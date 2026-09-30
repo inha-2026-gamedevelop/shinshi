@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce658e3ce8e9a0642b0f10ccdb32b42d, type: 3}
+  m_Name: SessionConfig
+  m_EditorClassIdentifier: Assembly-CSharp::Shinshi.Data.SessionConfigSO
+  _enemyHealthScale:
+  - 1
+  - 1.75
+  - 2.5
+  - 3.25
+  _bossHealthScale:
+  - 1
+  - 1.8
+  - 2.6
+  - 3.4
+  _damageScale:
+  - 1
+  - 1.05
+  - 1.1
+  - 1.15
+  _normalReviveDelay: 5
+  _normalReviveHealthRate: 0.5
+  _bossReviveDelay: 10
+  _bossReviveHealthRate: 0.3
+  _bossSharedRevives: 3
+  _safePointRetryInterval: 0.25
+  _reconnectGraceSeconds: 120
+  _readyCountdownSeconds: 3
+  _bossPotionUseLimit: 9
+  _auctionMinBid: 100
+  _auctionMinIncrement: 10
+  _auctionBaseSeconds: 30
+  _auctionExtendThreshold: 10
+  _auctionExtendTo: 10
+  _auctionMaxSeconds: 120
+  _auctionFeeRate: 0
+  _serviceCancelExtraEssence: 0

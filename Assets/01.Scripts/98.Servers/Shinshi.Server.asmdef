@@ -1,0 +1,21 @@
+{
+    "name": "Shinshi.Server",
+    "rootNamespace": "Shinshi",
+    "references": [
+        "Shinshi.Runtime",
+        "Mirror",
+        "Mirror.Transports",
+        "kcp2k"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_SERVER || UNITY_EDITOR"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

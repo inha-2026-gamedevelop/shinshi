@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72981feb1271b86479a5a61bba1e01d6, type: 3}
+  m_Name: PlayerConfig
+  m_EditorClassIdentifier: Assembly-CSharp::Shinshi.Data.PlayerConfigSO
+  _moveSpeed: 5
+  _dodgeDistance: 3
+  _dodgeDuration: 0.25
+  _dodgeCooldown: 5
+  _dodgeEnergyCost: 0
+  _baseMaxEnergy: 100
+  _energyRegenPerSecond: 10
+  _baseAttack: 100
+  _baseHealth: 1500
+  _baseDefense: 100
+  _baseCritChance: 0.05
+  _critDamageMultiplier: 2
+  _inputBufferSeconds: 0.15
+  _inputBufferDepth: 1
+  _basicAttacks:
+  - _damageCoefficient: 1
+    _interval: 0.9
+    _range: 3
+    _arcAngle: 90
+  - _damageCoefficient: 0.7
+    _interval: 0.8
+    _range: 9
+    _arcAngle: 0
+  - _damageCoefficient: 0.6
+    _interval: 0.8
+    _range: 8
+    _arcAngle: 0

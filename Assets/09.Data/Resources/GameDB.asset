@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9500d9709ca47946adcbc555b271b3f, type: 3}
+  m_Name: GameDB
+  m_EditorClassIdentifier: Assembly-CSharp::Shinshi.Data.GameDatabaseSO
+  _contentVersion: 0.1.0
+  _player: {fileID: 11400000, guid: 2021a386e8409a04fae7009d9cfef252, type: 2}
+  _session: {fileID: 11400000, guid: ebd4ed8253e26a241b033f0c7995832d, type: 2}

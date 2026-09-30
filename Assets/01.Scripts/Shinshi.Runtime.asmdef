@@ -1,0 +1,26 @@
+{
+    "name": "Shinshi.Runtime",
+    "rootNamespace": "Shinshi",
+    "references": [
+        "Mirror",
+        "Mirror.Components",
+        "Mirror.Transports",
+        "kcp2k",
+        "Unity.Cinemachine",
+        "Unity.AI.Navigation",
+        "Unity.TextMeshPro",
+        "DOTween.Modules",
+        "DOTweenPro.Scripts",
+        "PixelCrushers",
+        "DialogueSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

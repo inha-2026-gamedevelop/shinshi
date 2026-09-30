@@ -1,0 +1,16 @@
+{
+    "name": "Shinshi.Dev",
+    "rootNamespace": "Shinshi.Dev",
+    "references": [
+        "Shinshi.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
