@@ -1,0 +1,60 @@
+namespace Shinshi.Common
+{
+    /// <summary> 거절된 요청의 사유 코드, 값은 API와 주고받으므로 기존 값을 바꾸거나 재배열하지 않는다 </summary>
+    public enum ERejectReason
+    {
+        None                 = 0,
+
+        // 전투 행동
+        Dead                 = 100,
+        WrongPhase           = 101,
+        Cooldown             = 102,
+        InsufficientEnergy   = 103,
+        InvalidTarget        = 104,
+
+        // 물약
+        FullHealth           = 200,
+        Disabled             = 201,
+        PotionLimit          = 202,
+        PendingCommit        = 203,
+
+        // 부활
+        TooEarly             = 300,
+        NoSafePoint          = 301,
+        NoRevives            = 302,
+        SessionTerminal      = 303,
+
+        // 출정 준비
+        Locked               = 400,
+        MissingUnlock        = 401,
+        InsufficientTicket   = 402,
+        StaleRevision        = 403,
+        NotLeader            = 404,
+        NotAllReady          = 405,
+        NoCapacity           = 406,
+        ReservationConflict  = 407,
+
+        // 성장, 제작, 계승
+        WrongLocation        = 500,
+        InventoryFull        = 501,
+        InsufficientItem     = 502,
+        BoundItem            = 503,
+        InvalidInheritance   = 504,
+
+        // 채집
+        OutOfRange           = 600,
+        Occupied             = 601,
+        InsufficientAction   = 602,
+
+        // 경매
+        NotEligible          = 700,
+        Closed               = 701,
+        BidTooLow            = 702,
+        InsufficientCurrency = 703,
+
+        // 정산, 공통
+        AlreadySettled       = 900,
+        SessionMismatch      = 901,
+        IdempotencyConflict  = 902
+    }
+}
