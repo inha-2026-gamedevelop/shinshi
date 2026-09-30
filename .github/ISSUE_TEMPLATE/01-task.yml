@@ -1,0 +1,46 @@
+name: 작업
+description: 개발 작업 항목
+title: "[작업] "
+labels: ["task"]
+body:
+  # 파트가 확정되면 dropdown으로 바꾼다
+  - type: input
+    id: part
+    attributes:
+      label: 담당 파트
+      placeholder: "{파트}"
+    validations:
+      required: true
+
+  # 마일스톤 일정이 정해지면 dropdown으로 바꾼다
+  - type: input
+    id: milestone
+    attributes:
+      label: 마일스톤
+      placeholder: (미정)
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 무엇을 만드나
+      placeholder: 바닥에 떨어진 아이템을 서버가 판정해 한 명에게만 지급
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      description: 무엇이 되면 이 이슈를 닫을 수 있는지 구체적으로
+      placeholder: |
+        - 두 명이 동시에 주워도 한 명만 받는다
+        - 받은 사람의 인벤토리가 모든 클라이언트에서 같게 보인다
+        - 다인 접속(M2 이상)에서 확인했다
+    validations:
+      required: true
+
+  - type: textarea
+    id: refs
+    attributes:
+      label: 참고 문서
+      placeholder: docs/unity/NETWORK_AUTHORITY.md

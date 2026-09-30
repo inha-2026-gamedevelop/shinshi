@@ -1,0 +1,4 @@
+interface:
+  display_name: "주석 작성"
+  short_description: "실행 코드를 보존하며 코딩 컨벤션에 맞는 의도와 제약 주석 작성"
+  default_prompt: "$write-comments로 지정한 코드의 숨은 제약과 의도를 설명하는 주석을 추가해줘."

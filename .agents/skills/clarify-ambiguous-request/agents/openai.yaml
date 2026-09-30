@@ -1,0 +1,4 @@
+interface:
+  display_name: "모호한 요청 명확화"
+  short_description: "코드와 문서로 요청을 좁히고 결과를 바꾸는 핵심 입력 확인"
+  default_prompt: "$clarify-ambiguous-request로 이 요청에서 먼저 결정해야 할 사항을 확인해줘."

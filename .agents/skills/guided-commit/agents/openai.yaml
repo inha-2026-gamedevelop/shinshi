@@ -1,0 +1,4 @@
+interface:
+  display_name: "가이드 커밋"
+  short_description: "변경 검토와 문서 동기화 후 관심사별 커밋 준비 및 실행"
+  default_prompt: "$guided-commit으로 현재 작업 범위의 변경을 검토하고 커밋해줘."

@@ -1,0 +1,92 @@
+# 외부 에셋 대장
+
+2026-09-30 실제 설치 파일과 Unity 6000.4.7f1 에디터에서 확인했다. 저장소 루트가 Unity 프로젝트 루트다. Asset Store의 최신 버전과 이 프로젝트에 설치된 버전은 구분한다. 취득일·구매 내역·좌석 보유 현황은 확인하지 않았으며 설치 확인일을 취득일로 대신 적지 않는다.
+
+## 분류와 설치 목록
+
+외부 Asset Store 에셋은 `Assets/99.ThirdParty/{분류}/{에셋}/`에 둔다. 패키지 내부의 `Editor/`, `Resources/`, DLL, asmdef, 라이선스와 사용 문서는 보존한다.
+
+| 분류 | 내용 | 현재 상태 |
+|---|---|---|
+| `Animation` | 트윈, 애니메이션 도구·클립 | DOTween Pro와 동봉 DOTween·DemiLib |
+| `Tools` | 에디터, 대화, 물리 감지, 최적화, 셰이더 제작 도구 | 아래 8개 패키지 |
+| `VFX` | 완성된 이펙트, 파티클, 이펙트용 소재 | Realistic Spirit Blossom Spells VFX |
+| `Model` | 게임에서 사용할 모델·환경·소품 | 독립 패키지 없음, 분류 폴더만 준비 |
+
+아래 경로는 `Assets/99.ThirdParty/` 기준이다. 상업 이용 상태의 “조건부”는 해당 라이선스와 사용자의 보유 권한을 충족해야 한다는 뜻이며, 이번 정리에서 구매 증빙까지 검증했다는 의미는 아니다. 모든 항목의 취득일은 미확인이다.
+
+| 에셋 | 설치 버전 | 제작자 | 경로 | 구분 | 라이선스·상업 이용 | 출처 |
+|---|---|---|---|---|---|---|
+| DOTween Pro | 1.0.430 | Demigiant | `Animation/Demigiant/` | 유료, DOTween·DemiLib 동봉 | Pro 라이선스·조건부 | [공식 제품·설치 안내](https://dotween.demigiant.com/pro.php) |
+| Realistic Spirit Blossom Spells VFX | 1.0 | Piloto Studio | `VFX/Piloto Studio/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 399376](https://assetstore-fallback.unity.com/packages/vfx/particles/spells/realistic-spirit-blossom-spells-vfx-399376) |
+| Dialogue System for Unity | 2.2.73.2 | Pixel Crushers | `Tools/Pixel Crushers/` | 유료, Common 동봉 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 11672](https://assetstore.unity.com/packages/tools/behavior-ai/dialogue-system-for-unity-11672) |
+| RayCast Pro | 1.1.5A | Philosophers | `Tools/RaycastPro/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 214714](https://marketplace.unity.com/packages/tools/physics/raycastpro-214714) |
+| Editor Console Pro | 3.983 | FlyingWorm | `Tools/ConsolePro/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 11889](https://assetstore.unity.com/packages/tools/utilities/editor-console-pro-11889) |
+| Hierarchy Designer | 3.2.2 | Pedro Verpha | `Tools/Hierarchy Designer/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 273928](https://assetstore.unity.com/packages/tools/utilities/hierarchy-designer-273928) |
+| Wingman - Your Inspector's Best Friend | 1.1.0 | Kyle Rhoads | `Tools/Wingman/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 303181](https://assetstore.unity.com/packages/tools/utilities/wingman-your-inspector-s-best-friend-303181) |
+| Amplify Shader Editor | 1.9.9.12 | Amplify Creations | `Tools/AmplifyShaderEditor/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 68570](https://assetstore.unity.com/packages/tools/visual-scripting/amplify-shader-editor-68570) |
+| Maintainer 2 | 2.3.3 | Code Stage | `Tools/CodeStage/Maintainer/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 310179](https://assetstore.unity.com/packages/tools/utilities/maintainer-2-310179) |
+| Mesh Baker | 미확인(동봉 API 문서 3.37.0) | Ian Deane / Digital Opus | `Tools/MeshBaker/` | 에디션 미확인 | 에디션별 라이선스 확인 대기 | [유료판](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-5017), [무료판](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-free-31895) |
+
+설치 버전은 `.meta`의 `AssetOrigin.productId`, `packageName`, `packageVersion`으로 확인했다. Mesh Baker는 해당 메타데이터가 없고 동봉 문서가 `docs/API-3.37.0.zip`이다. 로컬 Mesh Baker Free 캐시와 일부 GUID·파일이 일치하지만 전체가 같지 않아 무료·유료 에디션을 확정하지 않았다. 확인 전에는 배포하지 않도록 해당 패키지도 Git에서 제외한다. 무료 독립 에셋으로 확인되면 에디션·버전·라이선스를 기록하고 패키지 단위 제외 규칙을 조정한다.
+
+## 기본 패키지와 위치 예외
+
+- `Packages/`의 Unity 기본 패키지와 MCP for Unity는 UPM이 관리하므로 Asset Store 폴더로 옮기지 않는다. 실제 버전·Git 의존성은 `Packages/manifest.json`, 고정 해시는 `Packages/packages-lock.json`이 기준이다.
+- 주요 설치 버전: URP 17.4.0, Input System 1.19.0, Cinemachine 3.1.7, AI Navigation 2.0.12, Unity Test Framework 1.6.0, Timeline 1.8.12, uGUI 2.0.0, Visual Scripting 1.9.11. 각 패키지의 동봉 LICENSE를 따른다.
+- Mirror 96.11.3은 무료 오픈소스(MIT, `Assets/Mirror/LICENSE`)이며 [공식 GitHub 릴리스](https://github.com/MirrorNetworking/Mirror/releases/tag/v96.11.3)의 `.unitypackage`로 2026-09-30 설치했다. 팀 전원이 같은 버전을 써야 하므로 Git에 포함하고, Mirror 기본 위치인 `Assets/Mirror/`를 유지한다(재임포트·업데이트 경로와 같음). 동봉 스크립트 템플릿(`ScriptTemplates/`)은 팀 템플릿과 섞이지 않도록 설치하지 않았다. 동봉 트랜스포트·예제 에셋의 개별 라이선스(`Transports/*/LICENSE`, `Examples/_Common/` 내 고지)는 원본대로 보존한다.
+- `Assets/Plugins/TextMesh Pro/`는 TMP 필수 폰트·리소스·셰이더이며 데모가 아니다. 2026-10-01 Unity 에디터에서 `Assets/TextMesh Pro/`에서 옮겼다(GUID 유지). `TMP Settings`는 `Resources.Load`로 찾으므로 `Resources/` 구조와 파일명, 동봉 라이선스를 유지한다. TMP 필수 리소스를 다시 임포트하면 `Assets/TextMesh Pro/`에 새로 풀리니 중복을 지우거나 이 위치로 옮긴다.
+- `Assets/Gizmos/`의 `DialogueDatabase Icon.png`, `StringAsset Icon.png`, `TextTable Icon.png`는 Dialogue System의 에디터 아이콘이다. 플러그인 코드와 Unity Gizmos가 이 위치를 사용하므로 유지하고 유료 패키지와 함께 Git에서 제외한다.
+- DOTween 설정은 `Assets/99.ThirdParty/Animation/Demigiant/DOTween/Resources/DOTweenSettings.asset`에 있다. `Resources.Load("DOTweenSettings")`가 계속 동작하도록 파일명과 `Resources/` 구조를 유지했다.
+
+## 정리 내역과 유지한 의존 에셋
+
+Unity `AssetDatabase.GetDependencies`로 삭제 후보 밖에서 들어오는 참조를 검사한 뒤 에디터 API로 이동·삭제했다.
+
+| 원래 위치 | 처리 |
+|---|---|
+| `Assets/TutorialInfo/`, `Assets/Readme.asset` | URP 템플릿 안내·튜토리얼 제거 |
+| `Hierarchy Designer/Demo/` | 예제 씬 제거 |
+| `MeshBaker/Examples/`, `MeshBaker/Temp/` | 예제·임시 산출물 제거. `MeshBakerWorkingFolder/DONT_DELETE.txt`와 도구 본체는 보존 |
+| `Demigiant/DOTweenPro Examples/` | 예제 제거 |
+| `Pixel Crushers/Dialogue System/Demo/` | 아래 필요한 모델 의존성을 보존한 뒤 데모 제거 |
+| `RaycastPro/_Demo/` | 아래 필요한 텍스처를 보존한 뒤 데모 제거 |
+| `CodeStage/Maintainer/Demo/` | 데모 제거 |
+| 빈 `Assets/Plugins/`, `Assets/Resources/` | 모든 내용 이동 후 제거 |
+
+Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 데모의 Recon Troop 모델과 머티리얼·텍스처를 참조했다. `Demo/Art/Recon Troop/`를 `Prefabs/Camera Angle Studio/Recon Troop/`로 옮겨 GUID를 보존했다. RaycastPro의 `Gizmos/Stamp.mat`가 쓰던 `_Demo/_Resources/Stamp.psd`는 `Gizmos/Stamp.psd`로 옮겼다. 외부 연동용 `.unitypackage`, 에디터 UI 리소스와 Console Pro의 Unity 버전별 DLL은 필요 시 사용되는 구성이라 보존했다.
+
+## 승인된 경로 보정과 DOTween 설정
+
+2026-09-30 사용자가 외부 원본의 **경로 문자열 7곳만 보정**하도록 승인했다. 동작 로직과 타입·필드·메서드 이름은 바꾸지 않았다. 에셋 업데이트 시 덮어써질 수 있으므로 다음 보정을 다시 확인한다.
+
+| 파일 (`Assets/99.ThirdParty/` 기준) | 이전 접두 경로 | 현재 접두 경로 | 치환 수 |
+|---|---|---|---:|
+| `Tools/MeshBaker/Editor/core/MB_EditorUtil.cs` | `Assets/MeshBaker` | `Assets/99.ThirdParty/Tools/MeshBaker` | 3 |
+| `Tools/Pixel Crushers/Dialogue System/Scripts/Editor/Tools/Setup Wizards/DialogueManagerWizard.cs` | `Assets/Plugins/Pixel Crushers/Dialogue System` | `Assets/99.ThirdParty/Tools/Pixel Crushers/Dialogue System` | 2 |
+| `Tools/Pixel Crushers/Dialogue System/Scripts/Editor/Utility/EditorTools.cs` | `Assets/Plugins/Pixel Crushers/Dialogue System` | `Assets/99.ThirdParty/Tools/Pixel Crushers/Dialogue System` | 2 |
+
+정리 전 EPO Outline 미설치 상태에서 DOTween EPO 연동이 켜져 컴파일 오류 18개가 있었다. `modules.epoOutlineEnabled=false`로 바꾸고 DOTween 공식 Utility의 `ApplyModulesSettings`를 실행해 연동 컴파일 조건을 비활성화하고 해결했다. 해당 연동 스크립트는 삭제하지 않았다. [공식 설치 안내](https://dotween.demigiant.com/pro.php)는 설치 후 사용할 모듈을 설정하도록 안내한다.
+
+## Git와 재설치
+
+- `.gitignore`는 유료 패키지의 폴더·폴더 메타 및 위 Gizmos 예외만 명시적으로 제외한다. 분류 폴더의 `.meta`와 이 대장은 공유한다. 미래의 무료 에셋까지 `99.ThirdParty/` 전체를 일괄 제외하지 않는다.
+- 재설치할 때 이 대장의 설치 버전을 임포트하고 Unity 에디터에서 위 경로로 옮긴다. 구 위치에 중복 DLL·소스가 남지 않게 확인한다.
+- 구매 에셋을 참조하는 팀 씬·프리팹을 공유하기 전 기존 GUID를 유지하는 설치·참조 복원 절차를 확인한다. 이번 SampleScene은 구매 에셋을 참조하지 않는다.
+- 원본 복구 백업은 Git에서 제외한 개인 작업 영역에 보존했다. 공유 문서를 읽기 위해 개인 백업을 열 필요는 없다. 팀 재설치 기준은 이 대장과 각 공급자의 패키지다.
+
+## 실제 검증
+
+최종 검사 결과는 아래에 기록한다. 게임·네트워크 코드는 변경하지 않았으며 플러그인 전체 기능의 플레이 테스트와 다인 접속 테스트는 실시하지 않았다.
+
+| 주장 | 실행 수단 | 실제 결과 | 상태 |
+|---|---|---|---|
+| 설치 에셋 분류·삭제 | Unity AssetDatabase 이동·삭제, 파일 목록 대조 | 10개 패키지 분류, 1,286개 파일(메타 포함) 제거, 약 109.6 MiB 감소 | 정적 검증 통과 |
+| 참조·메타 보존 | 이동 전 메타 GUID 목록과 이동 후 목록 대조, 직렬화 파일의 삭제 GUID 검사 | 보존 대상 GUID 3,746개 일치, 중복·누락·고아 메타·삭제 GUID 참조 모두 0 | 정적 검증 통과 |
+| 기존 프로젝트 씬 보존 | `Assets/00.Scenes/SampleScene.unity` SHA-256 대조 및 에디터 dirty 상태 | 파일 내용 동일, dirty=false | 정적 검증 통과 |
+| 컴파일 | Unity 재컴파일 및 Console 오류 조회 | 오류 0. 외부 코드의 구 API 등 경고 150개(Mesh Baker 108, RaycastPro 26, Wingman 15, Hierarchy Designer 1)는 별도 유지보수 대상 | 조건부 통과 |
+| DOTween 설정 로드 | 에디터에서 `Resources.Load("DOTweenSettings")` | 이동한 설정 에셋 로드 성공 | 기능 확인 |
+| 보정된 도구 경로 | Dialogue Manager·SceneFaderCanvas 프리팹 로드, Mesh Baker 작업 폴더 API 호출 | 프리팹 둘 다 로드 성공, 작업 폴더가 새 경로 반환 | 기능 확인 |
+| VFX 시각 결과·플러그인 전체 기능·다인 접속 | 미실행 | 폴더 정리 범위에서 수행하지 않음 | 미검증 |
+
+원본 백업 대비 남은 파일의 변경도 확인했다. 수동 코드 수정은 승인된 3개 파일의 경로 7곳이다. 설치 과정에서 추가된 Pixel Crushers 소스 65개의 주석만 있는 변경과 DOTween 설정 변경은 보존했으며 게임 로직 변화로 기록하지 않았다. 문서 링크·경로와 공백 검사 결과도 함께 확인한다.

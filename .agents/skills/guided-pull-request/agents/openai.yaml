@@ -1,0 +1,4 @@
+interface:
+  display_name: "가이드 풀 리퀘스트"
+  short_description: "실제 템플릿과 검증 근거를 확인해 풀 리퀘스트 본문 준비"
+  default_prompt: "$guided-pull-request로 현재 브랜치의 PR 제목과 본문을 준비해줘."

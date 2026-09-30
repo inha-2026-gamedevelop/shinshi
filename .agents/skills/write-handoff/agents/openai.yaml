@@ -1,0 +1,4 @@
+interface:
+  display_name: "인수인계 작성"
+  short_description: "미완료 작업의 실제 상태와 근거 및 다음 세션 행동 기록"
+  default_prompt: "$write-handoff로 여기까지의 상태와 검증 근거, 다음 세션 첫 행동을 남겨줘."

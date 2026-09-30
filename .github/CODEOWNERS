@@ -1,0 +1,87 @@
+# 파일 경로별 리뷰 담당자
+#
+# 경로는 docs/coding-convention.md 0장 폴더 구조를 따른다. 폴더를 옮기면 이 파일도 같이 고친다.
+# 존재하지 않는 경로는 GitHub이 조용히 무시한다.
+#
+# 표시 이름이 아니라 GitHub 로그인(@아이디)을 적어야 한다. 잘못 적으면 GitHub은 경고 없이 그 줄을 무시한다
+# (Settings의 CODEOWNERS 오류 표시로 확인).
+# 마지막으로 매칭된 줄이 이기므로 넓은 경로를 먼저, 좁은 경로를 나중에 둔다.
+#
+# 팀 구성
+#   @aurenixs           민성, 팀장, 공통 · 네트워크 · 플레이어 전투 · 카메라 · 통합
+#   @oname36-creator    기웅, 보스 · 몬스터 · 프롤로그 · 컷신
+#   @kjw1237            진욱, UI · 성장 · 인벤토리 · 제작 · 생활 · 맵
+
+# ---------------------------------------------------------------
+# 문서와 공용 설정 - 팀장 검토
+# ---------------------------------------------------------------
+/docs/                              @aurenixs
+/.github/                           @aurenixs
+/AGENTS.md                          @aurenixs
+/CLAUDE.md                          @aurenixs
+/README.md                          @aurenixs
+/.gitattributes                     @aurenixs
+/.gitignore                         @aurenixs
+/.editorconfig                      @aurenixs
+/.claude/skills/                    @aurenixs
+/.agents/skills/                    @aurenixs
+/Packages/                          @aurenixs
+/ProjectSettings/                   @aurenixs
+
+# ---------------------------------------------------------------
+# 씬 - 통합 씬은 팀장, 담당 개발 씬은 담당자 (씬 경로와 이름은 미정)
+# ---------------------------------------------------------------
+# /Assets/{통합 씬 경로}.unity         @aurenixs
+# /Assets/{씬 폴더}/Dev_{파트}.unity   {담당자 GitHub 로그인}
+
+# ---------------------------------------------------------------
+# 스크립트 - 기본은 팀장, 파트 폴더는 파트 담당
+# ---------------------------------------------------------------
+/Assets/01.Scripts/00.Common/       @aurenixs
+/Assets/01.Scripts/01.Network/      @aurenixs
+/Assets/01.Scripts/02.Combat/       @aurenixs
+/Assets/01.Scripts/03.AI/           @oname36-creator
+/Assets/01.Scripts/04.Systems/      @aurenixs
+/Assets/01.Scripts/05.Art/          @aurenixs
+/Assets/01.Scripts/06.UI/           @kjw1237
+/Assets/01.Scripts/99.Dev/          @aurenixs
+
+# 04.Systems 기능 폴더 - 성장, 인벤토리, 제작, 생활은 진욱, 웨이브는 기웅과 민성이 같이 본다
+/Assets/01.Scripts/04.Systems/Growth/      @kjw1237
+/Assets/01.Scripts/04.Systems/Equipment/   @kjw1237
+/Assets/01.Scripts/04.Systems/Talisman/    @kjw1237
+/Assets/01.Scripts/04.Systems/Inventory/   @kjw1237
+/Assets/01.Scripts/04.Systems/Crafting/    @kjw1237
+/Assets/01.Scripts/04.Systems/Life/        @kjw1237
+/Assets/01.Scripts/04.Systems/Reward/      @kjw1237 @aurenixs
+/Assets/01.Scripts/04.Systems/Wave/        @oname36-creator @aurenixs
+
+# 05.Art - 맵(환경)은 진욱
+/Assets/01.Scripts/05.Art/Environment/     @kjw1237
+
+# 네트워크 연결 코드는 파트와 무관하게 팀장이 맡는다 (docs/unity/SERVER_CLIENT_WORKFLOW.md).
+# **/Net/ 는 상태 클래스(NetworkBehaviour: 동기화 필드, Command, Rpc),
+# 98.Servers/ 는 서버 전용 어셈블리(Shinshi.Server)다. 파트 규칙보다 뒤에 둔다.
+/Assets/01.Scripts/**/Net/          @aurenixs
+/Assets/01.Scripts/98.Servers/      @aurenixs
+
+# 서버 전용 AI와 웨이브 진행은 작성 담당과 팀장이 같이 본다
+/Assets/01.Scripts/98.Servers/03.AI/              @oname36-creator @aurenixs
+/Assets/01.Scripts/98.Servers/04.Systems/Wave/    @oname36-creator @aurenixs
+
+# ---------------------------------------------------------------
+# 데이터 - GameDB 에셋, 루트와 공용은 팀장, 도메인 SO 값은 해당 파트
+# ---------------------------------------------------------------
+/Assets/09.Data/                    @aurenixs
+/Assets/09.Data/AI/                 @oname36-creator
+/Assets/09.Data/Growth/             @kjw1237
+/Assets/09.Data/Reward/             @kjw1237 @aurenixs
+/Assets/09.Data/Life/               @kjw1237 @aurenixs
+/Assets/09.Data/Presentation/       @kjw1237
+
+# ---------------------------------------------------------------
+# 테스트와 에디터 도구 - 팀장
+# ---------------------------------------------------------------
+/Assets/Tests/                      @aurenixs
+/Assets/Editor/                     @aurenixs
+/Assets/ScriptTemplates/            @aurenixs

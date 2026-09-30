@@ -1,0 +1,4 @@
+interface:
+  display_name: "기술 대안 비교"
+  short_description: "프로젝트 제약에 맞춰 기술 대안의 비용과 적합성을 비교"
+  default_prompt: "$present-alternatives로 구현 대안을 비교하고 권장안을 설명해줘."

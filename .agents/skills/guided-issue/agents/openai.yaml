@@ -1,0 +1,4 @@
+interface:
+  display_name: "가이드 이슈 등록"
+  short_description: "실제 템플릿과 재현 로그를 바탕으로 GitHub 이슈 준비"
+  default_prompt: "$guided-issue로 확인한 문제를 GitHub 버그 이슈 초안으로 정리해줘."
