@@ -1,0 +1,15 @@
+// Unity
+using UnityEngine;
+
+namespace #NAMESPACE#
+{
+    [CreateAssetMenu(fileName = "#SCRIPTNAME#", menuName = "Shinshi/#SCRIPTNAME#")]
+    public class #SCRIPTNAME# : ScriptableObject
+    {
+        /****************************************
+        *                Fields
+        ****************************************/
+
+        #NOTRIM#
+    }
+}

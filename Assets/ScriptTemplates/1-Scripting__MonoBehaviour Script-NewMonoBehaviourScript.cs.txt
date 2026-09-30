@@ -1,0 +1,39 @@
+// System
+using System;
+
+// Unity
+using UnityEngine;
+
+namespace #NAMESPACE#
+{
+    public class #SCRIPTNAME# : MonoBehaviour
+    {
+        /****************************************
+        *                Fields
+        ****************************************/
+
+
+        /****************************************
+        *              Unity Event
+        ****************************************/
+
+        private void Awake()
+        {
+            #NOTRIM#
+        }
+
+        private void Start()
+        {
+            #NOTRIM#
+        }
+
+        private void Update()
+        {
+            #NOTRIM#
+        }
+
+        /****************************************
+        *                Methods
+        ****************************************/
+    }
+}
