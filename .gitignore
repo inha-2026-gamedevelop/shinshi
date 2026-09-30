@@ -104,3 +104,118 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# ══════════════════════════════════════════════════════
+#  shinshi 팀 공통 추가 규칙 (위는 Unity 공식 템플릿)
+# ══════════════════════════════════════════════════════
+
+# Asset Store 도구 캐시
+.vsconfig
+/[Aa]ssets/AssetStoreTools/
+/[Aa]ssets/AssetStoreTools.meta
+
+# 구매 에셋 원본 폴더 (도입 예정) — 라이선스가 구매 계정에 묶여 커밋할 수 없으면
+# 폴더를 정하고 아래 두 줄의 주석을 풀어 쓴다. 배포 경로는 docs/ai/12_ASSET_AND_DATA_POLICY.md
+# /[Aa]ssets/{구매 에셋 폴더}/
+# /[Aa]ssets/{구매 에셋 폴더}.meta
+
+# 압축본은 커밋하지 않는다. Unity가 만드는 .meta도 함께 제외해 원본 없는 참조를 막는다
+*.zip
+*.zip.meta
+
+# UnityYAMLMerge 충돌 해결 시 남는 백업
+*.orig
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Python 개발 환경과 실행 캐시 (.github/scripts 등)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 실제 환경값과 로컬 실행 데이터, 비밀값 없는 예제는 공유
+.env
+.env.*
+*.env
+!.env.example
+!*.env.example
+*.local
+.local/
+
+# 인증서 개인키와 서명 비밀키, 공개키는 배포 소스
+*.key
+*.pem
+*.pfx
+*.p12
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+!*.public.pem
+!*.pub.pem
+
+# 도구 생성물과 개인 AI 설정 (팀 공유 스킬 .claude/skills, .agents/skills 는 커밋한다)
+node_modules/
+TestResults/
+coverage/
+*.dmp
+.mcp.*.json
+.claude/settings.local.json
+.codex/
+
+# 개인 기록 — 세션 인수인계(.claude/docs)와 다른 담당자에게 넘길 전달 문서(.claude/handover).
+# 경로 규칙은 AGENTS.md
+.claude/docs/
+.claude/handover/
+
+_bmad/
+_bmad-output/
+.agents/skills/bmad-*/
+.agents/skills/gds-*/
+
+# Purchased Asset Store packages and bundled dependencies (docs/licenses/ASSET_REGISTRY.md)
+/Assets/99.ThirdParty/VFX/Piloto Studio/
+/Assets/99.ThirdParty/VFX/Piloto Studio.meta
+/Assets/99.ThirdParty/Animation/Demigiant/
+/Assets/99.ThirdParty/Animation/Demigiant.meta
+/Assets/99.ThirdParty/Tools/AmplifyShaderEditor/
+/Assets/99.ThirdParty/Tools/AmplifyShaderEditor.meta
+/Assets/99.ThirdParty/Tools/CodeStage/
+/Assets/99.ThirdParty/Tools/CodeStage.meta
+/Assets/99.ThirdParty/Tools/ConsolePro/
+/Assets/99.ThirdParty/Tools/ConsolePro.meta
+/Assets/99.ThirdParty/Tools/Hierarchy Designer/
+/Assets/99.ThirdParty/Tools/Hierarchy Designer.meta
+/Assets/99.ThirdParty/Tools/Pixel Crushers/
+/Assets/99.ThirdParty/Tools/Pixel Crushers.meta
+/Assets/99.ThirdParty/Tools/RaycastPro/
+/Assets/99.ThirdParty/Tools/RaycastPro.meta
+/Assets/99.ThirdParty/Tools/Wingman/
+/Assets/99.ThirdParty/Tools/Wingman.meta
+/Assets/99.ThirdParty/*
+
+# Mesh Baker edition is unconfirmed; review before sharing its source
+/Assets/99.ThirdParty/Tools/MeshBaker/
+/Assets/99.ThirdParty/Tools/MeshBaker.meta
+
+# Dialogue System icons require Unity's root Gizmos path
+/Assets/Gizmos/DialogueDatabase Icon.png
+/Assets/Gizmos/DialogueDatabase Icon.png.meta
+/Assets/Gizmos/StringAsset Icon.png
+/Assets/Gizmos/StringAsset Icon.png.meta
+/Assets/Gizmos/TextTable Icon.png
+/Assets/Gizmos/TextTable Icon.png.meta
