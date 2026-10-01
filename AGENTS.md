@@ -6,7 +6,7 @@ shinshi 저장소에서 일하는 AI 에이전트와 팀원이 **반드시** 따
 
 - 저장소 루트가 곧 Unity 프로젝트 루트다 (`Assets/`, `Packages/`, `ProjectSettings/`).
 - Unity 6000.4.7f1, URP, Unity Test Framework. 입력은 구 Input Manager(`UnityEngine.Input`, Active Input Handling = Both). 네트워크는 Mirror 96.11.3(`Assets/Mirror/`), 데디케이티드 서버 방식(확정). 서버 구성·호스팅은 `docs/unity/NETWORK_AUTHORITY.md` 7장.
-- 게임 기획·기술 설계는 [docs/00-reading-guide.md](docs/00-reading-guide.md)에서 시작한다. 게임플레이 C#과 백엔드는 아직 미구현이다. `Assets/01.Scripts/00.Common/`에는 공통 계약(`Constants`, enum, GameDB 골격)만 있으며, 설계에 적힌 예정 파일·도구를 실제로 존재한다고 가정하지 않는다.
+- 게임 기획·기술 설계는 [docs/00-reading-guide.md](docs/00-reading-guide.md)에서 시작한다. 게임플레이 C#과 백엔드는 아직 미구현이다. `Assets/01.Scripts/00.Common/`에는 공통 계약(`Constants`, enum, 인터페이스, GameDB와 도메인 SO 초안)과 엔진 비의존 DTO(`Contracts/`)가 있고, `02.Combat/Damage/`·`98.Servers/`에는 파트 간 인터페이스만 있다. 설계에 적힌 예정 파일·도구를 실제로 존재한다고 가정하지 않는다.
 
 ## 반드시 읽을 것
 

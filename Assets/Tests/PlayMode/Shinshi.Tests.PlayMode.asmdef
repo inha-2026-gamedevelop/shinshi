@@ -4,6 +4,7 @@
     "references": [
         "Shinshi.Runtime",
         "Shinshi.Server",
+        "Shinshi.Contracts",
         "Mirror",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

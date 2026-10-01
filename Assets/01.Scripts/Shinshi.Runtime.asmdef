@@ -2,6 +2,7 @@
     "name": "Shinshi.Runtime",
     "rootNamespace": "Shinshi",
     "references": [
+        "Shinshi.Contracts",
         "Mirror",
         "Mirror.Components",
         "Mirror.Transports",

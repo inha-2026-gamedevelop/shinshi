@@ -3,6 +3,7 @@
     "rootNamespace": "Shinshi",
     "references": [
         "Shinshi.Runtime",
+        "Shinshi.Contracts",
         "Mirror",
         "Mirror.Transports",
         "kcp2k"

@@ -55,9 +55,10 @@ Assets/
 | 어셈블리 | asmdef 위치 | 포함 | 참조 | 빌드 포함 조건 |
 |---|---|---|---|---|
 | `Shinshi.Runtime` | `01.Scripts/` | `00.Common/`~`06.UI/` | Mirror, Cinemachine, AI Navigation, TextMeshPro, DOTween, Dialogue System | 항상 |
+| `Shinshi.Contracts` | `01.Scripts/00.Common/Contracts/` | Unity와 백엔드가 함께 쓰는 엔진 비의존 API DTO (`noEngineReferences`). `Shinshi.Runtime`에서 빠진다 | 없음. `Shinshi.Runtime`, `Shinshi.Server`, 테스트가 참조한다 | 항상 |
 | `Shinshi.Server` | `01.Scripts/98.Servers/` | `98.Servers/` | `Shinshi.Runtime`, `Shinshi.Dev`, Mirror | define 제약 `UNITY_SERVER \|\| UNITY_EDITOR` |
 | `Shinshi.Dev` | `01.Scripts/99.Dev/` | `99.Dev/` | `Shinshi.Runtime` | 항상 컴파일하되 파일 안을 `#if UNITY_EDITOR \|\| DEVELOPMENT_BUILD`로 비운다. `Shinshi.Server`의 개발 패널이 참조해야 해서 define 제약을 걸지 않는다 |
-| `Shinshi.Tests.EditMode` · `Shinshi.Tests.PlayMode` | `Tests/EditMode/` · `Tests/PlayMode/` | 테스트 | `Shinshi.Runtime`, `Shinshi.Server`, 테스트 러너 | 테스트 전용 |
+| `Shinshi.Tests.EditMode` · `Shinshi.Tests.PlayMode` | `Tests/EditMode/` · `Tests/PlayMode/` | 테스트 | `Shinshi.Runtime`, `Shinshi.Server`, `Shinshi.Contracts`, 테스트 러너 | 테스트 전용 |
 
   - 에디터에서는 `UNITY_EDITOR`가 정의되어 서버 코드도 컴파일되므로 에디터 한 개로 서버·클라를 함께 실행해 시험할 수 있다. Dedicated Server 빌드 대상은 `UNITY_SERVER`를 정의한다.
   - 로그·기즈모 호출 API처럼 도메인 코드가 부르는 개발 기능은 `Shinshi.Runtime`(`00.Common/`)에 `[Conditional]`로 두고, `Shinshi.Dev`에는 패널·웹 서버처럼 도메인이 부르지 않는 것만 둔다. `Shinshi.Runtime`은 `Shinshi.Dev`를 참조하지 않는다.
@@ -77,6 +78,7 @@ Assets/
 ```csharp
 namespace Shinshi.Common       // 공통 유틸리티, Constants
 namespace Shinshi.Data         // ScriptableObject 정의 (GameDB)
+namespace Shinshi.Contracts    // Unity와 백엔드가 함께 쓰는 API DTO, UnityEngine 참조 금지
 namespace Shinshi.Network      // 세션, 동기화
 namespace Shinshi.Combat       // 플레이어, 피해 판정, 기술
 namespace Shinshi.AI           // 산귀, 보스, 웨이브 스폰 (AI·패턴 판정 포함)
