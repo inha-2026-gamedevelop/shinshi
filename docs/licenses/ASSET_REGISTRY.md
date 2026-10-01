@@ -35,20 +35,50 @@ UMA는 2026-10-01 팀장 승인으로 GitHub 공식 릴리스의 `UMA31_f1.unity
 
 ## 공용 돌바닥·부유석 제작 소재와 가공물
 
-2026-10-01 사용자 제공 참고 시트와 실사 판타지 제작 요청을 기준으로 아래 소재를 취득·가공했다. Asset Store 설치 패키지와 구분하여 기록하며, Unity 임포트·프리팹·에디터 프리뷰 확인과 미검증 항목은 [제작·사용 문서](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md)에 기록한다.
+2026-10-01 사용자 제공 참고 시트와 실사 판타지 제작 요청을 기준으로 아래 소재를 취득·가공했다. Asset Store 설치 패키지와 구분하여 출처·사용조건과 배치용 경로를 기록한다. 후속 제작은 [아트 제작 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md)을 따른다.
 
 | 에셋 | 버전·제작 기록 | 제작자 | 보관·사용 경로 | 구분 | 라이선스·상업 이용 | 출처 |
 |---|---|---|---|---|---|---|
-| Rock 01 석재 PBR | 2026-10-01 취득, 4K Base Color·Roughness·OpenGL Normal·Height | Rob Tuytel / Poly Haven | 원본 `.codex/art/realistic-fantasy-kit/textures/`, 돌바닥 가공 재질에 사용 | 외부 무료 소재 | CC0, 상업 이용·수정·재배포 가능 | [공식 자산](https://polyhaven.com/a/rock_01), [라이선스](https://polyhaven.com/license) |
-| 공용 돌바닥 | 2026-10-01 Blender MCP 제작, 6×6m 모듈·3LOD FBX·PBR/AO 출력 | shinshi 프로젝트 제작 | 모델·재질 `Assets/01.Scripts/05.Art/Environment/StoneCourtyard/`, 프리팹 `Assets/02.Prefab/Environment/StoneCourtyard/` | 프로젝트 제작 메시·가공 재질 | 석재 표면 원본은 위 CC0. 자체 메시·베이크와 외부 소재를 구분하여 관리 | [참고 CA-05](../design/concept-art.md#6-ca-05-공용-돌바닥-타일), [제작 기록](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md) |
-| 장식용 부유석 | Meshy CLI 0.3.0, `meshy-7.1`, 작업 `01a0f4de-b032-70ef-923a-05f9a0c97a84`, 2026-10-01 생성·다운로드, 실제 35크레딧·Blender 3LOD/PBR/AO 출력 | Meshy 생성 + shinshi Blender 가공 | 원본 `.codex/art/realistic-fantasy-kit/meshy/output/`, 모델·재질 `Assets/01.Scripts/05.Art/Environment/FloatingRock/`, 프리팹 `Assets/02.Prefab/Environment/FloatingRock/` | AI 생성 원본·프로젝트 가공물 | 생성 당시 계정 플랜 미확인. 플랜별 조건·입력 권리 확인 상태는 아래 기록 | [참고 CA-06](../design/concept-art.md#7-ca-06-부유석), [Meshy 소유 안내](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models), [이용 약관](https://www.meshy.ai/terms-of-use) |
+| Rock 01 석재 PBR | 2026-10-01 취득, 4K Base Color·Roughness·OpenGL Normal·Height | Rob Tuytel / Poly Haven | 원본은 Git 제외 개인 작업 영역에 보존, 돌바닥 가공 재질에 사용 | 외부 무료 소재 | CC0, 상업 이용·수정·재배포 가능 | [공식 자산](https://polyhaven.com/a/rock_01), [라이선스](https://polyhaven.com/license) |
+| 공용 돌바닥 | 2026-10-01 Blender MCP 제작, 6×6m 모듈·3LOD FBX·PBR/AO 출력 | shinshi 프로젝트 제작 | 모델·재질 `Assets/01.Scripts/05.Art/Environment/StoneCourtyard/`, 프리팹 `Assets/02.Prefab/Environment/StoneCourtyard/` | 프로젝트 제작 메시·가공 재질 | 석재 표면 원본은 위 CC0. 자체 메시·베이크와 외부 소재를 구분하여 관리 | [참고 CA-05](../design/concept-art.md#6-ca-05-공용-돌바닥-타일), [배치 프리팹](../../Assets/02.Prefab/Environment/StoneCourtyard/PF_StoneCourtyardTile.prefab) |
+| 장식용 부유석 | Meshy CLI 0.3.0, `meshy-7.1`, 작업 `01a0f4de-b032-70ef-923a-05f9a0c97a84`, 2026-10-01 생성·다운로드, 실제 35크레딧·Blender 3LOD/PBR/AO 출력 | Meshy 생성 + shinshi Blender 가공 | 원본은 Git 제외 개인 작업 영역에 보존, 모델·재질 `Assets/01.Scripts/05.Art/Environment/FloatingRock/`, 프리팹 `Assets/02.Prefab/Environment/FloatingRock/` | AI 생성 원본·프로젝트 가공물 | 생성 당시 계정 플랜 미확인. 플랜별 조건·입력 권리 확인 상태는 아래 기록 | [참고 CA-06](../design/concept-art.md#7-ca-06-부유석), [Meshy 소유 안내](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models), [이용 약관](https://www.meshy.ai/terms-of-use) |
 
 - Rock 01 원본 PNG 네 개는 4096×4096이며 공식 파일 API의 MD5와 모두 일치한다. 시각 확인용 썸네일은 런타임 소재에 포함하지 않았다.
 - 참고 그림은 사용자 제공이다. 작가·제작 도구·라이선스와 별도 권리 확인은 미확인으로 기록하고 소유권을 추측하지 않는다.
 - Meshy 공식 안내는 유료 플랜 생성물의 비공개 소유와 무료 플랜 생성물의 CC BY 4.0·Meshy 표시 조건을 구분한다. 실제 생성 계정 플랜을 CLI에서 확인하지 못했으므로 이 부유석을 자체 소유 또는 CC0로 확정하지 않는다. 커뮤니티 공개는 요청하거나 수행하지 않았다. [상업 이용 안내](https://help.meshy.ai/en/articles/16102098-can-i-use-meshy-assets-commercially)
-- 원본 GLB·FBX, 다운로드 텍스처, Blender `.blend`와 제작 기록은 위 `.codex/art/` 작업 영역에 보존하며 Git에서 제외한다. 런타임 모델·재질·텍스처는 [팀 모델링 에셋 규칙](../unity/SCENE_AND_ASSET_SAFETY.md#팀이-만든-모델링-에셋)에 따라 `05.Art/Environment/`, 배치용 프리팹은 `02.Prefab/Environment/`에서 `.meta`와 함께 공유한다. 모델 제작은 프리팹 생성·참조 검증까지 포함한다.
-- 런타임 모델명은 `StoneCourtyard/Models/SM_StoneCourtyardTile_{High,Medium,Low}.fbx`, `FloatingRock/Models/SM_FloatingRock_{High,Medium,Low}.fbx`다. 단계는 LOD0·1·2에 대응하며 Unity 에디터에서 이름을 바꿔 GUID를 보존했다. 공유 제작 렌더는 [사용 문서의 미리보기](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md#7-최종-blender-베이크-미리보기)에 있다.
-- Unity에서 `PF_StoneCourtyardTile.prefab`·`PF_FloatingRock.prefab`, URP Lit 재질·PBR/AO 연결과 프리뷰를 확인했다. `02.Prefab/` 이관 뒤 에셋 20개·폴더 포함 메타 32개에 누락 0, 프리팹 GUID 2개 유지와 에셋 관련 신규 오류·경고 0을 확인했다. Console 이력 변화와 연결 경고는 [검증 기록](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md#6-실제-검증과-남은-확인)에 따로 적었다. 기존 씬은 변경하지 않았다. 게임플레이·성능·빌드·배포 검증과 Meshy 계정 플랜 확인은 완료하지 않았다.
+- 원본 GLB·FBX, 다운로드 텍스처, Blender `.blend`와 제작 기록은 Git 제외 개인 작업 영역에 보존한다. 런타임 모델·재질·텍스처는 [팀 모델링 에셋 규칙](../unity/SCENE_AND_ASSET_SAFETY.md#팀이-만든-모델링-에셋)에 따라 `05.Art/Environment/`, 배치용 프리팹은 `02.Prefab/Environment/`에서 `.meta`와 함께 공유한다. 모델 제작은 프리팹 생성·참조 검증까지 포함한다.
+- 런타임 모델명은 `StoneCourtyard/Models/SM_StoneCourtyardTile_{High,Medium,Low}.fbx`, `FloatingRock/Models/SM_FloatingRock_{High,Medium,Low}.fbx`다. 단계는 LOD0·1·2에 대응한다. [돌바닥 프리팹](../../Assets/02.Prefab/Environment/StoneCourtyard/PF_StoneCourtyardTile.prefab)과 [부유석 프리팹](../../Assets/02.Prefab/Environment/FloatingRock/PF_FloatingRock.prefab)을 배치하고, 상세 디자인·제작 기록·렌더는 개인 docs에 보관한다.
+- Unity 임포트·URP Lit PBR/AO 연결·LOD·메타와 에디터 프리뷰를 확인했다. 게임플레이·성능·빌드·배포 검증과 Meshy 계정 플랜 확인은 완료하지 않았다.
+
+## 공용 석등 생성·가공물
+
+| 에셋 | 생성·가공 | 보관·사용 | 권리 확인 상태 | 근거 |
+|---|---|---|---|---|
+| StoneLantern | 2026-10-01 Meshy CLI 0.3.0·Meshy 7.1, 작업 `01a0f547-3b81-70a0-9f76-1c4c0dc96ebe`, SUCCEEDED·실제 30크레딧. Blender MCP 3LOD·실제 AO·창 Emission 베이크 | 원본은 Git 제외 개인 작업 영역에 보존, 런타임 `Assets/01.Scripts/05.Art/Props/StoneLantern/`, 배치 프리팹 `Assets/02.Prefab/Props/StoneLantern/` | ChatGPT 생성 단독 석등 입력·Meshy 출력·프로젝트 가공물. Meshy 생성 계정 플랜 미확인, CC0·독점 소유로 확정하지 않음 | [배치 프리팹](../../Assets/02.Prefab/Props/StoneLantern/PF_StoneLantern.prefab), [Meshy 소유 조건](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models), [약관](https://www.meshy.ai/terms-of-use) |
+
+디자인 컨셉·생성 프롬프트는 개인 docs에 보관한다. 에셋 대장은 실제 사용 모델의 출처·조건을 기록하며 개인 시안 이미지를 게시하지 않는다. 외부 폴리헤이븐 석재를 이 석등 재질에 추가로 사용하지 않았다.
+
+## 건축·매다는 등 시제품
+
+| 에셋 | 생성·가공 | 런타임 보관·사용 조건 |
+|---|---|---|
+| TiledHouse | Meshy 작업 `01a0f5f0-8d3e-717a-9331-18e74132e8b6`, 성공 출력·30크레딧. 가공 3LOD는 59,999 / 32,998 / 16,799삼각형 | `Assets/01.Scripts/05.Art/Environment/TiledHouse/`. 3FBX·7PNG(PBR/AO·Alpha), 재질·프리팹 미구성 |
+| RedGate | Meshy 작업 `01a0f5fb-2b43-763f-894a-179d71ee1eea`, 성공 출력·30크레딧. 가공 3LOD는 40,000 / 22,000 / 11,200삼각형 | `Assets/01.Scripts/05.Art/Environment/RedGate/`. 3FBX·6PNG(PBR/AO), 재질·프리팹 미구성 |
+| HangingLantern | Meshy 작업 `01a0f5ec-73bb-759b-89c8-5f4e535102cd`, 성공 출력·30크레딧. 가공 3LOD는 23,000 / 19,550 / 16,099삼각형 | `Assets/01.Scripts/05.Art/Props/HangingLantern/`의 3FBX·8PNG·재질, [장식용 프리팹](../../Assets/02.Prefab/Props/HangingLantern/PF_HangingLantern.prefab). Collider 없음 |
+
+2026-10-01 커밋 전 정적 확인에서 세 모델의 FBX는 가공 출력과 SHA-256이 일치했고 메타·텍스처 임포트 설정을 확인했다. 매다는 등은 Emission 맵·색이 연결됐으나 `_EMISSION` 키워드가 없어 현행 URP Lit에서 발광하지 않는다. 최신 LOD의 시각·전환·게임플레이·성능·빌드는 이번 검토에서 미실행이다. 건축 두 모델은 배치용 프리팹이 완성되기 전 중간 산출물이다.
+
+생성 원본·입력·상세 기록은 Git 제외 개인 작업 영역에 보존한다. Meshy 생성 계정 플랜·입력 권리·배포 조건은 미확인으로 유지하며 CC0·독점 소유를 주장하지 않는다. [Meshy 소유 조건](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models)과 [약관](https://www.meshy.ai/terms-of-use)을 실제 계정 조건과 대조해야 한다.
+
+## 신시 마을 지형 시제품
+
+| 에셋 | 제작·소재 | 런타임 보관·사용 | 권리 구분 |
+|---|---|---|---|
+| Aerial Grass Rock 지면 PBR — 이전 시제품 이력 | 2026-10-01 취득·2K JPG 원본 보존. 이전 상부 지면에서 Diffuse/Height/Roughness를 사용했고 OpenGL Normal 원본은 보존만 함 | 원본·상세 제작 이력은 개인 작업 영역. 현행 native 부유석 키트의 표면에는 추가 지면 맵을 사용하지 않음 | Rob Tuytel / Poly Haven, 외부 CC0 소재. [공식 자산](https://polyhaven.com/a/aerial_grass_rock), [CC0 라이선스](https://polyhaven.com/license) |
+| VillageTerrain v2 — 이전 통합 시제품 | 기존 Meshy FloatingRock 암석 조립 + Blender 상부·3LOD·접합 AO. Aerial Grass Rock/Rock 01 사용, 새 Meshy 생성·비용 없음 | `Assets/01.Scripts/05.Art/Environment/VillageTerrain/`의 기존 `PF_VillageTerrain`·`Dev_ShinshiVillageTerrain`는 이력이며 새 키트 배치 대상으로 사용하지 않음 | 프로젝트 제작 상부·가공 재질, 위 CC0 소재와 기존 Meshy 원본 조건을 구분 |
+| VillageTerrain 독립 부유석 키트 | 같은 Meshy 원본의 Core/E/NE/NW/W/SW/SE 변형7개, 원래 암석·이끼 표면·공유PBR·자체AO7·렌더3LOD·숨은 상단충돌7. 추가 Meshy 비용 없음 | `Assets/01.Scripts/05.Art/Environment/VillageTerrain/{Models,Textures,Materials}/Chunks/`의28FBX·7AO·7재질, [조립용7PF](../../Assets/02.Prefab/Environment/VillageTerrain/Chunks/), [검수 갤러리](../../Assets/00.Scenes/Dev_FloatingIslandKit.unity) | 기존 FloatingRock의 Meshy 계정 플랜 미확인 상태를 승계. 가공·AO 제작 기록과 원본 조건을 구분하며 전체를 CC0·독점 소유로 확정하지 않음 |
+
+설계·Blender 원본·상세 제작 기록·렌더와 취소된 시제품은 개인 docs에 보관한다. 현행 키트는 추가 가시 상부판 없이 개별 조각을 제작하고 사용자가 Unity에서 조립한다. 자체 AO는 고정 조립의 접합 AO와 구분한다. Unity7PF·임포트/참조/메타·지정 ray/강제LOD·고정 카메라 시각검사를 완료했고 기존 FloatingRock·공유표면 맵·보호64파일을 보존했다. 갤러리는 완성맵이 아니다. 숨은 상단충돌은 선택면용 정적 Non-Convex로 모든 가시경사/선반의 이동을 보장하지 않는다. 실제 맵조립·보행·다리/물/건물·게임플레이·연속LOD·성능·빌드·서버 통합은 미검증이다.
 
 ## 기본 패키지와 위치 예외
 
