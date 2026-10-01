@@ -167,3 +167,22 @@ Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 �
 | 기존 원본 파생7종 | 기존 FloatingRock 파생 바위5종과 CherryTree 파생2종. 원본 모델·재질·프리팹 보존, 파생형 크기·피벗·용도별 Collider 조정 | 파생형은 공용 목록 경로를 따른다. 중앙 거대 벚꽃나무는 신규 제작에 포함하지 않는다 |
 
 생성 입력·작업 ID·원본·편집본·상세 제작 기록은 Git 제외 개인 작업 영역에 보존했다. 인증값은 에셋과 문서에 넣지 않는다. 생성 계정 플랜과 입력·출력 권리 조건은 기존 Meshy 기록과 같이 별도 확인 상태이며, 이번 정적·시각 검증을 상업 이용 권리 확인으로 취급하지 않는다. 현재70종은 조건부 통과이고 식생·목조 교각 표면 보정과 게임 사용·성능·빌드 검증이 남아 있다.
+
+## 원화 대조 마을 제작 — 2026-10-01~02
+
+사용자의 원화 대조·세부 건물 제작 요청으로 CA04의 개별 물체 참조를 준비하고 Meshy 원본 8건을 생성했다. 받은 원본은 Blender 5.1에서 형상·치수·UV·노멀·재질·실제 AO를 수정한 뒤 Unity에 가져온다. Blender MCP의 연결 불가 상태에서 실제 Blender 실행 파일의 background Python을 사용했으며, Blender 가공을 생략하지 않았다. 각 작업의 실제 비용은30, 합계240크레딧이며 추가 유료 재생성은 없다.
+
+| 제작물 | Meshy 작업 ID | 공유 이름 |
+|---|---|---|
+| 이중 지붕 전각 | `01a0f7d5-7e61-7458-bc2a-487534893da2` | `ReferenceGrandHall` |
+| 열린 정자 | `01a0f7d5-bea5-70b1-b2bf-60eebc3a572a` | `ReferencePavilion` |
+| 석주·붉은 문 | `01a0f7d5-bf5d-72ba-bca9-4536f261de4e` | `ReferenceCeremonialGate` |
+| 공방 | `01a0f7d5-87a3-731b-91e2-22728104dcc0` | `ReferenceWorkshop` |
+| 기와 주거 | `01a0f7d5-87a0-749c-8ddc-ae70a4b53f01` | `ReferenceTiledResidence` |
+| 초가 | `01a0f7d5-87cb-772d-9b21-2904ae47f3e9` | `ReferenceThatchedCottage` |
+| 크림색 시장 차양 | `01a0f7d5-877d-752a-9d2a-d8ee2b46a9a9` | `ReferenceMarketCanopy` |
+| 불규칙 석판 길 | `01a0f7d5-a6f9-73e5-9aeb-5c8ac24f7b5b` | `ReferenceStonePath` |
+
+런타임은 `Assets/01.Scripts/05.Art/Environment/{공유 이름}/`, 배치용 프리팹은 `Assets/02.Prefab/Environment/{공유 이름}/`이다. 기존 FloatingRock 작업 `01a0f4de-b032-70ef-923a-05f9a0c97a84`의 Blender 청크 원본에서 파생한 `ReferenceIsland` 7종은 추가 Meshy 비용0이며 원본 UV·아랫면을 보존하고 윗면과 색·AO를 다시 처리했다. `ReferenceShrineDetails`는 기존 링 원본을 바탕으로 Blender에서 천·기둥·돌 기단을 제작했고, `VillageAssembly/PF_ReferenceSanctuaryLantern`은 기존 모듈·등을 조립한 것이다. 신규 Meshy 생성 수에 이 파생·직접 제작·조립물을 더하지 않는다.
+
+원본 GLB·편집 blend·입력 이미지·반려된 축소 후보·상세 검수는 Git 제외 개인 제작 기록에 보존한다. 권리 확인 상태는 위 기존 Meshy 기록과 같다. 최종 경로·LOD 예외·시각 검증·사용 제한은 [공용 환경 에셋 목록](../unity/SHARED_ENVIRONMENT_ASSET_CATALOG.md)의 원화 대조 마을 항목을 따른다.

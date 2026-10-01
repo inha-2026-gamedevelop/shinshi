@@ -151,3 +151,43 @@ JarWide/JarTall은 남던 검정 삼각·몸통 파손을 해결하려고 측정
 현재 70개 프리팹의 중복 없는 텍스처 참조208개 중 신규 소유206개를 에디터에서 읽었다. Unity native loaded memory 합은 신규116.48MiB, 기존 Cherry 텍스처2개를 포함하면119.15MiB다. 신규 CPU 읽기 복사와 밉맵 있는 비스트리밍 텍스처는 각각0개이며 BC7/BC5 임포트를 사용한다. 이는 현재 에디터에 로드된 Texture 메모리 측정으로 전용 GPU VRAM, 최대 임포트 사용량, Player 빌드나 마을 다수 배치 성능을 증명하지 않는다.
 
 중립 PreviewScene의 수동LOD·Collider ray는 게임사용 검증을 대신하지 않는다. [씬·에셋 안전](SCENE_AND_ASSET_SAFETY.md)과 [검증 플레이북](../ai/03_VERIFICATION_PLAYBOOK.md)을 따른다. 개별렌더·프롬프트·원본·상세기록은 Git제외 개인작업 위치에 두며 이 공용문서에는 경로·사용조건·검증범위만 남긴다.
+
+## 마을 쿼터뷰 배치 씬
+
+[Dev_ShinshiVillageQuarterView](../../Assets/00.Scenes/Dev_ShinshiVillageQuarterView.unity)는 기존 환경 프리팹과 native 지형 청크를 배치한 별도 개발 씬이다. 중앙 성소·전각·공방·주거·시장·약초밭·정자·위성 문섬·다리를 구분한다. 구름·폭포·연못 수면 효과는 사용자 요청에 따라 제외했다.
+
+- 전체 검수 카메라 `QuarterView_Overview`는 orthographic74, 확대 검수용 `QuarterView_Gameplay`는 orthographic21이며 둘 다 Euler(42,-36,0)이다. 후자는 비활성이고 추적 로직은 없다.
+- [VillageWatchtower](../../Assets/02.Prefab/Environment/VillageAssembly/PF_VillageWatchtower.prefab)는 기존 모듈을 재조합한 망루다. 모듈의 local AO를 재사용하며 조립 접촉 AO/GI는 새로 베이크하지 않았다. 원본 모듈의 용도별 충돌을 유지한다.
+- 씬은 기존 바닥·벚꽃 재질을 복제한 `Assets/01.Scripts/05.Art/Environment/VillageAssembly/Materials/`의 `M_VillageAssembly_PaleStone.mat`·`M_VillageAssembly_Blossom.mat`를 인스턴스에 적용한다. 원본 재질은 유지한다.
+- 씬 인스턴스에서 활성 LOD의 마지막 cull을0.001로 조정했다. 망루의 비활성 자식 LOD는 aggregate 루트 LOD가 대신 제어한다. 이 조정은 다수 배치 성능 검증이 아니다.
+- 최초 연결길은 `ModPavingEdge2m`1203개와 연결 계단12개·석축22개로 구성했다. 아래 원화 대조 후속 작업에서 길 메시와 지형 높이·착지부를 교체했다. 최초34접점/최대7.6cm 검증은 교체 전 이력이며 현재 높이 연결의 통과 근거로 재사용하지 않는다.
+- 씬 인스턴스의 누락 프리팹·메시·재질 슬롯·스크립트·LOD renderer 검증과 전체/확대 쿼터뷰 카메라 렌더를 수행했다. 현재 후속 검증 범위와 남은 항목은 아래를 따른다. 임시 지형 표본 Collider는 제거했다.
+- 전체 보행·게임 통합·PlayerBuild·성능·유사도90%는 미검증이다. 상세 배치/렌더/검사 원료는 Git 제외 개인 제작 기록에 둔다.
+
+## 원화 대조 마을 — 2026-10-01~02
+
+CA04의 이중 지붕·붉은 목재·기와·회벽·초가·시장 차양을 별도 모델로 제작하고 위 개발 씬에 배치했다. 개별 물체 참조→Meshy8건→실제 Blender5.1 가공→Unity 재질·Collider·프리팹 순서이며 생성 ID·실제240크레딧은 [에셋 대장](../licenses/ASSET_REGISTRY.md)을 따른다. 원본 모델·기존 프리팹·다른 개발 씬은 보존한다.
+
+| 배치 프리팹 | 기본 크기 X×Y×Z(m) | High / Medium / Low tris | 충돌 사용 조건 |
+|---|---|---:|---|
+| [ReferenceGrandHall](../../Assets/02.Prefab/Environment/ReferenceGrandHall/PF_ReferenceGrandHall.prefab) | 17.998×12.989×13.986 | 99998 / 99998 / 99998 | 외부 건물 몸체 근사Box; 내부 이동 기능 없음 |
+| [ReferencePavilion](../../Assets/02.Prefab/Environment/ReferencePavilion/PF_ReferencePavilion.prefab) | 5.003×5.499×5.003 | 80000 / 80000 / 80000 | 기둥4Box·바닥Box; 실제 바닥 높이 약0.529m |
+| [ReferenceCeremonialGate](../../Assets/02.Prefab/Environment/ReferenceCeremonialGate/PF_ReferenceCeremonialGate.prefab) | 7.002×5.998×2.001 | 80000 / 80000 / 80000 | 기둥X±2.035m의2Box, 가운데 통로 개방 |
+| [ReferenceWorkshop](../../Assets/02.Prefab/Environment/ReferenceWorkshop/PF_ReferenceWorkshop.prefab) | 7.5×5×5.5 | 195000 / 195000 / 195000 | 외부 건물 몸체 근사Box |
+| [ReferenceTiledResidence](../../Assets/02.Prefab/Environment/ReferenceTiledResidence/PF_ReferenceTiledResidence.prefab) | 6×4.5×4.5 | 194999 / 194999 / 194999 | 외부 건물 몸체 근사Box |
+| [ReferenceThatchedCottage](../../Assets/02.Prefab/Environment/ReferenceThatchedCottage/PF_ReferenceThatchedCottage.prefab) | 4.497×3.5×3.8 | 194999 / 194999 / 194999 | 외부 건물 몸체 근사Box |
+| [ReferenceMarketCanopy](../../Assets/02.Prefab/Environment/ReferenceMarketCanopy/PF_ReferenceMarketCanopy.prefab) | 4×3×3 | 195000 / 195000 / 195000 | 기둥4Box, 판매대 포함; 시설 상호작용 없음 |
+| [ReferenceStonePath](../../Assets/02.Prefab/Environment/ReferenceStonePath/PF_ReferenceStonePath.prefab) | High5.008×0.268×1.806 | 12000 / 6000 / 2206 | 표면 근사Box, 루트Y=0 부근이 보행면 |
+| [ReferenceShrineDetails](../../Assets/02.Prefab/Environment/ReferenceShrineDetails/PF_ReferenceShrineDetails.prefab) | 7.958×3.721×7.843 | 16000 / 16000 / 16000 | 돌 링11Box·앞 출입구; 천은 장식 |
+
+- 생활 건물4종의 Unity native 모델 정면은+Z로 확인해 프리팹의 LOD 자식에Y180도를 적용했다. 루트 피벗과 충돌 기준을 보존한 정면−Z 프리팹이며 각 모델의 축·치수는 실제 Unity 임포트로 확인했다.
+- 건물7종·성소는 축소 후보에서 지붕·열린 부분·천이 파손돼 최종 High를3LOD에 유지했다. 이들은 삼각형 감면이 없다. 길 Low는 연결된 별도 토폴로지와 전용1K BaseColor/Normal/AO·Smoothness 맵을 사용한다. 나머지 새 건물·길 High/Medium은2K, 성소는1K이며 URP Lit에 실제 AO의G·Metal의R·Smoothness의A를 연결했다.
+- `ReferenceIsland/Chunks/PF_ReferenceIsland_{Core,NE,NW,W,SW,SE,E}`7종은 기존 FloatingRock의 닫힌 고밀도 원본을 연결감면해 가공한 native 청크다. UV분리 메시의 독립감면으로 생겼던 삼각형 틈을 실제 토폴로지에서 수리했다. 최고점0~−0.06m의 얕은 윗면 두께를 유지하며 별도cap은 없다. 각 High60000/Medium30000tris, Low는 Core21302/NE21966/NW22438/W21564/SW22864/SE22236/E23172tris다. 원본 atlas의 per-corner UV를 감면 중 보간하며 원본 loop 배열·polygon 순서의 완전 동일성을 주장하지 않는다. CoreBase2K 공유·청크별 실제 AO1K/Normal2K 재베이크·High 상부 정확 subset 충돌 메시를 사용한다. Low 근접 faceting/국소 질감 늘어짐은 먼 거리 사용 조건이다. 원본은 보존했고 원본 색에서 기존 조명/AO 제거가 완전히 증명된 것은 아니다.
+- [ReferenceSanctuaryLantern](../../Assets/02.Prefab/Environment/VillageAssembly/PF_ReferenceSanctuaryLantern.prefab)은 기존 등걸이·처마·매다는 등을 조립했다. 원본의 실제 local AO를 재사용하며, 새 조립 접촉AO/GI는 베이크하지 않았다.
+- 현재 연결길은 불규칙 석판226개/27개 경로·착지 그룹이다. 별도 높이 연결 계단20개와 정자 출입계단을 추가하고 전각의 계단 진행을12m→9m로 줄여 상부 착지부를 넓혔다. 길·계단·다리·선착장 표본 검증은 전체 캐릭터 보행이나 가파른 연결부의 이동 적합성을 증명하지 않는다.
+- 건물 마당·문섬의 반복 원형무늬 StoneCourtyard97인스턴스를 불규칙 석판275줄로 교체했다. 기존 외곽 크기와 Collider 상단높이를 유지했고 중앙성소의 원형포장·약초밭4기단은 유지했다. 각마당3표본 총291ray에서 누락0·높이차이최대약6e−8m다. 이 표본은 전체 보행·모든모서리 연속성을 증명하지 않는다. 연결길과 합쳐 석판501개이며 원본 프리팹은 보존했다.
+- 정자를(30,1.05,20)에 배치하고 접근 길을 수정했다. 중앙 꽃 수관만 수평1.22배로 넓혔으며 줄기·성소 피벗은 유지한다. 벚꽃 수관·흰 꽃 변형은 기존 지원 셰이더·버텍스AO를 보존한다. 소나무·관목과 추가한 HerbBroad/HerbFlowers/ShrubLow445개·114식생 주머니는 기존 URP Lit의 실제 local AO/Normal을 유지하며, 조립 접촉AO나 전체맵GI 재베이크 결과가 아니다. 구름·수면·폭포 효과는 추가하지 않았다.
+- 건물 외부 소품7개는 기존 WoodCrate/WoodBarrel/WovenBasket 프리팹을 재사용하며 기존 local AO/Normal과 충돌을 유지한다. 시장의 기존 Basket/Barrel/Jar15개는 지형·StoneCourtyard 상부 Collider 기준으로 높이를 다시 맞췄다. 건물·연결길·다른 소품과 footprint가 겹치는 후보는 제외했다. 새 조립접촉AO는 베이크하지 않았다.
+- 미세 재질·기와의 faceting, 성소 돌의 작은 검은 대시·천 닫힘 이음은 잔여 검수 항목이다. 정지 LOD·전체/확대 쿼터뷰·메타/참조 검증과 실제 플레이·연속LOD·성능·빌드·원화 유사도 수치 판정을 구분한다. 최종 검사 원료는 Git 제외 개인 제작 기록에 보존한다.
+- 전각 아래처마의 밝은띠·대문의 흰기둥은 실제 Blender 표면색 보정으로 각각 기와색·붉은목재색에 맞췄다. BaseColor2장만 바뀌고 회벽·석기단·천·금색장식 및 형상·UV·AO·Normal·Mask·FBX는 보존했다. 두맵을 실제 Unity2K/BC7/sRGB로 재임포트하고 앞뒤·확대 렌더를 확인했다. 작은 기와끝 밝은패치와 문기둥-돌받침 경계는 잔여 항목이다.
+- 최종 저장 씬의 정적 검사는9154오브젝트/1852외부프리팹/1963LODGroup/964Collider에서 누락Script·Prefab·Mesh·Material·LOD renderer0, 잘못된bounds0, 파티클0·임시 지형검사용Collider0이다. 신규49Texture의 에디터 native loaded memory 합은441,190,962bytes(420.75MiB), readable0·streaming0이다. 이 수치는 전체씬 GPU VRAM·Player peak·다수배치 성능이 아니다. 건물7종·성소는 High 복제LOD 예외이므로 감면 성능을 주장하지 않는다.
