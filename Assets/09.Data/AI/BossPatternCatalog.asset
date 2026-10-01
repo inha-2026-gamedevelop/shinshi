@@ -27,8 +27,8 @@ MonoBehaviour:
     _sideAngleMax: 0
     _nearbyRadius: 0
     _emptyWeightRetrySeconds: 0
-    _directControlMaxSeconds: 0
-    _directControlImmuneSeconds: 0
+    _directControlMaxSeconds: 1
+    _directControlImmuneSeconds: 2
   - _definitionId: boss_cheolgak
     _displayKey: boss_cheolgak.name
     _arenaDiameter: 0
@@ -272,21 +272,21 @@ MonoBehaviour:
     - 0
     - 0
     - 0
-    _telegraphSeconds: 0
-    _trackingSeconds: 0
-    _turnRate: 0
+    _telegraphSeconds: 1.6
+    _trackingSeconds: 0.6
+    _turnRate: 90
     _activeSeconds: 0
-    _recoverySeconds: 0
+    _recoverySeconds: 0.5
     _shape:
       _shape: 5
-      _range: 0
+      _range: 14
       _arcAngle: 0
-      _width: 0
+      _width: 4
       _projectileSpeed: 0
-    _damageRef: 0
+    _damageRef: 0.45
     _guardable: 0
     _controlPhase: 3
-    _controlWindowSeconds: 0
+    _controlWindowSeconds: 0.4
     _controlCancelsPattern: 1
     _areaDurationSeconds: 0
     _areaTickInterval: 0

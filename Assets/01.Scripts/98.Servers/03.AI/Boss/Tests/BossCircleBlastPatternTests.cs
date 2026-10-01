@@ -849,7 +849,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
-        public void Factory_CreatesOnlyP02AndP03()
+        public void Factory_CreatesOnlyP02AndP03AndP06()
         {
             WolbaekPatternFactory factory = new WolbaekPatternFactory(TEST_HREF);
 
@@ -859,7 +859,9 @@ namespace Shinshi.Tests
                     new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f, 1f },
                     1f, 0.5f, 120f, 0f, 0.5f, EnemyCatalogSO.AttackShapeSpec.Fan(6f, 100f), 0.24f, true)));
 
-            string[] others = { "wolbaek_p01", "wolbaek_p04", "wolbaek_p05", "wolbaek_p06" };
+            Assert.IsInstanceOf<BossLineBlastPattern>(factory.Create(BossTestFixtures.MakePattern("wolbaek_p06")));
+
+            string[] others = { "wolbaek_p01", "wolbaek_p04", "wolbaek_p05" };
             for (int i = 0; i < others.Length; ++i)
             {
                 Assert.IsNull(factory.Create(BossTestFixtures.MakePattern(others[i])), others[i]);
@@ -909,7 +911,6 @@ namespace Shinshi.Tests
         [TestCase("wolbaek_p01")]
         [TestCase("wolbaek_p04")]
         [TestCase("wolbaek_p05")]
-        [TestCase("wolbaek_p06")]
         public void CatalogAsset_OtherUnimplementedPatterns_StayUnset(string patternId)
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
