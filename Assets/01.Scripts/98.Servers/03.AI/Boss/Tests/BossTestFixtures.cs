@@ -36,10 +36,11 @@ namespace Shinshi.Tests
         public static BossPatternCatalogSO.PatternDefinition MakePattern(string id, float weight = 10f,
             float telegraph = 1f, float active = 0.5f, float recovery = 0.5f,
             EBossActionState controlPhase = EBossActionState.SelectTarget, float controlWindow = 0f,
-            bool controlCancels = false, int maxAreas = 0, float[] recentMultipliers = null)
+            bool controlCancels = false, int maxAreas = 0, float[] recentMultipliers = null,
+            float[] distanceMultipliers = null)
         {
             return new BossPatternCatalogSO.PatternDefinition(id, BOSS_ID, 1, weight,
-                new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f },
+                distanceMultipliers ?? new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f },
                 recentMultipliers ?? new[] { 1f, 1f, 1f, 1f },
                 telegraph, 0f, 0f, active, recovery, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 1f, true,
                 controlPhase, controlWindow, controlCancels, 0f, 0f, maxAreas);
@@ -112,7 +113,9 @@ namespace Shinshi.Tests
 
         public int IssueInstanceId()
         {
-            return _nextId++;
+            int issued = _nextId;
+            ++_nextId;
+            return issued;
         }
     }
 
@@ -126,8 +129,13 @@ namespace Shinshi.Tests
     {
         public bool Pending { get; set; }
 
-        public bool TryConsumeDirectControl()
+        /// <summary> Pending일 때 넘겨 줄 제어 값 </summary>
+        public BossDirectControl Next { get; set; } = new BossDirectControl("test_bind", 0.5f);
+
+        public bool TryConsumeDirectControl(out BossDirectControl control)
         {
+            control = Next;
+
             if (!Pending)
             {
                 return false;
@@ -235,6 +243,12 @@ namespace Shinshi.Tests
 
         public int CastInstanceId => Context.CastInstanceId;
 
+        /// <summary> 지속물이 들고 있을 피해 게이트와 같은 것, 닫힌 뒤에도 잡고 있는 쪽이 피해를 못 내는지 본다 </summary>
+        public BossDamageGate CapturedGate => Context.Damage;
+
+        /// <summary> 단계가 이어지는 동안 Tick이 불린 횟수 </summary>
+        public int TickCount { get; private set; }
+
         public ScheduledHitPattern(params double[] hitOffsets)
         {
             _hitOffsets = hitOffsets;
@@ -260,6 +274,8 @@ namespace Shinshi.Tests
         // 실행 시작 기준 오프셋마다 한 번씩 타격한다
         protected override void OnTick(EBossAttackState state, double serverTime)
         {
+            ++TickCount;
+
             if (state == EBossAttackState.Telegraph)
             {
                 return;

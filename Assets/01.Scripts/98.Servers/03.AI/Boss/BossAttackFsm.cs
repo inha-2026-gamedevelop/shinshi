@@ -74,7 +74,8 @@ namespace Shinshi.AI
             }
         }
 
-        /// <summary> 직접 제어를 받을 수 있는 구간인가, 구간은 지정한 단계의 마지막 n초이며 끝 경계를 포함한다 </summary>
+        // TODO(기웅): 기획 미정 - 구간의 끝 경계를 포함할지 정해지지 않았다. 지금은 포함하며 이 값에 기대는 테스트는 두지 않았다
+        /// <summary> 직접 제어를 받을 수 있는 구간인가, 구간은 지정한 단계의 마지막 n초다 </summary>
         public bool IsControlWindowOpen(double serverTime)
         {
             if (State == EBossAttackState.Ready)

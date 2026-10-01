@@ -17,7 +17,7 @@ namespace Shinshi.AI
         private readonly int                 _targetCombatId;
         private readonly ICombatTarget       _self;
         private readonly ICombatTargetQuery  _targets;
-        private readonly IDamageResolver     _damage;
+        private readonly BossDamageGate      _damage;
 
         /****************************************
         *              Properties
@@ -33,14 +33,15 @@ namespace Shinshi.AI
 
         public ICombatTarget      Self           => _self;
         public ICombatTargetQuery Targets        => _targets;
-        public IDamageResolver    Damage         => _damage;
+        /// <summary> 피해는 IDamageResolver가 아니라 이 게이트로만 낸다, 지속물을 만들 때도 이 게이트를 넘긴다 </summary>
+        public BossDamageGate     Damage         => _damage;
 
         /****************************************
         *                Methods
         ****************************************/
 
         public BossPatternContext(PatternDefinition definition, int castInstanceId, int targetCombatId,
-            ICombatTarget self, ICombatTargetQuery targets, IDamageResolver damage)
+            ICombatTarget self, ICombatTargetQuery targets, BossDamageGate damage)
         {
             _definition     = definition;
             _castInstanceId = castInstanceId;

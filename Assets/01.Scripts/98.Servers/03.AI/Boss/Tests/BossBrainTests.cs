@@ -324,17 +324,19 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tick_AllowedControlAndAttackProgressSameTick_ControlWins()
+        public void Tick_AllowedControlWhileAttackWouldProgress_ControlRunsBeforeAttackProgress()
         {
             BossHarness h = Make(MakeControllable());
             h.Factory.HitOffsets = new[] { 0.0 };
             h.Brain.Begin(0.0);
             h.Brain.Tick(0.0);
+            int ticksBefore = h.Factory.Last.TickCount;
 
-            // 1.0초는 예고가 끝나 실행으로 넘어갈 시각이자 제어 구간의 끝 경계다
+            // 0.75초는 예고 마지막 0.4초 안이다. 구간 끝 경계 처리는 기획 미정이라 경계 시각은 쓰지 않는다
             h.Control.Pending = true;
-            h.Brain.Tick(1.0);
+            h.Brain.Tick(0.75);
 
+            Assert.AreEqual(ticksBefore, h.Factory.Last.TickCount, "제어가 먼저 처리되어 이번 틱의 공격 진행은 일어나지 않는다");
             Assert.AreEqual(EBossInterruptReason.DirectControl, h.Factory.Last.CancelReason);
             Assert.AreEqual(EBossAttackState.Ready, h.Brain.AttackState);
             Assert.AreEqual(0, h.Damage.Requests.Count);
@@ -360,22 +362,275 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tick_DeathAndCombatEndSameTick_StopsOnceWithSingleCancel()
+        public void Tick_BossDeathAndPartyWipeSameTick_RecordsBothAndWipeTakesPriority()
         {
             BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
             h.Brain.Begin(0.0);
             h.Brain.Tick(0.0);
 
-            // 어느 사유를 기록할지는 기획 미정이라 한 번만 멈추는지만 본다
+            h.Player.LifeState = EParticipantLifeState.Dead;
             h.Vitals.IsHealthZero = true;
             h.Brain.RequestCombatEnd();
             h.Brain.Tick(0.25);
 
-            Assert.AreNotEqual(EBossFlowState.Combat, h.Brain.FlowState);
-            Assert.AreEqual(1, h.Effects.Cancels.Count);
+            // 기획의 초기 기준: 보스 사망과 전원 사망이 같은 시각이면 전멸을 우선한다
+            Assert.AreEqual(EBossFlowState.Ended, h.Brain.FlowState);
+            Assert.IsTrue(h.Brain.IsBossDeathRecorded);
+            Assert.IsTrue(h.Brain.IsCombatEndRecorded);
+            Assert.AreEqual(EParticipantLifeState.Dead, h.Player.LifeState, "플레이어 사망 상태는 바뀌지 않는다");
 
+            // 정리는 한 번만 지시한다
+            Assert.AreEqual(1, h.Effects.Cancels.Count);
+            Assert.AreEqual(EBossInterruptReason.Death, h.Effects.Cancels[0].Key);
             h.Brain.Tick(0.5);
             Assert.AreEqual(1, h.Effects.Cancels.Count);
+        }
+
+        [Test]
+        public void Tick_PartyWipeWithoutBossDeath_RecordsOnlyCombatEnd()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+
+            h.Brain.RequestCombatEnd();
+            h.Brain.Tick(0.25);
+
+            Assert.AreEqual(EBossFlowState.Ended, h.Brain.FlowState);
+            Assert.IsFalse(h.Brain.IsBossDeathRecorded);
+            Assert.IsTrue(h.Brain.IsCombatEndRecorded);
+        }
+
+        [Test]
+        public void Tick_BossDeathWithoutPartyWipe_RecordsOnlyDeath()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+
+            h.Vitals.IsHealthZero = true;
+            h.Brain.Tick(0.25);
+
+            Assert.AreEqual(EBossFlowState.Defeated, h.Brain.FlowState);
+            Assert.IsTrue(h.Brain.IsBossDeathRecorded);
+            Assert.IsFalse(h.Brain.IsCombatEndRecorded);
+        }
+
+        /****************************************
+        *        Damage Gate After Stop
+        ****************************************/
+
+        [Test]
+        public void TryApply_AfterBossDeath_GateBlocksEvenWhoeverStillHoldsIt()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+
+            // 지속 장판이나 투사체가 패턴 밖에서 게이트를 잡고 있는 상황이다
+            BossDamageGate held = h.Factory.Last.CapturedGate;
+            Assert.IsTrue(held.IsOpen);
+
+            h.Vitals.IsHealthZero = true;
+            h.Brain.Tick(0.25);
+
+            DamageRequest request = new DamageRequest(BossHarness.SELF_ID, BossHarness.PLAYER_ID, 1, 1, 1f,
+                EDamageFlags.None, Vector3.zero, "p1");
+            Assert.IsFalse(held.IsOpen);
+            Assert.IsFalse(held.TryApply(in request, out DamageResult _));
+            Assert.AreEqual(0, h.Damage.Requests.Count);
+        }
+
+        [Test]
+        public void TryApply_AfterCombatEnd_GateBlocksToo()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+            BossDamageGate held = h.Factory.Last.CapturedGate;
+
+            h.Brain.RequestCombatEnd();
+            h.Brain.Tick(0.25);
+
+            DamageRequest request = new DamageRequest(BossHarness.SELF_ID, BossHarness.PLAYER_ID, 1, 1, 1f,
+                EDamageFlags.None, Vector3.zero, "p1");
+            Assert.IsFalse(held.TryApply(in request, out DamageResult _));
+            Assert.AreEqual(0, h.Damage.Requests.Count);
+        }
+
+        [Test]
+        public void TryApply_AfterPhaseTransition_GateStaysOpenForNextPhase()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+            BossDamageGate held = h.Factory.Last.CapturedGate;
+
+            h.Vitals.HealthRate = 0.4f;
+            h.Brain.Tick(0.25);
+
+            Assert.IsTrue(held.IsOpen, "전환은 전투의 끝이 아니라서 게이트를 닫지 않는다");
+        }
+
+        /****************************************
+        *           Appearance Wait
+        ****************************************/
+
+        [Test]
+        public void Tick_DuringAppearance_NeitherSelectsTargetsNorAttacks()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            Assert.IsTrue(h.Brain.BeginAppearance(0.0, 3f));
+            Assert.AreEqual(EBossFlowState.Appearing, h.Brain.FlowState);
+
+            for (double t = 0.0; t < 3.0; t += 0.25)
+            {
+                h.Brain.Tick(t);
+            }
+
+            Assert.AreEqual(EBossFlowState.Appearing, h.Brain.FlowState);
+            Assert.AreEqual(EBossAttackState.Ready, h.Brain.AttackState);
+            Assert.AreEqual(0, h.Random.IntCalls, "등장 대기 중에는 타깃을 고르지 않는다");
+            Assert.AreEqual(0, h.Factory.CreateCount);
+            Assert.AreEqual(0, h.Damage.Requests.Count);
+        }
+
+        [Test]
+        public void Tick_AppearanceEnds_StartsCombatAndSelectsFirstPatternSameTick()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.BeginAppearance(0.0, 3f);
+
+            h.Brain.Tick(2.75);
+            Assert.AreEqual(EBossFlowState.Appearing, h.Brain.FlowState);
+
+            h.Brain.Tick(3.0);
+            Assert.AreEqual(EBossFlowState.Combat, h.Brain.FlowState);
+            Assert.AreEqual("p1", h.Brain.ActivePatternId);
+            Assert.AreEqual(EBossAttackState.Telegraph, h.Brain.AttackState);
+        }
+
+        [Test]
+        public void Tick_AppearanceAndOpeningDelay_ApplyInSequenceNotOverlapped()
+        {
+            BossHarness h = new BossHarness(BossTestFixtures.MakeBoss(openingDelay: 1f), null, BossTestFixtures.MakePattern("p1"));
+            h.Brain.BeginAppearance(0.0, 3f);
+
+            // 등장 대기가 끝나는 3초가 전투 시작이고, 첫 선택은 거기서 OpeningDelaySeconds 뒤인 4초다
+            h.Brain.Tick(3.0);
+            Assert.AreEqual(EBossFlowState.Combat, h.Brain.FlowState);
+            Assert.AreEqual(0, h.Factory.CreateCount);
+
+            h.Brain.Tick(3.75);
+            Assert.AreEqual(0, h.Factory.CreateCount);
+
+            h.Brain.Tick(4.0);
+            Assert.AreEqual(1, h.Factory.CreateCount);
+        }
+
+        [Test]
+        public void Tick_LateTickAfterAppearance_CountsOpeningDelayFromScheduledEnd()
+        {
+            BossHarness h = new BossHarness(BossTestFixtures.MakeBoss(openingDelay: 1f), null, BossTestFixtures.MakePattern("p1"));
+            h.Brain.BeginAppearance(0.0, 3f);
+
+            // 틱이 늦어도 전투 시작은 등장 대기가 끝나는 3초로 잡는다
+            h.Brain.Tick(3.5);
+            Assert.AreEqual(EBossFlowState.Combat, h.Brain.FlowState);
+            Assert.AreEqual(0, h.Factory.CreateCount);
+
+            h.Brain.Tick(4.0);
+            Assert.AreEqual(1, h.Factory.CreateCount);
+        }
+
+        [Test]
+        public void BeginAppearance_ZeroOrNegativeSeconds_StartsCombatImmediately()
+        {
+            BossHarness zero = Make(BossTestFixtures.MakePattern("p1"));
+            Assert.IsTrue(zero.Brain.BeginAppearance(0.0, 0f));
+            Assert.AreEqual(EBossFlowState.Combat, zero.Brain.FlowState);
+
+            BossHarness negative = Make(BossTestFixtures.MakePattern("p1"));
+            Assert.IsTrue(negative.Brain.BeginAppearance(0.0, -2f));
+            Assert.AreEqual(EBossFlowState.Combat, negative.Brain.FlowState);
+        }
+
+        [Test]
+        public void Tick_CombatEndDuringAppearance_EndsWithoutEverStartingCombat()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.BeginAppearance(0.0, 3f);
+
+            h.Brain.RequestCombatEnd();
+            h.Brain.Tick(1.0);
+
+            Assert.AreEqual(EBossFlowState.Ended, h.Brain.FlowState);
+            Assert.IsTrue(h.Brain.IsCombatEndRecorded);
+            Assert.AreEqual(0, h.Factory.CreateCount);
+            Assert.AreEqual(0, h.Effects.Cancels.Count, "시작하지 않은 전투에는 정리할 지속물이 없다");
+        }
+
+        [Test]
+        public void Tick_BossDeathDuringAppearance_ReportsDefeatedWithoutCombat()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.BeginAppearance(0.0, 3f);
+
+            h.Vitals.IsHealthZero = true;
+            h.Brain.Tick(1.0);
+
+            Assert.AreEqual(EBossFlowState.Defeated, h.Brain.FlowState);
+            Assert.AreEqual(0, h.Factory.CreateCount);
+        }
+
+        [Test]
+        public void Tick_NoApiTakesClientCutsceneSignal_StartIsDrivenByServerTimeOnly()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.BeginAppearance(0.0, 3f);
+
+            // 서버 시각이 도달하기 전에는 어떤 호출로도 전투가 시작되지 않는다
+            h.Brain.Tick(0.0);
+            h.Brain.Tick(1.0);
+            h.Brain.Tick(2.999);
+
+            Assert.AreEqual(EBossFlowState.Appearing, h.Brain.FlowState);
+        }
+
+        [Test]
+        public void BeginAppearance_AfterBegin_IsRejected()
+        {
+            BossHarness h = Make(BossTestFixtures.MakePattern("p1"));
+            h.Brain.BeginAppearance(0.0, 3f);
+
+            Assert.IsFalse(h.Brain.Begin(0.0));
+            Assert.IsFalse(h.Brain.BeginAppearance(0.0, 1f));
+        }
+
+        /****************************************
+        *     Next Selection Reads Latest State
+        ****************************************/
+
+        [Test]
+        public void Tick_NextSelectionAfterRecover_ReadsLatestSituation()
+        {
+            PatternDefinition near = BossTestFixtures.MakePattern("near", distanceMultipliers: new[] { 1f, 0f, 0f });
+            PatternDefinition far = BossTestFixtures.MakePattern("far", distanceMultipliers: new[] { 0f, 0f, 1f });
+            BossHarness h = Make(near, far);
+            h.Random.Roll = 0f;
+            h.Brain.Begin(0.0);
+
+            h.Brain.Tick(0.0);
+            Assert.AreEqual("near", h.Brain.ActivePatternId);
+
+            h.Brain.Tick(2.0);
+            Assert.AreEqual(EBossAttackState.Ready, h.Brain.AttackState);
+
+            // 회복이 끝난 뒤 타깃이 멀어지면 다음 선택은 그 상황으로 계산된다
+            h.Player.Position = new Vector3(0f, 0f, 20f);
+            h.Brain.Tick(2.25);
+
+            Assert.AreEqual("far", h.Brain.ActivePatternId);
         }
 
         /****************************************
@@ -398,6 +653,83 @@ namespace Shinshi.Tests
             h.Control.Pending = true;
             h.Brain.Tick(0.75);
             Assert.AreEqual(EBossInterruptReason.DirectControl, h.Factory.Last.CancelReason);
+        }
+
+        [Test]
+        public void Tick_AppliedControl_RaisesNotificationWithCancelFlagAndCappedSeconds()
+        {
+            BossHarness h = Make(MakeControllable());
+            BossDirectControlApplied? received = null;
+            h.Brain.DirectControlApplied += applied => received = applied;
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+
+            // 보스 정의의 직접 제어 최대 시간은 1초라 5초 요청은 1초로 잘린다
+            h.Control.Next = new BossDirectControl("test_bind", 5f);
+            h.Control.Pending = true;
+            h.Brain.Tick(0.75);
+
+            Assert.IsTrue(received.HasValue);
+            Assert.IsTrue(received.Value.CancelledPattern);
+            Assert.AreEqual("p1", received.Value.PatternId);
+            Assert.AreEqual("test_bind", received.Value.Control.SourceId);
+            Assert.AreEqual(1f, received.Value.AppliedSeconds, 0.0001f);
+        }
+
+        [Test]
+        public void Tick_AppliedControlOnNonCancelingPattern_StillNotifiesWithoutCancel()
+        {
+            // 속박 같은 제어가 보스를 어떻게 움직일지는 협의 전이라, 알림만 나가고 흐름은 그대로다
+            PatternDefinition pattern = BossTestFixtures.MakePattern("p1",
+                controlPhase: EBossActionState.Telegraph, controlWindow: 0.4f, controlCancels: false);
+            BossHarness h = Make(pattern);
+            BossDirectControlApplied? received = null;
+            h.Brain.DirectControlApplied += applied => received = applied;
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+
+            h.Control.Pending = true;
+            h.Brain.Tick(0.75);
+
+            Assert.IsTrue(received.HasValue);
+            Assert.IsFalse(received.Value.CancelledPattern);
+            Assert.AreEqual(0.5f, received.Value.AppliedSeconds, 0.0001f);
+            Assert.AreEqual(EBossAttackState.Telegraph, h.Brain.AttackState);
+            Assert.IsFalse(h.Factory.Last.IsCancelled);
+        }
+
+        [Test]
+        public void Tick_ControlWithoutRequestedSeconds_AppliesZeroSeconds()
+        {
+            BossHarness h = Make(MakeControllable());
+            BossDirectControlApplied? received = null;
+            h.Brain.DirectControlApplied += applied => received = applied;
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+
+            h.Control.Next = new BossDirectControl(null, 0f);
+            h.Control.Pending = true;
+            h.Brain.Tick(0.75);
+
+            Assert.IsTrue(received.HasValue);
+            Assert.AreEqual(0f, received.Value.AppliedSeconds);
+            Assert.AreEqual(string.Empty, received.Value.Control.SourceId);
+        }
+
+        [Test]
+        public void Tick_DroppedControl_DoesNotNotify()
+        {
+            BossHarness h = Make(MakeControllable());
+            int count = 0;
+            h.Brain.DirectControlApplied += applied => ++count;
+            h.Brain.Begin(0.0);
+            h.Brain.Tick(0.0);
+
+            // 허용 구간 밖의 제어는 버려지고 알림도 나가지 않는다
+            h.Control.Pending = true;
+            h.Brain.Tick(0.25);
+
+            Assert.AreEqual(0, count);
         }
 
         [Test]
@@ -438,28 +770,28 @@ namespace Shinshi.Tests
             BossHarness h = Make(MakeControllable());
             h.Brain.Begin(0.0);
 
-            // 1.0초에 첫 제어가 성공해 3.0초까지 면역이다
+            // 0.75초에 첫 제어가 성공해 2.75초까지 면역이다
             h.Brain.Tick(0.0);
             h.Control.Pending = true;
-            h.Brain.Tick(1.0);
+            h.Brain.Tick(0.75);
             Assert.AreEqual(EBossInterruptReason.DirectControl, h.Factory.Last.CancelReason);
 
-            // 두 번째 패턴은 1.25초에 시작해 예고가 2.25초에 끝난다, 면역 안의 제어는 무시된다
-            h.Brain.Tick(1.25);
+            // 두 번째 패턴은 1.0초에 시작해 예고가 2.0초에 끝나고 제어 구간은 1.6초부터다, 면역 안의 제어는 무시된다
+            h.Brain.Tick(1.0);
             Assert.AreEqual(2, h.Factory.CreateCount);
             h.Control.Pending = true;
-            h.Brain.Tick(2.0);
+            h.Brain.Tick(1.75);
             Assert.IsFalse(h.Factory.Last.IsCancelled);
-            h.Brain.Tick(2.25);
-            Assert.AreEqual(EBossAttackState.Execute, h.Brain.AttackState);
+            Assert.AreEqual(EBossAttackState.Telegraph, h.Brain.AttackState);
 
-            // 두 번째 패턴이 3.25초에 끝나고 세 번째가 3.5초에 시작한다, 면역이 풀린 뒤라 제어가 듣는다
-            h.Brain.Tick(2.75);
+            // 두 번째 패턴이 3.0초에 끝나고 세 번째가 3.25초에 시작한다, 면역이 풀린 뒤라 제어가 듣는다
+            h.Brain.Tick(2.0);
+            h.Brain.Tick(2.5);
+            h.Brain.Tick(3.0);
             h.Brain.Tick(3.25);
-            h.Brain.Tick(3.5);
             Assert.AreEqual(3, h.Factory.CreateCount);
             h.Control.Pending = true;
-            h.Brain.Tick(4.25);
+            h.Brain.Tick(4.0);
             Assert.AreEqual(EBossInterruptReason.DirectControl, h.Factory.Last.CancelReason);
         }
 

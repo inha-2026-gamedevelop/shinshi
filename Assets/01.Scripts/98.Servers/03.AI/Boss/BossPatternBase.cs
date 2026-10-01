@@ -100,8 +100,8 @@ namespace Shinshi.AI
                 return false;
             }
 
-            result = _context.Damage.Apply(in request);
-            return true;
+            // 패턴 자신이 취소되지 않았어도 게이트가 닫혔으면(사망, 전투 종료) 나가지 않는다
+            return _context.Damage.TryApply(in request, out result);
         }
 
         private bool IsActive()
