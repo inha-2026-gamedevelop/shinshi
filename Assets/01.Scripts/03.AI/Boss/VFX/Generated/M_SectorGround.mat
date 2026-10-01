@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_SectorGround
+  m_Shader: {fileID: 4800000, guid: 9b8e85710b3e81646a7e658b2f7b39db, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Clock: 0
+    - _DissolveAmount: 0
+    - _EdgeIntensity: 0.7
+    - _EdgeWidth: 0.06
+    - _ExplosionIntensity: 4
+    - _FlowSpeed: 2
+    - _NoiseScale: 3
+    - _NoiseSpeed: 0.4
+    m_Colors:
+    - _BaseColor: {r: 0.21999997, g: 0.018, b: 0.003, a: 0.15}
+    - _EmissionColor: {r: 3, g: 0.45, b: 0.04, a: 1}
+    - _Shape: {r: 0, g: 6, b: 2.094, a: 0.035}
+    - _Sweep: {r: 2, g: 0, b: 4, a: 0.04}
+    - _Timing: {r: 1, g: 0.35, b: 0.25, a: 0.45}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
