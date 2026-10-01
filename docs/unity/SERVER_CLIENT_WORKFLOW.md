@@ -130,6 +130,7 @@ Assets/01.Scripts/
 | `BossPatternSelector` | 거리·방향·주변 인원 구간과 가중치 곱, 비례 선택. 상태 없는 순수 계산 |
 | `BossDamageGate` | 보스의 피해 창구. 전투 중에만 열리고 사망이나 전투 종료로 닫히면 다시 열리지 않는다 |
 | `BossFanBlastPattern` | P02 전방 부채꼴 요력 폭발. 시간과 범위와 피해 배수는 패턴 정의에서 읽고 `DamageRef x Href`를 방어 전 `RawDamage`로 낸다. 예고, 추적 중 방향 변경, 방향 고정, 타격, 취소 시점은 `IBossFanTelegraphListener`로 알린다(구현 없음) |
+| `BossCircleBlastPattern` | P03 중심 원형 여우불 폭발. 예고 시작 때 보스의 서버 위치를 공격 중심으로 저장하고 예고 중 보스와 타깃이 움직여도 바꾸지 않는다. 예고가 끝나면 반경 안(수평 거리, 경계 포함)의 살아 있는 플레이어와 소환물을 한 번 타격하며 `DamageRef x Href`를 방어 전 `RawDamage`로 낸다. 예고 시작, 타격, 취소 시점은 `IBossCircleTelegraphListener`(중심, 반경, 시전 번호)로 알린다(구현 없음). 부채꼴 알림과 별도 인터페이스다 |
 | `IBossPattern`, `BossPatternBase` | 패턴 한 번의 실행. 피해는 `IDamageResolver`가 아니라 게이트로만 낸다. 취소나 게이트 폐쇄 뒤에는 피해 요청이 나가지 않는다 |
 
 확정된 규칙(2026-10-02).
@@ -151,7 +152,7 @@ Assets/01.Scripts/
 |---|---|---|
 | `IBossVitals` | 보스 체력 비율과 체력 0 여부 읽기. `ICombatTarget`에 체력 읽기가 없어 새로 둠 | 민성 (U05) |
 | `IBossControlSource` | 도착한 직접 제어를 `BossDirectControl`(출처 ID, 요청 시간) 한 건씩 넘김. 플레이어 기술이 보스에 제어를 거는 계약이 없어 **실제 제어 연결은 미구현** | 민성 (U05, U07) |
-| `IBossPatternFactory` | 패턴 정의로 시전 실행 객체 생성. 구현 `WolbaekPatternFactory`는 P02만 만들고 나머지는 null. 생성자에 Href를 받으며 기본값은 없다 | 기웅 (U10, P01과 P03~P06은 미구현) |
+| `IBossPatternFactory` | 패턴 정의로 시전 실행 객체 생성. 구현 `WolbaekPatternFactory`는 P02와 P03만 만들고 나머지는 null. 생성자에 Href를 받으며 기본값은 없고, 부채꼴과 원형 알림 리스너는 선택 인자다 | 기웅 (U10, P01과 P04~P06은 미구현) |
 | `IBossEffectLifetime` | 지속 장판·투사체 수명, 이유별 취소, 동시 장판 수 조회 | 기웅 (U10) |
 | `IBossPatternCatalog` | 보스·패턴 정의 조회. 어댑터 `BossPatternCatalogSource`가 `BossPatternCatalogSO`를 감싼다 | 기웅 (구현됨) |
 | `IBossRandom` | 타깃·패턴 선택 난수. 기본 `SeededBossRandom` | 기웅 (구현됨) |
@@ -163,8 +164,8 @@ Assets/01.Scripts/
 - `BossBrain.Tick`을 누가 어떤 주기로 부르는지와 `BossBrain`을 만들어 `ServerLinks`에 연결하는 서버 부트스트랩은 없다(민성).
 - 보스 상태와 예고를 클라이언트에 보내는 복제(`NetworkBehaviour`, Rpc)는 없다(민성).
 - 등장 대기 중 보스가 받는 피해를 막는 것은 `IDamageResolver` 쪽이 `FlowState`를 읽어 `Invulnerable`로 처리해야 한다. 뼈대는 상태만 노출하고 이 연결은 없다(민성).
-- 월백 P02만 실행이 구현됐고(EditMode 검증, 실제 서버 실행 미검증) P01과 P03~P06, 지속물 수명 관리자 구현은 없다(기웅). P02의 회복 0.5초는 임시값이며 `wolbaek_p02` 데이터에서 조정한다.
-- P02에 넘길 Href(지역과 난이도로 결정)와 시작 인원 피해 배율을 곱할 위치는 서버 연결이 정한다(민성). `IBossFanTelegraphListener`를 받아 클라이언트 VFX로 전달하는 복제와 보스 몸체 회전도 없다.
+- 월백 P02와 P03만 실행이 구현됐고(EditMode 검증, 실제 서버 실행 미검증) P01과 P04~P06, 지속물 수명 관리자 구현은 없다(기웅). P02와 P03의 회복 0.5초는 임시값이며 확정 밸런스가 아니다. `BossPatternCatalog.asset`의 `wolbaek_p02`, `wolbaek_p03` 데이터에서 조정한다. P03은 이번 작업에서 실행 수치만 입력했고 선택 가중치와 배율은 미입력이며(기획 문서에는 있다), 월백은 `IsTuned`가 거짓인 채다.
+- P02와 P03에 넘길 Href(지역과 난이도로 결정)와 시작 인원 피해 배율을 곱할 위치는 서버 연결이 정한다(민성). `IBossFanTelegraphListener`와 `IBossCircleTelegraphListener`를 받아 클라이언트 VFX로 전달하는 복제와 보스 몸체 이동·회전도 없다. 원형 VFX 모듈과 P03 예고 시각 일치, 중심 고정에 맞춘 몸체 연출은 미검증이다.
 - 컷씬 길이를 담는 데이터 필드가 없어 `BeginAppearance`의 길이는 호출자가 넘긴다.
 - 속박 등 취소형이 아닌 제어가 보스를 움직이는 동작은 구현하지 않았다. 알림만 나간다.
 

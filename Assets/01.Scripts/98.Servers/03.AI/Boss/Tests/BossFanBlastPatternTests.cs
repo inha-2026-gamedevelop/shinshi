@@ -776,7 +776,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
-        public void Factory_CreatesOnlyP02()
+        public void Factory_P02_CreatesFanPattern()
         {
             WolbaekPatternFactory factory = new WolbaekPatternFactory(TEST_HREF);
 
@@ -814,10 +814,6 @@ namespace Shinshi.Tests
             Assert.AreEqual(0.5f, p02.RecoverySeconds);
 
             Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
-
-            Assert.IsTrue(catalog.TryGetPattern("wolbaek_p03", out PatternDefinition p03));
-            Assert.AreEqual(0f, p03.TelegraphSeconds);
-            Assert.AreEqual(0f, p03.DamageRef);
         }
     }
 }
