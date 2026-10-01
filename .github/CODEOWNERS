@@ -56,6 +56,16 @@
 /Assets/01.Scripts/04.Systems/Reward/      @kjw1237 @aurenixs
 /Assets/01.Scripts/04.Systems/Wave/        @oname36-creator @aurenixs
 
+# GameDB SO 정의 - 클래스는 00.Common/Data에 모여 있지만 필드는 값 소유 파트가 고친다
+/Assets/01.Scripts/00.Common/Data/EnemyCatalogSO.cs         @oname36-creator
+/Assets/01.Scripts/00.Common/Data/BossPatternCatalogSO.cs   @oname36-creator
+/Assets/01.Scripts/00.Common/Data/WaveConfigSO.cs           @oname36-creator @aurenixs
+/Assets/01.Scripts/00.Common/Data/ProgressionCatalogSO.cs   @oname36-creator
+/Assets/01.Scripts/00.Common/Data/EquipmentCatalogSO.cs     @kjw1237
+/Assets/01.Scripts/00.Common/Data/GrowthConfigSO.cs         @kjw1237
+/Assets/01.Scripts/00.Common/Data/RewardCatalogSO.cs        @kjw1237
+/Assets/01.Scripts/00.Common/Data/LifeConfigSO.cs           @kjw1237
+
 # 05.Art - 맵(환경)은 진욱
 /Assets/01.Scripts/05.Art/Environment/     @kjw1237
 
@@ -78,6 +88,7 @@
 /Assets/09.Data/Reward/             @kjw1237 @aurenixs
 /Assets/09.Data/Life/               @kjw1237 @aurenixs
 /Assets/09.Data/Presentation/       @kjw1237
+/Assets/09.Data/Progression/        @oname36-creator
 
 # ---------------------------------------------------------------
 # 테스트와 에디터 도구 - 팀장

@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72981feb1271b86479a5a61bba1e01d6, type: 3}
   m_Name: PlayerConfig
   m_EditorClassIdentifier: Assembly-CSharp::Shinshi.Data.PlayerConfigSO
+  _schemaVersion: 1
   _moveSpeed: 5
   _dodgeDistance: 3
   _dodgeDuration: 0.25
@@ -24,6 +25,11 @@ MonoBehaviour:
   _baseDefense: 100
   _baseCritChance: 0.05
   _critDamageMultiplier: 2
+  _critChanceCap: 0.6
+  _damageReductionCap: 0.6
+  _defenseReductionConstant: 1000
+  _potionSharedCooldown: 10
+  _potionUseDisplaySeconds: 0.35
   _inputBufferSeconds: 0.15
   _inputBufferDepth: 1
   _basicAttacks:

@@ -1,9 +1,11 @@
 // System
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 // Unity
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 // 서드파티
 using NUnit.Framework;
@@ -22,7 +24,6 @@ namespace Shinshi.Tests
 
         private const float INVALID_MOVE_SPEED       = 0f;
         private const int   SHORT_SCALE_TABLE_LENGTH = 2;
-        private const int   MISSING_REFERENCE_ERRORS = 2;
 
         /****************************************
         *                Fields
@@ -67,7 +68,7 @@ namespace Shinshi.Tests
 
             List<string> errors = Validate(root);
 
-            Assert.AreEqual(MISSING_REFERENCE_ERRORS, errors.Count, string.Join("\n", errors));
+            Assert.AreEqual(GameDBTestFixtures.ReferenceCount, errors.Count, string.Join("\n", errors));
             StringAssert.Contains("_player", errors[0]);
             StringAssert.Contains("_session", errors[1]);
         }
@@ -85,6 +86,16 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Validate_DraftRoot_HasNoErrors()
+        {
+            GameDatabaseSO root = CreateValidRoot();
+
+            List<string> errors = Validate(root);
+
+            CollectionAssert.IsEmpty(errors, string.Join("\n", errors));
+        }
+
+        [Test]
         public void Validate_DefaultConfigs_HaveNoErrors()
         {
             List<string> playerErrors  = Validate(Create<PlayerConfigSO>());
@@ -98,6 +109,9 @@ namespace Shinshi.Tests
         public void Validate_NonPositiveMoveSpeed_ReportsMoveSpeed()
         {
             PlayerConfigSO player = Create<PlayerConfigSO>();
+
+            // 값을 바꾸면 OnValidate가 인스펙터용 오류를 바로 남긴다
+            LogAssert.Expect(LogType.Error, new Regex("_moveSpeed"));
             SetFloat(player, "_moveSpeed", INVALID_MOVE_SPEED);
 
             List<string> errors = Validate(player);
@@ -113,6 +127,8 @@ namespace Shinshi.Tests
 
             var serialized = new SerializedObject(session);
             serialized.FindProperty("_enemyHealthScale").arraySize = SHORT_SCALE_TABLE_LENGTH;
+
+            LogAssert.Expect(LogType.Error, new Regex("_enemyHealthScale"));
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             List<string> errors = Validate(session);
@@ -134,14 +150,7 @@ namespace Shinshi.Tests
 
         private GameDatabaseSO CreateValidRoot()
         {
-            GameDatabaseSO root = Create<GameDatabaseSO>();
-
-            var serialized = new SerializedObject(root);
-            serialized.FindProperty("_player").objectReferenceValue  = Create<PlayerConfigSO>();
-            serialized.FindProperty("_session").objectReferenceValue = Create<SessionConfigSO>();
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            return root;
+            return GameDBTestFixtures.CreateValidRoot(_created);
         }
 
         private static List<string> Validate(IDataValidatable target)

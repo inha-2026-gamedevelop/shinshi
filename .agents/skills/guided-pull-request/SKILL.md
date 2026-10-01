@@ -10,7 +10,7 @@ PR 생성·수정 요청에 적용한다. [AGENTS.md](../../../AGENTS.md)와 [�
 ## 브랜치와 변경 분석
 
 1. 현재 브랜치, `git status`, remote와 실제 브랜치 목록을 확인한다. 작업 브랜치는 `feature/{팀원이름}`이다. `main`이나 대상 통합 브랜치 자체에서 PR을 만들지 않는다.
-2. base는 사용자 지시와 실제 저장소 설정에서 확인한다. `develop`의 존재를 가정하지 않는다. base가 확정되면 `git log <base>..HEAD --oneline`, `git diff <base>...HEAD --stat`과 diff를 읽는다.
+2. base는 통합 브랜치 `develop`이다. 사용자가 다른 base를 지시하면 따르고, 원격에 `develop`이 없으면 만들지 말고 알린다. base가 확정되면 `git log <base>..HEAD --oneline`, `git diff <base>...HEAD --stat`과 diff를 읽는다.
 3. 커밋되지 않은 작업과 push되지 않은 커밋을 구분한다. 무관한 파일을 임의로 커밋하지 않는다. 추가 커밋이 요청 범위에 포함되면 [가이드 커밋](../guided-commit/SKILL.md)을 따른다. push도 허용된 브랜치·범위에서만 수행한다.
 4. 씬·`.meta`·네트워크 권위·밸런스 상수·대용량 바이너리를 확인한다. PR 크기 기준이 실제 `CONTRIBUTING.md` 등에 있으면 적용하고 초과 이유와 나눌 경계를 알린다. 없는 기준을 강제하지 않는다.
 

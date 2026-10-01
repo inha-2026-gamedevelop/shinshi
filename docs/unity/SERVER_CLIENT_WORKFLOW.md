@@ -91,3 +91,25 @@ Assets/01.Scripts/
 - 나중에 기존 파일을 분리할 때도 `.cs.meta` GUID와 씬·프리팹 참조를 보존한다.
 - GitHub 브랜치 보호 설정 적용 여부는 별도 확인이 필요하다.
 - 파트가 확정되고 파일이 생기면 도메인별 상태·서버·규칙 클래스 목록을 이 절에 표로 적는다.
+
+## 7. 일반전 웨이브 서버 경계
+
+웨이브·스폰 작성(기웅)과 세션 연결(민성)이 같은 파일을 고치지 않도록 `98.Servers/`에 인터페이스와 값 타입만 먼저 두었다. 구현 클래스는 아직 없다.
+
+| 파일 | 네임스페이스 | 구현 | 호출 |
+|---|---|---|---|
+| `98.Servers/03.AI/Spawn/ISpawnDirector.cs` | `Shinshi.AI` | 기웅 | 웨이브 세션이 `TryRequestSpawn(waveIndex, sourceId)`로 출현 요청, 활성 수·대기 수 조회, `Halt` |
+| `98.Servers/03.AI/Spawn/ISpawnProgressListener.cs` | `Shinshi.AI` | 웨이브 세션(기웅) | 스폰 디렉터가 출현·처치·소멸을 알림 |
+| `98.Servers/04.Systems/Wave/IWaveSession.cs` | `Shinshi.Systems` | 기웅 | 세션 바인딩이 `Begin`·`Tick`(서버 시각)·`Abort`, `Progress` 조회 |
+| `98.Servers/04.Systems/Wave/IWaveSessionListener.cs` | `Shinshi.Systems` | 세션 바인딩(민성) | 웨이브 세션이 처치·웨이브 종료·세션 종료(`Success`/`Timeout`)를 알림 |
+| `WaveSessionOutcome`·`WaveProgressSnapshot` | `Shinshi.Systems` | 값 타입 | 종료 결과, HUD 동기화 값 |
+
+- 의존은 `Wave → Spawn` 한 방향이다. 세션 바인딩은 `IWaveSession`·`IWaveSessionListener`만 알고 스폰 디렉터를 직접 부르지 않는다.
+- 웨이브 쪽은 `WaveConfigSO` 내부 필드를 계약에 노출하지 않고 `int waveIndex`(0부터)와 `string sourceId`만 주고받는다. 참가자 ID는 `string`이다.
+- 활성 상한 때문에 바로 나오지 못한 출현은 디렉터가 대기열에 넣고 빈자리에 순서대로 내보낸다. 수락한 요청은 버리지 않는다(지연 스폰 누락 0).
+- 적의 퇴장은 활성 수를 줄여야 하므로 반드시 스폰 디렉터를 거쳐 통지한다.
+- 개인 드롭은 웨이브에서 판정하지 않는다. 세션 바인딩이 `OnEnemyDefeated`의 `sourceId`를 원인 ID로 개인 판정에 넘긴다. 처치자 ID는 기록용이며 보상 자격은 참가자 명단이 정한다.
+- 한 처치가 웨이브를 끝내면 `OnEnemyDefeated → OnWaveCleared → OnWaveSessionEnded` 순서로 부른다. `OnWaveSessionEnded`는 한 번만 오며 여기서 정산 요청을 발행하고, 정산 결과 판정은 U14가 한다.
+- 제한 시간은 `Begin`에 넘긴 시각(Running 진입)부터 잰다. 시각은 바인딩이 `NetworkTime`에서 읽어 넘기며 웨이브 코드는 Mirror를 참조하지 않는다.
+- `Abort`는 서비스 장애 취소처럼 바깥 원인으로 멈출 때 쓰며 결과 통지를 보내지 않는다.
+- 구현 클래스의 생성 위치와 생성자 인자, 소멸 적의 집계, 시간 초과 뒤 남은 적 처리, 마지막 처치와 420초가 같은 틱일 때의 우선순위는 미정이다.

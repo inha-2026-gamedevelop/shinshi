@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ce658e3ce8e9a0642b0f10ccdb32b42d, type: 3}
   m_Name: SessionConfig
   m_EditorClassIdentifier: Assembly-CSharp::Shinshi.Data.SessionConfigSO
+  _schemaVersion: 1
   _enemyHealthScale:
   - 1
   - 1.75

@@ -54,10 +54,11 @@ Assets/
 
 | 어셈블리 | asmdef 위치 | 포함 | 참조 | 빌드 포함 조건 |
 |---|---|---|---|---|
-| `Shinshi.Runtime` | `01.Scripts/` | `00.Common/`~`06.UI/` | Mirror, Cinemachine, AI Navigation, TextMeshPro, DOTween, Dialogue System | 항상 |
+| `Shinshi.Runtime` | `01.Scripts/` | `00.Common/`~`06.UI/` | Mirror, Cinemachine, AI Navigation, TextMeshPro, DOTween, Dialogue System, Mesh Baker(`MeshBakerCore`), UMA(`UMA_Core`) | 항상 |
+| `Shinshi.Contracts` | `01.Scripts/00.Common/Contracts/` | Unity와 백엔드가 함께 쓰는 엔진 비의존 API DTO (`noEngineReferences`). `Shinshi.Runtime`에서 빠진다 | 없음. `Shinshi.Runtime`, `Shinshi.Server`, 테스트가 참조한다 | 항상 |
 | `Shinshi.Server` | `01.Scripts/98.Servers/` | `98.Servers/` | `Shinshi.Runtime`, `Shinshi.Dev`, Mirror | define 제약 `UNITY_SERVER \|\| UNITY_EDITOR` |
 | `Shinshi.Dev` | `01.Scripts/99.Dev/` | `99.Dev/` | `Shinshi.Runtime` | 항상 컴파일하되 파일 안을 `#if UNITY_EDITOR \|\| DEVELOPMENT_BUILD`로 비운다. `Shinshi.Server`의 개발 패널이 참조해야 해서 define 제약을 걸지 않는다 |
-| `Shinshi.Tests.EditMode` · `Shinshi.Tests.PlayMode` | `Tests/EditMode/` · `Tests/PlayMode/` | 테스트 | `Shinshi.Runtime`, `Shinshi.Server`, 테스트 러너 | 테스트 전용 |
+| `Shinshi.Tests.EditMode` · `Shinshi.Tests.PlayMode` | `Tests/EditMode/` · `Tests/PlayMode/` | 테스트 | `Shinshi.Runtime`, `Shinshi.Server`, `Shinshi.Contracts`, 테스트 러너 | 테스트 전용 |
 
   - 에디터에서는 `UNITY_EDITOR`가 정의되어 서버 코드도 컴파일되므로 에디터 한 개로 서버·클라를 함께 실행해 시험할 수 있다. Dedicated Server 빌드 대상은 `UNITY_SERVER`를 정의한다.
   - 로그·기즈모 호출 API처럼 도메인 코드가 부르는 개발 기능은 `Shinshi.Runtime`(`00.Common/`)에 `[Conditional]`로 두고, `Shinshi.Dev`에는 패널·웹 서버처럼 도메인이 부르지 않는 것만 둔다. `Shinshi.Runtime`은 `Shinshi.Dev`를 참조하지 않는다.
@@ -77,6 +78,7 @@ Assets/
 ```csharp
 namespace Shinshi.Common       // 공통 유틸리티, Constants
 namespace Shinshi.Data         // ScriptableObject 정의 (GameDB)
+namespace Shinshi.Contracts    // Unity와 백엔드가 함께 쓰는 API DTO, UnityEngine 참조 금지
 namespace Shinshi.Network      // 세션, 동기화
 namespace Shinshi.Combat       // 플레이어, 피해 판정, 기술
 namespace Shinshi.AI           // 산귀, 보스, 웨이브 스폰 (AI·패턴 판정 포함)
@@ -693,7 +695,7 @@ private IEnumerator CoApplyEffect()
 
 ### GameDB — ScriptableObject 기반 밸런스 DB
 
-GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 `PlayerConfigSO`, `SessionConfigSO`는 구현되어 있다(에디터에서 초기화와 값 조회만 확인, 플레이 모드와 서버 부트는 미검증). 나머지 SO는 해당 파트가 첫 수치를 넣을 때 아래 구조로 추가한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
+GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO 13개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). `AvatarCatalogSO`는 2026-10-01 UMA 아바타 연동과 함께 추가했다. 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
 
 ```
 스크립트: Assets/01.Scripts/00.Common/Data/     (namespace Shinshi.Data)
@@ -706,7 +708,22 @@ GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 `PlayerConfigSO`
 | `GameDatabaseSO` | `09.Data/Resources/GameDB.asset` | 도메인 SO 참조 모음 (루트), 콘텐츠 버전 | {팀장} |
 | `PlayerConfigSO` | `09.Data/Combat/PlayerConfig.asset` | 이동, 회피, 기력, 기본 능력치, 입력 보관, 직업별 기본 공격 | {팀장} |
 | `SessionConfigSO` | `09.Data/Session/SessionConfig.asset` | 시작 인원별 배율, 부활, 재접속, 준비, 보스 물약 횟수, 파티 경매, 장애 취소 정산 정책 | {팀장} |
-| {이름}SO | `09.Data/{도메인}/{이름}SO.asset` | {값 설명} | {파트} |
+| `SkillCatalogSO` | `09.Data/Combat/SkillCatalog.asset` | 기술 12종, 강림 3종, 공명 규칙, 계약 동료 공통값 | {팀장} |
+| `TalismanCatalogSO` | `09.Data/Combat/TalismanCatalog.asset` | 부적 효과 45종 정의와 변형 수치, 효과 레벨 보너스 배율 | {팀장} |
+| `EnemyCatalogSO` | `09.Data/AI/EnemyCatalog.asset` | 일반 적 4역할의 체력, 공격, 제어, 예고 | 기웅 |
+| `BossPatternCatalogSO` | `09.Data/AI/BossPatternCatalog.asset` | 보스 정의, 월백 1페이즈 6패턴(`wolbaek_p01`~`06`)의 가중치, 문맥 배율, 예고와 회복, 제어 창. 수치는 0(미지정)으로 비워 두고 기웅이 지정한다. 미지정 보스는 `IsTuned`가 거짓이라 전투를 열지 않는다 | 기웅 |
+| `WaveConfigSO` | `09.Data/AI/WaveConfig.asset` | 숲 6웨이브 배치, source ID, 활성 상한, 제한 시간 | 기웅 (세션 연결은 {팀장}) |
+| `EquipmentCatalogSO` | `09.Data/Growth/EquipmentCatalog.asset` | 장비 6부위 4등급, 제작, 25강, 계승표 | 진욱 |
+| `GrowthConfigSO` | `09.Data/Growth/GrowthConfig.asset` | 수련 5항목, 부적 등록 확률과 보정, 효과 강화 비용 | 진욱 |
+| `RewardCatalogSO` | `09.Data/Reward/RewardCatalog.asset` | 재화와 재료 아이템, 개인 드롭, 웨이브 기본 보상, 추가 정기, 보스 보상 | 진욱 (정산 규칙 수치는 `SessionConfigSO`) |
+| `LifeConfigSO` | `09.Data/Life/LifeConfig.asset` | 약초, 채집 선점과 재생, 행동력, 물약 레시피 | 진욱 |
+| `ProgressionCatalogSO` | `09.Data/Progression/ProgressionCatalog.asset` | 지역, 보스전 해금, 여우의 흔적, 최초 지원, 체험판 플래그 | 기웅 |
+| `AvatarCatalogSO` | `09.Data/Avatar/AvatarCatalog.asset` | 외형 슬라이더와 UMA DNA 대응, 색 팔레트, 직업별 고정 헤어, 장비 부위의 UMA 의상 슬롯, UMA 생성기 설정. 지금 값은 UMA 기본 종족 기준 임시값 | {팀장} |
+| {이름}SO | `09.Data/{도메인}/{이름}.asset` | {값 설명} | {파트} |
+
+- 도메인 SO는 `GameDataSO`를 상속하고 `ValidateValues`를 구현한다. 다른 카탈로그 ID를 참조하면 `ValidateReferences`에서 상대 카탈로그의 `Contains*` 메서드로 검사한다. 참조 검사는 모든 SO의 값 검사가 통과한 뒤에만 돈다.
+- 카탈로그 항목은 `IDefinition`(`DefinitionId`, `DisplayKey`)을 구현하고 `DefinitionLookup<T>`로 찾는다. ID는 저장 데이터와 서버 판정이 참조하므로 표시 이름을 바꿔도 바꾸지 않는다.
+- 한 SO는 한 파트가 소유한다. 클래스 파일은 `00.Common/Data/`에 있어도 담당 파트가 필드를 고치며, 리뷰 담당은 `.github/CODEOWNERS`에 파일 단위로 적는다.
 
 ```csharp
 // 읽기 - 정적 접근은 GameDB (예시 이름)
@@ -1014,7 +1031,8 @@ _hitFeedback = HitFeedbackLocator.Current;
 | 입력 | **구 Input Manager** (`UnityEngine.Input`, 축과 버튼은 `ProjectSettings/InputManager.asset`). Active Input Handling은 Both | Input System 패키지 API (`UnityEngine.InputSystem`) - 설치는 되어 있지만 팀 코드에서 쓰지 않는다 |
 | UI · 월드 텍스트 | **TextMesh Pro** (`TMPro`) | 레거시 `UnityEngine.UI.Text` |
 | 커스텀 셰이더 | **Amplify Shader Editor** | 손으로 쓴 셰이더 (ASE로 안 되는 경우만, 이유를 주석으로) |
-| 메시 · 머티리얼 결합 (드로우콜 절감) | **MeshBaker** | 자체 메시 결합 코드 |
+| 메시 · 머티리얼 결합 (드로우콜 절감) | **MeshBaker**. 플레이어 아바타는 UMA가 생성 때 결합하므로 예외 | 자체 메시 결합 코드 |
+| 플레이어 아바타 (얼굴, 체형 슬라이더, 의상 조합, 텍스처 아틀라스) | **UMA 3.1** (`UMA`, `UMA.CharacterSystem`, 원본 `Assets/UMA`는 수정하지 않는다). 팀 코드는 `05.Art/Avatar/`의 `AvatarView`와 GameDB `AvatarCatalogSO`를 거친다 | 자체 슬라이더, 의상 조합, 아틀라스 코드. UMA 원본 수정 |
 
 - 단순한 1회 물리 쿼리(접지 확인 등)는 RaycastPro 없이 `Physics` NonAlloc API를 직접 써도 된다 (17장).
 - 에디터 전용 도구(Console Pro, Hierarchy Designer, Maintainer, Wingman, MCP for Unity)는 런타임 코드에서 참조하지 않는다.

@@ -150,14 +150,18 @@ Assets/01.Scripts/05.Art/
 └ Shaders/             여러 에셋이 함께 쓰는 셰이더 그래프
 ```
 
-에셋 폴더 안은 `Models/`, `Materials/`, `Textures/`로 나누고, 프리팹이 생기면 `Prefabs/`를 더한다. `Camera/`, `Telegraph/`, `VFX/`는 표현 스크립트 폴더이므로 모델을 넣지 않는다.
+모델 에셋 폴더 안은 `Models/`, `Materials/`, `Textures/`로 나눈다. 씬에 배치할 프리팹은 사용자 지정에 따라 `Assets/02.Prefab/{분류}/{에셋}/`에 둔다. 모델의 `Characters/`, `Environment/`, `Props/` 분류를 프리팹에도 적용한다. `Camera/`, `Telegraph/`, `VFX/`는 표현 스크립트 폴더이므로 모델을 넣지 않는다.
+
+**모델 제작은 프리팹 생성과 참조 검증까지가 기본 과정이다.** FBX 임포트 뒤 재질·노멀·AO 등 해당 모델의 표면 표현과 LOD를 연결하고, 용도에 맞게 충돌체를 설정한 뒤 `02.Prefab/`에 `PF_` 프리팹을 만든다. 장식용 모델은 Collider를 생략할 수 있다. 프리팹의 모델·재질·LOD 참조, `.meta`, 임포트·Console과 시각 결과를 확인하고 실제로 하지 못한 게임플레이·성능 검증은 별도로 표시한다.
+
+사용자 지정 기본 과정에 따라 **AO·노멀·거칠기 등 실사에 가까운 3D 스타일화 판타지 재질 작업은 매번 별도 요청을 기다리지 않고 수행한다.** 모델과 셰이더에 맞는 실제 AO 베이크 또는 검증된 버텍스 AO를 사용하고, 색에 섞인 조명·중복 차폐·과한 검은 틈을 점검한다. 물·발광 효과처럼 AO를 생략할 합리적 이유가 있으면 작업 기록에 남긴다. 원화 분석·ChatGPT 목표 이미지·Blender·URP 재질·LOD·프리팹·완료 증거는 [아트 제작 기본 과정](ART_ASSET_PRODUCTION_WORKFLOW.md)을 따른다.
 
 | 종류 | 접두사 | 예 |
 |---|---|---|
 | 정적 메시 | `SM_` | `SM_CherryTree.fbx` |
 | 스킨드 메시 (리그 있음) | `SK_` | `SK_{캐릭터}.fbx` |
 | 재질 | `M_` | `M_CherryTree_Blossom.mat` |
-| 텍스처 | `T_{에셋}_{용도}` | `T_CherryTree_Trunk_BaseColor.jpg` (`BaseColor`, `Normal`, `ORM`, `Mask`) |
+| 텍스처 | `T_{에셋}_{용도}` | `T_CherryTree_Trunk_BaseColor.jpg` (`BaseColor`, `Normal`, `AO`, `MetallicSmoothness`, `Mask`) |
 | 셰이더 그래프 | `SG_` | `SG_VertexColorFoliage.shadergraph` |
 | 프리팹 | `PF_` | `PF_CherryTree.prefab` |
 

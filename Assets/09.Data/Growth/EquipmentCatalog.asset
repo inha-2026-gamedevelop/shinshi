@@ -1,0 +1,448 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9493c325ce9d3a24499b9fc29598aeef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.EquipmentCatalogSO
+  _schemaVersion: 1
+  _equipment:
+  - _definitionId: equip_weapon_common
+    _displayKey: equip_weapon_common.name
+    _slot: 0
+    _grade: 0
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_common
+    _bossMaterialCount: 4
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_weapon_rare
+    _displayKey: equip_weapon_rare.name
+    _slot: 0
+    _grade: 1
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_rare
+    _bossMaterialCount: 6
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_weapon_epic
+    _displayKey: equip_weapon_epic.name
+    _slot: 0
+    _grade: 2
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_epic
+    _bossMaterialCount: 8
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_weapon_legendary
+    _displayKey: equip_weapon_legendary.name
+    _slot: 0
+    _grade: 3
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_legendary
+    _bossMaterialCount: 10
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_head_common
+    _displayKey: equip_head_common.name
+    _slot: 1
+    _grade: 0
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_common
+    _bossMaterialCount: 3
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_head_rare
+    _displayKey: equip_head_rare.name
+    _slot: 1
+    _grade: 1
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_rare
+    _bossMaterialCount: 4
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_head_epic
+    _displayKey: equip_head_epic.name
+    _slot: 1
+    _grade: 2
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_epic
+    _bossMaterialCount: 6
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_head_legendary
+    _displayKey: equip_head_legendary.name
+    _slot: 1
+    _grade: 3
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_legendary
+    _bossMaterialCount: 8
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_body_common
+    _displayKey: equip_body_common.name
+    _slot: 2
+    _grade: 0
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_common
+    _bossMaterialCount: 4
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_body_rare
+    _displayKey: equip_body_rare.name
+    _slot: 2
+    _grade: 1
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_rare
+    _bossMaterialCount: 6
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_body_epic
+    _displayKey: equip_body_epic.name
+    _slot: 2
+    _grade: 2
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_epic
+    _bossMaterialCount: 8
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_body_legendary
+    _displayKey: equip_body_legendary.name
+    _slot: 2
+    _grade: 3
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_legendary
+    _bossMaterialCount: 10
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_hands_common
+    _displayKey: equip_hands_common.name
+    _slot: 3
+    _grade: 0
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_common
+    _bossMaterialCount: 3
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_hands_rare
+    _displayKey: equip_hands_rare.name
+    _slot: 3
+    _grade: 1
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_rare
+    _bossMaterialCount: 4
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_hands_epic
+    _displayKey: equip_hands_epic.name
+    _slot: 3
+    _grade: 2
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_epic
+    _bossMaterialCount: 6
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_hands_legendary
+    _displayKey: equip_hands_legendary.name
+    _slot: 3
+    _grade: 3
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_legendary
+    _bossMaterialCount: 8
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_feet_common
+    _displayKey: equip_feet_common.name
+    _slot: 4
+    _grade: 0
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_common
+    _bossMaterialCount: 3
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_feet_rare
+    _displayKey: equip_feet_rare.name
+    _slot: 4
+    _grade: 1
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_rare
+    _bossMaterialCount: 4
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_feet_epic
+    _displayKey: equip_feet_epic.name
+    _slot: 4
+    _grade: 2
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_epic
+    _bossMaterialCount: 6
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_feet_legendary
+    _displayKey: equip_feet_legendary.name
+    _slot: 4
+    _grade: 3
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_legendary
+    _bossMaterialCount: 8
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_accessory_common
+    _displayKey: equip_accessory_common.name
+    _slot: 5
+    _grade: 0
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_common
+    _bossMaterialCount: 3
+    _auctionMaterialId: item_auction_material_common
+    _auctionMaterialCount: 1
+  - _definitionId: equip_accessory_rare
+    _displayKey: equip_accessory_rare.name
+    _slot: 5
+    _grade: 1
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_rare
+    _bossMaterialCount: 4
+    _auctionMaterialId: item_auction_material_rare
+    _auctionMaterialCount: 1
+  - _definitionId: equip_accessory_epic
+    _displayKey: equip_accessory_epic.name
+    _slot: 5
+    _grade: 2
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_epic
+    _bossMaterialCount: 6
+    _auctionMaterialId: item_auction_material_epic
+    _auctionMaterialCount: 1
+  - _definitionId: equip_accessory_legendary
+    _displayKey: equip_accessory_legendary.name
+    _slot: 5
+    _grade: 3
+    _isTraining: 0
+    _bossMaterialId: item_boss_material_legendary
+    _bossMaterialCount: 8
+    _auctionMaterialId: item_auction_material_legendary
+    _auctionMaterialCount: 1
+  - _definitionId: equip_weapon_training
+    _displayKey: equip_weapon_training.name
+    _slot: 0
+    _grade: 0
+    _isTraining: 1
+    _bossMaterialId: 
+    _bossMaterialCount: 0
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_head_training
+    _displayKey: equip_head_training.name
+    _slot: 1
+    _grade: 0
+    _isTraining: 1
+    _bossMaterialId: 
+    _bossMaterialCount: 0
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_body_training
+    _displayKey: equip_body_training.name
+    _slot: 2
+    _grade: 0
+    _isTraining: 1
+    _bossMaterialId: 
+    _bossMaterialCount: 0
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_hands_training
+    _displayKey: equip_hands_training.name
+    _slot: 3
+    _grade: 0
+    _isTraining: 1
+    _bossMaterialId: 
+    _bossMaterialCount: 0
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_feet_training
+    _displayKey: equip_feet_training.name
+    _slot: 4
+    _grade: 0
+    _isTraining: 1
+    _bossMaterialId: 
+    _bossMaterialCount: 0
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  - _definitionId: equip_accessory_training
+    _displayKey: equip_accessory_training.name
+    _slot: 5
+    _grade: 0
+    _isTraining: 1
+    _bossMaterialId: 
+    _bossMaterialCount: 0
+    _auctionMaterialId: 
+    _auctionMaterialCount: 0
+  _slotBaseStats:
+  - _slot: 0
+    _attack: 200
+    _health: 0
+    _defense: 0
+    _critChance: 0
+  - _slot: 1
+    _attack: 0
+    _health: 180
+    _defense: 20
+    _critChance: 0
+  - _slot: 2
+    _attack: 0
+    _health: 300
+    _defense: 40
+    _critChance: 0
+  - _slot: 3
+    _attack: 0
+    _health: 120
+    _defense: 20
+    _critChance: 0
+  - _slot: 4
+    _attack: 0
+    _health: 150
+    _defense: 20
+    _critChance: 0
+  - _slot: 5
+    _attack: 40
+    _health: 150
+    _defense: 0
+    _critChance: 0.02
+  _gradeStatMultipliers:
+  - 1
+  - 1.35
+  - 1.8225
+  - 2.460375
+  _enhancementStatRate: 0.04
+  _trainingStatRate: 0.5
+  _enhancementSteps:
+  - _essenceCost: 150
+    _shardCost: 2
+    _baseSuccessRate: 1
+    _failBonusRate: 0
+  - _essenceCost: 200
+    _shardCost: 2
+    _baseSuccessRate: 1
+    _failBonusRate: 0
+  - _essenceCost: 250
+    _shardCost: 2
+    _baseSuccessRate: 1
+    _failBonusRate: 0
+  - _essenceCost: 300
+    _shardCost: 2
+    _baseSuccessRate: 1
+    _failBonusRate: 0
+  - _essenceCost: 350
+    _shardCost: 2
+    _baseSuccessRate: 1
+    _failBonusRate: 0
+  - _essenceCost: 400
+    _shardCost: 3
+    _baseSuccessRate: 0.8
+    _failBonusRate: 0.1
+  - _essenceCost: 450
+    _shardCost: 3
+    _baseSuccessRate: 0.8
+    _failBonusRate: 0.1
+  - _essenceCost: 500
+    _shardCost: 3
+    _baseSuccessRate: 0.8
+    _failBonusRate: 0.1
+  - _essenceCost: 550
+    _shardCost: 3
+    _baseSuccessRate: 0.8
+    _failBonusRate: 0.1
+  - _essenceCost: 600
+    _shardCost: 3
+    _baseSuccessRate: 0.8
+    _failBonusRate: 0.1
+  - _essenceCost: 650
+    _shardCost: 4
+    _baseSuccessRate: 0.65
+    _failBonusRate: 0.1
+  - _essenceCost: 700
+    _shardCost: 4
+    _baseSuccessRate: 0.65
+    _failBonusRate: 0.1
+  - _essenceCost: 750
+    _shardCost: 4
+    _baseSuccessRate: 0.65
+    _failBonusRate: 0.1
+  - _essenceCost: 800
+    _shardCost: 4
+    _baseSuccessRate: 0.65
+    _failBonusRate: 0.1
+  - _essenceCost: 850
+    _shardCost: 4
+    _baseSuccessRate: 0.65
+    _failBonusRate: 0.1
+  - _essenceCost: 900
+    _shardCost: 5
+    _baseSuccessRate: 0.5
+    _failBonusRate: 0.1
+  - _essenceCost: 950
+    _shardCost: 5
+    _baseSuccessRate: 0.5
+    _failBonusRate: 0.1
+  - _essenceCost: 1000
+    _shardCost: 5
+    _baseSuccessRate: 0.3
+    _failBonusRate: 0.1
+  - _essenceCost: 1050
+    _shardCost: 5
+    _baseSuccessRate: 0.3
+    _failBonusRate: 0.1
+  - _essenceCost: 1100
+    _shardCost: 5
+    _baseSuccessRate: 0.3
+    _failBonusRate: 0.1
+  - _essenceCost: 1150
+    _shardCost: 6
+    _baseSuccessRate: 0.2
+    _failBonusRate: 0.1
+  - _essenceCost: 1200
+    _shardCost: 6
+    _baseSuccessRate: 0.2
+    _failBonusRate: 0.1
+  - _essenceCost: 1250
+    _shardCost: 6
+    _baseSuccessRate: 0.2
+    _failBonusRate: 0.1
+  - _essenceCost: 1300
+    _shardCost: 6
+    _baseSuccessRate: 0.1
+    _failBonusRate: 0.1
+  - _essenceCost: 1350
+    _shardCost: 6
+    _baseSuccessRate: 0.1
+    _failBonusRate: 0.1
+  _sameGradeInheritCost: 500
+  _upperGradeInheritCost: 1500
+  _upperGradeInheritance:
+  - _sourceLevel: 17
+    _resultLevel: 10
+  - _sourceLevel: 18
+    _resultLevel: 11
+  - _sourceLevel: 19
+    _resultLevel: 12
+  - _sourceLevel: 20
+    _resultLevel: 13
+  - _sourceLevel: 21
+    _resultLevel: 14
+  - _sourceLevel: 22
+    _resultLevel: 15
+  - _sourceLevel: 23
+    _resultLevel: 16
+  - _sourceLevel: 24
+    _resultLevel: 18
+  - _sourceLevel: 25
+    _resultLevel: 20
+  _disassembleRefundRate: 0.25
+  _storageSlotsPerCharacter: 100

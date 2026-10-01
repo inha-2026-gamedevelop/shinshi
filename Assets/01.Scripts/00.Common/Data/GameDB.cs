@@ -18,9 +18,20 @@ namespace Shinshi.Data
 
         public static bool IsInitialized => _root != null;
 
-        public static string          ContentVersion => Root.ContentVersion;
-        public static PlayerConfigSO  Player         => Root.Player;
-        public static SessionConfigSO Session        => Root.Session;
+        public static string               ContentVersion => Root.ContentVersion;
+        public static PlayerConfigSO       Player         => Root.Player;
+        public static SessionConfigSO      Session        => Root.Session;
+        public static SkillCatalogSO       Skills         => Root.Skills;
+        public static TalismanCatalogSO    Talismans      => Root.Talismans;
+        public static EnemyCatalogSO       Enemies        => Root.Enemies;
+        public static BossPatternCatalogSO BossPatterns   => Root.BossPatterns;
+        public static WaveConfigSO         Waves          => Root.Waves;
+        public static EquipmentCatalogSO   Equipment      => Root.Equipment;
+        public static GrowthConfigSO       Growth         => Root.Growth;
+        public static RewardCatalogSO      Rewards        => Root.Rewards;
+        public static LifeConfigSO         Life           => Root.Life;
+        public static ProgressionCatalogSO Progression    => Root.Progression;
+        public static AvatarCatalogSO      Avatar         => Root.Avatar;
 
         private static GameDatabaseSO Root
         {
@@ -49,6 +60,12 @@ namespace Shinshi.Data
         internal static void ResetForTests()
         {
             _root = null;
+        }
+
+        /// <summary> 재화와 재료, 약초와 물약, 장비 중 어느 카탈로그에든 있는 아이템 ID인지 본다 </summary>
+        public static bool ContainsItem(string itemId)
+        {
+            return Root.ContainsItem(itemId);
         }
 
         /// <summary> 루트를 검증하고 등록한다, 같은 루트로 다시 불러도 안전하다 </summary>

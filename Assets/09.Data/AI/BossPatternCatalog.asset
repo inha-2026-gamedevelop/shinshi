@@ -1,0 +1,293 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f7d31d1023bb9548ba10834e12eaba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.BossPatternCatalogSO
+  _schemaVersion: 1
+  _bosses:
+  - _definitionId: boss_wolbaek
+    _displayKey: boss_wolbaek.name
+    _arenaDiameter: 0
+    _healthRef: 0
+    _defense: 0
+    _phaseTransitionHealthRate: 0
+    _openingDelaySeconds: 0
+    _nearDistanceMax: 0
+    _midDistanceMax: 0
+    _frontAngleMax: 0
+    _sideAngleMax: 0
+    _nearbyRadius: 0
+    _emptyWeightRetrySeconds: 0
+    _directControlMaxSeconds: 0
+    _directControlImmuneSeconds: 0
+  - _definitionId: boss_cheolgak
+    _displayKey: boss_cheolgak.name
+    _arenaDiameter: 0
+    _healthRef: 0
+    _defense: 0
+    _phaseTransitionHealthRate: 0
+    _openingDelaySeconds: 0
+    _nearDistanceMax: 0
+    _midDistanceMax: 0
+    _frontAngleMax: 0
+    _sideAngleMax: 0
+    _nearbyRadius: 0
+    _emptyWeightRetrySeconds: 0
+    _directControlMaxSeconds: 0
+    _directControlImmuneSeconds: 0
+  _patterns:
+  - _definitionId: wolbaek_p01
+    _displayKey: wolbaek_p01.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _baseWeight: 0
+    _distanceMultipliers:
+    - 0
+    - 0
+    - 0
+    _directionMultipliers:
+    - 0
+    - 0
+    - 0
+    _nearbyMultipliers:
+    - 0
+    - 0
+    - 0
+    _recentUseMultipliers:
+    - 0
+    - 0
+    - 0
+    - 0
+    _telegraphSeconds: 0
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 0
+    _shape:
+      _shape: 2
+      _range: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+  - _definitionId: wolbaek_p02
+    _displayKey: wolbaek_p02.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _baseWeight: 0
+    _distanceMultipliers:
+    - 0
+    - 0
+    - 0
+    _directionMultipliers:
+    - 0
+    - 0
+    - 0
+    _nearbyMultipliers:
+    - 0
+    - 0
+    - 0
+    _recentUseMultipliers:
+    - 0
+    - 0
+    - 0
+    - 0
+    _telegraphSeconds: 0
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 0
+    _shape:
+      _shape: 0
+      _range: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+  - _definitionId: wolbaek_p03
+    _displayKey: wolbaek_p03.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _baseWeight: 0
+    _distanceMultipliers:
+    - 0
+    - 0
+    - 0
+    _directionMultipliers:
+    - 0
+    - 0
+    - 0
+    _nearbyMultipliers:
+    - 0
+    - 0
+    - 0
+    _recentUseMultipliers:
+    - 0
+    - 0
+    - 0
+    - 0
+    _telegraphSeconds: 0
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 0
+    _shape:
+      _shape: 1
+      _range: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+  - _definitionId: wolbaek_p04
+    _displayKey: wolbaek_p04.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _baseWeight: 0
+    _distanceMultipliers:
+    - 0
+    - 0
+    - 0
+    _directionMultipliers:
+    - 0
+    - 0
+    - 0
+    _nearbyMultipliers:
+    - 0
+    - 0
+    - 0
+    _recentUseMultipliers:
+    - 0
+    - 0
+    - 0
+    - 0
+    _telegraphSeconds: 0
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 0
+    _shape:
+      _shape: 3
+      _range: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0
+    _guardable: 1
+    _controlPhase: 5
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+  - _definitionId: wolbaek_p05
+    _displayKey: wolbaek_p05.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _baseWeight: 0
+    _distanceMultipliers:
+    - 0
+    - 0
+    - 0
+    _directionMultipliers:
+    - 0
+    - 0
+    - 0
+    _nearbyMultipliers:
+    - 0
+    - 0
+    - 0
+    _recentUseMultipliers:
+    - 0
+    - 0
+    - 0
+    - 0
+    _telegraphSeconds: 0
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 0
+    _shape:
+      _shape: 4
+      _range: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0
+    _guardable: 0
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+  - _definitionId: wolbaek_p06
+    _displayKey: wolbaek_p06.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _baseWeight: 0
+    _distanceMultipliers:
+    - 0
+    - 0
+    - 0
+    _directionMultipliers:
+    - 0
+    - 0
+    - 0
+    _nearbyMultipliers:
+    - 0
+    - 0
+    - 0
+    _recentUseMultipliers:
+    - 0
+    - 0
+    - 0
+    - 0
+    _telegraphSeconds: 0
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 0
+    _shape:
+      _shape: 5
+      _range: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0
+    _guardable: 0
+    _controlPhase: 3
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 1
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0

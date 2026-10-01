@@ -1,0 +1,153 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43716aa3d31eae848a109e520b06b93b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.RewardCatalogSO
+  _schemaVersion: 1
+  _items:
+  - _definitionId: item_essence
+    _displayKey: item_essence.name
+    _grade: 0
+    _perCharacter: 1
+    _stackLimit: 0
+  - _definitionId: item_refine_shard
+    _displayKey: item_refine_shard.name
+    _grade: 0
+    _perCharacter: 1
+    _stackLimit: 9999
+  - _definitionId: item_boss_ticket
+    _displayKey: item_boss_ticket.name
+    _grade: 0
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_yeopjeon
+    _displayKey: item_yeopjeon.name
+    _grade: 0
+    _perCharacter: 0
+    _stackLimit: 0
+  - _definitionId: item_boss_material_common
+    _displayKey: item_boss_material_common.name
+    _grade: 0
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_boss_material_rare
+    _displayKey: item_boss_material_rare.name
+    _grade: 1
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_boss_material_epic
+    _displayKey: item_boss_material_epic.name
+    _grade: 2
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_boss_material_legendary
+    _displayKey: item_boss_material_legendary.name
+    _grade: 3
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_auction_material_common
+    _displayKey: item_auction_material_common.name
+    _grade: 0
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_auction_material_rare
+    _displayKey: item_auction_material_rare.name
+    _grade: 1
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_auction_material_epic
+    _displayKey: item_auction_material_epic.name
+    _grade: 2
+    _perCharacter: 0
+    _stackLimit: 9999
+  - _definitionId: item_auction_material_legendary
+    _displayKey: item_auction_material_legendary.name
+    _grade: 3
+    _perCharacter: 0
+    _stackLimit: 9999
+  _essenceItemId: item_essence
+  _refineShardItemId: item_refine_shard
+  _bossTicketItemId: item_boss_ticket
+  _tradeCurrencyItemId: item_yeopjeon
+  _baseEssencePerWave: 100
+  _extraEssencePerWave: 10
+  _refineShardsPerWave: 20
+  _enemyDrops:
+  - _enemyId: enemy_melee
+    _extraEssence: 8
+    _ticketChance: 0.005
+    _ticketQuantity: 1
+    _talismanChance: 0.02
+    _talismanQuantity: 1
+  - _enemyId: enemy_ranged
+    _extraEssence: 8
+    _ticketChance: 0.005
+    _ticketQuantity: 1
+    _talismanChance: 0.02
+    _talismanQuantity: 1
+  - _enemyId: enemy_charger
+    _extraEssence: 8
+    _ticketChance: 0.005
+    _ticketQuantity: 1
+    _talismanChance: 0.02
+    _talismanQuantity: 1
+  - _enemyId: enemy_elite
+    _extraEssence: 8
+    _ticketChance: 0.005
+    _ticketQuantity: 1
+    _talismanChance: 0.02
+    _talismanQuantity: 1
+  _bossRewards:
+  - _bossId: boss_cheolgak
+    _difficulty: 0
+    _essence: 600
+    _tradeCurrency: 120
+    _materialItemId: item_boss_material_common
+    _materialRolls: 2
+    _materialRollChance: 0.75
+    _materialPerSuccess: 3
+    _auctionItemId: item_auction_material_common
+    _auctionChance: 0.35
+    _auctionQuantity: 1
+  - _bossId: boss_cheolgak
+    _difficulty: 1
+    _essence: 800
+    _tradeCurrency: 160
+    _materialItemId: item_boss_material_rare
+    _materialRolls: 2
+    _materialRollChance: 0.75
+    _materialPerSuccess: 4
+    _auctionItemId: item_auction_material_rare
+    _auctionChance: 0.35
+    _auctionQuantity: 1
+  - _bossId: boss_wolbaek
+    _difficulty: 0
+    _essence: 1000
+    _tradeCurrency: 200
+    _materialItemId: item_boss_material_epic
+    _materialRolls: 2
+    _materialRollChance: 0.75
+    _materialPerSuccess: 5
+    _auctionItemId: item_auction_material_epic
+    _auctionChance: 0.35
+    _auctionQuantity: 1
+  - _bossId: boss_wolbaek
+    _difficulty: 1
+    _essence: 1400
+    _tradeCurrency: 260
+    _materialItemId: item_boss_material_legendary
+    _materialRolls: 2
+    _materialRollChance: 0.75
+    _materialPerSuccess: 6
+    _auctionItemId: item_auction_material_legendary
+    _auctionChance: 0.35
+    _auctionQuantity: 1

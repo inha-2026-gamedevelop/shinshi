@@ -21,11 +21,13 @@
 | 씬·에셋·`.meta` | [씬 · 에셋 안전](../unity/SCENE_AND_ASSET_SAFETY.md) | `Assets/00.Scenes/SampleScene.unity` | 씬 소유, `.meta` 동반 커밋 |
 | 외부 에셋·라이선스·설치 기록 | [에셋 대장](../licenses/ASSET_REGISTRY.md) | `Assets/99.ThirdParty/` | 분류, 버전, 출처, Git 제외, 경로 보정 |
 | 3D 모델 제작·공용 재사용 | [모델 제작 목록](../design/model-production-list.md), [컨셉아트 기록](../design/concept-art.md) | 제작 계획, 기존 벚꽃나무는 `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 원본 수와 배치 수 구분, 기존 모델 우선 검토, Meshy CLI → Blender 흐름 |
+| 아트 재질·AO·프리팹 기본 과정 | [아트 제작 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 모델·재질 `Assets/01.Scripts/05.Art/`, 배치 프리팹 `Assets/02.Prefab/` | AO/PBR 기본 처리, 셰이더별 지원, AI 목표 이미지와 실제 검증 구분 |
 | 렌더링 설정 (URP) | — | `Assets/Settings/` (PC · Mobile RP 에셋) | 공용 설정 변경은 팀 영향 |
 | 폴리지 셰이더·재질 | [버텍스 컬러 폴리지 셰이더](../unity/VERTEX_COLOR_FOLIAGE_SHADER.md) | `Assets/01.Scripts/05.Art/Shaders/`, `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 버텍스 컬러 AO, 알파 클립, 밉맵 커버리지 보존 |
 | 입력 | [코딩 컨벤션](../coding-convention.md) 23장 | `ProjectSettings/InputManager.asset` | 구 Input Manager(`UnityEngine.Input`), Active Input Handling = Both |
 | 밸런스 데이터 | [밸런스 데이터 작업](../unity/BALANCE_DATA_WORKFLOW.md) | `Assets/09.Data/` (GameDB 루트, 플레이어·세션 설정) | 수치는 ScriptableObject에 둔다 |
 | 성능·수명 패턴 | [엔지니어링 패턴](../unity/UNITY_ENGINEERING_PATTERNS.md) | — | 실제 문제가 생겼을 때 적용 |
+| 맵 성능·베이크·VFX 준비 | [맵 성능 사전 준비](../unity/MAP_PERFORMANCE_PREPARATION.md) | `Assets/Settings/`, 모델·배치 프리팹 (실제 맵 로더/준비 시스템 미검증) | 최소 사양 60 FPS, 첫 사용 끊김과 지속 GPU 비용 구분, 조명·모델 베이크·풀·측정 대안 |
 | 구조·디자인 패턴 | [디자인 패턴](../unity/DESIGN_PATTERNS.md) | — | 도입 판단 기준 |
 | 도입 기능 계획·개발 도구 | [도입 기능 계획](../unity/FEATURE_ADOPTION_PLAN.md) | `Assets/01.Scripts/99.Dev/` (`.gitkeep`만 있음) | 제안 상태, 권위 위치별 패널 분리, 외부 체험판 빌드 제거 |
 | 외부 AI에 넣을 에셋·데이터 | [에셋 · 데이터 정책](12_ASSET_AND_DATA_POLICY.md) | — | 구매 에셋·비공개 데이터 취급 |

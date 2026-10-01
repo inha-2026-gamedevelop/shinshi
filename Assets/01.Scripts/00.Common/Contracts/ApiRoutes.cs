@@ -1,0 +1,35 @@
+namespace Shinshi.Contracts
+{
+    /// <summary> 클라이언트와 런처가 부르는 API 경로, v1 안에서는 필드 추가만 허용하고 의미 변경은 v2로 낸다 </summary>
+    public static class ApiRoutes
+    {
+        // 이 폴더의 DTO는 Unity와 백엔드가 모두 Newtonsoft.Json으로 읽고 쓴다. 필드는 private으로 두고
+        // DataContract, DataMember(Name)으로 JSON 키를 정하며, 키는 camelCase이고 바꾸면 와이어 계약이 바뀐다.
+        // JsonUtility와 System.Text.Json은 DataMember가 붙은 private 필드를 읽지 않아 빈 객체가 되므로 쓰지 않는다.
+        // 시각은 UTC 유닉스 밀리초 long으로 보내고, 받는 쪽은 null과 빈 문자열을 모두 값 없음으로 본다.
+        // 토큰을 담은 DTO는 로그에 직렬화하지 않고 필드를 출력하는 ToString도 만들지 않는다
+
+        /****************************************
+        *                Fields
+        ****************************************/
+
+        // 초대 코드나 갱신 토큰을 접근 토큰으로 교환한다. 버전 불일치도 여기서 먼저 거절한다
+        public const string AUTH_EXCHANGE     = "/v1/auth/exchange";
+
+        // 로그인한 런처가 게임 전용 하위 세션을 받는다
+        public const string AUTH_GAME_SESSION = "/v1/auth/game-session";
+
+        // 점검 여부, 공지, 기능 차단, 허용 buildId
+        public const string SERVICE_STATE     = "/v1/service-state";
+
+        // string.Format으로 operationId를 넣는다. 응답을 잃은 작업은 새 ID로 다시 보내지 않고 이 경로로 조회한다
+        public const string OPERATION_FORMAT  = "/v1/operations/{0}";
+
+        // POST로 캐릭터를 만든다. 본문은 CharacterCreateRequest, 응답은 CharacterCreateResponse
+        public const string CHARACTERS        = "/v1/characters";
+
+        // TODO(민성): 캐릭터 목록 조회와 선택 경로는 기획 미정이라 정하지 않았다
+        // TODO(민성): 갱신 토큰 교환을 AUTH_EXCHANGE로 합칠지 별도 경로로 둘지, 게임 세션 갱신 경로는 기획 미정
+        // TODO(민성): 접근 토큰을 싣는 헤더 형식은 기획 미정
+    }
+}

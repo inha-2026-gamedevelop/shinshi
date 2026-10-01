@@ -131,6 +131,7 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 |---|---|
 | `POST /v1/auth/exchange` | 클라이언트의 인증 수단→세션 교환. 체험판은 초대 계정 기반, 실제 공급자 연결은 도입 단계 |
 | `GET /v1/towns`, `GET /v1/parties` | 인증 클라이언트의 접속 가능 목록 조회 |
+| `POST /v1/characters` | 인증 클라이언트의 캐릭터 생성. 캐릭터·기본 외형·초기 지급을 한 작업으로 확정하고, 외형 구조·범위·팔레트·직업별 허용 헤어를 검증한다(실패 `InvalidAppearance`). 같은 operationId 재시도·조회 규칙을 따른다 |
 | `POST /v1/game-sessions/reservations` | 권한 있는 마을 서버의 전원 티켓/물약 일괄 예약 |
 | `POST /v1/game-sessions/{id}/start` | 배정된 던전 서버의 전원 준비 확인 후 소비 확정 |
 | `POST /v1/game-sessions/{id}/events` | 서버의 순번 있는 전리품/물약/체크포인트 이벤트 저장 |

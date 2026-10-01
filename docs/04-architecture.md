@@ -210,20 +210,20 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 | `GameDatabaseSO` | 모든 카탈로그 참조·contentVersion | 민성 |
 | `PlayerConfigSO` | 이동/회피·기력회복·기본능력·기본공격 | 민성 |
 | `SkillCatalogSO` | 기술12·강림3 ID, 비용/CD/타임라인/형태 | 민성 |
-| `TalismanCatalogSO` | 45효과 ID·직업/기술/선택단계·변형/수치/레벨 | 민성+진욱 계약, 값 소유자 지정 |
+| `TalismanCatalogSO` | 45효과 ID·직업/기술/선택단계·변형/수치/레벨 | 민성(등록·강화 비용과 확률은 `GrowthConfigSO`) |
 | `EnemyCatalogSO` | 4일반적 역할·HP/공격·제어/예고 | 기웅 |
 | `BossPatternCatalogSO` | 월백6패턴·문맥배율·형태·회복/방어/제어창 | 기웅 |
 | `WaveConfigSO` | 6웨이브 배치·180개 source ID·활성상한·시간 | 기웅, 세션 연결 민성 |
 | `EquipmentCatalogSO` | 6부위·4등급·기본수치·제작/강화·계승표 | 진욱 |
-| `GrowthConfigSO` | 수련5항목·비용·상한·등록/강화 보정 | 진욱 |
-| `RewardCatalogSO` | 개인드롭·웨이브기본·추가정기·보스보상·희귀확률 | 진욱/민성 계약 |
-| `LifeConfigSO` | 약초·행동력·선점/재생·소형/대형 레시피 | 진욱/민성 계약 |
+| `GrowthConfigSO` | 수련5항목·비용·상한·부적 등록/강화 비용과 보정 | 진욱 |
+| `RewardCatalogSO` | 재화·재료 아이템, 개인드롭·웨이브기본·추가정기·보스보상·희귀확률 | 진욱(정산 규칙 수치는 `SessionConfigSO`, 민성) |
+| `LifeConfigSO` | 약초·행동력·선점/재생·소형/대형 레시피 | 진욱 |
 | `SessionConfigSO` | 스케일·부활·복귀/입장/경매 게임 규칙 | 민성 |
-| `ProgressionCatalogSO` | 지역·보스·흔적·최초지원·체험판 플래그 | 기웅/진욱 계약 |
+| `ProgressionCatalogSO` | 지역·보스·흔적·최초지원·체험판 플래그 | 기웅 |
 | `CameraConfigSO` | 카메라 거리·각도 등 로컬 시점 값 (`09.Data/Combat/`) | 민성 |
 | `PresentationConfigSO` | 음향·색·로컬 전용 연출 참조 | 담당 아트/UI |
 
-“계약” 표시는 두 파트가 한 SO를 동시에 소유한다는 뜻이 아니다. 구현 착수 때 필드 책임을 분리하거나 대표 소유자 한 명을 지정한다. SO 구조 변경은 [밸런스 작업](unity/BALANCE_DATA_WORKFLOW.md) 절차를 따른다. 기술 표를 실제로 도입할 때 [코딩 컨벤션](coding-convention.md)의 SO 대상 표와 연결한다.
+2026-10-01 사용자 결정으로 공동 소유였던 SO를 한 파트씩으로 나눴다(부적 효과 정의는 민성, 등록·강화 수치는 진욱의 `GrowthConfigSO`, 보상·생활은 진욱, 진행은 기웅). SO 구조 변경은 [밸런스 작업](unity/BALANCE_DATA_WORKFLOW.md) 절차를 따른다. 기술 표를 실제로 도입할 때 [코딩 컨벤션](coding-convention.md)의 SO 대상 표와 연결한다.
 
 기술 실행 시 원본 기술→핵심 변형→형태에 맞는 보조 효과→효과 레벨 보너스→최종 표시/판정 명세 순으로 컴파일한다. 대표 기술 3종의 2×2×2조합을 검사한다. Lv1~5 배율1/1.15/1.30/1.45/1.60은 부적이 더하는 보너스에만 적용하며 원본 기술 전체를 반복 배수하지 않는다.
 

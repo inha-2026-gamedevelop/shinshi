@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6be670e92f35c9445be464b1b7bbd6ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.LifeConfigSO
+  _schemaVersion: 1
+  _herbs:
+  - _definitionId: item_herb
+    _displayKey: item_herb.name
+    _stackLimit: 9999
+  _potions:
+  - _definitionId: item_potion_small
+    _displayKey: item_potion_small.name
+    _size: 0
+    _healRate: 0.3
+    _herbId: item_herb
+    _herbCost: 5
+    _outputCount: 1
+    _stackLimit: 999
+  - _definitionId: item_potion_large
+    _displayKey: item_potion_large.name
+    _size: 1
+    _healRate: 0.5
+    _herbId: item_herb
+    _herbCost: 12
+    _outputCount: 1
+    _stackLimit: 999
+  _potionCraftSeconds: 1
+  _zoneCapacity: 8
+  _nodesPerZone: 12
+  _gatherHerbId: item_herb
+  _interactRange: 1.5
+  _gatherSeconds: 3
+  _claimTimeoutSeconds: 10
+  _disconnectReleaseSeconds: 5
+  _regrowSeconds: 60
+  _herbsPerGather: 2
+  _maxClaimsPerAccount: 1
+  _maxActionEnergy: 100
+  _actionCostPerGather: 2
+  _actionRecoverInterval: 300
+  _actionRecoverAmount: 1

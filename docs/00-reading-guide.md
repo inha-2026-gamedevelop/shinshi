@@ -30,6 +30,8 @@
 | [런처·패치 설계](design/launcher-and-patch.md) | 런처 로그인·세션 전달, 서명 패치·설치·자체 업데이트, 서버 버전 맞춤, 체험판 범위 선택지 | 민성 |
 | [컨셉아트 기록](design/concept-art.md) | 월백 전장·숲 맵·신시 마을 컨셉아트의 보이는 요소와 기획 대조 | 진욱, 기웅 |
 | [3D 모델 제작 목록](design/model-production-list.md) | 공용 모델·지역 조립·캐릭터 후보, Meshy CLI → Blender 제작 흐름·수량 제안 | 진욱, 기웅, 아트 제작자 |
+| [아트 제작 기본 과정](unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 원화·ChatGPT 목표 이미지, 기본 AO/PBR 처리, Blender·URP·LOD·프리팹 생성·검증 | 아트 제작자, AI 작업자 |
+| [맵 성능 사전 준비](unity/MAP_PERFORMANCE_PREPARATION.md) | 최소 사양 60 FPS, 조명·모델 베이크, VFX 프리워밍·풀·품질 대안과 측정 절차 (적용 미검증) | 맵·아트·VFX·검수 담당 |
 
 작업 규칙은 [AI 작업 문서](ai/README.md), Unity 시작·씬 안전은 [첫 실행 안내](unity/UNITY_START_HERE.md)와 [씬·에셋 안전](unity/SCENE_AND_ASSET_SAFETY.md)에서 찾는다.
 
