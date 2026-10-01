@@ -31,6 +31,7 @@ namespace Shinshi.Data
         public static RewardCatalogSO      Rewards        => Root.Rewards;
         public static LifeConfigSO         Life           => Root.Life;
         public static ProgressionCatalogSO Progression    => Root.Progression;
+        public static AvatarCatalogSO      Avatar         => Root.Avatar;
 
         private static GameDatabaseSO Root
         {

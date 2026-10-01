@@ -32,6 +32,7 @@ namespace Shinshi.Common
         {
             if (IsServerBuild)
             {
+                OnServerBuildAwake();
                 enabled = false;
                 return;
             }
@@ -44,5 +45,8 @@ namespace Shinshi.Common
         ****************************************/
 
         protected virtual void OnViewAwake() { }
+
+        /// <summary> 서버 빌드에서 이 컴포넌트가 꺼지기 직전에 한 번 불린다, 함께 붙은 표현용 외부 컴포넌트를 끌 때 쓴다 </summary>
+        protected virtual void OnServerBuildAwake() { }
     }
 }

@@ -1,0 +1,309 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c002c8cf99914442b234badaa83bdf5, type: 3}
+  m_Name: AvatarCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.AvatarCatalogSO
+  _schemaVersion: 1
+  _raceName: Human Female 3.0
+  _faceSliders:
+  - _sliderId: face_width
+    _dnaName: headWidth
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: cheekbone_width
+    _dnaName: cheekWidth
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: cheek_fullness
+    _dnaName: cheekSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: jaw_length
+    _dnaName: chinPosition
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: jaw_width
+    _dnaName: jawsSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: chin_shape
+    _dnaName: chinPronounced
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: eye_size
+    _dnaName: eyeSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: eye_spacing
+    _dnaName: eyeSpacing
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: eye_height
+    _dnaName: EyePosition
+    _dnaMin: 0.6
+    _dnaNeutral: 1
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: eye_tilt
+    _dnaName: eyeRotation
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: brow_height
+    _dnaName: BrowPosition
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: brow_tilt
+    _dnaName: 
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: brow_thickness
+    _dnaName: 
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: nose_size
+    _dnaName: noseSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: nose_length
+    _dnaName: nosePronounced
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: nose_bridge
+    _dnaName: noseFlatten
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 1
+  - _sliderId: nose_width
+    _dnaName: noseWidth
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: nose_tip_height
+    _dnaName: noseInclination
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: mouth_width
+    _dnaName: mouthSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: mouth_height
+    _dnaName: 
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: upper_lip
+    _dnaName: lipsSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: lower_lip
+    _dnaName: 
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  _bodySliders:
+  - _sliderId: height
+    _dnaName: height
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: head_size
+    _dnaName: headSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: neck_length
+    _dnaName: 
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: shoulder_width
+    _dnaName: shoulderWidth
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: arm_thickness
+    _dnaName: armWidth
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: thigh_thickness
+    _dnaName: legsSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: calf_thickness
+    _dnaName: 
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: chest
+    _dnaName: breastSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: waist
+    _dnaName: waist
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  - _sliderId: hips
+    _dnaName: gluteusSize
+    _dnaMin: 0
+    _dnaNeutral: 0.5
+    _dnaMax: 1
+    _inverted: 0
+  _skinColorName: Skin
+  _eyeColorName: Eyes
+  _browColorName: Brows
+  _lipColorName: Lips
+  _skinTones:
+    serializedVersion: 2
+    key0: {r: 0.96, g: 0.86, b: 0.78, a: 1}
+    key1: {r: 0.87, g: 0.72, b: 0.6, a: 1}
+    key2: {r: 0.62, g: 0.46, b: 0.36, a: 0}
+    key3: {r: 0, g: 0, b: 0, a: 0}
+    key4: {r: 0, g: 0, b: 0, a: 0}
+    key5: {r: 0, g: 0, b: 0, a: 0}
+    key6: {r: 0, g: 0, b: 0, a: 0}
+    key7: {r: 0, g: 0, b: 0, a: 0}
+    ctime0: 0
+    ctime1: 32768
+    ctime2: 65535
+    ctime3: 0
+    ctime4: 0
+    ctime5: 0
+    ctime6: 0
+    ctime7: 0
+    atime0: 0
+    atime1: 65535
+    atime2: 0
+    atime3: 0
+    atime4: 0
+    atime5: 0
+    atime6: 0
+    atime7: 0
+    m_Mode: 0
+    m_ColorSpace: -1
+    m_NumColorKeys: 3
+    m_NumAlphaKeys: 2
+  _eyeColors:
+  - {r: 0.18, g: 0.11, b: 0.07, a: 1}
+  - {r: 0.24, g: 0.15, b: 0.09, a: 1}
+  - {r: 0.31, g: 0.2, b: 0.12, a: 1}
+  - {r: 0.12, g: 0.08, b: 0.06, a: 1}
+  - {r: 0.38, g: 0.26, b: 0.15, a: 1}
+  - {r: 0.27, g: 0.22, b: 0.16, a: 1}
+  - {r: 0.2, g: 0.2, b: 0.19, a: 1}
+  - {r: 0.33, g: 0.29, b: 0.22, a: 1}
+  - {r: 0.43, g: 0.31, b: 0.18, a: 1}
+  - {r: 0.16, g: 0.13, b: 0.11, a: 1}
+  - {r: 0.22, g: 0.25, b: 0.24, a: 1}
+  - {r: 0.47, g: 0.37, b: 0.24, a: 1}
+  _browColors:
+  - {r: 0.06, g: 0.05, b: 0.05, a: 1}
+  - {r: 0.1, g: 0.08, b: 0.07, a: 1}
+  - {r: 0.15, g: 0.11, b: 0.08, a: 1}
+  - {r: 0.21, g: 0.15, b: 0.1, a: 1}
+  - {r: 0.28, g: 0.2, b: 0.13, a: 1}
+  - {r: 0.12, g: 0.12, b: 0.12, a: 1}
+  - {r: 0.34, g: 0.25, b: 0.17, a: 1}
+  - {r: 0.18, g: 0.14, b: 0.12, a: 1}
+  _lipColors:
+  - {r: 0.78, g: 0.47, b: 0.45, a: 1}
+  - {r: 0.72, g: 0.4, b: 0.4, a: 1}
+  - {r: 0.82, g: 0.52, b: 0.5, a: 1}
+  - {r: 0.66, g: 0.36, b: 0.36, a: 1}
+  - {r: 0.75, g: 0.45, b: 0.48, a: 1}
+  - {r: 0.7, g: 0.42, b: 0.38, a: 1}
+  - {r: 0.6, g: 0.33, b: 0.33, a: 1}
+  - {r: 0.85, g: 0.58, b: 0.55, a: 1}
+  _baseWardrobeRecipes:
+  - underwear_white_granit_top_Recipe
+  - underwear_white_granit_bottom_Recipe
+  _hairWardrobeSlot: Hair
+  _classHairs:
+  - _playerClass: 0
+    _hairId: 1
+    _recipeName: HairPonytail_Recipe
+  - _playerClass: 1
+    _hairId: 2
+    _recipeName: Hair_Bun_Recipe
+  - _playerClass: 2
+    _hairId: 3
+    _recipeName: Hair_LongSwept_Recipe
+  _gearSlots:
+  - _slot: 1
+    _wardrobeSlots:
+    - Helmet
+  - _slot: 2
+    _wardrobeSlots:
+    - Chest
+    - Legs
+  - _slot: 3
+    _wardrobeSlots:
+    - Hands
+  - _slot: 4
+    _wardrobeSlots:
+    - Feet
+  - _slot: 5
+    _wardrobeSlots:
+    - Waist
+  _generatorIterationCount: 1
+  _generatorInterFrameDelay: 1
+  _generatorProcessAllPending: 0
