@@ -107,7 +107,7 @@ Assets/
 | 피해 | `DamageResolver`, `HitLedger`, `GuardWindow` | 서버 피해/중복 적중 차단·반격 판정 |
 | 신령 | `SummonController`, `SummonTargetRules`, `ResonanceRules` | 2동료 시간제 유지, 타깃/공명·3강림 |
 | 적 AI | `EnemyController`, `EnemyDecisionRules`, `SpawnDirector` | 생존 타깃·제어·이동·공격, 활성 24상한 |
-| 보스 | `WolbaekController`, `BossPatternSelector`, `BossPatternExecutor` | 문맥→가중 선택→예고/발동/회복. 2페이즈는 입력 대기 |
+| 보스 | `BossBrain`, `BossCombat`, `BossSelectionTree`, `BossPatternSelector`, `IBossPattern` (서버 뼈대, 구현됨·EditMode만 검증), `WolbaekController`(개체 연결, 미구현) | 상위 FSM→전투(페이즈·공격 FSM, 선택 BT)→가중 선택→패턴 실행. 6패턴·복제·제어 연결은 미구현, 2페이즈는 입력 대기. 계약은 [서버·클라이언트 협업 8장](unity/SERVER_CLIENT_WORKFLOW.md#8-보스-서버-경계) |
 | 일반전 | `WaveSession`, `WaveSchedule`, `ParticipantRoster` | 6웨이브·180마리·420초·고정 시작 인원 |
 | 보스 세션 | `BossSession`, `ReviveBudget`, `ResultEligibility` | 솔로/협동 사망·공용3회·처치 자격 |
 | 전리품 | `LootRoller`, `SessionRewardLedger`, `SettlementRules` | 개인 독립 추첨·보호/추가 정기·정산안 |
@@ -192,6 +192,8 @@ Departed 캐릭터는 전장에서 제거하고 보스 타깃·주변 인원 계
 기술은 `Idle → Targeting(선택형) → Validating → Windup → Active → Recovery → Idle`이다. Targeting 취소는 비용이 없다. 서버가 승인한 시점에 명세의 자원/쿨다운을 적용한다. 입력 큐 0.15초/1개와 취소 가능한 구간은 기획 데이터로 정한다.
 
 월백은 `SelectTarget → ReadContext → SelectPattern → Telegraph → Execute → Recover → SelectTarget`이다. 매 선택 시 생존 플레이어 한 명을 무작위로 고르고 거리·방향을 계산한다. 근처 5m의 플레이어/전투 봇만 세고 소환물은 제외한다. 0명은 1명 열, 3명 이상은 3명 열을 쓴다. 가중치는 Base×거리×방향×인원×최근 패턴이며 최대값 고정 선택을 하지 않는다. 1페이즈 원본 6패턴과 배율은 기획 표를 보존한다.
+
+보스 서버 구조는 `상위 FSM → Combat → PhaseState / AttackState FSM → Combat BT → 상황별 가중치 선택 → 패턴 실행`이다. 위 `SelectTarget → ReadContext → SelectPattern`은 공격 FSM이 `Ready`이고 페이즈가 `Active`일 때만 BT가 한 번에 평가하는 단계이고, 공격 FSM은 `Ready → Telegraph → Execute → Recover → Ready`를 서버 시각으로 진행한다. 상위 FSM이 중단 이유(사망, 전투 종료, 페이즈 전환, 직접 제어)를 정하고 취소를 지시한다. 현재 패턴은 자신의 실행과 예약 타격을 정리하고, 지속 장판과 투사체는 별도 수명 관리자가 이유별로 정리한다. 예고, 실행, 회복 중에도 사망, 페이즈 전환, 직접 제어 검사는 계속하며, 같은 틱의 우선순위는 사망·전투 종료 → 페이즈 전환 → 허용된 직접 제어 → 일반 공격 진행·새 선택이다. 이미 적용된 피해는 되돌리지 않는다. 체력 0과 사망 확정은 구분하며 최종 발악 도입은 미정이다. 오프닝과 강제 후속 공격도 미정이라 구현하지 않았고 일반 가중 선택 앞에 선택 규칙을 끼울 자리만 있다.
 
 생명 50% 도달 즉시 `PhaseTransitionPending`을 설정하고 1페이즈의 새 패턴 선택을 막는다. 전투 부록의 전환 취소 규칙에 따라 진행 중인 1페이즈 공격·잔여 장판·투사체와 예정 피해를 종료한 뒤 2페이즈 실행기에 인계한다. 2페이즈 데이터·실행기를 받기 전 공개 배포 빌드에서 미완성 전환을 정상 완주로 꾸미지 않는다. 별도 시험 빌드는 1페이즈 종료 지점을 명확하게 표시한다. 2페이즈 자체의 전환 연출·공격 규칙은 담당자의 입력을 따른다.
 

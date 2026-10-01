@@ -1,6 +1,6 @@
 # 서버·클라이언트 협업
 
-> 2026-10-01 개정. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정)다. 그믐에서 이식한 partial 분할(`.server.cs`·`.network.cs`) 대신 **역할별 클래스 분리와 서버 전용 어셈블리**를 쓴다. 네트워크 C#(`Net/`, `98.Servers/`)과 asmdef는 아직 없으며, 첫 네트워크 기능부터 이 구조로 시작한다.
+> 2026-10-01 개정. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정)다. 그믐에서 이식한 partial 분할(`.server.cs`·`.network.cs`) 대신 **역할별 클래스 분리와 서버 전용 어셈블리**를 쓴다. asmdef(`Shinshi.Runtime`·`Shinshi.Server`·`Shinshi.Contracts`·`Shinshi.Dev`·테스트)와 서버 부트스트랩은 있고 `Net/` 상태 클래스는 아직 없으며, 첫 네트워크 기능부터 이 구조로 시작한다.
 
 같은 Unity 프로젝트와 저장소, Mirror 서버 권위 구조를 쓰며 **실행 위치와 작성 담당을 분리한다.** 판정·AI는 서버에서만 실행되지만(권위 원칙 그대로, [네트워크 권위](NETWORK_AUTHORITY.md)) 작성은 원래 파트 담당이 하고, {팀장}은 네트워크 연결 코드를 맡는다.
 서버 구현 전체를 팀장 한 명이 맡으면 판정 규칙을 모르는 사람이 규칙을 쓰게 되고 병목이 생긴다. 그래서 판정·AI 작성은 파트 담당에게 둔다.
@@ -84,10 +84,10 @@ Assets/01.Scripts/
 
 ## 6. 현재 적용 범위
 
-2026-10-01 확인 기준 `Assets/01.Scripts/`의 게임플레이 C#은 아직 없다(`00.Common/`에 공통 계약만 있다). 팀 코드용 asmdef도 없어 현재 코드는 기본 `Assembly-CSharp`에 들어간다. 도메인 폴더와 일부 아트 자산은 존재하며, 게임용 `98.Servers/`·`Net/` 구현은 예정 상태다.
+2026-10-01 코드 기준으로 `Assets/01.Scripts/`의 게임플레이 C#은 보스 서버 뼈대(8장)뿐이다. `00.Common/`에 공통 계약, `01.Network/`와 `98.Servers/01.Network/`에 네트워크 매니저와 서버 부트스트랩, `02.Combat/Damage/`와 `98.Servers/`에 파트 간 인터페이스가 있고, 게임용 `Net/` 상태 클래스와 그 구현체는 아직 없다.
 
-- asmdef(`Shinshi.Runtime`·`Shinshi.Server`·`Shinshi.Dev`·테스트)는 U01에서 만들고 첫 `NetworkBehaviour`부터 위 배치를 따른다. 이미 있는 `00.Common/` 코드는 `Shinshi.Runtime`에 들어간다.
-- `ServerLinks`·`ClientView`·`ServerBootstrap`은 도입 예정 이름이다. 실제 타입이 생기면 이 절에 위치와 함께 적는다.
+- asmdef(`Shinshi.Runtime`·`Shinshi.Server`·`Shinshi.Contracts`·`Shinshi.Dev`·테스트)는 만들어져 있고 첫 `NetworkBehaviour`부터 위 배치를 따른다. `00.Common/` 코드는 `Shinshi.Runtime`에 들어간다.
+- `ServerLinks`(`01.Network/`), `ClientView`(`00.Common/Utility/`), `ServerBootstrap`(`98.Servers/01.Network/`)은 있다. `ServerBootstrap`은 서버 시작과 GameDB 확인까지만 하며, 서버 객체를 만들어 `ServerLinks`에 등록하는 부분과 `ServerLinks.Register`를 부르는 곳은 아직 없다.
 - 나중에 기존 파일을 분리할 때도 `.cs.meta` GUID와 씬·프리팹 참조를 보존한다.
 - GitHub 브랜치 보호 설정 적용 여부는 별도 확인이 필요하다.
 - 파트가 확정되고 파일이 생기면 도메인별 상태·서버·규칙 클래스 목록을 이 절에 표로 적는다.
@@ -113,3 +113,52 @@ Assets/01.Scripts/
 - 제한 시간은 `Begin`에 넘긴 시각(Running 진입)부터 잰다. 시각은 바인딩이 `NetworkTime`에서 읽어 넘기며 웨이브 코드는 Mirror를 참조하지 않는다.
 - `Abort`는 서비스 장애 취소처럼 바깥 원인으로 멈출 때 쓰며 결과 통지를 보내지 않는다.
 - 구현 클래스의 생성 위치와 생성자 인자, 소멸 적의 집계, 시간 초과 뒤 남은 적 처리, 마지막 처치와 420초가 같은 틱일 때의 우선순위는 미정이다.
+
+## 8. 보스 서버 경계
+
+보스 AI의 서버 뼈대를 `98.Servers/03.AI/Boss/`(`Shinshi.AI`, 기웅 작성, 민성 공동 리뷰)에 구현했다. 서버 시각을 바깥에서 받아 진행하는 일반 C# 클래스이며 Mirror와 `MonoBehaviour`에 의존하지 않는다. 가짜 의존성으로 EditMode 테스트(`98.Servers/03.AI/Boss/Tests/`의 별도 asmdef `Shinshi.Tests.Server.AI`)를 돌려 검증했다. 전용 서버와 클라이언트를 띄운 실행 검증은 하지 않았다. `Assets/Tests/`가 민성 소유라 테스트를 임시로 이 폴더에 두었으며 옮길지는 민성과 정한다.
+
+구조는 `상위 FSM(BossBrain) → Combat(BossCombat) → PhaseState / AttackState FSM → Combat BT → 상황별 가중치 선택 → 패턴 실행`이다.
+
+| 클래스 | 책임 |
+|---|---|
+| `BossBrain` | 상위 FSM(`Inactive → Combat → Defeated / Ended`). 사망과 전투 종료를 판단해 취소를 지시한다. 진입점 `Begin`·`Tick(serverTime)`·`RequestCombatEnd` |
+| `BossCombat` | 전투 중 한 틱의 순서를 지키고 두 FSM과 BT를 묶는다 |
+| `BossPhaseFsm` | `Active → TransitionPending → AwaitingHandoff`. 새 선택은 `Active`일 때만 허용한다 |
+| `BossAttackFsm` | `Ready → Telegraph → Execute → Recover → Ready`. 단계 타이머와 직접 제어 구간을 서버 시각으로 계산한다 |
+| `BossSelectionTree`, `Bt*` | 경량 BT. 공격 FSM이 `Ready`이고 페이즈가 `Active`일 때만 평가한다 |
+| `BossPatternSelector` | 거리·방향·주변 인원 구간과 가중치 곱, 비례 선택. 상태 없는 순수 계산 |
+| `IBossPattern`, `BossPatternBase` | 패턴 한 번의 실행. 취소 뒤에는 피해 요청이 `IDamageResolver`까지 가지 않는다 |
+
+- 한 틱의 우선순위는 사망·전투 종료 → 페이즈 전환 → 허용된 직접 제어 → 일반 공격 진행·새 선택이다. 이미 적용된 피해는 되돌리지 않는다.
+- 상위 FSM이 중단 이유(`EBossInterruptReason`)를 정하고 취소를 지시한다. 현재 패턴은 자신의 실행과 예약 타격을 정리하고, 지속 장판과 투사체는 `IBossEffectLifetime`이 이유별로 정리한다.
+- 예고, 실행, 회복 중에도 사망, 페이즈 전환, 직접 제어 검사는 계속한다. BT는 새 행동을 고를 수 있을 때만 평가한다.
+- 체력 0(`IBossVitals.IsHealthZero`)과 사망 확정(`IBossDeathPolicy`)은 구분한다. 기본 정책 `ImmediateBossDeathPolicy`는 체력 0이면 바로 확정하는 임시 구현이며 최종 발악이 도입되면 교체한다.
+- 오프닝과 강제 후속 공격은 구현하지 않았다. 일반 가중 선택 앞에 평가되는 `IBossSelectionRule` 자리만 있고 등록된 규칙은 없다. 기존 필드 `OpeningDelaySeconds`는 첫 선택 가능 시각에만 반영한다.
+
+연결 계약(모두 `Shinshi.AI`, 인터페이스만 두었고 아래 구현은 아직 없다).
+
+| 인터페이스 | 역할 | 구현 담당 |
+|---|---|---|
+| `IBossVitals` | 보스 체력 비율과 체력 0 여부 읽기. `ICombatTarget`에 체력 읽기가 없어 새로 둠 | 민성 (U05) |
+| `IBossControlSource` | 도착한 직접 제어를 한 건씩 넘김. 플레이어 기술이 보스에 제어를 거는 계약이 없어 **실제 제어 연결은 미구현** | 민성 (U05, U07) |
+| `IBossPatternFactory` | 패턴 정의로 시전 실행 객체 생성. 월백 6패턴 구현 | 기웅 (U10) |
+| `IBossEffectLifetime` | 지속 장판·투사체 수명, 이유별 취소, 동시 장판 수 조회 | 기웅 (U10) |
+| `IBossPatternCatalog` | 보스·패턴 정의 조회. 어댑터 `BossPatternCatalogSource`가 `BossPatternCatalogSO`를 감싼다 | 기웅 (구현됨) |
+| `IBossRandom` | 타깃·패턴 선택 난수. 기본 `SeededBossRandom` | 기웅 (구현됨) |
+
+기존 계약 `ICombatTargetQuery`, `ICombatTarget`, `IDamageResolver`, `DamageRequest`를 그대로 쓴다. 이 계약들의 구현체는 아직 없다.
+
+연결되지 않은 것.
+
+- `BossBrain.Tick`을 누가 어떤 주기로 부르는지와 `BossBrain`을 만들어 `ServerLinks`에 연결하는 서버 부트스트랩은 없다(민성).
+- 보스 상태와 예고를 클라이언트에 보내는 복제(`NetworkBehaviour`, Rpc)는 없다(민성).
+- 월백 6패턴 실행, 지속물 수명 관리자 구현은 없다(기웅).
+
+미정인 게임 규칙.
+
+- 최종 발악 도입 여부와 방식
+- 직접 제어가 걸린 동안 보스의 동작, 취소형이 아닌 제어는 면역 시작만 표시한다
+- 같은 틱에 사망과 전투 종료가 겹칠 때 기록할 이유(뼈대는 사망을 먼저 기록하며 승패는 세션이 판정한다)
+- 보스 사망 때 남은 장판과 투사체를 지울지
+- 2페이즈 인계(`AwaitingHandoff`에서 멈춘다)

@@ -4,20 +4,21 @@
 
 ## 기능별 진입점
 
-경로는 저장소 루트(Unity 프로젝트 루트) 기준이고, 코드 경로는 `Assets/01.Scripts/` 기준이다. 게임플레이 C#은 아직 없고 `00.Common/`에 공통 계약(`Constants`, enum, GameDB 골격)만 있으므로, 나머지 코드 진입점은 [코딩 컨벤션](../coding-convention.md)에 정한 예정 위치다. 일부 아트와 별도 에디터 스크립트는 존재한다.
+경로는 저장소 루트(Unity 프로젝트 루트) 기준이고, 코드 경로는 `Assets/01.Scripts/` 기준이다. 게임플레이 C#은 보스 서버 뼈대(`98.Servers/03.AI/Boss/`)뿐이고 `00.Common/`에 공통 계약(`Constants`, enum, GameDB 골격), `01.Network/`·`98.Servers/`에 서버 부트스트랩, `02.Combat/Damage/`에 인터페이스가 있으므로, 나머지 코드 진입점은 [코딩 컨벤션](../coding-convention.md)에 정한 예정 위치다. 일부 아트와 별도 에디터 스크립트는 존재한다.
 
 | 찾는 것 | 공유 문서 | 실제 진입점 | 확인할 것 |
 |---|---|---|---|
 | 게임 기획 (장르·규칙·스코프) | [기획서](../02-game-design.md), [시스템 개요](../01-system-design.md) | `docs/design/` 상세 부록, [컨셉아트 기록](../design/concept-art.md) | 확정 규칙과 위임 초기 수치, 월백 2페이즈 입력 대기 |
 | 기술 설계 | [기술설계서](../03-technical-design.md), [아키텍처](../04-architecture.md) | 제안 모듈·API·스키마 | 전투 1~4인, 전용 서버·공유 마을·ASP.NET Core·PostgreSQL; 구현 상태 구분 |
-| 구현 현황 | [구현 로드맵](../05-implementation-roadmap.md) | `Assets/01.Scripts/` (폴더·일부 아트·공통 계약 존재, 게임플레이 C# 미구현) | 코드 존재와 검증 완료를 구분 |
+| 구현 현황 | [구현 로드맵](../05-implementation-roadmap.md) | `Assets/01.Scripts/` (폴더·일부 아트·공통 계약 존재, 게임플레이 C#은 보스 서버 뼈대뿐) | 코드 존재와 검증 완료를 구분 |
 | 클라이언트 API | [기술설계서](../03-technical-design.md) | 도메인별 요청·조회 창구 (설계, 아직 미구현) | 원본 상태는 서버, UI는 요청/조회 |
 | 첫 실행·개발 환경 | [처음 프로젝트를 열 때](../unity/UNITY_START_HERE.md) | `ProjectSettings/ProjectVersion.txt`, `Packages/manifest.json` | Unity 6000.4.7f1, 패키지 버전 |
 | C# 스타일·폴더·네임스페이스 | [코딩 컨벤션](../coding-convention.md) | `Assets/01.Scripts/`, 루트 네임스페이스 `Shinshi` | 도메인 폴더 번호는 파트 확정 시 조정 |
 | 네트워크 권위 (Mirror) | [네트워크 권위](../unity/NETWORK_AUTHORITY.md) | `Assets/01.Scripts/01.Network/` (Mirror 96.11.3 설치됨) | 서버 판정, Command/Rpc 매핑 |
 | 서버/클라이언트 경계·소유 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | 도메인 `Rules/`·`Net/`·`View/`와 `Assets/01.Scripts/98.Servers/`(`Shinshi.Server` 어셈블리) | `Net/`·`98.Servers/`는 {팀장} 소유(AI·웨이브 하위는 공동), 서버 코드는 클라 빌드에서 제외 |
+| 보스 AI 서버 뼈대 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) 8장, [아키텍처](../04-architecture.md) 5.3 | `Assets/01.Scripts/98.Servers/03.AI/Boss/` (`BossBrain`) | 서버 시각 주입 FSM·경량 BT, 가짜 의존성 EditMode 검증만. 6패턴·복제·플레이어 제어 연결·틱 구동 미구현 |
 | 멀티플레이 테스트 | [멀티플레이 테스트](04_MULTIPLAYER_TEST_PROTOCOL.md) | — | 테스트 등급 M0~M3, 실제 경로·빌드·조건 기록 |
-| 검증 증거 | [검증 플레이북](03_VERIFICATION_PLAYBOOK.md) | `Assets/Tests/EditMode/`, `Assets/Tests/PlayMode/` (폴더만 있고 테스트 없음) | 증거 등급과 상태 어휘 |
+| 검증 증거 | [검증 플레이북](03_VERIFICATION_PLAYBOOK.md) | `Assets/Tests/EditMode/`(GameDB·서버 실행 설정 등 일부 테스트), 보스 뼈대 테스트 `Assets/01.Scripts/98.Servers/03.AI/Boss/Tests/`, `Assets/Tests/PlayMode/`(폴더만 있음) | 증거 등급과 상태 어휘 |
 | 씬·에셋·`.meta` | [씬 · 에셋 안전](../unity/SCENE_AND_ASSET_SAFETY.md) | `Assets/00.Scenes/SampleScene.unity` | 씬 소유, `.meta` 동반 커밋 |
 | 외부 에셋·라이선스·설치 기록 | [에셋 대장](../licenses/ASSET_REGISTRY.md) | `Assets/99.ThirdParty/` | 분류, 버전, 출처, Git 제외, 경로 보정 |
 | 3D 모델 제작·공용 재사용 | [모델 제작 목록](../design/model-production-list.md), [컨셉아트 기록](../design/concept-art.md) | 제작 계획, 기존 벚꽃나무는 `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 원본 수와 배치 수 구분, 기존 모델 우선 검토, Meshy CLI → Blender 흐름 |
