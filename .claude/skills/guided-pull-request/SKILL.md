@@ -1,6 +1,6 @@
 ---
 name: guided-pull-request
-description: 사용자가 PR 의사를 밝힐 때(예를 들어 "PR 올려줘", "풀리퀘 보내자", "풀리퀘스트 만들어줘") 바로 gh pr create를 실행하지 않고, 브랜치·커밋 상태 확인 → 변경 분석 → PR 템플릿(`.github/PULL_REQUEST_TEMPLATE.md`) 양식대로 본문 작성 → 검증 항목을 실제 근거로 채움 → 담당자(@me)와 리뷰어 설정 → 사용자 확인을 거쳐 shinshi 저장소의 main으로 PR을 생성한다. 확인할 수 없는 항목은 임의로 체크하지 않고 사용자에게 묻는다.
+description: 사용자가 PR 의사를 밝힐 때(예를 들어 "PR 올려줘", "풀리퀘 보내자", "풀리퀘스트 만들어줘") 바로 gh pr create를 실행하지 않고, 브랜치·커밋 상태 확인 → 변경 분석 → PR 템플릿(`.github/PULL_REQUEST_TEMPLATE.md`) 양식대로 본문 작성 → 검증 항목을 실제 근거로 채움 → 담당자(@me)와 리뷰어 설정 → 사용자 확인을 거쳐 shinshi 저장소의 통합 브랜치 develop으로 PR을 생성한다. 확인할 수 없는 항목은 임의로 체크하지 않고 사용자에게 묻는다.
 ---
 
 # 가이드 풀 리퀘스트
@@ -8,7 +8,7 @@ description: 사용자가 PR 의사를 밝힐 때(예를 들어 "PR 올려줘", 
 ## 언제 발동하나
 
 사용자가 지금 브랜치의 작업을 PR로 올리고 싶다는 의사를 밝히면 발동한다.
-예: "PR 올려줘", "풀리퀘 보내자", "풀리퀘스트 만들어줘", "main에 PR 보내줘".
+예: "PR 올려줘", "풀리퀘 보내자", "풀리퀘스트 만들어줘", "develop에 PR 보내줘".
 
 **바로 `gh pr create`를 실행하지 않는다** — 아래 절차를 먼저 거친다.
 이미 이 절차로 본문을 확정한 뒤 "그대로 올려"라고 재요청하는 경우는 재점검 없이 실행한다.
@@ -18,14 +18,14 @@ description: 사용자가 PR 의사를 밝힐 때(예를 들어 "PR 올려줘", 
 ### 1. 브랜치와 커밋 상태 확인
 
 - `git branch --show-current`로 현재 브랜치를 확인한다. `feature/{팀원이름}` 형식이어야 한다.
-- **`main` 위에 있으면 PR을 만들지 않는다.** 사용자에게 알리고 멈춘다.
+- **`main`이나 `develop` 위에 있으면 PR을 만들지 않는다.** 사용자에게 알리고 멈춘다.
 - `git status`로 커밋되지 않은 변경이 남았는지 본다. 남아 있으면 이번 PR에 포함할지 사용자에게 묻는다 — 임의로 커밋하지 않는다(커밋은 `guided-commit`의 범위다).
-- `git fetch origin` 후 `git log origin/main..HEAD --oneline`으로 이번 PR에 들어갈 커밋 목록을 확인한다. 비어 있으면 올릴 것이 없다고 알리고 멈춘다.
+- `git fetch origin` 후 `git log origin/develop..HEAD --oneline`으로 이번 PR에 들어갈 커밋 목록을 확인한다. 비어 있으면 올릴 것이 없다고 알리고 멈춘다.
 - 푸시되지 않은 커밋이 있으면 `git push -u origin {브랜치}`가 필요함을 알리고 **사용자 승인을 받은 뒤** 푸시한다.
 
 ### 2. 변경 내용 분석
 
-- `git diff origin/main...HEAD --stat`으로 변경 파일 전체를 본다.
+- `git diff origin/develop...HEAD --stat`으로 변경 파일 전체를 본다.
 - 커밋 메시지와 diff를 읽고 **무엇을 왜 했는지**를 스스로 요약할 수 있을 때까지 파악한다. 커밋 메시지를 그대로 나열하는 것은 요약이 아니다.
 - 아래를 판정한다. 이후 본문 작성의 근거가 된다.
   - 씬 파일(`.unity`)이 포함됐는가. 통합 씬(이름 **미정**)이나 남의 담당 씬이 있는가 ([씬 · 에셋 안전](../../../docs/unity/SCENE_AND_ASSET_SAFETY.md) 1장).
@@ -89,16 +89,16 @@ description: 사용자가 PR 의사를 밝힐 때(예를 들어 "PR 올려줘", 
 ### 7. 사용자 확인 후 생성
 
 - `gh pr create`를 실행하기 전에 **제목과 본문 전체, 그리고 지정할 리뷰어·담당자를 함께 보여주고 확인받는다.**
-- 승인 후 실행한다. 저장소는 `inha-2026-gamedevelop/shinshi`, base는 `main`이다.
+- 승인 후 실행한다. 저장소는 `inha-2026-gamedevelop/shinshi`, base는 통합 브랜치 `develop`이다.
 
 ```bash
 # 팀원이 올리는 PR — {팀장} 계정을 리뷰어로 지정한다
-gh pr create --base main --head feature/{팀원이름} \
+gh pr create --base develop --head feature/{팀원이름} \
   --assignee @me --reviewer {팀장 GitHub 계정} \
   --title "..." --body-file {임시파일}
 
 # {팀장}이 올리는 PR — 사용자가 고른 다른 팀원을 리뷰어로 지정한다
-gh pr create --base main --head feature/{팀원이름} \
+gh pr create --base develop --head feature/{팀원이름} \
   --assignee @me --reviewer {리뷰할 팀원 GitHub 계정} \
   --title "..." --body-file {임시파일}
 ```
@@ -116,7 +116,7 @@ gh pr create --base main --head feature/{팀원이름} \
 - {팀장}이 작성자인 PR에 {팀장} 본인을 리뷰어로 넣기
 - 리뷰어 계정을 추측해서 넣기
 - 확인하지 않은 검증 항목을 체크하거나 완료로 적기
-- `main`에서 PR 생성
+- `main`이나 `develop`에서 PR 생성
 - 템플릿(또는 AGENTS.md의 PR 항목) 섹션을 임의로 바꾸거나 빼기
 - 이슈 번호·테스트 결과를 추측해서 채우기
 - 승인 없이 push

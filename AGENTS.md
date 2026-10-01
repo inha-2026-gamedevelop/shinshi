@@ -20,7 +20,7 @@ shinshi 저장소에서 일하는 AI 에이전트와 팀원이 **반드시** 따
 
 ## 지킬 것
 
-- 브랜치는 담당자별 `feature/{팀원이름}`. `main`에 직접 커밋하지 않는다.
+- 브랜치는 담당자별 `feature/{팀원이름}`. 통합 브랜치는 `develop`이며 PR은 `develop`으로 올린다. `develop`과 `main`에 직접 커밋하지 않는다.
 - 다른 파트 소유 영역(`Net/`, `98.Servers/`, `01.Network/`, `00.Common/`은 {팀장}, 경로별 세부는 `.github/CODEOWNERS`)을 고치기 전에 담당자에게 확인한다. 서버 전용 코드는 `98.Servers/`(`Shinshi.Server` 어셈블리)에 두고 `NetworkBehaviour`를 partial로 나누지 않는다.
 - 에셋은 `.meta`와 함께 커밋하고, 이동 · 이름 변경은 Unity 에디터에서 한다.
 - 비밀값(키, 토큰, 비밀번호)은 커밋하지 않는다.
