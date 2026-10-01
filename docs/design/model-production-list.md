@@ -149,7 +149,7 @@ Unity 임포트·모델/재질/LOD 참조·메타를 확인했고 이 정적 시
 
 ### 여성 모듈형 리깅 시제품 — 2026-10-01
 
-사용자 요청으로 작업을 종료했다. **현행 외형은 사용자 거절(REJECT), 신규 UMA 외형 채택·코드 연동은 보류**다.49에셋은 시제품으로 보존하며 기존 PF와 카탈로그·런타임 기본 선택은 유지했다. 아래 기술 검증은 최종 외형 승인을 뜻하지 않는다.
+사용자 요청으로 작업을 종료했다. **현행 외형은 사용자 거절(REJECT), 신규 UMA 외형 채택·코드 연동은 보류**다. 2026-10-01 팀장 요청으로 `PlayerFemaleModular/UMA/` 검토 에셋은 저장소에서 삭제했으며 아래 UMA3 에셋 기록은 경위로만 남긴다. 기존 PF와 카탈로그·런타임 기본 선택은 유지했다. 아래 기술 검증은 최종 외형 승인을 뜻하지 않는다.
 
 기존 외형에서 파생한 [PF_PlayerFemaleModular](../../Assets/02.Prefab/Characters/PlayerFemaleModular/PF_PlayerFemaleModular.prefab)를 제작했다. 런타임 모델·애니메이션·재질은 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleModular/`에 있다. 후속 얼굴·손 국소 표면 정리에서 UV와 목·손목 경계를 보존하고, 수정한 몸·머리 쌍의 실제 AO와 탄젠트 노멀을 2K로 다시 베이크했다. 전용 `M_PlayerFemaleModular_Base.mat`는 `Textures/T_PlayerFemaleModular_Refined_AO.png`, `T_PlayerFemaleModular_Refined_Normal.png`를 사용하며 Normal Scale은 1이다. BaseColor·거칠기·MetallicSmoothness는 `PlayerFemaleBasePreview/`의 원본 맵을 계속 참조하므로 해당 폴더를 함께 보존한다. 기존 정적 시제품 재질은 유지했다. 별도 생성 머리는 계속 미채택이며, 채택한 전신의 삼각형 연결 구조·UV에 리깅 웨이트를 전송하고 목에서 머리와 몸을 분리했다. AO는 이 몸·머리 쌍의 베이크이며 임의 부품 교체나 UMA의 새 조립 형상에 대한 AO 검증을 대신하지 않는다. 부품 교체 시 [아트 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md)에 따라 부품 국소 AO와 조립 접촉 AO를 다시 확인·베이크한다.
 
