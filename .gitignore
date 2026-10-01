@@ -208,9 +208,13 @@ _bmad-output/
 /Assets/99.ThirdParty/Tools/Wingman.meta
 /Assets/99.ThirdParty/*
 
-# Mesh Baker edition is unconfirmed; review before sharing its source
+# Mesh Baker paid edition (team lead confirmed 2026-10-01); paid package is shared outside Git
 /Assets/99.ThirdParty/Tools/MeshBaker/
 /Assets/99.ThirdParty/Tools/MeshBaker.meta
+
+# UMA 3.1 (MIT, about 1.2GB). Its code hardcodes Assets/UMA/, so it stays at the root instead of 99.ThirdParty
+/Assets/UMA/
+/Assets/UMA.meta
 
 # Dialogue System icons require Unity's root Gizmos path
 /Assets/Gizmos/DialogueDatabase Icon.png

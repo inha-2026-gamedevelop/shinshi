@@ -13,7 +13,9 @@
         "DOTween.Modules",
         "DOTweenPro.Scripts",
         "PixelCrushers",
-        "DialogueSystem"
+        "DialogueSystem",
+        "MeshBakerCore",
+        "UMA_Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

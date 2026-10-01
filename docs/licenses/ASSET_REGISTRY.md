@@ -26,9 +26,12 @@
 | Wingman - Your Inspector's Best Friend | 1.1.0 | Kyle Rhoads | `Tools/Wingman/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 303181](https://assetstore.unity.com/packages/tools/utilities/wingman-your-inspector-s-best-friend-303181) |
 | Amplify Shader Editor | 1.9.9.12 | Amplify Creations | `Tools/AmplifyShaderEditor/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 68570](https://assetstore.unity.com/packages/tools/visual-scripting/amplify-shader-editor-68570) |
 | Maintainer 2 | 2.3.3 | Code Stage | `Tools/CodeStage/Maintainer/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 310179](https://assetstore.unity.com/packages/tools/utilities/maintainer-2-310179) |
-| Mesh Baker | 미확인(동봉 API 문서 3.37.0) | Ian Deane / Digital Opus | `Tools/MeshBaker/` | 에디션 미확인 | 에디션별 라이선스 확인 대기 | [유료판](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-5017), [무료판](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-free-31895) |
+| Mesh Baker | 소스 버전 문자열 3.39.0(`MB3_MBVersionConcrete`), 동봉 API 문서 3.37.0 | Ian Deane / Digital Opus | `Tools/MeshBaker/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 5017](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-5017) |
+| UMA (Unity Multipurpose Avatar) | 3.1f1 (GitHub 릴리스 `V3.1f1`, 2026-09-28 게시) | UMA Steering Group | `Assets/UMA/` (경로 예외) | 무료, 외부 원본 | MIT(GitHub 저장소)·조건부 | [GitHub 릴리스](https://github.com/umasteeringgroup/UMA/releases/tag/V3.1f1) |
 
-설치 버전은 `.meta`의 `AssetOrigin.productId`, `packageName`, `packageVersion`으로 확인했다. Mesh Baker는 해당 메타데이터가 없고 동봉 문서가 `docs/API-3.37.0.zip`이다. 로컬 Mesh Baker Free 캐시와 일부 GUID·파일이 일치하지만 전체가 같지 않아 무료·유료 에디션을 확정하지 않았다. 확인 전에는 배포하지 않도록 해당 패키지도 Git에서 제외한다. 무료 독립 에셋으로 확인되면 에디션·버전·라이선스를 기록하고 패키지 단위 제외 규칙을 조정한다.
+UMA는 2026-10-01 팀장 승인으로 GitHub 공식 릴리스의 `UMA31_f1.unitypackage`(1,170,694,098바이트, SHA-256 `701a87dfd7e8a00a65f5a8066e23e8a3d62327214269992776db2cc7efe48866`)를 가져왔다. Asset Store판(3.0.5, 표준 EULA)이 아니다. UMA 코드 33개 파일(런타임 `Core/Scripts/UMASettings.cs` 포함)이 `Assets/UMA/` 경로를 직접 적고 있어 `99.ThirdParty/`로 옮기지 않고 루트에 둔다. 원본은 고치지 않고 우리 연결 코드는 `Assets/01.Scripts/`에 둔다(아바타 설계 A안). 패키지가 커서 Git에서 제외하고 다른 외부 에셋처럼 따로 공유한다. 가져오기 뒤 Console 오류 0을 확인했다. Unity 6000.4.7f1·URP 실제 표시와 서버 빌드 영향은 미검증이다.
+
+설치 버전은 `.meta`의 `AssetOrigin.productId`, `packageName`, `packageVersion`으로 확인했다. Mesh Baker는 해당 메타데이터가 없고 동봉 문서가 `docs/API-3.37.0.zip`이다. 소스의 버전 문자열은 3.39.0이다. 2026-10-01 팀장이 유료판 결제를 확인해 에디션을 유료로 기록한다. 결제 증빙과 팀원별 사용 좌석은 이 대장에서 검증하지 않았다. 유료 에셋이므로 다른 유료 에셋과 같이 패키지를 Git에서 제외하고 설치할 때마다 받는다. 환경 메시 결합에 쓰려고 `Shinshi.Runtime`이 `MeshBakerCore` 어셈블리를 참조한다. 플레이어 아바타는 UMA가 결합한다.
 
 ## 공용 돌바닥·부유석 제작 소재와 가공물
 
