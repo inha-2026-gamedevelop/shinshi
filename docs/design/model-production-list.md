@@ -149,9 +149,9 @@ Unity 임포트·모델/재질/LOD 참조·메타를 확인했고 이 정적 시
 
 ### 여성 모듈형 리깅 시제품 — 2026-10-01
 
-사용자 요청으로 작업을 종료했다. **현행 외형은 사용자 거절(REJECT), 신규 UMA 외형 채택·코드 연동은 보류**다. 2026-10-01 팀장 요청으로 `PlayerFemaleModular/UMA/` 검토 에셋은 저장소에서 삭제했으며 아래 UMA3 에셋 기록은 경위로만 남긴다. 기존 PF와 카탈로그·런타임 기본 선택은 유지했다. 아래 기술 검증은 최종 외형 승인을 뜻하지 않는다.
+사용자 요청으로 작업을 종료했다. **현행 외형은 사용자 거절(REJECT), 신규 UMA 외형 채택·코드 연동은 보류**다. 같은 날 UMA를 쓰지 않기로 해 UMA3 연동 에셋49개(`PlayerFemaleModular/UMA/`)는 삭제했고, 아래 UMA 관련 검증은 당시 기록으로만 남긴다. 기존 PF와 카탈로그·런타임 기본 선택은 유지했다. 아래 기술 검증은 최종 외형 승인을 뜻하지 않는다.
 
-기존 외형에서 파생한 [PF_PlayerFemaleModular](../../Assets/02.Prefab/Characters/PlayerFemaleModular/PF_PlayerFemaleModular.prefab)를 제작했다. 런타임 모델·애니메이션·재질은 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleModular/`에 있다. 후속 얼굴·손 국소 표면 정리에서 UV와 목·손목 경계를 보존하고, 수정한 몸·머리 쌍의 실제 AO와 탄젠트 노멀을 2K로 다시 베이크했다. 전용 `M_PlayerFemaleModular_Base.mat`는 `Textures/T_PlayerFemaleModular_Refined_AO.png`, `T_PlayerFemaleModular_Refined_Normal.png`를 사용하며 Normal Scale은 1이다. BaseColor·거칠기·MetallicSmoothness는 `PlayerFemaleBasePreview/`의 원본 맵을 계속 참조하므로 해당 폴더를 함께 보존한다. 기존 정적 시제품 재질은 유지했다. 별도 생성 머리는 계속 미채택이며, 채택한 전신의 삼각형 연결 구조·UV에 리깅 웨이트를 전송하고 목에서 머리와 몸을 분리했다. AO는 이 몸·머리 쌍의 베이크이며 임의 부품 교체나 UMA의 새 조립 형상에 대한 AO 검증을 대신하지 않는다. 부품 교체 시 [아트 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md)에 따라 부품 국소 AO와 조립 접촉 AO를 다시 확인·베이크한다.
+기존 외형에서 파생한 [PF_PlayerFemaleModular](../../Assets/02.Prefab/Characters/PlayerFemaleModular/PF_PlayerFemaleModular.prefab)를 제작했다. 런타임 모델·애니메이션·재질은 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleModular/`에 있다. 후속 얼굴·손 국소 표면 정리에서 UV와 목·손목 경계를 보존하고, 수정한 몸·머리 쌍의 실제 AO와 탄젠트 노멀을 2K로 다시 베이크했다. 전용 `M_PlayerFemaleModular_Base.mat`는 `Textures/T_PlayerFemaleModular_Refined_AO.png`, `T_PlayerFemaleModular_Refined_Normal.png`를 사용하며 Normal Scale은 1이다. BaseColor·거칠기·MetallicSmoothness는 `PlayerFemaleBasePreview/`의 원본 맵을 계속 참조하므로 해당 폴더를 함께 보존한다. 기존 정적 시제품 재질은 유지했다. 별도 생성 머리는 계속 미채택이며, 채택한 전신의 삼각형 연결 구조·UV에 리깅 웨이트를 전송하고 목에서 머리와 몸을 분리했다. AO는 이 몸·머리 쌍의 베이크이며 임의 부품 교체에 대한 AO 검증을 대신하지 않는다. 부품 교체 시 [아트 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md)에 따라 부품 국소 AO와 조립 접촉 AO를 다시 확인·베이크한다.
 
 24개 뼈의 공통 골격, `Hips` rootBone을 쓰는 머리·몸·눈꺼풀의 3LOD와 `Blink` 눈꺼풀 모프, 걷기·달리기 검토용 애니메이션을 포함한다. 후속 표면 정리 모델의 LOD별 전체 삼각형 수는 56,044 / 29,997 / 16,941이며 각 단계에 눈꺼풀 3,840삼각형이 포함된다. Unity Humanoid Avatar 유효성, Read/Write 켬, Optimize Game Objects 끔, 9개 스킨드 렌더러의 임포트·참조를 확인했다. 높이 1.7m는 개인 시제품 치수이며 공용 비례·게임 판정 크기를 확정하지 않는다.
 
@@ -238,7 +238,7 @@ UMA3 연동용 에셋49개를 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleM
 | 기와집·붉은 문·매다는 등 — 2026-10-01 공용 제작 반영 | 3LOD·실제 AO/PBR·재질·프리팹 연결과 정적 참조 확인. 매다는 등은 창 발광을 연결했고 정자는 같은 프리팹 2개를 별도 중첩 참조한다. 기와집 3LOD는 벽 파손을 막기 위해 동일 High 형상이며 삼각형 감면은 없다. 게임플레이·성능·빌드는 미검증 |
 | Blender 수정·Unity 적용·리깅·성능 | 돌바닥·부유석·석등의 3LOD·PBR/AO·프리팹·에디터 프리뷰 확인 완료. 석등은 창 발광 마스크·단순 충돌체 포함. 리깅·게임플레이·성능은 미검증 |
 | 플레이어 여성 베이스 외형 시제품 — 2026-10-01 추가 실행 | Meshy 전신·머리 2건, 각 30·총 60크레딧 생성·다운로드. 전신만 3LOD·2K PBR/실제 국소 AO·정적 프리팹으로 가공하고 임포트·참조·메타·중립 프리뷰·강제 정지 LOD 확인. 별도 머리는 미채택이며 재질 최종 품질·리깅·머리 조립·게임플레이·성능·빌드는 미검증 |
-| 플레이어 여성 모듈형 리깅 시제품 — 2026-10-01 후속 실행 | 공통24뼈·목 분리·3LOD·Blink·Humanoid PF. 얼굴·손 표면 정리·실제 AO/노멀 재베이크·닫힘 교정·1.2초 걷기와24뼈rest 기준/실제 클립 참조 복구. Unity 목15표본·Blink 초기화·33 CPU 캡처 통과. UMA native229뼈 기반49에셋 저장,3LOD DNA30표본·색상12검사 통과, 합성용 원본 mip 수정으로 광범위 패치 제거. **사용자 외형 거절·신규 UMA 채택/연동 보류로 종료**. 마지막 노멀 변경 후High10DNA/4색 재통과·Medium/Low변경후 미실행. native걷기 바닥9/16실패·최대19.9607mm침투/전용Walk 미저장. 남은 것: 정식 런타임 등록,6미지원 슬라이더·전체조합/극한DNA·최종토폴로지·달리기클리핑·GPU 플레이루프·성능·빌드 미완료 |
+| 플레이어 여성 모듈형 리깅 시제품 — 2026-10-01 후속 실행 | 공통24뼈·목 분리·3LOD·Blink·Humanoid PF. 얼굴·손 표면 정리·실제 AO/노멀 재베이크·닫힘 교정·1.2초 걷기와24뼈rest 기준/실제 클립 참조 복구. Unity 목15표본·Blink 초기화·33 CPU 캡처 통과. UMA native229뼈 기반49에셋 저장,3LOD DNA30표본·색상12검사 통과, 합성용 원본 mip 수정으로 광범위 패치 제거. **사용자 외형 거절·신규 UMA 채택/연동 보류로 종료**. 같은 날 UMA 미사용 결정으로 UMA 에셋49개 삭제. 마지막 노멀 변경 후High10DNA/4색 재통과·Medium/Low변경후 미실행. native걷기 바닥9/16실패·최대19.9607mm침투/전용Walk 미저장. 남은 것: 정식 런타임 등록,6미지원 슬라이더·전체조합/극한DNA·최종토폴로지·달리기클리핑·GPU 플레이루프·성능·빌드 미완료 |
 
 문서의 링크·공백 등 정적 확인과 실제 모델 품질·게임 실행 검증을 구분한다. 완료 판정은 [검증 플레이북](../ai/03_VERIFICATION_PLAYBOOK.md)을 따른다.
 
