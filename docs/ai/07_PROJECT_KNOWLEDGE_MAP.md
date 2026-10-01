@@ -24,6 +24,7 @@
 | 아트 재질·AO·프리팹 기본 과정 | [아트 제작 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 모델·재질 `Assets/01.Scripts/05.Art/`, 배치 프리팹 `Assets/02.Prefab/` | AO/PBR 기본 처리, 셰이더별 지원, AI 목표 이미지와 실제 검증 구분 |
 | 렌더링 설정 (URP) | — | `Assets/Settings/` (PC · Mobile RP 에셋) | 공용 설정 변경은 팀 영향 |
 | UI 배치 JSON 적용 (에디터 도구) | — | `Assets/01.Scripts/06.UI/Systems/UiLayoutImporter.cs`, 메뉴 `Shinshi/UI/배치 JSON 적용`, 기록 컴포넌트 `UiLayoutNote` | 저장소 밖 웹 배치 편집기가 내보낸 JSON(`format` `gemeum-ui-layout`, `version` 2)만 받는다. 다시 적용하면 `UiLayoutNote` id로 같은 오브젝트를 찾아 위치·크기·순서만 갱신하고 지우지 않는다. `#if UNITY_EDITOR` 안에 있다. 구현됨·실행 미검증 |
+| HUD 상시 화면 (`Dev_HUD`) | — | 배치 JSON `Assets/09.Data/UI/Layout_HUD.json`, 씬 `Assets/00.Scenes/Dev_HUD/Dev_HUD.unity`의 `HUDCanvas/Layout_상시 화면`, 레벨·HP·MP 표시 `Assets/01.Scripts/06.UI/Hud/HudPlayerStatusView.cs`, 스프라이트 `Assets/01.Scripts/05.Art/UI/` | 메뉴 버튼, 미니맵 테두리·이름표, 레벨·HP·MP만 그림이 있고 나머지는 자리표시다. `HudPlayerStatusView`는 `SetLevel`·`SetHp`·`SetMp`만 있고 플레이어 상태와 연결되지 않았다. 미니맵·플레이어 정보 크기는 프로젝트 JSON에서 고쳤으므로 웹 편집기 원본과 다르다. 구현됨·실행 미검증 |
 | 폴리지 셰이더·재질 | [버텍스 컬러 폴리지 셰이더](../unity/VERTEX_COLOR_FOLIAGE_SHADER.md) | `Assets/01.Scripts/05.Art/Shaders/`, `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 버텍스 컬러 AO, 알파 클립, 밉맵 커버리지 보존 |
 | 입력 | [코딩 컨벤션](../coding-convention.md) 23장 | `ProjectSettings/InputManager.asset` | 구 Input Manager(`UnityEngine.Input`), Active Input Handling = Both |
 | 밸런스 데이터 | [밸런스 데이터 작업](../unity/BALANCE_DATA_WORKFLOW.md) | `Assets/09.Data/` (GameDB 루트, 플레이어·세션 설정) | 수치는 ScriptableObject에 둔다 |
