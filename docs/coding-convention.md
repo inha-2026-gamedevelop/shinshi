@@ -693,7 +693,7 @@ private IEnumerator CoApplyEffect()
 
 ### GameDB — ScriptableObject 기반 밸런스 DB
 
-GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 `PlayerConfigSO`, `SessionConfigSO`는 구현되어 있다(에디터에서 초기화와 값 조회만 확인, 플레이 모드와 서버 부트는 미검증). 나머지 SO는 해당 파트가 첫 수치를 넣을 때 아래 구조로 추가한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
+GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO 12개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
 
 ```
 스크립트: Assets/01.Scripts/00.Common/Data/     (namespace Shinshi.Data)
@@ -706,7 +706,21 @@ GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 `PlayerConfigSO`
 | `GameDatabaseSO` | `09.Data/Resources/GameDB.asset` | 도메인 SO 참조 모음 (루트), 콘텐츠 버전 | {팀장} |
 | `PlayerConfigSO` | `09.Data/Combat/PlayerConfig.asset` | 이동, 회피, 기력, 기본 능력치, 입력 보관, 직업별 기본 공격 | {팀장} |
 | `SessionConfigSO` | `09.Data/Session/SessionConfig.asset` | 시작 인원별 배율, 부활, 재접속, 준비, 보스 물약 횟수, 파티 경매, 장애 취소 정산 정책 | {팀장} |
-| {이름}SO | `09.Data/{도메인}/{이름}SO.asset` | {값 설명} | {파트} |
+| `SkillCatalogSO` | `09.Data/Combat/SkillCatalog.asset` | 기술 12종, 강림 3종, 공명 규칙, 계약 동료 공통값 | {팀장} |
+| `TalismanCatalogSO` | `09.Data/Combat/TalismanCatalog.asset` | 부적 효과 45종 정의와 변형 수치, 효과 레벨 보너스 배율 | {팀장} |
+| `EnemyCatalogSO` | `09.Data/AI/EnemyCatalog.asset` | 일반 적 4역할의 체력, 공격, 제어, 예고 | 기웅 |
+| `BossPatternCatalogSO` | `09.Data/AI/BossPatternCatalog.asset` | 보스 정의, 월백 1페이즈 6패턴(`wolbaek_p01`~`06`)의 가중치, 문맥 배율, 예고와 회복, 제어 창. 수치는 0(미지정)으로 비워 두고 기웅이 지정한다. 미지정 보스는 `IsTuned`가 거짓이라 전투를 열지 않는다 | 기웅 |
+| `WaveConfigSO` | `09.Data/AI/WaveConfig.asset` | 숲 6웨이브 배치, source ID, 활성 상한, 제한 시간 | 기웅 (세션 연결은 {팀장}) |
+| `EquipmentCatalogSO` | `09.Data/Growth/EquipmentCatalog.asset` | 장비 6부위 4등급, 제작, 25강, 계승표 | 진욱 |
+| `GrowthConfigSO` | `09.Data/Growth/GrowthConfig.asset` | 수련 5항목, 부적 등록 확률과 보정, 효과 강화 비용 | 진욱 |
+| `RewardCatalogSO` | `09.Data/Reward/RewardCatalog.asset` | 재화와 재료 아이템, 개인 드롭, 웨이브 기본 보상, 추가 정기, 보스 보상 | 진욱 (정산 규칙 수치는 `SessionConfigSO`) |
+| `LifeConfigSO` | `09.Data/Life/LifeConfig.asset` | 약초, 채집 선점과 재생, 행동력, 물약 레시피 | 진욱 |
+| `ProgressionCatalogSO` | `09.Data/Progression/ProgressionCatalog.asset` | 지역, 보스전 해금, 여우의 흔적, 최초 지원, 체험판 플래그 | 기웅 |
+| {이름}SO | `09.Data/{도메인}/{이름}.asset` | {값 설명} | {파트} |
+
+- 도메인 SO는 `GameDataSO`를 상속하고 `ValidateValues`를 구현한다. 다른 카탈로그 ID를 참조하면 `ValidateReferences`에서 상대 카탈로그의 `Contains*` 메서드로 검사한다. 참조 검사는 모든 SO의 값 검사가 통과한 뒤에만 돈다.
+- 카탈로그 항목은 `IDefinition`(`DefinitionId`, `DisplayKey`)을 구현하고 `DefinitionLookup<T>`로 찾는다. ID는 저장 데이터와 서버 판정이 참조하므로 표시 이름을 바꿔도 바꾸지 않는다.
+- 한 SO는 한 파트가 소유한다. 클래스 파일은 `00.Common/Data/`에 있어도 담당 파트가 필드를 고치며, 리뷰 담당은 `.github/CODEOWNERS`에 파일 단위로 적는다.
 
 ```csharp
 // 읽기 - 정적 접근은 GameDB (예시 이름)

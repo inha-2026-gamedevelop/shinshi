@@ -15,3 +15,13 @@ MonoBehaviour:
   _contentVersion: 0.1.0
   _player: {fileID: 11400000, guid: 2021a386e8409a04fae7009d9cfef252, type: 2}
   _session: {fileID: 11400000, guid: ebd4ed8253e26a241b033f0c7995832d, type: 2}
+  _skills: {fileID: 11400000, guid: c895b4d05b38e5d4898e1337bca025ed, type: 2}
+  _talismans: {fileID: 11400000, guid: 813a9e7d759b38b43bff15f8f1f74e82, type: 2}
+  _enemies: {fileID: 11400000, guid: 172dd332122be304593b4df204799664, type: 2}
+  _bossPatterns: {fileID: 11400000, guid: 719c28580b6059547a4311242dfe0a6c, type: 2}
+  _waves: {fileID: 11400000, guid: 3a15a240df08efc4392185cdd5d2dc6a, type: 2}
+  _equipment: {fileID: 11400000, guid: 4b76be6ae3d4dd942a8461f29bf4bd99, type: 2}
+  _growth: {fileID: 11400000, guid: 762d48f462303d54b819d20b2f433b1e, type: 2}
+  _rewards: {fileID: 11400000, guid: 2ba1b1366af1c2c4297fa2c5c65b0290, type: 2}
+  _life: {fileID: 11400000, guid: 193e12f729bde8848962f0fa6b6ab1c7, type: 2}
+  _progression: {fileID: 11400000, guid: d618baa0b708b894a8c4141a30b7a9a6, type: 2}

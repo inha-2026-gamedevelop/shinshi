@@ -1,0 +1,94 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f1de45bc5323e84ab72f9c6d3bfc5fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.EnemyCatalogSO
+  _schemaVersion: 1
+  _enemies:
+  - _definitionId: enemy_melee
+    _displayKey: enemy_melee.name
+    _role: 0
+    _healthRef: 2.4
+    _defense: 100
+    _moveSpeed: 3.8
+    _attackDamageRef: 0.08
+    _attackInterval: 1.8
+    _telegraphSeconds: 0.45
+    _attackActiveSeconds: 0
+    _attackShape:
+      _shape: 0
+      _range: 1.5
+      _arcAngle: 90
+      _width: 0
+      _projectileSpeed: 0
+    _guardable: 1
+    _controllable: 1
+    _controlDurationScale: 1
+  - _definitionId: enemy_ranged
+    _displayKey: enemy_ranged.name
+    _role: 1
+    _healthRef: 1.8
+    _defense: 100
+    _moveSpeed: 3
+    _attackDamageRef: 0.07
+    _attackInterval: 2.5
+    _telegraphSeconds: 0.75
+    _attackActiveSeconds: 0
+    _attackShape:
+      _shape: 3
+      _range: 14
+      _arcAngle: 0
+      _width: 0.5
+      _projectileSpeed: 8
+    _guardable: 1
+    _controllable: 1
+    _controlDurationScale: 1
+  - _definitionId: enemy_charger
+    _displayKey: enemy_charger.name
+    _role: 2
+    _healthRef: 3.2
+    _defense: 100
+    _moveSpeed: 4
+    _attackDamageRef: 0.14
+    _attackInterval: 4
+    _telegraphSeconds: 0.9
+    _attackActiveSeconds: 0.45
+    _attackShape:
+      _shape: 2
+      _range: 6
+      _arcAngle: 0
+      _width: 1.5
+      _projectileSpeed: 0
+    _guardable: 1
+    _controllable: 1
+    _controlDurationScale: 1
+  - _definitionId: enemy_elite
+    _displayKey: enemy_elite.name
+    _role: 3
+    _healthRef: 8
+    _defense: 150
+    _moveSpeed: 3.2
+    _attackDamageRef: 0.2
+    _attackInterval: 5
+    _telegraphSeconds: 1.2
+    _attackActiveSeconds: 0
+    _attackShape:
+      _shape: 1
+      _range: 3
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _guardable: 1
+    _controllable: 1
+    _controlDurationScale: 0.5
+  _maxCloseTelegraphsPerTarget: 3
+  _maxProjectileTelegraphsPerTarget: 2

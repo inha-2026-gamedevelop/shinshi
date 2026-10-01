@@ -1,0 +1,189 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2ef9659de6194346abf095f4d7363f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.ProgressionCatalogSO
+  _schemaVersion: 1
+  _trialEdition: 1
+  _foxTraceCap: 3
+  _regions:
+  - _definitionId: region_forest
+    _displayKey: region_forest.name
+    _hasWaveBattle: 1
+    _foxTracesPerClear: 0
+    _availableInTrial: 1
+    _trialPreUnlocked: 0
+    _requirement:
+      _requiresIntro: 1
+      _clearedRegionId: 
+      _unlockedRegionId: 
+      _clearedBattleId: 
+      _foxTraceCount: 0
+    _referenceAttack: 220
+    _referenceHealth: 1950
+    _trialReferenceAttack: 644.32
+    _trialReferenceHealth: 3541
+  - _definitionId: region_ruins
+    _displayKey: region_ruins.name
+    _hasWaveBattle: 1
+    _foxTracesPerClear: 0
+    _availableInTrial: 0
+    _trialPreUnlocked: 0
+    _requirement:
+      _requiresIntro: 0
+      _clearedRegionId: region_forest
+      _unlockedRegionId: 
+      _clearedBattleId: 
+      _foxTraceCount: 0
+    _referenceAttack: 268
+    _referenceHealth: 2130
+    _trialReferenceAttack: 0
+    _trialReferenceHealth: 0
+  - _definitionId: region_altar
+    _displayKey: region_altar.name
+    _hasWaveBattle: 1
+    _foxTracesPerClear: 1
+    _availableInTrial: 0
+    _trialPreUnlocked: 0
+    _requirement:
+      _requiresIntro: 0
+      _clearedRegionId: 
+      _unlockedRegionId: 
+      _clearedBattleId: battle_cheolgak_easy
+      _foxTraceCount: 0
+    _referenceAttack: 553.6
+    _referenceHealth: 3201
+    _trialReferenceAttack: 0
+    _trialReferenceHealth: 0
+  - _definitionId: region_wolbaek_barrier
+    _displayKey: region_wolbaek_barrier.name
+    _hasWaveBattle: 0
+    _foxTracesPerClear: 0
+    _availableInTrial: 1
+    _trialPreUnlocked: 1
+    _requirement:
+      _requiresIntro: 0
+      _clearedRegionId: 
+      _unlockedRegionId: 
+      _clearedBattleId: 
+      _foxTraceCount: 3
+    _referenceAttack: 0
+    _referenceHealth: 0
+    _trialReferenceAttack: 0
+    _trialReferenceHealth: 0
+  _bossBattles:
+  - _definitionId: battle_cheolgak_easy
+    _displayKey: battle_cheolgak_easy.name
+    _bossId: boss_cheolgak
+    _difficulty: 0
+    _ticketCost: 1
+    _availableInTrial: 0
+    _trialPreUnlocked: 0
+    _requirement:
+      _requiresIntro: 0
+      _clearedRegionId: region_ruins
+      _unlockedRegionId: 
+      _clearedBattleId: 
+      _foxTraceCount: 0
+  - _definitionId: battle_cheolgak_hard
+    _displayKey: battle_cheolgak_hard.name
+    _bossId: boss_cheolgak
+    _difficulty: 1
+    _ticketCost: 1
+    _availableInTrial: 0
+    _trialPreUnlocked: 0
+    _requirement:
+      _requiresIntro: 0
+      _clearedRegionId: 
+      _unlockedRegionId: 
+      _clearedBattleId: battle_cheolgak_easy
+      _foxTraceCount: 0
+  - _definitionId: battle_wolbaek_easy
+    _displayKey: battle_wolbaek_easy.name
+    _bossId: boss_wolbaek
+    _difficulty: 0
+    _ticketCost: 1
+    _availableInTrial: 1
+    _trialPreUnlocked: 1
+    _requirement:
+      _requiresIntro: 0
+      _clearedRegionId: 
+      _unlockedRegionId: region_wolbaek_barrier
+      _clearedBattleId: battle_cheolgak_hard
+      _foxTraceCount: 0
+  - _definitionId: battle_wolbaek_hard
+    _displayKey: battle_wolbaek_hard.name
+    _bossId: boss_wolbaek
+    _difficulty: 1
+    _ticketCost: 1
+    _availableInTrial: 0
+    _trialPreUnlocked: 0
+    _requirement:
+      _requiresIntro: 0
+      _clearedRegionId: 
+      _unlockedRegionId: 
+      _clearedBattleId: battle_wolbaek_easy
+      _foxTraceCount: 0
+  _standardCharacterGrant:
+    _grantId: grant_character_standard
+    _items:
+    - _itemId: item_essence
+      _quantity: 500
+    _equipment:
+    - _equipmentId: equip_weapon_training
+      _enhancement: 0
+    - _equipmentId: equip_head_training
+      _enhancement: 0
+    - _equipmentId: equip_body_training
+      _enhancement: 0
+    - _equipmentId: equip_hands_training
+      _enhancement: 0
+    - _equipmentId: equip_feet_training
+      _enhancement: 0
+    - _equipmentId: equip_accessory_training
+      _enhancement: 0
+    _actionEnergy: 0
+  _standardAccountGrant:
+    _grantId: grant_account_standard
+    _items:
+    - _itemId: item_potion_small
+      _quantity: 9
+    _equipment: []
+    _actionEnergy: 100
+  _trialCharacterGrant:
+    _grantId: grant_character_trial
+    _items:
+    - _itemId: item_essence
+      _quantity: 500
+    _equipment:
+    - _equipmentId: equip_weapon_rare
+      _enhancement: 17
+    - _equipmentId: equip_head_rare
+      _enhancement: 17
+    - _equipmentId: equip_body_rare
+      _enhancement: 17
+    - _equipmentId: equip_hands_rare
+      _enhancement: 17
+    - _equipmentId: equip_feet_rare
+      _enhancement: 17
+    - _equipmentId: equip_accessory_rare
+      _enhancement: 17
+    _actionEnergy: 0
+  _trialAccountGrant:
+    _grantId: grant_account_trial
+    _items:
+    - _itemId: item_potion_small
+      _quantity: 9
+    - _itemId: item_potion_large
+      _quantity: 9
+    _equipment: []
+    _actionEnergy: 100

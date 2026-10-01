@@ -1,0 +1,967 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f4110d255ffe214ab377842528f3418, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.TalismanCatalogSO
+  _schemaVersion: 1
+  _levelBonusMultipliers:
+  - 1
+  - 1.15
+  - 1.3
+  - 1.45
+  - 1.6
+  _effects:
+  - _definitionId: T01-1A
+    _displayKey: T01-1A.name
+    _playerClass: 0
+    _skillId: skill_warrior_wide_slash
+    _tier: 0
+    _choice: 0
+    _kind: 0
+    _upgradeStat: 0
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T01-1B
+    _displayKey: T01-1B.name
+    _playerClass: 0
+    _skillId: skill_warrior_wide_slash
+    _tier: 0
+    _choice: 1
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T01-2A
+    _displayKey: T01-2A.name
+    _playerClass: 0
+    _skillId: skill_warrior_wide_slash
+    _tier: 1
+    _choice: 0
+    _kind: 2
+    _upgradeStat: 2
+    _levelOneBonus: 20
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0.5
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T01-2B
+    _displayKey: T01-2B.name
+    _playerClass: 0
+    _skillId: skill_warrior_wide_slash
+    _tier: 1
+    _choice: 1
+    _kind: 3
+    _upgradeStat: 6
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 80
+      _fixedRadius: 0
+      _radiusDelta: -0.5
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T01-3A
+    _displayKey: T01-3A.name
+    _playerClass: 0
+    _skillId: skill_warrior_wide_slash
+    _tier: 2
+    _choice: 0
+    _kind: 14
+    _upgradeStat: 7
+    _levelOneBonus: 0.6
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0.15
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T01-3B
+    _displayKey: T01-3B.name
+    _playerClass: 0
+    _skillId: skill_warrior_wide_slash
+    _tier: 2
+    _choice: 1
+    _kind: 15
+    _upgradeStat: 7
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 2.2
+      _fixedArcAngle: 0
+      _fixedRadius: 3
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T02-1A
+    _displayKey: T02-1A.name
+    _playerClass: 0
+    _skillId: skill_warrior_dash
+    _tier: 0
+    _choice: 0
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T02-2A
+    _displayKey: T02-2A.name
+    _playerClass: 0
+    _skillId: skill_warrior_dash
+    _tier: 1
+    _choice: 0
+    _kind: 7
+    _upgradeStat: 5
+    _levelOneBonus: 1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T02-3A
+    _displayKey: T02-3A.name
+    _playerClass: 0
+    _skillId: skill_warrior_dash
+    _tier: 2
+    _choice: 0
+    _kind: 16
+    _upgradeStat: 7
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 1.8
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T03-1A
+    _displayKey: T03-1A.name
+    _playerClass: 0
+    _skillId: skill_warrior_ground_slam
+    _tier: 0
+    _choice: 0
+    _kind: 0
+    _upgradeStat: 0
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T03-2A
+    _displayKey: T03-2A.name
+    _playerClass: 0
+    _skillId: skill_warrior_ground_slam
+    _tier: 1
+    _choice: 0
+    _kind: 8
+    _upgradeStat: 6
+    _levelOneBonus: 0.15
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T03-3A
+    _displayKey: T03-3A.name
+    _playerClass: 0
+    _skillId: skill_warrior_ground_slam
+    _tier: 2
+    _choice: 0
+    _kind: 17
+    _upgradeStat: 7
+    _levelOneBonus: 1.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 4
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0.2
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T04-1A
+    _displayKey: T04-1A.name
+    _playerClass: 0
+    _skillId: skill_warrior_counter
+    _tier: 0
+    _choice: 0
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T04-2A
+    _displayKey: T04-2A.name
+    _playerClass: 0
+    _skillId: skill_warrior_counter
+    _tier: 1
+    _choice: 0
+    _kind: 9
+    _upgradeStat: 8
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T04-3A
+    _displayKey: T04-3A.name
+    _playerClass: 0
+    _skillId: skill_warrior_counter
+    _tier: 2
+    _choice: 0
+    _kind: 18
+    _upgradeStat: 7
+    _levelOneBonus: 0.5
+    _variant:
+      _baseCoefficient: 3.5
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 8
+      _width: 3
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T05-1A
+    _displayKey: T05-1A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_spell_bolt
+    _tier: 0
+    _choice: 0
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T05-2A
+    _displayKey: T05-2A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_spell_bolt
+    _tier: 1
+    _choice: 0
+    _kind: 6
+    _upgradeStat: 4
+    _levelOneBonus: 2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T05-3A
+    _displayKey: T05-3A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_spell_bolt
+    _tier: 2
+    _choice: 0
+    _kind: 19
+    _upgradeStat: 7
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 1.2
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 3
+      _spreadAngle: 20
+      _maxExtraTargets: 0
+  - _definitionId: T06-1A
+    _displayKey: T06-1A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_flame_field
+    _tier: 0
+    _choice: 0
+    _kind: 0
+    _upgradeStat: 0
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T06-1B
+    _displayKey: T06-1B.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_flame_field
+    _tier: 0
+    _choice: 1
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T06-2A
+    _displayKey: T06-2A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_flame_field
+    _tier: 1
+    _choice: 0
+    _kind: 4
+    _upgradeStat: 3
+    _levelOneBonus: 0.5
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T06-2B
+    _displayKey: T06-2B.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_flame_field
+    _tier: 1
+    _choice: 1
+    _kind: 5
+    _upgradeStat: 6
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 2
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T06-3A
+    _displayKey: T06-3A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_flame_field
+    _tier: 2
+    _choice: 0
+    _kind: 20
+    _upgradeStat: 7
+    _levelOneBonus: 1
+    _variant:
+      _baseCoefficient: 4.5
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0.8
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T06-3B
+    _displayKey: T06-3B.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_flame_field
+    _tier: 2
+    _choice: 1
+    _kind: 21
+    _upgradeStat: 7
+    _levelOneBonus: 1.5
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T07-1A
+    _displayKey: T07-1A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_binding_field
+    _tier: 0
+    _choice: 0
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T07-2A
+    _displayKey: T07-2A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_binding_field
+    _tier: 1
+    _choice: 0
+    _kind: 4
+    _upgradeStat: 3
+    _levelOneBonus: 0.5
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T07-3A
+    _displayKey: T07-3A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_binding_field
+    _tier: 2
+    _choice: 0
+    _kind: 22
+    _upgradeStat: 10
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T08-1A
+    _displayKey: T08-1A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_lightning
+    _tier: 0
+    _choice: 0
+    _kind: 0
+    _upgradeStat: 0
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T08-2A
+    _displayKey: T08-2A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_lightning
+    _tier: 1
+    _choice: 0
+    _kind: 4
+    _upgradeStat: 3
+    _levelOneBonus: 0.5
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T08-3A
+    _displayKey: T08-3A.name
+    _playerClass: 1
+    _skillId: skill_sorcerer_lightning
+    _tier: 2
+    _choice: 0
+    _kind: 14
+    _upgradeStat: 7
+    _levelOneBonus: 2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0.35
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T09-1A
+    _displayKey: T09-1A.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_beast
+    _tier: 0
+    _choice: 0
+    _kind: 10
+    _upgradeStat: 9
+    _levelOneBonus: 4
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T09-1B
+    _displayKey: T09-1B.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_beast
+    _tier: 0
+    _choice: 1
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T09-2A
+    _displayKey: T09-2A.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_beast
+    _tier: 1
+    _choice: 0
+    _kind: 11
+    _upgradeStat: 11
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T09-2B
+    _displayKey: T09-2B.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_beast
+    _tier: 1
+    _choice: 1
+    _kind: 12
+    _upgradeStat: 12
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T09-3A
+    _displayKey: T09-3A.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_beast
+    _tier: 2
+    _choice: 0
+    _kind: 14
+    _upgradeStat: 7
+    _levelOneBonus: 0.15
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0.12
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T09-3B
+    _displayKey: T09-3B.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_beast
+    _tier: 2
+    _choice: 1
+    _kind: 15
+    _upgradeStat: 7
+    _levelOneBonus: 0.05
+    _variant:
+      _baseCoefficient: 0.25
+      _fixedArcAngle: 0
+      _fixedRadius: 2.5
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T10-1A
+    _displayKey: T10-1A.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_spirit
+    _tier: 0
+    _choice: 0
+    _kind: 10
+    _upgradeStat: 9
+    _levelOneBonus: 4
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T10-2A
+    _displayKey: T10-2A.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_spirit
+    _tier: 1
+    _choice: 0
+    _kind: 6
+    _upgradeStat: 4
+    _levelOneBonus: 2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T10-3A
+    _displayKey: T10-3A.name
+    _playerClass: 2
+    _skillId: skill_summoner_summon_spirit
+    _tier: 2
+    _choice: 0
+    _kind: 23
+    _upgradeStat: 7
+    _levelOneBonus: 0.05
+    _variant:
+      _baseCoefficient: 0.3
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 2
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T11-1A
+    _displayKey: T11-1A.name
+    _playerClass: 2
+    _skillId: skill_summoner_spirit_strike
+    _tier: 0
+    _choice: 0
+    _kind: 1
+    _upgradeStat: 1
+    _levelOneBonus: 0.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T11-2A
+    _displayKey: T11-2A.name
+    _playerClass: 2
+    _skillId: skill_summoner_spirit_strike
+    _tier: 1
+    _choice: 0
+    _kind: 13
+    _upgradeStat: 13
+    _levelOneBonus: 2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T11-3A
+    _displayKey: T11-3A.name
+    _playerClass: 2
+    _skillId: skill_summoner_spirit_strike
+    _tier: 2
+    _choice: 0
+    _kind: 24
+    _upgradeStat: 7
+    _levelOneBonus: 1.2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 2
+  - _definitionId: T12-1A
+    _displayKey: T12-1A.name
+    _playerClass: 2
+    _skillId: skill_summoner_target_barrier
+    _tier: 0
+    _choice: 0
+    _kind: 0
+    _upgradeStat: 0
+    _levelOneBonus: 0.1
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T12-2A
+    _displayKey: T12-2A.name
+    _playerClass: 2
+    _skillId: skill_summoner_target_barrier
+    _tier: 1
+    _choice: 0
+    _kind: 10
+    _upgradeStat: 9
+    _levelOneBonus: 2
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0
+  - _definitionId: T12-3A
+    _displayKey: T12-3A.name
+    _playerClass: 2
+    _skillId: skill_summoner_target_barrier
+    _tier: 2
+    _choice: 0
+    _kind: 25
+    _upgradeStat: 12
+    _levelOneBonus: 0.05
+    _variant:
+      _baseCoefficient: 0
+      _fixedArcAngle: 0
+      _fixedRadius: 0
+      _radiusDelta: 0
+      _altShapeBonus: 0
+      _length: 0
+      _width: 0
+      _delay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxExtraTargets: 0

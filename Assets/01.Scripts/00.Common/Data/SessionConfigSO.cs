@@ -12,7 +12,7 @@ namespace Shinshi.Data
 {
     /// <summary> 시작 인원 배율, 부활, 재접속, 경매처럼 출정 한 판의 규칙 수치 </summary>
     [CreateAssetMenu(fileName = "SessionConfigSO", menuName = "Shinshi/SessionConfigSO")]
-    public class SessionConfigSO : ScriptableObject, IDataValidatable
+    public class SessionConfigSO : GameDataSO
     {
         /****************************************
         *              Constants
@@ -94,7 +94,7 @@ namespace Shinshi.Data
             return table[startingCount - Constants.Session.MIN_PARTY_SIZE];
         }
 
-        public void Validate(List<string> errors)
+        protected override void ValidateValues(List<string> errors)
         {
             const string OWNER = nameof(SessionConfigSO);
 
@@ -135,18 +135,6 @@ namespace Shinshi.Data
             for (int i = 0; i < table.Length; ++i)
             {
                 DataValidation.RequirePositive(errors, OWNER, $"{field}[{i}]", table[i]);
-            }
-        }
-
-        // 인스펙터에서 값을 바꾸는 즉시 오류를 보여 준다
-        private void OnValidate()
-        {
-            var errors = new List<string>();
-            Validate(errors);
-
-            for (int i = 0; i < errors.Count; ++i)
-            {
-                Debug.LogError($"[GameDB] {errors[i]}", this);
             }
         }
     }

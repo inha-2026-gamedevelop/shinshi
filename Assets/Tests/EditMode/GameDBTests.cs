@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 
 // Unity
-using UnityEditor;
 using UnityEngine;
 
 // 서드파티
@@ -117,14 +116,7 @@ namespace Shinshi.Tests
 
         private GameDatabaseSO CreateValidRoot()
         {
-            GameDatabaseSO root = Create<GameDatabaseSO>();
-
-            var serialized = new SerializedObject(root);
-            serialized.FindProperty("_player").objectReferenceValue  = Create<PlayerConfigSO>();
-            serialized.FindProperty("_session").objectReferenceValue = Create<SessionConfigSO>();
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            return root;
+            return GameDBTestFixtures.CreateValidRoot(_created);
         }
     }
 }

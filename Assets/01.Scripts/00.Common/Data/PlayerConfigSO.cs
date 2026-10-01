@@ -10,9 +10,9 @@ using Shinshi.Common;
 
 namespace Shinshi.Data
 {
-    /// <summary> 플레이어의 이동, 회피, 기력, 기본 능력치, 입력 보관, 직업별 기본 공격 </summary>
+    /// <summary> 플레이어의 이동, 회피, 기력, 기본 능력치, 전투 공통 상한, 물약 사용, 입력 보관, 직업별 기본 공격 </summary>
     [CreateAssetMenu(fileName = "PlayerConfigSO", menuName = "Shinshi/PlayerConfigSO")]
-    public class PlayerConfigSO : ScriptableObject, IDataValidatable
+    public class PlayerConfigSO : GameDataSO
     {
         /// <summary> 직업별 기본 공격 명세 </summary>
         [Serializable]
@@ -75,6 +75,17 @@ namespace Shinshi.Data
         [SerializeField] private float _baseCritChance       = 0.05f; // 0에서 1 사이 비율
         [SerializeField] private float _critDamageMultiplier = 2f;
 
+        // 성장 투자와 버프로 오르는 값을 한곳에서 막아야 직업, 부적 조합마다 상한이 갈리지 않는다
+        [Header("전투 공통 상한")]
+        [SerializeField] private float _critChanceCap            = 0.6f;  // 0에서 1 사이 비율, 버프까지 더한 최종 치명 확률 상한
+        [SerializeField] private float _damageReductionCap       = 0.6f;  // 0에서 1 사이 비율, 방어로 얻는 피해 감소율 상한
+        [SerializeField] private float _defenseReductionConstant = 1000f; // 감소율 = 방어 / (방어 + 이 값), 물리와 도술에 같이 쓴다
+
+        // 생활 제작이 아니라 전투 중 사용 규칙이라 여기 둔다. 보스전 합산 사용 횟수 상한은 SessionConfigSO가 가진다
+        [Header("물약 사용")]
+        [SerializeField] private float _potionSharedCooldown    = 10f;   // 초, 소형과 대형이 함께 쓰는 재사용 대기, 부활해도 유지
+        [SerializeField] private float _potionUseDisplaySeconds = 0.35f; // 초, 사용 표시 동작, 이동 가능하고 무적 없음
+
         [Header("입력 보관")]
         [SerializeField] private float _inputBufferSeconds   = 0.15f;
         [SerializeField] private int   _inputBufferDepth     = 1;     // 다음 행동 하나만 보관
@@ -89,20 +100,25 @@ namespace Shinshi.Data
             new BasicAttackSpec(0.6f, 0.8f, 8f, 0f)
         };
 
-        public float MoveSpeed            => _moveSpeed;
-        public float DodgeDistance        => _dodgeDistance;
-        public float DodgeDuration        => _dodgeDuration;
-        public float DodgeCooldown        => _dodgeCooldown;
-        public float DodgeEnergyCost      => _dodgeEnergyCost;
-        public float BaseMaxEnergy        => _baseMaxEnergy;
-        public float EnergyRegenPerSecond => _energyRegenPerSecond;
-        public float BaseAttack           => _baseAttack;
-        public float BaseHealth           => _baseHealth;
-        public float BaseDefense          => _baseDefense;
-        public float BaseCritChance       => _baseCritChance;
-        public float CritDamageMultiplier => _critDamageMultiplier;
-        public float InputBufferSeconds   => _inputBufferSeconds;
-        public int   InputBufferDepth     => _inputBufferDepth;
+        public float MoveSpeed                => _moveSpeed;
+        public float DodgeDistance            => _dodgeDistance;
+        public float DodgeDuration            => _dodgeDuration;
+        public float DodgeCooldown            => _dodgeCooldown;
+        public float DodgeEnergyCost          => _dodgeEnergyCost;
+        public float BaseMaxEnergy            => _baseMaxEnergy;
+        public float EnergyRegenPerSecond     => _energyRegenPerSecond;
+        public float BaseAttack               => _baseAttack;
+        public float BaseHealth               => _baseHealth;
+        public float BaseDefense              => _baseDefense;
+        public float BaseCritChance           => _baseCritChance;
+        public float CritDamageMultiplier     => _critDamageMultiplier;
+        public float CritChanceCap            => _critChanceCap;
+        public float DamageReductionCap       => _damageReductionCap;
+        public float DefenseReductionConstant => _defenseReductionConstant;
+        public float PotionSharedCooldown     => _potionSharedCooldown;
+        public float PotionUseDisplaySeconds  => _potionUseDisplaySeconds;
+        public float InputBufferSeconds       => _inputBufferSeconds;
+        public int   InputBufferDepth         => _inputBufferDepth;
 
         /****************************************
         *                Methods
@@ -119,7 +135,7 @@ namespace Shinshi.Data
             return _basicAttacks[index];
         }
 
-        public void Validate(List<string> errors)
+        protected override void ValidateValues(List<string> errors)
         {
             const string OWNER = nameof(PlayerConfigSO);
 
@@ -133,8 +149,13 @@ namespace Shinshi.Data
             DataValidation.RequirePositive(errors, OWNER, nameof(_baseAttack), _baseAttack);
             DataValidation.RequirePositive(errors, OWNER, nameof(_baseHealth), _baseHealth);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_baseDefense), _baseDefense);
-            DataValidation.RequireRange(errors, OWNER, nameof(_baseCritChance), _baseCritChance, 0f, MAX_RATE);
             DataValidation.RequireRange(errors, OWNER, nameof(_critDamageMultiplier), _critDamageMultiplier, MIN_CRIT_MULTIPLIER, float.MaxValue);
+            DataValidation.RequirePositiveAtMost(errors, OWNER, nameof(_critChanceCap), _critChanceCap, MAX_RATE);
+            DataValidation.RequireRange(errors, OWNER, nameof(_baseCritChance), _baseCritChance, 0f, Math.Min(_critChanceCap, MAX_RATE));
+            DataValidation.RequireRange(errors, OWNER, nameof(_damageReductionCap), _damageReductionCap, 0f, MAX_RATE);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_defenseReductionConstant), _defenseReductionConstant);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_potionSharedCooldown), _potionSharedCooldown);
+            DataValidation.RequireNonNegative(errors, OWNER, nameof(_potionUseDisplaySeconds), _potionUseDisplaySeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_inputBufferSeconds), _inputBufferSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_inputBufferDepth), _inputBufferDepth);
 
@@ -161,18 +182,6 @@ namespace Shinshi.Data
                 DataValidation.RequirePositive(errors, OWNER, field + ".Interval", spec.Interval);
                 DataValidation.RequirePositive(errors, OWNER, field + ".Range", spec.Range);
                 DataValidation.RequireRange(errors, OWNER, field + ".ArcAngle", spec.ArcAngle, 0f, MAX_ARC_ANGLE);
-            }
-        }
-
-        // 인스펙터에서 값을 바꾸는 즉시 오류를 보여 준다
-        private void OnValidate()
-        {
-            var errors = new List<string>();
-            Validate(errors);
-
-            for (int i = 0; i < errors.Count; ++i)
-            {
-                Debug.LogError($"[GameDB] {errors[i]}", this);
             }
         }
     }

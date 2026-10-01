@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9a630e412db4234ea4545611312a068, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.GrowthConfigSO
+  _schemaVersion: 1
+  _trainingTotalCap: 100
+  _trainingStatCap: 40
+  _trainingBaseCost: 100
+  _trainingCostStep: 10
+  _trainingStats:
+  - _stat: 0
+    _gainPerStep: 0.005
+  - _stat: 1
+    _gainPerStep: 0.01
+  - _stat: 2
+    _gainPerStep: 0.02
+  - _stat: 3
+    _gainPerStep: 0.005
+  - _stat: 4
+    _gainPerStep: 1
+  _respecBaseCost: 200
+  _respecCostPerStep: 20
+  _registerCardCost: 1
+  _registerEssenceCost: 150
+  _registerSuccessRates:
+  - 0.5
+  - 0.65
+  - 0.8
+  - 1
+  _effectUpgradeCosts:
+  - _cardCost: 1
+    _essenceCost: 300
+  - _cardCost: 1
+    _essenceCost: 600
+  - _cardCost: 2
+    _essenceCost: 1000
+  - _cardCost: 3
+    _essenceCost: 1600
+  _cardDisassembleEssence: 50
+  _unregisteredCardStackLimit: 999

@@ -1,0 +1,424 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cde8831c0d722943922edd24b945fc9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.SkillCatalogSO
+  _schemaVersion: 1
+  _skills:
+  - _definitionId: skill_warrior_wide_slash
+    _displayKey: skill_warrior_wide_slash.name
+    _playerClass: 0
+    _slot: 0
+    _isSignature: 1
+    _energyCost: 20
+    _cooldown: 6
+    _timeline:
+      _windup: 0.2
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 0
+      _castRange: 0
+      _radius: 3
+      _arcAngle: 120
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 2.2
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_warrior_dash
+    _displayKey: skill_warrior_dash.name
+    _playerClass: 0
+    _slot: 1
+    _isSignature: 0
+    _energyCost: 20
+    _cooldown: 8
+    _timeline:
+      _windup: 0
+      _active: 0.3
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 2
+      _castRange: 4
+      _radius: 0
+      _arcAngle: 0
+      _width: 1.5
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 1.8
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_warrior_ground_slam
+    _displayKey: skill_warrior_ground_slam.name
+    _playerClass: 0
+    _slot: 2
+    _isSignature: 0
+    _energyCost: 30
+    _cooldown: 12
+    _timeline:
+      _windup: 0.6
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 1
+      _castRange: 0
+      _radius: 3
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 2
+    _effect:
+      _damageCoefficient: 4
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_warrior_counter
+    _displayKey: skill_warrior_counter.name
+    _playerClass: 0
+    _slot: 3
+    _isSignature: 0
+    _energyCost: 25
+    _cooldown: 12
+    _timeline:
+      _windup: 0
+      _active: 0.5
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 0
+      _castRange: 0
+      _radius: 3
+      _arcAngle: 120
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 3.5
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_sorcerer_spell_bolt
+    _displayKey: skill_sorcerer_spell_bolt.name
+    _playerClass: 1
+    _slot: 0
+    _isSignature: 0
+    _energyCost: 15
+    _cooldown: 4
+    _timeline:
+      _windup: 0.15
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 0
+      _shape: 3
+      _castRange: 10
+      _radius: 0
+      _arcAngle: 0
+      _width: 0.5
+      _projectileSpeed: 16
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 1.6
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_sorcerer_flame_field
+    _displayKey: skill_sorcerer_flame_field.name
+    _playerClass: 1
+    _slot: 1
+    _isSignature: 1
+    _energyCost: 30
+    _cooldown: 12
+    _timeline:
+      _windup: 0.3
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 1
+      _shape: 1
+      _castRange: 8
+      _radius: 2.5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0.5625
+      _tickInterval: 0.5
+      _duration: 4
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_sorcerer_binding_field
+    _displayKey: skill_sorcerer_binding_field.name
+    _playerClass: 1
+    _slot: 2
+    _isSignature: 0
+    _energyCost: 25
+    _cooldown: 14
+    _timeline:
+      _windup: 0.3
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 1
+      _shape: 1
+      _castRange: 8
+      _radius: 3
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 1
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 2
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_sorcerer_lightning
+    _displayKey: skill_sorcerer_lightning.name
+    _playerClass: 1
+    _slot: 3
+    _isSignature: 0
+    _energyCost: 30
+    _cooldown: 10
+    _timeline:
+      _windup: 0.7
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 1
+      _shape: 1
+      _castRange: 9
+      _radius: 2
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 3.8
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_summoner_summon_beast
+    _displayKey: skill_summoner_summon_beast.name
+    _playerClass: 2
+    _slot: 0
+    _isSignature: 1
+    _energyCost: 30
+    _cooldown: 20
+    _timeline:
+      _windup: 0.5
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 2
+      _shape: 4
+      _castRange: 0
+      _radius: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 20
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0.35
+      _companionAttackInterval: 0.75
+      _companionAttackRange: 1.5
+  - _definitionId: skill_summoner_summon_spirit
+    _displayKey: skill_summoner_summon_spirit.name
+    _playerClass: 2
+    _slot: 1
+    _isSignature: 0
+    _energyCost: 30
+    _cooldown: 20
+    _timeline:
+      _windup: 0.5
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 2
+      _shape: 4
+      _castRange: 0
+      _radius: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 20
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0.45
+      _companionAttackInterval: 1
+      _companionAttackRange: 8
+  - _definitionId: skill_summoner_spirit_strike
+    _displayKey: skill_summoner_spirit_strike.name
+    _playerClass: 2
+    _slot: 2
+    _isSignature: 0
+    _energyCost: 15
+    _cooldown: 5
+    _timeline:
+      _windup: 0.2
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 0
+      _shape: 3
+      _castRange: 9
+      _radius: 0
+      _arcAngle: 0
+      _width: 0.5
+      _projectileSpeed: 16
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 1.8
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  - _definitionId: skill_summoner_target_barrier
+    _displayKey: skill_summoner_target_barrier.name
+    _playerClass: 2
+    _slot: 3
+    _isSignature: 0
+    _energyCost: 25
+    _cooldown: 12
+    _timeline:
+      _windup: 0.3
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 1
+      _shape: 1
+      _castRange: 8
+      _radius: 3
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0.7
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 6
+      _rootDuration: 0
+      _allyDamageBonus: 0.2
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+  _ascensions:
+  - _definitionId: skill_summoner_ascension_single
+    _displayKey: skill_summoner_ascension_single.name
+    _slot: 0
+    _resonanceCost: 60
+    _castRange: 10
+    _radius: 1.5
+    _windup: 0.6
+    _recovery: 0.15
+    _damageCoefficient: 12
+    _rootDuration: 0
+    _singleTarget: 1
+  - _definitionId: skill_summoner_ascension_area
+    _displayKey: skill_summoner_ascension_area.name
+    _slot: 1
+    _resonanceCost: 80
+    _castRange: 10
+    _radius: 4
+    _windup: 0.7
+    _recovery: 0.15
+    _damageCoefficient: 7
+    _rootDuration: 0
+    _singleTarget: 0
+  - _definitionId: skill_summoner_ascension_control
+    _displayKey: skill_summoner_ascension_control.name
+    _slot: 2
+    _resonanceCost: 40
+    _castRange: 8
+    _radius: 3
+    _windup: 0.4
+    _recovery: 0.15
+    _damageCoefficient: 4
+    _rootDuration: 2
+    _singleTarget: 0
+  _ascensionSharedCooldown: 3
+  _resonanceMax: 100
+  _resonancePerBasicHit: 1
+  _resonancePerSkillHit: 4
+  _resonancePerCompanionHit: 0.5
+  _resonancePerCastCap: 8
+  _companionHealthRate: 0.6
+  _companionDefenseRate: 1
+  _companionSearchRadius: 10
+  _companionRecallDistance: 12
+  _companionWarpDistance: 18
+  _companionStuckSeconds: 2
+  _companionWarpOffset: 1.5
+  _companionMoveSpeed: 5

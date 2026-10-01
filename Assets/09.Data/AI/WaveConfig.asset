@@ -1,0 +1,137 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4c2bcfd8e7b08e4792df1600a1df222, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.WaveConfigSO
+  _schemaVersion: 1
+  _regionId: region_forest
+  _arenaSize: 32
+  _spawnGateCount: 4
+  _spawnTelegraphSeconds: 1
+  _spawnExclusionRadius: 4
+  _maxActiveEnemies: 24
+  _timeLimitSeconds: 420
+  _intermissionSeconds: 5
+  _settlementSeconds: 20
+  _waves:
+  - _definitionId: wave_forest_01
+    _displayKey: wave_forest_01.name
+    _enemies:
+    - _enemyId: enemy_melee
+      _count: 20
+    _groups:
+    - _spawnTime: 0
+      _count: 4
+    - _spawnTime: 10
+      _count: 4
+    - _spawnTime: 20
+      _count: 4
+    - _spawnTime: 30
+      _count: 4
+    - _spawnTime: 40
+      _count: 4
+  - _definitionId: wave_forest_02
+    _displayKey: wave_forest_02.name
+    _enemies:
+    - _enemyId: enemy_melee
+      _count: 18
+    - _enemyId: enemy_ranged
+      _count: 6
+    _groups:
+    - _spawnTime: 0
+      _count: 5
+    - _spawnTime: 10
+      _count: 5
+    - _spawnTime: 20
+      _count: 5
+    - _spawnTime: 30
+      _count: 5
+    - _spawnTime: 40
+      _count: 4
+  - _definitionId: wave_forest_03
+    _displayKey: wave_forest_03.name
+    _enemies:
+    - _enemyId: enemy_melee
+      _count: 24
+    - _enemyId: enemy_charger
+      _count: 4
+    _groups:
+    - _spawnTime: 0
+      _count: 6
+    - _spawnTime: 10
+      _count: 6
+    - _spawnTime: 20
+      _count: 6
+    - _spawnTime: 30
+      _count: 5
+    - _spawnTime: 40
+      _count: 5
+  - _definitionId: wave_forest_04
+    _displayKey: wave_forest_04.name
+    _enemies:
+    - _enemyId: enemy_melee
+      _count: 28
+    - _enemyId: enemy_elite
+      _count: 4
+    _groups:
+    - _spawnTime: 0
+      _count: 7
+    - _spawnTime: 10
+      _count: 7
+    - _spawnTime: 20
+      _count: 6
+    - _spawnTime: 30
+      _count: 6
+    - _spawnTime: 40
+      _count: 6
+  - _definitionId: wave_forest_05
+    _displayKey: wave_forest_05.name
+    _enemies:
+    - _enemyId: enemy_melee
+      _count: 22
+    - _enemyId: enemy_ranged
+      _count: 8
+    - _enemyId: enemy_charger
+      _count: 6
+    _groups:
+    - _spawnTime: 0
+      _count: 8
+    - _spawnTime: 10
+      _count: 7
+    - _spawnTime: 20
+      _count: 7
+    - _spawnTime: 30
+      _count: 7
+    - _spawnTime: 40
+      _count: 7
+  - _definitionId: wave_forest_06
+    _displayKey: wave_forest_06.name
+    _enemies:
+    - _enemyId: enemy_melee
+      _count: 24
+    - _enemyId: enemy_ranged
+      _count: 8
+    - _enemyId: enemy_charger
+      _count: 6
+    - _enemyId: enemy_elite
+      _count: 2
+    _groups:
+    - _spawnTime: 0
+      _count: 8
+    - _spawnTime: 10
+      _count: 8
+    - _spawnTime: 20
+      _count: 8
+    - _spawnTime: 30
+      _count: 8
+    - _spawnTime: 40
+      _count: 8
