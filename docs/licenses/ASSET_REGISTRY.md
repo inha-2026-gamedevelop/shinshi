@@ -30,6 +30,23 @@
 
 설치 버전은 `.meta`의 `AssetOrigin.productId`, `packageName`, `packageVersion`으로 확인했다. Mesh Baker는 해당 메타데이터가 없고 동봉 문서가 `docs/API-3.37.0.zip`이다. 로컬 Mesh Baker Free 캐시와 일부 GUID·파일이 일치하지만 전체가 같지 않아 무료·유료 에디션을 확정하지 않았다. 확인 전에는 배포하지 않도록 해당 패키지도 Git에서 제외한다. 무료 독립 에셋으로 확인되면 에디션·버전·라이선스를 기록하고 패키지 단위 제외 규칙을 조정한다.
 
+## 공용 돌바닥·부유석 제작 소재와 가공물
+
+2026-10-01 사용자 제공 참고 시트와 실사 판타지 제작 요청을 기준으로 아래 소재를 취득·가공했다. Asset Store 설치 패키지와 구분하여 기록하며, Unity 임포트·프리팹·에디터 프리뷰 확인과 미검증 항목은 [제작·사용 문서](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md)에 기록한다.
+
+| 에셋 | 버전·제작 기록 | 제작자 | 보관·사용 경로 | 구분 | 라이선스·상업 이용 | 출처 |
+|---|---|---|---|---|---|---|
+| Rock 01 석재 PBR | 2026-10-01 취득, 4K Base Color·Roughness·OpenGL Normal·Height | Rob Tuytel / Poly Haven | 원본 `.codex/art/realistic-fantasy-kit/textures/`, 돌바닥 가공 재질에 사용 | 외부 무료 소재 | CC0, 상업 이용·수정·재배포 가능 | [공식 자산](https://polyhaven.com/a/rock_01), [라이선스](https://polyhaven.com/license) |
+| 공용 돌바닥 | 2026-10-01 Blender MCP 제작, 6×6m 모듈·3LOD FBX·PBR/AO 출력 | shinshi 프로젝트 제작 | 모델·재질 `Assets/01.Scripts/05.Art/Environment/StoneCourtyard/`, 프리팹 `Assets/02.Prefab/Environment/StoneCourtyard/` | 프로젝트 제작 메시·가공 재질 | 석재 표면 원본은 위 CC0. 자체 메시·베이크와 외부 소재를 구분하여 관리 | [참고 CA-05](../design/concept-art.md#6-ca-05-공용-돌바닥-타일), [제작 기록](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md) |
+| 장식용 부유석 | Meshy CLI 0.3.0, `meshy-7.1`, 작업 `01a0f4de-b032-70ef-923a-05f9a0c97a84`, 2026-10-01 생성·다운로드, 실제 35크레딧·Blender 3LOD/PBR/AO 출력 | Meshy 생성 + shinshi Blender 가공 | 원본 `.codex/art/realistic-fantasy-kit/meshy/output/`, 모델·재질 `Assets/01.Scripts/05.Art/Environment/FloatingRock/`, 프리팹 `Assets/02.Prefab/Environment/FloatingRock/` | AI 생성 원본·프로젝트 가공물 | 생성 당시 계정 플랜 미확인. 플랜별 조건·입력 권리 확인 상태는 아래 기록 | [참고 CA-06](../design/concept-art.md#7-ca-06-부유석), [Meshy 소유 안내](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models), [이용 약관](https://www.meshy.ai/terms-of-use) |
+
+- Rock 01 원본 PNG 네 개는 4096×4096이며 공식 파일 API의 MD5와 모두 일치한다. 시각 확인용 썸네일은 런타임 소재에 포함하지 않았다.
+- 참고 그림은 사용자 제공이다. 작가·제작 도구·라이선스와 별도 권리 확인은 미확인으로 기록하고 소유권을 추측하지 않는다.
+- Meshy 공식 안내는 유료 플랜 생성물의 비공개 소유와 무료 플랜 생성물의 CC BY 4.0·Meshy 표시 조건을 구분한다. 실제 생성 계정 플랜을 CLI에서 확인하지 못했으므로 이 부유석을 자체 소유 또는 CC0로 확정하지 않는다. 커뮤니티 공개는 요청하거나 수행하지 않았다. [상업 이용 안내](https://help.meshy.ai/en/articles/16102098-can-i-use-meshy-assets-commercially)
+- 원본 GLB·FBX, 다운로드 텍스처, Blender `.blend`와 제작 기록은 위 `.codex/art/` 작업 영역에 보존하며 Git에서 제외한다. 런타임 모델·재질·텍스처는 [팀 모델링 에셋 규칙](../unity/SCENE_AND_ASSET_SAFETY.md#팀이-만든-모델링-에셋)에 따라 `05.Art/Environment/`, 배치용 프리팹은 `02.Prefab/Environment/`에서 `.meta`와 함께 공유한다. 모델 제작은 프리팹 생성·참조 검증까지 포함한다.
+- 런타임 모델명은 `StoneCourtyard/Models/SM_StoneCourtyardTile_{High,Medium,Low}.fbx`, `FloatingRock/Models/SM_FloatingRock_{High,Medium,Low}.fbx`다. 단계는 LOD0·1·2에 대응하며 Unity 에디터에서 이름을 바꿔 GUID를 보존했다. 공유 제작 렌더는 [사용 문서의 미리보기](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md#7-최종-blender-베이크-미리보기)에 있다.
+- Unity에서 `PF_StoneCourtyardTile.prefab`·`PF_FloatingRock.prefab`, URP Lit 재질·PBR/AO 연결과 프리뷰를 확인했다. `02.Prefab/` 이관 뒤 에셋 20개·폴더 포함 메타 32개에 누락 0, 프리팹 GUID 2개 유지와 에셋 관련 신규 오류·경고 0을 확인했다. Console 이력 변화와 연결 경고는 [검증 기록](../unity/STONE_COURTYARD_AND_FLOATING_ROCK.md#6-실제-검증과-남은-확인)에 따로 적었다. 기존 씬은 변경하지 않았다. 게임플레이·성능·빌드·배포 검증과 Meshy 계정 플랜 확인은 완료하지 않았다.
+
 ## 기본 패키지와 위치 예외
 
 - `Packages/`의 Unity 기본 패키지와 MCP for Unity는 UPM이 관리하므로 Asset Store 폴더로 옮기지 않는다. 실제 버전·Git 의존성은 `Packages/manifest.json`, 고정 해시는 `Packages/packages-lock.json`이 기준이다.
@@ -65,6 +82,13 @@ Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 �
 | `Tools/MeshBaker/Editor/core/MB_EditorUtil.cs` | `Assets/MeshBaker` | `Assets/99.ThirdParty/Tools/MeshBaker` | 3 |
 | `Tools/Pixel Crushers/Dialogue System/Scripts/Editor/Tools/Setup Wizards/DialogueManagerWizard.cs` | `Assets/Plugins/Pixel Crushers/Dialogue System` | `Assets/99.ThirdParty/Tools/Pixel Crushers/Dialogue System` | 2 |
 | `Tools/Pixel Crushers/Dialogue System/Scripts/Editor/Utility/EditorTools.cs` | `Assets/Plugins/Pixel Crushers/Dialogue System` | `Assets/99.ThirdParty/Tools/Pixel Crushers/Dialogue System` | 2 |
+
+2026-10-01 사용자가 Pixel Crushers asmdef의 **참조 추가만** 승인했다. 프로젝트에 `TMP_PRESENT`·`USE_NEW_INPUT`이 정의되어 있어 동봉 asmdef의 빈 참조로는 TMP·Input System 코드가 컴파일되지 않고, 이를 참조하는 `Shinshi.Runtime`도 막혔다. 소스와 다른 asmdef 항목은 바꾸지 않았다. 동봉 `CommonAssemblyDefinitions.unitypackage`를 다시 가져오거나 에셋을 업데이트하면 덮어써지므로 아래 참조를 다시 확인한다.
+
+| 파일 (`Assets/99.ThirdParty/` 기준) | 추가한 참조 |
+|---|---|
+| `Tools/Pixel Crushers/Common/PixelCrushers.asmdef` | `Unity.TextMeshPro`, `Unity.InputSystem` |
+| `Tools/Pixel Crushers/Common/Scripts/Editor/PixelCrushersEditor.asmdef` | `Unity.TextMeshPro` |
 
 정리 전 EPO Outline 미설치 상태에서 DOTween EPO 연동이 켜져 컴파일 오류 18개가 있었다. `modules.epoOutlineEnabled=false`로 바꾸고 DOTween 공식 Utility의 `ApplyModulesSettings`를 실행해 연동 컴파일 조건을 비활성화하고 해결했다. 해당 연동 스크립트는 삭제하지 않았다. [공식 설치 안내](https://dotween.demigiant.com/pro.php)는 설치 후 사용할 모듈을 설정하도록 안내한다.
 
