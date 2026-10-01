@@ -54,7 +54,7 @@ Assets/
 
 | 어셈블리 | asmdef 위치 | 포함 | 참조 | 빌드 포함 조건 |
 |---|---|---|---|---|
-| `Shinshi.Runtime` | `01.Scripts/` | `00.Common/`~`06.UI/` | Mirror, Cinemachine, AI Navigation, TextMeshPro, DOTween, Dialogue System, Mesh Baker(`MeshBakerCore`), UMA(`UMA_Core`) | 항상 |
+| `Shinshi.Runtime` | `01.Scripts/` | `00.Common/`~`06.UI/` | Mirror, Cinemachine, AI Navigation, TextMeshPro, DOTween, Dialogue System, Mesh Baker(`MeshBakerCore`) | 항상 |
 | `Shinshi.Contracts` | `01.Scripts/00.Common/Contracts/` | Unity와 백엔드가 함께 쓰는 엔진 비의존 API DTO (`noEngineReferences`). `Shinshi.Runtime`에서 빠진다 | 없음. `Shinshi.Runtime`, `Shinshi.Server`, 테스트가 참조한다 | 항상 |
 | `Shinshi.Server` | `01.Scripts/98.Servers/` | `98.Servers/` | `Shinshi.Runtime`, `Shinshi.Dev`, Mirror | define 제약 `UNITY_SERVER \|\| UNITY_EDITOR` |
 | `Shinshi.Dev` | `01.Scripts/99.Dev/` | `99.Dev/` | `Shinshi.Runtime` | 항상 컴파일하되 파일 안을 `#if UNITY_EDITOR \|\| DEVELOPMENT_BUILD`로 비운다. `Shinshi.Server`의 개발 패널이 참조해야 해서 define 제약을 걸지 않는다 |
@@ -695,7 +695,7 @@ private IEnumerator CoApplyEffect()
 
 ### GameDB — ScriptableObject 기반 밸런스 DB
 
-GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO 13개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). `AvatarCatalogSO`는 2026-10-01 UMA 아바타 연동과 함께 추가했다. 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
+GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO 13개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). `AvatarCatalogSO`는 2026-10-01 UMA 아바타 연동과 함께 추가했고, 같은 날 UMA를 쓰지 않기로 하면서 UMA 적용 뷰(`AvatarView`)는 지우고 카탈로그는 남겼다. 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
 
 ```
 스크립트: Assets/01.Scripts/00.Common/Data/     (namespace Shinshi.Data)
@@ -718,7 +718,7 @@ GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO
 | `RewardCatalogSO` | `09.Data/Reward/RewardCatalog.asset` | 재화와 재료 아이템, 개인 드롭, 웨이브 기본 보상, 추가 정기, 보스 보상 | 진욱 (정산 규칙 수치는 `SessionConfigSO`) |
 | `LifeConfigSO` | `09.Data/Life/LifeConfig.asset` | 약초, 채집 선점과 재생, 행동력, 물약 레시피 | 진욱 |
 | `ProgressionCatalogSO` | `09.Data/Progression/ProgressionCatalog.asset` | 지역, 보스전 해금, 여우의 흔적, 최초 지원, 체험판 플래그 | 기웅 |
-| `AvatarCatalogSO` | `09.Data/Avatar/AvatarCatalog.asset` | 외형 슬라이더와 UMA DNA 대응, 색 팔레트, 직업별 고정 헤어, 장비 부위의 UMA 의상 슬롯, UMA 생성기 설정. 지금 값은 UMA 기본 종족 기준 임시값 | {팀장} |
+| `AvatarCatalogSO` | `09.Data/Avatar/AvatarCatalog.asset` | 외형 슬라이더와 UMA DNA 대응, 색 팔레트, 직업별 고정 헤어, 장비 부위의 UMA 의상 슬롯, UMA 생성기 설정. 지금 값은 UMA 기본 종족 기준 임시값이다. UMA를 뺐으므로 이 값을 적용하는 코드가 없고, 새 아바타 방식이 정해지면 필드와 값을 다시 정한다 | {팀장} |
 | {이름}SO | `09.Data/{도메인}/{이름}.asset` | {값 설명} | {파트} |
 
 - 도메인 SO는 `GameDataSO`를 상속하고 `ValidateValues`를 구현한다. 다른 카탈로그 ID를 참조하면 `ValidateReferences`에서 상대 카탈로그의 `Contains*` 메서드로 검사한다. 참조 검사는 모든 SO의 값 검사가 통과한 뒤에만 돈다.
@@ -1031,8 +1031,7 @@ _hitFeedback = HitFeedbackLocator.Current;
 | 입력 | **구 Input Manager** (`UnityEngine.Input`, 축과 버튼은 `ProjectSettings/InputManager.asset`). Active Input Handling은 Both | Input System 패키지 API (`UnityEngine.InputSystem`) - 설치는 되어 있지만 팀 코드에서 쓰지 않는다 |
 | UI · 월드 텍스트 | **TextMesh Pro** (`TMPro`) | 레거시 `UnityEngine.UI.Text` |
 | 커스텀 셰이더 | **Amplify Shader Editor** | 손으로 쓴 셰이더 (ASE로 안 되는 경우만, 이유를 주석으로) |
-| 메시 · 머티리얼 결합 (드로우콜 절감) | **MeshBaker**. 플레이어 아바타는 UMA가 생성 때 결합하므로 예외 | 자체 메시 결합 코드 |
-| 플레이어 아바타 (얼굴, 체형 슬라이더, 의상 조합, 텍스처 아틀라스) | **UMA 3.1** (`UMA`, `UMA.CharacterSystem`, 원본 `Assets/UMA`는 수정하지 않는다). 팀 코드는 `05.Art/Avatar/`의 `AvatarView`와 GameDB `AvatarCatalogSO`를 거친다 | 자체 슬라이더, 의상 조합, 아틀라스 코드. UMA 원본 수정 |
+| 메시 · 머티리얼 결합 (드로우콜 절감) | **MeshBaker** | 자체 메시 결합 코드 |
 
 - 단순한 1회 물리 쿼리(접지 확인 등)는 RaycastPro 없이 `Physics` NonAlloc API를 직접 써도 된다 (17장).
 - 에디터 전용 도구(Console Pro, Hierarchy Designer, Maintainer, Wingman, MCP for Unity)는 런타임 코드에서 참조하지 않는다.
