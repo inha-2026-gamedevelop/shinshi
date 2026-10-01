@@ -55,6 +55,7 @@ Codex에서는 `$guided-commit`처럼 스킬 이름을 지정하거나 목적을
 | [04 아키텍처](../04-architecture.md) | 모듈·씬·데이터·상태 전이의 위치를 찾을 때 |
 | [05 구현 로드맵](../05-implementation-roadmap.md) | 작업 선행 관계·담당·수용 기준을 확인할 때 |
 | [3D 모델 제작 목록](../design/model-production-list.md) | 공용 원본·지역 조립·후속 모델과 Meshy CLI → Blender 제작 흐름을 볼 때 |
+| [아트 제작 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 원화·목표 이미지부터 AO/PBR·LOD·`02.Prefab/` 프리팹까지 별도 요청 없이 진행할 때 |
 
 ### AI 작업 운영
 

@@ -21,6 +21,7 @@
 | 씬·에셋·`.meta` | [씬 · 에셋 안전](../unity/SCENE_AND_ASSET_SAFETY.md) | `Assets/00.Scenes/SampleScene.unity` | 씬 소유, `.meta` 동반 커밋 |
 | 외부 에셋·라이선스·설치 기록 | [에셋 대장](../licenses/ASSET_REGISTRY.md) | `Assets/99.ThirdParty/` | 분류, 버전, 출처, Git 제외, 경로 보정 |
 | 3D 모델 제작·공용 재사용 | [모델 제작 목록](../design/model-production-list.md), [컨셉아트 기록](../design/concept-art.md) | 제작 계획, 기존 벚꽃나무는 `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 원본 수와 배치 수 구분, 기존 모델 우선 검토, Meshy CLI → Blender 흐름 |
+| 아트 재질·AO·프리팹 기본 과정 | [아트 제작 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 모델·재질 `Assets/01.Scripts/05.Art/`, 배치 프리팹 `Assets/02.Prefab/` | AO/PBR 기본 처리, 셰이더별 지원, AI 목표 이미지와 실제 검증 구분 |
 | 렌더링 설정 (URP) | — | `Assets/Settings/` (PC · Mobile RP 에셋) | 공용 설정 변경은 팀 영향 |
 | 폴리지 셰이더·재질 | [버텍스 컬러 폴리지 셰이더](../unity/VERTEX_COLOR_FOLIAGE_SHADER.md) | `Assets/01.Scripts/05.Art/Shaders/`, `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 버텍스 컬러 AO, 알파 클립, 밉맵 커버리지 보존 |
 | 입력 | [코딩 컨벤션](../coding-convention.md) 23장 | `ProjectSettings/InputManager.asset` | 구 Input Manager(`UnityEngine.Input`), Active Input Handling = Both |
