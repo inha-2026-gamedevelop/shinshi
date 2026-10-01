@@ -70,6 +70,15 @@ UMA는 2026-10-01 팀장 승인으로 GitHub 공식 릴리스의 `UMA31_f1.unity
 
 생성 원본·입력·상세 기록은 Git 제외 개인 작업 영역에 보존한다. Meshy 생성 계정 플랜·입력 권리·배포 조건은 미확인으로 유지하며 CC0·독점 소유를 주장하지 않는다. [Meshy 소유 조건](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models)과 [약관](https://www.meshy.ai/terms-of-use)을 실제 계정 조건과 대조해야 한다.
 
+## 여성 베이스 외형 시제품
+
+| 에셋 | 생성·가공 | 보관·사용 | 권리 확인 상태 | 근거 |
+|---|---|---|---|---|
+| PlayerFemaleBasePreview | 2026-10-01 Meshy CLI 0.3.0·Meshy 7.1, 전신 작업 `01a0f5d5-b3d5-71eb-a2ed-6c6fa93f7140`·머리 작업 `01a0f5d5-dac6-73b9-870c-07a196f0f4cf` 모두 SUCCEEDED, 각 30·총 60크레딧. 전신을 Blender MCP에서 정리하고 3LOD·PBR·실제 국소 AO 제작 | 원본·입력·상세 기록은 Git 제외 개인 작업 영역에 보존, 런타임은 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleBasePreview/`, 프리팹은 `Assets/02.Prefab/Characters/PlayerFemaleBasePreview/`. 별도 머리는 미채택·미조립으로 원본만 보존 | ChatGPT 생성 참조 입력·Meshy 생성 출력·프로젝트 가공물. 생성 계정 플랜과 권리 조건 확인 미완료, CC0·독점 소유로 확정하지 않음. 커뮤니티 공개·배포 수행 안 함 | [외형 프리팹](../../Assets/02.Prefab/Characters/PlayerFemaleBasePreview/PF_PlayerFemaleBasePreview.prefab), [Meshy 소유 조건](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models), [약관](https://www.meshy.ai/terms-of-use) |
+| PlayerFemaleModular | 2026-10-01 기존 전신을 Meshy CLI 0.3.0 자동 리깅, 작업 `01a0f617-3ae7-7795-9712-21cfc3ac16c7` SUCCEEDED·추가 5크레딧(위 전신·머리 생성 포함 여성 시제품 누적 65). 목 분리·3LOD·Blink 제작 후 얼굴·손 국소 표면 정리, 실제 AO/노멀 재베이크, 눈꺼풀 아틀라스·모프 노멀 및 걷기 교정. 이번 교정에는 추가 생성 과금 없음 | 원본·상세 기록은 Git 제외 개인 작업 영역에 보존, 런타임 모델·애니메이션·전용 재질·교정 맵은 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleModular/`, 프리팹은 `Assets/02.Prefab/Characters/PlayerFemaleModular/`. 원본 BaseColor·거칠기·MetallicSmoothness를 참조하므로 `PlayerFemaleBasePreview/` 함께 보존 | 위 입력·생성물의 확인 상태를 승계하며 새로운 독점 권리·CC0를 주장하지 않음. 자동 리깅·원본 클립 출처는 Meshy, 메시·눈꺼풀·걷기 교정은 프로젝트 작업. UMA3 연동 후보의 native 뼈·rest·bind 데이터는 설치된 UMA3 콘텐츠에서 파생하므로 해당 콘텐츠 라이선스도 적용. 계정 플랜·배포 조건 확인 미완료 | [모듈형 프리팹](../../Assets/02.Prefab/Characters/PlayerFemaleModular/PF_PlayerFemaleModular.prefab), [Meshy 리깅 API](https://docs.meshy.ai/en/api/rigging), [Meshy 소유 조건](https://help.meshy.ai/en/articles/10137554-what-is-the-ownership-of-the-generated-models) |
+
+`PlayerFemaleBasePreview`는 리깅·애니메이션·얼굴 모프·Collider가 없는 정적 외형 시제품이며 당시 Unity 임포트·참조·메타와 중립 프리뷰·강제 정지 LOD를 확인했다. 후속 `PlayerFemaleModular`는 공통 24뼈·머리/몸 분리·Blink·검토용 걷기/달리기와 Humanoid 임포트를 포함한다. 표면 정리 후 3LOD는 56,044 / 29,997 / 16,941삼각형이며 Unity CPU 목 15표본·Blink 초기화·33캡처를 확인했다. 수정된 몸·머리 쌍의 실제 AO/노멀을 재베이크했으며, 다른 부품 조합이나 UMA의 새 형상에는 AO 재검증이 필요하다. 눈꺼풀은 기하 모프 노멀을 사용하며 별도 노멀 맵·고정 AO 생략은 시제품 예외다. UMA3 native 바인딩과 색상 마스크는 연동 준비 단계다. 에디터 메모리 장애로 마지막 눈꺼풀 형상·공용 Avatar 적용 및 UMA 실제 생성 검증은 남았고 달리기 손/몸 겹침도 미교정이다. Collider는 두 시제품 모두 없고, 최종 얼굴 제작·전체 커스터마이징·GPU/player loop·게임플레이·성능·Windows 빌드·상업 배포 검증은 미완료다. 개인 이미지·프롬프트·렌더는 공용 문서에 게시하지 않고, 사용 조건과 검증 범위는 [모델 제작 목록](../design/model-production-list.md)을 따른다.
+
 ## 신시 마을 지형 시제품
 
 | 에셋 | 제작·소재 | 런타임 보관·사용 | 권리 구분 |
