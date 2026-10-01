@@ -27,6 +27,7 @@
 | 입력 | [코딩 컨벤션](../coding-convention.md) 23장 | `ProjectSettings/InputManager.asset` | 구 Input Manager(`UnityEngine.Input`), Active Input Handling = Both |
 | 밸런스 데이터 | [밸런스 데이터 작업](../unity/BALANCE_DATA_WORKFLOW.md) | `Assets/09.Data/` (GameDB 루트, 플레이어·세션 설정) | 수치는 ScriptableObject에 둔다 |
 | 성능·수명 패턴 | [엔지니어링 패턴](../unity/UNITY_ENGINEERING_PATTERNS.md) | — | 실제 문제가 생겼을 때 적용 |
+| 맵 성능·베이크·VFX 준비 | [맵 성능 사전 준비](../unity/MAP_PERFORMANCE_PREPARATION.md) | `Assets/Settings/`, 모델·배치 프리팹 (실제 맵 로더/준비 시스템 미검증) | 최소 사양 60 FPS, 첫 사용 끊김과 지속 GPU 비용 구분, 조명·모델 베이크·풀·측정 대안 |
 | 구조·디자인 패턴 | [디자인 패턴](../unity/DESIGN_PATTERNS.md) | — | 도입 판단 기준 |
 | 도입 기능 계획·개발 도구 | [도입 기능 계획](../unity/FEATURE_ADOPTION_PLAN.md) | `Assets/01.Scripts/99.Dev/` (`.gitkeep`만 있음) | 제안 상태, 권위 위치별 패널 분리, 외부 체험판 빌드 제거 |
 | 외부 AI에 넣을 에셋·데이터 | [에셋 · 데이터 정책](12_ASSET_AND_DATA_POLICY.md) | — | 구매 에셋·비공개 데이터 취급 |
