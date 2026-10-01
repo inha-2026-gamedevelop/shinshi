@@ -92,6 +92,9 @@ namespace Shinshi.Contracts
             public const int ALREADY_SETTLED       = 900;
             public const int SESSION_MISMATCH      = 901;
             public const int IDEMPOTENCY_CONFLICT  = 902;
+
+            // 캐릭터 생성
+            public const int INVALID_APPEARANCE    = 1000;
         }
 
         /// <summary> EPlayerClass와 같은 값, 캐릭터마다 고정 </summary>

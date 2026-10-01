@@ -20,23 +20,28 @@ namespace Shinshi.Contracts
         // ContractCodes.PlayerClass
         [DataMember(Name = "classId")]     private int    _classId;
 
+        // 캐릭터, 외형, 초기 지급은 한 작업으로 함께 확정된다. 같은 operationId에 다른 외형을 보내면 IdempotencyConflict다
+        [DataMember(Name = "appearance")]  private CharacterAppearance _appearance;
+
         /****************************************
         *              Properties
         ****************************************/
 
-        public string OperationId => _operationId;
-        public string Name        => _name;
-        public int    ClassId     => _classId;
+        public string              OperationId => _operationId;
+        public string              Name        => _name;
+        public int                 ClassId     => _classId;
+        public CharacterAppearance Appearance  => _appearance;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public CharacterCreateRequest(string operationId, string name, int classId)
+        public CharacterCreateRequest(string operationId, string name, int classId, CharacterAppearance appearance)
         {
             _operationId = operationId;
             _name        = name;
             _classId     = classId;
+            _appearance  = appearance;
         }
 
         private CharacterCreateRequest() { }

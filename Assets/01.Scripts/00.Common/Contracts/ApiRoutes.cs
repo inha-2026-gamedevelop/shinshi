@@ -25,7 +25,10 @@ namespace Shinshi.Contracts
         // string.Format으로 operationId를 넣는다. 응답을 잃은 작업은 새 ID로 다시 보내지 않고 이 경로로 조회한다
         public const string OPERATION_FORMAT  = "/v1/operations/{0}";
 
-        // TODO(민성): 캐릭터 목록, 생성, 선택 경로는 기획 미정이라 정하지 않았다
+        // POST로 캐릭터를 만든다. 본문은 CharacterCreateRequest, 응답은 CharacterCreateResponse
+        public const string CHARACTERS        = "/v1/characters";
+
+        // TODO(민성): 캐릭터 목록 조회와 선택 경로는 기획 미정이라 정하지 않았다
         // TODO(민성): 갱신 토큰 교환을 AUTH_EXCHANGE로 합칠지 별도 경로로 둘지, 게임 세션 갱신 경로는 기획 미정
         // TODO(민성): 접근 토큰을 싣는 헤더 형식은 기획 미정
     }

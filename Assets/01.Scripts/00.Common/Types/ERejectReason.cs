@@ -66,6 +66,9 @@ namespace Shinshi.Common
         // 정산, 공통
         AlreadySettled       = 900,
         SessionMismatch      = 901,
-        IdempotencyConflict  = 902
+        IdempotencyConflict  = 902,
+
+        // 캐릭터 생성
+        InvalidAppearance    = 1000  // 외형 구조, 값 범위, 팔레트, 직업별 허용 헤어 중 하나가 맞지 않는다
     }
 }

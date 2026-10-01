@@ -20,27 +20,33 @@ namespace Shinshi.Contracts
         // 성장 요청이 기대값으로 보내는 캐릭터 revision
         [DataMember(Name = "revision")]    private long   _revision;
 
+        // 선택 화면이 캐릭터 모습을 그릴 때 쓴다
+        [DataMember(Name = "appearance")]  private CharacterAppearance _appearance;
+
         // TODO(진욱): 선택 화면에 보일 캐릭터별 성장 요약 필드는 기획 미정
 
         /****************************************
         *              Properties
         ****************************************/
 
-        public string CharacterId => _characterId;
-        public string Name        => _name;
-        public int    ClassId     => _classId;
-        public long   Revision    => _revision;
+        public string              CharacterId => _characterId;
+        public string              Name        => _name;
+        public int                 ClassId     => _classId;
+        public long                Revision    => _revision;
+        public CharacterAppearance Appearance  => _appearance;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public CharacterSummary(string characterId, string name, int classId, long revision)
+        public CharacterSummary(string characterId, string name, int classId, long revision,
+            CharacterAppearance appearance)
         {
             _characterId = characterId;
             _name        = name;
             _classId     = classId;
             _revision    = revision;
+            _appearance  = appearance;
         }
 
         private CharacterSummary() { }
