@@ -36,8 +36,7 @@ Material:
   stringTagMap:
     RenderType: Opaque
     ShinshiProduction: "shinshi-shared-production-01|D:/shinshi/.claude/docs/2026-10-01/\uC2E0\uC2DC-\uB9C8\uC744-\uB514\uC790\uC778-\uCEE8\uC149/shared-production-01/runtime/Environment/ModTimberBridgePier"
-  disabledShaderPasses:
-  - MOTIONVECTORS
+  disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
