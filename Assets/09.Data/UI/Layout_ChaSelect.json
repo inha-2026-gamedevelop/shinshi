@@ -852,40 +852,6 @@
           "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹",
           "children": [
             {
-              "id": "emurc4n39e7p2",
-              "name": "직업마크 / 캐릭터 레벨 / 닉네임",
-              "type": "box",
-              "description": "",
-              "anchor": "TopLeft",
-              "anchorMin": [
-                0,
-                1
-              ],
-              "anchorMax": [
-                0,
-                1
-              ],
-              "pivot": [
-                0,
-                1
-              ],
-              "anchoredPosition": [
-                8,
-                -624
-              ],
-              "sizeDelta": [
-                376,
-                60
-              ],
-              "screenRect": [
-                217,
-                780,
-                376,
-                60
-              ],
-              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/직업마크 / 캐릭터 레벨 / 닉네임"
-            },
-            {
               "id": "emurc3mom4a2m",
               "name": "캐릭터 랜더링",
               "type": "box",
@@ -956,40 +922,6 @@
           "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹",
           "children": [
             {
-              "id": "emurc5q2vk088",
-              "name": "직업마크 / 캐릭터 레벨 / 닉네임",
-              "type": "box",
-              "description": "",
-              "anchor": "TopLeft",
-              "anchorMin": [
-                0,
-                1
-              ],
-              "anchorMax": [
-                0,
-                1
-              ],
-              "pivot": [
-                0,
-                1
-              ],
-              "anchoredPosition": [
-                8,
-                -624
-              ],
-              "sizeDelta": [
-                376,
-                60
-              ],
-              "screenRect": [
-                772,
-                780,
-                376,
-                60
-              ],
-              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/직업마크 / 캐릭터 레벨 / 닉네임"
-            },
-            {
               "id": "emurc5q2v8x57",
               "name": "캐릭터 랜더링",
               "type": "box",
@@ -1059,40 +991,6 @@
           ],
           "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹",
           "children": [
-            {
-              "id": "emurc635t5lro",
-              "name": "직업마크 / 캐릭터 레벨 / 닉네임",
-              "type": "box",
-              "description": "",
-              "anchor": "TopLeft",
-              "anchorMin": [
-                0,
-                1
-              ],
-              "anchorMax": [
-                0,
-                1
-              ],
-              "pivot": [
-                0,
-                1
-              ],
-              "anchoredPosition": [
-                8,
-                -624
-              ],
-              "sizeDelta": [
-                376,
-                60
-              ],
-              "screenRect": [
-                1327,
-                780,
-                376,
-                60
-              ],
-              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/직업마크 / 캐릭터 레벨 / 닉네임"
-            },
             {
               "id": "emurc635tk2uq",
               "name": "캐릭터 랜더링",
