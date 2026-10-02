@@ -31,22 +31,30 @@ namespace Shinshi.Backend.Sessions
         private readonly IGameSessionMaintenanceWork _work;
         private readonly ILogger<GameSessionMaintenanceService> _logger;
         private readonly TimeProvider _timeProvider;
-        private DateTimeOffset _recoveryAllowedAt;
+        private readonly RecoveryLivenessGate _liveness;
 
         /****************************************
         *                Methods
         ****************************************/
 
+        /// <summary> 이 서비스만 쓰는 보류로 만든다. 운영자 수동 복구와 보류를 나누려면 DI가 쓰는 공유 게이트 생성자를 쓴다 </summary>
         public GameSessionMaintenanceService(IGameSessionMaintenanceWork work, ILogger<GameSessionMaintenanceService> logger,
             TimeProvider timeProvider)
+            : this(work, logger, timeProvider, new RecoveryLivenessGate(timeProvider))
+        {
+        }
+
+        public GameSessionMaintenanceService(IGameSessionMaintenanceWork work, ILogger<GameSessionMaintenanceService> logger,
+            TimeProvider timeProvider, RecoveryLivenessGate liveness)
         {
             ArgumentNullException.ThrowIfNull(work);
             ArgumentNullException.ThrowIfNull(logger);
             ArgumentNullException.ThrowIfNull(timeProvider);
-            _work               = work;
-            _logger             = logger;
-            _timeProvider       = timeProvider;
-            _recoveryAllowedAt  = timeProvider.GetUtcNow() + ServerPoolTimings.StartupRecoveryGrace;
+            ArgumentNullException.ThrowIfNull(liveness);
+            _work         = work;
+            _logger       = logger;
+            _timeProvider = timeProvider;
+            _liveness     = liveness;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -63,8 +71,9 @@ namespace Shinshi.Backend.Sessions
         {
             try
             {
+                // 만료 예약 해제는 생존 판정이 아니므로 보류 중에도 계속한다
                 int released = await _work.ReleaseExpiredAsync(MAX_RELEASES_PER_RUN, cancellationToken);
-                SessionRecoveryResult recovered = IsRecoveryDeferred()
+                SessionRecoveryResult recovered = _liveness.IsDeferred()
                     ? new SessionRecoveryResult(0, 0)
                     : await _work.RecoverLostSessionsAsync(MAX_RECOVERY_PER_RUN, cancellationToken);
                 int purged = await _work.PurgeExpiredJoinTokensAsync(MAX_PURGES_PER_RUN, cancellationToken);
@@ -82,32 +91,15 @@ namespace Shinshi.Backend.Sessions
                 string sqlState = (exception as PostgresException)?.SqlState ?? string.Empty;
                 if (PostgresTransactionPolicy.IsConnectionFailure(exception))
                 {
-                    DeferRecovery();
+                    _liveness.Defer();
                     _logger.LogWarning("Game session maintenance could not reach the database ({ExceptionType}, {SqlState}); "
                         + "lost-session recovery is deferred until {RecoveryAllowedAt}.",
-                        exception.GetType().Name, sqlState, _recoveryAllowedAt);
+                        exception.GetType().Name, sqlState, _liveness.AllowedAt);
                     return;
                 }
 
                 _logger.LogError("Game session maintenance failed ({ExceptionType}, {SqlState}).",
                     exception.GetType().Name, sqlState);
-            }
-        }
-
-        // API가 막 시작했거나 DB에 닿지 못했던 동안 서버들의 heartbeat도 저장되지 못했다. 그 직후의 오래된 heartbeat를
-        // 서버 소실로 보면 살아 있는 출정을 장애 취소(환급)하므로, 서버들이 heartbeat를 다시 보낼 시간만큼 복구를 미룬다.
-        // 만료 예약 해제는 생존 판정이 아니라 계속한다
-        private bool IsRecoveryDeferred()
-        {
-            return _timeProvider.GetUtcNow() < _recoveryAllowedAt;
-        }
-
-        private void DeferRecovery()
-        {
-            DateTimeOffset allowedAt = _timeProvider.GetUtcNow() + ServerPoolTimings.StartupRecoveryGrace;
-            if (allowedAt > _recoveryAllowedAt)
-            {
-                _recoveryAllowedAt = allowedAt;
             }
         }
 

@@ -133,7 +133,9 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | 경로 | 인증·호출자 | 현재 목적 |
 |---|---|---|
 | `POST /v1/auth/exchange` | 초대 코드 또는 갱신 토큰(본문), 접근 Bearer 불필요 | 초대 교환 또는 갱신 토큰 회전, 빌드 호환 검사 |
-| `GET /v1/service-state` | 공개, Bearer 불필요 | 설정의 점검·공지·차단 기능·허용 buildId. DB readiness를 보장하지 않음 |
+| `GET /v1/service-state` | 공개, Bearer 불필요 | 점검·공지(`notice`, 노출 중 공지 목록 `notices`)·차단 기능·허용 buildId. 런타임 DB 연결이 있으면 `service_state`·`service_notices`(5초 캐시), 없으면 설정 값. DB readiness를 보장하지 않음 |
+| `GET /v1/inbox`, `POST /v1/inbox/claim` | 플레이어 접근 Bearer | 운영자 지급 우편 목록(곧 만료되는 순서 최대 100개)·수령. 수령은 operationId 원자 작업(원장 `InboxClaim`). 기능 키 `inbox_claim`이 꺼지면 저장된 결과가 없는 요청은 `FEATURE_DISABLED(1100)`. 계정별 1분 수령 30회·목록 60회 초과는 429 `RATE_LIMITED` |
+| `/admin/v1/*` | 어드민 접근 Bearer(게임·서버 토큰은 401), 허용 네트워크 밖 404 | 운영자 로그인·역할, 계정 조회·강제 종료, 초대, 지급·조정, 서비스 상태·공지, 로그 조회, 세션 복구. 경로·역할 표는 [Backend README](../Backend/README.md) 0008 절 |
 | `POST /v1/town/join-ticket` | 플레이어 접근 Bearer | 소유 캐릭터를 검증하고 API가 고른 살아 있는 마을의 60초 일회 토큰 발급 |
 | `POST /v1/game-sessions/{sessionId}/rejoin-ticket` | 플레이어 접근 Bearer | Running 출정의 Active 참가자 복귀 토큰. 게임 서버가 120초 재접속 유예를 별도 검증 |
 | `POST /v1/server-instances/lease` | 서비스 자격 Bearer + `X-Shinshi-Instance-Id` | instanceId·역할·bootId에 묶인 서버 임대 발급/갱신. 임대 없이 부르는 유일한 서버 경로 |
@@ -147,7 +149,11 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | `POST /v1/game-sessions/{sessionId}/start` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 전원 준비·임대 이관 검증 후 Reserved→Running, 티켓 소비 |
 | `POST /v1/game-sessions/{sessionId}/events` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 순번 있는 전리품·물약·기본/추가 정기 적립·SessionEnded 저장 |
 | `POST /v1/game-sessions/{sessionId}/checkpoints` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 별도 경로의 진단용 체크포인트. 저장/동일 중복은 204, 경제 이벤트와 분리 |
-| `POST /v1/game-sessions/{sessionId}/settlement` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 저장한 종료 정산안을 동일 operationId로 원자 적용 |
+| `POST /v1/game-sessions/{sessionId}/settlement` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 저장한 종료 정산안을 동일 operationId로 원자 적용. 보스 성공은 `Closed` 대신 `Auction`으로 두고 서버·참가자·접속 임대를 유지한다 |
+| `POST /v1/game-sessions/{sessionId}/auctions` | 배정 던전 서버(같은 boot) 임대 Bearer + 인스턴스 헤더 | `Auction` 출정의 파티 경매 품목 개시. 자격 집합 동결, 자격 1명이면 단독 모드. 현재 처치당 1품목 |
+| `POST /v1/game-sessions/{sessionId}/auctions/{auctionId}/bids` | 배정 던전 서버(같은 boot) | 접속 자격자 입찰 전달. 행위자는 참가자 계정, 최고가 엽전 예약·이전 예약 해제, `expectedBidSeq` 직렬화 |
+| `POST /v1/game-sessions/{sessionId}/auctions/{auctionId}/close` | 배정 던전 서버(같은 boot) | 종료 시각·접속 집합을 먼저 저장(Closing)한 뒤 그 값으로 낙찰·분배·소각 또는 유찰 |
+| `POST /v1/game-sessions/{sessionId}/auctions/finish` | 배정 던전 서버(같은 boot) | 열린 품목이 없을 때 출정 `Closed`, 참가자 정산 완료, 접속 임대 해제, 서버 Draining |
 
 서버 임대의 instanceId·역할·bootId와 경로/본문/인스턴스 헤더를 대조한다. 일반 로그인 토큰으로 서버 경로를 호출할 수 없다. [AuthRoutes](../Assets/01.Scripts/00.Common/Contracts/Auth/AuthRoutes.cs)의 `/v1/auth/join/consume`는 상수만 존재하며 Backend 공유 컴파일에서 제외되어 현재 HTTP 경로가 아니다.
 
@@ -159,8 +165,9 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | `POST /v1/characters` | DTO·경로 상수 존재, Controller 미구현. 생성/외형 검증·초기 지급은 성장 파트 통합 대상 |
 | `GET /v1/operations/{operationId}` | 경로 상수·작업 저장소 존재, HTTP 조회 Controller 미구현 |
 | `POST /v1/auth/game-session` | 경로 상수·인증 저장소 메서드 존재, 발급 Controller·런처 연결 미구현 |
-| 캐릭터 원자 작업·채집 완료·경매 입찰/정산 | 7.2·9장의 설계 계약, HTTP 경로/처리 미구현 |
-| `/admin/v1/*` | 체험판은 API·CLI만 제공한다는 결정. 운영자 권한·감사·CLI 구현은 후속 운영 모듈 |
+| 캐릭터 원자 작업·채집 완료 | 7.2의 설계 계약, HTTP 경로/처리 미구현 |
+| 파티 경매 개시/입찰/마감/finish·복구 | API 구현됨·DB 테스트 통과·실제 Unity 서버 연결 미구현(9장) |
+| 어드민 P1 이후 기능 | P0 `/admin/v1`은 위 표대로 구현됨(U25). 조건부 일괄 지급·2인 승인, 이벤트, 제재, 해금 조정, 경매 복구 목록, RecoveryPending 상태 세션 처리는 미구현 |
 
 ## 6. 출정 예약과 전장 전환
 
@@ -210,7 +217,7 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 채집의 행동력 2 예약은 API 예약 행이 아니라 마을 서버 메모리의 계정별 선점 기록으로 둔다(위임 초기안). 행동력의 소비처가 채집뿐이고 계정 활성 세션이 하나이므로 쓰는 쪽이 하나다. 시작 때 마을 서버는 최근 계정 스냅샷으로 가용량을 확인하고 계정당 선점 1개를 강제한다. 완료 호출에서 API가 행 잠금 안에서 회복을 반영하고 가용 2 이상을 다시 검증해 차감·지급한다. 부족하면 `InsufficientAction`으로 거절하고 노드를 해제한다. 마을 프로세스가 소실되면 선점과 예약도 함께 사라지며 차감은 일어나지 않는다.
 
-성장 결과 공간이 없으면 비용을 소모하지 않는다. 후속 인벤토리 설계는 이미 획득을 확정한 드롭/낙찰을 보상 회수함에 넣고 원래 시각부터 30일을 유지하며 수령 가능한 수량만 원자 이동하는 방식이다. 현재 reward_inbox·인벤토리 공간 처리·수령 API는 미구현이다. 현재 정산 API는 허용 ID·귀속·수량/줄 수 상한을 검증하고 account_items 스택에 지급한다. 상한 거절을 회수함 지급 완료로 표시하지 않는다.
+성장 결과 공간이 없으면 비용을 소모하지 않는다. 후속 인벤토리 설계는 이미 획득을 확정한 드롭/낙찰을 보상 회수함에 넣고 원래 시각부터 30일을 유지하며 수령 가능한 수량만 원자 이동하는 방식이다. 현재 `reward_inbox`와 수령 API(`/v1/inbox`)는 운영자 지급(U25)용으로만 구현되어 있고, 드롭·낙찰 확보품을 회수함에 넣는 흐름과 인벤토리 공간 처리는 미구현이다. 현재 정산 API는 허용 ID·귀속·수량/줄 수 상한을 검증하고 account_items 스택에 지급한다. 상한 거절을 회수함 지급 완료로 표시하지 않는다.
 
 계승은 제작과 별도다. 원본 +17부터 한 등급 위로만 `17→10,18→11,19→12,20→13,21→14,22→15,23→16,24→18,25→20`, 같은 등급은 원본 단계 유지다. 원본은 계승 성공 때 소모하고 실패 보정을 결과 단계로 복사하지 않는다. 장비 강화 보정 키에는 장비 ID나 등급을 넣지 않는다.
 
@@ -264,6 +271,8 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 - 낙찰금/분배 인원을 버림해 동일 지급, 나머지 소각. 대상 0명이면 전액 소각. 수수료 0%다. **품목 개시 때 자격자가 한 명인 경우** 최저가 구매·전액 소각 모드로 연다. 여러 명으로 열린 품목은 접속자가 한 명으로 줄어도 모드를 바꾸지 않으며, 이미 접수한 최고 입찰과 예약금을 최저가 100으로 덮지 않는다.
 - 아무도 입찰하지 않으면 유찰·재료 소멸. 기본/개인 보상은 유지한다.
 
+**API 구현 현황(2026-10-02)**: `PostgresPartyAuctionRepository`와 `AuctionsController`, 마이그레이션 0009(`auctions`, `auction_bids`, `account_wallets.currency_reserved`, `game_sessions.auction_ends_at`)가 있다. 보스 성공 정산 뒤 출정은 `Auction` 상태에서 경매를 마치고 `finish`로 닫힌다. 경매 단계 기한은 180초이고 품목 개시는 품목 상한 120초를 다 쓸 수 있는 정산 뒤 60초 안에만 받는다. 기한+60초를 넘기거나 배정 boot가 60초 무증거이면 유지 작업이 종료 기록 있는 품목은 그 값으로 정산, 없는 품목은 예약을 풀어 취소한 뒤 출정을 닫는다(API 시작·DB 장애 직후 보류는 기존 복구와 같다). Unity 던전 쪽은 `PartyAuctionDirector`(98.Servers/01.Network/Session/Auction)가 정산 확정 직후 희귀 재료 출현을 한 번 판정해 품목을 열고, `SessionConfigSO`의 30초 기본·10초 연장·120초 상한으로 마감하며, 접속은 실제 Mirror 연결로 판단하고, 마감 뒤 `finish`가 확정돼야 출정 프로세스가 내려간다. 입찰은 `AuctionBidMessage`, 상태는 `AuctionStateMessage`·`AuctionBidResultMessage`(01.Network/Auction)로 오가며 클라이언트는 `PartyAuctionClient`를 구독한다(구현됨·EditMode 검증·실제 서버 실행 미검증). 경매 중 재입장과 클라이언트 경매 화면(UI 담당)은 아직 없다.
+
 경매 서버가 소실된 경우 API는 저장된 유효 입찰과 **영속 저장된 종료 이벤트의 접속 집합**으로 종료를 재개한다. 마지막 heartbeat의 과거 접속 상태를 종료 순간 상태로 대신 쓰지 않는다. 종료 이벤트가 없어 자격을 확정할 수 없다면 해당 경매를 `RecoveryPending`으로 두고 예약금 해제/품목 취소를 한 번 수행하며, 확인할 수 없는 분배금을 임의 발행하지 않는다. 이 경매 장애는 이미 성공한 보스 전투의 티켓 환급 사유로 확장하지 않는다.
 
 후속 유저 경매장은 정가 시장이며 같은 엽전 잔액을 쓴다. 판매 보관·수량·구매자 차감·판매자 지급·5% 올림 수수료를 API 트랜잭션으로 처리한다. 체험판에는 시장 화면/거래 API를 제공하지 않는다.
@@ -288,7 +297,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 
 재화·수량형 아이템의 모든 증감은 상태 변경과 **같은 트랜잭션**에서 `economy_ledger`에 한 행씩 남긴다. 장비 인스턴스는 `item_history`에 생성부터 소멸까지 남긴다. 행에는 사유(`EEconomyReason`), 출처 종류·ID, `operationId`, 행위자 종류(`Player`/`Server`/`Admin`/`System`)를 적는다. 원장을 거치지 않고 잔액을 바꾸는 API 코드 경로는 두지 않는다. 계정·자산별 원장 합계와 현재 잔액의 일일 대사·ERROR 알림은 운영 목표다. 현재 `EconomyLedgerReconciler`의 읽기 전용 대사와 같은 DB 소비자용 `PostgresOutboxDispatcher`는 구현되어 있지만 주기 스케줄러·소비 callback 등록·외부 통지는 연결 전이다.
 
-운영자 지급·회수·조정·이벤트·점검·기능 차단·제재·장애 복구는 어드민 경로(`/admin/v1`)의 원자 작업으로만 한다. 체험판은 API·CLI만 제공하며 별도 어드민 웹 화면을 만들지 않는다(2026-10-01 결정). CLI도 API를 호출하고 DB에 직접 접속하지 않는다(ADR02). 이 운영 모듈은 현재 미구현이다. 후속 운영 모듈의 모든 쓰기는 `operationId`·사유가 필수이고 추가 전용 `admin_audit_log`에 같은 트랜잭션으로 남기는 계약이다. 현재 이 감사 테이블은 없다. 게임 규칙을 바꾸는 이벤트 배율은 세션 시작 때 고정한다. 기능·권한·로그 보존의 상세는 [운영 도구·로그 설계](design/operations-admin.md)다.
+운영자 지급·회수·조정·이벤트·점검·기능 차단·제재·장애 복구는 어드민 경로(`/admin/v1`)의 원자 작업으로만 한다. 체험판은 API·CLI만 제공하며 별도 어드민 웹 화면을 만들지 않는다(2026-10-01 결정). CLI도 API를 호출하고 DB에 직접 접속하지 않는다(ADR02). P0 운영 모듈은 마이그레이션 0008과 `Backend/src/Shinshi.Api/Admin/`로 구현됐다(U25, 백엔드 자동 테스트 통과·운영 실행 미검증). 모든 어드민 쓰기는 `operationId`·사유가 필수이고 `IdempotentOperationExecutor`로 실행하며 추가 전용 `admin_audit_log`에 효과와 같은 트랜잭션으로 남긴다. 업무 거절은 감사 행도 롤백하므로 감사 로그에는 커밋된 변경만 남는다. 계정 상세와 원장·아이템 이력·세션 이벤트·작업 조회는 사유를 받아 읽기 전에 감사한다. 예외로 수동 정산 재시도·장애 취소는 의도 감사 행을 먼저 커밋하고, 기존 정산·장애 취소 경로가 서버 actor로 확정한 뒤, 어드민 작업과 감사를 따로 확정한다. 격리된 Settling 세션의 강제 종료(`ForceClose`)는 운영자 작업 한 트랜잭션에서 장애 취소 보상으로 닫는다. API 시작·DB 단절 뒤 30초 동안은 자동 복구와 같이 수동 장애 취소·강제 종료도 보류한다(503). 운영자 지급은 `reward_inbox` 우편으로 넣고 플레이어가 `POST /v1/inbox/claim`으로 받는다. 점검·기능 차단·허용 빌드·공지는 DB `service_state`·`service_notices`로 옮겼고 기능 차단은 `ServiceFeatureGate`로 진입점에서 `FEATURE_DISABLED`로 거절한다(현재 출정 예약과 우편 수령에 연결). 명령줄 도구는 `Backend/src/Shinshi.AdminCli`다. 게임 규칙을 바꾸는 이벤트 배율은 세션 시작 때 고정한다(이벤트는 P1). 기능·권한·로그 보존의 상세는 [운영 도구·로그 설계](design/operations-admin.md)다.
 
 ### 런처와 패치
 
@@ -339,7 +348,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 |---|---|---|
 | 1 | Windows용 Editor와 Linux Dedicated Server 빌드 모듈 확인 | 같은 프로젝트로 클라이언트·헤드리스 서버 생성 가능 |
 | 2 | GameDB·Bootstrap·`ShinshiBuild` 진입점 존재, SO 설정 잔여와 실제 빌드 확인 | `town`/`dungeon` 역할과 콘텐츠 버전 보고 |
-| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0007 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
+| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0010 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
 | 4 | 개발용 서버 URL/포트/자격을 환경 설정에 주입 | 코드·문서·클라이언트에 실제 비밀값 없음 |
 | 5 | 마을 프로세스1·던전 프로세스1·클라이언트2부터 실행 | 로그인→입장→권위 이동→정산→재접속 |
 | 6 | 승인된 AWS 환경에 같은 서버 빌드 배포 | 외부 PC 접속·버전 거절·로그 추적·종료/복구 |
@@ -384,7 +393,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 | 서비스 장애 취소 | 완료 웨이브 기본 정기 전액+추가 정기 적립분50% 내림. 정책/규칙/Backend 구현, SessionConfig SO 미정값 정리 잔여 |
 | 일반전 종료 경합 | 420초와 마지막 처치 같은 틱은 성공 우선 |
 | 보스 시험 순서 | 보스 전체 실행 시험은 마지막 M-Boss에서 수행. 생산 보스의 성공/종료 연결은 별도 구현 잔여 |
-| 체험판 운영 도구 | 어드민 API·CLI만, 별도 웹 화면 없음. 운영 권한·CLI 구현은 후속 |
+| 체험판 운영 도구 | 어드민 API·CLI만, 별도 웹 화면 없음. P0 API·운영자 역할·감사 구현됨(U25), 명령줄 도구 `Backend/src/Shinshi.AdminCli`. 운영 실행 미검증 |
 | DB·DTO·인증 | PostgreSQL/Npgsql+Dapper/SQL 마이그레이션, Unity Contracts 원본 링크, `Authorization: Bearer` |
 | 손실 시험 | 1%·3%를 별도 시험 조건으로 사용. 실제 시험은 미실행 |
 | KCP 암호화 | 체험판 미적용, 60초 일회 토큰·배정 인스턴스/참가자 결합 |
@@ -403,5 +412,5 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 | 정산 안전 상한·콘텐츠 허용 목록 | `SettlementSanityLimits`의 임시 출정/아이템/지갑/일일 상한과 허용 ID 규칙을 실제 보상 최대치로 확정 | 사용자(기획)·민성 | 외부 체험 전 |
 | MCP for Unity 패키지 | 유지(특정 커밋 고정) / 유지(`#main`) / manifest에서 제거하고 개인 설치 | 민성 | 다음 패키지 변경 때 |
 | Timeline·Localization·Visual Scripting 사용 | 컷신·다국어에 사용 / 미사용 시 제거 검토 | 기웅·진욱, 패키지 변경은 민성 | U18 |
-| 체험판 어드민 접근 제한·권한 세부 | API·CLI 범위 안에서 [운영 도구](design/operations-admin.md) 상세 확정 | 사용자·민성 | U25 전 |
+| 어드민 앞단 접근 제한 | P0는 API의 허용 IP·CIDR 목록(`Admin:AllowedNetworks`)으로 구현. VPN·사설망·관리형 인증 프록시를 더할지([운영 도구](design/operations-admin.md) 8장) | 민성 | U19 |
 | 체험판 런처 범위·배포 저장소·코드 서명 | [런처·패치](design/launcher-and-patch.md) 9장 | 사용자·민성 | U26 전 |

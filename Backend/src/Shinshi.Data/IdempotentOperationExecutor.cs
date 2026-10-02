@@ -70,6 +70,19 @@ namespace Shinshi.Data
             }
         }
 
+        /// <summary> 효과 없이 저장된 결과만 찾는다. 없으면 null이고 작업 행을 남기지 않는다. 다른 본문의 같은 ID는 IDEMPOTENCY_CONFLICT다.
+        /// 점검, 기능 차단처럼 새 작업만 막는 게이트가 재전송에는 처음 결과를 돌려줄 때 쓴다 </summary>
+        public async Task<OperationResult?> FindStoredAsync(OperationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            // 새 작업이면 BeginAsync가 넣은 Pending 행은 커밋하지 않은 채 Dispose되어 롤백된다
+            await using IOperationScope scope = await _store.BeginAsync(request, cancellationToken);
+            StoredOperation? existing = scope.ExistingOperation;
+            return existing == null ? null : Replay(request, existing, scope);
+        }
+
         private async Task<OperationResult> ExecuteOnceAsync(OperationRequest request,
             Func<OperationExecutionContext, CancellationToken, Task<OperationDecision>> effect,
             CancellationToken cancellationToken)
@@ -78,14 +91,7 @@ namespace Shinshi.Data
             StoredOperation? existing = scope.ExistingOperation;
             if (existing != null)
             {
-                if (string.Equals(existing.RequestHash, request.RequestHash, StringComparison.Ordinal))
-                {
-                    return existing.Result;
-                }
-
-                return new OperationResult(request.OperationId.ToString("D"),
-                    ContractCodes.OperationStatus.REJECTED, ContractCodes.RejectReason.IDEMPOTENCY_CONFLICT,
-                    existing.Result.CommittedRevision, scope.Context.ServerTime.ToUnixTimeMilliseconds(), string.Empty);
+                return Replay(request, existing, scope);
             }
 
             OperationDecision decision = await effect(scope.Context, cancellationToken);
@@ -105,6 +111,18 @@ namespace Shinshi.Data
             await scope.SaveResultAsync(result, cancellationToken);
             await scope.CommitAsync(cancellationToken);
             return result;
+        }
+
+        private static OperationResult Replay(OperationRequest request, StoredOperation existing, IOperationScope scope)
+        {
+            if (string.Equals(existing.RequestHash, request.RequestHash, StringComparison.Ordinal))
+            {
+                return existing.Result;
+            }
+
+            return new OperationResult(request.OperationId.ToString("D"),
+                ContractCodes.OperationStatus.REJECTED, ContractCodes.RejectReason.IDEMPOTENCY_CONFLICT,
+                existing.Result.CommittedRevision, scope.Context.ServerTime.ToUnixTimeMilliseconds(), string.Empty);
         }
     }
 }

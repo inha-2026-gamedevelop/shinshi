@@ -3,8 +3,10 @@ using System;
 
 // Third-party
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 // Project
+using Shinshi.Data.Auctions;
 using Shinshi.Data.Reservations;
 using Shinshi.Data.Sessions;
 using Shinshi.Data.Settlement;
@@ -27,6 +29,8 @@ namespace Shinshi.Backend.Sessions
             services.AddSingleton<PostgresReservationRepository>();
             services.AddSingleton<PostgresGameSessionRepository>();
             services.AddSingleton<PostgresSettlementRepository>();
+            services.AddSingleton<PostgresPartyAuctionRepository>();
+            services.TryAddSingleton(provider => new RecoveryLivenessGate(provider.GetRequiredService<TimeProvider>()));
             return services;
         }
 

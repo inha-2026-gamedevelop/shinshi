@@ -98,7 +98,26 @@ namespace Shinshi.Contracts
             public const int SETTLEMENT_LIMIT_EXCEEDED = 904;
 
             // 캐릭터 생성
-            public const int INVALID_APPEARANCE = 1000;
+            public const int INVALID_APPEARANCE     = 1000;
+            public const int CHARACTER_NAME_TAKEN   = 1001;
+            public const int INVALID_CHARACTER_NAME = 1002;
+
+            // 운영, 우편함
+            public const int FEATURE_DISABLED         = 1100;
+            public const int INBOX_EXPIRED            = 1101;
+            public const int INBOX_ALREADY_CLAIMED    = 1102;
+            public const int INBOX_CANCELLED          = 1103;
+            public const int INBOX_CHARACTER_REQUIRED = 1104;
+            public const int INBOX_NOT_FOUND          = 1105;
+
+            // 계정 가입, 아이디와 비밀번호 로그인. EMAIL_TAKEN은 이메일 인증 기능에서 쓰려고 번호만 잡아 둔다
+            public const int LOGIN_ID_TAKEN      = 1200;
+            public const int EMAIL_TAKEN         = 1201;
+            public const int INVALID_LOGIN_ID    = 1202;
+            public const int INVALID_EMAIL       = 1203;
+            public const int WEAK_PASSWORD       = 1204;
+            public const int INVALID_CREDENTIALS = 1205;
+            public const int ACCOUNT_LOCKED      = 1206;
         }
 
         /// <summary> EEconomyReason과 같은 값, 경제 원장에 기록되므로 기존 값을 바꾸거나 재배열하지 않는다 </summary>
