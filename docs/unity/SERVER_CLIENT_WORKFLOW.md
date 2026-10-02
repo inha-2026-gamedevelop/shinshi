@@ -176,6 +176,7 @@ Assets/01.Scripts/
 | `IBossEffectLifetime` | 지속 장판·투사체 수명, 이유별 취소, 동시 장판 수 조회. 지속물이 없는 P02·P03·P06 시험용으로 서버가 빈 구현 `EmptyBossEffectLifetime`을 넣는다 | 기웅 (U10, 실제 관리자는 미구현) |
 | `IBossPatternCatalog` | 보스·패턴 정의 조회. 어댑터 `BossPatternCatalogSource`가 `BossPatternCatalogSO`를 감싼다 | 기웅 (구현됨) |
 | `IBossRandom` | 타깃·패턴 선택 난수. 기본 `SeededBossRandom` | 기웅 (구현됨) |
+| `BossTelegraphPresenter` (`03.AI/Boss/View/`, `Shinshi.Runtime`) | 서버가 확정한 P01·P02·P03·P06 예고·발동·취소를 시전 번호별로 그리는 클라이언트 표현 진입점. 서버 시각을 받아 늦게 받은 예고를 이어서 그리고 `Restore`로 복원한다. 임시 표현이며 서버→클라이언트 전달 창구는 없어 샘플 입력(`BossTelegraphSampleInput`)으로만 확인했다 | 기웅 (구현됨·실제 전달 미연결) |
 
 기존 계약 `ICombatTargetQuery`(`CombatTargetRegistry`), `ICombatTarget`, `IDamageResolver`(`SkillDamageResolver`), `DamageRequest`를 그대로 쓴다.
 
