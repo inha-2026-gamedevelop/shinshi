@@ -1337,7 +1337,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void CatalogAsset_P06HasAgreedValuesAndSelectionIsUnset()
+        public void CatalogAsset_P06HasAgreedValuesAndBossIsTuned()
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assert.IsNotNull(catalog);
@@ -1360,11 +1360,11 @@ namespace Shinshi.Tests
             // 임시값, 확정 밸런스가 아니다
             Assert.AreEqual(0.5f, p06.RecoverySeconds);
 
-            Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
+            Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
         }
 
         [Test]
-        public void CatalogAsset_BossDirectControlSettings_AreTheDocumentedOnesOnly()
+        public void CatalogAsset_BossSettings_AreTheDocumentedOnes()
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assert.IsTrue(catalog.TryGetBoss(WOLBAEK_ID, out BossPatternCatalogSO.BossDefinition boss));
@@ -1372,10 +1372,10 @@ namespace Shinshi.Tests
             Assert.AreEqual(1f, boss.DirectControlMaxSeconds);
             Assert.AreEqual(2f, boss.DirectControlImmuneSeconds);
 
-            // 그 밖의 보스 수치는 미입력이다
-            Assert.AreEqual(0f, boss.ArenaDiameter);
-            Assert.AreEqual(0f, boss.HealthRef);
-            Assert.AreEqual(0f, boss.PhaseTransitionHealthRate);
+            // 전장 지름, 시작 체력 배수, 전환 비율은 기획 문서의 시작값이다
+            Assert.AreEqual(36f, boss.ArenaDiameter);
+            Assert.AreEqual(700f, boss.HealthRef);
+            Assert.AreEqual(0.5f, boss.PhaseTransitionHealthRate);
         }
 
         [Test]

@@ -1184,7 +1184,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void CatalogAsset_StillUntuned_OnlyBossBasicsRemain()
+        public void CatalogAsset_IsTuned_AndHasNoPatternErrors()
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             List<string> errors = new List<string>();
@@ -1192,10 +1192,8 @@ namespace Shinshi.Tests
             catalog.ValidateTuning("boss_wolbaek", errors);
 
             string all = string.Join("\n", errors);
-            Assert.IsFalse(catalog.IsTuned("boss_wolbaek"));
-            StringAssert.DoesNotContain("wolbaek_p04", all);
-            StringAssert.DoesNotContain("wolbaek_p05", all);
-            StringAssert.Contains("ArenaDiameter", all);
+            Assert.IsTrue(catalog.IsTuned("boss_wolbaek"));
+            Assert.AreEqual(0, errors.Count, all);
         }
     }
 }

@@ -410,28 +410,18 @@ namespace Shinshi.Tests
             Assert.IsNull(factory.Create(pattern));
         }
 
-        // 선택 경계는 채웠지만 월백 보스 기본값이 비어 있어 전투를 열지 않는다
+        // 선택 경계와 월백 보스 기본값이 모두 입력돼 전투를 연다
         [Test]
-        public void IsTuned_StillFalse_AndErrorsNameTheMissingValues()
+        public void IsTuned_True_AndHasNoTuningErrors()
         {
             BossPatternCatalogSO catalog = LoadCatalog();
             List<string> errors = new List<string>();
 
             catalog.ValidateTuning(WOLBAEK_ID, errors);
 
-            Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
             string all = string.Join("\n", errors);
-            StringAssert.Contains("ArenaDiameter", all);
-            StringAssert.Contains("HealthRef", all);
-            StringAssert.Contains("PhaseTransitionHealthRate", all);
-            StringAssert.DoesNotContain("wolbaek_p04", all);
-            StringAssert.DoesNotContain("wolbaek_p05", all);
-            StringAssert.DoesNotContain("NearDistanceMax", all);
-            StringAssert.DoesNotContain("wolbaek_p01", all);
-            StringAssert.DoesNotContain("wolbaek_p02", all);
-            StringAssert.DoesNotContain("wolbaek_p03", all);
-            StringAssert.DoesNotContain("wolbaek_p06", all);
-            Debug.Log("[BossWeight] IsTuned 오류 목록\n" + all);
+            Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
+            Assert.AreEqual(0, errors.Count, all);
         }
     }
 }
