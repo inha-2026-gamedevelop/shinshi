@@ -4,7 +4,8 @@
     "references": [
         "Shinshi.Runtime",
         "Mirror",
-        "Mirror.Transports"
+        "Mirror.Transports",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
