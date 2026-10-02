@@ -367,6 +367,7 @@ namespace Shinshi.Launcher.ViewModels
             }
 
             _settings       = settings;
+            _game.ConfigureInstallRoot(settings.InstallRoot);
             _channel        = settings.Channel;
             IsTeamBuild     = settings.TeamBuild;
             InstallRootText = settings.InstallRoot;
