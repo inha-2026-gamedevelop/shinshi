@@ -103,20 +103,26 @@ namespace Shinshi.Network
             foreach (CharacterSummary character in result.Characters)
             {
                 CharacterSummary selected = character;
-                AddButton(character.Name + " - Enter town", () => Run(CoJoin(selected.CharacterId)));
+                AddButton(character.Name + " (" + ClassLabel(character.ClassId) + ") - Enter town", () => Run(CoJoin(selected.CharacterId)));
             }
 
             if (result.Characters.Count == 0)
             {
-                _status.text = "No characters. Create a test warrior to begin.";
-                AddButton("Create test warrior", () => Run(CoCreate()));
+                _status.text = "No characters. Create a test character to begin.";
             }
+
+            // 직업마다 서버 판정이 달라지므로 세 직업을 각각 만들어 볼 수 있게 항상 둔다
+            AddCreateButton(ContractCodes.PlayerClass.WARRIOR);
+            AddCreateButton(ContractCodes.PlayerClass.SORCERER);
+            AddCreateButton(ContractCodes.PlayerClass.SUMMONER);
         }
 
-        private IEnumerator CoCreate()
+        private IEnumerator CoCreate(int classId)
         {
             _busy = true;
-            if (_pendingCreation == null)
+
+            // 실패한 생성을 다시 보낼 때만 이전 요청을 쓴다. 다른 직업 버튼을 눌렀으면 새 요청을 만든다
+            if ((_pendingCreation == null) || (_pendingCreation.ClassId != classId))
             {
                 int[] face = new int[CharacterAppearance.FACE_SLIDER_COUNT];
                 int[] body = new int[CharacterAppearance.BODY_SLIDER_COUNT];
@@ -126,7 +132,7 @@ namespace Shinshi.Network
                     face, body, CharacterAppearance.SLIDER_NEUTRAL, CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN,
                     CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN);
                 _pendingCreation = new CharacterCreateRequest(Guid.NewGuid().ToString("D"),
-                    "LAN" + Guid.NewGuid().ToString("N").Substring(0, TEST_NAME_SUFFIX_LENGTH), ContractCodes.PlayerClass.WARRIOR, appearance);
+                    "LAN" + Guid.NewGuid().ToString("N").Substring(0, TEST_NAME_SUFFIX_LENGTH), classId, appearance);
             }
 
             // 응답을 잃어도 같은 작업 ID와 본문을 다시 보내 중복 생성을 막는다.
@@ -272,6 +278,16 @@ namespace Shinshi.Network
                 var events = new GameObject("LauncherInput", typeof(EventSystem), typeof(StandaloneInputModule));
                 events.transform.SetParent(_canvas.transform, false);
             }
+        }
+
+        private void AddCreateButton(int classId)
+        {
+            AddButton("Create test " + ClassLabel(classId).ToLowerInvariant(), () => Run(CoCreate(classId)));
+        }
+
+        private static string ClassLabel(int classId)
+        {
+            return Enum.IsDefined(typeof(EPlayerClass), classId) ? ((EPlayerClass)classId).ToString() : "Unknown";
         }
 
         private void AddButton(string label, UnityEngine.Events.UnityAction action)
