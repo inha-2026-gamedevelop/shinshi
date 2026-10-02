@@ -28,5 +28,8 @@ namespace Shinshi.Combat
 
         // 수평면 정면 단위 벡터. 전방 반격과 후방 피격, 보스 방향 배율의 기준
         Vector3 Forward { get; }
+
+        // 수평 몸체 반경(m). 회피가 이 몸체 직전에서 멈춘다
+        float BodyRadius { get; }
     }
 }
