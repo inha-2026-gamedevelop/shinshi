@@ -1,0 +1,1078 @@
+// System
+using System.Collections.Generic;
+
+// Unity
+using UnityEngine;
+using UnityEngine.AI;
+
+// 서드파티
+using Mirror;
+
+// 프로젝트 내부
+using Shinshi.Common;
+using Shinshi.Data;
+
+namespace Shinshi.Combat
+{
+    /// <summary> 플레이어 한 명의 서버 판정, 입력 검증과 서버 권위 이동, 기본 공격, 체력과 사망을 맡는다 </summary>
+    public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant
+    {
+        // Command 처리기는 검증과 의도 보관만 하고, 실제 이동과 공격은 CombatServerRuntime의 틱에서 한다.
+        // 한 틱에 이동 입력이 여러 개 와도 경로 계산은 마지막 것 한 번만 하고, 처리 순서를 틱 순서에 맞춘다
+        // 소유 클라이언트는 PlayerPrediction의 PlayerMovePredictor가 같은 이동 순번, 경과 시간의 위치로 예측 오차를 보정한다
+
+        /****************************************
+        *                Fields
+        ****************************************/
+
+        private readonly PlayerInputState                 _input;
+        private readonly PlayerCombatState                _combat;
+        private readonly Transform                        _transform;
+        private readonly PlayerInputGate                  _gate;
+        private readonly IDamageResolver                  _resolver;
+        private readonly ICombatTargetQuery               _query;
+        private readonly PlayerConfigSO.BasicAttackSpec   _attack;
+        private readonly List<ICombatTarget>              _targetBuffer;
+        private readonly NavMeshPath                      _navPath;
+        private readonly PathFollower                     _path;
+        private readonly MoveRequestThrottle              _moveThrottle;
+        private readonly CombatLineOfSight                _lineOfSight;
+        private readonly int                              _combatId;
+        private readonly int                              _participantId;
+        private readonly float                            _moveSpeed;
+        private readonly float                            _attackPower;
+        private readonly float                            _defense;
+        private readonly double                           _attackBufferSeconds;
+
+        private float                 _health              = 0f;
+        private float                 _maxHealth           = 0f;
+        private EParticipantLifeState _lifeState           = EParticipantLifeState.Alive;
+        private double                _deathTime           = 0.0;
+        private Vector3               _forward             = Vector3.forward;
+        private bool                  _hasPendingMove      = false;
+        private Vector3               _pendingDestination  = Vector3.zero;
+        private uint                  _pendingMoveSequence = 0;
+        private uint                  _moveSequence        = 0;
+        private double                _moveStartTime       = 0.0;
+        private PlayerMoveAuthority   _publishedMove;
+        private bool                  _hasPendingAttack    = false;
+        private ushort                _pendingAimYaw       = 0;
+        private double                _nextAttackTime      = 0.0;
+        private readonly float        _dodgeDistance;
+        private readonly float        _dodgeDuration;
+        private readonly double       _dodgeCooldown;
+        private bool                  _hasPendingDodge      = false;
+        private ushort                _pendingDodgeYaw      = 0;
+        private uint                  _pendingDodgeSequence = 0;
+        private double                _pendingDodgeDeadline = 0.0;
+        private bool                  _isDodging            = false;
+        private Vector3               _dodgeStart           = Vector3.zero;
+        private Vector3               _dodgeEnd             = Vector3.zero;
+        private double                _dodgeStartTime       = 0.0;
+        private double                _nextDodgeTime        = 0.0;
+        private bool                  _isDisconnecting      = false;
+        private bool                  _isDetached           = false;
+        private SkillServer           _skills;
+        private ICombatSkillPhase     _skillPhase;
+        private bool                  _hasPendingSkill      = false;
+        private PlayerSkillInput      _pendingSkill;
+        private double                _pendingSkillDeadline = 0.0;
+        private bool                  _hasReviveRequest     = false;
+        private uint                  _reviveSequence       = 0;
+        private double                _nextReviveCheckTime  = 0.0;
+
+        /****************************************
+        *              Properties
+        ****************************************/
+
+        public PlayerInputState      InputState      => _input;
+        public int                   CombatId        => _combatId;
+        public int                   ParticipantId   => _participantId;
+        public ECombatFaction        Faction         => ECombatFaction.Player;
+        public EParticipantLifeState LifeState       => _lifeState;
+        public bool                  IsSummon        => false;
+        public int                   OwnerCombatId   => CombatIds.NONE;
+        public Vector3               Position        => _transform.position;
+        public Vector3               Forward         => _forward;
+        public float                 BodyRadius      => Constants.Combat.PLAYER_BODY_RADIUS;
+        public float                 Health          => _health;
+        public float                 MaxHealth       => _maxHealth;
+        public float                 Defense         => _defense;
+        public double                DeathTime       => _deathTime;
+        public float                 AttackPower     => _attackPower;
+        public SkillServer           Skills          => _skills;
+
+        // 연결이 끊겨 소유권만 뗀 채 서버에 남은 상태. 입력은 받지 않지만 피격, 사망, 기술 타이머는 계속 처리한다
+        public bool                  IsDetached      => _isDetached;
+
+        // 부활 요청을 받아 두고 틱의 부활 단계가 승인하기를 기다린다
+        public bool                  HasReviveRequest    => _hasReviveRequest;
+        public double                NextReviveCheckTime => _nextReviveCheckTime;
+
+        // 출정 명단에 마지막으로 알린 생사, 틱 끝에서 LifeState와 다를 때만 다시 알린다
+        public EParticipantLifeState ReportedLifeState { get; set; } = EParticipantLifeState.Alive;
+
+        // TODO(민성): 스폰 보호 기간이 정해지면 무적 상태를 반영한다
+        public bool IsInvulnerable  => false;
+        public bool IsGuardingFront => false;
+
+        // 기술 반격의 120도 방어는 SkillDamageResolver가 적중 원장과 함께 판정한다
+
+        /****************************************
+        *                Methods
+        ****************************************/
+
+        // OnStartServer 알림에서 한 번 만든다. 할당은 여기서 끝내고 틱과 Command 처리에서는 만들지 않는다.
+        // participantId는 인증기가 연결에 결합한 출정 참가자 번호다. 재접속해도 같은 번호가 온다
+        public PlayerServer(PlayerInputState input, PlayerCombatState combat, int combatId, int participantId, int sessionEpoch,
+            PlayerConfigSO config, IDamageResolver resolver, ICombatTargetQuery query, CombatLineOfSight lineOfSight,
+            double serverTime)
+        {
+            _input         = input;
+            _combat        = combat;
+            _transform     = input.transform;
+            _resolver      = resolver;
+            _query         = query;
+            _lineOfSight   = lineOfSight;
+            _combatId      = combatId;
+            _participantId = participantId;
+
+            // TODO(민성): 성장, 장비, 부적이 붙으면 CharacterStats에서 최종 능력치를 받는다. 지금은 기본 능력치다
+            _moveSpeed   = config.MoveSpeed;
+            _attackPower = config.BaseAttack;
+            _defense     = config.BaseDefense;
+            _maxHealth   = config.BaseHealth;
+            _health      = _maxHealth;
+            _attack      = config.GetBasicAttack(combat.PlayerClass);
+
+            // TODO(민성): 회피 기력 비용(DodgeEnergyCost)은 기획에서 0이다. 0이 아니게 바뀌면 기술 자원에서 뺀다
+            _dodgeDistance = config.DodgeDistance;
+            _dodgeDuration = config.DodgeDuration;
+            _dodgeCooldown = config.DodgeCooldown;
+
+            // 보관 깊이가 0이면 쿨다운이 끝난 뒤의 입력만 받는다
+            _attackBufferSeconds = (config.InputBufferDepth > 0) ? config.InputBufferSeconds : 0.0;
+
+            _targetBuffer = new List<ICombatTarget>(Constants.Combat.MAX_COMBAT_TARGETS);
+            _navPath      = new NavMeshPath();
+            _path         = new PathFollower(Constants.Player.MAX_PATH_CORNERS);
+            _moveThrottle = new MoveRequestThrottle(Constants.Player.MAX_MOVE_DESTINATION_DISTANCE,
+                Constants.Player.MOVE_REPATH_MIN_INTERVAL_SECONDS, Constants.Player.MOVE_SAME_DESTINATION_EPSILON_SQR);
+
+            _gate = new PlayerInputGate(Constants.Network.PROTOCOL_VERSION, Constants.Network.INPUT_SEND_RATE_MAX,
+                Constants.Player.INPUT_RATE_BURST, Constants.Network.INPUT_PAST_TOLERANCE_SECONDS,
+                Constants.Network.INPUT_FUTURE_TOLERANCE_SECONDS, Constants.Player.INPUT_VIOLATION_WINDOW_SECONDS,
+                Constants.Player.INPUT_VIOLATION_DISCONNECT_THRESHOLD, serverTime);
+            _gate.Bind(sessionEpoch, participantId);
+            _gate.Restore(input.LastProcessedSequence);
+
+            if (FacingRules.TryGetHorizontalDirection(_transform.forward, out Vector3 initialForward))
+            {
+                _forward = initialForward;
+            }
+
+            _input.SetIdentity(sessionEpoch, participantId);
+            _combat.SetCombatId(_combatId);
+            _combat.SetHealth(_health, _maxHealth);
+            _combat.SetLifeState(_lifeState);
+            _combat.SetFacingYaw(FacingRules.EncodeYaw(_forward));
+            _input.SetMoveSpeed(_moveSpeed);
+            PublishMovement(serverTime);
+            _input.ServerHandler = this;
+        }
+
+        /// <summary> 재접속 유예로 보존할 서버 상태 </summary>
+        public ParticipantCombatSnapshot CaptureSnapshot()
+        {
+            return new ParticipantCombatSnapshot(_health, _lifeState, _deathTime, _nextAttackTime, _gate.LastAcceptedSequence,
+                _gate.ViolationCount, _gate.ViolationWindowStart, _nextDodgeTime);
+        }
+
+        /// <summary> 유예 안에 돌아온 참가자의 상태를 되돌린다, 만든 직후 스폰 메시지가 나가기 전에 부른다 </summary>
+        public void Restore(in ParticipantCombatSnapshot snapshot)
+        {
+            // 최대 체력이 줄었으면 넘는 몫은 버린다. 회복은 하지 않는다
+            _health         = Mathf.Min(snapshot.Health, _maxHealth);
+            _lifeState      = snapshot.LifeState;
+            _deathTime      = snapshot.DeathTime;
+            _nextAttackTime = snapshot.NextAttackTime;
+            _nextDodgeTime  = snapshot.NextDodgeTime;
+            _input.SetDodgeReadyAt(_nextDodgeTime);
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                _health = 0f;
+            }
+
+            _gate.Restore(snapshot.LastSequence);
+            _gate.RestoreViolations(snapshot.ViolationWindowStart, snapshot.ViolationCount);
+            _input.SetLastProcessedSequence(snapshot.LastSequence);
+            _combat.SetHealth(_health, _maxHealth);
+            _combat.SetLifeState(_lifeState);
+        }
+
+        /// <summary> 상태가 서버에서 멈출 때 부른다, 상태가 더 이상 이 개체를 부르지 않게 끊는다 </summary>
+        public void Shutdown(bool preserveSkills = false)
+        {
+            _input.ServerHandler = null;
+            _input.SkillServerHandler = null;
+            if (preserveSkills)
+            {
+                _skills?.Detach();
+            }
+            else
+            {
+                _skills?.Shutdown();
+            }
+            _hasPendingMove      = false;
+            _hasPendingAttack    = false;
+            _hasPendingSkill     = false;
+            _hasPendingDodge     = false;
+            _isDodging           = false;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+            _targetBuffer.Clear();
+        }
+
+        /// <summary> 연결이 끊겨 개체만 남길 때 부른다, 보관한 입력과 진행 중 이동을 버린다. 체력과 타이머는 그대로 둔다 </summary>
+        public void Detach()
+        {
+            if (_isDetached)
+            {
+                return;
+            }
+
+            _isDetached          = true;
+            _input.ServerHandler = null;
+            _input.SkillServerHandler = null;
+            _hasPendingMove      = false;
+            _hasPendingAttack    = false;
+            _hasPendingSkill     = false;
+            _hasReviveRequest    = false;
+            _hasPendingDodge     = false;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+        }
+
+        /// <summary> 같은 참가자의 새 연결이 남은 개체를 넘겨받은 뒤 부른다, 회복이나 쿨다운 초기화 없이 입력만 다시 받는다 </summary>
+        public void Reattach()
+        {
+            if (!_isDetached)
+            {
+                return;
+            }
+
+            // 입력 위반 누적은 게이트에 남아 있으므로 새 연결의 첫 입력부터 같은 기준으로 센다. 끊기 표시만 내린다.
+            // 내리지 않으면 이전 연결이 위반으로 끊긴 캐릭터는 새 연결의 첫 정상 지연 한 번에도 다시 끊긴다
+            _gate.ClearDisconnect();
+            _isDetached          = false;
+            _isDisconnecting     = false;
+            _input.ServerHandler = this;
+            if (_skills != null)
+            {
+                _input.SkillServerHandler = this;
+            }
+
+            ReplicateSkills();
+        }
+
+        /****************************************
+        *            Input Handlers
+        ****************************************/
+
+        public void HandleMove(in PlayerMoveInput input)
+        {
+            if (!TryAcceptHeader(input.Header, out _))
+            {
+                return;
+            }
+
+            uint sequence = input.Header.Sequence;
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Dead);
+                return;
+            }
+
+            Vector3 destination = input.Destination;
+            if (!IsFinite(destination))
+            {
+                _input.SendInputRejected(sequence, ERejectReason.InvalidTarget);
+                return;
+            }
+
+            EMoveAdmission admission = _moveThrottle.CheckDestination(_transform.position, destination, _path.IsMoving);
+            if (admission == EMoveAdmission.TooFar)
+            {
+                _input.SendInputRejected(sequence, ERejectReason.OutOfRange);
+                return;
+            }
+
+            // 이동은 기본 공격 준비를 취소한다
+            _hasPendingAttack = false;
+
+            // 진행 중인 경로와 같은 곳이면 다시 계산하지 않는다. 앞서 보관한 다른 목적지도 이 의도로 덮는다
+            if (admission == EMoveAdmission.SameDestination)
+            {
+                _hasPendingMove = false;
+                return;
+            }
+
+            _pendingDestination  = destination;
+            _pendingMoveSequence = sequence;
+            _hasPendingMove      = true;
+        }
+
+        public void HandleAttack(in PlayerAttackInput input)
+        {
+            if (!TryAcceptHeader(input.Header, out double requestTime))
+            {
+                return;
+            }
+
+            uint sequence = input.Header.Sequence;
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Dead);
+                return;
+            }
+
+            if ((_skills != null) && (_skills.BlocksMovement))
+            {
+                if (_skills.IsGuardWindow)
+                {
+                    _skills.Cancel();
+                }
+                else
+                {
+                    _input.SendInputRejected(sequence, ERejectReason.WrongPhase);
+                    return;
+                }
+            }
+
+            if ((_skills != null) && (_skills.BlocksMovement))
+            {
+                _input.SendInputRejected(sequence, ERejectReason.WrongPhase);
+                return;
+            }
+
+            // 허용 창으로 자른 요청 시각 기준으로 남은 쿨다운이 보관 시간 안이면 받아 두고 쿨다운이 끝나는 틱에 쓴다
+            if ((_nextAttackTime - requestTime) > _attackBufferSeconds)
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Cooldown);
+                return;
+            }
+
+            // 보관은 한 개다. 새 조준이 앞선 대기 입력을 덮는다
+            _pendingAimYaw    = input.AimYaw;
+            _hasPendingAttack = true;
+        }
+
+        public void HandleDodge(in PlayerDodgeInput input)
+        {
+            if (!TryAcceptHeader(input.Header, out double requestTime))
+            {
+                return;
+            }
+
+            uint sequence = input.Header.Sequence;
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Dead);
+                return;
+            }
+
+            // TODO(민성): 플레이어 이동 불가, 기절 상태가 생기면 여기서 거절한다
+            if (IsSkillLockingDodge())
+            {
+                _input.SendInputRejected(sequence, ERejectReason.WrongPhase);
+                return;
+            }
+
+            // 한 행동당 다음 행동 하나만 보관한다. 회피 중이거나 이미 받아 둔 회피가 있으면 쿨다운으로 어차피 막힌다
+            if ((_hasPendingDodge) || ((_nextDodgeTime - requestTime) > _attackBufferSeconds))
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Cooldown);
+                return;
+            }
+
+            // 보관 시간에 틱 하나를 더한다. 받은 직후 틱의 서버 시각이 수신 시각보다 한 틱까지 늦을 수 있다
+            _pendingDodgeYaw      = input.AimYaw;
+            _pendingDodgeSequence = sequence;
+            _pendingDodgeDeadline = NetworkTime.time + _attackBufferSeconds + (1.0 / Constants.Network.SERVER_TICK_RATE);
+            _hasPendingDodge      = true;
+
+            // 상충 입력은 회피가 먼저다
+            _hasPendingAttack = false;
+        }
+
+        // 기술이 실제로 타격 중이면 회피로 끊지 못한다. 준비와 후딜, 반격 방어 창은 끊을 수 있다
+        private bool IsSkillLockingDodge()
+        {
+            return (_skills != null) && (_skills.Phase == ESkillPhase.Active) && (!_skills.IsGuardWindow);
+        }
+
+        // 부활은 요청만 받아 두고 실제 승인은 틱의 부활 단계(종료 판정 뒤)가 한다. 같은 틱의 전멸이 부활보다 먼저다
+        public void HandleRevive(in PlayerInputHeader header)
+        {
+            if (!TryAcceptHeader(in header, out _))
+            {
+                return;
+            }
+
+            if (_lifeState == EParticipantLifeState.Alive)
+            {
+                _input.SendInputRejected(header.Sequence, ERejectReason.WrongPhase);
+                return;
+            }
+
+            if (_lifeState == EParticipantLifeState.Spectating)
+            {
+                _input.SendInputRejected(header.Sequence, ERejectReason.NoRevives);
+                return;
+            }
+
+            // 보관은 한 개다. 새 요청이 앞선 대기 요청의 순번을 덮지만 재평가 시각은 유지한다.
+            // 연타로 시각을 0으로 되돌리면 안전 지점 탐색(NavMesh 샘플)을 매 틱 다시 돌리게 된다
+            _nextReviveCheckTime = NextReviveCheckOnRequest(_hasReviveRequest, _nextReviveCheckTime);
+            _reviveSequence      = header.Sequence;
+            _hasReviveRequest    = true;
+        }
+
+        /// <summary> 부활 요청을 받을 때의 재평가 시각, 대기 요청이 있으면 그 시각을 유지하고 없으면 바로 평가한다 </summary>
+        public static double NextReviveCheckOnRequest(bool hasPendingRequest, double pendingCheckTime)
+        {
+            return hasPendingRequest ? pendingCheckTime : 0.0;
+        }
+
+        /// <summary> 부활 단계가 거절했을 때 부른다, 요청을 지우고 사유를 소유자에게 알린다 </summary>
+        public void RejectRevive(ERejectReason reason)
+        {
+            if (!_hasReviveRequest)
+            {
+                return;
+            }
+
+            _hasReviveRequest = false;
+            _input.SendInputRejected(_reviveSequence, reason);
+        }
+
+        /// <summary> 안전 지점이 없어 다음 재평가 시각까지 미룬다, 횟수는 쓰지 않는다 </summary>
+        public void DeferRevive(double nextCheckTime)
+        {
+            _nextReviveCheckTime = nextCheckTime;
+        }
+
+        /// <summary> 죽은 자리 근처의 걸을 수 있는 지점을 찾는다, 못 찾으면 거짓 </summary>
+        public bool TryFindRevivePoint(out Vector3 point)
+        {
+            // TODO(민성): 맵 디자인이 지정한 안전 복귀 지점이 생기면 그 목록에서 가장 가까운 곳을 고른다
+            if (NavMesh.SamplePosition(_transform.position, out NavMeshHit hit, Constants.Combat.REVIVE_SAFE_POINT_SEARCH_RADIUS,
+                NavMesh.AllAreas))
+            {
+                point = hit.position;
+                return true;
+            }
+
+            point = _transform.position;
+            return false;
+        }
+
+        /// <summary> 부활 단계가 승인한 뒤 부른다, 지점으로 옮기고 체력 비율만큼 되살린다 </summary>
+        public void Revive(Vector3 point, float healthRate)
+        {
+            if (_lifeState == EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            _lifeState          = EParticipantLifeState.Alive;
+            _health             = PlayerLifeRules.ReviveHealth(_maxHealth, healthRate);
+            _deathTime          = 0.0;
+            _hasReviveRequest   = false;
+            _isDodging          = false;
+            _transform.position = point;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+            _combat.SetHealth(_health, _maxHealth);
+            _combat.SetLifeState(_lifeState);
+        }
+
+        /// <summary> 보스 공용 부활이 바닥난 뒤 사망했을 때 관전으로 옮긴다, 대기 중인 요청은 NoRevives로 거절한다 </summary>
+        public void EnterSpectating()
+        {
+            if (_lifeState != EParticipantLifeState.Dead)
+            {
+                return;
+            }
+
+            RejectRevive(ERejectReason.NoRevives);
+            _lifeState = EParticipantLifeState.Spectating;
+            _combat.SetLifeState(_lifeState);
+        }
+
+        public void ConfigureSkills(SkillCatalogSO catalog, PlayerConfigSO player, CombatTargetRegistry registry,
+            ICombatSkillPhase phase, double now, SkillServer retained = null)
+        {
+            _skillPhase = phase;
+            if (retained != null)
+            {
+                _skills = retained;
+                _skills.Rebind(this);
+                _combat.SetPlayerClass(retained.PlayerClass);
+            }
+            else
+            {
+                _skills = new SkillServer(this, _combat.PlayerClass, _participantId, catalog, player, registry, _resolver, _lineOfSight, now);
+            }
+            _input.SkillServerHandler = this;
+            ReplicateSkills();
+        }
+
+        public void HandleSkill(in PlayerSkillInput input)
+        {
+            if (!TryAcceptHeader(input.Header, out _, true))
+            {
+                return;
+            }
+            if ((_skills == null) || (_skillPhase == null))
+            {
+                _input.SendSkillResult(input.Header.Sequence, CombatIds.NONE, ERejectReason.Disabled);
+                return;
+            }
+            if (_isDodging)
+            {
+                _input.SendSkillResult(input.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
+                return;
+            }
+            double now = NetworkTime.time;
+            if (!_skills.TryCast(input.Kind, input.Slot, input.Point, input.AimYaw, now,
+                _skillPhase.AllowsCombat, out ERejectReason reason))
+            {
+                double readyAt = _skills.NextActionAt;
+                if ((reason == ERejectReason.Cooldown) && (input.Kind == ESkillRequestKind.Regular))
+                {
+                    readyAt = _skills.GetReadyAt(input.Slot);
+                }
+                else if ((reason == ERejectReason.Cooldown) && (input.Kind == ESkillRequestKind.Ascension))
+                {
+                    readyAt = _skills.AscensionReadyAt;
+                }
+                if ((_skillPhase.AllowsCombat) && (_lifeState == EParticipantLifeState.Alive)
+                    && ((reason == ERejectReason.Cooldown) || ((reason == ERejectReason.WrongPhase) && (_skills.Phase != ESkillPhase.Idle)))
+                    && (_attackBufferSeconds > 0.0) && (readyAt >= now) && ((readyAt - now) <= _attackBufferSeconds))
+                {
+                    if (_hasPendingSkill)
+                    {
+                        _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
+                    }
+                    _pendingSkill = input;
+                    _pendingSkillDeadline = now + _attackBufferSeconds;
+                    _hasPendingSkill = true;
+                    _hasPendingAttack = false;
+                    return;
+                }
+                _input.SendSkillResult(input.Header.Sequence, CombatIds.NONE, reason);
+                return;
+            }
+            CommitSkillInput(input.Header.Sequence);
+        }
+
+        private void CommitSkillInput(uint sequence)
+        {
+            if (_hasPendingSkill)
+            {
+                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
+                _hasPendingSkill = false;
+            }
+            _hasPendingAttack = false;
+            _hasPendingMove = false;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+            ReplicateSkills();
+            _input.SendSkillResult(sequence, _skills.CastInstanceId, ERejectReason.None);
+        }
+
+        private bool TryAcceptHeader(in PlayerInputHeader header, out double requestTime, bool reportSkill = false)
+        {
+            requestTime = 0.0;
+            if ((_isDisconnecting) || (_isDetached))
+            {
+                return false;
+            }
+
+            EInputVerdict verdict = _gate.Check(in header, NetworkTime.time, out requestTime);
+            if (verdict == EInputVerdict.Accepted)
+            {
+                _input.SetLastProcessedSequence(header.Sequence);
+                return true;
+            }
+
+            if (reportSkill)
+            {
+                // 기존 코드값 안에서 헤더 거절을 전달한다. 구체적인 입력 위반은 게이트가 누적한다
+                ERejectReason reason = ERejectReason.InvalidTarget;
+                switch (verdict)
+                {
+                    case EInputVerdict.ProtocolMismatch:
+                        reason = ERejectReason.VersionMismatch;
+                        break;
+                    case EInputVerdict.SessionMismatch:
+                        reason = ERejectReason.SessionMismatch;
+                        break;
+                    case EInputVerdict.ParticipantMismatch:
+                        reason = ERejectReason.NotEligible;
+                        break;
+                    case EInputVerdict.RateLimited:
+                        reason = ERejectReason.NoCapacity;
+                        break;
+                    case EInputVerdict.StaleSequence:
+                        reason = ERejectReason.StaleRevision;
+                        break;
+                }
+                _input.SendSkillResult(header.Sequence, CombatIds.NONE, reason);
+            }
+
+            if (_gate.ShouldDisconnect)
+            {
+                Kick(verdict);
+            }
+
+            return false;
+        }
+
+        // 연결 종료는 드물어서 이때만 문자열을 만든다
+        private void Kick(EInputVerdict verdict)
+        {
+            _isDisconnecting = true;
+            Debug.LogWarning($"[Combat] 입력 위반으로 연결을 끊는다, combatId={_combatId}, verdict={verdict}, violations={_gate.ViolationCount}");
+            _input.DisconnectOwner();
+        }
+
+        /****************************************
+        *                 Tick
+        ****************************************/
+
+        // 경로 계산은 참가자별 최소 간격과 틱 예산을 모두 통과해야 한다. 못 하면 의도를 남겨 두고 다음 틱에 다시 본다
+        public void TickMovement(float deltaTime, double serverTime, PathRequestBudget pathBudget)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            // 회피는 기술 준비와 후딜을 끊으므로 기술의 이동 막기보다 먼저 본다
+            if (TickDodge(deltaTime, serverTime))
+            {
+                return;
+            }
+
+            if ((_skills != null) && (_skills.BlocksMovement))
+            {
+                return;
+            }
+
+            if ((_hasPendingMove) && (_moveThrottle.IsRepathReady(serverTime)) && (pathBudget.TryConsume()))
+            {
+                _hasPendingMove = false;
+                bool hasPath = MovePathRules.TryBeginPath(_transform.position, _pendingDestination, _navPath, _path);
+                _moveThrottle.MarkAttempt(serverTime, hasPath, _pendingDestination);
+                if (hasPath)
+                {
+                    // 이 틱에서 바로 한 칸 나아가므로 이동은 틱 구간의 시작에 시작한 것이다
+                    _moveSequence  = _pendingMoveSequence;
+                    _moveStartTime = serverTime - deltaTime;
+                }
+                else
+                {
+                    _input.SendInputRejected(_pendingMoveSequence, ERejectReason.InvalidTarget);
+                }
+            }
+
+            if (!_path.IsMoving)
+            {
+                return;
+            }
+
+            Vector3 next = _path.Step(_transform.position, _moveSpeed * deltaTime, out Vector3 direction, out bool moved);
+            _transform.position = next;
+
+            if ((moved) && (direction != Vector3.zero))
+            {
+                SetFacing(direction);
+            }
+        }
+
+        public void TickAttack(double serverTime)
+        {
+            // 회피 중에 받은 공격은 버리지 않고 회피가 끝난 틱에 쓴다
+            if ((!_hasPendingAttack) || (_lifeState != EParticipantLifeState.Alive) || (_isDodging)
+                || ((_skills != null) && (_skills.BlocksMovement)))
+            {
+                return;
+            }
+
+            if (serverTime < _nextAttackTime)
+            {
+                return;
+            }
+
+            // TODO(민성): 타격 발생 시점(준비 시간)이 기획에서 정해지면 준비 상태를 두고 그 시각에 판정한다. 지금은 승인 틱에 바로 판정한다
+            _hasPendingAttack = false;
+            _nextAttackTime   = serverTime + _attack.Interval;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+
+            Vector3 aim = FacingRules.DecodeYaw(_pendingAimYaw);
+            SetFacing(aim);
+            ExecuteBasicAttack(aim);
+        }
+
+        // 이번 틱의 위치를 회피가 정했으면 참이다. 경로 이동과 기술의 이동 막기는 이 틱에 보지 않는다
+        private bool TickDodge(float deltaTime, double serverTime)
+        {
+            if (_isDodging)
+            {
+                double elapsed = serverTime - _dodgeStartTime;
+                _transform.position = DodgeRules.GetPosition(_dodgeStart, _dodgeEnd, elapsed, _dodgeDuration);
+                if (elapsed >= _dodgeDuration)
+                {
+                    _isDodging = false;
+                }
+
+                return true;
+            }
+
+            if (!_hasPendingDodge)
+            {
+                return false;
+            }
+
+            if (serverTime > _pendingDodgeDeadline)
+            {
+                _hasPendingDodge = false;
+                _input.SendInputRejected(_pendingDodgeSequence, IsSkillLockingDodge() ? ERejectReason.WrongPhase : ERejectReason.Cooldown);
+                return false;
+            }
+
+            // 보관 시간 안에서 쿨다운이 끝나거나 기술 타격이 끝나기를 기다린다
+            if ((serverTime < _nextDodgeTime) || (IsSkillLockingDodge()))
+            {
+                return false;
+            }
+
+            _hasPendingDodge = false;
+            return BeginDodge(deltaTime, serverTime);
+        }
+
+        private bool BeginDodge(float deltaTime, double serverTime)
+        {
+            Vector3 direction = FacingRules.DecodeYaw(_pendingDodgeYaw);
+            if (!DodgeRules.TryGetWallClampedEnd(_transform.position, direction, _dodgeDistance, out Vector3 start, out Vector3 wallEnd))
+            {
+                _input.SendInputRejected(_pendingDodgeSequence, ERejectReason.InvalidTarget);
+                return false;
+            }
+
+            Vector3 flat         = wallEnd - start;
+            flat.y               = 0f;
+            float   wallDistance = flat.magnitude;
+            float   clear        = ClampByEnemyBodies(start, direction, wallDistance);
+            Vector3 end          = (wallDistance > 0f) ? Vector3.Lerp(start, wallEnd, clear / wallDistance) : start;
+
+            // 승인한 뒤에만 기술을 끊는다. 확정한 기력과 쿨다운은 돌려주지 않는다
+            if ((_skills != null) && (_skills.BlocksMovement))
+            {
+                CancelSkillForDodge();
+            }
+
+            _hasPendingMove   = false;
+            _hasPendingAttack = false;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+
+            // 이 틱에서 바로 한 칸 나아가므로 틱 구간의 시작에 시작한 것이다. 쿨다운도 그때부터 센다
+            _isDodging      = true;
+            _dodgeStart     = start;
+            _dodgeEnd       = end;
+            _dodgeStartTime = serverTime - deltaTime;
+            _nextDodgeTime  = _dodgeStartTime + _dodgeCooldown;
+            _input.SetDodgeReadyAt(_nextDodgeTime);
+
+            // 예측은 회피를 이동 순번 하나로 보고 같은 기준으로 맞춘다
+            _moveSequence  = _pendingDodgeSequence;
+            _moveStartTime = _dodgeStartTime;
+
+            SetFacing(direction);
+            _transform.position = DodgeRules.GetPosition(start, end, deltaTime, _dodgeDuration);
+            if (deltaTime >= _dodgeDuration)
+            {
+                _isDodging = false;
+            }
+
+            return true;
+        }
+
+        // 적 몸체 직전에서 멈춘다. 아군과 신령 몸체는 막지 않는다
+        private float ClampByEnemyBodies(Vector3 start, Vector3 direction, float distance)
+        {
+            float searchRadius = distance + Constants.Combat.PLAYER_BODY_RADIUS + Constants.Combat.MAX_BODY_RADIUS;
+            int   count        = _query.GetLivingInRadius(start, searchRadius, ECombatFaction.Enemy, true, _targetBuffer);
+            for (int i = 0; i < count; ++i)
+            {
+                ICombatTarget target = _targetBuffer[i];
+                if (!BasicAttackRules.IsWithinHeight(start, target.Position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+                {
+                    continue;
+                }
+
+                distance = DodgeRules.GetClearDistance(start, direction, distance, target.Position,
+                    Constants.Combat.PLAYER_BODY_RADIUS + target.BodyRadius);
+            }
+
+            // 반환된 참조는 이번 틱에만 쓴다
+            _targetBuffer.Clear();
+            return distance;
+        }
+
+        /// <summary> 틱 끝 위치를 소유 클라이언트 예측의 기준으로 보낸다, 이동, 공격, 기술 처리가 모두 끝난 뒤 부른다 </summary>
+        public void PublishMovement(double serverTime)
+        {
+            bool    isMoving = (_path.IsMoving) || (_isDodging);
+            Vector3 position = _transform.position;
+
+            // 멈춘 채 그대로면 경과 시간도 멈춘 시점 값으로 둔다. 매 틱 바꾸면 서 있는 동안에도 계속 전송된다
+            if ((_publishedMove.IsValid) && (!isMoving) && (!_publishedMove.IsMoving)
+                && (_publishedMove.MoveSequence == _moveSequence) && (_publishedMove.Position == position))
+            {
+                return;
+            }
+
+            float elapsed = (_moveSequence != 0) ? (float)(serverTime - _moveStartTime) : 0f;
+            _publishedMove = new PlayerMoveAuthority(position, _moveSequence, elapsed, isMoving);
+            _input.SetMoveAuthority(in _publishedMove);
+        }
+
+        private void ExecuteBasicAttack(Vector3 aim)
+        {
+            Vector3 origin   = _transform.position;
+            float   range    = _attack.Range;
+            bool    isRanged = _attack.ArcAngle <= 0f;
+            float   radius   = isRanged ? (range + Constants.Combat.BASIC_ATTACK_RAY_HALF_WIDTH) : range;
+
+            int count = _query.GetLivingInRadius(origin, radius, ECombatFaction.Enemy, true, _targetBuffer);
+            if (count == 0)
+            {
+                return;
+            }
+
+            // TODO(민성): 치명타와 시작 인원 피해 배율의 적용 위치가 기획에서 정해지면 여기서 곱한다
+            float rawDamage = _attackPower * _attack.DamageCoefficient;
+            int   castId    = _resolver.IssueInstanceId();
+            int   actionId  = _resolver.IssueInstanceId();
+
+            if (isRanged)
+            {
+                ApplyFirstOnRay(origin, aim, range, rawDamage, castId, actionId);
+            }
+            else
+            {
+                ApplyArc(origin, aim, range, rawDamage, castId, actionId);
+            }
+
+            // 반환된 참조는 이번 틱에만 쓴다
+            _targetBuffer.Clear();
+        }
+
+        private void ApplyArc(Vector3 origin, Vector3 aim, float range, float rawDamage, int castId, int actionId)
+        {
+            for (int i = 0; i < _targetBuffer.Count; ++i)
+            {
+                ICombatTarget target   = _targetBuffer[i];
+                Vector3       position = target.Position;
+                if (!BasicAttackRules.IsInArc(origin, aim, position, range, _attack.ArcAngle))
+                {
+                    continue;
+                }
+
+                if (!BasicAttackRules.IsWithinHeight(origin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+                {
+                    continue;
+                }
+
+                // 부채꼴 안 대상 수만큼 선을 긋는다. 지형만 보므로 앞선 적이 뒤의 적을 가리지 않는다
+                if (_lineOfSight.IsBlocked(origin, position))
+                {
+                    continue;
+                }
+
+                var request = new DamageRequest(_combatId, target.CombatId, castId, actionId, rawDamage,
+                    EDamageFlags.None, origin, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+                _resolver.Apply(in request);
+            }
+        }
+
+        // 원거리 기본 공격은 첫 적에서 사라지고 지형에 막힌 거리 너머는 맞히지 않는다. 조준선 하나만 쏘아 막힌 거리를 잰다
+        // TODO(민성): 투사체 속도가 정해지면 투사체로 바꾼다
+        private void ApplyFirstOnRay(Vector3 origin, Vector3 aim, float range, float rawDamage, int castId, int actionId)
+        {
+            int   firstIndex    = -1;
+            float firstDistance = float.MaxValue;
+            float clearRange    = _lineOfSight.GetClearDistance(origin, aim, range);
+
+            for (int i = 0; i < _targetBuffer.Count; ++i)
+            {
+                Vector3 position = _targetBuffer[i].Position;
+                if (!BasicAttackRules.TryProjectOnRay(origin, aim, position, clearRange,
+                    Constants.Combat.BASIC_ATTACK_RAY_HALF_WIDTH, out float along))
+                {
+                    continue;
+                }
+
+                if (!BasicAttackRules.IsWithinHeight(origin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+                {
+                    continue;
+                }
+
+                if (along < firstDistance)
+                {
+                    firstDistance = along;
+                    firstIndex    = i;
+                }
+            }
+
+            if (firstIndex < 0)
+            {
+                return;
+            }
+
+            var request = new DamageRequest(_combatId, _targetBuffer[firstIndex].CombatId, castId, actionId, rawDamage,
+                EDamageFlags.None, origin, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+            _resolver.Apply(in request);
+        }
+
+        private void SetFacing(Vector3 direction)
+        {
+            _forward = direction;
+            _combat.SetFacingYaw(FacingRules.EncodeYaw(direction));
+        }
+
+        public void SetSkillPosition(Vector3 position) { _transform.position = position; }
+        public void SetSkillFacing(Vector3 direction) { SetFacing(direction); }
+
+        /// <summary> 회피가 서버에서 승인된 뒤에만 호출한다, 취소만 보내 후딜을 공짜로 지우지 않는다 </summary>
+        public void CancelSkillForDodge()
+        {
+            if (_hasPendingSkill)
+            {
+                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
+                _hasPendingSkill = false;
+            }
+            _skills?.Cancel();
+            ReplicateSkills();
+        }
+
+        public void StopSkillCombat()
+        {
+            if (_hasPendingSkill)
+            {
+                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
+            }
+            _hasPendingSkill = false;
+            _skills?.Shutdown();
+            ReplicateSkills();
+        }
+
+        public void TickSkills(float deltaTime, double serverTime, PathRequestBudget budget)
+        {
+            _skills?.Tick(serverTime, deltaTime, budget);
+            if ((!_hasPendingSkill) || (_skills == null))
+            {
+                return;
+            }
+            if ((_skills.Phase != ESkillPhase.Idle) && (serverTime <= _pendingSkillDeadline))
+            {
+                return;
+            }
+            _hasPendingSkill = false;
+            if (serverTime > _pendingSkillDeadline)
+            {
+                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.TooEarly);
+                return;
+            }
+            if (!_skills.TryCast(_pendingSkill.Kind, _pendingSkill.Slot, _pendingSkill.Point, _pendingSkill.AimYaw, serverTime,
+                _skillPhase.AllowsCombat, out ERejectReason reason))
+            {
+                // 쿨다운을 기다리는 의도는 보관 창 동안 유지한다. 실제 커밋 시 전부 다시 검증한다
+                if ((reason == ERejectReason.Cooldown) && (serverTime <= _pendingSkillDeadline))
+                {
+                    _hasPendingSkill = true;
+                    return;
+                }
+                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, reason);
+                return;
+            }
+            CommitSkillInput(_pendingSkill.Header.Sequence);
+        }
+
+        public void ReplicateSkills()
+        {
+            if (_skills == null)
+            {
+                return;
+            }
+            _combat.SetSkillResources(_skills.Energy, _skills.MaxEnergy, _skills.Resonance);
+            _combat.SetSkillExecution(_skills.Phase, _skills.CastInstanceId, _skills.ActionInstanceId, (byte)_skills.Slot,
+                _skills.Kind, _skills.Origin, _skills.Aim, _skills.Point, _skills.ResolveAt);
+            _input.SetSkillCooldowns(_skills.GetReadyAt(Constants.Combat.SKILL_SLOT_Q), _skills.GetReadyAt(Constants.Combat.SKILL_SLOT_W),
+                _skills.GetReadyAt(Constants.Combat.SKILL_SLOT_E), _skills.GetReadyAt(Constants.Combat.SKILL_SLOT_R), _skills.AscensionReadyAt);
+        }
+
+        /****************************************
+        *                Damage
+        ****************************************/
+
+        public void ApplyDamage(float appliedAmount, bool isLethal, double serverTime)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            _health = isLethal ? 0f : Mathf.Max(0f, _health - appliedAmount);
+            _combat.SetHealth(_health, _maxHealth);
+
+            if (!isLethal)
+            {
+                return;
+            }
+
+            // 보스 공용 부활이 바닥났으면 틱의 부활 단계가 관전으로 옮긴다
+            _lifeState        = EParticipantLifeState.Dead;
+            _deathTime        = serverTime;
+            _hasPendingMove   = false;
+            _hasPendingAttack = false;
+            if (_hasPendingSkill)
+            {
+                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.Dead);
+            }
+            _hasPendingSkill  = false;
+            if (_hasPendingDodge)
+            {
+                _input.SendInputRejected(_pendingDodgeSequence, ERejectReason.Dead);
+            }
+            _hasPendingDodge  = false;
+            _isDodging        = false;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+            _combat.SetLifeState(_lifeState);
+            _skills?.OnOwnerDeath();
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return (!float.IsNaN(value.x)) && (!float.IsInfinity(value.x))
+                && (!float.IsNaN(value.y)) && (!float.IsInfinity(value.y))
+                && (!float.IsNaN(value.z)) && (!float.IsInfinity(value.z));
+        }
+    }
+}

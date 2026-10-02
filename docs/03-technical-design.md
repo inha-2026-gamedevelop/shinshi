@@ -1,7 +1,7 @@
 # 신시 기술 설계서
 
-> 문서 버전 1.0 · 2026-10-01 · 설계 기준안, 구현·실행 검증 전.
-> 게임 규칙은 [기획서](02-game-design.md), 모듈·타입·데이터 배치는 [아키텍처](04-architecture.md)를 따른다. 이 문서의 API·타입·스키마는 구현할 계약이며 현재 존재하는 코드가 아니다.
+> 문서 버전 1.1 · 2026-10-02 · M-A 구현과 2026-10-01 확정 결정 반영.
+> 게임 규칙은 [기획서](02-game-design.md), 모듈·타입·데이터 배치는 [아키텍처](04-architecture.md)를 따른다. 현재 소스와 후속 설계를 절별로 구분한다. 사용자 제공 검증은 Unity Test Runner EditMode 780개, PostgreSQL 18 Docker 환경 Backend 396개 통과이며 이번 문서 갱신은 정적 대조다. 서버 빌드·M2/M3·IL2CPP·실제 배포는 실행 미검증이다.
 
 ## 1. 목적과 적용 범위
 
@@ -22,25 +22,25 @@ PC 쿼터뷰 협동 액션 RPG의 신시 공유 마을, 1~4인 일반전·보스
 
 ## 2. 실제 기반과 도입할 기술
 
-2026-10-01 파일 조사 기준이다. `Assets/01.Scripts/00.Common/`에 `Constants`, enum 20개, GameDB 골격(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`, `PlayerConfigSO`, `SessionConfigSO`)이 있고 게임플레이 C#은 0개다. 그 밖의 자체 C#은 에디터 템플릿 처리기뿐이다. 도메인 폴더와 일부 환경 아트도 존재한다. 게임 네트워크 매니저, 나머지 GameDB 카탈로그, 백엔드 API, DB 마이그레이션, 서버 배포는 아직 구현하지 않았다.
+2026-10-02 작업 트리 기준이다. `00.Common/Contracts`의 엔진 비의존 DTO, `01.Network`의 Mirror 연결·클라이언트 인증, `02.Combat`의 상태·규칙·표현, `98.Servers`의 서버 인증·백엔드 게이트웨이·던전 세션·전투 처리가 구현되어 있다. 백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Contracts,Shinshi.Data}`, 테스트는 `Backend/tests/Shinshi.Backend.Tests`이며 SQL 마이그레이션 0001~0007이 있다. `deploy/`의 API 컨테이너·systemd 파일, `Assets/Editor/Build/ShinshiBuild.cs`의 빌드 진입점, `tools/`의 M2 실행 보조는 존재하지만 서버 빌드·배포 실행은 미검증이다. AI·보스·성장·생활·경매 등 후속 파트 전체를 구현 완료로 확대하지 않는다.
 
 | 항목 | 현재/계획 | 기준·선택 이유 |
 |---|---|---|
 | Unity | 설치 6000.4.7f1 | `ProjectSettings/ProjectVersion.txt`. 이번 설계에서 업그레이드하지 않음 |
 | URP | 설치 17.4.0 | `Packages/manifest.json`, 3D 스타일화·효과 가독성 |
 | 입력 | 구 Input Manager 사용, Active Input Handling = Both | 2026-10-01 사용자 결정. 팀 입력 코드는 `UnityEngine.Input`만 쓴다. Input System 1.19.0 패키지는 설치된 채로 두며 팀 코드에서 참조하지 않는다 |
-| Mirror/KCP | 설치 96.11.3 / 동봉 UDP KCP | `Assets/Mirror/version.txt`, `Transports/KCP/`. 동봉 `Transports/Encryption/`은 미사용. 프로젝트 권위 코드·프리팹 설정은 미구현 |
+| Mirror/KCP | 설치 96.11.3 / 동봉 UDP KCP | `Assets/Mirror/version.txt`, `Transports/KCP/`. 프로젝트 연결·인증·서버 처리와 Network 프리팹이 존재한다. 체험판은 동봉 `Transports/Encryption/`을 적용하지 않음(2026-10-01 결정). 실제 다인 연결은 미검증 |
 | Cinemachine / Navigation | 설치 3.1.7 / 2.0.12 | 카메라·NavMesh 기반 경로의 기존 도구 사용 |
 | Unity Test Framework | 설치 1.6.0 | EditMode 규칙 검사, PlayMode 연결·수명 검사. 테스트 어셈블리 구성은 [아키텍처 2장](04-architecture.md#2-폴더와-소유) |
 | DOTween / Dialogue System / TMP | 로컬 설치 확인 | 표현·대화·텍스트에 기존 도구 사용. 서버 판정은 연출 완료 콜백에 의존하지 않음. DOTween·Dialogue System은 유료 에셋이라 `.gitignore`로 Git에서 제외되어 새 클론·빌드 머신에는 별도 설치가 필요하다. TMP 필수 리소스는 `Assets/Plugins/TextMesh Pro/` |
 | Timeline / Localization / Visual Scripting | 설치 1.8.12 / 1.5.13 / 1.9.11 | `Packages/manifest.json`에 있으나 사용 계약은 미정(15장). 서버 판정에 사용하지 않음 |
 | MCP for Unity | 설치, Git `#main` | 에디터 전용 작업 도구. `packages-lock.json`의 해시로 고정되며 런타임·서버 코드에서 참조하지 않음 |
-| API | ASP.NET Core, 도입 예정 | 외부 프로세스. .NET 10 LTS를 초기 구현 기준으로 제안 |
-| DB | PostgreSQL, 도입 예정 | PostgreSQL 18을 초기 구현 기준으로 제안. 경제 트랜잭션·유일 제약·영속 저장 |
-| 로컬 DB 운영 | Docker Compose, 도입 예정 | 팀별 동일한 DB·마이그레이션 시작 환경 |
+| API | ASP.NET Core / .NET 10 구현됨 | `Backend/Directory.Build.props`의 `net10.0`, 외부 프로세스 |
+| DB | PostgreSQL 18 / Npgsql + Dapper 구현됨 | `Shinshi.Data.csproj`: Npgsql 10.0.3, Dapper 2.1.86. SQL 마이그레이션·경제 트랜잭션·유일 제약 |
+| 로컬 DB 운영 | Docker Compose 구현됨 | `Backend/docker-compose.yml`, 실행 방법은 [Backend README](../Backend/README.md). 통합 테스트는 실제 DB 연결 설정이 있을 때만 실행 |
 | AWS | EC2 Linux 게임/API + RDS DB, 도입 예정 | 초기 단순 구성 후 실측에 따라 확장 |
 
-API/DB의 패치 버전과 드라이버는 구현 시 고정하고 통합 검증한다. .NET 10은 외부 API 런타임 선택이며 Unity 런타임을 .NET 10으로 바꾼다는 뜻이 아니다. Unity와 API는 버전 있는 JSON DTO로 통신한다. 2026-10-01 지원 정책 확인: [.NET 지원 정책](https://dotnet.microsoft.com/en-us/platform/support/policy), [PostgreSQL 버전 정책](https://www.postgresql.org/support/versioning/). 설치 자산의 배포 조건은 [에셋 대장](licenses/ASSET_REGISTRY.md)이 기준이다.
+API 패키지는 프로젝트 파일에서 버전을 고정한다. .NET 10은 외부 API 런타임 선택이며 Unity 런타임을 .NET 10으로 바꾼다는 뜻이 아니다. Unity와 API는 버전 있는 JSON DTO로 통신하고 `Shinshi.Contracts.csproj`가 `Assets/01.Scripts/00.Common/Contracts/**/*.cs` 원본을 Compile Include/Link로 공유한다. 직렬화 계약은 `DataContract`/`DataMember`와 Newtonsoft.Json이며 Unity 패키지는 `com.unity.nuget.newtonsoft-json` 3.2.1, Backend 패키지는 Newtonsoft.Json 13.0.4다. 버전이 같은 것으로 가정하지 않고 DTO 계약 테스트로 확인한다. 2026-10-01 지원 정책 확인: [.NET 지원 정책](https://dotnet.microsoft.com/en-us/platform/support/policy), [PostgreSQL 버전 정책](https://www.postgresql.org/support/versioning/). 설치 자산의 배포 조건은 [에셋 대장](licenses/ASSET_REGISTRY.md)이 기준이다.
 
 ## 3. 실행 구성과 용량
 
@@ -60,8 +60,9 @@ flowchart LR
 - 한 Unity 서버 빌드가 실행 인자로 `town` 또는 `dungeon` 역할을 고른다. 클라이언트와 같은 프로젝트에서 빌드하며 플레이어 호스트는 제공하지 않는다.
 - 생활 구역은 마을 서버가 관리하는 별도 공간/영역 ID, 영역당 8명으로 시작한다. 8명 제한은 신시 전체 정원과 다르다. 영역별 약초 노드·관심 영역을 분리한다.
 - 100명이 전부 4인 파티면 동시 던전 25개, 전부 솔로면 100개가 필요하다. **25개는 무조건적인 최대 요구량이 아니다.** 초기 풀 수 `DUNGEON_POOL_SIZE`는 측정한 프로세스 메모리·CPU와 호스팅 자원으로 정한다.
-- 풀 부족 시 출정 순서대로 대기한다. 대기 중에는 티켓을 소모하지 않는다. 준비 해제·취소·연결 종료 시 대기열에서 제거한다. 빈 프로세스 확보 후 자격과 전원 준비를 다시 검증한다.
-- 동일 계정은 활성 캐릭터/게임 세션 하나만 허용한다. 새 연결은 기존 세션을 무조건 새 출정으로 생성하지 않고 동일 출정 재접속 여부를 확인한다.
+- 현재 예약 API는 풀 부족 시 `NO_CAPACITY`로 거절하며 티켓·물약을 예약하거나 소비하지 않는다. 영속 대기열은 구현하지 않았다. 유휴 던전은 `registered_at, instance_id` 순서와 `SKIP LOCKED`로 고른다. 출정 순서 대기열은 후속 계획이며 실제 API 동작으로 표시하지 않는다.
+- 동일 계정은 활성 캐릭터/게임 세션 하나만 허용한다. 살아 있는 계정 접속 임대가 있으면 새 연결을 `ALREADY_CONNECTED`로 거절하고 “이미 접속 중인 계정”으로 안내한다(2026-10-01 결정). 진행 중 출정은 동일 참가자의 재접속 경로로 처리한다.
+- 던전 프로세스는 출정 하나를 맡고 정산·예약 해제 뒤 `Draining`으로 전환해 종료한다. systemd가 새 `bootId`로 재기동하며 끝난 프로세스를 같은 boot로 `Idle`에 되돌려 재배정하지 않는다. [운영 설명](../deploy/gameserver/README.md)의 파일은 구현됨·실행 미검증이다.
 - Redis·다중 마을 채널·GameLift는 초기 필수 구성에 넣지 않는다. API가 마을 목록을 반환하는 계약은 유지해 이후 확장할 수 있게 한다.
 
 ## 4. 권위와 통신
@@ -82,11 +83,11 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 ### 4.2 입력과 복제 계약
 
-초기 시뮬레이션 기준은 서버 30Hz, 소유 입력 전송 최대 30Hz, 플레이어 복제 15Hz 또는 30Hz(아래 제약에 따라 측정으로 결정, 기획 초안은 20Hz), 적 10Hz, 마을 원격 캐릭터 10Hz로 제안한다. Mirror `sendRate`·`sendIntervalMultiplier` 등 설치 버전의 실제 API로 구현하면서 가능한 조합을 검증한다. 계약값은 `Constants`에서 관리하며 밸런스 수치와 섞지 않는다.
+현재 `Constants.Network`는 서버 틱·Mirror 전송 30Hz, 소유 입력 전송 최대 30Hz, 플레이어 복제 15Hz, 적·마을 원격 캐릭터 복제 10Hz를 지정한다. 플레이어 복제 15Hz 또는 30Hz의 최종 선택은 지연·대역폭 측정 뒤 결정한다(기획 초안은 20Hz). 계약값은 `Constants`에서 관리하며 밸런스 수치와 섞지 않는다. 설정 존재를 실제 주기·성능 검증으로 해석하지 않는다.
 
 설치된 Mirror 96.11.3에서 헤드리스 서버는 `NetworkManager.sendRate`를 `Application.targetFrameRate`로도 쓰고(`ConfigureHeadlessFrameRate`), `NetworkTransform` 계열은 전역 전송 간격의 정수배(`sendIntervalMultiplier`)로만 주기를 늘린다. `sendRate` 30이면 NetworkTransform 복제는 30/15/10Hz처럼 나뉘므로 플레이어 20Hz는 그대로 구현되지 않는다. 15Hz 또는 30Hz를 지연·대역폭 측정으로 고르고 결과를 이 절에 반영한다.
 
-입력 공통 헤더는 `protocolVersion, sessionId, participantId, inputSequence, estimatedServerTime`다. `estimatedServerTime`은 Mirror `NetworkTime` 기준이다. 순번은 연결이 바뀌어도 동일 출정 참가자의 마지막 승인 이후로 이어진다. 입력은 이동 목적지·조준 좌표/방향·기술 ID처럼 의도를 보내며 최종 위치·피해·잔액을 보내지 않는다. 연결별 입력이 계약 주기를 넘으면 초과분을 버리고 위반 횟수를 기록하며, 임계값을 넘은 연결은 끊는다. 임계값은 구현 시 `Constants`에 둔다.
+현재 Mirror 입력 공통 헤더는 `PlayerInputHeader`의 `protocolVersion(int), sessionEpoch(int), participantId(int), sequence(uint), estimatedServerTime(double)`이며 `PlayerInputSerializer`가 이 순서로 직렬화한다. `sessionEpoch`와 참가자 번호는 서버가 발급한 전투용 번호이며 API의 UUID `sessionId`·`participantId`와 구분한다. `estimatedServerTime`은 Mirror `NetworkTime` 기준 초이며 API의 UTC Unix 밀리초와 다르다. 순번은 연결이 바뀌어도 동일 출정 참가자의 마지막 승인 이후로 이어진다. 입력은 이동 목적지·조준 좌표/방향·기술 ID처럼 의도를 보내며 최종 위치·피해·잔액을 보내지 않는다. 입력 제한 값은 `Constants`에서 관리하고, 서버 입력 창구의 순번·시각·전송량 검증을 적용한다.
 
 서버 검증 순서:
 
@@ -109,7 +110,7 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 ## 5. 공개 요청과 결과 계약
 
-아래 이름은 구현 예정 계약의 작업명이다. 실제 생산 API가 생기기 전 UI는 개발용 표시 상태로 제작하되 정상 버튼에서 가짜 성공을 확정하지 않는다.
+아래 표는 게임 요청의 계약이며 구현 범위는 모듈마다 다르다. 현재 HTTP 진입점은 다음 표의 “구현됨” 행을 따른다. 미구현 기능의 UI는 개발용 표시 상태로 제작하되 정상 버튼에서 가짜 성공을 확정하지 않는다.
 
 | 요청 | 필수 인자 | 승인 시 결과 | 주요 거절 |
 |---|---|---|---|
@@ -117,34 +118,49 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | `RequestPotionUse` | 입력 헤더, 물약 정의/지참 슬롯 | 사용 영수증·잔량·횟수·HP·공용 만료시각 | FullHealth, Disabled, PotionLimit, PendingCommit |
 | `RequestRevive` | 입력 헤더 | 위치·HP·공용 횟수 | TooEarly, NoSafePoint, NoRevives, SessionTerminal |
 | `RequestReady` | 방 revision, 장비/부적/물약 준비 revision | 참가자 준비 상태 | Locked, MissingUnlock, InsufficientTicket, StaleRevision |
-| `RequestDeparture` | 방 ID/revision, operationId | 대기/예약/전장 배정/시작 | NotLeader, NotAllReady, NoCapacity, ReservationConflict |
+| `RequestDeparture` | 방 ID/revision, operationId | 예약/전장 배정/시작 | NotLeader, NotAllReady, `NO_CAPACITY`, ReservationConflict |
 | 수련/제작/강화/등록/계승 | operationId, 캐릭터 revision, 대상 ID·예상 비용 버전 | 원자적 경제 영수증·새 revision | WrongLocation, InventoryFull, InsufficientItem, BoundItem, InvalidInheritance |
 | `RequestGatherStart/Cancel` | 노드 ID, nodeRevision, operationId | 선점·완료 예정 시각/해제 | OutOfRange, Occupied, InsufficientAction |
 | `RequestAuctionBid` | auctionId, revision, 정수 금액, operationId | 최고가·예약금·종료시각 | NotEligible, Closed, BidTooLow, InsufficientCurrency |
 | `RequestAbandon` | sessionId, operationId | 개인 실패 정산·귀환 | AlreadySettled, SessionMismatch |
 
-응답 공통은 `operationId, status, reasonCode, committedRevision, serverTime, receiptId`다. `status`는 `Pending`(수락, 미확정)·`Committed`(영속 확정)·`Rejected`(효과 없음, reasonCode 필수) 셋이며 C# 타입은 `EOperationStatus`로 둔다. `Pending`은 성공이 아니다. `operationId`는 요청을 처음 만든 쪽이 UUID로 생성한다. 플레이어 요청은 클라이언트, 드롭·정산처럼 서버가 시작한 작업은 게임 서버다. API는 `(actor_id, operation_id)`로 유일 처리하고 다른 행위자의 ID 조회를 거절한다. 게임 서버는 클라이언트가 보낸 ID를 그대로 전달하되 actor는 인증된 연결에서 정한다. UI는 현재 스냅샷을 먼저 받고 이벤트를 구독하며, 캐릭터 교체·재접속 시 이전 구독을 해제한다. 동일 operationId로 조회/재시도하면 최초 확정 결과를 받는다. 같은 ID에 다른 요청 본문이면 `IdempotencyConflict`다.
+경제 작업 응답 공통은 `operationId, status, reasonCode, committedRevision, serverTimeUnixMs, receiptId`다. `status`는 `Pending`(수락, 미확정)·`Committed`(영속 확정)·`Rejected`(효과 없음, reasonCode 필수) 셋이며 C# 타입은 `EOperationStatus`로 둔다. `Pending`은 성공이 아니다. `operationId`는 요청을 처음 만든 쪽이 UUID로 생성한다. 플레이어 요청은 클라이언트, 드롭·정산처럼 서버가 시작한 작업은 게임 서버다. API는 `(actor_id, operation_id)`로 유일 처리하고 다른 행위자의 ID 조회를 거절한다. 게임 서버는 클라이언트가 보낸 ID를 그대로 전달하되 actor는 인증된 연결에서 정한다. UI는 현재 스냅샷을 먼저 받고 이벤트를 구독하며, 캐릭터 교체·재접속 시 이전 구독을 해제한다. 동일 operationId로 조회/재시도하면 최초 확정 결과를 받는다. 같은 ID에 다른 요청 본문이면 `IdempotencyConflict`다.
 
-### 서버↔API 엔드포인트 초안
+### 현재 HTTP 엔드포인트
 
-| 경로 작업명 | 호출자·목적 |
+경로의 원본은 [ApiRoutes](../Assets/01.Scripts/00.Common/Contracts/ApiRoutes.cs), [GameServerRoutes](../Assets/01.Scripts/00.Common/Contracts/Sessions/GameServerRoutes.cs), [JoinApiRoutes](../Assets/01.Scripts/00.Common/Contracts/Join/JoinApiRoutes.cs)다. 아래는 `Backend/src/Shinshi.Api`의 Controller와 대조한 구현됨 경로다. 운영 도메인·TLS와 실제 Unity 서버 통합 실행은 미검증이다. 모든 Bearer 자격은 `Authorization: Bearer {token}`으로 싣는다.
+
+| 경로 | 인증·호출자 | 현재 목적 |
+|---|---|---|
+| `POST /v1/auth/exchange` | 초대 코드 또는 갱신 토큰(본문), 접근 Bearer 불필요 | 초대 교환 또는 갱신 토큰 회전, 빌드 호환 검사 |
+| `GET /v1/service-state` | 공개, Bearer 불필요 | 설정의 점검·공지·차단 기능·허용 buildId. DB readiness를 보장하지 않음 |
+| `POST /v1/town/join-ticket` | 플레이어 접근 Bearer | 소유 캐릭터를 검증하고 API가 고른 살아 있는 마을의 60초 일회 토큰 발급 |
+| `POST /v1/game-sessions/{sessionId}/rejoin-ticket` | 플레이어 접근 Bearer | Running 출정의 Active 참가자 복귀 토큰. 게임 서버가 120초 재접속 유예를 별도 검증 |
+| `POST /v1/server-instances/lease` | 서비스 자격 Bearer + `X-Shinshi-Instance-Id` | instanceId·역할·bootId에 묶인 서버 임대 발급/갱신. 임대 없이 부르는 유일한 서버 경로 |
+| `POST /v1/server-instances/register` | 서버 임대 Bearer + 인스턴스 헤더 | 같은 bootId의 역할·주소·포트·빌드·콘텐츠 등록 |
+| `POST /v1/server-instances/{instanceId}/heartbeat`, `/drain` | 서버 임대 Bearer + 인스턴스 헤더 | 5초 생존 신호·배정 중지, 계정 임대 연장 |
+| `POST /v1/server-instances/{instanceId}/account-leases/{leaseId}/release` | 소유 서버 임대 Bearer + 인스턴스 헤더 | 연결 종료 시 계정 접속 임대 해제. 본문 없음, 이미 해제/이관되면 204 |
+| `POST /v1/game-servers/join-tokens/exchange` | 대상 서버 임대 Bearer + 인스턴스 헤더 | 마을/던전 일회 입장 토큰 한 번 교환. 응답 유실 시 같은 토큰 재교환 불가 |
+| `POST /v1/game-sessions/reservations` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 풀 배정·전원 티켓/물약 원자 예약. 풀 부족은 `NO_CAPACITY` |
+| `POST /v1/game-sessions/{sessionId}/cancel`, `/join-tickets` | 예약한 마을 서버 임대 Bearer + 인스턴스 헤더 | 시작 전 전체 취소·참가자별 입장 토큰 발급 |
+| `POST /v1/game-sessions/{sessionId}/lease-transfer` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 참가자 계정 접속 임대를 마을에서 던전으로 이관 |
+| `POST /v1/game-sessions/{sessionId}/start` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 전원 준비·임대 이관 검증 후 Reserved→Running, 티켓 소비 |
+| `POST /v1/game-sessions/{sessionId}/events` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 순번 있는 전리품·물약·기본/추가 정기 적립·SessionEnded 저장 |
+| `POST /v1/game-sessions/{sessionId}/checkpoints` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 별도 경로의 진단용 체크포인트. 저장/동일 중복은 204, 경제 이벤트와 분리 |
+| `POST /v1/game-sessions/{sessionId}/settlement` | 배정 던전 서버 임대 Bearer + 인스턴스 헤더 | 저장한 종료 정산안을 동일 operationId로 원자 적용 |
+
+서버 임대의 instanceId·역할·bootId와 경로/본문/인스턴스 헤더를 대조한다. 일반 로그인 토큰으로 서버 경로를 호출할 수 없다. [AuthRoutes](../Assets/01.Scripts/00.Common/Contracts/Auth/AuthRoutes.cs)의 `/v1/auth/join/consume`는 상수만 존재하며 Backend 공유 컴파일에서 제외되어 현재 HTTP 경로가 아니다.
+
+### 후속 HTTP 계약
+
+| 경로/기능 | 현재 상태 |
 |---|---|
-| `POST /v1/auth/exchange` | 클라이언트의 인증 수단→세션 교환. 체험판은 초대 계정 기반, 실제 공급자 연결은 도입 단계 |
-| `GET /v1/towns`, `GET /v1/parties` | 인증 클라이언트의 접속 가능 목록 조회 |
-| `POST /v1/characters` | 인증 클라이언트의 캐릭터 생성. 캐릭터·기본 외형·초기 지급을 한 작업으로 확정하고, 외형 구조·범위·팔레트·직업별 허용 헤어를 검증한다(실패 `InvalidAppearance`). 같은 operationId 재시도·조회 규칙을 따른다 |
-| `POST /v1/game-sessions/reservations` | 권한 있는 마을 서버의 전원 티켓/물약 일괄 예약 |
-| `POST /v1/game-sessions/{id}/start` | 배정된 던전 서버의 전원 준비 확인 후 소비 확정 |
-| `POST /v1/game-sessions/{id}/events` | 서버의 순번 있는 전리품/물약/체크포인트 이벤트 저장 |
-| `POST /v1/game-sessions/{id}/settlement` | 서버의 승리·실패·포기·장애 정산 |
-| `POST /v1/characters/{id}/operations` | 신시 서버의 성장·제작·등록·계승 원자 작업 |
-| `POST /v1/gathering/{id}/complete` | 마을 서버의 선점 검증 후 행동력/약초 원자 확정 |
-| `POST /v1/auctions/{id}/bids`, `/settle` | 세션 서버의 입찰·예약금/낙찰/분배 트랜잭션 |
-| `GET /v1/operations/{id}` | 소유자 또는 권한 서버의 미확인 작업 결과 재조회 |
-| `GET /v1/service-state` | 런처·클라이언트·마을 서버의 점검 여부·공지·기능 차단·허용 `buildId` 조회 |
-| `POST /v1/auth/game-session` | 로그인한 런처가 게임 전용 하위 세션을 발급받음([런처·패치](design/launcher-and-patch.md) 3장) |
-| `/admin/v1/*` | 어드민 전용. 게임 토큰으로 호출 불가([운영 도구](design/operations-admin.md) 7장) |
-
-게임 서버 전용 경로는 서비스 자격과 서버 임대 토큰을 요구하며 일반 로그인 토큰으로 호출할 수 없다. 경로 확정 전 구현체를 전제로 한 외부 연동을 하지 않는다.
+| `GET /v1/towns`, `GET /v1/parties` | 목록 경로 초안, Controller 미구현. 현재 마을 선택은 `/v1/town/join-ticket`이 수행 |
+| `POST /v1/characters` | DTO·경로 상수 존재, Controller 미구현. 생성/외형 검증·초기 지급은 성장 파트 통합 대상 |
+| `GET /v1/operations/{operationId}` | 경로 상수·작업 저장소 존재, HTTP 조회 Controller 미구현 |
+| `POST /v1/auth/game-session` | 경로 상수·인증 저장소 메서드 존재, 발급 Controller·런처 연결 미구현 |
+| 캐릭터 원자 작업·채집 완료·경매 입찰/정산 | 7.2·9장의 설계 계약, HTTP 경로/처리 미구현 |
+| `/admin/v1/*` | 체험판은 API·CLI만 제공한다는 결정. 운영자 권한·감사·CLI 구현은 후속 운영 모듈 |
 
 ## 6. 출정 예약과 전장 전환
 
@@ -154,12 +170,12 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 2. API가 계정 ID 순서로 잠금을 잡아 **전원의 보스 티켓 1장과 각 지참 물약을 한 트랜잭션으로 예약**한다. 일반전 티켓 예약은 없다. 하나라도 부족하면 전부 예약하지 않는다.
 3. `reservationId`에 서버·참가자·캐릭터/준비 revision·contentVersion을 묶는다. 일회용 접속 토큰은 60초, 로딩 준비 제한은 120초로 제안한다. 토큰 발급은 참가자별이고 한 번만 교환한다.
 4. 마을의 캐릭터를 전장 이행 상태로 두고 던전 연결/스폰 준비를 확인한다. 한 명이라도 실패하면 시작하지 않고 예약 해제·마을 복귀한다.
-5. 배정된 서버가 전원 준비 증거로 `/start`를 요청한다. API는 `Reserved→Started`와 **전원 티켓 소비**, 물약 예약의 출정 귀속을 한 번 커밋한다. 던전은 성공 영수증을 받은 뒤 전투 시계를 시작한다.
-6. 응답이 유실되면 새 ID로 재소비하지 않고 동일 시작 작업을 조회한다. Started 상태라면 원래 출정을 재개하거나 확인된 장애 취소 경로로 보상한다.
+5. 배정된 서버가 전원 준비 증거로 `/start`를 요청한다. API는 `Reserved→Running`와 **전원 티켓 소비**, 물약 예약의 출정 귀속을 한 번 커밋한다. 던전은 성공 영수증을 받은 뒤 전투 시계를 시작한다.
+6. 응답이 유실되면 새 ID로 재소비하지 않고 동일 시작 작업을 조회한다. Running 상태라면 원래 출정을 재개하거나 확인된 장애 취소 경로로 보상한다.
 
 예약 행은 `expires_at`(초기안: 준비 제한 120초 + 여유 30초)을 가진다. `/start`가 오지 않은 채 만료되면 API가 예약 전체를 한 번 해제한다. 마을·던전 프로세스가 예약 뒤 소실돼도 티켓·물약이 묶이지 않게 하기 위해서다. `/start`와 만료 해제가 경합하면 `Reserved` 상태 조건부 갱신으로 둘 중 하나만 성공하고, 진 쪽은 확정된 상태를 조회해 따른다.
 
-60초 토큰 만료와 120초 준비 제한은 별개다. 아직 교환하지 않은 토큰이 만료되면 인증 세션·예약 상태·참가자 소유를 다시 검증해 같은 예약에 새 토큰을 발급하고 이전 토큰을 폐기한다. 이미 교환한 토큰은 재사용하지 않는다. Started 이후 복귀는 120초 재접속 자격을 검증한 별도 일회용 복귀 토큰을 발급한다.
+60초 토큰 만료와 120초 준비 제한은 별개다. 아직 교환하지 않은 토큰이 만료되면 인증 세션·예약 상태·참가자 소유를 다시 검증해 같은 예약에 새 토큰을 발급하고 이전 토큰을 폐기한다. 이미 교환한 토큰은 재사용하지 않는다. Running 이후 복귀는 120초 재접속 자격을 검증한 별도 일회용 복귀 토큰을 발급한다.
 
 예약된 물약은 계정 재고의 총량과 사용 가능량을 구분한다. 전투 시작만으로 전부 소비하지 않는다. 실제 사용만 소비하고 정산 때 미사용 예약을 반환한다. 지참량은 가용 재고 안에서 선택하며 보스는 두 종류 합산 **사용 9회**, 일반전은 지참량만큼 사용한다.
 
@@ -194,23 +210,23 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 채집의 행동력 2 예약은 API 예약 행이 아니라 마을 서버 메모리의 계정별 선점 기록으로 둔다(위임 초기안). 행동력의 소비처가 채집뿐이고 계정 활성 세션이 하나이므로 쓰는 쪽이 하나다. 시작 때 마을 서버는 최근 계정 스냅샷으로 가용량을 확인하고 계정당 선점 1개를 강제한다. 완료 호출에서 API가 행 잠금 안에서 회복을 반영하고 가용 2 이상을 다시 검증해 차감·지급한다. 부족하면 `InsufficientAction`으로 거절하고 노드를 해제한다. 마을 프로세스가 소실되면 선점과 예약도 함께 사라지며 차감은 일어나지 않는다.
 
-성장 결과 공간이 없으면 비용을 소모하지 않는다. 이미 획득을 확정한 드롭/낙찰은 보상 회수함에 넣고 원래 시각부터 30일을 유지한다. 수령은 수령 가능한 수량만 이동하며 원본 보상 ID를 재사용해 중복 지급하지 않는다.
+성장 결과 공간이 없으면 비용을 소모하지 않는다. 후속 인벤토리 설계는 이미 획득을 확정한 드롭/낙찰을 보상 회수함에 넣고 원래 시각부터 30일을 유지하며 수령 가능한 수량만 원자 이동하는 방식이다. 현재 reward_inbox·인벤토리 공간 처리·수령 API는 미구현이다. 현재 정산 API는 허용 ID·귀속·수량/줄 수 상한을 검증하고 account_items 스택에 지급한다. 상한 거절을 회수함 지급 완료로 표시하지 않는다.
 
 계승은 제작과 별도다. 원본 +17부터 한 등급 위로만 `17→10,18→11,19→12,20→13,21→14,22→15,23→16,24→18,25→20`, 같은 등급은 원본 단계 유지다. 원본은 계승 성공 때 소모하고 실패 보정을 결과 단계로 복사하지 않는다. 장비 강화 보정 키에는 장비 ID나 등급을 넣지 않는다.
 
 ### 7.3 전리품·물약과 장애
 
-전리품은 `(sessionId, sourceEventId, recipientId, rewardIndex)`가 유일하다. 일반전 모든 몬스터의 개인별 판정 결과는 생성 즉시 저장 큐에 넣되 UI에는 내구 저장 전까지 저장 중으로 표시한다. 완료 웨이브 기본 보상, 카드·티켓·정련편은 확보 목록에 보존한다. 추가 정기는 출정 원장에 쌓고 성공 100%, 실패/포기 50%로 최종 정산한다. 정산 전에 소비 가능한 잔액에 더했다가 실패 때 빼는 방식은 사용하지 않는다.
+전리품은 `(sessionId, sourceEventId, recipientId, rewardIndex)`가 유일하다. 일반전 모든 몬스터의 개인별 판정 결과는 생성 즉시 저장 큐에 넣되 UI에는 내구 저장 전까지 저장 중으로 표시한다. 현재 정산 DTO `SettlementGrant`는 `essence`, `refineShards`, `tickets`, `currency`, `items`, `talismans`를 구분한다. 정기·정련편은 캐릭터, 티켓·엽전은 계정 지갑, 아이템·미등록 부적은 계정 귀속(`Account`)이며 지갑 자산을 아이템 줄로 우회 지급하지 않는다. 완료 웨이브 기본 보상, 카드·티켓·정련편은 확보 목록에 보존한다. 추가 정기는 출정 원장에 쌓고 성공 100%, 실패/포기 50%로 최종 정산한다. 정산 전에 소비 가능한 잔액에 더했다가 실패 때 빼는 방식은 사용하지 않는다.
 
 물약은 회복 적용 전 사용 이벤트를 API에 확정하는 초기 방식을 채택한다. 응답까지 추가 물약 요청을 잠그고 저장 지연을 표시한다. 승인 응답 시 동일 전투·행동 가능 상태를 재확인해 한 번 회복을 적용한다. 그 전에 사망·종료로 적용할 수 없으면 해당 미적용 사용을 취소하는 보상 작업으로 재고/횟수를 복원한다. 적용/취소 중 하나만 유일하게 종결한다. 재접속 중 미확인 상태는 서버 기록을 먼저 조회한다. 10초 쿨다운은 실제 회복 적용 시각 기준이다. API 왕복 지연으로 회복 체감이 목표를 벗어나면 영속 명령 큐 구조를 측정 후 개선하되 미저장 소비를 정상 완료로 표시하지 않는다.
 
-전투 상태 체크포인트는 30초마다 저장한다. 체크포인트는 경제 원장의 대체물이 아니다. 체험판 초기안은 프로세스 생존 시 인메모리 권위 상태로 재접속하고, 프로세스 소실 시 오래된 체크포인트만으로 보스를 되살려 이어가지 않는다. 완전 복구 검증 전에는 **확인된 서비스 장애 취소**로 처리한다. 장애 취소는 소모 티켓·실제로 사용한 물약을 같은 보상 ID로 한 번 복구하며, 이미 확정된 전리품을 재추첨/재지급하지 않는다. 개인 연결 종료·의도적 포기는 장애 환급 사유가 아니다.
+전투 상태 체크포인트는 30초 저장을 목표로 한다. DB와 `/checkpoints` API는 구현되어 있지만 `DungeonSessionHost.Tick`의 주기 송신은 TODO라 현재 자동 저장된다고 주장하지 않는다. 체크포인트는 경제 원장의 대체물이 아니다. 체험판 초기안은 프로세스 생존 시 인메모리 권위 상태로 재접속하고, 프로세스 소실 시 오래된 체크포인트만으로 보스를 되살려 이어가지 않는다. 완전 복구 검증 전에는 **확인된 서비스 장애 취소**로 처리한다. 장애 취소는 소모 티켓·실제로 사용한 물약을 같은 보상 ID로 한 번 복구하며, 이미 확정된 전리품을 재추첨/재지급하지 않는다. 개인 연결 종료·의도적 포기는 장애 환급 사유가 아니다.
 
-장애 취소 때 출정 원장에 쌓였으나 정산 전인 추가 정기의 처리(실패와 같은 50%, 전액, 미지급)는 기획 규칙에 없어 **미정**이다(15장). 결정 전 구현은 이 값을 `SessionConfigSO`의 한 항목으로 두고 임의 기본값으로 배포하지 않는다.
+서비스 장애 취소는 완료 웨이브 기본 정기 적립분을 전액, 정산 전 추가 정기 적립분을 50% 내림해 지급한다(2026-10-01 결정). API는 `session_participants.base_essence_accrued`와 `essence_accrued`를 구분하고 장애 취소 트랜잭션에서 한 번 적용한다. 일반 종료의 정산안은 게임 서버가 계산하며 장애 취소는 저장된 출정 원장을 API가 보상 처리한다. 정책은 확정되었지만 `SessionConfig.asset`의 `_serviceCancelExtraEssence`는 아직 Undecided(0)이며 `GameDBBuildValidator`가 배포 빌드를 차단하는 설정 잔여가 있다.
 
-**종료·정산 장애 계약.** 정산 규칙은 던전 서버의 `SettlementRules`가 계산하고 API는 다시 계산하지 않는다. 이를 위해 순서를 고정한다.
+**종료·정산 장애 계약.** 일반 종료의 정산 규칙은 던전 서버의 `SettlementRules`가 계산하고 API는 저장된 정산안을 검증·적용한다. 종료 정산안이 없는 확인된 서비스 장애 취소는 위에 정한 원장 기반 보상 규칙을 API가 수행한다. 이를 위해 순서를 고정한다.
 
-1. 던전 서버는 종료 판정 즉시 종료 원인과 참가자별 정산안(보호 전리품, 추가 정기 지급률 적용 결과, 미사용 물약 반환)을 `SessionEnded` 이벤트로 `/events`에 저장한다. 개별 포기·유예 만료도 `ParticipantSettled` 이벤트로 같은 순서를 따른다.
+1. 던전 서버는 종료 판정 즉시 종료 원인과 참가자별 정산안(보호 전리품, 추가 정기 지급률 적용 결과, 미사용 물약 반환)을 `SessionEnded` 이벤트로 `/events`에 저장한다. 개별 포기·유예 만료는 Unity의 `ParticipantSettled` 내부 이벤트로 자격을 닫는다. 현재 API에는 별도 ParticipantSettled 종류/개인 정산 경로가 없어 참가자별 종료 원인을 세션 종료 정산안에 담아 최종 적용한다. 개인 귀환 직후 별도 영수증 확정은 후속 통합 계약이다.
 2. 저장 영수증을 받은 뒤 같은 operationId로 `/settlement`를 호출한다. API는 저장된 이벤트의 정산안만 적용한다.
 3. 종료 이벤트 저장 뒤 프로세스가 소실되면 API 복구 작업이 같은 정산안과 operationId로 정산을 끝낸다.
 4. 종료 이벤트 저장 전 소실은 전투 결과를 확정할 수 없으므로 임대 확인(10장) 뒤 확인된 서비스 장애 취소로 처리한다.
@@ -220,7 +236,7 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 연결 종료 시각은 서버가 연결 해제를 감지한 시각이다. KCP 기본 `Timeout`은 10000ms라 네트워크 단절은 최대 약 10초 늦게 감지될 수 있으며, 이 시간은 120초에 포함하지 않는다. 연결 종료부터 120초 동안 캐릭터는 서버에 남아 피격된다. 수동 입력은 중단하고 타이머·예정 공격·피격·사망은 계속 처리한다. 동일 계정/참가자·출정 토큰으로 복귀하면 기존 HP·기력·공명·스킬/물약 만료시각·지참량·사망시각을 제공한다. netId가 바뀌어도 영구 participantId로 연결한다. 복귀 시 무료 회복·부활·쿨다운 초기화는 없다.
 
-초기 한 틱 처리 순서는 입력 수집→예정 공격/피해·사망→전투 종료 판정→살아 있는 세션의 부활 승인→복제다. 같은 틱의 마지막 생존자 사망과 부활은 전멸이 우선한다. 최종 보스 사망과 전원 사망이 완전히 같은 시각이면 초기 기준으로 전멸 실패를 우선하며 실제 전투 피드백을 확인한다.
+초기 한 틱 처리 순서는 입력 수집→예정 공격/피해·사망→전투 종료 판정→살아 있는 세션의 부활 승인→복제다. 일반전 420초 도달과 마지막 적 처치가 같은 틱이면 성공을 먼저 판정한다(2026-10-01 결정). 보스 전체 실행 시험은 마지막 M-Boss에서 수행한다(2026-10-01 결정). 생산 보스의 성공/종료 연결은 후속 보스 통합 작업이다. 같은 틱의 마지막 생존자 사망과 부활은 전멸이 우선한다. 최종 보스 사망과 전원 사망이 완전히 같은 시각이면 초기 기준으로 전멸 실패를 우선하며 실제 전투 피드백을 확인한다.
 
 | 상황 | 처리 |
 |---|---|
@@ -256,23 +272,23 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 체험판 인증은 사전 발급 초대 계정으로 시작하는 위임 초기안이다. 공급자/계정 발급 운영은 실제 배포 단계에서 연결한다. 로그인 토큰·전장 일회용 토큰·게임 서버 서비스 자격을 분리하고 토큰·비밀번호를 로그/클라이언트 빌드에 넣지 않는다. 서버 간 통신은 HTTPS와 역할별 자격 검증을 사용한다. DB 포트는 게임 클라이언트에 공개하지 않는다.
 
-KCP 기본 전송은 암호화하지 않는다. 전장 일회용 토큰은 60초·한 번 교환·참가자와 배정 인스턴스에 결합해 가로채도 재사용 범위를 제한한다. Mirror 동봉 `Encryption` 트랜스포트 적용 여부는 미정이다(15장). 토큰 교환은 Mirror `NetworkAuthenticator` 파생 컴포넌트에서 처리하고, 인증 전 연결에는 플레이어를 스폰하지 않는다.
+KCP 기본 전송은 암호화하지 않는다. 전장 일회용 토큰은 60초·한 번 교환·참가자와 배정 인스턴스에 결합해 가로채도 재사용 범위를 제한한다. Mirror 동봉 `Encryption` 트랜스포트는 체험판에 적용하지 않는다(2026-10-01 결정). 토큰 교환은 Mirror `NetworkAuthenticator` 파생 컴포넌트에서 처리하고, 인증 전 연결에는 플레이어를 스폰하지 않는다.
 
 저장소에는 비밀값을 두지 않는다. `.gitignore`가 `.env`·`*.env`·`*.pem`·`*.key` 등을 제외하고 `.env.example`만 공유한다. DB 연결 문자열, 서비스 자격, 토큰 서명 키는 API·서버 프로세스에만 주입하며 클라이언트 빌드와 Unity 에셋·SO에 넣지 않는다. 운영 비밀값 저장소와 API의 도메인·TLS 인증서 방식은 미정이다(15장).
 
 배포 설정은 `SERVER_ROLE`, `GAME_PORT`, `BACKEND_BASE_URL`, `CONTENT_VERSION`, `INSTANCE_ID`, `DUNGEON_POOL_SIZE` 등 외부 설정으로 주입한다. 정확한 변수명은 구현 계약에서 고정한다. 비밀값은 별도 시크릿 설정으로 공급한다. KCP 수신은 UDP 포트를 열고 API HTTPS와 구분한다. EC2 유형/개수·RDS 사양은 실측 전 확정하지 않는다.
 
-서버 임대 heartbeat 5초, 15초 연속 부재 시 신규 배정 중지·장애 확인을 시작하는 초기안이다. 즉시 무조건 환급하지 않고 프로세스/임대 상태를 확인한다. 소실로 확정한 인스턴스가 쥔 계정 세션 임대는 API가 해제해 해당 계정이 다시 로그인할 수 있게 한다. 마을 세션 중 같은 계정의 새 로그인을 기존 연결 대체로 처리할지 거절할지는 미정이다(15장). 던전 참가 중이면 두 경우 모두 해당 출정 복귀를 먼저 안내한다. 종료 배포는 신규 배정 중지→진행 세션 종료 대기→정산 outbox 비우기→종료 순서다. 경제 미확정 작업이 있으면 강제 정상 종료로 표시하지 않는다.
+서버 heartbeat는 5초 주기다. 15초 부재는 신규 배정과 시작·이벤트 효과의 생존 판정에서 제외하는 기준이며 Running 출정의 장애 취소 기준은 60초다. 전체 인스턴스가 무응답이면 API 쪽 단절로 보고 Running 장애 취소를 보류한다. API 시작·DB 연결 장애 뒤 30초 동안도 소실 복구를 보류한다. 임대 인증은 heartbeat와 분리하며 같은 boot의 정상 heartbeat는 Offline 확정 전까지 회복할 수 있다. 정산안이 있는 Settling은 15초 생존 판정 또는 종료 저장 뒤 60초 지연으로 동일 정산안을 복구한다. 계정 접속 임대는 15초이고 heartbeat/drain이 함께 연장한다. 만료된 임대는 되살리지 않으며 정산·예약 해제·장애 취소는 대상 임대를 해제한다. 살아 있는 임대와 충돌하는 새 연결은 “이미 접속 중인 계정”으로 거절하고 던전 참가자는 기존 출정 복귀 경로를 안내한다. 종료 배포는 신규 배정 중지→진행 세션 종료 대기→정산 outbox 비우기→종료 순서다. 경제 미확정 작업이 있으면 강제 정상 종료로 표시하지 않는다.
 
 로그 공통 키는 `buildId, contentVersion, instanceId, sessionId, participantId, operationId, eventId, reasonCode`다. 개인정보 대신 내부 ID를 쓰고 토큰을 제외한다. 관측 항목은 서버 틱 시간·활성 적/연결 수·대역폭·프로세스 메모리·API p50/p95/p99·저장 큐/재시도·예약/정산 불일치·드롭/강화 결과 분포다.
 
-API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미확정 경제 작업은 결과 조회 뒤 재시도하며 무한 새 요청을 만들지 않는다. 장기 저장 장애는 해당 성장/제작/입찰 UI를 잠그고 이유를 표시한다. 게임 서버의 미저장 이벤트가 누적되면 새 출정을 받지 않으며 진행 세션은 저장 복구 또는 확인된 장애 취소로 마감한다.
+API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미확정 경제 작업은 결과 조회 뒤 재시도하며 무한 새 요청을 만들지 않는다. 장기 저장 장애는 해당 성장/제작/입찰 UI를 잠그고 이유를 표시한다. 백엔드 일시 장애는 `BACKEND_UNAVAILABLE(810)`로 구분한다. 생존 판정만 일시 실패한 `/start`·`/events`는 효과와 operations 결과를 롤백하고 503, `Retry-After: 5`로 응답하므로 같은 operationId를 재시도한다. 게임 서버의 미저장 이벤트가 누적되면 새 출정을 받지 않으며 진행 세션은 저장 복구 또는 확인된 장애 취소로 마감한다.
 
 ### 경제 원장과 운영 도구
 
-재화·수량형 아이템의 모든 증감은 상태 변경과 **같은 트랜잭션**에서 `economy_ledger`에 한 행씩 남긴다. 장비 인스턴스는 `item_history`에 생성부터 소멸까지 남긴다. 행에는 사유(`EEconomyReason`), 출처 종류·ID, `operationId`, 행위자 종류(`Player`/`Server`/`Admin`/`System`)를 적는다. 원장을 거치지 않고 잔액을 바꾸는 API 코드 경로는 두지 않는다. 계정·자산별 원장 합계와 현재 잔액의 대사는 매일 실행하고 불일치는 ERROR로 알린다.
+재화·수량형 아이템의 모든 증감은 상태 변경과 **같은 트랜잭션**에서 `economy_ledger`에 한 행씩 남긴다. 장비 인스턴스는 `item_history`에 생성부터 소멸까지 남긴다. 행에는 사유(`EEconomyReason`), 출처 종류·ID, `operationId`, 행위자 종류(`Player`/`Server`/`Admin`/`System`)를 적는다. 원장을 거치지 않고 잔액을 바꾸는 API 코드 경로는 두지 않는다. 계정·자산별 원장 합계와 현재 잔액의 일일 대사·ERROR 알림은 운영 목표다. 현재 `EconomyLedgerReconciler`의 읽기 전용 대사와 같은 DB 소비자용 `PostgresOutboxDispatcher`는 구현되어 있지만 주기 스케줄러·소비 callback 등록·외부 통지는 연결 전이다.
 
-운영자 지급·회수·조정·이벤트·점검·기능 차단·제재·장애 복구는 어드민 경로(`/admin/v1`)의 원자 작업으로만 한다. 어드민 화면도 DB에 직접 접속하지 않는다(ADR02). 모든 쓰기는 `operationId`·사유가 필수이고 추가 전용 `admin_audit_log`에 같은 트랜잭션으로 남긴다. 게임 규칙을 바꾸는 이벤트 배율은 세션 시작 때 고정한다. 기능·권한·로그 보존의 상세는 [운영 도구·로그 설계](design/operations-admin.md)다.
+운영자 지급·회수·조정·이벤트·점검·기능 차단·제재·장애 복구는 어드민 경로(`/admin/v1`)의 원자 작업으로만 한다. 체험판은 API·CLI만 제공하며 별도 어드민 웹 화면을 만들지 않는다(2026-10-01 결정). CLI도 API를 호출하고 DB에 직접 접속하지 않는다(ADR02). 이 운영 모듈은 현재 미구현이다. 후속 운영 모듈의 모든 쓰기는 `operationId`·사유가 필수이고 추가 전용 `admin_audit_log`에 같은 트랜잭션으로 남기는 계약이다. 현재 이 감사 테이블은 없다. 게임 규칙을 바꾸는 이벤트 배율은 세션 시작 때 고정한다. 기능·권한·로그 보존의 상세는 [운영 도구·로그 설계](design/operations-admin.md)다.
 
 ### 런처와 패치
 
@@ -303,7 +319,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 
 클라이언트 목표는 1080p 평균 60fps, 프레임 p95 25ms 이하, 메모리 최대 4GB이며 실제 시험 PC를 기록한다. 서버 30Hz의 틱 예산과 프로세스 메모리를 별도 측정한다. 렌더링 목표를 서버 처리량 근거로 쓰지 않는다. [검증 플레이북](ai/03_VERIFICATION_PLAYBOOK.md)과 [멀티플레이 절차](ai/04_MULTIPLAYER_TEST_PROTOCOL.md)에 따라 호스트 모드만 확인한 기능은 완료로 보고하지 않는다.
 
-현재 확인한 것은 설치 파일·문서·규칙의 정적 정합성이다. 게임 코드·API·DB·통합 시험·부하·실제 배포는 미실행이다. 월백 2페이즈, 실제 배포 환경과 자산, 세 사람의 가용 시간을 받아 구현 일정과 외부 배포 가능성을 다시 확인한다.
+현재 소스·SO·HTTP 경로·SQL·어셈블리를 정적으로 대조했다. 사용자 제공 실행 근거는 Unity Test Runner EditMode 780개와 PostgreSQL 18 Docker 환경 Backend 396개 통과이며 이번 갱신에서 재실행한 결과는 아니다. Linux Dedicated Server/Windows 클라이언트 빌드·IL2CPP·M2/M3·지연/손실·부하·실제 배포는 실행 미검증이다. 월백 2페이즈, 실제 배포 환경과 자산, 세 사람의 가용 시간을 받아 구현 일정과 외부 배포 가능성을 다시 확인한다.
 
 ## 12. 기준 문서
 
@@ -319,18 +335,18 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 
 기존 Unity 프로젝트를 그대로 연다. 새 Unity 템플릿으로 다시 만들거나 패키지를 일괄 업그레이드하지 않는다. 설치 버전은 [첫 실행 안내](unity/UNITY_START_HERE.md)와 프로젝트 파일을 따른다. Unity 버전의 공식 릴리스 근거는 [6000.4.7f1 릴리스](https://unity.com/releases/editor/whats-new/6000.4.7f1)다.
 
-| 순서 | 구현 시 준비 | 확인할 결과 |
+| 순서 | 현재 기반·남은 준비 | 확인할 결과 |
 |---|---|---|
 | 1 | Windows용 Editor와 Linux Dedicated Server 빌드 모듈 확인 | 같은 프로젝트로 클라이언트·헤드리스 서버 생성 가능 |
-| 2 | GameDB·역할별 Bootstrap·클라이언트/서버 빌드 프로필 작성 | `town`/`dungeon` 역할과 콘텐츠 버전 보고 |
-| 3 | 별도 `Backend/` .NET 10 API 프로젝트, PostgreSQL 18 로컬 Compose·마이그레이션 작성 | 건강 검사·DB 연결·유일 키·롤백 검증 |
+| 2 | GameDB·Bootstrap·`ShinshiBuild` 진입점 존재, SO 설정 잔여와 실제 빌드 확인 | `town`/`dungeon` 역할과 콘텐츠 버전 보고 |
+| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0007 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
 | 4 | 개발용 서버 URL/포트/자격을 환경 설정에 주입 | 코드·문서·클라이언트에 실제 비밀값 없음 |
 | 5 | 마을 프로세스1·던전 프로세스1·클라이언트2부터 실행 | 로그인→입장→권위 이동→정산→재접속 |
 | 6 | 승인된 AWS 환경에 같은 서버 빌드 배포 | 외부 PC 접속·버전 거절·로그 추적·종료/복구 |
 
-이 순서는 실행 계획이며 현재 사용할 완성 배포 스크립트나 API 프로젝트가 존재한다는 뜻이 아니다. 생성 전 명령을 복사해 실행하도록 제시하지 않는다. 실제 SDK·DB 드라이버·이미지 패치와 빌드 명령은 [로드맵](05-implementation-roadmap.md)의 U01/U02/U19에서 고정한다. MCP for Unity는 선택적 에디터 작업 도구이며 게임 실행 의존성이 아니다. 다만 현재 `Packages/manifest.json`에 Git 의존성으로 들어 있어 프로젝트를 여는 모든 팀원에게 설치된다. 유지·제거·버전 고정 방식은 미정이다(15장).
+이 순서는 남은 통합·배포 검증 계획이다. 현재 사용할 Backend 실행 명령은 [Backend README](../Backend/README.md), 배포 파일/환경은 [deploy README](../deploy/README.md), 실제 빌드·M2 준비는 [로드맵](05-implementation-roadmap.md)을 따른다. 파일 존재를 빌드·배포 통과로 해석하지 않는다. MCP for Unity는 선택적 에디터 작업 도구이며 게임 실행 의존성이 아니다. 다만 현재 `Packages/manifest.json`에 Git 의존성으로 들어 있어 프로젝트를 여는 모든 팀원에게 설치된다. 유지·제거·버전 고정 방식은 미정이다(15장).
 
-위임 초기 표현 설계는 다음과 같다.
+아래 표현·관측 항목은 적용 목표다. 서버/API의 전 구간 JSON 로깅·지표 수집, UI·음향·진단 통합은 파일 또는 일부 구현의 존재만으로 완료라 하지 않는다.
 
 - **UI:** uGUI·TextMeshPro를 기본으로 삼는다. HUD는 스냅샷/변경 이벤트를 표시하고 패널별 로딩·오류·재시도 상태를 가진다. 동일 기능에 UI Toolkit을 혼합하지 않는다. 실제 설치 API와 입력 차단은 구현 시 확인한다.
 - **자산 로딩:** Bootstrap의 필수 GameDB 루트만 Resources로 로드한다. 숲·월백·마을은 씬 단위 비동기 로드와 직렬화 참조를 사용한다. 첫 전투 전에 해당 씬의 공격 예고/VFX를 준비하고, 초기에는 원격 Addressables 카탈로그를 도입하지 않는다.
@@ -356,20 +372,36 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 
 초대 계정 방식의 첫 구현은 운영자가 발급한 일회용 고엔트로피 초대 코드를 HTTPS로 교환하는 구조로 제한한다. 코드는 계정에 연결하고 DB에는 원문 대신 해시·만료·사용 여부를 저장하며, 교환·소비를 원자 처리한다. 클라이언트가 임의 accountId를 제출해 로그인하는 경로는 개발 외부에 노출하지 않는다. 초대 코드는 24시간, 접근 토큰은 15분, 회전되는 갱신 토큰은 24시간을 초기값으로 두고 폐기된 토큰은 재사용하지 못하게 한다. 토큰은 OS 보호 저장소를 사용하며 PlayerPrefs에 저장하지 않는다. 기기 변경/유실은 운영자가 같은 계정에 새 초대를 발급하고 기존 세션을 폐기한다. 회원가입·소셜 로그인·계정 복구 셀프서비스는 이번 외부 체험판 인증의 필수 범위에 추가하지 않는다. 런처를 쓰면 초대 코드 입력과 갱신 토큰 보관은 런처가 맡고 게임은 파이프로 받은 게임 세션을 쓴다([런처·패치](design/launcher-and-patch.md) 3장). 런처 도입 전·후 모두 게임의 인증 입력은 한 곳으로 모은다.
 
-## 15. 미정 항목
+## 15. 확정 결정과 미정 항목
 
-아래는 기존 문서에서 결정 근거를 찾지 못한 항목이다. 선택지는 비교용이며 결정이 아니다. 결정되면 해당 절 본문을 고치고 이 표에서 뺀다.
+### 15.1 2026-10-01 확정 결정
+
+본문에 반영한 결정이다. 구현 여부와 실행 검증은 별도이며 설정 잔여가 결정 자체를 미정으로 되돌리지 않는다.
+
+| 항목 | 결정·적용 경계 |
+|---|---|
+| 동시 접속 | 새 연결 거절, “이미 접속 중인 계정”. 계정 접속 임대15초·heartbeat 연장 |
+| 서비스 장애 취소 | 완료 웨이브 기본 정기 전액+추가 정기 적립분50% 내림. 정책/규칙/Backend 구현, SessionConfig SO 미정값 정리 잔여 |
+| 일반전 종료 경합 | 420초와 마지막 처치 같은 틱은 성공 우선 |
+| 보스 시험 순서 | 보스 전체 실행 시험은 마지막 M-Boss에서 수행. 생산 보스의 성공/종료 연결은 별도 구현 잔여 |
+| 체험판 운영 도구 | 어드민 API·CLI만, 별도 웹 화면 없음. 운영 권한·CLI 구현은 후속 |
+| DB·DTO·인증 | PostgreSQL/Npgsql+Dapper/SQL 마이그레이션, Unity Contracts 원본 링크, `Authorization: Bearer` |
+| 손실 시험 | 1%·3%를 별도 시험 조건으로 사용. 실제 시험은 미실행 |
+| KCP 암호화 | 체험판 미적용, 60초 일회 토큰·배정 인스턴스/참가자 결합 |
+| 백엔드 장애 | `BACKEND_UNAVAILABLE(810)`로 표시, 확정 결과가 없는 작업은 같은 ID로 재시도 |
+| 정산 자산 | 아이템·미등록 부적은 계정 귀속. 정기·정련편·티켓·엽전과 부적 전용 DTO 칸 구분 |
+| 던전 프로세스 수명 | 출정1개 후 Draining·종료, systemd 새 bootId 재기동. 실제 Linux 수명 검증 미실행 |
+
+### 15.2 남은 결정
 
 | 항목 | 선택지 | 결정 담당 | 필요 시점 |
 |---|---|---|---|
-| 서비스 장애 취소 때 정산 전 추가 정기 | 실패와 같은 50% / 전액 / 미지급 | 사용자(기획) | U17 전 |
 | AWS 계정·리전·EC2 유형·개수·RDS 사양 | 헤드리스 메모리·100명 부하 실측 뒤 결정 | 민성 | U19 |
 | API 도메인·TLS 인증서 | 관리형 인증서+로드밸런서 / 인스턴스에 직접 설치 | 민성 | U19 |
 | 운영 비밀값 공급 | 관리형 비밀 저장소 / 매개변수 저장소 / 권한을 제한한 인스턴스 환경 파일 | 민성 | U02·U19 |
-| KCP 전송 암호화 | 미적용(일회용 토큰으로 위험 제한) / Mirror `Encryption` 트랜스포트 | 민성 | U03 전 |
 | DB 백업·복구 목표 | 자동 백업 보존 기간·수동 스냅샷 시점, 허용 데이터 손실 시간 | 민성 | 외부 체험 전 |
-| 같은 계정의 새 로그인(마을) | 기존 연결 대체 / 새 로그인 거절 | 민성(사용자 확인) | U02 |
+| 정산 안전 상한·콘텐츠 허용 목록 | `SettlementSanityLimits`의 임시 출정/아이템/지갑/일일 상한과 허용 ID 규칙을 실제 보상 최대치로 확정 | 사용자(기획)·민성 | 외부 체험 전 |
 | MCP for Unity 패키지 | 유지(특정 커밋 고정) / 유지(`#main`) / manifest에서 제거하고 개인 설치 | 민성 | 다음 패키지 변경 때 |
 | Timeline·Localization·Visual Scripting 사용 | 컷신·다국어에 사용 / 미사용 시 제거 검토 | 기웅·진욱, 패키지 변경은 민성 | U18 |
-| 체험판 어드민 범위·화면 기술·접근 제한 | [운영 도구](design/operations-admin.md) 8장 | 사용자·민성 | U25 전 |
+| 체험판 어드민 접근 제한·권한 세부 | API·CLI 범위 안에서 [운영 도구](design/operations-admin.md) 상세 확정 | 사용자·민성 | U25 전 |
 | 체험판 런처 범위·배포 저장소·코드 서명 | [런처·패치](design/launcher-and-patch.md) 9장 | 사용자·민성 | U26 전 |

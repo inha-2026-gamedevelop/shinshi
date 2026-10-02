@@ -62,11 +62,15 @@ namespace Shinshi.Common
         BuildNotAllowed      = 806, // 허용 buildId 목록에 없다
         Maintenance          = 807,
         Sanctioned           = 808,
+        AlreadyConnected     = 809, // 같은 계정이 이미 접속 중이다
+        BackendUnavailable   = 810, // 백엔드 API에 일시적으로 닿지 않는다, 클라이언트 탓이 아니다
+        RateLimited          = 811,
 
         // 정산, 공통
         AlreadySettled       = 900,
         SessionMismatch      = 901,
         IdempotencyConflict  = 902,
+        SettlementLimitExceeded = 904,
 
         // 캐릭터 생성
         InvalidAppearance    = 1000  // 외형 구조, 값 범위, 팔레트, 직업별 허용 헤어 중 하나가 맞지 않는다

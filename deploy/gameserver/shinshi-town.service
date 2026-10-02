@@ -1,0 +1,35 @@
+[Unit]
+Description=Shinshi town dedicated server
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=shinshi-game
+Group=shinshi-game
+WorkingDirectory=/opt/shinshi/gameserver/current
+EnvironmentFile=/etc/shinshi/gameserver/town.env
+Environment=HOME=/var/lib/shinshi/gameserver/town
+ExecStart=/opt/shinshi/gameserver/current/ShinshiServer.x86_64 -batchmode -nographics -logFile - -role town -port ${GAME_PORT} -instance ${INSTANCE_ID} -backend-base-url ${BACKEND_BASE_URL} -content-version ${CONTENT_VERSION} -dungeon-pool-size ${DUNGEON_POOL_SIZE}
+Restart=always
+RestartSec=2
+KillSignal=SIGTERM
+KillMode=control-group
+TimeoutStopSec=300
+SendSIGKILL=yes
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shinshi-town
+StateDirectory=shinshi/gameserver/town
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
