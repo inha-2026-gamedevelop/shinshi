@@ -11,6 +11,8 @@ namespace Shinshi.Data.Sessions
         public const string RESERVED = "Reserved";
         public const string RUNNING  = "Running";
         public const string SETTLING = "Settling";
+        // 보스 성공 정산 뒤 파티 경매 단계. 경매 finish가 Closed로 닫는다
+        public const string AUCTION  = "Auction";
         public const string CLOSED   = "Closed";
 
         // game_sessions.result

@@ -178,6 +178,14 @@ namespace Shinshi.Backend.Tests.Sessions
                 GameServerRouteTemplates.CHECKPOINTS.Replace("{sessionId}", id));
             Assert.Equal(string.Format(CultureInfo.InvariantCulture, GameServerRoutes.SETTLEMENT_FORMAT, id),
                 GameServerRouteTemplates.SETTLEMENT.Replace("{sessionId}", id));
+            Assert.Equal(string.Format(CultureInfo.InvariantCulture, GameServerRoutes.AUCTIONS_FORMAT, id),
+                GameServerRouteTemplates.AUCTIONS.Replace("{sessionId}", id));
+            Assert.Equal(string.Format(CultureInfo.InvariantCulture, GameServerRoutes.AUCTION_BIDS_FORMAT, id, id),
+                GameServerRouteTemplates.AUCTION_BIDS.Replace("{sessionId}", id).Replace("{auctionId}", id));
+            Assert.Equal(string.Format(CultureInfo.InvariantCulture, GameServerRoutes.AUCTION_CLOSE_FORMAT, id, id),
+                GameServerRouteTemplates.AUCTION_CLOSE.Replace("{sessionId}", id).Replace("{auctionId}", id));
+            Assert.Equal(string.Format(CultureInfo.InvariantCulture, GameServerRoutes.AUCTION_FINISH_FORMAT, id),
+                GameServerRouteTemplates.AUCTION_FINISH.Replace("{sessionId}", id));
         }
 
         private static async Task<HttpResponseMessage> PostEventsAsync(HttpClient client, GameServerApplicationFactory factory,

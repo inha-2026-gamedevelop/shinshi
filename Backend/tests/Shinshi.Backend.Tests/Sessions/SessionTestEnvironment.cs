@@ -15,6 +15,7 @@ using Xunit;
 // Project
 using Shinshi.Contracts;
 using Shinshi.Data;
+using Shinshi.Data.Auctions;
 using Shinshi.Data.Reservations;
 using Shinshi.Data.Sessions;
 using Shinshi.Data.Settlement;
@@ -53,6 +54,7 @@ namespace Shinshi.Backend.Tests.Sessions
         public PostgresReservationRepository  Reservations { get; }
         public PostgresGameSessionRepository  Sessions     { get; }
         public PostgresSettlementRepository   Settlement   { get; }
+        public PostgresPartyAuctionRepository Auctions     { get; }
         public Guid                           TownId       { get; } = Guid.NewGuid();
         public List<Guid>                     DungeonIds   { get; } = new List<Guid>();
 
@@ -72,6 +74,7 @@ namespace Shinshi.Backend.Tests.Sessions
             Reservations = new PostgresReservationRepository(database.DataSource, Executor, Leases, JoinTokens);
             Sessions     = new PostgresGameSessionRepository(database.DataSource, Executor, Ledger);
             Settlement   = new PostgresSettlementRepository(database.DataSource, Executor, Ledger);
+            Auctions     = new PostgresPartyAuctionRepository(database.DataSource, Executor, Ledger);
         }
 
         public static async Task<SessionTestEnvironment> CreateAsync(int dungeonCount = 1)
@@ -157,6 +160,15 @@ namespace Shinshi.Backend.Tests.Sessions
                 session.Participants.Select(participant => participant.ParticipantId).ToArray());
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, started.Status);
             return session;
+        }
+
+        /// <summary> 보스 성공 정산 뒤 Auction 단계를 배정 던전의 boot로 끝낸다(출정 Closed, 임대 해제, Draining) </summary>
+        public async Task<OperationResult> FinishAuctionAsync(ReservedSessionView session)
+        {
+            await using NpgsqlConnection connection = await DataSource.OpenConnectionAsync();
+            Guid? boot = await connection.QuerySingleOrDefaultAsync<Guid?>(
+                "SELECT instance_boot_id FROM game_sessions WHERE session_id = @Id;", new { Id = session.SessionId });
+            return await Auctions.FinishAsync(session.InstanceId, boot, session.SessionId, Guid.NewGuid());
         }
 
         public async Task<WalletSnapshot> ReadWalletAsync(Guid accountId)

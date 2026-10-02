@@ -31,5 +31,13 @@ namespace Shinshi.Contracts
         public const string EVENTS_FORMAT             = "/v1/game-sessions/{0}/events";
         public const string CHECKPOINTS_FORMAT        = "/v1/game-sessions/{0}/checkpoints";
         public const string SETTLEMENT_FORMAT         = "/v1/game-sessions/{0}/settlement";
+
+        // 던전 서버: 정산을 마친 보스 성공 출정의 파티 경매. {0} sessionId, {1} auctionId
+        public const string AUCTIONS_FORMAT           = "/v1/game-sessions/{0}/auctions";
+        public const string AUCTION_BIDS_FORMAT       = "/v1/game-sessions/{0}/auctions/{1}/bids";
+        public const string AUCTION_CLOSE_FORMAT      = "/v1/game-sessions/{0}/auctions/{1}/close";
+
+        // 던전 서버: 모든 품목을 마친 뒤 출정을 닫는다(참가자 정산 완료, 접속 임대 해제, 서버 Draining)
+        public const string AUCTION_FINISH_FORMAT     = "/v1/game-sessions/{0}/auctions/finish";
     }
 }

@@ -12,6 +12,7 @@ using Npgsql;
 
 // Project
 using Shinshi.Contracts;
+using Shinshi.Data.Auctions;
 using Shinshi.Data.Sessions;
 
 namespace Shinshi.Data.Settlement
@@ -145,7 +146,8 @@ namespace Shinshi.Data.Settlement
             // 영원히 그 거절만 재생되어 세션이 Settling에 갇힌다
             (GameSessionSnapshot? current, DateTimeOffset serverTime) = await ReadSnapshotAsync(sessionId, cancellationToken);
             if ((current != null) && (current.InstanceId == callerInstanceId)
-                && (current.State != GameSessionStates.SETTLING) && (current.State != GameSessionStates.CLOSED))
+                && (current.State != GameSessionStates.SETTLING) && (current.State != GameSessionStates.CLOSED)
+                && (current.State != GameSessionStates.AUCTION))
             {
                 return Unstored(operationId, ContractCodes.RejectReason.WRONG_PHASE, current.Revision, serverTime);
             }
@@ -172,14 +174,16 @@ namespace Shinshi.Data.Settlement
                 return null;
             }
 
-            Guid operationId = SessionDb.CreateNameBasedGuid(CANCEL_NAME + sessionId.ToString("D"));
+            Guid operationId = ServiceCancelOperationId(sessionId);
 
             // 고정 operationId라 거절도 영구 저장된다. 아직 취소할 수 없는 상태(살아 있는 프로세스, Settling)는
             // 저장하지 않고 돌려줘야 나중에 프로세스가 소실됐을 때 같은 ID로 취소할 수 있다.
             // 진행 중 출정은 heartbeat가 60초 끊기고 풀에 살아 있는 서버가 남아 있을 때만 취소한다
             bool cancellable = (current.State == GameSessionStates.RUNNING)
                 && await IsServiceCancellableAsync(sessionId, cancellationToken);
-            if (!cancellable && (current.State != GameSessionStates.CLOSED))
+            // 경매 단계(Auction)는 정산이 이미 끝난 출정이라 닫힌 출정과 같이 ALREADY_SETTLED가 된다
+            bool settled = (current.State == GameSessionStates.CLOSED) || (current.State == GameSessionStates.AUCTION);
+            if (!cancellable && !settled)
             {
                 return Unstored(operationId, ContractCodes.RejectReason.WRONG_PHASE, current.Revision, serverTime);
             }
@@ -190,6 +194,12 @@ namespace Shinshi.Data.Settlement
                 SessionDb.ToRequestJson(new { sessionId = sessionId.ToString("D") }));
             return await _executor.ExecuteAsync(request, (context, token) =>
                 ServiceCancelEffectAsync(instanceId, sessionId, operationId, context, token), cancellationToken);
+        }
+
+        /// <summary> 세션의 장애 취소 작업 ID. actor는 배정 서버이고 자동 복구와 수동 복구가 같은 값을 쓴다 </summary>
+        public static Guid ServiceCancelOperationId(Guid sessionId)
+        {
+            return SessionDb.CreateNameBasedGuid(CANCEL_NAME + sessionId.ToString("D"));
         }
 
         /// <summary> 배정 프로세스가 소실된(heartbeat 만료, 재시작, Offline) 열린 출정과 /settlement가 오지 않은 Settling 출정을 종결한다.
@@ -361,16 +371,27 @@ namespace Shinshi.Data.Settlement
         {
             (DbConnection connection, DbTransaction transaction) = SessionDb.Require(context);
 
-            // 잠금 순서: 세션(조건부 갱신) -> 계정(오름차순) -> 캐릭터 -> 아이템 -> 인스턴스
+            // 잠금 순서: 세션(조건부 갱신) -> 계정(오름차순) -> 캐릭터 -> 아이템 -> 인스턴스.
+            // 보스 성공은 기본 보상(엽전)을 지급한 뒤 같은 던전이 파티 경매를 진행해야 하므로 닫지 않고 Auction으로 둔다.
+            // 참가자 정산 완료, 접속 임대 해제, 서버 반환은 경매 finish(PostgresPartyAuctionRepository)가 한다
             ClosedRow? closed = await connection.QuerySingleOrDefaultAsync<ClosedRow>(new CommandDefinition(
                 """
                 UPDATE game_sessions
-                SET state = 'Closed', result = 'Settled', closed_at = clock_timestamp(), revision = revision + 1
+                SET state = CASE WHEN mode = 'Boss' AND end_reason = @Success THEN 'Auction' ELSE 'Closed' END,
+                    result = CASE WHEN mode = 'Boss' AND end_reason = @Success THEN NULL ELSE 'Settled' END,
+                    closed_at = CASE WHEN mode = 'Boss' AND end_reason = @Success THEN NULL ELSE clock_timestamp() END,
+                    auction_ends_at = CASE WHEN mode = 'Boss' AND end_reason = @Success
+                        THEN clock_timestamp() + @AuctionPhase ELSE NULL END,
+                    revision = revision + 1
                 WHERE session_id = @SessionId AND instance_id = @InstanceId AND state = 'Settling'
                     AND settlement_operation_id = @OperationId
-                RETURNING ended_event_seq AS "EndedEventSeq", instance_boot_id AS "InstanceBootId", revision AS "Revision";
-                """, new { SessionId = sessionId, InstanceId = callerInstanceId, OperationId = operationId },
-                transaction, cancellationToken: cancellationToken));
+                RETURNING ended_event_seq AS "EndedEventSeq", instance_boot_id AS "InstanceBootId", revision AS "Revision",
+                    state = 'Auction' AS "StartsAuction";
+                """, new
+                {
+                    SessionId = sessionId, InstanceId = callerInstanceId, OperationId = operationId,
+                    Success = GameSessionCodes.EndReason.SUCCESS, AuctionPhase = PartyAuctionRules.AuctionPhase
+                }, transaction, cancellationToken: cancellationToken));
             if (closed == null)
             {
                 return await RejectSettlementAsync(connection, transaction, callerInstanceId, sessionId, cancellationToken);
@@ -386,7 +407,8 @@ namespace Shinshi.Data.Settlement
             await SessionDb.LockAccountsAsync(connection, transaction,
                 participants.Values.Select(row => row.AccountId), cancellationToken);
             List<EconomyLedgerLine> ledger = new List<EconomyLedgerLine>();
-            LedgerSource source = new LedgerSource(sessionId, operationId, callerInstanceId);
+            LedgerSource source = new LedgerSource(sessionId, operationId, EconomyLedgerCodes.ACTOR_SERVER,
+                callerInstanceId);
 
             // 계정 지갑(티켓, 엽전) -> 캐릭터(정기, 정련편) -> 계정 아이템(보호 전리품, 미등록 부적) 순서로 갱신한다
             List<(ParticipantRow Participant, long Tickets, long Currency)> wallets = plan.Grants
@@ -431,17 +453,35 @@ namespace Shinshi.Data.Settlement
 
                 UPDATE reservations SET state = 'Settled', closed_at = clock_timestamp()
                 WHERE session_id = @SessionId AND asset_kind = 'Item' AND state = 'Reserved';
+                """, new { SessionId = sessionId }, transaction, cancellationToken: cancellationToken));
+
+            // 경매 단계는 참가자와 접속 임대, 서버를 그대로 둔다. 던전 heartbeat가 임대를 계속 연장해 경매 중 마을 접속을 막는다
+            if (!closed.StartsAuction)
+            {
+                await CloseParticipantsAsync(connection, transaction, callerInstanceId, sessionId,
+                    participants.Values.Select(row => row.AccountId), closed.InstanceBootId, cancellationToken);
+            }
+            await _ledger.AppendAsync(context, ledger, cancellationToken);
+            return OperationDecision.Committed(closed.Revision, Guid.NewGuid().ToString("D"));
+        }
+
+        /// <summary> 출정을 끝낸다: 참가자 정산 완료, 이 던전에 남은 접속 임대 해제, 서버 Draining. 정산과 경매 finish가 함께 쓴다 </summary>
+        public static async Task CloseParticipantsAsync(DbConnection connection, DbTransaction transaction, Guid instanceId,
+            Guid sessionId, IEnumerable<Guid> accountIds, Guid? instanceBootId, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(connection);
+            ArgumentNullException.ThrowIfNull(transaction);
+            await connection.ExecuteAsync(new CommandDefinition(
+                """
                 UPDATE session_participants SET state = 'Settled', settled_at = clock_timestamp()
                 WHERE session_id = @SessionId AND state = 'Active';
                 """, new { SessionId = sessionId }, transaction, cancellationToken: cancellationToken));
 
             // 출정이 끝났으므로 참가자가 이 던전에 남긴 접속 임대를 푼다. 던전 heartbeat가 계속 연장해 마을 복귀를 막지 않게 한다
-            await PostgresAccountLeaseRepository.ReleaseForClosedSessionAsync(connection, transaction, callerInstanceId,
-                participants.Values.Select(row => row.AccountId), cancellationToken);
-            await PostgresServerPoolRepository.ReturnToPoolAsync(connection, transaction, callerInstanceId,
-                closed.InstanceBootId, cancellationToken);
-            await _ledger.AppendAsync(context, ledger, cancellationToken);
-            return OperationDecision.Committed(closed.Revision, Guid.NewGuid().ToString("D"));
+            await PostgresAccountLeaseRepository.ReleaseForClosedSessionAsync(connection, transaction, instanceId,
+                accountIds, cancellationToken);
+            await PostgresServerPoolRepository.ReturnToPoolAsync(connection, transaction, instanceId, instanceBootId,
+                cancellationToken);
         }
 
         private static async Task<OperationDecision> RejectSettlementAsync(DbConnection connection,
@@ -453,7 +493,7 @@ namespace Shinshi.Data.Settlement
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
             }
-            if (current.State == GameSessionStates.CLOSED)
+            if ((current.State == GameSessionStates.CLOSED) || (current.State == GameSessionStates.AUCTION))
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.ALREADY_SETTLED, current.Revision);
             }
@@ -498,7 +538,7 @@ namespace Shinshi.Data.Settlement
                 {
                     return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
                 }
-                if (current.State == GameSessionStates.CLOSED)
+                if ((current.State == GameSessionStates.CLOSED) || (current.State == GameSessionStates.AUCTION))
                 {
                     return OperationDecision.Rejected(ContractCodes.RejectReason.ALREADY_SETTLED, current.Revision);
                 }
@@ -508,24 +548,10 @@ namespace Shinshi.Data.Settlement
                 throw TransientRejectionException.LivenessUnknown(ServerPoolTimings.LIVENESS_RETRY_AFTER_SECONDS);
             }
 
-            List<ParticipantRow> participants = await PostgresGameSessionRepository.ReadParticipantsAsync(connection,
-                transaction, sessionId, cancellationToken);
-            await SessionDb.LockAccountsAsync(connection, transaction, participants.Select(row => row.AccountId),
-                cancellationToken);
             List<EconomyLedgerLine> ledger = new List<EconomyLedgerLine>();
-            LedgerSource source = new LedgerSource(sessionId, operationId, instanceId);
-
-            await RefundTicketsAsync(connection, transaction, sessionId, source, ledger, cancellationToken);
-            await RefundPotionsAsync(connection, transaction, sessionId, source, ledger, cancellationToken);
-
-            // 기본과 추가는 같은 캐릭터 정기 자산이라 원장 한 줄(ServiceCancelEssence)로 합친다. 구성은 참가자 행의 두 적립 열로 재현한다
-            List<(ParticipantRow Participant, long Essence, long Shards)> essence = participants
-                .Where(row => row.State == GameSessionStates.PARTICIPANT_ACTIVE)
-                .Select(row => (row, CalculateServiceCancelEssence(row.BaseEssenceAccrued, row.EssenceAccrued), 0L))
-                .Where(entry => entry.Item2 > 0)
-                .ToList();
-            await GrantCharacterAssetsAsync(connection, transaction, essence,
-                EconomyLedgerCodes.REASON_SERVICE_CANCEL_GRANT, source, ledger, cancellationToken);
+            LedgerSource source = new LedgerSource(sessionId, operationId, EconomyLedgerCodes.ACTOR_SERVER, instanceId);
+            List<ParticipantRow> participants = await CompensateCancelledSessionAsync(connection, transaction, sessionId,
+                source, ledger, cancellationToken);
 
             await connection.ExecuteAsync(new CommandDefinition(
                 """
@@ -544,6 +570,75 @@ namespace Shinshi.Data.Settlement
                 transaction, cancellationToken: cancellationToken));
             await _ledger.AppendAsync(context, ledger, cancellationToken);
             return OperationDecision.Committed(closed.Revision, Guid.NewGuid().ToString("D"));
+        }
+
+        /// <summary> 자동 복구가 실패 한도에 닿아 격리한 Settling 출정을 서비스 장애 취소와 같은 지급 규칙(티켓, 물약 환급과
+        /// 기본 정기 전액, 추가 정기 50% 내림)으로 닫는다. 호출자의 작업 트랜잭션에서 actorKind, actorId, operationId로 원장을 쓴다.
+        /// 이미 다른 경로로 닫혔거나 격리되지 않은 세션이면 아무것도 바꾸지 않고 null이다 </summary>
+        public async Task<long?> ForceCloseQuarantinedAsync(OperationExecutionContext context, Guid sessionId,
+            string actorKind, Guid actorId, Guid operationId, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+            ArgumentException.ThrowIfNullOrWhiteSpace(actorKind);
+            if ((sessionId == Guid.Empty) || (actorId == Guid.Empty) || (operationId == Guid.Empty))
+            {
+                throw new ArgumentException("Session, actor and operation IDs are required.");
+            }
+
+            (DbConnection connection, DbTransaction transaction) = SessionDb.Require(context);
+
+            // 늦게 온 /settlement와 같은 상태 조건부 갱신이라 세션 행 잠금 순서대로 한쪽만 이긴다. 정산이 먼저 이기면 여기서 null,
+            // 여기가 먼저 이기면 정산은 ALREADY_SETTLED다. end_reason은 게임 서버가 기록한 종료 사유라 그대로 둔다
+            ClosedRow? closed = await connection.QuerySingleOrDefaultAsync<ClosedRow>(new CommandDefinition(
+                """
+                UPDATE game_sessions AS session
+                SET state = 'Closed', result = 'ServiceCancelled', closed_at = clock_timestamp(),
+                    revision = session.revision + 1
+                WHERE session.session_id = @SessionId AND session.state = 'Settling'
+                    AND session.recovery_failures >= @MaxFailures
+                RETURNING session.instance_id AS "InstanceId", session.instance_boot_id AS "InstanceBootId",
+                    session.revision AS "Revision";
+                """, new { SessionId = sessionId, MaxFailures = MAX_RECOVERY_FAILURES }, transaction,
+                cancellationToken: cancellationToken));
+            if (closed == null)
+            {
+                return null;
+            }
+
+            List<EconomyLedgerLine> ledger = new List<EconomyLedgerLine>();
+            LedgerSource source = new LedgerSource(sessionId, operationId, actorKind, actorId);
+            List<ParticipantRow> participants = await CompensateCancelledSessionAsync(connection, transaction, sessionId,
+                source, ledger, cancellationToken);
+
+            // 정산을 끝내지 못한 프로세스가 살아 있을 수 있어 Offline으로 덮지 않고 정산 종결과 같이 Draining으로 돌려보낸다
+            await CloseParticipantsAsync(connection, transaction, closed.InstanceId, sessionId,
+                participants.Select(row => row.AccountId), closed.InstanceBootId, cancellationToken);
+            await _ledger.AppendAsync(context, ledger, cancellationToken);
+            return closed.Revision;
+        }
+
+        // 장애 취소 지급: 참가 계정을 잠그고 티켓과 사용 물약을 환급한 뒤 정기를 지급한다. 참가자 상태와 임대는 호출자가 정리한다
+        private static async Task<List<ParticipantRow>> CompensateCancelledSessionAsync(DbConnection connection,
+            DbTransaction transaction, Guid sessionId, LedgerSource source, List<EconomyLedgerLine> ledger,
+            CancellationToken cancellationToken)
+        {
+            List<ParticipantRow> participants = await PostgresGameSessionRepository.ReadParticipantsAsync(connection,
+                transaction, sessionId, cancellationToken);
+            await SessionDb.LockAccountsAsync(connection, transaction, participants.Select(row => row.AccountId),
+                cancellationToken);
+
+            await RefundTicketsAsync(connection, transaction, sessionId, source, ledger, cancellationToken);
+            await RefundPotionsAsync(connection, transaction, sessionId, source, ledger, cancellationToken);
+
+            // 기본과 추가는 같은 캐릭터 정기 자산이라 원장 한 줄(ServiceCancelEssence)로 합친다. 구성은 참가자 행의 두 적립 열로 재현한다
+            List<(ParticipantRow Participant, long Essence, long Shards)> essence = participants
+                .Where(row => row.State == GameSessionStates.PARTICIPANT_ACTIVE)
+                .Select(row => (row, CalculateServiceCancelEssence(row.BaseEssenceAccrued, row.EssenceAccrued), 0L))
+                .Where(entry => entry.Item2 > 0)
+                .ToList();
+            await GrantCharacterAssetsAsync(connection, transaction, essence,
+                EconomyLedgerCodes.REASON_SERVICE_CANCEL_GRANT, source, ledger, cancellationToken);
+            return participants;
         }
 
         private static async Task RefundTicketsAsync(DbConnection connection, DbTransaction transaction, Guid sessionId,
@@ -777,16 +872,18 @@ namespace Shinshi.Data.Settlement
 
             private readonly Guid _sessionId;
             private readonly Guid _operationId;
+            private readonly string _actorKind;
             private readonly Guid _actorId;
 
             /****************************************
             *                Methods
             ****************************************/
 
-            public LedgerSource(Guid sessionId, Guid operationId, Guid actorId)
+            public LedgerSource(Guid sessionId, Guid operationId, string actorKind, Guid actorId)
             {
                 _sessionId   = sessionId;
                 _operationId = operationId;
+                _actorKind   = actorKind;
                 _actorId     = actorId;
             }
 
@@ -796,7 +893,7 @@ namespace Shinshi.Data.Settlement
                 return new EconomyLedgerLine(accountId, characterId, assetKind, assetId, bindingKind, delta, balanceAfter,
                     reason,
                     EconomyLedgerCodes.SOURCE_GAME_SESSION, _sessionId.ToString("D"), _operationId,
-                    EconomyLedgerCodes.ACTOR_SERVER, _actorId);
+                    _actorKind, _actorId);
             }
         }
 
@@ -807,8 +904,10 @@ namespace Shinshi.Data.Settlement
             ****************************************/
 
             public long  EndedEventSeq  { get; set; }
+            public Guid  InstanceId     { get; set; }
             public Guid? InstanceBootId { get; set; }
             public long  Revision       { get; set; }
+            public bool  StartsAuction  { get; set; }
         }
 
         private sealed class LostSessionRow

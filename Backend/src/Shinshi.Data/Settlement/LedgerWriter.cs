@@ -123,6 +123,10 @@ namespace Shinshi.Data.Settlement
                     return ContractCodes.EconomyReason.SERVICE_CANCEL_REFUND;
                 case EconomyLedgerCodes.REASON_SERVICE_CANCEL_GRANT:
                     return ContractCodes.EconomyReason.SERVICE_CANCEL_ESSENCE;
+                case EconomyLedgerCodes.REASON_AUCTION_SETTLE:
+                    return ContractCodes.EconomyReason.AUCTION_SETTLE;
+                case EconomyLedgerCodes.REASON_AUCTION_PAYOUT:
+                    return ContractCodes.EconomyReason.AUCTION_PAYOUT;
                 default:
                     throw new ArgumentException("Unsupported session ledger reason.", nameof(reason));
             }

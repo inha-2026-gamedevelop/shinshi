@@ -131,7 +131,7 @@ namespace Shinshi.Data.Sessions
                     AND NOT EXISTS (SELECT 1 FROM game_sessions AS open_session
                         WHERE open_session.instance_id = {alias}.instance_id
                             AND open_session.instance_boot_id = {alias}.boot_id
-                            AND open_session.state IN ('Reserved', 'Running', 'Settling'))))
+                            AND open_session.state IN ('Reserved', 'Running', 'Settling', 'Auction'))))
             """;
 
         private readonly NpgsqlDataSource _dataSource;
