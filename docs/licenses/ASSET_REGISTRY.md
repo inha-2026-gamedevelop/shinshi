@@ -202,3 +202,18 @@ Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 �
 관찰한 생성·리토폴로지·리깅 차감은 합계 415크레딧이며 추가 결제나 구독 변경은 하지 않았다. Tripo 리깅/애니메이션 내보내기 일부는 Chrome 차단으로 받지 못했으므로 성공으로 기록하지 않는다. 공통 몸체의 최종 골격은 Blender에서 별도로 제작·검증했다. 검토용 프리팹은 `Assets/02.Prefab/Characters/PlayerFemaleTripo/`의 `PF_FemaleCommonBody`, `PF_FemaleCommonBody_Cute`, `PF_FemaleHeadCute`다.
 
 **상업 이용 권리 확인은 보류**다. [Tripo 공식 상업 이용 안내](https://www.tripo3d.ai/help/privacy-policy/how-to-use-tripo-models-commercially)는 유료 플랜과 무료 플랜의 권리 조건을 구분하지만, 생성 당시 계정 플랜은 확인하지 못했다. 크레딧 잔액과 다운로드 성공만으로 유료 플랜·권리 보유를 추정하지 않는다. 상업 배포 전 생성 당시 플랜과 적용 약관·입력 권리를 확인해야 하며, 현재 외형·리깅 검증은 그 확인을 대신하지 않는다. 확인한 제작 범위와 남은 게임 사용 검증은 [모델 제작 목록](../design/model-production-list.md#tripo-공통-여성-몸체귀여운-얼굴-첫-검토-묶음--2026-10-03)을 따른다.
+
+## CA-07 추가 환경 모델 — 2026-10-03
+
+CA-07(`docs/design/references/concept-art/village-layout-02.webp`)에서 기존 Assets에 없던 4종을 사용자 승인으로 제작했다. 입력 이미지는 원화 크롭을 스타일 참조로 첨부해 Codex CLI 0.159.3(`gpt-6.1-sol`)의 내장 이미지 생성으로 만든 단일 물체 시안이다. Meshy CLI 0.3.0 image-to-3d(`meshy-7.1`, PBR, 2K, `remove_lighting=true`, 리메시 없음)로 각 1회만 생성했고 재시도는 없다. 각 작업의 실제 차감은 30, 합계 120크레딧이다. 받은 원본은 실제 Blender 5.1 background Python으로 가공했다.
+
+| 공유 이름 | Meshy 작업 ID | 가공 요약 |
+|---|---|---|
+| `Waterwheel` | `01a0fd83-e275-7601-af22-7dd75dfd6eff` | 감면·새 UV·원본→감면 전사 베이크·실제 AO |
+| `WheatFieldPlot` | `01a0fd83-ec06-7464-b129-ae4477e5981d` | 흙 둔덕은 원본 높이장 재구성 후 전사 베이크·실제 AO, 밀은 원본 밀 줄기를 렌더한 알파 카드 아틀라스와 카드 버텍스 AO |
+| `LotusCluster` | `01a0fd83-f47c-73b4-816c-1c2dced15083` | 높이 0.6배 압축·수면 피벗·감면·전사 베이크·실제 AO |
+| `ArchedTimberBridge` | `01a0fd83-fd3a-77ca-ac64-458ddb1ac906` | 폭 1.06배, 아치 높이를 포물선 변위로 약 0.78→1.47m로 키움, 감면·전사 베이크·실제 AO |
+
+런타임은 `Assets/01.Scripts/05.Art/Environment/{공유 이름}/`, 배치용 프리팹은 `Assets/02.Prefab/Environment/{공유 이름}/`이다. 입력 시안·원본 GLB·편집 blend·베이크 원본·검수 렌더는 Git 제외 개인 제작 기록에 보존한다. 인증값은 기록하지 않았다.
+
+권리 확인 상태는 위 기존 Meshy 기록과 같다. 생성 계정 플랜과 입력 이미지(Codex 생성)·출력 권리 조건은 확인하지 않았으며, CC0나 독점 소유로 확정하지 않는다. 사용 조건과 검증 범위는 [공용 환경 에셋 목록](../unity/SHARED_ENVIRONMENT_ASSET_CATALOG.md#ca-07-추가-에셋--2026-10-03)을 따른다.
