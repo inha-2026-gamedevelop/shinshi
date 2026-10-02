@@ -1,24 +1,30 @@
 # 프로젝트 지식 맵
 
-2026-10-01 shinshi 작업 트리 기준. 실제 코드·SO·설정에서 현재 동작을 확인하고, 게임 기획의 목표와 구분한다. 사용자의 최신 명시 지시가 권한과 요구사항을 정한다.
+2026-10-02 shinshi 작업 트리 기준. 실제 코드·SO·설정에서 현재 계약을 확인하고, 게임 기획의 목표와 구분한다. 사용자의 최신 명시 지시가 권한과 요구사항을 정한다.
 
 ## 기능별 진입점
 
-경로는 저장소 루트(Unity 프로젝트 루트) 기준이고, 코드 경로는 `Assets/01.Scripts/` 기준이다. 게임플레이 C#은 아직 없고 `00.Common/`에 공통 계약(`Constants`, enum, GameDB 골격)만 있으므로, 나머지 코드 진입점은 [코딩 컨벤션](../coding-convention.md)에 정한 예정 위치다. 일부 아트와 별도 에디터 스크립트는 존재한다.
+경로는 저장소 루트(Unity 프로젝트 루트) 기준이고, 표의 `00.Common/`·`01.Network/`·`02.Combat/`·`98.Servers/`는 `Assets/01.Scripts/` 아래 상대 경로다. 서버 M-A의 입장·재접속·플레이어 전투·세션·정산과 `Backend/`의 API·DB 기반이 있다. 아래에서 실제 진입점과 미착수 계획을 구분한다. 실제 서버 빌드·M2/M3·IL2CPP·배포는 **구현됨·실행 미검증**이다.
 
 | 찾는 것 | 공유 문서 | 실제 진입점 | 확인할 것 |
 |---|---|---|---|
 | 게임 기획 (장르·규칙·스코프) | [기획서](../02-game-design.md), [시스템 개요](../01-system-design.md) | `docs/design/` 상세 부록, [컨셉아트 기록](../design/concept-art.md) | 확정 규칙과 위임 초기 수치, 월백 2페이즈 입력 대기 |
-| 기술 설계 | [기술설계서](../03-technical-design.md), [아키텍처](../04-architecture.md) | 제안 모듈·API·스키마 | 전투 1~4인, 전용 서버·공유 마을·ASP.NET Core·PostgreSQL; 구현 상태 구분 |
-| 구현 현황 | [구현 로드맵](../05-implementation-roadmap.md) | `Assets/01.Scripts/` (폴더·일부 아트·공통 계약 존재, 게임플레이 C# 미구현) | 코드 존재와 검증 완료를 구분 |
-| 클라이언트 API | [기술설계서](../03-technical-design.md) | 도메인별 요청·조회 창구 (설계, 아직 미구현) | 원본 상태는 서버, UI는 요청/조회 |
+| 기술 설계 | [기술설계서](../03-technical-design.md), [아키텍처](../04-architecture.md) | `Backend/src/Shinshi.Api/Program.cs`, `Backend/src/Shinshi.Data/Migrations/` | 실제 API·스키마와 후속 설계를 구분; .NET 10·PostgreSQL 18·Npgsql+Dapper |
+| 구현 현황 | [구현 로드맵](../05-implementation-roadmap.md) | `Assets/01.Scripts/`, `Backend/`, `deploy/`, `tools/` | 서버 M-A 코드 존재와 UI·맵·보스 등 남은 범위, 실행 검증을 구분 |
+| API·DTO 계약 | [기술설계서](../03-technical-design.md), [백엔드 안내](../../Backend/README.md) | `00.Common/Contracts/{ApiRoutes,Sessions/GameServerRoutes,Join/JoinApiRoutes,Auth/AuthRoutes}.cs`; `Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj` | DTO 원본 Compile Include/Link와 제외 목록, 실제 제공 경로, `Authorization: Bearer`; 후속 경제/UI API와 구분 |
 | 첫 실행·개발 환경 | [처음 프로젝트를 열 때](../unity/UNITY_START_HERE.md) | `ProjectSettings/ProjectVersion.txt`, `Packages/manifest.json` | Unity 6000.4.7f1, 패키지 버전 |
 | C# 스타일·폴더·네임스페이스 | [코딩 컨벤션](../coding-convention.md) | `Assets/01.Scripts/`, 루트 네임스페이스 `Shinshi` | 도메인 폴더 번호는 파트 확정 시 조정 |
-| 네트워크 권위 (Mirror) | [네트워크 권위](../unity/NETWORK_AUTHORITY.md) | `Assets/01.Scripts/01.Network/` (Mirror 96.11.3 설치됨) | 서버 판정, Command/Rpc 매핑 |
-| 서버/클라이언트 경계·소유 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | 도메인 `Rules/`·`Net/`·`View/`와 `Assets/01.Scripts/98.Servers/`(`Shinshi.Server` 어셈블리) | `Net/`·`98.Servers/`는 {팀장} 소유(AI·웨이브 하위는 공동), 서버 코드는 클라 빌드에서 제외 |
-| 멀티플레이 테스트 | [멀티플레이 테스트](04_MULTIPLAYER_TEST_PROTOCOL.md) | — | 테스트 등급 M0~M3, 실제 경로·빌드·조건 기록 |
-| 검증 증거 | [검증 플레이북](03_VERIFICATION_PLAYBOOK.md) | `Assets/Tests/EditMode/`, `Assets/Tests/PlayMode/` (폴더만 있고 테스트 없음) | 증거 등급과 상태 어휘 |
-| 씬·에셋·`.meta` | [씬 · 에셋 안전](../unity/SCENE_AND_ASSET_SAFETY.md) | `Assets/00.Scenes/SampleScene.unity` | 씬 소유, `.meta` 동반 커밋 |
+| 네트워크 권위 (Mirror) | [네트워크 권위](../unity/NETWORK_AUTHORITY.md) | `01.Network/ShinshiNetworkManager.cs`, `01.Network/ServerLinks.cs`, `02.Combat/Player/Net/PlayerInputState.cs` | 서버 판정, Command/Rpc, 서버 전용 구현 연결 |
+| 서버/클라이언트 경계·소유 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | `02.Combat/Player/{Rules,Net,View}/`, `98.Servers/02.Combat/CombatServerInstaller.cs`, `98.Servers/Shinshi.Server.asmdef` | `Net/`·`98.Servers/`는 {팀장} 소유(AI·웨이브 하위는 공동), `ServerLinks` 주입, 서버 코드는 클라 빌드에서 제외 |
+| 인증·입장·재접속 | [네트워크 권위](../unity/NETWORK_AUTHORITY.md), [기술설계서](../03-technical-design.md) | `01.Network/ShinshiClientAuthenticator.cs`, `98.Servers/01.Network/{ShinshiServerAuthenticator,ApiJoinTokenVerifier}.cs`; `Backend/src/Shinshi.Api/Auth/`; `98.Servers/02.Combat/Player/ReconnectVault.cs` | 개발 형식 검증과 출시 API 교환 구분, 일회용 토큰, 동시 계정 접속 거절, 참가자·출정·lease·bootId 검증 |
+| 서버 부팅·풀·종료 | [네트워크 권위](../unity/NETWORK_AUTHORITY.md), [게임 서버 배포 안내](../../deploy/gameserver/README.md) | `98.Servers/01.Network/{ServerBootstrap,ServerLaunchConfig,BackendLaunchSettings,ServerPresence,ServerShutdownController}.cs` | 역할별 서버, 백엔드 게이트웨이, heartbeat·계정 lease, 출정 하나 뒤 종료·새 bootId 재기동; Linux 적용은 실행 미검증 |
+| 던전 세션·저장·정산 | [기술설계서](../03-technical-design.md), [아키텍처](../04-architecture.md) | `98.Servers/01.Network/Session/{DungeonSessionHost,DungeonSession,SessionEventQueue,HttpBackendEventSink,SessionSettlement}.cs`; `Backend/src/Shinshi.Data/{Reservations,Sessions,Settlement,Ledger}/` | 예약/start 영수증, 이벤트·체크포인트 분리, operationId 멱등, 정산·원장·outbox, 계정 귀속·지갑·부적 칸 |
+| 플레이어 전투·스킬·피해 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | `98.Servers/02.Combat/{CombatServerRuntime,Player/PlayerServer,Skills/SkillServer,Skills/CompanionServer,Damage/DamageResolver}.cs`; `02.Combat/Player/View/` | 서버 입력 검증·판정과 클라이언트 예측, `Obstacle` 레이어 8(`ProjectSettings/TagManager.asset`), 미구현 AI·보스·표현과 구분 |
+| 백엔드 실행·DB 마이그레이션 | [백엔드 안내](../../Backend/README.md), [루트 README](../../README.md#빌드테스트) | `Backend/docker-compose.yml`, `Backend/src/Shinshi.Api/Program.cs`, `Backend/src/Shinshi.Data/SqlMigrationRunner.cs`, `Migrations/0001`~`0007` | migration/runtime DB 권한 분리, SQL 이력·체크섬, 테스트 전용 `SHINSHI_TEST_CONNECTION_STRING`; 비밀값은 환경/시크릿 |
+| 빌드·배포 준비·다인 시험 | [배포 안내](../../deploy/README.md), [루트 README](../../README.md#빌드테스트), [멀티플레이 테스트](04_MULTIPLAYER_TEST_PROTOCOL.md) | `Assets/Editor/Build/ShinshiBuild.cs`, `tools/Start-M2.ps1`, `deploy/api/Dockerfile`, `deploy/gameserver/` | Bootstrap 빌드, Windows 서버+클라이언트 실행 준비; 실제 서버 빌드·M2/M3·배포는 실행 미검증 |
+| 검증 증거 | [검증 플레이북](03_VERIFICATION_PLAYBOOK.md) | `Assets/Tests/EditMode/`, `Backend/tests/` | 제공된 검증 결과: Unity Test Runner EditMode 780건, 실제 PostgreSQL 18(Docker) 백엔드 396건 통과; 이번 동기화는 정적 대조 |
+| 씬·에셋·`.meta` | [씬 · 에셋 안전](../unity/SCENE_AND_ASSET_SAFETY.md) | `Assets/00.Scenes/Bootstrap.unity`, `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab` | Bootstrap 소유 {팀장}, 실제 빌드·배치 경로, `.meta` 동반 커밋 |
+| DTO 직렬화·IL2CPP 보존 | [백엔드 안내](../../Backend/README.md), [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | `Assets/link.xml`, `Packages/manifest.json`, `98.Servers/01.Network/BackendJson.cs`, `Backend/src/Shinshi.Contracts/ContractJson.cs` | Newtonsoft 직접 의존, private 필드·생성자 보존, IL2CPP 실행 미검증 |
 | 외부 에셋·라이선스·설치 기록 | [에셋 대장](../licenses/ASSET_REGISTRY.md) | `Assets/99.ThirdParty/` | 분류, 버전, 출처, Git 제외, 경로 보정 |
 | 3D 모델 제작·공용 재사용 | [모델 제작 목록](../design/model-production-list.md), [컨셉아트 기록](../design/concept-art.md) | 제작 계획, 기존 벚꽃나무는 `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 원본 수와 배치 수 구분, 기존 모델 우선 검토, Meshy CLI → Blender 흐름 |
 | 아트 재질·AO·프리팹 기본 과정 | [아트 제작 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 모델·재질 `Assets/01.Scripts/05.Art/`, 배치 프리팹 `Assets/02.Prefab/` | AO/PBR 기본 처리, 셰이더별 지원, AI 목표 이미지와 실제 검증 구분 |
@@ -29,7 +35,7 @@
 | 성능·수명 패턴 | [엔지니어링 패턴](../unity/UNITY_ENGINEERING_PATTERNS.md) | — | 실제 문제가 생겼을 때 적용 |
 | 맵 성능·베이크·VFX 준비 | [맵 성능 사전 준비](../unity/MAP_PERFORMANCE_PREPARATION.md) | `Assets/Settings/`, 모델·배치 프리팹 (실제 맵 로더/준비 시스템 미검증) | 최소 사양 60 FPS, 첫 사용 끊김과 지속 GPU 비용 구분, 조명·모델 베이크·풀·측정 대안 |
 | 구조·디자인 패턴 | [디자인 패턴](../unity/DESIGN_PATTERNS.md) | — | 도입 판단 기준 |
-| 도입 기능 계획·개발 도구 | [도입 기능 계획](../unity/FEATURE_ADOPTION_PLAN.md) | `Assets/01.Scripts/99.Dev/` (`.gitkeep`만 있음) | 제안 상태, 권위 위치별 패널 분리, 외부 체험판 빌드 제거 |
+| 도입 기능 계획·개발 도구 | [도입 기능 계획](../unity/FEATURE_ADOPTION_PLAN.md) | `Assets/01.Scripts/99.Dev/` (`Shinshi.Dev.asmdef` 존재, 패널 미구현) | 제안 상태, 권위 위치별 패널 분리, 외부 체험판 빌드 제거 |
 | 외부 AI에 넣을 에셋·데이터 | [에셋 · 데이터 정책](12_ASSET_AND_DATA_POLICY.md) | — | 구매 에셋·비공개 데이터 취급 |
 | AI 작업 운영 전체 | [AI 작업 문서](README.md), 루트 [`AGENTS.md`](../../AGENTS.md) | — | 승인 경계, 인수인계, 브랜치 `feature/{팀원이름}` |
 
@@ -37,7 +43,7 @@
 
 - 코드 존재만으로 기능/시각/네트워크 검증이 끝난 것은 아니다. [테스트 절차](04_MULTIPLAYER_TEST_PROTOCOL.md)에 실제 경로·빌드·조건을 기록한다.
 - 역할과 폴더 소유자는 팀 합의와 [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md)을 확인한다. `.github/CODEOWNERS`에 경로별 담당(@aurenixs, @oname36-creator, @kjw1237)이 지정되어 있다.
-- 구현된 밸런스 값은 `Assets/09.Data/` 원본에서 읽는다. 지금은 `PlayerConfig`, `SessionConfig`만 있으므로 나머지 설계 수치는 [기획서](../02-game-design.md)와 연결 부록에서 확인한다.
+- 구현된 밸런스 값은 `Assets/09.Data/Resources/GameDB.asset`이 참조하는 `Combat/`·`Session/`·`AI/`·`Growth/`·`Reward/`·`Life/`·`Progression/`·`Avatar/` SO 원본에서 읽는다. 카탈로그 파일 존재와 실제 데이터 충족을 구분하고, 후속 설계 수치는 [기획서](../02-game-design.md)와 연결 부록에서 확인한다.
 - 공유되지 않는 개인 로그 대신 재현 가능한 절차와 코드 근거를 쓴다. [문서 분류](../DOCUMENTATION_POLICY.md)를 따른다.
 - 실행 환경, 배포 버전, 테스트 수, 개인 계정 상태는 영구 상수로 취급하지 않는다.
 - 새 공유 문서를 만들면 이 표의 해당 행을 갱신한다. `(작성 예정)` 행은 문서가 생기면 링크로 바꾼다.

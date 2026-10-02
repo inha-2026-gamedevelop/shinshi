@@ -23,9 +23,13 @@ Assets/
 ├ 00.Scenes/          씬
 ├ 01.Scripts/
 │ ├ 00.Common/        공통 (Shinshi.Common) - Constants, Events, Interfaces, Pooling, Sound, Types, Utility
+│ │ ├ Contracts/      Unity·백엔드 공용 엔진 비의존 DTO (Shinshi.Contracts)
 │ │ └ Data/           GameDB ScriptableObject 정의 (Shinshi.Data) - 16장
 │ ├ 01.Network/       세션, 동기화 (Shinshi.Network) - Lobby, Session
-│ ├ 02.Combat/        플레이어 전투 (Shinshi.Combat) - Player, Damage, Skill
+│ ├ 02.Combat/        플레이어 전투 (Shinshi.Combat)
+│ │ ├ Player/         입력·이동·생사 상태와 공용 Rules, 클라이언트 View
+│ │ ├ Damage/         피해 계약·공용 Rules
+│ │ └ Skills/         기술 입력 계약·동료 동기화 상태
 │ ├ 03.AI/            산귀·보스 AI, 웨이브 스폰 (Shinshi.AI) - Enemy, Boss, Spawn
 │ ├ 04.Systems/       게임플레이 시스템 (Shinshi.Systems) - Wave, Outpost, Reward, BossTicket, Essence,
 │ │                   Talisman, Equipment, Inventory, Growth, FoxTrace, Interaction,
@@ -35,6 +39,11 @@ Assets/
 │ │                     (규칙: docs/unity/SCENE_AND_ASSET_SAFETY.md 4장)
 │ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Lobby, Systems
 │ ├ 98.Servers/       서버 전용 코드 (Shinshi.Server 어셈블리) - 9장
+│ │ ├ 01.Network/     부트스트랩·인증·백엔드 게이트웨이·서버 존재·종료
+│ │ │ └ Session/      출정 명단·이벤트 저장 큐·개인 드롭·정산
+│ │ ├ 02.Combat/      서버 전투 틱·Player/·Damage/·Skills/
+│ │ ├ 03.AI/Spawn/    스폰 경계 계약 (실행 구현 예정)
+│ │ └ 04.Systems/Wave/ 웨이브 경계 계약 (실행 구현 예정)
 │ └ 99.Dev/           개발·디버그 도구 (Shinshi.Dev 어셈블리) - 출시 빌드 제외 대상
 ├ 09.Data/            GameDB ScriptableObject 에셋 - 16장
 ├ Editor/             에디터 전용 코드 (Shinshi.Editor)
@@ -46,19 +55,31 @@ Assets/
   └ PlayMode/         런타임 동작 테스트
 ```
 
+Unity 프로젝트 밖의 도구도 저장소 루트에 있다.
+
+```text
+Backend/              ASP.NET Core API·PostgreSQL 데이터 계층·SQL migration·테스트
+deploy/               API 컨테이너·게임 서버 systemd 배포 템플릿과 안내
+tools/                Start-M2.ps1 등 실행 보조 스크립트
+```
+
+2026-10-02 동기화 기준 전투 구현 경로는 `02.Combat/Player/`·`Damage/`·`Skills/`다. 기존 `02.Combat/Skill/`은 빈 스캐폴드이며 실행 코드 위치로 안내하지 않는다. 위 목록에서 예정으로 표시한 AI·웨이브 실행 클래스는 아직 없다. 배포 템플릿과 실행 보조 스크립트의 존재는 서버 빌드·M2·배포 실행 성공을 뜻하지 않는다.
+
 외부 Asset Store 에셋은 `99.ThirdParty/{분류}/{에셋}/`에 둔다. Unity 에디터에서 `.meta`와 GUID를 유지하며 옮기고, 내부의 `Editor/`와 `Resources/` 구조를 보존한다. `Plugins/TextMesh Pro/` 필수 리소스와 `Gizmos/`의 위치 예외, 설치 버전과 승인된 경로 보정은 [에셋 대장](licenses/ASSET_REGISTRY.md)을 따른다. 업데이트 후에는 중복 패키지와 대장의 경로 보정을 다시 확인한다. 어떤 플러그인을 무엇에 쓰는지는 23장.
 
 
 - 도메인 폴더 번호와 목록은 이 표가 기준이다. 표에 없는 최상위 폴더를 만들 때는 먼저 이 표를 고친다. 하위 기능 폴더는 기획서(웨이브·토벌 거점·보상·보스 입장권·정기·부적·여우의 흔적)에 맞춘 초기안이며, 파트와 기획이 확정되면 조정한다.
-- 팀 코드는 아래 어셈블리(asmdef)로 나눈다. 폴더에 asmdef를 두면 그 아래 전체가 해당 어셈블리가 되고, 하위 폴더에 다른 asmdef가 있으면 그 폴더는 빠진다. 생성은 U01에서 하며 실제 참조 목록은 asmdef 파일이 기준이다.
+- 팀 코드는 아래 실제 어셈블리(asmdef)로 나뉜다. 폴더에 asmdef를 두면 그 아래 전체가 해당 어셈블리가 되고, 하위 폴더에 다른 asmdef가 있으면 그 폴더는 빠진다. 실제 참조 목록은 asmdef 파일이 기준이다.
 
 | 어셈블리 | asmdef 위치 | 포함 | 참조 | 빌드 포함 조건 |
 |---|---|---|---|---|
-| `Shinshi.Runtime` | `01.Scripts/` | `00.Common/`~`06.UI/` | Mirror, Cinemachine, AI Navigation, TextMeshPro, DOTween, Dialogue System, Mesh Baker(`MeshBakerCore`) | 항상 |
+| `Shinshi.Runtime` | `01.Scripts/` | `00.Common/`~`06.UI/` (`Contracts/` 제외) | `Shinshi.Contracts`, `Mirror`, `Mirror.Components`, `Mirror.Transports`, `kcp2k`, `Unity.Cinemachine`, `Unity.AI.Navigation`, `Unity.TextMeshPro`, `DOTween.Modules`, `DOTweenPro.Scripts`, `PixelCrushers`, `DialogueSystem`, `MeshBakerCore` | 항상 |
 | `Shinshi.Contracts` | `01.Scripts/00.Common/Contracts/` | Unity와 백엔드가 함께 쓰는 엔진 비의존 API DTO (`noEngineReferences`). `Shinshi.Runtime`에서 빠진다 | 없음. `Shinshi.Runtime`, `Shinshi.Server`, 테스트가 참조한다 | 항상 |
-| `Shinshi.Server` | `01.Scripts/98.Servers/` | `98.Servers/` | `Shinshi.Runtime`, `Shinshi.Dev`, Mirror | define 제약 `UNITY_SERVER \|\| UNITY_EDITOR` |
-| `Shinshi.Dev` | `01.Scripts/99.Dev/` | `99.Dev/` | `Shinshi.Runtime` | 항상 컴파일하되 파일 안을 `#if UNITY_EDITOR \|\| DEVELOPMENT_BUILD`로 비운다. `Shinshi.Server`의 개발 패널이 참조해야 해서 define 제약을 걸지 않는다 |
-| `Shinshi.Tests.EditMode` · `Shinshi.Tests.PlayMode` | `Tests/EditMode/` · `Tests/PlayMode/` | 테스트 | `Shinshi.Runtime`, `Shinshi.Server`, `Shinshi.Contracts`, 테스트 러너 | 테스트 전용 |
+| `Shinshi.Server` | `01.Scripts/98.Servers/` | `98.Servers/` | `Shinshi.Runtime`, `Shinshi.Contracts`, `Mirror`, `Mirror.Transports`, `kcp2k` | define 제약 `UNITY_SERVER \|\| UNITY_EDITOR` |
+| `Shinshi.Dev` | `01.Scripts/99.Dev/` | `99.Dev/` | `Shinshi.Runtime` | 항상 컴파일하되 파일 안을 `#if UNITY_EDITOR \|\| DEVELOPMENT_BUILD`로 비운다 |
+| `Shinshi.Tests.EditMode` · `Shinshi.Tests.PlayMode` | `Tests/EditMode/` · `Tests/PlayMode/` | 테스트 | `Shinshi.Runtime`, `Shinshi.Server`, `Shinshi.Contracts`, `Mirror`, `UnityEngine.TestRunner`, `UnityEditor.TestRunner` | 테스트 전용 (`UNITY_INCLUDE_TESTS`), EditMode는 Editor만 포함 |
+
+현재 참조의 원본: [Runtime asmdef](../Assets/01.Scripts/Shinshi.Runtime.asmdef), [Contracts asmdef](../Assets/01.Scripts/00.Common/Contracts/Shinshi.Contracts.asmdef), [Server asmdef](../Assets/01.Scripts/98.Servers/Shinshi.Server.asmdef), [Dev asmdef](../Assets/01.Scripts/99.Dev/Shinshi.Dev.asmdef). 백엔드는 [Shinshi.Contracts.csproj](../Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj)에서 `Assets/01.Scripts/00.Common/Contracts/`의 DTO 소스를 링크한다. 같은 계약을 백엔드 폴더에 복제하지 않는다.
 
   - 에디터에서는 `UNITY_EDITOR`가 정의되어 서버 코드도 컴파일되므로 에디터 한 개로 서버·클라를 함께 실행해 시험할 수 있다. Dedicated Server 빌드 대상은 `UNITY_SERVER`를 정의한다.
   - 로그·기즈모 호출 API처럼 도메인 코드가 부르는 개발 기능은 `Shinshi.Runtime`(`00.Common/`)에 `[Conditional]`로 두고, `Shinshi.Dev`에는 패널·웹 서버처럼 도메인이 부르지 않는 것만 둔다. `Shinshi.Runtime`은 `Shinshi.Dev`를 참조하지 않는다.
@@ -328,6 +349,8 @@ namespace Shinshi.Player
 | 서버 | `98.Servers/{NN}.{도메인}/{기능}/{이름}Server.cs` 등 | `Shinshi.Server` | 서버만 필요한 판단과 실행. 요청 검증 처리기, AI 결정·상태 머신, 스폰, 보상 추첨, 정산, 백엔드 호출 | {팀장}. AI·웨이브는 해당 파트 담당 |
 | 표현 | `{NN}.{도메인}/{기능}/View/{이름}View.cs`, UI는 `{NN}.UI/` | `Shinshi.Runtime` | 상태를 읽어 애니메이션·VFX·UI로 보여 준다 | 파트 담당 |
 
+서버만 쓰는 순수 판정 클래스(엔진·네트워크 상태를 갖지 않는 정적 계산)는 `98.Servers/` 안에서 `{이름}Rules`라는 이름을 써도 된다. 예: `JoinHandshakeRules`, `SettlementRules`. 위치가 `98.Servers/`이므로 클라이언트 빌드에 들어가지 않으며, 위 표의 규칙 층(Runtime 공용)과는 위치로 구분한다.
+
 ```
 Assets/01.Scripts/
 ├ 03.AI/Enemy/Rules/EnemyTelegraphRules.cs       예고 형태 계산 (서버·클라 공용)
@@ -342,13 +365,15 @@ Assets/01.Scripts/
 
 - 서버 클래스는 프리팹·씬에 붙이지 않는다. 클라이언트 빌드에는 그 타입이 없어 프리팹에 빈 스크립트 참조가 남는다. 서버 부트스트랩(`98.Servers/01.Network/`)이 역할(`town`/`dungeon`)에 맞춰 만들고 상태에 연결한다.
 - `NetworkBehaviour`는 전부 `Shinshi.Runtime`에 둔다. Mirror는 프리팹의 `NetworkBehaviour` 순번으로 직렬화하므로 서버와 클라 빌드의 구성이 같아야 한다. `[Command]`·Rpc도 양쪽 빌드에 있어야 한다.
-- 연결 방법: 상태의 `OnStartServer`·`OnStopServer`가 `ServerLinks`(`01.Network/`, 도입 예정)에 알린다. `Shinshi.Server`가 서버 시작 때 타입별 처리기를 등록해 두고, 알림을 받으면 서버 객체를 만들어 상태에 붙인다.
+- 연결 방법: 상태의 `OnStartServer`·`OnStopServer`가 [ServerLinks](../Assets/01.Scripts/01.Network/ServerLinks.cs)에 알린다. 현재 [ServerBootstrap](../Assets/01.Scripts/98.Servers/01.Network/ServerBootstrap.cs)이 서버를 열기 전에 [CombatServerInstaller](../Assets/01.Scripts/98.Servers/02.Combat/CombatServerInstaller.cs)를 부르고, 설치기가 `PlayerInputState`의 시작·종료 처리기를 정확한 타입으로 등록한다. 알림을 받은 `CombatServerRuntime`이 `PlayerServer`를 생성·정리한다. 중복 타입 등록은 거절되며 플레이 시작 시 정적 등록을 비운다.
 - `[Command]`는 검증 없이 상태가 가진 처리기 인터페이스(`I{이름}ServerHandler`, 상태와 같은 `Net/`)로 넘긴다. 호출자·소유권·순번·중복 검증은 서버 처리기가 한다.
 - 전용 서버에서는 SyncVar hook이 불리지 않는다. 서버 로직을 hook에 걸지 않는다.
-- 표현은 `ClientView`(`00.Common/`, 도입 예정)를 상속하고 서버 빌드(`UNITY_SERVER`)에서 스스로 꺼진다. 표현과 UI는 상태의 읽기 프로퍼티·이벤트와 공개 요청 창구만 쓰며, `[Server]` 메서드나 서버 클래스를 호출하지 않는다.
+- 표현은 [ClientView](../Assets/01.Scripts/00.Common/Utility/ClientView.cs)를 상속하고 서버 빌드(`UNITY_SERVER`)에서 스스로 꺼진다. 표현과 UI는 상태의 읽기 프로퍼티·이벤트와 공개 요청 창구만 쓰며, `[Server]` 메서드나 서버 클래스를 호출하지 않는다.
+
+아래 코드는 역할 분리를 설명하는 예시다. 현재 전투 요청 창구는 `02.Combat/Player/Net/PlayerInputState.cs`이며, 실제 타입·연결 흐름은 [서버·클라이언트 협업](unity/SERVER_CLIENT_WORKFLOW.md) 6·8장을 따른다. 서버 틱·인증·게이트웨이의 `MonoBehaviour` 드라이버도 서버 부트스트랩이 실행 중에 생성·부착하며 씬·프리팹에는 직렬화하지 않는다.
 
 ```csharp
-// 02.Combat/Skill/Net/PlayerSkillState.cs - Shinshi.Runtime
+// 02.Combat/Skills/Net/PlayerSkillState.cs - Shinshi.Runtime 예시
 public class PlayerSkillState : NetworkBehaviour
 {
     /****************************************
@@ -413,7 +438,7 @@ public class PlayerSkillState : NetworkBehaviour
     }
 }
 
-// 98.Servers/02.Combat/Skill/PlayerSkillServer.cs - Shinshi.Server
+// 98.Servers/02.Combat/Skills/PlayerSkillServer.cs - Shinshi.Server 예시
 public class PlayerSkillServer : IPlayerSkillServerHandler
 {
     public void HandleCast(PlayerSkillState state, SkillRequest request)
@@ -653,6 +678,8 @@ public float moveSpeed = 5f;
 // 외부에서 읽기만 필요하면 프로퍼티
 public float MoveSpeed => _moveSpeed;
 ```
+
+예외: 클래스 안에 숨긴 `private struct` 값 묶음(배열에 담아 `ref`로 제자리 수정하는 내부 기록)은 할당 없이 다루려고 필드를 `public`으로 둘 수 있다. 이름은 `PascalCase`로 통일하고, 그 struct를 클래스 밖으로 노출하지 않는다.
 
 ---
 

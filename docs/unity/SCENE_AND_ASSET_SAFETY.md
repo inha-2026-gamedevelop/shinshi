@@ -10,10 +10,12 @@
 
 **Unity 씬 파일은 머지가 사실상 불가능하다.** 두 사람이 같은 씬을 고치면 한쪽 작업이 통째로 사라진다.
 
-지금은 템플릿 씬 `Assets/00.Scenes/SampleScene.unity`뿐이다. **(도입 예정)** 파트가 정해지면 씬을 만들면서 아래 표를 채운다. 씬 하나에 소유자는 한 명이다.
+템플릿 씬 `Assets/00.Scenes/SampleScene.unity`와 서버·클라이언트 빌드 진입 씬 `Assets/00.Scenes/Bootstrap.unity`가 있다. 개발 씬은 파트별로 만들면서 아래 표에 소유자를 등록한다. 씬 하나에 소유자는 한 명이다.
 
 | 씬 | 수정 권한 |
 |---|---|
+| `Assets/00.Scenes/Bootstrap.unity` | **{팀장}** |
+| `Assets/00.Scenes/Dev_PlayerMovement.unity` (이동 예측, 회피 시험) | **{팀장}** |
 | `Assets/{씬 폴더}/Dev_{파트}.unity` | {파트} ({팀원이름}) |
 | 실제 런타임 흐름 씬 (타이틀, 로비, 게임 등) | 통합 담당자 ({팀원이름}) |
 | 메인 씬 (이름 미정) | **통합 담당자만** |

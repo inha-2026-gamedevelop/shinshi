@@ -1,6 +1,6 @@
 # 네트워크 권위 규칙
 
-> 2026-09-30 shinshi 기준으로 이식, 2026-10-01 기획과 동기화. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정), 서버 구성과 호스팅은 [7장](#7-데디케이티드-서버-운영-원칙)(확정). 전투는 1~4인이고 공유 마을 포함 목표 동시 접속은 10~100명이며 실제 수용량은 미검증이다. 구체적 계약은 [기술설계서](../03-technical-design.md)를 함께 본다.
+> 2026-10-02 M-A 코드와 동기화. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정), 서버 구성과 호스팅은 [7장](#7-데디케이티드-서버-운영-원칙)을 따른다. 전투는 1~4인이고 공유 마을 포함 목표 동시 접속은 10~100명이며 실제 수용량은 미검증이다. 연결·인증·전투·출정·정산 코드는 있지만 서버 빌드·M2/M3·IL2CPP·배포는 `구현됨·실행 미검증`이다. 구체적 계약은 [기술설계서](../03-technical-design.md)와 [서버·클라이언트 협업](SERVER_CLIENT_WORKFLOW.md)을 함께 본다.
 
 > 멀티플레이 게임에서 가장 자주, 가장 늦게 드러나는 결함이 권위 경계 위반이다.
 > 단일 플레이에서는 멀쩡하고 여러 명 접속에서만 깨지므로, 발견 시점에는 이미 여러 시스템이 그 위에 얹혀 있다.
@@ -122,7 +122,20 @@
 | 서버에서만 실행 | `[Server]` / `[ServerCallback]` |
 | 클라이언트에서만 실행 | `[Client]` / `[ClientCallback]` |
 
-### 시스템별 매핑 예시
+### 현재 구현의 매핑
+
+| 경로 | 권위와 전달 |
+|---|---|
+| `PlayerInputState` | 소유 클라이언트의 요청을 Command로 서버 처리기 인터페이스에 전달. session epoch·sequence·입력 서버 시각은 서버에서 검증하며 승인 순번·참가자·권위 이동·쿨다운 등은 소유자에게 동기화 |
+| `PlayerCombatState` | 서버가 확정한 HP·생사·기력·공명·기술 단계·조준 상태를 동기화하며 클라이언트 hook은 표현 갱신에 사용 |
+| `CombatServerRuntime`·`PlayerServer` | `Shinshi.Server`에서 이동·피해·사망·기술을 판정. 입력·피해 처리 뒤 세션 종료, 그 뒤 부활 승인·복제 |
+| `PlayerPrediction`·`PlayerMovePredictor` | 소유 클라이언트의 이동 표현을 예측하고 `PlayerMoveAuthority`의 처리 sequence·권위 경로로 재조정. 원격 위치는 서버 권위 `NetworkTransform`으로 보간 |
+| `ShinshiServerAuthenticator` | 인증 전 메시지로 버전·콘텐츠 해시·일회 토큰을 확인. 참가자 결합과 던전 입장 검증 뒤에만 플레이어 생성·Command 허용 |
+| `DungeonSession`·`SessionEventQueue`·`SessionSettlement` | 서버가 개인 보상과 종료 원인을 확정해 순번 있는 이벤트·정산안을 API에 보낸다. 종료 이벤트 저장 확인 뒤 정상 정산 요청, 장애 취소는 API 복구 경로 |
+
+원본은 [플레이어 상태](../../Assets/01.Scripts/02.Combat/Player/Net/PlayerCombatState.cs), [입력 상태](../../Assets/01.Scripts/02.Combat/Player/Net/PlayerInputState.cs), [서버 전투 틱](../../Assets/01.Scripts/98.Servers/02.Combat/CombatServerRuntime.cs), [출정](../../Assets/01.Scripts/98.Servers/01.Network/Session/DungeonSession.cs)이다. `PlayerInputReader`는 `PF_NetPlayer`에 연결되어 있지만 실제 입력·다인 실행은 미검증이다. 일반전 스폰·웨이브 호스트 연결과 보스 마지막 단계의 생산 종료 연결은 남아 있다. 아래 표는 후속 시스템에도 적용할 매핑 예시이며 모두 구현됐다는 뜻은 아니다.
+
+### 후속 시스템 매핑 예시
 
 | 시스템 | Mirror 처리 |
 |---|---|
@@ -201,13 +214,14 @@ public override void OnClientConnect()
 }
 ```
 
-프로젝트의 `NetworkManager` 파생 클래스(도입 예정)가 `ClientConnected`·`ClientDisconnected`를 이 방식으로 제공한다.
-연결 수명을 알아야 하는 코드는 Mirror의 정적 이벤트가 아니라 이쪽을 구독한다.
+현재 [ShinshiNetworkManager](../../Assets/01.Scripts/01.Network/ShinshiNetworkManager.cs)는 `OnServerDisconnect`를 오버라이드하고 서버 개체 유지·기본 연결 정리 뒤 `ServerDisconnected`를 낸다. `ServerBootstrap`이 서버 인증기의 정리를 이 이벤트에 연결한다. 클라이언트 인증 거절·같은 토큰 재시도는 `ShinshiClientAuthenticator.Rejected`·`JoinRetryScheduled`를 구독한다. 위 코드의 `ClientConnected`·`ClientDisconnected`는 설명용 이름이며 현재 매니저가 제공하는 멤버가 아니다. 새 클라이언트 연결 이벤트가 필요하면 같은 콜백 재발행 방식으로 계약을 추가한다.
 
 ### 트랜스포트
 
 트랜스포트는 Mirror 기본 KCP(UDP)로 시작한다. 호스팅은 로컬 개발에서 시작해 AWS로 옮긴다(확정, 2026-09-30). 서버 구성과 이전 단계는 [7장](#7-데디케이티드-서버-운영-원칙)에 적는다. 클라우드에서는 보안 그룹 등에서 KCP 포트를 **UDP**로 열어야 한다.
 **연결 경로가 달라도 게임 판정 권위는 데디케이티드 서버에 남는다.** 트랜스포트나 외부 서비스(로그인, 매칭 등)를 붙이더라도 게임 시뮬레이션의 판정을 그쪽으로 옮기지 않는다.
+
+체험판에는 KCP 암호화를 적용하지 않는다(2026-10-01 결정). API의 HTTPS·Bearer 인증은 별도의 HTTP 경로에 적용되며 게임 UDP 트래픽 암호화의 근거로 삼지 않는다.
 
 ---
 
@@ -215,7 +229,11 @@ public override void OnClientConnect()
 
 판정 창이 짧은 입력(예: 회피, 반격)은 네트워크 지연이 50~150ms만 생겨도 서버의 판정 결과와 클라이언트의 체감이 어긋난다. 이런 기능이 기획에 들어오면 아래 방향을 따른다.
 
-### 설계 방향
+### 입력 계약과 현재 범위
+
+현재 `PlayerInputHeader`는 session epoch·sequence·추정 서버 시각을 담고 `PlayerInputGate`가 결합된 참가자·순서·허용 시각을 검증한다. 시각 허용 창은 [Constants.network.cs](../../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)의 과거 150ms·미래 50ms다. 서버 틱은 30Hz, 플레이어 위치 복제는 초기 15Hz, 적·마을 원격은 10Hz이며 수용량·체감 측정 뒤 조정한다. 아래 판정 창 ID·소비 계약은 타이밍 창을 추가할 때의 요구사항이며 현재 모든 타이밍 기술이 구현됐다는 뜻은 아니다.
+
+### 판정 창을 추가할 때
 
 1. 서버가 판정 창별 ID, 대상, 시작·종료 서버 시각, 소비 여부를 보유
 2. 클라이언트가 요청 ID, 판정 창 ID, 입력 순서와 추정 서버 시각을 함께 전송
@@ -227,6 +245,7 @@ public override void OnClientConnect()
 ### 검증 시 확인할 것
 
 - 지연 0ms(로컬), 50ms, 150ms 조건에서 각각 성공률을 비교한다
+- 손실 1%·3% 조건에서도 중복·순서·누락과 체감을 확인한다(2026-10-01 결정)
 - 클라이언트가 "맞았다고 느꼈는데 실패"하는 빈도를 기록한다
 - 데디케이티드 서버에서는 모든 플레이어가 지연을 겪는다. 호스트 모드에서 잰 성공률은 판정 근거로 쓰지 않는다
 
@@ -246,11 +265,11 @@ public override void OnClientConnect()
 맞음: 판정 로직을 [Server] 메서드로 분리하고, 서버에 화면·입력·로컬 플레이어가 없어도 동작하게 한다
 ```
 
-- 판정은 `[Server]` 메서드 안에서만
+- Runtime 상태 변경은 `[Server]` 경로로만 하고 판정 객체는 `Shinshi.Server`에서 실행한다
 - `isLocalPlayer` 분기는 입력 · UI · 카메라에만
 - 서버 빌드는 화면 없이(헤드리스) 돈다. 카메라 · 오디오 · UI · VFX 같은 표현 컴포넌트는 서버에서 동작하지 않아도 판정이 깨지지 않게 둔다. 판정이 표현 컴포넌트의 값(애니메이션 이벤트, 파티클 수명 등)에 기대지 않는다
 - 에디터 호스트 모드는 개발 편의용이다. 호스트 모드에서만 확인한 기능은 완료로 보고하지 않는다 ([멀티플레이 테스트 절차](../ai/04_MULTIPLAYER_TEST_PROTOCOL.md))
-- 서버 빌드 설정(Dedicated Server 빌드 프로필), 인증 방식, 텔레메트리는 (도입 예정)이며 정해지면 이 절에 적는다
+- 서버 실행 설정·인증·존재 신호·출정 종료 경로는 구현돼 있다. Dedicated Server·클라이언트·IL2CPP 빌드와 다인 접속·배포 실행은 미검증이다. 구조화 운영 텔레메트리와 OS 종료 신호의 자동 드레인 연동은 별도 확인이 필요하다
 
 ### 7.1 서버 구성 (확정, 2026-09-30)
 
@@ -258,28 +277,40 @@ public override void OnClientConnect()
 
 | 계층 | 역할 | 구현 | 100명 기준 규모 |
 |---|---|---|---|
-| 마을 서버 (신시) | 공유 공간, 부적 교체, 파티 모집 | Unity C# 헤드리스 + Mirror, 공간 기반 Interest Management | 프로세스 1개 |
-| 던전 서버 | 파티 하나의 웨이브·보스전 판정 | Unity C# 헤드리스 + Mirror, 미리 띄운 풀에서 배정 | 파티당 1개. 100명이 모두 4인 출정하면 25개, 모두 솔로면 100개 필요. 실제 풀 상한은 실측하고 부족하면 대기열 적용 |
-| 백엔드 API | 로그인, 캐릭터·인벤토리 저장, 던전 배정 | C# ASP.NET Core (도입 예정) | 1개 |
-| DB | 영구 데이터 | PostgreSQL (도입 예정) | 1개 |
+| 마을 서버 (신시) | 공유 공간, 부적 교체, 파티 모집 | Unity C# + Mirror 역할 부트스트랩·입장 인증 구현. 공간 기반 Interest Management와 마을 기능 통합은 목표 | 프로세스 1개 |
+| 던전 서버 | 파티 하나의 웨이브·보스전 판정 | Unity C# + Mirror, 풀 존재·출정 명단·전투·저장·정산 구현. 일반전 웨이브·스폰과 보스 마지막 단계 연결은 남음 | 파티당 1개. 100명이 모두 4인 출정하면 25개, 모두 솔로면 100개 필요. 실제 풀 상한은 실측하고 부족하면 대기열 적용 |
+| 백엔드 API | 로그인·접속 토큰, 예약·배정·시작·이벤트 저장·정산·장애 복구 | [ASP.NET Core API](../../Backend/src/Shinshi.Api/Program.cs) 구현. 캐릭터·인벤토리 등 전체 도메인 API 완료를 뜻하지 않음 | 초기 1개 |
+| DB | 영구 데이터 | PostgreSQL, [Npgsql+Dapper 데이터 계층](../../Backend/src/Shinshi.Data/Shinshi.Data.csproj)과 [SQL migration](../../Backend/src/Shinshi.Data/SqlMigrationRunner.cs) 구현 | 초기 1개 |
 
 - 게임 서버(마을·던전)는 클라이언트와 같은 Unity 프로젝트·같은 코드에서 빌드한다. 서버 역할은 빌드를 나누지 않고 실행 인자로 고른다
-- 던전은 프로세스 하나에 던전 하나를 돌린다. 하나가 죽어도 다른 던전이 끊기지 않고, 클라우드 확장 단위와 그대로 맞는다. 프로세스당 메모리는 서버 빌드로 실측한 뒤 적는다
-- 마을에서 던전으로 갈 때는 백엔드가 던전 서버 주소와 일회용 토큰을 내주고, 던전 서버가 토큰을 검증한 뒤 받는다. 던전 결과는 던전 서버가 백엔드에 보고한다
+- 던전은 프로세스 하나에 **출정 하나**를 돌린 뒤 종료한다. `ServerShutdownController`가 드레인·연결 정리·flush를 수행하고 [systemd 던전 유닛](../../deploy/gameserver/shinshi-dungeon@.service)의 `Restart=always`가 새 프로세스를 띄운다. `ServerPresence`는 매번 새 bootId로 등록한다. 같은 프로세스의 명단·닫힘 기록·보존소를 다음 출정에 재사용하지 않는다. 프로세스당 메모리는 서버 빌드로 실측한 뒤 적는다
+- 마을에서 던전으로 갈 때는 백엔드가 던전 서버 주소와 60초 일회용 토큰을 내주고, 던전 서버가 API 교환·서버 역할·인스턴스·출정·참가자 결합을 확인한 뒤 받는다. 입장 후 계정 접속 임대 이관과 start 영수증이 확정돼야 전투를 시작한다. 이벤트·정산은 던전 서버가 백엔드에 보고한다
 - **DB에 쓰는 것은 백엔드뿐이다.** 게임 서버도 백엔드 API를 거친다. 클라이언트는 어떤 저장 경로에도 직접 쓰지 않는다
 - 백엔드는 게임 판정을 하지 않는다. 판정 권위는 마을·던전 서버에 있다
 - 서버 주소·포트·백엔드 URL·서버 역할은 코드에 박지 않고 **명령줄 인자나 환경변수**로 받는다
 - 이 규모에서는 Redis, 마을 채널 분할, 관리형 게임 서버 호스팅(GameLift 등)을 쓰지 않는다. 대신 백엔드가 마을 서버 목록을 내려주는 구조로 두어 채널을 나중에 늘릴 수 있게 한다
 
+### 7.1.1 인증·경제 경계
+
+- HTTP 토큰은 `Authorization: Bearer {token}`으로 보낸다. 게임 서버의 서비스 자격은 임대 발급에만 쓰고, 이후 서버 경로는 `ServerCredentials`의 유효한 서버 임대 토큰을 사용한다. 인스턴스 헤더만으로 서버를 인증하지 않는다. 실행 설정은 [ServerLaunchConfig](../../Assets/01.Scripts/98.Servers/01.Network/ServerLaunchConfig.cs)·[BackendLaunchSettings](../../Assets/01.Scripts/98.Servers/01.Network/BackendLaunchSettings.cs)가 기준이다.
+- 서비스 자격은 `BACKEND_SERVICE_TOKEN` 또는 `-backend-service-token-file`의 파일로 공급한다. 토큰 원문을 CLI 인자·SO·로그에 넣지 않는다. 출시 서버는 API 검증기를 쓰고, `dev` 검증기는 에디터·개발 빌드 전용이며 형식만 확인한다. 출시 서버는 서비스 자격 없이 던전을 열지 않는다.
+- 동시 접속은 거절하며 사용자 문구는 **“이미 접속 중인 계정”**, 코드 `AlreadyConnected(809)`다. 늦은 끊김 감지를 기다리는 같은 토큰 재시도와 실제 던전 재입장 토큰 발급을 구분한다. 진행 중 재접속 유예에서는 원래 서버 개체가 피격·사망·타이머를 계속 받고, 복귀 시 같은 참가자에게 재결합한다. 자세한 흐름은 [협업 문서 8장](SERVER_CLIENT_WORKFLOW.md#8-인증재접속서버-수명-연결)을 따른다.
+- 백엔드 일시 불가 `BackendUnavailable(810)`와 호출 제한 `RateLimited(811)`을 토큰 변조 사유와 구분한다. 정산 상한 초과는 `SettlementLimitExceeded(904)`다. 값의 원본은 [ERejectReason](../../Assets/01.Scripts/00.Common/Types/ERejectReason.cs)과 [ContractCodes](../../Assets/01.Scripts/00.Common/Contracts/ContractCodes.cs)다.
+- 서버는 [SettlementGrant](../../Assets/01.Scripts/00.Common/Contracts/Sessions/SettlementGrant.cs)의 지갑 자산 칸(정기·정련편·티켓·엽전), 아이템 칸과 부적 칸을 구분해 정산안을 보낸다. 정산 아이템은 계정 귀속이다. 지갑 자산을 일반 아이템 ID로 지급하지 않는다. API는 정산안의 상한·자격·멱등성·원장과 트랜잭션을 확인하고 게임 처치를 다시 시뮬레이션하지 않는다.
+- 서비스 장애 취소는 완료 웨이브 기본 정기 전액과 적립 추가 정기 50%(내림)를 지급한다(2026-10-01 결정). [SettlementRules](../../Assets/01.Scripts/98.Servers/01.Network/Session/SettlementRules.cs)의 계산과 API 복구 정산 경로는 있다. `SessionConfigSO` 기본 정책은 아직 `Undecided`이고 비개발 빌드 검증기가 이를 막으므로 SO 설정 반영을 확인해야 한다.
+- 운영 제어는 관리자 API·CLI로 한다(2026-10-01 결정). 게임 클라이언트에 관리자 경제 쓰기 경로를 두지 않는다. DTO 원본은 [Contracts](../../Assets/01.Scripts/00.Common/Contracts/ApiRoutes.cs)이며 [백엔드 Contracts csproj](../../Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj)가 소스를 링크한다.
+
 ### 7.2 호스팅 단계 (확정, 2026-09-30)
 
 | 단계 | 구성 |
 |---|---|
-| 1. 로컬 개발 | 에디터 또는 헤드리스 빌드로 게임 서버 실행, 백엔드는 로컬 실행, DB는 Docker Compose (도입 예정) |
+| 1. 로컬 개발 | 에디터 또는 헤드리스 빌드로 게임 서버 실행, 백엔드는 로컬 실행, DB는 [Docker Compose](../../Backend/docker-compose.yml). 구성 파일·M2 실행 도구는 있으며 서버 빌드·M2/M3 통합은 미검증 |
 | 2. AWS 초기 | 게임 서버와 백엔드를 EC2(Linux) 한두 대에, DB는 RDS |
 | 3. AWS 확장 | 필요해지면 던전 서버를 자동 확장 풀이나 관리형 호스팅으로, 백엔드를 컨테이너로 옮긴다. 이때 채널 분할과 Redis를 검토한다 |
 
 서버 빌드는 처음부터 Linux 헤드리스로 뽑아 확인한다. 인스턴스 사양은 헤드리스 프로세스 메모리와 100명 부하 테스트 결과로 정한다.
+
+이번 동기화는 실제 소스·asmdef·DTO·배포 템플릿과 문서의 정적 대조다. 기존 실행 근거로 제공된 것은 사용자 제공 Unity Test Runner EditMode 780개 통과와 Backend 396개 통과(PostgreSQL 18 Docker)뿐이다. 이를 서버 빌드·M2/M3·IL2CPP·Linux/systemd 배포 검증으로 확장하지 않는다. `ServerShutdownController`의 애플리케이션 종료와 systemd의 재시작 설정은 구현돼 있지만 OS `SIGTERM`을 자동으로 드레인에 연결하는 코드는 확인되지 않았다.
 
 ---
 

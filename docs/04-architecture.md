@@ -1,11 +1,11 @@
 # 신시 소프트웨어 아키텍처
 
-> 문서 버전 1.0 · 2026-10-01 · 구현 예정 구조.
-> [기획서](02-game-design.md)의 규칙을 [기술 설계](03-technical-design.md)의 서버 권위·저장 계약으로 구현하기 위한 모듈 지도다. 아래 클래스·SO·API·DB는 설계 이름이며 기존 구현이라고 주장하지 않는다.
+> 문서 버전 1.1 · 2026-10-02 · M-A 구현과 후속 구조 구분.
+> [기획서](02-game-design.md)의 규칙을 [기술 설계](03-technical-design.md)의 서버 권위·저장 계약으로 구현하기 위한 모듈 지도다. 실제 소스·어셈블리·마이그레이션과 미구현 설계 이름을 구분한다. 사용자 제공 검증은 Unity EditMode 780개, PostgreSQL 18 Docker 환경 Backend 396개 통과다. 이번 갱신은 정적 대조이며 서버 빌드·M2/M3·IL2CPP·배포는 실행 미검증이다.
 
 ## 1. 현재 상태와 구조 원칙
 
-Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구는 설치되어 있다. `Assets/01.Scripts/`의 도메인 폴더·meta와 일부 환경 아트가 있고, `00.Common/`에 `Constants`, enum, GameDB 골격이 있으나 게임플레이 C#은 없다. `Assets/09.Data/`에는 GameDB 루트와 `PlayerConfig`, `SessionConfig` 에셋만 있고 `Assets/Tests/`는 빈 폴더이며 백엔드·DB 프로젝트는 미생성이다. `98.Servers/`·`99.Dev/`는 `.gitkeep`만 있다. 팀 코드용 asmdef는 아직 없어 현재 C#은 기본 `Assembly-CSharp`에 들어간다(asmdef는 `Assets/Mirror/`와 `99.ThirdParty/`에만 있음). U01에서 아래 2장의 어셈블리 구성을 만든다. 기존 `Assets/Editor/ScriptTemplateNamespaceProcessor.cs`는 코드 템플릿 보조이며 게임 기능이 아니다.
+Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0007, `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
 
 게임의 규칙, 네트워크 연결, 화면 표현, 영구 저장을 구분한다. 규칙은 해당 파트가 작성하고 서버 경로에서 실행한다. 클라이언트는 공개 Request/조회 계약만 사용하며 서버 전용 어셈블리(`Shinshi.Server`)의 타입을 참조하지 않는다. 과도한 빈 인터페이스나 상태 클래스는 먼저 만들지 않고 실제 교체 지점·중복·협업 경계가 있을 때 도입한다.
 
@@ -23,23 +23,24 @@ flowchart TD
   REP --> FAC
 ```
 
-이 그림은 실행 책임이다. 어셈블리는 `Shinshi.Runtime`(규칙·상태·표현·UI·요청 창구)과 `Shinshi.Server`(서버 수명·검증·AI·정산·백엔드 게이트웨이) 두 개로 나누고, 서버 쪽은 클라이언트 빌드에서 빠진다. 규칙 중 클라가 알아야 하는 계산만 `Shinshi.Runtime`에 둔다. 기준은 [코딩 컨벤션](coding-convention.md) 0장·9장.
+이 그림은 실행 책임이다. 어셈블리는 `Shinshi.Contracts`(엔진 비의존 공유 DTO), `Shinshi.Runtime`(규칙·상태·표현·UI·요청 창구), `Shinshi.Server`(서버 수명·검증·정산·백엔드 게이트웨이), `Shinshi.Dev`와 테스트 어셈블리로 나뉜다. `Shinshi.Server`는 define 제약으로 클라이언트 빌드에서 제외하도록 구성되어 있으나 실제 빌드 제거 검증은 미실행이다. 규칙 중 클라가 알아야 하는 계산만 `Shinshi.Runtime`에 둔다. 기준은 [코딩 컨벤션](coding-convention.md) 0장·9장.
 
 ## 2. 폴더와 소유
 
-현재 규정된 최상위 구조를 사용한다. 아래 새 기능 하위 폴더는 계획이며 파일 생성 시 실제 목록과 소유를 갱신한다.
+현재 규정된 최상위 구조를 사용한다. 아래는 도메인 배치이며 하위 폴더가 있다고 해당 기능이 구현된 것은 아니다. 네임스페이스(Shinshi.Common 등)와 실제 어셈블리(Shinshi.Runtime 등)를 혼동하지 않는다.
 
 ```text
 Assets/
   00.Scenes/                    기존 씬 폴더
   01.Scripts/
     00.Common/                  Shinshi.Common, 공용 계약·자료형·GameDB·Constants·로컬 풀
-      Data/                     Shinshi.Data, SO 정의
+      Contracts/                Shinshi.Contracts, 엔진 비의존 DTO 원본
+      Data/                     Shinshi.Data 네임스페이스, SO 정의
       Events/ Interfaces/ Types/ Utility/ Pooling/ Constants/ Sound/
     01.Network/                 Shinshi.Network, 세션·로비·연결·게이트웨이
       Session/ Lobby/
     02.Combat/                  Shinshi.Combat, 플레이어·피해·기술·소환
-      Player/ Damage/ Skill/
+      Player/ Damage/ Skills/
     03.AI/                      Shinshi.AI, 산귀·월백·출현
       Enemy/ Boss/ Spawn/
     04.Systems/                 Shinshi.Systems, 진행·경제·생활 규칙
@@ -50,11 +51,11 @@ Assets/
     06.UI/                      Shinshi.UI, Combat/Hub/Lobby/Systems
     98.Servers/                 Shinshi.Server, 서버 전용 클래스. 도메인 경로를 비춤. 민성(AI·웨이브는 기웅)
       {NN.원래도메인}/{기능}/    원래 경로를 그대로 비춤
-    99.Dev/                     테스트 지원·진단, 배포에서 분리
-  09.Data/                      GameDB 에셋, 현재 루트와 플레이어·세션 설정 SO
+    99.Dev/                     테스트 지원·진단, 현재 define 제한 없음
+  09.Data/                      GameDB 루트와 도메인별 카탈로그·설정 SO 에셋
     Resources/GameDB.asset      GameDatabaseSO 루트
     Combat/ AI/ Growth/ Reward/ Life/ Session/ Presentation/
-  Tests/EditMode/ PlayMode/     폴더만 있음, 테스트 미작성
+  Tests/EditMode/ PlayMode/     테스트 asmdef 존재, EditMode 테스트 작성됨
   Editor/                       기존 에디터 도구
   ScriptTemplates/              기존 팀 스크립트 템플릿
   Mirror/                       기존 Mirror 96.11.3, 기본 위치 유지
@@ -72,9 +73,18 @@ Assets/
 
 개체 하나는 규칙(`{기능}/Rules/`, 서버·클라 공용 계산), 상태(`{기능}/Net/{이름}State.cs`, `NetworkBehaviour`), 서버(`98.Servers/{NN}.{도메인}/{기능}/`, 서버 전용), 표현(`{기능}/View/`)으로 나눈다. 상태는 동기화 필드·Command·Rpc만 갖고 판정을 두지 않는다. Command는 상태가 가진 처리기 인터페이스로 넘기고, 서버 처리기가 호출자·소유권·상태·revision·중복을 검증한 뒤 규칙을 호출한다. 서버 객체는 프리팹에 붙이지 않고 `ServerBootstrap`이 상태의 `OnStartServer` 알림을 받아 만든다. 층별 규칙과 코드 예시는 [코딩 컨벤션](coding-convention.md) 9장, 담당은 [서버·클라이언트 협업](unity/SERVER_CLIENT_WORKFLOW.md)이 기준이다. 모듈 표(4장)의 타입은 이 층 중 하나에 속한다.
 
-**어셈블리와 테스트 구성(2026-10-01 확정).** `Assets/01.Scripts/`에 `Shinshi.Runtime`, `98.Servers/`에 `Shinshi.Server`(define 제약 `UNITY_SERVER || UNITY_EDITOR`), `99.Dev/`에 `Shinshi.Dev`를 둔다. `Tests/EditMode`·`Tests/PlayMode` asmdef는 `Shinshi.Runtime`과 `Shinshi.Server`를 참조하므로 규칙·서버 클래스를 `NetworkBehaviour` 없이 시험한다. 이전에 비교한 (A) 전체 단일 어셈블리, (B) 순수 규칙만 분리 안은 partial 구조를 전제로 했으므로 폐기한다. 전체 표는 [코딩 컨벤션](coding-convention.md) 0장이다.
+**실제 어셈블리와 테스트 구성(2026-10-02 작업 트리).** 도메인별 `Shinshi.Combat`·`Shinshi.AI` 등은 네임스페이스이며 별도 asmdef가 아니다. 기준은 [코딩 컨벤션](coding-convention.md) 0장이다.
 
-백엔드 저장소 내 배치는 위임 초기안으로 `Backend/Shinshi.Api/`, `Backend/Shinshi.Api.Tests/`, `Backend/Shinshi.Admin/`(어드민 화면, [운영 도구](design/operations-admin.md)), `Backend/deploy/`를 제안한다. 런처는 `Launcher/`(런처·패치·게시 도구와 테스트, [런처·패치](design/launcher-and-patch.md) 2장)에 둔다. 현재 존재하지 않으며 Unity Assets 밖의 별도 .NET 프로젝트다. 실제 생성 시 빌드·의존성·비밀값 제외 규칙을 함께 설정한다.
+| asmdef 경로 | 어셈블리·참조 | 현재 제약 |
+|---|---|---|
+| `Assets/01.Scripts/Shinshi.Runtime.asmdef` | `Shinshi.Runtime` → Contracts, Mirror/Components/Transports, kcp2k, Cinemachine, Navigation, TMP, DOTween, Dialogue System, MeshBakerCore | 플랫폼·define 제한 없음. 유료 패키지 참조는 빌드 머신 별도 설치 필요 |
+| `00.Common/Contracts/Shinshi.Contracts.asmdef` | `Shinshi.Contracts`, 프로젝트 어셈블리 참조 없음 | `noEngineReferences=true`, 엔진 비의존 공유 계약 |
+| `98.Servers/Shinshi.Server.asmdef` | `Shinshi.Server` → Runtime, Contracts, Mirror, Mirror.Transports, kcp2k | `UNITY_SERVER \|\| UNITY_EDITOR` |
+| `99.Dev/Shinshi.Dev.asmdef` | `Shinshi.Dev` → Runtime | 현재 플랫폼·define 제한 없음. 배포에서 자동 제외된다고 가정하지 않음 |
+| `Assets/Tests/EditMode/Shinshi.Tests.EditMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | Editor 한정, `UNITY_INCLUDE_TESTS`, autoReferenced=false |
+| `Assets/Tests/PlayMode/Shinshi.Tests.PlayMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | 플랫폼 제한 없음, `UNITY_INCLUDE_TESTS`, autoReferenced=false. 실제 PlayMode/빌드 검증 미실행 |
+
+백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Data,Shinshi.Contracts}`와 `Backend/tests/Shinshi.Backend.Tests`의 .NET 10 프로젝트다. `Shinshi.Contracts.csproj`는 Unity Contracts 원본 C#을 Compile Include/Link로 공유하며 Newtonsoft.Json을 사용한다. `Contracts/Auth`의 기존 Consume 경로/DTO 세 파일은 공유 컴파일에서 제외되어 현재 접속 교환은 `Contracts/Join`을 사용한다. DB 접근은 Npgsql + Dapper, 마이그레이션은 `Shinshi.Data/Migrations/*.sql`이다. 실행은 [Backend README](../Backend/README.md), API 컨테이너·게임 서버 유닛은 [deploy README](../deploy/README.md)를 따른다. 어드민은 체험판 API·CLI만 제공한다는 결정이며 운영 모듈과 `Launcher/`는 아직 생성하지 않았다.
 
 ## 3. 씬과 부트스트랩
 
@@ -87,87 +97,62 @@ Assets/
 | `WolbaekEasy` | 월백 이지 전투/파티 경매 | dungeon |
 | `DevCombat` / `DevGrowth` | 담당 파트의 반복 시험 | 개발 전용 |
 
-현재 이 씬들이 존재하는 것은 아니다. 기존 확인된 씬은 `Assets/00.Scenes/SampleScene.unity`다. 팀 씬은 Unity 에디터에서 만들고 GUID·meta를 보존한다.
+실제 `Assets/00.Scenes/Bootstrap.unity`와 기존 `SampleScene.unity`가 존재한다. 나머지 표의 씬은 작업명이며 현재 씬 파일로 가정하지 않는다. Bootstrap·Network 프리팹의 파일 존재와 서버 빌드/다인 접속 검증은 구분한다. 팀 씬은 Unity 에디터에서 만들고 GUID·meta를 보존한다.
 
 부트 순서는 외부 설정 읽기→GameDB 단일 초기화→필수 참조/콘텐츠 해시 검증→역할별 서비스 바인딩→Mirror 시작→해당 씬 준비→API readiness 보고다. `GameDBBootstrap`만 BeforeSceneLoad에서 Resources 루트를 로드해 초기화한다. Awake는 같은 멱등 경로를 호출하며 소비자는 Start/OnStartServer/OnStartClient 이후 읽는다. 필수 데이터가 없으면 기본값으로 전투를 열지 않는다.
 
 서버에서는 카메라·UI·오디오·연출이 비활성/부재여도 규칙이 동작해야 한다. `NetworkClient.localPlayer`, `Camera.main`, 애니메이션 이벤트를 서버 판정의 전제로 삼지 않는다. 마을↔던전은 프로세스 간 연결 전환이며 방장 승계는 관리 권한만 바꾸고 서버를 플레이어로 옮기지 않는다.
 
-## 4. 모듈과 제안 타입
+## 4. 모듈과 실제 타입
 
-| 모듈 | 제안 타입 | 책임·입출력 |
+| 현재 구현 영역 | 실제 타입·위치 | 연결 범위·후속 작업 |
 |---|---|---|
-| 연결 | `ShinshiNetworkManager`, `SessionBinding`, `JoinTokenAuthenticator` | Mirror 콜백, 역할·토큰·참가자 연결, 재접속. 인증기는 Mirror `NetworkAuthenticator` 파생이며 버전·토큰 검증 전 플레이어를 스폰하지 않음 |
-| 백엔드 연결 | `BackendGateway`, `OperationTracker`, `ServerLeaseClient` | 인증된 HTTPS, 동일 ID 재시도/조회, 서버 임대 |
-| 런처 연결 | `LauncherSessionReceiver`, `BuildIdentity` | 파이프로 게임 세션 1회 수신·PID 확인·갱신, `build-identity.json` 읽기. 게임 안 초대 코드 로그인과 같은 인증 입력 창구로 합류 |
-| 서비스 상태 | `ServiceStateClient` | 점검·기능 차단·공지·이벤트 스냅샷 조회. 세션 시작 때 이벤트 고정 |
-| 전투 입력 | `PlayerInputReader`, `PlayerRequestFacade`, `PlayerPrediction` | 구 Input Manager 입력 의도→요청, 소유 예측/재조정 |
-| 플레이어 상태 | `PlayerActor`, `CharacterStats`, `PlayerLifeRules` | HP/자원·생사, 복제 상태와 규칙 연결 |
-| 스킬 | `SkillController`, `SkillResolver`, `TalismanModifierResolver` | 12기술·3단 부적 조합→실행 명세 |
-| 피해 | `DamageResolver`, `HitLedger`, `GuardWindow` | 서버 피해/중복 적중 차단·반격 판정 |
-| 신령 | `SummonController`, `SummonTargetRules`, `ResonanceRules` | 2동료 시간제 유지, 타깃/공명·3강림 |
-| 적 AI | `EnemyController`, `EnemyDecisionRules`, `SpawnDirector` | 생존 타깃·제어·이동·공격, 활성 24상한 |
-| 보스 | `WolbaekController`, `BossPatternSelector`, `BossPatternExecutor` | 문맥→가중 선택→예고/발동/회복. 2페이즈는 입력 대기 |
-| 일반전 | `WaveSession`, `WaveSchedule`, `ParticipantRoster` | 6웨이브·180마리·420초·고정 시작 인원 |
-| 보스 세션 | `BossSession`, `ReviveBudget`, `ResultEligibility` | 솔로/협동 사망·공용3회·처치 자격 |
-| 전리품 | `LootRoller`, `SessionRewardLedger`, `SettlementRules` | 개인 독립 추첨·보호/추가 정기·정산안 |
-| 성장 | `TrainingRules`, `EquipmentRules`, `TalismanRules` | 비용/상한/보정/계승·결과 미리보기 |
-| 인벤토리 | `InventorySnapshot`, `ItemInstance`, `RewardInbox` | 소유·스택/공간·귀속·30일 회수함 |
-| 생활 | `GatherNode`, `GatheringRules`, `ActionEnergyRules`, `CraftingRules` | 선점/취소/완료, 오프라인 회복·제작 |
-| 파티 경매 | `PartyAuctionSession`, `BidRules`, `AuctionSettlement` | 자격 집합·입찰 순번·예약금·분배 |
-| 진행 | `AccountProgress`, `StoryProgressRules` | 지역/흔적/첫 처치·체험판 진행 분리 |
-| UI | `LocalPlayerView`, `HubPanels`, `CombatHud`, `AuctionView` | 현재 스냅샷·늦은 구독·재바인딩·거절/저장 대기 |
-| 표현 | `TelegraphPresenter`, `CombatFxPresenter`, `LocalFxPool` | 권위 좌표/시각의 표시, 로컬 풀 |
+| 연결/인증 | `01.Network/ShinshiNetworkManager`, `ShinshiClientAuthenticator`; 서버 `ShinshiServerAuthenticator`, `SessionBinding`, `ApiJoinTokenVerifier` | Mirror 연결·버전/토큰·참가자 소유 확인. 실제 다인 접속은 미검증 |
+| 서버/API 연결 | `98.Servers/01.Network/BackendGateway`, `HttpClientBackendTransport`, `ServerPresence`, `AccountLeaseReleaser` | 임대·풀 등록·heartbeat·동일 ID 재시도·계정 임대 해제 |
+| 프로세스 수명 | `ServerProcessDriver`, `ServerShutdownController`, `UnityServerProcessControl` | 한 출정 뒤 Draining·연결 정리·종료, systemd 새 bootId. Linux 실행 미검증 |
+| 플레이어 입력/상태 | `02.Combat/Player/Net/PlayerInputState`, `PlayerCombatState`; View의 `PlayerInputReader`, `PlayerPrediction`, `PlayerMovePredictor` | 구 Input Manager·입력 순번·소유 예측/재조정 |
+| 플레이어 서버 | `98.Servers/02.Combat/Player/PlayerServer`, `PlayerInputGate`, `MoveRequestThrottle`, `ReconnectVault`, `ReviveBudget` | 이동·기본공격·회피·생사·120초 보존·공용 부활 규칙/처리 |
+| 피해 | `98.Servers/02.Combat/Damage/DamageResolver`, `HitLedger`, `CombatTargetRegistry`; 공용 `DamageRules` | 서버 피해·중복 적중·표적·가시성 검사 |
+| 스킬/동료 | `98.Servers/02.Combat/Skills/SkillServer`, `CompanionServer`, `ResonanceLedger`; `CompanionCombatState`, `ITalismanModifierResolver` | 실행·동료·공명 기반. 부적 modifier의 실제 파트 연결과 보스/적 통합 후속 |
+| 세션/보상 | `98.Servers/01.Network/Session/DungeonSessionHost`, `DungeonSession`, `ParticipantRoster`, `LootRoller`, `SettlementLedger`, `SettlementRules` | 세션 규칙·원장·정산안 구현. 호스트의 일반전 CreateNormal/웨이브 source/참가자 효과 연결은 TODO라 6웨이브 완주로 판정하지 않음 |
+| 저장 연결 | `SessionEventQueue`, `HttpBackendEventSink`, `SessionSettlement` | 순번 이벤트·SessionEnded·정산 영수증 연결. 진단 체크포인트 주기 송신 TODO |
+| API/DB | `Backend/src/Shinshi.Api`, `Shinshi.Data` | 실제 HTTP는 [기술 설계 5장](03-technical-design.md#현재-http-엔드포인트), 실제 스키마는 7장 |
 
-타입 수는 필수 고정 목록이 아니다. 동일 역할이 단순하면 합치고, 교체/협업 경계가 생기면 나눈다. 네트워크 개체를 로컬 VFX 풀에 넣지 않는다. 네트워크 풀링은 Mirror 스폰 핸들러·netId/수명 초기화 검증이 필요한 별도 작업이다.
+후속 모듈의 작업명은 `EnemyController`·`SpawnDirector`·월백 패턴 실행기(M-Boss), 성장/장비/부적 규칙, 인벤토리·RewardInbox, 생활/제작, PartyAuctionSession, 진행, UI/HUD, 런처·운영 API/CLI다. 관련 SO 카탈로그의 존재와 게임플레이 구현은 구분한다. 보스 마지막 단계 통보·경매·미정산 화면·마을 로비의 통합을 M-A 파일 존재만으로 완료라 하지 않는다.
+
+타입 수는 필수 고정 목록이 아니다. 동일 역할이 단순하면 합치고 교체/협업 경계가 생기면 나눈다. 네트워크 개체를 로컬 VFX 풀에 넣지 않는다. 네트워크 풀링은 Mirror 스폰 핸들러·netId/수명 초기화 검증이 필요한 별도 작업이다.
 
 ## 5. 핵심 상태와 전이
 
 ### 5.1 출정
 
-`Lobby → ReadyCheck → Queued → Reserved → Loading → Starting → Running → Settling → Auction(보스 성공·희귀 재료 출현) → Returning → Closed`
+현재 API가 쓰는 `game_sessions.state`는 `Reserved → Running → Settling → Closed`다. `/start` 승인 때 Running으로 바뀌며 Started라는 저장 상태는 없다. DB CHECK에는 Loading/Starting/Auction/Returning/RecoveryPending도 허용되어 있지만 현재 API가 이 상태를 쓰는 것은 아니다. 마을 로비·준비/카운트다운·화면 로딩·경매·귀환은 후속 UI/게임 흐름이며 DB 상태와 별도로 다룬다.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Lobby
-  Lobby --> ReadyCheck: 전원 준비 후 방장 출정
-  ReadyCheck --> Lobby: 준비 변경·이탈·자격 실패
-  ReadyCheck --> Queued: 3초 카운트다운 완료
-  Queued --> Lobby: 취소·연결 종료·예약 실패
-  Queued --> Reserved: 풀 배정·전원 예약
-  Reserved --> Loading: 참가자별 토큰 발급
-  Reserved --> Lobby: 취소·예약 만료(예약 해제)
-  Loading --> Starting: 전원 스폰 준비
-  Loading --> Lobby: 120초 초과·연결 실패(예약 해제)
-  Starting --> Running: start 영수증
-  Starting --> Lobby: start 거절(예약 해제)
-  Running --> Settling: 종료 판정·SessionEnded 저장
-  Running --> Settling: 프로세스 소실 확인(ServiceCancelled)
-  Settling --> Auction: 기본 보상 영수증·희귀 재료 출현
-  Settling --> Returning: 정산 영수증
-  Settling --> RecoveryPending: 재시도 한계 초과
-  Auction --> Returning: 전 품목 종결
-  RecoveryPending --> Closed: 운영 복구 정산
-  Returning --> Closed
+  [*] --> Reserved: 풀 배정·전원 예약
+  Reserved --> Running: 전원 준비·임대 이관 후 start 영수증
+  Reserved --> Closed: 취소·만료(Released/Expired)
+  Running --> Settling: SessionEnded 저장
+  Running --> Closed: 확인된 서비스 장애 취소
+  Settling --> Closed: 저장 정산안 적용·복구
   Closed --> [*]
 ```
 
-| 상태 | 소유·기록 위치 | 소실 시 |
+| 구간 | 실제 소유·기록 | 현재 처리와 후속 경계 |
 |---|---|---|
-| Lobby·ReadyCheck | 마을 서버 메모리의 방 | 방이 사라짐. 경제 영향 없음 |
-| Queued | API 배정 대기열(위임 초기안) | 티켓 미소비. 마을 소실 시 대기열에서 제거 |
-| Reserved·Loading·Starting | API `reservations`·`game_sessions` | 예약 만료 시 API가 해제([기술 설계 6장](03-technical-design.md#6-출정-예약과-전장-전환)) |
-| Running | 던전 서버 메모리 + API `session_events` | 종료 이벤트 없으면 확인된 장애 취소 |
-| Settling·RecoveryPending | API | 저장된 정산안으로 API가 재개 |
-| Auction | 던전 서버 진행 + API 입찰·예약 | 5.4의 경매 장애 규칙 |
-| Returning·Closed | 클라이언트 전환·마을 서버 / API | 귀환 실패는 재로그인으로 마을 복귀 |
+| Lobby·ReadyCheck | 마을 로비/준비 구현 대상 | 해금·전원 준비·3초 카운트다운의 통합은 후속 작업 |
+| 풀 부족 | 예약 API | `NO_CAPACITY`, 티켓·물약 무예약. 출정 대기열은 미구현 |
+| Reserved | API `game_sessions`·`session_participants`·`reservations` | 준비 120초+여유 30초 만료. 전원 예약/취소가 원자적 |
+| Running | 던전 메모리 + API 순번 `session_events` | 시작 인원·참가자 고정. 진단 체크포인트의 DB/API는 구현됐지만 Unity 30초 송신은 TODO |
+| Settling | API 저장 `SessionEnded` 정산안 | 같은 operationId 재시도. 저장 뒤 60초 미정산도 유지 작업이 복구 |
+| Closed | API 영수증·result | Released/Expired/Settled/ServiceCancelled. 던전은 Draining 후 종료, 새 bootId로 재기동 |
+| 경매·귀환 | 후속 게임/UI 통합 | 성공 보스 경매는 5.4 설계, 기본 정산 경로 존재가 경매 구현을 뜻하지 않음 |
 
-- ReadyCheck는 방장의 출정 요청 뒤 해금·티켓·물약 자격을 다시 확인하고 3초 카운트다운을 보여 주는 구간이다(카운트다운 위치는 위임 초기안). 이 동안 준비 변경·이탈이 생기면 Lobby로 돌아간다.
-- Ready 변경/일행 이탈: 시작 전 상태에서는 준비 해제 또는 예약 취소 후 Lobby.
-- Starting은 티켓 소비 확정 응답을 기다리는 상태이며 전투 타이머를 시작하지 않는다.
-- Running 참가자 집합은 고정, 신규 참가 불가. 이탈은 참가자 상태만 바꾸고 시작 인원 스케일을 바꾸지 않는다.
-- 종료 원인은 `ESessionEndReason`의 Success/Timeout/AllDead/Abandon/DisconnectExpired/ServiceCancelled로 기록한다. Success 아닌데 보스 기본 보상을 생성하지 않는다. 프로세스 소실 경로의 Settling은 API가 수행한다.
-- Settling은 멱등 영수증 확정 전까지 유지하고 저장 실패를 Closed로 숨기지 않는다. `SessionEnded` 저장 뒤에는 세션이 Settling이어도 참가자 개인의 귀환을 허용하고(경매가 열리면 경매 종결 뒤) 결과 화면은 정산 영수증 전까지 저장 중으로 표시한다([기술 설계 7.3](03-technical-design.md#73-전리품물약과-장애)).
+- Starting이라는 화면/서버 대기 구간에서는 start 영수증 전 전투 시계를 시작하지 않는다.
+- Running 참가자 집합은 고정이며 신규 참가를 허용하지 않는다. 이탈해도 시작 인원 스케일을 바꾸지 않는다.
+- 종료 원인은 `ESessionEndReason`의 Success/Timeout/AllDead/Abandon/DisconnectExpired/ServiceCancelled다. 보스 마지막 단계의 성공 통보는 M-Boss 통합 범위다.
+- 종료 정산안 저장 뒤 귀환 허용·결과 화면 저장 중 표시·개인 이탈 정산 등 전체 UX는 [기술 설계 7.3](03-technical-design.md#73-전리품물약과-장애)의 계약이며 현재 모든 화면/파트 연결이 완료된 것은 아니다.
 
 ### 5.2 참가자
 
@@ -205,7 +190,7 @@ Departed 캐릭터는 전장에서 제거하고 보스 타깃·주변 인원 계
 
 SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도는 별도 구조체/레코드다. 모든 정의에 안정적 `definitionId`, 스키마 버전, 표시 키를 둔다. 이름 변경을 ID 변경으로 취급하지 않는다. ID 중복·누락·효과 범위·불가능한 참조는 빌드 전 검증한다.
 
-| SO 제안 | 주요 데이터 | 책임 파트 |
+| 현재 SO 정의·에셋 | 주요 데이터 계약 | 책임 파트 |
 |---|---|---|
 | `GameDatabaseSO` | 모든 카탈로그 참조·contentVersion | 민성 |
 | `PlayerConfigSO` | 이동/회피·기력회복·기본능력·기본공격 | 민성 |
@@ -220,7 +205,13 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 | `LifeConfigSO` | 약초·행동력·선점/재생·소형/대형 레시피 | 진욱 |
 | `SessionConfigSO` | 스케일·부활·복귀/입장/경매 게임 규칙 | 민성 |
 | `ProgressionCatalogSO` | 지역·보스·흔적·최초지원·체험판 플래그 | 기웅 |
-| `CameraConfigSO` | 카메라 거리·각도 등 로컬 시점 값 (`09.Data/Combat/`) | 민성 |
+| `AvatarCatalogSO` | 외형 슬라이더·UMA DNA·색 목록·직업별 헤어·장비 슬롯. `09.Data/Avatar/AvatarCatalog.asset` 존재 | 민성 |
+
+아래 SO는 아직 클래스·에셋이 없는 후속 제안이다.
+
+| 후속 SO 제안 | 주요 데이터 계약 | 책임 파트 |
+|---|---|---|
+| `CameraConfigSO` | 카메라 거리·각도 등 로컬 시점 값 (`09.Data/Combat/` 예정) | 민성 |
 | `PresentationConfigSO` | 음향·색·로컬 전용 연출 참조 | 담당 아트/UI |
 
 2026-10-01 사용자 결정으로 공동 소유였던 SO를 한 파트씩으로 나눴다(부적 효과 정의는 민성, 등록·강화 수치는 진욱의 `GrowthConfigSO`, 보상·생활은 진욱, 진행은 기웅). SO 구조 변경은 [밸런스 작업](unity/BALANCE_DATA_WORKFLOW.md) 절차를 따른다. 기술 표를 실제로 도입할 때 [코딩 컨벤션](coding-convention.md)의 SO 대상 표와 연결한다.
@@ -229,52 +220,57 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 
 이 명세를 서버 판정과 클라이언트 예고가 같은 ID/hash로 사용한다. 소환 동료 한 공격 동작의 다중 적중은 공명을 한 번만 주므로 `castInstanceId / actionInstanceId / hitTargetId`를 구분한다. 전투용 HitLedger는 수명 종료 때 비우고 보상 원장의 영구 ID와 혼용하지 않는다.
 
-## 7. 영구 데이터 초안
+## 7. 영구 데이터
 
-아래는 PostgreSQL 논리 스키마다. 마이그레이션·인덱스·실제 SQL은 API 구현 작업에서 작성한다. 모든 시간은 UTC 서버 시각으로 저장하고 UI만 현지화한다.
+### 7.1 현재 SQL 스키마
 
-| 테이블 작업명 | 핵심 키·필드 | 불변 조건 |
+아래는 [0001~0007 마이그레이션](../Backend/src/Shinshi.Data/Migrations/)과 [SqlMigrationRunner](../Backend/src/Shinshi.Data/SqlMigrationRunner.cs)의 실제 테이블·컬럼·키다. 시각은 `timestamptz` UTC, 정수 잔액/수량은 `bigint`와 음수 금지 제약을 사용한다. 사용자 제공 PostgreSQL 18 Docker 테스트 396개 통과는 기존 실행 근거이며 이번 표는 SQL 정적 대조다.
+
+| 실제 테이블 | 주요 컬럼·키 | 제약/현재 의미 |
 |---|---|---|
-| `accounts` | account_id, created_at, revision | 계정당 활성 플레이 세션1(`account_leases`로 강제) |
-| `account_leases` | account_id(유일), lease_id, instance_id, role, expires_at | 계정당 1행. 인스턴스 소실 확정 시 API가 해제 |
-| `auth_invites` | invite_id, account_id, code_hash, expires_at, used_at | 원문 미저장·교환과 소비를 한 트랜잭션으로 |
-| `auth_refresh_tokens` | token_id, account_id, token_hash, expires_at, revoked_at | 원문 미저장·회전 시 이전 토큰 폐기·폐기 토큰 재사용 거절 |
-| `server_instances` | instance_id, role, address, port, build_id, content_version, state, heartbeat_at | 풀 배정 대상. heartbeat 15초 부재 시 신규 배정 중지 |
-| `characters` | character_id, account_id, class_id, essence, shards, revision | 직업 고정·정기/정련편 캐릭터별 |
-| `account_wallets` | account_id, currency, tickets, action_value, action_anchor, revision | 공유 잔액, 사용 가능=총량−예약량 |
-| `account_items` | account_id, definition_id, binding_kind, quantity | 약초/보스재료/물약/미등록 부적, 동일 ID/귀속별 스택 |
-| `equipment_instances` | item_id, character_id, definition_id, grade, slot, enhancement, bound, locked, origin | 강화0~25·소유·잠금/착용·지원품 표식 |
-| `training` | character_id, stat_id, stage | 5행·항목≤40·합계≤100 |
-| `enhancement_pity` | character_id, slot, current_stage, fail_count | **아이템 ID·등급을 키에 넣지 않음** |
-| `talisman_progress` | character_id, effect_id, learned_level, registration_fail_count | 배우기 전 실패 보정, 배운 뒤Lv1~5 |
-| `talisman_loadout` | character_id, skill_id, selection_tier, effect_id | 단계당1개·소유/직업/기술 일치 |
-| `account_progress` | account_id, progress_id, value, completed_at | 영구 해금·흔적·첫 처치, 체험판 namespace 분리 |
-| `initial_grants` | account_id/character_id, grant_id, receipt_id | 삭제/재생성·재접속 중복 지원 차단 |
-| `game_sessions` | session_id, mode, map_id, state, starting_count, content_version, server_lease, started_at, result | 시작 후 참여자/스케일 고정 |
-| `session_participants` | session_id, participant_id, character_id, connection_state, grace_until, death_at, settled_at | 이탈 정산 뒤 보상 제외 |
-| `reservations` | reservation_id, owner, session_id, item/currency, quantity, state, expires_at | 시작 전 전체취소·소비/반환 한 번 |
-| `session_events` | session_id, event_seq, event_id, event_kind, payload, committed_at | event_id 유일·순번 누락 검출 |
-| `session_rewards` | session_id, source_event_id, recipient_id, reward_index, payload, state | 추첨/확보 한 번·추가정기 미지급 보관 |
-| `session_checkpoints` | session_id, checkpoint_seq, last_event_seq, state_blob, schema_version | 30초 주기. 체험판에서는 진단·향후 복구 검증용이며 재접속은 프로세스 메모리, 프로세스 소실은 장애 취소를 쓴다. 경제 원장 대체 금지 |
-| `auctions` | auction_id, session_id, item, status, opened_at, deadline, eligible_ids, closing_connected_ids, revision | 동결 자격·종료 순번 |
-| `auction_bids` | auction_id, bid_seq, bidder_id, amount, reservation_id, operation_id | 최고가 예약·입찰 철회 금지 |
-| `operations` | operation_id, actor_id, request_hash, status, receipt, committed_at | `(actor_id, operation_id)` 유일. 동일 ID·동일 본문만 재실행 허용, 체험판 기간 삭제 안 함 |
-| `reward_inbox` | reward_id, owner, source_kind, source_id, payload, original_awarded_at, expires_at, remaining | 회수함은 원래 획득+30일, 운영자 우편은 지급별 기한·부분 수령 원자성 |
-| `economy_ledger` | ledger_id, occurred_at, account_id, character_id, asset_kind, asset_id, delta, balance_after, reason, source_type, source_id, operation_id, actor_kind, actor_id | 상태 변경과 같은 트랜잭션·추가 전용·자산별 합계=잔액 |
-| `item_history` | item_id, seq, event, before, after, owner_id, operation_id, occurred_at | 장비 인스턴스의 생성~소멸 추적·추가 전용 |
-| `admin_users` | admin_id, role, mfa_enabled, disabled_at | 게임 계정과 분리·2단계 인증 필수 |
-| `admin_audit_log` | audit_id, at, admin_id, role, action, target_type, target_id, before, after, reason, approval_id | 추가 전용(API DB 계정에 UPDATE·DELETE 권한 없음) |
-| `admin_grants` | grant_id, target_spec, rewards, reason, expires_at, state, created_by, approved_by | `(grant_id, account_id)` 유일 지급·미수령분 취소 |
-| `live_events` | event_id, kind, target, value, starts_at, ends_at, state | 배율 상한·시작 뒤 종료 앞당기기만 허용 |
-| `service_state` | key(maintenance·feature 이름·notice), value, updated_by, updated_at | 점검·기능 차단·공지. 변경은 감사 로그 |
-| `allowed_builds` | build_id, channel, protocol_version, content_hash, allowed_from, allowed_until | 런처·API·인증기가 같은 목록으로 판정 |
-| `sanctions` | sanction_id, account_id, kind, starts_at, ends_at, reason, evidence_ref, created_by | 기간 중 로그인·출정 거절 |
-| `auth_game_sessions` | game_session_id, parent_token_id, account_id, expires_at, revoked_at | 런처 세션의 하위·부모 폐기 시 함께 폐기 |
-| `outbox` | event_id, aggregate_id, payload, delivered_at, retries | 같은 트랜잭션 결과 통지·중복 소비 방지 |
+| `schema_migrations` | PK version; name, checksum, applied_at | 실행기가 생성. 번호순 SQL·SHA-256 체크섬, 적용 SQL 변경 거절 |
+| `accounts` | PK account_id; created_at, revision | revision≥0 |
+| `account_leases` | PK account_id; UNIQUE lease_id; instance_id, role, expires_at | (instance_id, role) FK. 계정당 접속 임대 하나, 수명15초·heartbeat 연장 |
+| `server_instances` | PK instance_id; UNIQUE(instance_id, role); address, port, build_id, content_version, state, heartbeat_at, boot_id, registered_at | 역할0/1, 상태 Idle/Reserved/Active/Draining/Offline. 등록시각순 배정, heartbeat15초 부재 배정 제외 |
+| `auth_invites` | PK invite_id; account_id, UNIQUE code_hash, expires_at, used_at, max_uses, used_count, revoked_at | 해시32바이트. 허용 사용수 내 원자 소비 |
+| `auth_token_families` | PK family_id; account_id, created_at, revoked_at; UNIQUE(account_id, family_id) | 갱신/접근/입장 토큰의 계정 인증 묶음 |
+| `auth_refresh_tokens` | PK token_id; account_id, family_id, UNIQUE token_hash, expires_at, revoked_at, consumed_at, replaced_by_token_id | (account_id, family_id) FK. 회전·재사용 폐기, 접근 토큰 연결용 3컬럼 UNIQUE |
+| `auth_access_tokens` | PK token_id; account_id, family_id, refresh_token_id, UNIQUE token_hash, expires_at, revoked_at | 갱신 토큰의 (account_id, family_id, token_id)에 FK, 접근15분 |
+| `auth_game_sessions` | PK game_session_id; account_id, parent_token_id, token_hash, expires_at, revoked_at | 부모 갱신 토큰 FK, nullable UNIQUE 해시. 저장소 존재, HTTP/런처 연결 후속 |
+| `auth_server_leases` | PK lease_id; service_id, instance_id, role, UNIQUE token_hash, expires_at, revoked_at, boot_id | 서버 인스턴스/역할 FK, 임대를 발급 boot에 결합. heartbeat 생존 판정과 인증 분리 |
+| `auth_join_tokens` | PK token_id; account_id, family_id, character_id, participant_id, session_id, instance_id, server_lease_id, server_role, UNIQUE token_hash, expires_at, consumed_at, revoked_at | 계정/캐릭터·토큰계열·대상 임대/역할 FK. 마을은 session_id/participant_id NULL, 던전은 필수. 60초 일회 교환 |
+| `characters` | PK character_id; UNIQUE(account_id, character_id); account_id, class_id, essence, shards, revision | 직업0~2, 정기/정련편 캐릭터별. 외형·성장 전체 스키마는 후속 |
+| `account_wallets` | PK account_id; currency, tickets, tickets_reserved, action_value, action_anchor, revision | 계정 지갑. 0≤tickets_reserved≤tickets, 행동력0~100 |
+| `account_items` | PK(account_id, definition_id, binding_kind); quantity, reserved | 0≤reserved≤quantity, 스택/귀속별 가용량=quantity−reserved |
+| `game_sessions` | PK session_id; mode, map_id, state, starting_count, content_version, instance_id, role, server_lease, revision; reserved_by_instance_id, instance_boot_id, expires_at, created_at, started_at; last_event_seq, ended_event_seq, end_reason, settlement_operation_id, settling_at, closed_at, result; recovery_failures, next_recovery_at, ended_essence | 던전 역할1 FK, 시작인원1~4. 현재 Reserved/Running/Settling/Closed. 종료 이벤트 순번≤last_event_seq, 정산 operationId와 동시 기록 |
+| `session_participants` | PK(session_id, participant_id); UNIQUE participant_id, UNIQUE(session_id, account_id); account_id, character_id, state, essence_accrued, base_essence_accrued, settled_at | 상태 Reserved/Active/Settled/Released. 열린 참가자의 account_id 부분 UNIQUE. 기본/추가 정기 원장 분리 |
+| `reservations` | PK reservation_id; session_id, participant_id, account_id, asset_kind, definition_id, binding_kind, quantity, consumed, state, created_at, closed_at | 참가자 FK·(session_id, account_id, asset_kind, definition_id, binding_kind) UNIQUE. Ticket/Item, 보스티켓1장. 만료시각은 game_sessions.expires_at |
+| `session_events` | PK(session_id, event_seq); UNIQUE event_id; event_kind, participant_id, payload, operation_id, committed_at | 종류1~5: Loot/PotionUsed/ExtraEssence/SessionEnded/BaseEssence. UPDATE/DELETE/TRUNCATE 거절, 단조 순번 |
+| `session_checkpoints` | PK(session_id, checkpoint_seq); last_event_seq, schema_version, state_blob, saved_at | blob≤262144바이트, 별도 `/checkpoints`. 진단용이며 경제 복구·프로세스 소실 후 전투 재개에 사용하지 않음 |
+| `operations` | PK(actor_id, operation_id); operation_kind, request_hash, status, result_json, committed_revision, receipt_id, created_at, committed_at | 같은 행위자·ID·정규화 본문만 같은 결과. Pending/Committed/Rejected와 JSON 영수증 제약 |
+| `economy_ledger` | PK ledger_id; UNIQUE(actor_id, operation_id, entry_key); occurred_at, account_id, character_id, asset_kind, asset_id, binding_kind, delta, balance_after, reason, source_type, source_id, actor_kind | operation FK, delta≠0, 상태 변경과 같은 트랜잭션. Currency/Tickets/Essence/Shards/AccountItem, 추가 전용 |
+| `item_history` | PK(item_id, seq); event_kind, before_state, after_state, owner_id, actor_id, operation_id, occurred_at | operation FK, before/after 객체 중 하나 필수. 삭제한 장비 이력도 보존, 추가 전용 |
+| `outbox` | PK event_id; UNIQUE(consumer_key, event_id); aggregate_id, consumer_key, event_kind, payload, actor_id, operation_id, created_at, delivered_at, retries, next_attempt_at | operation FK, 객체 payload. 같은 DB 소비 callback용 전달기 존재, 자동 background 등록/외부 전송은 후속 |
+| `outbox_inbox` | PK(consumer_key, event_id); consumed_at | outbox 복합 FK, 같은 DB 소비 중복 방지·추가 전용 |
 
-생활 노드의 실시간 선점은 마을 서버가 소유하고 완료의 nodeInstanceId/claimId·재생시각을 이벤트로 남긴다. 행동력은 계정 행 잠금 안에서 `경과한 5분 구간 수`를 계산해 상한100까지 반영한 뒤 예약/소모한다. 상한에 머문 초과 시간은 적립하지 않는다. 회복 앵커를 클라이언트 시계나 캐릭터 변경으로 초기화하지 않는다.
+0002는 던전 인스턴스/역할 FK를, 0003은 인증 묶음·원장·outbox를, 0004는 예약·참가자·이벤트·체크포인트를 더했다. 0005는 boot/마을 토큰·정산 복구, 0006은 복구 백오프·종료 정기 합계·배정/정리 인덱스, 0007은 완료 웨이브 기본 정기 적립과 이벤트 종류5를 더했다. 마이그레이션은 별도 `--migrate`로 실행하며 런타임 DML 자격과 migration-owner 자격을 구분한다. down SQL은 검토용이며 자동 되돌리기는 없다.
 
-동시 게임 접속은 계정 세션 임대의 유일 제약으로 제한한다. 계정 삭제/재생성 정책과 실제 인증 공급자의 안정 ID 연결은 배포 전 검증한다. 백업 복원·마이그레이션은 스키마 버전·경제 원장까지 함께 복구해야 하며 클라이언트 로컬 파일을 생산 잔액 복원 근거로 쓰지 않는다.
+서비스 장애 취소는 기본 정기 적립분 전액+추가 정기 적립분50% 내림, 티켓·사용 물약 환급을 한 번 적용한다. 일반 정산 DTO는 정기·정련편·티켓·엽전 전용 칸과 보호 아이템·미등록 부적 칸을 구분한다. 아이템/부적 귀속은 `Account`만 받는다. `session_rewards`라는 테이블은 현재 없으며 전리품 이벤트와 메모리 정산 원장을 별도 보상 테이블 구현으로 오해하지 않는다.
+
+### 7.2 후속 영구 데이터 설계
+
+| 계획 테이블/데이터 | 설계 계약·현재 경계 |
+|---|---|
+| `equipment_instances`, `training`, `enhancement_pity` | 장비0~25·수련5항목·항목40/합계100. 강화 보정 키는 캐릭터/부위/현재단계이며 아이템ID·등급 제외 |
+| `talisman_progress`, `talisman_loadout` | 등록 실패 보정·Lv1~5·단계당1개, 직업/기술 소유 검증 |
+| `account_progress`, `initial_grants` | 영구 해금·체험판 namespace·계정/캐릭터 초기 지급 멱등 |
+| `session_rewards`, `reward_inbox` | 별도 보상/회수함 테이블 미구현. 확보품 원래 획득+30일·부분 수령 원자성 설계 |
+| `auctions`, `auction_bids` | 동결 자격·최고가 예약·영속 종료 접속 집합, 5.4 설계 |
+| `admin_users`, `admin_audit_log`, `admin_grants` | 게임 계정과 분리·MFA·추가 전용 감사·원자 지급. 체험판은 API·CLI만 제공 |
+| `live_events`, `service_state`, `allowed_builds`, `sanctions` | 운영 저장 모듈 미구현. 현재 service-state/허용 빌드는 설정 조회이고 실제 제재 DB 조회 없음 |
+| 참가자 connection_state/grace_until/death_at | 현재 DB 참가자 컬럼이 아님. 프로세스 메모리의 연결·120초 유예·생사와 API 경제 참가자 상태를 구분 |
+
+생활 노드의 실시간 선점·행동력 회복/소모, 성장·회수함·경매·운영 데이터의 구체 SQL은 해당 파트 통합 작업에서 작성한다. 행동력은 계정 행 잠금 안에서 5분 구간을 계산해 상한100까지 반영하고 상한에 머문 초과 시간은 적립하지 않는 설계다. 이 규칙을 현재 `account_wallets` 컬럼이 존재한다는 사실만으로 구현 완료라 하지 않는다. 백업 복원·마이그레이션은 스키마와 경제 원장을 함께 복구하며 클라이언트 로컬 파일을 잔액 복원 근거로 쓰지 않는다.
 
 ## 8. 모듈 의존과 통합 계약
 
@@ -303,7 +299,7 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 | 월백 가중6패턴/2페이즈 연결 | Selector/Executor/BossPatternCatalogSO | 문맥표·최근 패널티·전환 미입력 차단 |
 | 개인 드롭/티켓 매 몬스터 | LootRoller/SessionRewardLedger | source ID별 개인 판정·재시도 동일 결과 |
 | 전원 티켓1/물약 지참 | reservations/Start operation | 일부 부족이면 전원 무소비·응답 유실 |
-| 실패 추가정기50%만 손실 | SettlementRules/session_rewards | 보호품 유지·보스 실패 기본보상0 |
+| 실패 추가정기50% 지급 | SettlementRules/SettlementLedger/session_events | 보호품 유지·보스 실패 기본보상0 |
 | 보스10초/공용3/전멸 즉시 | ReviveBudget/PlayerLifeRules | 동시 부활·마지막 사망 우선 |
 | 재접속120초/피격 유지 | SessionBinding/ParticipantRoster(프로세스 메모리 상태) | 경계 시각·유예 후 자격 제외·감지 지연 기록 |
 | 서버 소실·정산 장애 | SessionEnded 이벤트/API 복구 작업/reservations 만료 | 종료 이벤트 저장 전·후 종료, 예약 만료와 start 경합 |
@@ -318,4 +314,4 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 
 ## 10. 설계 검증 경계
 
-문서 단계에서는 이름·책임·상태·권위·영속성·기획 대응을 검토한다. 도입할 클래스 존재, API 실행, DB 원자성, Linux 빌드, 네트워크 지연, 성능을 문서만으로 검증 완료라 하지 않는다. 구현 후 실제 소스·SO·테스트가 생기면 이 표의 제안 이름을 실제 경로와 연결하고 [디자인 패턴 지도](unity/DESIGN_PATTERNS.md)의 적용 위치를 갱신한다.
+현재 소스·SO·asmdef·HTTP Controller·SQL 마이그레이션을 정적으로 대조했다. 사용자 제공 EditMode 780개·Backend 396개 통과는 기존 실행 근거이고 이번 문서 갱신에서 재실행한 것은 아니다. 실제 서버/클라이언트 빌드·IL2CPP·M2/M3·지연/손실·성능·배포는 미검증이다. 후속 모듈의 제안 이름을 현재 파일로 가정하지 않으며 실제 연결이 생기면 이 문서와 [디자인 패턴 지도](unity/DESIGN_PATTERNS.md)를 함께 갱신한다.
