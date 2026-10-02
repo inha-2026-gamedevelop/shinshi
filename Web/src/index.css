@@ -1,0 +1,45 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import 'tailwindcss';
+
+/* 런처와 같은 팔레트. 디자인 시스템: ui-ux-pro-max "Dark Mode (OLED)" 스타일을 런처 색으로 맞춤 */
+@theme {
+  --color-bg: #0e1014;
+  --color-panel: #1a1e26;
+  --color-panel-2: #141820;
+  --color-divider: #262b36;
+  --color-fg: #edeff3;
+  --color-muted: #9aa3b2;
+  --color-accent: #ff6a13;
+  --color-accent-hover: #ff8236;
+  --color-ok: #4ade80;
+  --color-danger: #ff7a7a;
+  --color-warn: #fbbf24;
+  --font-sans: 'Pretendard Variable', Pretendard, 'Malgun Gothic', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    min-width: 320px;
+    line-height: 1.6;
+    word-break: keep-all;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
