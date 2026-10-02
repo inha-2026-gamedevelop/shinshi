@@ -226,6 +226,7 @@ namespace Shinshi.Network
         public override void OnStartClient()
         {
             base.OnStartClient();
+            PartyAuctionClient.RegisterHandlers();
             if (playerPrefab == null)
             {
                 return;

@@ -88,11 +88,19 @@ namespace Shinshi.Common
             public const float PLAYER_BODY_RADIUS    = 0.5f;
             public const float COMPANION_BODY_RADIUS = 0.5f;
 
+            // TODO(민성): 기획 미정, 보스 몸체 반경 임시값(m). 보스 정의 데이터에 몸체 크기가 생기면 그 값을 쓴다
+            public const float BOSS_BODY_RADIUS      = 2f;
+
             // 몸체에 막히는지 볼 대상을 찾을 때 이동 거리에 더하는 여유(m). 가장 큰 몸체(보스) 반경보다 커야 한다
             public const float MAX_BODY_RADIUS = 4f;
 
             // 제어 허용 구간에 있는 보스에게 적용하는 최대 속박 시간(초)
             public const float BOSS_ROOT_MAX_SECONDS  = 1f;
+
+            // 출정 계약(예약, 입장 토큰)에 보스와 전장 지역이 없어 보스전은 이 값으로 연다. 체험판 기준 Aref, Href는 숲 지역에 있다
+            // TODO(민성): 출정 계약에 보스와 지역이 생기면 그 값으로 바꾼다
+            public const string DEV_BOSS_ID        = "boss_wolbaek";
+            public const string DEV_BOSS_REGION_ID = "region_forest";
             public const float SKILL_HALF_WIDTH_SCALE = 0.5f;
             public const int   WARRIOR_COUNTER_SLOT   = 3;
         }

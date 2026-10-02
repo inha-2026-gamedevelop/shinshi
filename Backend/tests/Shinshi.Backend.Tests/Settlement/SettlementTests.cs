@@ -82,6 +82,12 @@ namespace Shinshi.Backend.Tests.Settlement
                 "SELECT quantity FROM account_items WHERE account_id = @AccountId AND definition_id = @LootId;",
                 new { player.AccountId, LootId = LOOT_ID }));
             await AssertLedgerMatchesBalancesAsync(environment, player, TICKETS, POTIONS);
+
+            // 보스 성공은 정산 뒤 경매 단계라 서버가 Active로 남고, 경매 finish가 Draining으로 돌려보낸다
+            Assert.Equal(GameSessionStates.INSTANCE_ACTIVE, await environment.TextAsync(
+                "SELECT state FROM server_instances WHERE instance_id = @Id;", new { Id = session.InstanceId }));
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED,
+                (await environment.FinishAuctionAsync(session)).Status);
             Assert.Equal(GameSessionStates.INSTANCE_DRAINING, await environment.TextAsync(
                 "SELECT state FROM server_instances WHERE instance_id = @Id;", new { Id = session.InstanceId }));
         }

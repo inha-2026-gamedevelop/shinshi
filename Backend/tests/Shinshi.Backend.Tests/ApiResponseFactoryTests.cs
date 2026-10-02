@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -64,7 +66,7 @@ namespace Shinshi.Backend.Tests
 
         /// <summary> 서비스 상태 조회는 설정된 상태와 고정된 서버 시각을 실제 DTO로 반환한다 </summary>
         [Fact]
-        public void Get_ConfiguredServiceState_ReturnsConfiguredSnapshotAndFixedTime()
+        public async Task Get_ConfiguredServiceState_ReturnsConfiguredSnapshotAndFixedTime()
         {
             ServiceCollection services = new ServiceCollection();
             services.Configure<ServiceStateOptions>(options =>
@@ -78,7 +80,7 @@ namespace Shinshi.Backend.Tests
             ServiceStateController controller = new ServiceStateController(
                 provider.GetRequiredService<IOptionsMonitor<ServiceStateOptions>>(), new FixedTimeProvider());
 
-            ActionResult<ServiceStateResponse> response = controller.Get();
+            ActionResult<ServiceStateResponse> response = await controller.Get(CancellationToken.None);
 
             Assert.Null(response.Result);
             ServiceStateResponse state = Assert.IsType<ServiceStateResponse>(response.Value);
@@ -91,7 +93,7 @@ namespace Shinshi.Backend.Tests
 
         /// <summary> 설정을 제공하지 않아도 초기 상태는 점검과 빈 허용 빌드 목록을 반환한다 </summary>
         [Fact]
-        public void Get_DefaultServiceState_ReturnsMaintenanceSnapshotAndFixedTime()
+        public async Task Get_DefaultServiceState_ReturnsMaintenanceSnapshotAndFixedTime()
         {
             ServiceCollection services = new ServiceCollection();
             services.AddOptions<ServiceStateOptions>();
@@ -99,7 +101,7 @@ namespace Shinshi.Backend.Tests
             ServiceStateController controller = new ServiceStateController(
                 provider.GetRequiredService<IOptionsMonitor<ServiceStateOptions>>(), new FixedTimeProvider());
 
-            ActionResult<ServiceStateResponse> response = controller.Get();
+            ActionResult<ServiceStateResponse> response = await controller.Get(CancellationToken.None);
 
             Assert.Null(response.Result);
             ServiceStateResponse state = Assert.IsType<ServiceStateResponse>(response.Value);

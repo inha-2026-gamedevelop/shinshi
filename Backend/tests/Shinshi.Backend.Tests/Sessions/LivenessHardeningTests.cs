@@ -197,11 +197,13 @@ namespace Shinshi.Backend.Tests.Sessions
             });
             OperationResult settled = await environment.Settlement.SettleAsync(session.InstanceId, session.SessionId,
                 settlementId);
+            OperationResult finished = await environment.FinishAuctionAsync(session);
             ReservedSessionView next = await environment.ReserveAsync(GameSessionCodes.Mode.BOSS, new[] { other },
                 POTIONS_RESERVED);
 
             Assert.Equal(first, session.InstanceId);
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, settled.Status);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, finished.Status);
             Assert.Equal(GameSessionStates.INSTANCE_DRAINING, await environment.TextAsync(
                 "SELECT state FROM server_instances WHERE instance_id = @Id;", new { Id = first }));
             Assert.Equal(second, next.InstanceId);
@@ -339,7 +341,14 @@ namespace Shinshi.Backend.Tests.Sessions
             OperationResult settled = await environment.Settlement.SettleAsync(session.InstanceId, session.SessionId,
                 settlementId);
 
+            // 경매 단계 동안은 임대를 유지해 같은 계정의 마을 접속을 막고, finish가 푼다
+            long heldDuringAuction = await environment.ScalarAsync(
+                "SELECT count(*) FROM account_leases WHERE instance_id = @Id;", new { Id = session.InstanceId });
+            OperationResult finished = await environment.FinishAuctionAsync(session);
+
             Assert.Equal(EServerPoolStatus.Accepted, beat.Status);
+            Assert.True(heldDuringAuction > 0);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, finished.Status);
             Assert.Equal(1L, extended);
             Assert.Equal(0L, revived);
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, started.Status);
@@ -379,6 +388,7 @@ namespace Shinshi.Backend.Tests.Sessions
                     new[] { SessionEventTests.Grant(earlier.Participants[0].ParticipantId, 1) })
             });
             await environment.Settlement.SettleAsync(earlier.InstanceId, earlier.SessionId, earlierSettlement);
+            await environment.FinishAuctionAsync(earlier);
             await environment.ExecuteAsync("UPDATE game_sessions SET ended_essence = @Essence WHERE session_id = @Id;",
                 new { Id = earlier.SessionId, Essence = SettlementSanityLimits.MAX_INSTANCE_DAILY_ESSENCE - DAILY_MARGIN });
             await environment.RebootDungeonAsync(earlier.InstanceId);

@@ -29,7 +29,7 @@ Assets/
 │ ├ 02.Combat/        플레이어 전투 (Shinshi.Combat)
 │ │ ├ Player/         입력·이동·생사 상태와 공용 Rules, 클라이언트 View
 │ │ ├ Damage/         피해 계약·공용 Rules
-│ │ └ Skills/         기술 입력 계약·동료 동기화 상태
+│ │ └ Skill/          기술 입력 계약·동료 동기화 상태
 │ ├ 03.AI/            산귀·보스 AI, 웨이브 스폰 (Shinshi.AI) - Enemy, Boss, Spawn
 │ ├ 04.Systems/       게임플레이 시스템 (Shinshi.Systems) - Wave, Outpost, Reward, BossTicket, Essence,
 │ │                   Talisman, Equipment, Inventory, Growth, FoxTrace, Interaction,
@@ -39,10 +39,17 @@ Assets/
 │ │                     (규칙: docs/unity/SCENE_AND_ASSET_SAFETY.md 4장)
 │ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Lobby, Systems
 │ ├ 98.Servers/       서버 전용 코드 (Shinshi.Server 어셈블리) - 9장
-│ │ ├ 01.Network/     부트스트랩·인증·백엔드 게이트웨이·서버 존재·종료
-│ │ │ └ Session/      출정 명단·이벤트 저장 큐·개인 드롭·정산
-│ │ ├ 02.Combat/      서버 전투 틱·Player/·Damage/·Skills/
-│ │ ├ 03.AI/Spawn/    스폰 경계 계약 (실행 구현 예정)
+│ │ ├ 01.Network/     서버 프로세스·접속·백엔드 연결
+│ │ │ ├ Bootstrap/    부트스트랩·실행 설정·프로세스 제어·종료
+│ │ │ ├ Presence/     서버 풀 등록·존재 신호·공개 주소 검사
+│ │ │ ├ Backend/      백엔드 게이트웨이·HTTP 전송·차단기·서버 자격
+│ │ │ ├ Auth/         입장 토큰 검증·인증 대기·참가 명단·계정 임대 해제
+│ │ │ └ Session/      출정 진행(DungeonSession·명단)
+│ │ │   ├ Events/     이벤트 저장 큐·백엔드 저장 경로
+│ │ │   ├ Settlement/ 정산 요청·원장·규칙
+│ │ │   └ Reward/     보스 보상·적 드롭 판정
+│ │ ├ 02.Combat/      서버 전투 틱·Player/·Damage/·Skill/·Boss/
+│ │ ├ 03.AI/          Boss/(보스 두뇌·패턴), Spawn/(스폰 경계 계약)
 │ │ └ 04.Systems/Wave/ 웨이브 경계 계약 (실행 구현 예정)
 │ └ 99.Dev/           개발·디버그 도구 (Shinshi.Dev 어셈블리) - 출시 빌드 제외 대상
 ├ 09.Data/            GameDB ScriptableObject 에셋 - 16장
@@ -63,7 +70,7 @@ deploy/               API 컨테이너·게임 서버 systemd 배포 템플릿�
 tools/                Start-M2.ps1 등 실행 보조 스크립트
 ```
 
-2026-10-02 동기화 기준 전투 구현 경로는 `02.Combat/Player/`·`Damage/`·`Skills/`다. 기존 `02.Combat/Skill/`은 빈 스캐폴드이며 실행 코드 위치로 안내하지 않는다. 위 목록에서 예정으로 표시한 AI·웨이브 실행 클래스는 아직 없다. 배포 템플릿과 실행 보조 스크립트의 존재는 서버 빌드·M2·배포 실행 성공을 뜻하지 않는다.
+전투 구현 경로는 `02.Combat/Player/`·`Damage/`·`Skill/`이고, 서버의 보스 몸체는 `98.Servers/02.Combat/Boss/`, 보스 두뇌와 패턴은 `98.Servers/03.AI/Boss/`다. 위 목록에서 예정으로 표시한 산귀 AI·웨이브 실행 클래스는 아직 없다. 배포 템플릿과 실행 보조 스크립트의 존재는 서버 빌드·M2·배포 실행 성공을 뜻하지 않는다.
 
 외부 Asset Store 에셋은 `99.ThirdParty/{분류}/{에셋}/`에 둔다. Unity 에디터에서 `.meta`와 GUID를 유지하며 옮기고, 내부의 `Editor/`와 `Resources/` 구조를 보존한다. `Plugins/TextMesh Pro/` 필수 리소스와 `Gizmos/`의 위치 예외, 설치 버전과 승인된 경로 보정은 [에셋 대장](licenses/ASSET_REGISTRY.md)을 따른다. 업데이트 후에는 중복 패키지와 대장의 경로 보정을 다시 확인한다. 어떤 플러그인을 무엇에 쓰는지는 23장.
 
@@ -365,7 +372,7 @@ Assets/01.Scripts/
 
 - 서버 클래스는 프리팹·씬에 붙이지 않는다. 클라이언트 빌드에는 그 타입이 없어 프리팹에 빈 스크립트 참조가 남는다. 서버 부트스트랩(`98.Servers/01.Network/`)이 역할(`town`/`dungeon`)에 맞춰 만들고 상태에 연결한다.
 - `NetworkBehaviour`는 전부 `Shinshi.Runtime`에 둔다. Mirror는 프리팹의 `NetworkBehaviour` 순번으로 직렬화하므로 서버와 클라 빌드의 구성이 같아야 한다. `[Command]`·Rpc도 양쪽 빌드에 있어야 한다.
-- 연결 방법: 상태의 `OnStartServer`·`OnStopServer`가 [ServerLinks](../Assets/01.Scripts/01.Network/ServerLinks.cs)에 알린다. 현재 [ServerBootstrap](../Assets/01.Scripts/98.Servers/01.Network/ServerBootstrap.cs)이 서버를 열기 전에 [CombatServerInstaller](../Assets/01.Scripts/98.Servers/02.Combat/CombatServerInstaller.cs)를 부르고, 설치기가 `PlayerInputState`의 시작·종료 처리기를 정확한 타입으로 등록한다. 알림을 받은 `CombatServerRuntime`이 `PlayerServer`를 생성·정리한다. 중복 타입 등록은 거절되며 플레이 시작 시 정적 등록을 비운다.
+- 연결 방법: 상태의 `OnStartServer`·`OnStopServer`가 [ServerLinks](../Assets/01.Scripts/01.Network/ServerLinks.cs)에 알린다. 현재 [ServerBootstrap](../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerBootstrap.cs)이 서버를 열기 전에 [CombatServerInstaller](../Assets/01.Scripts/98.Servers/02.Combat/CombatServerInstaller.cs)를 부르고, 설치기가 `PlayerInputState`의 시작·종료 처리기를 정확한 타입으로 등록한다. 알림을 받은 `CombatServerRuntime`이 `PlayerServer`를 생성·정리한다. 중복 타입 등록은 거절되며 플레이 시작 시 정적 등록을 비운다.
 - `[Command]`는 검증 없이 상태가 가진 처리기 인터페이스(`I{이름}ServerHandler`, 상태와 같은 `Net/`)로 넘긴다. 호출자·소유권·순번·중복 검증은 서버 처리기가 한다.
 - 전용 서버에서는 SyncVar hook이 불리지 않는다. 서버 로직을 hook에 걸지 않는다.
 - 표현은 [ClientView](../Assets/01.Scripts/00.Common/Utility/ClientView.cs)를 상속하고 서버 빌드(`UNITY_SERVER`)에서 스스로 꺼진다. 표현과 UI는 상태의 읽기 프로퍼티·이벤트와 공개 요청 창구만 쓰며, `[Server]` 메서드나 서버 클래스를 호출하지 않는다.
@@ -373,7 +380,7 @@ Assets/01.Scripts/
 아래 코드는 역할 분리를 설명하는 예시다. 현재 전투 요청 창구는 `02.Combat/Player/Net/PlayerInputState.cs`이며, 실제 타입·연결 흐름은 [서버·클라이언트 협업](unity/SERVER_CLIENT_WORKFLOW.md) 6·9장을 따른다. 서버 틱·인증·게이트웨이의 `MonoBehaviour` 드라이버도 서버 부트스트랩이 실행 중에 생성·부착하며 씬·프리팹에는 직렬화하지 않는다.
 
 ```csharp
-// 02.Combat/Skills/Net/PlayerSkillState.cs - Shinshi.Runtime 예시
+// 02.Combat/Skill/Net/PlayerSkillState.cs - Shinshi.Runtime 예시
 public class PlayerSkillState : NetworkBehaviour
 {
     /****************************************
@@ -438,7 +445,7 @@ public class PlayerSkillState : NetworkBehaviour
     }
 }
 
-// 98.Servers/02.Combat/Skills/PlayerSkillServer.cs - Shinshi.Server 예시
+// 98.Servers/02.Combat/Skill/PlayerSkillServer.cs - Shinshi.Server 예시
 public class PlayerSkillServer : IPlayerSkillServerHandler
 {
     public void HandleCast(PlayerSkillState state, SkillRequest request)

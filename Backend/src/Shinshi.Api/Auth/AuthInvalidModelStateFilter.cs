@@ -43,8 +43,15 @@ namespace Shinshi.Backend
             bool server = context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<RequireServerLeaseAttribute>() != null;
             bool townJoin = context.ActionDescriptor.Parameters.Any(parameter =>
                 parameter.ParameterType == typeof(TownJoinTicketRequest));
+            bool gameSession = context.ActionDescriptor.Parameters.Any(parameter =>
+                parameter.ParameterType == typeof(GameSessionIssueRequest));
             int reason = (server || townJoin)
                 ? ContractCodes.RejectReason.SESSION_MISMATCH : ContractCodes.RejectReason.INVALID_INVITE_CODE;
+            // 게임 세션 발급 본문은 빌드 정보뿐이라 읽지 못하면 버전 거절로 돌려준다
+            if (gameSession)
+            {
+                reason = ContractCodes.RejectReason.VERSION_MISMATCH;
+            }
             string buildId = string.Empty;
             if (context.ActionArguments.TryGetValue("request", out object? request)
                 && (request is AuthExchangeRequest exchange))

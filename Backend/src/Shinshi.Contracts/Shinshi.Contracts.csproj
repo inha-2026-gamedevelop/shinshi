@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/01.Scripts/00.Common/Contracts/**/*.cs"
+      Link="Shared/%(RecursiveDir)%(Filename)%(Extension)"
+      Exclude="../../../Assets/01.Scripts/00.Common/Contracts/Auth/AuthRoutes.cs;../../../Assets/01.Scripts/00.Common/Contracts/Auth/JoinTokenConsumeRequest.cs;../../../Assets/01.Scripts/00.Common/Contracts/Auth/JoinTokenConsumeResponse.cs" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+</Project>

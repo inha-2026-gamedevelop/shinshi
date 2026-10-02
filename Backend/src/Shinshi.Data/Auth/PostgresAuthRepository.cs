@@ -91,7 +91,7 @@ namespace Shinshi.Data.Auth
 
                 Guid familyId = Guid.NewGuid();
                 await connection.ExecuteAsync(Command(
-                    "INSERT INTO auth_token_families(family_id,account_id) VALUES (@FamilyId,@AccountId);",
+                    "INSERT INTO auth_token_families(family_id,account_id,origin) VALUES (@FamilyId,@AccountId,'invite');",
                     new { FamilyId = familyId, AccountId = accountId.Value }, transaction, token));
                 return await InsertTokenPairAsync(connection, transaction, accountId.Value, familyId, null, token);
             }, cancellationToken);

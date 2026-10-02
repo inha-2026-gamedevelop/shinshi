@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Shinshi.Patch.Client</RootNamespace>
+    <AssemblyName>Shinshi.Patch.Client</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Shinshi.Patch.Core/Shinshi.Patch.Core.csproj" />
+  </ItemGroup>
+</Project>

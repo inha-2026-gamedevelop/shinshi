@@ -59,7 +59,7 @@ namespace Shinshi.Backend
 
             // 예외 메시지에는 연결 정보가 섞일 수 있어 응답과 로그에 싣지 않는다
             context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString(CultureInfo.InvariantCulture);
-            context.HttpContext.Response.Headers.CacheControl = "no-store";
+            context.HttpContext.Response.Headers.CacheControl = CacheControlValues.NO_STORE;
             context.Result = ApiResponseFactory.Reject(StatusCodes.Status503ServiceUnavailable, reasonCode, string.Empty,
                 _timeProvider);
             context.ExceptionHandled = true;

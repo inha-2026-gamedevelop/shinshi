@@ -59,6 +59,13 @@ namespace Shinshi.Backend
                 return ApiResponseFactory.Reject(StatusCodes.Status400BadRequest,
                     ContractCodes.RejectReason.SESSION_MISMATCH, string.Empty, _timeProvider);
             }
+
+            // 빌드 검사는 게임 세션 발급이 맡는다. 빌드 없이 받을 수 있는 접근 토큰(홈페이지 로그인)으로는 게임 서버 입장 토큰을 주지 않는다
+            if (AuthActors.GetPlayerTokenKind(HttpContext) != EPlayerTokenKind.GameSession)
+            {
+                return ApiResponseFactory.Reject(StatusCodes.Status403Forbidden,
+                    ContractCodes.RejectReason.SESSION_MISMATCH, string.Empty, _timeProvider);
+            }
             if (!_accounts.TryAcquire(player.AccountId))
             {
                 return AuthFailureLimiter.RejectTooMany(HttpContext, _timeProvider);

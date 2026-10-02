@@ -105,7 +105,15 @@ namespace Shinshi.Data.Settlement
         public const string REASON_SERVICE_CANCEL_REFUND = "ServiceCancelRefund";
         public const string REASON_SERVICE_CANCEL_GRANT  = "ServiceCancelEssence";
 
-        public const string SOURCE_GAME_SESSION = "GameSession";
+        // 파티 경매: 낙찰자의 엽전 차감과 재료 지급은 Settle, 분배 대상의 엽전 지급은 Payout이다. 소각분은 원장 줄이 없다
+        public const string REASON_AUCTION_SETTLE        = "AuctionSettle";
+        public const string REASON_AUCTION_PAYOUT        = "AuctionPayout";
+
+        public const string SOURCE_GAME_SESSION  = "GameSession";
+        public const string SOURCE_PARTY_AUCTION = "PartyAuction";
         public const string ACTOR_SERVER        = "Server";
+
+        // 운영자 작업이 직접 바꾼 잔액(격리 세션 강제 종료 등). actor_id는 운영자 ID다
+        public const string ACTOR_ADMIN         = "Admin";
     }
 }

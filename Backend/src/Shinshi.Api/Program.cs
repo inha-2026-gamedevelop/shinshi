@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 // Project
+using Shinshi.Backend.Admin;
 using Shinshi.Backend.Sessions;
 using Shinshi.Contracts;
 using Shinshi.Data;
@@ -38,10 +39,17 @@ namespace Shinshi.Backend
         {
             bool migrate = (args.Length == MIGRATION_ARGUMENT_COUNT)
                 && (args[0] == MIGRATE_ARGUMENT);
-            WebApplicationBuilder builder = WebApplication.CreateBuilder(migrate ? Array.Empty<string>() : args);
+            bool bootstrapOwner = (args.Length == MIGRATION_ARGUMENT_COUNT)
+                && (args[0] == AdminBootstrapCommand.ARGUMENT);
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(
+                (migrate || bootstrapOwner) ? Array.Empty<string>() : args);
             if (migrate)
             {
                 return await ApplyMigrationsAsync(builder.Configuration);
+            }
+            if (bootstrapOwner)
+            {
+                return await AdminBootstrapCommand.RunAsync(builder.Configuration, Console.Out, Console.Error);
             }
 
             builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -71,6 +79,7 @@ namespace Shinshi.Backend
             builder.Services.AddSingleton<IJoinTokenIssuer, JoinTokenIssuer>();
             builder.Services.AddSingleton<IEconomyLedgerWriter, LedgerWriter>();
             builder.Services.AddShinshiGameSessions();
+            builder.Services.AddShinshiAdmin(builder.Configuration);
             if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Postgres")))
             {
                 builder.Services.AddShinshiGameSessionMaintenance();
@@ -79,6 +88,7 @@ namespace Shinshi.Backend
             await using WebApplication app = builder.Build();
             app.UseShinshiForwardedHeaders(app.Configuration);
             app.UseRouting();
+            app.UseShinshiAdminAuthentication();
             app.UseShinshiAuthentication();
             app.MapControllers();
             await app.RunAsync();

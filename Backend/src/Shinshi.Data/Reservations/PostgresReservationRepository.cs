@@ -66,6 +66,27 @@ namespace Shinshi.Data.Reservations
                 input.ToRequestJson());
             OperationResult result = await _executor.ExecuteAsync(request,
                 (context, token) => ReserveEffectAsync(input, context, token), cancellationToken);
+            return await ToOutcomeAsync(result, cancellationToken);
+        }
+
+        /// <summary> 같은 예약 요청의 저장된 결과만 읽고 아무것도 예약하지 않는다. 처음 보는 operationId면 null이다 </summary>
+        public async Task<ReservationOutcome?> FindStoredAsync(ReservationInput input,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+            if (!input.IsValid())
+            {
+                throw new ArgumentException("Reservation request is invalid.", nameof(input));
+            }
+
+            OperationRequest request = new OperationRequest(input.TownInstanceId, input.OperationId, RESERVE_KIND,
+                input.ToRequestJson());
+            OperationResult? stored = await _executor.FindStoredAsync(request, cancellationToken);
+            return stored == null ? null : await ToOutcomeAsync(stored, cancellationToken);
+        }
+
+        private async Task<ReservationOutcome> ToOutcomeAsync(OperationResult result, CancellationToken cancellationToken)
+        {
             if ((result.Status != ContractCodes.OperationStatus.COMMITTED)
                 || !Guid.TryParse(result.ReceiptId, out Guid sessionId))
             {

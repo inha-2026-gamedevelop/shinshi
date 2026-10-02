@@ -9,6 +9,7 @@ using UnityEngine;
 using Mirror;
 
 // 프로젝트 내부
+using Shinshi.AI;
 using Shinshi.Common;
 using Shinshi.Data;
 using Shinshi.Network;
@@ -60,6 +61,8 @@ namespace Shinshi.Combat
         private DungeonSessionHost           _host;
         private List<int>                    _closedParticipants;
         private bool                         _scalesApplied         = false;
+        private BossServer                   _boss;
+        private bool                         _bossSpawnChecked      = false;
 
         /****************************************
         *              Properties
@@ -71,6 +74,9 @@ namespace Shinshi.Combat
         public int                  SessionEpoch   => _sessionEpoch;
         public ReconnectVault       ReconnectVault => _reconnectVault;
         public DungeonSessionHost   SessionHost    => _host;
+
+        // 보스전 출정 시작 틱에 만든다. 일반전, 마을, 시작 전, 생성 실패면 null이다
+        public BossServer           Boss           => _boss;
 
         // 출정 시작 때 고정한 시작 인원별 배율, 스포너가 적과 보스를 만들 때 읽는다. 시작 전과 마을은 1이다
         // TODO(민성): 적 스폰과 피해 계산이 붙으면 이 값을 적용 위치에서 곱한다
@@ -368,6 +374,7 @@ namespace Shinshi.Combat
         {
             bool sessionTick = (_host != null) && (_host.BeginTick(serverTime));
             ApplySessionPhase();
+            TrySpawnBoss(serverTime);
             DiscardClosedParticipants();
             CloseExpiredParticipants(serverTime);
             _resolver.BeginTick(serverTime);
@@ -395,11 +402,14 @@ namespace Shinshi.Combat
                 _retainedSkillTicks[i].Tick(serverTime, deltaTime, _pathBudget);
             }
 
+            TickBoss(serverTime, sessionTick);
             ReportLifeStates();
             if (sessionTick)
             {
                 _host.CompleteTick();
             }
+
+            EndBossIfSessionEnded(serverTime);
 
             ApproveRevives(serverTime);
 
@@ -435,6 +445,101 @@ namespace Shinshi.Combat
             BossHealthScale  = session.BossHealthScale;
             DamageScale      = session.DamageScale;
             _scalesApplied   = true;
+        }
+
+        // 보스전 출정이 진행되는 첫 틱에 한 번만 시도한다. 보스 체력과 피해 배율은 출정 시작 때 고정되므로 그 전에는 만들 수 없다.
+        // 데이터가 비어 전투를 열 수 없으면 보스 없이 진행한다. 개발 빌드는 TryCompleteBossForDevelopment로 끝낼 수 있다
+        // TODO(민성): 출시 전에 보스를 만들지 못한 보스전을 서비스 취소로 끝낼지 정한다
+        // TODO(민성): 던전 씬의 보스 생성 지점이 정해지면 원점 대신 그 위치와 방향을 쓴다
+        private void TrySpawnBoss(double serverTime)
+        {
+            if ((_bossSpawnChecked) || (!_scalesApplied) || (!_host.IsSessionRunning))
+            {
+                return;
+            }
+
+            _bossSpawnChecked = true;
+            if (!_host.Session.IsBossSession)
+            {
+                return;
+            }
+
+            if (!GameDB.IsInitialized)
+            {
+                Debug.LogError("[Boss] GameDB 초기화 전이라 보스를 만들지 않는다");
+                return;
+            }
+
+            ProgressionCatalogSO progression = GameDB.Progression;
+            if (!progression.TryGetRegion(Constants.Combat.DEV_BOSS_REGION_ID, out ProgressionCatalogSO.RegionDefinition region))
+            {
+                Debug.LogError($"[Boss] 전장 지역이 없어 보스를 만들지 않는다, region={Constants.Combat.DEV_BOSS_REGION_ID}");
+                return;
+            }
+
+            float referenceAttack = progression.GetReferenceAttack(region);
+            float referenceHealth = progression.GetReferenceHealth(region);
+            if ((!(referenceAttack > 0f)) || (!(referenceHealth > 0f)) || (!(BossHealthScale > 0f)) || (!(DamageScale > 0f)))
+            {
+                Debug.LogError($"[Boss] 기준값이나 인원 배율이 0이라 보스를 만들지 않는다, Aref={referenceAttack}, " +
+                    $"Href={referenceHealth}, health={BossHealthScale}, damage={DamageScale}");
+                return;
+            }
+
+            var boss = new BossServer(Constants.Combat.DEV_BOSS_ID, _registry.IssueCombatId(), Vector3.zero, Vector3.forward,
+                referenceAttack, referenceHealth, BossHealthScale,
+                new BossPatternCatalogSource(GameDB.BossPatterns), _registry, new BossDamageScaler(_skillResolver, DamageScale),
+                new EmptyBossEffectLifetime(), new SeededBossRandom(_sessionEpoch));
+
+            if (!boss.Begin(serverTime))
+            {
+                Debug.LogError($"[Boss] 보스 전투를 열지 못해 보스 없이 진행한다, boss={Constants.Combat.DEV_BOSS_ID}");
+                return;
+            }
+
+            if (!_registry.Register(boss))
+            {
+                Debug.LogError($"[Boss] 전투 대상 등록이 거절돼 보스 없이 진행한다, boss={Constants.Combat.DEV_BOSS_ID}");
+                return;
+            }
+
+            _boss = boss;
+            Debug.Log($"[Boss] 보스 전투 시작, boss={Constants.Combat.DEV_BOSS_ID}, combatId={boss.CombatId}, " +
+                $"maxHealth={boss.MaxHealth}");
+        }
+
+        // 플레이어 기술과 공격 뒤, 생사 보고 앞에 둔다. 같은 틱에 플레이어가 보스를 처치하면 두뇌가 사망을 먼저 보고
+        // 공격하지 않고, 보스 공격으로 마지막 생존자가 죽으면 같은 틱의 종료 판정이 전멸을 본다
+        private void TickBoss(double serverTime, bool sessionTick)
+        {
+            if (_boss == null)
+            {
+                return;
+            }
+
+            if ((_allowsCombat) && (_boss.IsActive))
+            {
+                _boss.Tick(serverTime);
+            }
+
+            // 세션 틱이 열리지 않은 틱이면 받지 않으므로 다음 틱에 다시 알린다
+            if ((sessionTick) && (_boss.HasUnreportedDefeat) && (_host.ReportBossDefeated()))
+            {
+                _boss.MarkDefeatReported();
+                Debug.Log($"[Boss] 보스 처치를 세션에 알렸다, combatId={_boss.CombatId}");
+            }
+        }
+
+        // 승패는 세션 종료 사유가 정본이다. 같은 틱 보스 사망과 전멸이면 보스는 이미 사망 상태라 종료 요청을 받지 않는다
+        private void EndBossIfSessionEnded(double serverTime)
+        {
+            if ((_boss == null) || (!_boss.IsActive) || (!_host.Session.IsEnded))
+            {
+                return;
+            }
+
+            _boss.EndCombat(serverTime);
+            Debug.Log($"[Boss] 출정 종료로 보스 전투를 멈춘다, reason={_host.Session.EndReason}");
         }
 
         // 생사가 바뀐 참가자만 명단에 알린다. 연결이 끊겨 남은 캐릭터의 사망도 여기서 기록된다

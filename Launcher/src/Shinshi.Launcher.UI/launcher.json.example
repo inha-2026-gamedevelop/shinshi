@@ -1,0 +1,11 @@
+{
+  "patchSource": "https://patch.example.invalid/shinshi",
+  "channel": "stable",
+  "publicKeys": [
+    "BASE64_PUBLIC_KEY_HERE"
+  ],
+  "installRoot": null,
+  "teamBuild": false,
+  "apiBaseUrl": "https://api.example.invalid",
+  "websiteUrl": "http://localhost:5173"
+}

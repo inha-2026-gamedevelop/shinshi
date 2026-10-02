@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Shinshi.Launcher.Account</RootNamespace>
+    <AssemblyName>Shinshi.Launcher.Account</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj" />
+  </ItemGroup>
+</Project>

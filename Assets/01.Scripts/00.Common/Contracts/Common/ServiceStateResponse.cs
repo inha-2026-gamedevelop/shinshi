@@ -23,17 +23,24 @@ namespace Shinshi.Contracts
 
         [DataMember(Name = "serverTimeUnixMs")] private long     _serverTimeUnixMs;
 
+        // 지금 노출 중인 공지 전체(중요도, 시작 시각 내림차순). notice에는 그중 런처 대상 첫 공지의 제목이 들어간다.
+        // 이 필드를 모르는 이전 응답과 생성자는 null이므로 키를 내보내지 않는다
+        [DataMember(Name = "notices", EmitDefaultValue = false)] private ServiceNotice[] _notices;
+
+        private static readonly ServiceNotice[] G_EmptyNotices = new ServiceNotice[0];
+
         // TODO(민성): 세션 시작 때 고정할 운영 이벤트 스냅샷의 필드는 기획 미정
 
         /****************************************
         *              Properties
         ****************************************/
 
-        public bool                  Maintenance      => _maintenance;
-        public string                Notice           => _notice;
-        public IReadOnlyList<string> DisabledFeatures => _disabledFeatures;
-        public IReadOnlyList<string> AllowedBuildIds  => _allowedBuildIds;
-        public long                  ServerTimeUnixMs => _serverTimeUnixMs;
+        public bool                         Maintenance      => _maintenance;
+        public string                       Notice           => _notice;
+        public IReadOnlyList<string>        DisabledFeatures => _disabledFeatures;
+        public IReadOnlyList<string>        AllowedBuildIds  => _allowedBuildIds;
+        public long                         ServerTimeUnixMs => _serverTimeUnixMs;
+        public IReadOnlyList<ServiceNotice> Notices          => _notices ?? G_EmptyNotices;
 
         /****************************************
         *                Methods
@@ -47,6 +54,13 @@ namespace Shinshi.Contracts
             _disabledFeatures = disabledFeatures;
             _allowedBuildIds  = allowedBuildIds;
             _serverTimeUnixMs = serverTimeUnixMs;
+        }
+
+        public ServiceStateResponse(bool maintenance, string notice, string[] disabledFeatures,
+            string[] allowedBuildIds, long serverTimeUnixMs, ServiceNotice[] notices)
+            : this(maintenance, notice, disabledFeatures, allowedBuildIds, serverTimeUnixMs)
+        {
+            _notices = notices;
         }
 
         private ServiceStateResponse() { }

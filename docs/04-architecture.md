@@ -5,7 +5,7 @@
 
 ## 1. 현재 상태와 구조 원칙
 
-Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0007, `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
+Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0010(0008 운영 어드민, 0009 파티 경매, 0010 계정 자격·캐릭터 이름), `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
 
 게임의 규칙, 네트워크 연결, 화면 표현, 영구 저장을 구분한다. 규칙은 해당 파트가 작성하고 서버 경로에서 실행한다. 클라이언트는 공개 Request/조회 계약만 사용하며 서버 전용 어셈블리(`Shinshi.Server`)의 타입을 참조하지 않는다. 과도한 빈 인터페이스나 상태 클래스는 먼저 만들지 않고 실제 교체 지점·중복·협업 경계가 있을 때 도입한다.
 
@@ -40,7 +40,7 @@ Assets/
     01.Network/                 Shinshi.Network, 세션·로비·연결·게이트웨이
       Session/ Lobby/
     02.Combat/                  Shinshi.Combat, 플레이어·피해·기술·소환
-      Player/ Damage/ Skills/
+      Player/ Damage/ Skill/
     03.AI/                      Shinshi.AI, 산귀·월백·출현
       Enemy/ Boss/ Spawn/
     04.Systems/                 Shinshi.Systems, 진행·경제·생활 규칙
@@ -84,7 +84,7 @@ Assets/
 | `Assets/Tests/EditMode/Shinshi.Tests.EditMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | Editor 한정, `UNITY_INCLUDE_TESTS`, autoReferenced=false |
 | `Assets/Tests/PlayMode/Shinshi.Tests.PlayMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | 플랫폼 제한 없음, `UNITY_INCLUDE_TESTS`, autoReferenced=false. 실제 PlayMode/빌드 검증 미실행 |
 
-백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Data,Shinshi.Contracts}`와 `Backend/tests/Shinshi.Backend.Tests`의 .NET 10 프로젝트다. `Shinshi.Contracts.csproj`는 Unity Contracts 원본 C#을 Compile Include/Link로 공유하며 Newtonsoft.Json을 사용한다. `Contracts/Auth`의 기존 Consume 경로/DTO 세 파일은 공유 컴파일에서 제외되어 현재 접속 교환은 `Contracts/Join`을 사용한다. DB 접근은 Npgsql + Dapper, 마이그레이션은 `Shinshi.Data/Migrations/*.sql`이다. 실행은 [Backend README](../Backend/README.md), API 컨테이너·게임 서버 유닛은 [deploy README](../deploy/README.md)를 따른다. 어드민은 체험판 API·CLI만 제공한다는 결정이며 운영 모듈과 `Launcher/`는 아직 생성하지 않았다.
+백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Data,Shinshi.Contracts}`와 `Backend/tests/Shinshi.Backend.Tests`의 .NET 10 프로젝트다. `Shinshi.Contracts.csproj`는 Unity Contracts 원본 C#을 Compile Include/Link로 공유하며 Newtonsoft.Json을 사용한다. `Contracts/Auth`의 기존 Consume 경로/DTO 세 파일은 공유 컴파일에서 제외되어 현재 접속 교환은 `Contracts/Join`을 사용한다. DB 접근은 Npgsql + Dapper, 마이그레이션은 `Shinshi.Data/Migrations/*.sql`이다. 실행은 [Backend README](../Backend/README.md), API 컨테이너·게임 서버 유닛은 [deploy README](../deploy/README.md)를 따른다. 어드민은 체험판 API·CLI만 제공한다는 결정이다. P0 운영 모듈은 `Shinshi.Api/Admin/`(어드민 API), `Shinshi.Data/Admin/`, `Shinshi.Contracts/Admin/`(어드민 전용 DTO, Unity 공유 계약 아님), 플레이어 우편함 `Shinshi.Api/Inbox/`·`Shinshi.Data/Inbox/`와 마이그레이션 0008로 구현됐고(U25, 운영 실행 미검증) 명령줄 도구는 `Backend/src/Shinshi.AdminCli`다. `Launcher/`는 아직 생성하지 않았다.
 
 ## 3. 씬과 부트스트랩
 
@@ -108,12 +108,12 @@ Assets/
 | 현재 구현 영역 | 실제 타입·위치 | 연결 범위·후속 작업 |
 |---|---|---|
 | 연결/인증 | `01.Network/ShinshiNetworkManager`, `ShinshiClientAuthenticator`; 서버 `ShinshiServerAuthenticator`, `SessionBinding`, `ApiJoinTokenVerifier` | Mirror 연결·버전/토큰·참가자 소유 확인. 실제 다인 접속은 미검증 |
-| 서버/API 연결 | `98.Servers/01.Network/BackendGateway`, `HttpClientBackendTransport`, `ServerPresence`, `AccountLeaseReleaser` | 임대·풀 등록·heartbeat·동일 ID 재시도·계정 임대 해제 |
+| 서버/API 연결 | `98.Servers/01.Network/Backend/BackendGateway`, `HttpClientBackendTransport`, `ServerPresence`, `AccountLeaseReleaser` | 임대·풀 등록·heartbeat·동일 ID 재시도·계정 임대 해제 |
 | 프로세스 수명 | `ServerProcessDriver`, `ServerShutdownController`, `UnityServerProcessControl` | 한 출정 뒤 Draining·연결 정리·종료, systemd 새 bootId. Linux 실행 미검증 |
 | 플레이어 입력/상태 | `02.Combat/Player/Net/PlayerInputState`, `PlayerCombatState`; View의 `PlayerInputReader`, `PlayerPrediction`, `PlayerMovePredictor` | 구 Input Manager·입력 순번·소유 예측/재조정 |
 | 플레이어 서버 | `98.Servers/02.Combat/Player/PlayerServer`, `PlayerInputGate`, `MoveRequestThrottle`, `ReconnectVault`, `ReviveBudget` | 이동·기본공격·회피·생사·120초 보존·공용 부활 규칙/처리 |
 | 피해 | `98.Servers/02.Combat/Damage/DamageResolver`, `HitLedger`, `CombatTargetRegistry`; 공용 `DamageRules` | 서버 피해·중복 적중·표적·가시성 검사 |
-| 스킬/동료 | `98.Servers/02.Combat/Skills/SkillServer`, `CompanionServer`, `ResonanceLedger`; `CompanionCombatState`, `ITalismanModifierResolver` | 실행·동료·공명 기반. 부적 modifier의 실제 파트 연결과 보스/적 통합 후속 |
+| 스킬/동료 | `98.Servers/02.Combat/Skill/SkillServer`, `CompanionServer`, `ResonanceLedger`; `CompanionCombatState`, `ITalismanModifierResolver` | 실행·동료·공명 기반. 부적 modifier의 실제 파트 연결과 보스/적 통합 후속 |
 | 보스 | `BossBrain`, `BossCombat`, `BossSelectionTree`, `BossPatternSelector`, `IBossPattern` (서버 뼈대, 구현됨·EditMode만 검증), `WolbaekController`(개체 연결, 미구현) | 상위 FSM→전투(페이즈·공격 FSM, 선택 BT)→가중 선택→패턴 실행. 6패턴·복제·제어 연결은 미구현, 2페이즈는 입력 대기. 계약은 [서버·클라이언트 협업 8장](unity/SERVER_CLIENT_WORKFLOW.md#8-보스-서버-경계) |
 | 세션/보상 | `98.Servers/01.Network/Session/DungeonSessionHost`, `DungeonSession`, `ParticipantRoster`, `LootRoller`, `SettlementLedger`, `SettlementRules` | 세션 규칙·원장·정산안 구현. 호스트의 일반전 CreateNormal/웨이브 source/참가자 효과 연결은 TODO라 6웨이브 완주로 판정하지 않음 |
 | 저장 연결 | `SessionEventQueue`, `HttpBackendEventSink`, `SessionSettlement` | 순번 이벤트·SessionEnded·정산 영수증 연결. 진단 체크포인트 주기 송신 TODO |
@@ -127,7 +127,7 @@ Assets/
 
 ### 5.1 출정
 
-현재 API가 쓰는 `game_sessions.state`는 `Reserved → Running → Settling → Closed`다. `/start` 승인 때 Running으로 바뀌며 Started라는 저장 상태는 없다. DB CHECK에는 Loading/Starting/Auction/Returning/RecoveryPending도 허용되어 있지만 현재 API가 이 상태를 쓰는 것은 아니다. 마을 로비·준비/카운트다운·화면 로딩·경매·귀환은 후속 UI/게임 흐름이며 DB 상태와 별도로 다룬다.
+현재 API가 쓰는 `game_sessions.state`는 `Reserved → Running → Settling → Closed`이고, 보스 성공 출정은 `Settling → Auction → Closed`다(정산이 기본 보상을 지급하고 Auction으로 둔 뒤 경매 `finish` 또는 경매 복구가 닫는다). `/start` 승인 때 Running으로 바뀌며 Started라는 저장 상태는 없다. DB CHECK에는 Loading/Starting/Returning/RecoveryPending도 허용되어 있지만 현재 API가 이 상태를 쓰는 것은 아니다. 마을 로비·준비/카운트다운·화면 로딩·경매·귀환은 후속 UI/게임 흐름이며 DB 상태와 별도로 다룬다.
 
 ```mermaid
 stateDiagram-v2
@@ -227,7 +227,7 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 
 ### 7.1 현재 SQL 스키마
 
-아래는 [0001~0007 마이그레이션](../Backend/src/Shinshi.Data/Migrations/)과 [SqlMigrationRunner](../Backend/src/Shinshi.Data/SqlMigrationRunner.cs)의 실제 테이블·컬럼·키다. 시각은 `timestamptz` UTC, 정수 잔액/수량은 `bigint`와 음수 금지 제약을 사용한다. 사용자 제공 PostgreSQL 18 Docker 테스트 396개 통과는 기존 실행 근거이며 이번 표는 SQL 정적 대조다.
+아래는 [0001~0008 마이그레이션](../Backend/src/Shinshi.Data/Migrations/)과 [SqlMigrationRunner](../Backend/src/Shinshi.Data/SqlMigrationRunner.cs)의 실제 테이블·컬럼·키다. 0009의 경매 테이블은 7.2의 `auctions` 행, 0010의 `account_credentials`와 `characters` 이름·외형 열은 [Backend README](../Backend/README.md)의 0010 절에 있고 이 표에는 아직 반영하지 않았다. 시각은 `timestamptz` UTC, 정수 잔액/수량은 `bigint`와 음수 금지 제약을 사용한다. 사용자 제공 PostgreSQL 18 Docker 테스트 396개 통과는 기존 실행 근거이며 이번 표는 SQL 정적 대조다.
 
 | 실제 테이블 | 주요 컬럼·키 | 제약/현재 의미 |
 |---|---|---|
@@ -255,8 +255,15 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 | `item_history` | PK(item_id, seq); event_kind, before_state, after_state, owner_id, actor_id, operation_id, occurred_at | operation FK, before/after 객체 중 하나 필수. 삭제한 장비 이력도 보존, 추가 전용 |
 | `outbox` | PK event_id; UNIQUE(consumer_key, event_id); aggregate_id, consumer_key, event_kind, payload, actor_id, operation_id, created_at, delivered_at, retries, next_attempt_at | operation FK, 객체 payload. 같은 DB 소비 callback용 전달기 존재, 자동 background 등록/외부 전송은 후속 |
 | `outbox_inbox` | PK(consumer_key, event_id); consumed_at | outbox 복합 FK, 같은 DB 소비 중복 방지·추가 전용 |
+| `admin_users` | PK admin_id; UNIQUE login_name; password_hash, password_salt, password_iterations, totp_secret_encrypted, role, created_at, created_by, disabled_at, failed_attempts, locked_until, totp_last_step | 0008. 게임 계정과 분리, 소문자 이름 CHECK, role 0~3, PBKDF2 해시·AES-GCM TOTP 암호문만 저장. 지우지 않고 disabled_at |
+| `admin_sessions` | PK session_id; admin_id, UNIQUE token_hash, created_at, expires_at, revoked_at | 0008. 어드민 토큰 HMAC만 저장 |
+| `admin_audit_log` | PK audit_id; occurred_at, admin_id, actor_kind, admin_role, action, target_kind, target_id, before_state, after_state, reason, operation_id, approval_id, self_approved, request_ip_hash | 0008. 추가 전용(트리거·런타임 SELECT/INSERT만), Admin/System actor CHECK, (admin_id, operation_id) operations FK |
+| `admin_grants` | PK grant_id; created_by, created_operation_id, created_at, reason, rewards, target_account_ids, claim_days, state, executed_at/by, cancelled_at/by, source_kind, source_ref | 0008. Draft/Executed/Cancelled, 대상 1~1000·보상 1~50줄, 취소되지 않은 RecoveryCompensation의 source_ref 부분 유일(`ux_admin_grants_recovery_ref`) |
+| `reward_inbox` | PK inbox_id; UNIQUE(grant_id, account_id); account_id, source_kind, source_ref, rewards, created_at, expires_at, claimed_at, claimed_character_id, claim_operation_id, cancelled_at | 0008. 운영자 지급 우편. 수령·취소 상호 배타, 수령 operation·캐릭터 소유 FK |
+| `service_state` | PK id(=1); maintenance, disabled_features, allowed_build_ids, revision, updated_at, updated_by | 0008. 단일 행, 초기 점검 중·빈 목록. revision 낙관적 갱신 |
+| `service_notices` | PK notice_id; title, body, target, severity, starts_at, ends_at, created_by, created_at, ended_at, ended_by | 0008. 대상 Launcher/Game/Both, 중요도 0~2, 지우지 않고 ended_at |
 
-0002는 던전 인스턴스/역할 FK를, 0003은 인증 묶음·원장·outbox를, 0004는 예약·참가자·이벤트·체크포인트를 더했다. 0005는 boot/마을 토큰·정산 복구, 0006은 복구 백오프·종료 정기 합계·배정/정리 인덱스, 0007은 완료 웨이브 기본 정기 적립과 이벤트 종류5를 더했다. 마이그레이션은 별도 `--migrate`로 실행하며 런타임 DML 자격과 migration-owner 자격을 구분한다. down SQL은 검토용이며 자동 되돌리기는 없다.
+0002는 던전 인스턴스/역할 FK를, 0003은 인증 묶음·원장·outbox를, 0004는 예약·참가자·이벤트·체크포인트를 더했다. 0005는 boot/마을 토큰·정산 복구, 0006은 복구 백오프·종료 정기 합계·배정/정리 인덱스, 0007은 완료 웨이브 기본 정기 적립과 이벤트 종류5를 더했다. 0008은 위 운영 어드민 테이블 일곱 개와 어드민 조회용 인덱스(`session_participants(account_id, session_id)`, `economy_ledger(account_id, occurred_at, ledger_id)`, `game_sessions(state, created_at, session_id)`, `admin_audit_log(target_kind, occurred_at, audit_id)`)를 더했다. 0008의 지급·조정·수령 코드는 0009의 `account_wallets.currency_reserved`를 읽으므로 두 마이그레이션은 함께 배포한다. 마이그레이션은 별도 `--migrate`로 실행하며 런타임 DML 자격과 migration-owner 자격을 구분한다. down SQL은 검토용이며 자동 되돌리기는 없다.
 
 서비스 장애 취소는 기본 정기 적립분 전액+추가 정기 적립분50% 내림, 티켓·사용 물약 환급을 한 번 적용한다. 일반 정산 DTO는 정기·정련편·티켓·엽전 전용 칸과 보호 아이템·미등록 부적 칸을 구분한다. 아이템/부적 귀속은 `Account`만 받는다. `session_rewards`라는 테이블은 현재 없으며 전리품 이벤트와 메모리 정산 원장을 별도 보상 테이블 구현으로 오해하지 않는다.
 
@@ -267,10 +274,10 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 | `equipment_instances`, `training`, `enhancement_pity` | 장비0~25·수련5항목·항목40/합계100. 강화 보정 키는 캐릭터/부위/현재단계이며 아이템ID·등급 제외 |
 | `talisman_progress`, `talisman_loadout` | 등록 실패 보정·Lv1~5·단계당1개, 직업/기술 소유 검증 |
 | `account_progress`, `initial_grants` | 영구 해금·체험판 namespace·계정/캐릭터 초기 지급 멱등 |
-| `session_rewards`, `reward_inbox` | 별도 보상/회수함 테이블 미구현. 확보품 원래 획득+30일·부분 수령 원자성 설계 |
-| `auctions`, `auction_bids` | 동결 자격·최고가 예약·영속 종료 접속 집합, 5.4 설계 |
-| `admin_users`, `admin_audit_log`, `admin_grants` | 게임 계정과 분리·MFA·추가 전용 감사·원자 지급. 체험판은 API·CLI만 제공 |
-| `live_events`, `service_state`, `allowed_builds`, `sanctions` | 운영 저장 모듈 미구현. 현재 service-state/허용 빌드는 설정 조회이고 실제 제재 DB 조회 없음 |
+| `session_rewards`, `reward_inbox` | `reward_inbox`는 0008에서 운영자 지급 우편(출처 `AdminGrant`·`RecoveryCompensation`)으로 구현됨(7.1 표). 게임 확보품 회수함(원래 획득+30일·부분 수령 원자성)과 `session_rewards`는 미구현 |
+| `auctions`, `auction_bids` | 0009 구현됨. 동결 자격·최고가 예약(`account_wallets.currency_reserved`)·영속 종료 접속 집합. 품목 상태 Open → Closing → Sold/Unsold, 종료 기록 없는 Open → Cancelled |
+| `admin_users`, `admin_sessions`, `admin_audit_log`, `admin_grants`, `service_state`, `service_notices` | 0008 구현됨(7.1 표). 체험판은 API·CLI만 제공. 서비스 상태는 런타임 DB 연결이 있으면 API가 5초 캐시로 읽고 없으면 설정 값 |
+| `live_events`, `sanctions` | 미구현(P1). 실제 제재 DB 조회 없음. 별도 `allowed_builds` 테이블 없이 허용 빌드는 `service_state.allowed_build_ids` |
 | 참가자 connection_state/grace_until/death_at | 현재 DB 참가자 컬럼이 아님. 프로세스 메모리의 연결·120초 유예·생사와 API 경제 참가자 상태를 구분 |
 
 생활 노드의 실시간 선점·행동력 회복/소모, 성장·회수함·경매·운영 데이터의 구체 SQL은 해당 파트 통합 작업에서 작성한다. 행동력은 계정 행 잠금 안에서 5분 구간을 계산해 상한100까지 반영하고 상한에 머문 초과 시간은 적립하지 않는 설계다. 이 규칙을 현재 `account_wallets` 컬럼이 존재한다는 사실만으로 구현 완료라 하지 않는다. 백업 복원·마이그레이션은 스키마와 경제 원장을 함께 복구하며 클라이언트 로컬 파일을 잔액 복원 근거로 쓰지 않는다.

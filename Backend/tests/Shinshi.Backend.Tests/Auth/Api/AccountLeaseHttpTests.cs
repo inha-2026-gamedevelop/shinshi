@@ -191,10 +191,13 @@ namespace Shinshi.Backend.Tests.Auth
         {
             await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
             Fixture fixture = await SeedAsync(database);
-            AuthExchangeResponse login = await LoginResponseAsync(fixture);
+            // 복귀 입장권은 게임 하위 세션 토큰만 받는다
+            PlayerAuthIdentity identity = await LoginAsync(fixture);
+            IssuedAuthToken game = await fixture.Auth.IssueGameSessionAsync(identity,
+                TimeSpan.FromMinutes(GameSessionController.GAME_SESSION_MINUTES));
             using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options, null);
             using HttpClient player = factory.CreateClient();
-            player.DefaultRequestHeaders.Add(ApiRoutes.AUTHORIZATION_HEADER, ApiRoutes.BEARER_PREFIX + login.AccessToken);
+            player.DefaultRequestHeaders.Add(ApiRoutes.AUTHORIZATION_HEADER, ApiRoutes.BEARER_PREFIX + game.Token);
             string path = string.Format(CultureInfo.InvariantCulture, ApiRoutes.REJOIN_TICKET_FORMAT, Guid.NewGuid());
 
             for (int attempt = 0; attempt < AccountRequestLimiter.MAX_REJOIN_TICKETS_PER_WINDOW; ++attempt)

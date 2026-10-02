@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 
 // Project
+using Shinshi.Backend.Accounts;
 using Shinshi.Data.Auth;
 
 namespace Shinshi.Backend
@@ -41,6 +42,7 @@ namespace Shinshi.Backend
                 provider.GetRequiredService<IOptions<AuthTokenOptions>>().Value));
             services.TryAddSingleton<IAuthRepository>(provider => provider.GetRequiredService<PostgresAuthRepository>());
             services.TryAddSingleton<ServerCredentialIssuer>();
+            services.AddShinshiAccounts(configuration);
             AddRateLimiting(services);
             return services;
         }
@@ -76,6 +78,9 @@ namespace Shinshi.Backend
                 options.AddPolicy(AuthFailureLimiter.SERVER_LEASE_POLICY, context =>
                     RateLimitPartition.GetFixedWindowLimiter(AuthFailureLimiter.ServerLeaseKeyOf(context),
                         _ => AuthFailureLimiter.CreateWindow(AuthFailureLimiter.MAX_SERVER_LEASE_REQUESTS_PER_WINDOW)));
+                options.AddPolicy(AccountSignupLimiter.AVAILABILITY_POLICY, context =>
+                    RateLimitPartition.GetFixedWindowLimiter(AuthFailureLimiter.KeyOf(context),
+                        _ => AuthFailureLimiter.CreateWindow(AccountSignupLimiter.MAX_AVAILABILITY_REQUESTS_PER_WINDOW)));
             });
         }
     }

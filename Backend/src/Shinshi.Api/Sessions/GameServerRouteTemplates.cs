@@ -22,5 +22,9 @@ namespace Shinshi.Backend.Sessions
         public const string EVENTS             = "/v1/game-sessions/{sessionId}/events";
         public const string CHECKPOINTS        = "/v1/game-sessions/{sessionId}/checkpoints";
         public const string SETTLEMENT         = "/v1/game-sessions/{sessionId}/settlement";
+        public const string AUCTIONS           = "/v1/game-sessions/{sessionId}/auctions";
+        public const string AUCTION_BIDS       = "/v1/game-sessions/{sessionId}/auctions/{auctionId}/bids";
+        public const string AUCTION_CLOSE      = "/v1/game-sessions/{sessionId}/auctions/{auctionId}/close";
+        public const string AUCTION_FINISH     = "/v1/game-sessions/{sessionId}/auctions/finish";
     }
 }

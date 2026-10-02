@@ -588,6 +588,19 @@ namespace Shinshi.Network
             }
         }
 
+        // 종료는 CompleteTick이 판정한다. 같은 틱에 전원이 죽었으면 전멸 실패가 먼저라 이 성공은 버려진다
+        /// <summary> 보스 사망이 확정된 틱 안에서 부른다, 보스전이 진행 중일 때만 받는다 </summary>
+        public bool ReportBossDefeated()
+        {
+            if ((!IsRunning) || (!_inTick) || (!_isBossSession) || (_storageFault))
+            {
+                return false;
+            }
+
+            _successPending = true;
+            return true;
+        }
+
         /// <summary> 임대 확인 등으로 확정한 서비스 장애 취소, 경제 환급은 백엔드가 동일 operationId로 처리한다 </summary>
         public bool CancelService(double serverTime)
         {

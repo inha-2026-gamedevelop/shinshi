@@ -78,6 +78,49 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void ReportBossDefeated_InTick_EndsSuccessAtCompleteTick()
+        {
+            Assert.IsTrue(_session.BeginTick(1.0));
+            Assert.IsTrue(_session.ReportBossDefeated());
+            Assert.IsTrue(_session.IsRunning, "종료는 CompleteTick이 판정한다");
+
+            _session.CompleteTick();
+
+            Assert.AreEqual(ESessionEndReason.Success, _session.EndReason);
+        }
+
+        [Test]
+        public void ReportBossDefeated_SameTickWipe_AllDeadWins()
+        {
+            Assert.IsTrue(_session.BeginTick(1.0));
+            Assert.IsTrue(_session.ReportBossDefeated());
+            _roster.TrySetLifeState(PLAYER_ONE, EParticipantLifeState.Dead);
+            _roster.TrySetLifeState(PLAYER_TWO, EParticipantLifeState.Dead);
+
+            _session.CompleteTick();
+
+            Assert.AreEqual(ESessionEndReason.AllDead, _session.EndReason, "같은 틱 보스 처치와 전멸은 전멸 실패가 먼저다");
+        }
+
+        [Test]
+        public void ReportBossDefeated_OutsideTickOrAfterEnd_Rejected()
+        {
+            Assert.IsFalse(_session.ReportBossDefeated(), "틱 밖에서는 받지 않는다");
+
+            _roster.TrySetLifeState(PLAYER_ONE, EParticipantLifeState.Dead);
+            _roster.TrySetLifeState(PLAYER_TWO, EParticipantLifeState.Dead);
+            Tick(1.0);
+
+            if (_session.BeginTick(2.0))
+            {
+                Assert.IsFalse(_session.ReportBossDefeated(), "끝난 출정은 받지 않는다");
+                _session.CompleteTick();
+            }
+
+            Assert.AreEqual(ESessionEndReason.AllDead, _session.EndReason);
+        }
+
+        [Test]
         public void CompleteTick_AliveCharacterInReconnectGrace_IsNotWipe()
         {
             _roster.TrySetLifeState(PLAYER_ONE, EParticipantLifeState.Dead);

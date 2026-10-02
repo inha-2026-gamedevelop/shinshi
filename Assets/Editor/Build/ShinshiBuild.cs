@@ -142,6 +142,14 @@ namespace Shinshi.Editor
             BuildReport report    = BuildPipeline.BuildPlayer(options);
             bool        succeeded = report.summary.result == BuildResult.Succeeded;
 
+            // 후처리 예외가 빌드 결과에 반영되지 않는 경우가 있어 게시 도구가 읽을 파일을 직접 확인한다
+            string identityPath = BuildIdentityWriter.GetIdentityPath(options.locationPathName);
+            if (succeeded && (!File.Exists(identityPath)))
+            {
+                Debug.LogError($"[Build] 빌드 신원 파일이 없다: {identityPath}");
+                succeeded = false;
+            }
+
             string message = $"[Build] {targetName} ({(development ? "개발" : "배포")}) - {report.summary.result}, {options.locationPathName}";
             if (succeeded)
             {

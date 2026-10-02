@@ -61,7 +61,8 @@ namespace Shinshi.Backend.Tests.Settlement
             Assert.Empty(stalled.Failures);
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, late.Status);
             Assert.Equal(ESSENCE_GRANT, (await environment.ReadWalletAsync(player.AccountId)).Essence);
-            Assert.Equal(GameSessionStates.CLOSED, await environment.TextAsync(
+            // 보스 성공 정산은 경매 단계로 넘어간다. 출정 종료는 경매 finish(또는 경매 복구)가 한다
+            Assert.Equal(GameSessionStates.AUCTION, await environment.TextAsync(
                 "SELECT state FROM game_sessions WHERE session_id = @Id;", new { Id = session.SessionId }));
         }
 
