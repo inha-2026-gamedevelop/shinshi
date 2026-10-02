@@ -1,6 +1,6 @@
 # 프로젝트 지식 맵
 
-2026-10-02 shinshi 작업 트리 기준. 실제 코드·SO·설정에서 현재 계약을 확인하고, 게임 기획의 목표와 구분한다. 사용자의 최신 명시 지시가 권한과 요구사항을 정한다.
+2026-10-03 shinshi 작업 트리 기준. 실제 코드·SO·설정에서 현재 계약을 확인하고, 게임 기획의 목표와 구분한다. 사용자의 최신 명시 지시가 권한과 요구사항을 정한다.
 
 ## 기능별 진입점
 
@@ -32,7 +32,7 @@
 | 렌더링 설정 (URP) | — | `Assets/Settings/` (PC · Mobile RP 에셋) | 공용 설정 변경은 팀 영향 |
 | UI 배치 JSON 적용 (에디터 도구) | — | `Assets/01.Scripts/06.UI/Systems/UiLayoutImporter.cs`, 메뉴 `Shinshi/UI/배치 JSON 적용`, 기록 컴포넌트 `UiLayoutNote` | 저장소 밖 웹 배치 편집기가 내보낸 JSON(`format` `gemeum-ui-layout`, `version` 2)만 받는다. 다시 적용하면 `UiLayoutNote` id로 같은 오브젝트를 찾아 위치·크기·순서만 갱신하고 지우지 않는다. `#if UNITY_EDITOR` 안에 있다. 구현됨·실행 미검증 |
 | HUD 상시 화면 (`Dev_HUD`) | — | 배치 JSON `Assets/09.Data/UI/Layout_HUD.json`, 씬 `Assets/00.Scenes/Dev_HUD/Dev_HUD.unity`의 `HUDCanvas/Layout_상시 화면`, 레벨·HP·MP 표시 `Assets/01.Scripts/06.UI/Hud/HudPlayerStatusView.cs`, 스킬 칸 표시 `Assets/01.Scripts/06.UI/Hud/HudSkillSlotView.cs`, 스프라이트 `Assets/01.Scripts/05.Art/UI/` | 메뉴 버튼, 미니맵 테두리·이름표, 레벨·HP·MP, 스킬 칸(Q/E/R 3칸과 대시)만 그림이 있고 나머지는 자리표시다. 기획서의 W 칸은 레이아웃에 칸이 없어 아직 없다. `HudPlayerStatusView`(`SetLevel`·`SetHp`·`SetMp`)와 `HudSkillSlotView`(`SetCooldown`·`SetIcon`·`SetKeyLabel`)는 플레이어·기술 상태와 연결되지 않았다. 미니맵·플레이어 정보 크기는 프로젝트 JSON에서 고쳤으므로 웹 편집기 원본과 다르다. 구현됨·실행 미검증 |
-| 마을 HUD 개발 씬 | — | `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView.unity`, 은색 변환 `Assets/01.Scripts/05.Art/Shaders/SH_HudSilver.shader`, 재질 `Assets/01.Scripts/05.Art/UI/HudMenuButton/M_HudSilver.mat` | 원본 `Dev_HUD`의 테스트 플레이어·카메라·HUD·EventSystem을 복사했다. 이 씬에는 Q/W/E/R 4칸과 대시, 은색 테두리, 사용자 조정 크기·위치가 있다. 원본 씬과 배치 JSON은 별개이며 JSON을 다시 적용하면 수동 배치에 영향을 줄 수 있다. Play Mode 화면·씬 참조·Console 확인, 플레이어·기술 상태 연결과 멀티플레이는 미검증 |
+| 마을 HUD 개발 씬 | [개발 씬 사용·검증](../unity/DEV_HUD_PREVIEW.md) | `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView.unity`, Navigation의 NavMeshSurface와 `NavMesh-Navigation.asset`, UI 스프라이트 `Assets/01.Scripts/05.Art/UI/` | 원본 Dev_HUD의 테스트 플레이어·카메라·HUD·EventSystem을 복사했다. Q/W/E/R 4칸과 대시, 은색 테두리, 사용자 조정 배치가 있다. Humanoid/Physics Colliders/Volume NavMesh를 베이크하고 플레이어를 수집에서 제외했다. 주변 7곳 경로·분리된 PathFollower 도달 확인. 실제 네트워크 이동·전체 구역·멀티플레이·Player 빌드는 미검증. 원본 씬과 배치 JSON은 별개 |
 | 폴리지 셰이더·재질 | [버텍스 컬러 폴리지 셰이더](../unity/VERTEX_COLOR_FOLIAGE_SHADER.md) | `Assets/01.Scripts/05.Art/Shaders/`, `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 버텍스 컬러 AO, 알파 클립, 밉맵 커버리지 보존 |
 | 입력 | [코딩 컨벤션](../coding-convention.md) 23장 | `ProjectSettings/InputManager.asset` | 구 Input Manager(`UnityEngine.Input`), Active Input Handling = Both |
 | 밸런스 데이터 | [밸런스 데이터 작업](../unity/BALANCE_DATA_WORKFLOW.md) | `Assets/09.Data/` (GameDB 루트, 플레이어·세션 설정) | 수치는 ScriptableObject에 둔다 |
