@@ -28,8 +28,17 @@ namespace Shinshi.Contracts
         // POST로 캐릭터를 만든다. 본문은 CharacterCreateRequest, 응답은 CharacterCreateResponse
         public const string CHARACTERS        = "/v1/characters";
 
+        // string.Format으로 sessionId를 넣는다. 진행 중 출정에서 끊긴 플레이어가 복귀용 일회 접속 토큰을 다시 받는다
+        public const string REJOIN_TICKET_FORMAT = "/v1/game-sessions/{0}/rejoin-ticket";
+
+        // 플레이어 접근 토큰으로 서버가 고른 마을의 일회 입장 토큰을 받는다
+        public const string TOWN_JOIN_TICKET = "/v1/town/join-ticket";
+
         // TODO(민성): 캐릭터 목록 조회와 선택 경로는 기획 미정이라 정하지 않았다
         // TODO(민성): 갱신 토큰 교환을 AUTH_EXCHANGE로 합칠지 별도 경로로 둘지, 게임 세션 갱신 경로는 기획 미정
-        // TODO(민성): 접근 토큰을 싣는 헤더 형식은 기획 미정
+
+        // 접근 토큰은 Authorization: Bearer {token}으로 싣는다
+        public const string AUTHORIZATION_HEADER = "Authorization";
+        public const string BEARER_PREFIX        = "Bearer ";
     }
 }
