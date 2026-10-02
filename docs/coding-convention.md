@@ -35,9 +35,9 @@ Assets/
 │ │                   Talisman, Equipment, Inventory, Growth, FoxTrace, Interaction,
 │ │                   Life, Crafting, Auction
 │ ├ 05.Art/           표현 (Shinshi.Art) - Camera, Environment, Telegraph, VFX
-│ │                   + 팀 제작 모델링 에셋 - Characters, Environment, Props, Shaders
+│ │                   + 팀 제작 모델링 에셋 - Characters, Environment, Props, Shaders, UI
 │ │                     (규칙: docs/unity/SCENE_AND_ASSET_SAFETY.md 4장)
-│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Lobby, Systems
+│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Lobby, Systems
 │ ├ 98.Servers/       서버 전용 코드 (Shinshi.Server 어셈블리) - 9장
 │ │ ├ 01.Network/     부트스트랩·인증·백엔드 게이트웨이·서버 존재·종료
 │ │ │ └ Session/      출정 명단·이벤트 저장 큐·개인 드롭·정산
@@ -370,7 +370,7 @@ Assets/01.Scripts/
 - 전용 서버에서는 SyncVar hook이 불리지 않는다. 서버 로직을 hook에 걸지 않는다.
 - 표현은 [ClientView](../Assets/01.Scripts/00.Common/Utility/ClientView.cs)를 상속하고 서버 빌드(`UNITY_SERVER`)에서 스스로 꺼진다. 표현과 UI는 상태의 읽기 프로퍼티·이벤트와 공개 요청 창구만 쓰며, `[Server]` 메서드나 서버 클래스를 호출하지 않는다.
 
-아래 코드는 역할 분리를 설명하는 예시다. 현재 전투 요청 창구는 `02.Combat/Player/Net/PlayerInputState.cs`이며, 실제 타입·연결 흐름은 [서버·클라이언트 협업](unity/SERVER_CLIENT_WORKFLOW.md) 6·8장을 따른다. 서버 틱·인증·게이트웨이의 `MonoBehaviour` 드라이버도 서버 부트스트랩이 실행 중에 생성·부착하며 씬·프리팹에는 직렬화하지 않는다.
+아래 코드는 역할 분리를 설명하는 예시다. 현재 전투 요청 창구는 `02.Combat/Player/Net/PlayerInputState.cs`이며, 실제 타입·연결 흐름은 [서버·클라이언트 협업](unity/SERVER_CLIENT_WORKFLOW.md) 6·9장을 따른다. 서버 틱·인증·게이트웨이의 `MonoBehaviour` 드라이버도 서버 부트스트랩이 실행 중에 생성·부착하며 씬·프리팹에는 직렬화하지 않는다.
 
 ```csharp
 // 02.Combat/Skills/Net/PlayerSkillState.cs - Shinshi.Runtime 예시

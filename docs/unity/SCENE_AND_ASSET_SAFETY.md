@@ -149,6 +149,7 @@ Assets/01.Scripts/05.Art/
 ├ Characters/{에셋}/   플레이어 · 산귀 · 보스 등 캐릭터
 ├ Environment/{에셋}/  나무 · 건물 · 지형 소품 등 배경
 ├ Props/{에셋}/        상호작용 물체 · 무기 · 아이템 등 소품
+├ UI/{에셋}/           HUD 등 UI 스프라이트 (Textures/만 둔다)
 └ Shaders/             여러 에셋이 함께 쓰는 셰이더 그래프
 ```
 

@@ -246,6 +246,7 @@ namespace Shinshi.Data
 
         // 번호는 기획표의 P01~P06 순서와 같다. ID 앞에 보스를 붙여 다음 보스 패턴과 겹치지 않게 한다
         // TODO(기웅): 2페이즈 패턴은 담당자 입력 대기, 들어오면 phase 2로 추가한다
+        // TODO(기웅): wolbaek_p02, p03, p06의 회복 0.5초는 임시값이다, 확정 밸런스가 아니며 에셋에서 조정한다
         [Header("패턴")]
         [SerializeField] private PatternDefinition[] _patterns =
         {

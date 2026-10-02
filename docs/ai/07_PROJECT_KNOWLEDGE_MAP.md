@@ -4,7 +4,7 @@
 
 ## 기능별 진입점
 
-경로는 저장소 루트(Unity 프로젝트 루트) 기준이고, 표의 `00.Common/`·`01.Network/`·`02.Combat/`·`98.Servers/`는 `Assets/01.Scripts/` 아래 상대 경로다. 서버 M-A의 입장·재접속·플레이어 전투·세션·정산과 `Backend/`의 API·DB 기반이 있다. 아래에서 실제 진입점과 미착수 계획을 구분한다. 실제 서버 빌드·M2/M3·IL2CPP·배포는 **구현됨·실행 미검증**이다.
+경로는 저장소 루트(Unity 프로젝트 루트) 기준이고, 표의 `00.Common/`·`01.Network/`·`02.Combat/`·`98.Servers/`는 `Assets/01.Scripts/` 아래 상대 경로다. 서버 M-A의 입장·재접속·플레이어 전투·세션·정산과 `Backend/`의 API·DB 기반, 보스 AI 서버 뼈대(`98.Servers/03.AI/Boss/`)가 있다. 아래에서 실제 진입점과 미착수 계획을 구분한다. 실제 서버 빌드·M2/M3·IL2CPP·배포는 **구현됨·실행 미검증**이다.
 
 | 찾는 것 | 공유 문서 | 실제 진입점 | 확인할 것 |
 |---|---|---|---|
@@ -20,15 +20,18 @@
 | 서버 부팅·풀·종료 | [네트워크 권위](../unity/NETWORK_AUTHORITY.md), [게임 서버 배포 안내](../../deploy/gameserver/README.md) | `98.Servers/01.Network/{ServerBootstrap,ServerLaunchConfig,BackendLaunchSettings,ServerPresence,ServerShutdownController}.cs` | 역할별 서버, 백엔드 게이트웨이, heartbeat·계정 lease, 출정 하나 뒤 종료·새 bootId 재기동; Linux 적용은 실행 미검증 |
 | 던전 세션·저장·정산 | [기술설계서](../03-technical-design.md), [아키텍처](../04-architecture.md) | `98.Servers/01.Network/Session/{DungeonSessionHost,DungeonSession,SessionEventQueue,HttpBackendEventSink,SessionSettlement}.cs`; `Backend/src/Shinshi.Data/{Reservations,Sessions,Settlement,Ledger}/` | 예약/start 영수증, 이벤트·체크포인트 분리, operationId 멱등, 정산·원장·outbox, 계정 귀속·지갑·부적 칸 |
 | 플레이어 전투·스킬·피해 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | `98.Servers/02.Combat/{CombatServerRuntime,Player/PlayerServer,Skills/SkillServer,Skills/CompanionServer,Damage/DamageResolver}.cs`; `02.Combat/Player/View/` | 서버 입력 검증·판정과 클라이언트 예측, `Obstacle` 레이어 8(`ProjectSettings/TagManager.asset`), 미구현 AI·보스·표현과 구분 |
+| 보스 AI 서버 뼈대 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) 8장, [아키텍처](../04-architecture.md) 5.3 | `Assets/01.Scripts/98.Servers/03.AI/Boss/` (`BossBrain`) | 서버 시각 주입 FSM·경량 BT, 가짜 의존성 EditMode 검증만. 6패턴·복제·플레이어 제어 연결·틱 구동 미구현 |
 | 백엔드 실행·DB 마이그레이션 | [백엔드 안내](../../Backend/README.md), [루트 README](../../README.md#빌드테스트) | `Backend/docker-compose.yml`, `Backend/src/Shinshi.Api/Program.cs`, `Backend/src/Shinshi.Data/SqlMigrationRunner.cs`, `Migrations/0001`~`0007` | migration/runtime DB 권한 분리, SQL 이력·체크섬, 테스트 전용 `SHINSHI_TEST_CONNECTION_STRING`; 비밀값은 환경/시크릿 |
 | 빌드·배포 준비·다인 시험 | [배포 안내](../../deploy/README.md), [루트 README](../../README.md#빌드테스트), [멀티플레이 테스트](04_MULTIPLAYER_TEST_PROTOCOL.md) | `Assets/Editor/Build/ShinshiBuild.cs`, `tools/Start-M2.ps1`, `deploy/api/Dockerfile`, `deploy/gameserver/` | Bootstrap 빌드, Windows 서버+클라이언트 실행 준비; 실제 서버 빌드·M2/M3·배포는 실행 미검증 |
-| 검증 증거 | [검증 플레이북](03_VERIFICATION_PLAYBOOK.md) | `Assets/Tests/EditMode/`, `Backend/tests/` | 제공된 검증 결과: Unity Test Runner EditMode 780건, 실제 PostgreSQL 18(Docker) 백엔드 396건 통과; 이번 동기화는 정적 대조 |
+| 검증 증거 | [검증 플레이북](03_VERIFICATION_PLAYBOOK.md) | `Assets/Tests/EditMode/`, 보스 뼈대 테스트 `Assets/01.Scripts/98.Servers/03.AI/Boss/Tests/`, `Backend/tests/` | 제공된 검증 결과: Unity Test Runner EditMode 780건, 실제 PostgreSQL 18(Docker) 백엔드 396건 통과; 이번 동기화는 정적 대조 |
 | 씬·에셋·`.meta` | [씬 · 에셋 안전](../unity/SCENE_AND_ASSET_SAFETY.md) | `Assets/00.Scenes/Bootstrap.unity`, `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab` | Bootstrap 소유 {팀장}, 실제 빌드·배치 경로, `.meta` 동반 커밋 |
 | DTO 직렬화·IL2CPP 보존 | [백엔드 안내](../../Backend/README.md), [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | `Assets/link.xml`, `Packages/manifest.json`, `98.Servers/01.Network/BackendJson.cs`, `Backend/src/Shinshi.Contracts/ContractJson.cs` | Newtonsoft 직접 의존, private 필드·생성자 보존, IL2CPP 실행 미검증 |
 | 외부 에셋·라이선스·설치 기록 | [에셋 대장](../licenses/ASSET_REGISTRY.md) | `Assets/99.ThirdParty/` | 분류, 버전, 출처, Git 제외, 경로 보정 |
 | 3D 모델 제작·공용 재사용 | [모델 제작 목록](../design/model-production-list.md), [컨셉아트 기록](../design/concept-art.md) | 제작 계획, 기존 벚꽃나무는 `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 원본 수와 배치 수 구분, 기존 모델 우선 검토, Meshy CLI → Blender 흐름 |
 | 아트 재질·AO·프리팹 기본 과정 | [아트 제작 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 모델·재질 `Assets/01.Scripts/05.Art/`, 배치 프리팹 `Assets/02.Prefab/` | AO/PBR 기본 처리, 셰이더별 지원, AI 목표 이미지와 실제 검증 구분 |
 | 렌더링 설정 (URP) | — | `Assets/Settings/` (PC · Mobile RP 에셋) | 공용 설정 변경은 팀 영향 |
+| UI 배치 JSON 적용 (에디터 도구) | — | `Assets/01.Scripts/06.UI/Systems/UiLayoutImporter.cs`, 메뉴 `Shinshi/UI/배치 JSON 적용`, 기록 컴포넌트 `UiLayoutNote` | 저장소 밖 웹 배치 편집기가 내보낸 JSON(`format` `gemeum-ui-layout`, `version` 2)만 받는다. 다시 적용하면 `UiLayoutNote` id로 같은 오브젝트를 찾아 위치·크기·순서만 갱신하고 지우지 않는다. `#if UNITY_EDITOR` 안에 있다. 구현됨·실행 미검증 |
+| HUD 상시 화면 (`Dev_HUD`) | — | 배치 JSON `Assets/09.Data/UI/Layout_HUD.json`, 씬 `Assets/00.Scenes/Dev_HUD/Dev_HUD.unity`의 `HUDCanvas/Layout_상시 화면`, 레벨·HP·MP 표시 `Assets/01.Scripts/06.UI/Hud/HudPlayerStatusView.cs`, 스킬 칸 표시 `Assets/01.Scripts/06.UI/Hud/HudSkillSlotView.cs`, 스프라이트 `Assets/01.Scripts/05.Art/UI/` | 메뉴 버튼, 미니맵 테두리·이름표, 레벨·HP·MP, 스킬 칸(Q/E/R 3칸과 대시)만 그림이 있고 나머지는 자리표시다. 기획서의 W 칸은 레이아웃에 칸이 없어 아직 없다. `HudPlayerStatusView`(`SetLevel`·`SetHp`·`SetMp`)와 `HudSkillSlotView`(`SetCooldown`·`SetIcon`·`SetKeyLabel`)는 플레이어·기술 상태와 연결되지 않았다. 미니맵·플레이어 정보 크기는 프로젝트 JSON에서 고쳤으므로 웹 편집기 원본과 다르다. 구현됨·실행 미검증 |
 | 폴리지 셰이더·재질 | [버텍스 컬러 폴리지 셰이더](../unity/VERTEX_COLOR_FOLIAGE_SHADER.md) | `Assets/01.Scripts/05.Art/Shaders/`, `Assets/01.Scripts/05.Art/Environment/CherryTree/` | 버텍스 컬러 AO, 알파 클립, 밉맵 커버리지 보존 |
 | 입력 | [코딩 컨벤션](../coding-convention.md) 23장 | `ProjectSettings/InputManager.asset` | 구 Input Manager(`UnityEngine.Input`), Active Input Handling = Both |
 | 밸런스 데이터 | [밸런스 데이터 작업](../unity/BALANCE_DATA_WORKFLOW.md) | `Assets/09.Data/` (GameDB 루트, 플레이어·세션 설정) | 수치는 ScriptableObject에 둔다 |

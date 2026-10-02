@@ -48,7 +48,7 @@ Assets/
       Equipment/ Inventory/ Growth/ FoxTrace/ Interaction/
       Life/ Crafting/ Auction/  폴더만 생성(.gitkeep)
     05.Art/                     Shinshi.Art, 카메라·예고·VFX·환경
-    06.UI/                      Shinshi.UI, Combat/Hub/Lobby/Systems
+    06.UI/                      Shinshi.UI, Combat/Hub/Hud/Lobby/Systems
     98.Servers/                 Shinshi.Server, 서버 전용 클래스. 도메인 경로를 비춤. 민성(AI·웨이브는 기웅)
       {NN.원래도메인}/{기능}/    원래 경로를 그대로 비춤
     99.Dev/                     테스트 지원·진단, 현재 define 제한 없음
@@ -114,6 +114,7 @@ Assets/
 | 플레이어 서버 | `98.Servers/02.Combat/Player/PlayerServer`, `PlayerInputGate`, `MoveRequestThrottle`, `ReconnectVault`, `ReviveBudget` | 이동·기본공격·회피·생사·120초 보존·공용 부활 규칙/처리 |
 | 피해 | `98.Servers/02.Combat/Damage/DamageResolver`, `HitLedger`, `CombatTargetRegistry`; 공용 `DamageRules` | 서버 피해·중복 적중·표적·가시성 검사 |
 | 스킬/동료 | `98.Servers/02.Combat/Skills/SkillServer`, `CompanionServer`, `ResonanceLedger`; `CompanionCombatState`, `ITalismanModifierResolver` | 실행·동료·공명 기반. 부적 modifier의 실제 파트 연결과 보스/적 통합 후속 |
+| 보스 | `BossBrain`, `BossCombat`, `BossSelectionTree`, `BossPatternSelector`, `IBossPattern` (서버 뼈대, 구현됨·EditMode만 검증), `WolbaekController`(개체 연결, 미구현) | 상위 FSM→전투(페이즈·공격 FSM, 선택 BT)→가중 선택→패턴 실행. 6패턴·복제·제어 연결은 미구현, 2페이즈는 입력 대기. 계약은 [서버·클라이언트 협업 8장](unity/SERVER_CLIENT_WORKFLOW.md#8-보스-서버-경계) |
 | 세션/보상 | `98.Servers/01.Network/Session/DungeonSessionHost`, `DungeonSession`, `ParticipantRoster`, `LootRoller`, `SettlementLedger`, `SettlementRules` | 세션 규칙·원장·정산안 구현. 호스트의 일반전 CreateNormal/웨이브 source/참가자 효과 연결은 TODO라 6웨이브 완주로 판정하지 않음 |
 | 저장 연결 | `SessionEventQueue`, `HttpBackendEventSink`, `SessionSettlement` | 순번 이벤트·SessionEnded·정산 영수증 연결. 진단 체크포인트 주기 송신 TODO |
 | API/DB | `Backend/src/Shinshi.Api`, `Shinshi.Data` | 실제 HTTP는 [기술 설계 5장](03-technical-design.md#현재-http-엔드포인트), 실제 스키마는 7장 |
@@ -177,6 +178,8 @@ Departed 캐릭터는 전장에서 제거하고 보스 타깃·주변 인원 계
 기술은 `Idle → Targeting(선택형) → Validating → Windup → Active → Recovery → Idle`이다. Targeting 취소는 비용이 없다. 서버가 승인한 시점에 명세의 자원/쿨다운을 적용한다. 입력 큐 0.15초/1개와 취소 가능한 구간은 기획 데이터로 정한다.
 
 월백은 `SelectTarget → ReadContext → SelectPattern → Telegraph → Execute → Recover → SelectTarget`이다. 매 선택 시 생존 플레이어 한 명을 무작위로 고르고 거리·방향을 계산한다. 근처 5m의 플레이어/전투 봇만 세고 소환물은 제외한다. 0명은 1명 열, 3명 이상은 3명 열을 쓴다. 가중치는 Base×거리×방향×인원×최근 패턴이며 최대값 고정 선택을 하지 않는다. 1페이즈 원본 6패턴과 배율은 기획 표를 보존한다.
+
+보스 서버 구조는 `상위 FSM → Combat → PhaseState / AttackState FSM → Combat BT → 상황별 가중치 선택 → 패턴 실행`이다. 위 `SelectTarget → ReadContext → SelectPattern`은 공격 FSM이 `Ready`이고 페이즈가 `Active`일 때만 BT가 한 번에 평가하는 단계이고, 공격 FSM은 `Ready → Telegraph → Execute → Recover → Ready`를 서버 시각으로 진행한다. 상위 FSM이 중단 이유(사망, 전투 종료, 페이즈 전환, 직접 제어)를 정하고 취소를 지시한다. 현재 패턴은 자신의 실행과 예약 타격을 정리하고, 지속 장판과 투사체는 별도 수명 관리자가 이유별로 정리한다. 예고, 실행, 회복 중에도 사망, 페이즈 전환, 직접 제어 검사는 계속하며, 같은 틱의 우선순위는 사망·전투 종료 → 페이즈 전환 → 허용된 직접 제어 → 일반 공격 진행·새 선택이다. 이미 적용된 피해는 되돌리지 않는다. 최종 발악은 이번 구현에서 제외하며 체력 0이면 사망을 확정하고, 발악을 추가할 때 사망 정책을 교체할 자리만 둔다. 보스 사망과 전원 사망이 같은 시각이면 기획의 초기 기준대로 전멸 실패를 우선하되 둘 다 기록하고 플레이어 사망 상태는 유지한다. 보스가 죽으면 남은 장판과 투사체를 즉시 제거하고 예약 타격을 포함한 추가 피해를 막으며 이미 적용된 피해는 되돌리지 않는다. 보스는 등장 컷씬 전에 미리 스폰하고 상위 FSM의 등장 대기 상태에서 서버 시각으로만 전투 시작 시점을 관리한다(클라이언트 컷씬 종료 신호는 기준이 아니며, 컷씬의 시작 조건과 길이는 기획과 세션이 정한다). 고정 오프닝과 강제 후속 공격은 제외하며 일반 가중 선택 앞에 선택 규칙을 끼울 자리만 있다. 속박 등 직접 제어가 보스를 움직이는 방식은 가능성을 열어 두고 적용 사실만 알리며, 월백 2페이즈와 그로기는 미정이다. 세부 계약은 [서버·클라이언트 협업 8장](unity/SERVER_CLIENT_WORKFLOW.md#8-보스-서버-경계)에 있다.
 
 생명 50% 도달 즉시 `PhaseTransitionPending`을 설정하고 1페이즈의 새 패턴 선택을 막는다. 전투 부록의 전환 취소 규칙에 따라 진행 중인 1페이즈 공격·잔여 장판·투사체와 예정 피해를 종료한 뒤 2페이즈 실행기에 인계한다. 2페이즈 데이터·실행기를 받기 전 공개 배포 빌드에서 미완성 전환을 정상 완주로 꾸미지 않는다. 별도 시험 빌드는 1페이즈 종료 지점을 명확하게 표시한다. 2페이즈 자체의 전환 연출·공격 규칙은 담당자의 입력을 따른다.
 
