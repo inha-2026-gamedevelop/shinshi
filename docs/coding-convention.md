@@ -31,9 +31,9 @@ Assets/
 │ │                   Talisman, Equipment, Inventory, Growth, FoxTrace, Interaction,
 │ │                   Life, Crafting, Auction
 │ ├ 05.Art/           표현 (Shinshi.Art) - Camera, Environment, Telegraph, VFX
-│ │                   + 팀 제작 모델링 에셋 - Characters, Environment, Props, Shaders
+│ │                   + 팀 제작 모델링 에셋 - Characters, Environment, Props, Shaders, UI
 │ │                     (규칙: docs/unity/SCENE_AND_ASSET_SAFETY.md 4장)
-│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Lobby, Systems
+│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Lobby, Systems
 │ ├ 98.Servers/       서버 전용 코드 (Shinshi.Server 어셈블리) - 9장
 │ └ 99.Dev/           개발·디버그 도구 (Shinshi.Dev 어셈블리) - 출시 빌드 제외 대상
 ├ 09.Data/            GameDB ScriptableObject 에셋 - 16장

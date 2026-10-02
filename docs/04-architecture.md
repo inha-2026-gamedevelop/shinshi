@@ -47,7 +47,7 @@ Assets/
       Equipment/ Inventory/ Growth/ FoxTrace/ Interaction/
       Life/ Crafting/ Auction/  폴더만 생성(.gitkeep)
     05.Art/                     Shinshi.Art, 카메라·예고·VFX·환경
-    06.UI/                      Shinshi.UI, Combat/Hub/Lobby/Systems
+    06.UI/                      Shinshi.UI, Combat/Hub/Hud/Lobby/Systems
     98.Servers/                 Shinshi.Server, 서버 전용 클래스. 도메인 경로를 비춤. 민성(AI·웨이브는 기웅)
       {NN.원래도메인}/{기능}/    원래 경로를 그대로 비춤
     99.Dev/                     테스트 지원·진단, 배포에서 분리

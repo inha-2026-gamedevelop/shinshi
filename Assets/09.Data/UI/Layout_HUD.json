@@ -1,0 +1,1655 @@
+{
+  "format": "gemeum-ui-layout",
+  "version": 2,
+  "exportedAt": "2026-10-01T16:29:40.694Z",
+  "layoutName": "상시 화면",
+  "layoutDescription": "상시 화면\n",
+  "conventions": {
+    "purpose": "Unity UI(uGUI) 배치 참고 자료. 각 노드를 같은 이름의 GameObject + RectTransform으로 만들고, 아래 값으로 위치·크기를 맞춘다.",
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "canvasScaler": "Scale With Screen Size, Reference Resolution 1920x1080",
+    "units": "모든 길이는 기준 해상도의 px",
+    "hierarchy": "children 배열 = Hierarchy 자식. 배열 순서대로 형제 순서를 둔다(뒤에 있을수록 위에 그려진다)",
+    "topLevel": "최상위 노드는 anchorMin = anchorMax = pivot = anchor 프리셋 값. anchoredPosition은 Unity 좌표(위쪽이 +y)",
+    "children": "자식 노드는 부모 RectTransform의 왼쪽 위에 붙인다: anchorMin = anchorMax = pivot = (0, 1), anchoredPosition = (x, -y)",
+    "screenRect": "검산용. 화면 왼쪽 위 기준 [x, y, w, h], y는 아래로 증가",
+    "types": {
+      "box": "사각 Image",
+      "circle": "원형 Image(원 스프라이트 또는 Mask)",
+      "group": "그래픽이 없는 빈 RectTransform 컨테이너"
+    },
+    "reference": "reference가 true인 노드는 HUD가 아닌 참고 영역이다. 만들지 않는다",
+    "description": "요소의 역할과 상태 변화 설명. 실제 그래픽·텍스트를 만들 때 따른다"
+  },
+  "root": [
+    {
+      "id": "emupioe5lyfqz",
+      "name": "플레이어 정보 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "BottomCenter",
+      "anchorMin": [
+        0.5,
+        0
+      ],
+      "anchorMax": [
+        0.5,
+        0
+      ],
+      "pivot": [
+        0.5,
+        0
+      ],
+      "anchoredPosition": [
+        0,
+        48
+      ],
+      "sizeDelta": [
+        604,
+        78
+      ],
+      "screenRect": [
+        658,
+        954,
+        604,
+        78
+      ],
+      "path": "플레이어 정보 그룹",
+      "children": [
+        {
+          "id": "emupip1u3vh70",
+          "name": "플레이어 레벨",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            17,
+            -13
+          ],
+          "sizeDelta": [
+            59,
+            59
+          ],
+          "screenRect": [
+            675,
+            967,
+            59,
+            59
+          ],
+          "path": "플레이어 정보 그룹/플레이어 레벨"
+        },
+        {
+          "id": "emupipbvcq66l",
+          "name": "플레이어 HP",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            95,
+            -13
+          ],
+          "sizeDelta": [
+            498,
+            21
+          ],
+          "screenRect": [
+            753,
+            967,
+            498,
+            21
+          ],
+          "path": "플레이어 정보 그룹/플레이어 HP"
+        },
+        {
+          "id": "emupipjriqvht",
+          "name": "플레이어 MP",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            95,
+            -42
+          ],
+          "sizeDelta": [
+            498,
+            21
+          ],
+          "screenRect": [
+            753,
+            996,
+            498,
+            21
+          ],
+          "path": "플레이어 정보 그룹/플레이어 MP"
+        }
+      ]
+    },
+    {
+      "id": "emupiq9pgntln",
+      "name": "메뉴 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "TopRight",
+      "anchorMin": [
+        1,
+        1
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "pivot": [
+        1,
+        1
+      ],
+      "anchoredPosition": [
+        -40,
+        -40
+      ],
+      "sizeDelta": [
+        264,
+        80
+      ],
+      "screenRect": [
+        1616,
+        40,
+        264,
+        80
+      ],
+      "path": "메뉴 그룹",
+      "children": [
+        {
+          "id": "emupir8f9k9hb",
+          "name": "인벤토리",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            100,
+            -8
+          ],
+          "sizeDelta": [
+            64,
+            64
+          ],
+          "screenRect": [
+            1716,
+            48,
+            64,
+            64
+          ],
+          "path": "메뉴 그룹/인벤토리"
+        },
+        {
+          "id": "emupirayay90z",
+          "name": "메뉴",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            184,
+            -8
+          ],
+          "sizeDelta": [
+            64,
+            64
+          ],
+          "screenRect": [
+            1800,
+            48,
+            64,
+            64
+          ],
+          "path": "메뉴 그룹/메뉴"
+        },
+        {
+          "id": "emupir1asipif",
+          "name": "내정보",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            16,
+            -8
+          ],
+          "sizeDelta": [
+            64,
+            64
+          ],
+          "screenRect": [
+            1632,
+            48,
+            64,
+            64
+          ],
+          "path": "메뉴 그룹/내정보"
+        }
+      ]
+    },
+    {
+      "id": "emupitv3semlg",
+      "name": "맵정보 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "TopLeft",
+      "anchorMin": [
+        0,
+        1
+      ],
+      "anchorMax": [
+        0,
+        1
+      ],
+      "pivot": [
+        0,
+        1
+      ],
+      "anchoredPosition": [
+        40,
+        -40
+      ],
+      "sizeDelta": [
+        266,
+        317
+      ],
+      "screenRect": [
+        40,
+        40,
+        266,
+        317
+      ],
+      "path": "맵정보 그룹",
+      "children": [
+        {
+          "id": "emupiugl4chop",
+          "name": "미니맵",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -8
+          ],
+          "sizeDelta": [
+            250,
+            250
+          ],
+          "screenRect": [
+            48,
+            48,
+            250,
+            250
+          ],
+          "path": "맵정보 그룹/미니맵"
+        },
+        {
+          "id": "emupiuvp3de19",
+          "name": "맵이름",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            67,
+            -274
+          ],
+          "sizeDelta": [
+            132,
+            35
+          ],
+          "screenRect": [
+            107,
+            314,
+            132,
+            35
+          ],
+          "path": "맵정보 그룹/맵이름"
+        }
+      ]
+    },
+    {
+      "id": "emupivhejvwxs",
+      "name": "채팅창 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        -740,
+        -344
+      ],
+      "sizeDelta": [
+        360,
+        294
+      ],
+      "screenRect": [
+        40,
+        737,
+        360,
+        294
+      ],
+      "path": "채팅창 그룹",
+      "children": [
+        {
+          "id": "emupiwz6e0cwl",
+          "name": "채팅창 내용",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -32
+          ],
+          "sizeDelta": [
+            360,
+            232
+          ],
+          "screenRect": [
+            40,
+            769,
+            360,
+            232
+          ],
+          "path": "채팅창 그룹/채팅창 내용"
+        },
+        {
+          "id": "emupivvuk9axa",
+          "name": "채팅창구분",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            120,
+            32
+          ],
+          "screenRect": [
+            40,
+            737,
+            120,
+            32
+          ],
+          "path": "채팅창 그룹/채팅창구분"
+        },
+        {
+          "id": "emupiwmhvugh4",
+          "name": "채팅 인풋창",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -264
+          ],
+          "sizeDelta": [
+            360,
+            32
+          ],
+          "screenRect": [
+            40,
+            1001,
+            360,
+            32
+          ],
+          "path": "채팅창 그룹/채팅 인풋창"
+        }
+      ]
+    },
+    {
+      "id": "emupiyrceevbx",
+      "name": "버프,디버프 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        0,
+        -344
+      ],
+      "sizeDelta": [
+        864,
+        56
+      ],
+      "screenRect": [
+        528,
+        856,
+        864,
+        56
+      ],
+      "path": "버프,디버프 그룹",
+      "children": [
+        {
+          "id": "emupiyjhego3r",
+          "name": "디버프 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            864,
+            24
+          ],
+          "screenRect": [
+            528,
+            856,
+            864,
+            24
+          ],
+          "path": "버프,디버프 그룹/디버프 그룹",
+          "children": [
+            {
+              "id": "emupj0g78i6f8",
+              "name": "디버프 아이콘",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -8
+              ],
+              "sizeDelta": [
+                24,
+                16
+              ],
+              "screenRect": [
+                536,
+                864,
+                24,
+                16
+              ],
+              "path": "버프,디버프 그룹/디버프 그룹/디버프 아이콘"
+            }
+          ]
+        },
+        {
+          "id": "emupixuqugfeh",
+          "name": "버프 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -36
+          ],
+          "sizeDelta": [
+            864,
+            24
+          ],
+          "screenRect": [
+            528,
+            892,
+            864,
+            24
+          ],
+          "path": "버프,디버프 그룹/버프 그룹",
+          "children": [
+            {
+              "id": "emupj0mioe6kk",
+              "name": "버프 아이콘",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                0
+              ],
+              "sizeDelta": [
+                24,
+                12
+              ],
+              "screenRect": [
+                536,
+                892,
+                24,
+                12
+              ],
+              "path": "버프,디버프 그룹/버프 그룹/버프 아이콘"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "emupj4b7fazeo",
+      "name": "퀘스트 창 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        766,
+        222
+      ],
+      "sizeDelta": [
+        308,
+        300
+      ],
+      "screenRect": [
+        1572,
+        168,
+        308,
+        300
+      ],
+      "path": "퀘스트 창 그룹",
+      "children": [
+        {
+          "id": "emupj575l81ri",
+          "name": "퀘스트 박스 컨트롤 바",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            308,
+            24
+          ],
+          "screenRect": [
+            1572,
+            168,
+            308,
+            24
+          ],
+          "path": "퀘스트 창 그룹/퀘스트 박스 컨트롤 바"
+        },
+        {
+          "id": "emupj57gg82d6",
+          "name": "퀘스트 내용 0",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -40
+          ],
+          "sizeDelta": [
+            308,
+            60
+          ],
+          "screenRect": [
+            1572,
+            208,
+            308,
+            60
+          ],
+          "path": "퀘스트 창 그룹/퀘스트 내용 0"
+        },
+        {
+          "id": "emupj60d3pc2k",
+          "name": "퀘스트 내용 1",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -116
+          ],
+          "sizeDelta": [
+            308,
+            60
+          ],
+          "screenRect": [
+            1572,
+            284,
+            308,
+            60
+          ],
+          "path": "퀘스트 창 그룹/퀘스트 내용 1"
+        },
+        {
+          "id": "emupj9u4juubp",
+          "name": "퀘스트 내용 2",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -192
+          ],
+          "sizeDelta": [
+            308,
+            60
+          ],
+          "screenRect": [
+            1572,
+            360,
+            308,
+            60
+          ],
+          "path": "퀘스트 창 그룹/퀘스트 내용 2"
+        }
+      ]
+    },
+    {
+      "id": "emupj6ijg1mha",
+      "name": "스킬 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        688,
+        -427
+      ],
+      "sizeDelta": [
+        464,
+        128
+      ],
+      "screenRect": [
+        1416,
+        903,
+        464,
+        128
+      ],
+      "path": "스킬 그룹",
+      "children": [
+        {
+          "id": "emupj6z21esqg",
+          "name": "스킬1",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            352,
+            -18
+          ],
+          "sizeDelta": [
+            92,
+            92
+          ],
+          "screenRect": [
+            1768,
+            921,
+            92,
+            92
+          ],
+          "path": "스킬 그룹/스킬1"
+        },
+        {
+          "id": "emupj8sn1igtk",
+          "name": "스킬2",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            232,
+            -18
+          ],
+          "sizeDelta": [
+            92,
+            92
+          ],
+          "screenRect": [
+            1648,
+            921,
+            92,
+            92
+          ],
+          "path": "스킬 그룹/스킬2"
+        },
+        {
+          "id": "emupj8wklhck7",
+          "name": "스킬3",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            112,
+            -18
+          ],
+          "sizeDelta": [
+            92,
+            92
+          ],
+          "screenRect": [
+            1528,
+            921,
+            92,
+            92
+          ],
+          "path": "스킬 그룹/스킬3"
+        },
+        {
+          "id": "emupj90elvtq8",
+          "name": "대시",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            28,
+            -54
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ],
+          "screenRect": [
+            1444,
+            957,
+            56,
+            56
+          ],
+          "path": "스킬 그룹/대시"
+        }
+      ]
+    },
+    {
+      "id": "emupjacmag11n",
+      "name": "파티창 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        752,
+        -96
+      ],
+      "sizeDelta": [
+        336,
+        296
+      ],
+      "screenRect": [
+        1544,
+        488,
+        336,
+        296
+      ],
+      "path": "파티창 그룹",
+      "children": [
+        {
+          "id": "emupjaxemm3zl",
+          "name": "파티원 단일 그룹1",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -8
+          ],
+          "sizeDelta": [
+            320,
+            64
+          ],
+          "screenRect": [
+            1552,
+            496,
+            320,
+            64
+          ],
+          "path": "파티창 그룹/파티원 단일 그룹1",
+          "children": [
+            {
+              "id": "emupjcui4iuzm",
+              "name": "파티원 HP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -8
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                504,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 HP"
+            },
+            {
+              "id": "emupjdokoq1rm",
+              "name": "파티원 MP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -32
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                528,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 MP"
+            },
+            {
+              "id": "emupjcdjp6jde",
+              "name": "파티원 정보",
+              "type": "circle",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -8
+              ],
+              "sizeDelta": [
+                48,
+                48
+              ],
+              "screenRect": [
+                1560,
+                504,
+                48,
+                48
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 정보"
+            }
+          ]
+        },
+        {
+          "id": "emupjef63n5gq",
+          "name": "파티원 단일 그룹1",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -80
+          ],
+          "sizeDelta": [
+            320,
+            64
+          ],
+          "screenRect": [
+            1552,
+            568,
+            320,
+            64
+          ],
+          "path": "파티창 그룹/파티원 단일 그룹1",
+          "children": [
+            {
+              "id": "emupjef63q0u8",
+              "name": "파티원 HP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -8
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                576,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 HP"
+            },
+            {
+              "id": "emupjef63wlui",
+              "name": "파티원 MP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -32
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                600,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 MP"
+            },
+            {
+              "id": "emupjef63w9c7",
+              "name": "파티원 정보",
+              "type": "circle",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -8
+              ],
+              "sizeDelta": [
+                48,
+                48
+              ],
+              "screenRect": [
+                1560,
+                576,
+                48,
+                48
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 정보"
+            }
+          ]
+        },
+        {
+          "id": "emupjejxi1nbu",
+          "name": "파티원 단일 그룹1",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -152
+          ],
+          "sizeDelta": [
+            320,
+            64
+          ],
+          "screenRect": [
+            1552,
+            640,
+            320,
+            64
+          ],
+          "path": "파티창 그룹/파티원 단일 그룹1",
+          "children": [
+            {
+              "id": "emupjejxiidch",
+              "name": "파티원 HP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -8
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                648,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 HP"
+            },
+            {
+              "id": "emupjejxiy76p",
+              "name": "파티원 MP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -32
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                672,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 MP"
+            },
+            {
+              "id": "emupjejxiu8ob",
+              "name": "파티원 정보",
+              "type": "circle",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -8
+              ],
+              "sizeDelta": [
+                48,
+                48
+              ],
+              "screenRect": [
+                1560,
+                648,
+                48,
+                48
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 정보"
+            }
+          ]
+        },
+        {
+          "id": "emupjeo6dxhi3",
+          "name": "파티원 단일 그룹1",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -224
+          ],
+          "sizeDelta": [
+            320,
+            64
+          ],
+          "screenRect": [
+            1552,
+            712,
+            320,
+            64
+          ],
+          "path": "파티창 그룹/파티원 단일 그룹1",
+          "children": [
+            {
+              "id": "emupjeo6dvpbp",
+              "name": "파티원 HP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -8
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                720,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 HP"
+            },
+            {
+              "id": "emupjeo6dq1t2",
+              "name": "파티원 MP",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                68,
+                -32
+              ],
+              "sizeDelta": [
+                236,
+                16
+              ],
+              "screenRect": [
+                1620,
+                744,
+                236,
+                16
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 MP"
+            },
+            {
+              "id": "emupjeo6d3bq6",
+              "name": "파티원 정보",
+              "type": "circle",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -8
+              ],
+              "sizeDelta": [
+                48,
+                48
+              ],
+              "screenRect": [
+                1560,
+                720,
+                48,
+                48
+              ],
+              "path": "파티창 그룹/파티원 단일 그룹1/파티원 정보"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
