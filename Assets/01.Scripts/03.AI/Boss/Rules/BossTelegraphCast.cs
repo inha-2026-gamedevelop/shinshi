@@ -42,6 +42,7 @@ namespace Shinshi.AI
         public int                 BossId    => _start.BossId;
         public int                 CastId    => _start.CastId;
         public string              PatternId => _start.PatternId;
+        public int                 GroupId   => _start.GroupId;
         public EBossTelegraphShape Shape     => _start.Shape;
         public Vector3             Origin    => _start.Origin;
         public float               Width     => _start.Width;

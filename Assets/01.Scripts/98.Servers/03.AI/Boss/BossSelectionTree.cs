@@ -22,6 +22,8 @@ namespace Shinshi.AI
         // 수평 거리나 방향 벡터가 이 값 이하이면 각도를 정의할 수 없어 정면으로 본다
         private const float DIRECTION_EPSILON = 0.0001f;
 
+        private const int FIRST_PHASE = 1;
+
         private readonly BtNode                     _root;
         private readonly List<IBossSelectionRule>   _rules = new List<IBossSelectionRule>();
 
@@ -124,23 +126,47 @@ namespace Shinshi.AI
         {
             blackboard.Catalog.CollectPatterns(blackboard.Boss.DefinitionId, blackboard.Phase, blackboard.Candidates);
 
-            // 동시 장판이 상한만큼 남아 있는 패턴은 후보에서 뺀다
+            // 동시 장판이 상한만큼 남아 있는 패턴은 후보에서 뺀다, 빈 슬롯이 하나도 없으면 여러 장판 패턴도 뺀다
             for (int i = blackboard.Candidates.Count - 1; i >= 0; --i)
             {
                 PatternDefinition candidate = blackboard.Candidates[i];
-                if ((candidate.MaxConcurrentAreas > 0)
-                    && (blackboard.Effects.ActiveAreaCount(candidate.DefinitionId) >= candidate.MaxConcurrentAreas))
+                // 여러 장판을 설치하는 패턴은 패턴 ID와 상관없는 보스 전체 장판 수로 센다, 알려 주지 않는 관리자면 패턴별 수를 쓴다
+                int used = ((candidate.RawAreaTargetCount > 1) && (blackboard.Effects is IBossAreaCapacity capacity))
+                    ? capacity.TotalAreaCount
+                    : blackboard.Effects.ActiveAreaCount(candidate.DefinitionId);
+                if ((candidate.MaxConcurrentAreas > 0) && (used >= candidate.MaxConcurrentAreas))
                 {
                     blackboard.Candidates.RemoveAt(i);
                 }
             }
 
+            // 2페이즈 이상은 데이터가 비었거나 공격이 구현되지 않은 정의를 미리 뺀다. 1페이즈는 기존 동작을 그대로 둔다
+            bool isLaterPhase = blackboard.Phase > FIRST_PHASE;
+            if (isLaterPhase)
+            {
+                for (int i = blackboard.Candidates.Count - 1; i >= 0; --i)
+                {
+                    if (!blackboard.IsExecutable(blackboard.Candidates[i]))
+                    {
+                        blackboard.Candidates.RemoveAt(i);
+                    }
+                }
+            }
+
+            // 체력 구간은 선택 시점의 값이다. 진행 중인 공격은 이 계산과 무관하다
+            float healthRate = isLaterPhase ? blackboard.Vitals.HealthRate : 0f;
+
             blackboard.Weights.Clear();
             for (int i = 0; i < blackboard.Candidates.Count; ++i)
             {
                 PatternDefinition candidate = blackboard.Candidates[i];
-                blackboard.Weights.Add(BossPatternSelector.ComputeWeight(candidate, blackboard.DistanceBand,
-                    blackboard.DirectionBand, blackboard.NearbyBand, blackboard.GetRecentSlot(candidate.DefinitionId)));
+                int recentSlot = blackboard.GetRecentSlot(candidate.DefinitionId);
+                float weight = isLaterPhase
+                    ? BossPatternSelector.ComputeSecondPhaseWeight(candidate, blackboard.Boss, healthRate, blackboard.LastGroup,
+                        blackboard.DistanceBand, blackboard.DirectionBand, blackboard.NearbyBand, recentSlot)
+                    : BossPatternSelector.ComputeWeight(candidate, blackboard.DistanceBand, blackboard.DirectionBand,
+                        blackboard.NearbyBand, recentSlot);
+                blackboard.Weights.Add(weight);
             }
 
             int index = BossPatternSelector.Pick(blackboard.Weights, blackboard.Random.NextFloat01());

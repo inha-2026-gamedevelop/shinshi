@@ -6,7 +6,7 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 namespace Shinshi.AI
 {
     /// <summary> 월백 패턴 정의로 실행 객체를 만든다, 1페이즈 여섯 패턴(P01~P06)이 모두 있다 </summary>
-    public sealed class WolbaekPatternFactory : IBossPatternFactory
+    public sealed class WolbaekPatternFactory : IBossPatternFactory, IBossPatternAvailability
     {
         /****************************************
         *              Constants
@@ -18,6 +18,14 @@ namespace Shinshi.AI
         public const string P04_ID = "wolbaek_p04";
         public const string P05_ID = "wolbaek_p05";
         public const string P06_ID = "wolbaek_p06";
+
+        // 2페이즈 패턴 ID, 1페이즈 ID와 겹치지 않는다. 지금 Create가 만드는 것은 P04(장판), P05(투사체), P06(원형 폭발)뿐이고 나머지는 null이다
+        public const string P2_P01_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P01_ID;
+        public const string P2_P02_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P02_ID;
+        public const string P2_P03_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P03_ID;
+        public const string P2_P04_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID;
+        public const string P2_P05_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P05_ID;
+        public const string P2_P06_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P06_ID;
 
         /****************************************
         *                Fields
@@ -65,6 +73,33 @@ namespace Shinshi.AI
             _areaListener       = areaListener;
         }
 
+        // Create가 null을 돌려줄 조건과 같아야 한다. 2페이즈 정의는 공격을 구현하는 단계에서 여기에 더한다(지금은 P04, P05, P06)
+        public bool CanCreate(PatternDefinition definition)
+        {
+            if (definition == null)
+            {
+                return false;
+            }
+
+            string id = definition.DefinitionId;
+            if (id == P01_ID)
+            {
+                return _movement != null;
+            }
+
+            if ((id == P04_ID) || (id == P2_P05_ID))
+            {
+                return _projectiles != null;
+            }
+
+            if ((id == P05_ID) || (id == P2_P04_ID))
+            {
+                return _areas != null;
+            }
+
+            return (id == P02_ID) || (id == P03_ID) || (id == P06_ID) || (id == P2_P06_ID);
+        }
+
         public IBossPattern Create(PatternDefinition definition)
         {
             if (definition == null)
@@ -103,6 +138,24 @@ namespace Shinshi.AI
             if (definition.DefinitionId == P06_ID)
             {
                 return new BossLineBlastPattern(_referenceHealth, _lineListener);
+            }
+
+            // 2페이즈 P06은 1페이즈 P03과 같은 원형 실행을 쓰고 시간, 반경, 피해, 회복은 정의 값이 다르다
+            // 2페이즈 P05는 1페이즈 P04와 같은 투사체 실행을 쓰고 발 수와 간격은 정의 값이 정한다
+            // 2페이즈 P04는 1페이즈 P05와 같은 장판 실행을 쓰고 대상 수와 지연 처리는 정의 값이 정한다
+            if (definition.DefinitionId == P2_P04_ID)
+            {
+                return (_areas == null) ? null : new BossAreaPattern(_referenceHealth, _areas, _areaListener);
+            }
+
+            if (definition.DefinitionId == P2_P05_ID)
+            {
+                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener);
+            }
+
+            if (definition.DefinitionId == P2_P06_ID)
+            {
+                return new BossCircleBlastPattern(_referenceHealth, _circleListener);
             }
 
             return null;

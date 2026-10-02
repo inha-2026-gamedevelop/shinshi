@@ -175,7 +175,7 @@ namespace Shinshi.Tests
             public EBossAreaEnd     LastEnd;
             public double           LastEndAt;
 
-            public void OnTelegraphStarted(int castInstanceId, Vector3 center, float radius, float telegraphSeconds)
+            public void OnTelegraphStarted(int castInstanceId, int areaId, Vector3 center, float radius, float telegraphSeconds)
             {
                 ++TelegraphStarts;
                 TelegraphCenter  = center;
@@ -183,12 +183,12 @@ namespace Shinshi.Tests
                 TelegraphSeconds = telegraphSeconds;
             }
 
-            public void OnCancelled(int castInstanceId, EBossInterruptReason reason)
+            public void OnCancelled(int castInstanceId, int areaId, EBossInterruptReason reason)
             {
                 TelegraphCancels.Add(reason);
             }
 
-            public void OnAreaActivated(int castInstanceId, Vector3 center, float radius, float durationSeconds, float tickInterval,
+            public void OnAreaActivated(int castInstanceId, int areaId, Vector3 center, float radius, float durationSeconds, float tickInterval,
                 double activateServerTime)
             {
                 Activated.Add(castInstanceId);
@@ -199,12 +199,12 @@ namespace Shinshi.Tests
                 ActivatedAt       = activateServerTime;
             }
 
-            public void OnAreaTick(int castInstanceId, int hitIndex, double roundServerTime, int hitCount)
+            public void OnAreaTick(int castInstanceId, int areaId, int hitIndex, double roundServerTime, int hitCount)
             {
                 Ticks.Add(new TickRecord { CastId = castInstanceId, Index = hitIndex, RoundTime = roundServerTime, HitCount = hitCount });
             }
 
-            public void OnAreaEnded(int castInstanceId, EBossAreaEnd end, double endServerTime)
+            public void OnAreaEnded(int castInstanceId, int areaId, EBossAreaEnd end, double endServerTime)
             {
                 Ended.Add(castInstanceId);
                 LastEnd   = end;
@@ -890,12 +890,12 @@ namespace Shinshi.Tests
             public int Ended;
             public EBossProjectileEnd Kind;
 
-            public void OnProjectileLaunched(int castInstanceId, Vector3 origin, Vector3 direction, float speed, float width,
+            public void OnProjectileLaunched(int castInstanceId, int projectileId, Vector3 origin, Vector3 direction, float speed, float width,
                 float pathLength, double launchServerTime)
             {
             }
 
-            public void OnProjectileEnded(int castInstanceId, EBossProjectileEnd end, Vector3 position, int hitTargetId)
+            public void OnProjectileEnded(int castInstanceId, int projectileId, EBossProjectileEnd end, Vector3 position, int hitTargetId)
             {
                 ++Ended;
                 Kind = end;

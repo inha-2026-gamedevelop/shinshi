@@ -185,7 +185,7 @@ namespace Shinshi.AI
                 return false;
             }
 
-            RetireSameBoss(start.BossId);
+            RetireSameBoss(start.BossId, start.GroupId);
             return Add(new BossTelegraphCast(start), now);
         }
 
@@ -324,7 +324,7 @@ namespace Shinshi.AI
                 return false;
             }
 
-            RetireSameBoss(snapshot.Start.BossId);
+            RetireSameBoss(snapshot.Start.BossId, snapshot.Start.GroupId);
             return Add(BossTelegraphCast.FromSnapshot(in snapshot), now);
         }
 
@@ -360,9 +360,10 @@ namespace Shinshi.AI
                 return false;
             }
 
-            if (TryFind(id, out Entry telegraph) && (telegraph.Cast.Shape == EBossTelegraphShape.Projectile))
+            // 예고는 시전 번호로 찾는다. 한 시전의 둘째 발부터는 이미 마무리된 예고라 Strike가 아무것도 하지 않는다
+            if (TryFind(start.CastId, out Entry telegraph) && (telegraph.Cast.Shape == EBossTelegraphShape.Projectile))
             {
-                Strike(id, start.LaunchServerTime);
+                Strike(start.CastId, start.LaunchServerTime);
             }
 
             AddProjectile(track);
@@ -848,12 +849,13 @@ namespace Shinshi.AI
         }
 
         // 같은 보스의 새 시전이 시작되면 이전 표현은 끝난 것이다. 발동한 것은 연출을 마저 하게 두지 않고 정리한다
-        private void RetireSameBoss(int bossId)
+        // 같은 보스의 이전 시전 표현을 끝낸다. 같은 묶음(한 시전이 동시에 시작한 예고들)은 서로 끝내지 않는다
+        private void RetireSameBoss(int bossId, int groupId)
         {
             for (int i = _active.Count - 1; i >= 0; --i)
             {
                 Entry entry = _active[i];
-                if (entry.Cast.BossId != bossId)
+                if ((entry.Cast.BossId != bossId) || (entry.Cast.GroupId == groupId))
                 {
                     continue;
                 }

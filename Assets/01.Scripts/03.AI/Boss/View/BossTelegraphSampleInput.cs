@@ -46,6 +46,10 @@ namespace Shinshi.AI
         private const float  CIRCLE_TELEGRAPH  = 1.2f;
         private const float  CIRCLE_RADIUS     = 5f;
 
+        // 2페이즈 P06 원형 폭발, 1페이즈 P03과 같은 원형 예고를 쓰고 ID와 회복만 다르다
+        private const string PHASE_TWO_CIRCLE_ID       = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P06_ID;
+        private const float  PHASE_TWO_CIRCLE_RECOVERY = 0.8f;
+
         // P06 직선 방출
         private const string P06_ID            = "wolbaek_p06";
         private const float  LINE_TELEGRAPH    = 1.6f;
@@ -67,7 +71,21 @@ namespace Shinshi.AI
         private const float  PROJ_WALL_PATH    = 12f;
         private const float  PROJ_HIT_DISTANCE = 14f;
         private const float  PROJ_CANCEL_FLIGHT = 0.8f;
-        private const int    LOOP_STEP_COUNT   = 13;
+        private const int    LOOP_STEP_COUNT   = 21;
+
+        // 2페이즈 P04 지정 장판, 한 시전이 장판 두 개를 동시에 설치한다. 1페이즈 P05와 같은 예고와 장판 값을 쓴다
+        private const string PHASE_TWO_AREA_ID    = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID;
+
+        // 2페이즈 P05 순차 투사체, 예고 하나와 같은 방향의 독립된 세 발이다. 1페이즈 P04와 같은 예고와 비행 값을 쓴다
+        private const string VOLLEY_ID             = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P05_ID;
+        private const int    VOLLEY_COUNT          = 3;
+        private const float  VOLLEY_INTERVAL       = 0.3f;
+        private const float  VOLLEY_RECOVERY       = 0.5f;
+        private const float  VOLLEY_HIT_DISTANCE   = 4f;   // 개별 소멸 샘플에서 첫 발이 맞는 거리
+        private const float  VOLLEY_CANCEL_AFTER   = 0.15f; // 둘째 발을 쏜 뒤 중간 취소가 오는 시간
+        private const float  VOLLEY_LATE_SECONDS   = 0.5f; // 늦은 발사 알림이 발사 시각보다 늦게 도착하는 시간
+        private const float  VOLLEY_RESTORE_STEP   = 0.3f; // 다중 복원 샘플에서 발 사이 발사 시각 차이
+        private const float  VOLLEY_RESTORE_BASE   = 0.6f; // 다중 복원 샘플에서 가장 늦은 발이 이미 난 시간
 
         // P05 장판
         private const string P05_ID            = "wolbaek_p05";
@@ -172,6 +190,240 @@ namespace Shinshi.AI
         public void PlayCircle()
         {
             PlayCircle(false);
+        }
+
+        /// <summary> 2페이즈 P06 원형 폭발, 예고 1.2초 반경 5m, 서버 확정이 오면 터진다 </summary>
+        [ContextMenu("Play Phase2 P06 Circle")]
+        public void PlayPhaseTwoCircle()
+        {
+            PlayCircle(PHASE_TWO_CIRCLE_ID, PHASE_TWO_CIRCLE_RECOVERY, false);
+        }
+
+        /// <summary> 2페이즈 P06 예고 중 사망이나 페이즈 전환이나 전투 종료로 취소된다 </summary>
+        [ContextMenu("Play Phase2 P06 Circle Cancelled")]
+        public void PlayPhaseTwoCircleCancelled()
+        {
+            PlayCircle(PHASE_TWO_CIRCLE_ID, PHASE_TWO_CIRCLE_RECOVERY, true);
+        }
+
+        /// <summary> 2페이즈 P05 순차 투사체, 예고 하나 뒤 같은 방향으로 세 발이 0.3초 간격으로 나가 각자 날아간다 </summary>
+        [ContextMenu("Play Phase2 P05 Volley")]
+        public void PlayPhaseTwoVolley()
+        {
+            PlayVolley(false, false, false);
+        }
+
+        /// <summary> 2페이즈 P05 첫 발만 가까운 대상에 맞아 사라지고 나머지 두 발은 계속 난다 </summary>
+        [ContextMenu("Play Phase2 P05 Volley One Hit")]
+        public void PlayPhaseTwoVolleyOneHit()
+        {
+            PlayVolley(true, false, false);
+        }
+
+        /// <summary> 2페이즈 P05 둘째 발을 쏜 직후 사망이나 전투 종료로 날고 있는 발이 제거되고 셋째 발은 나가지 않는다 </summary>
+        [ContextMenu("Play Phase2 P05 Volley Cancelled")]
+        public void PlayPhaseTwoVolleyCancelled()
+        {
+            PlayVolley(false, true, false);
+        }
+
+        /// <summary> 2페이즈 P05 둘째 발의 발사 알림만 늦게 도착한다, 발사 시각 기준으로 이어서 그려야 한다 </summary>
+        [ContextMenu("Play Phase2 P05 Volley Late Launch")]
+        public void PlayPhaseTwoVolleyLateLaunch()
+        {
+            PlayVolley(false, false, true);
+        }
+
+        /// <summary> 2페이즈 P05 세 발이 비행 중일 때 스냅샷 셋으로 복원한 접속, 발마다 서버 시각 기준 위치부터 이어서 그려야 한다 </summary>
+        [ContextMenu("Play Phase2 P05 Volley Restore")]
+        public void PlayPhaseTwoVolleyRestore()
+        {
+            double now = ReadClock();
+            int castId = NextCastId();
+            Vector3 origin = transform.position;
+            Vector3 direction = Quaternion.AngleAxis(AimDegrees(PROJ_TRACKING, PROJ_TURN_RATE), Vector3.up) * transform.forward;
+
+            for (int i = 0; i < VOLLEY_COUNT; ++i)
+            {
+                int projectileId = NextCastId();
+                double launch = now - VOLLEY_RESTORE_BASE - ((VOLLEY_COUNT - 1 - i) * (double)VOLLEY_RESTORE_STEP);
+                BossProjectileSnapshot snapshot = new BossProjectileSnapshot
+                {
+                    Start = new BossProjectileStart(SAMPLE_BOSS_ID, projectileId, castId, origin, direction, PROJ_SPEED, PROJ_WIDTH,
+                        PROJ_RANGE, launch),
+                    Fate = EBossProjectileFate.Flying
+                };
+
+                _presenter.RestoreProjectile(in snapshot);
+                Vector3 endPosition = origin + (direction * PROJ_RANGE);
+                Schedule(launch + (PROJ_RANGE / PROJ_SPEED), () => _presenter.EndProjectile(projectileId, EBossProjectileFate.Range, endPosition));
+            }
+        }
+
+        // 예고 하나와 서버가 한 발씩 확정하는 독립된 세 발을 서버 알림 순서대로 흘린다. 클라이언트가 세 발을 스스로 만들지 않고 알림마다 한 발이다
+        private void PlayVolley(bool firstHits, bool cancelMidSequence, bool lateSecond)
+        {
+            double start = ReadClock();
+            int castId = NextCastId();
+
+            _presenter.BeginTelegraph(BossTelegraphStart.Projectile(SAMPLE_BOSS_ID, castId, VOLLEY_ID, transform.position,
+                transform.forward, PROJ_RANGE, PROJ_WIDTH, start, PROJ_TELEGRAPH));
+            ScheduleTracking(castId, start, PROJ_TRACKING, PROJ_TURN_RATE, PROJ_RANGE, null);
+
+            double firstLaunch = start + PROJ_TELEGRAPH;
+            Vector3 direction = Quaternion.AngleAxis(AimDegrees(PROJ_TRACKING, PROJ_TURN_RATE), Vector3.up) * transform.forward;
+            Vector3 origin = transform.position;
+            int shots = cancelMidSequence ? (VOLLEY_COUNT - 1) : VOLLEY_COUNT;
+            int[] ids = new int[shots];
+
+            for (int i = 0; i < shots; ++i)
+            {
+                int projectileId = NextCastId();
+                ids[i] = projectileId;
+                double launch = firstLaunch + (i * (double)VOLLEY_INTERVAL);
+                BossProjectileStart shot = new BossProjectileStart(SAMPLE_BOSS_ID, projectileId, castId, origin, direction,
+                    PROJ_SPEED, PROJ_WIDTH, PROJ_RANGE, launch);
+
+                double arrive = (lateSecond && (i == 1)) ? (launch + VOLLEY_LATE_SECONDS) : launch;
+                Schedule(arrive, () => _presenter.LaunchProjectile(in shot));
+
+                if (cancelMidSequence)
+                {
+                    continue;
+                }
+
+                bool hit = firstHits && (i == 0);
+                float endDistance = hit ? VOLLEY_HIT_DISTANCE : PROJ_RANGE;
+                EBossProjectileFate fate = hit ? EBossProjectileFate.Hit : EBossProjectileFate.Range;
+                Schedule(launch + (endDistance / PROJ_SPEED), () => _presenter.EndProjectile(projectileId, fate, origin + (direction * endDistance)));
+            }
+
+            if (cancelMidSequence)
+            {
+                double cancelAt = firstLaunch + VOLLEY_INTERVAL + VOLLEY_CANCEL_AFTER;
+                for (int i = 0; i < shots; ++i)
+                {
+                    int projectileId = ids[i];
+                    Schedule(cancelAt, () => _presenter.CancelProjectile(projectileId));
+                }
+            }
+
+            ScheduleFinish(castId, firstLaunch + ((VOLLEY_COUNT - 1) * (double)VOLLEY_INTERVAL), VOLLEY_RECOVERY);
+        }
+
+        /// <summary> 2페이즈 P04 지정 장판, 한 시전이 예고 둘을 동시에 보이고 서버 활성 확정마다 장판이 따로 생긴다 </summary>
+        [ContextMenu("Play Phase2 P04 Two Areas")]
+        public void PlayPhaseTwoAreas()
+        {
+            PlayAreaPair(EAreaPairMode.Pair);
+        }
+
+        /// <summary> 2페이즈 P04 두 장판이 완전히 겹친다, 표현은 각 장판을 따로 그리고 피해 합산은 서버가 한다 </summary>
+        [ContextMenu("Play Phase2 P04 Overlapping Areas")]
+        public void PlayPhaseTwoAreasOverlap()
+        {
+            PlayAreaPair(EAreaPairMode.Overlap);
+        }
+
+        /// <summary> 2페이즈 P04 빈 슬롯이 하나라 장판 하나만 설치된다 </summary>
+        [ContextMenu("Play Phase2 P04 Single Area")]
+        public void PlayPhaseTwoAreaSingle()
+        {
+            PlayAreaPair(EAreaPairMode.Single);
+        }
+
+        /// <summary> 2페이즈 P04 장판 하나만 중간에 끝나고 다른 장판은 남아 끝까지 간다 </summary>
+        [ContextMenu("Play Phase2 P04 One Area Ends")]
+        public void PlayPhaseTwoAreaOneEnds()
+        {
+            PlayAreaPair(EAreaPairMode.OneEnds);
+        }
+
+        /// <summary> 2페이즈 P04 활성 중 사망이나 전투 종료로 두 장판이 모두 제거된다 </summary>
+        [ContextMenu("Play Phase2 P04 Areas Cancelled")]
+        public void PlayPhaseTwoAreasCancelled()
+        {
+            PlayAreaPair(EAreaPairMode.AllCancelled);
+        }
+
+        /// <summary> 2페이즈 P04 둘째 장판의 활성 알림만 2.5초 늦게 도착한다, 활성 시각 기준으로 이어서 그려야 한다 </summary>
+        [ContextMenu("Play Phase2 P04 Late Activation")]
+        public void PlayPhaseTwoAreasLateActivation()
+        {
+            PlayAreaPair(EAreaPairMode.LateSecond);
+        }
+
+        /// <summary> 2페이즈 P04 두 장판이 활성 중일 때 스냅샷 둘로 복원한 접속, 장판마다 이미 표시한 회차를 다시 표시하지 않는다 </summary>
+        [ContextMenu("Play Phase2 P04 Areas Restore")]
+        public void PlayPhaseTwoAreasRestore()
+        {
+            double now = ReadClock();
+            int castId = NextCastId();
+            for (int i = 0; i < 2; ++i)
+            {
+                int areaId = NextCastId();
+                double activate = now - (AREA_RESTORE_TICK + 0.2) - (i * 0.4);
+                BossAreaSnapshot snapshot = new BossAreaSnapshot
+                {
+                    Start = new BossAreaStart(SAMPLE_BOSS_ID, areaId, castId, AreaCenter((i == 0) ? -AREA_SPREAD : AREA_SPREAD),
+                        AREA_RADIUS, AREA_DURATION, AREA_INTERVAL, activate),
+                    Fate = EBossAreaFate.Active,
+                    LastTickIndex = AREA_RESTORE_TICK,
+                    LastTickServerTime = activate + AREA_RESTORE_TICK
+                };
+                _presenter.RestoreArea(in snapshot);
+                int id = areaId;
+                Schedule(activate + AREA_DURATION, () => _presenter.EndArea(id, EBossAreaFate.Expired));
+            }
+        }
+
+        private enum EAreaPairMode
+        {
+            Pair,
+            Overlap,
+            Single,
+            OneEnds,
+            AllCancelled,
+            LateSecond
+        }
+
+        // 한 시전이 장판을 하나씩 동시에 설치한다. 장판마다 장판 번호가 있고 예고는 장판 번호를 키로 시전 번호 묶음에 속한다
+        // 클라이언트가 장판을 스스로 만들지 않고 서버 활성 알림마다 한 개씩 생긴다
+        private void PlayAreaPair(EAreaPairMode mode)
+        {
+            double start = ReadClock();
+            int castId = NextCastId();
+            int count = (mode == EAreaPairMode.Single) ? 1 : 2;
+            double activate = start + AREA_TELEGRAPH;
+
+            for (int i = 0; i < count; ++i)
+            {
+                int areaId = NextCastId();
+                float side = (mode == EAreaPairMode.Overlap) ? 0f : ((i == 0) ? -AREA_SPREAD : AREA_SPREAD);
+                Vector3 center = AreaCenter(side);
+
+                _presenter.BeginTelegraph(BossTelegraphStart.Circle(SAMPLE_BOSS_ID, areaId, PHASE_TWO_AREA_ID, center, AREA_RADIUS,
+                    start, AREA_TELEGRAPH, castId));
+
+                BossAreaStart area = new BossAreaStart(SAMPLE_BOSS_ID, areaId, castId, center, AREA_RADIUS, AREA_DURATION,
+                    AREA_INTERVAL, activate);
+                bool late = (mode == EAreaPairMode.LateSecond) && (i == 1);
+                Schedule(late ? (activate + AREA_LATE_SECONDS) : activate, () => _presenter.ActivateArea(in area));
+
+                // 패턴 정상 종료는 회복이 끝난 뒤이고 장판과 무관하다
+                ScheduleFinish(areaId, activate, AREA_RECOVERY);
+
+                bool cancelThis = (mode == EAreaPairMode.AllCancelled) || ((mode == EAreaPairMode.OneEnds) && (i == 0));
+                if (cancelThis)
+                {
+                    ScheduleAreaTicks(areaId, activate, 0, true);
+                    Schedule(activate + AREA_CANCEL_AT, () => _presenter.CancelArea(areaId));
+                    continue;
+                }
+
+                ScheduleAreaTicks(areaId, activate, late ? Mathf.CeilToInt(AREA_LATE_SECONDS / AREA_INTERVAL) : 0, false);
+                Schedule(activate + AREA_DURATION, () => _presenter.EndArea(areaId, EBossAreaFate.Expired));
+            }
         }
 
         /// <summary> P06 직선 방출 </summary>
@@ -545,10 +797,15 @@ namespace Shinshi.AI
 
         private void PlayCircle(bool cancel)
         {
+            PlayCircle(P03_ID, 0f, cancel);
+        }
+
+        private void PlayCircle(string patternId, float recovery, bool cancel)
+        {
             double start = ReadClock();
             int castId = NextCastId();
 
-            _presenter.BeginTelegraph(BossTelegraphStart.Circle(SAMPLE_BOSS_ID, castId, P03_ID, transform.position,
+            _presenter.BeginTelegraph(BossTelegraphStart.Circle(SAMPLE_BOSS_ID, castId, patternId, transform.position,
                 CIRCLE_RADIUS, start, CIRCLE_TELEGRAPH));
 
             if (cancel)
@@ -558,7 +815,7 @@ namespace Shinshi.AI
             }
 
             Schedule(start + CIRCLE_TELEGRAPH, () => _presenter.Strike(castId, start + CIRCLE_TELEGRAPH));
-            ScheduleFinish(castId, start + CIRCLE_TELEGRAPH, 0f);
+            ScheduleFinish(castId, start + CIRCLE_TELEGRAPH, recovery);
         }
 
         private void PlayLine(bool cancel)
@@ -673,7 +930,15 @@ namespace Shinshi.AI
                 case 9: PlayProjectileNearWall(); break;
                 case 10: PlayProjectileCancelledInFlight(); break;
                 case 11: PlayArea(); break;
-                default: PlayAreaCancelled(); break;
+                case 12: PlayAreaCancelled(); break;
+                case 13: PlayPhaseTwoCircle(); break;
+                case 14: PlayPhaseTwoCircleCancelled(); break;
+                case 15: PlayPhaseTwoVolley(); break;
+                case 16: PlayPhaseTwoVolleyOneHit(); break;
+                case 17: PlayPhaseTwoVolleyCancelled(); break;
+                case 18: PlayPhaseTwoAreas(); break;
+                case 19: PlayPhaseTwoAreaOneEnds(); break;
+                default: PlayPhaseTwoAreasCancelled(); break;
             }
 
             ++_loopStep;

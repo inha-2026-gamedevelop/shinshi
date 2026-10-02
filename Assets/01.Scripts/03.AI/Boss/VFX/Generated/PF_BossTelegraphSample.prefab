@@ -91,7 +91,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.AreaGroundVFXPool
   _prefab: {fileID: 1171933486481949381, guid: fbc26a4727ef14147bdff3a9c867127d, type: 3}
-  _capacity: 4
+  _capacity: 6
 --- !u!1 &6205425355556310751
 GameObject:
   m_ObjectHideFlags: 0
@@ -203,4 +203,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.RectTelegraphVFXPool
   _prefab: {fileID: 3378560259577184839, guid: fdd68b2ba89329a448931f2b2234040e, type: 3}
-  _capacity: 4
+  _capacity: 8

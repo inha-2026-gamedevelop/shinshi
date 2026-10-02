@@ -15,7 +15,7 @@ namespace Shinshi.AI
 {
     // 네트워크 없이 월백 50% 결계 전개를 눈으로 확인하는 시험 장치다. 기존 시험 구동기(WolbaekBossTestRig)는 건드리지 않고
     // 같은 서버 클래스를 따로 이어 붙인다. 서버 부트스트랩이 하게 될 생성, 틱 호출, 등록을 대신할 뿐 권위 경계를 바꾸지 않는다
-    // 보스 두뇌에는 2페이즈 인계 경로가 없어서 완료 뒤 일반 전투 재개는 확인하지 못한다. 완료 알림 횟수만 보여 준다
+    // 전개가 끝나면 두뇌의 인계(CompleteHandoff)를 부른다. 2페이즈 공격은 아직 없어 두뇌는 준비 대기 상태에서 멈춘다
     /// <summary> 월백 결계 전개 시험 구동기, 두뇌의 인계 대기 상태를 읽어 결계 시퀀스를 구동한다 </summary>
     public sealed class WolbaekBarrierTestRig : MonoBehaviour
     {
@@ -69,6 +69,7 @@ namespace Shinshi.AI
         private BossView                _bossView;
         private Transform               _playerBody;
         private BossDefinition          _boss;
+        private bool                    _isHandoffDone;
 
         /****************************************
         *              Unity Event
@@ -134,6 +135,12 @@ namespace Shinshi.AI
             if (_brain.FlowState == EBossFlowState.Combat)
             {
                 _director.Tick(now, _brain.PhaseState == EBossPhaseState.AwaitingHandoff);
+
+                // 결계 전개가 끝나면 두뇌에 인계를 알린다. 2페이즈 공격이 준비되지 않았으면 두뇌는 준비 대기 상태로 기다린다
+                if (_director.IsCompleted && (!_isHandoffDone))
+                {
+                    _isHandoffDone = _brain.CompleteHandoff();
+                }
             }
             else
             {
@@ -164,7 +171,7 @@ namespace Shinshi.AI
 
             if (_director.IsCompleted)
             {
-                GUILayout.Label("전개 완료, 2페이즈 인계는 보스 두뇌 변경 승인 대기라 연결하지 않았다");
+                GUILayout.Label($"전개 완료, 인계 {_isHandoffDone}  2페이즈 공격이 준비되지 않았으면 준비 대기(AwaitingReadiness)다");
             }
 
             GUILayout.Space(GUI_SPACING);
@@ -229,6 +236,7 @@ namespace Shinshi.AI
             _presenter.ClearAll();
             _bossView.ResetView();
             _barrierView.Clear();
+            _isHandoffDone = false;
 
             var catalog = new BossPatternCatalogSource(GameDB.BossPatterns);
             if ((!catalog.TryGetBoss(Constants.Combat.DEV_BOSS_ID, out _boss)) || (!catalog.IsTuned(Constants.Combat.DEV_BOSS_ID)))
@@ -258,7 +266,7 @@ namespace Shinshi.AI
             _registry.Register(_player);
             _registry.Register(_body);
 
-            var patternBridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock);
+            var patternBridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock, () => _brain.ActivePatternId);
             _projectiles = new BossProjectileManager(_registry, _body, patternBridge);
             _areas       = new BossAreaManager(_registry, patternBridge);
 

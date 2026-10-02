@@ -11,7 +11,8 @@ using Shinshi.Common;
 namespace Shinshi.AI
 {
     // 등록, 진행, 정리 순서
-    // 등록: 패턴이 예고 끝 경계(FSM 단계 경계)에서 TryLaunch를 한 번 부른다. 발사 시각은 그 경계이고 틱 시각이 아니다
+    // 등록: 패턴이 발사 예약 시각(첫 발은 예고 끝 경계)마다 TryLaunch를 부른다. 발사 시각은 그 예약 시각이고 틱 시각이 아니다
+    // 한 시전이 여러 발을 쏠 수 있어 투사체 한 발은 시전 번호가 아니라 동작 번호(ActionInstanceId)로 구분한다. 시전 번호는 같은 시전의 발들이 함께 쓰는 묶음 키다
     // 진행: BossCombat이 공격 진행 뒤에 매 틱 Tick을 부른다. 이번 틱에 발사된 투사체도 발사 시각부터 지금까지 이어서 진행하므로 틱이 거칠어도 누락이 없다
     // 정리: 상위 FSM이 사망, 페이즈 전환, 전투 종료로 끊으면 BossBrain이 게이트를 먼저 닫고 Cancel(reason, NONE)을 불러 모두 즉시 제거한다
     //       직접 제어는 이미 발사한 투사체를 취소하지 않으므로 DirectControl 사유는 무시한다. 패턴의 정상 종료(Finish)도 투사체를 건드리지 않는다
@@ -28,7 +29,7 @@ namespace Shinshi.AI
         *              Constants
         ****************************************/
 
-        // 동시에 날 수 있는 투사체 수, 한 번에 한 발씩 쏘고 회복이 끝난 뒤에도 남을 수 있어 여유를 둔다
+        // 동시에 날 수 있는 투사체 수, 한 시전이 여러 발을 쏘고 회복이 끝난 뒤에도 남을 수 있어 여유를 둔다. 가득 차면 새 발은 발사되지 않는다
         private const int   MAX_PROJECTILES   = 8;
         private const float MIN_DIRECTION_SQR = 0.000001f;
         private const float EDGE_EPSILON      = 0.001f; // m, 경계의 부동소수 오차 흡수
@@ -92,6 +93,12 @@ namespace Shinshi.AI
 
         public bool TryLaunch(in BossProjectileSpec spec)
         {
+            // 투사체 한 발은 동작 번호가 가리킨다. 이미 날고 있는 번호의 중복 발사는 받지 않는다
+            if (IsActionActive(spec.ActionInstanceId))
+            {
+                return false;
+            }
+
             if ((spec.Gate == null) || (spec.Speed <= 0f) || (spec.Range <= 0f) || (spec.Width < 0f)
                 || (spec.Direction.sqrMagnitude < MIN_DIRECTION_SQR) || (spec.CastInstanceId == CombatIds.NONE))
             {
@@ -110,8 +117,8 @@ namespace Shinshi.AI
             slot.PathLength = MeasurePath(spec.Origin, spec.Direction, spec.Range, spec.Width);
             ++_activeCount;
 
-            _listener?.OnProjectileLaunched(spec.CastInstanceId, spec.Origin, spec.Direction, spec.Speed, spec.Width,
-                slot.PathLength, spec.LaunchServerTime);
+            _listener?.OnProjectileLaunched(spec.CastInstanceId, spec.ActionInstanceId, spec.Origin, spec.Direction, spec.Speed,
+                spec.Width, slot.PathLength, spec.LaunchServerTime);
             return true;
         }
 
@@ -153,6 +160,19 @@ namespace Shinshi.AI
         public int ActiveAreaCount(string patternId)
         {
             return 0;
+        }
+
+        private bool IsActionActive(int actionInstanceId)
+        {
+            for (int i = 0; i < _slots.Length; ++i)
+            {
+                if (_slots[i].Active && (_slots[i].Spec.ActionInstanceId == actionInstanceId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private Slot FindFreeSlot()
@@ -266,9 +286,10 @@ namespace Shinshi.AI
         private void End(Slot slot, EBossProjectileEnd end, Vector3 position, int hitTargetId)
         {
             int castInstanceId = slot.Spec.CastInstanceId;
+            int projectileId   = slot.Spec.ActionInstanceId;
             slot.Active = false;
             --_activeCount;
-            _listener?.OnProjectileEnded(castInstanceId, end, position, hitTargetId);
+            _listener?.OnProjectileEnded(castInstanceId, projectileId, end, position, hitTargetId);
         }
 
         private static Vector3 PositionAt(Slot slot, float distance)

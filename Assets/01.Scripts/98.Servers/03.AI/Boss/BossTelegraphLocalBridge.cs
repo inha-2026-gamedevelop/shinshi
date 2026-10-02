@@ -22,6 +22,7 @@ namespace Shinshi.AI
         private readonly BossTelegraphPresenter _presenter;
         private readonly BossTestRigBody        _body;
         private readonly Func<double>           _clock;
+        private readonly Func<string>           _activePatternId;
 
         // 부채꼴과 직사각형은 조준 갱신 알림에 길이가 없어서 시작 때 받은 길이를 시전 번호별로 기억한다
         private readonly Dictionary<int, float> _lengths = new Dictionary<int, float>();
@@ -30,11 +31,14 @@ namespace Shinshi.AI
         *                Methods
         ****************************************/
 
-        public BossTelegraphLocalBridge(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock)
+        // activePatternId는 지금 진행 중인 패턴 ID를 읽는 창구다. 원형 알림에는 패턴 ID가 없어서 1페이즈 P03과 2페이즈 P06을 가르는 데 쓴다
+        public BossTelegraphLocalBridge(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock,
+            Func<string> activePatternId = null)
         {
-            _presenter = presenter;
-            _body      = body;
-            _clock     = clock;
+            _presenter       = presenter;
+            _body            = body;
+            _clock           = clock;
+            _activePatternId = activePatternId;
         }
 
         private int Boss => _body.CombatId;
@@ -88,8 +92,10 @@ namespace Shinshi.AI
         void IBossCircleTelegraphListener.OnTelegraphStarted(int castInstanceId, Vector3 center, float radius,
             float telegraphSeconds)
         {
-            Begin(BossTelegraphStart.Circle(Boss, castInstanceId, WolbaekPatternFactory.P03_ID, center, radius, Now,
-                telegraphSeconds));
+            string patternId = (_activePatternId != null) && (_activePatternId() == WolbaekPatternFactory.P2_P06_ID)
+                ? WolbaekPatternFactory.P2_P06_ID
+                : WolbaekPatternFactory.P03_ID;
+            Begin(BossTelegraphStart.Circle(Boss, castInstanceId, patternId, center, radius, Now, telegraphSeconds));
         }
 
         void IBossCircleTelegraphListener.OnHit(int castInstanceId, int hitCount)
@@ -187,7 +193,11 @@ namespace Shinshi.AI
             float length, float width, float telegraphSeconds)
         {
             _body.Face(direction);
-            Begin(BossTelegraphStart.Projectile(Boss, castInstanceId, WolbaekPatternFactory.P04_ID, origin, direction,
+            // 투사체 알림에도 패턴 ID가 없어 진행 중인 패턴 ID로 1페이즈 P04와 2페이즈 P05를 가른다
+            string patternId = (_activePatternId != null) && (_activePatternId() == WolbaekPatternFactory.P2_P05_ID)
+                ? WolbaekPatternFactory.P2_P05_ID
+                : WolbaekPatternFactory.P04_ID;
+            Begin(BossTelegraphStart.Projectile(Boss, castInstanceId, patternId, origin, direction,
                 length, width, Now, telegraphSeconds));
         }
 
@@ -208,54 +218,58 @@ namespace Shinshi.AI
             CancelCast(castInstanceId);
         }
 
-        void IBossProjectileListener.OnProjectileLaunched(int castInstanceId, Vector3 origin, Vector3 direction,
-            float speed, float width, float pathLength, double launchServerTime)
+        void IBossProjectileListener.OnProjectileLaunched(int castInstanceId, int projectileId, Vector3 origin,
+            Vector3 direction, float speed, float width, float pathLength, double launchServerTime)
         {
             _presenter.enabled = true;
-            var start = new BossProjectileStart(Boss, castInstanceId, origin, direction, speed, width, pathLength,
+            var start = new BossProjectileStart(Boss, projectileId, castInstanceId, origin, direction, speed, width, pathLength,
                 launchServerTime);
             _presenter.LaunchProjectile(in start);
         }
 
-        void IBossProjectileListener.OnProjectileEnded(int castInstanceId, EBossProjectileEnd end, Vector3 position,
-            int hitTargetId)
+        void IBossProjectileListener.OnProjectileEnded(int castInstanceId, int projectileId, EBossProjectileEnd end,
+            Vector3 position, int hitTargetId)
         {
-            _presenter.EndProjectile(castInstanceId, ToFate(end), position);
+            _presenter.EndProjectile(projectileId, ToFate(end), position);
         }
 
         /****************************************
         *             P05 Area
         ****************************************/
 
-        void IBossAreaTelegraphListener.OnTelegraphStarted(int castInstanceId, Vector3 center, float radius,
+        // 장판 예고는 장판 번호를 표현의 시전 키로 쓴다. 한 시전의 장판 예고들은 시전 번호를 묶음으로 달아 서로 지우지 않게 한다
+        void IBossAreaTelegraphListener.OnTelegraphStarted(int castInstanceId, int areaId, Vector3 center, float radius,
             float telegraphSeconds)
         {
-            Begin(BossTelegraphStart.Circle(Boss, castInstanceId, WolbaekPatternFactory.P05_ID, center, radius, Now,
-                telegraphSeconds));
+            // 장판 알림에도 패턴 ID가 없어 진행 중인 패턴 ID로 1페이즈 P05와 2페이즈 P04를 가른다
+            string patternId = (_activePatternId != null) && (_activePatternId() == WolbaekPatternFactory.P2_P04_ID)
+                ? WolbaekPatternFactory.P2_P04_ID
+                : WolbaekPatternFactory.P05_ID;
+            Begin(BossTelegraphStart.Circle(Boss, areaId, patternId, center, radius, Now, telegraphSeconds, castInstanceId));
         }
 
-        void IBossAreaTelegraphListener.OnCancelled(int castInstanceId, EBossInterruptReason reason)
+        void IBossAreaTelegraphListener.OnCancelled(int castInstanceId, int areaId, EBossInterruptReason reason)
         {
-            CancelCast(castInstanceId);
+            CancelCast(areaId);
         }
 
-        void IBossAreaListener.OnAreaActivated(int castInstanceId, Vector3 center, float radius, float durationSeconds,
-            float tickInterval, double activateServerTime)
+        void IBossAreaListener.OnAreaActivated(int castInstanceId, int areaId, Vector3 center, float radius,
+            float durationSeconds, float tickInterval, double activateServerTime)
         {
             _presenter.enabled = true;
-            var start = new BossAreaStart(Boss, castInstanceId, center, radius, durationSeconds, tickInterval,
+            var start = new BossAreaStart(Boss, areaId, castInstanceId, center, radius, durationSeconds, tickInterval,
                 activateServerTime);
             _presenter.ActivateArea(in start);
         }
 
-        void IBossAreaListener.OnAreaTick(int castInstanceId, int hitIndex, double roundServerTime, int hitCount)
+        void IBossAreaListener.OnAreaTick(int castInstanceId, int areaId, int hitIndex, double roundServerTime, int hitCount)
         {
-            _presenter.TickArea(castInstanceId, hitIndex, roundServerTime);
+            _presenter.TickArea(areaId, hitIndex, roundServerTime);
         }
 
-        void IBossAreaListener.OnAreaEnded(int castInstanceId, EBossAreaEnd end, double endServerTime)
+        void IBossAreaListener.OnAreaEnded(int castInstanceId, int areaId, EBossAreaEnd end, double endServerTime)
         {
-            _presenter.EndArea(castInstanceId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
+            _presenter.EndArea(areaId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
         }
 
         /****************************************

@@ -244,7 +244,7 @@ namespace Shinshi.Tests
                 TelegraphCancels.Add(reason);
             }
 
-            public void OnProjectileLaunched(int castInstanceId, Vector3 origin, Vector3 direction, float speed, float width,
+            public void OnProjectileLaunched(int castInstanceId, int projectileId, Vector3 origin, Vector3 direction, float speed, float width,
                 float pathLength, double launchServerTime)
             {
                 ++LaunchCount;
@@ -256,7 +256,7 @@ namespace Shinshi.Tests
                 LaunchTime       = launchServerTime;
             }
 
-            public void OnProjectileEnded(int castInstanceId, EBossProjectileEnd end, Vector3 position, int hitTargetId)
+            public void OnProjectileEnded(int castInstanceId, int projectileId, EBossProjectileEnd end, Vector3 position, int hitTargetId)
             {
                 ++EndCount;
                 EndKind        = end;

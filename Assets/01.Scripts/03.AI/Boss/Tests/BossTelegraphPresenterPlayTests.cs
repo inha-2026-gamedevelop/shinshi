@@ -25,6 +25,8 @@ namespace Shinshi.Tests
 
         private const string SAMPLE_PREFAB_PATH = "Assets/01.Scripts/03.AI/Boss/VFX/Generated/PF_BossTelegraphSample.prefab";
         private const int    POOL_CAPACITY      = 4;
+        private const int    RECT_POOL_CAPACITY = 8; // 직사각형 풀은 예고와 한 시전의 여러 발이 함께 쓴다
+        private const int    AREA_POOL_CAPACITY = 6; // 장판 풀은 보스 전체 상한 3개와 옅어지는 장판이 함께 쓴다
         private const int    BOSS_ID            = 1;
         private const float  DASH_SPEED         = 8f / 0.45f;
         private const float  TOLERANCE          = 0.05f;
@@ -162,11 +164,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, _presenter.ProjectileCount);
             Assert.AreEqual(0, _presenter.AreaCount);
             Assert.AreEqual(0, _areaPool.LeasedCount);
-            Assert.AreEqual(POOL_CAPACITY, _areaPool.AvailableCount);
+            Assert.AreEqual(AREA_POOL_CAPACITY, _areaPool.AvailableCount);
             Assert.AreEqual(0, _sectorPool.LeasedCount);
             Assert.AreEqual(POOL_CAPACITY, _sectorPool.AvailableCount);
             Assert.AreEqual(0, _rectPool.LeasedCount);
-            Assert.AreEqual(POOL_CAPACITY, _rectPool.AvailableCount);
+            Assert.AreEqual(RECT_POOL_CAPACITY, _rectPool.AvailableCount);
         }
 
         /****************************************
@@ -784,14 +786,14 @@ namespace Shinshi.Tests
         [Test]
         public void Projectile_PoolExhausted_SkipsVisualWithoutErrors()
         {
-            for (int i = 1; i <= POOL_CAPACITY + 1; ++i)
+            for (int i = 1; i <= RECT_POOL_CAPACITY + 1; ++i)
             {
                 BossProjectileStart start = Shot(i, bossId: i);
                 Assert.IsTrue(_presenter.LaunchProjectile(in start));
             }
 
-            Assert.AreEqual(POOL_CAPACITY + 1, _presenter.ProjectileCount);
-            Assert.IsTrue(_presenter.TryGetProjectile(POOL_CAPACITY + 1, out BossProjectileTrack track, out RectTelegraphVFXController rect));
+            Assert.AreEqual(RECT_POOL_CAPACITY + 1, _presenter.ProjectileCount);
+            Assert.IsTrue(_presenter.TryGetProjectile(RECT_POOL_CAPACITY + 1, out BossProjectileTrack track, out RectTelegraphVFXController rect));
             Assert.IsNull(rect);
 
             _presenter.ClearAll();
@@ -1033,18 +1035,834 @@ namespace Shinshi.Tests
         [Test]
         public void Area_PoolExhausted_SkipsVisualWithoutErrors()
         {
-            for (int i = 1; i <= POOL_CAPACITY + 1; ++i)
+            for (int i = 1; i <= AREA_POOL_CAPACITY + 1; ++i)
             {
                 BossAreaStart start = AreaShot(i);
                 Assert.IsTrue(_presenter.ActivateArea(in start));
             }
 
-            Assert.AreEqual(POOL_CAPACITY + 1, _presenter.AreaCount);
-            Assert.IsTrue(_presenter.TryGetArea(POOL_CAPACITY + 1, out BossAreaTrack track, out AreaGroundVFXController visual));
+            Assert.AreEqual(AREA_POOL_CAPACITY + 1, _presenter.AreaCount);
+            Assert.IsTrue(_presenter.TryGetArea(AREA_POOL_CAPACITY + 1, out BossAreaTrack track, out AreaGroundVFXController visual));
             Assert.IsNull(visual);
 
             _presenter.ClearAll();
             AssertAllReturned();
+        }
+
+        /****************************************
+        *      Phase Two P06 Circle (Pressure)
+        ****************************************/
+
+        // 2페이즈 P06은 1페이즈 P03과 같은 원형 예고를 쓰고 패턴 ID만 다르다. 표현은 ID로 모양을 가르지 않으므로 같은 규칙을 따라야 한다
+        private BossTelegraphStart PhaseTwoCircle(int castId, float seconds = 1.2f, int bossId = BOSS_ID, double? start = null)
+        {
+            return BossTelegraphStart.Circle(bossId, castId, Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P06_ID, Vector3.zero, 5f,
+                start ?? Now, seconds);
+        }
+
+        [UnityTest]
+        public IEnumerator PhaseTwoCircle_HoldsUntilServerStrike_ThenPlaysAndReturnsToPool()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(PhaseTwoCircle(1, 0.2f)));
+            yield return new WaitForSeconds(0.45f);
+
+            Visuals(1, out BossTelegraphCast cast, out SectorVFXController sector, out RectTelegraphVFXController rect);
+            Assert.AreEqual(Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P06_ID, cast.PatternId);
+            Assert.AreEqual(EBossTelegraphShape.Circle, cast.Shape);
+            Assert.IsTrue(sector.IsHolding, "예고가 끝나도 서버 확정 전에는 폭발하지 않는다");
+            CollectionAssert.DoesNotContain(_events, "1:Execute");
+
+            Assert.IsTrue(_presenter.Strike(1, Now));
+            yield return new WaitForSeconds(0.1f);
+            Assert.IsFalse(sector.IsHolding);
+
+            yield return WaitUntil(() => _presenter.ActiveCount == 0);
+            yield return null;
+            AssertAllReturned();
+            CollectionAssert.Contains(_events, "1:Execute");
+        }
+
+        [UnityTest]
+        public IEnumerator PhaseTwoCircle_NeverConfirmed_ClearsWithoutExploding()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(PhaseTwoCircle(1, 0.1f)));
+
+            yield return WaitUntil(() => _presenter.ActiveCount == 0);
+            yield return null;
+
+            AssertAllReturned();
+            CollectionAssert.DoesNotContain(_events, "1:Execute");
+            CollectionAssert.Contains(_events, "1:Cancelled");
+            Assert.IsFalse(_presenter.Strike(1, Now), "끝난 시전은 늦은 확정으로 되살아나지 않는다");
+        }
+
+        [Test]
+        public void PhaseTwoCircle_Cancel_BlocksLateNotificationsAndDuplicateStart()
+        {
+            _useRealClock = true;
+            BossTelegraphStart start = PhaseTwoCircle(1);
+            Assert.IsTrue(_presenter.BeginTelegraph(start));
+            Assert.IsFalse(_presenter.BeginTelegraph(start), "중복 시작은 무시한다");
+            Assert.AreEqual(1, _sectorPool.LeasedCount);
+
+            Assert.IsTrue(_presenter.Cancel(1));
+
+            AssertAllReturned();
+            Assert.IsFalse(_presenter.Strike(1, Now));
+            Assert.IsFalse(_presenter.Cancel(1));
+            Assert.IsFalse(_presenter.BeginTelegraph(start), "취소된 번호는 되살리지 못한다");
+        }
+
+        [UnityTest]
+        public IEnumerator PhaseTwoCircle_ReceivedLate_ContinuesFromElapsedServerTime()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(PhaseTwoCircle(1, 1.2f, start: Now - 0.5)));
+            yield return null;
+
+            Visuals(1, out BossTelegraphCast cast, out SectorVFXController sector, out RectTelegraphVFXController rect);
+            Assert.GreaterOrEqual(sector.Elapsed, 0.5f, "이미 흐른 시간만큼 건너뛰어 시작한다");
+        }
+
+        [UnityTest]
+        public IEnumerator PhaseTwoCircle_RestoreExecuted_SkipsChargeAndReturnsToPool()
+        {
+            _useRealClock = true;
+            double executeTime = Now - 0.1;
+            BossTelegraphSnapshot snapshot = new BossTelegraphSnapshot
+            {
+                Start             = PhaseTwoCircle(6, 0.2f, start: executeTime - 0.2),
+                Direction         = Vector3.forward,
+                Length            = 5f,
+                IsDirectionLocked = true,
+                Phase             = EBossTelegraphPhase.Execute,
+                ExecuteServerTime = executeTime
+            };
+
+            Assert.IsTrue(_presenter.Restore(in snapshot));
+            yield return null;
+
+            Visuals(6, out BossTelegraphCast cast, out SectorVFXController sector, out RectTelegraphVFXController rect);
+            Assert.IsFalse(sector.IsHolding);
+
+            yield return WaitUntil(() => _presenter.ActiveCount == 0);
+            yield return null;
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator PhaseTwoCircle_PoolReuse_AlternatingWithPhaseOneCircleLeaksNothing()
+        {
+            _useRealClock = true;
+            for (int i = 1; i <= 10; ++i)
+            {
+                BossTelegraphStart start = ((i % 2) == 0) ? PhaseTwoCircle(i, 0.5f) : Circle(i, 0.5f);
+                Assert.IsTrue(_presenter.BeginTelegraph(start));
+                yield return null;
+
+                Visuals(i, out BossTelegraphCast cast, out SectorVFXController sector, out RectTelegraphVFXController rect);
+                Assert.Less(sector.Elapsed, 0.2f, "재사용한 연출은 처음부터 시작한다");
+                Assert.IsFalse(sector.IsHolding);
+                Assert.IsTrue(_presenter.Cancel(i));
+                AssertAllReturned();
+            }
+        }
+
+        // 샘플 입력의 2페이즈 P06 재생, 시작과 서버 확정 발동과 회복 뒤 정리까지 시각표대로 흐르는지 본다
+        [UnityTest]
+        public IEnumerator SampleInput_PhaseTwoCircle_PlaysStrikesAndReturnsToPool()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoCircle();
+            int castId = sample.LastCastId;
+            Assert.IsTrue(_presenter.TryGetVisuals(castId, out BossTelegraphCast cast, out SectorVFXController sector, out _));
+            Assert.AreEqual(Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P06_ID, cast.PatternId);
+
+            yield return WaitUntilLong(() => _presenter.ActiveCount == 0);
+            yield return null;
+            AssertAllReturned();
+            CollectionAssert.Contains(_events, castId + ":Execute");
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_PhaseTwoCircleCancelled_NeverExplodes()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoCircleCancelled();
+            int castId = sample.LastCastId;
+
+            yield return WaitUntilLong(() => _presenter.ActiveCount == 0);
+            yield return null;
+            AssertAllReturned();
+            CollectionAssert.DoesNotContain(_events, castId + ":Execute");
+            CollectionAssert.Contains(_events, castId + ":Cancelled");
+        }
+
+        // 자동 반복을 끄지 않으면 켜는 순간 첫 단계가 시작돼 시전 번호가 섞인다
+        private BossTelegraphSampleInput PrepareSampleWithoutLoop()
+        {
+            BossTelegraphSampleInput sample = _root.GetComponent<BossTelegraphSampleInput>();
+            System.Reflection.FieldInfo loop = typeof(BossTelegraphSampleInput).GetField("_autoLoop",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            loop.SetValue(sample, false);
+            return sample;
+        }
+
+        private IEnumerator WaitUntilLong(System.Func<bool> condition)
+        {
+            float until = Time.realtimeSinceStartup + (WAIT_LIMIT * 2f);
+            while ((!condition()) && (Time.realtimeSinceStartup < until))
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(condition(), "시간 안에 조건이 만족되지 않았다");
+        }
+
+        /****************************************
+        *   Phase Two P05 Volley (Basic, 3 shots)
+        ****************************************/
+
+        private const int VOLLEY_CAST = 50;
+
+        // 한 시전이 쏘는 독립된 세 발, 시전 번호는 같고 투사체 번호(동작 번호)가 서로 다르다
+        private BossProjectileStart VolleyShot(int projectileId, double? launch = null, int castId = VOLLEY_CAST, int bossId = BOSS_ID)
+        {
+            return new BossProjectileStart(bossId, projectileId, castId, Vector3.zero, Vector3.forward, 10f, 1f, 35f, launch ?? Now);
+        }
+
+        private BossTelegraphStart VolleyTelegraph(int castId = VOLLEY_CAST, int bossId = BOSS_ID)
+        {
+            return BossTelegraphStart.Projectile(bossId, castId, Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P05_ID, Vector3.zero,
+                Vector3.forward, 35f, 1f, Now, 0.9f);
+        }
+
+        private void LaunchThree(double baseLaunch)
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                BossProjectileStart shot = VolleyShot(101 + i, baseLaunch + (i * 0.3));
+                Assert.IsTrue(_presenter.LaunchProjectile(in shot), "발사 알림 " + (101 + i));
+            }
+        }
+
+        [Test]
+        public void Volley_ThreeShotsOfOneCast_FlyTogetherAndFirstLaunchFinishesTheTelegraph()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(VolleyTelegraph()));
+            Assert.AreEqual(1, _presenter.ActiveCount);
+
+            LaunchThree(Now);
+
+            Assert.AreEqual(3, _presenter.ProjectileCount, "알림마다 한 발이고 클라이언트가 스스로 늘리지 않는다");
+            for (int id = 101; id <= 103; ++id)
+            {
+                Assert.IsTrue(_presenter.TryGetProjectile(id, out BossProjectileTrack track, out RectTelegraphVFXController rect));
+                Assert.AreEqual(VOLLEY_CAST, track.Start.CastId);
+                Assert.IsNotNull(rect);
+            }
+
+            CollectionAssert.Contains(_events, VOLLEY_CAST + ":Execute", "첫 발사가 예고를 마무리한다");
+        }
+
+        [Test]
+        public void Volley_OnlyAnnouncedShotsExist_NothingIsInventedWithoutServerLaunch()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(VolleyTelegraph()));
+            BossProjectileStart first = VolleyShot(101);
+            Assert.IsTrue(_presenter.LaunchProjectile(in first));
+
+            Assert.AreEqual(1, _presenter.ProjectileCount);
+            Assert.IsFalse(_presenter.TryGetProjectile(102, out BossProjectileTrack ignored, out _));
+        }
+
+        [Test]
+        public void Volley_OneShotEnds_OthersKeepFlyingAndEndedOneStaysEnded()
+        {
+            _useRealClock = true;
+            LaunchThree(Now);
+
+            Assert.IsTrue(_presenter.EndProjectile(101, EBossProjectileFate.Hit, new Vector3(0f, 0f, 4f)));
+
+            Assert.IsTrue(_presenter.TryGetProjectile(101, out BossProjectileTrack hit, out _));
+            Assert.AreEqual(EBossProjectileFate.Hit, hit.Fate);
+            Assert.IsTrue(_presenter.TryGetProjectile(102, out BossProjectileTrack second, out _));
+            Assert.AreEqual(EBossProjectileFate.Flying, second.Fate);
+            Assert.IsTrue(_presenter.TryGetProjectile(103, out BossProjectileTrack third, out _));
+            Assert.AreEqual(EBossProjectileFate.Flying, third.Fate);
+            Assert.IsFalse(_presenter.EndProjectile(101, EBossProjectileFate.Wall, Vector3.zero), "끝난 발은 다시 끝나지 않는다");
+        }
+
+        [Test]
+        public void Volley_CancelOneShot_RemovesOnlyThatShot()
+        {
+            _useRealClock = true;
+            LaunchThree(Now);
+
+            Assert.IsTrue(_presenter.CancelProjectile(102));
+
+            Assert.AreEqual(2, _presenter.ProjectileCount);
+            Assert.IsFalse(_presenter.TryGetProjectile(102, out BossProjectileTrack gone, out _));
+            Assert.IsTrue(_presenter.TryGetProjectile(101, out BossProjectileTrack kept, out _));
+            Assert.IsTrue(_presenter.TryGetProjectile(103, out BossProjectileTrack kept2, out _));
+        }
+
+        [Test]
+        public void Volley_CancelAllAndClear_ReturnEveryRectToThePool()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(VolleyTelegraph()));
+            LaunchThree(Now);
+
+            Assert.IsTrue(_presenter.CancelProjectile(101));
+            Assert.IsTrue(_presenter.CancelProjectile(102));
+            Assert.IsTrue(_presenter.CancelProjectile(103));
+            _presenter.ClearAll();
+
+            AssertAllReturned();
+        }
+
+        [Test]
+        public void Volley_FinishAndNextCast_DoNotRemoveFlyingProjectiles()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(VolleyTelegraph()));
+            LaunchThree(Now);
+
+            Assert.IsTrue(_presenter.Finish(VOLLEY_CAST));
+            Assert.IsTrue(_presenter.BeginTelegraph(Line(70)));
+
+            Assert.AreEqual(3, _presenter.ProjectileCount);
+            Assert.IsTrue(_presenter.TryGetProjectile(101, out BossProjectileTrack track, out RectTelegraphVFXController rect));
+            Assert.IsNotNull(rect);
+        }
+
+        [Test]
+        public void Volley_DuplicateLaunchOfTheSameShot_IsIgnoredWhileTheOthersStart()
+        {
+            _useRealClock = true;
+            BossProjectileStart first = VolleyShot(101);
+            BossProjectileStart second = VolleyShot(102);
+            Assert.IsTrue(_presenter.LaunchProjectile(in first));
+            Assert.IsFalse(_presenter.LaunchProjectile(in first));
+            Assert.IsTrue(_presenter.LaunchProjectile(in second));
+
+            Assert.AreEqual(2, _presenter.ProjectileCount);
+        }
+
+        [Test]
+        public void Volley_EndArrivingBeforeLaunch_BlocksOnlyThatShot()
+        {
+            _useRealClock = true;
+            Assert.IsFalse(_presenter.EndProjectile(102, EBossProjectileFate.Hit, Vector3.zero));
+
+            BossProjectileStart blocked = VolleyShot(102);
+            BossProjectileStart other = VolleyShot(103);
+            Assert.IsFalse(_presenter.LaunchProjectile(in blocked), "먼저 온 소멸이 늦은 발사를 막는다");
+            Assert.IsTrue(_presenter.LaunchProjectile(in other));
+            Assert.AreEqual(1, _presenter.ProjectileCount);
+        }
+
+        [Test]
+        public void Volley_LateLaunch_ContinuesFromTheServerLaunchTime()
+        {
+            _useRealClock = true;
+            BossProjectileStart late = VolleyShot(102, Now - 0.5);
+            Assert.IsTrue(_presenter.LaunchProjectile(in late));
+
+            Assert.IsTrue(_presenter.TryGetProjectile(102, out BossProjectileTrack track, out _));
+            Assert.AreEqual(5f, track.GetDistance(Now), 0.2f, "0.5초 늦게 받아도 속도 10m/초로 이미 5m 갔다");
+        }
+
+        [UnityTest]
+        public IEnumerator Volley_RestoreThreeShots_EachContinuesFromItsOwnLaunchTime()
+        {
+            _useRealClock = true;
+            for (int i = 0; i < 3; ++i)
+            {
+                BossProjectileSnapshot snapshot = new BossProjectileSnapshot
+                {
+                    Start = VolleyShot(101 + i, Now - 0.6 - ((2 - i) * 0.3)),
+                    Fate = EBossProjectileFate.Flying
+                };
+                Assert.IsTrue(_presenter.RestoreProjectile(in snapshot));
+            }
+
+            yield return null;
+
+            Assert.AreEqual(3, _presenter.ProjectileCount);
+            double now = Now;
+            float d1 = ProjectileDistance(101, now);
+            float d2 = ProjectileDistance(102, now);
+            float d3 = ProjectileDistance(103, now);
+            Assert.Greater(d3, 5.5f);
+            Assert.AreEqual(3f, d2 - d3, 0.3f, "먼저 쏜 발일수록 멀리 갔고 발 사이 0.3초는 3m 차이다");
+            Assert.AreEqual(3f, d1 - d2, 0.3f);
+
+            Assert.IsTrue(_presenter.TryGetProjectileSnapshot(102, out BossProjectileSnapshot back));
+            Assert.AreEqual(VOLLEY_CAST, back.Start.CastId);
+        }
+
+        private float ProjectileDistance(int id, double now)
+        {
+            Assert.IsTrue(_presenter.TryGetProjectile(id, out BossProjectileTrack track, out _));
+            return track.GetDistance(now);
+        }
+
+        [UnityTest]
+        public IEnumerator Volley_PoolReuse_ManyVolleysLeakNothingAndRestartFromOrigin()
+        {
+            _useRealClock = true;
+            for (int round = 0; round < 6; ++round)
+            {
+                int cast = 200 + (round * 10);
+                Assert.IsTrue(_presenter.BeginTelegraph(VolleyTelegraph(cast)));
+                for (int i = 0; i < 3; ++i)
+                {
+                    BossProjectileStart shot = VolleyShot(cast + 1 + i, Now, cast);
+                    Assert.IsTrue(_presenter.LaunchProjectile(in shot));
+                }
+
+                yield return null;
+                Assert.AreEqual(3, _presenter.ProjectileCount);
+                for (int i = 0; i < 3; ++i)
+                {
+                    Assert.IsTrue(_presenter.TryGetProjectile(cast + 1 + i, out BossProjectileTrack track, out RectTelegraphVFXController rect));
+                    Assert.Less(track.GetDistance(Now), 2f, "재사용한 표현은 발사 위치에서 다시 시작한다");
+                    Assert.IsNotNull(rect);
+                    Assert.IsTrue(_presenter.CancelProjectile(cast + 1 + i));
+                }
+
+                _presenter.ClearAll();
+                AssertAllReturned();
+            }
+        }
+
+        // 샘플 입력의 2페이즈 P05 재생, 예고 하나와 세 발의 시작, 개별 소멸, 중간 취소, 회복 뒤 정리까지 시각표대로 흐른다
+        [UnityTest]
+        public IEnumerator SampleInput_Volley_ThreeShotsFlyIndependentlyAndReturnToPool()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoVolley();
+            int castId = sample.LastCastId - 3;
+            yield return WaitUntilLong(() => _presenter.ProjectileCount == 3);
+
+            yield return WaitUntilLong(() => (_presenter.ProjectileCount == 0) && (_presenter.ActiveCount == 0));
+            yield return null;
+            AssertAllReturned();
+            CollectionAssert.Contains(_events, castId + ":Execute");
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_VolleyOneHit_FirstEndsOthersContinue()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoVolleyOneHit();
+            yield return WaitUntilLong(() => _presenter.ProjectileCount == 3);
+            int last = sample.LastCastId;
+            int firstShot = last - 2;
+
+            // 셋째 발이 나갈 때 첫 발은 이미 소멸했고(맞은 뒤) 나머지 둘은 계속 난다
+            Assert.IsTrue(_presenter.TryGetProjectile(last, out BossProjectileTrack third, out _));
+            Assert.AreEqual(EBossProjectileFate.Flying, third.Fate, "한 발의 소멸이 나머지를 지우지 않는다");
+            Assert.IsTrue(_presenter.TryGetProjectile(last - 1, out BossProjectileTrack second, out _));
+            Assert.AreEqual(EBossProjectileFate.Flying, second.Fate);
+            if (_presenter.TryGetProjectile(firstShot, out BossProjectileTrack first, out _))
+            {
+                Assert.AreNotEqual(EBossProjectileFate.Flying, first.Fate);
+            }
+
+            yield return WaitUntilLong(() => (_presenter.ProjectileCount == 0) && (_presenter.ActiveCount == 0));
+            yield return null;
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_VolleyCancelled_RemovesFlyingShotsAndNeverLaunchesTheThird()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoVolleyCancelled();
+            int last = sample.LastCastId;
+
+            yield return WaitUntilLong(() => _presenter.TryGetProjectile(last, out BossProjectileTrack second, out _));
+            yield return WaitUntilLong(() => (_presenter.ProjectileCount == 0) && (_presenter.ActiveCount == 0));
+            yield return null;
+
+            AssertAllReturned();
+            Assert.IsFalse(_presenter.TryGetProjectile(last + 1, out BossProjectileTrack none, out _), "셋째 발은 나가지 않았다");
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_VolleyLateLaunchAndRestore_PlayWithoutRestartingFromTheOrigin()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoVolleyRestore();
+            yield return null;
+            Assert.AreEqual(3, _presenter.ProjectileCount);
+            int last = sample.LastCastId;
+            Assert.Greater(ProjectileDistance(last, Now), 5f, "복원은 발사 시각 기준 위치에서 이어진다");
+
+            yield return WaitUntilLong(() => _presenter.ProjectileCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoVolleyLateLaunch();
+            yield return WaitUntilLong(() => _presenter.ProjectileCount == 3);
+            yield return WaitUntilLong(() => (_presenter.ProjectileCount == 0) && (_presenter.ActiveCount == 0));
+            yield return null;
+            AssertAllReturned();
+        }
+
+        /****************************************
+        *   Phase Two P04 Areas (Pressure, 2 areas)
+        ****************************************/
+
+        private const int AREA_CAST = 300;
+
+        // 한 시전의 두 장판, 시전 번호는 같고 장판 번호가 서로 다르다. 예고는 장판 번호를 키로 시전 번호 묶음에 속한다
+        private BossTelegraphStart AreaTelegraph(int areaId, Vector3 center, int castId = AREA_CAST, int bossId = BOSS_ID,
+            double? start = null)
+        {
+            return BossTelegraphStart.Circle(bossId, areaId, Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID, center, 3f,
+                start ?? Now, 1f, castId);
+        }
+
+        private BossAreaStart PairArea(int areaId, Vector3 center, double? activate = null, int castId = AREA_CAST, int bossId = BOSS_ID)
+        {
+            return new BossAreaStart(bossId, areaId, castId, center, 3f, 6f, 1f, activate ?? Now);
+        }
+
+        private static readonly Vector3 LeftCenter  = new Vector3(-4f, 0f, 5f);
+        private static readonly Vector3 RightCenter = new Vector3(4f, 0f, 5f);
+
+        [Test]
+        public void PairAreas_TwoTelegraphsOfOneCast_AreShownTogether()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(301, LeftCenter)));
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(302, RightCenter)), "같은 시전의 둘째 예고가 첫째를 지우지 않는다");
+
+            Assert.AreEqual(2, _presenter.ActiveCount);
+            Assert.AreEqual(2, _sectorPool.LeasedCount);
+            Assert.IsTrue(_presenter.TryGetVisuals(301, out BossTelegraphCast first, out SectorVFXController sector1, out _));
+            Assert.IsTrue(_presenter.TryGetVisuals(302, out BossTelegraphCast second, out SectorVFXController sector2, out _));
+            Assert.AreEqual(first.GroupId, second.GroupId);
+            Assert.IsNotNull(sector1);
+            Assert.IsNotNull(sector2);
+        }
+
+        [Test]
+        public void PairAreas_DifferentCastOfTheSameBoss_StillRetiresThePreviousTelegraphs()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(301, LeftCenter)));
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(302, RightCenter)));
+
+            Assert.IsTrue(_presenter.BeginTelegraph(Line(70)));
+
+            Assert.AreEqual(1, _presenter.ActiveCount, "다른 시전의 새 예고는 이전 예고를 끝낸다(기존 규칙)");
+        }
+
+        [Test]
+        public void PairAreas_FirstActivationKeepsTheSecondTelegraphAndCreatesOnlyItsOwnArea()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(301, LeftCenter)));
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(302, RightCenter)));
+
+            BossAreaStart first = PairArea(301, LeftCenter);
+            Assert.IsTrue(_presenter.ActivateArea(in first));
+
+            Assert.AreEqual(1, _presenter.AreaCount, "활성 알림마다 장판 한 개");
+            Assert.IsTrue(_presenter.TryGetVisuals(302, out BossTelegraphCast second, out _, out _), "둘째 예고는 그대로 남는다");
+            Assert.IsFalse(second.HasExecuted);
+            CollectionAssert.Contains(_events, "301:Execute");
+            CollectionAssert.DoesNotContain(_events, "302:Execute");
+        }
+
+        [UnityTest]
+        public IEnumerator PairAreas_TelegraphEndAlone_NeverCreatesAnAreaWithoutServerActivation()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(BossTelegraphStart.Circle(BOSS_ID, 301, "wolbaek_ph2_p04", LeftCenter, 3f, Now, 0.15f, AREA_CAST)));
+
+            yield return WaitUntil(() => _presenter.ActiveCount == 0);
+            yield return null;
+
+            Assert.AreEqual(0, _presenter.AreaCount);
+            AssertAllReturned();
+        }
+
+        [Test]
+        public void PairAreas_TickEndAndCancel_AffectOnlyThatAreaId()
+        {
+            _useRealClock = true;
+            BossAreaStart first = PairArea(301, LeftCenter);
+            BossAreaStart second = PairArea(302, RightCenter);
+            Assert.IsTrue(_presenter.ActivateArea(in first));
+            Assert.IsTrue(_presenter.ActivateArea(in second));
+
+            Assert.IsTrue(_presenter.TickArea(301, 0, Now));
+            Assert.IsTrue(_presenter.TryGetArea(301, out BossAreaTrack t1, out _));
+            Assert.IsTrue(_presenter.TryGetArea(302, out BossAreaTrack t2, out _));
+            Assert.AreEqual(0, t1.LastTickIndex);
+            Assert.AreEqual(-1, t2.LastTickIndex, "한 장판의 타격 표시가 다른 장판에 번지지 않는다");
+
+            Assert.IsTrue(_presenter.CancelArea(301));
+            Assert.AreEqual(1, _presenter.AreaCount);
+            Assert.IsTrue(_presenter.TryGetArea(302, out BossAreaTrack kept, out _));
+            Assert.AreEqual(EBossAreaFate.Active, kept.Fate);
+            Assert.IsFalse(_presenter.EndArea(301, EBossAreaFate.Expired), "끝난 장판은 다시 끝나지 않는다");
+        }
+
+        [Test]
+        public void PairAreas_FinishAndNextCast_DoNotRemoveActiveAreas()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(301, LeftCenter)));
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(302, RightCenter)));
+            BossAreaStart first = PairArea(301, LeftCenter);
+            BossAreaStart second = PairArea(302, RightCenter);
+            Assert.IsTrue(_presenter.ActivateArea(in first));
+            Assert.IsTrue(_presenter.ActivateArea(in second));
+
+            Assert.IsTrue(_presenter.Finish(301));
+            Assert.IsTrue(_presenter.Finish(302));
+            Assert.IsTrue(_presenter.BeginTelegraph(Line(70)));
+
+            Assert.AreEqual(2, _presenter.AreaCount, "다음 시전이 시작돼도 활성 장판은 남는다");
+        }
+
+        [Test]
+        public void PairAreas_DuplicateActivationIgnored_AndCancelBeforeActivationBlocksOnlyThatArea()
+        {
+            _useRealClock = true;
+            BossAreaStart first = PairArea(301, LeftCenter);
+            BossAreaStart second = PairArea(302, RightCenter);
+            Assert.IsFalse(_presenter.CancelArea(302), "활성 전 취소는 장판이 없어 아무것도 지우지 않는다");
+
+            Assert.IsTrue(_presenter.ActivateArea(in first));
+            Assert.IsFalse(_presenter.ActivateArea(in first), "중복 활성 알림은 무시한다");
+            Assert.IsFalse(_presenter.ActivateArea(in second), "먼저 온 취소가 그 장판의 늦은 활성을 막는다");
+            Assert.AreEqual(1, _presenter.AreaCount);
+
+            BossAreaStart third = PairArea(303, RightCenter);
+            Assert.IsTrue(_presenter.ActivateArea(in third), "다른 장판은 영향이 없다");
+            Assert.AreEqual(2, _presenter.AreaCount);
+        }
+
+        [Test]
+        public void PairAreas_LateActivation_ContinuesFromTheServerActivationTime()
+        {
+            _useRealClock = true;
+            BossAreaStart late = PairArea(302, RightCenter, Now - 2.5);
+            Assert.IsTrue(_presenter.ActivateArea(in late));
+
+            Assert.IsTrue(_presenter.TryGetArea(302, out BossAreaTrack track, out AreaGroundVFXController visual));
+            Assert.AreEqual(2.5f, track.GetAge(Now), 0.2f);
+            Assert.Less(track.GetLifeRatio(Now), 0.7f, "이미 흐른 시간만큼 수명이 줄어 있다");
+            Assert.IsNotNull(visual);
+        }
+
+        [Test]
+        public void PairAreas_RestoreTwoSnapshots_KeepsEachAreasShownRoundsAndCastId()
+        {
+            _useRealClock = true;
+            for (int i = 0; i < 2; ++i)
+            {
+                double activate = Now - 3.2 - (i * 0.4);
+                BossAreaSnapshot snapshot = new BossAreaSnapshot
+                {
+                    Start = PairArea(301 + i, (i == 0) ? LeftCenter : RightCenter, activate),
+                    Fate = EBossAreaFate.Active,
+                    LastTickIndex = 3,
+                    LastTickServerTime = activate + 3.0
+                };
+                Assert.IsTrue(_presenter.RestoreArea(in snapshot));
+            }
+
+            Assert.AreEqual(2, _presenter.AreaCount);
+            Assert.IsFalse(_presenter.TickArea(301, 3, Now), "복원 전에 표시한 회차는 다시 표시하지 않는다");
+            Assert.IsTrue(_presenter.TickArea(301, 4, Now));
+            Assert.IsTrue(_presenter.TryGetAreaSnapshot(302, out BossAreaSnapshot back));
+            Assert.AreEqual(AREA_CAST, back.Start.CastId);
+            Assert.AreEqual(3, back.LastTickIndex);
+        }
+
+        [Test]
+        public void PairAreas_ThreeAreasAndTwoTelegraphs_AllGetVisualsWithoutExhaustingPools()
+        {
+            _useRealClock = true;
+            for (int i = 0; i < 3; ++i)
+            {
+                BossAreaStart area = PairArea(401 + i, LeftCenter + new Vector3(i * 7f, 0f, 0f), castId: 400 + i);
+                Assert.IsTrue(_presenter.ActivateArea(in area));
+            }
+
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(501, LeftCenter, castId: 500)));
+            Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(502, RightCenter, castId: 500)));
+
+            Assert.AreEqual(3, _presenter.AreaCount);
+            for (int i = 0; i < 3; ++i)
+            {
+                Assert.IsTrue(_presenter.TryGetArea(401 + i, out BossAreaTrack track, out AreaGroundVFXController visual));
+                Assert.IsNotNull(visual, "보스 전체 상한 3개 모두 표현이 있다");
+            }
+
+            Assert.AreEqual(2, _sectorPool.LeasedCount);
+            _presenter.ClearAll();
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator PairAreas_PoolReuse_ManyPairsLeakNothing()
+        {
+            _useRealClock = true;
+            for (int round = 0; round < 6; ++round)
+            {
+                int cast = 600 + (round * 10);
+                Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(cast + 1, LeftCenter, cast)));
+                Assert.IsTrue(_presenter.BeginTelegraph(AreaTelegraph(cast + 2, RightCenter, cast)));
+                BossAreaStart a = PairArea(cast + 1, LeftCenter, Now, cast);
+                BossAreaStart b = PairArea(cast + 2, RightCenter, Now, cast);
+                Assert.IsTrue(_presenter.ActivateArea(in a));
+                Assert.IsTrue(_presenter.ActivateArea(in b));
+                yield return null;
+
+                Assert.AreEqual(2, _presenter.AreaCount);
+                Assert.IsTrue(_presenter.CancelArea(cast + 1));
+                Assert.IsTrue(_presenter.CancelArea(cast + 2));
+                _presenter.ClearAll();
+                AssertAllReturned();
+            }
+        }
+
+        // 샘플 입력의 2페이즈 P04 재생, 예고 둘과 서버가 확정한 장판 둘의 시작, 개별 종료, 전체 취소, 늦은 활성, 복원을 시각표대로 흘린다
+        [UnityTest]
+        public IEnumerator SampleInput_PhaseTwoAreas_TwoTelegraphsThenTwoIndependentAreasAndReturnToPool()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoAreas();
+            Assert.AreEqual(2, _presenter.ActiveCount, "예고 둘이 동시에 있다");
+            Assert.AreEqual(0, _presenter.AreaCount);
+
+            yield return WaitUntilLong(() => _presenter.AreaCount == 2);
+            yield return WaitUntilVeryLong(() => (_presenter.AreaCount == 0) && (_presenter.ActiveCount == 0));
+            yield return null;
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_PhaseTwoOneAreaEnds_OtherAreaKeepsGoing()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoAreaOneEnds();
+            int second = sample.LastCastId;
+            int first = second - 1;
+
+            yield return WaitUntilLong(() => _presenter.AreaCount == 2);
+            yield return WaitUntilLong(() => !_presenter.TryGetArea(first, out BossAreaTrack t, out _));
+            Assert.IsTrue(_presenter.TryGetArea(second, out BossAreaTrack kept, out _), "한 장판이 끝나도 다른 장판은 남는다");
+            Assert.AreEqual(EBossAreaFate.Active, kept.Fate);
+
+            yield return WaitUntilVeryLong(() => (_presenter.AreaCount == 0) && (_presenter.ActiveCount == 0));
+            yield return null;
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_PhaseTwoAreasCancelled_BothRemovedAtOnce()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoAreasCancelled();
+
+            yield return WaitUntilLong(() => _presenter.AreaCount == 2);
+            yield return WaitUntilLong(() => _presenter.AreaCount == 0);
+            yield return WaitUntilLong(() => _presenter.ActiveCount == 0);
+            yield return null;
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_PhaseTwoSingleAndOverlapAndLateAndRestore_PlayAndReturnToPool()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoAreaSingle();
+            yield return WaitUntilLong(() => _presenter.AreaCount == 1);
+            _presenter.ClearAll();
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoAreasOverlap();
+            yield return WaitUntilLong(() => _presenter.AreaCount == 2);
+            _presenter.ClearAll();
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoAreasRestore();
+            yield return null;
+            Assert.AreEqual(2, _presenter.AreaCount, "복원은 이미 지난 시간만큼 이어서 그린다");
+            _presenter.ClearAll();
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoAreasLateActivation();
+            yield return WaitUntilLong(() => _presenter.AreaCount == 1);
+            yield return WaitUntilLong(() => _presenter.AreaCount == 2);
+            _presenter.ClearAll();
+            AssertAllReturned();
+        }
+
+        private IEnumerator WaitUntilVeryLong(System.Func<bool> condition)
+        {
+            float until = Time.realtimeSinceStartup + (WAIT_LIMIT * 4f);
+            while ((!condition()) && (Time.realtimeSinceStartup < until))
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(condition(), "시간 안에 조건이 만족되지 않았다");
         }
     }
 }

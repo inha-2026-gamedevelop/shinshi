@@ -9,6 +9,7 @@ using Shinshi.Common;
 namespace Shinshi.AI
 {
     // 슬롯 순서: 예약(TryReserve, 예고 시작) -> 활성(TryActivate, 예약을 장판으로 전환) -> 사라짐(Expired 또는 Cancelled)
+    // 장판 한 개는 장판 번호(AreaId)로 구분하고 시전 번호는 같은 시전이 설치한 장판들의 묶음이다. 시전 번호를 넘긴 정리(Cancel)만 그 시전의 장판을 함께 지우고, 장판의 수명 종료는 그 장판 하나만 끝낸다
     // 예약과 활성 장판을 같은 슬롯 하나로 세므로 ActiveAreaCount는 예약 + 활성의 합이고 이중 집계가 없다. 슬롯은 사라지거나 예약을 풀 때 정확히 한 번 돌아온다
     // 이미 상한이면 예약이 실패하고 기존 장판은 지우지 않는다
     //
@@ -24,7 +25,7 @@ namespace Shinshi.AI
     //
     // 판정은 월백 원형 패턴과 같다. 중심에서 수평 거리가 반경 이하(경계 포함)인 살아 있는 플레이어와 소환물이 대상이고 대상 중심점으로 판정하며 BodyRadius는 쓰지 않는다. 표현이 같은 원이다
     /// <summary> 월백 장판의 수명 관리자, 슬롯 상한과 주기 피해와 정리를 맡는다 </summary>
-    public sealed class BossAreaManager : IBossEffectLifetime, IBossTickableEffects, IBossAreaHost
+    public sealed class BossAreaManager : IBossEffectLifetime, IBossTickableEffects, IBossAreaHost, IBossAreaCapacity
     {
         /****************************************
         *              Constants
@@ -50,6 +51,7 @@ namespace Shinshi.AI
         {
             public ESlotState  State;
             public int         CastInstanceId;
+            public int         AreaId;
             public string      PatternId;
             public BossAreaSpec Spec;
             public int         HitCount;
@@ -75,6 +77,9 @@ namespace Shinshi.AI
         /// <summary> 활성되어 피해를 내고 있는 장판 수 </summary>
         public int ActiveCount => _activeCount;
 
+        /// <summary> 패턴과 상관없는 예약과 활성 장판의 합, 보스 전체 장판 상한 검사가 쓴다 </summary>
+        public int TotalAreaCount => _reservedCount + _activeCount;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -92,12 +97,29 @@ namespace Shinshi.AI
 
         public bool TryReserve(int castInstanceId, string patternId, int maxConcurrent)
         {
-            if ((castInstanceId == CombatIds.NONE) || string.IsNullOrEmpty(patternId))
+            return Reserve(castInstanceId, castInstanceId, patternId, maxConcurrent, false);
+        }
+
+        public bool TryReserve(int castInstanceId, int areaId, string patternId, int maxConcurrent)
+        {
+            return Reserve(castInstanceId, areaId, patternId, maxConcurrent, false);
+        }
+
+        public bool TryReserveWithinTotal(int castInstanceId, int areaId, string patternId, int maxTotal)
+        {
+            return Reserve(castInstanceId, areaId, patternId, maxTotal, true);
+        }
+
+        // limitIsTotal이 참이면 limit을 보스의 모든 장판 수와 비교하고 거짓이면 같은 패턴의 장판 수와 비교한다. 검사와 예약이 한 번에 이뤄진다
+        private bool Reserve(int castInstanceId, int areaId, string patternId, int limit, bool limitIsTotal)
+        {
+            if ((castInstanceId == CombatIds.NONE) || (areaId == CombatIds.NONE) || string.IsNullOrEmpty(patternId))
             {
                 return false;
             }
 
             int samePattern = 0;
+            int total = 0;
             Slot free = null;
             for (int i = 0; i < _slots.Length; ++i)
             {
@@ -108,33 +130,36 @@ namespace Shinshi.AI
                     continue;
                 }
 
-                // 같은 시전 번호의 예약이 이미 있으면 두 번 세지 않는다
-                if (slot.CastInstanceId == castInstanceId)
+                // 같은 장판 번호의 예약이 이미 있으면 두 번 세지 않는다. 같은 시전의 다른 장판은 별개다
+                if (slot.AreaId == areaId)
                 {
                     return false;
                 }
 
+                ++total;
                 if (slot.PatternId == patternId)
                 {
                     ++samePattern;
                 }
             }
 
-            if ((free == null) || ((maxConcurrent > 0) && (samePattern >= maxConcurrent)))
+            int counted = limitIsTotal ? total : samePattern;
+            if ((free == null) || ((limit > 0) && (counted >= limit)))
             {
                 return false;
             }
 
             free.State          = ESlotState.Reserved;
+            free.AreaId         = areaId;
             free.CastInstanceId = castInstanceId;
             free.PatternId      = patternId;
             ++_reservedCount;
             return true;
         }
 
-        public void ReleaseReservation(int castInstanceId)
+        public void ReleaseReservation(int areaId)
         {
-            Slot slot = Find(castInstanceId, ESlotState.Reserved);
+            Slot slot = Find(areaId, ESlotState.Reserved);
             if (slot != null)
             {
                 Free(slot);
@@ -143,7 +168,7 @@ namespace Shinshi.AI
 
         public bool TryActivate(in BossAreaSpec spec)
         {
-            Slot slot = Find(spec.CastInstanceId, ESlotState.Reserved);
+            Slot slot = Find(spec.AreaId, ESlotState.Reserved);
             if (slot == null)
             {
                 return false;
@@ -162,8 +187,8 @@ namespace Shinshi.AI
             --_reservedCount;
             ++_activeCount;
 
-            _listener?.OnAreaActivated(spec.CastInstanceId, spec.Center, spec.Radius, spec.DurationSeconds, spec.TickInterval,
-                spec.ActivateServerTime);
+            _listener?.OnAreaActivated(spec.CastInstanceId, spec.AreaId, spec.Center, spec.Radius, spec.DurationSeconds,
+                spec.TickInterval, spec.ActivateServerTime);
             return true;
         }
 
@@ -239,11 +264,11 @@ namespace Shinshi.AI
             return Math.Max(1, (int)Math.Ceiling(((double)durationSeconds / tickInterval) - ROUND_EPSILON));
         }
 
-        private Slot Find(int castInstanceId, ESlotState state)
+        private Slot Find(int areaId, ESlotState state)
         {
             for (int i = 0; i < _slots.Length; ++i)
             {
-                if ((_slots[i].State == state) && (_slots[i].CastInstanceId == castInstanceId))
+                if ((_slots[i].State == state) && (_slots[i].AreaId == areaId))
                 {
                     return _slots[i];
                 }
@@ -256,6 +281,12 @@ namespace Shinshi.AI
         private void Advance(Slot slot, double serverTime)
         {
             BossAreaSpec spec = slot.Spec;
+
+            if (spec.SkipMissedRounds)
+            {
+                AdvanceLatestOnly(slot, serverTime);
+                return;
+            }
 
             while (slot.NextHit < slot.HitCount)
             {
@@ -273,6 +304,30 @@ namespace Shinshi.AI
             {
                 End(slot, EBossAreaEnd.Expired, spec.ActivateServerTime + spec.DurationSeconds);
             }
+        }
+
+        // 지연된 틱에서 장판 하나당 한 회만 판정한다. 가장 최근 도래한 회차만 현재 위치로 판정하고 이전 회차는 건너뛰며 다음 회차는 원래 활성 시각 기준이다
+        // 종료 시각이 지났으면 미처리 회차 없이 종료한다. 이 제한은 장판 하나 안에서만 적용돼 서로 다른 장판의 중첩 피해를 막지 않는다
+        private void AdvanceLatestOnly(Slot slot, double serverTime)
+        {
+            BossAreaSpec spec = slot.Spec;
+            double endTime = spec.ActivateServerTime + spec.DurationSeconds;
+
+            if (serverTime >= endTime)
+            {
+                End(slot, EBossAreaEnd.Expired, endTime);
+                return;
+            }
+
+            int due = (int)Math.Floor(((serverTime - spec.ActivateServerTime) / spec.TickInterval) + ROUND_EPSILON);
+            due = Math.Min(due, slot.HitCount - 1);
+            if (due < slot.NextHit)
+            {
+                return;
+            }
+
+            Hit(slot, due, spec.ActivateServerTime + (due * (double)spec.TickInterval));
+            slot.NextHit = due + 1;
         }
 
         // 회차마다 현재 범위 안을 다시 조회하고 대상당 한 번 요청한다, 회차마다 새 동작 번호를 쓰고 시전 번호는 유지한다
@@ -295,14 +350,15 @@ namespace Shinshi.AI
             }
 
             _buffer.Clear();
-            _listener?.OnAreaTick(spec.CastInstanceId, hitIndex, roundTime, hitCount);
+            _listener?.OnAreaTick(spec.CastInstanceId, spec.AreaId, hitIndex, roundTime, hitCount);
         }
 
         private void End(Slot slot, EBossAreaEnd end, double endServerTime)
         {
             int castInstanceId = slot.Spec.CastInstanceId;
+            int areaId         = slot.Spec.AreaId;
             Free(slot);
-            _listener?.OnAreaEnded(castInstanceId, end, endServerTime);
+            _listener?.OnAreaEnded(castInstanceId, areaId, end, endServerTime);
         }
 
         // 슬롯을 돌려준다, 상태로 어느 개수에서 뺄지 정하므로 한 번만 돌아온다
@@ -318,6 +374,7 @@ namespace Shinshi.AI
             }
 
             slot.State          = ESlotState.Free;
+            slot.AreaId         = CombatIds.NONE;
             slot.CastInstanceId = CombatIds.NONE;
             slot.PatternId      = null;
         }

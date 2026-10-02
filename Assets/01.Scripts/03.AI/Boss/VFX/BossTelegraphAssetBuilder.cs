@@ -37,6 +37,12 @@ namespace Shinshi.Editor
         private const string RECT_POOL_NAME       = "Rect Pool";
         private const int    POOL_CAPACITY        = 4;
 
+        // 직사각형 풀은 예고와 투사체 비행이 함께 쓴다. 2페이즈 P05는 한 시전에 세 발이 동시에 날아서 다른 풀보다 크게 잡는다
+        private const int    RECT_POOL_CAPACITY   = 8;
+
+        // 장판 풀은 활성 장판과 옅어지는 중인 장판이 함께 쓴다. 2페이즈 P04는 보스 전체 상한 3개가 동시에 있고 사라지는 연출이 겹치므로 크게 잡는다
+        private const int    AREA_POOL_CAPACITY   = 6;
+
         /****************************************
         *                 Menu
         ****************************************/
@@ -149,9 +155,9 @@ namespace Shinshi.Editor
                 SetReference(sectorPool, "_prefab", sectorPrefab);
                 SetInt(sectorPool, "_capacity", POOL_CAPACITY);
                 SetReference(rectPool, "_prefab", rectPrefab);
-                SetInt(rectPool, "_capacity", POOL_CAPACITY);
+                SetInt(rectPool, "_capacity", RECT_POOL_CAPACITY);
                 SetReference(areaPool, "_prefab", areaPrefab);
-                SetInt(areaPool, "_capacity", POOL_CAPACITY);
+                SetInt(areaPool, "_capacity", AREA_POOL_CAPACITY);
                 SetReference(presenter, "_areaPool", areaPool);
                 SetReference(presenter, "_sectorPool", sectorPool);
                 SetReference(presenter, "_rectPool", rectPool);

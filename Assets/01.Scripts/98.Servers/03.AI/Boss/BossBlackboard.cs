@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Shinshi.Combat;
 
 using BossDefinition    = Shinshi.Data.BossPatternCatalogSO.BossDefinition;
+using EPatternGroup     = Shinshi.Data.BossPatternCatalogSO.EPatternGroup;
 using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
@@ -36,6 +37,15 @@ namespace Shinshi.AI
         public IBossPatternCatalog        Catalog       { get; set; }
         public IBossRandom                Random        { get; set; }
 
+        /// <summary> 2페이즈 선택의 체력 구간 판정이 읽는다 </summary>
+        public IBossVitals                Vitals        { get; set; }
+
+        /// <summary> 2페이즈 선택이 실행 가능한 후보만 남길 때 읽는다 </summary>
+        public IBossPatternFactory        Patterns      { get; set; }
+
+        /// <summary> 직전에 예고를 시작한 패턴의 그룹, 기록이 없으면 None이고 첫 선택의 흐름 배율은 1이다 </summary>
+        public EPatternGroup              LastGroup     { get; private set; }
+
         /// <summary> 이 서버 시각 전에는 새 선택을 하지 않는다 </summary>
         public double                     NextSelectionTime { get; set; }
 
@@ -55,15 +65,55 @@ namespace Shinshi.AI
         *                Methods
         ****************************************/
 
-        /// <summary> 예고를 실제로 시작한 패턴을 기록한다, 직접 제어로 끊겨도 기록은 남는다 </summary>
-        public void RecordUse(string patternId)
+        /// <summary> 예고를 실제로 시작한 패턴과 그 그룹을 기록한다, 직접 제어로 끊겨도 기록은 남는다 </summary>
+        public void RecordUse(string patternId, EPatternGroup group = EPatternGroup.None)
         {
+            LastGroup = group;
+
             for (int i = RECENT_HISTORY_SIZE - 1; i > 0; --i)
             {
                 _recent[i] = _recent[i - 1];
             }
 
             _recent[0] = patternId;
+        }
+
+        // 데이터가 지정됐고 팩토리가 만들 수 있는 정의만 실행 가능하다. 확인 인터페이스가 없는 쪽은 가능한 것으로 본다
+        /// <summary> 2페이즈 이상 선택이 후보로 쓸 수 있는 정의인가, 선택 중 null 생성 오류가 반복되지 않게 미리 거른다 </summary>
+        public bool IsExecutable(PatternDefinition pattern)
+        {
+            if ((Catalog is IBossPatternReadiness data) && (!data.IsPatternReady(Boss.DefinitionId, pattern)))
+            {
+                return false;
+            }
+
+            return (!(Patterns is IBossPatternAvailability implementation)) || implementation.CanCreate(pattern);
+        }
+
+        /// <summary> 현재 페이즈에 실행 가능한 후보가 하나라도 있는가, 후보 버퍼를 덮어쓴다 </summary>
+        public bool HasExecutableCandidate()
+        {
+            Catalog.CollectPatterns(Boss.DefinitionId, Phase, Candidates);
+            for (int i = 0; i < Candidates.Count; ++i)
+            {
+                if (IsExecutable(Candidates[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary> 최근 사용 기록과 직전 그룹을 비운다, 페이즈 전환이 부른다 </summary>
+        public void ResetHistory()
+        {
+            for (int i = 0; i < RECENT_HISTORY_SIZE; ++i)
+            {
+                _recent[i] = null;
+            }
+
+            LastGroup = EPatternGroup.None;
         }
 
         /// <summary> 직전 0, 2회 전 1, 3회 전 2, 없으면 RecentSlotNone, 같은 ID가 여럿이면 가장 최근 것 </summary>

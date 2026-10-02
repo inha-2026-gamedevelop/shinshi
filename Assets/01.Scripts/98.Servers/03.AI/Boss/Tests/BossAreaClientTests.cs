@@ -131,17 +131,17 @@ namespace Shinshi.Tests
             public readonly Dictionary<int, BossAreaTrack> Areas = new Dictionary<int, BossAreaTrack>();
             public List<int> TickLog = new List<int>();
 
-            public void OnTelegraphStarted(int castInstanceId, Vector3 center, float radius, float telegraphSeconds)
+            public void OnTelegraphStarted(int castInstanceId, int areaId, Vector3 center, float radius, float telegraphSeconds)
             {
                 Cast = new BossTelegraphCast(BossTelegraphStart.Circle(BOSS_ID, castInstanceId, P05_ID, center, radius, Now, telegraphSeconds));
             }
 
-            public void OnCancelled(int castInstanceId, EBossInterruptReason reason)
+            public void OnCancelled(int castInstanceId, int areaId, EBossInterruptReason reason)
             {
                 Cast.TryCancel();
             }
 
-            public void OnAreaActivated(int castInstanceId, Vector3 center, float radius, float durationSeconds, float tickInterval,
+            public void OnAreaActivated(int castInstanceId, int areaId, Vector3 center, float radius, float durationSeconds, float tickInterval,
                 double activateServerTime)
             {
                 Areas[castInstanceId] = new BossAreaTrack(new BossAreaStart(BOSS_ID, castInstanceId, center, radius, durationSeconds,
@@ -149,13 +149,13 @@ namespace Shinshi.Tests
                 Cast.TryStrike(activateServerTime);
             }
 
-            public void OnAreaTick(int castInstanceId, int hitIndex, double roundServerTime, int hitCount)
+            public void OnAreaTick(int castInstanceId, int areaId, int hitIndex, double roundServerTime, int hitCount)
             {
                 Areas[castInstanceId].TryTick(hitIndex, roundServerTime);
                 TickLog.Add(hitIndex);
             }
 
-            public void OnAreaEnded(int castInstanceId, EBossAreaEnd end, double endServerTime)
+            public void OnAreaEnded(int castInstanceId, int areaId, EBossAreaEnd end, double endServerTime)
             {
                 if (end == EBossAreaEnd.Expired)
                 {
