@@ -56,6 +56,7 @@ namespace Shinshi.Tests
         public int                   OwnerCombatId { get; set; }
         public Vector3               Position      { get; set; }
         public Vector3               Forward       { get; set; } = Vector3.forward;
+        public float                 BodyRadius    { get; set; }
     }
 
     internal sealed class FakeTargetQuery : ICombatTargetQuery
