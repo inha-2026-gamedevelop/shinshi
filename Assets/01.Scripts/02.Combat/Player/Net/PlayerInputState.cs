@@ -223,6 +223,29 @@ namespace Shinshi.Combat
         *            Client Requests
         ****************************************/
 
+        /// <summary> 기술이 다시 쓸 수 있게 되는 서버 시각, 강림은 세 칸이 공용 값 하나를 쓴다 </summary>
+        public double GetSkillReadyAt(ESkillRequestKind kind, byte slot)
+        {
+            if (kind == ESkillRequestKind.Ascension)
+            {
+                return _ascensionReadyAt;
+            }
+
+            switch (slot)
+            {
+                case Constants.Combat.SKILL_SLOT_Q:
+                    return _skillQReadyAt;
+                case Constants.Combat.SKILL_SLOT_W:
+                    return _skillWReadyAt;
+                case Constants.Combat.SKILL_SLOT_E:
+                    return _skillEReadyAt;
+                case Constants.Combat.SKILL_SLOT_R:
+                    return _skillRReadyAt;
+                default:
+                    return 0.0;
+            }
+        }
+
         /// <summary> 클릭한 지면 좌표로 이동을 요청한다, 소유 클라이언트에서만 동작한다 </summary>
         public void RequestMove(Vector3 destination)
         {

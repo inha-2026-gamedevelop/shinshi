@@ -107,6 +107,7 @@ GameObject:
   - component: {fileID: 2066583378322049471}
   - component: {fileID: 4676749000467046556}
   - component: {fileID: 6912862041508884124}
+  - component: {fileID: 129413589570490458}
   m_Layer: 0
   m_Name: PF_NetPlayer
   m_TagString: Untagged
@@ -286,3 +287,15 @@ MonoBehaviour:
   _invalidColor: {r: 1, g: 0.25, b: 0.2, a: 0.8}
   _lineWidth: 0.08
   _groundLift: 0.05
+--- !u!114 &129413589570490458
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea382e913d5cb7c48ac23310171cde38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.LocalPlayerHudBinder

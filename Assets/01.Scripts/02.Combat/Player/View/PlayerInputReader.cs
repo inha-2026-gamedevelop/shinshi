@@ -241,7 +241,7 @@ namespace Shinshi.Combat
                 return false;
             }
 
-            bool isReady = SkillInputRules.IsReady(GetReadyAt(kind, slot), NetworkTime.time, GameDB.Player.InputBufferSeconds);
+            bool isReady = SkillInputRules.IsReady(_input.GetSkillReadyAt(kind, slot), NetworkTime.time, GameDB.Player.InputBufferSeconds);
             ESkillInputDecision decision = SkillInputRules.DecideKey(aimMode, isReady, _isTargeting, _targetKind, _targetSlot,
                 kind, slot);
             switch (decision)
@@ -297,28 +297,6 @@ namespace Shinshi.Combat
             }
 
             return ESkillInputKey.None;
-        }
-
-        private double GetReadyAt(ESkillRequestKind kind, byte slot)
-        {
-            if (kind == ESkillRequestKind.Ascension)
-            {
-                return _input.AscensionReadyAt;
-            }
-
-            switch (slot)
-            {
-                case Constants.Combat.SKILL_SLOT_Q:
-                    return _input.SkillQReadyAt;
-                case Constants.Combat.SKILL_SLOT_W:
-                    return _input.SkillWReadyAt;
-                case Constants.Combat.SKILL_SLOT_E:
-                    return _input.SkillEReadyAt;
-                case Constants.Combat.SKILL_SLOT_R:
-                    return _input.SkillRReadyAt;
-                default:
-                    return 0.0;
-            }
         }
 
         // 방향 기술은 입력 순간의 커서 방향, 자기 위치 기술은 시전자 위치로 보낸다. 서버는 방향 기술의 지점을 쓰지 않는다

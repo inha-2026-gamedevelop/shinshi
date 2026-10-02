@@ -34,7 +34,7 @@ namespace Shinshi.Combat
 
         // 서버가 PlayerServer를 만들 때 세션 결합의 직업(API 교환 응답)으로 정한다. 값 0이 무사라 직렬화 초기값만 무사이고,
         // 서버 판정은 이 값을 읽지 않고 PlayerServer가 받은 직업을 쓴다
-        [SyncVar]
+        [SyncVar(hook = nameof(OnPlayerClassChanged))]
         private EPlayerClass _playerClass = EPlayerClass.Warrior;
         [SyncVar] private int _combatId;
 
@@ -77,6 +77,7 @@ namespace Shinshi.Combat
         // 전용 서버에서는 hook이 불리지 않으므로 표현과 UI만 구독한다
         public event Action<float, float>           HealthChanged;
         public event Action<EParticipantLifeState> LifeStateChanged;
+        public event Action<EPlayerClass>          PlayerClassChanged;
 
         /****************************************
         *                Server
@@ -151,6 +152,11 @@ namespace Shinshi.Combat
         private void OnLifeStateChanged(EParticipantLifeState previous, EParticipantLifeState next)
         {
             LifeStateChanged?.Invoke(next);
+        }
+
+        private void OnPlayerClassChanged(EPlayerClass previous, EPlayerClass next)
+        {
+            PlayerClassChanged?.Invoke(next);
         }
     }
 }
