@@ -1108,9 +1108,9 @@ namespace Shinshi.Tests
             Assert.Throws<ArgumentNullException>(() => new BossAreaManager(null));
         }
 
-        // 서버가 읽는 에셋 값이 기획 표의 P05와 같고 가중치는 그대로이며, 남은 IsTuned 오류는 보스 기본값뿐이다
+        // 서버가 읽는 에셋 값이 기획 표의 P05와 같고 가중치는 그대로이며, 보스 기본값까지 입력돼 IsTuned 오류가 없다
         [Test]
-        public void CatalogAsset_P05_HasPlannedValues_AndRemainingTuningErrorsAreBossBasicsOnly()
+        public void CatalogAsset_P05_HasPlannedValues_AndBossIsTuned()
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assert.IsTrue(catalog.TryGetPattern(P05_ID, out PatternDefinition p05));
@@ -1135,12 +1135,8 @@ namespace Shinshi.Tests
             List<string> errors = new List<string>();
             catalog.ValidateTuning("boss_wolbaek", errors);
             string all = string.Join("\n", errors);
-            Assert.IsFalse(catalog.IsTuned("boss_wolbaek"));
-            Assert.AreEqual(3, errors.Count, all);
-            StringAssert.DoesNotContain("wolbaek_p0", all);
-            StringAssert.Contains("ArenaDiameter", all);
-            StringAssert.Contains("HealthRef", all);
-            StringAssert.Contains("PhaseTransitionHealthRate", all);
+            Assert.IsTrue(catalog.IsTuned("boss_wolbaek"));
+            Assert.AreEqual(0, errors.Count, all);
         }
 
         // 팩토리 시험용 이동 창구, 이동 자체는 쓰지 않는다

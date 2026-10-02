@@ -793,7 +793,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void CatalogAsset_P02HasConfirmedValuesAndBossStaysUntuned()
+        public void CatalogAsset_P02HasConfirmedValuesAndBossIsTuned()
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assert.IsNotNull(catalog);
@@ -813,7 +813,7 @@ namespace Shinshi.Tests
             // 임시값, 확정 밸런스가 아니다
             Assert.AreEqual(0.5f, p02.RecoverySeconds);
 
-            Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
+            Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
         }
     }
 }
