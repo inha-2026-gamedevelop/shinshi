@@ -49,7 +49,7 @@ Assets/
 │ │ │   ├ Settlement/ 정산 요청·원장·규칙
 │ │ │   └ Reward/     보스 보상·적 드롭 판정
 │ │ ├ 02.Combat/      서버 전투 틱·Player/·Damage/·Skill/·Boss/
-│ │ ├ 03.AI/          Boss/(보스 두뇌·패턴), Spawn/(스폰 경계 계약)
+│ │ ├ 03.AI/          Boss/(보스 두뇌·패턴), Enemy/(근접·돌진 산귀 두뇌 프로토타입), Spawn/(스폰 경계 계약)
 │ │ └ 04.Systems/Wave/ 웨이브 경계 계약 (실행 구현 예정)
 │ └ 99.Dev/           개발·디버그 도구 (Shinshi.Dev 어셈블리) - 출시 빌드 제외 대상
 ├ 09.Data/            GameDB ScriptableObject 에셋 - 16장
@@ -70,7 +70,7 @@ deploy/               API 컨테이너·게임 서버 systemd 배포 템플릿�
 tools/                Start-M2.ps1 등 실행 보조 스크립트
 ```
 
-전투 구현 경로는 `02.Combat/Player/`·`Damage/`·`Skill/`이고, 서버의 보스 몸체는 `98.Servers/02.Combat/Boss/`, 보스 두뇌와 패턴은 `98.Servers/03.AI/Boss/`다. 위 목록에서 예정으로 표시한 산귀 AI·웨이브 실행 클래스는 아직 없다. 배포 템플릿과 실행 보조 스크립트의 존재는 서버 빌드·M2·배포 실행 성공을 뜻하지 않는다.
+전투 구현 경로는 `02.Combat/Player/`·`Damage/`·`Skill/`이고, 서버의 보스 몸체는 `98.Servers/02.Combat/Boss/`, 보스 두뇌와 패턴은 `98.Servers/03.AI/Boss/`다. 일반 적(산귀)은 근접·돌진 두뇌 프로토타입만 `98.Servers/03.AI/Enemy/`에 있고, 원거리·정예 산귀와 웨이브 실행 클래스는 아직 없다. 배포 템플릿과 실행 보조 스크립트의 존재는 서버 빌드·M2·배포 실행 성공을 뜻하지 않는다.
 
 외부 Asset Store 에셋은 `99.ThirdParty/{분류}/{에셋}/`에 둔다. Unity 에디터에서 `.meta`와 GUID를 유지하며 옮기고, 내부의 `Editor/`와 `Resources/` 구조를 보존한다. `Plugins/TextMesh Pro/` 필수 리소스와 `Gizmos/`의 위치 예외, 설치 버전과 승인된 경로 보정은 [에셋 대장](licenses/ASSET_REGISTRY.md)을 따른다. 업데이트 후에는 중복 패키지와 대장의 경로 보정을 다시 확인한다. 어떤 플러그인을 무엇에 쓰는지는 23장.
 

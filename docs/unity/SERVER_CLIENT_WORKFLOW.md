@@ -56,6 +56,7 @@ Assets/01.Scripts/
     01.Network/Session/                {팀장}: 출정 진행·명단 (Events/ 저장, Settlement/ 정산, Reward/ 드롭)
     02.Combat/                         전투 담당: 서버 틱·Player/·Damage/·Skill/·Boss/(보스 몸체)
     03.AI/Boss/                        AI 담당·{팀장}: 보스 두뇌·패턴
+    03.AI/Enemy/                       AI 담당·{팀장}: 일반 적 두뇌(근접·돌진 프로토타입)
     03.AI/Spawn/                       AI 담당·{팀장}: 스폰 계약 (구현 예정)
     04.Systems/Wave/                   웨이브 담당·{팀장}: 웨이브 계약 (구현 예정)
   99.Dev/                               Shinshi.Dev
