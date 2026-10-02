@@ -128,6 +128,7 @@
 |---|---|
 | `PlayerInputState` | 소유 클라이언트의 요청을 Command로 서버 처리기 인터페이스에 전달. session epoch·sequence·입력 서버 시각은 서버에서 검증하며 승인 순번·참가자·권위 이동·쿨다운 등은 소유자에게 동기화 |
 | `PlayerCombatState` | 서버가 확정한 HP·생사·기력·공명·기술 단계·조준 상태를 동기화하며 클라이언트 hook은 표현 갱신에 사용 |
+| `CompanionCombatState` | 서버 스포너가 소환 때 서버 소유로 스폰하고 복귀·재호출 때 내리는 동료 개체. 수명·체력·타깃·yaw를 SyncVar로, 위치는 `NetworkTransformReliable`로 보낸다. Command가 없다 |
 | `CombatServerRuntime`·`PlayerServer` | `Shinshi.Server`에서 이동·피해·사망·기술을 판정. 입력·피해 처리 뒤 세션 종료, 그 뒤 부활 승인·복제 |
 | `PlayerPrediction`·`PlayerMovePredictor` | 소유 클라이언트의 이동 표현을 예측하고 `PlayerMoveAuthority`의 처리 sequence·권위 경로로 재조정. 원격 위치는 서버 권위 `NetworkTransform`으로 보간 |
 | `ShinshiServerAuthenticator` | 인증 전 메시지로 버전·콘텐츠 해시·일회 토큰을 확인. 참가자 결합과 던전 입장 검증 뒤에만 플레이어 생성·Command 허용 |
