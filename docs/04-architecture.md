@@ -40,7 +40,7 @@ Assets/
     01.Network/                 Shinshi.Network, 세션·로비·연결·게이트웨이
       Session/ Lobby/
     02.Combat/                  Shinshi.Combat, 플레이어·피해·기술·소환
-      Player/ Damage/ Skills/
+      Player/ Damage/ Skill/
     03.AI/                      Shinshi.AI, 산귀·월백·출현
       Enemy/ Boss/ Spawn/
     04.Systems/                 Shinshi.Systems, 진행·경제·생활 규칙
@@ -108,12 +108,12 @@ Assets/
 | 현재 구현 영역 | 실제 타입·위치 | 연결 범위·후속 작업 |
 |---|---|---|
 | 연결/인증 | `01.Network/ShinshiNetworkManager`, `ShinshiClientAuthenticator`; 서버 `ShinshiServerAuthenticator`, `SessionBinding`, `ApiJoinTokenVerifier` | Mirror 연결·버전/토큰·참가자 소유 확인. 실제 다인 접속은 미검증 |
-| 서버/API 연결 | `98.Servers/01.Network/BackendGateway`, `HttpClientBackendTransport`, `ServerPresence`, `AccountLeaseReleaser` | 임대·풀 등록·heartbeat·동일 ID 재시도·계정 임대 해제 |
+| 서버/API 연결 | `98.Servers/01.Network/Backend/BackendGateway`, `HttpClientBackendTransport`, `ServerPresence`, `AccountLeaseReleaser` | 임대·풀 등록·heartbeat·동일 ID 재시도·계정 임대 해제 |
 | 프로세스 수명 | `ServerProcessDriver`, `ServerShutdownController`, `UnityServerProcessControl` | 한 출정 뒤 Draining·연결 정리·종료, systemd 새 bootId. Linux 실행 미검증 |
 | 플레이어 입력/상태 | `02.Combat/Player/Net/PlayerInputState`, `PlayerCombatState`; View의 `PlayerInputReader`, `PlayerPrediction`, `PlayerMovePredictor` | 구 Input Manager·입력 순번·소유 예측/재조정 |
 | 플레이어 서버 | `98.Servers/02.Combat/Player/PlayerServer`, `PlayerInputGate`, `MoveRequestThrottle`, `ReconnectVault`, `ReviveBudget` | 이동·기본공격·회피·생사·120초 보존·공용 부활 규칙/처리 |
 | 피해 | `98.Servers/02.Combat/Damage/DamageResolver`, `HitLedger`, `CombatTargetRegistry`; 공용 `DamageRules` | 서버 피해·중복 적중·표적·가시성 검사 |
-| 스킬/동료 | `98.Servers/02.Combat/Skills/SkillServer`, `CompanionServer`, `ResonanceLedger`; `CompanionCombatState`, `ITalismanModifierResolver` | 실행·동료·공명 기반. 부적 modifier의 실제 파트 연결과 보스/적 통합 후속 |
+| 스킬/동료 | `98.Servers/02.Combat/Skill/SkillServer`, `CompanionServer`, `ResonanceLedger`; `CompanionCombatState`, `ITalismanModifierResolver` | 실행·동료·공명 기반. 부적 modifier의 실제 파트 연결과 보스/적 통합 후속 |
 | 보스 | `BossBrain`, `BossCombat`, `BossSelectionTree`, `BossPatternSelector`, `IBossPattern` (서버 뼈대, 구현됨·EditMode만 검증), `WolbaekController`(개체 연결, 미구현) | 상위 FSM→전투(페이즈·공격 FSM, 선택 BT)→가중 선택→패턴 실행. 6패턴·복제·제어 연결은 미구현, 2페이즈는 입력 대기. 계약은 [서버·클라이언트 협업 8장](unity/SERVER_CLIENT_WORKFLOW.md#8-보스-서버-경계) |
 | 세션/보상 | `98.Servers/01.Network/Session/DungeonSessionHost`, `DungeonSession`, `ParticipantRoster`, `LootRoller`, `SettlementLedger`, `SettlementRules` | 세션 규칙·원장·정산안 구현. 호스트의 일반전 CreateNormal/웨이브 source/참가자 효과 연결은 TODO라 6웨이브 완주로 판정하지 않음 |
 | 저장 연결 | `SessionEventQueue`, `HttpBackendEventSink`, `SessionSettlement` | 순번 이벤트·SessionEnded·정산 영수증 연결. 진단 체크포인트 주기 송신 TODO |

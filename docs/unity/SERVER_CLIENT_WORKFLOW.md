@@ -45,13 +45,17 @@ Assets/01.Scripts/
   02.Combat/Player/Rules/                전투 담당: 공용 입력·이동·생사 계산
   02.Combat/Player/View/                 전투 담당: 입력·예측
   02.Combat/Damage/                      전투 담당: 피해 계약·공용 계산
-  02.Combat/Skills/                      전투 담당: 기술 입력·동료 상태
+  02.Combat/Skill/                      전투 담당: 기술 입력·동료 상태
   {NN}.UI/                              UI 담당
   98.Servers/                           Shinshi.Server (UNITY_SERVER || UNITY_EDITOR)
     Shinshi.Server.asmdef               {팀장}
-    01.Network/                        {팀장}: 부트스트랩·인증·게이트웨이·존재 신호·종료
-    01.Network/Session/                {팀장}: 출정 명단·이벤트 저장·드롭·정산
-    02.Combat/                         전투 담당: 서버 틱·Player/·Damage/·Skills/
+    01.Network/Bootstrap/              {팀장}: 부트스트랩·실행 설정·프로세스 제어·종료
+    01.Network/Presence/               {팀장}: 서버 풀 등록·존재 신호
+    01.Network/Backend/                {팀장}: 백엔드 게이트웨이·HTTP 전송·서버 자격
+    01.Network/Auth/                   {팀장}: 입장 토큰 검증·인증 대기·참가 명단
+    01.Network/Session/                {팀장}: 출정 진행·명단 (Events/ 저장, Settlement/ 정산, Reward/ 드롭)
+    02.Combat/                         전투 담당: 서버 틱·Player/·Damage/·Skill/·Boss/(보스 몸체)
+    03.AI/Boss/                        AI 담당·{팀장}: 보스 두뇌·패턴
     03.AI/Spawn/                       AI 담당·{팀장}: 스폰 계약 (구현 예정)
     04.Systems/Wave/                   웨이브 담당·{팀장}: 웨이브 계약 (구현 예정)
   99.Dev/                               Shinshi.Dev
@@ -91,7 +95,7 @@ Assets/01.Scripts/
 
 | 기능 | Runtime·Contracts 원본 | Server 구현 |
 |---|---|---|
-| 연결·입장 | [ShinshiNetworkManager](../../Assets/01.Scripts/01.Network/ShinshiNetworkManager.cs), [ShinshiClientAuthenticator](../../Assets/01.Scripts/01.Network/ShinshiClientAuthenticator.cs), `JoinRequestMessage`·`JoinResponseMessage`·`ServerLinks` | [ServerBootstrap](../../Assets/01.Scripts/98.Servers/01.Network/ServerBootstrap.cs), `ShinshiServerAuthenticator`·`ApiJoinTokenVerifier`·`ServerSessionRegistry`·`SessionBinding` |
+| 연결·입장 | [ShinshiNetworkManager](../../Assets/01.Scripts/01.Network/ShinshiNetworkManager.cs), [ShinshiClientAuthenticator](../../Assets/01.Scripts/01.Network/ShinshiClientAuthenticator.cs), `JoinRequestMessage`·`JoinResponseMessage`·`ServerLinks` | [ServerBootstrap](../../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerBootstrap.cs), `ShinshiServerAuthenticator`·`ApiJoinTokenVerifier`·`ServerSessionRegistry`·`SessionBinding` |
 | 입력·이동·생사 | [PlayerInputState](../../Assets/01.Scripts/02.Combat/Player/Net/PlayerInputState.cs), `PlayerCombatState`, `PlayerInputHeader`, `PlayerMoveAuthority`, `Player/Rules/`, `PlayerInputReader`·`PlayerPrediction` | [CombatServerRuntime](../../Assets/01.Scripts/98.Servers/02.Combat/CombatServerRuntime.cs), `PlayerServer`·`PlayerInputGate`·`ReconnectVault`·`ReviveBudget` |
 | 피해·기술 | [피해 계약](../../Assets/01.Scripts/02.Combat/Damage/IDamageResolver.cs), `DamageRules`, `PlayerSkillInput`·`CompanionCombatState` | `DamageResolver`·`HitLedger`·`CombatTargetRegistry`, `SkillServer`·`CompanionServer`·`ResonanceLedger` |
 | 출정·개인 보상 | [Sessions DTO](../../Assets/01.Scripts/00.Common/Contracts/Sessions/GameServerRoutes.cs), [Reservations DTO](../../Assets/01.Scripts/00.Common/Contracts/Reservations/ReservationRequest.cs) | [DungeonSessionHost](../../Assets/01.Scripts/98.Servers/01.Network/Session/DungeonSessionHost.cs), `DungeonSession`·`ParticipantRoster`·`SessionEventQueue`·`LootRoller`·`SessionSettlement`·`SettlementRules` |
@@ -215,4 +219,4 @@ Assets/01.Scripts/
 7. 마을 연결 종료는 참가자 키를 지우고 `AccountLeaseReleaser`로 계정 접속 임대 해제를 보낸다. 시작 전 던전 끊김은 start를 막고 예약 만료를 기다린다. 던전 입장자의 계정 임대 이관이 모두 확정된 뒤 같은 참가자 집합·operationId로 start를 요청하고 영수증을 받아 Running에 들어간다.
 8. 서비스 자격이 있으면 `ServerPresence`가 임대 발급 → 새 bootId로 풀 등록 → heartbeat를 수행한다. 던전은 출정 하나가 끝나면 `ServerShutdownController`가 드레인을 요청하고 결과 확인 유예·연결 종료·전송 flush 뒤 프로세스를 종료한다. systemd 던전 유닛은 `Restart=always`로 새 프로세스·새 bootId를 띄운다. 이 애플리케이션 종료 경로와 OS `SIGTERM`의 자동 드레인 연동은 구분하며, 후자의 실행 검증 근거는 없다.
 
-에디터·개발 빌드의 기본 검증기는 `dev`이고 형식만 확인한다. `JOIN_TOKEN_VERIFIER=api` 또는 `-join-verifier api`와 서비스 자격을 넣어 API 경로를 시험한다. 개발 저장 경로는 경제 결과를 남기지 않는다. 출시 빌드는 개발 검증기를 포함하지 않는다. 실제 실행 설정·자격 공급은 [BackendLaunchSettings](../../Assets/01.Scripts/98.Servers/01.Network/BackendLaunchSettings.cs)와 [서버 운영 원칙](NETWORK_AUTHORITY.md) 7장을 따른다.
+에디터·개발 빌드의 기본 검증기는 `dev`이고 형식만 확인한다. `JOIN_TOKEN_VERIFIER=api` 또는 `-join-verifier api`와 서비스 자격을 넣어 API 경로를 시험한다. 개발 저장 경로는 경제 결과를 남기지 않는다. 출시 빌드는 개발 검증기를 포함하지 않는다. 실제 실행 설정·자격 공급은 [BackendLaunchSettings](../../Assets/01.Scripts/98.Servers/01.Network/Backend/BackendLaunchSettings.cs)와 [서버 운영 원칙](NETWORK_AUTHORITY.md) 7장을 따른다.
