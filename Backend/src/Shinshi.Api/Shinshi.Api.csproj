@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../Shinshi.Contracts/Shinshi.Contracts.csproj" />
+    <ProjectReference Include="../Shinshi.Data/Shinshi.Data.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.12" />
+  </ItemGroup>
+</Project>
