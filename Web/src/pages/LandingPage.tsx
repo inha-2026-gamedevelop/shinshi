@@ -1,10 +1,13 @@
 import { useAuth } from '../auth/AuthContext';
-import { Button, LinkButton } from '../components/ui';
+import { Button, LinkButton, buttonClass } from '../components/ui';
+
+const DOWNLOAD_URL = (import.meta.env.VITE_LAUNCHER_DOWNLOAD_URL ?? '').trim();
+const HAS_DOWNLOAD = DOWNLOAD_URL.startsWith('/downloads/') || DOWNLOAD_URL.startsWith('https://');
 
 const FEATURES = [
   { title: '하나의 계정', body: '홈페이지에서 만든 아이디로 런처에 바로 로그인합니다.' },
   { title: '나만의 이름', body: '캐릭터 이름이 곧 닉네임입니다. 게임 안에서 정하고, 겹치지 않습니다.' },
-  { title: '런처로 시작', body: '런처가 업데이트와 접속을 맡습니다. 내려받기는 준비 중입니다.' },
+  { title: '런처로 시작', body: HAS_DOWNLOAD ? '런처에서 게임을 설치하고 홈페이지 계정으로 접속합니다.' : '런처가 업데이트와 접속을 맡습니다. 내려받기는 준비 중입니다.' },
 ];
 
 export function LandingPage() {
@@ -60,15 +63,19 @@ export function LandingPage() {
                 </LinkButton>
               </>
             )}
-            <Button variant="secondary" disabled aria-describedby="launcher-status" className="sm:min-w-40">
+            {HAS_DOWNLOAD ? (
+              <a href={DOWNLOAD_URL} download className={buttonClass('secondary', 'sm:min-w-40')} aria-describedby="launcher-status">
+                런처 내려받기
+              </a>
+            ) : <Button variant="secondary" disabled aria-describedby="launcher-status" className="sm:min-w-40">
               <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               런처 내려받기
-            </Button>
+            </Button>}
           </div>
           <p id="launcher-status" className="mt-3 text-[13px] text-muted">
-            런처 내려받기는 준비 중입니다.
+            {HAS_DOWNLOAD ? 'Windows 64비트 · 압축 해제 후 ShinshiLauncher.exe 실행 → 설치 → 로그인 → 게임 시작' : '런처 내려받기는 준비 중입니다.'}
           </p>
         </div>
       </section>

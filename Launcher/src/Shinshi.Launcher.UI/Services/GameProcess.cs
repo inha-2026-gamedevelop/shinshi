@@ -23,12 +23,13 @@ namespace Shinshi.Launcher.Services
 
         private Process? _process;
         private int      _isRunning;
+        private string?  _installRoot;
 
         /****************************************
         *              Properties
         ****************************************/
 
-        // 런처가 시작하지 않은 게임(직접 실행, 런처 재시작 전 실행)도 업데이트를 막아야 하므로 이름으로도 확인한다
+        // 직접 실행한 설치본도 막되 같은 이름의 데디서버는 패치 대상 파일을 쓰지 않으므로 제외한다.
         public bool IsRunning => (Volatile.Read(ref _isRunning) != 0) || IsAnyGameProcessAlive();
 
         // 스레드 풀에서 불린다. 받는 쪽이 UI 스레드로 넘긴다
@@ -37,6 +38,13 @@ namespace Shinshi.Launcher.Services
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 실행 중 검사 범위를 런처가 관리하는 설치 루트로 한정한다 </summary>
+        public void ConfigureInstallRoot(string installRoot)
+        {
+            _installRoot = Path.GetFullPath(installRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+        }
 
         // arguments에는 세션 전달용 파이프 이름과 런처 PID만 싣는다. 토큰은 같은 사용자의 다른 프로세스가 명령줄로 읽을 수 있어 넣지 않는다
         public bool TryStart(string versionPath, string arguments, out int processId, out string error)
@@ -173,13 +181,35 @@ namespace Shinshi.Launcher.Services
             }
         }
 
-        private static bool IsAnyGameProcessAlive()
+        private bool IsAnyGameProcessAlive()
         {
             Process[] processes = Process.GetProcessesByName(PROCESS_NAME);
-            bool isAlive = processes.Length > 0;
+            bool isAlive = false;
             foreach (Process process in processes)
             {
-                process.Dispose();
+                try
+                {
+                    string? path = process.MainModule?.FileName;
+                    if ((_installRoot == null) || (path == null)
+                        || Path.GetFullPath(path).StartsWith(_installRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isAlive = true;
+                    }
+                }
+                catch (Win32Exception)
+                {
+                    // 경로를 읽을 수 없는 실행본은 패치 중 파일 변경을 막는 쪽으로 판정한다.
+                    isAlive = true;
+                }
+                catch (InvalidOperationException)
+                {
+                    // 조회 중 이미 끝난 프로세스는 설치를 막지 않는다.
+                    continue;
+                }
+                finally
+                {
+                    process.Dispose();
+                }
             }
 
             return isAlive;

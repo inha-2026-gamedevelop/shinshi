@@ -162,6 +162,12 @@ namespace Shinshi.Combat
                     continue;
                 }
 
+                // 투명하게 비워진 지붕, 나무를 눌러도 그 뒤에 보이는 땅을 누른 것으로 본다
+                if (OcclusionFadeChannel.IsFaded(hit.point))
+                {
+                    continue;
+                }
+
                 nearest = hit.distance;
                 point   = hit.point;
                 found   = true;

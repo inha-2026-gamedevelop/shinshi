@@ -30,6 +30,22 @@ namespace Shinshi.Backend.Tests.Accounts
         ****************************************/
 
         [PostgresFact]
+        public async Task List_AccountsWithDifferentCharacters_ReturnsOnlyOwnerAndEmptyForUnknownAccount()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresCharacterRepository repository = CreateRepository(database);
+            Guid owner = await AddAccountAsync(database);
+            Guid other = await AddAccountAsync(database);
+            CharacterCreateOutcome mine = await CreateAsync(repository, owner, Guid.NewGuid(), "MyWarrior");
+            await CreateAsync(repository, other, Guid.NewGuid(), "OtherWarrior");
+
+            CharacterRecord character = Assert.Single(await repository.ListAsync(owner));
+            Assert.Equal(owner, character.AccountId);
+            Assert.Equal(mine.Character!.CharacterId, character.CharacterId);
+            Assert.Empty(await repository.ListAsync(Guid.NewGuid()));
+        }
+
+        [PostgresFact]
         public async Task Create_CommitsAndSameOperationReplaysSameCharacter()
         {
             await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();

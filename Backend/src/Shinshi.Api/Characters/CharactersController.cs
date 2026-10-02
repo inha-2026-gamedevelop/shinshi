@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,6 +37,22 @@ namespace Shinshi.Backend.Characters
         {
             _characters   = characters;
             _timeProvider = timeProvider;
+        }
+
+        /// <summary> 인증된 계정의 캐릭터 목록을 반환한다. 계정 ID는 요청에서 받지 않는다 </summary>
+        [HttpGet(ApiRoutes.CHARACTERS)]
+        public async Task<IActionResult> List(CancellationToken cancellationToken)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Guid? accountId = AuthActors.GetPlayer(HttpContext)?.AccountId;
+            if (accountId == null)
+            {
+                return Reject(StatusCodes.Status401Unauthorized, ContractCodes.RejectReason.TOKEN_REVOKED);
+            }
+
+            var characters = await _characters.ListAsync(accountId.Value, cancellationToken);
+            return Ok(new CharacterListResponse(characters.Select(character => ToSummary(character)!).ToArray(),
+                _timeProvider.GetUtcNow().ToUnixTimeMilliseconds()));
         }
 
         /// <summary> 200과 AvailabilityResponse. 입력 중 안내용이며 확정은 생성 요청의 유일 제약이 한다. IP당 1분 30회 </summary>

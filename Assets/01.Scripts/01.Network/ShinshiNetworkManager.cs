@@ -68,6 +68,12 @@ namespace Shinshi.Network
 
             if (!hasAddress)
             {
+#if !UNITY_SERVER
+                if (LauncherSession.State != ELauncherSessionState.NotLaunched)
+                {
+                    gameObject.AddComponent<LauncherTownConnector>().Initialize(this);
+                }
+#endif
                 return;
             }
 

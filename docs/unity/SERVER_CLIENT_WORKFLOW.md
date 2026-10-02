@@ -91,6 +91,8 @@ Assets/01.Scripts/
 
 ## 6. 현재 적용 범위
 
+런처 접속 경로는 `LauncherTownConnector`가 전달받은 게임 세션으로 `GET /v1/characters`를 호출하고, 선택한 캐릭터의 마을 입장권을 요청한 뒤 `ShinshiClientAuthenticator`로 인증한다. 목록 API는 인증된 계정의 캐릭터만 반환한다. 캐릭터가 없으면 테스트용 검사를 생성하는 Bootstrap UI가 있으며, 완성된 로비·게임 플레이 UI는 아니다. 게임 세션 갱신은 미연결이다. Windows IL2CPP 클라이언트 빌드와 관련 자동 테스트는 통과했으나, 이 신규 경로의 마을 접속 화면 확인과 M2 다인 접속 회귀는 검증 대기다.
+
 2026-10-02 작업 트리 기준 다음 타입이 존재한다. 표는 코드의 배치·호출 경계를 설명하며 다인 접속 성공이나 출시 빌드 성공을 뜻하지 않는다.
 
 | 기능 | Runtime·Contracts 원본 | Server 구현 |

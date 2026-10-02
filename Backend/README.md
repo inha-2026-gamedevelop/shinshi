@@ -335,4 +335,6 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 
 **0010 스키마.** `account_credentials`(account_id PK/FK, 소문자 login_id 유일 + 형식 CHECK, password_hash 형식 CHECK, email, email_key, email_verified, created_at, updated_at, `email_verified`인 행만의 email_key 부분 유일 인덱스)와 `characters.name`, `name_key`, `appearance`, `auth_token_families.origin`(`invite`/`password`, 기존 행은 모두 초대 교환으로 만들었으므로 `invite`로 채운 뒤 기본값을 지워 새 묶음은 시작 수단을 반드시 적는다)을 더한다. 기존 캐릭터 행에는 채울 이름이 없어 세 열을 NULL 허용으로 두었다. NULL끼리는 유일 인덱스에서 충돌하지 않고, 이름이 있으면 형식 CHECK와 `name_key = lower(name)`을 지킨다. 임시 이름을 채워 NOT NULL로 만드는 방식은 임시 이름끼리, 또는 나중 실제 이름과 겹칠 수 있고 이름 없이 행을 넣는 기존 코드와 테스트를 깨므로 택하지 않았다. 0010 down은 모든 아이디, 비밀번호 해시, 이메일, 캐릭터 이름을 지우므로 운영 DB에서 실행하지 않는다. 런타임 권한은 위 권한 SQL의 0010 줄이다.
 
-**남은 일.** 인증 메일(그 전까지 `emailVerified=false`, `EMAIL_TAKEN`은 번호만 예약), 비밀번호 찾기, 캐릭터 이름 금칙어, 계정당 캐릭터 수, 캐릭터 목록 조회 경로는 기획 미정이다. 테스트는 `tests/Shinshi.Backend.Tests/Accounts/`에 있다.
+`GET /v1/characters`는 접근 토큰 또는 게임 하위 세션으로 인증된 계정의 `CharacterListResponse`를 반환한다. 계정 ID는 요청에서 받지 않으며 응답은 캐시하지 않는다. Bootstrap 런처 접속 화면에서 캐릭터 선택에 사용한다.
+
+**남은 일.** 인증 메일(그 전까지 `emailVerified=false`, `EMAIL_TAKEN`은 번호만 예약), 비밀번호 찾기, 캐릭터 이름 금칙어, 계정당 캐릭터 수는 기획 미정이다. 테스트는 `tests/Shinshi.Backend.Tests/Accounts/`에 있다.

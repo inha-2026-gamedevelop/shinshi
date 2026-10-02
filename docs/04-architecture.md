@@ -214,7 +214,7 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 
 | 후속 SO 제안 | 주요 데이터 계약 | 책임 파트 |
 |---|---|---|
-| `CameraConfigSO` | 카메라 거리·각도 등 로컬 시점 값 (`09.Data/Combat/` 예정) | 민성 |
+| `CameraConfigSO` | 카메라 줌 3단계 시점(각도·시야각·거리·초점)·전환 시간·가림 투명화 등 로컬 시점 값 (`09.Data/Combat/CameraConfig.asset`) | 민성 |
 | `PresentationConfigSO` | 음향·색·로컬 전용 연출 참조 | 담당 아트/UI |
 
 2026-10-01 사용자 결정으로 공동 소유였던 SO를 한 파트씩으로 나눴다(부적 효과 정의는 민성, 등록·강화 수치는 진욱의 `GrowthConfigSO`, 보상·생활은 진욱, 진행은 기웅). SO 구조 변경은 [밸런스 작업](unity/BALANCE_DATA_WORKFLOW.md) 절차를 따른다. 기술 표를 실제로 도입할 때 [코딩 컨벤션](coding-convention.md)의 SO 대상 표와 연결한다.

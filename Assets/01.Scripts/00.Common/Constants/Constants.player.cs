@@ -20,6 +20,9 @@ namespace Shinshi.Common
             // TODO(민성): 키 변경 옵션이 생기면 InputManager 버튼이나 설정값으로 옮긴다
             public const UnityEngine.KeyCode KEY_DODGE = UnityEngine.KeyCode.Space;
 
+            // 카메라 휠 줌 축 이름. 위로 굴리면 양수이고 카메라가 가까워진다
+            public const string AXIS_CAMERA_ZOOM = "Mouse ScrollWheel";
+
             // 커서 지면 지점을 찾는 레이캐스트 거리(m)와 한 번에 받는 충돌 수. 자기 몸체를 걸러 내야 해서 여러 개를 받는다
             public const float CURSOR_RAYCAST_MAX_DISTANCE = 500f;
             public const int   CURSOR_RAYCAST_MAX_HITS     = 8;

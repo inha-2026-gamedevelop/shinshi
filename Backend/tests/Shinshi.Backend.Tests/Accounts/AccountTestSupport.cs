@@ -456,6 +456,7 @@ namespace Shinshi.Backend.Tests.Accounts
 
         public HashSet<string> TakenKeys { get; } = new HashSet<string>(StringComparer.Ordinal);
         public int CreateCalls { get; private set; }
+        public Guid? ListedAccountId { get; private set; }
 
         /****************************************
         *                Methods
@@ -471,6 +472,12 @@ namespace Shinshi.Backend.Tests.Accounts
         public Task<bool> IsNameTakenAsync(string nameKey, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(TakenKeys.Contains(nameKey));
+        }
+
+        public Task<IReadOnlyList<CharacterRecord>> ListAsync(Guid accountId, CancellationToken cancellationToken = default)
+        {
+            ListedAccountId = accountId;
+            return Task.FromResult<IReadOnlyList<CharacterRecord>>(Array.Empty<CharacterRecord>());
         }
     }
 

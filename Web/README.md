@@ -38,6 +38,8 @@ npm run preview      # 빌드 결과 확인
 
 ## NAS 배치
 
+배포 환경의 `VITE_LAUNCHER_DOWNLOAD_URL`을 `/downloads/런처파일.zip` 또는 HTTPS 주소로 설정하면 홈페이지 런처 다운로드 버튼이 활성화된다. 값이 없으면 준비 중으로 표시한다. 설정 후 다시 빌드해야 한다.
+
 1. `npm run build` 결과인 `dist/`를 NAS 웹 서버 폴더에 올린다.
 2. 역방향 프록시 한 단으로 같은 도메인의 `/v1/*`를 API로 넘긴다. 같은 출처이므로 API에 CORS를 열지 않는다.
 3. 그 밖의 경로는 모두 `index.html`로 돌려보낸다(SPA 경로 `/signup`, `/login`, `/me`, `/recover`).

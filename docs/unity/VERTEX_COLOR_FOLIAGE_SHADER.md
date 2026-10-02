@@ -24,7 +24,7 @@
 
 ```
 Base Color = Base Map(RGB) × Tint × lerp(1, Vertex Color, Vertex Color Strength)
-Alpha      = Base Map(A)     → Alpha Clip Threshold = Alpha Cutoff
+Alpha      = ShinshiOcclusionFade(Base Map(A), 월드 위치, 화면 픽셀)     → Alpha Clip Threshold = Alpha Cutoff
 Smoothness = Smoothness
 ```
 
@@ -46,6 +46,8 @@ Smoothness = Smoothness
 | Render Face | Both | 꽃 · 잎은 뒷면도 보여야 한다 |
 | Allow Material Override | 켬 | 재질마다 Render Face, 그림자 등을 바꿀 수 있다 |
 | Cast / Receive Shadows | 켬 | |
+
+`ShinshiOcclusionFade` Custom Function 노드(`Shaders/OcclusionFade/ShinshiOcclusionFade.hlsl`)는 게임 카메라의 가림 투명화 범위 안에서 알파를 음수로 내려 알파 클립이 픽셀을 버리게 한다. 그림자 패스는 비우지 않는다. 재질에서 Alpha Clipping을 끄면 투명화도 꺼진다.
 
 그래프를 고치면 Shader Graph 창에서 **Save Asset**을 눌러야 반영된다.
 

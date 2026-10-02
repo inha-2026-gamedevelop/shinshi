@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,5 +15,8 @@ namespace Shinshi.Data.Characters
             int classId, string appearanceJson, string requestJson, CancellationToken cancellationToken = default);
 
         Task<bool> IsNameTakenAsync(string nameKey, CancellationToken cancellationToken = default);
+
+        /// <summary> 인증된 계정이 소유한 캐릭터만 ID 순서로 반환한다 </summary>
+        Task<IReadOnlyList<CharacterRecord>> ListAsync(Guid accountId, CancellationToken cancellationToken = default);
     }
 }

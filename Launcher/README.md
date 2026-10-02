@@ -18,6 +18,10 @@ dotnet test Launcher/Shinshi.Launcher.slnx
 
 서비스 상태의 공지 제목(`notice`)이 비어 있으면 `notices` 목록에서 제목이 있는 Launcher 또는 Both 대상의 첫 공지를 표시한다.
 
+런처가 넘긴 게임 세션을 받은 Bootstrap 클라이언트는 계정의 캐릭터 목록을 조회하고 선택한 캐릭터로 마을 입장권을 요청한다. 캐릭터가 없는 계정은 테스트용 검사 캐릭터를 생성할 수 있다. 현재 화면은 접속 검증용이며 완성된 로비나 마을 플레이 화면은 아니다. 게임 세션 갱신은 아직 연결하지 않아 세션 만료 후 새 입장을 요청하려면 게임을 닫고 런처에서 다시 시작해야 한다.
+
+Windows 독립 실행 배포: `dotnet publish Launcher/src/Shinshi.Launcher.UI -c Release -r win-x64 --self-contained true -o <배포폴더>`. 해당 폴더에 `launcher.json`을 넣고 전체를 함께 배포한다. 개발 빌드는 `channel: internal`, `teamBuild: true`로 설정한다. 같은 PC의 데디서버가 설치를 막지 않도록 실행 중 검사는 런처 설치 루트 아래 게임으로 한정한다.
+
 ## 로컬 게시
 
 Unity 빌드(`Shinshi/Build/...` 메뉴)는 끝날 때 `Shinshi_Data/StreamingAssets/build-identity.json`을 쓴다. 게시 도구는 이 파일이 없으면 게임을 게시하지 않는다.
