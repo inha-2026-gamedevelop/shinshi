@@ -166,7 +166,7 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | `GET /v1/operations/{operationId}` | 경로 상수·작업 저장소 존재, HTTP 조회 Controller 미구현 |
 | `POST /v1/auth/game-session` | 경로 상수·인증 저장소 메서드 존재, 발급 Controller·런처 연결 미구현 |
 | 캐릭터 원자 작업·채집 완료 | 7.2의 설계 계약, HTTP 경로/처리 미구현 |
-| 파티 경매 개시/입찰/마감/finish·복구 | API 구현됨·DB 테스트 통과·실제 Unity 서버 연결 미구현(9장) |
+| 파티 경매 개시/입찰/마감/finish·복구 | API·Unity 서버 연결 구현됨·DB 테스트 통과·실제 서버 실행 미검증(9장) |
 | 어드민 P1 이후 기능 | P0 `/admin/v1`은 위 표대로 구현됨(U25). 조건부 일괄 지급·2인 승인, 이벤트, 제재, 해금 조정, 경매 복구 목록, RecoveryPending 상태 세션 처리는 미구현 |
 
 ## 6. 출정 예약과 전장 전환

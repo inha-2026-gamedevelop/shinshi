@@ -199,6 +199,8 @@ namespace Shinshi.Network
                     return;
                 }
 
+                dungeonHost.AuctionAudience = new MirrorAuctionAudience();
+                ConfigureBossAuction(dungeonHost);
                 CombatServerInstaller.Runtime.BindSession(dungeonHost);
                 manager.PlayerRetention = CombatServerInstaller.Runtime;
                 DungeonHost             = dungeonHost;
@@ -225,6 +227,17 @@ namespace Shinshi.Network
             try
             {
                 manager.StartServer();
+                if (dungeonHost != null)
+                {
+                    // 서버가 열린 뒤 등록해야 Listen의 초기화에 지워지지 않는다. 입찰자는 인증된 연결의 참가자 번호로 정한다
+                    NetworkServer.ReplaceHandler<AuctionBidMessage>((connection, message) =>
+                    {
+                        if (connection.authenticationData is SessionBinding binding)
+                        {
+                            dungeonHost.HandleAuctionBid(binding.ParticipantId, message.Amount);
+                        }
+                    });
+                }
             }
             catch (Exception exception)
             {
@@ -248,6 +261,22 @@ namespace Shinshi.Network
 
         // 출시 빌드는 서비스 자격이 없으면 저장과 정산을 할 수 없어 던전을 열지 않는다.
         // 개발 빌드는 기록만 남기는 저장과 정산으로 대신하고, 경제 결과가 남지 않는다고 경고한다
+        // 출정 계약에 보스와 난이도가 없어 보스전은 개발 보스(이지)의 보상 표로 연다
+        // TODO(민성): 출정 계약에 보스와 난이도가 생기면 그 값으로 고른다
+        private static void ConfigureBossAuction(DungeonSessionHost host)
+        {
+            foreach (RewardCatalogSO.BossRewardSpec spec in GameDB.Rewards.BossRewards)
+            {
+                if ((spec != null) && (spec.BossId == Constants.Combat.DEV_BOSS_ID) && (spec.Difficulty == EBossDifficulty.Easy))
+                {
+                    host.ConfigureBossAuction(spec.AuctionItemId, spec.AuctionChance);
+                    return;
+                }
+            }
+
+            Debug.LogWarning($"[ServerBoot] 보스 보상 표에 경매 재료가 없어 파티 경매 없이 출정을 닫는다, boss={Constants.Combat.DEV_BOSS_ID}");
+        }
+
         private static bool TryCreateDungeonHost(ServerSessionRegistry sessions, out DungeonSessionHost host, out string error)
         {
             host  = null;

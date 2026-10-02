@@ -72,6 +72,9 @@ namespace Shinshi.Network
         private SessionEventQueue     _events             = null;
         private DungeonSession        _session            = null;
         private SessionSettlement     _settlement         = null;
+        private PartyAuctionDirector  _auction            = null;
+        private string                _auctionItemId      = null;
+        private float                 _auctionChance      = 0f;
         private byte[]                _lootSalt           = null;
         private double                _serverTime         = 0.0;
         private double                _localStartTime     = 0.0;
@@ -113,6 +116,12 @@ namespace Shinshi.Network
 
         /// <summary> None이 아니면 이 출정은 끝났고 프로세스를 재활용한다 </summary>
         public ESortieTerminalReason TerminalReason => _terminalReason;
+
+        // 보스 성공 정산 뒤에만 있다. 끝나야 출정 프로세스가 재활용된다
+        public PartyAuctionDirector  Auction        => _auction;
+
+        // 서버 부트스트랩이 Mirror 연결 구현을 넣는다. 없으면 접속자가 없는 것으로 보고 경매 없이 출정을 닫는다
+        public IAuctionAudience      AuctionAudience { get; set; }
         public bool                  IsTerminal     => _terminalReason != ESortieTerminalReason.None;
 
         // 보존 기록 만료로 명단을 닫는 것은 시작 뒤만이다. 시작 전 끊김의 유예 상한은 예약 만료다
@@ -254,6 +263,7 @@ namespace Shinshi.Network
             }
 
             _settlement.Tick(_serverTime);
+            TickAuction();
             UpdateTerminal();
 
             // TODO(민성): 진행 중이면 Constants.Network.CHECKPOINT_INTERVAL_SECONDS마다 진단용 체크포인트(SessionCheckpointRequest,
@@ -702,6 +712,69 @@ namespace Shinshi.Network
 #endif
         }
 
+        /// <summary> 보스 처치 성공 때 쓸 파티 경매 희귀 재료와 출현 확률, 출정 시작 전에 한 번 넣는다 </summary>
+        public void ConfigureBossAuction(string itemDefinitionId, float chance)
+        {
+            if ((!string.IsNullOrEmpty(itemDefinitionId)) && ((!(chance >= 0f)) || (!(chance <= 1f))))
+            {
+                throw new ArgumentOutOfRangeException(nameof(chance), "출현 확률은 0에서 1 사이다");
+            }
+
+            _auctionItemId = itemDefinitionId;
+            _auctionChance = chance;
+        }
+
+        /// <summary> 인증된 연결의 경매 입찰을 넘긴다, 경매가 없으면 마감으로 돌려준다 </summary>
+        public void HandleAuctionBid(int participantId, long amount)
+        {
+            if (_auction == null)
+            {
+                AuctionAudience?.SendBidResult(participantId, new AuctionBidResultMessage(amount, ERejectReason.Closed));
+                return;
+            }
+
+            _auction.HandleBid(participantId, amount);
+        }
+
+        // API는 보스 성공 정산 뒤 출정을 Auction으로 두므로 품목이 없어도 경매 진행기가 finish로 닫아야 한다
+        private void TickAuction()
+        {
+            if ((_auction == null) && (_settlement.State == ESessionSettlementState.Settled) && (_session.IsBossSession)
+                && (_session.EndReason == ESessionEndReason.Success))
+            {
+                StartAuction();
+            }
+
+            _auction?.Tick(_serverTime);
+        }
+
+        private void StartAuction()
+        {
+            _auction = new PartyAuctionDirector(_sessionId, _config, _usesBackend ? _gateway : null,
+                AuctionAudience ?? new DisconnectedAuctionAudience(), UnixMilliseconds, _warn);
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                ParticipantSnapshot participant = _roster.GetAt(i);
+                string apiId = participant.ParticipantKey;
+                if ((_usesBackend) && (!SessionContractIds.TryGetApiParticipantId(participant.ParticipantKey, out apiId)))
+                {
+                    continue;
+                }
+
+                _auction.AddParticipant(participant.ParticipantId, apiId);
+            }
+
+            // 희귀 재료는 파티가 한 번의 출현 판정을 공유한다. 개발 출정은 start 영수증이 없어 salt를 여기서 만든다
+            bool appears = (!string.IsNullOrEmpty(_auctionItemId))
+                && LootRoller.RollBossAuction(_lootSalt ?? LootRoller.CreateSalt(), _sessionId, _auctionChance);
+            _auction.Begin(_serverTime, appears ? _auctionItemId : null);
+        }
+
+        private static long UnixMilliseconds()
+        {
+            return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
+
         // 세션이 끝난 뒤 정산이나 장애 취소 저장이 마무리됐는지 본다
         private void UpdateTerminal()
         {
@@ -730,6 +803,12 @@ namespace Shinshi.Network
 
             if (_settlement.State == ESessionSettlementState.Settled)
             {
+                // 보스 성공은 파티 경매와 출정 닫기(finish)까지 끝나야 내린다
+                if ((_auction != null) && (!_auction.IsFinished))
+                {
+                    return;
+                }
+
                 SetTerminal(ESortieTerminalReason.Settled);
             }
             else if (_settlement.State == ESessionSettlementState.Abandoned)

@@ -32,6 +32,7 @@ namespace Shinshi.Network
         private const int    DOUBLE_SHIFT         = 11;
         private const double DOUBLE_SCALE         = 1.0 / 9007199254740992.0;
         private const string BOSS_MATERIAL_DOMAIN = "shinshi.boss-material";
+        private const string BOSS_AUCTION_DOMAIN  = "shinshi.boss-auction";
 
         /****************************************
         *                Methods
@@ -122,6 +123,26 @@ namespace Shinshi.Network
             }
 
             return quantity;
+        }
+
+        /// <summary> 보스 처치 성공 때 파티 경매 희귀 재료가 나오는지 정한다, 파티가 한 번의 판정을 공유하고 같은 입력은 같은 결과다 </summary>
+        public static bool RollBossAuction(byte[] salt, string sessionId, double chance)
+        {
+            if ((salt == null) || (salt.Length != Constants.Session.LOOT_SALT_BYTES))
+            {
+                throw new ArgumentException("출정 비밀 salt가 필요하다", nameof(salt));
+            }
+
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                throw new ArgumentException("출정 ID가 필요하다", nameof(sessionId));
+            }
+
+            ulong state = HASH_OFFSET;
+            HashBytes(ref state, salt);
+            HashString(ref state, BOSS_AUCTION_DOMAIN);
+            HashString(ref state, sessionId);
+            return UnitInterval(Next(ref state)) < chance;
         }
 
         /// <summary> 출정 하나의 비밀 salt를 암호학적 난수로 만든다, start 확정 때 한 번 부른다 </summary>
