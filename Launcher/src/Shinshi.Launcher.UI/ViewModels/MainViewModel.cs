@@ -723,10 +723,28 @@ namespace Shinshi.Launcher.ViewModels
             return state;
         }
 
-        // TODO(민성): 서비스 상태에 공지 목록 계약이 들어오면 목록에서 런처 대상 공지를 고른다
+        // notice는 서버가 고른 런처 대상 첫 공지의 제목이다. 이전 서버처럼 비어 있으면 목록에서 직접 고른다
         private static string PickLauncherNotice(ServiceStateResponse state)
         {
-            return string.IsNullOrWhiteSpace(state.Notice) ? string.Empty : state.Notice.Trim();
+            if (!string.IsNullOrWhiteSpace(state.Notice))
+            {
+                return state.Notice.Trim();
+            }
+
+            foreach (ServiceNotice notice in state.Notices)
+            {
+                if ((notice == null) || (string.IsNullOrWhiteSpace(notice.Title)))
+                {
+                    continue;
+                }
+
+                if ((notice.Target == ServiceNotice.TARGET_LAUNCHER) || (notice.Target == ServiceNotice.TARGET_BOTH))
+                {
+                    return notice.Title.Trim();
+                }
+            }
+
+            return string.Empty;
         }
 
         private static bool Contains(IReadOnlyList<string> values, string value)
