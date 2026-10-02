@@ -1,0 +1,8 @@
+<linker>
+  <!-- API DTO는 Newtonsoft가 리플렉션으로 private 필드와 비공개 기본 생성자를 찾는다.
+       코드에서 직접 부르지 않는 생성자와 필드를 IL2CPP 코드 제거가 지우면 빌드에서만 빈 객체가 된다 -->
+  <assembly fullname="Shinshi.Contracts" preserve="all"/>
+
+  <!-- 계약 해석기, 변환기, DataContract 처리 경로를 리플렉션으로 고른다. 패키지 link.xml은 System 쪽 변환기만 보존한다 -->
+  <assembly fullname="Newtonsoft.Json" preserve="all"/>
+</linker>
