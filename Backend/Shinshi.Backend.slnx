@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Shinshi.Contracts/Shinshi.Contracts.csproj" />
+    <Project Path="src/Shinshi.Data/Shinshi.Data.csproj" />
+    <Project Path="src/Shinshi.Api/Shinshi.Api.csproj" />
+    <Project Path="src/Shinshi.AdminCli/Shinshi.AdminCli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Shinshi.Backend.Tests/Shinshi.Backend.Tests.csproj" />
+  </Folder>
+</Solution>

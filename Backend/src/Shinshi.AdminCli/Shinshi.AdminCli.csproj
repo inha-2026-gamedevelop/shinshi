@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>shinshi-admin</AssemblyName>
+    <RootNamespace>Shinshi.AdminCli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Shinshi.Contracts/Shinshi.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shinshi.Backend.Tests" />
+  </ItemGroup>
+</Project>
