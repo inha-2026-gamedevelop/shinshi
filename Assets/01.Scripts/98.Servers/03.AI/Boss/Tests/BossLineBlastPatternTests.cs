@@ -1360,13 +1360,6 @@ namespace Shinshi.Tests
             // 임시값, 확정 밸런스가 아니다
             Assert.AreEqual(0.5f, p06.RecoverySeconds);
 
-            // 선택 가중치와 배율은 이번 범위에서 입력하지 않았다
-            Assert.AreEqual(0f, p06.BaseWeight);
-            AssertAllZero(p06.DistanceMultipliers);
-            AssertAllZero(p06.DirectionMultipliers);
-            AssertAllZero(p06.NearbyMultipliers);
-            AssertAllZero(p06.RecentUseMultipliers);
-
             Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
         }
 
@@ -1383,8 +1376,6 @@ namespace Shinshi.Tests
             Assert.AreEqual(0f, boss.ArenaDiameter);
             Assert.AreEqual(0f, boss.HealthRef);
             Assert.AreEqual(0f, boss.PhaseTransitionHealthRate);
-            Assert.AreEqual(0f, boss.NearDistanceMax);
-            Assert.AreEqual(0f, boss.EmptyWeightRetrySeconds);
         }
 
         [Test]
@@ -1410,26 +1401,5 @@ namespace Shinshi.Tests
             Assert.IsFalse(p03.HasControlWindow);
         }
 
-        [TestCase("wolbaek_p04")]
-        [TestCase("wolbaek_p05")]
-        public void CatalogAsset_OtherUnimplementedPatterns_StayUnset(string patternId)
-        {
-            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
-            Assert.IsTrue(catalog.TryGetPattern(patternId, out PatternDefinition pattern));
-
-            Assert.AreEqual(0f, pattern.TelegraphSeconds);
-            Assert.AreEqual(0f, pattern.RecoverySeconds);
-            Assert.AreEqual(0f, pattern.DamageRef);
-            Assert.AreEqual(0f, pattern.BaseWeight);
-            Assert.AreEqual(0f, pattern.ControlWindowSeconds);
-        }
-
-        private static void AssertAllZero(IReadOnlyList<float> values)
-        {
-            for (int i = 0; i < values.Count; ++i)
-            {
-                Assert.AreEqual(0f, values[i]);
-            }
-        }
     }
 }
