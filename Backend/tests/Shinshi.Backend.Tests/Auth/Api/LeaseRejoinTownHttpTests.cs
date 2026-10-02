@@ -116,9 +116,9 @@ namespace Shinshi.Backend.Tests.Auth
             using HttpClient dungeon = factory.CreateClient();
             Authorize(dungeon, fixture.DungeonLease.Token, fixture.DungeonId);
             using HttpClient player = factory.CreateClient();
-            Authorize(player, (await LoginAsync(fixture, fixture.AccountId)).AccessToken, fixture.DungeonId);
+            Authorize(player, await GameTokenAsync(fixture, fixture.AccountId), fixture.DungeonId);
             using HttpClient stranger = factory.CreateClient();
-            Authorize(stranger, (await LoginAsync(fixture, fixture.OtherAccountId)).AccessToken, fixture.DungeonId);
+            Authorize(stranger, await GameTokenAsync(fixture, fixture.OtherAccountId), fixture.DungeonId);
 
             ReservationResponse reservation = await ReserveAsync(town, fixture);
             string rejoinPath = string.Format(ApiRoutes.REJOIN_TICKET_FORMAT, reservation.SessionId);
@@ -217,7 +217,7 @@ namespace Shinshi.Backend.Tests.Auth
             using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options, null);
             using HttpClient player = factory.CreateClient();
             player.DefaultRequestHeaders.Add(ApiRoutes.AUTHORIZATION_HEADER,
-                ApiRoutes.BEARER_PREFIX + (await LoginAsync(fixture, fixture.AccountId)).AccessToken);
+                ApiRoutes.BEARER_PREFIX + await GameTokenAsync(fixture, fixture.AccountId));
             using HttpClient town = factory.CreateClient();
             Authorize(town, fixture.TownLease.Token, fixture.TownId);
 
@@ -266,7 +266,7 @@ namespace Shinshi.Backend.Tests.Auth
             using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options, null);
             using HttpClient player = factory.CreateClient();
             player.DefaultRequestHeaders.Add(ApiRoutes.AUTHORIZATION_HEADER,
-                ApiRoutes.BEARER_PREFIX + (await LoginAsync(fixture, fixture.AccountId)).AccessToken);
+                ApiRoutes.BEARER_PREFIX + await GameTokenAsync(fixture, fixture.AccountId));
 
             using HttpResponseMessage response = await player.PostAsync(ApiRoutes.TOWN_JOIN_TICKET,
                 Body(new TownJoinTicketRequest(fixture.OtherCharacterId.ToString("D"))));
@@ -286,7 +286,7 @@ namespace Shinshi.Backend.Tests.Auth
             using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options, null);
             using HttpClient player = factory.CreateClient();
             player.DefaultRequestHeaders.Add(ApiRoutes.AUTHORIZATION_HEADER,
-                ApiRoutes.BEARER_PREFIX + (await LoginAsync(fixture, fixture.AccountId)).AccessToken);
+                ApiRoutes.BEARER_PREFIX + await GameTokenAsync(fixture, fixture.AccountId));
             await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
             Guid boot = await connection.QuerySingleAsync<Guid>(
                 "SELECT boot_id FROM server_instances WHERE instance_id = @TownId;", new { fixture.TownId });
@@ -335,6 +335,16 @@ namespace Shinshi.Backend.Tests.Auth
         {
             IssuedAuthToken invite = await fixture.Auth.IssueInviteAsync(accountId);
             return (await fixture.Auth.ExchangeInviteAsync(invite.Token)).Response!;
+        }
+
+        // 마을, 복귀 입장권은 빌드 검사를 거친 게임 하위 세션 토큰만 받는다
+        private static async Task<string> GameTokenAsync(Fixture fixture, Guid accountId)
+        {
+            AuthExchangeResponse login = await LoginAsync(fixture, accountId);
+            PlayerAuthIdentity identity = (await fixture.Auth.ValidateAccessAsync(login.AccessToken)).Identity!;
+            IssuedAuthToken game = await fixture.Auth.IssueGameSessionAsync(identity,
+                TimeSpan.FromMinutes(GameSessionController.GAME_SESSION_MINUTES));
+            return game.Token;
         }
 
         private static async Task<Fixture> SeedAsync(PostgresTestDatabase database)

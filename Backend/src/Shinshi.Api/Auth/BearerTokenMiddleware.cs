@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
 // Project
+using Shinshi.Backend.Admin;
 using Shinshi.Contracts;
 using Shinshi.Data.Auth;
 
@@ -44,7 +45,9 @@ namespace Shinshi.Backend
             ArgumentNullException.ThrowIfNull(context);
             Endpoint? endpoint = context.GetEndpoint();
             AuthActors.Clear(context);
-            if ((endpoint == null) || (endpoint.Metadata.GetMetadata<IAllowAnonymous>() != null))
+            // 어드민 엔드포인트는 AdminAuthenticationMiddleware가 어드민 토큰으로만 연다
+            if ((endpoint == null) || (endpoint.Metadata.GetMetadata<IAllowAnonymous>() != null)
+                || (endpoint.Metadata.GetMetadata<IAdminEndpointMetadata>() != null))
             {
                 await _next(context);
                 return;
@@ -89,12 +92,20 @@ namespace Shinshi.Backend
             {
                 AuthValidationOutcome<PlayerAuthIdentity> outcome = await repository.ValidateAccessAsync(
                     token, context.RequestAborted);
+                EPlayerTokenKind kind = EPlayerTokenKind.Access;
+                // 접근 토큰 표에 없는 우리 토큰은 게임 하위 세션으로 다시 본다. 두 표의 해시 용도가 달라 한 원문은 한 표에만 있다.
+                // 접근 토큰으로 찾은 만료(TOKEN_EXPIRED)는 그대로 돌려주고, 못 찾은 경우(TOKEN_REVOKED)만 하위 세션 결과를 쓴다
+                if (!outcome.IsSuccess && ownToken && (outcome.ReasonCode == ContractCodes.RejectReason.TOKEN_REVOKED))
+                {
+                    outcome = await repository.ValidateGameSessionAsync(token, context.RequestAborted);
+                    kind = EPlayerTokenKind.GameSession;
+                }
                 if (!outcome.IsSuccess)
                 {
                     await RejectAsync(context, outcome.ReasonCode, CountsAsFailure(serverRoute, ownToken));
                     return;
                 }
-                AuthActors.SetPlayer(context, outcome.Identity!);
+                AuthActors.SetPlayer(context, outcome.Identity!, kind);
             }
 
             await _next(context);

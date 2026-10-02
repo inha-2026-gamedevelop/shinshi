@@ -171,37 +171,17 @@ namespace Shinshi.Data.Auth
         }
 
         /// <summary> 검증된 로그인 주체에서만 부모 수명을 넘지 않는 짧은 게임 하위 세션을 발급한다 </summary>
-        public Task<IssuedAuthToken> IssueGameSessionAsync(PlayerAuthIdentity identity, TimeSpan duration,
+        public async Task<IssuedAuthToken> IssueGameSessionAsync(PlayerAuthIdentity identity, TimeSpan duration,
             CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(identity);
-            ValidatePlayerIdentity(identity);
-            ValidateDuration(duration, TimeSpan.FromMinutes(ACCESS_MINUTES));
-            return InTransactionAsync(async (connection, transaction, token) =>
+            AuthValidationOutcome<IssuedAuthToken> outcome = await IssueGameSessionForPlayerAsync(identity, duration,
+                cancellationToken);
+            if (!outcome.IsSuccess)
             {
-                await LockAccountAsync(connection, transaction, identity.AccountId, token);
-                if (!await LockActiveIdentityAsync(connection, transaction, identity, token))
-                {
-                    throw new ArgumentException("The parent login is revoked or expired.", nameof(identity));
-                }
+                throw new ArgumentException("The parent login is revoked or expired.", nameof(identity));
+            }
 
-                DateTime now = await ReadTimeAsync(connection, transaction, token);
-                Guid id = Guid.NewGuid();
-                string raw = _hasher.CreateToken();
-                DateTime expires = now.Add(duration);
-                await connection.ExecuteAsync(Command(
-                    """
-                    INSERT INTO auth_game_sessions(game_session_id,parent_token_id,account_id,token_hash,expires_at)
-                    SELECT @Id,token_id,account_id,@Hash,LEAST(@Expires,expires_at)
-                    FROM auth_refresh_tokens WHERE token_id = @ParentId;
-                    """, new { Id = id, ParentId = identity.RefreshTokenId,
-                        Hash = _hasher.Hash(AuthTokenHasher.GAME_SESSION_DOMAIN, raw), Expires = expires },
-                    transaction, token));
-                DateTime storedExpires = await connection.QuerySingleAsync<DateTime>(Command(
-                    "SELECT expires_at FROM auth_game_sessions WHERE game_session_id = @Id;",
-                    new { Id = id }, transaction, token));
-                return new IssuedAuthToken(raw, id, UnixMilliseconds(storedExpires), UnixMilliseconds(now));
-            }, cancellationToken);
+            return outcome.Identity!;
         }
 
         /// <summary> 하위 세션 행뿐 아니라 직접 부모와 전체 로그인 묶음의 폐기를 항상 확인한다 </summary>

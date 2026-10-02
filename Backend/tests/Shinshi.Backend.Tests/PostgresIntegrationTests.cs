@@ -311,7 +311,7 @@ namespace Shinshi.Backend.Tests
             await connection.ExecuteAsync(
                 """
                 INSERT INTO accounts (account_id) VALUES (@ParentAccount), (@OtherAccount);
-                INSERT INTO auth_token_families (family_id, account_id) VALUES (@ParentToken, @ParentAccount);
+                INSERT INTO auth_token_families (family_id, account_id, origin) VALUES (@ParentToken, @ParentAccount, 'invite');
                 INSERT INTO auth_refresh_tokens (token_id, account_id, family_id, token_hash, expires_at)
                 VALUES (@ParentToken, @ParentAccount, @ParentToken, decode(repeat('01', 32), 'hex'),
                     clock_timestamp() + interval '1 hour');
