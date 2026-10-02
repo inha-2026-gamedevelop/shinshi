@@ -1,5 +1,7 @@
 // System
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
@@ -71,6 +73,19 @@ namespace Shinshi.Data.Characters
             return await connection.QuerySingleAsync<bool>(new CommandDefinition(
                 "SELECT EXISTS (SELECT 1 FROM characters WHERE name_key = @NameKey);",
                 new { NameKey = nameKey }, cancellationToken: cancellationToken));
+        }
+
+        public async Task<IReadOnlyList<CharacterRecord>> ListAsync(Guid accountId, CancellationToken cancellationToken = default)
+        {
+            await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+            IEnumerable<CharacterRow> rows = await connection.QueryAsync<CharacterRow>(new CommandDefinition(
+                """
+                SELECT character_id AS "CharacterId", account_id AS "AccountId", name AS "Name", class_id AS "ClassId",
+                    revision AS "Revision", appearance::text AS "Appearance"
+                FROM characters WHERE account_id = @AccountId ORDER BY character_id;
+                """, new { AccountId = accountId }, cancellationToken: cancellationToken));
+            return rows.Select(row => new CharacterRecord(row.CharacterId, row.AccountId, row.Name, row.ClassId,
+                row.Revision, row.Appearance)).ToArray();
         }
 
         private static async Task<OperationDecision> CreateEffectAsync(OperationExecutionContext context, Guid accountId,

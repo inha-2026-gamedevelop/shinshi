@@ -35,6 +35,24 @@ namespace Shinshi.Backend.Tests.Accounts
         ****************************************/
 
         [Fact]
+        public async Task CharacterList_RequiresAuthenticationAndIgnoresRequestedAccountId()
+        {
+            using AccountApiHost host = new AccountApiHost();
+            using HttpClient client = host.CreateClient();
+            using HttpResponseMessage anonymous = await client.GetAsync(ApiRoutes.CHARACTERS);
+            Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+            Assert.Null(host.Characters.ListedAccountId);
+            await SignupAsync(client, LOGIN_ID, PASSWORD, EMAIL);
+            AuthExchangeResponse tokens = await LoginTokensAsync(client, LOGIN_ID, PASSWORD);
+            using HttpClient authenticated = host.CreateClient(tokens.AccessToken);
+            using HttpResponseMessage response = await authenticated.GetAsync(ApiRoutes.CHARACTERS + "?accountId=" + Guid.NewGuid());
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(Guid.Parse(tokens.AccountId), host.Characters.ListedAccountId);
+            Assert.True(response.Headers.CacheControl!.NoStore);
+            Assert.Empty(AccountApiHost.Read<CharacterListResponse>(await response.Content.ReadAsStringAsync()).Characters);
+        }
+
+        [Fact]
         public async Task Signup_ValidRequest_Returns201WithLowercaseLoginIdAndNoTokens()
         {
             using AccountApiHost host = new AccountApiHost();
