@@ -32,7 +32,8 @@ namespace Shinshi.Combat
         [SyncVar]
         private ushort _facingYaw = 0;
 
-        // TODO(민성): 세션 바인딩이 캐릭터 정보로 넣는다. 지금은 기본값 무사로 시작한다
+        // 서버가 PlayerServer를 만들 때 세션 결합의 직업(API 교환 응답)으로 정한다. 값 0이 무사라 직렬화 초기값만 무사이고,
+        // 서버 판정은 이 값을 읽지 않고 PlayerServer가 받은 직업을 쓴다
         [SyncVar]
         private EPlayerClass _playerClass = EPlayerClass.Warrior;
         [SyncVar] private int _combatId;

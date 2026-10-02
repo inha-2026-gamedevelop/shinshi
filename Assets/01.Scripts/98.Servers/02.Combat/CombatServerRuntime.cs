@@ -246,6 +246,14 @@ namespace Shinshi.Combat
                 return false;
             }
 
+            // 남은 개체는 이전 직업으로 만들어졌다. API 직업과 다르면 넘기지 않고, 새 개체 생성이 이미 전투 중인 참가자로 거절한다
+            if (!RetentionRules.MatchesBoundClass(binding.PlayerClass, player.PlayerClass))
+            {
+                Debug.LogError($"[Combat] 남은 캐릭터의 직업이 API 직업과 달라 새 연결에 넘기지 않는다, participantId={participantId}, " +
+                    $"existing={player.PlayerClass}, bound={binding.PlayerClass}");
+                return false;
+            }
+
             if (!NetworkServer.ReplacePlayerForConnection(connection, player.InputState.gameObject, ReplacePlayerOptions.KeepActive))
             {
                 return false;
@@ -299,13 +307,19 @@ namespace Shinshi.Combat
                 return;
             }
 
-            int combatId = _registry.IssueCombatId();
-            if (_retainedSkills.TryGetValue(participantId, out SkillServer retainedClass))
+            // 직업은 결합이 API 교환에서 받은 값이 정본이다. 보존된 기술 서버가 다른 직업이면 그 기술 상태는 쓰지 않는다
+            EPlayerClass playerClass = binding.PlayerClass;
+            if ((_retainedSkills.TryGetValue(participantId, out SkillServer retainedClass))
+                && (!RetentionRules.MatchesBoundClass(playerClass, retainedClass.PlayerClass)))
             {
-                combat.SetPlayerClass(retainedClass.PlayerClass);
+                Debug.LogError($"[Combat] 보존된 기술 상태의 직업이 API 직업과 달라 버린다, participantId={participantId}, " +
+                    $"retained={retainedClass.PlayerClass}, bound={playerClass}");
+                ReleaseRetainedSkills(participantId);
             }
-            var player   = new PlayerServer(input, combat, combatId, participantId, _sessionEpoch, _playerConfig, _skillResolver,
-                _registry, _lineOfSight, now);
+
+            int combatId = _registry.IssueCombatId();
+            var player   = new PlayerServer(input, combat, playerClass, combatId, participantId, _sessionEpoch, _playerConfig,
+                _skillResolver, _registry, _lineOfSight, now);
             // 재접속 보존 상태를 소비하기 전에 자리를 확보한다. 상한 거절로 기존 자원을 잃지 않게 한다
             if (!_registry.Register(player))
             {

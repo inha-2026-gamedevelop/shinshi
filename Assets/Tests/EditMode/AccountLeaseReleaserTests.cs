@@ -202,7 +202,8 @@ namespace Shinshi.Tests
             // DTO 생성자는 백엔드 작업자가 필드를 더하며 바뀔 수 있어 JSON으로 만든다
             var response = BackendJson.Deserialize<JoinTokenExchangeResponse>(
                 "{\"characterId\":\"" + CHARACTER_ID + "\",\"instanceId\":\"" + INSTANCE_ID + "\",\"serverRole\":" +
-                ContractCodes.ServerRole.TOWN.ToString(CultureInfo.InvariantCulture) + "}");
+                ContractCodes.ServerRole.TOWN.ToString(CultureInfo.InvariantCulture) + ",\"classId\":" +
+                ContractCodes.PlayerClass.WARRIOR.ToString(CultureInfo.InvariantCulture) + "}");
 
             Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE_ID, response,
                 out JoinTokenClaims claims));

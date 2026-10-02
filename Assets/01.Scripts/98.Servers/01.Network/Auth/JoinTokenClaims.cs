@@ -1,19 +1,24 @@
+// 프로젝트 내부
+using Shinshi.Common;
+
 namespace Shinshi.Network
 {
     /// <summary> 검증기가 접속 토큰에서 확인한 내용 </summary>
     public readonly struct JoinTokenClaims
     {
-        // 백엔드 검증기는 instanceId와 역할을 이 서버 실행 설정과 대조한 뒤에만 만든다. 개발 검증기는 키만 채운다
+        // 백엔드 검증기는 instanceId와 역할을 이 서버 실행 설정과 대조한 뒤에만 만든다. 개발 검증기는 키만 채운다.
+        // 직업은 API 응답이 준 값만 쓴다. 키만 받는 생성자는 개발과 시험 전용이라 직업을 무사로 둔다
 
         /****************************************
         *                Fields
         ****************************************/
 
-        private readonly string _participantKey;
-        private readonly string _characterId;
-        private readonly string _instanceId;
-        private readonly string _sortieId;
-        private readonly string _accountLeaseId;
+        private readonly string       _participantKey;
+        private readonly string       _characterId;
+        private readonly string       _instanceId;
+        private readonly string       _sortieId;
+        private readonly string       _accountLeaseId;
+        private readonly EPlayerClass _playerClass;
 
         /****************************************
         *              Properties
@@ -34,6 +39,9 @@ namespace Shinshi.Network
         // 마을 입장이 받은 계정 접속 임대 ID(GUID), 연결이 끊기면 서버가 풀어 준다. 던전, 개발 토큰, 값이 없는 응답은 null
         public string AccountLeaseId => _accountLeaseId;
 
+        // 토큰이 발급된 캐릭터의 직업, API 교환 응답의 classId다. 클라이언트가 보낸 값은 쓰지 않는다
+        public EPlayerClass PlayerClass => _playerClass;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -45,6 +53,7 @@ namespace Shinshi.Network
             _instanceId     = null;
             _sortieId       = null;
             _accountLeaseId = null;
+            _playerClass    = EPlayerClass.Warrior;
         }
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId)
@@ -54,12 +63,19 @@ namespace Shinshi.Network
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
             string accountLeaseId)
+            : this(participantKey, characterId, instanceId, sortieId, accountLeaseId, EPlayerClass.Warrior)
+        {
+        }
+
+        public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
+            string accountLeaseId, EPlayerClass playerClass)
         {
             _participantKey = participantKey;
             _characterId    = characterId;
             _instanceId     = instanceId;
             _sortieId       = sortieId;
             _accountLeaseId = accountLeaseId;
+            _playerClass    = playerClass;
         }
     }
 }

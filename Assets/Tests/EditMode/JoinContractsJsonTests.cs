@@ -34,16 +34,19 @@ namespace Shinshi.Tests
         public void ExchangeResponse_RoundTrip_KeepsAllFields()
         {
             var source = new JoinTokenExchangeResponse("char-1", "dungeon-01", ContractCodes.ServerRole.DUNGEON, "part-1", "sortie-1",
-                1234567890123L);
+                1234567890123L, ContractCodes.PlayerClass.SUMMONER);
 
-            var read = BackendJson.Deserialize<JoinTokenExchangeResponse>(BackendJson.Serialize(source));
+            string json = BackendJson.Serialize(source);
+            var    read = BackendJson.Deserialize<JoinTokenExchangeResponse>(json);
 
+            StringAssert.Contains("\"classId\":2", json);
             Assert.AreEqual("char-1", read.CharacterId);
             Assert.AreEqual("dungeon-01", read.InstanceId);
             Assert.AreEqual(ContractCodes.ServerRole.DUNGEON, read.ServerRole);
             Assert.AreEqual("part-1", read.ParticipantId);
             Assert.AreEqual("sortie-1", read.SortieId);
             Assert.AreEqual(1234567890123L, read.ServerTimeUnixMs);
+            Assert.AreEqual(ContractCodes.PlayerClass.SUMMONER, read.ClassId);
         }
 
         [Test]
@@ -57,6 +60,17 @@ namespace Shinshi.Tests
             Assert.AreEqual("c", read.CharacterId);
             Assert.IsNull(read.ParticipantId);
             Assert.IsNull(read.SortieId);
+        }
+
+        [Test]
+        public void ExchangeResponse_MissingClassId_ReadsAsUnknownNotWarrior()
+        {
+            const string JSON = "{\"characterId\":\"c\",\"instanceId\":\"town-01\",\"serverRole\":0}";
+
+            var read = BackendJson.Deserialize<JoinTokenExchangeResponse>(JSON);
+
+            Assert.AreEqual(JoinTokenExchangeResponse.UNKNOWN_CLASS_ID, read.ClassId);
+            Assert.AreNotEqual(ContractCodes.PlayerClass.WARRIOR, read.ClassId);
         }
 
         [Test]

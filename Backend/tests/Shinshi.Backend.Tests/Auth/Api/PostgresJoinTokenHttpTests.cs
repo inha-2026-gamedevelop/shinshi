@@ -44,7 +44,7 @@ namespace Shinshi.Backend.Tests.Auth
         public async Task Exchange_ReservationIssuerAndRenewedDungeonLease_ReturnsSharedContractExactlyOnce()
         {
             await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
-            Fixture fixture = await SeedAsync(database);
+            Fixture fixture = await SeedAsync(database, ContractCodes.PlayerClass.SUMMONER);
             IssuedAuthToken invite = await fixture.Auth.IssueInviteAsync(fixture.AccountId);
             AuthExchangeResponse login = (await fixture.Auth.ExchangeInviteAsync(invite.Token)).Response!;
             using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options);
@@ -86,10 +86,13 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(ticket.ParticipantId, result.ParticipantId);
             Assert.Equal(reservation.SessionId, result.SortieId);
             Assert.True(result.ServerTimeUnixMs >= ticket.ServerTimeUnixMs);
-            Assert.Equal(new[] { "accountLeaseId", "characterId", "instanceId", "participantId", "serverRole",
+            Assert.Equal(new[] { "accountLeaseId", "characterId", "classId", "instanceId", "participantId", "serverRole",
                     "serverTimeUnixMs", "sortieId" },
                 JObject.Parse(responseBody).Properties().Select(property => property.Name).OrderBy(name => name).ToArray());
             Assert.Null(result.AccountLeaseId);
+
+            // 던전 입장도 참가자가 묶인 캐릭터의 직업을 API가 준다. 무사(기본값)가 아닌 직업으로 심어 기본값 누락을 가린다
+            Assert.Equal(ContractCodes.PlayerClass.SUMMONER, result.ClassId);
 
             using HttpResponseMessage replay = await dungeon.PostAsync(JoinApiRoutes.JOIN_TOKEN_EXCHANGE, Body(request));
             Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
@@ -99,6 +102,36 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(1L, await connection.QuerySingleAsync<long>(
                 "SELECT count(*) FROM auth_join_tokens WHERE consumed_at IS NOT NULL;"));
             Assert.Equal(1L, await connection.QuerySingleAsync<long>("SELECT count(*) FROM game_sessions;"));
+        }
+
+        [PostgresFact]
+        public async Task Exchange_TownJoinToken_ReturnsCharacterClass()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await SeedAsync(database, ContractCodes.PlayerClass.SORCERER);
+
+            // 시험 시드는 예약 검사용 계정 임대를 미리 넣어 두므로, 마을 입장 교환이 임대를 새로 얻도록 지운다
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync("DELETE FROM account_leases WHERE account_id = @AccountId;",
+                new { fixture.AccountId });
+            IssuedAuthToken invite = await fixture.Auth.IssueInviteAsync(fixture.AccountId);
+            AuthExchangeResponse login = (await fixture.Auth.ExchangeInviteAsync(invite.Token)).Response!;
+            PlayerAuthIdentity identity = (await fixture.Auth.ValidateAccessAsync(login.AccessToken)).Identity!;
+            IssuedAuthToken joinToken = (await fixture.Auth.IssueTownJoinTokenAsync(identity, fixture.CharacterId,
+                fixture.TownId)).Identity!;
+            using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options);
+            using HttpClient town = factory.CreateClient();
+            Authorize(town, fixture.TownLease.Token, fixture.TownId);
+
+            using HttpResponseMessage exchange = await town.PostAsync(JoinApiRoutes.JOIN_TOKEN_EXCHANGE,
+                Body(new JoinTokenExchangeRequest(joinToken.Token, fixture.TownId.ToString("D"), ContractCodes.ServerRole.TOWN)));
+
+            Assert.Equal(HttpStatusCode.OK, exchange.StatusCode);
+            JoinTokenExchangeResponse result = Read<JoinTokenExchangeResponse>(await exchange.Content.ReadAsStringAsync());
+            Assert.Equal(fixture.CharacterId.ToString("D"), result.CharacterId);
+            Assert.Equal(ContractCodes.PlayerClass.SORCERER, result.ClassId);
+            Assert.Null(result.ParticipantId);
+            Assert.NotNull(result.AccountLeaseId);
         }
 
         [PostgresFact]
@@ -133,7 +166,8 @@ namespace Shinshi.Backend.Tests.Auth
             return reservation;
         }
 
-        private static async Task<Fixture> SeedAsync(PostgresTestDatabase database)
+        private static async Task<Fixture> SeedAsync(PostgresTestDatabase database,
+            int classId = ContractCodes.PlayerClass.WARRIOR)
         {
             Fixture fixture = new Fixture(database.DataSource);
             await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
@@ -148,7 +182,7 @@ namespace Shinshi.Backend.Tests.Auth
                 INSERT INTO account_leases(account_id,lease_id,instance_id,role,expires_at)
                     VALUES (@AccountId,@AccountLease,@TownId,@Town,clock_timestamp() + interval '15 minutes');
                 """, new { fixture.AccountId, fixture.CharacterId, fixture.TownId, fixture.DungeonId,
-                    Class = ContractCodes.PlayerClass.WARRIOR, Town = ContractCodes.ServerRole.TOWN,
+                    Class = classId, Town = ContractCodes.ServerRole.TOWN,
                     Dungeon = ContractCodes.ServerRole.DUNGEON, TownPort = TOWN_PORT, DungeonPort = DUNGEON_PORT,
                     Content = CONTENT, TownBoot = Guid.NewGuid(), DungeonBoot = Guid.NewGuid(), AccountLease = Guid.NewGuid() });
             fixture.TownLease = await fixture.Auth.IssueServerLeaseAsync(Guid.NewGuid(), fixture.TownId,

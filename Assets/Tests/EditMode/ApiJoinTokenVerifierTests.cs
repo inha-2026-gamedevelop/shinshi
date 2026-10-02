@@ -27,6 +27,7 @@ namespace Shinshi.Tests
         private const string CHARACTER     = "char-1";
         private const string PARTICIPANT   = "part-1";
         private const string SORTIE        = "sortie-1";
+        private const int    CLASS_ID      = ContractCodes.PlayerClass.SORCERER;
         private const int    AUTH_REQUEST  = 7;
         private const int    STATUS_OK     = 200;
         private const int    STATUS_GONE   = 410;
@@ -66,6 +67,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(CHARACTER, listener.Calls[0].Claims.CharacterId);
             Assert.AreEqual(INSTANCE, listener.Calls[0].Claims.InstanceId);
             Assert.AreEqual(SORTIE, listener.Calls[0].Claims.SortieId);
+            Assert.AreEqual(EPlayerClass.Sorcerer, listener.Calls[0].Claims.PlayerClass);
         }
 
         [Test]
@@ -106,7 +108,7 @@ namespace Shinshi.Tests
         [Test]
         public void Verify_TownExchange_UsesCharacterAsKey()
         {
-            var       response  = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L);
+            var       response  = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L, CLASS_ID);
             var       transport = Answer(response);
             using var gateway   = CreateGateway(transport);
             var       verifier  = CreateVerifier(gateway, TOWN_INSTANCE, EServerRole.Town);
@@ -118,6 +120,25 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.None, listener.Calls[0].Reason);
             Assert.AreEqual(Constants.Network.PARTICIPANT_KEY_TOWN_PREFIX + CHARACTER, listener.Calls[0].Claims.ParticipantKey);
             Assert.IsNull(listener.Calls[0].Claims.SortieId);
+            Assert.AreEqual(EPlayerClass.Sorcerer, listener.Calls[0].Claims.PlayerClass);
+        }
+
+        [Test]
+        public void Verify_ResponseWithUnknownClass_RejectsAndDoesNotRememberExchange()
+        {
+            var       response  = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, SORTIE, 1L,
+                JoinTokenExchangeResponse.UNKNOWN_CLASS_ID);
+            var       transport = Answer(response);
+            using var gateway   = CreateGateway(transport);
+            var       verifier  = CreateVerifier(gateway, INSTANCE, EServerRole.Dungeon);
+            var       listener  = new RecordingVerifyListener();
+
+            verifier.Verify(AUTH_REQUEST, TOKEN, listener);
+            Deliver(gateway);
+
+            // 무사로 대신하지 않고 입장을 거절한다
+            Assert.AreEqual(ERejectReason.TokenRevoked, listener.Calls[0].Reason);
+            Assert.AreEqual(0, verifier.RememberedCount);
         }
 
         [Test]
@@ -216,16 +237,43 @@ namespace Shinshi.Tests
         [Test]
         public void ClaimsRules_TownWithSortieOrDungeonWithoutSortie_AreMismatch()
         {
-            var townWithSortie  = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.TOWN, PARTICIPANT, SORTIE, 1L);
-            var dungeonNoSortie = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, null, 1L);
-            var wrongRole       = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L);
-            var unsafeId        = new JoinTokenExchangeResponse("char 1", INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L);
+            var townWithSortie  = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.TOWN, PARTICIPANT, SORTIE, 1L, CLASS_ID);
+            var dungeonNoSortie = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, null, 1L, CLASS_ID);
+            var wrongRole       = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L, CLASS_ID);
+            var unsafeId        = new JoinTokenExchangeResponse("char 1", INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L, CLASS_ID);
 
             Assert.AreEqual(ERejectReason.SessionMismatch, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE, townWithSortie, out _));
             Assert.AreEqual(ERejectReason.SessionMismatch, JoinTokenClaimsRules.TryCreate(EServerRole.Dungeon, INSTANCE, dungeonNoSortie, out _));
             Assert.AreEqual(ERejectReason.SessionMismatch, JoinTokenClaimsRules.TryCreate(EServerRole.Dungeon, INSTANCE, wrongRole, out _));
             Assert.AreEqual(ERejectReason.TokenRevoked, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE, unsafeId, out _));
             Assert.AreEqual(ERejectReason.TokenRevoked, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE, null, out _));
+        }
+
+        [TestCase(ContractCodes.PlayerClass.WARRIOR, EPlayerClass.Warrior)]
+        [TestCase(ContractCodes.PlayerClass.SORCERER, EPlayerClass.Sorcerer)]
+        [TestCase(ContractCodes.PlayerClass.SUMMONER, EPlayerClass.Summoner)]
+        public void ClaimsRules_KnownClass_CarriesClassToTownAndDungeonClaims(int classId, EPlayerClass expected)
+        {
+            var town    = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L, classId);
+            var dungeon = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, SORTIE, 1L, classId);
+
+            Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, TOWN_INSTANCE, town, out JoinTokenClaims townClaims));
+            Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Dungeon, INSTANCE, dungeon, out JoinTokenClaims dungeonClaims));
+            Assert.AreEqual(expected, townClaims.PlayerClass);
+            Assert.AreEqual(expected, dungeonClaims.PlayerClass);
+        }
+
+        [TestCase(JoinTokenExchangeResponse.UNKNOWN_CLASS_ID)]
+        [TestCase(-5)]
+        [TestCase(3)]
+        [TestCase(99)]
+        public void ClaimsRules_UnknownClass_RejectsTownAndDungeonEntry(int classId)
+        {
+            var town    = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L, classId);
+            var dungeon = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, SORTIE, 1L, classId);
+
+            Assert.AreEqual(ERejectReason.TokenRevoked, JoinTokenClaimsRules.TryCreate(EServerRole.Town, TOWN_INSTANCE, town, out _));
+            Assert.AreEqual(ERejectReason.TokenRevoked, JoinTokenClaimsRules.TryCreate(EServerRole.Dungeon, INSTANCE, dungeon, out _));
         }
 
         [Test]
@@ -243,7 +291,7 @@ namespace Shinshi.Tests
 
         private static JoinTokenExchangeResponse DungeonResponse(string instanceId)
         {
-            return new JoinTokenExchangeResponse(CHARACTER, instanceId, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, SORTIE, 1L);
+            return new JoinTokenExchangeResponse(CHARACTER, instanceId, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, SORTIE, 1L, CLASS_ID);
         }
 
         private static FakeBackendTransport Answer(JoinTokenExchangeResponse response)

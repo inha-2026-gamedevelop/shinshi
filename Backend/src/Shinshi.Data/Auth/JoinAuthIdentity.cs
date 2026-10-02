@@ -12,6 +12,9 @@ namespace Shinshi.Data.Auth
 
         public Guid AccountId { get; }
         public Guid CharacterId { get; }
+
+        // 토큰이 발급된 캐릭터의 직업(ContractCodes.PlayerClass). 게임 서버는 클라이언트가 아니라 이 값으로 직업을 정한다
+        public int ClassId { get; }
         public Guid ParticipantId { get; }
         public Guid SessionId { get; }
         public Guid InstanceId { get; }
@@ -24,11 +27,12 @@ namespace Shinshi.Data.Auth
         *                Methods
         ****************************************/
 
-        public JoinAuthIdentity(Guid accountId, Guid characterId, Guid participantId, Guid sessionId, Guid instanceId,
-            long serverTimeUnixMs, Guid accountLeaseId = default)
+        public JoinAuthIdentity(Guid accountId, Guid characterId, int classId, Guid participantId, Guid sessionId,
+            Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default)
         {
             AccountId        = accountId;
             CharacterId      = characterId;
+            ClassId          = classId;
             ParticipantId    = participantId;
             SessionId        = sessionId;
             InstanceId       = instanceId;
