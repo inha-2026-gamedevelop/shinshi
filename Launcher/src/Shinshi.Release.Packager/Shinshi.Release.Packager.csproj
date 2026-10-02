@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Shinshi.Release</RootNamespace>
+    <AssemblyName>Shinshi.Release.Packager</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Shinshi.Patch.Core/Shinshi.Patch.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -19,6 +19,12 @@ namespace Shinshi.Contracts
         // 로그인한 런처가 게임 전용 하위 세션을 받는다
         public const string AUTH_GAME_SESSION = "/v1/auth/game-session";
 
+        // 게임이 게임 세션 토큰을 bearer로 보내 만료 전에 새 하위 세션으로 바꾼다. 이전 토큰은 즉시 폐기된다
+        public const string AUTH_GAME_SESSION_REFRESH = "/v1/auth/game-session/refresh";
+
+        // 런처가 세션 전달에 실패했을 때 방금 발급한 게임 세션을 bearer로 보내 폐기한다
+        public const string AUTH_GAME_SESSION_REVOKE  = "/v1/auth/game-session/revoke";
+
         // 점검 여부, 공지, 기능 차단, 허용 buildId
         public const string SERVICE_STATE     = "/v1/service-state";
 
@@ -35,7 +41,7 @@ namespace Shinshi.Contracts
         public const string TOWN_JOIN_TICKET = "/v1/town/join-ticket";
 
         // TODO(민성): 캐릭터 목록 조회와 선택 경로는 기획 미정이라 정하지 않았다
-        // TODO(민성): 갱신 토큰 교환을 AUTH_EXCHANGE로 합칠지 별도 경로로 둘지, 게임 세션 갱신 경로는 기획 미정
+        // TODO(민성): 갱신 토큰 교환을 AUTH_EXCHANGE로 합칠지 별도 경로로 둘지 기획 미정
 
         // 접근 토큰은 Authorization: Bearer {token}으로 싣는다
         public const string AUTHORIZATION_HEADER = "Authorization";

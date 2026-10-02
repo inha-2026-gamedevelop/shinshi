@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Shinshi.Patch.Core/Shinshi.Patch.Core.csproj" />
+    <Project Path="src/Shinshi.Patch.Client/Shinshi.Patch.Client.csproj" />
+    <Project Path="src/Shinshi.Release.Packager/Shinshi.Release.Packager.csproj" />
+    <Project Path="src/Shinshi.Launcher.Account/Shinshi.Launcher.Account.csproj" />
+    <Project Path="src/Shinshi.Launcher.UI/Shinshi.Launcher.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Shinshi.Launcher.Tests/Shinshi.Launcher.Tests.csproj" />
+  </Folder>
+</Solution>
