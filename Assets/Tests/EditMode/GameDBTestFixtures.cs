@@ -35,7 +35,8 @@ namespace Shinshi.Tests
             ("_rewards",      typeof(RewardCatalogSO)),
             ("_life",         typeof(LifeConfigSO)),
             ("_progression",  typeof(ProgressionCatalogSO)),
-            ("_avatar",       typeof(AvatarCatalogSO))
+            ("_avatar",       typeof(AvatarCatalogSO)),
+            ("_camera",       typeof(CameraConfigSO))
         };
 
         public static int ReferenceCount => REFERENCES.Length;

@@ -45,6 +45,9 @@ namespace Shinshi.Data
         [Header("외형")]
         [SerializeField] private AvatarCatalogSO _avatar;
 
+        [Header("카메라")]
+        [SerializeField] private CameraConfigSO _camera;
+
         public string               ContentVersion => _contentVersion;
         public PlayerConfigSO       Player         => _player;
         public SessionConfigSO      Session        => _session;
@@ -59,6 +62,7 @@ namespace Shinshi.Data
         public LifeConfigSO         Life           => _life;
         public ProgressionCatalogSO Progression    => _progression;
         public AvatarCatalogSO      Avatar         => _avatar;
+        public CameraConfigSO       Camera         => _camera;
 
         /****************************************
         *                Methods
@@ -85,13 +89,13 @@ namespace Shinshi.Data
             GameDataSO[] children =
             {
                 _player, _session, _skills, _talismans, _enemies, _bossPatterns,
-                _waves, _equipment, _growth, _rewards, _life, _progression, _avatar
+                _waves, _equipment, _growth, _rewards, _life, _progression, _avatar, _camera
             };
             string[] names =
             {
                 nameof(_player), nameof(_session), nameof(_skills), nameof(_talismans), nameof(_enemies), nameof(_bossPatterns),
                 nameof(_waves), nameof(_equipment), nameof(_growth), nameof(_rewards), nameof(_life), nameof(_progression),
-                nameof(_avatar)
+                nameof(_avatar), nameof(_camera)
             };
 
             int errorCountBefore = errors.Count;

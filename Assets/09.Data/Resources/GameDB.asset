@@ -26,3 +26,4 @@ MonoBehaviour:
   _life: {fileID: 11400000, guid: 193e12f729bde8848962f0fa6b6ab1c7, type: 2}
   _progression: {fileID: 11400000, guid: d618baa0b708b894a8c4141a30b7a9a6, type: 2}
   _avatar: {fileID: 11400000, guid: c6a3fddaa7b530e4dafd1a6830106b00, type: 2}
+  _camera: {fileID: 11400000, guid: 02a08632c322287418393ac664064321, type: 2}
