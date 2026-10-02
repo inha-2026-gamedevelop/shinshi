@@ -1,0 +1,1135 @@
+{
+  "format": "gemeum-ui-layout",
+  "version": 2,
+  "exportedAt": "2026-10-02T19:51:40.059Z",
+  "layoutName": "캐릭터 선택",
+  "layoutDescription": "캐릭터 선택 화면",
+  "conventions": {
+    "purpose": "Unity UI(uGUI) 배치 참고 자료. 각 노드를 같은 이름의 GameObject + RectTransform으로 만들고, 아래 값으로 위치·크기를 맞춘다.",
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "canvasScaler": "Scale With Screen Size, Reference Resolution 1920x1080",
+    "units": "모든 길이는 기준 해상도의 px",
+    "hierarchy": "children 배열 = Hierarchy 자식. 배열 순서대로 형제 순서를 둔다(뒤에 있을수록 위에 그려진다)",
+    "topLevel": "최상위 노드는 anchorMin = anchorMax = pivot = anchor 프리셋 값. anchoredPosition은 Unity 좌표(위쪽이 +y)",
+    "children": "자식 노드는 부모 RectTransform의 왼쪽 위에 붙인다: anchorMin = anchorMax = pivot = (0, 1), anchoredPosition = (x, -y)",
+    "screenRect": "검산용. 화면 왼쪽 위 기준 [x, y, w, h], y는 아래로 증가",
+    "types": {
+      "box": "사각 Image",
+      "circle": "원형 Image(원 스프라이트 또는 Mask)",
+      "group": "그래픽이 없는 빈 RectTransform 컨테이너"
+    },
+    "reference": "reference가 true인 노드는 HUD가 아닌 참고 영역이다. 만들지 않는다",
+    "description": "요소의 역할과 상태 변화 설명. 실제 그래픽·텍스트를 만들 때 따른다"
+  },
+  "root": [
+    {
+      "id": "emurbgk4ot3ci",
+      "name": "게임시작 버튼",
+      "type": "box",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        0,
+        -454
+      ],
+      "sizeDelta": [
+        196,
+        52
+      ],
+      "screenRect": [
+        862,
+        968,
+        196,
+        52
+      ],
+      "path": "게임시작 버튼"
+    },
+    {
+      "id": "emurbpt9on0os",
+      "name": "캐릭터 리스트 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        776,
+        92
+      ],
+      "sizeDelta": [
+        256,
+        544
+      ],
+      "screenRect": [
+        1608,
+        176,
+        256,
+        544
+      ],
+      "path": "캐릭터 리스트 그룹",
+      "children": [
+        {
+          "id": "emurbvng5jcrj",
+          "name": "캐릭터 생성 버튼",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -416
+          ],
+          "sizeDelta": [
+            240,
+            112
+          ],
+          "screenRect": [
+            1616,
+            592,
+            240,
+            112
+          ],
+          "path": "캐릭터 리스트 그룹/캐릭터 생성 버튼"
+        },
+        {
+          "id": "emurbqza70d82",
+          "name": "캐릭터 리스트1 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -8
+          ],
+          "sizeDelta": [
+            240,
+            120
+          ],
+          "screenRect": [
+            1616,
+            184,
+            240,
+            120
+          ],
+          "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹",
+          "children": [
+            {
+              "id": "emurbr971ddux",
+              "name": "직업이름",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -12
+              ],
+              "sizeDelta": [
+                120,
+                28
+              ],
+              "screenRect": [
+                1728,
+                196,
+                120,
+                28
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/직업이름"
+            },
+            {
+              "id": "emurbsuarhd4g",
+              "name": "닉네임",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -48
+              ],
+              "sizeDelta": [
+                120,
+                32
+              ],
+              "screenRect": [
+                1728,
+                232,
+                120,
+                32
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/닉네임"
+            },
+            {
+              "id": "emurbunsspbek",
+              "name": "전투력",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -88
+              ],
+              "sizeDelta": [
+                120,
+                16
+              ],
+              "screenRect": [
+                1728,
+                272,
+                120,
+                16
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/전투력"
+            },
+            {
+              "id": "emurbr2bqynza",
+              "name": "직업 마크 / 레벨",
+              "type": "circle",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -12
+              ],
+              "sizeDelta": [
+                96,
+                96
+              ],
+              "screenRect": [
+                1624,
+                196,
+                96,
+                96
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/직업 마크 / 레벨"
+            }
+          ]
+        },
+        {
+          "id": "emurbuxz8ix3m",
+          "name": "캐릭터 리스트1 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -144
+          ],
+          "sizeDelta": [
+            240,
+            120
+          ],
+          "screenRect": [
+            1616,
+            320,
+            240,
+            120
+          ],
+          "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹",
+          "children": [
+            {
+              "id": "emurbuxz8rmi6",
+              "name": "직업이름",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -12
+              ],
+              "sizeDelta": [
+                120,
+                28
+              ],
+              "screenRect": [
+                1728,
+                332,
+                120,
+                28
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/직업이름"
+            },
+            {
+              "id": "emurbuxz882tc",
+              "name": "닉네임",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -48
+              ],
+              "sizeDelta": [
+                120,
+                32
+              ],
+              "screenRect": [
+                1728,
+                368,
+                120,
+                32
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/닉네임"
+            },
+            {
+              "id": "emurbuxz84ej3",
+              "name": "전투력",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -88
+              ],
+              "sizeDelta": [
+                120,
+                16
+              ],
+              "screenRect": [
+                1728,
+                408,
+                120,
+                16
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/전투력"
+            },
+            {
+              "id": "emurbuxz8g7wj",
+              "name": "직업 마크 / 레벨",
+              "type": "circle",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -12
+              ],
+              "sizeDelta": [
+                96,
+                96
+              ],
+              "screenRect": [
+                1624,
+                332,
+                96,
+                96
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/직업 마크 / 레벨"
+            }
+          ]
+        },
+        {
+          "id": "emurbv2902icn",
+          "name": "캐릭터 리스트1 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            8,
+            -280
+          ],
+          "sizeDelta": [
+            240,
+            120
+          ],
+          "screenRect": [
+            1616,
+            456,
+            240,
+            120
+          ],
+          "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹",
+          "children": [
+            {
+              "id": "emurbv290r5d7",
+              "name": "직업이름",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -12
+              ],
+              "sizeDelta": [
+                120,
+                28
+              ],
+              "screenRect": [
+                1728,
+                468,
+                120,
+                28
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/직업이름"
+            },
+            {
+              "id": "emurbv290wi7p",
+              "name": "닉네임",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -48
+              ],
+              "sizeDelta": [
+                120,
+                32
+              ],
+              "screenRect": [
+                1728,
+                504,
+                120,
+                32
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/닉네임"
+            },
+            {
+              "id": "emurbv290uo6h",
+              "name": "전투력",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                112,
+                -88
+              ],
+              "sizeDelta": [
+                120,
+                16
+              ],
+              "screenRect": [
+                1728,
+                544,
+                120,
+                16
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/전투력"
+            },
+            {
+              "id": "emurbv2908i35",
+              "name": "직업 마크 / 레벨",
+              "type": "circle",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -12
+              ],
+              "sizeDelta": [
+                96,
+                96
+              ],
+              "screenRect": [
+                1624,
+                468,
+                96,
+                96
+              ],
+              "path": "캐릭터 리스트 그룹/캐릭터 리스트1 그룹/직업 마크 / 레벨"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "emurbww65y7uy",
+      "name": "하단 버튼 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        776,
+        -420
+      ],
+      "sizeDelta": [
+        256,
+        120
+      ],
+      "screenRect": [
+        1608,
+        900,
+        256,
+        120
+      ],
+      "path": "하단 버튼 그룹",
+      "children": [
+        {
+          "id": "emurbx2eczqon",
+          "name": "환경설정 버튼",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            144,
+            -14
+          ],
+          "sizeDelta": [
+            104,
+            92
+          ],
+          "screenRect": [
+            1752,
+            914,
+            104,
+            92
+          ],
+          "path": "하단 버튼 그룹/환경설정 버튼"
+        },
+        {
+          "id": "emurbxhtz9j8s",
+          "name": "캐릭터 삭제 버튼",
+          "type": "circle",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            24,
+            -14
+          ],
+          "sizeDelta": [
+            104,
+            92
+          ],
+          "screenRect": [
+            1632,
+            914,
+            104,
+            92
+          ],
+          "path": "하단 버튼 그룹/캐릭터 삭제 버튼"
+        }
+      ]
+    },
+    {
+      "id": "emurbzkwihhmt",
+      "name": "뒤로 가기 버튼",
+      "type": "box",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        -836,
+        446
+      ],
+      "sizeDelta": [
+        120,
+        60
+      ],
+      "screenRect": [
+        64,
+        64,
+        120,
+        60
+      ],
+      "path": "뒤로 가기 버튼"
+    },
+    {
+      "id": "emurc04lvv3rn",
+      "name": "캐릭터 표시 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        0,
+        36
+      ],
+      "sizeDelta": [
+        1550,
+        720
+      ],
+      "screenRect": [
+        185,
+        144,
+        1550,
+        720
+      ],
+      "path": "캐릭터 표시 그룹",
+      "children": [
+        {
+          "id": "emurc2jybi3l4",
+          "name": "캐릭터 표시1 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            24,
+            -12
+          ],
+          "sizeDelta": [
+            392,
+            696
+          ],
+          "screenRect": [
+            209,
+            156,
+            392,
+            696
+          ],
+          "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹",
+          "children": [
+            {
+              "id": "emurc4n39e7p2",
+              "name": "직업마크 / 캐릭터 레벨 / 닉네임",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -624
+              ],
+              "sizeDelta": [
+                376,
+                60
+              ],
+              "screenRect": [
+                217,
+                780,
+                376,
+                60
+              ],
+              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/직업마크 / 캐릭터 레벨 / 닉네임"
+            },
+            {
+              "id": "emurc3mom4a2m",
+              "name": "캐릭터 랜더링",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                0
+              ],
+              "sizeDelta": [
+                376,
+                608
+              ],
+              "screenRect": [
+                217,
+                156,
+                376,
+                608
+              ],
+              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/캐릭터 랜더링"
+            }
+          ]
+        },
+        {
+          "id": "emurc5q2vnfyc",
+          "name": "캐릭터 표시1 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            579,
+            -12
+          ],
+          "sizeDelta": [
+            392,
+            696
+          ],
+          "screenRect": [
+            764,
+            156,
+            392,
+            696
+          ],
+          "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹",
+          "children": [
+            {
+              "id": "emurc5q2vk088",
+              "name": "직업마크 / 캐릭터 레벨 / 닉네임",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -624
+              ],
+              "sizeDelta": [
+                376,
+                60
+              ],
+              "screenRect": [
+                772,
+                780,
+                376,
+                60
+              ],
+              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/직업마크 / 캐릭터 레벨 / 닉네임"
+            },
+            {
+              "id": "emurc5q2v8x57",
+              "name": "캐릭터 랜더링",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                0
+              ],
+              "sizeDelta": [
+                376,
+                608
+              ],
+              "screenRect": [
+                772,
+                156,
+                376,
+                608
+              ],
+              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/캐릭터 랜더링"
+            }
+          ]
+        },
+        {
+          "id": "emurc635thb8v",
+          "name": "캐릭터 표시1 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            1134,
+            -12
+          ],
+          "sizeDelta": [
+            392,
+            696
+          ],
+          "screenRect": [
+            1319,
+            156,
+            392,
+            696
+          ],
+          "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹",
+          "children": [
+            {
+              "id": "emurc635t5lro",
+              "name": "직업마크 / 캐릭터 레벨 / 닉네임",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                -624
+              ],
+              "sizeDelta": [
+                376,
+                60
+              ],
+              "screenRect": [
+                1327,
+                780,
+                376,
+                60
+              ],
+              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/직업마크 / 캐릭터 레벨 / 닉네임"
+            },
+            {
+              "id": "emurc635tk2uq",
+              "name": "캐릭터 랜더링",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                8,
+                0
+              ],
+              "sizeDelta": [
+                376,
+                608
+              ],
+              "screenRect": [
+                1327,
+                156,
+                376,
+                608
+              ],
+              "path": "캐릭터 표시 그룹/캐릭터 표시1 그룹/캐릭터 랜더링"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
