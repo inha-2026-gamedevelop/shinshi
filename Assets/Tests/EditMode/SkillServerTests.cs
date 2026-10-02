@@ -977,7 +977,7 @@ namespace Shinshi.Tests
                 }
             }
 
-            public void ApplyRoot(float duration, double serverTime)
+            public void ApplyRoot(string sourceId, float duration, double serverTime)
             {
                 ++RootCalls;
                 RootDuration = duration;

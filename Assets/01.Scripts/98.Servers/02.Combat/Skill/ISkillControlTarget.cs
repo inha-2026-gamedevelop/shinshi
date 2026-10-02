@@ -15,6 +15,7 @@ namespace Shinshi.Combat
         *                Methods
         ****************************************/
 
-        void ApplyRoot(float duration, double serverTime);
+        /// <summary> sourceId는 속박을 건 기술이나 효과의 정의 ID다 </summary>
+        void ApplyRoot(string sourceId, float duration, double serverTime);
     }
 }

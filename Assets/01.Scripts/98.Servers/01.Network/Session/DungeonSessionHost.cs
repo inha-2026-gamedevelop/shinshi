@@ -288,6 +288,12 @@ namespace Shinshi.Network
             _roster.TrySetLifeState(participantId, state);
         }
 
+        /// <summary> 보스 사망이 확정된 틱에 부른다, BeginTick과 CompleteTick 사이에서만 받는다 </summary>
+        public bool ReportBossDefeated()
+        {
+            return (_inTick) && (_session.ReportBossDefeated());
+        }
+
         /// <summary> 연결이 끊긴 캐릭터를 유예 동안 남길지, 진행 중인 세션의 닫히지 않은 원래 참가자만 남긴다 </summary>
         public bool CanRetain(int participantId)
         {

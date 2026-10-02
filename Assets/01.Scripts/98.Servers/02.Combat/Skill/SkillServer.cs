@@ -623,7 +623,7 @@ namespace Shinshi.Combat
                 && (target is ISkillControlTarget control) && (control.AllowsRoot))
             {
                 float duration = root * control.RootDurationScale;
-                control.ApplyRoot(control.IsBoss ? Mathf.Min(duration, Constants.Combat.BOSS_ROOT_MAX_SECONDS) : duration, now);
+                control.ApplyRoot(source, control.IsBoss ? Mathf.Min(duration, Constants.Combat.BOSS_ROOT_MAX_SECONDS) : duration, now);
             }
         }
 

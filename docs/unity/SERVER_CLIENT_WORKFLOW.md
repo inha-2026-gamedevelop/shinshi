@@ -104,7 +104,7 @@ Assets/01.Scripts/
 - 서비스 장애 취소 정책은 2026-10-01에 완료 웨이브 기본 정기 전액과 적립 추가 정기 50%(내림)로 확정됐고 `SettlementRules`가 이 계산을 제공한다. [SessionConfigSO](../../Assets/01.Scripts/00.Common/Data/SessionConfigSO.cs)의 정책 기본값은 아직 `Undecided`이며 [배포 빌드 검증기](../../Assets/Editor/Build/GameDBBuildValidator.cs)는 그 값의 비개발 빌드를 막는다. 정책 확정과 SO 설정 반영은 별개로 확인한다.
 - 코드 확인과 문서 링크·diff 점검만 이번 동기화에서 수행했다. 기존 실행 근거로 제공된 결과는 **사용자 제공 Unity Test Runner EditMode 780개 통과, PostgreSQL 18 Docker를 사용한 Backend 396개 통과**다. 이번 작업 트리의 새 실행 검증으로 재표시하지 않는다.
 - 2026-10-02 `Dev_PlayerMovement` 씬의 Windows 개발 서버 빌드 1개와 클라이언트 빌드 2개를 같은 PC에서 town 역할로 실행해 접속, 소유 이동 예측, 회피, 원격 표시를 지연 시뮬레이션 RTT 0/50/150ms에서 확인했다(자동 조작, 스냅 0회, 정지 시 서버 위치 차이 0). Linux 서버·M3·IL2CPP·배포·dungeon 역할 다인 접속은 실행하지 않았다. [Start-M2.ps1](../../tools/Start-M2.ps1)과 [배포 템플릿](../../deploy/gameserver/shinshi-dungeon@.service)은 존재하지만 실행 결과는 미검증이다. GitHub 브랜치 보호 설정 적용 여부도 별도 확인이 필요하다.
-- 보스 AI 서버 뼈대(`98.Servers/03.AI/Boss/`, `Shinshi.AI`)와 연결 계약은 8장에 있다. 서버 틱 구동·`ServerLinks` 연결·복제는 아직 없다.
+- 보스 AI 서버 뼈대(`98.Servers/03.AI/Boss/`, `Shinshi.AI`)와 서버 연결(`98.Servers/02.Combat/Boss/`)은 8장에 있다. 서버 틱 구동과 세션 결과 연결은 있고(실제 서버 실행 미검증), 복제는 아직 없다.
 - 이후 파일 분리·이동에서도 `.cs.meta` GUID와 씬·프리팹 참조를 보존한다.
 
 ## 7. 일반전 웨이브 서버 경계
@@ -162,29 +162,36 @@ Assets/01.Scripts/
 - 고정 오프닝과 강제 후속 공격은 이번 구현에서 제외한다. 등장 대기가 끝나면 가중치로 첫 패턴을 고르고, 각 패턴의 회복이 끝난 뒤 그 시점의 상황(타깃, 거리, 방향, 주변 인원, 최근 기록)을 다시 읽어 다음 패턴을 가중 선택한다. 일반 가중 선택 앞에 평가되는 `IBossSelectionRule` 자리는 유지하며 등록된 규칙은 없다.
 - 직접 제어는 기획에 적힌 규칙대로 한다. 패턴별 허용 구간에서만 받고, 한 패턴에 최초 1회이며 적용 뒤 면역 시간 동안은 받지 않는다. 취소형 패턴(P06)은 예고 마지막 구간에서 성공하면 공격을 취소한다. 속박 등 취소형이 아닌 제어는 보스 동작이 협의 전이라 적용 표시와 면역 시작과 알림만 하고, 제어를 이동·회전·공격 정지로 일괄 해석하지 않는다. 가능성을 열어 두려고 제어는 값 묶음(`BossDirectControl`: 출처 ID, 요청 시간)으로 받고, 적용된 제어는 `BossBrain.DirectControlApplied` 알림(`BossDirectControlApplied`: 적용 시간(보스 정의의 최대 시간으로 자름), 패턴 취소 여부, 패턴 ID)으로 알린다. 보스를 실제로 어떻게 움직일지는 이 알림을 받는 쪽에서 나중에 붙인다.
 
-연결 계약(모두 `Shinshi.AI`, 인터페이스만 두었고 아래 구현은 아직 없다).
+연결 계약(모두 `Shinshi.AI`).
 
 | 인터페이스 | 역할 | 구현 담당 |
 |---|---|---|
-| `IBossVitals` | 보스 체력 비율과 체력 0 여부 읽기. `ICombatTarget`에 체력 읽기가 없어 새로 둠 | 민성 (U05) |
-| `IBossControlSource` | 도착한 직접 제어를 `BossDirectControl`(출처 ID, 요청 시간) 한 건씩 넘김. 플레이어 기술이 보스에 제어를 거는 계약이 없어 **실제 제어 연결은 미구현** | 민성 (U05, U07) |
+| `IBossVitals` | 보스 체력 비율과 체력 0 여부 읽기. `ICombatTarget`에 체력 읽기가 없어 새로 둠 | 민성 (`BossServer`, 구현됨·실행 미검증) |
+| `IBossControlSource` | 도착한 직접 제어를 `BossDirectControl`(출처 ID, 요청 시간) 한 건씩 넘김. 플레이어 기술의 속박(`ISkillControlTarget.ApplyRoot(sourceId, 시간, 시각)`)을 `BossServer`가 틱당 한 칸에 담아 넘기고 틱 끝에 비운다 | 민성 (`BossServer`, 구현됨·실행 미검증) |
 | `IBossPatternFactory` | 패턴 정의로 시전 실행 객체 생성. 구현 `WolbaekPatternFactory`는 P02와 P03과 P06만 만들고 나머지는 null. 생성자에 Href를 받으며 기본값은 없고, 부채꼴·원형·직사각형 알림 리스너는 선택 인자다 | 기웅 (U10, P01과 P04, P05는 미구현) |
-| `IBossEffectLifetime` | 지속 장판·투사체 수명, 이유별 취소, 동시 장판 수 조회 | 기웅 (U10) |
+| `IBossEffectLifetime` | 지속 장판·투사체 수명, 이유별 취소, 동시 장판 수 조회. 지속물이 없는 P02·P03·P06 시험용으로 서버가 빈 구현 `EmptyBossEffectLifetime`을 넣는다 | 기웅 (U10, 실제 관리자는 미구현) |
 | `IBossPatternCatalog` | 보스·패턴 정의 조회. 어댑터 `BossPatternCatalogSource`가 `BossPatternCatalogSO`를 감싼다 | 기웅 (구현됨) |
 | `IBossRandom` | 타깃·패턴 선택 난수. 기본 `SeededBossRandom` | 기웅 (구현됨) |
 
-기존 계약 `ICombatTargetQuery`, `ICombatTarget`, `IDamageResolver`, `DamageRequest`를 그대로 쓴다. 이 계약들의 구현체는 아직 없다.
+기존 계약 `ICombatTargetQuery`(`CombatTargetRegistry`), `ICombatTarget`, `IDamageResolver`(`SkillDamageResolver`), `DamageRequest`를 그대로 쓴다.
+
+서버 연결(민성, `98.Servers/02.Combat/Boss/`, 구현됨·EditMode 검증·실제 서버 실행 미검증).
+
+- `BossServer`가 보스 몸체다. `IDamageable`·`ISkillControlTarget`·`IBossVitals`·`IBossControlSource`와 세 예고 리스너를 구현하고 `BossBrain`을 가진다. 최대 체력은 `HealthRef × Aref × 보스 체력 배율`, 방어는 보스 정의 값이다. 치명타는 `IDamageable` 계약대로 그 자리에서 `Dead`로 바꾸고, 등장 대기·시작 전·종료 뒤에는 무적이다. 예고 방향(조준 변경, 방향 고정)으로 정면을 돌린다. 위치는 원점 고정이다.
+- `CombatServerRuntime`이 보스전 출정이 진행되는 첫 틱(배율 고정 직후)에 보스를 만들어 레지스트리에 적 진영으로 등록하고 `Begin`으로 전투를 연다. 틱 순서는 플레이어 기술·공격 → 보스 `Tick` → 생사 보고 → 세션 종료 판정 → (출정이 끝났으면) 같은 시각 `RequestCombatEnd`와 `Tick`이다.
+- 보스 사망이 확정된 틱에 `DungeonSessionHost.ReportBossDefeated` → `DungeonSession.ReportBossDefeated`로 성공을 예약한다. 종료는 `CompleteTick`이 판정하므로 같은 틱 전원 사망이면 전멸이 우선한다. 승패의 기준은 세션 종료 사유다. 이 순서에서 보스는 이미 `Defeated`라 같은 틱 종료 요청을 받지 않아 `IsCombatEndRecorded`가 기록되지 않는다(기웅에게 계약 변경 요청).
+- 보스가 내는 피해는 `BossDamageScaler`가 시작 인원 피해 배율을 `RawDamage`에 곱해 `SkillDamageResolver`에 넘긴다. 번호·위치는 바꾸지 않아 반격 방어와 중복 적중 판정이 유지된다.
+- 보스와 전장 지역은 출정 계약에 없어 `Constants.Combat.DEV_BOSS_ID`(`boss_wolbaek`)·`DEV_BOSS_REGION_ID`(`region_forest`, 체험판 Aref·Href)로 연다. 정의가 없거나 `IsTuned`가 거짓이면 오류 로그 뒤 보스 없이 진행하며 개발 빌드는 `TryCompleteBossForDevelopment`로 끝낸다. 보스 몸체 반경은 임시값 `BOSS_BODY_RADIUS`다.
 
 연결되지 않은 것.
 
-- `BossBrain.Tick`을 누가 어떤 주기로 부르는지와 `BossBrain`을 만들어 `ServerLinks`에 연결하는 서버 부트스트랩은 없다(민성).
-- 보스 상태와 예고를 클라이언트에 보내는 복제(`NetworkBehaviour`, Rpc)는 없다(민성).
-- 등장 대기 중 보스가 받는 피해를 막는 것은 `IDamageResolver` 쪽이 `FlowState`를 읽어 `Invulnerable`로 처리해야 한다. 뼈대는 상태만 노출하고 이 연결은 없다(민성).
+- 보스 상태와 예고를 클라이언트에 보내는 복제(`NetworkBehaviour`, Rpc)와 보스 네트워크 개체 생성은 없다(민성). 지금 보스는 서버 메모리에만 있다.
+- 출정 계약에서 보스·지역을 받는 것, 던전 씬의 보스 생성 지점, 보스를 만들지 못한 보스전의 출시 처리(서비스 취소 여부)는 미정이다(민성).
 - 월백 P02와 P03과 P06만 실행이 구현됐고(EditMode 검증, 실제 서버 실행 미검증) P01과 P04, P05, 지속물 수명 관리자 구현은 없다(기웅). P02, P03, P06의 회복 0.5초는 임시값이며 확정 밸런스가 아니다. `BossPatternCatalog.asset`의 `wolbaek_p02`, `wolbaek_p03`, `wolbaek_p06` 데이터에서 조정한다. P03과 P06은 실행 수치만 입력했고 선택 가중치와 배율은 미입력이며(기획 문서에는 있다), 월백은 `IsTuned`가 거짓인 채다.
 - P06(`BossLineBlastPattern`): 1.6초 예고, 처음 0.6초 동안 90도/초로 타깃을 추적한 뒤 방향을 고정하고, 예고가 끝나면 한 번 타격한다(`ActiveSeconds` 0). 판정은 타격 시점의 보스 서버 위치를 시작점으로 고정된 조준 방향의 수평 직사각형(전방 0~14m, 좌우 각 2m, 네 경계 포함, 뒤쪽 제외)이며, 데이터의 `Shape.Range`가 길이, `Shape.Width`가 전체 폭이다. 조회는 원형 반경 `sqrt(길이² + (폭/2)²)`에 1mm 여유를 더해 먼 모서리까지 후보에 넣고, 안팎은 직사각형으로 다시 가른다. 방어 불가(`Unblockable`)이며 RawDamage는 `DamageRef(0.45) × Href`다. 예고의 시작점·방향·길이·폭·시간은 `IBossLineTelegraphListener`(예고 시작, 추적 방향 변경, 방향 고정, 타격, 취소)로 내보낸다. 예고 시작 알림의 시작점은 그때의 보스 위치이고 타격은 그 시점의 보스 위치에서 판정하므로, 보스가 예고 중 움직이면 표현 쪽이 보스를 따라가야 한다(보스 이동은 미정).
 - P06 직접 제어: `wolbaek_p06` 데이터에 예고 단계, 마지막 0.4초, 취소형으로 입력했고 월백 보스 정의에 최대 1초와 면역 2초를 입력했다. 취소는 새 경로 없이 기존 `BossCombat`→`BossAttackFsm` 흐름을 쓴다. 구간 시작 직전은 취소되지 않고(그 제어는 버려지며 같은 시전의 구간 안 제어는 받는다), 시작 경계와 구간 안은 취소되며, 취소 뒤에는 타격이 나가지 않는다. 구간 계산은 `(double)ControlWindowSeconds`와 `(double)TelegraphSeconds`를 쓰므로 0.4, 1.6이 아니라 float 값 기준이다.
 - 직접 제어 구간의 끝 경계(예고 종료 시각) 현재 동작: `BossAttackFsm.IsControlWindowOpen`이 끝 경계를 포함(`<=`)하지만 한 틱의 순서가 직접 제어 → 공격 진행이라, 예고 종료 시각과 정확히 같은 틱에 제어가 먼저 도착해 아직 예고 단계일 때만 취소된다. 틱이 그 시각을 넘어서 도착하면 단계가 아직 예고여도 `serverTime > 종료`라 버려진다. 포함 여부는 기획 미정이며 이번 작업에서 바꾸지 않았고 이 경계에 기대는 테스트도 두지 않았다.
-- P02, P03, P06에 넘길 Href(지역과 난이도로 결정)와 시작 인원 피해 배율을 곱할 위치는 서버 연결이 정한다(민성). `IBossFanTelegraphListener`, `IBossCircleTelegraphListener`, `IBossLineTelegraphListener`를 받아 클라이언트 VFX로 전달하는 복제와 보스 몸체 이동·회전도 없다. 원형·직사각형 VFX 모듈과 P03·P06 예고 시각 일치, P06 예고 방향 고정과 몸체 연출은 미검증이다. 회복 중 취소가 와도 패턴은 취소 알림을 낸다(P02, P03, P06 공통, 타격 이후라 피해에는 영향 없다). 표현 쪽은 타격 알림을 받은 시전의 취소 알림을 무시해야 한다.
+- P02, P03, P06에 넘기는 Href는 전장 지역의 기준값이고 시작 인원 피해 배율은 `BossDamageScaler`가 곱한다(위 서버 연결). 예고 리스너를 받아 클라이언트 VFX로 전달하는 복제와 보스 몸체 이동은 없다(회전은 서버 정면만 바꾼다). 원형·직사각형 VFX 모듈과 P03·P06 예고 시각 일치, P06 예고 방향 고정과 몸체 연출은 미검증이다. 회복 중 취소가 와도 패턴은 취소 알림을 낸다(P02, P03, P06 공통, 타격 이후라 피해에는 영향 없다). 표현 쪽은 타격 알림을 받은 시전의 취소 알림을 무시해야 한다.
 - 컷씬 길이를 담는 데이터 필드가 없어 `BeginAppearance`의 길이는 호출자가 넘긴다.
 - 속박 등 취소형이 아닌 제어가 보스를 움직이는 동작은 구현하지 않았다. 알림만 나간다.
 
