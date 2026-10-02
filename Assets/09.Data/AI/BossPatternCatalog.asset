@@ -67,18 +67,18 @@ MonoBehaviour:
     - 0
     - 0
     - 0
-    _telegraphSeconds: 0
-    _trackingSeconds: 0
-    _turnRate: 0
-    _activeSeconds: 0
-    _recoverySeconds: 0
+    _telegraphSeconds: 0.8
+    _trackingSeconds: 0.4
+    _turnRate: 180
+    _activeSeconds: 0.45
+    _recoverySeconds: 0.8
     _shape:
       _shape: 2
-      _range: 0
+      _range: 8
       _arcAngle: 0
-      _width: 0
+      _width: 2
       _projectileSpeed: 0
-    _damageRef: 0
+    _damageRef: 0.18
     _guardable: 1
     _controlPhase: 0
     _controlWindowSeconds: 0

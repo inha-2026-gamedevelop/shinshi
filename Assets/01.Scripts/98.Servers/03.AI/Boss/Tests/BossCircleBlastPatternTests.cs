@@ -908,7 +908,6 @@ namespace Shinshi.Tests
             Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
         }
 
-        [TestCase("wolbaek_p01")]
         [TestCase("wolbaek_p04")]
         [TestCase("wolbaek_p05")]
         public void CatalogAsset_OtherUnimplementedPatterns_StayUnset(string patternId)
