@@ -1,0 +1,42 @@
+# Dockerfile-specific ignore file for a repository-root build context.
+# Only build inputs enter the context; Unity assets and local credentials do not.
+# Keep exceptions at file level: allowing a directory also allows descendants.
+# Add explicit file patterns when a new source subdirectory is introduced.
+**
+!Backend/Shinshi.Backend.slnx
+!Backend/Directory.Build.props
+!Backend/NuGet.Config
+!Backend/src/Shinshi.Api/*.csproj
+!Backend/src/Shinshi.Api/*.cs
+!Backend/src/Shinshi.Api/Auth/*.cs
+!Backend/src/Shinshi.Api/Controllers/*.cs
+!Backend/src/Shinshi.Contracts/*.csproj
+!Backend/src/Shinshi.Contracts/*.cs
+!Backend/src/Shinshi.Data/*.csproj
+!Backend/src/Shinshi.Data/*.cs
+!Backend/src/Shinshi.Data/Auth/*.cs
+!Backend/src/Shinshi.Data/Ledger/*.cs
+!Backend/src/Shinshi.Data/Migrations/*.sql
+!Backend/tests/Shinshi.Backend.Tests/*.csproj
+!Backend/tests/Shinshi.Backend.Tests/*.cs
+!Backend/tests/Shinshi.Backend.Tests/Auth/*.cs
+!Backend/tests/Shinshi.Backend.Tests/Auth/Api/*.cs
+!Backend/tests/Shinshi.Backend.Tests/Ledger/*.cs
+!Assets/01.Scripts/00.Common/Contracts/*.cs
+!Assets/01.Scripts/00.Common/Contracts/Auth/*.cs
+!Assets/01.Scripts/00.Common/Contracts/Characters/*.cs
+!Assets/01.Scripts/00.Common/Contracts/Common/*.cs
+!Assets/01.Scripts/00.Common/Contracts/Sessions/*.cs
+!deploy/api/Dockerfile
+!deploy/api/Dockerfile.dockerignore
+
+# These exclusions also win over the allowed source extensions above.
+**/bin/**
+**/obj/**
+**/.local/**
+**/.env
+**/*.env
+**/*.pem
+**/*.key
+**/*.pfx
+**/*.p12
