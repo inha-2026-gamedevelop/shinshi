@@ -331,11 +331,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Server::Shinshi.AI.WolbaekBossTestRig
   _presenterPrefab: {fileID: 3362672448524188666, guid: 975816e6e292197419e423799030feac, type: 3}
-  _bossVisualPrefab: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  _bossViewPrefab: {fileID: 2897417657671704511, guid: 4dbe54c4863042e45aa4c53adfee8f89, type: 3}
   _referenceAttack: 644.32
   _referenceHealth: 3541
   _healthScale: 1
-  _visualScale: 2
   _playerStart: {x: 0, y: 0, z: 12}
 --- !u!4 &1343865293
 Transform:

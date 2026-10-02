@@ -36,21 +36,6 @@ namespace Shinshi.AI
         private const float  GUI_MARGIN       = 10f;
         private const string HORIZONTAL_AXIS  = "Horizontal";
         private const string VERTICAL_AXIS    = "Vertical";
-        private const string URP_LIT_SHADER   = "Universal Render Pipeline/Lit";
-        private const string PROP_SRC_TEXTURE = "_MainTex";
-        private const string PROP_SRC_COLOR   = "_Color";
-        private const string PROP_SRC_SMOOTH  = "_Glossiness";
-        private const string PROP_BASE_MAP    = "_BaseMap";
-        private const string PROP_BASE_COLOR  = "_BaseColor";
-        private const string PROP_BUMP_MAP    = "_BumpMap";
-        private const string PROP_SMOOTHNESS  = "_Smoothness";
-        private const string PROP_CULL        = "_Cull";
-        private const string PROP_ALPHA_CLIP  = "_AlphaClip";
-        private const string PROP_CUTOFF      = "_Cutoff";
-        private const string KEYWORD_NORMAL   = "_NORMALMAP";
-        private const string KEYWORD_ALPHATEST = "_ALPHATEST_ON";
-        private const float  ALPHA_CUTOFF_DEFAULT = 0.5f;
-        private const float  FLAG_ON          = 1f;
         private const float  HALF             = 0.5f;
         private const float  PERCENT          = 100f;
         private const float  GUI_SPACING      = 6f;
@@ -66,13 +51,12 @@ namespace Shinshi.AI
 
         [Header("프리팹")]
         [SerializeField] private BossTelegraphPresenter _presenterPrefab; // 예고 표현 풀을 묶은 프리팹
-        [SerializeField] private GameObject             _bossVisualPrefab; // 월백 외형, 비워 두면 캡슐을 쓴다
+        [SerializeField] private BossView               _bossViewPrefab;   // 월백 외형과 모션
 
         [Header("시험 주입값")]
         [SerializeField] private float   _referenceAttack = 644.32f; // Aref, 체험판 숲 기준
         [SerializeField] private float   _referenceHealth = 3541f;   // Href, 체험판 숲 기준
         [SerializeField] private float   _healthScale     = 1f;      // 시작 인원에 따른 체력 배율
-        [SerializeField] private float   _visualScale     = 2f;
         [SerializeField] private Vector3 _playerStart     = new Vector3(0f, 0f, 12f);
 
         private CombatTargetRegistry    _registry;
@@ -83,7 +67,7 @@ namespace Shinshi.AI
         private BossAreaManager         _areas;
         private EnemyTestRigPlayer      _player;
         private BossTelegraphPresenter  _presenter;
-        private Transform               _bossVisual;
+        private BossView                _bossView;
         private Transform               _playerBody;
         private Renderer                _playerRenderer;
         private BossDefinition          _boss;
@@ -124,7 +108,12 @@ namespace Shinshi.AI
             _playerRenderer = body.GetComponent<Renderer>();
             _playerBody.SetParent(transform, false);
 
-            CreateBossVisual();
+            CreateBossView();
+            if (_bossView == null)
+            {
+                return;
+            }
+
             Build();
         }
 
@@ -228,6 +217,7 @@ namespace Shinshi.AI
         private void Build()
         {
             _presenter.ClearAll();
+            _bossView.ResetView();
 
             var catalog = new BossPatternCatalogSource(GameDB.BossPatterns);
             if ((!catalog.TryGetBoss(Constants.Combat.DEV_BOSS_ID, out _boss)) || (!catalog.IsTuned(Constants.Combat.DEV_BOSS_ID)))
@@ -289,94 +279,17 @@ namespace Shinshi.AI
             Debug.Log($"[Boss] 월백 1페이즈 시험 시작, maxHealth={_body.MaxHealth:F0}, 전장 지름={_boss.ArenaDiameter}");
         }
 
-        private void CreateBossVisual()
+        private void CreateBossView()
         {
-            GameObject visual = (_bossVisualPrefab != null)
-                ? Instantiate(_bossVisualPrefab, transform)
-                : GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            visual.name = "BossVisual";
-
-            foreach (Collider collider in visual.GetComponentsInChildren<Collider>())
+            if (_bossViewPrefab == null)
             {
-                Destroy(collider);
-            }
-
-            ConvertToUrp(visual);
-            _bossVisual = visual.transform;
-            _bossVisual.localScale = Vector3.one * _visualScale;
-        }
-
-        // 외부 모델의 재질은 내장 파이프라인용 Standard 셰이더라 URP에서 분홍색으로 깨진다. 원본 에셋은 고치지 않고
-        // 이 시험 인스턴스에만 같은 텍스처를 쓰는 URP Lit 재질을 입힌다. 정식 재질 가공은 아트 제작 절차에서 따로 한다
-        private static void ConvertToUrp(GameObject visual)
-        {
-            Shader lit = Shader.Find(URP_LIT_SHADER);
-            if (lit == null)
-            {
+                Debug.LogError("[Boss] 보스 외형 프리팹이 비어 있다", this);
+                enabled = false;
                 return;
             }
 
-            var converted = new Dictionary<Material, Material>();
-            foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>())
-            {
-                Material[] materials = renderer.sharedMaterials;
-                for (int i = 0; i < materials.Length; ++i)
-                {
-                    Material source = materials[i];
-                    if ((source == null) || (source.shader == lit))
-                    {
-                        continue;
-                    }
-
-                    if (!converted.TryGetValue(source, out Material target))
-                    {
-                        target = CreateUrpMaterial(source, lit);
-                        converted.Add(source, target);
-                    }
-
-                    materials[i] = target;
-                }
-
-                renderer.sharedMaterials = materials;
-            }
-        }
-
-        private static Material CreateUrpMaterial(Material source, Shader lit)
-        {
-            var target = new Material(lit) { name = source.name + "_URP" };
-
-            if (source.HasProperty(PROP_SRC_TEXTURE))
-            {
-                target.SetTexture(PROP_BASE_MAP, source.GetTexture(PROP_SRC_TEXTURE));
-            }
-
-            if (source.HasProperty(PROP_SRC_COLOR))
-            {
-                target.SetColor(PROP_BASE_COLOR, source.GetColor(PROP_SRC_COLOR));
-            }
-
-            if ((source.HasProperty(PROP_BUMP_MAP)) && (source.GetTexture(PROP_BUMP_MAP) != null))
-            {
-                target.SetTexture(PROP_BUMP_MAP, source.GetTexture(PROP_BUMP_MAP));
-                target.EnableKeyword(KEYWORD_NORMAL);
-            }
-
-            if (source.HasProperty(PROP_SRC_SMOOTH))
-            {
-                target.SetFloat(PROP_SMOOTHNESS, source.GetFloat(PROP_SRC_SMOOTH));
-            }
-
-            target.SetFloat(PROP_CULL, (float)UnityEngine.Rendering.CullMode.Off);
-
-            // 머리카락과 속눈썹은 알파 테스트 재질이라 같은 방식으로 자른다
-            if (source.IsKeywordEnabled(KEYWORD_ALPHATEST))
-            {
-                target.SetFloat(PROP_ALPHA_CLIP, FLAG_ON);
-                target.SetFloat(PROP_CUTOFF, source.HasProperty(PROP_CUTOFF) ? source.GetFloat(PROP_CUTOFF) : ALPHA_CUTOFF_DEFAULT);
-                target.EnableKeyword(KEYWORD_ALPHATEST);
-            }
-
-            return target;
+            _bossView = Instantiate(_bossViewPrefab, transform);
+            _bossView.Bind(_presenter, ReadClock);
         }
 
         // 패턴이 바뀔 때마다 순서와 횟수를 남긴다, 가중 선택이 여섯 패턴을 고르게 쓰는지 눈으로 보려는 것이다
@@ -402,8 +315,8 @@ namespace Shinshi.AI
 
         private void ApplyView()
         {
-            _bossVisual.SetPositionAndRotation(_body.Position, Quaternion.LookRotation(_body.Forward, Vector3.up));
-            _bossVisual.gameObject.SetActive(_body.LifeState == EParticipantLifeState.Alive);
+            _bossView.SetPose(_body.Position, _body.Forward);
+            _bossView.SetDefeated(_body.LifeState != EParticipantLifeState.Alive);
 
             _playerBody.position = _player.Position + Vector3.up;
             _playerBody.gameObject.SetActive(_player.LifeState == EParticipantLifeState.Alive);
