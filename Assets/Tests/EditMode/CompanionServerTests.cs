@@ -22,15 +22,16 @@ namespace Shinshi.Tests
         *                Fields
         ****************************************/
 
-        private const float  OWNER_HEALTH    = 1500f;
-        private const float  OWNER_DEFENSE   = 100f;
-        private const float  OWNER_ATTACK    = 100f;
-        private const float  ENEMY_HEALTH    = 1000f;
-        private const float  TOLERANCE       = 0.0001f;
-        private const float  MELEE_INTERVAL  = 0.75f;
-        private const float  RANGED_INTERVAL = 1f;
-        private const float  RECALL_DISTANCE = 12f;
-        private const double START_TIME      = 0.0;
+        private const float  OWNER_HEALTH       = 1500f;
+        private const float  OWNER_DEFENSE      = 100f;
+        private const float  OWNER_ATTACK       = 100f;
+        private const float  ENEMY_HEALTH       = 1000f;
+        private const float  TOLERANCE          = 0.0001f;
+        private const float  MELEE_INTERVAL     = 0.75f;
+        private const float  RANGED_INTERVAL    = 1f;
+        private const float  RECALL_DISTANCE    = 12f;
+        private const double START_TIME         = 0.0;
+        private const float  BOSS_NEARBY_RADIUS = 5f;
 
         private SkillCatalogSO       _catalog;
         private CombatTargetRegistry _registry;
@@ -453,6 +454,21 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(1, _registry.GetLivingPlayers(players));
             Assert.AreSame(_owner, players[0]);
+        }
+
+        [Test]
+        public void CountLivingInRadius_ActiveCompanionsBesideOwner_BossNearbyCountExcludesSummons()
+        {
+            CompanionServer ranged = CreateCompanion(_registry, _resolver);
+            StartCompanion(0);
+            Assert.IsTrue(ranged.Start(GetSummon(1), _resolver.IssueInstanceId(), START_TIME));
+            Assert.AreEqual(_owner.Position, _companion.Position);
+
+            // 보스 두뇌는 includeSummons를 거짓으로 주변 인원을 센다. 동료 두 체가 붙어 있어도 본체 한 명만 남는다
+            Assert.AreEqual(1, _registry.CountLivingInRadius(_owner.Position, BOSS_NEARBY_RADIUS, ECombatFaction.Player, false));
+            Assert.AreEqual(3, _registry.CountLivingInRadius(_owner.Position, BOSS_NEARBY_RADIUS, ECombatFaction.Player, true));
+
+            ranged.Stop();
         }
 
         /****************************************

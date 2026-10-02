@@ -165,6 +165,8 @@ namespace Shinshi.Network
                 return;
             }
 
+            EnableCompanionObjects(manager);
+
             if (!TryCreateJoinTokenVerifier(args, config, manager, out IJoinTokenVerifier verifier, out string verifierError))
             {
                 BootFailure.Stop(verifierError);
@@ -305,6 +307,20 @@ namespace Shinshi.Network
             }
 
             return true;
+        }
+
+        // 동료 프리팹이 없는 씬이면 동료 판정만 돌고 클라이언트에 개체가 보이지 않는다. 서버를 막지는 않는다
+        private static void EnableCompanionObjects(ShinshiNetworkManager manager)
+        {
+            GameObject prefab = CompanionNetworkSpawner.FindPrefab(manager);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[Combat] 네트워크 매니저 spawnPrefabs에 동료 프리팹이 없어 동료 개체를 스폰하지 않는다");
+                return;
+            }
+
+            CombatServerInstaller.Runtime.EnableCompanionObjects(
+                new CompanionNetworkSpawner(prefab, manager, Constants.Combat.MAX_COMPANION_OBJECTS));
         }
 
         private static ShinshiServerAuthenticator InstallAuthenticator(ShinshiNetworkManager manager, ServerSessionRegistry sessions,

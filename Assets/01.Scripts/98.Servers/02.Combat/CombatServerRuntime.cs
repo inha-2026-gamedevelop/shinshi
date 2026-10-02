@@ -63,6 +63,8 @@ namespace Shinshi.Combat
         private bool                         _scalesApplied         = false;
         private BossServer                   _boss;
         private bool                         _bossSpawnChecked      = false;
+        private ICompanionObjectHost         _companionHost;
+        private CompanionSpawnTracker        _companionTracker;
 
         /****************************************
         *              Properties
@@ -124,6 +126,9 @@ namespace Shinshi.Combat
             {
                 _host.Roster.ParticipantClosed -= OnRosterParticipantClosed;
             }
+
+            _companionTracker?.ReleaseAll();
+            _companionHost?.DestroyPool();
         }
 
         /****************************************
@@ -426,6 +431,7 @@ namespace Shinshi.Combat
             EndBossIfSessionEnded(serverTime);
 
             ApproveRevives(serverTime);
+            SyncCompanionObjects();
 
             // 이동, 기술, 공격, 부활이 위치를 모두 옮긴 뒤에 보내야 예측이 틱 중간 위치를 기준으로 삼지 않는다
             for (int i = 0; i < _players.Count; ++i)
@@ -643,11 +649,42 @@ namespace Shinshi.Combat
             }
         }
 
-        /// <summary> 서버 스포너가 미리 생성한 동료 네트워크 상태를 참가자의 실행 객체에 결합한다 </summary>
-        public bool BindCompanionState(int participantId, int slot, CompanionCombatState state)
+        /// <summary> 서버를 열기 전에 한 번 부른다, 연결하지 않으면 동료 판정은 돌지만 클라이언트에 개체가 보이지 않는다 </summary>
+        public void EnableCompanionObjects(ICompanionObjectHost host)
         {
-            int index = IndexOfParticipant(participantId);
-            return (index >= 0) && (_players[index].Skills.BindCompanionState(slot, state));
+            if (host == null)
+            {
+                throw new ArgumentNullException(nameof(host));
+            }
+
+            // 설치처럼 여러 번 불려도 처음 연결만 쓴다. 이미 스폰한 개체의 짝을 다른 스포너로 바꾸지 않는다
+            if (_companionHost != null)
+            {
+                return;
+            }
+
+            _companionHost    = host;
+            _companionTracker = new CompanionSpawnTracker(host, Constants.Combat.MAX_COMPANION_OBJECTS);
+        }
+
+        // 기술, 보스 피해, 종료 판정, 부활이 동료를 모두 바꾼 뒤에 짝을 맞춘다. 같은 틱에 복귀한 동료를 먼저 내려야
+        // 재호출이 상한 안에서 새 개체를 받는다. 보존 기술 서버의 동료도 남은 수명 동안 화면에 남긴다
+        private void SyncCompanionObjects()
+        {
+            if (_companionTracker == null)
+            {
+                return;
+            }
+
+            _companionTracker.ReleaseStale();
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                _companionTracker.Track(_players[i].Skills);
+            }
+            for (int i = 0; i < _retainedSkillTicks.Count; ++i)
+            {
+                _companionTracker.Track(_retainedSkillTicks[i]);
+            }
         }
 
         // 개체가 지워진 경로의 보존 기록만 만료시킨다. 던전에서는 명단을 닫으면 세션이 ParticipantSettled를 저장한다.

@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 // Unity
@@ -19,6 +20,8 @@ namespace Shinshi.Network
         /****************************************
         *                Fields
         ****************************************/
+
+        private readonly Dictionary<uint, GameObject> _spawnPrefabsByAssetId = new Dictionary<uint, GameObject>();
 
         private EServerRole _serverRole = EServerRole.Town;
 
@@ -233,6 +236,7 @@ namespace Shinshi.Network
         {
             base.OnStartClient();
             PartyAuctionClient.RegisterHandlers();
+            RegisterEnemyReplicas();
             if (playerPrefab == null)
             {
                 return;
@@ -312,6 +316,55 @@ namespace Shinshi.Network
         private void DestroyPlayerReplica(GameObject player)
         {
             Destroy(player);
+        }
+
+        // spawnPrefabs에는 서버가 스폰하는 적과 소환물(동료)만 둔다. 서버 스포너가 ApplyEnemyReplication을 쓰므로
+        // 클라이언트 생성도 같은 간격을 적용하도록 Mirror의 기본 등록을 바꾼다
+        private void RegisterEnemyReplicas()
+        {
+            _spawnPrefabsByAssetId.Clear();
+            for (int i = 0; i < spawnPrefabs.Count; ++i)
+            {
+                GameObject prefab = spawnPrefabs[i];
+                if ((prefab == null) || (!prefab.TryGetComponent(out NetworkIdentity identity)))
+                {
+                    continue;
+                }
+
+                _spawnPrefabsByAssetId[identity.assetId] = prefab;
+                NetworkClient.UnregisterPrefab(prefab);
+                NetworkClient.RegisterPrefab(prefab, SpawnEnemyReplica, DestroyEnemyReplica);
+            }
+        }
+
+        private GameObject SpawnEnemyReplica(SpawnMessage message)
+        {
+            if (!_spawnPrefabsByAssetId.TryGetValue(message.assetId, out GameObject prefab))
+            {
+                Debug.LogError($"[Network] 등록되지 않은 스폰 프리팹이다, assetId={message.assetId}");
+                return null;
+            }
+
+            GameObject replica = Instantiate(prefab, message.position, message.rotation);
+            if (!replica.TryGetComponent(out NetworkIdentity identity))
+            {
+                Destroy(replica);
+                return null;
+            }
+
+            ApplyEnemyReplication(identity);
+            return replica;
+        }
+
+        // 호스트에서는 서버 개체와 같은 개체가 넘어온다. 서버 스포너가 풀로 다시 쓰므로 여기서 지우지 않는다
+        private void DestroyEnemyReplica(GameObject replica)
+        {
+            if (NetworkServer.active)
+            {
+                return;
+            }
+
+            Destroy(replica);
         }
 
         private static void ApplyTransformReplication(NetworkIdentity identity, float intervalSeconds)

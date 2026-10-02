@@ -558,6 +558,49 @@ namespace Shinshi.Tests
 
         [TestCase(0)]
         [TestCase(1)]
+        public void CompanionSlots_SummonResolveThenOwnerDeath_TrackerSpawnsAfterWindupAndDespawnsOnDeath(int slot)
+        {
+            CreateServer(EPlayerClass.Summoner);
+            var host    = new FakeCompanionObjectHost();
+            var tracker = new CompanionSpawnTracker(host, Constants.Combat.MAX_COMPANION_OBJECTS);
+            CastRegular(slot, Vector3.zero);
+            SyncCompanionObjects(tracker);
+
+            // 예약된 자리는 사망 상태 대기 개체라 화면에 내보내지 않는다
+            Assert.AreEqual(CombatIds.NONE, _server.GetActiveCompanionId(slot));
+            Assert.AreEqual(0, host.Spawns.Count);
+
+            Tick(_server.ResolveAt, false);
+            SyncCompanionObjects(tracker);
+
+            Assert.AreEqual(_server.GetCompanion(slot).CombatId, _server.GetActiveCompanionId(slot));
+            Assert.AreEqual(1, host.Spawns.Count);
+            Assert.AreEqual(_server.GetCompanion(slot).CombatId, host.Spawns[0].CompanionId);
+
+            _owner.LifeState = EParticipantLifeState.Dead;
+            _server.OnOwnerDeath();
+            SyncCompanionObjects(tracker);
+
+            Assert.AreEqual(CombatIds.NONE, _server.GetActiveCompanionId(slot));
+            Assert.AreEqual(1, host.Despawns.Count);
+            Assert.AreEqual(0, tracker.Count);
+        }
+
+        [Test]
+        public void CompanionSlots_NonSummonerOrInvalidSlot_ReportsNoneAndRejectsBinding()
+        {
+            CreateServer(EPlayerClass.Warrior);
+
+            Assert.AreEqual(Constants.Combat.COMPANIONS_PER_PLAYER, _server.CompanionSlotCount);
+            Assert.AreEqual(PARTICIPANT_ID, _server.ParticipantId);
+            Assert.AreEqual(CombatIds.NONE, _server.GetActiveCompanionId(-1));
+            Assert.AreEqual(CombatIds.NONE, _server.GetActiveCompanionId(Constants.Combat.COMPANIONS_PER_PLAYER));
+            Assert.IsFalse(_server.BindCompanionState(0, null));
+            _server.UnbindCompanionState(Constants.Combat.COMPANIONS_PER_PLAYER);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
         public void Tick_Summon_OnlyAppearsAfterWindupAndCancelPreventsCreation(int slot)
         {
             CreateServer(EPlayerClass.Summoner);
@@ -895,6 +938,12 @@ namespace Shinshi.Tests
             var                 snapshot = new SkillCombatSnapshot(before.Energy, resonance, before.GetReadyAt(0), before.GetReadyAt(1),
                 before.GetReadyAt(2), before.GetReadyAt(COUNTER_SLOT), before.AscensionReadyAt);
             _server.Restore(in snapshot);
+        }
+
+        private void SyncCompanionObjects(CompanionSpawnTracker tracker)
+        {
+            tracker.ReleaseStale();
+            tracker.Track(_server);
         }
 
         private void Tick(double now, bool tickCompanions = true)
