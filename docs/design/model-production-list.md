@@ -171,6 +171,20 @@ UMA3 연동용 에셋49개를 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleM
 
 달리기의 일부 원본 PF 표본에서 손과 몸이 겹쳐 동작 맞춤·클리핑 보정이 필요하다. 현행 UMA 외형은 사용자 거절이며 채택·코드 연동을 보류하고 종료했다. 실제 High native 걷기16phase는1.2초 클립·유효 Avatar/55 human 매핑/humanScale1.13814175·유한정점·토폴로지·목틈0·중립복원0을 확인했으나 바닥9/16실패, phase0.75 최대19.9607mm침투가 남았다. 임시 iKOnFeet 진단은 침투가 없어졌지만1phase의25mm 초과 들뜸으로 전체실패했고 저장 에셋/Controller를 바꾸지 않았다. 교정된 native 전용Walk는 저장하지 않았다. 마지막 노멀 변경 후Medium/Low 재검증도 미실행이다. 최종 리토폴로지·얼굴 아틀라스/눈꺼풀 품질, 전체 슬라이더·조합, 독립 안구·입·표정, native 손가락 포즈·극한 DNA, 직업별 헤어·장비, GPU 연속 재생·상태 전환·전 조합 클리핑, 게임플레이·성능·Windows 빌드·배포 검증은 미완료다. 상세 제작 기록·렌더는 개인 docs에 보존하고 [에셋 대장](../licenses/ASSET_REGISTRY.md#여성-베이스-외형-시제품)에 출처와 사용 조건을 남긴다.
 
+### Tripo 공통 여성 몸체·귀여운 얼굴 첫 검토 묶음 — 2026-10-03
+
+사용자 승인으로 공통 몸체에 직업별 의상·헤어와 얼굴 3종을 분리하는 제작 방식으로 전환했다. 첫 검토 묶음은 불투명 유니타드를 입은 공통 몸체와 귀여운 인상의 성인 여성 얼굴이다. 작업은 최대 Blender 4개, 결과 검토는 두 개씩 진행한다. 기존 Meshy/UMA 시제품과 별도 에셋이며, 공통 몸체에 포함된 기술 확인용 기본 머리는 최종 얼굴 3종에 추가하는 네 번째 얼굴이 아니다.
+
+같은 에셋 루트의 `Warrior/Textures/` 3장은 이전 무사 전신의 중간 베이크 보존본이며 현재 공통 몸체 프리팹에 연결하지 않는다. 분리 의상용 최종 맵이나 무사 제작 완료 결과로 사용하지 않는다.
+
+런타임 모델·재질·텍스처는 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleTripo/CommonBody/`, `Heads/Cute/`에 있다. 조립 검토용은 [PF_FemaleCommonBody_Cute](../../Assets/02.Prefab/Characters/PlayerFemaleTripo/PF_FemaleCommonBody_Cute.prefab), 기술 몸체 검토용은 [PF_FemaleCommonBody](../../Assets/02.Prefab/Characters/PlayerFemaleTripo/PF_FemaleCommonBody.prefab), 머리 교체용 템플릿은 [PF_FemaleHeadCute](../../Assets/02.Prefab/Characters/PlayerFemaleTripo/PF_FemaleHeadCute.prefab)이다. 머리 템플릿의 renderer bones/rootBone은 조립 대상의 동일 rest 골격으로 다시 연결해야 한다. 실제 공유 52뼈·최대 4가중치·Humanoid Avatar와 3LOD를 구성했으며, 조립본의 LOD 삼각형 수는 75,993 / 43,508 / 24,167이다. 약 1.67m는 시제품 치수이며 공용 비례·게임 판정 크기나 최종 성능 예산을 확정하지 않는다.
+
+High 형상의 부품별 실제 자체 AO와 기하 노멀을 베이크하고 피부·천의 거칠기를 구분한 2K BaseColor/Normal/PackedMAS를 사용한다. PackedMAS는 R 금속성, G AO, A smoothness이며 데이터 맵은 선형으로 임포트한다. 얼굴 세부와 몸체 LOD의 표면 반응을 검수하고, 새 목 연결부의 투영 아티팩트는 국소 노멀 보정으로 처리한다. AO를 BaseColor에 다시 곱하지 않는다. 실제 Unity URP 다각도·강제 정지 LOD 및 간접광 AO 검증을 상세 제작 기록에 연결한다.
+
+Native 걷기·달리기 16 phase × 3LOD를 두 조립 변형에서 각각 96표본 확인했다. 비유한 정점은 0, 몸체·귀여운 머리 목 간격의 최대값은 약 35.184µm다. renderer bounds는 `rootBone` 공간에서 실제 변형 표본으로 구성하고, 저장된 3개 프리팹의 모델·맵·뼈·LOD·메타 참조와 중립 bounds를 검사했다. 모델/텍스처 Read/Write는 끄고 뼈 계층을 보존한다. 텍스처 6개의 Editor object memory 합계는 약 64.26MiB이며 Player/GPU VRAM 측정값은 아니다. 장식·외형 검토용이므로 Collider를 생략했으며 게임용 capsule/hitbox는 구현하지 않았다. 검증은 격리 PreviewScene에서 수행하고 당시 활성 개발 씬과 dirty 상태를 보존했다.
+
+상태는 **첫 묶음 외형 수정 중, 검토용**이다. 목 노멀 반사 문제는 Native 화면에서 교정됐으나 목 아래 BaseColor 색 경계 수정과 최종 외형 재검토가 남아 있다. 참조 Run의 맨발 바닥 침투가 최대 약 25.77mm 남아 신발·RootHeight·FootIK 보정이 필요하다. 나머지 얼굴 2종, 직업별 의상·헤어, 독립 안구·표정, 의복/머리 보조본과 실제 흔들림, GPU 연속 재생·LOD 전환·게임 카메라·성능·빌드·플레이어 연동은 미완료다. SecondaryMotion 코드의 EditMode 28/28 통과는 실제 의복·헤어 동작 완료를 뜻하지 않는다. 원본·입력·상세 기록·검토 렌더는 Git 제외 개인 docs에 보존하고 출처·권리 확인 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#tripo-여성-공통-몸체얼굴직업-참조--2026-10-0203)을 따른다.
+
 ## 7. 모델 생성과 분리할 효과 작업
 
 | 요소 | 제작 방향 | 필요한 메시 |

@@ -186,3 +186,19 @@ Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 �
 런타임은 `Assets/01.Scripts/05.Art/Environment/{공유 이름}/`, 배치용 프리팹은 `Assets/02.Prefab/Environment/{공유 이름}/`이다. 기존 FloatingRock 작업 `01a0f4de-b032-70ef-923a-05f9a0c97a84`의 Blender 청크 원본에서 파생한 `ReferenceIsland` 7종은 추가 Meshy 비용0이며 원본 UV·아랫면을 보존하고 윗면과 색·AO를 다시 처리했다. `ReferenceShrineDetails`는 기존 링 원본을 바탕으로 Blender에서 천·기둥·돌 기단을 제작했고, `VillageAssembly/PF_ReferenceSanctuaryLantern`은 기존 모듈·등을 조립한 것이다. 신규 Meshy 생성 수에 이 파생·직접 제작·조립물을 더하지 않는다.
 
 원본 GLB·편집 blend·입력 이미지·반려된 축소 후보·상세 검수는 Git 제외 개인 제작 기록에 보존한다. 권리 확인 상태는 위 기존 Meshy 기록과 같다. 최종 경로·LOD 예외·시각 검증·사용 제한은 [공용 환경 에셋 목록](../unity/SHARED_ENVIRONMENT_ASSET_CATALOG.md)의 원화 대조 마을 항목을 따른다.
+
+## Tripo 여성 공통 몸체·얼굴·직업 참조 — 2026-10-02~03
+
+사용자가 승인한 생성 이미지 입력을 열린 Tripo Studio에 업로드하고 High/리토폴로지 원본을 실제 다운로드했다. 입력은 AI 생성 캐릭터 원화이며 실존 인물 사진 텍스처를 사용하지 않았다. 모델별 원본·프롬프트·파일 해시·차감 내역은 Git 제외 개인 docs에 보존한다. 아래 직업 전신은 분리 의상·헤어 제작의 참조 원본이며 최종 게임 모델이 아니다.
+
+| 원본 | Tripo 작업 ID | 가공·공유 범위 |
+|---|---|---|
+| 공통 여성 몸체 | `14c30fc6-18e6-4a72-a423-7969ee88298f` | 새 52뼈 골격·스킨·3LOD·AO/PBR. `Assets/01.Scripts/05.Art/Characters/PlayerFemaleTripo/CommonBody/` |
+| 귀여운 여성 얼굴 | `b2214a4c-64e3-4087-a2ef-47cc0836659b` | High 기반 얼굴 정리·공통 목 연결·3LOD·AO/PBR. 같은 루트의 `Heads/Cute/` |
+| 무사 전신 참조 | `6a518a8a-11f6-4858-8c71-b64564cd23cc` | 원본 보존, 종전 옷 스킨 후보는 변형 실패로 기각 |
+| 도술사 전신 참조 | `ac01bb7d-eb79-4968-947c-1bb54af6a8b6` | High/리토폴로지 원본 보존, 분리 의상·헤어 제작 대기 |
+| 신령사 전신 참조 | `e9fd2649-debe-483b-adde-86f14801a6a9` | High/리토폴로지 원본 보존, 분리 의상·헤어 제작 대기 |
+
+관찰한 생성·리토폴로지·리깅 차감은 합계 415크레딧이며 추가 결제나 구독 변경은 하지 않았다. Tripo 리깅/애니메이션 내보내기 일부는 Chrome 차단으로 받지 못했으므로 성공으로 기록하지 않는다. 공통 몸체의 최종 골격은 Blender에서 별도로 제작·검증했다. 검토용 프리팹은 `Assets/02.Prefab/Characters/PlayerFemaleTripo/`의 `PF_FemaleCommonBody`, `PF_FemaleCommonBody_Cute`, `PF_FemaleHeadCute`다.
+
+**상업 이용 권리 확인은 보류**다. [Tripo 공식 상업 이용 안내](https://www.tripo3d.ai/help/privacy-policy/how-to-use-tripo-models-commercially)는 유료 플랜과 무료 플랜의 권리 조건을 구분하지만, 생성 당시 계정 플랜은 확인하지 못했다. 크레딧 잔액과 다운로드 성공만으로 유료 플랜·권리 보유를 추정하지 않는다. 상업 배포 전 생성 당시 플랜과 적용 약관·입력 권리를 확인해야 하며, 현재 외형·리깅 검증은 그 확인을 대신하지 않는다. 확인한 제작 범위와 남은 게임 사용 검증은 [모델 제작 목록](../design/model-production-list.md#tripo-공통-여성-몸체귀여운-얼굴-첫-검토-묶음--2026-10-03)을 따른다.
