@@ -1,0 +1,39 @@
+# 마을 HUD 개발 씬
+
+대상은 `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView.unity`이다. 원본 `Dev_HUD.unity`와 `Assets/09.Data/UI/Layout_HUD.json`은 별개이며, JSON을 다시 적용하면 수동 배치에 영향을 줄 수 있다.
+
+## 이동용 NavMesh
+
+`Navigation` 루트의 NavMeshSurface는 Humanoid, Walkable, Physics Colliders, Volume 수집을 사용한다. 포함 레이어는 Default와 Obstacle(mask 257)이다. 수집 범위는 center `(16.203926, 8.5442295, 5.126976)`, size `(154.71117, 28.383587, 141.47272)`이며 기존 활성 Collider 범위에 여유를 둔 값이다.
+
+`PF_NetPlayer`와 `Test_Player`의 씬 인스턴스에는 자식까지 적용하는 Ignore From Build NavMeshModifier를 붙여 플레이어가 장애물로 베이크되지 않게 했다. 원본 프리팹은 수정하지 않았다. 환경 Collider나 배치를 바꾸면 Navigation의 NavMesh를 다시 베이크하고 아래 파일과 함께 씬을 저장한다.
+
+- 데이터: `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView/NavMesh-Navigation.asset`
+- 씬과 데이터, 데이터 폴더를 각자의 `.meta`와 함께 보관한다.
+
+2026-10-03 에디터 검증에서 베이크된 정점 5259개·삼각형 2393개를 확인했다. 중앙 출발점 주변 7곳의 완전 경로와 Play Mode의 MovePathRules/분리된 PathFollower 도달을 확인했다. 전체 구역 연결성, 소유된 네트워크 플레이어 입력·이동, M2/M3 및 Player 빌드는 미검증이다.
+
+## 씬 플레이어의 스폰 상태
+
+Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 것은 Mirror의 씬 NetworkIdentity 준비 처리다. 오브젝트는 남아 있으며 NavMesh가 삭제한 것이 아니다. 실제 플레이어는 인증된 서버의 스폰과 소유권 부여가 필요하다.
+
+검증 때 기존 Mirror NetworkConnection 생성자의 Time.time 접근으로 PF_NetPlayer 직렬화 예외가 남아 있었다. Mirror 원본은 이번 작업에서 수정하지 않았다.
+
+## 퀘스트·파티 HUD 시안
+
+퀘스트와 파티 UI는 현재 개발용 예시 표시이며 게임의 실제 임무·파티 상태에 연결되지 않았다.
+
+- 퀘스트: 상단 `진행 중인 임무 목록`과 `(n/n)`, 최소화 버튼, 투명한 임무 본문 3개. `HudQuestTrackerView`의 버튼은 본문만 접고 펼치며 상단은 유지한다. 외부에서 `SetCount`로 개수를 전달할 수 있다.
+- 파티: 4명 자리마다 원형 직업 아이콘, 위쪽 닉네임, 아래쪽 HP 바와 가운데 흰 수치를 표시한다. 멤버를 감싸는 판은 없으며 기존 MP 자리표시는 비활성화했다. 이름·직업·HP는 예시이고 파티 데이터 바인더는 아직 없다.
+
+| 용도 | 배치 에셋·코드 |
+|---|---|
+| 퀘스트 헤더 | `Assets/01.Scripts/05.Art/UI/HudQuest/Textures/T_HudQuest_Header.png` |
+| 퀘스트 접기·개수 표시 | `Assets/01.Scripts/06.UI/Hud/HudQuestTrackerView.cs` |
+| 파티 직업·빈 HP 틀 | `Assets/01.Scripts/05.Art/UI/HudParty/Textures/T_HudParty_Atlas.png`의 Multiple Sprite 4종 |
+| 파티 HP 채움 | 기존 `Assets/01.Scripts/05.Art/UI/HudPlayerStatus/Textures/T_HudPlayerStatus_FillHp.png` 재사용 |
+| 한글·기호 TMP | `Assets/01.Scripts/06.UI/Hud/Fonts/`의 Korean Regular/Bold와 Symbols |
+
+글자는 텍스처에 포함되지 않으며 TMP로 배치했다. Nanum Gothic 원본과 OFL 라이선스는 Fonts의 NanumGothic 폴더에 있다. TMP 파생 폰트에 예시 글리프를 넣었고 전역 fallback은 바꾸지 않았다. 파티는 Korean Bold를 사용한다. 에셋과 하위 폴더의 `.meta`를 함께 보관한다.
+
+2026-10-03 Play Mode 화면에서 투명 배경·4명 파티 표시·한글과 숫자의 미잘림을 확인했다. 퀘스트 버튼의 EventSystem 포인터 이벤트로 접기·펼치기를 확인했고 `SetCount(2, 3)` 결과도 확인했다. 실제 임무·파티 데이터 연결, 다인 접속과 Player 빌드는 미검증이다.
