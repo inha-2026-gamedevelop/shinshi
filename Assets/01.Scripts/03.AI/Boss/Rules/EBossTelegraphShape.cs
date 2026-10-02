@@ -13,6 +13,9 @@ namespace Shinshi.AI
         Line = 2,
 
         /// <summary> 직사각형 위를 이동하며 타격, 월백 P01 </summary>
-        Dash = 3
+        Dash = 3,
+
+        /// <summary> 투사체 경로 직사각형, 월백 P04. 발사하면 예고는 사라지고 투사체는 따로 날아간다 </summary>
+        Projectile = 4
     }
 }

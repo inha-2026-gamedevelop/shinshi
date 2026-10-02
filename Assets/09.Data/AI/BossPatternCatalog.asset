@@ -190,21 +190,21 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0
-    _trackingSeconds: 0
-    _turnRate: 0
+    _telegraphSeconds: 0.9
+    _trackingSeconds: 0.45
+    _turnRate: 120
     _activeSeconds: 0
-    _recoverySeconds: 0
+    _recoverySeconds: 0.5
     _shape:
       _shape: 3
-      _range: 0
+      _range: 35
       _arcAngle: 0
-      _width: 0
-      _projectileSpeed: 0
-    _damageRef: 0
+      _width: 1
+      _projectileSpeed: 10
+    _damageRef: 0.18
     _guardable: 1
     _controlPhase: 5
-    _controlWindowSeconds: 0
+    _controlWindowSeconds: 0.5
     _controlCancelsPattern: 0
     _areaDurationSeconds: 0
     _areaTickInterval: 0
@@ -231,25 +231,25 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0
+    _telegraphSeconds: 1
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0
+    _recoverySeconds: 0.5
     _shape:
       _shape: 4
-      _range: 0
+      _range: 3
       _arcAngle: 0
       _width: 0
       _projectileSpeed: 0
-    _damageRef: 0
+    _damageRef: 0.08
     _guardable: 0
     _controlPhase: 0
     _controlWindowSeconds: 0
     _controlCancelsPattern: 0
-    _areaDurationSeconds: 0
-    _areaTickInterval: 0
-    _maxConcurrentAreas: 0
+    _areaDurationSeconds: 6
+    _areaTickInterval: 1
+    _maxConcurrentAreas: 3
   - _definitionId: wolbaek_p06
     _displayKey: wolbaek_p06.name
     _bossId: boss_wolbaek

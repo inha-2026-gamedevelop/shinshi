@@ -29,6 +29,9 @@ namespace Shinshi.AI
         private const int    ENDED_HISTORY         = 32;   // 끝난 시전 번호를 기억하는 수, 늦게 온 알림이 되살리지 못하게 한다
         private const float  NO_DELAY              = 0f;
         private const float  NOT_EXECUTED          = -1f;
+        private const float  PROJECTILE_HEAD_LENGTH = 1.5f; // m, 투사체를 길쭉한 머리로 그릴 때의 길이, 판정 길이가 아니다
+        private const float  PROJECTILE_DISSOLVE    = 0.25f; // 초, 소멸 연출 길이
+        private const float  AREA_FADE             = 0.3f;  // 초, 장판이 사라질 때 옅어지는 시간
 
         /****************************************
         *                Fields
@@ -48,10 +51,36 @@ namespace Shinshi.AI
             public Action<SectorVFXController> OnSectorCompleted;
         }
 
+        // 날고 있는 투사체 한 발, 예고 표현과 따로 산다. 패턴이 끝나거나 같은 보스의 다음 시전이 시작돼도 이어서 그린다
+        private sealed class ProjectileEntry
+        {
+            public BossProjectileTrack        Track;
+            public RectTelegraphVFXController Rect;
+            public Quaternion                 Rotation;
+            public bool                       EndSeen;
+            public double                     EndSeenAt;
+        }
+
+        // 활성된 장판 한 개, 예고 표현과 따로 산다. 패턴이 끝나거나 같은 보스의 다음 시전이 시작돼도 지속 시간 동안 그린다
+        private sealed class AreaEntry
+        {
+            public BossAreaTrack            Track;
+            public AreaGroundVFXController  Visual;
+            public bool                     EndSeen;
+            public double                   EndSeenAt;
+        }
+
+        [SerializeField] private AreaGroundVFXPool _areaPool;
         [SerializeField] private SectorVFXPool _sectorPool;
         [SerializeField] private RectTelegraphVFXPool _rectPool;
 
         private readonly List<Entry>    _active       = new List<Entry>();
+        private readonly List<ProjectileEntry> _projectiles = new List<ProjectileEntry>();
+        private readonly List<AreaEntry> _areas       = new List<AreaEntry>();
+        private readonly HashSet<int>   _areaEndedIds   = new HashSet<int>();
+        private readonly Queue<int>     _areaEndedOrder = new Queue<int>();
+        private readonly HashSet<int>   _projectileEndedIds   = new HashSet<int>();
+        private readonly Queue<int>     _projectileEndedOrder = new Queue<int>();
         private readonly HashSet<int>   _endedIds     = new HashSet<int>();
         private readonly Queue<int>     _endedOrder   = new Queue<int>();
 
@@ -67,6 +96,18 @@ namespace Shinshi.AI
 
         /// <summary> 단계가 바뀔 때 알린다, 시전 번호와 새 단계. 시험과 진단용이다 </summary>
         public event Action<int, EBossTelegraphPhase> PhaseChanged;
+
+        /// <summary> 진행 중인 투사체 수 </summary>
+        public int ProjectileCount => _projectiles.Count;
+
+        /// <summary> 투사체의 소멸이 확인될 때 알린다, 시전 번호와 이유. 시험과 진단용이다 </summary>
+        public event Action<int, EBossProjectileFate> ProjectileFateChanged;
+
+        /// <summary> 진행 중인 장판 수 </summary>
+        public int AreaCount => _areas.Count;
+
+        /// <summary> 장판의 소멸이 확인될 때 알린다, 장판 번호와 이유. 시험과 진단용이다 </summary>
+        public event Action<int, EBossAreaFate> AreaFateChanged;
 
         /****************************************
         *              Unity Event
@@ -89,8 +130,24 @@ namespace Shinshi.AI
                 }
             }
 
+            for (int i = _projectiles.Count - 1; i >= 0; --i)
+            {
+                if (UpdateProjectile(_projectiles[i], now))
+                {
+                    _projectiles.RemoveAt(i);
+                }
+            }
+
+            for (int i = _areas.Count - 1; i >= 0; --i)
+            {
+                if (UpdateArea(_areas[i], now))
+                {
+                    _areas.RemoveAt(i);
+                }
+            }
+
             // 진행 중인 표현이 없으면 갱신을 멈춘다
-            if (_active.Count == 0)
+            if ((_active.Count == 0) && (_projectiles.Count == 0) && (_areas.Count == 0))
             {
                 enabled = false;
             }
@@ -284,6 +341,281 @@ namespace Shinshi.AI
             return false;
         }
 
+        /// <summary> 투사체 발사, 같은 시전 번호의 예고가 있으면 그 예고는 발사와 함께 마무리하고 투사체는 따로 그린다. 이미 있는 번호나 끝난 번호면 무시한다 </summary>
+        public bool LaunchProjectile(in BossProjectileStart start)
+        {
+            int id = start.ProjectileId;
+            if (_isServerBuild || IsProjectileKnown(id))
+            {
+                return false;
+            }
+
+            double now = ReadServerTime();
+            BossProjectileTrack track = new BossProjectileTrack(start);
+
+            // 소멸까지 이미 다 지난 늦은 발사는 그리지 않고, 뒤늦게 온 소멸이 되살리지도 못한다
+            if (now >= (start.LaunchServerTime + track.FlightSeconds + PROJECTILE_DISSOLVE))
+            {
+                RememberProjectileEnded(id);
+                return false;
+            }
+
+            if (TryFind(id, out Entry telegraph) && (telegraph.Cast.Shape == EBossTelegraphShape.Projectile))
+            {
+                Strike(id, start.LaunchServerTime);
+            }
+
+            AddProjectile(track);
+            return true;
+        }
+
+        /// <summary> 투사체 소멸, 서버가 알린 위치와 이유로 멈춘다. 모르는 번호면 나중에 늦게 오는 발사가 되살아나지 않게 기억해 둔다 </summary>
+        public bool EndProjectile(int projectileId, EBossProjectileFate fate, Vector3 position)
+        {
+            if (_isServerBuild)
+            {
+                return false;
+            }
+
+            if (fate == EBossProjectileFate.Cancelled)
+            {
+                return CancelProjectile(projectileId);
+            }
+
+            if (!TryFindProjectile(projectileId, out ProjectileEntry entry))
+            {
+                RememberProjectileEnded(projectileId);
+                return false;
+            }
+
+            if (!entry.Track.TryEnd(fate, position))
+            {
+                return false;
+            }
+
+            ProjectileFateChanged?.Invoke(projectileId, fate);
+            return true;
+        }
+
+        /// <summary> 투사체 제거(보스 사망, 페이즈 전환, 전투 종료), 표시는 바로 지운다 </summary>
+        public bool CancelProjectile(int projectileId)
+        {
+            if (_isServerBuild)
+            {
+                return false;
+            }
+
+            if (!TryFindProjectile(projectileId, out ProjectileEntry entry))
+            {
+                RememberProjectileEnded(projectileId);
+                return false;
+            }
+
+            if (!entry.Track.TryCancel())
+            {
+                return false;
+            }
+
+            RemoveProjectile(entry);
+            ProjectileFateChanged?.Invoke(projectileId, EBossProjectileFate.Cancelled);
+            return true;
+        }
+
+        /// <summary> 날고 있는 투사체를 스냅샷으로 복원한다, 이미 소멸했거나 소멸 연출까지 끝난 것은 무시한다. 처음부터 다시 날리지 않고 서버 시각 기준으로 이어서 그린다 </summary>
+        public bool RestoreProjectile(in BossProjectileSnapshot snapshot)
+        {
+            int id = snapshot.Start.ProjectileId;
+            if (_isServerBuild || IsProjectileKnown(id))
+            {
+                return false;
+            }
+
+            if (snapshot.Fate == EBossProjectileFate.Cancelled)
+            {
+                RememberProjectileEnded(id);
+                return false;
+            }
+
+            BossProjectileTrack track = BossProjectileTrack.FromSnapshot(in snapshot);
+            double now = ReadServerTime();
+            if (now >= (track.LaunchServerTime + track.FlightSeconds + PROJECTILE_DISSOLVE))
+            {
+                RememberProjectileEnded(id);
+                return false;
+            }
+
+            AddProjectile(track);
+            return true;
+        }
+
+        /// <summary> 진행 중인 투사체의 현재 상태, 복원에 넘길 값이다 </summary>
+        public bool TryGetProjectileSnapshot(int projectileId, out BossProjectileSnapshot snapshot)
+        {
+            if (TryFindProjectile(projectileId, out ProjectileEntry entry))
+            {
+                snapshot = entry.Track.ToSnapshot();
+                return true;
+            }
+
+            snapshot = default;
+            return false;
+        }
+
+        /// <summary> 진행 중인 투사체의 모델과 그리는 대상, 시험과 진단용이다. 풀이 비었으면 rect는 null이다 </summary>
+        public bool TryGetProjectile(int projectileId, out BossProjectileTrack track, out RectTelegraphVFXController rect)
+        {
+            if (TryFindProjectile(projectileId, out ProjectileEntry entry))
+            {
+                track = entry.Track;
+                rect  = entry.Rect;
+                return true;
+            }
+
+            track = null;
+            rect  = null;
+            return false;
+        }
+
+        /// <summary> 장판 활성, 서버가 활성을 알린 뒤에만 장판을 그린다(예고가 끝났다는 이유만으로 그리지 않는다). 같은 번호의 원형 예고가 있으면 그 예고는 활성과 함께 마무리하고 장판은 따로 그린다. 이미 있는 번호나 끝난 번호면 무시한다 </summary>
+        public bool ActivateArea(in BossAreaStart start)
+        {
+            int id = start.AreaId;
+            if (_isServerBuild || IsAreaKnown(id))
+            {
+                return false;
+            }
+
+            double now = ReadServerTime();
+            BossAreaTrack track = new BossAreaTrack(start);
+
+            // 소멸 연출까지 이미 다 지난 늦은 활성은 그리지 않고, 뒤늦게 온 알림이 되살리지도 못한다
+            if (now >= (start.EndServerTime + AREA_FADE))
+            {
+                RememberAreaEnded(id);
+                return false;
+            }
+
+            if (TryFind(id, out Entry telegraph) && (telegraph.Cast.Shape == EBossTelegraphShape.Circle))
+            {
+                Strike(id, start.ActivateServerTime);
+            }
+
+            AddArea(track);
+            return true;
+        }
+
+        /// <summary> 서버가 알린 타격 회차, 활성 순간이 0회차다. 이미 표시한 회차나 끝난 장판이면 무시한다 </summary>
+        public bool TickArea(int areaId, int hitIndex, double roundServerTime)
+        {
+            return TryFindArea(areaId, out AreaEntry entry) && entry.Track.TryTick(hitIndex, roundServerTime);
+        }
+
+        /// <summary> 장판 소멸, Expired는 옅어지며 사라지고 Cancelled는 즉시 지운다. 모르는 번호면 나중에 늦게 오는 활성이 되살아나지 않게 기억해 둔다 </summary>
+        public bool EndArea(int areaId, EBossAreaFate fate)
+        {
+            if (_isServerBuild)
+            {
+                return false;
+            }
+
+            if (fate == EBossAreaFate.Cancelled)
+            {
+                return CancelArea(areaId);
+            }
+
+            if (!TryFindArea(areaId, out AreaEntry entry))
+            {
+                RememberAreaEnded(areaId);
+                return false;
+            }
+
+            if (!entry.Track.TryEnd(fate))
+            {
+                return false;
+            }
+
+            AreaFateChanged?.Invoke(areaId, fate);
+            return true;
+        }
+
+        /// <summary> 장판 제거(보스 사망, 페이즈 전환, 전투 종료), 표시는 바로 지운다 </summary>
+        public bool CancelArea(int areaId)
+        {
+            if (_isServerBuild)
+            {
+                return false;
+            }
+
+            if (!TryFindArea(areaId, out AreaEntry entry))
+            {
+                RememberAreaEnded(areaId);
+                return false;
+            }
+
+            if (!entry.Track.TryCancel())
+            {
+                return false;
+            }
+
+            RemoveArea(entry);
+            AreaFateChanged?.Invoke(areaId, EBossAreaFate.Cancelled);
+            return true;
+        }
+
+        /// <summary> 진행 중인 장판을 스냅샷으로 복원한다, 이미 끝났거나 소멸 연출까지 지난 것은 무시한다. 처음부터 다시 그리지 않고 서버 시각 기준으로 이어서 그린다 </summary>
+        public bool RestoreArea(in BossAreaSnapshot snapshot)
+        {
+            int id = snapshot.Start.AreaId;
+            if (_isServerBuild || IsAreaKnown(id))
+            {
+                return false;
+            }
+
+            if (snapshot.Fate == EBossAreaFate.Cancelled)
+            {
+                RememberAreaEnded(id);
+                return false;
+            }
+
+            BossAreaTrack track = BossAreaTrack.FromSnapshot(in snapshot);
+            if (ReadServerTime() >= (track.EndServerTime + AREA_FADE))
+            {
+                RememberAreaEnded(id);
+                return false;
+            }
+
+            AddArea(track);
+            return true;
+        }
+
+        /// <summary> 진행 중인 장판의 현재 상태, 복원에 넘길 값이다 </summary>
+        public bool TryGetAreaSnapshot(int areaId, out BossAreaSnapshot snapshot)
+        {
+            if (TryFindArea(areaId, out AreaEntry entry))
+            {
+                snapshot = entry.Track.ToSnapshot();
+                return true;
+            }
+
+            snapshot = default;
+            return false;
+        }
+
+        /// <summary> 진행 중인 장판의 모델과 그리는 대상, 시험과 진단용이다. 풀이 비었으면 visual은 null이다 </summary>
+        public bool TryGetArea(int areaId, out BossAreaTrack track, out AreaGroundVFXController visual)
+        {
+            if (TryFindArea(areaId, out AreaEntry entry))
+            {
+                track  = entry.Track;
+                visual = entry.Visual;
+                return true;
+            }
+
+            track  = null;
+            visual = null;
+            return false;
+        }
+
         /// <summary> 진행 중인 표현의 모델과 그리는 대상, 시험과 진단용이다. 풀이 비었거나 형태에 맞지 않는 쪽은 null이다 </summary>
         public bool TryGetVisuals(int castId, out BossTelegraphCast cast, out SectorVFXController sector, out RectTelegraphVFXController rect)
         {
@@ -310,6 +642,18 @@ namespace Shinshi.AI
                 entry.Cast.TryCancel();
                 entry.Cast.TryExpire();
                 Remove(entry);
+            }
+
+            for (int i = _projectiles.Count - 1; i >= 0; --i)
+            {
+                _projectiles[i].Track.TryCancel();
+                RemoveProjectile(_projectiles[i]);
+            }
+
+            for (int i = _areas.Count - 1; i >= 0; --i)
+            {
+                _areas[i].Track.TryCancel();
+                RemoveArea(_areas[i]);
             }
         }
 
@@ -560,6 +904,203 @@ namespace Shinshi.AI
             while (_endedOrder.Count > ENDED_HISTORY)
             {
                 _endedIds.Remove(_endedOrder.Dequeue());
+            }
+        }
+
+        private void AddProjectile(BossProjectileTrack track)
+        {
+            ProjectileEntry entry = new ProjectileEntry
+            {
+                Track    = track,
+                Rotation = Quaternion.LookRotation(track.Direction, Vector3.up)
+            };
+
+            if (_rectPool != null)
+            {
+                entry.Rect = _rectPool.Acquire();
+                if (entry.Rect != null)
+                {
+                    entry.Rect.Show(track.Origin, track.Direction, track.Width, PROJECTILE_HEAD_LENGTH);
+                }
+            }
+
+            _projectiles.Add(entry);
+            enabled = true;
+        }
+
+        // 투사체 한 프레임, 소멸 연출까지 끝났으면 참이다. 경로 길이에 닿으면 서버 알림이 없어도 소멸 연출을 시작한다
+        private bool UpdateProjectile(ProjectileEntry entry, double now)
+        {
+            BossProjectileTrack track = entry.Track;
+            float distance = track.GetDistance(now);
+
+            if ((!entry.EndSeen) && track.HasReachedEnd(now))
+            {
+                entry.EndSeen   = true;
+                entry.EndSeenAt = now;
+            }
+
+            float dissolveAge = entry.EndSeen ? Mathf.Max(0f, (float)(now - entry.EndSeenAt)) : NOT_EXECUTED;
+            bool  isDone      = entry.EndSeen && ((entry.Rect == null) || (dissolveAge >= entry.Rect.DissolveSeconds));
+
+            if (entry.Rect != null)
+            {
+                float length = Mathf.Min(PROJECTILE_HEAD_LENGTH, distance);
+                Vector3 tail = track.Origin + (track.Direction * (distance - length));
+                entry.Rect.SetPose(tail, entry.Rotation, length);
+                entry.Rect.Render(1f, Mathf.Max(0f, (float)(now - track.LaunchServerTime)), 1f, dissolveAge, true);
+            }
+
+            if (isDone)
+            {
+                RemoveProjectile(entry, false);
+            }
+
+            return isDone;
+        }
+
+        private void RemoveProjectile(ProjectileEntry entry, bool removeFromList = true)
+        {
+            if ((entry.Rect != null) && (_rectPool != null))
+            {
+                _rectPool.Release(entry.Rect);
+            }
+
+            entry.Rect = null;
+            if (removeFromList)
+            {
+                _projectiles.Remove(entry);
+            }
+
+            RememberProjectileEnded(entry.Track.ProjectileId);
+        }
+
+        private bool TryFindProjectile(int projectileId, out ProjectileEntry entry)
+        {
+            for (int i = 0; i < _projectiles.Count; ++i)
+            {
+                if (_projectiles[i].Track.ProjectileId == projectileId)
+                {
+                    entry = _projectiles[i];
+                    return true;
+                }
+            }
+
+            entry = null;
+            return false;
+        }
+
+        private bool IsProjectileKnown(int projectileId)
+        {
+            return _projectileEndedIds.Contains(projectileId) || TryFindProjectile(projectileId, out ProjectileEntry _);
+        }
+
+        private void RememberProjectileEnded(int projectileId)
+        {
+            if (!_projectileEndedIds.Add(projectileId))
+            {
+                return;
+            }
+
+            _projectileEndedOrder.Enqueue(projectileId);
+            while (_projectileEndedOrder.Count > ENDED_HISTORY)
+            {
+                _projectileEndedIds.Remove(_projectileEndedOrder.Dequeue());
+            }
+        }
+
+        private void AddArea(BossAreaTrack track)
+        {
+            AreaEntry entry = new AreaEntry { Track = track };
+
+            if (_areaPool != null)
+            {
+                entry.Visual = _areaPool.Acquire();
+                if (entry.Visual != null)
+                {
+                    entry.Visual.Show(track.Center, track.Radius);
+                }
+            }
+
+            _areas.Add(entry);
+            enabled = true;
+        }
+
+        // 장판 한 프레임, 옅어지는 연출까지 끝났으면 참이다. 지속 시간이 지나면 서버 알림이 없어도 옅어지며 사라진다
+        private bool UpdateArea(AreaEntry entry, double now)
+        {
+            BossAreaTrack track = entry.Track;
+
+            if ((!entry.EndSeen) && (track.IsEnded || track.HasExpiredByTime(now)))
+            {
+                entry.EndSeen   = true;
+                entry.EndSeenAt = now;
+            }
+
+            float fadeAge = entry.EndSeen ? Mathf.Max(0f, (float)(now - entry.EndSeenAt)) : 0f;
+            float fade    = entry.EndSeen ? (1f - Mathf.Clamp01(fadeAge / AREA_FADE)) : 1f;
+            bool  isDone  = entry.EndSeen && (fadeAge >= AREA_FADE);
+
+            if (entry.Visual != null)
+            {
+                entry.Visual.Render(track.GetLifeRatio(now), track.GetPulseAge(now), fade);
+            }
+
+            if (isDone)
+            {
+                RemoveArea(entry, false);
+            }
+
+            return isDone;
+        }
+
+        private void RemoveArea(AreaEntry entry, bool removeFromList = true)
+        {
+            if ((entry.Visual != null) && (_areaPool != null))
+            {
+                _areaPool.Release(entry.Visual);
+            }
+
+            entry.Visual = null;
+            if (removeFromList)
+            {
+                _areas.Remove(entry);
+            }
+
+            RememberAreaEnded(entry.Track.AreaId);
+        }
+
+        private bool TryFindArea(int areaId, out AreaEntry entry)
+        {
+            for (int i = 0; i < _areas.Count; ++i)
+            {
+                if (_areas[i].Track.AreaId == areaId)
+                {
+                    entry = _areas[i];
+                    return true;
+                }
+            }
+
+            entry = null;
+            return false;
+        }
+
+        private bool IsAreaKnown(int areaId)
+        {
+            return _areaEndedIds.Contains(areaId) || TryFindArea(areaId, out AreaEntry _);
+        }
+
+        private void RememberAreaEnded(int areaId)
+        {
+            if (!_areaEndedIds.Add(areaId))
+            {
+                return;
+            }
+
+            _areaEndedOrder.Enqueue(areaId);
+            while (_areaEndedOrder.Count > ENDED_HISTORY)
+            {
+                _areaEndedIds.Remove(_areaEndedOrder.Dequeue());
             }
         }
 

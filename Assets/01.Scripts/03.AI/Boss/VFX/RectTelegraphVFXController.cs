@@ -115,6 +115,14 @@ namespace Shinshi.Art
             ApplyScale();
         }
 
+        /// <summary> 위치와 방향과 길이를 바꾼다, 날아가는 투사체처럼 움직이는 표현에 쓴다 </summary>
+        public void SetPose(Vector3 position, Quaternion rotation, float length)
+        {
+            _length = Mathf.Max(0f, length);
+            transform.SetPositionAndRotation(position, rotation);
+            ApplyScale();
+        }
+
         /// <summary> 한 프레임을 그린다. executeAge가 음수면 발동 전, dissolveAge가 음수면 아직 사라지기 전이다 </summary>
         public void Render(float charge, float executeAge, float traveledRatio, float dissolveAge, bool isDash)
         {

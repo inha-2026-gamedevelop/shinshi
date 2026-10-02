@@ -104,6 +104,14 @@ namespace Shinshi.AI
                 length, width, 0f, startServerTime, telegraphSeconds);
         }
 
+        /// <summary> P04 투사체, length는 서버가 보낸 벽 앞까지의 경로 길이고 width는 투사체 폭이다 </summary>
+        public static BossTelegraphStart Projectile(int bossId, int castId, string patternId, Vector3 origin, Vector3 direction,
+            float length, float width, double startServerTime, float telegraphSeconds)
+        {
+            return new BossTelegraphStart(bossId, castId, patternId, EBossTelegraphShape.Projectile, origin, direction,
+                length, width, 0f, startServerTime, telegraphSeconds);
+        }
+
         /// <summary> P01 돌진, length는 서버가 보낸 벽 제한 길이다 </summary>
         public static BossTelegraphStart Dash(int bossId, int castId, string patternId, Vector3 origin, Vector3 direction,
             float length, float width, double startServerTime, float telegraphSeconds)

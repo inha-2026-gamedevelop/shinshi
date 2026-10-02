@@ -172,8 +172,8 @@ Assets/01.Scripts/
 |---|---|---|
 | `IBossVitals` | 보스 체력 비율과 체력 0 여부 읽기. `ICombatTarget`에 체력 읽기가 없어 새로 둠 | 민성 (`BossServer`, 구현됨·실행 미검증) |
 | `IBossControlSource` | 도착한 직접 제어를 `BossDirectControl`(출처 ID, 요청 시간) 한 건씩 넘김. 플레이어 기술의 속박(`ISkillControlTarget.ApplyRoot(sourceId, 시간, 시각)`)을 `BossServer`가 틱당 한 칸에 담아 넘기고 틱 끝에 비운다 | 민성 (`BossServer`, 구현됨·실행 미검증) |
-| `IBossPatternFactory` | 패턴 정의로 시전 실행 객체 생성. 구현 `WolbaekPatternFactory`는 P01(`BossDashPattern`, `IBossMovement` 이동 창구가 있을 때만)과 P02와 P03과 P06을 만들고 나머지는 null. `IBossMovement`(벽 검사와 위치 이동)와 `IBossDashTelegraphListener`는 구현이 없으며 서버 몸체가 맡는다. 생성자에 Href를 받으며 기본값은 없고, 부채꼴·원형·직사각형 알림 리스너는 선택 인자다 | 기웅 (U10, P01과 P04, P05는 미구현) |
-| `IBossEffectLifetime` | 지속 장판·투사체 수명, 이유별 취소, 동시 장판 수 조회. 지속물이 없는 P02·P03·P06 시험용으로 서버가 빈 구현 `EmptyBossEffectLifetime`을 넣는다 | 기웅 (U10, 실제 관리자는 미구현) |
+| `IBossPatternFactory` | 패턴 정의로 시전 실행 객체 생성. 구현 `WolbaekPatternFactory`는 P01(`BossDashPattern`, `IBossMovement` 이동 창구가 있을 때만)과 P02와 P03과 P04(`BossProjectilePattern`, `IBossProjectileLauncher` 발사 창구가 있을 때만)와 P05(`BossAreaPattern`, `IBossAreaHost` 장판 관리자가 있을 때만)와 P06을 만든다. `IBossMovement`(벽 검사와 위치 이동)와 `IBossDashTelegraphListener`는 구현이 없으며 서버 몸체가 맡는다. 생성자에 Href를 받으며 기본값은 없고, 부채꼴·원형·직사각형 알림 리스너는 선택 인자다 | 기웅 (U10, P01과 P04, P05는 미구현) |
+| `IBossEffectLifetime` | 지속 장판·투사체 수명, 이유별 취소, 동시 장판 수 조회. 투사체는 `BossProjectileManager`(`IBossTickableEffects`도 구현해 `BossCombat`이 공격 진행 뒤 매 틱 부른다)가 맡고, 사망·페이즈 전환·전투 종료로만 제거하며 직접 제어와 패턴 종료는 투사체를 지우지 않는다. 장판은 `BossAreaManager`(슬롯 예약·활성·주기 피해·정리)가 맡고, 투사체와 장판을 함께 넘길 때는 `BossEffectComposite`로 묶는다. 서버는 아직 빈 구현 `EmptyBossEffectLifetime`을 넣고 있어 P04와 P05는 실행되지 않는다 | 기웅 (U10, 투사체·장판 구현됨·서버 연결 미구현) |
 | `IBossPatternCatalog` | 보스·패턴 정의 조회. 어댑터 `BossPatternCatalogSource`가 `BossPatternCatalogSO`를 감싼다 | 기웅 (구현됨) |
 | `IBossRandom` | 타깃·패턴 선택 난수. 기본 `SeededBossRandom` | 기웅 (구현됨) |
 | `BossTelegraphPresenter` (`03.AI/Boss/View/`, `Shinshi.Runtime`) | 서버가 확정한 P01·P02·P03·P06 예고·발동·취소를 시전 번호별로 그리는 클라이언트 표현 진입점. 서버 시각을 받아 늦게 받은 예고를 이어서 그리고 `Restore`로 복원한다. 임시 표현이며 서버→클라이언트 전달 창구는 없어 샘플 입력(`BossTelegraphSampleInput`)으로만 확인했다 | 기웅 (구현됨·실제 전달 미연결) |

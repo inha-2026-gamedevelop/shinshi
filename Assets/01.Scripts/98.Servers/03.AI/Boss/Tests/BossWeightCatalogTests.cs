@@ -396,10 +396,11 @@ namespace Shinshi.Tests
         *         Executability And Tuning
         ****************************************/
 
-        // 가중치가 입력되어도 서버 패턴이 없는 P04와 P05는 실행할 수 없다. 팩토리가 만들지 않는다
+        // 가중치가 입력되어도 서버 몸체 연결(이동 창구, 투사체 발사 창구, 장판 관리자)이 없으면 팩토리가 만들지 않아 실행할 수 없다
+        [TestCase("wolbaek_p01")]
         [TestCase("wolbaek_p04")]
         [TestCase("wolbaek_p05")]
-        public void UnimplementedPatterns_HaveWeightsButFactoryCannotCreateThem(string patternId)
+        public void PatternsNeedingServerConnections_HaveWeightsButFactoryCannotCreateThemWithoutThem(string patternId)
         {
             BossPatternCatalogSO catalog = LoadCatalog();
             Assert.IsTrue(catalog.TryGetPattern(patternId, out PatternDefinition pattern));
@@ -409,7 +410,7 @@ namespace Shinshi.Tests
             Assert.IsNull(factory.Create(pattern));
         }
 
-        // 선택 경계는 채웠지만 보스 기본값과 P04, P05 수치가 비어 있어 전투를 열지 않는다
+        // 선택 경계는 채웠지만 월백 보스 기본값이 비어 있어 전투를 열지 않는다
         [Test]
         public void IsTuned_StillFalse_AndErrorsNameTheMissingValues()
         {
@@ -423,8 +424,8 @@ namespace Shinshi.Tests
             StringAssert.Contains("ArenaDiameter", all);
             StringAssert.Contains("HealthRef", all);
             StringAssert.Contains("PhaseTransitionHealthRate", all);
-            StringAssert.Contains("wolbaek_p04", all);
-            StringAssert.Contains("wolbaek_p05", all);
+            StringAssert.DoesNotContain("wolbaek_p04", all);
+            StringAssert.DoesNotContain("wolbaek_p05", all);
             StringAssert.DoesNotContain("NearDistanceMax", all);
             StringAssert.DoesNotContain("wolbaek_p01", all);
             StringAssert.DoesNotContain("wolbaek_p02", all);

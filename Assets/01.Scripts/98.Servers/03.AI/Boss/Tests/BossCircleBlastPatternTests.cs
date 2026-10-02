@@ -901,17 +901,5 @@ namespace Shinshi.Tests
             Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
         }
 
-        // P04와 P05는 서버 패턴이 없어 실행 수치는 비어 있다. 선택 가중치는 BossWeightCatalogTests가 확인한다
-        [TestCase("wolbaek_p04")]
-        [TestCase("wolbaek_p05")]
-        public void CatalogAsset_UnimplementedPatterns_HaveNoExecutionValues(string patternId)
-        {
-            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
-            Assert.IsTrue(catalog.TryGetPattern(patternId, out PatternDefinition pattern));
-
-            Assert.AreEqual(0f, pattern.TelegraphSeconds);
-            Assert.AreEqual(0f, pattern.RecoverySeconds);
-            Assert.AreEqual(0f, pattern.DamageRef);
-        }
     }
 }

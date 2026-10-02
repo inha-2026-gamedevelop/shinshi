@@ -25,6 +25,10 @@ namespace Shinshi.Editor
         private const string MENU_PATH            = "Shinshi/VFX/Create Boss Telegraph Prefabs";
         private const string OUTPUT_ROOT          = "Assets/01.Scripts/03.AI/Boss/VFX/Generated";
         private const string RECT_SHADER_NAME     = "Shinshi/VFX/RectGround";
+        private const string AREA_SHADER_NAME     = "Shinshi/VFX/AreaGround";
+        private const string AREA_MATERIAL_NAME   = "M_AreaGround";
+        private const string AREA_PREFAB_NAME     = "PF_AreaGroundVFX";
+        private const string AREA_POOL_NAME       = "Area Pool";
         private const string RECT_MATERIAL_NAME   = "M_RectGround";
         private const string RECT_PREFAB_NAME     = "PF_RectTelegraphVFX";
         private const string SECTOR_PREFAB_NAME   = "PF_SectorGroundVFX";
@@ -47,8 +51,9 @@ namespace Shinshi.Editor
             }
 
             Shader shader = Shader.Find(RECT_SHADER_NAME);
+            Shader areaShader = Shader.Find(AREA_SHADER_NAME);
             GameObject sectorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(OUTPUT_ROOT + "/" + SECTOR_PREFAB_NAME + ".prefab");
-            if ((shader == null) || (sectorPrefab == null))
+            if ((shader == null) || (areaShader == null) || (sectorPrefab == null))
             {
                 Debug.LogError("[BossTelegraph] 셰이더나 부채꼴 프리팹이 없다, 임포트가 끝났는지와 Create Sector Ground Prefab을 먼저 했는지 확인한다");
                 return;
@@ -59,7 +64,8 @@ namespace Shinshi.Editor
 
             Material material = GetMaterial(RECT_MATERIAL_NAME, shader);
             RectTelegraphVFXController rectPrefab = CreateRectPrefab(material);
-            CreateSamplePrefab(sectorPrefab.GetComponent<SectorVFXController>(), rectPrefab);
+            AreaGroundVFXController areaPrefab = CreateAreaPrefab(GetMaterial(AREA_MATERIAL_NAME, areaShader));
+            CreateSamplePrefab(sectorPrefab.GetComponent<SectorVFXController>(), rectPrefab, areaPrefab);
 
             AssetDatabase.SaveAssets();
             Debug.Log("[BossTelegraph] 임시 표현 프리팹을 만들었다 - " + OUTPUT_ROOT);
@@ -105,7 +111,29 @@ namespace Shinshi.Editor
             }
         }
 
-        private static void CreateSamplePrefab(SectorVFXController sectorPrefab, RectTelegraphVFXController rectPrefab)
+        private static AreaGroundVFXController CreateAreaPrefab(Material material)
+        {
+            string path = OUTPUT_ROOT + "/" + AREA_PREFAB_NAME + ".prefab";
+            GameObject root = new GameObject(AREA_PREFAB_NAME);
+            try
+            {
+                root.AddComponent<AreaGroundVFXController>();
+                MeshRenderer surface = root.GetComponent<MeshRenderer>();
+                surface.sharedMaterial = material;
+                surface.shadowCastingMode = ShadowCastingMode.Off;
+                surface.receiveShadows = false;
+
+                GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path);
+                return saved.GetComponent<AreaGroundVFXController>();
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        private static void CreateSamplePrefab(SectorVFXController sectorPrefab, RectTelegraphVFXController rectPrefab,
+            AreaGroundVFXController areaPrefab)
         {
             string path = OUTPUT_ROOT + "/" + SAMPLE_PREFAB_NAME + ".prefab";
             GameObject root = new GameObject(SAMPLE_PREFAB_NAME);
@@ -116,11 +144,15 @@ namespace Shinshi.Editor
 
                 SectorVFXPool sectorPool = MakePool<SectorVFXPool>(root.transform, SECTOR_POOL_NAME);
                 RectTelegraphVFXPool rectPool = MakePool<RectTelegraphVFXPool>(root.transform, RECT_POOL_NAME);
+                AreaGroundVFXPool areaPool = MakePool<AreaGroundVFXPool>(root.transform, AREA_POOL_NAME);
 
                 SetReference(sectorPool, "_prefab", sectorPrefab);
                 SetInt(sectorPool, "_capacity", POOL_CAPACITY);
                 SetReference(rectPool, "_prefab", rectPrefab);
                 SetInt(rectPool, "_capacity", POOL_CAPACITY);
+                SetReference(areaPool, "_prefab", areaPrefab);
+                SetInt(areaPool, "_capacity", POOL_CAPACITY);
+                SetReference(presenter, "_areaPool", areaPool);
                 SetReference(presenter, "_sectorPool", sectorPool);
                 SetReference(presenter, "_rectPool", rectPool);
                 SetReference(sample, "_presenter", presenter);

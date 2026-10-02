@@ -9,8 +9,8 @@ namespace Shinshi.AI
 {
     // 네트워크 수신을 대신하는 샘플 입력이다. 서버가 보낼 알림 순서를 시각표로 흉내 내 표현 진입점만 부른다
     // 서버 AI와 판정은 실행하지 않고 타깃 추적도 하지 않는다. 방향과 길이와 시각은 모두 이 시각표가 정한 값이며 서버 확정 값이 아니다
-    // 아래 시간과 크기는 월백 P01, P02, P03, P06의 현재 에셋 값을 보고 옮긴 샘플 값이라 밸런스 원본이 아니다. 시험과 눈 확인에만 쓴다
-    /// <summary> 월백 네 패턴의 예고 시작, 갱신, 고정, 발동, 취소, 늦은 알림을 표현 진입점에 흘려 보내는 개발용 샘플 </summary>
+    // 아래 시간과 크기는 월백 P01~P06의 현재 에셋 값을 보고 옮긴 샘플 값이라 밸런스 원본이 아니다. 시험과 눈 확인에만 쓴다
+    /// <summary> 월백 여섯 패턴의 예고 시작, 갱신, 고정, 발동, 취소, 늦은 알림을 표현 진입점에 흘려 보내는 개발용 샘플 </summary>
     public sealed class BossTelegraphSampleInput : MonoBehaviour
     {
         /****************************************
@@ -54,6 +54,34 @@ namespace Shinshi.AI
         private const float  LINE_LENGTH       = 14f;
         private const float  LINE_WIDTH        = 4f;
         private const float  LINE_CANCEL_AT    = 1.3f;
+
+        // P04 투사체
+        private const string P04_ID            = "wolbaek_p04";
+        private const float  PROJ_TELEGRAPH    = 0.9f;
+        private const float  PROJ_TRACKING     = 0.45f;
+        private const float  PROJ_TURN_RATE    = 120f;
+        private const float  PROJ_RECOVERY     = 0.5f;
+        private const float  PROJ_RANGE        = 35f;
+        private const float  PROJ_WIDTH        = 1f;
+        private const float  PROJ_SPEED        = 10f;
+        private const float  PROJ_WALL_PATH    = 12f;
+        private const float  PROJ_HIT_DISTANCE = 14f;
+        private const float  PROJ_CANCEL_FLIGHT = 0.8f;
+        private const int    LOOP_STEP_COUNT   = 13;
+
+        // P05 장판
+        private const string P05_ID            = "wolbaek_p05";
+        private const float  AREA_TELEGRAPH    = 1f;
+        private const float  AREA_RADIUS       = 3f;
+        private const float  AREA_DURATION     = 6f;
+        private const float  AREA_INTERVAL     = 1f;
+        private const float  AREA_RECOVERY     = 0.5f;
+        private const float  AREA_DISTANCE     = 5f;   // 샘플 장판이 보스 앞 이만큼에 설치된다
+        private const float  AREA_SPREAD       = 4f;   // 동시 장판 샘플의 좌우 간격
+        private const float  AREA_STAGGER      = 1.5f; // 예고 1초 + 회복 0.5초마다 다음 시전이 시작한다
+        private const float  AREA_CANCEL_AT    = 2.5f; // 활성 뒤 이 시점에 사망으로 제거된다
+        private const float  AREA_LATE_SECONDS = 2.5f;
+        private const int    AREA_RESTORE_TICK = 3;
 
         private const float  SAMPLE_AIM_TARGET_DEGREES = 60f; // 샘플이 가정한 타깃 쪽 각도, 추적 한도까지만 돈다
         private const float  CANCEL_PHASE_AT   = 0.7f;
@@ -256,6 +284,246 @@ namespace Shinshi.AI
             });
         }
 
+        /// <summary> P04 투사체, 발사 뒤 14m에서 첫 대상에 맞고 사라진다. 패턴이 끝나도 투사체 표시는 따로 간다 </summary>
+        [ContextMenu("Play P04 Projectile")]
+        public void PlayProjectile()
+        {
+            PlayProjectile(PROJ_RANGE, EBossProjectileFate.Hit, PROJ_HIT_DISTANCE, false, false);
+        }
+
+        /// <summary> P04 투사체, 벽이 가까워 짧은 경로를 표시하고 벽 앞에서 피해 없이 사라진다 </summary>
+        [ContextMenu("Play P04 Projectile Near Wall")]
+        public void PlayProjectileNearWall()
+        {
+            PlayProjectile(PROJ_WALL_PATH, EBossProjectileFate.Wall, PROJ_WALL_PATH, false, false);
+        }
+
+        /// <summary> P04 투사체, 아무것도 맞지 않고 최대 사거리에서 사라진다 </summary>
+        [ContextMenu("Play P04 Projectile Range")]
+        public void PlayProjectileRange()
+        {
+            PlayProjectile(PROJ_RANGE, EBossProjectileFate.Range, PROJ_RANGE, false, false);
+        }
+
+        /// <summary> P04 예고 중 취소, 발사 전이라 투사체는 없다 </summary>
+        [ContextMenu("Play P04 Telegraph Cancelled")]
+        public void PlayProjectileTelegraphCancelled()
+        {
+            PlayProjectile(PROJ_RANGE, EBossProjectileFate.Range, PROJ_RANGE, true, false);
+        }
+
+        /// <summary> P04 투사체가 나는 중 보스 사망이나 전투 종료로 제거된다 </summary>
+        [ContextMenu("Play P04 Projectile Cancelled In Flight")]
+        public void PlayProjectileCancelledInFlight()
+        {
+            PlayProjectile(PROJ_RANGE, EBossProjectileFate.Range, PROJ_RANGE, false, true);
+        }
+
+        /// <summary> P04 회복이 끝나 다음 패턴(P06)의 예고가 시작돼도 먼저 쏜 투사체는 계속 난다 </summary>
+        [ContextMenu("Play P04 Then Next Cast")]
+        public void PlayProjectileThenNextCast()
+        {
+            double start = ReadClock();
+            PlayProjectile(PROJ_RANGE, EBossProjectileFate.Range, PROJ_RANGE, false, false);
+
+            // 같은 보스의 다음 시전, P04 예고 표현은 마무리되고 투사체는 남는다
+            double nextStart = start + PROJ_TELEGRAPH + PROJ_RECOVERY + 0.1;
+            int castId = NextCastId();
+            Schedule(nextStart, () => _presenter.BeginTelegraph(BossTelegraphStart.Line(SAMPLE_BOSS_ID, castId, P06_ID,
+                transform.position, transform.right, LINE_LENGTH, LINE_WIDTH, nextStart, LINE_TELEGRAPH)));
+            Schedule(nextStart + 0.5, () => _presenter.Cancel(castId));
+        }
+
+        /// <summary> 투사체가 이미 절반쯤 날아간 뒤에 발사 알림을 받은 늦은 접속, 처음부터 다시 날리지 않고 이어서 그려야 한다 </summary>
+        [ContextMenu("Play P04 Late Launch")]
+        public void PlayProjectileLateLaunch()
+        {
+            double now = ReadClock();
+            double launch = now - 1.0;
+            int castId = NextCastId();
+
+            BossProjectileStart start = new BossProjectileStart(SAMPLE_BOSS_ID, castId, transform.position, transform.forward,
+                PROJ_SPEED, PROJ_WIDTH, PROJ_RANGE, launch);
+            _presenter.LaunchProjectile(in start);
+        }
+
+        /// <summary> 날고 있는 투사체를 스냅샷으로 복원한 접속 </summary>
+        [ContextMenu("Play P04 Restore Mid Flight")]
+        public void PlayProjectileRestore()
+        {
+            double now = ReadClock();
+            int castId = NextCastId();
+            BossProjectileSnapshot snapshot = new BossProjectileSnapshot
+            {
+                Start = new BossProjectileStart(SAMPLE_BOSS_ID, castId, transform.position, transform.forward, PROJ_SPEED,
+                    PROJ_WIDTH, PROJ_RANGE, now - 1.5),
+                Fate = EBossProjectileFate.Flying
+            };
+
+            _presenter.RestoreProjectile(in snapshot);
+        }
+
+        // 예고, 추적, 고정, 발사, 소멸을 서버 알림 순서대로 흘린다. 패턴 종료 알림은 투사체 소멸과 별개로 보낸다
+        private void PlayProjectile(float pathLength, EBossProjectileFate endFate, float endDistance, bool cancelTelegraph,
+            bool cancelInFlight)
+        {
+            double start = ReadClock();
+            int castId = NextCastId();
+            float firstLength = (pathLength < PROJ_RANGE) ? (pathLength * 0.6f) : pathLength;
+
+            _presenter.BeginTelegraph(BossTelegraphStart.Projectile(SAMPLE_BOSS_ID, castId, P04_ID, transform.position,
+                transform.forward, firstLength, PROJ_WIDTH, start, PROJ_TELEGRAPH));
+            ScheduleTracking(castId, start, PROJ_TRACKING, PROJ_TURN_RATE, pathLength, firstLength);
+
+            if (cancelTelegraph)
+            {
+                Schedule(start + (PROJ_TELEGRAPH * 0.6), () => _presenter.Cancel(castId));
+                return;
+            }
+
+            double launch = start + PROJ_TELEGRAPH;
+            Vector3 direction = Quaternion.AngleAxis(AimDegrees(PROJ_TRACKING, PROJ_TURN_RATE), Vector3.up) * transform.forward;
+            Vector3 origin = transform.position;
+            BossProjectileStart shot = new BossProjectileStart(SAMPLE_BOSS_ID, castId, origin, direction, PROJ_SPEED, PROJ_WIDTH,
+                pathLength, launch);
+            Schedule(launch, () => _presenter.LaunchProjectile(in shot));
+
+            if (cancelInFlight)
+            {
+                Schedule(launch + PROJ_CANCEL_FLIGHT, () => _presenter.CancelProjectile(castId));
+            }
+            else
+            {
+                double endAt = launch + (endDistance / PROJ_SPEED);
+                Schedule(endAt, () => _presenter.EndProjectile(castId, endFate, origin + (direction * endDistance)));
+            }
+
+            ScheduleFinish(castId, launch, PROJ_RECOVERY);
+        }
+
+        /// <summary> P05 장판, 예고 1초 뒤 활성(첫 타격)하고 1초마다 타격해 6회, 6초에 추가 타격 없이 사라진다 </summary>
+        [ContextMenu("Play P05 Area")]
+        public void PlayArea()
+        {
+            PlayArea(0f, false, false);
+        }
+
+        /// <summary> P05 장판 셋이 1.5초 간격으로 겹쳐 동시에 유지된다, 패턴이 끝나고 다음 패턴이 시작돼도 먼저 만든 장판은 남는다 </summary>
+        [ContextMenu("Play P05 Three Areas")]
+        public void PlayAreaThree()
+        {
+            PlayArea(-AREA_SPREAD, false, false);
+            Schedule(ReadClock() + AREA_STAGGER, () => PlayArea(0f, false, false));
+            Schedule(ReadClock() + (AREA_STAGGER * 2f), () => PlayArea(AREA_SPREAD, false, false));
+        }
+
+        /// <summary> P05 예고 중 취소, 활성 전이라 장판은 없다 </summary>
+        [ContextMenu("Play P05 Telegraph Cancelled")]
+        public void PlayAreaTelegraphCancelled()
+        {
+            PlayArea(0f, true, false);
+        }
+
+        /// <summary> P05 장판이 유지되는 중 보스 사망이나 전투 종료로 제거된다 </summary>
+        [ContextMenu("Play P05 Area Cancelled")]
+        public void PlayAreaCancelled()
+        {
+            PlayArea(0f, false, true);
+        }
+
+        /// <summary> 장판이 이미 2.5초 지난 뒤에 활성 알림을 받은 늦은 접속, 처음부터 다시 그리지 않고 이어서 그려야 한다 </summary>
+        [ContextMenu("Play P05 Late Activation")]
+        public void PlayAreaLateActivation()
+        {
+            double now = ReadClock();
+            double activate = now - AREA_LATE_SECONDS;
+            int areaId = NextCastId();
+
+            BossAreaStart start = new BossAreaStart(SAMPLE_BOSS_ID, areaId, AreaCenter(0f), AREA_RADIUS, AREA_DURATION, AREA_INTERVAL, activate);
+            _presenter.ActivateArea(in start);
+            ScheduleAreaTicks(areaId, activate, 3, false);
+        }
+
+        /// <summary> 진행 중인 장판을 스냅샷으로 복원한 접속, 이미 표시한 회차는 다시 표시하지 않는다 </summary>
+        [ContextMenu("Play P05 Restore Mid Area")]
+        public void PlayAreaRestore()
+        {
+            double now = ReadClock();
+            double activate = now - (AREA_RESTORE_TICK + 0.2);
+            int areaId = NextCastId();
+
+            BossAreaSnapshot snapshot = new BossAreaSnapshot
+            {
+                Start = new BossAreaStart(SAMPLE_BOSS_ID, areaId, AreaCenter(0f), AREA_RADIUS, AREA_DURATION, AREA_INTERVAL, activate),
+                Fate = EBossAreaFate.Active,
+                LastTickIndex = AREA_RESTORE_TICK,
+                LastTickServerTime = activate + AREA_RESTORE_TICK
+            };
+            _presenter.RestoreArea(in snapshot);
+            ScheduleAreaTicks(areaId, activate, AREA_RESTORE_TICK + 1, false);
+        }
+
+        private Vector3 AreaCenter(float sideOffset)
+        {
+            return transform.position + (transform.forward * AREA_DISTANCE) + (transform.right * sideOffset);
+        }
+
+        // 예고에서 활성, 타격 회차, 소멸까지를 서버 알림 순서대로 흘린다. 장판 한 개의 수명은 패턴 종료와 별개다
+        private void PlayArea(float sideOffset, bool cancelTelegraph, bool cancelActive)
+        {
+            double start = ReadClock();
+            int castId = NextCastId();
+            Vector3 center = AreaCenter(sideOffset);
+
+            _presenter.BeginTelegraph(BossTelegraphStart.Circle(SAMPLE_BOSS_ID, castId, P05_ID, center, AREA_RADIUS, start, AREA_TELEGRAPH));
+
+            if (cancelTelegraph)
+            {
+                Schedule(start + (AREA_TELEGRAPH * 0.6), () => _presenter.Cancel(castId));
+                return;
+            }
+
+            double activate = start + AREA_TELEGRAPH;
+            BossAreaStart area = new BossAreaStart(SAMPLE_BOSS_ID, castId, center, AREA_RADIUS, AREA_DURATION, AREA_INTERVAL, activate);
+            Schedule(activate, () => _presenter.ActivateArea(in area));
+
+            // 패턴 정상 종료는 회복이 끝난 뒤이고 장판과 무관하다
+            ScheduleFinish(castId, activate, AREA_RECOVERY);
+
+            if (cancelActive)
+            {
+                ScheduleAreaTicks(castId, activate, 0, true);
+                Schedule(activate + AREA_CANCEL_AT, () => _presenter.CancelArea(castId));
+                return;
+            }
+
+            ScheduleAreaTicks(castId, activate, 0, false);
+            Schedule(activate + AREA_DURATION, () => _presenter.EndArea(castId, EBossAreaFate.Expired));
+        }
+
+        // 활성 시각 기준 firstIndex 회차부터 서버 타격 알림을 보낸다, 이미 지난 회차는 보내지 않는다
+        private void ScheduleAreaTicks(int areaId, double activate, int firstIndex, bool onlyBeforeCancel)
+        {
+            int count = Mathf.CeilToInt(AREA_DURATION / AREA_INTERVAL);
+            double now = ReadClock();
+            for (int i = firstIndex; i < count; ++i)
+            {
+                int index = i;
+                double at = activate + (index * AREA_INTERVAL);
+                if (onlyBeforeCancel && (index * AREA_INTERVAL) >= AREA_CANCEL_AT)
+                {
+                    break;
+                }
+
+                if (at < now)
+                {
+                    continue;
+                }
+
+                Schedule(at, () => _presenter.TickArea(areaId, index, at));
+            }
+        }
+
         private void PlayFan(bool cancel)
         {
             double start = ReadClock();
@@ -391,7 +659,7 @@ namespace Shinshi.AI
         {
             _isLoopWaiting = false;
 
-            switch (_loopStep % 8)
+            switch (_loopStep % LOOP_STEP_COUNT)
             {
                 case 0: PlayDash(); break;
                 case 1: PlayFan(); break;
@@ -400,11 +668,16 @@ namespace Shinshi.AI
                 case 4: PlayDashNearWall(); break;
                 case 5: PlayFanCancelled(); break;
                 case 6: PlayLineCancelled(); break;
-                default: PlayDashCancelled(); break;
+                case 7: PlayDashCancelled(); break;
+                case 8: PlayProjectile(); break;
+                case 9: PlayProjectileNearWall(); break;
+                case 10: PlayProjectileCancelledInFlight(); break;
+                case 11: PlayArea(); break;
+                default: PlayAreaCancelled(); break;
             }
 
             ++_loopStep;
-            double settle = ReadClock() + 3.5;
+            double settle = ReadClock() + 4.5;
             Schedule(settle, () =>
             {
                 _loopNextAt = ReadClock() + _loopGap;

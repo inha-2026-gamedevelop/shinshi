@@ -73,6 +73,7 @@ namespace Shinshi.AI
                     return IsInsideFan(direction, offset, length, arcAngle);
                 case EBossTelegraphShape.Line:
                 case EBossTelegraphShape.Dash:
+                case EBossTelegraphShape.Projectile:
                     return IsInsideRectangle(direction, offset, length, width);
                 default:
                     return false;
