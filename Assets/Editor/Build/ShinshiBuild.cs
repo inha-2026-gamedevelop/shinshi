@@ -43,7 +43,11 @@ namespace Shinshi.Editor
         private const int EXIT_SUCCESS = 0;
         private const int EXIT_FAILURE = 1;
 
-        private static readonly string[] G_Scenes = { BOOTSTRAP_SCENE_PATH };
+        // 이동 예측과 회피를 서버, 클라이언트 빌드로 시험하는 씬. Bootstrap 구성에 바닥, 내비 메시, 쿼터뷰 카메라, 지연 시뮬레이션을 더했다
+        public const string DEV_MOVEMENT_SCENE_PATH = "Assets/00.Scenes/Dev_PlayerMovement.unity";
+
+        private static readonly string[] G_Scenes            = { BOOTSTRAP_SCENE_PATH };
+        private static readonly string[] G_DevMovementScenes = { DEV_MOVEMENT_SCENE_PATH };
 
         /****************************************
         *                 Menu
@@ -65,6 +69,19 @@ namespace Shinshi.Editor
         private static void BuildLinuxServerMenu()
         {
             Build(TARGET_LINUX_SERVER, true);
+        }
+
+        // 같은 출력 폴더를 쓰므로 tools/Start-M2.ps1로 바로 띄울 수 있다. Bootstrap 빌드를 덮어쓴다
+        [MenuItem(MENU_ROOT + "Dev Movement/Windows Client (Development)")]
+        private static void BuildDevMovementClientMenu()
+        {
+            Build(TARGET_WINDOWS_CLIENT, true, G_DevMovementScenes);
+        }
+
+        [MenuItem(MENU_ROOT + "Dev Movement/Windows Server (Development)")]
+        private static void BuildDevMovementServerMenu()
+        {
+            Build(TARGET_WINDOWS_SERVER, true, G_DevMovementScenes);
         }
 
         [MenuItem(MENU_ROOT + "Check Client Compile")]
@@ -95,6 +112,17 @@ namespace Shinshi.Editor
 
         public static bool Build(string targetName, bool development)
         {
+            return Build(targetName, development, G_Scenes);
+        }
+
+        /// <summary> 개발 이동 씬으로 서버, 클라이언트 개발 빌드를 만든다, 에디터 코드 실행으로도 부른다 </summary>
+        public static bool BuildDevMovement(string targetName)
+        {
+            return Build(targetName, true, G_DevMovementScenes);
+        }
+
+        private static bool Build(string targetName, bool development, string[] scenes)
+        {
             if (!TryResolveTarget(targetName, out BuildTarget target, out StandaloneBuildSubtarget subtarget, out string extension))
             {
                 Debug.LogError($"[Build] 알 수 없는 빌드 대상이다: {targetName}");
@@ -103,7 +131,7 @@ namespace Shinshi.Editor
 
             var options = new BuildPlayerOptions
             {
-                scenes           = G_Scenes,
+                scenes           = scenes,
                 target           = target,
                 targetGroup      = BuildTargetGroup.Standalone,
                 subtarget        = (int)subtarget,

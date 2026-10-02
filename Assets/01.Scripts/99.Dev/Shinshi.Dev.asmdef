@@ -2,7 +2,9 @@
     "name": "Shinshi.Dev",
     "rootNamespace": "Shinshi.Dev",
     "references": [
-        "Shinshi.Runtime"
+        "Shinshi.Runtime",
+        "Mirror",
+        "Mirror.Transports"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
