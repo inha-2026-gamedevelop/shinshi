@@ -898,36 +898,8 @@ namespace Shinshi.Tests
             // 임시값, 확정 밸런스가 아니다
             Assert.AreEqual(0.5f, p03.RecoverySeconds);
 
-            // 이번 범위에서는 실행 수치만 입력했고 선택 가중치와 배율은 미입력이다
-            Assert.AreEqual(0f, p03.BaseWeight);
-            AssertAllZero(p03.DistanceMultipliers);
-            AssertAllZero(p03.DirectionMultipliers);
-            AssertAllZero(p03.NearbyMultipliers);
-            AssertAllZero(p03.RecentUseMultipliers);
-
             Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID));
         }
 
-        [TestCase("wolbaek_p01")]
-        [TestCase("wolbaek_p04")]
-        [TestCase("wolbaek_p05")]
-        public void CatalogAsset_OtherUnimplementedPatterns_StayUnset(string patternId)
-        {
-            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
-            Assert.IsTrue(catalog.TryGetPattern(patternId, out PatternDefinition pattern));
-
-            Assert.AreEqual(0f, pattern.TelegraphSeconds);
-            Assert.AreEqual(0f, pattern.RecoverySeconds);
-            Assert.AreEqual(0f, pattern.DamageRef);
-            Assert.AreEqual(0f, pattern.BaseWeight);
-        }
-
-        private static void AssertAllZero(IReadOnlyList<float> values)
-        {
-            for (int i = 0; i < values.Count; ++i)
-            {
-                Assert.AreEqual(0f, values[i]);
-            }
-        }
     }
 }

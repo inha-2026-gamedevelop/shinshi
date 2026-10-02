@@ -30,6 +30,7 @@ namespace Shinshi.Art
         private const float  DEBRIS_SIZE_MIN       = 0.08f;
         private const float  DEBRIS_SIZE_MAX       = 0.18f;
         private const string MESH_NAME             = "SectorGroundVFX Runtime Mesh";
+        private const float  HOLD_MARGIN           = 0.001f;
 
         [SerializeField] private SectorShape _shape = SectorShape.Default;
         [SerializeField] private SectorBehaviour _behaviour = SectorBehaviour.Default;
@@ -57,6 +58,8 @@ namespace Shinshi.Art
         private float _finishTime;
         private bool _initialized;
         private bool _playing;
+        private bool _holdForConfirm;
+        private bool _isConfirmed = true;
         private bool[] _emitted;
         private Vector3[] _positions;
         private float[] _starts;
@@ -66,6 +69,12 @@ namespace Shinshi.Art
         ****************************************/
 
         public bool IsPlaying => _playing;
+
+        /// <summary> 충전을 마치고 서버 확정을 기다리며 멈춰 있다 </summary>
+        public bool IsHolding => _playing && (!_isConfirmed) && (_elapsed >= HoldLimit());
+
+        /// <summary> 이 재생이 시작한 뒤 흐른 시간(초), 멈춰 있는 동안은 충전 끝에 머문다 </summary>
+        public float Elapsed => _elapsed;
 
         // 지면 소멸과 입자 꼬리가 모두 끝난 뒤에 불린다. 풀은 여기서 반환한다
         public event Action<SectorVFXController> Completed;
@@ -92,6 +101,11 @@ namespace Shinshi.Art
             }
 
             _elapsed += Time.deltaTime;
+            if (!_isConfirmed)
+            {
+                _elapsed = Mathf.Min(_elapsed, HoldLimit());
+            }
+
             UpdateVisual();
 
             if (_elapsed < _finishTime)
@@ -152,6 +166,13 @@ namespace Shinshi.Art
 
         public void Play(SectorShape requestedShape, SectorBehaviour requestedBehaviour)
         {
+            Play(requestedShape, requestedBehaviour, 0f, false);
+        }
+
+        // 서버 확정을 기다리는 예고용이다. startElapsed는 늦게 받은 예고가 이미 흐른 시간만큼 건너뛰어 시작하게 하고,
+        // holdForConfirm이 참이면 충전이 끝나는 순간에 멈춰 Confirm이 올 때까지 폭발하지 않는다. 취소는 Stop으로 한다
+        public void Play(SectorShape requestedShape, SectorBehaviour requestedBehaviour, float startElapsed, bool holdForConfirm)
+        {
             if (!Application.isPlaying)
             {
                 Debug.LogWarning("[SectorVFX] 플레이 모드에서만 재생할 수 있다", this);
@@ -182,7 +203,14 @@ namespace Shinshi.Art
             float tails = Mathf.Max(MaxLifetime(_energy), MaxLifetime(_debris));
             _finishTime = Mathf.Max(visualEnd, _activeBehaviour.TelegraphDuration + travel + stagger + tails);
 
-            _elapsed = 0f;
+            _holdForConfirm = holdForConfirm;
+            _isConfirmed = !holdForConfirm;
+            _elapsed = Mathf.Max(0f, startElapsed);
+            if (!_isConfirmed)
+            {
+                _elapsed = Mathf.Min(_elapsed, HoldLimit());
+            }
+
             _playing = true;
             enabled = true;
             _surface.enabled = true;
@@ -197,6 +225,12 @@ namespace Shinshi.Art
             UpdateVisual();
         }
 
+        /// <summary> 서버가 발동을 확정했다, 충전 끝에서 멈춰 있던 예고가 이어서 폭발한다. 멈추지 않은 재생에는 영향이 없다 </summary>
+        public void Confirm()
+        {
+            _isConfirmed = true;
+        }
+
         /// <summary> 즉시 화면과 입자를 지운다 </summary>
         public void Stop()
         {
@@ -206,6 +240,8 @@ namespace Shinshi.Art
         public void ResetForPool()
         {
             _playing = false;
+            _holdForConfirm = false;
+            _isConfirmed = true;
             _elapsed = 0f;
 
             if (_surface != null)
@@ -261,6 +297,12 @@ namespace Shinshi.Art
             _surface.enabled = false;
             _initialized = true;
             enabled = false;
+        }
+
+        // 충전이 끝나기 직전까지만 간다. 셰이더는 시계가 충전 시간에 닿는 순간 폭발을 시작하므로 그 직전에 세운다
+        private float HoldLimit()
+        {
+            return Mathf.Max(0f, _activeBehaviour.TelegraphDuration - HOLD_MARGIN);
         }
 
         private static float MaxLifetime(ParticleSystem system)

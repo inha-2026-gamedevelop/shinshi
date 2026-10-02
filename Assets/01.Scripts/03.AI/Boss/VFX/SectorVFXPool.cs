@@ -23,6 +23,13 @@ namespace Shinshi.Art
         private readonly HashSet<SectorVFXController> _leased = new HashSet<SectorVFXController>();
 
         /****************************************
+        *              Properties
+        ****************************************/
+
+        public int AvailableCount => _available.Count;
+        public int LeasedCount    => _leased.Count;
+
+        /****************************************
         *              Unity Event
         ****************************************/
 
@@ -74,6 +81,13 @@ namespace Shinshi.Art
         /// <summary> 연출을 재생한다, 풀이 비었으면 null이라 호출자는 연출을 생략할 수 있어야 한다 </summary>
         public SectorVFXController Play(Vector3 position, Quaternion rotation, SectorShape shape, SectorBehaviour behaviour)
         {
+            return Play(position, rotation, shape, behaviour, 0f, false);
+        }
+
+        /// <summary> 서버 확정을 기다리는 예고를 재생한다, 시작 오프셋과 확정 대기는 SectorVFXController.Play를 따른다 </summary>
+        public SectorVFXController Play(Vector3 position, Quaternion rotation, SectorShape shape, SectorBehaviour behaviour,
+            float startElapsed, bool holdForConfirm)
+        {
             if ((!isActiveAndEnabled) || (_available.Count == 0))
             {
                 return null;
@@ -83,7 +97,7 @@ namespace Shinshi.Art
             _leased.Add(instance);
             instance.transform.SetPositionAndRotation(position, rotation);
             instance.gameObject.SetActive(true);
-            instance.Play(shape, behaviour);
+            instance.Play(shape, behaviour, startElapsed, holdForConfirm);
             return instance;
         }
 

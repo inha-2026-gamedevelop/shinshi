@@ -27,6 +27,8 @@ namespace Shinshi.AI
         private readonly BossSelectionTree      _tree   = new BossSelectionTree();
         private readonly BossBlackboard         _blackboard = new BossBlackboard();
 
+        private readonly IBossTickableEffects _tickableEffects;
+
         private double _controlImmuneUntil;
 
         /****************************************
@@ -52,6 +54,7 @@ namespace Shinshi.AI
         public BossCombat(BossBrainDependencies dependencies, BossDamageGate damageGate, BossDefinition boss, double startTime)
         {
             _dependencies = dependencies;
+            _tickableEffects = dependencies.Effects as IBossTickableEffects;
             _damageGate   = damageGate;
             _boss         = boss;
 
@@ -78,8 +81,15 @@ namespace Shinshi.AI
             CancelAll(reason);
         }
 
-        // 순서는 전환, 직접 제어, 공격 진행과 새 선택이다. 사망과 전투 종료는 상위 FSM이 이 앞에서 처리한다
+        // 공격 진행 뒤에 지속물을 진행한다. 이번 틱에 발사된 투사체도 발사 시각부터 지금까지 이어서 진행하고, 이 틱에 끊겼다면 이미 정리된 뒤다
         public void Tick(double serverTime)
+        {
+            TickCombat(serverTime);
+            _tickableEffects?.Tick(serverTime);
+        }
+
+        // 순서는 전환, 직접 제어, 공격 진행과 새 선택이다. 사망과 전투 종료는 상위 FSM이 이 앞에서 처리한다
+        private void TickCombat(double serverTime)
         {
             _blackboard.ServerTime = serverTime;
 
