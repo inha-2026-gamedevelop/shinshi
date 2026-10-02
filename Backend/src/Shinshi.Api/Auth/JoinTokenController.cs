@@ -90,7 +90,7 @@ namespace Shinshi.Backend
             string? accountLeaseId = identity.AccountLeaseId == Guid.Empty ? null : identity.AccountLeaseId.ToString("D");
             return Ok(new JoinTokenExchangeResponse(identity.CharacterId.ToString("D"), identity.InstanceId.ToString("D"),
                 server.Role, town ? null : identity.ParticipantId.ToString("D"),
-                town ? null : identity.SessionId.ToString("D"), identity.ServerTimeUnixMs, accountLeaseId));
+                town ? null : identity.SessionId.ToString("D"), identity.ServerTimeUnixMs, accountLeaseId, identity.ClassId));
         }
     }
 }

@@ -1,3 +1,6 @@
+// 프로젝트 내부
+using Shinshi.Common;
+
 namespace Shinshi.Network
 {
     /// <summary> 인증을 통과한 연결과 출정 참가자의 결합, 인증기가 연결의 authenticationData에 넣는다 </summary>
@@ -9,9 +12,10 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        private readonly string _participantKey;
-        private readonly int    _participantId;
-        private readonly string _accountLeaseId;
+        private readonly string       _participantKey;
+        private readonly int          _participantId;
+        private readonly string       _accountLeaseId;
+        private readonly EPlayerClass _playerClass;
 
         /****************************************
         *              Properties
@@ -26,22 +30,21 @@ namespace Shinshi.Network
         // 마을 계정 접속 임대 ID, 연결이 끊기면 인증기가 해제를 보낸다. 없으면 null
         public string AccountLeaseId => _accountLeaseId;
 
+        // 토큰을 교환한 API가 알려 준 캐릭터 직업, 전투 개체는 이 값으로 만든다. 재접속마다 새 교환에서 다시 받는다
+        public EPlayerClass PlayerClass => _playerClass;
+
         public bool IsActive { get; internal set; }
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public SessionBinding(string participantKey, int participantId)
-            : this(participantKey, participantId, null)
-        {
-        }
-
-        public SessionBinding(string participantKey, int participantId, string accountLeaseId)
+        public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass)
         {
             _participantKey = participantKey;
             _participantId  = participantId;
             _accountLeaseId = accountLeaseId;
+            _playerClass    = playerClass;
             IsActive        = true;
         }
     }

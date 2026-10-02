@@ -69,7 +69,8 @@ namespace Shinshi.Tests
         [Test]
         public void Send_SuccessBody_DeserializesContractPayload()
         {
-            string    body      = BackendJson.Serialize(new JoinTokenExchangeResponse("char-1", "dungeon-01", 1, "part-1", "sortie-1", 5L));
+            string    body      = BackendJson.Serialize(new JoinTokenExchangeResponse("char-1", "dungeon-01", 1, "part-1", "sortie-1", 5L,
+                ContractCodes.PlayerClass.WARRIOR));
             var       transport = FakeBackendTransport.Always(STATUS_OK, body);
             using var gateway   = CreateGateway(transport);
             var       listener  = new RecordingBackendListener();

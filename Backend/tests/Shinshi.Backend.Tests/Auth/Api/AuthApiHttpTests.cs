@@ -131,6 +131,7 @@ namespace Shinshi.Backend.Tests
             JoinTokenExchangeResponse result = Read<JoinTokenExchangeResponse>(await response.Content.ReadAsStringAsync());
             Assert.Equal(factory.Repository.Join.CharacterId.ToString("D"), result.CharacterId);
             Assert.Equal(factory.Repository.Join.SessionId.ToString("D"), result.SortieId);
+            Assert.Equal(ContractCodes.PlayerClass.SUMMONER, result.ClassId);
             Assert.Equal(factory.Repository.Server.Role, result.ServerRole);
             Assert.Equal(factory.Repository.Server.LeaseId, factory.Repository.ConsumedLease);
             Assert.Equal(1, factory.Repository.ConsumeCalls);
@@ -481,7 +482,8 @@ namespace Shinshi.Backend.Tests
             public ServerAuthIdentity Server { get; } = new ServerAuthIdentity(Guid.NewGuid(), Guid.NewGuid(),
                 Guid.NewGuid(), ContractCodes.ServerRole.DUNGEON, long.MaxValue);
             public JoinAuthIdentity Join { get; } = new JoinAuthIdentity(Guid.NewGuid(), Guid.NewGuid(),
-                Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                ContractCodes.PlayerClass.SUMMONER, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             public int ExchangeReason { get; set; }
             public int ServerReason { get; set; }
             public int ConsumeReason { get; set; }

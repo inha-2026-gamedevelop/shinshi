@@ -37,6 +37,7 @@ namespace Shinshi.Combat
         private readonly PathFollower                     _path;
         private readonly MoveRequestThrottle              _moveThrottle;
         private readonly CombatLineOfSight                _lineOfSight;
+        private readonly EPlayerClass                     _playerClass;
         private readonly int                              _combatId;
         private readonly int                              _participantId;
         private readonly float                            _moveSpeed;
@@ -88,6 +89,7 @@ namespace Shinshi.Combat
         public PlayerInputState      InputState      => _input;
         public int                   CombatId        => _combatId;
         public int                   ParticipantId   => _participantId;
+        public EPlayerClass          PlayerClass     => _playerClass;
         public ECombatFaction        Faction         => ECombatFaction.Player;
         public EParticipantLifeState LifeState       => _lifeState;
         public bool                  IsSummon        => false;
@@ -123,10 +125,12 @@ namespace Shinshi.Combat
         ****************************************/
 
         // OnStartServer 알림에서 한 번 만든다. 할당은 여기서 끝내고 틱과 Command 처리에서는 만들지 않는다.
-        // participantId는 인증기가 연결에 결합한 출정 참가자 번호다. 재접속해도 같은 번호가 온다
-        public PlayerServer(PlayerInputState input, PlayerCombatState combat, int combatId, int participantId, int sessionEpoch,
-            PlayerConfigSO config, IDamageResolver resolver, ICombatTargetQuery query, CombatLineOfSight lineOfSight,
-            double serverTime)
+        // participantId는 인증기가 연결에 결합한 출정 참가자 번호다. 재접속해도 같은 번호가 온다.
+        // playerClass는 결합이 API 교환에서 받은 직업이다. 기본 공격 명세와 기술 서버가 모두 이 값을 쓰고, 클라이언트에는
+        // 아래에서 복제 상태로 알린다. 상태의 SyncVar를 읽어 정하면 [Server] 호출 순서에 기대게 되므로 인자로 받는다
+        public PlayerServer(PlayerInputState input, PlayerCombatState combat, EPlayerClass playerClass, int combatId,
+            int participantId, int sessionEpoch, PlayerConfigSO config, IDamageResolver resolver, ICombatTargetQuery query,
+            CombatLineOfSight lineOfSight, double serverTime)
         {
             _input         = input;
             _combat        = combat;
@@ -134,6 +138,7 @@ namespace Shinshi.Combat
             _resolver      = resolver;
             _query         = query;
             _lineOfSight   = lineOfSight;
+            _playerClass   = playerClass;
             _combatId      = combatId;
             _participantId = participantId;
 
@@ -143,7 +148,7 @@ namespace Shinshi.Combat
             _defense     = config.BaseDefense;
             _maxHealth   = config.BaseHealth;
             _health      = _maxHealth;
-            _attack      = config.GetBasicAttack(combat.PlayerClass);
+            _attack      = config.GetBasicAttack(playerClass);
 
             // TODO(민성): 회피 기력 비용(DodgeEnergyCost)은 기획에서 0이다. 0이 아니게 바뀌면 기술 자원에서 뺀다
             _dodgeDistance = config.DodgeDistance;
@@ -172,6 +177,7 @@ namespace Shinshi.Combat
             }
 
             _input.SetIdentity(sessionEpoch, participantId);
+            _combat.SetPlayerClass(playerClass);
             _combat.SetCombatId(_combatId);
             _combat.SetHealth(_health, _maxHealth);
             _combat.SetLifeState(_lifeState);
@@ -514,15 +520,15 @@ namespace Shinshi.Combat
             ICombatSkillPhase phase, double now, SkillServer retained = null)
         {
             _skillPhase = phase;
+            // 보존된 기술 서버는 같은 직업일 때만 넘어온다(CombatServerRuntime이 걸러 낸다)
             if (retained != null)
             {
                 _skills = retained;
                 _skills.Rebind(this);
-                _combat.SetPlayerClass(retained.PlayerClass);
             }
             else
             {
-                _skills = new SkillServer(this, _combat.PlayerClass, _participantId, catalog, player, registry, _resolver, _lineOfSight, now);
+                _skills = new SkillServer(this, _playerClass, _participantId, catalog, player, registry, _resolver, _lineOfSight, now);
             }
             _input.SkillServerHandler = this;
             ReplicateSkills();

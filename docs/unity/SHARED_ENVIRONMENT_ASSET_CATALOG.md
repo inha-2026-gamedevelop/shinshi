@@ -191,3 +191,31 @@ CA04의 이중 지붕·붉은 목재·기와·회벽·초가·시장 차양을 �
 - 미세 재질·기와의 faceting, 성소 돌의 작은 검은 대시·천 닫힘 이음은 잔여 검수 항목이다. 정지 LOD·전체/확대 쿼터뷰·메타/참조 검증과 실제 플레이·연속LOD·성능·빌드·원화 유사도 수치 판정을 구분한다. 최종 검사 원료는 Git 제외 개인 제작 기록에 보존한다.
 - 전각 아래처마의 밝은띠·대문의 흰기둥은 실제 Blender 표면색 보정으로 각각 기와색·붉은목재색에 맞췄다. BaseColor2장만 바뀌고 회벽·석기단·천·금색장식 및 형상·UV·AO·Normal·Mask·FBX는 보존했다. 두맵을 실제 Unity2K/BC7/sRGB로 재임포트하고 앞뒤·확대 렌더를 확인했다. 작은 기와끝 밝은패치와 문기둥-돌받침 경계는 잔여 항목이다.
 - 최종 저장 씬의 정적 검사는9154오브젝트/1852외부프리팹/1963LODGroup/964Collider에서 누락Script·Prefab·Mesh·Material·LOD renderer0, 잘못된bounds0, 파티클0·임시 지형검사용Collider0이다. 신규49Texture의 에디터 native loaded memory 합은441,190,962bytes(420.75MiB), readable0·streaming0이다. 이 수치는 전체씬 GPU VRAM·Player peak·다수배치 성능이 아니다. 건물7종·성소는 High 복제LOD 예외이므로 감면 성능을 주장하지 않는다.
+
+## CA-07 추가 에셋 — 2026-10-03
+
+CA-07 원화에 있지만 기존 Assets에 없던 4종이다. 단일 물체 시안 → Meshy 생성 1회씩 → Blender 5.1 가공 → Unity 재질·LOD·충돌·프리팹 순서로 만들었다. 출처·작업 ID·비용은 [에셋 대장](../licenses/ASSET_REGISTRY.md#ca-07-추가-환경-모델--2026-10-03)을 따른다. 네 프리팹 모두 루트 스케일 1, LOD 3단계, 정면 −Z 기준이다.
+
+| 배치 프리팹 | 크기 X×Y×Z(m) | 피벗 | High / Medium / Low tris | 충돌 사용 조건 |
+|---|---|---|---:|---|
+| [Waterwheel](../../Assets/02.Prefab/Environment/Waterwheel/PF_Waterwheel.prefab) | 4.60×4.81×4.27 | 바닥 중앙 | 59999 / 29999 / 11999 | 양쪽 받침틀 근사 Box 2개(Z ±1.44m). 바퀴·축은 충돌 없음, 회전 없음 |
+| [WheatFieldPlot](../../Assets/02.Prefab/Environment/WheatFieldPlot/PF_WheatFieldPlot.prefab) | 6.00×1.29×4.10(흙 둔덕 높이 0.27) | 바닥 중앙 | 9800 / 9080 / 8540 | 없음. 장식 밭이며 이동 차단 여부는 배치에서 별도 결정 |
+| [LotusCluster](../../Assets/02.Prefab/Environment/LotusCluster/PF_LotusCluster.prefab) | 2.50×0.44×2.53(수면 위 최고 0.38) | 수면 높이 중앙(Y=0) | 23999 / 11999 / 5279 | 없음. 수면 장식 |
+| [ArchedTimberBridge](../../Assets/02.Prefab/Environment/ArchedTimberBridge/PF_ArchedTimberBridge.prefab) | 10.00×2.48×2.61 | 경간 중앙, Y=0이 양 끝 데크 착지면 | 40000 / 20000 / 8000 | 보행 데크 MeshCollider(`COL_ArchedTimberBridge_Deck`, 폭 2.1m 띠, 원본 렌더 메시가 아님)와 양쪽 난간 Box 10개씩 |
+
+- 재질은 물레방아·다리가 `Lit Occlusion Fade`, 연꽃과 밀밭 흙이 URP Lit, 밀 카드가 `SG_VertexColorFoliage`(알파 클립 0.5, 양면, 버텍스 AO 강도 0.6)다. Lit 계열은 `T_*_Mask`의 R=Metallic, G=실제 AO, A=1−Roughness를 쓰며 금속 값은 모두 0이다. 다리 데크도 기존 목조 다리 모듈처럼 투명화 셰이더를 쓴다.
+- AO는 모두 Cycles에서 최종 High 형상으로 실제 베이크했다. 거리는 물레방아 0.5m, 다리 0.45m, 연꽃 0.15m, 밀밭 흙 0.35m(밀 카드 포함)이고, 밀 카드는 버텍스 AO 0.25m다. BaseColor·Normal·거칠기는 Meshy 원본에서 감면 메시로 전사했고, 빈 UV 영역과 광선 누락 텍셀은 주변 색으로 채웠다.
+- 밀밭의 Meshy 원본 줄기는 감면하면 사라져 원본 줄기를 렌더한 2K 알파 아틀라스와 세로 카드(300/180/90장)로 바꿨다. 흙 둔덕은 원본에 구멍이 있어 높이장으로 다시 만들었고 세 LOD가 같은 흙 메시를 쓴다. 따라서 LOD 감면 효과는 카드 수와 overdraw에만 있다.
+- 다리 데크 중심선의 최대 경사는 약 29~30도다. 아치를 키우면서 다리 아래 기둥 두 쌍이 데크와 함께 올라가 하단이 지면에 닿지 않을 수 있으므로 배치할 때 높이를 확인한다. 연꽃은 줄기 하단이 수면 아래 0.065m까지 내려간다.
+- Unity 확인 범위: 실제 임포트 치수, 루트 스케일, 재질·텍스처 참조 누락 0, LOD 3단계 참조, 텍스처 임포트(BaseColor sRGB BC7, Normal BC5, Mask·Normal 선형, CPU 읽기 끔), 저장하지 않는 PreviewScene의 중립 조명 앞·뒤·사선·쿼터뷰 42도·근거리·LOD별·AO 켬/끔 렌더, 신규 Console 오류·경고 0이다.
+- 미검증: 실제 씬 배치·게임 카메라·조명, 캐릭터 보행(다리 데크 경사·난간 접촉), 연속 LOD 전환, 다수 배치 성능, Player 빌드. 원화 유사도는 수치로 측정하지 않았다. 근거리에서 밀 이삭은 뭉툭한 형태와 일부 어두운 얼룩이 보이고, 물레방아·다리 원본 색에는 작은 밝은 얼룩이 남아 있다.
+
+## CA-07 마을 배치 씬 — 2026-10-03
+
+[Dev_ShinshiVillageCA07](../../Assets/00.Scenes/Dev_ShinshiVillageCA07.unity)은 [CA-07 배치도](../design/concept-art.md#8-ca-07-신시-마을-배치도-2)를 게임 쿼터뷰 기준으로 배치한 별도 개발 씬이다. CA-04 기반 `Dev_ShinshiVillageQuarterView`는 그대로 둔다.
+
+- 기준 카메라는 [CameraConfig](../../Assets/09.Data/Combat/CameraConfig.asset) 기본 단계(원근 FOV30, 피치55, 요0, 거리14.5)다. 원화 위쪽을 북쪽(+Z)으로 보고, 피치55에서 원화와 같은 화면 비율이 되도록 깊이 축을 맞췄다. 씬의 `QuarterView_Gameplay`는 같은 값의 원근 카메라, `QuarterView_Overview`·`CA07_CompareCamera`는 피치55·요0 직교 검수 카메라다.
+- 섬 몸체는 기존 ReferenceIsland 청크를 재사용하고, 위에 원화 윤곽대로 만든 단 11개(잔디·판석·바위 절벽 테두리)를 높이별로 얹었다. 단·포장·개울·연못·폭포 메시와 타일 텍스처는 `Assets/01.Scripts/05.Art/Environment/VillageCA07/`, 물 셰이더는 `Assets/01.Scripts/05.Art/Shaders/Atmosphere/`(`SH_StreamWater`, `SH_Waterfall`)에 있다. 단 메시는 보행 MeshCollider를 가진다.
+- 건물·나무·소품은 기존 프리팹과 위 CA-07 추가 에셋 4종을 배치했다. 소나무 2종·광장 원형 포장은 이 씬 전용 재질 변형(`M_CA07_*`)으로 색만 바꿨고 원본 재질은 유지한다. 대기·구름·후처리는 [Dev_ShinshiVillageQuarterView와 같은 구성](#마을-쿼터뷰-배치-씬)이다.
+- 확인 범위: 저장 씬의 누락 프리팹·메시·재질·스크립트 0, 플레이 모드에서 기본 줌 게임 카메라 화면, 피치55 전체 비교 렌더, Console 오류 0. 미검증: 전체 보행·계단/다리 연결 높이, 연속 LOD·성능·Player 빌드, 원화 유사도 수치. 단 바닥·포장·절벽 텍스처는 절차 생성이며 AO는 높이장 오목함으로 계산했다(형상 베이크 아님).
+- 2026-10-03 3차(로스트아크풍 보정): 단 높이차를 1.6배로 키우고 섬 청크를 단보다 3.5m 낮췄다. 광장의 회색 사각 판석(`Plaza_Ring_*`, `Plaza_Centre`)은 이 씬에서만 비활성화하고 동심원 판석(`SM_CA07_PlazaDisc`)과 테두리돌(`SM_CA07_PlazaRings`)로 바꿨다. 잔디·판석·절벽 텍스처는 2048 2차본(같은 높이장에서 Normal/AO 계산)이다. 소나무·관목·단풍·약초 잎은 [Lit Occlusion Fade Soft Foliage](../../Assets/01.Scripts/05.Art/Shaders/OcclusionFade/LitOcclusionFadeSoftFoliage.shader) 변형 재질(`M_CA07_*`)로 꼭짓점 노멀만 둥글게 굽혀 면이 각져 보이는 느낌을 줄였다. 원본 메시·재질·셰이더는 바꾸지 않았고, 변형 재질은 추가 속성 때문에 SRP Batcher 대상이 아니다.

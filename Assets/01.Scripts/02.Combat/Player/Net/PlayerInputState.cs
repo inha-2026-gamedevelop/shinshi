@@ -91,6 +91,9 @@ namespace Shinshi.Combat
         // 공격, 기술처럼 서버가 처리하는 틱에 이동을 멈추는 입력
         public event Action<uint> ActionSent;
 
+        // 기술 요청을 실제로 보낸 순번과 종류, 슬롯. SkillResult의 순번을 어떤 기술의 결과인지로 바꿀 때 쓴다
+        public event Action<uint, ESkillRequestKind, byte> SkillSent;
+
         // 회피를 보낸 순번과 수평 방향. 예측은 회피를 이동 순번 하나로 보고 서버 확정 상태와 짝짓는다
         public event Action<uint, Vector3> DodgeSent;
 
@@ -159,6 +162,7 @@ namespace Shinshi.Combat
                 _hasPendingSkill = false;
                 PlayerInputHeader skillHeader = NextHeader();
                 CmdSkill(new PlayerSkillInput(skillHeader, _pendingSkillKind, _pendingSkillSlot, _pendingSkillAim, _pendingSkillPoint));
+                SkillSent?.Invoke(skillHeader.Sequence, _pendingSkillKind, _pendingSkillSlot);
                 ActionSent?.Invoke(skillHeader.Sequence);
                 return;
             }
@@ -218,6 +222,29 @@ namespace Shinshi.Combat
         /****************************************
         *            Client Requests
         ****************************************/
+
+        /// <summary> 기술이 다시 쓸 수 있게 되는 서버 시각, 강림은 세 칸이 공용 값 하나를 쓴다 </summary>
+        public double GetSkillReadyAt(ESkillRequestKind kind, byte slot)
+        {
+            if (kind == ESkillRequestKind.Ascension)
+            {
+                return _ascensionReadyAt;
+            }
+
+            switch (slot)
+            {
+                case Constants.Combat.SKILL_SLOT_Q:
+                    return _skillQReadyAt;
+                case Constants.Combat.SKILL_SLOT_W:
+                    return _skillWReadyAt;
+                case Constants.Combat.SKILL_SLOT_E:
+                    return _skillEReadyAt;
+                case Constants.Combat.SKILL_SLOT_R:
+                    return _skillRReadyAt;
+                default:
+                    return 0.0;
+            }
+        }
 
         /// <summary> 클릭한 지면 좌표로 이동을 요청한다, 소유 클라이언트에서만 동작한다 </summary>
         public void RequestMove(Vector3 destination)
@@ -286,25 +313,27 @@ namespace Shinshi.Combat
                 _nextSequence, NetworkTime.predictedTime);
         }
 
-        /// <summary> 지점 지정 UI가 확정한 뒤 호출한다, 취소된 지정은 서버로 보내지 않는다 </summary>
+        /// <summary> 방향 기술은 키 입력 때, 지점 기술은 지정을 확정한 뒤 호출한다, 취소된 지정은 서버로 보내지 않는다 </summary>
         public void RequestSkill(ESkillRequestKind kind, byte slot, Vector3 point, Vector3 aimDirection)
         {
             if (!isOwned)
             {
                 return;
             }
+
             ushort yaw = FacingRules.EncodeYaw(Vector3.forward);
             if (FacingRules.TryGetHorizontalDirection(aimDirection, out Vector3 direction))
             {
                 yaw = FacingRules.EncodeYaw(direction);
             }
-            _pendingSkillKind = kind;
-            _pendingSkillSlot = slot;
-            _pendingSkillAim = yaw;
+
+            _pendingSkillKind  = kind;
+            _pendingSkillSlot  = slot;
+            _pendingSkillAim   = yaw;
             _pendingSkillPoint = point;
-            _hasPendingSkill = true;
-            _hasPendingAttack = false;
-            _hasPendingMove = false;
+            _hasPendingSkill   = true;
+            _hasPendingAttack  = false;
+            _hasPendingMove    = false;
         }
 
         /****************************************

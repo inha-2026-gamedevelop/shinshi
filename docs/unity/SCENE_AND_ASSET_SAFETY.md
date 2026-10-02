@@ -16,6 +16,7 @@
 |---|---|
 | `Assets/00.Scenes/Bootstrap.unity` | **{팀장}** |
 | `Assets/00.Scenes/Dev_PlayerMovement.unity` (이동 예측, 회피 시험) | **{팀장}** |
+| `Assets/00.Scenes/Dev_ShinshiVillageQuarterView.unity`, `Dev_ShinshiVillageCA07.unity` (마을 원화 배치·대기 연출 검수) | **{팀장}** |
 | `Assets/{씬 폴더}/Dev_{파트}.unity` | {파트} ({팀원이름}) |
 | 실제 런타임 흐름 씬 (타이틀, 로비, 게임 등) | 통합 담당자 ({팀원이름}) |
 | 메인 씬 (이름 미정) | **통합 담당자만** |

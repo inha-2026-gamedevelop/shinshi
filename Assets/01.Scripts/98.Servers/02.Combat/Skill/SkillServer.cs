@@ -12,7 +12,7 @@ using Shinshi.Data;
 namespace Shinshi.Combat
 {
     /// <summary> SO 기술을 서버 시각으로 실행한다, 모든 버퍼는 소유자 생성 때 확보한다 </summary>
-    public sealed class SkillServer : ICompanionContext
+    public sealed class SkillServer : ICompanionContext, ICompanionSlotSource
     {
         /****************************************
         *                Fields
@@ -75,23 +75,25 @@ namespace Shinshi.Combat
         *              Properties
         ****************************************/
 
-        public float             Energy           => _energy;
-        public EPlayerClass      PlayerClass      => _playerClass;
-        public float             MaxEnergy        => _player.BaseMaxEnergy;
-        public float             Resonance        => _resonance.Value;
-        public ESkillPhase       Phase            => _phase;
-        public int               CastInstanceId   => _castId;
-        public int               ActionInstanceId => _actionId;
-        public int               Slot             => _slot;
-        public ESkillRequestKind Kind             => _kind;
-        public Vector3           Origin           => _origin;
-        public Vector3           Aim              => _aim;
-        public Vector3           Point            => _point;
-        public double            ResolveAt        => _resolveAt;
-        public double            AscensionReadyAt => _ascensionReadyAt;
-        public double            NextActionAt     => _recoveryEndsAt;
-        public bool              BlocksMovement   => _phase != ESkillPhase.Idle;
-        public bool              IsGuardWindow    => (_phase == ESkillPhase.Active) && (IsCounter);
+        public float             Energy             => _energy;
+        public EPlayerClass      PlayerClass        => _playerClass;
+        public int               ParticipantId      => _participantId;
+        public int               CompanionSlotCount => _companions.Length;
+        public float             MaxEnergy          => _player.BaseMaxEnergy;
+        public float             Resonance          => _resonance.Value;
+        public ESkillPhase       Phase              => _phase;
+        public int               CastInstanceId     => _castId;
+        public int               ActionInstanceId   => _actionId;
+        public int               Slot               => _slot;
+        public ESkillRequestKind Kind               => _kind;
+        public Vector3           Origin             => _origin;
+        public Vector3           Aim                => _aim;
+        public Vector3           Point              => _point;
+        public double            ResolveAt          => _resolveAt;
+        public double            AscensionReadyAt   => _ascensionReadyAt;
+        public double            NextActionAt       => _recoveryEndsAt;
+        public bool              BlocksMovement     => _phase != ESkillPhase.Idle;
+        public bool              IsGuardWindow      => (_phase == ESkillPhase.Active) && (IsCounter);
         private bool IsCounter => (_kind == ESkillRequestKind.Regular) && (_playerClass == EPlayerClass.Warrior)
             && (_slot == Constants.Combat.WARRIOR_COUNTER_SLOT);
 
@@ -752,6 +754,15 @@ namespace Shinshi.Combat
             ReplicateCompanions();
         }
 
+        public int GetActiveCompanionId(int slot)
+        {
+            if ((slot < 0) || (slot >= _companions.Length) || (!_companions[slot].IsActive))
+            {
+                return CombatIds.NONE;
+            }
+            return _companions[slot].CombatId;
+        }
+
         /// <summary> 서버 스포너가 생성한 동료 상태를 연결한다, 플레이어가 생성 요청을 보내지 않는다 </summary>
         public bool BindCompanionState(int slot, CompanionCombatState state)
         {
@@ -762,6 +773,15 @@ namespace Shinshi.Combat
             _companionStates[slot] = state;
             ReplicateCompanions();
             return true;
+        }
+
+        public void UnbindCompanionState(int slot)
+        {
+            if ((slot < 0) || (slot >= _companionStates.Length))
+            {
+                return;
+            }
+            _companionStates[slot] = null;
         }
 
         private void ReplicateCompanions()

@@ -156,6 +156,9 @@ namespace Shinshi.Data
             [SerializeField] private SkillArea       _area;
             [SerializeField] private SkillEffectSpec _effect;
 
+            // 선택값, HUD 기술 칸 그림. 비어 있으면 HUD가 가진 기본 그림을 그대로 쓴다
+            [SerializeField] private Sprite          _icon;
+
             public string          DefinitionId => _definitionId;
             public string          DisplayKey   => _displayKey;
             public EPlayerClass    PlayerClass  => _playerClass;
@@ -166,6 +169,7 @@ namespace Shinshi.Data
             public SkillTimeline   Timeline     => _timeline;
             public SkillArea       Area         => _area;
             public SkillEffectSpec Effect       => _effect;
+            public Sprite          Icon         => _icon;
 
             /****************************************
             *                Methods
@@ -210,6 +214,9 @@ namespace Shinshi.Data
             [SerializeField] private float  _rootDuration;      // 초, 일반 적 기준 속박. 0이면 없음
             [SerializeField] private bool   _singleTarget;      // 범위 안에서 커서와 가장 가까운 유효 적 하나만 타격
 
+            // 선택값, HUD 강림 칸 그림. 비어 있으면 HUD가 가진 기본 그림을 그대로 쓴다
+            [SerializeField] private Sprite _icon;
+
             public string DefinitionId      => _definitionId;
             public string DisplayKey        => _displayKey;
             public int    Slot              => _slot;
@@ -221,6 +228,7 @@ namespace Shinshi.Data
             public float  DamageCoefficient => _damageCoefficient;
             public float  RootDuration      => _rootDuration;
             public bool   SingleTarget      => _singleTarget;
+            public Sprite Icon              => _icon;
 
             /****************************************
             *                Methods

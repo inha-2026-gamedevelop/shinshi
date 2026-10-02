@@ -106,6 +106,8 @@ GameObject:
   - component: {fileID: 9223089307088348216}
   - component: {fileID: 2066583378322049471}
   - component: {fileID: 4676749000467046556}
+  - component: {fileID: 6912862041508884124}
+  - component: {fileID: 129413589570490458}
   m_Layer: 0
   m_Name: PF_NetPlayer
   m_TagString: Untagged
@@ -266,3 +268,34 @@ MonoBehaviour:
   _input: {fileID: 5792919386774456564}
   _combat: {fileID: 7582053140134925329}
   _bodyCollider: {fileID: 9223089307088348216}
+  _rangeIndicator: {fileID: 6912862041508884124}
+--- !u!114 &6912862041508884124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 059d18285e346fb49a563e2cc6d0d9d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.SkillRangeIndicatorView
+  _material: {fileID: 2100000, guid: 90c7a8edf90b2f940a791b4370e920b7, type: 2}
+  _rangeColor: {r: 0.55, g: 0.8, b: 1, a: 0.35}
+  _validColor: {r: 0.55, g: 0.8, b: 1, a: 0.8}
+  _invalidColor: {r: 1, g: 0.25, b: 0.2, a: 0.8}
+  _lineWidth: 0.08
+  _groundLift: 0.05
+--- !u!114 &129413589570490458
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea382e913d5cb7c48ac23310171cde38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.LocalPlayerHudBinder

@@ -10,15 +10,30 @@ namespace Shinshi.Common
             ****************************************/
 
             // 입력은 구 Input Manager(UnityEngine.Input)를 쓴다. 축, 버튼 이름은 프로젝트 입력 설정에 있는 것만 둔다
-            // TODO(민성): 이동 클릭, 기술 Q/W/E/R, 회피, 물약 1/2, 강림 Z/X/C 이름을 입력 설정과 같이 넣는다
+            // TODO(민성): 물약 1/2 키를 입력 설정과 같이 넣는다
 
-            // Input.GetMouseButton 번호. 기획 기본 배치는 오른쪽 이동, 왼쪽 공격이다
+            // Input.GetMouseButton 번호. 기획 기본 배치는 오른쪽 이동, 왼쪽 공격이다.
+            // 지점 기술 지정 중에는 왼쪽이 확정, 오른쪽이 취소다
             // TODO(민성): 마우스 버튼 교환 옵션이 생기면 설정값으로 바꾼다
             public const int MOUSE_BUTTON_ATTACK = 0;
             public const int MOUSE_BUTTON_MOVE   = 1;
 
             // TODO(민성): 키 변경 옵션이 생기면 InputManager 버튼이나 설정값으로 옮긴다
             public const UnityEngine.KeyCode KEY_DODGE = UnityEngine.KeyCode.Space;
+
+            // 일반 기술 Q/W/E/R, 신령사 강림 Z/X/C, 지점 지정 취소
+            public const UnityEngine.KeyCode KEY_SKILL_Q          = UnityEngine.KeyCode.Q;
+            public const UnityEngine.KeyCode KEY_SKILL_W          = UnityEngine.KeyCode.W;
+            public const UnityEngine.KeyCode KEY_SKILL_E          = UnityEngine.KeyCode.E;
+            public const UnityEngine.KeyCode KEY_SKILL_R          = UnityEngine.KeyCode.R;
+            public const UnityEngine.KeyCode KEY_ASCENSION_Z      = UnityEngine.KeyCode.Z;
+            public const UnityEngine.KeyCode KEY_ASCENSION_X      = UnityEngine.KeyCode.X;
+            public const UnityEngine.KeyCode KEY_ASCENSION_C      = UnityEngine.KeyCode.C;
+            public const UnityEngine.KeyCode KEY_CANCEL_TARGETING = UnityEngine.KeyCode.Escape;
+
+            // 지점 기술 지정점을 최대 사거리보다 이만큼(m) 안쪽으로 제한한다. 서버는 자기 위치에서 거리를 다시 재고
+            // 내비 메시 보정도 하므로 사거리 경계에 딱 맞춘 지점은 예측 위치 오차만으로 사거리 밖 거절이 난다
+            public const float SKILL_POINT_RANGE_MARGIN = 0.25f;
 
             // 카메라 휠 줌 축 이름. 위로 굴리면 양수이고 카메라가 가까워진다
             public const string AXIS_CAMERA_ZOOM = "Mouse ScrollWheel";

@@ -71,6 +71,9 @@ namespace Shinshi.Common
             public const int RESONANCE_LEDGER_CAPACITY    = 256;
             public const int COMPANIONS_PER_PLAYER        = 2;
 
+            // 출정 하나에 동시에 스폰되는 동료 네트워크 개체 상한. 재호출은 같은 틱에 옛 개체를 먼저 내려 상한을 넘지 않는다
+            public const int MAX_COMPANION_OBJECTS = Session.MAX_PARTY_SIZE * COMPANIONS_PER_PLAYER;
+
             // TODO(민성): 기획 미정, 적 몸체 앞에서 멈추는 돌진 판정의 임시 반경(m)
             public const float SKILL_TARGET_BODY_RADIUS = 0.5f;
 

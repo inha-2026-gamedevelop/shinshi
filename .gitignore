@@ -26,6 +26,10 @@
 # Recordings can get excessive in size
 /[Rr]ecordings/
 
+# Unity MCP 스크린샷 기본 저장 위치. 확인용 캡처라 공유하지 않는다
+/[Aa]ssets/[Ss]creenshots/
+/[Aa]ssets/[Ss]creenshots.meta
+
 # Uncomment this line if you wish to ignore the asset store tools plugin
 # /[Aa]ssets/AssetStoreTools*
 

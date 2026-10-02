@@ -48,6 +48,12 @@ namespace Shinshi.Network
                 return ERejectReason.TokenRevoked;
             }
 
+            // 직업은 API가 준 값만 믿는다. 값이 없거나 모르는 값이면 무사로 대신하지 않고 입장을 거절한다
+            if (!TryReadPlayerClass(response.ClassId, out EPlayerClass playerClass))
+            {
+                return ERejectReason.TokenRevoked;
+            }
+
             bool hasParticipant = !string.IsNullOrEmpty(response.ParticipantId);
             bool hasSortie      = !string.IsNullOrEmpty(response.SortieId);
             if (serverRole == EServerRole.Dungeon)
@@ -58,7 +64,7 @@ namespace Shinshi.Network
                 }
 
                 claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_DUNGEON_PREFIX + response.ParticipantId,
-                    response.CharacterId, response.InstanceId, response.SortieId);
+                    response.CharacterId, response.InstanceId, response.SortieId, null, playerClass);
                 return ERejectReason.None;
             }
 
@@ -69,8 +75,21 @@ namespace Shinshi.Network
             }
 
             claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_TOWN_PREFIX + response.CharacterId,
-                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)));
+                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass);
             return ERejectReason.None;
+        }
+
+        /// <summary> 계약 코드가 EPlayerClass에 정의된 직업이면 참, 값 없음(-1)과 모르는 값은 거짓 </summary>
+        public static bool TryReadPlayerClass(int classId, out EPlayerClass playerClass)
+        {
+            playerClass = EPlayerClass.Warrior;
+            if (!Enum.IsDefined(typeof(EPlayerClass), classId))
+            {
+                return false;
+            }
+
+            playerClass = (EPlayerClass)classId;
+            return true;
         }
 
         /// <summary> 해제 경로에 넣을 수 있는 계정 접속 임대 ID만 남긴다, GUID가 아니면 null(해제 없이 heartbeat 만료로 풀린다) </summary>
