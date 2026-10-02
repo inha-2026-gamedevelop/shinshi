@@ -745,7 +745,7 @@ GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO
 | `SkillCatalogSO` | `09.Data/Combat/SkillCatalog.asset` | 기술 12종, 강림 3종, 공명 규칙, 계약 동료 공통값 | {팀장} |
 | `TalismanCatalogSO` | `09.Data/Combat/TalismanCatalog.asset` | 부적 효과 45종 정의와 변형 수치, 효과 레벨 보너스 배율 | {팀장} |
 | `EnemyCatalogSO` | `09.Data/AI/EnemyCatalog.asset` | 일반 적 4역할의 체력, 공격, 제어, 예고 | 기웅 |
-| `BossPatternCatalogSO` | `09.Data/AI/BossPatternCatalog.asset` | 보스 정의, 월백 1페이즈 6패턴(`wolbaek_p01`~`06`)의 가중치, 문맥 배율, 예고와 회복, 제어 창. 수치는 0(미지정)으로 비워 두고 기웅이 지정한다. 미지정 보스는 `IsTuned`가 거짓이라 전투를 열지 않는다 | 기웅 |
+| `BossPatternCatalogSO` | `09.Data/AI/BossPatternCatalog.asset` | 보스 정의(등장 컷씬 길이 `AppearanceSeconds` 포함, 0이면 등장 대기 없이 시작), 월백 1페이즈 6패턴(`wolbaek_p01`~`06`)의 가중치, 문맥 배율, 예고와 회복, 제어 창. 수치는 0(미지정)으로 비워 두고 기웅이 지정한다. 미지정 보스는 `IsTuned`가 거짓이라 전투를 열지 않는다 | 기웅 |
 | `WaveConfigSO` | `09.Data/AI/WaveConfig.asset` | 숲 6웨이브 배치, source ID, 활성 상한, 제한 시간 | 기웅 (세션 연결은 {팀장}) |
 | `EquipmentCatalogSO` | `09.Data/Growth/EquipmentCatalog.asset` | 장비 6부위 4등급, 제작, 25강, 계승표 | 진욱 |
 | `GrowthConfigSO` | `09.Data/Growth/GrowthConfig.asset` | 수련 5항목, 부적 등록 확률과 보정, 효과 강화 비용 | 진욱 |

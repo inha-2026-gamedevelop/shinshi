@@ -20,6 +20,7 @@ MonoBehaviour:
     _healthRef: 700
     _defense: 200
     _phaseTransitionHealthRate: 0.5
+    _appearanceSeconds: 0
     _openingDelaySeconds: 0
     _nearDistanceMax: 5
     _midDistanceMax: 12
@@ -35,6 +36,7 @@ MonoBehaviour:
     _healthRef: 0
     _defense: 0
     _phaseTransitionHealthRate: 0
+    _appearanceSeconds: 0
     _openingDelaySeconds: 0
     _nearDistanceMax: 0
     _midDistanceMax: 0

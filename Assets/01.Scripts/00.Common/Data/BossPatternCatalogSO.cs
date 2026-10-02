@@ -29,6 +29,7 @@ namespace Shinshi.Data
             [SerializeField] private float  _healthRef;                  // 지역 고정 권장 공격력 Aref의 배수, 시작 총체력
             [SerializeField] private float  _defense;                    // 피해 감소 공식에 넣는 방어
             [SerializeField] private float  _phaseTransitionHealthRate;  // 이 체력 비율에 닿으면 다음 페이즈 전환을 요청한다
+            [SerializeField] private float  _appearanceSeconds;          // 초, 등장 컷씬 길이, 전투 시작 전 기다리는 시간. 0이면 대기 없이 바로 시작한다
             [SerializeField] private float  _openingDelaySeconds;        // 초, 전투 시작 뒤 첫 패턴 선택까지
             [SerializeField] private float  _nearDistanceMax;            // m, 이 거리 미만이 근거리
             [SerializeField] private float  _midDistanceMax;             // m, 이 거리 미만이 중거리, 이상은 원거리
@@ -45,6 +46,7 @@ namespace Shinshi.Data
             public float  HealthRef                  => _healthRef;
             public float  Defense                    => _defense;
             public float  PhaseTransitionHealthRate  => _phaseTransitionHealthRate;
+            public float  AppearanceSeconds          => _appearanceSeconds;
             public float  OpeningDelaySeconds        => _openingDelaySeconds;
             public float  NearDistanceMax            => _nearDistanceMax;
             public float  MidDistanceMax             => _midDistanceMax;
@@ -72,9 +74,20 @@ namespace Shinshi.Data
                 float phaseTransitionHealthRate, float openingDelaySeconds, float nearDistanceMax, float midDistanceMax,
                 float frontAngleMax, float sideAngleMax, float nearbyRadius, float emptyWeightRetrySeconds,
                 float directControlMaxSeconds, float directControlImmuneSeconds)
+                : this(definitionId, arenaDiameter, healthRef, defense, phaseTransitionHealthRate, openingDelaySeconds,
+                    nearDistanceMax, midDistanceMax, frontAngleMax, sideAngleMax, nearbyRadius, emptyWeightRetrySeconds,
+                    directControlMaxSeconds, directControlImmuneSeconds, UNSET)
+            {
+            }
+
+            public BossDefinition(string definitionId, float arenaDiameter, float healthRef, float defense,
+                float phaseTransitionHealthRate, float openingDelaySeconds, float nearDistanceMax, float midDistanceMax,
+                float frontAngleMax, float sideAngleMax, float nearbyRadius, float emptyWeightRetrySeconds,
+                float directControlMaxSeconds, float directControlImmuneSeconds, float appearanceSeconds)
             {
                 _definitionId               = definitionId;
                 _displayKey                 = definitionId + DISPLAY_KEY_SUFFIX;
+                _appearanceSeconds          = appearanceSeconds;
                 _arenaDiameter              = arenaDiameter;
                 _healthRef                  = healthRef;
                 _defense                    = defense;
@@ -431,6 +444,7 @@ namespace Shinshi.Data
             CheckPositive(errors, field + ".HealthRef", boss.HealthRef, requireTuned);
             DataValidation.RequireNonNegative(errors, OWNER, field + ".Defense", boss.Defense);
             CheckPositiveAtMost(errors, field + ".PhaseTransitionHealthRate", boss.PhaseTransitionHealthRate, MAX_RATE, requireTuned);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".AppearanceSeconds", boss.AppearanceSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, field + ".OpeningDelaySeconds", boss.OpeningDelaySeconds);
             CheckPositive(errors, field + ".NearDistanceMax", boss.NearDistanceMax, requireTuned);
             CheckAtLeast(errors, field + ".MidDistanceMax", boss.MidDistanceMax, boss.NearDistanceMax, float.MaxValue, requireTuned);
