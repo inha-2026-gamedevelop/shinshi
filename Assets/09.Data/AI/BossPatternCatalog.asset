@@ -86,6 +86,42 @@ MonoBehaviour:
     - 0
     - 0
     - 0
+  - _definitionId: boss_mucheol
+    _displayKey: boss_mucheol.name
+    _arenaDiameter: 0
+    _healthRef: 0
+    _defense: 0
+    _phaseTransitionHealthRate: 0
+    _appearanceSeconds: 0
+    _openingDelaySeconds: 0
+    _nearDistanceMax: 0
+    _midDistanceMax: 0
+    _frontAngleMax: 0
+    _sideAngleMax: 0
+    _nearbyRadius: 0
+    _emptyWeightRetrySeconds: 0
+    _directControlMaxSeconds: 0
+    _directControlImmuneSeconds: 0
+    _enhancedHealthRate: 0
+    _flowMultipliers:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
   _patterns:
   - _definitionId: wolbaek_p01
     _displayKey: wolbaek_p01.name
