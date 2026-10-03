@@ -139,8 +139,23 @@ namespace Shinshi.Editor
                 options          = development ? BuildOptions.Development : BuildOptions.None
             };
 
-            BuildReport report    = BuildPipeline.BuildPlayer(options);
-            bool        succeeded = report.summary.result == BuildResult.Succeeded;
+            // 서버 빌드는 에디터의 대상 하위 설정을 Server로 바꿔 둔다. 그대로 두면 에디터가 UNITY_SERVER로 컴파일돼
+            // 클라이언트 플레이가 서버 부트스트랩에서 멈추므로 빌드 전 설정으로 되돌린다
+            StandaloneBuildSubtarget editorSubtarget = EditorUserBuildSettings.standaloneBuildSubtarget;
+            BuildReport report;
+            try
+            {
+                report = BuildPipeline.BuildPlayer(options);
+            }
+            finally
+            {
+                if (EditorUserBuildSettings.standaloneBuildSubtarget != editorSubtarget)
+                {
+                    EditorUserBuildSettings.standaloneBuildSubtarget = editorSubtarget;
+                }
+            }
+
+            bool succeeded = report.summary.result == BuildResult.Succeeded;
 
             // 후처리 예외가 빌드 결과에 반영되지 않는 경우가 있어 게시 도구가 읽을 파일을 직접 확인한다
             string identityPath = BuildIdentityWriter.GetIdentityPath(options.locationPathName);
