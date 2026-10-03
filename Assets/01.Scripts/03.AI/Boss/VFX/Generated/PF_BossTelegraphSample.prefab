@@ -45,6 +45,53 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossSweepCueView
   _material: {fileID: 2100000, guid: c927c662a649bc84bb57d62f7c6b6be7, type: 2}
+--- !u!1 &1620125708906308630
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5926831720623407892}
+  - component: {fileID: 2290186428297085335}
+  m_Layer: 0
+  m_Name: Star View
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5926831720623407892
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1620125708906308630}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1730081039639480695}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2290186428297085335
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1620125708906308630}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 740a49eea93c0b748bda1a64d2238c67, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossStarView
+  _beamMaterial: {fileID: 2100000, guid: b68014831bcb78b44bd4cba05cc2a7c3, type: 2}
+  _orbMaterial: {fileID: 2100000, guid: c927c662a649bc84bb57d62f7c6b6be7, type: 2}
+  _capacity: 2
 --- !u!1 &2554604377562902938
 GameObject:
   m_ObjectHideFlags: 0
@@ -219,6 +266,7 @@ Transform:
   - {fileID: 6468928926416810885}
   - {fileID: 9152120024832359431}
   - {fileID: 325760587958810761}
+  - {fileID: 5926831720623407892}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &3362672448524188666
@@ -233,6 +281,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ddce2500980f7654bbb2ebc87c25f904, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossTelegraphPresenter
+  _starView: {fileID: 2290186428297085335}
   _beamPool: {fileID: 6372626238138547917}
   _areaPool: {fileID: 5329415034196968965}
   _sectorPool: {fileID: 5375058763470758943}

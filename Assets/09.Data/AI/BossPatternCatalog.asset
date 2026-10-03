@@ -139,6 +139,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_p02
     _displayKey: wolbaek_p02.name
     _bossId: boss_wolbaek
@@ -191,6 +195,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_p03
     _displayKey: wolbaek_p03.name
     _bossId: boss_wolbaek
@@ -243,6 +251,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_p04
     _displayKey: wolbaek_p04.name
     _bossId: boss_wolbaek
@@ -295,6 +307,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_p05
     _displayKey: wolbaek_p05.name
     _bossId: boss_wolbaek
@@ -347,6 +363,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_p06
     _displayKey: wolbaek_p06.name
     _bossId: boss_wolbaek
@@ -399,6 +419,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_ph2_p01
     _displayKey: wolbaek_ph2_p01.name
     _bossId: boss_wolbaek
@@ -421,18 +445,18 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
-    _activeSeconds: 0
-    _recoverySeconds: 0
+    _activeSeconds: 6
+    _recoverySeconds: 1
     _shape:
       _shape: 5
-      _range: 0
+      _range: 27
       _arcAngle: 0
-      _width: 0
+      _width: 1.5
       _projectileSpeed: 0
-    _damageRef: 0
+    _damageRef: 0.03
     _guardable: 0
     _controlPhase: 0
     _controlWindowSeconds: 0
@@ -450,7 +474,11 @@ MonoBehaviour:
     _sweepIntervalSeconds: 0
     _beamCount: 0
     _beamLateralOffset: 0
-    _beamTickInterval: 0
+    _beamTickInterval: 0.25
+    _starVertexCount: 5
+    _starRingRadius: 14
+    _starConnectStep: 2
+    _starRotationDegrees: 20
   - _definitionId: wolbaek_ph2_p02
     _displayKey: wolbaek_ph2_p02.name
     _bossId: boss_wolbaek
@@ -503,6 +531,10 @@ MonoBehaviour:
     _beamCount: 2
     _beamLateralOffset: 5
     _beamTickInterval: 0.5
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_ph2_p03
     _displayKey: wolbaek_ph2_p03.name
     _bossId: boss_wolbaek
@@ -555,6 +587,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_ph2_p04
     _displayKey: wolbaek_ph2_p04.name
     _bossId: boss_wolbaek
@@ -607,6 +643,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_ph2_p05
     _displayKey: wolbaek_ph2_p05.name
     _bossId: boss_wolbaek
@@ -659,6 +699,10 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
   - _definitionId: wolbaek_ph2_p06
     _displayKey: wolbaek_ph2_p06.name
     _bossId: boss_wolbaek
@@ -711,3 +755,7 @@ MonoBehaviour:
     _beamCount: 0
     _beamLateralOffset: 0
     _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
