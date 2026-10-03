@@ -54,7 +54,8 @@ Unity 메뉴 **Shinshi → Build**에서 만든다.
 
 | 메뉴 | 입력 씬 | 출력 |
 |---|---|---|
-| Windows Client / Windows Server / Linux Server (Development) | `Assets/00.Scenes/Bootstrap.unity` | `Builds/{대상}/` |
+| Windows Client (Development) | `Bootstrap`과 `Assets/00.Scenes/Release/`의 `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown` | `Builds/windows-client/` |
+| Windows Server / Linux Server (Development) | `Bootstrap`, `Release/ShinshiTown` | `Builds/{대상}/` |
 | Dev Movement → Windows Client / Windows Server (Development) | `Assets/00.Scenes/Dev_PlayerMovement.unity` | 위와 같은 위치 (덮어씀) |
 
 명령줄 빌드:
@@ -64,6 +65,25 @@ Unity 메뉴 **Shinshi → Build**에서 만든다.
 ```
 
 `-shinshiTarget`은 `windows-client`, `windows-server`, `linux-server`를 받고, `-shinshiRelease`를 붙이면 개발 옵션을 끈다. 개발 빌드 실행 파일은 `-dev-latency-ms <ms>`(보내는 메시지 지연)와 `-dev-autopilot`(클라이언트 자동 이동, 회피)을 받는다. Windows 서버 1개와 클라이언트 여러 개를 한 PC에서 띄우려면 [tools/Start-M2.ps1](tools/Start-M2.ps1)을 쓴다.
+
+## 릴리즈 브랜치 실행
+
+릴리즈 브랜치를 받은 PC에서 로비 → 캐릭터 선택 → 캐릭터 생성 → 마을까지 실제 전용 서버로 진행한다. Docker Desktop과 .NET 10 SDK가 필요하다.
+
+```powershell
+git switch release/0.1.0
+.\tools\Start-ReleaseStack.ps1 -Build
+```
+
+- `-Build`는 Unity 에디터를 닫은 상태에서 Windows 서버·클라이언트 개발 빌드를 만든다. 이미 빌드가 있거나 메뉴로 만들었으면 `-Build`를 빼고 실행한다.
+- 스크립트가 PostgreSQL 컨테이너(`shinshi-release-db`, 127.0.0.1:55440), 마이그레이션, API(5080), 마을 서버(7777, API 입장 토큰 검증)를 차례로 띄우고 클라이언트 1개를 연다. 클라이언트 수는 `-ClientCount`로 정한다.
+- 처음에는 클라이언트 로비의 개발 로그인에 아이디, 비밀번호(8자 이상, 영문과 숫자), 이메일을 넣고 **가입 후 로그인**을 누른다. 다음부터는 **로그인**만 누른다. 이어서 캐릭터 생성, 게임 시작을 누르면 마을에 들어간다.
+- 다른 PC에서 접속하려면 서버 PC에서 `-PublicAddress <서버 PC의 IP>`로 실행하고 방화벽에서 5080(TCP)과 7777(UDP)을 연다. 다른 PC는 `Builds\windows-client\Shinshi.exe -api-base-url http://<서버 PC의 IP>:5080`으로 실행한다.
+- 비밀값(DB 비밀번호, 인증 키, 서버 서비스 토큰)은 `%LOCALAPPDATA%\Shinshi\release-stack`에 한 번 만들어 재사용하고 출력하지 않는다. 로그도 같은 곳에 남는다.
+- 끝낼 때는 `.\tools\Start-ReleaseStack.ps1 -Stop`, DB까지 지우려면 `-Stop -RemoveDatabase`.
+- 개발 빌드를 쓰는 이유: 출시 빌드 클라이언트는 런처가 넘긴 세션만 받는다. 리눅스 서버와 API 운영 배포는 [배포 안내](deploy/README.md)를 따른다.
+
+에디터에서 시험할 때는 같은 스크립트를 `-ClientCount 0`으로 띄우고 메뉴 **Shinshi → Play → Client**로 플레이한다.
 
 ## 문서
 
