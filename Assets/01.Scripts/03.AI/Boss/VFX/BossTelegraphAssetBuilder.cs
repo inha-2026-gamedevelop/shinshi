@@ -58,6 +58,10 @@ namespace Shinshi.Editor
         // 빔 풀은 한 시전의 평행 빔 둘과 옅어지는 중인 이전 빔을 함께 수용한다
         private const int    BEAM_POOL_CAPACITY   = 4;
 
+        // 별형 회전 빔 표현, 한 시전에 구조 하나와 옅어지는 이전 구조가 함께 있을 수 있다
+        private const string STAR_VIEW_NAME       = "Star View";
+        private const int    STAR_VIEW_CAPACITY   = 2;
+
         /****************************************
         *                 Menu
         ****************************************/
@@ -219,6 +223,15 @@ namespace Shinshi.Editor
                 }
 
                 SetReference(presenter, "_sweepCue", cue);
+
+                // 별형 회전 빔 표현, 빔은 빔 재질을 같이 쓰고 여우불은 여우불 이동 표현의 재질을 같이 쓴다
+                GameObject starObject = new GameObject(STAR_VIEW_NAME);
+                starObject.transform.SetParent(root.transform, false);
+                BossStarView starView = starObject.AddComponent<BossStarView>();
+                SetReference(starView, "_beamMaterial", AssetDatabase.LoadAssetAtPath<Material>(OUTPUT_ROOT + "/" + BEAM_MATERIAL_NAME + ".mat"));
+                SetReference(starView, "_orbMaterial", AssetDatabase.LoadAssetAtPath<Material>(OUTPUT_ROOT + "/" + SWEEP_CUE_MATERIAL + ".mat"));
+                SetInt(starView, "_capacity", STAR_VIEW_CAPACITY);
+                SetReference(presenter, "_starView", starView);
 
                 PrefabUtility.SaveAsPrefabAsset(root, path);
             }

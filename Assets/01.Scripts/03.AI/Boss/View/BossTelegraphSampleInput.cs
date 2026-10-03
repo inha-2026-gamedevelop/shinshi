@@ -71,7 +71,7 @@ namespace Shinshi.AI
         private const float  PROJ_WALL_PATH    = 12f;
         private const float  PROJ_HIT_DISTANCE = 14f;
         private const float  PROJ_CANCEL_FLIGHT = 0.8f;
-        private const int    LOOP_STEP_COUNT   = 26;
+        private const int    LOOP_STEP_COUNT   = 28;
         private const int    BEAM_FIRST_LOOP_STEP = 24; // 자동 반복에서 빔 시나리오가 시작하는 단계
 
         // 2페이즈 P03 반월 연쇄 폭발, 예고 1.2초 뒤 선택한 쪽 반원의 45도 구역 4개가 0.25초 간격으로 터진다. 구역마다 서버 폭발 확정이 와야 터진다
@@ -128,6 +128,22 @@ namespace Shinshi.AI
         private const float  BEAM_LATE_SECONDS   = 1.0f; // 둘째 빔의 활성 알림이 늦게 도착하는 시간
         private const int    BEAM_RESTORE_TICK   = 3;    // 복원 샘플에서 서버가 마지막으로 알린 타격 회차
         private const float  BEAM_LOOP_SETTLE    = 6.5f; // 자동 반복에서 빔 시나리오가 끝나기를 기다리는 시간
+
+        // 2페이즈 P01 별형 회전 빔, 전장 중심 반경 14m 오각형에 두 칸 뒤 꼭짓점을 잇는 빔 5개가 예고 2초 뒤 서버 활성 확정으로 6초 동안 초당 20도 돈다
+        private const float  STAR_TELEGRAPH    = 2f;
+        private const float  STAR_DURATION     = 6f;
+        private const float  STAR_TICK         = 0.25f;
+        private const float  STAR_RING_RADIUS  = 14f;
+        private const float  STAR_WIDTH        = 1.5f;
+        private const float  STAR_DEGREES      = 20f;
+        private const float  STAR_ARENA_RADIUS = 18f;  // 샘플이 가정한 전장 반지름, 실제 값은 서버가 알린다
+        private const int    STAR_VERTICES     = 5;
+        private const int    STAR_STEP         = 2;
+        private const float  STAR_CANCEL_AT    = 2.7f; // 활성 뒤 이 시점에 사망으로 제거된다
+        private const float  STAR_LATE_SECONDS = 1.0f; // 활성 알림이 늦게 도착하는 시간
+        private const int    STAR_RESTORE_TICK = 8;    // 복원 샘플에서 서버가 마지막으로 알린 타격 회차
+        private const float  STAR_LOOP_SETTLE  = 9f;   // 자동 반복에서 별형 시나리오가 끝나기를 기다리는 시간
+        private const int    STAR_FIRST_LOOP_STEP = 26;
 
         private const float  SAMPLE_AIM_TARGET_DEGREES = 60f; // 샘플이 가정한 타깃 쪽 각도, 추적 한도까지만 돈다
         private const float  CANCEL_PHASE_AT   = 0.7f;
@@ -578,6 +594,140 @@ namespace Shinshi.AI
                 }
 
                 Schedule(at, () => _presenter.TickBeam(beamId, index, at));
+            }
+        }
+
+        /// <summary> 2페이즈 P01 별형 빔, 서버가 오른쪽을 고른 경우. 예고 중 정지한 별에서 여우불이 오른쪽으로 차례로 맥동하고 활성 확정이 오면 6초 동안 오른쪽으로 돈다 </summary>
+        [ContextMenu("Play Phase2 P01 Star Right")]
+        public void PlayPhaseTwoStarRight()
+        {
+            PlayStar(true, EStarMode.Normal);
+        }
+
+        /// <summary> 2페이즈 P01 서버가 왼쪽을 고른 경우, 같은 구조를 반대로 돌린다 </summary>
+        [ContextMenu("Play Phase2 P01 Star Left")]
+        public void PlayPhaseTwoStarLeft()
+        {
+            PlayStar(false, EStarMode.Normal);
+        }
+
+        /// <summary> 2페이즈 P01 예고 중 취소된다, 활성 전이라 회전하지 않는다 </summary>
+        [ContextMenu("Play Phase2 P01 Star Telegraph Cancelled")]
+        public void PlayPhaseTwoStarTelegraphCancelled()
+        {
+            PlayStar(true, EStarMode.TelegraphCancelled);
+        }
+
+        /// <summary> 2페이즈 P01 회전 중 사망이나 전투 종료로 구조 전체가 즉시 제거된다 </summary>
+        [ContextMenu("Play Phase2 P01 Star Active Cancelled")]
+        public void PlayPhaseTwoStarActiveCancelled()
+        {
+            PlayStar(false, EStarMode.ActiveCancelled);
+        }
+
+        /// <summary> 2페이즈 P01 활성 알림이 1초 늦게 도착한다, 활성 서버 시각의 현재 각도부터 이어서 그린다 </summary>
+        [ContextMenu("Play Phase2 P01 Star Late Activation")]
+        public void PlayPhaseTwoStarLateActivation()
+        {
+            PlayStar(true, EStarMode.LateActivation);
+        }
+
+        /// <summary> 2페이즈 P01 별형 빔과 P04 장판 둘이 동시에 보인다, 표현은 각자 그리고 겹침의 안전 공간 판단은 사람이 한다 </summary>
+        [ContextMenu("Play Phase2 P01 Star With Areas")]
+        public void PlayPhaseTwoStarWithAreas()
+        {
+            PlayStar(true, EStarMode.Normal);
+            PlayAreaPair(EAreaPairMode.Pair);
+        }
+
+        /// <summary> 2페이즈 P01 회전 중간(이미 약 2초 돈 뒤)에 스냅샷으로 복원한 접속, 현재 서버 시각의 각도부터 이어서 그리고 처음 각도로 돌아가지 않는다 </summary>
+        [ContextMenu("Play Phase2 P01 Star Restore")]
+        public void PlayPhaseTwoStarRestore()
+        {
+            double now = ReadClock();
+            double activate = now - (STAR_RESTORE_TICK * (double)STAR_TICK) - 0.1;
+            int castId = NextCastId();
+            int starId = NextCastId();
+            BossStarShape shape = BossStarGeometry.Place(transform.position, STAR_ARENA_RADIUS, transform.forward, STAR_RING_RADIUS,
+                STAR_VERTICES, STAR_STEP, STAR_WIDTH, STAR_DEGREES, true);
+            BossStarSnapshot snapshot = new BossStarSnapshot
+            {
+                Start              = new BossStarStart(SAMPLE_BOSS_ID, starId, castId, in shape, activate - STAR_TELEGRAPH,
+                    STAR_TELEGRAPH, STAR_DURATION, STAR_TICK),
+                IsActivated        = true,
+                ActivateServerTime = activate,
+                Fate               = EBossAreaFate.Active,
+                LastTickIndex      = STAR_RESTORE_TICK,
+                LastTickServerTime = activate + (STAR_RESTORE_TICK * (double)STAR_TICK)
+            };
+
+            _presenter.RestoreStar(in snapshot);
+            ScheduleStarTicks(starId, activate, STAR_RESTORE_TICK + 1, false);
+            Schedule(activate + STAR_DURATION, () => _presenter.EndStar(starId, EBossAreaFate.Expired));
+        }
+
+        private enum EStarMode
+        {
+            Normal,
+            TelegraphCancelled,
+            ActiveCancelled,
+            LateActivation
+        }
+
+        // 구조 하나(별 전체)를 서버 예고 알림 한 번, 서버 활성 알림 한 번, 회차 알림으로 흘린다. 클라이언트가 좌우를 정하거나 각도를 고르지 않는다
+        private void PlayStar(bool rotatesRight, EStarMode mode)
+        {
+            double start = ReadClock();
+            int castId = NextCastId();
+            int starId = NextCastId();
+            double activate = start + STAR_TELEGRAPH;
+
+            BossStarShape shape = BossStarGeometry.Place(transform.position, STAR_ARENA_RADIUS, transform.forward, STAR_RING_RADIUS,
+                STAR_VERTICES, STAR_STEP, STAR_WIDTH, STAR_DEGREES, rotatesRight);
+            BossStarStart star = new BossStarStart(SAMPLE_BOSS_ID, starId, castId, in shape, start, STAR_TELEGRAPH, STAR_DURATION,
+                STAR_TICK);
+            _presenter.BeginStar(in star);
+
+            if (mode == EStarMode.TelegraphCancelled)
+            {
+                Schedule(start + (STAR_TELEGRAPH * 0.6), () => _presenter.CancelStar(starId));
+                return;
+            }
+
+            bool late = mode == EStarMode.LateActivation;
+            Schedule(late ? (activate + STAR_LATE_SECONDS) : activate, () => _presenter.ActivateStar(starId, activate));
+
+            if (mode == EStarMode.ActiveCancelled)
+            {
+                ScheduleStarTicks(starId, activate, 0, true);
+                Schedule(activate + STAR_CANCEL_AT, () => _presenter.CancelStar(starId));
+                return;
+            }
+
+            ScheduleStarTicks(starId, activate, late ? Mathf.CeilToInt(STAR_LATE_SECONDS / STAR_TICK) : 0, false);
+            Schedule(activate + STAR_DURATION, () => _presenter.EndStar(starId, EBossAreaFate.Expired));
+        }
+
+        // 활성 시각 기준 firstIndex 회차부터 서버 타격 알림을 보낸다, 이미 지난 회차는 보내지 않는다
+        private void ScheduleStarTicks(int starId, double activate, int firstIndex, bool onlyBeforeCancel)
+        {
+            int count = Mathf.CeilToInt(STAR_DURATION / STAR_TICK);
+            double now = ReadClock();
+            for (int i = firstIndex; i < count; ++i)
+            {
+                int index = i;
+                double at = activate + (index * (double)STAR_TICK);
+                if (onlyBeforeCancel && ((index * STAR_TICK) >= STAR_CANCEL_AT))
+                {
+                    break;
+                }
+
+                if (at < now)
+                {
+                    continue;
+                }
+
+                Schedule(at, () => _presenter.TickStar(starId, index, at));
             }
         }
 
@@ -1246,12 +1396,15 @@ namespace Shinshi.AI
                 case 22: PlayPhaseTwoSweepLeft(); break;
                 case 23: PlayPhaseTwoSweepCancelled(); break;
                 case 24: PlayPhaseTwoBeams(); break;
-                default: PlayPhaseTwoBeamsActiveCancelled(); break;
+                case 25: PlayPhaseTwoBeamsActiveCancelled(); break;
+                case 26: PlayPhaseTwoStarRight(); break;
+                default: PlayPhaseTwoStarActiveCancelled(); break;
             }
 
-            bool isBeamStep = (_loopStep % LOOP_STEP_COUNT) >= BEAM_FIRST_LOOP_STEP;
+            int step = _loopStep % LOOP_STEP_COUNT;
+            float settleSeconds = (step >= STAR_FIRST_LOOP_STEP) ? STAR_LOOP_SETTLE : ((step >= BEAM_FIRST_LOOP_STEP) ? BEAM_LOOP_SETTLE : 4.5f);
             ++_loopStep;
-            double settle = ReadClock() + (isBeamStep ? BEAM_LOOP_SETTLE : 4.5);
+            double settle = ReadClock() + settleSeconds;
             Schedule(settle, () =>
             {
                 _loopNextAt = ReadClock() + _loopGap;

@@ -19,7 +19,7 @@ namespace Shinshi.AI
         public const string P05_ID = "wolbaek_p05";
         public const string P06_ID = "wolbaek_p06";
 
-        // 2페이즈 패턴 ID, 1페이즈 ID와 겹치지 않는다. 지금 Create가 만드는 것은 P02(고정 평행 빔), P03(반월 연쇄), P04(장판), P05(투사체), P06(원형 폭발)뿐이고 나머지는 null이다
+        // 2페이즈 패턴 ID, 1페이즈 ID와 겹치지 않는다. 지금 Create가 만드는 것은 P01(별형 회전 빔), P02(고정 평행 빔), P03(반월 연쇄), P04(장판), P05(투사체), P06(원형 폭발)뿐이고 나머지는 null이다
         public const string P2_P01_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P01_ID;
         public const string P2_P02_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P02_ID;
         public const string P2_P03_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P03_ID;
@@ -45,6 +45,8 @@ namespace Shinshi.AI
         private readonly IBossBeamHost                  _beams;
         private readonly IBossArenaSource               _arena;
         private readonly IBossBeamTelegraphListener     _beamListener;
+        private readonly IBossStarHost                  _stars;
+        private readonly IBossStarTelegraphListener     _starListener;
 
         /****************************************
         *                Methods
@@ -61,8 +63,11 @@ namespace Shinshi.AI
             IBossProjectileLauncher projectiles = null, IBossProjectileTelegraphListener projectileListener = null,
             IBossAreaHost areas = null, IBossAreaTelegraphListener areaListener = null,
             IBossSweepTelegraphListener sweepListener = null, IBossBeamHost beams = null,
-            IBossArenaSource arena = null, IBossBeamTelegraphListener beamListener = null)
+            IBossArenaSource arena = null, IBossBeamTelegraphListener beamListener = null, IBossStarHost stars = null,
+            IBossStarTelegraphListener starListener = null)
         {
+            _stars        = stars;
+            _starListener = starListener;
             _beams        = beams;
             _arena        = arena;
             _beamListener = beamListener;
@@ -113,6 +118,11 @@ namespace Shinshi.AI
                 return (_beams != null) && (_arena != null);
             }
 
+            if (id == P2_P01_ID)
+            {
+                return (_stars != null) && (_arena != null);
+            }
+
             return (id == P02_ID) || (id == P03_ID) || (id == P06_ID) || (id == P2_P03_ID) || (id == P2_P06_ID);
         }
 
@@ -158,6 +168,14 @@ namespace Shinshi.AI
 
             // 2페이즈 P06은 1페이즈 P03과 같은 원형 실행을 쓰고 시간, 반경, 피해, 회복은 정의 값이 다르다
             // 2페이즈 P05는 1페이즈 P04와 같은 투사체 실행을 쓰고 발 수와 간격은 정의 값이 정한다
+            // 2페이즈 P01은 전장 기준 별형 구조를 회전하는 전용 실행이다. 별형 창구나 전장 입력이 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == P2_P01_ID)
+            {
+                return ((_stars == null) || (_arena == null))
+                    ? null
+                    : new BossStarPattern(_referenceHealth, _stars, _arena, _starListener);
+            }
+
             // 2페이즈 P02는 전장 기준으로 평행 빔을 고정하는 전용 실행이다. 빔 창구나 전장 입력이 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
             if (definition.DefinitionId == P2_P02_ID)
             {

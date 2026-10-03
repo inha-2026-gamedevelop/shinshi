@@ -80,6 +80,7 @@ namespace Shinshi.AI
             public double                   EndSeenAt;
         }
 
+        [SerializeField] private BossStarView _starView; // 별형 회전 빔, 비어 있으면 생략한다
         [SerializeField] private BeamGroundVFXPool _beamPool;
         [SerializeField] private AreaGroundVFXPool _areaPool;
         [SerializeField] private SectorVFXPool _sectorPool;
@@ -111,6 +112,7 @@ namespace Shinshi.AI
         private readonly Queue<int>     _cancelledGroupOrder = new Queue<int>();
 
         private Func<double> _serverClock;
+        private Func<double> _readClock;
         private bool         _isServerBuild;
 
         /****************************************
@@ -140,6 +142,12 @@ namespace Shinshi.AI
 
         /// <summary> 빔의 소멸이 확인될 때 알린다, 빔 번호와 이유. 시험과 진단용이다 </summary>
         public event Action<int, EBossAreaFate> BeamFateChanged;
+
+        /// <summary> 진행 중인 별형 빔 구조 수 </summary>
+        public int StarCount => (_starView != null) ? _starView.Count : 0;
+
+        /// <summary> 별형 빔 표현, 시험과 진단용이다 </summary>
+        public BossStarView Stars => _starView;
 
         /****************************************
         *              Unity Event
@@ -884,11 +892,65 @@ namespace Shinshi.AI
             return false;
         }
 
+        /// <summary> 별형 회전 빔 예고를 시작한다. 서버가 확정한 배치와 회전 방향과 속도를 그대로 그리며 활성 확정 전에는 회전하지 않는다 </summary>
+        public bool BeginStar(in BossStarStart start)
+        {
+            return UseStars() && _starView.Begin(in start);
+        }
+
+        /// <summary> 서버가 알린 별형 빔 활성, 이 시각부터 서버 시각 기준으로 회전한다 </summary>
+        public bool ActivateStar(int starId, double activateServerTime)
+        {
+            return UseStars() && _starView.Activate(starId, activateServerTime);
+        }
+
+        public bool TickStar(int starId, int hitIndex, double roundServerTime)
+        {
+            return UseStars() && _starView.Tick(starId, hitIndex, roundServerTime);
+        }
+
+        public bool EndStar(int starId, EBossAreaFate fate)
+        {
+            return UseStars() && _starView.End(starId, fate);
+        }
+
+        public bool CancelStar(int starId)
+        {
+            return UseStars() && _starView.Cancel(starId);
+        }
+
+        public bool RestoreStar(in BossStarSnapshot snapshot)
+        {
+            return UseStars() && _starView.Restore(in snapshot);
+        }
+
+        // 별형 표현이 연결돼 있으면 서버 시각 읽기를 맞춰 준다
+        private bool UseStars()
+        {
+            if ((_starView == null) || _isServerBuild)
+            {
+                return false;
+            }
+
+            if (_readClock == null)
+            {
+                _readClock = ReadServerTime;
+            }
+
+            _starView.SetServerClock(_readClock);
+            return true;
+        }
+
         public void ClearAll()
         {
             if (_sweepCue != null)
             {
                 _sweepCue.Clear();
+            }
+
+            if (_starView != null)
+            {
+                _starView.ClearAll();
             }
 
             for (int i = _beams.Count - 1; i >= 0; --i)
