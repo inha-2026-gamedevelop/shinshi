@@ -7000,7 +7000,9 @@ MonoBehaviour:
   - {fileID: 432807488}
   - {fileID: 2090506131}
   - {fileID: 87740927}
-  _selectedColor: {r: 1, g: 0.88, b: 0.62, a: 1}
+  _selectedSprite: {fileID: 21300000, guid: 240355a67bdb13b4ca42f61f3d3ad54e, type: 3}
+  _normalSprite: {fileID: 21300000, guid: 2355ad95ecc2737448c733af43534256, type: 3}
+  _selectedColor: {r: 1, g: 1, b: 1, a: 1}
   _normalColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &2134828300
 GameObject:
