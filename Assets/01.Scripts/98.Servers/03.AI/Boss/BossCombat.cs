@@ -23,7 +23,7 @@ namespace Shinshi.AI
         private readonly BossDamageGate         _damageGate;
         private readonly BossDefinition         _boss;
         private readonly BossPhaseFsm           _phase  = new BossPhaseFsm();
-        private readonly BossAttackFsm          _attack = new BossAttackFsm();
+        private readonly BossAttackFsm          _attack;
         private readonly BossSelectionTree      _tree   = new BossSelectionTree();
         private readonly BossBlackboard         _blackboard = new BossBlackboard();
 
@@ -54,6 +54,7 @@ namespace Shinshi.AI
         public BossCombat(BossBrainDependencies dependencies, BossDamageGate damageGate, BossDefinition boss, double startTime)
         {
             _dependencies = dependencies;
+            _attack       = new BossAttackFsm(dependencies.Casts);
             _tickableEffects = dependencies.Effects as IBossTickableEffects;
             _damageGate   = damageGate;
             _boss         = boss;

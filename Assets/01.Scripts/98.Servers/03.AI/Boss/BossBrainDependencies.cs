@@ -29,6 +29,9 @@ namespace Shinshi.AI
         /// <summary> 비워 두면 체력 0에서 바로 사망을 확정하는 임시 기본 정책을 쓴다 </summary>
         public IBossDeathPolicy     DeathPolicy { get; set; }
 
+        /// <summary> 시전의 발동과 정상 종료를 받는다, 선택이며 비우면 알리지 않는다 </summary>
+        public IBossCastListener    Casts       { get; set; }
+
         /****************************************
         *                Methods
         ****************************************/

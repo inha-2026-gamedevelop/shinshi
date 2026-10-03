@@ -16,6 +16,8 @@ namespace Shinshi.AI
         // 한 틱에 넘을 수 있는 단계 경계 수, 예고와 실행과 회복을 모두 지나도 이 값을 넘지 않는다
         private const int MAX_TRANSITIONS_PER_TICK = 4;
 
+        private readonly IBossCastListener _casts;
+
         private PatternDefinition   _definition;
         private IBossPattern        _pattern;
         private int                 _castInstanceId;
@@ -38,6 +40,12 @@ namespace Shinshi.AI
         /****************************************
         *                Methods
         ****************************************/
+
+        // casts는 발동과 정상 종료를 받는 쪽이다. 비우면 알리지 않는다
+        public BossAttackFsm(IBossCastListener casts = null)
+        {
+            _casts = casts;
+        }
 
         /// <summary> 예고를 시작한다, Ready에서만 시작할 수 있다 </summary>
         public bool Start(PatternDefinition definition, IBossPattern pattern, in BossPatternContext context, double serverTime)
@@ -129,6 +137,7 @@ namespace Shinshi.AI
                     State     = EBossAttackState.Execute;
                     _stateEnd = boundary + _definition.ActiveSeconds;
                     _pattern.EnterState(State, boundary);
+                    _casts?.OnCastExecuted(_castInstanceId, boundary);
                     break;
                 case EBossAttackState.Execute:
                     State     = EBossAttackState.Recover;
@@ -136,9 +145,11 @@ namespace Shinshi.AI
                     _pattern.EnterState(State, boundary);
                     break;
                 case EBossAttackState.Recover:
-                    IBossPattern pattern = _pattern;
+                    IBossPattern pattern        = _pattern;
+                    int          castInstanceId = _castInstanceId;
                     Reset();
                     pattern.Finish();
+                    _casts?.OnCastFinished(castInstanceId, boundary);
                     break;
                 default:
                     break;

@@ -63,6 +63,9 @@ namespace Shinshi.Combat
         private bool                         _scalesApplied         = false;
         private BossServer                   _boss;
         private bool                         _bossSpawnChecked      = false;
+        private IBossObjectHost              _bossHost;
+        private BossState                    _bossState;
+        private int                          _obstacleMask          = 0;
         private ICompanionObjectHost         _companionHost;
         private CompanionSpawnTracker        _companionTracker;
 
@@ -129,6 +132,7 @@ namespace Shinshi.Combat
 
             _companionTracker?.ReleaseAll();
             _companionHost?.DestroyPool();
+            _bossHost?.Despawn(_boss, _bossState);
         }
 
         /****************************************
@@ -164,6 +168,7 @@ namespace Shinshi.Combat
             }
 
             _playerConfig          = playerConfig;
+            _obstacleMask          = obstacleMask;
             _roster                = roster;
             _reconnectGraceSeconds = reconnectGraceSeconds;
             _sessionEpoch          = sessionEpoch;
@@ -429,6 +434,7 @@ namespace Shinshi.Combat
             }
 
             EndBossIfSessionEnded(serverTime);
+            PublishBossObject();
 
             ApproveRevives(serverTime);
             SyncCompanionObjects();
@@ -506,10 +512,13 @@ namespace Shinshi.Combat
                 return;
             }
 
-            var boss = new BossServer(Constants.Combat.DEV_BOSS_ID, _registry.IssueCombatId(), Vector3.zero, Vector3.forward,
-                referenceAttack, referenceHealth, BossHealthScale,
+            // 전장 맵이 없어 생성 지점을 원점으로 두고 전장 중심도 생성 지점으로 본다
+            Vector3 spawnPosition = Vector3.zero;
+            Vector3 spawnForward  = Vector3.forward;
+            var boss = new BossServer(Constants.Combat.DEV_BOSS_ID, _registry.IssueCombatId(), spawnPosition, spawnForward,
+                spawnPosition, referenceAttack, referenceHealth, BossHealthScale,
                 new BossPatternCatalogSource(GameDB.BossPatterns), _registry, new BossDamageScaler(_skillResolver, DamageScale),
-                new EmptyBossEffectLifetime(), new SeededBossRandom(_sessionEpoch));
+                new BossTerrainProbe(_obstacleMask), new SeededBossRandom(_sessionEpoch));
 
             if (!boss.Begin(serverTime))
             {
@@ -524,8 +533,67 @@ namespace Shinshi.Combat
             }
 
             _boss = boss;
+            SpawnBossObject();
             Debug.Log($"[Boss] 보스 전투 시작, boss={Constants.Combat.DEV_BOSS_ID}, combatId={boss.CombatId}, " +
                 $"maxHealth={boss.MaxHealth}");
+        }
+
+        /// <summary> 서버를 열기 전에 한 번 부른다, 연결하지 않으면 보스 판정은 돌지만 클라이언트에 보스와 공격이 보이지 않는다 </summary>
+        public void EnableBossObjects(IBossObjectHost host)
+        {
+            if (host == null)
+            {
+                throw new ArgumentNullException(nameof(host));
+            }
+
+            // 처음 연결만 쓴다. 이미 스폰한 보스의 짝을 다른 스포너로 바꾸지 않는다
+            if (_bossHost != null)
+            {
+                return;
+            }
+
+            _bossHost = host;
+        }
+
+        // 보스 전투가 열린 같은 틱, 첫 보스 Tick보다 앞에서 스폰한다. 스폰 메시지가 같은 신뢰 채널의 첫 예고 Rpc보다 먼저 가야
+        // 클라이언트가 사건을 놓치지 않으므로 이 호출을 TickBoss 뒤로 옮기지 않는다
+        private void SpawnBossObject()
+        {
+            if (_bossHost == null)
+            {
+                Debug.LogWarning("[Boss] 보스 개체 스포너가 없어 클라이언트에 보스를 보내지 않는다");
+                return;
+            }
+
+            if (!_bossHost.TrySpawn(_boss, out _bossState))
+            {
+                _bossState = null;
+                Debug.LogError($"[Boss] 보스 개체를 스폰하지 못해 클라이언트에 보스를 보내지 않는다, combatId={_boss.CombatId}");
+            }
+        }
+
+        // 보스 틱, 종료 처리가 위치와 생사와 흐름을 모두 바꾼 뒤에 기록한다
+        private void PublishBossObject()
+        {
+            if ((_bossHost == null) || (_bossState == null))
+            {
+                return;
+            }
+
+            _bossHost.Publish(_boss, _bossState);
+        }
+
+        // 서버 종료 등으로 개체가 스포너를 거치지 않고 파괴됐으면 보스 틱 전에 사건 연결을 끊어 파괴된 개체로 Rpc를 보내지 않는다
+        private void DetachDestroyedBossObject()
+        {
+            if ((ReferenceEquals(_bossState, null)) || (_bossState != null))
+            {
+                return;
+            }
+
+            _boss.SetEventListener(null);
+            _bossState = null;
+            Debug.LogWarning($"[Boss] 보스 개체가 파괴돼 사건 전달을 멈춘다, combatId={_boss.CombatId}");
         }
 
         // 플레이어 기술과 공격 뒤, 생사 보고 앞에 둔다. 같은 틱에 플레이어가 보스를 처치하면 두뇌가 사망을 먼저 보고
@@ -537,6 +605,7 @@ namespace Shinshi.Combat
                 return;
             }
 
+            DetachDestroyedBossObject();
             if ((_allowsCombat) && (_boss.IsActive))
             {
                 _boss.Tick(serverTime);
