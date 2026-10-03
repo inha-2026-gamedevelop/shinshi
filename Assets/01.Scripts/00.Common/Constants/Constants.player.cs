@@ -71,8 +71,9 @@ namespace Shinshi.Common
             // 진행 중인 경로의 목적지와 이 거리 제곱(m 제곱) 안이면 같은 목적지로 보고 다시 계산하지 않는다
             public const float MOVE_SAME_DESTINATION_EPSILON_SQR = 0.01f;
 
-            // 소유 클라이언트 이동 예측의 위치 기록. 간격(초) x 개수가 되돌아볼 수 있는 시간이며 왕복 지연과 복제 간격을 덮어야 한다
-            public const int    PREDICTION_HISTORY_CAPACITY         = 128;
+            // 소유 클라이언트 이동 예측의 위치 기록. 간격(초) x 개수가 되돌아볼 수 있는 시간이며 왕복 지연과 복제 간격을 덮어야 한다.
+            // 지연이 1초 넘게 튀어도 같은 시점끼리 비교할 수 있게 약 4초를 남긴다
+            public const int    PREDICTION_HISTORY_CAPACITY         = 512;
             public const double PREDICTION_HISTORY_INTERVAL_SECONDS = 1.0 / 120.0;
 
             // 예측과 서버 확정 위치의 차이(m). 이보다 작으면 무시하고, 스냅 거리보다 크면 보간 없이 바로 맞춘다
@@ -85,8 +86,17 @@ namespace Shinshi.Common
             // 기술, 사망처럼 서버가 위치를 정하는 동안 서버 위치를 따라가는 초당 비율
             public const float PREDICTION_FOLLOW_RATE = 15f;
 
-            // 보낸 이동이 이 시간(초) 안에 서버 이동 순번으로 돌아오지 않으면 잃은 것으로 보고 멈춘 상태끼리 비교한다
-            public const double PREDICTION_MOVE_ACK_TIMEOUT_SECONDS = 1.0;
+            // 보낸 이동이 이 시간(초) 안에 서버 이동 순번으로 돌아오지 않으면 잃은 것으로 보고 멈춘 상태끼리 비교한다.
+            // 입력은 신뢰 채널이고 경로 실패와 주기 초과는 통보되므로 시간 초과는 대개 지연이 튈 때 생긴다. 1초였을 때 지연이 튀면
+            // 아직 오는 중인 이동을 잃은 것으로 보고 옛 서버 위치로 스냅했다가 응답이 오면 다시 앞으로 스냅해 캐릭터가 되돌아갔다
+            public const double PREDICTION_MOVE_ACK_TIMEOUT_SECONDS = 3.0;
+
+            // 측정한 왕복 지연의 이 배수가 위 시간보다 길면 그만큼 더 기다린다
+            public const double PREDICTION_MOVE_ACK_RTT_MULTIPLIER = 4.0;
+
+            // 기다리는 시간의 상한(초). 위치 기록이 덮어 쓰이기 전까지만 기다린다
+            public const double PREDICTION_MOVE_ACK_TIMEOUT_MAX_SECONDS =
+                PREDICTION_HISTORY_CAPACITY * PREDICTION_HISTORY_INTERVAL_SECONDS;
 
             // 서버 틱 하나에서 계산하는 경로 수 상한. 넘는 요청은 다음 틱으로 미룬다
             public const int PATH_REQUESTS_PER_TICK = 4;

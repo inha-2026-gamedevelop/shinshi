@@ -637,6 +637,12 @@ namespace Shinshi.Combat
                 }
                 _input.SendSkillResult(header.Sequence, CombatIds.NONE, reason);
             }
+            else if (verdict == EInputVerdict.RateLimited)
+            {
+                // 지연이 뭉쳐 몰려 온 입력은 정상 클라이언트도 주기 초과로 버려진다. 알리지 않으면 소유 예측은 오지 않는 응답을
+                // 기다리다 시간 초과 뒤 서버 위치로 스냅한다. 순번 역행과 시각 오류는 변조 클라이언트만 만들므로 알리지 않는다
+                _input.SendInputRejected(header.Sequence, ERejectReason.RateLimited);
+            }
 
             if (_gate.ShouldDisconnect)
             {
