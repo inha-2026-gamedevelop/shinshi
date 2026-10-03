@@ -41,6 +41,7 @@
 | 밸런스 데이터 | [밸런스 데이터 작업](../unity/BALANCE_DATA_WORKFLOW.md) | `Assets/09.Data/` (GameDB 루트, 플레이어·세션 설정) | 수치는 ScriptableObject에 둔다 |
 | 성능·수명 패턴 | [엔지니어링 패턴](../unity/UNITY_ENGINEERING_PATTERNS.md) | — | 실제 문제가 생겼을 때 적용 |
 | 맵 성능·베이크·VFX 준비 | [맵 성능 사전 준비](../unity/MAP_PERFORMANCE_PREPARATION.md) | `Assets/Settings/`, 모델·배치 프리팹 (실제 맵 로더/준비 시스템 미검증) | 최소 사양 60 FPS, 첫 사용 끊김과 지속 GPU 비용 구분, 조명·모델 베이크·풀·측정 대안 |
+| 무사 넓게 베기 VFX | [네트워크 권위](../unity/NETWORK_AUTHORITY.md), [전투 설계](../design/combat-design.md) | 재생 `Assets/01.Scripts/05.Art/VFX/` (`WideSlashVfx`, `SlashVfxEmitter`, `SlashVfxStateBehaviour`, `SlashArcMeshBuilder`), 셰이더 `05.Art/Shaders/VFX/`, 텍스처/재질 `05.Art/VFX/WideSlash/`, 프리팹 `02.Prefab/VFX/WideSlash/PF_VFX_WarriorWideSlash.prefab`, 확인 씬 `00.Scenes/Dev_VFX/Dev_VFX_WideSlash.unity` | 기본형(전방 3m, 120도, 준비 0.2초)만. 캐릭터 루트의 `SlashVfxEmitter`를 공격 애니메이터 상태의 `SlashVfxStateBehaviour`가 기술 시작 시각에 부르고, 타격은 서버 확정 결과를 받은 View가 `PlayHit`으로 붙인다(이 수신 경로, 무사 공격 클립, 부적 변형은 아직 없음). 히트스톱과 임펄스는 로컬 공격자의 첫 타격에 한 번. 렌더 큐 2985~2998로 적 예고 아래. 확인 씬과 마을 광장 세 줌 단계 캡처로만 확인, 다인 플레이와 성능은 미검증 |
 | 구조·디자인 패턴 | [디자인 패턴](../unity/DESIGN_PATTERNS.md) | — | 도입 판단 기준 |
 | 도입 기능 계획·개발 도구 | [도입 기능 계획](../unity/FEATURE_ADOPTION_PLAN.md) | `Assets/01.Scripts/99.Dev/` (`Shinshi.Dev.asmdef` 존재, 패널 미구현) | 제안 상태, 권위 위치별 패널 분리, 외부 체험판 빌드 제거 |
 | 외부 AI에 넣을 에셋·데이터 | [에셋 · 데이터 정책](12_ASSET_AND_DATA_POLICY.md) | — | 구매 에셋·비공개 데이터 취급 |
