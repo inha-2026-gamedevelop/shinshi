@@ -51,7 +51,7 @@ namespace Shinshi.Tests
             return new PatternDefinition(P05_ID, BossTestFixtures.BOSS_ID, 1, 15f,
                 new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f, 1f },
                 TELEGRAPH, 0f, 0f, 0f, RECOVERY, EnemyCatalogSO.AttackShapeSpec.TargetArea(RADIUS), DAMAGE_REF, false,
-                EBossActionState.SelectTarget, 0f, false, DURATION, INTERVAL, MAX_AREAS);
+                EBossActionState.SelectTarget, 0f, false, DURATION, INTERVAL, MAX_AREAS, areaSkipsMissedRounds: true);
         }
 
         private sealed class AreaQuery : ICombatTargetQuery
@@ -435,16 +435,17 @@ namespace Shinshi.Tests
             world.StartCast(10, 0.0);
             double activate = ActivateOf(0.0);
 
+            // 확정 규칙: 틱이 거칠면 장판당 한 틱에 가장 최근 회차만 판정한다(회차 0, 그리고 건너뛴 뒤 회차 5)
             world.TickAt(activate);
             world.TickAt(activate + 5.0);
             world.TickAt(activate + 5.999);
             Assert.AreEqual(1, world.Manager.ActiveCount);
-            Assert.AreEqual(6, world.Hits(10));
+            Assert.AreEqual(2, world.Hits(10));
 
             world.TickAt(activate + 6.0);
 
             Assert.AreEqual(0, world.Manager.ActiveCount);
-            Assert.AreEqual(6, world.Hits(10));
+            Assert.AreEqual(2, world.Hits(10), "종료 시각의 회차는 없다");
             Assert.AreEqual(EBossAreaEnd.Expired, world.Listener.LastEnd);
         }
 
@@ -780,9 +781,9 @@ namespace Shinshi.Tests
         *           Coarse Tick Policy
         ****************************************/
 
-        // 종료 시각을 건너뛴 한 번의 큰 틱, 종료 전에 도래한 회차를 모두 처리한 뒤 종료하고 종료 뒤 회차는 없다
+        // 확정 규칙: 종료 시각을 건너뛴 한 번의 큰 틱은 미처리 회차 없이 종료한다
         [Test]
-        public void LargeTick_JumpOverEnd_ProcessesAllSixDueRoundsThenExpiresWithoutExtraHit()
+        public void LargeTick_JumpOverEnd_ExpiresWithoutAnyPendingDamage()
         {
             World world = new World();
             world.Add(10, AreaCenter);
@@ -791,19 +792,17 @@ namespace Shinshi.Tests
             world.TickAt(100.0);
 
             Assert.AreEqual(1, world.Listener.Activated.Count);
-            Assert.AreEqual(6, world.Hits(10));
+            Assert.AreEqual(0, world.Hits(10), "종료 시각을 지났으면 미처리 피해가 없다");
             Assert.AreEqual(EBossAreaEnd.Expired, world.Listener.LastEnd);
             Assert.AreEqual(ActivateOf(0.0) + DURATION, world.Listener.LastEndAt, EPSILON / 1000.0);
             Assert.AreEqual(0, world.Manager.ActiveCount);
-            for (int i = 0; i < 6; ++i)
-            {
-                Assert.AreEqual(i, world.Listener.Ticks[i].Index);
-            }
+            Assert.AreEqual(0, world.Listener.Ticks.Count);
         }
 
-        // 놓친 회차는 건너뛰지 않고 틱 시각의 현재 위치로 처리한다. 그 시각의 위치를 복원한다고 주장하지 않는다
+        // 확정 규칙: 지연되면 장판 한 개가 한 틱에 최대 한 회만 판정하고 가장 최근 도래한 회차만 현재 위치로 처리한다.
+        // 그 시각의 위치를 복원한다고 주장하지 않는다
         [Test]
-        public void LargeTick_MissedRounds_AreProcessedWithCurrentPositions_NotSkipped()
+        public void LargeTick_MissedRounds_OnlyTheLatestDueRoundIsProcessedWithCurrentPositions()
         {
             World world = new World();
             FakeCombatTarget late = world.Add(10, AreaCenter + new Vector3(20f, 0f, 0f));
@@ -815,16 +814,17 @@ namespace Shinshi.Tests
 
             world.TickAt(activate + 2.5);
 
-            Assert.AreEqual(3, world.Hits(10), "회차 0, 1, 2를 현재 위치로 처리한다");
-            Assert.AreEqual(3, world.Hits(11));
-            Assert.AreEqual(3, world.Listener.Ticks.Count);
-            HashSet<int> actionIds = new HashSet<int>();
-            for (int i = 0; i < world.Resolver.Requests.Count; ++i)
-            {
-                actionIds.Add(world.Resolver.Requests[i].ActionInstanceId);
-            }
+            Assert.AreEqual(1, world.Hits(10), "밀린 회차 0, 1, 2 중 가장 최근 회차 하나만 현재 위치로 처리한다");
+            Assert.AreEqual(1, world.Hits(11));
+            Assert.AreEqual(1, world.Listener.Ticks.Count);
+            Assert.AreEqual(2, world.Listener.Ticks[0].Index);
 
-            Assert.AreEqual(3, actionIds.Count);
+            // 다음 회차는 원래 활성 시각 기준이다
+            world.TickAt(activate + 2.9);
+            Assert.AreEqual(1, world.Hits(10));
+            world.TickAt(activate + 3.0);
+            Assert.AreEqual(2, world.Hits(10));
+            Assert.AreEqual(3, world.Listener.Ticks[1].Index);
         }
 
         [Test]
@@ -842,8 +842,8 @@ namespace Shinshi.Tests
             coarse.TickAt(50.0);
 
             Assert.AreEqual(1, coarse.Listener.Activated.Count);
-            Assert.AreEqual(fine.Hits(10), coarse.Hits(10));
-            Assert.AreEqual(6, coarse.Hits(10));
+            Assert.AreEqual(6, fine.Hits(10), "정상 진행은 6회다");
+            Assert.AreEqual(0, coarse.Hits(10), "종료 시각을 지난 큰 틱은 미처리 피해 없이 끝난다");
             Assert.AreEqual(0, coarse.Manager.ActiveCount);
         }
 

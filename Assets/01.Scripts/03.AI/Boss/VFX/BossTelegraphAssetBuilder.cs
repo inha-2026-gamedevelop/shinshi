@@ -29,6 +29,10 @@ namespace Shinshi.Editor
         private const string AREA_MATERIAL_NAME   = "M_AreaGround";
         private const string AREA_PREFAB_NAME     = "PF_AreaGroundVFX";
         private const string AREA_POOL_NAME       = "Area Pool";
+        private const string BEAM_SHADER_NAME     = "Shinshi/VFX/BossBeam";
+        private const string BEAM_MATERIAL_NAME   = "M_BossBeam";
+        private const string BEAM_PREFAB_NAME     = "PF_BeamGroundVFX";
+        private const string BEAM_POOL_NAME       = "Beam Pool";
         private const string RECT_MATERIAL_NAME   = "M_RectGround";
         private const string RECT_PREFAB_NAME     = "PF_RectTelegraphVFX";
         private const string SECTOR_PREFAB_NAME   = "PF_SectorGroundVFX";
@@ -37,11 +41,22 @@ namespace Shinshi.Editor
         private const string RECT_POOL_NAME       = "Rect Pool";
         private const int    POOL_CAPACITY        = 4;
 
+        // 부채꼴 풀은 예고와 폭발 연출이 함께 쓴다. 2페이즈 P03은 한 시전에 구역 4개가 동시에 있어 다른 시전의 예고까지 수용하게 크게 잡는다
+        private const int    SECTOR_POOL_CAPACITY = 8;
+
+        // 반월 연쇄 폭발의 여우불 이동 표현이 쓰는 임시 재질
+        private const string SWEEP_CUE_NAME       = "Sweep Cue";
+        private const string SWEEP_CUE_MATERIAL   = "M_SweepCue";
+        private const string URP_UNLIT_SHADER     = "Universal Render Pipeline/Unlit";
+
         // 직사각형 풀은 예고와 투사체 비행이 함께 쓴다. 2페이즈 P05는 한 시전에 세 발이 동시에 날아서 다른 풀보다 크게 잡는다
         private const int    RECT_POOL_CAPACITY   = 8;
 
         // 장판 풀은 활성 장판과 옅어지는 중인 장판이 함께 쓴다. 2페이즈 P04는 보스 전체 상한 3개가 동시에 있고 사라지는 연출이 겹치므로 크게 잡는다
         private const int    AREA_POOL_CAPACITY   = 6;
+
+        // 빔 풀은 한 시전의 평행 빔 둘과 옅어지는 중인 이전 빔을 함께 수용한다
+        private const int    BEAM_POOL_CAPACITY   = 4;
 
         /****************************************
         *                 Menu
@@ -58,8 +73,9 @@ namespace Shinshi.Editor
 
             Shader shader = Shader.Find(RECT_SHADER_NAME);
             Shader areaShader = Shader.Find(AREA_SHADER_NAME);
+            Shader beamShader = Shader.Find(BEAM_SHADER_NAME);
             GameObject sectorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(OUTPUT_ROOT + "/" + SECTOR_PREFAB_NAME + ".prefab");
-            if ((shader == null) || (areaShader == null) || (sectorPrefab == null))
+            if ((shader == null) || (areaShader == null) || (beamShader == null) || (sectorPrefab == null))
             {
                 Debug.LogError("[BossTelegraph] 셰이더나 부채꼴 프리팹이 없다, 임포트가 끝났는지와 Create Sector Ground Prefab을 먼저 했는지 확인한다");
                 return;
@@ -71,7 +87,8 @@ namespace Shinshi.Editor
             Material material = GetMaterial(RECT_MATERIAL_NAME, shader);
             RectTelegraphVFXController rectPrefab = CreateRectPrefab(material);
             AreaGroundVFXController areaPrefab = CreateAreaPrefab(GetMaterial(AREA_MATERIAL_NAME, areaShader));
-            CreateSamplePrefab(sectorPrefab.GetComponent<SectorVFXController>(), rectPrefab, areaPrefab);
+            BeamGroundVFXController beamPrefab = CreateBeamPrefab(GetMaterial(BEAM_MATERIAL_NAME, beamShader));
+            CreateSamplePrefab(sectorPrefab.GetComponent<SectorVFXController>(), rectPrefab, areaPrefab, beamPrefab);
 
             AssetDatabase.SaveAssets();
             Debug.Log("[BossTelegraph] 임시 표현 프리팹을 만들었다 - " + OUTPUT_ROOT);
@@ -138,8 +155,29 @@ namespace Shinshi.Editor
             }
         }
 
+        private static BeamGroundVFXController CreateBeamPrefab(Material material)
+        {
+            string path = OUTPUT_ROOT + "/" + BEAM_PREFAB_NAME + ".prefab";
+            GameObject root = new GameObject(BEAM_PREFAB_NAME);
+            try
+            {
+                root.AddComponent<BeamGroundVFXController>();
+                MeshRenderer surface = root.GetComponent<MeshRenderer>();
+                surface.sharedMaterial = material;
+                surface.shadowCastingMode = ShadowCastingMode.Off;
+                surface.receiveShadows = false;
+
+                GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path);
+                return saved.GetComponent<BeamGroundVFXController>();
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         private static void CreateSamplePrefab(SectorVFXController sectorPrefab, RectTelegraphVFXController rectPrefab,
-            AreaGroundVFXController areaPrefab)
+            AreaGroundVFXController areaPrefab, BeamGroundVFXController beamPrefab)
         {
             string path = OUTPUT_ROOT + "/" + SAMPLE_PREFAB_NAME + ".prefab";
             GameObject root = new GameObject(SAMPLE_PREFAB_NAME);
@@ -151,17 +189,36 @@ namespace Shinshi.Editor
                 SectorVFXPool sectorPool = MakePool<SectorVFXPool>(root.transform, SECTOR_POOL_NAME);
                 RectTelegraphVFXPool rectPool = MakePool<RectTelegraphVFXPool>(root.transform, RECT_POOL_NAME);
                 AreaGroundVFXPool areaPool = MakePool<AreaGroundVFXPool>(root.transform, AREA_POOL_NAME);
+                BeamGroundVFXPool beamPool = MakePool<BeamGroundVFXPool>(root.transform, BEAM_POOL_NAME);
 
                 SetReference(sectorPool, "_prefab", sectorPrefab);
-                SetInt(sectorPool, "_capacity", POOL_CAPACITY);
+                SetInt(sectorPool, "_capacity", SECTOR_POOL_CAPACITY);
                 SetReference(rectPool, "_prefab", rectPrefab);
                 SetInt(rectPool, "_capacity", RECT_POOL_CAPACITY);
                 SetReference(areaPool, "_prefab", areaPrefab);
                 SetInt(areaPool, "_capacity", AREA_POOL_CAPACITY);
+                SetReference(beamPool, "_prefab", beamPrefab);
+                SetInt(beamPool, "_capacity", BEAM_POOL_CAPACITY);
+                SetReference(presenter, "_beamPool", beamPool);
                 SetReference(presenter, "_areaPool", areaPool);
                 SetReference(presenter, "_sectorPool", sectorPool);
                 SetReference(presenter, "_rectPool", rectPool);
                 SetReference(sample, "_presenter", presenter);
+
+                // 여우불 이동 표현, 재질은 URP 비조명 셰이더로 만든 임시 값이다
+                GameObject cueObject = new GameObject(SWEEP_CUE_NAME);
+                cueObject.transform.SetParent(root.transform, false);
+                BossSweepCueView cue = cueObject.AddComponent<BossSweepCueView>();
+                Shader unlit = Shader.Find(URP_UNLIT_SHADER);
+                if (unlit != null)
+                {
+                    Material cueMaterial = GetMaterial(SWEEP_CUE_MATERIAL, unlit);
+                    cueMaterial.SetColor("_BaseColor", new Color(1f, 0.55f, 0.1f, 1f));
+                    EditorUtility.SetDirty(cueMaterial);
+                    SetReference(cue, "_material", cueMaterial);
+                }
+
+                SetReference(presenter, "_sweepCue", cue);
 
                 PrefabUtility.SaveAsPrefabAsset(root, path);
             }

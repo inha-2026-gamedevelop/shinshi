@@ -352,14 +352,14 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Asset_PhaseOneP05_StaysSingleAreaAndCatchUp()
+        public void Asset_PhaseOneP05_StaysSingleAreaAndSkipsMissedRounds()
         {
             Assert.IsTrue(LoadCatalog().TryGetPattern(LEGACY_ID, out PatternDefinition p5));
 
             Assert.AreEqual(1, p5.Phase);
             Assert.AreEqual(1, p5.AreaTargetCount);
             Assert.AreEqual(0, p5.RawAreaTargetCount);
-            Assert.IsFalse(p5.AreaSkipsMissedRounds);
+            Assert.IsTrue(p5.AreaSkipsMissedRounds, "1페이즈 P05도 지연 시 장판당 한 틱에 한 회, 이전 회차 생략");
             Assert.AreEqual(1f, p5.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(3, p5.MaxConcurrentAreas);
         }
@@ -903,7 +903,8 @@ namespace Shinshi.Tests
                     Vitals   = Vitals,
                     Targets  = Query,
                     Damage   = Damage,
-                    Patterns = new WolbaekPatternFactory(HREF, projectiles: Projectiles, areas: Areas, areaListener: Listener),
+                    Patterns = new ExcludingPatternFactory(new WolbaekPatternFactory(HREF, projectiles: Projectiles, areas: Areas, areaListener: Listener),
+                        BossPatternCatalogSO.WOLBAEK_P2_P03_ID),
                     Effects  = new BossEffectComposite(Projectiles, Areas),
                     Control  = new FakeControlSource(),
                     Random   = Random

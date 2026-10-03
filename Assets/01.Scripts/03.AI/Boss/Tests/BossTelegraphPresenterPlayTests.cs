@@ -27,6 +27,8 @@ namespace Shinshi.Tests
         private const int    POOL_CAPACITY      = 4;
         private const int    RECT_POOL_CAPACITY = 8; // 직사각형 풀은 예고와 한 시전의 여러 발이 함께 쓴다
         private const int    AREA_POOL_CAPACITY = 6; // 장판 풀은 보스 전체 상한 3개와 옅어지는 장판이 함께 쓴다
+        private const int    SECTOR_POOL_CAPACITY = 8; // 부채꼴 풀은 예고와 한 시전의 구역 4개가 함께 쓴다
+        private const int    BEAM_POOL_CAPACITY = 4; // 빔 풀은 한 시전의 평행 빔 둘과 옅어지는 이전 빔이 함께 쓴다
         private const int    BOSS_ID            = 1;
         private const float  DASH_SPEED         = 8f / 0.45f;
         private const float  TOLERANCE          = 0.05f;
@@ -41,6 +43,7 @@ namespace Shinshi.Tests
         private SectorVFXPool             _sectorPool;
         private RectTelegraphVFXPool      _rectPool;
         private AreaGroundVFXPool         _areaPool;
+        private BeamGroundVFXPool         _beamPool;
         private double                    _clock;
         private bool                      _useRealClock;
         private readonly List<string>     _events = new List<string>();
@@ -67,6 +70,7 @@ namespace Shinshi.Tests
             _sectorPool = _root.GetComponentInChildren<SectorVFXPool>();
             _rectPool   = _root.GetComponentInChildren<RectTelegraphVFXPool>();
             _areaPool   = _root.GetComponentInChildren<AreaGroundVFXPool>();
+            _beamPool   = _root.GetComponentInChildren<BeamGroundVFXPool>();
 
             _clock        = 100.0;
             _useRealClock = false;
@@ -163,10 +167,13 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, _presenter.ActiveCount);
             Assert.AreEqual(0, _presenter.ProjectileCount);
             Assert.AreEqual(0, _presenter.AreaCount);
+            Assert.AreEqual(0, _presenter.BeamCount);
+            Assert.AreEqual(0, _beamPool.LeasedCount);
+            Assert.AreEqual(BEAM_POOL_CAPACITY, _beamPool.AvailableCount);
             Assert.AreEqual(0, _areaPool.LeasedCount);
             Assert.AreEqual(AREA_POOL_CAPACITY, _areaPool.AvailableCount);
             Assert.AreEqual(0, _sectorPool.LeasedCount);
-            Assert.AreEqual(POOL_CAPACITY, _sectorPool.AvailableCount);
+            Assert.AreEqual(SECTOR_POOL_CAPACITY, _sectorPool.AvailableCount);
             Assert.AreEqual(0, _rectPool.LeasedCount);
             Assert.AreEqual(RECT_POOL_CAPACITY, _rectPool.AvailableCount);
         }
@@ -546,15 +553,15 @@ namespace Shinshi.Tests
         public void PoolExhausted_SkipsVisualWithoutErrors()
         {
             _useRealClock = true;
-            for (int i = 1; i <= POOL_CAPACITY + 1; ++i)
+            for (int i = 1; i <= SECTOR_POOL_CAPACITY + 1; ++i)
             {
                 Assert.IsTrue(_presenter.BeginTelegraph(Fan(i, 1f, bossId: i)));
             }
 
-            Assert.AreEqual(POOL_CAPACITY + 1, _presenter.ActiveCount);
-            Visuals(POOL_CAPACITY + 1, out BossTelegraphCast cast, out SectorVFXController sector, out RectTelegraphVFXController rect);
+            Assert.AreEqual(SECTOR_POOL_CAPACITY + 1, _presenter.ActiveCount);
+            Visuals(SECTOR_POOL_CAPACITY + 1, out BossTelegraphCast cast, out SectorVFXController sector, out RectTelegraphVFXController rect);
             Assert.IsNull(sector);
-            Assert.IsTrue(_presenter.Strike(POOL_CAPACITY + 1, Now));
+            Assert.IsTrue(_presenter.Strike(SECTOR_POOL_CAPACITY + 1, Now));
 
             _presenter.ClearAll();
             AssertAllReturned();
@@ -1863,6 +1870,825 @@ namespace Shinshi.Tests
             }
 
             Assert.IsTrue(condition(), "시간 안에 조건이 만족되지 않았다");
+        }
+
+        /****************************************
+        *   Phase Two P03 Sweep (Large, 4 zones)
+        ****************************************/
+
+        private const int SWEEP_CAST = 800;
+
+        // 한 시전의 구역 부채꼴 예고, 구역 번호가 표현의 키이고 시전 번호가 묶음이다. 구역 i의 예고는 그 구역 폭발 시각까지다
+        private BossTelegraphStart SweepZone(int zoneIndex, bool isRight = true, double? start = null, int castId = SWEEP_CAST,
+            int bossId = BOSS_ID, float baseSeconds = 1.2f)
+        {
+            float side = isRight ? 1f : -1f;
+            Vector3 direction = Quaternion.AngleAxis(side * 45f * (zoneIndex + 0.5f), Vector3.up) * Vector3.forward;
+            return BossTelegraphStart.Fan(bossId, castId + 1 + zoneIndex, Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P03_ID,
+                Vector3.zero, direction, 6f, 45f, start ?? Now, baseSeconds + (zoneIndex * 0.25f), castId);
+        }
+
+        private void BeginSweepZones(bool isRight = true, double? start = null, int castId = SWEEP_CAST, float baseSeconds = 1.2f)
+        {
+            for (int i = 0; i < 4; ++i)
+            {
+                Assert.IsTrue(_presenter.BeginTelegraph(SweepZone(i, isRight, start, castId, baseSeconds: baseSeconds)), "구역 " + i);
+            }
+        }
+
+        private BossSweepCueView Cue()
+        {
+            BossSweepCueView cue = _root.GetComponentInChildren<BossSweepCueView>(true);
+            Assert.IsNotNull(cue);
+            return cue;
+        }
+
+        [Test]
+        public void Sweep_FourZoneTelegraphsOfOneCast_AreShownTogetherAsFortyFiveDegreeFans()
+        {
+            _useRealClock = true;
+            BeginSweepZones();
+
+            Assert.AreEqual(4, _presenter.ActiveCount, "한 시전의 구역 예고가 서로 지우지 않는다");
+            Assert.AreEqual(4, _sectorPool.LeasedCount);
+            for (int i = 0; i < 4; ++i)
+            {
+                Visuals(SWEEP_CAST + 1 + i, out BossTelegraphCast cast, out SectorVFXController sector, out _);
+                Assert.AreEqual(EBossTelegraphShape.Fan, cast.Shape);
+                Assert.AreEqual(45f, cast.Start.ArcAngle, 0.001f);
+                Assert.AreEqual(6f, cast.Length, 0.001f);
+                Assert.AreEqual(SWEEP_CAST, cast.GroupId);
+                Assert.IsNotNull(sector);
+            }
+        }
+
+        [Test]
+        public void Sweep_ZoneDirectionsFollowTheServerChosenSideInOrder()
+        {
+            foreach (bool isRight in new[] { true, false })
+            {
+                _presenter.ClearAll();
+                _useRealClock = true;
+                int cast = isRight ? 810 : 820;
+                BeginSweepZones(isRight, null, cast);
+
+                float sign = isRight ? 1f : -1f;
+                for (int i = 0; i < 4; ++i)
+                {
+                    Visuals(cast + 1 + i, out BossTelegraphCast zone, out _, out _);
+                    Assert.AreEqual(sign * 45f * (i + 0.5f), Vector3.SignedAngle(Vector3.forward, zone.Direction, Vector3.up), 0.1f,
+                        (isRight ? "오른쪽 " : "왼쪽 ") + i);
+                }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator Sweep_TelegraphEndAlone_NeverExplodesWithoutTheServerZoneConfirmation()
+        {
+            _useRealClock = true;
+            Assert.IsTrue(_presenter.BeginTelegraph(SweepZone(0, baseSeconds: 0.15f)));
+            yield return new WaitForSeconds(0.35f);
+
+            Visuals(SWEEP_CAST + 1, out BossTelegraphCast cast, out SectorVFXController sector, out _);
+            Assert.IsTrue(sector.IsHolding, "예고가 끝나도 서버 확정 전에는 터지지 않는다");
+            CollectionAssert.DoesNotContain(_events, (SWEEP_CAST + 1) + ":Execute");
+        }
+
+        [UnityTest]
+        public IEnumerator Sweep_ServerZoneBlast_ExplodesOnlyThatZoneAndTheRestKeepWaiting()
+        {
+            _useRealClock = true;
+            BeginSweepZones(baseSeconds: 0.2f);
+            yield return new WaitForSeconds(0.3f);
+
+            Assert.IsTrue(_presenter.Strike(SWEEP_CAST + 1, Now));
+            yield return new WaitForSeconds(0.1f);
+
+            Visuals(SWEEP_CAST + 1, out BossTelegraphCast first, out SectorVFXController s1, out _);
+            Assert.IsFalse(s1.IsHolding, "확정된 구역은 폭발로 이어진다");
+            CollectionAssert.Contains(_events, (SWEEP_CAST + 1) + ":Execute");
+            for (int i = 1; i < 4; ++i)
+            {
+                CollectionAssert.DoesNotContain(_events, (SWEEP_CAST + 1 + i) + ":Execute", "다른 구역은 확정 전이다");
+            }
+
+            Assert.IsFalse(_presenter.Strike(SWEEP_CAST + 1, Now), "중복 폭발 알림은 다시 터지지 않는다");
+        }
+
+        [Test]
+        public void Sweep_DuplicateStartOfAZone_IsIgnored()
+        {
+            _useRealClock = true;
+            BeginSweepZones();
+
+            Assert.IsFalse(_presenter.BeginTelegraph(SweepZone(2)));
+            Assert.AreEqual(4, _presenter.ActiveCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Sweep_CancelGroupMidSequence_StopsRemainingZonesAndKeepsBlastedOnesPlaying()
+        {
+            _useRealClock = true;
+            BeginSweepZones(baseSeconds: 0.2f);
+            yield return new WaitForSeconds(0.3f);
+            Assert.IsTrue(_presenter.Strike(SWEEP_CAST + 1, Now));
+            Assert.IsTrue(_presenter.Strike(SWEEP_CAST + 2, Now));
+
+            Assert.IsTrue(_presenter.CancelGroup(SWEEP_CAST));
+
+            Assert.IsTrue(_presenter.TryGetVisuals(SWEEP_CAST + 1, out BossTelegraphCast blasted, out _, out _), "이미 폭발한 구역은 끝까지 간다");
+            Assert.IsTrue(blasted.HasExecuted);
+            Assert.IsFalse(_presenter.TryGetVisuals(SWEEP_CAST + 3, out BossTelegraphCast gone3, out _, out _));
+            Assert.IsFalse(_presenter.TryGetVisuals(SWEEP_CAST + 4, out BossTelegraphCast gone4, out _, out _));
+            Assert.IsFalse(_presenter.Strike(SWEEP_CAST + 3, Now), "취소된 구역은 늦은 확정으로 터지지 않는다");
+            Assert.IsFalse(_presenter.BeginTelegraph(SweepZone(3)), "취소가 먼저 온 묶음의 늦은 예고는 시작하지 못한다");
+        }
+
+        [Test]
+        public void Sweep_CancelBeforeAnyZoneArrives_BlocksTheWholeLateGroup()
+        {
+            _useRealClock = true;
+
+            Assert.IsFalse(_presenter.CancelGroup(SWEEP_CAST));
+
+            for (int i = 0; i < 4; ++i)
+            {
+                Assert.IsFalse(_presenter.BeginTelegraph(SweepZone(i)), "구역 " + i);
+            }
+
+            AssertAllReturned();
+            Assert.IsTrue(_presenter.BeginTelegraph(SweepZone(0, castId: SWEEP_CAST + 50)), "다른 시전은 영향이 없다");
+        }
+
+        [UnityTest]
+        public IEnumerator Sweep_LateStart_ContinuesFromTheServerStartTime()
+        {
+            _useRealClock = true;
+            BeginSweepZones(true, Now - 0.6);
+            yield return null;
+
+            Visuals(SWEEP_CAST + 1, out BossTelegraphCast cast, out SectorVFXController sector, out _);
+            Assert.GreaterOrEqual(sector.Elapsed, 0.55f, "이미 흐른 시간만큼 건너뛰어 시작한다");
+        }
+
+        [UnityTest]
+        public IEnumerator Sweep_RestoreMidSequence_BlastedZonesContinueAndOthersWaitForTheServer()
+        {
+            _useRealClock = true;
+            double start = Now - 1.2 - 0.3;
+            for (int i = 0; i < 4; ++i)
+            {
+                BossTelegraphStart zone = SweepZone(i, true, start);
+                double blastAt = start + 1.2 + (i * 0.25);
+                bool blasted = blastAt <= Now;
+                BossTelegraphSnapshot snapshot = new BossTelegraphSnapshot
+                {
+                    Start = zone,
+                    Direction = zone.Direction,
+                    Length = 6f,
+                    IsDirectionLocked = true,
+                    Phase = blasted ? EBossTelegraphPhase.Execute : EBossTelegraphPhase.Telegraph,
+                    ExecuteServerTime = blasted ? blastAt : 0.0,
+                    DashStoppedDistance = -1f
+                };
+                Assert.IsTrue(_presenter.Restore(in snapshot), "구역 " + i);
+            }
+
+            yield return null;
+
+            Assert.AreEqual(4, _presenter.ActiveCount);
+            Visuals(SWEEP_CAST + 1, out BossTelegraphCast zone0, out SectorVFXController sector0, out _);
+            Assert.IsTrue(zone0.HasExecuted);
+            Assert.IsFalse(sector0.IsHolding);
+            Visuals(SWEEP_CAST + 3, out BossTelegraphCast zone2, out SectorVFXController sector2, out _);
+            Assert.IsFalse(zone2.HasExecuted, "아직 서버 확정이 오지 않은 구역은 기다린다");
+
+            Assert.IsTrue(_presenter.Strike(SWEEP_CAST + 3, Now));
+            Assert.IsFalse(_presenter.Strike(SWEEP_CAST + 1, Now), "복원 전에 폭발한 구역은 다시 터지지 않는다");
+            _presenter.ClearAll();
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator Sweep_PoolReuse_ManySweepsLeakNothing()
+        {
+            _useRealClock = true;
+            for (int round = 0; round < 6; ++round)
+            {
+                int cast = 900 + (round * 10);
+                BeginSweepZones((round % 2) == 0, null, cast);
+                yield return null;
+                Assert.AreEqual(4, _presenter.ActiveCount);
+
+                Assert.IsTrue(_presenter.CancelGroup(cast));
+                AssertAllReturned();
+            }
+        }
+
+        // 여우불 이동 표현, 서버가 정한 쪽의 반원을 서버 시각으로 따라간다
+        [Test]
+        public void SweepCue_MovesTowardTheServerChosenSideAndClearsWithTheCast()
+        {
+            _useRealClock = true;
+            BossSweepCueView cue = Cue();
+
+            foreach (bool isRight in new[] { true, false })
+            {
+                BossSweepStart start = new BossSweepStart(BOSS_ID, 850, Vector3.zero, Vector3.forward, isRight, 6f, 180f, 1.2f, 0.75f,
+                    Now - 1.2);
+                Assert.IsTrue(_presenter.BeginSweepCue(in start));
+                Assert.IsTrue(cue.IsShown);
+
+                // 예고가 끝난 시각의 위치는 반원 한가운데(90도)다
+                cue.Clear();
+                Assert.IsTrue(cue.Begin(in start, () => Now));
+                Vector3 flat = cue.CurrentPosition;
+                flat.y = 0f;
+                float expected = isRight ? 90f : -90f;
+                Assert.AreEqual(expected, Vector3.SignedAngle(Vector3.forward, flat, Vector3.up), 2f);
+
+                Assert.IsTrue(_presenter.ClearSweepCue(850));
+                Assert.IsFalse(cue.IsShown);
+            }
+        }
+
+        [Test]
+        public void SweepCue_ClearOfAnotherCastDoesNothing_AndCancelGroupAndClearAllRemoveIt()
+        {
+            _useRealClock = true;
+            BossSweepCueView cue = Cue();
+            BossSweepStart start = new BossSweepStart(BOSS_ID, SWEEP_CAST, Vector3.zero, Vector3.forward, true, 6f, 180f, 1.2f, 0.75f, Now);
+
+            Assert.IsTrue(_presenter.BeginSweepCue(in start));
+            Assert.IsFalse(_presenter.ClearSweepCue(SWEEP_CAST + 7));
+            Assert.IsTrue(cue.IsShown);
+
+            _presenter.CancelGroup(SWEEP_CAST);
+            Assert.IsFalse(cue.IsShown, "취소하면 여우불도 사라진다");
+
+            Assert.IsTrue(_presenter.BeginSweepCue(in start));
+            _presenter.ClearAll();
+            Assert.IsFalse(cue.IsShown);
+        }
+
+        [Test]
+        public void SweepCue_StartThatEndedLongAgo_IsNotShown()
+        {
+            _useRealClock = true;
+            BossSweepStart old = new BossSweepStart(BOSS_ID, SWEEP_CAST, Vector3.zero, Vector3.forward, true, 6f, 180f, 1.2f, 0.75f, Now - 10.0);
+
+            Assert.IsFalse(_presenter.BeginSweepCue(in old));
+            Assert.IsFalse(Cue().IsShown);
+        }
+
+        // 샘플 입력의 2페이즈 P03 재생
+        [UnityTest]
+        public IEnumerator SampleInput_SweepRightAndLeft_ZonesExplodeInOrderAndReturnToPool()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            foreach (bool isRight in new[] { true, false })
+            {
+                if (isRight)
+                {
+                    sample.PlayPhaseTwoSweepRight();
+                }
+                else
+                {
+                    sample.PlayPhaseTwoSweepLeft();
+                }
+
+                int last = sample.LastCastId;
+                Assert.AreEqual(4, _presenter.ActiveCount, "구역 4개의 예고가 동시에 있다");
+                Assert.IsTrue(Cue().IsShown);
+
+                yield return WaitUntilVeryLong(() => (_presenter.ActiveCount == 0) && (!Cue().IsShown));
+                yield return null;
+                AssertAllReturned();
+                for (int i = 0; i < 4; ++i)
+                {
+                    CollectionAssert.Contains(_events, (last - 3 + i) + ":Execute", "구역 " + i);
+                }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_SweepCancelled_OnlyTheFirstTwoZonesExplode()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoSweepCancelled();
+            int last = sample.LastCastId;
+
+            yield return WaitUntilVeryLong(() => (_presenter.ActiveCount == 0) && (!Cue().IsShown));
+            yield return null;
+
+            AssertAllReturned();
+            CollectionAssert.Contains(_events, (last - 3) + ":Execute");
+            CollectionAssert.Contains(_events, (last - 2) + ":Execute");
+            CollectionAssert.DoesNotContain(_events, (last - 1) + ":Execute");
+            CollectionAssert.DoesNotContain(_events, last + ":Execute");
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_SweepDuplicateLateAndRestore_PlayWithoutRestartingOrRepeating()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoSweepDuplicate();
+            Assert.AreEqual(4, _presenter.ActiveCount, "중복 시작 알림은 구역을 늘리지 않는다");
+            yield return WaitUntilVeryLong(() => (_presenter.ActiveCount == 0) && (!Cue().IsShown));
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoSweepLateStart();
+            Assert.AreEqual(4, _presenter.ActiveCount);
+            yield return WaitUntilVeryLong(() => (_presenter.ActiveCount == 0) && (!Cue().IsShown));
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoSweepRestore();
+            yield return null;
+            Assert.AreEqual(4, _presenter.ActiveCount, "복원은 폭발한 구역과 기다리는 구역을 모두 되살린다");
+            yield return WaitUntilVeryLong(() => (_presenter.ActiveCount == 0) && (!Cue().IsShown));
+            yield return null;
+            AssertAllReturned();
+        }
+
+        /****************************************
+        *       Phase 2 P02: Fixed Parallel Beams
+        ****************************************/
+
+        private static readonly Vector3 BeamArenaCenter = new Vector3(10f, 0f, -5f);
+        private const float BEAM_ARENA_RADIUS = 18f;
+        private const float BEAM_TELEGRAPH    = 1.5f;
+        private const float BEAM_DURATION     = 4f;
+        private const float BEAM_TICK         = 0.5f;
+        private const int   FIRST_BEAM        = 901;
+        private const int   SECOND_BEAM       = 902;
+
+        private BossBeamStart BeamStart(int beamId, int index, double? start = null, int castId = 900, Vector3? arenaCenter = null,
+            int bossId = BOSS_ID)
+        {
+            BossBeamShape shape = BossBeamGeometry.Place(arenaCenter ?? BeamArenaCenter, BEAM_ARENA_RADIUS, Vector3.forward, index, 2,
+                5f, 2f);
+            return new BossBeamStart(bossId, beamId, castId, in shape, start ?? Now, BEAM_TELEGRAPH, BEAM_DURATION, BEAM_TICK);
+        }
+
+        private void BeamVisual(int beamId, out BossBeamTrack track, out BeamGroundVFXController visual)
+        {
+            Assert.IsTrue(_presenter.TryGetBeam(beamId, out track, out visual), "진행 중인 빔이 없다 " + beamId);
+        }
+
+        // 한 시전의 두 빔이 같은 묶음 번호로 동시에 예고되고, 서로 덮어쓰거나 지우지 않으며 각자 고정된 자리를 그린다
+        [UnityTest]
+        public IEnumerator Beam_TwoBeamsTelegraphTogether_EachHasItsOwnFixedVisual()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            BossBeamStart b = BeamStart(SECOND_BEAM, 1);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            Assert.IsTrue(_presenter.BeginBeam(in b), "같은 시전의 둘째 빔이 첫째를 지우지 않는다");
+            yield return null;
+
+            Assert.AreEqual(2, _presenter.BeamCount);
+            Assert.AreEqual(2, _beamPool.LeasedCount);
+            BeamVisual(FIRST_BEAM, out BossBeamTrack trackA, out BeamGroundVFXController visualA);
+            BeamVisual(SECOND_BEAM, out BossBeamTrack trackB, out BeamGroundVFXController visualB);
+
+            Assert.AreNotSame(visualA, visualB);
+            Assert.IsTrue(visualA.IsShown);
+            Assert.IsTrue(visualB.IsShown);
+            Assert.AreEqual(-5f, visualA.LateralOffset, 0.0001f);
+            Assert.AreEqual(5f, visualB.LateralOffset, 0.0001f);
+            Assert.AreEqual(2f, visualA.Width, 0.0001f);
+            Assert.AreEqual(BEAM_ARENA_RADIUS, visualA.ArenaRadius, 0.0001f);
+            Assert.AreEqual(BeamArenaCenter, visualA.ArenaCenter);
+            Assert.AreEqual(900, trackA.CastId);
+            Assert.AreEqual(900, trackB.CastId, "시전 번호는 묶음이다");
+            Assert.IsFalse(trackA.IsActivated);
+            Assert.AreEqual(EBossBeamPhase.Telegraph, trackA.GetPhase(Now));
+
+            // 예고 동안 시간이 흘러도 자리는 그대로이고 서버 활성 전에는 활성으로 그리지 않는다
+            _clock += 1.0;
+            yield return null;
+            Assert.AreEqual(2, _presenter.BeamCount);
+            Assert.IsFalse(trackA.IsActivated);
+            Assert.AreEqual(-5f, visualA.LateralOffset, 0.0001f);
+        }
+
+        // 예고 시간이 끝나도 서버 활성 확정이 없으면 지속 빔이 되지 않고 대기 시간 뒤 풀로 돌아온다
+        [UnityTest]
+        public IEnumerator Beam_NotActiveWithoutServerActivation_ExpiresAfterTheConfirmGrace()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            yield return null;
+
+            _clock += BEAM_TELEGRAPH + 0.2;
+            yield return null;
+            Assert.AreEqual(1, _presenter.BeamCount, "예고가 끝난 직후에는 서버 확정을 잠시 기다린다");
+            BeamVisual(FIRST_BEAM, out BossBeamTrack track, out BeamGroundVFXController _);
+            Assert.IsFalse(track.IsActivated, "예고 시간이 끝난 것만으로 활성이 되지 않는다");
+
+            _clock += 1.0;
+            yield return null;
+            yield return null;
+            AssertAllReturned();
+        }
+
+        // 활성에서 타격 회차, 지속 시간 끝의 옅어짐, 풀 반환까지
+        [UnityTest]
+        public IEnumerator Beam_FullLifecycle_ActivatesTicksThenFadesAtTheEndAndReturnsToPool()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            yield return null;
+            BeamVisual(FIRST_BEAM, out BossBeamTrack track, out BeamGroundVFXController visual);
+
+            double activate = a.StartServerTime + BEAM_TELEGRAPH;
+            _clock = activate;
+            Assert.IsTrue(_presenter.ActivateBeam(FIRST_BEAM, activate));
+            yield return null;
+            Assert.IsTrue(track.IsActivated);
+            Assert.AreEqual(EBossBeamPhase.Active, track.GetPhase(_clock));
+
+            for (int i = 0; i < 8; ++i)
+            {
+                _clock = activate + (i * (double)BEAM_TICK);
+                Assert.IsTrue(_presenter.TickBeam(FIRST_BEAM, i, _clock));
+                yield return null;
+                Assert.AreEqual(i, track.LastTickIndex);
+                Assert.IsTrue(visual.IsShown);
+            }
+
+            Assert.IsFalse(_presenter.TickBeam(FIRST_BEAM, 7, _clock), "같은 회차는 다시 표시하지 않는다");
+            Assert.IsFalse(_presenter.ActivateBeam(FIRST_BEAM, activate), "중복 활성은 무시한다");
+            Assert.AreEqual(0.5f, track.GetLifeRatio(activate + 2.0), 0.0001f);
+
+            _clock = activate + BEAM_DURATION;
+            yield return null;
+            Assert.AreEqual(1, _presenter.BeamCount, "지속 시간이 끝나면 옅어지는 동안만 남는다");
+
+            _clock += visual.FadeSeconds + 0.1;
+            yield return null;
+            yield return null;
+
+            AssertAllReturned();
+            Assert.IsFalse(visual.IsShown);
+        }
+
+        [UnityTest]
+        public IEnumerator Beam_ServerExpiredMessage_FadesAndReturns_NoFurtherTicks()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            Assert.IsTrue(_presenter.ActivateBeam(FIRST_BEAM, Now));
+            yield return null;
+
+            Assert.IsTrue(_presenter.EndBeam(FIRST_BEAM, EBossAreaFate.Expired));
+            Assert.IsFalse(_presenter.TickBeam(FIRST_BEAM, 2, _clock));
+            yield return null;
+            _clock += 1.0;
+            yield return null;
+            yield return null;
+
+            AssertAllReturned();
+        }
+
+        // 예고가 대기 시간 때문에 지워진 뒤에 서버 활성이 늦게 오면 예고 때 받은 값으로 이어서 그린다. 이미 모두 지난 활성은 그리지 않는다
+        [UnityTest]
+        public IEnumerator Beam_LateActivationAfterTheTelegraphWasDropped_ContinuesFromTheServerActivationTime()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            BossBeamStart b = BeamStart(SECOND_BEAM, 1);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            Assert.IsTrue(_presenter.BeginBeam(in b));
+            yield return null;
+
+            _clock += BEAM_TELEGRAPH + 1.0;
+            yield return null;
+            yield return null;
+            Assert.AreEqual(0, _presenter.BeamCount, "서버 확정 없이 대기 시간이 지나 지웠다");
+            Assert.IsFalse(_presenter.BeginBeam(in a), "지운 번호의 중복 시작은 무시한다");
+
+            double activate = a.StartServerTime + BEAM_TELEGRAPH;
+            Assert.IsTrue(_presenter.ActivateBeam(FIRST_BEAM, activate), "늦게 온 서버 활성은 이어서 그린다");
+            Assert.AreEqual(1, _presenter.BeamCount);
+            BeamVisual(FIRST_BEAM, out BossBeamTrack track, out BeamGroundVFXController visual);
+            Assert.IsTrue(track.IsActivated);
+            Assert.AreEqual(activate, track.ActivateServerTime, 0.0001);
+            Assert.IsTrue(visual.IsShown);
+            Assert.AreEqual(-5f, visual.LateralOffset, 0.0001f, "예고 때 받은 자리를 쓴다");
+
+            Assert.IsFalse(_presenter.ActivateBeam(SECOND_BEAM, _clock - 20.0), "지속 시간이 이미 모두 지난 활성은 그리지 않는다");
+            Assert.AreEqual(1, _presenter.BeamCount);
+        }
+
+        // 서버 활성이 예고 시작보다 먼저 도착해도 기억해 두었다가 예고가 오면 활성으로 시작한다
+        [Test]
+        public void Beam_ActivationArrivingBeforeTheTelegraph_IsRememberedAndApplied()
+        {
+            double activate = Now + 0.1;
+            Assert.IsFalse(_presenter.ActivateBeam(FIRST_BEAM, activate), "예고가 없어 아직 그릴 수 없다");
+            Assert.AreEqual(0, _presenter.BeamCount);
+
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0, Now - BEAM_TELEGRAPH + 0.1);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            BeamVisual(FIRST_BEAM, out BossBeamTrack track, out BeamGroundVFXController _);
+            Assert.IsTrue(track.IsActivated, "먼저 온 활성을 이어서 쓴다");
+            Assert.AreEqual(activate, track.ActivateServerTime, 0.0001);
+        }
+
+        // 활성 전에 한 빔만 취소돼도 같은 시전의 다른 빔은 남고, 취소가 시작보다 먼저 와도 늦은 시작이 되살아나지 않는다
+        [UnityTest]
+        public IEnumerator Beam_CancelOneBeam_KeepsTheOtherAndCancelBeforeStartBlocksTheLateStart()
+        {
+            Assert.IsFalse(_presenter.CancelBeam(910), "아직 모르는 번호의 취소");
+            BossBeamStart early = BeamStart(910, 0);
+            Assert.IsFalse(_presenter.BeginBeam(in early), "취소가 먼저 온 번호는 시작하지 못한다");
+
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            BossBeamStart b = BeamStart(SECOND_BEAM, 1);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            Assert.IsTrue(_presenter.BeginBeam(in b));
+            yield return null;
+
+            BeamVisual(FIRST_BEAM, out BossBeamTrack trackA, out BeamGroundVFXController visualA);
+            Assert.IsTrue(_presenter.CancelBeam(FIRST_BEAM));
+            Assert.IsFalse(visualA.IsShown);
+            Assert.AreEqual(1, _presenter.BeamCount);
+            Assert.AreEqual(1, _beamPool.LeasedCount);
+            BeamVisual(SECOND_BEAM, out BossBeamTrack trackB, out BeamGroundVFXController visualB);
+            Assert.IsTrue(visualB.IsShown, "다른 빔은 남는다");
+
+            Assert.IsFalse(_presenter.ActivateBeam(FIRST_BEAM, Now), "취소된 번호의 활성은 되살리지 못한다");
+            Assert.IsFalse(_presenter.TickBeam(FIRST_BEAM, 0, Now));
+            Assert.IsFalse(_presenter.EndBeam(FIRST_BEAM, EBossAreaFate.Expired));
+            Assert.IsFalse(_presenter.CancelBeam(FIRST_BEAM));
+            Assert.IsFalse(_presenter.BeginBeam(in a), "취소된 번호의 중복 시작은 무시한다");
+
+            Assert.IsTrue(_presenter.ActivateBeam(SECOND_BEAM, Now));
+            Assert.IsTrue(trackB.IsActivated);
+        }
+
+        // 활성 중 사망이나 전투 종료로 두 빔이 모두 즉시 사라지고 이후 알림이 되살리지 못한다
+        [UnityTest]
+        public IEnumerator Beam_CancelWhileActive_HidesAtOnceAndLateNotificationsCannotRevive()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            BossBeamStart b = BeamStart(SECOND_BEAM, 1);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            Assert.IsTrue(_presenter.BeginBeam(in b));
+            Assert.IsTrue(_presenter.ActivateBeam(FIRST_BEAM, Now));
+            Assert.IsTrue(_presenter.ActivateBeam(SECOND_BEAM, Now));
+            yield return null;
+            BeamVisual(FIRST_BEAM, out BossBeamTrack _, out BeamGroundVFXController visualA);
+
+            Assert.IsTrue(_presenter.EndBeam(FIRST_BEAM, EBossAreaFate.Cancelled));
+            Assert.IsTrue(_presenter.CancelBeam(SECOND_BEAM));
+
+            Assert.IsFalse(visualA.IsShown);
+            AssertAllReturned();
+            Assert.IsFalse(_presenter.TickBeam(FIRST_BEAM, 1, _clock));
+            Assert.IsFalse(_presenter.ActivateBeam(SECOND_BEAM, _clock));
+            BossBeamSnapshot snapshot = new BossBeamSnapshot { Start = a, IsActivated = true, ActivateServerTime = Now, Fate = EBossAreaFate.Active, LastTickIndex = -1 };
+            Assert.IsFalse(_presenter.RestoreBeam(in snapshot));
+        }
+
+        [Test]
+        public void Beam_TickBeforeActivation_IsIgnored_AndDuplicateStartIsIgnored()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            Assert.IsFalse(_presenter.BeginBeam(in a));
+            Assert.AreEqual(1, _presenter.BeamCount);
+            Assert.AreEqual(1, _beamPool.LeasedCount);
+            Assert.IsFalse(_presenter.TickBeam(FIRST_BEAM, 0, Now), "활성 전의 타격 알림은 받아들이지 않는다");
+            Assert.IsFalse(_presenter.TickBeam(999, 0, Now), "모르는 번호");
+        }
+
+        // 활성 중에 접속한 클라이언트가 스냅샷으로 복원, 이미 표시한 회차를 다시 표시하지 않고 남은 수명부터 이어서 그린다
+        [Test]
+        public void Beam_Restore_ContinuesAndDoesNotReplayShownTicks_EndedSnapshotsIgnored()
+        {
+            double activate = Now - 1.7;
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0, activate - BEAM_TELEGRAPH);
+            BossBeamSnapshot snapshot = new BossBeamSnapshot
+            {
+                Start              = a,
+                IsActivated        = true,
+                ActivateServerTime = activate,
+                Fate               = EBossAreaFate.Active,
+                LastTickIndex      = 3,
+                LastTickServerTime = activate + 1.5
+            };
+
+            Assert.IsTrue(_presenter.RestoreBeam(in snapshot));
+            BeamVisual(FIRST_BEAM, out BossBeamTrack track, out BeamGroundVFXController visual);
+            Assert.IsTrue(visual.IsShown);
+            Assert.IsTrue(track.IsActivated);
+            Assert.AreEqual(3, track.LastTickIndex);
+            Assert.AreEqual(1f - (1.7f / BEAM_DURATION), track.GetLifeRatio(Now), 0.001f, "남은 수명부터 이어서 그린다");
+            Assert.IsFalse(_presenter.TickBeam(FIRST_BEAM, 3, Now), "이미 표시한 회차");
+            Assert.IsTrue(_presenter.TickBeam(FIRST_BEAM, 4, Now));
+            Assert.IsFalse(_presenter.RestoreBeam(in snapshot), "같은 번호의 복원은 무시한다");
+
+            Assert.IsTrue(_presenter.TryGetBeamSnapshot(FIRST_BEAM, out BossBeamSnapshot current));
+            Assert.IsTrue(current.IsActivated);
+            Assert.AreEqual(4, current.LastTickIndex);
+
+            BossBeamSnapshot expired = new BossBeamSnapshot { Start = BeamStart(920, 0, Now - 20.0), IsActivated = true,
+                ActivateServerTime = Now - 18.0, Fate = EBossAreaFate.Active, LastTickIndex = -1 };
+            Assert.IsFalse(_presenter.RestoreBeam(in expired), "지속 시간이 모두 지난 스냅샷");
+            BossBeamSnapshot cancelled = new BossBeamSnapshot { Start = BeamStart(921, 0), Fate = EBossAreaFate.Cancelled, LastTickIndex = -1 };
+            Assert.IsFalse(_presenter.RestoreBeam(in cancelled));
+            Assert.AreEqual(1, _presenter.BeamCount);
+        }
+
+        [Test]
+        public void Beam_RestoreDuringTelegraph_KeepsWaitingForTheServerActivation()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0, Now - 0.5);
+            BossBeamSnapshot snapshot = new BossBeamSnapshot { Start = a, IsActivated = false, Fate = EBossAreaFate.Active, LastTickIndex = -1 };
+
+            Assert.IsTrue(_presenter.RestoreBeam(in snapshot));
+            BeamVisual(FIRST_BEAM, out BossBeamTrack track, out BeamGroundVFXController _);
+            Assert.IsFalse(track.IsActivated);
+            Assert.AreEqual(EBossBeamPhase.Telegraph, track.GetPhase(Now));
+            Assert.IsTrue(_presenter.ActivateBeam(FIRST_BEAM, Now + 1.0));
+            Assert.IsTrue(track.IsActivated);
+        }
+
+        // 표현 메시가 서버 판정과 같은 영역(폭 띠와 전장 원의 교집합)이다
+        [UnityTest]
+        public IEnumerator Beam_VisualMeshStaysInsideTheServerAreaAndTouchesTheArenaBoundary()
+        {
+            BossBeamStart b = BeamStart(SECOND_BEAM, 1);
+            Assert.IsTrue(_presenter.BeginBeam(in b));
+            yield return null;
+
+            BeamVisual(SECOND_BEAM, out BossBeamTrack track, out BeamGroundVFXController visual);
+            BossBeamShape shape = track.Start.Shape;
+            Vector3[] vertices = visual.GetComponent<MeshFilter>().sharedMesh.vertices;
+            Assert.Greater(vertices.Length, 4);
+            for (int i = 0; i < vertices.Length; ++i)
+            {
+                Vector3 world = visual.transform.TransformPoint(vertices[i]);
+                Assert.IsTrue(BossBeamGeometry.Contains(in shape, world), "정점 " + i + " " + world);
+                Vector3 offset = world - shape.ArenaCenter;
+                offset.y = 0f;
+                Assert.AreEqual(BEAM_ARENA_RADIUS, offset.magnitude, 0.001f, "앞뒤 끝 정점은 전장 경계 위다");
+            }
+        }
+
+        // 풀 재사용, 빔마다 자기 전장 기준 자리에서 시작하고 아무것도 새지 않는다
+        [UnityTest]
+        public IEnumerator Beam_PoolReuse_ManyCastsLeakNothingAndStartFromTheirOwnPlacement()
+        {
+            for (int cast = 0; cast < 6; ++cast)
+            {
+                Vector3 center = new Vector3(cast * 3f, 0f, cast);
+                int firstId = 1000 + (cast * 10);
+                BossBeamStart a = BeamStart(firstId, 0, null, 900 + cast, center);
+                BossBeamStart b = BeamStart(firstId + 1, 1, null, 900 + cast, center);
+                Assert.IsTrue(_presenter.BeginBeam(in a));
+                Assert.IsTrue(_presenter.BeginBeam(in b));
+                Assert.IsTrue(_presenter.ActivateBeam(firstId, Now));
+                yield return null;
+
+                BeamVisual(firstId, out BossBeamTrack _, out BeamGroundVFXController visual);
+                Assert.AreEqual(center, visual.ArenaCenter);
+                Assert.AreEqual(2, _beamPool.LeasedCount);
+
+                Assert.IsTrue(_presenter.CancelBeam(firstId));
+                Assert.IsTrue(_presenter.CancelBeam(firstId + 1));
+                AssertAllReturned();
+            }
+        }
+
+        // 빔 풀이 모자라면 표현만 생략하고 모델은 그대로 따라간다
+        [Test]
+        public void Beam_PoolExhausted_SkipsVisualWithoutErrors()
+        {
+            for (int i = 0; i < BEAM_POOL_CAPACITY + 2; ++i)
+            {
+                BossBeamStart start = BeamStart(1100 + i, i % 2);
+                Assert.IsTrue(_presenter.BeginBeam(in start));
+            }
+
+            Assert.AreEqual(BEAM_POOL_CAPACITY + 2, _presenter.BeamCount);
+            Assert.AreEqual(BEAM_POOL_CAPACITY, _beamPool.LeasedCount);
+            BeamVisual(1100 + BEAM_POOL_CAPACITY + 1, out BossBeamTrack track, out BeamGroundVFXController visual);
+            Assert.IsNull(visual);
+            Assert.IsTrue(_presenter.ActivateBeam(1100 + BEAM_POOL_CAPACITY + 1, Now));
+            Assert.IsTrue(track.IsActivated);
+
+            _presenter.ClearAll();
+            AssertAllReturned();
+        }
+
+        // 빔과 장판과 투사체가 함께 있어도 서로 풀을 빼앗거나 지우지 않고 ClearAll이 모두 돌려준다
+        [UnityTest]
+        public IEnumerator Beam_ClearAllAndDisable_ReleaseEveryBeamVisual_CoexistingWithAreasAndProjectiles()
+        {
+            BossBeamStart a = BeamStart(FIRST_BEAM, 0);
+            BossBeamStart b = BeamStart(SECOND_BEAM, 1);
+            Assert.IsTrue(_presenter.BeginBeam(in a));
+            Assert.IsTrue(_presenter.BeginBeam(in b));
+            Assert.IsTrue(_presenter.ActivateBeam(FIRST_BEAM, Now));
+            BossAreaStart area = AreaShot(1);
+            Assert.IsTrue(_presenter.ActivateArea(in area));
+            BossProjectileStart shot = Shot(2);
+            Assert.IsTrue(_presenter.LaunchProjectile(in shot));
+            yield return null;
+
+            Assert.AreEqual(2, _presenter.BeamCount);
+            Assert.AreEqual(1, _presenter.AreaCount);
+            Assert.AreEqual(1, _presenter.ProjectileCount);
+
+            _presenter.ClearAll();
+            AssertAllReturned();
+
+            BossBeamStart again = BeamStart(1200, 0);
+            Assert.IsTrue(_presenter.BeginBeam(in again));
+            _presenter.enabled = false;
+            yield return null;
+            AssertAllReturned();
+        }
+
+        /****************************************
+        *       Beam Sample Input Scenarios
+        ****************************************/
+
+        [UnityTest]
+        public IEnumerator SampleInput_BeamNormalAndTelegraphCancel_PlayAndReturnEverything()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoBeams();
+            yield return null;
+            Assert.AreEqual(2, _presenter.BeamCount, "예고 동안 두 줄이 동시에 보인다");
+            yield return WaitUntilVeryLong(() => (_presenter.BeamCount == 2) && IsAnyBeamActive());
+            yield return WaitUntilVeryLong(() => _presenter.BeamCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoBeamsTelegraphCancelled();
+            yield return WaitUntilVeryLong(() => _presenter.BeamCount == 0);
+            yield return null;
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_BeamActiveCancelledLateAndRestore_PlayWithoutRepeatingOrLeaking()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoBeamsActiveCancelled();
+            yield return WaitUntilVeryLong(() => IsAnyBeamActive());
+            yield return WaitUntilVeryLong(() => _presenter.BeamCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoBeamsLateActivation();
+            yield return WaitUntilVeryLong(() => _presenter.BeamCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoBeamsRestore();
+            yield return null;
+            Assert.AreEqual(2, _presenter.BeamCount, "복원은 활성 중인 두 빔을 모두 되살린다");
+            yield return WaitUntilVeryLong(() => _presenter.BeamCount == 0);
+            yield return null;
+            AssertAllReturned();
+        }
+
+        private bool IsAnyBeamActive()
+        {
+            for (int id = 1000; id < 1100; ++id)
+            {
+                if (_presenter.TryGetBeam(id, out BossBeamTrack track, out BeamGroundVFXController _) && track.IsActivated)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

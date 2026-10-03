@@ -510,7 +510,7 @@ namespace Shinshi.Tests
                     Vitals   = Vitals,
                     Targets  = Query,
                     Damage   = Damage,
-                    Patterns = new WolbaekPatternFactory(HREF, circleListener: Listener),
+                    Patterns = new ExcludingPatternFactory(new WolbaekPatternFactory(HREF, circleListener: Listener), BossPatternCatalogSO.WOLBAEK_P2_P03_ID),
                     Effects  = Effects,
                     Control  = new FakeControlSource(),
                     Random   = Random

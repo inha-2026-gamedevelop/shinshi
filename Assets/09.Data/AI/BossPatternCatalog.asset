@@ -134,6 +134,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_p02
     _displayKey: wolbaek_p02.name
     _bossId: boss_wolbaek
@@ -181,6 +186,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_p03
     _displayKey: wolbaek_p03.name
     _bossId: boss_wolbaek
@@ -228,6 +238,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_p04
     _displayKey: wolbaek_p04.name
     _bossId: boss_wolbaek
@@ -275,6 +290,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_p05
     _displayKey: wolbaek_p05.name
     _bossId: boss_wolbaek
@@ -321,7 +341,12 @@ MonoBehaviour:
     _projectileCount: 0
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
-    _areaSkipsMissedRounds: 0
+    _areaSkipsMissedRounds: 1
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_p06
     _displayKey: wolbaek_p06.name
     _bossId: boss_wolbaek
@@ -369,6 +394,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_ph2_p01
     _displayKey: wolbaek_ph2_p01.name
     _bossId: boss_wolbaek
@@ -416,6 +446,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_ph2_p02
     _displayKey: wolbaek_ph2_p02.name
     _bossId: boss_wolbaek
@@ -438,18 +473,18 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0
+    _telegraphSeconds: 1.5
     _trackingSeconds: 0
     _turnRate: 0
-    _activeSeconds: 0
-    _recoverySeconds: 0
+    _activeSeconds: 4
+    _recoverySeconds: 0.8
     _shape:
       _shape: 5
-      _range: 0
+      _range: 36
       _arcAngle: 0
-      _width: 0
+      _width: 2
       _projectileSpeed: 0
-    _damageRef: 0
+    _damageRef: 0.08
     _guardable: 0
     _controlPhase: 0
     _controlWindowSeconds: 0
@@ -463,6 +498,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 2
+    _beamLateralOffset: 5
+    _beamTickInterval: 0.5
   - _definitionId: wolbaek_ph2_p03
     _displayKey: wolbaek_ph2_p03.name
     _bossId: boss_wolbaek
@@ -485,18 +525,18 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0
+    _telegraphSeconds: 1.2
     _trackingSeconds: 0
     _turnRate: 0
-    _activeSeconds: 0
-    _recoverySeconds: 0
+    _activeSeconds: 0.75
+    _recoverySeconds: 0.8
     _shape:
       _shape: 0
-      _range: 0
-      _arcAngle: 0
+      _range: 6
+      _arcAngle: 180
       _width: 0
       _projectileSpeed: 0
-    _damageRef: 0
+    _damageRef: 0.18
     _guardable: 1
     _controlPhase: 0
     _controlWindowSeconds: 0
@@ -510,6 +550,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 4
+    _sweepIntervalSeconds: 0.25
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_ph2_p04
     _displayKey: wolbaek_ph2_p04.name
     _bossId: boss_wolbaek
@@ -557,6 +602,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 2
     _areaSkipsMissedRounds: 1
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_ph2_p05
     _displayKey: wolbaek_ph2_p05.name
     _bossId: boss_wolbaek
@@ -604,6 +654,11 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0.3
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
   - _definitionId: wolbaek_ph2_p06
     _displayKey: wolbaek_ph2_p06.name
     _bossId: boss_wolbaek
@@ -651,3 +706,8 @@ MonoBehaviour:
     _projectileIntervalSeconds: 0
     _areaTargetCount: 0
     _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0

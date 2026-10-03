@@ -13,7 +13,8 @@ namespace Shinshi.AI
     /// <summary> 서버 알림을 표현 진입점 호출로 바꾸는 시험용 연결부 </summary>
     public sealed class BossTelegraphLocalBridge :
         IBossFanTelegraphListener, IBossCircleTelegraphListener, IBossLineTelegraphListener, IBossDashTelegraphListener,
-        IBossProjectileTelegraphListener, IBossAreaTelegraphListener, IBossProjectileListener, IBossAreaListener
+        IBossProjectileTelegraphListener, IBossAreaTelegraphListener, IBossProjectileListener, IBossAreaListener,
+        IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener
     {
         /****************************************
         *                Fields
@@ -23,6 +24,10 @@ namespace Shinshi.AI
         private readonly BossTestRigBody        _body;
         private readonly Func<double>           _clock;
         private readonly Func<string>           _activePatternId;
+
+        // 반월 연쇄 폭발의 고정한 중심과 반경, 구역 예고를 시작할 때 쓴다. 시전은 한 번에 하나다
+        private Vector3 _sweepOrigin;
+        private float   _sweepRadius;
 
         // 부채꼴과 직사각형은 조준 갱신 알림에 길이가 없어서 시작 때 받은 길이를 시전 번호별로 기억한다
         private readonly Dictionary<int, float> _lengths = new Dictionary<int, float>();
@@ -270,6 +275,79 @@ namespace Shinshi.AI
         void IBossAreaListener.OnAreaEnded(int castInstanceId, int areaId, EBossAreaEnd end, double endServerTime)
         {
             _presenter.EndArea(areaId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
+        }
+
+        /****************************************
+        *        P03 (Phase 2) Sweep
+        ****************************************/
+
+        // 구역마다 부채꼴 예고 하나를 시작하고 구역 번호를 표현의 시전 키로, 시전 번호를 묶음 번호로 쓴다. 구역의 예고 길이는 그 구역의 폭발 시각까지다
+        // 서버가 구역 폭발을 확정하면 그 구역만 터지고, 예고 시간이 끝나는 것만으로는 터지지 않는다
+        void IBossSweepTelegraphListener.OnSweepStarted(int castInstanceId, Vector3 origin, Vector3 baseDirection, bool isRight,
+            float radius, float totalArcAngle, int zoneCount, float telegraphSeconds, float blastSpanSeconds)
+        {
+            _body.Face(baseDirection);
+            _sweepOrigin = origin;
+            _sweepRadius = radius;
+
+            _presenter.enabled = true;
+            var start = new BossSweepStart(Boss, castInstanceId, origin, baseDirection, isRight, radius, totalArcAngle,
+                telegraphSeconds, blastSpanSeconds, Now);
+            _presenter.BeginSweepCue(in start);
+        }
+
+        void IBossSweepTelegraphListener.OnZoneScheduled(int castInstanceId, int zoneId, int zoneIndex, Vector3 centerDirection,
+            float zoneArcAngle, float secondsUntilBlast)
+        {
+            Begin(BossTelegraphStart.Fan(Boss, zoneId, WolbaekPatternFactory.P2_P03_ID, _sweepOrigin, centerDirection,
+                _sweepRadius, zoneArcAngle, Now, secondsUntilBlast, castInstanceId));
+        }
+
+        void IBossSweepTelegraphListener.OnZoneBlasted(int castInstanceId, int zoneId, int zoneIndex, int hitCount,
+            double blastServerTime)
+        {
+            _presenter.Strike(zoneId, blastServerTime);
+        }
+
+        void IBossSweepTelegraphListener.OnCancelled(int castInstanceId, EBossInterruptReason reason)
+        {
+            _presenter.CancelGroup(castInstanceId);
+        }
+
+        /****************************************
+        *         P02 (Phase 2) Field Beam
+        ****************************************/
+
+        // 빔 한 줄마다 예고를 시작하고 빔 번호를 표현의 키로 쓴다. 시전 번호는 묶음 번호로 달려 서로 지우지 않는다
+        // 서버가 활성을 확정하기 전에는 예고만 보이고, 예고 시간이 끝나는 것만으로는 지속 빔이 되지 않는다
+        void IBossBeamTelegraphListener.OnTelegraphStarted(int castInstanceId, int beamId, in BossBeamShape shape,
+            float telegraphSeconds, float durationSeconds, float tickInterval)
+        {
+            _presenter.enabled = true;
+            var start = new BossBeamStart(Boss, beamId, castInstanceId, in shape, Now, telegraphSeconds, durationSeconds, tickInterval);
+            _presenter.BeginBeam(in start);
+        }
+
+        void IBossBeamTelegraphListener.OnCancelled(int castInstanceId, int beamId, EBossInterruptReason reason)
+        {
+            _presenter.CancelBeam(beamId);
+        }
+
+        void IBossBeamListener.OnBeamActivated(int castInstanceId, int beamId, float durationSeconds, float tickInterval,
+            double activateServerTime)
+        {
+            _presenter.enabled = true;
+            _presenter.ActivateBeam(beamId, activateServerTime);
+        }
+
+        void IBossBeamListener.OnBeamTick(int castInstanceId, int beamId, int hitIndex, double roundServerTime, int hitCount)
+        {
+            _presenter.TickBeam(beamId, hitIndex, roundServerTime);
+        }
+
+        void IBossBeamListener.OnBeamEnded(int castInstanceId, int beamId, EBossAreaEnd end, double endServerTime)
+        {
+            _presenter.EndBeam(beamId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
         }
 
         /****************************************

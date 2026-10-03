@@ -207,6 +207,15 @@ namespace Shinshi.Data
             [SerializeField] private int                            _areaTargetCount;           // 서로 다른 대상에게 동시에 설치하는 장판 수, 2 이상이면 여러 대상 시전이다
             [SerializeField] private bool                           _areaSkipsMissedRounds;     // 지연된 틱에서 장판 하나당 가장 최근 회차만 판정하고 이전 회차는 건너뛴다
 
+            // 부채꼴 연쇄 폭발만 쓴다. 0은 미지정이고 연쇄가 아니다. 전체 각도는 형태의 ArcAngle이고 구역 하나의 각도는 전체 각도를 구역 수로 나눈 값이다
+            [SerializeField] private int                            _sweepZoneCount;            // 선택한 쪽 반원을 나누는 구역 수
+            [SerializeField] private float                          _sweepIntervalSeconds;      // 초, 구역과 구역 사이, 첫 구역은 예고가 끝나는 순간이다
+
+            // 고정 평행 빔만 쓴다. 0은 미지정이고 빔 패턴이 아니다. 빔 폭은 형태의 Width, 유지 시간은 ActiveSeconds, 피해 간격은 아래 값이다
+            [SerializeField] private int                            _beamCount;                 // 한 시전이 설치하는 평행 빔 줄 수
+            [SerializeField] private float                          _beamLateralOffset;         // m, 전장 중심에서 각 빔 중심선까지 좌우 거리
+            [SerializeField] private float                          _beamTickInterval;          // 초, 피해 간격
+
             public string                         DefinitionId          => _definitionId;
             public string                         DisplayKey            => _displayKey;
             public string                         BossId                => _bossId;
@@ -250,18 +259,39 @@ namespace Shinshi.Data
 
             public bool                           AreaSkipsMissedRounds => _areaSkipsMissedRounds;
 
+            /// <summary> 데이터에 입력된 연쇄 구역 수 그대로, 0이면 연쇄 패턴이 아니다 </summary>
+            public int                            RawSweepZoneCount     => _sweepZoneCount;
+
+            /// <summary> 연쇄 구역 수, 연쇄가 아니면 한 구역으로 본다 </summary>
+            public int                            SweepZoneCount        => Mathf.Max(1, _sweepZoneCount);
+
+            public float                          SweepIntervalSeconds  => _sweepIntervalSeconds;
+
+            /// <summary> 데이터에 입력된 빔 줄 수 그대로, 0이면 빔 패턴이 아니다 </summary>
+            public int                            RawBeamCount          => _beamCount;
+
+            /// <summary> 빔 줄 수, 빔 패턴이 아니면 한 줄로 본다 </summary>
+            public int                            BeamCount             => Mathf.Max(1, _beamCount);
+
+            /// <summary> m, 전장 중심에서 빔 중심선까지 좌우 거리, 두 줄이면 중심선 사이 거리는 이 값의 두 배다 </summary>
+            public float                          BeamLateralOffset     => _beamLateralOffset;
+
+            /// <summary> 초, 빔 피해 간격, 활성 순간이 첫 타격이다. 빔 유지 시간은 ActiveSeconds다 </summary>
+            public float                          BeamTickInterval      => _beamTickInterval;
+
             /****************************************
             *                Methods
             ****************************************/
 
             /// <summary> 범주만 정하고 수치를 모두 미지정으로 둔 패턴, 배율 표는 열 수만 맞춘다 </summary>
             public PatternDefinition(string definitionId, string bossId, int phase, EEnemyAttackShape shape, bool guardable,
-                EBossActionState controlPhase = NO_CONTROL_PHASE, bool controlCancelsPattern = false)
+                EBossActionState controlPhase = NO_CONTROL_PHASE, bool controlCancelsPattern = false,
+                bool areaSkipsMissedRounds = false)
                 : this(definitionId, bossId, phase, UNSET,
                     new float[DISTANCE_BAND_COUNT], new float[DIRECTION_BAND_COUNT], new float[NEARBY_BAND_COUNT], new float[RECENT_USE_SLOTS],
                     UNSET, UNSET, UNSET, UNSET, UNSET,
                     new EnemyCatalogSO.AttackShapeSpec(shape, UNSET, UNSET, UNSET, UNSET), UNSET, guardable,
-                    controlPhase, UNSET, controlCancelsPattern)
+                    controlPhase, UNSET, controlCancelsPattern, areaSkipsMissedRounds: areaSkipsMissedRounds)
             {
             }
 
@@ -273,8 +303,14 @@ namespace Shinshi.Data
                 float areaDurationSeconds = 0f, float areaTickInterval = 0f, int maxConcurrentAreas = 0,
                 EPatternGroup group = EPatternGroup.None, float enhancedBaseWeight = 0f,
                 int projectileCount = 0, float projectileIntervalSeconds = 0f, int areaTargetCount = 0,
-                bool areaSkipsMissedRounds = false)
+                bool areaSkipsMissedRounds = false, int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
+                int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f)
             {
+                _beamCount                 = beamCount;
+                _beamLateralOffset         = beamLateralOffset;
+                _beamTickInterval          = beamTickInterval;
+                _sweepZoneCount            = sweepZoneCount;
+                _sweepIntervalSeconds      = sweepIntervalSeconds;
                 _areaTargetCount           = areaTargetCount;
                 _areaSkipsMissedRounds     = areaSkipsMissedRounds;
                 _group                 = group;
@@ -343,7 +379,14 @@ namespace Shinshi.Data
 
         // 한 시전이 장판을 설치할 수 있는 대상 수의 상한, 서버 패턴의 기술적 상한과 같다
         private const int   MAX_AREA_TARGETS     = 4;
+
+        // 한 시전의 연쇄 구역 수의 상한, 서버 패턴의 기술적 상한과 같다
+        private const int   MAX_SWEEP_ZONES      = 8;
         private const float SEQUENCE_EPSILON     = 0.0001f; // 초, 실행 구간 비교의 부동소수 오차
+
+        // 한 시전의 평행 빔 줄 수의 상한, 서버 빔 관리자의 슬롯 수와 같다
+        private const int   MAX_BEAMS            = 4;
+        private const float BEAM_LATERAL_FACTOR  = 2f;      // 두 줄 사이 중심선 거리는 좌우 거리의 두 배
 
         // 흐름 배율 표, 체력 구간 2 x 직전 그룹 3 x 다음 그룹 3
         private const int FLOW_BAND_COUNT  = 2;
@@ -397,7 +440,9 @@ namespace Shinshi.Data
                 new PatternDefinition("wolbaek_p03", WOLBAEK_ID, FIRST_PHASE, EEnemyAttackShape.Circle, guardable: true),
                 new PatternDefinition("wolbaek_p04", WOLBAEK_ID, FIRST_PHASE, EEnemyAttackShape.Projectile, guardable: true,
                     controlPhase: EBossActionState.Recover),
-                new PatternDefinition("wolbaek_p05", WOLBAEK_ID, FIRST_PHASE, EEnemyAttackShape.TargetArea, guardable: false),
+                // 1페이즈 P05도 지연된 틱에서 장판당 한 틱에 최근 회차만 판정한다(확정 규칙), 다음 회차는 원래 활성 시각 기준이다
+                new PatternDefinition("wolbaek_p05", WOLBAEK_ID, FIRST_PHASE, EEnemyAttackShape.TargetArea, guardable: false,
+                    areaSkipsMissedRounds: true),
                 new PatternDefinition("wolbaek_p06", WOLBAEK_ID, FIRST_PHASE, EEnemyAttackShape.Line, guardable: false,
                     controlPhase: EBossActionState.Telegraph, controlCancelsPattern: true)
             };
@@ -420,10 +465,19 @@ namespace Shinshi.Data
             {
                 MakePhaseTwo(WOLBAEK_P2_P01_ID, EEnemyAttackShape.Line, false, EPatternGroup.Large, 10f, 12f,
                     new[] { 1.0f, 1.1f, 1.1f }, flatDirection, new[] { 1.0f, 1.1f, 1.2f }, recent),
+                // P02는 전장 중심에서 좌우 5m에 폭 2m 평행 빔 두 줄을 예고 시작 순간의 방향으로 고정한다(가운데 안전 간격 8m). 예고 1.5초, 유지 4초(실행 구간),
+                // 활성 순간부터 0.5초 간격 8회, 회당 0.08Href, 방어 불가, 회복 0.8초이고 직접 제어는 없다. 체력 25% 이하에서도 수치는 같다
+                // 형태의 길이(36m)는 전장 안쪽으로 잘리므로 판정에 쓰지 않는 표시용 상한이다
                 MakePhaseTwo(WOLBAEK_P2_P02_ID, EEnemyAttackShape.Line, false, EPatternGroup.Large, 10f, 12f,
-                    new[] { 1.0f, 1.1f, 1.1f }, flatDirection, new[] { 1.0f, 1.1f, 1.2f }, recent),
+                    new[] { 1.0f, 1.1f, 1.1f }, flatDirection, new[] { 1.0f, 1.1f, 1.2f }, recent,
+                    new PhaseTwoExecution(1.5f, 4f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Line(36f, 2f), 0.08f,
+                        beamCount: 2, beamLateralOffset: 5f, beamTickInterval: 0.5f)),
+                // P03은 선택한 쪽 반원 180도를 45도씩 4구역으로 나눠 예고 종료 순간부터 0.25초 간격으로 차례로 폭발한다. 반경 6m, 예고 1.2초, 실행 0.75초(첫 폭발부터 마지막 폭발까지),
+                // 회복 0.8초, 피해 0.18Href, 반격 가능이고 직접 제어는 없다. 체력 25% 이하에서도 수치와 순서는 같다
                 MakePhaseTwo(WOLBAEK_P2_P03_ID, EEnemyAttackShape.Fan, true, EPatternGroup.Large, 12f, 14f,
-                    new[] { 1.3f, 1.2f, 0.7f }, flatDirection, new[] { 1.0f, 1.15f, 1.3f }, recent),
+                    new[] { 1.3f, 1.2f, 0.7f }, flatDirection, new[] { 1.0f, 1.15f, 1.3f }, recent,
+                    new PhaseTwoExecution(1.2f, 0.75f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Fan(6f, 180f), 0.18f,
+                        sweepZoneCount: 4, sweepIntervalSeconds: 0.25f)),
                 // P04는 서로 다른 생존 플레이어 최대 2명에게 장판을 하나씩 동시에 설치한다. 예고 1초, 반경 3m, 지속 6초, 간격 1초(활성 순간부터 6회), 회당 0.08Href, 방어 불가, 회복 0.5초이고
                 // 직접 제어는 없다. 보스 전체 장판(기존 월백 장판 포함) 상한은 3개이고 체력 25% 이하에서도 대상 수와 수치는 같다. 지연 시 장판당 한 틱에 한 회만 판정한다
                 MakePhaseTwo(WOLBAEK_P2_P04_ID, EEnemyAttackShape.TargetArea, false, EPatternGroup.Pressure, 16f, 18f,
@@ -486,13 +540,25 @@ namespace Shinshi.Data
             public readonly int                            MaxConcurrentAreas;
             public readonly int                            AreaTargetCount;
             public readonly bool                           AreaSkipsMissedRounds;
+            public readonly int                            SweepZoneCount;
+            public readonly float                          SweepIntervalSeconds;
+            public readonly int                            BeamCount;
+            public readonly float                          BeamLateralOffset;
+            public readonly float                          BeamTickInterval;
 
             public PhaseTwoExecution(float telegraphSeconds, float activeSeconds, float recoverySeconds,
                 EnemyCatalogSO.AttackShapeSpec shape, float damageRef, float trackingSeconds = 0f, float turnRate = 0f,
                 EBossActionState controlPhase = NO_CONTROL_PHASE, float controlWindowSeconds = 0f, int projectileCount = 0,
                 float projectileIntervalSeconds = 0f, float areaDurationSeconds = 0f, float areaTickInterval = 0f,
-                int maxConcurrentAreas = 0, int areaTargetCount = 0, bool areaSkipsMissedRounds = false)
+                int maxConcurrentAreas = 0, int areaTargetCount = 0, bool areaSkipsMissedRounds = false,
+                int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
+                int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f)
             {
+                BeamCount             = beamCount;
+                BeamLateralOffset     = beamLateralOffset;
+                BeamTickInterval      = beamTickInterval;
+                SweepZoneCount        = sweepZoneCount;
+                SweepIntervalSeconds  = sweepIntervalSeconds;
                 AreaDurationSeconds   = areaDurationSeconds;
                 AreaTickInterval      = areaTickInterval;
                 MaxConcurrentAreas    = maxConcurrentAreas;
@@ -527,7 +593,9 @@ namespace Shinshi.Data
                     value.AreaDurationSeconds, value.AreaTickInterval, value.MaxConcurrentAreas,
                     group: group, enhancedBaseWeight: enhancedBaseWeight,
                     projectileCount: value.ProjectileCount, projectileIntervalSeconds: value.ProjectileIntervalSeconds,
-                    areaTargetCount: value.AreaTargetCount, areaSkipsMissedRounds: value.AreaSkipsMissedRounds);
+                    areaTargetCount: value.AreaTargetCount, areaSkipsMissedRounds: value.AreaSkipsMissedRounds,
+                    sweepZoneCount: value.SweepZoneCount, sweepIntervalSeconds: value.SweepIntervalSeconds,
+                    beamCount: value.BeamCount, beamLateralOffset: value.BeamLateralOffset, beamTickInterval: value.BeamTickInterval);
             }
 
             return new PatternDefinition(id, WOLBAEK_ID, SECOND_PHASE, baseWeight,
@@ -838,6 +906,85 @@ namespace Shinshi.Data
             ValidateControlWindow(errors, field, pattern, requireTuned);
             ValidateProjectileSequence(errors, field, pattern);
             ValidateAreaTargets(errors, field, pattern);
+            ValidateSweep(errors, field, pattern);
+            ValidateBeam(errors, field, pattern);
+        }
+
+        // 빔은 선 형태여야 하고, 줄마다 폭과 좌우 거리와 피해 간격이 있어야 하며 간격은 유지 시간(ActiveSeconds) 안이어야 한다. 줄이 겹치면 가운데 간격이 없어지므로 막는다
+        private static void ValidateBeam(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireRange(errors, OWNER, field + ".BeamCount", pattern.RawBeamCount, 0, MAX_BEAMS);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".BeamLateralOffset", pattern.BeamLateralOffset);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".BeamTickInterval", pattern.BeamTickInterval);
+
+            if (pattern.RawBeamCount <= 0)
+            {
+                return;
+            }
+
+            if ((pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Line))
+            {
+                errors.Add($"{OWNER}.{field}.Shape: 빔은 선 형태여야 한다");
+            }
+
+            if (pattern.ActiveSeconds <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.ActiveSeconds: 빔 유지 시간이 필요하다");
+            }
+
+            if (pattern.BeamTickInterval <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.BeamTickInterval: 피해 간격이 필요하다");
+            }
+            else if (pattern.BeamTickInterval > (pattern.ActiveSeconds + SEQUENCE_EPSILON))
+            {
+                errors.Add($"{OWNER}.{field}.BeamTickInterval = {pattern.BeamTickInterval}: 유지 시간 {pattern.ActiveSeconds}초 이하여야 한다");
+            }
+
+            if ((pattern.RawBeamCount > 1) && (pattern.Shape != null)
+                && (pattern.Shape.Width > (pattern.BeamLateralOffset * BEAM_LATERAL_FACTOR)))
+            {
+                errors.Add($"{OWNER}.{field}.Shape.Width = {pattern.Shape.Width}: 줄 사이 거리 {pattern.BeamLateralOffset * BEAM_LATERAL_FACTOR}m를 넘으면 줄이 겹친다");
+            }
+
+            if (pattern.BeamLateralOffset <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.BeamLateralOffset: 좌우 거리가 필요하다");
+            }
+        }
+
+        // 연쇄 폭발은 부채꼴 형태여야 하고, 여러 구역이면 간격이 있어야 하며 실행 구간이 첫 구역부터 마지막 구역까지를 덮어야 마지막 폭발이 실행 밖으로 밀리지 않는다
+        private static void ValidateSweep(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireRange(errors, OWNER, field + ".SweepZoneCount", pattern.RawSweepZoneCount, 0, MAX_SWEEP_ZONES);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".SweepIntervalSeconds", pattern.SweepIntervalSeconds);
+
+            if (pattern.RawSweepZoneCount <= 0)
+            {
+                return;
+            }
+
+            if ((pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Fan))
+            {
+                errors.Add($"{OWNER}.{field}.Shape: 연쇄 폭발은 부채꼴 형태여야 한다");
+            }
+
+            if (pattern.RawSweepZoneCount == 1)
+            {
+                return;
+            }
+
+            if (pattern.SweepIntervalSeconds <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.SweepIntervalSeconds: 여러 구역이면 간격이 필요하다");
+                return;
+            }
+
+            float sequence = (pattern.RawSweepZoneCount - 1) * pattern.SweepIntervalSeconds;
+            if (pattern.ActiveSeconds < (sequence - SEQUENCE_EPSILON))
+            {
+                errors.Add($"{OWNER}.{field}.ActiveSeconds = {pattern.ActiveSeconds}: 첫 구역부터 마지막 구역까지 {sequence}초를 덮어야 한다");
+            }
         }
 
         // 여러 대상 장판은 동시 장판 상한이 한 시전의 설치 수보다 작지 않아야 한 번에 모두 설치할 수 있다

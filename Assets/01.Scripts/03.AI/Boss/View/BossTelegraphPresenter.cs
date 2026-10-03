@@ -32,6 +32,7 @@ namespace Shinshi.AI
         private const float  PROJECTILE_HEAD_LENGTH = 1.5f; // m, 투사체를 길쭉한 머리로 그릴 때의 길이, 판정 길이가 아니다
         private const float  PROJECTILE_DISSOLVE    = 0.25f; // 초, 소멸 연출 길이
         private const float  AREA_FADE             = 0.3f;  // 초, 장판이 사라질 때 옅어지는 시간
+        private const float  BEAM_FADE             = 0.3f;  // 초, 빔이 사라질 때 옅어지는 시간
 
         /****************************************
         *                Fields
@@ -70,19 +71,44 @@ namespace Shinshi.AI
             public double                   EndSeenAt;
         }
 
+        // 고정 빔 한 줄, 예고 표현(부채꼴, 직사각형)과 따로 산다. 한 시전의 빔들이 서로 덮어쓰거나 지우지 않도록 빔 번호로만 찾는다
+        private sealed class BeamEntry
+        {
+            public BossBeamTrack            Track;
+            public BeamGroundVFXController  Visual;
+            public bool                     EndSeen;
+            public double                   EndSeenAt;
+        }
+
+        [SerializeField] private BeamGroundVFXPool _beamPool;
         [SerializeField] private AreaGroundVFXPool _areaPool;
         [SerializeField] private SectorVFXPool _sectorPool;
         [SerializeField] private RectTelegraphVFXPool _rectPool;
+        [SerializeField] private BossSweepCueView _sweepCue; // 반월 연쇄 폭발의 여우불 이동, 비어 있으면 생략한다
 
         private readonly List<Entry>    _active       = new List<Entry>();
         private readonly List<ProjectileEntry> _projectiles = new List<ProjectileEntry>();
         private readonly List<AreaEntry> _areas       = new List<AreaEntry>();
+        private readonly List<BeamEntry> _beams       = new List<BeamEntry>();
+        private readonly HashSet<int>   _beamEndedIds   = new HashSet<int>();
+        private readonly Queue<int>     _beamEndedOrder = new Queue<int>();
+
+        // 서버 활성이 예고 시작보다 먼저 온 경우의 활성 시각, 시작이 오면 이어서 쓴다
+        private readonly Dictionary<int, double> _beamPendingActivations = new Dictionary<int, double>();
+        private readonly Queue<int>              _beamPendingOrder       = new Queue<int>();
+
+        // 서버 확정 없이 예고 대기 시간이 지나 지운 빔의 시작 값, 뒤늦게 활성이 오면 이 값으로 이어서 그린다
+        private readonly Dictionary<int, BossBeamStart> _beamExpiredStarts = new Dictionary<int, BossBeamStart>();
+        private readonly Queue<int>                     _beamExpiredOrder  = new Queue<int>();
+
         private readonly HashSet<int>   _areaEndedIds   = new HashSet<int>();
         private readonly Queue<int>     _areaEndedOrder = new Queue<int>();
         private readonly HashSet<int>   _projectileEndedIds   = new HashSet<int>();
         private readonly Queue<int>     _projectileEndedOrder = new Queue<int>();
         private readonly HashSet<int>   _endedIds     = new HashSet<int>();
         private readonly Queue<int>     _endedOrder   = new Queue<int>();
+        private readonly HashSet<int>   _cancelledGroupIds   = new HashSet<int>();
+        private readonly Queue<int>     _cancelledGroupOrder = new Queue<int>();
 
         private Func<double> _serverClock;
         private bool         _isServerBuild;
@@ -108,6 +134,12 @@ namespace Shinshi.AI
 
         /// <summary> 장판의 소멸이 확인될 때 알린다, 장판 번호와 이유. 시험과 진단용이다 </summary>
         public event Action<int, EBossAreaFate> AreaFateChanged;
+
+        /// <summary> 진행 중인 빔 수(예고 중과 활성, 옅어지는 중 포함) </summary>
+        public int BeamCount => _beams.Count;
+
+        /// <summary> 빔의 소멸이 확인될 때 알린다, 빔 번호와 이유. 시험과 진단용이다 </summary>
+        public event Action<int, EBossAreaFate> BeamFateChanged;
 
         /****************************************
         *              Unity Event
@@ -146,8 +178,16 @@ namespace Shinshi.AI
                 }
             }
 
+            for (int i = _beams.Count - 1; i >= 0; --i)
+            {
+                if (UpdateBeam(_beams[i], now))
+                {
+                    _beams.RemoveAt(i);
+                }
+            }
+
             // 진행 중인 표현이 없으면 갱신을 멈춘다
-            if ((_active.Count == 0) && (_projectiles.Count == 0) && (_areas.Count == 0))
+            if ((_active.Count == 0) && (_projectiles.Count == 0) && (_areas.Count == 0) && (_beams.Count == 0))
             {
                 enabled = false;
             }
@@ -174,6 +214,13 @@ namespace Shinshi.AI
         {
             if (_isServerBuild || IsKnown(start.CastId))
             {
+                return false;
+            }
+
+            // 묶음 전체가 이미 취소됐으면 늦게 온 예고가 되살아나지 않는다
+            if (_cancelledGroupIds.Contains(start.GroupId))
+            {
+                RememberEnded(start.CastId);
                 return false;
             }
 
@@ -635,8 +682,221 @@ namespace Shinshi.AI
         }
 
         /// <summary> 진행 중인 표현을 모두 즉시 지우고 풀에 돌려준다. 장면 전환이나 보스전 종료 때 부른다 </summary>
+        /// <summary> 반월 연쇄 폭발의 여우불 이동을 시작한다, 구역 예고와 별개이며 서버 시각 기준으로 늦게 받아도 이어서 그린다. 표현이 없으면 아무것도 하지 않는다 </summary>
+        public bool BeginSweepCue(in BossSweepStart start)
+        {
+            if (_isServerBuild || (_sweepCue == null))
+            {
+                return false;
+            }
+
+            return _sweepCue.Begin(in start, ReadServerTime);
+        }
+
+        /// <summary> 여우불 이동을 지운다, 다른 시전의 이동은 건드리지 않는다 </summary>
+        public bool ClearSweepCue(int castId)
+        {
+            return (_sweepCue != null) && _sweepCue.Clear(castId);
+        }
+
+        /// <summary> 같은 묶음(한 시전)의 아직 폭발하지 않은 예고를 모두 취소한다. 이미 폭발한 구역은 끝까지 가고 늦게 온 같은 묶음의 예고는 시작하지 못한다 </summary>
+        public bool CancelGroup(int groupId)
+        {
+            if (_isServerBuild)
+            {
+                return false;
+            }
+
+            RememberGroupCancelled(groupId);
+            bool any = false;
+            for (int i = _active.Count - 1; i >= 0; --i)
+            {
+                Entry entry = _active[i];
+                if ((entry.Cast.GroupId != groupId) || entry.Cast.HasExecuted)
+                {
+                    continue;
+                }
+
+                any |= Cancel(entry.Cast.CastId);
+            }
+
+            ClearSweepCue(groupId);
+            return any;
+        }
+
+        /// <summary> 빔 예고를 시작한다. 이미 있는 빔 번호나 끝난 번호면 무시한다. 활성이 예고 시작보다 먼저 와 있었으면 이어서 활성으로 그린다 </summary>
+        public bool BeginBeam(in BossBeamStart start)
+        {
+            int id = start.BeamId;
+            if (_isServerBuild || IsBeamKnown(id))
+            {
+                return false;
+            }
+
+            BossBeamTrack track = new BossBeamTrack(start);
+            if (_beamPendingActivations.TryGetValue(id, out double activateTime))
+            {
+                _beamPendingActivations.Remove(id);
+                track.TryActivate(activateTime);
+            }
+
+            return TryAddBeam(track);
+        }
+
+        /// <summary> 서버가 알린 빔 활성, 서버 확정이 있어야만 지속 빔으로 그린다. 예고가 없으면 활성 시각을 기억해 두었다가 예고가 오면 쓴다. 이미 활성했거나 끝난 빔이면 무시한다 </summary>
+        public bool ActivateBeam(int beamId, double activateServerTime)
+        {
+            if (_isServerBuild || _beamEndedIds.Contains(beamId))
+            {
+                return false;
+            }
+
+            if (TryFindBeam(beamId, out BeamEntry entry))
+            {
+                return entry.Track.TryActivate(activateServerTime);
+            }
+
+            // 서버 확정 없이 예고가 지나 지운 빔이 뒤늦게 활성되면 예고 때 받은 값으로 이어서 그린다
+            if (_beamExpiredStarts.TryGetValue(beamId, out BossBeamStart start))
+            {
+                _beamExpiredStarts.Remove(beamId);
+                BossBeamTrack revived = new BossBeamTrack(start);
+                revived.TryActivate(activateServerTime);
+                return TryAddBeam(revived);
+            }
+
+            if (_beamPendingActivations.ContainsKey(beamId))
+            {
+                return false;
+            }
+
+            _beamPendingActivations[beamId] = activateServerTime;
+            _beamPendingOrder.Enqueue(beamId);
+            while (_beamPendingOrder.Count > ENDED_HISTORY)
+            {
+                _beamPendingActivations.Remove(_beamPendingOrder.Dequeue());
+            }
+
+            return false;
+        }
+
+        /// <summary> 서버가 알린 빔 타격 회차, 활성 순간이 0회차다. 이미 표시한 회차나 활성 전이거나 끝난 빔이면 무시한다 </summary>
+        public bool TickBeam(int beamId, int hitIndex, double roundServerTime)
+        {
+            return TryFindBeam(beamId, out BeamEntry entry) && entry.Track.TryTick(hitIndex, roundServerTime);
+        }
+
+        /// <summary> 빔 소멸, Expired는 옅어지며 사라지고 Cancelled는 즉시 지운다. 모르는 번호면 나중에 늦게 오는 예고와 활성이 되살아나지 않게 기억해 둔다 </summary>
+        public bool EndBeam(int beamId, EBossAreaFate fate)
+        {
+            if (_isServerBuild)
+            {
+                return false;
+            }
+
+            if (fate == EBossAreaFate.Cancelled)
+            {
+                return CancelBeam(beamId);
+            }
+
+            if (!TryFindBeam(beamId, out BeamEntry entry))
+            {
+                RememberBeamEnded(beamId);
+                return false;
+            }
+
+            if (!entry.Track.TryEnd(fate))
+            {
+                return false;
+            }
+
+            BeamFateChanged?.Invoke(beamId, fate);
+            return true;
+        }
+
+        /// <summary> 빔 제거(활성 전 취소, 보스 사망, 페이즈 전환, 전투 종료), 표시는 바로 지운다. 다른 빔은 건드리지 않는다 </summary>
+        public bool CancelBeam(int beamId)
+        {
+            if (_isServerBuild)
+            {
+                return false;
+            }
+
+            if (!TryFindBeam(beamId, out BeamEntry entry))
+            {
+                RememberBeamEnded(beamId);
+                return false;
+            }
+
+            if (!entry.Track.TryCancel())
+            {
+                return false;
+            }
+
+            RemoveBeam(entry);
+            BeamFateChanged?.Invoke(beamId, EBossAreaFate.Cancelled);
+            return true;
+        }
+
+        /// <summary> 진행 중인 빔을 스냅샷으로 복원한다, 이미 끝났거나 소멸 연출까지 지난 것은 무시한다. 처음부터 다시 그리지 않고 서버 시각 기준으로 이어서 그린다 </summary>
+        public bool RestoreBeam(in BossBeamSnapshot snapshot)
+        {
+            int id = snapshot.Start.BeamId;
+            if (_isServerBuild || IsBeamKnown(id))
+            {
+                return false;
+            }
+
+            if (snapshot.Fate == EBossAreaFate.Cancelled)
+            {
+                RememberBeamEnded(id);
+                return false;
+            }
+
+            return TryAddBeam(BossBeamTrack.FromSnapshot(in snapshot));
+        }
+
+        /// <summary> 진행 중인 빔의 현재 상태, 복원에 넘길 값이다 </summary>
+        public bool TryGetBeamSnapshot(int beamId, out BossBeamSnapshot snapshot)
+        {
+            if (TryFindBeam(beamId, out BeamEntry entry))
+            {
+                snapshot = entry.Track.ToSnapshot();
+                return true;
+            }
+
+            snapshot = default;
+            return false;
+        }
+
+        /// <summary> 진행 중인 빔의 모델과 그리는 대상, 시험과 진단용이다. 풀이 비었으면 visual은 null이다 </summary>
+        public bool TryGetBeam(int beamId, out BossBeamTrack track, out BeamGroundVFXController visual)
+        {
+            if (TryFindBeam(beamId, out BeamEntry entry))
+            {
+                track  = entry.Track;
+                visual = entry.Visual;
+                return true;
+            }
+
+            track  = null;
+            visual = null;
+            return false;
+        }
+
         public void ClearAll()
         {
+            if (_sweepCue != null)
+            {
+                _sweepCue.Clear();
+            }
+
+            for (int i = _beams.Count - 1; i >= 0; --i)
+            {
+                _beams[i].Track.TryCancel();
+                RemoveBeam(_beams[i]);
+            }
+
             for (int i = _active.Count - 1; i >= 0; --i)
             {
                 Entry entry = _active[i];
@@ -895,6 +1155,20 @@ namespace Shinshi.AI
             return _endedIds.Contains(castId) || TryFind(castId, out Entry _);
         }
 
+        private void RememberGroupCancelled(int groupId)
+        {
+            if (!_cancelledGroupIds.Add(groupId))
+            {
+                return;
+            }
+
+            _cancelledGroupOrder.Enqueue(groupId);
+            while (_cancelledGroupOrder.Count > ENDED_HISTORY)
+            {
+                _cancelledGroupIds.Remove(_cancelledGroupOrder.Dequeue());
+            }
+        }
+
         private void RememberEnded(int castId)
         {
             if (!_endedIds.Add(castId))
@@ -1103,6 +1377,155 @@ namespace Shinshi.AI
             while (_areaEndedOrder.Count > ENDED_HISTORY)
             {
                 _areaEndedIds.Remove(_areaEndedOrder.Dequeue());
+            }
+        }
+
+        // 빔을 목록에 더한다. 이미 끝난 빔(서버 확정 없이 예고 대기 시간이 지났거나 소멸 연출까지 지난 것)은 그리지 않는다
+        private bool TryAddBeam(BossBeamTrack track)
+        {
+            double now = ReadServerTime();
+            bool isGone = track.IsActivated
+                ? (now >= (track.EndServerTime + BEAM_FADE))
+                : (now >= (track.Start.TelegraphEndServerTime + CONFIRM_GRACE_SECONDS));
+
+            if (track.IsEnded || isGone)
+            {
+                if (track.IsActivated || track.IsEnded)
+                {
+                    RememberBeamEnded(track.BeamId);
+                }
+                else
+                {
+                    RememberExpiredBeam(track.Start);
+                }
+
+                return false;
+            }
+
+            BeamEntry entry = new BeamEntry { Track = track };
+            if (_beamPool != null)
+            {
+                entry.Visual = _beamPool.Acquire();
+                if (entry.Visual != null)
+                {
+                    BossBeamShape shape = track.Start.Shape;
+                    entry.Visual.Show(shape.ArenaCenter, shape.ArenaRadius, shape.Direction, shape.LateralOffset, shape.Width);
+                }
+            }
+
+            _beams.Add(entry);
+            enabled = true;
+            return true;
+        }
+
+        // 빔 한 프레임, 옅어지는 연출까지 끝났으면 참이다. 서버 활성 없이 예고 대기 시간이 지나면 지우고, 지속 시간이 지나면 서버 알림이 없어도 옅어지며 사라진다
+        private bool UpdateBeam(BeamEntry entry, double now)
+        {
+            BossBeamTrack track = entry.Track;
+
+            if ((!track.IsActivated) && (!track.IsEnded)
+                && (now >= (track.Start.TelegraphEndServerTime + CONFIRM_GRACE_SECONDS)))
+            {
+                ReleaseBeamVisual(entry);
+                RememberExpiredBeam(track.Start);
+                return true;
+            }
+
+            if ((!entry.EndSeen) && (track.IsEnded || (track.IsActivated && (now >= track.EndServerTime))))
+            {
+                entry.EndSeen   = true;
+                entry.EndSeenAt = now;
+            }
+
+            float fadeAge = entry.EndSeen ? Mathf.Max(0f, (float)(now - entry.EndSeenAt)) : 0f;
+            float fade    = entry.EndSeen ? (1f - Mathf.Clamp01(fadeAge / BEAM_FADE)) : 1f;
+            bool  isDone  = entry.EndSeen && (fadeAge >= BEAM_FADE);
+
+            if (entry.Visual != null)
+            {
+                float progress = track.IsActivated ? track.GetLifeRatio(now) : track.GetTelegraphRatio(now);
+                entry.Visual.Render(track.IsActivated, progress, track.GetPulseAge(now), fade);
+            }
+
+            if (isDone)
+            {
+                RemoveBeam(entry, false);
+            }
+
+            return isDone;
+        }
+
+        private void ReleaseBeamVisual(BeamEntry entry)
+        {
+            if ((entry.Visual != null) && (_beamPool != null))
+            {
+                _beamPool.Release(entry.Visual);
+            }
+
+            entry.Visual = null;
+        }
+
+        private void RemoveBeam(BeamEntry entry, bool removeFromList = true)
+        {
+            ReleaseBeamVisual(entry);
+            if (removeFromList)
+            {
+                _beams.Remove(entry);
+            }
+
+            RememberBeamEnded(entry.Track.BeamId);
+        }
+
+        private bool TryFindBeam(int beamId, out BeamEntry entry)
+        {
+            for (int i = 0; i < _beams.Count; ++i)
+            {
+                if (_beams[i].Track.BeamId == beamId)
+                {
+                    entry = _beams[i];
+                    return true;
+                }
+            }
+
+            entry = null;
+            return false;
+        }
+
+        private bool IsBeamKnown(int beamId)
+        {
+            return _beamEndedIds.Contains(beamId) || _beamExpiredStarts.ContainsKey(beamId) || TryFindBeam(beamId, out BeamEntry _);
+        }
+
+        // 끝난 빔 번호를 기억한다. 기다리던 활성과 서버 확정 없이 지운 예고도 함께 버려 되살아나지 않게 한다
+        private void RememberBeamEnded(int beamId)
+        {
+            _beamPendingActivations.Remove(beamId);
+            _beamExpiredStarts.Remove(beamId);
+
+            if (!_beamEndedIds.Add(beamId))
+            {
+                return;
+            }
+
+            _beamEndedOrder.Enqueue(beamId);
+            while (_beamEndedOrder.Count > ENDED_HISTORY)
+            {
+                _beamEndedIds.Remove(_beamEndedOrder.Dequeue());
+            }
+        }
+
+        private void RememberExpiredBeam(in BossBeamStart start)
+        {
+            if (_beamExpiredStarts.ContainsKey(start.BeamId))
+            {
+                return;
+            }
+
+            _beamExpiredStarts[start.BeamId] = start;
+            _beamExpiredOrder.Enqueue(start.BeamId);
+            while (_beamExpiredOrder.Count > ENDED_HISTORY)
+            {
+                _beamExpiredStarts.Remove(_beamExpiredOrder.Dequeue());
             }
         }
 

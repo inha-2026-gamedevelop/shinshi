@@ -61,6 +61,7 @@ namespace Shinshi.AI
         private BossBrain               _brain;
         private BossProjectileManager   _projectiles;
         private BossAreaManager         _areas;
+        private BossBeamManager         _beams;
         private BossBarrierDirector     _director;
         private BossBarrierLocalBridge  _bridge;
         private BossBarrierView         _barrierView;
@@ -269,6 +270,10 @@ namespace Shinshi.AI
             var patternBridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock, () => _brain.ActivePatternId);
             _projectiles = new BossProjectileManager(_registry, _body, patternBridge);
             _areas       = new BossAreaManager(_registry, patternBridge);
+            _beams       = new BossBeamManager(_registry, patternBridge);
+
+            // 시험 구동기는 전장 중심과 반지름을 직접 알고 있어 고정 전장 입력으로 넘긴다. 실제 서버 세션의 전장 정보 연결은 서버 연결 담당이 한다
+            var arena = new BossFixedArena(center, arenaRadius);
 
             var dependencies = new BossBrainDependencies
             {
@@ -278,8 +283,9 @@ namespace Shinshi.AI
                 Targets  = _registry,
                 Damage   = _resolver,
                 Patterns = new WolbaekPatternFactory(_referenceHealth, patternBridge, patternBridge, patternBridge,
-                    patternBridge, _body, _projectiles, patternBridge, _areas, patternBridge),
-                Effects  = new BossEffectComposite(_projectiles, _areas),
+                    patternBridge, _body, _projectiles, patternBridge, _areas, patternBridge, patternBridge, _beams, arena,
+                    patternBridge),
+                Effects  = new BossEffectComposite(_projectiles, _areas, _beams),
                 Control  = _body,
                 Random   = new SeededBossRandom(Environment.TickCount)
             };

@@ -393,7 +393,7 @@ namespace Shinshi.Tests
         *        Tuning And Readiness Data
         ****************************************/
 
-        // 1페이즈 시작 검사는 2페이즈 데이터가 들어와도 같은 기준이다. 공격을 구현하고 수치를 넣은 P04, P05, P06만 준비됐고 나머지 셋은 수치가 비어 준비되지 않은 것으로 남는다
+        // 1페이즈 시작 검사는 2페이즈 데이터가 들어와도 같은 기준이다. 공격을 구현하고 수치를 넣은 P03~P06만 준비됐고 나머지 둘은 수치가 비어 준비되지 않은 것으로 남는다
         [Test]
         public void Asset_PhaseOneStaysTuned_AndOnlyImplementedPhaseTwoPatternsAreReady()
         {
@@ -403,7 +403,8 @@ namespace Shinshi.Tests
             Assert.IsFalse(catalog.IsPhaseTuned(WOLBAEK_ID, 2));
             for (int i = 0; i < Ids.Length; ++i)
             {
-                Assert.AreEqual((i >= 3), catalog.IsPatternReady(WOLBAEK_ID, AssetPattern(catalog, i)), Ids[i]);
+                // P01만 아직 수치가 비어 있다. P02(빔)부터 P06까지는 기획이 정한 실행 수치가 들어 있다
+                Assert.AreEqual((i >= 1), catalog.IsPatternReady(WOLBAEK_ID, AssetPattern(catalog, i)), Ids[i]);
             }
 
             List<PatternDefinition> first = new List<PatternDefinition>();
@@ -435,7 +436,7 @@ namespace Shinshi.Tests
             for (int i = 0; i < Ids.Length; ++i)
             {
                 PatternDefinition pattern = AssetPattern(LoadCatalog(), i);
-                bool implemented = i >= 3;
+                bool implemented = i >= 2;
                 Assert.AreEqual(implemented, factory.CanCreate(pattern), Ids[i]);
                 Assert.AreEqual(implemented, factory.Create(pattern) != null, Ids[i]);
             }

@@ -71,7 +71,21 @@ namespace Shinshi.AI
         private const float  PROJ_WALL_PATH    = 12f;
         private const float  PROJ_HIT_DISTANCE = 14f;
         private const float  PROJ_CANCEL_FLIGHT = 0.8f;
-        private const int    LOOP_STEP_COUNT   = 21;
+        private const int    LOOP_STEP_COUNT   = 26;
+        private const int    BEAM_FIRST_LOOP_STEP = 24; // 자동 반복에서 빔 시나리오가 시작하는 단계
+
+        // 2페이즈 P03 반월 연쇄 폭발, 예고 1.2초 뒤 선택한 쪽 반원의 45도 구역 4개가 0.25초 간격으로 터진다. 구역마다 서버 폭발 확정이 와야 터진다
+        private const string SWEEP_ID              = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P03_ID;
+        private const float  SWEEP_TELEGRAPH       = 1.2f;
+        private const float  SWEEP_INTERVAL        = 0.25f;
+        private const int    SWEEP_ZONES           = 4;
+        private const float  SWEEP_RADIUS          = 6f;
+        private const float  SWEEP_ARC             = 180f;
+        private const float  SWEEP_RECOVERY        = 0.8f;
+        private const float  SWEEP_CANCEL_AFTER    = 0.05f; // 둘째 구역 폭발 뒤 중간 취소가 오는 시간
+        private const float  SWEEP_LATE_SECONDS    = 0.6f;  // 늦은 시작이 이미 흐른 시간
+        private const float  SWEEP_RESTORE_SECONDS = 0.3f;  // 중간 복원이 예고 종료 뒤 이미 흐른 시간
+        private const float  SWEEP_DUPLICATE_DELAY = 0.05f; // 중복 발동 알림이 늦게 다시 오는 시간
 
         // 2페이즈 P04 지정 장판, 한 시전이 장판 두 개를 동시에 설치한다. 1페이즈 P05와 같은 예고와 장판 값을 쓴다
         private const string PHASE_TWO_AREA_ID    = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID;
@@ -100,6 +114,20 @@ namespace Shinshi.AI
         private const float  AREA_CANCEL_AT    = 2.5f; // 활성 뒤 이 시점에 사망으로 제거된다
         private const float  AREA_LATE_SECONDS = 2.5f;
         private const int    AREA_RESTORE_TICK = 3;
+
+        // 2페이즈 P02 필드 절단 빔, 전장 중심에서 좌우 5m에 폭 2m 평행 빔 두 줄이 예고 1.5초 뒤 서버 활성 확정으로 4초 동안 유지된다
+        private const float  BEAM_TELEGRAPH      = 1.5f;
+        private const float  BEAM_DURATION       = 4f;
+        private const float  BEAM_TICK           = 0.5f;
+        private const float  BEAM_OFFSET         = 5f;
+        private const float  BEAM_WIDTH          = 2f;
+        private const float  BEAM_ARENA_RADIUS   = 18f;  // 샘플이 가정한 전장 반지름, 실제 값은 서버가 알린다
+        private const int    BEAM_COUNT          = 2;
+        private const float  BEAM_RECOVERY       = 0.8f;
+        private const float  BEAM_CANCEL_AT      = 1.7f; // 활성 뒤 이 시점에 사망으로 제거된다
+        private const float  BEAM_LATE_SECONDS   = 1.0f; // 둘째 빔의 활성 알림이 늦게 도착하는 시간
+        private const int    BEAM_RESTORE_TICK   = 3;    // 복원 샘플에서 서버가 마지막으로 알린 타격 회차
+        private const float  BEAM_LOOP_SETTLE    = 6.5f; // 자동 반복에서 빔 시나리오가 끝나기를 기다리는 시간
 
         private const float  SAMPLE_AIM_TARGET_DEGREES = 60f; // 샘플이 가정한 타깃 쪽 각도, 추적 한도까지만 돈다
         private const float  CANCEL_PHASE_AT   = 0.7f;
@@ -423,6 +451,281 @@ namespace Shinshi.AI
 
                 ScheduleAreaTicks(areaId, activate, late ? Mathf.CeilToInt(AREA_LATE_SECONDS / AREA_INTERVAL) : 0, false);
                 Schedule(activate + AREA_DURATION, () => _presenter.EndArea(areaId, EBossAreaFate.Expired));
+            }
+        }
+
+        /// <summary> 2페이즈 P02 평행 빔 두 줄, 예고 중에는 고정된 두 줄이 보이고 서버 활성 확정이 오면 지속 빔이 되어 4초 뒤 사라진다. 가운데와 바깥쪽이 안전 구역이다 </summary>
+        [ContextMenu("Play Phase2 P02 Beams")]
+        public void PlayPhaseTwoBeams()
+        {
+            PlayBeams(EBeamMode.Normal);
+        }
+
+        /// <summary> 2페이즈 P02 예고 중 사망이나 페이즈 전환이나 전투 종료로 취소된다, 활성 전이라 지속 빔은 생기지 않는다 </summary>
+        [ContextMenu("Play Phase2 P02 Beams Telegraph Cancelled")]
+        public void PlayPhaseTwoBeamsTelegraphCancelled()
+        {
+            PlayBeams(EBeamMode.TelegraphCancelled);
+        }
+
+        /// <summary> 2페이즈 P02 활성 중 사망이나 전투 종료로 두 빔이 즉시 제거된다 </summary>
+        [ContextMenu("Play Phase2 P02 Beams Active Cancelled")]
+        public void PlayPhaseTwoBeamsActiveCancelled()
+        {
+            PlayBeams(EBeamMode.ActiveCancelled);
+        }
+
+        /// <summary> 2페이즈 P02 둘째 빔의 활성 알림만 1초 늦게 도착한다, 첫 빔은 영향 없이 진행하고 둘째 빔은 활성 시각 기준으로 이어서 그린다 </summary>
+        [ContextMenu("Play Phase2 P02 Beams Late Activation")]
+        public void PlayPhaseTwoBeamsLateActivation()
+        {
+            PlayBeams(EBeamMode.LateSecondActivation);
+        }
+
+        /// <summary> 2페이즈 P02 두 빔이 활성 중일 때 스냅샷 둘로 복원한 접속, 이미 표시한 타격 회차를 다시 표시하지 않고 남은 수명부터 이어서 그린다 </summary>
+        [ContextMenu("Play Phase2 P02 Beams Restore")]
+        public void PlayPhaseTwoBeamsRestore()
+        {
+            double now = ReadClock();
+            double activate = now - (BEAM_RESTORE_TICK * (double)BEAM_TICK) - 0.2;
+            int castId = NextCastId();
+
+            for (int i = 0; i < BEAM_COUNT; ++i)
+            {
+                int beamId = NextCastId();
+                BossBeamShape shape = BossBeamGeometry.Place(transform.position, BEAM_ARENA_RADIUS, transform.forward, i, BEAM_COUNT,
+                    BEAM_OFFSET, BEAM_WIDTH);
+                BossBeamSnapshot snapshot = new BossBeamSnapshot
+                {
+                    Start              = new BossBeamStart(SAMPLE_BOSS_ID, beamId, castId, in shape, activate - BEAM_TELEGRAPH,
+                        BEAM_TELEGRAPH, BEAM_DURATION, BEAM_TICK),
+                    IsActivated        = true,
+                    ActivateServerTime = activate,
+                    Fate               = EBossAreaFate.Active,
+                    LastTickIndex      = BEAM_RESTORE_TICK,
+                    LastTickServerTime = activate + (BEAM_RESTORE_TICK * (double)BEAM_TICK)
+                };
+
+                _presenter.RestoreBeam(in snapshot);
+                ScheduleBeamTicks(beamId, activate, BEAM_RESTORE_TICK + 1, false);
+                Schedule(activate + BEAM_DURATION, () => _presenter.EndBeam(beamId, EBossAreaFate.Expired));
+            }
+        }
+
+        private enum EBeamMode
+        {
+            Normal,
+            TelegraphCancelled,
+            ActiveCancelled,
+            LateSecondActivation
+        }
+
+        // 한 시전이 평행 빔을 한 줄씩 동시에 설치한다. 빔마다 빔 번호가 있고 시전 번호는 묶음이다
+        // 클라이언트가 빔을 스스로 만들지 않고 서버 예고 알림마다 한 줄, 서버 활성 알림마다 한 줄이 지속 빔이 된다
+        private void PlayBeams(EBeamMode mode)
+        {
+            double start = ReadClock();
+            int castId = NextCastId();
+            double activate = start + BEAM_TELEGRAPH;
+
+            for (int i = 0; i < BEAM_COUNT; ++i)
+            {
+                int beamId = NextCastId();
+                BossBeamShape shape = BossBeamGeometry.Place(transform.position, BEAM_ARENA_RADIUS, transform.forward, i, BEAM_COUNT,
+                    BEAM_OFFSET, BEAM_WIDTH);
+                BossBeamStart beam = new BossBeamStart(SAMPLE_BOSS_ID, beamId, castId, in shape, start, BEAM_TELEGRAPH, BEAM_DURATION,
+                    BEAM_TICK);
+                _presenter.BeginBeam(in beam);
+
+                if (mode == EBeamMode.TelegraphCancelled)
+                {
+                    Schedule(start + (BEAM_TELEGRAPH * 0.6), () => _presenter.CancelBeam(beamId));
+                    continue;
+                }
+
+                bool late = (mode == EBeamMode.LateSecondActivation) && (i == 1);
+                Schedule(late ? (activate + BEAM_LATE_SECONDS) : activate, () => _presenter.ActivateBeam(beamId, activate));
+
+                if (mode == EBeamMode.ActiveCancelled)
+                {
+                    ScheduleBeamTicks(beamId, activate, 0, true);
+                    Schedule(activate + BEAM_CANCEL_AT, () => _presenter.CancelBeam(beamId));
+                    continue;
+                }
+
+                ScheduleBeamTicks(beamId, activate, late ? Mathf.CeilToInt(BEAM_LATE_SECONDS / BEAM_TICK) : 0, false);
+                Schedule(activate + BEAM_DURATION, () => _presenter.EndBeam(beamId, EBossAreaFate.Expired));
+            }
+        }
+
+        // 활성 시각 기준 firstIndex 회차부터 서버 타격 알림을 보낸다, 이미 지난 회차는 보내지 않는다
+        private void ScheduleBeamTicks(int beamId, double activate, int firstIndex, bool onlyBeforeCancel)
+        {
+            int count = Mathf.CeilToInt(BEAM_DURATION / BEAM_TICK);
+            double now = ReadClock();
+            for (int i = firstIndex; i < count; ++i)
+            {
+                int index = i;
+                double at = activate + (index * (double)BEAM_TICK);
+                if (onlyBeforeCancel && ((index * BEAM_TICK) >= BEAM_CANCEL_AT))
+                {
+                    break;
+                }
+
+                if (at < now)
+                {
+                    continue;
+                }
+
+                Schedule(at, () => _presenter.TickBeam(beamId, index, at));
+            }
+        }
+
+        /// <summary> 2페이즈 P03 반월 연쇄 폭발, 서버가 오른쪽을 고른 경우 정면에서 오른쪽 반원 4구역이 차례로 터진다 </summary>
+        [ContextMenu("Play Phase2 P03 Sweep Right")]
+        public void PlayPhaseTwoSweepRight()
+        {
+            PlaySweep(true, ESweepMode.Normal);
+        }
+
+        /// <summary> 2페이즈 P03 서버가 왼쪽을 고른 경우, 같은 순서를 반대 방향으로 진행한다 </summary>
+        [ContextMenu("Play Phase2 P03 Sweep Left")]
+        public void PlayPhaseTwoSweepLeft()
+        {
+            PlaySweep(false, ESweepMode.Normal);
+        }
+
+        /// <summary> 2페이즈 P03 둘째 구역 폭발 직후 사망이나 전투 종료로 취소된다, 남은 구역과 여우불이 폭발 없이 사라진다 </summary>
+        [ContextMenu("Play Phase2 P03 Sweep Cancelled")]
+        public void PlayPhaseTwoSweepCancelled()
+        {
+            PlaySweep(true, ESweepMode.Cancelled);
+        }
+
+        /// <summary> 2페이즈 P03 시작 알림이 0.6초 늦게 도착한다, 서버 시각 기준으로 이어서 그리고 이미 지난 폭발은 서버 확정이 오는 대로 처리한다 </summary>
+        [ContextMenu("Play Phase2 P03 Sweep Late Start")]
+        public void PlayPhaseTwoSweepLateStart()
+        {
+            PlaySweep(false, ESweepMode.LateStart);
+        }
+
+        /// <summary> 2페이즈 P03 시작과 구역 폭발 알림이 중복해서 온다, 다시 시작하거나 다시 터지지 않아야 한다 </summary>
+        [ContextMenu("Play Phase2 P03 Sweep Duplicate")]
+        public void PlayPhaseTwoSweepDuplicate()
+        {
+            PlaySweep(true, ESweepMode.Duplicate);
+        }
+
+        /// <summary> 2페이즈 P03 첫 두 구역이 폭발한 뒤 스냅샷 넷으로 복원한 접속, 폭발한 구역은 이어서 재생하고 남은 구역은 서버 확정을 기다린다 </summary>
+        [ContextMenu("Play Phase2 P03 Sweep Restore")]
+        public void PlayPhaseTwoSweepRestore()
+        {
+            double now = ReadClock();
+            double start = now - SWEEP_TELEGRAPH - SWEEP_RESTORE_SECONDS;
+            int castId = NextCastId();
+            Vector3 origin = transform.position;
+            Vector3 baseDirection = transform.forward;
+            float zoneArc = SWEEP_ARC / SWEEP_ZONES;
+
+            BossSweepStart cue = new BossSweepStart(SAMPLE_BOSS_ID, castId, origin, baseDirection, true, SWEEP_RADIUS, SWEEP_ARC,
+                SWEEP_TELEGRAPH, (SWEEP_ZONES - 1) * SWEEP_INTERVAL, start);
+            _presenter.BeginSweepCue(in cue);
+
+            for (int i = 0; i < SWEEP_ZONES; ++i)
+            {
+                int zoneId = NextCastId();
+                float seconds = SWEEP_TELEGRAPH + (i * SWEEP_INTERVAL);
+                double blastAt = start + seconds;
+                Vector3 direction = Quaternion.AngleAxis(zoneArc * (i + 0.5f), Vector3.up) * baseDirection;
+                bool hasBlasted = blastAt <= now;
+
+                BossTelegraphSnapshot snapshot = new BossTelegraphSnapshot
+                {
+                    Start             = BossTelegraphStart.Fan(SAMPLE_BOSS_ID, zoneId, SWEEP_ID, origin, direction, SWEEP_RADIUS,
+                        zoneArc, start, seconds, castId),
+                    Direction         = direction,
+                    Length            = SWEEP_RADIUS,
+                    IsDirectionLocked = true,
+                    Phase             = hasBlasted ? EBossTelegraphPhase.Execute : EBossTelegraphPhase.Telegraph,
+                    ExecuteServerTime = hasBlasted ? blastAt : 0.0,
+                    DashStoppedDistance = -1f
+                };
+                _presenter.Restore(in snapshot);
+
+                if (!hasBlasted)
+                {
+                    int id = zoneId;
+                    Schedule(blastAt, () => _presenter.Strike(id, blastAt));
+                }
+
+                ScheduleFinish(zoneId, blastAt, SWEEP_RECOVERY);
+            }
+        }
+
+        private enum ESweepMode
+        {
+            Normal,
+            Cancelled,
+            LateStart,
+            Duplicate
+        }
+
+        // 예고 시작 한 번과 구역 네 개의 부채꼴 예고, 서버 구역 폭발 확정을 알림 순서대로 흘린다. 클라이언트가 좌우를 정하거나 타깃을 따라가지 않고
+        // 구역마다 폭발 확정이 와야 터진다. 구역 번호가 표현의 키이고 시전 번호는 묶음이다
+        private void PlaySweep(bool isRight, ESweepMode mode)
+        {
+            double start = ReadClock() - ((mode == ESweepMode.LateStart) ? SWEEP_LATE_SECONDS : 0f);
+            int castId = NextCastId();
+            Vector3 origin = transform.position;
+            Vector3 baseDirection = transform.forward;
+            float zoneArc = SWEEP_ARC / SWEEP_ZONES;
+            float side = isRight ? 1f : -1f;
+
+            BossSweepStart cue = new BossSweepStart(SAMPLE_BOSS_ID, castId, origin, baseDirection, isRight, SWEEP_RADIUS, SWEEP_ARC,
+                SWEEP_TELEGRAPH, (SWEEP_ZONES - 1) * SWEEP_INTERVAL, start);
+            _presenter.BeginSweepCue(in cue);
+            if (mode == ESweepMode.Duplicate)
+            {
+                _presenter.BeginSweepCue(in cue);
+            }
+
+            int zones = SWEEP_ZONES;
+            for (int i = 0; i < zones; ++i)
+            {
+                int zoneId = NextCastId();
+                float seconds = SWEEP_TELEGRAPH + (i * SWEEP_INTERVAL);
+                double blastAt = start + seconds;
+                Vector3 direction = Quaternion.AngleAxis(side * zoneArc * (i + 0.5f), Vector3.up) * baseDirection;
+
+                BossTelegraphStart zone = BossTelegraphStart.Fan(SAMPLE_BOSS_ID, zoneId, SWEEP_ID, origin, direction, SWEEP_RADIUS,
+                    zoneArc, start, seconds, castId);
+                _presenter.BeginTelegraph(in zone);
+                if (mode == ESweepMode.Duplicate)
+                {
+                    _presenter.BeginTelegraph(in zone);
+                }
+
+                // 중간 취소는 둘째 구역까지만 확정이 온다
+                if ((mode == ESweepMode.Cancelled) && (i > 1))
+                {
+                    continue;
+                }
+
+                int id = zoneId;
+                double at = blastAt;
+                Schedule(at, () => _presenter.Strike(id, at));
+                if (mode == ESweepMode.Duplicate)
+                {
+                    Schedule(at + SWEEP_DUPLICATE_DELAY, () => _presenter.Strike(id, at));
+                }
+
+                ScheduleFinish(zoneId, blastAt, SWEEP_RECOVERY);
+            }
+
+            if (mode == ESweepMode.Cancelled)
+            {
+                double cancelAt = start + SWEEP_TELEGRAPH + SWEEP_INTERVAL + SWEEP_CANCEL_AFTER;
+                Schedule(cancelAt, () => _presenter.CancelGroup(castId));
             }
         }
 
@@ -938,11 +1241,17 @@ namespace Shinshi.AI
                 case 17: PlayPhaseTwoVolleyCancelled(); break;
                 case 18: PlayPhaseTwoAreas(); break;
                 case 19: PlayPhaseTwoAreaOneEnds(); break;
-                default: PlayPhaseTwoAreasCancelled(); break;
+                case 20: PlayPhaseTwoAreasCancelled(); break;
+                case 21: PlayPhaseTwoSweepRight(); break;
+                case 22: PlayPhaseTwoSweepLeft(); break;
+                case 23: PlayPhaseTwoSweepCancelled(); break;
+                case 24: PlayPhaseTwoBeams(); break;
+                default: PlayPhaseTwoBeamsActiveCancelled(); break;
             }
 
+            bool isBeamStep = (_loopStep % LOOP_STEP_COUNT) >= BEAM_FIRST_LOOP_STEP;
             ++_loopStep;
-            double settle = ReadClock() + 4.5;
+            double settle = ReadClock() + (isBeamStep ? BEAM_LOOP_SETTLE : 4.5);
             Schedule(settle, () =>
             {
                 _loopNextAt = ReadClock() + _loopGap;

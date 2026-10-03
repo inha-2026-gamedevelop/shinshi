@@ -646,7 +646,8 @@ namespace Shinshi.Tests
                     Vitals   = Vitals,
                     Targets  = Query,
                     Damage   = Damage,
-                    Patterns = new WolbaekPatternFactory(HREF, projectiles: Projectiles, projectileListener: Listener),
+                    Patterns = new ExcludingPatternFactory(new WolbaekPatternFactory(HREF, projectiles: Projectiles, projectileListener: Listener),
+                        BossPatternCatalogSO.WOLBAEK_P2_P03_ID),
                     Effects  = Projectiles,
                     Control  = new FakeControlSource(),
                     Random   = Random
@@ -745,7 +746,9 @@ namespace Shinshi.Tests
             r.Brain = new BossBrain(WOLBAEK_ID, new BossBrainDependencies
             {
                 Catalog = new BossPatternCatalogSource(LoadCatalog()), Self = r.Self, Vitals = r.Vitals, Targets = r.Query,
-                Damage = r.Damage, Patterns = new WolbaekPatternFactory(HREF, projectiles: r.Projectiles, projectileListener: r.Listener),
+                Damage = r.Damage,
+                Patterns = new ExcludingPatternFactory(new WolbaekPatternFactory(HREF, projectiles: r.Projectiles, projectileListener: r.Listener),
+                    BossPatternCatalogSO.WOLBAEK_P2_P03_ID),
                 Effects = r.Projectiles, Control = new FakeControlSource(), Random = r.Random, DeathPolicy = death
             });
             r.TransitionAndHandoff();

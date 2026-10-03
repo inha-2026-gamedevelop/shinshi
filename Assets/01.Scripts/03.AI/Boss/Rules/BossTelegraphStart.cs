@@ -100,6 +100,14 @@ namespace Shinshi.AI
                 radius, 0f, arcAngle, startServerTime, telegraphSeconds);
         }
 
+        /// <summary> 한 시전이 부채꼴 예고를 구역마다 하나씩 여러 개 시작하는 경우, castId는 예고 하나의 번호(구역 번호)이고 groupId는 시전 번호다 </summary>
+        public static BossTelegraphStart Fan(int bossId, int castId, string patternId, Vector3 origin, Vector3 direction,
+            float radius, float arcAngle, double startServerTime, float telegraphSeconds, int groupId)
+        {
+            return new BossTelegraphStart(bossId, castId, groupId, patternId, EBossTelegraphShape.Fan, origin, direction,
+                radius, 0f, arcAngle, startServerTime, telegraphSeconds);
+        }
+
         /// <summary> P03 원형, 방향이 없어 앞쪽을 기본으로 둔다 </summary>
         public static BossTelegraphStart Circle(int bossId, int castId, string patternId, Vector3 center, float radius,
             double startServerTime, float telegraphSeconds)
