@@ -89,6 +89,16 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Constructor_NonBarrierBoss_HasNoBarrier()
+        {
+            BossServer boss = CreateBoss();
+
+            Assert.IsFalse(boss.HasBarrier, "결계 전개는 월백만 쓴다");
+            Assert.AreEqual(EBossBarrierState.Idle, boss.BarrierState);
+            Assert.IsFalse(boss.TryGetBarrierSnapshot(out BossBarrierStart _));
+        }
+
+        [Test]
         public void Begin_OpensCombatAndDropsInvulnerability()
         {
             BossServer boss = CreateBoss();
@@ -623,6 +633,78 @@ namespace Shinshi.Tests
             public void OnAreaEnded(int areaId, EBossAreaFate fate)
             {
                 LastAreaFate = fate;
+            }
+
+            public void OnSweepStarted(in BossSweepStart start)
+            {
+            }
+
+            public void OnSweepZoneScheduled(in BossTelegraphStart zone)
+            {
+            }
+
+            public void OnSweepZoneBlasted(int zoneId, double blastServerTime)
+            {
+            }
+
+            public void OnSweepCancelled(int castId)
+            {
+            }
+
+            public void OnBeamTelegraphStarted(in BossBeamStart start)
+            {
+            }
+
+            public void OnBeamCancelled(int beamId)
+            {
+            }
+
+            public void OnBeamActivated(int beamId, double activateServerTime)
+            {
+            }
+
+            public void OnBeamTicked(int beamId, int hitIndex, double roundServerTime)
+            {
+            }
+
+            public void OnBeamEnded(int beamId, EBossAreaFate fate)
+            {
+            }
+
+            public void OnStarTelegraphStarted(in BossStarStart start)
+            {
+            }
+
+            public void OnStarCancelled(int starId)
+            {
+            }
+
+            public void OnStarActivated(int starId, double activateServerTime)
+            {
+            }
+
+            public void OnStarTicked(int starId, int hitIndex, double roundServerTime)
+            {
+            }
+
+            public void OnStarEnded(int starId, EBossAreaFate fate)
+            {
+            }
+
+            public void OnBarrierStarted(in BossBarrierStart start)
+            {
+            }
+
+            public void OnBarrierActivated(int barrierId, double activateServerTime)
+            {
+            }
+
+            public void OnBarrierCompleted(int barrierId, double completeServerTime)
+            {
+            }
+
+            public void OnBarrierCleared(int barrierId)
+            {
             }
         }
     }

@@ -8,7 +8,8 @@ using UnityEngine;
 using Shinshi.AI;
 using Shinshi.Common;
 
-using BossDefinition = Shinshi.Data.BossPatternCatalogSO.BossDefinition;
+using BossDefinition    = Shinshi.Data.BossPatternCatalogSO.BossDefinition;
+using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.Combat
 {
@@ -21,17 +22,22 @@ namespace Shinshi.Combat
     // 받은 속박은 한 칸에 담고 Tick 끝에 비운다. 두뇌는 한 틱에 한 건만 꺼내고 페이즈 전환 틱에는 꺼내지 않으므로,
     // 비우지 않으면 지난 틱의 속박이 다음 패턴의 허용 구간에서 뒤늦게 적용된다.
     //
-    // 월백 여섯 패턴의 창구를 모두 이 몸체가 맡는다. 돌진은 이동 창구(Move, GetClearDistance)로 몸체를 옮기고, 투사체와 장판은
-    // 이 몸체가 만든 지속물 관리자 둘을 팩토리와 수명 관리(Effects)에 같은 객체로 넘긴다. 지속물의 Tick은 BossCombat이 부르고
+    // 월백 1, 2페이즈 패턴의 창구를 모두 이 몸체가 맡는다. 돌진은 이동 창구(Move, GetClearDistance)로 몸체를 옮기고, 투사체, 장판,
+    // 빔, 별형 빔은 이 몸체가 만든 지속물 관리자 넷을 팩토리와 수명 관리(Effects)에 같은 객체로 넘긴다. 지속물의 Tick은 BossCombat이 부르고
     // 피해는 패턴이 넘기는 게이트(BossDamageScaler를 거친 경로)로만 나가므로 여기서 배율을 다시 곱하지 않는다.
     //
     // 패턴 알림은 정면 갱신에 쓰고, 표현에 필요한 사건(IBossEventListener)으로 바꿔 복제 상태(BossState)에 넘긴다.
     // 시각은 틱 시각이나 FSM 단계 경계인 서버 시각만 쓴다. 표현 값(색, 진행도)은 만들지 않는다
+    //
+    // 패턴 팩토리는 보스 ID로 고른다. 무철은 패턴 없는 팩토리라 수치가 지정돼도 선택할 패턴이 없다.
+    // 50% 전환 뒤 인계 대기는 월백이면 결계 전개(BossBarrierDirector)가 끝날 때까지 이어지고, 결계가 없는 보스는 다음 틱에 바로 끝난다.
+    // 결계 위험 구역은 완료 뒤에도 사망이나 전투 종료까지 남아 2페이즈 동안 피해를 낸다
     /// <summary> 서버의 보스 개체, 피해를 받고 두뇌에 체력과 직접 제어를 넘기며 몸체 이동과 공격 사건 전달을 맡는다 </summary>
     public sealed class BossServer : IDamageable, ISkillControlTarget, IBossVitals, IBossControlSource, IBossMovement,
         IBossFanTelegraphListener, IBossCircleTelegraphListener, IBossLineTelegraphListener, IBossDashTelegraphListener,
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
-        IBossCastListener
+        IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
+        IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener
     {
         /****************************************
         *                Fields
@@ -40,6 +46,9 @@ namespace Shinshi.Combat
         private const float ROOT_DURATION_SCALE = 1f;
         private const float DIRECTION_EPSILON   = 0.0001f;
         private const float HALF                = 0.5f;
+
+        // 결계 전개를 쓰는 보스, 결계 설정이 카탈로그로 옮겨지면 정의 값으로 고른다
+        private const string BARRIER_BOSS_ID = "boss_wolbaek";
 
         private readonly string                _bossId;
         private readonly int                   _combatId;
@@ -50,7 +59,11 @@ namespace Shinshi.Combat
         private readonly IBossWallQuery        _terrain;
         private readonly BossProjectileManager _projectiles;
         private readonly BossAreaManager       _areas;
+        private readonly BossBeamManager       _beams;
+        private readonly BossStarManager       _stars;
+        private readonly IBossPatternFactory   _patterns;
         private readonly BossBrain             _brain;
+        private readonly BossBarrierDirector   _barrier;
 
         private Vector3               _position;
         private Vector3               _forward;
@@ -67,6 +80,10 @@ namespace Shinshi.Combat
         private EBossTelegraphShape _castShape = EBossTelegraphShape.Fan;
         private float               _castLength;
         private bool                _castIsArea = false;
+
+        // 반월 연쇄의 고정한 중심과 반경, 구역 예고 알림에 없어 시작 알림에서 받아 둔다. 시전은 한 번에 하나다
+        private Vector3 _sweepOrigin;
+        private float   _sweepRadius;
 
         /****************************************
         *              Properties
@@ -119,6 +136,18 @@ namespace Shinshi.Combat
         /// <summary> 날고 있는 투사체 수 </summary>
         public int ActiveProjectileCount => _projectiles.ActiveCount;
 
+        /// <summary> 활성되어 피해를 내고 있는 빔 수 </summary>
+        public int ActiveBeamCount => _beams.ActiveCount;
+
+        /// <summary> 활성되어 회전하고 있는 별형 빔 구조 수 </summary>
+        public int ActiveStarCount => _stars.ActiveCount;
+
+        /// <summary> 50% 전환 뒤 결계 전개를 쓰는 보스다, 거짓이면 인계 대기는 다음 틱에 바로 끝난다 </summary>
+        public bool HasBarrier => _barrier != null;
+
+        /// <summary> 결계 전개 진행 상태, 결계가 없는 보스는 Idle에 머문다 </summary>
+        public EBossBarrierState BarrierState => (_barrier != null) ? _barrier.State : EBossBarrierState.Idle;
+
         // 살아 있고 전투 중일 때만 몸체가 움직인다. 취소, 사망, 종료 뒤에 늦게 온 이동 요청은 무시한다
         private bool CanMove => (_lifeState == EParticipantLifeState.Alive) && (_brain.FlowState == EBossFlowState.Combat);
 
@@ -128,12 +157,12 @@ namespace Shinshi.Combat
 
         // referenceAttack, referenceHealth는 전장 지역의 Aref, Href이고 healthScale은 출정 시작 때 고정한 보스 체력 배율이다.
         // arenaCenter는 원형 전장의 중심이고 반경은 보스 정의의 전장 지름에서 읽는다. terrain은 정적 지형 벽 검사이며
-        // 비우면 전장 경계만 본다. targets는 패턴과 지속물 관리자가 함께 쓰는 전투 대상 조회다
-        // TODO(민성): 두 번째 보스가 생기면 패턴 팩토리를 보스 ID로 고른다. 지금은 월백만 있다
+        // 비우면 전장 경계만 본다. targets는 패턴과 지속물 관리자가 함께 쓰는 전투 대상 조회다.
+        // barrierSettings는 결계 전개를 쓰는 보스(월백)의 설정이고 비우면 임시 기본값이다. 다른 보스에는 쓰지 않는다
         public BossServer(string bossId, int combatId, Vector3 position, Vector3 forward, Vector3 arenaCenter,
             float referenceAttack, float referenceHealth, float healthScale,
             IBossPatternCatalog catalog, ICombatTargetQuery targets, IDamageResolver damage,
-            IBossWallQuery terrain, IBossRandom random)
+            IBossWallQuery terrain, IBossRandom random, BossBarrierSettings barrierSettings = null)
         {
             if (string.IsNullOrEmpty(bossId))
             {
@@ -177,9 +206,20 @@ namespace Shinshi.Combat
 
             _health = _maxHealth;
 
-            // 팩토리와 수명 관리에 같은 관리자 객체를 넘겨야 발사, 활성한 지속물이 정리와 Tick을 받는다
+            // 팩토리와 수명 관리에 같은 관리자 객체를 넘겨야 발사, 활성한 지속물이 정리와 Tick을 받는다.
+            // 2페이즈 빔과 별형 빔도 같은 이유로 한 객체를 두 곳에 넘기며, 전장 입력은 이 몸체가 가진 중심과 반경이다
             _projectiles = new BossProjectileManager(targets, this, this);
             _areas       = new BossAreaManager(targets, this);
+            _beams       = new BossBeamManager(targets, this);
+            _stars       = new BossStarManager(targets, this);
+            _patterns    = CreatePatterns(bossId, referenceHealth);
+
+            // 결계 피해는 패턴과 같은 피해 경로(damage)로 나가고 기준 체력도 패턴과 같은 Href다
+            if (bossId == BARRIER_BOSS_ID)
+            {
+                _barrier = new BossBarrierDirector(barrierSettings ?? new BossBarrierSettings(), this, this, targets, damage,
+                    _arenaCenter, _arenaRadius, referenceHealth, this);
+            }
 
             var dependencies = new BossBrainDependencies
             {
@@ -188,9 +228,8 @@ namespace Shinshi.Combat
                 Vitals   = this,
                 Targets  = targets,
                 Damage   = damage,
-                Patterns = new WolbaekPatternFactory(referenceHealth, this, this, this, this, this, _projectiles, this,
-                    _areas, this),
-                Effects  = new BossEffectComposite(_projectiles, _areas),
+                Patterns = _patterns,
+                Effects  = new BossEffectComposite(_projectiles, _areas, _beams, _stars),
                 Control  = this,
                 Random   = random,
                 Casts    = this
@@ -227,12 +266,33 @@ namespace Shinshi.Combat
             return _brain.Begin(serverTime);
         }
 
+        // 두뇌가 이 틱에 사망이나 종료를 확정하면 같은 틱에 결계도 정리한다. 이후에는 IsActive가 거짓이라 Tick이 오지 않는다
         /// <summary> 플레이어 기술과 공격이 끝난 뒤 한 번 부른다 </summary>
         public void Tick(double serverTime)
         {
             _tickTime = serverTime;
+            CompleteHandoffIfReady();
             _brain.Tick(serverTime);
+            TickBarrier(serverTime);
             _hasPendingControl = false;
+        }
+
+        /// <summary> 패턴 정의를 이 몸체의 팩토리가 만들 수 있는지, 2페이즈 창구 연결 확인과 진단용이다 </summary>
+        public bool CanCreatePattern(PatternDefinition definition)
+        {
+            return (_patterns is IBossPatternAvailability availability) && (availability.CanCreate(definition));
+        }
+
+        /// <summary> 늦은 접속 진단용 결계 현재 값, 결계가 없거나 예고 전, 정리 뒤에는 거짓이다 </summary>
+        public bool TryGetBarrierSnapshot(out BossBarrierStart start)
+        {
+            if (_barrier == null)
+            {
+                start = default;
+                return false;
+            }
+
+            return _barrier.TryGetSnapshot(out start);
         }
 
         /// <summary> 세션이 끝났을 때 부른다, 같은 시각에 바로 정리해 남은 타격이 다음 틱으로 밀리지 않게 한다 </summary>
@@ -517,14 +577,18 @@ namespace Shinshi.Combat
         {
             BeginCast(castInstanceId, EBossTelegraphShape.Circle, radius);
             _castIsArea = true;
-            var start = BossTelegraphStart.Circle(_combatId, castInstanceId, _brain.ActivePatternId, center, radius,
-                _tickTime, telegraphSeconds);
+
+            // 한 시전이 장판을 여럿 깔 수 있어(2페이즈 P04) 예고 번호는 장판 번호, 묶음 번호는 시전 번호로 보낸다.
+            // 복원 기록과 표현은 활성 알림의 장판 번호로 예고를 끝내므로 같은 번호여야 예고가 남지 않는다
+            var start = BossTelegraphStart.Circle(_combatId, areaId, _brain.ActivePatternId, center, radius,
+                _tickTime, telegraphSeconds, castInstanceId);
             _events?.OnTelegraphStarted(in start);
         }
 
         void IBossAreaTelegraphListener.OnCancelled(int castInstanceId, int areaId, EBossInterruptReason reason)
         {
-            CancelCast(castInstanceId);
+            ClearCast(castInstanceId);
+            _events?.OnCancelled(areaId);
         }
 
         // 활성하면 같은 번호의 예고는 끝나고 장판은 패턴이 끝나도 따로 남는다
@@ -544,7 +608,155 @@ namespace Shinshi.Combat
 
         void IBossAreaListener.OnAreaEnded(int castInstanceId, int areaId, EBossAreaEnd end, double endServerTime)
         {
-            _events?.OnAreaEnded(areaId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
+            _events?.OnAreaEnded(areaId, ToAreaFate(end));
+        }
+
+        /****************************************
+        *        P03 (Phase 2) Sweep
+        ****************************************/
+
+        // 반월 연쇄는 시전 예고(BeginCast)를 쓰지 않는다. 구역마다 따로 예고가 나가고 구역 폭발이 발동이라 시전 발동, 종료 알림과 겹치지 않는다
+        void IBossSweepTelegraphListener.OnSweepStarted(int castInstanceId, Vector3 origin, Vector3 baseDirection, bool isRight,
+            float radius, float totalArcAngle, int zoneCount, float telegraphSeconds, float blastSpanSeconds)
+        {
+            Face(baseDirection);
+            _sweepOrigin = origin;
+            _sweepRadius = radius;
+            var start = new BossSweepStart(_combatId, castInstanceId, origin, baseDirection, isRight, radius, totalArcAngle,
+                telegraphSeconds, blastSpanSeconds, _tickTime);
+            _events?.OnSweepStarted(in start);
+        }
+
+        // 구역 번호를 예고 키로, 시전 번호를 묶음 번호로 실어 같은 시전의 구역 예고끼리 서로 끝내지 않게 한다
+        void IBossSweepTelegraphListener.OnZoneScheduled(int castInstanceId, int zoneId, int zoneIndex, Vector3 centerDirection,
+            float zoneArcAngle, float secondsUntilBlast)
+        {
+            var zone = BossTelegraphStart.Fan(_combatId, zoneId, _brain.ActivePatternId, _sweepOrigin, centerDirection,
+                _sweepRadius, zoneArcAngle, _tickTime, secondsUntilBlast, castInstanceId);
+            _events?.OnSweepZoneScheduled(in zone);
+        }
+
+        void IBossSweepTelegraphListener.OnZoneBlasted(int castInstanceId, int zoneId, int zoneIndex, int hitCount,
+            double blastServerTime)
+        {
+            _events?.OnSweepZoneBlasted(zoneId, blastServerTime);
+        }
+
+        void IBossSweepTelegraphListener.OnCancelled(int castInstanceId, EBossInterruptReason reason)
+        {
+            _events?.OnSweepCancelled(castInstanceId);
+        }
+
+        /****************************************
+        *       P02 (Phase 2) Field Beam
+        ****************************************/
+
+        // 빔은 줄마다 빔 번호가 키다. 시전 예고(BeginCast)를 쓰지 않으므로 시전 발동, 종료 알림은 이 시전에서 아무것도 보내지 않는다
+        void IBossBeamTelegraphListener.OnTelegraphStarted(int castInstanceId, int beamId, in BossBeamShape shape,
+            float telegraphSeconds, float durationSeconds, float tickInterval)
+        {
+            var start = new BossBeamStart(_combatId, beamId, castInstanceId, in shape, _tickTime, telegraphSeconds,
+                durationSeconds, tickInterval);
+            _events?.OnBeamTelegraphStarted(in start);
+        }
+
+        void IBossBeamTelegraphListener.OnCancelled(int castInstanceId, int beamId, EBossInterruptReason reason)
+        {
+            _events?.OnBeamCancelled(beamId);
+        }
+
+        void IBossBeamListener.OnBeamActivated(int castInstanceId, int beamId, float durationSeconds, float tickInterval,
+            double activateServerTime)
+        {
+            _events?.OnBeamActivated(beamId, activateServerTime);
+        }
+
+        void IBossBeamListener.OnBeamTick(int castInstanceId, int beamId, int hitIndex, double roundServerTime, int hitCount)
+        {
+            _events?.OnBeamTicked(beamId, hitIndex, roundServerTime);
+        }
+
+        void IBossBeamListener.OnBeamEnded(int castInstanceId, int beamId, EBossAreaEnd end, double endServerTime)
+        {
+            _events?.OnBeamEnded(beamId, ToAreaFate(end));
+        }
+
+        /****************************************
+        *      P01 (Phase 2) Rotating Star
+        ****************************************/
+
+        // 별형 구조는 구조 번호가 키다. 기준 방향으로 몸을 돌리는 것은 로컬 시험 연결(BossTelegraphLocalBridge)과 같다
+        void IBossStarTelegraphListener.OnTelegraphStarted(int castInstanceId, int starId, in BossStarShape shape,
+            float telegraphSeconds, float durationSeconds, float tickInterval)
+        {
+            Face(shape.BaseDirection);
+            var start = new BossStarStart(_combatId, starId, castInstanceId, in shape, _tickTime, telegraphSeconds,
+                durationSeconds, tickInterval);
+            _events?.OnStarTelegraphStarted(in start);
+        }
+
+        void IBossStarTelegraphListener.OnCancelled(int castInstanceId, int starId, EBossInterruptReason reason)
+        {
+            _events?.OnStarCancelled(starId);
+        }
+
+        void IBossStarListener.OnStarActivated(int castInstanceId, int starId, float durationSeconds, float tickInterval,
+            double activateServerTime)
+        {
+            _events?.OnStarActivated(starId, activateServerTime);
+        }
+
+        void IBossStarListener.OnStarTick(int castInstanceId, int starId, int hitIndex, double roundServerTime, int hitCount)
+        {
+            _events?.OnStarTicked(starId, hitIndex, roundServerTime);
+        }
+
+        void IBossStarListener.OnStarEnded(int castInstanceId, int starId, EBossAreaEnd end, double endServerTime)
+        {
+            _events?.OnStarEnded(starId, ToAreaFate(end));
+        }
+
+        /****************************************
+        *            50% Barrier
+        ****************************************/
+
+        // 결계는 시전 예고(BeginCast)를 쓰지 않는다. 인계는 알림이 아니라 TickBarrier가 완료 여부를 보고 부른다
+        void IBossBarrierListener.OnBarrierStarted(in BossBarrierStart start)
+        {
+            _events?.OnBarrierStarted(in start);
+        }
+
+        void IBossBarrierListener.OnBarrierActivated(int barrierId, double activateServerTime)
+        {
+            _events?.OnBarrierActivated(barrierId, activateServerTime);
+        }
+
+        void IBossBarrierListener.OnBarrierCompleted(int barrierId, double completeServerTime)
+        {
+            _events?.OnBarrierCompleted(barrierId, completeServerTime);
+        }
+
+        // 예고 전에 끊기면 번호가 0이고 클라이언트에 보낸 결계가 없으므로 알리지 않는다
+        void IBossBarrierListener.OnBarrierCleared(int barrierId, EBossInterruptReason reason)
+        {
+            if (barrierId == CombatIds.NONE)
+            {
+                return;
+            }
+
+            _events?.OnBarrierCleared(barrierId);
+        }
+
+        /****************************************
+        *               Arena
+        ****************************************/
+
+        // 전장 기준 패턴(2페이즈 P01, P02)의 입력이다. 반경은 몸체 반경을 빼지 않은 전장 원 그대로다
+        public bool TryGetArena(out Vector3 center, out float radius)
+        {
+            center = _arenaCenter;
+            radius = _arenaRadius;
+            return _arenaRadius > 0f;
         }
 
         /****************************************
@@ -671,6 +883,59 @@ namespace Shinshi.Combat
         {
             return (shape == EBossTelegraphShape.Fan) || (shape == EBossTelegraphShape.Circle)
                 || (shape == EBossTelegraphShape.Line);
+        }
+
+        // 보스 ID로 팩토리를 고른다. 무철 외의 ID는 월백 팩토리로 두어 기존 월백 경로와 시험 보스 정의가 그대로 돈다
+        private IBossPatternFactory CreatePatterns(string bossId, float referenceHealth)
+        {
+            if (bossId == MucheolPatternFactory.BOSS_ID)
+            {
+                return new MucheolPatternFactory();
+            }
+
+            return new WolbaekPatternFactory(referenceHealth, this, this, this, this, this, _projectiles, this,
+                _areas, this, this, _beams, this, this, _stars, this);
+        }
+
+        // 페이즈 전환 뒤 인계 대기는 결계 전개 같은 별도 진행이 끝나기를 기다리는 자리다. 결계가 없는 보스는 전환한 틱의 다음 틱
+        // 처음에 바로 인계를 마쳐 그 틱부터 2페이즈 선택을 연다. 결계가 있으면 전개 시퀀스가 끝난 뒤에만 인계한다
+        private void CompleteHandoffIfReady()
+        {
+            if (_brain.PhaseState != EBossPhaseState.AwaitingHandoff)
+            {
+                return;
+            }
+
+            if ((_barrier != null) && (!_barrier.IsCompleted))
+            {
+                return;
+            }
+
+            _brain.CompleteHandoff();
+        }
+
+        // 두뇌가 전환한 틱에 바로 결계를 시작하고, 완료한 틱에 바로 인계해 2페이즈 선택이 한 틱 늦지 않게 한다.
+        // 전투가 끝났으면(사망, 종료 요청) 진행 중이든 완료 뒤든 위험 구역을 정리한다
+        private void TickBarrier(double serverTime)
+        {
+            if (_barrier == null)
+            {
+                return;
+            }
+
+            if (_brain.FlowState != EBossFlowState.Combat)
+            {
+                _barrier.Cancel(_brain.IsBossDeathRecorded ? EBossInterruptReason.Death : EBossInterruptReason.CombatEnd);
+                return;
+            }
+
+            _barrier.Tick(serverTime, _brain.PhaseState == EBossPhaseState.AwaitingHandoff);
+            CompleteHandoffIfReady();
+        }
+
+        private static EBossAreaFate ToAreaFate(EBossAreaEnd end)
+        {
+            return (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled;
         }
 
         private static EBossProjectileFate ToFate(EBossProjectileEnd end)

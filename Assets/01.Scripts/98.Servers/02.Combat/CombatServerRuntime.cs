@@ -62,6 +62,7 @@ namespace Shinshi.Combat
         private List<int>                    _closedParticipants;
         private bool                         _scalesApplied         = false;
         private BossServer                   _boss;
+        private string                       _bossId                = Constants.Combat.DEV_BOSS_ID;
         private bool                         _bossSpawnChecked      = false;
         private IBossObjectHost              _bossHost;
         private BossState                    _bossState;
@@ -82,6 +83,9 @@ namespace Shinshi.Combat
 
         // 보스전 출정 시작 틱에 만든다. 일반전, 마을, 시작 전, 생성 실패면 null이다
         public BossServer           Boss           => _boss;
+
+        // 보스전에서 열 보스 정의 ID, 부트스트랩이 실행 설정(-boss-id)에서 읽어 넘긴다. 넘기지 않으면 개발 보스다
+        public string               BossId         => _bossId;
 
         // 출정 시작 때 고정한 시작 인원별 배율, 스포너가 적과 보스를 만들 때 읽는다. 시작 전과 마을은 1이다
         // TODO(민성): 적 스폰과 피해 계산이 붙으면 이 값을 적용 위치에서 곱한다
@@ -186,6 +190,24 @@ namespace Shinshi.Combat
             _pathBudget            = new PathRequestBudget(Constants.Player.PATH_REQUESTS_PER_TICK);
             _lineOfSight           = new CombatLineOfSight(obstacleMask, Constants.Combat.LINE_OF_SIGHT_HEIGHT);
             _closedParticipants    = new List<int>(Constants.Session.MAX_RECONNECT_RECORDS);
+        }
+
+        // 출정 계약에 보스 ID가 없어 던전 서버 하나가 한 보스만 연다. 카탈로그 확인은 부트스트랩이 실행 설정을 읽을 때 한다
+        // TODO(민성): 출정 계약에 보스 ID가 생기면 출정 시작 때 계약 값으로 정한다
+        /// <summary> 보스전에서 열 보스 정의 ID를 정한다, 출정을 연결하기 전에 한 번 부른다 </summary>
+        public void ConfigureBoss(string bossId)
+        {
+            if (string.IsNullOrEmpty(bossId))
+            {
+                throw new ArgumentException("보스 ID가 비어 있다", nameof(bossId));
+            }
+
+            if (_host != null)
+            {
+                throw new InvalidOperationException("출정을 연결한 뒤에는 보스를 바꾸지 않는다");
+            }
+
+            _bossId = bossId;
         }
 
         /// <summary> 던전 역할에서 서버를 열기 전에 한 번 부른다, 이후 참가 자격은 출정 명단으로 판단한다 </summary>
@@ -517,26 +539,26 @@ namespace Shinshi.Combat
             // 전장 맵이 없어 생성 지점을 원점으로 두고 전장 중심도 생성 지점으로 본다
             Vector3 spawnPosition = Vector3.zero;
             Vector3 spawnForward  = Vector3.forward;
-            var boss = new BossServer(Constants.Combat.DEV_BOSS_ID, _registry.IssueCombatId(), spawnPosition, spawnForward,
+            var boss = new BossServer(_bossId, _registry.IssueCombatId(), spawnPosition, spawnForward,
                 spawnPosition, referenceAttack, referenceHealth, BossHealthScale,
                 new BossPatternCatalogSource(GameDB.BossPatterns), _registry, new BossDamageScaler(_skillResolver, DamageScale),
                 new BossTerrainProbe(_obstacleMask), new SeededBossRandom(_sessionEpoch));
 
             if (!boss.Begin(serverTime))
             {
-                Debug.LogError($"[Boss] 보스 전투를 열지 못해 보스 없이 진행한다, boss={Constants.Combat.DEV_BOSS_ID}");
+                Debug.LogError($"[Boss] 보스 전투를 열지 못해 보스 없이 진행한다, boss={_bossId}");
                 return;
             }
 
             if (!_registry.Register(boss))
             {
-                Debug.LogError($"[Boss] 전투 대상 등록이 거절돼 보스 없이 진행한다, boss={Constants.Combat.DEV_BOSS_ID}");
+                Debug.LogError($"[Boss] 전투 대상 등록이 거절돼 보스 없이 진행한다, boss={_bossId}");
                 return;
             }
 
             _boss = boss;
             SpawnBossObject();
-            Debug.Log($"[Boss] 보스 전투 시작, boss={Constants.Combat.DEV_BOSS_ID}, combatId={boss.CombatId}, " +
+            Debug.Log($"[Boss] 보스 전투 시작, boss={_bossId}, combatId={boss.CombatId}, " +
                 $"maxHealth={boss.MaxHealth}");
         }
 

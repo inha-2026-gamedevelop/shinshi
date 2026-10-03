@@ -196,6 +196,14 @@ namespace Shinshi.Network
             DungeonSessionHost dungeonHost = null;
             if (config.Role == EServerRole.Dungeon)
             {
+                // 보스 ID는 보스 생성과 경매 보상 표가 같은 값을 쓰도록 여기서 한 번만 읽는다
+                if (!ServerLaunchConfig.TryReadBossId(args, Environment.GetEnvironmentVariable, IsKnownBoss, out string bossId,
+                    out string bossError))
+                {
+                    BootFailure.Stop(bossError);
+                    return;
+                }
+
                 if (!TryCreateDungeonHost(sessions, out dungeonHost, out string hostError))
                 {
                     BootFailure.Stop(hostError);
@@ -203,7 +211,8 @@ namespace Shinshi.Network
                 }
 
                 dungeonHost.AuctionAudience = new MirrorAuctionAudience();
-                ConfigureBossAuction(dungeonHost);
+                ConfigureBossAuction(dungeonHost, bossId);
+                CombatServerInstaller.Runtime.ConfigureBoss(bossId);
                 CombatServerInstaller.Runtime.BindSession(dungeonHost);
                 manager.PlayerRetention = CombatServerInstaller.Runtime;
                 DungeonHost             = dungeonHost;
@@ -264,20 +273,26 @@ namespace Shinshi.Network
 
         // 출시 빌드는 서비스 자격이 없으면 저장과 정산을 할 수 없어 던전을 열지 않는다.
         // 개발 빌드는 기록만 남기는 저장과 정산으로 대신하고, 경제 결과가 남지 않는다고 경고한다
-        // 출정 계약에 보스와 난이도가 없어 보스전은 개발 보스(이지)의 보상 표로 연다
+        // 출정 계약에 보스와 난이도가 없어 보스전은 실행 설정의 보스(-boss-id, 기본 개발 보스) 이지 보상 표로 연다
         // TODO(민성): 출정 계약에 보스와 난이도가 생기면 그 값으로 고른다
-        private static void ConfigureBossAuction(DungeonSessionHost host)
+        private static void ConfigureBossAuction(DungeonSessionHost host, string bossId)
         {
             foreach (RewardCatalogSO.BossRewardSpec spec in GameDB.Rewards.BossRewards)
             {
-                if ((spec != null) && (spec.BossId == Constants.Combat.DEV_BOSS_ID) && (spec.Difficulty == EBossDifficulty.Easy))
+                if ((spec != null) && (spec.BossId == bossId) && (spec.Difficulty == EBossDifficulty.Easy))
                 {
                     host.ConfigureBossAuction(spec.AuctionItemId, spec.AuctionChance);
                     return;
                 }
             }
 
-            Debug.LogWarning($"[ServerBoot] 보스 보상 표에 경매 재료가 없어 파티 경매 없이 출정을 닫는다, boss={Constants.Combat.DEV_BOSS_ID}");
+            Debug.LogWarning($"[ServerBoot] 보스 보상 표에 경매 재료가 없어 파티 경매 없이 출정을 닫는다, boss={bossId}");
+        }
+
+        // 보스 카탈로그에 정의가 있는지만 본다. 수치 미지정(IsTuned 거짓)은 보스 생성이 오류를 남기고 보스 없이 진행한다
+        private static bool IsKnownBoss(string bossId)
+        {
+            return GameDB.BossPatterns.TryGetBoss(bossId, out _);
         }
 
         private static bool TryCreateDungeonHost(ServerSessionRegistry sessions, out DungeonSessionHost host, out string error)

@@ -21,6 +21,7 @@
 | `BACKEND_BASE_URL` | `-backend-base-url` | 운영 HTTPS URL; 자격 정보·쿼리·fragment·공백 없음 |
 | `CONTENT_VERSION` | `-content-version` | 해당 서버 빌드와 배포 콘텐츠의 버전 |
 | `DUNGEON_POOL_SIZE` | `-dungeon-pool-size` | Linux 프로세스 CPU·RSS·혼합 파티 부하로 결정한 양의 정수 N |
+| `BOSS_ID` | `-boss-id` | 선택, 던전만 읽는다. 보스전에서 여는 보스 정의 ID이며 없으면 `boss_wolbaek`. 보스 카탈로그에 없으면 시작하지 않는다. 유닛 실행 줄에는 넣지 않았으므로 환경파일에 둔다 |
 
 `INSTANCE_ID`는 GUID(`uuidgen`으로 슬롯마다 한 번 만들어 고정)다. `CONTENT_VERSION`은 영문·숫자로 시작하는 1~128자이며, 이후 영문·숫자·`.`·`_`·`-`·`+`만 쓴다. 파서는 HTTP도 허용하지만 운영에서는 HTTPS를 사용한다. `CONTENT_VERSION`은 접속 인증의 `protocolVersion`·`contentHash`·허용 `buildId`를 대신하지 않는다.
 

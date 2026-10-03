@@ -27,6 +27,8 @@ namespace Shinshi.Tests
         private const string TEST_POOL_TEXT   = "4";
         private const string PRIVATE_VALUE    = "private-value-for-test";
         private const int    TOO_LONG_LENGTH  = 129;
+        private const string MUCHEOL_ID       = "boss_mucheol";
+        private const string UNKNOWN_BOSS_ID  = "boss_unknown_for_test";
 
         /****************************************
         *                Tests
@@ -291,9 +293,49 @@ namespace Shinshi.Tests
                 Constants.Network.DEFAULT_GAME_PORT), config.InstanceId);
         }
 
+        [Test]
+        public void TryReadBossId_Missing_UsesDevBoss()
+        {
+            bool read = ServerLaunchConfig.TryReadBossId(new[] { EXECUTABLE }, Reader(ValidEnvironment()), IsTestBoss,
+                out string bossId, out string error);
+
+            Assert.IsTrue(read, error);
+            Assert.AreEqual(Constants.Combat.DEV_BOSS_ID, bossId);
+        }
+
+        [Test]
+        public void TryReadBossId_ArgOverridesEnvironment()
+        {
+            Dictionary<string, string> environment = ValidEnvironment();
+            environment[Constants.Network.ENV_BOSS_ID] = Constants.Combat.DEV_BOSS_ID;
+
+            bool read = ServerLaunchConfig.TryReadBossId(new[] { EXECUTABLE, Constants.Network.ARG_BOSS_ID, MUCHEOL_ID },
+                Reader(environment), IsTestBoss, out string bossId, out string error);
+
+            Assert.IsTrue(read, error);
+            Assert.AreEqual(MUCHEOL_ID, bossId);
+        }
+
+        [Test]
+        public void TryReadBossId_UnknownBoss_FailsWithoutEchoingValue()
+        {
+            bool read = ServerLaunchConfig.TryReadBossId(new[] { EXECUTABLE, Constants.Network.ARG_BOSS_ID, UNKNOWN_BOSS_ID },
+                Reader(ValidEnvironment()), IsTestBoss, out string bossId, out string error);
+
+            Assert.IsFalse(read);
+            Assert.IsNull(bossId);
+            StringAssert.Contains(Constants.Network.ARG_BOSS_ID, error);
+            StringAssert.DoesNotContain(UNKNOWN_BOSS_ID, error, "오류에 입력 값을 넣지 않는다");
+        }
+
         /****************************************
         *                Methods
         ****************************************/
+
+        private static bool IsTestBoss(string bossId)
+        {
+            return (bossId == Constants.Combat.DEV_BOSS_ID) || (bossId == MUCHEOL_ID);
+        }
 
         private static Func<string, string> Reader(Dictionary<string, string> environment)
         {

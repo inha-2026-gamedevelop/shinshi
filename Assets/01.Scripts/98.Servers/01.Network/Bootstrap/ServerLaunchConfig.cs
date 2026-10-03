@@ -174,6 +174,40 @@ namespace Shinshi.Network
             return true;
         }
 
+        // 출정 계약에 보스 ID가 없어 던전 서버 하나가 여는 보스를 실행 설정 한곳에서 정한다. 카탈로그 확인이 GameDB 초기화 뒤라
+        // 역할 해석(TryParse)과 나눠 부트스트랩이 따로 부른다. 없는 ID로 열면 보스 없이 출정이 돌므로 시작 전에 멈춘다
+        // TODO(민성): 출정 계약에 보스 ID가 생기면 출정마다 계약 값을 쓰고 이 설정은 개발 실행 기본값으로만 남긴다
+        /// <summary> 던전 서버의 보스 정의 ID를 읽는다, 없으면 개발 보스이고 isKnownBoss가 거짓인 ID는 오류다 </summary>
+        public static bool TryReadBossId(string[] args, Func<string, string> readEnvironment, Func<string, bool> isKnownBoss,
+            out string bossId, out string error)
+        {
+            if (isKnownBoss == null)
+            {
+                throw new ArgumentNullException(nameof(isKnownBoss));
+            }
+
+            bossId = null;
+            if (!TryReadValue(args, readEnvironment, Constants.Network.ARG_BOSS_ID, Constants.Network.ENV_BOSS_ID,
+                out string value, out error))
+            {
+                return false;
+            }
+
+            if (value == null)
+            {
+                value = Constants.Combat.DEV_BOSS_ID;
+            }
+
+            if ((!IsSafeToken(value)) || (!isKnownBoss(value)))
+            {
+                error = $"{Constants.Network.ENV_BOSS_ID} ({Constants.Network.ARG_BOSS_ID}): 보스 카탈로그에 있는 보스 정의 ID가 필요하다";
+                return false;
+            }
+
+            bossId = value;
+            return true;
+        }
+
         private static bool TryReadRequired(string[] args, Func<string, string> readEnvironment, string argName, string envName,
             out string value, out string error)
         {
