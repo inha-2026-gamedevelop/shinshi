@@ -424,7 +424,7 @@ MonoBehaviour:
     _telegraphSeconds: 0
     _trackingSeconds: 0
     _turnRate: 0
-    _activeSeconds: 0
+    _activeSeconds: 4
     _recoverySeconds: 0
     _shape:
       _shape: 5
@@ -450,7 +450,7 @@ MonoBehaviour:
     _sweepIntervalSeconds: 0
     _beamCount: 0
     _beamLateralOffset: 0
-    _beamTickInterval: 0
+    _beamTickInterval: 0.5
   - _definitionId: wolbaek_ph2_p02
     _displayKey: wolbaek_ph2_p02.name
     _bossId: boss_wolbaek
