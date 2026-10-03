@@ -10,6 +10,9 @@ using UnityEditor.Build.Player;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
+// 프로젝트 내부
+using Shinshi.Common;
+
 namespace Shinshi.Editor
 {
     /// <summary> 클라이언트, 서버 빌드와 컴파일 검사를 한곳에서 실행한다. 메뉴와 -executeMethod 둘 다 쓴다 </summary>
@@ -19,7 +22,7 @@ namespace Shinshi.Editor
         *              Constants
         ****************************************/
 
-        public const string BOOTSTRAP_SCENE_PATH = "Assets/00.Scenes/Bootstrap.unity";
+        public const string BOOTSTRAP_SCENE_PATH = Constants.Scene.FOLDER + Constants.Scene.BOOTSTRAP + Constants.Scene.EXTENSION;
 
         private const string MENU_ROOT    = "Shinshi/Build/";
         private const string OUTPUT_ROOT  = "Builds";
@@ -46,7 +49,12 @@ namespace Shinshi.Editor
         // 이동 예측과 회피를 서버, 클라이언트 빌드로 시험하는 씬. Bootstrap 구성에 바닥, 내비 메시, 쿼터뷰 카메라, 지연 시뮬레이션을 더했다
         public const string DEV_MOVEMENT_SCENE_PATH = "Assets/00.Scenes/Dev_PlayerMovement.unity";
 
-        private static readonly string[] G_Scenes            = { BOOTSTRAP_SCENE_PATH };
+        // 클라이언트는 로비, 캐릭터 선택, 생성을 거쳐 마을로 간다. 서버는 Bootstrap에서 역할을 읽고 마을 씬을 연다.
+        // SceneManager와 Mirror onlineScene은 Constants.Scene의 이름으로 찾으므로 빌드 목록에 빠지면 이동이 실패한다
+        private static readonly string[] G_ClientScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.LOBBY),
+            ScenePath(Constants.Scene.CHARACTER_SELECT), ScenePath(Constants.Scene.CHARACTER_CREATE),
+            ScenePath(Constants.Scene.SHINSHI_TOWN) };
+        private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_DevMovementScenes = { DEV_MOVEMENT_SCENE_PATH };
 
         /****************************************
@@ -100,6 +108,18 @@ namespace Shinshi.Editor
         *                Methods
         ****************************************/
 
+        /// <summary> 클라이언트 빌드에 넣는 씬 경로, 에디터 빌드 설정도 이 목록으로 맞춘다 </summary>
+        public static string[] GetClientScenes()
+        {
+            return (string[])G_ClientScenes.Clone();
+        }
+
+        /// <summary> 실제 실행 흐름 씬(Release 폴더)의 경로 </summary>
+        public static string ScenePath(string sceneName)
+        {
+            return Constants.Scene.RELEASE_FOLDER + sceneName + Constants.Scene.EXTENSION;
+        }
+
         /// <summary> 명령줄 진입점, 성공하면 0, 실패하면 1로 에디터를 끝낸다 </summary>
         public static void BuildFromCommandLine()
         {
@@ -112,7 +132,8 @@ namespace Shinshi.Editor
 
         public static bool Build(string targetName, bool development)
         {
-            return Build(targetName, development, G_Scenes);
+            bool server = (targetName == TARGET_WINDOWS_SERVER) || (targetName == TARGET_LINUX_SERVER);
+            return Build(targetName, development, server ? G_ServerScenes : G_ClientScenes);
         }
 
         /// <summary> 개발 이동 씬으로 서버, 클라이언트 개발 빌드를 만든다, 에디터 코드 실행으로도 부른다 </summary>
@@ -139,8 +160,23 @@ namespace Shinshi.Editor
                 options          = development ? BuildOptions.Development : BuildOptions.None
             };
 
-            BuildReport report    = BuildPipeline.BuildPlayer(options);
-            bool        succeeded = report.summary.result == BuildResult.Succeeded;
+            // 서버 빌드는 에디터의 대상 하위 설정을 Server로 바꿔 둔다. 그대로 두면 에디터가 UNITY_SERVER로 컴파일돼
+            // 클라이언트 플레이가 서버 부트스트랩에서 멈추므로 빌드 전 설정으로 되돌린다
+            StandaloneBuildSubtarget editorSubtarget = EditorUserBuildSettings.standaloneBuildSubtarget;
+            BuildReport report;
+            try
+            {
+                report = BuildPipeline.BuildPlayer(options);
+            }
+            finally
+            {
+                if (EditorUserBuildSettings.standaloneBuildSubtarget != editorSubtarget)
+                {
+                    EditorUserBuildSettings.standaloneBuildSubtarget = editorSubtarget;
+                }
+            }
+
+            bool succeeded = report.summary.result == BuildResult.Succeeded;
 
             // 후처리 예외가 빌드 결과에 반영되지 않는 경우가 있어 게시 도구가 읽을 파일을 직접 확인한다
             string identityPath = BuildIdentityWriter.GetIdentityPath(options.locationPathName);

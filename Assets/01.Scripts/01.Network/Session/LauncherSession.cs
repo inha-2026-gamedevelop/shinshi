@@ -124,6 +124,23 @@ namespace Shinshi.Network
             return true;
         }
 
+        // 에디터와 개발 빌드는 런처 없이 로비의 개발 로그인으로 받은 게임 세션을 같은 자리에 넣는다.
+        // 런처 세션을 받는 중이거나 아직 유효한 세션이 있으면 덮어쓰지 않는다
+        internal static bool AcceptDevelopmentLogin(LauncherHandoff handoff)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if ((IsLaunchRequired) || (_state == ELauncherSessionState.Receiving) || (HasSession && !IsExpired))
+            {
+                return false;
+            }
+
+            int attempt = BeginReceiving();
+            return Complete(attempt, handoff, Stopwatch.GetTimestamp());
+#else
+            return false;
+#endif
+        }
+
         // 이 시도가 아직 유효해 실패로 바꿨으면 true
         internal static bool Fail(int attempt, ELauncherSessionFailure reason)
         {

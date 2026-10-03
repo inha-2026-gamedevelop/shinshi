@@ -170,10 +170,17 @@ namespace Shinshi.Network
 
             public void WriteValue(object value)
             {
-                // 필수 SO가 파괴되거나 빠졌다면 같은 빈 해시로 서버를 띄우지 않는다
+                // 필수 SO가 파괴되거나 빠졌다면 같은 빈 해시로 서버를 띄우지 않는다.
+                // 에디터는 비워 둔 표현용 참조(기술 아이콘 등)도 가짜 null 객체로 읽는다. 빌드는 진짜 null이므로
+                // 값 없음으로 써야 에디터 클라이언트와 빌드 서버의 해시가 같다
                 if ((value is UnityEngine.Object unityObject) && (unityObject == null))
                 {
-                    throw new InvalidOperationException("GameDB 콘텐츠에 파괴된 Unity 에셋 참조가 있다");
+                    if (IsGameData(value.GetType()))
+                    {
+                        throw new InvalidOperationException("GameDB 콘텐츠에 파괴된 Unity 에셋 참조가 있다");
+                    }
+
+                    value = null;
                 }
 
                 if (value == null)

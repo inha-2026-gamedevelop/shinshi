@@ -212,7 +212,7 @@ MonoBehaviour:
   exceptionsDisconnect: 1
   authenticator: {fileID: 907308341}
   offlineScene: 
-  onlineScene: 
+  onlineScene: Assets/00.Scenes/Release/ShinshiTown.unity
   offlineSceneLoadDelay: 0
   playerPrefab: {fileID: 3983380130020674932, guid: 129b08337765a614aac396e69691dd6e, type: 3}
   autoCreatePlayer: 1
