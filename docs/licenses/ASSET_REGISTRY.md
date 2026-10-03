@@ -137,6 +137,10 @@ Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 �
 
 정리 전 EPO Outline 미설치 상태에서 DOTween EPO 연동이 켜져 컴파일 오류 18개가 있었다. `modules.epoOutlineEnabled=false`로 바꾸고 DOTween 공식 Utility의 `ApplyModulesSettings`를 실행해 연동 컴파일 조건을 비활성화하고 해결했다. 해당 연동 스크립트는 삭제하지 않았다. [공식 설치 안내](https://dotween.demigiant.com/pro.php)는 설치 후 사용할 모듈을 설정하도록 안내한다.
 
+## 외부 모델 텍스처 임포트 상한
+
+`Assets/Editor/ThirdPartyModelTextureLimiter.cs`가 `Assets/99.ThirdParty/Model/` 아래 텍스처를 최대 2048, 압축(CompressedHQ), 밉 스트리밍으로 가져온다. 원본 파일은 바꾸지 않고 임포트 설정만 낮추며 올리지는 않는다. 99.ThirdParty의 `.meta`는 Git에서 제외되므로 규칙이 각자의 에디터에서 적용되고, 이미 가져온 텍스처는 에디터를 열 때 한 번 다시 가져온다. 2026-10-03 기준 Kitsune Yuna(월백 외형)가 4096 무압축이었고, Bootstrap 네트워크 프리팹 목록 → `PF_NetWolbaekBoss` → 월백 외형 참조로 Bootstrap만 열어도 올라오던 텍스처 메모리가 에디터 측정(`Profiler.GetRuntimeMemorySizeLong`) 2,226MB에서 194MB로 줄었다. 근접 화면의 화질 확인은 하지 않았다.
+
 ## Git와 재설치
 
 - `.gitignore`는 유료 패키지의 폴더·폴더 메타 및 위 Gizmos 예외만 명시적으로 제외한다. 분류 폴더의 `.meta`와 이 대장은 공유한다. 미래의 무료 에셋까지 `99.ThirdParty/` 전체를 일괄 제외하지 않는다.
