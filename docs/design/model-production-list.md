@@ -187,6 +187,8 @@ Native 걷기·달리기 16 phase × 3LOD를 두 조립 변형에서 각각 96�
 
 상태는 **첫 묶음 외형 수정 중, 검토용**이다. 목 노멀 반사 문제는 Native 화면에서 교정됐으며 최종 외형 재검토가 남아 있다. 참조 Run의 맨발 바닥 침투가 최대 약 25.77mm 남아 신발·RootHeight·FootIK 보정이 필요하다. 나머지 얼굴 2종, 직업별 의상·헤어, 독립 안구·표정, 의복/머리 보조본과 실제 흔들림, GPU 연속 재생·LOD 전환·게임 카메라·성능·빌드·플레이어 연동은 미완료다. SecondaryMotion 코드의 EditMode 28/28 통과는 실제 의복·헤어 동작 완료를 뜻하지 않는다. 원본·입력·상세 기록·검토 렌더는 Git 제외 개인 docs에 보존하고 출처·권리 확인 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#tripo-여성-공통-몸체얼굴직업-참조--2026-10-0203)을 따른다.
 
+표현 연결 코드는 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleTripo/Runtime/`에 구현했다. BlinkView는 지정한 얼굴 LOD의 같은 모프를 적용·복원하며, FootIkMath/FootIkView는 Humanoid Animator IK 단계의 접지 계산·적용을 맡는다. PresentationView는 이동 루트와 전투 상태를 읽어 Animator 파라미터만 갱신하고, SecondaryMotionBinding은 기존 시뮬레이션에 실제 스킨 참조가 있는 추가본을 연결한다. 신규 4개 EditMode 테스트 클래스의 37건은 실제 Test Runner에서 모두 통과했다. 현재 검토 프리팹·실제 Player에는 이 코드를 연결하지 않았으며, 얼굴 Blink 모프·의상 추가본·Animator IK Pass와 최종 신발 접지의 실제 게임 검증은 대기다. 이 테스트 통과는 남은 Run 침투나 얼굴·의상 외형 완료를 뜻하지 않는다.
+
 ## 7. 모델 생성과 분리할 효과 작업
 
 | 요소 | 제작 방향 | 필요한 메시 |
