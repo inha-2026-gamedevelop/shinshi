@@ -133,6 +133,8 @@ Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 �
 | `Tools/Pixel Crushers/Common/PixelCrushers.asmdef` | `Unity.TextMeshPro`, `Unity.InputSystem` |
 | `Tools/Pixel Crushers/Common/Scripts/Editor/PixelCrushersEditor.asmdef` | `Unity.TextMeshPro` |
 
+2026-10-03 사용자가 에러 수정을 요청해 Mirror 96.11.3 원본의 **필드 특성 1곳만** 보정했다. `Assets/Mirror/Core/NetworkIdentity.cs`의 `_connectionToClient`에 `[NonSerialized]`를 붙였다. 도메인 리로드 백업이 이 private 필드를 직렬화하며 `NetworkConnection` 생성자의 `Time.time`에서 `get_time is not allowed to be called during serialization` 예외를 냈다(Bootstrap의 네트워크 프리팹이 열려 있으면 컴파일마다 3건). 동작 로직은 바꾸지 않았다. Mirror를 업데이트하면 다시 확인한다.
+
 정리 전 EPO Outline 미설치 상태에서 DOTween EPO 연동이 켜져 컴파일 오류 18개가 있었다. `modules.epoOutlineEnabled=false`로 바꾸고 DOTween 공식 Utility의 `ApplyModulesSettings`를 실행해 연동 컴파일 조건을 비활성화하고 해결했다. 해당 연동 스크립트는 삭제하지 않았다. [공식 설치 안내](https://dotween.demigiant.com/pro.php)는 설치 후 사용할 모듈을 설정하도록 안내한다.
 
 ## Git와 재설치

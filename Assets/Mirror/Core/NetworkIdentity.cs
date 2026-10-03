@@ -208,7 +208,9 @@ namespace Mirror
                 _connectionToClient?.AddOwnedObject(this);
             }
         }
-        NetworkConnectionToClient _connectionToClient;
+        // shinshi 보정: 도메인 리로드 백업이 private 필드까지 직렬화하며 NetworkConnection 생성자의 Time.time에서
+        // 예외를 낸다(get_time is not allowed during serialization). 실행 상태 참조라 직렬화하지 않는다
+        [NonSerialized] NetworkConnectionToClient _connectionToClient;
 
         // get all NetworkBehaviour components
         public NetworkBehaviour[] NetworkBehaviours { get; private set; }
