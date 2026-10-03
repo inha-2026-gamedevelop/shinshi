@@ -188,7 +188,7 @@ namespace Shinshi.Tests
                 Cast.TryCancel();
             }
 
-            public void OnProjectileLaunched(int castInstanceId, Vector3 origin, Vector3 direction, float speed, float width,
+            public void OnProjectileLaunched(int castInstanceId, int projectileId, Vector3 origin, Vector3 direction, float speed, float width,
                 float pathLength, double launchServerTime)
             {
                 Track = new BossProjectileTrack(new BossProjectileStart(BOSS_ID, castInstanceId, origin, direction, speed, width,
@@ -196,7 +196,7 @@ namespace Shinshi.Tests
                 Cast.TryStrike(launchServerTime);
             }
 
-            public void OnProjectileEnded(int castInstanceId, EBossProjectileEnd end, Vector3 position, int hitTargetId)
+            public void OnProjectileEnded(int castInstanceId, int projectileId, EBossProjectileEnd end, Vector3 position, int hitTargetId)
             {
                 ++EndCount;
                 EBossProjectileFate fate = EBossProjectileFate.Cancelled;

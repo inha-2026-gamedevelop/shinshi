@@ -5,7 +5,7 @@ namespace Shinshi.AI
 {
     // BossBrainDependencies.Effects는 하나뿐이라 투사체 관리자와 장판 관리자를 함께 넘길 때 쓴다. 정리와 Tick과 장판 수 조회가 빠지지 않게 모두 전달한다
     /// <summary> 여러 수명 관리자를 하나로 묶는다, 정리는 모두에게 전달하고 장판 수는 합산하며 Tick은 Tick을 구현한 관리자에게만 전달한다 </summary>
-    public sealed class BossEffectComposite : IBossEffectLifetime, IBossTickableEffects
+    public sealed class BossEffectComposite : IBossEffectLifetime, IBossTickableEffects, IBossAreaCapacity
     {
         /****************************************
         *                Fields
@@ -70,6 +70,24 @@ namespace Shinshi.AI
             }
 
             return count;
+        }
+
+        /// <summary> 장판 총 개수를 알려 주는 관리자의 합, 알려 주지 않는 관리자는 0으로 센다 </summary>
+        public int TotalAreaCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _effects.Length; ++i)
+                {
+                    if (_effects[i] is IBossAreaCapacity capacity)
+                    {
+                        count += capacity.TotalAreaCount;
+                    }
+                }
+
+                return count;
+            }
         }
 
         public void Tick(double serverTime)

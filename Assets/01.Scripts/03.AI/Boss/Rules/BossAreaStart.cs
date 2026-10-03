@@ -13,6 +13,7 @@ namespace Shinshi.AI
 
         private readonly int     _bossId;
         private readonly int     _areaId;
+        private readonly int     _castId;
         private readonly Vector3 _center;
         private readonly float   _radius;
         private readonly float   _durationSeconds;
@@ -25,8 +26,11 @@ namespace Shinshi.AI
 
         public int BossId => _bossId;
 
-        /// <summary> 서버의 시전 번호, 같은 번호의 예고 표현과 이어지지만 예고가 끝나도 장판은 따로 남는다 </summary>
+        /// <summary> 장판 한 개의 번호, 서버가 발급한 장판 번호다. 같은 번호의 예고 표현과 이어지지만 예고가 끝나도 장판은 따로 남는다 </summary>
         public int AreaId => _areaId;
+
+        /// <summary> 이 장판이 속한 시전 번호, 한 시전이 장판을 여러 개 설치해도 각 장판은 장판 번호로 구분하므로 묶음 표시에만 쓴다. 단일 장판은 장판 번호와 같다 </summary>
+        public int CastId => _castId;
 
         /// <summary> 예고 시작 순간 서버가 고정한 중심 </summary>
         public Vector3 Center => _center;
@@ -50,11 +54,19 @@ namespace Shinshi.AI
         *                Methods
         ****************************************/
 
+        // 시전 번호를 따로 주지 않으면 장판 번호가 시전 번호다(단일 장판)
         public BossAreaStart(int bossId, int areaId, Vector3 center, float radius, float durationSeconds, float tickInterval,
             double activateServerTime)
+            : this(bossId, areaId, areaId, center, radius, durationSeconds, tickInterval, activateServerTime)
+        {
+        }
+
+        public BossAreaStart(int bossId, int areaId, int castId, Vector3 center, float radius, float durationSeconds,
+            float tickInterval, double activateServerTime)
         {
             _bossId             = bossId;
             _areaId             = areaId;
+            _castId             = castId;
             _center             = center;
             _radius             = radius;
             _durationSeconds    = durationSeconds;

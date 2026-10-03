@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using BossDefinition    = Shinshi.Data.BossPatternCatalogSO.BossDefinition;
+using EPatternGroup     = Shinshi.Data.BossPatternCatalogSO.EPatternGroup;
 using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
@@ -66,6 +67,24 @@ namespace Shinshi.AI
             float recent = Multiplier(pattern.RecentUseMultipliers, recentSlot);
 
             return pattern.BaseWeight * distance * direction * nearby * recent;
+        }
+
+        // 2페이즈 최종 가중치다. 기본값은 체력 강화 구간(기준 이하, 경계 포함)이면 강화 기본값을 쓰고, 거기에 흐름 배율을 더 곱한다
+        // 직전 그룹이 없으면(전환 직후 첫 선택) 흐름 배율은 1이다. 나머지 네 배율과 최근 기록은 1페이즈와 같은 계산이다
+        /// <summary> 기본값 x 거리 x 방향 x 주변 x 최근 기록 x 흐름 배율 </summary>
+        public static float ComputeSecondPhaseWeight(PatternDefinition pattern, BossDefinition boss, float healthRate,
+            EPatternGroup previousGroup, int distanceBand, int directionBand, int nearbyBand, int recentSlot)
+        {
+            bool isEnhanced = boss.IsEnhanced(healthRate);
+            float baseWeight = isEnhanced ? pattern.EnhancedBaseWeight : pattern.BaseWeight;
+
+            float distance = Multiplier(pattern.DistanceMultipliers, distanceBand);
+            float direction = Multiplier(pattern.DirectionMultipliers, directionBand);
+            float nearby = Multiplier(pattern.NearbyMultipliers, nearbyBand);
+            float recent = Multiplier(pattern.RecentUseMultipliers, recentSlot);
+            float flow = boss.GetFlowMultiplier(isEnhanced, previousGroup, pattern.Group);
+
+            return baseWeight * distance * direction * nearby * recent * flow;
         }
 
         // 합이 0 이하이면 -1이다. roll01은 0 이상 1 미만이고 가중치 비율대로 뽑으며 최고값을 고정 선택하지 않는다

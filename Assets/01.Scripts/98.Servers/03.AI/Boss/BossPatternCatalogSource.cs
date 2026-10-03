@@ -8,7 +8,7 @@ using Shinshi.Data;
 namespace Shinshi.AI
 {
     /// <summary> BossPatternCatalogSO를 IBossPatternCatalog로 보이게 하는 어댑터 </summary>
-    public sealed class BossPatternCatalogSource : IBossPatternCatalog
+    public sealed class BossPatternCatalogSource : IBossPatternCatalog, IBossPatternReadiness
     {
         /****************************************
         *                Fields
@@ -43,6 +43,11 @@ namespace Shinshi.AI
         public bool IsTuned(string bossId)
         {
             return _catalog.IsTuned(bossId);
+        }
+
+        public bool IsPatternReady(string bossId, BossPatternCatalogSO.PatternDefinition pattern)
+        {
+            return _catalog.IsPatternReady(bossId, pattern);
         }
     }
 }

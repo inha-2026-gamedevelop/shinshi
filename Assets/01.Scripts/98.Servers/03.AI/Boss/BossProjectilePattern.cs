@@ -15,7 +15,14 @@ namespace Shinshi.AI
     // 시간과 사거리와 폭과 속도와 회전 속도와 피해 배수는 모두 패턴 정의에서 읽는다. 이 클래스에는 밸런스 값이 없다
     // 이 객체는 예고와 조준과 방향 고정과 발사까지만 맡는다. 발사된 투사체는 패턴이 끝나도 지속물 관리자가 이어서 진행하므로
     // 취소와 정상 종료(Finish)는 투사체를 건드리지 않는다. 투사체 정리는 IBossEffectLifetime.Cancel이 맡는다
-    /// <summary> 월백 P04 여우불 투사체, 추적 회전 뒤 방향을 고정하고 예고가 끝나면 한 발을 발사한다 </summary>
+    //
+    // 발 수와 간격은 패턴 정의에서 읽는다. 발 수가 미지정(0)이거나 1이면 예고가 끝나는 순간 한 발이고 1페이즈 P04가 이 경우다
+    // 여러 발이면 k번째 발의 예약 시각은 실행 시작 경계 + k x 간격이고 모든 발이 같은 고정 방향을 쓴다. 발사는 예약 시각 기준으로 센다
+    //   첫 발은 실행 단계에 들어가는 순간, 나머지는 실행 중 틱에서, 실행이 끝나는 경계에 놓인 마지막 발은 회복 단계에 들어가는 순간 놓치지 않고 낸다
+    //   한 틱에 도래한 발이 둘 이상이면 건너뛰지 않고 모두 낸다. 발마다 발사 위치는 그 발을 처리하는 시점의 보스 서버 위치이고 경로 길이도 그때 잰다
+    //   과거 위치를 기록하지 않으므로 틱이 거칠면 늦게 처리된 발은 예약 시각의 위치가 아니라 처리 시점의 보스 위치와 벽 조회를 쓴다
+    // 발마다 새 동작 번호(ActionInstanceId)를 받는다. 시전 번호는 한 시전의 발들이 함께 쓰고, 투사체 한 발은 동작 번호로 구분한다
+    /// <summary> 월백 여우불 투사체, 추적 회전 뒤 방향을 고정하고 예고가 끝나면 정의된 발 수만큼 같은 방향으로 순서대로 발사한다 </summary>
     public sealed class BossProjectilePattern : BossPatternBase
     {
         /****************************************
@@ -23,7 +30,8 @@ namespace Shinshi.AI
         ****************************************/
 
         private const float MIN_DIRECTION_SQR = 0.000001f; // m^2, 이보다 가까우면 방향을 정할 수 없다
-        private const float ANGLE_EPSILON     = 0.001f;    // 도, 경계 각도의 부동소수 오차 흡수
+        private const float  ANGLE_EPSILON    = 0.001f;    // 도, 경계 각도의 부동소수 오차 흡수
+        private const double FIRE_EPSILON     = 0.000001;  // 초, 예약 시각 비교의 부동소수 오차 흡수
 
         /****************************************
         *                Fields
@@ -37,7 +45,8 @@ namespace Shinshi.AI
         private double  _trackStart;
         private double  _trackedUntil;
         private bool    _isLocked;
-        private bool    _hasFired;
+        private int     _firedCount;
+        private double  _executeStart;
         private float   _pathLength;
 
         /****************************************
@@ -52,8 +61,11 @@ namespace Shinshi.AI
         /// <summary> 예고가 보여 주는 경로 길이, 벽이 가까우면 사거리보다 짧다 </summary>
         public float PathLength => _pathLength;
 
-        /// <summary> 한 발을 발사했다, 한 시전에 한 번만 참이 된다 </summary>
-        public bool HasFired => _hasFired;
+        /// <summary> 한 발이라도 발사했다 </summary>
+        public bool HasFired => _firedCount > 0;
+
+        /// <summary> 지금까지 발사한 발 수 </summary>
+        public int FiredCount => _firedCount;
 
         /****************************************
         *                Methods
@@ -80,7 +92,7 @@ namespace Shinshi.AI
             _trackStart   = serverTime;
             _trackedUntil = serverTime;
             _isLocked     = false;
-            _hasFired     = false;
+            _firedCount   = 0;
             _pathLength   = MeasurePath(_aim);
 
             _listener?.OnTelegraphStarted(Context.CastInstanceId, Context.Self.Position, _aim, _pathLength,
@@ -94,11 +106,21 @@ namespace Shinshi.AI
             if (state == EBossAttackState.Telegraph)
             {
                 AdvanceTracking(serverTime);
+                return;
             }
+
+            FireDue(serverTime);
         }
 
         protected override void OnEnterState(EBossAttackState state, double serverTime)
         {
+            if (state == EBossAttackState.Recover)
+            {
+                // 실행이 끝나는 경계에 놓인 마지막 발이 틱 순서 때문에 빠지지 않게 여기서 한 번 더 확인한다. serverTime은 실행 끝 경계다
+                FireDue(serverTime);
+                return;
+            }
+
             if (state != EBossAttackState.Execute)
             {
                 return;
@@ -107,13 +129,14 @@ namespace Shinshi.AI
             // 큰 시간 간격으로 틱이 건너뛰어도 고정은 반드시 발사보다 먼저 끝난다. serverTime은 FSM이 넘기는 예고 끝 경계다
             AdvanceTracking(serverTime);
             LockDirection();
-            Fire(serverTime);
+            _executeStart = serverTime;
+            FireDue(serverTime);
         }
 
         // 발사 전에 끊긴 경우만 알린다. 발사한 뒤의 투사체 소멸은 지속물 관리자가 알린다
         protected override void OnCancelled(EBossInterruptReason reason)
         {
-            if (!_hasFired)
+            if (!HasFired)
             {
                 _listener?.OnCancelled(Context.CastInstanceId, reason);
             }
@@ -201,22 +224,36 @@ namespace Shinshi.AI
             return _launcher.MeasurePath(Context.Self.Position, direction, definition.Shape.Range, definition.Shape.Width);
         }
 
-        // 한 시전에 한 발만 쏜다. 발사 위치는 보스의 서버 위치이고 시각은 예고가 끝난 경계다
-        private void Fire(double serverTime)
+        // 예약 시각이 지금까지인 발을 모두 낸다. 발사 시각은 틱 시각이 아니라 예약 시각이라 틱이 거칠어도 발 사이 간격이 유지된다
+        private void FireDue(double serverTime)
         {
-            if (_hasFired)
-            {
-                return;
-            }
+            PatternDefinition definition = Context.Definition;
+            int    count    = definition.ProjectileCount;
+            double interval = definition.ProjectileIntervalSeconds;
 
-            _hasFired = true;
+            while (_firedCount < count)
+            {
+                double scheduled = _executeStart + (_firedCount * interval);
+                if (scheduled > (serverTime + FIRE_EPSILON))
+                {
+                    return;
+                }
+
+                Fire(scheduled);
+            }
+        }
+
+        // 발마다 보스의 지금 서버 위치에서 고정 방향으로 쏜다. 순서 번호를 먼저 올려 발사 중 재진입해도 같은 발을 두 번 내지 않는다
+        private void Fire(double launchTime)
+        {
+            ++_firedCount;
 
             PatternDefinition definition = Context.Definition;
             EDamageFlags flags = definition.Guardable ? EDamageFlags.None : EDamageFlags.Unblockable;
 
             BossProjectileSpec spec = new BossProjectileSpec(Context.CastInstanceId, Context.Damage.IssueInstanceId(),
                 Context.Self.CombatId, definition.DefinitionId, Context.Self.Position, _aim, definition.Shape.ProjectileSpeed,
-                definition.Shape.Range, definition.Shape.Width, definition.DamageRef * _referenceHealth, flags, serverTime, Context.Damage);
+                definition.Shape.Range, definition.Shape.Width, definition.DamageRef * _referenceHealth, flags, launchTime, Context.Damage);
 
             _launcher.TryLaunch(in spec);
         }

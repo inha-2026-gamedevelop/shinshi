@@ -18,6 +18,7 @@ namespace Shinshi.AI
         private readonly ICombatTarget       _self;
         private readonly ICombatTargetQuery  _targets;
         private readonly BossDamageGate      _damage;
+        private readonly IBossRandom         _random;
 
         /****************************************
         *              Properties
@@ -36,13 +37,17 @@ namespace Shinshi.AI
         /// <summary> 피해는 IDamageResolver가 아니라 이 게이트로만 낸다, 지속물을 만들 때도 이 게이트를 넘긴다 </summary>
         public BossDamageGate     Damage         => _damage;
 
+        /// <summary> 서버의 난수 의존성, 두뇌의 타깃 선택과 같은 것이다. 비어 있을 수 있으므로 쓰는 패턴이 확인한다 </summary>
+        public IBossRandom        Random         => _random;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public BossPatternContext(PatternDefinition definition, int castInstanceId, int targetCombatId,
-            ICombatTarget self, ICombatTargetQuery targets, BossDamageGate damage)
+            ICombatTarget self, ICombatTargetQuery targets, BossDamageGate damage, IBossRandom random = null)
         {
+            _random         = random;
             _definition     = definition;
             _castInstanceId = castInstanceId;
             _targetCombatId = targetCombatId;
