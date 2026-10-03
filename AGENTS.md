@@ -21,6 +21,10 @@ shinshi 저장소에서 일하는 AI 에이전트와 팀원이 **반드시** 따
 
 ## 지킬 것
 
+- 한국어로, 결론부터 답한다.
+- 사실, 추정, 미검증으로 구분한다.
+- 코드나 설정을 읽어 확인할 수 있는것을 질문으로 되돌리지 않는다.
+- 보고 형식은 [docs/ai/03_VERIFICATION_PLAYBOOK.md](docs/ai/03_VERIFICATION_PLAYBOOK.md)를 따른다.
 - 브랜치는 담당자별 `feature/{팀원이름}`. 통합 브랜치는 `develop`이며 PR은 `develop`으로 올린다. `develop`과 `main`에 직접 커밋하지 않는다.
 - 다른 파트 소유 영역(`Net/`, `98.Servers/`, `01.Network/`, `00.Common/`은 {팀장}, 경로별 세부는 `.github/CODEOWNERS`)을 고치기 전에 담당자에게 확인한다. 서버 전용 코드는 `98.Servers/`(`Shinshi.Server` 어셈블리)에 두고 `NetworkBehaviour`를 partial로 나누지 않는다.
 - 에셋은 `.meta`와 함께 커밋하고, 이동 · 이름 변경은 Unity 에디터에서 한다.
