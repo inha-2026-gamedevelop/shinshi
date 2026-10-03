@@ -7,7 +7,7 @@ using Shinshi.Common;
 
 namespace Shinshi.UI
 {
-    /// <summary> 캐릭터 선택 리스트에서 고른 칸의 카드만 밝게 칠한다 </summary>
+    /// <summary> 캐릭터 선택 리스트에서 고른 칸의 카드만 선택 스프라이트와 색으로 바꾼다 </summary>
     public sealed class CharacterSelectListHighlight : ClientView
     {
         /****************************************
@@ -17,10 +17,11 @@ namespace Shinshi.UI
         [SerializeField] private CharacterSelectSelection _selection = null;
         [SerializeField] private Image[]                  _cards     = null;
 
-        // 프로젝트가 Linear 색 공간이라 알파가 화면에서 생각보다 밝게 섞인다. 기본 카드는 흰색을 0.04로 낮게 두고,
-        // 고른 카드는 밝기만 올리면 차이가 묻혀서 직업 글자와 같은 금색 계열로 구분한다
-        [SerializeField] private Color _selectedColor = new Color(0.86f, 0.78f, 0.58f, 0.22f);
-        [SerializeField] private Color _normalColor   = new Color(1f, 1f, 1f, 0.04f);
+        // 스프라이트가 비어 있으면 카드의 현재 스프라이트를 그대로 두고 색만 바꾼다
+        [SerializeField] private Sprite _selectedSprite = null;
+        [SerializeField] private Sprite _normalSprite   = null;
+        [SerializeField] private Color  _selectedColor  = Color.white;
+        [SerializeField] private Color  _normalColor    = Color.white;
 
         /****************************************
         *              Unity Event
@@ -51,7 +52,13 @@ namespace Shinshi.UI
         {
             for (int i = 0; i < _cards.Length; ++i)
             {
-                _cards[i].color = (i == selectedSlot) ? _selectedColor : _normalColor;
+                bool   isSelected = (i == selectedSlot);
+                Sprite sprite     = isSelected ? _selectedSprite : _normalSprite;
+                if (sprite != null)
+                {
+                    _cards[i].sprite = sprite;
+                }
+                _cards[i].color = isSelected ? _selectedColor : _normalColor;
             }
         }
 
