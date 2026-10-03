@@ -5,6 +5,7 @@ using System.Globalization;
 
 // Unity
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // 서드파티
 using Mirror;
@@ -25,6 +26,10 @@ namespace Shinshi.Network
 
         private EServerRole _serverRole = EServerRole.Town;
 
+        // 씬에 저장한 onlineScene은 마을 씬이다. 던전은 아직 전장 씬이 없어 씬을 바꾸지 않는다.
+        // 서버와 클라이언트가 같은 역할 설정으로 같은 값을 써야 클라이언트가 서버의 씬 안내를 기다린다
+        private string _townOnlineScene = string.Empty;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -41,6 +46,7 @@ namespace Shinshi.Network
 
         public override void Awake()
         {
+            _townOnlineScene = onlineScene ?? string.Empty;
             ApplyNetworkSettings();
             EnsureAuthenticator();
             base.Awake();
@@ -72,9 +78,10 @@ namespace Shinshi.Network
             if (!hasAddress)
             {
 #if !UNITY_SERVER
-                if (LauncherSession.State != ELauncherSessionState.NotLaunched)
+                // Bootstrap으로 시작한 클라이언트만 로비로 간다. 네트워크 매니저를 직접 둔 개발 씬은 그 자리에 남는다
+                if (string.Equals(SceneManager.GetActiveScene().name, Constants.Scene.BOOTSTRAP, StringComparison.Ordinal))
                 {
-                    gameObject.AddComponent<LauncherTownConnector>().Initialize(this);
+                    LobbyFlow.GoToLobby();
                 }
 #endif
                 return;
@@ -171,6 +178,7 @@ namespace Shinshi.Network
             }
 
             _serverRole = role;
+            onlineScene = (role == EServerRole.Town) ? _townOnlineScene : string.Empty;
             ApplyNetworkSettings();
         }
 
@@ -230,6 +238,19 @@ namespace Shinshi.Network
 
             base.OnServerDisconnect(conn);
             ServerDisconnected?.Invoke(conn);
+        }
+
+        // offlineScene은 쓰지 않는다. Mirror가 끊김 때 매니저를 DontDestroyOnLoad에서 꺼내 다음 씬과 함께 지운다.
+        // 마을에 있다가 끊기면 매니저를 남긴 채 캐릭터 선택으로 돌아간다. 선택 화면에서 접속에 실패한 경우는 화면이 직접 안내한다
+        public override void OnClientDisconnect()
+        {
+            base.OnClientDisconnect();
+#if !UNITY_SERVER
+            if ((!string.IsNullOrEmpty(_townOnlineScene)) && (Utils.IsSceneActive(_townOnlineScene)) && (!NetworkServer.active))
+            {
+                LobbyFlow.ReturnToCharacterSelect("마을 서버와 연결이 끊겼다. 다시 게임 시작을 누른다.");
+            }
+#endif
         }
 
         public override void OnStartClient()

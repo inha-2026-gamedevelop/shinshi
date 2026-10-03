@@ -92,7 +92,13 @@ Assets/01.Scripts/
 
 ## 6. 현재 적용 범위
 
-런처 접속 경로는 `LauncherTownConnector`가 전달받은 게임 세션으로 `GET /v1/characters`를 호출하고, 선택한 캐릭터의 마을 입장권을 요청한 뒤 `ShinshiClientAuthenticator`로 인증한다. 목록 API는 인증된 계정의 캐릭터만 반환한다. 캐릭터가 없으면 테스트용 검사를 생성하는 Bootstrap UI가 있으며, 완성된 로비·게임 플레이 UI는 아니다. 게임 세션 갱신은 미연결이다. Windows IL2CPP 클라이언트 빌드와 관련 자동 테스트는 통과했으나, 이 신규 경로의 마을 접속 화면 확인과 M2 다인 접속 회귀는 검증 대기다.
+클라이언트 진입 흐름은 `Bootstrap` → `Release/Lobby` → `Release/CharacterSelect` (↔ `Release/CharacterCreate`) → `Release/ShinshiTown`이다. 코드는 `01.Network/Lobby/`(`LobbyFlow`, `LobbyApiClient`, 화면별 `*Screen`)에 있다.
+
+- 로비(`LobbyScreen`): 런처가 넘긴 게임 세션(`LauncherSession`)을 기다린다. 에디터와 개발 빌드에서 런처 없이 실행하면 개발 로그인 패널(API 주소, 아이디, 비밀번호, 가입할 때만 쓰는 이메일, 로그인과 가입 후 로그인 버튼)이 보이고 `POST /v1/auth/exchange` → `POST /v1/auth/game-session`으로 받은 하위 세션을 같은 자리에 넣는다. 개발 로그인의 빌드 ID는 `dev-local`(`-build-id`로 변경), 기본 API 주소는 `http://127.0.0.1:5080`(`-api-base-url`로 변경)이며 API의 허용 buildId와 `AuthBuild__ContentHash`가 맞아야 한다.
+- 캐릭터 선택(`CharacterSelectScreen`): `GET /v1/characters`로 최대 3칸을 채우고, 고른 캐릭터로 `POST /v1/town/join-ticket`을 받아 `ShinshiClientAuthenticator`로 마을 서버에 접속한다. 삭제 API는 없어 삭제 버튼은 비활성이다. 목록 API가 전투력·레벨을 주지 않아 `전투력 -`, `Lv.-`로 표시한다.
+- 캐릭터 생성(`CharacterCreateScreen`): 직업 3종과 이름(`GET /v1/characters/name-availability`)을 정해 `POST /v1/characters`로 만든다. 외형 슬라이더 화면은 없어 계약의 중립값을 보낸다.
+- 마을: Bootstrap 네트워크 매니저의 `onlineScene`이 `Release/ShinshiTown`이다. 마을 역할(`ConfigureServerRole(Town)`)은 서버와 클라이언트 모두 이 값을 쓰고, 던전 역할은 비운다. 인증이 끝나면 서버가 마을 씬을 안내하고 클라이언트가 불러온 뒤 플레이어가 `NetworkStartPosition`에 스폰된다. 마을에서 연결이 끊기면 캐릭터 선택으로 돌아간다(`offlineScene`은 쓰지 않는다. Mirror가 매니저를 DontDestroyOnLoad에서 꺼내 지우기 때문이다).
+- 게임 세션 갱신(`/v1/auth/game-session/refresh`)은 아직 연결하지 않았다. 하위 세션은 15분이라 그 뒤의 목록·입장 요청은 다시 로그인해야 한다.
 
 2026-10-02 작업 트리 기준 다음 타입이 존재한다. 표는 코드의 배치·호출 경계를 설명하며 다인 접속 성공이나 출시 빌드 성공을 뜻하지 않는다.
 
