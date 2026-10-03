@@ -16,6 +16,8 @@ namespace Shinshi.AI
         ****************************************/
 
         private readonly int            _castInstanceId;
+        private readonly int            _areaId;
+        private readonly bool           _skipMissedRounds;
         private readonly int            _attackerId;
         private readonly string         _definitionId;
         private readonly Vector3        _center;
@@ -31,8 +33,14 @@ namespace Shinshi.AI
         *              Properties
         ****************************************/
 
-        /// <summary> 예고부터 회복까지 한 번의 시전 번호, 장판 한 개를 가리키는 키로도 쓴다. 모든 회차의 피해 요청이 같은 값을 쓴다 </summary>
+        /// <summary> 예고부터 회복까지 한 번의 시전 번호, 한 시전이 장판 여러 개를 설치할 수 있어 그 장판들이 함께 쓰는 묶음 키다. 모든 회차의 피해 요청이 같은 값을 쓴다 </summary>
         public int CastInstanceId => _castInstanceId;
+
+        /// <summary> 장판 한 개를 가리키는 키, 슬롯과 알림과 클라이언트 표현이 이 번호로 장판을 구분한다. 단일 장판 시전은 시전 번호와 같다 </summary>
+        public int AreaId => _areaId;
+
+        /// <summary> 참이면 지연된 틱에서 가장 최근 도래한 회차만 현재 위치로 판정하고 이전 회차는 건너뛴다, 아니면 놓친 회차를 모두 처리한다 </summary>
+        public bool SkipMissedRounds => _skipMissedRounds;
 
         public int     AttackerId   => _attackerId;
         public string  DefinitionId => _definitionId;
@@ -62,10 +70,21 @@ namespace Shinshi.AI
         *                Methods
         ****************************************/
 
+        // 장판 번호를 따로 주지 않으면 시전 번호가 장판 번호이고 놓친 회차를 모두 처리한다(1페이즈 P05의 단일 장판)
         public BossAreaSpec(int castInstanceId, int attackerId, string definitionId, Vector3 center, float radius,
             float durationSeconds, float tickInterval, float rawDamage, EDamageFlags flags, double activateServerTime,
             BossDamageGate gate)
+            : this(castInstanceId, castInstanceId, attackerId, definitionId, center, radius, durationSeconds, tickInterval,
+                rawDamage, flags, activateServerTime, gate, false)
         {
+        }
+
+        public BossAreaSpec(int castInstanceId, int areaId, int attackerId, string definitionId, Vector3 center, float radius,
+            float durationSeconds, float tickInterval, float rawDamage, EDamageFlags flags, double activateServerTime,
+            BossDamageGate gate, bool skipMissedRounds)
+        {
+            _areaId             = areaId;
+            _skipMissedRounds   = skipMissedRounds;
             _castInstanceId     = castInstanceId;
             _attackerId         = attackerId;
             _definitionId       = definitionId;

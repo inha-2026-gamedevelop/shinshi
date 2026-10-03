@@ -14,6 +14,7 @@ namespace Shinshi.AI
 
         private readonly int                 _bossId;
         private readonly int                 _castId;
+        private readonly int                 _groupId;
         private readonly string              _patternId;
         private readonly EBossTelegraphShape _shape;
         private readonly Vector3             _origin;
@@ -33,6 +34,9 @@ namespace Shinshi.AI
 
         /// <summary> 예고부터 회복까지 한 번의 시전 번호, 표현을 구분하는 키다 </summary>
         public int CastId => _castId;
+
+        /// <summary> 한 번의 시전이 동시에 시작한 예고들의 묶음 번호, 같은 묶음의 예고는 서로 끝내지 않는다. 묶음을 따로 주지 않으면 시전 번호와 같다 </summary>
+        public int GroupId => _groupId;
 
         /// <summary> 패턴 정의 ID, 로그와 진단용이며 표현은 형태로만 고른다 </summary>
         public string PatternId => _patternId;
@@ -66,9 +70,17 @@ namespace Shinshi.AI
 
         public BossTelegraphStart(int bossId, int castId, string patternId, EBossTelegraphShape shape, Vector3 origin,
             Vector3 direction, float length, float width, float arcAngle, double startServerTime, float telegraphSeconds)
+            : this(bossId, castId, castId, patternId, shape, origin, direction, length, width, arcAngle, startServerTime,
+                telegraphSeconds)
+        {
+        }
+
+        public BossTelegraphStart(int bossId, int castId, int groupId, string patternId, EBossTelegraphShape shape, Vector3 origin,
+            Vector3 direction, float length, float width, float arcAngle, double startServerTime, float telegraphSeconds)
         {
             _bossId           = bossId;
             _castId           = castId;
+            _groupId          = groupId;
             _patternId        = patternId;
             _shape            = shape;
             _origin           = origin;
@@ -88,11 +100,27 @@ namespace Shinshi.AI
                 radius, 0f, arcAngle, startServerTime, telegraphSeconds);
         }
 
+        /// <summary> 한 시전이 부채꼴 예고를 구역마다 하나씩 여러 개 시작하는 경우, castId는 예고 하나의 번호(구역 번호)이고 groupId는 시전 번호다 </summary>
+        public static BossTelegraphStart Fan(int bossId, int castId, string patternId, Vector3 origin, Vector3 direction,
+            float radius, float arcAngle, double startServerTime, float telegraphSeconds, int groupId)
+        {
+            return new BossTelegraphStart(bossId, castId, groupId, patternId, EBossTelegraphShape.Fan, origin, direction,
+                radius, 0f, arcAngle, startServerTime, telegraphSeconds);
+        }
+
         /// <summary> P03 원형, 방향이 없어 앞쪽을 기본으로 둔다 </summary>
         public static BossTelegraphStart Circle(int bossId, int castId, string patternId, Vector3 center, float radius,
             double startServerTime, float telegraphSeconds)
         {
             return new BossTelegraphStart(bossId, castId, patternId, EBossTelegraphShape.Circle, center, Vector3.forward,
+                radius, 0f, 0f, startServerTime, telegraphSeconds);
+        }
+
+        /// <summary> 한 시전이 원형 예고를 여러 개 동시에 시작하는 경우, castId는 예고 하나의 번호(장판 번호)이고 groupId는 시전 번호다 </summary>
+        public static BossTelegraphStart Circle(int bossId, int castId, string patternId, Vector3 center, float radius,
+            double startServerTime, float telegraphSeconds, int groupId)
+        {
+            return new BossTelegraphStart(bossId, castId, groupId, patternId, EBossTelegraphShape.Circle, center, Vector3.forward,
                 radius, 0f, 0f, startServerTime, telegraphSeconds);
         }
 

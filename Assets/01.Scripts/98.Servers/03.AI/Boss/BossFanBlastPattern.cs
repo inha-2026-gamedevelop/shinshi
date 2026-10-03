@@ -23,7 +23,6 @@ namespace Shinshi.AI
 
         private const float MIN_DIRECTION_SQR = 0.000001f; // m^2, 이보다 가까우면 방향을 정할 수 없다
         private const float ANGLE_EPSILON     = 0.001f;    // 도, 경계 각도의 부동소수 오차 흡수
-        private const float HALF              = 0.5f;
 
         /****************************************
         *                Fields
@@ -198,7 +197,7 @@ namespace Shinshi.AI
             for (int i = 0; i < _buffer.Count; ++i)
             {
                 ICombatTarget target = _buffer[i];
-                if (!IsInsideFan(origin, _aim, target.Position, radius, arc))
+                if (!BossFanShape.IsInsideSector(origin, _aim, target.Position, radius, arc))
                 {
                     continue;
                 }
@@ -214,26 +213,6 @@ namespace Shinshi.AI
 
             _buffer.Clear();
             _listener?.OnHit(Context.CastInstanceId, hitCount);
-        }
-
-        // 거리와 각도 경계를 모두 포함한다. 보스와 같은 위치의 대상은 방향이 없어 안으로 본다
-        private static bool IsInsideFan(Vector3 origin, Vector3 aim, Vector3 targetPosition, float radius, float arcAngle)
-        {
-            Vector3 offset = targetPosition - origin;
-            offset.y = 0f;
-
-            float sqrDistance = offset.sqrMagnitude;
-            if (sqrDistance > (radius * radius))
-            {
-                return false;
-            }
-
-            if (sqrDistance < MIN_DIRECTION_SQR)
-            {
-                return true;
-            }
-
-            return Vector3.Angle(aim, offset) <= ((arcAngle * HALF) + ANGLE_EPSILON);
         }
 
         private static Vector3 Flatten(Vector3 direction, Vector3 fallback)

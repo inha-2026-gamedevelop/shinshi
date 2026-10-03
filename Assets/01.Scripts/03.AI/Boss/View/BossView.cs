@@ -47,6 +47,7 @@ namespace Shinshi.AI
         private const float  DIRECTION_EPSILON    = 0.0001f;
         // 클라이언트 어셈블리는 서버 어셈블리의 패턴 팩토리 상수를 볼 수 없어 장판 패턴의 ID를 따로 둔다. 모양은 원형이어도 자세가 달라서다
         private const string AREA_PATTERN_ID     = "wolbaek_p05";
+        private const string AREA_PHASE_TWO_ID   = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID; // 2페이즈 지정 장판도 같은 던지는 자세다
         private const string URP_LIT_SHADER       = "Universal Render Pipeline/Lit";
         private const string PROP_SRC_TEXTURE     = "_MainTex";
         private const string PROP_SRC_COLOR       = "_Color";
@@ -361,7 +362,7 @@ namespace Shinshi.AI
             if (shape == EBossTelegraphShape.Circle)
             {
                 // 장판(P05)도 원형 예고를 쓰지만 팔을 앞으로 뻗어 지정 위치를 가리킨다
-                values = (patternId == AREA_PATTERN_ID) ? _gatherThrow : _gatherCircle;
+                values = IsAreaPattern(patternId) ? _gatherThrow : _gatherCircle;
             }
             else if (shape == EBossTelegraphShape.Projectile)
             {
@@ -386,7 +387,7 @@ namespace Shinshi.AI
 
             if (shape == EBossTelegraphShape.Circle)
             {
-                values = (patternId == AREA_PATTERN_ID) ? _gatherThrow : _gatherCircle;
+                values = IsAreaPattern(patternId) ? _gatherThrow : _gatherCircle;
             }
             else if (shape == EBossTelegraphShape.Projectile)
             {
@@ -401,6 +402,11 @@ namespace Shinshi.AI
                 ArmForward = values.z * RELEASE_ARM_SCALE,
                 Lift       = -BREATH_LIFT
             };
+        }
+
+        private static bool IsAreaPattern(string patternId)
+        {
+            return (patternId == AREA_PATTERN_ID) || (patternId == AREA_PHASE_TWO_ID);
         }
 
         private Pose DashPose()

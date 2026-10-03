@@ -128,6 +128,18 @@ namespace Shinshi.AI
             return true;
         }
 
+        // 인계를 부르는 쪽은 페이즈 전환 뒤 별도 진행(결계 전개 등)이 끝난 연결이다. 인계 대기 중이 아니거나 전투 중이 아니면 거짓이다
+        /// <summary> 페이즈 전환 뒤 인계를 마친다, 2페이즈에 실행 가능한 패턴이 있으면 새 선택을 다시 열고 없으면 준비를 기다린다 </summary>
+        public bool CompleteHandoff()
+        {
+            if ((FlowState != EBossFlowState.Combat) || (_combat == null))
+            {
+                return false;
+            }
+
+            return _combat.CompleteHandoff();
+        }
+
         /// <summary> 세션이 전투 종료를 알린다, 등장 대기 중에도 받으며 다음 Tick에서 가장 먼저 처리한다 </summary>
         public void RequestCombatEnd()
         {

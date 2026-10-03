@@ -66,6 +66,8 @@ namespace Shinshi.AI
             _blackboard.Effects    = dependencies.Effects;
             _blackboard.Catalog    = dependencies.Catalog;
             _blackboard.Random     = dependencies.Random;
+            _blackboard.Vitals     = dependencies.Vitals;
+            _blackboard.Patterns   = dependencies.Patterns;
 
             // 전투 시작 뒤 첫 선택까지의 기존 데이터 필드만 반영한다. 고정 오프닝 규칙은 아니다
             _blackboard.NextSelectionTime = startTime + boss.OpeningDelaySeconds;
@@ -74,6 +76,18 @@ namespace Shinshi.AI
         public void AddSelectionRule(IBossSelectionRule rule)
         {
             _tree.AddRule(rule);
+        }
+
+        /// <summary> 페이즈 전환 뒤 인계를 마친다, 2페이즈에 실행 가능한 패턴이 있으면 새 선택을 열고 없으면 준비를 기다린다. 인계 대기가 아니면 거짓이다 </summary>
+        public bool CompleteHandoff()
+        {
+            if (_phase.State != EBossPhaseState.AwaitingHandoff)
+            {
+                return false;
+            }
+
+            // 후보 확인은 2페이즈 번호가 올라간 뒤의 블랙보드 값으로 한다
+            return _phase.CompleteHandoff(_blackboard.HasExecutableCandidate());
         }
 
         /// <summary> 상위 FSM이 사망이나 전투 종료로 끊을 때 부른다, 지속물까지 모두 정리한다 </summary>
@@ -99,6 +113,15 @@ namespace Shinshi.AI
                 _phase.BeginTransition();
                 CancelAll(EBossInterruptReason.PhaseTransition);
                 _phase.CompleteTransition();
+
+                // 1페이즈의 사용 기록과 직전 그룹은 2페이즈 선택에 넘기지 않는다
+                _blackboard.ResetHistory();
+                _blackboard.Phase = _phase.Phase;
+                return;
+            }
+
+            if ((_phase.State == EBossPhaseState.AwaitingReadiness) && (!TryResumeFromReadiness(serverTime)))
+            {
                 return;
             }
 
@@ -125,6 +148,23 @@ namespace Shinshi.AI
             }
 
             StartSelectedPattern(serverTime);
+        }
+
+        // 실행 가능한 패턴이 생겼는지 EmptyWeightRetrySeconds 주기로 다시 본다. 없는 동안은 선택도 로그도 없다
+        private bool TryResumeFromReadiness(double serverTime)
+        {
+            if (serverTime < _blackboard.NextSelectionTime)
+            {
+                return false;
+            }
+
+            if (!_blackboard.HasExecutableCandidate())
+            {
+                _blackboard.NextSelectionTime = serverTime + _boss.EmptyWeightRetrySeconds;
+                return false;
+            }
+
+            return _phase.ResumeFromReadiness();
         }
 
         // 받은 제어가 허용 구간이 아니거나 이미 받았거나 면역이면 버린다
@@ -207,11 +247,20 @@ namespace Shinshi.AI
 
             int castInstanceId = _damageGate.IssueInstanceId();
             BossPatternContext context = new BossPatternContext(definition, castInstanceId,
-                _blackboard.TargetCombatId, _dependencies.Self, _dependencies.Targets, _damageGate);
+                _blackboard.TargetCombatId, _dependencies.Self, _dependencies.Targets, _damageGate, _dependencies.Random);
+
+            _attack.Start(definition, pattern, in context, serverTime);
+
+            // 시작할 수 없는 시전(대상이나 빈 슬롯이 없는 여러 장판)은 기록을 남기지 않고 기존 재조회 시간 뒤에 다시 고른다
+            if ((pattern is IBossPatternStartResult startResult) && startResult.IsStartRejected)
+            {
+                _attack.Cancel(EBossInterruptReason.None);
+                _blackboard.NextSelectionTime = serverTime + _boss.EmptyWeightRetrySeconds;
+                return;
+            }
 
             // 예고를 실제로 시작한 순간 기록한다
-            _blackboard.RecordUse(definition.DefinitionId);
-            _attack.Start(definition, pattern, in context, serverTime);
+            _blackboard.RecordUse(definition.DefinitionId, definition.Group);
         }
 
         private void CancelAll(EBossInterruptReason reason)

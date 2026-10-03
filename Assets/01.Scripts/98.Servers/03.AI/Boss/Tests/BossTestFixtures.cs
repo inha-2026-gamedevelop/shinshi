@@ -293,6 +293,37 @@ namespace Shinshi.Tests
         }
     }
 
+    // 실제 팩토리를 감싸 지정한 정의를 후보에서 뺀다. 다른 2페이즈 패턴이 구현돼도 한 패턴의 선택 동작만 시험하려는 두뇌 시험이 쓴다
+    internal sealed class ExcludingPatternFactory : IBossPatternFactory, IBossPatternAvailability
+    {
+        private readonly IBossPatternFactory     _inner;
+        private readonly HashSet<string>         _excluded = new HashSet<string>();
+
+        public ExcludingPatternFactory(IBossPatternFactory inner, params string[] excludedIds)
+        {
+            _inner = inner;
+            for (int i = 0; i < excludedIds.Length; ++i)
+            {
+                _excluded.Add(excludedIds[i]);
+            }
+        }
+
+        public bool CanCreate(BossPatternCatalogSO.PatternDefinition definition)
+        {
+            if (_excluded.Contains(definition.DefinitionId))
+            {
+                return false;
+            }
+
+            return (!(_inner is IBossPatternAvailability availability)) || availability.CanCreate(definition);
+        }
+
+        public IBossPattern Create(BossPatternCatalogSO.PatternDefinition definition)
+        {
+            return _excluded.Contains(definition.DefinitionId) ? null : _inner.Create(definition);
+        }
+    }
+
     internal sealed class FakePatternFactory : IBossPatternFactory
     {
         public List<ScheduledHitPattern> Created { get; } = new List<ScheduledHitPattern>();
