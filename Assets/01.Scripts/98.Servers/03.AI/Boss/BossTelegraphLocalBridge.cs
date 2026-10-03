@@ -14,7 +14,8 @@ namespace Shinshi.AI
     public sealed class BossTelegraphLocalBridge :
         IBossFanTelegraphListener, IBossCircleTelegraphListener, IBossLineTelegraphListener, IBossDashTelegraphListener,
         IBossProjectileTelegraphListener, IBossAreaTelegraphListener, IBossProjectileListener, IBossAreaListener,
-        IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener
+        IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
+        IBossStarTelegraphListener, IBossStarListener
     {
         /****************************************
         *                Fields
@@ -348,6 +349,41 @@ namespace Shinshi.AI
         void IBossBeamListener.OnBeamEnded(int castInstanceId, int beamId, EBossAreaEnd end, double endServerTime)
         {
             _presenter.EndBeam(beamId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
+        }
+
+        /****************************************
+        *         P01 (Phase 2) Rotating Star
+        ****************************************/
+
+        // 별 구조 하나마다 예고를 시작하고 구조 번호를 표현의 키로 쓴다. 서버가 활성을 확정하기 전에는 예고만 보이고 회전하지 않는다
+        void IBossStarTelegraphListener.OnTelegraphStarted(int castInstanceId, int starId, in BossStarShape shape,
+            float telegraphSeconds, float durationSeconds, float tickInterval)
+        {
+            _body.Face(shape.BaseDirection);
+            _presenter.enabled = true;
+            var start = new BossStarStart(Boss, starId, castInstanceId, in shape, Now, telegraphSeconds, durationSeconds, tickInterval);
+            _presenter.BeginStar(in start);
+        }
+
+        void IBossStarTelegraphListener.OnCancelled(int castInstanceId, int starId, EBossInterruptReason reason)
+        {
+            _presenter.CancelStar(starId);
+        }
+
+        void IBossStarListener.OnStarActivated(int castInstanceId, int starId, float durationSeconds, float tickInterval,
+            double activateServerTime)
+        {
+            _presenter.ActivateStar(starId, activateServerTime);
+        }
+
+        void IBossStarListener.OnStarTick(int castInstanceId, int starId, int hitIndex, double roundServerTime, int hitCount)
+        {
+            _presenter.TickStar(starId, hitIndex, roundServerTime);
+        }
+
+        void IBossStarListener.OnStarEnded(int castInstanceId, int starId, EBossAreaEnd end, double endServerTime)
+        {
+            _presenter.EndStar(starId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
         }
 
         /****************************************

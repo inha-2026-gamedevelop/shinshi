@@ -216,6 +216,12 @@ namespace Shinshi.Data
             [SerializeField] private float                          _beamLateralOffset;         // m, 전장 중심에서 각 빔 중심선까지 좌우 거리
             [SerializeField] private float                          _beamTickInterval;          // 초, 피해 간격
 
+            // 별형 회전 빔만 쓴다. 0은 미지정이고 별형이 아니다. 빔 폭은 형태의 Width, 유지 시간은 ActiveSeconds, 피해 간격은 BeamTickInterval이다
+            [SerializeField] private int                            _starVertexCount;           // 전장 중심 둘레에 놓는 여우불(꼭짓점) 수
+            [SerializeField] private float                          _starRingRadius;            // m, 전장 중심에서 꼭짓점까지 거리
+            [SerializeField] private int                            _starConnectStep;           // 꼭짓점 k를 몇 칸 뒤 꼭짓점과 잇는가(오각별은 2)
+            [SerializeField] private float                          _starRotationDegrees;       // 도/초, 활성 순간부터 한 방향으로 도는 속도
+
             public string                         DefinitionId          => _definitionId;
             public string                         DisplayKey            => _displayKey;
             public string                         BossId                => _bossId;
@@ -279,6 +285,18 @@ namespace Shinshi.Data
             /// <summary> 초, 빔 피해 간격, 활성 순간이 첫 타격이다. 빔 유지 시간은 ActiveSeconds다 </summary>
             public float                          BeamTickInterval      => _beamTickInterval;
 
+            /// <summary> 데이터에 입력된 별형 꼭짓점 수 그대로, 0이면 별형 회전 빔이 아니다 </summary>
+            public int                            StarVertexCount       => _starVertexCount;
+
+            /// <summary> m, 전장 중심에서 꼭짓점까지 거리 </summary>
+            public float                          StarRingRadius        => _starRingRadius;
+
+            /// <summary> 꼭짓점 k와 잇는 꼭짓점이 몇 칸 뒤인가 </summary>
+            public int                            StarConnectStep       => _starConnectStep;
+
+            /// <summary> 도/초, 활성 순간부터 도는 속도 </summary>
+            public float                          StarRotationDegrees   => _starRotationDegrees;
+
             /****************************************
             *                Methods
             ****************************************/
@@ -304,8 +322,13 @@ namespace Shinshi.Data
                 EPatternGroup group = EPatternGroup.None, float enhancedBaseWeight = 0f,
                 int projectileCount = 0, float projectileIntervalSeconds = 0f, int areaTargetCount = 0,
                 bool areaSkipsMissedRounds = false, int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
-                int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f)
+                int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f,
+                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f)
             {
+                _starVertexCount           = starVertexCount;
+                _starRingRadius            = starRingRadius;
+                _starConnectStep           = starConnectStep;
+                _starRotationDegrees       = starRotationDegrees;
                 _beamCount                 = beamCount;
                 _beamLateralOffset         = beamLateralOffset;
                 _beamTickInterval          = beamTickInterval;
@@ -386,7 +409,11 @@ namespace Shinshi.Data
 
         // 한 시전의 평행 빔 줄 수의 상한, 서버 빔 관리자의 슬롯 수와 같다
         private const int   MAX_BEAMS            = 4;
-        private const float BEAM_LATERAL_FACTOR  = 2f;      // 두 줄 사이 중심선 거리는 좌우 거리의 두 배
+        private const float BEAM_LATERAL_FACTOR  = 2f;
+
+        // 별형 꼭짓점 수의 범위, 서버 별형 패턴의 기술적 상한과 같다
+        private const int   MIN_STAR_VERTICES    = 5;
+        private const int   MAX_STAR_VERTICES    = 8;      // 두 줄 사이 중심선 거리는 좌우 거리의 두 배
 
         // 흐름 배율 표, 체력 구간 2 x 직전 그룹 3 x 다음 그룹 3
         private const int FLOW_BAND_COUNT  = 2;
@@ -463,8 +490,14 @@ namespace Shinshi.Data
 
             return new[]
             {
+                // P01은 전장 중심 반경 14m에 여우불 5개를 정오각형으로 놓고 두 칸 뒤 꼭짓점과 이어 오각별 빔 5개를 만든다(0-2, 1-3, 2-4, 3-0, 4-1).
+                // 빔 폭 1.5m, 예고 2초, 활성 순간부터 6초 동안 서버가 고른 방향(좌우 각 50%)으로 초당 20도 회전, 0.25초 간격 24회, 회당 0.03Href(0.5초에 0.06Href와 같은 총량),
+                // 방어 불가, 회복 1초, 직접 제어 없음이다. 체력 25% 이하에서도 수치는 같다. 수치는 시작안이며 테스트로 조정한다
+                // 형태의 길이(27m)는 별 한 줄(약 26.6m)의 표시용 값이고 판정은 꼭짓점 좌표로 한다
                 MakePhaseTwo(WOLBAEK_P2_P01_ID, EEnemyAttackShape.Line, false, EPatternGroup.Large, 10f, 12f,
-                    new[] { 1.0f, 1.1f, 1.1f }, flatDirection, new[] { 1.0f, 1.1f, 1.2f }, recent),
+                    new[] { 1.0f, 1.1f, 1.1f }, flatDirection, new[] { 1.0f, 1.1f, 1.2f }, recent,
+                    new PhaseTwoExecution(2f, 6f, 1f, EnemyCatalogSO.AttackShapeSpec.Line(27f, 1.5f), 0.03f,
+                        beamTickInterval: 0.25f, starVertexCount: 5, starRingRadius: 14f, starConnectStep: 2, starRotationDegrees: 20f)),
                 // P02는 전장 중심에서 좌우 5m에 폭 2m 평행 빔 두 줄을 예고 시작 순간의 방향으로 고정한다(가운데 안전 간격 8m). 예고 1.5초, 유지 4초(실행 구간),
                 // 활성 순간부터 0.5초 간격 8회, 회당 0.08Href, 방어 불가, 회복 0.8초이고 직접 제어는 없다. 체력 25% 이하에서도 수치는 같다
                 // 형태의 길이(36m)는 전장 안쪽으로 잘리므로 판정에 쓰지 않는 표시용 상한이다
@@ -545,6 +578,10 @@ namespace Shinshi.Data
             public readonly int                            BeamCount;
             public readonly float                          BeamLateralOffset;
             public readonly float                          BeamTickInterval;
+            public readonly int                            StarVertexCount;
+            public readonly float                          StarRingRadius;
+            public readonly int                            StarConnectStep;
+            public readonly float                          StarRotationDegrees;
 
             public PhaseTwoExecution(float telegraphSeconds, float activeSeconds, float recoverySeconds,
                 EnemyCatalogSO.AttackShapeSpec shape, float damageRef, float trackingSeconds = 0f, float turnRate = 0f,
@@ -552,8 +589,13 @@ namespace Shinshi.Data
                 float projectileIntervalSeconds = 0f, float areaDurationSeconds = 0f, float areaTickInterval = 0f,
                 int maxConcurrentAreas = 0, int areaTargetCount = 0, bool areaSkipsMissedRounds = false,
                 int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
-                int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f)
+                int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f,
+                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f)
             {
+                StarVertexCount       = starVertexCount;
+                StarRingRadius        = starRingRadius;
+                StarConnectStep       = starConnectStep;
+                StarRotationDegrees   = starRotationDegrees;
                 BeamCount             = beamCount;
                 BeamLateralOffset     = beamLateralOffset;
                 BeamTickInterval      = beamTickInterval;
@@ -595,7 +637,9 @@ namespace Shinshi.Data
                     projectileCount: value.ProjectileCount, projectileIntervalSeconds: value.ProjectileIntervalSeconds,
                     areaTargetCount: value.AreaTargetCount, areaSkipsMissedRounds: value.AreaSkipsMissedRounds,
                     sweepZoneCount: value.SweepZoneCount, sweepIntervalSeconds: value.SweepIntervalSeconds,
-                    beamCount: value.BeamCount, beamLateralOffset: value.BeamLateralOffset, beamTickInterval: value.BeamTickInterval);
+                    beamCount: value.BeamCount, beamLateralOffset: value.BeamLateralOffset, beamTickInterval: value.BeamTickInterval,
+                    starVertexCount: value.StarVertexCount, starRingRadius: value.StarRingRadius,
+                    starConnectStep: value.StarConnectStep, starRotationDegrees: value.StarRotationDegrees);
             }
 
             return new PatternDefinition(id, WOLBAEK_ID, SECOND_PHASE, baseWeight,
@@ -908,6 +952,78 @@ namespace Shinshi.Data
             ValidateAreaTargets(errors, field, pattern);
             ValidateSweep(errors, field, pattern);
             ValidateBeam(errors, field, pattern);
+            ValidateStar(errors, field, pattern);
+        }
+
+        // 별형 회전 빔은 선 형태여야 하고, 꼭짓점 수와 연결 칸 수와 배치 반경과 회전 속도와 피해 간격이 있어야 한다
+        // 연결 칸 수가 꼭짓점 수와 서로소가 아니면 닫힌 별이 되지 않고, 1이면 별이 아니라 다각형이다. 배치 반경은 전장 반지름 이하여야 빔이 전장 밖으로 나가지 않는다
+        private void ValidateStar(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireRange(errors, OWNER, field + ".StarVertexCount", pattern.StarVertexCount, 0, MAX_STAR_VERTICES);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".StarRingRadius", pattern.StarRingRadius);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".StarRotationDegrees", pattern.StarRotationDegrees);
+
+            if (pattern.StarVertexCount <= 0)
+            {
+                return;
+            }
+
+            if (pattern.StarVertexCount < MIN_STAR_VERTICES)
+            {
+                errors.Add($"{OWNER}.{field}.StarVertexCount = {pattern.StarVertexCount}: 별형은 {MIN_STAR_VERTICES}개 이상이어야 한다");
+            }
+
+            if ((pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Line))
+            {
+                errors.Add($"{OWNER}.{field}.Shape: 별형 빔은 선 형태여야 한다");
+            }
+
+            if ((pattern.StarConnectStep < 2) || (pattern.StarConnectStep > (pattern.StarVertexCount / 2))
+                || (GreatestCommonDivisor(pattern.StarVertexCount, pattern.StarConnectStep) != 1))
+            {
+                errors.Add($"{OWNER}.{field}.StarConnectStep = {pattern.StarConnectStep}: 꼭짓점 수와 서로소이고 2 이상 절반 이하여야 한다");
+            }
+
+            if (pattern.StarRingRadius <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.StarRingRadius: 배치 반경이 필요하다");
+            }
+            else if (TryGetBoss(pattern.BossId, out BossDefinition boss) && (boss.ArenaDiameter > UNSET)
+                && (pattern.StarRingRadius > (boss.ArenaDiameter * 0.5f)))
+            {
+                errors.Add($"{OWNER}.{field}.StarRingRadius = {pattern.StarRingRadius}: 전장 반지름 {boss.ArenaDiameter * 0.5f}m 이하여야 한다");
+            }
+
+            if (pattern.StarRotationDegrees <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.StarRotationDegrees: 회전 속도가 필요하다");
+            }
+
+            if (pattern.ActiveSeconds <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.ActiveSeconds: 회전 유지 시간이 필요하다");
+            }
+
+            if (pattern.BeamTickInterval <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.BeamTickInterval: 피해 간격이 필요하다");
+            }
+            else if (pattern.BeamTickInterval > (pattern.ActiveSeconds + SEQUENCE_EPSILON))
+            {
+                errors.Add($"{OWNER}.{field}.BeamTickInterval = {pattern.BeamTickInterval}: 유지 시간 {pattern.ActiveSeconds}초 이하여야 한다");
+            }
+        }
+
+        private static int GreatestCommonDivisor(int a, int b)
+        {
+            while (b != 0)
+            {
+                int remainder = a % b;
+                a = b;
+                b = remainder;
+            }
+
+            return a;
         }
 
         // 빔은 선 형태여야 하고, 줄마다 폭과 좌우 거리와 피해 간격이 있어야 하며 간격은 유지 시간(ActiveSeconds) 안이어야 한다. 줄이 겹치면 가운데 간격이 없어지므로 막는다
