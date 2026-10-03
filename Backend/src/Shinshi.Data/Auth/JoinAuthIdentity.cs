@@ -23,12 +23,15 @@ namespace Shinshi.Data.Auth
         // 마을 입장 교환이 같은 트랜잭션에서 얻은 계정 접속 임대. 던전 입장은 이관 경로가 임대를 옮기므로 빈 값이다
         public Guid AccountLeaseId { get; }
 
+        // 캐릭터 표시 이름. 이름 컬럼이 생기기 전의 캐릭터면 null이다
+        public string? CharacterName { get; }
+
         /****************************************
         *                Methods
         ****************************************/
 
         public JoinAuthIdentity(Guid accountId, Guid characterId, int classId, Guid participantId, Guid sessionId,
-            Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default)
+            Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default, string? characterName = null)
         {
             AccountId        = accountId;
             CharacterId      = characterId;
@@ -38,6 +41,7 @@ namespace Shinshi.Data.Auth
             InstanceId       = instanceId;
             ServerTimeUnixMs = serverTimeUnixMs;
             AccountLeaseId   = accountLeaseId;
+            CharacterName    = characterName;
         }
     }
 }

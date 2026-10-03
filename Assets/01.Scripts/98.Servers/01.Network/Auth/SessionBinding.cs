@@ -16,6 +16,7 @@ namespace Shinshi.Network
         private readonly int          _participantId;
         private readonly string       _accountLeaseId;
         private readonly EPlayerClass _playerClass;
+        private readonly string       _characterName;
 
         /****************************************
         *              Properties
@@ -33,6 +34,9 @@ namespace Shinshi.Network
         // 토큰을 교환한 API가 알려 준 캐릭터 직업, 전투 개체는 이 값으로 만든다. 재접속마다 새 교환에서 다시 받는다
         public EPlayerClass PlayerClass => _playerClass;
 
+        // 머리 위에 띄우는 표시 이름, 없으면 null
+        public string CharacterName => _characterName;
+
         public bool IsActive { get; internal set; }
 
         /****************************************
@@ -40,11 +44,18 @@ namespace Shinshi.Network
         ****************************************/
 
         public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass)
+            : this(participantKey, participantId, accountLeaseId, playerClass, null)
+        {
+        }
+
+        public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass,
+            string characterName)
         {
             _participantKey = participantKey;
             _participantId  = participantId;
             _accountLeaseId = accountLeaseId;
             _playerClass    = playerClass;
+            _characterName  = characterName;
             IsActive        = true;
         }
     }

@@ -19,6 +19,7 @@ namespace Shinshi.Network
         private readonly string       _sortieId;
         private readonly string       _accountLeaseId;
         private readonly EPlayerClass _playerClass;
+        private readonly string       _characterName;
 
         /****************************************
         *              Properties
@@ -42,6 +43,9 @@ namespace Shinshi.Network
         // 토큰이 발급된 캐릭터의 직업, API 교환 응답의 classId다. 클라이언트가 보낸 값은 쓰지 않는다
         public EPlayerClass PlayerClass => _playerClass;
 
+        // 머리 위에 띄우는 표시 이름, 없으면 null
+        public string CharacterName => _characterName;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -54,6 +58,13 @@ namespace Shinshi.Network
             _sortieId       = null;
             _accountLeaseId = null;
             _playerClass    = EPlayerClass.Warrior;
+            _characterName  = null;
+        }
+
+        public JoinTokenClaims(string participantKey, string characterName)
+            : this(participantKey)
+        {
+            _characterName = characterName;
         }
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId)
@@ -69,6 +80,12 @@ namespace Shinshi.Network
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
             string accountLeaseId, EPlayerClass playerClass)
+            : this(participantKey, characterId, instanceId, sortieId, accountLeaseId, playerClass, null)
+        {
+        }
+
+        public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
+            string accountLeaseId, EPlayerClass playerClass, string characterName)
         {
             _participantKey = participantKey;
             _characterId    = characterId;
@@ -76,6 +93,7 @@ namespace Shinshi.Network
             _sortieId       = sortieId;
             _accountLeaseId = accountLeaseId;
             _playerClass    = playerClass;
+            _characterName  = characterName;
         }
     }
 }

@@ -36,6 +36,9 @@ namespace Shinshi.Contracts
         // 게임 서버는 클라이언트가 아니라 이 값으로 전투 개체의 직업을 정한다
         [DataMember(Name = "classId")]          private int    _classId = UNKNOWN_CLASS_ID;
 
+        // 토큰이 발급된 캐릭터의 표시 이름. 게임 서버가 머리 위 이름으로 복제한다. 이름이 없는 옛 캐릭터면 빈 값이다
+        [DataMember(Name = "characterName")]    private string _characterName;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -48,6 +51,7 @@ namespace Shinshi.Contracts
         public long   ServerTimeUnixMs => _serverTimeUnixMs;
         public string AccountLeaseId   => _accountLeaseId;
         public int    ClassId          => _classId;
+        public string CharacterName    => _characterName;
 
         /****************************************
         *                Methods
@@ -61,6 +65,12 @@ namespace Shinshi.Contracts
 
         public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
             string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId)
+            : this(characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId, null)
+        {
+        }
+
+        public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
+            string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName)
         {
             _characterId      = characterId;
             _instanceId       = instanceId;
@@ -70,6 +80,7 @@ namespace Shinshi.Contracts
             _serverTimeUnixMs = serverTimeUnixMs;
             _accountLeaseId   = accountLeaseId;
             _classId          = classId;
+            _characterName    = characterName;
         }
 
         private JoinTokenExchangeResponse() { }

@@ -327,6 +327,8 @@ namespace Shinshi.Combat
                 ReleaseRetainedSkills(participantId);
             }
 
+            combat.SetDisplayName(binding.CharacterName);
+
             int combatId = _registry.IssueCombatId();
             var player   = new PlayerServer(input, combat, playerClass, combatId, participantId, _sessionEpoch, _playerConfig,
                 _skillResolver, _registry, _lineOfSight, now);

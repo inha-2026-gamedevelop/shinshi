@@ -54,6 +54,11 @@ namespace Shinshi.Network
                 return ERejectReason.TokenRevoked;
             }
 
+            // 이름은 표시용이라 형식이 틀려도 입장은 막지 않고 이름 없이 들인다
+            string characterName = CharacterNameRules.TryNormalize(response.CharacterName, out string name, out string _)
+                ? name
+                : null;
+
             bool hasParticipant = !string.IsNullOrEmpty(response.ParticipantId);
             bool hasSortie      = !string.IsNullOrEmpty(response.SortieId);
             if (serverRole == EServerRole.Dungeon)
@@ -64,7 +69,7 @@ namespace Shinshi.Network
                 }
 
                 claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_DUNGEON_PREFIX + response.ParticipantId,
-                    response.CharacterId, response.InstanceId, response.SortieId, null, playerClass);
+                    response.CharacterId, response.InstanceId, response.SortieId, null, playerClass, characterName);
                 return ERejectReason.None;
             }
 
@@ -75,7 +80,8 @@ namespace Shinshi.Network
             }
 
             claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_TOWN_PREFIX + response.CharacterId,
-                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass);
+                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass,
+                characterName);
             return ERejectReason.None;
         }
 

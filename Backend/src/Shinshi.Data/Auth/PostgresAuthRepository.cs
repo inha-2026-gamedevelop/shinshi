@@ -299,16 +299,16 @@ namespace Shinshi.Data.Auth
             }
 
             // 직업은 참가자가 묶인 캐릭터 행에서 읽는다. 게임 서버가 이 값으로 전투 개체를 만든다
-            int? classId = await connection.QuerySingleOrDefaultAsync<int?>(Command(
+            JoinCharacterRow? character = await connection.QuerySingleOrDefaultAsync<JoinCharacterRow>(Command(
                 """
-                SELECT character.class_id FROM session_participants AS participant JOIN characters AS character
+                SELECT character.class_id AS "ClassId", character.name AS "Name" FROM session_participants AS participant JOIN characters AS character
                     ON character.character_id = participant.character_id AND character.account_id = participant.account_id
                     WHERE participant.session_id = @SessionId AND participant.participant_id = @ParticipantId
                         AND participant.account_id = @AccountId AND participant.character_id = @CharacterId
                         AND participant.state IN ('Reserved','Active');
                 """, new { SessionId = sessionId, ParticipantId = participantId, found.AccountId, found.CharacterId },
                 transaction, token));
-            if (!classId.HasValue)
+            if (character == null)
             {
                 return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
             }
@@ -354,8 +354,15 @@ namespace Shinshi.Data.Auth
 
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             return AuthValidationOutcome<JoinAuthIdentity>.Success(new JoinAuthIdentity(consumed.AccountId,
-                consumed.CharacterId, classId.Value, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
-                consumed.InstanceId, UnixMilliseconds(now)));
+                consumed.CharacterId, character.ClassId, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
+                consumed.InstanceId, UnixMilliseconds(now), default, character.Name));
+        }
+
+        // 입장 교환이 읽는 캐릭터 직업과 표시 이름. 이름 컬럼이 생기기 전의 캐릭터면 이름은 null이다
+        private sealed class JoinCharacterRow
+        {
+            public int ClassId { get; set; }
+            public string? Name { get; set; }
         }
 
         private static Task<int> ReadUnconsumedReasonAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
