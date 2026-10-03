@@ -183,7 +183,11 @@ High 형상의 부품별 실제 자체 AO와 기하 노멀을 베이크하고 �
 
 Native 걷기·달리기 16 phase × 3LOD를 두 조립 변형에서 각각 96표본 확인했다. 비유한 정점은 0, 몸체·귀여운 머리 목 간격의 최대값은 약 35.184µm다. renderer bounds는 `rootBone` 공간에서 실제 변형 표본으로 구성하고, 저장된 3개 프리팹의 모델·맵·뼈·LOD·메타 참조와 중립 bounds를 검사했다. 모델/텍스처 Read/Write는 끄고 뼈 계층을 보존한다. 텍스처 6개의 Editor object memory 합계는 약 64.26MiB이며 Player/GPU VRAM 측정값은 아니다. 장식·외형 검토용이므로 Collider를 생략했으며 게임용 capsule/hitbox는 구현하지 않았다. 검증은 격리 PreviewScene에서 수행하고 당시 활성 개발 씬과 dirty 상태를 보존했다.
 
-상태는 **첫 묶음 외형 수정 중, 검토용**이다. 목 노멀 반사 문제는 Native 화면에서 교정됐으나 목 아래 BaseColor 색 경계 수정과 최종 외형 재검토가 남아 있다. 참조 Run의 맨발 바닥 침투가 최대 약 25.77mm 남아 신발·RootHeight·FootIK 보정이 필요하다. 나머지 얼굴 2종, 직업별 의상·헤어, 독립 안구·표정, 의복/머리 보조본과 실제 흔들림, GPU 연속 재생·LOD 전환·게임 카메라·성능·빌드·플레이어 연동은 미완료다. SecondaryMotion 코드의 EditMode 28/28 통과는 실제 의복·헤어 동작 완료를 뜻하지 않는다. 원본·입력·상세 기록·검토 렌더는 Git 제외 개인 docs에 보존하고 출처·권리 확인 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#tripo-여성-공통-몸체얼굴직업-참조--2026-10-0203)을 따른다.
+목 아래 BaseColor 색 경계를 보정하고, 몸체 Medium 3개·Low 4개 polygon의 UV를 국소 보정했다. 변경 후 실제 Unity URP 고정 LOD·다각도 18이미지와 3개 프리팹의 15개 SkinnedMeshRenderer·52뼈·3LOD·모델/맵 참조 및 중립 bounds를 확인했다. 일부 낮은 LOD 종아리 미세 자국과 옷깃 경계는 남아 있으며 전체 외형 통과로 판정하지 않는다. 원본과 변경 전 FBX는 개인 제작 기록에 보존했다.
+
+상태는 **첫 묶음 외형 수정 중, 검토용**이다. 목 노멀 반사 문제는 Native 화면에서 교정됐으며 최종 외형 재검토가 남아 있다. 참조 Run의 맨발 바닥 침투가 최대 약 25.77mm 남아 신발·RootHeight·FootIK 보정이 필요하다. 나머지 얼굴 2종, 직업별 의상·헤어, 독립 안구·표정, 의복/머리 보조본과 실제 흔들림, GPU 연속 재생·LOD 전환·게임 카메라·성능·빌드·플레이어 연동은 미완료다. SecondaryMotion 코드의 EditMode 28/28 통과는 실제 의복·헤어 동작 완료를 뜻하지 않는다. 원본·입력·상세 기록·검토 렌더는 Git 제외 개인 docs에 보존하고 출처·권리 확인 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#tripo-여성-공통-몸체얼굴직업-참조--2026-10-0203)을 따른다.
+
+표현 연결 코드는 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleTripo/Runtime/`에 구현했다. BlinkView는 지정한 얼굴 LOD의 같은 모프를 적용·복원하며, FootIkMath/FootIkView는 Humanoid Animator IK 단계의 접지 계산·적용을 맡는다. PresentationView는 이동 루트와 전투 상태를 읽어 Animator 파라미터만 갱신하고, SecondaryMotionBinding은 기존 시뮬레이션에 실제 스킨 참조가 있는 추가본을 연결한다. 신규 4개 EditMode 테스트 클래스의 37건은 실제 Test Runner에서 모두 통과했다. 현재 검토 프리팹·실제 Player에는 이 코드를 연결하지 않았으며, 얼굴 Blink 모프·의상 추가본·Animator IK Pass와 최종 신발 접지의 실제 게임 검증은 대기다. 이 테스트 통과는 남은 Run 침투나 얼굴·의상 외형 완료를 뜻하지 않는다.
 
 ## 7. 모델 생성과 분리할 효과 작업
 

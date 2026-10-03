@@ -31,6 +31,16 @@ namespace Shinshi.Common
             public const float ENEMY_SYNC_INTERVAL_SECONDS       = MIRROR_SEND_INTERVAL_SECONDS * ENEMY_SEND_INTERVAL_MULTIPLIER;
             public const float TOWN_REMOTE_SYNC_INTERVAL_SECONDS = MIRROR_SEND_INTERVAL_SECONDS * TOWN_REMOTE_SEND_INTERVAL_MULTIPLIER;
 
+            // 보스 상태(위치, 방향, 체력, 흐름) 복제 주기. 돌진 중 몸체는 클라이언트가 돌진 사건 값으로 그리고 예고 방향은
+            // 조준 사건이 틱마다 오므로 상태 값은 적과 같은 주기로 충분하다. 대역폭과 체감을 측정한 뒤 조정한다
+            public const int   BOSS_REPLICATION_RATE         = ENEMY_REPLICATION_RATE;
+            public const int   BOSS_SEND_INTERVAL_MULTIPLIER = MIRROR_SEND_RATE / BOSS_REPLICATION_RATE;
+            public const float BOSS_SYNC_INTERVAL_SECONDS    = MIRROR_SEND_INTERVAL_SECONDS * BOSS_SEND_INTERVAL_MULTIPLIER;
+
+            // 늦은 접속, 재접속 복원에 싣는 진행 중 투사체와 장판 수의 상한. 서버 관리자의 동시 상한보다 크게 둔다
+            public const int BOSS_RESTORE_MAX_PROJECTILES = 16;
+            public const int BOSS_RESTORE_MAX_AREAS       = 16;
+
             // 서버 시각 기준으로 입력을 받아 주는 창
             public const float INPUT_PAST_TOLERANCE_SECONDS   = 0.15f;
             public const float INPUT_FUTURE_TOLERANCE_SECONDS = 0.05f;

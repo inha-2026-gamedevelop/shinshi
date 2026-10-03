@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_VFX_WideSlash_Body
+  m_Shader: {fileID: 4800000, guid: c36a3289484100144bbbdf8f59343b16, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2992
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _NoiseTex:
+        m_Texture: {fileID: 2800000, guid: 4be0869d548d5f24d9af9789ceec9fff, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ProfileTex:
+        m_Texture: {fileID: 2800000, guid: b8b0d8df2e0fee74f9fe816cfb3c979a, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _DstBlend: 1
+    - _Erode: 0
+    - _ErodeSoftness: 0.15
+    - _Head: 1
+    - _HeadSoftness: 0.05
+    - _Intensity: 1
+    - _Opacity: 1
+    - _SoftFade: 0.3
+    - _SrcBlend: 1
+    - _TailLength: 1
+    - _TailWidth: 0.2
+    m_Colors:
+    - _ChannelMask: {r: 1, g: 0, b: 0, a: 0}
+    - _HeadColor: {r: 1.344, g: 1.274, b: 1.12, a: 1.4}
+    - _NoiseOffset: {r: 0, g: 0, b: 0, a: 0}
+    - _NoiseScale: {r: 3, g: 1, b: 0, a: 0}
+    - _TailColor: {r: 0.63, g: 0.56, b: 0.434, a: 0.7}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

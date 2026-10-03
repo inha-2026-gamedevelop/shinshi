@@ -166,6 +166,7 @@ namespace Shinshi.Network
             }
 
             EnableCompanionObjects(manager);
+            EnableBossObjects(manager);
 
             if (!TryCreateJoinTokenVerifier(args, config, manager, out IJoinTokenVerifier verifier, out string verifierError))
             {
@@ -321,6 +322,19 @@ namespace Shinshi.Network
 
             CombatServerInstaller.Runtime.EnableCompanionObjects(
                 new CompanionNetworkSpawner(prefab, manager, Constants.Combat.MAX_COMPANION_OBJECTS));
+        }
+
+        // 보스 프리팹이 없는 씬이면 보스 판정만 돌고 클라이언트에 보스와 공격 예고가 보이지 않는다. 서버를 막지는 않는다
+        private static void EnableBossObjects(ShinshiNetworkManager manager)
+        {
+            GameObject prefab = BossNetworkSpawner.FindPrefab(manager);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[Boss] 네트워크 매니저 spawnPrefabs에 보스 프리팹이 없어 보스 개체를 스폰하지 않는다");
+                return;
+            }
+
+            CombatServerInstaller.Runtime.EnableBossObjects(new BossNetworkSpawner(prefab));
         }
 
         private static ShinshiServerAuthenticator InstallAuthenticator(ShinshiNetworkManager manager, ServerSessionRegistry sessions,
