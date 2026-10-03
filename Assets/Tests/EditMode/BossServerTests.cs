@@ -368,7 +368,7 @@ namespace Shinshi.Tests
 
             ((IBossProjectileTelegraphListener)boss).OnTelegraphStarted(CAST_ID, Vector3.zero, Vector3.forward, LINE_LENGTH,
                 LINE_WIDTH, TELEGRAPH_SECONDS);
-            ((IBossProjectileListener)boss).OnProjectileLaunched(CAST_ID, Vector3.zero, Vector3.forward, PROJECTILE_SPEED,
+            ((IBossProjectileListener)boss).OnProjectileLaunched(CAST_ID, CAST_ID, Vector3.zero, Vector3.forward, PROJECTILE_SPEED,
                 LINE_WIDTH, LINE_LENGTH, BOUNDARY_TIME);
             boss.OnCastFinished(CAST_ID, BOUNDARY_TIME + TELEGRAPH_SECONDS);
 
@@ -400,7 +400,7 @@ namespace Shinshi.Tests
             var events = new RecordingEvents();
             boss.SetEventListener(events);
 
-            ((IBossAreaTelegraphListener)boss).OnTelegraphStarted(CAST_ID, Vector3.zero, FAN_RADIUS, TELEGRAPH_SECONDS);
+            ((IBossAreaTelegraphListener)boss).OnTelegraphStarted(CAST_ID, CAST_ID, Vector3.zero, FAN_RADIUS, TELEGRAPH_SECONDS);
             boss.OnCastExecuted(CAST_ID, BOUNDARY_TIME);
             boss.OnCastFinished(CAST_ID, BOUNDARY_TIME + TELEGRAPH_SECONDS);
 
@@ -428,8 +428,8 @@ namespace Shinshi.Tests
             var events = new RecordingEvents();
             boss.SetEventListener(events);
 
-            ((IBossProjectileListener)boss).OnProjectileEnded(CAST_ID, EBossProjectileEnd.Wall, Vector3.zero, CombatIds.NONE);
-            ((IBossAreaListener)boss).OnAreaEnded(CAST_ID, EBossAreaEnd.Expired, BOUNDARY_TIME);
+            ((IBossProjectileListener)boss).OnProjectileEnded(CAST_ID, CAST_ID, EBossProjectileEnd.Wall, Vector3.zero, CombatIds.NONE);
+            ((IBossAreaListener)boss).OnAreaEnded(CAST_ID, CAST_ID, EBossAreaEnd.Expired, BOUNDARY_TIME);
 
             Assert.AreEqual(EBossProjectileFate.Wall, events.LastProjectileFate);
             Assert.AreEqual(EBossAreaFate.Expired, events.LastAreaFate);

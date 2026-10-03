@@ -493,26 +493,26 @@ namespace Shinshi.Combat
         }
 
         // 발사하면 같은 번호의 예고는 끝나고 투사체는 패턴이 끝나도 따로 남는다
-        void IBossProjectileListener.OnProjectileLaunched(int castInstanceId, Vector3 origin, Vector3 direction, float speed,
-            float width, float pathLength, double launchServerTime)
+        void IBossProjectileListener.OnProjectileLaunched(int castInstanceId, int projectileId, Vector3 origin, Vector3 direction,
+            float speed, float width, float pathLength, double launchServerTime)
         {
             ClearCast(castInstanceId);
-            var start = new BossProjectileStart(_combatId, castInstanceId, origin, direction, speed, width, pathLength,
+            var start = new BossProjectileStart(_combatId, projectileId, castInstanceId, origin, direction, speed, width, pathLength,
                 launchServerTime);
             _events?.OnProjectileLaunched(in start);
         }
 
-        void IBossProjectileListener.OnProjectileEnded(int castInstanceId, EBossProjectileEnd end, Vector3 position,
+        void IBossProjectileListener.OnProjectileEnded(int castInstanceId, int projectileId, EBossProjectileEnd end, Vector3 position,
             int hitTargetId)
         {
-            _events?.OnProjectileEnded(castInstanceId, ToFate(end), position);
+            _events?.OnProjectileEnded(projectileId, ToFate(end), position);
         }
 
         /****************************************
         *               P05 Area
         ****************************************/
 
-        void IBossAreaTelegraphListener.OnTelegraphStarted(int castInstanceId, Vector3 center, float radius,
+        void IBossAreaTelegraphListener.OnTelegraphStarted(int castInstanceId, int areaId, Vector3 center, float radius,
             float telegraphSeconds)
         {
             BeginCast(castInstanceId, EBossTelegraphShape.Circle, radius);
@@ -522,29 +522,29 @@ namespace Shinshi.Combat
             _events?.OnTelegraphStarted(in start);
         }
 
-        void IBossAreaTelegraphListener.OnCancelled(int castInstanceId, EBossInterruptReason reason)
+        void IBossAreaTelegraphListener.OnCancelled(int castInstanceId, int areaId, EBossInterruptReason reason)
         {
             CancelCast(castInstanceId);
         }
 
         // 활성하면 같은 번호의 예고는 끝나고 장판은 패턴이 끝나도 따로 남는다
-        void IBossAreaListener.OnAreaActivated(int castInstanceId, Vector3 center, float radius, float durationSeconds,
+        void IBossAreaListener.OnAreaActivated(int castInstanceId, int areaId, Vector3 center, float radius, float durationSeconds,
             float tickInterval, double activateServerTime)
         {
             ClearCast(castInstanceId);
-            var start = new BossAreaStart(_combatId, castInstanceId, center, radius, durationSeconds, tickInterval,
+            var start = new BossAreaStart(_combatId, areaId, castInstanceId, center, radius, durationSeconds, tickInterval,
                 activateServerTime);
             _events?.OnAreaActivated(in start);
         }
 
-        void IBossAreaListener.OnAreaTick(int castInstanceId, int hitIndex, double roundServerTime, int hitCount)
+        void IBossAreaListener.OnAreaTick(int castInstanceId, int areaId, int hitIndex, double roundServerTime, int hitCount)
         {
-            _events?.OnAreaTicked(castInstanceId, hitIndex, roundServerTime);
+            _events?.OnAreaTicked(areaId, hitIndex, roundServerTime);
         }
 
-        void IBossAreaListener.OnAreaEnded(int castInstanceId, EBossAreaEnd end, double endServerTime)
+        void IBossAreaListener.OnAreaEnded(int castInstanceId, int areaId, EBossAreaEnd end, double endServerTime)
         {
-            _events?.OnAreaEnded(castInstanceId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
+            _events?.OnAreaEnded(areaId, (end == EBossAreaEnd.Expired) ? EBossAreaFate.Expired : EBossAreaFate.Cancelled);
         }
 
         /****************************************
