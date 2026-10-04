@@ -1,11 +1,11 @@
 // System
-using System.Collections;
 using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
 
 // 서드파티
+using DG.Tweening;
 using TMPro;
 
 namespace Shinshi.UI
@@ -29,7 +29,9 @@ namespace Shinshi.UI
         [SerializeField] private float _fadeOutTime = 0.3f;
 
         private readonly Queue<string> _queue = new Queue<string>();
-        private Coroutine _routine = null;
+
+        private Sequence _sequence  = null;
+        private bool     _isPlaying = false;
 
         /****************************************
         *              Properties
@@ -41,13 +43,30 @@ namespace Shinshi.UI
         *              Unity Event
         ****************************************/
 
+        private void Awake()
+        {
+            if (_group == null)
+            {
+                return;
+            }
+
+            // 문구마다 같은 페이드 인, 유지, 페이드 아웃을 반복하므로 한 번 만들어 재사용한다.
+            // 일시 정지 화면에서도 안내가 사라져야 하므로 시간 배율을 무시한다.
+            // CanvasGroup.DOFade는 Shinshi.Runtime이 참조하지 못하는 DOTween 모듈에 있어 코어 DOTween.To를 쓴다
+            _sequence = DOTween.Sequence()
+                .Append(DOTween.To(GetAlpha, SetAlpha, 1f, _fadeInTime))
+                .AppendInterval(_holdTime)
+                .Append(DOTween.To(GetAlpha, SetAlpha, 0f, _fadeOutTime))
+                .SetUpdate(true)
+                .SetAutoKill(false)
+                .Pause()
+                .SetLink(gameObject)
+                .OnComplete(PlayNext);
+        }
+
         private void OnEnable() { HideImmediate(); }
 
-        private void OnDisable()
-        {
-            _routine = null;
-            _queue.Clear();
-        }
+        private void OnDisable() { Clear(); }
 
         /****************************************
         *                Methods
@@ -68,57 +87,50 @@ namespace Shinshi.UI
 
             _queue.Enqueue(message);
 
-            if (_routine == null)
+            if (!_isPlaying)
             {
-                _routine = StartCoroutine(PlayQueue());
+                PlayNext();
             }
         }
 
         public void Clear()
         {
             _queue.Clear();
+            _isPlaying = false;
 
-            if (_routine != null)
+            if (_sequence != null)
             {
-                StopCoroutine(_routine);
-                _routine = null;
+                _sequence.Pause();
             }
 
             HideImmediate();
         }
 
-        private IEnumerator PlayQueue()
+        private void PlayNext()
         {
-            while (_queue.Count > 0)
+            if ((_sequence == null) || (_queue.Count == 0))
             {
-                if (_label != null)
-                {
-                    _label.text = _queue.Dequeue();
-                }
-
-                yield return Fade(0f, 1f, _fadeInTime);
-                yield return new WaitForSeconds(_holdTime);
-                yield return Fade(1f, 0f, _fadeOutTime);
+                _isPlaying = false;
+                return;
             }
 
-            _routine = null;
-        }
-
-        private IEnumerator Fade(float from, float to, float duration)
-        {
-            float elapsed = 0f;
-
-            while (elapsed < duration)
+            if (_label != null)
             {
-                elapsed += Time.unscaledDeltaTime;
-                SetAlpha(Mathf.Lerp(from, to, elapsed / duration));
-                yield return null;
+                _label.text = _queue.Dequeue();
+            }
+            else
+            {
+                _queue.Dequeue();
             }
 
-            SetAlpha(to);
+            _isPlaying = true;
+            HideImmediate();
+            _sequence.Restart();
         }
 
         private void HideImmediate() { SetAlpha(0f); }
+
+        private float GetAlpha() { return (_group != null) ? _group.alpha : 0f; }
 
         private void SetAlpha(float alpha)
         {
