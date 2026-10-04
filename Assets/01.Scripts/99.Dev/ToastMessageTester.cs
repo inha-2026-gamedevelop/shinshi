@@ -7,7 +7,7 @@ using Shinshi.UI;
 
 namespace Shinshi.Dev
 {
-    /// <summary>Dev_ToastMessage 씬에서 토스트 표시를 버튼과 키로 시험한다</summary>
+    /// <summary>Dev_ToastMessage 씬에서 토스트, 얼러트, 컨펌을 키로 시험한다</summary>
     public sealed class ToastMessageTester : MonoBehaviour
     {
         /****************************************
@@ -16,8 +16,8 @@ namespace Shinshi.Dev
 
         private const int BURST_COUNT = 5;
 
-        [SerializeField] private ToastMessageView _view = null;
-        [SerializeField] private string[]         _samples = null;
+        [SerializeField] private UiPopupHub _hub     = null;
+        [SerializeField] private string[]   _samples = null;
 
         private int _nextIndex = 0;
 
@@ -25,19 +25,47 @@ namespace Shinshi.Dev
         *              Unity Event
         ****************************************/
 
+        // 1 토스트, 2 토스트 연속, 3 닫기, 4/5/6 얼러트 소형/중형/대형, 7/8/9 컨펌 소형/중형/대형
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.Alpha1))
             {
-                ShowNext();
+                ShowToast();
             }
             else if (Input.GetKeyDown(KeyCode.Alpha2))
             {
-                ShowBurst();
+                for (int i = 0; i < BURST_COUNT; ++i)
+                {
+                    ShowToast();
+                }
             }
             else if (Input.GetKeyDown(KeyCode.Alpha3))
             {
-                ClearAll();
+                CloseAll();
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha4))
+            {
+                ShowAlert(EPopupSize.Small);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha5))
+            {
+                ShowAlert(EPopupSize.Medium);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha6))
+            {
+                ShowAlert(EPopupSize.Large);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha7))
+            {
+                ShowConfirm(EPopupSize.Small);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha8))
+            {
+                ShowConfirm(EPopupSize.Medium);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha9))
+            {
+                ShowConfirm(EPopupSize.Large);
             }
         }
 
@@ -45,31 +73,50 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        public void ShowNext()
+        public void ShowToast()
         {
-            if ((_view == null) || (_samples == null) || (_samples.Length == 0))
+            if (_hub != null)
             {
-                return;
+                _hub.ShowToast(NextSample());
+            }
+        }
+
+        public void ShowAlert(EPopupSize size)
+        {
+            if (_hub != null)
+            {
+                _hub.ShowAlert(size, NextSample());
+            }
+        }
+
+        public void ShowConfirm(EPopupSize size)
+        {
+            if (_hub != null)
+            {
+                _hub.ShowConfirm(size, NextSample(), OnConfirmResult);
+            }
+        }
+
+        public void CloseAll()
+        {
+            if (_hub != null)
+            {
+                _hub.CloseAll();
+            }
+        }
+
+        private void OnConfirmResult(bool result) { Debug.Log($"[ToastMessageTester] 컨펌 결과: {result}"); }
+
+        private string NextSample()
+        {
+            if ((_samples == null) || (_samples.Length == 0))
+            {
+                return string.Empty;
             }
 
-            _view.Show(_samples[_nextIndex % _samples.Length]);
+            string sample = _samples[_nextIndex % _samples.Length];
             ++_nextIndex;
-        }
-
-        public void ShowBurst()
-        {
-            for (int i = 0; i < BURST_COUNT; ++i)
-            {
-                ShowNext();
-            }
-        }
-
-        public void ClearAll()
-        {
-            if (_view != null)
-            {
-                _view.Clear();
-            }
+            return sample;
         }
     }
 }
