@@ -121,6 +121,9 @@ namespace Shinshi.UI
             SetActive(_equippedMark, !empty && data.IsEquipped);
         }
 
+        /// <summary>코드로 칸을 만들 때 툴팁을 연결한다</summary>
+        public void Bind(TooltipView tooltip) { _tooltip = tooltip; }
+
         public void SetSelected(bool selected) { SetActive(_selectedMark, selected); }
 
         private static void SetActive(GameObject target, bool active)
