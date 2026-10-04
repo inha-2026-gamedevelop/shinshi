@@ -15,7 +15,7 @@ using Shinshi.Common;
 namespace Shinshi.UI
 {
     /// <summary>
-    /// 출정 준비 화면. 전투 종류와 난이도, 입장권, 장비·부적 요약, 물약 지참량, 파티 준비 상태를 보여 주고
+    /// 출정 준비 화면. 전투 종류와 난이도, 입장권, 장비와 부적 요약, 물약 지참량, 파티 준비 상태를 보여 주고
     /// 사용자의 선택은 이벤트로 알린다. 값의 판정과 저장은 서버가 하며 이 뷰는 받은 값을 그대로 그린다
     /// </summary>
     public sealed class SortiePrepView : MonoBehaviour
@@ -25,12 +25,21 @@ namespace Shinshi.UI
         ****************************************/
 
         [Serializable]
-        private struct MemberRow
+        private class MemberRow
         {
-            public GameObject Root;
-            public TMP_Text   NameLabel;
-            public Image      ClassIcon;
-            public TMP_Text   StateLabel;
+            /****************************************
+            *                Fields
+            ****************************************/
+
+            [SerializeField] private GameObject _root       = null;
+            [SerializeField] private TMP_Text   _nameLabel  = null;
+            [SerializeField] private Image      _classIcon  = null;
+            [SerializeField] private TMP_Text   _stateLabel = null;
+
+            public GameObject Root       => _root;
+            public TMP_Text   NameLabel  => _nameLabel;
+            public Image      ClassIcon  => _classIcon;
+            public TMP_Text   StateLabel => _stateLabel;
         }
 
         /****************************************
@@ -49,16 +58,22 @@ namespace Shinshi.UI
         private const string WAIT_STATE        = "대기 중";
         private const string OFFLINE_STATE     = "접속 끊김";
         private const string LACK_STATE        = "조건 부족";
-        private const string CLASS_ID_PREFIX   = "class_";
+
+        // EPlayerClass 순서와 같아야 한다
+        private static readonly string[] G_ClassIconIds = { "class_warrior", "class_sorcerer", "class_summoner" };
 
         [Header("전장")]
-        [SerializeField] private Button   _waveModeButton = null;
-        [SerializeField] private Button   _bossModeButton = null;
-        [SerializeField] private TMP_Text _regionLabel    = null;
-        [SerializeField] private Button   _easyButton     = null;
-        [SerializeField] private Button   _hardButton     = null;
-        [SerializeField] private GameObject _difficultyRoot = null;
-        [SerializeField] private TMP_Text _ticketLabel    = null;
+        [SerializeField] private Button     _waveModeButton   = null;
+        [SerializeField] private Button     _bossModeButton   = null;
+        [SerializeField] private GameObject _waveModeSelected = null;
+        [SerializeField] private GameObject _bossModeSelected = null;
+        [SerializeField] private TMP_Text   _regionLabel      = null;
+        [SerializeField] private Button     _easyButton       = null;
+        [SerializeField] private Button     _hardButton       = null;
+        [SerializeField] private GameObject _easySelected     = null;
+        [SerializeField] private GameObject _hardSelected     = null;
+        [SerializeField] private GameObject _difficultyRoot   = null;
+        [SerializeField] private TMP_Text   _ticketLabel      = null;
 
         [Header("요약")]
         [SerializeField] private ItemSlotGridView _equipmentGrid = null;
@@ -70,16 +85,19 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text[] _potionLabels       = null;
 
         [Header("파티")]
-        [SerializeField] private MemberRow[]    _members = null;
+        [SerializeField] private MemberRow[]     _members = null;
         [SerializeField] private UiIconLibrarySO _library = null;
 
         [Header("하단")]
-        [SerializeField] private Button   _readyButton    = null;
-        [SerializeField] private TMP_Text _readyLabel     = null;
-        [SerializeField] private Button   _startButton    = null;
-        [SerializeField] private TMP_Text _startLabel     = null;
-        [SerializeField] private Button   _leaveButton    = null;
-        [SerializeField] private TMP_Text _noticeLabel    = null;
+        [SerializeField] private Button   _readyButton = null;
+        [SerializeField] private TMP_Text _readyLabel  = null;
+        [SerializeField] private Button   _startButton = null;
+        [SerializeField] private TMP_Text _startLabel  = null;
+        [SerializeField] private Button   _leaveButton = null;
+        [SerializeField] private TMP_Text _noticeLabel = null;
+
+        private ESortieMode     _mode       = ESortieMode.Wave;
+        private EBossDifficulty _difficulty = EBossDifficulty.Easy;
 
         private readonly int[] _carry     = new int[POTION_KIND_COUNT];
         private readonly int[] _available = new int[POTION_KIND_COUNT];
@@ -108,7 +126,10 @@ namespace Shinshi.UI
             AddListener(_readyButton, OnReady);
             AddListener(_startButton, OnStart);
             AddListener(_leaveButton, OnLeave);
-            AddPotionListeners();
+            AddListener(PotionButton(_potionMinusButtons, EPotionSize.Small), OnSmallMinus);
+            AddListener(PotionButton(_potionPlusButtons, EPotionSize.Small), OnSmallPlus);
+            AddListener(PotionButton(_potionMinusButtons, EPotionSize.Large), OnLargeMinus);
+            AddListener(PotionButton(_potionPlusButtons, EPotionSize.Large), OnLargePlus);
         }
 
         private void OnDisable()
@@ -120,15 +141,21 @@ namespace Shinshi.UI
             RemoveListener(_readyButton, OnReady);
             RemoveListener(_startButton, OnStart);
             RemoveListener(_leaveButton, OnLeave);
-            RemovePotionListeners();
+            RemoveListener(PotionButton(_potionMinusButtons, EPotionSize.Small), OnSmallMinus);
+            RemoveListener(PotionButton(_potionPlusButtons, EPotionSize.Small), OnSmallPlus);
+            RemoveListener(PotionButton(_potionMinusButtons, EPotionSize.Large), OnLargeMinus);
+            RemoveListener(PotionButton(_potionPlusButtons, EPotionSize.Large), OnLargePlus);
         }
 
         /****************************************
         *                Methods
         ****************************************/
 
+        // 고른 버튼을 비활성으로 바꾸면 "쓸 수 없음"과 구분되지 않고 색만으로 상태를 알리게 되므로
+        // 버튼은 그대로 두고 선택 틀을 따로 켠다
         public void SetMode(ESortieMode mode)
         {
+            _mode = mode;
             bool boss = (mode == ESortieMode.Boss);
 
             if (_difficultyRoot != null)
@@ -141,8 +168,8 @@ namespace Shinshi.UI
                 _ticketLabel.gameObject.SetActive(boss);
             }
 
-            SetInteractable(_waveModeButton, boss);
-            SetInteractable(_bossModeButton, !boss);
+            SetActive(_waveModeSelected, !boss);
+            SetActive(_bossModeSelected, boss);
         }
 
         public void SetRegion(string regionName)
@@ -155,8 +182,9 @@ namespace Shinshi.UI
 
         public void SetDifficulty(EBossDifficulty difficulty)
         {
-            SetInteractable(_easyButton, difficulty != EBossDifficulty.Easy);
-            SetInteractable(_hardButton, difficulty != EBossDifficulty.Hard);
+            _difficulty = difficulty;
+            SetActive(_easySelected, difficulty == EBossDifficulty.Easy);
+            SetActive(_hardSelected, difficulty == EBossDifficulty.Hard);
         }
 
         public void SetTicket(int have, int need)
@@ -221,6 +249,11 @@ namespace Shinshi.UI
 
             for (int i = 0; i < _members.Length; ++i)
             {
+                if (_members[i] == null)
+                {
+                    continue;
+                }
+
                 bool has = (members != null) && (i < members.Count) && !members[i].IsEmpty;
 
                 if (_members[i].Root != null)
@@ -284,7 +317,9 @@ namespace Shinshi.UI
 
             if ((row.ClassIcon != null) && (_library != null))
             {
-                Sprite icon = _library.FindIcon(CLASS_ID_PREFIX + data.PlayerClass.ToString().ToLowerInvariant());
+                int classIndex = (int)data.PlayerClass;
+                bool known = (classIndex >= 0) && (classIndex < G_ClassIconIds.Length);
+                Sprite icon = known ? _library.FindIcon(G_ClassIconIds[classIndex]) : null;
                 row.ClassIcon.sprite  = icon;
                 row.ClassIcon.enabled = (icon != null);
             }
@@ -315,39 +350,22 @@ namespace Shinshi.UI
             return data.IsReady ? READY_STATE : WAIT_STATE;
         }
 
-        private void AddPotionListeners()
+        private static Button PotionButton(Button[] buttons, EPotionSize size)
         {
-            for (int i = 0; i < POTION_KIND_COUNT; ++i)
+            int index = (int)size;
+
+            if ((buttons == null) || (index >= buttons.Length))
             {
-                int index = i;
-
-                if ((_potionMinusButtons != null) && (index < _potionMinusButtons.Length) && (_potionMinusButtons[index] != null))
-                {
-                    _potionMinusButtons[index].onClick.AddListener(() => ChangePotion(index, -1));
-                }
-
-                if ((_potionPlusButtons != null) && (index < _potionPlusButtons.Length) && (_potionPlusButtons[index] != null))
-                {
-                    _potionPlusButtons[index].onClick.AddListener(() => ChangePotion(index, 1));
-                }
+                return null;
             }
+
+            return buttons[index];
         }
 
-        private void RemovePotionListeners()
-        {
-            for (int i = 0; i < POTION_KIND_COUNT; ++i)
-            {
-                if ((_potionMinusButtons != null) && (i < _potionMinusButtons.Length) && (_potionMinusButtons[i] != null))
-                {
-                    _potionMinusButtons[i].onClick.RemoveAllListeners();
-                }
-
-                if ((_potionPlusButtons != null) && (i < _potionPlusButtons.Length) && (_potionPlusButtons[i] != null))
-                {
-                    _potionPlusButtons[i].onClick.RemoveAllListeners();
-                }
-            }
-        }
+        private void OnSmallMinus() { ChangePotion((int)EPotionSize.Small, -1); }
+        private void OnSmallPlus()  { ChangePotion((int)EPotionSize.Small, 1); }
+        private void OnLargeMinus() { ChangePotion((int)EPotionSize.Large, -1); }
+        private void OnLargePlus()  { ChangePotion((int)EPotionSize.Large, 1); }
 
         private void ChangePotion(int index, int delta)
         {
@@ -401,8 +419,14 @@ namespace Shinshi.UI
             }
         }
 
+        // 이미 고른 것을 다시 누르면 알리지 않는다. 알리면 받는 쪽이 선택 변경으로 보고 준비를 풀어 버린다
         private void RaiseMode(ESortieMode mode)
         {
+            if (mode == _mode)
+            {
+                return;
+            }
+
             Action<ESortieMode> handler = ModeChanged;
 
             if (handler != null)
@@ -413,6 +437,11 @@ namespace Shinshi.UI
 
         private void RaiseDifficulty(EBossDifficulty difficulty)
         {
+            if (difficulty == _difficulty)
+            {
+                return;
+            }
+
             Action<EBossDifficulty> handler = DifficultyChanged;
 
             if (handler != null)
@@ -442,6 +471,14 @@ namespace Shinshi.UI
             if (button != null)
             {
                 button.interactable = interactable;
+            }
+        }
+
+        private static void SetActive(GameObject target, bool active)
+        {
+            if (target != null)
+            {
+                target.SetActive(active);
             }
         }
     }
