@@ -106,17 +106,10 @@ namespace Shinshi.Dev
             };
         }
 
-        private static ItemSlotData Make(string id, EItemGrade grade, int count, string title, string description, bool locked = false, bool equipped = false)
+        private static ItemSlotData Make(string id, EItemGrade grade, int count, string title, string description,
+            bool locked = false, bool equipped = false)
         {
-            ItemSlotData data = new ItemSlotData();
-            data.Id          = id;
-            data.Grade       = grade;
-            data.Count       = count;
-            data.Title       = title;
-            data.Description = description;
-            data.IsLocked    = locked;
-            data.IsEquipped  = equipped;
-            return data;
+            return new ItemSlotData(id, grade, count, title, description, locked, equipped);
         }
     }
 }

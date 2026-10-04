@@ -23,28 +23,34 @@ namespace Shinshi.Dev
         ****************************************/
 
         private const int    COUNTDOWN_SECONDS = 3;
+        private const float  COUNTDOWN_STEP    = 1f;
         private const int    TICKET_HAVE       = 2;
         private const int    TICKET_NEED       = 1;
         private const int    SMALL_STOCK       = 12;
         private const int    LARGE_STOCK       = 4;
+        private const int    SMALL_CARRY       = 6;
+        private const int    LARGE_CARRY       = 2;
         private const string WAVE_REGION       = "숲 토벌 (6웨이브)";
         private const string BOSS_REGION       = "월백 결계";
 
         [SerializeField] private SortiePrepView _view = null;
 
-        private ESortieMode     _mode       = ESortieMode.Boss;
-        private EBossDifficulty _difficulty = EBossDifficulty.Easy;
-        private bool            _isLeader   = true;
-        private bool            _isReady    = false;
-        private int             _small      = 6;
-        private int             _large      = 2;
-        private Coroutine       _countdown  = null;
+        private ESortieMode     _mode          = ESortieMode.Boss;
+        private EBossDifficulty _difficulty    = EBossDifficulty.Easy;
+        private bool            _isLeader      = true;
+        private bool            _isReady       = false;
+        private int             _small         = SMALL_CARRY;
+        private int             _large         = LARGE_CARRY;
+        private Coroutine       _countdown     = null;
+        private WaitForSeconds  _waitCountdown = null;
 
         private readonly List<SortieMemberData> _members = new List<SortieMemberData>();
 
         /****************************************
         *              Unity Event
         ****************************************/
+
+        private void Awake() { _waitCountdown = new WaitForSeconds(COUNTDOWN_STEP); }
 
         private void OnEnable()
         {
@@ -148,7 +154,7 @@ namespace Shinshi.Dev
             for (int s = COUNTDOWN_SECONDS; s > 0; --s)
             {
                 _view.SetCountdown(s);
-                yield return new WaitForSeconds(1f);
+                yield return _waitCountdown;
             }
 
             _view.SetCountdown(0);
@@ -194,16 +200,9 @@ namespace Shinshi.Dev
             _members.Add(Member("서연", EPlayerClass.Warrior, false, false));
         }
 
-        private SortieMemberData Member(string name, EPlayerClass playerClass, bool leader, bool ready)
+        private static SortieMemberData Member(string name, EPlayerClass playerClass, bool leader, bool ready)
         {
-            SortieMemberData data = new SortieMemberData();
-            data.Name              = name;
-            data.PlayerClass       = playerClass;
-            data.IsLeader          = leader;
-            data.IsReady           = ready;
-            data.IsConnected       = true;
-            data.MeetsRequirements = true;
-            return data;
+            return new SortieMemberData(name, playerClass, leader, ready, true, true);
         }
 
         private static List<ItemSlotData> BuildEquipment()
@@ -232,12 +231,7 @@ namespace Shinshi.Dev
 
         private static ItemSlotData Item(string id, EItemGrade grade, string title)
         {
-            ItemSlotData data = new ItemSlotData();
-            data.Id    = id;
-            data.Grade = grade;
-            data.Count = 1;
-            data.Title = title;
-            return data;
+            return new ItemSlotData(id, grade, 1, title, string.Empty);
         }
     }
 }

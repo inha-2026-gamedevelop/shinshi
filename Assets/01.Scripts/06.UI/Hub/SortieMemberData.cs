@@ -3,18 +3,47 @@ using Shinshi.Common;
 
 namespace Shinshi.UI
 {
-    /// <summary>출정 준비 화면 파티 칸 하나가 표시할 값이며 서버 값을 화면용으로 옮긴 사본이다</summary>
-    public struct SortieMemberData
+    /// <summary>출정 준비 화면 파티 칸 하나가 표시할 값이며 서버 값을 화면용으로 옮긴 사본이다. 기본값은 빈 칸이다</summary>
+    public readonly struct SortieMemberData
     {
-        public string       Name;
-        public EPlayerClass PlayerClass;
-        public bool         IsLeader;
-        public bool         IsReady;
-        public bool         IsConnected;
+        /****************************************
+        *                Fields
+        ****************************************/
 
-        // 해금, 티켓, 지참 물약 조건을 모두 갖췄는지
-        public bool         MeetsRequirements;
+        private readonly string       _name;
+        private readonly EPlayerClass _playerClass;
+        private readonly bool         _isLeader;
+        private readonly bool         _isReady;
+        private readonly bool         _isConnected;
+        private readonly bool         _meetsRequirements;
 
-        public bool IsEmpty { get { return string.IsNullOrEmpty(Name); } }
+        /****************************************
+        *              Properties
+        ****************************************/
+
+        public string       Name        => _name;
+        public EPlayerClass PlayerClass => _playerClass;
+        public bool         IsLeader    => _isLeader;
+        public bool         IsReady     => _isReady;
+        public bool         IsConnected => _isConnected;
+        public bool         IsEmpty     => string.IsNullOrEmpty(_name);
+
+        // 해금, 입장권, 지참 물약 조건을 모두 갖췄는지
+        public bool MeetsRequirements => _meetsRequirements;
+
+        /****************************************
+        *                Methods
+        ****************************************/
+
+        public SortieMemberData(string name, EPlayerClass playerClass, bool isLeader, bool isReady,
+            bool isConnected, bool meetsRequirements)
+        {
+            _name              = name;
+            _playerClass       = playerClass;
+            _isLeader          = isLeader;
+            _isReady           = isReady;
+            _isConnected       = isConnected;
+            _meetsRequirements = meetsRequirements;
+        }
     }
 }

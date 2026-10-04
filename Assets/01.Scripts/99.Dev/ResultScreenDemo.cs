@@ -1,6 +1,7 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 // System
 using System.Collections;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -21,19 +22,29 @@ namespace Shinshi.Dev
         *                Fields
         ****************************************/
 
-        private const float SAVING_SECONDS   = 1.2f;
-        private const float RETRYING_SECONDS = 1.2f;
-        private const int   BASE_ESSENCE     = 600;
-        private const int   EXTRA_ESSENCE    = 1500;
-        private const string REGION_NAME     = "숲 토벌";
+        private const float  SAVING_SECONDS   = 1.2f;
+        private const float  RETRYING_SECONDS = 1.2f;
+        private const int    BASE_ESSENCE     = 600;
+        private const int    EXTRA_ESSENCE    = 1500;
+        private const int    LOSS_DIVISOR     = 2;
+        private const int    SHARD_COUNT      = 35;
+        private const string REGION_NAME      = "숲 토벌";
 
         [SerializeField] private ResultScreenView _view = null;
 
-        private Coroutine _saveRoutine = null;
+        private Coroutine      _saveRoutine  = null;
+        private WaitForSeconds _waitSaving   = null;
+        private WaitForSeconds _waitRetrying = null;
 
         /****************************************
         *              Unity Event
         ****************************************/
+
+        private void Awake()
+        {
+            _waitSaving   = new WaitForSeconds(SAVING_SECONDS);
+            _waitRetrying = new WaitForSeconds(RETRYING_SECONDS);
+        }
 
         private void OnEnable() { _view.ReturnClicked += OnReturnClicked; }
 
@@ -68,24 +79,24 @@ namespace Shinshi.Dev
         private void Show(ESessionEndReason reason)
         {
             bool success = (reason == ESessionEndReason.Success);
+            int  extra   = success ? EXTRA_ESSENCE : (EXTRA_ESSENCE / LOSS_DIVISOR);
+            int  lost    = success ? 0 : (EXTRA_ESSENCE / LOSS_DIVISOR);
 
-            ResultScreenData data = new ResultScreenData();
-            data.Reason       = reason;
-            data.RegionName   = REGION_NAME;
-            data.BaseEssence  = BASE_ESSENCE;
-            data.ExtraEssence = success ? EXTRA_ESSENCE : (EXTRA_ESSENCE / 2);
-            data.LostEssence  = success ? 0 : (EXTRA_ESSENCE / 2);
+            List<ItemSlotData> confirmed = new List<ItemSlotData>
+            {
+                Item("item_essence", EItemGrade.Common, BASE_ESSENCE + extra, "정기"),
+                Item("item_refine_shard", EItemGrade.Common, SHARD_COUNT, "정련편")
+            };
 
-            data.ConfirmedItems.Add(Item("item_essence", EItemGrade.Common, data.BaseEssence + data.ExtraEssence, "정기"));
-            data.ConfirmedItems.Add(Item("item_refine_shard", EItemGrade.Common, 35, "정련편"));
+            List<ItemSlotData> chance = new List<ItemSlotData>();
 
             if (success)
             {
-                data.ChanceItems.Add(Item("item_boss_ticket", EItemGrade.Rare, 1, "보스 입장권"));
-                data.ChanceItems.Add(Item("talisman_kind_08", EItemGrade.Epic, 1, "부적: 피해 증가"));
+                chance.Add(Item("item_boss_ticket", EItemGrade.Rare, 1, "보스 입장권"));
+                chance.Add(Item("talisman_kind_08", EItemGrade.Epic, 1, "부적: 피해 증가"));
             }
 
-            _view.SetResult(data);
+            _view.SetResult(new ResultScreenData(reason, REGION_NAME, BASE_ESSENCE, extra, lost, confirmed, chance));
 
             if (_saveRoutine != null)
             {
@@ -98,9 +109,9 @@ namespace Shinshi.Dev
         private IEnumerator RunSave()
         {
             _view.SetSaveStatus(ESaveStatus.Saving);
-            yield return new WaitForSeconds(SAVING_SECONDS);
+            yield return _waitSaving;
             _view.SetSaveStatus(ESaveStatus.Retrying);
-            yield return new WaitForSeconds(RETRYING_SECONDS);
+            yield return _waitRetrying;
             _view.SetSaveStatus(ESaveStatus.Saved);
             _saveRoutine = null;
         }
@@ -109,12 +120,7 @@ namespace Shinshi.Dev
 
         private static ItemSlotData Item(string id, EItemGrade grade, int count, string title)
         {
-            ItemSlotData data = new ItemSlotData();
-            data.Id    = id;
-            data.Grade = grade;
-            data.Count = count;
-            data.Title = title;
-            return data;
+            return new ItemSlotData(id, grade, count, title, string.Empty);
         }
     }
 }
