@@ -243,6 +243,41 @@ namespace Shinshi.Network
         {
             _createButton.interactable = false;
             _preview.Show(_selection.ToLook());
+            RefreshLookOptionHighlights();
+        }
+
+        private void RefreshLookOptionHighlights()
+        {
+            if (_lookOptions == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _lookOptions.Length; ++i)
+            {
+                CharacterLookOptionButton option = _lookOptions[i];
+                if ((option == null) || (option.Button == null) || (option.Button.targetGraphic == null))
+                {
+                    continue;
+                }
+
+                option.Button.targetGraphic.color = (option.Id == SelectedLookId(option.Part)) ? _selectedColor : _normalColor;
+            }
+        }
+
+        private int SelectedLookId(ECharacterLookPart part)
+        {
+            switch (part)
+            {
+                case ECharacterLookPart.Face:
+                    return _selection.FaceId;
+                case ECharacterLookPart.Hair:
+                    return _selection.HairId;
+                case ECharacterLookPart.Outfit:
+                    return _selection.OutfitId;
+                default:
+                    return -1;
+            }
         }
 
         // 고른 탭의 옵션 패널만 켜고, 나머지는 끈다. 현재 탭 버튼은 busy가 아닐 때도 누르지 못하게 해 선택 상태를 보인다
