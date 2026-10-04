@@ -45,6 +45,10 @@ namespace Shinshi.Network
         *              Properties
         ****************************************/
 
+        // DevCustomizationScenario와 자동화 검증용 공개 읽기 접근자
+        public Button StartButton => _startButton;
+        public bool   IsBusy      => _isBusy;
+
         private static bool HasValidSession => LauncherSession.HasSession && !LauncherSession.IsExpired;
 
         private static bool CanDevelopmentLogin => (!LauncherSession.IsLaunchRequired)

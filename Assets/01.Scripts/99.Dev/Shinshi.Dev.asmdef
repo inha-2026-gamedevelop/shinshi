@@ -3,9 +3,12 @@
     "rootNamespace": "Shinshi.Dev",
     "references": [
         "Shinshi.Runtime",
+        "Shinshi.Contracts",
         "Mirror",
         "Mirror.Transports",
-        "Unity.Cinemachine"
+        "Unity.Cinemachine",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

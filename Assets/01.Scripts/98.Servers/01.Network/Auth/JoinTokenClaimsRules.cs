@@ -54,6 +54,12 @@ namespace Shinshi.Network
                 return ERejectReason.TokenRevoked;
             }
 
+            if (!TryResolveNameAndAppearance(response.ClassId, response.CharacterName, response.AppearanceJson,
+                out string characterName, out CharacterAppearance appearance))
+            {
+                return ERejectReason.TokenRevoked;
+            }
+
             bool hasParticipant = !string.IsNullOrEmpty(response.ParticipantId);
             bool hasSortie      = !string.IsNullOrEmpty(response.SortieId);
             if (serverRole == EServerRole.Dungeon)
@@ -64,7 +70,8 @@ namespace Shinshi.Network
                 }
 
                 claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_DUNGEON_PREFIX + response.ParticipantId,
-                    response.CharacterId, response.InstanceId, response.SortieId, null, playerClass);
+                    response.CharacterId, response.InstanceId, response.SortieId, null, playerClass, characterName,
+                    appearance);
                 return ERejectReason.None;
             }
 
@@ -75,8 +82,58 @@ namespace Shinshi.Network
             }
 
             claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_TOWN_PREFIX + response.CharacterId,
-                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass);
+                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass,
+                characterName, appearance);
             return ERejectReason.None;
+        }
+
+        // null/v1 저장 외형(레거시)은 TryResolve가 직업 기본값으로 결정적으로 바꾸며 이름 null도 그대로 통과한다.
+        // 유효한 v2는 그대로 유지하되 DB의 유효한 정규화 닉네임이 반드시 있어야 한다(이름 null은 거절).
+        // 이름 값이 있으면 정규화 결과가 원문과 같아야 한다. 값이 있는 외형 JSON은 반드시 역직렬화에 성공해야 하며,
+        // 빈 문자열은 유효한 JSON이 아니므로 레거시 null로 보지 않고 거절한다.
+        // 클라이언트가 보낸 이름/외형이 아니라 서버가 자기 토큰 교환 응답에서 읽은 DB 값만 검사한다
+        private static bool TryResolveNameAndAppearance(int classId, string rawCharacterName, string appearanceJson,
+            out string characterName, out CharacterAppearance appearance)
+        {
+            characterName = null;
+            appearance = null;
+
+            string normalizedName = null;
+            if (rawCharacterName != null)
+            {
+                if ((!CharacterNameRules.TryNormalize(rawCharacterName, out string normalized, out string _))
+                    || (!string.Equals(normalized, rawCharacterName, StringComparison.Ordinal)))
+                {
+                    return false;
+                }
+
+                normalizedName = normalized;
+            }
+
+            CharacterAppearance stored = null;
+            if (appearanceJson != null)
+            {
+                if ((!BackendJson.TryDeserialize(appearanceJson, typeof(CharacterAppearance), out object parsed))
+                    || ((stored = parsed as CharacterAppearance) == null))
+                {
+                    return false;
+                }
+            }
+
+            if (!CharacterAppearanceCatalog.TryResolve(classId, stored, out appearance))
+            {
+                return false;
+            }
+
+            bool isLegacyAppearance = (stored == null) || ((stored.IsWellFormed()) && (stored.Version == CharacterAppearance.VERSION_1));
+            if ((!isLegacyAppearance) && (normalizedName == null))
+            {
+                appearance = null;
+                return false;
+            }
+
+            characterName = normalizedName;
+            return true;
         }
 
         /// <summary> 계약 코드가 EPlayerClass에 정의된 직업이면 참, 값 없음(-1)과 모르는 값은 거짓 </summary>

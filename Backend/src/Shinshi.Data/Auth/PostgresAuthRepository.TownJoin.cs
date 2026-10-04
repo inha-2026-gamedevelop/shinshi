@@ -73,7 +73,7 @@ namespace Shinshi.Data.Auth
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.TOKEN_REVOKED);
                 }
-                if (!(await LockOwnedCharacterClassAsync(connection, transaction, identity.AccountId, characterId, token)).HasValue)
+                if (await LockOwnedCharacterAsync(connection, transaction, identity.AccountId, characterId, token) == null)
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
                 }
@@ -140,8 +140,8 @@ namespace Shinshi.Data.Auth
             {
                 return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.TOKEN_REVOKED);
             }
-            int? classId = await LockOwnedCharacterClassAsync(connection, transaction, found.AccountId, found.CharacterId, token);
-            if (!classId.HasValue)
+            JoinCharacterRow? character = await LockOwnedCharacterAsync(connection, transaction, found.AccountId, found.CharacterId, token);
+            if (character == null)
             {
                 return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
             }
@@ -218,17 +218,20 @@ namespace Shinshi.Data.Auth
             // 마을 입장은 출정과 참가자가 없다. 빈 ID는 응답에서 값 없음으로 바뀐다
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             return AuthValidationOutcome<JoinAuthIdentity>.Success(new JoinAuthIdentity(consumed.AccountId,
-                consumed.CharacterId, classId.Value, Guid.Empty, Guid.Empty, consumed.InstanceId, UnixMilliseconds(now),
-                accountLeaseId));
+                consumed.CharacterId, character.ClassId, Guid.Empty, Guid.Empty, consumed.InstanceId, UnixMilliseconds(now),
+                accountLeaseId, character.Name, character.Appearance));
         }
 
-        // 계정 소유 캐릭터를 잠그고 직업을 돌려준다, 소유하지 않으면 null
-        private static Task<int?> LockOwnedCharacterClassAsync(NpgsqlConnection connection,
+        // 계정 소유 캐릭터를 잠그고 직업, 닉네임, 외형 원문을 돌려준다, 소유하지 않으면 null.
+        // name/appearance는 레거시 행에서 NULL일 수 있고, 그 NULL 자체가 표시 resolver가 읽는 유효한 값이다
+        private static Task<JoinCharacterRow?> LockOwnedCharacterAsync(NpgsqlConnection connection,
             NpgsqlTransaction transaction, Guid accountId, Guid characterId, CancellationToken token)
         {
-            return connection.QuerySingleOrDefaultAsync<int?>(Command(
-                "SELECT class_id FROM characters WHERE account_id = @AccountId AND character_id = @CharacterId FOR SHARE;",
-                new { AccountId = accountId, CharacterId = characterId }, transaction, token));
+            return connection.QuerySingleOrDefaultAsync<JoinCharacterRow?>(Command(
+                """
+                SELECT class_id AS "ClassId", name AS "Name", appearance::text AS "Appearance"
+                FROM characters WHERE account_id = @AccountId AND character_id = @CharacterId FOR SHARE;
+                """, new { AccountId = accountId, CharacterId = characterId }, transaction, token));
         }
 
         /****************************************

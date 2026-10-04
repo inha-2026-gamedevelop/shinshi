@@ -298,17 +298,18 @@ namespace Shinshi.Data.Auth
                     ? ContractCodes.RejectReason.ALREADY_SETTLED : ContractCodes.RejectReason.SESSION_MISMATCH);
             }
 
-            // 직업은 참가자가 묶인 캐릭터 행에서 읽는다. 게임 서버가 이 값으로 전투 개체를 만든다
-            int? classId = await connection.QuerySingleOrDefaultAsync<int?>(Command(
+            // 직업, 닉네임, 외형은 참가자가 묶인 캐릭터 행에서 읽는다. 게임 서버가 이 값으로 전투 개체와 공개 상태를 만든다
+            JoinCharacterRow? character = await connection.QuerySingleOrDefaultAsync<JoinCharacterRow?>(Command(
                 """
-                SELECT character.class_id FROM session_participants AS participant JOIN characters AS character
+                SELECT character.class_id AS "ClassId", character.name AS "Name", character.appearance::text AS "Appearance"
+                FROM session_participants AS participant JOIN characters AS character
                     ON character.character_id = participant.character_id AND character.account_id = participant.account_id
                     WHERE participant.session_id = @SessionId AND participant.participant_id = @ParticipantId
                         AND participant.account_id = @AccountId AND participant.character_id = @CharacterId
                         AND participant.state IN ('Reserved','Active');
                 """, new { SessionId = sessionId, ParticipantId = participantId, found.AccountId, found.CharacterId },
                 transaction, token));
-            if (!classId.HasValue)
+            if (character == null)
             {
                 return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
             }
@@ -354,8 +355,9 @@ namespace Shinshi.Data.Auth
 
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             return AuthValidationOutcome<JoinAuthIdentity>.Success(new JoinAuthIdentity(consumed.AccountId,
-                consumed.CharacterId, classId.Value, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
-                consumed.InstanceId, UnixMilliseconds(now)));
+                consumed.CharacterId, character.ClassId, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
+                consumed.InstanceId, UnixMilliseconds(now), characterName: character.Name,
+                appearanceJson: character.Appearance));
         }
 
         private static Task<int> ReadUnconsumedReasonAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
@@ -589,6 +591,15 @@ namespace Shinshi.Data.Auth
             public Guid? SessionId { get; set; }
             public Guid InstanceId { get; set; }
             public int ServerRole { get; set; }
+        }
+
+        // Town과 Dungeon 소비가 같은 모양으로 쓴다. Name/Appearance는 레거시 행에서 null일 수 있고,
+        // 그 null 자체가 JoinAuthIdentity를 거쳐 표시 resolver가 읽는 유효한 값이다
+        private sealed class JoinCharacterRow
+        {
+            public int ClassId { get; set; }
+            public string? Name { get; set; }
+            public string? Appearance { get; set; }
         }
     }
 }

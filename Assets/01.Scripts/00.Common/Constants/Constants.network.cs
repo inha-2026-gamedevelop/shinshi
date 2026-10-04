@@ -9,8 +9,8 @@ namespace Shinshi.Common
             *                Fields
             ****************************************/
 
-            // 클라이언트와 서버 빌드가 같아야 접속할 수 있다
-            public const int PROTOCOL_VERSION = 1;
+            // 클라이언트와 서버 빌드가 같아야 접속할 수 있다. 캐릭터 이름/외형 SyncVar 3개를 더하며 1에서 2로 올린다
+            public const int PROTOCOL_VERSION = 2;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;

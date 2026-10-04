@@ -57,6 +57,18 @@ namespace Shinshi.Network
         private bool                       _isLoaded      = false;
 
         /****************************************
+        *              Properties
+        ****************************************/
+
+        // DevCustomizationScenario와 자동화 검증용 공개 읽기 접근자
+        public Button                           StartButton => _startButton;
+        public Button                           CreateButton => _createButton;
+        public bool                              IsBusy      => _isBusy;
+        public bool                              IsLoaded    => _isLoaded;
+        public System.Collections.Generic.IReadOnlyList<CharacterSummary> Characters => _characters;
+        public CharacterSelectSelection          Selection   => _selection;
+
+        /****************************************
         *              Unity Event
         ****************************************/
 
@@ -175,7 +187,9 @@ namespace Shinshi.Network
             {
                 if (i < _characters.Count)
                 {
-                    _slots[i].Show(_characters[i].Name, LobbyText.ClassName(_characters[i].ClassId));
+                    CharacterSummary character = _characters[i];
+                    _slots[i].Show(character.Name, LobbyText.ClassName(character.ClassId));
+                    _slots[i].ShowLook(character.ClassId, character.Appearance);
                 }
                 else
                 {
@@ -216,9 +230,18 @@ namespace Shinshi.Network
         private void RefreshButtons()
         {
             bool idle = (!_isBusy) && (!NetworkClient.active);
-            _startButton.interactable  = idle && _isLoaded && (GetSelectedCharacter() != null);
+            int  slot = _selection.SelectedSlot;
+            bool hasValidSlot = (slot >= 0) && (slot < _slots.Length);
+            bool selectedLookReady = (hasValidSlot) && (_slots[slot].IsLookReady);
+            _startButton.interactable  = idle && _isLoaded && (GetSelectedCharacter() != null) && selectedLookReady;
             _createButton.interactable = idle && _isLoaded && (_characters.Count < _slots.Length);
             _backButton.interactable   = idle;
+
+            // 고른 칸의 해석/조립이 실패했으면 그 사유를 그대로 보인다. 정상이면 다른 흐름이 정한 문구를 가리지 않는다
+            if ((hasValidSlot) && (!selectedLookReady) && (!string.IsNullOrEmpty(_slots[slot].LastError)))
+            {
+                _status.text = _slots[slot].LastError;
+            }
         }
 
         private void OnStartClicked()

@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be6d232e246caa04b99d93239e5e8f97, type: 3}
+  m_Name: PlayerFemaleLookCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleLookCatalogSO
+  _faces:
+  - _id: 1
+    _label: Cute
+    _classPrefab: {fileID: 7006143584879147019, guid: 3c4e88a8d5f114e4ca54618e4fff0d33, type: 3}
+  _hairs:
+  - _id: 1
+    _label: "\uBB34\uC0AC"
+    _classPrefab: {fileID: 7006143584879147019, guid: 3c4e88a8d5f114e4ca54618e4fff0d33, type: 3}
+  - _id: 2
+    _label: "\uB3C4\uC220\uC0AC"
+    _classPrefab: {fileID: 4337086673816873307, guid: 7c26387533e6a3541a28b667605b7066, type: 3}
+  - _id: 3
+    _label: "\uC2E0\uB839\uC0AC"
+    _classPrefab: {fileID: 3182473319891073137, guid: 0017cac8d1c4ca64bbbec73145d161d1, type: 3}
+  _outfits:
+  - _id: 1
+    _label: "\uBB34\uC0AC"
+    _classPrefab: {fileID: 7006143584879147019, guid: 3c4e88a8d5f114e4ca54618e4fff0d33, type: 3}
+  - _id: 2
+    _label: "\uB3C4\uC220\uC0AC"
+    _classPrefab: {fileID: 4337086673816873307, guid: 7c26387533e6a3541a28b667605b7066, type: 3}
+  - _id: 3
+    _label: "\uC2E0\uB839\uC0AC"
+    _classPrefab: {fileID: 3182473319891073137, guid: 0017cac8d1c4ca64bbbec73145d161d1, type: 3}
+  _locomotionController: {fileID: 9100000, guid: 5a3c2ec7e1d3d8641b2f477657fd0fd9, type: 2}

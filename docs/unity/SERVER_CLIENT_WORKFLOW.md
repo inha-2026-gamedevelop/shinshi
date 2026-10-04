@@ -96,7 +96,7 @@ Assets/01.Scripts/
 
 - 로비(`LobbyScreen`): 런처가 넘긴 게임 세션(`LauncherSession`)을 기다린다. 에디터와 개발 빌드에서 런처 없이 실행하면 개발 로그인 패널(API 주소, 아이디, 비밀번호, 가입할 때만 쓰는 이메일, 로그인과 가입 후 로그인 버튼)이 보이고 `POST /v1/auth/exchange` → `POST /v1/auth/game-session`으로 받은 하위 세션을 같은 자리에 넣는다. 개발 로그인의 빌드 ID는 `dev-local`(`-build-id`로 변경), 기본 API 주소는 `http://127.0.0.1:5080`(`-api-base-url`로 변경)이며 API의 허용 buildId와 `AuthBuild__ContentHash`가 맞아야 한다.
 - 캐릭터 선택(`CharacterSelectScreen`): `GET /v1/characters`로 최대 3칸을 채우고, 고른 캐릭터로 `POST /v1/town/join-ticket`을 받아 `ShinshiClientAuthenticator`로 마을 서버에 접속한다. 삭제 API는 없어 삭제 버튼은 비활성이다. 목록 API가 전투력·레벨을 주지 않아 `전투력 -`, `Lv.-`로 표시한다.
-- 캐릭터 생성(`CharacterCreateScreen`): 직업 3종과 이름(`GET /v1/characters/name-availability`)을 정해 `POST /v1/characters`로 만든다. 외형 슬라이더 화면은 없어 계약의 중립값을 보낸다.
+- 캐릭터 생성(`CharacterCreateScreen`): 직업 3종, Cute 얼굴 1종, 헤어·옷 각 3종과 이름(`GET /v1/characters/name-availability`)을 정해 `POST /v1/characters`로 만든다. 헤어·옷은 직업과 독립적으로 고르고, 슬라이더·색은 중립값을 보낸다. 저장·미리보기·마을 적용 계약은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)를 따른다.
 - 마을: Bootstrap 네트워크 매니저의 `onlineScene`이 `Release/ShinshiTown`이다. 마을 역할(`ConfigureServerRole(Town)`)은 서버와 클라이언트 모두 이 값을 쓰고, 던전 역할은 비운다. 인증이 끝나면 서버가 마을 씬을 안내하고 클라이언트가 불러온 뒤 플레이어가 `NetworkStartPosition`에 스폰된다. 마을에서 연결이 끊기면 캐릭터 선택으로 돌아간다(`offlineScene`은 쓰지 않는다. Mirror가 매니저를 DontDestroyOnLoad에서 꺼내 지우기 때문이다).
 - 게임 세션 갱신(`/v1/auth/game-session/refresh`)은 아직 연결하지 않았다. 하위 세션은 15분이라 그 뒤의 목록·입장 요청은 다시 로그인해야 한다.
 
@@ -278,9 +278,9 @@ Assets/01.Scripts/
 ## 9. 인증·재접속·서버 수명 연결
 
 1. `ServerBootstrap`이 역할·포트·콘텐츠 버전을 읽고 GameDB를 확인한 뒤 콘텐츠 해시를 계산한다. 전투 설치, 던전 역할의 `DungeonSessionHost`·플레이어 유지 창구 결합, 서버 인증기 설치를 끝낸 뒤 `StartServer`를 부른다.
-2. 클라이언트는 `ShinshiClientAuthenticator.SetJoinToken`을 `StartClient` 전에 부른다. 연결 직후 `JoinRequestMessage(protocolVersion, contentHash, joinToken)`을 보낸다. 서버는 버전·해시·토큰 길이와 인증 대기 상한·마감을 먼저 확인한다.
+2. 클라이언트는 `ShinshiClientAuthenticator.SetJoinToken`을 `StartClient` 전에 부른다. 연결 직후 `JoinRequestMessage(protocolVersion, contentHash, joinToken)`을 보낸다. 닉네임·외형 복제 필드를 추가한 접속 프로토콜은 version 2다. 서버는 버전·해시·토큰 길이와 인증 대기 상한·마감을 먼저 확인한다.
 3. 출시 서버는 `ApiJoinTokenVerifier`가 [일회용 토큰 교환](../../Assets/01.Scripts/00.Common/Contracts/Join/JoinApiRoutes.cs)을 한 번 호출하고 인스턴스·역할·캐릭터·직업(`classId`)·출정·참가자 정보를 확인한다. 직업은 마을과 던전 모두 이 응답에서만 오며, 모르는 값이면 입장을 거절하고 `SessionBinding.PlayerClass`로 `CombatServerRuntime`이 개체를 만든다. 게임 서버의 HTTP 호출은 `Authorization: Bearer {token}`을 쓴다. 서비스 자격은 서버 임대 발급에, 이후 게임 서버 경로는 `ServerPresence`가 받은 서버 임대 토큰에 묶인다. 일반 플레이어 접근 토큰으로 서버 전용 경로를 호출하지 않는다.
-4. `ServerSessionRegistry`가 같은 참가자의 동시 연결을 거절하고 `SessionBinding`을 만든다. 마을 참가자 키는 캐릭터 ID, 던전 키는 출정 참가자 ID다. 계정 전체의 단일 접속 임대는 백엔드가 담당한다. 던전은 `DungeonSessionHost.Admit`까지 통과해야 연결의 `authenticationData`를 설정하고 `ServerAccept`한다. 인증 이전에는 플레이어 생성·Command를 허용하지 않는다.
+4. `ServerSessionRegistry`가 같은 참가자의 동시 연결을 거절하고 `SessionBinding`을 만든다. 토큰 교환 응답의 DB 닉네임·외형을 검증해 `SessionBinding`에서 `PlayerCombatState`로 전달한 뒤 최초 생성·재결합한다. 외형 payload 버전은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)에서 구분한다. 마을 참가자 키는 캐릭터 ID, 던전 키는 출정 참가자 ID다. 계정 전체의 단일 접속 임대는 백엔드가 담당한다. 던전은 `DungeonSessionHost.Admit`까지 통과해야 연결의 `authenticationData`를 설정하고 `ServerAccept`한다. 인증 이전에는 플레이어 생성·Command를 허용하지 않는다.
 5. 동시 접속 거절은 `AlreadyConnected(809)`이며 사용자 안내는 **“이미 접속 중인 계정”**이다. 이전 연결의 끊김 감지가 늦을 때를 위해 클라이언트는 2초 간격으로 최대 6회 같은 토큰을 다시 보낸다. 서버 검증기는 교환 성공 정보를 이 서버에서만 최대 20초 기억하고 입장 성공 시 지운다. 재시도 중에는 `JoinRetryScheduled`, 최종 거절 때는 `Rejected`를 UI가 받는다. 백엔드 일시 불가는 `BackendUnavailable(810)`이고, `RateLimited(811)`과 정산 상한 `SettlementLimitExceeded(904)`는 별도 코드다.
 6. 진행 중 던전에서 끊긴 원래 참가자는 `ShinshiNetworkManager.OnServerDisconnect`가 소유권만 떼어 서버에 개체를 남긴다. 유예 중에도 피격·사망·기술 타이머가 진행된다. 새 일회 재입장 토큰을 [rejoin-ticket 경로](../../Assets/01.Scripts/00.Common/Contracts/ApiRoutes.cs)로 받고 인증되면 같은 참가자·같은 개체를 새 연결에 넘긴다. 개체가 실제로 삭제된 경로는 `ReconnectVault`가 전투 스냅샷을 보존한다. 유예 만료 후 진행 중 출정은 참가자를 닫고 개인 실패 정산으로 이어지며 재합류를 막는다.
 7. 마을 연결 종료는 참가자 키를 지우고 `AccountLeaseReleaser`로 계정 접속 임대 해제를 보낸다. 시작 전 던전 끊김은 start를 막고 예약 만료를 기다린다. 던전 입장자의 계정 임대 이관이 모두 확정된 뒤 같은 참가자 집합·operationId로 start를 요청하고 영수증을 받아 Running에 들어간다.

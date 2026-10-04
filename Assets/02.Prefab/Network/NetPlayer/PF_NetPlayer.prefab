@@ -90,6 +90,37 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &3115142689308502947
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8516834599915649105}
+  m_Layer: 0
+  m_Name: CharacterPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8516834599915649105
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3115142689308502947}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6673343655243534398}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3983380130020674932
 GameObject:
   m_ObjectHideFlags: 0
@@ -108,6 +139,10 @@ GameObject:
   - component: {fileID: 4676749000467046556}
   - component: {fileID: 6912862041508884124}
   - component: {fileID: 129413589570490458}
+  - component: {fileID: 7561073857838914920}
+  - component: {fileID: 2284502398026728587}
+  - component: {fileID: 6357300329141890245}
+  - component: {fileID: 3928697706582662904}
   m_Layer: 0
   m_Name: PF_NetPlayer
   m_TagString: Untagged
@@ -129,6 +164,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 811916610174099758}
+  - {fileID: 8516834599915649105}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2005168681890243753
@@ -299,3 +335,72 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea382e913d5cb7c48ac23310171cde38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.LocalPlayerHudBinder
+--- !u!114 &7561073857838914920
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00490ce71b13acd4e91241b9fd21325b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleCharacterAppearanceView
+  _combat: {fileID: 7582053140134925329}
+  _catalog: {fileID: 11400000, guid: a3c63fa59e4dba94fba27adfc30290a9, type: 2}
+  _controller: {fileID: 9100000, guid: 5a3c2ec7e1d3d8641b2f477657fd0fd9, type: 2}
+  _assembledParent: {fileID: 8516834599915649105}
+  _movementRoot: {fileID: 6673343655243534398}
+  _capsule: {fileID: 2507756089790218063}
+  _presentationView: {fileID: 2284502398026728587}
+  _predictionMotionSource: {fileID: 6357300329141890245}
+  _serverMotionSource: {fileID: 3928697706582662904}
+--- !u!114 &2284502398026728587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c7f3b53d490fce488444dd483601238, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleCharacterPresentationView
+  _animator: {fileID: 0}
+  _movementRoot: {fileID: 6673343655243534398}
+  _visualPivot: {fileID: 8516834599915649105}
+  _combat: {fileID: 7582053140134925329}
+  _motionSourceComponent: {fileID: 6357300329141890245}
+  _speedParameter: Speed
+  _aliveParameter: 
+  _speedDampSeconds: 0.1
+  _maximumVisualSpeed: 12
+--- !u!114 &6357300329141890245
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60343441f42470f4abcbb982d1530333, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleCharacterPredictionMotionSource
+  _prediction: {fileID: 2066583378322049471}
+  _combat: {fileID: 7582053140134925329}
+--- !u!114 &3928697706582662904
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 911c322195b0c5a4db40803b20c3cd9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleCharacterServerMotionSource
+  _combat: {fileID: 7582053140134925329}

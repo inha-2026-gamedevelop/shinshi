@@ -36,6 +36,11 @@ namespace Shinshi.Contracts
         // 게임 서버는 클라이언트가 아니라 이 값으로 전투 개체의 직업을 정한다
         [DataMember(Name = "classId")]          private int    _classId = UNKNOWN_CLASS_ID;
 
+        // DB 소유 캐릭터의 닉네임과 외형 원문. 명시적 레거시 캐릭터는 둘 다 값 없음이며, 클라이언트가 보낸 이름/외형은
+        // 쓰지 않는다. 표시 resolver가 null을 직업 기본값으로 읽는다
+        [DataMember(Name = "characterName")]    private string _characterName;
+        [DataMember(Name = "appearance")]        private string _appearanceJson;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -48,6 +53,8 @@ namespace Shinshi.Contracts
         public long   ServerTimeUnixMs => _serverTimeUnixMs;
         public string AccountLeaseId   => _accountLeaseId;
         public int    ClassId          => _classId;
+        public string CharacterName    => _characterName;
+        public string AppearanceJson   => _appearanceJson;
 
         /****************************************
         *                Methods
@@ -61,6 +68,14 @@ namespace Shinshi.Contracts
 
         public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
             string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId)
+            : this(characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId,
+                classId, null, null)
+        {
+        }
+
+        public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
+            string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName,
+            string appearanceJson)
         {
             _characterId      = characterId;
             _instanceId       = instanceId;
@@ -70,6 +85,8 @@ namespace Shinshi.Contracts
             _serverTimeUnixMs = serverTimeUnixMs;
             _accountLeaseId   = accountLeaseId;
             _classId          = classId;
+            _characterName    = characterName;
+            _appearanceJson   = appearanceJson;
         }
 
         private JoinTokenExchangeResponse() { }

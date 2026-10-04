@@ -1,5 +1,6 @@
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Contracts;
 
 namespace Shinshi.Network
 {
@@ -13,12 +14,14 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        private readonly string       _participantKey;
-        private readonly string       _characterId;
-        private readonly string       _instanceId;
-        private readonly string       _sortieId;
-        private readonly string       _accountLeaseId;
-        private readonly EPlayerClass _playerClass;
+        private readonly string              _participantKey;
+        private readonly string              _characterId;
+        private readonly string              _instanceId;
+        private readonly string              _sortieId;
+        private readonly string              _accountLeaseId;
+        private readonly EPlayerClass        _playerClass;
+        private readonly string              _characterName;
+        private readonly CharacterAppearance _appearance;
 
         /****************************************
         *              Properties
@@ -42,6 +45,12 @@ namespace Shinshi.Network
         // 토큰이 발급된 캐릭터의 직업, API 교환 응답의 classId다. 클라이언트가 보낸 값은 쓰지 않는다
         public EPlayerClass PlayerClass => _playerClass;
 
+        // DB 소유 캐릭터의 닉네임, 명시적 레거시 캐릭터는 null(TryResolve가 이미 결정적으로 직업 기본 외형에 대응시킨다)
+        public string CharacterName => _characterName;
+
+        // TryResolve가 정규화를 끝낸 외형, null/v1은 직업 기본값으로, 유효한 v2는 그대로 들어 있다. 개발 토큰은 null
+        public CharacterAppearance Appearance => _appearance;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -54,6 +63,8 @@ namespace Shinshi.Network
             _sortieId       = null;
             _accountLeaseId = null;
             _playerClass    = EPlayerClass.Warrior;
+            _characterName  = null;
+            _appearance     = null;
         }
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId)
@@ -69,6 +80,12 @@ namespace Shinshi.Network
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
             string accountLeaseId, EPlayerClass playerClass)
+            : this(participantKey, characterId, instanceId, sortieId, accountLeaseId, playerClass, null, null)
+        {
+        }
+
+        public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
+            string accountLeaseId, EPlayerClass playerClass, string characterName, CharacterAppearance appearance)
         {
             _participantKey = participantKey;
             _characterId    = characterId;
@@ -76,6 +93,8 @@ namespace Shinshi.Network
             _sortieId       = sortieId;
             _accountLeaseId = accountLeaseId;
             _playerClass    = playerClass;
+            _characterName  = characterName;
+            _appearance     = appearance;
         }
     }
 }

@@ -25,6 +25,7 @@ namespace Shinshi.Art
         private const int   INFINITE_LOOPS         = -1;
 
         [SerializeField] private SkinnedMeshRenderer[] _renderers             = Array.Empty<SkinnedMeshRenderer>();
+        [SerializeField] private SkinnedMeshRenderer[] _expressionRenderers   = Array.Empty<SkinnedMeshRenderer>();
         [SerializeField] private string                _blinkBlendShape       = "Blink";
         [SerializeField] private string[]              _expressionBlendShapes = Array.Empty<string>();
         [SerializeField] private bool                  _automaticBlink        = true;
@@ -94,7 +95,8 @@ namespace Shinshi.Art
         ****************************************/
 
         /// <summary> 모든 얼굴 LOD의 같은 이름 모프를 연결하고 기존 연결의 원래 값을 복원한다 </summary>
-        public bool Configure(SkinnedMeshRenderer[] renderers, string blinkBlendShape, string[] expressionBlendShapes)
+        public bool Configure(SkinnedMeshRenderer[] renderers, string blinkBlendShape, string[] expressionBlendShapes,
+            SkinnedMeshRenderer[] expressionRenderers = null)
         {
             StopSequence();
             RestoreBindings(_blinkBindings);
@@ -104,6 +106,7 @@ namespace Shinshi.Art
             }
 
             _renderers             = renderers;
+            _expressionRenderers   = expressionRenderers;
             _blinkBlendShape       = blinkBlendShape;
             _expressionBlendShapes = expressionBlendShapes;
             bool result = TryBind(out _validationError);
@@ -136,13 +139,29 @@ namespace Shinshi.Art
                 return false;
             }
 
-            if (!TryBuildBindings(_blinkBlendShape, out BlendShapeBinding[] blinkBindings, out error))
+            if (!TryBuildBindings(_renderers, _blinkBlendShape, out BlendShapeBinding[] blinkBindings, out error))
             {
                 _validationError = error;
                 return false;
             }
 
             int expressionCount = (_expressionBlendShapes == null) ? 0 : _expressionBlendShapes.Length;
+            // 독립 안구·속눈썹은 Blink에만 참여하고 표정은 지정한 피부 LOD에 적용한다
+            SkinnedMeshRenderer[] expressionRenderers = ((_expressionRenderers == null) || (_expressionRenderers.Length == 0))
+                ? _renderers : _expressionRenderers;
+            if (expressionCount > 0)
+            {
+                for (int i = 0; i < expressionRenderers.Length; ++i)
+                {
+                    if (Array.IndexOf(_renderers, expressionRenderers[i]) < 0)
+                    {
+                        error = "표정 렌더러는 눈 깜박임에 연결한 얼굴 LOD에 포함돼야 한다";
+                        _validationError = error;
+                        return false;
+                    }
+                }
+            }
+
             var expressions = new ExpressionBinding[expressionCount];
             var names = new HashSet<string>(StringComparer.Ordinal) { _blinkBlendShape };
             for (int i = 0; i < expressionCount; ++i)
@@ -155,7 +174,7 @@ namespace Shinshi.Art
                     return false;
                 }
 
-                if (!TryBuildBindings(name, out BlendShapeBinding[] shapes, out error))
+                if (!TryBuildBindings(expressionRenderers, name, out BlendShapeBinding[] shapes, out error))
                 {
                     _validationError = error;
                     return false;
@@ -222,13 +241,14 @@ namespace Shinshi.Art
             return true;
         }
 
-        private bool TryBuildBindings(string name, out BlendShapeBinding[] bindings, out string error)
+        private static bool TryBuildBindings(SkinnedMeshRenderer[] renderers, string name,
+            out BlendShapeBinding[] bindings, out string error)
         {
-            bindings = new BlendShapeBinding[_renderers.Length];
+            bindings = new BlendShapeBinding[renderers.Length];
             var uniqueRenderers = new HashSet<SkinnedMeshRenderer>();
-            for (int i = 0; i < _renderers.Length; ++i)
+            for (int i = 0; i < renderers.Length; ++i)
             {
-                SkinnedMeshRenderer renderer = _renderers[i];
+                SkinnedMeshRenderer renderer = renderers[i];
                 if ((renderer == null) || (renderer.sharedMesh == null) || (!uniqueRenderers.Add(renderer)))
                 {
                     error = "얼굴 LOD 렌더러가 없거나 중복됐다";

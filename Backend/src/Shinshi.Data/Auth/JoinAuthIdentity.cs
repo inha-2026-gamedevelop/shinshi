@@ -23,12 +23,17 @@ namespace Shinshi.Data.Auth
         // 마을 입장 교환이 같은 트랜잭션에서 얻은 계정 접속 임대. 던전 입장은 이관 경로가 임대를 옮기므로 빈 값이다
         public Guid AccountLeaseId { get; }
 
+        // DB 소유 캐릭터의 닉네임과 외형 원문(JSON), 명시적 레거시 캐릭터는 둘 다 null이다. 토큰 소비 트랜잭션이 채운다
+        public string? CharacterName { get; }
+        public string? AppearanceJson { get; }
+
         /****************************************
         *                Methods
         ****************************************/
 
         public JoinAuthIdentity(Guid accountId, Guid characterId, int classId, Guid participantId, Guid sessionId,
-            Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default)
+            Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default, string? characterName = null,
+            string? appearanceJson = null)
         {
             AccountId        = accountId;
             CharacterId      = characterId;
@@ -38,6 +43,8 @@ namespace Shinshi.Data.Auth
             InstanceId       = instanceId;
             ServerTimeUnixMs = serverTimeUnixMs;
             AccountLeaseId   = accountLeaseId;
+            CharacterName    = characterName;
+            AppearanceJson   = appearanceJson;
         }
     }
 }

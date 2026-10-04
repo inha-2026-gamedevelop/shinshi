@@ -16,13 +16,11 @@ namespace Shinshi.Tests
         *                Fields
         ****************************************/
 
-        private const float DELTA_SECONDS       = 0.1f;
-        private const float TELEPORT_DISTANCE   = 1.5f;
-        private const float MAX_SPEED           = 12f;
-        private const float TOLERANCE           = 0.00001f;
-        private const float MOVE_DISTANCE       = 0.2f;
-        private const float EXPECTED_SPEED      = 2f;
-        private const float CORRECTION_DISTANCE = 1.3f;
+        private const float DELTA_SECONDS  = 0.1f;
+        private const float TOLERANCE      = 0.00001f;
+        private const float MOVE_DISTANCE  = 0.2f;
+        private const float EXPECTED_SPEED = 2f;
+        private const float LARGE_DISTANCE = 1.5f;
 
         private GameObject _root;
         private Animator _animator;
@@ -84,45 +82,48 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void GetPlanarSpeed_RegularMovement_ReturnsMetersPerSecond()
+        public void TryRead_FirstSample_EstablishesBaselineAndReturnsFalse()
         {
-            Assert.AreEqual(EXPECTED_SPEED, GetSpeed(Vector3.zero, Vector3.forward * MOVE_DISTANCE), TOLERANCE);
+            var sampler = new PlayerFemaleCharacterMotionSampler();
+            Assert.IsFalse(sampler.TryRead(true, 0f, 0.0, out float speed));
+            Assert.AreEqual(0f, speed);
         }
 
         [Test]
-        public void GetPlanarSpeed_VerticalMotion_ReturnsZero()
+        public void TryRead_RegularMovement_ReturnsMetersPerSecond()
         {
-            Assert.AreEqual(0f, GetSpeed(Vector3.zero, Vector3.up));
+            var sampler = new PlayerFemaleCharacterMotionSampler();
+            sampler.TryRead(true, 0f, 0.0, out _);
+            Assert.IsTrue(sampler.TryRead(true, MOVE_DISTANCE, DELTA_SECONDS, out float speed));
+            Assert.AreEqual(EXPECTED_SPEED, speed, TOLERANCE);
         }
 
         [Test]
-        public void GetPlanarSpeed_Teleport_ReturnsZero()
+        public void TryRead_DistanceDecreased_ResetsBaselineAndReturnsFalse()
         {
-            Assert.AreEqual(0f, GetSpeed(Vector3.zero, Vector3.forward * TELEPORT_DISTANCE));
+            var sampler = new PlayerFemaleCharacterMotionSampler();
+            sampler.TryRead(true, LARGE_DISTANCE, DELTA_SECONDS, out _);
+            Assert.IsFalse(sampler.TryRead(true, 0f, DELTA_SECONDS * 2f, out float speed));
+            Assert.AreEqual(0f, speed);
+        }
+
+        [TestCase(0.0)]
+        [TestCase(double.NaN)]
+        public void TryRead_ElapsedTimeDidNotAdvance_ReturnsFalse(double unscaledTime)
+        {
+            var sampler = new PlayerFemaleCharacterMotionSampler();
+            sampler.TryRead(true, 0f, 0.0, out _);
+            Assert.IsFalse(sampler.TryRead(true, MOVE_DISTANCE, unscaledTime, out float speed));
+            Assert.AreEqual(0f, speed);
         }
 
         [Test]
-        public void GetPlanarSpeed_CorrectionBelowTeleportThreshold_ClampsVisualSpeed()
+        public void TryRead_NotAvailable_ResetsBaselineAndReturnsFalse()
         {
-            Assert.AreEqual(MAX_SPEED, GetSpeed(Vector3.zero, Vector3.forward * CORRECTION_DISTANCE));
-        }
-
-        [TestCase(0f)]
-        [TestCase(float.NaN)]
-        public void GetPlanarSpeed_InvalidDeltaTime_ReturnsZero(float deltaSeconds)
-        {
-            Assert.AreEqual(0f, PlayerFemaleCharacterPresentationView.GetPlanarSpeed(Vector3.zero, Vector3.forward,
-                deltaSeconds, TELEPORT_DISTANCE, MAX_SPEED));
-        }
-
-        /****************************************
-        *                Methods
-        ****************************************/
-
-        private static float GetSpeed(Vector3 previous, Vector3 current)
-        {
-            return PlayerFemaleCharacterPresentationView.GetPlanarSpeed(previous, current, DELTA_SECONDS,
-                TELEPORT_DISTANCE, MAX_SPEED);
+            var sampler = new PlayerFemaleCharacterMotionSampler();
+            sampler.TryRead(true, MOVE_DISTANCE, DELTA_SECONDS, out _);
+            Assert.IsFalse(sampler.TryRead(false, MOVE_DISTANCE * 2f, DELTA_SECONDS * 2f, out float speed));
+            Assert.AreEqual(0f, speed);
         }
     }
 }

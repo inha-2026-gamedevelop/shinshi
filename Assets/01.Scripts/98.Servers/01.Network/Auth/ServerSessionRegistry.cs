@@ -86,7 +86,8 @@ namespace Shinshi.Network
             }
 
             _connected.Add(participantId);
-            binding = new SessionBinding(key, participantId, claims.AccountLeaseId, claims.PlayerClass);
+            binding = new SessionBinding(key, participantId, claims.AccountLeaseId, claims.PlayerClass,
+                claims.CharacterName, claims.Appearance);
             return ERejectReason.None;
         }
 

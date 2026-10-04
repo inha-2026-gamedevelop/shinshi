@@ -97,8 +97,14 @@ namespace Shinshi.Backend.Characters
                 return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_CHARACTER_NAME);
             }
 
-            // TODO(민성): 직업별 허용 헤어와 팔레트 카탈로그 검사는 API에 카탈로그가 생기면 붙인다. 지금은 구조와 값 범위만 본다
+            // v1은 과거 요청을 소급 거절하지 않도록 구조 검사만 본다. v2는 등록된 face/hair/outfit과 중립값까지 본다
             if (!IsKnownClass(request.ClassId) || (request.Appearance == null) || !request.Appearance.IsWellFormed())
+            {
+                return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_APPEARANCE);
+            }
+            bool appearanceAllowed = (request.Appearance.Version == CharacterAppearance.VERSION_1)
+                || CharacterAppearanceCatalog.IsAllowed(request.ClassId, request.Appearance);
+            if (!appearanceAllowed)
             {
                 return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_APPEARANCE);
             }

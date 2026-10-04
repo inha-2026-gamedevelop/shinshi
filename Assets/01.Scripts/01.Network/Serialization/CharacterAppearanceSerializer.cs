@@ -15,7 +15,11 @@ namespace Shinshi.Network
     {
         // Contracts DTO는 백엔드와 같이 쓰려고 private 필드로 두어 Weaver가 자동 직렬화하지 못한다.
         // public 필드 스냅샷을 따로 만드는 대신 여기서 직접 읽고 쓴다.
-        // 필드 순서를 바꾸면 서버와 클라가 다른 값을 읽는다. 바꿀 때는 CharacterAppearance.CURRENT_VERSION을 올린다
+        // 필드 순서를 바꾸면 서버와 클라가 다른 값을 읽는다. 바꿀 때는 Constants.Network.PROTOCOL_VERSION을 올린다
+
+        // 존재 여부 1바이트를 포함해 nonnull v1 메시지는 44바이트로 고정이고, v2는 faceId/outfitId 2바이트만
+        // 뒤에 붙어 46바이트가 된다. 이 레이아웃을 깨는 내부 보초 바이트를 넣지 않는다 - 과거 request_hash와
+        // 와이어 수신 쪽 모두 이 바이트 수 그대로를 기대한다
 
         /****************************************
         *                Methods
@@ -35,6 +39,11 @@ namespace Shinshi.Network
                 throw new ArgumentException("검증되지 않은 외형은 보내지 않는다", nameof(value));
             }
 
+            if ((value.Version != CharacterAppearance.VERSION_1) && (value.Version != CharacterAppearance.VERSION_2))
+            {
+                throw new ArgumentException("지원하지 않는 외형 버전은 보내지 않는다", nameof(value));
+            }
+
             writer.WriteBool(true);
             writer.WriteByte((byte)value.Version);
             writer.WriteByte((byte)value.BodyType);
@@ -46,10 +55,15 @@ namespace Shinshi.Network
             writer.WriteByte((byte)value.LipColor);
             writer.WriteUShort((ushort)value.HairId);
             writer.WriteByte((byte)value.HairColor);
+            if (value.Version == CharacterAppearance.VERSION_2)
+            {
+                writer.WriteByte((byte)value.FaceId);
+                writer.WriteByte((byte)value.OutfitId);
+            }
         }
 
-        // 모르는 version 값도 그대로 돌려주고 적용 쪽이 기본 외형으로 표시한다. 다만 길이를 앞에 붙이는 것은 슬라이더 배열뿐이라
-        // 고정 필드를 더하거나 빼는 버전 변경은 읽을 수 없고 뒤따르는 데이터까지 어긋난다. 그런 변경은 서버와 클라이언트를 함께 배포한다
+        // 지원 범위 밖 version은 뒤따르는 필드 수를 알 수 없으므로 그 자리에서 거절한다. 기본 외형으로 조용히
+        // 넘기지 않고 예외로 알린다. 패킷이 중간에 잘리면 NetworkReader가 바이트 부족으로 예외를 던진다
         public static CharacterAppearance ReadCharacterAppearance(this NetworkReader reader)
         {
             if (!reader.ReadBool())
@@ -57,7 +71,12 @@ namespace Shinshi.Network
                 return null;
             }
 
-            int   version   = reader.ReadByte();
+            int version = reader.ReadByte();
+            if ((version != CharacterAppearance.VERSION_1) && (version != CharacterAppearance.VERSION_2))
+            {
+                throw new InvalidOperationException($"지원하지 않는 외형 버전이다: {version}");
+            }
+
             int   bodyType  = reader.ReadByte();
             int[] face      = ReadSliders(reader);
             int[] body      = ReadSliders(reader);
@@ -68,8 +87,16 @@ namespace Shinshi.Network
             int   hairId    = reader.ReadUShort();
             int   hairColor = reader.ReadByte();
 
+            int faceId   = CharacterAppearance.VALUE_MIN;
+            int outfitId = CharacterAppearance.VALUE_MIN;
+            if (version == CharacterAppearance.VERSION_2)
+            {
+                faceId   = reader.ReadByte();
+                outfitId = reader.ReadByte();
+            }
+
             return new CharacterAppearance(version, bodyType, face, body, skinTone,
-                eyeColor, browColor, lipColor, hairId, hairColor);
+                eyeColor, browColor, lipColor, hairId, hairColor, faceId, outfitId);
         }
 
         // 개수를 1바이트로 보내 다른 version의 길이도 읽을 수 있게 한다
