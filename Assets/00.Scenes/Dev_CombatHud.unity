@@ -3003,9 +3003,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "B \uC77C\uBC18\uC804/\uBCF4\uC2A4  H \uBCF4\uC2A4 \uD53C\uD574  1\xB72
-    \uBB3C\uC57D  G \uACF5\uBA85+20  Z\xB7X\xB7C \uAC15\uB9BC  K \uC4F0\uB7EC\uC9D0 
-    F \uBD80\uD65C  T \uAC70\uC808 \uC548\uB0B4"
+  m_text: "B \uC77C\uBC18\uC804/\uBCF4\uC2A4  H \uBCF4\uC2A4 \uD53C\uD574  1, 2 \uBB3C\uC57D 
+    G \uACF5\uBA85+20  Z, X, C \uAC15\uB9BC  K \uC4F0\uB7EC\uC9D0  F \uBD80\uD65C 
+    T \uAC70\uC808 \uC548\uB0B4"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4f3aeb303a141424bb1968e3f4b51e23, type: 2}
   m_sharedMaterial: {fileID: 2215754320897070259, guid: 4f3aeb303a141424bb1968e3f4b51e23, type: 2}
