@@ -29,10 +29,21 @@ namespace Shinshi.Data.Sessions
                     definitionId = entry.DefinitionId,
                     bindingKind = entry.BindingKind
                 },
+                // revertsEventId는 0013 되돌림 유일 인덱스가 문자열로 비교하므로 소문자 "D" 형식으로 고정한다
+                GameSessionCodes.EventKind.POTION_USE_REVERTED => new
+                {
+                    participantId = entry.ParticipantId,
+                    revertsEventId = entry.RevertsEventId!.Value.ToString("D")
+                },
                 GameSessionCodes.EventKind.ESSENCE_ACCRUED or GameSessionCodes.EventKind.BASE_ESSENCE_ACCRUED => new
                 {
                     participantId = entry.ParticipantId,
                     amount = entry.Amount
+                },
+                GameSessionCodes.EventKind.PARTICIPANT_DEPARTED => new
+                {
+                    participantId = entry.ParticipantId,
+                    departReason = entry.EndReason
                 },
                 GameSessionCodes.EventKind.SESSION_ENDED => new SessionEndedPayload
                 {

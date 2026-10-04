@@ -39,6 +39,18 @@ namespace Shinshi.Network
         *              Properties
         ****************************************/
 
+        private static bool IsDevelopmentRuntime
+        {
+            get
+            {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
         // 캐릭터 생성 직후처럼 선택 화면이 먼저 고를 캐릭터
         public static string PreferredCharacterId
         {
@@ -90,7 +102,7 @@ namespace Shinshi.Network
             return notice;
         }
 
-        /// <summary> 게임 세션 발급의 빌드 검사에 보낼 값. GameDB가 준비되지 않았으면 null이다 </summary>
+        /// <summary> 게임 세션 발급의 빌드 검사에 보낼 값. GameDB가 준비되지 않았거나 출시 빌드의 신원 파일을 쓸 수 없으면 null이다 </summary>
         public static ClientBuildInfo CreateBuildInfo()
         {
             if (string.IsNullOrEmpty(_contentHash))
@@ -107,8 +119,40 @@ namespace Shinshi.Network
                 }
             }
 
-            string buildId = ReadArgument(ARG_BUILD_ID) ?? DEV_BUILD_ID;
+            BuildIdentity identity = BuildIdentityLoader.LoadForRuntime(_contentHash, out EBuildIdentityStatus status);
+            string buildId = ResolveBuildId(IsDevelopmentRuntime, ReadArgument(ARG_BUILD_ID), identity, status);
+            if (buildId == null)
+            {
+                Debug.LogError($"[Lobby] 빌드 신원 파일을 쓸 수 없어 로그인을 막는다 ({status})");
+                return null;
+            }
+
+            if ((status == EBuildIdentityStatus.Corrupt) || (status == EBuildIdentityStatus.ProtocolMismatch)
+                || (status == EBuildIdentityStatus.ContentHashMismatch))
+            {
+                Debug.LogWarning($"[Lobby] 개발 빌드의 신원 파일을 쓰지 않는다 ({status}), buildId={buildId}");
+            }
+
             return new ClientBuildInfo(buildId, Constants.Network.PROTOCOL_VERSION, _contentHash);
+        }
+
+        /// <summary> 보낼 빌드 ID를 고른다. 출시 빌드는 신원 파일만 쓰고 없거나 어긋나면 null, 개발 빌드는 인자 -> 신원 파일 -> dev-local 순이다 </summary>
+        public static string ResolveBuildId(bool developmentRuntime, string argumentBuildId, BuildIdentity identity,
+            EBuildIdentityStatus status)
+        {
+            bool loaded = (status == EBuildIdentityStatus.Loaded) && (identity != null);
+            if (!developmentRuntime)
+            {
+                // 출시 빌드에서 실행 인자로 빌드 ID를 바꾸면 API 허용 목록 검사를 다른 빌드 값으로 통과할 수 있다
+                return loaded ? identity.BuildId : null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(argumentBuildId))
+            {
+                return argumentBuildId;
+            }
+
+            return loaded ? identity.BuildId : DEV_BUILD_ID;
         }
 
         public static string ReadDevApiBaseUrl()

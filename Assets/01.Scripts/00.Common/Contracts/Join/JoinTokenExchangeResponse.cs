@@ -16,6 +16,9 @@ namespace Shinshi.Contracts
         // classId 키가 없는 응답을 직업 0(무사)으로 읽지 않도록 값 없음을 따로 둔다. 서버는 이 값을 알 수 없는 직업으로 거절한다
         public const int UNKNOWN_CLASS_ID = -1;
 
+        // 마을 입장이나 출정 계약을 받지 못한 응답의 mode. mode 키가 없는 응답을 일반전(0)으로 읽지 않게 한다
+        public const int NO_MODE = -1;
+
         [DataMember(Name = "characterId")]      private string _characterId;
         [DataMember(Name = "instanceId")]       private string _instanceId;
 
@@ -39,6 +42,24 @@ namespace Shinshi.Contracts
         // 토큰이 발급된 캐릭터의 표시 이름. 게임 서버가 머리 위 이름으로 복제한다. 이름이 없는 옛 캐릭터면 빈 값이다
         [DataMember(Name = "characterName")]    private string _characterName;
 
+        // 던전 입장, 재입장의 출정 계약. 예약 때 마을이 확정한 값이고 던전 서버는 이 값으로 전투를 연다. 마을 입장이면 값 없음이다.
+        // mode는 GameSessionCodes.Mode, difficulty는 GameSessionCodes.Difficulty(보스전이 아니면 NONE)
+        [DataMember(Name = "mode")]             private int    _mode       = NO_MODE;
+        [DataMember(Name = "mapId")]            private string _mapId;
+        [DataMember(Name = "battleId")]         private string _battleId;
+        [DataMember(Name = "bossId")]           private string _bossId;
+        [DataMember(Name = "difficulty")]       private int    _difficulty = GameSessionCodes.Difficulty.NONE;
+
+        // 던전 입장, 재입장 교환만 채운다. 출정 예약 때 고정한 전투 장비, 수련, 부적이며 마을 입장이나 0011 전 출정이면 null이다
+        [DataMember(Name = "combatLoadout")]    private CharacterCombatLoadout _combatLoadout;
+
+        // 토큰이 발급된 캐릭터의 계정. 마을 서버가 생활, 준비 확인, 출정 예약 요청에 넣는다. 이 필드 전의 응답이면 null이다
+        [DataMember(Name = "accountId")]        private string _accountId;
+
+        // 던전 입장, 재입장 교환만 채운다. 이 참가자가 출정에 지참한 물약의 남은 예약분(예약 수량 - 확정 사용)이며
+        // 던전 서버는 이 수량 안에서만 POTION_USED를 보낸다. 마을 입장이나 이 필드를 모르는 API면 null이다
+        [DataMember(Name = "potions")]          private ReservationPotion[] _potions;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -52,6 +73,14 @@ namespace Shinshi.Contracts
         public string AccountLeaseId   => _accountLeaseId;
         public int    ClassId          => _classId;
         public string CharacterName    => _characterName;
+        public int    Mode             => _mode;
+        public string MapId            => _mapId;
+        public string BattleId         => _battleId;
+        public string BossId           => _bossId;
+        public int    Difficulty       => _difficulty;
+        public CharacterCombatLoadout CombatLoadout => _combatLoadout;
+        public string AccountId        => _accountId;
+        public ReservationPotion[] Potions => _potions;
 
         /****************************************
         *                Methods
@@ -71,6 +100,32 @@ namespace Shinshi.Contracts
 
         public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
             string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName)
+            : this(characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId,
+                characterName, NO_MODE, null, null, null, GameSessionCodes.Difficulty.NONE, null)
+        {
+        }
+
+        public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
+            string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
+            string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout)
+            : this(characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId,
+                characterName, mode, mapId, battleId, bossId, difficulty, combatLoadout, null)
+        {
+        }
+
+        public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
+            string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
+            string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout,
+            string accountId)
+            : this(characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId,
+                characterName, mode, mapId, battleId, bossId, difficulty, combatLoadout, accountId, null)
+        {
+        }
+
+        public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
+            string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
+            string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout,
+            string accountId, ReservationPotion[] potions)
         {
             _characterId      = characterId;
             _instanceId       = instanceId;
@@ -81,6 +136,14 @@ namespace Shinshi.Contracts
             _accountLeaseId   = accountLeaseId;
             _classId          = classId;
             _characterName    = characterName;
+            _mode             = mode;
+            _mapId            = mapId;
+            _battleId         = battleId;
+            _bossId           = bossId;
+            _difficulty       = difficulty;
+            _combatLoadout    = combatLoadout;
+            _accountId        = accountId;
+            _potions          = potions;
         }
 
         private JoinTokenExchangeResponse() { }

@@ -11,6 +11,7 @@ using Mirror;
 // 프로젝트 내부
 using Shinshi.Combat;
 using Shinshi.Common;
+using Shinshi.Contracts;
 using Shinshi.Data;
 
 namespace Shinshi.Network
@@ -33,11 +34,17 @@ namespace Shinshi.Network
         public static ServerLaunchConfig Config      { get; private set; }
         public static string             ContentHash { get; private set; }
 
+        // 풀 등록과 로그에 싣는 빌드 ID. 출시 빌드는 빌드 신원 파일 값만 쓰고 표시용 bundleVersion으로 대신하지 않는다
+        public static string             BuildId     { get; private set; }
+
         // 서비스 자격이 있을 때만 있다. 저장 큐, 성장 요청 같은 서버 쪽 백엔드 호출이 모두 이것 하나를 쓴다
         public static BackendGateway     Backend     { get; private set; }
 
         // 던전 역할에서만 있다. 출정 명단, start 영수증, 저장 큐, 정산을 맡는다
         public static DungeonSessionHost DungeonHost { get; private set; }
+
+        // 마을 역할에서만 있다. 파티, 성장 중계, 생활 요청을 맡는다
+        public static TownServerHost     Town        { get; private set; }
 
         // 서비스 자격이 있을 때만 있다. 임대 발급, 풀 등록, heartbeat를 맡는다
         public static ServerPresence     Presence    { get; private set; }
@@ -81,8 +88,10 @@ namespace Shinshi.Network
             IsRunning    = false;
             Config       = default;
             ContentHash  = null;
+            BuildId      = null;
             Backend      = null;
             DungeonHost  = null;
+            Town         = null;
             Presence     = null;
             Shutdown     = null;
             _credentials = null;
@@ -115,6 +124,12 @@ namespace Shinshi.Network
                 return;
             }
 
+            // 서버 빌드의 표준 출력을 배포 로그 형식으로 바꾼다. 빌드 ID는 신원 파일을 읽은 뒤 채우고 그 전 줄은 null이다
+            if (IsServerBuild)
+            {
+                ServerJsonLogHandler.Install(config.RoleName, config.InstanceId, config.ContentVersion, ReadSessionId);
+            }
+
             // GameDBBootstrap이 실패를 이미 기록하고 멈췄다
             if (!GameDB.IsInitialized)
             {
@@ -138,6 +153,17 @@ namespace Shinshi.Network
                 BootFailure.Stop($"contentHash 계산 실패 ({exception.GetType().Name})");
                 return;
             }
+
+            BuildIdentity identity = BuildIdentityLoader.LoadForRuntime(contentHash, out EBuildIdentityStatus identityStatus);
+            string buildId = LobbyFlow.ResolveBuildId(IsDevelopmentRuntime, null, identity, identityStatus);
+            if (buildId == null)
+            {
+                BootFailure.Stop($"빌드 신원 파일을 쓸 수 없다 ({identityStatus}). 빌드 결과의 StreamingAssets를 함께 배포한다");
+                return;
+            }
+
+            BuildId = buildId;
+            ServerJsonLogHandler.SetBuildId(buildId);
 
             ShinshiNetworkManager manager = NetworkManager.singleton as ShinshiNetworkManager;
             if (manager == null)
@@ -167,6 +193,7 @@ namespace Shinshi.Network
 
             EnableCompanionObjects(manager);
             EnableBossObjects(manager);
+            EnableEnemyObjects(manager);
 
             if (!TryCreateJoinTokenVerifier(args, config, manager, out IJoinTokenVerifier verifier, out string verifierError))
             {
@@ -196,7 +223,8 @@ namespace Shinshi.Network
             DungeonSessionHost dungeonHost = null;
             if (config.Role == EServerRole.Dungeon)
             {
-                // 보스 ID는 보스 생성과 경매 보상 표가 같은 값을 쓰도록 여기서 한 번만 읽는다
+                // 실행 설정 보스(-boss-id)는 보스전 계약이 없는 개발 출정의 기본값이다. 계약이 있으면 호스트가 계약 보스와 난이도로
+                // 보스, 보상 표, 경매 재료를 고른다
                 if (!ServerLaunchConfig.TryReadBossId(args, Environment.GetEnvironmentVariable, IsKnownBoss, out string bossId,
                     out string bossError))
                 {
@@ -211,7 +239,11 @@ namespace Shinshi.Network
                 }
 
                 dungeonHost.AuctionAudience = new MirrorAuctionAudience();
-                ConfigureBossAuction(dungeonHost, bossId);
+                dungeonHost.SortieAudience  = new MirrorSortieAudience();
+                dungeonHost.ConfigureContent(GameDB.Waves, GameDB.Rewards, GameDB.Talismans, bossId, IsKnownBoss);
+
+                // TODO(기웅): 일반전 웨이브 진행기(스폰 디렉터, 적 두뇌) 구현이 생기면 여기서 dungeonHost.WaveFactory에 넣는다.
+                // 없으면 일반전 계약도 경고와 함께 웨이브 없는 개발 세션으로 열린다(IWaveSessionFactory 주석의 규칙을 지킨다)
                 CombatServerInstaller.Runtime.ConfigureBoss(bossId);
                 CombatServerInstaller.Runtime.BindSession(dungeonHost);
                 manager.PlayerRetention = CombatServerInstaller.Runtime;
@@ -250,6 +282,19 @@ namespace Shinshi.Network
                         }
                     });
                 }
+
+                // 마을도 등록한다. 처리기가 없으면 물약 키를 누른 클라이언트를 Mirror가 모르는 메시지로 끊는다
+                if (CombatServerInstaller.Runtime != null)
+                {
+                    CombatServerInstaller.Runtime.RegisterMessageHandlers();
+                }
+
+                // 마을 파티, 성장 중계, 생활 처리기도 서버를 연 뒤에 등록한다. 해금 진행 값 미확인 허용은 개발 빌드만이다
+                if (config.Role == EServerRole.Town)
+                {
+                    Town = TownServerInstaller.Install(manager, Backend, config.ContentVersion, IsDevelopmentRuntime,
+                        LogBackendWarning);
+                }
             }
             catch (Exception exception)
             {
@@ -267,28 +312,15 @@ namespace Shinshi.Network
             StartProcessLifecycle(manager, config, publicAddress, dungeonHost);
 
             Debug.Log($"[ServerBoot] 서버 시작 - role={config.RoleName}, instance={config.InstanceId}, port={config.Port}, " +
-                $"contentVersion={config.ContentVersion}, contentHash={ContentHash}, protocol={Constants.Network.PROTOCOL_VERSION}, " +
-                $"dungeonPoolSize={config.DungeonPoolSize}, sendRate={Constants.Network.MIRROR_SEND_RATE}");
+                $"contentVersion={config.ContentVersion}, contentHash={ContentHash}, buildId={BuildId}, " +
+                $"protocol={Constants.Network.PROTOCOL_VERSION}, dungeonPoolSize={config.DungeonPoolSize}, " +
+                $"sendRate={Constants.Network.MIRROR_SEND_RATE}");
+            ServerJsonLogHandler.LogEvent(ServerLogLine.LEVEL_INFO, ServerLogLine.EVENT_SERVER_STARTED, null, null,
+                ServerLogLine.FormatPortData(config.Port));
         }
 
         // 출시 빌드는 서비스 자격이 없으면 저장과 정산을 할 수 없어 던전을 열지 않는다.
         // 개발 빌드는 기록만 남기는 저장과 정산으로 대신하고, 경제 결과가 남지 않는다고 경고한다
-        // 출정 계약에 보스와 난이도가 없어 보스전은 실행 설정의 보스(-boss-id, 기본 개발 보스) 이지 보상 표로 연다
-        // TODO(민성): 출정 계약에 보스와 난이도가 생기면 그 값으로 고른다
-        private static void ConfigureBossAuction(DungeonSessionHost host, string bossId)
-        {
-            foreach (RewardCatalogSO.BossRewardSpec spec in GameDB.Rewards.BossRewards)
-            {
-                if ((spec != null) && (spec.BossId == bossId) && (spec.Difficulty == EBossDifficulty.Easy))
-                {
-                    host.ConfigureBossAuction(spec.AuctionItemId, spec.AuctionChance);
-                    return;
-                }
-            }
-
-            Debug.LogWarning($"[ServerBoot] 보스 보상 표에 경매 재료가 없어 파티 경매 없이 출정을 닫는다, boss={bossId}");
-        }
-
         // 보스 카탈로그에 정의가 있는지만 본다. 수치 미지정(IsTuned 거짓)은 보스 생성이 오류를 남기고 보스 없이 진행한다
         private static bool IsKnownBoss(string bossId)
         {
@@ -339,6 +371,21 @@ namespace Shinshi.Network
                 new CompanionNetworkSpawner(prefab, manager, Constants.Combat.MAX_COMPANION_OBJECTS));
         }
 
+        // 일반 적 프리팹(PF_NetEnemy)이 아직 없다. 없으면 적 판정만 돌고 클라이언트에 적이 보이지 않는다. 서버를 막지는 않는다
+        private static void EnableEnemyObjects(ShinshiNetworkManager manager)
+        {
+            GameObject prefab = EnemyNetworkSpawner.FindPrefab(manager);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[Enemy] 네트워크 매니저 spawnPrefabs에 일반 적 프리팹({EnemyNetworkSpawner.PREFAB_NAME})이 없어 " +
+                    "적 개체를 스폰하지 않는다");
+                return;
+            }
+
+            CombatServerInstaller.Runtime.EnableEnemyObjects(
+                new EnemyNetworkSpawner(prefab, manager, Constants.Combat.MAX_COMBAT_TARGETS));
+        }
+
         // 보스 프리팹이 없는 씬이면 보스 판정만 돌고 클라이언트에 보스와 공격 예고가 보이지 않는다. 서버를 막지는 않는다
         private static void EnableBossObjects(ShinshiNetworkManager manager)
         {
@@ -377,7 +424,7 @@ namespace Shinshi.Network
             ServerPresence presence = null;
             if ((Backend != null) && (_credentials != null))
             {
-                presence = new ServerPresence(Backend, _credentials, config.Role, publicAddress, config.Port, Application.version,
+                presence = new ServerPresence(Backend, _credentials, config.Role, publicAddress, config.Port, BuildId,
                     config.ContentVersion, null, LogBackendWarning);
                 presence.Start();
                 Debug.Log($"[ServerBoot] 서버 풀 존재 신호 시작 - instance={config.InstanceId}, bootId={presence.BootId}");
@@ -391,8 +438,25 @@ namespace Shinshi.Network
             }
 
             driver.Bind(presence, shutdown);
+            if (ServerJsonLogHandler.IsInstalled)
+            {
+                var metrics = new ServerMetricsSampler(dungeonHost);
+                if (CombatServerInstaller.Runtime != null)
+                {
+                    CombatServerInstaller.Runtime.Metrics = metrics;
+                }
+
+                driver.BindMetrics(metrics);
+            }
+
             Presence = presence;
             Shutdown = shutdown;
+        }
+
+        // 던전 프로세스는 출정 하나만 맡으므로 그 출정 번호를 모든 줄에 싣는다. 시작 전과 마을은 null이다
+        private static string ReadSessionId()
+        {
+            return DungeonHost?.SessionId;
         }
 
         // 출시 빌드는 백엔드 교환 검증기만 쓴다. 개발 검증기는 형식만 보므로 출시 서버 빌드에는 컴파일되지도 않는다.

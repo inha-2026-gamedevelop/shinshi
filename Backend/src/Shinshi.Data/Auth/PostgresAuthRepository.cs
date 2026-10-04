@@ -1,6 +1,8 @@
 // System
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -292,25 +294,39 @@ namespace Shinshi.Data.Auth
             if (!await LockJoinContextAsync(connection, transaction, sessionId, instanceId, serverLeaseId, token))
             {
                 bool closed = await connection.QuerySingleAsync<bool>(Command(
-                    "SELECT state NOT IN ('Reserved','Loading','Starting','Running') FROM game_sessions WHERE session_id = @SessionId;",
-                    new { SessionId = sessionId }, transaction, token));
+                    """
+                    SELECT state NOT IN ('Reserved','Loading','Starting','Running')
+                        AND NOT (state = 'Auction' AND auction_ends_at > clock_timestamp())
+                    FROM game_sessions WHERE session_id = @SessionId;
+                    """, new { SessionId = sessionId }, transaction, token));
                 return AuthValidationOutcome<JoinAuthIdentity>.Rejected(closed
                     ? ContractCodes.RejectReason.ALREADY_SETTLED : ContractCodes.RejectReason.SESSION_MISMATCH);
             }
 
-            // 직업은 참가자가 묶인 캐릭터 행에서 읽는다. 게임 서버가 이 값으로 전투 개체를 만든다
+            // 직업은 참가자가 묶인 캐릭터 행에서, 출정 계약은 세션 행에서 읽는다. 게임 서버가 이 값으로 전투 개체와 전투를 만든다
             JoinCharacterRow? character = await connection.QuerySingleOrDefaultAsync<JoinCharacterRow>(Command(
                 """
-                SELECT character.class_id AS "ClassId", character.name AS "Name" FROM session_participants AS participant JOIN characters AS character
+                SELECT character.class_id AS "ClassId", character.name AS "Name",
+                    participant.departed_at IS NOT NULL AS "Departed", session.mode AS "Mode", session.map_id AS "MapId",
+                    session.battle_id AS "BattleId", session.boss_id AS "BossId", session.difficulty AS "Difficulty",
+                    participant.loadout_snapshot::text AS "Loadout"
+                FROM session_participants AS participant
+                JOIN characters AS character
                     ON character.character_id = participant.character_id AND character.account_id = participant.account_id
+                JOIN game_sessions AS session ON session.session_id = participant.session_id
                     WHERE participant.session_id = @SessionId AND participant.participant_id = @ParticipantId
                         AND participant.account_id = @AccountId AND participant.character_id = @CharacterId
-                        AND participant.state IN ('Reserved','Active');
+                        AND participant.state IN ('Reserved','Active') AND character.deleted_at IS NULL;
                 """, new { SessionId = sessionId, ParticipantId = participantId, found.AccountId, found.CharacterId },
                 transaction, token));
             if (character == null)
             {
                 return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
+            }
+            if (character.Departed)
+            {
+                // 포기, 접속 만료로 떠난 참가자는 같은 출정에 다시 들어오지 않는다
+                return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.ALREADY_SETTLED);
             }
 
             bool connectedElsewhere = await connection.QuerySingleAsync<bool>(Command(
@@ -339,8 +355,12 @@ namespace Shinshi.Data.Auth
                             AND instance.heartbeat_at > clock_timestamp() - @Heartbeat)
                     AND EXISTS (SELECT 1 FROM game_sessions AS session WHERE session.session_id = @SessionId
                         AND session.instance_id = @InstanceId AND session.role = @Dungeon
-                        AND session.state IN ('Reserved','Loading','Starting','Running')
+                        AND (session.state IN ('Reserved','Loading','Starting','Running')
+                            OR (session.state = 'Auction' AND session.auction_ends_at > clock_timestamp()))
                         AND (session.state <> 'Reserved' OR session.expires_at > clock_timestamp()))
+                    AND NOT EXISTS (SELECT 1 FROM session_participants AS participant
+                        WHERE participant.session_id = @SessionId AND participant.participant_id = auth_join_tokens.participant_id
+                            AND participant.departed_at IS NOT NULL)
                 RETURNING account_id AS "AccountId", character_id AS "CharacterId",
                     participant_id AS "ParticipantId", session_id AS "SessionId", instance_id AS "InstanceId";
                 """, new { Hash = hash, InstanceId = instanceId, SessionId = sessionId, LeaseId = serverLeaseId,
@@ -352,17 +372,47 @@ namespace Shinshi.Data.Auth
                     await ReadUnconsumedReasonAsync(connection, transaction, hash, token));
             }
 
+            // 던전 서버는 이 수량 안에서만 물약 사용 이벤트를 보낸다. 넘는 사용은 /events가 POTION_LIMIT로 거절하고 그 거절은
+            // 출정 저장 큐를 멈추므로, 서버가 미리 막을 수 있게 확정 사용을 뺀 남은 예약분을 함께 준다
+            List<ReservationPotion> potions = (await connection.QueryAsync<ReservedPotionRow>(Command(
+                """
+                SELECT definition_id AS "DefinitionId", binding_kind AS "BindingKind", quantity - consumed AS "Remaining"
+                FROM reservations
+                WHERE session_id = @SessionId AND participant_id = @ParticipantId AND asset_kind = 'Item'
+                    AND state = 'Reserved' AND quantity > consumed
+                ORDER BY definition_id, binding_kind;
+                """, new { SessionId = sessionId, ParticipantId = participantId }, transaction, token)))
+                .Select(row => new ReservationPotion(row.DefinitionId, row.BindingKind, row.Remaining)).ToList();
+
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             return AuthValidationOutcome<JoinAuthIdentity>.Success(new JoinAuthIdentity(consumed.AccountId,
                 consumed.CharacterId, character.ClassId, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
-                consumed.InstanceId, UnixMilliseconds(now), default, character.Name));
+                consumed.InstanceId, UnixMilliseconds(now), default, character.Name,
+                JoinSortieContract.FromRow(character.Mode, character.MapId, character.BattleId, character.BossId,
+                    character.Difficulty), character.Loadout, potions));
         }
 
-        // 입장 교환이 읽는 캐릭터 직업과 표시 이름. 이름 컬럼이 생기기 전의 캐릭터면 이름은 null이다
+        // 던전 입장 교환이 돌려주는 남은 물약 예약분 한 줄
+        private sealed class ReservedPotionRow
+        {
+            public string DefinitionId { get; set; } = string.Empty;
+            public string BindingKind { get; set; } = string.Empty;
+            public long Remaining { get; set; }
+        }
+
+        // 입장 교환이 읽는 캐릭터 직업과 표시 이름. 이름 컬럼이 생기기 전의 캐릭터면 이름은 null이다.
+        // 던전 입장은 이탈 여부와 출정 계약도 함께 읽는다(마을 입장은 기본값)
         private sealed class JoinCharacterRow
         {
             public int ClassId { get; set; }
             public string? Name { get; set; }
+            public bool Departed { get; set; }
+            public string Mode { get; set; } = string.Empty;
+            public string MapId { get; set; } = string.Empty;
+            public string? BattleId { get; set; }
+            public string? BossId { get; set; }
+            public short? Difficulty { get; set; }
+            public string? Loadout { get; set; }
         }
 
         private static Task<int> ReadUnconsumedReasonAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
@@ -534,7 +584,8 @@ namespace Shinshi.Data.Auth
                 SELECT session.session_id FROM game_sessions AS session JOIN server_instances AS instance
                     ON instance.instance_id = session.instance_id AND instance.role = session.role
                 WHERE session.session_id = @SessionId AND session.instance_id = @InstanceId AND session.role = @Dungeon
-                    AND session.state IN ('Reserved','Loading','Starting','Running')
+                    AND (session.state IN ('Reserved','Loading','Starting','Running')
+                        OR (session.state = 'Auction' AND session.auction_ends_at > clock_timestamp()))
                     AND (session.state <> 'Reserved' OR session.expires_at > clock_timestamp())
                     AND (session.instance_boot_id IS NULL OR session.instance_boot_id = instance.boot_id)
                 FOR SHARE OF session;

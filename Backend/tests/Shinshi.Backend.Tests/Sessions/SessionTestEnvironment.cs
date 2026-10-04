@@ -33,6 +33,7 @@ namespace Shinshi.Backend.Tests.Sessions
         public const string POTION_ID       = "potion-small";
         public const string BINDING         = SettlementSanityLimits.ACCOUNT_BINDING_KIND;
         public const string MAP_ID          = "test-map";
+        public const string BOSS_ID         = "boss_wolbaek";
 
         private const int    TEST_PORT        = 7777;
         private const int    LEASE_MINUTES    = 5;
@@ -140,7 +141,10 @@ namespace Shinshi.Backend.Tests.Sessions
                 potionsEach > 0
                     ? new[] { new PotionReservationInput(POTION_ID, BINDING, potionsEach) }
                     : Array.Empty<PotionReservationInput>())).ToList();
-            return new ReservationInput(TownId, operationId, mode, MAP_ID, CONTENT_VERSION, participants);
+            // 보스전은 bossId와 난이도가 필수다(0012 출정 계약)
+            bool boss = mode == GameSessionCodes.Mode.BOSS;
+            return new ReservationInput(TownId, operationId, mode, MAP_ID, CONTENT_VERSION, participants, null,
+                boss ? BOSS_ID : null, boss ? GameSessionCodes.Difficulty.EASY : GameSessionCodes.Difficulty.NONE);
         }
 
         /// <summary> 예약을 확정하고 세션 정보를 돌려준다 </summary>

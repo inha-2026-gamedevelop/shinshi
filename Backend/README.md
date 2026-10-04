@@ -67,6 +67,15 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.auctions TO shinshi_runtime;
 GRANT SELECT, INSERT ON TABLE public.auction_bids TO shinshi_runtime;
 -- 0010: 아이디, 비밀번호 자격. characters의 새 열(name, name_key, appearance)은 기존 테이블 권한을 따른다
 GRANT SELECT, INSERT, UPDATE ON TABLE public.account_credentials TO shinshi_runtime;
+-- 0011: 성장, 장비, 초기 지급, 계정 진행, 일일 대사. 지급 기록, 해금 기록, 성장 영수증은 추가 전용이다
+GRANT SELECT, INSERT, UPDATE ON TABLE
+    public.talisman_progress, public.character_training, public.account_progress, public.economy_reconciliation_runs
+    TO shinshi_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+    public.talisman_loadout, public.equipment_instances, public.enhancement_pity TO shinshi_runtime;
+GRANT SELECT, INSERT ON TABLE public.initial_grants, public.account_unlocks, public.growth_receipts TO shinshi_runtime;
+-- 0012: 30일 보상 회수함 줄. 수령은 남은 수량만 줄이고 행을 지우지 않는다. 새 열(캐릭터 삭제, 출정 계약, 이탈)은 기존 테이블 권한을 따른다
+GRANT SELECT, INSERT, UPDATE ON TABLE public.reward_inbox_lines TO shinshi_runtime;
 -- 0008: 운영자 계정, 어드민 세션, 지급, 우편함, 공지. service_state는 0008이 넣은 단일 행만 갱신한다(INSERT 없음)
 GRANT SELECT, INSERT, UPDATE ON TABLE
     public.admin_users, public.admin_sessions, public.admin_grants, public.reward_inbox, public.service_notices
@@ -236,6 +245,7 @@ Remove-Item Env:SHINSHI_BOOTSTRAP_OWNER
 | `/admin/v1/audit` | GET | Viewer | 감사 로그. 조회 자체는 감사하지 않음 |
 | `/admin/v1/sessions?state=` | GET | Viewer | 복구 대상 세션 목록과 생존 판정 보류 여부 |
 | `/admin/v1/sessions/{sessionId}/recovery` | POST | Admin | 정산 재시도, 서비스 장애 취소, 격리 세션 강제 종료 |
+| `/admin/v1/auctions?state=&cursor=&limit=` | GET | Viewer | 경매 단계 출정. state 없으면 멈춘 경매(기한 + 60초 유예 경과 또는 서버 소실), `Open`/`Closing`이면 그 품목 상태. 진행 중 품목, 예약 엽전, 품목 마감, `livenessDeferred` |
 | `/v1/inbox` | GET | 플레이어 접근 토큰 | 어드민·서버 토큰은 401. 계정별 1분 60회 |
 | `/v1/inbox/claim` | POST | 플레이어 접근 토큰 | `inbox_claim` 기능 차단 대상. 계정별 1분 30회, 본문 4 KiB(넘으면 413). 둘 다 본문을 읽기 전에 거절 |
 
@@ -256,7 +266,7 @@ DB 점검은 로그인과 토큰 갱신 교환(`AuthBuildPolicy`)과 새 출정 
 
 공개 `ServiceStateResponse`는 기존 필드 의미를 유지하고 `notices` 배열(`ServiceNotice`: noticeId, title, body, target `Launcher`/`Game`/`Both`, severity 0~2, 시작·끝 시각)을 더했다. `notices`는 지금 노출 중인 공지만 중요도, 시작 시각 내림차순으로 최대 20개다. 기존 `notice` 문자열은 노출 중인 런처 대상 첫 공지의 제목이고, DB 모드에서 그런 공지가 없으면 빈 문자열이다. 공지 작성의 형식 검사(제목·본문 길이, 대상, 중요도, 시작 < 끝)는 작업 행 없이 400이다. 현재 시각과 비교하는 검사(끝 시각이 지금 이하)는 멱등 실행 안에서 DB 시각으로 하고 저장되는 409 `INVALID_REQUEST`다. 그래서 확정된 공지를 만료 뒤 같은 operationId로 재전송해도 처음 결과를 받는다.
 
-**기능 차단.** 키는 `ServiceFeatureKeys`의 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`이며 목록 밖 키는 저장에서 400이다. 진입점은 싱글턴 `ServiceFeatureGate`를 받아 `CheckFeatureAsync(ServiceFeatureKeys.X)`가 `FEATURE_DISABLED(1100)`이면 효과와 operations 저장 전에 409로 거절한다. 게이트 거절 자체는 저장하지 않는다. 막는 동안 같은 operationId 재전송은 `IdempotentOperationExecutor.FindStoredAsync`로 저장된 처음 결과를 돌려주고, 저장된 결과가 없으면 차단 거절이다. 그래서 차단 중에 처음 보낸 operationId는 차단이 풀린 뒤 다시 보내면 새로 실행된다. 철자가 틀린 키는 예외다. 이미 시작한 진행(정산, 경매 마감 등)은 막지 않는다. 현재 연결된 곳은 새 출정 예약(점검이면 `MAINTENANCE`, `dungeon_entry` 또는 보스전의 `boss_entry`가 꺼졌으면 `FEATURE_DISABLED`, `CheckNewSortieAsync`)과 `POST /v1/inbox/claim`(`inbox_claim`)뿐이다. `auction`, `crafting`, `enhance`, `inherit`, `gathering`은 키만 있고 각 기능의 API 진입점이 생길 때 연결한다.
+**기능 차단.** 키는 `ServiceFeatureKeys`의 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`이며 목록 밖 키는 저장에서 400이다. 진입점은 싱글턴 `ServiceFeatureGate`를 받아 `CheckFeatureAsync(ServiceFeatureKeys.X)`가 `FEATURE_DISABLED(1100)`이면 효과와 operations 저장 전에 409로 거절한다. 게이트 거절 자체는 저장하지 않는다. 막는 동안 같은 operationId 재전송은 `IdempotentOperationExecutor.FindStoredAsync`로 저장된 처음 결과를 돌려주고, 저장된 결과가 없으면 차단 거절이다. 그래서 차단 중에 처음 보낸 operationId는 차단이 풀린 뒤 다시 보내면 새로 실행된다. 철자가 틀린 키는 예외다. 이미 시작한 진행(정산, 경매 마감 등)은 막지 않는다. 현재 연결된 곳은 새 출정 예약(점검이면 `MAINTENANCE`, `dungeon_entry` 또는 보스전의 `boss_entry`가 꺼졌으면 `FEATURE_DISABLED`, `CheckNewSortieAsync`), `POST /v1/inbox/claim`(`inbox_claim`), 생활 채집(`gathering`)과 물약 제작(`crafting`), 경매 입찰(`auction`, 개시, 마감, 단계 종료는 막지 않음)이다. `enhance`, `inherit`와 장비 제작의 `crafting`은 각 기능의 API 진입점이 생길 때 연결한다.
 
 **운영자 지급과 우편함.** 지급은 `admin_grants` 한 건이다. 작성(`POST /admin/v1/grants {targetAccountIds 1~1000, rewards 1~50줄, claimDays 1~365(기본 30), sourceKind, sourceRef}`)은 Draft만 만들고 대상 계정이 하나라도 없으면 `NOT_FOUND`로 전체를 거절한다. 실행은 Draft만 받아 대상마다 우편 한 행을 한 트랜잭션에 넣는다(`(grant_id, account_id)` 유일이라 다시 넣지 않음, 기한은 DB 시각 + claimDays). 대상이 2명 이상인 일괄 지급과 `RecoveryCompensation` 지급의 실행은 Admin 이상만 할 수 있다(`AdminGrantPolicy`). Operator가 부르면 작업 행 없이 403 `FORBIDDEN_ROLE`이고, 실행 효과도 잠근 지급 행으로 같은 판정을 다시 한다. `RecoveryCompensation`은 같은 `sourceRef`에 취소되지 않은 지급이 이미 있으면 작성이 409 `INVALID_STATE`다(유일 인덱스가 동시 작성도 막음, 앞 지급을 취소하면 다시 작성 가능). P0에는 2인 승인이 없어 실행 감사 행을 `self_approved=true`로 남긴다. 취소는 Draft를 그대로 Cancelled로, Executed는 기한 안의 미수령 우편만 취소하고 수령·만료 수를 감사에 남긴다. 이미 수령한 우편은 되돌리지 않으며 회수는 개인 조정으로 한다. 자산은 `Currency`, `Tickets`(계정), `Essence`, `Shards`(캐릭터, 수령 때 고름), `AccountItem`(정산과 같은 허용 ID, 귀속 `Account`)이고 행동력은 지급 대상이 아니다. 한 줄 수량 상한 1,000,000은 오타 방지용 임시값이다(TODO, 기획 미정).
 
@@ -268,7 +278,7 @@ DB 점검은 로그인과 토큰 갱신 교환(`AuthBuildPolicy`)과 새 출정 
 
 **로그 조회.** 로그 조회는 읽기 전용 스냅샷이다. 원장, 아이템 이력, 세션 이벤트, 작업 조회는 계정 데이터가 실리는 민감 조회라 `reason` 조회 문자열(최대 500자)이 필수이고, 데이터를 읽기 전에 감사 행(`admin.ledger.view`, `admin.item.history.view`, `admin.session.events.view`, `admin.operation.view`)을 자체 트랜잭션으로 커밋한다. 대상이 없어 404가 되는 조회도 시도로 감사하고, 원장은 페이지마다 한 행이다. 감사 로그 조회는 감사하지 않는다. 시각 조건은 UTC 유닉스 ms이며 `fromUnixMs` 포함, `toUnixMs` 제외다. 목록은 keyset `cursor`(응답의 `nextCursor`)와 `limit`(기본 100, 최대 500)로 넘긴다. 원장은 `accountId` 또는 `sourceType`+`sourceId`가 없으면 400(전체 스캔 방지)이고 `characterId`, `assetKind`, `assetId`, `reasonCode`(원장 사유 숫자, `reason`은 감사 사유)로 좁힌다. 필터 전체의 사유·자산별 합계(`totals`)는 cursor 없이 부른 첫 페이지에만 있고 다음 페이지는 null이다. 감사 로그는 `adminId`, `targetKind`(+`targetId`), 기간으로 거른다. 요청 IP는 HMAC 해시의 앞부분만 보인다.
 
-**장애 세션 복구.** `GET /admin/v1/sessions`는 `state`가 없으면 복구 관심 대상(RecoveryPending, 자동 복구가 실패했거나 백오프 중인 Running/Settling, 정산 대기 시간이 지난 Settling, 배정 서버 생존 증거가 없는 Running)을, 있으면 그 상태의 세션을 준다. `POST /admin/v1/sessions/{sessionId}/recovery {operationId, reason, action}`의 action은 셋이다.
+**장애 세션 복구.** `GET /admin/v1/sessions`는 `state`가 없으면 복구 관심 대상(RecoveryPending, 자동 복구가 실패했거나 백오프 중인 Running/Settling, 정산 대기 시간이 지난 Settling, 배정 서버 생존 증거가 없는 Running, 멈춘 Auction: 항목의 `auctionOverdue`)을, 있으면 그 상태의 세션을 준다. `POST /admin/v1/sessions/{sessionId}/recovery {operationId, reason, action}`의 action은 셋이다.
 
 - `RetrySettlement`: 저장된 종료 이벤트가 있는 Settling을 자동 복구와 같은 배정 서버 actor, 같은 정산 operationId로 정산한다.
 - `ServiceCancel`: 배정 서버 소실이 확인된 Running을 장애 취소한다. 서버가 살아 있으면 `INVALID_STATE`다.
@@ -325,16 +335,63 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 | `GET /v1/accounts/me` | 접근 토큰 또는 게임 하위 세션 | 200 `AccountProfileResponse`. 초대 코드 계정은 `loginId`, `email`이 null |
 | `POST /v1/accounts/credentials` | 접근 토큰만(게임 하위 세션은 403 `SESSION_MISMATCH`) | 204. 일반 변경은 `{currentPassword, newPassword}`이고 현재 비밀번호 재확인이 필수다(틀리면 403 `INVALID_CREDENTIALS`, 로그인과 같은 실패 제한). `currentPassword` 없는 변경은 초대(복구 코드) 교환으로 시작한 로그인 묶음에서 시작 30분 안에만 되며(아니면 403 `INVALID_CREDENTIALS`), 아이디가 없는 계정은 `{loginId, email, newPassword}`, 있는 계정은 `{newPassword, email?}`다. 성공하면 같은 트랜잭션에서 호출한 묶음을 포함한 계정의 모든 로그인 묶음, 게임 하위 세션, 입장 토큰, 남은 초대를 폐기하므로 새 자격으로 다시 로그인한다. 409 `LOGIN_ID_TAKEN`·`INVALID_CREDENTIALS`(동시 변경) |
 | `GET /v1/characters/name-availability?name=` | 플레이어 | 200 `AvailabilityResponse`(`INVALID_CHARACTER_NAME(1002)`, `CHARACTER_NAME_TAKEN(1001)`). IP별 1분 30회 |
-| `POST /v1/characters` `CharacterCreateRequest` | 플레이어 | 200 확정, 409 거절(`CHARACTER_NAME_TAKEN`, `NO_CAPACITY`, `IDEMPOTENCY_CONFLICT`), 본문 `CharacterCreateResponse`. 400은 형식 오류이며 작업으로 저장하지 않는다 |
+| `POST /v1/characters` `CharacterCreateRequest` | 플레이어 | 200 확정, 409 거절(`CHARACTER_NAME_TAKEN`, `NO_CAPACITY`, `IDEMPOTENCY_CONFLICT`), 본문 `CharacterCreateResponse`. 400은 형식 오류이며 작업으로 저장하지 않는다. 계정별 1분 10회(생성, 삭제 합산, `AccountRequestLimiter`)를 넘으면 429 `RATE_LIMITED` |
+| `POST /v1/characters/{characterId}/delete` `CharacterDeleteRequest` | 플레이어 | 200 확정, 409 거절(`CHARACTER_NOT_FOUND`, `ALREADY_CONNECTED`, `RESERVATION_CONFLICT`, `STALE_REVISION`). 계정별 1분 한도와, 계정 행 잠금 뒤 최근 24시간 삭제 수가 `MAX_DELETES_PER_WINDOW`(기획 미정 임시값 3, 0012 `ix_characters_account_deleted`)에 닿으면 429 `RATE_LIMITED`(본문 `OperationResult`, 저장된 거절) |
 
 **비밀번호.** PBKDF2-HMAC-SHA256 600,000회, 16바이트 솔트, 32바이트 결과를 `pbkdf2-sha256$회수$솔트$해시`(base64)로 저장하고 행의 회수로 검증한다. `Accounts__PasswordIterations`는 테스트 호스트만 낮춘다(최소 1000). 비교는 고정 시간이고, 없는 아이디도 현재 기본 회수의 더미 해시를 계산한다(테스트는 PBKDF2 계산 수와 회수를 센다). 로그인에 성공했는데 저장 해시의 회수가 현재보다 낮으면 같은 비밀번호를 새 회수로 해시해 발급 트랜잭션에서 바꾼다. 형식이 틀린 아이디는 존재할 수 없어 해시 없이 401이다. 해시는 DB 트랜잭션 밖에서 계산하고, 동시 계산은 `PasswordHashGate`가 CPU 코어 수로 제한한다. 대기는 코어 수의 2배까지만 받고 넘으면 바로, 대기 2초가 지나면 429 `RATE_LIMITED`(`Retry-After: 2`)이며 요청이 취소되면 대기에서 빠진다. 로그인 발급과 비밀번호 변경은 계정 행 잠금 아래에서 검증한 해시가 그대로인지 다시 본다. 로그인 묶음에는 시작 수단(`auth_token_families.origin`: `invite`, `password`)을 적고 갱신 회전은 같은 묶음을 이어 쓴다.
 
 **실패 제한.** `PasswordLoginLimiter`(프로세스 메모리)는 bearer 위조를 세는 `AuthFailureLimiter`와 따로 센다. (아이디, IP) 쌍 5회 연속 실패면 잠금 만료를 지금+15분으로 두고 그 쌍만 429 `ACCOUNT_LOCKED`다. 잠금 중에는 해시를 계산하지 않고 만료도 늘리지 않으며, 만료가 지나면 실패 수를 0으로 한다. 같은 쌍의 동시 시도는 쌍 차례(최대 2초 대기, 넘으면 `RATE_LIMITED`)로 판정, 해시, 기록을 하나씩 한다. 같은 아이디의 최근 1시간(미끄럼 창) 실패 합계가 50회를 넘으면 그 아이디의 시도를 IP마다 1분 1회로 늦춘다. 성공하면 그 쌍의 실패 수를 0으로 한다. 키는 마지막 사용 뒤 1시간이 지나면 지우고, 쌍과 아이디 키 합계가 10만 개를 넘으면 오래 쓰지 않은 것부터 9만 개까지 줄인다. 비밀번호 변경의 현재 비밀번호 확인도 같은 제한을 받는다. 가입은 형식 검사를 통과한 시도만 IP당 1시간 5회다. API를 여러 대로 늘리면 카운터를 공유 저장소로 옮겨야 한다. IP는 forwarded headers 처리 뒤 값이므로 NAS 역방향 프록시를 `ForwardedHeaders__KnownProxies__*`에 넣어야 방문자별로 센다.
 
-**캐릭터.** 이름은 앞뒤 공백 제거 -> NFKC -> 2~12자의 완성형 한글·영문·숫자 검사 -> 표시 이름 `name` -> `ToLowerInvariant` 비교 키 `name_key`(유일 인덱스) 순서다. 생성은 계정 actor의 `character.create` 멱등 작업이며 영수증 ID가 캐릭터 ID다. 계정 행을 잠근 뒤 개수 상한(`MAX_CHARACTERS_PER_ACCOUNT = 3`, 기획 미정 임시값, 전용 코드가 없어 `NO_CAPACITY`)을 보고 `INSERT ... ON CONFLICT (name_key) DO NOTHING`으로 넣는다. 동시에 같은 키를 넣으면 먼저 커밋한 쪽만 남고 나머지는 `CHARACTER_NAME_TAKEN`으로 저장된다. 외형은 `appearance` jsonb로 저장하며 직업별 헤어·팔레트 카탈로그 검사와 초기 지급은 아직 없다.
+**캐릭터.** 이름은 앞뒤 공백 제거 -> NFKC -> 2~12자의 완성형 한글·영문·숫자 검사 -> 표시 이름 `name` -> `ToLowerInvariant` 비교 키 `name_key`(유일 인덱스) 순서다. 생성은 계정 actor의 `character.create` 멱등 작업이며 영수증 ID가 캐릭터 ID다. 계정 행을 잠근 뒤 개수 상한(`MAX_CHARACTERS_PER_ACCOUNT = 3`, 기획 미정 임시값, 전용 코드가 없어 `NO_CAPACITY`)을 보고 `INSERT ... ON CONFLICT (name_key) DO NOTHING`으로 넣는다. 동시에 같은 키를 넣으면 먼저 커밋한 쪽만 남고 나머지는 `CHARACTER_NAME_TAKEN`으로 저장된다. 외형은 `appearance` jsonb로 저장하며 직업별 헤어·팔레트 카탈로그 검사는 아직 없고, 초기 지급은 0011 절의 `InitialGrantService`가 같은 트랜잭션에서 한다.
 
 **0010 스키마.** `account_credentials`(account_id PK/FK, 소문자 login_id 유일 + 형식 CHECK, password_hash 형식 CHECK, email, email_key, email_verified, created_at, updated_at, `email_verified`인 행만의 email_key 부분 유일 인덱스)와 `characters.name`, `name_key`, `appearance`, `auth_token_families.origin`(`invite`/`password`, 기존 행은 모두 초대 교환으로 만들었으므로 `invite`로 채운 뒤 기본값을 지워 새 묶음은 시작 수단을 반드시 적는다)을 더한다. 기존 캐릭터 행에는 채울 이름이 없어 세 열을 NULL 허용으로 두었다. NULL끼리는 유일 인덱스에서 충돌하지 않고, 이름이 있으면 형식 CHECK와 `name_key = lower(name)`을 지킨다. 임시 이름을 채워 NOT NULL로 만드는 방식은 임시 이름끼리, 또는 나중 실제 이름과 겹칠 수 있고 이름 없이 행을 넣는 기존 코드와 테스트를 깨므로 택하지 않았다. 0010 down은 모든 아이디, 비밀번호 해시, 이메일, 캐릭터 이름을 지우므로 운영 DB에서 실행하지 않는다. 런타임 권한은 위 권한 SQL의 0010 줄이다.
 
 `GET /v1/characters`는 접근 토큰 또는 게임 하위 세션으로 인증된 계정의 `CharacterListResponse`를 반환한다. 계정 ID는 요청에서 받지 않으며 응답은 캐시하지 않는다. Bootstrap 런처 접속 화면에서 캐릭터 선택에 사용한다.
 
 **남은 일.** 인증 메일(그 전까지 `emailVerified=false`, `EMAIL_TAKEN`은 번호만 예약), 비밀번호 찾기, 캐릭터 이름 금칙어, 계정당 캐릭터 수는 기획 미정이다. 테스트는 `tests/Shinshi.Backend.Tests/Accounts/`에 있다.
+
+## 성장, 장비, 초기 지급, 계정 진행 (0011)
+
+규칙 수치의 원본은 Unity SO(`EquipmentCatalogSO`, `GrowthConfigSO`, `TalismanCatalogSO`, `ProgressionCatalogSO`)다. 백엔드는 그 에셋 값을 옮긴 `src/Shinshi.Data/Content/growth-content.json`(내장 리소스 `Shinshi.Data.Content.growth-content.json`, `schemaVersion` 1, `contentVersion`은 GameDB 값)만 읽고 시작 시 개수, 범위, 참조를 검증한다. 코드는 `Shinshi.Data/Growth/`, `Shinshi.Api/Growth/`, `Shinshi.Api/Ledger/EconomyReconciliationService.cs`이고 등록은 `AddShinshiGrowth`(항상), `AddShinshiEconomyReconciliation`(연결 문자열이 있을 때만)이다.
+
+| 경로 | 인증 | 결과 |
+|---|---|---|
+| `GET /v1/town/characters/{characterId}/growth` | 마을 서버 임대 | 200 `CharacterGrowthSnapshot`, 캐릭터가 없으면 404, 계정 접속 임대가 그 마을에 없으면 409 `WRONG_LOCATION` |
+| `POST .../talismans/{register,upgrade,loadout,disassemble}` | 마을 서버 임대, 기능 키 `talisman` | `GrowthOperationResponse` |
+| `POST .../training`, `.../training/respec` | 마을 서버 임대, 기능 키 `training` | `GrowthOperationResponse` |
+| `POST .../equipment/craft`, `.../equipment/{itemId}/enhance`, `.../equipment/inherit` | 마을 서버 임대, 기능 키 `crafting`, `enhance`, `inherit` | `GrowthOperationResponse` |
+| `POST .../equipment/{itemId}/{equip,unequip,lock,dismantle}` | 마을 서버 임대 | `GrowthOperationResponse` |
+| `GET /v1/accounts/me/progress` | 플레이어 | 200 `AccountProgressResponse` |
+| `POST /v1/town/accounts/{accountId}/progress/intro` `IntroCompleteRequest{operationId}` | 마을 서버 임대 | 200 `OperationResult`(영수증 ID = 계정 ID, 이미 완료도 확정), 409 `SESSION_MISMATCH`(그 계정의 접속 임대가 호출 마을에 없음), `INVALID_TARGET`(없는 계정). 계정 actor 멱등 |
+
+모든 쓰기는 캐릭터 계정 actor의 멱등 작업이다(`growth_receipts.actor_id = account_id`, 중계한 마을은 `town_instance_id`). 실행 전에 캐릭터에서 계정을 읽으므로 재접속이나 다른 마을에서 같은 operationId를 다시 보내도 처음 결과를 받고, 요청 해시에는 `expectedRevision`과 roll을 넣지 않는다(판정 입력일 뿐이다). 없는 캐릭터는 actor를 정할 수 없어 저장 없이 `INVALID_TARGET`이다. 원장 `actor_kind`는 `Player`이고 entry_key 앞에 작업 내 일련번호가 붙어 같은 자산 두 줄도 쓴다. 등록, 강화의 roll은 `growth_receipts.roll_basis_points`에 남는다. 잠금 순서는 계정 -> 캐릭터 -> 장비(item_id) -> account_items(정의 ID)이고, 그 캐릭터 계정의 살아 있는 접속 임대가 호출한 마을에 없으면 `WRONG_LOCATION`, 열린 출정(Reserved/Active)이 있으면 `LOCKED`, 요청의 `expectedRevision`이 `characters.loadout_revision`과 다르면 `STALE_REVISION`이다. 성공하면 `loadout_revision`이 1 오르고(배분이 같은 재분배, 이미 같은 상태의 착용, 잠금은 그대로) `growth_receipts`에 성공, 실패와 장비 ID를 남겨 재전송에도 처음 결과를 돌려준다. 등록, 강화의 확률 입력 `rollBasisPoints`(0~9999)는 마을 서버가 뽑고 요청 해시에서 빠지므로 같은 operationId를 다른 roll로 다시 보내도 처음 결과다. 비용은 `EconomyDebits.TryDebitExactAsync`로 가용량(총량 - 예약량)에서 정확히 빼며 모자라면 효과 전체를 되돌리고 `INSUFFICIENT_ITEM`이다. 원장 사유는 TRAINING 12, CRAFT 13, ENHANCE 14, INHERIT 15, TALISMAN_REGISTER 16, TALISMAN_UPGRADE 17, DISMANTLE 18, INITIAL_GRANT 25이고 장비 변경은 `item_history`에 남긴다. 삭제한 캐릭터는 성장 조회가 404, 성장 쓰기가 `INVALID_TARGET`이다. 장비 분해 반환이 보스 재료 보관 상한(9999)을 넘으면 회수함으로 보내지 않고 장비를 남긴 채 `INVENTORY_FULL`이다(플레이어 행위는 공간 부족이면 거절, 회수함은 확정된 획득만). 기능 차단 중에는 저장된 결과만 돌려주고 처음 보는 operationId는 저장 없이 409 `FEATURE_DISABLED`다.
+
+캐릭터 생성 작업은 같은 트랜잭션에서 `InitialGrantService`를 부른다. 계정 최초분(`initial_grants`의 `AccountFirst` 부분 유일 인덱스)은 계정에 한 번만 물약을 주고 `action_value = 100`, `action_anchor = now`로 지갑을 맞추며, 캐릭터분은 캐릭터마다 정기와 6부위 장비(착용, 귀속)를 준다. 묶음은 설정 `Growth__ContentProfile`(`Trial` 기본, `Standard`)로 고른다. 기존 계정, 캐릭터에는 소급하지 않는다.
+
+출정 준비 확인(readiness)이 돌려주는 `characterRevision`도 `loadout_revision`이고, 출정 예약은 참가자의 `characterRevision`을 `loadout_revision`과 대조하며 삭제한 캐릭터(0012 `deleted_at`)는 `SESSION_MISMATCH`로 거절하고 `session_participants.loadout_snapshot`에 `CharacterCombatLoadout`을 고정한다. 던전 입장, 재입장 교환 응답 `JoinTokenExchangeResponse.combatLoadout`이 이 값이다. 같은 응답의 `potions`는 그 참가자의 남은 물약 예약분(예약 수량 - 확정 사용, 지참하지 않았으면 빈 배열)이며, 던전 서버는 이 수량과 보스 사용 상한 안에서만 `POTION_USED`를 보낸다(넘는 사용은 `/events`가 `POTION_LIMIT`로 거절하고 저장 큐가 멈춘다). 일일 대사는 `economy_reconciliation_runs`(UTC 날짜 PK)를 먼저 넣은 API 인스턴스만 돌고, 불일치마다 금액 없이 ID만 ERROR 로그로 남긴다. 대사는 계정 ID 순서의 계정 창(기본 200개)마다 그 계정들의 잔액과 원장만 집계하고, 창마다 선점 `started_at`을 갱신(heartbeat)해 오래 걸려도 다른 인스턴스가 stale로 보고 이어받지 않는다. 선점을 잃으면 결과를 기록하지 않고 멈춘다.
+
+**계정 진행 기록.** 성공 정산(`end_reason = SUCCESS`) 트랜잭션이 계정 행을 잠근 뒤, 떠나지 않은(`departed_at IS NULL`) 참가자에게 일반전은 `battle_id`(지역 ID)의 `RegionCleared`와 그 지역의 `foxTracesPerClear`(상한 `foxTraceCap`), 보스전은 `boss_id`와 `difficulty`로 찾은 보스전의 `BattleCleared`를 기록한다. 실패, 장애 취소, 콘텐츠에 없는 지도는 기록하지 않는다. 정산 효과는 `settlement_operation_id` 조건부 갱신으로 한 번만 돌므로 진행도 한 번만 오른다. 설정 `Growth__RejectUnknownBattles=true`(출시 프로필)면 예약이 성장 콘텐츠에 없는 battleId(테스트용 지도, 빈 값)를 `INVALID_TARGET`으로 거절한다(기본 false, 개발, 테스트는 판정만 생략). 0011 down은 장비, 성장 상태를 모두 지우므로 운영 DB에서 실행하지 않는다.
+
+## 생활(행동력, 채집, 물약 제작)과 물약 되돌림 (0013)
+
+마을 서버 전용 경로다. 서버 임대 bearer와 인스턴스 헤더 확인(`GameServerControllerBase`, 마을 역할)을 거치고, 본문의 계정 접속 임대가 이 마을 인스턴스의 만료 전 임대가 아니면 `SESSION_MISMATCH(901)`다. 작업 actor는 본문의 계정이며 요청 해시는 계정과 업무 값만 넣는다(임대 ID, 마을 인스턴스 제외). 재접속으로 다른 마을, 다른 임대에서 같은 operationId를 다시 보내도 처음 결과다.
+
+| 경로 | 본문 | 결과 |
+|---|---|---|
+| `POST /v1/town/life/snapshot` | `{accountId, accountLeaseId}` | 200 `LifeSnapshotResponse{actionValue, actionMax, nextRecoverAtUnixMs(상한이면 0), herb{definitionId, quantity, cap}, potions[{definitionId, quantity, reserved}], serverTimeUnixMs}`. DB 시각으로 회복을 반영하고 저장 값은 바꾸지 않는다. 409 `ApiRejection(SESSION_MISMATCH)` |
+| `POST /v1/town/life/gathers` | `{operationId, accountId, accountLeaseId, zoneId, nodeId}` | `OperationResult`(committedRevision은 지갑 revision). 409 `INSUFFICIENT_ACTION(602)`, `INVENTORY_FULL(501)`, `SESSION_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `FEATURE_DISABLED`(`gathering`) |
+| `POST /v1/town/life/potion-crafts` | `{operationId, accountId, accountLeaseId, potionDefinitionId, count}` | `OperationResult`. 409 `INSUFFICIENT_ITEM(502)`, `INVENTORY_FULL`, `SESSION_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `FEATURE_DISABLED`(`crafting`). 모르는 물약, count 0 이하는 400 |
+
+**수치.** `Shinshi.Data/Life/LifeContent`가 `Assets/09.Data/Life/LifeConfig.asset` 값을 옮긴 상수다: 행동력 상한 100, 채집 비용 2, 300초마다 1 회복, 약초 `item_herb` 채집당 2개, 보관 상한 9999, 물약 `item_potion_small`(약초 5), `item_potion_large`(약초 12), 각 1개 산출, 상한 999, 귀속 `Account`.
+
+**행동력.** `ActionEnergyRules`가 `min(100, value + floor((now - anchor) / 300초))`로 회복을 계산한다(now는 지갑 잠금 뒤 읽은 DB 시각). 상한에서 쓰면 `action_anchor = now`, 아니면 회복에 쓴 구간만큼만 앞으로 옮겨 남은 진행분을 보존한다. 0013은 `account_wallets.action_value` 기본값만 100으로 바꾸고 기존 행은 바꾸지 않는다.
+
+**원자성.** 잠금 순서는 계정(`FOR UPDATE`) -> 계정 임대(`FOR SHARE`) -> 지갑(`INSERT ... ON CONFLICT DO NOTHING` 뒤 `FOR UPDATE`) -> 아이템(정의 ID 순 `FOR UPDATE`)이다. 차감, 지급, 원장(`Gathering(19)` source_type `gathering` source_id `zoneId:nodeId`, `Craft(13)` source_type `potion_craft`), 작업 결과가 한 트랜잭션이다. 거절은 효과 전체를 되돌리고 거절 결과만 저장한다. 기능 차단 거절은 저장하지 않는다.
+
+**물약 되돌림.** `GameSessionCodes.EventKind.POTION_USE_REVERTED = 7`, `SessionEventEntry.revertsEventId`. 원 `POTION_USED`가 같은 세션, 같은 참가자에 저장돼 있거나 같은 배치 앞쪽에 있고 아직 되돌리지 않았으면 `reservations.consumed - 1`, `account_items.quantity + 1, reserved + 1`, 원장 `PotionReturn(21)`이다. 아니면 배치 전체가 `SESSION_MISMATCH`다. 0013의 `ux_session_events_potion_revert`(`payload->>'revertsEventId'`, `event_kind = 7`)가 중복 저장의 마지막 방어선이다. 보스전은 참가자별 `POTION_USED - POTION_USE_REVERTED`가 9(단일 원본 `GameSessionCodes.Potion.BOSS_USE_LIMIT`, 던전 `PotionServer`도 같은 상수, `SessionConfig.asset _bossPotionUseLimit`가 다르면 SO 검증 오류)를 넘으면 배치 전체를 `POTION_LIMIT(202)`로 거절한다. 0013 down은 7 행을 지울 수 없어 직전 범위 CHECK를 `NOT VALID`로 건다. 0013은 새 테이블이 없어 런타임 권한 추가가 없다.
+
+## API 관측 (U19)
+
+`Shinshi.Api/Observability`. 배포는 `Logging__Console__FormatterName=shinshi-json`으로 공통 JSON 한 줄 로그(`deploy/LOGGING.md`)를 켜고 `Observability__InstanceId`, `Observability__BuildId`, `Observability__ContentVersion`을 넣는다(없으면 null). `RequestLoggingMiddleware`가 전달 헤더 처리 바로 뒤, 라우팅과 인증보다 앞에서 요청마다 `api.request.completed`(경로 템플릿, 메서드, 상태, 소요 ms, 경로의 GUID sessionId)를 남기고 `ApiMetrics`(Meter `Shinshi.Api`, 히스토그램 `api_request_duration_ms`)에 넣는다. `MetricsReporterService`가 60초마다 `api.metrics`(`data.metrics`: 직전 60초 p50/p95/p99, 표본 수, DB 연결이 있으면 미전달 outbox 수 `settlement_outbox_pending`)를 남긴다. 프레임워크 로그는 값 대신 메시지 틀만, 예외는 형식 이름만 남긴다.
+
+**CLI.** `shinshi-admin auctions list [--state Open|Closing]`, `shinshi-admin service-state allow-build add|remove <buildId> --reason <사유>`(현재 목록과 revision을 읽어 하나만 바꾼 목록을 그 revision으로 저장, 이미 있거나 없으면 저장 안 함, 64개 상한, 그 사이 다른 저장이면 409 `INVALID_STATE`로 거절되고 자동 재시도하지 않음).

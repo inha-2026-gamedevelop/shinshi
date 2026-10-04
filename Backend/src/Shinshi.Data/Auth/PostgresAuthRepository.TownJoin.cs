@@ -230,7 +230,7 @@ namespace Shinshi.Data.Auth
             return connection.QuerySingleOrDefaultAsync<JoinCharacterRow>(Command(
                 """
                 SELECT class_id AS "ClassId", name AS "Name" FROM characters
-                WHERE account_id = @AccountId AND character_id = @CharacterId FOR SHARE;
+                WHERE account_id = @AccountId AND character_id = @CharacterId AND deleted_at IS NULL FOR SHARE;
                 """,
                 new { AccountId = accountId, CharacterId = characterId }, transaction, token));
         }

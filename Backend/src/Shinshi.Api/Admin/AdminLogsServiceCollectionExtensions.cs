@@ -31,6 +31,7 @@ namespace Shinshi.Backend.Admin
             // 자동 복구(GameSessionMaintenanceService)와 같은 인스턴스를 써야 기동, DB 단절 보류를 함께 따른다
             services.TryAddSingleton(provider => new RecoveryLivenessGate(provider.GetRequiredService<TimeProvider>()));
             services.TryAddSingleton<AdminSessionRecoveryService>();
+            services.TryAddSingleton<PostgresAdminAuctionReader>();
             return services;
         }
     }

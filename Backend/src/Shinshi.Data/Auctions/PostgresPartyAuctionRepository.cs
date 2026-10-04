@@ -12,6 +12,8 @@ using Npgsql;
 
 // Project
 using Shinshi.Contracts;
+using Shinshi.Data.Inbox;
+using Shinshi.Data.Ledger;
 using Shinshi.Data.Sessions;
 using Shinshi.Data.Settlement;
 
@@ -45,7 +47,9 @@ namespace Shinshi.Data.Auctions
 
         // 배정 boot가 장애 취소 임계 동안 살아 있다는 증거가 없고, 다른 살아 있는 서버는 있다(API, DB 단절과 구분).
         // 정산 저장소의 서비스 장애 취소와 같은 조건이다
-        private const string LOST_CONDITION =
+        // 운영 경매 목록(PostgresAdminAuctionReader)과 복구 후보 목록도 같은 판정을 쓴다. session 별칭과 @CancelTimeout,
+        // @HeartbeatTimeout 매개변수가 필요하다
+        internal const string LOST_CONDITION =
             """
             NOT EXISTS (SELECT 1 FROM server_instances AS instance
                 WHERE instance.instance_id = session.instance_id AND instance.boot_id = session.instance_boot_id
@@ -97,7 +101,31 @@ namespace Shinshi.Data.Auctions
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(input);
+            (OperationResult? unstored, OperationRequest? request, Guid account) = await ResolveBidAsync(instanceId,
+                bootId, input, cancellationToken);
+            if (unstored != null)
+            {
+                return unstored;
+            }
 
+            return await _executor.ExecuteAsync(request!, (context, token) =>
+                BidEffectAsync(instanceId, bootId, account, input, context, token), cancellationToken);
+        }
+
+        /// <summary> 같은 입찰의 저장된 결과만 읽고 아무것도 바꾸지 않는다. 처음 보는 operationId이거나 호출 던전이 이 출정의 배정 boot가
+        /// 아니면 null이다. 경매 기능 차단 중 재전송에 처음 결과를 돌려줄 때 쓴다 </summary>
+        public async Task<OperationResult?> FindStoredBidAsync(Guid instanceId, Guid? bootId, AuctionBidInput input,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+            (OperationResult? unstored, OperationRequest? request, Guid _) = await ResolveBidAsync(instanceId, bootId,
+                input, cancellationToken);
+            return unstored != null ? null : await _executor.FindStoredAsync(request!, cancellationToken);
+        }
+
+        private async Task<(OperationResult? Unstored, OperationRequest? Request, Guid Account)> ResolveBidAsync(
+            Guid instanceId, Guid? bootId, AuctionBidInput input, CancellationToken cancellationToken)
+        {
             // 행위자(참가자 계정)의 멱등 기록을 조회, 저장하기 전에 호출 던전이 이 출정의 배정 boot인지 본다. 다른 던전이 같은 ID로
             // 결과를 재생하거나 거절을 먼저 저장해 정상 요청을 막지 못하게 한다. 효과 안에서 같은 검사를 잠금과 함께 다시 한다
             BidOwnerRow? owner;
@@ -118,12 +146,14 @@ namespace Shinshi.Data.Auctions
             if ((owner == null) || (owner.InstanceId != instanceId)
                 || (owner.InstanceBootId.HasValue && (owner.InstanceBootId != bootId)))
             {
-                return Unstored(input.OperationId, ContractCodes.RejectReason.SESSION_MISMATCH, serverTime);
+                return (Unstored(input.OperationId, ContractCodes.RejectReason.SESSION_MISMATCH, serverTime), null,
+                    Guid.Empty);
             }
             Guid? accountId = owner.AccountId;
             if (!accountId.HasValue)
             {
-                return Unstored(input.OperationId, ContractCodes.RejectReason.NOT_ELIGIBLE, serverTime);
+                return (Unstored(input.OperationId, ContractCodes.RejectReason.NOT_ELIGIBLE, serverTime), null,
+                    Guid.Empty);
             }
 
             Guid account = accountId.Value;
@@ -137,8 +167,7 @@ namespace Shinshi.Data.Auctions
                     expectedBidSeq = input.ExpectedBidSeq,
                     acceptedAtUnixMs = input.AcceptedAtUnixMs
                 }));
-            return await _executor.ExecuteAsync(request, (context, token) =>
-                BidEffectAsync(instanceId, bootId, account, input, context, token), cancellationToken);
+            return (null, request, account);
         }
 
         /// <summary> 마감. 종료 시각과 접속 집합을 저장한 뒤 그 값으로 정산한다. 정산이 실패해도 종료 기록은 남아 재시도와 복구가 잇는다 </summary>
@@ -311,11 +340,12 @@ namespace Shinshi.Data.Auctions
                 return OperationDecision.Rejected(ContractCodes.RejectReason.WRONG_PHASE, guard.Revision);
             }
 
-            // 자격자는 이 출정의 원래 참가자이며 경매 단계에서 아직 Active인 사람이다
+            // 자격자는 이 출정의 원래 참가자이며 경매 단계에서 아직 Active인 사람이다. 포기, 접속 만료로 떠난 참가자(departed_at)는
+            // 상태가 Active로 남아도 자격이 없다
             long members = await connection.QuerySingleAsync<long>(new CommandDefinition(
                 """
                 SELECT count(*) FROM session_participants
-                WHERE session_id = @SessionId AND participant_id = ANY(@Ids) AND state = 'Active';
+                WHERE session_id = @SessionId AND participant_id = ANY(@Ids) AND state = 'Active' AND departed_at IS NULL;
                 """, new { input.SessionId, Ids = eligible }, transaction, cancellationToken: cancellationToken));
             if (members != eligible.Length)
             {
@@ -531,18 +561,36 @@ namespace Shinshi.Data.Auctions
             ledger.Add(Entry(winner, EconomyLedgerCodes.ASSET_CURRENCY, string.Empty, string.Empty, -price,
                 winnerBalance.Value, EconomyLedgerCodes.REASON_AUCTION_SETTLE, auctionId, operationId, actorId));
 
-            long quantity = await connection.QuerySingleAsync<long>(new CommandDefinition(
-                """
-                INSERT INTO account_items AS item (account_id, definition_id, binding_kind, quantity)
-                VALUES (@AccountId, @DefinitionId, @Binding, @Quantity)
-                ON CONFLICT (account_id, definition_id, binding_kind) DO UPDATE SET quantity = item.quantity + EXCLUDED.quantity
-                RETURNING item.quantity;
-                """, new
-                {
-                    AccountId = winner, auction.DefinitionId, Binding = auction.BindingKind, Quantity = ITEM_QUANTITY
-                }, transaction, cancellationToken: cancellationToken));
-            ledger.Add(Entry(winner, EconomyLedgerCodes.ASSET_ITEM, auction.DefinitionId, auction.BindingKind,
-                ITEM_QUANTITY, quantity, EconomyLedgerCodes.REASON_AUCTION_SETTLE, auctionId, operationId, actorId));
+            // 낙찰은 보관 공간이 없어도 취소하지 않는다. 상한을 넘긴 몫은 같은 트랜잭션에서 30일 회수함으로 옮긴다
+            EconomyAsset item = EconomyAsset.AccountItem(winner, auction.DefinitionId, auction.BindingKind);
+            long held = await RecoveryInbox.ReadBalanceForUpdateAsync(connection, transaction, item, cancellationToken)
+                ?? 0;
+            long fits = RewardStorageLimits.Fits(RewardStorageLimits.LimitFor(item.Kind, item.AssetId), held,
+                ITEM_QUANTITY);
+            if (fits > 0)
+            {
+                long quantity = await connection.QuerySingleAsync<long>(new CommandDefinition(
+                    """
+                    INSERT INTO account_items AS item (account_id, definition_id, binding_kind, quantity)
+                    VALUES (@AccountId, @DefinitionId, @Binding, @Quantity)
+                    ON CONFLICT (account_id, definition_id, binding_kind) DO UPDATE SET quantity = item.quantity + EXCLUDED.quantity
+                    RETURNING item.quantity;
+                    """, new
+                    {
+                        AccountId = winner, auction.DefinitionId, Binding = auction.BindingKind, Quantity = fits
+                    }, transaction, cancellationToken: cancellationToken));
+                ledger.Add(Entry(winner, EconomyLedgerCodes.ASSET_ITEM, auction.DefinitionId, auction.BindingKind,
+                    fits, quantity, EconomyLedgerCodes.REASON_AUCTION_SETTLE, auctionId, operationId, actorId));
+            }
+            if (fits < ITEM_QUANTITY)
+            {
+                await RecoveryInbox.InsertAsync(connection, transaction, RecoveryInbox.SOURCE_AUCTION_REWARD,
+                    auctionId.ToString("D"), new[]
+                    {
+                        new RecoveryLine(winner, null, EconomyAsset.ACCOUNT_ITEM, auction.DefinitionId, auction.BindingKind,
+                            ITEM_QUANTITY - fits)
+                    }, cancellationToken);
+            }
 
             if ((recipients.Count > 0) && (each > 0))
             {

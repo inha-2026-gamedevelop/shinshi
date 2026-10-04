@@ -59,6 +59,19 @@ namespace Shinshi.Network
         public IEnumerator Send<T>(string baseUrl, string bearer, string path, object body, Action<LobbyApiReply<T>> done)
             where T : class
         {
+            return SendCore(baseUrl, bearer, path, body, body != null, done);
+        }
+
+        /// <summary> 본문 없는 POST다. 게임 세션 갱신처럼 bearer만으로 동작하는 경로에 쓴다 </summary>
+        public IEnumerator SendEmptyPost<T>(string baseUrl, string bearer, string path, Action<LobbyApiReply<T>> done)
+            where T : class
+        {
+            return SendCore(baseUrl, bearer, path, null, true, done);
+        }
+
+        private IEnumerator SendCore<T>(string baseUrl, string bearer, string path, object body, bool post,
+            Action<LobbyApiReply<T>> done) where T : class
+        {
             if (done == null)
             {
                 throw new ArgumentNullException(nameof(done));
@@ -76,7 +89,7 @@ namespace Shinshi.Network
             }
 
             string address = baseUrl.TrimEnd('/') + path;
-            using (var request = new UnityWebRequest(address, body == null ? UnityWebRequest.kHttpVerbGET : UnityWebRequest.kHttpVerbPOST))
+            using (var request = new UnityWebRequest(address, post ? UnityWebRequest.kHttpVerbPOST : UnityWebRequest.kHttpVerbGET))
             {
                 _request                = request;
                 request.timeout         = REQUEST_TIMEOUT_SECONDS;

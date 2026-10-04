@@ -28,6 +28,13 @@ namespace Shinshi.Network
         // SessionEnded의 참가자별 정산안, 종료 판정 때 한 번 만들고 저장 재시도에도 바꾸지 않는다
         public SettlementGrant[] Grants              { get; }
 
+        // PotionUsed의 물약 정의와 귀속(출정 예약과 같은 값). 다른 종류는 null이다
+        public string            DefinitionId        { get; }
+        public string            BindingKind         { get; }
+
+        // PotionUseReverted가 되돌리는 PotionUsed의 저장 순번. 다른 종류는 0이다
+        public long              RevertsSequence     { get; }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -36,7 +43,7 @@ namespace Shinshi.Network
             string participantId = null, string sourceId = null, string killerParticipantId = null,
             long killSequence = 0, int waveIndex = 0, ESessionEndReason reason = default,
             bool isBossSession = false, in LootRollResult loot = default, SettlementGrant[] grants = null,
-            long amount = 0)
+            long amount = 0, string definitionId = null, string bindingKind = null, long revertsSequence = 0)
         {
             Type                = type;
             ServerTime          = serverTime;
@@ -50,6 +57,9 @@ namespace Shinshi.Network
             Loot                = loot;
             Grants              = grants;
             Amount              = amount;
+            DefinitionId        = definitionId;
+            BindingKind         = bindingKind;
+            RevertsSequence     = revertsSequence;
         }
     }
 }

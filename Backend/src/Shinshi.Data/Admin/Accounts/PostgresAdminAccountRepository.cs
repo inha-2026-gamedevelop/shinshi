@@ -32,7 +32,8 @@ namespace Shinshi.Data.Admin
             """
             SELECT hit.account_id AS "AccountId", hit.matched_by AS "MatchedBy", hit.matched_id AS "MatchedId",
                 account.created_at AS "CreatedAt",
-                (SELECT count(*) FROM characters AS c WHERE c.account_id = hit.account_id)::integer AS "CharacterCount",
+                (SELECT count(*) FROM characters AS c WHERE c.account_id = hit.account_id
+                    AND c.deleted_at IS NULL)::integer AS "CharacterCount",
                 EXISTS (SELECT 1 FROM account_leases AS lease WHERE lease.account_id = hit.account_id
                     AND lease.expires_at > clock_timestamp()) AS "Online"
             FROM hits AS hit JOIN accounts AS account ON account.account_id = hit.account_id
@@ -62,7 +63,7 @@ namespace Shinshi.Data.Admin
                     FROM accounts WHERE account_id = @Id
                     UNION ALL
                     SELECT account_id, CAST(@MatchCharacter AS text), character_id
-                    FROM characters WHERE character_id = @Id)
+                    FROM characters WHERE character_id = @Id AND deleted_at IS NULL)
                 """, new
                 {
                     Id             = id,
@@ -128,7 +129,7 @@ namespace Shinshi.Data.Admin
                 """
                 SELECT character_id AS "CharacterId", class_id AS "ClassId", essence AS "Essence", shards AS "Shards",
                     revision AS "Revision"
-                FROM characters WHERE account_id = @AccountId ORDER BY character_id;
+                FROM characters WHERE account_id = @AccountId AND deleted_at IS NULL ORDER BY character_id;
                 """, parameters, cancellationToken);
             IEnumerable<ItemRow> items = await QueryAsync<ItemRow>(connection, transaction,
                 """

@@ -127,8 +127,8 @@ namespace Shinshi.Common
             public const string ARG_CONTENT_VERSION   = "-content-version";
             public const string ARG_DUNGEON_POOL_SIZE = "-dungeon-pool-size";
 
-            // 던전 서버가 여는 보스 정의 ID. 없으면 Constants.Combat.DEV_BOSS_ID이고 보스 카탈로그에 있는 ID만 받는다
-            // TODO(민성): 출정 계약에 보스 ID가 생기면 출정마다 그 값을 쓰고 이 설정은 개발 실행용으로만 남긴다
+            // 보스전 계약이 없는 출정(개발)에서 던전 서버가 여는 보스 정의 ID. 계약이 있으면 계약 보스를 쓴다.
+            // 없으면 Constants.Combat.DEV_BOSS_ID이고 보스 카탈로그에 있는 ID만 받는다
             public const string ENV_BOSS_ID = "BOSS_ID";
             public const string ARG_BOSS_ID = "-boss-id";
 

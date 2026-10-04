@@ -1,0 +1,1160 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "0.1.0",
+  "equipment": {
+    "definitions": [
+      {
+        "definitionId": "equip_weapon_common",
+        "slot": 0,
+        "grade": 0,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_common",
+        "bossMaterialCount": 4,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_weapon_rare",
+        "slot": 0,
+        "grade": 1,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_rare",
+        "bossMaterialCount": 6,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_weapon_epic",
+        "slot": 0,
+        "grade": 2,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_epic",
+        "bossMaterialCount": 8,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_weapon_legendary",
+        "slot": 0,
+        "grade": 3,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_legendary",
+        "bossMaterialCount": 10,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_head_common",
+        "slot": 1,
+        "grade": 0,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_common",
+        "bossMaterialCount": 3,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_head_rare",
+        "slot": 1,
+        "grade": 1,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_rare",
+        "bossMaterialCount": 4,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_head_epic",
+        "slot": 1,
+        "grade": 2,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_epic",
+        "bossMaterialCount": 6,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_head_legendary",
+        "slot": 1,
+        "grade": 3,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_legendary",
+        "bossMaterialCount": 8,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_body_common",
+        "slot": 2,
+        "grade": 0,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_common",
+        "bossMaterialCount": 4,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_body_rare",
+        "slot": 2,
+        "grade": 1,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_rare",
+        "bossMaterialCount": 6,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_body_epic",
+        "slot": 2,
+        "grade": 2,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_epic",
+        "bossMaterialCount": 8,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_body_legendary",
+        "slot": 2,
+        "grade": 3,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_legendary",
+        "bossMaterialCount": 10,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_hands_common",
+        "slot": 3,
+        "grade": 0,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_common",
+        "bossMaterialCount": 3,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_hands_rare",
+        "slot": 3,
+        "grade": 1,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_rare",
+        "bossMaterialCount": 4,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_hands_epic",
+        "slot": 3,
+        "grade": 2,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_epic",
+        "bossMaterialCount": 6,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_hands_legendary",
+        "slot": 3,
+        "grade": 3,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_legendary",
+        "bossMaterialCount": 8,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_feet_common",
+        "slot": 4,
+        "grade": 0,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_common",
+        "bossMaterialCount": 3,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_feet_rare",
+        "slot": 4,
+        "grade": 1,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_rare",
+        "bossMaterialCount": 4,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_feet_epic",
+        "slot": 4,
+        "grade": 2,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_epic",
+        "bossMaterialCount": 6,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_feet_legendary",
+        "slot": 4,
+        "grade": 3,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_legendary",
+        "bossMaterialCount": 8,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_accessory_common",
+        "slot": 5,
+        "grade": 0,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_common",
+        "bossMaterialCount": 3,
+        "auctionMaterialId": "item_auction_material_common",
+        "auctionMaterialCount": 1
+      },
+      {
+        "definitionId": "equip_accessory_rare",
+        "slot": 5,
+        "grade": 1,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_rare",
+        "bossMaterialCount": 4,
+        "auctionMaterialId": "item_auction_material_rare",
+        "auctionMaterialCount": 1
+      },
+      {
+        "definitionId": "equip_accessory_epic",
+        "slot": 5,
+        "grade": 2,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_epic",
+        "bossMaterialCount": 6,
+        "auctionMaterialId": "item_auction_material_epic",
+        "auctionMaterialCount": 1
+      },
+      {
+        "definitionId": "equip_accessory_legendary",
+        "slot": 5,
+        "grade": 3,
+        "isTraining": false,
+        "bossMaterialId": "item_boss_material_legendary",
+        "bossMaterialCount": 8,
+        "auctionMaterialId": "item_auction_material_legendary",
+        "auctionMaterialCount": 1
+      },
+      {
+        "definitionId": "equip_weapon_training",
+        "slot": 0,
+        "grade": 0,
+        "isTraining": true,
+        "bossMaterialId": "",
+        "bossMaterialCount": 0,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_head_training",
+        "slot": 1,
+        "grade": 0,
+        "isTraining": true,
+        "bossMaterialId": "",
+        "bossMaterialCount": 0,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_body_training",
+        "slot": 2,
+        "grade": 0,
+        "isTraining": true,
+        "bossMaterialId": "",
+        "bossMaterialCount": 0,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_hands_training",
+        "slot": 3,
+        "grade": 0,
+        "isTraining": true,
+        "bossMaterialId": "",
+        "bossMaterialCount": 0,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_feet_training",
+        "slot": 4,
+        "grade": 0,
+        "isTraining": true,
+        "bossMaterialId": "",
+        "bossMaterialCount": 0,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      },
+      {
+        "definitionId": "equip_accessory_training",
+        "slot": 5,
+        "grade": 0,
+        "isTraining": true,
+        "bossMaterialId": "",
+        "bossMaterialCount": 0,
+        "auctionMaterialId": "",
+        "auctionMaterialCount": 0
+      }
+    ],
+    "slotBaseStats": [
+      {
+        "slot": 0,
+        "attack": 200,
+        "health": 0,
+        "defense": 0,
+        "critChance": 0
+      },
+      {
+        "slot": 1,
+        "attack": 0,
+        "health": 180,
+        "defense": 20,
+        "critChance": 0
+      },
+      {
+        "slot": 2,
+        "attack": 0,
+        "health": 300,
+        "defense": 40,
+        "critChance": 0
+      },
+      {
+        "slot": 3,
+        "attack": 0,
+        "health": 120,
+        "defense": 20,
+        "critChance": 0
+      },
+      {
+        "slot": 4,
+        "attack": 0,
+        "health": 150,
+        "defense": 20,
+        "critChance": 0
+      },
+      {
+        "slot": 5,
+        "attack": 40,
+        "health": 150,
+        "defense": 0,
+        "critChance": 0.02
+      }
+    ],
+    "gradeStatMultipliers": [
+      1,
+      1.35,
+      1.8225,
+      2.460375
+    ],
+    "enhancementStatRate": 0.04,
+    "trainingStatRate": 0.5,
+    "enhancementSteps": [
+      {
+        "essenceCost": 150,
+        "shardCost": 2,
+        "baseSuccessRate": 1,
+        "failBonusRate": 0
+      },
+      {
+        "essenceCost": 200,
+        "shardCost": 2,
+        "baseSuccessRate": 1,
+        "failBonusRate": 0
+      },
+      {
+        "essenceCost": 250,
+        "shardCost": 2,
+        "baseSuccessRate": 1,
+        "failBonusRate": 0
+      },
+      {
+        "essenceCost": 300,
+        "shardCost": 2,
+        "baseSuccessRate": 1,
+        "failBonusRate": 0
+      },
+      {
+        "essenceCost": 350,
+        "shardCost": 2,
+        "baseSuccessRate": 1,
+        "failBonusRate": 0
+      },
+      {
+        "essenceCost": 400,
+        "shardCost": 3,
+        "baseSuccessRate": 0.8,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 450,
+        "shardCost": 3,
+        "baseSuccessRate": 0.8,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 500,
+        "shardCost": 3,
+        "baseSuccessRate": 0.8,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 550,
+        "shardCost": 3,
+        "baseSuccessRate": 0.8,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 600,
+        "shardCost": 3,
+        "baseSuccessRate": 0.8,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 650,
+        "shardCost": 4,
+        "baseSuccessRate": 0.65,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 700,
+        "shardCost": 4,
+        "baseSuccessRate": 0.65,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 750,
+        "shardCost": 4,
+        "baseSuccessRate": 0.65,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 800,
+        "shardCost": 4,
+        "baseSuccessRate": 0.65,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 850,
+        "shardCost": 4,
+        "baseSuccessRate": 0.65,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 900,
+        "shardCost": 5,
+        "baseSuccessRate": 0.5,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 950,
+        "shardCost": 5,
+        "baseSuccessRate": 0.5,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1000,
+        "shardCost": 5,
+        "baseSuccessRate": 0.3,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1050,
+        "shardCost": 5,
+        "baseSuccessRate": 0.3,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1100,
+        "shardCost": 5,
+        "baseSuccessRate": 0.3,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1150,
+        "shardCost": 6,
+        "baseSuccessRate": 0.2,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1200,
+        "shardCost": 6,
+        "baseSuccessRate": 0.2,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1250,
+        "shardCost": 6,
+        "baseSuccessRate": 0.2,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1300,
+        "shardCost": 6,
+        "baseSuccessRate": 0.1,
+        "failBonusRate": 0.1
+      },
+      {
+        "essenceCost": 1350,
+        "shardCost": 6,
+        "baseSuccessRate": 0.1,
+        "failBonusRate": 0.1
+      }
+    ],
+    "sameGradeInheritCost": 500,
+    "upperGradeInheritCost": 1500,
+    "upperGradeInheritance": [
+      {
+        "sourceLevel": 17,
+        "resultLevel": 10
+      },
+      {
+        "sourceLevel": 18,
+        "resultLevel": 11
+      },
+      {
+        "sourceLevel": 19,
+        "resultLevel": 12
+      },
+      {
+        "sourceLevel": 20,
+        "resultLevel": 13
+      },
+      {
+        "sourceLevel": 21,
+        "resultLevel": 14
+      },
+      {
+        "sourceLevel": 22,
+        "resultLevel": 15
+      },
+      {
+        "sourceLevel": 23,
+        "resultLevel": 16
+      },
+      {
+        "sourceLevel": 24,
+        "resultLevel": 18
+      },
+      {
+        "sourceLevel": 25,
+        "resultLevel": 20
+      }
+    ],
+    "disassembleRefundRate": 0.25,
+    "storageSlotsPerCharacter": 100
+  },
+  "growth": {
+    "trainingTotalCap": 100,
+    "trainingStatCap": 40,
+    "trainingBaseCost": 100,
+    "trainingCostStep": 10,
+    "trainingStats": [
+      {
+        "stat": 0,
+        "gainPerStep": 0.005
+      },
+      {
+        "stat": 1,
+        "gainPerStep": 0.01
+      },
+      {
+        "stat": 2,
+        "gainPerStep": 0.02
+      },
+      {
+        "stat": 3,
+        "gainPerStep": 0.005
+      },
+      {
+        "stat": 4,
+        "gainPerStep": 1
+      }
+    ],
+    "respecBaseCost": 200,
+    "respecCostPerStep": 20,
+    "registerCardCost": 1,
+    "registerEssenceCost": 150,
+    "registerSuccessRates": [
+      0.5,
+      0.65,
+      0.8,
+      1
+    ],
+    "effectUpgradeCosts": [
+      {
+        "cardCost": 1,
+        "essenceCost": 300
+      },
+      {
+        "cardCost": 1,
+        "essenceCost": 600
+      },
+      {
+        "cardCost": 2,
+        "essenceCost": 1000
+      },
+      {
+        "cardCost": 3,
+        "essenceCost": 1600
+      }
+    ],
+    "cardDisassembleEssence": 50,
+    "unregisteredCardStackLimit": 999
+  },
+  "talismans": {
+    "levelBonusMultipliers": [
+      1,
+      1.15,
+      1.3,
+      1.45,
+      1.6
+    ],
+    "effects": [
+      {
+        "definitionId": "T01-1A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_wide_slash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T01-1B",
+        "playerClass": 0,
+        "skillId": "skill_warrior_wide_slash",
+        "tier": 0,
+        "choice": 1
+      },
+      {
+        "definitionId": "T01-2A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_wide_slash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T01-2B",
+        "playerClass": 0,
+        "skillId": "skill_warrior_wide_slash",
+        "tier": 1,
+        "choice": 1
+      },
+      {
+        "definitionId": "T01-3A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_wide_slash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T01-3B",
+        "playerClass": 0,
+        "skillId": "skill_warrior_wide_slash",
+        "tier": 2,
+        "choice": 1
+      },
+      {
+        "definitionId": "T02-1A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_dash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T02-2A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_dash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T02-3A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_dash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T03-1A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_ground_slam",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T03-2A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_ground_slam",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T03-3A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_ground_slam",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T04-1A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_counter",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T04-2A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_counter",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T04-3A",
+        "playerClass": 0,
+        "skillId": "skill_warrior_counter",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T05-1A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_spell_bolt",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T05-2A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_spell_bolt",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T05-3A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_spell_bolt",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T06-1A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_flame_field",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T06-1B",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_flame_field",
+        "tier": 0,
+        "choice": 1
+      },
+      {
+        "definitionId": "T06-2A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_flame_field",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T06-2B",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_flame_field",
+        "tier": 1,
+        "choice": 1
+      },
+      {
+        "definitionId": "T06-3A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_flame_field",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T06-3B",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_flame_field",
+        "tier": 2,
+        "choice": 1
+      },
+      {
+        "definitionId": "T07-1A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_binding_field",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T07-2A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_binding_field",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T07-3A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_binding_field",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T08-1A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_lightning",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T08-2A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_lightning",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T08-3A",
+        "playerClass": 1,
+        "skillId": "skill_sorcerer_lightning",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T09-1A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_beast",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T09-1B",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_beast",
+        "tier": 0,
+        "choice": 1
+      },
+      {
+        "definitionId": "T09-2A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_beast",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T09-2B",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_beast",
+        "tier": 1,
+        "choice": 1
+      },
+      {
+        "definitionId": "T09-3A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_beast",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T09-3B",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_beast",
+        "tier": 2,
+        "choice": 1
+      },
+      {
+        "definitionId": "T10-1A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_spirit",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T10-2A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_spirit",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T10-3A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_summon_spirit",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T11-1A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_spirit_strike",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T11-2A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_spirit_strike",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T11-3A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_spirit_strike",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T12-1A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_target_barrier",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T12-2A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_target_barrier",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T12-3A",
+        "playerClass": 2,
+        "skillId": "skill_summoner_target_barrier",
+        "tier": 2,
+        "choice": 0
+      }
+    ]
+  },
+  "progression": {
+    "trialEdition": true,
+    "foxTraceCap": 3,
+    "regions": [
+      {
+        "definitionId": "region_forest",
+        "hasWaveBattle": true,
+        "foxTracesPerClear": 0,
+        "availableInTrial": true,
+        "trialPreUnlocked": false,
+        "requirement": {
+          "requiresIntro": true,
+          "clearedRegionId": "",
+          "unlockedRegionId": "",
+          "clearedBattleId": "",
+          "foxTraceCount": 0
+        }
+      },
+      {
+        "definitionId": "region_ruins",
+        "hasWaveBattle": true,
+        "foxTracesPerClear": 0,
+        "availableInTrial": false,
+        "trialPreUnlocked": false,
+        "requirement": {
+          "requiresIntro": false,
+          "clearedRegionId": "region_forest",
+          "unlockedRegionId": "",
+          "clearedBattleId": "",
+          "foxTraceCount": 0
+        }
+      },
+      {
+        "definitionId": "region_altar",
+        "hasWaveBattle": true,
+        "foxTracesPerClear": 1,
+        "availableInTrial": false,
+        "trialPreUnlocked": false,
+        "requirement": {
+          "requiresIntro": false,
+          "clearedRegionId": "",
+          "unlockedRegionId": "",
+          "clearedBattleId": "battle_cheolgak_easy",
+          "foxTraceCount": 0
+        }
+      },
+      {
+        "definitionId": "region_wolbaek_barrier",
+        "hasWaveBattle": false,
+        "foxTracesPerClear": 0,
+        "availableInTrial": true,
+        "trialPreUnlocked": true,
+        "requirement": {
+          "requiresIntro": false,
+          "clearedRegionId": "",
+          "unlockedRegionId": "",
+          "clearedBattleId": "",
+          "foxTraceCount": 3
+        }
+      }
+    ],
+    "bossBattles": [
+      {
+        "definitionId": "battle_cheolgak_easy",
+        "bossId": "boss_cheolgak",
+        "difficulty": 0,
+        "ticketCost": 1,
+        "availableInTrial": false,
+        "trialPreUnlocked": false,
+        "requirement": {
+          "requiresIntro": false,
+          "clearedRegionId": "region_ruins",
+          "unlockedRegionId": "",
+          "clearedBattleId": "",
+          "foxTraceCount": 0
+        }
+      },
+      {
+        "definitionId": "battle_cheolgak_hard",
+        "bossId": "boss_cheolgak",
+        "difficulty": 1,
+        "ticketCost": 1,
+        "availableInTrial": false,
+        "trialPreUnlocked": false,
+        "requirement": {
+          "requiresIntro": false,
+          "clearedRegionId": "",
+          "unlockedRegionId": "",
+          "clearedBattleId": "battle_cheolgak_easy",
+          "foxTraceCount": 0
+        }
+      },
+      {
+        "definitionId": "battle_wolbaek_easy",
+        "bossId": "boss_wolbaek",
+        "difficulty": 0,
+        "ticketCost": 1,
+        "availableInTrial": true,
+        "trialPreUnlocked": true,
+        "requirement": {
+          "requiresIntro": false,
+          "clearedRegionId": "",
+          "unlockedRegionId": "region_wolbaek_barrier",
+          "clearedBattleId": "battle_cheolgak_hard",
+          "foxTraceCount": 0
+        }
+      },
+      {
+        "definitionId": "battle_wolbaek_hard",
+        "bossId": "boss_wolbaek",
+        "difficulty": 1,
+        "ticketCost": 1,
+        "availableInTrial": false,
+        "trialPreUnlocked": false,
+        "requirement": {
+          "requiresIntro": false,
+          "clearedRegionId": "",
+          "unlockedRegionId": "",
+          "clearedBattleId": "battle_wolbaek_easy",
+          "foxTraceCount": 0
+        }
+      }
+    ],
+    "standardCharacterGrant": {
+      "grantId": "grant_character_standard",
+      "items": [
+        {
+          "itemId": "item_essence",
+          "quantity": 500
+        }
+      ],
+      "equipment": [
+        {
+          "equipmentId": "equip_weapon_training",
+          "enhancement": 0
+        },
+        {
+          "equipmentId": "equip_head_training",
+          "enhancement": 0
+        },
+        {
+          "equipmentId": "equip_body_training",
+          "enhancement": 0
+        },
+        {
+          "equipmentId": "equip_hands_training",
+          "enhancement": 0
+        },
+        {
+          "equipmentId": "equip_feet_training",
+          "enhancement": 0
+        },
+        {
+          "equipmentId": "equip_accessory_training",
+          "enhancement": 0
+        }
+      ],
+      "actionEnergy": 0
+    },
+    "standardAccountGrant": {
+      "grantId": "grant_account_standard",
+      "items": [
+        {
+          "itemId": "item_potion_small",
+          "quantity": 9
+        }
+      ],
+      "equipment": [],
+      "actionEnergy": 100
+    },
+    "trialCharacterGrant": {
+      "grantId": "grant_character_trial",
+      "items": [
+        {
+          "itemId": "item_essence",
+          "quantity": 500
+        }
+      ],
+      "equipment": [
+        {
+          "equipmentId": "equip_weapon_rare",
+          "enhancement": 17
+        },
+        {
+          "equipmentId": "equip_head_rare",
+          "enhancement": 17
+        },
+        {
+          "equipmentId": "equip_body_rare",
+          "enhancement": 17
+        },
+        {
+          "equipmentId": "equip_hands_rare",
+          "enhancement": 17
+        },
+        {
+          "equipmentId": "equip_feet_rare",
+          "enhancement": 17
+        },
+        {
+          "equipmentId": "equip_accessory_rare",
+          "enhancement": 17
+        }
+      ],
+      "actionEnergy": 0
+    },
+    "trialAccountGrant": {
+      "grantId": "grant_account_trial",
+      "items": [
+        {
+          "itemId": "item_potion_small",
+          "quantity": 9
+        },
+        {
+          "itemId": "item_potion_large",
+          "quantity": 9
+        }
+      ],
+      "equipment": [],
+      "actionEnergy": 100
+    }
+  }
+}

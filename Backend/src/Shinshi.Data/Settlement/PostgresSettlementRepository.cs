@@ -13,6 +13,9 @@ using Npgsql;
 // Project
 using Shinshi.Contracts;
 using Shinshi.Data.Auctions;
+using Shinshi.Data.Growth;
+using Shinshi.Data.Inbox;
+using Shinshi.Data.Ledger;
 using Shinshi.Data.Sessions;
 
 namespace Shinshi.Data.Settlement
@@ -117,13 +120,15 @@ namespace Shinshi.Data.Settlement
         private readonly NpgsqlDataSource _dataSource;
         private readonly IdempotentOperationExecutor _executor;
         private readonly IEconomyLedgerWriter _ledger;
+        private readonly PostgresAccountProgressRepository? _progress;
 
         /****************************************
         *                Methods
         ****************************************/
 
+        /// <summary> progress가 null이면(진행 기록이 필요 없는 테스트, 도구) 성공 정산에서 계정 진행을 기록하지 않는다 </summary>
         public PostgresSettlementRepository(NpgsqlDataSource dataSource, IdempotentOperationExecutor executor,
-            IEconomyLedgerWriter ledger)
+            IEconomyLedgerWriter ledger, PostgresAccountProgressRepository? progress = null)
         {
             ArgumentNullException.ThrowIfNull(dataSource);
             ArgumentNullException.ThrowIfNull(executor);
@@ -131,6 +136,7 @@ namespace Shinshi.Data.Settlement
             _dataSource = dataSource;
             _executor   = executor;
             _ledger     = ledger;
+            _progress   = progress;
         }
 
         /// <summary> SessionEnded의 정산안을 한 번 적용한다. 같은 operationId는 최초 결과, 다른 ID는 ALREADY_SETTLED다 </summary>
@@ -386,7 +392,8 @@ namespace Shinshi.Data.Settlement
                 WHERE session_id = @SessionId AND instance_id = @InstanceId AND state = 'Settling'
                     AND settlement_operation_id = @OperationId
                 RETURNING ended_event_seq AS "EndedEventSeq", instance_boot_id AS "InstanceBootId", revision AS "Revision",
-                    state = 'Auction' AS "StartsAuction";
+                    state = 'Auction' AS "StartsAuction", (end_reason = @Success) AS "Succeeded",
+                    (mode = 'Boss') AS "IsBoss", battle_id AS "BattleId", boss_id AS "BossId", difficulty AS "Difficulty";
                 """, new
                 {
                     SessionId = sessionId, InstanceId = callerInstanceId, OperationId = operationId,
@@ -410,27 +417,49 @@ namespace Shinshi.Data.Settlement
             LedgerSource source = new LedgerSource(sessionId, operationId, EconomyLedgerCodes.ACTOR_SERVER,
                 callerInstanceId);
 
-            // 계정 지갑(티켓, 엽전) -> 캐릭터(정기, 정련편) -> 계정 아이템(보호 전리품, 미등록 부적) 순서로 갱신한다
-            List<(ParticipantRow Participant, long Tickets, long Currency)> wallets = plan.Grants
-                .Where(grant => (grant.Tickets > 0) || (grant.Currency > 0))
-                .Select(grant => (participants[grant.ParticipantId], grant.Tickets, grant.Currency))
-                .ToList();
+            // 계정 지갑(티켓, 엽전) -> 캐릭터(정기, 정련편) -> 계정 아이템(보호 전리품, 미등록 부적) 순서로 갱신한다.
+            // 보관 상한(티켓, 정련편, 재료, 물약, 부적)을 넘긴 몫은 지급하지 않고 같은 트랜잭션에서 30일 회수함으로 옮긴다
+            List<RecoveryLine> overflow = new List<RecoveryLine>();
+            List<(ParticipantRow Participant, long Tickets, long Currency)> wallets = await CapWalletsAsync(connection,
+                transaction, plan.Grants
+                    .Where(grant => (grant.Tickets > 0) || (grant.Currency > 0))
+                    .Select(grant => (participants[grant.ParticipantId], grant.Tickets, grant.Currency))
+                    .ToList(), overflow, cancellationToken);
             await GrantWalletsAsync(connection, transaction, wallets, source, ledger, cancellationToken);
 
-            List<(ParticipantRow Participant, long Essence, long Shards)> characters = plan.Grants
-                .Where(grant => (grant.Essence > 0) || (grant.RefineShards > 0))
-                .Select(grant => (participants[grant.ParticipantId], grant.Essence, grant.RefineShards))
-                .ToList();
+            List<(ParticipantRow Participant, long Essence, long Shards)> characters = await CapShardsAsync(connection,
+                transaction, plan.Grants
+                    .Where(grant => (grant.Essence > 0) || (grant.RefineShards > 0))
+                    .Select(grant => (participants[grant.ParticipantId], grant.Essence, grant.RefineShards))
+                    .ToList(), overflow, cancellationToken);
             await GrantCharacterAssetsAsync(connection, transaction, characters,
                 EconomyLedgerCodes.REASON_SESSION_SETTLEMENT, source, ledger, cancellationToken);
 
             // 부적 줄의 DefinitionId는 효과 ID다. item_ 접두 아이템 ID와 겹치지 않아 같은 표에 효과 ID별로 쌓는다
-            List<(ParticipantRow Participant, string Definition, string Binding, long Quantity)> items = plan.Grants
-                .SelectMany(grant => grant.Items.Concat(grant.Talismans ?? new List<SessionEventPayloads.ItemPayload>())
-                    .Select(item => (participants[grant.ParticipantId], item.DefinitionId, item.BindingKind,
-                        item.Quantity)))
-                .ToList();
+            List<(ParticipantRow Participant, string Definition, string Binding, long Quantity)> items = await CapItemsAsync(
+                connection, transaction, plan.Grants
+                    .SelectMany(grant => grant.Items.Concat(grant.Talismans ?? new List<SessionEventPayloads.ItemPayload>())
+                        .Select(item => (participants[grant.ParticipantId], item.DefinitionId, item.BindingKind,
+                            item.Quantity)))
+                    .ToList(), overflow, cancellationToken);
             await GrantItemsAsync(connection, transaction, items, source, ledger, cancellationToken);
+            await RecoveryInbox.InsertAsync(connection, transaction, RecoveryInbox.SOURCE_SESSION_REWARD,
+                sessionId.ToString("D"), overflow, cancellationToken);
+
+            // 성공 정산만 계정 진행(지역 성공, 보스 첫 처치, 여우의 흔적)을 남긴다. 실패, 장애 취소는 기록하지 않고,
+            // 포기나 접속 만료로 떠난 참가자(departed_at)는 성공에 참여하지 않았으므로 뺀다. 계정 행은 위에서 이미 잠갔고,
+            // 같은 출정의 정산 효과는 settlement_operation_id 조건부 갱신으로 한 번만 실행되므로 진행도 한 번만 오른다
+            if ((_progress != null) && closed.Succeeded)
+            {
+                Guid[] clearers = (await connection.QueryAsync<Guid>(new CommandDefinition(
+                    """
+                    SELECT account_id FROM session_participants
+                    WHERE session_id = @SessionId AND state = 'Active' AND departed_at IS NULL
+                    ORDER BY account_id;
+                    """, new { SessionId = sessionId }, transaction, cancellationToken: cancellationToken))).ToArray();
+                await _progress.RecordSessionClearAsync(context, clearers, closed.IsBoss, closed.BattleId, closed.BossId,
+                    closed.Difficulty, operationId, cancellationToken);
+            }
 
             // 미사용 지참 물약은 예약만 풀어 반환한다. 총량은 그대로이므로 원장 기록이 없다
             await connection.ExecuteAsync(new CommandDefinition(
@@ -715,6 +744,142 @@ namespace Shinshi.Data.Settlement
             return Math.Min(paid, SettlementSanityLimits.MAX_SESSION_ESSENCE);
         }
 
+        // 티켓 보관 상한. 지갑 행을 계정 순서로 잠그고 읽어 남은 공간만 지급하고 넘친 몫은 overflow에 담는다. 엽전은 상한이 없다
+        private static async Task<List<(ParticipantRow Participant, long Tickets, long Currency)>> CapWalletsAsync(
+            DbConnection connection, DbTransaction transaction,
+            List<(ParticipantRow Participant, long Tickets, long Currency)> grants, List<RecoveryLine> overflow,
+            CancellationToken cancellationToken)
+        {
+            if (!grants.Any(grant => grant.Tickets > 0))
+            {
+                return grants;
+            }
+
+            Dictionary<Guid, long> current = (await connection.QueryAsync<(Guid AccountId, long Tickets)>(
+                new CommandDefinition(
+                    """
+                    SELECT account_id, tickets FROM account_wallets WHERE account_id = ANY(@Accounts)
+                    ORDER BY account_id FOR UPDATE;
+                    """, new { Accounts = grants.Select(grant => grant.Participant.AccountId).ToArray() }, transaction,
+                    cancellationToken: cancellationToken)))
+                .ToDictionary(row => row.AccountId, row => row.Tickets);
+            long? limit = RewardStorageLimits.LimitFor(EconomyAsset.TICKETS, null);
+            List<(ParticipantRow Participant, long Tickets, long Currency)> capped =
+                new List<(ParticipantRow, long, long)>(grants.Count);
+            foreach ((ParticipantRow participant, long tickets, long currency) in grants)
+            {
+                long fits = RewardStorageLimits.Fits(limit, current.GetValueOrDefault(participant.AccountId), tickets);
+                if (tickets > fits)
+                {
+                    overflow.Add(new RecoveryLine(participant.AccountId, null, EconomyAsset.TICKETS, null, null,
+                        tickets - fits));
+                }
+                if ((fits > 0) || (currency > 0))
+                {
+                    capped.Add((participant, fits, currency));
+                }
+            }
+
+            return capped;
+        }
+
+        // 정련편 보관 상한(캐릭터별). 캐릭터 행을 ID 순서로 잠그고 읽는다. 정기는 상한이 없다
+        private static async Task<List<(ParticipantRow Participant, long Essence, long Shards)>> CapShardsAsync(
+            DbConnection connection, DbTransaction transaction,
+            List<(ParticipantRow Participant, long Essence, long Shards)> grants, List<RecoveryLine> overflow,
+            CancellationToken cancellationToken)
+        {
+            if (!grants.Any(grant => grant.Shards > 0))
+            {
+                return grants;
+            }
+
+            Dictionary<Guid, long> current = (await connection.QueryAsync<(Guid CharacterId, long Shards)>(
+                new CommandDefinition(
+                    """
+                    SELECT character_id, shards FROM characters WHERE character_id = ANY(@Characters)
+                    ORDER BY character_id FOR UPDATE;
+                    """, new { Characters = grants.Select(grant => grant.Participant.CharacterId).ToArray() },
+                    transaction, cancellationToken: cancellationToken)))
+                .ToDictionary(row => row.CharacterId, row => row.Shards);
+            long? limit = RewardStorageLimits.LimitFor(EconomyAsset.SHARDS, null);
+            List<(ParticipantRow Participant, long Essence, long Shards)> capped =
+                new List<(ParticipantRow, long, long)>(grants.Count);
+            foreach ((ParticipantRow participant, long essence, long shards) in grants)
+            {
+                long fits = RewardStorageLimits.Fits(limit, current.GetValueOrDefault(participant.CharacterId), shards);
+                if (shards > fits)
+                {
+                    overflow.Add(new RecoveryLine(participant.AccountId, participant.CharacterId, EconomyAsset.SHARDS,
+                        null, null, shards - fits));
+                }
+                if ((fits > 0) || (essence > 0))
+                {
+                    capped.Add((participant, essence, fits));
+                }
+            }
+
+            return capped;
+        }
+
+        // 계정 아이템(재료, 물약, 미등록 부적) 보관 상한. 같은 키를 먼저 합치고 아이템 행을 키 순서로 잠근 뒤 읽는다
+        private static async Task<List<(ParticipantRow Participant, string Definition, string Binding, long Quantity)>>
+            CapItemsAsync(DbConnection connection, DbTransaction transaction,
+                List<(ParticipantRow Participant, string Definition, string Binding, long Quantity)> items,
+                List<RecoveryLine> overflow, CancellationToken cancellationToken)
+        {
+            List<(ParticipantRow Participant, string Definition, string Binding, long Quantity)> merged = items
+                .GroupBy(item => (item.Participant.AccountId, item.Definition, item.Binding))
+                .Select(group => (group.First().Participant, group.Key.Definition, group.Key.Binding,
+                    group.Sum(item => item.Quantity)))
+                .ToList();
+            List<(ParticipantRow Participant, string Definition, string Binding, long Quantity)> limited = merged
+                .Where(item => RewardStorageLimits.LimitFor(EconomyAsset.ACCOUNT_ITEM, item.Definition).HasValue)
+                .ToList();
+            if (limited.Count == 0)
+            {
+                return merged;
+            }
+
+            Dictionary<(Guid, string, string), long> current = (await connection.QueryAsync<ItemRow>(
+                new CommandDefinition(
+                    """
+                    SELECT item.account_id AS "AccountId", item.definition_id AS "DefinitionId",
+                        item.binding_kind AS "BindingKind", item.quantity AS "Quantity"
+                    FROM account_items AS item
+                    JOIN unnest(@Accounts::uuid[], @Definitions::text[], @Bindings::text[])
+                        AS wanted(account_id, definition_id, binding_kind)
+                        ON wanted.account_id = item.account_id AND wanted.definition_id = item.definition_id
+                            AND wanted.binding_kind = item.binding_kind
+                    ORDER BY item.account_id, item.definition_id, item.binding_kind
+                    FOR UPDATE OF item;
+                    """, new
+                    {
+                        Accounts = limited.Select(item => item.Participant.AccountId).ToArray(),
+                        Definitions = limited.Select(item => item.Definition).ToArray(),
+                        Bindings = limited.Select(item => item.Binding).ToArray()
+                    }, transaction, cancellationToken: cancellationToken)))
+                .ToDictionary(row => (row.AccountId, row.DefinitionId, row.BindingKind), row => row.Quantity);
+            List<(ParticipantRow Participant, string Definition, string Binding, long Quantity)> capped =
+                new List<(ParticipantRow, string, string, long)>(merged.Count);
+            foreach ((ParticipantRow participant, string definition, string binding, long quantity) in merged)
+            {
+                long fits = RewardStorageLimits.Fits(RewardStorageLimits.LimitFor(EconomyAsset.ACCOUNT_ITEM, definition),
+                    current.GetValueOrDefault((participant.AccountId, definition, binding)), quantity);
+                if (quantity > fits)
+                {
+                    overflow.Add(new RecoveryLine(participant.AccountId, null, EconomyAsset.ACCOUNT_ITEM, definition,
+                        binding, quantity - fits));
+                }
+                if (fits > 0)
+                {
+                    capped.Add((participant, definition, binding, fits));
+                }
+            }
+
+            return capped;
+        }
+
         private static async Task GrantWalletsAsync(DbConnection connection, DbTransaction transaction,
             IReadOnlyList<(ParticipantRow Participant, long Tickets, long Currency)> grants, LedgerSource source,
             List<EconomyLedgerLine> ledger, CancellationToken cancellationToken)
@@ -908,6 +1073,13 @@ namespace Shinshi.Data.Settlement
             public Guid? InstanceBootId { get; set; }
             public long  Revision       { get; set; }
             public bool  StartsAuction  { get; set; }
+
+            // 출정 계약(0012). 0012 전 출정은 battle, boss, difficulty가 NULL이다
+            public bool    Succeeded  { get; set; }
+            public bool    IsBoss     { get; set; }
+            public string? BattleId   { get; set; }
+            public string? BossId     { get; set; }
+            public short?  Difficulty { get; set; }
         }
 
         private sealed class LostSessionRow

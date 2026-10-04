@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Globalization;
 
 // 프로젝트 내부
 using Shinshi.Common;
@@ -80,6 +81,8 @@ namespace Shinshi.Network
             _drainDeadline  = now + Constants.Network.RECYCLE_DRAIN_WAIT_SECONDS;
             _presence?.RequestDrain();
             _warn?.Invoke($"[Shutdown] 프로세스를 내린다, reason={reason}, exitCode={exitCode}");
+            ServerJsonLogHandler.LogEvent(ServerLogLine.LEVEL_WARN, ServerLogLine.EVENT_DRAIN_REQUESTED, null, null,
+                FormatExitData(exitCode));
         }
 
         /// <summary> 매 프레임 부른다 </summary>
@@ -103,6 +106,13 @@ namespace Shinshi.Network
                 case EServerShutdownStage.Flushing:
                     if ((now >= _flushUntil) && ((_presence == null) || (_presence.IsDrainCompleted) || (now >= _drainDeadline)))
                     {
+                        // 드레인 응답을 받지 못하고 기한으로 내리는 경우만 강제 종료로 남긴다. 정상 마감 근거가 없어서다
+                        if ((_presence != null) && (!_presence.IsDrainCompleted))
+                        {
+                            ServerJsonLogHandler.LogEvent(ServerLogLine.LEVEL_ERROR, ServerLogLine.EVENT_SHUTDOWN_FORCED, null,
+                                null, FormatExitData(_exitCode));
+                        }
+
                         _stage = EServerShutdownStage.Exited;
                         _control.Quit(_exitCode);
                     }
@@ -143,6 +153,11 @@ namespace Shinshi.Network
 
             ESortieTerminalReason reason = _host.TerminalReason;
             Request(ExitCodeFor(reason), GraceFor(reason), "출정 종료 " + reason);
+        }
+
+        private static string FormatExitData(int exitCode)
+        {
+            return "{\"exitCode\":" + exitCode.ToString(CultureInfo.InvariantCulture) + "}";
         }
 
         /// <summary> 출정 종료 원인별 종료 코드, 불변식 위반만 오류 코드다 </summary>

@@ -46,8 +46,9 @@ namespace Shinshi.Data.Settlement
 
         public EconomyLedgerLine(Guid accountId, Guid? characterId, string assetKind, string assetId, string bindingKind,
             long delta, long balanceAfter, string reason, string sourceType, string sourceId, Guid operationId,
-            string actorKind, Guid actorId)
+            string actorKind, Guid actorId, string entryScope = "")
         {
+            ArgumentNullException.ThrowIfNull(entryScope);
             ArgumentException.ThrowIfNullOrWhiteSpace(assetKind);
             ArgumentNullException.ThrowIfNull(assetId);
             ArgumentNullException.ThrowIfNull(bindingKind);
@@ -78,9 +79,11 @@ namespace Shinshi.Data.Settlement
             ActorKind    = actorKind;
             ActorId      = actorId;
 
-            // 한 작업 안에서 자산 하나는 한 줄만 쓴다. 재전달 때 같은 키가 나와 원장 중복을 막는다
-            EntryKey = assetKind + ":" + accountId.ToString("N") + ":" + (characterId?.ToString("N") ?? string.Empty)
-                + ":" + assetId + ":" + bindingKind;
+            // 한 작업 안에서 자산 하나는 한 줄만 쓴다. 재전달 때 같은 키가 나와 원장 중복을 막는다.
+            // 같은 작업이 같은 자산을 다른 사유로 두 번 바꾸면(물약 소비와 되돌림) entryScope로 줄을 나눈다
+            EntryKey = (entryScope.Length == 0 ? string.Empty : entryScope + ":") + assetKind + ":"
+                + accountId.ToString("N") + ":" + (characterId?.ToString("N") ?? string.Empty) + ":" + assetId + ":"
+                + bindingKind;
         }
     }
 
@@ -104,6 +107,9 @@ namespace Shinshi.Data.Settlement
         public const string REASON_SESSION_SETTLEMENT    = "SessionSettlement";
         public const string REASON_SERVICE_CANCEL_REFUND = "ServiceCancelRefund";
         public const string REASON_SERVICE_CANCEL_GRANT  = "ServiceCancelEssence";
+
+        // 확정된 지참 물약 사용을 되돌려 예약분으로 돌려준다(POTION_USE_REVERTED)
+        public const string REASON_POTION_RETURN         = "PotionReturn";
 
         // 파티 경매: 낙찰자의 엽전 차감과 재료 지급은 Settle, 분배 대상의 엽전 지급은 Payout이다. 소각분은 원장 줄이 없다
         public const string REASON_AUCTION_SETTLE        = "AuctionSettle";

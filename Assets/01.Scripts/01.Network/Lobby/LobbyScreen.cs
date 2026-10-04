@@ -117,19 +117,11 @@ namespace Shinshi.Network
             if (HasValidSession)
             {
                 _status.text = "로그인했다. 게임 시작을 누른다.";
+                return;
             }
-            else if (LauncherSession.State == ELauncherSessionState.Receiving)
-            {
-                _status.text = "런처에서 로그인 정보를 받는 중이다.";
-            }
-            else if (CanDevelopmentLogin)
-            {
-                _status.text = "개발 로그인: 아이디와 비밀번호를 넣는다.";
-            }
-            else
-            {
-                _status.text = "런처로 다시 실행한다.";
-            }
+
+            _status.text = LauncherSessionRules.DescribeLaunchStatus(LauncherSession.IsLaunchRequired, LauncherSession.State,
+                LauncherSession.FailureReason);
         }
 
         private void OnStartClicked()

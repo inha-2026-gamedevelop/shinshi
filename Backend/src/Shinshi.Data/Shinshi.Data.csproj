@@ -10,5 +10,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Migrations/*.sql" />
+    <EmbeddedResource Include="Content/growth-content.json" LogicalName="Shinshi.Data.Content.growth-content.json" />
   </ItemGroup>
 </Project>

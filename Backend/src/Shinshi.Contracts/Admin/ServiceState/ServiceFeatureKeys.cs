@@ -21,9 +21,13 @@ namespace Shinshi.Contracts.Admin
         public const string INBOX_CLAIM   = "inbox_claim";
         public const string DUNGEON_ENTRY = "dungeon_entry";
 
+        // 부적 등록, 강화, 조합, 분해와 정기 수련, 재분배
+        public const string TALISMAN      = "talisman";
+        public const string TRAINING      = "training";
+
         private static readonly string[] G_All =
         {
-            AUCTION, CRAFTING, ENHANCE, INHERIT, GATHERING, BOSS_ENTRY, INBOX_CLAIM, DUNGEON_ENTRY
+            AUCTION, CRAFTING, ENHANCE, INHERIT, GATHERING, BOSS_ENTRY, INBOX_CLAIM, DUNGEON_ENTRY, TALISMAN, TRAINING
         };
 
         /****************************************

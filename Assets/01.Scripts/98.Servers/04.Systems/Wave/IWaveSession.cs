@@ -20,7 +20,7 @@ namespace Shinshi.Systems
         /// <summary> 전투를 시작한다, 출정이 Running에 들어간 서버 시각을 넘기며 제한 시간은 이 시각부터 잰다 </summary>
         void Begin(double serverTime);
 
-        // TODO(기웅): 기획 미정 - 마지막 처치와 제한 시간 도달이 같은 틱이면 어느 쪽이 우선인지 정해지지 않았다
+        // 마지막 처치와 제한 시간 도달이 같은 틱이면 성공을 먼저 판정한다(2026-10-01 결정). 구현체는 처치 반영 뒤 시간 초과를 본다
         /// <summary> 서버 시각으로 예정 출현과 제한 시간을 진행한다, 시작 전이거나 끝난 뒤에는 아무것도 하지 않는다 </summary>
         void Tick(double serverTime);
 

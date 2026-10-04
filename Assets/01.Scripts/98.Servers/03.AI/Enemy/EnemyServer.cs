@@ -55,9 +55,9 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceAttack은 전장 지역의 Aref다. 플레이어의 현재 능력치를 대신 넣지 않는다.
-        // 몸체 반경은 기획에 값이 없어 호출자가 정한다
+        // 몸체 반경은 기획에 값이 없어 호출자가 정한다. healthScale은 출정 시작 인원 체력 배율(SessionConfigSO)이고 기본 1이다
         public EnemyServer(EnemyDefinition definition, int combatId, Vector3 position, Vector3 forward,
-            float referenceAttack, float bodyRadius)
+            float referenceAttack, float bodyRadius, float healthScale = 1f)
         {
             if (definition == null)
             {
@@ -74,10 +74,15 @@ namespace Shinshi.AI
                 throw new ArgumentOutOfRangeException(nameof(referenceAttack), "지역 기준 공격력은 0보다 큰 유한값이다");
             }
 
+            if ((!(healthScale > 0f)) || (float.IsInfinity(healthScale)))
+            {
+                throw new ArgumentOutOfRangeException(nameof(healthScale), "체력 배율은 0보다 큰 유한값이다");
+            }
+
             _combatId   = combatId;
             _position   = position;
             _forward    = BossTelegraphRules.Flatten(forward, Vector3.forward);
-            _maxHealth  = definition.HealthRef * referenceAttack;
+            _maxHealth  = definition.HealthRef * referenceAttack * healthScale;
             _health     = _maxHealth;
             _defense    = definition.Defense;
             _bodyRadius = bodyRadius;

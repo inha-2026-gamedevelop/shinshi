@@ -52,6 +52,42 @@ namespace Shinshi.Backend.Tests
         *                Methods
         ****************************************/
 
+        /// <summary> 0012, 0013은 이벤트 종류 CHECK를 NOT VALID로 건 뒤 VALIDATE한다. 최종 스키마의 CHECK는 검증 완료 상태이고
+        /// 범위 밖 종류는 막힌다. 캐릭터 삭제 상한이 읽는 부분 인덱스도 있어야 한다 </summary>
+        [PostgresFact]
+        public async Task Migrations_EventKindCheckValidatedAndDeleteIndexPresent()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+
+            bool validated = await connection.QuerySingleAsync<bool>(
+                """
+                SELECT constraint_row.convalidated FROM pg_constraint AS constraint_row
+                JOIN pg_class AS table_row ON table_row.oid = constraint_row.conrelid
+                JOIN pg_namespace AS schema_row ON schema_row.oid = table_row.relnamespace
+                WHERE schema_row.nspname = current_schema() AND table_row.relname = 'session_events'
+                    AND constraint_row.conname = 'ck_session_events_event_kind';
+                """);
+            string definition = await connection.QuerySingleAsync<string>(
+                """
+                SELECT pg_get_constraintdef(constraint_row.oid) FROM pg_constraint AS constraint_row
+                JOIN pg_class AS table_row ON table_row.oid = constraint_row.conrelid
+                JOIN pg_namespace AS schema_row ON schema_row.oid = table_row.relnamespace
+                WHERE schema_row.nspname = current_schema() AND table_row.relname = 'session_events'
+                    AND constraint_row.conname = 'ck_session_events_event_kind';
+                """);
+            long deleteIndex = await connection.QuerySingleAsync<long>(
+                """
+                SELECT count(*) FROM pg_indexes
+                WHERE schemaname = current_schema() AND indexname = 'ix_characters_account_deleted';
+                """);
+
+            Assert.True(validated);
+            Assert.Contains("7", definition, StringComparison.Ordinal);
+            Assert.DoesNotContain("NOT VALID", definition, StringComparison.Ordinal);
+            Assert.Equal(1L, deleteIndex);
+        }
+
         /// <summary> 역할을 생략해도 던전으로 고정하고 마을 서버 참조 및 역할 위조를 거절한다 </summary>
         [PostgresFact]
         public async Task Insert_GameSession_RequiresDungeonServerAndRole()

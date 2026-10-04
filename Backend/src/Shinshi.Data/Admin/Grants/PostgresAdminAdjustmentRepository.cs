@@ -61,7 +61,10 @@ namespace Shinshi.Data.Admin.Grants
                 return OperationDecision.Rejected(AdminContractCodes.RejectReason.NOT_FOUND);
             }
             if ((adjustment.CharacterId != null) && !await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
-                "SELECT EXISTS (SELECT 1 FROM characters WHERE character_id = @CharacterId AND account_id = @AccountId);",
+                """
+                SELECT EXISTS (SELECT 1 FROM characters
+                    WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL);
+                """,
                 new { adjustment.CharacterId, adjustment.AccountId }, transaction, cancellationToken: cancellationToken)))
             {
                 return OperationDecision.Rejected(AdminContractCodes.RejectReason.NOT_FOUND);

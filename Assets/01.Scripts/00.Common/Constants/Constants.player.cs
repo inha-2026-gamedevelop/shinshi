@@ -30,6 +30,8 @@ namespace Shinshi.Common
             public const UnityEngine.KeyCode KEY_ASCENSION_X      = UnityEngine.KeyCode.X;
             public const UnityEngine.KeyCode KEY_ASCENSION_C      = UnityEngine.KeyCode.C;
             public const UnityEngine.KeyCode KEY_CANCEL_TARGETING = UnityEngine.KeyCode.Escape;
+            public const UnityEngine.KeyCode KEY_POTION_SMALL     = UnityEngine.KeyCode.Alpha1;
+            public const UnityEngine.KeyCode KEY_POTION_LARGE     = UnityEngine.KeyCode.Alpha2;
 
             // 지점 기술 지정점을 최대 사거리보다 이만큼(m) 안쪽으로 제한한다. 서버는 자기 위치에서 거리를 다시 재고
             // 내비 메시 보정도 하므로 사거리 경계에 딱 맞춘 지점은 예측 위치 오차만으로 사거리 밖 거절이 난다

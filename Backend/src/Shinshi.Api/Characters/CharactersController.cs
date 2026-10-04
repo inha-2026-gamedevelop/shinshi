@@ -26,16 +26,22 @@ namespace Shinshi.Backend.Characters
         *                Fields
         ****************************************/
 
+        // ApiRoutes.CHARACTER_DELETE_FORMAT과 같은 경로의 ASP.NET Core 템플릿
+        public const string CHARACTER_DELETE_TEMPLATE = "/v1/characters/{characterId}/delete";
+
         private readonly ICharacterRepository _characters;
+        private readonly AccountRequestLimiter _accounts;
         private readonly TimeProvider _timeProvider;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public CharactersController(ICharacterRepository characters, TimeProvider timeProvider)
+        public CharactersController(ICharacterRepository characters, AccountRequestLimiter accounts,
+            TimeProvider timeProvider)
         {
             _characters   = characters;
+            _accounts     = accounts;
             _timeProvider = timeProvider;
         }
 
@@ -75,7 +81,7 @@ namespace Shinshi.Backend.Characters
                 : ContractCodes.RejectReason.NONE));
         }
 
-        /// <summary> 200 확정, 409 거절(CHARACTER_NAME_TAKEN, NO_CAPACITY, IDEMPOTENCY_CONFLICT)이고 본문은 CharacterCreateResponse다.
+        /// <summary> 200 확정, 409 거절(CHARACTER_NAME_TAKEN, NO_CAPACITY, IDEMPOTENCY_CONFLICT)이고 본문은 CharacterCreateResponse다. 계정별 1분 한도를 넘으면 429다.
         /// 400은 형식 오류(INVALID_CHARACTER_NAME, INVALID_APPEARANCE)이며 작업으로 저장하지 않는다. 같은 operationId 재전송은 처음 결과와 같은 캐릭터다 </summary>
         [HttpPost(ApiRoutes.CHARACTERS)]
         public async Task<IActionResult> Create([FromBody] CharacterCreateRequest? request,
@@ -102,6 +108,10 @@ namespace Shinshi.Backend.Characters
             {
                 return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_APPEARANCE);
             }
+            if (!_accounts.TryAcquireCharacterWrite(accountId.Value))
+            {
+                return AuthFailureLimiter.RejectTooMany(HttpContext, _timeProvider);
+            }
 
             string requestJson = JsonConvert.SerializeObject(request, ContractJson.CreateSettings());
             string appearanceJson = JsonConvert.SerializeObject(request.Appearance, ContractJson.CreateSettings());
@@ -110,6 +120,40 @@ namespace Shinshi.Backend.Characters
             int statusCode = outcome.Result.Status == ContractCodes.OperationStatus.COMMITTED
                 ? StatusCodes.Status200OK : StatusCodes.Status409Conflict;
             return StatusCode(statusCode, new CharacterCreateResponse(outcome.Result, ToSummary(outcome.Character)));
+        }
+
+        /// <summary> 200 확정(영수증 ID = 캐릭터 ID), 409 거절(CHARACTER_NOT_FOUND, ALREADY_CONNECTED, RESERVATION_CONFLICT,
+        /// STALE_REVISION, IDEMPOTENCY_CONFLICT)이고 본문은 OperationResult다. 429는 계정별 1분 한도 또는 24시간 삭제 상한(RATE_LIMITED)이다. 400은 형식 오류이며 작업으로 저장하지 않는다 </summary>
+        [HttpPost(CHARACTER_DELETE_TEMPLATE)]
+        public async Task<IActionResult> Delete(string characterId, [FromBody] CharacterDeleteRequest? request,
+            CancellationToken cancellationToken)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Guid? accountId = AuthActors.GetPlayer(HttpContext)?.AccountId;
+            if (accountId == null)
+            {
+                return Reject(StatusCodes.Status401Unauthorized, ContractCodes.RejectReason.TOKEN_REVOKED);
+            }
+            if ((request == null) || !Guid.TryParse(request.OperationId, out Guid operationId)
+                || (operationId == Guid.Empty) || !Guid.TryParse(characterId, out Guid target) || (target == Guid.Empty)
+                || (request.ExpectedRevision < 0))
+            {
+                return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.IDEMPOTENCY_CONFLICT);
+            }
+            if (!_accounts.TryAcquireCharacterWrite(accountId.Value))
+            {
+                return AuthFailureLimiter.RejectTooMany(HttpContext, _timeProvider);
+            }
+
+            // 최근 24시간 삭제 상한 초과(RATE_LIMITED)는 저장된 작업 결과지만 재시도 시점을 알리도록 429로 돌려준다
+            OperationResult result = await _characters.DeleteAsync(accountId.Value, operationId, target,
+                request.ExpectedRevision, cancellationToken);
+            if ((result.Status == ContractCodes.OperationStatus.REJECTED)
+                && (result.ReasonCode == ContractCodes.RejectReason.RATE_LIMITED))
+            {
+                return StatusCode(StatusCodes.Status429TooManyRequests, result);
+            }
+            return ApiResponseFactory.FromOperation(result);
         }
 
         private static CharacterSummary? ToSummary(CharacterRecord? character)

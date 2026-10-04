@@ -187,6 +187,26 @@ namespace Shinshi.Backend.Tests.Auctions
             Assert.Equal(0L, await environment.ScalarAsync("SELECT COALESCE(sum(currency_reserved), 0) FROM account_wallets;"));
         }
 
+        /// <summary> 포기, 접속 만료로 떠난 참가자는 상태가 Active로 남아도 경매 자격자로 개시할 수 없다 </summary>
+        [PostgresFact]
+        public async Task Open_WithDepartedParticipant_RejectsNotEligible()
+        {
+            await using SessionTestEnvironment environment = await SessionTestEnvironment.CreateAsync();
+            AuctionSession setup = await CreateAuctionSessionAsync(environment, 2, CURRENCY_GRANT);
+            Guid[] ids = setup.ParticipantIds;
+            await environment.ExecuteAsync(
+                """
+                UPDATE session_participants SET departed_at = clock_timestamp(), depart_reason = @Reason
+                WHERE participant_id = @Id;
+                """, new { Id = ids[1], Reason = GameSessionCodes.EndReason.ABANDON });
+
+            OperationResult withDeparted = await OpenAsync(environment, setup, Guid.NewGuid(), ids);
+            OperationResult remaining = await OpenAsync(environment, setup, Guid.NewGuid(), new[] { ids[0] });
+
+            Assert.Equal(ContractCodes.RejectReason.NOT_ELIGIBLE, withDeparted.ReasonCode);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, remaining.Status);
+        }
+
         /// <summary> 같은 순번의 동시 입찰은 하나만 승인되고 나머지는 StaleRevision이며 예약 합계는 승인된 금액뿐이다 </summary>
         [PostgresFact]
         public async Task Bid_ConcurrentSameSeq_OnlyOneWins()

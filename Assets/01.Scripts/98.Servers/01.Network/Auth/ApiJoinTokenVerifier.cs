@@ -29,6 +29,7 @@ namespace Shinshi.Network
         private readonly EServerRole                           _serverRole;
         private readonly Func<double>                          _clock;
         private readonly Action<string>                        _warn;
+        private readonly bool                                  _requireCombatLoadout;
         private readonly Dictionary<int, PendingExchange>      _pending     = new Dictionary<int, PendingExchange>();
         private readonly Dictionary<string, ExchangedClaims>   _exchanged   = new Dictionary<string, ExchangedClaims>(StringComparer.Ordinal);
         private readonly List<string>                          _expiredKeys = new List<string>();
@@ -44,9 +45,16 @@ namespace Shinshi.Network
         *                Methods
         ****************************************/
 
-        /// <summary> clock은 단조 증가 초, warn은 null이면 기록하지 않는다 </summary>
+        /// <summary> clock은 단조 증가 초, warn은 null이면 기록하지 않는다. 출시 빌드는 전투 준비 없는 던전 입장을 거절한다 </summary>
         public ApiJoinTokenVerifier(BackendGateway gateway, string instanceId, EServerRole serverRole, Func<double> clock,
             Action<string> warn)
+            : this(gateway, instanceId, serverRole, clock, warn, !UnityEngine.Debug.isDebugBuild)
+        {
+        }
+
+        /// <summary> requireCombatLoadout이면 combatLoadout이 없는 던전 교환 응답을 SessionMismatch로 거절한다 </summary>
+        public ApiJoinTokenVerifier(BackendGateway gateway, string instanceId, EServerRole serverRole, Func<double> clock,
+            Action<string> warn, bool requireCombatLoadout)
         {
             if (gateway == null)
             {
@@ -63,6 +71,8 @@ namespace Shinshi.Network
             _serverRole = serverRole;
             _clock      = clock ?? BackendGateway.MonotonicSeconds;
             _warn       = warn;
+
+            _requireCombatLoadout = requireCombatLoadout;
         }
 
         public void Verify(int requestId, string joinToken, IJoinTokenVerifyListener listener)
@@ -157,7 +167,7 @@ namespace Shinshi.Network
             {
                 case EBackendOutcome.Succeeded:
                     ERejectReason reason = JoinTokenClaimsRules.TryCreate(_serverRole, _instanceId,
-                        response.Payload as JoinTokenExchangeResponse, out claims);
+                        response.Payload as JoinTokenExchangeResponse, _requireCombatLoadout, out claims);
                     if (reason != ERejectReason.None)
                     {
                         _warn?.Invoke($"[Auth] 토큰 교환 응답이 이 서버와 맞지 않아 거절한다, reason={reason}, instance={_instanceId}");

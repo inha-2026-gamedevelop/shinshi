@@ -289,7 +289,15 @@ namespace Shinshi.Network
                     result.RetryAfterSeconds);
             }
 
-            return new BackendResponse(requestId, EBackendOutcome.Rejected, status, reasonCode, null, attempt);
+            // 예약, 성장 거절처럼 사유가 본문 안쪽 result에 있는 응답도 있어 읽을 수 있으면 계약 DTO를 함께 넘긴다.
+            // 거절 본문(ApiRejection)이 오면 DTO의 필드는 비어 있다. 받는 쪽은 IsSucceeded가 아니면 값 없음을 먼저 확인한다
+            object rejectedPayload = null;
+            if ((request.ResponseType != null) && (BackendJson.TryDeserialize(result.Body, request.ResponseType, out object parsed)))
+            {
+                rejectedPayload = parsed;
+            }
+
+            return new BackendResponse(requestId, EBackendOutcome.Rejected, status, reasonCode, rejectedPayload, attempt);
         }
 
         // 다시 보내면 결과가 달라질 수 있는 실패만 고른다. 거절과 계약 불일치는 몇 번을 보내도 같다

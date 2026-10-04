@@ -21,12 +21,14 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY --from=build /app/publish/ ./
+# shinshi-json writes the deploy/LOGGING.md common keys (UTC ts, level, service=api, ...). Set Observability__InstanceId,
+# Observability__BuildId and Observability__ContentVersion at run time; unset values are logged as null.
+# Framework request logs are left at Warning because api.request.completed already records each request.
 ENV ASPNETCORE_ENVIRONMENT=Production \
     ASPNETCORE_URLS=http://+:8080 \
-    Logging__Console__FormatterName=json \
-    Logging__Console__FormatterOptions__IncludeScopes=true \
-    Logging__Console__FormatterOptions__UseUtcTimestamp=true \
-    Logging__Console__FormatterOptions__TimestampFormat=yyyy-MM-ddTHH:mm:ss.fffZ
+    Logging__Console__FormatterName=shinshi-json \
+    Logging__LogLevel__Default=Information \
+    Logging__LogLevel__Microsoft.AspNetCore=Warning
 
 EXPOSE 8080/tcp
 # APP_UID is the non-root app user supplied by the official .NET Linux image.

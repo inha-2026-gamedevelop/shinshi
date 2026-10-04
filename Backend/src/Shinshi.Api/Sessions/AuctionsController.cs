@@ -6,10 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 
 // Third-party
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 // Project
+using Shinshi.Backend.Admin;
 using Shinshi.Contracts;
+using Shinshi.Contracts.Admin;
 using Shinshi.Data.Auctions;
 using Shinshi.Data.Sessions;
 
@@ -30,18 +33,26 @@ namespace Shinshi.Backend.Sessions
         private static readonly long MAX_UNIX_MS = DateTimeOffset.MaxValue.ToUnixTimeMilliseconds();
 
         private readonly PostgresPartyAuctionRepository _auctions;
+        private readonly TimeProvider _timeProvider;
+        private readonly ServiceFeatureGate? _features;
 
         /****************************************
         *                Methods
         ****************************************/
 
+        // 어드민 모듈 없이 올린 테스트 호스트에서도 만들 수 있게 게이트는 선택 의존성이다
         public AuctionsController(IServerCallerAuthenticator callers, PostgresServerPoolRepository pool,
-            PostgresPartyAuctionRepository auctions)
+            PostgresPartyAuctionRepository auctions, TimeProvider timeProvider, ServiceFeatureGate? features = null)
             : base(callers, pool)
         {
-            _auctions = auctions;
+            _auctions     = auctions;
+            _timeProvider = timeProvider;
+            _features     = features;
         }
 
+        // TODO(민성): auction 기능 차단 때 개시도 막을지 정한다. 막으면 보스 성공 출정의 경매 품목을 어떻게 처리할지(드롭, 우편)가
+        // 정해지지 않았다(.claude/docs/2026-10-03/서버-미구현-구현-계획.md 잠정 결정 15, docs/design/operations-admin.md 기능 차단).
+        // 지금은 입찰만 막고 개시, 마감, 단계 종료는 진행한다
         [HttpPost(GameServerRouteTemplates.AUCTIONS)]
         public async Task<IActionResult> Open(string sessionId, [FromBody] AuctionOpenRequest request,
             CancellationToken cancellationToken)
@@ -88,12 +99,27 @@ namespace Shinshi.Backend.Sessions
             }
 
             await TouchAsync(caller, cancellationToken);
-            OperationResult result = await _auctions.BidAsync(caller.InstanceId, caller.BootId, new AuctionBidInput
+            AuctionBidInput input = new AuctionBidInput
             {
                 SessionId = session, AuctionId = auction, OperationId = operationId, ParticipantId = participantId,
                 Amount = request.Amount, ExpectedBidSeq = request.ExpectedBidSeq,
                 AcceptedAtUnixMs = request.AcceptedAtUnixMs
-            }, cancellationToken);
+            };
+
+            // 차단 중에는 새 입찰을 저장하지 않고 FEATURE_DISABLED로 거절한다. 이미 확정된 입찰의 재전송은 처음 결과를 받는다
+            if ((_features != null) && (await _features.CheckFeatureAsync(ServiceFeatureKeys.AUCTION, cancellationToken)
+                    != ContractCodes.RejectReason.NONE))
+            {
+                OperationResult? stored = await _auctions.FindStoredBidAsync(caller.InstanceId, caller.BootId, input,
+                    cancellationToken);
+                return stored == null
+                    ? ApiResponseFactory.Reject(StatusCodes.Status409Conflict,
+                        ContractCodes.RejectReason.FEATURE_DISABLED, string.Empty, _timeProvider)
+                    : ApiResponseFactory.FromOperation(stored);
+            }
+
+            OperationResult result = await _auctions.BidAsync(caller.InstanceId, caller.BootId, input,
+                cancellationToken);
             return ApiResponseFactory.FromOperation(result);
         }
 
