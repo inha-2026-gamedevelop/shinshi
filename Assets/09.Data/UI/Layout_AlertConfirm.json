@@ -1,0 +1,646 @@
+{
+  "format": "gemeum-ui-layout",
+  "version": 2,
+  "layoutName": "얼러트·컨펌",
+  "layoutDescription": "알림창(확인 하나)과 확인창(확인/취소) 소·중·대 배치. 재구성본이라 conventions와 설명 필드는 비어 있다.",
+  "conventions": {},
+  "root": [
+    {
+      "id": "n010",
+      "name": "얼러트",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        -28,
+        262
+      ],
+      "sizeDelta": [
+        1784,
+        476
+      ],
+      "children": [
+        {
+          "id": "n003",
+          "name": "새 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            1152,
+            0
+          ],
+          "sizeDelta": [
+            240,
+            120
+          ],
+          "children": [
+            {
+              "id": "n001",
+              "name": "새 박스",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                240,
+                120
+              ]
+            },
+            {
+              "id": "n002",
+              "name": "컨펌btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                78,
+                -80
+              ],
+              "sizeDelta": [
+                84,
+                28
+              ]
+            }
+          ]
+        },
+        {
+          "id": "n006",
+          "name": "중형 얼러트",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            688,
+            0
+          ],
+          "sizeDelta": [
+            448,
+            296
+          ],
+          "children": [
+            {
+              "id": "n004",
+              "name": "중형 얼러트",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                448,
+                296
+              ]
+            },
+            {
+              "id": "n005",
+              "name": "컨펌btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                182,
+                -248
+              ],
+              "sizeDelta": [
+                84,
+                28
+              ]
+            }
+          ]
+        },
+        {
+          "id": "n009",
+          "name": "대형 얼러트 그룹",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            672,
+            448
+          ],
+          "children": [
+            {
+              "id": "n007",
+              "name": "컨펌btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                294,
+                -400
+              ],
+              "sizeDelta": [
+                84,
+                28
+              ]
+            },
+            {
+              "id": "n008",
+              "name": "대형 얼러트",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                672,
+                448
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n023",
+      "name": "컨펌",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        -28,
+        -262
+      ],
+      "sizeDelta": [
+        1784,
+        476
+      ],
+      "children": [
+        {
+          "id": "n014",
+          "name": "소형 컨펌",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            1144,
+            0
+          ],
+          "sizeDelta": [
+            240,
+            120
+          ],
+          "children": [
+            {
+              "id": "n011",
+              "name": "소형 컨펌",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                240,
+                120
+              ]
+            },
+            {
+              "id": "n012",
+              "name": "컨펌btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                24,
+                -80
+              ],
+              "sizeDelta": [
+                58,
+                28
+              ]
+            },
+            {
+              "id": "n013",
+              "name": "컨펌btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                158,
+                -80
+              ],
+              "sizeDelta": [
+                58,
+                28
+              ]
+            }
+          ]
+        },
+        {
+          "id": "n018",
+          "name": "중형 컨펌",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            680,
+            0
+          ],
+          "sizeDelta": [
+            448,
+            296
+          ],
+          "children": [
+            {
+              "id": "n015",
+              "name": "중형 얼러트",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                448,
+                296
+              ]
+            },
+            {
+              "id": "n016",
+              "name": "컨펌btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                72,
+                -248
+              ],
+              "sizeDelta": [
+                84,
+                28
+              ]
+            },
+            {
+              "id": "n017",
+              "name": "캔슬btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                292,
+                -248
+              ],
+              "sizeDelta": [
+                84,
+                28
+              ]
+            }
+          ]
+        },
+        {
+          "id": "n022",
+          "name": "대형 컨펌",
+          "type": "group",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            672,
+            448
+          ],
+          "children": [
+            {
+              "id": "n019",
+              "name": "캔슬btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                404,
+                -400
+              ],
+              "sizeDelta": [
+                84,
+                28
+              ]
+            },
+            {
+              "id": "n020",
+              "name": "컨펌btn",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                184,
+                -400
+              ],
+              "sizeDelta": [
+                84,
+                28
+              ]
+            },
+            {
+              "id": "n021",
+              "name": "대형 얼러트",
+              "type": "box",
+              "description": "",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                672,
+                448
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
