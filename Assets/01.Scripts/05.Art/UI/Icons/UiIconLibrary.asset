@@ -13,170 +13,170 @@ MonoBehaviour:
   m_Name: UiIconLibrary
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiIconLibrarySO
   _entries:
-  - Id: basic_attack_sorcerer
-    Sprite: {fileID: 21300000, guid: c8d715e93fd65d048a2c62558bd3028e, type: 3}
-  - Id: basic_attack_summoner
-    Sprite: {fileID: 21300000, guid: 46b314991b5fb0b4b81e4da56233ecf7, type: 3}
-  - Id: basic_attack_warrior
-    Sprite: {fileID: 21300000, guid: 877a9c6625345c243b2f7f2917f82f19, type: 3}
-  - Id: class_sorcerer
-    Sprite: {fileID: 21300000, guid: 96c8e243be3421d4abef46717c79d404, type: 3}
-  - Id: class_summoner
-    Sprite: {fileID: 21300000, guid: 5f6c35a1ef93a2445919ece774ee4a0b, type: 3}
-  - Id: class_warrior
-    Sprite: {fileID: 21300000, guid: ae4f1ed8d09314e489238c548441e7ef, type: 3}
-  - Id: equip_accessory
-    Sprite: {fileID: 21300000, guid: 4e04df2fcb07e1b4488de119bc8ed3e8, type: 3}
-  - Id: equip_body
-    Sprite: {fileID: 21300000, guid: 3299a78f470cf0b409440b095af837d3, type: 3}
-  - Id: equip_feet
-    Sprite: {fileID: 21300000, guid: 961a2b56b0f89f243844f01530110820, type: 3}
-  - Id: equip_hands
-    Sprite: {fileID: 21300000, guid: 3ad5497804cbe02458791f7e2e60b28d, type: 3}
-  - Id: equip_head
-    Sprite: {fileID: 21300000, guid: 5d2e9265e80cb3d448a8835fc98ed8fd, type: 3}
-  - Id: equip_weapon
-    Sprite: {fileID: 21300000, guid: e10e32d9e80e7e04caca82613f318a7d, type: 3}
-  - Id: item_auction_material_common
-    Sprite: {fileID: 21300000, guid: dcbec4680f259d24fb76a1a4d5772628, type: 3}
-  - Id: item_auction_material_epic
-    Sprite: {fileID: 21300000, guid: f377d735c1eec37419b097acee64eb66, type: 3}
-  - Id: item_auction_material_legendary
-    Sprite: {fileID: 21300000, guid: 39ab59b1c955ef242a7a9e4a0d7387da, type: 3}
-  - Id: item_auction_material_rare
-    Sprite: {fileID: 21300000, guid: 5b59566c93a6a6340acae524dab8b18b, type: 3}
-  - Id: item_boss_material_common
-    Sprite: {fileID: 21300000, guid: 53aa68ee26e11644eae9c330d29ae269, type: 3}
-  - Id: item_boss_material_epic
-    Sprite: {fileID: 21300000, guid: 76af483a31762374ca65e5df3308d286, type: 3}
-  - Id: item_boss_material_legendary
-    Sprite: {fileID: 21300000, guid: 6bf9e3d3631976c49b8739a812826991, type: 3}
-  - Id: item_boss_material_rare
-    Sprite: {fileID: 21300000, guid: 36287988d53020741a3ffe2e61b65676, type: 3}
-  - Id: item_boss_ticket
-    Sprite: {fileID: 21300000, guid: b16efdf65be019b4d96b4d76451e2b4f, type: 3}
-  - Id: item_essence
-    Sprite: {fileID: 21300000, guid: ba994f85bfa5dc24f8534ab0ce3a48d1, type: 3}
-  - Id: item_fox_trace
-    Sprite: {fileID: 21300000, guid: 0ea014e255608344ea9d8016daaccab9, type: 3}
-  - Id: item_herb
-    Sprite: {fileID: 21300000, guid: 32ce1a9e5b3741849a0e7f76524a6201, type: 3}
-  - Id: item_potion_large
-    Sprite: {fileID: 21300000, guid: d4fa6b2bb5a352d4c81d9ed706dd9102, type: 3}
-  - Id: item_potion_small
-    Sprite: {fileID: 21300000, guid: 457c1cd5b72721741beac6465912b53a, type: 3}
-  - Id: item_refine_shard
-    Sprite: {fileID: 21300000, guid: 8076679ce69903742871fa879789eb2c, type: 3}
-  - Id: item_yeopjeon
-    Sprite: {fileID: 21300000, guid: 2bbbccf1d6dc5d24fb0cfcf70f348677, type: 3}
-  - Id: mark_equipped
-    Sprite: {fileID: 21300000, guid: 8dfd1fc092ebf8d42b7261ca3e809e70, type: 3}
-  - Id: mark_lock
-    Sprite: {fileID: 21300000, guid: d123d73b0cfc95d4f8967cf7d2762fa4, type: 3}
-  - Id: skill_dodge
-    Sprite: {fileID: 21300000, guid: 30b03a6b6ee8b8640943301a4f04eee8, type: 3}
-  - Id: skill_sorcerer_binding_field
-    Sprite: {fileID: 21300000, guid: 27ce9eb597cbc6041abdce2724144d5b, type: 3}
-  - Id: skill_sorcerer_flame_field
-    Sprite: {fileID: 21300000, guid: 7ff896fc3782f8548833a48ab0116f05, type: 3}
-  - Id: skill_sorcerer_lightning
-    Sprite: {fileID: 21300000, guid: 526289217eb009348bb4086cccac428b, type: 3}
-  - Id: skill_sorcerer_spell_bolt
-    Sprite: {fileID: 21300000, guid: 4ae86289d7574e84eb21d81eb8ed5c0e, type: 3}
-  - Id: skill_summoner_ascension_area
-    Sprite: {fileID: 21300000, guid: 51742de57c38859488865c1554375dfd, type: 3}
-  - Id: skill_summoner_ascension_control
-    Sprite: {fileID: 21300000, guid: cf8b765d9a23c90408d9b0c4f16cf3fe, type: 3}
-  - Id: skill_summoner_ascension_single
-    Sprite: {fileID: 21300000, guid: 985a2d9be8fbfe84db1e253cd07bcedf, type: 3}
-  - Id: skill_summoner_spirit_strike
-    Sprite: {fileID: 21300000, guid: c104f0fa6dc7271409fc11d7b516a207, type: 3}
-  - Id: skill_summoner_summon_beast
-    Sprite: {fileID: 21300000, guid: 5ffab9962ea60dc46842c76a18f43549, type: 3}
-  - Id: skill_summoner_summon_spirit
-    Sprite: {fileID: 21300000, guid: cb3cf48b0fb25f54c895c37eee57f950, type: 3}
-  - Id: skill_summoner_target_barrier
-    Sprite: {fileID: 21300000, guid: be3aea799be7e8c4194e052be0191f44, type: 3}
-  - Id: skill_warrior_counter
-    Sprite: {fileID: 21300000, guid: ce092796ef1548248a093e467ff5a84b, type: 3}
-  - Id: skill_warrior_dash
-    Sprite: {fileID: 21300000, guid: 40014e8144f5a3c489b9385123407dc2, type: 3}
-  - Id: skill_warrior_ground_slam
-    Sprite: {fileID: 21300000, guid: 50f27e8f9095ac844864d13fe0d42622, type: 3}
-  - Id: skill_warrior_wide_slash
-    Sprite: {fileID: 21300000, guid: fcd2ef789ec66bc42a7dc04eaf84d06d, type: 3}
-  - Id: stat_action_points
-    Sprite: {fileID: 21300000, guid: afbc043966034974784b7553376964c8, type: 3}
-  - Id: tab_consumable
-    Sprite: {fileID: 21300000, guid: 6be7806b58501f34382e073aaedc0568, type: 3}
-  - Id: tab_equipment
-    Sprite: {fileID: 21300000, guid: 35916a6566de5fb4697e562e95b34c1d, type: 3}
-  - Id: tab_material
-    Sprite: {fileID: 21300000, guid: 7f198d778206d5946a2d47078cdb94ec, type: 3}
-  - Id: tab_talisman
-    Sprite: {fileID: 21300000, guid: 39220f4f8f83af54190698a2c4335a28, type: 3}
-  - Id: talisman_kind_00
-    Sprite: {fileID: 21300000, guid: 47461e59b2b3ee14d913119f1621d7f4, type: 3}
-  - Id: talisman_kind_01
-    Sprite: {fileID: 21300000, guid: bf15aab95b9eb974b8f32b2098da51d7, type: 3}
-  - Id: talisman_kind_02
-    Sprite: {fileID: 21300000, guid: 5a632bd001ec1404fbfcb0040ea0f071, type: 3}
-  - Id: talisman_kind_03
-    Sprite: {fileID: 21300000, guid: e9fb2c66db0b5fb4b9d19cecdd2ab2c0, type: 3}
-  - Id: talisman_kind_04
-    Sprite: {fileID: 21300000, guid: ddea985718fb69f4aa0160b87825f400, type: 3}
-  - Id: talisman_kind_05
-    Sprite: {fileID: 21300000, guid: 4c10818541960ee4bb2829c557069f12, type: 3}
-  - Id: talisman_kind_06
-    Sprite: {fileID: 21300000, guid: 9e7441dc9068b554988159f4a98dd210, type: 3}
-  - Id: talisman_kind_07
-    Sprite: {fileID: 21300000, guid: 4de3a026497257b46bc7e2bbc2b3df5e, type: 3}
-  - Id: talisman_kind_08
-    Sprite: {fileID: 21300000, guid: c38a967c4d7eaf743be4f49d6a80a893, type: 3}
-  - Id: talisman_kind_09
-    Sprite: {fileID: 21300000, guid: c890ff75224c4b141b4d1978f4283e60, type: 3}
-  - Id: talisman_kind_10
-    Sprite: {fileID: 21300000, guid: 0ac11f6e9e3d35a4db31a3c27764ee44, type: 3}
-  - Id: talisman_kind_11
-    Sprite: {fileID: 21300000, guid: 4af3291f528b2304f914fb438a10fa7e, type: 3}
-  - Id: talisman_kind_12
-    Sprite: {fileID: 21300000, guid: 028ad0262a2bc7549b9775c542c173fe, type: 3}
-  - Id: talisman_kind_13
-    Sprite: {fileID: 21300000, guid: d7f51ef357602554db03367a99e24a1c, type: 3}
-  - Id: talisman_kind_14
-    Sprite: {fileID: 21300000, guid: 59cb02cc8663c5f4d906f6c983a18ac2, type: 3}
-  - Id: talisman_kind_15
-    Sprite: {fileID: 21300000, guid: 30e10d3ab3a82304c8b3e3336a3d5293, type: 3}
-  - Id: talisman_kind_16
-    Sprite: {fileID: 21300000, guid: d66c2fbda42945a49a702c7b9a41d2fe, type: 3}
-  - Id: talisman_kind_17
-    Sprite: {fileID: 21300000, guid: 92129c53fd1bebf49acd304c3be59d2a, type: 3}
-  - Id: talisman_kind_18
-    Sprite: {fileID: 21300000, guid: efc437f631ff8f54db6408c378b19e50, type: 3}
-  - Id: talisman_kind_19
-    Sprite: {fileID: 21300000, guid: 664fba389bcf7d542879e902c52d299f, type: 3}
-  - Id: talisman_kind_20
-    Sprite: {fileID: 21300000, guid: 446b0af0ce52f0a4bbe21dd40ca0acbe, type: 3}
-  - Id: talisman_kind_21
-    Sprite: {fileID: 21300000, guid: 11afcf9b05db93f479b9354a4e1e54e8, type: 3}
-  - Id: talisman_kind_22
-    Sprite: {fileID: 21300000, guid: 1076d29d9d07e9e469b81c1731dffa58, type: 3}
-  - Id: talisman_kind_23
-    Sprite: {fileID: 21300000, guid: a22bedb0381724b4a982025c4e137b5c, type: 3}
-  - Id: talisman_kind_24
-    Sprite: {fileID: 21300000, guid: 1daeb052caaeaaa4bb2cea00b86908d0, type: 3}
-  - Id: talisman_kind_25
-    Sprite: {fileID: 21300000, guid: 2263ac7de3126ba4894da7689e34c69f, type: 3}
-  - Id: train_attack
-    Sprite: {fileID: 21300000, guid: 49d8dac22bafba64fa4684885c37f8d4, type: 3}
-  - Id: train_crit
-    Sprite: {fileID: 21300000, guid: f96bf8baccfa0b84683e5ae3b6b84ee1, type: 3}
-  - Id: train_defense
-    Sprite: {fileID: 21300000, guid: 04f3d74bd3d4a3243843568ae9702ac5, type: 3}
-  - Id: train_energy
-    Sprite: {fileID: 21300000, guid: 3569121c422cae8478629b609e2d3e01, type: 3}
-  - Id: train_health
-    Sprite: {fileID: 21300000, guid: d06b788b658fd454784858ea2687c7a2, type: 3}
+  - _id: basic_attack_sorcerer
+    _sprite: {fileID: 21300000, guid: c8d715e93fd65d048a2c62558bd3028e, type: 3}
+  - _id: basic_attack_summoner
+    _sprite: {fileID: 21300000, guid: 46b314991b5fb0b4b81e4da56233ecf7, type: 3}
+  - _id: basic_attack_warrior
+    _sprite: {fileID: 21300000, guid: 877a9c6625345c243b2f7f2917f82f19, type: 3}
+  - _id: class_sorcerer
+    _sprite: {fileID: 21300000, guid: 96c8e243be3421d4abef46717c79d404, type: 3}
+  - _id: class_summoner
+    _sprite: {fileID: 21300000, guid: 5f6c35a1ef93a2445919ece774ee4a0b, type: 3}
+  - _id: class_warrior
+    _sprite: {fileID: 21300000, guid: ae4f1ed8d09314e489238c548441e7ef, type: 3}
+  - _id: equip_accessory
+    _sprite: {fileID: 21300000, guid: 4e04df2fcb07e1b4488de119bc8ed3e8, type: 3}
+  - _id: equip_body
+    _sprite: {fileID: 21300000, guid: 3299a78f470cf0b409440b095af837d3, type: 3}
+  - _id: equip_feet
+    _sprite: {fileID: 21300000, guid: 961a2b56b0f89f243844f01530110820, type: 3}
+  - _id: equip_hands
+    _sprite: {fileID: 21300000, guid: 3ad5497804cbe02458791f7e2e60b28d, type: 3}
+  - _id: equip_head
+    _sprite: {fileID: 21300000, guid: 5d2e9265e80cb3d448a8835fc98ed8fd, type: 3}
+  - _id: equip_weapon
+    _sprite: {fileID: 21300000, guid: e10e32d9e80e7e04caca82613f318a7d, type: 3}
+  - _id: item_auction_material_common
+    _sprite: {fileID: 21300000, guid: dcbec4680f259d24fb76a1a4d5772628, type: 3}
+  - _id: item_auction_material_epic
+    _sprite: {fileID: 21300000, guid: f377d735c1eec37419b097acee64eb66, type: 3}
+  - _id: item_auction_material_legendary
+    _sprite: {fileID: 21300000, guid: 39ab59b1c955ef242a7a9e4a0d7387da, type: 3}
+  - _id: item_auction_material_rare
+    _sprite: {fileID: 21300000, guid: 5b59566c93a6a6340acae524dab8b18b, type: 3}
+  - _id: item_boss_material_common
+    _sprite: {fileID: 21300000, guid: 53aa68ee26e11644eae9c330d29ae269, type: 3}
+  - _id: item_boss_material_epic
+    _sprite: {fileID: 21300000, guid: 76af483a31762374ca65e5df3308d286, type: 3}
+  - _id: item_boss_material_legendary
+    _sprite: {fileID: 21300000, guid: 6bf9e3d3631976c49b8739a812826991, type: 3}
+  - _id: item_boss_material_rare
+    _sprite: {fileID: 21300000, guid: 36287988d53020741a3ffe2e61b65676, type: 3}
+  - _id: item_boss_ticket
+    _sprite: {fileID: 21300000, guid: b16efdf65be019b4d96b4d76451e2b4f, type: 3}
+  - _id: item_essence
+    _sprite: {fileID: 21300000, guid: ba994f85bfa5dc24f8534ab0ce3a48d1, type: 3}
+  - _id: item_fox_trace
+    _sprite: {fileID: 21300000, guid: 0ea014e255608344ea9d8016daaccab9, type: 3}
+  - _id: item_herb
+    _sprite: {fileID: 21300000, guid: 32ce1a9e5b3741849a0e7f76524a6201, type: 3}
+  - _id: item_potion_large
+    _sprite: {fileID: 21300000, guid: d4fa6b2bb5a352d4c81d9ed706dd9102, type: 3}
+  - _id: item_potion_small
+    _sprite: {fileID: 21300000, guid: 457c1cd5b72721741beac6465912b53a, type: 3}
+  - _id: item_refine_shard
+    _sprite: {fileID: 21300000, guid: 8076679ce69903742871fa879789eb2c, type: 3}
+  - _id: item_yeopjeon
+    _sprite: {fileID: 21300000, guid: 2bbbccf1d6dc5d24fb0cfcf70f348677, type: 3}
+  - _id: mark_equipped
+    _sprite: {fileID: 21300000, guid: 8dfd1fc092ebf8d42b7261ca3e809e70, type: 3}
+  - _id: mark_lock
+    _sprite: {fileID: 21300000, guid: d123d73b0cfc95d4f8967cf7d2762fa4, type: 3}
+  - _id: skill_dodge
+    _sprite: {fileID: 21300000, guid: 30b03a6b6ee8b8640943301a4f04eee8, type: 3}
+  - _id: skill_sorcerer_binding_field
+    _sprite: {fileID: 21300000, guid: 27ce9eb597cbc6041abdce2724144d5b, type: 3}
+  - _id: skill_sorcerer_flame_field
+    _sprite: {fileID: 21300000, guid: 7ff896fc3782f8548833a48ab0116f05, type: 3}
+  - _id: skill_sorcerer_lightning
+    _sprite: {fileID: 21300000, guid: 526289217eb009348bb4086cccac428b, type: 3}
+  - _id: skill_sorcerer_spell_bolt
+    _sprite: {fileID: 21300000, guid: 4ae86289d7574e84eb21d81eb8ed5c0e, type: 3}
+  - _id: skill_summoner_ascension_area
+    _sprite: {fileID: 21300000, guid: 51742de57c38859488865c1554375dfd, type: 3}
+  - _id: skill_summoner_ascension_control
+    _sprite: {fileID: 21300000, guid: cf8b765d9a23c90408d9b0c4f16cf3fe, type: 3}
+  - _id: skill_summoner_ascension_single
+    _sprite: {fileID: 21300000, guid: 985a2d9be8fbfe84db1e253cd07bcedf, type: 3}
+  - _id: skill_summoner_spirit_strike
+    _sprite: {fileID: 21300000, guid: c104f0fa6dc7271409fc11d7b516a207, type: 3}
+  - _id: skill_summoner_summon_beast
+    _sprite: {fileID: 21300000, guid: 5ffab9962ea60dc46842c76a18f43549, type: 3}
+  - _id: skill_summoner_summon_spirit
+    _sprite: {fileID: 21300000, guid: cb3cf48b0fb25f54c895c37eee57f950, type: 3}
+  - _id: skill_summoner_target_barrier
+    _sprite: {fileID: 21300000, guid: be3aea799be7e8c4194e052be0191f44, type: 3}
+  - _id: skill_warrior_counter
+    _sprite: {fileID: 21300000, guid: ce092796ef1548248a093e467ff5a84b, type: 3}
+  - _id: skill_warrior_dash
+    _sprite: {fileID: 21300000, guid: 40014e8144f5a3c489b9385123407dc2, type: 3}
+  - _id: skill_warrior_ground_slam
+    _sprite: {fileID: 21300000, guid: 50f27e8f9095ac844864d13fe0d42622, type: 3}
+  - _id: skill_warrior_wide_slash
+    _sprite: {fileID: 21300000, guid: fcd2ef789ec66bc42a7dc04eaf84d06d, type: 3}
+  - _id: stat_action_points
+    _sprite: {fileID: 21300000, guid: afbc043966034974784b7553376964c8, type: 3}
+  - _id: tab_consumable
+    _sprite: {fileID: 21300000, guid: 6be7806b58501f34382e073aaedc0568, type: 3}
+  - _id: tab_equipment
+    _sprite: {fileID: 21300000, guid: 35916a6566de5fb4697e562e95b34c1d, type: 3}
+  - _id: tab_material
+    _sprite: {fileID: 21300000, guid: 7f198d778206d5946a2d47078cdb94ec, type: 3}
+  - _id: tab_talisman
+    _sprite: {fileID: 21300000, guid: 39220f4f8f83af54190698a2c4335a28, type: 3}
+  - _id: talisman_kind_00
+    _sprite: {fileID: 21300000, guid: 47461e59b2b3ee14d913119f1621d7f4, type: 3}
+  - _id: talisman_kind_01
+    _sprite: {fileID: 21300000, guid: bf15aab95b9eb974b8f32b2098da51d7, type: 3}
+  - _id: talisman_kind_02
+    _sprite: {fileID: 21300000, guid: 5a632bd001ec1404fbfcb0040ea0f071, type: 3}
+  - _id: talisman_kind_03
+    _sprite: {fileID: 21300000, guid: e9fb2c66db0b5fb4b9d19cecdd2ab2c0, type: 3}
+  - _id: talisman_kind_04
+    _sprite: {fileID: 21300000, guid: ddea985718fb69f4aa0160b87825f400, type: 3}
+  - _id: talisman_kind_05
+    _sprite: {fileID: 21300000, guid: 4c10818541960ee4bb2829c557069f12, type: 3}
+  - _id: talisman_kind_06
+    _sprite: {fileID: 21300000, guid: 9e7441dc9068b554988159f4a98dd210, type: 3}
+  - _id: talisman_kind_07
+    _sprite: {fileID: 21300000, guid: 4de3a026497257b46bc7e2bbc2b3df5e, type: 3}
+  - _id: talisman_kind_08
+    _sprite: {fileID: 21300000, guid: c38a967c4d7eaf743be4f49d6a80a893, type: 3}
+  - _id: talisman_kind_09
+    _sprite: {fileID: 21300000, guid: c890ff75224c4b141b4d1978f4283e60, type: 3}
+  - _id: talisman_kind_10
+    _sprite: {fileID: 21300000, guid: 0ac11f6e9e3d35a4db31a3c27764ee44, type: 3}
+  - _id: talisman_kind_11
+    _sprite: {fileID: 21300000, guid: 4af3291f528b2304f914fb438a10fa7e, type: 3}
+  - _id: talisman_kind_12
+    _sprite: {fileID: 21300000, guid: 028ad0262a2bc7549b9775c542c173fe, type: 3}
+  - _id: talisman_kind_13
+    _sprite: {fileID: 21300000, guid: d7f51ef357602554db03367a99e24a1c, type: 3}
+  - _id: talisman_kind_14
+    _sprite: {fileID: 21300000, guid: 59cb02cc8663c5f4d906f6c983a18ac2, type: 3}
+  - _id: talisman_kind_15
+    _sprite: {fileID: 21300000, guid: 30e10d3ab3a82304c8b3e3336a3d5293, type: 3}
+  - _id: talisman_kind_16
+    _sprite: {fileID: 21300000, guid: d66c2fbda42945a49a702c7b9a41d2fe, type: 3}
+  - _id: talisman_kind_17
+    _sprite: {fileID: 21300000, guid: 92129c53fd1bebf49acd304c3be59d2a, type: 3}
+  - _id: talisman_kind_18
+    _sprite: {fileID: 21300000, guid: efc437f631ff8f54db6408c378b19e50, type: 3}
+  - _id: talisman_kind_19
+    _sprite: {fileID: 21300000, guid: 664fba389bcf7d542879e902c52d299f, type: 3}
+  - _id: talisman_kind_20
+    _sprite: {fileID: 21300000, guid: 446b0af0ce52f0a4bbe21dd40ca0acbe, type: 3}
+  - _id: talisman_kind_21
+    _sprite: {fileID: 21300000, guid: 11afcf9b05db93f479b9354a4e1e54e8, type: 3}
+  - _id: talisman_kind_22
+    _sprite: {fileID: 21300000, guid: 1076d29d9d07e9e469b81c1731dffa58, type: 3}
+  - _id: talisman_kind_23
+    _sprite: {fileID: 21300000, guid: a22bedb0381724b4a982025c4e137b5c, type: 3}
+  - _id: talisman_kind_24
+    _sprite: {fileID: 21300000, guid: 1daeb052caaeaaa4bb2cea00b86908d0, type: 3}
+  - _id: talisman_kind_25
+    _sprite: {fileID: 21300000, guid: 2263ac7de3126ba4894da7689e34c69f, type: 3}
+  - _id: train_attack
+    _sprite: {fileID: 21300000, guid: 49d8dac22bafba64fa4684885c37f8d4, type: 3}
+  - _id: train_crit
+    _sprite: {fileID: 21300000, guid: f96bf8baccfa0b84683e5ae3b6b84ee1, type: 3}
+  - _id: train_defense
+    _sprite: {fileID: 21300000, guid: 04f3d74bd3d4a3243843568ae9702ac5, type: 3}
+  - _id: train_energy
+    _sprite: {fileID: 21300000, guid: 3569121c422cae8478629b609e2d3e01, type: 3}
+  - _id: train_health
+    _sprite: {fileID: 21300000, guid: d06b788b658fd454784858ea2687c7a2, type: 3}
   _gradeFrames:
   - {fileID: 21300000, guid: 824954f161e077446b911562b25229e7, type: 3}
   - {fileID: 21300000, guid: bff35a7c8955cee41be0752fd83bdf2a, type: 3}

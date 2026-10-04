@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -18,10 +19,17 @@ namespace Shinshi.UI
         ****************************************/
 
         [Serializable]
-        public struct Entry
+        public class Entry
         {
-            public string Id;
-            public Sprite Sprite;
+            /****************************************
+            *                Fields
+            ****************************************/
+
+            [SerializeField] private string _id;     // 카탈로그 정의 ID, 등급이 붙은 ID는 등급을 뗀 ID로 대신 찾는다
+            [SerializeField] private Sprite _sprite;
+
+            public string Id     => _id;
+            public Sprite Sprite => _sprite;
         }
 
         /****************************************
@@ -40,6 +48,9 @@ namespace Shinshi.UI
         [SerializeField] private Sprite _tierSupport = null;
         [SerializeField] private Sprite _tierCore    = null;
 
+        // 찾은 결과를 원래 ID로 기억해 두므로 등급을 떼어 찾는 경우도 두 번째부터는 문자열을 만들지 않는다
+        private Dictionary<string, Sprite> _lookup = null;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -48,38 +59,50 @@ namespace Shinshi.UI
         public Sprite TierCore    => _tierCore;
 
         /****************************************
+        *              Unity Event
+        ****************************************/
+
+        private void OnEnable() { _lookup = null; }
+
+        private void OnValidate() { _lookup = null; }
+
+        /****************************************
         *                Methods
         ****************************************/
 
-        /// <summary>정확히 맞는 ID가 없으면 마지막 마디를 떼며 찾는다 (equip_weapon_rare -> equip_weapon)</summary>
+        /// <summary>정확히 맞는 ID가 없으면 마지막 마디를 떼며 찾는다 (equip_weapon_rare -> equip_weapon). 없으면 null</summary>
         public Sprite FindIcon(string id)
         {
-            if ((_entries == null) || string.IsNullOrEmpty(id))
+            if (string.IsNullOrEmpty(id))
             {
                 return null;
             }
 
-            string key = id;
+            EnsureLookup();
 
-            while (true)
+            if (_lookup.TryGetValue(id, out Sprite cached))
             {
-                for (int i = 0; i < _entries.Length; ++i)
-                {
-                    if (_entries[i].Id == key)
-                    {
-                        return _entries[i].Sprite;
-                    }
-                }
-
-                int cut = key.LastIndexOf(ID_SEPARATOR);
-
-                if (cut <= 0)
-                {
-                    return null;
-                }
-
-                key = key.Substring(0, cut);
+                return cached;
             }
+
+            Sprite found = null;
+            string key = id;
+            int cut = key.LastIndexOf(ID_SEPARATOR);
+
+            while (cut > 0)
+            {
+                key = key.Substring(0, cut);
+
+                if (_lookup.TryGetValue(key, out found))
+                {
+                    break;
+                }
+
+                cut = key.LastIndexOf(ID_SEPARATOR);
+            }
+
+            _lookup[id] = found;
+            return found;
         }
 
         public Sprite FindGradeFrame(EItemGrade grade)
@@ -92,6 +115,33 @@ namespace Shinshi.UI
             }
 
             return _gradeFrames[index];
+        }
+
+        private void EnsureLookup()
+        {
+            if (_lookup != null)
+            {
+                return;
+            }
+
+            _lookup = new Dictionary<string, Sprite>();
+
+            if (_entries == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _entries.Length; ++i)
+            {
+                Entry entry = _entries[i];
+
+                if ((entry == null) || string.IsNullOrEmpty(entry.Id))
+                {
+                    continue;
+                }
+
+                _lookup[entry.Id] = entry.Sprite;
+            }
         }
     }
 }
