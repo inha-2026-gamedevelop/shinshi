@@ -7,14 +7,14 @@ using TMPro;
 
 namespace Shinshi.UI
 {
-    /// <summary>칸 옆에 제목과 설명을 띄우는 풍선이며 화면 밖으로 나가지 않게 위치를 보정한다</summary>
+    /// <summary>칸 옆에 제목과 설명을 띄우는 풍선이며 부모 영역 밖으로 나가지 않게 위치를 보정한다</summary>
     public sealed class TooltipView : MonoBehaviour
     {
         /****************************************
         *                Fields
         ****************************************/
 
-        private const float SCREEN_MARGIN = 8f;
+        private const float EDGE_MARGIN = 8f;
 
         [Header("표시")]
         [SerializeField] private RectTransform _panel      = null;
@@ -22,11 +22,24 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text      _bodyLabel  = null;
         [SerializeField] private Vector2       _offset     = new Vector2(16f, -16f);
 
+        private RectTransform _area   = null;
+        private Canvas        _canvas = null;
+
         /****************************************
         *              Unity Event
         ****************************************/
 
-        private void Awake() { Hide(); }
+        private void Awake()
+        {
+            if (_panel != null)
+            {
+                _area = _panel.parent as RectTransform;
+                Canvas canvas = _panel.GetComponentInParent<Canvas>(true);
+                _canvas = (canvas != null) ? canvas.rootCanvas : null;
+            }
+
+            Hide();
+        }
 
         /****************************************
         *                Methods
@@ -62,22 +75,35 @@ namespace Shinshi.UI
             }
         }
 
+        // 화면 좌표를 그대로 position에 넣으면 Screen Space - Overlay에서만 맞는다.
+        // HUD 캔버스를 카메라 기준으로 바꿔도 맞도록 부모 영역의 로컬 좌표로 바꿔서 놓는다
         private void Place(Vector2 screenPoint)
         {
-            Canvas canvas = _panel.GetComponentInParent<Canvas>();
-            float scale = (canvas != null) ? canvas.scaleFactor : 1f;
-            Vector2 size = _panel.rect.size * scale;
-            Vector2 pivot = _panel.pivot;
-            Vector2 target = screenPoint + (_offset * scale);
+            if ((_area == null) || (_canvas == null))
+            {
+                return;
+            }
 
-            float minX = SCREEN_MARGIN + (size.x * pivot.x);
-            float maxX = Screen.width - SCREEN_MARGIN - (size.x * (1f - pivot.x));
-            float minY = SCREEN_MARGIN + (size.y * pivot.y);
-            float maxY = Screen.height - SCREEN_MARGIN - (size.y * (1f - pivot.y));
+            Camera eventCamera = (_canvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : _canvas.worldCamera;
+
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_area, screenPoint, eventCamera, out Vector2 local))
+            {
+                return;
+            }
+
+            Rect    bounds = _area.rect;
+            Vector2 size   = _panel.rect.size;
+            Vector2 pivot  = _panel.pivot;
+            Vector2 target = local + _offset;
+
+            float minX = bounds.xMin + EDGE_MARGIN + (size.x * pivot.x);
+            float maxX = bounds.xMax - EDGE_MARGIN - (size.x * (1f - pivot.x));
+            float minY = bounds.yMin + EDGE_MARGIN + (size.y * pivot.y);
+            float maxY = bounds.yMax - EDGE_MARGIN - (size.y * (1f - pivot.y));
 
             target.x = Mathf.Clamp(target.x, minX, Mathf.Max(minX, maxX));
             target.y = Mathf.Clamp(target.y, minY, Mathf.Max(minY, maxY));
-            _panel.position = target;
+            _panel.localPosition = new Vector3(target.x, target.y, 0f);
         }
     }
 }
