@@ -129,6 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4974113}
   - component: {fileID: 4974114}
+  - component: {fileID: 4974115}
   m_Layer: 0
   m_Name: "\uC0C8 \uADF8\uB8F9"
   m_TagString: Untagged
@@ -173,6 +174,20 @@ MonoBehaviour:
   _layoutId: n003
   _condition: 0
   _description: 
+--- !u!114 &4974115
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4974112}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5913795689fe8464c8e439d260f72f50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.AlertPopupView
+  _confirmButton: {fileID: 688542645}
+  _messageLabel: {fileID: 0}
 --- !u!1 &39635021
 GameObject:
   m_ObjectHideFlags: 0
@@ -183,6 +198,7 @@ GameObject:
   m_Component:
   - component: {fileID: 39635022}
   - component: {fileID: 39635023}
+  - component: {fileID: 39635024}
   m_Layer: 0
   m_Name: "\uC18C\uD615 \uCEE8\uD38C"
   m_TagString: Untagged
@@ -228,6 +244,21 @@ MonoBehaviour:
   _layoutId: n014
   _condition: 0
   _description: 
+--- !u!114 &39635024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 39635021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 235df081d6457a84ebe62924b3eb1143, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.ConfirmPopupView
+  _confirmButton: {fileID: 234429636}
+  _cancelButton: {fileID: 829415111}
+  _messageLabel: {fileID: 0}
 --- !u!1 &71075745
 GameObject:
   m_ObjectHideFlags: 0
@@ -1010,6 +1041,7 @@ GameObject:
   m_Component:
   - component: {fileID: 312273992}
   - component: {fileID: 312273993}
+  - component: {fileID: 312273994}
   m_Layer: 0
   m_Name: "\uB300\uD615 \uC5BC\uB7EC\uD2B8 \uADF8\uB8F9"
   m_TagString: Untagged
@@ -1054,6 +1086,20 @@ MonoBehaviour:
   _layoutId: n009
   _condition: 0
   _description: 
+--- !u!114 &312273994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 312273991}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5913795689fe8464c8e439d260f72f50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.AlertPopupView
+  _confirmButton: {fileID: 1994808443}
+  _messageLabel: {fileID: 0}
 --- !u!1 &396679215
 GameObject:
   m_ObjectHideFlags: 0
@@ -1120,8 +1166,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1589,8 +1635,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2524,6 +2570,7 @@ GameObject:
   m_Component:
   - component: {fileID: 962621906}
   - component: {fileID: 962621907}
+  - component: {fileID: 962621908}
   m_Layer: 0
   m_Name: "\uC911\uD615 \uCEE8\uD38C"
   m_TagString: Untagged
@@ -2569,6 +2616,21 @@ MonoBehaviour:
   _layoutId: n018
   _condition: 0
   _description: 
+--- !u!114 &962621908
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 962621905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 235df081d6457a84ebe62924b3eb1143, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.ConfirmPopupView
+  _confirmButton: {fileID: 1616617027}
+  _cancelButton: {fileID: 1904164613}
+  _messageLabel: {fileID: 0}
 --- !u!1 &1000686091
 GameObject:
   m_ObjectHideFlags: 0
@@ -2772,8 +2834,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2984,8 +3046,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -3266,8 +3328,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -3403,8 +3465,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -3538,6 +3600,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1543598756}
   - component: {fileID: 1543598757}
+  - component: {fileID: 1543598758}
   m_Layer: 0
   m_Name: "\uC911\uD615 \uC5BC\uB7EC\uD2B8"
   m_TagString: Untagged
@@ -3582,6 +3645,20 @@ MonoBehaviour:
   _layoutId: n006
   _condition: 0
   _description: 
+--- !u!114 &1543598758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1543598755}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5913795689fe8464c8e439d260f72f50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.AlertPopupView
+  _confirmButton: {fileID: 200786886}
+  _messageLabel: {fileID: 0}
 --- !u!1 &1616617022
 GameObject:
   m_ObjectHideFlags: 0
@@ -3785,8 +3862,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -4059,8 +4136,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -4333,8 +4410,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293978342
-  m_fontColor: {r: 0.9, g: 0.91, b: 0.94, a: 1}
+    rgba: 3873890009
+  m_fontColor: {r: 0.85, g: 0.87, b: 0.9, a: 0.9}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -4414,6 +4491,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2093038447}
   - component: {fileID: 2093038448}
+  - component: {fileID: 2093038449}
   m_Layer: 0
   m_Name: "\uB300\uD615 \uCEE8\uD38C"
   m_TagString: Untagged
@@ -4459,6 +4537,21 @@ MonoBehaviour:
   _layoutId: n022
   _condition: 0
   _description: 
+--- !u!114 &2093038449
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2093038446}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 235df081d6457a84ebe62924b3eb1143, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.ConfirmPopupView
+  _confirmButton: {fileID: 1000686096}
+  _cancelButton: {fileID: 170183560}
+  _messageLabel: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
