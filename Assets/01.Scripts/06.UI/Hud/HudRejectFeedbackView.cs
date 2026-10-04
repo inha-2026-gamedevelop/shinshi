@@ -16,21 +16,24 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        // 같은 사유가 이 시간 안에 반복되면 다시 띄우지 않는다. 키를 누르고 있을 때 문구가 쌓이는 것을 막는다
+        // 같은 안내가 이 시간 안에 반복되면 다시 띄우지 않는다. 키를 누르고 있을 때 문구가 쌓이는 것을 막는다
         private const float REPEAT_BLOCK_SECONDS = 0.8f;
 
         [SerializeField] private ToastMessageView _toast = null;
 
-        private ERejectReason _lastReason = ERejectReason.None;
-        private float        _lastTime   = float.NegativeInfinity;
+        private string _lastText = null;
+        private float  _lastTime = float.NegativeInfinity;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public void Show(ERejectReason reason)
+        public void Show(ERejectReason reason) { Show(reason, false); }
+
+        /// <summary>강림처럼 공명을 쓰는 요청이면 usesResonance를 true로 넘긴다</summary>
+        public void Show(ERejectReason reason, bool usesResonance)
         {
-            string text = RejectText.Describe(reason);
+            string text = RejectText.Describe(reason, usesResonance);
 
             if ((_toast == null) || string.IsNullOrEmpty(text))
             {
@@ -39,13 +42,13 @@ namespace Shinshi.UI
 
             float now = Time.unscaledTime;
 
-            if ((reason == _lastReason) && ((now - _lastTime) < REPEAT_BLOCK_SECONDS))
+            if (string.Equals(text, _lastText) && ((now - _lastTime) < REPEAT_BLOCK_SECONDS))
             {
                 return;
             }
 
-            _lastReason = reason;
-            _lastTime   = now;
+            _lastText = text;
+            _lastTime = now;
             _toast.Show(text);
         }
     }
