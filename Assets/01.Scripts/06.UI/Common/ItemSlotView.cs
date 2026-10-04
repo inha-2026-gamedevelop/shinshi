@@ -11,7 +11,7 @@ using TMPro;
 
 namespace Shinshi.UI
 {
-    /// <summary>등급 틀, 아이콘, 수량, 잠금·착용 표시를 갖춘 아이템 칸이며 마우스를 올리면 툴팁을 연다</summary>
+    /// <summary>등급 틀, 아이콘, 수량, 잠금과 착용 표시를 갖춘 아이템 칸이며 마우스를 올리면 툴팁을 연다</summary>
     public sealed class ItemSlotView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
     {
         /****************************************

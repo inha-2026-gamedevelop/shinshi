@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -133,7 +134,7 @@ namespace Shinshi.UI
             }
         }
 
-        private static void ApplyItems(ItemSlotGridView grid, TMP_Text emptyLabel, System.Collections.Generic.IReadOnlyList<ItemSlotData> items)
+        private static void ApplyItems(ItemSlotGridView grid, TMP_Text emptyLabel, IReadOnlyList<ItemSlotData> items)
         {
             bool has = (items != null) && (items.Count > 0);
 

@@ -13,6 +13,7 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
+        private const float  PERCENT_SCALE = 100f;
         private const string HEALTH_FORMAT = "{0}%";
         private const string PHASE_FORMAT  = "{0}단계 / {1}단계";
         private const string REVIVE_FORMAT = "공용 부활 {0}/{1}";
@@ -28,13 +29,13 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text _reviveLabel = null;
         [SerializeField] private TMP_Text _potionLabel = null;
 
-        private int   _healthPercent = -1;
-        private int   _phase         = -1;
-        private int   _phaseTotal    = -1;
-        private int   _revives       = -1;
-        private int   _reviveMax     = -1;
-        private int   _potionUsed    = -1;
-        private int   _potionMax     = -1;
+        private int _healthPercent = -1;
+        private int _phase         = -1;
+        private int _phaseTotal    = -1;
+        private int _revives       = -1;
+        private int _reviveMax     = -1;
+        private int _potionUsed    = -1;
+        private int _potionMax     = -1;
 
         /****************************************
         *                Methods
@@ -52,7 +53,7 @@ namespace Shinshi.UI
         public void SetHealth(float ratio)
         {
             float clamped = Mathf.Clamp01(ratio);
-            int percent = Mathf.RoundToInt(clamped * 100f);
+            int percent = Mathf.RoundToInt(clamped * PERCENT_SCALE);
 
             if (percent == _healthPercent)
             {

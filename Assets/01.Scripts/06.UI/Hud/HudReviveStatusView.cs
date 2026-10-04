@@ -26,7 +26,7 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text   _statusLabel  = null;
         [SerializeField] private TMP_Text   _revivesLabel = null;
 
-        private EParticipantLifeState _state = EParticipantLifeState.Alive;
+        private EParticipantLifeState _state   = EParticipantLifeState.Alive;
         private int                   _seconds = -1;
         private int                   _revives = -1;
 

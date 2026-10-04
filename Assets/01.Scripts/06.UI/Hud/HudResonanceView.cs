@@ -16,8 +16,8 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        private const int   SLOT_COUNT      = 3;
-        private const float DISABLED_ALPHA  = 0.45f;
+        private const int    SLOT_COUNT     = 3;
+        private const float  DISABLED_ALPHA = 0.45f;
         private const string VALUE_FORMAT   = "{0:N0} / {1:N0}";
         private const string COST_FORMAT    = "{0}";
 

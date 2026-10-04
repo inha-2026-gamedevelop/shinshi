@@ -16,13 +16,13 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        private const int   SIZE_COUNT     = 2;
-        private const float EMPTY_ALPHA    = 0.45f;
+        private const int   SIZE_COUNT  = 2;
+        private const float EMPTY_ALPHA = 0.45f;
 
         [Header("소형, 대형 순서")]
-        [SerializeField] private TMP_Text[]    _countLabels = null;
-        [SerializeField] private CanvasGroup[] _groups      = null;
-        [SerializeField] private HudSkillSlotView[] _slots  = null;
+        [SerializeField] private TMP_Text[]         _countLabels = null;
+        [SerializeField] private CanvasGroup[]      _groups      = null;
+        [SerializeField] private HudSkillSlotView[] _slots       = null;
 
         private readonly int[] _counts = { -1, -1 };
 

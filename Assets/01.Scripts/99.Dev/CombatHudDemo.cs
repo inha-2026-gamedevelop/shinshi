@@ -9,8 +9,8 @@ using Shinshi.UI;
 namespace Shinshi.Dev
 {
     /// <summary>
-    /// Dev_CombatHud 씬에서 일반전·보스 HUD, 공명, 물약, 부활 대기, 거절 안내를 가짜 값으로 시험한다.
-    /// 키: B 일반전/보스 전환, H 보스 피해, 1·2 물약, G 공명 +20, Z·X·C 강림, K 쓰러짐, F 부활, T 거절 안내
+    /// Dev_CombatHud 씬에서 일반전과 보스 HUD, 공명, 물약, 부활 대기, 거절 안내를 가짜 값으로 시험한다.
+    /// 키: B 일반전/보스 전환, H 보스 피해, 1, 2 물약, G 공명 +20, Z, X, C 강림, K 쓰러짐, F 부활, T 거절 안내
     /// </summary>
     public sealed class CombatHudDemo : MonoBehaviour
     {
@@ -18,48 +18,53 @@ namespace Shinshi.Dev
         *                Fields
         ****************************************/
 
-        private const float TIME_LIMIT       = 420f;
-        private const int   WAVE_TOTAL       = 6;
-        private const float WAVE_SECONDS     = 70f;
-        private const int   ENEMIES_PER_WAVE = 30;
-        private const float POTION_COOLDOWN  = 10f;
-        private const int   RESONANCE_MAX    = 100;
-        private const int   RESONANCE_STEP   = 20;
-        private const float ASCENSION_CD     = 3f;
-        private const float REVIVE_WAIT      = 10f;
-        private const int   BOSS_PHASE_TOTAL = 2;
-        private const int   SHARED_REVIVES   = 3;
-        private const int   BOSS_POTION_MAX  = 9;
-        private const float BOSS_HIT_RATIO   = 0.07f;
-        private const string BOSS_NAME       = "월백";
+        private const float  TIME_LIMIT       = 420f;
+        private const int    WAVE_TOTAL       = 6;
+        private const float  WAVE_SECONDS     = 70f;
+        private const int    ENEMIES_PER_WAVE = 30;
+        private const float  POTION_COOLDOWN  = 10f;
+        private const int    RESONANCE_MAX    = 100;
+        private const int    RESONANCE_START  = 60;
+        private const int    RESONANCE_STEP   = 20;
+        private const int    ASCENSION_COUNT  = 3;
+        private const float  ASCENSION_CD     = 3f;
+        private const float  REVIVE_WAIT      = 10f;
+        private const int    BOSS_PHASE_TOTAL = 2;
+        private const float  PHASE_TWO_RATIO  = 0.5f;
+        private const int    SHARED_REVIVES   = 3;
+        private const int    BOSS_POTION_MAX  = 9;
+        private const float  BOSS_HIT_RATIO   = 0.07f;
+        private const int    SMALL_POTION     = 5;
+        private const int    LARGE_POTION     = 2;
+        private const string BOSS_NAME        = "월백";
 
         private static readonly int[] G_AscensionCosts = { 60, 80, 40 };
 
         [Header("HUD")]
-        [SerializeField] private GameObject         _waveGroup = null;
-        [SerializeField] private GameObject         _bossGroup = null;
-        [SerializeField] private HudWaveView        _wave      = null;
-        [SerializeField] private HudBossView        _boss      = null;
-        [SerializeField] private HudResonanceView   _resonance = null;
-        [SerializeField] private HudPotionView      _potion    = null;
-        [SerializeField] private HudReviveStatusView   _revive    = null;
-        [SerializeField] private HudRejectFeedbackView _reject    = null;
+        [SerializeField] private GameObject         _waveGroup      = null;
+        [SerializeField] private GameObject         _bossGroup      = null;
+        [SerializeField] private HudWaveView        _wave           = null;
+        [SerializeField] private HudBossView        _boss           = null;
+        [SerializeField] private HudResonanceView   _resonance      = null;
+        [SerializeField] private HudPotionView      _potion         = null;
+        [SerializeField] private HudReviveStatusView   _revive         = null;
+        [SerializeField] private HudRejectFeedbackView _reject         = null;
         [SerializeField] private HudSkillSlotView[] _ascensionSlots = null;
 
-        private bool  _isBoss        = false;
-        private float _elapsed       = 0f;
-        private float _bossHealth    = 1f;
-        private int   _resonanceNow  = 60;
-        private int   _potionUsed    = 0;
-        private int   _smallPotion   = 5;
-        private int   _largePotion   = 2;
-        private float _potionCd      = 0f;
-        private int   _revivesLeft   = SHARED_REVIVES;
-        private float _reviveWait    = 0f;
-        private EParticipantLifeState _life = EParticipantLifeState.Alive;
-        private int   _rejectCursor  = 0;
+        private bool                  _isBoss       = false;
+        private float                 _elapsed      = 0f;
+        private float                 _bossHealth   = 1f;
+        private int                   _resonanceNow = RESONANCE_START;
+        private int                   _potionUsed   = 0;
+        private int                   _smallPotion  = SMALL_POTION;
+        private int                   _largePotion  = LARGE_POTION;
+        private float                 _potionCd     = 0f;
+        private int                   _revivesLeft  = SHARED_REVIVES;
+        private float                 _reviveWait   = 0f;
+        private EParticipantLifeState _life         = EParticipantLifeState.Alive;
+        private int                   _rejectCursor = 0;
 
-        private readonly float[] _ascensionCd = new float[3];
+        private readonly float[] _ascensionCd = new float[ASCENSION_COUNT];
 
         private static readonly ERejectReason[] G_RejectSamples =
         {
@@ -199,9 +204,16 @@ namespace Shinshi.Dev
 
         private void UseAscension(int index)
         {
-            if ((_resonanceNow < G_AscensionCosts[index]) || (_ascensionCd[index] > 0f))
+            // 서버와 같은 순서로 공명을 먼저, 공용 쿨다운을 나중에 본다
+            if (_resonanceNow < G_AscensionCosts[index])
             {
-                _reject.Show((_ascensionCd[index] > 0f) ? ERejectReason.Cooldown : ERejectReason.InsufficientEnergy);
+                _reject.Show(ERejectReason.InsufficientEnergy, true);
+                return;
+            }
+
+            if (_ascensionCd[index] > 0f)
+            {
+                _reject.Show(ERejectReason.Cooldown);
                 return;
             }
 
@@ -279,7 +291,7 @@ namespace Shinshi.Dev
             _wave.SetIntermission(0f);
 
             _boss.SetHealth(_bossHealth);
-            _boss.SetPhase((_bossHealth > 0.5f) ? 1 : 2, BOSS_PHASE_TOTAL);
+            _boss.SetPhase((_bossHealth > PHASE_TWO_RATIO) ? 1 : BOSS_PHASE_TOTAL, BOSS_PHASE_TOTAL);
             _boss.SetSharedRevives(_revivesLeft, SHARED_REVIVES);
             _boss.SetPotionUse(_potionUsed, BOSS_POTION_MAX);
 
