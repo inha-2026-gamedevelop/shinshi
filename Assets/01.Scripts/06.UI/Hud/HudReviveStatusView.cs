@@ -10,7 +10,7 @@ using Shinshi.Common;
 namespace Shinshi.UI
 {
     /// <summary>쓰러진 동안 부활 대기 시간, 부활 가능 안내, 관전 상태를 화면 가운데에 보여 주고 살아 있으면 숨긴다</summary>
-    public sealed class ReviveStatusView : MonoBehaviour
+    public sealed class HudReviveStatusView : MonoBehaviour
     {
         /****************************************
         *                Fields

@@ -38,12 +38,12 @@ namespace Shinshi.Dev
         [Header("HUD")]
         [SerializeField] private GameObject         _waveGroup = null;
         [SerializeField] private GameObject         _bossGroup = null;
-        [SerializeField] private WaveHudView        _wave      = null;
-        [SerializeField] private BossHudView        _boss      = null;
+        [SerializeField] private HudWaveView        _wave      = null;
+        [SerializeField] private HudBossView        _boss      = null;
         [SerializeField] private HudResonanceView   _resonance = null;
         [SerializeField] private HudPotionView      _potion    = null;
-        [SerializeField] private ReviveStatusView   _revive    = null;
-        [SerializeField] private RejectFeedbackView _reject    = null;
+        [SerializeField] private HudReviveStatusView   _revive    = null;
+        [SerializeField] private HudRejectFeedbackView _reject    = null;
         [SerializeField] private HudSkillSlotView[] _ascensionSlots = null;
 
         private bool  _isBoss        = false;

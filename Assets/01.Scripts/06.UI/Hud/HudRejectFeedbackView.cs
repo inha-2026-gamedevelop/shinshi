@@ -10,7 +10,7 @@ namespace Shinshi.UI
     /// 기술, 물약, 부활 요청이 거절됐을 때 사유를 한 줄 토스트로 보여 준다.
     /// 거절 이벤트를 받는 쪽(LocalPlayerView 구독자)이 Show를 부른다
     /// </summary>
-    public sealed class RejectFeedbackView : MonoBehaviour
+    public sealed class HudRejectFeedbackView : MonoBehaviour
     {
         /****************************************
         *                Fields

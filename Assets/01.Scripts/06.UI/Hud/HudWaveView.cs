@@ -7,7 +7,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary>일반전 상단 표시. 현재 웨이브/전체, 남은 제한 시간, 남은 적 수를 보여 준다</summary>
-    public sealed class WaveHudView : MonoBehaviour
+    public sealed class HudWaveView : MonoBehaviour
     {
         /****************************************
         *                Fields

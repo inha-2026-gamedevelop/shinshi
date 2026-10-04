@@ -7,7 +7,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary>보스전 상단 표시. 보스 체력과 단계, 파티 공용 부활 횟수, 보스 물약 사용 횟수를 보여 준다</summary>
-    public sealed class BossHudView : MonoBehaviour
+    public sealed class HudBossView : MonoBehaviour
     {
         /****************************************
         *                Fields
