@@ -52,9 +52,12 @@ namespace Shinshi.UI
         ****************************************/
 
         /// <summary>목록보다 최소 칸 수가 크면 남는 칸은 빈 칸으로 둔다</summary>
-        public void SetItems(IReadOnlyList<ItemSlotData> items)
+        public void SetItems(IReadOnlyList<ItemSlotData> items) { SetItems(items, _minSlotCount); }
+
+        /// <summary>인벤토리 칸 수처럼 실행 중에 정해지는 최소 칸 수로 표시한다</summary>
+        public void SetItems(IReadOnlyList<ItemSlotData> items, int minSlotCount)
         {
-            int count = Mathf.Max(_minSlotCount, (items != null) ? items.Count : 0);
+            int count = Mathf.Max(minSlotCount, (items != null) ? items.Count : 0);
             EnsureSlots(count);
 
             for (int i = 0; i < _slots.Count; ++i)
@@ -77,6 +80,8 @@ namespace Shinshi.UI
                 _slots[i].SetSelected(i == index);
             }
         }
+
+        public int IndexOf(ItemSlotView slot) { return _slots.IndexOf(slot); }
 
         private void EnsureSlots(int count)
         {
