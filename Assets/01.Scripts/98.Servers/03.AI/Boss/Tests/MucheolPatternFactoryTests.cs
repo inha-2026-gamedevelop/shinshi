@@ -29,7 +29,7 @@ namespace Shinshi.Tests
 
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const string WOLBAEK_ID   = "boss_wolbaek";
-        private const string OTHER_ID     = "mucheol_p06";
+        private const string OTHER_ID     = "mucheol_p07";
         private const float  TEST_HREF    = 3541f; // 테스트가 명시적으로 주입하는 값이다
         private const float  ANGLE_TOLERANCE = 0.05f;
         private const float  TIME_MARGIN  = 0.1f;  // 초, 경계 전후로 두는 여유
@@ -456,6 +456,14 @@ namespace Shinshi.Tests
             for (int i = 0; i < catalog.Patterns.Count; ++i)
             {
                 Assert.AreNotEqual(MucheolPatternFactory.BOSS_ID, catalog.Patterns[i].BossId);
+            }
+
+            // P06(뿔 들이받기)은 공용 FSM의 충돌 회복 승인, 서버와 맵 연결, 검증이 끝나기 전에는 운영 카탈로그에 넣지 않는다.
+            // 가중치를 0으로 두거나 팩토리가 만들지 못하게만 막는 방식은 쓰지 않는다. 1페이즈 선택은 만들 수 없는 후보를 미리 거르지 않아
+            // 정의가 있으면 후보가 되고 Create가 null이라 오류 로그가 반복된다
+            for (int i = 0; i < catalog.Patterns.Count; ++i)
+            {
+                Assert.AreNotEqual(MucheolPatternFactory.P06_ID, catalog.Patterns[i].DefinitionId);
             }
 
             // 새 보스를 더해도 월백 수치는 그대로여야 한다
