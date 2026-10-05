@@ -29,9 +29,9 @@ namespace Shinshi.UI
         private const string ALL_DEAD_TITLE   = "토벌 실패 - 전멸";
         private const string ABANDON_TITLE    = "토벌 중도 포기";
         private const string OTHER_TITLE      = "전투 종료";
-        private const string BASE_FORMAT      = "기본 정기 +{0:N0}";
-        private const string EXTRA_FORMAT     = "추가 정기 +{0:N0}";
-        private const string LOST_FORMAT      = "추가 정기 손실 -{0:N0}";
+        private const string BASE_FORMAT      = "+{0:N0}";
+        private const string EXTRA_FORMAT     = "+{0:N0}";
+        private const string LOST_FORMAT      = "손실 -{0:N0}";
         private const string RETURN_TEXT      = "귀환";
         private const string WAIT_HINT        = "저장이 끝나면 귀환할 수 있습니다";
         private const string EMPTY_HINT       = "없음";
