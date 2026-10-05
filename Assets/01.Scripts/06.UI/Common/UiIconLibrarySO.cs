@@ -48,6 +48,9 @@ namespace Shinshi.UI
         [SerializeField] private Sprite[] _gradeBackgrounds = null;
         [SerializeField] private Sprite   _emptyBackground  = null;
 
+        [Header("등급 색 (일반, 희귀, 영웅, 전설 순서)")]
+        [SerializeField] private Color[] _gradeColors = null;
+
         [Header("부적 단계 배지")]
         [SerializeField] private Sprite _tierSupport = null;
         [SerializeField] private Sprite _tierCore    = null;
@@ -114,6 +117,19 @@ namespace Shinshi.UI
 
         /// <summary>등급 색 그라데이션 칸 바탕, 없으면 null</summary>
         public Sprite FindGradeBackground(EItemGrade grade) { return PickByGrade(_gradeBackgrounds, grade); }
+
+        /// <summary>칸 아래 등급 줄에 쓰는 색, 없으면 흰색</summary>
+        public Color FindGradeColor(EItemGrade grade)
+        {
+            int index = (int)grade;
+
+            if ((_gradeColors == null) || (index < 0) || (index >= _gradeColors.Length))
+            {
+                return Color.white;
+            }
+
+            return _gradeColors[index];
+        }
 
         private static Sprite PickByGrade(Sprite[] sprites, EItemGrade grade)
         {

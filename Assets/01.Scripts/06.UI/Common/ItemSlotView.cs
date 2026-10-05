@@ -29,6 +29,10 @@ namespace Shinshi.UI
         [SerializeField] private GameObject _equippedMark = null;
         [SerializeField] private GameObject _selectedMark = null;
 
+        [Header("등급 줄 표시 (선택)")]
+        [SerializeField] private Image      _gradeEdge      = null;
+        [SerializeField] private GameObject _itemBackground = null;
+
         [Header("참조")]
         [SerializeField] private UiIconLibrarySO _library = null;
         [SerializeField] private TooltipView     _tooltip = null;
@@ -126,6 +130,19 @@ namespace Shinshi.UI
                 }
             }
 
+            // 바탕 전체를 칠하지 않고 아래 줄 색으로만 등급을 알리는 칸에서 쓴다
+            if (_gradeEdge != null)
+            {
+                bool showEdge = !empty && (_library != null);
+                _gradeEdge.enabled = showEdge;
+
+                if (showEdge)
+                {
+                    _gradeEdge.color = _library.FindGradeColor(data.Grade);
+                }
+            }
+
+            SetActive(_itemBackground, !empty);
             SetActive(_lockMark, !empty && data.IsLocked);
             SetActive(_equippedMark, !empty && data.IsEquipped);
         }
