@@ -456,7 +456,11 @@ namespace Shinshi.Backend.Tests.Accounts
 
         public HashSet<string> TakenKeys { get; } = new HashSet<string>(StringComparer.Ordinal);
         public int CreateCalls { get; private set; }
+        public int DeleteCalls { get; private set; }
         public Guid? ListedAccountId { get; private set; }
+
+        // 삭제 대역이 돌려줄 거절 사유. NONE이면 확정이다
+        public int DeleteReason { get; set; } = ContractCodes.RejectReason.NONE;
 
         /****************************************
         *                Methods
@@ -466,7 +470,9 @@ namespace Shinshi.Backend.Tests.Accounts
             int classId, string appearanceJson, string requestJson, CancellationToken cancellationToken = default)
         {
             ++CreateCalls;
-            throw new NotSupportedException("HTTP tests only check validation before the repository.");
+            // HTTP 테스트는 저장소 앞의 검증과 한도만 본다. 저장소까지 오면 슬롯 부족 거절로 답한다
+            return Task.FromResult(new CharacterCreateOutcome(new OperationResult(operationId.ToString("D"),
+                ContractCodes.OperationStatus.REJECTED, ContractCodes.RejectReason.NO_CAPACITY, 0, 0, string.Empty), null));
         }
 
         public Task<bool> IsNameTakenAsync(string nameKey, CancellationToken cancellationToken = default)
@@ -478,6 +484,16 @@ namespace Shinshi.Backend.Tests.Accounts
         {
             ListedAccountId = accountId;
             return Task.FromResult<IReadOnlyList<CharacterRecord>>(Array.Empty<CharacterRecord>());
+        }
+
+        public Task<OperationResult> DeleteAsync(Guid accountId, Guid operationId, Guid characterId,
+            long expectedRevision, CancellationToken cancellationToken = default)
+        {
+            ++DeleteCalls;
+            int status = DeleteReason == ContractCodes.RejectReason.NONE
+                ? ContractCodes.OperationStatus.COMMITTED : ContractCodes.OperationStatus.REJECTED;
+            return Task.FromResult(new OperationResult(operationId.ToString("D"), status, DeleteReason, expectedRevision + 1,
+                0, characterId.ToString("D")));
         }
     }
 

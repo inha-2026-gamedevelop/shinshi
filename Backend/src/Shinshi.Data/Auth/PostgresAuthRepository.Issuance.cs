@@ -247,6 +247,7 @@ namespace Shinshi.Data.Auth
                 Guid? character = await connection.QuerySingleOrDefaultAsync<Guid?>(Command(
                     """
                     SELECT character_id FROM characters WHERE account_id = @AccountId AND character_id = @CharacterId
+                        AND deleted_at IS NULL
                     FOR SHARE;
                     """, new { identity.AccountId, CharacterId = characterId }, transaction, token));
                 if (!character.HasValue)

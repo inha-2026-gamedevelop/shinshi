@@ -42,6 +42,10 @@ namespace Shinshi.Backend.Tests.AdminCli
             Assert.Equal("TOKEN_REVOKED", ContractCodeNames.RejectReason(ContractCodes.RejectReason.TOKEN_REVOKED));
             Assert.Equal("IDEMPOTENCY_CONFLICT",
                 ContractCodeNames.RejectReason(ContractCodes.RejectReason.IDEMPOTENCY_CONFLICT));
+            Assert.Equal("CHARACTER_NOT_FOUND", ContractCodeNames.RejectReason(1003));
+            Assert.Equal("ROOM_NOT_FOUND", ContractCodeNames.RejectReason(1300));
+            Assert.Equal("ROOM_PASSWORD_MISMATCH", ContractCodeNames.RejectReason(1301));
+            Assert.Equal("INVITE_EXPIRED", ContractCodeNames.RejectReason(1302));
             Assert.Equal(ContractCodeNames.UNKNOWN, ContractCodeNames.RejectReason(-12345));
         }
 

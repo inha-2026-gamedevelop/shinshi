@@ -25,9 +25,16 @@ namespace Shinshi.Network
         *                Methods
         ****************************************/
 
-        /// <summary> 통과하면 None과 입장 정보, 아니면 거절 사유 </summary>
+        /// <summary> 통과하면 None과 입장 정보, 아니면 거절 사유. 던전의 전투 준비가 없어도 받는다 </summary>
         public static ERejectReason TryCreate(EServerRole serverRole, string expectedInstanceId, JoinTokenExchangeResponse response,
             out JoinTokenClaims claims)
+        {
+            return TryCreate(serverRole, expectedInstanceId, response, false, out claims);
+        }
+
+        /// <summary> requireCombatLoadout이면 전투 준비(combatLoadout)나 출정 계약(mode)이 없는 던전 입장을 거절한다(출시 서버) </summary>
+        public static ERejectReason TryCreate(EServerRole serverRole, string expectedInstanceId, JoinTokenExchangeResponse response,
+            bool requireCombatLoadout, out JoinTokenClaims claims)
         {
             claims = default;
             if (response == null)
@@ -54,6 +61,11 @@ namespace Shinshi.Network
                 return ERejectReason.TokenRevoked;
             }
 
+            // 이름은 표시용이라 형식이 틀려도 입장은 막지 않고 이름 없이 들인다
+            string characterName = CharacterNameRules.TryNormalize(response.CharacterName, out string name, out string _)
+                ? name
+                : null;
+
             bool hasParticipant = !string.IsNullOrEmpty(response.ParticipantId);
             bool hasSortie      = !string.IsNullOrEmpty(response.SortieId);
             if (serverRole == EServerRole.Dungeon)
@@ -63,8 +75,23 @@ namespace Shinshi.Network
                     return ERejectReason.SessionMismatch;
                 }
 
+                // 전투 준비 없이 기본 능력치로 대신 들이면 장비, 수련, 부적이 조용히 사라진 채 전투한다.
+                // 출시 서버는 막고, 개발 서버(0011 전 출정 시험)는 전투 런타임이 기본 능력치와 경고로 받는다
+                if ((requireCombatLoadout) && (response.CombatLoadout == null))
+                {
+                    return ERejectReason.SessionMismatch;
+                }
+
+                ERejectReason sortieReason = TryReadSortie(response, requireCombatLoadout, out SortieDescriptor sortie);
+                if (sortieReason != ERejectReason.None)
+                {
+                    return sortieReason;
+                }
+
                 claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_DUNGEON_PREFIX + response.ParticipantId,
-                    response.CharacterId, response.InstanceId, response.SortieId, null, playerClass);
+                    response.CharacterId, response.InstanceId, response.SortieId, null, playerClass, characterName)
+                    .WithSortieLoadout(response.CombatLoadout, response.Potions)
+                    .WithSortie(in sortie);
                 return ERejectReason.None;
             }
 
@@ -75,7 +102,54 @@ namespace Shinshi.Network
             }
 
             claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_TOWN_PREFIX + response.CharacterId,
-                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass);
+                response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass,
+                characterName).WithAccountId(ToAccountLeaseId(response.AccountId));
+            return ERejectReason.None;
+        }
+
+        // 일반전은 보스가 없고 보스전은 보스와 난이도가 있어야 한다. 값이 서로 맞지 않는 계약으로 전투를 열면 보상 표와
+        // 보스가 어긋나므로 형식이 틀리면 개발 서버에서도 거절한다. mode가 아예 없는 응답(이전 API)만 개발 서버가 계약 없음으로 받는다
+        /// <summary> 던전 교환 응답의 출정 계약을 읽는다, required면 계약 없는 응답을 거절한다 </summary>
+        public static ERejectReason TryReadSortie(JoinTokenExchangeResponse response, bool required, out SortieDescriptor sortie)
+        {
+            sortie = default;
+            if (response == null)
+            {
+                return ERejectReason.TokenRevoked;
+            }
+
+            if (response.Mode == JoinTokenExchangeResponse.NO_MODE)
+            {
+                return required ? ERejectReason.SessionMismatch : ERejectReason.None;
+            }
+
+            if ((!IsOptionalSafeId(response.MapId)) || (!IsOptionalSafeId(response.BattleId)))
+            {
+                return ERejectReason.SessionMismatch;
+            }
+
+            if (response.Mode == GameSessionCodes.Mode.NORMAL)
+            {
+                if ((!string.IsNullOrEmpty(response.BossId)) || (response.Difficulty != GameSessionCodes.Difficulty.NONE))
+                {
+                    return ERejectReason.SessionMismatch;
+                }
+            }
+            else if (response.Mode == GameSessionCodes.Mode.BOSS)
+            {
+                bool knownDifficulty = (response.Difficulty == GameSessionCodes.Difficulty.EASY)
+                    || (response.Difficulty == GameSessionCodes.Difficulty.HARD);
+                if ((!IsSafeId(response.BossId)) || (!knownDifficulty))
+                {
+                    return ERejectReason.SessionMismatch;
+                }
+            }
+            else
+            {
+                return ERejectReason.SessionMismatch;
+            }
+
+            sortie = new SortieDescriptor(response.Mode, response.MapId, response.BattleId, response.BossId, response.Difficulty);
             return ERejectReason.None;
         }
 
@@ -92,6 +166,7 @@ namespace Shinshi.Network
             return true;
         }
 
+        // 계정 ID도 같은 GUID 형식이라 이 함수로 하이픈 형식만 남긴다. 형식이 틀리면 null이고 마을 생활, 출정 요청을 거절한다
         /// <summary> 해제 경로에 넣을 수 있는 계정 접속 임대 ID만 남긴다, GUID가 아니면 null(해제 없이 heartbeat 만료로 풀린다) </summary>
         public static string ToAccountLeaseId(string value)
         {
@@ -119,6 +194,11 @@ namespace Shinshi.Network
             }
 
             return (ERejectReason)reasonCode;
+        }
+
+        private static bool IsOptionalSafeId(string value)
+        {
+            return (string.IsNullOrEmpty(value)) || (IsSafeId(value));
         }
 
         // 키는 로그와 저장 이벤트에 그대로 쓰이므로 ASCII 식별자 문자만 받는다

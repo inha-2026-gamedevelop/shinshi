@@ -17,6 +17,7 @@ namespace Shinshi.Backend.Sessions
         public const string RESERVATIONS       = GameServerRoutes.RESERVATIONS;
         public const string RESERVATION_CANCEL = "/v1/game-sessions/{sessionId}/cancel";
         public const string JOIN_TICKETS       = "/v1/game-sessions/{sessionId}/join-tickets";
+        public const string READINESS          = GameServerRoutes.READINESS;
         public const string LEASE_TRANSFER     = "/v1/game-sessions/{sessionId}/lease-transfer";
         public const string START              = "/v1/game-sessions/{sessionId}/start";
         public const string EVENTS             = "/v1/game-sessions/{sessionId}/events";

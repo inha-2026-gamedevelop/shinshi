@@ -21,6 +21,7 @@ using Xunit;
 using Shinshi.Backend;
 using Shinshi.Contracts;
 using Shinshi.Data.Auth;
+using Shinshi.Data.Life;
 
 namespace Shinshi.Backend.Tests.Auth
 {
@@ -35,6 +36,9 @@ namespace Shinshi.Backend.Tests.Auth
         private const int TOWN_PORT = 7777;
         private const int DUNGEON_PORT = 7780;
         private const string CONTENT = "join-http-test";
+        private const string BATTLE_ID = "battle_forest_1";
+        private const long POTIONS_OWNED = 5;
+        private const long POTIONS_CARRIED = 3;
 
         /****************************************
         *                Methods
@@ -86,13 +90,31 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(ticket.ParticipantId, result.ParticipantId);
             Assert.Equal(reservation.SessionId, result.SortieId);
             Assert.True(result.ServerTimeUnixMs >= ticket.ServerTimeUnixMs);
-            Assert.Equal(new[] { "accountLeaseId", "characterId", "classId", "instanceId", "participantId", "serverRole",
+            Assert.Equal(new[] { "accountId", "accountLeaseId", "battleId", "bossId", "characterId", "characterName", "classId",
+                    "combatLoadout", "difficulty", "instanceId", "mapId", "mode", "participantId", "potions", "serverRole",
                     "serverTimeUnixMs", "sortieId" },
                 JObject.Parse(responseBody).Properties().Select(property => property.Name).OrderBy(name => name).ToArray());
             Assert.Null(result.AccountLeaseId);
 
+            // 출정 계약은 예약 때 저장한 값 그대로다. 일반전이라 bossId는 값 없음, 난이도는 NONE이다
+            Assert.Equal(GameSessionCodes.Mode.NORMAL, result.Mode);
+            Assert.Equal(CONTENT, result.MapId);
+            Assert.Equal(BATTLE_ID, result.BattleId);
+            Assert.Null(result.BossId);
+            Assert.Equal(GameSessionCodes.Difficulty.NONE, result.Difficulty);
+
             // 던전 입장도 참가자가 묶인 캐릭터의 직업을 API가 준다. 무사(기본값)가 아닌 직업으로 심어 기본값 누락을 가린다
             Assert.Equal(ContractCodes.PlayerClass.SUMMONER, result.ClassId);
+
+            // 예약 때 고정한 전투 준비가 함께 온다. 장비 없는 캐릭터면 6칸이 비어 있고 수련은 0이다
+            Assert.NotNull(result.CombatLoadout);
+            Assert.Equal(ContractCodes.PlayerClass.SUMMONER, result.CombatLoadout.ClassId);
+            Assert.Equal(6, result.CombatLoadout.Equipped.Length);
+            Assert.Equal(new int[5], result.CombatLoadout.Training);
+
+            // 물약을 지참하지 않았으면 남은 예약분은 null이 아니라 빈 배열이다. 던전은 null을 모르는 API로 본다
+            Assert.NotNull(result.Potions);
+            Assert.Empty(result.Potions);
 
             using HttpResponseMessage replay = await dungeon.PostAsync(JoinApiRoutes.JOIN_TOKEN_EXCHANGE, Body(request));
             Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
@@ -154,11 +176,63 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(0L, await connection.QuerySingleAsync<long>("SELECT count(*) FROM auth_join_tokens;"));
         }
 
-        private static async Task<ReservationResponse> ReserveAsync(HttpClient town, Fixture fixture)
+        [PostgresFact]
+        public async Task Exchange_DungeonJoinWithReservedPotions_ReturnsRemainingReservation()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await SeedAsync(database, ContractCodes.PlayerClass.WARRIOR);
+
+            // 입장 토큰은 로그인한 계정 세션 계보에 묶여 발급된다
+            IssuedAuthToken invite = await fixture.Auth.IssueInviteAsync(fixture.AccountId);
+            Assert.NotNull((await fixture.Auth.ExchangeInviteAsync(invite.Token)).Response);
+            await using (NpgsqlConnection seed = await database.DataSource.OpenConnectionAsync())
+            {
+                await seed.ExecuteAsync(
+                    "INSERT INTO account_items(account_id, definition_id, binding_kind, quantity) VALUES (@AccountId, @Potion, @Binding, @Owned);",
+                    new { fixture.AccountId, Potion = LifeContent.POTION_SMALL_ID, Binding = LifeContent.BINDING_KIND,
+                        Owned = POTIONS_OWNED });
+            }
+
+            using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options);
+            using HttpClient town = factory.CreateClient();
+            Authorize(town, fixture.TownLease.Token, fixture.TownId);
+            ReservationResponse reservation = await ReserveAsync(town, fixture,
+                new[] { new ReservationPotion(LifeContent.POTION_SMALL_ID, LifeContent.BINDING_KIND, POTIONS_CARRIED) });
+
+            // 확정된 사용 하나를 흉내 낸다. 교환 응답은 예약 수량에서 확정 사용을 뺀 값이다
+            await using (NpgsqlConnection used = await database.DataSource.OpenConnectionAsync())
+            {
+                await used.ExecuteAsync("UPDATE reservations SET consumed = 1 WHERE asset_kind = 'Item';");
+            }
+
+            using HttpResponseMessage issue = await town.PostAsync(string.Format(GameServerRoutes.JOIN_TICKETS_FORMAT, reservation.SessionId),
+                new StringContent(string.Empty));
+            Assert.Equal(HttpStatusCode.OK, issue.StatusCode);
+            JoinTicket ticket = Assert.Single(Read<JoinTicketsResponse>(await issue.Content.ReadAsStringAsync()).Tickets);
+
+            using HttpClient dungeon = factory.CreateClient();
+            Authorize(dungeon, fixture.DungeonLease.Token, fixture.DungeonId);
+            using HttpResponseMessage exchange = await dungeon.PostAsync(JoinApiRoutes.JOIN_TOKEN_EXCHANGE,
+                Body(new JoinTokenExchangeRequest(ticket.JoinToken, fixture.DungeonId.ToString("D"), ContractCodes.ServerRole.DUNGEON)));
+            Assert.Equal(HttpStatusCode.OK, exchange.StatusCode);
+            JoinTokenExchangeResponse result = Read<JoinTokenExchangeResponse>(await exchange.Content.ReadAsStringAsync());
+            ReservationPotion potion = Assert.Single(result.Potions);
+            Assert.Equal(LifeContent.POTION_SMALL_ID, potion.DefinitionId);
+            Assert.Equal(LifeContent.BINDING_KIND, potion.BindingKind);
+            Assert.Equal(POTIONS_CARRIED - 1, potion.Quantity);
+        }
+
+        private static Task<ReservationResponse> ReserveAsync(HttpClient town, Fixture fixture)
+        {
+            return ReserveAsync(town, fixture, Array.Empty<ReservationPotion>());
+        }
+
+        private static async Task<ReservationResponse> ReserveAsync(HttpClient town, Fixture fixture, ReservationPotion[] potions)
         {
             ReservationRequest request = new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL,
                 CONTENT, CONTENT, new[] { new ReservationParticipant(fixture.AccountId.ToString("D"),
-                    fixture.CharacterId.ToString("D"), 0, Array.Empty<ReservationPotion>()) });
+                    fixture.CharacterId.ToString("D"), 0, potions) }, BATTLE_ID, null,
+                GameSessionCodes.Difficulty.NONE);
             using HttpResponseMessage response = await town.PostAsync(GameServerRoutes.RESERVATIONS, Body(request));
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             ReservationResponse reservation = Read<ReservationResponse>(await response.Content.ReadAsStringAsync());

@@ -1,11 +1,15 @@
 // System
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Text;
 
 // 프로젝트 내부
 using Shinshi.Common;
 using Shinshi.Contracts;
 using Shinshi.Data;
+using Shinshi.Systems;
 
 namespace Shinshi.Network
 {
@@ -28,6 +32,13 @@ namespace Shinshi.Network
         //
         // 출정 ID는 첫 입장 토큰의 sortieId다. 서비스 자격이 없는 개발 실행은 토큰에 출정이 없어 프로세스 안에서 만든
         // 개발 출정 ID로 시작 준비 시간 뒤 바로 시작하고, 저장과 정산은 기록만 남긴다
+        //
+        // 출정 계약(SortieDescriptor: 종류, 맵, 전투, 보스, 난이도)도 첫 입장 토큰에서 고정한다. 이후 토큰이 출정 ID나 계약이
+        // 다르면 SessionMismatch다. 일반전 계약은 웨이브 진행기 주입(WaveFactory)이 있어야 일반전으로 열고, 없으면 경고를 남기고
+        // 웨이브 없는 개발 세션으로 연다. 보스전은 계약의 보스와 난이도로 보스, 보상 표, 경매 재료를 고른다.
+        //
+        // 포기는 메시지 처리기가 받아 두고 다음 틱 BeginTick 뒤에 처리한다. 틱 중간에 참가 집합이 바뀌지 않게 하기 위해서다.
+        // 출정 상태(SortieStatusMessage)는 값이 바뀐 틱 끝과 (재)접속 때 그 참가자에게만 보낸다
 
         /****************************************
         *                Fields
@@ -37,12 +48,30 @@ namespace Shinshi.Network
         private const int    STATUS_BAD_REQUEST   = 400;
         private const int    STATUS_CONFLICT      = 409;
 
+        // 체크포인트 버퍼 처음 용량, 참가자 4명 기준 수백 바이트라 넉넉하다
+        private const int    CHECKPOINT_INITIAL_BYTES = 1024;
+
         private enum ELeaseTransferState
         {
             Waiting  = 0,
             InFlight = 1,
             Done     = 2,
             Rejected = 3
+        }
+
+        // 참가자마다 하나, 명단 순서로 둔다. 같은 작업 ID 재전송에는 처음 결과를 다시 보낸다
+        private struct AbandonSlot
+        {
+            public Guid          OperationId;
+            public bool          Pending;
+            public bool          HasResult;
+            public ERejectReason Result;
+        }
+
+        private struct StatusSlot
+        {
+            public bool                Sent;
+            public SortieStatusMessage Last;
         }
 
         private struct LeaseSlot
@@ -66,6 +95,13 @@ namespace Shinshi.Network
         private readonly string[]              _readyIds;
         private readonly LeaseSlot[]           _leases;
         private readonly int[]                 _absentIds;
+        private readonly int[]                 _admittedIds;
+        private readonly EPlayerClass[]        _admittedClasses;
+        private readonly AbandonSlot[]         _abandons;
+        private readonly StatusSlot[]          _statuses;
+        private readonly SessionCheckpointState _checkpoint;
+        private readonly MemoryStream          _checkpointStream;
+        private readonly BinaryWriter          _checkpointWriter;
 
         private string                _sessionId          = null;
         private bool                  _usesBackend        = false;
@@ -91,6 +127,17 @@ namespace Shinshi.Network
         private bool                  _inTick             = false;
         private bool                  _disposed           = false;
         private ESortieTerminalReason _terminalReason     = ESortieTerminalReason.None;
+        private SortieDescriptor      _descriptor;
+        private int                   _admittedCount      = 0;
+        private WaveConfigSO          _waves              = null;
+        private RewardCatalogSO       _rewards            = null;
+        private TalismanCatalogSO     _talismans          = null;
+        private string                _defaultBossId      = null;
+        private Func<string, bool>    _isKnownBoss        = null;
+        private bool                  _auctionReadmitOpen = false;
+        private double                _nextCheckpointTime = 0.0;
+        private long                  _checkpointSeq      = 0;
+        private int                   _checkpointRequestId = 0;
 
         /****************************************
         *              Properties
@@ -130,6 +177,32 @@ namespace Shinshi.Network
         // 초, 안전 복귀 지점이 없을 때 부활을 다시 평가하는 간격
         public float SafePointRetryInterval => _config.SafePointRetryInterval;
 
+        // m, 안전 복귀 지점과 살아 있는 적 사이 최소 수평 거리
+        public float SafePointEnemyClearance => _config.SafePointEnemyClearance;
+
+        // 첫 입장 토큰에서 고정한 출정 계약, 첫 입장 전과 개발 토큰은 계약 없음이다
+        public SortieDescriptor Sortie => _descriptor;
+
+        // 이 출정에서 열 보스, 보스전 계약이면 계약 값이고 아니면 ConfigureContent의 기본 보스다(없으면 null)
+        public string           BossId         => SortieContentRules.ResolveBossId(in _descriptor, _defaultBossId);
+        public EBossDifficulty  BossDifficulty => _descriptor.BossDifficulty;
+
+        // 일반전 웨이브 진행기 주입 창구(적 담당 구현). 서버 부트스트랩이 출정 시작 전에 넣는다
+        public IWaveSessionFactory WaveFactory      { get; set; }
+
+        // 출정 상태와 포기 결과를 보낼 곳, 없으면 보내지 않는다
+        public ISortieAudience     SortieAudience   { get; set; }
+
+        // 체크포인트에 실을 전투 값(전투 런타임), 없으면 명단과 진행 값만 싣는다
+        public ICheckpointSource   CheckpointSource { get; set; }
+
+        // 출정 종료 직전에 미적용 물약 되돌림을 넣는 곳(전투 런타임), 출정 시작 전에 넣는다. 없으면 부르지 않는다
+        public ISessionEndingListener SessionEndingListener { get; set; }
+
+        // 보낸 진단 체크포인트 수와 응답 대기 여부
+        public long CheckpointSequence   => _checkpointSeq;
+        public bool IsCheckpointInFlight => _checkpointRequestId != 0;
+
         /// <summary> 접속 임대 이관이 확정 거절된 참가자, 인증된 연결을 끊어야 한다. 메인 스레드에서 통지한다 </summary>
         public event Action<int> ParticipantEvicted;
 
@@ -166,6 +239,13 @@ namespace Shinshi.Network
             _readyIds          = new string[Constants.Session.MAX_PARTY_SIZE];
             _leases            = new LeaseSlot[Constants.Session.MAX_PARTY_SIZE];
             _absentIds         = new int[Constants.Session.MAX_PARTY_SIZE];
+            _admittedIds       = new int[Constants.Session.MAX_PARTY_SIZE];
+            _admittedClasses   = new EPlayerClass[Constants.Session.MAX_PARTY_SIZE];
+            _abandons          = new AbandonSlot[Constants.Session.MAX_PARTY_SIZE];
+            _statuses          = new StatusSlot[Constants.Session.MAX_PARTY_SIZE];
+            _checkpoint        = new SessionCheckpointState(Constants.Session.MAX_PARTY_SIZE);
+            _checkpointStream  = new MemoryStream(CHECKPOINT_INITIAL_BYTES);
+            _checkpointWriter  = new BinaryWriter(_checkpointStream, Encoding.UTF8, true);
             _localSessionId    = Guid.NewGuid().ToString(GUID_FORMAT);
             _roster.ParticipantClosed += OnParticipantClosed;
         }
@@ -178,13 +258,18 @@ namespace Shinshi.Network
                 return ERejectReason.SessionMismatch;
             }
 
-            ERejectReason reason = ResolveSession(claims.SortieId);
+            ERejectReason reason = ResolveSession(in claims);
             if (reason != ERejectReason.None)
             {
                 return reason;
             }
 
             int participantId = binding.ParticipantId;
+            if (binding.IsAuctionOnly)
+            {
+                return AdmitAuctionOnly(participantId);
+            }
+
             if (_roster.TryGet(participantId, out ParticipantSnapshot existing))
             {
                 return (existing.ConnectionState == EParticipantConnectionState.Departed)
@@ -213,8 +298,106 @@ namespace Shinshi.Network
                 AddLeaseSlot(participantId, apiParticipantId);
             }
 
+            _admittedIds[_admittedCount]     = participantId;
+            _admittedClasses[_admittedCount] = binding.PlayerClass;
+            ++_admittedCount;
             _startDirty = true;
             return ERejectReason.None;
+        }
+
+        // 출정이 끝나 닫힌 원래 참가자가 경매 중에 돌아왔다. 출정 종료로 닫힌(Success) 사람만 받고 개인 이탈자는 거절한다
+        private ERejectReason AdmitAuctionOnly(int participantId)
+        {
+            if ((_auction == null) || (_auction.IsFinished) || (!_registry.AllowsAuctionReadmission(participantId))
+                || (!_roster.TryGet(participantId, out ParticipantSnapshot participant))
+                || (participant.ConnectionState != EParticipantConnectionState.Departed)
+                || (participant.CloseReason != ESessionEndReason.Success))
+            {
+                return ERejectReason.AlreadySettled;
+            }
+
+            return ERejectReason.None;
+        }
+
+        /// <summary> 경매 전용으로 다시 들어온 연결이 준비되면 부른다, 현재 경매 상태와 출정 상태를 그 참가자에게 한 번 보낸다 </summary>
+        public void OnAuctionOnlyJoined(int participantId)
+        {
+            _auction?.SendSnapshot(participantId);
+            SendStatusTo(participantId);
+        }
+
+        /// <summary> 출정 계약에 쓸 GameDB 원본을 넣는다, 첫 입장 전에 한 번 부른다. defaultBossId는 보스전 계약이 없을 때(개발) 연다 </summary>
+        public void ConfigureContent(WaveConfigSO waves, RewardCatalogSO rewards, TalismanCatalogSO talismans, string defaultBossId,
+            Func<string, bool> isKnownBoss)
+        {
+            if (_sessionId != null)
+            {
+                throw new InvalidOperationException("첫 입장 뒤에는 출정 원본을 바꾸지 않는다");
+            }
+
+            _waves         = waves;
+            _rewards       = rewards;
+            _talismans     = talismans;
+            _defaultBossId = defaultBossId;
+            _isKnownBoss   = isKnownBoss;
+        }
+
+        /// <summary> 인증된 연결의 포기 요청을 받아 둔다, 다음 틱 BeginTick 뒤 처리하고 결과는 그 참가자에게 보낸다 </summary>
+        public void RequestAbandon(int participantId, Guid operationId)
+        {
+            int index = IndexOfRoster(participantId);
+            if ((operationId == Guid.Empty) || (index < 0) || (_disposed))
+            {
+                SendAbandonResult(participantId, operationId, ERejectReason.SessionMismatch);
+                return;
+            }
+
+            ref AbandonSlot slot = ref _abandons[index];
+            if (slot.OperationId == operationId)
+            {
+                // 같은 요청의 재전송이다. 처리했으면 처음 결과를 다시 보내고, 처리 전이면 처리 때 한 번 답한다
+                if (slot.HasResult)
+                {
+                    SendAbandonResult(participantId, operationId, slot.Result);
+                }
+
+                return;
+            }
+
+            if (slot.Pending)
+            {
+                SendAbandonResult(participantId, operationId, ERejectReason.PendingCommit);
+                return;
+            }
+
+            slot.OperationId = operationId;
+            slot.Pending     = true;
+            slot.HasResult   = false;
+            slot.Result      = ERejectReason.None;
+        }
+
+        /// <summary> 이 참가자에게 지금 출정 상태를 보낸다, 접속, 재접속 때 부른다 </summary>
+        public void SendStatusTo(int participantId)
+        {
+            int index = IndexOfRoster(participantId);
+            if (index < 0)
+            {
+                return;
+            }
+
+            SortieStatusMessage status = BuildStatus(index);
+            _statuses[index].Sent = true;
+            _statuses[index].Last = status;
+            SortieAudience?.SendStatus(participantId, in status);
+        }
+
+        /// <summary> 일반전 웨이브를 진행한다, 전투 런타임이 플레이어와 보스 피해 뒤 생사 보고 앞에서 부른다 </summary>
+        public void TickWave()
+        {
+            if (_inTick)
+            {
+                _session.TickWave();
+            }
         }
 
         /// <summary> 서버 틱 맨 앞에서 부른다, 세션이 진행 중이면 이번 틱을 열고 참이다. 시작 전에는 시작 조건만 본다 </summary>
@@ -232,6 +415,7 @@ namespace Shinshi.Network
                 TickLobby(serverTime);
                 if (_session == null)
                 {
+                    AnswerPendingAbandons(ERejectReason.WrongPhase);
                     return false;
                 }
             }
@@ -242,6 +426,7 @@ namespace Shinshi.Network
             }
 
             _inTick = true;
+            ProcessAbandons(serverTime);
             return true;
         }
 
@@ -265,9 +450,8 @@ namespace Shinshi.Network
             _settlement.Tick(_serverTime);
             TickAuction();
             UpdateTerminal();
-
-            // TODO(민성): 진행 중이면 Constants.Network.CHECKPOINT_INTERVAL_SECONDS마다 진단용 체크포인트(SessionCheckpointRequest,
-            // lastEventSeq는 저장 큐의 LastAcknowledgedSequence)를 checkpoints 경로로 보낸다. 경제 복구에는 쓰지 않는다
+            TickCheckpoint();
+            PublishStatuses();
         }
 
         /// <summary> 연결이 끊겨 캐릭터를 서버에 남겼거나 지웠을 때 부른다, 시각은 마지막 서버 틱 시각이다 </summary>
@@ -369,6 +553,19 @@ namespace Shinshi.Network
                 return;
             }
 
+            // 진단용이라 재시도하지 않는다. 다음 주기가 새 상태로 대신한다
+            if (response.RequestId == _checkpointRequestId)
+            {
+                _checkpointRequestId = 0;
+                if (!response.IsSucceeded)
+                {
+                    _warn?.Invoke($"[Session] 체크포인트 저장 실패, 다음 주기에 새로 보낸다, session={_sessionId}, " +
+                        $"seq={_checkpointSeq}, outcome={response.Outcome}, status={response.StatusCode}, reason={response.ReasonCode}");
+                }
+
+                return;
+            }
+
             for (int i = 0; i < _leaseCount; ++i)
             {
                 ref LeaseSlot slot = ref _leases[i];
@@ -391,6 +588,8 @@ namespace Shinshi.Network
             _disposed = true;
             _roster.ParticipantClosed -= OnParticipantClosed;
             _session?.Dispose();
+            _checkpointWriter.Dispose();
+            _checkpointStream.Dispose();
         }
 
         private void OnStartResponse(in BackendResponse response)
@@ -472,8 +671,9 @@ namespace Shinshi.Network
             ParticipantEvicted?.Invoke(participantId);
         }
 
-        private ERejectReason ResolveSession(string sortieId)
+        private ERejectReason ResolveSession(in JoinTokenClaims claims)
         {
+            string sortieId  = claims.SortieId;
             bool   hasSortie = !string.IsNullOrEmpty(sortieId);
             string sessionId = hasSortie ? sortieId : _localSessionId;
             if ((!hasSortie) && (!_allowLocalSession))
@@ -486,9 +686,10 @@ namespace Shinshi.Network
                 return ERejectReason.SessionMismatch;
             }
 
+            // 같은 출정이라도 계약이 다르면 다른 예약에서 나온 토큰이다
             if (_sessionId != null)
             {
-                return string.Equals(_sessionId, sessionId, StringComparison.Ordinal)
+                return (string.Equals(_sessionId, sessionId, StringComparison.Ordinal)) && (_descriptor.Matches(claims.Sortie))
                     ? ERejectReason.None
                     : ERejectReason.SessionMismatch;
             }
@@ -499,8 +700,17 @@ namespace Shinshi.Network
                 return ERejectReason.BackendUnavailable;
             }
 
+            // 이 서버 콘텐츠에 없는 보스로는 전투를 열 수 없다. 출정을 고정하지 않고 거절해 예약 만료가 티켓을 돌려주게 둔다
+            SortieDescriptor sortie = claims.Sortie;
+            if ((sortie.IsBoss) && (_isKnownBoss != null) && (!_isKnownBoss(sortie.BossId)))
+            {
+                _warn?.Invoke($"[Session] 출정 계약의 보스가 서버 콘텐츠에 없어 입장을 거절한다, sortie={sessionId}, boss={sortie.BossId}");
+                return ERejectReason.SessionMismatch;
+            }
+
             _sessionId   = sessionId;
             _usesBackend = usesBackend;
+            _descriptor  = sortie;
             return ERejectReason.None;
         }
 
@@ -662,9 +872,16 @@ namespace Shinshi.Network
 
             _events = new SessionEventQueue(_sessionId, sink);
 
-            // TODO(민성): 웨이브 디렉터가 생기면 일반전은 CreateNormal로 만들고 source ID와 직업 효과를 Begin 전에 등록한다.
-            // 지금은 웨이브 없는 세션(개발 보스 종료만 제공)으로 연다
-            var session = new DungeonSession(_sessionId, _roster, _events, _config, null, null, _lootSalt);
+            DungeonSession session = CreateSession();
+            if (session == null)
+            {
+                _events        = null;
+                _startRejected = true;
+                ReportInvariant("일반전 원본을 등록하지 못해 세션을 열지 못했다");
+                return;
+            }
+
+            session.SetEndingListener(SessionEndingListener);
             if (!session.Begin(serverTime))
             {
                 session.Dispose();
@@ -674,8 +891,9 @@ namespace Shinshi.Network
                 return;
             }
 
-            _session    = session;
-            _settlement = new SessionSettlement(_sessionId, _usesBackend ? _gateway : null, _warn);
+            _session            = session;
+            _settlement         = new SessionSettlement(_sessionId, _usesBackend ? _gateway : null, _warn);
+            _nextCheckpointTime = serverTime + Constants.Network.CHECKPOINT_INTERVAL_SECONDS;
 
             // start를 보낸 뒤 끊긴 참가자는 시작 시각부터 재접속 유예를 센다
             for (int i = 0; i < _absentCount; ++i)
@@ -684,6 +902,86 @@ namespace Shinshi.Network
             }
 
             _absentCount = 0;
+        }
+
+        // 일반전 계약이고 웨이브 진행기 주입과 원본이 있으면 일반전, 아니면 보스전(또는 개발 세션)으로 연다
+        private DungeonSession CreateSession()
+        {
+            if (_descriptor.IsNormal)
+            {
+                if ((WaveFactory != null) && (_waves != null) && (_rewards != null) && (_talismans != null))
+                {
+                    return CreateNormalSession();
+                }
+
+                // 일반전 계약에는 보스 보상(엽전)을 넣지 않는다. API가 일반전 정산의 엽전을 거절하기 때문이다
+                _warn?.Invoke($"[Session] 일반전 웨이브 구현이 없어 웨이브 없는 개발 세션으로 연다, session={_sessionId}");
+                return new DungeonSession(_sessionId, _roster, _events, _config, null, null, _lootSalt);
+            }
+
+            var boss = new DungeonSession(_sessionId, _roster, _events, _config, null, null, _lootSalt);
+            ConfigureBossRewards(boss);
+            return boss;
+        }
+
+        // 배치 계획 전체의 source ID와 참가자별 직업 드롭을 Begin 전에 등록한다. 하나라도 빠지면 처치나 개인 드롭이 버려지므로 열지 않는다
+        private DungeonSession CreateNormalSession()
+        {
+            int count   = _roster.Count;
+            var context = new WaveSessionContext(_sessionId, _descriptor.MapId, _descriptor.BattleId, count,
+                _config.GetEnemyHealthScale(count), _config.GetDamageScale(count), _waves);
+            IWaveSession wave = WaveFactory.Create(in context);
+            if (wave == null)
+            {
+                return null;
+            }
+
+            DungeonSession session = DungeonSession.CreateNormal(_sessionId, _roster, _events, _config, _waves, _rewards, wave,
+                _lootSalt);
+            if (SortieContentRules.RegisterWaveSources(session, _waves, _rewards) != _waves.CountTotalEnemies())
+            {
+                session.Dispose();
+                return null;
+            }
+
+            // 시작 때 한 번이라 효과 목록을 새로 만든다
+            var effects = new List<string>();
+            for (int i = 0; i < _admittedCount; ++i)
+            {
+                if (!_roster.TryGet(_admittedIds[i], out _))
+                {
+                    continue;
+                }
+
+                SortieContentRules.CollectClassEffects(_talismans, _admittedClasses[i], effects);
+                if (!session.RegisterParticipantLoot(_admittedIds[i], effects))
+                {
+                    session.Dispose();
+                    return null;
+                }
+            }
+
+            return session;
+        }
+
+        // 보스와 난이도에 맞는 보상 표가 있으면 처치 보상과 경매 재료를 그것으로 정한다. 없으면 ConfigureBossAuction 값만 쓴다
+        private void ConfigureBossRewards(DungeonSession session)
+        {
+            string bossId = BossId;
+            if ((_rewards == null) || (bossId == null))
+            {
+                return;
+            }
+
+            if (!SortieContentRules.TryFindBossReward(_rewards.BossRewards, bossId, BossDifficulty,
+                out RewardCatalogSO.BossRewardSpec spec))
+            {
+                _warn?.Invoke($"[Session] 보스 보상 표가 없어 기본 보상과 경매 없이 연다, boss={bossId}, difficulty={BossDifficulty}");
+                return;
+            }
+
+            session.RegisterBossReward(spec);
+            ConfigureBossAuction(spec.AuctionItemId, spec.AuctionChance);
         }
 
         private void ReportInvariant(string detail)
@@ -746,6 +1044,13 @@ namespace Shinshi.Network
             }
 
             _auction?.Tick(_serverTime);
+
+            // 경매가 끝나면 닫힌 참가자의 재입장을 다시 막는다
+            if ((_auctionReadmitOpen) && (_auction != null) && (_auction.IsFinished))
+            {
+                _registry.RevokeAuctionReadmission();
+                _auctionReadmitOpen = false;
+            }
         }
 
         private void StartAuction()
@@ -754,14 +1059,24 @@ namespace Shinshi.Network
                 AuctionAudience ?? new DisconnectedAuctionAudience(), UnixMilliseconds, _warn);
             for (int i = 0; i < _roster.Count; ++i)
             {
+                // 출정 진행 중에 떠난 사람(포기, 유예 만료)은 경매 대상이 아니다. 출정 종료로 닫힌 사람만 넣고 경매 동안 재입장을 허용한다
                 ParticipantSnapshot participant = _roster.GetAt(i);
+                if (participant.CloseReason != ESessionEndReason.Success)
+                {
+                    continue;
+                }
+
                 string apiId = participant.ParticipantKey;
                 if ((_usesBackend) && (!SessionContractIds.TryGetApiParticipantId(participant.ParticipantKey, out apiId)))
                 {
                     continue;
                 }
 
-                _auction.AddParticipant(participant.ParticipantId, apiId);
+                if (_auction.AddParticipant(participant.ParticipantId, apiId))
+                {
+                    _registry.AllowAuctionReadmission(participant.ParticipantId);
+                    _auctionReadmitOpen = true;
+                }
             }
 
             // 희귀 재료는 파티가 한 번의 출현 판정을 공유한다. 개발 출정은 start 영수증이 없어 salt를 여기서 만든다
@@ -876,6 +1191,246 @@ namespace Shinshi.Network
         private void OnParticipantClosed(int participantId, ESessionEndReason reason, double serverTime)
         {
             _registry.Close(participantId);
+        }
+
+        // BeginTick 뒤, 피해 처리 전에 받아 둔 포기를 처리한다. 마지막 참가자가 포기하면 같은 틱 CompleteTick이 출정을 끝낸다
+        private void ProcessAbandons(double serverTime)
+        {
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                ref AbandonSlot slot = ref _abandons[i];
+                if (!slot.Pending)
+                {
+                    continue;
+                }
+
+                int participantId = _roster.GetAt(i).ParticipantId;
+                ERejectReason reason;
+                if (!_session.IsRunning)
+                {
+                    reason = ERejectReason.SessionTerminal;
+                }
+                else
+                {
+                    reason = _session.TryAbandon(participantId, serverTime) ? ERejectReason.None : ERejectReason.AlreadySettled;
+                }
+
+                CompleteAbandon(ref slot, participantId, reason);
+            }
+        }
+
+        // 시작 전 포기는 받지 않는다. 시작 전 이탈은 start를 막고 예약 만료로 티켓을 돌려주는 경로라 사용자 포기로 열지 않는다
+        private void AnswerPendingAbandons(ERejectReason reason)
+        {
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                ref AbandonSlot slot = ref _abandons[i];
+                if (slot.Pending)
+                {
+                    CompleteAbandon(ref slot, _roster.GetAt(i).ParticipantId, reason);
+                }
+            }
+        }
+
+        private void CompleteAbandon(ref AbandonSlot slot, int participantId, ERejectReason reason)
+        {
+            slot.Pending   = false;
+            slot.HasResult = true;
+            slot.Result    = reason;
+            SendAbandonResult(participantId, slot.OperationId, reason);
+        }
+
+        private void SendAbandonResult(int participantId, Guid operationId, ERejectReason reason)
+        {
+            var message = new SortieAbandonResultMessage(operationId, reason);
+            SortieAudience?.SendAbandonResult(participantId, in message);
+        }
+
+        // 틱 끝에서 바뀐 참가자에게만 보낸다. 참가자는 4명 이하라 매 틱 비교해도 할당이 없다
+        private void PublishStatuses()
+        {
+            if (SortieAudience == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                SortieStatusMessage status = BuildStatus(i);
+                ref StatusSlot slot = ref _statuses[i];
+                if ((slot.Sent) && (slot.Last.SameAs(in status)))
+                {
+                    continue;
+                }
+
+                slot.Sent = true;
+                slot.Last = status;
+                SortieAudience.SendStatus(_roster.GetAt(i).ParticipantId, in status);
+            }
+        }
+
+        private SortieStatusMessage BuildStatus(int rosterIndex)
+        {
+            ParticipantSnapshot participant    = _roster.GetAt(rosterIndex);
+            bool                ended          = (_session != null) && (_session.IsEnded);
+            ESessionEndReason   endReason      = ended ? _session.EndReason : ESessionEndReason.Success;
+            bool                personal       = (_session != null) && (_session.HasDeparture(participant.ParticipantId));
+            ESessionEndReason   personalReason = personal ? participant.CloseReason : ESessionEndReason.Success;
+
+            // 개인 이탈자는 이탈 기록 저장(API가 같은 트랜잭션에서 계정 임대를 푼다) 뒤 마을로 갈 수 있다
+            bool canReturn = personal ? _session.IsDepartureStored(participant.ParticipantId) : CanReturnAfterEnd();
+            return new SortieStatusMessage(CurrentPhase(), endReason, personal, personalReason, canReturn, CurrentSettlementState());
+        }
+
+        // API는 정산 확정 때 참가자 계정 임대를 푼다. 보스 성공은 경매 동안 던전이 임대를 쥐고 경매 닫기(finish)에서 푼다.
+        // 장애 취소와 정산 확정 거절은 API 복구 작업이 풀어 기다릴 신호가 없으므로 종료 저장 뒤 허용하고 입장권 재시도에 맡긴다
+        private bool CanReturnAfterEnd()
+        {
+            if ((_session == null) || (_settlement == null) || (!_session.CanReturn))
+            {
+                return false;
+            }
+
+            if ((_session.EndReason == ESessionEndReason.ServiceCancelled) || (_settlement.State == ESessionSettlementState.Abandoned))
+            {
+                return true;
+            }
+
+            if (_settlement.State != ESessionSettlementState.Settled)
+            {
+                return false;
+            }
+
+            if (_auction != null)
+            {
+                return _auction.IsFinished;
+            }
+
+            // 정산 응답은 틱 사이(Pump)에 오므로 경매가 다음 틱에 시작되기 전일 수 있다
+            return (!_session.IsBossSession) || (_session.EndReason != ESessionEndReason.Success);
+        }
+
+        private ESortiePhase CurrentPhase()
+        {
+            if (IsTerminal)
+            {
+                return ESortiePhase.Closed;
+            }
+
+            if (_session == null)
+            {
+                return ESortiePhase.Waiting;
+            }
+
+            if (_session.IsRunning)
+            {
+                return ESortiePhase.Running;
+            }
+
+            return ((_auction != null) && (!_auction.IsFinished)) ? ESortiePhase.Auction : ESortiePhase.Ended;
+        }
+
+        private ESortieSettlementState CurrentSettlementState()
+        {
+            if ((_settlement == null) || (_session == null) || (!_session.IsEnded))
+            {
+                return ESortieSettlementState.None;
+            }
+
+            switch (_settlement.State)
+            {
+                case ESessionSettlementState.Settled:
+                    return ESortieSettlementState.Settled;
+                case ESessionSettlementState.Abandoned:
+                    return ESortieSettlementState.Deferred;
+                default:
+                    return ESortieSettlementState.Pending;
+            }
+        }
+
+        // 진행 중에만 30초마다 보낸다. 보내는 중이면 이번 주기는 건너뛰고 다음 주기가 새 상태로 대신한다(재시도 없음)
+        private void TickCheckpoint()
+        {
+            if ((!_usesBackend) || (_session == null) || (!_session.IsRunning) || (_serverTime < _nextCheckpointTime))
+            {
+                return;
+            }
+
+            _nextCheckpointTime = _serverTime + Constants.Network.CHECKPOINT_INTERVAL_SECONDS;
+            if (_checkpointRequestId != 0)
+            {
+                return;
+            }
+
+            SendCheckpoint();
+        }
+
+        // 30초에 한 번이라 base64 문자열과 요청 DTO 할당을 허용한다. 바이트 버퍼와 쓰기 개체는 재사용한다
+        private void SendCheckpoint()
+        {
+            FillCheckpoint();
+            _checkpointStream.SetLength(0);
+            SessionCheckpointCodec.Write(_checkpointWriter, _checkpoint);
+            _checkpointWriter.Flush();
+            int length = (int)_checkpointStream.Length;
+            if (length > SessionCheckpointCodec.MAX_STATE_BYTES)
+            {
+                _warn?.Invoke($"[Session] 체크포인트가 저장 상한을 넘어 보내지 않는다, session={_sessionId}, bytes={length}");
+                return;
+            }
+
+            ++_checkpointSeq;
+            string state = Convert.ToBase64String(_checkpointStream.GetBuffer(), 0, length);
+            string path  = string.Format(CultureInfo.InvariantCulture, GameServerRoutes.CHECKPOINTS_FORMAT, _sessionId);
+            var    body  = new SessionCheckpointRequest(_checkpointSeq, _events.LastAcknowledgedSequence,
+                SessionCheckpointCodec.SCHEMA_VERSION, state);
+            _checkpointRequestId = _gateway.Send(BackendRequest.Post(path, body, null, null, Constants.Network.API_TIMEOUT_SECONDS),
+                this);
+        }
+
+        private void FillCheckpoint()
+        {
+            _checkpoint.ServerTime       = _serverTime;
+            _checkpoint.ElapsedSeconds   = _serverTime - _session.StartTime;
+            _checkpoint.StartingCount    = _session.StartingCount;
+            _checkpoint.KillSequence     = _session.KillSequence;
+            _checkpoint.RemainingRevives = _session.RemainingRevives;
+
+            _checkpoint.HasWave         = _session.TryGetWaveProgress(out WaveProgressSnapshot progress);
+            _checkpoint.WaveIndex       = progress.WaveIndex;
+            _checkpoint.WaveCount       = progress.WaveCount;
+            _checkpoint.RemainingInWave = progress.RemainingInWave;
+            _checkpoint.WaveElapsed     = progress.ElapsedSeconds;
+
+            float bossHealthRate = 0f;
+            int   bossPhase      = 0;
+            _checkpoint.HasBoss        = (CheckpointSource != null) && (CheckpointSource.TryGetBossVitals(out bossHealthRate, out bossPhase));
+            _checkpoint.BossHealthRate = bossHealthRate;
+            _checkpoint.BossPhase      = bossPhase;
+
+            _checkpoint.ClearParticipants();
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                ParticipantSnapshot participant = _roster.GetAt(i);
+                CheckpointVitals    vitals      = default;
+                bool hasVitals = (CheckpointSource != null)
+                    && (CheckpointSource.TryGetParticipantVitals(participant.ParticipantId, out vitals));
+                _checkpoint.TryAdd(new CheckpointParticipant(participant.ParticipantKey, participant.ConnectionState,
+                    participant.LifeState, participant.CloseReason, participant.GraceUntil, hasVitals, in vitals));
+            }
+        }
+
+        private int IndexOfRoster(int participantId)
+        {
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                if (_roster.GetAt(i).ParticipantId == participantId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
     }
 }

@@ -42,6 +42,9 @@ namespace Shinshi.Network
         private readonly byte[]                   _lootSalt;
         private readonly SettlementLedger         _ledger;
 
+        // 명단 순서별 개인 이탈(ParticipantSettled) 저장 순번, 0이면 진행 중 개인 이탈이 없었다
+        private readonly long[]                   _departureSequences;
+
         // 시작 전에 GameDB에서 복사한다. 일반전은 웨이브 보상이 없으면 시작하지 않는다
         private SettlementRewardRule _rewardRule;
         private BossRewardRule       _bossRule;
@@ -50,6 +53,9 @@ namespace Shinshi.Network
 
         // 보스전만 있다. 일반전은 부활 횟수 제한과 전멸 실패가 없다
         private readonly ReviveBudget             _revives;
+
+        // 종료 이벤트 전에 마지막 이벤트(미적용 물약 되돌림)를 넣을 곳, 없으면 부르지 않는다
+        private ISessionEndingListener _endingListener = null;
 
         private double            _serverTime          = 0.0;
         private double            _startTime           = 0.0;
@@ -94,6 +100,9 @@ namespace Shinshi.Network
 
         // 보스전 공용 부활 잔여, 일반전은 -1
         public int RemainingRevives => (_revives != null) ? _revives.Remaining : -1;
+
+        // Begin이 받은 서버 시각, 시작 전은 0이다
+        public double StartTime => _startTime;
 
         /****************************************
         *                Methods
@@ -154,6 +163,7 @@ namespace Shinshi.Network
             _defeatedSources    = new bool[sourceCount];
             _participantEffects = new string[Constants.Session.MAX_PARTY_SIZE][];
             _ledger             = new SettlementLedger(Constants.Session.MAX_PARTY_SIZE);
+            _departureSequences = new long[Constants.Session.MAX_PARTY_SIZE];
             // 저장이 멈추면 새 처치, 웨이브, 재접속을 받지 않고 그 틱 끝에 출정이 끝난다. 그래서 보존 버퍼에 쌓일 수 있는 것은
             // 참가자마다 처치 또는 웨이브 결과와 기본, 추가 적립(3), 연결 종료(1), 개인 종료 두 이벤트(2), 그리고 세션 종료 하나다
             _pending = new SessionEventData[(Constants.Session.MAX_PARTY_SIZE * PENDING_EVENTS_PER_PARTICIPANT) + 1];
@@ -176,8 +186,20 @@ namespace Shinshi.Network
                 throw new ArgumentNullException(nameof(wave));
             }
 
-            var session = new DungeonSession(sessionId, roster, events, GameDB.Session, GameDB.Waves, wave);
-            session.RegisterRewards(GameDB.Rewards);
+            return CreateNormal(sessionId, roster, events, GameDB.Session, GameDB.Waves, GameDB.Rewards, wave, null);
+        }
+
+        /// <summary> 넘긴 원본으로 일반전을 만든다, 던전 호스트와 시험이 쓴다. lootSalt는 start 확정 때 만든 출정 비밀이다 </summary>
+        public static DungeonSession CreateNormal(string sessionId, ParticipantRoster roster, SessionEventQueue events,
+            SessionConfigSO config, WaveConfigSO waves, RewardCatalogSO rewards, IWaveSession wave, byte[] lootSalt)
+        {
+            if (wave == null)
+            {
+                throw new ArgumentNullException(nameof(wave));
+            }
+
+            var session = new DungeonSession(sessionId, roster, events, config, waves, wave, lootSalt);
+            session.RegisterRewards(rewards);
             return session;
         }
 
@@ -358,10 +380,6 @@ namespace Shinshi.Network
             if (!IsEnded)
             {
                 bool storageStopped = (_storageFault) || (_events.IsTerminal);
-                if (!storageStopped)
-                {
-                    _wave?.Tick(_serverTime);
-                }
 
                 // 같은 틱의 최종 처치와 전원 사망은 전멸 실패를 우선한다
                 if (storageStopped)
@@ -395,6 +413,47 @@ namespace Shinshi.Network
             _events.Tick(_serverTime);
             FlushPending();
             _inTick = false;
+        }
+
+        // 전투 런타임이 플레이어 기술, 보스 피해 뒤 생사 보고 앞에서 부른다. 적이 플레이어를 때린 결과가 같은 틱의 생사 보고와
+        // 종료 판정에 들어가고, 처치 통지(OnEnemyDefeated)는 이 틱 안에서만 받는다
+        /// <summary> 일반전 웨이브를 이 틱의 서버 시각으로 진행한다, BeginTick과 CompleteTick 사이에서만 돈다 </summary>
+        public void TickWave()
+        {
+            if ((_wave == null) || (!_inTick) || (IsEnded) || (_disposed) || (_storageFault) || (_events.IsTerminal))
+            {
+                return;
+            }
+
+            _wave.Tick(_serverTime);
+        }
+
+        /// <summary> 일반전 진행 값, 웨이브가 없으면 거짓 </summary>
+        public bool TryGetWaveProgress(out WaveProgressSnapshot progress)
+        {
+            progress = default;
+            if (_wave == null)
+            {
+                return false;
+            }
+
+            progress = _wave.Progress;
+            return true;
+        }
+
+        /// <summary> 진행 중에 이 참가자만 먼저 떠났는지(포기, 유예 만료), 출정 종료로 닫힌 것은 아니다 </summary>
+        public bool HasDeparture(int participantId)
+        {
+            int index = IndexOfParticipant(participantId);
+            return (index >= 0) && (_departureSequences[index] > 0);
+        }
+
+        /// <summary> 개인 이탈 기록이 저장 확인됐다, API가 계정 임대를 풀어 마을 입장권을 받을 수 있다 </summary>
+        public bool IsDepartureStored(int participantId)
+        {
+            int index = IndexOfParticipant(participantId);
+            return (index >= 0) && (_departureSequences[index] > 0)
+                && (_events.LastAcknowledgedSequence >= _departureSequences[index]);
         }
 
         /// <summary> 부활 대기 시간과 보스 공용 횟수를 본다, 횟수는 줄이지 않는다. 안전 지점을 찾기 전에 부른다 </summary>
@@ -628,6 +687,12 @@ namespace Shinshi.Network
         }
 #endif
 
+        /// <summary> 시작 전에 한 번 넣는다. 종료 판정 직후 종료 이벤트보다 먼저 부른다 </summary>
+        public void SetEndingListener(ISessionEndingListener listener)
+        {
+            _endingListener = listener;
+        }
+
         public void Dispose()
         {
             if (_disposed)
@@ -661,6 +726,12 @@ namespace Shinshi.Network
             if (IsEnded)
             {
                 return;
+            }
+
+            // 아직 진행 중일 때 불러야 넣은 이벤트가 종료 이벤트보다 앞 순번이 된다. 저장이 멈췄으면 넣지 않는다
+            if ((_endingListener != null) && (!_storageFault) && (_pendingCount == 0) && (!_events.IsTerminal))
+            {
+                _endingListener.OnSessionEnding(_serverTime);
             }
 
             _wave?.Abort();
@@ -782,11 +853,7 @@ namespace Shinshi.Network
 
             if ((_pendingCount == 0) && (_events.TryEnqueue(in data, out long sequence)))
             {
-                if (data.Type == ESessionEventType.SessionEnded)
-                {
-                    _endEventSequence = sequence;
-                }
-
+                RecordSequence(in data, sequence);
                 return;
             }
 
@@ -801,6 +868,30 @@ namespace Shinshi.Network
             ++_pendingCount;
         }
 
+        // 종료 이벤트와 개인 이탈의 저장 순번을 기억한다. 귀환 가능(저장 확인) 판단에 쓴다
+        private void RecordSequence(in SessionEventData data, long sequence)
+        {
+            if (data.Type == ESessionEventType.SessionEnded)
+            {
+                _endEventSequence = sequence;
+                return;
+            }
+
+            if (data.Type != ESessionEventType.ParticipantSettled)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                if (string.Equals(_roster.GetAt(i).ParticipantKey, data.ParticipantId, StringComparison.Ordinal))
+                {
+                    _departureSequences[i] = sequence;
+                    return;
+                }
+            }
+        }
+
         private void FlushPending()
         {
             int sent = 0;
@@ -811,11 +902,7 @@ namespace Shinshi.Network
                     break;
                 }
 
-                if (_pending[i].Type == ESessionEventType.SessionEnded)
-                {
-                    _endEventSequence = sequence;
-                }
-
+                RecordSequence(in _pending[i], sequence);
                 ++sent;
             }
 

@@ -400,11 +400,11 @@ namespace Shinshi.Tests
             BossPatternCatalogSO catalog = LoadCatalog();
 
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
-            Assert.IsFalse(catalog.IsPhaseTuned(WOLBAEK_ID, 2));
+            Assert.IsTrue(catalog.IsPhaseTuned(WOLBAEK_ID, 2), "여섯 패턴 모두 실행 수치가 들어 있다");
             for (int i = 0; i < Ids.Length; ++i)
             {
-                // P01만 아직 수치가 비어 있다. P02(빔)부터 P06까지는 기획이 정한 실행 수치가 들어 있다
-                Assert.AreEqual((i >= 1), catalog.IsPatternReady(WOLBAEK_ID, AssetPattern(catalog, i)), Ids[i]);
+                // 여섯 패턴 모두 실행 수치가 들어 있다(P01 별형 빔은 시작안이며 테스트로 조정한다)
+                Assert.IsTrue(catalog.IsPatternReady(WOLBAEK_ID, AssetPattern(catalog, i)), Ids[i]);
             }
 
             List<PatternDefinition> first = new List<PatternDefinition>();
@@ -416,13 +416,13 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Asset_SecondPhaseValidation_ReportsMissingExecutionValues()
+        public void Asset_SecondPhaseValidation_PassesNowThatAllSixPatternsHaveExecutionValues()
         {
             List<string> errors = new List<string>();
 
             LoadCatalog().ValidateTuning(WOLBAEK_ID, 2, errors);
 
-            Assert.Greater(errors.Count, 0);
+            Assert.AreEqual(0, errors.Count, string.Join("\n", errors));
         }
 
         [Test]

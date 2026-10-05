@@ -566,14 +566,32 @@ namespace Shinshi.Network
         // 받는 사람마다 자격 여부가 달라 참가자별로 보낸다. 끊긴 참가자에게는 대상 구현이 보내지 않는다
         private void Broadcast()
         {
-            long minimum   = MinimumBid();
-            long published = (minimum == long.MaxValue) ? 0 : minimum;
             for (int i = 0; i < _participantCount; ++i)
             {
-                var message = new AuctionStateMessage(_phase, _mode, _itemId ?? string.Empty, _highBid, _highParticipant,
-                    published, _endsAt, _eligible[i], _payoutEach);
-                _audience.SendState(_participantIds[i], in message);
+                SendStateAt(i);
             }
+        }
+
+        // 자격은 품목 개시 때 고정한 값이다(03 9장). 개시 뒤 처음 들어온 사람은 그 품목 NotEligible로 본다
+        /// <summary> 경매 전용으로 다시 들어온 참가자에게 지금 품목 상태를 한 번 보낸다, 시작 전이거나 대상이 아니면 보내지 않는다 </summary>
+        public void SendSnapshot(int participantId)
+        {
+            int index = IndexOf(participantId);
+            if ((_step == EAuctionStep.Idle) || (index < 0))
+            {
+                return;
+            }
+
+            SendStateAt(index);
+        }
+
+        private void SendStateAt(int index)
+        {
+            long minimum   = MinimumBid();
+            long published = (minimum == long.MaxValue) ? 0 : minimum;
+            var  message   = new AuctionStateMessage(_phase, _mode, _itemId ?? string.Empty, _highBid, _highParticipant,
+                published, _endsAt, _eligible[index], _payoutEach);
+            _audience.SendState(_participantIds[index], in message);
         }
 
         private int IndexOf(int participantId)

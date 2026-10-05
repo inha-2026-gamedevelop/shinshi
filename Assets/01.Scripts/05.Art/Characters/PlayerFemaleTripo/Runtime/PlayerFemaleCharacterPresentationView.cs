@@ -7,7 +7,7 @@ using Shinshi.Combat;
 
 namespace Shinshi.Art
 {
-    /// <summary> 확정 또는 예측된 루트 이동과 읽기 전용 전투 상태를 Animator 파라미터로 표현한다 </summary>
+    /// <summary> 역할별 이동 샘플과 전투 상태를 Animator와 시각 자식 방향으로 표현한다 </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(PlayerFemaleCharacterPresentationView.EXECUTION_ORDER)]
     public sealed class PlayerFemaleCharacterPresentationView : ClientView
@@ -20,25 +20,33 @@ namespace Shinshi.Art
 
         [SerializeField] private Animator          _animator;
         [SerializeField] private Transform         _movementRoot;
+        [SerializeField] private Transform         _visualPivot;
         [SerializeField] private PlayerCombatState _combat;
+        [SerializeField] private MonoBehaviour     _motionSourceComponent;
         [SerializeField] private string            _speedParameter     = "Speed";
         [SerializeField] private string            _aliveParameter     = string.Empty;
         [SerializeField] private float             _speedDampSeconds   = 0.1f;
-        [SerializeField] private float             _teleportDistance   = 1.5f;
         [SerializeField] private float             _maximumVisualSpeed = 12f;
 
-        private Vector3 _previousPosition;
-        private int     _speedHash;
-        private int     _aliveHash;
-        private bool    _hasAliveParameter;
-        private bool    _isBound;
-        private string  _validationError = string.Empty;
+        private IPlayerFemaleCharacterMotionSource _motionSource;
+        private MonoBehaviour                     _boundMotionSourceComponent;
+        private RuntimeAnimatorController         _boundController;
+
+        private int    _speedHash;
+        private int    _aliveHash;
+        private bool   _hasAliveParameter;
+        private bool   _hasMotionSample;
+        private bool   _isBound;
+        private float  _lastVisualSpeed;
+        private string _validationError = string.Empty;
 
         /****************************************
         *              Properties
         ****************************************/
 
-        public bool IsBound            => _isBound;
+        public bool   IsBound          => _isBound;
+        public bool   HasMotionSample  => _hasMotionSample;
+        public float  LastVisualSpeed  => _lastVisualSpeed;
         public string ValidationError  => _validationError;
 
         /****************************************
@@ -55,57 +63,66 @@ namespace Shinshi.Art
             ResetMotionSample();
         }
 
+        private void OnDisable()
+        {
+            ResetMotionSample();
+        }
+
         private void Update()
         {
-            if ((!_isBound) || (IsServerBuild) || (_animator == null) || (_movementRoot == null))
-            {
-                return;
-            }
-
-            bool alive = (_combat == null) || (_combat.LifeState == EParticipantLifeState.Alive);
-            Vector3 position = _movementRoot.position;
-            float speed = (alive) ? GetPlanarSpeed(_previousPosition, position, Time.deltaTime,
-                _teleportDistance, _maximumVisualSpeed) : 0f;
-            _previousPosition = position;
-            _animator.SetFloat(_speedHash, speed, _speedDampSeconds, Time.deltaTime);
-            if (_hasAliveParameter)
-            {
-                _animator.SetBool(_aliveHash, alive);
-            }
+            UpdatePresentation(Time.unscaledTimeAsDouble, Time.unscaledDeltaTime);
         }
 
         /****************************************
         *                Methods
         ****************************************/
 
-        /// <summary> 네트워크나 예측 컴포넌트가 옮기는 루트를 읽고 시각 Animator만 연결한다 </summary>
-        public bool Configure(Animator animator, Transform movementRoot, PlayerCombatState combat = null)
+        /// <summary> 시각 자식과 역할별 속도 소스를 연결한다, 소스가 없으면 속도 읽기 불가 상태로 표현한다 </summary>
+        public bool Configure(Animator animator, Transform movementRoot, PlayerCombatState combat = null,
+            MonoBehaviour motionSource = null, Transform visualPivot = null)
         {
-            _animator     = animator;
-            _movementRoot = movementRoot;
-            _combat       = combat;
+            ResetMotionSample();
+            _animator              = animator;
+            _movementRoot          = movementRoot;
+            _combat                = combat;
+            _motionSourceComponent = motionSource;
+            _visualPivot           = (visualPivot != null) ? visualPivot : (animator != null) ? animator.transform : null;
             return TryBind(out _validationError);
         }
 
-        /// <summary> 이동 권위를 쓰지 않도록 root motion을 금지하고 실제 컨트롤러 파라미터를 캐시한다 </summary>
+        /// <summary> root motion과 게임플레이 루트 회전을 금지하고 실제 컨트롤러 파라미터를 캐시한다 </summary>
         public bool TryBind(out string error)
         {
+            ResetMotionSample();
             _isBound = false;
-            if ((IsServerBuild) || (_animator == null) || (_movementRoot == null)
-                || (string.IsNullOrWhiteSpace(_speedParameter))
-                || (_animator.runtimeAnimatorController == null) || (_animator.applyRootMotion)
-                || ((_animator.transform != _movementRoot) && (!_animator.transform.IsChildOf(_movementRoot)))
-                || (!SecondaryMotionMath.IsFinite(_speedDampSeconds)) || (_speedDampSeconds < 0f)
-                || (!SecondaryMotionMath.IsFinite(_teleportDistance)) || (_teleportDistance <= 0f)
-                || (!SecondaryMotionMath.IsFinite(_maximumVisualSpeed)) || (_maximumVisualSpeed <= 0f))
+            if ((_visualPivot == null) && (_animator != null))
             {
-                error = "root motion이 꺼진 Animator와 그 상위 이동 루트, 유효한 시각 수치가 필요하다";
-                _validationError = error;
-                return false;
+                _visualPivot = _animator.transform;
             }
 
-            _speedHash = Animator.StringToHash(_speedParameter);
-            _aliveHash = Animator.StringToHash(_aliveParameter);
+            if ((IsServerBuild) || (_animator == null) || (_movementRoot == null) || (_visualPivot == null)
+                || (string.IsNullOrWhiteSpace(_speedParameter)) || (_animator.runtimeAnimatorController == null)
+                || (_animator.applyRootMotion) || (_animator.transform == _movementRoot)
+                || (!_animator.transform.IsChildOf(_movementRoot)) || (_visualPivot == _movementRoot)
+                || (!_visualPivot.IsChildOf(_movementRoot))
+                || ((_visualPivot != _animator.transform) && (!_animator.transform.IsChildOf(_visualPivot)))
+                || ((_combat != null) && (_combat.transform != _movementRoot))
+                || (!SecondaryMotionMath.IsFinite(_speedDampSeconds)) || (_speedDampSeconds < 0f)
+                || (!SecondaryMotionMath.IsFinite(_maximumVisualSpeed)) || (_maximumVisualSpeed <= 0f))
+            {
+                return FailBinding("root motion이 꺼진 시각 자식 Animator와 피벗, 같은 이동 루트, 유효한 시각 수치가 필요하다", out error);
+            }
+
+            _motionSource = (_motionSourceComponent != null) ? _motionSourceComponent as IPlayerFemaleCharacterMotionSource : null;
+            _boundMotionSourceComponent = _motionSourceComponent;
+            if ((_motionSourceComponent != null)
+                && ((_motionSource == null) || (_motionSource.MovementRoot != _movementRoot)))
+            {
+                return FailBinding("속도 소스는 같은 이동 루트의 IPlayerFemaleCharacterMotionSource여야 한다", out error);
+            }
+
+            _speedHash         = Animator.StringToHash(_speedParameter);
+            _aliveHash         = Animator.StringToHash(_aliveParameter);
             _hasAliveParameter = !string.IsNullOrWhiteSpace(_aliveParameter);
             bool hasSpeed = false;
             bool hasAlive = !_hasAliveParameter;
@@ -125,48 +142,98 @@ namespace Shinshi.Art
 
             if ((!hasSpeed) || (!hasAlive))
             {
-                error = "Animator에 Speed Float와 지정한 생존 Bool 파라미터가 필요하다";
-                _validationError = error;
-                return false;
+                return FailBinding("Animator에 Speed Float와 지정한 생존 Bool 파라미터가 필요하다", out error);
             }
 
+            _boundController = _animator.runtimeAnimatorController;
             _isBound = true;
             ResetMotionSample();
+            _animator.SetFloat(_speedHash, 0f);
             error = string.Empty;
             _validationError = error;
             return true;
         }
 
-        /// <summary> 재활성이나 순간이동 뒤 첫 프레임에 거짓 이동 속도가 생기지 않게 표본을 초기화한다 </summary>
+        /// <summary> 재활성이나 소스 교체 뒤 첫 프레임에 누적 이동을 속도로 오인하지 않게 표본을 초기화한다 </summary>
         public void ResetMotionSample()
         {
-            if (_movementRoot != null)
+            if ((_boundMotionSourceComponent != null) && (_motionSource != null))
             {
-                _previousPosition = _movementRoot.position;
+                _motionSource.ResetMotionSample();
+            }
+
+            _hasMotionSample = false;
+            _lastVisualSpeed = 0f;
+            if ((_isBound) && (_animator != null) && (_animator.runtimeAnimatorController == _boundController))
+            {
+                _animator.SetFloat(_speedHash, 0f);
             }
         }
 
-        /// <summary> 수직 이동과 순간이동을 제외하고 초당 수평 이동량을 시각 속도 한도 안에서 계산한다 </summary>
-        public static float GetPlanarSpeed(Vector3 previousPosition, Vector3 position, float deltaSeconds,
-            float teleportDistance, float maximumVisualSpeed)
+        private void UpdatePresentation(double unscaledTime, float unscaledDeltaSeconds)
         {
-            if ((!SecondaryMotionMath.IsFinite(previousPosition)) || (!SecondaryMotionMath.IsFinite(position))
-                || (!SecondaryMotionMath.IsFinite(deltaSeconds)) || (deltaSeconds <= 0f)
-                || (!SecondaryMotionMath.IsFinite(teleportDistance)) || (teleportDistance <= 0f)
-                || (!SecondaryMotionMath.IsFinite(maximumVisualSpeed)) || (maximumVisualSpeed <= 0f))
+            if ((!_isBound) || (IsServerBuild) || (!isActiveAndEnabled))
             {
-                return 0f;
+                ResetMotionSample();
+                return;
             }
 
-            Vector3 displacement = position - previousPosition;
-            if (displacement.sqrMagnitude >= teleportDistance * teleportDistance)
+            if ((_animator == null) || (_movementRoot == null) || (_visualPivot == null)
+                || (_animator.runtimeAnimatorController != _boundController) || (_animator.applyRootMotion)
+                || (_animator.transform == _movementRoot) || (!_animator.transform.IsChildOf(_movementRoot))
+                || (_visualPivot == _movementRoot) || (!_visualPivot.IsChildOf(_movementRoot))
+                || ((_visualPivot != _animator.transform) && (!_animator.transform.IsChildOf(_visualPivot)))
+                || ((_combat != null) && (_combat.transform != _movementRoot))
+                || (_motionSourceComponent != _boundMotionSourceComponent))
             {
-                return 0f;
+                ResetMotionSample();
+                _isBound = false;
+                _validationError = "표현 참조나 Animator 설정이 바뀌어 다시 연결해야 한다";
+                return;
             }
 
-            displacement.y = 0f;
-            float speed = displacement.magnitude / deltaSeconds;
-            return (SecondaryMotionMath.IsFinite(speed)) ? Mathf.Min(speed, maximumVisualSpeed) : 0f;
+            bool alive = (_combat == null) || (_combat.LifeState == EParticipantLifeState.Alive);
+            bool validTime = (!double.IsNaN(unscaledTime)) && (!double.IsInfinity(unscaledTime)) && (unscaledTime >= 0.0)
+                && (SecondaryMotionMath.IsFinite(unscaledDeltaSeconds)) && (unscaledDeltaSeconds > 0f);
+            float speed = 0f;
+            bool canRead = (alive) && (validTime) && (_motionSourceComponent != null)
+                && (_motionSourceComponent.isActiveAndEnabled) && (_motionSource != null)
+                && (_motionSource.MovementRoot == _movementRoot);
+            bool sampleRead = (canRead) && (_motionSource.TryRead(unscaledTime, out speed));
+            _hasMotionSample = (sampleRead)
+                && (SecondaryMotionMath.IsFinite(speed)) && (speed >= 0f);
+            if (!_hasMotionSample)
+            {
+                if ((!canRead) || (sampleRead))
+                {
+                    ResetMotionSample();
+                }
+
+                _lastVisualSpeed = 0f;
+                _animator.SetFloat(_speedHash, 0f);
+            }
+            else
+            {
+                _lastVisualSpeed = Mathf.Min(speed, _maximumVisualSpeed);
+                _animator.SetFloat(_speedHash, _lastVisualSpeed, _speedDampSeconds, unscaledDeltaSeconds);
+            }
+
+            if (_hasAliveParameter)
+            {
+                _animator.SetBool(_aliveHash, alive);
+            }
+
+            if (_combat != null)
+            {
+                _visualPivot.rotation = Quaternion.LookRotation(FacingRules.DecodeYaw(_combat.FacingYaw), Vector3.up);
+            }
+        }
+
+        private bool FailBinding(string errorMessage, out string error)
+        {
+            error = errorMessage;
+            _validationError = error;
+            return false;
         }
     }
 }

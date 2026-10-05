@@ -181,6 +181,103 @@ namespace Shinshi.Backend.Tests
             Assert.Equal(OVERFLOW_TOTAL, row.LedgerTotal);
         }
 
+        /// <summary> 계정 창을 작게 잘라도 결과(행과 순서)는 한 창 전체 집계와 같고, 페이지 cursor가 창 경계를 넘어도 빠지거나 겹치지 않는다 </summary>
+        [PostgresFact]
+        public async Task FindMismatchesAsync_SmallAccountWindows_MatchSingleWindowResult()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            const int ACCOUNTS = 7;
+            for (int i = 0; i < ACCOUNTS; ++i)
+            {
+                Guid accountId = Guid.NewGuid();
+                await LedgerTestSupport.SeedAccountAsync(database, accountId);
+                if ((i % 2) == 0)
+                {
+                    await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+                    await connection.ExecuteAsync(
+                        "UPDATE account_wallets SET tickets = @Tickets, currency = 1 WHERE account_id = @AccountId;",
+                        new { Tickets = TICKETS, AccountId = accountId });
+                }
+            }
+
+            IReadOnlyList<EconomyReconciliationMismatch> whole =
+                await new EconomyLedgerReconciler(database.DataSource, LARGE_BATCH).FindMismatchesAsync(LARGE_BATCH);
+            EconomyLedgerReconciler windowed = new EconomyLedgerReconciler(database.DataSource, 2);
+            List<EconomyReconciliationMismatch> paged = new List<EconomyReconciliationMismatch>();
+            int windows = 0;
+            EconomyReconciliationCursor? cursor = null;
+            while (true)
+            {
+                IReadOnlyList<EconomyReconciliationMismatch> page = await windowed.FindMismatchesAsync(PAGE_SIZE + 1,
+                    cursor, _ => { ++windows; return Task.FromResult(true); }, CancellationToken.None);
+                paged.AddRange(page);
+                if (page.Count < PAGE_SIZE + 1)
+                {
+                    break;
+                }
+                cursor = page[^1].Cursor;
+            }
+
+            Assert.Equal(8, whole.Count);
+            Assert.Equal(whole.Select(Key), paged.Select(Key));
+            Assert.True(windows > 0);
+        }
+
+        /// <summary> 창 사이 콜백이 false면(선점을 잃음) 더 집계하지 않고 지금까지 찾은 것만 돌려준다 </summary>
+        [PostgresFact]
+        public async Task FindMismatchesAsync_ContinueFalse_StopsAfterFirstWindow()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            for (int i = 0; i < 4; ++i)
+            {
+                Guid accountId = Guid.NewGuid();
+                await LedgerTestSupport.SeedAccountAsync(database, accountId);
+                await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+                await connection.ExecuteAsync("UPDATE account_wallets SET tickets = @Tickets WHERE account_id = @AccountId;",
+                    new { Tickets = TICKETS, AccountId = accountId });
+            }
+
+            IReadOnlyList<EconomyReconciliationMismatch> page = await new EconomyLedgerReconciler(database.DataSource, 1)
+                .FindMismatchesAsync(LARGE_BATCH, null, _ => Task.FromResult(false), CancellationToken.None);
+
+            Assert.Single(page);
+        }
+
+        /// <summary> 진행 중 heartbeat가 시작 시각을 갱신해 다른 작업자가 stale로 이어받지 못하고, 이어받힌 작업자의 heartbeat는 false다 </summary>
+        [PostgresFact]
+        public async Task ReconciliationRun_Heartbeat_PreventsStaleTakeover()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresReconciliationRunRepository runs = new PostgresReconciliationRunRepository(database.DataSource);
+            Guid first = Guid.NewGuid();
+            Guid second = Guid.NewGuid();
+            TimeSpan stale = TimeSpan.FromHours(2);
+            DateOnly runDate = Assert.NotNull(await runs.TryClaimAsync(first, stale));
+            await using (NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync())
+            {
+                await connection.ExecuteAsync(
+                    "UPDATE economy_reconciliation_runs SET started_at = clock_timestamp() - interval '3 hours';");
+            }
+
+            Assert.True(await runs.HeartbeatAsync(runDate, first));
+            Assert.Null(await runs.TryClaimAsync(second, stale));
+
+            await using (NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync())
+            {
+                await connection.ExecuteAsync(
+                    "UPDATE economy_reconciliation_runs SET started_at = clock_timestamp() - interval '3 hours';");
+            }
+            Assert.Equal(runDate, await runs.TryClaimAsync(second, stale));
+            Assert.False(await runs.HeartbeatAsync(runDate, first));
+            Assert.False(await runs.FinishAsync(runDate, first, 0));
+            Assert.True(await runs.FinishAsync(runDate, second, 0));
+        }
+
+        private static string Key(EconomyReconciliationMismatch row)
+        {
+            return $"{row.AccountId}/{row.CharacterId}/{row.AssetKind}/{row.AssetId}/{row.BindingKind}/{row.LedgerTotal}";
+        }
+
         private static void AssertMismatch(IEnumerable<EconomyReconciliationMismatch> rows, string assetKind,
             Guid? characterId, string assetId, string bindingKind, long ledgerBalance)
         {

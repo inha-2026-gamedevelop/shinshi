@@ -22,7 +22,7 @@ PC 쿼터뷰 협동 액션 RPG의 신시 공유 마을, 1~4인 일반전·보스
 
 ## 2. 실제 기반과 도입할 기술
 
-2026-10-02 작업 트리 기준이다. `00.Common/Contracts`의 엔진 비의존 DTO, `01.Network`의 Mirror 연결·클라이언트 인증, `02.Combat`의 상태·규칙·표현, `98.Servers`의 서버 인증·백엔드 게이트웨이·던전 세션·전투 처리가 구현되어 있다. 백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Contracts,Shinshi.Data}`, 테스트는 `Backend/tests/Shinshi.Backend.Tests`이며 SQL 마이그레이션 0001~0010이 있다. `deploy/`의 API 컨테이너·systemd 파일, `Assets/Editor/Build/ShinshiBuild.cs`의 빌드 진입점, `tools/`의 M2 실행 보조는 존재하지만 서버 빌드·배포 실행은 미검증이다. AI·보스·성장·생활·경매 등 후속 파트 전체를 구현 완료로 확대하지 않는다.
+2026-10-03 작업 트리 기준이다. `00.Common/Contracts`의 엔진 비의존 DTO, `01.Network`의 Mirror 연결·클라이언트 인증, `02.Combat`의 상태·규칙·표현, `98.Servers`의 서버 인증·백엔드 게이트웨이·던전 세션·전투 처리·마을 서버(`05.Town`: 파티·성장·생활 중계)가 구현되어 있다. 백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Contracts,Shinshi.Data}`, 테스트는 `Backend/tests/Shinshi.Backend.Tests`이며 SQL 마이그레이션 0001~0013이 있다. `deploy/`의 API 컨테이너·systemd 파일, `Assets/Editor/Build/ShinshiBuild.cs`의 빌드 진입점, `tools/`의 M2 실행 보조는 존재하지만 서버 빌드·배포 실행은 미검증이다. AI·보스·성장·생활·경매 등 후속 파트 전체를 구현 완료로 확대하지 않는다.
 
 | 항목 | 현재/계획 | 기준·선택 이유 |
 |---|---|---|
@@ -136,6 +136,12 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | `GET /v1/service-state` | 공개, Bearer 불필요 | 점검·공지(`notice`, 노출 중 공지 목록 `notices`)·차단 기능·허용 buildId. 런타임 DB 연결이 있으면 `service_state`·`service_notices`(5초 캐시), 없으면 설정 값. DB readiness를 보장하지 않음 |
 | `GET /v1/inbox`, `POST /v1/inbox/claim` | 플레이어 접근 Bearer | 운영자 지급 우편 목록(곧 만료되는 순서 최대 100개)·수령. 수령은 operationId 원자 작업(원장 `InboxClaim`). 기능 키 `inbox_claim`이 꺼지면 저장된 결과가 없는 요청은 `FEATURE_DISABLED(1100)`. 계정별 1분 수령 30회·목록 60회 초과는 429 `RATE_LIMITED` |
 | `/admin/v1/*` | 어드민 접근 Bearer(게임·서버 토큰은 401), 허용 네트워크 밖 404 | 운영자 로그인·역할, 계정 조회·강제 종료, 초대, 지급·조정, 서비스 상태·공지, 로그 조회, 세션 복구. 경로·역할 표는 [Backend README](../Backend/README.md) 0008 절 |
+| `GET`·`POST /v1/characters`, `GET /v1/characters/name-availability`, `POST /v1/characters/{characterId}/delete` | 플레이어 접근 Bearer | 캐릭터 목록·이름 확인·생성(초기 지급 1회 포함)·소프트 삭제. 거절 코드는 [Backend README](../Backend/README.md) 0010 절 |
+| `POST /v1/auth/game-session`, `/refresh`, `/revoke` | 발급은 플레이어 접근 Bearer, 갱신·폐기는 게임 하위 세션 토큰 | 런처→게임 하위 세션 발급·회전·폐기. 게임은 만료 5분 전에 회전한다(`GameSessionRefresher`) |
+| `GET /v1/accounts/me/progress` | 플레이어 접근 Bearer | 계정 진행·해금 조회 |
+| `/v1/town/characters/{characterId}/...`(성장 조회, 부적 등록·강화·조합·분해, 수련·재분배, 장비 제작·계승·강화·착용·해제·잠금·분해), `POST /v1/town/accounts/{accountId}/progress/intro` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 마을 서버가 중계하는 성장 원자 작업과 신시 안내 완료 기록. 확률은 마을 서버가 뽑은 roll을 받는다. 경로·규칙은 [Backend README](../Backend/README.md) 0011 절 |
+| `POST /v1/town/life/snapshot`, `/gathers`, `/potion-crafts` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 행동력·재고 조회, 채집 완료, 물약 제작. [Backend README](../Backend/README.md) 0013 절 |
+| `POST /v1/game-sessions/readiness` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 출정 준비 확인(읽기 전용, 작업 행·원장 없음) |
 | `POST /v1/town/join-ticket` | 플레이어 접근 Bearer | 소유 캐릭터를 검증하고 API가 고른 살아 있는 마을의 60초 일회 토큰 발급 |
 | `POST /v1/game-sessions/{sessionId}/rejoin-ticket` | 플레이어 접근 Bearer | Running 출정의 Active 참가자 복귀 토큰. 게임 서버가 120초 재접속 유예를 별도 검증 |
 | `POST /v1/server-instances/lease` | 서비스 자격 Bearer + `X-Shinshi-Instance-Id` | instanceId·역할·bootId에 묶인 서버 임대 발급/갱신. 임대 없이 부르는 유일한 서버 경로 |
@@ -162,12 +168,9 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | 경로/기능 | 현재 상태 |
 |---|---|
 | `GET /v1/towns`, `GET /v1/parties` | 목록 경로 초안, Controller 미구현. 현재 마을 선택은 `/v1/town/join-ticket`이 수행 |
-| `POST /v1/characters` | DTO·경로 상수 존재, Controller 미구현. 생성/외형 검증·초기 지급은 성장 파트 통합 대상 |
 | `GET /v1/operations/{operationId}` | 경로 상수·작업 저장소 존재, HTTP 조회 Controller 미구현 |
-| `POST /v1/auth/game-session` | 경로 상수·인증 저장소 메서드 존재, 발급 Controller·런처 연결 미구현 |
-| 캐릭터 원자 작업·채집 완료 | 7.2의 설계 계약, HTTP 경로/처리 미구현 |
 | 파티 경매 개시/입찰/마감/finish·복구 | API·Unity 서버 연결 구현됨·DB 테스트 통과·실제 서버 실행 미검증(9장) |
-| 어드민 P1 이후 기능 | P0 `/admin/v1`은 위 표대로 구현됨(U25). 조건부 일괄 지급·2인 승인, 이벤트, 제재, 해금 조정, 경매 복구 목록, RecoveryPending 상태 세션 처리는 미구현 |
+| 어드민 P1 이후 기능 | P0 `/admin/v1`은 위 표대로 구현됨(U25). 조건부 일괄 지급·2인 승인, 이벤트, 제재, 해금 조정, RecoveryPending 상태 세션 처리는 미구현. 경매 복구 목록(`GET /admin/v1/auctions`)은 구현됨 |
 
 ## 6. 출정 예약과 전장 전환
 
@@ -217,7 +220,7 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 채집의 행동력 2 예약은 API 예약 행이 아니라 마을 서버 메모리의 계정별 선점 기록으로 둔다(위임 초기안). 행동력의 소비처가 채집뿐이고 계정 활성 세션이 하나이므로 쓰는 쪽이 하나다. 시작 때 마을 서버는 최근 계정 스냅샷으로 가용량을 확인하고 계정당 선점 1개를 강제한다. 완료 호출에서 API가 행 잠금 안에서 회복을 반영하고 가용 2 이상을 다시 검증해 차감·지급한다. 부족하면 `InsufficientAction`으로 거절하고 노드를 해제한다. 마을 프로세스가 소실되면 선점과 예약도 함께 사라지며 차감은 일어나지 않는다.
 
-성장 결과 공간이 없으면 비용을 소모하지 않는다. 후속 인벤토리 설계는 이미 획득을 확정한 드롭/낙찰을 보상 회수함에 넣고 원래 시각부터 30일을 유지하며 수령 가능한 수량만 원자 이동하는 방식이다. 현재 `reward_inbox`와 수령 API(`/v1/inbox`)는 운영자 지급(U25)용으로만 구현되어 있고, 드롭·낙찰 확보품을 회수함에 넣는 흐름과 인벤토리 공간 처리는 미구현이다. 현재 정산 API는 허용 ID·귀속·수량/줄 수 상한을 검증하고 account_items 스택에 지급한다. 상한 거절을 회수함 지급 완료로 표시하지 않는다.
+성장 결과 공간이 없으면 비용을 소모하지 않는다. 후속 인벤토리 설계는 이미 획득을 확정한 드롭/낙찰을 보상 회수함에 넣고 원래 시각부터 30일을 유지하며 수령 가능한 수량만 원자 이동하는 방식이다. 현재 정산·경매 지급은 보관 상한을 넘는 아이템 수량만 0012 `reward_inbox_lines`(30일, 부분 수령)로 보내고 나머지는 account_items 스택에 지급한다. 보관 상한이 정해지지 않은 정기·엽전은 회수함 대상이 아니다. 정산 API는 허용 ID·귀속·수량/줄 수 상한을 계속 검증한다. 회수함 화면은 없다.
 
 계승은 제작과 별도다. 원본 +17부터 한 등급 위로만 `17→10,18→11,19→12,20→13,21→14,22→15,23→16,24→18,25→20`, 같은 등급은 원본 단계 유지다. 원본은 계승 성공 때 소모하고 실패 보정을 결과 단계로 복사하지 않는다. 장비 강화 보정 키에는 장비 ID나 등급을 넣지 않는다.
 
@@ -227,9 +230,9 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 물약은 회복 적용 전 사용 이벤트를 API에 확정하는 초기 방식을 채택한다. 응답까지 추가 물약 요청을 잠그고 저장 지연을 표시한다. 승인 응답 시 동일 전투·행동 가능 상태를 재확인해 한 번 회복을 적용한다. 그 전에 사망·종료로 적용할 수 없으면 해당 미적용 사용을 취소하는 보상 작업으로 재고/횟수를 복원한다. 적용/취소 중 하나만 유일하게 종결한다. 재접속 중 미확인 상태는 서버 기록을 먼저 조회한다. 10초 쿨다운은 실제 회복 적용 시각 기준이다. API 왕복 지연으로 회복 체감이 목표를 벗어나면 영속 명령 큐 구조를 측정 후 개선하되 미저장 소비를 정상 완료로 표시하지 않는다.
 
-전투 상태 체크포인트는 30초 저장을 목표로 한다. DB와 `/checkpoints` API는 구현되어 있지만 `DungeonSessionHost.Tick`의 주기 송신은 TODO라 현재 자동 저장된다고 주장하지 않는다. 체크포인트는 경제 원장의 대체물이 아니다. 체험판 초기안은 프로세스 생존 시 인메모리 권위 상태로 재접속하고, 프로세스 소실 시 오래된 체크포인트만으로 보스를 되살려 이어가지 않는다. 완전 복구 검증 전에는 **확인된 서비스 장애 취소**로 처리한다. 장애 취소는 소모 티켓·실제로 사용한 물약을 같은 보상 ID로 한 번 복구하며, 이미 확정된 전리품을 재추첨/재지급하지 않는다. 개인 연결 종료·의도적 포기는 장애 환급 사유가 아니다.
+전투 상태 체크포인트는 30초마다 저장한다. `DungeonSessionHost`가 백엔드를 쓰는 진행 중 출정에서 30초(`Constants.Network.CHECKPOINT_INTERVAL_SECONDS`)마다 명단·진행 값과 전투 런타임이 준 참가자 체력·자원, 보스 체력 비율·페이즈를 이진으로 묶어 `/checkpoints`에 보낸다. 앞 요청이 응답을 기다리는 중이면 그 주기는 건너뛰고 재시도하지 않으며, 저장 상한을 넘는 상태는 보내지 않고 경고만 남긴다. 실제 서버 빌드·DB에서 주기 저장을 돌려 본 검증은 아직 없다. 체크포인트는 경제 원장의 대체물이 아니다. 체험판 초기안은 프로세스 생존 시 인메모리 권위 상태로 재접속하고, 프로세스 소실 시 오래된 체크포인트만으로 보스를 되살려 이어가지 않는다. 완전 복구 검증 전에는 **확인된 서비스 장애 취소**로 처리한다. 장애 취소는 소모 티켓·실제로 사용한 물약을 같은 보상 ID로 한 번 복구하며, 이미 확정된 전리품을 재추첨/재지급하지 않는다. 개인 연결 종료·의도적 포기는 장애 환급 사유가 아니다.
 
-서비스 장애 취소는 완료 웨이브 기본 정기 적립분을 전액, 정산 전 추가 정기 적립분을 50% 내림해 지급한다(2026-10-01 결정). API는 `session_participants.base_essence_accrued`와 `essence_accrued`를 구분하고 장애 취소 트랜잭션에서 한 번 적용한다. 일반 종료의 정산안은 게임 서버가 계산하며 장애 취소는 저장된 출정 원장을 API가 보상 처리한다. 정책은 확정되었지만 `SessionConfig.asset`의 `_serviceCancelExtraEssence`는 아직 Undecided(0)이며 `GameDBBuildValidator`가 배포 빌드를 차단하는 설정 잔여가 있다.
+서비스 장애 취소는 완료 웨이브 기본 정기 적립분을 전액, 정산 전 추가 정기 적립분을 50% 내림해 지급한다(2026-10-01 결정). API는 `session_participants.base_essence_accrued`와 `essence_accrued`를 구분하고 장애 취소 트랜잭션에서 한 번 적용한다. 일반 종료의 정산안은 게임 서버가 계산하며 장애 취소는 저장된 출정 원장을 API가 보상 처리한다. `SessionConfig.asset`의 `_serviceCancelExtraEssence`는 `HalfLoss`(1)로 이 정책과 같다.
 
 **종료·정산 장애 계약.** 일반 종료의 정산 규칙은 던전 서버의 `SettlementRules`가 계산하고 API는 저장된 정산안을 검증·적용한다. 종료 정산안이 없는 확인된 서비스 장애 취소는 위에 정한 원장 기반 보상 규칙을 API가 수행한다. 이를 위해 순서를 고정한다.
 
@@ -271,7 +274,7 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 - 낙찰금/분배 인원을 버림해 동일 지급, 나머지 소각. 대상 0명이면 전액 소각. 수수료 0%다. **품목 개시 때 자격자가 한 명인 경우** 최저가 구매·전액 소각 모드로 연다. 여러 명으로 열린 품목은 접속자가 한 명으로 줄어도 모드를 바꾸지 않으며, 이미 접수한 최고 입찰과 예약금을 최저가 100으로 덮지 않는다.
 - 아무도 입찰하지 않으면 유찰·재료 소멸. 기본/개인 보상은 유지한다.
 
-**API 구현 현황(2026-10-02)**: `PostgresPartyAuctionRepository`와 `AuctionsController`, 마이그레이션 0009(`auctions`, `auction_bids`, `account_wallets.currency_reserved`, `game_sessions.auction_ends_at`)가 있다. 보스 성공 정산 뒤 출정은 `Auction` 상태에서 경매를 마치고 `finish`로 닫힌다. 경매 단계 기한은 180초이고 품목 개시는 품목 상한 120초를 다 쓸 수 있는 정산 뒤 60초 안에만 받는다. 기한+60초를 넘기거나 배정 boot가 60초 무증거이면 유지 작업이 종료 기록 있는 품목은 그 값으로 정산, 없는 품목은 예약을 풀어 취소한 뒤 출정을 닫는다(API 시작·DB 장애 직후 보류는 기존 복구와 같다). Unity 던전 쪽은 `PartyAuctionDirector`(98.Servers/01.Network/Session/Auction)가 정산 확정 직후 희귀 재료 출현을 한 번 판정해 품목을 열고, `SessionConfigSO`의 30초 기본·10초 연장·120초 상한으로 마감하며, 접속은 실제 Mirror 연결로 판단하고, 마감 뒤 `finish`가 확정돼야 출정 프로세스가 내려간다. 입찰은 `AuctionBidMessage`, 상태는 `AuctionStateMessage`·`AuctionBidResultMessage`(01.Network/Auction)로 오가며 클라이언트는 `PartyAuctionClient`를 구독한다(구현됨·EditMode 검증·실제 서버 실행 미검증). 경매 중 재입장과 클라이언트 경매 화면(UI 담당)은 아직 없다.
+**API 구현 현황(2026-10-02)**: `PostgresPartyAuctionRepository`와 `AuctionsController`, 마이그레이션 0009(`auctions`, `auction_bids`, `account_wallets.currency_reserved`, `game_sessions.auction_ends_at`)가 있다. 보스 성공 정산 뒤 출정은 `Auction` 상태에서 경매를 마치고 `finish`로 닫힌다. 경매 단계 기한은 180초이고 품목 개시는 품목 상한 120초를 다 쓸 수 있는 정산 뒤 60초 안에만 받는다. 기한+60초를 넘기거나 배정 boot가 60초 무증거이면 유지 작업이 종료 기록 있는 품목은 그 값으로 정산, 없는 품목은 예약을 풀어 취소한 뒤 출정을 닫는다(API 시작·DB 장애 직후 보류는 기존 복구와 같다). Unity 던전 쪽은 `PartyAuctionDirector`(98.Servers/01.Network/Session/Auction)가 정산 확정 직후 희귀 재료 출현을 한 번 판정해 품목을 열고, `SessionConfigSO`의 30초 기본·10초 연장·120초 상한으로 마감하며, 접속은 실제 Mirror 연결로 판단하고, 마감 뒤 `finish`가 확정돼야 출정 프로세스가 내려간다. 입찰은 `AuctionBidMessage`, 상태는 `AuctionStateMessage`·`AuctionBidResultMessage`(01.Network/Auction)로 오가며 클라이언트는 `PartyAuctionClient`를 구독한다(구현됨·EditMode 검증·실제 서버 실행 미검증). 경매 마감 전 끊긴 참가자의 재입장은 구현됐다(구현됨·실행 미검증). 클라이언트 경매 화면(UI 담당)은 아직 없다.
 
 경매 서버가 소실된 경우 API는 저장된 유효 입찰과 **영속 저장된 종료 이벤트의 접속 집합**으로 종료를 재개한다. 마지막 heartbeat의 과거 접속 상태를 종료 순간 상태로 대신 쓰지 않는다. 종료 이벤트가 없어 자격을 확정할 수 없다면 해당 경매를 `RecoveryPending`으로 두고 예약금 해제/품목 취소를 한 번 수행하며, 확인할 수 없는 분배금을 임의 발행하지 않는다. 이 경매 장애는 이미 성공한 보스 전투의 티켓 환급 사유로 확장하지 않는다.
 
@@ -328,7 +331,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 
 클라이언트 목표는 1080p 평균 60fps, 프레임 p95 25ms 이하, 메모리 최대 4GB이며 실제 시험 PC를 기록한다. 서버 30Hz의 틱 예산과 프로세스 메모리를 별도 측정한다. 렌더링 목표를 서버 처리량 근거로 쓰지 않는다. [검증 플레이북](ai/03_VERIFICATION_PLAYBOOK.md)과 [멀티플레이 절차](ai/04_MULTIPLAYER_TEST_PROTOCOL.md)에 따라 호스트 모드만 확인한 기능은 완료로 보고하지 않는다.
 
-현재 소스·SO·HTTP 경로·SQL·어셈블리를 정적으로 대조했다. 사용자 제공 실행 근거는 Unity Test Runner EditMode 780개와 PostgreSQL 18 Docker 환경 Backend 396개 통과이며 이번 갱신에서 재실행한 결과는 아니다. Linux Dedicated Server/Windows 클라이언트 빌드·IL2CPP·M2/M3·지연/손실·부하·실제 배포는 실행 미검증이다. 월백 2페이즈, 실제 배포 환경과 자산, 세 사람의 가용 시간을 받아 구현 일정과 외부 배포 가능성을 다시 확인한다.
+현재 소스·SO·HTTP 경로·SQL·어셈블리를 정적으로 대조했다. 사용자 제공 실행 근거는 [로드맵](05-implementation-roadmap.md) 8장의 실행 증거 표를 따르며 이번 갱신에서 재실행한 결과는 아니다. Linux Dedicated Server/Windows 클라이언트 빌드·IL2CPP·M2/M3·지연/손실·부하·실제 배포는 실행 미검증이다. 월백 2페이즈, 실제 배포 환경과 자산, 세 사람의 가용 시간을 받아 구현 일정과 외부 배포 가능성을 다시 확인한다.
 
 ## 12. 기준 문서
 
@@ -348,7 +351,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 |---|---|---|
 | 1 | Windows용 Editor와 Linux Dedicated Server 빌드 모듈 확인 | 같은 프로젝트로 클라이언트·헤드리스 서버 생성 가능 |
 | 2 | GameDB·Bootstrap·`ShinshiBuild` 진입점 존재, SO 설정 잔여와 실제 빌드 확인 | `town`/`dungeon` 역할과 콘텐츠 버전 보고 |
-| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0010 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
+| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0013 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
 | 4 | 개발용 서버 URL/포트/자격을 환경 설정에 주입 | 코드·문서·클라이언트에 실제 비밀값 없음 |
 | 5 | 마을 프로세스1·던전 프로세스1·클라이언트2부터 실행 | 로그인→입장→권위 이동→정산→재접속 |
 | 6 | 승인된 AWS 환경에 같은 서버 빌드 배포 | 외부 PC 접속·버전 거절·로그 추적·종료/복구 |

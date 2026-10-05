@@ -14,7 +14,8 @@ namespace Shinshi.Contracts
         [DataMember(Name = "accountId")]         private string              _accountId;
         [DataMember(Name = "characterId")]       private string              _characterId;
 
-        // 마을이 준비 확인에 쓴 캐릭터 revision, 다르면 전체를 거절한다
+        // 마을이 준비 확인에 쓴 CharacterGrowthSnapshot.loadoutRevision, 다르면 전체를 STALE_REVISION으로 거절한다.
+        // 정산의 정기, 정련편 지급은 이 값을 올리지 않으므로 보상만으로 준비가 깨지지 않는다
         [DataMember(Name = "characterRevision")] private long                _characterRevision;
         [DataMember(Name = "potions")]           private ReservationPotion[] _potions;
 

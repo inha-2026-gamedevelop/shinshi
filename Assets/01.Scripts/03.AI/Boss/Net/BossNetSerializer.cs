@@ -33,6 +33,7 @@ namespace Shinshi.AI
         {
             writer.WriteInt(value.BossId);
             writer.WriteInt(value.CastId);
+            writer.WriteInt(value.GroupId);
             writer.WriteString(value.PatternId);
             writer.WriteByte((byte)value.Shape);
             writer.WriteVector3(value.Origin);
@@ -48,6 +49,7 @@ namespace Shinshi.AI
         {
             int                 bossId    = reader.ReadInt();
             int                 castId    = reader.ReadInt();
+            int                 groupId   = reader.ReadInt();
             string              patternId = reader.ReadString();
             EBossTelegraphShape shape     = (EBossTelegraphShape)ReadEnumByte(reader, MAX_SHAPE);
             Vector3             origin    = reader.ReadVector3();
@@ -57,8 +59,8 @@ namespace Shinshi.AI
             float               arcAngle  = reader.ReadFloat();
             double              startTime = reader.ReadDouble();
             float               seconds   = reader.ReadFloat();
-            return new BossTelegraphStart(bossId, castId, patternId, shape, origin, direction, length, width, arcAngle,
-                startTime, seconds);
+            return new BossTelegraphStart(bossId, castId, groupId, patternId, shape, origin, direction, length, width,
+                arcAngle, startTime, seconds);
         }
 
         public static void WriteBossProjectileStart(this NetworkWriter writer, BossProjectileStart value)
@@ -172,6 +174,205 @@ namespace Shinshi.AI
             return new BossAreaSnapshot
             {
                 Start              = reader.ReadBossAreaStart(),
+                Fate               = (EBossAreaFate)ReadEnumByte(reader, MAX_AREA_FATE),
+                LastTickIndex      = reader.ReadInt(),
+                LastTickServerTime = reader.ReadDouble()
+            };
+        }
+
+        public static void WriteBossSweepStart(this NetworkWriter writer, BossSweepStart value)
+        {
+            writer.WriteInt(value.BossId);
+            writer.WriteInt(value.CastId);
+            writer.WriteVector3(value.Origin);
+            writer.WriteVector3(value.BaseDirection);
+            writer.WriteBool(value.IsRight);
+            writer.WriteFloat(value.Radius);
+            writer.WriteFloat(value.TotalArcAngle);
+            writer.WriteFloat(value.TelegraphSeconds);
+            writer.WriteFloat(value.BlastSpanSeconds);
+            writer.WriteDouble(value.StartServerTime);
+        }
+
+        public static BossSweepStart ReadBossSweepStart(this NetworkReader reader)
+        {
+            int     bossId        = reader.ReadInt();
+            int     castId        = reader.ReadInt();
+            Vector3 origin        = reader.ReadVector3();
+            Vector3 baseDirection = reader.ReadVector3();
+            bool    isRight       = reader.ReadBool();
+            float   radius        = reader.ReadFloat();
+            float   totalArc      = reader.ReadFloat();
+            float   telegraph     = reader.ReadFloat();
+            float   blastSpan     = reader.ReadFloat();
+            double  startTime     = reader.ReadDouble();
+            return new BossSweepStart(bossId, castId, origin, baseDirection, isRight, radius, totalArc, telegraph, blastSpan,
+                startTime);
+        }
+
+        public static void WriteBossBeamShape(this NetworkWriter writer, BossBeamShape value)
+        {
+            writer.WriteVector3(value.ArenaCenter);
+            writer.WriteFloat(value.ArenaRadius);
+            writer.WriteVector3(value.Direction);
+            writer.WriteFloat(value.LateralOffset);
+            writer.WriteFloat(value.Width);
+        }
+
+        public static BossBeamShape ReadBossBeamShape(this NetworkReader reader)
+        {
+            Vector3 arenaCenter   = reader.ReadVector3();
+            float   arenaRadius   = reader.ReadFloat();
+            Vector3 direction     = reader.ReadVector3();
+            float   lateralOffset = reader.ReadFloat();
+            float   width         = reader.ReadFloat();
+            return new BossBeamShape(arenaCenter, arenaRadius, direction, lateralOffset, width);
+        }
+
+        public static void WriteBossBeamStart(this NetworkWriter writer, BossBeamStart value)
+        {
+            writer.WriteInt(value.BossId);
+            writer.WriteInt(value.BeamId);
+            writer.WriteInt(value.CastId);
+            writer.WriteBossBeamShape(value.Shape);
+            writer.WriteDouble(value.StartServerTime);
+            writer.WriteFloat(value.TelegraphSeconds);
+            writer.WriteFloat(value.DurationSeconds);
+            writer.WriteFloat(value.TickInterval);
+        }
+
+        public static BossBeamStart ReadBossBeamStart(this NetworkReader reader)
+        {
+            int           bossId       = reader.ReadInt();
+            int           beamId       = reader.ReadInt();
+            int           castId       = reader.ReadInt();
+            BossBeamShape shape        = reader.ReadBossBeamShape();
+            double        startTime    = reader.ReadDouble();
+            float         telegraph    = reader.ReadFloat();
+            float         duration     = reader.ReadFloat();
+            float         tickInterval = reader.ReadFloat();
+            return new BossBeamStart(bossId, beamId, castId, in shape, startTime, telegraph, duration, tickInterval);
+        }
+
+        public static void WriteBossStarShape(this NetworkWriter writer, BossStarShape value)
+        {
+            writer.WriteVector3(value.ArenaCenter);
+            writer.WriteFloat(value.ArenaRadius);
+            writer.WriteVector3(value.BaseDirection);
+            writer.WriteFloat(value.RingRadius);
+            writer.WriteInt(value.VertexCount);
+            writer.WriteInt(value.ConnectStep);
+            writer.WriteFloat(value.BeamWidth);
+            writer.WriteFloat(value.SignedDegreesPerSecond);
+        }
+
+        public static BossStarShape ReadBossStarShape(this NetworkReader reader)
+        {
+            Vector3 arenaCenter      = reader.ReadVector3();
+            float   arenaRadius      = reader.ReadFloat();
+            Vector3 baseDirection    = reader.ReadVector3();
+            float   ringRadius       = reader.ReadFloat();
+            int     vertexCount      = reader.ReadInt();
+            int     connectStep      = reader.ReadInt();
+            float   beamWidth        = reader.ReadFloat();
+            float   degreesPerSecond = reader.ReadFloat();
+            return new BossStarShape(arenaCenter, arenaRadius, baseDirection, ringRadius, vertexCount, connectStep, beamWidth,
+                degreesPerSecond);
+        }
+
+        public static void WriteBossStarStart(this NetworkWriter writer, BossStarStart value)
+        {
+            writer.WriteInt(value.BossId);
+            writer.WriteInt(value.StarId);
+            writer.WriteInt(value.CastId);
+            writer.WriteBossStarShape(value.Shape);
+            writer.WriteDouble(value.StartServerTime);
+            writer.WriteFloat(value.TelegraphSeconds);
+            writer.WriteFloat(value.DurationSeconds);
+            writer.WriteFloat(value.TickInterval);
+        }
+
+        public static BossStarStart ReadBossStarStart(this NetworkReader reader)
+        {
+            int           bossId       = reader.ReadInt();
+            int           starId       = reader.ReadInt();
+            int           castId       = reader.ReadInt();
+            BossStarShape shape        = reader.ReadBossStarShape();
+            double        startTime    = reader.ReadDouble();
+            float         telegraph    = reader.ReadFloat();
+            float         duration     = reader.ReadFloat();
+            float         tickInterval = reader.ReadFloat();
+            return new BossStarStart(bossId, starId, castId, in shape, startTime, telegraph, duration, tickInterval);
+        }
+
+        public static void WriteBossBarrierStart(this NetworkWriter writer, BossBarrierStart value)
+        {
+            writer.WriteInt(value.BossId);
+            writer.WriteInt(value.BarrierId);
+            writer.WriteVector3(value.Center);
+            writer.WriteFloat(value.OuterRadius);
+            writer.WriteFloat(value.InnerRadius);
+            writer.WriteFloat(value.TickInterval);
+            writer.WriteDouble(value.TelegraphServerTime);
+            writer.WriteDouble(value.ActivateServerTime);
+            writer.WriteDouble(value.CompleteServerTime);
+        }
+
+        public static BossBarrierStart ReadBossBarrierStart(this NetworkReader reader)
+        {
+            int     bossId        = reader.ReadInt();
+            int     barrierId     = reader.ReadInt();
+            Vector3 center        = reader.ReadVector3();
+            float   outerRadius   = reader.ReadFloat();
+            float   innerRadius   = reader.ReadFloat();
+            float   tickInterval  = reader.ReadFloat();
+            double  telegraphTime = reader.ReadDouble();
+            double  activateTime  = reader.ReadDouble();
+            double  completeTime  = reader.ReadDouble();
+            return new BossBarrierStart(bossId, barrierId, center, outerRadius, innerRadius, tickInterval, telegraphTime,
+                activateTime, completeTime);
+        }
+
+        public static void WriteBossBeamSnapshot(this NetworkWriter writer, BossBeamSnapshot value)
+        {
+            writer.WriteBossBeamStart(value.Start);
+            writer.WriteBool(value.IsActivated);
+            writer.WriteDouble(value.ActivateServerTime);
+            writer.WriteByte((byte)value.Fate);
+            writer.WriteInt(value.LastTickIndex);
+            writer.WriteDouble(value.LastTickServerTime);
+        }
+
+        public static BossBeamSnapshot ReadBossBeamSnapshot(this NetworkReader reader)
+        {
+            return new BossBeamSnapshot
+            {
+                Start              = reader.ReadBossBeamStart(),
+                IsActivated        = reader.ReadBool(),
+                ActivateServerTime = reader.ReadDouble(),
+                Fate               = (EBossAreaFate)ReadEnumByte(reader, MAX_AREA_FATE),
+                LastTickIndex      = reader.ReadInt(),
+                LastTickServerTime = reader.ReadDouble()
+            };
+        }
+
+        public static void WriteBossStarSnapshot(this NetworkWriter writer, BossStarSnapshot value)
+        {
+            writer.WriteBossStarStart(value.Start);
+            writer.WriteBool(value.IsActivated);
+            writer.WriteDouble(value.ActivateServerTime);
+            writer.WriteByte((byte)value.Fate);
+            writer.WriteInt(value.LastTickIndex);
+            writer.WriteDouble(value.LastTickServerTime);
+        }
+
+        public static BossStarSnapshot ReadBossStarSnapshot(this NetworkReader reader)
+        {
+            return new BossStarSnapshot
+            {
+                Start              = reader.ReadBossStarStart(),
+                IsActivated        = reader.ReadBool(),
+                ActivateServerTime = reader.ReadDouble(),
                 Fate               = (EBossAreaFate)ReadEnumByte(reader, MAX_AREA_FATE),
                 LastTickIndex      = reader.ReadInt(),
                 LastTickServerTime = reader.ReadDouble()

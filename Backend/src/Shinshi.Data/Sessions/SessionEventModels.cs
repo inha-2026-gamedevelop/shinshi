@@ -58,6 +58,9 @@ namespace Shinshi.Data.Sessions
         public Guid?                      SettlementOperationId { get; set; }
         public List<SettlementGrantInput> Grants                { get; set; } = new List<SettlementGrantInput>();
         public string                     PayloadJson           { get; set; } = string.Empty;
+
+        // POTION_USE_REVERTED가 되돌리는 원 POTION_USED의 eventId
+        public Guid?                      RevertsEventId        { get; set; }
     }
 
     /// <summary> 1초 단위 이벤트 배치. 형식이 틀리면 저장소에 들어오기 전에 요청 형식 오류로 거절한다 </summary>
@@ -118,6 +121,16 @@ namespace Shinshi.Data.Sessions
                 }
             }
 
+            // 같은 원 이벤트를 한 배치에서 두 번 되돌리는 것은 형식 오류다. 배치 사이 중복은 저장소가 저장된 되돌림으로 거절한다
+            List<Guid> reverted = events.Where(entry => entry.EventKind == GameSessionCodes.EventKind.POTION_USE_REVERTED)
+                .Select(entry => entry.RevertsEventId!.Value).ToList();
+            if ((reverted.Distinct().Count() != reverted.Count)
+                || reverted.Any(target => events.Any(entry => (entry.EventId == target)
+                    && (entry.EventKind != GameSessionCodes.EventKind.POTION_USED))))
+            {
+                return ContractCodes.RejectReason.SESSION_MISMATCH;
+            }
+
             // 단일 이벤트 상한을 통과한 뒤 합산하므로 배치 크기 내에서 long 합계가 넘치지 않는다. 기본, 추가 적립은 따로 센다
             if (events.Where(entry => IsAccrual(entry.EventKind))
                 .GroupBy(entry => (entry.EventKind, entry.ParticipantId!.Value))
@@ -146,6 +159,11 @@ namespace Shinshi.Data.Sessions
                     return (HasParticipant(entry) && !string.IsNullOrWhiteSpace(entry.DefinitionId)
                         && !string.IsNullOrWhiteSpace(entry.BindingKind))
                         ? ContractCodes.RejectReason.NONE : ContractCodes.RejectReason.SESSION_MISMATCH;
+                case GameSessionCodes.EventKind.POTION_USE_REVERTED:
+                    // 물약 정의와 귀속은 원 이벤트에서 읽으므로 받지 않는다
+                    return (HasParticipant(entry) && entry.RevertsEventId.HasValue
+                        && (entry.RevertsEventId.Value != Guid.Empty) && (entry.RevertsEventId.Value != entry.EventId))
+                        ? ContractCodes.RejectReason.NONE : ContractCodes.RejectReason.SESSION_MISMATCH;
                 case GameSessionCodes.EventKind.ESSENCE_ACCRUED:
                 case GameSessionCodes.EventKind.BASE_ESSENCE_ACCRUED:
                     if (!HasParticipant(entry) || (entry.Amount <= 0))
@@ -156,6 +174,9 @@ namespace Shinshi.Data.Sessions
                         ? SettlementSanityLimits.REJECT_REASON : ContractCodes.RejectReason.NONE;
                 case GameSessionCodes.EventKind.SESSION_ENDED:
                     return last ? GetEndRejectReason(entry) : ContractCodes.RejectReason.SESSION_MISMATCH;
+                case GameSessionCodes.EventKind.PARTICIPANT_DEPARTED:
+                    return (HasParticipant(entry) && IsDepartReason(entry.EndReason))
+                        ? ContractCodes.RejectReason.NONE : ContractCodes.RejectReason.SESSION_MISMATCH;
                 default:
                     return ContractCodes.RejectReason.SESSION_MISMATCH;
             }
@@ -255,6 +276,13 @@ namespace Shinshi.Data.Sessions
         private static bool HasParticipant(SessionEventInput entry)
         {
             return entry.ParticipantId.HasValue && (entry.ParticipantId.Value != Guid.Empty);
+        }
+
+        /// <summary> PARTICIPANT_DEPARTED가 받는 이유. 포기와 접속 만료만 개인 이탈이고 나머지 종료 원인은 출정 전체의 끝이다 </summary>
+        public static bool IsDepartReason(int endReason)
+        {
+            return (endReason == GameSessionCodes.EndReason.ABANDON)
+                || (endReason == GameSessionCodes.EndReason.DISCONNECT_EXPIRED);
         }
     }
 

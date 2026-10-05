@@ -19,13 +19,15 @@ namespace Shinshi.Tests
         *                Fields
         ****************************************/
 
-        private const int   LOD_COUNT      = 3;
-        private const float MAX_WEIGHT     = 100f;
-        private const float INITIAL_WEIGHT = 15f;
-        private const float HALF_CLOSED    = 0.5f;
+        private const int   LOD_COUNT          = 3;
+        private const float MAX_WEIGHT         = 100f;
+        private const float INITIAL_WEIGHT     = 15f;
+        private const float HALF_CLOSED        = 0.5f;
+        private const float EYE_INITIAL_WEIGHT = 25f;
 
         private GameObject _root;
         private Mesh[] _meshes;
+        private Mesh _eyeMesh;
         private SkinnedMeshRenderer[] _renderers;
         private PlayerFemaleCharacterBlinkView _view;
 
@@ -59,6 +61,10 @@ namespace Shinshi.Tests
             for (int i = 0; i < _meshes.Length; ++i)
             {
                 UnityEngine.Object.DestroyImmediate(_meshes[i]);
+            }
+            if (_eyeMesh != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_eyeMesh);
             }
         }
 
@@ -175,9 +181,104 @@ namespace Shinshi.Tests
             Assert.AreEqual(0f, _renderers[0].GetBlendShapeWeight(1));
         }
 
+        [Test]
+        public void Configure_SeparateEyes_BlinksAllLodsAndAppliesExpressionOnlyToHeads()
+        {
+            SkinnedMeshRenderer[] eyes = CreateEyeRenderers();
+            SkinnedMeshRenderer[] allRenderers = CombineRenderers(eyes);
+            Assert.IsTrue(_view.Configure(allRenderers, "Blink", new[] { "Smile" }, _renderers), _view.ValidationError);
+            Assert.IsTrue(_view.TrySetBlink(HALF_CLOSED));
+            Assert.IsTrue(_view.TrySetExpression("Smile", 1f));
+            for (int i = 0; i < LOD_COUNT; ++i)
+            {
+                Assert.AreEqual(MAX_WEIGHT * HALF_CLOSED, _renderers[i].GetBlendShapeWeight(0));
+                Assert.AreEqual(MAX_WEIGHT * HALF_CLOSED, eyes[i].GetBlendShapeWeight(0));
+                Assert.AreEqual(MAX_WEIGHT, _renderers[i].GetBlendShapeWeight(1));
+                Assert.AreEqual(-1, eyes[i].sharedMesh.GetBlendShapeIndex("Smile"));
+            }
+
+            Assert.AreEqual(allRenderers.Length, _view.BlinkRendererCount);
+        }
+
+        [Test]
+        public void Configure_SeparateEyesWithoutExplicitExpressionRenderers_RejectsMissingMorph()
+        {
+            Assert.IsTrue(_view.TrySetBlink(1f));
+            Assert.IsFalse(_view.Configure(CombineRenderers(CreateEyeRenderers()), "Blink", new[] { "Smile" }));
+            Assert.IsFalse(_view.IsBound);
+            Assert.AreEqual(0f, _renderers[0].GetBlendShapeWeight(0));
+        }
+
+        [Test]
+        public void Configure_ExpressionRendererOutsideBlinkTargets_RejectsBinding()
+        {
+            SkinnedMeshRenderer[] eyes = CreateEyeRenderers();
+            Assert.IsFalse(_view.Configure(_renderers, "Blink", new[] { "Smile" }, new[] { eyes[0] }));
+            Assert.IsFalse(_view.IsBound);
+            StringAssert.Contains("포함", _view.ValidationError);
+        }
+
+        [Test]
+        public void Configure_DuplicateExpressionRenderer_RejectsBinding()
+        {
+            Assert.IsFalse(_view.Configure(_renderers, "Blink", new[] { "Smile" }, new[] { _renderers[0], _renderers[0] }));
+            Assert.IsFalse(_view.IsBound);
+        }
+
+        [Test]
+        public void OnDisable_SeparateEyes_RestoresAllBlinkAndHeadExpressionWeights()
+        {
+            SkinnedMeshRenderer[] eyes = CreateEyeRenderers();
+            Assert.IsFalse(_view.Configure(Array.Empty<SkinnedMeshRenderer>(), "Blink", Array.Empty<string>()));
+            for (int i = 0; i < LOD_COUNT; ++i)
+            {
+                _renderers[i].SetBlendShapeWeight(0, INITIAL_WEIGHT);
+                _renderers[i].SetBlendShapeWeight(1, INITIAL_WEIGHT);
+                eyes[i].SetBlendShapeWeight(0, EYE_INITIAL_WEIGHT);
+            }
+
+            Assert.IsTrue(_view.Configure(CombineRenderers(eyes), "Blink", new[] { "Smile" }, _renderers), _view.ValidationError);
+            Assert.IsTrue(_view.TrySetBlink(1f));
+            Assert.IsTrue(_view.TrySetExpression("Smile", 1f));
+            typeof(PlayerFemaleCharacterBlinkView).GetMethod("OnDisable", BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(_view, null);
+            for (int i = 0; i < LOD_COUNT; ++i)
+            {
+                Assert.AreEqual(INITIAL_WEIGHT, _renderers[i].GetBlendShapeWeight(0));
+                Assert.AreEqual(INITIAL_WEIGHT, _renderers[i].GetBlendShapeWeight(1));
+                Assert.AreEqual(EYE_INITIAL_WEIGHT, eyes[i].GetBlendShapeWeight(0));
+            }
+        }
+
         /****************************************
         *                Methods
         ****************************************/
+
+        private SkinnedMeshRenderer[] CreateEyeRenderers()
+        {
+            _eyeMesh = new Mesh { name = "BlinkOnlyEyeFixture" };
+            _eyeMesh.vertices = new[] { Vector3.zero, Vector3.right, Vector3.up };
+            _eyeMesh.triangles = new[] { 0, 1, 2 };
+            _eyeMesh.AddBlendShapeFrame("Blink", MAX_WEIGHT, new[] { Vector3.up, Vector3.zero, Vector3.zero }, null, null);
+            var eyes = new SkinnedMeshRenderer[LOD_COUNT];
+            for (int i = 0; i < LOD_COUNT; ++i)
+            {
+                var child = new GameObject("EyeLOD" + i);
+                child.transform.SetParent(_root.transform, false);
+                eyes[i] = child.AddComponent<SkinnedMeshRenderer>();
+                eyes[i].sharedMesh = _eyeMesh;
+            }
+
+            return eyes;
+        }
+
+        private SkinnedMeshRenderer[] CombineRenderers(SkinnedMeshRenderer[] extraRenderers)
+        {
+            var combined = new SkinnedMeshRenderer[_renderers.Length + extraRenderers.Length];
+            Array.Copy(_renderers, combined, _renderers.Length);
+            Array.Copy(extraRenderers, 0, combined, _renderers.Length, extraRenderers.Length);
+            return combined;
+        }
 
         private static Mesh CreateFaceMesh()
         {

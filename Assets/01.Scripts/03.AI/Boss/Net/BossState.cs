@@ -242,6 +242,132 @@ namespace Shinshi.AI
             RpcAreaEnded(areaId, fate);
         }
 
+        [Server]
+        public void OnSweepStarted(in BossSweepStart start)
+        {
+            _serverLedger.OnSweepStarted(in start);
+            RpcSweepStarted(start);
+        }
+
+        [Server]
+        public void OnSweepZoneScheduled(in BossTelegraphStart zone)
+        {
+            _serverLedger.OnSweepZoneScheduled(in zone);
+            RpcSweepZoneScheduled(zone);
+        }
+
+        [Server]
+        public void OnSweepZoneBlasted(int zoneId, double blastServerTime)
+        {
+            _serverLedger.OnSweepZoneBlasted(zoneId, blastServerTime);
+            RpcSweepZoneBlasted(zoneId, blastServerTime);
+        }
+
+        [Server]
+        public void OnSweepCancelled(int castId)
+        {
+            _serverLedger.OnSweepCancelled(castId);
+            RpcSweepCancelled(castId);
+        }
+
+        [Server]
+        public void OnBeamTelegraphStarted(in BossBeamStart start)
+        {
+            _serverLedger.OnBeamTelegraphStarted(in start);
+            RpcBeamTelegraphStarted(start);
+        }
+
+        [Server]
+        public void OnBeamCancelled(int beamId)
+        {
+            _serverLedger.OnBeamCancelled(beamId);
+            RpcBeamCancelled(beamId);
+        }
+
+        [Server]
+        public void OnBeamActivated(int beamId, double activateServerTime)
+        {
+            _serverLedger.OnBeamActivated(beamId, activateServerTime);
+            RpcBeamActivated(beamId, activateServerTime);
+        }
+
+        [Server]
+        public void OnBeamTicked(int beamId, int hitIndex, double roundServerTime)
+        {
+            _serverLedger.OnBeamTicked(beamId, hitIndex, roundServerTime);
+            RpcBeamTicked(beamId, hitIndex, roundServerTime);
+        }
+
+        [Server]
+        public void OnBeamEnded(int beamId, EBossAreaFate fate)
+        {
+            _serverLedger.OnBeamEnded(beamId, fate);
+            RpcBeamEnded(beamId, fate);
+        }
+
+        [Server]
+        public void OnStarTelegraphStarted(in BossStarStart start)
+        {
+            _serverLedger.OnStarTelegraphStarted(in start);
+            RpcStarTelegraphStarted(start);
+        }
+
+        [Server]
+        public void OnStarCancelled(int starId)
+        {
+            _serverLedger.OnStarCancelled(starId);
+            RpcStarCancelled(starId);
+        }
+
+        [Server]
+        public void OnStarActivated(int starId, double activateServerTime)
+        {
+            _serverLedger.OnStarActivated(starId, activateServerTime);
+            RpcStarActivated(starId, activateServerTime);
+        }
+
+        [Server]
+        public void OnStarTicked(int starId, int hitIndex, double roundServerTime)
+        {
+            _serverLedger.OnStarTicked(starId, hitIndex, roundServerTime);
+            RpcStarTicked(starId, hitIndex, roundServerTime);
+        }
+
+        [Server]
+        public void OnStarEnded(int starId, EBossAreaFate fate)
+        {
+            _serverLedger.OnStarEnded(starId, fate);
+            RpcStarEnded(starId, fate);
+        }
+
+        [Server]
+        public void OnBarrierStarted(in BossBarrierStart start)
+        {
+            _serverLedger.OnBarrierStarted(in start);
+            RpcBarrierStarted(start);
+        }
+
+        [Server]
+        public void OnBarrierActivated(int barrierId, double activateServerTime)
+        {
+            _serverLedger.OnBarrierActivated(barrierId, activateServerTime);
+            RpcBarrierActivated(barrierId, activateServerTime);
+        }
+
+        [Server]
+        public void OnBarrierCompleted(int barrierId, double completeServerTime)
+        {
+            _serverLedger.OnBarrierCompleted(barrierId, completeServerTime);
+            RpcBarrierCompleted(barrierId, completeServerTime);
+        }
+
+        [Server]
+        public void OnBarrierCleared(int barrierId)
+        {
+            _serverLedger.OnBarrierCleared(barrierId);
+            RpcBarrierCleared(barrierId);
+        }
+
         /****************************************
         *               ClientRpc
         ****************************************/
@@ -335,6 +461,132 @@ namespace Shinshi.AI
         {
             _clientLedger.OnAreaEnded(areaId, fate);
             _listener?.OnAreaEnded(areaId, fate);
+        }
+
+        [ClientRpc]
+        private void RpcSweepStarted(BossSweepStart start)
+        {
+            _clientLedger.OnSweepStarted(in start);
+            _listener?.OnSweepStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcSweepZoneScheduled(BossTelegraphStart zone)
+        {
+            _clientLedger.OnSweepZoneScheduled(in zone);
+            _listener?.OnSweepZoneScheduled(in zone);
+        }
+
+        [ClientRpc]
+        private void RpcSweepZoneBlasted(int zoneId, double blastServerTime)
+        {
+            _clientLedger.OnSweepZoneBlasted(zoneId, blastServerTime);
+            _listener?.OnSweepZoneBlasted(zoneId, blastServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcSweepCancelled(int castId)
+        {
+            _clientLedger.OnSweepCancelled(castId);
+            _listener?.OnSweepCancelled(castId);
+        }
+
+        [ClientRpc]
+        private void RpcBeamTelegraphStarted(BossBeamStart start)
+        {
+            _clientLedger.OnBeamTelegraphStarted(in start);
+            _listener?.OnBeamTelegraphStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcBeamCancelled(int beamId)
+        {
+            _clientLedger.OnBeamCancelled(beamId);
+            _listener?.OnBeamCancelled(beamId);
+        }
+
+        [ClientRpc]
+        private void RpcBeamActivated(int beamId, double activateServerTime)
+        {
+            _clientLedger.OnBeamActivated(beamId, activateServerTime);
+            _listener?.OnBeamActivated(beamId, activateServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcBeamTicked(int beamId, int hitIndex, double roundServerTime)
+        {
+            _clientLedger.OnBeamTicked(beamId, hitIndex, roundServerTime);
+            _listener?.OnBeamTicked(beamId, hitIndex, roundServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcBeamEnded(int beamId, EBossAreaFate fate)
+        {
+            _clientLedger.OnBeamEnded(beamId, fate);
+            _listener?.OnBeamEnded(beamId, fate);
+        }
+
+        [ClientRpc]
+        private void RpcStarTelegraphStarted(BossStarStart start)
+        {
+            _clientLedger.OnStarTelegraphStarted(in start);
+            _listener?.OnStarTelegraphStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcStarCancelled(int starId)
+        {
+            _clientLedger.OnStarCancelled(starId);
+            _listener?.OnStarCancelled(starId);
+        }
+
+        [ClientRpc]
+        private void RpcStarActivated(int starId, double activateServerTime)
+        {
+            _clientLedger.OnStarActivated(starId, activateServerTime);
+            _listener?.OnStarActivated(starId, activateServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcStarTicked(int starId, int hitIndex, double roundServerTime)
+        {
+            _clientLedger.OnStarTicked(starId, hitIndex, roundServerTime);
+            _listener?.OnStarTicked(starId, hitIndex, roundServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcStarEnded(int starId, EBossAreaFate fate)
+        {
+            _clientLedger.OnStarEnded(starId, fate);
+            _listener?.OnStarEnded(starId, fate);
+        }
+
+        [ClientRpc]
+        private void RpcBarrierStarted(BossBarrierStart start)
+        {
+            _clientLedger.OnBarrierStarted(in start);
+            _listener?.OnBarrierStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcBarrierActivated(int barrierId, double activateServerTime)
+        {
+            _clientLedger.OnBarrierActivated(barrierId, activateServerTime);
+            _listener?.OnBarrierActivated(barrierId, activateServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcBarrierCompleted(int barrierId, double completeServerTime)
+        {
+            _clientLedger.OnBarrierCompleted(barrierId, completeServerTime);
+            _listener?.OnBarrierCompleted(barrierId, completeServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcBarrierCleared(int barrierId)
+        {
+            _clientLedger.OnBarrierCleared(barrierId);
+            _listener?.OnBarrierCleared(barrierId);
         }
 
         /****************************************

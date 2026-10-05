@@ -32,7 +32,7 @@ namespace Shinshi.Data.Reservations
         }
     }
 
-    /// <summary> 예약할 참가자 한 명. 마을 서버가 준비 확인에 쓴 캐릭터 revision을 함께 보낸다 </summary>
+    /// <summary> 예약할 참가자 한 명. 마을 서버가 준비 확인에 쓴 캐릭터 loadout_revision을 함께 보낸다 </summary>
     public sealed class ParticipantReservationInput
     {
         /****************************************
@@ -68,6 +68,9 @@ namespace Shinshi.Data.Reservations
         public const int MIN_PARTY_SIZE = 1;
         public const int MAX_PARTY_SIZE = 4;
 
+        // game_sessions.battle_id, boss_id CHECK(0012)와 같은 길이 상한
+        public const int MAX_CONTRACT_ID_LENGTH = 64;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -79,12 +82,24 @@ namespace Shinshi.Data.Reservations
         public string                                     ContentVersion { get; }
         public IReadOnlyList<ParticipantReservationInput> Participants   { get; }
 
+        // 출정 계약. 빈 문자열은 값 없음이고 difficulty는 GameSessionCodes.Difficulty다
+        public string                                     BattleId       { get; }
+        public string                                     BossId         { get; }
+        public int                                        Difficulty     { get; }
+
         /****************************************
         *                Methods
         ****************************************/
 
         public ReservationInput(Guid townInstanceId, Guid operationId, int mode, string mapId, string contentVersion,
             IReadOnlyList<ParticipantReservationInput> participants)
+            : this(townInstanceId, operationId, mode, mapId, contentVersion, participants, null, null,
+                GameSessionCodes.Difficulty.NONE)
+        {
+        }
+
+        public ReservationInput(Guid townInstanceId, Guid operationId, int mode, string mapId, string contentVersion,
+            IReadOnlyList<ParticipantReservationInput> participants, string? battleId, string? bossId, int difficulty)
         {
             TownInstanceId = townInstanceId;
             OperationId    = operationId;
@@ -92,6 +107,9 @@ namespace Shinshi.Data.Reservations
             MapId          = mapId ?? string.Empty;
             ContentVersion = contentVersion ?? string.Empty;
             Participants   = participants ?? Array.Empty<ParticipantReservationInput>();
+            BattleId       = battleId ?? string.Empty;
+            BossId         = bossId ?? string.Empty;
+            Difficulty     = difficulty;
         }
 
         /// <summary> 형식 검증. 계정, 캐릭터, 같은 참가자의 물약 종류가 중복되면 요청 형식 오류다 </summary>
@@ -106,6 +124,10 @@ namespace Shinshi.Data.Reservations
                 return false;
             }
             if (string.IsNullOrWhiteSpace(MapId) || string.IsNullOrWhiteSpace(ContentVersion))
+            {
+                return false;
+            }
+            if (!IsContractValid())
             {
                 return false;
             }
@@ -141,10 +163,44 @@ namespace Shinshi.Data.Reservations
             return true;
         }
 
-        /// <summary> 요청 해시용 본문. 참가자와 물약 순서는 요청 순서를 그대로 둔다 </summary>
+        // 보스전은 bossId와 난이도가 필수이고 일반전은 둘 다 없어야 한다. battleId는 선택이다
+        private bool IsContractValid()
+        {
+            if ((BattleId.Length > MAX_CONTRACT_ID_LENGTH) || (BossId.Length > MAX_CONTRACT_ID_LENGTH)
+                || ((BattleId.Length > 0) && string.IsNullOrWhiteSpace(BattleId)))
+            {
+                return false;
+            }
+            if (Mode == GameSessionCodes.Mode.BOSS)
+            {
+                return !string.IsNullOrWhiteSpace(BossId) && ((Difficulty == GameSessionCodes.Difficulty.EASY)
+                    || (Difficulty == GameSessionCodes.Difficulty.HARD));
+            }
+
+            return (BossId.Length == 0) && (Difficulty == GameSessionCodes.Difficulty.NONE);
+        }
+
+        /// <summary> 요청 해시용 본문. 참가자와 물약 순서는 요청 순서를 그대로 둔다.
+        /// 출정 계약 필드는 값이 있을 때만 넣어 0012 전에 저장된 같은 요청의 해시가 바뀌지 않게 한다 </summary>
         public string ToRequestJson()
         {
+            if ((BattleId.Length == 0) && (BossId.Length == 0) && (Difficulty == GameSessionCodes.Difficulty.NONE))
+            {
+                return SessionDb.ToRequestJson(RequestBody());
+            }
+
             return SessionDb.ToRequestJson(new
+            {
+                body = RequestBody(),
+                battleId = BattleId,
+                bossId = BossId,
+                difficulty = Difficulty
+            });
+        }
+
+        private object RequestBody()
+        {
+            return new
             {
                 mode = Mode,
                 mapId = MapId,
@@ -161,7 +217,7 @@ namespace Shinshi.Data.Reservations
                         quantity = potion.Quantity
                     })
                 })
-            });
+            };
         }
     }
 

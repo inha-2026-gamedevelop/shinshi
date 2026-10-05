@@ -68,11 +68,12 @@ namespace Shinshi.Backend.Inbox
             InboxEntry[] entries = listing.Entries.Select(entry => new InboxEntry(entry.InboxId.ToString("D"),
                 entry.SourceKind, entry.CreatedAt.ToUnixTimeMilliseconds(), entry.ExpiresAt.ToUnixTimeMilliseconds(),
                 entry.Rewards.Select(line => new InboxReward(line.AssetKind, line.AssetId, line.BindingKind,
-                    line.Quantity)).ToArray(), RewardLines.RequiresCharacter(entry.Rewards))).ToArray();
+                    line.Quantity)).ToArray(), entry.RequiresCharacter)).ToArray();
             return Ok(new InboxListResponse(entries, listing.ServerTime.ToUnixTimeMilliseconds()));
         }
 
-        /// <summary> 거절은 409와 OperationResult(INBOX_*)이고 같은 operationId 재전송은 처음 결과를 받는다. 형식 오류는 400이다.
+        /// <summary> 거절은 409와 OperationResult(INBOX_*, 회수함에 공간이 없으면 INVENTORY_FULL)이고 같은 operationId 재전송은 처음 결과를 받는다.
+        /// 회수함 우편은 상한까지 남은 공간만 옮기는 부분 수령이다. 형식 오류는 400이다.
         /// 이 계정의 우편이 아니면 작업 행 없이 409 INBOX_NOT_FOUND다. 계정별 1분 한도를 넘으면 429 RATE_LIMITED와 Retry-After,
         /// 본문이 InboxRequestGateFilter.MAX_BODY_BYTES를 넘으면 413이며 둘 다 본문을 읽기 전에 거절한다 </summary>
         [HttpPost(ApiRoutes.INBOX_CLAIM)]

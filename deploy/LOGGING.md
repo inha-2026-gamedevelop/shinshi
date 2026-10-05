@@ -2,7 +2,7 @@
 
 적용 서비스는 `api`, `town`, `dungeon`이다. UTF-8 JSON 객체 하나를 한 줄로 표준 출력에 기록하고 오류도 같은 형식을 사용한다. systemd의 journald 또는 컨테이너 로그 수집기는 이 줄을 보존한다. 수집 시각으로 발생 시각을 덮어쓰지 않는다.
 
-이 문서는 구현할 공통 규약이다. Dockerfile은 ASP.NET Core 내장 JSON 콘솔 포맷을 켜지만 그 출력은 `Timestamp`, `LogLevel`, `Message`, `EventId`, `Scopes` 등의 원래 키를 사용한다. 공통 키를 채우는 API 로거/수집기 연결은 후속 작업이다. 현재 Unity의 `Debug.Log` 문자열과 API의 `--migrate` 실행기가 직접 stdout/stderr에 쓰는 문장도 공통 JSON으로 자동 변환되지 않는다. 내장 포맷이나 journald를 켰다는 이유만으로 이 규약과 지표가 구현되었다고 판정하지 않는다.
+이 문서는 구현할 공통 규약이다. API Dockerfile은 `shinshi-json` 콘솔 포매터(`Backend/src/Shinshi.Api/Observability`)를 켜고, 이 포매터가 아래 공통 키로 한 줄씩 쓴다. `instanceId`, `buildId`, `contentVersion`은 실행 환경의 `Observability__InstanceId`, `Observability__BuildId`, `Observability__ContentVersion`에서 오며 없으면 `null`이다. 프레임워크(Microsoft.*) 로그는 메시지 값을 버리고 `data.template`만 남긴다. 요청마다 `api.request.completed`(경로 템플릿, 메서드, 상태, 소요 ms), 60초마다 `api.metrics`(`data.metrics`)를 남긴다. 게임 서버 빌드(`UNITY_SERVER`)는 `ServerBootstrap`이 `ServerJsonLogHandler`(`Assets/01.Scripts/98.Servers/01.Network/Observability/`)를 설치해 Unity `Debug.Log*` 문자열을 `unity.log`(예외는 `unity.exception`) 이벤트의 공통 JSON 한 줄로 바꾼다. 메시지는 Bearer 값을 가린 뒤 `data.message`에 넣고, `buildId`는 빌드 신원 파일을 읽은 뒤부터 채운다(그 전 줄은 `null`). 서버 시작은 `server.started`, 드레인·강제 종료는 `server.drain.requested`·`server.shutdown.forced`, 60초마다 `server.metrics`를 남긴다. 에디터와 클라이언트 빌드는 설치하지 않아 평문 그대로다. API의 `--migrate`·관리자 부트스트랩 실행기가 직접 stdout/stderr에 쓰는 문장은 여전히 공통 JSON으로 자동 변환되지 않는다. 내장 포맷이나 journald를 켰다는 이유만으로 이 규약과 지표가 구현되었다고 판정하지 않는다.
 
 ## 공통 키
 

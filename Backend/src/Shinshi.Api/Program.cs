@@ -11,6 +11,9 @@ using Npgsql;
 
 // Project
 using Shinshi.Backend.Admin;
+using Shinshi.Backend.Growth;
+using Shinshi.Backend.Life;
+using Shinshi.Backend.Observability;
 using Shinshi.Backend.Sessions;
 using Shinshi.Contracts;
 using Shinshi.Data;
@@ -79,14 +82,20 @@ namespace Shinshi.Backend
             builder.Services.AddSingleton<IJoinTokenIssuer, JoinTokenIssuer>();
             builder.Services.AddSingleton<IEconomyLedgerWriter, LedgerWriter>();
             builder.Services.AddShinshiGameSessions();
+            builder.Services.AddShinshiLife();
+            builder.Services.AddShinshiGrowth(builder.Configuration);
+            builder.Services.AddShinshiObservability(builder.Configuration,
+                !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Postgres")));
             builder.Services.AddShinshiAdmin(builder.Configuration);
             if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Postgres")))
             {
                 builder.Services.AddShinshiGameSessionMaintenance();
+                builder.Services.AddShinshiEconomyReconciliation();
             }
 
             await using WebApplication app = builder.Build();
             app.UseShinshiForwardedHeaders(app.Configuration);
+            app.UseShinshiRequestLogging();
             app.UseRouting();
             app.UseShinshiAdminAuthentication();
             app.UseShinshiAuthentication();

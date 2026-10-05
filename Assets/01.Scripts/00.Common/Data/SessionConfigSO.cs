@@ -37,6 +37,7 @@ namespace Shinshi.Data
         [SerializeField] private float _bossReviveHealthRate   = 0.3f;
         [SerializeField] private int   _bossSharedRevives      = 3;     // 파티 공용 횟수
         [SerializeField] private float _safePointRetryInterval = 0.25f; // 초, 안전 지점이 없을 때 재평가 간격
+        [SerializeField] private float _safePointEnemyClearance = 6f;   // m, 복귀 지점과 살아 있는 적 사이 최소 수평 거리
 
         [Header("재접속과 준비")]
         [SerializeField] private float _reconnectGraceSeconds  = 120f;
@@ -58,22 +59,23 @@ namespace Shinshi.Data
         [Header("서비스 장애 취소")]
         [SerializeField] private EExtraEssencePolicy _serviceCancelExtraEssence = EExtraEssencePolicy.Undecided;
 
-        public float NormalReviveDelay      => _normalReviveDelay;
-        public float NormalReviveHealthRate => _normalReviveHealthRate;
-        public float BossReviveDelay        => _bossReviveDelay;
-        public float BossReviveHealthRate   => _bossReviveHealthRate;
-        public int   BossSharedRevives      => _bossSharedRevives;
-        public float SafePointRetryInterval => _safePointRetryInterval;
-        public float ReconnectGraceSeconds  => _reconnectGraceSeconds;
-        public float ReadyCountdownSeconds  => _readyCountdownSeconds;
-        public int   BossPotionUseLimit     => _bossPotionUseLimit;
-        public int   AuctionMinBid          => _auctionMinBid;
-        public int   AuctionMinIncrement    => _auctionMinIncrement;
-        public float AuctionBaseSeconds     => _auctionBaseSeconds;
-        public float AuctionExtendThreshold => _auctionExtendThreshold;
-        public float AuctionExtendTo        => _auctionExtendTo;
-        public float AuctionMaxSeconds      => _auctionMaxSeconds;
-        public float AuctionFeeRate         => _auctionFeeRate;
+        public float NormalReviveDelay       => _normalReviveDelay;
+        public float NormalReviveHealthRate  => _normalReviveHealthRate;
+        public float BossReviveDelay         => _bossReviveDelay;
+        public float BossReviveHealthRate    => _bossReviveHealthRate;
+        public int   BossSharedRevives       => _bossSharedRevives;
+        public float SafePointRetryInterval  => _safePointRetryInterval;
+        public float SafePointEnemyClearance => _safePointEnemyClearance;
+        public float ReconnectGraceSeconds   => _reconnectGraceSeconds;
+        public float ReadyCountdownSeconds   => _readyCountdownSeconds;
+        public int   BossPotionUseLimit      => _bossPotionUseLimit;
+        public int   AuctionMinBid           => _auctionMinBid;
+        public int   AuctionMinIncrement     => _auctionMinIncrement;
+        public float AuctionBaseSeconds      => _auctionBaseSeconds;
+        public float AuctionExtendThreshold  => _auctionExtendThreshold;
+        public float AuctionExtendTo         => _auctionExtendTo;
+        public float AuctionMaxSeconds       => _auctionMaxSeconds;
+        public float AuctionFeeRate          => _auctionFeeRate;
         public EExtraEssencePolicy ServiceCancelExtraEssence => _serviceCancelExtraEssence;
 
         /****************************************
@@ -108,9 +110,16 @@ namespace Shinshi.Data
             DataValidation.RequirePositiveAtMost(errors, OWNER, nameof(_bossReviveHealthRate), _bossReviveHealthRate, MAX_RATE);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_bossSharedRevives), _bossSharedRevives);
             DataValidation.RequirePositive(errors, OWNER, nameof(_safePointRetryInterval), _safePointRetryInterval);
+            DataValidation.RequireNonNegative(errors, OWNER, nameof(_safePointEnemyClearance), _safePointEnemyClearance);
             DataValidation.RequirePositive(errors, OWNER, nameof(_reconnectGraceSeconds), _reconnectGraceSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_readyCountdownSeconds), _readyCountdownSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_bossPotionUseLimit), _bossPotionUseLimit);
+            if (_bossPotionUseLimit != Shinshi.Contracts.GameSessionCodes.Potion.BOSS_USE_LIMIT)
+            {
+                // 던전 서버와 API는 공용 계약 상수를 쓴다. SO 값은 표시와 검토용이라 다르면 어긋난 것이다
+                errors.Add($"{OWNER}.{nameof(_bossPotionUseLimit)} = {_bossPotionUseLimit}: "
+                    + $"GameSessionCodes.Potion.BOSS_USE_LIMIT({Shinshi.Contracts.GameSessionCodes.Potion.BOSS_USE_LIMIT})와 같아야 한다");
+            }
             DataValidation.RequirePositive(errors, OWNER, nameof(_auctionMinBid), _auctionMinBid);
             DataValidation.RequirePositive(errors, OWNER, nameof(_auctionMinIncrement), _auctionMinIncrement);
             DataValidation.RequirePositive(errors, OWNER, nameof(_auctionBaseSeconds), _auctionBaseSeconds);

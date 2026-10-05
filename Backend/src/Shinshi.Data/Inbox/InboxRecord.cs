@@ -17,6 +17,9 @@ namespace Shinshi.Data.Inbox
         public DateTimeOffset            ExpiresAt  { get; }
         public IReadOnlyList<RewardLine> Rewards    { get; }
 
+        // 수령 요청에 캐릭터 ID가 필요한지. 회수함 행은 획득한 캐릭터에 묶여 있어 필요 없다
+        public bool                      RequiresCharacter { get; }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -26,11 +29,12 @@ namespace Shinshi.Data.Inbox
         {
             ArgumentNullException.ThrowIfNull(sourceKind);
             ArgumentNullException.ThrowIfNull(rewards);
-            InboxId    = inboxId;
-            SourceKind = sourceKind;
-            CreatedAt  = createdAt;
-            ExpiresAt  = expiresAt;
-            Rewards    = rewards;
+            InboxId           = inboxId;
+            SourceKind        = sourceKind;
+            CreatedAt         = createdAt;
+            ExpiresAt         = expiresAt;
+            Rewards           = rewards;
+            RequiresCharacter = !RecoveryInbox.IsRecoverySource(sourceKind) && RewardLines.RequiresCharacter(rewards);
         }
     }
 }

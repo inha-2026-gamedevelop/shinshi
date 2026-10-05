@@ -213,6 +213,14 @@ namespace Shinshi.Backend.Sessions
                     }
                     input.SettlementOperationId = settlementOperationId;
                 }
+                if (!string.IsNullOrEmpty(entry.RevertsEventId))
+                {
+                    if (!TryParseId(entry.RevertsEventId, out Guid revertsEventId))
+                    {
+                        return null;
+                    }
+                    input.RevertsEventId = revertsEventId;
+                }
 
                 List<SettlementGrantInput>? grants = ToGrants(entry.Grants);
                 if (grants == null)

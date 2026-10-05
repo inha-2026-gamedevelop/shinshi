@@ -76,6 +76,7 @@ namespace Shinshi.Common
         InvalidAppearance    = 1000, // 외형 구조, 값 범위, 팔레트, 직업별 허용 헤어 중 하나가 맞지 않는다
         CharacterNameTaken   = 1001, // 전각, 반각과 대소문자만 다른 이름도 같은 이름이다
         InvalidCharacterName = 1002, // 정규화 뒤 2~12자의 완성형 한글, 영문, 숫자가 아니다
+        CharacterNotFound    = 1003, // 없거나 다른 계정이거나 이미 삭제한 캐릭터다
 
         // 운영, 우편함
         FeatureDisabled        = 1100, // 운영자가 기능 차단 스위치로 끈 기능이다
@@ -92,6 +93,11 @@ namespace Shinshi.Common
         InvalidEmail           = 1203,
         WeakPassword           = 1204,
         InvalidCredentials     = 1205, // 아이디가 없든 비밀번호가 틀리든 같은 거절이다
-        AccountLocked          = 1206  // 이 IP에서 같은 아이디로 연속 실패해 잠시 막혔다. 다른 IP는 막히지 않는다
+        AccountLocked          = 1206, // 이 IP에서 같은 아이디로 연속 실패해 잠시 막혔다. 다른 IP는 막히지 않는다
+
+        // 마을 파티
+        RoomNotFound           = 1300, // 방이 없거나 이미 출정했다
+        RoomPasswordMismatch   = 1301,
+        InviteExpired          = 1302  // 초대를 받은 지 30초가 지났다
     }
 }

@@ -14,10 +14,8 @@ namespace Shinshi.Network
     public static class LauncherSession
     {
         // 상태 변경은 모두 메인 스레드에서만 한다. 수신 스레드는 결과를 메인 스레드로 넘기고 여기를 직접 부르지 않는다.
-        // 그래서 StateChanged도 항상 메인 스레드에서 불린다
-
-        // TODO(민성): 받은 세션으로 API를 부르고 만료 전에 AUTH_GAME_SESSION_REFRESH로 갱신한다
-        // TODO(민성): IsLaunchRequired인데 세션이 없으면 정식 로그인을 막고 "런처로 실행하세요"를 표시한다
+        // 그래서 StateChanged도 항상 메인 스레드에서 불린다.
+        // 만료 전 갱신은 GameSessionRefresher가 하고, 런처 필수 빌드의 안내는 LauncherSessionRules.DescribeLaunchStatus가 정한다
 
         /****************************************
         *                Fields
@@ -30,7 +28,7 @@ namespace Shinshi.Network
         private static string                  _apiBaseUrl       = null;
         private static long                    _expiryTimestamp  = 0;
 
-        // 수신 시도 번호. 시간 초과나 리셋 뒤에 늦게 도착한 결과를 버린다
+        // 수신 시도 번호. 시간 초과나 리셋 뒤에 늦게 도착한 결과를 버린다. 토큰을 갱신할 때도 올려 늦은 갱신 응답을 버린다
         private static int _attempt = 0;
 
         /****************************************
@@ -47,6 +45,9 @@ namespace Shinshi.Network
         public static bool IsLaunchRequired => (!Application.isEditor) && (!UnityEngine.Debug.isDebugBuild);
 
         public static bool IsExpired => GetRemainingMs() <= 0;
+
+        // 지금 들고 있는 세션의 번호. 갱신 요청을 보낼 때 잡아 두고 응답을 넣을 때 ReplaceToken에 돌려준다
+        public static int SessionAttempt => _attempt;
 
         public static event Action<ELauncherSessionState> StateChanged;
 
@@ -139,6 +140,48 @@ namespace Shinshi.Network
 #else
             return false;
 #endif
+        }
+
+        // 갱신으로 받은 새 토큰을 넣는다. 그사이 세션이 바뀌었거나 다른 계정의 응답이면 버리고 false.
+        // 넣으면 번호를 올린다. 이전 토큰으로 보낸 요청의 응답이 늦게 와도 새 토큰을 덮지 못한다
+        internal static bool ReplaceToken(int attempt, GameSessionIssueResponse refreshed, long receivedTimestamp)
+        {
+            if ((attempt != _attempt) || (_state != ELauncherSessionState.Received))
+            {
+                return false;
+            }
+
+            if ((refreshed == null) || string.IsNullOrWhiteSpace(refreshed.GameSessionToken)
+                || (!string.Equals(refreshed.AccountId, _accountId, StringComparison.Ordinal)))
+            {
+                return false;
+            }
+
+            long remainingMs = refreshed.ExpiresAtUnixMs - refreshed.ServerTimeUnixMs;
+            if (remainingMs <= 0)
+            {
+                return false;
+            }
+
+            ++_attempt;
+            _gameSessionToken = refreshed.GameSessionToken;
+            _expiryTimestamp  = LauncherSessionRules.ComputeExpiryTimestamp(receivedTimestamp, remainingMs, Stopwatch.Frequency);
+            return true;
+        }
+
+        // 받은 세션이 API에서 폐기, 만료로 거절됐다. 이 세션 번호가 아직 유효해 실패로 바꿨으면 true
+        internal static bool EndSession(int attempt, ELauncherSessionFailure reason)
+        {
+            if ((attempt != _attempt) || (_state != ELauncherSessionState.Received))
+            {
+                return false;
+            }
+
+            ++_attempt;
+            ClearSession();
+            _failureReason = reason;
+            SetState(ELauncherSessionState.Failed);
+            return true;
         }
 
         // 이 시도가 아직 유효해 실패로 바꿨으면 true

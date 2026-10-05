@@ -69,5 +69,8 @@ namespace Shinshi.Contracts.Admin
         public const string SESSIONS                = PREFIX + "/sessions";
         public const string SESSION_RECOVERY        = PREFIX + "/sessions/{sessionId}/recovery";
         public const string SESSION_RECOVERY_FORMAT = PREFIX + "/sessions/{0}/recovery";
+
+        // 경매 단계 출정 목록(멈춘 경매 확인). GET /admin/v1/auctions?state=&cursor=&limit=
+        public const string AUCTIONS                = PREFIX + "/auctions";
     }
 }

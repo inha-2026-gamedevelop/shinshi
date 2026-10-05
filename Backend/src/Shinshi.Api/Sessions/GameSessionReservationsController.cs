@@ -219,7 +219,7 @@ namespace Shinshi.Backend.Sessions
             }
 
             return new ReservationInput(townInstanceId, operationId, request.Mode, request.MapId, request.ContentVersion,
-                participants);
+                participants, request.BattleId, request.BossId, request.Difficulty);
         }
     }
 }

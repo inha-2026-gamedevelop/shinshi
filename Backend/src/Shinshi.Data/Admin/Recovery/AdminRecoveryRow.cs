@@ -13,13 +13,15 @@ namespace Shinshi.Data.Admin
         *              Properties
         ****************************************/
 
-        public Guid     ServerInstanceId  { get; set; }
-        public Guid?    ServerBootId      { get; set; }
-        public string   ServerState       { get; set; } = string.Empty;
-        public DateTime ServerHeartbeatAt { get; set; }
-        public bool     AssignedBootAlive { get; set; }
-        public bool     SettlingStale     { get; set; }
-        public bool     InstanceLost      { get; set; }
+        public Guid     ServerInstanceId      { get; set; }
+        public Guid?    ServerBootId          { get; set; }
+        public string   ServerState           { get; set; } = string.Empty;
+        public DateTime ServerHeartbeatAt     { get; set; }
+        public bool     AssignedBootAlive     { get; set; }
+        public bool     SettlingStale         { get; set; }
+        public bool     InstanceLost          { get; set; }
+        public bool     AuctionDeadlinePassed { get; set; }
+        public bool     AuctionInstanceLost   { get; set; }
 
         /****************************************
         *                Methods
@@ -32,7 +34,8 @@ namespace Shinshi.Data.Admin
                 AdminLogValues.ToText(ServerBootId), ServerState, AdminLogValues.ToUnixMs(ServerHeartbeatAt),
                 AssignedBootAlive);
             return new AdminRecoverySession(ToContract(), instance, RecoveryFailures >= quarantineFailures, SettlingStale,
-                (InstanceLost) && (!livenessDeferred));
+                (InstanceLost) && (!livenessDeferred),
+                AuctionDeadlinePassed || (AuctionInstanceLost && (!livenessDeferred)));
         }
     }
 }

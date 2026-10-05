@@ -62,9 +62,16 @@ namespace Shinshi.Combat
         // 회피 쿨다운이 끝나는 서버 시각. HUD와 입력의 미리 거르기가 읽는다
         [SyncVar] private double _dodgeReadyAt;
 
+        // 부활 요청을 받았지만 안전 복귀 지점이 모두 위험해 재평가를 기다린다. 복귀 버튼의 대기 표시만 읽는다.
+        // 다른 참가자에게 보일 이유가 없어 관찰자 전체에 보내는 PlayerCombatState가 아니라 소유자 전용인 여기에 둔다
+        [SyncVar] private bool _isWaitingSafePoint;
+
         private double _nextMoveSendTime = 0.0;
         private bool   _hasPendingDodge  = false;
         private ushort _pendingDodgeYaw  = 0;
+
+        private bool        _hasPendingPotion  = false;
+        private EPotionSize _pendingPotionSize = EPotionSize.Small;
 
         /****************************************
         *              Properties
@@ -99,6 +106,8 @@ namespace Shinshi.Combat
 
         public double DodgeReadyAt => _dodgeReadyAt;
 
+        public bool IsWaitingSafePoint => _isWaitingSafePoint;
+
         public double SkillQReadyAt    => _skillQReadyAt;
         public double SkillWReadyAt    => _skillWReadyAt;
         public double SkillEReadyAt    => _skillEReadyAt;
@@ -128,7 +137,8 @@ namespace Shinshi.Combat
             // 서버는 참가자별 경로 재계산 간격 안에 온 이동을 미뤄 처리한다. 같은 간격으로 보내야 예측이 경로를 시작하는
             // 시점과 서버가 시작하는 시점이 지연만큼만 어긋나고, 미뤄진 몫만큼 매번 보정되지 않는다
             bool canSendMove = (_hasPendingMove) && (now >= _nextMoveSendTime);
-            if ((!canSendMove) && (!_hasPendingAttack) && (!_hasPendingSkill) && (!_hasPendingRevive) && (!_hasPendingDodge))
+            if ((!canSendMove) && (!_hasPendingAttack) && (!_hasPendingSkill) && (!_hasPendingRevive) && (!_hasPendingDodge)
+                && (!_hasPendingPotion))
             {
                 return;
             }
@@ -147,6 +157,14 @@ namespace Shinshi.Combat
                 PlayerInputHeader dodgeHeader = NextHeader();
                 CmdDodge(new PlayerDodgeInput(dodgeHeader, _pendingDodgeYaw));
                 DodgeSent?.Invoke(dodgeHeader.Sequence, FacingRules.DecodeYaw(_pendingDodgeYaw));
+                return;
+            }
+
+            // 물약은 Command가 아니라 메시지로 보낸다. 같은 연결의 신뢰 채널이라 순번 순서가 Command와 섞이지 않는다
+            if (_hasPendingPotion)
+            {
+                _hasPendingPotion = false;
+                NetworkClient.Send(new PotionUseRequestMessage(NextHeader(), _pendingPotionSize));
                 return;
             }
 
@@ -217,6 +235,7 @@ namespace Shinshi.Combat
             _hasPendingSkill  = false;
             _hasPendingRevive = false;
             _hasPendingDodge  = false;
+            _hasPendingPotion = false;
         }
 
         /****************************************
@@ -291,6 +310,18 @@ namespace Shinshi.Combat
             _pendingDodgeYaw  = FacingRules.EncodeYaw(horizontal);
             _hasPendingDodge  = true;
             _hasPendingAttack = false;
+        }
+
+        /// <summary> 물약 사용을 요청한다, 잔량과 쿨다운과 회복은 서버가 판정하고 결과는 PotionClient로 온다 </summary>
+        public void RequestPotion(EPotionSize size)
+        {
+            if (!isOwned)
+            {
+                return;
+            }
+
+            _pendingPotionSize = size;
+            _hasPendingPotion  = true;
         }
 
         /// <summary> 사망 뒤 부활을 요청한다, 대기 시간과 횟수는 서버가 판정한다 </summary>
@@ -409,6 +440,12 @@ namespace Shinshi.Combat
         public void SetMoveSpeed(float moveSpeed)
         {
             _moveSpeed = moveSpeed;
+        }
+
+        [Server]
+        public void SetWaitingSafePoint(bool waiting)
+        {
+            _isWaitingSafePoint = waiting;
         }
 
         [Server]

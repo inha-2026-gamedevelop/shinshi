@@ -27,6 +27,7 @@ namespace Shinshi.Combat
         private double _lastRefillTime   = 0.0;
         private double _violationStart   = 0.0;
         private int    _violationCount   = 0;
+        private double _lastRateViolationTime = double.NegativeInfinity;
         private bool   _shouldDisconnect = false;
 
         /****************************************
@@ -116,7 +117,14 @@ namespace Shinshi.Combat
             // 주기 초과분은 순번을 보기 전에 버린다. 버린 입력의 순번은 승인하지 않으므로 다음 입력이 이어 받는다
             if (!TryTakeToken(serverTime))
             {
-                AddViolation(serverTime);
+                // 끊겼던 연결이 다시 이어지면 쌓인 입력이 한 틱에 몰려 온다. 같은 서버 시각의 초과는 한 번만 세어 정상 사용자가
+                // 지연 한 번으로 끊기지 않게 한다. 계속 몰아 보내는 클라이언트는 틱마다 한 번씩 쌓여 곧 임계값에 닿는다
+                if (serverTime > _lastRateViolationTime)
+                {
+                    _lastRateViolationTime = serverTime;
+                    AddViolation(serverTime);
+                }
+
                 return EInputVerdict.RateLimited;
             }
 

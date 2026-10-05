@@ -13,5 +13,15 @@ namespace Shinshi.AI
 
         /// <summary> 남아 있는 장판 한 개 </summary>
         void OnAreaRestored(in BossAreaSnapshot snapshot);
+
+        /// <summary> 예고 중이거나 활성된 빔 한 줄, 표현은 BossTelegraphPresenter.RestoreBeam으로 넘긴다 </summary>
+        void OnBeamRestored(in BossBeamSnapshot snapshot);
+
+        /// <summary> 예고 중이거나 활성된 별형 빔 구조 하나, 표현은 BossTelegraphPresenter.RestoreStar로 넘긴다 </summary>
+        void OnStarRestored(in BossStarSnapshot snapshot);
+
+        // 단계는 받은 시각과 서버 시각으로 정해지므로 시작 값 하나만 넘긴다
+        /// <summary> 예고 중이거나 활성된 결계 위험 구역, 표현은 BossBarrierView.Begin으로 넘긴다 </summary>
+        void OnBarrierRestored(in BossBarrierStart start);
     }
 }

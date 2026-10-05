@@ -424,6 +424,7 @@ namespace Shinshi.Data
         private const int    SECOND_PHASE                    = 2;
         private const string WOLBAEK_ID                     = "boss_wolbaek";
         private const string CHEOLGAK_ID                     = "boss_cheolgak";
+        private const string MUCHEOL_ID                      = "boss_mucheol";
         private const int    WOLBAEK_PHASE_ONE_PATTERN_COUNT = 6;
 
         /****************************************
@@ -438,7 +439,9 @@ namespace Shinshi.Data
         {
             new BossDefinition(WOLBAEK_ID),
             // 보상과 진행 카탈로그가 철각 보스전을 참조하므로 ID만 둔다. 체험판에 넣지 않고 패턴도 없다
-            new BossDefinition(CHEOLGAK_ID)
+            new BossDefinition(CHEOLGAK_ID),
+            // 산문지기 무철, 월백 뼈대를 그대로 쓰는 새 보스다. 수치와 패턴은 비어 있어 IsTuned가 거짓이라 전투를 열지 않는다
+            new BossDefinition(MUCHEOL_ID)
         };
 
         // 번호는 기획표의 P01~P06 순서와 같다. ID 앞에 보스를 붙여 다음 보스 패턴과 겹치지 않게 한다

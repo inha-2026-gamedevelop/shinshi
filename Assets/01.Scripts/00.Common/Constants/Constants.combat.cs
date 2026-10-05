@@ -106,6 +106,16 @@ namespace Shinshi.Common
             public const string DEV_BOSS_REGION_ID = "region_forest";
             public const float SKILL_HALF_WIDTH_SCALE = 0.5f;
             public const int   WARRIOR_COUNTER_SLOT   = 3;
+
+            // CharacterCombatLoadout 배열 길이. 장비는 EEquipmentSlot, 수련은 ETrainingStat 순서다
+            public const int EQUIPMENT_SLOT_COUNT = 6;
+            public const int TRAINING_STAT_COUNT  = 5;
+
+            // 부적 효과의 기술당 선택 단계 수만큼 잡는 참가자 한 명의 부적 칸 상한(기술 4개 x 단계 3개)
+            public const int MAX_TALISMANS_PER_PARTICIPANT = SKILLS_PER_CLASS * TALISMAN_TIERS_PER_SKILL;
+
+            // 갈라진 빛이 한 동작에서 고르는 서로 다른 대상 수 상한
+            public const int MAX_COMPANION_SPLIT_TARGETS = 4;
         }
     }
 }

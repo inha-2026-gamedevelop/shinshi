@@ -25,6 +25,21 @@ namespace Shinshi.Network
         private const long MS_PER_SECOND = 1000;
         private const int  MAX_JSON_DEPTH = 8;
 
+        // 게임 세션 수명은 15분이다. 남은 시간이 이 이하가 되면 갱신한다. 전송 재시도(1+2+4초)와 응답 지연을 넉넉히 덮는다
+        public const long REFRESH_LEAD_MS = 5 * 60 * MS_PER_SECOND;
+
+        // 연결 실패나 시간 초과일 때만 다시 보낸다. 횟수를 다 쓰면 이 세션으로는 더 갱신하지 않는다
+        private static readonly float[] G_RefreshRetryDelaysSeconds = { 1f, 2f, 4f };
+
+        // 출시 빌드는 런처 없이 로그인할 수 없다. 안내는 모두 이 문구를 기준으로 쓴다
+        public const string TEXT_LAUNCH_REQUIRED    = "런처로 실행하세요.";
+        public const string TEXT_RECEIVING          = "런처에서 로그인 정보를 받는 중이다.";
+        public const string TEXT_SESSION_ENDED      = "로그인이 만료됐다. 런처로 다시 실행하세요.";
+        public const string TEXT_RECEIVE_FAILED     = "런처에서 로그인 정보를 받지 못했다. 런처로 다시 실행하세요.";
+        public const string TEXT_DEV_LOGIN          = "개발 로그인: 아이디와 비밀번호를 넣는다.";
+        public const string TEXT_DEV_SESSION_ENDED  = "로그인이 만료됐다. 개발 로그인을 다시 한다.";
+        public const string TEXT_DEV_RECEIVE_FAILED = "런처 로그인 정보를 받지 못했다. 개발 로그인을 쓴다.";
+
         private const string SCHEME_HTTP  = "http";
         private const string SCHEME_HTTPS = "https";
 
@@ -252,6 +267,70 @@ namespace Shinshi.Network
             }
 
             return (seconds * MS_PER_SECOND) + ((leftover * MS_PER_SECOND) / timestampFrequency);
+        }
+
+        /// <summary> 남은 시간이 갱신 시점 안으로 들어왔는지 본다, 이미 만료됐으면 갱신하지 않는다 </summary>
+        public static bool ShouldRefresh(long remainingMs)
+        {
+            return (remainingMs > 0) && (remainingMs <= REFRESH_LEAD_MS);
+        }
+
+        /// <summary> 갱신 응답 하나의 처리 방식. statusCode 0은 서버에 닿지 못한 것이다 </summary>
+        public static EGameSessionRefreshOutcome ClassifyRefreshReply(long statusCode, int reasonCode, GameSessionIssueResponse value)
+        {
+            if (value != null)
+            {
+                bool usable = (!string.IsNullOrWhiteSpace(value.GameSessionToken)) && (value.ExpiresAtUnixMs > value.ServerTimeUnixMs);
+                return usable ? EGameSessionRefreshOutcome.Succeeded : EGameSessionRefreshOutcome.Stopped;
+            }
+
+            if ((reasonCode == ContractCodes.RejectReason.TOKEN_REVOKED) || (reasonCode == ContractCodes.RejectReason.TOKEN_EXPIRED))
+            {
+                return EGameSessionRefreshOutcome.SessionEnded;
+            }
+
+            return (statusCode == 0) ? EGameSessionRefreshOutcome.RetryTransport : EGameSessionRefreshOutcome.Stopped;
+        }
+
+        /// <summary> retryIndex번째(0부터) 전송 재시도 전 대기, 횟수를 다 썼으면 false </summary>
+        public static bool TryGetRefreshRetryDelay(int retryIndex, out float delaySeconds)
+        {
+            delaySeconds = 0f;
+            if ((retryIndex < 0) || (retryIndex >= G_RefreshRetryDelaysSeconds.Length))
+            {
+                return false;
+            }
+
+            delaySeconds = G_RefreshRetryDelaysSeconds[retryIndex];
+            return true;
+        }
+
+        /// <summary> 유효한 세션이 없을 때 로비에 띄울 안내. Received는 받은 세션이 만료된 경우다 </summary>
+        public static string DescribeLaunchStatus(bool launchRequired, ELauncherSessionState state, ELauncherSessionFailure failure)
+        {
+            if (state == ELauncherSessionState.Receiving)
+            {
+                return TEXT_RECEIVING;
+            }
+
+            bool ended = (state == ELauncherSessionState.Received) || (failure == ELauncherSessionFailure.Expired)
+                || (failure == ELauncherSessionFailure.Revoked);
+            if (launchRequired)
+            {
+                if (ended)
+                {
+                    return TEXT_SESSION_ENDED;
+                }
+
+                return (state == ELauncherSessionState.Failed) ? TEXT_RECEIVE_FAILED : TEXT_LAUNCH_REQUIRED;
+            }
+
+            if (ended)
+            {
+                return TEXT_DEV_SESSION_ENDED;
+            }
+
+            return (state == ELauncherSessionState.Failed) ? TEXT_DEV_RECEIVE_FAILED : TEXT_DEV_LOGIN;
         }
 
         /// <summary> 수신 확인을 파이프로 보낼 본문으로 만든다 </summary>

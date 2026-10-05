@@ -23,6 +23,7 @@ namespace Shinshi.Network
         private readonly Dictionary<string, int> _idsByKey;
         private readonly HashSet<int>            _connected;
         private readonly HashSet<int>            _closed;
+        private readonly HashSet<int>            _auctionReadmit;
         private readonly int                     _capacity;
 
         private int _lastParticipantId = 0;
@@ -49,6 +50,8 @@ namespace Shinshi.Network
             _idsByKey  = new Dictionary<string, int>(capacity, StringComparer.Ordinal);
             _connected = new HashSet<int>();
             _closed    = new HashSet<int>();
+
+            _auctionReadmit = new HashSet<int>();
         }
 
         /// <summary> 검증된 참가자를 받는다, 받으면 연결에 붙일 결합을 돌려준다 </summary>
@@ -73,10 +76,17 @@ namespace Shinshi.Network
                 _idsByKey.Add(key, participantId);
             }
 
-            // 유예가 끝난 참가자는 개인 실패 정산 대상이라 다시 들이지 않는다
+            // 유예가 끝난 참가자는 개인 실패 정산 대상이라 다시 들이지 않는다. 출정이 끝나 닫힌 참가자는 경매가 열려 있는 동안만
+            // 경매 전용으로 다시 받는다(던전 호스트가 경매 시작 때 허용한 번호)
+            bool auctionOnly = false;
             if (_closed.Contains(participantId))
             {
-                return ERejectReason.AlreadySettled;
+                if (!_auctionReadmit.Contains(participantId))
+                {
+                    return ERejectReason.AlreadySettled;
+                }
+
+                auctionOnly = true;
             }
 
             // 이전 연결의 끊김을 서버가 아직 감지하지 못했으면 여기서 거절된다. 클라이언트는 잠시 뒤 다시 시도한다
@@ -86,7 +96,14 @@ namespace Shinshi.Network
             }
 
             _connected.Add(participantId);
-            binding = new SessionBinding(key, participantId, claims.AccountLeaseId, claims.PlayerClass);
+            binding = new SessionBinding(key, participantId, claims.AccountLeaseId, claims.PlayerClass, claims.CharacterName);
+            binding.AccountId   = claims.AccountId;
+            binding.CharacterId = claims.CharacterId;
+
+            binding.CombatLoadout   = claims.CombatLoadout;
+            binding.ReservedPotions = claims.ReservedPotions;
+            binding.Sortie          = claims.Sortie;
+            binding.IsAuctionOnly   = auctionOnly;
             return ERejectReason.None;
         }
 
@@ -133,6 +150,23 @@ namespace Shinshi.Network
         public void Close(int participantId)
         {
             _closed.Add(participantId);
+        }
+
+        /// <summary> 출정 종료로 닫힌 참가자를 경매 동안 경매 전용으로 다시 받게 한다, 던전 호스트가 경매 시작 때 부른다 </summary>
+        public void AllowAuctionReadmission(int participantId)
+        {
+            _auctionReadmit.Add(participantId);
+        }
+
+        /// <summary> 경매가 끝나면 부른다, 이후 닫힌 참가자는 다시 AlreadySettled로 거절한다 </summary>
+        public void RevokeAuctionReadmission()
+        {
+            _auctionReadmit.Clear();
+        }
+
+        public bool AllowsAuctionReadmission(int participantId)
+        {
+            return _auctionReadmit.Contains(participantId);
         }
     }
 }

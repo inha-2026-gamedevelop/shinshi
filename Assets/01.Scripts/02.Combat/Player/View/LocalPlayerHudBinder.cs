@@ -136,7 +136,7 @@ namespace Shinshi.Combat
             _statusView = FindAnyObjectByType<HudPlayerStatusView>(FindObjectsInactive.Include);
 
             Array.Clear(_slotViews, 0, KEY_COUNT);
-            HudSkillSlotView[] slots = FindObjectsByType<HudSkillSlotView>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            HudSkillSlotView[] slots = FindObjectsByType<HudSkillSlotView>(FindObjectsInactive.Include);
             for (int i = 0; i < slots.Length; ++i)
             {
                 if (LocalPlayerHudRules.TryParseSlotKey(slots[i].gameObject.name, out ESkillInputKey key))

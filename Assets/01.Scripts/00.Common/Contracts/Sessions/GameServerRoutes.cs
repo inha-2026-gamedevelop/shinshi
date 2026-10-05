@@ -25,6 +25,9 @@ namespace Shinshi.Contracts
         public const string RESERVATION_CANCEL_FORMAT = "/v1/game-sessions/{0}/cancel";
         public const string JOIN_TICKETS_FORMAT       = "/v1/game-sessions/{0}/join-tickets";
 
+        // 마을 서버: 출정 준비 확인. 이 마을에 접속한 참가자의 가용 티켓, 물약, 캐릭터 revision을 읽기만 한다(ReadinessRequest -> ReadinessResponse)
+        public const string READINESS                 = "/v1/game-sessions/readiness";
+
         // 던전 서버: 접속 임대 이관, 시작, 순번 이벤트, 체크포인트, 정산
         public const string LEASE_TRANSFER_FORMAT     = "/v1/game-sessions/{0}/lease-transfer";
         public const string START_FORMAT              = "/v1/game-sessions/{0}/start";

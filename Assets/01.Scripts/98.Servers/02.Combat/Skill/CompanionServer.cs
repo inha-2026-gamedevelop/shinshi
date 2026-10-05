@@ -22,6 +22,16 @@ namespace Shinshi.Combat
         private const int MELEE_SLOT  = 0;
         private const int RANGED_SLOT = 1;
 
+        // 원거리 동료의 한 동작 투사체. 갈라진 빛은 같은 동작 번호로 서로 다른 대상에게 여러 발을 쏜다
+        private struct Shot
+        {
+            public bool    Active;
+            public Vector3 Position;
+            public Vector3 Direction;
+            public float   Remaining;
+            public double  LastTime;
+        }
+
         private readonly ISkillCaster         _owner;
         private readonly SkillCatalogSO       _catalog;
         private readonly CombatTargetRegistry _registry;
@@ -31,6 +41,7 @@ namespace Shinshi.Combat
         private readonly List<ICombatTarget>  _targets;
         private readonly NavMeshPath          _navPath;
         private readonly PathFollower         _path;
+        private readonly Shot[]               _shots;
 
         private SkillCatalogSO.SkillDefinition _skill;
         private int                            _combatId            = CombatIds.NONE;
@@ -50,12 +61,15 @@ namespace Shinshi.Combat
         private double                         _unreachableSince    = double.NaN;
         private Vector3                        _pathDestination     = Vector3.zero;
         private bool                           _hasDestination      = false;
-        private bool                           _projectileActive    = false;
-        private Vector3                        _projectilePosition  = Vector3.zero;
-        private Vector3                        _projectileDirection = Vector3.forward;
-        private float                          _projectileRemaining = 0f;
-        private double                         _projectileLastTime  = 0.0;
-        private int                            _projectileActionId  = CombatIds.NONE;
+        private int                            _volleyActionId      = CombatIds.NONE;
+        private int                            _volleyCastId        = CombatIds.NONE;
+        private SkillModifiers                 _modifiers           = SkillModifiers.Identity;
+        private float                          _attackInterval      = 0f;
+        private float                          _attackRange         = 0f;
+        private bool                           _hasFollowUp         = false;
+        private double                         _followUpAt          = 0.0;
+        private int                            _followUpTargetId    = CombatIds.NONE;
+        private int                            _followUpCastId      = CombatIds.NONE;
 
         /****************************************
         *              Properties
@@ -101,10 +115,17 @@ namespace Shinshi.Combat
             _targets     = new List<ICombatTarget>(Constants.Combat.MAX_COMBAT_TARGETS);
             _navPath     = new NavMeshPath();
             _path        = new PathFollower(Constants.Player.MAX_PATH_CORNERS);
+            _shots       = new Shot[Constants.Combat.MAX_COMPANION_SPLIT_TARGETS];
         }
 
         /// <summary> 소환 완료 시 호출한다, 거절된 재호출은 기존 동료를 유지한다 </summary>
         public bool Start(SkillCatalogSO.SkillDefinition skill, int castId, double now)
+        {
+            return Start(skill, castId, now, SkillModifiers.Identity);
+        }
+
+        /// <summary> 부적이 바꾼 유지 시간, 공격 간격, 사거리, 공격 변형으로 소환한다. 값은 이 소환이 끝날 때까지 고정이다 </summary>
+        public bool Start(SkillCatalogSO.SkillDefinition skill, int castId, double now, in SkillModifiers modifiers)
         {
             if ((skill == null) || (skill.Area == null) || (skill.Effect == null)
                 || (skill.PlayerClass != EPlayerClass.Summoner) || (skill.Area.Shape != ESkillShape.Summon)
@@ -114,6 +135,10 @@ namespace Shinshi.Combat
                 || (!IsPositiveFinite(skill.Effect.Duration)) || (!IsPositiveFinite(skill.Effect.CompanionAttackInterval))
                 || (!IsPositiveFinite(skill.Effect.CompanionAttackRange))
                 || (!IsPositiveFinite(skill.Effect.CompanionAttackCoefficient))
+                || (!IsPositiveFinite(TalismanModifierRules.GetDuration(skill, in modifiers)))
+                || (!IsPositiveFinite(TalismanModifierRules.GetCompanionAttackInterval(skill, in modifiers)))
+                || (!IsPositiveFinite(TalismanModifierRules.GetCompanionAttackRange(skill, in modifiers)))
+                || (!IsNonNegativeFinite(modifiers.DamageScale)) || (!IsNonNegativeFinite(modifiers.MarkedDamageBonus))
                 || (!IsPositiveFinite(_owner.MaxHealth * _catalog.CompanionHealthRate))
                 || (!IsNonNegativeFinite(_owner.Defense * _catalog.CompanionDefenseRate)))
             {
@@ -144,6 +169,9 @@ namespace Shinshi.Combat
             }
 
             _skill            = skill;
+            _modifiers        = modifiers;
+            _attackInterval   = TalismanModifierRules.GetCompanionAttackInterval(skill, in modifiers);
+            _attackRange      = TalismanModifierRules.GetCompanionAttackRange(skill, in modifiers);
             _castId           = castId;
             _ranged           = skill.Slot == RANGED_SLOT;
             _maxHealth        = _owner.MaxHealth * _catalog.CompanionHealthRate;
@@ -151,13 +179,14 @@ namespace Shinshi.Combat
             _defense          = _owner.Defense * _catalog.CompanionDefenseRate;
             _position         = _owner.Position;
             _forward          = FacingRules.TryGetHorizontalDirection(_owner.Forward, out Vector3 facing) ? facing : Vector3.forward;
-            _expiresAt        = now + skill.Effect.Duration;
-            _nextAttackAt     = now + skill.Effect.CompanionAttackInterval;
+            _expiresAt        = now + TalismanModifierRules.GetDuration(skill, in modifiers);
+            _nextAttackAt     = now + _attackInterval;
             _nextRepathAt     = now;
             _unreachableSince = double.NaN;
             _hasDestination   = false;
             _targetId         = CombatIds.NONE;
-            _projectileActive = false;
+            _hasFollowUp      = false;
+            ClearShots();
             _path.Stop();
             _reserved = false;
             _active   = true;
@@ -207,7 +236,8 @@ namespace Shinshi.Combat
             _registry.Unregister(_combatId);
             _active           = false;
             _reserved         = false;
-            _projectileActive = false;
+            _hasFollowUp      = false;
+            ClearShots();
             _health           = 0f;
             _targetId         = CombatIds.NONE;
             _hasDestination   = false;
@@ -229,7 +259,8 @@ namespace Shinshi.Combat
                 return;
             }
 
-            TickProjectile(now);
+            TickShots(now);
+            TickFollowUp(now);
 
             float ownerDistanceSqr = HorizontalDistanceSqr(_position, _owner.Position);
             if ((ownerDistanceSqr >= (_catalog.CompanionWarpDistance * _catalog.CompanionWarpDistance))
@@ -260,7 +291,7 @@ namespace Shinshi.Combat
                 _forward = direction;
             }
 
-            float range = _skill.Effect.CompanionAttackRange;
+            float range = _attackRange;
             bool inRange = HorizontalDistanceSqr(_position, target.Position) <= (range * range);
             bool blocked = _lineOfSight.IsBlocked(_position, target.Position);
             if ((!inRange) || (blocked))
@@ -277,27 +308,22 @@ namespace Shinshi.Combat
             _hasDestination   = false;
             _unreachableSince = double.NaN;
 
-            if ((now < _nextAttackAt) || ((_ranged) && (_projectileActive))
+            if ((now < _nextAttackAt) || ((_ranged) && (HasActiveShot()))
                 || (Mathf.Abs(target.Position.y - _position.y) > Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
             {
                 return;
             }
 
             // 밀린 공격을 한 틱에 몰아 실행하지 않고 각 실제 공격 동작에 새 번호를 발급한다
-            _nextAttackAt = now + _skill.Effect.CompanionAttackInterval;
+            _nextAttackAt = now + _attackInterval;
             int actionId = _resolver.IssueInstanceId();
             if (_ranged)
             {
-                _projectileActive    = true;
-                _projectilePosition  = _position;
-                _projectileDirection = _forward;
-                _projectileRemaining = range;
-                _projectileLastTime  = now;
-                _projectileActionId  = actionId;
+                FireVolley(target, now, actionId);
                 return;
             }
 
-            ApplyAttack(target, _position, actionId);
+            AttackMelee(target, now, actionId);
         }
 
         public void ApplyDamage(float appliedAmount, bool isLethal, double serverTime)
@@ -347,30 +373,207 @@ namespace Shinshi.Combat
                 && (_registry.TryGet(target.CombatId, out ICombatTarget registered)) && (ReferenceEquals(target, registered));
         }
 
-        private void TickProjectile(double now)
+        // 원거리 동료는 첫 대상에게, 갈라진 빛은 가까운 순서의 서로 다른 대상에게 한 발씩 쏜다. 대상이 하나면 한 발이다
+        private void FireVolley(ICombatTarget target, double now, int actionId)
         {
-            if ((!_projectileActive) || (now <= _projectileLastTime))
+            SkillCoreVariant core  = _modifiers.Core;
+            int              count = core.Is(ETalismanEffectKind.SplitTargets) ? Mathf.Clamp(core.Count, 1, _shots.Length) : 1;
+            _volleyActionId = actionId;
+            _volleyCastId   = CombatIds.NONE;
+            Launch(0, _forward, now);
+            if (count <= 1)
             {
                 return;
             }
 
-            float distance = Mathf.Min(_projectileRemaining,
-                Constants.Combat.COMPANION_PROJECTILE_SPEED * (float)(now - _projectileLastTime));
-            float clear = _lineOfSight.GetClearDistance(_projectilePosition, _projectileDirection, distance);
-            ICombatTarget hit = FirstTargetOnRay(_projectilePosition, _projectileDirection, clear);
-            if (hit != null)
+            int launched   = 1;
+            int candidates = _registry.GetLivingInRadius(_position, _attackRange, ECombatFaction.Enemy, false, _targets);
+            while (launched < count)
             {
-                _projectileActive = false;
-                ApplyAttack(hit, _projectilePosition, _projectileActionId);
+                ICombatTarget next = NearestOther(candidates, target.CombatId, launched);
+                if (next == null)
+                {
+                    break;
+                }
+
+                Vector3 delta = next.Position - _position;
+                if (!FacingRules.TryGetHorizontalDirection(delta, out Vector3 direction))
+                {
+                    break;
+                }
+
+                Launch(launched, direction, now);
+                ++launched;
             }
 
-            _projectilePosition  += _projectileDirection * clear;
-            _projectileRemaining -= clear;
-            _projectileLastTime = now;
-            if ((clear < distance) || (_projectileRemaining <= 0f))
+            _targets.Clear();
+        }
+
+        // 이미 쏜 대상(첫 대상과 앞선 갈래의 대상)을 빼고 가장 가까운 유효 적을 고른다. 쏜 대상은 버퍼 앞쪽으로 옮겨 둔다
+        private ICombatTarget NearestOther(int count, int primaryId, int launched)
+        {
+            int   nearest  = -1;
+            float distance = float.PositiveInfinity;
+            for (int i = launched - 1; i < count; ++i)
             {
-                _projectileActive = false;
+                ICombatTarget candidate = _targets[i];
+                if ((candidate.CombatId == primaryId) || (candidate.IsSummon)
+                    || (Mathf.Abs(candidate.Position.y - _position.y) > Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE)
+                    || (_lineOfSight.IsBlocked(_position, candidate.Position)))
+                {
+                    continue;
+                }
+
+                float candidateDistance = HorizontalDistanceSqr(_position, candidate.Position);
+                if ((candidateDistance < distance)
+                    || ((candidateDistance == distance) && (candidate.CombatId < _targets[nearest].CombatId)))
+                {
+                    nearest  = i;
+                    distance = candidateDistance;
+                }
             }
+
+            if (nearest < 0)
+            {
+                return null;
+            }
+
+            // 고른 대상을 검사 구간 앞(launched - 1)으로 옮겨 다음 갈래가 다시 고르지 않게 한다
+            ICombatTarget chosen   = _targets[nearest];
+            _targets[nearest]      = _targets[launched - 1];
+            _targets[launched - 1] = chosen;
+            return chosen;
+        }
+
+        private void Launch(int index, Vector3 direction, double now)
+        {
+            ref Shot shot = ref _shots[index];
+            shot.Active    = true;
+            shot.Position  = _position;
+            shot.Direction = direction;
+            shot.Remaining = _attackRange;
+            shot.LastTime  = now;
+        }
+
+        private void TickShots(double now)
+        {
+            for (int i = 0; i < _shots.Length; ++i)
+            {
+                ref Shot shot = ref _shots[i];
+                if ((!shot.Active) || (now <= shot.LastTime))
+                {
+                    continue;
+                }
+
+                float distance = Mathf.Min(shot.Remaining,
+                    Constants.Combat.COMPANION_PROJECTILE_SPEED * (float)(now - shot.LastTime));
+                float clear = _lineOfSight.GetClearDistance(shot.Position, shot.Direction, distance);
+                ICombatTarget hit = FirstTargetOnRay(shot.Position, shot.Direction, clear);
+                if (hit != null)
+                {
+                    shot.Active = false;
+                    // 첫 적에 닿을 때 시전 번호를 발급한다. 비행 중 다른 공격이 끝나도 공명 종료 고수위에 걸리지 않는다.
+                    // 같은 동작의 다른 갈래는 그 번호를 같이 써서 공명을 한 번만 얻는다
+                    if (_volleyCastId == CombatIds.NONE)
+                    {
+                        _volleyCastId = _resolver.IssueInstanceId();
+                    }
+
+                    ApplyAttack(hit, shot.Position, _volleyCastId, _volleyActionId, TalismanModifierRules.GetPrimaryCoefficient(_skill, in _modifiers));
+                }
+
+                shot.Position  += shot.Direction * clear;
+                shot.Remaining -= clear;
+                shot.LastTime   = now;
+                if ((clear < distance) || (shot.Remaining <= 0f))
+                {
+                    shot.Active = false;
+                }
+            }
+        }
+
+        // 근접 동료 한 동작. 주변 휩쓸기는 동료 중심 원형 안의 적을 모두 치고, 연속 타격은 같은 대상을 짧은 간격 뒤 한 번 더 친다.
+        // 한 동작의 모든 타격은 같은 시전 번호를 써서 공명은 최초 유효 적중에서만 얻는다
+        private void AttackMelee(ICombatTarget target, double now, int actionId)
+        {
+            SkillCoreVariant core   = _modifiers.Core;
+            int              castId = _resolver.IssueInstanceId();
+            float            coefficient = TalismanModifierRules.GetPrimaryCoefficient(_skill, in _modifiers);
+            if (core.Is(ETalismanEffectKind.CircleSweep))
+            {
+                Sweep(core.Radius, castId, actionId, coefficient);
+                return;
+            }
+
+            ApplyAttack(target, _position, castId, actionId, coefficient);
+            if (core.Is(ETalismanEffectKind.FollowUpStrike))
+            {
+                _hasFollowUp      = true;
+                _followUpAt       = now + core.Delay;
+                _followUpTargetId = target.CombatId;
+                _followUpCastId   = castId;
+            }
+        }
+
+        private void Sweep(float radius, int castId, int actionId, float coefficient)
+        {
+            int count = _registry.GetLivingInRadius(_position, radius, ECombatFaction.Enemy, false, _targets);
+            for (int i = 0; i < count; ++i)
+            {
+                ICombatTarget candidate = _targets[i];
+                if ((Mathf.Abs(candidate.Position.y - _position.y) > Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE)
+                    || (_lineOfSight.IsBlocked(_position, candidate.Position)))
+                {
+                    continue;
+                }
+
+                ApplyAttack(candidate, _position, castId, actionId, coefficient);
+            }
+
+            _targets.Clear();
+        }
+
+        // 연속 타격의 두 번째 타격. 대상이 죽었거나 사거리를 벗어났으면 치지 않는다. 다음 공격 주기는 바꾸지 않는다
+        private void TickFollowUp(double now)
+        {
+            if ((!_hasFollowUp) || (now < _followUpAt))
+            {
+                return;
+            }
+
+            _hasFollowUp = false;
+            if ((!_registry.TryGet(_followUpTargetId, out ICombatTarget target)) || (!IsValidTarget(target))
+                || (HorizontalDistanceSqr(_position, target.Position) > (_attackRange * _attackRange))
+                || (Mathf.Abs(target.Position.y - _position.y) > Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+            {
+                return;
+            }
+
+            ApplyAttack(target, _position, _followUpCastId, _resolver.IssueInstanceId(), _modifiers.Core.AddedCoefficient);
+        }
+
+        private bool HasActiveShot()
+        {
+            for (int i = 0; i < _shots.Length; ++i)
+            {
+                if (_shots[i].Active)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ClearShots()
+        {
+            for (int i = 0; i < _shots.Length; ++i)
+            {
+                _shots[i].Active = false;
+            }
+
+            _volleyActionId = CombatIds.NONE;
+            _volleyCastId   = CombatIds.NONE;
         }
 
         private ICombatTarget FirstTargetOnRay(Vector3 origin, Vector3 direction, float range)
@@ -413,7 +616,8 @@ namespace Shinshi.Combat
             return first;
         }
 
-        private void ApplyAttack(ICombatTarget target, Vector3 origin, int actionId)
+        // 표적 결계 안의 적이면 결계 보너스에 표적 집중 보너스를 더한다. 결계 밖 적에게는 표적 집중이 붙지 않는다
+        private void ApplyAttack(ICombatTarget target, Vector3 origin, int castId, int actionId, float coefficient)
         {
             float bonus = _context.GetCompanionDamageBonus(target);
             if ((!IsNonNegativeFinite(bonus)) || (!IsNonNegativeFinite(_owner.AttackPower)))
@@ -421,15 +625,19 @@ namespace Shinshi.Combat
                 return;
             }
 
-            float rawDamage = _owner.AttackPower * _skill.Effect.CompanionAttackCoefficient * (1f + bonus);
+            if (bonus > 0f)
+            {
+                bonus += _modifiers.MarkedDamageBonus;
+            }
+
+            float rawDamage = _owner.AttackPower * coefficient * _modifiers.DamageScale * (1f + bonus);
             if (!IsPositiveFinite(rawDamage))
             {
                 return;
             }
 
-            // 첫 적에 닿을 때 시전 번호를 발급한다. 비행 중 다른 공격이 끝나도 공명 종료 고수위에 걸리지 않는다.
-            // 동작 번호는 발사 때 정한 값을 유지하고 소환 생성 번호와 분리한다.
-            var request = new DamageRequest(_combatId, target.CombatId, _resolver.IssueInstanceId(), actionId, rawDamage,
+            // 동작 번호는 공격 때 정한 값을 유지하고 소환 생성 번호와 분리한다
+            var request = new DamageRequest(_combatId, target.CombatId, castId, actionId, rawDamage,
                 EDamageFlags.None, origin, _skill.DefinitionId);
             DamageResult result = _resolver.Apply(in request);
             if (result.CountsAsHit)

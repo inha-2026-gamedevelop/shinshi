@@ -45,6 +45,19 @@ namespace Shinshi.Tests
         private const double ROUND_TIME    = 12.0;
         private const float  FLOAT_EPSILON = 0.0001f;
         private const double TIME_EPSILON  = 0.000001;
+        private const int    BEAM_ID       = 14;
+        private const int    STAR_ID       = 15;
+        private const int    ZONE_ID       = 16;
+        private const float  ARENA_RADIUS  = 20f;
+        private const float  BEAM_OFFSET   = 2f;
+        private const float  RING_RADIUS   = 8f;
+        private const int    VERTEX_COUNT  = 5;
+        private const int    CONNECT_STEP  = 2;
+        private const float  TURN_RATE     = -30f; // 도/초, 왼쪽 회전
+        private const float  ARC_ANGLE     = 45f;
+        private const int    BARRIER_ID    = 17;
+        private const float  INNER_RADIUS  = 17.3f;
+        private const double COMPLETE_TIME = 12.7;
 
         /****************************************
         *                Tests
@@ -220,9 +233,203 @@ namespace Shinshi.Tests
             CollectionAssert.AreEqual(new[] { AREA_ID }, listener.RestoredAreas);
         }
 
+        [Test]
+        public void Beam_TelegraphActivateTick_KeepsProgressAndEndRemoves()
+        {
+            var ledger = new BossEffectLedger();
+            BossBeamStart beam = MakeBeam(BEAM_ID);
+            ledger.OnBeamTelegraphStarted(in beam);
+
+            Assert.AreEqual(1, ledger.BeamCount, "예고 중인 빔도 복원에 넣는다");
+            Assert.IsFalse(ledger.GetBeam(0).IsActivated);
+
+            ledger.OnBeamActivated(BEAM_ID, EXECUTE_TIME);
+            ledger.OnBeamTicked(BEAM_ID, 1, ROUND_TIME);
+            ledger.OnBeamTicked(BEAM_ID, 0, EXECUTE_TIME);
+
+            Assert.IsTrue(ledger.GetBeam(0).IsActivated);
+            Assert.AreEqual(EXECUTE_TIME, ledger.GetBeam(0).ActivateServerTime, TIME_EPSILON);
+            Assert.AreEqual(1, ledger.GetBeam(0).LastTickIndex, "늦게 온 이전 회차는 무시한다");
+
+            ledger.OnBeamEnded(BEAM_ID, EBossAreaFate.Expired);
+
+            Assert.AreEqual(0, ledger.BeamCount);
+        }
+
+        [Test]
+        public void Star_CancelledBeforeActivation_Removes()
+        {
+            var ledger = new BossEffectLedger();
+            BossStarStart star = MakeStar(STAR_ID);
+            ledger.OnStarTelegraphStarted(in star);
+
+            Assert.AreEqual(1, ledger.StarCount);
+
+            ledger.OnStarCancelled(STAR_ID);
+
+            Assert.AreEqual(0, ledger.StarCount, "활성 전에 취소된 별형 빔은 복원에 넣지 않는다");
+        }
+
+        [Test]
+        public void WriteRead_RoundTripsBeamsStarsAndGroupId()
+        {
+            var source = new BossEffectLedger();
+            BossTelegraphStart zone = BossTelegraphStart.Fan(BOSS_ID, ZONE_ID, PATTERN_ID, Vector3.zero, Vector3.forward,
+                RADIUS, ARC_ANGLE, START_TIME, TELEGRAPH, CAST_ID);
+            source.OnTelegraphStarted(in zone);
+            BossBeamStart beam = MakeBeam(BEAM_ID);
+            source.OnBeamTelegraphStarted(in beam);
+            source.OnBeamActivated(BEAM_ID, EXECUTE_TIME);
+            BossStarStart star = MakeStar(STAR_ID);
+            source.OnStarTelegraphStarted(in star);
+
+            var target = new BossEffectLedger();
+            using (NetworkWriterPooled writer = NetworkWriterPool.Get())
+            {
+                source.Write(writer);
+                using (NetworkReaderPooled reader = NetworkReaderPool.Get(writer.ToArraySegment()))
+                {
+                    target.Read(reader);
+                    Assert.AreEqual(0, reader.Remaining, "쓴 만큼 정확히 읽는다");
+                }
+            }
+
+            Assert.AreEqual(ZONE_ID, target.Cast.Start.CastId);
+            Assert.AreEqual(CAST_ID, target.Cast.Start.GroupId, "묶음 번호도 오간다");
+
+            Assert.AreEqual(1, target.BeamCount);
+            BossBeamSnapshot beamCopy = target.GetBeam(0);
+            Assert.AreEqual(BEAM_ID, beamCopy.Start.BeamId);
+            Assert.AreEqual(CAST_ID, beamCopy.Start.CastId);
+            Assert.IsTrue(beamCopy.IsActivated);
+            Assert.AreEqual(BEAM_OFFSET, beamCopy.Start.Shape.LateralOffset, FLOAT_EPSILON);
+            Assert.AreEqual(ARENA_RADIUS, beamCopy.Start.Shape.ArenaRadius, FLOAT_EPSILON);
+
+            Assert.AreEqual(1, target.StarCount);
+            BossStarSnapshot starCopy = target.GetStar(0);
+            Assert.AreEqual(STAR_ID, starCopy.Start.StarId);
+            Assert.IsFalse(starCopy.IsActivated);
+            Assert.AreEqual(VERTEX_COUNT, starCopy.Start.Shape.VertexCount);
+            Assert.AreEqual(CONNECT_STEP, starCopy.Start.Shape.ConnectStep);
+            Assert.AreEqual(TURN_RATE, starCopy.Start.Shape.SignedDegreesPerSecond, FLOAT_EPSILON);
+        }
+
+        [Test]
+        public void Replay_SendsBeamsAndStarsAsRestores()
+        {
+            var ledger = new BossEffectLedger();
+            BossBeamStart beam = MakeBeam(BEAM_ID);
+            ledger.OnBeamTelegraphStarted(in beam);
+            BossStarStart star = MakeStar(STAR_ID);
+            ledger.OnStarTelegraphStarted(in star);
+            var listener = new RecordingStateListener();
+
+            ledger.Replay(listener);
+
+            CollectionAssert.AreEqual(new[] { BEAM_ID }, listener.RestoredBeams);
+            CollectionAssert.AreEqual(new[] { STAR_ID }, listener.RestoredStars);
+        }
+
+        [Test]
+        public void Barrier_StartedThenCleared_KeepsUntilClearOfSameId()
+        {
+            var ledger = new BossEffectLedger();
+            BossBarrierStart barrier = MakeBarrier(BARRIER_ID);
+            ledger.OnBarrierStarted(in barrier);
+            ledger.OnBarrierActivated(BARRIER_ID, EXECUTE_TIME);
+            ledger.OnBarrierCompleted(BARRIER_ID, COMPLETE_TIME);
+
+            Assert.IsTrue(ledger.HasBarrier, "활성, 완료 뒤에도 정리 전까지 남는다");
+            Assert.AreEqual(BARRIER_ID, ledger.Barrier.BarrierId);
+
+            ledger.OnBarrierCleared(OTHER_ID);
+            Assert.IsTrue(ledger.HasBarrier, "다른 번호의 정리는 무시한다");
+
+            ledger.OnBarrierCleared(BARRIER_ID);
+            Assert.IsFalse(ledger.HasBarrier);
+        }
+
+        [Test]
+        public void WriteRead_RoundTripsBarrierAndReplaysRestore()
+        {
+            var source = new BossEffectLedger();
+            BossBarrierStart barrier = MakeBarrier(BARRIER_ID);
+            source.OnBarrierStarted(in barrier);
+
+            var target = new BossEffectLedger();
+            using (NetworkWriterPooled writer = NetworkWriterPool.Get())
+            {
+                source.Write(writer);
+                using (NetworkReaderPooled reader = NetworkReaderPool.Get(writer.ToArraySegment()))
+                {
+                    target.Read(reader);
+                    Assert.AreEqual(0, reader.Remaining, "쓴 만큼 정확히 읽는다");
+                }
+            }
+
+            Assert.IsTrue(target.HasBarrier);
+            BossBarrierStart copy = target.Barrier;
+            Assert.AreEqual(BOSS_ID, copy.BossId);
+            Assert.AreEqual(BARRIER_ID, copy.BarrierId);
+            Assert.AreEqual(Vector3.one, copy.Center);
+            Assert.AreEqual(ARENA_RADIUS, copy.OuterRadius, FLOAT_EPSILON);
+            Assert.AreEqual(INNER_RADIUS, copy.InnerRadius, FLOAT_EPSILON);
+            Assert.AreEqual(TICK_INTERVAL, copy.TickInterval, FLOAT_EPSILON);
+            Assert.AreEqual(START_TIME, copy.TelegraphServerTime, TIME_EPSILON);
+            Assert.AreEqual(EXECUTE_TIME, copy.ActivateServerTime, TIME_EPSILON);
+            Assert.AreEqual(COMPLETE_TIME, copy.CompleteServerTime, TIME_EPSILON);
+
+            var listener = new RecordingStateListener();
+            target.Replay(listener);
+
+            CollectionAssert.AreEqual(new[] { BARRIER_ID }, listener.RestoredBarriers, "늦게 연결한 수신부도 결계를 복원으로 받는다");
+        }
+
+        [Test]
+        public void WriteRead_NoBarrier_RoundTripsEmpty()
+        {
+            var source = new BossEffectLedger();
+            BossBarrierStart barrier = MakeBarrier(BARRIER_ID);
+            source.OnBarrierStarted(in barrier);
+            source.OnBarrierCleared(BARRIER_ID);
+
+            var target = new BossEffectLedger();
+            target.OnBarrierStarted(in barrier);
+            using (NetworkWriterPooled writer = NetworkWriterPool.Get())
+            {
+                source.Write(writer);
+                using (NetworkReaderPooled reader = NetworkReaderPool.Get(writer.ToArraySegment()))
+                {
+                    target.Read(reader);
+                    Assert.AreEqual(0, reader.Remaining);
+                }
+            }
+
+            Assert.IsFalse(target.HasBarrier, "받은 값으로 바꾸므로 이전 결계가 남지 않는다");
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
+
+        private static BossBarrierStart MakeBarrier(int barrierId)
+        {
+            return new BossBarrierStart(BOSS_ID, barrierId, Vector3.one, ARENA_RADIUS, INNER_RADIUS, TICK_INTERVAL, START_TIME,
+                EXECUTE_TIME, COMPLETE_TIME);
+        }
+
+        private static BossBeamStart MakeBeam(int beamId)
+        {
+            var shape = new BossBeamShape(Vector3.zero, ARENA_RADIUS, Vector3.forward, BEAM_OFFSET, WIDTH);
+            return new BossBeamStart(BOSS_ID, beamId, CAST_ID, in shape, START_TIME, TELEGRAPH, DURATION, TICK_INTERVAL);
+        }
+
+        private static BossStarStart MakeStar(int starId)
+        {
+            var shape = new BossStarShape(Vector3.zero, ARENA_RADIUS, Vector3.forward, RING_RADIUS, VERTEX_COUNT, CONNECT_STEP,
+                WIDTH, TURN_RATE);
+            return new BossStarStart(BOSS_ID, starId, CAST_ID, in shape, START_TIME, TELEGRAPH, DURATION, TICK_INTERVAL);
+        }
 
         private static BossTelegraphStart MakeLine(int castId)
         {
@@ -246,10 +453,28 @@ namespace Shinshi.Tests
             public List<int> RestoredCasts       { get; } = new List<int>();
             public List<int> RestoredProjectiles { get; } = new List<int>();
             public List<int> RestoredAreas       { get; } = new List<int>();
+            public List<int> RestoredBeams       { get; } = new List<int>();
+            public List<int> RestoredStars       { get; } = new List<int>();
+            public List<int> RestoredBarriers    { get; } = new List<int>();
+
+            public void OnBarrierRestored(in BossBarrierStart start)
+            {
+                RestoredBarriers.Add(start.BarrierId);
+            }
 
             public void OnTelegraphRestored(in BossTelegraphSnapshot snapshot)
             {
                 RestoredCasts.Add(snapshot.Start.CastId);
+            }
+
+            public void OnBeamRestored(in BossBeamSnapshot snapshot)
+            {
+                RestoredBeams.Add(snapshot.Start.BeamId);
+            }
+
+            public void OnStarRestored(in BossStarSnapshot snapshot)
+            {
+                RestoredStars.Add(snapshot.Start.StarId);
             }
 
             public void OnProjectileRestored(in BossProjectileSnapshot snapshot)
@@ -311,6 +536,78 @@ namespace Shinshi.Tests
             }
 
             public void OnAreaEnded(int areaId, EBossAreaFate fate)
+            {
+            }
+
+            public void OnSweepStarted(in BossSweepStart start)
+            {
+            }
+
+            public void OnSweepZoneScheduled(in BossTelegraphStart zone)
+            {
+            }
+
+            public void OnSweepZoneBlasted(int zoneId, double blastServerTime)
+            {
+            }
+
+            public void OnSweepCancelled(int castId)
+            {
+            }
+
+            public void OnBeamTelegraphStarted(in BossBeamStart start)
+            {
+            }
+
+            public void OnBeamCancelled(int beamId)
+            {
+            }
+
+            public void OnBeamActivated(int beamId, double activateServerTime)
+            {
+            }
+
+            public void OnBeamTicked(int beamId, int hitIndex, double roundServerTime)
+            {
+            }
+
+            public void OnBeamEnded(int beamId, EBossAreaFate fate)
+            {
+            }
+
+            public void OnStarTelegraphStarted(in BossStarStart start)
+            {
+            }
+
+            public void OnStarCancelled(int starId)
+            {
+            }
+
+            public void OnStarActivated(int starId, double activateServerTime)
+            {
+            }
+
+            public void OnStarTicked(int starId, int hitIndex, double roundServerTime)
+            {
+            }
+
+            public void OnStarEnded(int starId, EBossAreaFate fate)
+            {
+            }
+
+            public void OnBarrierStarted(in BossBarrierStart start)
+            {
+            }
+
+            public void OnBarrierActivated(int barrierId, double activateServerTime)
+            {
+            }
+
+            public void OnBarrierCompleted(int barrierId, double completeServerTime)
+            {
+            }
+
+            public void OnBarrierCleared(int barrierId)
             {
             }
         }

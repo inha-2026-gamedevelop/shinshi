@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+// Project
+using Shinshi.Contracts;
+
 namespace Shinshi.Data.Characters
 {
     /// <summary> 캐릭터 생성과 이름 조회. 이름은 CharacterNameRules로 정규화한 값과 비교 키만 받는다 </summary>
@@ -16,7 +19,12 @@ namespace Shinshi.Data.Characters
 
         Task<bool> IsNameTakenAsync(string nameKey, CancellationToken cancellationToken = default);
 
-        /// <summary> 인증된 계정이 소유한 캐릭터만 ID 순서로 반환한다 </summary>
+        /// <summary> 인증된 계정이 소유한 살아 있는 캐릭터만 ID 순서로 반환한다 </summary>
         Task<IReadOnlyList<CharacterRecord>> ListAsync(Guid accountId, CancellationToken cancellationToken = default);
+
+        // 계정 actor의 멱등 작업이다. 없거나 남의, 이미 삭제한 캐릭터면 CHARACTER_NOT_FOUND, 접속 중이면 ALREADY_CONNECTED,
+        // 열린 출정 참가자면 RESERVATION_CONFLICT, revision이 다르면 STALE_REVISION이다
+        Task<OperationResult> DeleteAsync(Guid accountId, Guid operationId, Guid characterId, long expectedRevision,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -25,7 +25,7 @@ Assets/
 │ ├ 00.Common/        공통 (Shinshi.Common) - Constants, Events, Interfaces, Pooling, Sound, Types, Utility
 │ │ ├ Contracts/      Unity·백엔드 공용 엔진 비의존 DTO (Shinshi.Contracts)
 │ │ └ Data/           GameDB ScriptableObject 정의 (Shinshi.Data) - 16장
-│ ├ 01.Network/       세션, 동기화 (Shinshi.Network) - Lobby, Session
+│ ├ 01.Network/       세션, 동기화 (Shinshi.Network) - Lobby, Session, Town(마을 요청 메시지·클라이언트 송신 창구)
 │ ├ 02.Combat/        플레이어 전투 (Shinshi.Combat)
 │ │ ├ Player/         입력·이동·생사 상태와 공용 Rules, 클라이언트 View
 │ │ ├ Damage/         피해 계약·공용 Rules
@@ -50,7 +50,8 @@ Assets/
 │ │ │   └ Reward/     보스 보상·적 드롭 판정
 │ │ ├ 02.Combat/      서버 전투 틱·Player/·Damage/·Skill/·Boss/
 │ │ ├ 03.AI/          Boss/(보스 두뇌·패턴), Enemy/(근접·돌진 산귀 두뇌 프로토타입), Spawn/(스폰 경계 계약)
-│ │ └ 04.Systems/Wave/ 웨이브 경계 계약 (실행 구현 예정)
+│ │ ├ 04.Systems/Wave/ 웨이브 경계 계약 (실행 구현 예정)
+│ │ └ 05.Town/        마을 역할 서버 - Party/(방·초대·준비·출정 대기열), Growth/(성장 API 중계), Life/(채집·물약 제작)
 │ └ 99.Dev/           개발·디버그 도구 (Shinshi.Dev 어셈블리) - 출시 빌드 제외 대상
 ├ 09.Data/            GameDB ScriptableObject 에셋 - 16장
 ├ Editor/             에디터 전용 코드 (Shinshi.Editor)

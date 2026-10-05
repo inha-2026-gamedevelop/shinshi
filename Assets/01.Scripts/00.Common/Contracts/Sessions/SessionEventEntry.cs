@@ -18,7 +18,7 @@ namespace Shinshi.Contracts
         // GameSessionCodes.EventKind
         [DataMember(Name = "eventKind")]             private int               _eventKind;
 
-        // POTION_USED, ESSENCE_ACCRUED, BASE_ESSENCE_ACCRUED의 대상
+        // POTION_USED, ESSENCE_ACCRUED, BASE_ESSENCE_ACCRUED, PARTICIPANT_DEPARTED의 대상
         [DataMember(Name = "participantId")]         private string            _participantId;
 
         // POTION_USED의 물약 정의와 귀속
@@ -29,7 +29,7 @@ namespace Shinshi.Contracts
         // BASE_ESSENCE_ACCRUED에서는 완료 웨이브의 기본 정기이며 역시 출정 원장에만 쌓인다
         [DataMember(Name = "amount")]                private long              _amount;
 
-        // SESSION_ENDED의 GameSessionCodes.EndReason
+        // SESSION_ENDED의 GameSessionCodes.EndReason. PARTICIPANT_DEPARTED에서는 떠난 이유(ABANDON, DISCONNECT_EXPIRED)다
         [DataMember(Name = "endReason")]             private int               _endReason;
 
         // SESSION_ENDED 뒤 /settlement에 쓸 ID. 프로세스가 사라지면 API 복구 작업도 같은 ID로 정산한다
@@ -40,6 +40,9 @@ namespace Shinshi.Contracts
 
         // LOOT 등 저장만 하는 진단 내용
         [DataMember(Name = "payloadJson")]           private string            _payloadJson;
+
+        // POTION_USE_REVERTED가 되돌리는 원 POTION_USED의 eventId
+        [DataMember(Name = "revertsEventId")]        private string            _revertsEventId;
 
         /****************************************
         *              Properties
@@ -56,6 +59,7 @@ namespace Shinshi.Contracts
         public string            SettlementOperationId => _settlementOperationId;
         public SettlementGrant[] Grants                => _grants;
         public string            PayloadJson           => _payloadJson;
+        public string            RevertsEventId        => _revertsEventId;
 
         /****************************************
         *                Methods
@@ -76,6 +80,16 @@ namespace Shinshi.Contracts
             _settlementOperationId = settlementOperationId;
             _grants                = grants;
             _payloadJson           = payloadJson;
+        }
+
+        /// <summary> POTION_USE_REVERTED처럼 원 이벤트를 가리키는 항목 </summary>
+        public SessionEventEntry(long eventSeq, string eventId, int eventKind, string participantId,
+            string definitionId, string bindingKind, long amount, int endReason, string settlementOperationId,
+            SettlementGrant[] grants, string payloadJson, string revertsEventId)
+            : this(eventSeq, eventId, eventKind, participantId, definitionId, bindingKind, amount, endReason,
+                settlementOperationId, grants, payloadJson)
+        {
+            _revertsEventId = revertsEventId;
         }
 
         private SessionEventEntry() { }

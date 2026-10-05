@@ -16,10 +16,13 @@ namespace Shinshi.Network
         // 저장 큐는 ACK 전까지 같은 배치(같은 순번 범위와 payload)를 다시 넘긴다. 이벤트 ID와 operationId를 순번에서 만들므로
         // 재시도 본문이 바이트 단위로 같고, 응답을 잃은 배치를 다시 보내도 API가 처음 확정한 결과를 돌려준다.
         //
-        // API의 이벤트 종류는 LOOT, POTION_USED, ESSENCE_ACCRUED, BASE_ESSENCE_ACCRUED, SESSION_ENDED뿐이다. 순번은 한 건당
-        // 하나라 서버 이벤트 하나를 여러 건으로 나눌 수 없으므로, 경제 효과가 없는 참가, 이탈, 개인 정산, 웨이브 완료는 저장만 하는
-        // LOOT 종류에 진단 payload로 싣는다. 추가 정기 적립은 ESSENCE_ACCRUED, 완료 웨이브 기본 정기 적립은 BASE_ESSENCE_ACCRUED로
-        // 보낸다. 둘 다 장애 취소의 지급 기준이다(기본 전액, 추가 50% 내림).
+        // 순번은 한 건당 하나라 서버 이벤트 하나를 여러 건으로 나눌 수 없으므로, 경제 효과가 없는 참가, 연결 이탈, 웨이브 완료는
+        // 저장만 하는 LOOT 종류에 진단 payload로 싣는다. 진행 중 개인 이탈 확정(ParticipantSettled, 포기와 유예 만료)은
+        // PARTICIPANT_DEPARTED로 보낸다. 추가 정기 적립은 ESSENCE_ACCRUED, 완료 웨이브 기본 정기 적립은
+        // BASE_ESSENCE_ACCRUED로 보낸다. 둘 다 장애 취소의 지급 기준이다(기본 전액, 추가 50% 내림).
+        // 물약 사용은 POTION_USED(참가자, 정의, 귀속), 되돌림은 POTION_USE_REVERTED(참가자, 원 이벤트 ID)로 보낸다. 형식이
+        // 틀린 물약 이벤트를 그대로 보내면 API가 배치 전체를 확정 거절해 큐가 멈추므로 그때는 진단 LOOT로만 남긴다.
+        // 지참 수량과 보스 사용 상한은 PotionServer가 보내기 전에 막는다. 저장 거절은 큐를 멈춰 출정을 장애 취소로 끝낸다.
         // 서비스 장애 취소는 API 복구 작업만 기록할 수 있어 SESSION_ENDED로 보내지 않는다.
         // 배치 직렬화는 1초에 한 번 이하로 일어나는 저빈도 경로라 DTO와 JSON 할당을 허용한다
 
@@ -148,6 +151,30 @@ namespace Shinshi.Network
             // 참가자 ID가 있으면 API가 GUID로 읽는다. 개발 키처럼 형식이 다르면 배치 전체가 거절되므로 payload에만 남긴다
             string participantId = SessionContractIds.TryGetApiParticipantId(data.ParticipantId, out string apiId) ? apiId : null;
 
+            if ((data.Type == ESessionEventType.PotionUsed) && (participantId != null)
+                && (!string.IsNullOrEmpty(data.DefinitionId)) && (!string.IsNullOrEmpty(data.BindingKind)))
+            {
+                return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.POTION_USED, participantId,
+                    data.DefinitionId, data.BindingKind, 0L, 0, null, null, null);
+            }
+
+            // 진행 중 개인 이탈(포기, 유예 만료)은 PARTICIPANT_DEPARTED로 보낸다. API가 같은 트랜잭션에서 그 계정의 던전 접속 임대를
+            // 풀어 마을 복귀를 허용한다. 경제 정산은 하지 않고 SESSION_ENDED 정산안이 이 참가자를 한 번 포함한다
+            if ((data.Type == ESessionEventType.ParticipantSettled) && (participantId != null) && (IsDepartReason(data.Reason)))
+            {
+                return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.PARTICIPANT_DEPARTED,
+                    participantId, null, null, 0L, (int)data.Reason, null, null, null);
+            }
+
+            // 물약 정의와 귀속은 API가 원 이벤트에서 읽으므로 싣지 않는다
+            if ((data.Type == ESessionEventType.PotionUseReverted) && (participantId != null) && (data.RevertsSequence > 0)
+                && (data.RevertsSequence < sessionEvent.Seq))
+            {
+                return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.POTION_USE_REVERTED,
+                    participantId, null, null, 0L, 0, null, null, null,
+                    SessionContractIds.CreateEventId(sessionId, data.RevertsSequence));
+            }
+
             // 적립은 API 출정 원장에 쌓여 장애 취소의 지급 기준이 된다. 대상이 GUID가 아니거나 양이 0 이하면 API가
             // 배치 전체를 거절하므로 그때는 진단 LOOT로만 남긴다
             int accrualKind = GetAccrualKind(data.Type);
@@ -159,6 +186,11 @@ namespace Shinshi.Network
 
             return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.LOOT, participantId, null, null,
                 0L, 0, null, null, BackendJson.Serialize(new DiagnosticPayload(in data)));
+        }
+
+        private static bool IsDepartReason(ESessionEndReason reason)
+        {
+            return (reason == ESessionEndReason.Abandon) || (reason == ESessionEndReason.DisconnectExpired);
         }
 
         // 적립 이벤트가 아니면 LOOT를 돌려준다
@@ -217,6 +249,8 @@ namespace Shinshi.Network
             [DataMember(Name = "talismanQuantity")]    private int    _talismanQuantity;
             [DataMember(Name = "talismanEffectId")]    private string _talismanEffectId;
             [DataMember(Name = "amount")]              private long   _amount;
+            [DataMember(Name = "definitionId")]        private string _definitionId;
+            [DataMember(Name = "revertsSequence")]     private long   _revertsSequence;
 
             public DiagnosticPayload(in SessionEventData data)
             {
@@ -234,6 +268,8 @@ namespace Shinshi.Network
                 _talismanQuantity    = data.Loot.TalismanQuantity;
                 _talismanEffectId    = data.Loot.TalismanEffectId;
                 _amount              = data.Amount;
+                _definitionId        = data.DefinitionId;
+                _revertsSequence     = data.RevertsSequence;
             }
         }
 #pragma warning restore CS0414
