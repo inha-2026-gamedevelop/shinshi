@@ -29,7 +29,7 @@ namespace Shinshi.Tests
 
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const string WOLBAEK_ID   = "boss_wolbaek";
-        private const string OTHER_ID     = "mucheol_p03";
+        private const string OTHER_ID     = "mucheol_p06";
         private const float  TEST_HREF    = 3541f; // 테스트가 명시적으로 주입하는 값이다
         private const float  ANGLE_TOLERANCE = 0.05f;
         private const float  TIME_MARGIN  = 0.1f;  // 초, 경계 전후로 두는 여유
