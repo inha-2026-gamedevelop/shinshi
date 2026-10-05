@@ -9,7 +9,7 @@ namespace Shinshi.AI
     // 월백 뼈대(두뇌, 페이즈 FSM, 선택, 피해 게이트)를 그대로 쓰는 산문지기 무철의 팩토리다.
     // 지금 만드는 것은 P01~P06뿐이고 나머지 정의는 null이라 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
     /// <summary> 무철 패턴 정의로 실행 객체를 만든다, 1페이즈는 P01~P06이 있다 </summary>
-    public sealed class MucheolPatternFactory : IBossPatternFactory, IBossPatternAvailability
+    public sealed class MucheolPatternFactory : IBossPatternFactory, IBossPatternAvailability, IBossChargeCastTrackerSource
     {
         /****************************************
         *              Constants
@@ -37,6 +37,15 @@ namespace Shinshi.AI
         private readonly MucheolChargeSpec            _chargeSpec;
         private readonly IBossChargeStructureQuery    _chargeStructures;
         private readonly IBossChargeOutcomeListener   _chargeListener;
+
+        private IBossChargeCastTracker _chargeTracker;
+
+        /****************************************
+        *              Properties
+        ****************************************/
+
+        /// <summary> 지금 연결된 시전 추적 수신자, 연결되지 않았으면 null이다. 기믹이 자신이 연결됐는지 확인하는 데 쓴다 </summary>
+        public IBossChargeCastTracker ChargeCastTracker => _chargeTracker;
 
         /****************************************
         *                Methods
@@ -67,6 +76,13 @@ namespace Shinshi.AI
             _chargeSpec       = chargeSpec;
             _chargeStructures = chargeStructures;
             _chargeListener   = chargeListener;
+        }
+
+        // 시전 추적 수신자(기믹)는 생성자가 아니라 따로 연결한다. 기믹이 팩토리로 P06을 고를 수 있는지 확인하고 팩토리가 기믹에 시전을 알리는
+        // 서로를 아는 관계라 한쪽을 먼저 만들 수 없기 때문이다. 보스전이 시작되기 전에 한 번 연결하며, 이후 만드는 P06 시전부터 알린다
+        public void SetChargeCastTracker(IBossChargeCastTracker tracker)
+        {
+            _chargeTracker = tracker;
         }
 
         // Create가 null을 돌려줄 조건과 같아야 한다
@@ -125,7 +141,7 @@ namespace Shinshi.AI
             if (definition.DefinitionId == P06_ID)
             {
                 return new MucheolChargePattern(_referenceHealth, _movement, _chargeSpec, _chargeStructures, _dashListener,
-                    _chargeListener);
+                    _chargeListener, _chargeTracker);
             }
 
             return new BossFanBlastPattern(_referenceHealth, _fanListener);

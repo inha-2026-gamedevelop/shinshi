@@ -29,9 +29,11 @@ namespace Shinshi.AI
         private readonly MucheolChargeSpec          _spec;
         private readonly BossDashPattern            _dash;
         private readonly IBossChargeOutcomeListener _outcomeListener;
+        private readonly IBossChargeCastTracker     _castTracker;
 
         private BossPatternContext _context;
         private bool               _isCancelled;
+        private bool               _isFinished;
         private bool               _isEnded;
 
         private EBossChargeEnd     _endKind;
@@ -69,9 +71,10 @@ namespace Shinshi.AI
         ****************************************/
 
         // movement는 돌진이 보스 몸체를 옮기는 창구이고 structures는 구조물 조회다. 구조물 조회가 없으면 벽에만 막힌다
+        // castTracker는 시전의 실제 시작과 취소를 받는 쪽(기믹)이고 비어 있으면 알리지 않는다
         public MucheolChargePattern(float referenceHealth, IBossMovement movement, MucheolChargeSpec spec,
             IBossChargeStructureQuery structures = null, IBossDashTelegraphListener dashListener = null,
-            IBossChargeOutcomeListener outcomeListener = null)
+            IBossChargeOutcomeListener outcomeListener = null, IBossChargeCastTracker castTracker = null)
         {
             if (movement == null)
             {
@@ -87,12 +90,14 @@ namespace Shinshi.AI
             _spec            = spec;
             _dash            = new BossDashPattern(referenceHealth, _movement, dashListener);
             _outcomeListener = outcomeListener;
+            _castTracker     = castTracker;
         }
 
         public void Begin(in BossPatternContext context, double serverTime)
         {
             _context         = context;
             _isCancelled     = false;
+            _isFinished      = false;
             _isEnded         = false;
             _endKind         = EBossChargeEnd.None;
             _collision       = default;
@@ -101,6 +106,9 @@ namespace Shinshi.AI
             _movement.ResetLimit();
             _dash.Begin(in context, serverTime);
             ResolveEnd();
+
+            // 패턴을 고른 것이 아니라 시전이 실제로 시작된 이 순간에 알린다
+            _castTracker?.OnChargeCastStarted(context.CastInstanceId);
         }
 
         public void EnterState(EBossAttackState state, double serverTime)
@@ -125,20 +133,28 @@ namespace Shinshi.AI
             ResolveEnd();
         }
 
-        // 취소된 시전은 끝 종류를 정하지 않는다. 이미 낸 피해는 되돌리지 않고 이후 이동과 타격은 돌진 실행이 막는다
+        // 취소된 시전은 끝 종류를 정하지 않는다. 이미 낸 피해는 되돌리지 않고 이후 이동과 타격은 돌진 실행이 막는다.
+        // 정상 종료한 뒤의 취소 호출은 이미 끝난 시전이라 알리지 않는다
         public void Cancel(EBossInterruptReason reason)
         {
-            if (_isCancelled)
+            if ((_isCancelled) || (_isFinished))
             {
                 return;
             }
 
             _isCancelled = true;
             _dash.Cancel(reason);
+            _castTracker?.OnChargeCastCancelled(_context.CastInstanceId, reason);
         }
 
         public void Finish()
         {
+            if (_isCancelled)
+            {
+                return;
+            }
+
+            _isFinished = true;
             _dash.Finish();
         }
 
