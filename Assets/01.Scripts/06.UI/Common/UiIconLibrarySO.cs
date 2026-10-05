@@ -44,6 +44,10 @@ namespace Shinshi.UI
         [Header("등급 틀 (일반, 희귀, 영웅, 전설 순서)")]
         [SerializeField] private Sprite[] _gradeFrames = null;
 
+        [Header("칸 바탕 (일반, 희귀, 영웅, 전설 순서)")]
+        [SerializeField] private Sprite[] _gradeBackgrounds = null;
+        [SerializeField] private Sprite   _emptyBackground  = null;
+
         [Header("부적 단계 배지")]
         [SerializeField] private Sprite _tierSupport = null;
         [SerializeField] private Sprite _tierCore    = null;
@@ -55,8 +59,9 @@ namespace Shinshi.UI
         *              Properties
         ****************************************/
 
-        public Sprite TierSupport => _tierSupport;
-        public Sprite TierCore    => _tierCore;
+        public Sprite TierSupport     => _tierSupport;
+        public Sprite TierCore        => _tierCore;
+        public Sprite EmptyBackground => _emptyBackground;
 
         /****************************************
         *              Unity Event
@@ -105,16 +110,21 @@ namespace Shinshi.UI
             return found;
         }
 
-        public Sprite FindGradeFrame(EItemGrade grade)
+        public Sprite FindGradeFrame(EItemGrade grade) { return PickByGrade(_gradeFrames, grade); }
+
+        /// <summary>등급 색 그라데이션 칸 바탕, 없으면 null</summary>
+        public Sprite FindGradeBackground(EItemGrade grade) { return PickByGrade(_gradeBackgrounds, grade); }
+
+        private static Sprite PickByGrade(Sprite[] sprites, EItemGrade grade)
         {
             int index = (int)grade;
 
-            if ((_gradeFrames == null) || (index < 0) || (index >= _gradeFrames.Length))
+            if ((sprites == null) || (index < 0) || (index >= sprites.Length))
             {
                 return null;
             }
 
-            return _gradeFrames[index];
+            return sprites[index];
         }
 
         private void EnsureLookup()

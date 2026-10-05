@@ -21,6 +21,7 @@ namespace Shinshi.UI
         private const string COUNT_FORMAT = "{0:N0}";
 
         [Header("표시")]
+        [SerializeField] private Image      _background   = null;
         [SerializeField] private Image      _frame        = null;
         [SerializeField] private Image      _icon         = null;
         [SerializeField] private TMP_Text   _countLabel   = null;
@@ -97,6 +98,14 @@ namespace Shinshi.UI
                 Sprite sprite = ((_library != null) && !empty) ? _library.FindIcon(data.Id) : null;
                 _icon.sprite  = sprite;
                 _icon.enabled = (sprite != null);
+            }
+
+            // 등급은 칸 바탕 색으로 먼저 알리고, 빈 칸은 움푹 들어간 바탕으로 구분한다
+            if ((_background != null) && (_library != null))
+            {
+                Sprite background = empty ? _library.EmptyBackground : _library.FindGradeBackground(data.Grade);
+                _background.sprite  = background;
+                _background.enabled = (background != null);
             }
 
             if (_frame != null)

@@ -182,5 +182,11 @@ MonoBehaviour:
   - {fileID: 21300000, guid: bff35a7c8955cee41be0752fd83bdf2a, type: 3}
   - {fileID: 21300000, guid: f14363dfb4240d44d92c353fe602bd15, type: 3}
   - {fileID: 21300000, guid: 379c9f198195f57439918f36eaf925c0, type: 3}
+  _gradeBackgrounds:
+  - {fileID: 21300000, guid: 82812d9dc8262aa409671d67d11a36cd, type: 3}
+  - {fileID: 21300000, guid: 0af683ce8efdbea4a91fb2e02ed444b4, type: 3}
+  - {fileID: 21300000, guid: 8450047d883099c47a73c3711ac227ce, type: 3}
+  - {fileID: 21300000, guid: c145ce9ff5c19c94a8ad86f12df451df, type: 3}
+  _emptyBackground: {fileID: 21300000, guid: 0821f74597e2ed4479e9028e9d77ae88, type: 3}
   _tierSupport: {fileID: 21300000, guid: 1012cdc39a4345646998a480684d8bda, type: 3}
   _tierCore: {fileID: 21300000, guid: 46a021030db4d164f9181bac62f01cbe, type: 3}
