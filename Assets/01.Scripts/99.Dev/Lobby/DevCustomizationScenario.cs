@@ -28,7 +28,7 @@ namespace Shinshi.Dev
     public sealed class DevCustomizationScenario : MonoBehaviour
     {
         // 재귀 CLI/Unity 실행이나 Reflection, private 필드 접근 없이 실제 화면 버튼과 production 흐름만 쓴다.
-        // LobbyScreen.StartButton/IsBusy, CharacterCreateScreen.GetLookTabButton, CharacterSelectScreen.CreateButton은
+        // LobbyScreen.StartButton/IsBusy, CharacterCreateScreen.CustomizePanel의 단계 버튼, CharacterSelectScreen.CreateButton은
         // 모두 실제 production 화면이 쓰는 같은 버튼이다. 하나라도 null이거나 비활성이면 ContractGaps에 남기고 실패한다
 
         /****************************************
@@ -38,17 +38,25 @@ namespace Shinshi.Dev
         private const string ARG_SCENARIO        = "-dev-customization-scenario";
         private const string ARG_MODE            = "-dev-cust-mode";
         private const string ARG_CLASS           = "-dev-cust-class";
-        private const string ARG_FACE            = "-dev-cust-face";
-        private const string ARG_HAIR            = "-dev-cust-hair";
-        private const string ARG_OUTFIT          = "-dev-cust-outfit";
+        private const string ARG_PREFIX          = "-dev-cust-";
+        private const string ARG_REMOTE_PREFIX   = "-dev-cust-remote-";
         private const string ARG_NAME            = "-dev-cust-name";
         private const string ARG_RESULT          = "-dev-cust-result";
         private const string ARG_REJOINS         = "-dev-cust-rejoins";
         private const string ARG_REMOTE_NAME     = "-dev-cust-remote-name";
-        private const string ARG_REMOTE_HAIR     = "-dev-cust-remote-hair";
-        private const string ARG_REMOTE_OUTFIT   = "-dev-cust-remote-outfit";
         private const string ARG_OBSERVE_SECONDS = "-dev-cust-observe-seconds";
         private const string ARG_SCREENSHOT      = "-dev-cust-screenshot";
+
+        // 외형 인자 접미사, ARG_PREFIX 또는 ARG_REMOTE_PREFIX 뒤에 붙인다. 성별은 0 여성, 1 남성이다
+        private const string SUFFIX_SEX         = "sex";
+        private const string SUFFIX_FACE        = "face";
+        private const string SUFFIX_HAIR        = "hair";
+        private const string SUFFIX_HAIR_COLOR  = "hair-color";
+        private const string SUFFIX_EYE         = "eye";
+        private const string SUFFIX_SKIN        = "skin";
+        private const string SUFFIX_FACIAL_HAIR = "facial-hair";
+        private const string SUFFIX_BUST        = "bust";
+        private const string SUFFIX_OUTFIT_MASK = "outfit-mask";
 
         private const string MODE_CREATE = "create";
         private const string MODE_ENTER  = "enter";
@@ -56,9 +64,8 @@ namespace Shinshi.Dev
         private const int MIN_CLASS_ID = ContractCodes.PlayerClass.WARRIOR;
         private const int MAX_CLASS_ID = ContractCodes.PlayerClass.SUMMONER;
 
-        // 얼굴 1종, 헤어/의상은 직업과 독립인 3종, 세 부위가 같은 1..3 범위를 쓴다
-        private const int MIN_PART_ID = CharacterAppearanceCatalog.HAIR_WARRIOR;
-        private const int MAX_PART_ID = CharacterAppearanceCatalog.HAIR_SUMMONER;
+        // 생성 화면 단계 버튼을 누를 수 있는 최대 횟수, 값이 한 바퀴 돌아도 목표에 닿지 않으면 실패로 본다
+        private const int MAX_STEP_PRESSES = 32;
 
         private const int MIN_REJOINS = 0;
         private const int MAX_REJOINS = 10;
@@ -101,15 +108,12 @@ namespace Shinshi.Dev
         {
             public string Mode;
             public int    ClassId;
-            public int    FaceId;
-            public int    HairId;
-            public int    OutfitId;
+            public CharacterP09Look Look;
             public string Name;
             public string ResultPath;
             public int    Rejoins;
             public string RemoteName;
-            public int    RemoteHairId;
-            public int    RemoteOutfitId;
+            public CharacterP09Look RemoteLook;
             public int    ObserveSeconds;
             public string ScreenshotPath;
         }
@@ -128,17 +132,18 @@ namespace Shinshi.Dev
             public int    CombatId;
             public int    ClassId;
             public string CharacterName = string.Empty;
-            public int    FaceId;
-            public int    HairId;
-            public int    OutfitId;
-            public int    AssembledFaceId;
-            public int    AssembledHairId;
-            public int    AssembledOutfitId;
+            public string Look = string.Empty;
+            public string AssembledLook = string.Empty;
+            public bool   HasLook;
             public bool   Owned;
             public bool   Authenticated;
             public bool   Assembled;
             public bool   PlaceholderVisible;
             public string AssemblyError = string.Empty;
+
+            // JsonUtility가 구조체 속성을 저장하지 못해 비교용 값은 직렬화에서 뺀다
+            [NonSerialized] public CharacterP09Look LookValue;
+            [NonSerialized] public CharacterP09Look AssembledValue;
         }
 
         [Serializable]
@@ -148,9 +153,7 @@ namespace Shinshi.Dev
             public string RunMode = string.Empty;
             public string ExpectedCharacterName = string.Empty;
             public int    ExpectedClassId;
-            public int    ExpectedFaceId;
-            public int    ExpectedHairId;
-            public int    ExpectedOutfitId;
+            public string ExpectedLook = string.Empty;
             public int    JoinsRequested;
             public int    JoinsCompleted;
             public int    RejoinsRequested;
@@ -488,20 +491,7 @@ namespace Shinshi.Dev
 
             LogStep(ctx, "CreateClass:ok");
 
-            // 얼굴도 탭+옵션 1종뿐이지만 실제 클릭 경로로 검증한다, 기본값과 같다고 건너뛰지 않는다
-            yield return CoSelectLookPart(ctx, createScreen, ECharacterLookPart.Face, CharacterAppearanceCatalog.FACE_CUTE);
-            if (ctx.Failed)
-            {
-                yield break;
-            }
-
-            yield return CoSelectLookPart(ctx, createScreen, ECharacterLookPart.Hair, ctx.Args.HairId);
-            if (ctx.Failed)
-            {
-                yield break;
-            }
-
-            yield return CoSelectLookPart(ctx, createScreen, ECharacterLookPart.Outfit, ctx.Args.OutfitId);
+            yield return CoApplyCustomization(ctx, createScreen);
             if (ctx.Failed)
             {
                 yield break;
@@ -563,52 +553,101 @@ namespace Shinshi.Dev
             LogStep(ctx, "CreateSubmit:ok");
         }
 
-        // 탭을 먼저 눌러 옵션 패널을 활성화한 뒤에만 옵션을 클릭한다. 이미 활성인 탭은 UI가 interactable=false로
-        // 표시하므로 그 상태를 명시 단계로만 남기고, 비활성 버튼의 onClick을 직접 호출해 숨기지 않는다
-        private IEnumerator CoSelectLookPart(ScenarioContext ctx, CharacterCreateScreen createScreen,
-            ECharacterLookPart part, int optionId)
+        // 성별을 먼저 바꾼다. 성별 전환이 수염과 가슴 크기를 되돌리므로 그 뒤에 나머지 행을 목표값으로 맞춘다
+        private IEnumerator CoApplyCustomization(ScenarioContext ctx, CharacterCreateScreen createScreen)
         {
-            Button tabButton = createScreen.GetLookTabButton(part);
-            if (tabButton == null)
+            CharacterCustomizePanel panel = createScreen.CustomizePanel;
+            if (panel == null)
             {
-                AddContractGap(ctx, "CharacterCreateScreen.GetLookTabButton(" + part + ")이 null이다");
-                Fail(ctx, "LookTab:" + part + ":missing");
+                AddContractGap(ctx, "CharacterCreateScreen.CustomizePanel이 null이다");
+                Fail(ctx, "Customize:missing");
                 yield break;
             }
 
-            bool alreadyActive = (!tabButton.interactable) && (tabButton.gameObject.activeInHierarchy) && (!createScreen.IsBusy);
-            if (alreadyActive)
+            CharacterP09Look look = ctx.Args.Look;
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.Sex, look.BodyType);
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.Face, look.FaceId);
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.Hair, look.HairId);
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.HairColor, look.HairColor);
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.EyeColor, look.EyeColor);
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.Skin, look.SkinTone);
+            if (ctx.Failed) { yield break; }
+
+            if (look.IsMale)
             {
-                LogStep(ctx, "LookTab:" + part + ":already-active");
+                yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.FacialHair, look.FacialHair);
             }
             else
             {
-                if (!TryInvoke(tabButton, createScreen.IsBusy))
+                yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.BustSize, look.BustSize);
+            }
+
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.ArmorHead, ArmorTarget(look, CharacterAppearanceCatalog.P09_OUTFIT_HEAD));
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.ArmorChest, ArmorTarget(look, CharacterAppearanceCatalog.P09_OUTFIT_CHEST));
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.ArmorArm, ArmorTarget(look, CharacterAppearanceCatalog.P09_OUTFIT_ARM));
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.ArmorWaist, ArmorTarget(look, CharacterAppearanceCatalog.P09_OUTFIT_WAIST));
+            if (ctx.Failed) { yield break; }
+
+            yield return CoSetRow(ctx, createScreen, panel, CharacterCustomizePanel.ERow.ArmorLeg, ArmorTarget(look, CharacterAppearanceCatalog.P09_OUTFIT_LEG));
+            if (ctx.Failed) { yield break; }
+
+            LogStep(ctx, "Customize:ok");
+        }
+
+        private static int ArmorTarget(CharacterP09Look look, int outfitBit)
+        {
+            return look.HasOutfit(outfitBit) ? 1 : 0;
+        }
+
+        // 실제 "다음" 버튼을 값이 목표와 같아질 때까지 누른다. 값은 한 바퀴 돌기 때문에 상한만 두고 실패로 끝낸다
+        private IEnumerator CoSetRow(ScenarioContext ctx, CharacterCreateScreen createScreen, CharacterCustomizePanel panel,
+            CharacterCustomizePanel.ERow row, int target)
+        {
+            Button next = panel.GetStepButton(row, 1);
+            if (next == null)
+            {
+                AddContractGap(ctx, "CharacterCustomizePanel.GetStepButton(" + row + ",1)이 null이다");
+                Fail(ctx, "Customize:" + row + ":missing");
+                yield break;
+            }
+
+            for (int presses = 0; panel.GetValue(row) != target; ++presses)
+            {
+                if (presses >= MAX_STEP_PRESSES)
                 {
-                    Fail(ctx, "LookTab:" + part + ":unavailable");
+                    Fail(ctx, "Customize:" + row + ":unreachable");
                     yield break;
                 }
 
-                LogStep(ctx, "LookTab:" + part + ":ok");
+                if (!TryInvoke(next, createScreen.IsBusy))
+                {
+                    Fail(ctx, "Customize:" + row + ":unavailable");
+                    yield break;
+                }
+
+                yield return null; // 버튼 반응이 선택 상태에 반영된 다음 프레임에 값을 다시 읽는다
             }
 
-            yield return null; // 탭 전환으로 바뀐 옵션 패널 활성 상태가 반영된 다음 프레임을 쓴다
-
-            Button optionButton = createScreen.GetLookOptionButton(part, optionId);
-            if (optionButton == null)
-            {
-                AddContractGap(ctx, "CharacterCreateScreen.GetLookOptionButton(" + part + "," + optionId + ")이 null이다");
-                Fail(ctx, "LookOption:" + part + ":missing");
-                yield break;
-            }
-
-            if (!TryInvoke(optionButton, createScreen.IsBusy))
-            {
-                Fail(ctx, "LookOption:" + part + ":unavailable");
-                yield break;
-            }
-
-            LogStep(ctx, "LookOption:" + part + ":ok");
+            LogStep(ctx, "Customize:" + row + ":ok");
         }
 
         private IEnumerator CoEnterSelectAndJoin(ScenarioContext ctx, int joinIndex)
@@ -637,10 +676,11 @@ namespace Shinshi.Dev
 
             CharacterSummary character = selectScreen.Characters[slot];
             bool resolved = CharacterAppearanceCatalog.TryResolve(character.ClassId, character.Appearance, out CharacterAppearance canonical);
-            CharacterLook look = default;
-            bool hasLook = (resolved) && (CharacterLook.TryFrom(canonical, out look));
-            if ((!hasLook) || (character.ClassId != ctx.Args.ClassId) || (!look.Equals(ExpectedLook(ctx.Args))))
+            CharacterP09Look look = default;
+            bool hasLook = (resolved) && (CharacterP09Look.TryFrom(canonical, out look));
+            if ((!hasLook) || (character.ClassId != ctx.Args.ClassId) || (!look.Equals(ctx.Args.Look)))
             {
+                LogLookMismatch("SelectFind" + joinIndex, ctx.Args.Look, look);
                 Fail(ctx, "SelectFind" + joinIndex + ":mismatch");
                 yield break;
             }
@@ -746,11 +786,12 @@ namespace Shinshi.Dev
 
             if ((!string.Equals(snapshot.CharacterName, ctx.Args.Name, StringComparison.Ordinal))
                 || (snapshot.ClassId != ctx.Args.ClassId)
-                || (snapshot.FaceId != ctx.Args.FaceId) || (snapshot.HairId != ctx.Args.HairId) || (snapshot.OutfitId != ctx.Args.OutfitId)
-                || (snapshot.AssembledFaceId != ctx.Args.FaceId) || (snapshot.AssembledHairId != ctx.Args.HairId)
-                || (snapshot.AssembledOutfitId != ctx.Args.OutfitId)
+                || (!snapshot.HasLook) || (!snapshot.LookValue.Equals(ctx.Args.Look))
+                || (!snapshot.AssembledValue.Equals(ctx.Args.Look))
                 || (!snapshot.Owned) || (!snapshot.Authenticated) || (!snapshot.Assembled) || (snapshot.PlaceholderVisible))
             {
+                LogLookMismatch("TownLocalVerify" + joinIndex + ":replicated", ctx.Args.Look, snapshot.LookValue);
+                LogLookMismatch("TownLocalVerify" + joinIndex + ":assembled", ctx.Args.Look, snapshot.AssembledValue);
                 Fail(ctx, "TownLocalVerify" + joinIndex + ":mismatch");
                 yield break;
             }
@@ -792,12 +833,13 @@ namespace Shinshi.Dev
             ctx.RemoteJoins.Add(snapshot);
 
             if ((!string.Equals(snapshot.CharacterName, ctx.Args.RemoteName, StringComparison.Ordinal))
-                || (snapshot.FaceId != ctx.Args.FaceId) || (snapshot.HairId != ctx.Args.RemoteHairId)
-                || (snapshot.OutfitId != ctx.Args.RemoteOutfitId) || (snapshot.Owned) || (!snapshot.Authenticated)
-                || (snapshot.AssembledFaceId != ctx.Args.FaceId) || (snapshot.AssembledHairId != ctx.Args.RemoteHairId)
-                || (snapshot.AssembledOutfitId != ctx.Args.RemoteOutfitId)
+                || (!snapshot.HasLook) || (!snapshot.LookValue.Equals(ctx.Args.RemoteLook))
+                || (!snapshot.AssembledValue.Equals(ctx.Args.RemoteLook))
+                || (snapshot.Owned) || (!snapshot.Authenticated)
                 || (!snapshot.Assembled) || (snapshot.PlaceholderVisible))
             {
+                LogLookMismatch("RemoteVerify:replicated", ctx.Args.RemoteLook, snapshot.LookValue);
+                LogLookMismatch("RemoteVerify:assembled", ctx.Args.RemoteLook, snapshot.AssembledValue);
                 Fail(ctx, "RemoteVerify:mismatch");
                 yield break;
             }
@@ -1033,9 +1075,12 @@ namespace Shinshi.Dev
             return -1;
         }
 
-        private static CharacterLook ExpectedLook(ScenarioArgs args)
+        private static void LogLookMismatch(string label, CharacterP09Look expected, CharacterP09Look actual)
         {
-            return new CharacterLook(args.FaceId, args.HairId, args.OutfitId);
+            if (!expected.Equals(actual))
+            {
+                Debug.LogError("[DevCustomizationScenario] " + label + " 외형 불일치 expected=[" + expected + "] actual=[" + actual + "]");
+            }
         }
 
         private static bool TryFindRemote(string remoteName, out PlayerCombatState remoteCombat)
@@ -1144,15 +1189,14 @@ namespace Shinshi.Dev
                 PlaceholderVisible = (capsule != null) && (capsule.gameObject.activeSelf),
                 AssemblyError      = appearanceView.LastError ?? string.Empty
             };
-            snapshot.AssembledFaceId = appearanceView.CurrentLook.FaceId;
-            snapshot.AssembledHairId = appearanceView.CurrentLook.HairId;
-            snapshot.AssembledOutfitId = appearanceView.CurrentLook.OutfitId;
+            snapshot.AssembledValue = appearanceView.CurrentLook;
+            snapshot.AssembledLook  = snapshot.AssembledValue.ToString();
 
-            if (CharacterLook.TryFrom(combat.Appearance, out CharacterLook look))
+            if (CharacterP09Look.TryFrom(combat.Appearance, out CharacterP09Look look))
             {
-                snapshot.FaceId   = look.FaceId;
-                snapshot.HairId   = look.HairId;
-                snapshot.OutfitId = look.OutfitId;
+                snapshot.HasLook   = true;
+                snapshot.LookValue = look;
+                snapshot.Look      = look.ToString();
             }
 
             return snapshot;
@@ -1188,9 +1232,7 @@ namespace Shinshi.Dev
             ctx.Result.RunMode                = ctx.Args.Mode;
             ctx.Result.ExpectedCharacterName   = ctx.Args.Name;
             ctx.Result.ExpectedClassId         = ctx.Args.ClassId;
-            ctx.Result.ExpectedFaceId          = ctx.Args.FaceId;
-            ctx.Result.ExpectedHairId          = ctx.Args.HairId;
-            ctx.Result.ExpectedOutfitId        = ctx.Args.OutfitId;
+            ctx.Result.ExpectedLook            = ctx.Args.Look.ToString();
             ctx.Result.JoinsRequested          = FIRST_JOIN_INDEX + ctx.Args.Rejoins;
             ctx.Result.RejoinsRequested        = ctx.Args.Rejoins;
             ctx.Result.ObserveSecondsRequested = ctx.Args.ObserveSeconds;
@@ -1352,22 +1394,9 @@ namespace Shinshi.Dev
                 return false;
             }
 
-            int faceId = CharacterAppearanceCatalog.FACE_CUTE;
-            if ((TryReadInt(rawArgs, ARG_FACE, out int parsedFaceId)) && (parsedFaceId != CharacterAppearanceCatalog.FACE_CUTE))
+            if (!TryBuildLook(rawArgs, ARG_PREFIX, classId, out CharacterP09Look look, out string lookError))
             {
-                error = ARG_FACE + ": Cute 얼굴 " + CharacterAppearanceCatalog.FACE_CUTE + "만 지원한다";
-                return false;
-            }
-
-            if ((!TryReadInt(rawArgs, ARG_HAIR, out int hairId)) || (hairId < MIN_PART_ID) || (hairId > MAX_PART_ID))
-            {
-                error = ARG_HAIR + ": " + MIN_PART_ID + ".." + MAX_PART_ID + " 범위가 필요하다";
-                return false;
-            }
-
-            if ((!TryReadInt(rawArgs, ARG_OUTFIT, out int outfitId)) || (outfitId < MIN_PART_ID) || (outfitId > MAX_PART_ID))
-            {
-                error = ARG_OUTFIT + ": " + MIN_PART_ID + ".." + MAX_PART_ID + " 범위가 필요하다";
+                error = lookError;
                 return false;
             }
 
@@ -1402,10 +1431,9 @@ namespace Shinshi.Dev
                 return false;
             }
 
-            bool   hasRemoteName   = TryReadString(rawArgs, ARG_REMOTE_NAME, out string rawRemoteName);
-            string remoteName      = null;
-            int    remoteHairId    = 0;
-            int    remoteOutfitId  = 0;
+            bool   hasRemoteName = TryReadString(rawArgs, ARG_REMOTE_NAME, out string rawRemoteName);
+            string remoteName    = null;
+            CharacterP09Look remoteLook = default;
             if (hasRemoteName)
             {
                 if (!CharacterNameRules.TryNormalize(rawRemoteName, out remoteName, out string _))
@@ -1414,22 +1442,16 @@ namespace Shinshi.Dev
                     return false;
                 }
 
-                if ((!TryReadInt(rawArgs, ARG_REMOTE_HAIR, out remoteHairId)) || (remoteHairId < MIN_PART_ID) || (remoteHairId > MAX_PART_ID))
+                // 원격 플레이어의 직업은 모르므로 지정하지 않은 값은 로컬과 같은 직업의 기본값에서 시작한다
+                if (!TryBuildLook(rawArgs, ARG_REMOTE_PREFIX, classId, out remoteLook, out string remoteLookError))
                 {
-                    error = ARG_REMOTE_HAIR + ": " + ARG_REMOTE_NAME + "와 함께 " + MIN_PART_ID + ".." + MAX_PART_ID + " 범위가 필요하다";
-                    return false;
-                }
-
-                if ((!TryReadInt(rawArgs, ARG_REMOTE_OUTFIT, out remoteOutfitId))
-                    || (remoteOutfitId < MIN_PART_ID) || (remoteOutfitId > MAX_PART_ID))
-                {
-                    error = ARG_REMOTE_OUTFIT + ": " + ARG_REMOTE_NAME + "와 함께 " + MIN_PART_ID + ".." + MAX_PART_ID + " 범위가 필요하다";
+                    error = remoteLookError;
                     return false;
                 }
             }
-            else if ((TryReadInt(rawArgs, ARG_REMOTE_HAIR, out int _)) || (TryReadInt(rawArgs, ARG_REMOTE_OUTFIT, out int _)))
+            else if (HasAnyLookArg(rawArgs, ARG_REMOTE_PREFIX))
             {
-                error = ARG_REMOTE_HAIR + "/" + ARG_REMOTE_OUTFIT + "는 " + ARG_REMOTE_NAME + " 없이 줄 수 없다";
+                error = ARG_REMOTE_PREFIX + "* 외형 인자는 " + ARG_REMOTE_NAME + " 없이 줄 수 없다";
                 return false;
             }
 
@@ -1449,20 +1471,69 @@ namespace Shinshi.Dev
             {
                 Mode           = mode,
                 ClassId        = classId,
-                FaceId         = faceId,
-                HairId         = hairId,
-                OutfitId       = outfitId,
+                Look           = look,
                 Name           = name,
                 ResultPath     = resultPath,
                 Rejoins        = rejoins,
                 RemoteName     = remoteName,
-                RemoteHairId   = remoteHairId,
-                RemoteOutfitId = remoteOutfitId,
+                RemoteLook     = remoteLook,
                 ObserveSeconds = observeSeconds,
                 ScreenshotPath = screenshotPath
             };
 
             return true;
+        }
+
+        // 지정하지 않은 값은 직업 기본 외형을 쓰고, 성별에 맞게 정규화한 뒤 허용 여부를 확인한다
+        private static bool TryBuildLook(string[] rawArgs, string prefix, int classId, out CharacterP09Look look, out string error)
+        {
+            look  = default;
+            error = null;
+
+            CharacterAppearance baseAppearance = CharacterAppearanceCatalog.CreateDefault(classId);
+            if ((baseAppearance == null) || (!CharacterP09Look.TryFrom(baseAppearance, out CharacterP09Look defaults)))
+            {
+                error = prefix + ": 직업 기본 외형을 만들지 못했다";
+                return false;
+            }
+
+            int bodyType   = ReadIntOrDefault(rawArgs, prefix + SUFFIX_SEX, defaults.BodyType);
+            int faceId     = ReadIntOrDefault(rawArgs, prefix + SUFFIX_FACE, defaults.FaceId);
+            int hairId     = ReadIntOrDefault(rawArgs, prefix + SUFFIX_HAIR, defaults.HairId);
+            int hairColor  = ReadIntOrDefault(rawArgs, prefix + SUFFIX_HAIR_COLOR, defaults.HairColor);
+            int eyeColor   = ReadIntOrDefault(rawArgs, prefix + SUFFIX_EYE, defaults.EyeColor);
+            int skinTone   = ReadIntOrDefault(rawArgs, prefix + SUFFIX_SKIN, defaults.SkinTone);
+            int facialHair = ReadIntOrDefault(rawArgs, prefix + SUFFIX_FACIAL_HAIR, defaults.FacialHair);
+            int bustSize   = ReadIntOrDefault(rawArgs, prefix + SUFFIX_BUST, defaults.BustSize);
+            int outfitMask = ReadIntOrDefault(rawArgs, prefix + SUFFIX_OUTFIT_MASK, defaults.OutfitMask);
+
+            CharacterAppearanceCatalog.NormalizeForBodyType(bodyType, ref facialHair, ref bustSize);
+
+            CharacterAppearance appearance = CharacterAppearanceCatalog.CreateP09(bodyType, faceId, hairId, hairColor, eyeColor,
+                skinTone, facialHair, bustSize, outfitMask);
+            if ((!CharacterAppearanceCatalog.IsAllowed(classId, appearance)) || (!CharacterP09Look.TryFrom(appearance, out look)))
+            {
+                error = prefix + "*: 허용되지 않는 외형이다 [sex=" + bodyType + " face=" + faceId + " hair=" + hairId
+                    + " hairColor=" + hairColor + " eye=" + eyeColor + " skin=" + skinTone + " facialHair=" + facialHair
+                    + " bust=" + bustSize + " outfit=" + outfitMask + "]";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static int ReadIntOrDefault(string[] args, string name, int fallback)
+        {
+            return TryReadInt(args, name, out int value) ? value : fallback;
+        }
+
+        private static bool HasAnyLookArg(string[] args, string prefix)
+        {
+            return (TryReadInt(args, prefix + SUFFIX_SEX, out int _)) || (TryReadInt(args, prefix + SUFFIX_FACE, out int _))
+                || (TryReadInt(args, prefix + SUFFIX_HAIR, out int _)) || (TryReadInt(args, prefix + SUFFIX_HAIR_COLOR, out int _))
+                || (TryReadInt(args, prefix + SUFFIX_EYE, out int _)) || (TryReadInt(args, prefix + SUFFIX_SKIN, out int _))
+                || (TryReadInt(args, prefix + SUFFIX_FACIAL_HAIR, out int _)) || (TryReadInt(args, prefix + SUFFIX_BUST, out int _))
+                || (TryReadInt(args, prefix + SUFFIX_OUTFIT_MASK, out int _));
         }
 
         private static bool TryReadString(string[] args, string name, out string value)

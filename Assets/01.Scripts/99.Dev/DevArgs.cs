@@ -26,6 +26,23 @@ namespace Shinshi.Dev
             return false;
         }
 
+        public static bool TryReadString(string name, out string value)
+        {
+            value = null;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < (args.Length - 1); ++i)
+            {
+                if (string.Equals(args[i], name, StringComparison.Ordinal))
+                {
+                    value = args[i + 1];
+                    return true;
+                }
+            }
+#endif
+            return false;
+        }
+
         public static bool TryReadFloat(string name, out float value)
         {
             value = 0f;

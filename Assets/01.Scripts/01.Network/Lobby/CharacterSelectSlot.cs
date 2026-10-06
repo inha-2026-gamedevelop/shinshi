@@ -97,7 +97,7 @@ namespace Shinshi.Network
             }
 
             if ((!CharacterAppearanceCatalog.TryResolve(classId, storedAppearance, out CharacterAppearance canonical))
-                || (!CharacterLook.TryFrom(canonical, out CharacterLook look)))
+                || (!CharacterP09Look.TryFrom(canonical, out CharacterP09Look look)))
             {
                 _resolvedValid = false;
                 _lastError     = "외형을 불러올 수 없다.";

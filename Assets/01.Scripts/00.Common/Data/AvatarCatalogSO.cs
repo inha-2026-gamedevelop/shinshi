@@ -211,7 +211,8 @@ namespace Shinshi.Data
         {
             int hairId = TryGetClassHair(playerClass, out ClassHair hair) ? hair.HairId : CharacterAppearance.VALUE_MIN;
 
-            return new CharacterAppearance(CharacterAppearance.CURRENT_VERSION, CharacterAppearance.BODY_TYPE_FEMALE,
+            // UMA 슬라이더 외형은 v2 의미다. CURRENT_VERSION(v3, P09)으로 올리지 않는다
+            return new CharacterAppearance(CharacterAppearance.VERSION_2, CharacterAppearance.BODY_TYPE_FEMALE,
                 CreateNeutralSliders(CharacterAppearance.FACE_SLIDER_COUNT),
                 CreateNeutralSliders(CharacterAppearance.BODY_SLIDER_COUNT),
                 CharacterAppearance.SLIDER_NEUTRAL, CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN,

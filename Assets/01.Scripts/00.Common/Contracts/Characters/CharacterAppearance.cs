@@ -14,7 +14,9 @@ namespace Shinshi.Contracts
         // 팔레트 ID와 직업별 허용 hairId는 카탈로그 내용이라 IsWellFormed가 보지 않는다. API가 카탈로그로 따로 검사한다
 
         // v1은 faceId/outfitId를 모른다. 기존 request_hash를 보존하려면 v1 재직렬화에서 이 두 키가 항상 빠져야 하므로
-        // EmitDefaultValue뿐 아니라 버전까지 보는 ShouldSerialize로 한 번 더 막는다(아래 메서드 참고)
+        // EmitDefaultValue뿐 아니라 버전까지 보는 ShouldSerialize로 한 번 더 막는다(아래 메서드 참고).
+        // v3는 P09 모듈 캐릭터 외형이다. 기존 키를 P09 의미(성별, 얼굴형, 헤어, 팔레트 ID, 장비 표시 비트)로 다시 쓰고
+        // facialHair/bustSize만 새로 더한다. 두 새 키도 같은 방식으로 v1/v2 재직렬화에서 빠진다
 
         /****************************************
         *                Fields
@@ -22,8 +24,10 @@ namespace Shinshi.Contracts
 
         public const int VERSION_1         = 1;
         public const int VERSION_2         = 2;
-        public const int CURRENT_VERSION   = VERSION_2;
+        public const int VERSION_3         = 3;
+        public const int CURRENT_VERSION   = VERSION_3;
         public const int BODY_TYPE_FEMALE  = 0;
+        public const int BODY_TYPE_MALE    = 1;
         public const int FACE_SLIDER_COUNT = 22;
         public const int BODY_SLIDER_COUNT = 10;
         public const int VALUE_MIN         = 0;     // 슬라이더, 피부색, 팔레트 ID의 최솟값
@@ -52,6 +56,10 @@ namespace Shinshi.Contracts
         [DataMember(Name = "faceId",   EmitDefaultValue = false)] private int _faceId;
         [DataMember(Name = "outfitId", EmitDefaultValue = false)] private int _outfitId;
 
+        // v3 전용
+        [DataMember(Name = "facialHair", EmitDefaultValue = false)] private int _facialHair;
+        [DataMember(Name = "bustSize",   EmitDefaultValue = false)] private int _bustSize;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -69,6 +77,8 @@ namespace Shinshi.Contracts
         public int                HairColor => _hairColor;
         public int                FaceId    => _faceId;
         public int                OutfitId  => _outfitId;
+        public int                FacialHair => _facialHair;
+        public int                BustSize   => _bustSize;
 
         /****************************************
         *                Methods
@@ -84,6 +94,14 @@ namespace Shinshi.Contracts
 
         public CharacterAppearance(int version, int bodyType, int[] face, int[] body, int skinTone,
             int eyeColor, int browColor, int lipColor, int hairId, int hairColor, int faceId, int outfitId)
+            : this(version, bodyType, face, body, skinTone, eyeColor, browColor, lipColor, hairId, hairColor,
+                faceId, outfitId, VALUE_MIN, VALUE_MIN)
+        {
+        }
+
+        public CharacterAppearance(int version, int bodyType, int[] face, int[] body, int skinTone,
+            int eyeColor, int browColor, int lipColor, int hairId, int hairColor, int faceId, int outfitId,
+            int facialHair, int bustSize)
         {
             _version   = version;
             _bodyType  = bodyType;
@@ -95,8 +113,10 @@ namespace Shinshi.Contracts
             _lipColor  = lipColor;
             _hairId    = hairId;
             _hairColor = hairColor;
-            _faceId    = faceId;
-            _outfitId  = outfitId;
+            _faceId     = faceId;
+            _outfitId   = outfitId;
+            _facialHair = facialHair;
+            _bustSize   = bustSize;
         }
 
         private CharacterAppearance() { }
@@ -105,8 +125,10 @@ namespace Shinshi.Contracts
         // 이 오버로드는 public만 찾는다 - private으로 두면 조용히 무시되고 EmitDefaultValue만으로는
         // 0이 아닌 값의 생략을 보장하지 않아 v1이 faceId/outfitId를 들고 있으면 과거 request_hash가 깨진다.
         // 그래서 이 두 메서드는 반드시 public이어야 한다
-        public bool ShouldSerialize_faceId()   { return (_version == VERSION_2) && (_faceId != VALUE_MIN); }
-        public bool ShouldSerialize_outfitId() { return (_version == VERSION_2) && (_outfitId != VALUE_MIN); }
+        public bool ShouldSerialize_faceId()     { return (_version >= VERSION_2) && (_faceId != VALUE_MIN); }
+        public bool ShouldSerialize_outfitId()   { return (_version >= VERSION_2) && (_outfitId != VALUE_MIN); }
+        public bool ShouldSerialize_facialHair() { return (_version == VERSION_3) && (_facialHair != VALUE_MIN); }
+        public bool ShouldSerialize_bustSize()   { return (_version == VERSION_3) && (_bustSize != VALUE_MIN); }
 
         /// <summary> 현재 버전의 구조와 값 범위가 맞는지, 팔레트와 헤어 허용 여부는 보지 않는다 </summary>
         public bool IsWellFormed()
@@ -128,6 +150,11 @@ namespace Shinshi.Contracts
                 return IsByteValue(_faceId) && IsByteValue(_outfitId);
             }
 
+            if (_version == VERSION_3)
+            {
+                return IsByteValue(_faceId) && IsByteValue(_outfitId) && IsByteValue(_facialHair) && IsByteValue(_bustSize);
+            }
+
             return false;
         }
 
@@ -142,7 +169,7 @@ namespace Shinshi.Contracts
             if ((_version != other._version) || (_bodyType != other._bodyType) || (_skinTone != other._skinTone)
                 || (_eyeColor != other._eyeColor) || (_browColor != other._browColor) || (_lipColor != other._lipColor)
                 || (_hairId != other._hairId) || (_hairColor != other._hairColor) || (_faceId != other._faceId)
-                || (_outfitId != other._outfitId))
+                || (_outfitId != other._outfitId) || (_facialHair != other._facialHair) || (_bustSize != other._bustSize))
             {
                 return false;
             }
@@ -152,7 +179,7 @@ namespace Shinshi.Contracts
 
         private bool IsCommonStructureValid()
         {
-            if ((_bodyType != BODY_TYPE_FEMALE)
+            if ((!IsBodyTypeValid())
                 || (!AreSlidersValid(_face, FACE_SLIDER_COUNT)) || (!AreSlidersValid(_body, BODY_SLIDER_COUNT))
                 || (!IsByteValue(_skinTone)) || (!IsByteValue(_eyeColor)) || (!IsByteValue(_browColor))
                 || (!IsByteValue(_lipColor)) || (!IsByteValue(_hairColor)))
@@ -161,6 +188,17 @@ namespace Shinshi.Contracts
             }
 
             return (_hairId >= VALUE_MIN) && (_hairId <= HAIR_ID_MAX);
+        }
+
+        // v1/v2는 여성 단일 모델이었다. 남성은 P09(v3)부터 받는다
+        private bool IsBodyTypeValid()
+        {
+            if (_version == VERSION_3)
+            {
+                return (_bodyType == BODY_TYPE_FEMALE) || (_bodyType == BODY_TYPE_MALE);
+            }
+
+            return _bodyType == BODY_TYPE_FEMALE;
         }
 
         private static bool AreArraysEqual(int[] left, int[] right)

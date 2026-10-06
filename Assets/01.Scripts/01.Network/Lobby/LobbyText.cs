@@ -50,6 +50,28 @@ namespace Shinshi.Network
 
         public static string PreviewFailed() { return "선택한 조합을 미리 볼 수 없다. 다른 조합을 고르거나 게임을 다시 실행한다."; }
 
+        // P09 커스터마이징 행 값
+        public const string NONE = "없음";
+
+        public static string SexName(int bodyType) { return (bodyType == Shinshi.Contracts.CharacterAppearance.BODY_TYPE_MALE) ? "남성" : "여성"; }
+
+        public static string HairName(int hairId)
+        {
+            return (hairId == Shinshi.Contracts.CharacterAppearanceCatalog.P09_HAIR_SKINHEAD) ? "민머리" : hairId.ToString();
+        }
+
+        public static string BustName(int bustSize)
+        {
+            switch (bustSize)
+            {
+                case 1:  return "작게";
+                case 3:  return "크게";
+                default: return "보통";
+            }
+        }
+
+        public static string ArmorState(bool isOn) { return isOn ? "착용" : "벗음"; }
+
         public static string HairLabel(int hairId)
         {
             switch (hairId)

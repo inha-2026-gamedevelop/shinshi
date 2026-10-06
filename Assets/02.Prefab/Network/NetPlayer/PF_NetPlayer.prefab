@@ -143,6 +143,7 @@ GameObject:
   - component: {fileID: 2284502398026728587}
   - component: {fileID: 6357300329141890245}
   - component: {fileID: 3928697706582662904}
+  - component: {fileID: 5502222593023159885}
   m_Layer: 0
   m_Name: PF_NetPlayer
   m_TagString: Untagged
@@ -348,12 +349,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleCharacterAppearanceView
   _combat: {fileID: 7582053140134925329}
-  _catalog: {fileID: 11400000, guid: a3c63fa59e4dba94fba27adfc30290a9, type: 2}
-  _controller: {fileID: 9100000, guid: 5a3c2ec7e1d3d8641b2f477657fd0fd9, type: 2}
+  _catalog: {fileID: 11400000, guid: 4f285b0f1971d094385db84f8fb269db, type: 2}
+  _combatProfile: {fileID: 11400000, guid: c24e8f32714a36946a449c9b90ee366c, type: 2}
   _assembledParent: {fileID: 8516834599915649105}
   _movementRoot: {fileID: 6673343655243534398}
   _capsule: {fileID: 2507756089790218063}
   _presentationView: {fileID: 2284502398026728587}
+  _combatAnimation: {fileID: 5502222593023159885}
   _predictionMotionSource: {fileID: 6357300329141890245}
   _serverMotionSource: {fileID: 3928697706582662904}
 --- !u!114 &2284502398026728587
@@ -374,7 +376,7 @@ MonoBehaviour:
   _combat: {fileID: 7582053140134925329}
   _motionSourceComponent: {fileID: 6357300329141890245}
   _speedParameter: Speed
-  _aliveParameter: 
+  _aliveParameter: Alive
   _speedDampSeconds: 0.1
   _maximumVisualSpeed: 12
 --- !u!114 &6357300329141890245
@@ -404,3 +406,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleCharacterServerMotionSource
   _combat: {fileID: 7582053140134925329}
+--- !u!114 &5502222593023159885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2dfa2b27b31a3343ba3b9334b3db7d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerCharacterCombatAnimationView

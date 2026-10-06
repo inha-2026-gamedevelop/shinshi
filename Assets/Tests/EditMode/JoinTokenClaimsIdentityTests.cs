@@ -115,10 +115,8 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(ERejectReason.None, reason);
             Assert.AreEqual("마을검증", claims.CharacterName);
-            Assert.AreEqual(CharacterAppearance.VERSION_2, claims.Appearance.Version);
-            Assert.AreEqual(CharacterAppearanceCatalog.FACE_CUTE, claims.Appearance.FaceId);
-            Assert.AreEqual(3, claims.Appearance.HairId);
-            Assert.AreEqual(2, claims.Appearance.OutfitId);
+            // 허용된 v2는 직업 기본 v3로 정규화된다, 저장된 v2 조합 값은 표시에 쓰이지 않는다
+            Assert.IsTrue(claims.Appearance.ContentEquals(CharacterAppearanceCatalog.CreateDefault((int)EPlayerClass.Warrior)));
         }
 
         /****************************************
@@ -212,7 +210,7 @@ namespace Shinshi.Tests
         [Test]
         public void TryCreate_UnsupportedAppearanceVersion_RejectsAsTokenRevoked()
         {
-            CharacterAppearance unsupported = new CharacterAppearance(3, CharacterAppearance.BODY_TYPE_FEMALE,
+            CharacterAppearance unsupported = new CharacterAppearance(CharacterAppearance.CURRENT_VERSION + 1, CharacterAppearance.BODY_TYPE_FEMALE,
                 NeutralSliders(CharacterAppearance.FACE_SLIDER_COUNT), NeutralSliders(CharacterAppearance.BODY_SLIDER_COUNT),
                 CharacterAppearance.SLIDER_NEUTRAL, CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN,
                 CharacterAppearance.VALUE_MIN, 1, CharacterAppearance.VALUE_MIN, 1, 1);
@@ -335,10 +333,8 @@ namespace Shinshi.Tests
 
         private static void AssertClassDefaultAppearance(int classId, CharacterAppearance appearance)
         {
-            Assert.AreEqual(CharacterAppearance.VERSION_2, appearance.Version);
-            Assert.AreEqual(CharacterAppearanceCatalog.FACE_CUTE, appearance.FaceId);
-            Assert.AreEqual(classId + 1, appearance.HairId);
-            Assert.AreEqual(classId + 1, appearance.OutfitId);
+            Assert.AreEqual(CharacterAppearance.VERSION_3, appearance.Version);
+            Assert.IsTrue(appearance.ContentEquals(CharacterAppearanceCatalog.CreateDefault(classId)));
         }
 
         private static JoinTokenExchangeResponse BuildTownResponse(int classId, string characterName, string appearanceJson)

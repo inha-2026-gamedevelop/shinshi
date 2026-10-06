@@ -20,5 +20,13 @@ namespace Shinshi.Network
             return string.Equals(pendingName, nextName, StringComparison.Ordinal)
                 && (pendingClassId == nextClassId) && pendingLook.Equals(nextLook);
         }
+
+        /// <summary> P09(v3) 외형 9개 값까지 모두 같을 때만 재사용한다 </summary>
+        public static bool CanReuse(string pendingName, int pendingClassId, CharacterP09Look pendingLook,
+            string nextName, int nextClassId, CharacterP09Look nextLook)
+        {
+            return string.Equals(pendingName, nextName, StringComparison.Ordinal)
+                && (pendingClassId == nextClassId) && pendingLook.Equals(nextLook);
+        }
     }
 }

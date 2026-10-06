@@ -38,7 +38,7 @@ namespace Shinshi.Network
         /// <summary> 직업을 바꿀 때 부른다. 아직 직접 고르지 않은 부위만 새 직업 기본값으로 다시 채운다 </summary>
         public void ApplyClassDefaults(int classId)
         {
-            CharacterAppearance defaultAppearance = CharacterAppearanceCatalog.CreateDefault(classId);
+            CharacterAppearance defaultAppearance = CharacterAppearanceCatalog.CreateDefaultV2(classId);
             if (!_hasHairChoice)
             {
                 _hairId = defaultAppearance.HairId;

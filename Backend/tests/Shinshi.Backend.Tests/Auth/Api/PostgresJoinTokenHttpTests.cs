@@ -216,6 +216,37 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.NotEqual(v1Result.AppearanceJson, otherResult.AppearanceJson);
         }
 
+        // v3(P09) 외형은 성별과 수염, 가슴 크기, 장비 비트까지 가공 없이 입장 교환 응답에 실려야 한다
+        [PostgresFact]
+        public async Task Exchange_TownJoinToken_PassesThroughStoredV3AppearanceUnchanged()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            CharacterAppearance male = CharacterAppearanceCatalog.CreateP09(CharacterAppearance.BODY_TYPE_MALE, 2, 3, 7, 4, 3, 6, 0, 21);
+            CharacterAppearance female = CharacterAppearanceCatalog.CreateP09(CharacterAppearance.BODY_TYPE_FEMALE, 3, 2, 8, 3, 1, 0, 3, 5);
+            Assert.True(CharacterAppearanceCatalog.IsAllowed(ContractCodes.PlayerClass.SUMMONER, male));
+            Assert.True(CharacterAppearanceCatalog.IsAllowed(ContractCodes.PlayerClass.SORCERER, female));
+            Fixture maleFixture = await SeedAsync(database, ContractCodes.PlayerClass.SUMMONER, "남성외형",
+                JsonConvert.SerializeObject(male, ContractJson.CreateSettings()));
+            Fixture femaleFixture = await SeedAsync(database, ContractCodes.PlayerClass.SORCERER, "여성외형",
+                JsonConvert.SerializeObject(female, ContractJson.CreateSettings()));
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync("DELETE FROM account_leases WHERE account_id IN (@A,@B);",
+                new { A = maleFixture.AccountId, B = femaleFixture.AccountId });
+
+            JoinTokenExchangeResponse maleResult = await ExchangeTownAsync(database, maleFixture);
+            JoinTokenExchangeResponse femaleResult = await ExchangeTownAsync(database, femaleFixture);
+
+            CharacterAppearance maleBack = JsonConvert.DeserializeObject<CharacterAppearance>(maleResult.AppearanceJson!,
+                ContractJson.CreateSettings())!;
+            CharacterAppearance femaleBack = JsonConvert.DeserializeObject<CharacterAppearance>(femaleResult.AppearanceJson!,
+                ContractJson.CreateSettings())!;
+            Assert.Equal(CharacterAppearance.VERSION_3, maleBack.Version);
+            Assert.True(male.ContentEquals(maleBack));
+            Assert.Equal(6, maleBack.FacialHair);
+            Assert.True(female.ContentEquals(femaleBack));
+            Assert.Equal(3, femaleBack.BustSize);
+        }
+
         private static async Task<JoinTokenExchangeResponse> ExchangeTownAsync(PostgresTestDatabase database, Fixture fixture)
         {
             using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options);

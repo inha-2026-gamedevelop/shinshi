@@ -1987,8 +1987,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: becb7da45572a494b86d09ce85755fde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleLookPreviewView
-  _catalog: {fileID: 11400000, guid: a3c63fa59e4dba94fba27adfc30290a9, type: 2}
-  _controller: {fileID: 9100000, guid: 5a3c2ec7e1d3d8641b2f477657fd0fd9, type: 2}
+  _catalog: {fileID: 11400000, guid: 4f285b0f1971d094385db84f8fb269db, type: 2}
   _root: {fileID: 572728261}
 --- !u!4 &572728261
 Transform:
@@ -3669,8 +3668,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: becb7da45572a494b86d09ce85755fde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleLookPreviewView
-  _catalog: {fileID: 11400000, guid: a3c63fa59e4dba94fba27adfc30290a9, type: 2}
-  _controller: {fileID: 9100000, guid: 5a3c2ec7e1d3d8641b2f477657fd0fd9, type: 2}
+  _catalog: {fileID: 11400000, guid: 4f285b0f1971d094385db84f8fb269db, type: 2}
   _root: {fileID: 1008815018}
 --- !u!1 &1067473618
 GameObject:
@@ -6714,8 +6712,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: becb7da45572a494b86d09ce85755fde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerFemaleLookPreviewView
-  _catalog: {fileID: 11400000, guid: a3c63fa59e4dba94fba27adfc30290a9, type: 2}
-  _controller: {fileID: 9100000, guid: 5a3c2ec7e1d3d8641b2f477657fd0fd9, type: 2}
+  _catalog: {fileID: 11400000, guid: 4f285b0f1971d094385db84f8fb269db, type: 2}
   _root: {fileID: 2095217990}
 --- !u!1 &2106196001
 GameObject:
@@ -6865,6 +6862,8 @@ MonoBehaviour:
   - {fileID: 432807488}
   - {fileID: 2090506131}
   - {fileID: 87740927}
+  _selectedSprite: {fileID: 0}
+  _normalSprite: {fileID: 0}
   _selectedColor: {r: 0.86, g: 0.78, b: 0.58, a: 0.22}
   _normalColor: {r: 1, g: 1, b: 1, a: 0.04}
 --- !u!1 &2134828300

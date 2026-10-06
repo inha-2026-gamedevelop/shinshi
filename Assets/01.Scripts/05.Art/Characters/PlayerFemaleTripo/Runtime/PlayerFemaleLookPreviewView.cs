@@ -10,30 +10,37 @@ using Shinshi.Contracts;
 
 namespace Shinshi.Art
 {
-    /// <summary> 로비 미리보기 전용 조립 표현, 서버 판정이나 전투 상태를 갖지 않는다 </summary>
+    /// <summary> 로비 미리보기 전용 P09 조립 표현, 서버 판정이나 전투 상태를 갖지 않는다 </summary>
     [DisallowMultipleComponent]
     public sealed class PlayerFemaleLookPreviewView : ClientView
     {
+        // 클래스 이름과 GUID는 생성, 선택 씬 참조를 지키려고 그대로 둔다. 생성 화면은 값을 자주 바꾸므로 이미 만든 인스턴스에
+        // 적용기를 다시 돌려 바꾸고, 적용이 실패했을 때만 인스턴스를 버리고 다음 요청에서 전체를 다시 조립한다
+
         /****************************************
         *                Fields
         ****************************************/
 
-        [SerializeField] private PlayerFemaleLookCatalogSO  _catalog;
-        [SerializeField] private RuntimeAnimatorController  _controller;
-        [SerializeField] private Transform                  _root;
+        private static readonly int _faceEmotionHash = Animator.StringToHash("FaceEmotion");
 
-        private GameObject    _current;
-        private bool          _hasLook;
-        private CharacterLook _look;
-        private bool          _isReady;
-        private string        _lastError = string.Empty;
+        [SerializeField] private PlayerCharacterLookCatalogSO _catalog;
+        [SerializeField] private Transform                    _root;
+
+        private GameObject       _current;
+        private Animator         _animator;
+        private bool             _hasLook;
+        private CharacterP09Look _look;
+        private int              _faceEmotion;
+        private bool             _isReady;
+        private string           _lastError = string.Empty;
 
         /****************************************
         *              Properties
         ****************************************/
 
-        public bool   IsReady   => _isReady;
-        public string LastError => _lastError;
+        public bool             IsReady   => _isReady;
+        public string           LastError => _lastError;
+        public CharacterP09Look Look      => _look;
 
         public event Action<bool> ReadyChanged;
 
@@ -53,19 +60,8 @@ namespace Shinshi.Art
         *                Methods
         ****************************************/
 
-        public void Configure(PlayerFemaleLookCatalogSO catalog, RuntimeAnimatorController controller, Transform root)
-        {
-            _catalog    = catalog;
-            _controller = controller;
-            _root       = root;
-
-            // 참조가 바뀌었으니 같은 look이라도 다음 Show는 다시 조립한다
-            _hasLook = false;
-        }
-
-        /// <summary> 이전 시도가 성공한 같은 조합을 다시 보여 주면 조립을 다시 하지 않는다.
-        /// 실패한 시도는 캐시하지 않으므로 같은 look으로 다시 불러도 재시도한다 </summary>
-        public void Show(CharacterLook look)
+        /// <summary> 같은 외형을 이미 보여 주고 있으면 아무것도 하지 않는다. 실패한 시도는 캐시하지 않아 같은 값으로 다시 부르면 재시도한다 </summary>
+        public void Show(CharacterP09Look look)
         {
             if ((_isReady) && (_hasLook) && (_look.Equals(look)))
             {
@@ -74,7 +70,25 @@ namespace Shinshi.Art
 
             _hasLook = true;
             _look    = look;
+
+            if ((_current != null) && (_isReady)
+                && (PlayerCharacterLookApplier.TryApply(_current, _catalog, look, out string error)))
+            {
+                _lastError = string.Empty;
+                return;
+            }
+
             Rebuild();
+        }
+
+        /// <summary> 생성 화면 표정 미리보기, 0은 무표정이다. 저장하지 않는다 </summary>
+        public void SetFaceEmotion(int emotion)
+        {
+            _faceEmotion = emotion;
+            if ((_animator != null) && (_animator.isActiveAndEnabled))
+            {
+                _animator.SetInteger(_faceEmotionHash, emotion);
+            }
         }
 
         private void Rebuild()
@@ -82,7 +96,8 @@ namespace Shinshi.Art
             if (_current != null)
             {
                 Destroy(_current);
-                _current = null;
+                _current  = null;
+                _animator = null;
             }
 
             SetReady(false);
@@ -92,15 +107,16 @@ namespace Shinshi.Art
                 return;
             }
 
-            bool success = PlayerFemaleLookAssembler.TryAssemble(_catalog, _look, _root, _controller,
-                out GameObject result, out string error);
-            _lastError = error;
-            if (!success)
+            if (!PlayerCharacterLookAssembler.TryAssemble(_catalog, _look, _root, out GameObject result, out string error))
             {
+                _lastError = error;
                 return;
             }
 
-            _current = result;
+            _current   = result;
+            _animator  = result.GetComponent<Animator>();
+            _lastError = string.Empty;
+            SetFaceEmotion(_faceEmotion);
             SetReady(true);
         }
 

@@ -27,6 +27,19 @@
 | Amplify Shader Editor | 1.9.9.12 | Amplify Creations | `Tools/AmplifyShaderEditor/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 68570](https://assetstore.unity.com/packages/tools/visual-scripting/amplify-shader-editor-68570) |
 | Maintainer 2 | 2.3.3 | Code Stage | `Tools/CodeStage/Maintainer/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 310179](https://assetstore.unity.com/packages/tools/utilities/maintainer-2-310179) |
 | Mesh Baker | 소스 버전 문자열 3.39.0(`MB3_MBVersionConcrete`), 동봉 API 문서 3.37.0 | Ian Deane / Digital Opus | `Tools/MeshBaker/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 5017](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-5017) |
+| CombatGirls Sword Character Pack | 1.3.1(`CombatGirls_SwordCharacterPack`) | 미확인 | `Animation/CombatGirlsCharacterPack/` | 유료 | Standard Unity Asset Store EULA·조건부 | Asset Store productId 345454 |
+| P09 Modular Humanoid | 미확인(`AssetOrigin` 없음) | 미확인 | `Model/P09_Modular_Humanoid/` | 미확인 | 미확인 | 미확인 |
+
+### 플레이어 캐릭터 파생물 — 2026-10-06
+
+플레이어 캐릭터는 P09 Modular Humanoid 모델에 CombatGirls 애니메이션을 입혀 쓴다. 두 패키지는 Git에서 제외되므로 팀원은 공유 드라이브에서 받아 위 경로에 설치해야 캐릭터가 보인다. 다음 파생물은 원본 패키지에서 복사·가공해 Git에 커밋한다. 원본 패키지는 수정하지 않았다.
+
+- `Assets/01.Scripts/05.Art/Characters/PlayerP09/Materials/`: 원본 lilToon 재질을 URP Lit로 옮긴 사본. 원본 텍스처를 GUID로 참조한다.
+- `Assets/01.Scripts/05.Art/Characters/PlayerP09/Textures/`: 원본 HDRP 마스크 PNG를 복사해 선형으로 다시 임포트한 사본.
+- `Assets/01.Scripts/05.Art/Characters/PlayerP09/Animations/Clips/`: CombatGirls FBX 클립을 `.anim`으로 복사하고 이벤트를 지운 사본.
+- `Assets/02.Prefab/Characters/PlayerP09/PF_PlayerP09.prefab`: 원본 `P09_Human` 프리팹 변형.
+
+P09의 원본 판매처·버전·라이선스와 두 패키지의 구매 증빙은 이 대장에서 확인하지 못했다. 원본 패키지의 ReadMe는 lilToon 셰이더를 요구하지만 프로젝트는 URP Lit 사본을 써 lilToon을 설치하지 않는다.
 
 UMA 3.1f1(GitHub 릴리스 `V3.1f1`)은 2026-10-01 들였다가 같은 날 쓰지 않기로 하고 뺐다. 연결 코드 `AvatarView`, `Shinshi.Runtime`의 `UMA_Core` 참조, `.gitignore`의 `Assets/UMA/` 예외, UMA 태그(`UMAKeepChain`, `UMAIgnore`), `PlayerFemaleModular/UMA/` 연동 에셋을 함께 지웠다. `Assets/UMA/`를 받아 둔 작업자는 로컬에서 직접 지운다.
 

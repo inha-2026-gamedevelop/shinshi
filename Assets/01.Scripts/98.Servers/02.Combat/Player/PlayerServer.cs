@@ -855,6 +855,8 @@ namespace Shinshi.Combat
                 CancelSkillForDodge();
             }
 
+            _combat.BumpDodgeSequence();
+
             _hasPendingMove   = false;
             _hasPendingAttack = false;
             _path.Stop();
@@ -929,6 +931,9 @@ namespace Shinshi.Combat
 
         private void ExecuteBasicAttack(Vector3 aim)
         {
+            // 맞힐 대상이 없어도 휘두르는 모습은 보여야 하므로 판정 전에 올린다
+            _combat.BumpAttackSequence();
+
             Vector3 origin   = _transform.position;
             float   range    = _attack.Range;
             bool    isRanged = _attack.ArcAngle <= 0f;

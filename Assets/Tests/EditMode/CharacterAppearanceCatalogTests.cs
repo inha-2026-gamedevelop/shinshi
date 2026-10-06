@@ -18,10 +18,10 @@ namespace Shinshi.Tests
             bool success = CharacterAppearanceCatalog.TryResolve(ContractCodes.PlayerClass.SORCERER, null, out CharacterAppearance canonical);
 
             Assert.IsTrue(success);
-            Assert.AreEqual(CharacterAppearance.VERSION_2, canonical.Version);
-            Assert.AreEqual(CharacterAppearanceCatalog.FACE_CUTE, canonical.FaceId);
+            Assert.AreEqual(CharacterAppearance.VERSION_3, canonical.Version);
+            Assert.IsTrue(canonical.ContentEquals(CharacterAppearanceCatalog.CreateDefault(ContractCodes.PlayerClass.SORCERER)));
+            Assert.AreEqual(2, canonical.FaceId);
             Assert.AreEqual(CharacterAppearanceCatalog.HAIR_SORCERER, canonical.HairId);
-            Assert.AreEqual(CharacterAppearanceCatalog.OUTFIT_SORCERER, canonical.OutfitId);
         }
 
         [Test]
@@ -36,8 +36,8 @@ namespace Shinshi.Tests
             bool success = CharacterAppearanceCatalog.TryResolve(ContractCodes.PlayerClass.WARRIOR, legacy, out CharacterAppearance canonical);
 
             Assert.IsTrue(success);
-            Assert.AreEqual(CharacterAppearanceCatalog.HAIR_WARRIOR, canonical.HairId);
-            Assert.AreEqual(CharacterAppearanceCatalog.OUTFIT_WARRIOR, canonical.OutfitId);
+            Assert.AreEqual(CharacterAppearance.VERSION_3, canonical.Version);
+            Assert.IsTrue(canonical.ContentEquals(CharacterAppearanceCatalog.CreateDefault(ContractCodes.PlayerClass.WARRIOR)));
         }
 
         [Test]

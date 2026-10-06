@@ -62,6 +62,11 @@ namespace Shinshi.Combat
         [SyncVar] private Vector3 _skillPoint;
         [SyncVar] private double _skillResolveAt;
 
+        // 관찰자에게 기본 공격과 회피 모션을 보이기 위한 표현 전용 순번이다. 서버가 행동을 시작할 때마다 1씩 올리고(255 다음 0)
+        // 클라이언트는 값이 바뀌었는지만 본다. 서버 판정은 이 값을 읽지 않는다
+        [SyncVar] private byte _attackSequence;
+        [SyncVar] private byte _dodgeSequence;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -89,6 +94,8 @@ namespace Shinshi.Combat
         public string CharacterName => _characterName;
         public CharacterAppearance Appearance => _appearance;
         public float LocomotionSpeed => _locomotionSpeed;
+        public byte AttackSequence => _attackSequence;
+        public byte DodgeSequence => _dodgeSequence;
 
         // 전용 서버에서는 hook이 불리지 않으므로 표현과 UI만 구독한다
         public event Action<float, float>           HealthChanged;
@@ -152,6 +159,18 @@ namespace Shinshi.Combat
             _energy = energy;
             _maxEnergy = maxEnergy;
             _resonance = resonance;
+        }
+
+        [Server]
+        public void BumpAttackSequence()
+        {
+            _attackSequence = unchecked((byte)(_attackSequence + 1));
+        }
+
+        [Server]
+        public void BumpDodgeSequence()
+        {
+            _dodgeSequence = unchecked((byte)(_dodgeSequence + 1));
         }
 
         [Server]

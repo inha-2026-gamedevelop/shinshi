@@ -37,10 +37,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.None, reason);
             Assert.AreEqual(EPlayerClass.Warrior, binding.PlayerClass);
             Assert.AreEqual("마을검증", binding.CharacterName);
-            Assert.AreEqual(CharacterAppearance.VERSION_2, binding.Appearance.Version);
-            Assert.AreEqual(CharacterAppearanceCatalog.FACE_CUTE, binding.Appearance.FaceId);
-            Assert.AreEqual(3, binding.Appearance.HairId);
-            Assert.AreEqual(2, binding.Appearance.OutfitId);
+            Assert.AreEqual(CharacterAppearance.VERSION_3, binding.Appearance.Version);
+            Assert.IsTrue(binding.Appearance.ContentEquals(CharacterAppearanceCatalog.CreateDefault(ContractCodes.PlayerClass.WARRIOR)));
         }
 
         [Test]
@@ -57,8 +55,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.None, secondReason);
             Assert.AreEqual(firstBinding.ParticipantId, secondBinding.ParticipantId);
             Assert.AreEqual("마을검증", secondBinding.CharacterName);
-            Assert.AreEqual(3, secondBinding.Appearance.HairId);
-            Assert.AreEqual(2, secondBinding.Appearance.OutfitId);
+            Assert.IsTrue(secondBinding.Appearance.ContentEquals(
+                CharacterAppearanceCatalog.CreateDefault(ContractCodes.PlayerClass.WARRIOR)));
         }
 
         [Test]
@@ -75,8 +73,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.None, secondReason);
             Assert.AreNotEqual(firstBinding.ParticipantId, secondBinding.ParticipantId);
             Assert.AreEqual("마을검증", secondBinding.CharacterName);
-            Assert.AreEqual(3, secondBinding.Appearance.HairId);
-            Assert.AreEqual(2, secondBinding.Appearance.OutfitId);
+            Assert.IsTrue(secondBinding.Appearance.ContentEquals(
+                CharacterAppearanceCatalog.CreateDefault(ContractCodes.PlayerClass.WARRIOR)));
         }
 
         /****************************************

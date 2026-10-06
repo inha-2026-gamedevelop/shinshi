@@ -18,7 +18,7 @@ namespace Shinshi.Network
         // 필드 순서를 바꾸면 서버와 클라가 다른 값을 읽는다. 바꿀 때는 Constants.Network.PROTOCOL_VERSION을 올린다
 
         // 존재 여부 1바이트를 포함해 nonnull v1 메시지는 44바이트로 고정이고, v2는 faceId/outfitId 2바이트만
-        // 뒤에 붙어 46바이트가 된다. 이 레이아웃을 깨는 내부 보초 바이트를 넣지 않는다 - 과거 request_hash와
+        // 뒤에 붙어 46바이트, v3는 facialHair/bustSize 2바이트가 더 붙어 48바이트가 된다. 이 레이아웃을 깨는 내부 보초 바이트를 넣지 않는다 - 과거 request_hash와
         // 와이어 수신 쪽 모두 이 바이트 수 그대로를 기대한다
 
         /****************************************
@@ -39,7 +39,7 @@ namespace Shinshi.Network
                 throw new ArgumentException("검증되지 않은 외형은 보내지 않는다", nameof(value));
             }
 
-            if ((value.Version != CharacterAppearance.VERSION_1) && (value.Version != CharacterAppearance.VERSION_2))
+            if (!IsSupportedVersion(value.Version))
             {
                 throw new ArgumentException("지원하지 않는 외형 버전은 보내지 않는다", nameof(value));
             }
@@ -55,10 +55,16 @@ namespace Shinshi.Network
             writer.WriteByte((byte)value.LipColor);
             writer.WriteUShort((ushort)value.HairId);
             writer.WriteByte((byte)value.HairColor);
-            if (value.Version == CharacterAppearance.VERSION_2)
+            if (value.Version >= CharacterAppearance.VERSION_2)
             {
                 writer.WriteByte((byte)value.FaceId);
                 writer.WriteByte((byte)value.OutfitId);
+            }
+
+            if (value.Version == CharacterAppearance.VERSION_3)
+            {
+                writer.WriteByte((byte)value.FacialHair);
+                writer.WriteByte((byte)value.BustSize);
             }
         }
 
@@ -72,7 +78,7 @@ namespace Shinshi.Network
             }
 
             int version = reader.ReadByte();
-            if ((version != CharacterAppearance.VERSION_1) && (version != CharacterAppearance.VERSION_2))
+            if (!IsSupportedVersion(version))
             {
                 throw new InvalidOperationException($"지원하지 않는 외형 버전이다: {version}");
             }
@@ -87,16 +93,30 @@ namespace Shinshi.Network
             int   hairId    = reader.ReadUShort();
             int   hairColor = reader.ReadByte();
 
-            int faceId   = CharacterAppearance.VALUE_MIN;
-            int outfitId = CharacterAppearance.VALUE_MIN;
-            if (version == CharacterAppearance.VERSION_2)
+            int faceId     = CharacterAppearance.VALUE_MIN;
+            int outfitId   = CharacterAppearance.VALUE_MIN;
+            int facialHair = CharacterAppearance.VALUE_MIN;
+            int bustSize   = CharacterAppearance.VALUE_MIN;
+            if (version >= CharacterAppearance.VERSION_2)
             {
                 faceId   = reader.ReadByte();
                 outfitId = reader.ReadByte();
             }
 
+            if (version == CharacterAppearance.VERSION_3)
+            {
+                facialHair = reader.ReadByte();
+                bustSize   = reader.ReadByte();
+            }
+
             return new CharacterAppearance(version, bodyType, face, body, skinTone,
-                eyeColor, browColor, lipColor, hairId, hairColor, faceId, outfitId);
+                eyeColor, browColor, lipColor, hairId, hairColor, faceId, outfitId, facialHair, bustSize);
+        }
+
+        private static bool IsSupportedVersion(int version)
+        {
+            return (version == CharacterAppearance.VERSION_1) || (version == CharacterAppearance.VERSION_2)
+                || (version == CharacterAppearance.VERSION_3);
         }
 
         // 개수를 1바이트로 보내 다른 version의 길이도 읽을 수 있게 한다
