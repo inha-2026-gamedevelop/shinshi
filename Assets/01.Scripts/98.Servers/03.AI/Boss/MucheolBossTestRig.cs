@@ -13,12 +13,14 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
 {
-    // 네트워크 없이 무철 1페이즈 여섯 패턴을 눈으로 확인하는 시험 장치다. 빈 오브젝트에 붙이면 무철 대체 외형과 WASD 플레이어를 만들고 바로 전투를 연다.
+    // 네트워크 없이 무철 1페이즈 여섯 패턴(2페이즈 모드를 켜면 2페이즈 여섯 패턴도)을 눈으로 확인하는 시험 장치다. 빈 오브젝트에 붙이면 무철 대체 외형과 WASD 플레이어를 만들고 바로 전투를 연다.
     // 서버 부트스트랩이 하게 될 생성, 틱 호출, 등록을 대신할 뿐이며 서버 권위 경계나 Command, Rpc를 바꾸지 않는다.
     // 보스 수치는 운영 BossPatternCatalog 에셋이 아니라 MucheolDevCatalog의 임시 시작값을 쓴다. 운영 에셋은 무철을 비활성으로 두고 있다.
     // 월백 시험 장치와 같은 예고 표현 연결부(BossTelegraphLocalBridge)와 시험용 몸체(BossTestRigBody)를 읽기만 하고 재사용한다.
+    // 2페이즈 모드(_phaseTwoMode)는 1페이즈 시험과 별도 모드다. 꺼 두면 카탈로그, 팩토리, 화면이 이전과 같다. 켜면 체력 55%에서 2페이즈로 넘어가고
+    // 전환 뒤 인계(CompleteHandoff)는 이 구동기가 서버 연결 대신 부른다(자동 부름은 끌 수 있다). 운영에서는 서버 연결이 불러야 한다.
     // 무철 외형 모델이 없어 캡슐로 대신한다. 무철 기믹 1은 공용 두뇌 연결이 승인 전이라 이 장면에서 동작하지 않는다
-    /// <summary> 무철 1페이즈 시험 구동기, 단일 프로세스에서 서버 두뇌와 예고 표현과 대체 외형을 이어 준다 </summary>
+    /// <summary> 무철 시험 구동기, 단일 프로세스에서 서버 두뇌와 예고 표현과 대체 외형을 이어 준다 </summary>
     public sealed class MucheolBossTestRig : MonoBehaviour
     {
         /****************************************
@@ -43,6 +45,13 @@ namespace Shinshi.AI
         private const int    PATTERN_COUNT    = 6;
         private const int    PATTERN_SUFFIX_LENGTH = 2;
         private const string PATTERN_ID_PREFIX = "mucheol_p0";
+        private const string PHASE_TWO_ID_PREFIX = "mucheol_ph2_p0";
+        private const string PHASE_TWO_MARK   = "ph2";
+        private const string PHASE_TWO_LABEL  = "2-";
+        private const float  HP_BEFORE_TRANSITION = 0.56f;  // 55% 전환 직전
+        private const float  HP_AT_TRANSITION     = 0.549f; // 55% 이하, 부동소수 경계를 피해 살짝 아래로 둔다
+        private const float  HP_BEFORE_ENHANCED   = 0.26f;  // 25% 초과
+        private const float  HP_AT_ENHANCED       = 0.249f; // 25% 이하(강화 구간), 같은 이유로 살짝 아래다
 
         // 외형은 반경이 BOSS_BODY_RADIUS인 캡슐이다. 캡슐 기본 높이 2m, 반경 0.5m에 맞춰 배율을 정한다
         private const float  CAPSULE_BASE_RADIUS = 0.5f;
@@ -74,6 +83,11 @@ namespace Shinshi.AI
         [SerializeField] private float   _healthScale     = 1f;      // 시작 인원에 따른 체력 배율
         [SerializeField] private Vector3 _playerStart     = new Vector3(0f, 0f, 12f);
 
+        [Header("2페이즈 모드")]
+        [SerializeField] private bool    _phaseTwoMode        = false; // 켜면 체력 55%에서 2페이즈로 넘어가고 mucheol_ph2 패턴이 후보가 된다
+        [SerializeField] private float   _startHealthRate     = 1f;    // 시작 체력 비율, 2페이즈 시험은 낮춰서 시작할 수 있다
+        [SerializeField] private bool    _autoCompleteHandoff = true;  // 전환 뒤 인계 대기에서 CompleteHandoff를 이 구동기가 대신 부른다
+
         private CombatTargetRegistry    _registry;
         private DamageResolver          _resolver;
         private BossTestRigBody         _body;
@@ -84,6 +98,8 @@ namespace Shinshi.AI
         private ForcedPatternRule       _forced;
         private ComboVisual             _combo;
         private ChargeOutcomeLog        _chargeLog;
+        private SequenceVisual          _sequence;
+        private MultiDashVisual         _multiDash;
         private Transform               _bossBody;
         private Transform               _bossNose;
         private Transform               _playerBody;
@@ -147,6 +163,12 @@ namespace Shinshi.AI
             _body.Brain = _brain;
             _brain.Tick(now);
 
+            // 전환 뒤 인계 대기는 서버 연결이 CompleteHandoff를 불러야 풀린다. 이 구동기가 그 자리를 대신한다
+            if (_phaseTwoMode && _autoCompleteHandoff && (_brain.PhaseState == EBossPhaseState.AwaitingHandoff))
+            {
+                _brain.CompleteHandoff();
+            }
+
             TrackPattern();
             ApplyView();
         }
@@ -159,8 +181,8 @@ namespace Shinshi.AI
             }
 
             GUILayout.BeginArea(new Rect(GUI_MARGIN, GUI_MARGIN, GUI_WIDTH, Screen.height - (GUI_MARGIN * 2f)), GUI.skin.box);
-            GUILayout.Label($"무철 시험 (임시 수치, 운영 에셋 아님)  Flow {_brain.FlowState}  Phase {_brain.Phase}");
-            GUILayout.Label($"Attack {_brain.AttackState}  Pattern {_brain.ActivePatternId}");
+            GUILayout.Label($"무철 시험 ({(_phaseTwoMode ? "2페이즈 모드" : "1페이즈")}, 임시 수치, 운영 에셋 아님)  Flow {_brain.FlowState}  Phase {_brain.Phase}");
+            GUILayout.Label($"Attack {_brain.AttackState}  Pattern {_brain.ActivePatternId}  PhaseState {_brain.PhaseState}");
             GUILayout.Label($"Boss HP {_body.Health:F0}/{_body.MaxHealth:F0} ({_body.HealthRate * PERCENT:F1}%)");
             GUILayout.Label($"Player HP {_player.Health:F0}/{_player.MaxHealth:F0}");
 
@@ -170,13 +192,26 @@ namespace Shinshi.AI
             {
                 string id = PATTERN_ID_PREFIX + i;
                 _counts.TryGetValue(id, out int count);
-                GUILayout.Label($"  {id}  {count}");
+                if (_phaseTwoMode)
+                {
+                    _counts.TryGetValue(PHASE_TWO_ID_PREFIX + i, out int countTwo);
+                    GUILayout.Label($"  {id}  {count}      {PHASE_TWO_ID_PREFIX + i}  {countTwo}");
+                }
+                else
+                {
+                    GUILayout.Label($"  {id}  {count}");
+                }
             }
 
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("최근 순서 " + string.Join(" > ", _history));
             GUILayout.Label("P05 마지막 타: " + _combo.LastEvent);
             GUILayout.Label("P06 마지막 결과: " + _chargeLog.LastText);
+            if (_phaseTwoMode)
+            {
+                GUILayout.Label("2페이즈 순차 타격 마지막 타: " + _sequence.LastEvent);
+                GUILayout.Label("2페이즈 연속 돌진 마지막 시전: " + _multiDash.LastEvent);
+            }
 
             if (IsBossOnArenaBoundary())
             {
@@ -196,6 +231,20 @@ namespace Shinshi.AI
             }
 
             GUILayout.EndHorizontal();
+            if (_phaseTwoMode)
+            {
+                GUILayout.BeginHorizontal();
+                for (int i = 1; i <= PATTERN_COUNT; ++i)
+                {
+                    if (GUILayout.Button(PHASE_TWO_LABEL + "P0" + i))
+                    {
+                        _forced.PendingId = PHASE_TWO_ID_PREFIX + i;
+                    }
+                }
+
+                GUILayout.EndHorizontal();
+            }
+
             if (!string.IsNullOrEmpty(_forced.PendingId))
             {
                 GUILayout.Label("강제 대기: " + _forced.PendingId);
@@ -205,6 +254,40 @@ namespace Shinshi.AI
             if (GUILayout.Button("Boss HP -10%"))
             {
                 _body.ApplyDamage(_body.MaxHealth * HP_STEP_RATE, false, ReadClock());
+            }
+
+            if (_phaseTwoMode)
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("HP 56%"))
+                {
+                    LowerHealthTo(HP_BEFORE_TRANSITION);
+                }
+
+                if (GUILayout.Button("HP 54.9% (전환)"))
+                {
+                    LowerHealthTo(HP_AT_TRANSITION);
+                }
+
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("HP 26%"))
+                {
+                    LowerHealthTo(HP_BEFORE_ENHANCED);
+                }
+
+                if (GUILayout.Button("HP 24.9% (강화)"))
+                {
+                    LowerHealthTo(HP_AT_ENHANCED);
+                }
+
+                GUILayout.EndHorizontal();
+
+                _autoCompleteHandoff = GUILayout.Toggle(_autoCompleteHandoff, "전환 뒤 CompleteHandoff 자동 호출 (운영에서는 서버 연결이 호출)");
+                if ((!_autoCompleteHandoff) && (_brain.PhaseState == EBossPhaseState.AwaitingHandoff) && GUILayout.Button("CompleteHandoff 호출"))
+                {
+                    _brain.CompleteHandoff();
+                }
             }
 
             if (GUILayout.Button("Kill boss"))
@@ -219,6 +302,11 @@ namespace Shinshi.AI
 
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("기믹 1(돌진 유도)은 공용 두뇌 연결 승인 전이라 이 장면에서 동작하지 않음");
+            if (_phaseTwoMode)
+            {
+                GUILayout.Label("2-P06 정의의 실행 구간은 세 번(3.45초)에 고정: 공용 공격 FSM이 실행 시간을 하나로 고정하는 제약. 두 번 달리면 남는 구간 동안 선다");
+            }
+
             GUILayout.EndArea();
         }
 
@@ -244,7 +332,7 @@ namespace Shinshi.AI
         {
             _presenter.ClearAll();
 
-            _catalog = new MucheolDevCatalog(_arenaDiameter);
+            _catalog = new MucheolDevCatalog(_arenaDiameter, _phaseTwoMode);
             _catalog.TryGetBoss(MucheolPatternFactory.BOSS_ID, out var boss);
 
             _registry = new CombatTargetRegistry(Constants.Combat.MAX_COMBAT_TARGETS);
@@ -272,6 +360,19 @@ namespace Shinshi.AI
                 new MucheolComboSpec(new MucheolComboHit(5f, 120f, 0.14f, 0f), new MucheolComboHit(5f, 70f, 0.24f, 0.5f)), _combo,
                 new MucheolChargeSpec(2.5f), null, _chargeLog);
 
+            // 2페이즈 모드는 1페이즈 팩토리 뒤에 2페이즈 팩토리를 묶는다. 꺼 두면 1페이즈 팩토리 하나다
+            IBossPatternFactory patterns = factory;
+            _sequence  = null;
+            _multiDash = null;
+            if (_phaseTwoMode)
+            {
+                _sequence  = new SequenceVisual(_presenter, _body, ReadClock, () => _brain.ActivePatternId);
+                _multiDash = new MultiDashVisual(_presenter, _body, ReadClock, () => _brain.ActivePatternId);
+                var phaseTwo = new MucheolPhase2PatternFactory(_referenceHealth, MucheolDevCatalog.CreatePhaseTwoSpec(), _body, _catalog,
+                    new BoundaryMarginMovement(_body), _sequence, _multiDash);
+                patterns = new MucheolPatternFactoryChain(factory, phaseTwo);
+            }
+
             var dependencies = new BossBrainDependencies
             {
                 Catalog  = _catalog,
@@ -279,7 +380,7 @@ namespace Shinshi.AI
                 Vitals   = _body,
                 Targets  = _registry,
                 Damage   = _resolver,
-                Patterns = factory,
+                Patterns = patterns,
                 Effects  = new BossEffectComposite(), // 무철 1페이즈에는 투사체나 장판 같은 지속물이 없다
                 Control  = _body,
                 Random   = new SeededBossRandom(Environment.TickCount)
@@ -302,7 +403,23 @@ namespace Shinshi.AI
             _lastPatternId    = string.Empty;
             _history.Clear();
             _counts.Clear();
-            Debug.Log($"[Boss] 무철 1페이즈 시험 시작, maxHealth={_body.MaxHealth:F0}, 전장 지름={boss.ArenaDiameter}");
+
+            if (_phaseTwoMode && (_startHealthRate < 1f))
+            {
+                LowerHealthTo(_startHealthRate);
+            }
+
+            Debug.Log($"[Boss] 무철 {(_phaseTwoMode ? "2페이즈 모드" : "1페이즈")} 시험 시작, maxHealth={_body.MaxHealth:F0}, 전장 지름={boss.ArenaDiameter}");
+        }
+
+        // 체력을 목표 비율까지 깎는다. 몸체에는 회복이 없어 지금보다 높은 비율로는 올리지 못하고, 그때는 Reset으로 다시 만든다
+        private void LowerHealthTo(float rate)
+        {
+            float target = _body.MaxHealth * rate;
+            if (_body.Health > target)
+            {
+                _body.ApplyDamage(_body.Health - target, false, ReadClock());
+            }
         }
 
         // 시험 몸체의 경계는 전장 반지름에서 몸체 반경을 뺀 거리다. 거기에 정확히 닿아 끝나면 이후 돌진이 0m가 된다
@@ -349,7 +466,8 @@ namespace Shinshi.AI
             _counts.TryGetValue(id, out int count);
             _counts[id] = count + 1;
 
-            _history.Add(id.Substring(id.Length - PATTERN_SUFFIX_LENGTH));
+            string suffix = id.Substring(id.Length - PATTERN_SUFFIX_LENGTH);
+            _history.Add(id.Contains(PHASE_TWO_MARK) ? (PHASE_TWO_LABEL + suffix) : suffix);
             if (_history.Count > HISTORY_LENGTH)
             {
                 _history.RemoveAt(0);
@@ -456,6 +574,203 @@ namespace Shinshi.AI
                 LastText = (end == EBossChargeEnd.Collision)
                     ? $"충돌({collision.Kind}) 간 거리 {collision.TravelDistance:F1}m, 회복 요청 {recoverySeconds:F1}초 (공용 FSM은 아직 안 읽음)"
                     : $"정상 종료, 회복 {recoverySeconds:F1}초";
+            }
+        }
+
+        // 2페이즈 순차 타격을 예고 표현으로 보인다. 타마다 예고 하나씩이고 같은 시전의 예고는 시전 번호를 묶음으로 달아 서로 지우지 않는다.
+        // 부채꼴, 직사각형, 원형 모두 시전 시작 때 한꺼번에 시작하고 각자 (예고 + 지연) 뒤에 확정된다
+        private sealed class SequenceVisual : IMucheolSequenceTelegraphListener
+        {
+            private readonly BossTelegraphPresenter _presenter;
+            private readonly BossTestRigBody        _body;
+            private readonly Func<double>           _clock;
+            private readonly Func<string>           _activePatternId;
+
+            private IReadOnlyList<MucheolSequenceStep> _steps;
+
+            public string LastEvent = "아직 없음";
+
+            public SequenceVisual(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock, Func<string> activePatternId)
+            {
+                _presenter       = presenter;
+                _body            = body;
+                _clock           = clock;
+                _activePatternId = activePatternId;
+            }
+
+            private static int Key(int castInstanceId, int index)
+            {
+                return (index == 0) ? castInstanceId : (castInstanceId + (COMBO_KEY_OFFSET * index));
+            }
+
+            private static Vector3 StepDirection(Vector3 aim, MucheolSequenceStep step)
+            {
+                return Quaternion.AngleAxis(step.AimOffsetDegrees, Vector3.up) * aim;
+            }
+
+            public void OnTelegraphStarted(int castInstanceId, Vector3 origin, Vector3 direction, float telegraphSeconds,
+                IReadOnlyList<MucheolSequenceStep> steps)
+            {
+                _steps = steps;
+                _body.Face(direction);
+                _presenter.enabled = true;
+
+                string patternId = _activePatternId();
+                for (int i = 0; i < steps.Count; ++i)
+                {
+                    MucheolSequenceStep step = steps[i];
+                    float seconds = telegraphSeconds + step.DelaySeconds;
+                    BossTelegraphStart start;
+
+                    if (step.Shape == EMucheolSequenceShape.Fan)
+                    {
+                        start = BossTelegraphStart.Fan(_body.CombatId, Key(castInstanceId, i), patternId, origin,
+                            StepDirection(direction, step), step.Range, step.ArcAngle, _clock(), seconds, castInstanceId);
+                    }
+                    else if (step.Shape == EMucheolSequenceShape.Line)
+                    {
+                        start = new BossTelegraphStart(_body.CombatId, Key(castInstanceId, i), castInstanceId, patternId,
+                            EBossTelegraphShape.Line, origin, StepDirection(direction, step), step.Range, step.Width, 0f, _clock(), seconds);
+                    }
+                    else
+                    {
+                        start = BossTelegraphStart.Circle(_body.CombatId, Key(castInstanceId, i), patternId, origin, step.Range,
+                            _clock(), seconds, castInstanceId);
+                    }
+
+                    _presenter.BeginTelegraph(in start);
+                }
+
+                LastEvent = $"예고 시작, 타 {steps.Count}개";
+            }
+
+            public void OnAimChanged(int castInstanceId, Vector3 direction)
+            {
+                _body.Face(direction);
+                for (int i = 0; i < _steps.Count; ++i)
+                {
+                    if (_steps[i].Shape != EMucheolSequenceShape.Circle)
+                    {
+                        _presenter.UpdateAim(Key(castInstanceId, i), StepDirection(direction, _steps[i]), _steps[i].Range, _clock());
+                    }
+                }
+            }
+
+            public void OnDirectionLocked(int castInstanceId, Vector3 direction)
+            {
+                for (int i = 0; i < _steps.Count; ++i)
+                {
+                    if (_steps[i].Shape != EMucheolSequenceShape.Circle)
+                    {
+                        _presenter.LockDirection(Key(castInstanceId, i), StepDirection(direction, _steps[i]), _steps[i].Range);
+                    }
+                }
+            }
+
+            public void OnStepHit(int castInstanceId, int stepIndex, int hitCount)
+            {
+                _presenter.Strike(Key(castInstanceId, stepIndex), _clock());
+                LastEvent = $"{stepIndex + 1}타 확정({_steps[stepIndex].Shape}), 맞은 대상 {hitCount}명";
+            }
+
+            public void OnCancelled(int castInstanceId, EBossInterruptReason reason)
+            {
+                _presenter.CancelGroup(castInstanceId);
+                LastEvent = $"취소({reason})";
+            }
+        }
+
+        // 2페이즈 연속 돌진을 예고 표현의 돌진으로 보인다. 돌진마다 예고 하나씩이고(첫 돌진은 시전 시작, 이후는 재조준 시작)
+        // 같은 시전의 예고는 시전 번호를 묶음으로 달아 서로 지우지 않는다
+        private sealed class MultiDashVisual : IMucheolMultiDashListener
+        {
+            private readonly BossTelegraphPresenter _presenter;
+            private readonly BossTestRigBody        _body;
+            private readonly Func<double>           _clock;
+            private readonly Func<string>           _activePatternId;
+
+            private int _planned;
+
+            public string LastEvent = "아직 없음";
+
+            public MultiDashVisual(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock, Func<string> activePatternId)
+            {
+                _presenter       = presenter;
+                _body            = body;
+                _clock           = clock;
+                _activePatternId = activePatternId;
+            }
+
+            private static int Key(int castInstanceId, int dashIndex)
+            {
+                return (dashIndex == 0) ? castInstanceId : (castInstanceId + (COMBO_KEY_OFFSET * dashIndex));
+            }
+
+            private void BeginDashTelegraph(int castInstanceId, int dashIndex, Vector3 origin, Vector3 direction, float length,
+                float width, float seconds)
+            {
+                _body.Face(direction);
+                _presenter.enabled = true;
+
+                var start = new BossTelegraphStart(_body.CombatId, Key(castInstanceId, dashIndex), castInstanceId, _activePatternId(),
+                    EBossTelegraphShape.Dash, origin, direction, length, width, 0f, _clock(), seconds);
+                _presenter.BeginTelegraph(in start);
+            }
+
+            public void OnTelegraphStarted(int castInstanceId, Vector3 origin, Vector3 direction, float length, float width,
+                float telegraphSeconds, int dashCount)
+            {
+                _planned = dashCount;
+                BeginDashTelegraph(castInstanceId, 0, origin, direction, length, width, telegraphSeconds);
+                LastEvent = $"예고 시작, 계획 {dashCount}회";
+            }
+
+            public void OnAimChanged(int castInstanceId, int dashIndex, Vector3 direction, float length)
+            {
+                _body.Face(direction);
+                _presenter.UpdateAim(Key(castInstanceId, dashIndex), direction, length, _clock());
+            }
+
+            public void OnDirectionLocked(int castInstanceId, int dashIndex, Vector3 direction, float length)
+            {
+                _body.Face(direction);
+                _presenter.LockDirection(Key(castInstanceId, dashIndex), direction, length);
+            }
+
+            public void OnReaimStarted(int castInstanceId, int dashIndex, Vector3 origin, Vector3 direction, float length, float width,
+                float reaimSeconds)
+            {
+                BeginDashTelegraph(castInstanceId, dashIndex, origin, direction, length, width, reaimSeconds);
+                LastEvent = $"{dashIndex + 1}번째 돌진 재조준";
+            }
+
+            public void OnDashStarted(int castInstanceId, int dashIndex, Vector3 origin, Vector3 direction, float distance, float seconds,
+                float speed, double startServerTime)
+            {
+                _presenter.BeginDash(Key(castInstanceId, dashIndex), distance, seconds, speed, startServerTime);
+                LastEvent = $"{dashIndex + 1}/{_planned}번째 돌진 시작, 거리 {distance:F1}m";
+            }
+
+            public void OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall)
+            {
+                _presenter.StopDash(Key(castInstanceId, dashIndex), position, stoppedByWall);
+                LastEvent = $"{dashIndex + 1}번째 돌진 정지{(stoppedByWall ? "(벽)" : string.Empty)}";
+            }
+
+            public void OnHit(int castInstanceId, int dashIndex, int hitCount)
+            {
+                LastEvent = $"{dashIndex + 1}번째 돌진 적중 {hitCount}명";
+            }
+
+            public void OnTruncated(int castInstanceId, int plannedDashCount, int completedDashCount)
+            {
+                LastEvent = $"실행 구간이 짧아 잘림, 계획 {plannedDashCount}회 중 {completedDashCount}회 완료";
+            }
+
+            public void OnCancelled(int castInstanceId, EBossInterruptReason reason)
+            {
+                _presenter.CancelGroup(castInstanceId);
+                LastEvent = $"취소({reason})";
             }
         }
 
