@@ -5,7 +5,6 @@ using System.Text;
 
 // Unity
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 // 서드파티
@@ -21,7 +20,8 @@ namespace Shinshi.UI
     public sealed class NetworkOverlayView : MonoBehaviour
     {
         // 씬, 프리팹을 고치지 않고 로비부터 마을까지 같은 표시를 쓰려고 DontDestroyOnLoad로 하나만 둔다.
-        // 글꼴은 씬이 불러 둔 HUD 한글 글꼴을 우선 쓰고, 아직 없으면 OS 한글 글꼴로 만든 TMP 글꼴을 쓴다.
+        // 글꼴은 OS 한글 글꼴로 만든 이 표시 전용 TMP 글꼴을 끝까지 쓴다. 예전처럼 씬의 HUD 동적 글꼴로 바꾸면
+        // 그 아틀라스가 씬 글자로 차서 다음 아틀라스로 넘어간 글리프를 첫 아틀라스 재질로 그려 빌드에서 글자가 깨졌다.
         // 이름표는 매 프레임 움직이므로 통계 글자와 다른 하위 캔버스에 두어 다시 그리는 범위를 나눈다
 
         /****************************************
@@ -42,13 +42,14 @@ namespace Shinshi.UI
         private const double PING_GOOD_MS             = 80.0;
         private const double PING_WARN_MS             = 150.0;
         private const double MILLISECONDS_PER_SECOND  = 1000.0;
-        private const string PROJECT_FONT_NAME        = "HudQuestKorean-Regular";
         private const KeyCode PREDICTION_TOGGLE_KEY   = KeyCode.F3;
 
         private static readonly string[] KOREAN_FONT_FAMILIES = { "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Noto Sans CJK KR" };
 
         private static readonly Vector2 STATS_OFFSET    = new Vector2(12f, -8f);
         private static readonly Vector2 STATS_SIZE      = new Vector2(640f, 60f);
+        private static readonly Vector2 STATS_PADDING   = new Vector2(8f, 4f);
+        private static readonly Color   STATS_BACK      = new Color(0f, 0f, 0f, 0.55f);
         private static readonly Vector2 NAMEPLATE_SIZE  = new Vector2(300f, 40f);
         private static readonly Color   PING_GOOD_COLOR = new Color(0.55f, 1f, 0.55f);
         private static readonly Color   PING_WARN_COLOR = new Color(1f, 0.85f, 0.35f);
@@ -61,12 +62,13 @@ namespace Shinshi.UI
         private readonly Predicate<uint>             _isDespawned = IsDespawned;
 
         private TMP_FontAsset   _font;
-        private bool            _hasProjectFont  = false;
         private RectTransform   _nameplateRoot;
         private TextMeshProUGUI _statsText;
+        private RectTransform   _statsBack;
         private float           _nextRefreshTime = 0f;
         private int             _frameCount      = 0;
         private float           _frameTime       = 0f;
+        private float           _maxFrameTime    = 0f;
 
         // 예측 진단값은 멀티 테스트용이다. 개발 빌드에서는 처음부터 보이고 배포 빌드에서는 F3으로 켠다
         private bool            _showsPrediction = false;
@@ -95,24 +97,8 @@ namespace Shinshi.UI
             // Unity API는 필드 초기화(생성자)에서 부를 수 없다
             _showsPrediction = Debug.isDebugBuild;
 
-            _font = FindProjectFont();
-            _hasProjectFont = _font != null;
-            if (!_hasProjectFont)
-            {
-                _font = CreateSystemKoreanFont();
-            }
-
+            _font = CreateSystemKoreanFont();
             BuildCanvas();
-        }
-
-        private void OnEnable()
-        {
-            SceneManager.sceneLoaded += OnSceneLoaded;
-        }
-
-        private void OnDisable()
-        {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
         private void Update()
@@ -123,8 +109,14 @@ namespace Shinshi.UI
                 _nextRefreshTime = 0f;
             }
 
+            float deltaTime = Time.unscaledDeltaTime;
             ++_frameCount;
-            _frameTime += Time.unscaledDeltaTime;
+            _frameTime += deltaTime;
+            if (deltaTime > _maxFrameTime)
+            {
+                _maxFrameTime = deltaTime;
+            }
+
             if (Time.unscaledTime >= _nextRefreshTime)
             {
                 _nextRefreshTime = Time.unscaledTime + REFRESH_INTERVAL_SECONDS;
@@ -137,43 +129,6 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
-
-        // HUD가 있는 씬이 열리면 그 씬이 불러 둔 프로젝트 글꼴로 바꾼다. 한 번 바꾼 뒤에는 다시 찾지 않는다
-        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            if (_hasProjectFont)
-            {
-                return;
-            }
-
-            TMP_FontAsset projectFont = FindProjectFont();
-            if (projectFont == null)
-            {
-                return;
-            }
-
-            _font           = projectFont;
-            _hasProjectFont = true;
-            _statsText.font = projectFont;
-            foreach (KeyValuePair<uint, Nameplate> pair in _nameplates)
-            {
-                pair.Value.Text.font = projectFont;
-            }
-        }
-
-        private static TMP_FontAsset FindProjectFont()
-        {
-            TMP_FontAsset[] loaded = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
-            for (int i = 0; i < loaded.Length; ++i)
-            {
-                if (string.Equals(loaded[i].name, PROJECT_FONT_NAME, StringComparison.Ordinal))
-                {
-                    return loaded[i];
-                }
-            }
-
-            return null;
-        }
 
         private static TMP_FontAsset CreateSystemKoreanFont()
         {
@@ -210,6 +165,18 @@ namespace Shinshi.UI
             _nameplateRoot.offsetMax = Vector2.zero;
             nameplateObject.AddComponent<Canvas>();
 
+            // 밝은 하늘, UI 위에서도 읽히게 글자 크기에 맞춘 반투명 배경을 깐다
+            var backObject = new GameObject("StatsBack", typeof(RectTransform));
+            _statsBack = (RectTransform)backObject.transform;
+            _statsBack.SetParent(transform, false);
+            _statsBack.anchorMin        = new Vector2(0f, 1f);
+            _statsBack.anchorMax        = new Vector2(0f, 1f);
+            _statsBack.pivot            = new Vector2(0f, 1f);
+            _statsBack.anchoredPosition = STATS_OFFSET + new Vector2(-STATS_PADDING.x, STATS_PADDING.y);
+            var back = backObject.AddComponent<Image>();
+            back.color         = STATS_BACK;
+            back.raycastTarget = false;
+
             _statsText = CreateText("Stats", transform, STATS_FONT_SIZE, TextAlignmentOptions.TopLeft);
             RectTransform rect = _statsText.rectTransform;
             rect.anchorMin        = new Vector2(0f, 1f);
@@ -242,12 +209,15 @@ namespace Shinshi.UI
         // 0.5초마다 한 번만 문자열을 만든다. 매 프레임 만들면 할당이 쌓인다
         private void RefreshStats()
         {
-            float fps = (_frameTime > 0f) ? (_frameCount / _frameTime) : 0f;
-            _frameCount = 0;
-            _frameTime  = 0f;
+            float fps          = (_frameTime > 0f) ? (_frameCount / _frameTime) : 0f;
+            int   maxFrameMs   = Mathf.RoundToInt(_maxFrameTime * (float)MILLISECONDS_PER_SECOND);
+            _frameCount   = 0;
+            _frameTime    = 0f;
+            _maxFrameTime = 0f;
 
+            // 평균 FPS로는 순간 끊김이 묻히므로 갱신 구간에서 가장 길었던 프레임도 함께 보인다
             _builder.Clear();
-            _builder.Append("FPS ").Append(Mathf.RoundToInt(fps));
+            _builder.Append("FPS ").Append(Mathf.RoundToInt(fps)).Append("  최대 ").Append(maxFrameMs).Append("ms");
 
             Color color = Color.white;
             if ((NetworkClient.active) && (NetworkClient.isConnected) && (!NetworkServer.active))
@@ -264,6 +234,9 @@ namespace Shinshi.UI
 
             _statsText.color = color;
             _statsText.SetText(_builder);
+
+            Vector2 textSize = _statsText.GetPreferredValues();
+            _statsBack.sizeDelta = textSize + (STATS_PADDING * 2f);
         }
 
         // 보정 거리가 이동 거리에 비해 크거나 스냅이 늘면 예측이 서버와 어긋나고 있다는 뜻이다. 멀티 테스트 진단용이다
