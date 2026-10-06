@@ -133,7 +133,7 @@ namespace Shinshi.AI
 
             _presenter.SetServerClock(ReadClock);
 
-            GameObject player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            GameObject player = TestRigDisplay.CreatePrimitive(PrimitiveType.Capsule);
             player.name = "PlayerBody";
             Destroy(player.GetComponent<Collider>());
             _playerBody     = player.transform;
@@ -180,7 +180,7 @@ namespace Shinshi.AI
                 return;
             }
 
-            GUILayout.BeginArea(new Rect(GUI_MARGIN, GUI_MARGIN, GUI_WIDTH, Screen.height - (GUI_MARGIN * 2f)), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_WIDTH, Screen.height - TestRigDisplay.GUI_TOP - GUI_MARGIN), GUI.skin.box);
             GUILayout.Label($"무철 시험 ({(_phaseTwoMode ? "2페이즈 모드" : "1페이즈")}, 임시 수치, 운영 에셋 아님)  Flow {_brain.FlowState}  Phase {_brain.Phase}");
             GUILayout.Label($"Attack {_brain.AttackState}  Pattern {_brain.ActivePatternId}  PhaseState {_brain.PhaseState}");
             GUILayout.Label($"Boss HP {_body.Health:F0}/{_body.MaxHealth:F0} ({_body.HealthRate * PERCENT:F1}%)");
@@ -434,7 +434,7 @@ namespace Shinshi.AI
         // 무철 외형 모델이 없어 캡슐과 앞쪽을 알리는 막대로 대신한다
         private void CreateBossStandIn()
         {
-            GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            GameObject capsule = TestRigDisplay.CreatePrimitive(PrimitiveType.Capsule);
             capsule.name = "MucheolStandIn";
             Destroy(capsule.GetComponent<Collider>());
             float radiusScale = Constants.Combat.BOSS_BODY_RADIUS / CAPSULE_BASE_RADIUS;
@@ -443,7 +443,7 @@ namespace Shinshi.AI
             capsule.GetComponent<Renderer>().material.color = BossColor;
             _bossBody = capsule.transform;
 
-            GameObject nose = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject nose = TestRigDisplay.CreatePrimitive(PrimitiveType.Cube);
             nose.name = "MucheolFacing";
             Destroy(nose.GetComponent<Collider>());
             nose.transform.SetParent(transform, false);

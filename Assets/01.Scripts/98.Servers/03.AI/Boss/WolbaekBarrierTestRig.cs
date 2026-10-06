@@ -95,7 +95,7 @@ namespace Shinshi.AI
 
             _presenter.SetServerClock(ReadClock);
 
-            GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            GameObject body = TestRigDisplay.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "PlayerBody";
             Destroy(body.GetComponent<Collider>());
             _playerBody = body.transform;
@@ -162,7 +162,7 @@ namespace Shinshi.AI
                 return;
             }
 
-            GUILayout.BeginArea(new Rect(GUI_MARGIN, GUI_MARGIN, GUI_WIDTH, Screen.height - (GUI_MARGIN * 2f)), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_WIDTH, Screen.height - TestRigDisplay.GUI_TOP - GUI_MARGIN), GUI.skin.box);
             GUILayout.Label($"Flow {_brain.FlowState}  Phase {_brain.Phase} ({_brain.PhaseState})  Attack {_brain.AttackState}");
             GUILayout.Label($"Boss HP {_body.HealthRate * PERCENT:F1}%  전환 {_boss.PhaseTransitionHealthRate * PERCENT:F0}%");
             GUILayout.Label($"결계 {_director.State}  위험 구역 활성 {_director.IsHazardActive}  완료 {_director.IsCompleted}");

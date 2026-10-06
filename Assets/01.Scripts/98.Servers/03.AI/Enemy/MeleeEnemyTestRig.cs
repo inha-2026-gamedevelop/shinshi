@@ -95,7 +95,7 @@ namespace Shinshi.AI
 
             _enemyView = Instantiate(_enemyPrefab, _enemy.Position, Quaternion.identity, transform);
 
-            GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            GameObject body = TestRigDisplay.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "PlayerBody";
             Destroy(body.GetComponent<Collider>());
             _playerBody = body.transform;
@@ -133,7 +133,7 @@ namespace Shinshi.AI
                 return;
             }
 
-            GUILayout.BeginArea(new Rect(GUI_MARGIN, GUI_MARGIN, GUI_WIDTH, GUI_HEIGHT), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_WIDTH, GUI_HEIGHT), GUI.skin.box);
             GUILayout.Label($"State {_brain.State}  Attacks {_brain.ExecutedCount}  LastHit {_brain.LastHitCount}");
             GUILayout.Label($"Enemy HP {_enemy.Health:F0}/{_enemy.MaxHealth:F0}  Player HP {_player.Health:F0}");
 
