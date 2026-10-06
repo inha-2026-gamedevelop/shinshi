@@ -59,8 +59,9 @@ namespace Shinshi.Editor
         private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_DevMovementScenes = { DEV_MOVEMENT_SCENE_PATH };
 
-        // 네트워크 없이 보스 패턴과 UI 화면을 확인하는 개발 씬 묶음. 서버 접속 없이 한 실행 파일에서 고르며(DevTestScenePicker),
-        // 보스 시험 장치가 Shinshi.Server에 있어 SHINSHI_DEV_TEST로 그 어셈블리를 클라이언트 빌드에 넣는다
+        // 네트워크 없이 보스 패턴과 UI 화면, 마을 렌더링 비용을 확인하는 개발 씬 묶음. 서버 접속 없이 한 실행 파일에서 고르며(DevTestScenePicker),
+        // 보스 시험 장치가 Shinshi.Server에 있어 SHINSHI_DEV_TEST로 그 어셈블리를 클라이언트 빌드에 넣는다.
+        // 마을은 NetworkManager 없이 열려 플레이어 없이 배경만 그리며, -devPerfTown 측정(DevTownPerfViews)에 쓴다
         private static readonly string[] G_DevTestScenes     = {
             "Assets/00.Scenes/Dev_AI/Dev_BossMucheol.unity",
             "Assets/00.Scenes/Dev_AI/Dev_BossMucheolPhase2.unity",
@@ -74,7 +75,8 @@ namespace Shinshi.Editor
             "Assets/00.Scenes/Dev_HUD/Dev_ToastMessage.unity",
             "Assets/00.Scenes/Dev_HUD/Dev_Trade.unity",
             "Assets/00.Scenes/Dev_HUD/Dev_Auction.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_ChaSelect.unity" };
+            "Assets/00.Scenes/Dev_HUD/Dev_ChaSelect.unity",
+            ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_DevTestDefines    = { DEV_TEST_DEFINE };
 
         /****************************************
@@ -200,6 +202,14 @@ namespace Shinshi.Editor
             // 서버 빌드는 에디터의 대상 하위 설정을 Server로 바꿔 둔다. 그대로 두면 에디터가 UNITY_SERVER로 컴파일돼
             // 클라이언트 플레이가 서버 부트스트랩에서 멈추므로 빌드 전 설정으로 되돌린다
             StandaloneBuildSubtarget editorSubtarget = EditorUserBuildSettings.standaloneBuildSubtarget;
+
+            // 시험 빌드의 프레임 기록(DevPerfLogger)이 GPU 시간을 읽으려면 Frame Timing 통계가 켜져 있어야 한다. 다른 빌드에는 남기지 않는다
+            bool frameTimingStats = PlayerSettings.enableFrameTimingStats;
+            if (Array.IndexOf(extraDefines, DEV_TEST_DEFINE) >= 0)
+            {
+                PlayerSettings.enableFrameTimingStats = true;
+            }
+
             BuildReport report;
             try
             {
@@ -211,6 +221,8 @@ namespace Shinshi.Editor
                 {
                     EditorUserBuildSettings.standaloneBuildSubtarget = editorSubtarget;
                 }
+
+                PlayerSettings.enableFrameTimingStats = frameTimingStats;
             }
 
             bool succeeded = report.summary.result == BuildResult.Succeeded;
