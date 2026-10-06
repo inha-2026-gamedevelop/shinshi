@@ -39,6 +39,9 @@ namespace Shinshi.Data.Auth
         // 던전 입장, 재입장 때 이 참가자의 남은 물약 예약분(예약 수량 - 확정 사용). 마을 입장이면 null이다
         public IReadOnlyList<ReservationPotion>? Potions { get; }
 
+        // DB 소유 캐릭터의 외형 원문(JSON), 명시적 레거시 캐릭터는 null이다. 토큰 소비 트랜잭션이 채운다
+        public string? AppearanceJson { get; }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -46,7 +49,8 @@ namespace Shinshi.Data.Auth
         public JoinAuthIdentity(Guid accountId, Guid characterId, int classId, Guid participantId, Guid sessionId,
             Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default, string? characterName = null,
             JoinSortieContract? sortie = null, string? combatLoadoutJson = null,
-            IReadOnlyList<ReservationPotion>? potions = null)
+            IReadOnlyList<ReservationPotion>? potions = null,
+            string? appearanceJson = null)
         {
             AccountId        = accountId;
             CharacterId      = characterId;
@@ -60,6 +64,7 @@ namespace Shinshi.Data.Auth
             Sortie           = sortie;
             CombatLoadoutJson = combatLoadoutJson;
             Potions          = potions;
+            AppearanceJson   = appearanceJson;
         }
     }
 }

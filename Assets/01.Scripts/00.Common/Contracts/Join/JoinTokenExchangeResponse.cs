@@ -60,6 +60,10 @@ namespace Shinshi.Contracts
         // 던전 서버는 이 수량 안에서만 POTION_USED를 보낸다. 마을 입장이나 이 필드를 모르는 API면 null이다
         [DataMember(Name = "potions")]          private ReservationPotion[] _potions;
 
+        // DB 소유 캐릭터의 외형 원문. 명시적 레거시 캐릭터는 값 없음이며, 클라이언트가 보낸 외형은 쓰지 않는다.
+        // 표시 resolver가 null을 직업 기본값으로 읽는다
+        [DataMember(Name = "appearance")]       private string _appearanceJson;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -81,6 +85,7 @@ namespace Shinshi.Contracts
         public CharacterCombatLoadout CombatLoadout => _combatLoadout;
         public string AccountId        => _accountId;
         public ReservationPotion[] Potions => _potions;
+        public string AppearanceJson   => _appearanceJson;
 
         /****************************************
         *                Methods
@@ -126,6 +131,23 @@ namespace Shinshi.Contracts
             string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
             string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout,
             string accountId, ReservationPotion[] potions)
+            : this(characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId,
+                characterName, mode, mapId, battleId, bossId, difficulty, combatLoadout, accountId, potions, null)
+        {
+        }
+
+        public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
+            string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName,
+            string appearanceJson)
+            : this(characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId,
+                characterName, NO_MODE, null, null, null, GameSessionCodes.Difficulty.NONE, null, null, null, appearanceJson)
+        {
+        }
+
+        public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
+            string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
+            string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout,
+            string accountId, ReservationPotion[] potions, string appearanceJson)
         {
             _characterId      = characterId;
             _instanceId       = instanceId;
@@ -144,6 +166,7 @@ namespace Shinshi.Contracts
             _combatLoadout    = combatLoadout;
             _accountId        = accountId;
             _potions          = potions;
+            _appearanceJson   = appearanceJson;
         }
 
         private JoinTokenExchangeResponse() { }

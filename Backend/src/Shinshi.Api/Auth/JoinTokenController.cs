@@ -102,7 +102,8 @@ namespace Shinshi.Backend
                 town ? null : identity.SessionId.ToString("D"), identity.ServerTimeUnixMs, accountLeaseId, identity.ClassId,
                 identity.CharacterName, sortie?.Mode ?? JoinTokenExchangeResponse.NO_MODE, sortie?.MapId,
                 sortie?.BattleId, sortie?.BossId, sortie?.Difficulty ?? GameSessionCodes.Difficulty.NONE, combatLoadout,
-                identity.AccountId.ToString("D"), town ? null : identity.Potions?.ToArray()));
+                identity.AccountId.ToString("D"), town ? null : identity.Potions?.ToArray(),
+                identity.AppearanceJson));
         }
     }
 }

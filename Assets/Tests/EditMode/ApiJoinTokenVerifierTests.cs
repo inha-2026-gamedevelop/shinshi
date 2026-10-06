@@ -280,7 +280,7 @@ namespace Shinshi.Tests
         public void ClaimsRules_CharacterName_CarriesNormalizedNameToTownAndDungeonClaims()
         {
             var town    = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L,
-                null, CLASS_ID, " 달빛여우 ");
+                null, CLASS_ID, "달빛여우");
             var dungeon = new JoinTokenExchangeResponse(CHARACTER, INSTANCE, ContractCodes.ServerRole.DUNGEON, PARTICIPANT, SORTIE,
                 1L, null, CLASS_ID, "Fox01");
 
@@ -290,18 +290,28 @@ namespace Shinshi.Tests
             Assert.AreEqual("Fox01", dungeonClaims.CharacterName);
         }
 
-        // 이름은 표시용이라 없거나 형식이 틀려도 입장은 받고 이름만 비운다
-        [TestCase(null)]
+        // 이름이 없는 레거시 캐릭터는 입장을 받고 이름만 비운다
+        [Test]
+        public void ClaimsRules_MissingName_AdmitsWithoutName()
+        {
+            var town = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L,
+                null, CLASS_ID, null);
+
+            Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, TOWN_INSTANCE, town, out JoinTokenClaims claims));
+            Assert.IsNull(claims.CharacterName);
+        }
+
+        // DB 이름은 생성 때 정규화돼 저장되므로 정규화 결과와 다른 값은 변조로 보고 입장을 거절한다
         [TestCase("")]
         [TestCase("a")]
+        [TestCase(" 달빛여우 ")]
         [TestCase("<b>관리자</b>")]
-        public void ClaimsRules_MissingOrInvalidName_AdmitsWithoutName(string characterName)
+        public void ClaimsRules_InvalidOrUnnormalizedName_RejectsEntry(string characterName)
         {
             var town = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L,
                 null, CLASS_ID, characterName);
 
-            Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, TOWN_INSTANCE, town, out JoinTokenClaims claims));
-            Assert.IsNull(claims.CharacterName);
+            Assert.AreEqual(ERejectReason.TokenRevoked, JoinTokenClaimsRules.TryCreate(EServerRole.Town, TOWN_INSTANCE, town, out _));
         }
 
         [Test]

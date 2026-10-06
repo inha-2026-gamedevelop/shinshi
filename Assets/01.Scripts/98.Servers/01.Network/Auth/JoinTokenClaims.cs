@@ -25,6 +25,7 @@ namespace Shinshi.Network
         private readonly CharacterCombatLoadout _combatLoadout;
         private readonly ReservationPotion[]    _reservedPotions;
         private readonly SortieDescriptor       _sortie;
+        private readonly CharacterAppearance    _appearance;
 
         /****************************************
         *              Properties
@@ -63,6 +64,9 @@ namespace Shinshi.Network
         // 던전 교환이 준 출정 계약(종류, 맵, 전투, 보스, 난이도), 마을, 개발 토큰, mode를 모르는 API는 계약 없음이다
         public SortieDescriptor Sortie => _sortie;
 
+        // TryResolve가 정규화한 공개 외형, null/v1은 직업 기본값으로, 유효한 v2는 그대로 들어 있다. 마을 토큰도 채운다
+        public CharacterAppearance Appearance => _appearance;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -76,6 +80,7 @@ namespace Shinshi.Network
             _accountLeaseId = null;
             _playerClass    = EPlayerClass.Warrior;
             _characterName  = null;
+            _appearance     = null;
             _accountId      = null;
             _combatLoadout   = null;
             _reservedPotions = null;
@@ -101,12 +106,18 @@ namespace Shinshi.Network
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
             string accountLeaseId, EPlayerClass playerClass)
-            : this(participantKey, characterId, instanceId, sortieId, accountLeaseId, playerClass, null)
+            : this(participantKey, characterId, instanceId, sortieId, accountLeaseId, playerClass, null, null)
         {
         }
 
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
             string accountLeaseId, EPlayerClass playerClass, string characterName)
+            : this(participantKey, characterId, instanceId, sortieId, accountLeaseId, playerClass, characterName, null)
+        {
+        }
+
+        public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
+            string accountLeaseId, EPlayerClass playerClass, string characterName, CharacterAppearance appearance)
         {
             _participantKey = participantKey;
             _characterId    = characterId;
@@ -115,6 +126,7 @@ namespace Shinshi.Network
             _accountLeaseId = accountLeaseId;
             _playerClass    = playerClass;
             _characterName  = characterName;
+            _appearance     = appearance;
             _accountId      = null;
             _combatLoadout   = null;
             _reservedPotions = null;

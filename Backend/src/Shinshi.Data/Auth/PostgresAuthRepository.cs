@@ -303,10 +303,10 @@ namespace Shinshi.Data.Auth
                     ? ContractCodes.RejectReason.ALREADY_SETTLED : ContractCodes.RejectReason.SESSION_MISMATCH);
             }
 
-            // 직업은 참가자가 묶인 캐릭터 행에서, 출정 계약은 세션 행에서 읽는다. 게임 서버가 이 값으로 전투 개체와 전투를 만든다
+            // 직업, 닉네임, 외형은 참가자가 묶인 캐릭터 행에서, 출정 계약은 세션 행에서 읽는다. 게임 서버가 이 값으로 전투 개체와 전투를 만든다
             JoinCharacterRow? character = await connection.QuerySingleOrDefaultAsync<JoinCharacterRow>(Command(
                 """
-                SELECT character.class_id AS "ClassId", character.name AS "Name",
+                SELECT character.class_id AS "ClassId", character.name AS "Name", character.appearance::text AS "Appearance",
                     participant.departed_at IS NOT NULL AS "Departed", session.mode AS "Mode", session.map_id AS "MapId",
                     session.battle_id AS "BattleId", session.boss_id AS "BossId", session.difficulty AS "Difficulty",
                     participant.loadout_snapshot::text AS "Loadout"
@@ -389,7 +389,7 @@ namespace Shinshi.Data.Auth
                 consumed.CharacterId, character.ClassId, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
                 consumed.InstanceId, UnixMilliseconds(now), default, character.Name,
                 JoinSortieContract.FromRow(character.Mode, character.MapId, character.BattleId, character.BossId,
-                    character.Difficulty), character.Loadout, potions));
+                    character.Difficulty), character.Loadout, potions, character.Appearance));
         }
 
         // 던전 입장 교환이 돌려주는 남은 물약 예약분 한 줄
@@ -400,12 +400,13 @@ namespace Shinshi.Data.Auth
             public long Remaining { get; set; }
         }
 
-        // 입장 교환이 읽는 캐릭터 직업과 표시 이름. 이름 컬럼이 생기기 전의 캐릭터면 이름은 null이다.
+        // 입장 교환이 읽는 캐릭터 직업, 닉네임, 외형 원문. 레거시 행이면 이름과 외형은 null이고 그 null이 표시 resolver가 읽는 유효한 값이다.
         // 던전 입장은 이탈 여부와 출정 계약도 함께 읽는다(마을 입장은 기본값)
         private sealed class JoinCharacterRow
         {
             public int ClassId { get; set; }
             public string? Name { get; set; }
+            public string? Appearance { get; set; }
             public bool Departed { get; set; }
             public string Mode { get; set; } = string.Empty;
             public string MapId { get; set; } = string.Empty;
