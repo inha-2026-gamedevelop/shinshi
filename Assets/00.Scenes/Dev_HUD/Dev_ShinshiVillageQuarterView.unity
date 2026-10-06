@@ -114944,13 +114944,33 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8151032155878159728, guid: 197bb38fa511fdc4fa1aedf73d13134d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1154755571}
   m_SourcePrefab: {fileID: 100100000, guid: 197bb38fa511fdc4fa1aedf73d13134d, type: 3}
 --- !u!4 &1154755569 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3156883454302964568, guid: 197bb38fa511fdc4fa1aedf73d13134d, type: 3}
   m_PrefabInstance: {fileID: 1154755568}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1154755570 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8151032155878159728, guid: 197bb38fa511fdc4fa1aedf73d13134d, type: 3}
+  m_PrefabInstance: {fileID: 1154755568}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1154755571
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1154755570}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 986ef8cba3f99574ba4d56d11672f045, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiCursorBlockedTarget
 --- !u!1001 &1155269675
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -198454,6 +198474,59 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2841981771774866850, guid: 39d035d7b911e714285207f018f9106a, type: 3}
   m_PrefabInstance: {fileID: 1976056721}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1976640500
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1976640502}
+  - component: {fileID: 1976640501}
+  m_Layer: 0
+  m_Name: UiCursor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1976640501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1976640500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d6abe0f6366b8d44a164d8890b1649c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiCursor
+  _defaultTexture: {fileID: 2800000, guid: 54cf7165f05920a419b1fb7c98fbaf35, type: 3}
+  _pressedTexture: {fileID: 2800000, guid: 6bc4bcb2a4c2e694da88afb91170df5f, type: 3}
+  _blockedTexture: {fileID: 2800000, guid: 75a38be961165e74da971d85459e5489, type: 3}
+  _hotspot: {x: 2, y: 2}
+  _camera: {fileID: 451051953}
+  _targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _flashDuration: 0.4
+--- !u!4 &1976640502
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1976640500}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1977078071
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -215893,3 +215966,4 @@ SceneRoots:
   - {fileID: 604192094}
   - {fileID: 1016464296}
   - {fileID: 2095746887}
+  - {fileID: 1976640502}
