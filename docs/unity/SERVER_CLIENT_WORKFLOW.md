@@ -47,7 +47,7 @@ Assets/01.Scripts/
   02.Combat/Damage/                      전투 담당: 피해 계약·공용 계산
   02.Combat/Skill/                      전투 담당: 기술 입력·동료 상태
   {NN}.UI/                              UI 담당
-  98.Servers/                           Shinshi.Server (UNITY_SERVER || UNITY_EDITOR)
+  98.Servers/                           Shinshi.Server (UNITY_SERVER || UNITY_EDITOR || SHINSHI_DEV_TEST)
     Shinshi.Server.asmdef               {팀장}
     01.Network/Bootstrap/              {팀장}: 부트스트랩·실행 설정·프로세스 제어·종료
     01.Network/Presence/               {팀장}: 서버 풀 등록·존재 신호

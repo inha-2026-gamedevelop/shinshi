@@ -15,7 +15,7 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
-        "UNITY_SERVER || UNITY_EDITOR"
+        "UNITY_SERVER || UNITY_EDITOR || SHINSHI_DEV_TEST"
     ],
     "versionDefines": [],
     "noEngineReferences": false

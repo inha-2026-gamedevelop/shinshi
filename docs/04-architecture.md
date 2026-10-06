@@ -79,7 +79,7 @@ Assets/
 |---|---|---|
 | `Assets/01.Scripts/Shinshi.Runtime.asmdef` | `Shinshi.Runtime` → Contracts, Mirror/Components/Transports, kcp2k, Cinemachine, Navigation, TMP, DOTween, Dialogue System, MeshBakerCore | 플랫폼·define 제한 없음. 유료 패키지 참조는 빌드 머신 별도 설치 필요 |
 | `00.Common/Contracts/Shinshi.Contracts.asmdef` | `Shinshi.Contracts`, 프로젝트 어셈블리 참조 없음 | `noEngineReferences=true`, 엔진 비의존 공유 계약 |
-| `98.Servers/Shinshi.Server.asmdef` | `Shinshi.Server` → Runtime, Contracts, Mirror, Mirror.Transports, kcp2k | `UNITY_SERVER \|\| UNITY_EDITOR` |
+| `98.Servers/Shinshi.Server.asmdef` | `Shinshi.Server` → Runtime, Contracts, Mirror, Mirror.Transports, kcp2k | `UNITY_SERVER \|\| UNITY_EDITOR \|\| SHINSHI_DEV_TEST`(시험 빌드 `windows-devtest`만 정의) |
 | `99.Dev/Shinshi.Dev.asmdef` | `Shinshi.Dev` → Runtime | 현재 플랫폼·define 제한 없음. 배포에서 자동 제외된다고 가정하지 않음 |
 | `Assets/Tests/EditMode/Shinshi.Tests.EditMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | Editor 한정, `UNITY_INCLUDE_TESTS`, autoReferenced=false |
 | `Assets/Tests/PlayMode/Shinshi.Tests.PlayMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | 플랫폼 제한 없음, `UNITY_INCLUDE_TESTS`, autoReferenced=false. 실제 PlayMode/빌드 검증 미실행 |

@@ -35,8 +35,10 @@ namespace Shinshi.Editor
         public const string TARGET_WINDOWS_CLIENT = "windows-client";
         public const string TARGET_WINDOWS_SERVER = "windows-server";
         public const string TARGET_LINUX_SERVER   = "linux-server";
+        public const string TARGET_WINDOWS_DEVTEST = "windows-devtest";
 
         private const string SERVER_DEFINE      = "UNITY_SERVER";
+        private const string DEV_TEST_DEFINE    = "SHINSHI_DEV_TEST";
         private const string SERVER_ASSEMBLY    = "Shinshi.Server.dll";
         private const string COMPILE_CHECK_ROOT = "Temp/ShinshiCompileCheck";
 
@@ -56,6 +58,24 @@ namespace Shinshi.Editor
             ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_DevMovementScenes = { DEV_MOVEMENT_SCENE_PATH };
+
+        // 네트워크 없이 보스 패턴과 UI 화면을 확인하는 개발 씬 묶음. 서버 접속 없이 한 실행 파일에서 고르며(DevTestScenePicker),
+        // 보스 시험 장치가 Shinshi.Server에 있어 SHINSHI_DEV_TEST로 그 어셈블리를 클라이언트 빌드에 넣는다
+        private static readonly string[] G_DevTestScenes     = {
+            "Assets/00.Scenes/Dev_AI/Dev_BossMucheol.unity",
+            "Assets/00.Scenes/Dev_AI/Dev_BossMucheolPhase2.unity",
+            "Assets/00.Scenes/Dev_AI/Dev_BossWolbaek.unity",
+            "Assets/00.Scenes/Dev_AI/Dev_BossWolbaekBarrier.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_CombatHud.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_ItemSlot.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_Result.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_SortiePrep.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_ToastMessage.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_Trade.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_Auction.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_ChaSelect.unity" };
+        private static readonly string[] G_DevTestDefines    = { DEV_TEST_DEFINE };
 
         /****************************************
         *                 Menu
@@ -90,6 +110,12 @@ namespace Shinshi.Editor
         private static void BuildDevMovementServerMenu()
         {
             Build(TARGET_WINDOWS_SERVER, true, G_DevMovementScenes);
+        }
+
+        [MenuItem(MENU_ROOT + "Dev Test/Windows Boss and UI Scenes (Development)")]
+        private static void BuildDevTestMenu()
+        {
+            Build(TARGET_WINDOWS_DEVTEST, true);
         }
 
         [MenuItem(MENU_ROOT + "Check Client Compile")]
@@ -132,6 +158,11 @@ namespace Shinshi.Editor
 
         public static bool Build(string targetName, bool development)
         {
+            if (targetName == TARGET_WINDOWS_DEVTEST)
+            {
+                return Build(targetName, true, G_DevTestScenes, G_DevTestDefines);
+            }
+
             bool server = (targetName == TARGET_WINDOWS_SERVER) || (targetName == TARGET_LINUX_SERVER);
             return Build(targetName, development, server ? G_ServerScenes : G_ClientScenes);
         }
@@ -143,6 +174,11 @@ namespace Shinshi.Editor
         }
 
         private static bool Build(string targetName, bool development, string[] scenes)
+        {
+            return Build(targetName, development, scenes, Array.Empty<string>());
+        }
+
+        private static bool Build(string targetName, bool development, string[] scenes, string[] extraDefines)
         {
             if (!TryResolveTarget(targetName, out BuildTarget target, out StandaloneBuildSubtarget subtarget, out string extension))
             {
@@ -157,7 +193,8 @@ namespace Shinshi.Editor
                 targetGroup      = BuildTargetGroup.Standalone,
                 subtarget        = (int)subtarget,
                 locationPathName = Path.Combine(OUTPUT_ROOT, targetName, PRODUCT_NAME + extension),
-                options          = development ? BuildOptions.Development : BuildOptions.None
+                options          = development ? BuildOptions.Development : BuildOptions.None,
+                extraScriptingDefines = extraDefines
             };
 
             // 서버 빌드는 에디터의 대상 하위 설정을 Server로 바꿔 둔다. 그대로 두면 에디터가 UNITY_SERVER로 컴파일돼
@@ -235,6 +272,7 @@ namespace Shinshi.Editor
             switch (name)
             {
                 case TARGET_WINDOWS_CLIENT:
+                case TARGET_WINDOWS_DEVTEST:
                     target    = BuildTarget.StandaloneWindows64;
                     subtarget = StandaloneBuildSubtarget.Player;
                     extension = WINDOWS_EXTENSION;
