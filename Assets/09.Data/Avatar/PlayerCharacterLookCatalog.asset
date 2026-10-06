@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa69615f35dfa654082c1f88a593606d, type: 3}
+  m_Name: PlayerCharacterLookCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerCharacterLookCatalogSO
+  _prefab: {fileID: 5674798817702660991, guid: 2e2d1b2d2280eea439af7d28749c51f1, type: 3}
+  _controller: {fileID: 9100000, guid: 73f6052471cc88b4c8bdf2a9d6a4da39, type: 2}
+  _femaleSkins:
+  - {fileID: 2100000, guid: a41028037e1cb5443a44ca23c2ed7ff8, type: 2}
+  - {fileID: 2100000, guid: 5a6157076c5a9f44ebc65359df313dd0, type: 2}
+  - {fileID: 2100000, guid: ca71f982051eebc4ab206e4762dd04be, type: 2}
+  _maleSkins:
+  - {fileID: 2100000, guid: d7c03fe114f426e4dbb755fd5cc74c9f, type: 2}
+  - {fileID: 2100000, guid: e19bf9d1d84df774aafcfc5478045979, type: 2}
+  - {fileID: 2100000, guid: bd4188b1fbfa62e4c8c8b22e43076eb6, type: 2}
+  _eyes:
+  - {fileID: 2100000, guid: 1c70834e053d31743aa120b095db7cb0, type: 2}
+  - {fileID: 2100000, guid: cb5b8040ef629054c89b9593eab56994, type: 2}
+  - {fileID: 2100000, guid: 6380c1e22111dd84abf16eeb2abd8e00, type: 2}
+  - {fileID: 2100000, guid: cd41074201413b54c959ed0999e98cbe, type: 2}
+  - {fileID: 2100000, guid: cee0790eb6c4e6b418e774a5ef253afe, type: 2}
+  _hairColors:
+  - {fileID: 2100000, guid: a531cc1d78335464797ff12640efb05f, type: 2}
+  - {fileID: 2100000, guid: c0fc72baaa3711b4584931de79762810, type: 2}
+  - {fileID: 2100000, guid: 29b3813306d88c44a915e8d57d1ca06f, type: 2}
+  - {fileID: 2100000, guid: 7dd2894216d241c4b910d012806c79b1, type: 2}
+  - {fileID: 2100000, guid: 9820aab8b9ed38e43a8028812eef0759, type: 2}
+  - {fileID: 2100000, guid: d68cd482cb2f6f64a8e6713c36e86d07, type: 2}
+  - {fileID: 2100000, guid: d60e7b549087f024cad31ed964a8df68, type: 2}
+  - {fileID: 2100000, guid: acf3c01dac20f9f45b942daf862548c1, type: 2}
+  - {fileID: 2100000, guid: 93fd76dd11606a4439279641b754baa2, type: 2}
+  _bustScales:
+  - {x: 0.85, y: 0.8, z: 0.85}
+  - {x: 1, y: 1, z: 1}
+  - {x: 1.2, y: 1.2, z: 1.2}
+  _faceEmotions:
+  - P09_Facial_Neutoral
+  - P09_Facial_Damage
+  - P09_Facial_Failed
+  - P09_Facial_Fierce
+  - P09_Facial_Fun
+  - P09_Facial_Jito
+  - P09_Facial_Sad
+  - P09_Facial_Sharp
+  - P09_Facial_Smile
+  - P09_Facial_Surprised

@@ -750,6 +750,149 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(1, host.Characters.DeleteCalls);
         }
 
+        // v2는 등록된 face/hair/outfit과 중립 슬라이더/색까지 엄격히 본다. 목록 바깥 ID, 비중립 슬라이더/피부/색,
+        // 미지의 직업은 모두 저장소를 부르기 전에 400으로 거절된다
+        [Fact]
+        public async Task CharacterCreate_V2StrictCatalogRejectsOutOfRangePartsNonNeutralValuesAndUnknownClass_Returns400BeforeRepository()
+        {
+            using AccountApiHost host = new AccountApiHost();
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+
+            (string Label, int ClassId, CharacterAppearance Appearance)[] cases =
+            {
+                ("Face0", ContractCodes.PlayerClass.WARRIOR, CharacterAppearanceCatalog.Create(0,
+                    CharacterAppearanceCatalog.HAIR_WARRIOR, CharacterAppearanceCatalog.OUTFIT_WARRIOR)),
+                ("Face2", ContractCodes.PlayerClass.WARRIOR, CharacterAppearanceCatalog.Create(2,
+                    CharacterAppearanceCatalog.HAIR_WARRIOR, CharacterAppearanceCatalog.OUTFIT_WARRIOR)),
+                ("Hair0", ContractCodes.PlayerClass.WARRIOR, CharacterAppearanceCatalog.Create(
+                    CharacterAppearanceCatalog.FACE_CUTE, 0, CharacterAppearanceCatalog.OUTFIT_WARRIOR)),
+                ("Hair4", ContractCodes.PlayerClass.WARRIOR, CharacterAppearanceCatalog.Create(
+                    CharacterAppearanceCatalog.FACE_CUTE, 4, CharacterAppearanceCatalog.OUTFIT_WARRIOR)),
+                ("Outfit0", ContractCodes.PlayerClass.WARRIOR, CharacterAppearanceCatalog.Create(
+                    CharacterAppearanceCatalog.FACE_CUTE, CharacterAppearanceCatalog.HAIR_WARRIOR, 0)),
+                ("Outfit4", ContractCodes.PlayerClass.WARRIOR, CharacterAppearanceCatalog.Create(
+                    CharacterAppearanceCatalog.FACE_CUTE, CharacterAppearanceCatalog.HAIR_WARRIOR, 4)),
+                ("FaceSlider", ContractCodes.PlayerClass.WARRIOR,
+                    V2Appearance(face: MutatedSliders(CharacterAppearance.FACE_SLIDER_COUNT))),
+                ("BodySlider", ContractCodes.PlayerClass.WARRIOR,
+                    V2Appearance(body: MutatedSliders(CharacterAppearance.BODY_SLIDER_COUNT))),
+                ("SkinTone", ContractCodes.PlayerClass.WARRIOR,
+                    V2Appearance(skinTone: CharacterAppearance.SLIDER_NEUTRAL - 1)),
+                ("EyeColor", ContractCodes.PlayerClass.WARRIOR, V2Appearance(eyeColor: 1)),
+                ("UnknownClass", 9, V2Appearance()),
+            };
+
+            for (int i = 0; i < cases.Length; ++i)
+            {
+                (string label, int classId, CharacterAppearance appearance) = cases[i];
+                using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "Ext" + i, classId, appearance)));
+                Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+                Assert.Equal(ContractCodes.RejectReason.INVALID_APPEARANCE,
+                    AccountApiHost.Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
+            }
+
+            Assert.Equal(0, host.Characters.CreateCalls);
+        }
+
+        // 허용된 v3(P09) 외형은 검증을 통과해 저장소까지 간다. 대역 저장소는 슬롯 부족(409)으로 답하므로
+        // 400이 아니고 저장소 호출 1회와 v3 JSON 전달로 통과를 확인한다
+        [Theory]
+        [InlineData(ContractCodes.PlayerClass.WARRIOR, CharacterAppearance.BODY_TYPE_FEMALE, 1, 1, 1, 1, 1, 0, 2, 31)]
+        [InlineData(ContractCodes.PlayerClass.SORCERER, CharacterAppearance.BODY_TYPE_FEMALE, 3, 3, 9, 5, 3, 0, 3, 0)]
+        [InlineData(ContractCodes.PlayerClass.SUMMONER, CharacterAppearance.BODY_TYPE_MALE, 2, 2, 4, 2, 2, 8, 0, 21)]
+        [InlineData(ContractCodes.PlayerClass.WARRIOR, CharacterAppearance.BODY_TYPE_MALE, 1, 3, 1, 1, 1, 0, 0, 31)]
+        public async Task CharacterCreate_V3AllowedAppearance_ReachesRepository(int classId, int bodyType, int faceId, int hairId,
+            int hairColor, int eyeColor, int skinTone, int facialHair, int bustSize, int outfitMask)
+        {
+            using AccountApiHost host = new AccountApiHost();
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+            CharacterAppearance appearance = CharacterAppearanceCatalog.CreateP09(bodyType, faceId, hairId, hairColor, eyeColor,
+                skinTone, facialHair, bustSize, outfitMask);
+            Assert.True(CharacterAppearanceCatalog.IsAllowed(classId, appearance));
+
+            using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, appearance)));
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal(1, host.Characters.CreateCalls);
+            CharacterAppearance forwarded = AccountApiHost.Read<CharacterAppearance>(host.Characters.LastAppearanceJson!);
+            Assert.Equal(CharacterAppearance.VERSION_3, forwarded.Version);
+            Assert.True(appearance.ContentEquals(forwarded));
+        }
+
+        [Fact]
+        public async Task CharacterCreate_V3RejectsOutOfRangeGenderMismatchAndNonCanonicalValues_Returns400BeforeRepository()
+        {
+            using AccountApiHost host = new AccountApiHost();
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+            const int FEMALE = CharacterAppearance.BODY_TYPE_FEMALE;
+            const int MALE   = CharacterAppearance.BODY_TYPE_MALE;
+
+            (string Label, CharacterAppearance Appearance)[] cases =
+            {
+                ("Face0", CharacterAppearanceCatalog.CreateP09(FEMALE, 0, 1, 1, 1, 1, 0, 2, 31)),
+                ("Face4", CharacterAppearanceCatalog.CreateP09(FEMALE, 4, 1, 1, 1, 1, 0, 2, 31)),
+                ("Hair0", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 0, 1, 1, 1, 0, 2, 31)),
+                ("Hair4", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 4, 1, 1, 1, 0, 2, 31)),
+                ("HairColor0", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 0, 1, 1, 0, 2, 31)),
+                ("HairColor10", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 10, 1, 1, 0, 2, 31)),
+                ("Eye0", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 0, 1, 0, 2, 31)),
+                ("Eye6", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 6, 1, 0, 2, 31)),
+                ("Skin0", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 1, 0, 0, 2, 31)),
+                ("Skin4", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 1, 4, 0, 2, 31)),
+                ("Outfit32", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 1, 1, 0, 2, 32)),
+                ("MaleBust", CharacterAppearanceCatalog.CreateP09(MALE, 1, 1, 1, 1, 1, 0, 2, 31)),
+                ("MaleFacialHair9", CharacterAppearanceCatalog.CreateP09(MALE, 1, 1, 1, 1, 1, 9, 0, 31)),
+                ("FemaleFacialHair", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 1, 1, 1, 2, 31)),
+                ("FemaleNoBust", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 1, 1, 0, 0, 31)),
+                ("FemaleBust4", CharacterAppearanceCatalog.CreateP09(FEMALE, 1, 1, 1, 1, 1, 0, 4, 31)),
+                ("BodyType2", CharacterAppearanceCatalog.CreateP09(2, 1, 1, 1, 1, 1, 0, 2, 31)),
+                ("BrowColor", new CharacterAppearance(CharacterAppearance.VERSION_3, FEMALE,
+                    NeutralSliders(CharacterAppearance.FACE_SLIDER_COUNT), NeutralSliders(CharacterAppearance.BODY_SLIDER_COUNT),
+                    1, 1, 1, 0, 1, 1, 1, 31, 0, 2)),
+                ("FaceSlider", new CharacterAppearance(CharacterAppearance.VERSION_3, FEMALE,
+                    MutatedSliders(CharacterAppearance.FACE_SLIDER_COUNT), NeutralSliders(CharacterAppearance.BODY_SLIDER_COUNT),
+                    1, 1, 0, 0, 1, 1, 1, 31, 0, 2)),
+                ("Version4", new CharacterAppearance(CharacterAppearance.CURRENT_VERSION + 1, FEMALE,
+                    NeutralSliders(CharacterAppearance.FACE_SLIDER_COUNT), NeutralSliders(CharacterAppearance.BODY_SLIDER_COUNT),
+                    1, 1, 0, 0, 1, 1, 1, 31, 0, 2)),
+            };
+
+            for (int i = 0; i < cases.Length; ++i)
+            {
+                (string label, CharacterAppearance appearance) = cases[i];
+                using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "Ext" + i, ContractCodes.PlayerClass.WARRIOR, appearance)));
+                Assert.True(HttpStatusCode.BadRequest == response.StatusCode, label);
+                Assert.True(ContractCodes.RejectReason.INVALID_APPEARANCE
+                    == AccountApiHost.Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode, label);
+            }
+
+            Assert.Equal(0, host.Characters.CreateCalls);
+        }
+
+        // 기존 v2 요청의 재시도를 위해 v2도 계속 받는다
+        [Fact]
+        public async Task CharacterCreate_V2StillAccepted_ReachesRepositoryWithV2Appearance()
+        {
+            using AccountApiHost host = new AccountApiHost();
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+
+            using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.WARRIOR,
+                    CharacterTestData.AppearanceV2(CharacterAppearanceCatalog.FACE_CUTE, 2, 3))));
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal(1, host.Characters.CreateCalls);
+            Assert.Equal(CharacterAppearance.VERSION_2,
+                AccountApiHost.Read<CharacterAppearance>(host.Characters.LastAppearanceJson!).Version);
+        }
+
         [Fact]
         public async Task SignupLoginAndPasswordChange_NeverLogPasswordText()
         {
@@ -805,6 +948,37 @@ namespace Shinshi.Backend.Tests.Accounts
                 + "?name=" + Uri.EscapeDataString(name));
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             return AccountApiHost.Read<AvailabilityResponse>(await response.Content.ReadAsStringAsync());
+        }
+
+        // 기본은 전부 중립인 v2 외형. 지정한 값만 바꿔 거절 사례를 만든다
+        private static CharacterAppearance V2Appearance(int[]? face = null, int[]? body = null,
+            int skinTone = CharacterAppearance.SLIDER_NEUTRAL, int eyeColor = CharacterAppearance.VALUE_MIN,
+            int browColor = CharacterAppearance.VALUE_MIN, int lipColor = CharacterAppearance.VALUE_MIN,
+            int hairId = CharacterAppearanceCatalog.HAIR_WARRIOR, int hairColor = CharacterAppearance.VALUE_MIN,
+            int faceId = CharacterAppearanceCatalog.FACE_CUTE, int outfitId = CharacterAppearanceCatalog.OUTFIT_WARRIOR)
+        {
+            return new CharacterAppearance(CharacterAppearance.VERSION_2, CharacterAppearance.BODY_TYPE_FEMALE,
+                face ?? NeutralSliders(CharacterAppearance.FACE_SLIDER_COUNT),
+                body ?? NeutralSliders(CharacterAppearance.BODY_SLIDER_COUNT), skinTone, eyeColor, browColor, lipColor,
+                hairId, hairColor, faceId, outfitId);
+        }
+
+        private static int[] NeutralSliders(int count)
+        {
+            int[] values = new int[count];
+            for (int i = 0; i < count; ++i)
+            {
+                values[i] = CharacterAppearance.SLIDER_NEUTRAL;
+            }
+
+            return values;
+        }
+
+        private static int[] MutatedSliders(int count)
+        {
+            int[] values = NeutralSliders(count);
+            values[0] = CharacterAppearance.SLIDER_NEUTRAL - 1;
+            return values;
         }
     }
 }

@@ -885,12 +885,13 @@ namespace Shinshi.Combat
                 || (shape == EBossTelegraphShape.Line);
         }
 
-        // 보스 ID로 팩토리를 고른다. 무철 외의 ID는 월백 팩토리로 두어 기존 월백 경로와 시험 보스 정의가 그대로 돈다
+        // 보스 ID로 팩토리를 고른다. 무철 외의 ID는 월백 팩토리로 두어 기존 월백 경로와 시험 보스 정의가 그대로 돈다.
+        // 무철의 2연타(P05)와 돌진(P06)은 이 서버가 아직 연타 예고, 돌진 구조물 수신자를 구현하지 않아 넘기지 않으며 팩토리가 고르지 않는다
         private IBossPatternFactory CreatePatterns(string bossId, float referenceHealth)
         {
             if (bossId == MucheolPatternFactory.BOSS_ID)
             {
-                return new MucheolPatternFactory();
+                return new MucheolPatternFactory(referenceHealth, this, this, this, this);
             }
 
             return new WolbaekPatternFactory(referenceHealth, this, this, this, this, this, _projectiles, this,

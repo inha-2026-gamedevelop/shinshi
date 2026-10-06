@@ -220,16 +220,17 @@ namespace Shinshi.Data.Auth
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             return AuthValidationOutcome<JoinAuthIdentity>.Success(new JoinAuthIdentity(consumed.AccountId,
                 consumed.CharacterId, character.ClassId, Guid.Empty, Guid.Empty, consumed.InstanceId, UnixMilliseconds(now),
-                accountLeaseId, character.Name));
+                accountLeaseId, character.Name, appearanceJson: character.Appearance));
         }
 
-        // 계정 소유 캐릭터를 잠그고 직업과 표시 이름을 돌려준다, 소유하지 않으면 null
+        // 계정 소유 캐릭터를 잠그고 직업, 닉네임, 외형 원문을 돌려준다, 소유하지 않으면 null.
+        // name/appearance는 레거시 행에서 NULL일 수 있고, 그 NULL 자체가 표시 resolver가 읽는 유효한 값이다
         private static Task<JoinCharacterRow?> LockOwnedCharacterAsync(NpgsqlConnection connection,
             NpgsqlTransaction transaction, Guid accountId, Guid characterId, CancellationToken token)
         {
             return connection.QuerySingleOrDefaultAsync<JoinCharacterRow>(Command(
                 """
-                SELECT class_id AS "ClassId", name AS "Name" FROM characters
+                SELECT class_id AS "ClassId", name AS "Name", appearance::text AS "Appearance" FROM characters
                 WHERE account_id = @AccountId AND character_id = @CharacterId AND deleted_at IS NULL FOR SHARE;
                 """,
                 new { AccountId = accountId, CharacterId = characterId }, transaction, token));

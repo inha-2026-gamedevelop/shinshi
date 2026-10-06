@@ -90,6 +90,7 @@ namespace Shinshi.Combat
         ****************************************/
 
         public PlayerInputState      InputState      => _input;
+        public PlayerCombatState     Combat          => _combat;
         public int                   CombatId        => _combatId;
         public int                   ParticipantId   => _participantId;
         public EPlayerClass          PlayerClass     => _playerClass;
@@ -854,6 +855,8 @@ namespace Shinshi.Combat
                 CancelSkillForDodge();
             }
 
+            _combat.BumpDodgeSequence();
+
             _hasPendingMove   = false;
             _hasPendingAttack = false;
             _path.Stop();
@@ -909,6 +912,11 @@ namespace Shinshi.Combat
             bool    isMoving = (_path.IsMoving) || (_isDodging);
             Vector3 position = _transform.position;
 
+            // 관찰자용 공개 속도는 Transform 차분이 아니라 서버가 직접 공개한다(NETWORK_AUTHORITY 5.5 함정5).
+            // 아래 조기 반환과 무관하게 매번 최신 값으로 둔다
+            float locomotionSpeed = _isDodging ? (_dodgeDistance / _dodgeDuration) : ((_path.IsMoving) ? _moveSpeed : 0f);
+            _combat.SetLocomotionSpeed(locomotionSpeed);
+
             // 멈춘 채 그대로면 경과 시간도 멈춘 시점 값으로 둔다. 매 틱 바꾸면 서 있는 동안에도 계속 전송된다
             if ((_publishedMove.IsValid) && (!isMoving) && (!_publishedMove.IsMoving)
                 && (_publishedMove.MoveSequence == _moveSequence) && (_publishedMove.Position == position))
@@ -923,6 +931,9 @@ namespace Shinshi.Combat
 
         private void ExecuteBasicAttack(Vector3 aim)
         {
+            // 맞힐 대상이 없어도 휘두르는 모습은 보여야 하므로 판정 전에 올린다
+            _combat.BumpAttackSequence();
+
             Vector3 origin   = _transform.position;
             float   range    = _attack.Range;
             bool    isRanged = _attack.ArcAngle <= 0f;

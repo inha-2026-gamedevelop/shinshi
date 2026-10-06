@@ -9,6 +9,7 @@ using Mirror;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Contracts;
 
 namespace Shinshi.Combat
 {
@@ -38,8 +39,15 @@ namespace Shinshi.Combat
         private EPlayerClass _playerClass = EPlayerClass.Warrior;
         [SyncVar] private int _combatId;
 
-        // 머리 위 이름. 서버가 세션 결합의 캐릭터 이름(API 교환 응답)으로 한 번 정한다. 없으면 빈 값이다
-        [SyncVar] private string _displayName = string.Empty;
+        // DB 인증 닉네임과 정규 v2 외형, 명시적 레거시 캐릭터는 둘 다 null이다(TryResolve가 직업 기본값에 대응시킨다).
+        // 최초 스폰 전과 기존 개체 재결합 양쪽에서 서버만 SetPublicIdentity로 채운다
+        [SyncVar(hook = nameof(OnCharacterNameChanged))]
+        private string _characterName;
+        [SyncVar(hook = nameof(OnAppearanceChanged))]
+        private CharacterAppearance _appearance;
+
+        // 관찰자용 공개 이동 속도, Transform 차분이 아니라 서버가 직접 공개한다(NETWORK_AUTHORITY 5.5 함정5)
+        [SyncVar] private float _locomotionSpeed;
 
         [SyncVar] private float _energy;
         [SyncVar] private float _maxEnergy;
@@ -54,6 +62,11 @@ namespace Shinshi.Combat
         [SyncVar] private Vector3 _skillPoint;
         [SyncVar] private double _skillResolveAt;
 
+        // 관찰자에게 기본 공격과 회피 모션을 보이기 위한 표현 전용 순번이다. 서버가 행동을 시작할 때마다 1씩 올리고(255 다음 0)
+        // 클라이언트는 값이 바뀌었는지만 본다. 서버 판정은 이 값을 읽지 않는다
+        [SyncVar] private byte _attackSequence;
+        [SyncVar] private byte _dodgeSequence;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -64,7 +77,8 @@ namespace Shinshi.Combat
         public ushort                FacingYaw   => _facingYaw;
         public EPlayerClass          PlayerClass => _playerClass;
         public int CombatId => _combatId;
-        public string DisplayName => _displayName;
+        // 머리 위 이름. DB 인증 닉네임이며 이름이 없는 레거시 캐릭터면 빈 값이다
+        public string DisplayName => _characterName ?? string.Empty;
         public float Energy => _energy;
         public float MaxEnergy => _maxEnergy;
         public float Resonance => _resonance;
@@ -77,11 +91,18 @@ namespace Shinshi.Combat
         public Vector3 SkillAim => _skillAim;
         public Vector3 SkillPoint => _skillPoint;
         public double SkillResolveAt => _skillResolveAt;
+        public string CharacterName => _characterName;
+        public CharacterAppearance Appearance => _appearance;
+        public float LocomotionSpeed => _locomotionSpeed;
+        public byte AttackSequence => _attackSequence;
+        public byte DodgeSequence => _dodgeSequence;
 
         // 전용 서버에서는 hook이 불리지 않으므로 표현과 UI만 구독한다
         public event Action<float, float>           HealthChanged;
         public event Action<EParticipantLifeState> LifeStateChanged;
         public event Action<EPlayerClass>          PlayerClassChanged;
+        public event Action<string>                CharacterNameChanged;
+        public event Action<CharacterAppearance>   AppearanceChanged;
 
         /****************************************
         *                Server
@@ -116,10 +137,20 @@ namespace Shinshi.Combat
         [Server]
         public void SetCombatId(int combatId) { _combatId = combatId; }
 
+        // 최초 스폰 전(CombatServerRuntime.AddPlayer)과 기존 개체 재결합(TryReattachPlayer) 양쪽에서 부른다.
+        // 클라이언트가 보낸 값이 아니라 DB 인증 토큰 claims/binding이 가진 값만 쓴다
         [Server]
-        public void SetDisplayName(string displayName)
+        public void SetPublicIdentity(string characterName, CharacterAppearance appearance)
         {
-            _displayName = displayName ?? string.Empty;
+            _characterName = characterName;
+            _appearance    = appearance;
+        }
+
+        // Transform 차분이 아니라 서버가 직접 공개한다. PlayerServer.PublishMovement가 조기 반환 앞에서 부른다
+        [Server]
+        public void SetLocomotionSpeed(float locomotionSpeed)
+        {
+            _locomotionSpeed = locomotionSpeed;
         }
 
         [Server]
@@ -128,6 +159,18 @@ namespace Shinshi.Combat
             _energy = energy;
             _maxEnergy = maxEnergy;
             _resonance = resonance;
+        }
+
+        [Server]
+        public void BumpAttackSequence()
+        {
+            _attackSequence = unchecked((byte)(_attackSequence + 1));
+        }
+
+        [Server]
+        public void BumpDodgeSequence()
+        {
+            _dodgeSequence = unchecked((byte)(_dodgeSequence + 1));
         }
 
         [Server]
@@ -167,6 +210,16 @@ namespace Shinshi.Combat
         private void OnPlayerClassChanged(EPlayerClass previous, EPlayerClass next)
         {
             PlayerClassChanged?.Invoke(next);
+        }
+
+        private void OnCharacterNameChanged(string previous, string next)
+        {
+            CharacterNameChanged?.Invoke(next);
+        }
+
+        private void OnAppearanceChanged(CharacterAppearance previous, CharacterAppearance next)
+        {
+            AppearanceChanged?.Invoke(next);
         }
     }
 }

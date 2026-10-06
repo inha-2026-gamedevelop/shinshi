@@ -48,7 +48,13 @@ namespace Shinshi.Backend.Tests.Auth
         public async Task Exchange_ReservationIssuerAndRenewedDungeonLease_ReturnsSharedContractExactlyOnce()
         {
             await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
-            Fixture fixture = await SeedAsync(database, ContractCodes.PlayerClass.SUMMONER);
+            // 헤어/의상은 직업과 독립이다. 소환사(SUMMONER) 캐릭터에 자기 직업 기본 의상이 아닌 조합을 심어
+            // 교환 응답이 직업 기본값이 아니라 DB에 저장된 그대로의 닉네임/외형을 돌려주는지 가린다
+            const string OWNED_NAME = "서버검증";
+            CharacterAppearance ownedAppearance = CharacterAppearanceCatalog.Create(CharacterAppearanceCatalog.FACE_CUTE,
+                CharacterAppearanceCatalog.HAIR_SUMMONER, CharacterAppearanceCatalog.OUTFIT_SORCERER);
+            Fixture fixture = await SeedAsync(database, ContractCodes.PlayerClass.SUMMONER, OWNED_NAME,
+                JsonConvert.SerializeObject(ownedAppearance, ContractJson.CreateSettings()));
             IssuedAuthToken invite = await fixture.Auth.IssueInviteAsync(fixture.AccountId);
             AuthExchangeResponse login = (await fixture.Auth.ExchangeInviteAsync(invite.Token)).Response!;
             using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options);
@@ -90,9 +96,9 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(ticket.ParticipantId, result.ParticipantId);
             Assert.Equal(reservation.SessionId, result.SortieId);
             Assert.True(result.ServerTimeUnixMs >= ticket.ServerTimeUnixMs);
-            Assert.Equal(new[] { "accountId", "accountLeaseId", "battleId", "bossId", "characterId", "characterName", "classId",
-                    "combatLoadout", "difficulty", "instanceId", "mapId", "mode", "participantId", "potions", "serverRole",
-                    "serverTimeUnixMs", "sortieId" },
+            Assert.Equal(new[] { "accountId", "accountLeaseId", "appearance", "battleId", "bossId", "characterId", "characterName",
+                    "classId", "combatLoadout", "difficulty", "instanceId", "mapId", "mode", "participantId", "potions",
+                    "serverRole", "serverTimeUnixMs", "sortieId" },
                 JObject.Parse(responseBody).Properties().Select(property => property.Name).OrderBy(name => name).ToArray());
             Assert.Null(result.AccountLeaseId);
 
@@ -115,6 +121,12 @@ namespace Shinshi.Backend.Tests.Auth
             // 물약을 지참하지 않았으면 남은 예약분은 null이 아니라 빈 배열이다. 던전은 null을 모르는 API로 본다
             Assert.NotNull(result.Potions);
             Assert.Empty(result.Potions);
+
+            // 던전 입장도 DB 소유 캐릭터의 닉네임과 외형 원문을 그대로 전달한다. 직업 기본값으로 대체하지 않는다
+            Assert.Equal(OWNED_NAME, result.CharacterName);
+            CharacterAppearance returnedAppearance = JsonConvert.DeserializeObject<CharacterAppearance>(
+                result.AppearanceJson!, ContractJson.CreateSettings())!;
+            Assert.True(ownedAppearance.ContentEquals(returnedAppearance));
 
             using HttpResponseMessage replay = await dungeon.PostAsync(JoinApiRoutes.JOIN_TOKEN_EXCHANGE, Body(request));
             Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
@@ -154,6 +166,102 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(ContractCodes.PlayerClass.SORCERER, result.ClassId);
             Assert.Null(result.ParticipantId);
             Assert.NotNull(result.AccountLeaseId);
+        }
+
+        // 마을 입장은 세 저장 형태(명시 레거시 null, v1, v2) 모두 DB 소유 캐릭터의 닉네임/외형 원문을 그대로 전달하고,
+        // 다른 계정의 값과 섞이지 않는다. consumed once 조건은 위 던전 테스트의 재전송 단언이 같은 경로로 이미 지킨다
+        [PostgresFact]
+        public async Task Exchange_TownJoinToken_PassesThroughOwnedNameAndAppearanceAcrossStorageVariantsWithoutCrossAccountLeak()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture legacy = await SeedAsync(database, ContractCodes.PlayerClass.WARRIOR);
+            CharacterAppearance v1Appearance = new CharacterAppearance(CharacterAppearance.VERSION_1,
+                CharacterAppearance.BODY_TYPE_FEMALE,
+                Enumerable.Repeat(CharacterAppearance.SLIDER_NEUTRAL, CharacterAppearance.FACE_SLIDER_COUNT).ToArray(),
+                Enumerable.Repeat(CharacterAppearance.SLIDER_NEUTRAL, CharacterAppearance.BODY_SLIDER_COUNT).ToArray(),
+                10, 1, 2, 3, 4, 5);
+            const string V1_NAME = "구닉네임";
+            Fixture v1 = await SeedAsync(database, ContractCodes.PlayerClass.SORCERER, V1_NAME,
+                JsonConvert.SerializeObject(v1Appearance, ContractJson.CreateSettings()));
+            const string OTHER_NAME = "다른계정";
+            CharacterAppearance otherAppearance = CharacterAppearanceCatalog.CreateDefault(ContractCodes.PlayerClass.WARRIOR);
+            Fixture other = await SeedAsync(database, ContractCodes.PlayerClass.WARRIOR, OTHER_NAME,
+                JsonConvert.SerializeObject(otherAppearance, ContractJson.CreateSettings()));
+
+            // 시험 시드는 예약 검사용 계정 임대를 미리 넣어 두므로, 마을 입장 교환이 임대를 새로 얻도록 지운다
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync("DELETE FROM account_leases WHERE account_id IN (@A,@B,@C);",
+                new { A = legacy.AccountId, B = v1.AccountId, C = other.AccountId });
+
+            JoinTokenExchangeResponse legacyResult = await ExchangeTownAsync(database, legacy);
+            JoinTokenExchangeResponse v1Result = await ExchangeTownAsync(database, v1);
+            JoinTokenExchangeResponse otherResult = await ExchangeTownAsync(database, other);
+
+            Assert.Null(legacyResult.CharacterName);
+            Assert.Null(legacyResult.AppearanceJson);
+
+            Assert.Equal(V1_NAME, v1Result.CharacterName);
+            CharacterAppearance storedV1 = JsonConvert.DeserializeObject<CharacterAppearance>(v1Result.AppearanceJson!,
+                ContractJson.CreateSettings())!;
+            Assert.True(v1Appearance.ContentEquals(storedV1));
+
+            Assert.Equal(OTHER_NAME, otherResult.CharacterName);
+            CharacterAppearance storedOther = JsonConvert.DeserializeObject<CharacterAppearance>(
+                otherResult.AppearanceJson!, ContractJson.CreateSettings())!;
+            Assert.True(otherAppearance.ContentEquals(storedOther));
+
+            // 다른 계정 소유 캐릭터의 교환 응답이 섞이지 않았다
+            Assert.NotEqual(v1Result.CharacterId, otherResult.CharacterId);
+            Assert.NotEqual(v1Result.CharacterName, otherResult.CharacterName);
+            Assert.NotEqual(v1Result.AppearanceJson, otherResult.AppearanceJson);
+        }
+
+        // v3(P09) 외형은 성별과 수염, 가슴 크기, 장비 비트까지 가공 없이 입장 교환 응답에 실려야 한다
+        [PostgresFact]
+        public async Task Exchange_TownJoinToken_PassesThroughStoredV3AppearanceUnchanged()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            CharacterAppearance male = CharacterAppearanceCatalog.CreateP09(CharacterAppearance.BODY_TYPE_MALE, 2, 3, 7, 4, 3, 6, 0, 21);
+            CharacterAppearance female = CharacterAppearanceCatalog.CreateP09(CharacterAppearance.BODY_TYPE_FEMALE, 3, 2, 8, 3, 1, 0, 3, 5);
+            Assert.True(CharacterAppearanceCatalog.IsAllowed(ContractCodes.PlayerClass.SUMMONER, male));
+            Assert.True(CharacterAppearanceCatalog.IsAllowed(ContractCodes.PlayerClass.SORCERER, female));
+            Fixture maleFixture = await SeedAsync(database, ContractCodes.PlayerClass.SUMMONER, "남성외형",
+                JsonConvert.SerializeObject(male, ContractJson.CreateSettings()));
+            Fixture femaleFixture = await SeedAsync(database, ContractCodes.PlayerClass.SORCERER, "여성외형",
+                JsonConvert.SerializeObject(female, ContractJson.CreateSettings()));
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync("DELETE FROM account_leases WHERE account_id IN (@A,@B);",
+                new { A = maleFixture.AccountId, B = femaleFixture.AccountId });
+
+            JoinTokenExchangeResponse maleResult = await ExchangeTownAsync(database, maleFixture);
+            JoinTokenExchangeResponse femaleResult = await ExchangeTownAsync(database, femaleFixture);
+
+            CharacterAppearance maleBack = JsonConvert.DeserializeObject<CharacterAppearance>(maleResult.AppearanceJson!,
+                ContractJson.CreateSettings())!;
+            CharacterAppearance femaleBack = JsonConvert.DeserializeObject<CharacterAppearance>(femaleResult.AppearanceJson!,
+                ContractJson.CreateSettings())!;
+            Assert.Equal(CharacterAppearance.VERSION_3, maleBack.Version);
+            Assert.True(male.ContentEquals(maleBack));
+            Assert.Equal(6, maleBack.FacialHair);
+            Assert.True(female.ContentEquals(femaleBack));
+            Assert.Equal(3, femaleBack.BustSize);
+        }
+
+        private static async Task<JoinTokenExchangeResponse> ExchangeTownAsync(PostgresTestDatabase database, Fixture fixture)
+        {
+            using ApiFactory factory = new ApiFactory(database.DataSource, fixture.Options);
+            using HttpClient town = factory.CreateClient();
+            Authorize(town, fixture.TownLease.Token, fixture.TownId);
+            IssuedAuthToken invite = await fixture.Auth.IssueInviteAsync(fixture.AccountId);
+            AuthExchangeResponse login = (await fixture.Auth.ExchangeInviteAsync(invite.Token)).Response!;
+            PlayerAuthIdentity identity = (await fixture.Auth.ValidateAccessAsync(login.AccessToken)).Identity!;
+            IssuedAuthToken joinToken = (await fixture.Auth.IssueTownJoinTokenAsync(identity, fixture.CharacterId,
+                fixture.TownId)).Identity!;
+
+            using HttpResponseMessage exchange = await town.PostAsync(JoinApiRoutes.JOIN_TOKEN_EXCHANGE,
+                Body(new JoinTokenExchangeRequest(joinToken.Token, fixture.TownId.ToString("D"), ContractCodes.ServerRole.TOWN)));
+            Assert.Equal(HttpStatusCode.OK, exchange.StatusCode);
+            return Read<JoinTokenExchangeResponse>(await exchange.Content.ReadAsStringAsync());
         }
 
         [PostgresFact]
@@ -240,15 +348,19 @@ namespace Shinshi.Backend.Tests.Auth
             return reservation;
         }
 
+        // name/appearanceJson을 비워 두면 과거 레거시 행처럼 둘 다 NULL이고, 채우면 그 값으로 실제 저장된 캐릭터를 심는다.
+        // name_key는 CharacterNameRules와 같은 규칙(소문자)으로 맞춰야 characters 테이블의 CHECK를 통과한다
         private static async Task<Fixture> SeedAsync(PostgresTestDatabase database,
-            int classId = ContractCodes.PlayerClass.WARRIOR)
+            int classId = ContractCodes.PlayerClass.WARRIOR, string? name = null, string? appearanceJson = null)
         {
             Fixture fixture = new Fixture(database.DataSource);
+            string? nameKey = (name == null) ? null : name.ToLowerInvariant();
             await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
             await connection.ExecuteAsync(
                 """
                 INSERT INTO accounts(account_id) VALUES (@AccountId);
-                INSERT INTO characters(character_id,account_id,class_id) VALUES (@CharacterId,@AccountId,@Class);
+                INSERT INTO characters(character_id,account_id,class_id,name,name_key,appearance)
+                    VALUES (@CharacterId,@AccountId,@Class,@Name,@NameKey,CAST(@Appearance AS jsonb));
                 INSERT INTO account_wallets(account_id) VALUES (@AccountId);
                 INSERT INTO server_instances(instance_id,role,address,port,build_id,content_version,state,boot_id)
                     VALUES (@TownId,@Town,'127.0.0.1',@TownPort,@Content,@Content,'Idle',@TownBoot),
@@ -256,9 +368,10 @@ namespace Shinshi.Backend.Tests.Auth
                 INSERT INTO account_leases(account_id,lease_id,instance_id,role,expires_at)
                     VALUES (@AccountId,@AccountLease,@TownId,@Town,clock_timestamp() + interval '15 minutes');
                 """, new { fixture.AccountId, fixture.CharacterId, fixture.TownId, fixture.DungeonId,
-                    Class = classId, Town = ContractCodes.ServerRole.TOWN,
-                    Dungeon = ContractCodes.ServerRole.DUNGEON, TownPort = TOWN_PORT, DungeonPort = DUNGEON_PORT,
-                    Content = CONTENT, TownBoot = Guid.NewGuid(), DungeonBoot = Guid.NewGuid(), AccountLease = Guid.NewGuid() });
+                    Class = classId, Name = name, NameKey = nameKey, Appearance = appearanceJson,
+                    Town = ContractCodes.ServerRole.TOWN, Dungeon = ContractCodes.ServerRole.DUNGEON,
+                    TownPort = TOWN_PORT, DungeonPort = DUNGEON_PORT, Content = CONTENT, TownBoot = Guid.NewGuid(),
+                    DungeonBoot = Guid.NewGuid(), AccountLease = Guid.NewGuid() });
             fixture.TownLease = await fixture.Auth.IssueServerLeaseAsync(Guid.NewGuid(), fixture.TownId,
                 ContractCodes.ServerRole.TOWN, TimeSpan.FromMinutes(SERVER_MINUTES));
             fixture.DungeonLease = await fixture.Auth.IssueServerLeaseAsync(Guid.NewGuid(), fixture.DungeonId,

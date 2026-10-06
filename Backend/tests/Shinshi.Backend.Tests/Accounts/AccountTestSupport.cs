@@ -456,6 +456,7 @@ namespace Shinshi.Backend.Tests.Accounts
 
         public HashSet<string> TakenKeys { get; } = new HashSet<string>(StringComparer.Ordinal);
         public int CreateCalls { get; private set; }
+        public string? LastAppearanceJson { get; private set; }
         public int DeleteCalls { get; private set; }
         public Guid? ListedAccountId { get; private set; }
 
@@ -470,6 +471,7 @@ namespace Shinshi.Backend.Tests.Accounts
             int classId, string appearanceJson, string requestJson, CancellationToken cancellationToken = default)
         {
             ++CreateCalls;
+            LastAppearanceJson = appearanceJson;
             // HTTP 테스트는 저장소 앞의 검증과 한도만 본다. 저장소까지 오면 슬롯 부족 거절로 답한다
             return Task.FromResult(new CharacterCreateOutcome(new OperationResult(operationId.ToString("D"),
                 ContractCodes.OperationStatus.REJECTED, ContractCodes.RejectReason.NO_CAPACITY, 0, 0, string.Empty), null));

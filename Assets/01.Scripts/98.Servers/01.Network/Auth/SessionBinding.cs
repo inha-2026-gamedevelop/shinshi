@@ -13,11 +13,12 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        private readonly string       _participantKey;
-        private readonly int          _participantId;
-        private readonly string       _accountLeaseId;
-        private readonly EPlayerClass _playerClass;
-        private readonly string       _characterName;
+        private readonly string              _participantKey;
+        private readonly int                 _participantId;
+        private readonly string              _accountLeaseId;
+        private readonly EPlayerClass        _playerClass;
+        private readonly string              _characterName;
+        private readonly CharacterAppearance _appearance;
 
         /****************************************
         *              Properties
@@ -35,8 +36,11 @@ namespace Shinshi.Network
         // 토큰을 교환한 API가 알려 준 캐릭터 직업, 전투 개체는 이 값으로 만든다. 재접속마다 새 교환에서 다시 받는다
         public EPlayerClass PlayerClass => _playerClass;
 
-        // 머리 위에 띄우는 표시 이름, 없으면 null
+        // DB 인증 닉네임, 명시적 레거시 캐릭터는 null
         public string CharacterName => _characterName;
+
+        // TryResolve가 정규화를 끝낸 외형. 개체의 공개 상태(PlayerCombatState)에 그대로 적용한다
+        public CharacterAppearance Appearance => _appearance;
 
         public bool IsActive { get; internal set; }
 
@@ -63,18 +67,25 @@ namespace Shinshi.Network
         ****************************************/
 
         public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass)
-            : this(participantKey, participantId, accountLeaseId, playerClass, null)
+            : this(participantKey, participantId, accountLeaseId, playerClass, null, null)
         {
         }
 
         public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass,
             string characterName)
+            : this(participantKey, participantId, accountLeaseId, playerClass, characterName, null)
+        {
+        }
+
+        public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass,
+            string characterName, CharacterAppearance appearance)
         {
             _participantKey = participantKey;
             _participantId  = participantId;
             _accountLeaseId = accountLeaseId;
             _playerClass    = playerClass;
             _characterName  = characterName;
+            _appearance     = appearance;
             IsActive        = true;
         }
     }

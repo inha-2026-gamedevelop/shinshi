@@ -7,6 +7,10 @@ using UnityEngine;
 // 서드파티
 using TMPro;
 
+// 프로젝트 내부
+using Shinshi.Art;
+using Shinshi.Contracts;
+
 namespace Shinshi.Network
 {
     /// <summary> 캐릭터 선택 화면의 칸 하나. 같은 칸을 무대 표시와 리스트 카드가 함께 보여 주므로 글자는 여러 곳에 쓴다 </summary>
@@ -27,6 +31,37 @@ namespace Shinshi.Network
         [SerializeField] private TMP_Text[]   _classTexts    = null;
         [SerializeField] private TMP_Text[]   _powerTexts    = null;
         [SerializeField] private TMP_Text[]   _levelTexts    = null;
+        [SerializeField] private TMP_Text     _errorText     = null;
+
+        // 칸마다 저장된 외형을 직접 조립해 보여 준다
+        [SerializeField] private PlayerFemaleLookPreviewView _preview = null;
+
+        // 해석/조립이 실패해도 이전에 성공했던 preview의 IsReady 캐시가 그대로 남아 있을 수 있다.
+        // 이 값으로 그 성공 캐시를 가리지 않고 실제 이번 해석 결과만 본다
+        private bool   _resolvedValid = true;
+        private string _lastError     = string.Empty;
+
+        /****************************************
+        *              Properties
+        ****************************************/
+
+        public bool IsLookReady     => (_resolvedValid) && ((_preview == null) || (_preview.IsReady));
+        public bool IsResolvedValid => _resolvedValid;
+
+        // Screen이 공용 _status에 표시할 오류. 해석 실패면 그 사유를, 해석은 됐지만 조립이 실패했으면
+        // preview.LastError를 돌려준다. 둘 다 아니면 빈 문자열이다
+        public string LastError
+        {
+            get
+            {
+                if (!_resolvedValid)
+                {
+                    return _lastError;
+                }
+
+                return ((_preview != null) && (!_preview.IsReady)) ? _preview.LastError : string.Empty;
+            }
+        }
 
         /****************************************
         *                Methods
@@ -43,6 +78,37 @@ namespace Shinshi.Network
             // 목록 API가 아직 전투력과 레벨을 주지 않는다. 받을 때까지 값 없음으로 둔다
             SetText(_powerTexts, filled ? UNKNOWN_POWER : string.Empty);
             SetText(_levelTexts, filled ? UNKNOWN_LEVEL : string.Empty);
+
+            // 빈 칸으로 다시 쓰이면 이전 캐릭터의 해석 실패 상태를 들고 있지 않는다. ShowLook이 다시 불리면 덮인다
+            if (!filled)
+            {
+                _resolvedValid = true;
+                _lastError     = string.Empty;
+                SetText(new[] { _errorText }, string.Empty);
+            }
+        }
+
+        /// <summary> classId로 TryResolve한 외형을 조립한다. 해석/조립 실패는 오류를 보이고 시작을 막는다 </summary>
+        public void ShowLook(int classId, CharacterAppearance storedAppearance)
+        {
+            if (_preview == null)
+            {
+                return;
+            }
+
+            if ((!CharacterAppearanceCatalog.TryResolve(classId, storedAppearance, out CharacterAppearance canonical))
+                || (!CharacterP09Look.TryFrom(canonical, out CharacterP09Look look)))
+            {
+                _resolvedValid = false;
+                _lastError     = "외형을 불러올 수 없다.";
+                SetText(new[] { _errorText }, _lastError);
+                return;
+            }
+
+            _resolvedValid = true;
+            _lastError     = string.Empty;
+            SetText(new[] { _errorText }, string.Empty);
+            _preview.Show(look);
         }
 
         private static void SetActive(GameObject[] targets, bool active)

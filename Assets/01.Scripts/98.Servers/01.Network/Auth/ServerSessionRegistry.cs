@@ -96,7 +96,8 @@ namespace Shinshi.Network
             }
 
             _connected.Add(participantId);
-            binding = new SessionBinding(key, participantId, claims.AccountLeaseId, claims.PlayerClass, claims.CharacterName);
+            binding = new SessionBinding(key, participantId, claims.AccountLeaseId, claims.PlayerClass,
+                claims.CharacterName, claims.Appearance);
             binding.AccountId   = claims.AccountId;
             binding.CharacterId = claims.CharacterId;
 

@@ -417,6 +417,17 @@ namespace Shinshi.Combat
                 return false;
             }
 
+            // 기존 개체 재결합에도 최초 hook 순서에 기대지 않고 DB 인증 이름/외형을 다시 적용한다.
+            // 값이 달라졌으면 경고만 남긴다 - 재인증된 값이 항상 이긴다
+            PlayerCombatState combat = player.Combat;
+            CharacterAppearance previousAppearance = combat.Appearance;
+            if ((!string.Equals(combat.CharacterName, binding.CharacterName, StringComparison.Ordinal))
+                || (previousAppearance == null) || (!previousAppearance.ContentEquals(binding.Appearance)))
+            {
+                Debug.LogWarning($"[Combat] 재결합 참가자의 DB 인증 외형이 기존 값과 달라 새 값으로 갱신한다, participantId={participantId}");
+            }
+            combat.SetPublicIdentity(binding.CharacterName, binding.Appearance);
+
             if (!NetworkServer.ReplacePlayerForConnection(connection, player.InputState.gameObject, ReplacePlayerOptions.KeepActive))
             {
                 return false;
@@ -488,7 +499,9 @@ namespace Shinshi.Combat
                 return;
             }
 
-            combat.SetDisplayName(binding.CharacterName);
+            // 최초 스폰 전에 DB 인증 이름/외형을 공개한다. PlayerServer 생성자가 다른 SyncVar를 먼저 설정하므로
+            // 호출 순서에 기대지 않고 명시적으로 여기서 정한다
+            combat.SetPublicIdentity(binding.CharacterName, binding.Appearance);
             AdoptSessionEpoch();
 
             int combatId = _registry.IssueCombatId();

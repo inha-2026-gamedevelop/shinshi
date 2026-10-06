@@ -48,6 +48,60 @@ namespace Shinshi.Network
             }
         }
 
+        public static string PreviewFailed() { return "선택한 조합을 미리 볼 수 없다. 다른 조합을 고르거나 게임을 다시 실행한다."; }
+
+        // P09 커스터마이징 행 값
+        public const string NONE = "없음";
+
+        public static string SexName(int bodyType) { return (bodyType == Shinshi.Contracts.CharacterAppearance.BODY_TYPE_MALE) ? "남성" : "여성"; }
+
+        public static string HairName(int hairId)
+        {
+            return (hairId == Shinshi.Contracts.CharacterAppearanceCatalog.P09_HAIR_SKINHEAD) ? "민머리" : hairId.ToString();
+        }
+
+        public static string BustName(int bustSize)
+        {
+            switch (bustSize)
+            {
+                case 1:  return "작게";
+                case 3:  return "크게";
+                default: return "보통";
+            }
+        }
+
+        public static string ArmorState(bool isOn) { return isOn ? "착용" : "벗음"; }
+
+        public static string HairLabel(int hairId)
+        {
+            switch (hairId)
+            {
+                case CharacterAppearanceCatalog.HAIR_WARRIOR:
+                    return "헤어 1";
+                case CharacterAppearanceCatalog.HAIR_SORCERER:
+                    return "헤어 2";
+                case CharacterAppearanceCatalog.HAIR_SUMMONER:
+                    return "헤어 3";
+                default:
+                    return "알 수 없는 헤어";
+            }
+        }
+
+        public static string OutfitLabel(int outfitId)
+        {
+            switch (outfitId)
+            {
+                case CharacterAppearanceCatalog.OUTFIT_WARRIOR:
+                    return "의상 1";
+                case CharacterAppearanceCatalog.OUTFIT_SORCERER:
+                    return "의상 2";
+                case CharacterAppearanceCatalog.OUTFIT_SUMMONER:
+                    return "의상 3";
+                default:
+                    return "알 수 없는 의상";
+            }
+        }
+
         /// <summary> API 실패를 안내 문구로 바꾼다 </summary>
         public static string Describe<T>(LobbyApiReply<T> reply) where T : class
         {
@@ -105,7 +159,9 @@ namespace Shinshi.Network
                 case ERejectReason.NoCapacity:
                     return "자리가 없다. 캐릭터 수 상한이거나 열린 마을 서버가 없다.";
                 case ERejectReason.InvalidAppearance:
-                    return "외형 값이 올바르지 않다.";
+                    return "선택한 외형을 쓸 수 없다. 게임을 최신 버전으로 실행한다.";
+                case ERejectReason.IdempotencyConflict:
+                    return "이전 요청과 다른 선택이다. 다시 확인하고 생성한다.";
                 case ERejectReason.CharacterNameTaken:
                     return "이미 쓰는 이름이다.";
                 case ERejectReason.InvalidCharacterName:

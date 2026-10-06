@@ -39,6 +39,13 @@ namespace Shinshi.Art
         public string ValidationError  => _validationError;
         public int SimulatedBoneCount  => (_isBound) ? _simulation.SimulatedBoneCount : 0;
 
+        // 조립기가 혼합 헤어의 보조본 체인/캡슐을 의상 쪽 체인과 합쳐 다시 구성할 때 읽는다
+        public Transform                    MotionRoot => _motionRoot;
+        public CharacterSecondaryMotionView Simulation => _simulation;
+        public SkinnedMeshRenderer[]        Renderers  => _renderers;
+        public SecondaryMotionChain[]       Chains     => _chains;
+        public SecondaryMotionCapsule[]     Capsules   => _capsules;
+
         /****************************************
         *              Unity Event
         ****************************************/
