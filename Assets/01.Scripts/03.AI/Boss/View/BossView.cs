@@ -123,6 +123,7 @@ namespace Shinshi.AI
         private BoneRef                _rightArm;
         private bool                   _hasBones;
         private bool                   _resetsBind;
+        private bool                   _hasClip;
 
         private Vector3    _targetPosition;
         private Vector3    _targetForward = Vector3.forward;
@@ -344,8 +345,14 @@ namespace Shinshi.AI
             return ReleasePose(cast.Shape, cast.PatternId);
         }
 
+        // 대기 클립이 호흡을 하므로 클립이 붙어 있으면 임시 호흡은 더하지 않는다
         private Pose IdlePose()
         {
+            if (_hasClip)
+            {
+                return default;
+            }
+
             float breath = Mathf.Sin(Time.time * BREATH_RATE);
             return new Pose
             {
@@ -451,6 +458,7 @@ namespace Shinshi.AI
             // 컨트롤러가 없으면 아무도 본을 되돌리지 않으므로 매 프레임 기본 자세에서 시작한다.
             // 컨트롤러가 붙으면 그 포즈 위에 덧붙인다
             _resetsBind = _animator.runtimeAnimatorController == null;
+            _hasClip    = !_resetsBind;
         }
 
         private BoneRef Cache(HumanBodyBones id)
