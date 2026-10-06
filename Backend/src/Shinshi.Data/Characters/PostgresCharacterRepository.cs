@@ -12,6 +12,8 @@ using Npgsql;
 
 // Project
 using Shinshi.Contracts;
+using Shinshi.Data.Growth;
+using Shinshi.Data.Ledger;
 using Shinshi.Data.Sessions;
 
 namespace Shinshi.Data.Characters
@@ -24,26 +26,46 @@ namespace Shinshi.Data.Characters
         ****************************************/
 
         public const string CREATE_OPERATION_KIND = "character.create";
+        public const string DELETE_OPERATION_KIND = "character.delete";
+
+        // 접속 판정은 마을 입장 교환과 같은 heartbeat 기준이다. 비정상 종료한 서버의 남은 임대는 삭제를 막지 않는다
+        private const int HEARTBEAT_SECONDS = 15;
 
         // TODO(민성): 계정당 캐릭터 수는 기획 미정(docs/design/account-and-website.md 8장). 확정 전 임시값이다
         public const int MAX_CHARACTERS_PER_ACCOUNT = 3;
+
+        // TODO(민성): 계정당 하루 삭제 수는 기획 미정(docs/design/account-and-website.md 8장, 잠정 결정 9 소프트 삭제).
+        // 삭제와 생성을 반복해 이름 키와 캐릭터 행을 무한히 소모하지 못하게 슬롯 수만큼으로 임시로 막는다
+        public const int MAX_DELETES_PER_WINDOW = MAX_CHARACTERS_PER_ACCOUNT;
+        public const int DELETE_WINDOW_HOURS    = 24;
 
         // 캐릭터 생성은 계정 revision 계약이 없어 0으로 확정한다
         private const long NO_REVISION = 0;
 
         private readonly NpgsqlDataSource _dataSource;
         private readonly IdempotentOperationExecutor _executor;
+        private readonly InitialGrantService _grants;
 
         /****************************************
         *                Methods
         ****************************************/
 
+        // 초기 지급을 따로 구성하지 않은 호스트(테스트, 도구)는 내장 콘텐츠의 체험판 지급을 쓴다
         public PostgresCharacterRepository(NpgsqlDataSource dataSource, IdempotentOperationExecutor executor)
+            : this(dataSource, executor, new InitialGrantService(GrowthContent.LoadEmbedded(), EGrowthContentProfile.Trial,
+                new PostgresEconomyLedgerWriter(), new PostgresItemHistoryWriter()))
+        {
+        }
+
+        public PostgresCharacterRepository(NpgsqlDataSource dataSource, IdempotentOperationExecutor executor,
+            InitialGrantService grants)
         {
             ArgumentNullException.ThrowIfNull(dataSource);
             ArgumentNullException.ThrowIfNull(executor);
+            ArgumentNullException.ThrowIfNull(grants);
             _dataSource = dataSource;
             _executor   = executor;
+            _grants     = grants;
         }
 
         public async Task<CharacterCreateOutcome> CreateAsync(Guid accountId, Guid operationId, string name,
@@ -56,7 +78,7 @@ namespace Shinshi.Data.Characters
             ArgumentNullException.ThrowIfNull(requestJson);
             OperationRequest request = new OperationRequest(accountId, operationId, CREATE_OPERATION_KIND, requestJson);
             OperationResult result = await _executor.ExecuteAsync(request, (context, token) => CreateEffectAsync(context,
-                accountId, name, nameKey, classId, appearanceJson, token), cancellationToken);
+                accountId, operationId, name, nameKey, classId, appearanceJson, token), cancellationToken);
             if ((result.Status != ContractCodes.OperationStatus.COMMITTED)
                 || !Guid.TryParse(result.ReceiptId, out Guid characterId))
             {
@@ -82,14 +104,112 @@ namespace Shinshi.Data.Characters
                 """
                 SELECT character_id AS "CharacterId", account_id AS "AccountId", name AS "Name", class_id AS "ClassId",
                     revision AS "Revision", appearance::text AS "Appearance"
-                FROM characters WHERE account_id = @AccountId ORDER BY character_id;
+                FROM characters WHERE account_id = @AccountId AND deleted_at IS NULL ORDER BY character_id;
                 """, new { AccountId = accountId }, cancellationToken: cancellationToken));
             return rows.Select(row => new CharacterRecord(row.CharacterId, row.AccountId, row.Name, row.ClassId,
                 row.Revision, row.Appearance)).ToArray();
         }
 
-        private static async Task<OperationDecision> CreateEffectAsync(OperationExecutionContext context, Guid accountId,
-            string name, string nameKey, int classId, string appearanceJson, CancellationToken cancellationToken)
+        public Task<OperationResult> DeleteAsync(Guid accountId, Guid operationId, Guid characterId,
+            long expectedRevision, CancellationToken cancellationToken = default)
+        {
+            if ((accountId == Guid.Empty) || (operationId == Guid.Empty) || (characterId == Guid.Empty))
+            {
+                throw new ArgumentException("Account, operation and character IDs are required.");
+            }
+
+            OperationRequest request = new OperationRequest(accountId, operationId, DELETE_OPERATION_KIND,
+                SessionDb.ToRequestJson(new { characterId = characterId.ToString("D"), expectedRevision }));
+            return _executor.ExecuteAsync(request, (context, token) => DeleteEffectAsync(context, accountId, operationId,
+                characterId, expectedRevision, token), cancellationToken);
+        }
+
+        private static async Task<OperationDecision> DeleteEffectAsync(OperationExecutionContext context, Guid accountId,
+            Guid operationId, Guid characterId, long expectedRevision, CancellationToken cancellationToken)
+        {
+            (DbConnection connection, DbTransaction transaction) = SessionDb.Require(context);
+
+            // 잠금 순서: 계정 -> 캐릭터. 생성, 예약, 마을 입장 교환과 같은 계정 행에서 줄을 선다
+            if (await SessionDb.LockAccountsAsync(connection, transaction, new[] { accountId }, cancellationToken) != 1)
+            {
+                throw new InvalidOperationException("Character owner account is missing.");
+            }
+
+            long? revision = await connection.QuerySingleOrDefaultAsync<long?>(new CommandDefinition(
+                """
+                SELECT revision FROM characters
+                WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL
+                FOR UPDATE;
+                """, new { CharacterId = characterId, AccountId = accountId }, transaction,
+                cancellationToken: cancellationToken));
+            if (!revision.HasValue)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_NOT_FOUND);
+            }
+
+            bool connected = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                """
+                SELECT EXISTS (SELECT 1 FROM account_leases AS lease JOIN server_instances AS instance
+                    ON instance.instance_id = lease.instance_id AND instance.role = lease.role
+                    WHERE lease.account_id = @AccountId AND lease.expires_at > clock_timestamp()
+                        AND instance.state <> 'Offline'
+                        AND instance.heartbeat_at > clock_timestamp() - @Heartbeat);
+                """, new { AccountId = accountId, Heartbeat = TimeSpan.FromSeconds(HEARTBEAT_SECONDS) }, transaction,
+                cancellationToken: cancellationToken));
+            if (connected)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.ALREADY_CONNECTED, revision.Value);
+            }
+
+            bool sortie = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                """
+                SELECT EXISTS (SELECT 1 FROM session_participants
+                    WHERE character_id = @CharacterId AND state IN ('Reserved', 'Active'));
+                """, new { CharacterId = characterId }, transaction, cancellationToken: cancellationToken));
+            if (sortie)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.RESERVATION_CONFLICT, revision.Value);
+            }
+            if (revision.Value != expectedRevision)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.STALE_REVISION, revision.Value);
+            }
+
+            // 계정 행을 잠근 뒤 세므로 동시 삭제가 함께 상한을 넘지 못한다. 시각은 DB 기준이다(ix_characters_account_deleted)
+            long recentDeletes = await connection.QuerySingleAsync<long>(new CommandDefinition(
+                """
+                SELECT COUNT(*) FROM characters
+                WHERE account_id = @AccountId AND deleted_at IS NOT NULL
+                    AND deleted_at > clock_timestamp() - @Window;
+                """, new { AccountId = accountId, Window = TimeSpan.FromHours(DELETE_WINDOW_HOURS) }, transaction,
+                cancellationToken: cancellationToken));
+            if (recentDeletes >= MAX_DELETES_PER_WINDOW)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.RATE_LIMITED, revision.Value);
+            }
+
+            // 삭제 전에 받은 미교환 입장 토큰(마을, 출정)은 더 쓸 수 없게 한다
+            await connection.ExecuteAsync(new CommandDefinition(
+                """
+                UPDATE auth_join_tokens SET revoked_at = clock_timestamp()
+                WHERE account_id = @AccountId AND character_id = @CharacterId
+                    AND consumed_at IS NULL AND revoked_at IS NULL;
+                """, new { AccountId = accountId, CharacterId = characterId }, transaction,
+                cancellationToken: cancellationToken));
+            long deleted = await connection.QuerySingleAsync<long>(new CommandDefinition(
+                """
+                UPDATE characters
+                SET deleted_at = clock_timestamp(), delete_operation_id = @OperationId, revision = revision + 1
+                WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL
+                RETURNING revision;
+                """, new { AccountId = accountId, CharacterId = characterId, OperationId = operationId }, transaction,
+                cancellationToken: cancellationToken));
+            return OperationDecision.Committed(deleted, characterId.ToString("D"));
+        }
+
+        private async Task<OperationDecision> CreateEffectAsync(OperationExecutionContext context, Guid accountId,
+            Guid operationId, string name, string nameKey, int classId, string appearanceJson,
+            CancellationToken cancellationToken)
         {
             (DbConnection connection, DbTransaction transaction) = SessionDb.Require(context);
 
@@ -100,7 +220,7 @@ namespace Shinshi.Data.Characters
             }
 
             long count = await connection.QuerySingleAsync<long>(new CommandDefinition(
-                "SELECT COUNT(*) FROM characters WHERE account_id = @AccountId;",
+                "SELECT COUNT(*) FROM characters WHERE account_id = @AccountId AND deleted_at IS NULL;",
                 new { AccountId = accountId }, transaction, cancellationToken: cancellationToken));
             if (count >= MAX_CHARACTERS_PER_ACCOUNT)
             {
@@ -124,6 +244,8 @@ namespace Shinshi.Data.Characters
                 return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_NAME_TAKEN);
             }
 
+            // 계정 행을 잠근 같은 트랜잭션이라 동시 생성 중 한쪽만 계정 최초분을 받는다. 지급 실패는 생성 전체를 되돌린다
+            await _grants.ApplyAsync(context, accountId, characterId, classId, operationId, cancellationToken);
             return OperationDecision.Committed(NO_REVISION, characterId.ToString("D"));
         }
 
@@ -135,7 +257,7 @@ namespace Shinshi.Data.Characters
                 """
                 SELECT character_id AS "CharacterId", account_id AS "AccountId", name AS "Name", class_id AS "ClassId",
                     revision AS "Revision", appearance::text AS "Appearance"
-                FROM characters WHERE character_id = @CharacterId AND account_id = @AccountId;
+                FROM characters WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL;
                 """, new { CharacterId = characterId, AccountId = accountId }, cancellationToken: cancellationToken));
             return row == null ? null : new CharacterRecord(row.CharacterId, row.AccountId, row.Name, row.ClassId,
                 row.Revision, row.Appearance);

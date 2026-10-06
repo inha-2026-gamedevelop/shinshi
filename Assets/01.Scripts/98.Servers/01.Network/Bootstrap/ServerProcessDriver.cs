@@ -14,6 +14,7 @@ namespace Shinshi.Network
 
         private ServerPresence           _presence;
         private ServerShutdownController _shutdown;
+        private ServerMetricsSampler     _metrics;
 
         /****************************************
         *              Unity Event
@@ -23,6 +24,7 @@ namespace Shinshi.Network
         {
             _presence?.Tick();
             _shutdown?.Tick();
+            _metrics?.Tick(BackendGateway.MonotonicSeconds());
         }
 
         /****************************************
@@ -33,6 +35,12 @@ namespace Shinshi.Network
         {
             _presence = presence;
             _shutdown = shutdown;
+        }
+
+        /// <summary> 구조화 로그를 설치한 서버 빌드에서만 붙인다 </summary>
+        public void BindMetrics(ServerMetricsSampler metrics)
+        {
+            _metrics = metrics;
         }
     }
 }

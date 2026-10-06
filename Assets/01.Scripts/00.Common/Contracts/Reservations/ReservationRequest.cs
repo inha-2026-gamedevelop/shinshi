@@ -19,6 +19,15 @@ namespace Shinshi.Contracts
         [DataMember(Name = "contentVersion")] private string                   _contentVersion;
         [DataMember(Name = "participants")]   private ReservationParticipant[] _participants;
 
+        // 일반전 전투 정의 ID. 없으면 빈 값이다
+        [DataMember(Name = "battleId")]       private string                   _battleId;
+
+        // 보스전에만 넣는다. 보스전인데 bossId가 없거나 일반전인데 있으면 요청 형식 오류(400)다
+        [DataMember(Name = "bossId")]         private string                   _bossId;
+
+        // GameSessionCodes.Difficulty. 키가 없는 이전 요청은 NONE으로 읽는다. 보스전이 아니면 NONE이어야 한다
+        [DataMember(Name = "difficulty")]     private int                      _difficulty = GameSessionCodes.Difficulty.NONE;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -28,6 +37,9 @@ namespace Shinshi.Contracts
         public string                   MapId          => _mapId;
         public string                   ContentVersion => _contentVersion;
         public ReservationParticipant[] Participants   => _participants;
+        public string                   BattleId       => _battleId;
+        public string                   BossId         => _bossId;
+        public int                      Difficulty     => _difficulty;
 
         /****************************************
         *                Methods
@@ -35,12 +47,21 @@ namespace Shinshi.Contracts
 
         public ReservationRequest(string operationId, int mode, string mapId, string contentVersion,
             ReservationParticipant[] participants)
+            : this(operationId, mode, mapId, contentVersion, participants, null, null, GameSessionCodes.Difficulty.NONE)
+        {
+        }
+
+        public ReservationRequest(string operationId, int mode, string mapId, string contentVersion,
+            ReservationParticipant[] participants, string battleId, string bossId, int difficulty)
         {
             _operationId    = operationId;
             _mode           = mode;
             _mapId          = mapId;
             _contentVersion = contentVersion;
             _participants   = participants;
+            _battleId       = battleId;
+            _bossId         = bossId;
+            _difficulty     = difficulty;
         }
 
         private ReservationRequest() { }

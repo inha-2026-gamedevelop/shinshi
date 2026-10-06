@@ -17,6 +17,9 @@ namespace Shinshi.Network
         Expired,
         InvalidApiBaseUrl,
         AckFailed,
-        Timeout
+        Timeout,
+
+        // 받은 뒤 갱신하려 했더니 API가 토큰을 폐기된 것으로 거절했다
+        Revoked
     }
 }

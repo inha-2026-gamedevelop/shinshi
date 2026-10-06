@@ -34,6 +34,11 @@ namespace Shinshi.Contracts
         // POST로 캐릭터를 만든다. 본문은 CharacterCreateRequest, 응답은 CharacterCreateResponse
         public const string CHARACTERS        = "/v1/characters";
 
+        // string.Format으로 characterId를 넣는다. POST로 캐릭터를 소프트 삭제한다. 본문은 CharacterDeleteRequest, 응답은 OperationResult.
+        // 접속 중(ALREADY_CONNECTED), 출정 중(RESERVATION_CONFLICT), revision 불일치(STALE_REVISION),
+        // 없거나 남의 캐릭터(CHARACTER_NOT_FOUND)는 거절한다. 이름은 반환하지 않고 슬롯만 돌려받는다
+        public const string CHARACTER_DELETE_FORMAT = "/v1/characters/{0}/delete";
+
         // string.Format으로 sessionId를 넣는다. 진행 중 출정에서 끊긴 플레이어가 복귀용 일회 접속 토큰을 다시 받는다
         public const string REJOIN_TICKET_FORMAT = "/v1/game-sessions/{0}/rejoin-ticket";
 

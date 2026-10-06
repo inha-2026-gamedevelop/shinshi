@@ -118,9 +118,11 @@ namespace Shinshi.Tests
         {
             PlayerInputGate gate = CreateGate();
             Assert.AreEqual(EInputVerdict.Accepted, gate.Check(Header(5, START_TIME), START_TIME, out _));
+            // 같은 서버 시각의 주기 초과는 한 번만 세므로 시각을 나눠 순번 역행으로 위반을 쌓는다
             for (int i = 0; i < Constants.Player.INPUT_VIOLATION_DISCONNECT_THRESHOLD; ++i)
             {
-                gate.Check(Header(5, START_TIME), START_TIME, out _);
+                double now = START_TIME + ((i + 1) * VIOLATION_STEP_SECONDS);
+                gate.Check(Header(5, now), now, out _);
             }
 
             Assert.IsTrue(gate.ShouldDisconnect);
@@ -171,6 +173,22 @@ namespace Shinshi.Tests
             Assert.AreEqual(EInputVerdict.RateLimited, gate.Check(Header(sequence, START_TIME), START_TIME, out _));
             Assert.AreEqual(sequence - 1, gate.LastAcceptedSequence);
             Assert.AreEqual(1, gate.ViolationCount);
+        }
+
+        // 끊겼다 이어진 연결의 입력이 한 틱에 몰려도 위반은 한 번만 센다. 지연 한 번으로 정상 사용자가 끊기지 않는다
+        [Test]
+        public void Check_BurstInSameTick_CountsOneViolation()
+        {
+            PlayerInputGate gate  = CreateGate();
+            int             burst = Constants.Player.INPUT_RATE_BURST + Constants.Player.INPUT_VIOLATION_DISCONNECT_THRESHOLD * 2;
+
+            for (int i = 1; i <= burst; ++i)
+            {
+                gate.Check(Header((uint)i, START_TIME), START_TIME, out _);
+            }
+
+            Assert.AreEqual(1, gate.ViolationCount);
+            Assert.IsFalse(gate.ShouldDisconnect);
         }
 
         [Test]

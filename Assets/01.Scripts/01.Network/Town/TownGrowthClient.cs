@@ -1,0 +1,161 @@
+// System
+using System;
+
+// 서드파티
+using Mirror;
+
+namespace Shinshi.Network
+{
+    // 성장 화면(UI 담당)은 이 창구의 이벤트만 구독하고 요청 메서드로 보낸다. 판정, 확률, 비용 차감은 마을 서버와 API가 한다.
+    // 요청 메서드는 새 operationId를 만들어 보내고 돌려준다. 결과를 받지 못하면 RetryLast로 같은 요청을 다시 보낸다.
+    // 연결되지 않았으면 Guid.Empty를 돌려주고 아무것도 보내지 않는다
+    /// <summary> 클라이언트의 마을 성장 요청 송신과 결과 수신 창구 </summary>
+    public static class TownGrowthClient
+    {
+        /****************************************
+        *                Fields
+        ****************************************/
+
+        private static GrowthSnapshotMessage _snapshot;
+        private static bool                  _hasSnapshot;
+        private static GrowthRequestMessage  _lastRequest;
+        private static bool                  _hasLastRequest;
+
+        /****************************************
+        *              Properties
+        ****************************************/
+
+        public static GrowthSnapshotMessage Snapshot    => _snapshot;
+        public static bool                  HasSnapshot => _hasSnapshot;
+
+        public static event Action<GrowthResultMessage>   ResultReceived;
+        public static event Action<GrowthSnapshotMessage> SnapshotChanged;
+
+        /****************************************
+        *                Methods
+        ****************************************/
+
+        /// <summary> 클라이언트가 시작할 때 한 번 부른다, 이전 연결의 상태를 비운다 </summary>
+        public static void RegisterHandlers()
+        {
+            _snapshot       = default;
+            _hasSnapshot    = false;
+            _lastRequest    = default;
+            _hasLastRequest = false;
+            NetworkClient.ReplaceHandler<GrowthResultMessage>(OnResult);
+            NetworkClient.ReplaceHandler<GrowthSnapshotMessage>(OnSnapshot);
+        }
+
+        public static Guid RequestSnapshot()
+        {
+            return Send(EGrowthAction.Snapshot, null, null, 0, 0, false, null, null);
+        }
+
+        public static Guid RegisterTalisman(string effectId)
+        {
+            return Send(EGrowthAction.TalismanRegister, effectId, null, 0, 0, false, null, null);
+        }
+
+        public static Guid UpgradeTalisman(string effectId)
+        {
+            return Send(EGrowthAction.TalismanUpgrade, effectId, null, 0, 0, false, null, null);
+        }
+
+        public static Guid ReplaceTalismanLoadout(TownLoadoutEntry[] entries)
+        {
+            return Send(EGrowthAction.TalismanLoadout, null, null, 0, 0, false, null, entries);
+        }
+
+        public static Guid DisassembleTalisman(string effectId, int quantity)
+        {
+            return Send(EGrowthAction.TalismanDisassemble, effectId, null, quantity, 0, false, null, null);
+        }
+
+        /// <summary> stat은 ETrainingStat 값 </summary>
+        public static Guid Train(int stat, int steps)
+        {
+            return Send(EGrowthAction.Training, null, null, stat, steps, false, null, null);
+        }
+
+        /// <summary> allocation은 ETrainingStat 순서의 새 투자 단계 </summary>
+        public static Guid RespecTraining(int[] allocation)
+        {
+            return Send(EGrowthAction.TrainingRespec, null, null, 0, 0, false, allocation, null);
+        }
+
+        public static Guid CraftEquipment(string definitionId)
+        {
+            return Send(EGrowthAction.EquipmentCraft, definitionId, null, 0, 0, false, null, null);
+        }
+
+        public static Guid EnhanceEquipment(string itemId)
+        {
+            return Send(EGrowthAction.EquipmentEnhance, itemId, null, 0, 0, false, null, null);
+        }
+
+        public static Guid InheritEquipment(string sourceItemId, string targetItemId)
+        {
+            return Send(EGrowthAction.EquipmentInherit, sourceItemId, targetItemId, 0, 0, false, null, null);
+        }
+
+        public static Guid EquipEquipment(string itemId)
+        {
+            return Send(EGrowthAction.EquipmentEquip, itemId, null, 0, 0, false, null, null);
+        }
+
+        public static Guid UnequipEquipment(string itemId)
+        {
+            return Send(EGrowthAction.EquipmentUnequip, itemId, null, 0, 0, false, null, null);
+        }
+
+        public static Guid LockEquipment(string itemId, bool locked)
+        {
+            return Send(EGrowthAction.EquipmentLock, itemId, null, 0, 0, locked, null, null);
+        }
+
+        public static Guid DismantleEquipment(string itemId)
+        {
+            return Send(EGrowthAction.EquipmentDismantle, itemId, null, 0, 0, false, null, null);
+        }
+
+        /// <summary> 마지막 요청을 같은 operationId로 다시 보낸다, 서버와 API가 처음 결과를 돌려준다 </summary>
+        public static bool RetryLast()
+        {
+            if ((!NetworkClient.isConnected) || (!_hasLastRequest))
+            {
+                return false;
+            }
+
+            NetworkClient.Send(_lastRequest);
+            return true;
+        }
+
+        private static Guid Send(EGrowthAction action, string targetId, string secondaryId, int intArg, int intArg2, bool flag,
+            int[] allocation, TownLoadoutEntry[] loadout)
+        {
+            if (!NetworkClient.isConnected)
+            {
+                return Guid.Empty;
+            }
+
+            Guid operationId = Guid.NewGuid();
+            _lastRequest    = new GrowthRequestMessage(operationId, action, targetId, secondaryId, intArg, intArg2, flag,
+                allocation, loadout);
+            _hasLastRequest = true;
+            NetworkClient.Send(_lastRequest);
+            return operationId;
+        }
+
+        private static void OnResult(GrowthResultMessage message)
+        {
+            ResultReceived?.Invoke(message);
+        }
+
+        private static void OnSnapshot(GrowthSnapshotMessage message)
+        {
+            _snapshot    = message;
+            _hasSnapshot = true;
+            SnapshotChanged?.Invoke(message);
+        }
+    }
+}

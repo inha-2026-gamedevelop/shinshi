@@ -18,9 +18,19 @@ namespace Shinshi.Combat
         *                Fields
         ****************************************/
 
+        // 투사체, 장판(지속 피해와 결계), 부적 변형의 지연 타격(후속 타격, 충격파, 폭발)
+        private enum EEffectKind : byte
+        {
+            Projectile = 0,
+            Field      = 1,
+            Strike     = 2
+        }
+
+        // 부적이 바꾼 판정 수치는 생성 때 값으로 고정한다. 틱마다 SO와 수정값에서 다시 계산하지 않는다
         private struct Effect
         {
             public bool                           Active;
+            public EEffectKind                    Kind;
             public SkillCatalogSO.SkillDefinition Skill;
             public SkillModifiers                 Modifiers;
             public int                            CastId;
@@ -31,7 +41,19 @@ namespace Shinshi.Combat
             public double                         EndsAt;
             public float                          Travelled;
             public double                         LastTime;
+            public ESkillShape                    Shape;            // 지연 타격 판정 형태
+            public float                          Radius;           // m, 장판과 지연 타격 반경, 부채꼴이면 길이
+            public float                          ArcAngle;         // 도, 부채꼴 지연 타격
+            public float                          Range;            // m, 투사체 사거리
+            public float                          Coefficient;      // A, 투사체 첫 적중과 지연 타격 계수, 피해 보조 전
+            public float                          ExtraCoefficient; // A, 관통 뒤 타격과 장판 종료 폭발 계수, 피해 보조 전
+            public int                            PierceLeft;       // 관통 투사체가 더 맞힐 수 있는 적 수
+            public int                            LastHitId;        // 관통 투사체가 방금 맞힌 대상, 같은 위치에서 다시 고르지 않는다
+            public float                          Root;             // 초, 지연 타격 속박
         }
+
+        // 갈래 수의 가운데 번호를 구하는 배율, 세 갈래면 -1, 0, +1 칸으로 퍼진다
+        private const float CENTER_INDEX_SCALE = 0.5f;
 
         private readonly SkillCasterAnchor                _owner;
         private readonly EPlayerClass                     _playerClass;
@@ -70,6 +92,7 @@ namespace Shinshi.Combat
         private float                              _energy           = 0f;
         private bool                               _guardSucceeded   = false;
         private bool                               _dashStopped      = false;
+        private float                              _maxEnergy        = 0f;
 
         /****************************************
         *              Properties
@@ -79,7 +102,7 @@ namespace Shinshi.Combat
         public EPlayerClass      PlayerClass        => _playerClass;
         public int               ParticipantId      => _participantId;
         public int               CompanionSlotCount => _companions.Length;
-        public float             MaxEnergy          => _player.BaseMaxEnergy;
+        public float             MaxEnergy          => _maxEnergy;
         public float             Resonance          => _resonance.Value;
         public ESkillPhase       Phase              => _phase;
         public int               CastInstanceId     => _castId;
@@ -101,9 +124,10 @@ namespace Shinshi.Combat
         *                Methods
         ****************************************/
 
+        // maxEnergy는 CharacterStats의 최대 기력이다. 0 이하면 PlayerConfigSO의 기본 최대 기력을 쓴다
         public SkillServer(ISkillCaster owner, EPlayerClass playerClass, int participantId, SkillCatalogSO catalog,
             PlayerConfigSO player, CombatTargetRegistry registry, IDamageResolver resolver, CombatLineOfSight lineOfSight,
-            double now, ITalismanModifierResolver modifiers = null, ISkillNavigation navigation = null)
+            double now, ITalismanModifierResolver modifiers = null, ISkillNavigation navigation = null, float maxEnergy = 0f)
         {
             if ((owner == null) || (catalog == null) || (player == null) || (registry == null) || (resolver == null) || (lineOfSight == null))
             {
@@ -143,8 +167,9 @@ namespace Shinshi.Combat
             {
                 _companions[i] = new CompanionServer(_owner, catalog, registry, resolver, lineOfSight, this);
             }
-            _energy   = player.BaseMaxEnergy;
-            _lastTick = now;
+            _maxEnergy = (maxEnergy > 0f) ? maxEnergy : player.BaseMaxEnergy;
+            _energy    = _maxEnergy;
+            _lastTick  = now;
         }
 
         public double GetReadyAt(int slot) => _readyAt[slot];
@@ -197,8 +222,14 @@ namespace Shinshi.Combat
                 reason = ERejectReason.InvalidTarget;
                 return false;
             }
+            SkillModifiers modifier = (skill != null) ? (_modifiers?.Resolve(_participantId, skill) ?? SkillModifiers.Identity) : SkillModifiers.Identity;
+            if (!IsValidModifiers(in modifier))
+            {
+                reason = ERejectReason.InvalidTarget;
+                return false;
+            }
             bool isPoint = (ascension != null) || (skill.Area.AimMode == ESkillAimMode.Point);
-            float range = (ascension != null) ? ascension.CastRange : skill.Area.CastRange;
+            float range = (ascension != null) ? ascension.CastRange : TalismanModifierRules.GetCastRange(skill, in modifier);
             Vector3 origin = _owner.Position;
             if (isPoint)
             {
@@ -225,15 +256,8 @@ namespace Shinshi.Combat
                     return false;
                 }
             }
-            SkillModifiers modifier = (skill != null) ? (_modifiers?.Resolve(_participantId, skill) ?? SkillModifiers.Identity) : SkillModifiers.Identity;
-            if ((!IsNonNegativeFinite(modifier.EnergyScale)) || (!IsNonNegativeFinite(modifier.CooldownScale))
-                || (!IsNonNegativeFinite(modifier.DamageScale)) || (!IsNonNegativeFinite(modifier.ResonanceBonus)))
-            {
-                reason = ERejectReason.InvalidTarget;
-                return false;
-            }
-            float cost = (skill != null) ? skill.EnergyCost * modifier.EnergyScale : ascension.ResonanceCost;
-            float cooldown = (skill != null) ? skill.Cooldown * modifier.CooldownScale : _catalog.AscensionSharedCooldown;
+            float cost = (skill != null) ? TalismanModifierRules.GetEnergyCost(skill, in modifier) : ascension.ResonanceCost;
+            float cooldown = (skill != null) ? TalismanModifierRules.GetCooldown(skill, in modifier) : _catalog.AscensionSharedCooldown;
             if ((!IsNonNegativeFinite(cost)) || (!IsNonNegativeFinite(cooldown))
                 || ((skill != null) && ((!IsNonNegativeFinite(skill.Effect.DamageCoefficient * modifier.DamageScale))
                     || (!IsNonNegativeFinite(skill.Effect.TickCoefficient * modifier.DamageScale)))))
@@ -252,8 +276,7 @@ namespace Shinshi.Combat
                 reason = ERejectReason.Cooldown;
                 return false;
             }
-            if ((skill != null) && ((skill.Area.Shape == ESkillShape.Projectile)
-                || ((skill.Area.Shape != ESkillShape.Summon) && (skill.Effect.Duration > 0f))) && (GetFreeEffect() < 0))
+            if ((skill != null) && (RequiredEffectSlots(skill, in modifier) > CountFreeEffects()))
             {
                 reason = ERejectReason.NoCapacity;
                 return false;
@@ -298,7 +321,7 @@ namespace Shinshi.Combat
             _castId        = castId;
             _actionId      = _resolver.IssueInstanceId();
             float windup = (skill != null) ? skill.Timeline.Windup : ascension.Windup;
-            float active = (skill != null) ? skill.Timeline.Active : 0f;
+            float active = (skill != null) ? TalismanModifierRules.GetActiveSeconds(skill, in modifier) : 0f;
             float recovery = (skill != null) ? skill.Timeline.Recovery : ascension.Recovery;
             _resolveAt      = now + windup;
             _activeEndsAt   = _resolveAt + active;
@@ -360,8 +383,7 @@ namespace Shinshi.Combat
             {
                 if ((IsCounter) && (_guardSucceeded))
                 {
-                    ApplyArea(_skill, _castModifiers, _owner.Position, _aim, _castId, _actionId,
-                        _skill.Effect.DamageCoefficient, _skill.Effect.RootDuration, false, now);
+                    ApplyCounter(now);
                 }
                 _phase = ESkillPhase.Recovery;
             }
@@ -388,7 +410,7 @@ namespace Shinshi.Combat
             }
             if (_skill.Area.Shape == ESkillShape.Summon)
             {
-                if (!_companions[_slot].Start(_skill, _castId, _resolveAt))
+                if (!_companions[_slot].Start(_skill, _castId, _resolveAt, in _castModifiers))
                 {
                     Debug.LogError("[Combat] 예약된 동료의 소환 확정에 실패했다");
                 }
@@ -396,35 +418,113 @@ namespace Shinshi.Combat
             }
             if (_skill.Area.Shape == ESkillShape.Projectile)
             {
-                AddEffect(_resolveAt);
+                AddProjectiles(_resolveAt);
                 return;
             }
+
+            // 핵심 변형이 정한 형태(원형 교체)와 보조가 바꾼 반경, 각도로 첫 타격과 뒤따르는 타격을 모두 판정한다
+            SkillCoreVariant core   = _castModifiers.Core;
+            ESkillShape      shape  = TalismanModifierRules.GetShape(_skill, in _castModifiers);
+            float            radius = TalismanModifierRules.GetRadius(_skill, in _castModifiers);
+            float            arc    = TalismanModifierRules.GetArcAngle(_skill, in _castModifiers);
+            Vector3          center = (_skill.Area.Shape == ESkillShape.Cone) ? _owner.Position : _point;
             if (_skill.Effect.DamageCoefficient > 0f)
             {
-                Vector3 center = (_skill.Area.Shape == ESkillShape.Cone) ? _owner.Position : _point;
-                ApplyArea(_skill, _castModifiers, center, _aim, _castId, _actionId,
-                    _skill.Effect.DamageCoefficient, _skill.Effect.RootDuration, false, now);
+                // 보스는 끌어오지 않고, 속박은 ApplyHit가 보스 허용 구간과 최대 시간으로 자른다
+                if (core.Is(ETalismanEffectKind.PullRoot))
+                {
+                    PullTargets(center, radius, now);
+                }
+
+                ApplyArea(_skill, in _castModifiers, shape, center, _aim, radius, arc, _castId, _actionId,
+                    TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers),
+                    _skill.Effect.RootDuration + core.RootBonus, now);
+                if (core.Is(ETalismanEffectKind.FollowUpStrike))
+                {
+                    AddStrike(shape, center, radius, arc, core.AddedCoefficient, _resolveAt + core.Delay);
+                }
+                else if (core.Is(ETalismanEffectKind.Shockwave))
+                {
+                    AddStrike(ESkillShape.Circle, center, core.Radius, 0f, core.AddedCoefficient, _resolveAt + core.Delay);
+                }
             }
             if (_skill.Effect.Duration > 0f)
             {
-                AddEffect(_resolveAt);
+                // 화염 분출은 지속 피해를 지연 뒤 단일 폭발로 바꾼다. 반경과 피해 보조는 폭발에도 그대로 붙는다
+                if (core.Is(ETalismanEffectKind.Detonate))
+                {
+                    AddStrike(ESkillShape.Circle, center, radius, 0f,
+                        TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers), _resolveAt + core.Delay);
+                }
+                else
+                {
+                    AddField(_resolveAt, radius);
+                }
             }
         }
 
-        private void AddEffect(double now)
+        // 지속 장판과 결계. 잔불 폭발은 종료 때 같은 반경으로 한 번 더 친다
+        private void AddField(double now, float radius)
         {
             int index = GetFreeEffect();
             if (index < 0)
             {
                 return;
             }
-            bool projectile = _skill.Area.Shape == ESkillShape.Projectile;
+            SkillCoreVariant core = _castModifiers.Core;
             _effects[index] = new Effect
             {
-                Active = true, Skill = _skill, Modifiers = _castModifiers, CastId = _castId, ActionId = _actionId,
-                Origin = projectile ? _owner.Position : _point, Aim = _aim, LastTime = now,
-                EndsAt = now + (projectile ? (_skill.Area.CastRange / _skill.Area.ProjectileSpeed) : _skill.Effect.Duration),
-                NextTick = Constants.Combat.FIELD_TICKS_IMMEDIATELY ? now : now + _skill.Effect.TickInterval
+                Active = true, Kind = EEffectKind.Field, Skill = _skill, Modifiers = _castModifiers, CastId = _castId,
+                ActionId = _actionId, Origin = _point, Aim = _aim, LastTime = now, Shape = ESkillShape.Circle, Radius = radius,
+                EndsAt = now + TalismanModifierRules.GetDuration(_skill, in _castModifiers),
+                NextTick = Constants.Combat.FIELD_TICKS_IMMEDIATELY ? now : now + _skill.Effect.TickInterval,
+                ExtraCoefficient = core.Is(ETalismanEffectKind.EndExplosion) ? core.AddedCoefficient : 0f,
+                LastHitId = CombatIds.NONE
+            };
+        }
+
+        // 삼갈래 술식은 같은 동작 번호로 갈래를 나눠 쏴서 한 대상이 두 갈래에 맞아도 적중 원장이 한 번만 받는다
+        private void AddProjectiles(double now)
+        {
+            SkillCoreVariant core        = _castModifiers.Core;
+            bool             spread      = core.Is(ETalismanEffectKind.SpreadShot);
+            bool             pierce      = core.Is(ETalismanEffectKind.PierceShot);
+            int              count       = spread ? Math.Max(1, core.Count) : 1;
+            float            range       = TalismanModifierRules.GetCastRange(_skill, in _castModifiers);
+            float            coefficient = TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers);
+            for (int i = 0; i < count; ++i)
+            {
+                int index = GetFreeEffect();
+                if (index < 0)
+                {
+                    return;
+                }
+                float   angle = spread ? ((i - ((count - 1) * CENTER_INDEX_SCALE)) * core.SpreadAngle) : 0f;
+                Vector3 aim   = Quaternion.AngleAxis(angle, Vector3.up) * _aim;
+                _effects[index] = new Effect
+                {
+                    Active = true, Kind = EEffectKind.Projectile, Skill = _skill, Modifiers = _castModifiers, CastId = _castId,
+                    ActionId = _actionId, Origin = _owner.Position, Aim = aim, LastTime = now, Range = range,
+                    EndsAt = now + (range / _skill.Area.ProjectileSpeed), Coefficient = coefficient,
+                    ExtraCoefficient = pierce ? core.AddedCoefficient : 0f, PierceLeft = pierce ? core.ExtraTargets : 0,
+                    LastHitId = CombatIds.NONE
+                };
+            }
+        }
+
+        // 후속 타격, 충격파, 폭발처럼 첫 판정 뒤 정해진 시각에 한 번 치는 판정. 발동 때 새 동작 번호를 받아 같은 적도 다시 맞는다
+        private void AddStrike(ESkillShape shape, Vector3 center, float radius, float arc, float coefficient, double at)
+        {
+            int index = GetFreeEffect();
+            if (index < 0)
+            {
+                return;
+            }
+            _effects[index] = new Effect
+            {
+                Active = true, Kind = EEffectKind.Strike, Skill = _skill, Modifiers = _castModifiers, CastId = _castId,
+                ActionId = CombatIds.NONE, Origin = center, Aim = _aim, LastTime = at, NextTick = at, EndsAt = at,
+                Shape = shape, Radius = radius, ArcAngle = arc, Coefficient = coefficient, LastHitId = CombatIds.NONE
             };
         }
 
@@ -437,63 +537,111 @@ namespace Shinshi.Combat
                 {
                     continue;
                 }
-                if (effect.Skill.Area.Shape == ESkillShape.Projectile)
+                switch (effect.Kind)
                 {
-                    TickProjectile(ref effect, now);
+                    case EEffectKind.Projectile:
+                        TickProjectile(ref effect, now);
+                        if (now >= effect.EndsAt)
+                        {
+                            effect.Active = false;
+                        }
+                        break;
+                    case EEffectKind.Strike:
+                        if (now >= effect.NextTick)
+                        {
+                            ApplyArea(effect.Skill, in effect.Modifiers, effect.Shape, effect.Origin, effect.Aim, effect.Radius,
+                                effect.ArcAngle, effect.CastId, _resolver.IssueInstanceId(), effect.Coefficient, 0f, now);
+                            effect.Active = false;
+                        }
+                        break;
+                    default:
+                        TickField(ref effect, now);
+                        break;
                 }
-                else if (effect.Skill.Effect.TickCoefficient > 0f)
-                {
-                    // 경계 마지막 틱까지 포함하고 한 시전 번호 아래 각 주기에 새 동작 번호를 발급한다
-                    while ((effect.NextTick <= now) && (effect.NextTick <= effect.EndsAt))
-                    {
-                        int action = _resolver.IssueInstanceId();
-                        ApplyArea(effect.Skill, effect.Modifiers, effect.Origin, effect.Aim, effect.CastId, action,
-                            effect.Skill.Effect.TickCoefficient, 0f, false, now);
-                        effect.NextTick += effect.Skill.Effect.TickInterval;
-                    }
-                }
-                if (now >= effect.EndsAt)
-                {
-                    effect.Active = false;
-                }
-                if (!effect.Active)
+                if ((!effect.Active) && (!HasEffectCast(effect.CastId)))
                 {
                     _resonance.ReleaseCast(effect.CastId);
                 }
             }
         }
 
+        private void TickField(ref Effect effect, double now)
+        {
+            if (effect.Skill.Effect.TickCoefficient > 0f)
+            {
+                // 경계 마지막 틱까지 포함하고 한 시전 번호 아래 각 주기에 새 동작 번호를 발급한다
+                while ((effect.NextTick <= now) && (effect.NextTick <= effect.EndsAt))
+                {
+                    int action = _resolver.IssueInstanceId();
+                    ApplyArea(effect.Skill, in effect.Modifiers, ESkillShape.Circle, effect.Origin, effect.Aim, effect.Radius, 0f,
+                        effect.CastId, action, effect.Skill.Effect.TickCoefficient, 0f, now);
+                    effect.NextTick += effect.Skill.Effect.TickInterval;
+                }
+            }
+            if (now < effect.EndsAt)
+            {
+                return;
+            }
+            if (effect.ExtraCoefficient > 0f)
+            {
+                ApplyArea(effect.Skill, in effect.Modifiers, ESkillShape.Circle, effect.Origin, effect.Aim, effect.Radius, 0f,
+                    effect.CastId, _resolver.IssueInstanceId(), effect.ExtraCoefficient, 0f, now);
+            }
+            effect.Active = false;
+        }
+
+        // 관통 술식은 맞힌 대상 위치까지 나아가 남은 거리에서 다음 적을 찾는다. 첫 적중은 원래 계수, 뒤는 추가 계수다
         private void TickProjectile(ref Effect effect, double now)
         {
-            float distance = Mathf.Min(effect.Skill.Area.CastRange - effect.Travelled,
+            float distance = Mathf.Min(effect.Range - effect.Travelled,
                 effect.Skill.Area.ProjectileSpeed * (float)Math.Max(0.0, now - effect.LastTime));
-            float clear = _lineOfSight.GetClearDistance(effect.Origin, effect.Aim, distance);
-            int index = FirstOnRay(effect.Origin, effect.Aim, clear, effect.Skill.Area.Width * Constants.Combat.SKILL_HALF_WIDTH_SCALE,
-                out _);
-            if (index >= 0)
+            float clear     = _lineOfSight.GetClearDistance(effect.Origin, effect.Aim, distance);
+            float halfWidth = effect.Skill.Area.Width * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
+            float remaining = clear;
+            while (effect.Active)
             {
-                ApplyHit(_targets[index], effect.Skill.DefinitionId, effect.CastId, effect.ActionId, effect.Origin,
-                    effect.Skill.Effect.DamageCoefficient * effect.Modifiers.DamageScale, effect.Modifiers.ResonanceBonus, 0f, false, now);
-                effect.Active = false;
+                int index = FirstOnRay(effect.Origin, effect.Aim, remaining, halfWidth, effect.LastHitId, out float along);
+                if (index < 0)
+                {
+                    break;
+                }
+                ICombatTarget target      = _targets[index];
+                float         coefficient = (effect.LastHitId == CombatIds.NONE) ? effect.Coefficient : effect.ExtraCoefficient;
+                ApplyHit(target, effect.Skill.DefinitionId, effect.CastId, effect.ActionId, effect.Origin,
+                    coefficient * effect.Modifiers.DamageScale, effect.Modifiers.ResonanceBonus, 0f, false, now);
+                if (effect.PierceLeft <= 0)
+                {
+                    effect.Active = false;
+                    break;
+                }
+                --effect.PierceLeft;
+                effect.LastHitId  = target.CombatId;
+                along             = Mathf.Clamp(along, 0f, remaining);
+                effect.Origin    += effect.Aim * along;
+                effect.Travelled += along;
+                remaining        -= along;
             }
-            effect.Origin += effect.Aim * clear;
-            effect.Travelled += clear;
-            effect.LastTime = now;
-            if ((clear < distance) || (effect.Travelled >= effect.Skill.Area.CastRange))
+            effect.Origin    += effect.Aim * remaining;
+            effect.Travelled += remaining;
+            effect.LastTime   = now;
+            if ((clear < distance) || (effect.Travelled >= effect.Range))
             {
                 effect.Active = false;
             }
             _targets.Clear();
         }
 
+        // 관통 돌진은 적 몸체에서 멈추지 않고 지나간 경로의 적을 모두 친다. 같은 동작 번호라 한 적은 한 번만 맞는다
         private void TickDash(double now)
         {
             if (_dashStopped)
             {
                 return;
             }
+            bool  pierce = _castModifiers.Core.Is(ETalismanEffectKind.PierceDash);
+            float range  = TalismanModifierRules.GetCastRange(_skill, in _castModifiers);
             float elapsed = (float)Math.Max(0.0, Math.Min(now, _activeEndsAt) - _resolveAt);
-            Vector3 desired = _origin + (_aim * (_skill.Area.CastRange * elapsed / _skill.Timeline.Active));
+            Vector3 desired = _origin + (_aim * (range * elapsed / _skill.Timeline.Active));
             Vector3 from = _owner.Position;
             Vector3 delta = desired - from;
             float distance = delta.magnitude;
@@ -501,12 +649,23 @@ namespace Shinshi.Combat
             Vector3 navigationEnd = _navigation.Move(from, from + (_aim * clear));
             float horizontalDistance = Mathf.Sqrt(HorizontalDistanceSqr(from, navigationEnd));
             clear = Mathf.Min(clear, horizontalDistance);
-            float radius = Constants.Combat.SKILL_TARGET_BODY_RADIUS;
-            int index = FirstOnRay(from, _aim, clear + radius, _skill.Area.Width * Constants.Combat.SKILL_HALF_WIDTH_SCALE, out float along);
+            float radius      = Constants.Combat.SKILL_TARGET_BODY_RADIUS;
+            float halfWidth   = _skill.Area.Width * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
+            float coefficient = TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers);
+            int index = -1;
+            float along = 0f;
+            if (pierce)
+            {
+                ApplyLine(_skill, in _castModifiers, from, _aim, clear + radius, halfWidth, _castId, _actionId, coefficient, now);
+            }
+            else
+            {
+                index = FirstOnRay(from, _aim, clear + radius, halfWidth, CombatIds.NONE, out along);
+            }
             if (index >= 0)
             {
                 ApplyHit(_targets[index], _skill.DefinitionId, _castId, _actionId, from,
-                    _skill.Effect.DamageCoefficient * _castModifiers.DamageScale, _castModifiers.ResonanceBonus, 0f, false, now);
+                    coefficient * _castModifiers.DamageScale, _castModifiers.ResonanceBonus, 0f, false, now);
                 clear = Mathf.Min(clear, Mathf.Max(0f, along - radius));
                 _dashStopped = true;
             }
@@ -527,7 +686,7 @@ namespace Shinshi.Combat
             _targets.Clear();
         }
 
-        private int FirstOnRay(Vector3 origin, Vector3 aim, float range, float halfWidth, out float along)
+        private int FirstOnRay(Vector3 origin, Vector3 aim, float range, float halfWidth, int excludedId, out float along)
         {
             _registry.GetLivingInRadius(origin, range + halfWidth, ECombatFaction.Enemy, true, _targets);
             int nearest = -1;
@@ -535,7 +694,8 @@ namespace Shinshi.Combat
             for (int i = 0; i < _targets.Count; ++i)
             {
                 Vector3 position = _targets[i].Position;
-                if ((!BasicAttackRules.IsWithinHeight(origin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+                if ((_targets[i].CombatId == excludedId)
+                    || (!BasicAttackRules.IsWithinHeight(origin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
                     || (_lineOfSight.IsBlocked(origin, position))
                     || (!BasicAttackRules.TryProjectOnRay(origin, aim, position, range, halfWidth, out float candidate)))
                 {
@@ -550,15 +710,31 @@ namespace Shinshi.Combat
             return nearest;
         }
 
-        private void ApplyArea(SkillCatalogSO.SkillDefinition skill, SkillModifiers modifiers, Vector3 center, Vector3 aim,
-            int castId, int actionId, float coefficient, float root, bool ascension, double now)
+        // 반격 성공 뒤 한 번 친다. 반격 파동은 전방 부채꼴 대신 전방 직선 파동이다
+        private void ApplyCounter(double now)
         {
-            _registry.GetLivingInRadius(center, skill.Area.Radius, ECombatFaction.Enemy, true, _targets);
+            SkillCoreVariant core = _castModifiers.Core;
+            if (core.Is(ETalismanEffectKind.CounterWave))
+            {
+                ApplyLine(_skill, in _castModifiers, _owner.Position, _aim, core.Length,
+                    core.Width * Constants.Combat.SKILL_HALF_WIDTH_SCALE, _castId, _actionId,
+                    TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers), now);
+                return;
+            }
+            ApplyArea(_skill, in _castModifiers, ESkillShape.Cone, _owner.Position, _aim,
+                TalismanModifierRules.GetRadius(_skill, in _castModifiers), TalismanModifierRules.GetArcAngle(_skill, in _castModifiers),
+                _castId, _actionId, _skill.Effect.DamageCoefficient, _skill.Effect.RootDuration, now);
+        }
+
+        private void ApplyArea(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers, ESkillShape shape, Vector3 center,
+            Vector3 aim, float radius, float arcAngle, int castId, int actionId, float coefficient, float root, double now)
+        {
+            _registry.GetLivingInRadius(center, radius, ECombatFaction.Enemy, true, _targets);
             for (int i = 0; i < _targets.Count; ++i)
             {
                 ICombatTarget target = _targets[i];
-                if ((skill.Area.Shape == ESkillShape.Cone)
-                    && (!BasicAttackRules.IsInArc(center, aim, target.Position, skill.Area.Radius, skill.Area.ArcAngle)))
+                if ((shape == ESkillShape.Cone)
+                    && (!BasicAttackRules.IsInArc(center, aim, target.Position, radius, arcAngle)))
                 {
                     continue;
                 }
@@ -568,7 +744,49 @@ namespace Shinshi.Combat
                     continue;
                 }
                 ApplyHit(target, skill.DefinitionId, castId, actionId, center, coefficient * modifiers.DamageScale,
-                    modifiers.ResonanceBonus, root, ascension, now);
+                    modifiers.ResonanceBonus, root, false, now);
+            }
+            _targets.Clear();
+        }
+
+        // 시작점에서 aim 방향 길이 length, 반폭 halfWidth 직사각형 안의 적을 모두 친다
+        private void ApplyLine(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers, Vector3 origin, Vector3 aim,
+            float length, float halfWidth, int castId, int actionId, float coefficient, double now)
+        {
+            _registry.GetLivingInRadius(origin, length + halfWidth, ECombatFaction.Enemy, true, _targets);
+            for (int i = 0; i < _targets.Count; ++i)
+            {
+                ICombatTarget target = _targets[i];
+                if ((!BasicAttackRules.IsWithinHeight(origin, target.Position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+                    || (_lineOfSight.IsBlocked(origin, target.Position))
+                    || (!BasicAttackRules.TryProjectOnRay(origin, aim, target.Position, length, halfWidth, out _)))
+                {
+                    continue;
+                }
+                ApplyHit(target, skill.DefinitionId, castId, actionId, origin, coefficient * modifiers.DamageScale,
+                    modifiers.ResonanceBonus, 0f, false, now);
+            }
+            _targets.Clear();
+        }
+
+        // 진중 응집, 제어 가능한 일반 적만 진 중심으로 한 번 옮긴다. 보스와 끌기를 구현하지 않은 대상은 그 자리에서 속박만 받는다
+        private void PullTargets(Vector3 center, float radius, double now)
+        {
+            _registry.GetLivingInRadius(center, radius, ECombatFaction.Enemy, true, _targets);
+            for (int i = 0; i < _targets.Count; ++i)
+            {
+                ICombatTarget target = _targets[i];
+                if ((!(target is ISkillControlTarget control)) || (control.IsBoss) || (!control.AllowsRoot)
+                    || (!(target is ISkillPullTarget pull)))
+                {
+                    continue;
+                }
+                if ((!BasicAttackRules.IsWithinHeight(center, target.Position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+                    || (_lineOfSight.IsBlocked(center, target.Position)))
+                {
+                    continue;
+                }
+                pull.PullTo(center, now);
             }
             _targets.Clear();
         }
@@ -661,11 +879,11 @@ namespace Shinshi.Combat
             for (int i = 0; i < _effects.Length; ++i)
             {
                 ref Effect effect = ref _effects[i];
-                if ((!effect.Active) || (effect.Skill.Effect.AllyDamageBonus <= 0f))
+                if ((!effect.Active) || (effect.Kind != EEffectKind.Field) || (effect.Skill.Effect.AllyDamageBonus <= 0f))
                 {
                     continue;
                 }
-                _registry.GetLivingInRadius(effect.Origin, effect.Skill.Area.Radius, ECombatFaction.Enemy, true, _targets);
+                _registry.GetLivingInRadius(effect.Origin, effect.Radius, ECombatFaction.Enemy, true, _targets);
                 for (int j = 0; j < _targets.Count; ++j)
                 {
                     ICombatTarget candidate = _targets[j];
@@ -698,8 +916,8 @@ namespace Shinshi.Combat
             for (int i = 0; i < _effects.Length; ++i)
             {
                 ref Effect effect = ref _effects[i];
-                if ((effect.Active) && (effect.Skill.Effect.AllyDamageBonus > bonus)
-                    && (HorizontalDistanceSqr(effect.Origin, target.Position) <= effect.Skill.Area.Radius * effect.Skill.Area.Radius))
+                if ((effect.Active) && (effect.Kind == EEffectKind.Field) && (effect.Skill.Effect.AllyDamageBonus > bonus)
+                    && (HorizontalDistanceSqr(effect.Origin, target.Position) <= effect.Radius * effect.Radius))
                 {
                     bonus = effect.Skill.Effect.AllyDamageBonus;
                 }
@@ -819,6 +1037,61 @@ namespace Shinshi.Combat
                 }
             }
             return false;
+        }
+
+        private int CountFreeEffects()
+        {
+            int count = 0;
+            for (int i = 0; i < _effects.Length; ++i)
+            {
+                if (!_effects[i].Active)
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
+
+        // 확정 전에 필요한 효과 칸을 모두 확인한다. 칸이 모자라 변형의 후속 타격이나 갈래만 빠진 채 비용을 받지 않게 한다
+        private static int RequiredEffectSlots(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            SkillCoreVariant core = modifiers.Core;
+            switch (skill.Area.Shape)
+            {
+                case ESkillShape.Summon:
+                case ESkillShape.Line:
+                    return 0;
+                case ESkillShape.Projectile:
+                    return core.Is(ETalismanEffectKind.SpreadShot) ? Math.Max(1, core.Count) : 1;
+                default:
+                    int slots = 0;
+                    if ((skill.Effect.DamageCoefficient > 0f)
+                        && ((core.Is(ETalismanEffectKind.FollowUpStrike)) || (core.Is(ETalismanEffectKind.Shockwave))))
+                    {
+                        ++slots;
+                    }
+                    if (skill.Effect.Duration > 0f)
+                    {
+                        ++slots;
+                    }
+                    return slots;
+            }
+        }
+
+        private static bool IsValidModifiers(in SkillModifiers modifiers)
+        {
+            return (IsNonNegativeFinite(modifiers.EnergyScale)) && (IsNonNegativeFinite(modifiers.CooldownScale))
+                && (IsNonNegativeFinite(modifiers.DamageScale)) && (IsNonNegativeFinite(modifiers.ResonanceBonus))
+                && (IsNonNegativeFinite(modifiers.AttackIntervalScale)) && (IsFinite(modifiers.RadiusDelta))
+                && (IsFinite(modifiers.ArcAngleDelta)) && (IsFinite(modifiers.RangeDelta)) && (IsFinite(modifiers.MoveDistanceDelta))
+                && (IsFinite(modifiers.DurationDelta)) && (IsFinite(modifiers.GuardDurationDelta))
+                && (IsNonNegativeFinite(modifiers.FixedRadius)) && (IsNonNegativeFinite(modifiers.FixedArcAngle))
+                && (IsNonNegativeFinite(modifiers.MarkedDamageBonus));
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return (!float.IsNaN(value)) && (!float.IsInfinity(value));
         }
 
         private int GetFreeEffect()

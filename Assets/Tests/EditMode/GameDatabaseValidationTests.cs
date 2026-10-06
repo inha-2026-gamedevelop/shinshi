@@ -137,6 +137,23 @@ namespace Shinshi.Tests
             StringAssert.Contains("_enemyHealthScale", errors[0]);
         }
 
+        [Test]
+        public void Validate_BossPotionLimitDiffersFromContract_ReportsField()
+        {
+            SessionConfigSO session = Create<SessionConfigSO>();
+
+            var serialized = new SerializedObject(session);
+            serialized.FindProperty("_bossPotionUseLimit").intValue = Shinshi.Contracts.GameSessionCodes.Potion.BOSS_USE_LIMIT + 1;
+
+            LogAssert.Expect(LogType.Error, new Regex("_bossPotionUseLimit"));
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            List<string> errors = Validate(session);
+
+            Assert.AreEqual(1, errors.Count, string.Join("\n", errors));
+            StringAssert.Contains("_bossPotionUseLimit", errors[0]);
+        }
+
         /****************************************
         *                Methods
         ****************************************/

@@ -224,7 +224,7 @@ namespace Shinshi.Backend.Tests.Admin
             Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED,
                 await gate.CheckFeatureAsync(ServiceFeatureKeys.AUCTION));
             Assert.Throws<ArgumentException>(() => gate.IsDisabled("Auction"));
-            Assert.Equal(8, ServiceFeatureKeys.All.Count);
+            Assert.Equal(10, ServiceFeatureKeys.All.Count);
         }
 
         private static ServiceNoticeRecord Notice(string title, string target, int severity, DateTimeOffset startsAt,

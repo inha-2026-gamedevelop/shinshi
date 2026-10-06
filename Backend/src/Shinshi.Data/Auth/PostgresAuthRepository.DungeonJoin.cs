@@ -70,7 +70,10 @@ namespace Shinshi.Data.Auth
                 }
 
                 Guid? character = await connection.QuerySingleOrDefaultAsync<Guid?>(Command(
-                    "SELECT character_id FROM characters WHERE account_id = @AccountId AND character_id = @CharacterId FOR SHARE;",
+                    """
+                    SELECT character_id FROM characters
+                    WHERE account_id = @AccountId AND character_id = @CharacterId AND deleted_at IS NULL FOR SHARE;
+                    """,
                     new { grant.AccountId, grant.CharacterId }, transaction, token));
                 if (!character.HasValue)
                 {
@@ -157,6 +160,8 @@ namespace Shinshi.Data.Auth
                     """
                     SELECT participant.participant_id AS "ParticipantId", participant.character_id AS "CharacterId",
                         participant.state AS "ParticipantState", session.state AS "SessionState",
+                        participant.departed_at IS NOT NULL AS "Departed",
+                        COALESCE(session.auction_ends_at > clock_timestamp(), false) AS "AuctionOpen",
                         session.instance_id AS "InstanceId", instance.address AS "Address", instance.port AS "Port"
                     FROM session_participants AS participant
                     JOIN game_sessions AS session ON session.session_id = participant.session_id
@@ -230,8 +235,9 @@ namespace Shinshi.Data.Auth
 
         private static int? RejoinPhaseReason(RejoinRow target)
         {
+            // 포기, 접속 만료로 떠난 참가자는 정산 전이어도 복귀하지 않는다(PARTICIPANT_DEPARTED)
             if ((target.ParticipantState == GameSessionStates.PARTICIPANT_SETTLED)
-                || (target.ParticipantState == GameSessionStates.PARTICIPANT_RELEASED))
+                || (target.ParticipantState == GameSessionStates.PARTICIPANT_RELEASED) || target.Departed)
             {
                 return ContractCodes.RejectReason.ALREADY_SETTLED;
             }
@@ -240,7 +246,10 @@ namespace Shinshi.Data.Auth
                 // 시작 전 입장은 예약한 마을 서버의 입장권 경로다
                 return ContractCodes.RejectReason.WRONG_PHASE;
             }
-            if (target.SessionState != GameSessionStates.RUNNING)
+
+            // 보스 성공 뒤 경매 단계는 마감(auction_ends_at) 전까지 끊긴 참가자의 복귀를 받는다. 마감 뒤는 종결로 본다
+            bool auctionOpen = (target.SessionState == GameSessionStates.AUCTION) && target.AuctionOpen;
+            if ((target.SessionState != GameSessionStates.RUNNING) && !auctionOpen)
             {
                 return ContractCodes.RejectReason.SESSION_TERMINAL;
             }
@@ -249,7 +258,7 @@ namespace Shinshi.Data.Auth
                 ? null : ContractCodes.RejectReason.SESSION_MISMATCH;
         }
 
-        // Reserved 출정은 예약한 마을 서버의 입장권만, Running 출정은 본인 복귀만 발급한다.
+        // Reserved 출정은 예약한 마을 서버의 입장권만, Running과 마감 전 Auction 출정은 떠나지 않은 본인 복귀만 발급한다.
         // 마을 임대 조건은 Reserved에만 걸며 townInstanceId가 없으면 Reserved 분기가 성립하지 않는다
         private static async Task<bool> LockIssuableParticipantAsync(NpgsqlConnection connection,
             NpgsqlTransaction transaction, Guid sessionId, Guid participantId, Guid accountId, Guid characterId,
@@ -261,11 +270,15 @@ namespace Shinshi.Data.Auth
                     ON session.session_id = participant.session_id
                 WHERE participant.session_id = @SessionId AND participant.participant_id = @ParticipantId
                     AND participant.account_id = @AccountId AND participant.character_id = @CharacterId
-                    AND participant.state IN ('Reserved','Active') AND session.state IN ('Reserved','Running')
+                    AND participant.state IN ('Reserved','Active') AND session.state IN ('Reserved','Running','Auction')
+                    AND participant.departed_at IS NULL
                     AND ((session.state = 'Reserved' AND participant.state = 'Reserved'
                             AND session.reserved_by_instance_id = @TownInstanceId
                             AND session.expires_at > clock_timestamp())
                         OR (session.state = 'Running' AND participant.state = 'Active'
+                            AND CAST(@TownInstanceId AS uuid) IS NULL)
+                        OR (session.state = 'Auction' AND participant.state = 'Active'
+                            AND session.auction_ends_at > clock_timestamp()
                             AND CAST(@TownInstanceId AS uuid) IS NULL))
                 FOR SHARE OF participant;
                 """, new { SessionId = sessionId, ParticipantId = participantId, AccountId = accountId,
@@ -273,7 +286,7 @@ namespace Shinshi.Data.Auth
             return participant.HasValue;
         }
 
-        // 같은 참가자의 미교환 토큰은 폐기한다. 만료는 요청 수명, Reserved 예약 만료, 로그인 묶음 만료 중 이른 값이다
+        // 같은 참가자의 미교환 토큰은 폐기한다. 만료는 요청 수명, Reserved 예약 만료, Auction 마감, 로그인 묶음 만료 중 이른 값이다
         private async Task<IssuedAuthToken?> InsertDungeonJoinTokenAsync(NpgsqlConnection connection,
             NpgsqlTransaction transaction, DungeonTokenTarget target, TimeSpan lifetime, CancellationToken token)
         {
@@ -283,7 +296,8 @@ namespace Shinshi.Data.Auth
             DateTime expires = await connection.QuerySingleAsync<DateTime>(Command(
                 """
                 SELECT LEAST(@RequestedExpires,
-                    CASE WHEN session.state = 'Reserved' THEN session.expires_at ELSE 'infinity'::timestamptz END,
+                    CASE WHEN session.state = 'Reserved' THEN session.expires_at
+                        WHEN session.state = 'Auction' THEN session.auction_ends_at ELSE 'infinity'::timestamptz END,
                     COALESCE((
                         SELECT MAX(refresh.expires_at) FROM auth_refresh_tokens AS refresh
                         WHERE refresh.account_id = @AccountId AND refresh.family_id = @FamilyId
@@ -324,6 +338,8 @@ namespace Shinshi.Data.Auth
             public Guid CharacterId { get; set; }
             public string ParticipantState { get; set; } = string.Empty;
             public string SessionState { get; set; } = string.Empty;
+            public bool Departed { get; set; }
+            public bool AuctionOpen { get; set; }
             public Guid InstanceId { get; set; }
             public string Address { get; set; } = string.Empty;
             public int Port { get; set; }

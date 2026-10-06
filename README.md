@@ -68,7 +68,7 @@ Unity 메뉴 **Shinshi → Build**에서 만든다.
 
 ## 릴리즈 브랜치 실행
 
-릴리즈 브랜치를 받은 PC에서 로비 → 캐릭터 선택 → 캐릭터 생성 → 마을까지 실제 전용 서버로 진행한다. Docker Desktop과 .NET 10 SDK가 필요하다.
+릴리즈 브랜치를 받은 PC에서 로비 → 캐릭터 선택 → 캐릭터 생성 → 마을까지 실제 전용 서버로 진행한다. Docker Desktop과 .NET 10 SDK가 필요하다. `Assets/99.ThirdParty/`의 외부 에셋은 Git에 없으므로 처음 받은 PC는 [에셋 대장](docs/licenses/ASSET_REGISTRY.md)대로 설치한 뒤 Unity로 한 번 열어 컴파일 오류가 없는지 확인한다.
 
 ```powershell
 git switch release/0.1.0

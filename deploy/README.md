@@ -79,6 +79,7 @@ Linux Dedicated Server 빌드 하나가 역할 인자로 마을/던전을 고른
 | `-backend-base-url` | `BACKEND_BASE_URL` | 자격 정보·query·fragment 없는 절대 URL. 배포 시 HTTPS |
 | `-content-version` | `CONTENT_VERSION` | 빌드에 포함된 GameDB 버전과 정확히 일치 |
 | `-dungeon-pool-size` | `DUNGEON_POOL_SIZE` | 실제 시작한/등록할 풀 크기 N, 정수 1 이상 |
+| `-boss-id` | `BOSS_ID` | 선택. 던전 서버가 보스전에서 여는 보스 정의 ID. 없으면 `boss_wolbaek`. 보스 카탈로그에 없는 ID면 서버를 시작하지 않는다. 출정 계약에 보스 ID가 생기면 그 값으로 바뀐다 |
 
 실행 인자가 환경 변수보다 우선한다. `INSTANCE_ID`와 `CONTENT_VERSION`은 영문/숫자로 시작하는 1~128자이며 영문·숫자·`.`·`_`·`-`·`+`만 허용된다. 각 환경 예시는 자리표시자를 교체하기 전 실행하지 않는다. `-batchmode -nographics -logFile -`는 Unity 헤드리스/표준 출력 옵션이다. 서비스 자격·서명 키를 실행 인자로 넣지 않는다.
 

@@ -130,6 +130,7 @@ namespace Shinshi.Combat
             }
             else
             {
+                _predictor.SetRoundTripTime(NetworkTime.rtt);
                 float speed = isDodging ? _dodgeSpeed : _input.MoveSpeed;
                 position = _predictor.Advance(position, speed, now);
                 position = _predictor.Reconcile(in authority, position, now, deltaTime);

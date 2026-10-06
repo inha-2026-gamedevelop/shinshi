@@ -34,6 +34,7 @@ MonoBehaviour:
   _bossReviveHealthRate: 0.3
   _bossSharedRevives: 3
   _safePointRetryInterval: 0.25
+  _safePointEnemyClearance: 6
   _reconnectGraceSeconds: 120
   _readyCountdownSeconds: 3
   _bossPotionUseLimit: 9

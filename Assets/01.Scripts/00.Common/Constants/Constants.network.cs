@@ -9,8 +9,9 @@ namespace Shinshi.Common
             *                Fields
             ****************************************/
 
-            // 클라이언트와 서버 빌드가 같아야 접속할 수 있다
-            public const int PROTOCOL_VERSION = 1;
+            // 클라이언트와 서버 빌드가 같아야 접속할 수 있다.
+            // 2: 플레이어 이름 SyncVar, 보스 예고 묶음 번호와 2페이즈 빔, 별형 빔, 반월 연쇄, 50% 결계 사건 추가(2026-10-03)
+            public const int PROTOCOL_VERSION = 2;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -37,9 +38,11 @@ namespace Shinshi.Common
             public const int   BOSS_SEND_INTERVAL_MULTIPLIER = MIRROR_SEND_RATE / BOSS_REPLICATION_RATE;
             public const float BOSS_SYNC_INTERVAL_SECONDS    = MIRROR_SEND_INTERVAL_SECONDS * BOSS_SEND_INTERVAL_MULTIPLIER;
 
-            // 늦은 접속, 재접속 복원에 싣는 진행 중 투사체와 장판 수의 상한. 서버 관리자의 동시 상한보다 크게 둔다
+            // 늦은 접속, 재접속 복원에 싣는 진행 중 투사체, 장판, 빔, 별형 빔 수의 상한. 서버 관리자의 동시 상한보다 크게 둔다
             public const int BOSS_RESTORE_MAX_PROJECTILES = 16;
             public const int BOSS_RESTORE_MAX_AREAS       = 16;
+            public const int BOSS_RESTORE_MAX_BEAMS       = 16;
+            public const int BOSS_RESTORE_MAX_STARS       = 8;
 
             // 서버 시각 기준으로 입력을 받아 주는 창
             public const float INPUT_PAST_TOLERANCE_SECONDS   = 0.15f;
@@ -123,6 +126,11 @@ namespace Shinshi.Common
             public const string ARG_BACKEND_BASE_URL  = "-backend-base-url";
             public const string ARG_CONTENT_VERSION   = "-content-version";
             public const string ARG_DUNGEON_POOL_SIZE = "-dungeon-pool-size";
+
+            // 보스전 계약이 없는 출정(개발)에서 던전 서버가 여는 보스 정의 ID. 계약이 있으면 계약 보스를 쓴다.
+            // 없으면 Constants.Combat.DEV_BOSS_ID이고 보스 카탈로그에 있는 ID만 받는다
+            public const string ENV_BOSS_ID = "BOSS_ID";
+            public const string ARG_BOSS_ID = "-boss-id";
 
             // 개발 클라이언트의 자동 접속 주소, 포트는 ARG_PORT를 함께 쓴다
             public const string ARG_CONNECT      = "-connect";

@@ -4,6 +4,7 @@ using System;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Contracts;
 
 namespace Shinshi.Network
 {
@@ -29,7 +30,9 @@ namespace Shinshi.Network
                 return;
             }
 
-            listener.OnJoinTokenVerified(requestId, ERejectReason.None, new JoinTokenClaims(participantKey));
+            // 개발 토큰에는 캐릭터가 없어 참가자 키가 이름 규칙에 맞으면 그대로 이름으로 띄운다
+            string characterName = CharacterNameRules.TryNormalize(participantKey, out string name, out string _) ? name : null;
+            listener.OnJoinTokenVerified(requestId, ERejectReason.None, new JoinTokenClaims(participantKey, characterName));
         }
 
         // 같은 개발 토큰은 언제나 다시 쓸 수 있으므로 기억할 것이 없다

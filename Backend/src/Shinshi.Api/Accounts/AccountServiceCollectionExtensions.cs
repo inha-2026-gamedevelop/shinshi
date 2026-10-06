@@ -13,6 +13,7 @@ using Shinshi.Data;
 using Shinshi.Data.Accounts;
 using Shinshi.Data.Auth;
 using Shinshi.Data.Characters;
+using Shinshi.Data.Growth;
 
 namespace Shinshi.Backend.Accounts
 {
@@ -36,10 +37,19 @@ namespace Shinshi.Backend.Accounts
             services.TryAddSingleton(provider => new PasswordLoginLimiter(provider.GetRequiredService<TimeProvider>()));
             services.TryAddSingleton<PasswordCredentialVerifier>();
             services.TryAddSingleton<AccountSignupLimiter>();
+            services.TryAddSingleton<AccountRequestLimiter>();
             services.TryAddScoped<AccountInvalidModelStateFilter>();
             services.TryAddSingleton<IAccountRepository>(provider => provider.GetRequiredService<PostgresAuthRepository>());
-            services.TryAddSingleton<ICharacterRepository>(provider => new PostgresCharacterRepository(
-                provider.GetRequiredService<NpgsqlDataSource>(), provider.GetRequiredService<IdempotentOperationExecutor>()));
+            // 성장 모듈(AddShinshiGrowth)이 등록한 초기 지급 설정이 있으면 그 프로필을 쓴다
+            services.TryAddSingleton<ICharacterRepository>(provider =>
+            {
+                InitialGrantService? grants = provider.GetService<InitialGrantService>();
+                return grants == null
+                    ? new PostgresCharacterRepository(provider.GetRequiredService<NpgsqlDataSource>(),
+                        provider.GetRequiredService<IdempotentOperationExecutor>())
+                    : new PostgresCharacterRepository(provider.GetRequiredService<NpgsqlDataSource>(),
+                        provider.GetRequiredService<IdempotentOperationExecutor>(), grants);
+            });
             return services;
         }
     }

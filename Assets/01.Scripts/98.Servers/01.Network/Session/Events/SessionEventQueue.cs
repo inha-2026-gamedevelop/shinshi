@@ -26,6 +26,9 @@ namespace Shinshi.Network
         private readonly SessionEvent[]    _ring;
         private readonly SessionEvent[]    _batch;
 
+        // _ring과 같은 칸에 넣은 시각(마지막 Tick의 서버 시각). 관측 지표의 가장 오래된 미확인 나이만 쓴다
+        private readonly double[]          _enqueuedAt;
+
         private int    _head                     = 0;
         private int    _count                    = 0;
         private int    _batchCount               = 0;
@@ -66,6 +69,9 @@ namespace Shinshi.Network
         public long RetryCount               => _retryCount;
         public long LastAcknowledgedSequence => _lastAcknowledgedSequence;
 
+        /// <summary> 가장 오래된 미확인 이벤트가 큐에 머문 초, 비었으면 0. 틱 단위로만 정확하다 </summary>
+        public double OldestAgeSeconds => (_count == 0) ? 0.0 : Math.Max(0.0, _serverTime - _enqueuedAt[_head]);
+
         /// <summary> 확정 거절을 받아 더는 보내지도 받지도 않는다, 남은 이벤트는 API 장애 취소가 처리한다 </summary>
         public bool IsTerminal => _isTerminal;
 
@@ -97,10 +103,11 @@ namespace Shinshi.Network
                 throw new ArgumentOutOfRangeException(nameof(batchCapacity), "저장 배치 상한은 1 이상이다");
             }
 
-            _sessionId = sessionId;
-            _sink      = sink;
-            _ring      = new SessionEvent[capacity];
-            _batch     = new SessionEvent[batchCapacity];
+            _sessionId  = sessionId;
+            _sink       = sink;
+            _ring       = new SessionEvent[capacity];
+            _batch      = new SessionEvent[batchCapacity];
+            _enqueuedAt = new double[capacity];
         }
 
         /// <summary> 빈자리가 있으면 확정 payload에 다음 순번을 붙인다, 거절 시 sequence는 0이고 기존 큐는 유지된다 </summary>
@@ -193,7 +200,8 @@ namespace Shinshi.Network
         private void EnqueueUnchecked(in SessionEventData data)
         {
             int tail = (_head + _count) % _ring.Length;
-            _ring[tail] = new SessionEvent(++_lastSequence, in data);
+            _ring[tail]       = new SessionEvent(++_lastSequence, in data);
+            _enqueuedAt[tail] = _serverTime;
             ++_count;
             _highWatermark = Math.Max(_highWatermark, _count);
         }

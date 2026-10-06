@@ -1,3 +1,6 @@
+// System
+using System;
+
 // Unity
 using UnityEngine;
 
@@ -30,6 +33,7 @@ namespace Shinshi.Combat
         private bool    _wasInterrupted   = false;
         private double  _lastStepTime     = 0.0;
         private Vector3 _moveDirection    = Vector3.zero;
+        private double  _ackTimeout       = Constants.Player.PREDICTION_MOVE_ACK_TIMEOUT_SECONDS;
 
         // 예측 품질 측정값. 보정 거리가 예측 이동 거리에 비해 작을수록, 스냅이 없을수록 체감이 매끄럽다
         private float _travelledDistance = 0f;
@@ -79,10 +83,22 @@ namespace Shinshi.Combat
             _moveDirection    = Vector3.zero;
         }
 
+        /// <summary> 측정한 왕복 지연(초)으로 이동 응답을 기다리는 시간을 늘린다, 지연이 튀는 동안 아직 오는 중인 이동을 잃은 것으로 보지 않게 한다 </summary>
+        public void SetRoundTripTime(double roundTripTime)
+        {
+            // 기록보다 오래 기다리면 같은 시점끼리 비교할 수 없으므로 기록 길이에서 자른다
+            double scaled = roundTripTime * Constants.Player.PREDICTION_MOVE_ACK_RTT_MULTIPLIER;
+            double atLeast = Math.Max(Constants.Player.PREDICTION_MOVE_ACK_TIMEOUT_SECONDS, scaled);
+            _ackTimeout = Math.Min(atLeast, Constants.Player.PREDICTION_MOVE_ACK_TIMEOUT_MAX_SECONDS);
+        }
+
         /// <summary> 진행 중인 경로와 같은 목적지인지 본다, 서버도 같은 목적지는 다시 계산하지 않고 순번을 남기지 않는다 </summary>
         public bool IsSameActiveDestination(Vector3 destination)
         {
-            return (_path.IsMoving) && (_hasDestination)
+            // 클라이언트는 서버보다 먼저 도착한다. 도착 뒤 같은 곳을 다시 누르면 서버는 아직 가는 중이라 순번 없이 버리므로,
+            // 서버와 짝짓는 중인 이동도 진행 중으로 본다. 공격으로 멈춘 경로는 서버도 멈췄으므로 다시 계산한다
+            bool isTracking = (_path.IsMoving) || ((_hasRecord) && (!_isRecordResolved) && (!_wasInterrupted));
+            return (isTracking) && (_hasDestination)
                 && ((destination - _destination).sqrMagnitude <= Constants.Player.MOVE_SAME_DESTINATION_EPSILON_SQR);
         }
 
@@ -245,7 +261,7 @@ namespace Shinshi.Combat
 
             // 순번은 입력 종류와 상관없이 늘어나므로 서버가 아직 이 이동까지 오지 않았다는 뜻이다
             isPending = (_hasRecord) && (!_isRecordResolved) && (_recordSequence > authority.MoveSequence)
-                && ((now - _recordStartTime) < Constants.Player.PREDICTION_MOVE_ACK_TIMEOUT_SECONDS);
+                && ((now - _recordStartTime) < _ackTimeout);
             if (isPending)
             {
                 return false;

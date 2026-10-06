@@ -93,6 +93,47 @@ namespace Shinshi.Tests
             Assert.AreEqual(position, corrected);
         }
 
+        // 지연이 1초 넘게 튀어도 응답을 기다린다. 기다리지 않으면 옛 서버 위치로 스냅했다가 응답이 오면 다시 앞으로 스냅한다
+        [Test]
+        public void Reconcile_UnackedMoveDuringLatencySpike_KeepsPredictionEvenWhenFar()
+        {
+            PlayerMovePredictor predictor = CreateMovingPredictor(out Vector3 position);
+            Vector3             server    = new Vector3(0f, 0f, Constants.Player.PREDICTION_SNAP_DISTANCE + 1f);
+
+            var     authority = new PlayerMoveAuthority(server, MOVE_SEQUENCE - 1, 1f, true);
+            Vector3 corrected = predictor.Reconcile(in authority, position, 2.0, FRAME_SECONDS);
+
+            Assert.AreEqual(position, corrected);
+        }
+
+        [Test]
+        public void Reconcile_UnackedMovePastTimeout_SnapsWhenFar()
+        {
+            PlayerMovePredictor predictor = CreateMovingPredictor(out Vector3 position);
+            Vector3             server    = new Vector3(0f, 0f, Constants.Player.PREDICTION_SNAP_DISTANCE + 1f);
+            double              late      = Constants.Player.PREDICTION_MOVE_ACK_TIMEOUT_SECONDS + 0.5;
+
+            var     authority = new PlayerMoveAuthority(server, MOVE_SEQUENCE - 1, 1f, true);
+            Vector3 corrected = predictor.Reconcile(in authority, position, late, FRAME_SECONDS);
+
+            Assert.AreEqual(server, corrected);
+        }
+
+        [Test]
+        public void SetRoundTripTime_LongRoundTrip_ExtendsAckTimeout()
+        {
+            PlayerMovePredictor predictor = CreateMovingPredictor(out Vector3 position);
+            Vector3             server    = new Vector3(0f, 0f, Constants.Player.PREDICTION_SNAP_DISTANCE + 1f);
+            double              late      = Constants.Player.PREDICTION_MOVE_ACK_TIMEOUT_SECONDS + 0.5;
+
+            // 왕복 1초면 배수만큼 기다리므로 기본 시간이 지나도 스냅하지 않는다
+            predictor.SetRoundTripTime(1.0);
+            var     authority = new PlayerMoveAuthority(server, MOVE_SEQUENCE - 1, 1f, true);
+            Vector3 corrected = predictor.Reconcile(in authority, position, late, FRAME_SECONDS);
+
+            Assert.AreEqual(position, corrected);
+        }
+
         [Test]
         public void Reconcile_BothStoppedWithoutRecord_CorrectsTowardServer()
         {
@@ -150,6 +191,23 @@ namespace Shinshi.Tests
             Assert.IsFalse(predictor.IsSameActiveDestination(Vector3.zero));
 
             predictor.InterruptMove();
+            Assert.IsFalse(predictor.IsSameActiveDestination(_destination));
+        }
+
+        // 클라이언트가 먼저 도착한 뒤 같은 곳을 다시 눌러도 서버는 같은 이동으로 보므로 새 기록을 시작하지 않는다
+        [Test]
+        public void IsSameActiveDestination_ArrivedBeforeServer_ReturnsTrueUntilResolved()
+        {
+            PlayerMovePredictor predictor = CreateMovingPredictor(out Vector3 position);
+            for (double now = 0.4; now <= 3.0; now += 0.1)
+            {
+                position = predictor.Advance(position, SPEED, now);
+            }
+
+            Assert.IsFalse(predictor.IsMoving);
+            Assert.IsTrue(predictor.IsSameActiveDestination(_destination));
+
+            predictor.ResolveRecord();
             Assert.IsFalse(predictor.IsSameActiveDestination(_destination));
         }
 

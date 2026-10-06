@@ -1,7 +1,6 @@
 namespace Shinshi.AI
 {
-    // ICombatTarget에는 체력 읽기가 없어 보스 FSM이 읽을 창구를 따로 둔다
-    // TODO(민성): 체력과 피해 시스템(U05)이 구현한다
+    // ICombatTarget에는 체력 읽기가 없어 보스 FSM이 읽을 창구를 따로 둔다. 실제 구현은 BossServer다
     /// <summary> 보스 체력의 읽기 전용 창구 </summary>
     public interface IBossVitals
     {

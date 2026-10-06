@@ -55,6 +55,39 @@ namespace Shinshi.Contracts
             // ESSENCE_ACCRUED에 구분 필드를 붙이지 않고 종류를 나눈 이유: 구분 필드가 없는 이전 서버의 적립이 기본값 0으로
             // 읽혀 지급률이 바뀌는 일을 막고, ESSENCE_ACCRUED(추가 정기, 장애 취소 50%)의 기존 의미를 그대로 둔다
             public const int BASE_ESSENCE_ACCRUED = 5;
+
+            // 참가자 한 명이 포기하거나 접속 만료로 출정을 떠났다. participantId와 endReason(ABANDON, DISCONNECT_EXPIRED)을 쓴다.
+            // API는 같은 트랜잭션에서 그 계정의 던전 접속 임대를 풀어 마을 복귀를 허용하고, 이후 복귀 토큰은 ALREADY_SETTLED로 거절한다.
+            // 경제 정산은 하지 않는다. 떠난 참가자도 SESSION_ENDED 정산안에 한 번 포함된다
+            public const int PARTICIPANT_DEPARTED = 6;
+
+            // 확정된 POTION_USED 한 건을 되돌린다(회복을 적용하지 못한 경우). revertsEventId에 원 이벤트 ID를 싣고,
+            // 원 이벤트가 같은 세션, 같은 참가자에 있고 아직 되돌리지 않았을 때만 저장된다. 물약 1개가 예약분으로 돌아간다
+            public const int POTION_USE_REVERTED = 7;
+        }
+
+        /// <summary> 출정 물약 규칙의 단일 원본. 던전 서버(PotionServer)와 API(세션 이벤트 저장)가 같은 값을 쓰고,
+        /// SessionConfigSO._bossPotionUseLimit가 이 값과 다르면 데이터 검증이 실패한다 </summary>
+        public static class Potion
+        {
+            /****************************************
+            *                Fields
+            ****************************************/
+
+            // 보스전 참가자 한 명의 물약 사용 상한(소형, 대형 합산). 되돌린 사용은 세지 않는다
+            public const int BOSS_USE_LIMIT = 9;
+        }
+
+        /// <summary> EBossDifficulty와 같은 값. 출정 예약과 입장 교환의 difficulty, 보스전이 아니면 NONE </summary>
+        public static class Difficulty
+        {
+            /****************************************
+            *                Fields
+            ****************************************/
+
+            public const int NONE = -1;
+            public const int EASY = 0;
+            public const int HARD = 1;
         }
 
         /// <summary> 서버 풀 인스턴스 상태, Idle만 새 출정에 배정한다 </summary>

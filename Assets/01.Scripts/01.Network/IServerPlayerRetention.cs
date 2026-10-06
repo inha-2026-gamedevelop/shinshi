@@ -11,5 +11,8 @@ namespace Shinshi.Network
 
         // 참이면 남겨 둔 같은 개체에 새 연결의 소유권을 줬다는 뜻이다. 매니저는 새 개체를 만들지 않는다
         bool TryReattachPlayer(NetworkConnectionToClient connection);
+
+        // 참이면 캐릭터 없이 받는 연결(출정 종료 뒤 경매 전용 재입장)이라 매니저는 플레이어 개체를 만들지 않는다
+        bool TryJoinWithoutPlayer(NetworkConnectionToClient connection);
     }
 }

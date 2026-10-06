@@ -168,6 +168,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, _presenter.ProjectileCount);
             Assert.AreEqual(0, _presenter.AreaCount);
             Assert.AreEqual(0, _presenter.BeamCount);
+            Assert.AreEqual(0, _presenter.StarCount);
             Assert.AreEqual(0, _beamPool.LeasedCount);
             Assert.AreEqual(BEAM_POOL_CAPACITY, _beamPool.AvailableCount);
             Assert.AreEqual(0, _areaPool.LeasedCount);
@@ -2683,6 +2684,371 @@ namespace Shinshi.Tests
             for (int id = 1000; id < 1100; ++id)
             {
                 if (_presenter.TryGetBeam(id, out BossBeamTrack track, out BeamGroundVFXController _) && track.IsActivated)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /****************************************
+        *       Phase 2 P01: Rotating Star
+        ****************************************/
+
+        private static readonly Vector3 StarCenter = new Vector3(10f, 0f, -5f);
+        private const float STAR_ARENA_RADIUS = 18f;
+        private const float STAR_TELEGRAPH    = 2f;
+        private const float STAR_DURATION     = 6f;
+        private const float STAR_TICK         = 0.25f;
+        private const int   FIRST_STAR        = 1301;
+        private const int   SECOND_STAR       = 1302;
+
+        private BossStarStart StarStart(int starId, bool right = true, double? start = null, Vector3? center = null, int castId = 1300)
+        {
+            BossStarShape shape = BossStarGeometry.Place(center ?? StarCenter, STAR_ARENA_RADIUS, Vector3.forward, 14f, 5, 2, 1.5f,
+                20f, right);
+            return new BossStarStart(BOSS_ID, starId, castId, in shape, start ?? Now, STAR_TELEGRAPH, STAR_DURATION, STAR_TICK);
+        }
+
+        private void StarVisual(int starId, out BossStarTrack track, out StarGroundVFXController visual)
+        {
+            Assert.IsTrue(_presenter.Stars.TryGet(starId, out track, out visual), "진행 중인 별형 구조가 없다 " + starId);
+        }
+
+        // 예고 중에는 정지한 별이 보이고 여우불 5개가 모두 있으며 서버 활성 전에는 돌지 않는다
+        [UnityTest]
+        public IEnumerator Star_Telegraph_ShowsAFixedStarAndDoesNotRotateWithoutServerActivation()
+        {
+            BossStarStart a = StarStart(FIRST_STAR);
+            Assert.IsTrue(_presenter.BeginStar(in a));
+            yield return null;
+
+            Assert.AreEqual(1, _presenter.StarCount);
+            StarVisual(FIRST_STAR, out BossStarTrack track, out StarGroundVFXController visual);
+            Assert.IsTrue(visual.IsShown);
+            Assert.AreEqual(5, visual.ShownOrbCount);
+            Assert.AreEqual(1.5f, visual.BeamWidth, 0.0001f);
+
+            Vector3 vertex0 = visual.GetOrbPosition(0);
+            _clock += 1.0;
+            yield return null;
+            Assert.AreEqual(0f, visual.RotationDegrees, 0.0001f, "활성 전에는 회전하지 않는다");
+            Assert.AreEqual(0f, (vertex0 - visual.GetOrbPosition(0)).magnitude, 0.0001f, "예고 중 여우불 위치는 그대로");
+            Assert.IsFalse(track.IsActivated);
+            Assert.AreEqual(EBossBeamPhase.Telegraph, track.GetPhase(Now));
+        }
+
+        // 예고 종료만으로는 회전하지 않고, 대기 시간 뒤 풀로 돌아온다
+        [UnityTest]
+        public IEnumerator Star_NotActiveWithoutServerActivation_ExpiresAfterTheConfirmGrace()
+        {
+            BossStarStart a = StarStart(FIRST_STAR);
+            Assert.IsTrue(_presenter.BeginStar(in a));
+            yield return null;
+
+            _clock += STAR_TELEGRAPH + 0.2;
+            yield return null;
+            Assert.AreEqual(1, _presenter.StarCount);
+            StarVisual(FIRST_STAR, out BossStarTrack track, out StarGroundVFXController visual);
+            Assert.IsFalse(track.IsActivated);
+            Assert.AreEqual(0f, visual.RotationDegrees, 0.0001f);
+
+            _clock += 1.0;
+            yield return null;
+            yield return null;
+            Assert.AreEqual(0, _presenter.StarCount);
+            Assert.AreEqual(2, _presenter.Stars.FreeCount);
+        }
+
+        // 활성 확정 뒤에는 서버 시각의 현재 각도로 돌고, 오른쪽과 왼쪽은 반대로 돈다
+        [UnityTest]
+        public IEnumerator Star_ActiveRotationFollowsServerTime_RightAndLeftAreOpposite()
+        {
+            BossStarStart right = StarStart(FIRST_STAR, true);
+            BossStarStart left  = StarStart(SECOND_STAR, false, null, null, 1310);
+            Assert.IsTrue(_presenter.BeginStar(in right));
+            Assert.IsTrue(_presenter.BeginStar(in left));
+            double activate = Now + STAR_TELEGRAPH;
+            _clock = activate;
+            Assert.IsTrue(_presenter.ActivateStar(FIRST_STAR, activate));
+            Assert.IsTrue(_presenter.ActivateStar(SECOND_STAR, activate));
+
+            _clock = activate + 1.5;
+            yield return null;
+            StarVisual(FIRST_STAR, out BossStarTrack trackRight, out StarGroundVFXController visualRight);
+            StarVisual(SECOND_STAR, out BossStarTrack trackLeft, out StarGroundVFXController visualLeft);
+            Assert.AreEqual(30f, visualRight.RotationDegrees, 0.01f, "1.5초 x 초당 20도");
+            Assert.AreEqual(-30f, visualLeft.RotationDegrees, 0.01f);
+            Assert.AreEqual(30f, trackRight.GetRotationDegrees(_clock), 0.01f);
+
+            // 서버 시각으로 계산하므로 프레임을 건너뛰어도 같은 각도다
+            _clock = activate + 5.0;
+            yield return null;
+            Assert.AreEqual(100f, visualRight.RotationDegrees, 0.01f);
+
+            // 여우불 꼭짓점은 구조와 함께 돌아 별의 모양이 유지된다
+            BossStarShape shape = trackRight.Start.Shape;
+            for (int i = 0; i < 5; ++i)
+            {
+                Vector3 expected = BossStarGeometry.GetVertex(in shape, i, 100f);
+                Vector3 actual = visualRight.GetOrbPosition(i);
+                Assert.AreEqual(expected.x, actual.x, 0.01f, "여우불 " + i);
+                Assert.AreEqual(expected.z, actual.z, 0.01f, "여우불 " + i);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator Star_FullLifecycle_TicksThenStopsAtTheEndFadesAndReturnsToPool()
+        {
+            BossStarStart a = StarStart(FIRST_STAR);
+            Assert.IsTrue(_presenter.BeginStar(in a));
+            double activate = a.StartServerTime + STAR_TELEGRAPH;
+            _clock = activate;
+            Assert.IsTrue(_presenter.ActivateStar(FIRST_STAR, activate));
+            yield return null;
+            StarVisual(FIRST_STAR, out BossStarTrack track, out StarGroundVFXController visual);
+
+            for (int i = 0; i < 24; ++i)
+            {
+                _clock = activate + (i * (double)STAR_TICK);
+                Assert.IsTrue(_presenter.TickStar(FIRST_STAR, i, _clock));
+                yield return null;
+                Assert.AreEqual(i, track.LastTickIndex);
+            }
+
+            Assert.IsFalse(_presenter.TickStar(FIRST_STAR, 23, _clock), "같은 회차는 다시 표시하지 않는다");
+            Assert.IsFalse(_presenter.ActivateStar(FIRST_STAR, activate), "중복 활성은 무시한다");
+
+            _clock = activate + STAR_DURATION;
+            yield return null;
+            Assert.AreEqual(120f, visual.RotationDegrees, 0.01f, "유지 시간이 끝나면 마지막 각도에서 멈춘다");
+            Assert.AreEqual(1, _presenter.StarCount, "옅어지는 동안만 남는다");
+
+            _clock += 0.5;
+            yield return null;
+            yield return null;
+            Assert.AreEqual(0, _presenter.StarCount);
+            Assert.AreEqual(2, _presenter.Stars.FreeCount);
+            Assert.IsFalse(visual.IsShown);
+        }
+
+        // 늦은 활성(예고가 대기 시간으로 지워진 뒤)은 활성 서버 시각의 현재 각도부터 이어서 그린다
+        [UnityTest]
+        public IEnumerator Star_LateActivation_ContinuesFromTheCurrentServerAngle()
+        {
+            BossStarStart a = StarStart(FIRST_STAR);
+            Assert.IsTrue(_presenter.BeginStar(in a));
+            yield return null;
+            _clock += STAR_TELEGRAPH + 1.0;
+            yield return null;
+            yield return null;
+            Assert.AreEqual(0, _presenter.StarCount);
+            Assert.IsFalse(_presenter.BeginStar(in a), "지운 번호의 중복 시작은 무시한다");
+
+            double activate = a.StartServerTime + STAR_TELEGRAPH;
+            Assert.IsTrue(_presenter.ActivateStar(FIRST_STAR, activate));
+            yield return null;
+            StarVisual(FIRST_STAR, out BossStarTrack track, out StarGroundVFXController visual);
+            Assert.IsTrue(track.IsActivated);
+            Assert.AreEqual(20f, visual.RotationDegrees, 0.05f, "활성 시각 기준 1초가 흐른 각도, 처음 각도로 돌아가지 않는다");
+        }
+
+        [Test]
+        public void Star_ActivationBeforeTelegraph_IsRememberedAndAppliedWhenTheTelegraphArrives()
+        {
+            double activate = Now + 0.1;
+            Assert.IsFalse(_presenter.ActivateStar(FIRST_STAR, activate));
+            BossStarStart a = StarStart(FIRST_STAR, true, Now - STAR_TELEGRAPH + 0.1);
+            Assert.IsTrue(_presenter.BeginStar(in a));
+            StarVisual(FIRST_STAR, out BossStarTrack track, out StarGroundVFXController _);
+            Assert.IsTrue(track.IsActivated);
+            Assert.AreEqual(activate, track.ActivateServerTime, 0.0001);
+        }
+
+        [UnityTest]
+        public IEnumerator Star_CancelBeforeStartBlocksTheLateStart_AndCancelWhileActiveHidesAtOnce()
+        {
+            Assert.IsFalse(_presenter.CancelStar(1310));
+            BossStarStart early = StarStart(1310);
+            Assert.IsFalse(_presenter.BeginStar(in early), "취소가 먼저 온 번호는 시작하지 못한다");
+
+            BossStarStart a = StarStart(FIRST_STAR);
+            Assert.IsTrue(_presenter.BeginStar(in a));
+            Assert.IsTrue(_presenter.ActivateStar(FIRST_STAR, Now));
+            yield return null;
+            StarVisual(FIRST_STAR, out BossStarTrack _, out StarGroundVFXController visual);
+
+            Assert.IsTrue(_presenter.CancelStar(FIRST_STAR));
+            Assert.IsFalse(visual.IsShown);
+            Assert.AreEqual(0, _presenter.StarCount);
+            Assert.AreEqual(2, _presenter.Stars.FreeCount);
+
+            Assert.IsFalse(_presenter.TickStar(FIRST_STAR, 1, Now));
+            Assert.IsFalse(_presenter.ActivateStar(FIRST_STAR, Now));
+            Assert.IsFalse(_presenter.EndStar(FIRST_STAR, EBossAreaFate.Expired));
+            Assert.IsFalse(_presenter.CancelStar(FIRST_STAR));
+            BossStarSnapshot snapshot = new BossStarSnapshot { Start = a, IsActivated = true, ActivateServerTime = Now,
+                Fate = EBossAreaFate.Active, LastTickIndex = -1 };
+            Assert.IsFalse(_presenter.RestoreStar(in snapshot));
+        }
+
+        // 중간 복원은 서버 시각의 현재 각도로 이어서 그리고 이미 표시한 회차를 다시 표시하지 않는다
+        [UnityTest]
+        public IEnumerator Star_Restore_DrawsTheCurrentServerAngle_NotTheStartAngle()
+        {
+            double activate = Now - 2.0;
+            BossStarStart a = StarStart(FIRST_STAR, true, activate - STAR_TELEGRAPH);
+            BossStarSnapshot snapshot = new BossStarSnapshot
+            {
+                Start              = a,
+                IsActivated        = true,
+                ActivateServerTime = activate,
+                Fate               = EBossAreaFate.Active,
+                LastTickIndex      = 8,
+                LastTickServerTime = activate + 2.0
+            };
+
+            Assert.IsTrue(_presenter.RestoreStar(in snapshot));
+            yield return null;
+            StarVisual(FIRST_STAR, out BossStarTrack track, out StarGroundVFXController visual);
+            Assert.AreEqual(40f, visual.RotationDegrees, 0.05f, "2초 x 초당 20도, 처음 각도가 아니다");
+            Assert.IsFalse(_presenter.TickStar(FIRST_STAR, 8, Now), "이미 표시한 회차");
+            Assert.IsTrue(_presenter.TickStar(FIRST_STAR, 9, Now));
+            Assert.IsFalse(_presenter.RestoreStar(in snapshot), "같은 번호의 복원은 무시한다");
+
+            BossStarSnapshot expired = new BossStarSnapshot { Start = StarStart(1320, true, Now - 30.0), IsActivated = true,
+                ActivateServerTime = Now - 28.0, Fate = EBossAreaFate.Active, LastTickIndex = -1 };
+            Assert.IsFalse(_presenter.RestoreStar(in expired), "지속 시간이 모두 지난 스냅샷");
+            BossStarSnapshot cancelled = new BossStarSnapshot { Start = StarStart(1321), Fate = EBossAreaFate.Cancelled, LastTickIndex = -1 };
+            Assert.IsFalse(_presenter.RestoreStar(in cancelled));
+            Assert.AreEqual(1, _presenter.StarCount);
+        }
+
+        // 표현 메시의 모든 정점이 서버 판정 영역(빔 직사각형)의 모서리 안이고, 회전해도 같다
+        [UnityTest]
+        public IEnumerator Star_VisualMeshMatchesTheServerBeamRectangles_AtAnyRotation()
+        {
+            BossStarStart a = StarStart(FIRST_STAR, true);
+            Assert.IsTrue(_presenter.BeginStar(in a));
+            double activate = Now;
+            Assert.IsTrue(_presenter.ActivateStar(FIRST_STAR, activate));
+
+            foreach (double elapsed in new[] { 0.0, 1.1, 4.3 })
+            {
+                _clock = activate + elapsed;
+                yield return null;
+                StarVisual(FIRST_STAR, out BossStarTrack track, out StarGroundVFXController visual);
+                BossStarShape shape = track.Start.Shape;
+                float rotation = track.GetRotationDegrees(_clock);
+                Vector3[] vertices = visual.GetComponent<MeshFilter>().sharedMesh.vertices;
+                Assert.AreEqual(5 * 4, vertices.Length, "빔 5개의 직사각형");
+                for (int i = 0; i < vertices.Length; ++i)
+                {
+                    Vector3 world = visual.transform.TransformPoint(vertices[i]);
+                    Assert.IsTrue(BossStarGeometry.Contains(in shape, world, rotation), "정점 " + i + " 회전 " + rotation);
+                }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator Star_PoolReuseAndClearAll_ReleaseEverythingAndCoexistWithAreasAndBeams()
+        {
+            for (int cast = 0; cast < 5; ++cast)
+            {
+                Vector3 center = new Vector3(cast * 2f, 0f, cast);
+                int starId = 1400 + cast;
+                BossStarStart a = StarStart(starId, (cast % 2) == 0, null, center, 1400 + cast);
+                Assert.IsTrue(_presenter.BeginStar(in a));
+                Assert.IsTrue(_presenter.ActivateStar(starId, Now));
+                yield return null;
+
+                StarVisual(starId, out BossStarTrack _, out StarGroundVFXController visual);
+                Assert.AreEqual(center, visual.transform.position);
+                Assert.AreEqual(1, 2 - _presenter.Stars.FreeCount);
+                Assert.IsTrue(_presenter.CancelStar(starId));
+                Assert.AreEqual(2, _presenter.Stars.FreeCount);
+            }
+
+            BossStarStart star = StarStart(FIRST_STAR);
+            BossBeamStart beam = BeamStart(FIRST_BEAM, 0);
+            BossAreaStart area = AreaShot(1);
+            Assert.IsTrue(_presenter.BeginStar(in star));
+            Assert.IsTrue(_presenter.ActivateStar(FIRST_STAR, Now));
+            Assert.IsTrue(_presenter.BeginBeam(in beam));
+            Assert.IsTrue(_presenter.ActivateArea(in area));
+            yield return null;
+            Assert.AreEqual(1, _presenter.StarCount);
+            Assert.AreEqual(1, _presenter.BeamCount);
+            Assert.AreEqual(1, _presenter.AreaCount);
+
+            _presenter.ClearAll();
+            Assert.AreEqual(0, _presenter.StarCount);
+            Assert.AreEqual(2, _presenter.Stars.FreeCount);
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_StarRightLeftAndCancelled_PlayAndReturnEverything()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoStarRight();
+            yield return null;
+            Assert.AreEqual(1, _presenter.StarCount, "예고 동안 구조 하나가 보인다");
+            yield return WaitUntilVeryLong(() => IsAnyStarActive());
+            yield return WaitUntilVeryLong(() => _presenter.StarCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoStarTelegraphCancelled();
+            yield return WaitUntilVeryLong(() => _presenter.StarCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoStarActiveCancelled();
+            yield return WaitUntilVeryLong(() => IsAnyStarActive());
+            yield return WaitUntilVeryLong(() => _presenter.StarCount == 0);
+            yield return null;
+            AssertAllReturned();
+        }
+
+        [UnityTest]
+        public IEnumerator SampleInput_StarLateActivationRestoreAndWithAreas_PlayWithoutRepeatingOrLeaking()
+        {
+            BossTelegraphSampleInput sample = PrepareSampleWithoutLoop();
+            _useRealClock = true;
+            sample.enabled = true;
+            yield return null;
+
+            sample.PlayPhaseTwoStarLateActivation();
+            yield return WaitUntilVeryLong(() => _presenter.StarCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoStarRestore();
+            yield return null;
+            Assert.AreEqual(1, _presenter.StarCount, "복원은 회전 중인 구조를 되살린다");
+            yield return WaitUntilVeryLong(() => _presenter.StarCount == 0);
+            yield return null;
+            AssertAllReturned();
+
+            sample.PlayPhaseTwoStarWithAreas();
+            yield return null;
+            Assert.AreEqual(1, _presenter.StarCount);
+            yield return WaitUntilVeryLong(() => (_presenter.StarCount == 0) && (_presenter.AreaCount == 0) && (_presenter.ActiveCount == 0));
+            yield return null;
+            AssertAllReturned();
+        }
+
+        private bool IsAnyStarActive()
+        {
+            for (int id = 1000; id < 1100; ++id)
+            {
+                if (_presenter.Stars.TryGet(id, out BossStarTrack track, out StarGroundVFXController _) && track.IsActivated)
                 {
                     return true;
                 }

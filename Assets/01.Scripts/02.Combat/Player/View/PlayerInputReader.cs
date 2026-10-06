@@ -138,6 +138,16 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 물약은 회피 다음이다. 이동 중에도 쓰고 진행 중인 지정은 끝내지 않는다
+            if (Input.GetKeyDown(Constants.Player.KEY_POTION_SMALL))
+            {
+                _input.RequestPotion(EPotionSize.Small);
+            }
+            else if (Input.GetKeyDown(Constants.Player.KEY_POTION_LARGE))
+            {
+                _input.RequestPotion(EPotionSize.Large);
+            }
+
             if (HandleSkillKey())
             {
                 return;

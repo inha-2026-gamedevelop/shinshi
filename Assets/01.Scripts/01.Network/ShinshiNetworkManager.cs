@@ -30,6 +30,12 @@ namespace Shinshi.Network
         // 서버와 클라이언트가 같은 역할 설정으로 같은 값을 써야 클라이언트가 서버의 씬 안내를 기다린다
         private string _townOnlineScene = string.Empty;
 
+#if !UNITY_SERVER
+        // 마을 서버가 보낸 내 던전 입장권으로 마을을 끊고 던전에 접속한다. 클라이언트 빌드에서만 만든다
+        private SortieDepartFlow      _departFlow       = null;
+        private Action<ERejectReason> _onDepartFinished = null;
+#endif
+
         /****************************************
         *              Properties
         ****************************************/
@@ -39,6 +45,15 @@ namespace Shinshi.Network
 
         // 서버 부트스트랩이 던전 역할에서 넣는다. 클라이언트 빌드에는 구현 타입이 없어 항상 null이다
         public IServerPlayerRetention PlayerRetention { private get; set; } = null;
+
+        // 던전에서 마을로(SortieReturnFlow), 마을에서 던전으로(SortieDepartFlow) 옮기는 중이다.
+        // 이 동안 끊김은 캐릭터 선택 복귀로 다루지 않는다
+        public bool IsTransferringServer { get; set; } = false;
+
+#if !UNITY_SERVER
+        // 마을 -> 던전 이동이 끝났다. None이면 던전 인증 성공, 아니면 거절 사유다. 출정 화면(UI 담당)이 안내에 쓴다
+        public event Action<ERejectReason> SortieDepartFinished;
+#endif
 
         /****************************************
         *              Unity Event
@@ -50,6 +65,26 @@ namespace Shinshi.Network
             ApplyNetworkSettings();
             EnsureAuthenticator();
             base.Awake();
+#if !UNITY_SERVER
+            // 중복 매니저는 base.Awake가 지운다. 남는 하나만 입장권을 받는다
+            if ((singleton == this) && (authenticator is ShinshiClientAuthenticator clientAuthenticator))
+            {
+                _departFlow       = new SortieDepartFlow(this, clientAuthenticator);
+                _onDepartFinished = OnSortieDepartFinished;
+                TownPartyClient.SortieTicketReceived += OnSortieTicketReceived;
+            }
+#endif
+        }
+
+        public override void OnDestroy()
+        {
+#if !UNITY_SERVER
+            if (_departFlow != null)
+            {
+                TownPartyClient.SortieTicketReceived -= OnSortieTicketReceived;
+            }
+#endif
+            base.OnDestroy();
         }
 
         // 헤드리스 자동 시작을 켜 두면 역할과 포트를 읽기 전에 서버가 떠 버린다
@@ -198,6 +233,12 @@ namespace Shinshi.Network
                 return;
             }
 
+            // 출정이 끝난 뒤 경매에만 다시 들어온 참가자는 캐릭터 없이 경매 상태만 받는다
+            if ((PlayerRetention != null) && (PlayerRetention.TryJoinWithoutPlayer(connection)))
+            {
+                return;
+            }
+
             // 재접속 유예 중 서버에 남아 있던 같은 참가자의 개체가 있으면 새로 만들지 않고 그 개체를 넘겨받는다
             if ((PlayerRetention != null) && (PlayerRetention.TryReattachPlayer(connection)))
             {
@@ -246,17 +287,48 @@ namespace Shinshi.Network
         {
             base.OnClientDisconnect();
 #if !UNITY_SERVER
-            if ((!string.IsNullOrEmpty(_townOnlineScene)) && (Utils.IsSceneActive(_townOnlineScene)) && (!NetworkServer.active))
+            if ((!IsTransferringServer) && (!string.IsNullOrEmpty(_townOnlineScene)) && (Utils.IsSceneActive(_townOnlineScene))
+                && (!NetworkServer.active))
             {
                 LobbyFlow.ReturnToCharacterSelect("마을 서버와 연결이 끊겼다. 다시 게임 시작을 누른다.");
             }
 #endif
         }
 
+#if !UNITY_SERVER
+        private void OnSortieTicketReceived(SortieTicketMessage ticket)
+        {
+            if ((_departFlow == null) || (NetworkServer.active)
+                || (!SortieDepartFlow.CanBegin(_departFlow.IsRunning, IsTransferringServer, NetworkClient.isConnected)))
+            {
+                Debug.LogWarning("[Network] 던전 입장권을 받았지만 이미 서버를 옮기는 중이거나 마을에 연결돼 있지 않아 무시한다");
+                return;
+            }
+
+            StartCoroutine(_departFlow.Run(ticket, _onDepartFinished));
+        }
+
+        // 던전 접속 단계에서 실패하면 마을 연결도 끊긴 상태라 캐릭터 선택으로 보낸다. 입장권 확인 실패는 마을에 남는다
+        private void OnSortieDepartFinished(ERejectReason reason)
+        {
+            SortieDepartFinished?.Invoke(reason);
+            if ((reason != ERejectReason.None) && (!NetworkClient.active) && (!NetworkServer.active))
+            {
+                LobbyFlow.ReturnToCharacterSelect("던전 서버에 접속하지 못했다. 다시 게임 시작을 누른다.");
+            }
+        }
+#endif
+
         public override void OnStartClient()
         {
             base.OnStartClient();
             PartyAuctionClient.RegisterHandlers();
+            SortieClient.RegisterHandlers();
+            TownPartyClient.RegisterHandlers();
+            TownGrowthClient.RegisterHandlers();
+            TownLifeClient.RegisterHandlers();
+            TownProgressClient.RegisterHandlers();
+            Shinshi.Combat.PotionClient.RegisterHandlers();
             RegisterEnemyReplicas();
             if (playerPrefab == null)
             {

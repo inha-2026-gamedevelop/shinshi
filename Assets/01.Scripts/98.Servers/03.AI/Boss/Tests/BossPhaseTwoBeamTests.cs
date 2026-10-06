@@ -359,7 +359,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(8f, p06.BaseWeight, TOLERANCE);
             Assert.IsTrue(LoadCatalog().TryGetPattern(BossPatternCatalogSO.WOLBAEK_P2_P01_ID, out PatternDefinition p01));
             Assert.AreEqual(10f, p01.BaseWeight, TOLERANCE);
-            Assert.IsFalse(LoadCatalog().IsPatternReady(WOLBAEK_ID, p01), "P01은 아직 수치가 비어 있다");
+            Assert.IsTrue(LoadCatalog().IsPatternReady(WOLBAEK_ID, p01), "P01 별형 빔도 수치가 들어 있다");
         }
 
         /****************************************

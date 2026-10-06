@@ -11,17 +11,21 @@ using Mirror;
 // 프로젝트 내부
 using Shinshi.AI;
 using Shinshi.Common;
+using Shinshi.Contracts;
 using Shinshi.Data;
 using Shinshi.Network;
 
 namespace Shinshi.Combat
 {
     /// <summary> 서버 전투 틱을 고정 주기로 돌린다, CombatServerInstaller가 실행 중에 만들며 프리팹, 씬에 붙이지 않는다 </summary>
-    public sealed class CombatServerRuntime : MonoBehaviour, ICombatSkillPhase, IServerPlayerRetention
+    public sealed class CombatServerRuntime : MonoBehaviour, ICombatSkillPhase, IServerPlayerRetention, IPotionHost,
+        ICheckpointSource, ISessionEndingListener
     {
         // 한 틱 처리 순서: 세션 BeginTick(유예 만료를 먼저 닫는다) -> 닫힌 참가자의 남은 캐릭터 정리 -> 입력(이미 Command
         // 처리기가 검증해 보관) -> 이동 -> 기술, 기본 공격과 피해, 사망 -> 생사를 명단에 반영 -> 세션 CompleteTick(종료 판정)
         // -> 부활 승인 -> 복제. 같은 틱의 마지막 생존자 사망과 부활은 전멸이 우선해야 하므로 부활은 종료 판정 뒤에 둔다.
+        // 일반전 웨이브(적 출현, 적 두뇌, 제한 시간)는 플레이어와 보스 피해 뒤, 생사 보고 앞에서 세션 틱 안에 돈다. 적이 때려 죽은
+        // 플레이어가 같은 틱 생사 보고와 종료 판정에 들어간다. 포기 요청은 세션 BeginTick이 피해 처리 전에 처리한다.
         //
         // 마을(출정 없음)은 명단을 닫지 않는다. 인증기가 끊길 때 참가자 키를 지우므로 다시 들어오면 새 번호를 받고,
         // 그 번호로는 보존 기록을 찾을 수 없어 마을에서는 상태를 보존하지 않는다. 마을에는 전투 자원이 없다.
@@ -62,12 +66,22 @@ namespace Shinshi.Combat
         private List<int>                    _closedParticipants;
         private bool                         _scalesApplied         = false;
         private BossServer                   _boss;
+        private string                       _bossId                = Constants.Combat.DEV_BOSS_ID;
         private bool                         _bossSpawnChecked      = false;
         private IBossObjectHost              _bossHost;
         private BossState                    _bossState;
         private int                          _obstacleMask          = 0;
         private ICompanionObjectHost         _companionHost;
         private CompanionSpawnTracker        _companionTracker;
+        private ServerMetricsSampler         _metrics;
+        private RevivePointSelector          _revivePoints;
+        private bool                         _warnedNoRevivePoints  = false;
+        private EquipmentCatalogSO           _equipment;
+        private GrowthConfigSO               _growth;
+        private TalismanModifierResolver     _talismans;
+        private PotionServer                 _potions;
+        private IEnemyObjectHost             _enemyHost;
+        private bool                         _epochFromSession      = false;
 
         /****************************************
         *              Properties
@@ -80,11 +94,24 @@ namespace Shinshi.Combat
         public ReconnectVault       ReconnectVault => _reconnectVault;
         public DungeonSessionHost   SessionHost    => _host;
 
+        // 구조화 로그를 설치한 서버 빌드에서만 부트스트랩이 넣는다. 틱 수행 시간만 재고 대기 시간은 넣지 않는다
+        public ServerMetricsSampler Metrics        { set => _metrics = value; }
+
         // 보스전 출정 시작 틱에 만든다. 일반전, 마을, 시작 전, 생성 실패면 null이다
         public BossServer           Boss           => _boss;
 
-        // 출정 시작 때 고정한 시작 인원별 배율, 스포너가 적과 보스를 만들 때 읽는다. 시작 전과 마을은 1이다
-        // TODO(민성): 적 스폰과 피해 계산이 붙으면 이 값을 적용 위치에서 곱한다
+        // 던전 출정을 연결한 뒤에만 있다. 마을과 GameDB 없는 시험 설치는 null이다
+        public PotionServer         Potions        => _potions;
+
+        // 보스전에서 열 보스 정의 ID. 보스전 출정 계약이 있으면 계약 값이고, 없으면 실행 설정(-boss-id, 기본 개발 보스)이다
+        public string               BossId         => ((_host != null) && (_host.Sortie.IsBoss)) ? _host.Sortie.BossId : _bossId;
+
+        // 일반 적 네트워크 개체 스포너, 프리팹이 없는 씬이면 null이다. 웨이브 구현(적 담당)이 적을 만들 때 쓴다
+        public IEnemyObjectHost     EnemyObjects   => _enemyHost;
+
+        // 출정 시작 때 고정한 시작 인원별 배율, 시작 전과 마을은 1이다. 보스는 BossHealthScale을 BossServer에, DamageScale을
+        // BossDamageScaler에 넣는다. 일반 적은 웨이브 구현이 WaveSessionContext의 같은 값을 EnemyServer 생성자(healthScale)와
+        // CreateScaledEnemyResolver에 넣는다
         public float EnemyHealthScale { get; private set; } = 1f;
         public float BossHealthScale  { get; private set; } = 1f;
         public float DamageScale      { get; private set; } = 1f;
@@ -112,7 +139,9 @@ namespace Shinshi.Combat
             while (((now - _lastTickTime) >= TICK_INTERVAL_SECONDS) && (steps < Constants.Combat.MAX_CATCHUP_TICKS))
             {
                 _lastTickTime += TICK_INTERVAL_SECONDS;
+                long started = System.Diagnostics.Stopwatch.GetTimestamp();
                 Step(_lastTickTime, (float)TICK_INTERVAL_SECONDS);
+                _metrics?.RecordTick(System.Diagnostics.Stopwatch.GetTimestamp() - started);
                 ++steps;
             }
 
@@ -186,6 +215,31 @@ namespace Shinshi.Combat
             _pathBudget            = new PathRequestBudget(Constants.Player.PATH_REQUESTS_PER_TICK);
             _lineOfSight           = new CombatLineOfSight(obstacleMask, Constants.Combat.LINE_OF_SIGHT_HEIGHT);
             _closedParticipants    = new List<int>(Constants.Session.MAX_RECONNECT_RECORDS);
+
+            // 성장 데이터는 GameDB가 있을 때만 잡는다. 없는 시험 설치는 모든 참가자를 기본 능력치와 원래 기술 수치로 들인다
+            if (GameDB.IsInitialized)
+            {
+                _equipment = GameDB.Equipment;
+                _growth    = GameDB.Growth;
+                _talismans = new TalismanModifierResolver(GameDB.Talismans, _skillCatalog, Constants.Session.MAX_PARTY_SIZE);
+            }
+        }
+
+        // 보스전 계약이 있으면 계약 보스가 이 값보다 우선한다(BossId). 카탈로그 확인은 부트스트랩이 실행 설정을 읽을 때 한다
+        /// <summary> 계약이 없는 출정(개발)에서 열 기본 보스 정의 ID를 정한다, 출정 시작 전까지만 받는다 </summary>
+        public void ConfigureBoss(string bossId)
+        {
+            if (string.IsNullOrEmpty(bossId))
+            {
+                throw new ArgumentException("보스 ID가 비어 있다", nameof(bossId));
+            }
+
+            if ((_host != null) && (_host.HasStarted))
+            {
+                throw new InvalidOperationException("출정을 시작한 뒤에는 보스를 바꾸지 않는다");
+            }
+
+            _bossId = bossId;
         }
 
         /// <summary> 던전 역할에서 서버를 열기 전에 한 번 부른다, 이후 참가 자격은 출정 명단으로 판단한다 </summary>
@@ -204,6 +258,105 @@ namespace Shinshi.Combat
             _host   = host;
             _roster = host.Roster;
             host.Roster.ParticipantClosed += OnRosterParticipantClosed;
+            host.CheckpointSource      = this;
+            host.SessionEndingListener = this;
+
+            if (GameDB.IsInitialized)
+            {
+                _potions = new PotionServer(_playerConfig, GameDB.Life, new DungeonPotionEventLedger(host), this,
+                    Constants.Session.MAX_PARTY_SIZE);
+            }
+        }
+
+        /// <summary> 서버를 연 뒤에 한 번 부른다(Listen이 처리기를 비운다). 물약 요청은 인증된 연결의 참가자 개체로만 받는다 </summary>
+        public void RegisterMessageHandlers()
+        {
+            NetworkServer.ReplaceHandler<PotionUseRequestMessage>(OnPotionRequest);
+            NetworkServer.ReplaceHandler<SortieAbandonRequestMessage>(OnAbandonRequest);
+        }
+
+        // 메인 스레드의 Mirror 수신에서 불린다. 참가자는 연결 결합으로 정하고 메시지 값은 작업 ID만 쓴다.
+        // 실제 포기는 다음 틱 세션 BeginTick 뒤에 처리한다
+        private void OnAbandonRequest(NetworkConnectionToClient connection, SortieAbandonRequestMessage message)
+        {
+            if ((_host == null) || (connection == null) || (!(connection.authenticationData is SessionBinding binding))
+                || (!binding.IsActive))
+            {
+                return;
+            }
+
+            _host.RequestAbandon(binding.ParticipantId, message.OperationId);
+        }
+
+        // 매니저가 플레이어 생성 요청에서 먼저 부른다. 출정 종료 뒤 경매에만 다시 들어온 연결은 캐릭터 없이 경매 상태만 받는다
+        public bool TryJoinWithoutPlayer(NetworkConnectionToClient connection)
+        {
+            if ((_host == null) || (connection == null) || (!(connection.authenticationData is SessionBinding binding))
+                || (!binding.IsActive) || (!binding.IsAuctionOnly))
+            {
+                return false;
+            }
+
+            _host.OnAuctionOnlyJoined(binding.ParticipantId);
+            return true;
+        }
+
+        /// <summary> 서버를 열기 전에 한 번 부른다, 연결하지 않으면 적 판정은 돌지만 클라이언트에 적이 보이지 않는다 </summary>
+        public void EnableEnemyObjects(IEnemyObjectHost host)
+        {
+            if (host == null)
+            {
+                throw new ArgumentNullException(nameof(host));
+            }
+
+            if (_enemyHost != null)
+            {
+                return;
+            }
+
+            _enemyHost = host;
+        }
+
+        /// <summary> 일반 적 공격 피해에 시작 인원 피해 배율을 곱하는 판정기, 웨이브 구현이 출정 시작 뒤 한 번 받는다 </summary>
+        public IDamageResolver CreateScaledEnemyResolver()
+        {
+            return new BossDamageScaler(_skillResolver, DamageScale);
+        }
+
+        public bool TryGetParticipantVitals(int participantId, out CheckpointVitals vitals)
+        {
+            vitals = default;
+            int index = IndexOfParticipant(participantId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            PlayerServer player = _players[index];
+            SkillServer  skills = player.Skills;
+            vitals = new CheckpointVitals(player.Health, player.MaxHealth, (skills != null) ? skills.Energy : 0f,
+                (skills != null) ? skills.Resonance : 0f, player.DeathTime, player.IsDetached);
+            return true;
+        }
+
+        // 세션이 종료 이벤트를 넣기 직전에 부른다. 미적용 물약 되돌림이 종료 이벤트보다 앞 순번이 되게 한다
+        public void OnSessionEnding(double serverTime)
+        {
+            _potions?.RevertUnapplied(serverTime);
+        }
+
+        public bool TryGetBossVitals(out float healthRate, out int phase)
+        {
+            healthRate = 0f;
+            phase      = 0;
+            if (_boss == null)
+            {
+                return false;
+            }
+
+            healthRate = _boss.HealthRate;
+            phase      = (int)_boss.PhaseState;
+            return true;
         }
 
         // 매니저가 연결 종료 기본 처리 전에 부른다. 진행 중인 출정의 닫히지 않은 원래 참가자만 남긴다
@@ -245,7 +398,7 @@ namespace Shinshi.Combat
 
             int participantId = binding.ParticipantId;
             int index         = IndexOfParticipant(participantId);
-            if ((index < 0) || (_roster.IsClosed(participantId)))
+            if ((binding.IsAuctionOnly) || (index < 0) || (_roster.IsClosed(participantId)))
             {
                 return false;
             }
@@ -271,6 +424,8 @@ namespace Shinshi.Combat
 
             player.Reattach();
             _host.OnParticipantAttached(participantId, _lastTickTime);
+            SendPotionState(player, 0, ERejectReason.None);
+            _host.SendStatusTo(participantId);
             return true;
         }
 
@@ -284,7 +439,7 @@ namespace Shinshi.Combat
             // 인증기가 연결에 결합한 참가자만 받는다. 매니저도 막지만 다른 생성 경로가 생겨도 여기서 한 번 더 막는다
             NetworkConnectionToClient connection = input.connectionToClient;
             SessionBinding binding = (connection != null) ? (connection.authenticationData as SessionBinding) : null;
-            if ((binding == null) || (!binding.IsActive))
+            if ((binding == null) || (!binding.IsActive) || (binding.IsAuctionOnly))
             {
                 Debug.LogError($"[Combat] 인증되지 않은 연결의 플레이어라 서버 판정을 붙이지 않고 끊는다, {input.name}");
                 input.DisconnectOwner();
@@ -327,9 +482,18 @@ namespace Shinshi.Combat
                 ReleaseRetainedSkills(participantId);
             }
 
+            if (!TryResolveStats(binding, playerClass, out CharacterStats stats))
+            {
+                input.DisconnectOwner();
+                return;
+            }
+
+            combat.SetDisplayName(binding.CharacterName);
+            AdoptSessionEpoch();
+
             int combatId = _registry.IssueCombatId();
             var player   = new PlayerServer(input, combat, playerClass, combatId, participantId, _sessionEpoch, _playerConfig,
-                _skillResolver, _registry, _lineOfSight, now);
+                in stats, _skillResolver, _registry, _lineOfSight, now);
             // 재접속 보존 상태를 소비하기 전에 자리를 확보한다. 상한 거절로 기존 자원을 잃지 않게 한다
             if (!_registry.Register(player))
             {
@@ -344,16 +508,163 @@ namespace Shinshi.Combat
                 {
                     _retainedSkills.Remove(participantId);
                     _retainedSkillTicks.Remove(retained);
-                    player.ConfigureSkills(_skillCatalog, _playerConfig, _registry, this, now, retained);
+                    player.ConfigureSkills(_skillCatalog, _playerConfig, _registry, this, now, retained, _talismans);
                 }
             }
             if (player.Skills == null)
             {
-                player.ConfigureSkills(_skillCatalog, _playerConfig, _registry, this, now);
+                player.ConfigureSkills(_skillCatalog, _playerConfig, _registry, this, now, null, _talismans);
             }
 
             _players.Add(player);
             _host?.OnParticipantAttached(participantId, _lastTickTime);
+            if ((_potions != null) && (!_potions.TryRegister(participantId, binding.ParticipantKey, binding.ReservedPotions)))
+            {
+                Debug.LogError($"[Potion] 물약 기록 자리가 없어 이 참가자는 물약을 쓰지 못한다, participantId={participantId}");
+            }
+
+            SendPotionState(player, 0, ERejectReason.None);
+            _host?.SendStatusTo(participantId);
+        }
+
+        // 던전은 첫 입장 토큰으로 출정이 정해진 뒤에 플레이어가 생긴다. 첫 전투 개체를 만들기 전에 한 번 출정 ID에서 번호를 만든다.
+        // 이미 만든 개체나 보존 기록이 있으면 그 번호로 입력을 받고 있으므로 바꾸지 않는다
+        private void AdoptSessionEpoch()
+        {
+            if ((_epochFromSession) || (_host == null) || (_host.SessionId == null) || (_players.Count > 0)
+                || (_reconnectVault.Count > 0) || (_retainedSkills.Count > 0))
+            {
+                return;
+            }
+
+            _sessionEpoch     = CombatServerInstaller.CreateSessionEpoch(_host.SessionId);
+            _epochFromSession = true;
+        }
+
+        // 출정 고정 전투 준비로 최종 능력치와 부적을 정한다. 입장 때 한 번만 돌아 실패 이유 문자열을 만든다.
+        // 출시 빌드의 던전은 전투 준비가 없거나 콘텐츠와 맞지 않으면 기본값으로 대신하지 않고 거절한다. 장비, 수련, 부적이 조용히
+        // 사라진 채 전투하면 플레이어도 운영도 알아차리기 어렵다. 개발 빌드는 개발 토큰과 0011 전 출정을 시험하도록 경고하고 들인다.
+        // 마을은 전투 준비를 받지 않으므로 기본값이 정상이다
+        private bool TryResolveStats(SessionBinding binding, EPlayerClass playerClass, out CharacterStats stats)
+        {
+            int                    participantId = binding.ParticipantId;
+            CharacterCombatLoadout loadout       = binding.CombatLoadout;
+            bool                   strict        = (_host != null) && (!Debug.isDebugBuild);
+            stats = CharacterStatsRules.Base(_playerConfig);
+            _talismans?.Unregister(participantId);
+            if (loadout == null)
+            {
+                if (strict)
+                {
+                    Debug.LogError($"[Combat] 던전 입장에 전투 준비가 없어 받지 않는다, participantId={participantId}");
+                    return false;
+                }
+
+                if (_host != null)
+                {
+                    Debug.LogWarning($"[Combat] 전투 준비가 없어 기본 능력치로 들인다(개발 빌드), participantId={participantId}");
+                }
+
+                return true;
+            }
+
+            string         error    = null;
+            CharacterStats computed = stats;
+            if (loadout.ClassId != (int)playerClass)
+            {
+                error = $"직업이 결합과 다르다, loadout={loadout.ClassId}";
+            }
+            else if (CharacterStatsRules.TryCompute(_playerConfig, _equipment, _growth, loadout, out computed, out error))
+            {
+                if ((_talismans != null) && (!_talismans.TryRegister(participantId, playerClass, loadout.Talismans, out error)))
+                {
+                    computed = stats;
+                }
+            }
+
+            if (error != null)
+            {
+                _talismans?.Unregister(participantId);
+                if (strict)
+                {
+                    Debug.LogError($"[Combat] 전투 준비가 콘텐츠와 맞지 않아 받지 않는다, participantId={participantId}, {error}");
+                    return false;
+                }
+
+                Debug.LogWarning($"[Combat] 전투 준비가 콘텐츠와 맞지 않아 기본 능력치로 들인다(개발 빌드), participantId={participantId}, " +
+                    error);
+                return true;
+            }
+
+            // TODO(민성): 예약 때 콘텐츠 버전과 서버 콘텐츠 버전이 다를 때 거절할지 정한다. 지금은 기록만 남긴다
+            if ((GameDB.IsInitialized) && (!string.Equals(loadout.ContentVersion, GameDB.ContentVersion, StringComparison.Ordinal)))
+            {
+                Debug.LogWarning($"[Combat] 전투 준비의 콘텐츠 버전이 서버와 다르다, participantId={participantId}, " +
+                    $"loadout={loadout.ContentVersion}, server={GameDB.ContentVersion}");
+            }
+
+            stats = computed;
+            return true;
+        }
+
+        // 메인 스레드의 Mirror 수신에서 불린다. 참가자는 연결 결합으로 정하고 메시지 값은 물약 종류만 쓴다
+        private void OnPotionRequest(NetworkConnectionToClient connection, PotionUseRequestMessage message)
+        {
+            if ((connection == null) || (!(connection.authenticationData is SessionBinding binding)) || (!binding.IsActive))
+            {
+                return;
+            }
+
+            int index = IndexOfParticipant(binding.ParticipantId);
+            if (index < 0)
+            {
+                return;
+            }
+
+            PlayerServer player = _players[index];
+            if ((player.IsDetached) || (connection.identity != player.InputState.netIdentity)
+                || (!player.TryAcceptPotionInput(message.Header)))
+            {
+                return;
+            }
+
+            ERejectReason reason = (_potions != null)
+                ? _potions.TryUse(player, message.Size, message.Header.Sequence, NetworkTime.time)
+                : ERejectReason.WrongPhase;
+            SendPotionState(player, message.Header.Sequence, reason);
+        }
+
+        public bool TryGetPotionUser(int participantId, out IPotionUser user)
+        {
+            int index = IndexOfParticipant(participantId);
+            user = (index >= 0) ? _players[index] : null;
+            return index >= 0;
+        }
+
+        public void OnPotionState(int participantId, uint sequence, ERejectReason reason)
+        {
+            int index = IndexOfParticipant(participantId);
+            if (index >= 0)
+            {
+                SendPotionState(_players[index], sequence, reason);
+            }
+        }
+
+        // 소유 연결에만 보낸다. 연결이 끊겨 남은 개체는 재접속 때 다시 보낸다
+        private void SendPotionState(PlayerServer player, uint sequence, ERejectReason reason)
+        {
+            if ((_potions == null) || (player.IsDetached))
+            {
+                return;
+            }
+
+            NetworkConnectionToClient connection = player.InputState.connectionToClient;
+            if (connection == null)
+            {
+                return;
+            }
+
+            connection.Send(_potions.CreateState(player.ParticipantId, sequence, reason));
         }
 
         public void RemovePlayer(PlayerInputState input)
@@ -427,6 +738,11 @@ namespace Shinshi.Combat
             }
 
             TickBoss(serverTime, sessionTick);
+            if (sessionTick)
+            {
+                _host.TickWave();
+            }
+
             ReportLifeStates();
             if (sessionTick)
             {
@@ -435,6 +751,9 @@ namespace Shinshi.Combat
 
             EndBossIfSessionEnded(serverTime);
             PublishBossObject();
+
+            // 종료 판정 뒤에 확정을 본다. 이번 틱에 출정이 끝났으면 종료 이벤트 뒤로 되돌림을 넣지 않는다
+            _potions?.Tick(serverTime);
 
             ApproveRevives(serverTime);
             SyncCompanionObjects();
@@ -490,6 +809,11 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 보스전 계약이면 계약 보스, 아니면 실행 설정 기본 보스다. 계약 보스는 호스트가 입장 때 카탈로그에 있는지 확인했다
+            // TODO(민성): 난이도(쉬움, 어려움)별 보스 능력치 차이가 기획에 생기면 _host.BossDifficulty를 보스 생성에 넘긴다.
+            // 지금 난이도는 보상 표(RewardCatalogSO.BossRewards)만 고른다(docs/design/growth-economy.md 보스 보상)
+            string bossId = BossId;
+
             if (!GameDB.IsInitialized)
             {
                 Debug.LogError("[Boss] GameDB 초기화 전이라 보스를 만들지 않는다");
@@ -515,26 +839,26 @@ namespace Shinshi.Combat
             // 전장 맵이 없어 생성 지점을 원점으로 두고 전장 중심도 생성 지점으로 본다
             Vector3 spawnPosition = Vector3.zero;
             Vector3 spawnForward  = Vector3.forward;
-            var boss = new BossServer(Constants.Combat.DEV_BOSS_ID, _registry.IssueCombatId(), spawnPosition, spawnForward,
+            var boss = new BossServer(bossId, _registry.IssueCombatId(), spawnPosition, spawnForward,
                 spawnPosition, referenceAttack, referenceHealth, BossHealthScale,
                 new BossPatternCatalogSource(GameDB.BossPatterns), _registry, new BossDamageScaler(_skillResolver, DamageScale),
                 new BossTerrainProbe(_obstacleMask), new SeededBossRandom(_sessionEpoch));
 
             if (!boss.Begin(serverTime))
             {
-                Debug.LogError($"[Boss] 보스 전투를 열지 못해 보스 없이 진행한다, boss={Constants.Combat.DEV_BOSS_ID}");
+                Debug.LogError($"[Boss] 보스 전투를 열지 못해 보스 없이 진행한다, boss={bossId}");
                 return;
             }
 
             if (!_registry.Register(boss))
             {
-                Debug.LogError($"[Boss] 전투 대상 등록이 거절돼 보스 없이 진행한다, boss={Constants.Combat.DEV_BOSS_ID}");
+                Debug.LogError($"[Boss] 전투 대상 등록이 거절돼 보스 없이 진행한다, boss={bossId}");
                 return;
             }
 
             _boss = boss;
             SpawnBossObject();
-            Debug.Log($"[Boss] 보스 전투 시작, boss={Constants.Combat.DEV_BOSS_ID}, combatId={boss.CombatId}, " +
+            Debug.Log($"[Boss] 보스 전투 시작, boss={bossId}, combatId={boss.CombatId}, " +
                 $"maxHealth={boss.MaxHealth}");
         }
 
@@ -801,6 +1125,7 @@ namespace Shinshi.Combat
             }
 
             EParticipantLifeState deathState = _host.LifeStateOnDeath();
+            bool candidatesLoaded = false;
             for (int i = 0; i < _players.Count; ++i)
             {
                 PlayerServer player = _players[i];
@@ -813,6 +1138,13 @@ namespace Shinshi.Combat
                 if ((!player.HasReviveRequest) || (player.IsDetached) || (serverTime < player.NextReviveCheckTime))
                 {
                     continue;
+                }
+
+                // 평가할 요청이 있는 틱에만 한 번 읽는다. 지점 Transform이 움직여도 그 틱의 위치를 쓴다
+                if (!candidatesLoaded)
+                {
+                    LoadRevivePoints();
+                    candidatesLoaded = true;
                 }
 
                 ApproveRevive(player, serverTime);
@@ -830,7 +1162,7 @@ namespace Shinshi.Combat
             }
 
             // 안전 지점이 없으면 횟수를 쓰지 않고 다음 재평가 시각까지 요청을 남긴다
-            if (!player.TryFindRevivePoint(out Vector3 point))
+            if (!player.TryFindRevivePoint(_revivePoints, serverTime, out Vector3 point))
             {
                 player.DeferRevive(serverTime + _host.SafePointRetryInterval);
                 return;
@@ -845,6 +1177,34 @@ namespace Shinshi.Combat
 
             player.Revive(point, healthRate);
             player.ReportedLifeState = player.LifeState;
+        }
+
+        // 씬에 지정 지점이 없으면 선택기를 비워 두고 PlayerServer가 사망 위치 근처 NavMesh로 대신한다(경고는 한 번만)
+        private void LoadRevivePoints()
+        {
+            if (_revivePoints == null)
+            {
+                _revivePoints = new RevivePointSelector(_registry, new CombatReviveHazardQuery(), _host.SafePointEnemyClearance);
+            }
+
+            _revivePoints.ClearCandidates();
+            SafeRevivePointSet set = SafeRevivePointSet.Current;
+            if (set != null)
+            {
+                for (int i = 0; i < set.Count; ++i)
+                {
+                    if (set.TryGetPosition(i, out Vector3 position))
+                    {
+                        _revivePoints.AddCandidate(position);
+                    }
+                }
+            }
+
+            if ((_revivePoints.CandidateCount == 0) && (!_warnedNoRevivePoints))
+            {
+                _warnedNoRevivePoints = true;
+                Debug.LogWarning("[Combat] 씬에 안전 복귀 지점이 없어 사망 위치 근처 NavMesh 지점으로 부활시킨다");
+            }
         }
 
         private int IndexOfParticipant(int participantId)

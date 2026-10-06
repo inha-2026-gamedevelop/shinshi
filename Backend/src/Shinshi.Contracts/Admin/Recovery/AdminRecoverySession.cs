@@ -19,6 +19,10 @@ namespace Shinshi.Contracts.Admin
         [DataMember(Name = "settlingStale")] private bool                     _settlingStale;
         [DataMember(Name = "instanceLost")]  private bool                     _instanceLost;
 
+        // 경매 단계(Auction) 출정이 멈췄다: 경매 단계 기한에 복구 유예까지 지났거나, 배정 boot가 장애 취소 기준보다 오래 생존 증거가
+        // 없다(자동 복구가 경매를 닫는 조건). livenessDeferred 동안 서버 소실 쪽 판정은 빠진다
+        [DataMember(Name = "auctionOverdue")] private bool                    _auctionOverdue;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -27,7 +31,8 @@ namespace Shinshi.Contracts.Admin
         public AdminServerInstanceState Instance      => _instance;
         public bool                     Quarantined   => _quarantined;
         public bool                     SettlingStale => _settlingStale;
-        public bool                     InstanceLost  => _instanceLost;
+        public bool                     InstanceLost   => _instanceLost;
+        public bool                     AuctionOverdue => _auctionOverdue;
 
         /****************************************
         *                Methods
@@ -41,6 +46,13 @@ namespace Shinshi.Contracts.Admin
             _quarantined   = quarantined;
             _settlingStale = settlingStale;
             _instanceLost  = instanceLost;
+        }
+
+        public AdminRecoverySession(AdminSessionSummary session, AdminServerInstanceState instance, bool quarantined,
+            bool settlingStale, bool instanceLost, bool auctionOverdue)
+            : this(session, instance, quarantined, settlingStale, instanceLost)
+        {
+            _auctionOverdue = auctionOverdue;
         }
 
         private AdminRecoverySession() { }

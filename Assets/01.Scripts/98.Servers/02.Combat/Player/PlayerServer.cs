@@ -15,7 +15,7 @@ using Shinshi.Data;
 namespace Shinshi.Combat
 {
     /// <summary> 플레이어 한 명의 서버 판정, 입력 검증과 서버 권위 이동, 기본 공격, 체력과 사망을 맡는다 </summary>
-    public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant
+    public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant, IPotionUser
     {
         // Command 처리기는 검증과 의도 보관만 하고, 실제 이동과 공격은 CombatServerRuntime의 틱에서 한다.
         // 한 틱에 이동 입력이 여러 개 와도 경로 계산은 마지막 것 한 번만 하고, 처리 순서를 틱 순서에 맞춘다
@@ -43,6 +43,8 @@ namespace Shinshi.Combat
         private readonly float                            _moveSpeed;
         private readonly float                            _attackPower;
         private readonly float                            _defense;
+        private readonly float                            _maxEnergy;
+        private readonly float                            _critChance;
         private readonly double                           _attackBufferSeconds;
 
         private float                 _health              = 0f;
@@ -81,6 +83,7 @@ namespace Shinshi.Combat
         private bool                  _hasReviveRequest     = false;
         private uint                  _reviveSequence       = 0;
         private double                _nextReviveCheckTime  = 0.0;
+        private bool                  _isWaitingSafePoint   = false;
 
         /****************************************
         *              Properties
@@ -102,6 +105,11 @@ namespace Shinshi.Combat
         public float                 Defense         => _defense;
         public double                DeathTime       => _deathTime;
         public float                 AttackPower     => _attackPower;
+
+        // 0에서 1 사이, 상한 적용 뒤 값
+        // TODO(민성): 치명타와 시작 인원 피해 배율의 적용 위치가 기획에서 정해지면 피해 판정에서 이 값을 쓴다
+        public float                 CritChance      => _critChance;
+        public float                 MaxEnergy       => _maxEnergy;
         public SkillServer           Skills          => _skills;
 
         // 연결이 끊겨 소유권만 뗀 채 서버에 남은 상태. 입력은 받지 않지만 피격, 사망, 기술 타이머는 계속 처리한다
@@ -114,9 +122,14 @@ namespace Shinshi.Combat
         // 출정 명단에 마지막으로 알린 생사, 틱 끝에서 LifeState와 다를 때만 다시 알린다
         public EParticipantLifeState ReportedLifeState { get; set; } = EParticipantLifeState.Alive;
 
-        // TODO(민성): 스폰 보호 기간이 정해지면 무적 상태를 반영한다
+        // 기획상 복귀 뒤 무적 시간은 없다. 공격 예고와 실제 범위가 피격을 정하므로 부활 직후에도 거짓이다
+        // TODO(민성): 입장 직후 같은 다른 스폰 보호가 기획에 생기면 그 기간만 무적 상태를 반영한다
         public bool IsInvulnerable  => false;
         public bool IsGuardingFront => false;
+
+        // 플레이어를 기절시키는 원인과 시간이 기획에 없어 그 상태가 아직 없다
+        // TODO(민성): 플레이어 이동 불가, 기절 상태가 생기면 물약과 회피를 함께 막는다
+        public bool IsControlLocked => false;
 
         // 기술 반격의 120도 방어는 SkillDamageResolver가 적중 원장과 함께 판정한다
 
@@ -128,9 +141,10 @@ namespace Shinshi.Combat
         // participantId는 인증기가 연결에 결합한 출정 참가자 번호다. 재접속해도 같은 번호가 온다.
         // playerClass는 결합이 API 교환에서 받은 직업이다. 기본 공격 명세와 기술 서버가 모두 이 값을 쓰고, 클라이언트에는
         // 아래에서 복제 상태로 알린다. 상태의 SyncVar를 읽어 정하면 [Server] 호출 순서에 기대게 되므로 인자로 받는다
+        // stats는 결합의 출정 전투 준비로 CharacterStatsRules가 계산한 최종 능력치다. 전투 준비가 없는 개발 입장은 기본값이다
         public PlayerServer(PlayerInputState input, PlayerCombatState combat, EPlayerClass playerClass, int combatId,
-            int participantId, int sessionEpoch, PlayerConfigSO config, IDamageResolver resolver, ICombatTargetQuery query,
-            CombatLineOfSight lineOfSight, double serverTime)
+            int participantId, int sessionEpoch, PlayerConfigSO config, in CharacterStats stats, IDamageResolver resolver,
+            ICombatTargetQuery query, CombatLineOfSight lineOfSight, double serverTime)
         {
             _input         = input;
             _combat        = combat;
@@ -142,11 +156,12 @@ namespace Shinshi.Combat
             _combatId      = combatId;
             _participantId = participantId;
 
-            // TODO(민성): 성장, 장비, 부적이 붙으면 CharacterStats에서 최종 능력치를 받는다. 지금은 기본 능력치다
-            _moveSpeed   = config.MoveSpeed;
-            _attackPower = config.BaseAttack;
-            _defense     = config.BaseDefense;
-            _maxHealth   = config.BaseHealth;
+            _moveSpeed   = stats.MoveSpeed;
+            _attackPower = stats.Attack;
+            _defense     = stats.Defense;
+            _maxHealth   = stats.MaxHealth;
+            _maxEnergy   = stats.MaxEnergy;
+            _critChance  = stats.CritChance;
             _health      = _maxHealth;
             _attack      = config.GetBasicAttack(playerClass);
 
@@ -257,6 +272,7 @@ namespace Shinshi.Combat
             _hasPendingDodge     = false;
             _path.Stop();
             _moveThrottle.ClearActive();
+            SetWaitingSafePoint(false);
         }
 
         /// <summary> 같은 참가자의 새 연결이 남은 개체를 넘겨받은 뒤 부른다, 회복이나 쿨다운 초기화 없이 입력만 다시 받는다 </summary>
@@ -387,6 +403,7 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 기획은 이동 불가, 기절 중 회피를 막지만 플레이어를 기절시키는 원인과 시간이 정해지지 않아 그 상태가 아직 없다
             // TODO(민성): 플레이어 이동 불가, 기절 상태가 생기면 여기서 거절한다
             if (IsSkillLockingDodge())
             {
@@ -459,19 +476,25 @@ namespace Shinshi.Combat
             }
 
             _hasReviveRequest = false;
+            SetWaitingSafePoint(false);
             _input.SendInputRejected(_reviveSequence, reason);
         }
 
-        /// <summary> 안전 지점이 없어 다음 재평가 시각까지 미룬다, 횟수는 쓰지 않는다 </summary>
+        /// <summary> 안전 지점이 없어 다음 재평가 시각까지 미룬다, 횟수는 쓰지 않고 소유자에게 대기 중임을 알린다 </summary>
         public void DeferRevive(double nextCheckTime)
         {
             _nextReviveCheckTime = nextCheckTime;
+            SetWaitingSafePoint(true);
         }
 
-        /// <summary> 죽은 자리 근처의 걸을 수 있는 지점을 찾는다, 못 찾으면 거짓 </summary>
-        public bool TryFindRevivePoint(out Vector3 point)
+        /// <summary> 복귀 지점을 찾는다. 지정 지점이 있으면 선택기로 고르고, 없으면 죽은 자리 근처의 걸을 수 있는 지점이다. 못 찾으면 거짓 </summary>
+        public bool TryFindRevivePoint(RevivePointSelector selector, double serverTime, out Vector3 point)
         {
-            // TODO(민성): 맵 디자인이 지정한 안전 복귀 지점이 생기면 그 목록에서 가장 가까운 곳을 고른다
+            if ((selector != null) && (selector.CandidateCount > 0))
+            {
+                return selector.TrySelect(_transform.position, serverTime, out point);
+            }
+
             if (NavMesh.SamplePosition(_transform.position, out NavMeshHit hit, Constants.Combat.REVIVE_SAFE_POINT_SEARCH_RADIUS,
                 NavMesh.AllAreas))
             {
@@ -497,6 +520,7 @@ namespace Shinshi.Combat
             _hasReviveRequest   = false;
             _isDodging          = false;
             _transform.position = point;
+            SetWaitingSafePoint(false);
             _path.Stop();
             _moveThrottle.ClearActive();
             _combat.SetHealth(_health, _maxHealth);
@@ -512,12 +536,26 @@ namespace Shinshi.Combat
             }
 
             RejectRevive(ERejectReason.NoRevives);
+            SetWaitingSafePoint(false);
             _lifeState = EParticipantLifeState.Spectating;
             _combat.SetLifeState(_lifeState);
         }
 
+        // 바뀔 때만 복제 상태를 건드린다. 재평가마다 같은 값을 쓰지 않으려는 것이다
+        private void SetWaitingSafePoint(bool waiting)
+        {
+            if (_isWaitingSafePoint == waiting)
+            {
+                return;
+            }
+
+            _isWaitingSafePoint = waiting;
+            _input.SetWaitingSafePoint(waiting);
+        }
+
+        // talismans는 출정 고정 부적을 합성해 둔 창구다. null이면 원래 기술 수치다
         public void ConfigureSkills(SkillCatalogSO catalog, PlayerConfigSO player, CombatTargetRegistry registry,
-            ICombatSkillPhase phase, double now, SkillServer retained = null)
+            ICombatSkillPhase phase, double now, SkillServer retained = null, ITalismanModifierResolver talismans = null)
         {
             _skillPhase = phase;
             // 보존된 기술 서버는 같은 직업일 때만 넘어온다(CombatServerRuntime이 걸러 낸다)
@@ -528,7 +566,8 @@ namespace Shinshi.Combat
             }
             else
             {
-                _skills = new SkillServer(this, _playerClass, _participantId, catalog, player, registry, _resolver, _lineOfSight, now);
+                _skills = new SkillServer(this, _playerClass, _participantId, catalog, player, registry, _resolver, _lineOfSight, now,
+                    talismans, null, _maxEnergy);
             }
             _input.SkillServerHandler = this;
             ReplicateSkills();
@@ -598,6 +637,24 @@ namespace Shinshi.Combat
             _input.SendSkillResult(sequence, _skills.CastInstanceId, ERejectReason.None);
         }
 
+        /// <summary> 물약 요청의 입력 머리를 다른 입력과 같은 게이트로 검증한다, 통과하면 참 </summary>
+        public bool TryAcceptPotionInput(in PlayerInputHeader header)
+        {
+            return TryAcceptHeader(in header, out _);
+        }
+
+        // 물약 회복, 최대 체력을 넘는 몫은 버린다. 저장 확정 뒤 PotionServer만 부른다
+        public void Heal(float amount)
+        {
+            if ((_lifeState != EParticipantLifeState.Alive) || (!(amount > 0f)))
+            {
+                return;
+            }
+
+            _health = Mathf.Min(_maxHealth, _health + amount);
+            _combat.SetHealth(_health, _maxHealth);
+        }
+
         private bool TryAcceptHeader(in PlayerInputHeader header, out double requestTime, bool reportSkill = false)
         {
             requestTime = 0.0;
@@ -636,6 +693,12 @@ namespace Shinshi.Combat
                         break;
                 }
                 _input.SendSkillResult(header.Sequence, CombatIds.NONE, reason);
+            }
+            else if (verdict == EInputVerdict.RateLimited)
+            {
+                // 지연이 뭉쳐 몰려 온 입력은 정상 클라이언트도 주기 초과로 버려진다. 알리지 않으면 소유 예측은 오지 않는 응답을
+                // 기다리다 시간 초과 뒤 서버 위치로 스냅한다. 순번 역행과 시각 오류는 변조 클라이언트만 만들므로 알리지 않는다
+                _input.SendInputRejected(header.Sequence, ERejectReason.RateLimited);
             }
 
             if (_gate.ShouldDisconnect)

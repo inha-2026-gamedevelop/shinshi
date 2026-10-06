@@ -51,11 +51,14 @@ namespace Shinshi.Backend.Tests.Admin
                 BaseAddress = new Uri("https://localhost")
             });
             string operationId = Guid.NewGuid().ToString("D");
+            // 보스전은 출정 계약(bossId, 난이도)이 있어야 형식 검사를 지나 게이트까지 온다
+            bool boss = mode == GameSessionCodes.Mode.BOSS;
             ReservationRequest body = new ReservationRequest(operationId, mode, "forest", "content-1", new[]
             {
                 new ReservationParticipant(Guid.NewGuid().ToString("D"), Guid.NewGuid().ToString("D"), 0,
                     Array.Empty<ReservationPotion>())
-            });
+            }, null, boss ? "boss_wolbaek" : null,
+                boss ? GameSessionCodes.Difficulty.EASY : GameSessionCodes.Difficulty.NONE);
             using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, GameServerRoutes.RESERVATIONS)
             {
                 Content = new StringContent(JsonConvert.SerializeObject(body, ContractJson.CreateSettings()),

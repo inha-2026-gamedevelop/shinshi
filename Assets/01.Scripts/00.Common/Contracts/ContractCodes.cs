@@ -102,6 +102,9 @@ namespace Shinshi.Contracts
             public const int CHARACTER_NAME_TAKEN   = 1001;
             public const int INVALID_CHARACTER_NAME = 1002;
 
+            // 캐릭터 삭제. 다른 계정의 캐릭터와 이미 삭제한 캐릭터도 같은 코드다
+            public const int CHARACTER_NOT_FOUND    = 1003;
+
             // 운영, 우편함
             public const int FEATURE_DISABLED         = 1100;
             public const int INBOX_EXPIRED            = 1101;
@@ -118,6 +121,11 @@ namespace Shinshi.Contracts
             public const int WEAK_PASSWORD       = 1204;
             public const int INVALID_CREDENTIALS = 1205;
             public const int ACCOUNT_LOCKED      = 1206;
+
+            // 마을 파티(방 목록, 비밀번호 방, 초대)
+            public const int ROOM_NOT_FOUND         = 1300;
+            public const int ROOM_PASSWORD_MISMATCH = 1301;
+            public const int INVITE_EXPIRED         = 1302;
         }
 
         /// <summary> EEconomyReason과 같은 값, 경제 원장에 기록되므로 기존 값을 바꾸거나 재배열하지 않는다 </summary>

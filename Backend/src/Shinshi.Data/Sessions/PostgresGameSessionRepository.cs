@@ -28,6 +28,13 @@ namespace Shinshi.Data.Sessions
 
         private const long TICKET_COST = 1;
 
+        // 보스전 참가자 한 명의 물약 사용 상한(소형, 대형 합산). 공용 계약 상수가 단일 원본이고 던전 서버 PotionServer도 같은 값을 쓴다.
+        // 던전 서버가 먼저 막고 API는 침해되거나 어긋난 서버를 막는 이중 방어다. 되돌린 사용은 세지 않는다
+        public const long BOSS_POTION_USE_LIMIT = GameSessionCodes.Potion.BOSS_USE_LIMIT;
+
+        // 되돌림 원장 줄은 같은 배치의 소비 줄과 같은 자산이라 키를 나눈다
+        private const string POTION_RETURN_ENTRY_SCOPE = "revert";
+
         // 출정 원장 적립. 추가 정기는 essence_accrued, 완료 웨이브 기본 정기는 base_essence_accrued(0007)에 쌓는다
         private const string ACCRUE_EXTRA_ESSENCE_SQL =
             """
@@ -297,9 +304,19 @@ namespace Shinshi.Data.Sessions
                 return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH, last);
             }
 
+            // 물약 소비, 되돌림과 이탈 처리가 함께 잠글 계정을 먼저 오름차순으로 한 번에 잠근다. 따로 잠그면 배치 안에서
+            // 순서가 뒤집힌다(되돌림만 있는 계정을 뒤에서 처음 잠그면 앞서 잠근 큰 ID 계정 뒤에 작은 ID를 잡게 된다)
+            await SessionDb.LockAccountsAsync(connection, transaction, events
+                .Where(entry => (entry.EventKind == GameSessionCodes.EventKind.POTION_USED)
+                    || (entry.EventKind == GameSessionCodes.EventKind.POTION_USE_REVERTED)
+                    || (entry.EventKind == GameSessionCodes.EventKind.PARTICIPANT_DEPARTED))
+                .Select(entry => participants[entry.ParticipantId!.Value].AccountId), cancellationToken);
+
             List<EconomyLedgerLine> ledger = new List<EconomyLedgerLine>();
             int? potionReason = await ConsumePotionsAsync(connection, transaction, sessionId, operationId,
-                dungeonInstanceId, events, participants, ledger, cancellationToken);
+                dungeonInstanceId, session.Mode, events, participants, ledger, cancellationToken)
+                ?? await RevertPotionsAsync(connection, transaction, sessionId, operationId, dungeonInstanceId, events,
+                    participants, ledger, cancellationToken);
             if (potionReason.HasValue)
             {
                 return OperationDecision.Rejected(potionReason.Value, last);
@@ -327,6 +344,8 @@ namespace Shinshi.Data.Sessions
             {
                 return OperationDecision.Rejected(SettlementSanityLimits.REJECT_REASON, last);
             }
+            await DepartParticipantsAsync(connection, transaction, dungeonInstanceId, sessionId, events, participants,
+                cancellationToken);
             await InsertEventsAsync(connection, transaction, sessionId, operationId, events, cancellationToken);
             await connection.ExecuteAsync(new CommandDefinition(
                 """
@@ -415,7 +434,7 @@ namespace Shinshi.Data.Sessions
         }
 
         private static async Task<int?> ConsumePotionsAsync(DbConnection connection, DbTransaction transaction,
-            Guid sessionId, Guid operationId, Guid dungeonInstanceId, IReadOnlyList<SessionEventInput> events,
+            Guid sessionId, Guid operationId, Guid dungeonInstanceId, string mode, IReadOnlyList<SessionEventInput> events,
             IReadOnlyDictionary<Guid, ParticipantRow> participants, List<EconomyLedgerLine> ledger,
             CancellationToken cancellationToken)
         {
@@ -428,6 +447,11 @@ namespace Shinshi.Data.Sessions
             if (groups.Count == 0)
             {
                 return null;
+            }
+            if ((mode == GameSessionStates.MODE_BOSS)
+                && await ExceedsBossPotionLimitAsync(connection, transaction, sessionId, events, cancellationToken))
+            {
+                return ContractCodes.RejectReason.POTION_LIMIT;
             }
 
             await SessionDb.LockAccountsAsync(connection, transaction, groups.Select(group => group.AccountId),
@@ -495,6 +519,186 @@ namespace Shinshi.Data.Sessions
             return null;
         }
 
+        // 저장된 사용 - 되돌림에 이 배치의 사용 - 되돌림을 더한 참가자별 순사용이 상한을 넘는지 본다.
+        // 세션 행을 잠근 채 읽으므로 같은 세션의 다른 배치가 그 사이 끼어들지 않는다
+        private static async Task<bool> ExceedsBossPotionLimitAsync(DbConnection connection, DbTransaction transaction,
+            Guid sessionId, IReadOnlyList<SessionEventInput> events, CancellationToken cancellationToken)
+        {
+            Dictionary<Guid, long> net = (await connection.QueryAsync<PotionNetRow>(new CommandDefinition(
+                """
+                SELECT participant_id AS "ParticipantId",
+                    (count(*) FILTER (WHERE event_kind = @Used) - count(*) FILTER (WHERE event_kind = @Reverted))::bigint
+                        AS "Net"
+                FROM session_events
+                WHERE session_id = @SessionId AND event_kind IN (@Used, @Reverted) AND participant_id IS NOT NULL
+                GROUP BY participant_id;
+                """, new
+                {
+                    SessionId = sessionId, Used = GameSessionCodes.EventKind.POTION_USED,
+                    Reverted = GameSessionCodes.EventKind.POTION_USE_REVERTED
+                }, transaction, cancellationToken: cancellationToken)))
+                .ToDictionary(row => row.ParticipantId, row => row.Net);
+            foreach (SessionEventInput entry in events)
+            {
+                int delta = entry.EventKind == GameSessionCodes.EventKind.POTION_USED ? 1
+                    : entry.EventKind == GameSessionCodes.EventKind.POTION_USE_REVERTED ? -1 : 0;
+                if (delta == 0)
+                {
+                    continue;
+                }
+
+                Guid participant = entry.ParticipantId!.Value;
+                net[participant] = (net.TryGetValue(participant, out long current) ? current : 0) + delta;
+            }
+
+            return net.Values.Any(count => count > BOSS_POTION_USE_LIMIT);
+        }
+
+        // 확정된 POTION_USED를 되돌린다. 원 이벤트는 같은 세션, 같은 참가자의 저장된 사용이거나 이 배치에서 앞선 사용이어야 하고
+        // 아직 되돌리지 않았어야 한다. 아니면 배치 전체를 SESSION_MISMATCH로 거절한다. 되돌린 물약은 예약분으로 돌아가므로
+        // 출정 예약의 consumed를 줄이고 재고와 예약량을 함께 1씩 늘린다. 정산이 남은 예약분을 돌려줄 때 같은 수가 맞는다
+        private static async Task<int?> RevertPotionsAsync(DbConnection connection, DbTransaction transaction,
+            Guid sessionId, Guid operationId, Guid dungeonInstanceId, IReadOnlyList<SessionEventInput> events,
+            IReadOnlyDictionary<Guid, ParticipantRow> participants, List<EconomyLedgerLine> ledger,
+            CancellationToken cancellationToken)
+        {
+            List<SessionEventInput> reverts = events
+                .Where(entry => entry.EventKind == GameSessionCodes.EventKind.POTION_USE_REVERTED).ToList();
+            if (reverts.Count == 0)
+            {
+                return null;
+            }
+
+            Guid[] targets = reverts.Select(entry => entry.RevertsEventId!.Value).ToArray();
+            long already = await connection.ExecuteScalarAsync<long>(new CommandDefinition(
+                """
+                SELECT count(*) FROM session_events
+                WHERE event_kind = @Reverted AND (payload ->> 'revertsEventId') = ANY(@Targets);
+                """, new
+                {
+                    Reverted = GameSessionCodes.EventKind.POTION_USE_REVERTED,
+                    Targets = targets.Select(target => target.ToString("D")).ToArray()
+                }, transaction, cancellationToken: cancellationToken));
+            if (already > 0)
+            {
+                return ContractCodes.RejectReason.SESSION_MISMATCH;
+            }
+
+            Dictionary<Guid, OriginalPotionRow> originals = (await connection.QueryAsync<OriginalPotionRow>(
+                new CommandDefinition(
+                    """
+                    SELECT event_id AS "EventId", participant_id AS "ParticipantId",
+                        payload ->> 'definitionId' AS "DefinitionId", payload ->> 'bindingKind' AS "BindingKind"
+                    FROM session_events
+                    WHERE session_id = @SessionId AND event_kind = @Used AND event_id = ANY(@Targets);
+                    """, new { SessionId = sessionId, Used = GameSessionCodes.EventKind.POTION_USED, Targets = targets },
+                    transaction, cancellationToken: cancellationToken)))
+                .ToDictionary(row => row.EventId);
+            for (int index = 0; index < events.Count; ++index)
+            {
+                SessionEventInput entry = events[index];
+                if (entry.EventKind == GameSessionCodes.EventKind.POTION_USED)
+                {
+                    originals[entry.EventId] = new OriginalPotionRow
+                    {
+                        EventId = entry.EventId, ParticipantId = entry.ParticipantId, DefinitionId = entry.DefinitionId,
+                        BindingKind = entry.BindingKind, BatchIndex = index
+                    };
+                }
+            }
+
+            List<(Guid Participant, string DefinitionId, string BindingKind)> returned =
+                new List<(Guid, string, string)>(reverts.Count);
+            for (int index = 0; index < events.Count; ++index)
+            {
+                SessionEventInput entry = events[index];
+                if (entry.EventKind != GameSessionCodes.EventKind.POTION_USE_REVERTED)
+                {
+                    continue;
+                }
+
+                // 같은 배치의 원 이벤트는 되돌림보다 앞에 있어야 한다
+                if (!originals.TryGetValue(entry.RevertsEventId!.Value, out OriginalPotionRow? original)
+                    || (original.ParticipantId != entry.ParticipantId) || (original.BatchIndex >= index)
+                    || string.IsNullOrEmpty(original.DefinitionId) || string.IsNullOrEmpty(original.BindingKind))
+                {
+                    return ContractCodes.RejectReason.SESSION_MISMATCH;
+                }
+
+                returned.Add((entry.ParticipantId!.Value, original.DefinitionId!, original.BindingKind!));
+            }
+
+            List<PotionGroup> groups = returned.GroupBy(line => line)
+                .Select(group => new PotionGroup(group.Key.Participant, participants[group.Key.Participant].AccountId,
+                    participants[group.Key.Participant].CharacterId, group.Key.DefinitionId, group.Key.BindingKind,
+                    group.LongCount()))
+                .ToList();
+            await SessionDb.LockAccountsAsync(connection, transaction, groups.Select(group => group.AccountId),
+                cancellationToken);
+            int restored = (await connection.QueryAsync<Guid>(new CommandDefinition(
+                """
+                UPDATE reservations AS reservation SET consumed = reservation.consumed - returned.returned_count
+                FROM unnest(@Participants::uuid[], @Definitions::text[], @Bindings::text[], @Counts::bigint[])
+                    AS returned(participant_id, definition_id, binding_kind, returned_count)
+                WHERE reservation.session_id = @SessionId AND reservation.participant_id = returned.participant_id
+                    AND reservation.asset_kind = 'Item' AND reservation.definition_id = returned.definition_id
+                    AND reservation.binding_kind = returned.binding_kind AND reservation.state = 'Reserved'
+                    AND reservation.consumed >= returned.returned_count
+                RETURNING reservation.reservation_id;
+                """, new
+                {
+                    SessionId = sessionId,
+                    Participants = groups.Select(group => group.ParticipantId).ToArray(),
+                    Definitions = groups.Select(group => group.DefinitionId).ToArray(),
+                    Bindings = groups.Select(group => group.BindingKind).ToArray(),
+                    Counts = groups.Select(group => group.Count).ToArray()
+                }, transaction, cancellationToken: cancellationToken))).Count();
+            if (restored != groups.Count)
+            {
+                return ContractCodes.RejectReason.SESSION_MISMATCH;
+            }
+
+            List<ItemBalanceRow> balances = (await connection.QueryAsync<ItemBalanceRow>(new CommandDefinition(
+                """
+                WITH returned AS (
+                    SELECT * FROM unnest(@Accounts::uuid[], @Definitions::text[], @Bindings::text[], @Counts::bigint[])
+                        AS returned(account_id, definition_id, binding_kind, returned_count)
+                ), target AS (
+                    SELECT item.account_id, item.definition_id, item.binding_kind
+                    FROM account_items AS item
+                    JOIN returned ON returned.account_id = item.account_id
+                        AND returned.definition_id = item.definition_id AND returned.binding_kind = item.binding_kind
+                    ORDER BY item.account_id, item.definition_id, item.binding_kind
+                    FOR UPDATE OF item
+                )
+                UPDATE account_items AS item
+                SET quantity = item.quantity + returned.returned_count, reserved = item.reserved + returned.returned_count
+                FROM returned, target
+                WHERE item.account_id = target.account_id AND item.definition_id = target.definition_id
+                    AND item.binding_kind = target.binding_kind AND returned.account_id = target.account_id
+                    AND returned.definition_id = target.definition_id AND returned.binding_kind = target.binding_kind
+                RETURNING item.account_id AS "AccountId", item.definition_id AS "DefinitionId",
+                    item.binding_kind AS "BindingKind", item.quantity AS "Quantity", returned.returned_count AS "Delta";
+                """, new
+                {
+                    Accounts = groups.Select(group => group.AccountId).ToArray(),
+                    Definitions = groups.Select(group => group.DefinitionId).ToArray(),
+                    Bindings = groups.Select(group => group.BindingKind).ToArray(),
+                    Counts = groups.Select(group => group.Count).ToArray()
+                }, transaction, cancellationToken: cancellationToken))).ToList();
+            if (balances.Count != groups.Count)
+            {
+                throw new InvalidOperationException("Reserved potion stock is missing for a potion revert.");
+            }
+
+            ledger.AddRange(balances.Select(row => new EconomyLedgerLine(row.AccountId, null,
+                EconomyLedgerCodes.ASSET_ITEM, row.DefinitionId, row.BindingKind, row.Delta, row.Quantity,
+                EconomyLedgerCodes.REASON_POTION_RETURN, EconomyLedgerCodes.SOURCE_GAME_SESSION,
+                sessionId.ToString("D"), operationId, EconomyLedgerCodes.ACTOR_SERVER, dungeonInstanceId,
+                POTION_RETURN_ENTRY_SCOPE)));
+            return null;
+        }
+
         // 참가자 하나의 출정 누적이 상한을 넘으면 false다. 호출자가 배치 전체를 거절하고 효과를 되돌린다.
         // ESSENCE_ACCRUED는 essence_accrued(추가 정기), BASE_ESSENCE_ACCRUED는 base_essence_accrued(기본 정기)에 쌓는다
         private static async Task<bool> AccrueEssenceAsync(DbConnection connection, DbTransaction transaction, Guid sessionId,
@@ -526,6 +730,53 @@ namespace Shinshi.Data.Sessions
                     MaxEssence = SettlementSanityLimits.MAX_SESSION_ESSENCE
                 }, transaction, cancellationToken: cancellationToken));
             return updated == accrued.Count;
+        }
+
+        // PARTICIPANT_DEPARTED: 이탈 시각과 이유를 처음 한 번만 기록하고, 이 던전에 남은 그 계정의 접속 임대를 풀어 마을 복귀를 허용하며,
+        // 미교환 복귀 토큰을 폐기한다. 참가자 상태는 Active로 남아 경제 정산은 SESSION_ENDED 정산안에서 한 번만 한다.
+        // 이미 떠난 참가자의 이탈 이벤트는 기록만 남고 아무것도 바꾸지 않는다(순번이 막히지 않게 거절하지 않는다)
+        private static async Task DepartParticipantsAsync(DbConnection connection, DbTransaction transaction,
+            Guid dungeonInstanceId, Guid sessionId, IReadOnlyList<SessionEventInput> events,
+            IReadOnlyDictionary<Guid, ParticipantRow> participants, CancellationToken cancellationToken)
+        {
+            List<SessionEventInput> departures = events
+                .Where(entry => entry.EventKind == GameSessionCodes.EventKind.PARTICIPANT_DEPARTED)
+                .GroupBy(entry => entry.ParticipantId!.Value)
+                .Select(group => group.First())
+                .ToList();
+            if (departures.Count == 0)
+            {
+                return;
+            }
+
+            Guid[] departed = (await connection.QueryAsync<Guid>(new CommandDefinition(
+                """
+                UPDATE session_participants AS participant
+                SET departed_at = clock_timestamp(), depart_reason = departure.reason
+                FROM unnest(@Participants::uuid[], @Reasons::smallint[]) AS departure(participant_id, reason)
+                WHERE participant.session_id = @SessionId AND participant.participant_id = departure.participant_id
+                    AND participant.state = 'Active' AND participant.departed_at IS NULL
+                RETURNING participant.participant_id;
+                """, new
+                {
+                    SessionId = sessionId,
+                    Participants = departures.Select(entry => entry.ParticipantId!.Value).ToArray(),
+                    Reasons = departures.Select(entry => (short)entry.EndReason).ToArray()
+                }, transaction, cancellationToken: cancellationToken))).ToArray();
+            if (departed.Length == 0)
+            {
+                return;
+            }
+
+            await connection.ExecuteAsync(new CommandDefinition(
+                """
+                UPDATE auth_join_tokens SET revoked_at = clock_timestamp()
+                WHERE session_id = @SessionId AND participant_id = ANY(@Participants)
+                    AND consumed_at IS NULL AND revoked_at IS NULL;
+                """, new { SessionId = sessionId, Participants = departed }, transaction,
+                cancellationToken: cancellationToken));
+            await PostgresAccountLeaseRepository.ReleaseForClosedSessionAsync(connection, transaction, dungeonInstanceId,
+                departed.Select(id => participants[id].AccountId), cancellationToken);
         }
 
         private static Task InsertEventsAsync(DbConnection connection, DbTransaction transaction, Guid sessionId,
@@ -639,6 +890,31 @@ namespace Shinshi.Data.Sessions
 
             public Guid AccountId { get; set; }
             public long Tickets   { get; set; }
+        }
+
+        private sealed class PotionNetRow
+        {
+            /****************************************
+            *              Properties
+            ****************************************/
+
+            public Guid ParticipantId { get; set; }
+            public long Net           { get; set; }
+        }
+
+        private sealed class OriginalPotionRow
+        {
+            /****************************************
+            *              Properties
+            ****************************************/
+
+            public Guid    EventId       { get; set; }
+            public Guid?   ParticipantId { get; set; }
+            public string? DefinitionId  { get; set; }
+            public string? BindingKind   { get; set; }
+
+            // 이 배치 안의 위치. 이미 저장된 원 이벤트는 -1이다
+            public int     BatchIndex    { get; set; } = -1;
         }
 
         private sealed class ItemBalanceRow

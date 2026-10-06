@@ -13,6 +13,7 @@ using Npgsql;
 
 // Project
 using Shinshi.Contracts.Admin;
+using Shinshi.Data.Auctions;
 using Shinshi.Data.Sessions;
 using Shinshi.Data.Settlement;
 
@@ -46,13 +47,20 @@ namespace Shinshi.Data.Admin
         private static readonly string G_InstanceLostSql =
             "(session.state = 'Running' AND NOT " + string.Format(BOOT_ALIVE_SQL, "CancelTimeout") + ")";
 
+        // 경매 단계 자동 복구(유지 작업)가 경매를 닫는 두 조건. 기한 + 유예 경과와 배정 boot 소실이다
+        internal const string AUCTION_DEADLINE_SQL =
+            "(session.state = 'Auction' AND session.auction_ends_at + @AuctionGrace < clock_timestamp())";
+        internal static readonly string G_AuctionLostSql =
+            "(session.state = 'Auction' AND " + PostgresPartyAuctionRepository.LOST_CONDITION + ")";
+
         // 기본 목록: RecoveryPending, 자동 복구가 한 번 이상 실패했거나 백오프 중인 진행/정산 세션,
-        // 정산 대기 시간이 지난 Settling, 배정 서버 생존 증거가 없는 Running
+        // 정산 대기 시간이 지난 Settling, 배정 서버 생존 증거가 없는 Running, 멈춘 Auction
         private static readonly string G_RecoveryCandidateSql =
             "(session.state = 'RecoveryPending'"
             + " OR (session.state IN ('Running', 'Settling')"
             + " AND (session.recovery_failures > 0 OR session.next_recovery_at IS NOT NULL))"
-            + " OR " + SETTLING_STALE_SQL + " OR " + G_InstanceLostSql + ")";
+            + " OR " + SETTLING_STALE_SQL + " OR " + G_InstanceLostSql
+            + " OR " + AUCTION_DEADLINE_SQL + " OR " + G_AuctionLostSql + ")";
 
         // 같은 운영자 작업 키의 수동 복구를 직렬화하는 트랜잭션 advisory 잠금의 첫 키. 두 정수 키 공간은 부트스트랩, 마이그레이션이
         // 쓰는 bigint 한 개 키 공간과 겹치지 않는다. 둘째 키는 (운영자, operationId)의 hashtext이며 충돌해도 직렬화가 늘 뿐이다
@@ -90,6 +98,7 @@ namespace Shinshi.Data.Admin
             parameters.Add("HeartbeatTimeout", ServerPoolTimings.HeartbeatTimeout);
             parameters.Add("CancelTimeout", ServerPoolTimings.ServiceCancelTimeout);
             parameters.Add("SettlingTimeout", ServerPoolTimings.SettlingRecoveryDelay);
+            parameters.Add("AuctionGrace", PartyAuctionRules.PhaseRecoveryGrace);
             parameters.Add("Fetch", limit + 1);
             string filter = G_RecoveryCandidateSql;
             if (state != null)
@@ -113,7 +122,8 @@ namespace Shinshi.Data.Admin
                     instance.state AS "ServerState", instance.heartbeat_at AS "ServerHeartbeatAt",
                 """
                 + " " + string.Format(BOOT_ALIVE_SQL, "HeartbeatTimeout") + " AS \"AssignedBootAlive\", "
-                + SETTLING_STALE_SQL + " AS \"SettlingStale\", " + G_InstanceLostSql + " AS \"InstanceLost\""
+                + SETTLING_STALE_SQL + " AS \"SettlingStale\", " + G_InstanceLostSql + " AS \"InstanceLost\", "
+                + AUCTION_DEADLINE_SQL + " AS \"AuctionDeadlinePassed\", " + G_AuctionLostSql + " AS \"AuctionInstanceLost\""
                 + " FROM game_sessions AS session"
                 + " JOIN server_instances AS instance ON instance.instance_id = session.instance_id"
                 + " WHERE " + filter

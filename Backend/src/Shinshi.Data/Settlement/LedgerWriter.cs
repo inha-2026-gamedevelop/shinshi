@@ -123,6 +123,8 @@ namespace Shinshi.Data.Settlement
                     return ContractCodes.EconomyReason.SERVICE_CANCEL_REFUND;
                 case EconomyLedgerCodes.REASON_SERVICE_CANCEL_GRANT:
                     return ContractCodes.EconomyReason.SERVICE_CANCEL_ESSENCE;
+                case EconomyLedgerCodes.REASON_POTION_RETURN:
+                    return ContractCodes.EconomyReason.POTION_RETURN;
                 case EconomyLedgerCodes.REASON_AUCTION_SETTLE:
                     return ContractCodes.EconomyReason.AUCTION_SETTLE;
                 case EconomyLedgerCodes.REASON_AUCTION_PAYOUT:

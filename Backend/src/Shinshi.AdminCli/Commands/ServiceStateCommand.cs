@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,8 +22,11 @@ namespace Shinshi.AdminCli
         *                Fields
         ****************************************/
 
-        private const string SHOW = "show";
-        private const string SET  = "set";
+        private const string SHOW        = "show";
+        private const string SET         = "set";
+        private const string ALLOW_BUILD = "allow-build";
+        private const string ADD         = "add";
+        private const string REMOVE      = "remove";
 
         // 목록을 비우는 값. 빈 문자열 인자는 셸마다 다루는 방식이 달라 단어를 쓴다
         private const string EMPTY_LIST     = "none";
@@ -37,7 +41,10 @@ namespace Shinshi.AdminCli
             "service-state set [--maintenance on|off] [--disable <기능,...|none>] [--allow-builds <빌드,...|none>]",
             "                  [--expected-revision <n>] --reason <사유>",
             "                                               지정한 항목만 바꿈(Admin). 목록은 통째로 바뀜. 네 값을 모두 주면",
-            "                                               현재 값을 읽지 않음(재시도 명령)"
+            "                                               현재 값을 읽지 않음(재시도 명령)",
+            "service-state allow-build add|remove <buildId> --reason <사유>",
+            "                                               허용 빌드 하나만 더하거나 뺌(Admin). 이미 있거나 없으면 저장하지 않음.",
+            "                                               다른 운영자가 먼저 저장했으면 거절되고 다시 실행하면 됨"
         };
 
         /****************************************
@@ -53,14 +60,100 @@ namespace Shinshi.AdminCli
 
         public Task<int> RunAsync(CliContext context, CliArguments arguments, CancellationToken cancellationToken)
         {
-            string sub = arguments.Positional(0, "하위 명령(show, set)");
+            string sub = arguments.Positional(0, "하위 명령(show, set, allow-build)");
             CliArguments rest = arguments.SkipPositionals(1);
             return sub switch
             {
-                SHOW => ShowAsync(context, rest, cancellationToken),
-                SET  => SetAsync(context, rest, cancellationToken),
+                SHOW        => ShowAsync(context, rest, cancellationToken),
+                SET         => SetAsync(context, rest, cancellationToken),
+                ALLOW_BUILD => AllowBuildAsync(context, rest, cancellationToken),
                 _ => throw new CliUsageException("알 수 없는 하위 명령입니다: service-state " + sub)
             };
+        }
+
+        // 현재 목록과 revision을 읽고 빌드 하나만 바꾼 목록을 그 revision 기준으로 보낸다(API는 목록 전체를 받는다).
+        // 그 사이 다른 운영자가 저장했으면 API가 409 INVALID_STATE로 거절하고 아무것도 바뀌지 않는다. 자동으로 다시 읽어 보내지 않는다.
+        // 남이 바꾼 값을 운영자 확인 없이 덮어쓰지 않기 위해서다
+        private static async Task<int> AllowBuildAsync(CliContext context, CliArguments arguments,
+            CancellationToken cancellationToken)
+        {
+            string action = arguments.Positional(0, "add 또는 remove");
+            string buildId = arguments.Positional(1, "buildId");
+            arguments.EnsureOnly(2, new[] { AdminCliOptions.REASON }, Array.Empty<string>());
+            bool add = action switch
+            {
+                ADD    => true,
+                REMOVE => false,
+                _ => throw new CliUsageException("service-state allow-build는 add 또는 remove입니다: " + action)
+            };
+            if ((!string.Equals(buildId, buildId.Trim(), StringComparison.Ordinal)) || buildId.Any(char.IsControl)
+                || (buildId.IndexOf(LIST_SEPARATOR) >= 0)
+                || string.Equals(buildId, EMPTY_LIST, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new CliUsageException("buildId에 앞뒤 공백, 제어 문자, 쉼표를 쓸 수 없고 none은 buildId가 아닙니다: " + buildId);
+            }
+            if (buildId.Length > AdminServiceStateUpdateRequest.MAX_BUILD_ID_LENGTH)
+            {
+                throw new CliUsageException("buildId는 " + AdminServiceStateUpdateRequest.MAX_BUILD_ID_LENGTH
+                    + "자 이하입니다: " + buildId);
+            }
+
+            string reason = CliContext.RequireReason(arguments);
+            using AdminApiClient client = context.CreateClient();
+            AdminServiceStateResponse current = (await client.GetAsync<AdminServiceStateResponse>(
+                AdminApiRoutes.SERVICE_STATE, cancellationToken)).Value;
+            string[] builds = current.AllowedBuildIds ?? Array.Empty<string>();
+            bool present = builds.Contains(buildId, StringComparer.Ordinal);
+            if (add == present)
+            {
+                context.Line((add ? "이미 허용 목록에 있어 저장하지 않습니다: " : "허용 목록에 없어 저장하지 않습니다: ") + buildId);
+                return CliExitCodes.SUCCESS;
+            }
+            if (add && (builds.Length >= AdminServiceStateUpdateRequest.MAX_BUILD_IDS))
+            {
+                throw new CliUsageException("허용 빌드는 " + AdminServiceStateUpdateRequest.MAX_BUILD_IDS
+                    + "개까지입니다. 먼저 쓰지 않는 빌드를 빼세요.");
+            }
+
+            string[] next = add
+                ? builds.Concat(new[] { buildId }).ToArray()
+                : builds.Where(build => !string.Equals(build, buildId, StringComparison.Ordinal)).ToArray();
+            string[] disabled = current.DisabledFeatures ?? Array.Empty<string>();
+            List<(string, string)> summary = new List<(string, string)>
+            {
+                ("허용 빌드", Change(DescribeList(builds), DescribeList(next))),
+                ("기준 revision", CliFormat.Number(current.Revision)),
+                ("사유", reason)
+            };
+            if (next.Length == 0)
+            {
+                summary.Add(("주의", "허용 빌드가 비면 어떤 빌드도 로그인할 수 없습니다"));
+            }
+            if (!context.TryBeginWrite(add ? "허용 빌드를 더합니다." : "허용 빌드를 뺍니다.", summary,
+                    out string operationId))
+            {
+                return CliExitCodes.USAGE;
+            }
+
+            WriteRetryCommand(context, current.Maintenance, disabled, next, current.Revision, reason, operationId);
+            AdminApiResponse<OperationResult> response;
+            try
+            {
+                response = await client.SendAsync<OperationResult>(HttpMethod.Put, AdminApiRoutes.SERVICE_STATE,
+                    new AdminServiceStateUpdateRequest(operationId, reason, current.Maintenance, disabled, next,
+                        current.Revision), true, cancellationToken);
+            }
+            catch (AdminApiException exception) when ((exception.StatusCode == (int)HttpStatusCode.Conflict)
+                && (exception.ReasonCode == AdminContractCodes.RejectReason.INVALID_STATE))
+            {
+                context.Warn("다른 운영자가 기준 revision " + CliFormat.Number(current.Revision)
+                    + " 뒤에 서비스 상태를 먼저 저장해 거절됐습니다. 아무것도 바뀌지 않았습니다."
+                    + " service-state show로 확인한 뒤 같은 명령을 새로 실행하세요(--operation-id 없이).");
+                return CliExitCodes.REJECTED;
+            }
+
+            CommandOutput.WriteOperation(context, response, add ? "허용 빌드를 더했습니다." : "허용 빌드를 뺐습니다.");
+            return CliExitCodes.SUCCESS;
         }
 
         private static async Task<int> ShowAsync(CliContext context, CliArguments arguments,

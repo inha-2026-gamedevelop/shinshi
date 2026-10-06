@@ -710,6 +710,46 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(0, host.Characters.CreateCalls);
         }
 
+        /// <summary> 캐릭터 생성, 삭제는 계정별 1분 한도를 함께 쓴다. 넘으면 저장소 호출 없이 429이고, 저장된 24시간 삭제 상한
+        /// 거절(RATE_LIMITED)도 429로 돌려준다 </summary>
+        [Fact]
+        public async Task CharacterWrites_OverAccountLimit_Return429()
+        {
+            using AccountApiHost host = new AccountApiHost();
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+            string deletePath = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                ApiRoutes.CHARACTER_DELETE_FORMAT, Guid.NewGuid().ToString("D"));
+
+            host.Characters.DeleteReason = ContractCodes.RejectReason.RATE_LIMITED;
+            using HttpResponseMessage capped = await player.PostAsync(deletePath, AccountApiHost.Json(
+                new CharacterDeleteRequest(Guid.NewGuid().ToString("D"), 0)));
+            for (int i = 1; i < AccountRequestLimiter.MAX_CHARACTER_WRITES_PER_WINDOW; ++i)
+            {
+                using HttpResponseMessage created = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.WARRIOR,
+                        CharacterTestData.Appearance())));
+                Assert.Equal(HttpStatusCode.Conflict, created.StatusCode);
+            }
+
+            using HttpResponseMessage limited = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.WARRIOR,
+                    CharacterTestData.Appearance())));
+            host.Characters.DeleteReason = ContractCodes.RejectReason.NONE;
+            using HttpResponseMessage limitedDelete = await player.PostAsync(deletePath, AccountApiHost.Json(
+                new CharacterDeleteRequest(Guid.NewGuid().ToString("D"), 0)));
+
+            Assert.Equal(HttpStatusCode.TooManyRequests, capped.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.RATE_LIMITED,
+                AccountApiHost.Read<OperationResult>(await capped.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.RATE_LIMITED,
+                AccountApiHost.Read<ApiRejection>(await limited.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(HttpStatusCode.TooManyRequests, limitedDelete.StatusCode);
+            Assert.Equal(AccountRequestLimiter.MAX_CHARACTER_WRITES_PER_WINDOW - 1, host.Characters.CreateCalls);
+            Assert.Equal(1, host.Characters.DeleteCalls);
+        }
+
         [Fact]
         public async Task SignupLoginAndPasswordChange_NeverLogPasswordText()
         {

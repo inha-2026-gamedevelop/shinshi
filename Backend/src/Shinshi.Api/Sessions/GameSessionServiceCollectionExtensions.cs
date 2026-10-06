@@ -4,9 +4,12 @@ using System;
 // Third-party
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Npgsql;
 
 // Project
+using Shinshi.Data;
 using Shinshi.Data.Auctions;
+using Shinshi.Data.Growth;
 using Shinshi.Data.Reservations;
 using Shinshi.Data.Sessions;
 using Shinshi.Data.Settlement;
@@ -26,10 +29,19 @@ namespace Shinshi.Backend.Sessions
         {
             ArgumentNullException.ThrowIfNull(services);
             services.AddSingleton<PostgresServerPoolRepository>();
-            services.AddSingleton<PostgresReservationRepository>();
+            // 예약의 해금 최종 판정에 성장 모듈(AddShinshiGrowth)의 SortieUnlockPolicy가 반드시 있어야 한다
+            services.AddSingleton(provider => new PostgresReservationRepository(
+                provider.GetRequiredService<NpgsqlDataSource>(), provider.GetRequiredService<IdempotentOperationExecutor>(),
+                provider.GetRequiredService<PostgresAccountLeaseRepository>(), provider.GetRequiredService<IJoinTokenIssuer>(),
+                provider.GetRequiredService<SortieUnlockPolicy>()));
             services.AddSingleton<PostgresGameSessionRepository>();
-            services.AddSingleton<PostgresSettlementRepository>();
+            // 성공 정산이 계정 진행을 기록하도록 성장 모듈(AddShinshiGrowth)의 PostgresAccountProgressRepository를 넘긴다
+            services.AddSingleton(provider => new PostgresSettlementRepository(
+                provider.GetRequiredService<NpgsqlDataSource>(), provider.GetRequiredService<IdempotentOperationExecutor>(),
+                provider.GetRequiredService<IEconomyLedgerWriter>(),
+                provider.GetRequiredService<PostgresAccountProgressRepository>()));
             services.AddSingleton<PostgresPartyAuctionRepository>();
+            services.AddSingleton<PostgresReadinessRepository>();
             services.TryAddSingleton(provider => new RecoveryLivenessGate(provider.GetRequiredService<TimeProvider>()));
             return services;
         }

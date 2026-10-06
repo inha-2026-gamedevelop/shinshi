@@ -13,6 +13,7 @@ using Npgsql;
 // Project
 using Shinshi.Contracts;
 using Shinshi.Data.Auth;
+using Shinshi.Data.Growth;
 using Shinshi.Data.Sessions;
 
 namespace Shinshi.Data.Reservations
@@ -36,12 +37,21 @@ namespace Shinshi.Data.Reservations
         private readonly PostgresAccountLeaseRepository _leases;
         private readonly IJoinTokenIssuer _joinTokens;
 
+        // null이면 해금을 판정하지 않는다(저장소 단위 테스트). API는 항상 넣는다(AddShinshiGameSessions)
+        private readonly SortieUnlockPolicy? _unlocks;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public PostgresReservationRepository(NpgsqlDataSource dataSource, IdempotentOperationExecutor executor,
             PostgresAccountLeaseRepository leases, IJoinTokenIssuer joinTokens)
+            : this(dataSource, executor, leases, joinTokens, null)
+        {
+        }
+
+        public PostgresReservationRepository(NpgsqlDataSource dataSource, IdempotentOperationExecutor executor,
+            PostgresAccountLeaseRepository leases, IJoinTokenIssuer joinTokens, SortieUnlockPolicy? unlocks)
         {
             ArgumentNullException.ThrowIfNull(dataSource);
             ArgumentNullException.ThrowIfNull(executor);
@@ -51,6 +61,7 @@ namespace Shinshi.Data.Reservations
             _executor   = executor;
             _leases     = leases;
             _joinTokens = joinTokens;
+            _unlocks    = unlocks;
         }
 
         /// <summary> 전원의 보스 티켓 1장과 지참 물약을 한 트랜잭션으로 예약하고 유휴 던전을 배정한다. 하나라도 부족하면 아무것도 예약하지 않는다 </summary>
@@ -393,7 +404,8 @@ namespace Shinshi.Data.Reservations
                 return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
             }
 
-            // 잠금 순서: 계정(오름차순) -> 캐릭터 -> 지갑, 아이템 -> 인스턴스(SKIP LOCKED)
+            // 잠금 순서: 계정(오름차순) -> 캐릭터 -> 지갑, 아이템 -> 인스턴스(SKIP LOCKED). 성장 쓰기도 계정을 먼저 잠가
+            // 열린 출정 검사와 이 예약이 서로 끼어들지 못한다
             int locked = await SessionDb.LockAccountsAsync(connection, transaction, accounts, cancellationToken);
             if (locked != accounts.Length)
             {
@@ -415,6 +427,25 @@ namespace Shinshi.Data.Reservations
             if (leased != accounts.Length)
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
+            }
+
+            // 출시 프로필은 성장 콘텐츠에 없는 전장(테스트용 지도, 빈 battleId)의 출정을 열지 않는다
+            int knownReason = _unlocks?.CheckKnownBattle(input.Mode, input.BattleId) ?? ContractCodes.RejectReason.NONE;
+            if (knownReason != ContractCodes.RejectReason.NONE)
+            {
+                return OperationDecision.Rejected(knownReason);
+            }
+
+            // 해금 최종 판정. 계정 행을 잠근 뒤 읽으므로 진행 기록(정산, 안내 완료)과 엇갈리지 않는다
+            if ((_unlocks != null) && (_unlocks.TargetOf(input.Mode, input.BattleId) != null))
+            {
+                Dictionary<Guid, AccountProgressState> progress = await PostgresAccountProgressRepository.ReadStatesAsync(
+                    connection, transaction, accounts, cancellationToken);
+                int unlockReason = _unlocks.Check(input.Mode, input.BattleId, progress.Values);
+                if (unlockReason != ContractCodes.RejectReason.NONE)
+                {
+                    return OperationDecision.Rejected(unlockReason);
+                }
             }
 
             bool busy = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
@@ -443,8 +474,13 @@ namespace Shinshi.Data.Reservations
                 return OperationDecision.Rejected(ContractCodes.RejectReason.NO_CAPACITY);
             }
 
+            // 캐릭터 행을 공유 잠금한 채 고정하므로 성장 쓰기(캐릭터 행 배타 잠금)가 끼어들지 못한다
+            Dictionary<Guid, string> loadouts = await CombatLoadoutBuilder.BuildAsync(connection, transaction,
+                input.Participants.Select(participant => participant.CharacterId).ToArray(), input.ContentVersion,
+                cancellationToken);
             Guid sessionId = Guid.NewGuid();
-            long revision = await InsertSessionAsync(connection, transaction, input, sessionId, dungeon, cancellationToken);
+            long revision = await InsertSessionAsync(connection, transaction, input, sessionId, dungeon, loadouts,
+                cancellationToken);
             return OperationDecision.Committed(revision, sessionId.ToString("D"));
         }
 
@@ -454,8 +490,9 @@ namespace Shinshi.Data.Reservations
             Guid[] characters = input.Participants.Select(participant => participant.CharacterId).ToArray();
             Dictionary<Guid, CharacterRow> rows = (await connection.QueryAsync<CharacterRow>(new CommandDefinition(
                 """
-                SELECT character_id AS "CharacterId", account_id AS "AccountId", revision AS "Revision"
-                FROM characters WHERE character_id = ANY(@Characters) ORDER BY character_id FOR SHARE;
+                SELECT character_id AS "CharacterId", account_id AS "AccountId", loadout_revision AS "Revision"
+                FROM characters WHERE character_id = ANY(@Characters) AND deleted_at IS NULL
+                ORDER BY character_id FOR SHARE;
                 """, new { Characters = characters }, transaction, cancellationToken: cancellationToken)))
                 .ToDictionary(row => row.CharacterId);
 
@@ -465,6 +502,8 @@ namespace Shinshi.Data.Reservations
                 {
                     return ContractCodes.RejectReason.SESSION_MISMATCH;
                 }
+                // 전투 준비(장비, 수련, 부적)만 올리는 loadout_revision과 대조한다. 정산의 정기 지급처럼 준비와 무관한
+                // 잔액 변경은 이 값을 바꾸지 않아 마을이 확인한 준비가 보상 지급만으로 깨지지 않는다
                 if (row.Revision != participant.CharacterRevision)
                 {
                     return ContractCodes.RejectReason.STALE_REVISION;
@@ -535,7 +574,8 @@ namespace Shinshi.Data.Reservations
         }
 
         private static async Task<long> InsertSessionAsync(DbConnection connection, DbTransaction transaction,
-            ReservationInput input, Guid sessionId, AllocatedDungeon dungeon, CancellationToken cancellationToken)
+            ReservationInput input, Guid sessionId, AllocatedDungeon dungeon, IReadOnlyDictionary<Guid, string> loadouts,
+            CancellationToken cancellationToken)
         {
             bool boss = input.Mode == GameSessionCodes.Mode.BOSS;
             List<(Guid Participant, ParticipantReservationInput Input)> participants = input.Participants
@@ -558,14 +598,17 @@ namespace Shinshi.Data.Reservations
             long revision = await connection.QuerySingleAsync<long>(new CommandDefinition(
                 """
                 INSERT INTO game_sessions (session_id, mode, map_id, state, starting_count, content_version, instance_id,
-                    server_lease, reserved_by_instance_id, instance_boot_id, expires_at)
+                    server_lease, reserved_by_instance_id, instance_boot_id, expires_at, battle_id, boss_id, difficulty)
                 VALUES (@SessionId, @Mode, @MapId, 'Reserved', @StartingCount, @ContentVersion, @InstanceId,
-                    @ServerLease, @Town, @BootId, clock_timestamp() + @Lifetime)
+                    @ServerLease, @Town, @BootId, clock_timestamp() + @Lifetime, @BattleId, @BossId, @Difficulty)
                 RETURNING revision;
                 """, new
                 {
                     SessionId = sessionId,
                     Mode = boss ? GameSessionStates.MODE_BOSS : GameSessionStates.MODE_NORMAL,
+                    BattleId = input.BattleId.Length == 0 ? null : input.BattleId,
+                    BossId = input.BossId.Length == 0 ? null : input.BossId,
+                    Difficulty = input.Difficulty == GameSessionCodes.Difficulty.NONE ? (short?)null : (short)input.Difficulty,
                     input.MapId,
                     StartingCount = input.Participants.Count,
                     input.ContentVersion,
@@ -578,16 +621,19 @@ namespace Shinshi.Data.Reservations
 
             await connection.ExecuteAsync(new CommandDefinition(
                 """
-                INSERT INTO session_participants (session_id, participant_id, account_id, character_id, state)
-                SELECT @SessionId, participant.participant_id, participant.account_id, participant.character_id, 'Reserved'
-                FROM unnest(@ParticipantIds::uuid[], @Accounts::uuid[], @Characters::uuid[])
-                    AS participant(participant_id, account_id, character_id);
+                INSERT INTO session_participants (session_id, participant_id, account_id, character_id, state,
+                    loadout_snapshot)
+                SELECT @SessionId, participant.participant_id, participant.account_id, participant.character_id, 'Reserved',
+                    CAST(participant.loadout AS jsonb)
+                FROM unnest(@ParticipantIds::uuid[], @Accounts::uuid[], @Characters::uuid[], @Loadouts::text[])
+                    AS participant(participant_id, account_id, character_id, loadout);
                 """, new
                 {
                     SessionId = sessionId,
                     ParticipantIds = participants.Select(entry => entry.Participant).ToArray(),
                     Accounts = participants.Select(entry => entry.Input.AccountId).ToArray(),
-                    Characters = participants.Select(entry => entry.Input.CharacterId).ToArray()
+                    Characters = participants.Select(entry => entry.Input.CharacterId).ToArray(),
+                    Loadouts = participants.Select(entry => loadouts[entry.Input.CharacterId]).ToArray()
                 }, transaction, cancellationToken: cancellationToken));
 
             if (rows.Count > 0)

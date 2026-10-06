@@ -39,7 +39,8 @@ namespace Shinshi.AdminCli
             new OperationCommand(),
             new AuditCommand(),
             new SessionsCommand(),
-            new RecoverCommand()
+            new RecoverCommand(),
+            new AuctionsCommand()
         };
 
         /****************************************

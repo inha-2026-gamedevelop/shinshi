@@ -38,6 +38,9 @@ namespace Shinshi.Combat
         private EPlayerClass _playerClass = EPlayerClass.Warrior;
         [SyncVar] private int _combatId;
 
+        // 머리 위 이름. 서버가 세션 결합의 캐릭터 이름(API 교환 응답)으로 한 번 정한다. 없으면 빈 값이다
+        [SyncVar] private string _displayName = string.Empty;
+
         [SyncVar] private float _energy;
         [SyncVar] private float _maxEnergy;
         [SyncVar] private float _resonance;
@@ -61,6 +64,7 @@ namespace Shinshi.Combat
         public ushort                FacingYaw   => _facingYaw;
         public EPlayerClass          PlayerClass => _playerClass;
         public int CombatId => _combatId;
+        public string DisplayName => _displayName;
         public float Energy => _energy;
         public float MaxEnergy => _maxEnergy;
         public float Resonance => _resonance;
@@ -111,6 +115,12 @@ namespace Shinshi.Combat
 
         [Server]
         public void SetCombatId(int combatId) { _combatId = combatId; }
+
+        [Server]
+        public void SetDisplayName(string displayName)
+        {
+            _displayName = displayName ?? string.Empty;
+        }
 
         [Server]
         public void SetSkillResources(float energy, float maxEnergy, float resonance)

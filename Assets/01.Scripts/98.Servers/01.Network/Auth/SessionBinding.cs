@@ -1,5 +1,6 @@
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Contracts;
 
 namespace Shinshi.Network
 {
@@ -16,6 +17,7 @@ namespace Shinshi.Network
         private readonly int          _participantId;
         private readonly string       _accountLeaseId;
         private readonly EPlayerClass _playerClass;
+        private readonly string       _characterName;
 
         /****************************************
         *              Properties
@@ -33,18 +35,46 @@ namespace Shinshi.Network
         // 토큰을 교환한 API가 알려 준 캐릭터 직업, 전투 개체는 이 값으로 만든다. 재접속마다 새 교환에서 다시 받는다
         public EPlayerClass PlayerClass => _playerClass;
 
+        // 머리 위에 띄우는 표시 이름, 없으면 null
+        public string CharacterName => _characterName;
+
         public bool IsActive { get; internal set; }
+
+        // 둘 다 ServerSessionRegistry가 결합을 만든 직후 토큰 내용(JoinTokenClaims)에서 넣고 이후 바꾸지 않는다.
+        // 계정 ID는 마을 입장 교환만 준다(생활, 준비 확인, 출정 예약에 쓴다). 던전과 개발 토큰은 null이다
+        public string AccountId   { get; internal set; }
+
+        // 캐릭터 ID는 마을과 던전 입장 교환 응답의 characterId다. 개발 토큰과 값이 없는 응답은 null이다
+        public string CharacterId { get; internal set; }
+
+        // 던전 입장만 채운다. 출정 예약 때 고정한 전투 준비와 남은 물약 예약분이며 전투 런타임이 능력치, 부적, 물약 수량을
+        // 여기서 정한다. 개발 토큰, 0011 전 출정, 이 필드를 모르는 API면 null이다
+        public CharacterCombatLoadout CombatLoadout   { get; internal set; }
+        public ReservationPotion[]    ReservedPotions { get; internal set; }
+
+        // 던전 입장만 채운다. 입장 교환이 준 출정 계약이며 던전 호스트가 첫 입장에서 고정한 값과 대조한다
+        public SortieDescriptor       Sortie          { get; internal set; }
+
+        // 출정이 끝난 뒤 경매에만 다시 들어온 참가자다. 전투 개체를 만들지 않고 경매 상태와 입찰만 주고받는다
+        public bool                   IsAuctionOnly   { get; internal set; }
 
         /****************************************
         *                Methods
         ****************************************/
 
         public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass)
+            : this(participantKey, participantId, accountLeaseId, playerClass, null)
+        {
+        }
+
+        public SessionBinding(string participantKey, int participantId, string accountLeaseId, EPlayerClass playerClass,
+            string characterName)
         {
             _participantKey = participantKey;
             _participantId  = participantId;
             _accountLeaseId = accountLeaseId;
             _playerClass    = playerClass;
+            _characterName  = characterName;
             IsActive        = true;
         }
     }
