@@ -77,4 +77,6 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 
 뷰포트의 별도 Image 배경은 비활성화하고 Preview Camera를 투명색 Solid Color·HDR 끔으로 설정해 상세창 배경 위에 캐릭터만 합성한다. Play Mode에서 RT 양 끝 모서리 alpha0, 전체717200픽셀 중562436픽셀 완전 투명과154764픽셀 불투명을 확인했다. 공용 URP 설정은 변경하지 않았다.
 
+구분선8개는 기존 `Assets/01.Scripts/05.Art/UI/GameStyle/Textures/T_UiLine_Fade.png`를 재사용한다. 능력치5줄은 alpha0.15, 수련·부적·세로선은 alpha0.30이며 세로선은 같은 Sprite를90도 회전해 양 끝 페이드를 유지한다. Play Mode 화면과8/8 Sprite 참조·TMP 잘림0·Console 오류/경고0을 확인했다.
+
 기존 `UiWindowDragHandle`과 Button의 직렬화된 이벤트로 제목줄 드래그·닫기·왼쪽 위 버튼으로 다시 열기를 연결했다. Play Mode 1059×677에서 화면 표시·47개 활성 TMP 미잘림, EventSystem raycast와 포인터 클릭으로 닫기/열기, 드래그 이벤트로 이동과 화면 경계 제한을 확인했다. Console 오류·경고0이며 실제 마우스 조작·다른 화면비·서버 데이터·Player 빌드는 미검증이다. 이 개발 씬은 릴리즈 흐름에 적용하지 않았다.
