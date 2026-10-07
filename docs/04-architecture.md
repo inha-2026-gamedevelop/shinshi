@@ -3,6 +3,8 @@
 > 문서 버전 1.1 · 2026-10-02 · M-A 구현과 후속 구조 구분.
 > [기획서](02-game-design.md)의 규칙을 [기술 설계](03-technical-design.md)의 서버 권위·저장 계약으로 구현하기 위한 모듈 지도다. 실제 소스·어셈블리·마이그레이션과 미구현 설계 이름을 구분한다. 사용자 제공 검증은 Unity EditMode 780개, PostgreSQL 18 Docker 환경 Backend 396개 통과다. 이번 갱신은 정적 대조이며 서버 빌드·M2/M3·IL2CPP·배포는 실행 미검증이다.
 
+2026-10-07 신규 목표는 [캐릭터·애니메이션 개편](design/character-animation-design.md)의 검사·마검사·미정 세 번째 직업이다. 일반 기술 8개·부적30효과를 설계했고 나머지4기술·15효과는 예약한다. 현재 모듈/카탈로그의 무사·도술사·신령사 12기술·45효과와 공명/강림 구현은 [기존 직업 설계 보존본](design/legacy-class-design.md)에 대응하며, 아래 존재·검증 기록은 신규 기획 이관 완료를 뜻하지 않는다.
+
 ## 1. 현재 상태와 구조 원칙
 
 Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0010(0008 운영 어드민, 0009 파티 경매, 0010 계정 자격·캐릭터 이름), `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
@@ -197,8 +199,8 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 |---|---|---|
 | `GameDatabaseSO` | 모든 카탈로그 참조·contentVersion | 민성 |
 | `PlayerConfigSO` | 이동/회피·기력회복·기본능력·기본공격 | 민성 |
-| `SkillCatalogSO` | 기술12·강림3 ID, 비용/CD/타임라인/형태 | 민성 |
-| `TalismanCatalogSO` | 45효과 ID·직업/기술/선택단계·변형/수치/레벨 | 민성(등록·강화 비용과 확률은 `GrowthConfigSO`) |
+| `SkillCatalogSO` | 현재 구구현 기술12·강림3 ID, 비용/CD/타임라인/형태. 신규 검사/마검사8기술은 이관 예정 | 민성 |
+| `TalismanCatalogSO` | 현재 구구현45효과 ID·직업/기술/선택단계·변형/수치/레벨. 신규30효과와 미정15예약은 문서 설계 | 민성(등록·강화 비용과 확률은 `GrowthConfigSO`) |
 | `EnemyCatalogSO` | 4일반적 역할·HP/공격·제어/예고 | 기웅 |
 | `BossPatternCatalogSO` | 월백6패턴·문맥배율·형태·회복/방어/제어창 | 기웅 |
 | `WaveConfigSO` | 6웨이브 배치·180개 source ID·활성상한·시간 | 기웅, 세션 연결 민성 |
@@ -219,9 +221,11 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 
 2026-10-01 사용자 결정으로 공동 소유였던 SO를 한 파트씩으로 나눴다(부적 효과 정의는 민성, 등록·강화 수치는 진욱의 `GrowthConfigSO`, 보상·생활은 진욱, 진행은 기웅). SO 구조 변경은 [밸런스 작업](unity/BALANCE_DATA_WORKFLOW.md) 절차를 따른다. 기술 표를 실제로 도입할 때 [코딩 컨벤션](coding-convention.md)의 SO 대상 표와 연결한다.
 
-기술 실행 시 원본 기술→핵심 변형→형태에 맞는 보조 효과→효과 레벨 보너스→최종 표시/판정 명세 순으로 컴파일한다. 대표 기술 3종의 2×2×2조합을 검사한다. Lv1~5 배율1/1.15/1.30/1.45/1.60은 부적이 더하는 보너스에만 적용하며 원본 기술 전체를 반복 배수하지 않는다.
+기술 실행 시 원본 기술→핵심 변형→형태에 맞는 보조 효과→효과 레벨 보너스→최종 표시/판정 명세 순으로 컴파일한다. 신규 설계는 검사·마검사 대표 기술 2종의 각 2×2×2조합을 검사하며, 미정 직업은 확정 후 추가한다. 현재 구구현의 대표 기술3종 검증은 회귀로 보존한다. Lv1~5 배율1/1.15/1.30/1.45/1.60은 부적이 더하는 보너스에만 적용하며 원본 기술 전체를 반복 배수하지 않는다.
 
-이 명세를 서버 판정과 클라이언트 예고가 같은 ID/hash로 사용한다. 소환 동료 한 공격 동작의 다중 적중은 공명을 한 번만 주므로 `castInstanceId / actionInstanceId / hitTargetId`를 구분한다. 전투용 HitLedger는 수명 종료 때 비우고 보상 원장의 영구 ID와 혼용하지 않는다.
+이 명세를 서버 판정과 클라이언트 예고가 같은 ID/hash로 사용한다. 구신령사 구현에서는 소환 동료 한 공격 동작의 다중 적중이 공명을 한 번만 주므로 `castInstanceId / actionInstanceId / hitTargetId`를 구분한다. 신규 검술/마법·부적 추가타도 시전·타격 동작·대상 적중을 구분하여 중복 피해를 차단한다. 전투용 HitLedger는 수명 종료 때 비우고 보상 원장의 영구 ID와 혼용하지 않는다.
+
+직업 개편에서는 P09 외형 조립을 유지하고 검사에는 CombatGirls 검 모션, 마검사에는 MagicalKnight의 검+마법 모션을 매핑한다. 기존 `PlayerCombatAnimationProfile`의 전체 직업 검 모션 임시 배정은 신규 매핑 완료가 아니다. 새 애니메이션도 서버 승인 시전/타격 순번과 시각을 표현하며 피해·속박·이동은 서버 판정이다. 실제 직업 코드·기술/효과 ID, GameDB/SO·백엔드 콘텐츠, 영속 카드/진도/구성·열린 출정 스냅샷은 [기술설계의 이관 경계](03-technical-design.md#직업-개편의-적용이관-경계2026-10-07-계획)와 [로드맵 게이트](05-implementation-roadmap.md#직업-개편-구현이관-검증-게이트2026-10-07)를 충족한 뒤 전환한다. 문서용 `KS`/`MK` ID를 현행 `T` ID 필드에 바로 저장하지 않는다.
 
 ## 7. 영구 데이터
 
@@ -303,9 +307,9 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 |---|---|---|
 | 마을10~100/전장1~4, 시작 뒤 합류 금지 | SessionBinding/ParticipantRoster/API 배정 | 마을 부하·준비 자격·신규 토큰 거절 |
 | 6웨이브/180마리/420초/활성24 | WaveSession/WaveConfigSO/SpawnDirector | 지연 스폰 누락0·시간 초과·무한 부활 |
-| 직업3/일반기술12/부적45 | SkillResolver/TalismanCatalogSO | 대표 조합·자원·형태/판정 일치 |
-| 무적 없는 회피/전방 반격 | PlayerLifeRules/GuardWindow/DamageResolver | 경계/예고·RTT0/50/150ms |
-| 시간제 동료2/공명/강림3 | SummonController/ResonanceRules | 중복 적중 공명1회·사망 소환 해제 |
+| 신규 검사·마검사/일반기술8/부적30, 미정 직업4기술/15효과 예약 | SkillResolver/TalismanCatalogSO(이관 예정) | 대표 조합·자원·형태/판정·클립 일치, ID/저장 이관 게이트. 현재 구구현12/45 검증은 별도 회귀 |
+| 무적 없는 회피, 구무사의 전방 반격 | PlayerLifeRules/GuardWindow/DamageResolver | 회피 경계/예고·RTT0/50/150ms. 구반격은 회귀 검증으로 보존하고 새 검사에 적용하지 않음 |
+| 구신령사 시간제 동료2/공명/강림3 | SummonController/ResonanceRules | 구구현 회귀: 중복 적중 공명1회·사망 소환 해제. 새 직업 확정 범위에서 제외·재사용 보류 |
 | 월백 가중6패턴/2페이즈 연결 | Selector/Executor/BossPatternCatalogSO | 문맥표·최근 패널티·전환 미입력 차단 |
 | 개인 드롭/티켓 매 몬스터 | LootRoller/SessionRewardLedger | source ID별 개인 판정·재시도 동일 결과 |
 | 전원 티켓1/물약 지참 | reservations/Start operation | 일부 부족이면 전원 무소비·응답 유실 |

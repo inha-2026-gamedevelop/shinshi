@@ -8,8 +8,8 @@
 
 | 분류 | 내용 | 현재 상태 |
 |---|---|---|
-| `Animation` | 트윈, 애니메이션 도구·클립 | DOTween Pro와 동봉 DOTween·DemiLib |
-| `Tools` | 에디터, 대화, 물리 감지, 최적화, 셰이더 제작 도구 | 아래 8개 패키지 |
+| `Animation` | 캐릭터 애니메이션·클립 | CombatGirlsCharacterPack, Magical-Knight_Set, Succubus_Anim_Set 3종. 트윈 도구는 `Tools/Demigiant/` 참조 |
+| `Tools` | 에디터, 대화, 물리 감지, 최적화, 셰이더 제작·트윈 도구 | 아래 9개 패키지(DOTween Pro와 동봉 DOTween·DemiLib 포함) |
 | `VFX` | 완성된 이펙트, 파티클, 이펙트용 소재 | Realistic Spirit Blossom Spells VFX |
 | `Model` | 게임에서 사용할 모델·환경·소품 | 독립 패키지 없음, 분류 폴더만 준비 |
 
@@ -17,7 +17,7 @@
 
 | 에셋 | 설치 버전 | 제작자 | 경로 | 구분 | 라이선스·상업 이용 | 출처 |
 |---|---|---|---|---|---|---|
-| DOTween Pro | 1.0.430 | Demigiant | `Animation/Demigiant/` | 유료, DOTween·DemiLib 동봉 | Pro 라이선스·조건부 | [공식 제품·설치 안내](https://dotween.demigiant.com/pro.php) |
+| DOTween Pro | 1.0.430 | Demigiant | `Tools/Demigiant/` | 유료, DOTween·DemiLib 동봉 | Pro 라이선스·조건부 | [공식 제품·설치 안내](https://dotween.demigiant.com/pro.php) |
 | Realistic Spirit Blossom Spells VFX | 1.0 | Piloto Studio | `VFX/Piloto Studio/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 399376](https://assetstore-fallback.unity.com/packages/vfx/particles/spells/realistic-spirit-blossom-spells-vfx-399376) |
 | Dialogue System for Unity | 2.2.73.2 | Pixel Crushers | `Tools/Pixel Crushers/` | 유료, Common 동봉 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 11672](https://assetstore.unity.com/packages/tools/behavior-ai/dialogue-system-for-unity-11672) |
 | RayCast Pro | 1.1.5A | Philosophers | `Tools/RaycastPro/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 214714](https://marketplace.unity.com/packages/tools/physics/raycastpro-214714) |
@@ -28,9 +28,28 @@
 | Maintainer 2 | 2.3.3 | Code Stage | `Tools/CodeStage/Maintainer/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 310179](https://assetstore.unity.com/packages/tools/utilities/maintainer-2-310179) |
 | Mesh Baker | 소스 버전 문자열 3.39.0(`MB3_MBVersionConcrete`), 동봉 API 문서 3.37.0 | Ian Deane / Digital Opus | `Tools/MeshBaker/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 5017](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-5017) |
 | CombatGirls Sword Character Pack | 1.3.1(`CombatGirls_SwordCharacterPack`) | 미확인 | `Animation/CombatGirlsCharacterPack/` | 유료 | Standard Unity Asset Store EULA·조건부 | Asset Store productId 345454 |
+| Magical-Knight AnimSet | 1.23(`Magical-Knight AnimSet`) | 미확인 | `Animation/Magical-Knight_Set/` | 미확인(`AssetOrigin` productId 180708, Asset Store 패키지) | 미확인 | Asset Store productId 180708, 설치 FBX `.meta` |
 | P09 Modular Humanoid | 미확인(`AssetOrigin` 없음) | 미확인 | `Model/P09_Modular_Humanoid/` | 미확인 | 미확인 | 미확인 |
 | Succubus Anim Set | 1.21(`Succubus Anim Set`) | 미확인 | `Animation/Succubus_Anim_Set/` | 미확인(`AssetOrigin` productId 179271, Asset Store 패키지) | 미확인 | Asset Store productId 179271 |
 | Kitsune Yuna (월백 외형) | 1.0(`Kitsune Yuna`) | 미확인(폴더명 `Ida Faber`) | `Model/Ida Faber/Kitsune Yuna/` | 미확인(`AssetOrigin` productId 265718, Asset Store 패키지) | 미확인 | Asset Store productId 265718 |
+
+### 캐릭터 애니메이션 설치 조사 — 2026-10-07
+
+`Assets/99.ThirdParty/Animation/`의 실제 파일과 FBX `.meta`, 동봉 PDF를 읽기 전용으로 확인했다. 아래 수는 설치 파일 수이며 독립 기술 수나 재생 품질을 뜻하지 않는다. 클립 배정·기술·부적 개편은 [캐릭터 애니메이션 설계](../design/character-animation-design.md)를 따른다.
+
+| 패키지 | 전체 FBX | 애니메이션 FBX·명시 클립 | 구성과 적용 조건 |
+|---|---:|---:|---|
+| CombatGirlsCharacterPack | 49 | 36 | 감정 7, Normal 17, Special 12. 나머지 FBX는 캐릭터·분리 부품·환경 모델이며 기술로 세지 않는다 |
+| Magical-Knight_Set | 240 | 239 | T-pose 1, 원본 119, Inplace 119. 전체 콤보·분절, 시전 시작·유지·종료, Z 변형을 포함한다 |
+| Succubus_Anim_Set | 152 | 151 | T-pose 1, 원본 75, Inplace 75. 비행 이동과 흡수 공격·피격자 클립을 포함한다 |
+
+애니메이션 FBX 426개의 `ModelImporter.animationType: 3`(Humanoid)과 Avatar 참조 대상을 정적으로 확인했다. CombatGirls 36개는 `Humanoid_Bot/Models/Humanoid_F.fbx`를, Magical 238개와 Succubus 150개는 각 패키지의 T-pose FBX를 참조하며 해당 GUID의 파일이 존재한다. 두 T-pose는 자체 Avatar 생성 설정이다. 이 확인은 Avatar의 런타임 유효성이나 P09에서의 리타게팅 성공을 증명하지 않는다.
+
+Magical과 Succubus의 동봉 `Animation Asset Description.pdf`는 각각 일반 설명 1쪽으로 Root Motion·In-Place 제공을 명시하지만 기술별 동작·타격 시점은 설명하지 않는다. 실제 `.meta`에서는 원본과 Inplace 양쪽의 비 T-pose 클립에 `loopTime: 1`, `loopBlendPositionXZ/Y: 1`이 설정되어 있다. 파일명만으로 현재 루트 이동이나 원샷 종료를 확정하지 않고, 프로젝트 사본에서 이동·시전 유지의 반복과 공격·사망·시전 시작/종료의 단발 재생을 구분해 검증한다. 원본/Inplace와 분절·변형을 별도 신규 기술로 계산하지 않는다.
+
+CombatGirls 원본의 `SwitchSocket` 이벤트 39개는 무기 소켓 전환용이다. Magical·Succubus의 명시 이벤트는 0개이며 이 이벤트 목록은 서버 타격 판정 자료가 아니다. 기존 PlayerP09 프로젝트 사본 13개는 `m_Events: []`, 대기·걷기·달리기 반복과 공격·기술·회피·피격·사망 단발 설정을 정적으로 확인했다. 이번 조사에서 원본 패키지·사본 클립·컨트롤러·프리팹은 변경하지 않았다.
+
+검증 범위는 파일 목록·메타·기존 사본 설정·PDF 전체 페이지의 정적 확인(L1, 증거 등급 1)이다. 이번 Unity 재생, 동작별 손·검 궤적·발 미끄러짐·루트 이동, 실제 기술 타격 시점과 게임·서버·빌드 검증은 미실행·미검증이다. Magical의 제작자·구매 증빙·좌석·적용 라이선스는 확인하지 않았으며 동봉 저작권 안내를 상업 이용 권리 확인으로 취급하지 않는다. DOTween의 현재 설치는 `Tools/Demigiant/{DemiLib,DOTween,DOTweenPro}/`와 그 아래 설정 파일 존재를 확인했으며, 이번 조사가 과거 Unity 설정 로드 성공을 현재 재실행한 것은 아니다.
 
 ### 플레이어 캐릭터 파생물 — 2026-10-06
 
@@ -122,7 +141,7 @@ UMA 3.1f1(GitHub 릴리스 `V3.1f1`)은 2026-10-01 들였다가 같은 날 쓰�
 - Mirror 96.11.3은 무료 오픈소스(MIT, `Assets/Mirror/LICENSE`)이며 [공식 GitHub 릴리스](https://github.com/MirrorNetworking/Mirror/releases/tag/v96.11.3)의 `.unitypackage`로 2026-09-30 설치했다. 팀 전원이 같은 버전을 써야 하므로 Git에 포함하고, Mirror 기본 위치인 `Assets/Mirror/`를 유지한다(재임포트·업데이트 경로와 같음). 동봉 스크립트 템플릿(`ScriptTemplates/`)은 팀 템플릿과 섞이지 않도록 설치하지 않았다. 동봉 트랜스포트·예제 에셋의 개별 라이선스(`Transports/*/LICENSE`, `Examples/_Common/` 내 고지)는 원본대로 보존한다.
 - `Assets/Plugins/TextMesh Pro/`는 TMP 필수 폰트·리소스·셰이더이며 데모가 아니다. 2026-10-01 Unity 에디터에서 `Assets/TextMesh Pro/`에서 옮겼다(GUID 유지). `TMP Settings`는 `Resources.Load`로 찾으므로 `Resources/` 구조와 파일명, 동봉 라이선스를 유지한다. TMP 필수 리소스를 다시 임포트하면 `Assets/TextMesh Pro/`에 새로 풀리니 중복을 지우거나 이 위치로 옮긴다.
 - `Assets/Gizmos/`의 `DialogueDatabase Icon.png`, `StringAsset Icon.png`, `TextTable Icon.png`는 Dialogue System의 에디터 아이콘이다. 플러그인 코드와 Unity Gizmos가 이 위치를 사용하므로 유지하고 유료 패키지와 함께 Git에서 제외한다.
-- DOTween 설정은 `Assets/99.ThirdParty/Animation/Demigiant/DOTween/Resources/DOTweenSettings.asset`에 있다. `Resources.Load("DOTweenSettings")`가 계속 동작하도록 파일명과 `Resources/` 구조를 유지했다.
+- DOTween 설정의 2026-10-07 확인 경로는 `Assets/99.ThirdParty/Tools/Demigiant/DOTween/Resources/DOTweenSettings.asset`이다. `Resources.Load("DOTweenSettings")`가 참조하는 파일명과 `Resources/` 구조를 유지한다. 아래 실제 검증 표의 로드 성공은 2026-09-30 정리 당시 결과이며 이번에 재실행하지 않았다.
 
 ## 정리 내역과 유지한 의존 에셋
 
