@@ -34,7 +34,7 @@ namespace Shinshi.Network
                 }
 
                 equipment[next] = new TownEquipmentEntry(view.ItemId, view.DefinitionId, (byte)view.Slot, (byte)view.Grade,
-                    view.IsTraining, view.Origin, view.Enhancement, view.Equipped, view.Locked, view.Bound);
+                    view.IsTraining, view.Origin, view.Enhancement, view.Equipped, view.Locked, view.Bound, view.InMarket);
                 ++next;
             }
 

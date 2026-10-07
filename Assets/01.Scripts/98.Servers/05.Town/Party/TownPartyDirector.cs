@@ -42,6 +42,7 @@ namespace Shinshi.Network
         private readonly Dictionary<int, PendingCall> _calls;
         private readonly PartyInviteTable          _invites;
         private readonly SortieQueue               _queue;
+        private readonly Func<string, bool>        _isAccountCommitting;
 
         private int _lastRoomId = 0;
 
@@ -60,7 +61,7 @@ namespace Shinshi.Network
         /// <summary> gateway가 null이면(개발 빌드, 서비스 자격 없음) 준비와 출정을 BackendUnavailable로 거절한다 </summary>
         public TownPartyDirector(BackendGateway gateway, ITownAudience audience, ITownMemberDirectory directory,
             ProgressionCatalogSO progression, LifeConfigSO life, float countdownSeconds, string contentVersion,
-            bool allowUnverifiedProgress, Func<double> clock, Action<string> warn)
+            bool allowUnverifiedProgress, Func<double> clock, Action<string> warn, Func<string, bool> isAccountCommitting = null)
         {
             if ((audience == null) || (directory == null) || (progression == null) || (life == null))
             {
@@ -78,6 +79,7 @@ namespace Shinshi.Network
             _allowUnverifiedProgress = allowUnverifiedProgress;
             _clock                   = clock ?? BackendGateway.MonotonicSeconds;
             _warn                    = warn;
+            _isAccountCommitting     = isAccountCommitting;
             _rooms                   = new List<PartyRoom>(Constants.Town.MAX_PARTY_ROOMS);
             _roomsById               = new Dictionary<int, PartyRoom>(Constants.Town.MAX_PARTY_ROOMS);
             _roomOfMember            = new Dictionary<int, int>(Constants.Session.MAX_SESSION_PARTICIPANTS);
@@ -366,6 +368,12 @@ namespace Shinshi.Network
                 return ERejectReason.WrongPhase;
             }
 
+            // 거래 확정 중에는 재고가 바뀌므로 준비를 받지 않는다
+            if (IsCommitting(member))
+            {
+                return ERejectReason.PendingCommit;
+            }
+
             if ((!ReadyRules.IsValidPotionCount(message.SmallPotions)) || (!ReadyRules.IsValidPotionCount(message.LargePotions)))
             {
                 return ERejectReason.InvalidTarget;
@@ -447,6 +455,11 @@ namespace Shinshi.Network
                 return ERejectReason.BackendUnavailable;
             }
 
+            if (IsAnyCommitting(room))
+            {
+                return ERejectReason.PendingCommit;
+            }
+
             room.Phase           = EPartyPhase.Countdown;
             room.CountdownEndsAt = _clock() + _countdownSeconds;
             room.Touch();
@@ -511,6 +524,29 @@ namespace Shinshi.Network
 
         // 출정 준비를 모집 단계로 되돌린다. 예약이 이미 확정됐으면(입장권 대기) 취소를 보낸다.
         // 응답을 기다리던 예약은 revision이 달라졌으므로 확정으로 돌아오면 그때 취소한다
+        private bool IsCommitting(TownMember member)
+        {
+            return (_isAccountCommitting != null) && (member != null) && (_isAccountCommitting(member.AccountId));
+        }
+
+        private bool IsAnyCommitting(PartyRoom room)
+        {
+            if (_isAccountCommitting == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < room.Count; ++i)
+            {
+                if (IsCommitting(room.MemberAt(i)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void AbortProgress(PartyRoom room)
         {
             _queue.Remove(room.RoomId);
@@ -545,6 +581,13 @@ namespace Shinshi.Network
 
         private void BeginReservation(PartyRoom room)
         {
+            if (IsAnyCommitting(room))
+            {
+                AbortProgress(room);
+                BroadcastRoom(room);
+                return;
+            }
+
             room.Phase                  = EPartyPhase.Reserving;
             room.ReservationOperationId = NewOperationId();
             room.Retries                = 0;

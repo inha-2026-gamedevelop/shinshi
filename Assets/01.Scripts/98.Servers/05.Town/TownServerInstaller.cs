@@ -14,9 +14,10 @@ namespace Shinshi.Network
         *                Methods
         ****************************************/
 
-        /// <summary> 서버를 연 뒤 한 번 부른다. allowUnverifiedProgress는 개발 빌드에서만 참으로 준다 </summary>
+        /// <summary> 서버를 연 뒤 한 번 부른다. allowUnverifiedProgress는 개발 빌드에서만 참으로 준다. townInstanceId는 거래 prepare에
+        /// 싣는 이 마을의 인스턴스 ID이고 없으면 비운다 </summary>
         public static TownServerHost Install(ShinshiNetworkManager manager, BackendGateway gateway, string contentVersion,
-            bool allowUnverifiedProgress, Action<string> warn)
+            bool allowUnverifiedProgress, Action<string> warn, string townInstanceId = null)
         {
             if (manager == null)
             {
@@ -27,7 +28,8 @@ namespace Shinshi.Network
             var rollSource = new GrowthRollSource();
             var audience   = new MirrorTownAudience(Constants.Session.MAX_SESSION_PARTICIPANTS);
             var runtime    = new TownServerRuntime(gateway, audience, new RegistryGatherNodeLayout(), GameDB.Session, GameDB.Life,
-                GameDB.Progression, GameDB.Growth.TrainingTotalCap, contentVersion, allowUnverifiedProgress, rollSource.Next, null, warn);
+                GameDB.Progression, GameDB.Growth.TrainingTotalCap, contentVersion, allowUnverifiedProgress, rollSource.Next, null, warn, townInstanceId,
+                GameDB.Rewards.TradeCurrencyItemId);
             var host       = new TownServerHost(runtime, audience);
             host.RegisterHandlers();
 

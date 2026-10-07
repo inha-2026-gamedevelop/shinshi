@@ -5,6 +5,8 @@ namespace Shinshi.Network
     {
         Party  = 0,
         Growth = 1,
-        Life   = 2
+        Life   = 2,
+        Market = 3,
+        Trade  = 4
     }
 }

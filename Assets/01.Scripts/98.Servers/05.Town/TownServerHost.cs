@@ -38,6 +38,8 @@ namespace Shinshi.Network
             NetworkServer.ReplaceHandler<GrowthRequestMessage>(OnGrowth);
             NetworkServer.ReplaceHandler<LifeRequestMessage>(OnLife);
             NetworkServer.ReplaceHandler<IntroCompleteRequestMessage>(OnIntro);
+            NetworkServer.ReplaceHandler<MarketRequestMessage>(OnMarket);
+            NetworkServer.ReplaceHandler<TradeRequestMessage>(OnTrade);
         }
 
         /// <summary> 매니저의 연결 종료 알림에 건다 </summary>
@@ -81,6 +83,22 @@ namespace Shinshi.Network
             if (TryResolve(connection, out TownMember member))
             {
                 _runtime.HandleIntro(member, in message);
+            }
+        }
+
+        private void OnMarket(NetworkConnectionToClient connection, MarketRequestMessage message)
+        {
+            if (TryResolve(connection, out TownMember member))
+            {
+                _runtime.HandleMarket(member, in message);
+            }
+        }
+
+        private void OnTrade(NetworkConnectionToClient connection, TradeRequestMessage message)
+        {
+            if (TryResolve(connection, out TownMember member))
+            {
+                _runtime.HandleTrade(member, in message);
             }
         }
 

@@ -297,7 +297,7 @@ namespace Shinshi.Network
                 if (config.Role == EServerRole.Town)
                 {
                     Town = TownServerInstaller.Install(manager, Backend, config.ContentVersion, IsDevelopmentRuntime,
-                        LogBackendWarning);
+                        LogBackendWarning, config.InstanceId);
                 }
 
                 // 채팅은 두 역할 모두 연다. 마을 파티 채팅은 같은 방, 던전은 프로세스 하나가 세션 하나라 모든 참가자다

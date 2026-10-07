@@ -23,6 +23,8 @@ namespace Shinshi.Network
         private TownRequestThrottle _party;
         private TownRequestThrottle _growth;
         private TownRequestThrottle _life;
+        private TownRequestThrottle _market;
+        private TownRequestThrottle _trade;
 
         /****************************************
         *              Properties
@@ -74,6 +76,10 @@ namespace Shinshi.Network
                     return _growth.TryAccept(now, Constants.Town.REQUESTS_PER_SECOND, Constants.Town.REQUEST_WINDOW_SECONDS);
                 case ETownChannel.Life:
                     return _life.TryAccept(now, Constants.Town.REQUESTS_PER_SECOND, Constants.Town.REQUEST_WINDOW_SECONDS);
+                case ETownChannel.Market:
+                    return _market.TryAccept(now, Constants.Town.REQUESTS_PER_SECOND, Constants.Town.REQUEST_WINDOW_SECONDS);
+                case ETownChannel.Trade:
+                    return _trade.TryAccept(now, Constants.Town.REQUESTS_PER_SECOND, Constants.Town.REQUEST_WINDOW_SECONDS);
                 default:
                     return false;
             }

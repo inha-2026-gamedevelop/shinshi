@@ -33,6 +33,8 @@ namespace Shinshi.Network
         public PotionCraftServer  Potions       { get; }
         public LifeSnapshotRelay  LifeSnapshot  { get; }
         public IntroProgressRelay IntroProgress { get; }
+        public MarketRelayServer  Market        { get; }
+        public TownTradeDirector  Trade         { get; }
         public int                MemberCount   => _members.Count;
 
         /****************************************
@@ -42,7 +44,7 @@ namespace Shinshi.Network
         /// <summary> gateway가 null이면 API가 필요한 요청을 BackendUnavailable로 거절한다. roll은 0 이상 BASIS_POINTS 미만 </summary>
         public TownServerRuntime(BackendGateway gateway, ITownAudience audience, IGatherNodeLayout layout, SessionConfigSO session,
             LifeConfigSO life, ProgressionCatalogSO progression, int trainingTotalCap, string contentVersion, bool allowUnverifiedProgress, Func<int> roll,
-            Func<double> clock, Action<string> warn)
+            Func<double> clock, Action<string> warn, string townInstanceId = null, string tradeCurrencyItemId = null)
         {
             if ((audience == null) || (session == null) || (life == null) || (progression == null))
             {
@@ -50,17 +52,23 @@ namespace Shinshi.Network
             }
 
             _clock         = clock ?? BackendGateway.MonotonicSeconds;
-            _audience      = audience;
+
+            // 성장, 생활 스냅숏이 나가는 길목에서 마지막 값을 기억해 거래 사전 검사에 쓴다. 메시지는 그대로 전달된다
+            var tap        = new TownSnapshotTap(audience);
+            _audience      = tap;
             _members       = new Dictionary<int, TownMember>(Constants.Session.MAX_SESSION_PARTICIPANTS);
             _membersByName = new Dictionary<string, TownMember>(Constants.Session.MAX_SESSION_PARTICIPANTS, StringComparer.Ordinal);
 
-            Party         = new TownPartyDirector(gateway, audience, this, progression, life, session.ReadyCountdownSeconds,
-                contentVersion, allowUnverifiedProgress, _clock, warn);
-            Growth        = new GrowthRelayServer(gateway, audience, roll, _clock, Party.OnCharacterChanged, trainingTotalCap);
-            LifeSnapshot  = new LifeSnapshotRelay(gateway, audience);
-            Gather        = new GatherZoneServer(gateway, audience, layout, GatherSettings.FromConfig(life), _clock, RefreshLife);
-            Potions       = new PotionCraftServer(gateway, audience, life, RefreshLife);
-            IntroProgress = new IntroProgressRelay(gateway, audience);
+            Party         = new TownPartyDirector(gateway, tap, this, progression, life, session.ReadyCountdownSeconds,
+                contentVersion, allowUnverifiedProgress, _clock, warn, IsAccountTrading);
+            Growth        = new GrowthRelayServer(gateway, tap, roll, _clock, Party.OnCharacterChanged, trainingTotalCap);
+            LifeSnapshot  = new LifeSnapshotRelay(gateway, tap);
+            Gather        = new GatherZoneServer(gateway, tap, layout, GatherSettings.FromConfig(life), _clock, RefreshLife);
+            Potions       = new PotionCraftServer(gateway, tap, life, RefreshLife);
+            IntroProgress = new IntroProgressRelay(gateway, tap);
+            Market        = new MarketRelayServer(gateway, tap, _clock, RefreshLife);
+            Trade         = new TownTradeDirector(gateway, tap, this, tap, townInstanceId, tradeCurrencyItemId, IsSortieStarted,
+                OnTradeCommitted, _clock, RefreshSnapshots);
         }
 
         public bool TryGetMember(int participantId, out TownMember member)
@@ -89,6 +97,7 @@ namespace Shinshi.Network
             }
 
             Gather.OnMemberConnected(member);
+            Trade.AddMember(member);
         }
 
         /// <summary> 연결이 끊겼다. 방에서 빼고, 성장, 생활 대기를 지우고, 채집 선점은 해제 시간을 재기 시작한다 </summary>
@@ -105,6 +114,8 @@ namespace Shinshi.Network
             Potions.RemoveMember(participantId);
             LifeSnapshot.RemoveMember(participantId);
             IntroProgress.RemoveMember(participantId);
+            Market.RemoveMember(participantId);
+            Trade.RemoveMember(participantId);
             _members.Remove(participantId);
             if ((!string.IsNullOrEmpty(member.CharacterName))
                 && (_membersByName.TryGetValue(member.CharacterName, out TownMember named)) && (named == member))
@@ -181,11 +192,51 @@ namespace Shinshi.Network
             }
         }
 
+        /// <summary> 유저 경매장 요청. 속도 제한은 중계가 같은 채널로 센다 </summary>
+        public void HandleMarket(TownMember member, in MarketRequestMessage message)
+        {
+            Market.Handle(member, in message);
+        }
+
+        /// <summary> 1:1 거래 요청. 속도 제한은 거래 감독이 같은 채널로 센다 </summary>
+        public void HandleTrade(TownMember member, in TradeRequestMessage message)
+        {
+            Trade.Handle(member, in message);
+        }
+
         /// <summary> 매 프레임 부른다 </summary>
         public void Tick()
         {
             Party.Tick();
             Gather.Tick();
+            Trade.Tick();
+        }
+
+        // 거래 확정 중인 계정은 출정 준비, 시작을 할 수 없다
+        private bool IsAccountTrading(string accountId)
+        {
+            return (Trade != null) && (Trade.IsCommittingAccount(accountId));
+        }
+
+        // 거래를 열거나 결과를 모른 채 끝났을 때 서버가 직접 성장, 생활 스냅숏을 새로 받아 보낸다
+        private void RefreshSnapshots(TownMember member)
+        {
+            Growth.RequestSnapshot(member);
+            LifeSnapshot.Request(member);
+        }
+
+        // 출정을 시작한 방(카운트다운, 예약, 대기열)에 있으면 거래를 할 수 없다
+        private bool IsSortieStarted(int participantId)
+        {
+            PartyRoom room = Party.RoomOf(participantId);
+            return (room != null) && (room.Phase != EPartyPhase.Open);
+        }
+
+        // 거래가 확정되면 바뀐 재고를 보내고 파티 준비를 푼다
+        private void OnTradeCommitted(int participantId)
+        {
+            RefreshLife(participantId);
+            Party.OnCharacterChanged(participantId);
         }
 
         // 채집, 제작이 확정되면 바뀐 재고를 소유자에게 보낸다
