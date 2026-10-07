@@ -1,51 +1,68 @@
 @page "/grants"
 @inherits AdminPageBase
 @using Newtonsoft.Json.Linq
-<PageTitle>운영자 지급</PageTitle>
-<h1>운영자 지급</h1>
+<PageTitle>지급 · 신시 운영</PageTitle>
+<div class="page-head">
+    <div>
+        <h1><Icon Name="gift" /> 운영 지급</h1>
+        <p>작성은 초안만 만듭니다. 실행하면 대상 우편함에 넣고, 취소하면 미수령분만 취소합니다.</p>
+    </div>
+</div>
 <RoleRequirement MinimumRole="AdminContractCodes.Role.OPERATOR" />
-<p>작성은 초안만 만듭니다. 실행하면 대상 우편함에 넣고, 취소하면 미수령분만 취소합니다.</p>
-<fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
-    <legend>지급 초안 작성</legend>
-    <div class="form-grid">
-        <label>대상 계정 ID(줄마다 UUID 하나, 최대 1,000개)<textarea @bind="_targets" rows="4"></textarea></label>
-        <label>수령 기한(일)<input type="number" @bind="_claimDays" min="1" max="365" /></label>
-        <label>지급 출처<select @bind="_sourceKind"><option value="AdminGrant">일반 운영 지급</option><option value="RecoveryCompensation">장애 보정 지급</option></select></label>
-        <label>출처 참조(장애 보정은 세션 ID 필수)<input @bind="_sourceRef" maxlength="200" /></label>
-        <label>작성 사유<input @bind="_createReason" maxlength="500" /></label>
-    </div>
-    <h2>보상</h2>
-    @for (int i = 0; i < _rewards.Count; ++i)
-    {
-        GrantRewardInput reward = _rewards[i];
-        <div class="form-grid" @key="reward">
-            <label>자산 종류<select @bind="reward.AssetKind"><option value="Currency">엽전</option><option value="Tickets">입장권</option><option value="Essence">정기</option><option value="Shards">파편</option><option value="AccountItem">계정 아이템</option></select></label>
-            @if (reward.AssetKind == AdminGrantCodes.ASSET_ACCOUNT_ITEM)
+<div class="grid two">
+    <section class="card" aria-labelledby="create-title">
+        <div class="card-head"><Icon Name="plus" /><h2 id="create-title">지급 초안 작성</h2></div>
+        <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+            <TargetListPicker @ref="_targetPicker" Value="@_targets" ValueChanged="value => _targets = value" Rows="4" />
+            <div class="form-grid cols-2 mt">
+                <label class="field">수령 기한(일)
+                    <input type="number" inputmode="numeric" @bind="_claimDays" min="1" max="365" placeholder="@AdminDefaults.CLAIM_DAYS" /></label>
+                <label class="field">지급 출처
+                    <select @bind="_sourceKind"><option value="AdminGrant">일반 운영 지급</option><option value="RecoveryCompensation">장애 보정 지급</option></select></label>
+                <label class="field wide">출처 참조 (장애 보정은 세션 ID 필수)
+                    <input @bind="_sourceRef" maxlength="200" placeholder="@(_sourceKind == "RecoveryCompensation" ? "보정 대상 세션 ID" : "비워도 됩니다")" /></label>
+            </div>
+            <p class="default-hint">수령 기한을 비우면 @(AdminDefaults.CLAIM_DAYS)일</p>
+            <h3 class="mt">보상</h3>
+            @for (int i = 0; i < _rewards.Count; ++i)
             {
-                <label>아이템 정의 ID<input @bind="reward.AssetId" /></label><p>귀속: 계정</p>
+                GrantRewardInput reward = _rewards[i];
+                <div class="form-grid cols-2" @key="reward">
+                    <label class="field">자산 종류
+                        <select @bind="reward.AssetKind"><option value="Currency">엽전</option><option value="Tickets">입장권</option><option value="Essence">정기</option><option value="Shards">파편</option><option value="AccountItem">계정 아이템</option></select></label>
+                    <label class="field">수량
+                        <input type="number" inputmode="numeric" @bind="reward.Quantity" min="1" max="1000000" /></label>
+                    @if (reward.AssetKind == AdminGrantCodes.ASSET_ACCOUNT_ITEM)
+                    {
+                        <label class="field wide">아이템 정의 ID <input @bind="reward.AssetId" placeholder="아이템 정의 ID (귀속: 계정)" /></label>
+                    }
+                    <div class="wide"><button type="button" class="ghost small" disabled="@(_rewards.Count == 1)" @onclick="() => _rewards.Remove(reward)"><Icon Name="trash" /> 보상 줄 삭제</button></div>
+                </div>
             }
-            <label>수량<input type="number" @bind="reward.Quantity" min="1" max="1000000" /></label>
-            <button type="button" class="secondary" disabled="@(_rewards.Count == 1)" @onclick="() => _rewards.Remove(reward)">보상 줄 삭제</button>
-        </div>
-    }
-    <button type="button" class="secondary" disabled="@(_rewards.Count >= AdminGrantCodes.MAX_REWARD_LINES)" @onclick="() => _rewards.Add(new GrantRewardInput())">보상 줄 추가</button>
-    <button type="button" @onclick="PrepareCreate">초안 내용 확인</button>
-</fieldset>
-<section>
-    <h2>지급 상세</h2>
-    <label>지급 ID<input @bind="_grantId" /></label>
-    <button type="button" disabled="@(_busy || !Context.HasRole(AdminContractCodes.Role.OPERATOR))" @onclick="LoadAsync">상세 조회</button>
-</section>
-<fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
-    <legend>지급 실행·취소</legend>
-    <label>변경 사유<input @bind="_actionReason" maxlength="500" /></label>
-    <p class="muted">대상 2명 이상 또는 장애 보정 지급 실행은 Admin 이상입니다. Operator는 상세 조회 후 1명 일반 지급을 실행할 수 있습니다.</p>
-    <div class="actions">
-        <button type="button" disabled="@(!CanExecute)" @onclick="() => PrepareAction(true)">실행 내용 확인</button>
-        <button type="button" class="secondary" @onclick="() => PrepareAction(false)">취소 내용 확인</button>
-    </div>
-</fieldset>
-<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
+            <div class="actions">
+                <button type="button" class="secondary" disabled="@(_rewards.Count >= AdminGrantCodes.MAX_REWARD_LINES)" @onclick="() => _rewards.Add(new GrantRewardInput())"><Icon Name="plus" /> 보상 줄 추가</button>
+            </div>
+            <label class="field mt">작성 사유 <input @bind="_createReason" maxlength="500" placeholder="@AdminDefaults.GRANT_CREATE_REASON" /></label>
+            <p class="default-hint">비우면 "@AdminDefaults.GRANT_CREATE_REASON"</p>
+            <div class="actions"><LoadingButton Busy="_resolving" IconName="check" OnClick="PrepareCreateAsync">초안 내용 확인</LoadingButton></div>
+        </fieldset>
+    </section>
+    <section class="card" aria-labelledby="exec-title">
+        <div class="card-head"><Icon Name="send" /><h2 id="exec-title">지급 상세 · 실행 · 취소</h2></div>
+        <label class="field">지급 ID <input @bind="_grantId" placeholder="지급 ID(UUID)" autocomplete="off" /></label>
+        <div class="actions"><LoadingButton Variant="secondary" Busy="_busy" Disabled="!Context.HasRole(AdminContractCodes.Role.OPERATOR)" IconName="search" OnClick="LoadAsync">상세 조회</LoadingButton></div>
+        <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+            <label class="field mt">변경 사유 <input @bind="_actionReason" maxlength="500" placeholder="비우면 실행·취소별 기본 사유" /></label>
+            <p class="default-hint">실행은 "@AdminDefaults.GRANT_EXECUTE_REASON", 취소는 "@AdminDefaults.GRANT_CANCEL_REASON"</p>
+            <p class="hint">대상 2명 이상 또는 장애 보정 지급 실행은 Admin 이상입니다. Operator는 상세 조회 후 1명 일반 지급을 실행할 수 있습니다.</p>
+            <div class="actions">
+                <button type="button" disabled="@(!CanExecute)" @onclick="() => PrepareAction(true)"><Icon Name="send" /> 실행 내용 확인</button>
+                <button type="button" class="secondary" @onclick="() => PrepareAction(false)"><Icon Name="x-circle" /> 취소 내용 확인</button>
+            </div>
+        </fieldset>
+    </section>
+</div>
+<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" Defaults="_writeDefaults" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
 <ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
 @code
 {
@@ -53,8 +70,9 @@
     *                Fields
     ****************************************/
 
+    private TargetListPicker? _targetPicker;
     private string _targets = string.Empty;
-    private int _claimDays = AdminGrantCodes.DEFAULT_CLAIM_DAYS;
+    private int? _claimDays;
     private string _sourceKind = AdminGrantCodes.SOURCE_ADMIN_GRANT;
     private string _sourceRef = string.Empty;
     private string _createReason = string.Empty;
@@ -62,6 +80,9 @@
     private string _grantId = string.Empty;
     private string _actionReason = string.Empty;
     private JToken? _grantDetail;
+    private bool _resolving;
+    private readonly QueryParameterTracker _targetQuery = new();
+    private readonly QueryParameterTracker _grantQuery = new();
 
     private bool CanExecute => Context.HasRole(AdminContractCodes.Role.ADMIN)
         || ((Context.HasRole(AdminContractCodes.Role.OPERATOR))
@@ -70,19 +91,57 @@
         && (_grantDetail?["sourceKind"]?.ToString() == AdminGrantCodes.SOURCE_ADMIN_GRANT));
 
     /****************************************
+    *              Properties
+    ****************************************/
+
+    [SupplyParameterFromQuery(Name = "target")] public string? TargetParameter { get; set; }
+    [SupplyParameterFromQuery(Name = "grant")] public string? GrantParameter { get; set; }
+
+    /****************************************
     *                Methods
     ****************************************/
 
-    private void PrepareCreate()
+    protected override void OnParametersSet()
     {
+        // 다른 화면의 링크로 들어오면 대상 계정이나 지급 ID를 채운다
+        if (_targetQuery.TryTake(TargetParameter, out string account))
+        {
+            _targets = account;
+        }
+        if (_grantQuery.TryTake(GrantParameter, out string grantId))
+        {
+            _grantId = grantId;
+        }
+    }
+
+    private async Task PrepareCreateAsync()
+    {
+        if ((_resolving) || (_targetPicker == null))
+        {
+            return;
+        }
+        _error = string.Empty;
+        _resolving = true;
+        IReadOnlyList<string>? accounts;
+        try
+        {
+            accounts = await _targetPicker.EnsureAllAsync();
+        }
+        finally
+        {
+            _resolving = false;
+        }
+        if (accounts == null)
+        {
+            _error = "대상을 확인하지 못했습니다. 위 목록에서 실패한 항목을 고치세요.";
+            return;
+        }
         Validate(() =>
         {
-            string[] accounts = _targets.Split(new[] { '\r', '\n', ',', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(value => Id(value, "대상 계정 ID")).ToArray();
-            if ((accounts.Length < 1) || (accounts.Length > AdminGrantCodes.MAX_TARGET_ACCOUNTS)
-                || (accounts.Distinct(StringComparer.Ordinal).Count() != accounts.Length))
+            WriteDefaults defaults = new();
+            if ((accounts.Count < 1) || (accounts.Count > AdminGrantCodes.MAX_TARGET_ACCOUNTS))
             {
-                throw new ArgumentException("대상 계정은 중복 없는 UUID 1~1,000개로 입력하세요.");
+                throw new ArgumentException("대상 계정은 중복 없는 1~1,000개로 입력하세요.");
             }
             AdminGrantReward[] rewards = _rewards.Select(reward =>
             {
@@ -98,12 +157,9 @@
                 return new AdminGrantReward(reward.AssetKind, item ? reward.AssetId.Trim() : null!,
                     item ? "Account" : null!, reward.Quantity);
             }).ToArray();
-            string reason = RequireReason(_createReason);
-            int days = _claimDays;
-            if ((days < AdminGrantCodes.MIN_CLAIM_DAYS) || (days > AdminGrantCodes.MAX_CLAIM_DAYS))
-            {
-                throw new ArgumentException("수령 기한은 1~365일입니다.");
-            }
+            string reason = defaults.Reason(_createReason, AdminDefaults.GRANT_CREATE_REASON);
+            int days = defaults.Int(_claimDays?.ToString(), AdminDefaults.CLAIM_DAYS, AdminGrantCodes.MIN_CLAIM_DAYS,
+                AdminGrantCodes.MAX_CLAIM_DAYS, "수령 기한", "일");
             string source = _sourceKind;
             string? reference = Optional(_sourceRef);
             if (source == AdminGrantCodes.SOURCE_RECOVERY_COMPENSATION)
@@ -114,9 +170,10 @@
             {
                 throw new ArgumentException("출처 참조는 최대 200자입니다.");
             }
-            Prepare("지급 초안 작성", accounts.Length + "개 계정", reason, AdminContractCodes.Role.OPERATOR,
-                AdminApiRoutes.GRANTS, operation => new AdminGrantCreateRequest(operation, reason, accounts,
-                    rewards, days, source, reference!));
+            string[] accountIds = accounts.ToArray();
+            Prepare("지급 초안 작성", accountIds.Length + "개 계정", reason, AdminContractCodes.Role.OPERATOR,
+                AdminApiRoutes.GRANTS, operation => new AdminGrantCreateRequest(operation, reason, accountIds,
+                    rewards, days, source, reference!), defaults: defaults);
         });
     }
 
@@ -136,8 +193,9 @@
     {
         Validate(() =>
         {
+            WriteDefaults defaults = new();
             string grant = Id(_grantId, "지급 ID");
-            string reason = RequireReason(_actionReason);
+            string reason = defaults.Reason(_actionReason, execute ? AdminDefaults.GRANT_EXECUTE_REASON : AdminDefaults.GRANT_CANCEL_REASON);
             if ((execute) && (!CanExecute))
             {
                 throw new ArgumentException("지급 상세와 실행 권한을 확인하세요.");
@@ -147,7 +205,7 @@
                 ? AdminContractCodes.Role.ADMIN : AdminContractCodes.Role.OPERATOR;
             Prepare(execute ? "지급 실행" : "미수령 지급 취소", grant, reason, role,
                 string.Format(execute ? AdminApiRoutes.GRANT_EXECUTE_FORMAT : AdminApiRoutes.GRANT_CANCEL_FORMAT, grant),
-                operation => new AdminGrantActionRequest(operation, reason));
+                operation => new AdminGrantActionRequest(operation, reason), defaults: defaults);
         });
     }
 

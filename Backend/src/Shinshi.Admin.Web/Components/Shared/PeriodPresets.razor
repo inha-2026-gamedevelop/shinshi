@@ -1,0 +1,25 @@
+@* 로그 기간 빠른 선택(KST 기준) *@
+<div class="row mt" role="group" aria-label="기간 빠른 선택">
+    <span class="muted">빠른 선택</span>
+    <button type="button" class="pill-btn" @onclick='() => Pick("today")'>오늘</button>
+    <button type="button" class="pill-btn" @onclick='() => Pick("yesterday")'>어제</button>
+    <button type="button" class="pill-btn" @onclick='() => Pick("7d")'>최근 7일</button>
+    <button type="button" class="pill-btn" @onclick='() => Pick("30d")'>최근 30일</button>
+</div>
+@code
+{
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public EventCallback<(string From, string To)> OnPick { get; set; }
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private Task Pick(string key)
+    {
+        return OnPick.InvokeAsync(AdminTime.Preset(key, DateTimeOffset.UtcNow));
+    }
+}

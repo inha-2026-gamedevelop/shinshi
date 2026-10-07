@@ -1,31 +1,68 @@
 @page "/service-state"
 @inherits AdminPageBase
 @using Newtonsoft.Json.Linq
-<PageTitle>서비스 상태</PageTitle>
-<h1>서비스 상태</h1>
-<RoleRequirement MinimumRole="AdminContractCodes.Role.VIEWER" />
-<button type="button" disabled="@(_busy || HasPrepared)" @onclick="LoadAsync">최신 상태 조회 · 편집값 불러오기</button>
+<PageTitle>서비스 상태 · 신시 운영</PageTitle>
+<div class="page-head">
+    <div>
+        <h1><Icon Name="server" /> 서비스 상태</h1>
+        <p>점검·기능 차단·허용 빌드를 한 번에 저장합니다. 저장할 때는 조회한 리비전을 함께 보냅니다.</p>
+    </div>
+    <LoadingButton Variant="secondary" Busy="_busy" Disabled="HasPrepared" IconName="refresh" OnClick="LoadAsync">최신 상태 조회 · 편집값 불러오기</LoadingButton>
+</div>
 <RoleRequirement MinimumRole="AdminContractCodes.Role.ADMIN" />
-<fieldset disabled="@(FormLocked || !_loaded || !Context.HasRole(AdminContractCodes.Role.ADMIN))">
-    <legend>점검·기능·허용 빌드 변경</legend>
-    <p>조회한 리비전: <code>@_revision</code>. 모든 설정을 함께 저장합니다.</p>
-    <label class="checkbox"><input type="checkbox" @bind="_maintenance" /> 점검 중</label>
-    <h2>기능 차단</h2>
-    @foreach (string feature in ServiceFeatureKeys.All)
-    {
-        <label class="checkbox"><input type="checkbox" checked="@_disabled.Contains(feature)" @onchange="eventArgs => ToggleFeature(feature, eventArgs)" /> @FeatureLabel(feature) <small>(@feature)</small></label>
-    }
-    <h2>허용 빌드</h2>
-    @foreach (string build in _builds.ToArray())
-    {
-        <p><code>@build</code> <button type="button" class="secondary" @onclick="() => _builds.Remove(build)">삭제</button></p>
-    }
-    <div class="form-grid"><label>추가할 빌드 ID<input @bind="_newBuild" maxlength="128" /></label><button type="button" class="secondary" @onclick="AddBuild">빌드 추가</button></div>
-    <label>변경 사유<input @bind="_reason" maxlength="500" /></label>
-    <button type="button" @onclick="PrepareUpdate">저장 내용 확인</button>
-</fieldset>
-<p class="muted">리비전 충돌(409)이면 현재 요청을 닫고 최신 상태를 다시 조회하여 변경 내용을 확인하세요.</p>
-<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
+<div class="grid two">
+    <section class="card" aria-labelledby="state-now">
+        <div class="card-head"><Icon Name="activity" /><h2 id="state-now">현재 상태</h2></div>
+        @if (!_loaded)
+        {
+            <p class="muted">상단의 조회 버튼으로 최신 상태를 불러오세요. 저장하면 다시 조회해야 합니다.</p>
+        }
+        else
+        {
+            <div class="row">
+                <span class="@("badge " + (_maintenance ? "danger" : "ok"))"><Icon Name="@(_maintenance ? "wrench" : "check-circle")" /> @(_maintenance ? "점검 중" : "정상 운영")</span>
+                <span class="muted">리비전 <code>@_revision</code></span>
+            </div>
+            <p class="field-label mt">차단된 기능</p>
+            @if (_disabled.Count == 0)
+            {
+                <p class="muted">없음</p>
+            }
+            else
+            {
+                <div class="chip-list">@foreach (string feature in ServiceFeatureKeys.All.Where(_disabled.Contains)) { <span class="badge warn">@AdminLabels.Feature(feature)</span> }</div>
+            }
+            <p class="muted">허용 빌드 @_builds.Count 개</p>
+        }
+    </section>
+    <section class="card" aria-labelledby="state-edit">
+        <div class="card-head"><Icon Name="wrench" /><h2 id="state-edit">점검 · 기능 · 허용 빌드 변경</h2></div>
+        <fieldset disabled="@(FormLocked || !_loaded || !Context.HasRole(AdminContractCodes.Role.ADMIN))">
+            <label class="switch-row"><input type="checkbox" @bind="_maintenance" /> 점검 중으로 표시</label>
+            <h3 class="mt">기능 차단</h3>
+            <div class="form-grid cols-2">
+            @foreach (string feature in ServiceFeatureKeys.All)
+            {
+                <label class="check"><input type="checkbox" checked="@_disabled.Contains(feature)" @onchange="eventArgs => ToggleFeature(feature, eventArgs)" /> @AdminLabels.Feature(feature) <small class="muted">&nbsp;(@feature)</small></label>
+            }
+            </div>
+            <h3 class="mt">허용 빌드</h3>
+            <div class="chip-list">
+            @foreach (string build in _builds.ToArray())
+            {
+                <span class="chip"><code>@build</code> <button type="button" class="ghost icon-only small" aria-label="@(build + " 삭제")" @onclick="() => _builds.Remove(build)"><Icon Name="x" /></button></span>
+            }
+            </div>
+            <div class="row nowrap mt"><label class="field grow">추가할 빌드 ID<input @bind="_newBuild" maxlength="128" placeholder="빌드 ID" /></label>
+                <button type="button" class="secondary" @onclick="AddBuild"><Icon Name="plus" /> 빌드 추가</button></div>
+            <label class="field mt">변경 사유 <input @bind="_reason" maxlength="500" placeholder="@AdminDefaults.SERVICE_STATE_REASON" /></label>
+            <p class="default-hint">비우면 "@AdminDefaults.SERVICE_STATE_REASON"</p>
+            <div class="actions"><LoadingButton IconName="check" OnClick="PrepareUpdate">저장 내용 확인</LoadingButton></div>
+        </fieldset>
+        <p class="hint">리비전 충돌(409)이면 현재 요청을 닫고 최신 상태를 다시 조회하여 변경 내용을 확인하세요.</p>
+    </section>
+</div>
+<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" Defaults="_writeDefaults" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
 <ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
 @code
 {
@@ -100,14 +137,15 @@
             {
                 throw new ArgumentException("최신 상태를 먼저 조회하세요.");
             }
-            string reason = RequireReason(_reason);
+            WriteDefaults defaults = new();
+            string reason = defaults.Reason(_reason, AdminDefaults.SERVICE_STATE_REASON);
             bool maintenance = _maintenance;
             long revision = _revision;
             string[] features = ServiceFeatureKeys.All.Where(_disabled.Contains).ToArray();
             string[] builds = _builds.ToArray();
             Prepare("서비스 상태 저장", "서비스 전체 / 리비전 " + revision, reason, AdminContractCodes.Role.ADMIN,
                 AdminApiRoutes.SERVICE_STATE, operation => new AdminServiceStateUpdateRequest(operation, reason,
-                    maintenance, features, builds, revision), HttpMethod.Put);
+                    maintenance, features, builds, revision), HttpMethod.Put, defaults);
         });
     }
 
@@ -121,12 +159,4 @@
         }
         return base.WriteFailureMessage(result);
     }
-
-    private static string FeatureLabel(string feature) => feature switch
-    {
-        ServiceFeatureKeys.AUCTION => "경매", ServiceFeatureKeys.CRAFTING => "제작", ServiceFeatureKeys.ENHANCE => "강화",
-        ServiceFeatureKeys.INHERIT => "계승", ServiceFeatureKeys.GATHERING => "채집", ServiceFeatureKeys.BOSS_ENTRY => "보스 입장",
-        ServiceFeatureKeys.INBOX_CLAIM => "우편 수령", ServiceFeatureKeys.DUNGEON_ENTRY => "던전 입장",
-        ServiceFeatureKeys.TALISMAN => "부적", ServiceFeatureKeys.TRAINING => "정기 수련", _ => feature
-    };
 }

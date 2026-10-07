@@ -59,6 +59,7 @@ namespace Shinshi.Admin.Web
             builder.Services.AddSingleton<AdminWebLoginLimiter>();
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<AdminWebContext>();
+            builder.Services.AddScoped<ToastService>();
             builder.Services.AddHttpClient<AdminWebApiClient>()
                 .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
                 {

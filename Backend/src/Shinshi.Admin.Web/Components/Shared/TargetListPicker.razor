@@ -1,0 +1,115 @@
+@inject AdminWebApiClient Api
+@* 여러 지급 대상. 줄바꿈·쉼표로 구분한 캐릭터 이름 또는 계정 ID를 각각 풀어 칩으로 보여 주고, 실패한 항목이 있으면 실행을 막는다 *@
+<div class="field">
+    <label for="@_id">@Label</label>
+    <textarea id="@_id" rows="@Rows" placeholder="@Placeholder" value="@_text" disabled="@Disabled" spellcheck="false"
+              aria-describedby="@(_id + "-status")" @oninput="OnInput"></textarea>
+    <div class="row">
+        <LoadingButton Variant="secondary" Busy="_res.Busy" Disabled="Disabled || (Tokens.Count == 0)" IconName="search" OnClick="ResolveClickAsync">대상 확인</LoadingButton>
+        <span class="muted">@Tokens.Count 개 입력@(Tokens.Count > AdminGrantCodes.MAX_TARGET_ACCOUNTS ? " · 최대 " + AdminGrantCodes.MAX_TARGET_ACCOUNTS + "개" : string.Empty)</span>
+    </div>
+    <div id="@(_id + "-status")" aria-live="polite">
+        @if (_res.Busy)
+        {
+            <p class="progress-line"><Icon Name="loader" Spin="true" /> @_res.Progress / @Tokens.Count 확인 중</p>
+        }
+        @if (_res.Items.Count > 0)
+        {
+            <div class="chip-list">
+            @foreach (TargetResolution.Item item in _res.Items)
+            {
+                @if (item.Account != null)
+                {
+                    <span class="chip ok"><Icon Name="check-circle" /> @Display(item) <IdChip Value="@item.Account.AccountId" Label="계정 ID" /></span>
+                }
+                else
+                {
+                    <span class="chip bad" role="alert"><Icon Name="x-circle" /> @item.Token.Text <span class="muted">@item.Error</span></span>
+                }
+            }
+            </div>
+        }
+        @if (_res.Notes.Count > 0)
+        {
+            <ul class="default-list">
+            @foreach (string note in _res.Notes)
+            {
+                <li>@note</li>
+            }
+            </ul>
+        }
+    </div>
+</div>
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private readonly string _id = "targets-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+    private TargetResolution _res = default!;
+    private string _text = string.Empty;
+    private string _lastParentValue = string.Empty;
+
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public string Label { get; set; } = "대상 (캐릭터 이름 또는 계정 ID, 줄바꿈·쉼표로 구분)";
+    [Parameter] public string Placeholder { get; set; } = "예: 이름1, 이름2 또는 계정 ID를 한 줄에 하나씩";
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public int Rows { get; set; } = 4;
+
+    private IReadOnlyList<TargetToken> Tokens => TargetInput.Parse(_text);
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override void OnInitialized()
+    {
+        AccountLookup lookup = new(Api);
+        _res = new TargetResolution(token => lookup.ResolveAsync(token));
+    }
+
+    protected override void OnParametersSet()
+    {
+        if ((Value != _lastParentValue) && (Value != _text))
+        {
+            _text = Value;
+            _res.Reset();
+        }
+        _lastParentValue = Value;
+    }
+
+    /// <summary> 모든 대상을 확인해 중복 없는 계정 ID 목록을 돌려준다. 실패한 항목이 있거나 비었으면 null이다 </summary>
+    public async Task<IReadOnlyList<string>?> EnsureAllAsync()
+    {
+        string requested = _text;
+        Task<IReadOnlyList<string>?> task = _res.EnsureAllAsync(requested, () => _ = InvokeAsync(StateHasChanged));
+        await InvokeAsync(StateHasChanged);
+        IReadOnlyList<string>? result = await task;
+        await InvokeAsync(StateHasChanged);
+        return requested == _text ? result : null;
+    }
+
+    private async Task OnInput(ChangeEventArgs args)
+    {
+        _text = args.Value?.ToString() ?? string.Empty;
+        _lastParentValue = _text;
+        _res.Reset();
+        await ValueChanged.InvokeAsync(_text);
+    }
+
+    private async Task ResolveClickAsync()
+    {
+        await EnsureAllAsync();
+    }
+
+    private static string Display(TargetResolution.Item item)
+    {
+        return item.Token.Kind == ETargetKind.Name ? item.Token.Text : "계정";
+    }
+}

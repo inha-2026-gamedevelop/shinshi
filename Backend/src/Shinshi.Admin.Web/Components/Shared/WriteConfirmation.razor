@@ -1,27 +1,57 @@
 @using Newtonsoft.Json.Linq
+@implements IAsyncDisposable
+@inject IServiceProvider Services
+@* 쓰기 확정 전 확인 모달. 대상·사유·적용된 기본값을 보여 주고, 실행 버튼은 처리 중 비활성이다 *@
 @if (Body != null)
 {
-    <section class="confirmation" aria-label="변경 내용 확인">
-        <h2>@Title 확인</h2>
-        <p><strong>대상:</strong> @Target</p>
-        <JsonDataView Value="Body" />
-        @if (Attempted)
-        {
-            <p>작업 ID: <code>@OperationId</code></p>
-            <p>이 요청의 대상·본문·작업 ID는 고정되어 있습니다. 재시도는 같은 요청을 다시 보냅니다.</p>
-            @if ((!CanConfirm) && (!Busy))
+    <div class="modal-backdrop">
+        <div id="@DialogId" class="modal" role="dialog" aria-modal="true" aria-labelledby="@(DialogId + "-title")" tabindex="-1" @onkeydown="OnKeyDown">
+            <h2 id="@(DialogId + "-title")"><Icon Name="shield" /> @Title 확인</h2>
+            <dl class="summary">
+                <dt>대상</dt><dd>@Target</dd>
+            </dl>
+            <div class="reason-box">
+                <strong>사유 (감사 기록에 남습니다)@(Defaults?.ReasonDefaulted == true ? " · 기본 사유 사용" : string.Empty)</strong>
+                @Body["reason"]?.ToString()
+            </div>
+            @if ((Defaults != null) && (Defaults.Notes.Count > 0))
             {
-                <p>이 결과는 재시도할 수 없습니다. 결과와 상태를 조회한 뒤 새 작업을 작성하세요.</p>
+                <p class="field-label">입력하지 않아 기본값이 적용된 항목</p>
+                <ul class="default-list">
+                @foreach (string note in Defaults.Notes)
+                {
+                    <li>@note</li>
+                }
+                </ul>
             }
-        }
-        <div class="actions">
-            <button type="button" disabled="@(!CanConfirm)" @onclick="OnConfirm">@(Attempted ? "같은 요청 재시도" : "내용 확인 후 실행")</button>
-            <button type="button" class="secondary" disabled="@Busy" @onclick="OnCancel">@(Attempted ? "요청 닫기" : "수정으로 돌아가기")</button>
+            <details open>
+                <summary>전송할 내용</summary>
+                <JsonDataView Value="Body" />
+            </details>
+            @if (Attempted)
+            {
+                <p class="notice-box info"><Icon Name="info" /><span>작업 ID: <code>@OperationId</code>. 이 요청의 대상·본문·작업 ID는 고정되어 있습니다. 재시도는 같은 요청을 다시 보냅니다.</span></p>
+                @if ((!CanConfirm) && (!Busy))
+                {
+                    <p class="notice-box warning"><Icon Name="alert" /><span>이 결과는 재시도할 수 없습니다. 결과와 상태를 조회한 뒤 새 작업을 작성하세요.</span></p>
+                }
+            }
+            <div class="modal-actions">
+                <button type="button" class="secondary" disabled="@Busy" @onclick="OnCancel">@(Attempted ? "요청 닫기" : "수정으로 돌아가기")</button>
+                <LoadingButton Busy="Busy" Disabled="!CanConfirm" IconName="check" OnClick="OnConfirm">@(Attempted ? "같은 요청 재시도" : "내용 확인 후 실행")</LoadingButton>
+            </div>
         </div>
-    </section>
+    </div>
 }
 @code
 {
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private readonly string _dialogId = "confirm-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+    private bool _wasOpen;
+
     /****************************************
     *              Properties
     ****************************************/
@@ -33,6 +63,71 @@
     [Parameter] public bool Attempted { get; set; }
     [Parameter] public bool CanConfirm { get; set; }
     [Parameter] public bool Busy { get; set; }
+    [Parameter] public WriteDefaults? Defaults { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string DialogId => _dialogId;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        bool open = Body != null;
+        if (open == _wasOpen)
+        {
+            return;
+        }
+        _wasOpen = open;
+        await CallAsync(open ? "shinshiAdmin.openModal" : "shinshiAdmin.closeModal", open ? new object[] { _dialogId } : Array.Empty<object>());
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if ((args.Key == "Escape") && (!Busy))
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task CallAsync(string identifier, object[] arguments)
+    {
+        IJSRuntime? js = Services.GetService(typeof(IJSRuntime)) as IJSRuntime;
+        if (js == null)
+        {
+            return;
+        }
+        try
+        {
+            await js.InvokeVoidAsync(identifier, arguments);
+        }
+        catch (JSDisconnectedException)
+        {
+            // 회로가 이미 끊겼으면 포커스를 옮길 화면이 없으므로 정상 종료로 본다
+            return;
+        }
+        catch (InvalidOperationException)
+        {
+            // 렌더링 전(JS 사용 불가) 호출은 건너뛴다
+            return;
+        }
+        catch (JSException)
+        {
+            if (Services.GetService(typeof(ToastService)) is ToastService toasts)
+            {
+                toasts.Show(EToastKind.Info, "대화상자 포커스 이동에 실패했습니다.");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_wasOpen)
+        {
+            _wasOpen = false;
+            await CallAsync("shinshiAdmin.closeModal", Array.Empty<object>());
+        }
+    }
 }

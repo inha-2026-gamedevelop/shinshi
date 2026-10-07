@@ -1,22 +1,33 @@
 @using Newtonsoft.Json.Linq
+@inject ToastService Toasts
 @if (!string.IsNullOrEmpty(Error))
 {
-    <p role="alert" class="error">@Error</p>
+    <div class="notice-box error" role="alert"><Icon Name="x-circle" /><span>@Error</span></div>
 }
 @if (!string.IsNullOrEmpty(Message))
 {
-    <p role="status" class="success">@Message</p>
+    <div class="notice-box success" role="status"><Icon Name="check-circle" /><span>@Message</span></div>
 }
 @if (Busy)
 {
-    <p role="status">요청 처리 중입니다.</p>
+    <p class="progress-line" role="status"><Icon Name="loader" Spin="true" /> 요청 처리 중입니다.</p>
 }
 @if (Data != null)
 {
-    <section aria-label="조회 및 처리 결과"><JsonDataView Value="Data" /></section>
+    <section class="card result-card" aria-label="조회 및 처리 결과">
+        <div class="card-head"><Icon Name="list" /><h2>결과</h2></div>
+        <JsonDataView Value="Data" />
+    </section>
 }
 @code
 {
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private string _lastError = string.Empty;
+    private string _lastMessage = string.Empty;
+
     /****************************************
     *              Properties
     ****************************************/
@@ -25,4 +36,23 @@
     [Parameter] public string Error { get; set; } = string.Empty;
     [Parameter] public string Message { get; set; } = string.Empty;
     [Parameter] public bool Busy { get; set; }
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    // 새 오류·성공 문구가 생길 때 한 번만 토스트로 알린다
+    protected override void OnParametersSet()
+    {
+        if ((!string.IsNullOrEmpty(Error)) && (Error != _lastError))
+        {
+            Toasts.Show(EToastKind.Error, Error);
+        }
+        if ((!string.IsNullOrEmpty(Message)) && (Message != _lastMessage))
+        {
+            Toasts.Show(EToastKind.Success, Message);
+        }
+        _lastError = Error;
+        _lastMessage = Message;
+    }
 }

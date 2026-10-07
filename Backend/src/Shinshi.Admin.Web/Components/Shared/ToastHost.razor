@@ -1,0 +1,43 @@
+@implements IDisposable
+@inject ToastService Toasts
+<div class="toast-region" aria-live="polite" aria-atomic="false">
+    @foreach (ToastItem toast in Toasts.Snapshot())
+    {
+        <div class="@("toast " + CssFor(toast.Kind))" role="@(toast.Kind == EToastKind.Error ? "alert" : "status")" @key="toast.Id">
+            <Icon Name="@IconFor(toast.Kind)" />
+            <div class="toast-body">@toast.Text</div>
+            <button type="button" class="ghost icon-only small" aria-label="알림 닫기" @onclick="() => Toasts.Dismiss(toast.Id)"><Icon Name="x" /></button>
+        </div>
+    }
+</div>
+@code
+{
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override void OnInitialized()
+    {
+        Toasts.Changed += OnChanged;
+    }
+
+    private void OnChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static string CssFor(EToastKind kind) => kind switch
+    {
+        EToastKind.Success => "success", EToastKind.Error => "error", _ => "info"
+    };
+
+    private static string IconFor(EToastKind kind) => kind switch
+    {
+        EToastKind.Success => "check-circle", EToastKind.Error => "x-circle", _ => "info"
+    };
+
+    public void Dispose()
+    {
+        Toasts.Changed -= OnChanged;
+    }
+}

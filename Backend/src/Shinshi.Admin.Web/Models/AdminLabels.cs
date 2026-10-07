@@ -119,6 +119,29 @@ namespace Shinshi.Admin.Web.Models
                 || (key.Contains("accessToken", StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary> 서비스 기능 키의 한국어 이름 </summary>
+        public static string Feature(string feature) => feature switch
+        {
+            "auction" => "경매", "crafting" => "제작", "enhance" => "강화", "inherit" => "계승", "gathering" => "채집",
+            "boss_entry" => "보스 입장", "inbox_claim" => "우편 수령", "dungeon_entry" => "던전 입장",
+            "talisman" => "부적", "training" => "정기 수련", _ => feature
+        };
+
+        public static string NoticeStatus(string status) => status switch
+        {
+            "Active" => "노출 중", "Scheduled" => "예정", "Ended" => "종료", _ => status
+        };
+
+        public static string NoticeSeverity(int severity) => severity switch
+        {
+            0 => "안내", 1 => "경고", 2 => "긴급", _ => "알 수 없음"
+        };
+
+        public static string NoticeTarget(string target) => target switch
+        {
+            "Both" => "런처·게임", "Launcher" => "런처", "Game" => "게임", _ => target
+        };
+
         public static string Role(int role) => role switch
         {
             0 => "Viewer · 조회", 1 => "Operator · 운영", 2 => "Admin · 관리자", 3 => "Owner · 소유자", _ => "알 수 없음"
@@ -144,14 +167,7 @@ namespace Shinshi.Admin.Web.Models
             }
             if ((key.EndsWith("UnixMs", StringComparison.Ordinal)) && (long.TryParse(value.ToString(), out long unixMs)))
             {
-                try
-                {
-                    return DateTimeOffset.FromUnixTimeMilliseconds(unixMs).ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture);
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    return value.ToString();
-                }
+                return AdminTime.FormatKstSeconds(unixMs);
             }
             return value.ToString();
         }

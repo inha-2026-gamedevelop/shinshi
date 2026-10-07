@@ -201,7 +201,7 @@
 |---|---|---|
 | 어드민 API | 기존 ASP.NET Core API에 `/admin/v1` 경로와 별도 인증 스킴 | 별도 서비스는 트랜잭션·원장 코드를 중복시킴. **구현됨(U25)**: `Backend/src/Shinshi.Api/Admin/`, 별도 미들웨어 `AdminAuthenticationMiddleware`, DTO는 Unity 공유 계약이 아닌 `Backend/src/Shinshi.Contracts/Admin/` |
 | 명령줄 도구 | `Backend/src/Shinshi.AdminCli`가 어드민 API만 호출 | 체험판의 유일한 운영 도구. 사용법은 [Shinshi.AdminCli README](../../Backend/src/Shinshi.AdminCli/README.md) |
-| 어드민 화면 | **구현됨(2026-10-07)**: Blazor Interactive Server `Backend/src/Shinshi.Admin.Web/`가 어드민 API를 호출한다. 대시보드·계정·초대·지급·서비스 상태·공지·로그·장애 복구·운영자 관리 화면 | React 등은 화면 자유도가 크지만 팀 언어가 C#이라 학습·유지 비용이 큼 |
+| 어드민 화면 | **구현됨(2026-10-07)**: Blazor Interactive Server `Backend/src/Shinshi.Admin.Web/`가 어드민 API를 호출한다. 대시보드·캐릭터(이름 검색과 한 화면 프로필: 수련·장비 강화·부적·재화·최근 출정, `GET /admin/v1/characters/{id}`)·초대·지급·서비스 상태·공지·로그·장애 복구·운영자 관리 화면. 계정을 받는 입력은 캐릭터 이름도 받고, 날짜는 한국 시간 달력 입력, 비운 칸은 표시된 기본값으로 보낸다. 게임에 레벨 값이 없어 프로필은 수련 합계·최고 강화를 대신 보이고, 전투 능력치는 직업 기본값 데이터가 백엔드에 없어 계산하지 않는다 | React 등은 화면 자유도가 크지만 팀 언어가 C#이라 학습·유지 비용이 큼 |
 | 로그 저장소 | 체험판은 API·서버의 구조화 JSON을 호스트 로그 수집 서비스로 보냄 | 전용 검색 스택은 규모가 커진 뒤 검토 |
 | 지표 | API·서버가 지표를 노출하고 관리형 모니터링으로 수집 | 배포 환경 결정(U19) 뒤 확정 |
 

@@ -1,0 +1,144 @@
+@inject AdminWebApiClient Api
+@inject NavigationManager Navigation
+@* 상단 전역 검색. 캐릭터 이름 또는 계정·캐릭터 ID로 찾고, 한 명이면 바로 이동한다 *@
+<div class="global-search" role="search">
+    <form @onsubmit="SearchAsync" @onsubmit:preventDefault="true">
+        <div class="search-wrap">
+            <span class="search-icon"><Icon Name="search" /></span>
+            <input type="search" aria-label="캐릭터 검색" placeholder="캐릭터 이름 또는 계정 ID" autocomplete="off" spellcheck="false"
+                   maxlength="64" value="@_text" @oninput="OnInput" @onkeydown="OnKeyDown" />
+        </div>
+        @* 입력 직후 Enter가 서버 상태 갱신보다 먼저 와도 제출되도록 비활성 조건을 두지 않는다. 빈 검색은 SearchAsync가 무시한다 *@
+        <LoadingButton Type="submit" Busy="_busy" IconName="search">검색</LoadingButton>
+    </form>
+    @if ((_open) && ((_matches.Count > 0) || (!string.IsNullOrEmpty(_error))))
+    {
+        <div class="search-pop" role="region" aria-label="검색 결과">
+            <div class="pop-head"><span>@(_matches.Count > 0 ? "검색 결과 " + _matches.Count + "건" : "검색 결과")</span>
+                <button type="button" class="ghost icon-only small" aria-label="검색 결과 닫기" @onclick="Close"><Icon Name="x" /></button></div>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <p class="err-text" role="alert"><Icon Name="x-circle" /> @_error</p>
+            }
+            <ul>
+            @foreach (ResolvedAccount match in _matches)
+            {
+                <li><a href="@TargetUrl(match)" @onclick="Close">
+                    <Icon Name="@(match.CharacterId != null ? "user" : "users")" />
+                    <strong>@(match.CharacterName ?? (match.CharacterId != null ? "캐릭터" : "계정"))</strong>
+                    <span class="muted">계정 @AccountLookup.ShortId(match.AccountId) · 캐릭터 @match.CharacterCount 개</span>
+                    @if (match.Online) { <span class="badge ok">접속 중</span> }
+                    @if (match.CharacterDeleted) { <span class="badge danger">삭제됨</span> }
+                </a></li>
+            }
+            </ul>
+        </div>
+    }
+</div>
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private AccountLookup? _lookup;
+    private string _text = string.Empty;
+    private string _error = string.Empty;
+    private List<ResolvedAccount> _matches = new();
+    private readonly LatestRequest _latest = new();
+    private bool _busy;
+    private bool _open;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override void OnInitialized()
+    {
+        _lookup = new AccountLookup(Api);
+    }
+
+    private void OnInput(ChangeEventArgs args)
+    {
+        _text = args.Value?.ToString() ?? string.Empty;
+        // 입력이 바뀌면 대기 중인 이전 검색의 응답은 버린다
+        _latest.Cancel();
+        _busy = false;
+    }
+
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Close();
+        }
+    }
+
+    private void Close()
+    {
+        _open = false;
+        // 닫은 뒤에 도착한 응답이 결과창을 다시 열거나 이동시키지 않게 한다
+        _latest.Cancel();
+        _busy = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_text))
+        {
+            return;
+        }
+        int generation = _latest.Begin();
+        _busy = true;
+        _error = string.Empty;
+        _matches = new List<ResolvedAccount>();
+        try
+        {
+            TargetToken token = TargetInput.Classify(_text);
+            // UUID는 계정 ID일 수도 캐릭터 ID일 수도 있어 API로 확인한다
+            AccountLookupResult result = token.Kind == ETargetKind.Uuid ? await _lookup!.SearchIdAsync(token.Text)
+                : await _lookup!.ResolveAsync(token.Text);
+            if (!_latest.IsCurrent(generation))
+            {
+                return;
+            }
+            if (!result.IsSuccess)
+            {
+                _error = result.Error;
+            }
+            else if (result.Matches.Count == 0)
+            {
+                _error = "'" + token.Text + "' 와 일치하는 캐릭터·계정이 없습니다.";
+            }
+            else if (result.Matches.Count == 1)
+            {
+                _text = string.Empty;
+                _open = false;
+                Navigation.NavigateTo(TargetUrl(result.Matches[0]));
+                return;
+            }
+            else
+            {
+                _matches = result.Matches.ToList();
+            }
+            _open = true;
+        }
+        finally
+        {
+            if (_latest.IsCurrent(generation))
+            {
+                _busy = false;
+            }
+        }
+    }
+
+    /// <summary> 캐릭터가 일치하면 캐릭터 프로필로, 계정 ID가 일치하면 계정 작업 화면으로 보낸다 </summary>
+    private static string TargetUrl(ResolvedAccount match)
+    {
+        if (match.CharacterId != null)
+        {
+            return "/characters/" + match.CharacterId;
+        }
+        return "/characters?account=" + match.AccountId;
+    }
+}

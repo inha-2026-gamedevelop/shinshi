@@ -57,7 +57,7 @@ namespace Shinshi.Backend.Tests.AdminWeb
                 new Dictionary<string, string?> { [AdminWebApiClient.API_BASE_KEY] = "http://fake-api.test" }).Build();
             AdminWebApiClient api = new(http, context, configuration);
             await using ServiceProvider services = new ServiceCollection().AddLogging().AddSingleton(context)
-                .AddSingleton(api).AddSingleton(capture).AddSingleton<NavigationManager>(navigation)
+                .AddSingleton(api).AddSingleton(capture).AddScoped<ToastService>().AddSingleton<NavigationManager>(navigation)
                 .AddSingleton<AntiforgeryStateProvider, AntiforgeryProbe>().BuildServiceProvider();
             await using HtmlRenderer renderer = new(services, services.GetRequiredService<ILoggerFactory>());
             RenderFragment body = builder =>

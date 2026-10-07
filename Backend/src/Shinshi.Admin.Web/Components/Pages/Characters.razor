@@ -1,0 +1,279 @@
+@page "/characters"
+@page "/accounts"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>캐릭터 · 신시 운영</PageTitle>
+<div class="page-head">
+    <div>
+        <h1><Icon Name="users" /> 캐릭터</h1>
+        <p>캐릭터 이름 또는 계정 ID로 대상을 찾고 상세 조회·토큰 폐기·개인 자산 조정을 합니다.</p>
+    </div>
+</div>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.VIEWER" />
+<section class="card" aria-labelledby="find-title">
+    <div class="card-head"><Icon Name="search" /><h2 id="find-title">대상 찾기</h2></div>
+    <AccountPicker @ref="_picker" Label="캐릭터 이름 또는 계정 ID" Value="@_target" ValueChanged="OnTargetChanged" OnResolved="OnResolved"
+                   IncludeDeleted="_includeDeleted" InviteMode="_inviteMode"
+                   Placeholder="@(_inviteMode ? "초대 코드" : "캐릭터 이름 또는 계정 ID")"
+                   Hint="이름은 정확히 일치해야 합니다. 계정 ID(UUID)는 그대로 사용합니다. Enter 또는 확인 버튼으로 확정하세요." />
+    <div class="row">
+        <label class="check"><input type="checkbox" checked="@_includeDeleted" disabled="@_inviteMode" @onchange="OnIncludeDeleted" /> 삭제된 캐릭터도 찾기</label>
+        <label class="check"><input type="checkbox" checked="@_inviteMode" @onchange="OnInviteMode" /> 초대 코드로 찾기</label>
+    </div>
+    @if (_account != null)
+    {
+        <div class="actions">
+            @if (_account.CharacterId != null)
+            {
+                <a class="btn" href="@ProfileUrl(_account)"><Icon Name="user" /> 캐릭터 프로필 열기</a>
+            }
+            <LoadingButton Variant="secondary" Busy="_busy" IconName="search" OnClick="DetailAsync">계정 상세 조회</LoadingButton>
+            <a class="btn secondary" href="@("/logs?account=" + _account.AccountId)"><Icon Name="scroll" /> 원장 보기</a>
+            <a class="btn secondary" href="@("/grants?target=" + _account.AccountId)"><Icon Name="gift" /> 지급</a>
+        </div>
+    }
+</section>
+<div class="grid stack-top">
+    <section class="card" aria-labelledby="detail-title">
+        <div class="card-head"><Icon Name="search" /><h2 id="detail-title">계정 상세 조회</h2></div>
+        <label class="field">조회 사유 <input @bind="_detailReason" maxlength="500" placeholder="@AdminDefaults.READ_REASON" /></label>
+        <p class="default-hint">비우면 "@AdminDefaults.READ_REASON"</p>
+        <p class="hint">계정 상세는 민감 조회로 감사 기록에 남습니다.</p>
+        <div class="actions"><LoadingButton Busy="_busy" IconName="search" OnClick="DetailAsync">상세 조회</LoadingButton></div>
+    </section>
+    <section class="card" aria-labelledby="kick-title">
+        <div class="card-head"><Icon Name="ban" /><h2 id="kick-title">로그인 토큰 폐기</h2></div>
+        <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+            <p class="muted">현재 게임 접속은 유지됩니다. 이미 발급된 로그인·접근·갱신 토큰을 폐기하며, 아이디와 비밀번호 로그인을 막지는 않습니다.</p>
+            <label class="check"><input type="checkbox" @bind="_revokeInvites" /> 미폐기 초대도 함께 폐기</label>
+            <label class="field">변경 사유 <input @bind="_kickReason" maxlength="500" placeholder="@AdminDefaults.KICK_REASON" /></label>
+            <p class="default-hint">비우면 "@AdminDefaults.KICK_REASON"</p>
+            <div class="actions"><LoadingButton Variant="danger" IconName="ban" OnClick="PrepareKickAsync">폐기 내용 확인</LoadingButton></div>
+        </fieldset>
+        <RoleRequirement MinimumRole="AdminContractCodes.Role.OPERATOR" />
+    </section>
+    <section class="card" aria-labelledby="adjust-title">
+        <div class="card-head"><Icon Name="coins" /><h2 id="adjust-title">개인 자산 조정</h2></div>
+        <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+            <div class="form-grid cols-2">
+                <label class="field">자산 종류
+                    <select @bind="_assetKind">
+                        <option value="Currency">엽전</option><option value="Tickets">입장권</option><option value="Essence">정기</option><option value="Shards">파편</option><option value="AccountItem">계정 아이템</option>
+                    </select></label>
+                <label class="field">증감량 (음수는 회수)
+                    <input type="number" @bind="_delta" min="-1000000" max="1000000" placeholder="예: 100 또는 -50" /></label>
+                @if (_assetKind == AdminGrantCodes.ASSET_ACCOUNT_ITEM)
+                {
+                    <label class="field wide">아이템 정의 ID <input @bind="_assetId" placeholder="아이템 정의 ID" /></label>
+                }
+                @if ((_assetKind == AdminGrantCodes.ASSET_ESSENCE) || (_assetKind == AdminGrantCodes.ASSET_SHARDS))
+                {
+                    <label class="field wide">대상 캐릭터 ID <input @bind="_characterId" placeholder="@(_account?.CharacterId != null ? "비우면 검색한 캐릭터" : "캐릭터 ID(UUID)")" /></label>
+                }
+            </div>
+            <label class="field mt">변경 사유 <input @bind="_adjustReason" maxlength="500" placeholder="@AdminDefaults.ADJUST_REASON" /></label>
+            <p class="default-hint">비우면 "@AdminDefaults.ADJUST_REASON"</p>
+            <p class="hint">회수는 예약분을 뺀 가용량까지 적용합니다. 결과의 부족분을 확인하세요.</p>
+            <div class="actions"><LoadingButton IconName="check" OnClick="PrepareAdjustmentAsync">조정 내용 확인</LoadingButton></div>
+        </fieldset>
+    </section>
+</div>
+@if (_detail != null)
+{
+    <section class="card result-card" aria-labelledby="chars-title">
+        <div class="card-head"><Icon Name="users" /><h2 id="chars-title">이 계정의 캐릭터</h2><IdChip Value="@(_detail["accountId"]?.ToString() ?? string.Empty)" Label="계정 ID" /></div>
+        @if ((_detail["characters"] as JArray)?.Count > 0)
+        {
+            <div class="char-cards">
+            @foreach (JToken character in (JArray)_detail["characters"]!)
+            {
+                int classId = character["classId"]?.Value<int>() ?? -1;
+                <a class="char-card" href="@("/characters/" + character["characterId"])">
+                    <ClassEmblem ClassId="classId" />
+                    <span><strong>@AdminClassCatalog.Name(classId)</strong><br /><span class="muted">정기 @character["essence"] · 파편 @character["shards"]</span><br /><span class="mono muted">@AccountLookup.ShortId(character["characterId"]?.ToString() ?? string.Empty)</span></span>
+                </a>
+            }
+            </div>
+        }
+        else
+        {
+            <p class="muted">캐릭터가 없습니다.</p>
+        }
+    </section>
+}
+<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" Defaults="_writeDefaults" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
+<ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private AccountPicker? _picker;
+    private ResolvedAccount? _account;
+    private string _target = string.Empty;
+    private bool _includeDeleted;
+    private bool _inviteMode;
+    private string _detailReason = string.Empty;
+    private string _kickReason = string.Empty;
+    private bool _revokeInvites = true;
+    private string _assetKind = AdminGrantCodes.ASSET_CURRENCY;
+    private string _assetId = string.Empty;
+    private string _characterId = string.Empty;
+    private long _delta;
+    private string _adjustReason = string.Empty;
+    private JToken? _detail;
+    private readonly QueryParameterTracker _accountQuery = new();
+
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [SupplyParameterFromQuery(Name = "account")] public string? AccountParameter { get; set; }
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override void OnParametersSet()
+    {
+        // 다른 화면의 계정 링크로 들어오면 그 계정을 대상으로 채운다
+        if (_accountQuery.TryTake(AccountParameter, out string account))
+        {
+            _target = account;
+        }
+    }
+
+    private void OnTargetChanged(string value)
+    {
+        _target = value;
+    }
+
+    private void OnResolved(ResolvedAccount? account)
+    {
+        _account = account;
+        _detail = null;
+        _data = null;
+        // 대상이 바뀌면 진행 중이던 이전 대상의 상세 조회 응답은 버린다
+        InvalidateRead();
+    }
+
+    private void OnIncludeDeleted(ChangeEventArgs args)
+    {
+        _includeDeleted = args.Value is true;
+    }
+
+    private void OnInviteMode(ChangeEventArgs args)
+    {
+        _inviteMode = args.Value is true;
+    }
+
+    private static string ProfileUrl(ResolvedAccount account) => "/characters/" + account.CharacterId;
+
+    private async Task<ResolvedAccount?> RequireAccountAsync()
+    {
+        ResolvedAccount? account = _picker == null ? null : await _picker.EnsureAsync();
+        if (account == null)
+        {
+            _error = "먼저 위에서 대상 캐릭터 또는 계정을 확인하세요.";
+        }
+        return account;
+    }
+
+    private async Task DetailAsync()
+    {
+        _error = string.Empty;
+        ResolvedAccount? account = await RequireAccountAsync();
+        if (account == null)
+        {
+            return;
+        }
+        string? path = null;
+        Validate(() => path = Query(string.Format(AdminApiRoutes.ACCOUNT_FORMAT, account.AccountId),
+            ("reason", AdminDefaults.Reason(_detailReason, AdminDefaults.READ_REASON, out _))));
+        if (path != null)
+        {
+            await ReadAsync(path);
+        }
+    }
+
+    protected override void OnReadResponse(JToken? value)
+    {
+        _detail = (value?["characters"] is JArray) ? value : null;
+    }
+
+    private async Task PrepareKickAsync()
+    {
+        _error = string.Empty;
+        ResolvedAccount? account = await RequireAccountAsync();
+        if (account == null)
+        {
+            return;
+        }
+        Validate(() =>
+        {
+            WriteDefaults defaults = new();
+            string reason = defaults.Reason(_kickReason, AdminDefaults.KICK_REASON);
+            bool revoke = _revokeInvites;
+            Prepare("로그인 토큰 폐기", Describe(account), reason, AdminContractCodes.Role.OPERATOR,
+                string.Format(AdminApiRoutes.ACCOUNT_KICK_FORMAT, account.AccountId),
+                operation => new AdminAccountKickRequest(operation, reason, revoke), defaults: defaults);
+        });
+    }
+
+    private async Task PrepareAdjustmentAsync()
+    {
+        _error = string.Empty;
+        ResolvedAccount? account = await RequireAccountAsync();
+        if (account == null)
+        {
+            return;
+        }
+        Validate(() =>
+        {
+            WriteDefaults defaults = new();
+            string reason = defaults.Reason(_adjustReason, AdminDefaults.ADJUST_REASON);
+            string kind = _assetKind;
+            string? asset = kind == AdminGrantCodes.ASSET_ACCOUNT_ITEM ? Optional(_assetId) : null;
+            if ((kind == AdminGrantCodes.ASSET_ACCOUNT_ITEM) && (asset == null))
+            {
+                throw new ArgumentException("아이템 정의 ID를 입력하세요.");
+            }
+            string? binding = kind == AdminGrantCodes.ASSET_ACCOUNT_ITEM ? "Account" : null;
+            string? character = null;
+            if ((kind == AdminGrantCodes.ASSET_ESSENCE) || (kind == AdminGrantCodes.ASSET_SHARDS))
+            {
+                if ((string.IsNullOrWhiteSpace(_characterId)) && (account.CharacterId != null))
+                {
+                    character = account.CharacterId;
+                    defaults.Note("대상 캐릭터: 검색한 캐릭터 " + (account.CharacterName ?? account.CharacterId) + " (기본값)");
+                }
+                else
+                {
+                    character = Id(_characterId, "캐릭터 ID");
+                }
+            }
+            long delta = _delta;
+            if ((delta == 0) || (delta < -AdminGrantCodes.MAX_ADJUSTMENT) || (delta > AdminGrantCodes.MAX_ADJUSTMENT))
+            {
+                throw new ArgumentException("증감량은 0을 제외한 -1,000,000~1,000,000입니다.");
+            }
+            Prepare("개인 자산 조정", Describe(account), reason, AdminContractCodes.Role.OPERATOR,
+                string.Format(AdminApiRoutes.ACCOUNT_ADJUSTMENTS_FORMAT, account.AccountId),
+                operation => new AdminAdjustmentRequest(operation, reason, kind, asset!, binding!, character!, delta),
+                defaults: defaults);
+        });
+    }
+
+    private static string Describe(ResolvedAccount account)
+    {
+        return (string.IsNullOrEmpty(account.CharacterName) ? "계정" : account.CharacterName + " 의 계정") + " " + account.AccountId;
+    }
+
+    protected override void ClearSensitiveState()
+    {
+        _detail = null;
+        _target = string.Empty;
+        _account = null;
+    }
+}

@@ -28,6 +28,8 @@ namespace Shinshi.Admin.Web.Models
         private string _writePath = string.Empty;
         private int _writeRole;
         private bool _disposed;
+        private readonly LatestRequest _readLatest = new();
+        private bool _readInFlight;
 
         protected JToken? _data;
         protected JToken? _preparedBody;
@@ -38,6 +40,7 @@ namespace Shinshi.Admin.Web.Models
         protected bool _busy;
         protected bool _writeAttempted;
         protected bool _retryAllowed;
+        protected WriteDefaults? _writeDefaults;
 
         /****************************************
         *              Properties
@@ -67,12 +70,15 @@ namespace Shinshi.Admin.Web.Models
                 return;
             }
             _busy = true;
+            _readInFlight = true;
             _error = string.Empty;
             _message = string.Empty;
+            int generation = _readLatest.Begin();
             try
             {
                 AdminWebApiResult<JToken> result = await Api.GetAsync<JToken>(path);
-                if ((_disposed) || (!Context.IsAuthenticated))
+                // 조회 대상이 바뀌어 InvalidateRead가 불렸다면 이 응답은 버린다
+                if ((!_readLatest.IsCurrent(generation)) || (_disposed) || (!Context.IsAuthenticated))
                 {
                     return;
                 }
@@ -85,8 +91,34 @@ namespace Shinshi.Admin.Web.Models
             }
             finally
             {
+                if (_readLatest.IsCurrent(generation))
+                {
+                    _busy = false;
+                    _readInFlight = false;
+                }
+            }
+        }
+
+        /// <summary> 진행 중인 ReadAsync의 응답을 버리고 다시 조회할 수 있게 한다. 대상이 바뀌었을 때 부른다 </summary>
+        protected void InvalidateRead()
+        {
+            if (_readInFlight)
+            {
+                _readLatest.Cancel();
+                _readInFlight = false;
                 _busy = false;
             }
+        }
+
+        /// <summary> 화면 상태(_data·_message·_error)를 건드리지 않는 조회. 목록 새로 고침처럼 쓰기 결과와 겹치는 읽기에 쓴다 </summary>
+        protected async Task<AdminWebApiResult<JToken>?> FetchAsync(string path)
+        {
+            if ((_disposed) || (!Context.IsAuthenticated))
+            {
+                return null;
+            }
+            AdminWebApiResult<JToken> result = await Api.GetAsync<JToken>(path);
+            return ((_disposed) || (!Context.IsAuthenticated)) ? null : result;
         }
 
         protected async Task SearchAsync(object body)
@@ -115,7 +147,7 @@ namespace Shinshi.Admin.Web.Models
         }
 
         protected void Prepare(string title, string target, string reason, int role, string path,
-            Func<string, object> bodyFactory, HttpMethod? method = null)
+            Func<string, object> bodyFactory, HttpMethod? method = null, WriteDefaults? defaults = null)
         {
             if (FormLocked)
             {
@@ -133,6 +165,7 @@ namespace Shinshi.Admin.Web.Models
             _writeRole = role;
             _writeTitle = title;
             _writeTarget = target;
+            _writeDefaults = defaults;
             _preparedBody = JObject.FromObject(bodyFactory("확인 후 생성"));
             _writeAttempted = false;
             _retryAllowed = false;
@@ -211,6 +244,7 @@ namespace Shinshi.Admin.Web.Models
             _preparedBody = null;
             _writeAttempted = false;
             _retryAllowed = false;
+            _writeDefaults = null;
         }
 
         protected virtual string WriteFailureMessage(AdminWebApiResult<JToken> result) => result.ErrorMessage;
@@ -255,20 +289,6 @@ namespace Shinshi.Admin.Web.Models
         }
 
         protected static string Number(long value) => value.ToString(CultureInfo.InvariantCulture);
-
-        protected static long? UnixTime(string value, string label)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return null;
-            }
-            if (!DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
-                out DateTimeOffset time))
-            {
-                throw new ArgumentException(label + " 시각 형식을 확인하세요.");
-            }
-            return time.ToUnixTimeMilliseconds();
-        }
 
         private void ClearForExpiredSession()
         {

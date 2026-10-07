@@ -1,0 +1,18 @@
+@* 한국 시간으로 보여 주고 title에 UTC를 둔다 *@
+@if (UnixMs.HasValue)
+{
+    <time datetime="@AdminTime.FormatIso(UnixMs.Value)" title="@AdminTime.FormatUtc(UnixMs.Value)" class="mono">@(Seconds ? AdminTime.FormatKstSeconds(UnixMs.Value) : AdminTime.FormatKst(UnixMs.Value))</time>
+}
+else
+{
+    <span class="muted">없음</span>
+}
+@code
+{
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public long? UnixMs { get; set; }
+    [Parameter] public bool Seconds { get; set; }
+}
