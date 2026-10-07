@@ -52,13 +52,13 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 | `PopupCanvas` | Dev_ToastMessage | 필요 시 | 거절·초대·기술 거절(`NetworkFeedbackBinder`) |
 | `TradeCanvas`, `DungeonProgressCanvas` | Dev_Trade, Dev_DungeonProcess | 닫힌 채 배치 | 없음(개인거래·웨이브 진행 메시지 미구현) |
 
-단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_ChaSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
+단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_CharSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
 
 아직 없는 서버 값: 아이템 표시 이름(번역 표 없음, 정의 ID 표시), 캐릭터 레벨, 퀘스트, 출정 준비의 레벨·전투력, 결과 창의 보상 내역, 던전 웨이브 진행도. 검증은 EditMode 테스트와 오프라인 Play Mode 단축키 확인까지이며 실제 서버 접속 흐름은 미검증이다.
 
 ## 캐릭터 선택 개발 씬 아이콘 (2026-10-07)
 
-`Assets/00.Scenes/Dev_HUD/Dev_ChaSelect.unity`에 직업 마크 3개와 바랜 은색 기능 아이콘 5개를 연결했다. 직업 마크를 가리던 `Lv.` 예시 글자는 비활성화했으며, 하단 아이콘과 문구의 중심·화면 가장자리 여백을 맞췄다.
+`Assets/00.Scenes/Dev_HUD/Dev_CharSelect.unity`에 직업 마크 3개와 바랜 은색 기능 아이콘 5개를 연결했다. 직업 마크를 가리던 `Lv.` 예시 글자는 비활성화했으며, 하단 아이콘과 문구의 중심·화면 가장자리 여백을 맞췄다.
 
 | 용도 | 에셋 경로 |
 |---|---|

@@ -255,7 +255,7 @@ CA-07(`docs/design/references/concept-art/village-layout-02.webp`)에서 기존 
 
 | 에셋 | 제작·출처 | 보관·사용 조건 | 검증 |
 |---|---|---|---|
-| 무사·도술사·신령사 직업 마크 3개 | built-in image_gen 생성, 2026-10-07 | `Assets/01.Scripts/05.Art/UI/Icons/Textures/Class/T_Icon_Class_{Warrior,Sorcerer,Summoner}.png`, UI 단일 Sprite | Dev_ChaSelect 표시·마크 위치에서 세 슬롯 선택 확인 |
+| 무사·도술사·신령사 직업 마크 3개 | built-in image_gen 생성, 2026-10-07 | `Assets/01.Scripts/05.Art/UI/Icons/Textures/Class/T_Icon_Class_{Warrior,Sorcerer,Summoner}.png`, UI 단일 Sprite | Dev_CharSelect 표시·마크 위치에서 세 슬롯 선택 확인 |
 | 뒤로·삭제·설정·종료·생성 아이콘 5개 | built-in image_gen 생성, 2026-10-07 | `Assets/01.Scripts/05.Art/UI/CharSelect/Textures/T_CharSelect_Icon_{Back,Delete,Settings,Exit,Create}_Silver.png`, 알파·밉맵 없음·최대 256px | Unity 임포트·Play Mode 표시 확인 |
 
 출력의 별도 라이선스 검토와 생성 비용 수치는 확인하지 않았다. 세부 사용 위치·실행 검증 한계는 [개발 씬 아이콘 기록](../unity/DEV_HUD_PREVIEW.md#캐릭터-선택-개발-씬-아이콘-2026-10-07)을 따른다.
