@@ -1,0 +1,20 @@
+[
+  {
+    "targets": [
+      "host.docker.internal:9310"
+    ],
+    "labels": {
+      "role": "town",
+      "slot": "town"
+    }
+  },
+  {
+    "targets": [
+      "host.docker.internal:9320"
+    ],
+    "labels": {
+      "role": "dungeon",
+      "slot": "dungeon-1"
+    }
+  }
+]

@@ -1,0 +1,697 @@
+{
+  "uid": "shinshi-servers",
+  "title": "Shinshi 게임 서버",
+  "tags": [
+    "shinshi"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "role",
+        "label": "역할",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "shinshi-prometheus"
+        },
+        "query": {
+          "query": "label_values(up{job=\"shinshi-gameserver\"}, role)",
+          "refId": "role"
+        },
+        "definition": "label_values(up{job=\"shinshi-gameserver\"}, role)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "instance",
+        "label": "대상",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "shinshi-prometheus"
+        },
+        "query": {
+          "query": "label_values(up{job=\"shinshi-gameserver\", role=~\"$role\"}, instance)",
+          "refId": "instance"
+        },
+        "definition": "label_values(up{job=\"shinshi-gameserver\", role=~\"$role\"}, instance)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "상태",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "응답 중인 서버",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "sum(up{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"})",
+          "legendFormat": "up"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "응답 없는 서버",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "count(up{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"} == 0) or vector(0)",
+          "legendFormat": "down"
+        }
+      ],
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "접속 수 합계",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "sum(server_active_connections{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"})",
+          "legendFormat": "connections"
+        }
+      ],
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "가동 시간",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "time() - process_start_time_seconds{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 12,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "서버 틱",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "틱 시간 p50 / p95 / p99",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum by (instance, le) (rate(server_tick_duration_ms_bucket{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])))",
+          "legendFormat": "p50 {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (instance, le) (rate(server_tick_duration_ms_bucket{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])))",
+          "legendFormat": "p95 {{instance}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (instance, le) (rate(server_tick_duration_ms_bucket{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])))",
+          "legendFormat": "p99 {{instance}}"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "max(server_tick_budget_ms{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"})",
+          "legendFormat": "예산"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 16,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "예산 초과 틱 (초당)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(server_tick_overrun_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 16,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "네트워크",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "송신 대역폭",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(network_send_bytes_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "수신 대역폭",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(network_receive_bytes_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 8,
+        "y": 15,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "접속 1개당 송신",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(network_send_bytes_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m]) / clamp_min(server_active_connections{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}, 1)",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 16,
+        "y": 15,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "메시지 종류별 송신 바이트 상위 10 (METRICS_MESSAGE_DETAIL=1)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "topk(10, sum by (message) (rate(network_message_send_bytes_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])))",
+          "legendFormat": "{{message}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "메시지 종류별 송신 개수 상위 10 (METRICS_MESSAGE_DETAIL=1)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "topk(10, sum by (message) (rate(network_message_send_count_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])))",
+          "legendFormat": "{{message}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "접속 수",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "server_active_connections{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "스폰된 네트워크 개체",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "server_spawned_objects{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 17,
+      "type": "row",
+      "title": "메모리와 저장",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "상주 메모리(RSS)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "process_resident_memory_bytes{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "관리 힙",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "process_managed_heap_bytes{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 8,
+        "y": 40,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "저장 큐 (던전)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "storage_queue_depth{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "대기 {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "storage_queue_oldest_age_seconds{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "가장 오래된 초 {{instance}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(storage_retry_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[5m])",
+          "legendFormat": "재시도/초 {{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 16,
+        "y": 40,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    }
+  ]
+}

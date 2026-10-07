@@ -438,7 +438,16 @@ namespace Shinshi.Network
             }
 
             driver.Bind(presence, shutdown);
-            if (ServerJsonLogHandler.IsInstalled)
+
+            // 지표 설정이 틀려도 게임 서버는 연다. 수집기의 대상 끊김(up == 0) 경보로 드러난다
+            if (!ServerMetricsSettings.TryParse(Environment.GetCommandLineArgs(), Environment.GetEnvironmentVariable,
+                out ServerMetricsSettings metricsSettings, out string metricsError))
+            {
+                Debug.LogError($"[ServerBoot] 지표 내보내기 설정 오류로 끈다 - {metricsError}");
+                metricsSettings = default;
+            }
+
+            if ((ServerJsonLogHandler.IsInstalled) || (metricsSettings.Enabled))
             {
                 var metrics = new ServerMetricsSampler(dungeonHost);
                 if (CombatServerInstaller.Runtime != null)
@@ -447,10 +456,39 @@ namespace Shinshi.Network
                 }
 
                 driver.BindMetrics(metrics);
+                if (metricsSettings.Enabled)
+                {
+                    StartMetricsExporter(driver, metrics, metricsSettings, config);
+                }
             }
 
             Presence = presence;
             Shutdown = shutdown;
+        }
+
+        private static void StartMetricsExporter(ServerProcessDriver driver, ServerMetricsSampler metrics,
+            in ServerMetricsSettings settings, in ServerLaunchConfig config)
+        {
+            var traffic = new ServerTrafficCounter();
+            if (!traffic.Attach(Transport.active, settings.MessageDetail))
+            {
+                Debug.LogWarning("[ServerBoot] 활성 트랜스포트가 없어 송수신 바이트 지표를 빼고 내보낸다");
+                traffic = null;
+            }
+
+            var exporter = new ServerMetricsExporter(metrics, traffic, config.RoleName, BuildId, config.ContentVersion,
+                config.InstanceId);
+            if (!exporter.Start(settings.BindAddress, settings.Port, out string error))
+            {
+                Debug.LogError($"[ServerBoot] 지표 내보내기를 열지 못했다 - {error}");
+                exporter.Dispose();
+                traffic?.Dispose();
+                return;
+            }
+
+            driver.BindExporter(exporter, traffic);
+            Debug.Log($"[ServerBoot] 지표 내보내기 시작 - http://{settings.BindAddress}:{exporter.BoundPort}/metrics, " +
+                $"messageDetail={settings.MessageDetail}");
         }
 
         // 던전 프로세스는 출정 하나만 맡으므로 그 출정 번호를 모든 줄에 싣는다. 시작 전과 마을은 null이다

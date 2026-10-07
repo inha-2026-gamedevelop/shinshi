@@ -316,6 +316,7 @@ namespace Shinshi.Network
             {
                 if (IsAuthenticated())
                 {
+                    LobbyFlow.ActiveCharacterId = characterId;
                     _status.text = "마을로 이동하는 중이다.";
                     Debug.Log("[CharacterSelect] 마을 서버 인증 성공");
                     yield break;

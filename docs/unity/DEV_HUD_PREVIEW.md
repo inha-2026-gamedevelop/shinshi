@@ -37,3 +37,21 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 글자는 텍스처에 포함되지 않으며 TMP로 배치했다. Nanum Gothic 원본과 OFL 라이선스는 Fonts의 NanumGothic 폴더에 있다. TMP 파생 폰트에 예시 글리프를 넣었고 전역 fallback은 바꾸지 않았다. 파티는 Korean Bold를 사용한다. 에셋과 하위 폴더의 `.meta`를 함께 보관한다.
 
 2026-10-03 Play Mode 화면에서 투명 배경·4명 파티 표시·한글과 숫자의 미잘림을 확인했다. 퀘스트 버튼의 EventSystem 포인터 이벤트로 접기·펼치기를 확인했고 `SetCount(2, 3)` 결과도 확인했다. 실제 임무·파티 데이터 연결, 다인 접속과 Player 빌드는 미검증이다.
+
+## 릴리즈 씬 적용 (2026-10-07)
+
+`Assets/00.Scenes/Release/ShinshiTown.unity`에 이 씬의 `HUDCanvas`와 `UiCursor`, UI 담당 시험 씬의 창을 옮겼다. 시험 씬 원본은 바꾸지 않았다.
+
+| 릴리즈 루트 | 원본 씬 | 열기 | 서버 값 |
+|---|---|---|---|
+| `HUDCanvas` | Dev_ShinshiVillageQuarterView | 항상 | HP·MP·기술(`LocalPlayerHudBinder`), 파티(`PartyHudBinder` → `HudPartyView`) |
+| `InventoryCanvas` | Dev_ItemSlot | `I`, HUD 가방 버튼 | 성장·생활 스냅숏(`InventoryBinder`) |
+| `AuctionCanvas` | Dev_Auction | `Y` | 없음(유저 경매장 서버 미구현) |
+| `SortiePrepCanvas` | Dev_SortiePrep | `P`, 파티 방 입장 | 파티 방(`SortiePrepBinder`) |
+| `ResultCanvas` | Dev_Result | 출정 종료 | 출정 상태·정산 단계(`SortieResultBinder`) |
+| `PopupCanvas` | Dev_ToastMessage | 필요 시 | 거절·초대·기술 거절(`NetworkFeedbackBinder`) |
+| `TradeCanvas`, `DungeonProgressCanvas` | Dev_Trade, Dev_DungeonProcess | 닫힌 채 배치 | 없음(개인거래·웨이브 진행 메시지 미구현) |
+
+단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_ChaSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
+
+아직 없는 서버 값: 아이템 표시 이름(번역 표 없음, 정의 ID 표시), 캐릭터 레벨, 퀘스트, 출정 준비의 레벨·전투력, 결과 창의 보상 내역, 던전 웨이브 진행도. 검증은 EditMode 테스트와 오프라인 Play Mode 단축키 확인까지이며 실제 서버 접속 흐름은 미검증이다.

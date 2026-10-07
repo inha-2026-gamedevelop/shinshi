@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1d9f377db3ef4d46bd7feb1b215afa7, type: 3}
+  m_Name: HotkeyConfig
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Systems.HotkeyConfigSO
+  _bindings:
+  - _action: 1
+    _key: 105
+    _label: "\uC778\uBCA4\uD1A0\uB9AC"
+  - _action: 2
+    _key: 121
+    _label: "\uACBD\uB9E4\uC7A5"
+  - _action: 3
+    _key: 27
+    _label: "\uCC3D \uB2EB\uAE30"
+  - _action: 4
+    _key: 112
+    _label: "\uCD9C\uC815 \uC900\uBE44"

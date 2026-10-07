@@ -22,6 +22,9 @@
 | `CONTENT_VERSION` | `-content-version` | 해당 서버 빌드와 배포 콘텐츠의 버전 |
 | `DUNGEON_POOL_SIZE` | `-dungeon-pool-size` | Linux 프로세스 CPU·RSS·혼합 파티 부하로 결정한 양의 정수 N |
 | `BOSS_ID` | `-boss-id` | 선택, 던전만 읽는다. 보스전에서 여는 보스 정의 ID이며 없으면 `boss_wolbaek`. 보스 카탈로그에 없으면 시작하지 않는다. 유닛 실행 줄에는 넣지 않았으므로 환경파일에 둔다 |
+| `METRICS_PORT` | `-metrics-port` | 선택. Prometheus `/metrics` TCP 포트, 없거나 `0`이면 끈다. 마을 `9310`, 던전 슬롯 i는 `9320 + (i - 1)`. 공개 보안 그룹에 열지 않는다. 세부는 [모니터링](../monitoring/README.md) |
+| `METRICS_BIND_ADDRESS` | `-metrics-bind` | 선택. 기본 `127.0.0.1`, Prometheus가 다른 호스트에 있을 때만 사설 IP. 호스트 이름은 받지 않는다 |
+| `METRICS_MESSAGE_DETAIL` | `-metrics-message-detail` | 선택. `1`이면 Mirror 메시지 종류별 대역폭을 센다. 보낼 때마다 할당이 생겨 프로파일링할 때만 켠다 |
 
 `INSTANCE_ID`는 GUID(`uuidgen`으로 슬롯마다 한 번 만들어 고정)다. `CONTENT_VERSION`은 영문·숫자로 시작하는 1~128자이며, 이후 영문·숫자·`.`·`_`·`-`·`+`만 쓴다. 파서는 HTTP도 허용하지만 운영에서는 HTTPS를 사용한다. `CONTENT_VERSION`은 접속 인증의 `protocolVersion`·`contentHash`·허용 `buildId`를 대신하지 않는다.
 

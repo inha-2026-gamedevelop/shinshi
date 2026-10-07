@@ -50,6 +50,9 @@ namespace Shinshi.Network
         // 이 동안 끊김은 캐릭터 선택 복귀로 다루지 않는다
         public bool IsTransferringServer { get; set; } = false;
 
+        // 클라이언트가 지금 접속 대상으로 지정한 서버 역할. 던전은 아직 전용 씬이 없어 화면이 이 값으로 마을과 구분한다
+        public EServerRole ServerRole => _serverRole;
+
 #if !UNITY_SERVER
         // 마을 -> 던전 이동이 끝났다. None이면 던전 인증 성공, 아니면 거절 사유다. 출정 화면(UI 담당)이 안내에 쓴다
         public event Action<ERejectReason> SortieDepartFinished;
