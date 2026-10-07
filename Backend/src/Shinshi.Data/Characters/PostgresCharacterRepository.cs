@@ -170,6 +170,18 @@ namespace Shinshi.Data.Characters
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.RESERVATION_CONFLICT, revision.Value);
             }
+
+            // 계정 행을 잠근 뒤 보므로 등록과 겹치지 않는다. 보관 중인 장비는 이 캐릭터 행에 있어 삭제하면 반환할 곳이 없다
+            // (수량형 등록은 계정 귀속이라 캐릭터 삭제와 무관하다)
+            bool hasListing = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                """
+                SELECT EXISTS (SELECT 1 FROM market_listings
+                    WHERE seller_character_id = @CharacterId AND asset_kind = 'Equipment' AND state = 'Active');
+                """, new { CharacterId = characterId }, transaction, cancellationToken: cancellationToken));
+            if (hasListing)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_HAS_MARKET_LISTING, revision.Value);
+            }
             if (revision.Value != expectedRevision)
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.STALE_REVISION, revision.Value);

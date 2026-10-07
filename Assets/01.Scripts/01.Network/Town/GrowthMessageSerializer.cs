@@ -95,6 +95,7 @@ namespace Shinshi.Network
                 writer.WriteBool(entry.Equipped);
                 writer.WriteBool(entry.Locked);
                 writer.WriteBool(entry.Bound);
+                writer.WriteBool(entry.InMarket);
             }
 
             TownPityEntry[] pity = value.Pity;
@@ -144,8 +145,9 @@ namespace Shinshi.Network
                 bool   equipped     = reader.ReadBool();
                 bool   locked       = reader.ReadBool();
                 bool   bound        = reader.ReadBool();
+                bool   inMarket     = reader.ReadBool();
                 equipment[i] = new TownEquipmentEntry(itemId, definitionId, slot, grade, isTraining, origin, enhancement,
-                    equipped, locked, bound);
+                    equipped, locked, bound, inMarket);
             }
 
             int pityCount = PartyMessageSerializer.ReadCount(reader, MAX_SNAPSHOT_ENTRIES);

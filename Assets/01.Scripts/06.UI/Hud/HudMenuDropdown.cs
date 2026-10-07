@@ -1,9 +1,13 @@
+// System
+using System;
+
 // Unity
 using UnityEngine;
 using UnityEngine.UI;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Systems;
 
 namespace Shinshi.UI
 {
@@ -27,6 +31,12 @@ namespace Shinshi.UI
         [Header("펼치는 동안 숨길 HUD")]
         [SerializeField] private GameObject[] _hideWhileOpen = null;
 
+        // Esc를 창 닫기와 나눠 쓴다. 나중에 등록한 처리기가 먼저 받으므로 창이 열려 있으면 창이 먼저 닫히고, 열린 창이 없을 때만 메뉴가 받는다
+        [Header("단축키")]
+        [SerializeField] private HotkeyRouter _router = null;
+
+        private Func<bool> _onEscape = null;
+
         // 숨기기 전에 켜져 있던 것만 닫을 때 되살린다
         private bool[] _wasActive = null;
 
@@ -49,6 +59,12 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
+            _onEscape = OnEscape;
+            if (_router != null)
+            {
+                _router.Register(EHotkeyAction.CloseWindow, _onEscape);
+            }
+
             _menuButton.onClick.AddListener(Toggle);
             foreach (Button item in _panel.GetComponentsInChildren<Button>(true))
             {
@@ -58,6 +74,11 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
+            if (_router != null)
+            {
+                _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);
+            }
+
             _menuButton.onClick.RemoveListener(Toggle);
             foreach (Button item in _panel.GetComponentsInChildren<Button>(true))
             {
@@ -67,7 +88,8 @@ namespace Shinshi.UI
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
+            // 라우터가 있으면 Esc는 라우터의 창 닫기 처리기로 받는다. 없을 때만 직접 본다
+            if ((_router == null) && (Input.GetKeyDown(KeyCode.Escape)))
             {
                 Toggle();
                 return;
@@ -88,6 +110,12 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        private bool OnEscape()
+        {
+            Toggle();
+            return true;
+        }
 
         private void Toggle()
         {

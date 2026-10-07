@@ -85,7 +85,7 @@ namespace Shinshi.Backend.Admin
             return new ServiceStateResponse(Maintenance, launcher?.Title ?? FallbackNotice, _disabledFeatures.ToArray(),
                 _allowedBuildIds.ToArray(), now.ToUnixTimeMilliseconds(), visible.Select(notice => new ServiceNotice(
                     notice.NoticeId.ToString("D"), notice.Title, notice.Body, notice.Target, notice.Severity,
-                    notice.StartsAt.ToUnixTimeMilliseconds(), notice.EndsAt.ToUnixTimeMilliseconds())).ToArray());
+                    notice.StartsAt.ToUnixTimeMilliseconds(), notice.EndsAt.ToUnixTimeMilliseconds(), notice.Category)).ToArray());
         }
     }
 }

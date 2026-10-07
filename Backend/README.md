@@ -76,6 +76,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
 GRANT SELECT, INSERT ON TABLE public.initial_grants, public.account_unlocks, public.growth_receipts TO shinshi_runtime;
 -- 0012: 30일 보상 회수함 줄. 수령은 남은 수량만 줄이고 행을 지우지 않는다. 새 열(캐릭터 삭제, 출정 계약, 이탈)은 기존 테이블 권한을 따른다
 GRANT SELECT, INSERT, UPDATE ON TABLE public.reward_inbox_lines TO shinshi_runtime;
+-- 0015: 유저 경매장 등록, 1:1 거래 실행. 성사 기록은 추가 전용이다. equipment_instances의 새 열(escrow_kind, escrow_ref)은 기존 테이블 권한을 따른다
+GRANT SELECT, INSERT, UPDATE ON TABLE public.market_listings, public.player_trade_executions TO shinshi_runtime;
+GRANT SELECT, INSERT ON TABLE public.market_trades TO shinshi_runtime;
 -- 0008: 운영자 계정, 어드민 세션, 지급, 우편함, 공지. service_state는 0008이 넣은 단일 행만 갱신한다(INSERT 없음)
 GRANT SELECT, INSERT, UPDATE ON TABLE
     public.admin_users, public.admin_sessions, public.admin_grants, public.reward_inbox, public.service_notices
@@ -336,7 +339,8 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 |---|---|---|
 | `POST /v1/accounts` `{loginId, password, email}` | 공개 | 201 `AccountSignupResponse`(토큰 없음). 400 `INVALID_LOGIN_ID(1202)`·`WEAK_PASSWORD(1204)`·`INVALID_EMAIL(1203)`, 409 `LOGIN_ID_TAKEN(1200)`, 429 `RATE_LIMITED`, 503 `MAINTENANCE` |
 | `GET /v1/accounts/login-id-availability?loginId=` | 공개 | 200 `AvailabilityResponse`(형식 오류 `INVALID_LOGIN_ID`, 사용 중 `LOGIN_ID_TAKEN`). IP별 1분 30회 |
-| `POST /v1/auth/exchange` `{loginId, password, build?}` | 공개 | 200 `AuthExchangeResponse`. 초대·갱신·아이디 비밀번호 중 정확히 하나(아니면 400). `build`가 없으면 점검만, 있으면 기존 빌드 검사(403). 실패 401 `INVALID_CREDENTIALS(1205)`, 잠금 429 `ACCOUNT_LOCKED(1206)`, 늦춤·해시 대기 429 `RATE_LIMITED` |
+| `POST /v1/auth/exchange` `{loginId, password, build?}` | 공개 | 200 `AuthExchangeResponse`. 초대·갱신·아이디 비밀번호 중 정확히 하나(아니면 400). `build`가 없으면 점검만, 있으면 기존 빌드 검사(403). 갱신 토큰 회전도 같다(`build` 선택, 런처는 보내지 않는다). 초대 교환은 `build` 필수. 게임 서버 입장은 빌드를 검사하는 게임 세션 토큰만 받는다. 실패 401 `INVALID_CREDENTIALS(1205)`, 잠금 429 `ACCOUNT_LOCKED(1206)`, 늦춤·해시 대기 429 `RATE_LIMITED` |
+| `POST /v1/auth/logout` `{refreshToken}` | 공개(Bearer 없음) | 204(멱등). 진짜 갱신 토큰이면 만료·폐기 여부와 무관하게 묶음과 하위 게임 세션을 폐기하고, 못 찾아도 204라 존재 여부를 알리지 않는다. 빈 토큰 400, 태그가 틀린 토큰은 인증 실패 한도에 세고 204. 이미 붙은 접속 임대는 끊지 않는다(런처는 게임 실행 중 로그아웃을 막음) |
 | `GET /v1/accounts/me` | 접근 토큰 또는 게임 하위 세션 | 200 `AccountProfileResponse`. 초대 코드 계정은 `loginId`, `email`이 null |
 | `POST /v1/accounts/credentials` | 접근 토큰만(게임 하위 세션은 403 `SESSION_MISMATCH`) | 204. 일반 변경은 `{currentPassword, newPassword}`이고 현재 비밀번호 재확인이 필수다(틀리면 403 `INVALID_CREDENTIALS`, 로그인과 같은 실패 제한). `currentPassword` 없는 변경은 초대(복구 코드) 교환으로 시작한 로그인 묶음에서 시작 30분 안에만 되며(아니면 403 `INVALID_CREDENTIALS`), 아이디가 없는 계정은 `{loginId, email, newPassword}`, 있는 계정은 `{newPassword, email?}`다. 성공하면 같은 트랜잭션에서 호출한 묶음을 포함한 계정의 모든 로그인 묶음, 게임 하위 세션, 입장 토큰, 남은 초대를 폐기하므로 새 자격으로 다시 로그인한다. 409 `LOGIN_ID_TAKEN`·`INVALID_CREDENTIALS`(동시 변경) |
 | `GET /v1/characters/name-availability?name=` | 플레이어 | 200 `AvailabilityResponse`(`INVALID_CHARACTER_NAME(1002)`, `CHARACTER_NAME_TAKEN(1001)`). IP별 1분 30회 |
@@ -396,6 +400,35 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 **원자성.** 잠금 순서는 계정(`FOR UPDATE`) -> 계정 임대(`FOR SHARE`) -> 지갑(`INSERT ... ON CONFLICT DO NOTHING` 뒤 `FOR UPDATE`) -> 아이템(정의 ID 순 `FOR UPDATE`)이다. 차감, 지급, 원장(`Gathering(19)` source_type `gathering` source_id `zoneId:nodeId`, `Craft(13)` source_type `potion_craft`), 작업 결과가 한 트랜잭션이다. 거절은 효과 전체를 되돌리고 거절 결과만 저장한다. 기능 차단 거절은 저장하지 않는다.
 
 **물약 되돌림.** `GameSessionCodes.EventKind.POTION_USE_REVERTED = 7`, `SessionEventEntry.revertsEventId`. 원 `POTION_USED`가 같은 세션, 같은 참가자에 저장돼 있거나 같은 배치 앞쪽에 있고 아직 되돌리지 않았으면 `reservations.consumed - 1`, `account_items.quantity + 1, reserved + 1`, 원장 `PotionReturn(21)`이다. 아니면 배치 전체가 `SESSION_MISMATCH`다. 0013의 `ux_session_events_potion_revert`(`payload->>'revertsEventId'`, `event_kind = 7`)가 중복 저장의 마지막 방어선이다. 보스전은 참가자별 `POTION_USED - POTION_USE_REVERTED`가 9(단일 원본 `GameSessionCodes.Potion.BOSS_USE_LIMIT`, 던전 `PotionServer`도 같은 상수, `SessionConfig.asset _bossPotionUseLimit`가 다르면 SO 검증 오류)를 넘으면 배치 전체를 `POTION_LIMIT(202)`로 거절한다. 0013 down은 7 행을 지울 수 없어 직전 범위 CHECK를 `NOT VALID`로 건다. 0013은 새 테이블이 없어 런타임 권한 추가가 없다.
+
+## 공지 분류 (0014)
+
+`service_notices.category`(`Notice`/`Update`/`Event`/`Maintenance`, 기본 `Notice`, CHECK 제약)가 추가됐다. 공개 `GET /v1/service-state`의 `notices[]`와 어드민 공지 작성(API·CLI·웹)이 `category`를 싣고, 값이 없으면 `Notice`다. 런처 소식 탭이 분류를 쓰고 `Update`만 패치노트 탭에 나온다. down은 열만 지운다.
+
+## 유저 경매장과 1:1 거래 (0015)
+
+마을 서버 전용 경로다(서버 임대 bearer와 `X-Shinshi-Instance-Id`, 마을 역할). 일반 로그인 토큰, 던전 서버, 어드민 토큰은 효과 전에 401, 403이다. 경로 상수는 `MarketRoutes`, `TradeRoutes`(공유 계약)이고 ASP.NET 템플릿은 `MarketRouteTemplates`, `TradeRouteTemplates`이며 `MarketHttpTests`가 둘의 일치를 묶는다.
+
+| 경로 | 본문 -> 응답 | 비고 |
+|---|---|---|
+| `POST /v1/town/market/search` | `MarketSearchRequest` -> `MarketSearchResponse` | 읽기 전용. 정의 ID 묶음(최저가, 총 수량, 등록 수, 최근 체결가), 페이지 20 |
+| `POST /v1/town/market/listings/query` | `MarketListingsQueryRequest` -> `MarketListingsResponse` | 읽기 전용. 개당 가격, 등록 순. 보는 사람이 없어 `mine`은 항상 false |
+| `POST /v1/town/characters/{id}/market/listings` | `MarketListRequest` -> `MarketOperationResponse` | 기능 키 `market`. 등록 ID = 영수증 ID |
+| `POST .../market/purchases` | `MarketBuyRequest` -> `MarketOperationResponse` | 기능 키 `market`. 성사 ID = 영수증 ID, gross, fee, net |
+| `POST .../market/listings/{listingId}/cancel` | `MarketCancelRequest` -> `MarketOperationResponse` | 기능 키를 보지 않는다(차단 중에도 회수) |
+| `GET .../market/mine`, `GET .../market/history?page=` | -> `MarketMineResponse`, `MarketHistoryResponse` | 읽기 전용. 캐릭터가 없으면 404, 접속 임대가 이 마을에 없으면 409 `WRONG_LOCATION` |
+| `POST .../market/ack` | `MarketAckRequest` -> `MarketOperationResponse` | 경제 효과 없음. `seen_at`만 갱신하는 단순 UPDATE라 operations 행을 만들지 않고, 같은 요청을 다시 보내도 이미 표시된 행은 건너뛰어 결과가 같다 |
+| `POST /v1/town/trades/prepare` | `TradePrepareRequest` -> `TradeExecutionResponse` | 기능 키 `trade`. 경제 효과 없이 동결된 제안만 `Prepared`로 남긴다 |
+| `POST /v1/town/trades/{executionId}/commit` | `TradeCommitRequest` -> `TradeExecutionResponse` | 기능 키 `trade`. `operationId`는 prepare가 저장한 `commitOperationId`와 같아야 하고, 다르면 409 `INVALID_TARGET`(저장 안 함) |
+| `POST /v1/town/trades/{executionId}/resolve` | 본문 없음 -> `TradeExecutionResponse` | 막지 않는다. 상태 `Prepared`는 작업 상태 `Pending`(성공 아님)으로 돌려준다 |
+
+**경매장 쓰기.** 모든 쓰기는 캐릭터 계정 actor(`Player`)의 멱등 작업이고 요청 해시에는 경로의 `characterId`와 업무 값만 들어간다. 잠금 순서는 등록 행 -> 계정(uuid 오름차순, 판매자와 구매자를 한 번에) -> 캐릭터 -> 지갑 -> `account_items` -> 장비(`item_id`) -> 원장이다. 만료 판정은 등록 행을 잠근 뒤 별도 문장의 `clock_timestamp()`로 한다(잠금 대기 중에 지난 만료를 `now()`로는 놓친다). 등록은 약초, 미등록 부적 카드(수량형)와 `grade 0, +0, 미착용, 비귀속, 비잠금, 비수련용, 제작품` 장비만 받고(물약은 거절 `MarketNotTradable`) 계정 잠금 뒤 활성 10건을 센다. 수량형은 판매자 `account_items`에서 빼 등록 행으로 옮기고(원장 `MarketEscrow`, 가용량 `quantity - reserved`), 장비는 `escrow_kind = 'Market'` 표시만 한다(판매자 캐릭터의 보관 칸 100을 계속 차지, 착용 중이거나 이미 보관 중이면 거절). 구매는 한 등록의 수량 지정이며 구매자 엽전은 가용량(`currency - currency_reserved`)에서 정확히 빼고(`MarketPurchase`), 수수료 `MarketFeeRules.Fee(gross)`를 소각한 순수령을 판매자 지갑에 즉시 넣고(`MarketProceeds`, 0이면 줄 없음), 구매자 지급(`MarketReceive` 또는 장비 소유 이전 + 이력 `MarketSold`), 등록 수량 감소와 `market_trades`(추가 전용) 한 줄이 같은 트랜잭션이다. 보관 상한(수량형) 또는 100칸(장비)을 넘으면 `INVENTORY_FULL`로 전체를 거절한다. 취소와 만료는 미판매분을 반환한다(수량형은 상한까지 `MarketReturn`, 넘친 몫은 회수함 `MarketReturn` 출처 한 행(30일, 부분 수령), 장비는 보관 표시만 풀고 이력 `MarketReturned`). 만료 유지 작업(`MarketMaintenanceService`, 1분)은 만료된 활성 등록을 50건씩 `ORDER BY expires_at`로 읽고 등록마다 별도 트랜잭션으로 `FOR UPDATE SKIP LOCKED` 뒤 처리한다. actor는 `System`, operationId는 등록 ID에서 만든 이름 기반 Guid라 여러 API 인스턴스가 겹쳐도 반환은 한 번이다(다른 작업이 잡고 있는 행은 저장 없이 되돌려 다음 주기로 미룬다). 활성 장비 등록이 있는 캐릭터는 삭제를 `CharacterHasMarketListing`으로 거절하고, 성장 쓰기(강화, 계승, 착용, 해제, 잠금, 분해)는 보관 중인 장비를 `MarketEscrowed`로 거절하며 성장 스냅샷의 `EquipmentView.inMarket`이 보관 표시를 알린다.
+
+**1:1 거래.** 멱등 actor는 호출한 마을 서버 인스턴스다(`Server`). prepare(operationId = executionId)는 두 계정과 두 캐릭터를 잠근 뒤(실행 행은 잠그지 않아 commit의 실행 행 -> 계정 순서와 거꾸로 맞물리지 않는다) 두 계정의 접속 임대가 호출 마을에 있는지, 어느 쪽이든 `Prepared` 실행이 없는지(`account_a`, `account_b` 모두) 보고 동결한 제안(`offer_a`, `offer_b` JSON)과 `commit_operation_id`를 저장한다. 그 전에 두 계정의 `Prepared` 행을 지연 보정해 이미 끝난 실행을 Busy로 세지 않는다. commit(operationId = `commitOperationId`)은 실행 행 `FOR UPDATE` -> 만료(`clock_timestamp() > prepared_at + 120초` -> `TradeExpired`) -> 계정 -> 캐릭터 -> 지갑 -> `account_items` -> 장비 순서로 잠그고 보유량, 엽전 가용량, 장비 소유와 거래 가능 조건, 받는 쪽 공간(수량형은 같은 자산을 주고받는 순증감 기준 상한, 장비는 캐릭터 100칸 순증감)을 확인한 뒤 차감을 모두 끝내고 지급한다. 원장은 `TradeGive`(-) / `TradeReceive`(+)이고 `entry_key`에 방향 `a2b` / `b2a`가 들어가며 0인 줄은 만들지 않는다. 장비는 소유 계정과 캐릭터를 바꾸고 이력 `Traded`를 남긴다. 거절은 실행기가 효과를 모두 되돌린 뒤 거절만 저장하고, 실행 행의 종결(`Rejected`, 만료는 `Abandoned`)은 그 뒤 별도 짧은 트랜잭션이 `WHERE state = 'Prepared'` 조건부로 적는다. 이 갱신이 빠져도 resolve, prepare, 방치 정리가 `operations`의 commit 결과(`actor = town_instance_id`, `operation = commit_operation_id`)를 읽어 같은 종결을 만든다(지연 보정). 방치 정리(30초)는 만료된 `Prepared` 행에 resolve와 같은 처리를 한다(`SKIP LOCKED`).
+
+**마이그레이션 0015.** `market_listings`(활성 장비 유일 `ux_market_listings_item_active`, 검색 `ix_market_listings_search(definition_id, unit_price, created_at)`, 분류, 판매자, 만료, 장비 캐릭터 인덱스), `market_trades`(추가 전용 트리거, 구매자, 판매자, 정의 ID 시각 인덱스), `player_trade_executions`(계정별 `Prepared` 부분 유일 인덱스 2개, 방치 정리 인덱스), `equipment_instances.escrow_kind/escrow_ref`, `reward_inbox` 출처 `MarketReturn`(CHECK는 `NOT VALID` 뒤 `VALIDATE`, 회수함 출처 유일 인덱스 재생성). down은 경매장, 거래 테이블과 `MarketReturn` 회수함 행을 지우므로 운영 DB에서 실행하지 않는다. 런타임 권한은 위 GRANT 예시를 따른다.
+
+**남은 일.** 장비와 부적의 직업(`class_id`)은 성장 콘텐츠에 직업 정보가 없어 NULL로 저장한다(검색의 `classId` 필터는 아직 결과가 없다). 검색, 조회, 기록의 `page`는 계약이 페이지 번호라 `OFFSET`을 쓰지만 묶음 수(정의 ID 수), 한 정의의 활성 등록 수, 30일 기록으로 닫혀 있고 페이지는 1000으로 자른다. outbox는 소비자가 없어 쓰지 않는다(판매 결과는 `mine`, `history`로 읽는다). 테스트는 `tests/Shinshi.Backend.Tests/Market/`에 있다. 구현 실행이 보고한 결과는 백엔드 1388건 통과(실제 PostgreSQL 18, 2026-10-08, 병렬 2)이며 이 문서 작성 중 다시 실행하지 않았다. 마을 서버·클라이언트와 붙인 M2 실행은 미검증이다.
 
 ## API 관측 (U19)
 

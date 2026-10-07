@@ -137,6 +137,101 @@ namespace Shinshi.Backend.Tests.Auth
                 (await fixture.Repository.RotateGameSessionAsync(child.Token, _duration)).ReasonCode);
         }
 
+        [PostgresFact]
+        public async Task RevokeFamilyByRefreshTokenAsync_CurrentToken_RevokesFamilyAndChildrenAndIsIdempotent()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            IssuedAuthToken child = await IssueAsync(fixture);
+
+            Assert.True(await fixture.Repository.RevokeFamilyByRefreshTokenAsync(fixture.Login.RefreshToken));
+            Assert.True(await fixture.Repository.RevokeFamilyByRefreshTokenAsync(fixture.Login.RefreshToken));
+
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_REVOKED,
+                (await fixture.Repository.RotateRefreshAsync(fixture.Login.RefreshToken)).ReasonCode);
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_REVOKED,
+                (await fixture.Repository.ValidateAccessAsync(fixture.Login.AccessToken)).ReasonCode);
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_REVOKED,
+                (await fixture.Repository.ValidateGameSessionAsync(child.Token)).ReasonCode);
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            Assert.Equal(0L, await connection.QuerySingleAsync<long>(
+                """
+                SELECT (SELECT COUNT(*) FROM auth_access_tokens WHERE revoked_at IS NULL)
+                    +(SELECT COUNT(*) FROM auth_refresh_tokens WHERE revoked_at IS NULL)
+                    +(SELECT COUNT(*) FROM auth_game_sessions WHERE revoked_at IS NULL)
+                    +(SELECT COUNT(*) FROM auth_token_families WHERE revoked_at IS NULL);
+                """));
+        }
+
+        [PostgresFact]
+        public async Task RevokeFamilyByRefreshTokenAsync_ExpiredToken_StillRevokesFamily()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            IssuedAuthToken child = await IssueAsync(fixture);
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync(
+                "UPDATE auth_refresh_tokens SET expires_at=clock_timestamp()-INTERVAL '1 second';");
+
+            Assert.True(await fixture.Repository.RevokeFamilyByRefreshTokenAsync(fixture.Login.RefreshToken));
+
+            Assert.Equal(1L, await connection.QuerySingleAsync<long>(
+                "SELECT COUNT(*) FROM auth_token_families WHERE revoked_at IS NOT NULL;"));
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_REVOKED,
+                (await fixture.Repository.ValidateGameSessionAsync(child.Token)).ReasonCode);
+        }
+
+        [PostgresFact]
+        public async Task RevokeFamilyByRefreshTokenAsync_RotatedOldToken_RevokesSuccessorFamily()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse successor = (await fixture.Repository.RotateRefreshAsync(
+                fixture.Login.RefreshToken)).Response!;
+
+            Assert.True(await fixture.Repository.RevokeFamilyByRefreshTokenAsync(fixture.Login.RefreshToken));
+
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_REVOKED,
+                (await fixture.Repository.RotateRefreshAsync(successor.RefreshToken)).ReasonCode);
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_REVOKED,
+                (await fixture.Repository.ValidateAccessAsync(successor.AccessToken)).ReasonCode);
+        }
+
+        [PostgresFact]
+        public async Task RevokeFamilyByRefreshTokenAsync_UnknownOrOtherKindToken_ChangesNothing()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthTokenHasher hasher = new AuthTokenHasher(AuthTokenHasherTests.CreateOptions());
+
+            Assert.False(await fixture.Repository.RevokeFamilyByRefreshTokenAsync(hasher.CreateToken()));
+            Assert.False(await fixture.Repository.RevokeFamilyByRefreshTokenAsync("not-a-token"));
+            Assert.False(await fixture.Repository.RevokeFamilyByRefreshTokenAsync(fixture.Login.AccessToken));
+
+            Assert.True((await fixture.Repository.ValidateAccessAsync(fixture.Login.AccessToken)).IsSuccess);
+            Assert.True((await fixture.Repository.RotateRefreshAsync(fixture.Login.RefreshToken)).IsSuccess);
+        }
+
+        [PostgresFact]
+        public async Task RevokeFamilyByRefreshTokenAsync_ConcurrentWithRotation_NeverLeavesLiveSuccessor()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+
+            Task<bool> logout = fixture.Repository.RevokeFamilyByRefreshTokenAsync(fixture.Login.RefreshToken);
+            Task<AuthExchangeOutcome> rotate = fixture.Repository.RotateRefreshAsync(fixture.Login.RefreshToken);
+            await Task.WhenAll(logout, rotate);
+
+            Assert.True(logout.Result);
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            Assert.Equal(0L, await connection.QuerySingleAsync<long>(
+                "SELECT COUNT(*) FROM auth_refresh_tokens WHERE revoked_at IS NULL;"));
+            if (rotate.Result.IsSuccess)
+            {
+                Assert.False((await fixture.Repository.ValidateAccessAsync(rotate.Result.Response!.AccessToken)).IsSuccess);
+            }
+        }
+
         private static async Task<IssuedAuthToken> IssueAsync(Fixture fixture)
         {
             AuthValidationOutcome<IssuedAuthToken> issued = await fixture.Repository.IssueGameSessionForPlayerAsync(

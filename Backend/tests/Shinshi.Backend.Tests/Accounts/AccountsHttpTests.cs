@@ -588,7 +588,7 @@ namespace Shinshi.Backend.Tests.Accounts
         }
 
         [Fact]
-        public async Task Exchange_InviteOrRefreshWithoutBuild_IsStillVersionMismatch()
+        public async Task Exchange_InviteWithoutBuild_IsVersionMismatchAndRefreshReachesRepository()
         {
             using AccountApiHost host = new AccountApiHost();
             using HttpClient client = host.CreateClient();
@@ -601,7 +601,10 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(HttpStatusCode.Forbidden, invite.StatusCode);
             Assert.Equal(ContractCodes.RejectReason.VERSION_MISMATCH,
                 AccountApiHost.Read<ApiRejection>(await invite.Content.ReadAsStringAsync()).ReasonCode);
-            Assert.Equal(HttpStatusCode.Forbidden, refresh.StatusCode);
+            // 갱신은 build가 없어도 빌드 검사를 건너뛰고 저장소까지 가서 모르는 토큰으로 거절된다
+            Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_REVOKED,
+                AccountApiHost.Read<ApiRejection>(await refresh.Content.ReadAsStringAsync()).ReasonCode);
         }
 
         [Fact]

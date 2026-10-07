@@ -20,6 +20,7 @@ namespace Shinshi.Contracts.Admin
         [DataMember(Name = "body")]            private string _body;
         [DataMember(Name = "target")]          private string _target;
         [DataMember(Name = "severity")]        private int    _severity;
+        [DataMember(Name = "category")]        private string _category;
         [DataMember(Name = "startsAtUnixMs")]  private long   _startsAtUnixMs;
         [DataMember(Name = "endsAtUnixMs")]    private long   _endsAtUnixMs;
         [DataMember(Name = "createdBy")]       private string _createdBy;
@@ -39,6 +40,7 @@ namespace Shinshi.Contracts.Admin
         public string Body            => _body;
         public string Target          => _target;
         public int    Severity        => _severity;
+        public string Category        => string.IsNullOrEmpty(_category) ? ServiceNotice.CATEGORY_NOTICE : _category;
         public long   StartsAtUnixMs  => _startsAtUnixMs;
         public long   EndsAtUnixMs    => _endsAtUnixMs;
         public string CreatedBy       => _createdBy;
@@ -53,7 +55,7 @@ namespace Shinshi.Contracts.Admin
 
         public AdminNoticeSummary(string noticeId, string title, string body, string target, int severity,
             long startsAtUnixMs, long endsAtUnixMs, string createdBy, long createdAtUnixMs, long? endedAtUnixMs,
-            string endedBy, string status)
+            string endedBy, string status, string category = null)
         {
             _noticeId        = noticeId;
             _title           = title;
@@ -67,6 +69,7 @@ namespace Shinshi.Contracts.Admin
             _endedAtUnixMs   = endedAtUnixMs;
             _endedBy         = endedBy;
             _status          = status;
+            _category        = category;
         }
 
         private AdminNoticeSummary() { }

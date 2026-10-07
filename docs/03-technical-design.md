@@ -32,7 +32,7 @@ PC 쿼터뷰 협동 액션 RPG의 신시 공유 마을, 1~4인 일반전·보스
 
 ## 2. 실제 기반과 도입할 기술
 
-2026-10-03 작업 트리 기준이다. `00.Common/Contracts`의 엔진 비의존 DTO, `01.Network`의 Mirror 연결·클라이언트 인증, `02.Combat`의 상태·규칙·표현, `98.Servers`의 서버 인증·백엔드 게이트웨이·던전 세션·전투 처리·마을 서버(`05.Town`: 파티·성장·생활 중계)가 구현되어 있다. 백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Contracts,Shinshi.Data}`, 테스트는 `Backend/tests/Shinshi.Backend.Tests`이며 SQL 마이그레이션 0001~0013이 있다. `deploy/`의 API 컨테이너·systemd 파일, `Assets/Editor/Build/ShinshiBuild.cs`의 빌드 진입점, `tools/`의 M2 실행 보조는 존재하지만 서버 빌드·배포 실행은 미검증이다. AI·보스·성장·생활·경매 등 후속 파트 전체를 구현 완료로 확대하지 않는다.
+2026-10-03 작업 트리 기준이다. `00.Common/Contracts`의 엔진 비의존 DTO, `01.Network`의 Mirror 연결·클라이언트 인증, `02.Combat`의 상태·규칙·표현, `98.Servers`의 서버 인증·백엔드 게이트웨이·던전 세션·전투 처리·마을 서버(`05.Town`: 파티·성장·생활·경매장·1:1 거래 중계)가 구현되어 있다. 백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Contracts,Shinshi.Data}`, 테스트는 `Backend/tests/Shinshi.Backend.Tests`이며 SQL 마이그레이션 0001~0015가 있다(0014 공지 분류, 0015 유저 경매장·1:1 거래). `deploy/`의 API 컨테이너·systemd 파일, `Assets/Editor/Build/ShinshiBuild.cs`의 빌드 진입점, `tools/`의 M2 실행 보조는 존재하지만 서버 빌드·배포 실행은 미검증이다. AI·보스·성장·생활·경매 등 후속 파트 전체를 구현 완료로 확대하지 않는다.
 
 | 항목 | 현재/계획 | 기준·선택 이유 |
 |---|---|---|
@@ -142,7 +142,8 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 | 경로 | 인증·호출자 | 현재 목적 |
 |---|---|---|
-| `POST /v1/auth/exchange` | 초대 코드 또는 갱신 토큰(본문), 접근 Bearer 불필요 | 초대 교환 또는 갱신 토큰 회전, 빌드 호환 검사 |
+| `POST /v1/auth/exchange` | 초대 코드 또는 갱신 토큰(본문), 접근 Bearer 불필요 | 초대 교환 또는 갱신 토큰 회전. 초대 교환은 `build` 필수, **갱신 토큰 회전은 `build`가 선택**이다(없으면 점검만 검사, 있으면 빌드 호환 검사). 게임 서버 입장은 빌드를 검사하는 게임 세션 토큰만 받으므로 빌드 없이 받은 접근 토큰으로는 입장할 수 없다 |
+| `POST /v1/auth/logout` | 공개(Bearer 없음), 본문 `{ refreshToken }` | 갱신 토큰으로 묶음과 하위 게임 세션을 폐기한다. 만료·폐기된 토큰이어도 진짜 토큰이면 폐기하고, 못 찾아도 204(멱등, 존재 여부 비노출). 태그가 틀린 토큰은 인증 실패 한도에 센다. 이미 붙은 접속 임대는 끊지 않는다 |
 | `GET /v1/service-state` | 공개, Bearer 불필요 | 점검·공지(`notice`, 노출 중 공지 목록 `notices`)·차단 기능·허용 buildId. 런타임 DB 연결이 있으면 `service_state`·`service_notices`(5초 캐시), 없으면 설정 값. DB readiness를 보장하지 않음 |
 | `GET /v1/inbox`, `POST /v1/inbox/claim` | 플레이어 접근 Bearer | 운영자 지급 우편 목록(곧 만료되는 순서 최대 100개)·수령. 수령은 operationId 원자 작업(원장 `InboxClaim`). 기능 키 `inbox_claim`이 꺼지면 저장된 결과가 없는 요청은 `FEATURE_DISABLED(1100)`. 계정별 1분 수령 30회·목록 60회 초과는 429 `RATE_LIMITED` |
 | `/admin/v1/*` | 어드민 접근 Bearer(게임·서버 토큰은 401), 허용 네트워크 밖 404 | 운영자 로그인·역할, 계정 조회·강제 종료, 초대, 지급·조정, 서비스 상태·공지, 로그 조회, 세션 복구. 경로·역할 표는 [Backend README](../Backend/README.md) 0008 절 |
@@ -152,6 +153,8 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | `/v1/town/characters/{characterId}/...`(성장 조회, 부적 등록·강화·조합·분해, 수련·재분배, 장비 제작·계승·강화·착용·해제·잠금·분해), `POST /v1/town/accounts/{accountId}/progress/intro` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 마을 서버가 중계하는 성장 원자 작업과 신시 안내 완료 기록. 확률은 마을 서버가 뽑은 roll을 받는다. 경로·규칙은 [Backend README](../Backend/README.md) 0011 절 |
 | `POST /v1/town/life/snapshot`, `/gathers`, `/potion-crafts` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 행동력·재고 조회, 채집 완료, 물약 제작. [Backend README](../Backend/README.md) 0013 절 |
 | `POST /v1/game-sessions/readiness` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 출정 준비 확인(읽기 전용, 작업 행·원장 없음) |
+| `POST /v1/town/market/search`, `/v1/town/market/listings/query`, `POST /v1/town/characters/{characterId}/market/listings`, `/purchases`, `/listings/{listingId}/cancel`, `/ack`, `GET .../market/mine`, `.../market/history` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 유저 경매장 검색·품목별 등록 조회(읽기, 작업 행 없음), 등록·구매·취소·확인(쓰기는 operationId 원자 작업). 기능 키 `market`(취소·조회는 차단 중에도 허용). 경로 원본은 `Contracts/Market/MarketRoutes.cs`, 템플릿은 `Shinshi.Api/Market/MarketRouteTemplates.cs` |
+| `POST /v1/town/trades/prepare`, `/v1/town/trades/{executionId}/commit`, `/resolve` | 마을 서버 임대 Bearer + 인스턴스 헤더 | 1:1 거래의 제안 동결·확정·결과 불명 확정. 기능 키 `trade`. 경로 원본은 `Contracts/Trade/`, 템플릿은 `Shinshi.Api/Trade/TradeRouteTemplates.cs` |
 | `POST /v1/town/join-ticket` | 플레이어 접근 Bearer | 소유 캐릭터를 검증하고 API가 고른 살아 있는 마을의 60초 일회 토큰 발급 |
 | `POST /v1/game-sessions/{sessionId}/rejoin-ticket` | 플레이어 접근 Bearer | Running 출정의 Active 참가자 복귀 토큰. 게임 서버가 120초 재접속 유예를 별도 검증 |
 | `POST /v1/server-instances/lease` | 서비스 자격 Bearer + `X-Shinshi-Instance-Id` | instanceId·역할·bootId에 묶인 서버 임대 발급/갱신. 임대 없이 부르는 유일한 서버 경로 |
@@ -227,6 +230,14 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 | 물약 사용 | 출정 예약분 1 소비·사용 횟수·공용 쿨다운/회복 이벤트를 확정 영수증으로 기록 |
 | 경매 낙찰 | 최고 예약금 소비, 재료 지급, 자격자의 분배금 지급, 나머지 소각, 종료 상태 |
 | 정산 | 추가 정기 지급률, 보호 전리품, 미사용 물약 반환, 참가자/세션 종료·영수증 |
+| 경매장 등록 | 거래 가능 판정, 계정 활성 등록 10건 이하, 수량형 재고 차감 또는 장비 보관 표시, 등록 행(만료 DB 시각 +24시간), 원장 `MarketEscrow` |
+| 경매장 구매 | 등록 행 잠금 후 만료·가격·수량 재확인, 구매자 엽전 차감(`MarketPurchase`)·판매자 입금(`MarketProceeds`)·구매자 지급(`MarketReceive`) 또는 장비 소유 이전, 거래 기록 |
+| 경매장 취소·만료 | 미판매 수량 반환(원장 `MarketReturn`, 상한 초과분은 회수함) 또는 장비 보관 해제, 종료 상태. 만료는 유지 작업이 행마다 별도 트랜잭션·`SKIP LOCKED`로 처리 |
+| 1:1 거래 prepare | 형식·거래 가능 검사 뒤 동결 제안 `Prepared` 행 저장(경제 효과 없음) |
+| 1:1 거래 commit | 두 계정의 보유량·엽전·받는 쪽 공간 재확인, 품목·엽전 상호 이동(`TradeGive`/`TradeReceive`), 장비 소유 이전·이력, `Committed`. 준비 후 120초가 지나면 거절 |
+| 1:1 거래 resolve·정리 | 작업 결과가 있으면 그 결과로 종결, 없고 만료됐으면 `Abandoned`(경제 효과 없음) |
+
+경매장·거래 잠금 순서: 등록 행 → 계정(두 계정은 정렬해 한 번에) → 지갑 → 캐릭터 → 수량형 아이템 → 장비 행(`item_id` 정렬) → 원장. 같은 등록에 대한 구매·취소·만료는 등록 행 잠금이 직렬화하고, 만료 판정은 잠금을 얻은 뒤 `clock_timestamp()`로 한다.
 
 채집의 행동력 2 예약은 API 예약 행이 아니라 마을 서버 메모리의 계정별 선점 기록으로 둔다(위임 초기안). 행동력의 소비처가 채집뿐이고 계정 활성 세션이 하나이므로 쓰는 쪽이 하나다. 시작 때 마을 서버는 최근 계정 스냅샷으로 가용량을 확인하고 계정당 선점 1개를 강제한다. 완료 호출에서 API가 행 잠금 안에서 회복을 반영하고 가용 2 이상을 다시 검증해 차감·지급한다. 부족하면 `InsufficientAction`으로 거절하고 노드를 해제한다. 마을 프로세스가 소실되면 선점과 예약도 함께 사라지며 차감은 일어나지 않는다.
 
@@ -288,7 +299,9 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 경매 서버가 소실된 경우 API는 저장된 유효 입찰과 **영속 저장된 종료 이벤트의 접속 집합**으로 종료를 재개한다. 마지막 heartbeat의 과거 접속 상태를 종료 순간 상태로 대신 쓰지 않는다. 종료 이벤트가 없어 자격을 확정할 수 없다면 해당 경매를 `RecoveryPending`으로 두고 예약금 해제/품목 취소를 한 번 수행하며, 확인할 수 없는 분배금을 임의 발행하지 않는다. 이 경매 장애는 이미 성공한 보스 전투의 티켓 환급 사유로 확장하지 않는다.
 
-후속 유저 경매장은 정가 시장이며 같은 엽전 잔액을 쓴다. 판매 보관·수량·구매자 차감·판매자 지급·5% 올림 수수료를 API 트랜잭션으로 처리한다. 체험판에는 시장 화면/거래 API를 제공하지 않는다.
+유저 경매장은 정가 시장이며 같은 엽전 잔액을 쓴다. 체험판에 포함한다(2026-10-08 팀장 결정, 구현됨·실행 미검증). 마이그레이션 `0015_user_market_trade`의 `market_listings`(등록·잔여 수량·상태)·`market_trades`(추가 전용 거래 기록)와 장비 보관 표시(`escrow_kind/escrow_ref`)로, 등록 때 실물을 판매 보관하고 구매 때 구매자 차감·재고 감소·구매자 지급·판매자 즉시 입금·수수료(구매 한 건 총액 5% 올림)를 한 API 트랜잭션으로 처리한다. 만료·취소 반환 중 수량형 상한 초과분은 회수함 출처 `MarketReturn`으로 보낸다. 제작 물약은 초기 지원 물약과 재고가 한 행에 합쳐져 이번에는 거래 불가다(후속). 거래 규칙은 [체험판 경험 기본안 6장](design/experience-service.md)이 기준이다.
+
+1:1 거래의 세션(요청·편집·잠금·카운트다운·수락)은 마을 서버 메모리(`TownTradeDirector`)가 권위이고, 이동은 API가 두 단계로 확정한다. prepare가 동결한 제안을 `player_trade_executions`에 `Prepared`로 저장하고(경제 효과 없음, 한 계정에 `Prepared` 하나), commit이 보유량·거래 가능·엽전·받는 쪽 공간을 다시 확인해 한 트랜잭션으로 이동한다. 결과 불명이나 마을 서버 재시작은 resolve와 30초 간격 방치 정리가 확정한다(최악 종결 지연 약 150초). 양쪽이 같은 자산·엽전을 주고받으면 원장 키가 겹치므로 방향별 `entryScope`(`a2b`/`b2a`)를 쓰고 0 금액 줄은 만들지 않는다.
 
 ## 10. 보안·배포·관측
 
@@ -361,7 +374,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 |---|---|---|
 | 1 | Windows용 Editor와 Linux Dedicated Server 빌드 모듈 확인 | 같은 프로젝트로 클라이언트·헤드리스 서버 생성 가능 |
 | 2 | GameDB·Bootstrap·`ShinshiBuild` 진입점 존재, SO 설정 잔여와 실제 빌드 확인 | `town`/`dungeon` 역할과 콘텐츠 버전 보고 |
-| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0013 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
+| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0015 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
 | 4 | 개발용 서버 URL/포트/자격을 환경 설정에 주입 | 코드·문서·클라이언트에 실제 비밀값 없음 |
 | 5 | 마을 프로세스1·던전 프로세스1·클라이언트2부터 실행 | 로그인→입장→권위 이동→정산→재접속 |
 | 6 | 승인된 AWS 환경에 같은 서버 빌드 배포 | 외부 PC 접속·버전 거절·로그 추적·종료/복구 |

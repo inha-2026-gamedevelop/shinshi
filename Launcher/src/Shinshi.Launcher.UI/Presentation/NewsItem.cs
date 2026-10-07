@@ -1,41 +1,43 @@
+// System
+using System;
+
 namespace Shinshi.Launcher.Presentation
 {
-    /// <summary> 소식 카드 하나. 썸네일 색은 화면이 분류에 따라 고른다 </summary>
+    /// <summary> 소식 카드 하나. 서비스 공지 한 건을 화면용으로 옮긴 값이며 본문은 일반 텍스트다 </summary>
     public sealed class NewsItem
     {
         /****************************************
         *              Properties
         ****************************************/
 
-        public ENewsCategory Category     { get; }
-        public string        Title        { get; }
-        public string        Date         { get; }
-        public string        CategoryText => ToCategoryText(Category);
+        public string         Id         { get; }
+        public ENewsCategory  Category   { get; }
+        public string         Title      { get; }
+        public string         Body       { get; }
+        public int            Severity   { get; }
+        public DateTimeOffset StartsAt   { get; }
+
+        // 화면에 보일 날짜. 이 PC의 시간대 기준이다
+        public string         Date         => NewsRules.FormatDate(StartsAt, TimeZoneInfo.Local);
+        public string         CategoryText => NewsRules.ToCategoryText(Category);
+        public bool           HasBody      => Body.Length > 0;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public NewsItem(ENewsCategory category, string title, string date)
+        public NewsItem(string id, ENewsCategory category, string title, string body, int severity, DateTimeOffset startsAt)
         {
+            ArgumentNullException.ThrowIfNull(id);
+            ArgumentNullException.ThrowIfNull(title);
+            ArgumentNullException.ThrowIfNull(body);
+
+            Id       = id;
             Category = category;
             Title    = title;
-            Date     = date;
-        }
-
-        private static string ToCategoryText(ENewsCategory category)
-        {
-            switch (category)
-            {
-                case ENewsCategory.Notice:
-                    return "공지";
-                case ENewsCategory.Update:
-                    return "업데이트";
-                case ENewsCategory.Event:
-                    return "이벤트";
-                default:
-                    return string.Empty;
-            }
+            Body     = body;
+            Severity = severity;
+            StartsAt = startsAt;
         }
     }
 }

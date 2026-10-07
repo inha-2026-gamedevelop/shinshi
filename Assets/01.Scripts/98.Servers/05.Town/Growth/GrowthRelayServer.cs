@@ -148,6 +148,21 @@ namespace Shinshi.Network
             SendOperation(state);
         }
 
+        /// <summary> 서버가 직접 성장 스냅숏을 조회한다, 속도 제한을 세지 않는다. 이미 조회 중이거나 연결이 없으면 무시한다 </summary>
+        public void RequestSnapshot(TownMember member)
+        {
+            if ((member == null) || (_gateway == null) || (string.IsNullOrEmpty(member.CharacterId)))
+            {
+                return;
+            }
+
+            MemberState state = GetOrCreate(member);
+            if (state.SnapshotRequestId == 0)
+            {
+                RequestSnapshot(state);
+            }
+        }
+
         /// <summary> 마을 연결이 끊겼다, 그 참가자의 대기 상태를 지운다. 이미 보낸 요청의 응답은 버린다 </summary>
         public void RemoveMember(int participantId)
         {

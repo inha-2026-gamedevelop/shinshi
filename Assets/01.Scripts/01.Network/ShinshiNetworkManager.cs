@@ -342,6 +342,8 @@ namespace Shinshi.Network
             TownPartyClient.RegisterHandlers();
             TownGrowthClient.RegisterHandlers();
             TownLifeClient.RegisterHandlers();
+            TownMarketClient.RegisterHandlers();
+            TownTradeClient.RegisterHandlers();
             TownProgressClient.RegisterHandlers();
             ChatClient.RegisterHandlers();
             Shinshi.Combat.PotionClient.RegisterHandlers();

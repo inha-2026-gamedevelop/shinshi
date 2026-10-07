@@ -25,6 +25,10 @@ namespace Shinshi.Contracts
         // 런처가 세션 전달에 실패했을 때 방금 발급한 게임 세션을 bearer로 보내 폐기한다
         public const string AUTH_GAME_SESSION_REVOKE  = "/v1/auth/game-session/revoke";
 
+        // 런처가 저장된 갱신 토큰 원문(AuthLogoutRequest)으로 로그인 묶음과 하위 게임 세션을 폐기한다.
+        // bearer 없이 부르고, 만료된 토큰이나 이미 폐기된 묶음, 모르는 토큰도 204라 재시도해도 같은 결과다
+        public const string AUTH_LOGOUT       = "/v1/auth/logout";
+
         // 점검 여부, 공지, 기능 차단, 허용 buildId
         public const string SERVICE_STATE     = "/v1/service-state";
 

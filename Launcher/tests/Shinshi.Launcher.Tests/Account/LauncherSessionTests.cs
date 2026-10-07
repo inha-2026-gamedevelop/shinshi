@@ -1,5 +1,7 @@
 // System
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -39,7 +41,7 @@ namespace Shinshi.Launcher.Tests.Account
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
 
             SessionResult result = await session.LoginWithCredentialsAsync("  Player_1 ", AccountTestData.PASSWORD, true,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Equal(ELauncherSessionState.LoggedIn, session.State);
@@ -57,7 +59,7 @@ namespace Shinshi.Launcher.Tests.Account
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
 
             SessionResult result = await session.LoginWithCredentialsAsync(AccountTestData.LOGIN_ID, AccountTestData.PASSWORD, false,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Null(store.Token);
@@ -74,7 +76,7 @@ namespace Shinshi.Launcher.Tests.Account
             FakeHttpHandler handler = new FakeHttpHandler(_ => throw new InvalidOperationException("must not be called"));
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), new MemoryRefreshTokenStore());
 
-            SessionResult result = await session.LoginWithCredentialsAsync(loginId, password, true, AccountTestData.Build(),
+            SessionResult result = await session.LoginWithCredentialsAsync(loginId, password, true,
                 CancellationToken.None);
 
             Assert.Equal(ESessionError.InvalidInput, result.Error);
@@ -90,7 +92,7 @@ namespace Shinshi.Launcher.Tests.Account
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), new MemoryRefreshTokenStore());
 
             SessionResult result = await session.LoginWithCredentialsAsync(AccountTestData.LOGIN_ID, AccountTestData.PASSWORD, true,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
 
             Assert.Equal(ESessionError.ApiFailed, result.Error);
             Assert.Equal(EAuthApiError.Unauthorized, result.ApiError);
@@ -118,8 +120,8 @@ namespace Shinshi.Launcher.Tests.Account
             MemoryRefreshTokenStore store = new MemoryRefreshTokenStore();
             using LauncherSession session = await LoggedInAsync(handler, store);
 
-            Task<SessionResult> first  = session.EnsureAccessTokenAsync(AccountTestData.Build(), CancellationToken.None);
-            Task<SessionResult> second = session.EnsureAccessTokenAsync(AccountTestData.Build(), CancellationToken.None);
+            Task<SessionResult> first  = session.EnsureAccessTokenAsync(CancellationToken.None);
+            Task<SessionResult> second = session.EnsureAccessTokenAsync(CancellationToken.None);
             await Task.Delay(SETTLE_MS);
             release.SetResult();
             SessionResult[] results = await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromMilliseconds(WAIT_MS));
@@ -148,8 +150,8 @@ namespace Shinshi.Launcher.Tests.Account
             using LauncherSession session = await LoggedInAsync(handler, store);
             Assert.Equal(AccountTestData.REFRESH_TOKEN, store.Token);
 
-            SessionResult result = await session.EnsureAccessTokenAsync(AccountTestData.Build(), CancellationToken.None);
-            SessionResult again  = await session.EnsureAccessTokenAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.EnsureAccessTokenAsync(CancellationToken.None);
+            SessionResult again  = await session.EnsureAccessTokenAsync(CancellationToken.None);
 
             Assert.Equal(ESessionError.SessionLost, result.Error);
             Assert.Equal(EAuthApiError.ResponseLost, result.ApiError);
@@ -176,7 +178,7 @@ namespace Shinshi.Launcher.Tests.Account
             MemoryRefreshTokenStore store = new MemoryRefreshTokenStore();
             using LauncherSession session = await LoggedInAsync(handler, store);
 
-            SessionResult result = await session.EnsureAccessTokenAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.EnsureAccessTokenAsync(CancellationToken.None);
 
             Assert.Equal(ESessionError.ApiFailed, result.Error);
             Assert.Equal(EAuthApiError.Unreachable, result.ApiError);
@@ -191,7 +193,7 @@ namespace Shinshi.Launcher.Tests.Account
                 AccountTestData.REFRESH_TOKEN, AccountTestData.LONG_LIFE_MS)));
             using LauncherSession session = await LoggedInAsync(handler, new MemoryRefreshTokenStore());
 
-            SessionResult result = await session.EnsureAccessTokenAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.EnsureAccessTokenAsync(CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Single(handler.Requests);
@@ -206,7 +208,7 @@ namespace Shinshi.Launcher.Tests.Account
             using LauncherSession session = await LoggedInAsync(handler, store);
 
             session.IsRefreshSuspended = true;
-            SessionResult result = await session.EnsureAccessTokenAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.EnsureAccessTokenAsync(CancellationToken.None);
             SessionResult<GameSessionIssueResponse> issued = await session.IssueGameSessionAsync(AccountTestData.Build(),
                 CancellationToken.None);
 
@@ -224,7 +226,7 @@ namespace Shinshi.Launcher.Tests.Account
             MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store) { IsRefreshSuspended = true };
 
-            SessionResult result = await session.TryAutoLoginAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
 
             Assert.Equal(ESessionError.RefreshSuspended, result.Error);
             Assert.Empty(handler.Requests);
@@ -239,7 +241,7 @@ namespace Shinshi.Launcher.Tests.Account
             MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
 
-            SessionResult result = await session.TryAutoLoginAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Equal(ELauncherSessionState.LoggedIn, session.State);
@@ -253,7 +255,7 @@ namespace Shinshi.Launcher.Tests.Account
             FakeHttpHandler handler = new FakeHttpHandler(_ => throw new InvalidOperationException("must not be called"));
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), new MemoryRefreshTokenStore());
 
-            SessionResult result = await session.TryAutoLoginAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
 
             Assert.Equal(ESessionError.NoStoredLogin, result.Error);
             Assert.Empty(handler.Requests);
@@ -266,7 +268,7 @@ namespace Shinshi.Launcher.Tests.Account
             MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
 
-            SessionResult result = await session.TryAutoLoginAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
 
             Assert.Equal(ESessionError.ApiFailed, result.Error);
             Assert.Equal(EAuthApiError.Unreachable, result.ApiError);
@@ -282,7 +284,7 @@ namespace Shinshi.Launcher.Tests.Account
             MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
             using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
 
-            SessionResult result = await session.TryAutoLoginAsync(AccountTestData.Build(), CancellationToken.None);
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
 
             Assert.Equal(ESessionError.SessionLost, result.Error);
             Assert.Null(store.Token);
@@ -320,6 +322,173 @@ namespace Shinshi.Launcher.Tests.Account
         }
 
         [Fact]
+        public async Task LoginAndRefresh_SendNoBuild_OnlyGameSessionIssueSendsBuild()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(request =>
+            {
+                if (request.Path == ApiRoutes.AUTH_EXCHANGE)
+                {
+                    return Task.FromResult(ExchangeOk(AccountTestData.ACCESS_TOKEN, AccountTestData.REFRESH_TOKEN,
+                        AccountTestData.SHORT_LIFE_MS));
+                }
+
+                return Task.FromResult(FakeHttpHandler.Json(HttpStatusCode.OK, AccountTestData.GameSession()));
+            });
+            using LauncherSession session = await LoggedInAsync(handler, new MemoryRefreshTokenStore());
+
+            // 접근 토큰이 짧아 게임 세션 발급 전에 갱신이 한 번 나간다
+            SessionResult<GameSessionIssueResponse> issued = await session.IssueGameSessionAsync(AccountTestData.Build(),
+                CancellationToken.None);
+
+            Assert.True(issued.IsSuccess);
+            IReadOnlyList<RecordedRequest> exchanges = handler.Requests.Where(request => request.Path == ApiRoutes.AUTH_EXCHANGE).ToArray();
+            Assert.Equal(2, exchanges.Count);
+            Assert.All(exchanges, request => Assert.Null(request.ReadBody<AuthExchangeRequest>()!.Build));
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, exchanges[1].ReadBody<AuthExchangeRequest>()!.RefreshToken);
+            RecordedRequest game = Assert.Single(handler.Requests, request => request.Path == ApiRoutes.AUTH_GAME_SESSION);
+            Assert.Equal("build-1", game.ReadBody<GameSessionIssueRequest>()!.Build.BuildId);
+        }
+
+        [Fact]
+        public async Task TryAutoLoginAsync_SendsNoBuild()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(ExchangeOk(ROTATED_ACCESS, ROTATED_REFRESH,
+                AccountTestData.LONG_LIFE_MS)));
+            using LauncherSession session = new LauncherSession(AccountTestData.Client(handler),
+                new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN));
+
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
+
+            Assert.True(result.IsSuccess);
+            Assert.Null(Assert.Single(handler.Requests).ReadBody<AuthExchangeRequest>()!.Build);
+        }
+
+        [Fact]
+        public async Task IssueGameSessionAsync_VersionMismatch_KeepsLogin()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(request => Task.FromResult(request.Path == ApiRoutes.AUTH_EXCHANGE
+                ? ExchangeOk(AccountTestData.ACCESS_TOKEN, AccountTestData.REFRESH_TOKEN, AccountTestData.LONG_LIFE_MS)
+                : FakeHttpHandler.Reject(HttpStatusCode.Forbidden, ContractCodes.RejectReason.VERSION_MISMATCH)));
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore();
+            using LauncherSession session = await LoggedInAsync(handler, store);
+
+            SessionResult<GameSessionIssueResponse> result = await session.IssueGameSessionAsync(AccountTestData.Build(),
+                CancellationToken.None);
+
+            Assert.Equal(ESessionError.ApiFailed, result.Error);
+            Assert.Equal(EAuthApiError.VersionMismatch, result.ApiError);
+            Assert.Equal(ELauncherSessionState.LoggedIn, session.State);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, store.Token);
+        }
+
+        [Fact]
+        public async Task LogoutAsync_SendsRefreshTokenToServerBeforeClearing()
+        {
+            string? tokenAtServer = null;
+            string? storeAtServer = "unset";
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore();
+            FakeHttpHandler handler = new FakeHttpHandler(request =>
+            {
+                if (request.Path == ApiRoutes.AUTH_LOGOUT)
+                {
+                    tokenAtServer = request.ReadBody<AuthLogoutRequest>()!.RefreshToken;
+                    storeAtServer = store.Token;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+                }
+
+                return Task.FromResult(ExchangeOk(AccountTestData.ACCESS_TOKEN, AccountTestData.REFRESH_TOKEN, AccountTestData.LONG_LIFE_MS));
+            });
+            using LauncherSession session = await LoggedInAsync(handler, store);
+
+            SessionResult result = await session.LogoutAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, tokenAtServer);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, storeAtServer);
+            Assert.Null(store.Token);
+            Assert.Equal(ELauncherSessionState.LoggedOut, session.State);
+            Assert.Null(handler.Requests.Single(request => request.Path == ApiRoutes.AUTH_LOGOUT).Authorization);
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.InternalServerError)]
+        [InlineData(HttpStatusCode.TooManyRequests)]
+        public async Task LogoutAsync_ServerRejects_StillClearsLocalLogin(HttpStatusCode status)
+        {
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore();
+            FakeHttpHandler handler = new FakeHttpHandler(request => Task.FromResult(request.Path == ApiRoutes.AUTH_LOGOUT
+                ? new HttpResponseMessage(status)
+                : ExchangeOk(AccountTestData.ACCESS_TOKEN, AccountTestData.REFRESH_TOKEN, AccountTestData.LONG_LIFE_MS)));
+            using LauncherSession session = await LoggedInAsync(handler, store);
+
+            SessionResult result = await session.LogoutAsync();
+
+            Assert.Equal(ESessionError.ApiFailed, result.Error);
+            Assert.Null(store.Token);
+            Assert.Null(session.AccountId);
+            Assert.Equal(ELauncherSessionState.LoggedOut, session.State);
+        }
+
+        [Fact]
+        public async Task LogoutAsync_ServerUnreachable_StillClearsLocalLogin()
+        {
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore();
+            FakeHttpHandler handler = new FakeHttpHandler(request => request.Path == ApiRoutes.AUTH_LOGOUT
+                ? throw new HttpRequestException(HttpRequestError.ConnectionError, "refused")
+                : Task.FromResult(ExchangeOk(AccountTestData.ACCESS_TOKEN, AccountTestData.REFRESH_TOKEN, AccountTestData.LONG_LIFE_MS)));
+            using LauncherSession session = await LoggedInAsync(handler, store);
+
+            SessionResult result = await session.LogoutAsync();
+
+            Assert.Equal(EAuthApiError.Unreachable, result.ApiError);
+            Assert.Null(store.Token);
+            Assert.Equal(ELauncherSessionState.LoggedOut, session.State);
+        }
+
+        [Fact]
+        public async Task LogoutAsync_NotLoggedInWithStoredToken_RevokesStoredTokenOnServer()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)));
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
+            using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
+
+            SessionResult result = await session.LogoutAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, Assert.Single(handler.Requests).ReadBody<AuthLogoutRequest>()!.RefreshToken);
+            Assert.Null(store.Token);
+        }
+
+        [Fact]
+        public async Task LogoutAsync_NoToken_DoesNotCallServer()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => throw new InvalidOperationException("must not be called"));
+            using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), new MemoryRefreshTokenStore());
+
+            SessionResult result = await session.LogoutAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Empty(handler.Requests);
+        }
+
+        [Fact]
+        public async Task LogoutAsync_GameRunning_DoesNothing()
+        {
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore();
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(ExchangeOk(AccountTestData.ACCESS_TOKEN,
+                AccountTestData.REFRESH_TOKEN, AccountTestData.LONG_LIFE_MS)));
+            using LauncherSession session = await LoggedInAsync(handler, store);
+            session.IsRefreshSuspended = true;
+
+            SessionResult result = await session.LogoutAsync();
+
+            Assert.Equal(ESessionError.RefreshSuspended, result.Error);
+            Assert.Equal(ELauncherSessionState.LoggedIn, session.State);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, store.Token);
+            Assert.Equal(0, handler.Count(ApiRoutes.AUTH_LOGOUT));
+        }
+
+        [Fact]
         public async Task LogoutAsync_ClearsMemoryAndStore()
         {
             FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(ExchangeOk(AccountTestData.ACCESS_TOKEN,
@@ -341,7 +510,7 @@ namespace Shinshi.Launcher.Tests.Account
         {
             LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
             SessionResult login = await session.LoginWithCredentialsAsync(AccountTestData.LOGIN_ID, AccountTestData.PASSWORD, true,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
             Assert.True(login.IsSuccess);
             return session;
         }

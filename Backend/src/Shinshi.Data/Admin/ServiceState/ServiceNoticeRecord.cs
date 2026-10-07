@@ -7,6 +7,13 @@ namespace Shinshi.Data.Admin
     public sealed class ServiceNoticeRecord
     {
         /****************************************
+        *                Fields
+        ****************************************/
+
+        // service_notices.category 기본값과 같다
+        private const string DEFAULT_CATEGORY = "Notice";
+
+        /****************************************
         *              Properties
         ****************************************/
 
@@ -21,6 +28,7 @@ namespace Shinshi.Data.Admin
         public DateTimeOffset CreatedAt { get; }
         public DateTimeOffset? EndedAt { get; }
         public Guid? EndedBy { get; }
+        public string Category { get; }
 
         /****************************************
         *                Methods
@@ -28,7 +36,7 @@ namespace Shinshi.Data.Admin
 
         public ServiceNoticeRecord(Guid noticeId, string title, string body, string target, int severity,
             DateTimeOffset startsAt, DateTimeOffset endsAt, Guid createdBy, DateTimeOffset createdAt,
-            DateTimeOffset? endedAt, Guid? endedBy)
+            DateTimeOffset? endedAt, Guid? endedBy, string category = DEFAULT_CATEGORY)
         {
             NoticeId  = noticeId;
             Title     = title;
@@ -41,6 +49,7 @@ namespace Shinshi.Data.Admin
             CreatedAt = createdAt;
             EndedAt   = endedAt;
             EndedBy   = endedBy;
+            Category  = category;
         }
 
         /// <summary> 운영자가 내리지 않았고 now가 노출 기간 안이면 true </summary>

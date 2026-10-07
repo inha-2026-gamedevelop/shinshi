@@ -73,7 +73,11 @@ namespace Shinshi.Backend
             {
                 return await ExchangeCredentialsAsync(request, buildId, cancellationToken);
             }
-            int reason = await _buildPolicy.ValidateAsync(request.Build, cancellationToken);
+            // 갱신(자동 로그인)은 build가 없으면 점검만 본다. 게임에 들어가려면 게임 세션 발급의 빌드 검사를 따로 통과해야 하므로
+            // 설치가 없거나 낡은 런처도 로그인은 유지한다. 초대 코드 교환은 첫 로그인이라 build를 계속 요구한다
+            int reason = invite
+                ? await _buildPolicy.ValidateAsync(request.Build, cancellationToken)
+                : await _buildPolicy.ValidateOptionalBuildAsync(request.Build, cancellationToken);
             if (reason != ContractCodes.RejectReason.NONE)
             {
                 return ApiResponseFactory.Reject(StatusCodes.Status403Forbidden, reason, buildId, _timeProvider);

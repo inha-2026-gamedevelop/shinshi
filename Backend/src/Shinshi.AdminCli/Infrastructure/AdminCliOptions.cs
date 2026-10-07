@@ -36,6 +36,7 @@ namespace Shinshi.AdminCli
         public const string BODY              = "body";
         public const string TARGET            = "target";
         public const string SEVERITY          = "severity";
+        public const string CATEGORY          = "category";
         public const string STARTS            = "starts";
         public const string ENDS              = "ends";
 

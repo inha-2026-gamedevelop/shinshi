@@ -7,6 +7,13 @@ namespace Shinshi.Data.Admin
     public sealed class ServiceNoticeDraft
     {
         /****************************************
+        *                Fields
+        ****************************************/
+
+        // service_notices.category 기본값과 같다
+        private const string DEFAULT_CATEGORY = "Notice";
+
+        /****************************************
         *              Properties
         ****************************************/
 
@@ -17,13 +24,14 @@ namespace Shinshi.Data.Admin
         public int Severity { get; }
         public DateTimeOffset? StartsAt { get; }
         public DateTimeOffset EndsAt { get; }
+        public string Category { get; }
 
         /****************************************
         *                Methods
         ****************************************/
 
         public ServiceNoticeDraft(Guid noticeId, string title, string body, string target, int severity,
-            DateTimeOffset? startsAt, DateTimeOffset endsAt)
+            DateTimeOffset? startsAt, DateTimeOffset endsAt, string category = DEFAULT_CATEGORY)
         {
             if (noticeId == Guid.Empty)
             {
@@ -32,6 +40,7 @@ namespace Shinshi.Data.Admin
             ArgumentException.ThrowIfNullOrWhiteSpace(title);
             ArgumentNullException.ThrowIfNull(body);
             ArgumentException.ThrowIfNullOrWhiteSpace(target);
+            ArgumentException.ThrowIfNullOrWhiteSpace(category);
 
             NoticeId = noticeId;
             Title    = title;
@@ -40,6 +49,7 @@ namespace Shinshi.Data.Admin
             Severity = severity;
             StartsAt = startsAt;
             EndsAt   = endsAt;
+            Category = category;
         }
     }
 }

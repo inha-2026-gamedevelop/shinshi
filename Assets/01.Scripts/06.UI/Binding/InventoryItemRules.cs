@@ -19,6 +19,9 @@ namespace Shinshi.UI
         ****************************************/
 
         private const string ENHANCE_FORMAT = "+{0} 강화";
+        private const string IN_MARKET_TEXT = "경매장 등록 중";
+        private const string TRADABLE_TEXT  = "거래 가능";
+        private const string SEPARATOR      = ", ";
 
         /****************************************
         *                Methods
@@ -132,10 +135,26 @@ namespace Shinshi.UI
                 string description = (entry.Enhancement > 0)
                     ? string.Format(CultureInfo.InvariantCulture, ENHANCE_FORMAT, entry.Enhancement)
                     : string.Empty;
-                var slot = new ItemSlotData(entry.DefinitionId, grade, 1, entry.DefinitionId, description, entry.Locked,
-                    entry.Equipped);
+
+                // 경매장에 보관 중인 장비는 잠금처럼 다루고, 거래할 수 있는 장비는 표시한다
+                if (entry.InMarket)
+                {
+                    description = Join(description, IN_MARKET_TEXT);
+                }
+                else if (SellableItemRules.IsTradableEquipment(in entry))
+                {
+                    description = Join(description, TRADABLE_TEXT);
+                }
+
+                var slot = new ItemSlotData(entry.DefinitionId, grade, 1, entry.DefinitionId, description,
+                    entry.Locked || entry.InMarket, entry.Equipped);
                 into.Add(new InventoryItemData(slot, EInventoryCategory.Equipment, order++));
             }
+        }
+
+        private static string Join(string first, string second)
+        {
+            return string.IsNullOrEmpty(first) ? second : first + SEPARATOR + second;
         }
 
         private static void AddStack(List<InventoryItemData> into, ref long order, string definitionId, long quantity,

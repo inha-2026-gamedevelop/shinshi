@@ -137,6 +137,11 @@ namespace Shinshi.Admin.Web.Models
             0 => "안내", 1 => "경고", 2 => "긴급", _ => "알 수 없음"
         };
 
+        public static string NoticeCategory(string category) => category switch
+        {
+            "Notice" => "공지", "Update" => "업데이트", "Event" => "이벤트", "Maintenance" => "점검", _ => category
+        };
+
         public static string NoticeTarget(string target) => target switch
         {
             "Both" => "런처·게임", "Launcher" => "런처", "Game" => "게임", _ => target

@@ -7,7 +7,7 @@
 
 ## 1. 현재 상태와 구조 원칙
 
-Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0010(0008 운영 어드민, 0009 파티 경매, 0010 계정 자격·캐릭터 이름), `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
+Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0015(0008 운영 어드민, 0009 파티 경매, 0010 계정 자격·캐릭터 이름, 0014 공지 분류, 0015 유저 경매장·1:1 거래), `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
 
 게임의 규칙, 네트워크 연결, 화면 표현, 영구 저장을 구분한다. 규칙은 해당 파트가 작성하고 서버 경로에서 실행한다. 클라이언트는 공개 Request/조회 계약만 사용하며 서버 전용 어셈블리(`Shinshi.Server`)의 타입을 참조하지 않는다. 과도한 빈 인터페이스나 상태 클래스는 먼저 만들지 않고 실제 교체 지점·중복·협업 경계가 있을 때 도입한다.
 
@@ -322,7 +322,8 @@ SO는 읽기 전용 설계도이며 개별 상태·랜덤 결과·저장 진도�
 | 공용채집/행동력/물약 | GatheringRules/ActionEnergyRules | 선점/취소·미접속 회복·중복 완료 |
 | 보스희귀 경매/분배 | PartyAuctionSession/API 예약 | 시작/종료 자격·단절 낙찰·솔로소각 |
 | 이야기·지역 영구 공유 | AccountProgress | 첫 처치·흔적·반복 보상·체험판 분리 |
-| 후속 유저 경매장 | 별도 Market 모듈, 미구현 | 현재 체험판에서 제공하지 않음 |
+| 유저 경매장 | 백엔드 `Shinshi.Data/Market`·`Shinshi.Api/Market`, 마을 서버 `98.Servers/05.Town/Market`(`MarketRelayServer`), 계약 `Contracts/Market`, 클라이언트 `01.Network/Town/Market` | 구현됨·M2 실행 미검증. 제작 물약 거래는 후속 |
+| 1:1 거래 | 백엔드 `Shinshi.Data/Trade`·`Shinshi.Api/Trade`, 마을 서버 `98.Servers/05.Town/Trade`(`TownTradeDirector`가 세션 권위), 계약 `Contracts/Trade` | 구현됨·M2 실행 미검증. 이동은 prepare→commit→resolve |
 
 구현 순서는 ① 버전/GameDB/전용 서버 부트 ② 이동·기본공격·요청 결과 ③ 세션 예약/영속 원장 ④ 세 직업·일반전/개인 드롭 ⑤ 성장/생활·물약 ⑥ 월백/공용 부활/파티 경매 ⑦ UX·컷신·장애/부하·외부 배포 검증으로 잡는다. 이 순서는 모듈 의존 관계를 보인 것이며, 실제 착수 순서·담당·점검일은 [구현 로드맵](05-implementation-roadmap.md)이 기준이다(로드맵은 저장 경로와 전투 경로를 병행한다). 파트별 표현 작업은 샘플 스냅샷으로 병행하되 생산 서버 상태를 가짜로 확정하지 않는다. 월백 2페이즈·자산·배포 환경은 별도 입력 의존이며 이를 이유로 사용자가 정한 체험판 범위를 자동 축소하지 않는다.
 

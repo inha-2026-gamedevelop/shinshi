@@ -28,7 +28,8 @@ namespace Shinshi.Data.Growth
             """
             item_id AS "ItemId", account_id AS "AccountId", character_id AS "CharacterId",
             definition_id AS "DefinitionId", slot AS "Slot", grade AS "Grade", is_training AS "IsTraining",
-            origin AS "Origin", enhancement AS "Enhancement", equipped AS "Equipped", locked AS "Locked", bound AS "Bound"
+            origin AS "Origin", enhancement AS "Enhancement", equipped AS "Equipped", locked AS "Locked", bound AS "Bound",
+            escrow_kind AS "EscrowKind"
             """;
 
         private readonly IEconomyLedgerEntryWriter _ledger;

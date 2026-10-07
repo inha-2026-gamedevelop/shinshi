@@ -45,6 +45,7 @@ namespace Shinshi.Launcher.ViewModels
         private const string SERVICE_DOWN_TEXT     = "서버에 연결할 수 없습니다. 지금은 게임을 시작할 수 없습니다.";
         private const string MAINTENANCE_TEXT      = "서버 점검 중입니다.";
         private const string LOGIN_REQUIRED_TEXT   = "게임을 시작하려면 로그인해 주세요.";
+        private const string LOGOUT_BLOCKED_TEXT   = "게임 실행 중에는 로그아웃할 수 없습니다";
         private const string SIGNUP_PATH           = "signup";
         private const char   URL_SEPARATOR         = '/';
         private const int    ACCOUNT_SHORT_LENGTH  = 8;
@@ -74,6 +75,19 @@ namespace Shinshi.Launcher.ViewModels
 
         private ELauncherState _state       = ELauncherState.Checking;
         private ELauncherView  _currentView = ELauncherView.Home;
+
+        // 소식 상세에서 뒤로 갈 탭. 상세를 연 순간의 탭이다
+        private ELauncherView _newsDetailOrigin = ELauncherView.News;
+
+        private ENewsLoadState          _newsLoadState = ENewsLoadState.Idle;
+        private IReadOnlyList<NewsItem> _homeNews      = Array.Empty<NewsItem>();
+        private IReadOnlyList<NewsItem> _news          = Array.Empty<NewsItem>();
+        private IReadOnlyList<NewsItem> _patchNotes    = Array.Empty<NewsItem>();
+        private NewsItem?               _selectedNews;
+
+        // 서비스 상태를 마지막으로 받은 시각(Stopwatch 타임스탬프). 받은 적이 없으면 null
+        private long? _lastServiceStateTimestamp;
+        private bool  _isServiceStateRefreshing;
         private string         _channel     = PatchFormat.CHANNEL_STABLE;
 
         private string _errorMessage        = string.Empty;
@@ -116,7 +130,23 @@ namespace Shinshi.Launcher.ViewModels
         public ELauncherView CurrentView
         {
             get => _currentView;
-            set => SetProperty(ref _currentView, value);
+            set
+            {
+                if (!SetProperty(ref _currentView, value))
+                {
+                    return;
+                }
+
+                OnPropertyChanged(nameof(ActiveTab));
+                OnCurrentViewChanged(value);
+            }
+        }
+
+        // 상단 탭의 선택 표시. 소식 상세에서는 들어온 탭이 선택된 채로 남는다
+        public ELauncherView ActiveTab
+        {
+            get => (_currentView == ELauncherView.NewsDetail) ? _newsDetailOrigin : _currentView;
+            set => CurrentView = value;
         }
 
         // 설정 화면의 채널 선택. 팀 빌드가 아니면 바꿀 수 없다
@@ -268,10 +298,36 @@ namespace Shinshi.Launcher.ViewModels
         public string AccountText       => ShortenAccountId(_session?.AccountId);
         public bool   IsSignupAvailable => _settings?.WebsiteUri != null;
 
-        public ImageSource?            KeyArt     { get; }
-        public IReadOnlyList<NewsItem> HomeNews   { get; }
-        public IReadOnlyList<NewsItem> News       { get; }
-        public IReadOnlyList<NewsItem> PatchNotes { get; }
+        public ImageSource? KeyArt { get; }
+
+        public IReadOnlyList<NewsItem> HomeNews
+        {
+            get => _homeNews;
+            private set => SetProperty(ref _homeNews, value);
+        }
+
+        public IReadOnlyList<NewsItem> News
+        {
+            get => _news;
+            private set => SetProperty(ref _news, value);
+        }
+
+        public IReadOnlyList<NewsItem> PatchNotes
+        {
+            get => _patchNotes;
+            private set => SetProperty(ref _patchNotes, value);
+        }
+
+        public NewsItem? SelectedNews
+        {
+            get => _selectedNews;
+            private set => SetProperty(ref _selectedNews, value);
+        }
+
+        // 카드 대신 목록 자리에 보일 안내(비어 있음, 불러오는 중, 실패). 빈 문자열이면 숨는다
+        public string NewsStatusText         => NewsRules.GetStatusText(_newsLoadState, _news.Count);
+        public string PatchNotesStatusText   => NewsRules.GetStatusText(_newsLoadState, _patchNotes.Count);
+        public bool   IsNewsRetryVisible     => NewsRules.IsRetryVisible(_newsLoadState);
 
         public RelayCommand      PrimaryCommand           { get; }
         public AsyncRelayCommand RepairCommand            { get; }
@@ -281,6 +337,9 @@ namespace Shinshi.Launcher.ViewModels
         public RelayCommand      DismissErrorCommand      { get; }
         public AsyncRelayCommand LogoutCommand            { get; }
         public RelayCommand      OpenSignupCommand        { get; }
+        public RelayCommand      OpenNewsCommand          { get; }
+        public RelayCommand      CloseNewsDetailCommand   { get; }
+        public RelayCommand      RetryNewsCommand         { get; }
 
         /****************************************
         *                Methods
@@ -301,24 +360,13 @@ namespace Shinshi.Launcher.ViewModels
             LogoutCommand            = new AsyncRelayCommand(_ => LogoutAsync(), OnUnexpectedError,
                 _ => IsLoggedIn && (_state != ELauncherState.Launching));
             OpenSignupCommand        = new RelayCommand(_ => OpenSignup());
+            OpenNewsCommand          = new RelayCommand(OpenNews);
+            CloseNewsDetailCommand   = new RelayCommand(_ => CurrentView = _newsDetailOrigin);
+            RetryNewsCommand         = new RelayCommand(_ => RunGuarded(RefreshServiceStateAsync));
 
             _game.Exited += OnGameExited;
 
             KeyArt = LoadKeyArt();
-
-            // TODO(민성): 서비스 상태의 공지 목록(notices)으로 소식 카드를 채운다. 지금은 화면 확인용 예시다
-            News = new List<NewsItem>
-            {
-                new NewsItem(ENewsCategory.Notice, "신시 내부 체험 빌드 안내", "2026.10.02"),
-                new NewsItem(ENewsCategory.Update, "0.1.0 업데이트: 마을, 던전 첫 구간", "2026.10.01"),
-                new NewsItem(ENewsCategory.Event, "팀 플레이 테스트 일정", "2026.09.28"),
-                new NewsItem(ENewsCategory.Notice, "런처 설치 위치와 로그 안내", "2026.09.25")
-            };
-            HomeNews   = new List<NewsItem> { News[0], News[1], News[2] };
-            PatchNotes = new List<NewsItem>
-            {
-                new NewsItem(ENewsCategory.Update, "0.1.0 - 첫 내부 빌드", "2026.10.01")
-            };
 
             NoticeText = SAMPLE_NOTICE_TEXT;
         }
@@ -622,7 +670,10 @@ namespace Shinshi.Launcher.ViewModels
             {
                 LauncherLog.Warn("Game session issue failed. error=" + issued.Error + " apiError=" + issued.ApiError + " reason="
                     + issued.ReasonCode);
-                ErrorMessage = AccountErrorText.ToLoginMessage(issued);
+
+                // 로그인은 빌드와 무관하게 유지된다. 서버가 설치 빌드를 거절하면 업데이트 안내를 띄우고 패치 확인을 다시 한다
+                bool isVersionMismatch = (issued.Error == ESessionError.ApiFailed) && (issued.ApiError == EAuthApiError.VersionMismatch);
+                ErrorMessage = isVersionMismatch ? AccountErrorText.UPDATE_REQUIRED : AccountErrorText.ToLoginMessage(issued);
                 if (!IsLoggedIn)
                 {
                     CurrentView = ELauncherView.Login;
@@ -690,7 +741,7 @@ namespace Shinshi.Launcher.ViewModels
             return string.Empty;
         }
 
-        // 실패하면 null이고 공지 띠에 서버 연결 실패를 보인다
+        // 실패하면 null이고 공지 띠에 서버 연결 실패를, 소식 목록에 불러오기 실패를 보인다
         private async Task<ServiceStateResponse?> RefreshServiceStateAsync()
         {
             if (_api == null)
@@ -698,17 +749,32 @@ namespace Shinshi.Launcher.ViewModels
                 return null;
             }
 
-            AuthApiResult<ServiceStateResponse> result = await _api.GetServiceStateAsync(_lifetimeCts.Token);
+            _isServiceStateRefreshing = true;
+            SetNewsLoadState(ENewsLoadState.Loading);
+            AuthApiResult<ServiceStateResponse> result;
+            try
+            {
+                result = await _api.GetServiceStateAsync(_lifetimeCts.Token);
+            }
+            finally
+            {
+                _isServiceStateRefreshing = false;
+            }
+
             if (!result.IsSuccess || (result.Value == null))
             {
                 LauncherLog.Warn("Service state failed. error=" + result.Error + " status=" + result.StatusCode + " reason="
                     + result.ReasonCode);
                 NoticeText          = SERVICE_DOWN_TEXT;
                 IsNoticeMaintenance = true;
+                SetNewsLoadState(ENewsLoadState.Failed);
                 return null;
             }
 
             ServiceStateResponse state  = result.Value;
+            _lastServiceStateTimestamp = Stopwatch.GetTimestamp();
+            ApplyNews(NewsRules.ToItems(state.Notices));
+            SetNewsLoadState(ENewsLoadState.Loaded);
             string               notice = PickLauncherNotice(state);
             IsNoticeMaintenance = state.Maintenance;
             if (state.Maintenance)
@@ -775,14 +841,8 @@ namespace Shinshi.Launcher.ViewModels
                 return;
             }
 
-            // 서버가 설치 빌드로 버전을 확인하므로 설치가 없으면 저장된 로그인을 쓰지 않고 남겨 둔다
-            if (!TryReadInstalledBuild(out InstalledRelease? _, out ClientBuildInfo? build, out string _))
-            {
-                LauncherLog.Info("Auto-login skipped: no readable install.");
-                return;
-            }
-
-            SessionResult result = await _session.TryAutoLoginAsync(build, _lifetimeCts.Token);
+            // 설치가 없거나 빌드가 서버와 달라도 자동 로그인한다. 빌드는 게임 세션 발급에서만 검사한다
+            SessionResult result = await _session.TryAutoLoginAsync(_lifetimeCts.Token);
             LauncherLog.Info("Auto-login finished. error=" + result.Error + " apiError=" + result.ApiError + " reason=" + result.ReasonCode
                 + " storeFailed=" + result.IsStoreFailed);
             if (!result.IsSuccess)
@@ -804,18 +864,12 @@ namespace Shinshi.Launcher.ViewModels
                 return;
             }
 
-            if (!TryReadInstalledBuild(out InstalledRelease? _, out ClientBuildInfo? build, out string buildError))
-            {
-                LoginErrorText = buildError;
-                return;
-            }
-
             LoginErrorText = string.Empty;
             IsLoginBusy    = true;
             SessionResult result;
             try
             {
-                result = await _session.LoginWithCredentialsAsync(LoginIdText, password, RememberLogin, build, _lifetimeCts.Token);
+                result = await _session.LoginWithCredentialsAsync(LoginIdText, password, RememberLogin, _lifetimeCts.Token);
             }
             finally
             {
@@ -841,9 +895,28 @@ namespace Shinshi.Launcher.ViewModels
                 return;
             }
 
-            await _session.LogoutAsync();
+            // 서버에서 로그인 묶음을 폐기하면 실행 중인 게임의 세션이 끊긴다
+            if ((_state == ELauncherState.GameRunning) || _game.IsRunning)
+            {
+                ErrorMessage = LOGOUT_BLOCKED_TEXT;
+                return;
+            }
+
+            SessionResult result = await _session.LogoutAsync(_lifetimeCts.Token);
+            if (result.Error == ESessionError.RefreshSuspended)
+            {
+                ErrorMessage = LOGOUT_BLOCKED_TEXT;
+                return;
+            }
+
+            // 서버 폐기에 실패해도 로컬 로그인은 지웠다. 사용자에게는 로그아웃된 것으로 보이고 실패는 로그에만 남긴다
+            if (!result.IsSuccess)
+            {
+                LauncherLog.Warn("Server logout failed. apiError=" + result.ApiError + " reason=" + result.ReasonCode);
+            }
+
             LoginErrorText = string.Empty;
-            LauncherLog.Info("Logged out.");
+            LauncherLog.Info("Logged out. serverRevoked=" + result.IsSuccess);
         }
 
         private void OnSessionStateChanged()
@@ -1024,6 +1097,63 @@ namespace Shinshi.Launcher.ViewModels
 
             string version = (_targetVersion.Length == 0) ? string.Empty : "새 버전 " + _targetVersion + ", ";
             return version + "받을 크기 " + ByteFormat.Format(_bytesToDownload);
+        }
+
+        private void OnCurrentViewChanged(ELauncherView view)
+        {
+            if ((view != ELauncherView.News) && (view != ELauncherView.PatchNotes))
+            {
+                return;
+            }
+
+            // 받지 못한 상태(Failed)이면 오래된 목록을 믿지 않고 다시 받는다
+            TimeSpan? sinceLastFetch = null;
+            if (_lastServiceStateTimestamp.HasValue && (_newsLoadState == ENewsLoadState.Loaded))
+            {
+                sinceLastFetch = Stopwatch.GetElapsedTime(_lastServiceStateTimestamp.Value);
+            }
+
+            if (_isServiceStateRefreshing || !NewsRules.ShouldRefresh(sinceLastFetch))
+            {
+                return;
+            }
+
+            RunGuarded(RefreshServiceStateAsync);
+        }
+
+        private void ApplyNews(IReadOnlyList<NewsItem> items)
+        {
+            News       = items;
+            HomeNews   = NewsRules.TakeHome(items);
+            PatchNotes = NewsRules.FilterPatchNotes(items);
+            RaiseNewsStatusChanged();
+        }
+
+        private void SetNewsLoadState(ENewsLoadState state)
+        {
+            _newsLoadState = state;
+            RaiseNewsStatusChanged();
+        }
+
+        private void RaiseNewsStatusChanged()
+        {
+            OnPropertyChanged(nameof(NewsStatusText));
+            OnPropertyChanged(nameof(PatchNotesStatusText));
+            OnPropertyChanged(nameof(IsNewsRetryVisible));
+        }
+
+        private void OpenNews(object? parameter)
+        {
+            if (parameter is not NewsItem item)
+            {
+                return;
+            }
+
+            bool isTab = (_currentView == ELauncherView.Home) || (_currentView == ELauncherView.News)
+                || (_currentView == ELauncherView.PatchNotes);
+            _newsDetailOrigin = isTab ? _currentView : ELauncherView.News;
+            SelectedNews      = item;
+            CurrentView       = ELauncherView.NewsDetail;
         }
 
         private void Navigate(object? parameter)

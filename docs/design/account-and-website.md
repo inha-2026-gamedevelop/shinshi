@@ -48,7 +48,7 @@
 | `POST /v1/accounts` | 없음 | 가입. `AccountSignupRequest`(loginId, password, email). 성공 시 `AccountSignupResponse`(accountId, loginId, emailVerified) |
 | `GET /v1/accounts/login-id-availability?loginId=` | 없음 | 아이디 사용 가능 여부. 요청 제한 적용 |
 | `GET /v1/accounts/me` | 플레이어 | 아이디, 이메일, 인증 여부, 가입 시각 |
-| `POST /v1/auth/exchange` | 없음 | 기존 경로에 `loginId`, `password` 필드를 추가한다. 초대 코드, 갱신 토큰, 아이디 비밀번호 중 정확히 하나. 초대 코드와 갱신 토큰 교환은 지금처럼 `build`가 필수다. 새로 더한 아이디, 비밀번호 교환에서만 `build`를 생략할 수 있고(홈페이지), 있으면 지금처럼 검사한다. 기존 필드의 의미는 바꾸지 않으므로 v1 안의 추가 변경이다. 게임 빌드 검사는 게임 세션 발급(`POST /v1/auth/game-session`의 build)과 게임 서버 입장(protocolVersion, contentHash)이 맡으므로 마을 입장권(`/v1/town/join-ticket`)과 복귀 입장권 발급은 게임 세션 토큰만 받는다. 그래서 빌드 검사를 거치지 않은 접근 토큰으로는 게임 서버 입장 토큰을 받을 수 없다. 점검 중이면 빌드 유무와 관계없이 지금처럼 거절한다 |
+| `POST /v1/auth/exchange` | 없음 | 기존 경로에 `loginId`, `password` 필드를 추가한다. 초대 코드, 갱신 토큰, 아이디 비밀번호 중 정확히 하나. 초대 코드 교환은 지금처럼 `build`가 필수다. 아이디, 비밀번호 교환과 갱신 토큰 교환은 `build`를 생략할 수 있고(홈페이지, 런처 로그인·자동 로그인, 2026-10-08 결정), 있으면 지금처럼 검사한다. 기존 필드의 의미는 바꾸지 않으므로 v1 안의 추가 변경이다. 게임 빌드 검사는 게임 세션 발급(`POST /v1/auth/game-session`의 build)과 게임 서버 입장(protocolVersion, contentHash)이 맡으므로 마을 입장권(`/v1/town/join-ticket`)과 복귀 입장권 발급은 게임 세션 토큰만 받는다. 그래서 빌드 검사를 거치지 않은 접근 토큰으로는 게임 서버 입장 토큰을 받을 수 없다. 점검 중이면 빌드 유무와 관계없이 지금처럼 거절한다 |
 | `POST /v1/accounts/credentials` | 접근 토큰만(게임 세션 토큰 거절) | 비밀번호를 바꾼다. 일반 변경은 `currentPassword` 재확인이 필수다. `currentPassword` 없이 바꾸는 것은 복구 코드(초대) 교환으로 시작된 로그인 묶음에서 30분 안에만 허용하며, 아이디가 없는 계정은 이때 아이디, 이메일도 정한다. 확정하면 같은 트랜잭션에서 그 계정의 모든 로그인 묶음, 게임 세션과 남은 초대 코드를 폐기한다 |
 | `GET /v1/characters/name-availability?name=` | 플레이어 | 캐릭터 이름 사용 가능 여부 |
 | `POST /v1/characters` | 플레이어 | 캐릭터 생성(이름 포함). 이름 중복은 `CharacterNameTaken` |

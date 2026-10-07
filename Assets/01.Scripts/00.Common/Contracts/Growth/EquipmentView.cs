@@ -25,6 +25,8 @@ namespace Shinshi.Contracts
         [DataMember(Name = "locked")]       private bool   _locked;
         // 캐릭터 귀속, 거래 불가
         [DataMember(Name = "bound")]        private bool   _bound;
+        // 유저 경매장에 보관 중이라 착용, 강화, 계승, 잠금, 분해를 할 수 없다
+        [DataMember(Name = "inMarket")]     private bool   _inMarket;
 
         /****************************************
         *              Properties
@@ -40,13 +42,14 @@ namespace Shinshi.Contracts
         public bool   Equipped     => _equipped;
         public bool   Locked       => _locked;
         public bool   Bound        => _bound;
+        public bool   InMarket     => _inMarket;
 
         /****************************************
         *                Methods
         ****************************************/
 
         public EquipmentView(string itemId, string definitionId, int slot, int grade, bool isTraining, string origin,
-            int enhancement, bool equipped, bool locked, bool bound)
+            int enhancement, bool equipped, bool locked, bool bound, bool inMarket = false)
         {
             _itemId       = itemId;
             _definitionId = definitionId;
@@ -58,6 +61,7 @@ namespace Shinshi.Contracts
             _equipped     = equipped;
             _locked       = locked;
             _bound        = bound;
+            _inMarket     = inMarket;
         }
 
         private EquipmentView() { }

@@ -50,6 +50,11 @@ namespace Shinshi.Data.Auth
         Task<bool> RevokeGameSessionAsync(string gameSessionToken, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
 
+        // 갱신 토큰 원문으로 로그인 묶음을 찾아 만료, 폐기 여부와 무관하게 묶음과 하위 게임 세션을 폐기한다. 묶음이 있으면 true다.
+        // 구현하지 않는 테스트 대역은 찾지 못한 것으로 본다
+        Task<bool> RevokeFamilyByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+
         // 소문자 아이디로 비밀번호 로그인 자격을 찾는다. 구현하지 않는 테스트 대역은 모든 아이디를 없는 아이디로 본다
         Task<AccountCredentialRecord?> FindCredentialByLoginIdAsync(string loginId,
             CancellationToken cancellationToken = default)

@@ -151,7 +151,7 @@ namespace Shinshi.Backend.Tests.Admin
 
             AdminNoticeCreateRequest active = new AdminNoticeCreateRequest(AdminApiTestHost.NewOperationId(), REASON,
                 "  Maintenance tonight  ", "Servers restart at 02:00.", ServiceNotice.TARGET_LAUNCHER,
-                ServiceNotice.SEVERITY_WARNING, null, now + hour);
+                ServiceNotice.SEVERITY_WARNING, null, now + hour, ServiceNotice.CATEGORY_UPDATE);
             AdminNoticeCreateRequest scheduled = new AdminNoticeCreateRequest(AdminApiTestHost.NewOperationId(), REASON,
                 "Next event", string.Empty, ServiceNotice.TARGET_BOTH, ServiceNotice.SEVERITY_CRITICAL, now + hour,
                 now + (2 * hour));
@@ -166,6 +166,11 @@ namespace Shinshi.Backend.Tests.Admin
             using HttpResponseMessage badTarget = await AdminApiTestHost.SendAsync(client, HttpMethod.Post,
                 AdminApiRoutes.NOTICES, operatorToken, new AdminNoticeCreateRequest(AdminApiTestHost.NewOperationId(),
                     REASON, "title", string.Empty, "Everyone", ServiceNotice.SEVERITY_INFO, null, now + hour));
+            using HttpResponseMessage badCategory = await AdminApiTestHost.SendAsync(client, HttpMethod.Post,
+                AdminApiRoutes.NOTICES, operatorToken, new AdminNoticeCreateRequest(AdminApiTestHost.NewOperationId(),
+                    REASON, "title", string.Empty, ServiceNotice.TARGET_BOTH, ServiceNotice.SEVERITY_INFO, null,
+                    now + hour, "Rumor"));
+            Assert.Equal(HttpStatusCode.BadRequest, badCategory.StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, byViewer.StatusCode);
             // 지금과 비교하는 검사는 효과 안의 DB 시각으로 해 거절도 작업 결과로 저장된다. 형식 오류는 작업 행 없이 400이다
             Assert.Equal(HttpStatusCode.Conflict, pastEnd.StatusCode);
@@ -194,6 +199,7 @@ namespace Shinshi.Backend.Tests.Admin
             Assert.Equal(noticeId, visible.Notices[0].NoticeId);
             Assert.Equal(ServiceNotice.TARGET_LAUNCHER, visible.Notices[0].Target);
             Assert.Equal(ServiceNotice.SEVERITY_WARNING, visible.Notices[0].Severity);
+            Assert.Equal(ServiceNotice.CATEGORY_UPDATE, visible.Notices[0].Category);
 
             using HttpResponseMessage listed = await AdminApiTestHost.SendAsync(client, HttpMethod.Get,
                 AdminApiRoutes.NOTICES, viewer);
@@ -202,6 +208,8 @@ namespace Shinshi.Backend.Tests.Admin
             Assert.Equal(new[] { AdminNoticeSummary.STATUS_SCHEDULED, AdminNoticeSummary.STATUS_ACTIVE },
                 notices.Select(notice => notice.Status));
             Assert.Equal(operatorId.ToString("D"), notices[1].CreatedBy);
+            Assert.Equal(new[] { ServiceNotice.CATEGORY_NOTICE, ServiceNotice.CATEGORY_UPDATE },
+                notices.Select(notice => notice.Category));
 
             string endRoute = string.Format(AdminApiRoutes.NOTICE_END_FORMAT, noticeId);
             using HttpResponseMessage ended = await AdminApiTestHost.SendAsync(client, HttpMethod.Post, endRoute,

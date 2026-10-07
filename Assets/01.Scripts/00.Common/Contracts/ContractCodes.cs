@@ -126,6 +126,31 @@ namespace Shinshi.Contracts
             public const int ROOM_NOT_FOUND         = 1300;
             public const int ROOM_PASSWORD_MISMATCH = 1301;
             public const int INVITE_EXPIRED         = 1302;
+
+            // 유저 경매장
+            public const int MARKET_LISTING_LIMIT         = 1400;
+            public const int MARKET_NOT_TRADABLE          = 1401;
+            public const int MARKET_PRICE_OUT_OF_RANGE    = 1402;
+            public const int MARKET_SOLD_OUT              = 1403;
+            public const int MARKET_QUANTITY_CHANGED      = 1404;
+            public const int MARKET_PRICE_CHANGED         = 1405;
+            public const int MARKET_EXPIRED               = 1406;
+            public const int MARKET_SELF_PURCHASE         = 1407;
+            public const int MARKET_ESCROWED              = 1408;
+            public const int MARKET_NOT_OWNER             = 1409;
+            public const int CHARACTER_HAS_MARKET_LISTING = 1410;
+
+            // 1:1 거래
+            public const int TRADE_ITEM_CHANGED          = 1500;
+            public const int TRADE_NOT_TRADABLE          = 1501;
+            public const int TRADE_INVENTORY_FULL        = 1502;
+            public const int TRADE_INSUFFICIENT_CURRENCY = 1503;
+            public const int TRADE_SAME_ACCOUNT          = 1504;
+            public const int TRADE_NOT_IN_TOWN           = 1505;
+            public const int TRADE_BUSY                  = 1506;
+            public const int TRADE_TOO_FAR               = 1507;
+            public const int TRADE_REQUEST_EXPIRED       = 1508;
+            public const int TRADE_EXPIRED               = 1509;
         }
 
         /// <summary> EEconomyReason과 같은 값, 경제 원장에 기록되므로 기존 값을 바꾸거나 재배열하지 않는다 </summary>
@@ -165,6 +190,13 @@ namespace Shinshi.Contracts
             public const int EVENT_REWARD           = 28;
             public const int COUPON                 = 29;
             public const int RECOVERY_COMPENSATION  = 30;
+            public const int MARKET_ESCROW          = 31;
+            public const int MARKET_RETURN          = 32;
+            public const int MARKET_PURCHASE        = 33;
+            public const int MARKET_PROCEEDS        = 34;
+            public const int MARKET_RECEIVE         = 35;
+            public const int TRADE_GIVE             = 36;
+            public const int TRADE_RECEIVE          = 37;
         }
 
         /// <summary> EPlayerClass와 같은 값, 캐릭터마다 고정 </summary>

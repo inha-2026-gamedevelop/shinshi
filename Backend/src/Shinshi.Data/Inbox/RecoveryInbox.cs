@@ -61,6 +61,9 @@ namespace Shinshi.Data.Inbox
         public const string SOURCE_SESSION_REWARD = "SessionReward";
         public const string SOURCE_AUCTION_REWARD = "AuctionReward";
 
+        // 경매장 취소, 만료 반환이 보관 상한을 넘은 몫. source_ref는 등록 ID다
+        public const string SOURCE_MARKET_RETURN  = "MarketReturn";
+
         private static readonly string[] G_UpdateOrder =
         {
             EconomyAsset.CURRENCY, EconomyAsset.TICKETS, EconomyAsset.ESSENCE, EconomyAsset.SHARDS,
@@ -93,7 +96,8 @@ namespace Shinshi.Data.Inbox
 
         public static bool IsRecoverySource(string? sourceKind)
         {
-            return (sourceKind == SOURCE_SESSION_REWARD) || (sourceKind == SOURCE_AUCTION_REWARD);
+            return (sourceKind == SOURCE_SESSION_REWARD) || (sourceKind == SOURCE_AUCTION_REWARD)
+                || (sourceKind == SOURCE_MARKET_RETURN);
         }
 
         /// <summary> 계정마다 회수함 행 하나와 그 줄을 넣는다. 획득 시각과 만료(+30일)는 같은 DB 시각에서 정한다.

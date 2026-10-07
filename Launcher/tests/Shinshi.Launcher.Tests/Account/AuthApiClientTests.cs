@@ -36,7 +36,7 @@ namespace Shinshi.Launcher.Tests.Account
             AuthApiClient client = AccountTestData.Client(handler);
 
             AuthApiResult<AuthExchangeResponse> result = await client.ExchangeCredentialsAsync(AccountTestData.LOGIN_ID,
-                AccountTestData.PASSWORD, AccountTestData.Build(), CancellationToken.None);
+                AccountTestData.PASSWORD, CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Equal(AccountTestData.ACCESS_TOKEN, result.Value!.AccessToken);
@@ -52,7 +52,52 @@ namespace Shinshi.Launcher.Tests.Account
             Assert.Equal(AccountTestData.PASSWORD, sent.Password);
             Assert.Null(sent.InviteCode);
             Assert.Null(sent.RefreshToken);
-            Assert.Equal("build-1", sent.Build.BuildId);
+            Assert.Null(sent.Build);
+        }
+
+        [Fact]
+        public async Task ExchangeRefreshAsync_SendsRefreshTokenWithoutBuild()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(FakeHttpHandler.Json(HttpStatusCode.OK,
+                AccountTestData.Exchange(AccountTestData.ACCESS_TOKEN, AccountTestData.REFRESH_TOKEN, AccountTestData.LONG_LIFE_MS))));
+            AuthApiClient client = AccountTestData.Client(handler);
+
+            AuthApiResult<AuthExchangeResponse> result = await client.ExchangeRefreshAsync(AccountTestData.REFRESH_TOKEN,
+                CancellationToken.None);
+
+            Assert.True(result.IsSuccess);
+            AuthExchangeRequest sent = Assert.Single(handler.Requests).ReadBody<AuthExchangeRequest>()!;
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, sent.RefreshToken);
+            Assert.Null(sent.Build);
+        }
+
+        [Fact]
+        public async Task LogoutAsync_NoContent_PostsRefreshTokenWithoutBearer()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)));
+            AuthApiClient client = AccountTestData.Client(handler);
+
+            AuthApiResult result = await client.LogoutAsync(AccountTestData.REFRESH_TOKEN, CancellationToken.None);
+
+            Assert.True(result.IsSuccess);
+            RecordedRequest request = Assert.Single(handler.Requests);
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal(ApiRoutes.AUTH_LOGOUT, request.Path);
+            Assert.Null(request.Authorization);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, request.ReadBody<AuthLogoutRequest>()!.RefreshToken);
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.ServiceUnavailable, EAuthApiError.ServerError)]
+        [InlineData(HttpStatusCode.TooManyRequests, EAuthApiError.RateLimited)]
+        public async Task LogoutAsync_Failure_MapsError(HttpStatusCode status, EAuthApiError expected)
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(new HttpResponseMessage(status)));
+            AuthApiClient client = AccountTestData.Client(handler);
+
+            AuthApiResult result = await client.LogoutAsync(AccountTestData.REFRESH_TOKEN, CancellationToken.None);
+
+            Assert.Equal(expected, result.Error);
         }
 
         [Fact]
@@ -63,7 +108,7 @@ namespace Shinshi.Launcher.Tests.Account
             AuthApiClient client = new AuthApiClient(new HttpClient(handler), new Uri("https://api.example.test/shinshi"));
 
             AuthApiResult<AuthExchangeResponse> result = await client.ExchangeRefreshAsync(AccountTestData.REFRESH_TOKEN,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             RecordedRequest request = Assert.Single(handler.Requests);
@@ -88,7 +133,7 @@ namespace Shinshi.Launcher.Tests.Account
             AuthApiClient client = AccountTestData.Client(handler);
 
             AuthApiResult<AuthExchangeResponse> result = await client.ExchangeCredentialsAsync(AccountTestData.LOGIN_ID,
-                AccountTestData.PASSWORD, AccountTestData.Build(), CancellationToken.None);
+                AccountTestData.PASSWORD, CancellationToken.None);
 
             Assert.Equal(expected, result.Error);
             Assert.Equal(reason, result.ReasonCode);
@@ -119,7 +164,7 @@ namespace Shinshi.Launcher.Tests.Account
             AuthApiClient client = AccountTestData.Client(handler);
 
             AuthApiResult<AuthExchangeResponse> result = await client.ExchangeRefreshAsync(AccountTestData.REFRESH_TOKEN,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
 
             Assert.Equal(expected, result.Error);
             Assert.Equal(expected == EAuthApiError.ResponseLost, result.IsOutcomeUnknown);
@@ -137,7 +182,7 @@ namespace Shinshi.Launcher.Tests.Account
             AuthApiClient client = AccountTestData.Client(handler, TimeSpan.FromMilliseconds(SHORT_TIMEOUT_MS));
 
             AuthApiResult<AuthExchangeResponse> result = await client.ExchangeRefreshAsync(AccountTestData.REFRESH_TOKEN,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
 
             Assert.Equal(EAuthApiError.ResponseLost, result.Error);
             Assert.True(result.IsOutcomeUnknown);
@@ -155,7 +200,7 @@ namespace Shinshi.Launcher.Tests.Account
             using CancellationTokenSource cancel = new CancellationTokenSource(SHORT_TIMEOUT_MS);
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.ExchangeRefreshAsync(AccountTestData.REFRESH_TOKEN,
-                AccountTestData.Build(), cancel.Token));
+                cancel.Token));
         }
 
         [Fact]
@@ -165,7 +210,7 @@ namespace Shinshi.Launcher.Tests.Account
             AuthApiClient client = AccountTestData.Client(handler);
 
             AuthApiResult<AuthExchangeResponse> result = await client.ExchangeRefreshAsync(AccountTestData.REFRESH_TOKEN,
-                AccountTestData.Build(), CancellationToken.None);
+                CancellationToken.None);
 
             Assert.Equal(EAuthApiError.Malformed, result.Error);
             Assert.True(result.IsOutcomeUnknown);

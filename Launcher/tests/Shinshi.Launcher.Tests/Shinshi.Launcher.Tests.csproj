@@ -20,4 +20,11 @@
     <ProjectReference Include="../../src/Shinshi.Launcher.Account/Shinshi.Launcher.Account.csproj" />
     <ProjectReference Include="../../../Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- WPF 앱 프로젝트를 참조하면 WindowsBase 충돌 경고가 나서, 화면과 무관한 순수 규칙 파일만 링크한다 -->
+    <Compile Include="../../src/Shinshi.Launcher.UI/Presentation/NewsRules.cs" Link="Presentation/Linked/NewsRules.cs" />
+    <Compile Include="../../src/Shinshi.Launcher.UI/Presentation/NewsItem.cs" Link="Presentation/Linked/NewsItem.cs" />
+    <Compile Include="../../src/Shinshi.Launcher.UI/Presentation/ENewsCategory.cs" Link="Presentation/Linked/ENewsCategory.cs" />
+    <Compile Include="../../src/Shinshi.Launcher.UI/Presentation/ENewsLoadState.cs" Link="Presentation/Linked/ENewsLoadState.cs" />
+  </ItemGroup>
 </Project>
