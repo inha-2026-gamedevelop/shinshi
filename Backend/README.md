@@ -216,6 +216,8 @@ Remove-Item Env:SHINSHI_BOOTSTRAP_OWNER
 
 **0008 테이블.** `admin_users`(소문자 login_name, PBKDF2 해시와 솔트, AES-GCM TOTP 암호문, role 0~3, 실패 횟수, 잠금 시각, 마지막 TOTP 스텝), `admin_sessions`(어드민 토큰 HMAC), `admin_audit_log`(추가 전용, 0003의 `reject_append_only_mutation` 트리거가 UPDATE/DELETE/TRUNCATE를 거절, operation_id가 있으면 같은 운영자의 operations 행을 FK로 가리킴), `admin_grants`, `reward_inbox`(`(grant_id, account_id)` 유일, 수령과 취소 상호 배타, 수령 operation과 캐릭터 소유 FK), `service_state`(id=1 단일 행, 0008이 점검 중과 빈 목록으로 넣음), `service_notices`, `admin_operation_claims`(운영자 작업 키 `(admin_id, operation_id)`를 작업 종류, 대상, 요청 해시에 묶는 추가 전용 결속, 일반 업무 변경과 수동 복구가 효과 전에 커밋). `admin_grants`의 부분 유일 인덱스 `ux_admin_grants_recovery_ref`는 취소되지 않은 `RecoveryCompensation` 지급의 `source_ref`(복구 대상 세션 ID)를 유일하게 한다. 0008은 어드민 조회용으로 기존 테이블에도 인덱스 넷을 더한다: `session_participants(account_id, session_id)`, `economy_ledger(account_id, occurred_at, ledger_id)`, `game_sessions(state, created_at, session_id)`, `admin_audit_log(target_kind, occurred_at, audit_id)`. 0008의 지급·조정 코드는 0009 경매 마이그레이션의 `account_wallets.currency_reserved` 열을 읽으므로 두 마이그레이션은 함께 배포한다. 이번 미커밋 0008은 작업 키 결속과 빈 대상 키(생성 작업)를 반영해 수정했다. 이전 0008을 이미 적용한 DB의 DDL은 자동 갱신되지 않으며, 마이그레이션 실행기는 체크섬 불일치로 중단한다. 기존 DB는 별도 전환 절차가 필요하고 이 작업에서는 재생성하거나 변경하지 않았다. 검증은 최신 내장 SQL을 매번 적용하는 GUID 임시 테스트 스키마에서 수행했다. 0008 down은 검토용이며 이 테이블을 모두 지우므로 운영 DB에서 실행하지 않는다. 테스트는 `tests/Shinshi.Backend.Tests/Admin/`와 `tests/Shinshi.Backend.Tests/Inbox/`에 있다.
 
+**캐릭터 프로필.** `GET /admin/v1/characters/{characterId}?reason=`(Viewer 이상)은 `admin.character.view` 감사를 단독 커밋한 뒤 한 REPEATABLE READ 읽기 전용 트랜잭션의 고정 12개 SELECT 묶음으로 조회한다. 없는 대상도 감사 후 404다. 이름 검색 응답에는 기존 필드에 `matchedCharacterId`, `matchedCharacterName`, `matchedCharacterClassId`를 추가한다. 생성 시각은 characters에 열이 없어 `createdAtUnixMs: null`, 직업 표시명과 완전한 전투 계산 콘텐츠가 없어 `classDisplayName`·`combatStats`는 null이다. `appearanceJson`은 저장된 jsonb의 문자열이고, 최고 강화는 현재 보유 장비의 최댓값이다. `wallet.actionValue`는 저장값, `life.actionValue`는 DB 스냅샷 시각에 기존 생활 규칙으로 회복한 값이다. 수련 행이 없으면 기존 성장 조회와 같은 0단계·상한 40/100을 제공하고 지갑 행이 없으면 wallet은 null이다. 계정 진행 행이 없으면 진행 필드는 null이고 명시 해금 배열은 유지하며, 없는 생활 재고를 임의 생성하지 않는다.
+
 **엔드포인트.** 경로 상수는 `AdminApiRoutes`, 플레이어 우편함은 공유 `ApiRoutes.INBOX`·`INBOX_CLAIM`이다. 최소 역할은 컨트롤러와 액션의 `RequireAdminRole` 중 높은 값이다.
 
 | 경로 | 메서드 | 최소 역할 | 비고 |
@@ -225,8 +227,9 @@ Remove-Item Env:SHINSHI_BOOTSTRAP_OWNER
 | `/admin/v1/operators` | GET, POST | Owner | 생성 응답에만 초기 비밀번호·TOTP 비밀 |
 | `/admin/v1/operators/{adminId}/disable` | POST | Owner | 대상의 열린 세션 폐기. 마지막 활성 Owner는 거절 |
 | `/admin/v1/accounts?query=` | GET | Viewer | UUID(계정·캐릭터 ID)만. 그 밖은 400 |
-| `/admin/v1/accounts/search` | POST | Viewer | 본문 `{query}`. UUID 또는 초대 코드 원문(HMAC으로 바꿔 검색). 원문은 이 경로로만 받는다 |
+| `/admin/v1/accounts/search` | POST | Viewer | 본문 `{query}`(UUID/초대 코드) 또는 `{characterName, includeDeletedCharacters?}`(이름 정확 검색, 기본 삭제 제외). 이름과 초대 원문은 이 POST 본문으로만 받는다 |
 | `/admin/v1/accounts/{accountId}?reason=` | GET | Viewer | 민감 조회. `reason` 필수, 감사 행을 먼저 커밋한 뒤 읽음 |
+| `/admin/v1/characters/{characterId}?reason=` | GET | Viewer | 캐릭터 프로필. 필수 사유의 단독 감사를 먼저 커밋하고 수련·장비·부적·계정 진행·생활·지갑·임대·최근 출정 5개를 읽기 스냅샷으로 조회 |
 | `/admin/v1/accounts/{accountId}/kick` | POST | Operator | 로그인 묶음과 하위 토큰, `revokeInvites`면 초대도 폐기. 현재 접속은 유지, 비밀번호 로그인은 막지 않음 |
 | `/admin/v1/accounts/{accountId}/adjustments` | POST | Operator | 개인 재화·아이템 ± 조정 |
 | `/admin/v1/invites` | POST | Operator | 초대 원문은 처음 확정 응답에만 |
@@ -274,7 +277,9 @@ DB 점검은 로그인과 토큰 갱신 교환(`AuthBuildPolicy`)과 새 출정 
 
 플레이어 `GET /v1/inbox`는 미수령·미취소·미만료 우편을 곧 만료되는 순서(`expires_at` 오름차순)로 최대 100개 주고 캐릭터 자산이 있으면 `requiresCharacter`다. 저장된 보상 JSON은 읽을 때 구조만 검증한다(허용 ID·수량 상한 같은 작성 정책은 작성 때만 적용). 구조가 손상된 행은 목록에서 빼고 우편 ID만 경고 로그로 남긴다. `POST /v1/inbox/claim {operationId, inboxId, characterId}`는 actor가 계정인 플레이어 작업이며 잔액 증가, 원장(`InboxClaim(24)`, actor_kind `Player`, source_type `inbox`, source_id 우편 ID), 수령 표시를 한 트랜잭션에 쓴다. 요청 해시는 원문이 아니라 파싱한 값이라 GUID 표기만 다른 재전송도 같은 요청이다. 거절은 409와 `INBOX_EXPIRED(1101)`, `INBOX_ALREADY_CLAIMED(1102)`, `INBOX_CANCELLED(1103)`, `INBOX_CHARACTER_REQUIRED(1104, 남의 캐릭터 포함)`, `INBOX_NOT_FOUND(1105)`다. 없는 우편과 남의 우편은 operations 행을 남기지 않고 `INBOX_NOT_FOUND`다. 한도는 계정별 1분에 수령 30회, 목록 60회(`InboxRequestLimiter`, 프로세스 메모리)이고 넘으면 429 `RATE_LIMITED`와 `Retry-After`다. 한도와 수령 본문 상한(4 KiB, `Content-Length`가 넘으면 413, 길이 없는 본문은 `RequestSizeLimit`이 Kestrel에서 끊음)은 리소스 필터 `InboxRequestGateFilter`가 모델 바인딩 전에 적용하므로 거절된 요청의 본문은 읽지 않는다. `inbox_claim`이 꺼져 있으면 위 기능 차단 규칙을 따른다(저장된 결과가 있으면 그 결과, 없으면 409 `FEATURE_DISABLED`). 점검은 우편 수령을 막지 않는다. 장애 보정 지급(`sourceKind=RecoveryCompensation`)의 수령도 같은 `InboxClaim(24)`로 남으며 `RecoveryCompensation(30)` 원장 사유는 아직 쓰는 경로가 없다. 출처는 우편 행의 `source_kind`로 구분한다.
 
-**계정과 초대.** 검색은 `GET /admin/v1/accounts?query=<UUID>`(계정·캐릭터 ID만, 그 밖은 400)와 `POST /admin/v1/accounts/search {query}`(UUID 또는 초대 코드 원문) 둘이다. 요청 시작 로그에 조회 문자열이 남으므로 초대 원문은 본문으로만 받는다. 검색 결과는 계정 요약만 준다. 캐릭터 이름 검색은 없다. 상세는 지갑, 캐릭터, 아이템, 접속 임대, 최근 세션, 살아 있는 로그인 묶음 수, 초대 목록을 한 읽기 스냅샷에서 모은다. 초대 발급(`POST /admin/v1/invites {accountId(생략하면 새 계정), maxUses, expiresInHours, revokeExistingSessions}`)은 응답에 원문을 한 번만 싣고(`Cache-Control: no-store`) 같은 operationId 재전송은 같은 inviteId에 원문 null이다. 응답을 잃었으면 그 초대를 폐기하고 새로 발급한다. 기기 변경 재발급은 `revokeExistingSessions`(생략하면 `true`)로 기존 로그인 묶음과 하위 토큰, 이전 초대를 같은 트랜잭션에서 폐기한다. 강제 종료(`POST /admin/v1/accounts/{accountId}/kick {operationId, reason, revokeInvites}`)는 로그인 묶음, 접근·갱신 토큰, 게임 하위 세션, 미소비 입장 토큰을 폐기하고 `revokeInvites`(생략하면 `true`)면 미폐기 초대도 폐기한다. 응답은 `AdminAccountKickResponse{operation, accountId, invitesRevoked, currentSessionKept=true}`다. 이미 발급된 토큰과 초대만 폐기한다. 게임 서버가 쥔 계정 접속 임대는 지우지 않으므로 지금 접속 중인 마을·던전 연결은 이어지고, 폐기된 토큰의 갱신, 재접속, 새 입장 토큰 발급부터 거절된다. 0010의 아이디·비밀번호 로그인은 막지 않으므로 같은 아이디와 비밀번호로 새 토큰을 받을 수 있다. 로그인 차단은 제재(P1)다.
+**계정과 초대.** 검색은 `GET /admin/v1/accounts?query=<UUID>`(계정·캐릭터 ID만, 그 밖은 400)와 `POST /admin/v1/accounts/search`다. POST는 기존 `{query}`(UUID 또는 초대 코드)와 `{characterName, includeDeletedCharacters?}`(정규화된 이름 정확 검색)를 지원한다. 프레임워크나 앞단 요청 로그에 조회 문자열이 남을 수 있어 이름과 초대 원문은 본문으로만 받는다. 검색 결과는 계정 요약과 매칭된 캐릭터의 삭제 상태를 제공한다. 상세는 지갑, 캐릭터, 아이템, 접속 임대, 최근 세션, 살아 있는 로그인 묶음 수, 초대 목록을 한 읽기 스냅샷에서 모은다. 초대 발급(`POST /admin/v1/invites {accountId(생략하면 새 계정), maxUses, expiresInHours, revokeExistingSessions}`)은 응답에 원문을 한 번만 싣고(`Cache-Control: no-store`) 같은 operationId 재전송은 같은 inviteId에 원문 null이다. 응답을 잃었으면 그 초대를 폐기하고 새로 발급한다. 기기 변경 재발급은 `revokeExistingSessions`(생략하면 `true`)로 기존 로그인 묶음과 하위 토큰, 이전 초대를 같은 트랜잭션에서 폐기한다. 강제 종료(`POST /admin/v1/accounts/{accountId}/kick {operationId, reason, revokeInvites}`)는 로그인 묶음, 접근·갱신 토큰, 게임 하위 세션, 미소비 입장 토큰을 폐기하고 `revokeInvites`(생략하면 `true`)면 미폐기 초대도 폐기한다. 응답은 `AdminAccountKickResponse{operation, accountId, invitesRevoked, currentSessionKept=true}`다. 이미 발급된 토큰과 초대만 폐기한다. 게임 서버가 쥔 계정 접속 임대는 지우지 않으므로 지금 접속 중인 마을·던전 연결은 이어지고, 폐기된 토큰의 갱신, 재접속, 새 입장 토큰 발급부터 거절된다. 0010의 아이디·비밀번호 로그인은 막지 않으므로 같은 아이디와 비밀번호로 새 토큰을 받을 수 있다. 로그인 차단은 제재(P1)다.
+
+**캐릭터 이름으로 계정 검색.** `POST /admin/v1/accounts/search`에 `{characterName:"홍길동", includeDeletedCharacters:false}`를 보낸다. 기존 `{query}`와 `characterName` 중 정확히 하나만 지정한다. 이름은 생성 때와 같은 `CharacterNameRules`를 사용해 앞뒤 공백 제거, NFKC 정규화, 2~12자 완성형 한글/영문/숫자 검사, 소문자 `name_key` 정확 비교를 수행한다. 부분/접두 검색은 지원하지 않는다. 삭제 캐릭터는 기본 제외하며 `includeDeletedCharacters:true`로 포함한다. 응답 `includeDeletedCharacters`는 이름 검색에 적용한 정책(UUID/초대 검색은 false), 항목 `matchedBy=CharacterName`과 `matchedId`는 매칭된 캐릭터 ID, `matchedCharacterDeleted`는 `false`=활성, `true`=삭제, `null`=캐릭터 이외 매칭이다. GET 검색은 기존 UUID 계약을 유지한다. 형식 오류는 원문을 포함하지 않는 400 `INVALID_REQUEST`다. API 요청 로그는 기존 경로 템플릿만 기록하며 검색 원문을 로그/감사/시계열 label에 넣지 않는다. CLI는 `accounts search --character-name <이름> [--include-deleted]`이며 기존 `accounts search <UUID|초대 코드>`도 유지한다.
 
 **로그 조회.** 로그 조회는 읽기 전용 스냅샷이다. 원장, 아이템 이력, 세션 이벤트, 작업 조회는 계정 데이터가 실리는 민감 조회라 `reason` 조회 문자열(최대 500자)이 필수이고, 데이터를 읽기 전에 감사 행(`admin.ledger.view`, `admin.item.history.view`, `admin.session.events.view`, `admin.operation.view`)을 자체 트랜잭션으로 커밋한다. 대상이 없어 404가 되는 조회도 시도로 감사하고, 원장은 페이지마다 한 행이다. 감사 로그 조회는 감사하지 않는다. 시각 조건은 UTC 유닉스 ms이며 `fromUnixMs` 포함, `toUnixMs` 제외다. 목록은 keyset `cursor`(응답의 `nextCursor`)와 `limit`(기본 100, 최대 500)로 넘긴다. 원장은 `accountId` 또는 `sourceType`+`sourceId`가 없으면 400(전체 스캔 방지)이고 `characterId`, `assetKind`, `assetId`, `reasonCode`(원장 사유 숫자, `reason`은 감사 사유)로 좁힌다. 필터 전체의 사유·자산별 합계(`totals`)는 cursor 없이 부른 첫 페이지에만 있고 다음 페이지는 null이다. 감사 로그는 `adminId`, `targetKind`(+`targetId`), 기간으로 거른다. 요청 IP는 HMAC 해시의 앞부분만 보인다.
 
@@ -397,3 +402,90 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 `Shinshi.Api/Observability`. 배포는 `Logging__Console__FormatterName=shinshi-json`으로 공통 JSON 한 줄 로그(`deploy/LOGGING.md`)를 켜고 `Observability__InstanceId`, `Observability__BuildId`, `Observability__ContentVersion`을 넣는다(없으면 null). `RequestLoggingMiddleware`가 전달 헤더 처리 바로 뒤, 라우팅과 인증보다 앞에서 요청마다 `api.request.completed`(경로 템플릿, 메서드, 상태, 소요 ms, 경로의 GUID sessionId)를 남기고 `ApiMetrics`(Meter `Shinshi.Api`, 히스토그램 `api_request_duration_ms`)에 넣는다. `MetricsReporterService`가 60초마다 `api.metrics`(`data.metrics`: 직전 60초 p50/p95/p99, 표본 수, DB 연결이 있으면 미전달 outbox 수 `settlement_outbox_pending`)를 남긴다. 프레임워크 로그는 값 대신 메시지 틀만, 예외는 형식 이름만 남긴다.
 
 **CLI.** `shinshi-admin auctions list [--state Open|Closing]`, `shinshi-admin service-state allow-build add|remove <buildId> --reason <사유>`(현재 목록과 revision을 읽어 하나만 바꾼 목록을 그 revision으로 저장, 이미 있거나 없으면 저장 안 함, 64개 상한, 그 사이 다른 저장이면 409 `INVALID_STATE`로 거절되고 자동 재시도하지 않음).
+## API 생존과 준비 상태 확인 (OP-2)
+
+| 엔드포인트 | 의미 | 응답 |
+|---|---|---|
+| `GET /health/live` | 프로세스 생존. DB 연결이나 쿼리를 수행하지 않음 | 항상 200 `{"status":"ok"}` |
+| `GET /health/ready` | DB 연결과 `SELECT 1`을 요청 전체 2초 제한으로 확인 | 성공 200 `{"status":"ok"}`, 실패/시간초과/DB 설정 누락 503 `{"status":"unavailable"}` |
+
+두 경로는 인증이 필요 없고 `Cache-Control: no-store`를 사용한다. 프로브 내부 오류는 본문이나 로그로 직렬화하지 않으며 기존 요청 완료 로그의 HTTP 503 상태로 실패를 관측한다. 점검 모드는 DB 준비 상태와 별개다. 연결 문자열 없는 공개 상태 전용 호스트도 live는 성공하고 ready는 503이다.
+
+API Dockerfile의 `HEALTHCHECK`는 `/health/live`를 쓴다([deploy/api/Dockerfile](../deploy/api/Dockerfile)). 컨테이너 상태를 DB에 묶으면 unhealthy 재시작 도구가 DB 장애 때 멀쩡한 API를 계속 재시작해 진행 중 요청·정산만 끊기 때문이다. DB 준비 상태는 Prometheus blackbox가 바깥에서 `/health/ready`를 확인해 `ShinshiApiNotReady` 경보로 잡는다([모니터링](../deploy/monitoring/README.md)). 오케스트레이터를 쓰면 liveness는 `/health/live`, readiness는 `/health/ready`로 나눈다.
+
+## API Prometheus 지표 (OP-16)
+
+`GET /metrics`는 Prometheus text exposition `text/plain; version=0.0.4; charset=utf-8`을 제공한다. 외부 패키지를 추가하지 않았다. `Metrics:Enabled` 기본값은 `true`이며 `false`이면 404다. `Metrics:AllowedNetworks`는 CIDR/단일 IP 목록으로 비어 있으면 IPv4/IPv6 루프백만 허용하고 범위 밖은 404다. 환경에서는 `Metrics__Enabled`, `Metrics__AllowedNetworks__0` 등을 사용한다.
+
+허용 여부는 기존 `ForwardedHeaders:KnownProxies` 처리 뒤 `RemoteIpAddress`로 판정한다. 어드민과 같은 원칙으로 신뢰 프록시가 허용 네트워크 안에 있으면 시작을 실패시킨다. 신뢰 프록시가 없는 호스트에 `X-Forwarded-For` 또는 `Forwarded`가 붙은 요청은 404다. 프록시 누락/헤더 위조로 허용 프록시 주소가 원격 사용자 주소처럼 판정되지 않게 운영자/수집기 네트워크를 별도로 명시한다.
+
+| 최종 지표 | 종류/단위 | 의미 |
+|---|---|---|
+| `shinshi_api_http_requests_total{route,status_class}` | counter, 요청 수 | 완료 요청 누적. 4xx/5xx로 거절/오류를 구분 |
+| `shinshi_api_http_request_duration_seconds{route,status_class}` | histogram, 초 | 완료 요청 누적 지연 분포. `_bucket{le}`, `_sum`, `_count` 제공 |
+| `shinshi_api_settlement_outbox_pending` | gauge, 행 수 | 미전달 outbox 수. 기존 로그와 같은 `delivered_at IS NULL` 전체 행 집계 |
+| `shinshi_api_reconciliation_last_run_timestamp_seconds` | gauge, Unix 초 | 공동 DB 마지막 완료 대사의 `finished_at` |
+| `shinshi_api_reconciliation_last_mismatch_count` | gauge, 건 수 | 위 완료 대사의 불일치 수 |
+| `api_request_duration_ms` | histogram, ms | 기존 `deploy/LOGGING.md` 규약 별칭. 같은 표본을 밀리초로 제공 |
+| `api_request_duration_p50_ms`, `api_request_duration_p95_ms`, `api_request_duration_p99_ms` | gauge, ms | 기존 규약의 직전 60초 분위수. 표본 없으면 `NaN` |
+| `api_request_sample_count` | gauge, 건 수 | 직전 60초 분위수 표본 수 |
+| `settlement_outbox_pending` | gauge, 행 수 | 기존 규약 별칭. `shinshi_api_settlement_outbox_pending`과 같은 값 |
+
+요청 지표는 경로 템플릿과 상태 분류만 label로 쓰며, 원문 URL/이름/UUID를 넣지 않는다. counter와 histogram은 프로세스 재시작 때 초기화되므로 Prometheus `rate`/`increase`의 reset 처리를 사용한다. 전체 지연 분위수는 histogram 버킷을 합친 뒤 계산하고 인스턴스별 p95를 평균하지 않는다. 기존 60초 `api.metrics` 로그도 유지한다.
+
+DB 지표는 scrape 때 연결 대기를 포함한 2초 제한으로 조회한다. DB 미설정/연결 실패/시간초과는 측정 실패를 0으로 오인하지 않도록 `NaN`을 제공한다. 완료 대사가 한 번도 없으면 대사 timestamp는 `0`, 불일치 수는 `NaN`이다. 대사를 선점하지 않은 API 인스턴스도 공동 DB의 마지막 완료 결과를 제공한다. outbox와 대사 게이지는 복제본 사이에 같은 DB 값을 관측하므로 합산하지 않고 max 등으로 집계한다. 진행 중/실패한 대사는 마지막 완료 값을 덮어쓰지 않아 timestamp의 노후화로 확인할 수 있다. 불일치 경보는 `shinshi_api_reconciliation_last_mismatch_count > 0`, 대사 미실행/노후화는 `time() - shinshi_api_reconciliation_last_run_timestamp_seconds`로 판단한다. 조회 실패로 `NaN`인 경우도 운영 경보에서 별도로 다룬다.
+
+## 운영 웹 화면 (AdminWeb)
+
+`Backend/src/Shinshi.Admin.Web/`는 .NET 10 Blazor Interactive Server 운영 도구다. 기존 `/admin/v1` API·DTO·권한·감사를 HTTP로 사용하며 DB에 직접 연결하지 않는다. 앞의 0008 절에 적힌 API·CLI만 제공하던 범위에 운영 웹을 추가한 현재 구현이다. 기존 API와 CLI 실행 방법도 유지된다.
+
+Interactive Server 시작에 필요한 `blazor.web.js`는 .NET 10 SDK가 암시적으로 추가하는 공식 패키지 `Microsoft.AspNetCore.App.Internal.Assets`에서 온다(공유 런타임에는 없다). 처음 한 번 `dotnet restore Backend/Shinshi.Backend.slnx`로 `Backend/.local/packages`에 받아 두면 이후 `--no-restore`로 빌드할 수 있고, `MapStaticAssets`가 `_framework/blazor.web.js`를 제공한다. Production 환경의 소스 실행도 `UseStaticWebAssets`로 SDK 자산 매니페스트를 로드한다.
+
+API를 먼저 위 로컬 실행 절대로 `http://127.0.0.1:5080`에 시작한 뒤 별도 터미널에서 실행한다. 웹은 DB 연결 문자열이나 API의 비밀키가 필요하지 않으며 최초 Owner 생성·마이그레이션은 기존 API 절차를 따른다.
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = 'Production'
+$env:ASPNETCORE_URLS = 'http://127.0.0.1:5081'
+$env:AdminWeb__ApiBaseUrl = 'http://127.0.0.1:5080'
+dotnet run --project Backend/src/Shinshi.Admin.Web --no-restore --no-launch-profile
+```
+
+브라우저에서 `http://127.0.0.1:5081/login`을 열어 운영자 이름·비밀번호·6자리 TOTP로 로그인한다. 로컬 HTTP 실행은 같은 PC 루프백에서만 사용한다. 운영에서는 사설 HTTPS 주소로 접속하며 HTTPS 응답의 세션 쿠키는 `__Host-shinshi.admin.session` 이름과 `Secure`를 사용한다. 실행 예시와 launchSettings의 기본 환경은 Production이며, 예외 페이지는 환경과 관계없이 상세 오류를 노출하지 않는다.
+
+| 화면 | 경로 | 업무 |
+|---|---|---|
+| 대시보드 | `/`, `/dashboard` | 서비스 상태·노출 중 공지·복구 대상 수·최근 운영 기록·빠른 작업 |
+| 캐릭터 | `/characters`(`/accounts`도 같은 화면) | 이름·계정 ID·초대 코드로 대상 확인, 계정 상세·로그인 토큰 폐기·개인 자산 조정 |
+| 캐릭터 프로필 | `/characters/{characterId}` | 직업·수련·장비·부적·재화·최근 출정을 한 화면에(`GET /admin/v1/characters/{id}`) |
+| 지급 | `/grants` | 여러 대상 확인·작성·상세·실행·취소 |
+| 서비스 상태 | `/service-state` | 점검·기능 차단·허용 빌드 저장 |
+| 공지 | `/notices` | 목록·작성·즉시 종료 |
+| 로그 | `/logs` | 원장·아이템 이력·세션 이벤트·작업·감사 조회 |
+| 장애 복구 | `/recovery` | 대상 세션·경매 조회, 정산 재시도·서비스 장애 취소·격리 세션 강제 종료 |
+| 초대 | `/invites` | 코드 발급·폐기, 최초 응답 원문 표시 |
+| 운영자 | `/operators` | Owner의 계정 목록·생성·비활성화 |
+
+화면 사용 규칙: 상단 검색과 모든 대상 입력은 "캐릭터 이름 또는 계정 ID"를 받는다. UUID는 계정 ID로 그대로 쓰고 이름은 `POST /admin/v1/accounts/search`의 `characterName`으로 풀어 칩으로 확정하며, 못 찾으면 그 자리에 오류를 보인다. 날짜·시각 입력은 브라우저 달력(`datetime-local`)이고 한국 시간(KST) 기준이다. API에는 UTC 밀리초로 보내고 화면 표시는 KST, 마우스를 올리면 UTC가 보인다. 입력 칸의 placeholder에 보이는 값이 실제 기본값이다. 비워 두면 그 값을 보내고 확인 대화상자에 "기본값이 적용된 항목"과 "기본 사유 사용"을 표시한다. 기본값: 조회 사유 "운영 조회", 쓰기 사유는 동작별 문구, 조회 개수 50, 로그 기간 최근 24시간, 공지 시작 지금·종료 시작+24시간·대상 런처/게임·중요도 안내, 지급 수령 기한 30일, 초대 사용 1회·유효 24시간(API·CLI는 두 값을 필수로 받으므로 웹 기본값이다). 디자인 토큰과 컴포넌트는 `wwwroot/admin.css`·`wwwroot/admin.js`와 `Components/Shared`에 있으며 외부 글꼴·CDN·인라인 스크립트를 쓰지 않는다.
+
+| 설정 | 기본값 | 의미 |
+|---|---|---|
+| `AdminWeb__ApiBaseUrl` | `http://127.0.0.1:5080` | 웹 서버가 호출할 API 주소. 브라우저가 API에 직접 접근하지 않는다 |
+| `AdminWeb__AllowedNetworks__0` 등 | 빈 목록 | 운영 웹을 열 운영자 CIDR/단일 IP. 비어 있으면 IPv4/IPv6 루프백만 허용하고, 명시하면 기본 루프백도 대체한다 |
+| `ForwardedHeaders__KnownProxies__0` 등 | 빈 목록 | 웹 앞 신뢰 프록시 IP만. 허용 운영자 범위 안의 프록시 설정은 시작 실패다 |
+| `ASPNETCORE_URLS` | 호스트 기본값(명시 권장) | appsettings에는 `Urls`를 두지 않는다. 로컬 5081은 launchSettings 또는 위 실행 예시로 지정한다. 환경 변수 사용 시 `--no-launch-profile`로 프로필의 URL 덮어쓰기를 피한다. 컨테이너는 `http://+:8080` |
+
+허용 네트워크는 신뢰 프록시의 forwarded headers 처리 뒤 `RemoteIpAddress`로 판정하고 허용 밖 요청은 404다. 신뢰 프록시가 없는데 `X-Forwarded-For` 또는 `Forwarded`를 붙인 요청도 404다. 프록시는 `X-Forwarded-For`·`X-Forwarded-Proto`를 보내고, 프록시 자신의 IP는 운영자 허용 범위에 넣지 않는다. 웹 접근 허용과 API의 `Admin__AllowedNetworks__*`는 별도 설정이다. API에는 웹 서버 출처를 허용하며 브라우저의 IP 헤더를 전달하지 않는다. 따라서 API 감사의 요청 IP는 웹 서버 출처이고 기존 API 정책을 변경하지 않는다.
+
+로그인 결과의 API bearer는 웹 서버 메모리에만 둔다. 브라우저에는 무작위 세션 ID 쿠키만 보내고 토큰을 HTML·JavaScript·localStorage·sessionStorage에 넣지 않는다. 쿠키는 `HttpOnly`·`SameSite=Strict`, HTTPS에서는 `__Host-` 이름·`Secure`·`Path=/`를 사용하고 Domain을 설정하지 않는다. HTTPS 요청은 평문 HTTP용 세션 쿠키를 인증에 사용하지 않는다. 세션은 API가 응답한 만료시각과 웹 로그인 후 30분 중 이른 시각을 따르며 API가 401을 반환하면 웹 세션을 폐기하고 재로그인을 요구한다. 로그인·로그아웃 POST는 antiforgery 토큰을 검증한다. 로그아웃과 재로그인은 이전 API 세션 폐기를 시도하고 로컬 세션을 닫는다. API 폐기 실패는 토큰 없는 경고 로그와 화면 안내로 알리며, 이전 API 토큰은 만료 시각까지 유효할 수 있다. 세션 저장소는 운영자당 5개·전체 1,000개로 제한하고 초과 시 가장 오래된 세션을 폐기한다. 만료 정리는 주기적으로 및 조회 시 수행한다. 업무 화면은 만료 시각과 최대 15초 간격 확인으로 유휴 상태에서도 기존 조회·민감 데이터를 지우고 로그인 화면으로 이동한다.
+
+웹을 통해 로그인하는 운영자는 API에서 같은 웹 서버 출처 IP로 보인다. 기존 API 인증 한도(IP당 로그인 실패 20회/분, 인증 요청 60회/분)를 공유하므로 API 정책은 변경하지 않고 웹에서 실패를 먼저 제한한다. IP와 대소문자를 정규화한 로그인 이름별로 실패 1~4회 후 1·2·4·8초 지연, 5회 실패 후 60초 차단하며 한 IP나 이름에서 진행 중인 인증은 1개만 허용한다. 메모리 기록은 총 4,096개 키까지만 보관하고, 비활성 기록은 15분 후 정리한다. 상한에 도달하면 새 키의 인증을 거절한다. API의 429는 공유 인증 한도 안내로 표시한다. 여러 출처에 걸친 요청과 정상 로그인 폭주에서도 API의 공유 한도가 최종 적용된다.
+
+서버는 유효 세션 없이 업무 경로를 요청하면 `/login`으로 이동시키고 `/_blazor` 연결·협상은 401로 거절한다. `/login`, `/healthz`, 실제 MapStaticAssets 정적 자산만 비로그인 접근을 허용한다. CSP는 기본·스크립트 출처를 `'self'`로, WebSocket 출처를 현재 호스트의 ws/wss로 제한한다. Blazor 재접속 UI가 삽입하는 스타일을 위해 style-src에만 `'unsafe-inline'`을 허용하며 inline 스크립트와 eval은 허용하지 않는다. HTTPS 응답에는 HSTS(`max-age=31536000`)를 설정하며 신뢰 프록시의 HTTPS scheme 복원 뒤 판정한다.
+
+화면의 역할별 메뉴·버튼은 Viewer/Operator/Admin/Owner로 구분하고 실제 권한은 API가 최종 판정한다. 민감 조회는 사유를 입력하고 업무 변경은 사유와 확인 단계를 거친다. 확인한 쓰기 요청에서 `operationId`를 한 번 생성하며 202, 429, 5xx, 통신 실패처럼 결과가 불명확한 경우 같은 ID와 확인 때 고정한 본문으로 수동 재시도한다. 재시도할 때 입력을 고치지 말고 먼저 결과를 확인한다. 새로운 의도는 별도 확인과 새 작업으로 시작한다.
+
+초대 코드와 운영자 초기 비밀번호·TOTP 비밀은 API 최초 성공 응답 때만 볼 수 있다. 화면을 닫거나 다른 화면으로 이동하기 전에 안전하게 전달·보관하고 공유 화면/브라우저 캡처에서 지운다. 웹은 이 비밀을 세션이나 별도 저장소에 보존하지 않는다. 응답을 잃었거나 같은 작업 재전송에 비밀이 없으면 기존 초대/운영자를 폐기·비활성화한 뒤 새 작업으로 발급한다.
+
+Data Protection 공급자와 키 관리 저장소도 프로세스 메모리에 둔다. Windows 사용자 키 저장소나 디스크에 키를 기록하지 않는다. 메모리 XML 저장소에는 별도 XML 암호화를 두지 않아 시작 시 프레임워크가 암호화 저장 경고를 남길 수 있으나 키를 파일에 보존하지 않는다.
+
+운영 배치는 사설 HTTPS와 단일 웹 인스턴스를 전제로 한다. 프로세스 재시작 시 메모리 세션을 잃어 모든 운영자가 다시 로그인한다. 여러 인스턴스는 공유 세션 저장소와 sticky session 검토가 필요하며 현재 구현만으로 확장 배치를 검증했다고 보지 않는다. Dockerfile과 배치 설정은 [운영 웹 컨테이너](../deploy/admin-web/README.md)에 있다. 실제 API를 향한 운영자 조작·브라우저 시각 확인·컨테이너 배포·프록시 뒤 HTTPS 접속은 자동 HTTP 대역 테스트와 별도로 검증해야 한다.

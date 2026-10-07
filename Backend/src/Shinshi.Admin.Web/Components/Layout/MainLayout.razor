@@ -1,0 +1,96 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject AdminWebContext Session
+@inject NavigationManager Navigation
+
+@if (Session.IsAuthenticated)
+{
+    <div class="admin-shell">
+        <header class="topbar">
+            <a class="brand" href="/" aria-label="신시 운영 관리 대시보드"><Icon Name="shield" /> SHINSHI ADMIN</a>
+            <GlobalSearch />
+            <div class="topbar-user">
+                <span class="muted">@Session.LoginName</span>
+                <span class="badge accent">@RoleName(Session.Role)</span>
+                <form method="post" action="/logout" data-enhance="false">
+                    <AntiforgeryToken />
+                    <button class="secondary small" type="submit"><Icon Name="logout" /> 로그아웃</button>
+                </form>
+            </div>
+        </header>
+        <nav class="tabs" aria-label="운영 메뉴">
+            <NavLink href="/" Match="NavLinkMatch.All"><Icon Name="dashboard" /> 대시보드</NavLink>
+            <NavLink href="/characters"><Icon Name="users" /> 캐릭터</NavLink>
+            <NavLink href="/grants"><Icon Name="gift" /> 지급</NavLink>
+            <NavLink href="/service-state"><Icon Name="server" /> 서비스 상태</NavLink>
+            <NavLink href="/notices"><Icon Name="megaphone" /> 공지</NavLink>
+            <NavLink href="/logs"><Icon Name="scroll" /> 로그</NavLink>
+            <NavLink href="/recovery"><Icon Name="lifebuoy" /> 장애 복구</NavLink>
+            <NavLink href="/invites"><Icon Name="ticket" /> 초대</NavLink>
+            <NavLink href="/operators"><Icon Name="shield" /> 운영자</NavLink>
+        </nav>
+        <main class="workspace">@Body</main>
+        <footer class="admin-footer">운영자 ID: @Session.AdminId · API 감사 IP는 웹 서버의 주소로 기록됩니다. 시각은 한국 시간(KST) 기준입니다.</footer>
+    </div>
+    <ToastHost />
+}
+else
+{
+    <main class="login-shell"><p>로그인 화면으로 이동 중입니다.</p></main>
+}
+<div id="blazor-error-ui" role="alert">
+    연결에 문제가 생겼습니다. 화면을 다시 열고 로그인 상태와 작업 추적을 확인하세요.
+    <a href="/">화면 다시 열기</a>
+</div>
+
+@code {
+    private bool _disposed;
+
+    protected override void OnInitialized()
+    {
+        Session.Initialize();
+        Session.SessionExpired += OnSessionExpired;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!Session.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        else if (firstRender)
+        {
+            Session.StartExpiryMonitoring(action => InvokeAsync(action));
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Session.SessionExpired -= OnSessionExpired;
+        Session.StopExpiryMonitoring();
+    }
+
+    private void OnSessionExpired()
+    {
+        _ = InvokeAsync(() =>
+        {
+            if (!_disposed)
+            {
+                Navigation.NavigateTo("/login?error=expired", forceLoad: true);
+            }
+        });
+    }
+
+    private static string RoleName(int role)
+    {
+        return role switch
+        {
+            AdminContractCodes.Role.VIEWER => "Viewer · 조회",
+            AdminContractCodes.Role.OPERATOR => "Operator · 운영",
+            AdminContractCodes.Role.ADMIN => "Admin · 서비스 관리",
+            AdminContractCodes.Role.OWNER => "Owner · 운영자 관리",
+            _ => "알 수 없는 역할"
+        };
+    }
+}

@@ -1,0 +1,208 @@
+@inject AdminWebApiClient Api
+@* "캐릭터 이름 또는 계정 ID" 입력. UUID는 그대로 쓰고, 이름은 어드민 API로 풀어 확정한 대상을 칩으로 보여 준다 *@
+<div class="field">
+    <label for="@_id">@Label@(Optional ? " (선택)" : string.Empty)</label>
+    <div class="row nowrap">
+        <input id="@_id" type="text" autocomplete="off" spellcheck="false" placeholder="@Placeholder" value="@_text"
+               disabled="@Disabled" aria-invalid="@(string.IsNullOrEmpty(_res.Error) ? null : "true")" aria-describedby="@(_id + "-status")"
+               @oninput="OnInput" @onchange="OnCommit" @onkeydown="OnKeyDown" />
+        <LoadingButton Variant="secondary" Busy="_res.Busy" Disabled="Disabled || string.IsNullOrWhiteSpace(_text)" IconName="search" OnClick="ResolveClickAsync" Title="대상 확인">확인</LoadingButton>
+    </div>
+    <div id="@(_id + "-status")" aria-live="polite">
+        @if (_res.Selected != null)
+        {
+            <div class="chip-list">
+                <span class="chip ok">
+                    <Icon Name="check-circle" />
+                    <strong>@Title(_res.Selected)</strong>
+                    <span class="muted">@ClassNote(_res.Selected)</span>
+                    <IdChip Value="@_res.Selected.AccountId" Label="계정 ID" />
+                    @if (_res.Selected.Online)
+                    {
+                        <span class="badge ok">접속 중</span>
+                    }
+                    @if (_res.Selected.CharacterDeleted)
+                    {
+                        <span class="badge danger">삭제된 캐릭터</span>
+                    }
+                </span>
+            </div>
+        }
+        else if (_res.Matches.Count > 1)
+        {
+            <p class="hint">여러 계정이 일치합니다. 하나를 선택하세요.</p>
+            <div class="chip-list">
+            @foreach (ResolvedAccount match in _res.Matches)
+            {
+                ResolvedAccount item = match;
+                <button type="button" class="pill-btn" @onclick="() => SelectAsync(item)">@Title(item) · @AccountLookup.ShortId(item.AccountId)@(item.CharacterDeleted ? " (삭제됨)" : string.Empty)</button>
+            }
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_res.Error))
+        {
+            <p class="err-text" role="alert"><Icon Name="x-circle" /> @_res.Error</p>
+        }
+        else if ((_res.Selected == null) && (_res.Matches.Count == 0) && (!string.IsNullOrEmpty(Hint)))
+        {
+            <p class="hint">@Hint</p>
+        }
+    </div>
+</div>
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private readonly string _id = "acct-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+    private AccountResolution _res = default!;
+    private string _text = string.Empty;
+    private string _lastParentValue = string.Empty;
+    private bool _lastIncludeDeleted;
+    private bool _lastInviteMode;
+    private ResolvedAccount? _notified;
+
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public string Label { get; set; } = "캐릭터 이름 또는 계정 ID";
+    [Parameter] public string Placeholder { get; set; } = "캐릭터 이름 또는 계정 ID";
+    [Parameter] public string Hint { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public EventCallback<ResolvedAccount?> OnResolved { get; set; }
+    [Parameter] public bool Optional { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool IncludeDeleted { get; set; }
+    /// <summary> true면 입력을 초대 코드로 보고 찾는다 </summary>
+    [Parameter] public bool InviteMode { get; set; }
+
+    public bool HasText => !string.IsNullOrWhiteSpace(_text);
+    public ResolvedAccount? Account => _res.Selected;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override void OnInitialized()
+    {
+        AccountLookup lookup = new(Api);
+        _res = new AccountResolution((text, includeDeleted, invite) => invite ? lookup.ResolveInviteAsync(text)
+            : lookup.ResolveAsync(text, includeDeleted));
+        _lastIncludeDeleted = IncludeDeleted;
+        _lastInviteMode = InviteMode;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // 검색 모드가 바뀌면 이전 선택은 더 이상 유효하지 않다
+        if ((IncludeDeleted != _lastIncludeDeleted) || (InviteMode != _lastInviteMode))
+        {
+            _lastIncludeDeleted = IncludeDeleted;
+            _lastInviteMode = InviteMode;
+            _res.Reset();
+            await NotifyAsync(null);
+        }
+        // 부모가 값을 바꿔 넣으면(검색 결과 선택 등) 그 값을 받고 UUID면 바로 확정한다
+        if (Value != _lastParentValue)
+        {
+            _lastParentValue = Value;
+            if (Value != _text)
+            {
+                _text = Value;
+                _res.Reset();
+                await NotifyAsync(null);
+                if (TargetInput.IsUuid(Value, out _))
+                {
+                    await EnsureAsync();
+                }
+            }
+        }
+    }
+
+    /// <summary> 입력을 확정해 계정을 돌려준다. 비었거나 실패하면 null이다 </summary>
+    public async Task<ResolvedAccount?> EnsureAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_text))
+        {
+            _res.Reset();
+            return null;
+        }
+        string requested = _text;
+        Task<ResolutionOutcome> task = _res.EnsureOutcomeAsync(requested, IncludeDeleted, InviteMode);
+        await InvokeAsync(StateHasChanged);
+        ResolutionOutcome outcome = await task;
+        // 폐기된 조회이거나 기다리는 동안 입력이 바뀌었으면 결과를 쓰지 않고 알리지도 않는다
+        if ((outcome.Stale) || (requested != _text))
+        {
+            return null;
+        }
+        await NotifyAsync(outcome.Account);
+        await InvokeAsync(StateHasChanged);
+        return outcome.Account;
+    }
+
+    private async Task NotifyAsync(ResolvedAccount? account)
+    {
+        if (!ReferenceEquals(account, _notified))
+        {
+            _notified = account;
+            await OnResolved.InvokeAsync(account);
+        }
+    }
+
+    private async Task SelectAsync(ResolvedAccount account)
+    {
+        if (_res.Choose(account))
+        {
+            await NotifyAsync(account);
+        }
+    }
+
+    private async Task OnInput(ChangeEventArgs args)
+    {
+        string text = args.Value?.ToString() ?? string.Empty;
+        if (text == _text)
+        {
+            return;
+        }
+        _text = text;
+        _lastParentValue = text;
+        _res.Reset();
+        await ValueChanged.InvokeAsync(text);
+        await NotifyAsync(null);
+    }
+
+    private async Task OnCommit(ChangeEventArgs args)
+    {
+        if (HasText)
+        {
+            await EnsureAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if ((args.Key == "Enter") && (HasText))
+        {
+            await EnsureAsync();
+        }
+    }
+
+    private async Task ResolveClickAsync()
+    {
+        await EnsureAsync();
+    }
+
+    private static string Title(ResolvedAccount account)
+    {
+        return string.IsNullOrEmpty(account.CharacterName) ? "계정" : account.CharacterName!;
+    }
+
+    private static string ClassNote(ResolvedAccount account)
+    {
+        return account.CharacterCount > 0 ? "캐릭터 " + account.CharacterCount + "개" : string.Empty;
+    }
+}

@@ -8,6 +8,8 @@ namespace Shinshi.Systems
         Inventory    = 1,
         AuctionHouse = 2,
         CloseWindow  = 3,
-        SortiePrep   = 4
+        SortiePrep   = 4,
+        Chat         = 5,
+        CombatMeter  = 6
     }
 }

@@ -1,0 +1,57 @@
+# Example run of the API container with log retention. Not used by CI. Copy and adjust on the API host.
+# Run from the repository root after: docker build -t shinshi-api:local -f deploy/api/Dockerfile .
+#   docker compose -f deploy/api/docker-compose.example.yml up -d
+# Secrets stay out of this file: pass the connection string through the shell environment of the operator
+# or the secret provider (see deploy/README.md), never as a literal here.
+name: shinshi-api
+
+services:
+  api:
+    image: shinshi-api:local
+    container_name: shinshi-api
+    environment:
+      # Name without a value = take it from the environment that runs `docker compose`.
+      - ConnectionStrings__Postgres
+      - Observability__InstanceId=api-1
+      - Observability__BuildId=REPLACE_WITH_BUILD_ID
+      - Observability__ContentVersion=REPLACE_WITH_CONTENT_VERSION
+      # Prometheus' source address as the API sees it (its private IP, e.g. 10.0.1.5/32). Everything else gets 404 on /metrics.
+      - Metrics__AllowedNetworks__0=REPLACE_WITH_PROMETHEUS_HOST_CIDR
+    ports:
+      # API_BIND_ADDRESS decides who can reach port 5080:
+      #   Prometheus on the same host (or a same-host proxy only): leave the default 127.0.0.1.
+      #   Prometheus on another host (the usual production layout): set API_BIND_ADDRESS to this host's PRIVATE IP and let the
+      #   security group admit TCP 5080 only from the HTTPS entry point and the Prometheus host. Never 0.0.0.0 on a public interface.
+      # Then put the Prometheus host's source IP in Metrics__AllowedNetworks__0 above, and THIS API host's private IP and port
+      # (API_BIND_ADDRESS:5080) in deploy/monitoring/prometheus/targets/api-*.json.
+      # /metrics and /health/* must not be routed through the public proxy.
+      - "${API_BIND_ADDRESS:-127.0.0.1}:5080:8080"
+    restart: unless-stopped
+    stop_grace_period: 60s
+    # Log retention. Without a limit Docker's default json-file driver grows forever, and its files are deleted with the
+    # container, so a redeploy (`docker compose up` that recreates it) would lose the history.
+    #
+    # Recommended on a Linux host: the journald driver. Logs then live in the same journal, with the same 90-day / 4G limits
+    # as the game servers (deploy/gameserver/journald-shinshi.conf), and survive container recreation.
+    #   journalctl CONTAINER_NAME=shinshi-api -o cat
+    # `docker logs shinshi-api` keeps working with this driver.
+    logging:
+      driver: journald
+      options:
+        tag: shinshi-api
+        labels: service
+    labels:
+      service: api
+
+    # Alternative when journald is not available (Docker Desktop, local test): rotate json-file instead. Use this block in place of
+    # the one above. 10 files of 50 MB keep at most 500 MB, and history is lost when the container is removed.
+    #
+    # logging:
+    #   driver: json-file
+    #   options:
+    #     max-size: "50m"
+    #     max-file: "10"
+    #     compress: "true"
+    #
+    # The same limits can be set host-wide in /etc/docker/daemon.json for every container (restart dockerd afterwards):
+    #   { "log-driver": "json-file", "log-opts": { "max-size": "50m", "max-file": "10" } }

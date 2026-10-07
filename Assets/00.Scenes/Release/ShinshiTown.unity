@@ -14204,6 +14204,7 @@ GameObject:
   m_Component:
   - component: {fileID: 87300516}
   - component: {fileID: 87300517}
+  - component: {fileID: 87300518}
   m_Layer: 0
   m_Name: ChatGroup
   m_TagString: Untagged
@@ -14248,6 +14249,40 @@ MonoBehaviour:
   _layoutId: emupivhejvwxs
   _condition: 0
   _description: 
+--- !u!114 &87300518
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 87300515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5fc633498b202f34497afbb891e97e52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.HudChatView
+  _router: {fileID: 175147376}
+  _messages: {fileID: 511013385}
+  _input: {fileID: 1438275182}
+  _channel: {fileID: 1940978189}
+  _tabs:
+  - {fileID: 1495936372}
+  - {fileID: 414893917}
+  - {fileID: 1462587372}
+  _tabLabels:
+  - {fileID: 1852812934}
+  - {fileID: 290768073}
+  - {fileID: 47281858}
+  _underlines:
+  - {fileID: 634751417}
+  - {fileID: 1344502357}
+  - {fileID: 1419944596}
+  _partyColor: {r: 0.561, g: 0.827, b: 1, a: 1}
+  _systemColor: {r: 0.914, g: 0.788, b: 0.478, a: 1}
+  _selectedTabColor: {r: 0.02, g: 0.03, b: 0.05, a: 0.55}
+  _unselectedTabColor: {r: 0.02, g: 0.03, b: 0.05, a: 0}
+  _selectedLabelColor: {r: 0.92, g: 0.94, b: 0.97, a: 1}
+  _labelColor: {r: 0.58, g: 0.62, b: 0.68, a: 1}
 --- !u!1 &87550525
 GameObject:
   m_ObjectHideFlags: 0
@@ -91842,9 +91877,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "<color=#E9C97A>[\uC2DC\uC2A4\uD15C] : \uC2DC\uC2A4\uD15C \uC0C9\uC0C1\uC785\uB2C8\uB2E4</color>\n<color=#8FD3FF>[\uD30C\uD2F0]
-    : \uD30C\uD2F0 \uC0C9\uC0C1\uC785\uB2C8\uB2E4</color>\n[\uC804\uCCB4] : \uC804\uCCB4
-    \uC0C9\uC0C1\uC785\uB2C8\uB2E4"
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 41bb4f9c604e41a438b947123d8b3145, type: 2}
   m_sharedMaterial: {fileID: -3254274088557453994, guid: 41bb4f9c604e41a438b947123d8b3145, type: 2}

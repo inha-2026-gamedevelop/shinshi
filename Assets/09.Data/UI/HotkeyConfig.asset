@@ -25,3 +25,9 @@ MonoBehaviour:
   - _action: 4
     _key: 112
     _label: "\uCD9C\uC815 \uC900\uBE44"
+  - _action: 5
+    _key: 13
+    _label: "\uCC44\uD305"
+  - _action: 6
+    _key: 107
+    _label: "\uB51C\uBBF8\uD130"

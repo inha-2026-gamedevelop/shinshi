@@ -4,10 +4,9 @@ using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
-using UnityEngine.EventSystems;
 
-// 서드파티
-using TMPro;
+// 프로젝트 내부
+using Shinshi.Common;
 
 namespace Shinshi.Systems
 {
@@ -72,7 +71,8 @@ namespace Shinshi.Systems
                     continue;
                 }
 
-                if (IsTyping())
+                // 채팅이나 이름 입력 중에 글자를 치면 창이 열리지 않게 한다
+                if (TextInputFocus.IsTyping())
                 {
                     return;
                 }
@@ -177,24 +177,6 @@ namespace Shinshi.Systems
             {
                 _handlers[i] = new List<Func<bool>>();
             }
-        }
-
-        // 채팅이나 이름 입력 중에 글자를 치면 창이 열리지 않게 한다
-        private static bool IsTyping()
-        {
-            EventSystem system = EventSystem.current;
-            GameObject  focus  = (system != null) ? system.currentSelectedGameObject : null;
-            if (focus == null)
-            {
-                return false;
-            }
-
-            if ((focus.TryGetComponent(out TMP_InputField tmpField)) && (tmpField.isFocused))
-            {
-                return true;
-            }
-
-            return (focus.TryGetComponent(out UnityEngine.UI.InputField field)) && (field.isFocused);
         }
     }
 }

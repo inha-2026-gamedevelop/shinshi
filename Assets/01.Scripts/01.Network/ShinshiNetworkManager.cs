@@ -289,6 +289,16 @@ namespace Shinshi.Network
         public override void OnClientDisconnect()
         {
             base.OnClientDisconnect();
+
+            // 보스전 미터는 접속이 끊기면 실시간 값만 비운다. 결과 화면은 다음 보스전의 새 SessionEpoch 수신 때 교체된다
+            Shinshi.Combat.CombatMeterClient.ClearRealtime();
+
+            // 마을과 던전 사이를 옮길 때는 대화를 이어서 보여 준다
+            if (!IsTransferringServer)
+            {
+                ChatClient.ClearHistory();
+            }
+
 #if !UNITY_SERVER
             if ((!IsTransferringServer) && (!string.IsNullOrEmpty(_townOnlineScene)) && (Utils.IsSceneActive(_townOnlineScene))
                 && (!NetworkServer.active))
@@ -308,6 +318,8 @@ namespace Shinshi.Network
                 return;
             }
 
+            // 지난 보스전 전투 기록이 이번 출정 결과 화면에 남지 않게 출정을 떠날 때 비운다
+            Shinshi.Combat.CombatMeterClient.Clear();
             StartCoroutine(_departFlow.Run(ticket, _onDepartFinished));
         }
 
@@ -331,7 +343,9 @@ namespace Shinshi.Network
             TownGrowthClient.RegisterHandlers();
             TownLifeClient.RegisterHandlers();
             TownProgressClient.RegisterHandlers();
+            ChatClient.RegisterHandlers();
             Shinshi.Combat.PotionClient.RegisterHandlers();
+            Shinshi.Combat.CombatMeterClient.RegisterHandlers();
             RegisterEnemyReplicas();
             if (playerPrefab == null)
             {

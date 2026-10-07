@@ -1,0 +1,39 @@
+@* 브라우저 달력(datetime-local)으로 한국 시간을 입력한다. 비워 두면 DefaultHint의 값이 적용된다 *@
+<div class="field">
+    <label for="@_id">@Label <span class="muted">(KST)</span></label>
+    <input id="@_id" type="datetime-local" step="60" min="@AdminTime.MIN_INPUT" max="@AdminTime.MAX_INPUT" value="@Value" @onchange="OnChanged" aria-describedby="@(_id + "-hint")" />
+    <p id="@(_id + "-hint")" class="default-hint">@DefaultHint</p>
+    @if (ChildContent != null)
+    {
+        <div class="row">@ChildContent</div>
+    }
+</div>
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private readonly string _id = "dt-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    /// <summary> 비워 둘 때 적용되는 값을 알리는 문구 </summary>
+    [Parameter] public string DefaultHint { get; set; } = string.Empty;
+    /// <summary> 빠른 선택 버튼 </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private Task OnChanged(ChangeEventArgs args)
+    {
+        return ValueChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+    }
+}

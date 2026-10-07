@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="admin.css" />
+    <HeadOutlet @rendermode="PageRenderMode" />
+</head>
+<body>
+    <Routes @rendermode="PageRenderMode" />
+    <script src="admin.js"></script>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    // 인증 폼은 HTTP 응답에서 쿠키를 설정하고 업무 화면은 서버 circuit에서 API를 호출한다.
+    private IComponentRenderMode? PageRenderMode => HttpContext?.Request.Path == "/login"
+        ? null : new InteractiveServerRenderMode(prerender: false);
+}

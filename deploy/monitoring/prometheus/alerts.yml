@@ -42,3 +42,103 @@ groups:
           severity: info
         annotations:
           summary: "{{ $labels.instance }} restarted in the last 10 minutes"
+
+  # API alerts. The shinshi_api_* metric names follow the Backend implementation; if Backend renames one, change it here and in
+  # grafana/dashboards/shinshi-api.json. Initial thresholds, tune with real traffic.
+  - name: shinshi-api
+    rules:
+      - alert: ShinshiApiDown
+        expr: up{job="shinshi-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API {{ $labels.instance }} /metrics is not answering for 1 minute (process down, network, or Metrics:AllowedNetworks blocks Prometheus)"
+
+      # Blind-spot alerts: the API alerts above stay silent when nothing is scraped or probed.
+      # absent() fires when the series does not exist at all (target files empty, blackbox exporter gone, job misconfigured).
+      - alert: ShinshiApiMonitoringMissing
+        expr: absent(up{job="shinshi-api"}) or absent(probe_success{job="shinshi-api-ready"})
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No API metrics scrape or readiness probe result exists for 5 minutes (targets/api-*.json empty, or the blackbox exporter is down)"
+
+      - alert: ShinshiApiProbeUnavailable
+        expr: up{job="shinshi-api-ready"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The readiness probe for {{ $labels.instance }} cannot run (blackbox exporter not answering), so /health/ready is not being watched"
+
+      - alert: ShinshiApiNotReady
+        expr: probe_success{job="shinshi-api-ready"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API {{ $labels.instance }} /health/ready failed for 1 minute (503 means the database SELECT 1 failed)"
+
+      # Health and metrics routes are excluded so that the probes themselves do not count as traffic or errors.
+      # The traffic floor (about 30 requests per 5 minutes) keeps one failed request from tripping the ratio.
+      - alert: ShinshiApiErrorRate
+        expr: |
+          (
+            sum(rate(shinshi_api_http_requests_total{status_class=~"5.*", route!~".*health.*|.*metrics.*"}[5m])) or vector(0)
+          )
+          /
+          sum(rate(shinshi_api_http_requests_total{route!~".*health.*|.*metrics.*"}[5m]))
+            > 0.05
+          and
+          sum(rate(shinshi_api_http_requests_total{route!~".*health.*|.*metrics.*"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 5xx responses are over 5% of requests for 5 minutes"
+
+      - alert: ShinshiReconciliationMismatch
+        expr: shinshi_api_reconciliation_last_mismatch_count > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The last daily reconciliation found {{ $value }} mismatches (see the api log event for the details)"
+
+      - alert: ShinshiReconciliationStale
+        expr: time() - shinshi_api_reconciliation_last_run_timestamp_seconds > 26 * 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The daily reconciliation has not run for over 26 hours"
+
+      # Backend reports NaN when a DB-backed gauge cannot be read (and timestamp 0 / mismatch NaN when no reconciliation has run).
+      # NaN makes every threshold above false, so a failing read needs its own alert. x != x is true only for NaN.
+      - alert: ShinshiApiDbMetricsUnavailable
+        # Gauges missing on a scraped instance are compared per instance against up; max by (instance) keeps one alert per API
+        expr: |
+          max by (instance) (
+          (shinshi_api_settlement_outbox_pending != shinshi_api_settlement_outbox_pending)
+          or (shinshi_api_reconciliation_last_run_timestamp_seconds != shinshi_api_reconciliation_last_run_timestamp_seconds)
+          or ((shinshi_api_reconciliation_last_mismatch_count != shinshi_api_reconciliation_last_mismatch_count)
+              and on (instance) (shinshi_api_reconciliation_last_run_timestamp_seconds > 0))
+          or ((up{job="shinshi-api"} == 1) unless on (instance) shinshi_api_settlement_outbox_pending)
+          or ((up{job="shinshi-api"} == 1) unless on (instance) shinshi_api_reconciliation_last_run_timestamp_seconds)
+          or ((up{job="shinshi-api"} == 1) unless on (instance) shinshi_api_reconciliation_last_mismatch_count)
+          )
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API DB-backed gauges (outbox, reconciliation) are NaN or missing for 5 minutes, so those alerts cannot fire"
+
+      - alert: ShinshiOutboxBacklog
+        expr: shinshi_api_settlement_outbox_pending > 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} settlement outbox rows are still pending after 10 minutes"

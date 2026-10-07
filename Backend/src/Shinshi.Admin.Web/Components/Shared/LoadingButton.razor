@@ -1,0 +1,29 @@
+<button type="@Type" class="@CssClass" disabled="@(Busy || Disabled)" aria-busy="@(Busy ? "true" : null)" title="@Title" @onclick="OnClick">
+    @if (Busy)
+    {
+        <Icon Name="loader" Spin="true" />
+    }
+    else if (!string.IsNullOrEmpty(IconName))
+    {
+        <Icon Name="@IconName" />
+    }
+    @ChildContent
+</button>
+@code
+{
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    /// <summary> 처리 중에는 비활성화하고 스피너를 보여 중복 클릭을 막는다 </summary>
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Variant { get; set; } = string.Empty;
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string IconName { get; set; } = string.Empty;
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string CssClass => string.IsNullOrEmpty(Variant) ? "btn" : "btn " + Variant;
+}

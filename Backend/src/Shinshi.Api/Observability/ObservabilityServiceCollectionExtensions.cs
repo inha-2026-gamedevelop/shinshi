@@ -30,6 +30,11 @@ namespace Shinshi.Backend.Observability
             services.Configure<ShinshiJsonFormatterOptions>(
                 configuration.GetSection(ShinshiJsonFormatterOptions.SECTION_NAME));
             services.TryAddSingleton<ApiMetrics>();
+            services.Configure<MetricsOptions>(configuration.GetSection(MetricsOptions.SECTION_NAME));
+            services.TryAddSingleton<MetricsNetworkPolicy>();
+            services.AddHostedService<MetricsStartupService>();
+            services.TryAddSingleton<IMetricsDatabaseReader>(provider => new PostgresMetricsDatabaseReader(provider,
+                databaseAvailable, provider.GetRequiredService<ILogger<PostgresMetricsDatabaseReader>>()));
             services.AddHostedService(provider => new MetricsReporterService(provider.GetRequiredService<ApiMetrics>(),
                 provider.GetRequiredService<ILogger<MetricsReporterService>>(),
                 provider.GetRequiredService<TimeProvider>(), provider, databaseAvailable));

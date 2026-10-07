@@ -1,0 +1,14 @@
+@inject AdminWebContext Context
+<p class="role-note"><Icon Name="lock" /> 필요 권한: @AdminLabels.Role(MinimumRole). 현재 권한: @AdminLabels.Role(Context.Role).</p>
+@if (!Context.HasRole(MinimumRole))
+{
+    <div class="notice-box warning" role="status"><Icon Name="alert" /><span>이 화면의 작업에 필요한 권한이 없습니다.</span></div>
+}
+@code
+{
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public int MinimumRole { get; set; }
+}

@@ -1,6 +1,6 @@
 # shinshi-admin (Shinshi.AdminCli)
 
-체험판 운영 도구는 어드민 API와 이 명령줄 도구만 제공한다. 이 도구는 `/admin/v1` API만 호출하고 DB에 직접 붙지 않는다. 경로, DTO, 코드는 `Shinshi.Contracts.Admin`을 그대로 쓴다.
+이 명령줄 운영 도구는 `/admin/v1` API만 호출하고 DB에 직접 붙지 않는다. 경로, DTO, 코드는 `Shinshi.Contracts.Admin`을 그대로 쓴다.
 
 ## 실행
 
@@ -91,8 +91,9 @@ operationId: 2b0e...
 | `operators list` | `GET /admin/v1/operators` | Owner |
 | `operators create --user --role --reason` | `POST /admin/v1/operators` | Owner |
 | `operators disable <adminId> --reason` | `POST /admin/v1/operators/{adminId}/disable` | Owner |
-| `accounts search <질의>` | `POST /admin/v1/accounts/search` | Viewer |
+| `accounts search <질의>` 또는 `accounts search --character-name <이름> [--include-deleted]` | `POST /admin/v1/accounts/search` | Viewer |
 | `accounts show <accountId> --reason` | `GET /admin/v1/accounts/{accountId}?reason=` | Viewer(감사 기록) |
+| `characters show <characterId> --reason` 또는 `characters show --name <이름> [--include-deleted] --reason` | 이름은 `POST /admin/v1/accounts/search` 후 `GET /admin/v1/characters/{characterId}?reason=` | Viewer(감사 기록) |
 | `accounts kick <accountId> [--keep-invites] --reason` | `POST /admin/v1/accounts/{accountId}/kick` (응답 `AdminAccountKickResponse`) | Operator |
 | `invites issue [--account] --max-uses --hours [--keep-sessions] --reason` | `POST /admin/v1/invites` | Operator |
 | `invites revoke <inviteId> --reason` | `POST /admin/v1/invites/{inviteId}/revoke` | Operator |
@@ -114,6 +115,8 @@ operationId: 2b0e...
 | `sessions [--state] [--all]` | `GET /admin/v1/sessions` | Viewer |
 | `recover <sessionId> --action retry-settlement\|service-cancel\|force-close --reason` | `POST /admin/v1/sessions/{sessionId}/recovery` | Admin |
 
+- `accounts search --character-name <이름>`은 생성과 같은 앞뒤 공백 제거·NFKC 정규화·문화권 독립 소문자 키로 정확 검색한다. 부분 이름은 찾지 않는다. 기본으로 활성 캐릭터만 찾으며 `--include-deleted`면 소프트 삭제된 캐릭터도 찾는다. 응답의 `includeDeletedCharacters`는 이번 검색의 포함 정책이고 `matchedCharacterDeleted`는 `false`=활성, `true`=삭제, `null`=계정 ID·초대 매칭이다. `matchedId`는 이름·캐릭터 ID 매칭의 캐릭터 ID이며 `characterCount`는 활성 캐릭터 수다. 입력한 이름과 초대 원문은 POST 본문에만 보내고 URL·오류에 출력하지 않는다. 표에는 서버가 응답한 매칭 캐릭터 ID·이름·직업을 표시한다. 위치 검색어와 이름 옵션을 함께 쓰면 사용법 오류다.
+- `characters show`는 ID로 바로 조회하거나 `--name`으로 정확 검색한 캐릭터를 조회한다. 이름 검색은 기본으로 활성 캐릭터만 찾고 `--include-deleted`면 삭제 캐릭터도 포함한다. 검색 결과가 없거나 여러 캐릭터면 상세 GET 없이 종료 코드 2로 거절하며 캐릭터 ID로 다시 지정한다. `--reason`은 검색 전에 검사하고 상세 GET의 감사 사유로 보낸다. 기본 출력은 식별 정보·정기·파편·최고 강화 단계·수련 투자와 상한을 요약하고 그 밖의 중첩 프로필도 표시한다. `--json`은 캐릭터 상세 응답 전체를 그대로 쓴다.
 - `accounts kick`은 계정의 기존 토큰(로그인 묶음, 접근, 갱신, 게임 하위 세션, 미소비 입장 토큰)을 폐기하고 현재 접속은 유지한다. 기본으로 미사용 초대도 폐기하며 `--keep-invites`면 남긴다. 비밀번호 로그인은 막지 않으므로 같은 아이디와 비밀번호로 새 토큰을 받을 수 있다(로그인 차단은 제재, P1). 출력에 초대 폐기 여부와 현재 접속 유지 여부를 보여 준다.
 - `grants create`에서 같은 `--source-ref`의 RecoveryCompensation 지급을 다시 만들면 409 `INVALID_STATE`다.
 - `sessions` 응답의 `livenessDeferred`가 true면(API 시작 직후나 DB 단절 직후) 서버 소실 판정을 보류 중이라고 경고한다. 이때 `recover --action service-cancel|force-close`는 503 `BACKEND_UNAVAILABLE`(Retry-After)로 거절되고 종료 코드 3이다. 잠시 뒤 같은 `--operation-id`로 다시 실행한다.

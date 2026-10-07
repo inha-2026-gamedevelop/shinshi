@@ -1,0 +1,59 @@
+﻿@page "/login"
+@layout LoginLayout
+<PageTitle>운영자 로그인 · 신시</PageTitle>
+<section class="login-card">
+    <p class="eyebrow">SHINSHI ADMIN</p>
+    <h1>운영자 로그인</h1>
+    <p>운영자 계정과 인증 앱의 6자리 TOTP 코드를 입력하세요.</p>
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <p class="error" role="alert">@ErrorMessage</p>
+    }
+    @if (!string.IsNullOrEmpty(WarningMessage))
+    {
+        <p class="error" role="alert">@WarningMessage</p>
+        @if (Warning == "previous-session")
+        {
+            <p><a href="/">새 세션으로 운영 화면에 들어가기</a></p>
+        }
+    }
+    <form method="post" action="/login" data-enhance="false">
+        <AntiforgeryToken />
+        <label>로그인 이름
+            <input name="loginName" autocomplete="username" maxlength="100" required />
+        </label>
+        <label>비밀번호
+            <input name="password" type="password" autocomplete="current-password" maxlength="1024" required />
+        </label>
+        <label>TOTP 코드
+            <input name="totpCode" type="password" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required />
+        </label>
+        <button type="submit">로그인</button>
+    </form>
+    <p class="muted">세션은 최대 30분 유지됩니다. 비밀번호와 인증 코드는 저장하지 않습니다.</p>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "warning")]
+    public string? Warning { get; set; }
+
+    private string ErrorMessage => Error switch
+    {
+        "credentials" => "로그인할 수 없습니다. 입력한 로그인 정보와 인증 코드를 확인하세요.",
+        "rate" => "이 IP 또는 로그인 이름의 인증 시도가 제한되었습니다. 잠시 기다린 뒤 다시 로그인하세요.",
+        "api-rate" => "공유 인증 서비스의 요청 한도에 도달했습니다. 다른 운영자의 로그인 시도도 영향을 줄 수 있습니다. 잠시 기다린 뒤 다시 로그인하세요.",
+        "unavailable" => "인증 서비스에 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
+        "expired" => "세션이 만료되었거나 폐기되었습니다. 다시 로그인하세요.",
+        _ => string.Empty
+    };
+
+    private string WarningMessage => Warning switch
+    {
+        "logout" => "웹 세션은 로그아웃되었습니다. 서버 세션 폐기를 확인하지 못해 API 토큰은 원래 만료 시각까지 유효할 수 있으며, 만료 시각에 무효화됩니다.",
+        "previous-session" => "새 로그인은 완료되었고 이전 웹 세션은 폐기되었습니다. 이전 서버 세션 폐기를 확인하지 못해 이전 API 토큰은 원래 만료 시각까지 유효할 수 있으며, 만료 시각에 무효화됩니다.",
+        _ => string.Empty
+    };
+}

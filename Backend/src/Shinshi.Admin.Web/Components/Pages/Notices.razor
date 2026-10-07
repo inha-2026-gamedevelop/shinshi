@@ -1,0 +1,219 @@
+@page "/notices"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>공지 · 신시 운영</PageTitle>
+<div class="page-head">
+    <div>
+        <h1><Icon Name="megaphone" /> 공지</h1>
+        <p>현재·예정 공지와 종료된 지 7일 이내인 공지를 보여 줍니다. 시각은 한국 시간(KST)입니다.</p>
+    </div>
+    <LoadingButton Variant="secondary" Busy="_listing" IconName="refresh" OnClick="RefreshAsync">목록 새로 고침</LoadingButton>
+</div>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.OPERATOR" />
+<div class="grid two">
+    <section class="card" aria-labelledby="notice-list">
+        <div class="card-head"><Icon Name="list" /><h2 id="notice-list">공지 목록</h2></div>
+        @if (!string.IsNullOrEmpty(_listError))
+        {
+            <p class="err-text" role="alert"><Icon Name="x-circle" /> @_listError</p>
+        }
+        else if (_notices == null)
+        {
+            <div class="skeleton" aria-busy="true">&nbsp;</div>
+        }
+        else if (_notices.Length == 0)
+        {
+            <p class="muted">표시할 공지가 없습니다.</p>
+        }
+        else
+        {
+            <ul class="list-plain">
+            @foreach (JToken notice in _notices)
+            {
+                string status = notice["status"]?.ToString() ?? string.Empty;
+                int severity = notice["severity"]?.Value<int>() ?? 0;
+                string noticeId = notice["noticeId"]?.ToString() ?? string.Empty;
+                <li>
+                    <div class="spread">
+                        <span class="title">@notice["title"]</span>
+                        <span class="row">
+                            <span class="@("badge " + StatusClass(status))">@AdminLabels.NoticeStatus(status)</span>
+                            <span class="@("badge " + SeverityClass(severity))">@AdminLabels.NoticeSeverity(severity)</span>
+                        </span>
+                    </div>
+                    <span class="muted">@AdminLabels.NoticeTarget(notice["target"]?.ToString() ?? string.Empty) · <KstTime UnixMs='AdminJson.Ms(notice, "startsAtUnixMs")' /> ~ <KstTime UnixMs='AdminJson.Ms(notice, "endsAtUnixMs")' /></span>
+                    <span class="row"><IdChip Value="@noticeId" Label="공지 ID" />
+                        @if (status != AdminNoticeSummary.STATUS_ENDED)
+                        {
+                            <button type="button" class="secondary small" disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))" @onclick="() => SelectEnd(noticeId)"><Icon Name="x-circle" /> 종료하기</button>
+                        }
+                    </span>
+                </li>
+            }
+            </ul>
+        }
+    </section>
+    <div class="stack">
+        <section class="card" aria-labelledby="notice-create">
+            <div class="card-head"><Icon Name="plus" /><h2 id="notice-create">공지 작성</h2></div>
+            <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+                <div class="form-grid cols-2">
+                    <label class="field wide">제목 <input @bind="_title" maxlength="100" placeholder="공지 제목 (필수)" /></label>
+                    <label class="field wide">본문 <textarea @bind="_body" rows="4" maxlength="4000" placeholder="공지 본문"></textarea></label>
+                    <label class="field">대상
+                        <select @bind="_target"><option value="Both">런처·게임</option><option value="Launcher">런처</option><option value="Game">게임</option></select></label>
+                    <label class="field">중요도
+                        <select @bind="_severity"><option value="0">안내</option><option value="1">경고</option><option value="2">긴급</option></select></label>
+                    <DateTimeField Label="시작 시각" @bind-Value="_starts" DefaultHint="비우면 지금 바로 시작">
+                        <button type="button" class="pill-btn" @onclick="() => _starts = AdminTime.ToInput(DateTimeOffset.UtcNow)">지금</button>
+                    </DateTimeField>
+                    <DateTimeField Label="종료 시각" @bind-Value="_ends" DefaultHint="@("비우면 시작 + " + AdminDefaults.NOTICE_HOURS + "시간")">
+                        <button type="button" class="pill-btn" @onclick="() => AddHours(1)">+1시간</button>
+                        <button type="button" class="pill-btn" @onclick="() => AddHours(24)">+1일</button>
+                        <button type="button" class="pill-btn" @onclick="() => AddHours(168)">+7일</button>
+                    </DateTimeField>
+                </div>
+                <p class="default-hint">대상·중요도를 바꾸지 않으면 "런처·게임", "안내"</p>
+                <label class="field mt">작성 사유 <input @bind="_createReason" maxlength="500" placeholder="@AdminDefaults.NOTICE_CREATE_REASON" /></label>
+                <p class="default-hint">비우면 "@AdminDefaults.NOTICE_CREATE_REASON"</p>
+                <div class="actions"><LoadingButton IconName="check" OnClick="PrepareCreate">작성 내용 확인</LoadingButton></div>
+            </fieldset>
+        </section>
+        <section class="card" aria-labelledby="notice-end">
+            <div class="card-head"><Icon Name="x-circle" /><h2 id="notice-end">공지 즉시 종료</h2></div>
+            <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+                <div class="form-grid cols-2">
+                    <label class="field">공지 ID <input @bind="_noticeId" placeholder="목록에서 '종료하기'를 누르면 채워집니다" /></label>
+                    <label class="field">종료 사유 <input @bind="_endReason" maxlength="500" placeholder="@AdminDefaults.NOTICE_END_REASON" /></label>
+                </div>
+                <p class="default-hint">비우면 "@AdminDefaults.NOTICE_END_REASON"</p>
+                <div class="actions"><LoadingButton Variant="danger" IconName="x-circle" OnClick="PrepareEnd">종료 내용 확인</LoadingButton></div>
+            </fieldset>
+        </section>
+    </div>
+</div>
+<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" Defaults="_writeDefaults" OnConfirm="ConfirmThenRefreshAsync" OnCancel="CancelPrepared" />
+<ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private string _title = string.Empty;
+    private string _body = string.Empty;
+    private string _target = AdminDefaults.NOTICE_TARGET;
+    private int _severity = AdminDefaults.NOTICE_SEVERITY;
+    private string _starts = string.Empty;
+    private string _ends = string.Empty;
+    private string _createReason = string.Empty;
+    private string _noticeId = string.Empty;
+    private string _endReason = string.Empty;
+    private JToken[]? _notices;
+    private string _listError = string.Empty;
+    private bool _listing;
+    private readonly LatestRequest _listLatest = new();
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    // 새 조회를 시작하면 이전 목록 응답은 무효가 된다. 이미 진행 중이어도 건너뛰지 않는다
+    private async Task RefreshAsync()
+    {
+        _listing = true;
+        try
+        {
+            await _listLatest.RunAsync(() => FetchAsync(AdminApiRoutes.NOTICES), result =>
+            {
+                if (result == null)
+                {
+                    return;
+                }
+                _notices = result.IsSuccess ? (result.Value?["notices"] as JArray ?? new JArray()).ToArray() : null;
+                _listError = result.IsSuccess ? string.Empty : result.ErrorMessage;
+            });
+        }
+        finally
+        {
+            _listing = _listLatest.Pending;
+        }
+    }
+
+    private async Task ConfirmThenRefreshAsync()
+    {
+        await ConfirmAsync();
+        if (!string.IsNullOrEmpty(_message))
+        {
+            await RefreshAsync();
+        }
+    }
+
+    private void AddHours(int hours)
+    {
+        Validate(() => _ends = AdminTime.AddToInput(_starts, TimeSpan.FromHours(hours), DateTimeOffset.UtcNow));
+    }
+
+    private void SelectEnd(string noticeId)
+    {
+        _noticeId = noticeId;
+    }
+
+    private void PrepareCreate()
+    {
+        Validate(() =>
+        {
+            WriteDefaults defaults = new();
+            string title = _title.Trim();
+            string body = _body;
+            if ((title.Length == 0) || (title.Length > AdminNoticeCreateRequest.MAX_TITLE_LENGTH)
+                || (body.Length > AdminNoticeCreateRequest.MAX_BODY_LENGTH))
+            {
+                throw new ArgumentException("제목은 1~100자, 본문은 최대 4,000자입니다.");
+            }
+            (long starts, long ends) = NoticePeriod.Resolve(_starts, _ends, DateTimeOffset.UtcNow, AdminDefaults.NOTICE_HOURS, defaults);
+            string reason = defaults.Reason(_createReason, AdminDefaults.NOTICE_CREATE_REASON);
+            string target = _target;
+            int severity = _severity;
+            if (target == AdminDefaults.NOTICE_TARGET)
+            {
+                defaults.Note("대상: 런처·게임 (기본값)");
+            }
+            if (severity == AdminDefaults.NOTICE_SEVERITY)
+            {
+                defaults.Note("중요도: 안내 (기본값)");
+            }
+            Prepare("공지 작성", AdminLabels.NoticeTarget(target) + " / " + title, reason, AdminContractCodes.Role.OPERATOR,
+                AdminApiRoutes.NOTICES,
+                operation => new AdminNoticeCreateRequest(operation, reason, title, body, target, severity, starts, ends),
+                defaults: defaults);
+        });
+    }
+
+    private void PrepareEnd()
+    {
+        Validate(() =>
+        {
+            WriteDefaults defaults = new();
+            string notice = Id(_noticeId, "공지 ID");
+            string reason = defaults.Reason(_endReason, AdminDefaults.NOTICE_END_REASON);
+            Prepare("공지 종료", notice, reason, AdminContractCodes.Role.OPERATOR,
+                string.Format(AdminApiRoutes.NOTICE_END_FORMAT, notice),
+                operation => new AdminNoticeEndRequest(operation, reason), defaults: defaults);
+        });
+    }
+
+    private static string StatusClass(string status) => status switch
+    {
+        "Active" => "ok", "Scheduled" => "info", _ => string.Empty
+    };
+
+    private static string SeverityClass(int severity) => severity switch { 2 => "danger", 1 => "warn", _ => "info" };
+
+    protected override void ClearSensitiveState() { _notices = null; }
+}

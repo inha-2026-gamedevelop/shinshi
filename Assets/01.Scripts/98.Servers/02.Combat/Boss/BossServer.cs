@@ -123,6 +123,7 @@ namespace Shinshi.Combat
 
         public EBossFlowState  FlowState  => _brain.FlowState;
         public EBossPhaseState PhaseState => _brain.PhaseState;
+        public int            Phase      => _brain.Phase;
 
         /// <summary> 등장 대기나 전투 중이라 틱과 종료 요청을 받는다 </summary>
         public bool IsActive => (_brain.FlowState == EBossFlowState.Appearing) || (_brain.FlowState == EBossFlowState.Combat);

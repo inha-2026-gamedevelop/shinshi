@@ -41,11 +41,13 @@ namespace Shinshi.Combat
         ****************************************/
 
         private const double TICK_INTERVAL_SECONDS = 1.0 / Constants.Network.SERVER_TICK_RATE;
+        private const byte   FIRST_METER_PHASE     = 1;
 
         private CombatTargetRegistry         _registry;
         private HitLedger                    _ledger;
         private DamageResolver               _resolver;
-        private SkillDamageResolver          _skillResolver;
+        private IDamageResolver              _skillResolver;
+        private CombatMeterRecorder          _combatMeter;
         private SkillCatalogSO               _skillCatalog;
         private Dictionary<int, SkillServer> _retainedSkills;
         private List<SkillServer>            _retainedSkillTicks;
@@ -103,6 +105,8 @@ namespace Shinshi.Combat
         // 던전 출정을 연결한 뒤에만 있다. 마을과 GameDB 없는 시험 설치는 null이다
         public PotionServer         Potions        => _potions;
 
+        public CombatMeterRecorder  CombatMeter    => _combatMeter;
+
         // 보스전에서 열 보스 정의 ID. 보스전 출정 계약이 있으면 계약 값이고, 없으면 실행 설정(-boss-id, 기본 개발 보스)이다
         public string               BossId         => ((_host != null) && (_host.Sortie.IsBoss)) ? _host.Sortie.BossId : _bossId;
 
@@ -154,6 +158,11 @@ namespace Shinshi.Combat
 
         private void OnDestroy()
         {
+            if (_potions != null)
+            {
+                _potions.PotionApplied -= OnPotionApplied;
+            }
+
             if (_host != null)
             {
                 _host.Roster.ParticipantClosed -= OnRosterParticipantClosed;
@@ -265,6 +274,7 @@ namespace Shinshi.Combat
             {
                 _potions = new PotionServer(_playerConfig, GameDB.Life, new DungeonPotionEventLedger(host), this,
                     Constants.Session.MAX_PARTY_SIZE);
+                _potions.PotionApplied += OnPotionApplied;
             }
         }
 
@@ -437,6 +447,7 @@ namespace Shinshi.Combat
             _host.OnParticipantAttached(participantId, _lastTickTime);
             SendPotionState(player, 0, ERejectReason.None);
             _host.SendStatusTo(participantId);
+            _combatMeter?.Resend(participantId, _lastTickTime);
             return true;
         }
 
@@ -503,6 +514,7 @@ namespace Shinshi.Combat
             // 호출 순서에 기대지 않고 명시적으로 여기서 정한다
             combat.SetPublicIdentity(binding.CharacterName, binding.Appearance);
             AdoptSessionEpoch();
+            EnsureCombatMeter();
 
             int combatId = _registry.IssueCombatId();
             var player   = new PlayerServer(input, combat, playerClass, combatId, participantId, _sessionEpoch, _playerConfig,
@@ -530,6 +542,7 @@ namespace Shinshi.Combat
             }
 
             _players.Add(player);
+            RegisterMeterParticipant(player, in stats);
             _host?.OnParticipantAttached(participantId, _lastTickTime);
             if ((_potions != null) && (!_potions.TryRegister(participantId, binding.ParticipantKey, binding.ReservedPotions)))
             {
@@ -538,6 +551,71 @@ namespace Shinshi.Combat
 
             SendPotionState(player, 0, ERejectReason.None);
             _host?.SendStatusTo(participantId);
+            _combatMeter?.Resend(participantId, _lastTickTime);
+        }
+
+        // 전투 개체가 판정기를 보관하기 전에 감싼다. 출정 시작까지 기다리면 이미 만든 기술과 소환물이 기록을 우회한다
+        private void EnsureCombatMeter()
+        {
+            if ((_combatMeter != null) || (_host == null) || (_host.SessionId == null) || (_host.Sortie.IsNormal)
+                || ((_host.Session != null) && (!_host.Session.IsBossSession)))
+            {
+                return;
+            }
+
+            _combatMeter   = new CombatMeterRecorder(_registry, _skillCatalog, FindMeterConnection, _sessionEpoch,
+                _host.SessionId);
+            _skillResolver = new CombatMeterResolver(_skillResolver, _combatMeter, _resolver);
+            _host.CombatMeterSink = _combatMeter;
+            if (_host.Session != null)
+            {
+                _host.Session.SetCombatMeterSink(_combatMeter);
+                _combatMeter.Begin(_host.Session.StartTime);
+            }
+        }
+
+        private void RegisterMeterParticipant(PlayerServer player, in CharacterStats stats)
+        {
+            if (_combatMeter == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _host.Roster.Count; ++i)
+            {
+                ParticipantSnapshot participant = _host.Roster.GetAt(i);
+                if (participant.ParticipantId != player.ParticipantId)
+                {
+                    continue;
+                }
+
+                _combatMeter.RegisterParticipant(player.ParticipantId, player.CombatId, player.Combat.CharacterName,
+                    player.PlayerClass, in stats, i, participant.ParticipantKey);
+                _combatMeter.RegisterCombatId(player.ParticipantId, player.CombatId);
+                _combatMeter.ObserveLifeState(player.ParticipantId, player.LifeState, _lastTickTime);
+                return;
+            }
+        }
+
+        private NetworkConnectionToClient FindMeterConnection(int participantId)
+        {
+            // 경매 재입장은 전투 개체를 만들지 않으므로 인증 결합에서 연결을 찾는다
+            foreach (NetworkConnectionToClient connection in NetworkServer.connections.Values)
+            {
+                if ((connection != null) && (connection.isAuthenticated)
+                    && (connection.authenticationData is SessionBinding binding) && (binding.IsActive)
+                    && (binding.ParticipantId == participantId))
+                {
+                    return connection;
+                }
+            }
+
+            return null;
+        }
+
+        private void OnPotionApplied(int participantId)
+        {
+            _combatMeter?.RecordPotion(participantId);
         }
 
         // 던전은 첫 입장 토큰으로 출정이 정해진 뒤에 플레이어가 생긴다. 첫 전투 개체를 만들기 전에 한 번 출정 ID에서 번호를 만든다.
@@ -709,6 +787,7 @@ namespace Shinshi.Combat
                 _retainedSkills[player.ParticipantId] = player.Skills;
                 _retainedSkillTicks.Add(player.Skills);
                 player.Shutdown(true);
+                _combatMeter?.SuspendActive(player.ParticipantId, _lastTickTime);
                 _registry.Unregister(player.CombatId);
                 _players.RemoveAt(i);
 
@@ -720,6 +799,8 @@ namespace Shinshi.Combat
 
         private void Step(double serverTime, float deltaTime)
         {
+            AdoptSessionEpoch();
+            EnsureCombatMeter();
             bool sessionTick = (_host != null) && (_host.BeginTick(serverTime));
             ApplySessionPhase();
             TrySpawnBoss(serverTime);
@@ -751,12 +832,13 @@ namespace Shinshi.Combat
             }
 
             TickBoss(serverTime, sessionTick);
+            ObserveBossMeterPhase(serverTime);
             if (sessionTick)
             {
                 _host.TickWave();
             }
 
-            ReportLifeStates();
+            ReportLifeStates(serverTime);
             if (sessionTick)
             {
                 _host.CompleteTick();
@@ -770,6 +852,7 @@ namespace Shinshi.Combat
 
             ApproveRevives(serverTime);
             SyncCompanionObjects();
+            _combatMeter?.Tick(serverTime);
 
             // 이동, 기술, 공격, 부활이 위치를 모두 옮긴 뒤에 보내야 예측이 틱 중간 위치를 기준으로 삼지 않는다
             for (int i = 0; i < _players.Count; ++i)
@@ -956,6 +1039,25 @@ namespace Shinshi.Combat
             }
         }
 
+        // 피해 처리 뒤 정본 단계와 대기를 함께 반영한다. 전환 틱 피해는 이전 단계에 남고 인계 대기는 새 단계에 쌓인다
+        private void ObserveBossMeterPhase(double serverTime)
+        {
+            if ((_combatMeter == null) || (_boss == null))
+            {
+                return;
+            }
+
+            int phase = _boss.Phase;
+            if ((phase < FIRST_METER_PHASE) || (phase > Constants.CombatMeter.MAX_PHASES))
+            {
+                return;
+            }
+
+            EBossPhaseState state = _boss.PhaseState;
+            bool waiting = (state == EBossPhaseState.AwaitingHandoff) || (state == EBossPhaseState.AwaitingReadiness);
+            _combatMeter.ObservePhase((byte)phase, waiting, serverTime);
+        }
+
         // 승패는 세션 종료 사유가 정본이다. 같은 틱 보스 사망과 전멸이면 보스는 이미 사망 상태라 종료 요청을 받지 않는다
         private void EndBossIfSessionEnded(double serverTime)
         {
@@ -969,7 +1071,7 @@ namespace Shinshi.Combat
         }
 
         // 생사가 바뀐 참가자만 명단에 알린다. 연결이 끊겨 남은 캐릭터의 사망도 여기서 기록된다
-        private void ReportLifeStates()
+        private void ReportLifeStates(double serverTime)
         {
             if (_host == null)
             {
@@ -979,6 +1081,7 @@ namespace Shinshi.Combat
             for (int i = 0; i < _players.Count; ++i)
             {
                 PlayerServer player = _players[i];
+                _combatMeter?.ObserveLifeState(player.ParticipantId, player.LifeState, serverTime);
                 if (player.LifeState == player.ReportedLifeState)
                 {
                     continue;
@@ -993,6 +1096,7 @@ namespace Shinshi.Combat
         // OnStopServer가 같은 호출 스택에서 선수 목록을 바꾼다
         private void OnRosterParticipantClosed(int participantId, ESessionEndReason reason, double serverTime)
         {
+            _combatMeter?.CloseParticipant(participantId, serverTime);
             if (_closedParticipants.Count < _closedParticipants.Capacity)
             {
                 _closedParticipants.Add(participantId);
@@ -1189,6 +1293,7 @@ namespace Shinshi.Combat
             }
 
             player.Revive(point, healthRate);
+            _combatMeter?.RecordRevive(participantId, serverTime);
             player.ReportedLifeState = player.LifeState;
         }
 

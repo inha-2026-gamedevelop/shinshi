@@ -20,9 +20,10 @@ namespace Shinshi.AdminCli
         public const string FLAG_HELP           = "help";
 
         // 일부 명령만 받는 플래그. 파서가 값 옵션과 구분하려고 미리 알아야 한다
-        public const string FLAG_ALL           = "all";
-        public const string FLAG_KEEP_SESSIONS = "keep-sessions";
-        public const string FLAG_KEEP_INVITES  = "keep-invites";
+        public const string FLAG_ALL             = "all";
+        public const string FLAG_KEEP_SESSIONS   = "keep-sessions";
+        public const string FLAG_KEEP_INVITES    = "keep-invites";
+        public const string FLAG_INCLUDE_DELETED = "include-deleted";
 
         private static readonly string[] G_GlobalOptions = { OPTION_API, OPTION_OPERATION_ID };
         private static readonly string[] G_GlobalFlags   = { FLAG_JSON, FLAG_YES, FLAG_HELP };
@@ -37,7 +38,7 @@ namespace Shinshi.AdminCli
 
         public static IReadOnlyList<string> FlagNames { get; } = new[]
         {
-            FLAG_JSON, FLAG_YES, FLAG_HELP, FLAG_ALL, FLAG_KEEP_SESSIONS, FLAG_KEEP_INVITES
+            FLAG_JSON, FLAG_YES, FLAG_HELP, FLAG_ALL, FLAG_KEEP_SESSIONS, FLAG_KEEP_INVITES, FLAG_INCLUDE_DELETED
         };
 
         public IReadOnlyList<string> Positionals => _positionals;

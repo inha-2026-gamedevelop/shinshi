@@ -12,6 +12,9 @@ namespace Shinshi.Contracts.Admin
 
         public const string PREFIX = "/admin/v1";
 
+        public const string CHARACTER        = PREFIX + "/characters/{characterId}";
+        public const string CHARACTER_FORMAT = PREFIX + "/characters/{0}";
+
         // 경로 조회 문자열 이름. GET /admin/v1/accounts?query=, GET /admin/v1/sessions?state=
         public const string QUERY_PARAMETER = "query";
         public const string STATE_PARAMETER = "state";

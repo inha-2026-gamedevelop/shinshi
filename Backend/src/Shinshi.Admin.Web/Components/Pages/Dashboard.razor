@@ -1,0 +1,230 @@
+@page "/"
+@page "/dashboard"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>대시보드 · 신시 운영</PageTitle>
+<div class="page-head">
+    <div>
+        <h1><Icon Name="dashboard" /> 대시보드</h1>
+        <p>서비스 상태, 노출 중인 공지, 복구가 필요한 항목을 한눈에 봅니다.</p>
+    </div>
+    <LoadingButton Variant="secondary" Busy="_loading" IconName="refresh" OnClick="LoadAsync">새로 고침</LoadingButton>
+</div>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.VIEWER" />
+<div class="grid">
+    <section class="card" aria-labelledby="dash-service">
+        <div class="card-head"><Icon Name="server" /><h2 id="dash-service">서비스 상태</h2><a class="more" href="/service-state">관리 <Icon Name="chevron-right" /></a></div>
+        @if (!string.IsNullOrEmpty(_serviceError))
+        {
+            <p class="err-text" role="alert"><Icon Name="x-circle" /> @_serviceError</p>
+        }
+        else if (_service == null)
+        {
+            <div class="skeleton" aria-busy="true">&nbsp;</div>
+        }
+        else
+        {
+            bool maintenance = _service["maintenance"]?.Value<bool>() ?? false;
+            string[] disabled = (_service["disabledFeatures"] as JArray)?.Select(item => item.ToString()).ToArray() ?? Array.Empty<string>();
+            <div class="row">
+                <span class="@("badge " + (maintenance ? "danger" : "ok"))"><Icon Name="@(maintenance ? "wrench" : "check-circle")" /> @(maintenance ? "점검 중" : "정상 운영")</span>
+                <span class="muted">리비전 <span class="mono">@_service["revision"]</span></span>
+            </div>
+            <p class="field-label mt">차단된 기능</p>
+            @if (disabled.Length == 0)
+            {
+                <p class="muted">차단된 기능이 없습니다.</p>
+            }
+            else
+            {
+                <div class="chip-list">
+                @foreach (string feature in disabled)
+                {
+                    <span class="badge warn">@AdminLabels.Feature(feature)</span>
+                }
+                </div>
+            }
+            <p class="muted">허용 빌드 @((_service["allowedBuildIds"] as JArray)?.Count ?? 0)개 · 마지막 변경 <KstTime UnixMs='AdminJson.Ms(_service, "updatedAtUnixMs")' /></p>
+        }
+    </section>
+    <section class="card" aria-labelledby="dash-notice">
+        <div class="card-head"><Icon Name="megaphone" /><h2 id="dash-notice">노출 중인 공지</h2><a class="more" href="/notices">더보기 <Icon Name="chevron-right" /></a></div>
+        @if (!string.IsNullOrEmpty(_noticeError))
+        {
+            <p class="err-text" role="alert"><Icon Name="x-circle" /> @_noticeError</p>
+        }
+        else if (_notices == null)
+        {
+            <div class="skeleton" aria-busy="true">&nbsp;</div>
+        }
+        else if (_notices.Length == 0)
+        {
+            <p class="muted">지금 노출 중인 공지가 없습니다.</p>
+        }
+        else
+        {
+            <ul class="list-plain">
+            @foreach (JToken notice in _notices.Take(4))
+            {
+                <li>
+                    <span class="title">@notice["title"]</span>
+                    <span class="muted"><span class="@("badge " + SeverityClass(notice["severity"]?.Value<int>() ?? 0))">@AdminLabels.NoticeSeverity(notice["severity"]?.Value<int>() ?? 0)</span>
+                        @AdminLabels.NoticeTarget(notice["target"]?.ToString() ?? string.Empty) · 종료 <KstTime UnixMs='AdminJson.Ms(notice, "endsAtUnixMs")' /></span>
+                </li>
+            }
+            </ul>
+            @if (_notices.Length > 4)
+            {
+                <p class="muted">외 @(_notices.Length - 4)건</p>
+            }
+        }
+    </section>
+    <section class="card" aria-labelledby="dash-quick">
+        <div class="card-head"><Icon Name="zap" /><h2 id="dash-quick">빠른 작업</h2></div>
+        <div class="quick-grid">
+            <a href="/characters"><Icon Name="users" /> 캐릭터 조회</a>
+            <a href="/grants"><Icon Name="gift" /> 운영 지급</a>
+            <a href="/notices"><Icon Name="megaphone" /> 공지 작성</a>
+            <a href="/recovery"><Icon Name="lifebuoy" /> 장애 복구</a>
+        </div>
+    </section>
+    <section class="card" aria-labelledby="dash-recovery">
+        <div class="card-head"><Icon Name="lifebuoy" /><h2 id="dash-recovery">복구 대상</h2><a class="more" href="/recovery">장애 복구 <Icon Name="chevron-right" /></a></div>
+        @if (!string.IsNullOrEmpty(_recoveryError))
+        {
+            <p class="err-text" role="alert"><Icon Name="x-circle" /> @_recoveryError</p>
+        }
+        else if ((_sessions == null) || (_auctions == null))
+        {
+            <div class="skeleton" aria-busy="true">&nbsp;</div>
+        }
+        else
+        {
+            <div class="kpi">
+                <div class="tile"><div class="num">@CountText(_sessions, "sessions")</div><div class="cap">복구 관심 세션</div></div>
+                <div class="tile"><div class="num">@CountText(_auctions, "sessions")</div><div class="cap">멈춘 경매</div></div>
+            </div>
+            @if (_sessions["livenessDeferred"]?.Value<bool>() == true)
+            {
+                <div class="notice-box warning" role="status"><Icon Name="alert" /><span>서버 생존 판정이 보류 중입니다.</span></div>
+            }
+        }
+    </section>
+    <section class="card span-2" aria-labelledby="dash-audit">
+        <div class="card-head"><Icon Name="scroll" /><h2 id="dash-audit">최근 운영 기록</h2><a class="more" href="/logs">로그 <Icon Name="chevron-right" /></a></div>
+        @if (!string.IsNullOrEmpty(_auditError))
+        {
+            <p class="err-text" role="alert"><Icon Name="x-circle" /> @_auditError</p>
+        }
+        else if (_audit == null)
+        {
+            <div class="skeleton" aria-busy="true">&nbsp;</div>
+        }
+        else if (_audit.Length == 0)
+        {
+            <p class="muted">기록이 없습니다.</p>
+        }
+        else
+        {
+            <div class="table-scroll"><table>
+                <thead><tr><th scope="col">시각</th><th scope="col">동작</th><th scope="col">대상</th><th scope="col">사유</th></tr></thead>
+                <tbody>
+                @foreach (JToken entry in _audit)
+                {
+                    <tr>
+                        <td><KstTime UnixMs='AdminJson.Ms(entry, "occurredAtUnixMs")' /></td>
+                        <td>@entry["action"]</td>
+                        <td>@entry["targetKind"] <JsonDataView Value='entry["targetId"]' FieldName="targetId" /></td>
+                        <td>@entry["reason"]</td>
+                    </tr>
+                }
+                </tbody>
+            </table></div>
+        }
+    </section>
+</div>
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private const int PREVIEW = 100;
+
+    private JToken? _service;
+    private JToken[]? _notices;
+    private JToken? _sessions;
+    private JToken? _auctions;
+    private JToken[]? _audit;
+    private string _serviceError = string.Empty;
+    private string _noticeError = string.Empty;
+    private string _recoveryError = string.Empty;
+    private string _auditError = string.Empty;
+    private bool _loading;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+        _loading = true;
+        try
+        {
+            AdminWebApiResult<JToken>? service = await FetchAsync(AdminApiRoutes.SERVICE_STATE);
+            if (service == null) { return; }
+            _service = service.IsSuccess ? service.Value : null;
+            _serviceError = service.IsSuccess ? string.Empty : service.ErrorMessage;
+
+            AdminWebApiResult<JToken>? notices = await FetchAsync(AdminApiRoutes.NOTICES);
+            if (notices == null) { return; }
+            _notices = notices.IsSuccess ? (notices.Value?["notices"] as JArray ?? new JArray())
+                .Where(notice => notice["status"]?.ToString() == AdminNoticeSummary.STATUS_ACTIVE).ToArray() : null;
+            _noticeError = notices.IsSuccess ? string.Empty : notices.ErrorMessage;
+
+            AdminWebApiResult<JToken>? sessions = await FetchAsync(Query(AdminApiRoutes.SESSIONS, ("limit", Number(PREVIEW))));
+            if (sessions == null) { return; }
+            AdminWebApiResult<JToken>? auctions = await FetchAsync(Query(AdminApiRoutes.AUCTIONS, ("limit", Number(PREVIEW))));
+            if (auctions == null) { return; }
+            _sessions = sessions.IsSuccess ? sessions.Value : null;
+            _auctions = auctions.IsSuccess ? auctions.Value : null;
+            _recoveryError = !sessions.IsSuccess ? sessions.ErrorMessage : (!auctions.IsSuccess ? auctions.ErrorMessage : string.Empty);
+
+            AdminWebApiResult<JToken>? audit = await FetchAsync(Query(AdminApiRoutes.AUDIT, ("limit", "6")));
+            if (audit == null) { return; }
+            _audit = audit.IsSuccess ? (audit.Value?["entries"] as JArray ?? new JArray()).ToArray() : null;
+            _auditError = audit.IsSuccess ? string.Empty : audit.ErrorMessage;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string CountText(JToken page, string property)
+    {
+        int count = (page[property] as JArray)?.Count ?? 0;
+        bool more = !string.IsNullOrEmpty(page["nextCursor"]?.ToString());
+        return count + (more ? "+" : string.Empty);
+    }
+
+    private static string SeverityClass(int severity) => severity switch { 2 => "danger", 1 => "warn", _ => "info" };
+
+    protected override void ClearSensitiveState()
+    {
+        _service = null;
+        _notices = null;
+        _sessions = null;
+        _auctions = null;
+        _audit = null;
+    }
+}

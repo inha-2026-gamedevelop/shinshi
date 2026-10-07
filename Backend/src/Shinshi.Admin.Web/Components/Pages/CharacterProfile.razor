@@ -1,0 +1,342 @@
+@page "/characters/{CharacterId:guid}"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>@(_name ?? "캐릭터 프로필") · 신시 운영</PageTitle>
+@if (!string.IsNullOrEmpty(_loadError))
+{
+    <div class="notice-box error" role="alert"><Icon Name="x-circle" /><span>@_loadError</span></div>
+    <div class="row">
+    <label class="visually-hidden" for="profile-reason">조회 사유</label>
+    <input id="profile-reason" class="reason-input" @bind="_reason" maxlength="500" placeholder="@("조회 사유 (비우면 '" + AdminDefaults.READ_REASON + "')")" />
+    <LoadingButton Variant="secondary" Busy="_loading" IconName="refresh" OnClick="LoadAsync">다시 조회</LoadingButton>
+    </div>
+}
+else if (_profile == null)
+{
+    <div class="skeleton profile-skeleton" aria-busy="true">&nbsp;</div>
+}
+else
+{
+    JToken p = _profile;
+    int classId = p["classId"]?.Value<int>() ?? -1;
+    string className = p["classDisplayName"]?.Type == JTokenType.String ? p["classDisplayName"]!.ToString() : AdminClassCatalog.Name(classId);
+    string accountId = p["accountId"]?.ToString() ?? string.Empty;
+    bool deleted = p["deletedAtUnixMs"]?.Type == JTokenType.Integer;
+    bool online = p["online"]?.Value<bool>() ?? false;
+    JToken? lease = p["lease"]?.Type == JTokenType.Object ? p["lease"] : null;
+    JToken? training = p["training"];
+    JToken? life = p["life"];
+    JToken? wallet = p["wallet"]?.Type == JTokenType.Object ? p["wallet"] : null;
+    <section class="card profile-head @AdminClassCatalog.CssClass(classId)" aria-label="캐릭터 요약">
+        <ClassEmblem ClassId="classId" />
+        <div>
+            <div class="profile-name"><h1>@(_name ?? "이름 없음")</h1>
+                <span class="badge class-badge">@className</span>
+                @if (deleted) { <span class="badge danger">삭제됨 <KstTime UnixMs='AdminJson.Ms(p, "deletedAtUnixMs")' /></span> }
+                @if (online) { <span class="badge ok">접속 중 · @(lease?["role"]?.Value<int>() == 1 ? "던전" : "마을")</span> }
+                else { <span class="badge">오프라인</span> }
+            </div>
+            <div class="profile-sub">
+                <span>계정 <IdChip Value="@accountId" Label="계정 ID" Href="@("/characters?account=" + accountId)" /></span>
+                <span>캐릭터 <IdChip Value="@CharacterId.ToString("D")" Label="캐릭터 ID" /></span>
+                <span>생성일 @(p["createdAtUnixMs"]?.Type == JTokenType.Integer ? AdminTime.FormatKst(p["createdAtUnixMs"]!.Value<long>()) : "기록 없음")</span>
+                <span>리비전 <span class="mono">@p["revision"]</span></span>
+            </div>
+        </div>
+        <div class="big-stats">
+            <div class="big-stat"><div class="v">@(training?["total"]?.ToString() ?? "0")<small>/@(training?["totalCap"]?.ToString() ?? "100")</small></div><div class="c">수련</div></div>
+            <div class="big-stat"><div class="v">+@(p["highestEnhanceLevel"]?.ToString() ?? "0")</div><div class="c">최고 강화</div></div>
+            <div class="big-stat"><div class="v">@(life?["actionValue"]?.Type == JTokenType.Integer ? life["actionValue"]!.ToString() : "-")<small>/@(life?["actionCap"]?.ToString() ?? "100")</small></div><div class="c">행동력</div></div>
+        </div>
+    </section>
+    <div class="profile-actions" role="group" aria-label="캐릭터 작업">
+        <a class="btn" href="@("/grants?target=" + accountId)"><Icon Name="gift" /> 지급</a>
+        <a class="btn secondary" href="@("/characters?account=" + accountId)"><Icon Name="coins" /> 재화 조정</a>
+        <a class="btn secondary" href="@("/characters?account=" + accountId)"><Icon Name="ban" /> 강제 종료</a>
+        <a class="btn secondary" href="@("/logs?account=" + accountId)"><Icon Name="scroll" /> 원장 보기</a>
+        <a class="btn secondary" href="/logs"><Icon Name="history" /> 아이템 이력</a>
+        <span class="spacer"></span>
+        <label class="visually-hidden" for="profile-reason">조회 사유</label>
+        <input id="profile-reason" class="reason-input" @bind="_reason" maxlength="500" placeholder="@("조회 사유 (비우면 '" + AdminDefaults.READ_REASON + "')")" />
+        <LoadingButton Variant="secondary" Busy="_loading" IconName="refresh" OnClick="LoadAsync">다시 조회</LoadingButton>
+    </div>
+    <div class="profile-grid">
+        <div class="stack">
+        <section class="card" aria-labelledby="pf-train">
+            <div class="card-head"><Icon Name="zap" /><h2 id="pf-train">수련 능력치</h2><span class="badge">한 항목 최대 @(training?["itemCap"] ?? 40)</span></div>
+            <div class="bars">
+            @foreach ((string key, string label) in G_TrainingStats)
+            {
+                int value = training?[key]?.Value<int>() ?? 0;
+                int cap = training?["itemCap"]?.Value<int>() ?? 40;
+                <div class="bar-row">
+                    <div class="top"><span>@label</span><span class="mono">@value / @cap</span></div>
+                    <div class="bar" role="meter" aria-label="@label" aria-valuemin="0" aria-valuemax="@cap" aria-valuenow="@value"><span class="@("w-" + Percent(value, cap))"></span></div>
+                </div>
+            }
+            </div>
+            <div class="bar-total">
+                <div class="top"><strong>합계</strong><span class="mono">@(training?["total"] ?? 0) / @(training?["totalCap"] ?? 100)</span></div>
+                <div class="bar" role="meter" aria-label="수련 합계" aria-valuemin="0" aria-valuemax="@(training?["totalCap"] ?? 100)" aria-valuenow="@(training?["total"] ?? 0)"><span class="@("w-" + Percent(training?["total"]?.Value<int>() ?? 0, training?["totalCap"]?.Value<int>() ?? 100))"></span></div>
+            </div>
+            <details class="mt">
+                <summary>계산된 전투 능력치</summary>
+                @if (p["combatStats"]?.Type == JTokenType.Object)
+                {
+                    <JsonDataView Value='p["combatStats"]' />
+                }
+                else
+                {
+                    <p class="muted">직업 기본 능력치 데이터가 없어 계산하지 않았습니다.</p>
+                }
+            </details>
+        </section>
+            <section class="card" aria-labelledby="pf-progress">
+                <div class="card-head"><Icon Name="shield" /><h2 id="pf-progress">계정 해금</h2></div>
+                @{ JToken? progressInfo = p["accountProgress"]; }
+                <p class="muted">도입부 @(progressInfo?["introCompletedAtUnixMs"]?.Type == JTokenType.Integer ? "완료 " + AdminTime.FormatKst(progressInfo["introCompletedAtUnixMs"]!.Value<long>()) : "미완료") · 여우의 흔적 @(progressInfo?["foxTraces"]?.ToString() ?? "-") · 해금 기록 @((progressInfo?["unlocks"] as JArray)?.Count ?? 0)건</p>
+            </section>
+        </div>
+        <section class="card" aria-labelledby="pf-equip">
+            <div class="card-head"><Icon Name="swords" /><h2 id="pf-equip">장비</h2><span class="badge">보유 @(EquipmentList.Length)개</span></div>
+            <div class="slot-grid">
+            @for (int slot = 0; slot < G_SlotNames.Length; ++slot)
+            {
+                JToken? item = SlotItem(slot);
+                @if (item == null)
+                {
+                    <div class="slot empty"><div class="name">@G_SlotNames[slot]</div><div class="lv">-</div><span class="muted">비어 있음</span></div>
+                }
+                else
+                {
+                    <a class="slot" href="@("/logs?item=" + item["itemId"])" title="@item["definitionId"] · 아이템 이력 보기">
+                        <div class="name">@G_SlotNames[slot] · @G_GradeNames[Math.Clamp(item["grade"]?.Value<int>() ?? 0, 0, 3)]</div>
+                        <div class="lv">+@item["enhancement"]</div>
+                        <span class="row">
+                            @if (item["equipped"]?.Value<bool>() == true) { <span class="badge ok">착용</span> } else { <span class="badge">미착용</span> }
+                            @if (item["bound"]?.Value<bool>() == true) { <span class="badge info">귀속</span> }
+                            @if (item["locked"]?.Value<bool>() == true) { <span class="badge warn">잠금</span> }
+                        </span>
+                    </a>
+                }
+            }
+            </div>
+            <h3 class="mt">부적</h3>
+            @{
+                JArray loadout = p["talismanLoadout"] as JArray ?? new JArray();
+                JArray progress = p["talismanProgress"] as JArray ?? new JArray();
+                int registered = progress.Count(item => (item["level"]?.Value<int>() ?? 0) > 0);
+            }
+            <p class="muted">장착 @(loadout.Count)칸 · 등록 @registered / @(progress.Count)종</p>
+            @if (loadout.Count > 0)
+            {
+                <div class="chip-list">
+                @foreach (JToken slot in loadout)
+                {
+                    <span class="chip" title="@slot["skillId"]">@G_TierNames[Math.Clamp(slot["tier"]?.Value<int>() ?? 0, 0, 2)] · @slot["effectId"]</span>
+                }
+                </div>
+            }
+        </section>
+        <div class="stack">
+            <section class="card" aria-labelledby="pf-wallet">
+                <div class="card-head"><Icon Name="coins" /><h2 id="pf-wallet">재화</h2></div>
+                <div class="currency-grid">
+                    <div class="currency"><Icon Name="coins" /><div><div class="v">@Num(wallet?["currency"])</div><div class="c">엽전 (예약 @Num(wallet?["currencyReserved"]))</div></div></div>
+                    <div class="currency"><Icon Name="ticket" /><div><div class="v">@Num(wallet?["tickets"])</div><div class="c">티켓 (예약 @Num(wallet?["ticketsReserved"]))</div></div></div>
+                    <div class="currency"><Icon Name="gem" /><div><div class="v">@Num(p["essence"])</div><div class="c">정기</div></div></div>
+                    <div class="currency"><Icon Name="package" /><div><div class="v">@Num(p["shards"])</div><div class="c">정련편</div></div></div>
+                    <div class="currency"><Icon Name="zap" /><div><div class="v">@(life?["actionValue"]?.Type == JTokenType.Integer ? life["actionValue"]!.ToString() : "-") / @(life?["actionCap"] ?? 100)</div><div class="c">행동력@(life?["nextRecoverAtUnixMs"]?.Type == JTokenType.Integer ? " · 다음 회복 " + AdminTime.FormatKst(life["nextRecoverAtUnixMs"]!.Value<long>()) : string.Empty)</div></div></div>
+                    <div class="currency"><Icon Name="package" /><div><div class="v">@Stock(life?["herbs"]) · @Stock(life?["potions"])</div><div class="c">약초 · 물약 (예약 제외)</div></div></div>
+                </div>
+                @if (wallet == null) { <p class="muted">지갑 기록이 없습니다.</p> }
+            </section>
+            <section class="card" aria-labelledby="pf-sortie">
+                <div class="card-head"><Icon Name="swords" /><h2 id="pf-sortie">최근 출정</h2></div>
+                @if ((p["recentSessions"] as JArray)?.Count > 0)
+                {
+                    <ul class="sortie-list">
+                    @foreach (JToken session in (JArray)p["recentSessions"]!)
+                    {
+                        string result = session["result"]?.Type == JTokenType.String ? session["result"]!.ToString() : session["participantState"]?.ToString() ?? string.Empty;
+                        <li><a href="@("/logs?session=" + session["sessionId"])" title="정기 +@session["essenceAccrued"]">
+                            <span>@session["mode"] · @session["mapId"]</span>
+                            <span class="muted"><KstTime UnixMs='AdminJson.Ms(session, "createdAtUnixMs")' /></span>
+                            <span class="@("badge " + ResultClass(result))">@result</span>
+                        </a></li>
+                    }
+                    </ul>
+                }
+                else
+                {
+                    <p class="muted">출정 기록이 없습니다.</p>
+                }
+            </section>
+        </div>
+    </div>
+    <details class="card mt" open="@_foldOpen" @ontoggle="OnFoldToggle">
+        <summary><Icon Name="list" /> 아이템 전체 · 같은 계정의 다른 캐릭터 · 부적 등록 진행</summary>
+        <h3 class="mt">계정 공유 아이템</h3>
+        <JsonDataView Value='p["items"]' FieldName="items" />
+        <h3 class="mt">보유 장비 전체</h3>
+        <JsonDataView Value='p["equipment"]' FieldName="equipment" />
+        <h3 class="mt">부적 등록 진행</h3>
+        <JsonDataView Value='p["talismanProgress"]' FieldName="talismanProgress" />
+        <h3 class="mt">같은 계정의 다른 캐릭터</h3>
+        @if ((p["otherCharacters"] as JArray)?.Count > 0)
+        {
+            <div class="char-cards">
+            @foreach (JToken other in (JArray)p["otherCharacters"]!)
+            {
+                int otherClass = other["classId"]?.Value<int>() ?? -1;
+                bool otherDeleted = other["deletedAtUnixMs"]?.Type == JTokenType.Integer;
+                <a class="@("char-card " + AdminClassCatalog.CssClass(otherClass) + (otherDeleted ? " dim" : string.Empty))" href="@("/characters/" + other["characterId"])">
+                    <ClassEmblem ClassId="otherClass" />
+                    <span><strong>@(other["name"]?.Type == JTokenType.String ? other["name"]!.ToString() : "이름 없음")</strong><br /><span class="muted">@AdminClassCatalog.Name(otherClass)@(otherDeleted ? " · 삭제됨" : string.Empty)</span></span>
+                </a>
+            }
+            </div>
+        }
+        else
+        {
+            <p class="muted">다른 캐릭터가 없습니다.</p>
+        }
+    </details>
+}
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private static readonly (string Key, string Label)[] G_TrainingStats =
+    {
+        ("attack", "공격"), ("health", "생명"), ("defense", "방어"), ("crit", "치명"), ("energy", "기력")
+    };
+    private static readonly string[] G_SlotNames = { "무기", "머리", "몸", "손", "발", "장신구" };
+    private static readonly string[] G_GradeNames = { "일반", "희귀", "영웅", "전설" };
+    private static readonly string[] G_TierNames = { "보조1", "보조2", "핵심" };
+
+    private JToken? _profile;
+    private string? _name;
+    private string _reason = string.Empty;
+    private string _loadError = string.Empty;
+    private bool _loading;
+    private bool _foldOpen;
+    private Guid _loadedId;
+    private readonly LatestRequest _latest = new();
+
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public Guid CharacterId { get; set; }
+
+    private JToken[] EquipmentList => (_profile?["equipment"] as JArray)?.ToArray() ?? Array.Empty<JToken>();
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CharacterId != _loadedId)
+        {
+            _loadedId = CharacterId;
+            _profile = null;
+            _name = null;
+            _loadError = string.Empty;
+            await LoadAsync();
+        }
+    }
+
+    // 다른 캐릭터로 이동하면 이전 요청의 응답은 폐기하고 최신 ID를 항상 조회한다
+    private async Task LoadAsync()
+    {
+        _loadError = string.Empty;
+        string path;
+        try
+        {
+            path = Query(string.Format(AdminApiRoutes.CHARACTER_FORMAT, CharacterId.ToString("D")),
+                ("reason", AdminDefaults.Reason(_reason, AdminDefaults.READ_REASON, out _)));
+        }
+        catch (ArgumentException exception)
+        {
+            _loadError = exception.Message;
+            return;
+        }
+        _loading = true;
+        try
+        {
+            await _latest.RunAsync(() => FetchAsync(path), result =>
+            {
+                if (result == null)
+                {
+                    return;
+                }
+                if (result.IsSuccess)
+                {
+                    _profile = result.Value;
+                    _name = _profile?["name"]?.Type == JTokenType.String ? _profile["name"]!.ToString() : null;
+                }
+                else
+                {
+                    _profile = null;
+                    _loadError = result.StatusCode == 404 ? "캐릭터를 찾을 수 없습니다." : result.ErrorMessage;
+                }
+            });
+        }
+        finally
+        {
+            _loading = _latest.Pending;
+        }
+    }
+
+    // 장착한 장비를 우선하고, 없으면 같은 부위에서 가장 높게 강화한 장비를 보여 준다
+    private JToken? SlotItem(int slot)
+    {
+        return EquipmentList.Where(item => item["slot"]?.Value<int>() == slot)
+            .OrderByDescending(item => item["equipped"]?.Value<bool>() == true)
+            .ThenByDescending(item => item["enhancement"]?.Value<int>() ?? 0).FirstOrDefault();
+    }
+
+    private static string Num(JToken? token)
+    {
+        return token?.Type == JTokenType.Integer ? token.Value<long>().ToString("N0", System.Globalization.CultureInfo.InvariantCulture) : "-";
+    }
+
+    private static string Stock(JToken? items)
+    {
+        long total = 0;
+        foreach (JToken item in items as JArray ?? new JArray())
+        {
+            total += Math.Max(0, (item["quantity"]?.Value<long>() ?? 0) - (item["reserved"]?.Value<long>() ?? 0));
+        }
+        return total.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    // 막대 너비는 5% 단위 클래스(w-0 ~ w-100)로 표현한다
+    private static int Percent(int value, int cap)
+    {
+        if (cap <= 0)
+        {
+            return 0;
+        }
+        return Math.Clamp((int)Math.Round(value * 20.0 / cap), 0, 20) * 5;
+    }
+
+    private static string ResultClass(string result) => result switch
+    {
+        "Settled" or "Cleared" or "Success" => "ok", "Failed" or "Died" => "danger", _ => string.Empty
+    };
+
+    private void OnFoldToggle(EventArgs args)
+    {
+        _foldOpen = !_foldOpen;
+    }
+
+    protected override void ClearSensitiveState()
+    {
+        _profile = null;
+    }
+}

@@ -11,8 +11,9 @@ namespace Shinshi.Contracts.Admin
         public const string REASON_PARAMETER = "reason";
 
         // AdminAccountSummary.matchedBy 값. 초대 코드는 원문이 아니라 HMAC으로 찾는다
-        public const string MATCH_ACCOUNT_ID   = "AccountId";
-        public const string MATCH_CHARACTER_ID = "CharacterId";
-        public const string MATCH_INVITE_CODE  = "InviteCode";
+        public const string MATCH_ACCOUNT_ID     = "AccountId";
+        public const string MATCH_CHARACTER_ID   = "CharacterId";
+        public const string MATCH_CHARACTER_NAME = "CharacterName";
+        public const string MATCH_INVITE_CODE    = "InviteCode";
     }
 }

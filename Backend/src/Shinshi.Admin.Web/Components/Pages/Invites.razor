@@ -1,0 +1,125 @@
+@page "/invites"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>초대 · 신시 운영</PageTitle>
+<div class="page-head">
+    <div>
+        <h1><Icon Name="ticket" /> 초대</h1>
+        <p>초대 코드를 발급하거나 폐기합니다. 코드 원문은 발급 응답에서 한 번만 볼 수 있습니다.</p>
+    </div>
+</div>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.OPERATOR" />
+<OneTimeSecretView @ref="_secretView" />
+<div class="grid two">
+    <section class="card" aria-labelledby="inv-issue">
+        <div class="card-head"><Icon Name="plus" /><h2 id="inv-issue">초대 코드 발급</h2></div>
+        <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+            <AccountPicker @ref="_accountPicker" Label="기존 계정" Optional="true" Value="@_accountText" ValueChanged="value => _accountText = value"
+                           Hint="비우면 새 계정용 초대를 발급합니다." />
+            <div class="form-grid cols-2 mt">
+                <label class="field">최대 사용 횟수 <input @bind="_uses" inputmode="numeric" placeholder="@AdminDefaults.INVITE_USES" /></label>
+                <label class="field">유효 시간(시간) <input @bind="_hours" inputmode="numeric" placeholder="@AdminDefaults.INVITE_HOURS" /></label>
+            </div>
+            <p class="default-hint">비우면 사용 @(AdminDefaults.INVITE_USES)회 · 유효 @(AdminDefaults.INVITE_HOURS)시간 (사용 1~10회, 1~168시간)</p>
+            <label class="check mt"><input type="checkbox" @bind="_revokeExisting" /> 기존 로그인·토큰·초대 폐기</label>
+            <label class="field">발급 사유 <input @bind="_issueReason" maxlength="500" placeholder="@AdminDefaults.INVITE_ISSUE_REASON" /></label>
+            <p class="default-hint">비우면 "@AdminDefaults.INVITE_ISSUE_REASON"</p>
+            <div class="actions"><LoadingButton IconName="check" OnClick="PrepareIssueAsync">발급 내용 확인</LoadingButton></div>
+        </fieldset>
+    </section>
+    <section class="card" aria-labelledby="inv-revoke">
+        <div class="card-head"><Icon Name="ban" /><h2 id="inv-revoke">초대 폐기</h2></div>
+        <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.OPERATOR))">
+            <div class="form-grid cols-2">
+                <label class="field">초대 ID <input @bind="_inviteId" placeholder="초대 ID(UUID)" /></label>
+                <label class="field">폐기 사유 <input @bind="_revokeReason" maxlength="500" placeholder="@AdminDefaults.INVITE_REVOKE_REASON" /></label>
+            </div>
+            <p class="default-hint">비우면 "@AdminDefaults.INVITE_REVOKE_REASON"</p>
+            <div class="actions"><LoadingButton Variant="danger" IconName="ban" OnClick="PrepareRevoke">폐기 내용 확인</LoadingButton></div>
+        </fieldset>
+        <p class="hint">응답을 잃으면 같은 작업 ID로 발급 ID를 확인한 뒤 해당 초대를 폐기하고 새로 발급하세요.</p>
+    </section>
+</div>
+<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" Defaults="_writeDefaults" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
+<ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private OneTimeSecretView? _secretView;
+    private AccountPicker? _accountPicker;
+    private string _accountText = string.Empty;
+    private string _uses = string.Empty;
+    private string _hours = string.Empty;
+    private bool _revokeExisting = true;
+    private string _issueReason = string.Empty;
+    private string _inviteId = string.Empty;
+    private string _revokeReason = string.Empty;
+    private bool _issuing;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private async Task PrepareIssueAsync()
+    {
+        _error = string.Empty;
+        ResolvedAccount? account = _accountPicker == null ? null : await _accountPicker.EnsureAsync();
+        if ((_accountPicker != null) && (_accountPicker.HasText) && (account == null))
+        {
+            _error = "계정을 확인하지 못했습니다. 위 입력을 고치세요.";
+            return;
+        }
+        Validate(() =>
+        {
+            WriteDefaults defaults = new();
+            string reason = defaults.Reason(_issueReason, AdminDefaults.INVITE_ISSUE_REASON);
+            int uses = defaults.Int(_uses, AdminDefaults.INVITE_USES, AdminInviteIssueRequest.MIN_USES,
+                AdminInviteIssueRequest.MAX_USES, "최대 사용 횟수", "회");
+            int hours = defaults.Int(_hours, AdminDefaults.INVITE_HOURS, AdminInviteIssueRequest.MIN_HOURS,
+                AdminInviteIssueRequest.MAX_HOURS, "유효 시간", "시간");
+            bool revoke = _revokeExisting;
+            string? accountId = account?.AccountId;
+            _secretView?.Clear();
+            _issuing = true;
+            Prepare("초대 발급", accountId ?? "새 계정", reason, AdminContractCodes.Role.OPERATOR, AdminApiRoutes.INVITES,
+                operation => new AdminInviteIssueRequest(operation, reason, accountId!, uses, hours, revoke),
+                defaults: defaults);
+        });
+    }
+
+    private void PrepareRevoke()
+    {
+        Validate(() =>
+        {
+            string invite = Id(_inviteId, "초대 ID");
+            WriteDefaults defaults = new();
+            string reason = defaults.Reason(_revokeReason, AdminDefaults.INVITE_REVOKE_REASON);
+            _issuing = false;
+            Prepare("초대 폐기", invite, reason, AdminContractCodes.Role.OPERATOR,
+                string.Format(AdminApiRoutes.INVITE_REVOKE_FORMAT, invite),
+                operation => new AdminInviteRevokeRequest(operation, reason), defaults: defaults);
+        });
+    }
+
+    protected override void OnWriteResponse(JToken? value)
+    {
+        if ((!_issuing) || (value is not JObject response))
+        {
+            return;
+        }
+        string? code = response["inviteCode"]?.Value<string>();
+        response.Remove("inviteCode");
+        _inviteId = response["inviteId"]?.ToString() ?? string.Empty;
+        Dictionary<string, string> secrets = new();
+        if (!string.IsNullOrEmpty(code))
+        {
+            secrets.Add("초대 코드", code);
+        }
+        _secretView?.Show(secrets, "재전송 응답에는 초대 원문이 없습니다. 잃었다면 이 초대를 폐기하고 새로 발급하세요.");
+    }
+
+    protected override void ClearSensitiveState() { _secretView?.Clear(); }
+}

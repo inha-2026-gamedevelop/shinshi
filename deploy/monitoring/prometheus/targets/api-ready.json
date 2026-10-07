@@ -1,0 +1,10 @@
+[
+  {
+    "targets": [
+      "host.docker.internal:5080"
+    ],
+    "labels": {
+      "service": "api"
+    }
+  }
+]

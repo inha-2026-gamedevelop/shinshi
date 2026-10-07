@@ -1,0 +1,182 @@
+# Unit tests for the API alert rules. Run:
+#   docker run --rm -v "$PWD:/etc/prometheus:ro" --entrypoint promtool prom/prometheus:v3.5.0 test rules /etc/prometheus/alerts.test.yml
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      # 6 req/s total of which 0.6 req/s (10%) are 5xx, plus a health route that must be ignored.
+      - series: 'shinshi_api_http_requests_total{route="v1/sessions",status_class="2xx"}'
+        values: '0+324x30'
+      - series: 'shinshi_api_http_requests_total{route="v1/sessions",status_class="5xx"}'
+        values: '0+36x30'
+      - series: 'shinshi_api_http_requests_total{route="health/ready",status_class="5xx"}'
+        values: '0+600x30'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ShinshiApiErrorRate
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: ShinshiApiErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "API 5xx responses are over 5% of requests for 5 minutes"
+
+  - interval: 1m
+    input_series:
+      # Only 5xx on a nearly idle API (0.02 req/s): the traffic floor keeps the alert quiet.
+      - series: 'shinshi_api_http_requests_total{route="v1/sessions",status_class="5xx"}'
+        values: '0+1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ShinshiApiErrorRate
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="shinshi-api",instance="host.docker.internal:5080"}'
+        values: '1 1 0 0 0 0'
+      - series: 'probe_success{job="shinshi-api-ready",instance="host.docker.internal:5080"}'
+        values: '1 1 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ShinshiApiDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: shinshi-api
+              instance: host.docker.internal:5080
+            exp_annotations:
+              summary: "API host.docker.internal:5080 /metrics is not answering for 1 minute (process down, network, or Metrics:AllowedNetworks blocks Prometheus)"
+      - eval_time: 5m
+        alertname: ShinshiApiNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: shinshi-api-ready
+              instance: host.docker.internal:5080
+            exp_annotations:
+              summary: "API host.docker.internal:5080 /health/ready failed for 1 minute (503 means the database SELECT 1 failed)"
+
+  # Blind spots: no API series at all, and a dead blackbox exporter.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="shinshi-gameserver",instance="a"}'
+        values: '1x12'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ShinshiApiMonitoringMissing
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: shinshi-api
+            exp_annotations:
+              summary: "No API metrics scrape or readiness probe result exists for 5 minutes (targets/api-*.json empty, or the blackbox exporter is down)"
+          - exp_labels:
+              severity: critical
+              job: shinshi-api-ready
+            exp_annotations:
+              summary: "No API metrics scrape or readiness probe result exists for 5 minutes (targets/api-*.json empty, or the blackbox exporter is down)"
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="shinshi-api",instance="api:5080"}'
+        values: '1x12'
+      - series: 'up{job="shinshi-api-ready",instance="api:5080"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ShinshiApiProbeUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: shinshi-api-ready
+              instance: api:5080
+            exp_annotations:
+              summary: "The readiness probe for api:5080 cannot run (blackbox exporter not answering), so /health/ready is not being watched"
+
+  # NaN gauges (DB read failure) and a missing gauge on a live API.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="shinshi-api",instance="api:5080"}'
+        values: '1x12'
+      - series: 'shinshi_api_settlement_outbox_pending{instance="api:5080"}'
+        values: 'NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN'
+      - series: 'shinshi_api_reconciliation_last_run_timestamp_seconds{instance="api:5080"}'
+        values: '1000x12'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ShinshiApiDbMetricsUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: api:5080
+            exp_annotations:
+              summary: "API DB-backed gauges (outbox, reconciliation) are NaN or missing for 5 minutes, so those alerts cannot fire"
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="shinshi-api",instance="api:5080"}'
+        values: '1x12'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ShinshiApiDbMetricsUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: api:5080
+            exp_annotations:
+              summary: "API DB-backed gauges (outbox, reconciliation) are NaN or missing for 5 minutes, so those alerts cannot fire"
+
+  # No reconciliation record yet: timestamp 0 and mismatch NaN. Stale fires, the DB-unavailable alert must not.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="shinshi-api",instance="api:5080"}'
+        values: '1x12'
+      - series: 'shinshi_api_settlement_outbox_pending{instance="api:5080"}'
+        values: '0x12'
+      - series: 'shinshi_api_reconciliation_last_run_timestamp_seconds{instance="api:5080"}'
+        values: '0x12'
+      - series: 'shinshi_api_reconciliation_last_mismatch_count{instance="api:5080"}'
+        values: 'NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ShinshiApiDbMetricsUnavailable
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'shinshi_api_reconciliation_last_mismatch_count'
+        values: '0 0 2 2 2 2 2 2 2'
+      # Last run 27 hours before time zero; the alert needs 10 more minutes of this state.
+      - series: 'shinshi_api_reconciliation_last_run_timestamp_seconds'
+        values: '-96600x20'
+      - series: 'shinshi_api_settlement_outbox_pending'
+        values: '0 0 30 30 30 30 30 30 30 30 30 30 30 30 30'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: ShinshiReconciliationMismatch
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "The last daily reconciliation found 2 mismatches (see the api log event for the details)"
+      - eval_time: 14m
+        alertname: ShinshiReconciliationStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "The daily reconciliation has not run for over 26 hours"
+      - eval_time: 14m
+        alertname: ShinshiOutboxBacklog
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "30 settlement outbox rows are still pending after 10 minutes"

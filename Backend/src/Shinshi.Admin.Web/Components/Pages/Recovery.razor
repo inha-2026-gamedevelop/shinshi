@@ -1,0 +1,183 @@
+@page "/recovery"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>장애 복구 · 신시 운영</PageTitle>
+<div class="page-head">
+    <div>
+        <h1><Icon Name="lifebuoy" /> 장애 복구</h1>
+        <p>복구가 필요한 세션과 멈춘 경매를 확인하고, 세션 수동 복구를 실행합니다.</p>
+    </div>
+</div>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.VIEWER" />
+<div class="grid two">
+    <section class="card" aria-labelledby="rec-sessions">
+        <div class="card-head"><Icon Name="activity" /><h2 id="rec-sessions">복구 대상 세션</h2></div>
+        <div class="form-grid cols-2">
+            <label class="field">세션 상태
+                <select @bind="_state"><option value="">복구 관심 대상</option><option>Reserved</option><option>Loading</option><option>Starting</option><option>Running</option><option>Settling</option><option>Auction</option><option>Returning</option><option>RecoveryPending</option><option>Closed</option></select></label>
+            <label class="field">조회 개수 <input @bind="_limit" inputmode="numeric" placeholder="@AdminDefaults.LIST_LIMIT" /></label>
+        </div>
+        <p class="default-hint">조회 개수를 비우면 @(AdminDefaults.LIST_LIMIT)개</p>
+        <div class="actions">
+            <LoadingButton Busy="_busy" IconName="search" OnClick="() => LoadSessionsAsync(false)">세션 첫 페이지 조회</LoadingButton>
+            <LoadingButton Variant="secondary" Busy="_busy" Disabled="string.IsNullOrEmpty(_sessionCursor)" IconName="chevron-right" OnClick="() => LoadSessionsAsync(true)">같은 필터로 다음 페이지</LoadingButton>
+        </div>
+        @if (_sessions?["livenessDeferred"]?.Value<bool>() == true)
+        {
+            <div class="notice-box warning" role="status"><Icon Name="alert" /><span>서버 생존 판정이 보류 중입니다. 서버 소실을 확정할 수 없으며 장애 취소·강제 종료가 보류됩니다.</span></div>
+        }
+        @if (_sessions != null)
+        {
+            <div class="mt"><JsonDataView Value="_sessions" /></div>
+        }
+    </section>
+    <section class="card" aria-labelledby="rec-auctions">
+        <div class="card-head"><Icon Name="coins" /><h2 id="rec-auctions">경매 출정</h2></div>
+        <div class="form-grid cols-2">
+            <label class="field">품목 상태
+                <select @bind="_auctionState"><option value="">멈춘 경매</option><option value="Open">진행 중</option><option value="Closing">마감 중</option></select></label>
+            <label class="field">조회 개수 <input @bind="_auctionLimit" inputmode="numeric" placeholder="@AdminDefaults.LIST_LIMIT" /></label>
+        </div>
+        <p class="default-hint">조회 개수를 비우면 @(AdminDefaults.LIST_LIMIT)개</p>
+        <div class="actions">
+            <LoadingButton Busy="_busy" IconName="search" OnClick="() => LoadAuctionsAsync(false)">경매 첫 페이지 조회</LoadingButton>
+            <LoadingButton Variant="secondary" Busy="_busy" Disabled="string.IsNullOrEmpty(_auctionCursor)" IconName="chevron-right" OnClick="() => LoadAuctionsAsync(true)">같은 필터로 다음 페이지</LoadingButton>
+        </div>
+        <p class="hint">경매 자동 마감은 유지 작업이 처리합니다. 목록은 출정·예약 엽전·마감 상태를 확인하는 용도입니다.</p>
+        @if (_auctions != null)
+        {
+            <div class="mt"><JsonDataView Value="_auctions" /></div>
+        }
+    </section>
+</div>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.ADMIN" />
+<section class="card accent-edge" aria-labelledby="rec-manual">
+    <div class="card-head"><Icon Name="wrench" /><h2 id="rec-manual">세션 수동 복구</h2></div>
+    <fieldset disabled="@(FormLocked || !Context.HasRole(AdminContractCodes.Role.ADMIN))">
+        <div class="form-grid">
+            <label class="field">대상 세션 ID <input @bind="_sessionId" placeholder="세션 ID(UUID) — 목록의 ID 복사 버튼 사용" /></label>
+            <label class="field">복구 동작
+                <select @bind="_action"><option value="RetrySettlement">저장된 종료 이벤트로 정산 재시도</option><option value="ServiceCancel" disabled="@LivenessDeferred">서버 소실 세션 장애 취소</option><option value="ForceClose" disabled="@LivenessDeferred">격리 정산 세션 강제 종료</option></select></label>
+            <label class="field">복구 사유 <input @bind="_reason" maxlength="500" placeholder="@AdminDefaults.RECOVERY_REASON" /></label>
+        </div>
+        <p class="default-hint">비우면 "@AdminDefaults.RECOVERY_REASON"</p>
+        <p class="hint">정산 재시도는 Settling, 장애 취소는 서버 소실 Running, 강제 종료는 복구 실패 5회 이상인 Settling에서 적용됩니다. RecoveryPending 처리 경로는 없습니다.</p>
+        <div class="actions"><LoadingButton Variant="danger" IconName="check" OnClick="PrepareRecovery">복구 내용 확인</LoadingButton></div>
+    </fieldset>
+</section>
+<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" Defaults="_writeDefaults" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
+<ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private string _state = string.Empty;
+    private string _limit = string.Empty;
+    private string _auctionState = string.Empty;
+    private string _auctionLimit = string.Empty;
+    private JToken? _sessions;
+    private JToken? _auctions;
+    private string? _sessionPath;
+    private string? _auctionPath;
+    private string? _sessionCursor;
+    private string? _auctionCursor;
+    private string _sessionId = string.Empty;
+    private string _action = AdminSessionRecoveryCodes.RETRY_SETTLEMENT;
+    private string _reason = string.Empty;
+
+    private bool LivenessDeferred => _sessions?["livenessDeferred"]?.Value<bool>() == true
+        || _auctions?["livenessDeferred"]?.Value<bool>() == true;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private async Task LoadSessionsAsync(bool next)
+    {
+        string? path = null;
+        Validate(() =>
+        {
+            if (next)
+            {
+                if ((_sessionPath != null) && (!string.IsNullOrEmpty(_sessionCursor)))
+                {
+                    path = _sessionPath + (_sessionPath.Contains('?') ? "&" : "?") + "cursor=" + Uri.EscapeDataString(_sessionCursor);
+                }
+            }
+            else
+            {
+                _sessionPath = Query(AdminApiRoutes.SESSIONS, ("state", Optional(_state)), ("limit", Limit(_limit)));
+                path = _sessionPath;
+            }
+        });
+        if (path != null)
+        {
+            await ReadAsync(path);
+            _sessions = _data;
+            _sessionCursor = _sessions?["nextCursor"]?.Value<string>();
+            _data = null;
+        }
+    }
+
+    private async Task LoadAuctionsAsync(bool next)
+    {
+        string? path = null;
+        Validate(() =>
+        {
+            if (next)
+            {
+                if ((_auctionPath != null) && (!string.IsNullOrEmpty(_auctionCursor)))
+                {
+                    path = _auctionPath + (_auctionPath.Contains('?') ? "&" : "?") + "cursor=" + Uri.EscapeDataString(_auctionCursor);
+                }
+            }
+            else
+            {
+                _auctionPath = Query(AdminApiRoutes.AUCTIONS, ("state", Optional(_auctionState)), ("limit", Limit(_auctionLimit)));
+                path = _auctionPath;
+            }
+        });
+        if (path != null)
+        {
+            await ReadAsync(path);
+            _auctions = _data;
+            _auctionCursor = _auctions?["nextCursor"]?.Value<string>();
+            _data = null;
+        }
+    }
+
+    private void PrepareRecovery()
+    {
+        Validate(() =>
+        {
+            string session = Id(_sessionId, "세션 ID");
+            WriteDefaults defaults = new();
+            string reason = defaults.Reason(_reason, AdminDefaults.RECOVERY_REASON);
+            string action = _action;
+            if ((LivenessDeferred) && (action != AdminSessionRecoveryCodes.RETRY_SETTLEMENT))
+            {
+                throw new ArgumentException("서버 생존 판정 보류 중입니다. 최신 목록을 조회한 뒤 복구하세요.");
+            }
+            Prepare("세션 수동 복구", session, reason, AdminContractCodes.Role.ADMIN,
+                string.Format(AdminApiRoutes.SESSION_RECOVERY_FORMAT, session),
+                operation => new AdminSessionRecoveryRequest(operation, reason, action), defaults: defaults);
+        });
+    }
+
+    private static string Limit(string text)
+    {
+        return Number(AdminDefaults.Int(text, AdminDefaults.LIST_LIMIT, 1, AdminLogQueryParameters.MAX_LIMIT, "조회 개수", out _));
+    }
+
+    protected override void ClearSensitiveState()
+    {
+        _sessions = null;
+        _auctions = null;
+        _sessionPath = null;
+        _auctionPath = null;
+        _sessionCursor = null;
+        _auctionCursor = null;
+    }
+}

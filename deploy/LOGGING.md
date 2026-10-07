@@ -33,7 +33,7 @@
 
 ## 지표 이름과 단위
 
-수집 시 `data.metrics`의 숫자 필드로 아래 이름을 사용한다. 게임 서버는 `METRICS_PORT`를 주면 같은 이름을 Prometheus `/metrics`로도 내보낸다(구성은 [monitoring/README.md](monitoring/README.md)). 여기서 `server_tick_duration_ms`는 누적 히스토그램이고, 추가로 `server_info`, `server_tick_budget_ms`, `server_spawned_objects`, `process_start_time_seconds`, `network_send_packets_total`·`network_receive_packets_total`, 세부 집계를 켰을 때 `network_message_{send,receive}_{bytes,count}_total{message}`를 쓴다. 바이트는 KCP·UDP 헤더를 뺀 트랜스포트 페이로드다. `server_active_enemies`, `storage_failure_total`, `settlement_outbox_pending`, 불일치 counter는 아직 내보내지 않는다. API의 `/metrics`는 아직 없다. 시간은 단조 시계로 측정하고 바이트는 실측값을 쓴다.
+수집 시 `data.metrics`의 숫자 필드로 아래 이름을 사용한다. 게임 서버는 `METRICS_PORT`를 주면 같은 이름을 Prometheus `/metrics`로도 내보낸다(구성은 [monitoring/README.md](monitoring/README.md)). 여기서 `server_tick_duration_ms`는 누적 히스토그램이고, 추가로 `server_info`, `server_tick_budget_ms`, `server_spawned_objects`, `process_start_time_seconds`, `network_send_packets_total`·`network_receive_packets_total`, 세부 집계를 켰을 때 `network_message_{send,receive}_{bytes,count}_total{message}`를 쓴다. 바이트는 KCP·UDP 헤더를 뺀 트랜스포트 페이로드다. `server_active_enemies`, `storage_failure_total`, 불일치 counter는 게임 서버가 아직 내보내지 않는다. API는 `GET /metrics`(`Metrics:AllowedNetworks`로 접근 제한)에서 위 `api_*`·`settlement_outbox_pending` 별칭과 함께 `shinshi_api_*` 지표를 내보낸다. 이름·의미는 Backend README의 "API Prometheus 지표"가 기준이며, 경보 규칙과 `shinshi-api.json` 대시보드는 그 이름을 따른다([monitoring/README.md](monitoring/README.md)). 시간은 단조 시계로 측정하고 바이트는 실측값을 쓴다.
 
 | 이름 | 종류·단위 | 의미 |
 |---|---|---|
@@ -59,6 +59,36 @@
 분위수는 histogram 원표본/버킷에서 산출한다. 인스턴스별 p95를 평균하여 전체 p95라고 보고하지 않는다. 요청 범위는 낮은 카디널리티의 경로 템플릿·HTTP 메서드·상태 분류로만 나눈다. `sessionId`, `participantId`, `operationId`, `eventId`는 로그 상관 키이며 시계열 label로 사용하지 않는다. 프로세스 재시작 시 counter 초기화를 허용하고 수집기는 reset을 처리한다.
 
 30Hz이면 초기 틱 예산은 약 33.33ms지만 실제 `Constants.Network.SERVER_TICK_RATE`를 기준으로 계산한다. 샘플 빈도·알림 임계값·보존 기간은 Linux 부하/장애 시험 후 정한다. 메모리·CPU 실측 없이 풀 크기나 호스팅 사양을 확정하지 않는다.
+
+## 보존과 정산 추적 (OP-6b)
+
+체험판은 전용 로그 검색 스택 없이 호스트의 journald에 모은다. 게임 서버 유닛은 이미 `StandardOutput=journal`, `StandardError=journal`이고 `SyslogIdentifier`가 `shinshi-town`, `shinshi-dungeon-<슬롯>`이다. API 컨테이너는 Docker `journald` 로그 드라이버를 쓰면 같은 저장소에 같은 보존 설정으로 들어가고(`tag=shinshi-api`, 컨테이너를 다시 만들어도 남음), journald를 쓸 수 없는 환경은 `json-file` 회전으로 대신한다. 설정 파일은 아래와 같다.
+
+| 대상 | 파일 | 내용 |
+|---|---|---|
+| 호스트 journald | [gameserver/journald-shinshi.conf](gameserver/journald-shinshi.conf) | `Storage=persistent`(재부팅 뒤에도 보존), 90일·최대 4G·여유 2G 유지, 전송 속도 상한 완화 |
+| API 컨테이너 | [api/docker-compose.example.yml](api/docker-compose.example.yml) | `journald` 드라이버(권장) 또는 `json-file` 50MB x 10개 회전 |
+
+보존 원칙은 기술 로그 30일, 행동 로그 90일이다([운영 설계 4장](../docs/design/operations-admin.md)). journald는 로그 종류별 보존을 나누지 못하므로 둘을 같은 줄에서 가려낼 수 없는 지금은 상한을 90일로 두고, 실제로 먼저 걸리는 한계는 디스크 상한이다. 따라서 기술 로그도 최대 90일 남을 수 있고, 상한에 닿으면 가장 오래된 파일부터 지워져 보존 기간이 줄어든다. `journalctl --disk-usage`를 가끔 확인하고, 30일/90일 분리는 로그 저장소(OP-12) 단계에서 한다. 경제 원장·감사·세션 이벤트는 DB가 보존하며(운영 설계 4장) 이 로그 보존과 무관하다.
+
+### 정산 하나를 추적하는 조회
+
+정산·세션 하나는 `sessionId`(출정 단위)나 `operationId`(멱등 작업 단위)로 마을/던전 서버와 API 로그를 함께 훑는다. 공통 키는 위 표대로 JSON에 있으므로 `jq`로 고른다. 두 값 중 하나라도 맞는 줄을 시각 순서로 보여 준다. Unity가 JSON 설치 전에 찍는 평문 줄은 `fromjson?`가 건너뛴다. 아래는 Linux 호스트용 예시이며 이 작업에서 journald로는 실행하지 못했다. 같은 `jq` 필터를 샘플 JSON 줄에 적용한 것만 확인했다.
+
+```bash
+ID=00000000-0000-0000-0000-000000000000   # sessionId 또는 operationId
+SINCE="2 days ago"
+
+{
+  sudo journalctl -u 'shinshi-town.service' -u 'shinshi-dungeon@*.service' --since "$SINCE" --no-pager -o cat
+  sudo journalctl CONTAINER_NAME=shinshi-api --since "$SINCE" --no-pager -o cat
+} | grep -F "$ID"   | jq -R -c --arg id "$ID" 'fromjson? | select(.sessionId == $id or .operationId == $id)'   | jq -s -r 'sort_by(.ts)[] | [.ts, .service, .instanceId, .level, .event, (.operationId // "-"), (.reasonCode // "-")] | @tsv'
+```
+
+- 먼저 `sessionId`로 조회해 줄에 나온 `operationId`를 다시 `ID`에 넣어 그 작업만 좁힌다. API 요청 줄(`api.request.completed`)은 경로에 세션 GUID가 있을 때만 `sessionId`가 채워지고, 나머지 상관 키는 해당 이벤트를 남기는 코드가 채울 때만 있다.
+- API를 `json-file` 드라이버로 돌리면 둘째 명령을 `docker logs --since 48h shinshi-api 2>&1`로 바꾼다.
+- 한 줄 전체를 보려면 마지막 `jq`를 `jq -s 'sort_by(.ts)[]'`로 바꾼다. 로그에는 토큰·연결 문자열·요청 본문이 없다(위 규약).
+- DB에 남은 기록은 어드민 API로 본다. 같은 `operationId`는 `GET /admin/v1/operations/{actorId}/{operationId}`, 세션 이벤트는 `GET /admin/v1/sessions/{id}/events`(`reason` 필수, 조회도 감사됨)다.
 
 ## 드레인과 장애 이벤트
 

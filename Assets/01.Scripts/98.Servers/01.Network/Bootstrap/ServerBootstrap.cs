@@ -46,6 +46,9 @@ namespace Shinshi.Network
         // 마을 역할에서만 있다. 파티, 성장 중계, 생활 요청을 맡는다
         public static TownServerHost     Town        { get; private set; }
 
+        // 서버가 열린 뒤 항상 있다. 전체, 파티 채팅을 검증하고 방송한다
+        public static ChatServerHost     Chat        { get; private set; }
+
         // 서비스 자격이 있을 때만 있다. 임대 발급, 풀 등록, heartbeat를 맡는다
         public static ServerPresence     Presence    { get; private set; }
 
@@ -92,6 +95,7 @@ namespace Shinshi.Network
             Backend      = null;
             DungeonHost  = null;
             Town         = null;
+            Chat         = null;
             Presence     = null;
             Shutdown     = null;
             _credentials = null;
@@ -295,6 +299,10 @@ namespace Shinshi.Network
                     Town = TownServerInstaller.Install(manager, Backend, config.ContentVersion, IsDevelopmentRuntime,
                         LogBackendWarning);
                 }
+
+                // 채팅은 두 역할 모두 연다. 마을 파티 채팅은 같은 방, 던전은 프로세스 하나가 세션 하나라 모든 참가자다
+                IChatPartyLookup chatParty = (Town != null) ? new TownChatPartyLookup(Town.Runtime.Party) : null;
+                Chat = ChatServerInstaller.Install(manager, chatParty);
             }
             catch (Exception exception)
             {

@@ -30,6 +30,7 @@ namespace Shinshi.Network
         public const string EVENT_SHUTDOWN_FORCED        = "server.shutdown.forced";
         public const string EVENT_UNITY_LOG              = "unity.log";
         public const string EVENT_UNITY_EXCEPTION        = "unity.exception";
+        public const string EVENT_CHAT_MESSAGE           = "chat.message";
 
         // 0은 ContractCodes.RejectReason.NONE이다
         public const int NO_REASON = 0;

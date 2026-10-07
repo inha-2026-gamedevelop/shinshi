@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -116,7 +116,12 @@ namespace Shinshi.Backend.Ledger
                     cursor = page[page.Count - 1].Cursor;
                 }
 
-                await _runs.FinishAsync(runDate.Value, _workerId, mismatches, cancellationToken);
+                if (!await _runs.FinishAsync(runDate.Value, _workerId, mismatches, cancellationToken))
+                {
+                    _logger.LogWarning("Economy reconciliation for {RunDate} did not finish: the claim moved to another worker.",
+                        runDate.Value);
+                    return null;
+                }
                 _logger.LogInformation("Economy reconciliation for {RunDate} finished with {Mismatches} mismatches.",
                     runDate.Value, mismatches);
                 return mismatches;

@@ -73,6 +73,9 @@ namespace Shinshi.Combat
 
         public int Capacity => _records.Length;
 
+        /// <summary> 저장이 확정된 물약으로 체력이 실제 증가한 참가자를 통지한다 </summary>
+        public event Action<int> PotionApplied;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -333,10 +336,17 @@ namespace Shinshi.Combat
                 && (user != null) && (user.LifeState == EParticipantLifeState.Alive);
             if (canHeal)
             {
+                float healthBefore = user.Health;
                 user.Heal(user.MaxHealth * _life.GetPotion(size).HealRate);
+                bool healed = user.Health > healthBefore;
                 Consume(ref record, size);
                 record.CooldownEndsAt = serverTime + _player.PotionSharedCooldown;
                 _host.OnPotionState(record.ParticipantId, input, ERejectReason.None);
+                if (healed)
+                {
+                    PotionApplied?.Invoke(record.ParticipantId);
+                }
+
                 return;
             }
 

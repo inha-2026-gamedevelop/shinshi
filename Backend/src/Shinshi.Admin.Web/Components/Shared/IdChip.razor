@@ -1,0 +1,75 @@
+@* ID는 앞 8자만 보이고 전체 값은 title과 복사 버튼에 있다. Href가 있으면 해당 화면으로 이동한다 *@
+@inject IServiceProvider Services
+@if (!string.IsNullOrEmpty(Href))
+{
+    <span class="id-chip"><a href="@Href" class="mono" title="@Value">@Short</a><button type="button" class="copy" aria-label="@(Label + " 복사")" title="복사" @onclick="CopyAsync"><Icon Name="@(_copied ? "check" : "copy")" /></button></span>
+}
+else
+{
+    <span class="id-chip" title="@Value"><span>@Short</span><button type="button" class="copy" aria-label="@(Label + " 복사")" title="복사" @onclick="CopyAsync"><Icon Name="@(_copied ? "check" : "copy")" /></button></span>
+}
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private bool _copied;
+
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = "ID";
+    [Parameter] public string? Href { get; set; }
+
+    private string Short => Value.Length > 8 ? Value.Substring(0, 8) : Value;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private async Task CopyAsync()
+    {
+        IJSRuntime? js = Services.GetService(typeof(IJSRuntime)) as IJSRuntime;
+        if (js == null)
+        {
+            return;
+        }
+        try
+        {
+            bool copied = await js.InvokeAsync<bool>("shinshiAdmin.copy", Value);
+            if (!copied)
+            {
+                if (Services.GetService(typeof(ToastService)) is ToastService failed)
+                {
+                    failed.Show(EToastKind.Error, "클립보드에 복사하지 못했습니다.");
+                }
+                return;
+            }
+            _copied = true;
+            StateHasChanged();
+            await Task.Delay(1500);
+            _copied = false;
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            // 회로가 이미 끊겼으면 복사할 화면이 없다
+            return;
+        }
+        catch (InvalidOperationException)
+        {
+            // 렌더링 전(JS 사용 불가) 호출은 건너뛴다
+            return;
+        }
+        catch (JSException)
+        {
+            if (Services.GetService(typeof(ToastService)) is ToastService toasts)
+            {
+                toasts.Show(EToastKind.Error, "클립보드에 복사하지 못했습니다.");
+            }
+        }
+    }
+}

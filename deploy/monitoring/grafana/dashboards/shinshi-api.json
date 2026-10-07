@@ -1,0 +1,595 @@
+{
+  "uid": "shinshi-api",
+  "title": "Shinshi API",
+  "tags": [
+    "shinshi"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "상태",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "API 지표 응답",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "min(up{job=\"shinshi-api\"})",
+          "legendFormat": "up"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "응답",
+                  "color": "green"
+                },
+                "0": {
+                  "text": "없음",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "준비 상태 (/health/ready)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "min(probe_success{job=\"shinshi-api-ready\"})",
+          "legendFormat": "ready"
+        }
+      ],
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "정상",
+                  "color": "green"
+                },
+                "0": {
+                  "text": "DB 불가",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "마지막 대사 불일치",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "max(shinshi_api_reconciliation_last_mismatch_count)",
+          "legendFormat": "mismatch"
+        }
+      ],
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "마지막 대사 후 경과",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "time() - max(shinshi_api_reconciliation_last_run_timestamp_seconds)",
+          "legendFormat": "age"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 93600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "정산 outbox 대기",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "max(shinshi_api_settlement_outbox_pending)",
+          "legendFormat": "pending"
+        }
+      ],
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "요청률 (요청/초)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "sum(rate(shinshi_api_http_requests_total{route!~\".*health.*|.*metrics.*\"}[1m]))",
+          "legendFormat": "req/s"
+        }
+      ],
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "요청",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "요청률 (상태 분류별)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "sum by (status_class) (rate(shinshi_api_http_requests_total{route!~\".*health.*|.*metrics.*\"}[1m]))",
+          "legendFormat": "{{status_class}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "응답 시간 p50 / p95 / p99",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(shinshi_api_http_request_duration_seconds_bucket{route!~\".*health.*|.*metrics.*\"}[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(shinshi_api_http_request_duration_seconds_bucket{route!~\".*health.*|.*metrics.*\"}[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(shinshi_api_http_request_duration_seconds_bucket{route!~\".*health.*|.*metrics.*\"}[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 6,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "5xx 비율",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "sum(rate(shinshi_api_http_requests_total{status_class=~\"5.*\", route!~\".*health.*|.*metrics.*\"}[5m])) / sum(rate(shinshi_api_http_requests_total{route!~\".*health.*|.*metrics.*\"}[5m]))",
+          "legendFormat": "5xx 비율"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "5xx 요청률 (경로별 상위 10)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "topk(10, sum by (route) (rate(shinshi_api_http_requests_total{status_class=~\"5.*\", route!~\".*health.*|.*metrics.*\"}[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "정산·대사",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "정산 outbox 대기",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "shinshi_api_settlement_outbox_pending",
+          "legendFormat": "pending"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "대사 마지막 실행 후 경과와 불일치",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "time() - shinshi_api_reconciliation_last_run_timestamp_seconds",
+          "legendFormat": "경과(초)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "shinshi_api_reconciliation_last_mismatch_count",
+          "legendFormat": "불일치 건수"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "경과(초)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {}
+    }
+  ]
+}

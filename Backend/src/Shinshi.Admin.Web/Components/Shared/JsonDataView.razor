@@ -1,0 +1,126 @@
+@using Newtonsoft.Json.Linq
+@* API 응답을 표로 보여 준다. 비밀 필드는 키 이름으로 걸러 내고, ID·시각·참/거짓은 알맞은 표현으로 바꾼다 *@
+@if (Value is JObject obj)
+{
+    <div class="table-scroll"><table class="kv-table"><tbody>
+    @foreach (JProperty property in obj.Properties())
+    {
+        @if (!AdminLabels.IsSecret(property.Name))
+        {
+            <tr><th scope="row">@AdminLabels.Name(property.Name)</th><td><JsonDataView Value="property.Value" FieldName="@property.Name" /></td></tr>
+        }
+    }
+    </tbody></table></div>
+}
+else if (Value is JArray array)
+{
+    @if (array.Count == 0)
+    {
+        <span class="muted">목록이 비어 있습니다.</span>
+    }
+    else if (array.All(item => item is JObject))
+    {
+        string[] columns = Columns(array);
+        <div class="table-scroll"><table>
+            <thead><tr>
+                @foreach (string column in columns)
+                {
+                    <th scope="col">@AdminLabels.Name(column)</th>
+                }
+            </tr></thead>
+            <tbody>
+            @foreach (JToken row in array)
+            {
+                <tr>
+                @foreach (string column in columns)
+                {
+                    <td class="@(IsNumber(row[column]) ? "num" : null)"><JsonDataView Value="row[column]" FieldName="@column" /></td>
+                }
+                </tr>
+            }
+            </tbody>
+        </table></div>
+    }
+    else
+    {
+        <div class="chip-list">
+        @foreach (JToken item in array)
+        {
+            <span class="chip"><JsonDataView Value="item" FieldName="@FieldName" /></span>
+        }
+        </div>
+    }
+}
+else if (Value != null)
+{
+    @if (Value.Type == JTokenType.Null)
+    {
+        <span class="muted">없음</span>
+    }
+    else if (Value.Type == JTokenType.Boolean)
+    {
+        <span class="@("badge " + (Value.Value<bool>() ? "ok" : string.Empty))">@AdminLabels.Scalar(Value, FieldName)</span>
+    }
+    else if ((FieldName.EndsWith("UnixMs", StringComparison.Ordinal)) && (Value.Type == JTokenType.Integer))
+    {
+        <KstTime UnixMs="Value.Value<long>()" Seconds="true" />
+    }
+    else if ((Value.Type == JTokenType.String) && (TargetInput.IsUuid(Value.ToString(), out string uuid)))
+    {
+        <IdChip Value="@uuid" Label="@AdminLabels.Name(FieldName)" Href="@LinkFor(FieldName, uuid)" />
+    }
+    else
+    {
+        <span class="@(IsNumber(Value) ? "mono" : null)">@AdminLabels.Scalar(Value, FieldName)</span>
+    }
+}
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private const int MAX_COLUMNS = 16;
+
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public JToken? Value { get; set; }
+    [Parameter] public string FieldName { get; set; } = string.Empty;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private static string[] Columns(JArray rows)
+    {
+        List<string> columns = new();
+        foreach (JToken row in rows)
+        {
+            foreach (JProperty property in ((JObject)row).Properties())
+            {
+                if ((!AdminLabels.IsSecret(property.Name)) && (!columns.Contains(property.Name)) && (columns.Count < MAX_COLUMNS))
+                {
+                    columns.Add(property.Name);
+                }
+            }
+        }
+        return columns.ToArray();
+    }
+
+    private static bool IsNumber(JToken? token)
+    {
+        return (token != null) && ((token.Type == JTokenType.Integer) || (token.Type == JTokenType.Float));
+    }
+
+    // ID가 가리키는 화면이 있으면 그 화면으로 이동하는 링크를 만든다
+    private static string? LinkFor(string field, string id) => field switch
+    {
+        "accountId" => "/characters?account=" + id,
+        "sessionId" => "/logs?session=" + id,
+        "itemId" => "/logs?item=" + id,
+        "grantId" => "/grants?grant=" + id,
+        _ => null
+    };
+}
