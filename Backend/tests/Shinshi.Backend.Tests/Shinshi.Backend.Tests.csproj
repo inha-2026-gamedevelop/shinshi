@@ -18,6 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Shinshi.AdminCli/Shinshi.AdminCli.csproj" />
+    <ProjectReference Include="../../src/Shinshi.Admin.Web/Shinshi.Admin.Web.csproj" />
     <ProjectReference Include="../../src/Shinshi.Api/Shinshi.Api.csproj" />
     <ProjectReference Include="../../src/Shinshi.Contracts/Shinshi.Contracts.csproj" />
     <ProjectReference Include="../../src/Shinshi.Data/Shinshi.Data.csproj" />

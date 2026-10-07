@@ -1,0 +1,132 @@
+@page "/service-state"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>서비스 상태</PageTitle>
+<h1>서비스 상태</h1>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.VIEWER" />
+<button type="button" disabled="@(_busy || HasPrepared)" @onclick="LoadAsync">최신 상태 조회 · 편집값 불러오기</button>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.ADMIN" />
+<fieldset disabled="@(FormLocked || !_loaded || !Context.HasRole(AdminContractCodes.Role.ADMIN))">
+    <legend>점검·기능·허용 빌드 변경</legend>
+    <p>조회한 리비전: <code>@_revision</code>. 모든 설정을 함께 저장합니다.</p>
+    <label class="checkbox"><input type="checkbox" @bind="_maintenance" /> 점검 중</label>
+    <h2>기능 차단</h2>
+    @foreach (string feature in ServiceFeatureKeys.All)
+    {
+        <label class="checkbox"><input type="checkbox" checked="@_disabled.Contains(feature)" @onchange="eventArgs => ToggleFeature(feature, eventArgs)" /> @FeatureLabel(feature) <small>(@feature)</small></label>
+    }
+    <h2>허용 빌드</h2>
+    @foreach (string build in _builds.ToArray())
+    {
+        <p><code>@build</code> <button type="button" class="secondary" @onclick="() => _builds.Remove(build)">삭제</button></p>
+    }
+    <div class="form-grid"><label>추가할 빌드 ID<input @bind="_newBuild" maxlength="128" /></label><button type="button" class="secondary" @onclick="AddBuild">빌드 추가</button></div>
+    <label>변경 사유<input @bind="_reason" maxlength="500" /></label>
+    <button type="button" @onclick="PrepareUpdate">저장 내용 확인</button>
+</fieldset>
+<p class="muted">리비전 충돌(409)이면 현재 요청을 닫고 최신 상태를 다시 조회하여 변경 내용을 확인하세요.</p>
+<WriteConfirmation Title="@_writeTitle" Target="@_writeTarget" Body="_preparedBody" OperationId="@PendingOperationId" Attempted="_writeAttempted" CanConfirm="CanConfirm" Busy="_busy" OnConfirm="ConfirmAsync" OnCancel="CancelPrepared" />
+<ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private bool _loaded;
+    private bool _maintenance;
+    private long _revision;
+    private readonly HashSet<string> _disabled = new(StringComparer.Ordinal);
+    private readonly List<string> _builds = new();
+    private string _newBuild = string.Empty;
+    private string _reason = string.Empty;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private Task LoadAsync() => ReadAsync(AdminApiRoutes.SERVICE_STATE);
+
+    protected override void OnReadResponse(JToken? value)
+    {
+        if (value == null)
+        {
+            return;
+        }
+        _maintenance = value["maintenance"]?.Value<bool>() ?? true;
+        _revision = value["revision"]?.Value<long>() ?? 0;
+        _disabled.Clear();
+        foreach (JToken feature in value["disabledFeatures"] as JArray ?? new JArray())
+        {
+            _disabled.Add(feature.ToString());
+        }
+        _builds.Clear();
+        _builds.AddRange((value["allowedBuildIds"] as JArray ?? new JArray()).Select(build => build.ToString()));
+        _loaded = true;
+    }
+
+    private void ToggleFeature(string feature, ChangeEventArgs eventArgs)
+    {
+        if (eventArgs.Value is true)
+        {
+            _disabled.Add(feature);
+        }
+        else
+        {
+            _disabled.Remove(feature);
+        }
+    }
+
+    private void AddBuild()
+    {
+        Validate(() =>
+        {
+            string build = _newBuild.Trim();
+            if ((build.Length == 0) || (build.Length > AdminServiceStateUpdateRequest.MAX_BUILD_ID_LENGTH)
+                || (_builds.Count >= AdminServiceStateUpdateRequest.MAX_BUILD_IDS) || (_builds.Contains(build, StringComparer.Ordinal)))
+            {
+                throw new ArgumentException("빌드 ID는 중복 없이 1~128자로 입력하세요. 목록은 최대 64개입니다.");
+            }
+            _builds.Add(build);
+            _newBuild = string.Empty;
+        });
+    }
+
+    private void PrepareUpdate()
+    {
+        Validate(() =>
+        {
+            if (!_loaded)
+            {
+                throw new ArgumentException("최신 상태를 먼저 조회하세요.");
+            }
+            string reason = RequireReason(_reason);
+            bool maintenance = _maintenance;
+            long revision = _revision;
+            string[] features = ServiceFeatureKeys.All.Where(_disabled.Contains).ToArray();
+            string[] builds = _builds.ToArray();
+            Prepare("서비스 상태 저장", "서비스 전체 / 리비전 " + revision, reason, AdminContractCodes.Role.ADMIN,
+                AdminApiRoutes.SERVICE_STATE, operation => new AdminServiceStateUpdateRequest(operation, reason,
+                    maintenance, features, builds, revision), HttpMethod.Put);
+        });
+    }
+
+    protected override void OnWriteResponse(JToken? value) { _loaded = false; }
+
+    protected override string WriteFailureMessage(AdminWebApiResult<JToken> result)
+    {
+        if ((result.StatusCode == 409) && (result.ReasonCode == AdminContractCodes.RejectReason.INVALID_STATE))
+        {
+            return "다른 운영자가 먼저 서비스 상태를 변경했을 수 있습니다. 요청을 닫고 최신 상태를 다시 조회한 뒤 변경 내용을 확인하세요.";
+        }
+        return base.WriteFailureMessage(result);
+    }
+
+    private static string FeatureLabel(string feature) => feature switch
+    {
+        ServiceFeatureKeys.AUCTION => "경매", ServiceFeatureKeys.CRAFTING => "제작", ServiceFeatureKeys.ENHANCE => "강화",
+        ServiceFeatureKeys.INHERIT => "계승", ServiceFeatureKeys.GATHERING => "채집", ServiceFeatureKeys.BOSS_ENTRY => "보스 입장",
+        ServiceFeatureKeys.INBOX_CLAIM => "우편 수령", ServiceFeatureKeys.DUNGEON_ENTRY => "던전 입장",
+        ServiceFeatureKeys.TALISMAN => "부적", ServiceFeatureKeys.TRAINING => "정기 수련", _ => feature
+    };
+}

@@ -1,0 +1,215 @@
+@page "/logs"
+@inherits AdminPageBase
+@using Newtonsoft.Json.Linq
+<PageTitle>로그 조회</PageTitle>
+<h1>로그 조회</h1>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.VIEWER" />
+<p>원장·아이템·세션·작업 조회는 조회 사유를 감사 기록에 남깁니다. 시간 필터는 시작 포함·종료 제외입니다.</p>
+<label>민감 조회 사유<input @bind="_reason" maxlength="500" /></label>
+<section>
+    <h2>경제 원장</h2>
+    <div class="form-grid">
+        <label>계정 ID<input @bind="_accountId" /></label>
+        <label>캐릭터 ID(선택)<input @bind="_characterId" /></label>
+        <label>출처 종류(계정 없이 조회 시 필수)<input @bind="_sourceType" /></label>
+        <label>출처 ID(계정 없이 조회 시 필수)<input @bind="_sourceId" /></label>
+        <label>자산 종류(선택)<input @bind="_assetKind" /></label>
+        <label>자산 ID(선택)<input @bind="_assetId" /></label>
+        <label>원장 사유 코드(숫자, 선택)<input @bind="_reasonCode" inputmode="numeric" /></label>
+        <label>시작 시각(UTC, 선택)<input @bind="_from" placeholder="2026-10-07T00:00:00Z" /></label>
+        <label>종료 시각(UTC, 선택)<input @bind="_to" placeholder="2026-10-08T00:00:00Z" /></label>
+        <label>페이지 크기<input type="number" @bind="_limit" min="1" max="500" /></label>
+    </div>
+    <button type="button" disabled="@_busy" @onclick="LoadLedgerAsync">원장 첫 페이지 조회</button>
+    @if (_totals != null)
+    {
+        <details open><summary>원장 필터 전체 합계</summary><JsonDataView Value="_totals" /></details>
+    }
+</section>
+<section>
+    <h2>아이템 이력</h2>
+    <label>아이템 인스턴스 ID<input @bind="_itemId" /></label>
+    <button type="button" disabled="@_busy" @onclick="LoadItemAsync">이력 조회</button>
+</section>
+<section>
+    <h2>세션 이벤트</h2>
+    <label>세션 ID<input @bind="_sessionId" /></label>
+    <button type="button" disabled="@_busy" @onclick="LoadSessionAsync">세션 요약·참가자·이벤트 조회</button>
+</section>
+<section>
+    <h2>작업 추적</h2>
+    <div class="form-grid"><label>행위자 ID<input @bind="_actorId" /></label><label>작업 ID<input @bind="_operationId" /></label></div>
+    <button type="button" disabled="@_busy" @onclick="LoadOperationAsync">작업·원장·이력·감사 조회</button>
+</section>
+<section>
+    <h2>운영 감사 로그</h2>
+    <div class="form-grid">
+        <label>운영자 ID(선택)<input @bind="_auditAdminId" /></label>
+        <label>대상 종류(선택)<input @bind="_targetKind" /></label>
+        <label>대상 ID(종류와 함께 입력, 선택)<input @bind="_targetId" /></label>
+        <label>시작 시각(UTC, 선택)<input @bind="_auditFrom" placeholder="2026-10-07T00:00:00Z" /></label>
+        <label>종료 시각(UTC, 선택)<input @bind="_auditTo" placeholder="2026-10-08T00:00:00Z" /></label>
+        <label>페이지 크기<input type="number" @bind="_auditLimit" min="1" max="500" /></label>
+    </div>
+    <button type="button" disabled="@_busy" @onclick="LoadAuditAsync">감사 첫 페이지 조회</button>
+</section>
+@if (_pagedPath != null)
+{
+    <section>
+        <h2>@_pageLabel</h2>
+        <p class="muted">다음 페이지는 첫 조회의 필터와 사유를 그대로 사용합니다.</p>
+        <button type="button" disabled="@(_busy || string.IsNullOrEmpty(_cursor))" @onclick="NextAsync">같은 필터로 다음 페이지</button>
+    </section>
+}
+<ApiResultView Data="_data" Error="@_error" Message="@_message" Busy="_busy" />
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private string _reason = string.Empty;
+    private string _accountId = string.Empty;
+    private string _characterId = string.Empty;
+    private string _sourceType = string.Empty;
+    private string _sourceId = string.Empty;
+    private string _assetKind = string.Empty;
+    private string _assetId = string.Empty;
+    private string _reasonCode = string.Empty;
+    private string _from = string.Empty;
+    private string _to = string.Empty;
+    private int _limit = AdminLogQueryParameters.DEFAULT_LIMIT;
+    private string _itemId = string.Empty;
+    private string _sessionId = string.Empty;
+    private string _actorId = string.Empty;
+    private string _operationId = string.Empty;
+    private string _auditAdminId = string.Empty;
+    private string _targetKind = string.Empty;
+    private string _targetId = string.Empty;
+    private string _auditFrom = string.Empty;
+    private string _auditTo = string.Empty;
+    private int _auditLimit = AdminLogQueryParameters.DEFAULT_LIMIT;
+    private string? _pagedPath;
+    private string? _cursor;
+    private string _pageLabel = string.Empty;
+    private JToken? _totals;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    private async Task LoadLedgerAsync()
+    {
+        string? path = null;
+        Validate(() =>
+        {
+            string? account = OptionalId(_accountId, "계정 ID");
+            string? sourceType = Optional(_sourceType);
+            string? sourceId = Optional(_sourceId);
+            if ((account == null) && ((sourceType == null) || (sourceId == null)))
+            {
+                throw new ArgumentException("계정 ID 또는 출처 종류와 출처 ID를 함께 입력하세요.");
+            }
+            if ((Optional(_reasonCode) != null) && (!int.TryParse(_reasonCode, out _)))
+            {
+                throw new ArgumentException("원장 사유 코드는 숫자입니다.");
+            }
+            (string? from, string? to) = Range(_from, _to);
+            path = Query(AdminApiRoutes.LEDGER, ("reason", RequireReason(_reason)),
+                ("accountId", account), ("characterId", OptionalId(_characterId, "캐릭터 ID")),
+                ("sourceType", sourceType), ("sourceId", sourceId), ("assetKind", Optional(_assetKind)),
+                ("assetId", Optional(_assetId)), ("reasonCode", Optional(_reasonCode)),
+                ("fromUnixMs", from), ("toUnixMs", to), ("limit", Limit(_limit)));
+        });
+        if (path == null)
+        {
+            return;
+        }
+        _pagedPath = path;
+        _pageLabel = "원장 페이지";
+        _totals = null;
+        await ReadAsync(path);
+        _totals = _data?["totals"];
+        _cursor = _data?["nextCursor"]?.Value<string>();
+    }
+
+    private Task LoadItemAsync() => LoadSensitiveAsync(() => string.Format(AdminApiRoutes.ITEM_HISTORY_FORMAT, Id(_itemId, "아이템 ID")));
+    private Task LoadSessionAsync() => LoadSensitiveAsync(() => string.Format(AdminApiRoutes.SESSION_EVENTS_FORMAT, Id(_sessionId, "세션 ID")));
+    private Task LoadOperationAsync() => LoadSensitiveAsync(() => string.Format(AdminApiRoutes.OPERATION_FORMAT,
+        Id(_actorId, "행위자 ID"), Id(_operationId, "작업 ID")));
+
+    private async Task LoadSensitiveAsync(Func<string> route)
+    {
+        string? path = null;
+        Validate(() => path = Query(route(), ("reason", RequireReason(_reason))));
+        if (path != null)
+        {
+            _pagedPath = null;
+            _cursor = null;
+            _totals = null;
+            await ReadAsync(path);
+        }
+    }
+
+    private async Task LoadAuditAsync()
+    {
+        string? path = null;
+        Validate(() =>
+        {
+            if ((!string.IsNullOrWhiteSpace(_targetId)) && (string.IsNullOrWhiteSpace(_targetKind)))
+            {
+                throw new ArgumentException("대상 ID 필터에는 대상 종류도 입력하세요.");
+            }
+            (string? from, string? to) = Range(_auditFrom, _auditTo);
+            path = Query(AdminApiRoutes.AUDIT, ("adminId", OptionalId(_auditAdminId, "운영자 ID")),
+                ("targetKind", Optional(_targetKind)), ("targetId", Optional(_targetId)),
+                ("fromUnixMs", from), ("toUnixMs", to), ("limit", Limit(_auditLimit)));
+        });
+        if (path == null)
+        {
+            return;
+        }
+        _pagedPath = path;
+        _pageLabel = "감사 로그 페이지";
+        _totals = null;
+        await ReadAsync(path);
+        _cursor = _data?["nextCursor"]?.Value<string>();
+    }
+
+    private async Task NextAsync()
+    {
+        if ((_pagedPath == null) || (string.IsNullOrEmpty(_cursor)))
+        {
+            return;
+        }
+        await ReadAsync(_pagedPath + (_pagedPath.Contains('?') ? "&" : "?") + "cursor=" + Uri.EscapeDataString(_cursor));
+        _cursor = _data?["nextCursor"]?.Value<string>();
+    }
+
+    private static string Limit(int limit)
+    {
+        if ((limit < 1) || (limit > AdminLogQueryParameters.MAX_LIMIT))
+        {
+            throw new ArgumentException("페이지 크기는 1~500입니다.");
+        }
+        return Number(limit);
+    }
+
+    private static (string? From, string? To) Range(string fromText, string toText)
+    {
+        long? from = UnixTime(fromText, "시작");
+        long? to = UnixTime(toText, "종료");
+        if ((from.HasValue) && (to.HasValue) && (from.Value >= to.Value))
+        {
+            throw new ArgumentException("시작 시각은 종료 시각보다 앞서야 합니다.");
+        }
+        return (from.HasValue ? Number(from.Value) : null, to.HasValue ? Number(to.Value) : null);
+    }
+
+    protected override void ClearSensitiveState()
+    {
+        _totals = null;
+        _pagedPath = null;
+        _cursor = null;
+    }
+}

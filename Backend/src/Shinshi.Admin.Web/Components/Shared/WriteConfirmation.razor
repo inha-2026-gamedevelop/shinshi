@@ -1,0 +1,38 @@
+@using Newtonsoft.Json.Linq
+@if (Body != null)
+{
+    <section class="confirmation" aria-label="변경 내용 확인">
+        <h2>@Title 확인</h2>
+        <p><strong>대상:</strong> @Target</p>
+        <JsonDataView Value="Body" />
+        @if (Attempted)
+        {
+            <p>작업 ID: <code>@OperationId</code></p>
+            <p>이 요청의 대상·본문·작업 ID는 고정되어 있습니다. 재시도는 같은 요청을 다시 보냅니다.</p>
+            @if ((!CanConfirm) && (!Busy))
+            {
+                <p>이 결과는 재시도할 수 없습니다. 결과와 상태를 조회한 뒤 새 작업을 작성하세요.</p>
+            }
+        }
+        <div class="actions">
+            <button type="button" disabled="@(!CanConfirm)" @onclick="OnConfirm">@(Attempted ? "같은 요청 재시도" : "내용 확인 후 실행")</button>
+            <button type="button" class="secondary" disabled="@Busy" @onclick="OnCancel">@(Attempted ? "요청 닫기" : "수정으로 돌아가기")</button>
+        </div>
+    </section>
+}
+@code
+{
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Target { get; set; } = string.Empty;
+    [Parameter] public JToken? Body { get; set; }
+    [Parameter] public string? OperationId { get; set; }
+    [Parameter] public bool Attempted { get; set; }
+    [Parameter] public bool CanConfirm { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

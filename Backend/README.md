@@ -432,3 +432,54 @@ API Dockerfile의 `HEALTHCHECK`는 `/health/live`를 쓴다([deploy/api/Dockerfi
 
 DB 지표는 scrape 때 연결 대기를 포함한 2초 제한으로 조회한다. DB 미설정/연결 실패/시간초과는 측정 실패를 0으로 오인하지 않도록 `NaN`을 제공한다. 완료 대사가 한 번도 없으면 대사 timestamp는 `0`, 불일치 수는 `NaN`이다. 대사를 선점하지 않은 API 인스턴스도 공동 DB의 마지막 완료 결과를 제공한다. outbox와 대사 게이지는 복제본 사이에 같은 DB 값을 관측하므로 합산하지 않고 max 등으로 집계한다. 진행 중/실패한 대사는 마지막 완료 값을 덮어쓰지 않아 timestamp의 노후화로 확인할 수 있다. 불일치 경보는 `shinshi_api_reconciliation_last_mismatch_count > 0`, 대사 미실행/노후화는 `time() - shinshi_api_reconciliation_last_run_timestamp_seconds`로 판단한다. 조회 실패로 `NaN`인 경우도 운영 경보에서 별도로 다룬다.
 
+## 운영 웹 화면 (AdminWeb)
+
+`Backend/src/Shinshi.Admin.Web/`는 .NET 10 Blazor Interactive Server 운영 도구다. 기존 `/admin/v1` API·DTO·권한·감사를 HTTP로 사용하며 DB에 직접 연결하지 않는다. 앞의 0008 절에 적힌 API·CLI만 제공하던 범위에 운영 웹을 추가한 현재 구현이다. 기존 API와 CLI 실행 방법도 유지된다.
+
+Interactive Server 시작에 필요한 `blazor.web.js`는 .NET 10 SDK가 암시적으로 추가하는 공식 패키지 `Microsoft.AspNetCore.App.Internal.Assets`에서 온다(공유 런타임에는 없다). 처음 한 번 `dotnet restore Backend/Shinshi.Backend.slnx`로 `Backend/.local/packages`에 받아 두면 이후 `--no-restore`로 빌드할 수 있고, `MapStaticAssets`가 `_framework/blazor.web.js`를 제공한다. Production 환경의 소스 실행도 `UseStaticWebAssets`로 SDK 자산 매니페스트를 로드한다.
+
+API를 먼저 위 로컬 실행 절대로 `http://127.0.0.1:5080`에 시작한 뒤 별도 터미널에서 실행한다. 웹은 DB 연결 문자열이나 API의 비밀키가 필요하지 않으며 최초 Owner 생성·마이그레이션은 기존 API 절차를 따른다.
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = 'Production'
+$env:ASPNETCORE_URLS = 'http://127.0.0.1:5081'
+$env:AdminWeb__ApiBaseUrl = 'http://127.0.0.1:5080'
+dotnet run --project Backend/src/Shinshi.Admin.Web --no-restore --no-launch-profile
+```
+
+브라우저에서 `http://127.0.0.1:5081/login`을 열어 운영자 이름·비밀번호·6자리 TOTP로 로그인한다. 로컬 HTTP 실행은 같은 PC 루프백에서만 사용한다. 운영에서는 사설 HTTPS 주소로 접속하며 HTTPS 응답의 세션 쿠키는 `__Host-shinshi.admin.session` 이름과 `Secure`를 사용한다. 실행 예시와 launchSettings의 기본 환경은 Production이며, 예외 페이지는 환경과 관계없이 상세 오류를 노출하지 않는다.
+
+| 화면 | 경로 | 업무 |
+|---|---|---|
+| 운영 현황 | `/`, `/dashboard` | 점검·차단 기능·허용 빌드·노출 중 공지 |
+| 계정 | `/accounts` | 검색·민감 상세·개인 조정·기존 로그인 묶음/초대 폐기 |
+| 초대 | `/invites` | 코드 발급·폐기, 최초 응답 원문 표시 |
+| 지급 | `/grants` | 작성·상세·실행·취소 |
+| 서비스 상태 | `/service-state` | 점검·기능 차단·허용 빌드 저장 |
+| 공지 | `/notices` | 목록·작성·즉시 종료 |
+| 로그 | `/logs` | 원장·아이템 이력·세션 이벤트·작업·감사 조회 |
+| 장애 복구 | `/recovery` | 대상 세션·경매 조회, 정산 재시도·서비스 장애 취소·격리 세션 강제 종료 |
+| 운영자 | `/operators` | Owner의 계정 목록·생성·비활성화 |
+
+| 설정 | 기본값 | 의미 |
+|---|---|---|
+| `AdminWeb__ApiBaseUrl` | `http://127.0.0.1:5080` | 웹 서버가 호출할 API 주소. 브라우저가 API에 직접 접근하지 않는다 |
+| `AdminWeb__AllowedNetworks__0` 등 | 빈 목록 | 운영 웹을 열 운영자 CIDR/단일 IP. 비어 있으면 IPv4/IPv6 루프백만 허용하고, 명시하면 기본 루프백도 대체한다 |
+| `ForwardedHeaders__KnownProxies__0` 등 | 빈 목록 | 웹 앞 신뢰 프록시 IP만. 허용 운영자 범위 안의 프록시 설정은 시작 실패다 |
+| `ASPNETCORE_URLS` | 호스트 기본값(명시 권장) | appsettings에는 `Urls`를 두지 않는다. 로컬 5081은 launchSettings 또는 위 실행 예시로 지정한다. 환경 변수 사용 시 `--no-launch-profile`로 프로필의 URL 덮어쓰기를 피한다. 컨테이너는 `http://+:8080` |
+
+허용 네트워크는 신뢰 프록시의 forwarded headers 처리 뒤 `RemoteIpAddress`로 판정하고 허용 밖 요청은 404다. 신뢰 프록시가 없는데 `X-Forwarded-For` 또는 `Forwarded`를 붙인 요청도 404다. 프록시는 `X-Forwarded-For`·`X-Forwarded-Proto`를 보내고, 프록시 자신의 IP는 운영자 허용 범위에 넣지 않는다. 웹 접근 허용과 API의 `Admin__AllowedNetworks__*`는 별도 설정이다. API에는 웹 서버 출처를 허용하며 브라우저의 IP 헤더를 전달하지 않는다. 따라서 API 감사의 요청 IP는 웹 서버 출처이고 기존 API 정책을 변경하지 않는다.
+
+로그인 결과의 API bearer는 웹 서버 메모리에만 둔다. 브라우저에는 무작위 세션 ID 쿠키만 보내고 토큰을 HTML·JavaScript·localStorage·sessionStorage에 넣지 않는다. 쿠키는 `HttpOnly`·`SameSite=Strict`, HTTPS에서는 `__Host-` 이름·`Secure`·`Path=/`를 사용하고 Domain을 설정하지 않는다. HTTPS 요청은 평문 HTTP용 세션 쿠키를 인증에 사용하지 않는다. 세션은 API가 응답한 만료시각과 웹 로그인 후 30분 중 이른 시각을 따르며 API가 401을 반환하면 웹 세션을 폐기하고 재로그인을 요구한다. 로그인·로그아웃 POST는 antiforgery 토큰을 검증한다. 로그아웃과 재로그인은 이전 API 세션 폐기를 시도하고 로컬 세션을 닫는다. API 폐기 실패는 토큰 없는 경고 로그와 화면 안내로 알리며, 이전 API 토큰은 만료 시각까지 유효할 수 있다. 세션 저장소는 운영자당 5개·전체 1,000개로 제한하고 초과 시 가장 오래된 세션을 폐기한다. 만료 정리는 주기적으로 및 조회 시 수행한다. 업무 화면은 만료 시각과 최대 15초 간격 확인으로 유휴 상태에서도 기존 조회·민감 데이터를 지우고 로그인 화면으로 이동한다.
+
+웹을 통해 로그인하는 운영자는 API에서 같은 웹 서버 출처 IP로 보인다. 기존 API 인증 한도(IP당 로그인 실패 20회/분, 인증 요청 60회/분)를 공유하므로 API 정책은 변경하지 않고 웹에서 실패를 먼저 제한한다. IP와 대소문자를 정규화한 로그인 이름별로 실패 1~4회 후 1·2·4·8초 지연, 5회 실패 후 60초 차단하며 한 IP나 이름에서 진행 중인 인증은 1개만 허용한다. 메모리 기록은 총 4,096개 키까지만 보관하고, 비활성 기록은 15분 후 정리한다. 상한에 도달하면 새 키의 인증을 거절한다. API의 429는 공유 인증 한도 안내로 표시한다. 여러 출처에 걸친 요청과 정상 로그인 폭주에서도 API의 공유 한도가 최종 적용된다.
+
+서버는 유효 세션 없이 업무 경로를 요청하면 `/login`으로 이동시키고 `/_blazor` 연결·협상은 401로 거절한다. `/login`, `/healthz`, 실제 MapStaticAssets 정적 자산만 비로그인 접근을 허용한다. CSP는 기본·스크립트 출처를 `'self'`로, WebSocket 출처를 현재 호스트의 ws/wss로 제한한다. Blazor 재접속 UI가 삽입하는 스타일을 위해 style-src에만 `'unsafe-inline'`을 허용하며 inline 스크립트와 eval은 허용하지 않는다. HTTPS 응답에는 HSTS(`max-age=31536000`)를 설정하며 신뢰 프록시의 HTTPS scheme 복원 뒤 판정한다.
+
+화면의 역할별 메뉴·버튼은 Viewer/Operator/Admin/Owner로 구분하고 실제 권한은 API가 최종 판정한다. 민감 조회는 사유를 입력하고 업무 변경은 사유와 확인 단계를 거친다. 확인한 쓰기 요청에서 `operationId`를 한 번 생성하며 202, 429, 5xx, 통신 실패처럼 결과가 불명확한 경우 같은 ID와 확인 때 고정한 본문으로 수동 재시도한다. 재시도할 때 입력을 고치지 말고 먼저 결과를 확인한다. 새로운 의도는 별도 확인과 새 작업으로 시작한다.
+
+초대 코드와 운영자 초기 비밀번호·TOTP 비밀은 API 최초 성공 응답 때만 볼 수 있다. 화면을 닫거나 다른 화면으로 이동하기 전에 안전하게 전달·보관하고 공유 화면/브라우저 캡처에서 지운다. 웹은 이 비밀을 세션이나 별도 저장소에 보존하지 않는다. 응답을 잃었거나 같은 작업 재전송에 비밀이 없으면 기존 초대/운영자를 폐기·비활성화한 뒤 새 작업으로 발급한다.
+
+Data Protection 공급자와 키 관리 저장소도 프로세스 메모리에 둔다. Windows 사용자 키 저장소나 디스크에 키를 기록하지 않는다. 메모리 XML 저장소에는 별도 XML 암호화를 두지 않아 시작 시 프레임워크가 암호화 저장 경고를 남길 수 있으나 키를 파일에 보존하지 않는다.
+
+운영 배치는 사설 HTTPS와 단일 웹 인스턴스를 전제로 한다. 프로세스 재시작 시 메모리 세션을 잃어 모든 운영자가 다시 로그인한다. 여러 인스턴스는 공유 세션 저장소와 sticky session 검토가 필요하며 현재 구현만으로 확장 배치를 검증했다고 보지 않는다. Dockerfile과 배치 설정은 [운영 웹 컨테이너](../deploy/admin-web/README.md)에 있다. 실제 API를 향한 운영자 조작·브라우저 시각 확인·컨테이너 배포·프록시 뒤 HTTPS 접속은 자동 HTTP 대역 테스트와 별도로 검증해야 한다.

@@ -1,0 +1,42 @@
+@using Newtonsoft.Json.Linq
+@if (Value is JObject obj)
+{
+    <div class="table-scroll"><table><tbody>
+    @foreach (JProperty property in obj.Properties())
+    {
+        @if (!AdminLabels.IsSecret(property.Name))
+        {
+            <tr><th scope="row">@AdminLabels.Name(property.Name)</th><td><JsonDataView Value="property.Value" FieldName="@property.Name" /></td></tr>
+        }
+    }
+    </tbody></table></div>
+}
+else if (Value is JArray array)
+{
+    @if (array.Count == 0)
+    {
+        <span class="muted">목록이 비어 있습니다.</span>
+    }
+    else
+    {
+        <ol>
+        @foreach (JToken item in array)
+        {
+            <li><JsonDataView Value="item" FieldName="@FieldName" /></li>
+        }
+        </ol>
+    }
+}
+else if (Value != null)
+{
+    <span>@AdminLabels.Scalar(Value, FieldName)</span>
+}
+@code
+{
+    /****************************************
+    *              Properties
+    ****************************************/
+
+    [Parameter] public JToken? Value { get; set; }
+    [Parameter] public string FieldName { get; set; } = string.Empty;
+}

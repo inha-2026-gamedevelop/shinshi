@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Shinshi.Admin.Web</AssemblyName>
+    <RootNamespace>Shinshi.Admin.Web</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Shinshi.Contracts/Shinshi.Contracts.csproj" />
+  </ItemGroup>
+</Project>

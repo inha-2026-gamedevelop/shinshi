@@ -1,0 +1,48 @@
+@page "/"
+@page "/dashboard"
+@inherits AdminPageBase
+<PageTitle>운영 현황</PageTitle>
+<h1>운영 현황</h1>
+<RoleRequirement MinimumRole="AdminContractCodes.Role.VIEWER" />
+<button type="button" disabled="@_busy" @onclick="LoadAsync">현황 새로 고침</button>
+<ApiResultView Error="@_error" Busy="_busy" />
+<section><h2>서비스 상태</h2><JsonDataView Value="_service" /></section>
+<section><h2>현재 공지</h2><JsonDataView Value="_activeNotices" /></section>
+<p class="muted">서비스 상태와 공지의 최신 API 응답을 표시합니다.</p>
+@code
+{
+    /****************************************
+    *                Fields
+    ****************************************/
+
+    private Newtonsoft.Json.Linq.JToken? _service;
+    private Newtonsoft.Json.Linq.JToken? _activeNotices;
+
+    /****************************************
+    *                Methods
+    ****************************************/
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        await ReadAsync(AdminApiRoutes.SERVICE_STATE);
+        _service = _data;
+        if (!string.IsNullOrEmpty(_error))
+        {
+            return;
+        }
+        await ReadAsync(AdminApiRoutes.NOTICES);
+        _activeNotices = new Newtonsoft.Json.Linq.JArray((_data?["notices"] as Newtonsoft.Json.Linq.JArray
+            ?? new Newtonsoft.Json.Linq.JArray()).Where(notice => notice["status"]?.ToString() == AdminNoticeSummary.STATUS_ACTIVE));
+    }
+
+    protected override void ClearSensitiveState()
+    {
+        _service = null;
+        _activeNotices = null;
+    }
+}

@@ -4,6 +4,7 @@
     <Project Path="src/Shinshi.Data/Shinshi.Data.csproj" />
     <Project Path="src/Shinshi.Api/Shinshi.Api.csproj" />
     <Project Path="src/Shinshi.AdminCli/Shinshi.AdminCli.csproj" />
+    <Project Path="src/Shinshi.Admin.Web/Shinshi.Admin.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Shinshi.Backend.Tests/Shinshi.Backend.Tests.csproj" />
