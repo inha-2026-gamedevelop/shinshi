@@ -27,6 +27,10 @@ namespace Shinshi.Contracts.Admin
         // 이름·캐릭터 ID 매칭이면 false=활성, true=삭제. 계정 ID·초대 매칭이면 null이다
         [DataMember(Name = "matchedCharacterDeleted")] private bool? _matchedCharacterDeleted;
 
+        [DataMember(Name = "matchedCharacterId")]      private string _matchedCharacterId;
+        [DataMember(Name = "matchedCharacterName")]    private string _matchedCharacterName;
+        [DataMember(Name = "matchedCharacterClassId")] private int?   _matchedCharacterClassId;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -38,13 +42,17 @@ namespace Shinshi.Contracts.Admin
         public int    CharacterCount          => _characterCount;
         public bool   Online                  => _online;
         public bool?  MatchedCharacterDeleted => _matchedCharacterDeleted;
+        public string MatchedCharacterId      => _matchedCharacterId;
+        public string MatchedCharacterName    => _matchedCharacterName;
+        public int?   MatchedCharacterClassId => _matchedCharacterClassId;
 
         /****************************************
         *                Methods
         ****************************************/
 
         public AdminAccountSummary(string accountId, string matchedBy, string matchedId, long createdAtUnixMs,
-            int characterCount, bool online, bool? matchedCharacterDeleted = null)
+            int characterCount, bool online, bool? matchedCharacterDeleted = null,
+            string matchedCharacterId = null, string matchedCharacterName = null, int? matchedCharacterClassId = null)
         {
             _accountId               = accountId;
             _matchedBy               = matchedBy;
@@ -53,6 +61,9 @@ namespace Shinshi.Contracts.Admin
             _characterCount          = characterCount;
             _online                  = online;
             _matchedCharacterDeleted = matchedCharacterDeleted;
+            _matchedCharacterId      = matchedCharacterId;
+            _matchedCharacterName    = matchedCharacterName;
+            _matchedCharacterClassId = matchedCharacterClassId;
         }
 
         private AdminAccountSummary() { }

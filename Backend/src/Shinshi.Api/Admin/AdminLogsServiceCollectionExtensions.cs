@@ -24,6 +24,7 @@ namespace Shinshi.Backend.Admin
         {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(configuration);
+            services.TryAddSingleton<IAdminCharacterRepository, PostgresAdminCharacterRepository>();
             services.TryAddSingleton<PostgresAdminLedgerReader>();
             services.TryAddSingleton<PostgresAdminTraceReader>();
             services.TryAddSingleton<PostgresAdminAuditReader>();

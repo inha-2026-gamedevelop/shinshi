@@ -169,6 +169,43 @@ namespace Shinshi.Backend.Tests.AdminCli
             Assert.False(body["includeDeletedCharacters"]!.Value<bool>());
         }
 
+        [Fact]
+        public async Task Search_MatchedCharacterFields_DisplaysIdentityAndPreservesJson()
+        {
+            string characterId = Guid.NewGuid().ToString("D");
+            JObject response = new JObject
+            {
+                ["accounts"] = new JArray(new JObject
+                {
+                    ["accountId"] = Guid.NewGuid().ToString("D"),
+                    ["matchedBy"] = AdminAccountQuery.MATCH_CHARACTER_NAME,
+                    ["matchedId"] = characterId,
+                    ["matchedCharacterId"] = characterId,
+                    ["matchedCharacterName"] = "홍길동",
+                    ["matchedCharacterClassId"] = 2,
+                    ["matchedCharacterDeleted"] = false,
+                    ["createdAtUnixMs"] = 0,
+                    ["characterCount"] = 1,
+                    ["online"] = false
+                }),
+                ["includeDeletedCharacters"] = false
+            };
+            using CliHarness harness = Harness(_ => Json(HttpStatusCode.OK, response));
+
+            CliRun table = await harness.RunAsync(new[] { "accounts", "search", "--character-name", NAME });
+            CliRun json = await harness.RunAsync(new[] { "accounts", "search", "--character-name", NAME, "--json" });
+
+            Assert.Equal(CliExitCodes.SUCCESS, table.ExitCode);
+            Assert.Contains("캐릭터 ID", table.Out);
+            Assert.Contains("이름", table.Out);
+            Assert.Contains("직업", table.Out);
+            Assert.Contains(characterId, table.Out);
+            Assert.Contains("홍길동", table.Out);
+            Assert.True(JToken.DeepEquals(response, JObject.Parse(json.Out.Trim())));
+            Assert.DoesNotContain(NAME, table.Out + table.Error + json.Out + json.Error);
+            Assert.Equal(2, _requests.Count);
+            Assert.All(_requests, request => Assert.Equal(HttpMethod.Post, request.Method));
+        }
         private CliHarness Harness(Func<HttpRequestMessage, HttpResponseMessage> respond)
         {
             CliHarness harness = new CliHarness(() => new StubHttpHandler(_requests, respond));

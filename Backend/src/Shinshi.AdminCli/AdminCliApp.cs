@@ -28,6 +28,7 @@ namespace Shinshi.AdminCli
             new LogoutCommand(),
             new OperatorsCommand(),
             new AccountsCommand(),
+            new CharactersCommand(),
             new InvitesCommand(),
             new GrantsCommand(),
             new AdjustCommand(),

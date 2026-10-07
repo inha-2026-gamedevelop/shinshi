@@ -216,6 +216,8 @@ Remove-Item Env:SHINSHI_BOOTSTRAP_OWNER
 
 **0008 테이블.** `admin_users`(소문자 login_name, PBKDF2 해시와 솔트, AES-GCM TOTP 암호문, role 0~3, 실패 횟수, 잠금 시각, 마지막 TOTP 스텝), `admin_sessions`(어드민 토큰 HMAC), `admin_audit_log`(추가 전용, 0003의 `reject_append_only_mutation` 트리거가 UPDATE/DELETE/TRUNCATE를 거절, operation_id가 있으면 같은 운영자의 operations 행을 FK로 가리킴), `admin_grants`, `reward_inbox`(`(grant_id, account_id)` 유일, 수령과 취소 상호 배타, 수령 operation과 캐릭터 소유 FK), `service_state`(id=1 단일 행, 0008이 점검 중과 빈 목록으로 넣음), `service_notices`, `admin_operation_claims`(운영자 작업 키 `(admin_id, operation_id)`를 작업 종류, 대상, 요청 해시에 묶는 추가 전용 결속, 일반 업무 변경과 수동 복구가 효과 전에 커밋). `admin_grants`의 부분 유일 인덱스 `ux_admin_grants_recovery_ref`는 취소되지 않은 `RecoveryCompensation` 지급의 `source_ref`(복구 대상 세션 ID)를 유일하게 한다. 0008은 어드민 조회용으로 기존 테이블에도 인덱스 넷을 더한다: `session_participants(account_id, session_id)`, `economy_ledger(account_id, occurred_at, ledger_id)`, `game_sessions(state, created_at, session_id)`, `admin_audit_log(target_kind, occurred_at, audit_id)`. 0008의 지급·조정 코드는 0009 경매 마이그레이션의 `account_wallets.currency_reserved` 열을 읽으므로 두 마이그레이션은 함께 배포한다. 이번 미커밋 0008은 작업 키 결속과 빈 대상 키(생성 작업)를 반영해 수정했다. 이전 0008을 이미 적용한 DB의 DDL은 자동 갱신되지 않으며, 마이그레이션 실행기는 체크섬 불일치로 중단한다. 기존 DB는 별도 전환 절차가 필요하고 이 작업에서는 재생성하거나 변경하지 않았다. 검증은 최신 내장 SQL을 매번 적용하는 GUID 임시 테스트 스키마에서 수행했다. 0008 down은 검토용이며 이 테이블을 모두 지우므로 운영 DB에서 실행하지 않는다. 테스트는 `tests/Shinshi.Backend.Tests/Admin/`와 `tests/Shinshi.Backend.Tests/Inbox/`에 있다.
 
+**캐릭터 프로필.** `GET /admin/v1/characters/{characterId}?reason=`(Viewer 이상)은 `admin.character.view` 감사를 단독 커밋한 뒤 한 REPEATABLE READ 읽기 전용 트랜잭션의 고정 12개 SELECT 묶음으로 조회한다. 없는 대상도 감사 후 404다. 이름 검색 응답에는 기존 필드에 `matchedCharacterId`, `matchedCharacterName`, `matchedCharacterClassId`를 추가한다. 생성 시각은 characters에 열이 없어 `createdAtUnixMs: null`, 직업 표시명과 완전한 전투 계산 콘텐츠가 없어 `classDisplayName`·`combatStats`는 null이다. `appearanceJson`은 저장된 jsonb의 문자열이고, 최고 강화는 현재 보유 장비의 최댓값이다. `wallet.actionValue`는 저장값, `life.actionValue`는 DB 스냅샷 시각에 기존 생활 규칙으로 회복한 값이다. 수련 행이 없으면 기존 성장 조회와 같은 0단계·상한 40/100을 제공하고 지갑 행이 없으면 wallet은 null이다. 계정 진행 행이 없으면 진행 필드는 null이고 명시 해금 배열은 유지하며, 없는 생활 재고를 임의 생성하지 않는다.
+
 **엔드포인트.** 경로 상수는 `AdminApiRoutes`, 플레이어 우편함은 공유 `ApiRoutes.INBOX`·`INBOX_CLAIM`이다. 최소 역할은 컨트롤러와 액션의 `RequireAdminRole` 중 높은 값이다.
 
 | 경로 | 메서드 | 최소 역할 | 비고 |
@@ -227,6 +229,7 @@ Remove-Item Env:SHINSHI_BOOTSTRAP_OWNER
 | `/admin/v1/accounts?query=` | GET | Viewer | UUID(계정·캐릭터 ID)만. 그 밖은 400 |
 | `/admin/v1/accounts/search` | POST | Viewer | 본문 `{query}`(UUID/초대 코드) 또는 `{characterName, includeDeletedCharacters?}`(이름 정확 검색, 기본 삭제 제외). 이름과 초대 원문은 이 POST 본문으로만 받는다 |
 | `/admin/v1/accounts/{accountId}?reason=` | GET | Viewer | 민감 조회. `reason` 필수, 감사 행을 먼저 커밋한 뒤 읽음 |
+| `/admin/v1/characters/{characterId}?reason=` | GET | Viewer | 캐릭터 프로필. 필수 사유의 단독 감사를 먼저 커밋하고 수련·장비·부적·계정 진행·생활·지갑·임대·최근 출정 5개를 읽기 스냅샷으로 조회 |
 | `/admin/v1/accounts/{accountId}/kick` | POST | Operator | 로그인 묶음과 하위 토큰, `revokeInvites`면 초대도 폐기. 현재 접속은 유지, 비밀번호 로그인은 막지 않음 |
 | `/admin/v1/accounts/{accountId}/adjustments` | POST | Operator | 개인 재화·아이템 ± 조정 |
 | `/admin/v1/invites` | POST | Operator | 초대 원문은 처음 확정 응답에만 |

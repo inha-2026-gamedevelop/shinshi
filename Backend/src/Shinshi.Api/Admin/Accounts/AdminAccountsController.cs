@@ -19,7 +19,7 @@ using Shinshi.Data.Auth;
 namespace Shinshi.Backend.Admin
 {
     /// <summary> 계정 검색, 상세 조회(Viewer, 상세는 감사)와 강제 종료(Operator). 검색 이름과 초대 코드 원문은
-    /// 로그, 감사, 응답에 남기지 않는다 </summary>
+    /// 로그와 감사에 남기지 않는다. 검색 응답에는 매칭 캐릭터의 저장된 이름을 싣는다 </summary>
     public sealed class AdminAccountsController : AdminControllerBase
     {
         /****************************************

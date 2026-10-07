@@ -14,6 +14,9 @@ namespace Shinshi.Data.Admin
         public const string OPERATOR_CREATE  = "admin.operator.create";
         public const string OPERATOR_DISABLE = "admin.operator.disable";
 
+        public const string CHARACTER_VIEW   = "admin.character.view";
+
         public const string TARGET_ADMIN_USER = "admin_user";
+        public const string TARGET_CHARACTER  = "character";
     }
 }

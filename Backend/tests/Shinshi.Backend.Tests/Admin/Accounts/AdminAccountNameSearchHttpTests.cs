@@ -42,7 +42,7 @@ namespace Shinshi.Backend.Tests.Admin
         ****************************************/
 
         [PostgresFact]
-        public async Task SearchByBody_NormalizedName_FindsExactCharacterWithoutExposingName()
+        public async Task SearchByBody_NormalizedName_ReturnsMatchedCharacterWithoutLoggingInput()
         {
             await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
             using AdminApiTestHost host = new AdminApiTestHost(database.DataSource, false);
@@ -62,13 +62,13 @@ namespace Shinshi.Backend.Tests.Admin
                 using HttpResponseMessage response = await SearchNameAsync(client, token, input);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
                 Assert.Equal("no-store", response.Headers.CacheControl!.ToString());
-                string raw = await response.Content.ReadAsStringAsync();
-                Assert.DoesNotContain(input, raw);
-                Assert.DoesNotContain(NAME, raw);
                 AdminAccountSearchResponse found = await AdminTestSupport.ReadAsync<AdminAccountSearchResponse>(response);
                 AdminAccountSummary account = Assert.Single(found.Accounts);
                 Assert.Equal(accountId.ToString("D"), account.AccountId);
                 Assert.Equal(characterId.ToString("D"), account.MatchedId);
+                Assert.Equal(characterId.ToString("D"), account.MatchedCharacterId);
+                Assert.Equal(NAME, account.MatchedCharacterName);
+                Assert.Equal(0, account.MatchedCharacterClassId);
                 Assert.Equal(AdminAccountQuery.MATCH_CHARACTER_NAME, account.MatchedBy);
                 Assert.Equal(false, account.MatchedCharacterDeleted);
                 Assert.False(found.IncludeDeletedCharacters);
@@ -113,6 +113,9 @@ namespace Shinshi.Backend.Tests.Admin
             AdminAccountSummary account = Assert.Single(found.Accounts);
             Assert.Equal(accountId.ToString("D"), account.AccountId);
             Assert.Equal(characterId.ToString("D"), account.MatchedId);
+            Assert.Equal(characterId.ToString("D"), account.MatchedCharacterId);
+            Assert.Equal(NAME, account.MatchedCharacterName);
+            Assert.Equal(0, account.MatchedCharacterClassId);
             Assert.Equal(true, account.MatchedCharacterDeleted);
             Assert.Equal(0, account.CharacterCount);
 

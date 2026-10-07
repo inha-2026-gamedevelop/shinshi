@@ -103,10 +103,13 @@ namespace Shinshi.AdminCli
                 context.Line("삭제된 캐릭터 포함: " + CliFormat.YesNo(response.Value.IncludeDeletedCharacters));
             }
 
-            CliTable table = new CliTable("계정 ID", "찾은 근거", "근거 ID", "매칭 캐릭터 삭제", "생성", "활성 캐릭터 수", "접속 중");
+            CliTable table = new CliTable("계정 ID", "찾은 근거", "근거 ID", "캐릭터 ID", "이름", "직업", "매칭 캐릭터 삭제",
+                "생성", "활성 캐릭터 수", "접속 중");
             foreach (AdminAccountSummary account in response.Value.Accounts ?? Array.Empty<AdminAccountSummary>())
             {
                 table.Add(account.AccountId, account.MatchedBy, CliFormat.Text(account.MatchedId),
+                    CliFormat.Text(account.MatchedCharacterId), CliFormat.Text(account.MatchedCharacterName),
+                    CliFormat.Number(account.MatchedCharacterClassId),
                     account.MatchedCharacterDeleted.HasValue ? CliFormat.YesNo(account.MatchedCharacterDeleted.Value) : "-",
                     CliFormat.Time(account.CreatedAtUnixMs), CliFormat.Number(account.CharacterCount),
                     CliFormat.YesNo(account.Online));
