@@ -10,6 +10,9 @@ namespace Shinshi.Systems
         CloseWindow  = 3,
         SortiePrep   = 4,
         Chat         = 5,
-        CombatMeter  = 6
+        CombatMeter  = 6,
+        MailBox       = 7,
+        CharacterInfo = 8,
+        Trade         = 9
     }
 }

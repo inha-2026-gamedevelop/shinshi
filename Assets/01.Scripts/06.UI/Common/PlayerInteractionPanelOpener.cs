@@ -1,12 +1,15 @@
 // Unity
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 // 서드파티
 using TMPro;
 
 // 프로젝트 내부
+using Shinshi.Combat;
 using Shinshi.Common;
+using Shinshi.Network;
 
 namespace Shinshi.UI
 {
@@ -15,7 +18,9 @@ namespace Shinshi.UI
     {
         // 오른쪽은 이동 키이기도 해서, 누른 채 이동하다 캐릭터 위를 스치는 경우에는 열지 않아야 한다.
         // 누른 자리의 캐릭터와 뗀 자리의 캐릭터가 같고 짧게 눌렀을 때만 연다.
-        // 닉네임 칸은 지금 맞은 오브젝트의 이름을 넣는 임시 연결이며, 실제 구동에서는 서버가 준 닉네임으로 바꾼다
+        // 대상은 카메라 광선이 맞힌 콜라이더 부모의 PlayerCombatState로 찾는다(내 캐릭터는 isLocalPlayer). 콜라이더를 직접 연결해 두면(개발 씬) 그것이 우선이다.
+        // 닉네임은 서버가 내려준 캐릭터 이름(PlayerCombatState)을 쓰고, 그것이 없는 개체만 맞은 오브젝트의 이름을 쓴다.
+        // 다른 유저 패널의 거래하기, 파티초대 버튼은 이 컴포넌트가 클라이언트 창구로 보낸다. 귓속말과 캐릭터 정보는 아직 준비 중이라 끈다
 
         /****************************************
         *                Fields
@@ -28,6 +33,8 @@ namespace Shinshi.UI
 
         [Header("월드")]
         [SerializeField] private Camera   _camera        = null;
+
+        // 개발 씬용 고정 연결, 비워 두면 광선이 맞힌 플레이어를 찾는다
         [SerializeField] private Collider _selfCollider  = null;
         [SerializeField] private Collider _otherCollider = null;
 
@@ -37,10 +44,18 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text      _selfName   = null;
         [SerializeField] private TMP_Text      _otherName  = null;
 
+        [Header("다른 유저 패널 버튼")]
+        [SerializeField] private Button _tradeButton       = null;
+        [SerializeField] private Button _partyInviteButton = null;
+        [SerializeField] private Button _whisperButton     = null;
+        [SerializeField] private Button _infoButton        = null;
+
         private RectTransform _parentRect      = null;
         private RectTransform _openedPanel     = null;
-        private Collider      _pressedCollider = null;
+        private Component     _pressedTarget   = null;
+        private PlayerInteractionRules.ETarget _pressedKind = PlayerInteractionRules.ETarget.None;
         private float         _pressedTime     = 0f;
+        private string        _targetName      = string.Empty;
 
         /****************************************
         *              Unity Event
@@ -48,10 +63,9 @@ namespace Shinshi.UI
 
         protected override void OnViewAwake()
         {
-            if ((_camera == null) || (_selfCollider == null) || (_otherCollider == null)
-                || (_selfPanel == null) || (_otherPanel == null) || (_selfName == null) || (_otherName == null))
+            if ((_selfPanel == null) || (_otherPanel == null) || (_selfName == null) || (_otherName == null))
             {
-                Debug.LogError("[UI] 상호작용 패널 열기에 카메라, 콜라이더, 패널, 닉네임 칸이 모두 연결되지 않았다", this);
+                Debug.LogError("[UI] 상호작용 패널 열기에 패널과 닉네임 칸이 모두 연결되지 않았다", this);
                 enabled = false;
                 return;
             }
@@ -59,6 +73,22 @@ namespace Shinshi.UI
             _parentRect = (RectTransform)_selfPanel.parent;
             _selfPanel.gameObject.SetActive(false);
             _otherPanel.gameObject.SetActive(false);
+
+            // 귓속말 채널과 다른 플레이어 정보는 아직 없다
+            SetInteractable(_whisperButton, false);
+            SetInteractable(_infoButton, false);
+        }
+
+        private void OnEnable()
+        {
+            AddListener(_tradeButton, OnTradeClicked);
+            AddListener(_partyInviteButton, OnPartyInviteClicked);
+        }
+
+        private void OnDisable()
+        {
+            RemoveListener(_tradeButton, OnTradeClicked);
+            RemoveListener(_partyInviteButton, OnPartyInviteClicked);
         }
 
         private void Update()
@@ -94,7 +124,8 @@ namespace Shinshi.UI
 
         private void OnOpenButtonDown()
         {
-            _pressedCollider = null;
+            _pressedTarget = null;
+            _pressedKind   = PlayerInteractionRules.ETarget.None;
 
             // 열린 패널 안을 누른 것은 버튼에게 맡긴다
             if (IsInsideOpenedPanel())
@@ -110,14 +141,16 @@ namespace Shinshi.UI
                 return;
             }
 
-            _pressedCollider = RaycastCollider();
-            _pressedTime     = Time.unscaledTime;
+            _pressedTarget = RaycastTarget(out _pressedKind);
+            _pressedTime   = Time.unscaledTime;
         }
 
         private void OnOpenButtonUp()
         {
-            Collider pressed = _pressedCollider;
-            _pressedCollider = null;
+            Component pressed = _pressedTarget;
+            PlayerInteractionRules.ETarget kind = _pressedKind;
+            _pressedTarget = null;
+            _pressedKind   = PlayerInteractionRules.ETarget.None;
 
             if (pressed == null)
             {
@@ -129,24 +162,24 @@ namespace Shinshi.UI
                 return;
             }
 
-            if (RaycastCollider() != pressed)
+            if (RaycastTarget(out _) != pressed)
             {
                 return;
             }
 
-            Open(pressed);
+            Open(pressed, kind);
         }
 
-        private void Open(Collider target)
+        private void Open(Component target, PlayerInteractionRules.ETarget kind)
         {
             RectTransform panel = null;
             TMP_Text      label = null;
-            if (target == _selfCollider)
+            if (kind == PlayerInteractionRules.ETarget.Self)
             {
                 panel = _selfPanel;
                 label = _selfName;
             }
-            else if (target == _otherCollider)
+            else if (kind == PlayerInteractionRules.ETarget.Other)
             {
                 panel = _otherPanel;
                 label = _otherName;
@@ -157,7 +190,8 @@ namespace Shinshi.UI
                 return;
             }
 
-            label.text = target.name;
+            _targetName = ResolveName(target);
+            label.text  = _targetName;
 
             // 패널 왼쪽 위를 마우스 자리에 맞춘다. 부모는 가운데 기준이라 변환한 값이 그대로 위치가 된다
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_parentRect, Input.mousePosition, null, out Vector2 local);
@@ -167,10 +201,88 @@ namespace Shinshi.UI
             _openedPanel = panel;
         }
 
-        private Collider RaycastCollider()
+        // 서버가 내려준 이름을 먼저 쓴다. 네트워크 개체가 아니면 오브젝트 이름이다
+        private static string ResolveName(Component target)
         {
-            Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
-            return Physics.Raycast(ray, out RaycastHit hit) ? hit.collider : null;
+            PlayerCombatState combat = target.GetComponentInParent<PlayerCombatState>();
+            if ((combat != null) && (!string.IsNullOrEmpty(combat.DisplayName)))
+            {
+                return combat.DisplayName;
+            }
+
+            return target.name;
+        }
+
+        private void OnTradeClicked()
+        {
+            if (!string.IsNullOrEmpty(_targetName))
+            {
+                TownTradeClient.Request(_targetName);
+            }
+
+            Close();
+        }
+
+        private void OnPartyInviteClicked()
+        {
+            if (!string.IsNullOrEmpty(_targetName))
+            {
+                TownPartyClient.Invite(_targetName);
+            }
+
+            Close();
+        }
+
+        private static void AddListener(Button button, UnityEngine.Events.UnityAction action)
+        {
+            if (button != null)
+            {
+                button.onClick.AddListener(action);
+            }
+        }
+
+        private static void RemoveListener(Button button, UnityEngine.Events.UnityAction action)
+        {
+            if (button != null)
+            {
+                button.onClick.RemoveListener(action);
+            }
+        }
+
+        private static void SetInteractable(Button button, bool interactable)
+        {
+            if (button != null)
+            {
+                button.interactable = interactable;
+            }
+        }
+
+        // 광선이 맞힌 대상과 종류를 찾는다. 비교용 키는 맞은 플레이어의 PlayerCombatState, 없으면 고정 콜라이더다
+        private Component RaycastTarget(out PlayerInteractionRules.ETarget kind)
+        {
+            kind = PlayerInteractionRules.ETarget.None;
+            Camera camera = (_camera != null) ? _camera : Camera.main;
+            if (camera == null)
+            {
+                return null;
+            }
+
+            Ray ray = camera.ScreenPointToRay(Input.mousePosition);
+            if (!Physics.Raycast(ray, out RaycastHit hit))
+            {
+                return null;
+            }
+
+            Collider collider = hit.collider;
+            PlayerCombatState player = collider.GetComponentInParent<PlayerCombatState>();
+            kind = PlayerInteractionRules.Classify((_selfCollider != null) && (collider == _selfCollider),
+                (_otherCollider != null) && (collider == _otherCollider), player != null, (player != null) && (player.isLocalPlayer));
+            if (kind == PlayerInteractionRules.ETarget.None)
+            {
+                return null;
+            }
+
+            return (player != null) ? player : collider;
         }
 
         private bool IsInsideOpenedPanel()
