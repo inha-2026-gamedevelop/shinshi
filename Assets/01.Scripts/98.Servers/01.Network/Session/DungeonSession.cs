@@ -57,6 +57,8 @@ namespace Shinshi.Network
         // 종료 이벤트 전에 마지막 이벤트(미적용 물약 되돌림)를 넣을 곳, 없으면 부르지 않는다
         private ISessionEndingListener _endingListener = null;
 
+        private ICombatMeterSink _combatMeterSink = null;
+
         private double            _serverTime          = 0.0;
         private double            _startTime           = 0.0;
         private long              _killSequence        = 0;
@@ -328,6 +330,11 @@ namespace Shinshi.Network
             _serverTime = serverTime;
             _startTime  = serverTime;
             _started    = true;
+            if (_isBossSession)
+            {
+                _combatMeterSink?.OnSessionStarted(serverTime);
+            }
+
             _roster.Tick(serverTime);
             _events.Tick(serverTime);
             for (int i = 0; i < _roster.Count; ++i)
@@ -693,6 +700,12 @@ namespace Shinshi.Network
             _endingListener = listener;
         }
 
+        /// <summary> 종료 사유가 확정되면 모든 사유에서 기록기를 닫는다, 참가자 명단을 닫기 전에 통지한다 </summary>
+        public void SetCombatMeterSink(ICombatMeterSink sink)
+        {
+            _combatMeterSink = sink;
+        }
+
         public void Dispose()
         {
             if (_disposed)
@@ -738,6 +751,15 @@ namespace Shinshi.Network
             _revives?.MarkTerminal();
             _endReason = reason;
             IsEnded    = true;
+            try
+            {
+                _combatMeterSink?.OnSessionClosed(reason, _serverTime);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+
             if ((reason == ESessionEndReason.Success) && (_isBossSession))
             {
                 GrantBossReward();

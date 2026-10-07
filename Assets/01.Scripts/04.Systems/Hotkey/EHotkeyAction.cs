@@ -9,6 +9,7 @@ namespace Shinshi.Systems
         AuctionHouse = 2,
         CloseWindow  = 3,
         SortiePrep   = 4,
-        Chat         = 5
+        Chat         = 5,
+        CombatMeter  = 6
     }
 }

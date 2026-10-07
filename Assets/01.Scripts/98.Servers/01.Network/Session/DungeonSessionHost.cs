@@ -6,6 +6,7 @@ using System.IO;
 using System.Text;
 
 // 프로젝트 내부
+using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Contracts;
 using Shinshi.Data;
@@ -199,6 +200,9 @@ namespace Shinshi.Network
         // 출정 종료 직전에 미적용 물약 되돌림을 넣는 곳(전투 런타임), 출정 시작 전에 넣는다. 없으면 부르지 않는다
         public ISessionEndingListener SessionEndingListener { get; set; }
 
+        /// <summary> 보스전 기록기의 시작, 종료와 경매 재입장 통지를 받을 곳, 출정 시작 전에 넣는다 </summary>
+        public ICombatMeterSink CombatMeterSink { get; set; }
+
         // 보낸 진단 체크포인트 수와 응답 대기 여부
         public long CheckpointSequence   => _checkpointSeq;
         public bool IsCheckpointInFlight => _checkpointRequestId != 0;
@@ -319,11 +323,12 @@ namespace Shinshi.Network
             return ERejectReason.None;
         }
 
-        /// <summary> 경매 전용으로 다시 들어온 연결이 준비되면 부른다, 현재 경매 상태와 출정 상태를 그 참가자에게 한 번 보낸다 </summary>
+        /// <summary> 경매 전용으로 다시 들어온 연결이 준비되면 부른다, 경매 상태와 출정 상태, 확정된 미터 결과를 그 참가자에게 보낸다 </summary>
         public void OnAuctionOnlyJoined(int participantId)
         {
             _auction?.SendSnapshot(participantId);
             SendStatusTo(participantId);
+            CombatMeterSink?.ResendFinal(participantId);
         }
 
         /// <summary> 출정 계약에 쓸 GameDB 원본을 넣는다, 첫 입장 전에 한 번 부른다. defaultBossId는 보스전 계약이 없을 때(개발) 연다 </summary>
@@ -882,6 +887,7 @@ namespace Shinshi.Network
             }
 
             session.SetEndingListener(SessionEndingListener);
+            session.SetCombatMeterSink(CombatMeterSink);
             if (!session.Begin(serverTime))
             {
                 session.Dispose();
