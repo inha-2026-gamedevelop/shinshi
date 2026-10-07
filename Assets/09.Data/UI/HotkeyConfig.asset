@@ -31,3 +31,9 @@ MonoBehaviour:
   - _action: 6
     _key: 107
     _label: "\uB51C\uBBF8\uD130"
+  - _action: 7
+    _key: 109
+    _label: "\uC6B0\uD3B8\uD568"
+  - _action: 8
+    _key: 117
+    _label: "\uCE90\uB9AD\uD130 \uC815\uBCF4"
