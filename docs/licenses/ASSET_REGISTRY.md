@@ -29,6 +29,8 @@
 | Mesh Baker | 소스 버전 문자열 3.39.0(`MB3_MBVersionConcrete`), 동봉 API 문서 3.37.0 | Ian Deane / Digital Opus | `Tools/MeshBaker/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 5017](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-5017) |
 | CombatGirls Sword Character Pack | 1.3.1(`CombatGirls_SwordCharacterPack`) | 미확인 | `Animation/CombatGirlsCharacterPack/` | 유료 | Standard Unity Asset Store EULA·조건부 | Asset Store productId 345454 |
 | P09 Modular Humanoid | 미확인(`AssetOrigin` 없음) | 미확인 | `Model/P09_Modular_Humanoid/` | 미확인 | 미확인 | 미확인 |
+| Succubus Anim Set | 1.21(`Succubus Anim Set`) | 미확인 | `Animation/Succubus_Anim_Set/` | 미확인(`AssetOrigin` productId 179271, Asset Store 패키지) | 미확인 | Asset Store productId 179271 |
+| Kitsune Yuna (월백 외형) | 1.0(`Kitsune Yuna`) | 미확인(폴더명 `Ida Faber`) | `Model/Ida Faber/Kitsune Yuna/` | 미확인(`AssetOrigin` productId 265718, Asset Store 패키지) | 미확인 | Asset Store productId 265718 |
 
 ### 플레이어 캐릭터 파생물 — 2026-10-06
 
@@ -38,6 +40,16 @@
 - `Assets/01.Scripts/05.Art/Characters/PlayerP09/Textures/`: 원본 HDRP 마스크 PNG를 복사해 선형으로 다시 임포트한 사본.
 - `Assets/01.Scripts/05.Art/Characters/PlayerP09/Animations/Clips/`: CombatGirls FBX 클립을 `.anim`으로 복사하고 이벤트를 지운 사본.
 - `Assets/02.Prefab/Characters/PlayerP09/PF_PlayerP09.prefab`: 원본 `P09_Human` 프리팹 변형.
+
+### 월백 대기 모션 파생물 — 2026-10-06
+
+월백은 Kitsune Yuna 모델에 Succubus Anim Set의 `idle_inplace` 클립을 입혀 쓴다. 두 패키지는 Git에서 제외되며, 다음 파생물은 원본 패키지에서 복사·가공해 Git에 커밋한다. 원본 패키지는 수정하지 않았다.
+
+- `Assets/01.Scripts/03.AI/Boss/Animation/AN_Wolbaek_Idle.anim`: `idle_inplace.fbx` 클립을 `.anim`으로 복사하고 이벤트를 지운 사본. 월백에 맞게 손목·손가락·허리·다리·목 근육값을 줄이거나 고정했다.
+- `Assets/01.Scripts/03.AI/Boss/Animation/AV_Wolbaek.asset`: 원본 모델의 휴먼 설정을 읽어 팔 뼈 4개의 기준 자세만 T-포즈로 바꾼 Avatar. 원본 FBX의 import 설정은 바꾸지 않았다.
+- `Assets/01.Scripts/03.AI/Boss/Animation/AC_Wolbaek.controller`: `Idle` 상태 하나뿐인 프로젝트 소유 컨트롤러.
+
+Succubus Anim Set과 Kitsune Yuna의 제작자·라이선스 조건·구매 증빙은 이 대장에서 확인하지 못했다. 위 복사본을 저장소에 두는 것이 두 패키지의 사용 조건에 맞는지는 미확인이다.
 
 P09의 원본 판매처·버전·라이선스와 두 패키지의 구매 증빙은 이 대장에서 확인하지 못했다. 원본 패키지의 ReadMe는 lilToon 셰이더를 요구하지만 프로젝트는 URP Lit 사본을 써 lilToon을 설치하지 않는다.
 

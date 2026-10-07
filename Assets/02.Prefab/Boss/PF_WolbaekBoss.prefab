@@ -134,6 +134,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: SK_KitsuneYuna Blue
       objectReference: {fileID: 0}
+    - target: {fileID: 8126574153018421801, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_Avatar
+      value: 
+      objectReference: {fileID: 9000000, guid: 1157835604b9b0b459f4b310fdefb54a, type: 2}
+    - target: {fileID: 8126574153018421801, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 7b32962d5e8de8f45978ec104a566676, type: 2}
+    - target: {fileID: 8126574153018421801, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
