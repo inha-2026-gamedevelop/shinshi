@@ -52,6 +52,13 @@ namespace Shinshi.Backend
             {
                 reason = ContractCodes.RejectReason.VERSION_MISMATCH;
             }
+            // 로그아웃 본문은 갱신 토큰뿐이라 읽지 못하면 토큰 거절로 돌려준다
+            bool logout = context.ActionDescriptor.Parameters.Any(parameter =>
+                parameter.ParameterType == typeof(AuthLogoutRequest));
+            if (logout)
+            {
+                reason = ContractCodes.RejectReason.TOKEN_REVOKED;
+            }
             string buildId = string.Empty;
             if (context.ActionArguments.TryGetValue("request", out object? request)
                 && (request is AuthExchangeRequest exchange))

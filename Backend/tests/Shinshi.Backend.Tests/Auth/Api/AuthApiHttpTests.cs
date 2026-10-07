@@ -94,6 +94,122 @@ namespace Shinshi.Backend.Tests
         }
 
         [Fact]
+        public async Task Exchange_RefreshWithoutBuild_SucceedsWithoutBuildCheck()
+        {
+            using AuthFactory factory = new AuthFactory();
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await client.PostAsync(ApiRoutes.AUTH_EXCHANGE,
+                JsonBody(new AuthExchangeRequest(string.Empty, _token, null!)));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(1, factory.Repository.RotateCalls);
+            Assert.Equal(_token, Read<AuthExchangeResponse>(await response.Content.ReadAsStringAsync()).AccessToken);
+        }
+
+        [Theory]
+        [InlineData(PROTOCOL + 1, BUILD, ContractCodes.RejectReason.VERSION_MISMATCH)]
+        [InlineData(PROTOCOL, "unknown", ContractCodes.RejectReason.BUILD_NOT_ALLOWED)]
+        public async Task Exchange_RefreshWithWrongBuild_IsStillForbiddenWithoutRotating(int protocol, string build,
+            int reason)
+        {
+            using AuthFactory factory = new AuthFactory();
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await client.PostAsync(ApiRoutes.AUTH_EXCHANGE,
+                JsonBody(new AuthExchangeRequest(string.Empty, _token, Build(build: build, protocol: protocol))));
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.Equal(reason, Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(0, factory.Repository.RotateCalls);
+        }
+
+        [Fact]
+        public async Task Exchange_RefreshWithoutBuildDuringMaintenance_IsMaintenanceWithoutRotating()
+        {
+            using AuthFactory factory = new AuthFactory(maintenance: true);
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await client.PostAsync(ApiRoutes.AUTH_EXCHANGE,
+                JsonBody(new AuthExchangeRequest(string.Empty, _token, null!)));
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.MAINTENANCE,
+                Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(0, factory.Repository.RotateCalls);
+        }
+
+        [Fact]
+        public async Task Exchange_InviteWithoutBuild_IsStillVersionMismatchWithoutConsuming()
+        {
+            using AuthFactory factory = new AuthFactory();
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await client.PostAsync(ApiRoutes.AUTH_EXCHANGE,
+                JsonBody(new AuthExchangeRequest(_token, string.Empty, null!)));
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.VERSION_MISMATCH,
+                Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(0, factory.Repository.ExchangeCalls);
+        }
+
+        [Fact]
+        public async Task Logout_AuthenticRefreshToken_RevokesFamilyWithoutBearerOrBuild()
+        {
+            using AuthFactory factory = new AuthFactory();
+            using HttpClient client = factory.CreateClient();
+            string refresh = factory.Repository.CreateAuthenticToken();
+            using HttpResponseMessage response = await client.PostAsync(ApiRoutes.AUTH_LOGOUT,
+                JsonBody(new AuthLogoutRequest(refresh)));
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            Assert.Equal("no-store", response.Headers.CacheControl!.ToString());
+            Assert.Equal(refresh, factory.Repository.LastLogoutToken);
+            Assert.Equal(1, factory.Repository.LogoutCalls);
+            Assert.Equal(0, factory.Repository.AccessCalls);
+        }
+
+        [Fact]
+        public async Task Logout_RepeatedAndUnknownAuthenticToken_AreNoContent()
+        {
+            using AuthFactory factory = new AuthFactory();
+            factory.Repository.LogoutFound = false;
+            using HttpClient client = factory.CreateClient();
+            string refresh = factory.Repository.CreateAuthenticToken();
+            using HttpResponseMessage first = await client.PostAsync(ApiRoutes.AUTH_LOGOUT,
+                JsonBody(new AuthLogoutRequest(refresh)));
+            using HttpResponseMessage repeat = await client.PostAsync(ApiRoutes.AUTH_LOGOUT,
+                JsonBody(new AuthLogoutRequest(refresh)));
+            Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, repeat.StatusCode);
+            Assert.Equal(2, factory.Repository.LogoutCalls);
+        }
+
+        [Fact]
+        public async Task Logout_ForgedToken_IsNoContentWithoutRepositoryAndCountsFailure()
+        {
+            using AuthFactory factory = new AuthFactory();
+            using HttpClient client = factory.CreateClient();
+            for (int attempt = 0; attempt < AuthFailureLimiter.MAX_FAILURES_PER_WINDOW; ++attempt)
+            {
+                using HttpResponseMessage forged = await client.PostAsync(ApiRoutes.AUTH_LOGOUT,
+                    JsonBody(new AuthLogoutRequest(_token)));
+                Assert.Equal(HttpStatusCode.NoContent, forged.StatusCode);
+            }
+
+            using HttpResponseMessage blocked = await client.PostAsync(ApiRoutes.AUTH_LOGOUT,
+                JsonBody(new AuthLogoutRequest(factory.Repository.CreateAuthenticToken())));
+            Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+            Assert.Equal(0, factory.Repository.LogoutCalls);
+        }
+
+        [Theory]
+        [InlineData("{")]
+        [InlineData("{}")]
+        [InlineData("{\"refreshToken\":\"\"}")]
+        public async Task Logout_MalformedBody_IsBadRequestWithoutRepository(string json)
+        {
+            using AuthFactory factory = new AuthFactory();
+            using HttpClient client = factory.CreateClient();
+            using HttpResponseMessage response = await client.PostAsync(ApiRoutes.AUTH_LOGOUT,
+                new StringContent(json, Encoding.UTF8, "application/json"));
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal(0, factory.Repository.LogoutCalls);
+        }
+
+        [Fact]
         public async Task Middleware_BearerOnly_UsesTokenActorAndSeparatesServerCredential()
         {
             using AuthFactory factory = new AuthFactory();
@@ -492,6 +608,24 @@ namespace Shinshi.Backend.Tests
             public int AccessCalls { get; private set; }
             public int ConsumeCalls { get; private set; }
             public Guid ConsumedLease { get; private set; }
+            public int LogoutCalls { get; private set; }
+            public string LastLogoutToken { get; private set; } = string.Empty;
+            public bool LogoutFound { get; set; } = true;
+
+            // 태그 검사는 실제 해셔로 해서 위조 토큰(_token)과 진짜 토큰을 구분한다
+            private readonly AuthTokenHasher _hasher = new AuthTokenHasher(Auth.AuthTokenHasherTests.CreateOptions());
+
+            public string CreateAuthenticToken() { return _hasher.CreateToken(); }
+
+            public bool IsAuthenticToken(string token) { return _hasher.IsAuthentic(token); }
+
+            public Task<bool> RevokeFamilyByRefreshTokenAsync(string refreshToken,
+                CancellationToken cancellationToken = default)
+            {
+                ++LogoutCalls;
+                LastLogoutToken = refreshToken;
+                return Task.FromResult(LogoutFound);
+            }
 
             public Task<AuthExchangeOutcome> ExchangeInviteAsync(string inviteCode, CancellationToken cancellationToken = default)
             {

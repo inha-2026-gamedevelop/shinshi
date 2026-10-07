@@ -15,7 +15,7 @@ namespace Shinshi.Launcher.Presentation
         public const string RATE_LIMITED        = "요청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.";
         public const string SESSION_LOST        = "로그인이 만료됐습니다. 다시 로그인해 주세요.";
         public const string API_NOT_CONFIGURED  = "런처 설정에 API 주소(apiBaseUrl)가 없어 로그인할 수 없습니다.";
-        public const string NOT_INSTALLED       = "게임을 먼저 설치해 주세요. 로그인할 때 설치된 게임 버전을 확인합니다.";
+        public const string NOT_INSTALLED       = "게임을 먼저 설치해 주세요.";
         public const string BUILD_UNREADABLE    = "설치된 게임의 버전 정보를 읽지 못했습니다. 파일 검증 및 복구를 실행해 주세요.";
         public const string UPDATE_REQUIRED     = "업데이트가 필요합니다. 게임을 업데이트한 뒤 다시 시작해 주세요.";
         public const string MAINTENANCE         = "서버 점검 중입니다. 점검이 끝난 뒤 다시 시도해 주세요.";

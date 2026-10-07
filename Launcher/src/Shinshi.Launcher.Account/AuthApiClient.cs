@@ -60,15 +60,15 @@ namespace Shinshi.Launcher.Account
             _baseUri = text.EndsWith(PATH_SEPARATOR) ? baseUri : new Uri(text + PATH_SEPARATOR);
         }
 
-        // 비밀번호는 이 요청 본문에만 싣는다. 런처 화면의 로그인 경로다
+        // 비밀번호는 이 요청 본문에만 싣는다. 런처 화면의 로그인 경로다.
+        // 빌드를 보내지 않는다. 설치 빌드가 서버와 달라도 로그인은 되고, 빌드 검사는 게임 세션 발급이 한다
         public Task<AuthApiResult<AuthExchangeResponse>> ExchangeCredentialsAsync(string loginId, string password,
-            ClientBuildInfo build, CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             ArgumentException.ThrowIfNullOrEmpty(loginId);
             ArgumentException.ThrowIfNullOrEmpty(password);
-            ArgumentNullException.ThrowIfNull(build);
 
-            AuthExchangeRequest request = AuthExchangeRequest.ForCredentials(loginId, password, build);
+            AuthExchangeRequest request = AuthExchangeRequest.ForCredentials(loginId, password, null!);
             return SendAsync<AuthExchangeResponse>(HttpMethod.Post, ApiRoutes.AUTH_EXCHANGE, request, null, cancellationToken);
         }
 
@@ -83,14 +83,14 @@ namespace Shinshi.Launcher.Account
             return SendAsync<AuthExchangeResponse>(HttpMethod.Post, ApiRoutes.AUTH_EXCHANGE, request, null, cancellationToken);
         }
 
-        // 응답을 잃으면(IsOutcomeUnknown) 같은 갱신 토큰을 다시 보내지 않는다. 서버가 이미 회전했으면 재사용으로 보고 폐기한다
-        public Task<AuthApiResult<AuthExchangeResponse>> ExchangeRefreshAsync(string refreshToken, ClientBuildInfo build,
+        // 응답을 잃으면(IsOutcomeUnknown) 같은 갱신 토큰을 다시 보내지 않는다. 서버가 이미 회전했으면 재사용으로 보고 폐기한다.
+        // 빌드를 보내지 않으므로 서버는 점검만 확인한다
+        public Task<AuthApiResult<AuthExchangeResponse>> ExchangeRefreshAsync(string refreshToken,
             CancellationToken cancellationToken)
         {
             ArgumentException.ThrowIfNullOrEmpty(refreshToken);
-            ArgumentNullException.ThrowIfNull(build);
 
-            AuthExchangeRequest request = new AuthExchangeRequest(null, refreshToken, build);
+            AuthExchangeRequest request = new AuthExchangeRequest(null, refreshToken, null!);
             return SendAsync<AuthExchangeResponse>(HttpMethod.Post, ApiRoutes.AUTH_EXCHANGE, request, null, cancellationToken);
         }
 
@@ -103,6 +103,16 @@ namespace Shinshi.Launcher.Account
             GameSessionIssueRequest request = new GameSessionIssueRequest(build);
             return SendAsync<GameSessionIssueResponse>(HttpMethod.Post, ApiRoutes.AUTH_GAME_SESSION, request, accessToken,
                 cancellationToken);
+        }
+
+        /// <summary> 갱신 토큰 원문으로 서버의 로그인 묶음과 하위 게임 세션을 폐기한다. bearer 없이 보내며 서버는 같은 요청을 반복해도 204다 </summary>
+        public async Task<AuthApiResult> LogoutAsync(string refreshToken, CancellationToken cancellationToken)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(refreshToken);
+
+            AuthApiResult<string> result = await SendAsync<string>(HttpMethod.Post, ApiRoutes.AUTH_LOGOUT,
+                new AuthLogoutRequest(refreshToken), null, cancellationToken).ConfigureAwait(false);
+            return result.IsSuccess ? AuthApiResult.Success(result.StatusCode) : result;
         }
 
         /// <summary> 방금 발급한 게임 세션을 그 토큰을 bearer로 보내 폐기한다 </summary>

@@ -38,6 +38,7 @@ namespace Shinshi.Admin.Web.Models
         public const int    LOG_RANGE_HOURS = 24;
         public const string NOTICE_TARGET   = "Both";
         public const int    NOTICE_SEVERITY = 0;
+        public const string NOTICE_CATEGORY = "Notice";
 
         /****************************************
         *                Methods

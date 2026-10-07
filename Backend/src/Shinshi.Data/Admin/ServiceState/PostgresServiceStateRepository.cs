@@ -39,7 +39,7 @@ namespace Shinshi.Data.Admin
             """
             notice_id AS "NoticeId", title AS "Title", body AS "Body", target AS "Target", severity AS "Severity",
             starts_at AS "StartsAt", ends_at AS "EndsAt", created_by AS "CreatedBy", created_at AS "CreatedAt",
-            ended_at AS "EndedAt", ended_by AS "EndedBy"
+            ended_at AS "EndedAt", ended_by AS "EndedBy", category AS "Category"
             """;
 
         private readonly NpgsqlDataSource _dataSource;
@@ -147,8 +147,8 @@ namespace Shinshi.Data.Admin
                 out NpgsqlTransaction transaction);
             NoticeRow row = await connection.QuerySingleAsync<NoticeRow>(new CommandDefinition(
                 """
-                INSERT INTO service_notices (notice_id, title, body, target, severity, starts_at, ends_at, created_by)
-                VALUES (@NoticeId, @Title, @Body, @Target, @Severity, @StartsAt, @EndsAt, @AdminId)
+                INSERT INTO service_notices (notice_id, title, body, target, severity, starts_at, ends_at, created_by, category)
+                VALUES (@NoticeId, @Title, @Body, @Target, @Severity, @StartsAt, @EndsAt, @AdminId, @Category)
                 RETURNING
                 """ + " " + NOTICE_COLUMNS + ";",
                 new
@@ -158,6 +158,7 @@ namespace Shinshi.Data.Admin
                     draft.Body,
                     draft.Target,
                     draft.Severity,
+                    draft.Category,
                     StartsAt = startsAt.UtcDateTime,
                     EndsAt   = draft.EndsAt.UtcDateTime,
                     context.Admin.AdminId
@@ -227,6 +228,7 @@ namespace Shinshi.Data.Admin
                 notice.Title,
                 notice.Target,
                 notice.Severity,
+                notice.Category,
                 StartsAtUnixMs = notice.StartsAt.ToUnixTimeMilliseconds(),
                 EndsAtUnixMs   = notice.EndsAt.ToUnixTimeMilliseconds(),
                 EndedAtUnixMs  = notice.EndedAt?.ToUnixTimeMilliseconds()
@@ -283,6 +285,7 @@ namespace Shinshi.Data.Admin
             public DateTime CreatedAt { get; set; }
             public DateTime? EndedAt { get; set; }
             public Guid? EndedBy { get; set; }
+            public string Category { get; set; } = "Notice";
 
             /****************************************
             *                Methods
@@ -292,7 +295,7 @@ namespace Shinshi.Data.Admin
             {
                 return new ServiceNoticeRecord(NoticeId, Title, Body, Target, Severity, ToOffset(StartsAt),
                     ToOffset(EndsAt), CreatedBy, ToOffset(CreatedAt), EndedAt.HasValue ? ToOffset(EndedAt.Value) : null,
-                    EndedBy);
+                    EndedBy, Category);
             }
         }
     }

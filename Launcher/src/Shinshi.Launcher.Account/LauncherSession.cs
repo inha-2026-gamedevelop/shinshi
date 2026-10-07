@@ -98,10 +98,8 @@ namespace Shinshi.Launcher.Account
 
         /// <summary> 아이디, 비밀번호로 로그인한다. remember면 갱신 토큰을 저장해 다음 실행에 자동 로그인한다 </summary>
         public async Task<SessionResult> LoginWithCredentialsAsync(string loginId, string password, bool remember,
-            ClientBuildInfo build, CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
-            ArgumentNullException.ThrowIfNull(build);
-
             string normalized = LoginIdRules.Normalize(loginId);
             if (!LoginIdRules.IsValid(normalized) || string.IsNullOrEmpty(password))
             {
@@ -120,7 +118,7 @@ namespace Shinshi.Launcher.Account
                 AuthApiResult<AuthExchangeResponse> result;
                 try
                 {
-                    result = await _api.ExchangeCredentialsAsync(normalized, password, build, cancellationToken).ConfigureAwait(false);
+                    result = await _api.ExchangeCredentialsAsync(normalized, password, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -148,10 +146,8 @@ namespace Shinshi.Launcher.Account
         }
 
         /// <summary> 저장된 갱신 토큰으로 로그인한다. 저장된 것이 없으면 NoStoredLogin </summary>
-        public async Task<SessionResult> TryAutoLoginAsync(ClientBuildInfo build, CancellationToken cancellationToken)
+        public async Task<SessionResult> TryAutoLoginAsync(CancellationToken cancellationToken)
         {
-            ArgumentNullException.ThrowIfNull(build);
-
             await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
@@ -171,7 +167,7 @@ namespace Shinshi.Launcher.Account
                 }
 
                 SetState(ELauncherSessionState.LoggingIn);
-                SessionResult result = await RefreshLockedAsync(storedToken, build, true).ConfigureAwait(false);
+                SessionResult result = await RefreshLockedAsync(storedToken, true).ConfigureAwait(false);
                 if (!result.IsSuccess)
                 {
                     SetState(ELauncherSessionState.LoggedOut);
@@ -186,10 +182,8 @@ namespace Shinshi.Launcher.Account
         }
 
         /// <summary> 접근 토큰이 REFRESH_MARGIN_MS보다 적게 남았으면 갱신한다 </summary>
-        public async Task<SessionResult> EnsureAccessTokenAsync(ClientBuildInfo build, CancellationToken cancellationToken)
+        public async Task<SessionResult> EnsureAccessTokenAsync(CancellationToken cancellationToken)
         {
-            ArgumentNullException.ThrowIfNull(build);
-
             if (State != ELauncherSessionState.LoggedIn)
             {
                 return SessionResult.Fail(ESessionError.NotLoggedIn);
@@ -231,7 +225,7 @@ namespace Shinshi.Launcher.Account
                     isRemembered = _isRemembered;
                 }
 
-                return await RefreshLockedAsync(refreshToken, build, isRemembered).ConfigureAwait(false);
+                return await RefreshLockedAsync(refreshToken, isRemembered).ConfigureAwait(false);
             }
             finally
             {
@@ -239,7 +233,7 @@ namespace Shinshi.Launcher.Account
             }
         }
 
-        /// <summary> 게임 실행 직전에 게임 전용 하위 세션을 받는다. 접근 토큰이 거절되면 한 번 갱신하고 다시 요청한다 </summary>
+        /// <summary> 게임 실행 직전에 게임 전용 하위 세션을 받는다. 설치 빌드는 여기서만 서버에 보낸다. 접근 토큰이 거절되면 한 번 갱신하고 다시 요청한다 </summary>
         public async Task<SessionResult<GameSessionIssueResponse>> IssueGameSessionAsync(ClientBuildInfo build,
             CancellationToken cancellationToken)
         {
@@ -248,7 +242,7 @@ namespace Shinshi.Launcher.Account
             AuthApiResult<GameSessionIssueResponse>? last = null;
             for (int attempt = 0; attempt < MAX_ISSUE_ATTEMPTS; ++attempt)
             {
-                SessionResult ensured = await EnsureAccessTokenAsync(build, cancellationToken).ConfigureAwait(false);
+                SessionResult ensured = await EnsureAccessTokenAsync(cancellationToken).ConfigureAwait(false);
                 if (!ensured.IsSuccess)
                 {
                     return SessionResult<GameSessionIssueResponse>.From(ensured);
@@ -284,14 +278,38 @@ namespace Shinshi.Launcher.Account
             return SessionResult<GameSessionIssueResponse>.From(SessionResult.Fail(ESessionError.ApiFailed, failure));
         }
 
-        /// <summary> 메모리와 저장소의 토큰을 지운다 </summary>
-        public async Task LogoutAsync()
+        /// <summary> 서버에서 로그인 묶음을 폐기한 뒤 메모리와 저장소의 토큰을 지운다. 서버 호출이 실패해도 로컬은 지우며
+        /// 실패는 결과에 담아 돌려준다(호출자가 로그만 남긴다). 게임이 도는 동안에는 아무것도 하지 않고 RefreshSuspended를 돌려준다.
+        /// 서버 폐기는 실행 중인 게임의 세션을 끊기 때문이다 </summary>
+        public async Task<SessionResult> LogoutAsync(CancellationToken cancellationToken = default)
         {
-            // TODO(민성): 서버 로그아웃 경로가 생기면 갱신 토큰 계열과 하위 게임 세션을 서버에서도 폐기한다. 지금은 로컬에서만 지운다
-            await _gate.WaitAsync().ConfigureAwait(false);
+            await _gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
             try
             {
+                if (_isRefreshSuspended)
+                {
+                    return SessionResult.Fail(ESessionError.RefreshSuspended);
+                }
+
+                string? refreshToken;
+                lock (_lock)
+                {
+                    refreshToken = _refreshToken;
+                }
+
+                if (refreshToken == null)
+                {
+                    _store.TryLoad(out refreshToken);
+                }
+
+                SessionResult result = SessionResult.Success();
+                if (refreshToken != null)
+                {
+                    result = await RevokeOnServerAsync(refreshToken, cancellationToken).ConfigureAwait(false);
+                }
+
                 ClearLocked();
+                return result;
             }
             finally
             {
@@ -299,15 +317,31 @@ namespace Shinshi.Launcher.Account
             }
         }
 
+        // 취소와 네트워크 실패는 로그아웃을 막지 않는다. 서버에 닿지 못해도 로컬 토큰은 지워야 이 PC에서 자동 로그인이 되지 않는다
+        private async Task<SessionResult> RevokeOnServerAsync(string refreshToken, CancellationToken cancellationToken)
+        {
+            AuthApiResult api;
+            try
+            {
+                api = await _api.LogoutAsync(refreshToken, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return SessionResult.Fail(ESessionError.ApiFailed, AuthApiResult.Fail(EAuthApiError.ResponseLost, 0, 0));
+            }
+
+            return api.IsSuccess ? SessionResult.Success() : SessionResult.Fail(ESessionError.ApiFailed, api);
+        }
+
         // _gate를 잡은 상태에서만 부른다. 취소를 넘기지 않는 이유는 보낸 뒤 취소하면 응답을 잃은 것과 같아 로그인을 버려야 하기 때문이다
-        private async Task<SessionResult> RefreshLockedAsync(string refreshToken, ClientBuildInfo build, bool remember)
+        private async Task<SessionResult> RefreshLockedAsync(string refreshToken, bool remember)
         {
             if (_isRefreshSuspended)
             {
                 return SessionResult.Fail(ESessionError.RefreshSuspended);
             }
 
-            AuthApiResult<AuthExchangeResponse> result = await _api.ExchangeRefreshAsync(refreshToken, build, CancellationToken.None)
+            AuthApiResult<AuthExchangeResponse> result = await _api.ExchangeRefreshAsync(refreshToken, CancellationToken.None)
                 .ConfigureAwait(false);
             if (result.IsSuccess && IsUsable(result.Value))
             {

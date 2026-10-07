@@ -28,11 +28,18 @@ namespace Shinshi.AdminCli
             ServiceNotice.TARGET_LAUNCHER, ServiceNotice.TARGET_GAME, ServiceNotice.TARGET_BOTH
         };
 
+        private static readonly string[] G_Categories =
+        {
+            ServiceNotice.CATEGORY_NOTICE, ServiceNotice.CATEGORY_UPDATE, ServiceNotice.CATEGORY_EVENT,
+            ServiceNotice.CATEGORY_MAINTENANCE
+        };
+
         private static readonly string[] G_Usage =
         {
             "notices list                                   진행 중, 예정, 최근 7일 안에 끝난 공지",
             "notices create --title <제목> --body <본문> --target Launcher|Game|Both --severity info|warning|critical",
-            "               --ends <ISO8601 UTC> [--starts <ISO8601 UTC>] --reason <사유>",
+            "               [--category Notice|Update|Event|Maintenance] --ends <ISO8601 UTC>",
+            "               [--starts <ISO8601 UTC>] --reason <사유>",
             "notices end <noticeId> --reason <사유>         공지를 일찍 내림"
         };
 
@@ -104,10 +111,10 @@ namespace Shinshi.AdminCli
                 return CliExitCodes.SUCCESS;
             }
 
-            CliTable table = new CliTable("공지 ID", "상태", "대상", "중요도", "시작", "끝", "제목");
+            CliTable table = new CliTable("공지 ID", "상태", "분류", "대상", "중요도", "시작", "끝", "제목");
             foreach (AdminNoticeSummary notice in response.Value.Notices ?? Array.Empty<AdminNoticeSummary>())
             {
-                table.Add(notice.NoticeId, notice.Status, notice.Target, SeverityName(notice.Severity),
+                table.Add(notice.NoticeId, notice.Status, notice.Category, notice.Target, SeverityName(notice.Severity),
                     CliFormat.Time(notice.StartsAtUnixMs), CliFormat.Time(notice.EndedAtUnixMs ?? notice.EndsAtUnixMs),
                     notice.Title);
             }
@@ -122,7 +129,7 @@ namespace Shinshi.AdminCli
             arguments.EnsureOnly(0, new[]
             {
                 AdminCliOptions.TITLE, AdminCliOptions.BODY, AdminCliOptions.TARGET, AdminCliOptions.SEVERITY,
-                AdminCliOptions.STARTS, AdminCliOptions.ENDS, AdminCliOptions.REASON
+                AdminCliOptions.CATEGORY, AdminCliOptions.STARTS, AdminCliOptions.ENDS, AdminCliOptions.REASON
             }, Array.Empty<string>());
             string title = arguments.RequireOption(AdminCliOptions.TITLE).Trim();
             string body = arguments.RequireOption(AdminCliOptions.BODY);
@@ -138,6 +145,7 @@ namespace Shinshi.AdminCli
 
             string target = ParseTarget(arguments.RequireOption(AdminCliOptions.TARGET));
             int severity = ParseSeverity(arguments.RequireOption(AdminCliOptions.SEVERITY));
+            string category = ParseCategory(arguments.Option(AdminCliOptions.CATEGORY));
             long endsAt = CliFormat.ParseUtc(arguments.RequireOption(AdminCliOptions.ENDS), AdminCliOptions.ENDS);
             string? startsText = arguments.Option(AdminCliOptions.STARTS);
             long? startsAt = startsText == null ? null : CliFormat.ParseUtc(startsText, AdminCliOptions.STARTS);
@@ -154,6 +162,7 @@ namespace Shinshi.AdminCli
                     ("본문", body),
                     ("대상", target),
                     ("중요도", SeverityName(severity)),
+                    ("분류", category),
                     ("시작", startsAt.HasValue ? CliFormat.Time(startsAt.Value) : "저장 즉시"),
                     ("끝", CliFormat.Time(endsAt)),
                     ("사유", reason)
@@ -164,7 +173,7 @@ namespace Shinshi.AdminCli
 
             AdminApiResponse<OperationResult> response = await client.SendAsync<OperationResult>(HttpMethod.Post,
                 AdminApiRoutes.NOTICES,
-                new AdminNoticeCreateRequest(operationId, reason, title, body, target, severity, startsAt, endsAt), true,
+                new AdminNoticeCreateRequest(operationId, reason, title, body, target, severity, startsAt, endsAt, category), true,
                 cancellationToken);
             CommandOutput.WriteOperation(context, response, "공지를 만들었습니다. 영수증 ID가 공지 ID입니다.");
             return CliExitCodes.SUCCESS;
@@ -191,6 +200,25 @@ namespace Shinshi.AdminCli
                 new AdminNoticeEndRequest(operationId, reason), true, cancellationToken);
             CommandOutput.WriteOperation(context, response, "공지를 내렸습니다.");
             return CliExitCodes.SUCCESS;
+        }
+
+        // 옵션을 생략하면 기본 분류(Notice)다
+        private static string ParseCategory(string? text)
+        {
+            if (text == null)
+            {
+                return ServiceNotice.CATEGORY_NOTICE;
+            }
+
+            foreach (string category in G_Categories)
+            {
+                if (string.Equals(category, text.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return category;
+                }
+            }
+
+            throw new CliUsageException("--category는 " + string.Join(", ", G_Categories) + " 중 하나입니다: " + text);
         }
 
         private static string ParseTarget(string text)

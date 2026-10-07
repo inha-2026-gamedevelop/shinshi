@@ -38,6 +38,7 @@
                         <span class="title">@notice["title"]</span>
                         <span class="row">
                             <span class="@("badge " + StatusClass(status))">@AdminLabels.NoticeStatus(status)</span>
+                            <span class="badge">@AdminLabels.NoticeCategory(notice["category"]?.ToString() ?? AdminDefaults.NOTICE_CATEGORY)</span>
                             <span class="@("badge " + SeverityClass(severity))">@AdminLabels.NoticeSeverity(severity)</span>
                         </span>
                     </div>
@@ -64,6 +65,8 @@
                         <select @bind="_target"><option value="Both">런처·게임</option><option value="Launcher">런처</option><option value="Game">게임</option></select></label>
                     <label class="field">중요도
                         <select @bind="_severity"><option value="0">안내</option><option value="1">경고</option><option value="2">긴급</option></select></label>
+                    <label class="field">분류
+                        <select @bind="_category"><option value="Notice">공지</option><option value="Update">업데이트 (패치노트)</option><option value="Event">이벤트</option><option value="Maintenance">점검</option></select></label>
                     <DateTimeField Label="시작 시각" @bind-Value="_starts" DefaultHint="비우면 지금 바로 시작">
                         <button type="button" class="pill-btn" @onclick="() => _starts = AdminTime.ToInput(DateTimeOffset.UtcNow)">지금</button>
                     </DateTimeField>
@@ -73,7 +76,7 @@
                         <button type="button" class="pill-btn" @onclick="() => AddHours(168)">+7일</button>
                     </DateTimeField>
                 </div>
-                <p class="default-hint">대상·중요도를 바꾸지 않으면 "런처·게임", "안내"</p>
+                <p class="default-hint">대상·중요도·분류를 바꾸지 않으면 "런처·게임", "안내", "공지"</p>
                 <label class="field mt">작성 사유 <input @bind="_createReason" maxlength="500" placeholder="@AdminDefaults.NOTICE_CREATE_REASON" /></label>
                 <p class="default-hint">비우면 "@AdminDefaults.NOTICE_CREATE_REASON"</p>
                 <div class="actions"><LoadingButton IconName="check" OnClick="PrepareCreate">작성 내용 확인</LoadingButton></div>
@@ -104,6 +107,7 @@
     private string _body = string.Empty;
     private string _target = AdminDefaults.NOTICE_TARGET;
     private int _severity = AdminDefaults.NOTICE_SEVERITY;
+    private string _category = AdminDefaults.NOTICE_CATEGORY;
     private string _starts = string.Empty;
     private string _ends = string.Empty;
     private string _createReason = string.Empty;
@@ -180,6 +184,7 @@
             string reason = defaults.Reason(_createReason, AdminDefaults.NOTICE_CREATE_REASON);
             string target = _target;
             int severity = _severity;
+            string category = _category;
             if (target == AdminDefaults.NOTICE_TARGET)
             {
                 defaults.Note("대상: 런처·게임 (기본값)");
@@ -188,9 +193,13 @@
             {
                 defaults.Note("중요도: 안내 (기본값)");
             }
+            if (category == AdminDefaults.NOTICE_CATEGORY)
+            {
+                defaults.Note("분류: 공지 (기본값)");
+            }
             Prepare("공지 작성", AdminLabels.NoticeTarget(target) + " / " + title, reason, AdminContractCodes.Role.OPERATOR,
                 AdminApiRoutes.NOTICES,
-                operation => new AdminNoticeCreateRequest(operation, reason, title, body, target, severity, starts, ends),
+                operation => new AdminNoticeCreateRequest(operation, reason, title, body, target, severity, starts, ends, category),
                 defaults: defaults);
         });
     }

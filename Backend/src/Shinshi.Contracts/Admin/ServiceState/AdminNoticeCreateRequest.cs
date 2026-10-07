@@ -26,6 +26,9 @@ namespace Shinshi.Contracts.Admin
         // ServiceNotice.SEVERITY_INFO ~ SEVERITY_CRITICAL
         [DataMember(Name = "severity")]       private int    _severity;
 
+        // ServiceNotice.CATEGORY_NOTICE ~ CATEGORY_MAINTENANCE. 없으면 Notice다
+        [DataMember(Name = "category")]       private string _category;
+
         // null이면 저장 시각부터 노출한다. 끝 시각은 시작과 현재 시각보다 뒤여야 한다
         [DataMember(Name = "startsAtUnixMs")] private long?  _startsAtUnixMs;
         [DataMember(Name = "endsAtUnixMs")]   private long?  _endsAtUnixMs;
@@ -42,13 +45,14 @@ namespace Shinshi.Contracts.Admin
         public int    Severity       => _severity;
         public long?  StartsAtUnixMs => _startsAtUnixMs;
         public long?  EndsAtUnixMs   => _endsAtUnixMs;
+        public string Category       => string.IsNullOrEmpty(_category) ? ServiceNotice.CATEGORY_NOTICE : _category;
 
         /****************************************
         *                Methods
         ****************************************/
 
         public AdminNoticeCreateRequest(string operationId, string reason, string title, string body, string target,
-            int severity, long? startsAtUnixMs, long? endsAtUnixMs)
+            int severity, long? startsAtUnixMs, long? endsAtUnixMs, string category = null)
         {
             _operationId    = operationId;
             _reason         = reason;
@@ -58,6 +62,7 @@ namespace Shinshi.Contracts.Admin
             _severity       = severity;
             _startsAtUnixMs = startsAtUnixMs;
             _endsAtUnixMs   = endsAtUnixMs;
+            _category       = category;
         }
 
         private AdminNoticeCreateRequest() { }

@@ -42,6 +42,12 @@ namespace Shinshi.Backend.Admin
             ServiceNotice.TARGET_LAUNCHER, ServiceNotice.TARGET_GAME, ServiceNotice.TARGET_BOTH
         };
 
+        private static readonly string[] G_Categories =
+        {
+            ServiceNotice.CATEGORY_NOTICE, ServiceNotice.CATEGORY_UPDATE, ServiceNotice.CATEGORY_EVENT,
+            ServiceNotice.CATEGORY_MAINTENANCE
+        };
+
         private readonly PostgresServiceStateRepository _repository;
         private readonly ServiceStateStore _store;
         private readonly AdminOperationExecutor _operations;
@@ -71,7 +77,7 @@ namespace Shinshi.Backend.Admin
                 record.StartsAt.ToUnixTimeMilliseconds(), record.EndsAt.ToUnixTimeMilliseconds(),
                 record.CreatedBy.ToString("D"), record.CreatedAt.ToUnixTimeMilliseconds(),
                 record.EndedAt?.ToUnixTimeMilliseconds(), record.EndedBy?.ToString("D"),
-                StatusOf(record, now))).ToArray()));
+                StatusOf(record, now), record.Category)).ToArray()));
         }
 
         /// <summary> 결과의 receiptId가 noticeId다. 같은 operationId 재전송은 같은 noticeId를 준다. 형식 오류는 작업 행 없이 400이고,
@@ -140,6 +146,7 @@ namespace Shinshi.Backend.Admin
             if ((title.Length == 0) || (title.Length > AdminNoticeCreateRequest.MAX_TITLE_LENGTH)
                 || (body.Length > AdminNoticeCreateRequest.MAX_BODY_LENGTH)
                 || (Array.IndexOf(G_Targets, request.Target) < 0)
+                || (Array.IndexOf(G_Categories, request.Category) < 0)
                 || (request.Severity < ServiceNotice.SEVERITY_INFO) || (request.Severity > ServiceNotice.SEVERITY_CRITICAL)
                 || (!IsUnixMs(request.EndsAtUnixMs))
                 || ((request.StartsAtUnixMs != null) && (!IsUnixMs(request.StartsAtUnixMs))))
@@ -157,7 +164,7 @@ namespace Shinshi.Backend.Admin
             }
 
             return new ServiceNoticeDraft(Guid.NewGuid(), title, body, request.Target, request.Severity, startsAt,
-                endsAt);
+                endsAt, request.Category);
         }
 
         private static bool IsUnixMs(long? value)

@@ -64,11 +64,14 @@
 
             <StackPanel Orientation="Horizontal" Margin="56,0,0,0">
                 <RadioButton Style="{StaticResource Radio.NavTab}" GroupName="Nav" Content="홈" WindowChrome.IsHitTestVisibleInChrome="True"
-                             IsChecked="{Binding CurrentView, Converter={StaticResource EnumEquals}, ConverterParameter=Home, Mode=TwoWay}" />
+                             Command="{Binding NavigateCommand}" CommandParameter="Home"
+                             IsChecked="{Binding ActiveTab, Converter={StaticResource EnumEquals}, ConverterParameter=Home, Mode=TwoWay}" />
                 <RadioButton Style="{StaticResource Radio.NavTab}" GroupName="Nav" Content="소식" WindowChrome.IsHitTestVisibleInChrome="True"
-                             IsChecked="{Binding CurrentView, Converter={StaticResource EnumEquals}, ConverterParameter=News, Mode=TwoWay}" />
+                             Command="{Binding NavigateCommand}" CommandParameter="News"
+                             IsChecked="{Binding ActiveTab, Converter={StaticResource EnumEquals}, ConverterParameter=News, Mode=TwoWay}" />
                 <RadioButton Style="{StaticResource Radio.NavTab}" GroupName="Nav" Content="패치노트" WindowChrome.IsHitTestVisibleInChrome="True"
-                             IsChecked="{Binding CurrentView, Converter={StaticResource EnumEquals}, ConverterParameter=PatchNotes, Mode=TwoWay}" />
+                             Command="{Binding NavigateCommand}" CommandParameter="PatchNotes"
+                             IsChecked="{Binding ActiveTab, Converter={StaticResource EnumEquals}, ConverterParameter=PatchNotes, Mode=TwoWay}" />
             </StackPanel>
         </StackPanel>
 
@@ -211,7 +214,9 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Border.Card}" Margin="8,0" Height="150">
+                                <Button Style="{StaticResource Button.CardHost}" Margin="8,0"
+                                        Command="{Binding DataContext.OpenNewsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                <Border Style="{StaticResource Border.Card}" Height="150">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="64" />
@@ -245,9 +250,16 @@
                                         </StackPanel>
                                     </Grid>
                                 </Border>
+                                </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4,0,0"
+                                Visibility="{Binding NewsStatusText, Converter={StaticResource EmptyToCollapsed}}">
+                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding NewsStatusText}" VerticalAlignment="Center" />
+                        <Button Style="{StaticResource Button.Link}" Content="다시 시도" Margin="12,0,0,0" Command="{Binding RetryNewsCommand}"
+                                Visibility="{Binding IsNewsRetryVisible, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
                 </Grid>
             </Grid>
 
@@ -256,10 +268,18 @@
                           Visibility="{Binding CurrentView, Converter={StaticResource EnumToVisibility}, ConverterParameter=News}">
                 <StackPanel Margin="40,32,40,24">
                     <TextBlock Style="{StaticResource Text.Heading}" Text="소식" Margin="0,0,0,18" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12"
+                                Visibility="{Binding NewsStatusText, Converter={StaticResource EmptyToCollapsed}}">
+                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding NewsStatusText}" VerticalAlignment="Center" />
+                        <Button Style="{StaticResource Button.Link}" Content="다시 시도" Margin="12,0,0,0" Command="{Binding RetryNewsCommand}"
+                                Visibility="{Binding IsNewsRetryVisible, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
                     <ItemsControl ItemsSource="{Binding News}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Border.Card}" Margin="0,0,0,10" Padding="18,14">
+                                <Button Style="{StaticResource Button.CardHost}" Margin="0,0,0,10"
+                                        Command="{Binding DataContext.OpenNewsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                <Border Style="{StaticResource Border.Card}" Padding="18,14">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Muted}" Text="{Binding Date}"
                                                    VerticalAlignment="Center" />
@@ -270,6 +290,7 @@
                                         <TextBlock Style="{StaticResource Text.Base}" Text="{Binding Title}" FontSize="14" VerticalAlignment="Center" />
                                     </DockPanel>
                                 </Border>
+                                </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -280,23 +301,61 @@
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                           Visibility="{Binding CurrentView, Converter={StaticResource EnumToVisibility}, ConverterParameter=PatchNotes}">
                 <StackPanel Margin="40,32,40,24">
-                    <TextBlock Style="{StaticResource Text.Heading}" Text="패치노트" Margin="0,0,0,6" />
-                    <TextBlock Style="{StaticResource Text.Muted}" Text="패치노트는 서비스 공지와 연결한 뒤 이곳에 표시합니다." Margin="0,0,0,18" />
+                    <TextBlock Style="{StaticResource Text.Heading}" Text="패치노트" Margin="0,0,0,18" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12"
+                                Visibility="{Binding PatchNotesStatusText, Converter={StaticResource EmptyToCollapsed}}">
+                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding PatchNotesStatusText}" VerticalAlignment="Center" />
+                        <Button Style="{StaticResource Button.Link}" Content="다시 시도" Margin="12,0,0,0" Command="{Binding RetryNewsCommand}"
+                                Visibility="{Binding IsNewsRetryVisible, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
                     <ItemsControl ItemsSource="{Binding PatchNotes}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Border.Card}" Margin="0,0,0,10" Padding="18,14">
+                                <Button Style="{StaticResource Button.CardHost}" Margin="0,0,0,10"
+                                        Command="{Binding DataContext.OpenNewsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                <Border Style="{StaticResource Border.Card}" Padding="18,14">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Muted}" Text="{Binding Date}"
                                                    VerticalAlignment="Center" />
                                         <TextBlock Style="{StaticResource Text.Base}" Text="{Binding Title}" FontSize="14" VerticalAlignment="Center" />
                                     </DockPanel>
                                 </Border>
+                                </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- News detail: plain text only, no HTML or link handling -->
+            <Grid Grid.Row="0" Visibility="{Binding CurrentView, Converter={StaticResource EnumToVisibility}, ConverterParameter=NewsDetail}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Button Grid.Row="0" Style="{StaticResource Button.Outline}" HorizontalAlignment="Left" Margin="40,24,40,0"
+                        Command="{Binding CloseNewsDetailCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72B;" FontSize="12" Margin="0,0,8,0"
+                                   Foreground="{StaticResource Brush.TextSecondary}" />
+                        <TextBlock Text="뒤로" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedNews}">
+                    <StackPanel Margin="40,20,40,24" MaxWidth="820" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource Border.Chip}">
+                            <TextBlock Text="{Binding CategoryText}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Brush.Accent}" />
+                        </Border>
+                        <TextBlock Style="{StaticResource Text.Heading}" Text="{Binding Title}" TextWrapping="Wrap" TextTrimming="None"
+                                   Margin="0,12,0,0" />
+                        <TextBlock Style="{StaticResource Text.Muted}" Text="{Binding Date}" Margin="0,6,0,20" />
+                        <TextBlock Style="{StaticResource Text.Base}" Text="{Binding Body}" FontSize="14" LineHeight="22"
+                                   TextWrapping="Wrap" TextTrimming="None" />
+                        <TextBlock Style="{StaticResource Text.Muted}" Text="본문이 없는 공지입니다."
+                                   Visibility="{Binding HasBody, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
 
             <!-- Settings -->
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"

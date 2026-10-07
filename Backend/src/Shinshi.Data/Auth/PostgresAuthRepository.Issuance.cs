@@ -321,6 +321,38 @@ namespace Shinshi.Data.Auth
             }, cancellationToken);
         }
 
+        /// <summary> 갱신 토큰 원문으로 묶음을 찾아 만료, 폐기 여부와 무관하게 묶음과 하위 게임 세션을 폐기한다.
+        /// 우리 토큰이 아니거나 행이 없으면 false다. 이미 폐기된 묶음은 다시 폐기해도 같은 결과(true)다 </summary>
+        public Task<bool> RevokeFamilyByRefreshTokenAsync(string refreshToken,
+            CancellationToken cancellationToken = default)
+        {
+            if (!_hasher.IsAuthentic(refreshToken))
+            {
+                return Task.FromResult(false);
+            }
+
+            byte[] hash = _hasher.Hash(AuthTokenHasher.REFRESH_DOMAIN, refreshToken);
+            return InTransactionAsync(async (connection, transaction, token) =>
+            {
+                RefreshRow? found = await ReadRefreshAsync(connection, transaction, hash, token);
+                if (found == null)
+                {
+                    return false;
+                }
+
+                // 회전, 재사용 폐기와 같은 account -> family 순서로 잠근다
+                await LockAccountAsync(connection, transaction, found.AccountId, token);
+                FamilyRow? family = await LockFamilyAsync(connection, transaction, found.AccountId, found.FamilyId, token);
+                if (family == null)
+                {
+                    return false;
+                }
+
+                await RevokeFamilyRowsAsync(connection, transaction, found.FamilyId, token);
+                return true;
+            }, cancellationToken);
+        }
+
         private static async Task<bool> LockActiveIdentityAsync(NpgsqlConnection connection,
             NpgsqlTransaction transaction, PlayerAuthIdentity identity, CancellationToken token)
         {
