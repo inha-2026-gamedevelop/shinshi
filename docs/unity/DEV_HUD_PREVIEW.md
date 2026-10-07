@@ -66,3 +66,15 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 | 뒤로·삭제·설정·종료·생성 | `Assets/01.Scripts/05.Art/UI/CharSelect/Textures/T_CharSelect_Icon_{Back,Delete,Settings,Exit,Create}_Silver.png` |
 
 기능 아이콘은 투명 알파·단일 Sprite·Full Rect·밉맵 없음·최대 256px 설정이다. Play Mode의 1211×677 화면에서 표시·문구 미잘림을 확인하고, 직업 마크 중앙을 EventSystem으로 raycast한 뒤 포인터 클릭 이벤트를 전달해 세 슬롯 각각 0/1/2 선택을 확인했다. 검사 후 Edit Mode로 복귀했으며 Console 오류·경고 0이었다. 기능 아이콘의 기존 오브젝트는 Image이며 실제 생성·삭제·설정·종료 동작은 이번 검증에 포함하지 않았다. 릴리즈 `CharacterSelect.unity`는 이 아이콘 교체를 아직 반영하지 않았다.
+
+## 캐릭터 상세 개발 씬 (2026-10-07)
+
+`Assets/00.Scenes/Dev_HUD/Dev_CharDetail.unity`의 `CharDetailCanvas/Layout_캐릭터 상세/캐릭터 정보`에 976×676 상세창을 배치했다. 공통 GameStyle 창·슬롯, 기존 한글 TMP와 무사 직업 마크를 재사용한다. 왼쪽은 무기·머리·몸통·손·발·장신구 6칸, 가운데는 무사 외형, 오른쪽은 닉네임·직업·주요 능력치·수련·부적 요약·정기다. 장비 칸은 실제 아이템 그림 대신 부위명과 +17 예시를 표시한다.
+
+표시값은 희귀 제작 장비 6부위 +17·수련 공격10/생명10/방어7/치명5/기력5(합37)의 배치용 예시다. 공격676·최대 체력3895·방어372.55·치명9.5%·기력105를 표시하며 부적12효과와 정기5000도 예시다. 캐릭터 레벨·경험치·아이템 레벨과 산식 미정인 종합 전투력은 추가하지 않았다.
+
+미리보기는 기존 `PF_FemaleWarrior_Cute.prefab`의 씬 인스턴스와 `Assets/09.Data/UI/RT_CharDetailPreview.renderTexture`(652×1100, MSAA2, 밉맵 없음)를 사용하는 RawImage다. 프리팹 원본은 수정하지 않고 미리보기 인스턴스의 동작 스크립트·Animator를 비활성화했다. 팔을 내린 고정 자세는 씬 오버라이드다. 실제 장비 착용 외형이나 직업 전환에는 연결되지 않았다.
+
+뷰포트의 별도 Image 배경은 비활성화하고 Preview Camera를 투명색 Solid Color·HDR 끔으로 설정해 상세창 배경 위에 캐릭터만 합성한다. Play Mode에서 RT 양 끝 모서리 alpha0, 전체717200픽셀 중562436픽셀 완전 투명과154764픽셀 불투명을 확인했다. 공용 URP 설정은 변경하지 않았다.
+
+기존 `UiWindowDragHandle`과 Button의 직렬화된 이벤트로 제목줄 드래그·닫기·왼쪽 위 버튼으로 다시 열기를 연결했다. Play Mode 1059×677에서 화면 표시·47개 활성 TMP 미잘림, EventSystem raycast와 포인터 클릭으로 닫기/열기, 드래그 이벤트로 이동과 화면 경계 제한을 확인했다. Console 오류·경고0이며 실제 마우스 조작·다른 화면비·서버 데이터·Player 빌드는 미검증이다. 이 개발 씬은 릴리즈 흐름에 적용하지 않았다.
