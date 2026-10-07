@@ -81,7 +81,7 @@
 **구현(U25).** 네 설정 모두 `service_state`(단일 행, revision 낙관적 갱신)와 `service_notices`에 두고 `PUT /admin/v1/service-state`(Admin), `POST /admin/v1/notices`(Operator)로 바꾼다. API는 5초 캐시로 읽고 쓴 인스턴스는 바로 반영한다. 시작 때 백그라운드로 한 번 읽어 두고, 첫 읽기 전의 로그인·공개 상태 조회는 그 읽기를 기다리며 끝내 읽지 못하면 점검 중으로 본다. 0008의 초기 행은 점검 중·허용 빌드 없음이다. 설계와 다른 점은 아래와 같다.
 
 - 점검은 게임 로그인·토큰 갱신과 새 출정 예약을 거절한다. 어드민 계정은 게임 계정과 분리돼 점검의 영향을 받지 않지만, 점검 중에 게임에 들어가는 운영자 게임 계정 예외는 없다. 진행 중 출정의 입장 토큰 교환은 DB 점검을 보지 않고 설정 `ServiceState:Maintenance`를 읽는다(진행 세션 유지를 위해 의도적으로 남김).
-- 기능 키는 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`이며 목록 밖 키는 저장을 거절한다. 거절 코드는 `FEATURE_DISABLED(1100)`, HTTP 409다. `talisman`, `training`도 같은 목록에 있다. 지금 `ServiceFeatureGate`로 막는 곳은 새 출정 예약(`dungeon_entry`, 보스전은 `boss_entry`도), 우편 수령(`inbox_claim`), 경매 입찰(`auction`, 경매 열기는 막지 않는다), 마을 서버가 중계하는 성장 API(장비 제작 `crafting`·강화 `enhance`·계승 `inherit`, 부적 등록·강화·조합·분해 `talisman`, 수련·재분배 `training`), 생활 API(채집 `gathering`, 물약 제작 `crafting`)다. 장비 착용·해제·잠금·분해와 성장·생활 조회는 기능 키 없이 열려 있다. 게이트 거절은 저장하지 않는다. 막는 동안 같은 operationId 재전송은 저장된 처음 결과를 받고, 차단 중 처음 보낸 operationId는 해제 뒤 다시 오면 실행된다.
+- 기능 키는 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`, `market`, `trade`이며 목록 밖 키는 저장을 거절한다. 거절 코드는 `FEATURE_DISABLED(1100)`, HTTP 409다. `talisman`, `training`도 같은 목록에 있다. 지금 `ServiceFeatureGate`로 막는 곳은 새 출정 예약(`dungeon_entry`, 보스전은 `boss_entry`도), 우편 수령(`inbox_claim`), 경매 입찰(`auction`, 경매 열기는 막지 않는다), 마을 서버가 중계하는 성장 API(장비 제작 `crafting`·강화 `enhance`·계승 `inherit`, 부적 등록·강화·조합·분해 `talisman`, 수련·재분배 `training`), 생활 API(채집 `gathering`, 물약 제작 `crafting`), 경매장 API(등록·구매 `market`, 취소·조회·확인은 차단 중에도 열려 있어 회수 가능), 1:1 거래 prepare(`trade`)다. 장비 착용·해제·잠금·분해와 성장·생활 조회는 기능 키 없이 열려 있다. 게이트 거절은 저장하지 않는다. 막는 동안 같은 operationId 재전송은 저장된 처음 결과를 받고, 차단 중 처음 보낸 operationId는 해제 뒤 다시 오면 실행된다.
 - 점검은 우편 수령을 막지 않는다. 점검 중 수령을 허용할지는 정하지 않았다(8장).
 - 공지 작성의 형식 검사(길이·대상·시작 < 끝)는 작업 행 없이 400이고, 끝 시각이 지금 이하인지는 멱등 실행 안에서 DB 시각으로 판정해 409 `INVALID_REQUEST`로 저장한다. 확정된 공지를 만료 뒤 같은 operationId로 재전송해도 처음 결과를 받는다.
 - 공지는 공개 `GET /v1/service-state` 응답의 `notices` 배열로 내보낸다(노출 중인 것만, 최대 20개). 기존 `notice` 문자열은 노출 중인 런처 대상 첫 공지의 제목이다. 런처·마을 화면의 표시 연결은 이 작업 범위가 아니다.
@@ -247,6 +247,7 @@ U25에서 정한 것.
 | 행동·기술 로그 저장소와 보존 기간 | 관리형 로그 서비스 / 자체 수집 | 민성 | U19 |
 | 지급·조정 수량 상한 | 현재 한 줄 1,000,000 임시값 / 자산별 상한 | 사용자(기획)·민성 | 외부 체험 전 |
 | 진행 중 출정의 입장 점검 | 입장 토큰 교환이 설정 `ServiceState:Maintenance`를 계속 읽음(현재) / DB 점검으로 옮겨 진행 세션 재접속도 막음 | 민성 | 외부 체험 전 |
+| 토큰 폐기가 접속 임대를 끊지 않음 | 런처 로그아웃·`POST /v1/auth/logout`은 갱신 토큰 묶음과 게임 세션을 폐기하지만 이미 붙은 계정 접속 임대는 heartbeat로 연장돼 연결이 남는다(현재: 런처가 게임 실행 중 로그아웃을 막아 우회) / 폐기와 접속 임대 해제·연결 종료 통지 결합. 경매장·거래 기능 키 차단도 이미 붙은 연결의 진행 중 요청을 끊지 않는다 | 민성 | 제재(P1)와 함께. **미정(2026-10-08 유지)** |
 | 강제 종료의 즉시 차단 | 기존 토큰·초대 폐기만, 현재 접속 유지, 비밀번호 로그인 허용(현재) / 게임 서버에 연결 종료 통지·계정 임대 해제·로그인 차단 | 민성 | 제재(P1)와 함께 |
 | RecoveryPending 상태 세션 처리 | 처리 경로 추가 / 원인 수정 뒤 자동 복구 재시도 | 민성 | U17 장애 복구 |
 | 점검 중 우편 수령 | 허용(현재, `inbox_claim`으로만 막음) / 점검이면 수령도 거절 | 민성 | 외부 체험 전 |

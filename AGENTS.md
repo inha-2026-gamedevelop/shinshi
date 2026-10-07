@@ -6,7 +6,7 @@ shinshi 저장소에서 일하는 AI 에이전트와 팀원이 **반드시** 따
 
 - 저장소 루트가 곧 Unity 프로젝트 루트다 (`Assets/`, `Packages/`, `ProjectSettings/`).
 - Unity 6000.4.7f1, URP, Unity Test Framework. 입력은 구 Input Manager(`UnityEngine.Input`, Active Input Handling = Both). 네트워크는 Mirror 96.11.3(`Assets/Mirror/`), 데디케이티드 서버 방식(확정). 서버 구성·호스팅은 `docs/unity/NETWORK_AUTHORITY.md` 7장.
-- 게임 기획·기술 설계는 [docs/00-reading-guide.md](docs/00-reading-guide.md)에서 시작한다. 작업 트리에는 서버 M-A의 인증·재접속·전투·세션·정산 코드가 `01.Network/`·`02.Combat/`·`98.Servers/`(마을 서버는 `98.Servers/05.Town/`)에 있고, `00.Common/`에는 공통 계약·GameDB 기반과 엔진 비의존 DTO(`Contracts/`)가 있다. `Backend/`에는 ASP.NET Core .NET 10·Npgsql+Dapper·SQL 마이그레이션 `0001`~`0013`(`0008`은 운영 어드민, `0011`~`0013`은 성장·출정 계약·생활), `deploy/`·`tools/`에는 배포·M2 준비 파일이 있다. 제공된 검증 결과는 Unity EditMode 2241건·실제 PostgreSQL 18(Docker) 백엔드 930건 통과(2026-10-03)이며, 실제 서버 빌드·M2/M3·IL2CPP·배포는 **구현됨·실행 미검증**이다. 전체 게임의 구현 상태는 [로드맵](docs/05-implementation-roadmap.md)을 확인하고, 설계에 적힌 예정 파일·도구를 실제로 존재한다고 가정하지 않는다.
+- 게임 기획·기술 설계는 [docs/00-reading-guide.md](docs/00-reading-guide.md)에서 시작한다. 작업 트리에는 서버 M-A의 인증·재접속·전투·세션·정산 코드가 `01.Network/`·`02.Combat/`·`98.Servers/`(마을 서버는 `98.Servers/05.Town/`)에 있고, `00.Common/`에는 공통 계약·GameDB 기반과 엔진 비의존 DTO(`Contracts/`)가 있다. `Backend/`에는 ASP.NET Core .NET 10·Npgsql+Dapper·SQL 마이그레이션 `0001`~`0015`(`0008`은 운영 어드민, `0011`~`0013`은 성장·출정 계약·생활, `0014`는 공지 분류, `0015`는 유저 경매장·1:1 거래), `deploy/`·`tools/`에는 배포·M2 준비 파일이 있다. 제공된 검증 결과는 Unity EditMode 2241건·실제 PostgreSQL 18(Docker) 백엔드 930건 통과(2026-10-03)와 백엔드 1388건 통과(실제 PostgreSQL 18, 2026-10-08, 병렬 2, 구현 실행 보고)이며, 실제 서버 빌드·M2/M3·IL2CPP·배포는 **구현됨·실행 미검증**이다. 전체 게임의 구현 상태는 [로드맵](docs/05-implementation-roadmap.md)을 확인하고, 설계에 적힌 예정 파일·도구를 실제로 존재한다고 가정하지 않는다.
 
 ## 반드시 읽을 것
 
