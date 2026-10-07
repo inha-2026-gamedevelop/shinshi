@@ -83,6 +83,11 @@ namespace Shinshi.UI
 
         public int IndexOf(ItemSlotView slot) { return _slots.IndexOf(slot); }
 
+        public ItemSlotView GetSlot(int index)
+        {
+            return ((index >= 0) && (index < _slots.Count)) ? _slots[index] : null;
+        }
+
         private void EnsureSlots(int count)
         {
             if (_slotPrefab == null)

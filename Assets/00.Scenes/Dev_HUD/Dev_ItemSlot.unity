@@ -5351,6 +5351,7 @@ MonoBehaviour:
   _fullColor: {r: 0.9, g: 0.36, b: 0.32, a: 1}
   _yeopjeonLabel: {fileID: 324826836}
   _essenceLabel: {fileID: 2088096836}
+  _enableSlotInteraction: 1
 --- !u!224 &890468358
 RectTransform:
   m_ObjectHideFlags: 0
