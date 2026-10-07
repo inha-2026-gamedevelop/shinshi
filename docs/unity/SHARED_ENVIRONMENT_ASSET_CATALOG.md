@@ -210,6 +210,22 @@ CA-07 원화에 있지만 기존 Assets에 없던 4종이다. 단일 물체 시�
 - Unity 확인 범위: 실제 임포트 치수, 루트 스케일, 재질·텍스처 참조 누락 0, LOD 3단계 참조, 텍스처 임포트(BaseColor sRGB BC7, Normal BC5, Mask·Normal 선형, CPU 읽기 끔), 저장하지 않는 PreviewScene의 중립 조명 앞·뒤·사선·쿼터뷰 42도·근거리·LOD별·AO 켬/끔 렌더, 신규 Console 오류·경고 0이다.
 - 미검증: 실제 씬 배치·게임 카메라·조명, 캐릭터 보행(다리 데크 경사·난간 접촉), 연속 LOD 전환, 다수 배치 성능, Player 빌드. 원화 유사도는 수치로 측정하지 않았다. 근거리에서 밀 이삭은 뭉툭한 형태와 일부 어두운 얼룩이 보이고, 물레방아·다리 원본 색에는 작은 밝은 얼룩이 남아 있다.
 
+## 던전 에셋·조립 프리팹 — 2026-10-07
+
+던전용 신규 파일을 다음 경로에 추가했다. 파일 존재·직렬화 참조를 확인한 상태이며, 실제 전장에 배치하거나 게임 동작을 검증했다는 뜻은 아니다.
+
+| 배치 프리팹 경로 (`Assets/02.Prefab/` 기준) | 수량 | 모델·재질·텍스처 경로 (`Assets/01.Scripts/05.Art/` 기준) |
+|---|---:|---|
+| `Environment/DungeonAssemblies/` | 11 | `Environment/DungeonAssemblies/` 및 조립 대상 기존 에셋 |
+| `Environment/DungeonReuseOptimized/` | 35 | `Environment/DungeonReuseOptimized/` 및 기존 공용 재질 |
+| `Environment/DungeonTripo/` | 30 | `Environment/DungeonTripo/` |
+| `Props/DungeonTripo/` | 6 | `Props/DungeonTripo/` |
+
+- 총 82개 프리팹이며 조립 프리팹 6개는 `Environment/DungeonAssemblies/Layouts/`에 있다. 숲 입구·바닥, 고대 비석 제단, 월백 발판·소형 사당·6기둥 제안을 포함한다. `Proposal`은 제안 배치이며 보스 기믹이나 최종 배치 확정으로 해석하지 않는다.
+- 이번 커밋 준비의 L1 검사: 신규 에셋·메타 715개 파일, FBX 82개, PNG 71개, 재질 37개, `.asset` 6개, 프리팹 82개. 메타 누락·신규 GUID 중복·외부 GUID 참조 누락·Git 제외 에셋 의존은 0건이다. GUID 존재 검사는 임포트된 메시의 하위 fileID 유효성이나 시각 품질을 보증하지 않는다.
+- 프리팹 파일 76개에 LODGroup, 31개에 Collider가 직접 직렬화되어 있다. 중첩 프리팹까지 합산한 충돌체 수나 실제 보행 가능 여부를 뜻하지 않는다. 배치 시 지면 높이·충돌·LOD 전환과 참조를 Unity에서 확인한다.
+- 이번 검토에서 Unity 임포트·화면·AO/PBR 품질·실제 보행·연속 LOD·다수 배치 성능·Player 빌드는 미검증이다. 제작 상세 기록과 렌더는 Git 제외 개인 기록에 보존한다.
+
 ## CA-07 마을 배치 씬 — 2026-10-03
 
 [Dev_ShinshiVillageCA07](../../Assets/00.Scenes/Dev_ShinshiVillageCA07.unity)은 [CA-07 배치도](../design/concept-art.md#8-ca-07-신시-마을-배치도-2)를 게임 쿼터뷰 기준으로 배치한 별도 개발 씬이다. CA-04 기반 `Dev_ShinshiVillageQuarterView`는 그대로 둔다.
