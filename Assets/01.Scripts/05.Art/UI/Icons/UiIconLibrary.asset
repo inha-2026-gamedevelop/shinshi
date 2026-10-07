@@ -56,7 +56,7 @@ MonoBehaviour:
   - _id: item_boss_ticket
     _sprite: {fileID: 21300000, guid: b16efdf65be019b4d96b4d76451e2b4f, type: 3}
   - _id: item_essence
-    _sprite: {fileID: 21300000, guid: ba994f85bfa5dc24f8534ab0ce3a48d1, type: 3}
+    _sprite: {fileID: 21300000, guid: 26e50c3711efc3240ba8e0292525f4fc, type: 3}
   - _id: item_fox_trace
     _sprite: {fileID: 21300000, guid: 0ea014e255608344ea9d8016daaccab9, type: 3}
   - _id: item_herb
@@ -68,7 +68,7 @@ MonoBehaviour:
   - _id: item_refine_shard
     _sprite: {fileID: 21300000, guid: 8076679ce69903742871fa879789eb2c, type: 3}
   - _id: item_yeopjeon
-    _sprite: {fileID: 21300000, guid: 2bbbccf1d6dc5d24fb0cfcf70f348677, type: 3}
+    _sprite: {fileID: 21300000, guid: b8208a41b102e36428b5d75a26ec3004, type: 3}
   - _id: mark_equipped
     _sprite: {fileID: 21300000, guid: 8dfd1fc092ebf8d42b7261ca3e809e70, type: 3}
   - _id: mark_lock

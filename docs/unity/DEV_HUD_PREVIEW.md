@@ -80,3 +80,11 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 구분선8개는 기존 `Assets/01.Scripts/05.Art/UI/GameStyle/Textures/T_UiLine_Fade.png`를 재사용한다. 능력치5줄은 alpha0.15, 수련·부적·세로선은 alpha0.30이며 세로선은 같은 Sprite를90도 회전해 양 끝 페이드를 유지한다. Play Mode 화면과8/8 Sprite 참조·TMP 잘림0·Console 오류/경고0을 확인했다.
 
 기존 `UiWindowDragHandle`과 Button의 직렬화된 이벤트로 제목줄 드래그·닫기·왼쪽 위 버튼으로 다시 열기를 연결했다. Play Mode 1059×677에서 화면 표시·47개 활성 TMP 미잘림, EventSystem raycast와 포인터 클릭으로 닫기/열기, 드래그 이벤트로 이동과 화면 경계 제한을 확인했다. Console 오류·경고0이며 실제 마우스 조작·다른 화면비·서버 데이터·Player 빌드는 미검증이다. 이 개발 씬은 릴리즈 흐름에 적용하지 않았다.
+
+## 재화 아이콘 (2026-10-07)
+
+흰색 단색·투명 배경의 엽전(사각 구멍 동전)과 정기(기운을 감싼 불꽃) 아이콘을 `Assets/01.Scripts/05.Art/UI/Icons/Textures/Currency/`에 배치했다. 파일은 `T_Icon_Currency_Yeopjeon_White.png`와 `T_Icon_Currency_Essence_White.png`이며 256×256, Single Sprite, Full Rect, Clamp, 밉맵 없음, 비압축이다. UI의 Image.color로 색을 입힐 수 있다.
+
+`UiIconLibrary.asset`의 `item_yeopjeon`·`item_essence`를 새 Sprite로 연결했다. `Dev_ItemSlot.unity` 하단의 재화 이름 자리는 24×24 아이콘으로 표시하고 기존 수치 바인딩을 유지한다. 릴리즈 씬의 하단 문구는 수정하지 않았다.
+
+Play Mode 화면에서 인벤토리 하단의 두 아이콘·수치 1,250/2,100을 확인했다. Sprite 참조·흰색 틴트·수치 미잘림, Console 오류·경고0을 확인했다. 엽전 중앙 구멍과 이미지 네 모서리는 alpha0이다. 실제 서버 재화 변경·Player 빌드는 미검증이다.
