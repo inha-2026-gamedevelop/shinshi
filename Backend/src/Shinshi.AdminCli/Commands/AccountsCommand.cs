@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 // Project
+using Shinshi.Contracts;
 using Shinshi.Contracts.Admin;
 
 namespace Shinshi.AdminCli
@@ -17,13 +18,16 @@ namespace Shinshi.AdminCli
         *                Fields
         ****************************************/
 
-        private const string SEARCH = "search";
-        private const string SHOW   = "show";
-        private const string KICK   = "kick";
+        private const string SEARCH         = "search";
+        private const string SHOW           = "show";
+        private const string KICK           = "kick";
+        private const string CHARACTER_NAME = "character-name";
 
         private static readonly string[] G_Usage =
         {
             "accounts search <계정ID|캐릭터ID|초대 코드>    계정 검색 (초대 코드는 요청 본문으로 보냄)",
+            "accounts search --character-name <이름> [--include-deleted]",
+            "                                               이름 정확 검색. 기본은 활성 캐릭터만, 이름은 요청 본문으로 보냄",
             "accounts show <accountId> --reason <사유>      계정 상세. 민감 조회라 사유가 감사 로그에 남음",
             "accounts kick <accountId> [--keep-invites] --reason <사유>",
             "                                               기존 토큰 폐기(현재 접속 유지, 비밀번호 로그인은 막지 않음).",
@@ -57,22 +61,53 @@ namespace Shinshi.AdminCli
         private static async Task<int> SearchAsync(CliContext context, CliArguments arguments,
             CancellationToken cancellationToken)
         {
-            arguments.EnsureOnly(1, Array.Empty<string>(), Array.Empty<string>());
-            string query = arguments.Positional(0, "검색어").Trim();
+            bool byName = arguments.HasOption(CHARACTER_NAME);
+            bool includeDeleted = arguments.HasFlag(CliArguments.FLAG_INCLUDE_DELETED);
+            // EnsureOnly의 남는 위치 인자 오류는 원문을 출력하므로 이름 검색의 충돌은 먼저 값 없이 거절한다
+            if (((byName) && (arguments.Positionals.Count != 0))
+                || ((!byName) && (arguments.Positionals.Count > 1))
+                || ((!byName) && (includeDeleted)))
+            {
+                throw new CliUsageException("검색어 하나 또는 --character-name을 지정하세요. --include-deleted는 이름 검색에만 씁니다.");
+            }
+
+            arguments.EnsureOnly(byName ? 0 : 1, new[] { CHARACTER_NAME },
+                new[] { CliArguments.FLAG_INCLUDE_DELETED });
+            AdminAccountSearchRequest search;
+            if (byName)
+            {
+                string name = arguments.RequireOption(CHARACTER_NAME);
+                if (!CharacterNameRules.TryNormalize(name, out _, out _))
+                {
+                    throw new CliUsageException("캐릭터 이름 형식이 올바르지 않습니다.");
+                }
+
+                search = new AdminAccountSearchRequest(null, name, includeDeleted);
+            }
+            else
+            {
+                search = new AdminAccountSearchRequest(arguments.Positional(0, "검색어").Trim());
+            }
+
             using AdminApiClient client = context.CreateClient();
             AdminApiResponse<AdminAccountSearchResponse> response = await client.SendAsync<AdminAccountSearchResponse>(
-                HttpMethod.Post, AdminApiRoutes.ACCOUNTS_SEARCH, new AdminAccountSearchRequest(query), false,
-                cancellationToken);
+                HttpMethod.Post, AdminApiRoutes.ACCOUNTS_SEARCH, search, false, cancellationToken);
             if (context.Json)
             {
                 context.WriteJson(response.RawBody);
                 return CliExitCodes.SUCCESS;
             }
 
-            CliTable table = new CliTable("계정 ID", "찾은 근거", "근거 ID", "생성", "캐릭터 수", "접속 중");
+            if (byName)
+            {
+                context.Line("삭제된 캐릭터 포함: " + CliFormat.YesNo(response.Value.IncludeDeletedCharacters));
+            }
+
+            CliTable table = new CliTable("계정 ID", "찾은 근거", "근거 ID", "매칭 캐릭터 삭제", "생성", "활성 캐릭터 수", "접속 중");
             foreach (AdminAccountSummary account in response.Value.Accounts ?? Array.Empty<AdminAccountSummary>())
             {
                 table.Add(account.AccountId, account.MatchedBy, CliFormat.Text(account.MatchedId),
+                    account.MatchedCharacterDeleted.HasValue ? CliFormat.YesNo(account.MatchedCharacterDeleted.Value) : "-",
                     CliFormat.Time(account.CreatedAtUnixMs), CliFormat.Number(account.CharacterCount),
                     CliFormat.YesNo(account.Online));
             }

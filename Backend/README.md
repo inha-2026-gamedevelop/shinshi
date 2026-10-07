@@ -225,7 +225,7 @@ Remove-Item Env:SHINSHI_BOOTSTRAP_OWNER
 | `/admin/v1/operators` | GET, POST | Owner | 생성 응답에만 초기 비밀번호·TOTP 비밀 |
 | `/admin/v1/operators/{adminId}/disable` | POST | Owner | 대상의 열린 세션 폐기. 마지막 활성 Owner는 거절 |
 | `/admin/v1/accounts?query=` | GET | Viewer | UUID(계정·캐릭터 ID)만. 그 밖은 400 |
-| `/admin/v1/accounts/search` | POST | Viewer | 본문 `{query}`. UUID 또는 초대 코드 원문(HMAC으로 바꿔 검색). 원문은 이 경로로만 받는다 |
+| `/admin/v1/accounts/search` | POST | Viewer | 본문 `{query}`(UUID/초대 코드) 또는 `{characterName, includeDeletedCharacters?}`(이름 정확 검색, 기본 삭제 제외). 이름과 초대 원문은 이 POST 본문으로만 받는다 |
 | `/admin/v1/accounts/{accountId}?reason=` | GET | Viewer | 민감 조회. `reason` 필수, 감사 행을 먼저 커밋한 뒤 읽음 |
 | `/admin/v1/accounts/{accountId}/kick` | POST | Operator | 로그인 묶음과 하위 토큰, `revokeInvites`면 초대도 폐기. 현재 접속은 유지, 비밀번호 로그인은 막지 않음 |
 | `/admin/v1/accounts/{accountId}/adjustments` | POST | Operator | 개인 재화·아이템 ± 조정 |
@@ -274,7 +274,9 @@ DB 점검은 로그인과 토큰 갱신 교환(`AuthBuildPolicy`)과 새 출정 
 
 플레이어 `GET /v1/inbox`는 미수령·미취소·미만료 우편을 곧 만료되는 순서(`expires_at` 오름차순)로 최대 100개 주고 캐릭터 자산이 있으면 `requiresCharacter`다. 저장된 보상 JSON은 읽을 때 구조만 검증한다(허용 ID·수량 상한 같은 작성 정책은 작성 때만 적용). 구조가 손상된 행은 목록에서 빼고 우편 ID만 경고 로그로 남긴다. `POST /v1/inbox/claim {operationId, inboxId, characterId}`는 actor가 계정인 플레이어 작업이며 잔액 증가, 원장(`InboxClaim(24)`, actor_kind `Player`, source_type `inbox`, source_id 우편 ID), 수령 표시를 한 트랜잭션에 쓴다. 요청 해시는 원문이 아니라 파싱한 값이라 GUID 표기만 다른 재전송도 같은 요청이다. 거절은 409와 `INBOX_EXPIRED(1101)`, `INBOX_ALREADY_CLAIMED(1102)`, `INBOX_CANCELLED(1103)`, `INBOX_CHARACTER_REQUIRED(1104, 남의 캐릭터 포함)`, `INBOX_NOT_FOUND(1105)`다. 없는 우편과 남의 우편은 operations 행을 남기지 않고 `INBOX_NOT_FOUND`다. 한도는 계정별 1분에 수령 30회, 목록 60회(`InboxRequestLimiter`, 프로세스 메모리)이고 넘으면 429 `RATE_LIMITED`와 `Retry-After`다. 한도와 수령 본문 상한(4 KiB, `Content-Length`가 넘으면 413, 길이 없는 본문은 `RequestSizeLimit`이 Kestrel에서 끊음)은 리소스 필터 `InboxRequestGateFilter`가 모델 바인딩 전에 적용하므로 거절된 요청의 본문은 읽지 않는다. `inbox_claim`이 꺼져 있으면 위 기능 차단 규칙을 따른다(저장된 결과가 있으면 그 결과, 없으면 409 `FEATURE_DISABLED`). 점검은 우편 수령을 막지 않는다. 장애 보정 지급(`sourceKind=RecoveryCompensation`)의 수령도 같은 `InboxClaim(24)`로 남으며 `RecoveryCompensation(30)` 원장 사유는 아직 쓰는 경로가 없다. 출처는 우편 행의 `source_kind`로 구분한다.
 
-**계정과 초대.** 검색은 `GET /admin/v1/accounts?query=<UUID>`(계정·캐릭터 ID만, 그 밖은 400)와 `POST /admin/v1/accounts/search {query}`(UUID 또는 초대 코드 원문) 둘이다. 요청 시작 로그에 조회 문자열이 남으므로 초대 원문은 본문으로만 받는다. 검색 결과는 계정 요약만 준다. 캐릭터 이름 검색은 없다. 상세는 지갑, 캐릭터, 아이템, 접속 임대, 최근 세션, 살아 있는 로그인 묶음 수, 초대 목록을 한 읽기 스냅샷에서 모은다. 초대 발급(`POST /admin/v1/invites {accountId(생략하면 새 계정), maxUses, expiresInHours, revokeExistingSessions}`)은 응답에 원문을 한 번만 싣고(`Cache-Control: no-store`) 같은 operationId 재전송은 같은 inviteId에 원문 null이다. 응답을 잃었으면 그 초대를 폐기하고 새로 발급한다. 기기 변경 재발급은 `revokeExistingSessions`(생략하면 `true`)로 기존 로그인 묶음과 하위 토큰, 이전 초대를 같은 트랜잭션에서 폐기한다. 강제 종료(`POST /admin/v1/accounts/{accountId}/kick {operationId, reason, revokeInvites}`)는 로그인 묶음, 접근·갱신 토큰, 게임 하위 세션, 미소비 입장 토큰을 폐기하고 `revokeInvites`(생략하면 `true`)면 미폐기 초대도 폐기한다. 응답은 `AdminAccountKickResponse{operation, accountId, invitesRevoked, currentSessionKept=true}`다. 이미 발급된 토큰과 초대만 폐기한다. 게임 서버가 쥔 계정 접속 임대는 지우지 않으므로 지금 접속 중인 마을·던전 연결은 이어지고, 폐기된 토큰의 갱신, 재접속, 새 입장 토큰 발급부터 거절된다. 0010의 아이디·비밀번호 로그인은 막지 않으므로 같은 아이디와 비밀번호로 새 토큰을 받을 수 있다. 로그인 차단은 제재(P1)다.
+**계정과 초대.** 검색은 `GET /admin/v1/accounts?query=<UUID>`(계정·캐릭터 ID만, 그 밖은 400)와 `POST /admin/v1/accounts/search`다. POST는 기존 `{query}`(UUID 또는 초대 코드)와 `{characterName, includeDeletedCharacters?}`(정규화된 이름 정확 검색)를 지원한다. 프레임워크나 앞단 요청 로그에 조회 문자열이 남을 수 있어 이름과 초대 원문은 본문으로만 받는다. 검색 결과는 계정 요약과 매칭된 캐릭터의 삭제 상태를 제공한다. 상세는 지갑, 캐릭터, 아이템, 접속 임대, 최근 세션, 살아 있는 로그인 묶음 수, 초대 목록을 한 읽기 스냅샷에서 모은다. 초대 발급(`POST /admin/v1/invites {accountId(생략하면 새 계정), maxUses, expiresInHours, revokeExistingSessions}`)은 응답에 원문을 한 번만 싣고(`Cache-Control: no-store`) 같은 operationId 재전송은 같은 inviteId에 원문 null이다. 응답을 잃었으면 그 초대를 폐기하고 새로 발급한다. 기기 변경 재발급은 `revokeExistingSessions`(생략하면 `true`)로 기존 로그인 묶음과 하위 토큰, 이전 초대를 같은 트랜잭션에서 폐기한다. 강제 종료(`POST /admin/v1/accounts/{accountId}/kick {operationId, reason, revokeInvites}`)는 로그인 묶음, 접근·갱신 토큰, 게임 하위 세션, 미소비 입장 토큰을 폐기하고 `revokeInvites`(생략하면 `true`)면 미폐기 초대도 폐기한다. 응답은 `AdminAccountKickResponse{operation, accountId, invitesRevoked, currentSessionKept=true}`다. 이미 발급된 토큰과 초대만 폐기한다. 게임 서버가 쥔 계정 접속 임대는 지우지 않으므로 지금 접속 중인 마을·던전 연결은 이어지고, 폐기된 토큰의 갱신, 재접속, 새 입장 토큰 발급부터 거절된다. 0010의 아이디·비밀번호 로그인은 막지 않으므로 같은 아이디와 비밀번호로 새 토큰을 받을 수 있다. 로그인 차단은 제재(P1)다.
+
+**캐릭터 이름으로 계정 검색.** `POST /admin/v1/accounts/search`에 `{characterName:"홍길동", includeDeletedCharacters:false}`를 보낸다. 기존 `{query}`와 `characterName` 중 정확히 하나만 지정한다. 이름은 생성 때와 같은 `CharacterNameRules`를 사용해 앞뒤 공백 제거, NFKC 정규화, 2~12자 완성형 한글/영문/숫자 검사, 소문자 `name_key` 정확 비교를 수행한다. 부분/접두 검색은 지원하지 않는다. 삭제 캐릭터는 기본 제외하며 `includeDeletedCharacters:true`로 포함한다. 응답 `includeDeletedCharacters`는 이름 검색에 적용한 정책(UUID/초대 검색은 false), 항목 `matchedBy=CharacterName`과 `matchedId`는 매칭된 캐릭터 ID, `matchedCharacterDeleted`는 `false`=활성, `true`=삭제, `null`=캐릭터 이외 매칭이다. GET 검색은 기존 UUID 계약을 유지한다. 형식 오류는 원문을 포함하지 않는 400 `INVALID_REQUEST`다. API 요청 로그는 기존 경로 템플릿만 기록하며 검색 원문을 로그/감사/시계열 label에 넣지 않는다. CLI는 `accounts search --character-name <이름> [--include-deleted]`이며 기존 `accounts search <UUID|초대 코드>`도 유지한다.
 
 **로그 조회.** 로그 조회는 읽기 전용 스냅샷이다. 원장, 아이템 이력, 세션 이벤트, 작업 조회는 계정 데이터가 실리는 민감 조회라 `reason` 조회 문자열(최대 500자)이 필수이고, 데이터를 읽기 전에 감사 행(`admin.ledger.view`, `admin.item.history.view`, `admin.session.events.view`, `admin.operation.view`)을 자체 트랜잭션으로 커밋한다. 대상이 없어 404가 되는 조회도 시도로 감사하고, 원장은 페이지마다 한 행이다. 감사 로그 조회는 감사하지 않는다. 시각 조건은 UTC 유닉스 ms이며 `fromUnixMs` 포함, `toUnixMs` 제외다. 목록은 keyset `cursor`(응답의 `nextCursor`)와 `limit`(기본 100, 최대 500)로 넘긴다. 원장은 `accountId` 또는 `sourceType`+`sourceId`가 없으면 400(전체 스캔 방지)이고 `characterId`, `assetKind`, `assetId`, `reasonCode`(원장 사유 숫자, `reason`은 감사 사유)로 좁힌다. 필터 전체의 사유·자산별 합계(`totals`)는 cursor 없이 부른 첫 페이지에만 있고 다음 페이지는 null이다. 감사 로그는 `adminId`, `targetKind`(+`targetId`), 기간으로 거른다. 요청 IP는 HMAC 해시의 앞부분만 보인다.
 
@@ -397,3 +399,36 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 `Shinshi.Api/Observability`. 배포는 `Logging__Console__FormatterName=shinshi-json`으로 공통 JSON 한 줄 로그(`deploy/LOGGING.md`)를 켜고 `Observability__InstanceId`, `Observability__BuildId`, `Observability__ContentVersion`을 넣는다(없으면 null). `RequestLoggingMiddleware`가 전달 헤더 처리 바로 뒤, 라우팅과 인증보다 앞에서 요청마다 `api.request.completed`(경로 템플릿, 메서드, 상태, 소요 ms, 경로의 GUID sessionId)를 남기고 `ApiMetrics`(Meter `Shinshi.Api`, 히스토그램 `api_request_duration_ms`)에 넣는다. `MetricsReporterService`가 60초마다 `api.metrics`(`data.metrics`: 직전 60초 p50/p95/p99, 표본 수, DB 연결이 있으면 미전달 outbox 수 `settlement_outbox_pending`)를 남긴다. 프레임워크 로그는 값 대신 메시지 틀만, 예외는 형식 이름만 남긴다.
 
 **CLI.** `shinshi-admin auctions list [--state Open|Closing]`, `shinshi-admin service-state allow-build add|remove <buildId> --reason <사유>`(현재 목록과 revision을 읽어 하나만 바꾼 목록을 그 revision으로 저장, 이미 있거나 없으면 저장 안 함, 64개 상한, 그 사이 다른 저장이면 409 `INVALID_STATE`로 거절되고 자동 재시도하지 않음).
+## API 생존과 준비 상태 확인 (OP-2)
+
+| 엔드포인트 | 의미 | 응답 |
+|---|---|---|
+| `GET /health/live` | 프로세스 생존. DB 연결이나 쿼리를 수행하지 않음 | 항상 200 `{"status":"ok"}` |
+| `GET /health/ready` | DB 연결과 `SELECT 1`을 요청 전체 2초 제한으로 확인 | 성공 200 `{"status":"ok"}`, 실패/시간초과/DB 설정 누락 503 `{"status":"unavailable"}` |
+
+두 경로는 인증이 필요 없고 `Cache-Control: no-store`를 사용한다. 프로브 내부 오류는 본문이나 로그로 직렬화하지 않으며 기존 요청 완료 로그의 HTTP 503 상태로 실패를 관측한다. 점검 모드는 DB 준비 상태와 별개다. 연결 문자열 없는 공개 상태 전용 호스트도 live는 성공하고 ready는 503이다.
+
+API Dockerfile의 `HEALTHCHECK`는 `/health/live`를 쓴다([deploy/api/Dockerfile](../deploy/api/Dockerfile)). 컨테이너 상태를 DB에 묶으면 unhealthy 재시작 도구가 DB 장애 때 멀쩡한 API를 계속 재시작해 진행 중 요청·정산만 끊기 때문이다. DB 준비 상태는 Prometheus blackbox가 바깥에서 `/health/ready`를 확인해 `ShinshiApiNotReady` 경보로 잡는다([모니터링](../deploy/monitoring/README.md)). 오케스트레이터를 쓰면 liveness는 `/health/live`, readiness는 `/health/ready`로 나눈다.
+
+## API Prometheus 지표 (OP-16)
+
+`GET /metrics`는 Prometheus text exposition `text/plain; version=0.0.4; charset=utf-8`을 제공한다. 외부 패키지를 추가하지 않았다. `Metrics:Enabled` 기본값은 `true`이며 `false`이면 404다. `Metrics:AllowedNetworks`는 CIDR/단일 IP 목록으로 비어 있으면 IPv4/IPv6 루프백만 허용하고 범위 밖은 404다. 환경에서는 `Metrics__Enabled`, `Metrics__AllowedNetworks__0` 등을 사용한다.
+
+허용 여부는 기존 `ForwardedHeaders:KnownProxies` 처리 뒤 `RemoteIpAddress`로 판정한다. 어드민과 같은 원칙으로 신뢰 프록시가 허용 네트워크 안에 있으면 시작을 실패시킨다. 신뢰 프록시가 없는 호스트에 `X-Forwarded-For` 또는 `Forwarded`가 붙은 요청은 404다. 프록시 누락/헤더 위조로 허용 프록시 주소가 원격 사용자 주소처럼 판정되지 않게 운영자/수집기 네트워크를 별도로 명시한다.
+
+| 최종 지표 | 종류/단위 | 의미 |
+|---|---|---|
+| `shinshi_api_http_requests_total{route,status_class}` | counter, 요청 수 | 완료 요청 누적. 4xx/5xx로 거절/오류를 구분 |
+| `shinshi_api_http_request_duration_seconds{route,status_class}` | histogram, 초 | 완료 요청 누적 지연 분포. `_bucket{le}`, `_sum`, `_count` 제공 |
+| `shinshi_api_settlement_outbox_pending` | gauge, 행 수 | 미전달 outbox 수. 기존 로그와 같은 `delivered_at IS NULL` 전체 행 집계 |
+| `shinshi_api_reconciliation_last_run_timestamp_seconds` | gauge, Unix 초 | 공동 DB 마지막 완료 대사의 `finished_at` |
+| `shinshi_api_reconciliation_last_mismatch_count` | gauge, 건 수 | 위 완료 대사의 불일치 수 |
+| `api_request_duration_ms` | histogram, ms | 기존 `deploy/LOGGING.md` 규약 별칭. 같은 표본을 밀리초로 제공 |
+| `api_request_duration_p50_ms`, `api_request_duration_p95_ms`, `api_request_duration_p99_ms` | gauge, ms | 기존 규약의 직전 60초 분위수. 표본 없으면 `NaN` |
+| `api_request_sample_count` | gauge, 건 수 | 직전 60초 분위수 표본 수 |
+| `settlement_outbox_pending` | gauge, 행 수 | 기존 규약 별칭. `shinshi_api_settlement_outbox_pending`과 같은 값 |
+
+요청 지표는 경로 템플릿과 상태 분류만 label로 쓰며, 원문 URL/이름/UUID를 넣지 않는다. counter와 histogram은 프로세스 재시작 때 초기화되므로 Prometheus `rate`/`increase`의 reset 처리를 사용한다. 전체 지연 분위수는 histogram 버킷을 합친 뒤 계산하고 인스턴스별 p95를 평균하지 않는다. 기존 60초 `api.metrics` 로그도 유지한다.
+
+DB 지표는 scrape 때 연결 대기를 포함한 2초 제한으로 조회한다. DB 미설정/연결 실패/시간초과는 측정 실패를 0으로 오인하지 않도록 `NaN`을 제공한다. 완료 대사가 한 번도 없으면 대사 timestamp는 `0`, 불일치 수는 `NaN`이다. 대사를 선점하지 않은 API 인스턴스도 공동 DB의 마지막 완료 결과를 제공한다. outbox와 대사 게이지는 복제본 사이에 같은 DB 값을 관측하므로 합산하지 않고 max 등으로 집계한다. 진행 중/실패한 대사는 마지막 완료 값을 덮어쓰지 않아 timestamp의 노후화로 확인할 수 있다. 불일치 경보는 `shinshi_api_reconciliation_last_mismatch_count > 0`, 대사 미실행/노후화는 `time() - shinshi_api_reconciliation_last_run_timestamp_seconds`로 판단한다. 조회 실패로 `NaN`인 경우도 운영 경보에서 별도로 다룬다.
+

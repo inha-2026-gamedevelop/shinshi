@@ -27,11 +27,11 @@ namespace Shinshi.Data.Admin
         public const int RECENT_SESSION_LIMIT = 20;
         public const int INVITE_LIMIT         = 50;
 
-        // 한 UUID가 계정 하나와 캐릭터 하나에 동시에 맞을 수는 있지만 그 이상은 없다. 초대 해시는 유일하다
+        // 한 UUID는 계정 하나와 캐릭터 하나에 동시에 맞을 수 있다. 초대 해시와 캐릭터 name_key는 각각 유일하다
         private const string SEARCH_SQL =
             """
             SELECT hit.account_id AS "AccountId", hit.matched_by AS "MatchedBy", hit.matched_id AS "MatchedId",
-                account.created_at AS "CreatedAt",
+                hit.matched_character_deleted AS "MatchedCharacterDeleted", account.created_at AS "CreatedAt",
                 (SELECT count(*) FROM characters AS c WHERE c.account_id = hit.account_id
                     AND c.deleted_at IS NULL)::integer AS "CharacterCount",
                 EXISTS (SELECT 1 FROM account_leases AS lease WHERE lease.account_id = hit.account_id
@@ -59,10 +59,11 @@ namespace Shinshi.Data.Admin
             return SearchAsync(
                 """
                 WITH hits AS (
-                    SELECT account_id, CAST(@MatchAccount AS text) AS matched_by, account_id AS matched_id
+                    SELECT account_id, CAST(@MatchAccount AS text) AS matched_by, account_id AS matched_id,
+                        NULL::boolean AS matched_character_deleted
                     FROM accounts WHERE account_id = @Id
                     UNION ALL
-                    SELECT account_id, CAST(@MatchCharacter AS text), character_id
+                    SELECT account_id, CAST(@MatchCharacter AS text), character_id, false
                     FROM characters WHERE character_id = @Id AND deleted_at IS NULL)
                 """, new
                 {
@@ -80,9 +81,29 @@ namespace Shinshi.Data.Admin
             return SearchAsync(
                 """
                 WITH hits AS (
-                    SELECT account_id, CAST(@MatchInvite AS text) AS matched_by, invite_id AS matched_id
+                    SELECT account_id, CAST(@MatchInvite AS text) AS matched_by, invite_id AS matched_id,
+                        NULL::boolean AS matched_character_deleted
                     FROM auth_invites WHERE code_hash = @Hash)
                 """, new { Hash = codeHash, MatchInvite = AdminAccountQuery.MATCH_INVITE_CODE }, cancellationToken);
+        }
+
+        /// <summary> 생성과 같은 규칙으로 정규화한 name_key를 정확 검색한다. 0010 유일 인덱스는 삭제된 캐릭터도 포함한다 </summary>
+        public Task<IReadOnlyList<AdminAccountSummary>> SearchByCharacterNameKeyAsync(string nameKey,
+            bool includeDeletedCharacters, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(nameKey);
+            return SearchAsync(
+                """
+                WITH hits AS (
+                    SELECT account_id, CAST(@MatchName AS text) AS matched_by, character_id AS matched_id,
+                        deleted_at IS NOT NULL AS matched_character_deleted
+                    FROM characters WHERE name_key = @NameKey AND (@IncludeDeleted OR deleted_at IS NULL))
+                """, new
+                {
+                    NameKey        = nameKey,
+                    IncludeDeleted = includeDeletedCharacters,
+                    MatchName      = AdminAccountQuery.MATCH_CHARACTER_NAME
+                }, cancellationToken);
         }
 
         public async Task<bool> ExistsAsync(Guid accountId, CancellationToken cancellationToken = default)
@@ -236,7 +257,8 @@ namespace Shinshi.Data.Admin
             IEnumerable<SummaryRow> rows = await connection.QueryAsync<SummaryRow>(new CommandDefinition(
                 hitsSql + "\n" + SEARCH_SQL, parameters, cancellationToken: cancellationToken));
             return rows.Select(row => new AdminAccountSummary(row.AccountId.ToString("D"), row.MatchedBy,
-                row.MatchedId.ToString("D"), ToUnixMs(row.CreatedAt), row.CharacterCount, row.Online)).ToList();
+                row.MatchedId.ToString("D"), ToUnixMs(row.CreatedAt), row.CharacterCount, row.Online,
+                row.MatchedCharacterDeleted)).ToList();
         }
 
         private static Task<T?> QuerySingleOrDefaultAsync<T>(NpgsqlConnection connection, NpgsqlTransaction transaction,
@@ -275,6 +297,7 @@ namespace Shinshi.Data.Admin
             public DateTime CreatedAt { get; set; }
             public int CharacterCount { get; set; }
             public bool Online { get; set; }
+            public bool? MatchedCharacterDeleted { get; set; }
         }
 
         private sealed class AccountRow

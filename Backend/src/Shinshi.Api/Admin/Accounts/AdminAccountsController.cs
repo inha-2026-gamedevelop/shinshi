@@ -18,7 +18,7 @@ using Shinshi.Data.Auth;
 
 namespace Shinshi.Backend.Admin
 {
-    /// <summary> 계정 검색, 상세 조회(Viewer, 상세는 감사)와 강제 종료(Operator). 초대 코드 원문은 HMAC으로 바꾼 뒤 버리고
+    /// <summary> 계정 검색, 상세 조회(Viewer, 상세는 감사)와 강제 종료(Operator). 검색 이름과 초대 코드 원문은
     /// 로그, 감사, 응답에 남기지 않는다 </summary>
     public sealed class AdminAccountsController : AdminControllerBase
     {
@@ -64,13 +64,27 @@ namespace Shinshi.Backend.Admin
             return Ok(new AdminAccountSearchResponse(found.ToArray()));
         }
 
-        /// <summary> UUID면 계정 ID와 캐릭터 ID로, 그 밖은 초대 코드 원문으로 찾는다. 이 키로 만든 형식이 아닌 코드는 DB를 보지 않고 빈 목록이다 </summary>
+        /// <summary> query는 UUID 또는 초대 코드, characterName은 생성과 같은 정규화 키로 정확 검색한다.
+        /// 이름 검색은 기본으로 삭제된 캐릭터를 제외하고 includeDeletedCharacters로 포함할 수 있다 </summary>
         [HttpPost(AdminApiRoutes.ACCOUNTS_SEARCH)]
         public async Task<ActionResult<AdminAccountSearchResponse>> SearchByBody(
             [FromBody] AdminAccountSearchRequest? request, CancellationToken cancellationToken)
         {
+            if (request?.CharacterName != null)
+            {
+                if ((request.Query != null)
+                    || (!CharacterNameRules.TryNormalize(request.CharacterName, out _, out string nameKey)))
+                {
+                    return Reject(StatusCodes.Status400BadRequest, AdminContractCodes.RejectReason.INVALID_REQUEST);
+                }
+
+                IReadOnlyList<AdminAccountSummary> byName = await _accounts.SearchByCharacterNameKeyAsync(nameKey,
+                    request.IncludeDeletedCharacters, cancellationToken);
+                return Ok(new AdminAccountSearchResponse(byName.ToArray(), request.IncludeDeletedCharacters));
+            }
+
             string trimmed = request?.Query?.Trim() ?? string.Empty;
-            if (trimmed.Length == 0)
+            if ((trimmed.Length == 0) || (request?.IncludeDeletedCharacters == true))
             {
                 return Reject(StatusCodes.Status400BadRequest, AdminContractCodes.RejectReason.INVALID_REQUEST);
             }

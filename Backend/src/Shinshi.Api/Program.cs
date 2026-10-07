@@ -12,6 +12,7 @@ using Npgsql;
 // Project
 using Shinshi.Backend.Admin;
 using Shinshi.Backend.Growth;
+using Shinshi.Backend.Health;
 using Shinshi.Backend.Life;
 using Shinshi.Backend.Observability;
 using Shinshi.Backend.Sessions;
@@ -56,6 +57,7 @@ namespace Shinshi.Backend
             }
 
             builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+            builder.Services.AddSingleton<IReadinessProbe, PostgresReadinessProbe>();
             builder.Services.Configure<ServiceStateOptions>(
                 builder.Configuration.GetSection(ServiceStateOptions.SECTION_NAME));
             builder.Services.AddSingleton<BackendUnavailableExceptionFilter>();
