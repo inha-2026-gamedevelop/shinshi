@@ -14,7 +14,7 @@ namespace Shinshi.Dev
 {
     /// <summary>
     /// Dev_SortiePrep 씬에서 출정 준비 화면을 가짜 파티로 시험한다.
-    /// 선택을 바꾸면 준비가 풀리고, 방장은 전원이 준비하면 3초 카운트다운 뒤 시작한다. 키 L은 방장/참가자 전환
+    /// 난이도를 바꾸면 준비가 풀리고, 방장은 전원이 준비하면 3초 카운트다운 뒤 시작한다. 키 L은 방장/참가자 전환
     /// </summary>
     public sealed class SortiePrepDemo : MonoBehaviour
     {
@@ -24,23 +24,21 @@ namespace Shinshi.Dev
 
         private const int    COUNTDOWN_SECONDS = 3;
         private const float  COUNTDOWN_STEP    = 1f;
-        private const int    TICKET_HAVE       = 2;
-        private const int    TICKET_NEED       = 1;
-        private const int    SMALL_STOCK       = 12;
-        private const int    LARGE_STOCK       = 4;
-        private const int    SMALL_CARRY       = 6;
-        private const int    LARGE_CARRY       = 2;
-        private const string WAVE_REGION       = "숲 토벌 (6웨이브)";
-        private const string BOSS_REGION       = "월백 결계";
+        private const string DUNGEON_NAME      = "월백 결계";
+        private const string DUNGEON_SUMMARY   = "보스 토벌 · 최대 4인";
+        private const int    LEADER_LEVEL      = 32;
+        private const int    LEADER_POWER      = 15820;
+        private const int    READY_LEVEL       = 30;
+        private const int    READY_POWER       = 14260;
+        private const int    GUEST_LEVEL       = 28;
+        private const int    GUEST_POWER       = 12940;
 
-        [SerializeField] private SortiePrepView _view = null;
+        [SerializeField] private SortiePrepView _view       = null;
+        [SerializeField] private Sprite         _dungeonArt = null;
 
-        private ESortieMode     _mode          = ESortieMode.Boss;
         private EBossDifficulty _difficulty    = EBossDifficulty.Easy;
         private bool            _isLeader      = true;
         private bool            _isReady       = false;
-        private int             _small         = SMALL_CARRY;
-        private int             _large         = LARGE_CARRY;
         private Coroutine       _countdown     = null;
         private WaitForSeconds  _waitCountdown = null;
 
@@ -54,9 +52,7 @@ namespace Shinshi.Dev
 
         private void OnEnable()
         {
-            _view.ModeChanged       += OnModeChanged;
             _view.DifficultyChanged += OnDifficultyChanged;
-            _view.PotionChanged     += OnPotionChanged;
             _view.ReadyClicked      += OnReadyClicked;
             _view.StartClicked      += OnStartClicked;
             _view.LeaveClicked      += OnLeaveClicked;
@@ -64,9 +60,7 @@ namespace Shinshi.Dev
 
         private void OnDisable()
         {
-            _view.ModeChanged       -= OnModeChanged;
             _view.DifficultyChanged -= OnDifficultyChanged;
-            _view.PotionChanged     -= OnPotionChanged;
             _view.ReadyClicked      -= OnReadyClicked;
             _view.StartClicked      -= OnStartClicked;
             _view.LeaveClicked      -= OnLeaveClicked;
@@ -74,8 +68,7 @@ namespace Shinshi.Dev
 
         private void Start()
         {
-            _view.SetEquipment(BuildEquipment());
-            _view.SetTalismans(BuildTalismans());
+            _view.SetDungeon(DUNGEON_NAME, DUNGEON_SUMMARY, _dungeonArt);
             Refresh();
         }
 
@@ -92,29 +85,9 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        private void OnModeChanged(ESortieMode mode)
-        {
-            _mode = mode;
-            ClearReady();
-        }
-
         private void OnDifficultyChanged(EBossDifficulty difficulty)
         {
             _difficulty = difficulty;
-            ClearReady();
-        }
-
-        private void OnPotionChanged(EPotionSize size, int carry)
-        {
-            if (size == EPotionSize.Small)
-            {
-                _small = carry;
-            }
-            else
-            {
-                _large = carry;
-            }
-
             ClearReady();
         }
 
@@ -164,13 +137,7 @@ namespace Shinshi.Dev
 
         private void Refresh()
         {
-            bool boss = (_mode == ESortieMode.Boss);
-            _view.SetMode(_mode);
-            _view.SetRegion(boss ? BOSS_REGION : WAVE_REGION);
             _view.SetDifficulty(_difficulty);
-            _view.SetTicket(TICKET_HAVE, boss ? TICKET_NEED : 0);
-            _view.SetPotion(EPotionSize.Small, _small, SMALL_STOCK);
-            _view.SetPotion(EPotionSize.Large, _large, LARGE_STOCK);
             _view.SetCountdown(0);
 
             BuildMembers();
@@ -181,57 +148,30 @@ namespace Shinshi.Dev
 
             for (int i = 0; i < _members.Count; ++i)
             {
-                if (!_members[i].IsLeader && !_members[i].IsReady)
+                if (!_members[i].IsEmpty && !_members[i].IsLeader && !_members[i].IsReady)
                 {
                     allReady = false;
                 }
             }
 
-            _view.SetStartEnabled(allReady && (!boss || (TICKET_HAVE >= TICKET_NEED)));
+            _view.SetStartEnabled(allReady);
             _view.SetNotice(allReady ? ERejectReason.None : ERejectReason.NotAllReady);
         }
 
         private void BuildMembers()
         {
             _members.Clear();
-            _members.Add(Member("진욱", EPlayerClass.Warrior, true, true));
-            _members.Add(Member("민성", EPlayerClass.Sorcerer, false, true));
-            _members.Add(Member("기웅", EPlayerClass.Summoner, false, _isReady));
-            _members.Add(Member("서연", EPlayerClass.Warrior, false, false));
+            _members.Add(Member("진욱", EPlayerClass.Warrior, true, true, LEADER_LEVEL, LEADER_POWER));
+            _members.Add(Member("민성", EPlayerClass.Sorcerer, false, true, READY_LEVEL, READY_POWER));
+            _members.Add(Member("기웅", EPlayerClass.Summoner, false, _isReady, GUEST_LEVEL, GUEST_POWER));
+            // 네 번째 자리는 빈 자리 표시를 보려고 비워 둔다
+            _members.Add(default(SortieMemberData));
         }
 
-        private static SortieMemberData Member(string name, EPlayerClass playerClass, bool leader, bool ready)
+        private static SortieMemberData Member(string name, EPlayerClass playerClass, bool leader, bool ready,
+            int level, int combatPower)
         {
-            return new SortieMemberData(name, playerClass, leader, ready, true, true);
-        }
-
-        private static List<ItemSlotData> BuildEquipment()
-        {
-            return new List<ItemSlotData>
-            {
-                Item("equip_weapon_epic", EItemGrade.Epic, "무기(영웅)"),
-                Item("equip_head_rare", EItemGrade.Rare, "머리(희귀)"),
-                Item("equip_body_epic", EItemGrade.Epic, "몸(영웅)"),
-                Item("equip_hands_rare", EItemGrade.Rare, "손(희귀)"),
-                Item("equip_feet_common", EItemGrade.Common, "발(일반)"),
-                Item("equip_accessory_legendary", EItemGrade.Legendary, "장신구(전설)")
-            };
-        }
-
-        private static List<ItemSlotData> BuildTalismans()
-        {
-            return new List<ItemSlotData>
-            {
-                Item("talisman_kind_00", EItemGrade.Rare, "쿨다운 감소"),
-                Item("talisman_kind_08", EItemGrade.Rare, "피해 증가"),
-                Item("talisman_kind_14", EItemGrade.Epic, "후속 타격"),
-                Item("talisman_kind_16", EItemGrade.Epic, "관통 돌진")
-            };
-        }
-
-        private static ItemSlotData Item(string id, EItemGrade grade, string title)
-        {
-            return new ItemSlotData(id, grade, 1, title, string.Empty);
+            return new SortieMemberData(name, playerClass, leader, ready, true, true, level, combatPower);
         }
     }
 }

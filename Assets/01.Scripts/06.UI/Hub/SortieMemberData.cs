@@ -16,6 +16,8 @@ namespace Shinshi.UI
         private readonly bool         _isReady;
         private readonly bool         _isConnected;
         private readonly bool         _meetsRequirements;
+        private readonly int          _level;
+        private readonly int          _combatPower;
 
         /****************************************
         *              Properties
@@ -28,6 +30,10 @@ namespace Shinshi.UI
         public bool         IsConnected => _isConnected;
         public bool         IsEmpty     => string.IsNullOrEmpty(_name);
 
+        // 0이면 아직 받지 못한 값이다
+        public int Level       => _level;
+        public int CombatPower => _combatPower;
+
         // 해금, 입장권, 지참 물약 조건을 모두 갖췄는지
         public bool MeetsRequirements => _meetsRequirements;
 
@@ -36,7 +42,7 @@ namespace Shinshi.UI
         ****************************************/
 
         public SortieMemberData(string name, EPlayerClass playerClass, bool isLeader, bool isReady,
-            bool isConnected, bool meetsRequirements)
+            bool isConnected, bool meetsRequirements, int level, int combatPower)
         {
             _name              = name;
             _playerClass       = playerClass;
@@ -44,6 +50,8 @@ namespace Shinshi.UI
             _isReady           = isReady;
             _isConnected       = isConnected;
             _meetsRequirements = meetsRequirements;
+            _level             = level;
+            _combatPower       = combatPower;
         }
     }
 }

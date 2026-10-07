@@ -1,0 +1,2845 @@
+{
+  "format": "gemeum-ui-layout",
+  "version": 2,
+  "exportedAt": "2026-10-06T17:47:31.000Z",
+  "layoutName": "출정 준비",
+  "layoutDescription": "출정 준비 창. 던전 그림(이름·난이도 포함)과 파티원 리스트만 둔다",
+  "conventions": {
+    "purpose": "Unity UI(uGUI) 배치 참고 자료. 각 노드를 같은 이름의 GameObject + RectTransform으로 만들고, 아래 값으로 위치·크기를 맞춘다.",
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "canvasScaler": "Scale With Screen Size, Reference Resolution 1920x1080",
+    "units": "모든 길이는 기준 해상도의 px",
+    "hierarchy": "children 배열 = Hierarchy 자식. 배열 순서대로 형제 순서를 둔다(뒤에 있을수록 위에 그려진다)",
+    "topLevel": "최상위 노드는 anchorMin = anchorMax = pivot = anchor 프리셋 값. anchoredPosition은 Unity 좌표(위쪽이 +y)",
+    "children": "자식 노드는 부모 RectTransform의 왼쪽 위에 붙인다: anchorMin = anchorMax = pivot = (0, 1), anchoredPosition = (x, -y)",
+    "screenRect": "검산용. 화면 왼쪽 위 기준 [x, y, w, h], y는 아래로 증가",
+    "types": {
+      "box": "사각 Image",
+      "circle": "원형 Image(원 스프라이트 또는 Mask)",
+      "group": "그래픽이 없는 빈 RectTransform 컨테이너"
+    },
+    "reference": "reference가 true인 노드는 HUD가 아닌 참고 영역이다. 만들지 않는다",
+    "description": "요소의 역할과 상태 변화 설명. 실제 그래픽·텍스트를 만들 때 따른다"
+  },
+  "root": [
+    {
+      "id": "sp-window",
+      "name": "SortiePrep",
+      "type": "group",
+      "description": "출정 준비 창. 화면 가운데",
+      "anchor": "MiddleCenter",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        -12,
+        -12
+      ],
+      "sizeDelta": [
+        560,
+        614
+      ],
+      "screenRect": [
+        668,
+        245,
+        560,
+        614
+      ],
+      "path": "SortiePrep",
+      "children": [
+        {
+          "id": "sp-window-bg",
+          "name": "WindowBg",
+          "type": "box",
+          "description": "창 바탕과 테두리",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            560,
+            614
+          ],
+          "screenRect": [
+            668,
+            245,
+            560,
+            614
+          ],
+          "path": "SortiePrep/WindowBg"
+        },
+        {
+          "id": "sp-dungeon",
+          "name": "Dungeon",
+          "type": "group",
+          "description": "고른 던전 소개. 이름, 설명, 난이도를 그림 위에 얹는다. 이 창에서 던전을 바꾸지 않는다",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            560,
+            232
+          ],
+          "screenRect": [
+            668,
+            245,
+            560,
+            232
+          ],
+          "path": "SortiePrep/Dungeon",
+          "children": [
+            {
+              "id": "sp-dungeon-art",
+              "name": "DungeonArt",
+              "type": "box",
+              "description": "던전 원화. 그림이 없으면 끄고 ArtPlaceholder를 켠다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                560,
+                232
+              ],
+              "screenRect": [
+                668,
+                245,
+                560,
+                232
+              ],
+              "path": "SortiePrep/Dungeon/DungeonArt"
+            },
+            {
+              "id": "sp-dungeon-ph",
+              "name": "ArtPlaceholder",
+              "type": "box",
+              "description": "\"던전 그림\" 자리표시",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                160,
+                -76
+              ],
+              "sizeDelta": [
+                240,
+                40
+              ],
+              "screenRect": [
+                828,
+                321,
+                240,
+                40
+              ],
+              "path": "SortiePrep/Dungeon/ArtPlaceholder"
+            },
+            {
+              "id": "sp-dungeon-fog",
+              "name": "HardFog",
+              "type": "group",
+              "description": "어려움일 때만 켠다. 보라 안개 덩이가 일렁이고 작은 빛 알갱이가 피어오른다. 그림 밖으로 넘치지 않게 잘라 낸다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                560,
+                232
+              ],
+              "screenRect": [
+                668,
+                245,
+                560,
+                232
+              ],
+              "path": "SortiePrep/Dungeon/HardFog",
+              "children": [
+                {
+                  "id": "sp-fog0",
+                  "name": "Fog0",
+                  "type": "box",
+                  "description": "보라 안개 덩이. 천천히 떠다니며 밝아졌다 흐려진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    -80,
+                    -30
+                  ],
+                  "sizeDelta": [
+                    400,
+                    200
+                  ],
+                  "screenRect": [
+                    588,
+                    275,
+                    400,
+                    200
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Fog0"
+                },
+                {
+                  "id": "sp-fog1",
+                  "name": "Fog1",
+                  "type": "box",
+                  "description": "보라 안개 덩이. 천천히 떠다니며 밝아졌다 흐려진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    240,
+                    30
+                  ],
+                  "sizeDelta": [
+                    420,
+                    220
+                  ],
+                  "screenRect": [
+                    908,
+                    215,
+                    420,
+                    220
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Fog1"
+                },
+                {
+                  "id": "sp-fog2",
+                  "name": "Fog2",
+                  "type": "box",
+                  "description": "보라 안개 덩이. 천천히 떠다니며 밝아졌다 흐려진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    40,
+                    -100
+                  ],
+                  "sizeDelta": [
+                    460,
+                    180
+                  ],
+                  "screenRect": [
+                    708,
+                    345,
+                    460,
+                    180
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Fog2"
+                },
+                {
+                  "id": "sp-fog3",
+                  "name": "Fog3",
+                  "type": "box",
+                  "description": "보라 안개 덩이. 천천히 떠다니며 밝아졌다 흐려진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    330,
+                    -90
+                  ],
+                  "sizeDelta": [
+                    340,
+                    200
+                  ],
+                  "screenRect": [
+                    998,
+                    335,
+                    340,
+                    200
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Fog3"
+                },
+                {
+                  "id": "sp-mote0",
+                  "name": "Mote0",
+                  "type": "box",
+                  "description": "보라 빛 알갱이. 아래에서 위로 피어오르며 사라진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    60,
+                    -206
+                  ],
+                  "sizeDelta": [
+                    12,
+                    12
+                  ],
+                  "screenRect": [
+                    728,
+                    451,
+                    12,
+                    12
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Mote0"
+                },
+                {
+                  "id": "sp-mote1",
+                  "name": "Mote1",
+                  "type": "box",
+                  "description": "보라 빛 알갱이. 아래에서 위로 피어오르며 사라진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    150,
+                    -214
+                  ],
+                  "sizeDelta": [
+                    12,
+                    12
+                  ],
+                  "screenRect": [
+                    818,
+                    459,
+                    12,
+                    12
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Mote1"
+                },
+                {
+                  "id": "sp-mote2",
+                  "name": "Mote2",
+                  "type": "box",
+                  "description": "보라 빛 알갱이. 아래에서 위로 피어오르며 사라진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    245,
+                    -200
+                  ],
+                  "sizeDelta": [
+                    12,
+                    12
+                  ],
+                  "screenRect": [
+                    913,
+                    445,
+                    12,
+                    12
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Mote2"
+                },
+                {
+                  "id": "sp-mote3",
+                  "name": "Mote3",
+                  "type": "box",
+                  "description": "보라 빛 알갱이. 아래에서 위로 피어오르며 사라진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    330,
+                    -210
+                  ],
+                  "sizeDelta": [
+                    12,
+                    12
+                  ],
+                  "screenRect": [
+                    998,
+                    455,
+                    12,
+                    12
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Mote3"
+                },
+                {
+                  "id": "sp-mote4",
+                  "name": "Mote4",
+                  "type": "box",
+                  "description": "보라 빛 알갱이. 아래에서 위로 피어오르며 사라진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    420,
+                    -204
+                  ],
+                  "sizeDelta": [
+                    12,
+                    12
+                  ],
+                  "screenRect": [
+                    1088,
+                    449,
+                    12,
+                    12
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Mote4"
+                },
+                {
+                  "id": "sp-mote5",
+                  "name": "Mote5",
+                  "type": "box",
+                  "description": "보라 빛 알갱이. 아래에서 위로 피어오르며 사라진다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    500,
+                    -214
+                  ],
+                  "sizeDelta": [
+                    12,
+                    12
+                  ],
+                  "screenRect": [
+                    1168,
+                    459,
+                    12,
+                    12
+                  ],
+                  "path": "SortiePrep/Dungeon/HardFog/Mote5"
+                }
+              ]
+            },
+            {
+              "id": "sp-dungeon-band",
+              "name": "InfoBand",
+              "type": "box",
+              "description": "이름이 읽히도록 그림 아래쪽을 어둡게 하는 세로 그라데이션(아래가 진함)",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -132
+              ],
+              "sizeDelta": [
+                560,
+                100
+              ],
+              "screenRect": [
+                668,
+                377,
+                560,
+                100
+              ],
+              "path": "SortiePrep/Dungeon/InfoBand"
+            },
+            {
+              "id": "sp-dungeon-name",
+              "name": "DungeonName",
+              "type": "box",
+              "description": "던전 이름(예: 월백 결계). 큰 글자",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                20,
+                -162
+              ],
+              "sizeDelta": [
+                320,
+                34
+              ],
+              "screenRect": [
+                688,
+                407,
+                320,
+                34
+              ],
+              "path": "SortiePrep/Dungeon/DungeonName"
+            },
+            {
+              "id": "sp-dungeon-summary",
+              "name": "DungeonSummary",
+              "type": "box",
+              "description": "한 줄 설명(예: 보스 토벌 · 최대 4인)",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                20,
+                -198
+              ],
+              "sizeDelta": [
+                320,
+                20
+              ],
+              "screenRect": [
+                688,
+                443,
+                320,
+                20
+              ],
+              "path": "SortiePrep/Dungeon/DungeonSummary"
+            },
+            {
+              "id": "sp-diff",
+              "name": "Difficulty",
+              "type": "group",
+              "description": "난이도. 화살표로 넘기는 표시기. 끝에서 넘기면 반대쪽 끝으로 돈다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                370,
+                -160
+              ],
+              "sizeDelta": [
+                170,
+                60
+              ],
+              "screenRect": [
+                1038,
+                405,
+                170,
+                60
+              ],
+              "path": "SortiePrep/Dungeon/Difficulty",
+              "children": [
+                {
+                  "id": "sp-diff-prev",
+                  "name": "PrevButton",
+                  "type": "box",
+                  "description": "이전 난이도(왼쪽 화살표)",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    -6
+                  ],
+                  "sizeDelta": [
+                    28,
+                    28
+                  ],
+                  "screenRect": [
+                    1038,
+                    411,
+                    28,
+                    28
+                  ],
+                  "path": "SortiePrep/Dungeon/Difficulty/PrevButton"
+                },
+                {
+                  "id": "sp-diff-label",
+                  "name": "Label",
+                  "type": "box",
+                  "description": "난이도 이름. 쉬움 흰색, 어려움 보라",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    30,
+                    0
+                  ],
+                  "sizeDelta": [
+                    110,
+                    40
+                  ],
+                  "screenRect": [
+                    1068,
+                    405,
+                    110,
+                    40
+                  ],
+                  "path": "SortiePrep/Dungeon/Difficulty/Label"
+                },
+                {
+                  "id": "sp-diff-next",
+                  "name": "NextButton",
+                  "type": "box",
+                  "description": "다음 난이도(오른쪽 화살표)",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    142,
+                    -6
+                  ],
+                  "sizeDelta": [
+                    28,
+                    28
+                  ],
+                  "screenRect": [
+                    1180,
+                    411,
+                    28,
+                    28
+                  ],
+                  "path": "SortiePrep/Dungeon/Difficulty/NextButton"
+                },
+                {
+                  "id": "sp-diff-dot0",
+                  "name": "Dot0",
+                  "type": "circle",
+                  "description": "쉬움 표시 점. 고른 쪽만 밝다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    72,
+                    -44
+                  ],
+                  "sizeDelta": [
+                    8,
+                    8
+                  ],
+                  "screenRect": [
+                    1110,
+                    449,
+                    8,
+                    8
+                  ],
+                  "path": "SortiePrep/Dungeon/Difficulty/Dot0"
+                },
+                {
+                  "id": "sp-diff-dot1",
+                  "name": "Dot1",
+                  "type": "circle",
+                  "description": "어려움 표시 점. 고른 쪽만 밝다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    90,
+                    -44
+                  ],
+                  "sizeDelta": [
+                    8,
+                    8
+                  ],
+                  "screenRect": [
+                    1128,
+                    449,
+                    8,
+                    8
+                  ],
+                  "path": "SortiePrep/Dungeon/Difficulty/Dot1"
+                }
+              ]
+            },
+            {
+              "id": "emuwxqz75y3mz",
+              "name": "CloseButton",
+              "type": "box",
+              "description": "닫기(X). 나가기와 같은 동작",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                524,
+                -12
+              ],
+              "sizeDelta": [
+                24,
+                24
+              ],
+              "screenRect": [
+                1192,
+                257,
+                24,
+                24
+              ],
+              "path": "SortiePrep/Dungeon/CloseButton"
+            }
+          ]
+        },
+        {
+          "id": "sp-party",
+          "name": "Party",
+          "type": "group",
+          "description": "파티원 4명 세로 리스트",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            20,
+            -248
+          ],
+          "sizeDelta": [
+            520,
+            286
+          ],
+          "screenRect": [
+            688,
+            493,
+            520,
+            286
+          ],
+          "path": "SortiePrep/Party",
+          "children": [
+            {
+              "id": "sp-party-header",
+              "name": "Header",
+              "type": "box",
+              "description": "\"파티\" 소제목",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                120,
+                20
+              ],
+              "screenRect": [
+                688,
+                493,
+                120,
+                20
+              ],
+              "path": "SortiePrep/Party/Header"
+            },
+            {
+              "id": "sp-party-count",
+              "name": "ReadyCount",
+              "type": "box",
+              "description": "\"준비 2/3\". 방장을 뺀 파티원 기준, 오른쪽 정렬",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                400,
+                0
+              ],
+              "sizeDelta": [
+                120,
+                20
+              ],
+              "screenRect": [
+                1088,
+                493,
+                120,
+                20
+              ],
+              "path": "SortiePrep/Party/ReadyCount"
+            },
+            {
+              "id": "sp-member0",
+              "name": "Member0",
+              "type": "group",
+              "description": "파티 1번 행. 사람이 있으면 아래 요소를 켜고 없으면 EmptySlot만 켠다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -28
+              ],
+              "sizeDelta": [
+                520,
+                60
+              ],
+              "screenRect": [
+                688,
+                521,
+                520,
+                60
+              ],
+              "path": "SortiePrep/Party/Member0",
+              "children": [
+                {
+                  "id": "sp-member0-bg",
+                  "name": "RowBg",
+                  "type": "box",
+                  "description": "행 바탕",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    521,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member0/RowBg"
+                },
+                {
+                  "id": "sp-member0-ready",
+                  "name": "ReadyFx",
+                  "type": "group",
+                  "description": "준비 완료일 때만 켠다. 오른쪽이 진한 초록 그라데이션이 숨 쉬듯 밝아졌다 흐려지고, 그 위로 넓은 그라데이션 한 겹이 좌우로 천천히 흐른다. 행 밖으로 넘치지 않게 잘라 낸다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    521,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member0/ReadyFx",
+                  "children": [
+                    {
+                      "id": "sp-member0-ready-base",
+                      "name": "ReadyBase",
+                      "type": "box",
+                      "description": "왼쪽에서 오른쪽으로 진해지는 초록 그라데이션. 밝기가 천천히 오르내린다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        0,
+                        0
+                      ],
+                      "sizeDelta": [
+                        520,
+                        60
+                      ],
+                      "screenRect": [
+                        688,
+                        521,
+                        520,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member0/ReadyFx/ReadyBase"
+                    },
+                    {
+                      "id": "sp-member0-ready-sheen",
+                      "name": "Sheen",
+                      "type": "box",
+                      "description": "넓은 초록 그라데이션. 진한 끝이 늘 행 오른쪽 밖에 있도록 두고 좌우로 천천히 흐른다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        -120,
+                        0
+                      ],
+                      "sizeDelta": [
+                        640,
+                        60
+                      ],
+                      "screenRect": [
+                        568,
+                        521,
+                        640,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member0/ReadyFx/Sheen"
+                    }
+                  ]
+                },
+                {
+                  "id": "sp-member0-problem",
+                  "name": "ProblemTint",
+                  "type": "box",
+                  "description": "접속 끊김·조건 부족일 때만 켜는 옅은 빨강",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    521,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member0/ProblemTint"
+                },
+                {
+                  "id": "sp-member0-icon",
+                  "name": "ClassIcon",
+                  "type": "circle",
+                  "description": "직업 아이콘(무사/도술사/신령사). 두 줄 높이",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    12,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    44,
+                    44
+                  ],
+                  "screenRect": [
+                    700,
+                    529,
+                    44,
+                    44
+                  ],
+                  "path": "SortiePrep/Party/Member0/ClassIcon"
+                },
+                {
+                  "id": "sp-member0-name",
+                  "name": "Name",
+                  "type": "box",
+                  "description": "윗줄 \"직업 Lv.레벨 닉네임\". 직업은 회색, 레벨은 금색, 닉네임은 흰색",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    300,
+                    24
+                  ],
+                  "screenRect": [
+                    756,
+                    529,
+                    300,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member0/Name"
+                },
+                {
+                  "id": "sp-member0-power",
+                  "name": "Power",
+                  "type": "box",
+                  "description": "아랫줄 \"전투력 12,345\". 모르면 \"전투력 -\"",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -32
+                  ],
+                  "sizeDelta": [
+                    300,
+                    20
+                  ],
+                  "screenRect": [
+                    756,
+                    553,
+                    300,
+                    20
+                  ],
+                  "path": "SortiePrep/Party/Member0/Power"
+                },
+                {
+                  "id": "sp-member0-state",
+                  "name": "State",
+                  "type": "box",
+                  "description": "상태 글자(준비 완료/대기 중/접속 끊김/조건 부족). 방장은 비운다. 오른쪽 정렬",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    324,
+                    0
+                  ],
+                  "sizeDelta": [
+                    180,
+                    60
+                  ],
+                  "screenRect": [
+                    1012,
+                    521,
+                    180,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member0/State"
+                },
+                {
+                  "id": "sp-member0-crown",
+                  "name": "Crown",
+                  "type": "box",
+                  "description": "방장 왕관. 방장일 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    476,
+                    -18
+                  ],
+                  "sizeDelta": [
+                    28,
+                    24
+                  ],
+                  "screenRect": [
+                    1164,
+                    539,
+                    28,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member0/Crown"
+                },
+                {
+                  "id": "sp-member0-empty",
+                  "name": "EmptySlot",
+                  "type": "box",
+                  "description": "빈 자리 표시. 사람이 없을 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    521,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member0/EmptySlot"
+                }
+              ]
+            },
+            {
+              "id": "sp-member1",
+              "name": "Member1",
+              "type": "group",
+              "description": "파티 2번 행. 사람이 있으면 아래 요소를 켜고 없으면 EmptySlot만 켠다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -94
+              ],
+              "sizeDelta": [
+                520,
+                60
+              ],
+              "screenRect": [
+                688,
+                587,
+                520,
+                60
+              ],
+              "path": "SortiePrep/Party/Member1",
+              "children": [
+                {
+                  "id": "sp-member1-bg",
+                  "name": "RowBg",
+                  "type": "box",
+                  "description": "행 바탕",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    587,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member1/RowBg"
+                },
+                {
+                  "id": "sp-member1-ready",
+                  "name": "ReadyFx",
+                  "type": "group",
+                  "description": "준비 완료일 때만 켠다. 오른쪽이 진한 초록 그라데이션이 숨 쉬듯 밝아졌다 흐려지고, 그 위로 넓은 그라데이션 한 겹이 좌우로 천천히 흐른다. 행 밖으로 넘치지 않게 잘라 낸다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    587,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member1/ReadyFx",
+                  "children": [
+                    {
+                      "id": "sp-member1-ready-base",
+                      "name": "ReadyBase",
+                      "type": "box",
+                      "description": "왼쪽에서 오른쪽으로 진해지는 초록 그라데이션. 밝기가 천천히 오르내린다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        0,
+                        0
+                      ],
+                      "sizeDelta": [
+                        520,
+                        60
+                      ],
+                      "screenRect": [
+                        688,
+                        587,
+                        520,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member1/ReadyFx/ReadyBase"
+                    },
+                    {
+                      "id": "sp-member1-ready-sheen",
+                      "name": "Sheen",
+                      "type": "box",
+                      "description": "넓은 초록 그라데이션. 진한 끝이 늘 행 오른쪽 밖에 있도록 두고 좌우로 천천히 흐른다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        -120,
+                        0
+                      ],
+                      "sizeDelta": [
+                        640,
+                        60
+                      ],
+                      "screenRect": [
+                        568,
+                        587,
+                        640,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member1/ReadyFx/Sheen"
+                    }
+                  ]
+                },
+                {
+                  "id": "sp-member1-problem",
+                  "name": "ProblemTint",
+                  "type": "box",
+                  "description": "접속 끊김·조건 부족일 때만 켜는 옅은 빨강",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    587,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member1/ProblemTint"
+                },
+                {
+                  "id": "sp-member1-icon",
+                  "name": "ClassIcon",
+                  "type": "circle",
+                  "description": "직업 아이콘(무사/도술사/신령사). 두 줄 높이",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    12,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    44,
+                    44
+                  ],
+                  "screenRect": [
+                    700,
+                    595,
+                    44,
+                    44
+                  ],
+                  "path": "SortiePrep/Party/Member1/ClassIcon"
+                },
+                {
+                  "id": "sp-member1-name",
+                  "name": "Name",
+                  "type": "box",
+                  "description": "윗줄 \"직업 Lv.레벨 닉네임\". 직업은 회색, 레벨은 금색, 닉네임은 흰색",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    300,
+                    24
+                  ],
+                  "screenRect": [
+                    756,
+                    595,
+                    300,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member1/Name"
+                },
+                {
+                  "id": "sp-member1-power",
+                  "name": "Power",
+                  "type": "box",
+                  "description": "아랫줄 \"전투력 12,345\". 모르면 \"전투력 -\"",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -32
+                  ],
+                  "sizeDelta": [
+                    300,
+                    20
+                  ],
+                  "screenRect": [
+                    756,
+                    619,
+                    300,
+                    20
+                  ],
+                  "path": "SortiePrep/Party/Member1/Power"
+                },
+                {
+                  "id": "sp-member1-state",
+                  "name": "State",
+                  "type": "box",
+                  "description": "상태 글자(준비 완료/대기 중/접속 끊김/조건 부족). 방장은 비운다. 오른쪽 정렬",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    324,
+                    0
+                  ],
+                  "sizeDelta": [
+                    180,
+                    60
+                  ],
+                  "screenRect": [
+                    1012,
+                    587,
+                    180,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member1/State"
+                },
+                {
+                  "id": "sp-member1-crown",
+                  "name": "Crown",
+                  "type": "box",
+                  "description": "방장 왕관. 방장일 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    476,
+                    -18
+                  ],
+                  "sizeDelta": [
+                    28,
+                    24
+                  ],
+                  "screenRect": [
+                    1164,
+                    605,
+                    28,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member1/Crown"
+                },
+                {
+                  "id": "sp-member1-empty",
+                  "name": "EmptySlot",
+                  "type": "box",
+                  "description": "빈 자리 표시. 사람이 없을 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    587,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member1/EmptySlot"
+                }
+              ]
+            },
+            {
+              "id": "sp-member2",
+              "name": "Member2",
+              "type": "group",
+              "description": "파티 3번 행. 사람이 있으면 아래 요소를 켜고 없으면 EmptySlot만 켠다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -160
+              ],
+              "sizeDelta": [
+                520,
+                60
+              ],
+              "screenRect": [
+                688,
+                653,
+                520,
+                60
+              ],
+              "path": "SortiePrep/Party/Member2",
+              "children": [
+                {
+                  "id": "sp-member2-bg",
+                  "name": "RowBg",
+                  "type": "box",
+                  "description": "행 바탕",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    653,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member2/RowBg"
+                },
+                {
+                  "id": "sp-member2-ready",
+                  "name": "ReadyFx",
+                  "type": "group",
+                  "description": "준비 완료일 때만 켠다. 오른쪽이 진한 초록 그라데이션이 숨 쉬듯 밝아졌다 흐려지고, 그 위로 넓은 그라데이션 한 겹이 좌우로 천천히 흐른다. 행 밖으로 넘치지 않게 잘라 낸다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    653,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member2/ReadyFx",
+                  "children": [
+                    {
+                      "id": "sp-member2-ready-base",
+                      "name": "ReadyBase",
+                      "type": "box",
+                      "description": "왼쪽에서 오른쪽으로 진해지는 초록 그라데이션. 밝기가 천천히 오르내린다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        0,
+                        0
+                      ],
+                      "sizeDelta": [
+                        520,
+                        60
+                      ],
+                      "screenRect": [
+                        688,
+                        653,
+                        520,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member2/ReadyFx/ReadyBase"
+                    },
+                    {
+                      "id": "sp-member2-ready-sheen",
+                      "name": "Sheen",
+                      "type": "box",
+                      "description": "넓은 초록 그라데이션. 진한 끝이 늘 행 오른쪽 밖에 있도록 두고 좌우로 천천히 흐른다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        -120,
+                        0
+                      ],
+                      "sizeDelta": [
+                        640,
+                        60
+                      ],
+                      "screenRect": [
+                        568,
+                        653,
+                        640,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member2/ReadyFx/Sheen"
+                    }
+                  ]
+                },
+                {
+                  "id": "sp-member2-problem",
+                  "name": "ProblemTint",
+                  "type": "box",
+                  "description": "접속 끊김·조건 부족일 때만 켜는 옅은 빨강",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    653,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member2/ProblemTint"
+                },
+                {
+                  "id": "sp-member2-icon",
+                  "name": "ClassIcon",
+                  "type": "circle",
+                  "description": "직업 아이콘(무사/도술사/신령사). 두 줄 높이",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    12,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    44,
+                    44
+                  ],
+                  "screenRect": [
+                    700,
+                    661,
+                    44,
+                    44
+                  ],
+                  "path": "SortiePrep/Party/Member2/ClassIcon"
+                },
+                {
+                  "id": "sp-member2-name",
+                  "name": "Name",
+                  "type": "box",
+                  "description": "윗줄 \"직업 Lv.레벨 닉네임\". 직업은 회색, 레벨은 금색, 닉네임은 흰색",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    300,
+                    24
+                  ],
+                  "screenRect": [
+                    756,
+                    661,
+                    300,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member2/Name"
+                },
+                {
+                  "id": "sp-member2-power",
+                  "name": "Power",
+                  "type": "box",
+                  "description": "아랫줄 \"전투력 12,345\". 모르면 \"전투력 -\"",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -32
+                  ],
+                  "sizeDelta": [
+                    300,
+                    20
+                  ],
+                  "screenRect": [
+                    756,
+                    685,
+                    300,
+                    20
+                  ],
+                  "path": "SortiePrep/Party/Member2/Power"
+                },
+                {
+                  "id": "sp-member2-state",
+                  "name": "State",
+                  "type": "box",
+                  "description": "상태 글자(준비 완료/대기 중/접속 끊김/조건 부족). 방장은 비운다. 오른쪽 정렬",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    324,
+                    0
+                  ],
+                  "sizeDelta": [
+                    180,
+                    60
+                  ],
+                  "screenRect": [
+                    1012,
+                    653,
+                    180,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member2/State"
+                },
+                {
+                  "id": "sp-member2-crown",
+                  "name": "Crown",
+                  "type": "box",
+                  "description": "방장 왕관. 방장일 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    476,
+                    -18
+                  ],
+                  "sizeDelta": [
+                    28,
+                    24
+                  ],
+                  "screenRect": [
+                    1164,
+                    671,
+                    28,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member2/Crown"
+                },
+                {
+                  "id": "sp-member2-empty",
+                  "name": "EmptySlot",
+                  "type": "box",
+                  "description": "빈 자리 표시. 사람이 없을 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    653,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member2/EmptySlot"
+                }
+              ]
+            },
+            {
+              "id": "sp-member3",
+              "name": "Member3",
+              "type": "group",
+              "description": "파티 4번 행. 사람이 있으면 아래 요소를 켜고 없으면 EmptySlot만 켠다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -226
+              ],
+              "sizeDelta": [
+                520,
+                60
+              ],
+              "screenRect": [
+                688,
+                719,
+                520,
+                60
+              ],
+              "path": "SortiePrep/Party/Member3",
+              "children": [
+                {
+                  "id": "sp-member3-bg",
+                  "name": "RowBg",
+                  "type": "box",
+                  "description": "행 바탕",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    719,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member3/RowBg"
+                },
+                {
+                  "id": "sp-member3-ready",
+                  "name": "ReadyFx",
+                  "type": "group",
+                  "description": "준비 완료일 때만 켠다. 오른쪽이 진한 초록 그라데이션이 숨 쉬듯 밝아졌다 흐려지고, 그 위로 넓은 그라데이션 한 겹이 좌우로 천천히 흐른다. 행 밖으로 넘치지 않게 잘라 낸다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    719,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member3/ReadyFx",
+                  "children": [
+                    {
+                      "id": "sp-member3-ready-base",
+                      "name": "ReadyBase",
+                      "type": "box",
+                      "description": "왼쪽에서 오른쪽으로 진해지는 초록 그라데이션. 밝기가 천천히 오르내린다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        0,
+                        0
+                      ],
+                      "sizeDelta": [
+                        520,
+                        60
+                      ],
+                      "screenRect": [
+                        688,
+                        719,
+                        520,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member3/ReadyFx/ReadyBase"
+                    },
+                    {
+                      "id": "sp-member3-ready-sheen",
+                      "name": "Sheen",
+                      "type": "box",
+                      "description": "넓은 초록 그라데이션. 진한 끝이 늘 행 오른쪽 밖에 있도록 두고 좌우로 천천히 흐른다",
+                      "anchor": "TopLeft",
+                      "anchorMin": [
+                        0,
+                        1
+                      ],
+                      "anchorMax": [
+                        0,
+                        1
+                      ],
+                      "pivot": [
+                        0,
+                        1
+                      ],
+                      "anchoredPosition": [
+                        -120,
+                        0
+                      ],
+                      "sizeDelta": [
+                        640,
+                        60
+                      ],
+                      "screenRect": [
+                        568,
+                        719,
+                        640,
+                        60
+                      ],
+                      "path": "SortiePrep/Party/Member3/ReadyFx/Sheen"
+                    }
+                  ]
+                },
+                {
+                  "id": "sp-member3-problem",
+                  "name": "ProblemTint",
+                  "type": "box",
+                  "description": "접속 끊김·조건 부족일 때만 켜는 옅은 빨강",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    719,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member3/ProblemTint"
+                },
+                {
+                  "id": "sp-member3-icon",
+                  "name": "ClassIcon",
+                  "type": "circle",
+                  "description": "직업 아이콘(무사/도술사/신령사). 두 줄 높이",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    12,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    44,
+                    44
+                  ],
+                  "screenRect": [
+                    700,
+                    727,
+                    44,
+                    44
+                  ],
+                  "path": "SortiePrep/Party/Member3/ClassIcon"
+                },
+                {
+                  "id": "sp-member3-name",
+                  "name": "Name",
+                  "type": "box",
+                  "description": "윗줄 \"직업 Lv.레벨 닉네임\". 직업은 회색, 레벨은 금색, 닉네임은 흰색",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -8
+                  ],
+                  "sizeDelta": [
+                    300,
+                    24
+                  ],
+                  "screenRect": [
+                    756,
+                    727,
+                    300,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member3/Name"
+                },
+                {
+                  "id": "sp-member3-power",
+                  "name": "Power",
+                  "type": "box",
+                  "description": "아랫줄 \"전투력 12,345\". 모르면 \"전투력 -\"",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    68,
+                    -32
+                  ],
+                  "sizeDelta": [
+                    300,
+                    20
+                  ],
+                  "screenRect": [
+                    756,
+                    751,
+                    300,
+                    20
+                  ],
+                  "path": "SortiePrep/Party/Member3/Power"
+                },
+                {
+                  "id": "sp-member3-state",
+                  "name": "State",
+                  "type": "box",
+                  "description": "상태 글자(준비 완료/대기 중/접속 끊김/조건 부족). 방장은 비운다. 오른쪽 정렬",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    324,
+                    0
+                  ],
+                  "sizeDelta": [
+                    180,
+                    60
+                  ],
+                  "screenRect": [
+                    1012,
+                    719,
+                    180,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member3/State"
+                },
+                {
+                  "id": "sp-member3-crown",
+                  "name": "Crown",
+                  "type": "box",
+                  "description": "방장 왕관. 방장일 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    476,
+                    -18
+                  ],
+                  "sizeDelta": [
+                    28,
+                    24
+                  ],
+                  "screenRect": [
+                    1164,
+                    737,
+                    28,
+                    24
+                  ],
+                  "path": "SortiePrep/Party/Member3/Crown"
+                },
+                {
+                  "id": "sp-member3-empty",
+                  "name": "EmptySlot",
+                  "type": "box",
+                  "description": "빈 자리 표시. 사람이 없을 때만 켠다",
+                  "anchor": "TopLeft",
+                  "anchorMin": [
+                    0,
+                    1
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    0,
+                    0
+                  ],
+                  "sizeDelta": [
+                    520,
+                    60
+                  ],
+                  "screenRect": [
+                    688,
+                    719,
+                    520,
+                    60
+                  ],
+                  "path": "SortiePrep/Party/Member3/EmptySlot"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sp-footer",
+          "name": "Footer",
+          "type": "group",
+          "description": "하단 버튼 줄",
+          "anchor": "TopLeft",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -550
+          ],
+          "sizeDelta": [
+            560,
+            64
+          ],
+          "screenRect": [
+            668,
+            795,
+            560,
+            64
+          ],
+          "path": "SortiePrep/Footer",
+          "children": [
+            {
+              "id": "sp-footer-line",
+              "name": "BottomLine",
+              "type": "box",
+              "description": "위쪽 구분선",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                560,
+                1
+              ],
+              "screenRect": [
+                668,
+                795,
+                560,
+                1
+              ],
+              "path": "SortiePrep/Footer/BottomLine"
+            },
+            {
+              "id": "sp-footer-leave",
+              "name": "LeaveButton",
+              "type": "box",
+              "description": "나가기",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                20,
+                -12
+              ],
+              "sizeDelta": [
+                120,
+                40
+              ],
+              "screenRect": [
+                688,
+                807,
+                120,
+                40
+              ],
+              "path": "SortiePrep/Footer/LeaveButton"
+            },
+            {
+              "id": "sp-footer-ready",
+              "name": "ReadyButton",
+              "type": "box",
+              "description": "참가자에게만 보인다. 준비/준비 해제",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                420,
+                -12
+              ],
+              "sizeDelta": [
+                120,
+                40
+              ],
+              "screenRect": [
+                1088,
+                807,
+                120,
+                40
+              ],
+              "path": "SortiePrep/Footer/ReadyButton"
+            },
+            {
+              "id": "sp-footer-start",
+              "name": "StartButton",
+              "type": "box",
+              "description": "방장에게만 보인다. 출정, 카운트다운 중에는 \"3초 뒤 출정\". 전원 준비 전에는 누를 수 없다",
+              "anchor": "TopLeft",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                420,
+                -12
+              ],
+              "sizeDelta": [
+                120,
+                40
+              ],
+              "screenRect": [
+                1088,
+                807,
+                120,
+                40
+              ],
+              "path": "SortiePrep/Footer/StartButton"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
