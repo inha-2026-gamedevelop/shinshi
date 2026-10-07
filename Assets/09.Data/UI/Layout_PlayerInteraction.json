@@ -1,0 +1,156 @@
+{
+  "format": "gemeum-ui-layout",
+  "version": 2,
+  "exportedAt": "2026-10-07T06:12:37.019Z",
+  "layoutName": "타유저 상호작용",
+  "layoutDescription": "탑뷰 핵앤슬래시 코옵 인게임 HUD. 게임 화면 중앙은 비워 둔다.",
+  "conventions": {
+    "purpose": "Unity UI(uGUI) 배치 참고 자료. 각 노드를 같은 이름의 GameObject + RectTransform으로 만들고, 아래 값으로 위치·크기를 맞춘다.",
+    "referenceResolution": [1920, 1080],
+    "canvasScaler": "Scale With Screen Size, Reference Resolution 1920x1080",
+    "units": "모든 길이는 기준 해상도의 px",
+    "hierarchy": "children 배열 = Hierarchy 자식. 배열 순서대로 형제 순서를 둔다(뒤에 있을수록 위에 그려진다)",
+    "topLevel": "최상위 노드는 anchorMin = anchorMax = pivot = anchor 프리셋 값. anchoredPosition은 Unity 좌표(위쪽이 +y)",
+    "children": "자식 노드는 부모 RectTransform의 왼쪽 위에 붙인다: anchorMin = anchorMax = pivot = (0, 1), anchoredPosition = (x, -y)",
+    "screenRect": "검산용. 화면 왼쪽 위 기준 [x, y, w, h], y는 아래로 증가",
+    "types": {
+      "box": "사각 Image",
+      "circle": "원형 Image(원 스프라이트 또는 Mask)",
+      "group": "그래픽이 없는 빈 RectTransform 컨테이너"
+    },
+    "reference": "reference가 true인 노드는 HUD가 아닌 참고 영역이다. 만들지 않는다",
+    "description": "요소의 역할과 상태 변화 설명. 실제 그래픽·텍스트를 만들 때 따른다"
+  },
+  "root": [
+    {
+      "id": "emuxpkfayo6sg",
+      "name": "타유저 상호작용 패널 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [0.5, 0.5],
+      "anchorMax": [0.5, 0.5],
+      "pivot": [0.5, 0.5],
+      "anchoredPosition": [-180, 0],
+      "sizeDelta": [136, 176],
+      "screenRect": [712, 452, 136, 176],
+      "path": "타유저 상호작용 패널 그룹",
+      "children": [
+        {
+          "id": "emuxpkyqayn57",
+          "name": "유저 닉네임",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [0, 1],
+          "anchorMax": [0, 1],
+          "pivot": [0, 1],
+          "anchoredPosition": [0, 0],
+          "sizeDelta": [136, 48],
+          "screenRect": [712, 452, 136, 48],
+          "path": "타유저 상호작용 패널 그룹/유저 닉네임"
+        },
+        {
+          "id": "emuxpled1llzk",
+          "name": "거래하기",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [0, 1],
+          "anchorMax": [0, 1],
+          "pivot": [0, 1],
+          "anchoredPosition": [0, -48],
+          "sizeDelta": [136, 32],
+          "screenRect": [712, 500, 136, 32],
+          "path": "타유저 상호작용 패널 그룹/거래하기"
+        },
+        {
+          "id": "emuxplqqst6it",
+          "name": "파티초대",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [0, 1],
+          "anchorMax": [0, 1],
+          "pivot": [0, 1],
+          "anchoredPosition": [0, -80],
+          "sizeDelta": [136, 32],
+          "screenRect": [712, 532, 136, 32],
+          "path": "타유저 상호작용 패널 그룹/파티초대"
+        },
+        {
+          "id": "emuxply0mak7n",
+          "name": "캐릭터 정보",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [0, 1],
+          "anchorMax": [0, 1],
+          "pivot": [0, 1],
+          "anchoredPosition": [0, -112],
+          "sizeDelta": [136, 32],
+          "screenRect": [712, 564, 136, 32],
+          "path": "타유저 상호작용 패널 그룹/캐릭터 정보"
+        },
+        {
+          "id": "emuxpm9q6nv07",
+          "name": "귓속말",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [0, 1],
+          "anchorMax": [0, 1],
+          "pivot": [0, 1],
+          "anchoredPosition": [0, -144],
+          "sizeDelta": [136, 32],
+          "screenRect": [712, 596, 136, 32],
+          "path": "타유저 상호작용 패널 그룹/귓속말"
+        }
+      ]
+    },
+    {
+      "id": "emuxpmmacs3l7",
+      "name": "타유저 상호작용 패널 그룹",
+      "type": "group",
+      "description": "",
+      "anchor": "MiddleCenter",
+      "anchorMin": [0.5, 0.5],
+      "anchorMax": [0.5, 0.5],
+      "pivot": [0.5, 0.5],
+      "anchoredPosition": [0, 48],
+      "sizeDelta": [136, 80],
+      "screenRect": [892, 452, 136, 80],
+      "path": "타유저 상호작용 패널 그룹",
+      "children": [
+        {
+          "id": "emuxpmmackhdu",
+          "name": "유저 닉네임",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [0, 1],
+          "anchorMax": [0, 1],
+          "pivot": [0, 1],
+          "anchoredPosition": [0, 0],
+          "sizeDelta": [136, 48],
+          "screenRect": [892, 452, 136, 48],
+          "path": "타유저 상호작용 패널 그룹/유저 닉네임"
+        },
+        {
+          "id": "emuxpmmacjejo",
+          "name": "캐릭터 정보",
+          "type": "box",
+          "description": "",
+          "anchor": "TopLeft",
+          "anchorMin": [0, 1],
+          "anchorMax": [0, 1],
+          "pivot": [0, 1],
+          "anchoredPosition": [0, -48],
+          "sizeDelta": [136, 32],
+          "screenRect": [892, 500, 136, 32],
+          "path": "타유저 상호작용 패널 그룹/캐릭터 정보"
+        }
+      ]
+    }
+  ]
+}
