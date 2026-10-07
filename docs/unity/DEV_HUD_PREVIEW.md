@@ -52,6 +52,58 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 | `PopupCanvas` | Dev_ToastMessage | 필요 시 | 거절·초대·기술 거절(`NetworkFeedbackBinder`) |
 | `TradeCanvas`, `DungeonProgressCanvas` | Dev_Trade, Dev_DungeonProcess | 닫힌 채 배치 | 없음(개인거래·웨이브 진행 메시지 미구현) |
 
-단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_ChaSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
+단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_CharSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
 
 아직 없는 서버 값: 아이템 표시 이름(번역 표 없음, 정의 ID 표시), 캐릭터 레벨, 퀘스트, 출정 준비의 레벨·전투력, 결과 창의 보상 내역, 던전 웨이브 진행도. 검증은 EditMode 테스트와 오프라인 Play Mode 단축키 확인까지이며 실제 서버 접속 흐름은 미검증이다.
+
+## 캐릭터 선택 개발 씬 아이콘 (2026-10-07)
+
+`Assets/00.Scenes/Dev_HUD/Dev_CharSelect.unity`에 직업 마크 3개와 바랜 은색 기능 아이콘 5개를 연결했다. 직업 마크를 가리던 `Lv.` 예시 글자는 비활성화했으며, 하단 아이콘과 문구의 중심·화면 가장자리 여백을 맞췄다.
+
+| 용도 | 에셋 경로 |
+|---|---|
+| 무사·도술사·신령사 | `Assets/01.Scripts/05.Art/UI/Icons/Textures/Class/T_Icon_Class_{Warrior,Sorcerer,Summoner}.png` |
+| 뒤로·삭제·설정·종료·생성 | `Assets/01.Scripts/05.Art/UI/CharSelect/Textures/T_CharSelect_Icon_{Back,Delete,Settings,Exit,Create}_Silver.png` |
+
+기능 아이콘은 투명 알파·단일 Sprite·Full Rect·밉맵 없음·최대 256px 설정이다. Play Mode의 1211×677 화면에서 표시·문구 미잘림을 확인하고, 직업 마크 중앙을 EventSystem으로 raycast한 뒤 포인터 클릭 이벤트를 전달해 세 슬롯 각각 0/1/2 선택을 확인했다. 검사 후 Edit Mode로 복귀했으며 Console 오류·경고 0이었다. 기능 아이콘의 기존 오브젝트는 Image이며 실제 생성·삭제·설정·종료 동작은 이번 검증에 포함하지 않았다. 릴리즈 `CharacterSelect.unity`는 이 아이콘 교체를 아직 반영하지 않았다.
+
+## 캐릭터 상세 개발 씬 (2026-10-07)
+
+`Assets/00.Scenes/Dev_HUD/Dev_CharDetail.unity`의 `CharDetailCanvas/Layout_캐릭터 상세/캐릭터 정보`에 976×676 상세창을 배치했다. 공통 GameStyle 창·슬롯, 기존 한글 TMP와 무사 직업 마크를 재사용한다. 왼쪽은 무기·머리·몸통·손·발·장신구 6칸, 가운데는 무사 외형, 오른쪽은 닉네임·직업·주요 능력치·수련·부적 요약·정기다. 장비 칸은 실제 아이템 그림 대신 부위명·등급명·HEX·+17 예시를 표시하는 색상 가이드다.
+
+오른쪽 표시값은 희귀 제작 장비 6부위 +17·수련 공격10/생명10/방어7/치명5/기력5(합37)의 배치용 예시다. 공격676·최대 체력3895·방어372.55·치명9.5%·기력105를 표시하며 부적12효과와 정기5000도 예시다. 왼쪽 장비 칸의 여러 등급은 색상 가이드이며 이 수치 계산에는 연결되지 않는다. 캐릭터 레벨·경험치·아이템 레벨과 산식 미정인 종합 전투력은 추가하지 않았다.
+
+장비 6칸의 배경은 불투명 검정 `#000000`이다. 테두리·부위명·등급명·HEX 글자는 인벤토리 `PF_ItemSlot.prefab`이 참조하는 `Assets/01.Scripts/05.Art/UI/Icons/UiIconLibrary.asset`의 `FindGradeColor` 값과 일치한다. 무기·장신구는 전설, 머리는 영웅, 몸통·발은 희귀, 손은 일반 예시다.
+
+| 등급 | HEX |
+|---|---|
+| 일반 | `#B4B2A9` |
+| 희귀 | `#378ADD` |
+| 영웅 | `#7F77DD` |
+| 전설 | `#EF9F27` |
+
+강화 단계별 폰트 색상 규칙은 UI 코드·문서에서 확인되지 않았다. `InventoryItemRules`는 강화 수치를 툴팁 설명의 `+{0} 강화`로 전달하며 `ItemSlotData`와 `ItemSlotView`에는 강화 단계별 글자색 처리가 없다. 가이드의 +17은 모든 칸에서 고정색 `#E6EBF0`으로 표시한다. Play Mode에서 6칸의 검정 배경·인벤토리 등급색 일치·추가 안내 글자 미잘림과 Console 오류·경고0을 확인했다. 실제 아이템 데이터와 강화 단계별 색상 바인딩은 적용하지 않았다.
+
+미리보기는 기존 `PF_FemaleWarrior_Cute.prefab`의 씬 인스턴스와 `Assets/09.Data/UI/RT_CharDetailPreview.renderTexture`(652×1100, MSAA2, 밉맵 없음)를 사용하는 RawImage다. 프리팹 원본은 수정하지 않고 미리보기 인스턴스의 동작 스크립트·Animator를 비활성화했다. 팔을 내린 고정 자세는 씬 오버라이드다. 실제 장비 착용 외형이나 직업 전환에는 연결되지 않았다.
+
+뷰포트의 별도 Image 배경은 비활성화하고 Preview Camera를 투명색 Solid Color·HDR 끔으로 설정해 상세창 배경 위에 캐릭터만 합성한다. Play Mode에서 RT 양 끝 모서리 alpha0, 전체717200픽셀 중562436픽셀 완전 투명과154764픽셀 불투명을 확인했다. 공용 URP 설정은 변경하지 않았다.
+
+구분선8개는 기존 `Assets/01.Scripts/05.Art/UI/GameStyle/Textures/T_UiLine_Fade.png`를 재사용한다. 능력치5줄은 alpha0.15, 수련·부적·세로선은 alpha0.30이며 세로선은 같은 Sprite를90도 회전해 양 끝 페이드를 유지한다. Play Mode 화면과8/8 Sprite 참조·TMP 잘림0·Console 오류/경고0을 확인했다.
+
+기존 `UiWindowDragHandle`과 Button의 직렬화된 이벤트로 제목줄 드래그·닫기·왼쪽 위 버튼으로 다시 열기를 연결했다. Play Mode 1059×677에서 화면 표시·47개 활성 TMP 미잘림, EventSystem raycast와 포인터 클릭으로 닫기/열기, 드래그 이벤트로 이동과 화면 경계 제한을 확인했다. Console 오류·경고0이며 실제 마우스 조작·다른 화면비·서버 데이터·Player 빌드는 미검증이다. 이 개발 씬은 릴리즈 흐름에 적용하지 않았다.
+
+## 재화 아이콘 (2026-10-07)
+
+흰색 단색·투명 배경의 엽전(사각 구멍 동전)과 정기(기운을 감싼 불꽃) 아이콘을 `Assets/01.Scripts/05.Art/UI/Icons/Textures/Currency/`에 배치했다. 파일은 `T_Icon_Currency_Yeopjeon_White.png`와 `T_Icon_Currency_Essence_White.png`이며 256×256, Single Sprite, Full Rect, Clamp, 밉맵 없음, 비압축이다. UI의 Image.color로 색을 입힐 수 있다.
+
+`UiIconLibrary.asset`의 `item_yeopjeon`·`item_essence`를 새 Sprite로 연결했다. `Dev_ItemSlot.unity` 하단의 재화 이름 자리는 24×24 아이콘으로 표시하고 기존 수치 바인딩을 유지한다. `Dev_CharDetail.unity`의 정기 행에는 26×26 아이콘을 붙이고 정기 문구를 오른쪽으로 이동했다. `정기 배경` Image의 알파는 0으로 설정해 상세창 바탕이 그대로 보인다. 두 개발 씬의 기존 배치를 확인하기 위한 적용이며 릴리즈 씬의 하단 문구는 수정하지 않았다.
+
+Play Mode 화면에서 인벤토리 하단의 두 아이콘·수치 1,250/2,100과 상세창 정기 아이콘·투명 행을 확인했다. Sprite 참조·흰색 틴트·수치 미잘림, Console 오류·경고0을 확인했다. 엽전 중앙 구멍과 이미지 네 모서리는 alpha0이다. 실제 서버 재화 변경·Player 빌드는 미검증이다.
+
+## 인벤토리 슬롯 이동·정렬 잠금 (2026-10-07)
+
+`Dev_ItemSlot.unity`의 `InventoryView._enableSlotInteraction`을 켜 슬롯 간 왼쪽 드래그 이동·교환과 좌우 Alt + 왼쪽 클릭 잠금 토글을 연결했다. 빈 칸에는 이동하고 아이템이 있는 칸과는 교환한다. 잠금 표시는 기존 `ItemSlotView`를 사용하며, 정렬 시 잠긴 아이템은 현재 위치를 유지한다. 직접 이동하면 잠금 상태도 아이템에 따라 이동한다. 분류 탭의 빈 칸은 실제 빈 칸에 대응하고 다른 분류 아이템을 덮어쓰지 않는다. 슬롯 밖에 놓거나 창 닫기·탭 변경·정렬·데이터 갱신 시 드래그를 취소한다.
+
+입력은 `Assets/01.Scripts/06.UI/Inventory/InventorySlotInteraction.cs`에서 처리한다. 기능 활성화 기본값은 false이고 이번 연결 대상은 `Dev_ItemSlot`이다. 서버로부터 받은 화면용 사본의 로컬 배치이며 서버 저장·재접속 유지·수량 분할·자동 합치기·다른 창으로 이전은 이번 범위에 포함하지 않는다.
+
+Play Mode에서 EventSystem 드래그 이벤트와 실제 정렬 Dropdown/Button 콜백, UI 메서드로 34개 검증 항목이 통과했다. 이동·교환·잠금 표시·정렬 4종과 방향 전환·잠긴 아이템 이동 후 위치 유지·분류 탭 대응·수량 보존·아이콘 추적과 취소를 확인했다. Game View 캡처로 18/100칸 화면 표시를 확인했고 최종 Console 조회는 오류·경고0이었다. 물리 키보드의 Alt + 클릭 조합과 Player 빌드는 미검증이다.

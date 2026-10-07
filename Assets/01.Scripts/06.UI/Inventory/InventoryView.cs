@@ -62,6 +62,8 @@ namespace Shinshi.UI
         private readonly List<ItemSlotData>      _visible       = new List<ItemSlotData>();
         private readonly List<int>               _visibleToItem = new List<int>();
 
+        [SerializeField] private bool _enableSlotInteraction = false;
+
         private Comparison<InventoryItemData> _compare;
         private EInventoryCategory            _category      = EInventoryCategory.All;
         private EInventorySort                _sort          = EInventorySort.Grade;
@@ -225,6 +227,64 @@ namespace Shinshi.UI
             Refresh();
         }
 
+        public bool TryMoveSlot(ItemSlotView source, ItemSlotView target)
+        {
+            if ((!_enableSlotInteraction) || (_grid == null) || (!IsOpen))
+            {
+                return false;
+            }
+
+            int sourceIndex = ResolveItemIndex(source);
+            int targetIndex = ResolveItemIndex(target);
+            if ((sourceIndex < 0) || (targetIndex < 0) || (sourceIndex == targetIndex)
+                || (_items[sourceIndex].IsEmpty))
+            {
+                return false;
+            }
+
+            InventoryItemData item = _items[sourceIndex];
+            _items[sourceIndex] = _items[targetIndex];
+            _items[targetIndex] = item;
+            _selectedIndex = targetIndex;
+            Refresh();
+            return true;
+        }
+
+        public bool TryToggleSlotLock(ItemSlotView slot)
+        {
+            if ((!_enableSlotInteraction) || (_grid == null) || (!IsOpen))
+            {
+                return false;
+            }
+
+            int index = ResolveItemIndex(slot);
+            if ((index < 0) || (_items[index].IsEmpty))
+            {
+                return false;
+            }
+
+            InventoryItemData item = _items[index];
+            ItemSlotData data = item.Slot;
+            ItemSlotData changed = new ItemSlotData(data.Id, data.Grade, data.Count, data.Title,
+                data.Description, !data.IsLocked, data.IsEquipped);
+            _items[index] = new InventoryItemData(changed, item.Category, item.AcquiredOrder);
+            _selectedIndex = index;
+            Refresh();
+            return true;
+        }
+
+        private int ResolveItemIndex(ItemSlotView slot)
+        {
+            if (slot == null)
+            {
+                return NO_SELECTION;
+            }
+
+            int index = _grid.IndexOf(slot);
+            return ((index >= 0) && (index < _visibleToItem.Count))
+                ? _visibleToItem[index] : NO_SELECTION;
+        }
+
         private void BindTabs()
         {
             if (_tabs == null)
@@ -311,9 +371,35 @@ namespace Shinshi.UI
                 _visibleToItem.Add(i);
             }
 
+            // 분류 탭의 빈 칸은 실제 빈 칸에만 연결한다. 다른 분류 아이템을 빈 칸으로 덮어쓰지 않는다.
+            if ((_category != EInventoryCategory.All) && (_enableSlotInteraction))
+            {
+                for (int i = 0; i < _items.Count; ++i)
+                {
+                    if (_items[i].IsEmpty)
+                    {
+                        _visible.Add(default(ItemSlotData));
+                        _visibleToItem.Add(i);
+                    }
+                }
+            }
+
             if (_grid != null)
             {
                 _grid.SetItems(_visible, _capacity);
+                if (_enableSlotInteraction)
+                {
+                    for (int i = 0; i < _grid.SlotCount; ++i)
+                    {
+                        ItemSlotView slot = _grid.GetSlot(i);
+                        if (!slot.TryGetComponent(out InventorySlotInteraction interaction))
+                        {
+                            interaction = slot.gameObject.AddComponent<InventorySlotInteraction>();
+                        }
+
+                        interaction.Bind(this, slot);
+                    }
+                }
                 _grid.SetSelectedIndex(selectedVisible);
             }
 

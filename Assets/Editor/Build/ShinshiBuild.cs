@@ -75,7 +75,7 @@ namespace Shinshi.Editor
             "Assets/00.Scenes/Dev_HUD/Dev_ToastMessage.unity",
             "Assets/00.Scenes/Dev_HUD/Dev_Trade.unity",
             "Assets/00.Scenes/Dev_HUD/Dev_Auction.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_ChaSelect.unity",
+            "Assets/00.Scenes/Dev_HUD/Dev_CharSelect.unity",
             ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_DevTestDefines    = { DEV_TEST_DEFINE };
 

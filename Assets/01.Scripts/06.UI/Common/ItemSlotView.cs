@@ -44,6 +44,7 @@ namespace Shinshi.UI
         ****************************************/
 
         public ItemSlotData Data => _data;
+        public Sprite IconSprite => (_icon != null) ? _icon.sprite : null;
 
         /// <summary>칸을 눌렀을 때 알린다. 빈 칸도 알린다</summary>
         public event Action<ItemSlotView> Clicked;

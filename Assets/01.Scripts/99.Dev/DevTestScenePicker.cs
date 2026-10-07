@@ -48,7 +48,7 @@ namespace Shinshi.Dev
             { "Dev_Result",             "1 성공, 2 시간 초과, 3 전멸, 4 포기 결과 화면" },
             { "Dev_SortiePrep",         "L 파티장/파티원 전환, 화면 버튼으로 난이도 선택, 준비" },
             { "Dev_ToastMessage",       "1 토스트, 2 토스트 연속, 3 모두 닫기\n4 5 6 알림 소/중/대, 7 8 9 확인 소/중/대" },
-            { "Dev_ChaSelect",          "캐릭터 슬롯 클릭으로 선택" },
+            { "Dev_CharSelect",         "캐릭터 슬롯 클릭으로 선택" },
             { "ShinshiTown",            "서버 없이 연 마을 배경. -devPerfTown으로 실행하면 게임 줌 시점을 돌며 Player.log에 [Perf] 비용을 남긴다" } };
 
         private string[] _sceneNames  = null;
