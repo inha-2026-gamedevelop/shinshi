@@ -63,7 +63,8 @@ namespace Shinshi.Systems
             new Binding(EHotkeyAction.Inventory, KeyCode.I, "인벤토리"),
             new Binding(EHotkeyAction.AuctionHouse, KeyCode.Y, "경매장"),
             new Binding(EHotkeyAction.CloseWindow, KeyCode.Escape, "창 닫기"),
-            new Binding(EHotkeyAction.SortiePrep, KeyCode.P, "출정 준비")
+            new Binding(EHotkeyAction.SortiePrep, KeyCode.P, "출정 준비"),
+            new Binding(EHotkeyAction.Chat, KeyCode.Return, "채팅")
         };
 
         public IReadOnlyList<Binding> Bindings => _bindings;

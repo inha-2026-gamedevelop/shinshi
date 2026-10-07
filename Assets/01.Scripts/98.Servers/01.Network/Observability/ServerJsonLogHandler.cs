@@ -98,7 +98,19 @@ namespace Shinshi.Network
         public static void LogEvent(string level, string eventName, string operationId, string eventId, string dataJson,
             int reasonCode = ServerLogLine.NO_REASON)
         {
-            _installed?.Write(level, eventName, operationId, eventId, reasonCode, dataJson);
+            _installed?.Write(level, eventName, null, operationId, eventId, reasonCode, dataJson);
+        }
+
+        /// <summary> 참가자 한 명에게 속한 이벤트 한 줄을 쓴다. participantId는 API 참가자 ID이며 없으면 null이다. 설치 전이면 무시하며, 그 판단은 문자열을 만들기 전에 IsInstalled로 한다 </summary>
+        public static void LogParticipantEvent(string level, string eventName, string participantId, string dataJson)
+        {
+            ServerJsonLogHandler handler = _installed;
+            if (handler == null)
+            {
+                return;
+            }
+
+            handler.Write(level, eventName, participantId, null, null, ServerLogLine.NO_REASON, dataJson);
         }
 
         public void LogFormat(LogType logType, Object context, string format, params object[] args)
@@ -106,13 +118,13 @@ namespace Shinshi.Network
             string message = ((args == null) || (args.Length == 0))
                 ? format
                 : string.Format(CultureInfo.InvariantCulture, format, args);
-            Write(LevelFor(logType), ServerLogLine.EVENT_UNITY_LOG, null, null, ServerLogLine.NO_REASON,
+            Write(LevelFor(logType), ServerLogLine.EVENT_UNITY_LOG, null, null, null, ServerLogLine.NO_REASON,
                 ServerLogLine.FormatMessageData(message));
         }
 
         public void LogException(Exception exception, Object context)
         {
-            Write(ServerLogLine.LEVEL_ERROR, ServerLogLine.EVENT_UNITY_EXCEPTION, null, null, ServerLogLine.NO_REASON,
+            Write(ServerLogLine.LEVEL_ERROR, ServerLogLine.EVENT_UNITY_EXCEPTION, null, null, null, ServerLogLine.NO_REASON,
                 ServerLogLine.FormatExceptionData(exception));
         }
 
@@ -132,13 +144,14 @@ namespace Shinshi.Network
             }
         }
 
-        private void Write(string level, string eventName, string operationId, string eventId, int reasonCode, string dataJson)
+        private void Write(string level, string eventName, string participantId, string operationId, string eventId, int reasonCode,
+            string dataJson)
         {
             string sessionId = _sessionId?.Invoke();
             lock (_gate)
             {
-                string text = _line.Format(DateTime.UtcNow, level, eventName, sessionId, null, operationId, eventId, reasonCode,
-                    dataJson);
+                string text = _line.Format(DateTime.UtcNow, level, eventName, sessionId, participantId, operationId, eventId,
+                    reasonCode, dataJson);
                 try
                 {
                     _output.WriteLine(text);

@@ -289,6 +289,13 @@ namespace Shinshi.Network
         public override void OnClientDisconnect()
         {
             base.OnClientDisconnect();
+
+            // 마을과 던전 사이를 옮길 때는 대화를 이어서 보여 준다
+            if (!IsTransferringServer)
+            {
+                ChatClient.ClearHistory();
+            }
+
 #if !UNITY_SERVER
             if ((!IsTransferringServer) && (!string.IsNullOrEmpty(_townOnlineScene)) && (Utils.IsSceneActive(_townOnlineScene))
                 && (!NetworkServer.active))
@@ -331,6 +338,7 @@ namespace Shinshi.Network
             TownGrowthClient.RegisterHandlers();
             TownLifeClient.RegisterHandlers();
             TownProgressClient.RegisterHandlers();
+            ChatClient.RegisterHandlers();
             Shinshi.Combat.PotionClient.RegisterHandlers();
             RegisterEnemyReplicas();
             if (playerPrefab == null)

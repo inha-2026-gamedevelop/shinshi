@@ -130,8 +130,11 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 채팅 입력 중에는 글자 키를 회피, 물약, 기술로 보내지 않는다. 마우스 이동과 공격은 그대로 받는다
+            bool typing = TextInputFocus.IsTyping();
+
             // 상충 입력은 회피가 먼저다. 회피를 보낸 프레임에는 기술, 공격, 이동을 보내지 않고 진행 중인 지정도 끝낸다
-            if (Input.GetKeyDown(Constants.Player.KEY_DODGE))
+            if ((!typing) && (Input.GetKeyDown(Constants.Player.KEY_DODGE)))
             {
                 CancelTargeting();
                 HandleDodge();
@@ -139,16 +142,16 @@ namespace Shinshi.Combat
             }
 
             // 물약은 회피 다음이다. 이동 중에도 쓰고 진행 중인 지정은 끝내지 않는다
-            if (Input.GetKeyDown(Constants.Player.KEY_POTION_SMALL))
+            if ((!typing) && (Input.GetKeyDown(Constants.Player.KEY_POTION_SMALL)))
             {
                 _input.RequestPotion(EPotionSize.Small);
             }
-            else if (Input.GetKeyDown(Constants.Player.KEY_POTION_LARGE))
+            else if ((!typing) && (Input.GetKeyDown(Constants.Player.KEY_POTION_LARGE)))
             {
                 _input.RequestPotion(EPotionSize.Large);
             }
 
-            if (HandleSkillKey())
+            if ((!typing) && (HandleSkillKey()))
             {
                 return;
             }

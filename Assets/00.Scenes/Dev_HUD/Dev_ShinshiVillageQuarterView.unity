@@ -71296,6 +71296,7 @@ GameObject:
   m_Component:
   - component: {fileID: 686180337}
   - component: {fileID: 686180338}
+  - component: {fileID: 686180339}
   m_Layer: 0
   m_Name: ChatGroup
   m_TagString: Untagged
@@ -71340,6 +71341,40 @@ MonoBehaviour:
   _layoutId: emupivhejvwxs
   _condition: 0
   _description: 
+--- !u!114 &686180339
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 686180336}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5fc633498b202f34497afbb891e97e52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.HudChatView
+  _router: {fileID: 0}
+  _messages: {fileID: 874392489}
+  _input: {fileID: 1092130969}
+  _channel: {fileID: 1649481382}
+  _tabs:
+  - {fileID: 4240352}
+  - {fileID: 1128196741}
+  - {fileID: 1215618669}
+  _tabLabels:
+  - {fileID: 2131651115}
+  - {fileID: 206467059}
+  - {fileID: 1180777410}
+  _underlines:
+  - {fileID: 769127177}
+  - {fileID: 1232301853}
+  - {fileID: 1781918131}
+  _partyColor: {r: 0.561, g: 0.827, b: 1, a: 1}
+  _systemColor: {r: 0.914, g: 0.788, b: 0.478, a: 1}
+  _selectedTabColor: {r: 0.02, g: 0.03, b: 0.05, a: 0.55}
+  _unselectedTabColor: {r: 0.02, g: 0.03, b: 0.05, a: 0}
+  _selectedLabelColor: {r: 0.92, g: 0.94, b: 0.97, a: 1}
+  _labelColor: {r: 0.58, g: 0.62, b: 0.68, a: 1}
 --- !u!1001 &686978923
 PrefabInstance:
   m_ObjectHideFlags: 0
