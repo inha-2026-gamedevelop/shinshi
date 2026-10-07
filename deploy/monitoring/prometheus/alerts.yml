@@ -1,0 +1,44 @@
+# Initial thresholds. Tune after the Linux load test (deploy/LOGGING.md: thresholds are decided after measurement).
+groups:
+  - name: shinshi-gameserver
+    rules:
+      - alert: ShinshiServerDown
+        expr: up{job="shinshi-gameserver"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.role }} {{ $labels.instance }} metrics endpoint is not answering"
+
+      - alert: ShinshiTickP95OverBudget
+        expr: |
+          histogram_quantile(0.95, sum by (instance, role, le) (rate(server_tick_duration_ms_bucket[1m])))
+            > on (instance) group_left max by (instance) (server_tick_budget_ms)
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} tick p95 is over the tick budget"
+
+      - alert: ShinshiTickOverrunRate
+        expr: rate(server_tick_overrun_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} overruns the tick budget more than once per second"
+
+      - alert: ShinshiStorageQueueStuck
+        expr: storage_queue_oldest_age_seconds > 30
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} has session events unconfirmed by the API for over 30s"
+
+      - alert: ShinshiServerRestarted
+        expr: changes(process_start_time_seconds[10m]) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: "{{ $labels.instance }} restarted in the last 10 minutes"

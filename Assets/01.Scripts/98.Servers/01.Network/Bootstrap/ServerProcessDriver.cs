@@ -15,6 +15,8 @@ namespace Shinshi.Network
         private ServerPresence           _presence;
         private ServerShutdownController _shutdown;
         private ServerMetricsSampler     _metrics;
+        private ServerMetricsExporter    _exporter;
+        private ServerTrafficCounter     _traffic;
 
         /****************************************
         *              Unity Event
@@ -24,7 +26,18 @@ namespace Shinshi.Network
         {
             _presence?.Tick();
             _shutdown?.Tick();
-            _metrics?.Tick(BackendGateway.MonotonicSeconds());
+            double now = BackendGateway.MonotonicSeconds();
+            _metrics?.Tick(now);
+            _exporter?.Tick(now);
+        }
+
+        // 수신 스레드와 트랜스포트 구독을 프로세스 종료나 매니저 파괴 때 함께 닫는다
+        private void OnDestroy()
+        {
+            _exporter?.Dispose();
+            _traffic?.Dispose();
+            _exporter = null;
+            _traffic  = null;
         }
 
         /****************************************
@@ -41,6 +54,23 @@ namespace Shinshi.Network
         public void BindMetrics(ServerMetricsSampler metrics)
         {
             _metrics = metrics;
+        }
+
+        /// <summary> 지표 포트를 설정한 서버에서만 붙인다. 이전에 붙인 내보내기는 닫는다 </summary>
+        public void BindExporter(ServerMetricsExporter exporter, ServerTrafficCounter traffic)
+        {
+            if (_exporter != exporter)
+            {
+                _exporter?.Dispose();
+            }
+
+            if (_traffic != traffic)
+            {
+                _traffic?.Dispose();
+            }
+
+            _exporter = exporter;
+            _traffic  = traffic;
         }
     }
 }

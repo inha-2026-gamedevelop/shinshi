@@ -15,6 +15,7 @@
 | [gameserver/shinshi-dungeon@.service](gameserver/shinshi-dungeon@.service) | 던전 프로세스 인스턴스 1개씩 |
 | [gameserver/README.md](gameserver/README.md) | 환경 예시, Linux 설치 전제, 시작/종료·드레인 절차 |
 | [LOGGING.md](LOGGING.md) | JSON 공통 키·지표 이름·단위 |
+| [monitoring/README.md](monitoring/README.md) | 게임 서버 `/metrics`를 Prometheus로 수집하고 Grafana 대시보드·경보 규칙으로 보는 구성 |
 
 ## API 컨테이너
 

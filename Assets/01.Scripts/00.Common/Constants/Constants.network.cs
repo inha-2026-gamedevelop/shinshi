@@ -134,6 +134,18 @@ namespace Shinshi.Common
             public const string ENV_BOSS_ID = "BOSS_ID";
             public const string ARG_BOSS_ID = "-boss-id";
 
+            // Prometheus가 긁어 가는 지표 내보내기. 포트가 없거나 0이면 끈다. 수신 주소 기본값은 루프백이며
+            // 수집기가 다른 호스트에 있을 때만 내부망 주소를 준다. 게임 포트와 달리 외부에 열지 않는다
+            public const string ENV_METRICS_PORT             = "METRICS_PORT";
+            public const string ARG_METRICS_PORT             = "-metrics-port";
+            public const string ENV_METRICS_BIND_ADDRESS     = "METRICS_BIND_ADDRESS";
+            public const string ARG_METRICS_BIND_ADDRESS     = "-metrics-bind";
+            public const string METRICS_DEFAULT_BIND_ADDRESS = "127.0.0.1";
+
+            // 메시지 종류별 대역폭을 켠다(1이면 켬). 보낼 때마다 메시지를 박싱해 할당이 생기므로 프로파일링할 때만 켠다
+            public const string ENV_METRICS_MESSAGE_DETAIL = "METRICS_MESSAGE_DETAIL";
+            public const string ARG_METRICS_MESSAGE_DETAIL = "-metrics-message-detail";
+
             // 개발 클라이언트의 자동 접속 주소, 포트는 ARG_PORT를 함께 쓴다
             public const string ARG_CONNECT      = "-connect";
             public const string ARG_CONNECT_ROLE = "-connect-role";

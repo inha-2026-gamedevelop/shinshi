@@ -33,7 +33,7 @@
 
 ## 지표 이름과 단위
 
-수집 시 `data.metrics`의 숫자 필드로 아래 이름을 사용한다. 지표 수집/내보내기는 이번 배포 파일에 포함되지 않는다. 시간은 단조 시계로 측정하고 바이트는 실측값을 쓴다.
+수집 시 `data.metrics`의 숫자 필드로 아래 이름을 사용한다. 게임 서버는 `METRICS_PORT`를 주면 같은 이름을 Prometheus `/metrics`로도 내보낸다(구성은 [monitoring/README.md](monitoring/README.md)). 여기서 `server_tick_duration_ms`는 누적 히스토그램이고, 추가로 `server_info`, `server_tick_budget_ms`, `server_spawned_objects`, `process_start_time_seconds`, `network_send_packets_total`·`network_receive_packets_total`, 세부 집계를 켰을 때 `network_message_{send,receive}_{bytes,count}_total{message}`를 쓴다. 바이트는 KCP·UDP 헤더를 뺀 트랜스포트 페이로드다. `server_active_enemies`, `storage_failure_total`, `settlement_outbox_pending`, 불일치 counter는 아직 내보내지 않는다. API의 `/metrics`는 아직 없다. 시간은 단조 시계로 측정하고 바이트는 실측값을 쓴다.
 
 | 이름 | 종류·단위 | 의미 |
 |---|---|---|

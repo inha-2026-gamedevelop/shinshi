@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -39,10 +40,18 @@ namespace Shinshi.Network
         // 틱 예산은 실제 틱 주기다. 30Hz면 약 33.33ms
         private static readonly double TICK_BUDGET_MS = MS_PER_SECOND / Constants.Network.SERVER_TICK_RATE;
 
+        // Prometheus 히스토그램 경계(ms). 30Hz 예산 33.33ms 앞뒤를 촘촘히 둔다. 이 값은 창을 비워도 누적한다
+        private static readonly double[] G_HistogramBoundsMs = { 1.0, 2.0, 5.0, 10.0, 16.0, 25.0, 33.0, 50.0, 100.0, 250.0 };
+
         private readonly DungeonSessionHost _host;
         private readonly int[]              _buckets = new int[BUCKET_COUNT];
         private readonly StringBuilder      _builder = new StringBuilder(BUILDER_CAPACITY);
 
+        // 인덱스 i는 경계 i 이하인 틱 수(누적 아님), 마지막 칸은 모든 경계를 넘은 틱이다
+        private readonly long[] _histogram = new long[G_HistogramBoundsMs.Length + 1];
+
+        private long   _totalCount   = 0;
+        private double _totalSumMs   = 0.0;
         private int    _sampleCount  = 0;
         private double _maxMs        = 0.0;
         private long   _overrunTotal = 0;
@@ -56,6 +65,12 @@ namespace Shinshi.Network
         public long   OverrunTotal => _overrunTotal;
         public int    SampleCount  => _sampleCount;
         public double MaxMs        => _maxMs;
+
+        public static double                TickBudgetMs       => TICK_BUDGET_MS;
+        public static IReadOnlyList<double> HistogramBoundsMs  => G_HistogramBoundsMs;
+        public long                         TotalTickCount     => _totalCount;
+        public double                       TotalTickSumMs     => _totalSumMs;
+        public DungeonSessionHost           Host               => _host;
 
         /****************************************
         *                Methods
@@ -88,6 +103,33 @@ namespace Shinshi.Network
             {
                 ++_overrunTotal;
             }
+
+            ++_totalCount;
+            _totalSumMs += elapsedMs;
+            int slot = G_HistogramBoundsMs.Length;
+            for (int i = 0; i < G_HistogramBoundsMs.Length; ++i)
+            {
+                if (elapsedMs <= G_HistogramBoundsMs[i])
+                {
+                    slot = i;
+                    break;
+                }
+            }
+
+            ++_histogram[slot];
+        }
+
+        /// <summary> 경계 index 이하인 틱의 누적 수, index가 경계 개수면 전체 수(+Inf) </summary>
+        public long GetCumulativeBucket(int index)
+        {
+            long cumulative = 0;
+            int  last       = Math.Min(index, G_HistogramBoundsMs.Length);
+            for (int i = 0; i <= last; ++i)
+            {
+                cumulative += _histogram[i];
+            }
+
+            return cumulative;
         }
 
         /// <summary> 매 프레임 부른다, 주기가 되면 한 줄을 쓰고 틱 분포를 비운다. 단조 시계 초를 받는다 </summary>
@@ -168,7 +210,7 @@ namespace Shinshi.Network
         }
 
         // 인증을 마친 연결만 센다. 인증 대기 중인 연결은 아직 참가자가 아니다
-        private static int CountAuthenticatedConnections()
+        public static int CountAuthenticatedConnections()
         {
             if (!NetworkServer.active)
             {
