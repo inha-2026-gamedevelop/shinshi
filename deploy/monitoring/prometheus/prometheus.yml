@@ -1,5 +1,9 @@
-# Scrape every game server process's /metrics. Targets live in targets/*.json so the
-# operator can add or remove dungeon slots without editing this file (file_sd reloads automatically).
+# Scrape game server and API /metrics, probe the API /health/ready, and send alerts to Alertmanager.
+# Targets live in targets/*.json so the operator can add or remove servers without editing this file
+# (file_sd reloads automatically):
+#   targets/*.json              game servers (every file except api-*.json)
+#   targets/api-metrics.json    API /metrics
+#   targets/api-ready.json      API host:port whose /health/ready is probed through the blackbox exporter
 global:
   scrape_interval: 5s
   scrape_timeout: 4s
@@ -8,6 +12,12 @@ global:
 rule_files:
   - /etc/prometheus/alerts.yml
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
 scrape_configs:
   - job_name: shinshi-gameserver
     metrics_path: /metrics
@@ -15,3 +25,41 @@ scrape_configs:
       - files:
           - /etc/prometheus/targets/*.json
         refresh_interval: 30s
+    relabel_configs:
+      # The glob above also matches the API target files; keep them out of the game server job.
+      - source_labels: [__meta_filepath]
+        regex: '.*/api-[^/]*\.json'
+        action: drop
+
+  # API /metrics. Shinshi.Api only answers addresses inside Metrics:AllowedNetworks (404 elsewhere),
+  # so the Prometheus container's source address must be in that list.
+  - job_name: shinshi-api
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/api-metrics*.json
+        refresh_interval: 30s
+
+  # API readiness through the blackbox exporter: probe_success is 0 when /health/ready answers 503
+  # (database unreachable) or does not answer. Targets are host:port like the metrics job; the probed URL is built below.
+  - job_name: shinshi-api-ready
+    metrics_path: /probe
+    scrape_interval: 15s
+    scrape_timeout: 8s
+    params:
+      module: [http_ready]
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/api-ready*.json
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*)'
+        target_label: __param_target
+        replacement: 'http://${1}/health/ready'
+      - source_labels: [__address__]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

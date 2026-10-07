@@ -1,0 +1,29 @@
+# 예시(초기안, 결정 전). 설치 위치 /etc/systemd/system/shinshi-db-backup.service
+# 이 유닛은 Linux 대상 환경에서 실행한 적이 없다. systemd-analyze verify 문법 검사만 했다.
+#
+# 전제
+#   - /opt/shinshi/db/backup.sh 는 deploy/db/backup.sh 의 복사본이고 실행 권한이 있다.
+#   - /etc/shinshi/db/backup.env 는 deploy/db/systemd/backup.env.example 을 채운 파일(root 소유 0600 또는 backup 사용자 읽기 전용)이다.
+#   - /etc/shinshi/db/pgpass 는 PGPASSFILE 이 가리키는 .pgpass 형식 파일이다. 권한은 0600 이어야 libpq 가 읽는다. 비밀번호는 저장소에 두지 않는다.
+#   - 시스템 사용자 shinshi-backup 이 있고 /var/backups/shinshi 에 쓸 수 있다.
+#   - 이 호스트에 서버와 같은 주 버전(18) 이상의 pg_dump, pg_restore 가 있다.
+# 실패해도 알림이 가지 않는다(Alertmanager 미연결). systemctl status 와 journalctl -u shinshi-db-backup.service 로 확인한다.
+[Unit]
+Description=Shinshi PostgreSQL backup (pg_dump)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=shinshi-backup
+Group=shinshi-backup
+EnvironmentFile=/etc/shinshi/db/backup.env
+ExecStart=/opt/shinshi/db/backup.sh /var/backups/shinshi 7
+# 다른 저장소로 복사하는 단계는 보관 위치가 정해진 뒤에 추가한다(미결정). 예: ExecStartPost=<복사 명령>
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/backups/shinshi
+SyslogIdentifier=shinshi-db-backup

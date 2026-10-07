@@ -8,6 +8,7 @@
 | [shinshi-dungeon@.service](shinshi-dungeon@.service) | `/etc/systemd/system/shinshi-dungeon@.service`, `shinshi-dungeon@1`부터 `@N`까지 |
 | [town/.env.example](town/.env.example) | `/etc/shinshi/gameserver/town.env`의 비밀값 없는 예시 |
 | [dungeon/.env.example](dungeon/.env.example) | `/etc/shinshi/gameserver/dungeon-1.env`부터 `dungeon-N.env`까지의 비밀값 없는 예시 |
+| [journald-shinshi.conf](journald-shinshi.conf) | `/etc/systemd/journald.conf.d/shinshi.conf`, 로그 보존(90일·4G 상한)과 재부팅 뒤 보존 |
 
 ## 실행 계약과 포트
 
@@ -68,7 +69,16 @@ sudo systemctl enable --now shinshi-dungeon@1.service
 
 던전은 출정 하나가 끝나면 스스로 종료하고(종료 코드 0 재활용, 70 불변식 위반, 75 서버 풀 존재 상실), 새 bootId로 다시 떠야 하므로 `Restart=always`, 2초 뒤 재시작이다. 운영 알림은 70과 75에만 건다. 300초 동안 시작을 다섯 번으로 제한해 설정 오류나 지속 장애의 재시작 폭주를 막는다. 제한에 걸리면 원인을 해결한 뒤 해당 유닛의 `systemctl reset-failed`와 `start`로 재개한다. 명시적인 `systemctl stop`은 자동 재시작을 유발하지 않는다. `Restart=always`이므로 코드 0 종료도 재시작한다. 300초에 다섯 번 제한은 출정이 1분 안에 연달아 끝나는 경우에도 걸릴 수 있으니, 실측 뒤 던전 유닛의 `StartLimitBurst`를 조정한다.
 
-Unity의 `-logFile -`와 stdout·stderr를 journald로 모은다. 던전은 유닛 번호와 `SyslogIdentifier`로 구분한다. 로그를 구조화 JSON으로 바꾸거나 공통 필드를 자동 추가하는 기능은 유닛에 없다. 로그 형식·보존·비밀값 제외는 [공통 로그 안내](../LOGGING.md)를 따른다.
+Unity의 `-logFile -`와 stdout·stderr를 journald로 모은다(유닛의 `StandardOutput=journal`, `StandardError=journal`). 던전은 유닛 번호와 `SyslogIdentifier`(`shinshi-dungeon-<슬롯>`)로 구분한다. 로그를 구조화 JSON으로 바꾸거나 공통 필드를 자동 추가하는 기능은 유닛에 없다(서버 빌드의 `ServerJsonLogHandler`가 JSON 한 줄로 바꾼다). 프로세스가 재시작해도 journald에 남지만, 호스트 재부팅 뒤에도 남고 보존 기간·디스크 상한이 정해지려면 보존 설정을 설치해야 한다. 기본 설정은 호스트에 따라 메모리에만 두고 재부팅하면 사라진다.
+
+```bash
+sudo install -d /etc/systemd/journald.conf.d
+sudo install -m 0644 -o root -g root deploy/gameserver/journald-shinshi.conf /etc/systemd/journald.conf.d/shinshi.conf
+sudo systemctl restart systemd-journald
+journalctl --disk-usage
+```
+
+[journald-shinshi.conf](journald-shinshi.conf)는 `Storage=persistent`, 최대 90일·4G·여유 2G 유지다. 기술 로그 30일·행동 로그 90일 원칙을 journald는 종류별로 나누지 못하므로 상한을 90일로 두고 디스크 상한이 실제로 먼저 걸린다. 정산 하나를 `sessionId`·`operationId`로 추적하는 조회는 [공통 로그 안내](../LOGGING.md#보존과-정산-추적-op-6b)에 있다. 로그 형식·비밀값 제외도 그 문서를 따른다. 보존 파일은 이 작업에서 Linux 호스트에 적용해 보지 못했다.
 
 ```bash
 sudo systemctl status shinshi-town.service shinshi-dungeon@1.service
@@ -85,6 +95,6 @@ sudo ss -lunp
 
 예시는 서비스 자격·토큰·비밀번호를 포함하지 않는다. 그런 값을 실행 인자, URL, Unity 에셋·SO, 로그에 넣지 않는다. 게임서버의 API 서비스 자격 로딩 계약은 현재 실행 설정에 없으므로 임의 환경변수나 CLI 플래그를 추가하지 않았다. 후속 구현에서 외부 시크릿 공급과 실제 읽기 코드를 함께 연결한다. systemd의 `LoadCredential`을 선택할 경우에도 서버가 credential 파일을 읽는 코드와 해당 호스트 systemd 지원을 검증한 뒤 설정한다. 근거: [systemd.exec의 credential·환경 설정](https://github.com/systemd/systemd/blob/main/man/systemd.exec.xml).
 
-대상 Linux에서 `systemd-analyze verify`, 비루트 실행·런타임 파일 쓰기, 마을+N 던전 UDP 바인딩, API HTTPS·서비스 인증, crash 재시작·폭주 제한, journald 출력, SIGTERM 처리·시간 초과, 실제 세션 드레인·outbox·재접속을 확인해야 한다. 이 작업은 파일·실행 계약의 정적 확인만 수행했으며 유닛 실행·Linux 서버 빌드·네트워크 통합·부하 측정은 미검증이다.
+대상 Linux에서 `systemd-analyze verify`, 비루트 실행·런타임 파일 쓰기, 마을+N 던전 UDP 바인딩, API HTTPS·서비스 인증, crash 재시작·폭주 제한, journald 출력과 보존 설정 적용·재부팅 뒤 잔존·정산 추적 조회, SIGTERM 처리·시간 초과, 실제 세션 드레인·outbox·재접속을 확인해야 한다. 이 작업은 파일·실행 계약의 정적 확인만 수행했으며 유닛 실행·Linux 서버 빌드·네트워크 통합·부하 측정은 미검증이다.
 
 설계 근거: [기술 설계 3장·10장](../../docs/03-technical-design.md), [서버 운영 원칙 7장](../../docs/unity/NETWORK_AUTHORITY.md).

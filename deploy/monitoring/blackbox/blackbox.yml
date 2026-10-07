@@ -1,0 +1,12 @@
+# Probe modules for the blackbox exporter. Prometheus passes ?module=<name>&target=<url> (see prometheus.yml).
+modules:
+  # API readiness: /health/ready answers 200 only while the API can run SELECT 1 on the database (503 otherwise).
+  http_ready:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      valid_status_codes: [200]
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false

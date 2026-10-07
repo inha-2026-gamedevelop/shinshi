@@ -1,0 +1,13 @@
+# 예시(초기안, 결정 전): 하루 한 번. 설치 위치 /etc/systemd/system/shinshi-db-backup.timer
+# OnCalendar 는 호스트 시간대 기준이다. 시각은 플레이 시간대와 겹치지 않게 정한다(미결정).
+[Unit]
+Description=Run Shinshi PostgreSQL backup daily
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=shinshi-db-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -11,11 +11,13 @@
 | [api/Dockerfile](api/Dockerfile) | .NET 10 SDK에서 Backend 솔루션 빌드, API publish, ASP.NET runtime에서 비루트 실행 |
 | [api/Dockerfile.dockerignore](api/Dockerfile.dockerignore) | 저장소 루트 context에서 빌드 소스만 허용 |
 | [api/.env.example](api/.env.example) | API 환경 키와 자리표시자 |
+| [api/docker-compose.example.yml](api/docker-compose.example.yml) | API 컨테이너 실행 예시와 로그 보존(`journald` 드라이버 또는 `json-file` 회전) |
 | [gameserver/shinshi-town.service](gameserver/shinshi-town.service) | 마을 프로세스 1개 |
 | [gameserver/shinshi-dungeon@.service](gameserver/shinshi-dungeon@.service) | 던전 프로세스 인스턴스 1개씩 |
 | [gameserver/README.md](gameserver/README.md) | 환경 예시, Linux 설치 전제, 시작/종료·드레인 절차 |
-| [LOGGING.md](LOGGING.md) | JSON 공통 키·지표 이름·단위 |
-| [monitoring/README.md](monitoring/README.md) | 게임 서버 `/metrics`를 Prometheus로 수집하고 Grafana 대시보드·경보 규칙으로 보는 구성 |
+| [gameserver/journald-shinshi.conf](gameserver/journald-shinshi.conf) | 호스트 journald 로그 보존(90일·4G 상한, 재부팅 뒤 보존) |
+| [LOGGING.md](LOGGING.md) | JSON 공통 키·지표 이름·단위, 로그 보존, 정산 하나를 추적하는 조회 |
+| [monitoring/README.md](monitoring/README.md) | 게임 서버·API `/metrics`를 Prometheus로 수집하고 `/health/ready`를 확인해, Grafana 대시보드와 경보 규칙, Alertmanager 웹훅 전달까지 보는 구성 |
 
 ## API 컨테이너
 
@@ -45,7 +47,9 @@ Invoke-RestMethod http://127.0.0.1:5080/v1/service-state
 docker inspect --format '{{json .State.Health}}' shinshi-api-local
 ```
 
-`HEALTHCHECK`는 30초 간격으로 `GET /v1/service-state`의 HTTP 성공 여부를 본다. 이 API는 DB에 접근하지 않으며 점검 중에도 200을 반환할 수 있다. 따라서 HTTP 프로세스 생존 확인이며 DB readiness·로그인 가능·경제 저장 성공을 보장하지 않는다. Docker의 `unhealthy` 상태 자체는 컨테이너를 자동 재시작하지 않는다.
+`HEALTHCHECK`는 30초 간격으로 `GET /health/live`의 HTTP 성공 여부를 본다. 이 경로는 DB에 접근하지 않고 프로세스가 응답하면 200이다. 따라서 HTTP 프로세스 생존 확인이며 DB readiness·로그인 가능·경제 저장 성공을 보장하지 않는다. `/health/ready`를 쓰지 않는 이유는 DB 장애가 컨테이너 `unhealthy`로 번져 unhealthy 컨테이너를 재시작하는 자동 복구 도구나 오케스트레이터가 멀쩡한 API를 DB 없이 계속 재시작하는 연쇄를 막기 위해서다. 재시작은 DB를 고치지 못하고 진행 중 요청·정산 작업만 끊으며 재접속 폭주를 더한다. DB 준비 상태는 외부에서 Prometheus(blackbox)가 `/health/ready`를 확인해 `ShinshiApiNotReady` 경보로 본다([모니터링](monitoring/README.md)). 이 경로는 Backend에 `/health/live`가 들어간 빌드부터 있으므로, 그 전 빌드의 이미지는 `unhealthy`로 표시된다. Docker의 `unhealthy` 상태 자체는 컨테이너를 자동 재시작하지 않는다.
+
+API 로그는 Docker 기본 `json-file` 드라이버가 회전 없이 계속 쌓고 컨테이너를 지우면 함께 사라진다. 운영에서는 `journald` 드라이버(호스트 journald 보존 설정 공유, 컨테이너 재생성 뒤에도 남음)나 `json-file` 회전을 쓴다. 예시는 [api/docker-compose.example.yml](api/docker-compose.example.yml)이고, 보존 기간과 정산 추적 조회는 [로그 규약](LOGGING.md#보존과-정산-추적-op-6b)에 있다.
 
 API 설정은 [.env.example](api/.env.example)에 적힌 키를 프로세스 환경으로 공급한다. 실제 DB 연결 문자열·토큰·서비스 자격을 저장소나 환경 파일에 쓰지 않는다. 기존 프로그램은 외부 시크릿 파일을 자동 읽지 않으므로 시크릿 공급자가 환경으로 전달하는 연결은 별도 구현/운영 작업이다. `--build-arg`로 비밀값을 전달하지 않는다.
 
@@ -116,9 +120,9 @@ systemd-analyze verify deploy/gameserver/shinshi-town.service deploy/gameserver/
 
 부모/통합 담당이 이어서 할 작업:
 
-1. Docker 데몬 접근 가능한 Linux 환경에서 이미지 build/run, 비루트 UID·상태 검사·SIGTERM을 확인한다. DB readiness endpoint와 실제 DB 통합 검증은 Backend 범위다.
+1. Docker 데몬 접근 가능한 Linux 환경에서 이미지 build/run, 비루트 UID·상태 검사(`/health/live`)·SIGTERM을 확인한다. 실제 DB 통합 검증은 Backend 범위다.
 2. Linux Dedicated Server 빌드와 Bootstrap/GameDB 배치를 만들고 각 역할의 UDP 수신·재시작·동시 인스턴스 실행을 확인한다. 현재 `ServerBootstrap.CreateJoinTokenVerifier`는 출시 빌드에서 `null`을 반환하므로 실제 출시 인증기를 연결해야 한다.
 3. 역할별 서비스 자격과 시크릿 환경 공급, API HTTPS 도메인·TLS, 비공개 DB/migrator 권한을 연결한다. 이 파일들은 실제 비밀값을 담지 않는다.
 4. 서버 풀 등록·heartbeat, 신규 배정 중지, 세션 마감/저장 큐/outbox 드레인을 구현하고 장애·강제 종료 때 경제 작업을 복구한다.
-5. [로그 규약](LOGGING.md)을 API/Unity 로거·수집기에 연결하고 부하 시험으로 RSS·CPU·틱 시간·API p95·저장 큐를 측정해 N/호스팅 사양을 정한다. 필요 시 `ethtool -S`의 `pps_allowance_exceeded`, `bw_*_allowance_exceeded`, `conntrack_allowance_exceeded`도 확인한다.
+5. [로그 규약](LOGGING.md)은 API/Unity 로거에 연결되어 있고 호스트 journald·Docker 드라이버 보존 설정 파일이 있다. Linux 호스트에 적용하고 정산 추적 조회를 실제 로그로 확인한다. 실제 웹훅 채널을 정해 시험 경보를 받아 본다(OP-2). 부하 시험으로 RSS·CPU·틱 시간·API p95·저장 큐를 측정해 N/호스팅 사양을 정한다. 필요 시 `ethtool -S`의 `pps_allowance_exceeded`, `bw_*_allowance_exceeded`, `conntrack_allowance_exceeded`도 확인한다.
 6. 빌드 신원/허용 `buildId`, 드레인 뒤 교체, 서명 매니페스트·게시 sequence·stable 채널 검증 등 영역 17의 남은 작업을 별도로 진행한다.

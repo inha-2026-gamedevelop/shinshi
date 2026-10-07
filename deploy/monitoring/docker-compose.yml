@@ -1,6 +1,7 @@
-# Shinshi game server monitoring: Prometheus scrapes /metrics, Grafana shows the dashboard.
+# Shinshi monitoring: Prometheus scrapes game server and API /metrics, blackbox-exporter probes the API
+# /health/ready, Alertmanager delivers alerts to a Discord-compatible webhook, Grafana shows the dashboards.
 # Run from this folder: docker compose --env-file .env up -d
-# Both UIs bind to 127.0.0.1 only. Put them behind SSH tunnel or a VPN; do not expose them publicly.
+# Every UI/API port binds to 127.0.0.1 only. Put them behind SSH tunnel or a VPN; do not expose them publicly.
 name: shinshi-monitoring
 
 services:
@@ -19,6 +20,36 @@ services:
     extra_hosts:
       # Lets the container reach game servers running on the developer machine.
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - alertmanager
+      - blackbox
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - alertmanager-data:/alertmanager
+    secrets:
+      # Mounted at /run/secrets/alert_webhook_url, read through webhook_url_file in alertmanager.yml.
+      - alert_webhook_url
+    ports:
+      - "127.0.0.1:9093:9093"
+    restart: unless-stopped
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.27.0
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+    extra_hosts:
+      # Lets the container probe an API running on the developer machine.
+      - "host.docker.internal:host-gateway"
+    # No published port: only Prometheus reaches it, over the compose network.
     restart: unless-stopped
 
   grafana:
@@ -40,6 +71,12 @@ services:
       - prometheus
     restart: unless-stopped
 
+secrets:
+  alert_webhook_url:
+    # Discord-compatible webhook URL. Set ALERT_WEBHOOK_URL in .env (git ignored), never in a committed file.
+    environment: ALERT_WEBHOOK_URL
+
 volumes:
   prometheus-data:
+  alertmanager-data:
   grafana-data:

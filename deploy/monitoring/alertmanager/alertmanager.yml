@@ -1,0 +1,44 @@
+# Alertmanager: groups Prometheus alerts and sends them to a Discord-compatible webhook.
+# The webhook URL is a secret. It is read from /run/secrets/alert_webhook_url, which compose fills from
+# ALERT_WEBHOOK_URL in the git-ignored .env. Never write the URL into this file.
+# discord_configs needs Alertmanager 0.25 or newer (this stack pins 0.28.1).
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: discord
+  # One message per alert name. Alerts of one name on many servers (for example every dungeon slot) stay together.
+  group_by: [alertname]
+  # Conservative values for a small team: wait 30s to batch an incident, add late joiners at most every 5m,
+  # and repeat an unresolved alert only every 4h (12h for warnings) so the channel is not flooded.
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Informational alerts (ShinshiServerRestarted fires on every normal dungeon restart) are kept out of the channel.
+    # They stay visible in the Prometheus and Alertmanager UIs.
+    - matchers: [severity="info"]
+      receiver: "null"
+    - matchers: [severity="warning"]
+      receiver: discord
+      repeat_interval: 12h
+
+inhibit_rules:
+  # While one API instance does not answer, that same instance's other alerts add no information. Limited to the same
+  # instance so one replica going down never hides another replica's alerts. ShinshiApiErrorRate and the reconciliation
+  # mismatch alert are not suppressed: they are not tied to one instance's liveness and must stay visible.
+  - source_matchers: [alertname="ShinshiApiDown"]
+    target_matchers: [alertname=~"ShinshiApiNotReady|ShinshiOutboxBacklog|ShinshiReconciliationStale|ShinshiApiDbMetricsUnavailable"]
+    equal: [instance]
+
+receivers:
+  - name: "null"
+  - name: discord
+    discord_configs:
+      - webhook_url_file: /run/secrets/alert_webhook_url
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})'
+        message: |-
+          {{ range .Alerts -}}
+          {{ .Annotations.summary }}
+          {{ end }}

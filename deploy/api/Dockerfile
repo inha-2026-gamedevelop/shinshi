@@ -31,9 +31,13 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
     Logging__LogLevel__Microsoft.AspNetCore=Warning
 
 EXPOSE 8080/tcp
+# The container check uses /health/live (process answers, no database access) on purpose: if it used /health/ready, a database
+# outage would mark the container unhealthy and any auto-heal or orchestrator that restarts unhealthy containers would restart
+# a healthy API against a down database. Restarting does not fix the database, drops in-flight requests and settlement work,
+# and adds a reconnect storm. Database readiness is watched from outside: Prometheus probes /health/ready (ShinshiApiNotReady).
 # APP_UID is the non-root app user supplied by the official .NET Linux image.
 USER $APP_UID
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD ["curl", "--fail", "--silent", "--show-error", "--noproxy", "*", "--connect-timeout", "2", "--max-time", "3", "--output", "/dev/null", "http://127.0.0.1:8080/v1/service-state"]
+    CMD ["curl", "--fail", "--silent", "--show-error", "--noproxy", "*", "--connect-timeout", "2", "--max-time", "3", "--output", "/dev/null", "http://127.0.0.1:8080/health/live"]
 ENTRYPOINT ["dotnet", "Shinshi.Api.dll"]
