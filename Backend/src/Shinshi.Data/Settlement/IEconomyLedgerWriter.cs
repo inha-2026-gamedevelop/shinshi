@@ -115,6 +115,15 @@ namespace Shinshi.Data.Settlement
         public const string REASON_AUCTION_SETTLE        = "AuctionSettle";
         public const string REASON_AUCTION_PAYOUT        = "AuctionPayout";
 
+        // 유저 경매장과 1:1 거래. EEconomyReason의 같은 이름이다
+        public const string REASON_MARKET_ESCROW         = "MarketEscrow";
+        public const string REASON_MARKET_RETURN         = "MarketReturn";
+        public const string REASON_MARKET_PURCHASE       = "MarketPurchase";
+        public const string REASON_MARKET_PROCEEDS       = "MarketProceeds";
+        public const string REASON_MARKET_RECEIVE        = "MarketReceive";
+        public const string REASON_TRADE_GIVE            = "TradeGive";
+        public const string REASON_TRADE_RECEIVE         = "TradeReceive";
+
         public const string SOURCE_GAME_SESSION  = "GameSession";
         public const string SOURCE_PARTY_AUCTION = "PartyAuction";
         public const string ACTOR_SERVER        = "Server";

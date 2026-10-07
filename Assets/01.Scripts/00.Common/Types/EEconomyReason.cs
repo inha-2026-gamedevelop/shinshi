@@ -32,6 +32,13 @@ namespace Shinshi.Common
         AdminRevoke          = 27,
         EventReward          = 28,
         Coupon               = 29,
-        RecoveryCompensation = 30
+        RecoveryCompensation = 30,
+        MarketEscrow         = 31,
+        MarketReturn         = 32,
+        MarketPurchase       = 33,
+        MarketProceeds       = 34,
+        MarketReceive        = 35,
+        TradeGive            = 36,
+        TradeReceive         = 37
     }
 }

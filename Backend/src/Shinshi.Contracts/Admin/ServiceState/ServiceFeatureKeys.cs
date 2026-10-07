@@ -25,9 +25,13 @@ namespace Shinshi.Contracts.Admin
         public const string TALISMAN      = "talisman";
         public const string TRAINING      = "training";
 
+        // 유저 경매장과 1:1 거래
+        public const string MARKET        = "market";
+        public const string TRADE         = "trade";
+
         private static readonly string[] G_All =
         {
-            AUCTION, CRAFTING, ENHANCE, INHERIT, GATHERING, BOSS_ENTRY, INBOX_CLAIM, DUNGEON_ENTRY, TALISMAN, TRAINING
+            AUCTION, CRAFTING, ENHANCE, INHERIT, GATHERING, BOSS_ENTRY, INBOX_CLAIM, DUNGEON_ENTRY, TALISMAN, TRAINING, MARKET, TRADE
         };
 
         /****************************************

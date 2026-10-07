@@ -129,6 +129,20 @@ namespace Shinshi.Data.Settlement
                     return ContractCodes.EconomyReason.AUCTION_SETTLE;
                 case EconomyLedgerCodes.REASON_AUCTION_PAYOUT:
                     return ContractCodes.EconomyReason.AUCTION_PAYOUT;
+                case EconomyLedgerCodes.REASON_MARKET_ESCROW:
+                    return ContractCodes.EconomyReason.MARKET_ESCROW;
+                case EconomyLedgerCodes.REASON_MARKET_RETURN:
+                    return ContractCodes.EconomyReason.MARKET_RETURN;
+                case EconomyLedgerCodes.REASON_MARKET_PURCHASE:
+                    return ContractCodes.EconomyReason.MARKET_PURCHASE;
+                case EconomyLedgerCodes.REASON_MARKET_PROCEEDS:
+                    return ContractCodes.EconomyReason.MARKET_PROCEEDS;
+                case EconomyLedgerCodes.REASON_MARKET_RECEIVE:
+                    return ContractCodes.EconomyReason.MARKET_RECEIVE;
+                case EconomyLedgerCodes.REASON_TRADE_GIVE:
+                    return ContractCodes.EconomyReason.TRADE_GIVE;
+                case EconomyLedgerCodes.REASON_TRADE_RECEIVE:
+                    return ContractCodes.EconomyReason.TRADE_RECEIVE;
                 default:
                     throw new ArgumentException("Unsupported session ledger reason.", nameof(reason));
             }

@@ -71,6 +71,35 @@ namespace Shinshi.Backend.Tests.Admin
         }
 
         [Fact]
+        public void ToResponse_NoticeCategory_IsCarriedAndDefaultsToNotice()
+        {
+            ServiceNoticeRecord update = new ServiceNoticeRecord(Guid.NewGuid(), "patch", "body",
+                ServiceNotice.TARGET_LAUNCHER, ServiceNotice.SEVERITY_INFO, G_Now.AddHours(-1), G_Now.AddHours(1),
+                Guid.NewGuid(), G_Now.AddHours(-1), null, null, ServiceNotice.CATEGORY_UPDATE);
+            ServiceNoticeRecord plain = Notice("plain", ServiceNotice.TARGET_LAUNCHER, ServiceNotice.SEVERITY_INFO,
+                G_Now.AddHours(-2), G_Now.AddHours(1));
+            ServiceStateSnapshot snapshot = new ServiceStateSnapshot(false, null, new[] { "b1" }, 3,
+                EServiceStateSource.Database, string.Empty, new[] { update, plain });
+
+            IReadOnlyList<ServiceNotice> notices = snapshot.ToResponse(G_Now).Notices;
+
+            Assert.Equal(ServiceNotice.CATEGORY_UPDATE, notices.Single(notice => notice.Title == "patch").Category);
+            Assert.Equal(ServiceNotice.CATEGORY_NOTICE, notices.Single(notice => notice.Title == "plain").Category);
+        }
+
+        [Fact]
+        public void ServiceNotice_OldPayloadWithoutCategory_ReadsAsNotice()
+        {
+            const string OLD_JSON = "{\"noticeId\":\"a\",\"title\":\"t\",\"body\":\"b\",\"target\":\"Launcher\","
+                + "\"severity\":0,\"startsAtUnixMs\":1,\"endsAtUnixMs\":2}";
+
+            ServiceNotice notice = Newtonsoft.Json.JsonConvert.DeserializeObject<ServiceNotice>(OLD_JSON,
+                ContractJson.CreateSettings())!;
+
+            Assert.Equal(ServiceNotice.CATEGORY_NOTICE, notice.Category);
+        }
+
+        [Fact]
         public void ToResponse_NoLauncherNotice_UsesSourceFallback()
         {
             ServiceStateSnapshot configured = new ServiceStateSnapshot(true, null, null, 0,
@@ -224,7 +253,7 @@ namespace Shinshi.Backend.Tests.Admin
             Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED,
                 await gate.CheckFeatureAsync(ServiceFeatureKeys.AUCTION));
             Assert.Throws<ArgumentException>(() => gate.IsDisabled("Auction"));
-            Assert.Equal(10, ServiceFeatureKeys.All.Count);
+            Assert.Equal(12, ServiceFeatureKeys.All.Count);
         }
 
         private static ServiceNoticeRecord Notice(string title, string target, int severity, DateTimeOffset startsAt,

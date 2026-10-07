@@ -3,6 +3,7 @@ using System;
 
 // Third Party
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Shinshi.Data.Growth
 {
@@ -26,6 +27,12 @@ namespace Shinshi.Data.Growth
         public bool   Locked       { get; set; }
         public bool   Bound        { get; set; }
 
+        // 경매장 보관 중이면 "Market", 아니면 null. 성장 쓰기는 이 값이 있으면 MarketEscrowed로 거절한다
+        public string? EscrowKind  { get; set; }
+
+        // 보관한 등록 ID. 경매장 쓰기만 읽는다
+        public Guid?   EscrowRef   { get; set; }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -38,19 +45,26 @@ namespace Shinshi.Data.Growth
         /// <summary> item_history 상태 객체. 키 순서와 이름은 운영 조회가 읽으므로 바꾸지 않는다 </summary>
         public string ToHistoryJson()
         {
-            return JsonConvert.SerializeObject(new
+            // 보관 표시는 값이 있을 때만 끝에 붙여 기존 이력의 키와 순서를 그대로 둔다
+            JObject state = new JObject
             {
-                characterId = CharacterId.ToString("D"),
-                definitionId = DefinitionId,
-                slot = Slot,
-                grade = Grade,
-                isTraining = IsTraining,
-                origin = Origin,
-                enhancement = Enhancement,
-                equipped = Equipped,
-                locked = Locked,
-                bound = Bound
-            }, Formatting.None);
+                ["characterId"] = CharacterId.ToString("D"),
+                ["definitionId"] = DefinitionId,
+                ["slot"] = Slot,
+                ["grade"] = Grade,
+                ["isTraining"] = IsTraining,
+                ["origin"] = Origin,
+                ["enhancement"] = Enhancement,
+                ["equipped"] = Equipped,
+                ["locked"] = Locked,
+                ["bound"] = Bound
+            };
+            if (EscrowKind != null)
+            {
+                state["escrowKind"] = EscrowKind;
+            }
+
+            return state.ToString(Formatting.None);
         }
     }
 }

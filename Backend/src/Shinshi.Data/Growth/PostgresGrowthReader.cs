@@ -71,7 +71,8 @@ namespace Shinshi.Data.Growth
                 FROM character_training WHERE character_id = @CharacterId;
                 SELECT item_id AS "ItemId", definition_id AS "DefinitionId", slot AS "Slot", grade AS "Grade",
                     is_training AS "IsTraining", origin AS "Origin", enhancement AS "Enhancement", equipped AS "Equipped",
-                    locked AS "Locked", bound AS "Bound"
+                    locked AS "Locked", bound AS "Bound",
+                    escrow_kind AS "EscrowKind"
                 FROM equipment_instances WHERE character_id = @CharacterId ORDER BY slot, item_id;
                 SELECT slot AS "Slot", stage AS "Stage", failures AS "Failures"
                 FROM enhancement_pity WHERE character_id = @CharacterId AND failures > 0 ORDER BY slot, stage;
@@ -113,7 +114,7 @@ namespace Shinshi.Data.Growth
         private static EquipmentView ToView(EquipmentRecord row)
         {
             return new EquipmentView(row.ItemId.ToString("D"), row.DefinitionId, row.Slot, row.Grade, row.IsTraining,
-                row.Origin, row.Enhancement, row.Equipped, row.Locked, row.Bound);
+                row.Origin, row.Enhancement, row.Equipped, row.Locked, row.Bound, row.EscrowKind != null);
         }
 
         /****************************************

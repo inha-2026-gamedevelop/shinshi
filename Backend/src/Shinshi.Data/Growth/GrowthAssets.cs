@@ -29,5 +29,9 @@ namespace Shinshi.Data.Growth
         public const string HISTORY_UNEQUIPPED       = "Unequipped";
         public const string HISTORY_LOCK_CHANGED     = "LockChanged";
         public const string HISTORY_DISMANTLED       = "Dismantled";
+        public const string HISTORY_MARKET_ESCROWED  = "MarketEscrowed";
+        public const string HISTORY_MARKET_RETURNED  = "MarketReturned";
+        public const string HISTORY_MARKET_SOLD      = "MarketSold";
+        public const string HISTORY_TRADED           = "Traded";
     }
 }

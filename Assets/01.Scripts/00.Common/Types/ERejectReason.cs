@@ -98,6 +98,31 @@ namespace Shinshi.Common
         // 마을 파티
         RoomNotFound           = 1300, // 방이 없거나 이미 출정했다
         RoomPasswordMismatch   = 1301,
-        InviteExpired          = 1302  // 초대를 받은 지 30초가 지났다
+        InviteExpired          = 1302, // 초대를 받은 지 30초가 지났다
+
+        // 유저 경매장
+        MarketListingLimit     = 1400, // 계정 동시 등록 10건을 넘는다
+        MarketNotTradable      = 1401, // 거래 가능 품목이 아니다
+        MarketPriceOutOfRange  = 1402, // 개당 가격이나 수량이 범위 밖이다
+        MarketSoldOut          = 1403, // 이미 다 팔렸거나 취소됐다
+        MarketQuantityChanged  = 1404, // 남은 수량이 요청보다 적다
+        MarketPriceChanged     = 1405, // 개당 가격이 확인한 값과 다르다
+        MarketExpired          = 1406, // 등록 기한이 지났다
+        MarketSelfPurchase     = 1407, // 같은 계정의 등록은 살 수 없다
+        MarketEscrowed         = 1408, // 경매장에 보관 중인 장비라 다른 작업을 할 수 없다
+        MarketNotOwner         = 1409, // 본인 소유나 본인 등록이 아니다
+        CharacterHasMarketListing = 1410, // 활성 장비 등록이 있는 캐릭터는 삭제할 수 없다
+
+        // 1:1 거래
+        TradeItemChanged          = 1500, // 제안한 품목이나 수량이 실행 시점에 맞지 않는다
+        TradeNotTradable          = 1501,
+        TradeInventoryFull        = 1502, // 받는 쪽 공간이 부족하다
+        TradeInsufficientCurrency = 1503,
+        TradeSameAccount          = 1504,
+        TradeNotInTown            = 1505, // 접속 임대가 이 마을에 없다
+        TradeBusy                 = 1506, // 이미 진행 중인 실행이 있다
+        TradeTooFar               = 1507,
+        TradeRequestExpired       = 1508, // 거래 요청 수락 시간이 지났다
+        TradeExpired              = 1509  // prepare 뒤 120초가 지났다
     }
 }

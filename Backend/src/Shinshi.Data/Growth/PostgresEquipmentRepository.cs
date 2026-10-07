@@ -172,6 +172,10 @@ namespace Shinshi.Data.Growth
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
             }
+            if (item.EscrowKind != null)
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
+            }
             if (!EnhancementRules.CanEnhance(item.Enhancement))
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
@@ -228,6 +232,10 @@ namespace Shinshi.Data.Growth
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
             }
+            if ((source.EscrowKind != null) || (target.EscrowKind != null))
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
+            }
 
             // TODO(민성): 착용 중인 원본 거절과 계승 뒤 대상 자동 착용 여부는 기획 미정(docs/design/growth-economy.md 6장).
             // 확정 전에는 착용 원본을 BOUND_ITEM으로 거절하고 자동 착용하지 않는다
@@ -260,6 +268,10 @@ namespace Shinshi.Data.Growth
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
             }
+            if (item.EscrowKind != null)
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
+            }
             if (item.Equipped)
             {
                 return GrowthEffectResult.Committed(itemId: item.ItemId, changesLoadout: false);
@@ -285,7 +297,15 @@ namespace Shinshi.Data.Growth
             CancellationToken cancellationToken)
         {
             Dictionary<Guid, EquipmentRecord> items = await context.LockEquipmentAsync(new[] { itemId }, cancellationToken);
-            if (!items.TryGetValue(itemId, out EquipmentRecord? item) || !item.Equipped)
+            if (!items.TryGetValue(itemId, out EquipmentRecord? item))
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
+            }
+            if (item.EscrowKind != null)
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
+            }
+            if (!item.Equipped)
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
             }
@@ -308,6 +328,10 @@ namespace Shinshi.Data.Growth
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
             }
+            if (item.EscrowKind != null)
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
+            }
             if (item.Locked == locked)
             {
                 return GrowthEffectResult.Committed(itemId: item.ItemId, changesLoadout: false);
@@ -327,6 +351,10 @@ namespace Shinshi.Data.Growth
                 || !context.Content.TryGetEquipment(item.DefinitionId, out GrowthContent.EquipmentDefinition definition))
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
+            }
+            if (item.EscrowKind != null)
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
             }
             if (!string.Equals(item.Origin, GrowthCodes.EquipmentOrigin.CRAFT, StringComparison.Ordinal) || item.IsTraining
                 || item.Equipped || item.Locked)
