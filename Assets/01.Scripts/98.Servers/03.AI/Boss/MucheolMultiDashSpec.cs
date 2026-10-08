@@ -16,7 +16,6 @@ namespace Shinshi.AI
         private readonly int   _enhancedDashCount;
         private readonly float _dashSeconds;
         private readonly float _reaimSeconds;
-        private readonly float _reaimTurnRate;
 
         /****************************************
         *              Properties
@@ -34,14 +33,11 @@ namespace Shinshi.AI
         /// <summary> 초, 돌진이 끝나고 다음 돌진이 시작하기까지 </summary>
         public float ReaimSeconds => _reaimSeconds;
 
-        /// <summary> 도/초, 돌진 사이에 대상 쪽으로 돌 수 있는 속도, 0이면 재조준하지 않는다 </summary>
-        public float ReaimTurnRate => _reaimTurnRate;
-
         /****************************************
         *                Methods
         ****************************************/
 
-        public MucheolMultiDashSpec(int dashCount, int enhancedDashCount, float dashSeconds, float reaimSeconds, float reaimTurnRate)
+        public MucheolMultiDashSpec(int dashCount, int enhancedDashCount, float dashSeconds, float reaimSeconds)
         {
             if (dashCount < 1)
             {
@@ -63,16 +59,10 @@ namespace Shinshi.AI
                 throw new ArgumentOutOfRangeException(nameof(reaimSeconds), "재조준 시간은 0 이상의 유한값이다");
             }
 
-            if ((!(reaimTurnRate >= 0f)) || float.IsInfinity(reaimTurnRate))
-            {
-                throw new ArgumentOutOfRangeException(nameof(reaimTurnRate), "재조준 회전 속도는 0 이상의 유한값이다");
-            }
-
             _dashCount         = dashCount;
             _enhancedDashCount = enhancedDashCount;
             _dashSeconds       = dashSeconds;
             _reaimSeconds      = reaimSeconds;
-            _reaimTurnRate     = reaimTurnRate;
         }
 
         /// <summary> 강화 구간 여부에 따른 돌진 횟수 </summary>
