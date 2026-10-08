@@ -94,7 +94,7 @@ namespace Shinshi.Common
             public const float PLAYER_BODY_RADIUS    = 0.5f;
             public const float COMPANION_BODY_RADIUS = 0.5f;
 
-            // TODO(민성): 기획 미정, 보스 몸체 반경 임시값(m). 보스 정의 데이터에 몸체 크기가 생기면 그 값을 쓴다
+            // TODO(기웅): 기획 미정, 보스 몸체 반경 임시값(m). 보스 정의 데이터에 몸체 크기가 생기면 그 값을 쓴다
             public const float BOSS_BODY_RADIUS      = 2f;
 
             // 몸체에 막히는지 볼 대상을 찾을 때 이동 거리에 더하는 여유(m). 가장 큰 몸체(보스) 반경보다 커야 한다
