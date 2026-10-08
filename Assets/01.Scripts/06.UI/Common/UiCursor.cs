@@ -38,8 +38,11 @@ namespace Shinshi.UI
         [Tooltip("FlashBlocked로 불가 커서를 띄워 두는 시간(초)")]
         [SerializeField] private float _flashDuration = 0.4f;
 
+        private readonly Texture2D[] _scaled = new Texture2D[3];
+
         private ECursorState _state        = ECursorState.None;
         private float        _blockedUntil = 0f;
+        private float        _scale        = 1f;
 
         /****************************************
         *              Unity Event
@@ -57,13 +60,21 @@ namespace Shinshi.UI
         private void OnEnable()
         {
             _state = ECursorState.None;
+            _scale = CursorScale.Current;
+            CursorScale.Changed += OnScaleChanged;
             Refresh();
         }
 
         private void OnDisable()
         {
+            CursorScale.Changed -= OnScaleChanged;
             _state = ECursorState.None;
             Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+        }
+
+        private void OnDestroy()
+        {
+            ClearScaled();
         }
 
         private void Update()
@@ -107,7 +118,58 @@ namespace Shinshi.UI
             }
 
             _state = next;
-            Cursor.SetCursor(texture, _hotspot, CursorMode.Auto);
+            Cursor.SetCursor(Scaled(texture, next), _hotspot * _scale, CursorMode.Auto);
+        }
+
+        private void OnScaleChanged(float scale)
+        {
+            _scale = scale;
+            ClearScaled();
+            _state = ECursorState.None;
+            Refresh();
+        }
+
+        // 원본 그림은 그대로 두고 상태별로 배율을 적용한 복사본을 한 번만 만든다
+        private Texture2D Scaled(Texture2D source, ECursorState state)
+        {
+            if (Mathf.Approximately(_scale, 1f))
+            {
+                return source;
+            }
+
+            int index = (int)state - 1;
+            if (_scaled[index] == null)
+            {
+                _scaled[index] = Resize(source, Mathf.Max(1, Mathf.RoundToInt(source.width * _scale)), Mathf.Max(1, Mathf.RoundToInt(source.height * _scale)));
+            }
+            return _scaled[index];
+        }
+
+        private static Texture2D Resize(Texture2D source, int width, int height)
+        {
+            RenderTexture target = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            RenderTexture previous = RenderTexture.active;
+            target.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(source, target);
+            RenderTexture.active = target;
+            Texture2D result = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            result.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
+            result.Apply();
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(target);
+            return result;
+        }
+
+        private void ClearScaled()
+        {
+            for (int i = 0; i < _scaled.Length; ++i)
+            {
+                if (_scaled[i] != null)
+                {
+                    Destroy(_scaled[i]);
+                    _scaled[i] = null;
+                }
+            }
         }
 
         private ECursorState ResolveState()

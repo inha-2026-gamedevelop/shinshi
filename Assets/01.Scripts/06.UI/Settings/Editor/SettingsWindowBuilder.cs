@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 // System
 using System;
 using System.Collections.Generic;
@@ -115,6 +116,7 @@ namespace Shinshi.UI.Editor
             BuildNavigation();
             BuildGraphics();
             BuildAudio();
+            BuildGame();
             BuildFooter();
             PreloadCharacters(root);
 
@@ -162,11 +164,10 @@ namespace Shinshi.UI.Editor
 
             Fill("tab-line", new Color(G_Gold.r, G_Gold.g, G_Gold.b, 0.24f));
             Fill("tab-mark", G_Accent);
-            SetRect(Node("tab-mark"), 530f, 42f, 140f, 2f);
-            SetRect(Node("tab-guide"), 330f, 4f, 160f, 38f);
-            SetRect(Node("tab-opt"), 520f, 0f, 160f, 44f);
-            SetRect(Node("tab-sys"), 710f, 4f, 160f, 38f);
-            Text(Node("tab-guide"), "도감", 19f, new Color(0.4f, 0.45f, 0.48f, 1f));
+            SetRect(Node("tab-mark"), 435f, 42f, 140f, 2f);
+            SetRect(Node("tab-opt"), 425f, 0f, 160f, 44f);
+            SetRect(Node("tab-sys"), 615f, 4f, 160f, 38f);
+            Hide("tab-guide");
             Text(Node("tab-opt"), "옵션", 24f, G_Accent, true);
             Text(Node("tab-sys"), "시스템", 19f, new Color(0.4f, 0.45f, 0.48f, 1f));
             Hide("key-q");
@@ -186,6 +187,8 @@ namespace Shinshi.UI.Editor
             SetRect(Node("sub-screen"), 0f, 60f, 250f, 40f);
             SetRect(Node("sub-frame"), 0f, 104f, 250f, 40f);
             SetRect(Node("cat-aud"), 0f, 162f, 250f, 52f);
+            RectTransform gameNode = Rect(Node("catlist"), "GameCategory", 0f, 222f, 250f, 52f);
+            G_Nodes["cat-game"] = gameNode;
             Hide("cat-gfx-a");
             Hide("cat-aud-a");
             Node("cat-gfx-t").gameObject.SetActive(false);
@@ -194,19 +197,27 @@ namespace Shinshi.UI.Editor
             Node("cat-aud-bg").gameObject.SetActive(false);
             Button graphics = Button("cat-gfx", "그래픽", G_Control, TextAlignmentOptions.Left);
             Button audio = Button("cat-aud", "오디오", G_Control, TextAlignmentOptions.Left);
+            Button game = Button("cat-game", "게임", G_Control, TextAlignmentOptions.Left);
             TMP_Text graphicsLabel = graphics.GetComponentInChildren<TMP_Text>();
             TMP_Text audioLabel = audio.GetComponentInChildren<TMP_Text>();
             graphicsLabel.margin = new Vector4(56f, 0f, 0f, 0f);
             audioLabel.margin = new Vector4(56f, 0f, 0f, 0f);
+            TMP_Text gameLabel = game.GetComponentInChildren<TMP_Text>();
+            gameLabel.margin = new Vector4(56f, 0f, 0f, 0f);
             Glyph(Node("cat-gfx"), "MonitorGlyph", 17f, 14f, 24f, SettingsGlyph.EShape.Monitor, G_Accent);
             Glyph(Node("cat-aud"), "AudioGlyph", 17f, 14f, 24f, SettingsGlyph.EShape.Speaker, G_Accent);
+            Glyph(Node("cat-game"), "GameGlyph", 17f, 14f, 24f, SettingsGlyph.EShape.Gamepad, G_Accent);
+            Image gameEdge = Panel(Node("cat-game"), "SelectionEdge", 0f, 0f, 2f, 52f, G_Accent);
+            gameEdge.gameObject.SetActive(false);
             Image graphicsEdge = Panel(Node("cat-gfx"), "SelectionEdge", 0f, 0f, 2f, 52f, G_Accent);
             Image audioEdge = Panel(Node("cat-aud"), "SelectionEdge", 0f, 0f, 2f, 52f, G_Accent);
             audioEdge.gameObject.SetActive(false);
             Link("_graphicsIndicator", graphicsEdge.gameObject);
             Link("_audioIndicator", audioEdge.gameObject);
+            Link("_gameIndicator", gameEdge.gameObject);
             LinkArray("_graphicsLabels", new UnityEngine.Object[] { graphicsLabel });
             LinkArray("_audioLabels", new UnityEngine.Object[] { audioLabel });
+            LinkArray("_gameLabels", new UnityEngine.Object[] { gameLabel });
             Hide("sub-screen-bg");
             Hide("sub-frame-bg");
             Text(Node("sub-screen-t"), "화면 설정", 17f, G_Muted, false, TextAlignmentOptions.Left);
@@ -215,8 +226,10 @@ namespace Shinshi.UI.Editor
             UnityEventTools.AddPersistentListener(Button("sub-frame", string.Empty, Color.clear).onClick, G_View.ShowGraphics);
             LinkArray("_graphicsNavigation", new UnityEngine.Object[] { graphics });
             LinkArray("_audioNavigation", new UnityEngine.Object[] { audio });
+            LinkArray("_gameNavigation", new UnityEngine.Object[] { game });
             Link("_graphicsHighlight", graphics.GetComponent<Image>());
             Link("_audioHighlight", audio.GetComponent<Image>());
+            Link("_gameHighlight", game.GetComponent<Image>());
             Panel(Node("catlist"), "TreeGuide", 16f, 66f, 1f, 68f, new Color(G_Accent.r, G_Accent.g, G_Accent.b, 0.25f));
             Panel(Node("left"), "SidebarFooterRule", 20f, 460f, 234f, 1f, G_Border);
             Label(Node("left"), "SidebarFooterTitle", "설정 변경", 20f, 482f, 234f, 24f, 16f, G_Accent, true, TextAlignmentOptions.Left);
@@ -246,6 +259,7 @@ namespace Shinshi.UI.Editor
             scroll.content = content;
             RectTransform graphics = Rect(content, "GraphicsPage", 0f, 0f, 796f, 430f);
             RectTransform audio = Rect(content, "AudioPage", 0f, 0f, 796f, 430f);
+            RectTransform game = Rect(content, "GamePage", 0f, 0f, 796f, 430f);
             foreach (Transform child in new List<Transform>(Children(viewport)))
             {
                 if (child != content)
@@ -255,8 +269,11 @@ namespace Shinshi.UI.Editor
             }
             Link("_graphicsBody", graphics.gameObject);
             Link("_audioBody", audio.gameObject);
+            Link("_gameBody", game.gameObject);
             G_Nodes["audio-page"] = audio;
+            G_Nodes["game-page"] = game;
             audio.gameObject.SetActive(false);
+            game.gameObject.SetActive(false);
             // 현재 항목 수는 한 화면에 들어가므로 장식 스크롤바 대신 실제 스크롤 영역만 둔다
             Hide("rscroll");
         }
@@ -322,6 +339,21 @@ namespace Shinshi.UI.Editor
             Link("_masterValue", masterValue);
             Link("_bgmValue", bgmValue);
             Link("_sfxValue", sfxValue);
+        }
+
+        private static void BuildGame()
+        {
+            RectTransform page = Node("game-page");
+            Label(page, "GameSection", "마우스 커서", 62f, 16f, 300f, 34f, 20f, G_Gold, true, TextAlignmentOptions.Left);
+            Glyph(page, "GameSectionMark", 20f, 25f, 12f, SettingsGlyph.EShape.Diamond, G_Gold);
+            RectTransform row = Rect(page, "CursorSizeRow", 16f, 62f, ROW_WIDTH, ROW_HEIGHT);
+            Image background = Panel(row, "RowBackground", 0f, 0f, ROW_WIDTH, ROW_HEIGHT, G_Row);
+            Label(row, "Label", "커서 크기", 20f, 13f, 290f, 36f, 21f, G_Text, false, TextAlignmentOptions.Left);
+            Hint(row, background, "커서 크기", "게임 안에서 보이는 마우스 커서의 크기를 선택합니다. 선택하면 바로 미리 볼 수 있고, 취소하면 이전 크기로 돌아옵니다.");
+            RectTransform slot = Rect(row, "CursorSizeSlot", 420f, 10f, 344f, 42f);
+            G_Nodes["dd-cursor"] = slot;
+            Link("_cursorSize", Dropdown("dd-cursor", new[] { "중 (100%)" }));
+            Label(page, "GameNotice", "커서 크기는 화면이 아닌 게임 커서 그림에만 적용됩니다", 36f, 396f, 740f, 32f, 15f, G_Gold, false, TextAlignmentOptions.Left);
         }
 
         private static void BuildFooter()
@@ -737,7 +769,7 @@ namespace Shinshi.UI.Editor
 
         private static void PreloadCharacters(RectTransform root)
         {
-            StringBuilder characters = new StringBuilder("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%+-/ .,:()전체 화면테두리 없는 창창 모드제한 없음켜기끄기적용하지 않은 변경 사항이 있습니다설정을 적용했습니다모든 설정이 저장되어 있습니다소리의 크기와 균형을 조절합니다");
+            StringBuilder characters = new StringBuilder("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%+-/ .,:()전체 화면테두리 없는 창창 모드제한 없음켜기끄기게임마우스 커서커서 크기소중대적용하지 않은 변경 사항이 있습니다설정을 적용했습니다모든 설정이 저장되어 있습니다소리의 크기와 균형을 조절합니다");
             foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
             {
                 characters.Append(text.text);
@@ -793,3 +825,4 @@ namespace Shinshi.UI.Editor
         }
     }
 }
+#endif

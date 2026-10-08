@@ -22,6 +22,10 @@ namespace Shinshi.UI
         public const string FRAME_CAP_KEY = "Graphics.FrameCap";
 
         private const int   NO_FRAME_CAP = -1;
+        private const int   CATEGORY_GRAPHICS = 0;
+        private const int   CATEGORY_AUDIO    = 1;
+        private const int   CATEGORY_GAME     = 2;
+        private const int   CATEGORY_COUNT    = 3;
         private const float PERCENT      = 100f;
 
         private static readonly int[] G_FrameCaps = { 30, 60, 120, 144, NO_FRAME_CAP };
@@ -35,14 +39,19 @@ namespace Shinshi.UI
         [Header("분류")]
         [SerializeField] private GameObject _graphicsBody = null;
         [SerializeField] private GameObject _audioBody    = null;
+        [SerializeField] private GameObject _gameBody     = null;
         [SerializeField] private Button[]   _graphicsNavigation = null;
         [SerializeField] private Button[]   _audioNavigation    = null;
+        [SerializeField] private Button[]   _gameNavigation     = null;
         [SerializeField] private Image     _graphicsHighlight   = null;
         [SerializeField] private Image     _audioHighlight      = null;
+        [SerializeField] private Image     _gameHighlight       = null;
         [SerializeField] private GameObject _graphicsIndicator  = null;
         [SerializeField] private GameObject _audioIndicator     = null;
+        [SerializeField] private GameObject _gameIndicator      = null;
         [SerializeField] private TMP_Text[] _graphicsLabels     = null;
         [SerializeField] private TMP_Text[] _audioLabels        = null;
+        [SerializeField] private TMP_Text[] _gameLabels         = null;
         [SerializeField] private TMP_Text _categoryTitle = null;
         [SerializeField] private TMP_Text _categoryDetail = null;
 
@@ -64,6 +73,9 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text _bgmValue    = null;
         [SerializeField] private TMP_Text _sfxValue    = null;
         [SerializeField] private TMP_Text _muteState   = null;
+
+        [Header("게임")]
+        [SerializeField] private TMP_Dropdown _cursorSize = null;
 
         [Header("설명과 버튼")]
         [SerializeField] private TMP_Text _hintTitle = null;
@@ -88,8 +100,9 @@ namespace Shinshi.UI
         private int  _savedMode       = 0;
         private int  _savedResolution = 0;
         private int  _savedFrameCap   = NO_FRAME_CAP;
+        private int  _savedCursorSize = CursorScale.DEFAULT_INDEX;
         private bool _savedVsync      = true;
-        private bool _audioSelected   = false;
+        private int  _category        = CATEGORY_GRAPHICS;
         private bool _ready           = false;
 
         /****************************************
@@ -106,6 +119,7 @@ namespace Shinshi.UI
             _bgm.onValueChanged.AddListener(OnVolumeChanged);
             _sfx.onValueChanged.AddListener(OnVolumeChanged);
             _mute.onValueChanged.AddListener(OnMuteChanged);
+            _cursorSize.onValueChanged.AddListener(OnCursorSizeChanged);
             _reset.onClick.AddListener(ResetCategory);
             _resetAll.onClick.AddListener(ResetAll);
             _apply.onClick.AddListener(Apply);
@@ -119,6 +133,10 @@ namespace Shinshi.UI
             foreach (Button button in _audioNavigation)
             {
                 button.onClick.AddListener(ShowAudio);
+            }
+            foreach (Button button in _gameNavigation)
+            {
+                button.onClick.AddListener(ShowGame);
             }
             _ready = true;
         }
@@ -138,13 +156,14 @@ namespace Shinshi.UI
             if (_ready)
             {
                 _savedAudio.Preview();
+                CursorScale.Preview(_savedCursorSize);
             }
         }
 
         // 모달이 열려 있을 때만 활성화된다. 닫힌 창은 입력을 폴링하지 않는다
         private void Update()
         {
-            if ((_screenMode.IsExpanded) || (_resolution.IsExpanded) || (_frameCap.IsExpanded))
+            if ((_screenMode.IsExpanded) || (_resolution.IsExpanded) || (_frameCap.IsExpanded) || (_cursorSize.IsExpanded))
             {
                 return;
             }
@@ -152,16 +171,13 @@ namespace Shinshi.UI
             {
                 Cancel();
             }
-            else if ((Input.GetKeyDown(KeyCode.Q)) || (Input.GetKeyDown(KeyCode.E)))
+            else if (Input.GetKeyDown(KeyCode.Q))
             {
-                if (_audioSelected)
-                {
-                    ShowGraphics();
-                }
-                else
-                {
-                    ShowAudio();
-                }
+                SelectCategory((_category + CATEGORY_COUNT - 1) % CATEGORY_COUNT);
+            }
+            else if (Input.GetKeyDown(KeyCode.E))
+            {
+                SelectCategory((_category + 1) % CATEGORY_COUNT);
             }
         }
 
@@ -189,8 +205,9 @@ namespace Shinshi.UI
             gameObject.SetActive(true);
         }
 
-        public void ShowGraphics() { SelectCategory(false); }
-        public void ShowAudio() { SelectCategory(true); }
+        public void ShowGraphics() { SelectCategory(CATEGORY_GRAPHICS); }
+        public void ShowAudio() { SelectCategory(CATEGORY_AUDIO); }
+        public void ShowGame() { SelectCategory(CATEGORY_GAME); }
 
         /// <summary>마우스 또는 키보드로 선택한 항목의 설명을 표시한다</summary>
         public void ShowHint(string title, string description)
@@ -222,6 +239,7 @@ namespace Shinshi.UI
             _savedAudio = CurrentAudio();
             _savedAudio.Save();
             _savedAudio.Preview();
+            CursorScale.Save(_cursorSize.value);
             PlayerPrefs.Save();
             CaptureGraphicsBaseline();
             RefreshState();
@@ -241,21 +259,26 @@ namespace Shinshi.UI
         /// <summary>현재 분류를 기본값으로 편집한다. 저장은 적용 버튼에서 수행한다</summary>
         public void ResetCategory()
         {
-            if (_audioSelected)
+            switch (_category)
             {
-                SetAudio(SoundVolume.Default);
-                OnVolumeChanged(0f);
-            }
-            else
-            {
-                ResetGraphics();
+                case CATEGORY_AUDIO:
+                    SetAudio(SoundVolume.Default);
+                    OnVolumeChanged(0f);
+                    break;
+                case CATEGORY_GAME:
+                    ResetGame();
+                    break;
+                default:
+                    ResetGraphics();
+                    break;
             }
         }
 
-        /// <summary>그래픽과 오디오를 기본값으로 편집한다</summary>
+        /// <summary>그래픽, 오디오, 게임을 기본값으로 편집한다</summary>
         public void ResetAll()
         {
             ResetGraphics();
+            ResetGame();
             SetAudio(SoundVolume.Default);
             OnVolumeChanged(0f);
         }
@@ -295,6 +318,14 @@ namespace Shinshi.UI
             _vsync.SetIsOnWithoutNotify(PlayerPrefs.GetInt(VSYNC_KEY, 1) != 0);
             int frameCap = ValidFrameCap(PlayerPrefs.GetInt(FRAME_CAP_KEY, NO_FRAME_CAP));
             _frameCap.SetValueWithoutNotify(System.Array.IndexOf(G_FrameCaps, frameCap));
+            _cursorSize.ClearOptions();
+            List<string> cursorLabels = new List<string>(CursorScale.Count);
+            for (int i = 0; i < CursorScale.Count; ++i)
+            {
+                cursorLabels.Add(CursorScale.Label(i));
+            }
+            _cursorSize.AddOptions(cursorLabels);
+            _cursorSize.SetValueWithoutNotify(CursorScale.Load());
             _savedAudio = SoundVolume.Load();
             SetAudio(_savedAudio);
             _savedAudio.Preview();
@@ -308,33 +339,59 @@ namespace Shinshi.UI
             _savedResolution = _resolution.value;
             _savedVsync      = _vsync.isOn;
             _savedFrameCap   = G_FrameCaps[_frameCap.value];
+            _savedCursorSize = _cursorSize.value;
         }
 
-        private void SelectCategory(bool audio)
+        private void SelectCategory(int category)
         {
-            _audioSelected = audio;
-            _graphicsBody.SetActive(!audio);
-            _audioBody.SetActive(audio);
-            _graphicsHighlight.color = audio ? _idleColor : _selectedColor;
-            _audioHighlight.color = audio ? _selectedColor : _idleColor;
-            _graphicsIndicator.SetActive(!audio);
-            _audioIndicator.SetActive(audio);
-            foreach (TMP_Text label in _graphicsLabels)
+            _category = category;
+            _graphicsBody.SetActive(category == CATEGORY_GRAPHICS);
+            _audioBody.SetActive(category == CATEGORY_AUDIO);
+            _gameBody.SetActive(category == CATEGORY_GAME);
+            _graphicsHighlight.color = (category == CATEGORY_GRAPHICS) ? _selectedColor : _idleColor;
+            _audioHighlight.color    = (category == CATEGORY_AUDIO)    ? _selectedColor : _idleColor;
+            _gameHighlight.color     = (category == CATEGORY_GAME)     ? _selectedColor : _idleColor;
+            _graphicsIndicator.SetActive(category == CATEGORY_GRAPHICS);
+            _audioIndicator.SetActive(category == CATEGORY_AUDIO);
+            _gameIndicator.SetActive(category == CATEGORY_GAME);
+            PaintLabels(_graphicsLabels, category == CATEGORY_GRAPHICS);
+            PaintLabels(_audioLabels, category == CATEGORY_AUDIO);
+            PaintLabels(_gameLabels, category == CATEGORY_GAME);
+            switch (category)
             {
-                label.color = audio ? _idleTextColor : _activeTextColor;
+                case CATEGORY_AUDIO:
+                    _categoryTitle.text = "오디오";
+                    _categoryDetail.text = "소리의 크기와 균형을 조절합니다";
+                    break;
+                case CATEGORY_GAME:
+                    _categoryTitle.text = "게임";
+                    _categoryDetail.text = "게임 플레이 중 보이는 요소를 조절합니다";
+                    break;
+                default:
+                    _categoryTitle.text = "그래픽";
+                    _categoryDetail.text = "내 화면에 맞는 플레이 환경을 선택합니다";
+                    break;
             }
-            foreach (TMP_Text label in _audioLabels)
-            {
-                label.color = audio ? _activeTextColor : _idleTextColor;
-            }
-            _categoryTitle.text = audio ? "오디오" : "그래픽";
-            _categoryDetail.text = audio ? "소리의 크기와 균형을 조절합니다" : "내 화면에 맞는 플레이 환경을 선택합니다";
             ShowHint("설정 안내", "항목에 마우스를 올리면 자세한 설명을 확인할 수 있습니다.");
+        }
+
+        private void PaintLabels(TMP_Text[] labels, bool active)
+        {
+            foreach (TMP_Text label in labels)
+            {
+                label.color = active ? _activeTextColor : _idleTextColor;
+            }
         }
 
         private void OnGraphicsChanged(int value) { RefreshState(); }
         private void OnVsyncChanged(bool value) { RefreshState(); }
         private void OnMuteChanged(bool value) { OnVolumeChanged(0f); }
+
+        private void OnCursorSizeChanged(int value)
+        {
+            CursorScale.Preview(value);
+            RefreshState();
+        }
 
         private void OnVolumeChanged(float value)
         {
@@ -364,12 +421,20 @@ namespace Shinshi.UI
             RefreshState();
         }
 
+        private void ResetGame()
+        {
+            _cursorSize.SetValueWithoutNotify(CursorScale.DEFAULT_INDEX);
+            CursorScale.Preview(CursorScale.DEFAULT_INDEX);
+            RefreshState();
+        }
+
         private bool HasChanges()
         {
             return (_savedMode != _screenMode.value)
                 || (_savedResolution != _resolution.value)
                 || (_savedVsync != _vsync.isOn)
                 || (_savedFrameCap != G_FrameCaps[_frameCap.value])
+                || (_savedCursorSize != _cursorSize.value)
                 || (!_savedAudio.Equals(CurrentAudio()));
         }
 

@@ -17,6 +17,7 @@ namespace Shinshi.UI
             Monitor,
             Speaker,
             Moon,
+            Gamepad,
         }
 
         /****************************************
@@ -72,6 +73,20 @@ namespace Shinshi.UI
                     Line(helper, 0.7f, 0.5f, 0.62f, 0.65f);
                     Line(helper, 0.78f, 0.2f, 0.92f, 0.5f);
                     Line(helper, 0.92f, 0.5f, 0.78f, 0.8f);
+                    break;
+                case EShape.Gamepad:
+                    Line(helper, 0.08f, 0.4f, 0.2f, 0.75f);
+                    Line(helper, 0.2f, 0.75f, 0.8f, 0.75f);
+                    Line(helper, 0.8f, 0.75f, 0.92f, 0.4f);
+                    Line(helper, 0.92f, 0.4f, 0.8f, 0.2f);
+                    Line(helper, 0.8f, 0.2f, 0.62f, 0.38f);
+                    Line(helper, 0.62f, 0.38f, 0.38f, 0.38f);
+                    Line(helper, 0.38f, 0.38f, 0.2f, 0.2f);
+                    Line(helper, 0.2f, 0.2f, 0.08f, 0.4f);
+                    Line(helper, 0.2f, 0.57f, 0.4f, 0.57f);
+                    Line(helper, 0.3f, 0.47f, 0.3f, 0.67f);
+                    Quad(helper, new Vector2(0.68f, 0.48f), new Vector2(0.73f, 0.53f), new Vector2(0.68f, 0.58f), new Vector2(0.63f, 0.53f));
+                    Quad(helper, new Vector2(0.8f, 0.58f), new Vector2(0.85f, 0.63f), new Vector2(0.8f, 0.68f), new Vector2(0.75f, 0.63f));
                     break;
                 case EShape.Moon:
                     for (int i = 0; i < ARC_SEGMENTS; ++i)
