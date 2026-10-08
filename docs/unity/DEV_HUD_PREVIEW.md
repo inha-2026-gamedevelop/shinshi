@@ -100,6 +100,24 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 
 Play Mode 화면에서 인벤토리 하단의 두 아이콘·수치 1,250/2,100과 상세창 정기 아이콘·투명 행을 확인했다. Sprite 참조·흰색 틴트·수치 미잘림, Console 오류·경고0을 확인했다. 엽전 중앙 구멍과 이미지 네 모서리는 alpha0이다. 실제 서버 재화 변경·Player 빌드는 미검증이다.
 
+## 은색 HUD 메뉴 아이콘 (2026-10-07)
+
+기존 CharSelect의 뒤로·환경설정·게임 종료 아이콘과 같은 바랜 은색 금속·두꺼운 베벨 표현으로 메뉴 아이콘 5개를 제작했다. 모두 `Assets/01.Scripts/05.Art/UI/HudMenuButton/Textures/`에 둔다.
+
+| 메뉴 | 파일 | 적용 |
+|---|---|---|
+| 캐릭터 정보 | `T_HudMenuButton_IconProfile.png` | 기존 파일 교체, GUID 유지 |
+| 인벤토리 | `T_HudMenuButton_IconInventory.png` | 기존 파일 교체, GUID 유지 |
+| 특성 | `T_HudMenuButton_IconTraits.png` | 메뉴 전용 새 Sprite |
+| 경매장 | `T_HudMenuButton_IconAuction.png` | 메뉴 전용 새 Sprite |
+| 캐릭터 선택 | `T_HudMenuButton_IconCharacterSelect.png` | 꺾쇠·세로선 형태의 메뉴 전용 새 Sprite |
+
+캐릭터 정보는 사용자 참고 이미지처럼 왼쪽을 보는 사람 옆얼굴이며 투구 대신 사용한다. 캐릭터 선택은 왼쪽 꺾쇠와 짧은 세로선으로 표시한다. 특성은 4개 능력 노드를 잇는 가지 문양, 경매장은 경매 망치다. 기존 공용 수련 공격·경매 재료·뒤로가기 Sprite는 보존하며 메뉴의 Image.sprite에 전용 파일을 연결한다.
+
+사용자 소유 `Assets/00.Scenes/Dev_HUD/` 개발 씬의 기존 사용처에 적용했다. `Dev_HUD.unity`와 `Dev_ShinshiVillageQuarterView.unity`의 상시 메뉴 캐릭터 정보·인벤토리는 GUID를 유지한 파일 교체로 반영된다. 마을 UI 개발 씬의 확장 메뉴는 특성·경매장·캐릭터 선택을 새 Sprite로 연결했다. `Dev_CharSelect.unity`의 왼쪽 위 뒤로 가기 버튼에도 꺾쇠·세로선 Sprite를 사용한다. `Dev_ItemSlot.unity` 제목 가방과 `Dev_Trade.unity`의 인벤토리·거래창 제목 가방은 흰색 틴트·비율 유지로 설정했다.
+
+원본 PNG는 투명 알파가 있으며 Unity 임포트는 Single Sprite·Full Rect·최대256px·밉맵 없음·비압축·Clamp다. 32/64/96px 비교 화면에서 기존 은색 아이콘과 톤·실루엣을 확인했다. 씬 적용 후 마을 확장 메뉴 Play Mode에서 메뉴 열기·닫기와 새 아이콘5개 표시를 확인하고 캐릭터 선택 화면도 캡처했다. HUD·인벤토리·거래창은 에디터 Game View 캡처로 아이콘 표시를 확인했다. 검증 중 다른 인벤토리 코드 작업의 재컴파일로 Play Mode가 중단되어 인벤토리·거래창 런타임 조작은 이번 검증에서 제외한다. 마지막 Console 확인은 오류0이며 범위 밖 기존 코드·외부 에셋 경고와 MCP 재접속 경고가 남았다. 실제 메뉴 목적지 이동·Player 빌드는 미검증이다.
+
 ## 인벤토리 슬롯 이동·정렬 잠금 (2026-10-07)
 
 `Dev_ItemSlot.unity`의 `InventoryView._enableSlotInteraction`을 켜 슬롯 간 왼쪽 드래그 이동·교환과 좌우 Alt + 왼쪽 클릭 잠금 토글을 연결했다. 빈 칸에는 이동하고 아이템이 있는 칸과는 교환한다. 잠금 표시는 기존 `ItemSlotView`를 사용하며, 정렬 시 잠긴 아이템은 현재 위치를 유지한다. 직접 이동하면 잠금 상태도 아이템에 따라 이동한다. 분류 탭의 빈 칸은 실제 빈 칸에 대응하고 다른 분류 아이템을 덮어쓰지 않는다. 슬롯 밖에 놓거나 창 닫기·탭 변경·정렬·데이터 갱신 시 드래그를 취소한다.
