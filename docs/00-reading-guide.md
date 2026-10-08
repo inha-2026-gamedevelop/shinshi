@@ -28,6 +28,7 @@
 | [부적 효과 목록](design/talisman-catalog.md) | 현행 45효과(보조 30/핵심 15), 설계 ID·기술·선택 단계·변형 동작 | 민성, 진욱 |
 | [기존 직업 설계 보존본](design/legacy-class-design.md) | 무사·도술사·신령사 12기술/45효과·공명/강림의 구구현 근거와 이관 경계 | 구현·검수 담당 |
 | [성장·경제 기준안](design/growth-economy.md) | 능력치·수련, 장비 제작/강화/계승, 보상·경매 재료, 인벤토리 | 진욱, 민성 |
+| [캐릭터 경험치·레벨](design/character-level-growth.md) | Lv1~30·약 100판 만렙 초기안, 즉시 레벨업·실패 보존, 기존 수련과 결합 | 진욱, 민성 |
 | [계승 단계표](design/equipment-inheritance.md) | 재련 단계 대응과 17/18강 보완값 ([원본 이미지](design/references/inheritance-stage-table.png)) | 진욱 |
 | [생활·수련 요약](design/life-training.md) | 채집·물약·정기 수련 계산 | 진욱 |
 | [생활·서비스 기준안](design/experience-service.md) | 채집·물약, 출정·재접속, 파티 경매, NPC·해금, 프롤로그, HUD·체험판 목표 | 전원 |
