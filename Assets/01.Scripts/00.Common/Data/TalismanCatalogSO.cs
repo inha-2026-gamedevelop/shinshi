@@ -11,7 +11,7 @@ using Shinshi.Common;
 
 namespace Shinshi.Data
 {
-    /// <summary> 부적 효과 45종의 직업, 기술, 단계, 선택과 변형 수치 </summary>
+    /// <summary> 부적 효과 90종(구 직업 45종, 검사 · 마검사 · 궁수 45종)의 직업, 기술, 단계, 선택과 변형 수치 </summary>
     [CreateAssetMenu(fileName = "TalismanCatalog", menuName = "Shinshi/TalismanCatalogSO")]
     public class TalismanCatalogSO : GameDataSO
     {
@@ -33,8 +33,14 @@ namespace Shinshi.Data
             [SerializeField] private float _delay;            // 초, 첫 타격 뒤 후속 타격이나 폭발까지
             [SerializeField] private int   _projectileCount;  // 갈래 또는 대상 수
             [SerializeField] private float _spreadAngle;      // 도, 이웃한 갈래 사이 각도
-            [SerializeField] private int   _maxExtraTargets;  // 관통 뒤 추가로 맞힐 최대 적 수
+            [SerializeField] private int   _maxExtraTargets;  // 관통 뒤 추가로 맞힐 최대 적 수, PierceExtend는 교체할 최대 대상 수
+            [SerializeField] private float _projectileSpeed;  // m/초, 변형이 만드는 투사체 속도. 0이면 기술 원래 속도
+            [SerializeField] private float _pullDistance;     // m, 한 번 당기는 최대 거리
+            [SerializeField] private float _pullPointOffset;  // m, 시전자 전방 이 거리의 지점 쪽으로 당긴다. 0이면 판정 중심
 
+            public float ProjectileSpeed => _projectileSpeed;
+            public float PullDistance    => _pullDistance;
+            public float PullPointOffset => _pullPointOffset;
             public float BaseCoefficient => _baseCoefficient;
             public float FixedArcAngle   => _fixedArcAngle;
             public float FixedRadius     => _fixedRadius;
@@ -53,8 +59,12 @@ namespace Shinshi.Data
 
             public TalismanVariantSpec(float baseCoefficient = 0f, float fixedArcAngle = 0f, float fixedRadius = 0f,
                 float radiusDelta = 0f, float altShapeBonus = 0f, float length = 0f, float width = 0f, float delay = 0f,
-                int projectileCount = 0, float spreadAngle = 0f, int maxExtraTargets = 0)
+                int projectileCount = 0, float spreadAngle = 0f, int maxExtraTargets = 0, float projectileSpeed = 0f,
+                float pullDistance = 0f, float pullPointOffset = 0f)
             {
+                _projectileSpeed = projectileSpeed;
+                _pullDistance    = pullDistance;
+                _pullPointOffset = pullPointOffset;
                 _baseCoefficient = baseCoefficient;
                 _fixedArcAngle   = fixedArcAngle;
                 _fixedRadius     = fixedRadius;
@@ -128,6 +138,7 @@ namespace Shinshi.Data
         ****************************************/
 
         private const int   EFFECT_COUNT           = 45;
+        private const int   CLASS_EFFECT_COUNT     = 45;  // 검사, 마검사, 궁수 신규 효과
         private const int   EFFECTS_PER_CLASS      = 15;
         private const int   MAX_EFFECT_LEVEL       = 5;
         private const int   SIGNATURE_CHOICE_COUNT = 2;   // 대표 기술의 단계당 후보 수
@@ -153,6 +164,19 @@ namespace Shinshi.Data
         private const string SUMMON_SPIRIT  = "skill_summoner_summon_spirit";
         private const string SPIRIT_STRIKE  = "skill_summoner_spirit_strike";
         private const string TARGET_BARRIER = "skill_summoner_target_barrier";
+
+        private const string SWORD_SLASH       = "skill_swordsman_slash";
+        private const string SWORD_DASH        = "skill_swordsman_dash";
+        private const string SWORD_FOCUS       = "skill_swordsman_focus_slash";
+        private const string SWORD_CHAIN       = "skill_swordsman_chain_slash";
+        private const string MAGE_ARCANE       = "skill_mageknight_arcane_slash";
+        private const string MAGE_FLAME_FIELD  = "skill_mageknight_flame_field";
+        private const string MAGE_SEAL         = "skill_mageknight_seal_slash";
+        private const string MAGE_THUNDER      = "skill_mageknight_thunder_wave";
+        private const string ARCHER_RAPID      = "skill_archer_rapid_shot";
+        private const string ARCHER_RETREAT    = "skill_archer_retreat_shot";
+        private const string ARCHER_PIERCING   = "skill_archer_piercing_shot";
+        private const string ARCHER_SCATTER    = "skill_archer_scatter_shot";
 
         /****************************************
         *                Fields
@@ -304,9 +328,152 @@ namespace Shinshi.Data
                 ETalismanEffectKind.AttachBarrier, ETalismanUpgradeStat.DamageBonusPoint, 0.05f)
         };
 
-        [NonSerialized] private DefinitionLookup<TalismanEffectDefinition> _lookup = new DefinitionLookup<TalismanEffectDefinition>();
+        // 구 직업 효과 배열을 건드리지 않고 새 배열로 둬서 이미 저장된 에셋도 직렬화 기본값으로 이 45종을 받는다.
+        // 문서의 KS, MK, AR 코드는 문서용이고 런타임 ID는 기존 형식의 T13부터 T24다
+        [Header("부적 효과 45종 (검사, 마검사, 궁수)")]
+        [SerializeField] private TalismanEffectDefinition[] _classEffects =
+        {
+            // 검사 넓게 베기, 대표 기술. 연속 참격과 회전 참격은 무사 넓게 베기와 같은 규칙이다
+            new TalismanEffectDefinition("T13-1A", EPlayerClass.Swordsman, SWORD_SLASH, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.CooldownReduction, ETalismanUpgradeStat.CooldownRate, 0.1f),
+            new TalismanEffectDefinition("T13-1B", EPlayerClass.Swordsman, SWORD_SLASH, ETalismanTier.Support1, ETalismanChoice.B,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T13-2A", EPlayerClass.Swordsman, SWORD_SLASH, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.WidenArc, ETalismanUpgradeStat.ArcAngle, 20f,
+                new TalismanVariantSpec(altShapeBonus: 0.5f)),
+            new TalismanEffectDefinition("T13-2B", EPlayerClass.Swordsman, SWORD_SLASH, ETalismanTier.Support2, ETalismanChoice.B,
+                ETalismanEffectKind.FocusArc, ETalismanUpgradeStat.DamageRate, 0.2f,
+                new TalismanVariantSpec(fixedArcAngle: 80f, radiusDelta: -0.5f)),
+            new TalismanEffectDefinition("T13-3A", EPlayerClass.Swordsman, SWORD_SLASH, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.FollowUpStrike, ETalismanUpgradeStat.AddedCoefficient, 0.6f,
+                new TalismanVariantSpec(delay: 0.15f)),
+            new TalismanEffectDefinition("T13-3B", EPlayerClass.Swordsman, SWORD_SLASH, ETalismanTier.Core, ETalismanChoice.B,
+                ETalismanEffectKind.CircleSweep, ETalismanUpgradeStat.AddedCoefficient, 0.2f,
+                new TalismanVariantSpec(baseCoefficient: 2.2f, fixedRadius: 3f)),
 
-        public IReadOnlyList<TalismanEffectDefinition> Effects        => _effects;
+            // 검사 돌진 베기
+            new TalismanEffectDefinition("T14-1A", EPlayerClass.Swordsman, SWORD_DASH, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T14-2A", EPlayerClass.Swordsman, SWORD_DASH, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.MoveDistanceIncrease, ETalismanUpgradeStat.MoveDistance, 1f),
+            new TalismanEffectDefinition("T14-3A", EPlayerClass.Swordsman, SWORD_DASH, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.PierceDash, ETalismanUpgradeStat.AddedCoefficient, 0.2f,
+                new TalismanVariantSpec(baseCoefficient: 1.8f)),
+
+            // 검사 집중 베기, 잔향 검풍은 본타격 뒤 0.2초에 나가는 투사체이고 강한 검격은 검풍에도 적용한다
+            new TalismanEffectDefinition("T15-1A", EPlayerClass.Swordsman, SWORD_FOCUS, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.CooldownReduction, ETalismanUpgradeStat.CooldownRate, 0.1f),
+            new TalismanEffectDefinition("T15-2A", EPlayerClass.Swordsman, SWORD_FOCUS, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.DamageIncrease, ETalismanUpgradeStat.DamageRate, 0.15f),
+            new TalismanEffectDefinition("T15-3A", EPlayerClass.Swordsman, SWORD_FOCUS, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.FollowUpProjectile, ETalismanUpgradeStat.AddedCoefficient, 1.2f,
+                new TalismanVariantSpec(length: 6f, width: 1.5f, delay: 0.2f, projectileSpeed: 16f)),
+
+            // 검사 연환참, 검풍은 두 번째 타격 뒤 0.2초에 나간다
+            new TalismanEffectDefinition("T16-1A", EPlayerClass.Swordsman, SWORD_CHAIN, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T16-2A", EPlayerClass.Swordsman, SWORD_CHAIN, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.WidenArc, ETalismanUpgradeStat.ArcAngle, 20f,
+                new TalismanVariantSpec(altShapeBonus: 0.5f)),
+            new TalismanEffectDefinition("T16-3A", EPlayerClass.Swordsman, SWORD_CHAIN, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.FollowUpProjectile, ETalismanUpgradeStat.AddedCoefficient, 1f,
+                new TalismanVariantSpec(length: 8f, width: 1.5f, delay: 0.2f, projectileSpeed: 16f)),
+
+            // 마검사 마력검격, 삼갈래 검풍은 근접 타격을 투사체 세 발로 교체한다
+            new TalismanEffectDefinition("T17-1A", EPlayerClass.Mageknight, MAGE_ARCANE, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T17-2A", EPlayerClass.Mageknight, MAGE_ARCANE, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.ReachIncrease, ETalismanUpgradeStat.Range, 1f,
+                new TalismanVariantSpec(altShapeBonus: 2f)),
+            new TalismanEffectDefinition("T17-3A", EPlayerClass.Mageknight, MAGE_ARCANE, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.SpreadShot, ETalismanUpgradeStat.AddedCoefficient, 0.2f,
+                new TalismanVariantSpec(baseCoefficient: 1.2f, length: 8f, width: 0.5f, projectileCount: 3, spreadAngle: 20f, projectileSpeed: 16f)),
+
+            // 마검사 화염검진, 대표 기술. 도술사 불꽃진과 같은 규칙을 시전자 위치 원형 판정에 쓴다
+            new TalismanEffectDefinition("T18-1A", EPlayerClass.Mageknight, MAGE_FLAME_FIELD, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.CooldownReduction, ETalismanUpgradeStat.CooldownRate, 0.1f),
+            new TalismanEffectDefinition("T18-1B", EPlayerClass.Mageknight, MAGE_FLAME_FIELD, ETalismanTier.Support1, ETalismanChoice.B,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T18-2A", EPlayerClass.Mageknight, MAGE_FLAME_FIELD, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.RadiusIncrease, ETalismanUpgradeStat.Radius, 0.5f),
+            new TalismanEffectDefinition("T18-2B", EPlayerClass.Mageknight, MAGE_FLAME_FIELD, ETalismanTier.Support2, ETalismanChoice.B,
+                ETalismanEffectKind.FocusRadius, ETalismanUpgradeStat.DamageRate, 0.2f,
+                new TalismanVariantSpec(fixedRadius: 2f)),
+            new TalismanEffectDefinition("T18-3A", EPlayerClass.Mageknight, MAGE_FLAME_FIELD, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.Detonate, ETalismanUpgradeStat.AddedCoefficient, 1f,
+                new TalismanVariantSpec(baseCoefficient: 4.5f, delay: 0.8f)),
+            new TalismanEffectDefinition("T18-3B", EPlayerClass.Mageknight, MAGE_FLAME_FIELD, ETalismanTier.Core, ETalismanChoice.B,
+                ETalismanEffectKind.EndExplosion, ETalismanUpgradeStat.AddedCoefficient, 1.5f),
+
+            // 마검사 봉인검격, 검인 응집은 일반 적을 전방 2m 지점 쪽으로 최대 1m 당기고 속박을 늘린다
+            new TalismanEffectDefinition("T19-1A", EPlayerClass.Mageknight, MAGE_SEAL, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T19-2A", EPlayerClass.Mageknight, MAGE_SEAL, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.WidenArc, ETalismanUpgradeStat.ArcAngle, 20f,
+                new TalismanVariantSpec(altShapeBonus: 0.5f)),
+            new TalismanEffectDefinition("T19-3A", EPlayerClass.Mageknight, MAGE_SEAL, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.PullRoot, ETalismanUpgradeStat.RootDuration, 0.2f,
+                new TalismanVariantSpec(pullDistance: 1f, pullPointOffset: 2f)),
+
+            // 마검사 뇌광검파, 연속 검파는 같은 방향의 두 번째 검파를 0.35초 뒤에 낸다
+            new TalismanEffectDefinition("T20-1A", EPlayerClass.Mageknight, MAGE_THUNDER, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.CooldownReduction, ETalismanUpgradeStat.CooldownRate, 0.1f),
+            new TalismanEffectDefinition("T20-2A", EPlayerClass.Mageknight, MAGE_THUNDER, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.WidthIncrease, ETalismanUpgradeStat.Width, 0.5f),
+            new TalismanEffectDefinition("T20-3A", EPlayerClass.Mageknight, MAGE_THUNDER, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.FollowUpProjectile, ETalismanUpgradeStat.AddedCoefficient, 2f,
+                new TalismanVariantSpec(delay: 0.35f)),
+
+            // 궁수 속사, 끝맺음 화살은 마지막 발사 0.25초 뒤 한 발을 더 쏜다
+            new TalismanEffectDefinition("T21-1A", EPlayerClass.Archer, ARCHER_RAPID, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T21-2A", EPlayerClass.Archer, ARCHER_RAPID, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.RangeIncrease, ETalismanUpgradeStat.Range, 2f),
+            new TalismanEffectDefinition("T21-3A", EPlayerClass.Archer, ARCHER_RAPID, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.FollowUpProjectile, ETalismanUpgradeStat.AddedCoefficient, 0.6f,
+                new TalismanVariantSpec(delay: 0.25f)),
+
+            // 궁수 후퇴사격, 갈림 화살은 단발을 세 발로 교체한다
+            new TalismanEffectDefinition("T22-1A", EPlayerClass.Archer, ARCHER_RETREAT, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.CooldownReduction, ETalismanUpgradeStat.CooldownRate, 0.1f),
+            new TalismanEffectDefinition("T22-2A", EPlayerClass.Archer, ARCHER_RETREAT, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.MoveDistanceIncrease, ETalismanUpgradeStat.MoveDistance, 0.5f),
+            new TalismanEffectDefinition("T22-3A", EPlayerClass.Archer, ARCHER_RETREAT, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.SpreadShot, ETalismanUpgradeStat.AddedCoefficient, 0.2f,
+                new TalismanVariantSpec(baseCoefficient: 1f, projectileCount: 3, spreadAngle: 12f)),
+
+            // 궁수 관통시위, 대표 기술. 쌍연 시위는 0.3초 뒤 같은 관통 화살을 한 발 더 쏜다
+            new TalismanEffectDefinition("T23-1A", EPlayerClass.Archer, ARCHER_PIERCING, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.CooldownReduction, ETalismanUpgradeStat.CooldownRate, 0.1f),
+            new TalismanEffectDefinition("T23-1B", EPlayerClass.Archer, ARCHER_PIERCING, ETalismanTier.Support1, ETalismanChoice.B,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T23-2A", EPlayerClass.Archer, ARCHER_PIERCING, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.WidthIncrease, ETalismanUpgradeStat.Width, 0.3f),
+            new TalismanEffectDefinition("T23-2B", EPlayerClass.Archer, ARCHER_PIERCING, ETalismanTier.Support2, ETalismanChoice.B,
+                ETalismanEffectKind.FocusWidth, ETalismanUpgradeStat.DamageRate, 0.15f,
+                new TalismanVariantSpec(width: 0.3f)),
+            new TalismanEffectDefinition("T23-3A", EPlayerClass.Archer, ARCHER_PIERCING, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.PierceExtend, ETalismanUpgradeStat.AddedCoefficient, 0.4f,
+                new TalismanVariantSpec(baseCoefficient: 3.2f, maxExtraTargets: 6)),
+            new TalismanEffectDefinition("T23-3B", EPlayerClass.Archer, ARCHER_PIERCING, ETalismanTier.Core, ETalismanChoice.B,
+                ETalismanEffectKind.FollowUpProjectile, ETalismanUpgradeStat.AddedCoefficient, 1f,
+                new TalismanVariantSpec(delay: 0.3f)),
+
+            // 궁수 산개사격, 넓은 부채는 양 끝 각도를 각각 넓히고 관통 산개는 화살당 최대 2적을 관통한다
+            new TalismanEffectDefinition("T24-1A", EPlayerClass.Archer, ARCHER_SCATTER, ETalismanTier.Support1, ETalismanChoice.A,
+                ETalismanEffectKind.EnergyReduction, ETalismanUpgradeStat.EnergyCostRate, 0.2f),
+            new TalismanEffectDefinition("T24-2A", EPlayerClass.Archer, ARCHER_SCATTER, ETalismanTier.Support2, ETalismanChoice.A,
+                ETalismanEffectKind.WidenFan, ETalismanUpgradeStat.ArcAngle, 10f),
+            new TalismanEffectDefinition("T24-3A", EPlayerClass.Archer, ARCHER_SCATTER, ETalismanTier.Core, ETalismanChoice.A,
+                ETalismanEffectKind.PierceExtend, ETalismanUpgradeStat.AddedCoefficient, 0.2f,
+                new TalismanVariantSpec(baseCoefficient: 1.6f, maxExtraTargets: 2))
+        };
+
+        [NonSerialized] private DefinitionLookup<TalismanEffectDefinition> _lookup = new DefinitionLookup<TalismanEffectDefinition>();
+        [NonSerialized] private TalismanEffectDefinition[]                 _allEffects;
+
+        /// <summary> 구 직업 효과 45종 뒤에 신규 직업 효과 45종을 이은 전체 90종, 처음 읽을 때 한 번 만들고 재사용한다 </summary>
+        public IReadOnlyList<TalismanEffectDefinition> Effects        => GetAllEffects();
         public int                                     MaxEffectLevel => (_levelBonusMultipliers == null) ? 0 : _levelBonusMultipliers.Length;
 
         /****************************************
@@ -315,12 +482,12 @@ namespace Shinshi.Data
 
         private void OnEnable()
         {
-            _lookup.Invalidate();
+            InvalidateLookups();
         }
 
         protected override void OnValidate()
         {
-            _lookup.Invalidate();
+            InvalidateLookups();
             base.OnValidate();
         }
 
@@ -328,14 +495,44 @@ namespace Shinshi.Data
         *                Methods
         ****************************************/
 
+        private void InvalidateLookups()
+        {
+            _lookup.Invalidate();
+            _allEffects = null;
+        }
+
+        private TalismanEffectDefinition[] GetAllEffects()
+        {
+            if (_allEffects != null)
+            {
+                return _allEffects;
+            }
+
+            int legacyCount = (_effects == null) ? 0 : _effects.Length;
+            int classCount  = (_classEffects == null) ? 0 : _classEffects.Length;
+            var merged      = new TalismanEffectDefinition[legacyCount + classCount];
+            for (int i = 0; i < legacyCount; ++i)
+            {
+                merged[i] = _effects[i];
+            }
+
+            for (int i = 0; i < classCount; ++i)
+            {
+                merged[legacyCount + i] = _classEffects[i];
+            }
+
+            _allEffects = merged;
+            return merged;
+        }
+
         public bool ContainsEffect(string effectId)
         {
-            return _lookup.Contains(_effects, effectId);
+            return _lookup.Contains(GetAllEffects(), effectId);
         }
 
         public bool TryGetEffect(string effectId, out TalismanEffectDefinition effect)
         {
-            return _lookup.TryGet(_effects, effectId, out effect);
+            return _lookup.TryGet(GetAllEffects(), effectId, out effect);
         }
 
         /// <summary> 효과 레벨(1부터)의 보너스 배율 </summary>
@@ -361,6 +558,9 @@ namespace Shinshi.Data
 
             DataValidation.RequireDefinitions(errors, OWNER, nameof(_effects), _effects);
             DataValidation.RequireCount(errors, OWNER, nameof(_effects), _effects, EFFECT_COUNT);
+            DataValidation.RequireDefinitions(errors, OWNER, nameof(_classEffects), _classEffects);
+            DataValidation.RequireCount(errors, OWNER, nameof(_classEffects), _classEffects, CLASS_EFFECT_COUNT);
+            ValidateDuplicateEffectIds(errors, OWNER);
 
             ValidateLevelMultipliers(errors, OWNER);
             ValidateEffects(errors, OWNER);
@@ -373,14 +573,15 @@ namespace Shinshi.Data
             const string OWNER = nameof(TalismanCatalogSO);
 
             SkillCatalogSO skills = root.Skills;
-            if ((skills == null) || (_effects == null))
+            if (skills == null)
             {
                 return;
             }
 
-            for (int i = 0; i < _effects.Length; ++i)
+            TalismanEffectDefinition[] allEffects = GetAllEffects();
+            for (int i = 0; i < allEffects.Length; ++i)
             {
-                TalismanEffectDefinition effect = _effects[i];
+                TalismanEffectDefinition effect = allEffects[i];
                 if (effect == null)
                 {
                     continue;
@@ -437,27 +638,42 @@ namespace Shinshi.Data
             }
         }
 
+        private void ValidateDuplicateEffectIds(List<string> errors, string owner)
+        {
+            TalismanEffectDefinition[] allEffects = GetAllEffects();
+            var seen = new HashSet<string>();
+            for (int i = 0; i < allEffects.Length; ++i)
+            {
+                if ((allEffects[i] == null) || (string.IsNullOrEmpty(allEffects[i].DefinitionId)))
+                {
+                    continue;
+                }
+
+                if (!seen.Add(allEffects[i].DefinitionId))
+                {
+                    errors.Add($"{owner}.{nameof(_classEffects)}: 효과 ID {allEffects[i].DefinitionId}가 두 배열에 걸쳐 중복된다");
+                }
+            }
+        }
+
         private void ValidateEffects(List<string> errors, string owner)
         {
-            if (_effects == null)
-            {
-                return;
-            }
+            TalismanEffectDefinition[] allEffects = GetAllEffects();
 
             float maxMultiplier = ((_levelBonusMultipliers == null) || (_levelBonusMultipliers.Length == 0))
                 ? FIRST_LEVEL_MULTIPLIER
                 : _levelBonusMultipliers[_levelBonusMultipliers.Length - 1];
 
             var idPattern = new Regex(EFFECT_ID_PATTERN);
-            for (int i = 0; i < _effects.Length; ++i)
+            for (int i = 0; i < allEffects.Length; ++i)
             {
-                TalismanEffectDefinition effect = _effects[i];
+                TalismanEffectDefinition effect = allEffects[i];
                 if (effect == null)
                 {
                     continue;
                 }
 
-                string field = $"{nameof(_effects)}[{effect.DefinitionId}]";
+                string field = $"effects[{effect.DefinitionId}]";
 
                 ValidateIdMatchesSlot(errors, owner, field, effect, idPattern);
 
@@ -524,9 +740,28 @@ namespace Shinshi.Data
             DataValidation.RequireNonNegative(errors, owner, field + ".ProjectileCount", variant.ProjectileCount);
             DataValidation.RequireNonNegative(errors, owner, field + ".SpreadAngle", variant.SpreadAngle);
             DataValidation.RequireNonNegative(errors, owner, field + ".MaxExtraTargets", variant.MaxExtraTargets);
+            DataValidation.RequireNonNegative(errors, owner, field + ".ProjectileSpeed", variant.ProjectileSpeed);
+            DataValidation.RequireNonNegative(errors, owner, field + ".PullDistance", variant.PullDistance);
+            DataValidation.RequireNonNegative(errors, owner, field + ".PullPointOffset", variant.PullPointOffset);
 
             switch (kind)
             {
+                case ETalismanEffectKind.FocusWidth:
+                    DataValidation.RequirePositive(errors, owner, field + ".Width", variant.Width);
+                    break;
+                case ETalismanEffectKind.FollowUpProjectile:
+                    DataValidation.RequirePositive(errors, owner, field + ".Delay", variant.Delay);
+                    break;
+                case ETalismanEffectKind.PierceExtend:
+                    DataValidation.RequirePositive(errors, owner, field + ".MaxExtraTargets", variant.MaxExtraTargets);
+                    break;
+                case ETalismanEffectKind.PullRoot:
+                    if ((variant.PullPointOffset > 0f) && (variant.PullDistance <= 0f))
+                    {
+                        errors.Add($"{owner}.{field}.PullDistance: 당길 지점이 있으면 당기는 거리가 0보다 커야 한다");
+                    }
+
+                    break;
                 case ETalismanEffectKind.FocusArc:
                     DataValidation.RequirePositiveAtMost(errors, owner, field + ".FixedArcAngle", variant.FixedArcAngle, MAX_ARC_ANGLE);
                     break;
@@ -563,19 +798,15 @@ namespace Shinshi.Data
 
         private void ValidateClassCounts(List<string> errors, string owner)
         {
-            if (_effects == null)
-            {
-                return;
-            }
-
+            TalismanEffectDefinition[] allEffects = GetAllEffects();
             int classCount = Enum.GetValues(typeof(EPlayerClass)).Length;
             for (int c = 0; c < classCount; ++c)
             {
                 var playerClass = (EPlayerClass)c;
                 int count       = 0;
-                for (int i = 0; i < _effects.Length; ++i)
+                for (int i = 0; i < allEffects.Length; ++i)
                 {
-                    if ((_effects[i] != null) && (_effects[i].PlayerClass == playerClass))
+                    if ((allEffects[i] != null) && (allEffects[i].PlayerClass == playerClass))
                     {
                         ++count;
                     }
@@ -583,7 +814,7 @@ namespace Shinshi.Data
 
                 if (count != EFFECTS_PER_CLASS)
                 {
-                    errors.Add($"{owner}.{nameof(_effects)}[{playerClass}]: 효과 수 {count} != {EFFECTS_PER_CLASS}");
+                    errors.Add($"{owner}.effects[{playerClass}]: 효과 수 {count} != {EFFECTS_PER_CLASS}");
                 }
             }
         }
@@ -594,9 +825,10 @@ namespace Shinshi.Data
             hasChoiceB = false;
             int count  = 0;
 
-            for (int i = 0; i < _effects.Length; ++i)
+            TalismanEffectDefinition[] allEffects = GetAllEffects();
+            for (int i = 0; i < allEffects.Length; ++i)
             {
-                TalismanEffectDefinition effect = _effects[i];
+                TalismanEffectDefinition effect = allEffects[i];
                 if ((effect == null) || (effect.SkillId != skillId) || (effect.Tier != tier))
                 {
                     continue;
@@ -612,7 +844,10 @@ namespace Shinshi.Data
 
         private static bool IsCoreKind(ETalismanEffectKind kind)
         {
-            return kind >= ETalismanEffectKind.FollowUpStrike;
+            // WidthIncrease~WidenFan(26~29)는 보조 효과라 값 범위로 가를 수 없다
+            return ((kind >= ETalismanEffectKind.FollowUpStrike) && (kind <= ETalismanEffectKind.AttachBarrier))
+                || (kind == ETalismanEffectKind.FollowUpProjectile)
+                || (kind == ETalismanEffectKind.PierceExtend);
         }
     }
 }

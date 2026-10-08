@@ -432,6 +432,41 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(ContractCodes.RejectReason.NO_CAPACITY, extra.Result.ReasonCode);
         }
 
+        /// <summary> 0016 이후 스키마는 직업 0~5를 받고 저장소는 새 직업(3 검사, 4 마검사, 5 궁수)도 확정한다. 기존 직업 0, 1, 2도 그대로다 </summary>
+        [PostgresFact]
+        public async Task Create_ClassIdZeroToFive_CommitsAndPersistsClass()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresCharacterRepository repository = CreateRepository(database);
+
+            // 계정당 캐릭터 상한(3)이 있으므로 직업마다 계정을 따로 쓴다
+            for (int classId = 0; classId <= PlayerClassPolicy.MAX_CLASS_ID; ++classId)
+            {
+                Guid accountId = await AddAccountAsync(database);
+                CharacterCreateOutcome created = await CreateAsync(repository, accountId, Guid.NewGuid(), "Class" + classId,
+                    classId, CharacterTestData.Appearance());
+                Assert.Equal(ContractCodes.OperationStatus.COMMITTED, created.Result.Status);
+                Assert.Equal(classId, created.Character!.ClassId);
+                Assert.Equal(classId, Assert.Single(await repository.ListAsync(accountId)).ClassId);
+            }
+        }
+
+        [PostgresFact]
+        public async Task Schema_ClassIdAboveFiveOrNegative_ViolatesCheck()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Guid accountId = await AddAccountAsync(database);
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+
+            foreach (int classId in new[] { 6, -1 })
+            {
+                PostgresException violation = await Assert.ThrowsAsync<PostgresException>(() => connection.ExecuteAsync(
+                    "INSERT INTO characters(character_id, account_id, class_id) VALUES (@Id, @Account, @ClassId);",
+                    new { Id = Guid.NewGuid(), Account = accountId, ClassId = classId }));
+                Assert.Equal(PostgresErrorCodes.CheckViolation, violation.SqlState);
+            }
+        }
+
         [PostgresFact]
         public async Task Schema_LegacyRowsWithoutNameAreAllowedButNamedRowsMustMatchRules()
         {

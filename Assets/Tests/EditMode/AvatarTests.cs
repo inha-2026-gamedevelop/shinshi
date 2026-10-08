@@ -36,7 +36,9 @@ namespace Shinshi.Tests
         private const int   PALETTE_SIZE        = 4;
         private const int   UNKNOWN_HAIR        = 9999;
         private const int   BODY_WARDROBE_SLOTS = 2;  // 몸통은 상의와 하의
-        private const int   MISSING_ONE_CLASS   = 2;  // 세 직업 중 마지막 직업 헤어를 뺀다
+        private const int   MISSING_ONE_CLASS   = 2;  // 구 직업 세 개 중 마지막 직업 헤어를 뺀다
+        private const int   LEGACY_CLASS_COUNT  = 3;
+        private const int   NEW_CLASS_COUNT     = 3;
 
         private AvatarCatalogSO _catalog;
 
@@ -164,6 +166,45 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void ClassHairs_DefaultCatalog_CoversEveryClassWithUniqueIds()
+        {
+            int classCount = Enum.GetValues(typeof(EPlayerClass)).Length;
+            Assert.AreEqual(classCount, _catalog.ClassHairs.Count);
+
+            var ids = new HashSet<int>();
+            foreach (EPlayerClass playerClass in Enum.GetValues(typeof(EPlayerClass)))
+            {
+                Assert.IsTrue(_catalog.TryGetClassHair(playerClass, out AvatarCatalogSO.ClassHair hair), playerClass.ToString());
+                Assert.IsTrue(ids.Add(hair.HairId), $"{playerClass} hairId {hair.HairId} 중복");
+            }
+        }
+
+        [Test]
+        public void ClassHairs_LegacyArrayKeepsThreeEntries_NewClassesLiveInSeparateArray()
+        {
+            var serialized = new SerializedObject(_catalog);
+
+            // 이미 저장된 자산의 배열 길이는 자산이 가지므로 구 배열은 세 개 그대로, 신규 직업은 별도 배열이다
+            Assert.AreEqual(LEGACY_CLASS_COUNT, serialized.FindProperty("_classHairs").arraySize);
+            Assert.AreEqual(NEW_CLASS_COUNT, serialized.FindProperty("_newClassHairs").arraySize);
+            CollectionAssert.IsEmpty(Validate(), string.Join("; ", Validate()));
+        }
+
+        [Test]
+        public void Validate_MissingNewClassHair_ReportsError()
+        {
+            var serialized = new SerializedObject(_catalog);
+            serialized.FindProperty("_newClassHairs").arraySize = NEW_CLASS_COUNT - 1;
+
+            LogAssert.Expect(LogType.Error, new Regex("_classHairs"));
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            List<string> errors = Validate();
+
+            Assert.IsTrue(errors.Exists(e => e.Contains(EPlayerClass.Archer.ToString())), string.Join("; ", errors));
+        }
+
+        [Test]
         public void Validate_DuplicateHairId_ReportsError()
         {
             var serialized = new SerializedObject(_catalog);
@@ -185,6 +226,13 @@ namespace Shinshi.Tests
         {
             Assert.AreEqual(0, _catalog.GetWardrobeSlots(EEquipmentSlot.Weapon).Count);
             Assert.AreEqual(BODY_WARDROBE_SLOTS, _catalog.GetWardrobeSlots(EEquipmentSlot.Body).Count);
+        }
+
+        private List<string> Validate()
+        {
+            var errors = new List<string>();
+            _catalog.Validate(errors);
+            return errors;
         }
     }
 }

@@ -335,6 +335,8 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 
 설계는 `docs/design/account-and-website.md`다. 코드는 `Shinshi.Api/Accounts/`, `Shinshi.Api/Characters/`, `Shinshi.Data/Accounts/`, `Shinshi.Data/Characters/`, `PostgresAuthRepository.Accounts.cs`이고 등록은 `AddShinshiAuth`가 부르는 `AddShinshiAccounts`다. 형식 규칙은 Unity와 공유하는 `AccountCredentialRules`, `CharacterNameRules`(Contracts)에 있다.
 
+직업 ID 범위는 0~5다(0016 `player_class_range`가 `characters`, `market_listings`의 CHECK를 넓힌다). 새 직업 3(검사), 4(마검사), 5(궁수)는 설정 `Characters__EnabledClassIds`(쉼표 목록, 기본 `0,1,2`)에 넣기 전까지 닫혀 있다. 닫힌 직업의 캐릭터 생성은 `409 FEATURE_DISABLED`(작업으로 저장하지 않음), 마을 입장권 발급은 `FEATURE_DISABLED` 거절이다. 0, 1, 2는 항상 열려 있고 범위 밖(6 이상, 음수)은 400 `INVALID_APPEARANCE`다. 부적 효과는 `growth-content.json`에 직업 6개 x 15개 = 90개이며 효과 ID 형식(`^T[0-9]{2}-[1-3][A-Z]$`)은 그대로다. 0016 down은 직업 3~5 행이 있으면 데이터를 지우지 않고 중단한다.
+
 | 경로 | 인증 | 결과 |
 |---|---|---|
 | `POST /v1/accounts` `{loginId, password, email}` | 공개 | 201 `AccountSignupResponse`(토큰 없음). 400 `INVALID_LOGIN_ID(1202)`·`WEAK_PASSWORD(1204)`·`INVALID_EMAIL(1203)`, 409 `LOGIN_ID_TAKEN(1200)`, 429 `RATE_LIMITED`, 503 `MAINTENANCE` |

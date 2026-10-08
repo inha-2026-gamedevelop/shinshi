@@ -67,7 +67,10 @@ namespace Shinshi.Common
             public const int MAX_CATCHUP_TICKS = 3;
 
             // 플레이어당 동시에 남는 장판, 투사체 실행 버퍼 상한
-            public const int MAX_SKILL_EFFECTS_PER_PLAYER = 8;
+            public const int MAX_SKILL_EFFECTS_PER_PLAYER = 12;
+
+            // 관통 투사체 하나가 기억하는 맞힌 대상 상한. 넘는 관통 수는 이 값으로 잘린다
+            public const int MAX_PIERCE_HITS_PER_PROJECTILE = 8;
             public const int RESONANCE_LEDGER_CAPACITY    = 256;
             public const int COMPANIONS_PER_PLAYER        = 2;
 

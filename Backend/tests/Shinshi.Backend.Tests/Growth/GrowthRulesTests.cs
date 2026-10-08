@@ -33,7 +33,7 @@ namespace Shinshi.Backend.Tests.Growth
         {
             Assert.Equal("0.1.0", G_Content.ContentVersion);
             Assert.Equal(30, G_Content.Equipment.Definitions.Length);
-            Assert.Equal(45, G_Content.Talismans.Effects.Length);
+            Assert.Equal(90, G_Content.Talismans.Effects.Length);
             Assert.Equal(15, G_Content.Talismans.Effects.Count(effect => effect.PlayerClass == ContractCodes.PlayerClass.WARRIOR));
             Assert.Equal(new[] { 1m, 1.35m, 1.8225m, 2.460375m }, G_Content.Equipment.GradeStatMultipliers);
             Assert.Equal(0.04m, G_Content.Equipment.EnhancementStatRate);
@@ -62,6 +62,78 @@ namespace Shinshi.Backend.Tests.Growth
                 Assert.Equal(new[] { 20, 28, 40, 52 }[grade], crafted.Sum(definition => definition.BossMaterialCount));
                 Assert.Equal(1, crafted.Sum(definition => definition.AuctionMaterialCount));
             }
+        }
+
+        [Fact]
+        public void LoadEmbedded_SixClasses_HaveFifteenEffectsEachAndTwentyFourSkills()
+        {
+            Assert.Equal(90, G_Content.Talismans.Effects.Length);
+            for (int playerClass = 0; playerClass < GrowthContent.PLAYER_CLASS_COUNT; ++playerClass)
+            {
+                Assert.Equal(15, G_Content.Talismans.Effects.Count(effect => effect.PlayerClass == playerClass));
+            }
+
+            Assert.Equal(GrowthContent.REGULAR_SKILL_COUNT,
+                G_Content.Talismans.Effects.Select(effect => effect.SkillId).Distinct().Count());
+            Assert.Equal(12, G_Content.Talismans.Effects.Where(effect => effect.PlayerClass <= 2)
+                .Select(effect => effect.SkillId).Distinct().Count());
+            Assert.Equal(12, G_Content.Talismans.Effects.Where(effect => effect.PlayerClass >= 3)
+                .Select(effect => effect.SkillId).Distinct().Count());
+
+            // 한 기술의 효과는 한 직업에만 속한다
+            Assert.All(G_Content.Talismans.Effects.GroupBy(effect => effect.SkillId),
+                group => Assert.Single(group.Select(effect => effect.PlayerClass).Distinct()));
+        }
+
+        [Theory]
+        [InlineData("T01-1A", 0)]
+        [InlineData("T12-3A", 2)]
+        [InlineData("T13-1A", 3)]
+        [InlineData("T17-1A", 4)]
+        [InlineData("T24-3A", 5)]
+        public void TryGetEffect_KnownIds_ResolveToTheirClass(string effectId, int playerClass)
+        {
+            Assert.True(G_Content.TryGetEffect(effectId, out GrowthContent.TalismanEffect effect));
+            Assert.Equal(playerClass, effect.PlayerClass);
+        }
+
+        [Theory]
+        [InlineData("T25-1A")]
+        [InlineData("T00-1A")]
+        [InlineData("T13-4A")]
+        public void TryGetEffect_UnknownIds_AreRejected(string effectId)
+        {
+            Assert.False(G_Content.TryGetEffect(effectId, out _));
+        }
+
+        [Fact]
+        public void Parse_EffectOfClassSix_ThrowsInvalidData()
+        {
+            JObject content = JObject.Parse(ReadEmbeddedJson());
+            ((JArray)content["talismans"]!["effects"]!)[0]["playerClass"] = 6;
+
+            Assert.Throws<InvalidDataException>(() => GrowthContent.Parse(content.ToString()));
+        }
+
+        [Fact]
+        public void Parse_EffectCountedUnderWrongClass_ThrowsInvalidData()
+        {
+            // 새 직업 효과를 다른 직업으로 옮기면 직업별 15개가 깨진다
+            JObject content = JObject.Parse(ReadEmbeddedJson());
+            JToken moved = ((JArray)content["talismans"]!["effects"]!).First(effect => (string?)effect["definitionId"] == "T13-1A");
+            moved["playerClass"] = 0;
+
+            Assert.Throws<InvalidDataException>(() => GrowthContent.Parse(content.ToString()));
+        }
+
+        [Fact]
+        public void Parse_EffectIdTierMismatch_ThrowsInvalidData()
+        {
+            JObject content = JObject.Parse(ReadEmbeddedJson());
+            JToken effect = ((JArray)content["talismans"]!["effects"]!).First(entry => (string?)entry["definitionId"] == "T13-1A");
+            effect["tier"] = 1;
+
+            Assert.Throws<InvalidDataException>(() => GrowthContent.Parse(content.ToString()));
         }
 
         [Fact]

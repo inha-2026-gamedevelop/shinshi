@@ -84,6 +84,9 @@ namespace Shinshi.Tests
         [TestCase(EPlayerClass.Warrior)]
         [TestCase(EPlayerClass.Sorcerer)]
         [TestCase(EPlayerClass.Summoner)]
+        [TestCase(EPlayerClass.Swordsman)]
+        [TestCase(EPlayerClass.Mageknight)]
+        [TestCase(EPlayerClass.Archer)]
         public void AddPlayer_BoundClass_CreatesPlayerAndSkillServerWithThatClass(EPlayerClass boundClass)
         {
             PlayerServer player = AddBoundPlayer(KEY_A, boundClass, out _);
@@ -96,6 +99,9 @@ namespace Shinshi.Tests
         [TestCase(EPlayerClass.Warrior)]
         [TestCase(EPlayerClass.Sorcerer)]
         [TestCase(EPlayerClass.Summoner)]
+        [TestCase(EPlayerClass.Swordsman)]
+        [TestCase(EPlayerClass.Mageknight)]
+        [TestCase(EPlayerClass.Archer)]
         public void AddPlayer_BoundClass_UsesThatClassBasicAttack(EPlayerClass boundClass)
         {
             PlayerServer player = AddBoundPlayer(KEY_A, boundClass, out _);
@@ -157,6 +163,9 @@ namespace Shinshi.Tests
         [TestCase(EPlayerClass.Warrior)]
         [TestCase(EPlayerClass.Sorcerer)]
         [TestCase(EPlayerClass.Summoner)]
+        [TestCase(EPlayerClass.Swordsman)]
+        [TestCase(EPlayerClass.Mageknight)]
+        [TestCase(EPlayerClass.Archer)]
         public void TryAdmit_ClaimsClass_IsCarriedToBinding(EPlayerClass playerClass)
         {
             ERejectReason reason = _sessions.TryAdmit(new JoinTokenClaims(KEY_B, null, null, null, null, playerClass),
@@ -170,6 +179,9 @@ namespace Shinshi.Tests
         [TestCase(EPlayerClass.Sorcerer, EPlayerClass.Sorcerer, true)]
         [TestCase(EPlayerClass.Sorcerer, EPlayerClass.Warrior, false)]
         [TestCase(EPlayerClass.Summoner, EPlayerClass.Sorcerer, false)]
+        [TestCase(EPlayerClass.Archer, EPlayerClass.Archer, true)]
+        [TestCase(EPlayerClass.Archer, EPlayerClass.Swordsman, false)]
+        [TestCase(EPlayerClass.Mageknight, EPlayerClass.Sorcerer, false)]
         public void MatchesBoundClass_OnlySameClass_AllowsReuse(EPlayerClass bound, EPlayerClass retained, bool expected)
         {
             Assert.AreEqual(expected, RetentionRules.MatchesBoundClass(bound, retained));

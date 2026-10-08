@@ -12,6 +12,7 @@ using Npgsql;
 
 // Project
 using Shinshi.Contracts;
+using Shinshi.Data.Characters;
 
 namespace Shinshi.Data.Auth
 {
@@ -32,17 +33,21 @@ namespace Shinshi.Data.Auth
 
         private readonly NpgsqlDataSource _dataSource;
         private readonly AuthTokenHasher _hasher;
+        private readonly PlayerClassPolicy _classPolicy;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public PostgresAuthRepository(NpgsqlDataSource dataSource, AuthTokenOptions options)
+        /// <summary> classPolicy를 생략하면 기존 직업 0, 1, 2만 마을 입장이 열린다 </summary>
+        public PostgresAuthRepository(NpgsqlDataSource dataSource, AuthTokenOptions options,
+            PlayerClassPolicy? classPolicy = null)
         {
             ArgumentNullException.ThrowIfNull(dataSource);
             ArgumentNullException.ThrowIfNull(options);
-            _dataSource = dataSource;
-            _hasher     = new AuthTokenHasher(options);
+            _dataSource  = dataSource;
+            _hasher      = new AuthTokenHasher(options);
+            _classPolicy = classPolicy ?? PlayerClassPolicy.Default;
         }
 
         public bool IsAuthenticToken(string token)

@@ -26,6 +26,9 @@ namespace Shinshi.Combat
         private readonly float            _attackIntervalScale;
         private readonly float            _markedDamageBonus;
         private readonly SkillCoreVariant _core;
+        private readonly float            _widthDelta;
+        private readonly float            _fixedWidth;
+        private readonly float            _fanAngleDelta;
 
         /****************************************
         *              Properties
@@ -72,6 +75,15 @@ namespace Shinshi.Combat
 
         public SkillCoreVariant Core => _core;
 
+        // m, 투사체 폭에 더한다
+        public float WidthDelta     => _widthDelta;
+
+        // m, 0보다 크면 투사체 원래 폭 대신 쓴다
+        public float FixedWidth     => _fixedWidth;
+
+        // 도, 산개 투사체 양 끝 각도에 각각 더한다
+        public float FanAngleDelta  => _fanAngleDelta;
+
         public static SkillModifiers Identity => new SkillModifiers(1f, 1f, 1f, 0f);
 
         /****************************************
@@ -86,8 +98,11 @@ namespace Shinshi.Combat
         public SkillModifiers(float energyScale, float cooldownScale, float damageScale, float resonanceBonus,
             float radiusDelta, float fixedRadius, float arcAngleDelta, float fixedArcAngle, float rangeDelta,
             float moveDistanceDelta, float durationDelta, float guardDurationDelta, float attackIntervalScale,
-            float markedDamageBonus, in SkillCoreVariant core)
+            float markedDamageBonus, in SkillCoreVariant core, float widthDelta = 0f, float fixedWidth = 0f, float fanAngleDelta = 0f)
         {
+            _widthDelta          = widthDelta;
+            _fixedWidth          = fixedWidth;
+            _fanAngleDelta       = fanAngleDelta;
             _energyScale         = energyScale;
             _cooldownScale       = cooldownScale;
             _damageScale         = damageScale;

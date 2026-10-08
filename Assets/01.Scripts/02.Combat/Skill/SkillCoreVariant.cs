@@ -25,6 +25,9 @@ namespace Shinshi.Combat
         private readonly float               _spreadAngle;
         private readonly int                 _extraTargets;
         private readonly float               _rootBonus;
+        private readonly float               _speed;
+        private readonly float               _pullDistance;
+        private readonly float               _pullPointOffset;
 
         /****************************************
         *              Properties
@@ -57,6 +60,15 @@ namespace Shinshi.Combat
         // 초, 속박에 더하는 시간
         public float               RootBonus        => _rootBonus;
 
+        // m/초, 변형이 만드는 투사체 속도. 0이면 기술 원래 속도를 쓴다
+        public float               Speed            => _speed;
+
+        // m, 한 번 당기는 최대 거리
+        public float               PullDistance     => _pullDistance;
+
+        // m, 시전자 전방 이 거리의 지점 쪽으로 당긴다. 0이면 판정 중심으로 당긴다
+        public float               PullPointOffset  => _pullPointOffset;
+
         // 원래 타격 계수를 바꾸는 변형인지
         public bool                ReplacesCoefficient => (_hasValue) && (_baseCoefficient > 0f);
 
@@ -65,8 +77,12 @@ namespace Shinshi.Combat
         ****************************************/
 
         public SkillCoreVariant(ETalismanEffectKind kind, float baseCoefficient, float addedCoefficient, float delay, float radius,
-            float length, float width, int count, float spreadAngle, int extraTargets, float rootBonus)
+            float length, float width, int count, float spreadAngle, int extraTargets, float rootBonus,
+            float speed = 0f, float pullDistance = 0f, float pullPointOffset = 0f)
         {
+            _speed            = speed;
+            _pullDistance     = pullDistance;
+            _pullPointOffset  = pullPointOffset;
             _hasValue         = true;
             _kind             = kind;
             _baseCoefficient  = baseCoefficient;

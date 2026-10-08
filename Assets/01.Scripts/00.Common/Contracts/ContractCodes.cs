@@ -209,6 +209,9 @@ namespace Shinshi.Contracts
             public const int WARRIOR  = 0;
             public const int SORCERER = 1;
             public const int SUMMONER = 2;
+            public const int SWORDSMAN  = 3;
+            public const int MAGEKNIGHT = 4;
+            public const int ARCHER     = 5;
         }
 
         /// <summary> EServerRole과 같은 값 </summary>

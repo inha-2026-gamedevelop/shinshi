@@ -20,6 +20,7 @@ using Npgsql;
 
 // Project
 using Shinshi.Backend.Accounts;
+using Shinshi.Backend.Characters;
 using Shinshi.Backend.Tests.Admin;
 using Shinshi.Backend.Tests.Auth;
 using Shinshi.Contracts;
@@ -457,6 +458,7 @@ namespace Shinshi.Backend.Tests.Accounts
         public HashSet<string> TakenKeys { get; } = new HashSet<string>(StringComparer.Ordinal);
         public int CreateCalls { get; private set; }
         public string? LastAppearanceJson { get; private set; }
+        public int LastClassId { get; private set; } = -1;
         public int DeleteCalls { get; private set; }
         public Guid? ListedAccountId { get; private set; }
 
@@ -472,6 +474,7 @@ namespace Shinshi.Backend.Tests.Accounts
         {
             ++CreateCalls;
             LastAppearanceJson = appearanceJson;
+            LastClassId = classId;
             // HTTP 테스트는 저장소 앞의 검증과 한도만 본다. 저장소까지 오면 슬롯 부족 거절로 답한다
             return Task.FromResult(new CharacterCreateOutcome(new OperationResult(operationId.ToString("D"),
                 ContractCodes.OperationStatus.REJECTED, ContractCodes.RejectReason.NO_CAPACITY, 0, 0, string.Empty), null));
@@ -527,8 +530,9 @@ namespace Shinshi.Backend.Tests.Accounts
         *                Methods
         ****************************************/
 
+        /// <summary> enabledClassIds는 Characters:EnabledClassIds 값이다. null이면 설정을 비워 기본(0,1,2)이다 </summary>
         public AccountApiHost(bool maintenance = false, PasswordHashGate? gate = null,
-            int iterations = AccountPasswordHasherTests.TEST_ITERATIONS)
+            int iterations = AccountPasswordHasherTests.TEST_ITERATIONS, string? enabledClassIds = null)
         {
             Hasher = new CountingPasswordHasher(iterations);
 
@@ -557,6 +561,10 @@ namespace Shinshi.Backend.Tests.Accounts
                     if (gate != null)
                     {
                         services.AddSingleton(gate);
+                    }
+                    if (enabledClassIds != null)
+                    {
+                        services.PostConfigure<CharacterOptions>(options => options.EnabledClassIds = enabledClassIds);
                     }
                     services.PostConfigure<AuthBuildOptions>(options =>
                     {

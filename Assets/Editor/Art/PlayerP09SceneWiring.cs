@@ -29,6 +29,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         private const string MENU_PATH         = "Shinshi/Art/P09/Wire Scenes";
+        private const string CLASS_MENU_PATH   = "Shinshi/Art/P09/Wire NetPlayer To Class Assets";
         private const string CREATE_SCENE      = "Assets/00.Scenes/Release/CharacterCreate.unity";
         private const string SELECT_SCENE      = "Assets/00.Scenes/Release/CharacterSelect.unity";
         private const string NET_PLAYER_PREFAB = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
@@ -65,6 +66,25 @@ namespace Shinshi.Editor
         private static void WireMenu()
         {
             Debug.Log(WireAll());
+        }
+
+        [MenuItem(CLASS_MENU_PATH)]
+        private static void WireClassMenu()
+        {
+            Debug.Log(WireNetPlayerToClassAssets());
+        }
+
+        /// <summary> PF_NetPlayer만 검사, 마검사, 궁수 슈퍼셋 카탈로그와 프로필에 잇는다. 씬은 건드리지 않으며 직접 실행해야만 바뀐다 </summary>
+        public static string WireNetPlayerToClassAssets()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<PlayerCharacterLookCatalogSO>(PlayerP09AssetBuilder.CLASS_CATALOG_PATH);
+            var profile = AssetDatabase.LoadAssetAtPath<PlayerCombatAnimationProfileSO>(PlayerP09AssetBuilder.CLASS_PROFILE_PATH);
+            if ((catalog == null) || (profile == null))
+            {
+                return "[P09] 신규 직업 카탈로그나 프로필이 없다. Shinshi/Art/P09/Build Class Assets를 먼저 실행한다";
+            }
+
+            return WireNetPlayer(catalog, profile);
         }
 
         /// <summary> 프리팹, 선택 씬, 생성 씬 순서로 연결하고 결과 요약을 돌려준다 </summary>

@@ -52,8 +52,20 @@ namespace Shinshi.Tests
             Assert.IsTrue(CharacterAppearanceCatalog.IsAllowed(classId, a));
         }
 
+        [TestCase(ContractCodes.PlayerClass.SWORDSMAN)]
+        [TestCase(ContractCodes.PlayerClass.MAGEKNIGHT)]
+        [TestCase(ContractCodes.PlayerClass.ARCHER)]
+        public void CreateDefault_NewClass_IsAllowedP09Default(int classId)
+        {
+            CharacterAppearance a = CharacterAppearanceCatalog.CreateDefault(classId);
+
+            Assert.IsNotNull(a);
+            Assert.AreEqual(CharacterAppearance.VERSION_3, a.Version);
+            Assert.IsTrue(CharacterAppearanceCatalog.IsAllowed(classId, a));
+        }
+
         [TestCase(-1)]
-        [TestCase(3)]
+        [TestCase(6)]
         [TestCase(99)]
         public void CreateDefault_UnknownClass_ReturnsNull(int classId)
         {

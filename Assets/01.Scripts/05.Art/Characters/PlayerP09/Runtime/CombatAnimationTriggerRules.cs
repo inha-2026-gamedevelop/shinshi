@@ -75,6 +75,71 @@ namespace Shinshi.Art
             return true;
         }
 
+        /// <summary> 클립 길이를 목표 시간에 맞추는 데 필요한 재생 속도, 범위로 자르지 않는다. 입력이 올바르지 않으면 0 </summary>
+        public static float RequiredSpeed(float clipLength, float targetSeconds)
+        {
+            return ((clipLength <= 0f) || (targetSeconds <= 0f)) ? 0f : (clipLength / targetSeconds);
+        }
+
+        /// <summary> 필요 속도가 허용 범위 안인지, 밖이면 속도를 억지로 맞추지 않고 배정을 보류한다 </summary>
+        public static bool IsWithinSpeedBudget(float clipLength, float targetSeconds, float minSpeed, float maxSpeed)
+        {
+            float required = RequiredSpeed(clipLength, targetSeconds);
+            return (required > 0f) && (required >= minSpeed) && (required <= maxSpeed);
+        }
+
+        /// <summary> 이어 붙인 분절 클립의 합계 길이 </summary>
+        public static float SumLengths(float[] segmentLengths)
+        {
+            if (segmentLengths == null)
+            {
+                return 0f;
+            }
+
+            float sum = 0f;
+            for (int i = 0; i < segmentLengths.Length; ++i)
+            {
+                sum += segmentLengths[i];
+            }
+
+            return sum;
+        }
+
+        /// <summary> 분절을 순서대로 이어 재생하는 기술에서 경과 시간이 몇 번째 분절의 어디인지.
+        /// 시작 전이면 기다리고(거짓, isWaiting 참), 합계 재생 시간을 넘었으면 재생하지 않는다(거짓, isWaiting 거짓) </summary>
+        public static bool TryGetSegmentPosition(double elapsedSeconds, float speed, float[] segmentLengths, out int segmentIndex,
+            out float normalizedTime, out bool isWaiting)
+        {
+            segmentIndex   = 0;
+            normalizedTime = 0f;
+            isWaiting      = elapsedSeconds < 0.0;
+            if ((isWaiting) || (segmentLengths == null) || (segmentLengths.Length == 0) || (speed <= 0f))
+            {
+                return false;
+            }
+
+            double clipTime = elapsedSeconds * speed;
+            for (int i = 0; i < segmentLengths.Length; ++i)
+            {
+                float length = segmentLengths[i];
+                if (length <= 0f)
+                {
+                    return false;
+                }
+
+                if (clipTime < length)
+                {
+                    segmentIndex   = i;
+                    normalizedTime = (float)(clipTime / length);
+                    return true;
+                }
+
+                clipTime -= length;
+            }
+
+            return false;
+        }
+
         /// <summary> 기본 공격 콤보 다음 순서, 마지막 공격에서 오래 지났으면 처음부터 </summary>
         public static int NextAttackIndex(int previousIndex, float secondsSinceLastAttack, float resetSeconds, int count)
         {

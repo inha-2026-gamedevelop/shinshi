@@ -17,6 +17,7 @@ using Npgsql;
 // Project
 using Shinshi.Backend.Accounts;
 using Shinshi.Data.Auth;
+using Shinshi.Data.Characters;
 
 namespace Shinshi.Backend
 {
@@ -32,14 +33,14 @@ namespace Shinshi.Backend
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(configuration);
             services.TryAddSingleton<TimeProvider>(TimeProvider.System);
-            services.Configure<AuthTokenOptions>(configuration.GetSection("Auth"));
-            services.Configure<AuthBuildOptions>(configuration.GetSection(AuthBuildOptions.SECTION_NAME));
+            services.Configure<AuthTokenOptions>(configuration.GetSection("Auth"));            services.Configure<AuthBuildOptions>(configuration.GetSection(AuthBuildOptions.SECTION_NAME));
             services.Configure<ServiceCredentialOptions>(configuration.GetSection(ServiceCredentialOptions.SECTION_NAME));
             services.TryAddSingleton<AuthBuildPolicy>();
             services.TryAddScoped<AuthInvalidModelStateFilter>();
             services.TryAddSingleton<PostgresAuthRepository>(provider => new PostgresAuthRepository(
                 provider.GetRequiredService<NpgsqlDataSource>(),
-                provider.GetRequiredService<IOptions<AuthTokenOptions>>().Value));
+                provider.GetRequiredService<IOptions<AuthTokenOptions>>().Value,
+                provider.GetRequiredService<PlayerClassPolicy>())); // AddShinshiAccounts가 등록한다
             services.TryAddSingleton<IAuthRepository>(provider => provider.GetRequiredService<PostgresAuthRepository>());
             services.TryAddSingleton<ServerCredentialIssuer>();
             services.AddShinshiAccounts(configuration);

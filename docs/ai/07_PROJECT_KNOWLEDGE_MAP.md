@@ -1,5 +1,7 @@
 # 프로젝트 지식 맵
 
+> 구현 상태(2026-10-08): 검사·마검사·궁수의 서버 전투·부적·백엔드 계약을 추가했고, 기존 직업과 함께 총 24기술·90효과를 유지한다. 아래 초기 설계의 미착수·미적용 표기보다 [세 직업 구현과 검증](../05-implementation-roadmap.md#2026-10-08-세-직업-구현과-검증)을 우선한다. 신규 직업 기본 개방·실제 전투 연결·재생·다인 플레이 완료를 뜻하지 않는다.
+
 2026-10-03 shinshi 작업 트리 기준의 코드/실행 이력에 2026-10-07 직업 개편 정본을 연결했다. 실제 코드·SO·설정에서 현재 계약을 확인하고, 게임 기획의 목표와 구분한다. 사용자의 최신 명시 지시가 권한과 요구사항을 정한다.
 
 ## 기능별 진입점
@@ -9,8 +11,8 @@
 | 찾는 것 | 공유 문서 | 실제 진입점 | 확인할 것 |
 |---|---|---|---|
 | 게임 기획 (장르·규칙·스코프) | [기획서](../02-game-design.md), [시스템 개요](../01-system-design.md) | `docs/design/` 상세 부록, [컨셉아트 기록](../design/concept-art.md) | 확정 규칙과 위임 초기 수치, 월백 2페이즈 입력 대기 |
-| 직업·애니메이션 개편 정본 | [캐릭터·애니메이션 개편](../design/character-animation-design.md), [전투·전장 기준안](../design/combat-design.md), [부적 효과 목록](../design/talisman-catalog.md) | `docs/design/character-animation-design.md`와 연결 부록. 실제 구현은 후속 | 검사 CombatGirls 검 모션·마검사 MagicalKnight 검+마법, 일반8기술/30효과, 미정 세 번째4기술/15효과 예약, P09 외형 유지. 문서용KS/MK ID·클립 선정·저장 이관·contentHash·M2/M3 게이트를 구구현 적용 상태와 구분 |
-| 기존 직업 규칙·이관 근거 | [기존 직업 설계 보존본](../design/legacy-class-design.md), [구현 로드맵](../05-implementation-roadmap.md) | `00.Common/Types/EPlayerClass.cs`, `00.Common/Data/{SkillCatalogSO,TalismanCatalogSO}.cs`, `Assets/09.Data/Combat/`, `Backend/src/Shinshi.Data/Content/growth-content.json` | 현재 무사0/도술사1/신령사2·12기술/45효과·구신령사 공명/Z/X/C. 기존 카드/등록진도/열린출정과 과거 시험을 보존하며 신규 검사/마검사 적용 완료로 소급하지 않음 |
+| 직업·애니메이션 개편 정본 | [캐릭터·애니메이션 개편](../design/character-animation-design.md), [전투·전장 기준안](../design/combat-design.md), [부적 효과 목록](../design/talisman-catalog.md), [궁수 상세](../design/archer-design.md) | `docs/design/character-animation-design.md`와 연결 부록. 궁수 상세는 `archer-design.md`가 단일 기준이며 실제 구현은 후속 | 사용자 확정 검사·마검사·궁수, CombatGirls 검 모션·MagicalKnight 검+마법·Stylish Archer 활, 일반12기술/45효과(보조30/핵심15), P09 외형 유지. 기술/특성/클립은 위임 초기안·미구현/미검증. 문서용KS/MK/AR ID·저장 이관·contentHash·M2/M3 게이트를 구구현 적용 상태와 구분 |
+| 기존 직업 규칙·이관 근거 | [기존 직업 설계 보존본](../design/legacy-class-design.md), [구현 로드맵](../05-implementation-roadmap.md) | `00.Common/Types/EPlayerClass.cs`, `00.Common/Data/{SkillCatalogSO,TalismanCatalogSO}.cs`, `Assets/09.Data/Combat/`, `Backend/src/Shinshi.Data/Content/growth-content.json` | 현재 무사0/도술사1/신령사2·12기술/45효과·구신령사 공명/Z/X/C. 기존 카드/등록진도/열린출정과 과거 시험을 보존하며 신규 검사/마검사/궁수 적용 완료로 소급하지 않음 |
 | 기술 설계 | [기술설계서](../03-technical-design.md), [아키텍처](../04-architecture.md) | `Backend/src/Shinshi.Api/Program.cs`, `Backend/src/Shinshi.Data/Migrations/` | 실제 API·스키마와 후속 설계를 구분; .NET 10·PostgreSQL 18·Npgsql+Dapper |
 | 구현 현황 | [구현 로드맵](../05-implementation-roadmap.md) | `Assets/01.Scripts/`, `Backend/`, `deploy/`, `tools/` | 서버 M-A 코드 존재와 UI·맵·보스 등 남은 범위, 실행 검증을 구분 |
 | API·DTO 계약 | [기술설계서](../03-technical-design.md), [백엔드 안내](../../Backend/README.md) | `00.Common/Contracts/{ApiRoutes,Sessions/GameServerRoutes,Join/JoinApiRoutes,Auth/AuthRoutes}.cs`; `Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj` | DTO 원본 Compile Include/Link와 제외 목록, 실제 제공 경로, `Authorization: Bearer`; 후속 경제/UI API와 구분 |

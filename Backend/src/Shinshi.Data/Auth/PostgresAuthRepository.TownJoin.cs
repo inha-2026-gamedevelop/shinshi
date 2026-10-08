@@ -73,9 +73,16 @@ namespace Shinshi.Data.Auth
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.TOKEN_REVOKED);
                 }
-                if ((await LockOwnedCharacterAsync(connection, transaction, identity.AccountId, characterId, token)) == null)
+                JoinCharacterRow? selected = await LockOwnedCharacterAsync(connection, transaction, identity.AccountId,
+                    characterId, token);
+                if (selected == null)
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
+                }
+                // 새 직업(3~5)은 서버 설정으로 열기 전까지 마을 입장도 거절한다
+                if (!_classPolicy.IsEnabled(selected.ClassId))
+                {
+                    return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.FEATURE_DISABLED);
                 }
 
                 // 선택과 발급 사이에 등록 boot나 임대가 바뀌지 않도록 같은 트랜잭션에서 잠근다
