@@ -1,6 +1,6 @@
 # 외부 에셋 대장
 
-2026-09-30 실제 설치 파일과 Unity 6000.4.7f1 에디터에서 확인했다. 저장소 루트가 Unity 프로젝트 루트다. Asset Store의 최신 버전과 이 프로젝트에 설치된 버전은 구분한다. 취득일·구매 내역·좌석 보유 현황은 확인하지 않았으며 설치 확인일을 취득일로 대신 적지 않는다.
+2026-09-30 실제 설치 파일과 Unity 6000.4.7f1 에디터에서 처음 확인했고, 2026-10-08 `Assets/99.ThirdParty/` 전체 파일 목록과 `.meta`의 설치 정보를 정적으로 재대조했다. 이번 갱신에서 Unity 재생·컴파일·빌드는 실행하지 않았다. 저장소 루트가 Unity 프로젝트 루트다. Asset Store의 최신 버전과 이 프로젝트에 설치된 버전은 구분한다. 취득일·구매 내역·좌석 보유 현황은 확인하지 않았으며 설치 확인일을 취득일로 대신 적지 않는다.
 
 ## 분류와 설치 목록
 
@@ -8,10 +8,10 @@
 
 | 분류 | 내용 | 현재 상태 |
 |---|---|---|
-| `Animation` | 캐릭터 애니메이션·클립 | CombatGirlsCharacterPack, Magical-Knight_Set, Succubus_Anim_Set 3종. 트윈 도구는 `Tools/Demigiant/` 참조 |
+| `Animation` | 캐릭터 애니메이션·클립 | CombatGirlsCharacterPack, Grruzam Archer Animation, Magical-Knight_Set, Succubus_Anim_Set 4종. 트윈 도구는 `Tools/Demigiant/` 참조 |
 | `Tools` | 에디터, 대화, 물리 감지, 최적화, 셰이더 제작·트윈 도구 | 아래 9개 패키지(DOTween Pro와 동봉 DOTween·DemiLib 포함) |
-| `VFX` | 완성된 이펙트, 파티클, 이펙트용 소재 | Realistic Spirit Blossom Spells VFX |
-| `Model` | 게임에서 사용할 모델·환경·소품 | 독립 패키지 없음, 분류 폴더만 준비 |
+| `VFX` | 완성된 이펙트, 파티클, 이펙트용 소재·물 셰이더 | 7개 패키지. PixPlays 6계열은 Elemental Spells Full Pack VFX 1개 패키지에 포함 |
+| `Model` | 게임에서 사용할 모델·환경·소품 | P09 Modular Humanoid, Kitsune Yuna 2종 |
 
 아래 경로는 `Assets/99.ThirdParty/` 기준이다. 상업 이용 상태의 “조건부”는 해당 라이선스와 사용자의 보유 권한을 충족해야 한다는 뜻이며, 이번 정리에서 구매 증빙까지 검증했다는 의미는 아니다. 모든 항목의 취득일은 미확인이다.
 
@@ -20,10 +20,10 @@
 | DOTween Pro | 1.0.430 | Demigiant | `Tools/Demigiant/` | 유료, DOTween·DemiLib 동봉 | Pro 라이선스·조건부 | [공식 제품·설치 안내](https://dotween.demigiant.com/pro.php) |
 | Realistic Spirit Blossom Spells VFX | 1.0 | Piloto Studio | `VFX/Piloto Studio/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 399376](https://assetstore-fallback.unity.com/packages/vfx/particles/spells/realistic-spirit-blossom-spells-vfx-399376) |
 | Dialogue System for Unity | 2.2.73.2 | Pixel Crushers | `Tools/Pixel Crushers/` | 유료, Common 동봉 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 11672](https://assetstore.unity.com/packages/tools/behavior-ai/dialogue-system-for-unity-11672) |
-| RayCast Pro | 1.1.5A | Philosophers | `Tools/RaycastPro/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 214714](https://marketplace.unity.com/packages/tools/physics/raycastpro-214714) |
+| RayCast Pro | 1.1.5B | Philosophers | `Tools/RaycastPro/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 214714](https://marketplace.unity.com/packages/tools/physics/raycastpro-214714) |
 | Editor Console Pro | 3.983 | FlyingWorm | `Tools/ConsolePro/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 11889](https://assetstore.unity.com/packages/tools/utilities/editor-console-pro-11889) |
-| Hierarchy Designer | 3.2.2 | Pedro Verpha | `Tools/Hierarchy Designer/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 273928](https://assetstore.unity.com/packages/tools/utilities/hierarchy-designer-273928) |
-| Wingman - Your Inspector's Best Friend | 1.1.0 | Kyle Rhoads | `Tools/Wingman/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 303181](https://assetstore.unity.com/packages/tools/utilities/wingman-your-inspector-s-best-friend-303181) |
+| Hierarchy Designer | 3.2.3 | Pedro Verpha | `Tools/Hierarchy Designer/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 273928](https://assetstore.unity.com/packages/tools/utilities/hierarchy-designer-273928) |
+| Wingman - Your Inspector's Best Friend | 1.4.0 | Kyle Rhoads | `Tools/Wingman/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 303181](https://assetstore.unity.com/packages/tools/utilities/wingman-your-inspector-s-best-friend-303181) |
 | Amplify Shader Editor | 1.9.9.12 | Amplify Creations | `Tools/AmplifyShaderEditor/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 68570](https://assetstore.unity.com/packages/tools/visual-scripting/amplify-shader-editor-68570) |
 | Maintainer 2 | 2.3.3 | Code Stage | `Tools/CodeStage/Maintainer/` | 유료 | Standard Unity Asset Store EULA·조건부 | [Asset Store 310179](https://assetstore.unity.com/packages/tools/utilities/maintainer-2-310179) |
 | Mesh Baker | 소스 버전 문자열 3.39.0(`MB3_MBVersionConcrete`), 동봉 API 문서 3.37.0 | Ian Deane / Digital Opus | `Tools/MeshBaker/` | 유료 | Standard Unity Asset Store EULA / Extension Asset·조건부 | [Asset Store 5017](https://assetstore.unity.com/packages/tools/modeling/mesh-baker-5017) |
@@ -32,6 +32,45 @@
 | P09 Modular Humanoid | 미확인(`AssetOrigin` 없음) | 미확인 | `Model/P09_Modular_Humanoid/` | 미확인 | 미확인 | 미확인 |
 | Succubus Anim Set | 1.21(`Succubus Anim Set`) | 미확인 | `Animation/Succubus_Anim_Set/` | 미확인(`AssetOrigin` productId 179271, Asset Store 패키지) | 미확인 | Asset Store productId 179271 |
 | Kitsune Yuna (월백 외형) | 1.0(`Kitsune Yuna`) | 미확인(폴더명 `Ida Faber`) | `Model/Ida Faber/Kitsune Yuna/` | 미확인(`AssetOrigin` productId 265718, Asset Store 패키지) | 미확인 | Asset Store productId 265718 |
+| Stylish Archer Assets Pack | 1.4 | 미확인(설치 폴더명 `Grruzam Archer Animation`) | `Animation/Grruzam Archer Animation/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 249931 |
+| Sword slashes PRO | 3.0 | 미확인(설치 상위 폴더명 `Hovl Studio`) | `VFX/Hovl Studio/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 173450 |
+| Item Pickup VFX - URP | 1.0.20232 | 미확인 | `VFX/Item Pickup VFX URP/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 241404 |
+| Magic Slashes FX | 1.0 | 미확인 | `VFX/Magic Slashes FX/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 114452 |
+| Master Stylized Projectile | 1.0 | 미확인 | `VFX/MasterStylizedProjectiles/`, 일부 공용 파일 `VFX/Hovl Studio/HSFiles/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 255608 |
+| Elemental Spells Full Pack VFX | 1.0.1 | 미확인(설치 상위 폴더명 `PixPlays`) | `VFX/PixPlays/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 297318 |
+| Simple Water Shader URP | 1.0.0 | 미확인 | `VFX/Simple Water Shader/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 191449 |
+
+### 추가 설치·버전 대조 — 2026-10-08
+
+4개 분류의 패키지 폴더 22개와 파일 6,985개(`.meta` 제외)를 전수 열거했다. 대장에 없던 궁수 애니메이션 1종과 VFX·셰이더 6종을 추가했다. 아래 숫자는 재귀 파일 수로, 폴더 `.meta`·파일 `.meta`는 제외하며 프리팹 수에 데모·공용 부품·렌더 파이프라인 변형이 포함될 수 있다. 독립 이펙트 수나 실제 전투에서 사용할 기술 수를 뜻하지 않는다.
+
+| 신규 패키지 경로 (`Assets/99.ThirdParty/` 기준) | 파일 | FBX | 프리팹 | 정적 확인한 구성 |
+|---|---:|---:|---:|---|
+| `Animation/Grruzam Archer Animation/` | 474 | 466 | 5 | Animation 462 FBX, Modeling 4 FBX, 컨트롤러 1·마스크 1·씬 1 |
+| `VFX/Hovl Studio/` | 253 | 26 | 35 | `Sword slash VFX/` 및 공용 `HSFiles/` |
+| `VFX/Item Pickup VFX URP/` | 137 | 5 | 20 | 픽업 VFX·오디오·데모·PDF 3개·추가 unitypackage 1개 |
+| `VFX/Magic Slashes FX/` | 430 | 13 | 94 | PC/Mobile 데모·참격 프리팹·캐릭터·셰이더 |
+| `VFX/MasterStylizedProjectiles/` | 556 | 37 | 104 | 투사체 프리팹·Shader Graph·데모 |
+| `VFX/PixPlays/` | 261 | 19 | 62 | AOE·Auras·Beams·Blast·Projectiles·Shields 6계열과 Components |
+| `VFX/Simple Water Shader/` | 17 | 0 | 2 | Water Shader Graph·반사 카메라·수면 메시·데모 |
+
+- 위 22개 폴더는 Animation 4, Model 2, Tools 9, VFX 7이다. 공급자 상위 폴더와 동봉 의존 라이브러리는 표의 패키지 단위로 묶었다. `Hovl Studio/HSFiles/Materials/Flash21bcg.mat`와 `HSFiles/Textures/Circle116.png`는 productId 255608로 기록되어 있어 Master Stylized Projectile과 Sword slashes PRO의 공용 디렉터리 출처가 섞여 있다. 이 두 파일은 Hovl 폴더의 253개에만 세며 중복 설치로 단정하지 않는다.
+- Raycast Pro는 기존 기록 `1.1.5A`에서 현재 설치 `1.1.5B`, Wingman은 `1.1.0`에서 `1.4.0`, Hierarchy Designer는 `3.2.2`에서 `3.2.3`으로 정정했다. 설치 `.meta` 기준이며 업데이트 시각·최신 판매 버전·동작 호환성은 확인하지 않았다.
+- 과거 제거 기록과 달리 현재 `Tools/RaycastPro/_Demo/`와 `Tools/Hierarchy Designer/Demo/`가 존재한다. 과거 정리 결과는 이력으로 보존하고 현재 설치 상태와 구분한다. 이번에 데모를 삭제하거나 재배치하지 않았다.
+- 신규 7종의 제작자 공식 표기·구매 증빙·취득일·좌석·적용 EULA·상업 이용 권리는 미확인이다. 폴더명과 AssetOrigin은 설치 식별 근거일 뿐 권리 보유 근거가 아니다. 외부 원본은 읽기 전용으로 조사했다.
+- 검증: 파일/확장자 집계, 전체 `.meta`의 productId·packageName·packageVersion 대조, 현재 Git 제외 규칙 확인(L1, 증거 등급 1). Unity 임포트·URP 셰이더 표시·애니메이션 리타게팅·이펙트 성능·게임 및 서버 연결·빌드는 미검증이다.
+
+### 신규 VFX의 렌더 파이프라인 주의 — 2026-10-08
+
+PixPlays의 Elemental Spells Full Pack VFX 설치 트리에는 `Version_BuiltIn`·`Components_BuiltIn`·`*_BuiltIn.unity`가 전개되어 있고, AOE/Auras/Beams/Blast/Projectiles/Shields 각 계열의 URP 버전은 `Elemental*_URP.unitypackage` 6개로 포함되어 있다. 별도 URP 버전 폴더가 전개된 것은 확인되지 않았다. 패키지 포함과 URP 적용 완료를 구분한다.
+
+Magic Slashes FX의 `.shader` 6개에는 URP 파이프라인 태그가 없다. 이는 호환 검토가 필요한 정적 신호이며 실제 URP 표시 실패를 재현했다는 뜻은 아니다. 이번에는 unitypackage를 추가 임포트하거나 셰이더를 변경하지 않았다. 두 팩 모두 프로젝트 URP에서 실제 표시·재질·성능 검증이 필요하다.
+
+### 궁수 애니메이션 설치 조사 — 2026-10-08
+
+`Stylish Archer Assets Pack`의 Animation 폴더에는 이동 252, 공격 109, 스킬 46, 피격 23, 넘어짐 29, 사망 3, 합계 462개 FBX가 있다. 모델 4개를 더한 전체 FBX는 466개다. 원본/Root/Inplace·방향·연결 구간 변형을 독립 기술로 세지 않는다. 기술과 부적 설계는 [캐릭터 애니메이션 설계](../design/character-animation-design.md)를 따른다.
+
+전체 FBX의 `ModelImporter.animationType`은 Humanoid 456개, Generic 10개다. Animation 소속은 Humanoid 454개, Generic 8개이며 Generic 8개는 `Animation/Archer/1_Movements/2__Walk/Inplace/Archer@Walk_{BL45,BR45,Bwd,FL45,FR45,Fwd,L,R}_Root.FBX`다. 나머지 Generic 2개는 Modeling의 Bow·Arrow다. `Inplace` 폴더명만으로 Humanoid 호환이나 실제 루트 정지를 확정하지 않는다. 프로젝트 사본의 리타게팅·활과 화살 소켓·시위 동기화·발 미끄러짐·실제 발사 시점은 Unity 재생 검증이 필요하며 이번 조사에서는 수행하지 않았다.
 
 ### 캐릭터 애니메이션 설치 조사 — 2026-10-07
 
@@ -145,7 +184,7 @@ UMA 3.1f1(GitHub 릴리스 `V3.1f1`)은 2026-10-01 들였다가 같은 날 쓰�
 
 ## 정리 내역과 유지한 의존 에셋
 
-Unity `AssetDatabase.GetDependencies`로 삭제 후보 밖에서 들어오는 참조를 검사한 뒤 에디터 API로 이동·삭제했다.
+아래는 2026-09-30 정리 당시 이력이다. Unity `AssetDatabase.GetDependencies`로 삭제 후보 밖에서 들어오는 참조를 검사한 뒤 에디터 API로 이동·삭제했다. 현재 재설치된 데모 유무는 2026-10-08 대조 결과를 우선한다.
 
 | 원래 위치 | 처리 |
 |---|---|
@@ -187,14 +226,14 @@ Dialogue System의 `Prefabs/Camera Angle Studio/Camera Angle Studio.unity`가 �
 
 ## Git와 재설치
 
-- `.gitignore`는 유료 패키지의 폴더·폴더 메타 및 위 Gizmos 예외만 명시적으로 제외한다. 분류 폴더의 `.meta`와 이 대장은 공유한다. 미래의 무료 에셋까지 `99.ThirdParty/` 전체를 일괄 제외하지 않는다.
+- 2026-10-08 현재 `.gitignore`에는 개별 패키지 규칙 외에 `/Assets/99.ThirdParty/*`가 있어 해당 하위 트리의 미추적 파일을 포괄 제외한다. 신규 7종도 `git check-ignore`로 제외됨을 확인했다. 기존 추적 파일은 이 규칙만으로 추적 해제되지 않는다. 이번 갱신은 현재 상태를 기록하며 Git 제외 규칙 자체는 변경하지 않았다. 재설치는 공유 드라이브와 동일 버전 원본 패키지를 사용한다.
 - 재설치할 때 이 대장의 설치 버전을 임포트하고 Unity 에디터에서 위 경로로 옮긴다. 구 위치에 중복 DLL·소스가 남지 않게 확인한다.
 - 구매 에셋을 참조하는 팀 씬·프리팹을 공유하기 전 기존 GUID를 유지하는 설치·참조 복원 절차를 확인한다. 이번 SampleScene은 구매 에셋을 참조하지 않는다.
 - 원본 복구 백업은 Git에서 제외한 개인 작업 영역에 보존했다. 공유 문서를 읽기 위해 개인 백업을 열 필요는 없다. 팀 재설치 기준은 이 대장과 각 공급자의 패키지다.
 
 ## 실제 검증
 
-최종 검사 결과는 아래에 기록한다. 게임·네트워크 코드는 변경하지 않았으며 플러그인 전체 기능의 플레이 테스트와 다인 접속 테스트는 실시하지 않았다.
+아래 표는 2026-09-30 정리 당시 검사 결과이며, 2026-10-08 추가 설치 이후 재실행한 결과가 아니다. 게임·네트워크 코드는 변경하지 않았으며 플러그인 전체 기능의 플레이 테스트와 다인 접속 테스트는 실시하지 않았다.
 
 | 주장 | 실행 수단 | 실제 결과 | 상태 |
 |---|---|---|---|
