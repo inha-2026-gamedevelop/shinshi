@@ -1,3 +1,6 @@
+// System
+using System;
+
 // Unity
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -10,6 +13,7 @@ using TMPro;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Network;
+using Shinshi.Systems;
 
 namespace Shinshi.UI
 {
@@ -20,7 +24,7 @@ namespace Shinshi.UI
         // 누른 자리의 캐릭터와 뗀 자리의 캐릭터가 같고 짧게 눌렀을 때만 연다.
         // 대상은 카메라 광선이 맞힌 콜라이더 부모의 PlayerCombatState로 찾는다(내 캐릭터는 isLocalPlayer). 콜라이더를 직접 연결해 두면(개발 씬) 그것이 우선이다.
         // 닉네임은 서버가 내려준 캐릭터 이름(PlayerCombatState)을 쓰고, 그것이 없는 개체만 맞은 오브젝트의 이름을 쓴다.
-        // 다른 유저 패널의 거래하기, 파티초대 버튼은 이 컴포넌트가 클라이언트 창구로 보낸다. 귓속말과 캐릭터 정보는 아직 준비 중이라 끈다
+        // 기본은 거래와 파티 초대를 클라이언트 창구로 보낸다. 개발 씬은 예시 이벤트로 보내며 미구현 기능은 안내 화면을 연다
 
         /****************************************
         *                Fields
@@ -50,6 +54,17 @@ namespace Shinshi.UI
         [SerializeField] private Button _whisperButton     = null;
         [SerializeField] private Button _infoButton        = null;
 
+        [Header("개발 씬 조작")]
+        [SerializeField] private bool _previewActions = false;
+        [SerializeField] private HotkeyRouter _router = null;
+
+        public event Action<string> TradeRequested;
+        public event Action<string> PartyInviteRequested;
+        public event Action<string> WhisperRequested;
+        public event Action<string> InfoRequested;
+
+        private Func<bool> _onEscape = null;
+
         private RectTransform _parentRect      = null;
         private RectTransform _openedPanel     = null;
         private Component     _pressedTarget   = null;
@@ -75,25 +90,31 @@ namespace Shinshi.UI
             _otherPanel.gameObject.SetActive(false);
 
             // 귓속말 채널과 다른 플레이어 정보는 아직 없다
-            SetInteractable(_whisperButton, false);
-            SetInteractable(_infoButton, false);
+            SetInteractable(_whisperButton, _previewActions);
+            SetInteractable(_infoButton, _previewActions);
         }
 
         private void OnEnable()
         {
+            _onEscape = OnEscape;
             AddListener(_tradeButton, OnTradeClicked);
             AddListener(_partyInviteButton, OnPartyInviteClicked);
+            AddListener(_whisperButton, OnWhisperClicked);
+            AddListener(_infoButton, OnInfoClicked);
         }
 
         private void OnDisable()
         {
             RemoveListener(_tradeButton, OnTradeClicked);
             RemoveListener(_partyInviteButton, OnPartyInviteClicked);
+            RemoveListener(_whisperButton, OnWhisperClicked);
+            RemoveListener(_infoButton, OnInfoClicked);
+            Close();
         }
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if ((_router == null) && Input.GetKeyDown(KeyCode.Escape))
             {
                 Close();
                 return;
@@ -122,13 +143,16 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
-        private void OnOpenButtonDown()
+        private void OnOpenButtonDown() { BeginPointer(Input.mousePosition); }
+
+        /// <summary>화면 좌표에서 우클릭 선택을 시작한다. UI에 가려진 월드 개체는 선택하지 않는다</summary>
+        public void BeginPointer(Vector2 point)
         {
             _pressedTarget = null;
             _pressedKind   = PlayerInteractionRules.ETarget.None;
 
             // 열린 패널 안을 누른 것은 버튼에게 맡긴다
-            if (IsInsideOpenedPanel())
+            if (IsInsideOpenedPanel(point))
             {
                 return;
             }
@@ -136,16 +160,25 @@ namespace Shinshi.UI
             Close();
 
             // 다른 UI 위를 누른 경우는 뒤에 있는 캐릭터를 고르지 않는다
-            if ((EventSystem.current != null) && (EventSystem.current.IsPointerOverGameObject()))
+            if (EventSystem.current != null)
             {
-                return;
+                var hits = new System.Collections.Generic.List<RaycastResult>();
+                var pointer = new PointerEventData(EventSystem.current) { position = point };
+                EventSystem.current.RaycastAll(pointer, hits);
+                if (hits.Count > 0)
+                {
+                    return;
+                }
             }
 
-            _pressedTarget = RaycastTarget(out _pressedKind);
+            _pressedTarget = RaycastTarget(point, out _pressedKind);
             _pressedTime   = Time.unscaledTime;
         }
 
-        private void OnOpenButtonUp()
+        private void OnOpenButtonUp() { EndPointer(Input.mousePosition); }
+
+        /// <summary>같은 대상을 짧게 누른 경우에만 그 위치에서 패널을 연다</summary>
+        public void EndPointer(Vector2 point)
         {
             Component pressed = _pressedTarget;
             PlayerInteractionRules.ETarget kind = _pressedKind;
@@ -162,15 +195,15 @@ namespace Shinshi.UI
                 return;
             }
 
-            if (RaycastTarget(out _) != pressed)
+            if (RaycastTarget(point, out _) != pressed)
             {
                 return;
             }
 
-            Open(pressed, kind);
+            Open(pressed, kind, point);
         }
 
-        private void Open(Component target, PlayerInteractionRules.ETarget kind)
+        private void Open(Component target, PlayerInteractionRules.ETarget kind, Vector2 point)
         {
             RectTransform panel = null;
             TMP_Text      label = null;
@@ -194,11 +227,20 @@ namespace Shinshi.UI
             label.text  = _targetName;
 
             // 패널 왼쪽 위를 마우스 자리에 맞춘다. 부모는 가운데 기준이라 변환한 값이 그대로 위치가 된다
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(_parentRect, Input.mousePosition, null, out Vector2 local);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_parentRect, point, null, out Vector2 local);
             panel.pivot            = new Vector2(0f, 1f);
             panel.anchoredPosition = local;
+            Vector2 size = panel.rect.size;
+            Rect bounds = _parentRect.rect;
+            panel.anchoredPosition = new Vector2(Mathf.Clamp(local.x, bounds.xMin, bounds.xMax - size.x),
+                Mathf.Clamp(local.y, bounds.yMin + size.y, bounds.yMax));
             panel.gameObject.SetActive(true);
+            panel.SetAsLastSibling();
             _openedPanel = panel;
+            if (_router != null)
+            {
+                _router.Register(EHotkeyAction.CloseWindow, _onEscape);
+            }
         }
 
         // 서버가 내려준 이름을 먼저 쓴다. 네트워크 개체가 아니면 오브젝트 이름이다
@@ -217,7 +259,14 @@ namespace Shinshi.UI
         {
             if (!string.IsNullOrEmpty(_targetName))
             {
-                TownTradeClient.Request(_targetName);
+                if (_previewActions)
+                {
+                    TradeRequested?.Invoke(_targetName);
+                }
+                else
+                {
+                    TownTradeClient.Request(_targetName);
+                }
             }
 
             Close();
@@ -227,11 +276,42 @@ namespace Shinshi.UI
         {
             if (!string.IsNullOrEmpty(_targetName))
             {
-                TownPartyClient.Invite(_targetName);
+                if (_previewActions)
+                {
+                    PartyInviteRequested?.Invoke(_targetName);
+                }
+                else
+                {
+                    TownPartyClient.Invite(_targetName);
+                }
             }
 
             Close();
         }
+
+        private void OnWhisperClicked()
+        {
+            WhisperRequested?.Invoke(_targetName);
+            Close();
+        }
+
+        private void OnInfoClicked()
+        {
+            InfoRequested?.Invoke(_targetName);
+            Close();
+        }
+
+        private bool OnEscape()
+        {
+            if (_openedPanel == null)
+            {
+                return false;
+            }
+            Close();
+            return true;
+        }
+
+        public void ClosePanel() { Close(); }
 
         private static void AddListener(Button button, UnityEngine.Events.UnityAction action)
         {
@@ -258,7 +338,7 @@ namespace Shinshi.UI
         }
 
         // 광선이 맞힌 대상과 종류를 찾는다. 비교용 키는 맞은 플레이어의 PlayerCombatState, 없으면 고정 콜라이더다
-        private Component RaycastTarget(out PlayerInteractionRules.ETarget kind)
+        private Component RaycastTarget(Vector2 point, out PlayerInteractionRules.ETarget kind)
         {
             kind = PlayerInteractionRules.ETarget.None;
             Camera camera = (_camera != null) ? _camera : Camera.main;
@@ -267,7 +347,7 @@ namespace Shinshi.UI
                 return null;
             }
 
-            Ray ray = camera.ScreenPointToRay(Input.mousePosition);
+            Ray ray = camera.ScreenPointToRay(point);
             if (!Physics.Raycast(ray, out RaycastHit hit))
             {
                 return null;
@@ -285,9 +365,11 @@ namespace Shinshi.UI
             return (player != null) ? player : collider;
         }
 
-        private bool IsInsideOpenedPanel()
+        private bool IsInsideOpenedPanel() { return IsInsideOpenedPanel(Input.mousePosition); }
+
+        private bool IsInsideOpenedPanel(Vector2 point)
         {
-            return (_openedPanel != null) && RectTransformUtility.RectangleContainsScreenPoint(_openedPanel, Input.mousePosition, null);
+            return (_openedPanel != null) && RectTransformUtility.RectangleContainsScreenPoint(_openedPanel, point, null);
         }
 
         private void Close()
@@ -299,6 +381,10 @@ namespace Shinshi.UI
 
             _openedPanel.gameObject.SetActive(false);
             _openedPanel = null;
+            if (_router != null)
+            {
+                _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);
+            }
         }
     }
 }

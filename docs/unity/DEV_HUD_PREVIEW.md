@@ -111,8 +111,11 @@ Play Mode 화면에서 인벤토리 하단의 두 아이콘·수치 1,250/2,100�
 | 특성 | `T_HudMenuButton_IconTraits.png` | 메뉴 전용 새 Sprite |
 | 경매장 | `T_HudMenuButton_IconAuction.png` | 메뉴 전용 새 Sprite |
 | 캐릭터 선택 | `T_HudMenuButton_IconCharacterSelect.png` | 꺾쇠·세로선 형태의 메뉴 전용 새 Sprite |
+| 우편함 | `T_HudMenuButton_IconMail.png` | 2026-10-08 추가, 은색 봉투의 메뉴 전용 새 Sprite |
 
 캐릭터 정보는 사용자 참고 이미지처럼 왼쪽을 보는 사람 옆얼굴이며 투구 대신 사용한다. 캐릭터 선택은 왼쪽 꺾쇠와 짧은 세로선으로 표시한다. 특성은 4개 능력 노드를 잇는 가지 문양, 경매장은 경매 망치다. 기존 공용 수련 공격·경매 재료·뒤로가기 Sprite는 보존하며 메뉴의 Image.sprite에 전용 파일을 연결한다.
+
+우편함 Sprite는 기존 가방 아이콘과 같은 바랜 은색 금속·두꺼운 베벨의 닫힌 봉투다. 글자·배지 없이 봉투 덮개의 삼각선으로 구분한다. 원본 1254×1254 PNG의 알파를 유지하고 Single Sprite·Full Rect·최대256px·밉맵 없음·비압축·Clamp로 임포트했다. `Dev_HUD/Dev_ShinshiVillageQuarterView.unity` 확장 메뉴의 우편함에 흰색 틴트·비율 유지로 연결하고 기존 선 아이콘을 제거했다. `VillageUiPreviewBuilder`도 같은 Sprite를 연결하므로 메뉴 재생성 시 유지된다. 32/48/64px 비교와 씬 메뉴 사본의 Unity 카메라 캡처에서 형태를 확인했다. 재생성에 사용하는 아이콘 함수를 재호출해 참조 유지와 임시 아이콘 중복 없음, 기존 `OpenMail` 클릭 이벤트 유지도 확인했다. 환경설정 씬의 미저장 작업을 보존하기 위해 Play Mode를 전환하지 않았으며 우편 열기·수령 동작과 Player 빌드는 이번 아이콘 적용의 검증에 포함하지 않았다.
 
 사용자 소유 `Assets/00.Scenes/Dev_HUD/` 개발 씬의 기존 사용처에 적용했다. `Dev_HUD.unity`와 `Dev_ShinshiVillageQuarterView.unity`의 상시 메뉴 캐릭터 정보·인벤토리는 GUID를 유지한 파일 교체로 반영된다. 마을 UI 개발 씬의 확장 메뉴는 특성·경매장·캐릭터 선택을 새 Sprite로 연결했다. `Dev_CharSelect.unity`의 왼쪽 위 뒤로 가기 버튼에도 꺾쇠·세로선 Sprite를 사용한다. `Dev_ItemSlot.unity` 제목 가방과 `Dev_Trade.unity`의 인벤토리·거래창 제목 가방은 흰색 틴트·비율 유지로 설정했다.
 
