@@ -138,17 +138,13 @@ JarWide/JarTall은 남던 검정 삼각·몸통 파손을 해결하려고 측정
 
 [석등](../../Assets/02.Prefab/Props/StoneLantern/PF_StoneLantern.prefab), [6m반복 바닥](../../Assets/02.Prefab/Environment/StoneCourtyard/PF_StoneCourtyardTile.prefab), [부유석](../../Assets/02.Prefab/Environment/FloatingRock/PF_FloatingRock.prefab)은 신규70수에 더하지 않는다. 중앙 거대 벚꽃은 사용자 기존 원본을 사용한다.
 
-| 주장 | 실제 확인 범위 | 상태 |
-|---|---|---|
-| 제작70·베이크·3LOD 출력 | rendered 보고서70개, 저장 편집본, FBX210개와 실제 베이크 파일 | 출력 확인 |
-| 규격모듈 신고결함 | 앞·뒤3LOD252장 직접 검수와 WallPanel6장 후속검수에서 P1 8건/P2접합면 해소 | 해당 이미지 범위 확인 |
-| 항아리 몸통 | 최종 앞·뒤3LOD12장 직접 검수에서 검정삼각/격자/넓은 각진 얼룩 해소 | 해당 이미지 범위 확인 |
-| Nature8 원본 방향·UV증거 | 동일SHA 재import와 두원본단계 SHA일치·finite/nonzero/unit corner normal·현재High 별도검사 | actual Blender 확인 |
-| Unity 프리팹·정적 참조 | 70/70 실제 검증 통과; 모델·재질·UV0·노멀/탄젠트·LOD·GUID·용도별 Collider 참조 확인 | 정적 확인 |
-| Unity 중립 이미지 | 앞·뒤3LOD와 일반68종 AO 켬/끔, 총556장 생성·검수; 약초·관목4종과 목조 교각의 표면 보정은 후속 작업 | 조건부 통과 |
-| 게임사용 | 이동·접촉·연속자동LOD·게임조명/카메라·다수배치성능·PlayerBuild/OOMstress 미실행 | 미검증 |
+| 확인 범위 | 상태 |
+|---|---|
+| 70종 제작 출력과 Unity 프리팹의 모델·재질·UV·노멀·LOD·GUID·용도별 Collider 참조 | 정적 확인 |
+| 중립 조명·강제 정지 LOD 이미지 | 조건부 통과. 약초·관목4종과 목조 교각의 표면 보정 필요 |
+| 이동·접촉·연속 LOD·게임 조명/카메라·다수 배치 성능·Player 빌드/OOM 스트레스 | 미검증 |
 
-현재 70개 프리팹의 중복 없는 텍스처 참조208개 중 신규 소유206개를 에디터에서 읽었다. Unity native loaded memory 합은 신규116.48MiB, 기존 Cherry 텍스처2개를 포함하면119.15MiB다. 신규 CPU 읽기 복사와 밉맵 있는 비스트리밍 텍스처는 각각0개이며 BC7/BC5 임포트를 사용한다. 이는 현재 에디터에 로드된 Texture 메모리 측정으로 전용 GPU VRAM, 최대 임포트 사용량, Player 빌드나 마을 다수 배치 성능을 증명하지 않는다.
+신규 텍스처는 BC7/BC5 임포트를 사용하며 CPU 읽기 복사를 끄고 밉맵 있는 텍스처에 스트리밍을 적용했다. 에디터 확인은 GPU VRAM·Player 메모리·다수 배치 성능 예산의 통과를 뜻하지 않는다.
 
 중립 PreviewScene의 수동LOD·Collider ray는 게임사용 검증을 대신하지 않는다. [씬·에셋 안전](SCENE_AND_ASSET_SAFETY.md)과 [검증 플레이북](../ai/03_VERIFICATION_PLAYBOOK.md)을 따른다. 개별렌더·프롬프트·원본·상세기록은 Git제외 개인작업 위치에 두며 이 공용문서에는 경로·사용조건·검증범위만 남긴다.
 
@@ -166,7 +162,7 @@ JarWide/JarTall은 남던 검정 삼각·몸통 파손을 해결하려고 측정
 
 ## 원화 대조 마을 — 2026-10-01~02
 
-CA04의 이중 지붕·붉은 목재·기와·회벽·초가·시장 차양을 별도 모델로 제작하고 위 개발 씬에 배치했다. 개별 물체 참조→Meshy8건→실제 Blender5.1 가공→Unity 재질·Collider·프리팹 순서이며 생성 ID·실제240크레딧은 [에셋 대장](../licenses/ASSET_REGISTRY.md)을 따른다. 원본 모델·기존 프리팹·다른 개발 씬은 보존한다.
+CA04의 이중 지붕·붉은 목재·기와·회벽·초가·시장 차양을 별도 모델로 제작하고 위 개발 씬에 배치했다. 개별 물체 참조→Meshy8건→실제 Blender5.1 가공→Unity 재질·Collider·프리팹 순서이며 출처·사용 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md)을 따른다. 원본 모델·기존 프리팹·다른 개발 씬은 보존한다.
 
 | 배치 프리팹 | 기본 크기 X×Y×Z(m) | High / Medium / Low tris | 충돌 사용 조건 |
 |---|---|---:|---|
@@ -194,7 +190,7 @@ CA04의 이중 지붕·붉은 목재·기와·회벽·초가·시장 차양을 �
 
 ## CA-07 추가 에셋 — 2026-10-03
 
-CA-07 원화에 있지만 기존 Assets에 없던 4종이다. 단일 물체 시안 → Meshy 생성 1회씩 → Blender 5.1 가공 → Unity 재질·LOD·충돌·프리팹 순서로 만들었다. 출처·작업 ID·비용은 [에셋 대장](../licenses/ASSET_REGISTRY.md#ca-07-추가-환경-모델--2026-10-03)을 따른다. 네 프리팹 모두 루트 스케일 1, LOD 3단계, 정면 −Z 기준이다.
+CA-07 원화에 있지만 기존 Assets에 없던 4종이다. 단일 물체 시안 → Meshy 생성 1회씩 → Blender 5.1 가공 → Unity 재질·LOD·충돌·프리팹 순서로 만들었다. 출처·사용 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#ca-07-추가-환경-모델--2026-10-03)을 따른다. 네 프리팹 모두 루트 스케일 1, LOD 3단계, 정면 −Z 기준이다.
 
 | 배치 프리팹 | 크기 X×Y×Z(m) | 피벗 | High / Medium / Low tris | 충돌 사용 조건 |
 |---|---|---|---:|---|

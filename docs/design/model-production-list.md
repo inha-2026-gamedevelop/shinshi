@@ -153,31 +153,17 @@ Unity 임포트·모델/재질/LOD 참조·메타를 확인했고 이 정적 시
 
 ### 여성 모듈형 리깅 시제품 — 2026-10-01
 
-사용자 요청으로 작업을 종료했다. **현행 외형은 사용자 거절(REJECT), 신규 UMA 외형 채택·코드 연동은 보류**다. 같은 날 UMA를 쓰지 않기로 해 UMA3 연동 에셋49개(`PlayerFemaleModular/UMA/`)는 삭제했고, 아래 UMA 관련 검증은 당시 기록으로만 남긴다. 기존 PF와 카탈로그·런타임 기본 선택은 유지했다. 아래 기술 검증은 최종 외형 승인을 뜻하지 않는다.
+**외형 판정은 REJECT이며 신규 채택·코드 연동은 보류**다. UMA 미사용 결정으로 UMA3 연동 에셋은 삭제했다. 이 시제품은 현행 P09의 완료 근거가 아니다.
 
-기존 외형에서 파생한 [PF_PlayerFemaleModular](../../Assets/02.Prefab/Characters/PlayerFemaleModular/PF_PlayerFemaleModular.prefab)를 제작했다. 런타임 모델·애니메이션·재질은 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleModular/`에 있다. 후속 얼굴·손 국소 표면 정리에서 UV와 목·손목 경계를 보존하고, 수정한 몸·머리 쌍의 실제 AO와 탄젠트 노멀을 2K로 다시 베이크했다. 전용 `M_PlayerFemaleModular_Base.mat`는 `Textures/T_PlayerFemaleModular_Refined_AO.png`, `T_PlayerFemaleModular_Refined_Normal.png`를 사용하며 Normal Scale은 1이다. BaseColor·거칠기·MetallicSmoothness는 `PlayerFemaleBasePreview/`의 원본 맵을 계속 참조하므로 해당 폴더를 함께 보존한다. 기존 정적 시제품 재질은 유지했다. 별도 생성 머리는 계속 미채택이며, 채택한 전신의 삼각형 연결 구조·UV에 리깅 웨이트를 전송하고 목에서 머리와 몸을 분리했다. AO는 이 몸·머리 쌍의 베이크이며 임의 부품 교체에 대한 AO 검증을 대신하지 않는다. 부품 교체 시 [아트 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md)에 따라 부품 국소 AO와 조립 접촉 AO를 다시 확인·베이크한다.
+보존용 [PF_PlayerFemaleModular](../../Assets/02.Prefab/Characters/PlayerFemaleModular/PF_PlayerFemaleModular.prefab)의 모델·애니메이션·재질은 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleModular/`에 있다. BaseColor·거칠기·MetallicSmoothness를 참조하는 `PlayerFemaleBasePreview/`도 함께 보존한다. 전용 재질은 Refined AO/Normal을 사용한다. AO는 수정한 몸·머리 쌍에 한정되며 다른 부품을 조립하면 [아트 기본 과정](../unity/ART_ASSET_PRODUCTION_WORKFLOW.md)에 따라 국소 AO와 조립 접촉 AO를 다시 검증·베이크한다.
 
-24개 뼈의 공통 골격, `Hips` rootBone을 쓰는 머리·몸·눈꺼풀의 3LOD와 `Blink` 눈꺼풀 모프, 걷기·달리기 검토용 애니메이션을 포함한다. 후속 표면 정리 모델의 LOD별 전체 삼각형 수는 56,044 / 29,997 / 16,941이며 각 단계에 눈꺼풀 3,840삼각형이 포함된다. Unity Humanoid Avatar 유효성, Read/Write 켬, Optimize Game Objects 끔, 9개 스킨드 렌더러의 임포트·참조를 확인했다. 높이 1.7m는 개인 시제품 치수이며 공용 비례·게임 판정 크기를 확정하지 않는다.
+24뼈 공통 골격과 `Hips` rootBone, 머리·몸·눈꺼풀 3LOD, Blink 및 검토용 걷기·달리기를 포함한다. 전체 삼각형 수는 56,044 / 29,997 / 16,941이다. 임포트는 Read/Write 켬·Optimize Game Objects 끔이며 1.7m는 시제품 치수다. 별도 눈꺼풀은 독립 안구·표정 토폴로지를 대신하지 않고 얇은 보조 면에 고정 AO·별도 노멀 맵을 생략한 예외다. Collider는 없으며 검토용 Animator는 게임 이동을 구현하지 않는다.
 
-눈꺼풀은 기존의 그려진 눈 위에 추가한 별도 사각형 메시로, 독립 안구·얼굴 관절 토폴로지 제작을 대신하지 않는다. 단계별 512px BaseColor·거칠기·MetallicSmoothness를 사용한다. 얼굴의 조각난 UV를 눈꺼풀에 늘여 적용하던 줄무늬를 전용 피부 아틀라스로 교정했으며, Unity에서 닫힌 형상으로 계산한 기하 노멀 델타를 별도 Mesh 에셋에 보존했다. FBX BlendShape Normals는 None이다. 얇고 움직이는 부품에 고정 AO를 붙이지 않고 별도 노멀 맵도 생략한다. 마지막 닫힌 접합 형상을 프리팹에 재적용한 Unity 표본에서 기존 줄무늬와 눈 틈 제거를 확인했다. 캐릭터 외형·변형 검토용이므로 Collider는 없고 검토용 Animator는 게임 이동을 구현하지 않는다.
-
-마지막 표면·눈꺼풀 보정과 애니메이션 기준 교정을 적용한 Unity 수치 검사에서 세 LOD의 목 경계 위치·UV·웨이트·공유 bindpose 차이는 0, 경계 노멀 내적은 0.9999999 이상이었다. 중립·걷기·달리기·머리 회전·목 기울임의 총 15표본에서 목 틈 0, 세 LOD의 Blink `0→50→100→0` 변형·초기화를 확인했다. 실제 `SkinnedMeshRenderer.BakeMesh` 스냅샷 33장(걷기 16프레임 포함)을 저장하고 실제 Animator 클립 이름·경로·weight도 검사했다. 이 증거는 CPU 스키닝 표본 검증이며 GPU 스키닝 갱신·플레이어 루프 실행·성능 측정은 포함하지 않는다. 검증은 별도 PreviewScene에서 실행했고 활성 씬의 경로·dirty 상태와 기존 씬 파일을 보존했다.
-
-검토용 걷기는 원래 Meshy 클립을 1.2초·100보/분으로 맞추고 보폭·팔 흔들림·몸의 출렁임을 줄였다. FBX 재내보내기로 임베디드 Clip fileID가 바뀌어 기존 Controller의 Walk motion이 끊기는 문제를 실제 참조 재할당으로 해결했다. 모델의 공통24뼈 local rest를 애니메이션 Humanoid 설정에 공급해 source/model/PF의 humanScale을1.01658213으로 맞췄다. CopyFromOtherAvatar는 계층 차이 때문에 사용하지 않았다. 네 phase의 최대 source→PF 뼈 위치 차이는3.666µm다. 최저 발바닥 약−2.10mm는 source/target에 공통으로 남으므로 완전 무침투를 주장하지 않으며, 이전 약2cm 기준 차이와 구분한다.
-
-UMA3 연동용 에셋49개를 `Assets/01.Scripts/05.Art/Characters/PlayerFemaleModular/UMA/`에 실제 저장했다. 구성은9 SlotDataAsset,9 Unity Material,9 UMAMaterial,18 OverlayDataAsset,3 UMATextRecipe,1 RaceData다. 검토 종족의 정확한 이름은 `Shinshi Female UMA3 Review`, 기본 레시피는 `Recipes/R_PlayerFemaleModular_High.asset`이며 Medium/Low 레시피도 있다. 원본 PF24뼈와 별도로 실제 Human Female3.0 native229뼈·bindpose·원래228뼈 rest metadata에 바인딩했다. 소스는 Unity PF의 UV·삼각형을 그대로 캡처한 `UnityPrefabJSON` 경로로 추가 winding 반전이 필요하지 않다. 세 LOD 양손5지 distal 영역의 올바른 finger family dominant 비율은100%, 최소 family weight는95.035%다. 손바닥·손목·뿌리 보간을 보존했으나 native 손가락 포즈와 극한 DNA의 해부학 정합은 미검증이다.
-
-세 저장 레시피를 실제 생성해 각10개씩 총30개 DNA 표본(headWidth/eyeSize/eyeSpacing/height/shoulderWidth의0.25·0.75), 세 LOD×4색의12개 색상 검사를 통과했다. DNA 표본은 유한 정점·동일 토폴로지·목 틈0·중립 복원 오차0을 확인했다. 현재 카탈로그의 비어 있지 않은26 DNA 이름이 모두 live62 DNA에 존재하며 native 정의의 로드값55개를 보존했다. 이 키 검사와5키 변형 표본은26키 전체·조합·32슬라이더 완성 검증이 아니다. 이름이 비어 있는6개 슬라이더는 미지원으로 유지한다. NoAtlas SharedColor의 `Skin`은 몸·머리·눈꺼풀에, `Eyes`/`Brows`/`Lips`는 Head의 UV0 마스크에만 적용되고 AO/Normal/MetallicSmoothness 데이터 참조는 보존됐다. native Blink 입력0~1과 Unity weight0~100 대응을 확인했다. 마지막 변경은3LOD 눈꺼풀 shape normal 델타만 교정해 중립 정점·UV·웨이트·노멀/Blink 위치 델타를 그대로 유지한 것이다. 변경 후 High10 DNA표본·4색은 재통과했고 닫힘 음영 완화를 확인했다. Medium/Low의 검증은 마지막 노멀 변경 전 결과이며 변경 후 재실행하지 않았다. 수치 검사와 사용자에게 거절된 얼굴 인상을 구분한다.
-
-초기 네이티브 합성의 광범위 삼각형 패치는 카메라가 직접 사용하지 않는 합성용 원본 텍스처의 streaming mip 선택으로 UV 조각 경계가 번진 문제였다. 같은 기하에 원본2K 비스트리밍 텍스처를 적용한 진단으로 구분하고, 관련13개 텍스처의 streamingMipmaps를 끈 저장 importer 설정으로 세 LOD에서 광범위 패치 제거를 확인했다. mipmaps와 압축은 유지하며 전신 BaseColor·색상 마스크의 최대 크기는2048, 눈꺼풀은512, AO/Normal/MetallicSmoothness는1024다. 전역 QualitySettings를 이 캐릭터 수정에서 변경하지 않았다. 편집기 텍스처 object bytes 확인은 Player 메모리나 성능 예산 측정이 아니다. 세 LOD의 강제 정지 표본이며 실제 게임 카메라/연속 LOD·성능은 별도 검증한다.
-
-기존 UMA 패키지·전역 UMAAssetIndexer·런타임 아바타 코드·카탈로그는 이 아트 작업에서 수정하지 않았다. 새 에셋의 정식 등록/참조 로드, 검토 종족·레시피 선택, 생성 후 DNA·SharedColor·Blink 적용은 런타임 담당 코드에서 연결해야 한다. 검토 native 조립 높이 약1.986m와 원본 PF1.700m를 구분하고 전체 표시 크기 조절을 native bind/rest 변경으로 처리하지 않는다. 기존 기본 몸/안구/속옷을 현재 Body+Head+Eyelids의3슬롯에 중복 결합하지 않으며 헤어·의복에는 별도 fitting 검증이 필요하다.
-
-달리기의 일부 원본 PF 표본에서 손과 몸이 겹쳐 동작 맞춤·클리핑 보정이 필요하다. 현행 UMA 외형은 사용자 거절이며 채택·코드 연동을 보류하고 종료했다. 실제 High native 걷기16phase는1.2초 클립·유효 Avatar/55 human 매핑/humanScale1.13814175·유한정점·토폴로지·목틈0·중립복원0을 확인했으나 바닥9/16실패, phase0.75 최대19.9607mm침투가 남았다. 임시 iKOnFeet 진단은 침투가 없어졌지만1phase의25mm 초과 들뜸으로 전체실패했고 저장 에셋/Controller를 바꾸지 않았다. 교정된 native 전용Walk는 저장하지 않았다. 마지막 노멀 변경 후Medium/Low 재검증도 미실행이다. 최종 리토폴로지·얼굴 아틀라스/눈꺼풀 품질, 전체 슬라이더·조합, 독립 안구·입·표정, native 손가락 포즈·극한 DNA, 직업별 헤어·장비, GPU 연속 재생·상태 전환·전 조합 클리핑, 게임플레이·성능·Windows 빌드·배포 검증은 미완료다. 상세 제작 기록·렌더는 개인 docs에 보존하고 [에셋 대장](../licenses/ASSET_REGISTRY.md#여성-베이스-외형-시제품)에 출처와 사용 조건을 남긴다.
+CPU 스키닝 표본과 정지 LOD의 기술 확인만 수행했다. 원본 PF 달리기의 손·몸 겹침과 보행 바닥 침투가 남았고, 삭제된 UMA 조립물의 보행 교정은 통과하지 않았다. 최종 얼굴·리토폴로지·전체 커스터마이징·직업별 장비·연속 GPU 재생·게임플레이·성능·빌드·배포는 미완료다. 출처·권리 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#여성-베이스-외형-시제품)을 따른다.
 
 ### Tripo 공통 여성 몸체·귀여운 얼굴 첫 검토 묶음 — 2026-10-03
 
-사용자 승인으로 공통 몸체에 직업별 의상·헤어와 얼굴 3종을 분리하는 제작 방식으로 전환했다. 첫 검토 묶음은 불투명 유니타드를 입은 공통 몸체와 귀여운 인상의 성인 여성 얼굴이다. 작업은 최대 Blender 4개, 결과 검토는 두 개씩 진행한다. 기존 Meshy/UMA 시제품과 별도 에셋이며, 공통 몸체에 포함된 기술 확인용 기본 머리는 최종 얼굴 3종에 추가하는 네 번째 얼굴이 아니다.
+사용자 승인으로 공통 몸체에 직업별 의상·헤어와 얼굴 3종을 분리하는 제작 방식으로 전환했다. 첫 검토 묶음은 불투명 유니타드를 입은 공통 몸체와 귀여운 인상의 성인 여성 얼굴이다. 기존 Meshy/UMA 시제품과 별도 에셋이며, 공통 몸체에 포함된 기술 확인용 기본 머리는 최종 얼굴 3종에 추가하는 네 번째 얼굴이 아니다.
 
 같은 에셋 루트의 `Warrior/Textures/T_FemaleWarrior_Tripo_*` 3장은 이전 무사 전신의 중간 베이크 보존본이며 현재 공통 몸체 프리팹에 연결하지 않는다. 새 분리 의상의 `T_FemaleWarrior_{BaseColor,Outfit_*,Hair_*,Boots_*}`와 구분하며, 이전 맵을 분리 의상 제작 완료의 근거로 사용하지 않는다.
 
@@ -195,7 +181,7 @@ renderer bounds는 `rootBone` 공간의 실제 걷기·달리기와 얼굴 변�
 
 분리 의상과 헤어·신발·목은 `Warrior/`, `Taoist/`, `Spiritcaller/`에 배치했다. 조립본은 [PF_FemaleWarrior_Cute](../../Assets/02.Prefab/Characters/PlayerFemaleTripo/PF_FemaleWarrior_Cute.prefab), [PF_FemaleTaoist_Cute](../../Assets/02.Prefab/Characters/PlayerFemaleTripo/PF_FemaleTaoist_Cute.prefab), [PF_FemaleSpiritcaller_Cute](../../Assets/02.Prefab/Characters/PlayerFemaleTripo/PF_FemaleSpiritcaller_Cute.prefab)다. 실제 자체 AO·Normal·PackedMAS, 3LOD, 유효한 Humanoid Avatar와 보조본 27/31/33개를 연결했고, 3직업×3LOD×정지·걷기·달리기 54장 및 최종 얼굴·헤어 27장을 Native URP로 확인했다. 직업별 삼각형 합계는 무사 106,997/60,341/33,030, 도술사 107,177/60,334/32,766, 신령사 103,048/58,105/31,667이다. 신령사 Medium 헤어의 Source 대응 노멀 5개는 별도 runtime 메시로 교정했다. 신령사 헤어 확대 화면의 각진 판과 거친 끝은 기존 Source에도 남아 있어 외형 품질은 조건부다. 목은 검은 유니타드 UV의 별도 피부 재질이며 도술사·신령사의 동일 UV/형상에만 자체 AO를 공유한다. 조립 전체 접촉 AO와 구분한다.
 
-저장 5프리팹의 메시·이름별 스킨·재질·3LOD·Blink 참조 검사와 캐릭터 EditMode 88/88을 확인했다. Test Framework XML은 88통과·실패/skip0이며 MCP job의 초기화 timeout은 별도 실패 기록으로 보존했다. 관련 텍스처의 Editor object memory 합계 약 623.48MiB는 Player 메모리·VRAM·성능 예산 측정값이 아니다. 장식·외형 프리팹에는 게임플레이 Collider를 넣지 않았고 실제 Player·FootIK/Controller·게임 카메라·연속 LOD·지속 보조본 물리·M2/M3·빌드·성능은 미검증이다. 나머지 얼굴 2종은 후속 범위다. 상세 기록·실패 이력·검토 렌더는 Git 제외 개인 docs에 보존하고 출처·권리 확인 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#tripo-여성-공통-몸체얼굴직업-참조--2026-10-0203)을 따른다.
+저장 5프리팹의 메시·이름별 스킨·재질·3LOD·Blink 참조 검사와 캐릭터 EditMode 88/88을 확인했다. 관련 텍스처의 Editor object memory 합계 약 623.48MiB는 Player 메모리·VRAM·성능 예산 측정값이 아니다. 장식·외형 프리팹에는 게임플레이 Collider를 넣지 않았고 실제 Player·FootIK/Controller·게임 카메라·연속 LOD·지속 보조본 물리·M2/M3·빌드·성능은 미검증이다. 나머지 얼굴 2종은 후속 범위다. 상세 기록·실패 이력·검토 렌더는 Git 제외 개인 docs에 보존하고 출처·권리 확인 조건은 [에셋 대장](../licenses/ASSET_REGISTRY.md#tripo-여성-공통-몸체얼굴직업-참조--2026-10-0203)을 따른다.
 
 팔 리깅 추가 검증에서 무사 Avatar가 원래 메시의 rest 자세를 Humanoid 기준으로 사용해 공통 몸체와 팔꿈치 각도가 달라지는 결함을 재현했고, 공통 calibrated 52뼈의 Humanoid 기준을 실제 세 직업 importer에 반영했다. Generic 최종 rest, 원래 메시·named weights·bindpose·보조본 계층은 유지한다. 무사·도술사는 기존 실제 팔 포즈와 새 실제 스킨의 144개 비교에서 최대 차이 약 0.963µm, 양수 영향 누락 0을 확인했다. 이 비교의 몸체 포즈 대상은 High이며 하위 몸체는 rest·named skin·bindpose 대조로 검증했다. 세 직업 Native 걷기·달리기 표본에서 팔·소매가 따라가는 것도 확인했다. 120/162도 극단 굽힘의 천 접힘 경고는 남아 있으며 모든 동작의 무관통 검증을 뜻하지 않는다. Avatar 변경 뒤에는 기존 FootSupportProfile의 식별·보정값과 동작 검증 결과를 재사용하지 않는다.
 
@@ -266,11 +252,11 @@ renderer bounds는 `rootBone` 공간의 실제 걷기·달리기와 얼굴 변�
 | 콘셉트 4장과 기획 대조 | 목록 작성 근거로 사용. 미정 사항을 제작 확정과 구분 |
 | 기존 벚꽃나무·재질·셰이더 | 파일 존재와 관련 안내 확인. 이번 작업에서 화면·성능 재검증 안 함 |
 | 원본 수량·재사용 관계 | 제작 제안. 기존 에셋 채택·직접 제작에 따라 조정 |
-| Meshy CLI 설치·인증·생성 | 부유석 1건 35크레딧·석등 1건 30크레딧 생성·다운로드 완료. 기와집·붉은 문·매다는 등은 각 30크레딧 생성 출력과 가공 FBX를 확인했으며 출처·확인 범위는 에셋 대장을 따른다. 다른 계획 항목의 생성 완료를 뜻하지 않음 |
+| 생성 에셋 확인 | 부유석·석등·기와집·붉은 문·매다는 등의 생성 출력과 가공물을 확인했다. 출처·사용 조건·확인 범위는 에셋 대장을 따른다. 다른 계획 항목의 생성 완료를 뜻하지 않음 |
 | 기와집·붉은 문·매다는 등 — 2026-10-01 공용 제작 반영 | 3LOD·실제 AO/PBR·재질·프리팹 연결과 정적 참조 확인. 매다는 등은 창 발광을 연결했고 정자는 같은 프리팹 2개를 별도 중첩 참조한다. 기와집 3LOD는 벽 파손을 막기 위해 동일 High 형상이며 삼각형 감면은 없다. 게임플레이·성능·빌드는 미검증 |
 | Blender 수정·Unity 적용·리깅·성능 | 돌바닥·부유석·석등의 3LOD·PBR/AO·프리팹·에디터 프리뷰 확인 완료. 석등은 창 발광 마스크·단순 충돌체 포함. 리깅·게임플레이·성능은 미검증 |
-| 플레이어 여성 베이스 외형 시제품 — 2026-10-01 추가 실행 | Meshy 전신·머리 2건, 각 30·총 60크레딧 생성·다운로드. 전신만 3LOD·2K PBR/실제 국소 AO·정적 프리팹으로 가공하고 임포트·참조·메타·중립 프리뷰·강제 정지 LOD 확인. 별도 머리는 미채택이며 재질 최종 품질·리깅·머리 조립·게임플레이·성능·빌드는 미검증 |
-| 플레이어 여성 모듈형 리깅 시제품 — 2026-10-01 후속 실행 | 공통24뼈·목 분리·3LOD·Blink·Humanoid PF. 얼굴·손 표면 정리·실제 AO/노멀 재베이크·닫힘 교정·1.2초 걷기와24뼈rest 기준/실제 클립 참조 복구. Unity 목15표본·Blink 초기화·33 CPU 캡처 통과. UMA native229뼈 기반49에셋 저장,3LOD DNA30표본·색상12검사 통과, 합성용 원본 mip 수정으로 광범위 패치 제거. **사용자 외형 거절·신규 UMA 채택/연동 보류로 종료**. 같은 날 UMA 미사용 결정으로 UMA 에셋49개 삭제. 마지막 노멀 변경 후High10DNA/4색 재통과·Medium/Low변경후 미실행. native걷기 바닥9/16실패·최대19.9607mm침투/전용Walk 미저장. 남은 것: 정식 런타임 등록,6미지원 슬라이더·전체조합/극한DNA·최종토폴로지·달리기클리핑·GPU 플레이루프·성능·빌드 미완료 |
+| 플레이어 여성 베이스 외형 시제품 — 2026-10-01 추가 실행 | Meshy 전신·머리 원본을 생성했다. 전신만 3LOD·2K PBR/실제 국소 AO·정적 프리팹으로 가공하고 임포트·참조·메타·중립 프리뷰·강제 정지 LOD 확인. 별도 머리는 미채택이며 재질 최종 품질·리깅·머리 조립·게임플레이·성능·빌드는 미검증 |
+| 플레이어 여성 모듈형 리깅 시제품 — 2026-10-01 | **외형 REJECT·신규 채택/연동 보류**. UMA 연동 에셋 삭제. 보존용 PF·원본 텍스처 의존성과 남은 보행·클리핑·품질·게임 사용 제한은 위 시제품 항목을 따른다 |
 
 문서의 링크·공백 등 정적 확인과 실제 모델 품질·게임 실행 검증을 구분한다. 완료 판정은 [검증 플레이북](../ai/03_VERIFICATION_PLAYBOOK.md)을 따른다.
 
@@ -282,7 +268,7 @@ renderer bounds는 `rootBone` 공간의 실제 걷기·달리기와 얼굴 변�
 
 ### 원화 대조 마을 — 2026-10-01~02 후속
 
-사용자가 세부 건물까지 CA04와 같은 느낌으로 요청해 별도 `Dev_ShinshiVillageQuarterView` 개발 씬에 전각·정자·문·공방·기와 주거·초가·크림색 차양·불규칙 길을 제작·배치하는 후속 작업을 진행했다. 개별 물체 참조→Meshy 원본8건(실제 총240크레딧)→실제 Blender 5.1 형상·UV·노멀·AO/PBR 가공→Unity 프리팹 순서다. 기존 FloatingRock 파생 지형7종, 성소 띠·기단, 등 조립물과 기존 식생은 별도로 재사용했다.
+사용자가 세부 건물까지 CA04와 같은 느낌으로 요청해 별도 `Dev_ShinshiVillageQuarterView` 개발 씬에 전각·정자·문·공방·기와 주거·초가·크림색 차양·불규칙 길을 제작·배치하는 후속 작업을 진행했다. 개별 물체 참조→Meshy 원본8건→실제 Blender 5.1 형상·UV·노멀·AO/PBR 가공→Unity 프리팹 순서다. 기존 FloatingRock 파생 지형7종, 성소 띠·기단, 등 조립물과 기존 식생은 별도로 재사용했다.
 
 새 재료 맵은 BaseColor·Normal·실제 AO·거칠기 기반 Smoothness를 연결한다. 길 Low는 새 연결 토폴로지와 전용1K 맵으로 제작했다. 건물7종·성소의 축소 파손은 High 형상 유지로 처리해 삼각형 감면을 주장하지 않는다. 부유 지형7종은 닫힌 원본에서 연결감면·윗면UV 보호·실제 AO/Normal 재베이크와 새 상부 충돌 메시로 수리했다. High60000/Medium30000/Low21302~23172tris이며 Low의 근접 각짐·국소 UV 늘어짐은 먼 거리 사용 조건이다. Blender의 실제 출력 확인과 Unity의 축·정면 방향·크기·참조·정지 LOD 화면 검증을 구분한다.
 
