@@ -297,6 +297,16 @@ CA-07(`docs/design/references/concept-art/village-layout-02.webp`)에서 기존 
 
 권리 확인 상태는 위 기존 Meshy 기록과 같다. 생성 계정 플랜과 입력 이미지(Codex 생성)·출력 권리 조건은 확인하지 않았으며, CC0나 독점 소유로 확정하지 않는다. 사용 조건과 검증 범위는 [공용 환경 에셋 목록](../unity/SHARED_ENVIRONMENT_ASSET_CATALOG.md#ca-07-추가-에셋--2026-10-03)을 따른다.
 
+## 직업용 VFX 사본의 출처와 사용 조건 (2026-10-08)
+
+| 게임용 사본 | 외부 출처 | 사용 조건 |
+|---|---|---|
+| `Assets/02.Prefab/VFX/SwordsmanMagicSlash/` | `Magic Slashes FX`의 `Eff1_Left`, `Eff1_Right`, `Eff7_Slash` | 원본 메시·텍스처·재질 의존성을 유지한다. 동일 버전 패키지와 공급자 라이선스가 필요하다. |
+| `Assets/02.Prefab/VFX/Mageknight/` | Hovl Studio `Sword slash VFX`의 `Sword Slash 13`, `Spatial section`, `Slash wave`; PixPlays `ElementalAOE`의 `FireAoeVFX` | 원본 재질·텍스처 의존성을 유지한다. 해당 패키지 설치와 공급자 라이선스가 필요하다. |
+| `Assets/02.Prefab/VFX/Archer/` | `MasterStylizedProjectiles`의 `ArrowBullet`, `ArrowMuzzle`, `WindBullet`, `WindStart`, `WindHit` | 원본 재질·텍스처·셰이더 의존성을 유지한다. 해당 패키지 설치와 공급자 라이선스가 필요하다. |
+
+외부 원본은 `Assets/99.ThirdParty/VFX/`에 보존하며 팀 독자 제작 에셋으로 취급하지 않는다.
+
 ## 캐릭터 선택 UI 생성 이미지 (2026-10-07)
 
 프로젝트 세계관·직업 기획과 기존 UI의 바랜 은색 재질을 기준으로 Codex의 built-in `image_gen`으로 생성했다. 각 이미지별 독립 생성이며 투명 PNG 원본을 픽셀 변경 없이 복사했다. 상세 프롬프트·원본·비교 캡처는 Git 제외 개인 제작 기록에 보존한다.
