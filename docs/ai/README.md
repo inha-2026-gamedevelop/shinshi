@@ -85,6 +85,7 @@ Codex에서는 `$guided-commit`처럼 스킬 이름을 지정하거나 목적을
 | [네트워크 권위](../unity/NETWORK_AUTHORITY.md) | 서버냐 클라냐 판단할 때 |
 | [서버·클라이언트 협업](../unity/SERVER_CLIENT_WORKFLOW.md) | 규칙 · 상태 · 서버 · 표현 층 배치, `98.Servers/` 담당과 판정 · AI 작성 흐름을 확인할 때 |
 | [씬 · 에셋 안전](../unity/SCENE_AND_ASSET_SAFETY.md) | 씬 · `.meta` · LFS를 다룰 때 |
+| [마을 개발 씬 UI 조작](../unity/DEV_VILLAGE_UI_PREVIEW.md) | 마을 HUD 메뉴·우편함·경매장·우클릭 거래를 예시 데이터로 검수할 때 |
 | [밸런스 데이터 작업](../unity/BALANCE_DATA_WORKFLOW.md) | 수치를 만들거나 바꿀 때 |
 | [엔지니어링 패턴](../unity/UNITY_ENGINEERING_PATTERNS.md) | 성능 · 수명 문제가 실제로 생겼을 때 |
 | [디자인 패턴](../unity/DESIGN_PATTERNS.md) | 구조를 새로 잡거나 패턴 도입을 판단할 때 |

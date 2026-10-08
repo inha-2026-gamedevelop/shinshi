@@ -1,0 +1,60 @@
+{
+  "format": "gemeum-ui-layout",
+  "version": 2,
+  "exportedAt": "2026-10-07T08:44:03.471Z",
+  "layoutName": "햄버거 확장",
+  "layoutDescription": "햄버거 메뉴를 누르면 화면 오른쪽에 펼쳐지는 시스템 메뉴. 캐릭터, 경제, 시스템 묶음으로 나눈다.",
+  "root": [
+    {
+      "id": "emuxtxqaupa2m", "name": "햄버거 확장", "type": "group", "description": "",
+      "anchor": "MiddleCenter", "anchorMin": [0.5, 0.5], "anchorMax": [0.5, 0.5], "pivot": [0.5, 0.5],
+      "anchoredPosition": [648, 0], "sizeDelta": [544, 1000], "screenRect": [1336, 40, 544, 1000],
+      "path": "햄버거 확장",
+      "children": [
+        {
+          "id": "emuxusato3xyl", "name": "캐릭터 컨트롤 그룹", "type": "group", "description": "",
+          "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1],
+          "anchoredPosition": [0, -240], "sizeDelta": [544, 136], "screenRect": [1336, 280, 544, 136],
+          "path": "햄버거 확장/캐릭터 컨트롤 그룹",
+          "children": [
+            { "id": "emuxutgvf13np", "name": "캐릭터 정보", "type": "circle", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [40, -40], "sizeDelta": [80, 80], "screenRect": [1376, 320, 80, 80], "path": "햄버거 확장/캐릭터 컨트롤 그룹/캐릭터 정보" },
+            { "id": "emuxutryh8o2l", "name": "인벤토리", "type": "circle", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [192, -40], "sizeDelta": [80, 80], "screenRect": [1528, 320, 80, 80], "path": "햄버거 확장/캐릭터 컨트롤 그룹/인벤토리" },
+            { "id": "emuxut5dfsif4", "name": "캐릭터", "type": "box", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [0, 0], "sizeDelta": [120, 32], "screenRect": [1336, 280, 120, 32], "path": "햄버거 확장/캐릭터 컨트롤 그룹/캐릭터" },
+            { "id": "emuxutxao90hl", "name": "특성", "type": "circle", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [344, -40], "sizeDelta": [80, 80], "screenRect": [1680, 320, 80, 80], "path": "햄버거 확장/캐릭터 컨트롤 그룹/특성" }
+          ]
+        },
+        {
+          "id": "emuxuue4mi3j8", "name": "경제", "type": "group", "description": "",
+          "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1],
+          "anchoredPosition": [0, -440], "sizeDelta": [544, 136], "screenRect": [1336, 480, 544, 136],
+          "path": "햄버거 확장/경제",
+          "children": [
+            { "id": "emuxuue4md6bj", "name": "경매장", "type": "circle", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [40, -40], "sizeDelta": [80, 80], "screenRect": [1376, 520, 80, 80], "path": "햄버거 확장/경제/경매장" },
+            { "id": "emuxuue4mj2lx", "name": "거래", "type": "box", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [0, 0], "sizeDelta": [120, 32], "screenRect": [1336, 480, 120, 32], "path": "햄버거 확장/경제/거래" }
+          ]
+        },
+        {
+          "id": "emuxuwwkggksv", "name": "시스템 컨트롤 그룹", "type": "group", "description": "",
+          "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1],
+          "anchoredPosition": [0, -640], "sizeDelta": [544, 136], "screenRect": [1336, 680, 544, 136],
+          "path": "햄버거 확장/시스템 컨트롤 그룹",
+          "children": [
+            { "id": "emuxuwwkgfp6f", "name": "환경설정", "type": "circle", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [40, -40], "sizeDelta": [80, 80], "screenRect": [1376, 720, 80, 80], "path": "햄버거 확장/시스템 컨트롤 그룹/환경설정" },
+            { "id": "emuxuzkyegniw", "name": "캐릭터선택", "type": "circle", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [192, -40], "sizeDelta": [80, 80], "screenRect": [1528, 720, 80, 80], "path": "햄버거 확장/시스템 컨트롤 그룹/캐릭터선택" },
+            { "id": "emuxuzla8w07j", "name": "게임종료", "type": "circle", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [344, -40], "sizeDelta": [80, 80], "screenRect": [1680, 720, 80, 80], "path": "햄버거 확장/시스템 컨트롤 그룹/게임종료" },
+            { "id": "emuxuwwkg63np", "name": "시스템 그룹", "type": "box", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [0, 0], "sizeDelta": [120, 32], "screenRect": [1336, 680, 120, 32], "path": "햄버거 확장/시스템 컨트롤 그룹/시스템 그룹" }
+          ]
+        },
+        {
+          "id": "emuxuai6qd80f", "name": "캐릭터 정보 그룹", "type": "group", "description": "",
+          "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1],
+          "anchoredPosition": [0, -24], "sizeDelta": [544, 152], "screenRect": [1336, 64, 544, 152],
+          "path": "햄버거 확장/캐릭터 정보 그룹",
+          "children": [
+            { "id": "emuxuauho5jhk", "name": "직업 마크", "type": "box", "description": "", "anchor": "TopLeft", "anchorMin": [0, 1], "anchorMax": [0, 1], "pivot": [0, 1], "anchoredPosition": [0, 0], "sizeDelta": [160, 152], "screenRect": [1336, 64, 160, 152], "path": "햄버거 확장/캐릭터 정보 그룹/직업 마크" }
+          ]
+        }
+      ]
+    }
+  ]
+}
