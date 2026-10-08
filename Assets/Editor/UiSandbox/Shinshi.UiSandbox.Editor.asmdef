@@ -1,0 +1,22 @@
+{
+    "name": "Shinshi.UiSandbox.Editor",
+    "rootNamespace": "Shinshi.Editor",
+    "references": [
+        "Shinshi.Runtime",
+        "Shinshi.Contracts",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
+        "Mirror"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
