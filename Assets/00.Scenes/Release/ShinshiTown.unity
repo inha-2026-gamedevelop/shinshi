@@ -448583,6 +448583,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6390442460715270133, guid: 584e3f848deaf814f88689dab9bcbcb0, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4293847782
+      objectReference: {fileID: 0}
+    - target: {fileID: 6390442460715270133, guid: 584e3f848deaf814f88689dab9bcbcb0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 8663462935070819377, guid: 584e3f848deaf814f88689dab9bcbcb0, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4293847782
+      objectReference: {fileID: 0}
+    - target: {fileID: 8663462935070819377, guid: 584e3f848deaf814f88689dab9bcbcb0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 9151260387531777420, guid: 584e3f848deaf814f88689dab9bcbcb0, type: 3}
       propertyPath: m_Name
       value: QuickSlotGroup
