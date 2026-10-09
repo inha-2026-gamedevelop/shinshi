@@ -16,7 +16,8 @@ namespace Shinshi.AI
     // 시간과 거리와 폭과 회전 속도와 피해 배수는 모두 패턴 정의에서 읽는다. 이 클래스에는 밸런스 값이 없다
     // 판정 경로는 예고와 같은 직사각형(시작점에서 방향으로 길이, 좌우 폭의 절반)이고 끝단은 평평하다. 길이는 몸체가 벽 앞에서 실제로 갈 수 있는 거리다
     // 대상은 중심점으로 판정한다. 부채꼴, 원형, 직사각형 패턴이 모두 같은 방식이라 BodyRadius는 이동 검사에만 쓴다
-    /// <summary> 월백 P01 돌진, 추적 회전 뒤 방향을 고정하고 일정한 속도로 직진하며 지나간 구간의 대상을 한 번씩 타격한다 </summary>
+    // 기본은 추적 시간 동안 회전 속도로 제한해 돌며 월백 P01과 무철 P03이 이 방식이다. snapAimToTarget을 켜면(무철 P06) 예고를 시작하는 순간 선택된 대상
+    // 쪽으로 각도 제한 없이 방향을 잡고, 방향을 고정하는 시각까지 같은 대상을 따라간다. 켜도 고정한 뒤에는 돌진 중에 꺾이지 않는다    /// <summary> 월백 P01 돌진, 추적 회전 뒤 방향을 고정하고 일정한 속도로 직진하며 지나간 구간의 대상을 한 번씩 타격한다 </summary>
     public sealed class BossDashPattern : BossPatternBase
     {
         /****************************************
@@ -28,6 +29,7 @@ namespace Shinshi.AI
         private const float EDGE_EPSILON      = 0.001f;    // m, 직사각형 경계와 조회 반경의 부동소수 오차 흡수
         private const float STOP_EPSILON      = 0.001f;    // m, 도착과 벽 정지를 가르는 오차
         private const float HALF              = 0.5f;
+        private const float SNAP_MAX_DEGREES  = 180f;      // 도, atan2 각도의 최댓값이라 어느 방향이든 제한 없이 돈다
 
         /****************************************
         *                Fields
@@ -36,6 +38,7 @@ namespace Shinshi.AI
         private readonly float                     _referenceHealth;
         private readonly IBossMovement             _movement;
         private readonly IBossDashTelegraphListener _listener;
+        private readonly bool                      _snapAimToTarget;
         private readonly List<ICombatTarget>       _buffer  = new List<ICombatTarget>();
         private readonly HashSet<int>              _handled = new HashSet<int>();
 
@@ -78,7 +81,9 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
-        public BossDashPattern(float referenceHealth, IBossMovement movement, IBossDashTelegraphListener listener = null)
+        // snapAimToTarget은 예고를 시작할 때 대상 쪽으로 바로 조준하고 회전 속도 제한을 두지 않는다. 기본값 꺼짐은 기존 동작이다
+        public BossDashPattern(float referenceHealth, IBossMovement movement, IBossDashTelegraphListener listener = null,
+            bool snapAimToTarget = false)
         {
             if (movement == null)
             {
@@ -88,6 +93,7 @@ namespace Shinshi.AI
             _referenceHealth = referenceHealth;
             _movement        = movement;
             _listener        = listener;
+            _snapAimToTarget = snapAimToTarget;
         }
 
         protected override void OnBegin(double serverTime)
@@ -106,6 +112,12 @@ namespace Shinshi.AI
             _isDashing        = false;
             _isStopped        = false;
             _handled.Clear();
+
+            // 예고 시작 알림이 처음부터 대상 쪽 방향을 싣도록 알리기 전에 조준한다
+            if (_snapAimToTarget)
+            {
+                TryTurnToward(SNAP_MAX_DEGREES);
+            }
 
             _clearLength = MeasureClearLength(_aim);
 
@@ -159,7 +171,13 @@ namespace Shinshi.AI
             double until    = Math.Min(serverTime, trackEnd);
             double elapsed  = until - _trackedUntil;
 
-            if (elapsed > 0.0)
+            if (_snapAimToTarget)
+            {
+                // 고정 시각까지는 틱마다 대상 쪽으로 다시 잡는다. 틱이 거칠어도 고정 때의 방향은 그 틱의 대상 위치로 정해진다
+                RotateTowardTarget(SNAP_MAX_DEGREES);
+                _trackedUntil = until;
+            }
+            else if (elapsed > 0.0)
             {
                 RotateTowardTarget((float)elapsed * Context.Definition.TurnRate);
                 _trackedUntil = until;
@@ -174,26 +192,38 @@ namespace Shinshi.AI
         // 타깃이 사라졌거나 죽었으면 마지막 유효 방향을 유지한다
         private void RotateTowardTarget(float maxDegrees)
         {
-            if (maxDegrees <= 0f)
+            if (!TryTurnToward(maxDegrees))
             {
                 return;
+            }
+
+            _clearLength = MeasureClearLength(_aim);
+            _listener?.OnAimChanged(Context.CastInstanceId, _aim, _clearLength);
+        }
+
+        // 방향이 달라졌는지만 돌려주고 알리지 않는다. 알리는 일은 부르는 쪽이 한다
+        private bool TryTurnToward(float maxDegrees)
+        {
+            if (maxDegrees <= 0f)
+            {
+                return false;
             }
 
             if (!Context.Targets.TryGet(Context.TargetCombatId, out ICombatTarget target))
             {
-                return;
+                return false;
             }
 
             if (target.LifeState != EParticipantLifeState.Alive)
             {
-                return;
+                return false;
             }
 
             Vector3 toTarget = target.Position - Context.Self.Position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude < MIN_DIRECTION_SQR)
             {
-                return;
+                return false;
             }
 
             // 거의 같은 방향에서 acos 기반 SignedAngle은 흔들려 긴 경로 끝에서 어긋난다. atan2로 구한다
@@ -203,12 +233,11 @@ namespace Shinshi.AI
             float step  = Mathf.Clamp(angle, -maxDegrees, maxDegrees);
             if (Mathf.Abs(step) <= ANGLE_EPSILON)
             {
-                return;
+                return false;
             }
 
-            _aim         = (Quaternion.AngleAxis(step, Vector3.up) * _aim).normalized;
-            _clearLength = MeasureClearLength(_aim);
-            _listener?.OnAimChanged(Context.CastInstanceId, _aim, _clearLength);
+            _aim = (Quaternion.AngleAxis(step, Vector3.up) * _aim).normalized;
+            return true;
         }
 
         private void LockDirection()

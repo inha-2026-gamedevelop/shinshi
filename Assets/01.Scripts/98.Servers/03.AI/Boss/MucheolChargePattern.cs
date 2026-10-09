@@ -6,8 +6,9 @@ using UnityEngine;
 
 namespace Shinshi.AI
 {
-    // 거리, 폭, 예고, 추적, 회전 속도, 실행, 일반 회복, 피해, 방어 가능 여부는 패턴 정의에서, 충돌 회복은 충돌 설정에서 읽는다.
-    // 이 클래스에는 밸런스 값이 없다. 돌진 자체는 월백 P01과 같은 BossDashPattern을 그대로 쓰고 수정하지 않는다.
+    // 거리, 폭, 예고, 추적 시간, 실행, 일반 회복, 피해, 방어 가능 여부는 패턴 정의에서, 충돌 회복은 충돌 설정에서 읽는다.
+    // 이 클래스에는 밸런스 값이 없다. 돌진 자체는 월백 P01과 같은 BossDashPattern을 쓰되, 이지 조준 규칙대로 예고를 시작하는 순간
+    // 선택된 대상 쪽으로 각도 제한 없이 조준하고 고정 시각까지 따라가도록 snapAimToTarget을 켠다. 정의의 회전 속도는 이 패턴에서 쓰이지 않는다.
     // 벽과 구조물에 막힌 결과는 돌진 실행이 스스로 가진 상태(멈췄는지, 정의의 거리를 채웠는지)로 정한다.
     // 돌진 실행이 내보내는 표현용 알림(OnDashStopped)은 읽지 않는다. 알림은 표현을 위한 것이라 판정의 입력으로 삼지 않는다.
     // 충돌 회복은 지금 공격 FSM이 읽지 않는다. 패턴은 결과와 회복 시간을 결정해 IBossRecoveryDuration으로 내보내고,
@@ -88,7 +89,7 @@ namespace Shinshi.AI
 
             _movement        = new MucheolChargeMovement(movement, structures);
             _spec            = spec;
-            _dash            = new BossDashPattern(referenceHealth, _movement, dashListener);
+            _dash            = new BossDashPattern(referenceHealth, _movement, dashListener, snapAimToTarget: true);
             _outcomeListener = outcomeListener;
             _castTracker     = castTracker;
         }

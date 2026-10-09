@@ -339,14 +339,18 @@ namespace Shinshi.Tests
             public PatternDefinition      Definition { get; }
             public BossPatternContext     Context    { get; }
 
-            public Rig(PatternDefinition definition = null)
+            // create가 있으면 그 팩토리 경로로 패턴을 만든다. 팩토리가 만드는 실제 패턴의 기본 조준 동작을 확인하려는 용도다
+            public Rig(PatternDefinition definition = null, bool snapAimToTarget = false,
+                Func<DashMovement, DashListener, IBossPattern> create = null)
             {
                 Query.Targets.Add(Tracked);
                 Movement.Self = Self;
                 Gate          = new BossDamageGate(Resolver);
                 Gate.Open();
                 Definition = definition ?? MakeP01();
-                Pattern    = new BossDashPattern(TEST_HREF, Movement, Listener);
+                Pattern    = (create == null)
+                    ? new BossDashPattern(TEST_HREF, Movement, Listener, snapAimToTarget)
+                    : (BossDashPattern)create(Movement, Listener);
                 Context    = new BossPatternContext(Definition, Gate.IssueInstanceId(), Tracked.CombatId, Self, Query, Gate);
             }
 
@@ -410,6 +414,67 @@ namespace Shinshi.Tests
             Assert.AreEqual(72f, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
             Assert.AreEqual(1, rig.Listener.LockCount);
             Assert.AreEqual(72f, AimDegrees(rig.Listener.LockDirection), ANGLE_TOLERANCE);
+        }
+
+        // 기본 조준은 그대로다. 대상이 뒤에 있어도 예고는 기존 정면에서 시작하고 추적 시간 x 회전 속도까지만 돈다
+        [Test]
+        public void Default_TargetBehind_StartsForwardAndTurnsOnlyWithinBudget()
+        {
+            Rig rig = new Rig();
+            rig.Tracked.Position = new Vector3(0f, 0f, -10f);
+            rig.Start();
+
+            Assert.AreEqual(0f, Vector3.Angle(Vector3.forward, rig.Listener.StartDirection), ANGLE_TOLERANCE);
+
+            rig.TickRange(0.0, 0.7);
+
+            Assert.AreEqual(72f, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(72f, Vector3.Angle(Vector3.forward, rig.Listener.LockDirection), ANGLE_TOLERANCE);
+        }
+
+        // 월백 P01과 무철 1페이즈 P03은 팩토리가 만든 패턴이 기본 조준을 쓴다
+        [TestCase(false, 72f)]
+        [TestCase(true, 72f)]
+        public void Default_FactoryCreatedWolbaekAndMucheolP03_KeepLimitedAim(bool isMucheol, float expectedDegrees)
+        {
+            PatternDefinition definition = isMucheol
+                ? new PatternDefinition(MucheolPatternFactory.P03_ID, MucheolPatternFactory.BOSS_ID, 1, 15f,
+                    new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f, 1f },
+                    TELEGRAPH, TRACKING, TURN_RATE, ACTIVE, RECOVERY, EnemyCatalogSO.AttackShapeSpec.Dash(RANGE, WIDTH),
+                    DAMAGE_REF, true)
+                : MakeP01();
+
+            Rig rig = new Rig(definition, false, (movement, listener) => isMucheol
+                ? new MucheolPatternFactory(TEST_HREF, null, movement, listener).Create(definition)
+                : new WolbaekPatternFactory(TEST_HREF, null, null, null, listener, movement).Create(definition));
+            rig.Tracked.Position = new Vector3(0f, 0f, -10f);
+            rig.Start();
+
+            Assert.AreEqual(0f, Vector3.Angle(Vector3.forward, rig.Listener.StartDirection), ANGLE_TOLERANCE);
+
+            rig.TickRange(0.0, 0.7);
+
+            Assert.AreEqual(expectedDegrees, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+        }
+
+        // 옵션을 켠 돌진은 예고를 시작하는 순간 대상 쪽을 보고, 어느 방향이든 제한 없이 따라가다 고정한다
+        [Test]
+        public void SnapAim_TargetBehind_StartsAndLocksTowardTheTarget()
+        {
+            Rig rig = new Rig(null, true);
+            rig.Tracked.Position = new Vector3(0f, 0f, -10f);
+            rig.Start();
+
+            Assert.AreEqual(0f, Vector3.Angle(Vector3.back, rig.Listener.StartDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(0, rig.Listener.AimDirections.Count, "예고 시작 알림이 방향을 싣는다");
+
+            rig.TickRange(0.0, 0.1);
+            rig.Tracked.Position = new Vector3(10f, 0f, 0f);
+            rig.TickRange(0.1, 0.7);
+
+            Assert.IsTrue(rig.Pattern.IsDirectionLocked);
+            Assert.AreEqual(0f, Vector3.Angle(Vector3.right, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(0f, Vector3.Angle(Vector3.right, rig.Listener.LockDirection), ANGLE_TOLERANCE);
         }
 
         [Test]

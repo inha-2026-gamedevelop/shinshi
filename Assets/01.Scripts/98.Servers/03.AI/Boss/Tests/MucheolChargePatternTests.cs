@@ -245,6 +245,10 @@ namespace Shinshi.Tests
             public float StartLength;
             public float StartWidth;
             public int   LockCount;
+            public int   AimChangeCount;
+            public Vector3 TelegraphDirection;
+            public Vector3 LockDirection;
+            public Vector3 DashDirection;
             public int   DashStartCount;
             public float DashDistance;
             public float DashSeconds;
@@ -258,21 +262,25 @@ namespace Shinshi.Tests
                 ++StartCount;
                 StartLength = length;
                 StartWidth  = width;
+                TelegraphDirection = direction;
             }
 
             public void OnAimChanged(int castInstanceId, Vector3 direction, float length)
             {
+                ++AimChangeCount;
             }
 
             public void OnDirectionLocked(int castInstanceId, Vector3 direction, float length)
             {
                 ++LockCount;
+                LockDirection = direction;
             }
 
             public void OnDashStarted(int castInstanceId, Vector3 origin, Vector3 direction, float distance, float seconds, float speed,
                 double startServerTime)
             {
                 ++DashStartCount;
+                DashDirection = direction;
                 DashDistance = distance;
                 DashSeconds  = seconds;
                 DashSpeed    = speed;
@@ -569,22 +577,76 @@ namespace Shinshi.Tests
         *            Direction Lock
         ****************************************/
 
-        // 타깃이 오른쪽 90도에 있어도 처음 0.6초 동안 초당 90도로만 돌아 최대 54도에서 고정된다
+        // 이지 조준: 예고를 시작하는 순간 대상 쪽을 보고, 각도 제한 없이 고정 시각(0.6초)까지 따라간 뒤 고정한다
         [Test]
-        public void Tick_RotatesAtMostTurnRate_AndLocksAfterTrackingEnd()
+        public void Tick_TargetOnTheSide_AimsAtOnceWithoutTurnLimitAndLocksAfterTrackingEnd()
         {
             Rig rig = new Rig();
             rig.Tracked.Position = new Vector3(10f, 0f, 0f);
             rig.Start();
 
+            Assert.AreEqual(90f, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE, "정의의 회전 속도 x 시간(54도)이 아니라 바로 90도다");
+            Assert.AreEqual(90f, AimDegrees(rig.Dash.TelegraphDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(0, rig.Dash.AimChangeCount, "예고 시작 알림이 방향을 싣는다");
+
             rig.TickRange(0.0, 0.3);
-            Assert.AreEqual(TURN_RATE * 0.3f, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(90f, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
             Assert.IsFalse(rig.Pattern.IsDirectionLocked);
 
             rig.TickRange(0.3, 0.8);
             Assert.IsTrue(rig.Pattern.IsDirectionLocked);
-            Assert.AreEqual(TURN_RATE * TRACKING, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(90f, AimDegrees(rig.Dash.LockDirection), ANGLE_TOLERANCE);
             Assert.AreEqual(1, rig.Dash.LockCount);
+        }
+
+        [TestCase(0f)]
+        [TestCase(90f)]
+        [TestCase(-90f)]
+        [TestCase(135f)]
+        [TestCase(180f)]
+        [TestCase(-150f)]
+        public void Tick_PlayerAnywhere_TelegraphLockMovementAndHitsFollowTheSameDirection(float degrees)
+        {
+            Rig rig = new Rig();
+            Vector3 direction = Phase2Helpers.Polar(degrees, 1f);
+            Vector3 right = new Vector3(direction.z, 0f, -direction.x);
+            rig.Tracked.Position = direction * 30f;
+            FakeCombatTarget inside  = rig.AddPlayer(PROBE_ID, (direction * 9f) + (right * 1.4f));  // 폭의 절반(1.5m) 안
+            FakeCombatTarget outside = rig.AddPlayer(PROBE_ID + 1, (direction * 9f) + (right * 1.6f));
+            rig.Start();
+
+            Assert.AreEqual(0f, Vector3.Angle(direction, rig.Dash.TelegraphDirection), ANGLE_TOLERANCE, "예고 시작 방향");
+
+            rig.TickRange(0.0, ExecuteEnd + 1.0);
+
+            Assert.AreEqual(0f, Vector3.Angle(direction, rig.Dash.LockDirection), ANGLE_TOLERANCE, "고정 방향");
+            Assert.AreEqual(0f, Vector3.Angle(direction, rig.Dash.DashDirection), ANGLE_TOLERANCE, "돌진 시작 방향");
+            Assert.AreEqual(0f, Vector3.Angle(direction, rig.Self.Position), ANGLE_TOLERANCE, "실제 이동 방향");
+            Assert.AreEqual(RANGE, rig.Self.Position.magnitude, POSITION_TOLERANCE);
+            Assert.AreEqual(EBossChargeEnd.Normal, rig.Pattern.EndKind);
+            Assert.AreEqual(1, CountHits(rig.Resolver, inside.CombatId));
+            Assert.AreEqual(0, CountHits(rig.Resolver, outside.CombatId));
+        }
+
+        [Test]
+        public void Tick_TargetMovesBeforeLock_FollowsItAndThenKeepsTheLockedDirection()
+        {
+            Rig rig = new Rig();
+            rig.Tracked.Position = new Vector3(0f, 0f, -10f);
+            rig.Start();
+            Assert.AreEqual(180f, Mathf.Abs(AimDegrees(rig.Pattern.AimDirection)), ANGLE_TOLERANCE);
+
+            rig.TickRange(0.0, 0.3);
+            rig.Tracked.Position = new Vector3(10f, 0f, 0f);  // 고정 전에는 같은 대상을 따라간다
+            rig.TickRange(0.3, 0.8);
+            Assert.AreEqual(90f, AimDegrees(rig.Dash.LockDirection), ANGLE_TOLERANCE);
+
+            rig.Tracked.Position = new Vector3(-10f, 0f, 0f);  // 고정 뒤에는 따라가지 않는다
+            rig.TickRange(0.8, ExecuteEnd + 1.0);
+
+            Assert.AreEqual(90f, AimDegrees(rig.Dash.DashDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(RANGE, rig.Self.Position.x, POSITION_TOLERANCE);
+            Assert.AreEqual(0f, rig.Self.Position.z, POSITION_TOLERANCE);
         }
 
         [Test]
@@ -595,6 +657,7 @@ namespace Shinshi.Tests
             rig.Start();
             rig.TickRange(0.0, 0.8);
             Vector3 locked = rig.Pattern.AimDirection;
+            Assert.AreEqual(90f, AimDegrees(locked), ANGLE_TOLERANCE);
 
             rig.Tracked.Position = new Vector3(-10f, 0f, 0f);
             rig.TickRange(0.8, ExecuteEnd + 1.0);
@@ -604,6 +667,116 @@ namespace Shinshi.Tests
             Vector3 expected = locked * RANGE;
             Assert.AreEqual(expected.x, rig.Self.Position.x, POSITION_TOLERANCE);
             Assert.AreEqual(expected.z, rig.Self.Position.z, POSITION_TOLERANCE);
+        }
+
+        // 정확히 조준한 방향에 실제 벽이 있으면 막히는 것이 정상이고, 옛 방향의 벽은 뒤에 있는 대상 조준을 막지 않는다
+        [Test]
+        public void Tick_WallBetweenBossAndPlayer_StopsAtTheWall_ButWallBehindTheAimIsIrrelevant()
+        {
+            Rig blocked = new Rig();
+            blocked.Movement.WallZ = 10f;
+            blocked.Tracked.Position = new Vector3(0f, 0f, 20f);
+            blocked.Start();
+            blocked.TickRange(0.0, ExecuteEnd + 1.0);
+
+            Assert.AreEqual(EBossChargeEnd.Collision, blocked.Pattern.EndKind);
+            Assert.AreEqual(EBossChargeObstacleKind.Wall, blocked.Pattern.Collision.Kind);
+            Assert.AreEqual(8f, blocked.Self.Position.z, POSITION_TOLERANCE);
+
+            Rig open = new Rig();
+            open.Movement.WallZ = 10f;  // 보스가 원래 보던 쪽의 벽
+            open.Tracked.Position = new Vector3(0f, 0f, -20f);
+            open.Start();
+            open.TickRange(0.0, ExecuteEnd + 1.0);
+
+            Assert.AreEqual(EBossChargeEnd.Normal, open.Pattern.EndKind);
+            Assert.AreEqual(-RANGE, open.Self.Position.z, POSITION_TOLERANCE);
+        }
+
+        [Test]
+        public void Tick_SingleHugeStepWithPlayerBehind_MovesAndHitsTowardThePlayerOnly()
+        {
+            Rig rig = new Rig();
+            rig.Tracked.Position = new Vector3(0f, 0f, -12f);
+            FakeCombatTarget behind = rig.AddPlayer(PROBE_ID, new Vector3(0f, 0f, -9f));
+            FakeCombatTarget front  = rig.AddPlayer(PROBE_ID + 1, new Vector3(0f, 0f, 9f));
+            rig.Start();
+
+            rig.Fsm.Tick(100.0);
+
+            Assert.AreEqual(-RANGE, rig.Self.Position.z, POSITION_TOLERANCE);
+            Assert.AreEqual(1, CountHits(rig.Resolver, rig.Tracked.CombatId));
+            Assert.AreEqual(1, CountHits(rig.Resolver, behind.CombatId));
+            Assert.AreEqual(0, CountHits(rig.Resolver, front.CombatId));
+            Assert.AreEqual(1, rig.Outcome.Ends.Count);
+        }
+
+        [Test]
+        public void Cancel_DuringDashTowardAPlayerBehind_StopsMovementAndLaterTargetsAreNotHit()
+        {
+            Rig rig = new Rig();
+            rig.Tracked.Position = new Vector3(0f, 0f, -3f);
+            FakeCombatTarget far = rig.AddPlayer(PROBE_ID, new Vector3(0f, 0f, -14f));
+            rig.Start();
+
+            rig.TickRange(0.0, ExecuteStart + 0.2);
+            rig.Fsm.Cancel(EBossInterruptReason.CombatEnd);
+            float stoppedZ = rig.Self.Position.z;
+            int movesAtCancel = rig.Movement.MoveCalls;
+            rig.Tracked.Position = new Vector3(20f, 0f, 0f);
+            rig.TickRange(ExecuteStart + 0.2, ExecuteEnd + 3.0);
+
+            Assert.Less(stoppedZ, -3f);
+            Assert.Greater(stoppedZ, -14f);
+            Assert.AreEqual(stoppedZ, rig.Self.Position.z, POSITION_TOLERANCE);
+            Assert.AreEqual(0f, rig.Self.Position.x, POSITION_TOLERANCE);
+            Assert.AreEqual(movesAtCancel, rig.Movement.MoveCalls);
+            Assert.AreEqual(0, CountHits(rig.Resolver, far.CombatId));
+            Assert.AreEqual(0, rig.Outcome.Ends.Count);
+        }
+
+        // 선택된 대상이 죽거나 사라지면 마지막 유효 방향을 유지하고 다른 플레이어로 바꾸지 않는다
+        [Test]
+        public void Tick_TargetDeadAtStart_KeepsFacingAndNeverSwitchesToAnotherPlayer()
+        {
+            Rig rig = new Rig();
+            rig.Tracked.Position  = new Vector3(0f, 0f, -12f);
+            rig.Tracked.LifeState = EParticipantLifeState.Dead;
+            FakeCombatTarget behind = rig.AddPlayer(PROBE_ID, new Vector3(0f, 0f, -9f));
+            FakeCombatTarget front  = rig.AddPlayer(PROBE_ID + 1, new Vector3(0f, 0f, 9f));
+            rig.Start();
+
+            rig.TickRange(0.0, ExecuteEnd + 1.0);
+
+            Assert.AreEqual(0f, Vector3.Angle(Vector3.forward, rig.Dash.DashDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(0, CountHits(rig.Resolver, behind.CombatId));
+            Assert.AreEqual(1, CountHits(rig.Resolver, front.CombatId));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Tick_TargetDiesOrVanishesDuringTracking_KeepsTheLastValidDirection(bool vanishes)
+        {
+            Rig rig = new Rig();
+            rig.Tracked.Position = new Vector3(10f, 0f, 0f);
+            FakeCombatTarget other = rig.AddPlayer(PROBE_ID, new Vector3(-9f, 0f, 0f));
+            rig.Start();
+
+            rig.TickRange(0.0, 0.3);
+            if (vanishes)
+            {
+                rig.Query.Targets.Remove(rig.Tracked);
+            }
+            else
+            {
+                rig.Tracked.LifeState = EParticipantLifeState.Dead;
+            }
+
+            rig.TickRange(0.3, ExecuteEnd + 1.0);
+
+            Assert.AreEqual(90f, AimDegrees(rig.Dash.LockDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(90f, AimDegrees(rig.Dash.DashDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(0, CountHits(rig.Resolver, other.CombatId), "다른 플레이어에게 예고 없이 방향을 바꾸지 않는다");
         }
 
         /****************************************
