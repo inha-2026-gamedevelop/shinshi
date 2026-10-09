@@ -17,7 +17,8 @@ namespace Shinshi.Art.Editor
         public enum EGroundPatchKind
         {
             Grass,
-            Dirt
+            Dirt,
+            Brick
         }
 
         public enum EBrushMode
@@ -35,6 +36,7 @@ namespace Shinshi.Art.Editor
         private const string MESH_FOLDER        = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/Meshes";
         private const string GRASS_MATERIAL_DIR = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/Materials/";
         private const string GRASS_NAME_PREFIX  = "M_VillageGrassPatch_";
+        private const string BRICK_NAME_PREFIX  = "M_VillageBrickPatch_";
         private const string RANDOM_COLOR_LABEL = "무작위";
         private const string DIRT_MATERIAL      = "Assets/01.Scripts/05.Art/Environment/DungeonTripo/DVFX_Pack/Materials/M_DVFX_DirtTransition.mat";
         private const string ROOT_NAME          = "16_GroundPatches";
@@ -63,6 +65,29 @@ namespace Shinshi.Art.Editor
         private const float  MIN_ERASE_RADIUS   = 0.1f;
         private const int    VERTS_PER_TRIANGLE = 3;
 
+        private const string SEAM_MATERIAL      = GRASS_MATERIAL_DIR + "M_VillagePavingSeam.mat";
+        private const string SEAM_GROUP_NAME    = "Seam";
+        private const string SEAM_OBJECT_PREFIX = "Seam_";
+        private const string SEAM_MESH_PREFIX   = "SM_VillagePavingSeam_";
+        private const float  SEAM_WELD_SIZE     = 0.001f; // 같은 꼭짓점으로 합치는 거리(m), 노멀·UV 분할로 겹친 꼭짓점을 잇는다
+        private const float  SEAM_STEP          = 0.4f;   // 띠 테두리를 다시 찍는 간격(m)
+        private const float  SEAM_TILE_METERS   = 4f;     // 띠 텍스처 한 장이 덮는 길이(m)
+        private const float  SEAM_MIN_LENGTH    = 2f;     // 이보다 짧은 테두리 조각은 띠를 깔지 않는다(m)
+        private const float  SEAM_LIFT          = 0.06f;  // 포장 윗면보다 띄우는 높이(m), 포장이 바닥보다 약 5cm 떠 있다
+        private const int    SEAM_SMOOTH_PASSES = 3;      // 삼각형 모서리의 각진 테두리를 펴는 횟수
+        private const float  SMOOTH_WEIGHT_SUM  = 4f;     // 이웃 1 : 자신 2 : 이웃 1 가중 평균
+        private const int    SEAM_ROWS          = 4;      // 띠 폭 방향 꼭짓점 줄 수
+        private const int    SEAM_SORTING_ORDER = -1000;  // 칠한 패치가 모두 띠 위에 오게 가장 먼저 그린다
+        private const int    UINT16_VERTEX_LIMIT = 65535;
+        private const float  BRICK_TILE_METERS  = 2f;    // 벽돌 텍스처 한 장이 덮는 월드 길이(m), 벽돌 0.4 x 0.2m
+        private const float  BRICK_DUPLICATE_GAP = 0.01f; // 같은 칸에 이미 벽돌 장판이 있다고 보는 중심 거리(m)
+
+        private static readonly string[] G_BrickMaterialPaths =
+        {
+            GRASS_MATERIAL_DIR + "M_VillageBrickPatch_Jeondol.mat",
+            GRASS_MATERIAL_DIR + "M_VillageBrickPatch_RedBrick.mat"
+        };
+
         private static readonly string[] G_GrassMaterialPaths =
         {
             GRASS_MATERIAL_DIR + "M_VillageGrassPatch_A.mat",
@@ -85,6 +110,13 @@ namespace Shinshi.Art.Editor
         [SerializeField] private float            _dirtMaxRadius  = 2.8f;
         [SerializeField] private float            _maxHeightDelta = 0.6f; // 중심보다 이만큼 높거나 낮은 바닥은 비운다(m)
         [SerializeField] private bool             _randomRotation = true;
+        [SerializeField] private Material[]       _brickMaterials = new Material[0];
+        [SerializeField] private int              _brickColor     = 0; // 0이면 무작위, 그 밖은 재질 목록 순번 + 1
+        [SerializeField] private float            _brickHalfSize  = 2f; // 장판 한 장 크기의 절반(m)
+        [SerializeField] private bool             _brickSnap      = true;
+        [SerializeField] private float            _strokeSpacing  = 0.6f; // 드래그 간격, 최소 반경에 곱하는 비율
+        [SerializeField] private float            _seamInner      = 0.4f; // 경계 띠가 포장 안쪽으로 덮는 폭(m)
+        [SerializeField] private float            _seamOuter      = 0.8f; // 경계 띠가 포장 바깥으로 번지는 폭(m)
 
         private bool             _painting       = false;
         private SerializedObject _serialized     = null;
@@ -92,6 +124,8 @@ namespace Shinshi.Art.Editor
 
         // 한 번 드래그하는 동안 깎은 메쉬, 마우스를 뗄 때 한 번에 저장한다
         private readonly HashSet<Mesh> _strokeMeshes = new HashSet<Mesh>();
+
+        private Vector3 _lastStampPoint = Vector3.zero;
 
         /****************************************
         *              Unity Event
@@ -114,6 +148,11 @@ namespace Shinshi.Art.Editor
             if (_dirtMaterials.Length == 0)
             {
                 _dirtMaterials = LoadMaterials(DIRT_MATERIAL);
+            }
+
+            if (_brickMaterials.Length < G_BrickMaterialPaths.Length)
+            {
+                _brickMaterials = LoadMaterials(G_BrickMaterialPaths);
             }
 
             _serialized = new SerializedObject(this);
@@ -147,6 +186,7 @@ namespace Shinshi.Art.Editor
 
             EditorGUILayout.Space();
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_kind)), new GUIContent("종류"));
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_strokeSpacing)), new GUIContent("드래그 간격 (최소 반경 x)"));
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_randomRotation)), new GUIContent("무작위 회전"));
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_maxHeightDelta)), new GUIContent("허용 높이 차(m)"));
 
@@ -154,7 +194,7 @@ namespace Shinshi.Art.Editor
             EditorGUILayout.LabelField("풀", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_grassMinRadius)), new GUIContent("최소 반경(m)"));
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_grassMaxRadius)), new GUIContent("최대 반경(m)"));
-            _grassColor = EditorGUILayout.Popup("색상", _grassColor, BuildColorLabels());
+            _grassColor = EditorGUILayout.Popup("색상", _grassColor, BuildLabels(_grassMaterials, GRASS_NAME_PREFIX));
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_grassMaterials)), new GUIContent("재질 목록"), true);
             if (GUILayout.Button("선택한 풀 패치 색상 섞기"))
             {
@@ -166,6 +206,24 @@ namespace Shinshi.Art.Editor
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_dirtMinRadius)), new GUIContent("최소 반경(m)"));
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_dirtMaxRadius)), new GUIContent("최대 반경(m)"));
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_dirtMaterials)), new GUIContent("재질 (무작위 선택)"), true);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("벽돌", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("가장자리가 반듯한 사각 장판을 찍는다. 무늬가 월드 좌표를 따라 이어지고, 드래그하면 연달아 깔린다.", MessageType.None);
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_brickHalfSize)), new GUIContent("장판 반 크기(m)"));
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_brickSnap)), new GUIContent("장판 격자에 맞추기"));
+            _brickColor = EditorGUILayout.Popup("색상", _brickColor, BuildLabels(_brickMaterials, BRICK_NAME_PREFIX));
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_brickMaterials)), new GUIContent("재질 목록"), true);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("포장 경계 띠", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("포장 메쉬를 선택하고 누르면 테두리를 따라 흙에서 풀로 번지는 띠를 깐다. 다시 누르면 같은 포장의 띠를 새로 만든다.", MessageType.None);
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_seamInner)), new GUIContent("포장 안쪽 폭(m)"));
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_seamOuter)), new GUIContent("포장 바깥 폭(m)"));
+            if (GUILayout.Button("선택한 포장 경계에 띠 만들기"))
+            {
+                BuildSeamsForSelection();
+            }
 
             EditorGUILayout.Space();
             EditorGUILayout.HelpBox("패치를 옮기거나 돌린 뒤 선택하고 누르면 새 자리의 바닥에 맞게 메쉬를 다시 만든다.", MessageType.None);
@@ -244,7 +302,9 @@ namespace Shinshi.Art.Editor
                     }
                     else
                     {
+                        GUIUtility.hotControl = controlId;
                         StampPatch(hit);
+                        _lastStampPoint = hit.point;
                     }
                     current.Use();
                     break;
@@ -254,7 +314,20 @@ namespace Shinshi.Art.Editor
                         break;
                     }
 
-                    EraseArea(hit.point);
+                    if (_mode == EBrushMode.Erase)
+                    {
+                        EraseArea(hit.point);
+                    }
+                    else if (_kind == EGroundPatchKind.Brick)
+                    {
+                        // 벽돌은 같은 칸에 겹쳐 찍지 않으므로 지나가는 칸마다 깔린다
+                        StampPatch(hit);
+                    }
+                    else if (Vector3.Distance(hit.point, _lastStampPoint) >= GetStrokeSpacing())
+                    {
+                        StampPatch(hit);
+                        _lastStampPoint = hit.point;
+                    }
                     view.Repaint();
                     current.Use();
                     break;
@@ -279,8 +352,21 @@ namespace Shinshi.Art.Editor
                 return;
             }
 
-            float maxRadius = (_kind == EGroundPatchKind.Grass) ? _grassMaxRadius : _dirtMaxRadius;
-            float minRadius = (_kind == EGroundPatchKind.Grass) ? _grassMinRadius : _dirtMinRadius;
+            if (_kind == EGroundPatchKind.Brick)
+            {
+                Vector3 center = SnapBrickCenter(hit.point);
+                float half = _brickHalfSize;
+                Handles.color = Color.cyan;
+                Handles.DrawAAPolyLine(PREVIEW_THICKNESS,
+                    center + new Vector3(-half, 0f, -half),
+                    center + new Vector3(half, 0f, -half),
+                    center + new Vector3(half, 0f, half),
+                    center + new Vector3(-half, 0f, half),
+                    center + new Vector3(-half, 0f, -half));
+                return;
+            }
+
+            GetRadiusRange(out float minRadius, out float maxRadius);
             Handles.color = (_kind == EGroundPatchKind.Grass) ? Color.green : Color.yellow;
             Handles.DrawWireDisc(hit.point, Vector3.up, maxRadius, PREVIEW_THICKNESS);
             Handles.DrawWireDisc(hit.point, Vector3.up, minRadius);
@@ -448,7 +534,7 @@ namespace Shinshi.Art.Editor
 
         private void StampPatch(RaycastHit hit)
         {
-            Material material = (_kind == EGroundPatchKind.Grass) ? PickGrassMaterial() : PickMaterial(_dirtMaterials);
+            Material material = PickKindMaterial();
             if (material == null)
             {
                 Debug.LogWarning("[GroundPatch] 재질이 비어 있어 찍지 않는다");
@@ -456,17 +542,25 @@ namespace Shinshi.Art.Editor
             }
 
             Scene scene = hit.collider.gameObject.scene;
+            bool isBrick = _kind == EGroundPatchKind.Brick;
+            Vector3 center = isBrick ? SnapBrickCenter(hit.point) : hit.point;
+            if ((isBrick) && (HasBrickAt(scene, center, _brickMaterials)))
+            {
+                return;
+            }
+
             Transform parent = GetKindRoot(scene, _kind);
-            float minRadius = (_kind == EGroundPatchKind.Grass) ? _grassMinRadius : _dirtMinRadius;
-            float maxRadius = (_kind == EGroundPatchKind.Grass) ? _grassMaxRadius : _dirtMaxRadius;
+            GetRadiusRange(out float minRadius, out float maxRadius);
             float radius = Random.Range(minRadius, Mathf.Max(minRadius, maxRadius));
-            float yaw = _randomRotation ? Random.Range(0f, FULL_TURN) : 0f;
+
+            // 벽돌은 줄눈이 월드 축을 따르므로 돌리면 장판 가장자리와 줄눈이 어긋난다
+            float yaw = ((_randomRotation) && (!isBrick)) ? Random.Range(0f, FULL_TURN) : 0f;
 
             var patch = new GameObject(_kind + PATCH_SUFFIX);
             patch.transform.SetParent(parent, false);
-            patch.transform.SetPositionAndRotation(hit.point, Quaternion.Euler(0f, yaw, 0f));
+            patch.transform.SetPositionAndRotation(center, Quaternion.Euler(0f, yaw, 0f));
 
-            Mesh mesh = BuildMesh(patch.transform, radius, hit.collider, null);
+            Mesh mesh = BuildMesh(patch.transform, radius, hit.collider, null, isBrick);
             if (mesh == null)
             {
                 DestroyImmediate(patch);
@@ -540,7 +634,19 @@ namespace Shinshi.Art.Editor
         private bool RefitPatch(Transform patch, MeshFilter filter)
         {
             Mesh oldMesh = filter.sharedMesh;
-            ReadPatchShape(oldMesh, out float radius, out float bakedYaw);
+            bool isBrick = (patch.TryGetComponent(out MeshRenderer patchRenderer))
+                           && (System.Array.IndexOf(_brickMaterials, patchRenderer.sharedMaterial) >= 0);
+            float radius;
+            float bakedYaw;
+            if (isBrick)
+            {
+                ReadBrickHalfSize(oldMesh, out radius);
+                bakedYaw = 0f;
+            }
+            else
+            {
+                ReadPatchShape(oldMesh, out radius, out bakedYaw);
+            }
 
             Collider ground = FindGroundBelow(patch.position);
             if (ground == null)
@@ -556,7 +662,7 @@ namespace Shinshi.Art.Editor
             patch.localScale = Vector3.one;
             patch.rotation   = patch.rotation * Quaternion.Euler(0f, bakedYaw, 0f);
 
-            Mesh rebuilt = BuildMesh(patch, radius, ground, IsSharedMesh(patch.gameObject.scene, oldMesh) ? null : oldMesh);
+            Mesh rebuilt = BuildMesh(patch, radius, ground, IsSharedMesh(patch.gameObject.scene, oldMesh) ? null : oldMesh, isBrick);
             if (rebuilt == null)
             {
                 // 기존 메쉬에 회전이 남아 있으므로 Transform을 되돌려야 두 번 돌지 않는다
@@ -610,8 +716,369 @@ namespace Shinshi.Art.Editor
             bakedYaw = 0f;
         }
 
-        // target이 있으면 그 메쉬를 덮어쓴다. 중심이 바닥이 아니면 null
-        private Mesh BuildMesh(Transform patch, float radius, Collider ground, Mesh target)
+        private float GetStrokeSpacing()
+        {
+            GetRadiusRange(out float minRadius, out float _);
+            return Mathf.Max(MIN_ERASE_RADIUS, minRadius * _strokeSpacing);
+        }
+
+        private void BuildSeamsForSelection()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(SEAM_MATERIAL);
+            if (material == null)
+            {
+                Debug.LogWarning($"[GroundPatch] 경계 띠 재질이 없다: {SEAM_MATERIAL}");
+                return;
+            }
+
+            int built = 0;
+            foreach (GameObject selected in Selection.gameObjects)
+            {
+                foreach (MeshFilter source in selected.GetComponentsInChildren<MeshFilter>())
+                {
+                    if ((source.sharedMesh != null) && (BuildSeam(source, material)))
+                    {
+                        ++built;
+                    }
+                }
+            }
+
+            Debug.Log($"[GroundPatch] 포장 {built}개의 경계에 띠를 깔았다");
+        }
+
+        // 포장 윗면의 테두리를 찾아 바깥으로 번지는 띠 메쉬를 만든다. 테두리가 없으면 false
+        private bool BuildSeam(MeshFilter source, Material material)
+        {
+            List<List<Vector3>> chains = FindTopBoundaryChains(source, out List<bool> closed);
+            Scene scene = source.gameObject.scene;
+            var vertices  = new List<Vector3>();
+            var uvs       = new List<Vector2>();
+            var triangles = new List<int>();
+            for (int c = 0; c < chains.Count; ++c)
+            {
+                List<Vector3> samples = Resample(chains[c], closed[c], out float length);
+                if (length < SEAM_MIN_LENGTH)
+                {
+                    continue;
+                }
+
+                SmoothXZ(samples, closed[c]);
+                AppendRibbon(samples, closed[c], length, vertices, uvs, triangles);
+            }
+
+            if (triangles.Count == 0)
+            {
+                return false;
+            }
+
+            string seamName = (source.transform.parent != null) ? $"{source.transform.parent.name}_{source.name}" : source.name;
+            string path = $"{MESH_FOLDER}/{SEAM_MESH_PREFIX}{seamName}.asset";
+            Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            bool isNew = mesh == null;
+            if (isNew)
+            {
+                mesh = new Mesh();
+                mesh.name = SEAM_MESH_PREFIX + seamName;
+            }
+
+            mesh.Clear();
+            mesh.indexFormat = (vertices.Count > UINT16_VERTEX_LIMIT) ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            if (isNew)
+            {
+                AssetDatabase.CreateAsset(mesh, path);
+            }
+            else
+            {
+                EditorUtility.SetDirty(mesh);
+            }
+            AssetDatabase.SaveAssets();
+
+            Transform group = GetGroupRoot(scene, SEAM_GROUP_NAME);
+            Transform previous = group.Find(SEAM_OBJECT_PREFIX + seamName);
+            if (previous != null)
+            {
+                Undo.DestroyObjectImmediate(previous.gameObject);
+            }
+
+            var seam = new GameObject(SEAM_OBJECT_PREFIX + seamName);
+            seam.transform.SetParent(group, false);
+            seam.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var seamRenderer = seam.AddComponent<MeshRenderer>();
+            seamRenderer.sharedMaterial    = material;
+            seamRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            seamRenderer.sortingOrder      = SEAM_SORTING_ORDER;
+            GameObjectUtility.SetStaticEditorFlags(seam, StaticEditorFlags.BatchingStatic);
+            Undo.RegisterCreatedObjectUndo(seam, WINDOW_TITLE);
+            EditorSceneManager.MarkSceneDirty(scene);
+            return true;
+        }
+
+        // 위를 향한 삼각형만 모아 한 삼각형에만 속한 모서리를 이어 테두리 사슬을 만든다.
+        // 삼각형 순서를 따른 방향이라 사슬 진행 방향의 왼쪽이 항상 포장 바깥이다
+        private static List<List<Vector3>> FindTopBoundaryChains(MeshFilter source, out List<bool> closed)
+        {
+            Matrix4x4 toWorld = source.transform.localToWorldMatrix;
+            Vector3[] meshVertices = source.sharedMesh.vertices;
+            int[] meshTriangles = source.sharedMesh.triangles;
+
+            var welded    = new List<Vector3>();
+            var weldIndex = new Dictionary<Vector3Int, int>();
+            var remap     = new int[meshVertices.Length];
+            for (int i = 0; i < meshVertices.Length; ++i)
+            {
+                Vector3 world = toWorld.MultiplyPoint3x4(meshVertices[i]);
+                var key = Vector3Int.RoundToInt(world / SEAM_WELD_SIZE);
+                if (!weldIndex.TryGetValue(key, out int index))
+                {
+                    index = welded.Count;
+                    welded.Add(world);
+                    weldIndex.Add(key, index);
+                }
+                remap[i] = index;
+            }
+
+            var edgeUse = new Dictionary<long, int>();
+            var directed = new List<Vector2Int>();
+            for (int t = 0; t < meshTriangles.Length; t += VERTS_PER_TRIANGLE)
+            {
+                int a = remap[meshTriangles[t]];
+                int b = remap[meshTriangles[t + 1]];
+                int c = remap[meshTriangles[t + 2]];
+                Vector3 normal = Vector3.Cross(welded[b] - welded[a], welded[c] - welded[a]);
+                if ((normal.sqrMagnitude <= 0f) || (normal.normalized.y < MIN_GROUND_NORMAL))
+                {
+                    continue;
+                }
+
+                AddEdge(a, b, edgeUse, directed);
+                AddEdge(b, c, edgeUse, directed);
+                AddEdge(c, a, edgeUse, directed);
+            }
+
+            var next = new Dictionary<int, int>();
+            foreach (Vector2Int edge in directed)
+            {
+                if (edgeUse[EdgeKey(edge.x, edge.y)] == 1)
+                {
+                    next[edge.x] = edge.y;
+                }
+            }
+
+            var chains = new List<List<Vector3>>();
+            closed = new List<bool>();
+            var visited = new HashSet<int>();
+            foreach (int start in next.Keys)
+            {
+                if (visited.Contains(start))
+                {
+                    continue;
+                }
+
+                var chain = new List<Vector3>();
+                int current = start;
+                bool isClosed = false;
+                while (true)
+                {
+                    visited.Add(current);
+                    chain.Add(welded[current]);
+                    if (!next.TryGetValue(current, out int following))
+                    {
+                        break;
+                    }
+
+                    if (following == start)
+                    {
+                        isClosed = true;
+                        break;
+                    }
+
+                    if (visited.Contains(following))
+                    {
+                        break;
+                    }
+                    current = following;
+                }
+
+                chains.Add(chain);
+                closed.Add(isClosed);
+            }
+
+            return chains;
+        }
+
+        private static void AddEdge(int a, int b, Dictionary<long, int> edgeUse, List<Vector2Int> directed)
+        {
+            long key = EdgeKey(a, b);
+            edgeUse.TryGetValue(key, out int count);
+            edgeUse[key] = count + 1;
+            directed.Add(new Vector2Int(a, b));
+        }
+
+        private static long EdgeKey(int a, int b)
+        {
+            int low  = Mathf.Min(a, b);
+            int high = Mathf.Max(a, b);
+            return ((long)low << 32) | (uint)high;
+        }
+
+        // 테두리를 일정 간격으로 다시 찍는다. 닫힌 사슬은 끝점이 시작점과 같다
+        private static List<Vector3> Resample(List<Vector3> chain, bool isClosed, out float length)
+        {
+            var points = new List<Vector3>(chain);
+            if (isClosed)
+            {
+                points.Add(chain[0]);
+            }
+
+            length = 0f;
+            for (int i = 1; i < points.Count; ++i)
+            {
+                length += Vector3.Distance(points[i - 1], points[i]);
+            }
+
+            var samples = new List<Vector3>();
+            if (length <= 0f)
+            {
+                return samples;
+            }
+
+            int count = Mathf.Max(2, Mathf.RoundToInt(length / SEAM_STEP));
+            float step = length / count;
+            int segment = 1;
+            float walked = 0f;
+            for (int s = 0; s <= count; ++s)
+            {
+                float target = Mathf.Min(length, s * step);
+                while ((segment < points.Count - 1) && (walked + Vector3.Distance(points[segment - 1], points[segment]) < target))
+                {
+                    walked += Vector3.Distance(points[segment - 1], points[segment]);
+                    ++segment;
+                }
+
+                float span = Vector3.Distance(points[segment - 1], points[segment]);
+                float ratio = (span > 0f) ? (target - walked) / span : 0f;
+                samples.Add(Vector3.Lerp(points[segment - 1], points[segment], ratio));
+            }
+
+            return samples;
+        }
+
+        private static void SmoothXZ(List<Vector3> samples, bool isClosed)
+        {
+            int count = samples.Count;
+            for (int pass = 0; pass < SEAM_SMOOTH_PASSES; ++pass)
+            {
+                var source = samples.ToArray();
+                for (int i = 0; i < count; ++i)
+                {
+                    bool isEnd = (i == 0) || (i == count - 1);
+                    if ((isEnd) && (!isClosed))
+                    {
+                        continue;
+                    }
+
+                    // 닫힌 사슬은 마지막 점이 첫 점과 같으므로 그 이웃을 건너서 잇는다
+                    int prev = (i == 0) ? count - 2 : i - 1;
+                    int nextIndex = (i == count - 1) ? 1 : i + 1;
+                    Vector3 smoothed = (source[prev] + source[i] + source[i] + source[nextIndex]) / SMOOTH_WEIGHT_SUM;
+                    samples[i] = new Vector3(smoothed.x, source[i].y, smoothed.z);
+                }
+            }
+        }
+
+        private void AppendRibbon(List<Vector3> samples, bool isClosed, float length, List<Vector3> vertices, List<Vector2> uvs, List<int> triangles)
+        {
+            int baseIndex = vertices.Count;
+            int count = samples.Count;
+            float tiles = Mathf.Max(1f, Mathf.Round(length / SEAM_TILE_METERS)); // 닫힌 띠가 이음매 없이 이어지도록 정수 장수로 맞춘다
+            float walked = 0f;
+            for (int i = 0; i < count; ++i)
+            {
+                if (i > 0)
+                {
+                    walked += Vector3.Distance(samples[i - 1], samples[i]);
+                }
+
+                int before = (i > 0) ? i - 1 : (isClosed ? count - 2 : 0);
+                int after  = (i < count - 1) ? i + 1 : (isClosed ? 1 : count - 1);
+                Vector3 tangent = samples[after] - samples[before];
+                tangent.y = 0f;
+                tangent.Normalize();
+                var outward = new Vector3(-tangent.z, 0f, tangent.x);
+
+                for (int row = 0; row < SEAM_ROWS; ++row)
+                {
+                    float v = row / (float)(SEAM_ROWS - 1);
+                    float offset = Mathf.Lerp(-_seamInner, _seamOuter, v);
+                    Vector3 point = samples[i] + (outward * offset);
+                    float height = SampleSeamHeight(point, samples[i].y);
+                    if (offset <= 0f)
+                    {
+                        height = Mathf.Max(height, samples[i].y);
+                    }
+
+                    vertices.Add(new Vector3(point.x, height + SEAM_LIFT, point.z));
+                    uvs.Add(new Vector2(walked / length * tiles, v));
+                }
+            }
+
+            for (int i = 0; i < count - 1; ++i)
+            {
+                for (int row = 0; row < SEAM_ROWS - 1; ++row)
+                {
+                    int a = baseIndex + (i * SEAM_ROWS) + row;
+                    int b = a + 1;
+                    int c = a + SEAM_ROWS;
+                    int d = c + 1;
+                    triangles.Add(a);
+                    triangles.Add(b);
+                    triangles.Add(c);
+                    triangles.Add(b);
+                    triangles.Add(d);
+                    triangles.Add(c);
+                }
+            }
+        }
+
+        // 기준 높이에 가장 가까운 바닥을 고른다. 가까운 바닥이 없으면 기준 높이를 그대로 쓴다
+        private float SampleSeamHeight(Vector3 point, float referenceY)
+        {
+            RaycastHit[] hits = Physics.RaycastAll(new Vector3(point.x, referenceY + RAY_HEIGHT, point.z), Vector3.down, RAY_LENGTH, PICK_LAYERS, QueryTriggerInteraction.Ignore);
+            float best = referenceY;
+            float bestGap = _maxHeightDelta;
+            for (int i = 0; i < hits.Length; ++i)
+            {
+                float gap = Mathf.Abs(hits[i].point.y - referenceY);
+                if (gap < bestGap)
+                {
+                    bestGap = gap;
+                    best    = hits[i].point.y;
+                }
+            }
+
+            return best;
+        }
+
+        // 벽돌 장판은 UV가 월드 좌표라 모양을 UV로 읽을 수 없다. 회전이 없으므로 가장 먼 꼭짓점의 축 거리가 반 크기다
+        private static void ReadBrickHalfSize(Mesh mesh, out float halfSize)
+        {
+            halfSize = 0f;
+            Vector3[] vertices = mesh.vertices;
+            for (int i = 0; i < vertices.Length; ++i)
+            {
+                halfSize = Mathf.Max(halfSize, Mathf.Abs(vertices[i].x), Mathf.Abs(vertices[i].z));
+            }
+        }
+
+        // target이 있으면 그 메쉬를 덮어쓴다. 중심이 바닥이 아니면 null.
+        // worldUv면 UV를 월드 좌표로 매겨 이웃 장판과 무늬가 이어진다
+        private Mesh BuildMesh(Transform patch, float radius, Collider ground, Mesh target, bool worldUv)
         {
             if (!TrySampleGround(patch, Vector3.zero, ground, out Vector3 centerPoint))
             {
@@ -638,7 +1105,15 @@ namespace Shinshi.Art.Editor
                     }
 
                     vertices[index] = point + (Vector3.up * SURFACE_OFFSET);
-                    uvs[index]      = new Vector2((point.x + radius) / diameter, (point.z + radius) / diameter);
+                    if (worldUv)
+                    {
+                        Vector3 world = patch.TransformPoint(point);
+                        uvs[index] = new Vector2(world.x / BRICK_TILE_METERS, world.z / BRICK_TILE_METERS);
+                    }
+                    else
+                    {
+                        uvs[index] = new Vector2((point.x + radius) / diameter, (point.z + radius) / diameter);
+                    }
                 }
             }
 
@@ -792,6 +1267,11 @@ namespace Shinshi.Art.Editor
 
         private static Transform GetKindRoot(Scene scene, EGroundPatchKind kind)
         {
+            return GetGroupRoot(scene, kind.ToString());
+        }
+
+        private static Transform GetGroupRoot(Scene scene, string groupName)
+        {
             Transform root = FindRoot(scene);
             if (root == null)
             {
@@ -801,14 +1281,13 @@ namespace Shinshi.Art.Editor
                 root = created.transform;
             }
 
-            string kindName = kind.ToString();
-            Transform group = root.Find(kindName);
+            Transform group = root.Find(groupName);
             if (group != null)
             {
                 return group;
             }
 
-            var groupObject = new GameObject(kindName);
+            var groupObject = new GameObject(groupName);
             groupObject.transform.SetParent(root, false);
             Undo.RegisterCreatedObjectUndo(groupObject, WINDOW_TITLE);
             return groupObject.transform;
@@ -827,27 +1306,88 @@ namespace Shinshi.Art.Editor
             return null;
         }
 
-        private Material PickGrassMaterial()
+        private Material PickKindMaterial()
         {
-            int index = _grassColor - 1;
-            if ((index >= 0) && (index < _grassMaterials.Length) && (_grassMaterials[index] != null))
+            switch (_kind)
             {
-                return _grassMaterials[index];
+                case EGroundPatchKind.Grass:
+                    return PickByColor(_grassMaterials, _grassColor);
+                case EGroundPatchKind.Brick:
+                    return PickByColor(_brickMaterials, _brickColor);
+                default:
+                    return PickMaterial(_dirtMaterials);
             }
-
-            return PickMaterial(_grassMaterials);
         }
 
-        private string[] BuildColorLabels()
+        // color가 0이면 무작위, 그 밖은 목록 순번 + 1
+        private static Material PickByColor(Material[] materials, int color)
         {
-            var labels = new string[_grassMaterials.Length + 1];
-            labels[0] = RANDOM_COLOR_LABEL;
-            for (int i = 0; i < _grassMaterials.Length; ++i)
+            int index = color - 1;
+            if ((index >= 0) && (index < materials.Length) && (materials[index] != null))
             {
-                labels[i + 1] = (_grassMaterials[i] != null) ? _grassMaterials[i].name.Replace(GRASS_NAME_PREFIX, string.Empty) : string.Empty;
+                return materials[index];
+            }
+
+            return PickMaterial(materials);
+        }
+
+        private static string[] BuildLabels(Material[] materials, string prefix)
+        {
+            var labels = new string[materials.Length + 1];
+            labels[0] = RANDOM_COLOR_LABEL;
+            for (int i = 0; i < materials.Length; ++i)
+            {
+                labels[i + 1] = (materials[i] != null) ? materials[i].name.Replace(prefix, string.Empty) : string.Empty;
             }
 
             return labels;
+        }
+
+        private void GetRadiusRange(out float minRadius, out float maxRadius)
+        {
+            switch (_kind)
+            {
+                case EGroundPatchKind.Grass:
+                    minRadius = _grassMinRadius;
+                    maxRadius = _grassMaxRadius;
+                    break;
+                case EGroundPatchKind.Brick:
+                    minRadius = _brickHalfSize;
+                    maxRadius = _brickHalfSize;
+                    break;
+                default:
+                    minRadius = _dirtMinRadius;
+                    maxRadius = _dirtMaxRadius;
+                    break;
+            }
+        }
+
+        // 격자에 맞추면 장판 크기 단위 칸의 중심으로 옮긴다. 이웃 장판과 가장자리가 딱 맞물린다
+        private Vector3 SnapBrickCenter(Vector3 point)
+        {
+            if (!_brickSnap)
+            {
+                return point;
+            }
+
+            float size = _brickHalfSize + _brickHalfSize;
+            return new Vector3((Mathf.Floor(point.x / size) + HALF) * size, point.y, (Mathf.Floor(point.z / size) + HALF) * size);
+        }
+
+        private static bool HasBrickAt(Scene scene, Vector3 center, Material[] brickMaterials)
+        {
+            var brickSet = new HashSet<Material>(brickMaterials);
+            foreach (MeshRenderer patch in EnumeratePatches(scene))
+            {
+                Vector3 position = patch.transform.position;
+                var gap = new Vector2(position.x - center.x, position.z - center.z);
+                if ((brickSet.Contains(patch.sharedMaterial)) && (gap.sqrMagnitude < BRICK_DUPLICATE_GAP * BRICK_DUPLICATE_GAP))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // 선택한 오브젝트와 그 자식 중 풀 재질을 쓰는 패치에 목록의 재질을 무작위로 다시 준다
