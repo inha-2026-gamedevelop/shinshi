@@ -283,3 +283,11 @@ GroundPaint 씬의 기존 Deck 11개에는 [VillageCliffUpgrade 외피 프리팹
 맵 담당의 GroundPaint 개발 씬에서 두 구역에만 적용했다. 반복된 SE 섬 겉모델 두 개를 NW/SW로 바꾸고 선반·돌출부 27개와 식생 56개를 배치했다. 기존 충돌체 712개는 직렬화 값·변환이 동일하고 추가 충돌체는 없다. 원래 섬의 Collider는 보존하고 교체 대상의 기존 Renderer·LODGroup만 비활성화했다. 이 조립물만 끄면 교체한 본체도 사라지므로 비교·복구할 때는 해당 원래 섬의 Renderer·LODGroup도 복원해야 한다.
 
 55도 에디터 렌더·강제 정지 LOD·참조를 확인했다. 새 부유석 6개는 Low의 구멍을 피하기 위해 High/Medium 두 단계만 사용하며, 다른 암반은 기존 세 단계다. 실제 보행·연속 LOD·다인 접속·성능·빌드는 미검증으로 **조건부 통과**다. 원본 QuarterView 씬에는 적용하지 않았다.
+
+### 부유섬 몸체 교체 — 2026-10-10 후속
+
+외피가 단조롭게 읽혀 GroundPaint 씬에서 `PF_VillageCliff_*` 외피 인스턴스 11개를 제거하고, 기존 섬 겉모델의 상단 높이·범위를 조정해 큰 암반 몸체로 대신했다. 외피 프리팹·재질 원본은 삭제하지 않았다. SW 구역에는 시각 전용 `PF_NaturalIslandBody_SW`를, EWatch에는 `PF_NaturalIslandAccents_EWatch`를 추가했으며 둘 다 Collider가 없다.
+
+궁궐·시장 조립의 선반 27개는 큰 선반 7개로 정리했고 식생 56개는 바뀐 암반 면에 다시 붙였다. 이 과정에서 씬의 `PF_CliffAssembly_Palace`·`PF_CliffAssembly_Market`은 프리팹 연결을 풀었으므로, 위 두 프리팹 에셋은 이전 27선반 상태이며 씬과 같지 않다.
+
+에디터 기준 기존 충돌체 712개와 보호 지면·배치 11875개가 변경 전과 일치하고 누락 Mesh·Material·Script 참조는 없다. 시장·Farm·EWatch·North 계단의 가림은 에디터 렌더로 확인했다. 강제·연속 LOD, 실제 보행, 성능·빌드는 미검증으로 **조건부 통과**다. 원본 QuarterView 씬에는 적용하지 않았다.
