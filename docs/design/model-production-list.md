@@ -273,3 +273,13 @@ renderer bounds는 `rootBone` 공간의 실제 걷기·달리기와 얼굴 변�
 새 재료 맵은 BaseColor·Normal·실제 AO·거칠기 기반 Smoothness를 연결한다. 길 Low는 새 연결 토폴로지와 전용1K 맵으로 제작했다. 건물7종·성소의 축소 파손은 High 형상 유지로 처리해 삼각형 감면을 주장하지 않는다. 부유 지형7종은 닫힌 원본에서 연결감면·윗면UV 보호·실제 AO/Normal 재베이크와 새 상부 충돌 메시로 수리했다. High60000/Medium30000/Low21302~23172tris이며 Low의 근접 각짐·국소 UV 늘어짐은 먼 거리 사용 조건이다. Blender의 실제 출력 확인과 Unity의 축·정면 방향·크기·참조·정지 LOD 화면 검증을 구분한다.
 
 원화의 세부 구조·배치 대조 결과와 공용 경로·사용 조건은 [공용 환경 에셋 목록](../unity/SHARED_ENVIRONMENT_ASSET_CATALOG.md), 생성 ID·비용·원본 권리 확인 상태는 [에셋 대장](../licenses/ASSET_REGISTRY.md)을 따른다. 구름·폭포·수면 효과는 사용자 요청 범위에서 제외했다. 전체 보행·통합 게임·연속 LOD·성능·빌드와 유사도90% 수치 판정은 별도 미검증이다.
+
+### 궁궐·시장 절벽 조립 시안 — 2026-10-10
+
+GroundPaint 씬의 기존 Deck 11개에는 [VillageCliffUpgrade 외피 프리팹](../../Assets/02.Prefab/Environment/VillageCliffUpgrade/)을 적용했다. 원래 렌더 벽만 끄고 지면·충돌을 보존하며, 새 외피는 실제 Cycles 국소 AO·Normal·거칠기 기반 패킹 맵과 서로 다른 세 단계 LOD를 사용한다. 기존 장식 바위 4개는 비활성화했고, 아래 궁궐·시장 조립은 이 외피 위에 추가한 변경이다.
+
+[PF_CliffAssembly_Palace](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_CliffAssembly_Palace.prefab)와 [PF_CliffAssembly_Market](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_CliffAssembly_Market.prefab)은 기존 ReferenceIsland·FloatingRock·관목·약초를 재사용한 장식용 조립물이다. 원본 모델·텍스처는 수정하지 않고 별도 재질 5개의 색만 조정했다. 기존 Normal·AO·Smoothness와 식생 버텍스 색을 유지하며, 조립 전체의 접촉 AO는 새로 베이크하지 않았다. 이동 지면이나 Collider가 포함된 지형 프리팹으로 사용하지 않는다.
+
+맵 담당의 GroundPaint 개발 씬에서 두 구역에만 적용했다. 반복된 SE 섬 겉모델 두 개를 NW/SW로 바꾸고 선반·돌출부 27개와 식생 56개를 배치했다. 기존 충돌체 712개는 직렬화 값·변환이 동일하고 추가 충돌체는 없다. 원래 섬의 Collider는 보존하고 교체 대상의 기존 Renderer·LODGroup만 비활성화했다. 이 조립물만 끄면 교체한 본체도 사라지므로 비교·복구할 때는 해당 원래 섬의 Renderer·LODGroup도 복원해야 한다.
+
+55도 에디터 렌더·강제 정지 LOD·참조를 확인했다. 새 부유석 6개는 Low의 구멍을 피하기 위해 High/Medium 두 단계만 사용하며, 다른 암반은 기존 세 단계다. 실제 보행·연속 LOD·다인 접속·성능·빌드는 미검증으로 **조건부 통과**다. 원본 QuarterView 씬에는 적용하지 않았다.
