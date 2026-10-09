@@ -19,6 +19,10 @@ namespace Shinshi.AI
     // 월백 시험 장치와 같은 예고 표현 연결부(BossTelegraphLocalBridge)와 시험용 몸체(BossTestRigBody)를 읽기만 하고 재사용한다.
     // 2페이즈 모드(_phaseTwoMode)는 1페이즈 시험과 별도 모드다. 꺼 두면 카탈로그, 팩토리, 화면이 이전과 같다. 켜면 체력 55%에서 2페이즈로 넘어가고
     // 전환 뒤 인계(CompleteHandoff)는 이 구동기가 서버 연결 대신 부른다(자동 부름은 끌 수 있다). 운영에서는 서버 연결이 불러야 한다.
+    // 하드 P07 스위치(_hardP07Mode)는 2페이즈 모드 안의 별도 시험 스위치다. 꺼 두면 후보, 팩토리, 대상이 이전과 같고 P07은 어디에도 없다.
+    // 켜면 하드 전용 전장 공격(mucheol_ph2_p07)이 2페이즈 후보로 섞이고, 방어력과 체력을 하드 시험값으로 낮춘 플레이어에 더해
+    // 테스트용 동료와 소환물이 실제로 등록되어 같은 피해 경로와 밀림을 받는다. 밀림은 이 구동기 안의 로컬 대역(BossTestRigDisplacer)이 하며
+    // 운영 서버의 플레이어와 동료 이동, 네트워크 동기화는 이 장면이 증명하지 않는다.
     // 무철 외형 모델이 없어 캡슐로 대신한다. 무철 기믹 1은 공용 두뇌 연결이 승인 전이라 이 장면에서 동작하지 않는다
     /// <summary> 무철 시험 구동기, 단일 프로세스에서 서버 두뇌와 예고 표현과 대체 외형을 이어 준다 </summary>
     public sealed class MucheolBossTestRig : MonoBehaviour
@@ -66,6 +70,16 @@ namespace Shinshi.AI
         private const float  BODY_TURN_RATE     = 360f;  // 도/초, 몸이 서버 방향으로 돌 때 도착 시간을 넉넉히 잡을 때의 최고 속도 기준
         private const float  BODY_MIN_HORIZON   = 0.06f; // 초, 몸이 아주 작은 각도도 이보다 빠르게 돌지 않게 하는 최소 시간
 
+        // 하드 P07 시험 장치. 모두 시험 배치용 값이다
+        private const string P07_ID_SUFFIX      = "07";
+        private const float  EXTRA_BODY_SCALE   = 0.7f;   // 동료와 소환물 캡슐은 플레이어보다 작게 그린다
+        private const float  PLACE_DISTANCE     = 8f;     // m, 보스에서 시험 대상을 세우는 거리
+        private const float  PLACE_SPREAD       = 2f;     // m, 시험 대상끼리 옆으로 벌리는 거리
+        private const int    LANE_SIDES         = 2;      // 시험 대상을 좌우로 번갈아 세우는 줄 수
+        private const float  DISTURB_DISTANCE   = 3f;     // m, 예고 중에 보스를 옮기는 거리
+        private const float  DISTURB_YAW        = 90f;    // 도, 예고 중에 보스를 돌리는 각도
+        private const float  LOW_HEALTH_RATE    = 0.3f;   // 체력을 낮추는 시험 비율
+
         private static readonly Color BossColor = new Color(0.45f, 0.1f, 0.55f);
 
         /****************************************
@@ -90,11 +104,24 @@ namespace Shinshi.AI
         [SerializeField] private float   _startHealthRate     = 1f;    // 시작 체력 비율, 2페이즈 시험은 낮춰서 시작할 수 있다
         [SerializeField] private bool    _autoCompleteHandoff = true;  // 전환 뒤 인계 대기에서 CompleteHandoff를 이 구동기가 대신 부른다
 
+        [Header("하드 P07 시험 (2페이즈 모드 안의 스위치, 기본 꺼짐)")]
+        [SerializeField] private bool    _hardP07Mode          = false; // 켜면 P07이 2페이즈 후보가 되고 하드 시험 대상이 등록된다
+        [SerializeField] private float   _hardPlayerHealth     = 1500f; // PlayerConfig 기본 체력, 임시 시험값
+        [SerializeField] private float   _hardPlayerDefense    = 100f;  // PlayerConfig 기본 방어력, 임시 시험값
+        [SerializeField] private float   _hardCompanionRate    = 0.6f;  // 동료 최대 체력 / 주인 최대 체력, 임시 시험값
+        [SerializeField] private float   _hardSummonHealth     = 1500f; // 소환물 체력, 임시 시험값
+
         private CombatTargetRegistry    _registry;
         private DamageResolver          _resolver;
         private BossTestRigBody         _body;
         private BossBrain               _brain;
-        private EnemyTestRigPlayer      _player;
+        private BossTestRigCombatant    _player;
+        private BossTestRigDisplacer    _displacer;
+        private BattlefieldVisual       _battlefield;
+        private readonly List<ExtraTargetView> _extras = new List<ExtraTargetView>();
+        private bool                    _hardChangeRequested;
+        private Vector2                 _guiScroll;
+        private bool                    _hardRequestedValue;
         private BossTelegraphPresenter  _presenter;
         private MucheolDevCatalog       _catalog;
         private ForcedPatternRule       _forced;
@@ -156,6 +183,15 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 스위치는 GUI 이벤트 도중에 바꾸면 컨트롤 수가 어긋나 오류가 나므로 요청만 받아 두고 여기서 적용한다
+            if (_hardChangeRequested)
+            {
+                _hardChangeRequested = false;
+                _hardP07Mode         = _hardRequestedValue;
+                Build();
+                return;
+            }
+
             double now = ReadClock();
 
             if (_player.LifeState == EParticipantLifeState.Alive)
@@ -186,10 +222,26 @@ namespace Shinshi.AI
             }
 
             GUILayout.BeginArea(new Rect(GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_WIDTH, Screen.height - TestRigDisplay.GUI_TOP - GUI_MARGIN), GUI.skin.box);
-            GUILayout.Label($"무철 시험 ({(_phaseTwoMode ? "2페이즈 모드" : "1페이즈")}, 임시 수치, 운영 에셋 아님)  Flow {_brain.FlowState}  Phase {_brain.Phase}");
+            _guiScroll = GUILayout.BeginScrollView(_guiScroll);
+            GUILayout.Label($"무철 시험 ({(_phaseTwoMode ? (_hardP07Mode ? "2페이즈 모드 + 하드 P07" : "2페이즈 모드") : "1페이즈")}, 임시 수치, 운영 에셋 아님)  Flow {_brain.FlowState}  Phase {_brain.Phase}");
             GUILayout.Label($"Attack {_brain.AttackState}  Pattern {_brain.ActivePatternId}  PhaseState {_brain.PhaseState}");
             GUILayout.Label($"Boss HP {_body.Health:F0}/{_body.MaxHealth:F0} ({_body.HealthRate * PERCENT:F1}%)");
             GUILayout.Label($"Player HP {_player.Health:F0}/{_player.MaxHealth:F0}");
+            for (int i = 0; i < _extras.Count; ++i)
+            {
+                GUILayout.Label(_extras[i].Describe());
+            }
+
+            // 패널 아래쪽은 화면 밖으로 잘리기 쉬워 스위치를 맨 위에 둔다
+            if (_phaseTwoMode)
+            {
+                bool wantHard = GUILayout.Toggle(_hardP07Mode, "하드 P07 시험 스위치 (바꾸면 전투를 새로 시작)");
+                if (wantHard != _hardP07Mode)
+                {
+                    _hardChangeRequested = true;
+                    _hardRequestedValue  = wantHard;
+                }
+            }
 
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("패턴 실행 횟수");
@@ -208,6 +260,12 @@ namespace Shinshi.AI
                 }
             }
 
+            if (IsHardActive)
+            {
+                _counts.TryGetValue(MucheolPhase2PatternFactory.P07_ID, out int countSeven);
+                GUILayout.Label($"  {MucheolPhase2PatternFactory.P07_ID}  {countSeven}");
+            }
+
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("최근 순서 " + string.Join(" > ", _history));
             GUILayout.Label($"몸 방향 차이: 서버 방향과 {_bodyLagDegrees:F1}도");
@@ -217,6 +275,12 @@ namespace Shinshi.AI
             {
                 GUILayout.Label("2페이즈 순차 타격 마지막 타: " + _sequence.LastEvent);
                 GUILayout.Label("2페이즈 연속 돌진 마지막 시전: " + _multiDash.LastEvent);
+            }
+
+            if (IsHardActive)
+            {
+                GUILayout.Label("P07 전장 공격 마지막: " + _battlefield.LastEvent);
+                GUILayout.Label("P07 마지막 밀림: " + _battlefield.LastPush);
             }
 
             if (IsBossOnArenaBoundary())
@@ -249,6 +313,14 @@ namespace Shinshi.AI
                 }
 
                 GUILayout.EndHorizontal();
+
+                if (_hardP07Mode)
+                {
+                    if (GUILayout.Button(PHASE_TWO_LABEL + "P" + P07_ID_SUFFIX + " (하드 전장 공격)"))
+                    {
+                        _forced.PendingId = MucheolPhase2PatternFactory.P07_ID;
+                    }
+                }
             }
 
             if (!string.IsNullOrEmpty(_forced.PendingId))
@@ -294,6 +366,11 @@ namespace Shinshi.AI
                 {
                     _brain.CompleteHandoff();
                 }
+
+                if (_hardP07Mode)
+                {
+                    DrawHardTools();
+                }
             }
 
             if (GUILayout.Button("Kill boss"))
@@ -313,7 +390,97 @@ namespace Shinshi.AI
                 GUILayout.Label("2-P06 정의의 실행 구간은 세 번(3.45초)에 고정: 공용 공격 FSM이 실행 시간을 하나로 고정하는 제약. 두 번 달리면 남는 구간 동안 선다");
             }
 
+            GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        // 하드 P07 확인용 배치 도구. 위치만 바꾸고 판정은 건드리지 않는다
+        private void DrawHardTools()
+        {
+            GUILayout.Label("P07 시험 배치 (보스 정면 기준)");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("보스 중앙"))
+            {
+                PlaceBoss(false);
+            }
+
+            if (GUILayout.Button("보스 가장자리(+x)"))
+            {
+                PlaceBoss(true);
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("대상 안전지대(등 뒤)"))
+            {
+                PlaceTargets(-_body.Forward);
+            }
+
+            if (GUILayout.Button("대상 공격 영역(정면)"))
+            {
+                PlaceTargets(_body.Forward);
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("예고 중 보스 이동 + 회전"))
+            {
+                DisturbBoss();
+            }
+
+            if (GUILayout.Button("대상 체력 가득"))
+            {
+                SetTargetHealth(1f);
+            }
+
+            if (GUILayout.Button("대상 체력 낮춤"))
+            {
+                SetTargetHealth(LOW_HEALTH_RATE);
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        private void PlaceBoss(bool atEdge)
+        {
+            Vector3 center = transform.position;
+            float   limit  = (_arenaDiameter * HALF) - Constants.Combat.BOSS_BODY_RADIUS - BOUNDARY_MARGIN;
+
+            _body.Move(_body.Position, atEdge ? (center + (Vector3.right * limit)) : center, Constants.Combat.BOSS_BODY_RADIUS);
+        }
+
+        // 보스에서 direction 쪽으로 PLACE_DISTANCE 떨어진 줄에 플레이어와 동료와 소환물을 옆으로 벌려 세운다
+        private void PlaceTargets(Vector3 direction)
+        {
+            Vector3 side = Vector3.Cross(Vector3.up, direction);
+            Vector3 spot = _body.Position + (direction * PLACE_DISTANCE);
+
+            _player.Position = spot;
+            for (int i = 0; i < _extras.Count; ++i)
+            {
+                float lane = (i % LANE_SIDES == 0) ? -PLACE_SPREAD : PLACE_SPREAD;
+                _extras[i].Target.Position = spot + (side * (lane * ((i / LANE_SIDES) + 1)));
+            }
+        }
+
+        // 예고가 도는 중에 보스의 위치와 방향을 바꿔, 예고와 판정이 시작 순간의 값에 남는지 눈으로 본다
+        private void DisturbBoss()
+        {
+            Vector3 turned = Quaternion.AngleAxis(DISTURB_YAW, Vector3.up) * _body.Forward;
+
+            _body.Move(_body.Position, _body.Position + (turned * DISTURB_DISTANCE), Constants.Combat.BOSS_BODY_RADIUS);
+            _body.Face(turned);
+        }
+
+        private void SetTargetHealth(float rate)
+        {
+            _player.SetHealth(_player.MaxHealth * rate);
+            for (int i = 0; i < _extras.Count; ++i)
+            {
+                _extras[i].Target.SetHealth(_extras[i].Target.MaxHealth * rate);
+            }
         }
 
         private void OnDestroy()
@@ -327,6 +494,9 @@ namespace Shinshi.AI
         /****************************************
         *                Methods
         ****************************************/
+
+        // 하드 P07은 2페이즈 모드 안에서만 뜻이 있다
+        private bool IsHardActive => _phaseTwoMode && _hardP07Mode;
 
         private double ReadClock()
         {
@@ -368,7 +538,7 @@ namespace Shinshi.AI
         {
             _presenter.ClearAll();
 
-            _catalog = new MucheolDevCatalog(_arenaDiameter, _phaseTwoMode);
+            _catalog = new MucheolDevCatalog(_arenaDiameter, _phaseTwoMode, IsHardActive);
             _catalog.TryGetBoss(MucheolPatternFactory.BOSS_ID, out var boss);
 
             _registry = new CombatTargetRegistry(Constants.Combat.MAX_COMBAT_TARGETS);
@@ -383,9 +553,15 @@ namespace Shinshi.AI
             _body = new BossTestRigBody(_registry.IssueCombatId(), center, Vector3.forward,
                 boss.HealthRef * _referenceAttack * _healthScale, boss.Defense, Constants.Combat.BOSS_BODY_RADIUS,
                 center, boss.ArenaDiameter * HALF, lineOfSight);
-            _player = new EnemyTestRigPlayer(_registry.IssueCombatId(), center + _playerStart, PLAYER_MAX_HP);
+            _player = IsHardActive
+                ? new BossTestRigCombatant(_registry.IssueCombatId(), center + _playerStart, _hardPlayerHealth, _hardPlayerDefense, 0f)
+                : new BossTestRigCombatant(_registry.IssueCombatId(), center + _playerStart, PLAYER_MAX_HP, 0f, 0f);
             _registry.Register(_player);
             _registry.Register(_body);
+
+            _displacer = new BossTestRigDisplacer(_body);
+            _displacer.Register(_player);
+            RebuildExtraTargets();
 
             var bridge  = new BossTelegraphLocalBridge(_presenter, _body, ReadClock);
             var dashTap = new DashDeadlineTap(bridge, ReadClock, () => _brain.ActivePatternId, SetBodyDeadline);
@@ -401,12 +577,16 @@ namespace Shinshi.AI
             IBossPatternFactory patterns = factory;
             _sequence  = null;
             _multiDash = null;
+            _battlefield = null;
             if (_phaseTwoMode)
             {
                 _sequence  = new SequenceVisual(_presenter, _body, ReadClock, () => _brain.ActivePatternId);
                 _multiDash = new MultiDashVisual(_presenter, _body, ReadClock, () => _brain.ActivePatternId, SetBodyDeadline);
+                _battlefield = new BattlefieldVisual(_presenter, _body, ReadClock);
+
+                // 밀림 창구는 하드 스위치가 켜졌을 때만 준다. 꺼 두면 P07은 정의도 없고 팩토리도 만들지 않는다
                 var phaseTwo = new MucheolPhase2PatternFactory(_referenceHealth, MucheolDevCatalog.CreatePhaseTwoSpec(), _body, _catalog,
-                    new BoundaryMarginMovement(_body), _sequence, _multiDash);
+                    new BoundaryMarginMovement(_body), _sequence, _multiDash, IsHardActive ? _displacer : null, _battlefield);
                 patterns = new MucheolPatternFactoryChain(factory, phaseTwo);
             }
 
@@ -459,6 +639,35 @@ namespace Shinshi.AI
             {
                 _body.ApplyDamage(_body.Health - target, false, ReadClock());
             }
+        }
+
+        // 하드 스위치가 켜져 있으면 플레이어 옆에 테스트용 동료와 소환물을 등록한다. 둘 다 소환물(IsSummon)이라 보스 타깃 선택에서는 빠지고
+        // 범위 피해는 받는다. 방어력은 플레이어와 같게 두었고, 이 값은 실제 동료 능력치가 아니라 임시 시험값이다
+        private void RebuildExtraTargets()
+        {
+            for (int i = 0; i < _extras.Count; ++i)
+            {
+                _extras[i].Destroy();
+            }
+
+            _extras.Clear();
+            if (!IsHardActive)
+            {
+                return;
+            }
+
+            Vector3 spot = _player.Position;
+            AddExtraTarget("동료", Color.green, _player.MaxHealth * _hardCompanionRate, spot + (Vector3.left * PLACE_SPREAD));
+            AddExtraTarget("소환물", Color.cyan, _hardSummonHealth, spot + (Vector3.right * PLACE_SPREAD));
+        }
+
+        private void AddExtraTarget(string label, Color color, float health, Vector3 position)
+        {
+            var target = new BossTestRigCombatant(_registry.IssueCombatId(), position, health, _hardPlayerDefense, 0f,
+                isSummon: true, ownerCombatId: _player.CombatId);
+            _registry.Register(target);
+            _displacer.Register(target);
+            _extras.Add(new ExtraTargetView(label, target, color, transform));
         }
 
         // 시험 몸체의 경계는 전장 반지름에서 몸체 반경을 뺀 거리다. 거기에 정확히 닿아 끝나면 이후 돌진이 0m가 된다
@@ -530,6 +739,11 @@ namespace Shinshi.AI
 
             _playerBody.position = _player.Position + Vector3.up;
             _playerBody.gameObject.SetActive(_player.LifeState == EParticipantLifeState.Alive);
+
+            for (int i = 0; i < _extras.Count; ++i)
+            {
+                _extras[i].Apply();
+            }
 
             // 맞으면 잠깐 붉게 보여 판정이 났음을 알린다
             if (_player.Health < _lastPlayerHealth)
@@ -877,6 +1091,116 @@ namespace Shinshi.AI
             {
                 _presenter.CancelGroup(castInstanceId);
                 LastEvent = $"취소({reason})";
+            }
+        }
+
+        // 하드 P07 전장 공격을 예고 표현의 부채꼴로 보인다. 기존 부채꼴 연결부(BossTelegraphLocalBridge)는 부채꼴 알림을 월백 P02 ID로
+        // 그리고 조준 갱신 알림을 받는 계약이라 쓰지 않는다. 예고는 시작 때 한 번 그리고 이후 방향을 바꾸지 않는다
+        private sealed class BattlefieldVisual : IMucheolBattlefieldListener
+        {
+            private readonly BossTelegraphPresenter _presenter;
+            private readonly BossTestRigBody        _body;
+            private readonly Func<double>           _clock;
+            private readonly List<string>           _pushes = new List<string>();
+
+            public string LastEvent = "아직 없음";
+            public string LastPush  = "아직 없음";
+
+            public BattlefieldVisual(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock)
+            {
+                _presenter = presenter;
+                _body      = body;
+                _clock     = clock;
+            }
+
+            public void OnTelegraphStarted(int castInstanceId, Vector3 origin, Vector3 direction, float radius, float arcAngle,
+                float telegraphSeconds)
+            {
+                _pushes.Clear();
+                LastPush = "아직 없음";
+                _presenter.enabled = true;
+
+                BossTelegraphStart start = BossTelegraphStart.Fan(_body.CombatId, castInstanceId, MucheolPhase2PatternFactory.P07_ID,
+                    origin, direction, radius, arcAngle, _clock(), telegraphSeconds);
+                _presenter.BeginTelegraph(in start);
+
+                LastEvent = $"예고 시작, 저장 위치 {origin}, 저장 방향 {direction}, 반경 {radius:F0}m, 각도 {arcAngle:F0}도";
+            }
+
+            public void OnPushed(int castInstanceId, int combatId, float distance)
+            {
+                _pushes.Add($"#{combatId} {distance:F2}m");
+                LastPush = string.Join(", ", _pushes);
+            }
+
+            public void OnHit(int castInstanceId, int hitCount)
+            {
+                _presenter.Strike(castInstanceId, _clock());
+                LastEvent = $"타격 확정, 피해가 적용된 대상 {hitCount}명";
+            }
+
+            public void OnCancelled(int castInstanceId, EBossInterruptReason reason)
+            {
+                _presenter.Cancel(castInstanceId);
+                LastEvent = $"취소({reason})";
+            }
+        }
+
+        // 하드 시험에서 플레이어 곁에 세우는 동료와 소환물의 대역과 화면의 캡슐
+        private sealed class ExtraTargetView
+        {
+            private readonly string    _label;
+            private readonly Color     _color;
+            private readonly Transform _body;
+            private readonly Renderer  _renderer;
+
+            private float _lastHealth;
+            private float _flashUntil;
+
+            public BossTestRigCombatant Target { get; }
+
+            public ExtraTargetView(string label, BossTestRigCombatant target, Color color, Transform parent)
+            {
+                _label = label;
+                Target = target;
+                _color = color;
+
+                GameObject capsule = TestRigDisplay.CreatePrimitive(PrimitiveType.Capsule);
+                capsule.name = "Test" + label;
+                UnityEngine.Object.Destroy(capsule.GetComponent<Collider>());
+                capsule.transform.SetParent(parent, false);
+                capsule.transform.localScale = Vector3.one * EXTRA_BODY_SCALE;
+
+                _body       = capsule.transform;
+                _renderer   = capsule.GetComponent<Renderer>();
+                _lastHealth = target.Health;
+            }
+
+            public string Describe()
+            {
+                return $"{_label} HP {Target.Health:F0}/{Target.MaxHealth:F0} 위치 {Target.Position}";
+            }
+
+            public void Apply()
+            {
+                _body.position = Target.Position + (Vector3.up * EXTRA_BODY_SCALE);
+                _body.gameObject.SetActive(Target.LifeState == EParticipantLifeState.Alive);
+
+                if (Target.Health < _lastHealth)
+                {
+                    _flashUntil = Time.time + HIT_FLASH_SECONDS;
+                }
+
+                _lastHealth = Target.Health;
+                _renderer.material.color = (Time.time < _flashUntil) ? Color.red : _color;
+            }
+
+            public void Destroy()
+            {
+                if (_body != null)
+                {
+                    UnityEngine.Object.Destroy(_body.gameObject);
+                }
             }
         }
 

@@ -12,9 +12,11 @@ namespace Shinshi.AI
     // 강화 구간 기준은 보스 정의의 EnhancedHealthRate를 카탈로그에서 읽어 선택 가중치의 강화 구간과 같은 기준을 쓴다.
     // 방향이 있는 P01, P02, P05는 무철 전용 조준(naturalAim)을 켜 첫 조준이 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿는다.
     // P04는 방향이 없는 원형이라 켜지 않고, P03과 P06은 돌진마다 예고 시작에 대상 쪽으로 바로 조준하는 연속 돌진 실행이다.
+    // P07은 하드 전용 전장 공격이다. 맞은 대상을 미는 창구(IBossHitDisplacer)가 있어야만 만든다. 운영 서버에는 그 창구의 구현이 아직 없어
+    // 창구 없이 만들면 밀림 규칙이 빠진 채로 시전되기 때문이다. 어떤 난이도에서 후보가 되는지는 카탈로그가 정하고 이 팩토리는 모른다.
     // 운영 서버 두뇌는 아직 이 팩토리를 쓰지 않는다. 폭주 돌진(P06)은 공용 공격 FSM이 실행 시간을 고정해 횟수별 실행 시간을 줄 수 없어
     // 운영 후보에 넣지 않는다(승인 요청은 전달 문서에 있다)
-    /// <summary> 무철 2페이즈 패턴 정의로 실행 객체를 만든다, mucheol_ph2_p01~p06 </summary>
+    /// <summary> 무철 2페이즈 패턴 정의로 실행 객체를 만든다, mucheol_ph2_p01~p07 </summary>
     public sealed class MucheolPhase2PatternFactory : IBossPatternFactory, IBossPatternAvailability
     {
         /****************************************
@@ -27,6 +29,7 @@ namespace Shinshi.AI
         public const string P04_ID = "mucheol_ph2_p04";
         public const string P05_ID = "mucheol_ph2_p05";
         public const string P06_ID = "mucheol_ph2_p06";
+        public const string P07_ID = "mucheol_ph2_p07";
 
         /****************************************
         *                Fields
@@ -39,6 +42,8 @@ namespace Shinshi.AI
         private readonly IBossMovement                     _movement;
         private readonly IMucheolSequenceTelegraphListener _sequenceListener;
         private readonly IMucheolMultiDashListener         _dashListener;
+        private readonly IBossHitDisplacer                 _displacer;
+        private readonly IMucheolBattlefieldListener       _battlefieldListener;
 
         /****************************************
         *                Methods
@@ -48,20 +53,23 @@ namespace Shinshi.AI
         // vitals와 catalog는 연속 돌진의 강화 구간 판정에 쓴다. movement는 연속 돌진이 보스 몸체를 옮기는 창구이며 없으면 P03과 P06을 만들지 않는다
         public MucheolPhase2PatternFactory(float referenceHealth, MucheolPhase2Spec spec, IBossVitals vitals,
             IBossPatternCatalog catalog, IBossMovement movement = null, IMucheolSequenceTelegraphListener sequenceListener = null,
-            IMucheolMultiDashListener dashListener = null)
+            IMucheolMultiDashListener dashListener = null, IBossHitDisplacer displacer = null,
+            IMucheolBattlefieldListener battlefieldListener = null)
         {
             if (referenceHealth <= 0f)
             {
                 throw new ArgumentOutOfRangeException(nameof(referenceHealth));
             }
 
-            _referenceHealth  = referenceHealth;
-            _spec             = spec ?? throw new ArgumentNullException(nameof(spec));
-            _vitals           = vitals ?? throw new ArgumentNullException(nameof(vitals));
-            _catalog          = catalog ?? throw new ArgumentNullException(nameof(catalog));
-            _movement         = movement;
-            _sequenceListener = sequenceListener;
-            _dashListener     = dashListener;
+            _referenceHealth     = referenceHealth;
+            _spec                = spec ?? throw new ArgumentNullException(nameof(spec));
+            _vitals              = vitals ?? throw new ArgumentNullException(nameof(vitals));
+            _catalog             = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _movement            = movement;
+            _sequenceListener    = sequenceListener;
+            _dashListener        = dashListener;
+            _displacer           = displacer;
+            _battlefieldListener = battlefieldListener;
         }
 
         // Create가 null을 돌려줄 조건과 같아야 한다
@@ -86,6 +94,8 @@ namespace Shinshi.AI
                     return (_spec.P03 != null) && (_movement != null);
                 case P06_ID:
                     return (_spec.P06 != null) && (_movement != null);
+                case P07_ID:
+                    return (_spec.P07 != null) && (_displacer != null);
                 default:
                     return false;
             }
@@ -110,6 +120,8 @@ namespace Shinshi.AI
                     return new MucheolSequencePattern(_referenceHealth, _spec.P05, _sequenceListener, naturalAim: true);
                 case P03_ID:
                     return new MucheolMultiDashPattern(_referenceHealth, _movement, _spec.P03, ResolveDashCount(_spec.P03), _dashListener);
+                case P07_ID:
+                    return new MucheolBattlefieldBlastPattern(_referenceHealth, _spec.P07, _displacer, _battlefieldListener);
                 default:
                     return new MucheolMultiDashPattern(_referenceHealth, _movement, _spec.P06, ResolveDashCount(_spec.P06), _dashListener);
             }
