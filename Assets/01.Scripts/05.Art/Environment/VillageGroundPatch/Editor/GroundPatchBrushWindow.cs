@@ -33,8 +33,9 @@ namespace Shinshi.Art.Editor
         private const string MENU_PATH          = "Shinshi/Art/Environment/바닥 패치 브러시";
         private const string WINDOW_TITLE       = "바닥 패치 브러시";
         private const string MESH_FOLDER        = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/Meshes";
-        private const string GRASS_MATERIAL_A   = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/Materials/M_VillageGrassPatch_A.mat";
-        private const string GRASS_MATERIAL_B   = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/Materials/M_VillageGrassPatch_B.mat";
+        private const string GRASS_MATERIAL_DIR = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/Materials/";
+        private const string GRASS_NAME_PREFIX  = "M_VillageGrassPatch_";
+        private const string RANDOM_COLOR_LABEL = "무작위";
         private const string DIRT_MATERIAL      = "Assets/01.Scripts/05.Art/Environment/DungeonTripo/DVFX_Pack/Materials/M_DVFX_DirtTransition.mat";
         private const string ROOT_NAME          = "16_GroundPatches";
         private const string MESH_PREFIX        = "SM_VillageGroundPatch_";
@@ -62,7 +63,18 @@ namespace Shinshi.Art.Editor
         private const float  MIN_ERASE_RADIUS   = 0.1f;
         private const int    VERTS_PER_TRIANGLE = 3;
 
+        private static readonly string[] G_GrassMaterialPaths =
+        {
+            GRASS_MATERIAL_DIR + "M_VillageGrassPatch_A.mat",
+            GRASS_MATERIAL_DIR + "M_VillageGrassPatch_B.mat",
+            GRASS_MATERIAL_DIR + "M_VillageGrassPatch_Lush.mat",
+            GRASS_MATERIAL_DIR + "M_VillageGrassPatch_Fresh.mat",
+            GRASS_MATERIAL_DIR + "M_VillageGrassPatch_Dry.mat",
+            GRASS_MATERIAL_DIR + "M_VillageGrassPatch_Moss.mat"
+        };
+
         [SerializeField] private EBrushMode       _mode           = EBrushMode.Paint;
+        [SerializeField] private int              _grassColor     = 0; // 0이면 무작위, 그 밖은 재질 목록 순번 + 1
         [SerializeField] private float            _eraseRadius    = 1.5f;
         [SerializeField] private EGroundPatchKind _kind           = EGroundPatchKind.Grass;
         [SerializeField] private Material[]       _grassMaterials = new Material[0];
@@ -93,9 +105,10 @@ namespace Shinshi.Art.Editor
 
         private void OnEnable()
         {
-            if (_grassMaterials.Length == 0)
+            // 창이 이전 목록을 기억하고 있어도 새로 추가된 색상 재질이 빠지지 않게 기본 목록보다 짧으면 다시 채운다
+            if (_grassMaterials.Length < G_GrassMaterialPaths.Length)
             {
-                _grassMaterials = LoadMaterials(GRASS_MATERIAL_A, GRASS_MATERIAL_B);
+                _grassMaterials = LoadMaterials(G_GrassMaterialPaths);
             }
 
             if (_dirtMaterials.Length == 0)
@@ -141,7 +154,12 @@ namespace Shinshi.Art.Editor
             EditorGUILayout.LabelField("풀", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_grassMinRadius)), new GUIContent("최소 반경(m)"));
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_grassMaxRadius)), new GUIContent("최대 반경(m)"));
-            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_grassMaterials)), new GUIContent("재질 (무작위 선택)"), true);
+            _grassColor = EditorGUILayout.Popup("색상", _grassColor, BuildColorLabels());
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_grassMaterials)), new GUIContent("재질 목록"), true);
+            if (GUILayout.Button("선택한 풀 패치 색상 섞기"))
+            {
+                ShuffleSelectedGrassColors();
+            }
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("흙", EditorStyles.boldLabel);
@@ -430,8 +448,7 @@ namespace Shinshi.Art.Editor
 
         private void StampPatch(RaycastHit hit)
         {
-            Material[] materials = (_kind == EGroundPatchKind.Grass) ? _grassMaterials : _dirtMaterials;
-            Material material = PickMaterial(materials);
+            Material material = (_kind == EGroundPatchKind.Grass) ? PickGrassMaterial() : PickMaterial(_dirtMaterials);
             if (material == null)
             {
                 Debug.LogWarning("[GroundPatch] 재질이 비어 있어 찍지 않는다");
@@ -808,6 +825,53 @@ namespace Shinshi.Art.Editor
             }
 
             return null;
+        }
+
+        private Material PickGrassMaterial()
+        {
+            int index = _grassColor - 1;
+            if ((index >= 0) && (index < _grassMaterials.Length) && (_grassMaterials[index] != null))
+            {
+                return _grassMaterials[index];
+            }
+
+            return PickMaterial(_grassMaterials);
+        }
+
+        private string[] BuildColorLabels()
+        {
+            var labels = new string[_grassMaterials.Length + 1];
+            labels[0] = RANDOM_COLOR_LABEL;
+            for (int i = 0; i < _grassMaterials.Length; ++i)
+            {
+                labels[i + 1] = (_grassMaterials[i] != null) ? _grassMaterials[i].name.Replace(GRASS_NAME_PREFIX, string.Empty) : string.Empty;
+            }
+
+            return labels;
+        }
+
+        // 선택한 오브젝트와 그 자식 중 풀 재질을 쓰는 패치에 목록의 재질을 무작위로 다시 준다
+        private void ShuffleSelectedGrassColors()
+        {
+            var grassSet = new HashSet<Material>(_grassMaterials);
+            int changed = 0;
+            foreach (GameObject selected in Selection.gameObjects)
+            {
+                foreach (MeshRenderer patch in selected.GetComponentsInChildren<MeshRenderer>())
+                {
+                    if (!grassSet.Contains(patch.sharedMaterial))
+                    {
+                        continue;
+                    }
+
+                    Undo.RecordObject(patch, WINDOW_TITLE);
+                    patch.sharedMaterial = PickMaterial(_grassMaterials);
+                    EditorSceneManager.MarkSceneDirty(patch.gameObject.scene);
+                    ++changed;
+                }
+            }
+
+            Debug.Log($"[GroundPatch] 풀 패치 {changed}개의 색상을 섞었다");
         }
 
         private static Material PickMaterial(Material[] materials)
