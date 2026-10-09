@@ -141,12 +141,15 @@ namespace Shinshi.Data
         [SerializeField] private string[]          _baseWardrobeRecipes = { "underwear_white_granit_top_Recipe", "underwear_white_granit_bottom_Recipe" };
         [SerializeField] private string            _hairWardrobeSlot    = "Hair";
         [SerializeField] private ClassHair[]       _classHairs          = CreateDefaultClassHairs();
+        [SerializeField] private ClassHair[]       _newClassHairs       = CreateDefaultNewClassHairs();  // 검사, 마검사, 궁수
         [SerializeField] private GearSlotMapping[] _gearSlots           = CreateDefaultGearSlots();
 
         [Header("UMA 생성기 - 마을에 여러 명이 한꺼번에 들어올 때 프레임 튐을 막는다")]
         [SerializeField] private int  _generatorIterationCount    = 1;      // 프레임당 처리할 생성 단계 수
         [SerializeField] private int  _generatorInterFrameDelay   = 1;      // 생성 사이에 쉬는 프레임 수
         [SerializeField] private bool _generatorProcessAllPending = false;  // 켜면 대기 중인 모두를 한 프레임에 처리한다
+
+        [NonSerialized] private ClassHair[] _allClassHairs;
 
         public string                          RaceName                   => _raceName;
         public IReadOnlyList<SliderDefinition> FaceSliders                => _faceSliders;
@@ -161,7 +164,7 @@ namespace Shinshi.Data
         public IReadOnlyList<Color>            LipColors                  => _lipColors;
         public IReadOnlyList<string>           BaseWardrobeRecipes        => _baseWardrobeRecipes;
         public string                          HairWardrobeSlot           => _hairWardrobeSlot;
-        public IReadOnlyList<ClassHair>        ClassHairs                 => _classHairs;
+        public IReadOnlyList<ClassHair>        ClassHairs                 => GetAllClassHairs();
         public int                             GeneratorIterationCount    => _generatorIterationCount;
         public int                             GeneratorInterFrameDelay   => _generatorInterFrameDelay;
         public bool                            GeneratorProcessAllPending => _generatorProcessAllPending;
@@ -173,17 +176,54 @@ namespace Shinshi.Data
         /// <summary> 직업의 고정 헤어, 정의가 없으면 false </summary>
         public bool TryGetClassHair(EPlayerClass playerClass, out ClassHair hair)
         {
-            for (int i = 0; i < _classHairs.Length; ++i)
+            ClassHair[] all = GetAllClassHairs();
+            for (int i = 0; i < all.Length; ++i)
             {
-                if ((_classHairs[i] != null) && (_classHairs[i].PlayerClass == playerClass))
+                if ((all[i] != null) && (all[i].PlayerClass == playerClass))
                 {
-                    hair = _classHairs[i];
+                    hair = all[i];
                     return true;
                 }
             }
 
             hair = null;
             return false;
+        }
+
+        // 구 직업 헤어 뒤에 신규 직업 헤어를 이은 목록, 처음 읽을 때 한 번 만들고 재사용한다
+        private ClassHair[] GetAllClassHairs()
+        {
+            if (_allClassHairs != null)
+            {
+                return _allClassHairs;
+            }
+
+            int legacyCount = (_classHairs == null) ? 0 : _classHairs.Length;
+            int newCount    = (_newClassHairs == null) ? 0 : _newClassHairs.Length;
+            var merged      = new ClassHair[legacyCount + newCount];
+            for (int i = 0; i < legacyCount; ++i)
+            {
+                merged[i] = _classHairs[i];
+            }
+
+            for (int i = 0; i < newCount; ++i)
+            {
+                merged[legacyCount + i] = _newClassHairs[i];
+            }
+
+            _allClassHairs = merged;
+            return merged;
+        }
+
+        protected override void OnValidate()
+        {
+            _allClassHairs = null;
+            base.OnValidate();
+        }
+
+        private void OnEnable()
+        {
+            _allClassHairs = null;
         }
 
         /// <summary> 저장된 hairId를 그 직업이 쓸 수 있는지, 지금은 직업 기본 헤어만 허용한다 </summary>
@@ -331,11 +371,12 @@ namespace Shinshi.Data
         {
             var hairIds = new HashSet<int>();
             var classes = new HashSet<EPlayerClass>();
-            int count   = (_classHairs == null) ? 0 : _classHairs.Length;
+            ClassHair[] all = GetAllClassHairs();
+            int count   = all.Length;
 
             for (int i = 0; i < count; ++i)
             {
-                ClassHair hair = _classHairs[i];
+                ClassHair hair = all[i];
                 if (hair == null)
                 {
                     errors.Add($"{owner}.{nameof(_classHairs)}[{i}]: 항목이 비어 있다");
@@ -516,6 +557,17 @@ namespace Shinshi.Data
                 new ClassHair(EPlayerClass.Warrior,  1, "HairPonytail_Recipe"),
                 new ClassHair(EPlayerClass.Sorcerer, 2, "Hair_Bun_Recipe"),
                 new ClassHair(EPlayerClass.Summoner, 3, "Hair_LongSwept_Recipe")
+            };
+        }
+
+        // 이미 저장된 AvatarCatalog 에셋의 _classHairs 길이는 유지되므로 신규 직업은 별도 배열의 기본값으로 받는다
+        private static ClassHair[] CreateDefaultNewClassHairs()
+        {
+            return new[]
+            {
+                new ClassHair(EPlayerClass.Swordsman,  4, "HairPonytail_Recipe"),
+                new ClassHair(EPlayerClass.Mageknight, 5, "Hair_Bun_Recipe"),
+                new ClassHair(EPlayerClass.Archer,     6, "Hair_LongSwept_Recipe")
             };
         }
 

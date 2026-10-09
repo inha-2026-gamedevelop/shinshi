@@ -313,6 +313,9 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; al
 .class-0 { --class-color: #ff5a5f; }
 .class-1 { --class-color: #a78bfa; }
 .class-2 { --class-color: #2dd4bf; }
+.class-3 { --class-color: #fb923c; }
+.class-4 { --class-color: #60a5fa; }
+.class-5 { --class-color: #a3e635; }
 .class-x { --class-color: #a3a3a3; }
 
 /* 막대 너비(5% 단위) */

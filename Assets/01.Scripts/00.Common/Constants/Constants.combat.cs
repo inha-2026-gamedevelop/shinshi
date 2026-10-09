@@ -67,7 +67,10 @@ namespace Shinshi.Common
             public const int MAX_CATCHUP_TICKS = 3;
 
             // 플레이어당 동시에 남는 장판, 투사체 실행 버퍼 상한
-            public const int MAX_SKILL_EFFECTS_PER_PLAYER = 8;
+            public const int MAX_SKILL_EFFECTS_PER_PLAYER = 12;
+
+            // 관통 투사체 하나가 기억하는 맞힌 대상 상한. 넘는 관통 수는 이 값으로 잘린다
+            public const int MAX_PIERCE_HITS_PER_PROJECTILE = 8;
             public const int RESONANCE_LEDGER_CAPACITY    = 256;
             public const int COMPANIONS_PER_PLAYER        = 2;
 
@@ -91,7 +94,7 @@ namespace Shinshi.Common
             public const float PLAYER_BODY_RADIUS    = 0.5f;
             public const float COMPANION_BODY_RADIUS = 0.5f;
 
-            // TODO(민성): 기획 미정, 보스 몸체 반경 임시값(m). 보스 정의 데이터에 몸체 크기가 생기면 그 값을 쓴다
+            // TODO(기웅): 기획 미정, 보스 몸체 반경 임시값(m). 보스 정의 데이터에 몸체 크기가 생기면 그 값을 쓴다
             public const float BOSS_BODY_RADIUS      = 2f;
 
             // 몸체에 막히는지 볼 대상을 찾을 때 이동 거리에 더하는 여유(m). 가장 큰 몸체(보스) 반경보다 커야 한다

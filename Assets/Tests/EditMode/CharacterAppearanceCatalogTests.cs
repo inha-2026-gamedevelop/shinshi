@@ -131,8 +131,25 @@ namespace Shinshi.Tests
         *                Helpers
         ****************************************/
 
+        [TestCase(ContractCodes.PlayerClass.SWORDSMAN)]
+        [TestCase(ContractCodes.PlayerClass.MAGEKNIGHT)]
+        [TestCase(ContractCodes.PlayerClass.ARCHER)]
+        public void TryResolve_NewClass_AcceptsNullAndLegacyAsClassDefault(int classId)
+        {
+            Assert.IsTrue(CharacterAppearanceCatalog.TryResolve(classId, null, out CharacterAppearance nullCanonical));
+            Assert.IsTrue(nullCanonical.ContentEquals(CharacterAppearanceCatalog.CreateDefault(classId)));
+
+            CharacterAppearance legacy = new CharacterAppearance(CharacterAppearance.VERSION_1,
+                CharacterAppearance.BODY_TYPE_FEMALE, NewSliders(CharacterAppearance.FACE_SLIDER_COUNT),
+                NewSliders(CharacterAppearance.BODY_SLIDER_COUNT), CharacterAppearance.SLIDER_NEUTRAL,
+                CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN,
+                CharacterAppearance.VALUE_MIN, CharacterAppearance.VALUE_MIN);
+            Assert.IsTrue(CharacterAppearanceCatalog.TryResolve(classId, legacy, out CharacterAppearance legacyCanonical));
+            Assert.IsTrue(legacyCanonical.ContentEquals(CharacterAppearanceCatalog.CreateDefault(classId)));
+        }
+
         [TestCase(-1)]
-        [TestCase(3)]
+        [TestCase(6)]
         public void TryResolve_UnknownClass_RejectsNullAndLegacy(int classId)
         {
             Assert.IsFalse(CharacterAppearanceCatalog.TryResolve(classId, null, out CharacterAppearance nullCanonical));

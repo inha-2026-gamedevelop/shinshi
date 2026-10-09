@@ -25,7 +25,7 @@
 
 | 영역 | 항목 |
 |---|---|
-| 플레이어 | 위치, HP, 기력, 공명, 수련·장비·부적에서 계산한 능력치 (캐릭터 레벨·경험치 없음) |
+| 플레이어 | 위치, HP, 기력, 공명, 수련·장비·부적에서 계산한 능력치. 2026-10-08 추가된 캐릭터 경험치·레벨 및 레벨 기본 능력치도 서버 권위이며 코드·저장·동기화 적용은 미완료([레벨 기준안](../design/character-level-growth.md)) |
 | 전투 | 공격 판정, 피격 판정, 타이밍 판정 성공 여부 |
 | 투사체 | 궤적, 유도 대상, 명중 판정 |
 | 적 | AI 상태, HP, 스폰 위치와 시점 |
@@ -235,6 +235,8 @@ public override void OnClientConnect()
 
 현재 `PlayerInputHeader`는 session epoch·sequence·추정 서버 시각을 담고 `PlayerInputGate`가 결합된 참가자·순서·허용 시각을 검증한다. 시각 허용 창은 [Constants.network.cs](../../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)의 과거 150ms·미래 50ms다. 서버 틱은 30Hz, 플레이어 위치 복제는 초기 15Hz, 적·마을 원격은 10Hz이며 수용량·체감 측정 뒤 조정한다. 아래 판정 창 ID·소비 계약은 타이밍 창을 추가할 때의 요구사항이며 현재 모든 타이밍 기술이 구현됐다는 뜻은 아니다.
 
+입력 주기 상한(초당 30건, `INPUT_SEND_RATE_MAX`)을 넘긴 입력은 항상 버린다. 10초 창 안에서 상한을 넘긴 1초 구간이 5번이 되면 서버가 연결을 끊고 참가자 ID와 위반 횟수를 로그로 남긴다. 지연으로 묶여 온 패킷의 일시 초과는 이 횟수 안에서 허용한다(2026-10-08 팀장 결정, 미구현).
+
 ### 판정 창을 추가할 때
 
 1. 서버가 판정 창별 ID, 대상, 시작·종료 서버 시각, 소비 여부를 보유
@@ -301,7 +303,7 @@ public override void OnClientConnect()
 - 동시 접속은 거절하며 사용자 문구는 **“이미 접속 중인 계정”**, 코드 `AlreadyConnected(809)`다. 늦은 끊김 감지를 기다리는 같은 토큰 재시도와 실제 던전 재입장 토큰 발급을 구분한다. 진행 중 재접속 유예에서는 원래 서버 개체가 피격·사망·타이머를 계속 받고, 복귀 시 같은 참가자에게 재결합한다. 자세한 흐름은 [협업 문서 9장](SERVER_CLIENT_WORKFLOW.md#9-인증재접속서버-수명-연결)을 따른다.
 - 백엔드 일시 불가 `BackendUnavailable(810)`와 호출 제한 `RateLimited(811)`을 토큰 변조 사유와 구분한다. 정산 상한 초과는 `SettlementLimitExceeded(904)`다. 값의 원본은 [ERejectReason](../../Assets/01.Scripts/00.Common/Types/ERejectReason.cs)과 [ContractCodes](../../Assets/01.Scripts/00.Common/Contracts/ContractCodes.cs)다.
 - 서버는 [SettlementGrant](../../Assets/01.Scripts/00.Common/Contracts/Sessions/SettlementGrant.cs)의 지갑 자산 칸(정기·정련편·티켓·엽전), 아이템 칸과 부적 칸을 구분해 정산안을 보낸다. 정산 아이템은 계정 귀속이다. 지갑 자산을 일반 아이템 ID로 지급하지 않는다. API는 정산안의 상한·자격·멱등성·원장과 트랜잭션을 확인하고 게임 처치를 다시 시뮬레이션하지 않는다.
-- 서비스 장애 취소는 완료 웨이브 기본 정기 전액과 적립 추가 정기 50%(내림)를 지급한다(2026-10-01 결정). [SettlementRules](../../Assets/01.Scripts/98.Servers/01.Network/Session/Settlement/SettlementRules.cs)의 계산과 API 복구 정산 경로는 있다. `SessionConfigSO` 기본 정책은 아직 `Undecided`이고 비개발 빌드 검증기가 이를 막으므로 SO 설정 반영을 확인해야 한다.
+- 서비스 장애 취소의 현행 정책은 완료 웨이브 기본 정기와 서버 원장으로 확인된 미정산 추가 정기를 모두 100% 지급하는 것이다(2026-10-08 사용자 결정, 기존 추가 50% 정책 대체). 현재 `SettlementRules`와 API 복구 정산은 추가 50%, `Assets/09.Data/Session/SessionConfig.asset`의 정책은 1(`HalfLoss`)이므로 새 정책 적용·회귀 검증이 필요하다. 일반 실패·포기의 추가 정기 50% 보존은 유지한다. 상세는 [기술 설계](../03-technical-design.md)와 [로드맵](../05-implementation-roadmap.md)을 따른다.
 - 운영 제어는 관리자 API·CLI로 한다(2026-10-01 결정). 게임 클라이언트에 관리자 경제 쓰기 경로를 두지 않는다. DTO 원본은 [Contracts](../../Assets/01.Scripts/00.Common/Contracts/ApiRoutes.cs)이며 [백엔드 Contracts csproj](../../Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj)가 소스를 링크한다.
 
 ### 7.2 호스팅 단계 (확정, 2026-09-30)

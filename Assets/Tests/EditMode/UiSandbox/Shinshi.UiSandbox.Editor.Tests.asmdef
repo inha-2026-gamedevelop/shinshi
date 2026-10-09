@@ -1,0 +1,29 @@
+{
+    "name": "Shinshi.UiSandbox.Editor.Tests",
+    "rootNamespace": "Shinshi.Tests",
+    "references": [
+        "Shinshi.UiSandbox.Editor",
+        "Shinshi.Runtime",
+        "Shinshi.Contracts",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
+        "Mirror",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

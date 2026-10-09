@@ -21,6 +21,7 @@ Material:
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 2000
   stringTagMap:
+    RenderType: Opaque
     ShinshiProduction: shinshi-dungeon-tripo-20261007|D:/SHINSHIART/Tripo/CampfireLogs/Processed/Props/CampfireLogs
   disabledShaderPasses: []
   m_LockedProperties: 
@@ -52,7 +53,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 7c45211297b103944ae5cb9c6c39c489, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:

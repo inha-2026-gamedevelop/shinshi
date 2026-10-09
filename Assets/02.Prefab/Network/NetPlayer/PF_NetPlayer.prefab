@@ -144,6 +144,9 @@ GameObject:
   - component: {fileID: 6357300329141890245}
   - component: {fileID: 3928697706582662904}
   - component: {fileID: 5502222593023159885}
+  - component: {fileID: 5195532964739581056}
+  - component: {fileID: 7705905882241478004}
+  - component: {fileID: 8796973754014022743}
   m_Layer: 0
   m_Name: PF_NetPlayer
   m_TagString: Untagged
@@ -418,3 +421,65 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2dfa2b27b31a3343ba3b9334b3db7d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerCharacterCombatAnimationView
+--- !u!114 &5195532964739581056
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94e5995177fb93e43a8a882825c09f7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.SwordsmanMagicSlashView
+  _combat: {fileID: 7582053140134925329}
+  _basicPrefab: {fileID: 3620229305196540495, guid: 222c1b034fe90ab47a0fbba4c8f87b02, type: 3}
+  _widePrefab: {fileID: 188683641221598548, guid: 6a10759e25bd2ad43a351a54cb91140c, type: 3}
+  _dashPrefab: {fileID: 5246000443518733147, guid: a00aee7ab56c8014d9aa51c20be13d8a, type: 3}
+  _focusPrefab: {fileID: 831998015095478791, guid: 7f822fb59a611ae49b0ce2791a54870d, type: 3}
+  _chainPrefab: {fileID: 792755643059424191, guid: e078137535efca143a674f71d8e0014f, type: 3}
+  _chainSecondPrefab: {fileID: 3063658003728123891, guid: 7ee697859b3538d44b89ee61e93bfccb, type: 3}
+  _poolSizePerPrefab: 2
+  _maxPlaySeconds: 3
+  _maxLateSeconds: 0.25
+  _heightOffset: 0
+--- !u!114 &7705905882241478004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 180358ae6ff7c3b48b9d05515c5f343d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.MageknightVfxView
+  _combat: {fileID: 7582053140134925329}
+  _basicPrefab: {fileID: 223175418192766026, guid: 3bc2891cd978f6546b860b63c7c5f3c0, type: 3}
+  _arcanePrefab: {fileID: 4401836618647935956, guid: 7547c47df363fe34b9ec851f973a197c, type: 3}
+  _fieldPrefab: {fileID: 3181935672943181347, guid: 233c55ce434826444aead7c0a1b823fc, type: 3}
+  _sealPrefab: {fileID: 5636803044710103467, guid: ea0aca9bba3e176478fb4937762b9857, type: 3}
+  _wavePrefab: {fileID: 4023686897370039170, guid: 876b03aa451a003449aa0271094656bd, type: 3}
+  _poolSizePerPrefab: 2
+  _maxPlaySeconds: 3
+  _maxLateSeconds: 0.25
+  _heightOffset: 0
+--- !u!114 &8796973754014022743
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 597e016ad5f918345afc4ef2918d327d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.ArcherVfxView
+  _combat: {fileID: 7582053140134925329}
+  _arrowPrefab: {fileID: 3150555367362999579, guid: 156154de3e00a734e8cc7ca5f509aa0b, type: 3}
+  _muzzlePrefab: {fileID: 6914791226151446844, guid: a38dc3650a052ca47859f451e7282470, type: 3}
+  _windPrefab: {fileID: 5249418338576633219, guid: 832286be7a104c14f8b6fc35d03b9d81, type: 3}
+  _windMuzzlePrefab: {fileID: 3281536283908561520, guid: da3342042f8469049a2f8303635eb003, type: 3}

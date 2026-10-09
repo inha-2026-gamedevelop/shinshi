@@ -31,10 +31,9 @@ namespace Shinshi.Art
         private static readonly int   _actionIndexHash = Animator.StringToHash("ActionIndex");
         private static readonly int   _actionSpeedHash = Animator.StringToHash("ActionSpeed");
         private static readonly int   _aliveHash       = Animator.StringToHash("Alive");
-        private static readonly int[] G_SkillStates    = { Animator.StringToHash("Skill0"), Animator.StringToHash("Skill1"),
-                                                            Animator.StringToHash("Skill2"), Animator.StringToHash("Skill3"),
-                                                            Animator.StringToHash("Skill4"), Animator.StringToHash("Skill5"),
-                                                            Animator.StringToHash("Skill6") };
+
+        // 기술 상태 이름 해시, [행동 인덱스][분절]. 첫 분절은 Skill{i}, 이어지는 분절은 Skill{i}_{s}다
+        private static readonly int[][] G_SkillStates = BuildSkillStateHashes();
 
         private const int BASE_LAYER = 0;
 
@@ -53,6 +52,11 @@ namespace Shinshi.Art
         private bool  _hasHealthDrop  = false;
         private float _lastHealth     = -1f;
         private int   _hitSide        = 0;
+
+        private bool         _hasIntervalCache = false;
+        private bool         _hasInterval      = false;
+        private EPlayerClass _intervalClass    = EPlayerClass.Warrior;
+        private float        _interval         = 0f;
 
         /****************************************
         *              Unity Event
@@ -148,6 +152,9 @@ namespace Shinshi.Art
             _combat        = combat;
             _profile       = profile;
             _needsBaseline = true;
+            _attackIndex   = -1;
+
+            _hasIntervalCache = false;
             if (_combat != null)
             {
                 _combat.HealthChanged += OnHealthChanged;
@@ -210,40 +217,102 @@ namespace Shinshi.Art
             Fire(_dodgeHash, 0, speed, "Dodge");
         }
 
+        // 신규 직업은 프로필에 배정된 단계만 재생한다. 배정이 없으면(정식 배정 보류) 대체 클립도 속도 강제도 없이 아무것도 재생하지 않는다
         private void PlayAttack()
         {
+            EPlayerClass playerClass = _combat.PlayerClass;
+            int  stepCount = _profile.GetAttackStepCount(playerClass);
+            bool isLegacy  = (stepCount == 0) && (PlayerCombatAnimationProfileSO.IsLegacyClass(playerClass));
+            if ((stepCount == 0) && (!isLegacy))
+            {
+                return;
+            }
+
+            int comboCount = isLegacy ? PlayerCombatAnimationProfileSO.ATTACK_COUNT : stepCount;
             float now = Time.unscaledTime;
-            _attackIndex    = CombatAnimationTriggerRules.NextAttackIndex(_attackIndex, now - _lastAttackTime, _profile.ComboResetSeconds,
-                PlayerCombatAnimationProfileSO.ATTACK_COUNT);
+            _attackIndex    = CombatAnimationTriggerRules.NextAttackIndex(_attackIndex, now - _lastAttackTime,
+                _profile.GetComboResetSeconds(playerClass), comboCount);
             _lastAttackTime = now;
 
-            float target = GameDB.Player.GetBasicAttack(_combat.PlayerClass).Interval;
-            float speed  = CombatAnimationTriggerRules.ComputeSpeed(_profile.GetAttackClipLength(_attackIndex), target,
-                _profile.MinSpeed, _profile.MaxSpeed);
-            Fire(_attackHash, _attackIndex, speed, "Attack");
+            int actionIndex = _attackIndex;
+            if ((!isLegacy) && (!_profile.TryGetAttackIndex(playerClass, _attackIndex, out actionIndex)))
+            {
+                return;
+            }
+
+            if (!TryGetAttackInterval(playerClass, out float target))
+            {
+                return;
+            }
+
+            float clipLength = _profile.GetAttackClipLength(actionIndex);
+            if (_profile.TryGetAttackSegments(actionIndex, out float[] segments))
+            {
+                clipLength = CombatAnimationTriggerRules.SumLengths(segments);
+            }
+
+            float speed = CombatAnimationTriggerRules.ComputeSpeed(clipLength, target, _profile.MinSpeed, _profile.MaxSpeed);
+            Fire(_attackHash, actionIndex, speed, "Attack");
+        }
+
+        // 서버 기본 공격 명세(PlayerConfigSO)의 간격을 직업별로 한 번만 읽는다. 간격이 0 이하면 재생하지 않는다
+        private bool TryGetAttackInterval(EPlayerClass playerClass, out float interval)
+        {
+            if ((_hasIntervalCache) && (_intervalClass == playerClass))
+            {
+                interval = _interval;
+                return _hasInterval;
+            }
+
+            _hasIntervalCache = true;
+            _intervalClass    = playerClass;
+            _interval         = GameDB.Player.GetBasicAttack(playerClass).Interval;
+            _hasInterval      = _interval > 0f;
+
+            interval = _interval;
+            return _hasInterval;
         }
 
         // 새 시전을 재생한다. 아직 시작 전이면 거짓을 돌려 시전 기준값을 소비하지 않게 한다
         private bool TryPlayNewSkill()
         {
+            // 정식 배정이 없는 기술(시간 예산 초과 보류 포함)은 아무것도 재생하지 않는다
             if ((!_profile.TryGetSkillIndex(_combat.PlayerClass, _combat.SkillKind, _combat.SkillSlot, out int index))
                 || (index < 0) || (index >= G_SkillStates.Length) || (!TryGetSkillTimes(out float windup, out float total)))
             {
                 return true;
             }
 
-            float  clipLength = _profile.GetSkillClipLength(index);
-            float  speed      = CombatAnimationTriggerRules.ComputeSpeed(clipLength, total, _profile.MinSpeed, _profile.MaxSpeed);
-            double elapsed    = NetworkTime.time - (_combat.SkillResolveAt - windup);
-            bool   canResume  = CombatAnimationTriggerRules.TryGetResumePosition(elapsed, speed, clipLength, out float normalized,
-                out bool isWaiting);
+            float   clipLength = _profile.GetSkillClipLength(index);
+            bool    isChained  = _profile.TryGetSkillSegments(index, out float[] segments);
+            if (isChained)
+            {
+                clipLength = CombatAnimationTriggerRules.SumLengths(segments);
+            }
+
+            float   speed   = CombatAnimationTriggerRules.ComputeSpeed(clipLength, total, _profile.MinSpeed, _profile.MaxSpeed);
+            double  elapsed = NetworkTime.time - (_combat.SkillResolveAt - windup);
+            int     segment = 0;
+            float   normalized;
+            bool    isWaiting;
+            bool    canResume;
+            if (isChained)
+            {
+                canResume = CombatAnimationTriggerRules.TryGetSegmentPosition(elapsed, speed, segments, out segment, out normalized,
+                    out isWaiting);
+            }
+            else
+            {
+                canResume = CombatAnimationTriggerRules.TryGetResumePosition(elapsed, speed, clipLength, out normalized, out isWaiting);
+            }
+
             if (isWaiting)
             {
                 return false;
             }
 
             // 이미 끝난 시전은 재생하지 않는다
-            if (!canResume)
+            if ((!canResume) || (segment >= G_SkillStates[index].Length))
             {
                 return true;
             }
@@ -251,7 +320,7 @@ namespace Shinshi.Art
             ResetActionTriggers();
             _animator.SetInteger(_actionIndexHash, index);
             _animator.SetFloat(_actionSpeedHash, speed);
-            _animator.Play(G_SkillStates[index], BASE_LAYER, normalized);
+            _animator.Play(G_SkillStates[index][segment], BASE_LAYER, normalized);
             LogAction("Skill", index);
             return true;
         }
@@ -355,6 +424,21 @@ namespace Shinshi.Art
         private static bool IsSkillCasting(ESkillPhase phase)
         {
             return (phase == ESkillPhase.Windup) || (phase == ESkillPhase.Active);
+        }
+
+        private static int[][] BuildSkillStateHashes()
+        {
+            var hashes = new int[PlayerCombatAnimationProfileSO.MAX_SKILL_ACTIONS][];
+            for (int i = 0; i < hashes.Length; ++i)
+            {
+                hashes[i] = new int[PlayerCombatAnimationProfileSO.MAX_SEGMENTS];
+                for (int s = 0; s < hashes[i].Length; ++s)
+                {
+                    hashes[i][s] = Animator.StringToHash((s == 0) ? ("Skill" + i) : ("Skill" + i + "_" + s));
+                }
+            }
+
+            return hashes;
         }
 
         // M2 검증에서 두 클라이언트 로그를 맞대 보려고 개발 빌드에서만 남긴다

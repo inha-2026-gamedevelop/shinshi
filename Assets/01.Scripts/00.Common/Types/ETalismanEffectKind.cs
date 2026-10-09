@@ -1,6 +1,6 @@
 namespace Shinshi.Common
 {
-    /// <summary> 부적 효과가 기술 명세를 바꾸는 방식, FollowUpStrike부터는 핵심 변형이다 </summary>
+    /// <summary> 부적 효과가 기술 명세를 바꾸는 방식, FollowUpStrike~AttachBarrier와 FollowUpProjectile, PierceExtend는 핵심 변형이다 </summary>
     public enum ETalismanEffectKind
     {
         // 보조 효과
@@ -48,6 +48,21 @@ namespace Shinshi.Common
         // 투사체가 첫 적을 관통
         PierceShot              = 24,
         // 결계를 적 하나에 부착해 따라가게 함
-        AttachBarrier           = 25
+        AttachBarrier           = 25,
+
+        // 투사체 폭 증가, 검파와 관통 화살 모두에 적용
+        WidthIncrease           = 26,
+        // 투사체 폭 고정과 피해 증가
+        FocusWidth              = 27,
+        // 근접 길이 증가, 부채꼴이 투사체로 교체되면 사거리 증가
+        ReachIncrease           = 28,
+        // 산개 화살의 양 끝 각도 증가
+        WidenFan                = 29,
+
+        // 핵심 변형 (검사, 마검사, 궁수)
+        // 같은 동작 끝에서 같은 방향 투사체 하나를 더 발사
+        FollowUpProjectile      = 30,
+        // 투사체가 관통하는 최대 적 수를 교체하고 계수를 바꿈
+        PierceExtend            = 31
     }
 }

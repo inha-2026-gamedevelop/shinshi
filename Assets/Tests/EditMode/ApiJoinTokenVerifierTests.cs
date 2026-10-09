@@ -252,6 +252,9 @@ namespace Shinshi.Tests
         [TestCase(ContractCodes.PlayerClass.WARRIOR, EPlayerClass.Warrior)]
         [TestCase(ContractCodes.PlayerClass.SORCERER, EPlayerClass.Sorcerer)]
         [TestCase(ContractCodes.PlayerClass.SUMMONER, EPlayerClass.Summoner)]
+        [TestCase(ContractCodes.PlayerClass.SWORDSMAN, EPlayerClass.Swordsman)]
+        [TestCase(ContractCodes.PlayerClass.MAGEKNIGHT, EPlayerClass.Mageknight)]
+        [TestCase(ContractCodes.PlayerClass.ARCHER, EPlayerClass.Archer)]
         public void ClaimsRules_KnownClass_CarriesClassToTownAndDungeonClaims(int classId, EPlayerClass expected)
         {
             var town    = new JoinTokenExchangeResponse(CHARACTER, TOWN_INSTANCE, ContractCodes.ServerRole.TOWN, null, null, 1L, classId);
@@ -265,7 +268,7 @@ namespace Shinshi.Tests
 
         [TestCase(JoinTokenExchangeResponse.UNKNOWN_CLASS_ID)]
         [TestCase(-5)]
-        [TestCase(3)]
+        [TestCase(6)]
         [TestCase(99)]
         public void ClaimsRules_UnknownClass_RejectsTownAndDungeonEntry(int classId)
         {

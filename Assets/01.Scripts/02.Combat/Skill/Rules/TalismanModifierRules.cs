@@ -156,7 +156,98 @@ namespace Shinshi.Combat
                 return ESkillShape.Line;
             }
 
+            if ((shape == ESkillShape.Cone) && (modifiers.Core.Is(ETalismanEffectKind.SpreadShot)))
+            {
+                return ESkillShape.Projectile;
+            }
+
             return shape;
+        }
+
+        /// <summary> 근접 부채꼴이 갈래 투사체로 교체됐는지, 마검사 마력검격의 삼갈래 검풍 </summary>
+        public static bool IsMeleeReplacedByProjectile(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            return (skill.Area.Shape == ESkillShape.Cone) && (modifiers.Core.Is(ETalismanEffectKind.SpreadShot));
+        }
+
+        /// <summary> 투사체 폭(m). 폭 고정이 있으면 원래 폭 대신 쓰고 폭 증가를 더한다 </summary>
+        public static float GetProjectileWidth(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            float width = skill.Area.Width;
+            if ((IsMeleeReplacedByProjectile(skill, in modifiers)) && (modifiers.Core.Width > 0f))
+            {
+                width = modifiers.Core.Width;
+            }
+
+            if (modifiers.FixedWidth > 0f)
+            {
+                width = modifiers.FixedWidth;
+            }
+
+            return Math.Max(0f, width + modifiers.WidthDelta);
+        }
+
+        /// <summary> 투사체 속도(m/초), 근접 교체 투사체는 변형 속도를 쓴다 </summary>
+        public static float GetProjectileSpeed(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            if ((IsMeleeReplacedByProjectile(skill, in modifiers)) && (modifiers.Core.Speed > 0f))
+            {
+                return modifiers.Core.Speed;
+            }
+
+            return skill.Area.ProjectileSpeed;
+        }
+
+        /// <summary> 한 번에 쏘는 투사체 수, 갈래 변형이 있으면 그 수다 </summary>
+        public static int GetProjectileCount(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            if (modifiers.Core.Is(ETalismanEffectKind.SpreadShot))
+            {
+                return Math.Max(1, modifiers.Core.Count);
+            }
+
+            return Math.Max(1, skill.Effect.ProjectileCount);
+        }
+
+        /// <summary> 이웃한 투사체 사이 각도(도). 산개 양 끝 각도 증가는 끝 각도에 더한 뒤 간격으로 다시 나눈다 </summary>
+        public static float GetProjectileStepAngle(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            int count = GetProjectileCount(skill, in modifiers);
+            if (count <= 1)
+            {
+                return 0f;
+            }
+
+            float step      = modifiers.Core.Is(ETalismanEffectKind.SpreadShot) ? modifiers.Core.SpreadAngle : skill.Effect.SpreadAngle;
+            if (modifiers.FanAngleDelta == 0f)
+            {
+                return step;
+            }
+            float halfSlots = (count - 1) * 0.5f;
+            float halfSpan  = step * halfSlots;
+            return Math.Max(0f, (halfSpan + modifiers.FanAngleDelta) / halfSlots);
+        }
+
+        /// <summary> 투사체 하나가 맞히는 최대 적 수. 관통 변형이 있으면 교체하고 0이나 1은 첫 적에서 소멸한다 </summary>
+        public static int GetMaxTargets(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            if (modifiers.Core.Is(ETalismanEffectKind.PierceExtend))
+            {
+                return Math.Max(1, modifiers.Core.ExtraTargets);
+            }
+
+            return Math.Max(1, skill.Effect.MaxTargets);
+        }
+
+        /// <summary> 조준 반대 방향 후퇴 거리(m), 후퇴하지 않는 기술은 0이다 </summary>
+        public static float GetRetreatDistance(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            if (skill.Effect.RetreatDistance <= 0f)
+            {
+                return 0f;
+            }
+
+            return Math.Max(0f, skill.Effect.RetreatDistance + modifiers.MoveDistanceDelta);
         }
 
         /// <summary> 원 반경이나 부채꼴 길이(m), 0 아래로 내려가지 않는다 </summary>
@@ -190,7 +281,14 @@ namespace Shinshi.Combat
                 return skill.Area.CastRange;
             }
 
-            return Math.Max(0f, skill.Area.CastRange + modifiers.RangeDelta + modifiers.MoveDistanceDelta);
+            if (IsMeleeReplacedByProjectile(skill, in modifiers))
+            {
+                return Math.Max(0f, modifiers.Core.Length + modifiers.RangeDelta);
+            }
+
+            // 후퇴하는 기술의 이동 거리 증가는 사거리가 아니라 후퇴 거리에 들어간다
+            float moveDelta = (skill.Effect.RetreatDistance > 0f) ? 0f : modifiers.MoveDistanceDelta;
+            return Math.Max(0f, skill.Area.CastRange + modifiers.RangeDelta + moveDelta);
         }
 
         /// <summary> 장판, 결계, 소환 유지 시간(초) </summary>
@@ -286,6 +384,9 @@ namespace Shinshi.Combat
             public float            AttackIntervalScale;
             public float            MarkedDamageBonus;
             public SkillCoreVariant Core;
+            public float            WidthDelta;
+            public float            FixedWidth;
+            public float            FanAngleDelta;
 
             public void Reset()
             {
@@ -310,7 +411,8 @@ namespace Shinshi.Combat
                 }
 
                 Core = new SkillCoreVariant(effect.Kind, variant.BaseCoefficient, added, variant.Delay, variant.FixedRadius,
-                    variant.Length, variant.Width, variant.ProjectileCount, variant.SpreadAngle, variant.MaxExtraTargets, rootBonus);
+                    variant.Length, variant.Width, variant.ProjectileCount, variant.SpreadAngle, variant.MaxExtraTargets, rootBonus,
+                    variant.ProjectileSpeed, variant.PullDistance, variant.PullPointOffset);
             }
 
             public void ApplySupport(TalismanCatalogSO.TalismanEffectDefinition effect, float multiplier)
@@ -381,6 +483,28 @@ namespace Shinshi.Combat
                     case ETalismanEffectKind.ResonanceGainIncrease:
                         ResonanceBonus += bonus;
                         break;
+                    case ETalismanEffectKind.WidthIncrease:
+                        WidthDelta += bonus;
+                        break;
+                    case ETalismanEffectKind.FocusWidth:
+                        FixedWidth   = variant.Width;
+                        DamageScale *= 1f + bonus;
+                        break;
+                    case ETalismanEffectKind.ReachIncrease:
+                        // 부채꼴이 투사체로 교체되면 길이 대신 사거리를 늘리고 그 보너스는 레벨 배율을 따른다
+                        if (Core.Is(ETalismanEffectKind.SpreadShot))
+                        {
+                            RangeDelta += variant.AltShapeBonus * multiplier;
+                        }
+                        else
+                        {
+                            RadiusDelta += bonus;
+                        }
+
+                        break;
+                    case ETalismanEffectKind.WidenFan:
+                        FanAngleDelta += bonus;
+                        break;
                     default:
                         break;
                 }
@@ -390,7 +514,7 @@ namespace Shinshi.Combat
             {
                 return new SkillModifiers(EnergyScale, CooldownScale, DamageScale, ResonanceBonus, RadiusDelta, FixedRadius,
                     ArcAngleDelta, FixedArcAngle, RangeDelta, MoveDistanceDelta, DurationDelta, GuardDurationDelta,
-                    AttackIntervalScale, MarkedDamageBonus, in Core);
+                    AttackIntervalScale, MarkedDamageBonus, in Core, WidthDelta, FixedWidth, FanAngleDelta);
             }
         }
     }

@@ -932,6 +932,321 @@
         "skillId": "skill_summoner_target_barrier",
         "tier": 2,
         "choice": 0
+      },
+      {
+        "definitionId": "T13-1A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_slash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T13-1B",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_slash",
+        "tier": 0,
+        "choice": 1
+      },
+      {
+        "definitionId": "T13-2A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_slash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T13-2B",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_slash",
+        "tier": 1,
+        "choice": 1
+      },
+      {
+        "definitionId": "T13-3A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_slash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T13-3B",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_slash",
+        "tier": 2,
+        "choice": 1
+      },
+      {
+        "definitionId": "T14-1A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_dash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T14-2A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_dash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T14-3A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_dash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T15-1A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_focus_slash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T15-2A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_focus_slash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T15-3A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_focus_slash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T16-1A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_chain_slash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T16-2A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_chain_slash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T16-3A",
+        "playerClass": 3,
+        "skillId": "skill_swordsman_chain_slash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T17-1A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_arcane_slash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T17-2A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_arcane_slash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T17-3A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_arcane_slash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T18-1A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_flame_field",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T18-1B",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_flame_field",
+        "tier": 0,
+        "choice": 1
+      },
+      {
+        "definitionId": "T18-2A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_flame_field",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T18-2B",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_flame_field",
+        "tier": 1,
+        "choice": 1
+      },
+      {
+        "definitionId": "T18-3A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_flame_field",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T18-3B",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_flame_field",
+        "tier": 2,
+        "choice": 1
+      },
+      {
+        "definitionId": "T19-1A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_seal_slash",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T19-2A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_seal_slash",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T19-3A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_seal_slash",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T20-1A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_thunder_wave",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T20-2A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_thunder_wave",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T20-3A",
+        "playerClass": 4,
+        "skillId": "skill_mageknight_thunder_wave",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T21-1A",
+        "playerClass": 5,
+        "skillId": "skill_archer_rapid_shot",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T21-2A",
+        "playerClass": 5,
+        "skillId": "skill_archer_rapid_shot",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T21-3A",
+        "playerClass": 5,
+        "skillId": "skill_archer_rapid_shot",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T22-1A",
+        "playerClass": 5,
+        "skillId": "skill_archer_retreat_shot",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T22-2A",
+        "playerClass": 5,
+        "skillId": "skill_archer_retreat_shot",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T22-3A",
+        "playerClass": 5,
+        "skillId": "skill_archer_retreat_shot",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T23-1A",
+        "playerClass": 5,
+        "skillId": "skill_archer_piercing_shot",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T23-1B",
+        "playerClass": 5,
+        "skillId": "skill_archer_piercing_shot",
+        "tier": 0,
+        "choice": 1
+      },
+      {
+        "definitionId": "T23-2A",
+        "playerClass": 5,
+        "skillId": "skill_archer_piercing_shot",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T23-2B",
+        "playerClass": 5,
+        "skillId": "skill_archer_piercing_shot",
+        "tier": 1,
+        "choice": 1
+      },
+      {
+        "definitionId": "T23-3A",
+        "playerClass": 5,
+        "skillId": "skill_archer_piercing_shot",
+        "tier": 2,
+        "choice": 0
+      },
+      {
+        "definitionId": "T23-3B",
+        "playerClass": 5,
+        "skillId": "skill_archer_piercing_shot",
+        "tier": 2,
+        "choice": 1
+      },
+      {
+        "definitionId": "T24-1A",
+        "playerClass": 5,
+        "skillId": "skill_archer_scatter_shot",
+        "tier": 0,
+        "choice": 0
+      },
+      {
+        "definitionId": "T24-2A",
+        "playerClass": 5,
+        "skillId": "skill_archer_scatter_shot",
+        "tier": 1,
+        "choice": 0
+      },
+      {
+        "definitionId": "T24-3A",
+        "playerClass": 5,
+        "skillId": "skill_archer_scatter_shot",
+        "tier": 2,
+        "choice": 0
       }
     ]
   },

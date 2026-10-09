@@ -1,0 +1,256 @@
+// System
+using System;
+
+// Unity
+using UnityEngine;
+
+// 서드파티
+using Mirror;
+
+// 프로젝트 내부
+using Shinshi.Combat;
+using Shinshi.Common;
+using Shinshi.Data;
+
+namespace Shinshi.Art
+{
+    /// <summary> 마검사 공개 전투 상태를 관찰해 Hovl 효과를 재생하는 표현 전용 뷰, 서버 판정과 이동에 관여하지 않는다 </summary>
+    [DisallowMultipleComponent]
+    public sealed class MageknightVfxView : ClientView
+    {
+        /****************************************
+        *                Fields
+        ****************************************/
+
+        private const int    KIND_COUNT       = 5;
+        private const int    MIN_POOL_SIZE    = 1;
+        private const float  MIN_PLAY_SECONDS = 0.05f;
+        private const string POOL_ROOT_NAME   = "MageknightVfxPool";
+
+        [Header("관찰 대상")]
+        [SerializeField] private PlayerCombatState _combat;
+
+        [Header("효과 프리팹")]
+        [SerializeField] private GameObject _basicPrefab;
+        [SerializeField] private GameObject _arcanePrefab;
+        [SerializeField] private GameObject _fieldPrefab;
+        [SerializeField] private GameObject _sealPrefab;
+        [SerializeField] private GameObject _wavePrefab;
+
+        [Header("풀과 재생")]
+        [SerializeField] private int   _poolSizePerPrefab = 2;
+        [SerializeField] private float _maxPlaySeconds    = 3f;
+        // 재생 시각을 이만큼 넘겨 관찰한 짧은 효과는 이미 지난 일이라 재생하지 않는다
+        [SerializeField] private float _maxLateSeconds    = 0.25f;
+        [SerializeField] private float _heightOffset      = 0f;
+
+        private readonly MageknightVfxTracker _tracker = new MageknightVfxTracker();
+        private readonly MageknightVfxPool[]  _pools   = new MageknightVfxPool[KIND_COUNT];
+
+        private Transform _poolRoot;
+        private bool      _hasConfig;
+        private bool      _wasRunning;
+        private float     _waveSpeed;
+        private float     _waveRange;
+
+        /****************************************
+        *              Unity Event
+        ****************************************/
+
+        private void OnDisable()
+        {
+            _tracker.Reset();
+            _wasRunning = false;
+            StopAllEffects();
+        }
+
+        private void OnDestroy()
+        {
+            StopAllEffects();
+            if (_poolRoot != null)
+            {
+                Destroy(_poolRoot.gameObject);
+                _poolRoot = null;
+            }
+        }
+
+        private void Update()
+        {
+            if (_combat == null)
+            {
+                return;
+            }
+
+            if (_combat.PlayerClass != EPlayerClass.Mageknight)
+            {
+                // 직업이 바뀌면 남은 효과를 멈추고, 마검사로 돌아오면 새 기준값부터 본다
+                if (_wasRunning)
+                {
+                    _tracker.Reset();
+                    _wasRunning = false;
+                    StopAllEffects();
+                }
+
+                return;
+            }
+
+            if ((!_hasConfig) && (!TryConfigure()))
+            {
+                return;
+            }
+
+            _wasRunning = true;
+            EnsurePools();
+
+            // SyncVar hook의 중간값이 아니라 이번 프레임에 모인 현재값으로만 판단한다
+            double now = NetworkTime.time;
+            MageknightVfxTracker.Observation observation;
+            observation.PlayerClass    = _combat.PlayerClass;
+            observation.LifeState      = _combat.LifeState;
+            observation.AttackSequence = _combat.AttackSequence;
+            observation.DodgeSequence  = _combat.DodgeSequence;
+            observation.CastInstanceId = _combat.CastInstanceId;
+            observation.SkillPhase     = _combat.SkillPhase;
+            observation.SkillKind      = _combat.SkillKind;
+            observation.SkillSlot      = _combat.SkillSlot;
+            observation.SkillResolveAt = _combat.SkillResolveAt;
+            observation.SkillOrigin    = _combat.SkillOrigin;
+            observation.SkillAim       = _combat.SkillAim;
+            observation.Facing         = FacingRules.DecodeYaw(_combat.FacingYaw);
+            observation.Now            = now;
+
+            // 사망, 회피, 다음 시전은 준비 중인 효과만 버린다. 이미 나간 장판과 검기는 풀이 자기 수명까지 유지한다
+            int count = _tracker.Update(in observation);
+            for (int i = 0; i < count; ++i)
+            {
+                PlayEffect(_tracker.GetPlay(i), now);
+            }
+
+            TickPools(now);
+        }
+
+        /****************************************
+        *                Methods
+        ****************************************/
+
+        protected override void OnViewAwake()
+        {
+            // 프리팹은 부모 빌더가 주입하며, 전투 상태가 빠졌을 때만 부모에서 한 번 찾는다
+            if (_combat == null)
+            {
+                _combat = GetComponentInParent<PlayerCombatState>();
+            }
+        }
+
+        private void EnsurePools()
+        {
+            if (_poolRoot != null)
+            {
+                return;
+            }
+
+            // 직업 공개값을 받은 마검사만 풀을 만든다. 다른 직업의 플레이어에는 파티클 복제 비용이 없다.
+            _poolRoot = new GameObject(POOL_ROOT_NAME).transform;
+            int size = Mathf.Max(MIN_POOL_SIZE, _poolSizePerPrefab);
+            _pools[(int)EMageknightVfxKind.Basic]  = new MageknightVfxPool(_basicPrefab, _poolRoot, size);
+            _pools[(int)EMageknightVfxKind.Arcane] = new MageknightVfxPool(_arcanePrefab, _poolRoot, size);
+            _pools[(int)EMageknightVfxKind.Field]  = new MageknightVfxPool(_fieldPrefab, _poolRoot, size);
+            _pools[(int)EMageknightVfxKind.Seal]   = new MageknightVfxPool(_sealPrefab, _poolRoot, size);
+            _pools[(int)EMageknightVfxKind.Wave]   = new MageknightVfxPool(_wavePrefab, _poolRoot, size);
+        }
+
+        // GameDB는 Awake 시점에 준비되지 않을 수 있어 초기화될 때까지 다음 프레임에 다시 시도한다
+        private bool TryConfigure()
+        {
+            if (!GameDB.IsInitialized)
+            {
+                return false;
+            }
+
+            // 명세를 읽지 못한 값은 0으로 두어 해당 효과만 재생하지 않거나 즉시 재생한다
+            float basicDelay = 0f;
+            try
+            {
+                basicDelay = GameDB.Player.GetBasicAttack(EPlayerClass.Mageknight).Windup;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                basicDelay = 0f;
+            }
+
+            float fieldDuration = 0f;
+            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_W, out SkillCatalogSO.SkillDefinition field))
+            {
+                fieldDuration = field.Effect.Duration;
+            }
+
+            _waveSpeed = 0f;
+            _waveRange = 0f;
+            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_R, out SkillCatalogSO.SkillDefinition wave))
+            {
+                _waveSpeed = wave.Area.ProjectileSpeed;
+                _waveRange = wave.Area.CastRange;
+            }
+
+            _tracker.Configure(basicDelay, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds);
+            _hasConfig = true;
+            return true;
+        }
+
+        private void PlayEffect(MageknightVfxTracker.Play play, double now)
+        {
+            MageknightVfxPool pool = _pools[(int)play.Kind];
+            if ((pool == null) || (!pool.HasPrefab))
+            {
+                return;
+            }
+
+            // 기본 공격은 재생 순간의 캐릭터 위치, 나머지는 서버가 공개한 시전 위치에서 터진다
+            Vector3 position = MageknightVfxTracker.UsesActorPosition(play.Kind) ? _combat.transform.position : play.Origin;
+            position.y += _heightOffset;
+
+            Vector3 direction = play.Direction;
+            direction.y = 0f;
+
+            switch (play.Kind)
+            {
+                case EMageknightVfxKind.Field:
+                    pool.PlayTimed(position, ToRotation(direction), play.EndAt);
+                    break;
+                case EMageknightVfxKind.Wave:
+                    pool.PlayWave(position, direction, play.StartAt, _waveSpeed, _waveRange, now);
+                    break;
+                default:
+                    pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
+                    break;
+            }
+        }
+
+        private static Quaternion ToRotation(Vector3 direction)
+        {
+            return (direction.sqrMagnitude > Mathf.Epsilon) ? Quaternion.LookRotation(direction) : Quaternion.identity;
+        }
+
+        private void TickPools(double now)
+        {
+            for (int i = 0; i < _pools.Length; ++i)
+            {
+                if (_pools[i] != null)
+                {
+                    _pools[i].Tick(now);
+                }
+            }
+        }
+
+        private void StopAllEffects()
+        {
+            for (int i = 0; i < _pools.Length; ++i)
+            {
+                if (_pools[i] != null)
+                {
+                    _pools[i].StopAll();
+                }
+            }
+        }
+    }
+}

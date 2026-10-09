@@ -30,6 +30,8 @@ namespace Shinshi.Common
         // 피해 보너스에 더하는 비율 포인트
         DamageBonusPoint   = 12,
         // 공명
-        ResonanceGain      = 13
+        ResonanceGain      = 13,
+        // m, 투사체 폭
+        Width              = 14
     }
 }

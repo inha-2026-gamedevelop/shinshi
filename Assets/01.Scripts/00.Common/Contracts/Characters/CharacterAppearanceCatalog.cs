@@ -54,7 +54,10 @@ namespace Shinshi.Contracts
         private static readonly int[][] G_ClassDefaults = {
             new[] { CharacterAppearance.BODY_TYPE_FEMALE, 1, P09_HAIR_01, 1, 1, 1, P09_FACIAL_HAIR_NONE, P09_BUST_DEFAULT, P09_OUTFIT_ALL },
             new[] { CharacterAppearance.BODY_TYPE_FEMALE, 2, P09_HAIR_02, 5, 4, 2, P09_FACIAL_HAIR_NONE, P09_BUST_DEFAULT, P09_OUTFIT_ALL },
-            new[] { CharacterAppearance.BODY_TYPE_FEMALE, 3, P09_HAIR_02, 8, 3, 1, P09_FACIAL_HAIR_NONE, P09_BUST_DEFAULT, P09_OUTFIT_ALL } };
+            new[] { CharacterAppearance.BODY_TYPE_FEMALE, 3, P09_HAIR_02, 8, 3, 1, P09_FACIAL_HAIR_NONE, P09_BUST_DEFAULT, P09_OUTFIT_ALL },
+            new[] { CharacterAppearance.BODY_TYPE_FEMALE, 1, P09_HAIR_01, 3, 2, 1, P09_FACIAL_HAIR_NONE, P09_BUST_DEFAULT, P09_OUTFIT_ALL },
+            new[] { CharacterAppearance.BODY_TYPE_FEMALE, 2, P09_HAIR_02, 6, 5, 2, P09_FACIAL_HAIR_NONE, P09_BUST_DEFAULT, P09_OUTFIT_ALL },
+            new[] { CharacterAppearance.BODY_TYPE_FEMALE, 3, P09_HAIR_01, 7, 3, 3, P09_FACIAL_HAIR_NONE, P09_BUST_DEFAULT, P09_OUTFIT_ALL } };
 
         /****************************************
         *                Methods
@@ -220,7 +223,8 @@ namespace Shinshi.Contracts
         private static bool IsKnownClass(int classId)
         {
             return (classId == ContractCodes.PlayerClass.WARRIOR) || (classId == ContractCodes.PlayerClass.SORCERER)
-                || (classId == ContractCodes.PlayerClass.SUMMONER);
+                || (classId == ContractCodes.PlayerClass.SUMMONER) || (classId == ContractCodes.PlayerClass.SWORDSMAN)
+                || (classId == ContractCodes.PlayerClass.MAGEKNIGHT) || (classId == ContractCodes.PlayerClass.ARCHER);
         }
 
         private static int[] NewSliders(int count)

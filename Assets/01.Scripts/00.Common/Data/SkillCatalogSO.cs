@@ -105,6 +105,17 @@ namespace Shinshi.Data
             [SerializeField] private float _companionAttackInterval;    // 초
             [SerializeField] private float _companionAttackRange;       // m
 
+            // 검사, 마검사, 궁수 기술이 쓰는 값. 기존 직업 기술은 모두 0이다
+            [SerializeField] private float _secondHitCoefficient; // 공격력 배율, 최초 타격 뒤 같은 판정 형태의 두 번째 타격. 0이면 없음
+            [SerializeField] private float _secondHitDelay;       // 초, 최초 타격에서 두 번째 타격까지
+            [SerializeField] private int   _projectileCount;      // 동시에 쏘는 투사체 수. 0이나 1이면 한 발
+            [SerializeField] private float _spreadAngle;          // 도, 동시 투사체 사이 각도
+            [SerializeField] private int   _maxTargets;           // 투사체 하나가 맞히는 최대 적 수. 0이나 1이면 첫 적에서 소멸
+            [SerializeField] private int   _repeatCount;          // 순차 발사 횟수. 0이나 1이면 한 번
+            [SerializeField] private float _repeatInterval;       // 초, 순차 발사 사이
+            [SerializeField] private float _retreatDistance;      // m, 조준 반대 방향 후퇴 거리
+            [SerializeField] private float _retreatDuration;      // 초, 후퇴 이동 시간
+
             public float DamageCoefficient          => _damageCoefficient;
             public float TickCoefficient            => _tickCoefficient;
             public float TickInterval               => _tickInterval;
@@ -114,6 +125,15 @@ namespace Shinshi.Data
             public float CompanionAttackCoefficient => _companionAttackCoefficient;
             public float CompanionAttackInterval    => _companionAttackInterval;
             public float CompanionAttackRange       => _companionAttackRange;
+            public float SecondHitCoefficient       => _secondHitCoefficient;
+            public float SecondHitDelay             => _secondHitDelay;
+            public int   ProjectileCount            => _projectileCount;
+            public float SpreadAngle                => _spreadAngle;
+            public int   MaxTargets                 => _maxTargets;
+            public int   RepeatCount                => _repeatCount;
+            public float RepeatInterval             => _repeatInterval;
+            public float RetreatDistance            => _retreatDistance;
+            public float RetreatDuration            => _retreatDuration;
 
             /****************************************
             *                Methods
@@ -121,7 +141,10 @@ namespace Shinshi.Data
 
             public SkillEffectSpec(float damageCoefficient = 0f, float tickCoefficient = 0f, float tickInterval = 0f,
                 float duration = 0f, float rootDuration = 0f, float allyDamageBonus = 0f,
-                float companionAttackCoefficient = 0f, float companionAttackInterval = 0f, float companionAttackRange = 0f)
+                float companionAttackCoefficient = 0f, float companionAttackInterval = 0f, float companionAttackRange = 0f,
+                float secondHitCoefficient = 0f, float secondHitDelay = 0f, int projectileCount = 0, float spreadAngle = 0f,
+                int maxTargets = 0, int repeatCount = 0, float repeatInterval = 0f, float retreatDistance = 0f,
+                float retreatDuration = 0f)
             {
                 _damageCoefficient          = damageCoefficient;
                 _tickCoefficient            = tickCoefficient;
@@ -132,6 +155,15 @@ namespace Shinshi.Data
                 _companionAttackCoefficient = companionAttackCoefficient;
                 _companionAttackInterval    = companionAttackInterval;
                 _companionAttackRange       = companionAttackRange;
+                _secondHitCoefficient       = secondHitCoefficient;
+                _secondHitDelay             = secondHitDelay;
+                _projectileCount            = projectileCount;
+                _spreadAngle                = spreadAngle;
+                _maxTargets                 = maxTargets;
+                _repeatCount                = repeatCount;
+                _repeatInterval             = repeatInterval;
+                _retreatDistance            = retreatDistance;
+                _retreatDuration            = retreatDuration;
             }
         }
 
@@ -255,7 +287,8 @@ namespace Shinshi.Data
         *              Constants
         ****************************************/
 
-        private const int   SKILL_COUNT                = 12;
+        private const int   SKILL_COUNT                = 12; // 구 직업 3종(무사, 도술사, 신령사)
+        private const int   CLASS_SKILL_COUNT          = 12; // 검사, 마검사, 궁수
         private const int   SIGNATURE_SKILLS_PER_CLASS = 1;
         private const float MAX_ARC_ANGLE              = 360f;
 
@@ -324,6 +357,67 @@ namespace Shinshi.Data
                 new SkillEffectSpec(damageCoefficient: 0.7f, duration: 6f, allyDamageBonus: 0.2f))
         };
 
+        // 기존 _skills 배열을 건드리지 않고 새 배열로 둬서 이미 저장된 에셋도 직렬화 기본값으로 이 12종을 받는다.
+        // 후딜은 검사 0.2초, 마검사와 궁수는 기획의 기술별 값이다
+        [Header("신규 직업 일반 기술 (검사, 마검사, 궁수 Q, W, E, R 4개)")]
+        [SerializeField] private SkillDefinition[] _classSkills =
+        {
+            new SkillDefinition("skill_swordsman_slash", EPlayerClass.Swordsman, slot: 0, isSignature: true, energyCost: 20f, cooldown: 6f,
+                new SkillTimeline(0.2f, 0f, 0.2f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 120f),
+                new SkillEffectSpec(damageCoefficient: 2.2f)),
+            new SkillDefinition("skill_swordsman_dash", EPlayerClass.Swordsman, slot: 1, isSignature: false, energyCost: 20f, cooldown: 8f,
+                new SkillTimeline(0f, 0.3f, 0.2f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Line, castRange: 4f, width: 1.5f),
+                new SkillEffectSpec(damageCoefficient: 1.8f)),
+            new SkillDefinition("skill_swordsman_focus_slash", EPlayerClass.Swordsman, slot: 2, isSignature: false, energyCost: 30f, cooldown: 12f,
+                new SkillTimeline(0.6f, 0f, 0.2f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 80f),
+                new SkillEffectSpec(damageCoefficient: 4.0f)),
+            // 두 번째 타격은 최초 타격 0.2초 뒤, Active가 그 구간이다
+            new SkillDefinition("skill_swordsman_chain_slash", EPlayerClass.Swordsman, slot: 3, isSignature: false, energyCost: 25f, cooldown: 12f,
+                new SkillTimeline(0.3f, 0.2f, 0.2f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 90f),
+                new SkillEffectSpec(damageCoefficient: 1.75f, secondHitCoefficient: 1.75f, secondHitDelay: 0.2f)),
+
+            new SkillDefinition("skill_mageknight_arcane_slash", EPlayerClass.Mageknight, slot: 0, isSignature: false, energyCost: 15f, cooldown: 4f,
+                new SkillTimeline(0.25f, 0f, 0.15f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 100f),
+                new SkillEffectSpec(damageCoefficient: 1.6f)),
+            // 시전자 발동 위치 중심에 고정, 4초 동안 0.5초마다 8회, 총 4.5A
+            new SkillDefinition("skill_mageknight_flame_field", EPlayerClass.Mageknight, slot: 1, isSignature: true, energyCost: 30f, cooldown: 12f,
+                new SkillTimeline(0.3f, 0f, 0.15f),
+                new SkillArea(ESkillAimMode.Self, ESkillShape.Circle, radius: 2.5f),
+                new SkillEffectSpec(tickCoefficient: 0.5625f, tickInterval: 0.5f, duration: 4f)),
+            new SkillDefinition("skill_mageknight_seal_slash", EPlayerClass.Mageknight, slot: 2, isSignature: false, energyCost: 25f, cooldown: 14f,
+                new SkillTimeline(0.3f, 0f, 0.15f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 120f),
+                new SkillEffectSpec(damageCoefficient: 1.0f, rootDuration: 2f)),
+            new SkillDefinition("skill_mageknight_thunder_wave", EPlayerClass.Mageknight, slot: 3, isSignature: false, energyCost: 30f, cooldown: 10f,
+                new SkillTimeline(0.7f, 0f, 0.15f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 9f, width: 1.5f, projectileSpeed: 18f),
+                new SkillEffectSpec(damageCoefficient: 3.8f)),
+
+            // 첫 발은 준비 끝(0.35초)에 나가고 나머지는 0.25초 간격, Active가 그 구간이다
+            new SkillDefinition("skill_archer_rapid_shot", EPlayerClass.Archer, slot: 0, isSignature: false, energyCost: 20f, cooldown: 7f,
+                new SkillTimeline(0.35f, 0.5f, 0.25f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 10f, width: 0.3f, projectileSpeed: 24f),
+                new SkillEffectSpec(damageCoefficient: 0.8f, repeatCount: 3, repeatInterval: 0.25f)),
+            // 발사 뒤 같은 순간부터 조준 반대로 3m 후퇴, Active가 후퇴 시간이다
+            new SkillDefinition("skill_archer_retreat_shot", EPlayerClass.Archer, slot: 1, isSignature: false, energyCost: 20f, cooldown: 10f,
+                new SkillTimeline(0.15f, 0.35f, 0.2f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 10f, width: 0.3f, projectileSpeed: 24f),
+                new SkillEffectSpec(damageCoefficient: 1.0f, retreatDistance: 3f, retreatDuration: 0.35f)),
+            new SkillDefinition("skill_archer_piercing_shot", EPlayerClass.Archer, slot: 2, isSignature: true, energyCost: 30f, cooldown: 12f,
+                new SkillTimeline(0.9f, 0f, 0.3f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 14f, width: 0.5f, projectileSpeed: 28f),
+                new SkillEffectSpec(damageCoefficient: 3.2f, maxTargets: 4)),
+            new SkillDefinition("skill_archer_scatter_shot", EPlayerClass.Archer, slot: 3, isSignature: false, energyCost: 25f, cooldown: 10f,
+                new SkillTimeline(0.45f, 0f, 0.3f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 9f, width: 0.3f, projectileSpeed: 22f),
+                new SkillEffectSpec(damageCoefficient: 1.6f, projectileCount: 5, spreadAngle: 10f))
+        };
+
         // TODO(민성): 강림 후딜은 기획에 없어 신령사 공통 후딜 0.15초를 자리값으로 둔다. 기획 확정 뒤 교체
         [Header("공명 강림 (Z, X, C)")]
         [SerializeField] private AscensionDefinition[] _ascensions =
@@ -359,8 +453,10 @@ namespace Shinshi.Data
 
         [NonSerialized] private DefinitionLookup<SkillDefinition>     _skillLookup     = new DefinitionLookup<SkillDefinition>();
         [NonSerialized] private DefinitionLookup<AscensionDefinition> _ascensionLookup = new DefinitionLookup<AscensionDefinition>();
+        [NonSerialized] private SkillDefinition[]                     _allSkills;
 
-        public IReadOnlyList<SkillDefinition>     Skills                   => _skills;
+        /// <summary> 구 직업 12종 뒤에 신규 직업 12종을 이은 전체 일반 기술 24종, 처음 읽을 때 한 번 만들고 재사용한다 </summary>
+        public IReadOnlyList<SkillDefinition>     Skills                   => GetAllSkills();
         public IReadOnlyList<AscensionDefinition> Ascensions               => _ascensions;
         public float                              AscensionSharedCooldown  => _ascensionSharedCooldown;
         public float                              ResonanceMax             => _resonanceMax;
@@ -396,15 +492,39 @@ namespace Shinshi.Data
         *                Methods
         ****************************************/
 
-        /// <summary> 일반 기술 12종 안에 있는지 본다, 강림 ID는 포함하지 않는다 </summary>
+        /// <summary> 일반 기술 24종 안에 있는지 본다, 강림 ID는 포함하지 않는다 </summary>
         public bool ContainsSkill(string skillId)
         {
-            return _skillLookup.Contains(_skills, skillId);
+            return _skillLookup.Contains(GetAllSkills(), skillId);
         }
 
         public bool TryGetSkill(string skillId, out SkillDefinition skill)
         {
-            return _skillLookup.TryGet(_skills, skillId, out skill);
+            return _skillLookup.TryGet(GetAllSkills(), skillId, out skill);
+        }
+
+        private SkillDefinition[] GetAllSkills()
+        {
+            if (_allSkills != null)
+            {
+                return _allSkills;
+            }
+
+            int legacyCount = (_skills == null) ? 0 : _skills.Length;
+            int classCount  = (_classSkills == null) ? 0 : _classSkills.Length;
+            var all         = new SkillDefinition[legacyCount + classCount];
+            for (int i = 0; i < legacyCount; ++i)
+            {
+                all[i] = _skills[i];
+            }
+
+            for (int i = 0; i < classCount; ++i)
+            {
+                all[legacyCount + i] = _classSkills[i];
+            }
+
+            _allSkills = all;
+            return all;
         }
 
         public bool ContainsAscension(string ascensionId)
@@ -421,14 +541,10 @@ namespace Shinshi.Data
         public bool TryGetSkillBySlot(EPlayerClass playerClass, int slot, out SkillDefinition skill)
         {
             skill = null;
-            if (_skills == null)
+            SkillDefinition[] all = GetAllSkills();
+            for (int i = 0; i < all.Length; ++i)
             {
-                return false;
-            }
-
-            for (int i = 0; i < _skills.Length; ++i)
-            {
-                SkillDefinition candidate = _skills[i];
+                SkillDefinition candidate = all[i];
                 if ((candidate != null) && (candidate.PlayerClass == playerClass) && (candidate.Slot == slot))
                 {
                     skill = candidate;
@@ -445,6 +561,8 @@ namespace Shinshi.Data
 
             DataValidation.RequireDefinitions(errors, OWNER, nameof(_skills), _skills);
             DataValidation.RequireCount(errors, OWNER, nameof(_skills), _skills, SKILL_COUNT);
+            DataValidation.RequireDefinitions(errors, OWNER, nameof(_classSkills), _classSkills);
+            DataValidation.RequireCount(errors, OWNER, nameof(_classSkills), _classSkills, CLASS_SKILL_COUNT);
             DataValidation.RequireDefinitions(errors, OWNER, nameof(_ascensions), _ascensions);
             DataValidation.RequireCount(errors, OWNER, nameof(_ascensions), _ascensions, Constants.Combat.SUMMON_ENHANCEMENT_COUNT);
 
@@ -471,20 +589,24 @@ namespace Shinshi.Data
 
         private void ValidateSkills(List<string> errors, string owner)
         {
-            if (_skills == null)
+            SkillDefinition[] all = GetAllSkills();
+            for (int i = 0; i < all.Length; ++i)
             {
-                return;
-            }
-
-            for (int i = 0; i < _skills.Length; ++i)
-            {
-                SkillDefinition skill = _skills[i];
+                SkillDefinition skill = all[i];
                 if (skill == null)
                 {
                     continue;
                 }
 
                 string field = $"{nameof(_skills)}[{skill.DefinitionId}]";
+
+                for (int j = 0; j < i; ++j)
+                {
+                    if ((all[j] != null) && (string.Equals(all[j].DefinitionId, skill.DefinitionId, StringComparison.Ordinal)))
+                    {
+                        errors.Add($"{owner}.{field}: 두 배열에 같은 ID가 있다");
+                    }
+                }
 
                 DataValidation.RequireRange(errors, owner, field + ".Slot", skill.Slot, 0f, Constants.Player.SKILL_SLOT_COUNT - 1);
                 DataValidation.RequirePositive(errors, owner, field + ".EnergyCost", skill.EnergyCost);
@@ -575,15 +697,42 @@ namespace Shinshi.Data
             {
                 DataValidation.RequirePositive(errors, owner, field + ".Duration", effect.Duration);
             }
+
+            DataValidation.RequireNonNegative(errors, owner, field + ".SecondHitCoefficient", effect.SecondHitCoefficient);
+            DataValidation.RequireNonNegative(errors, owner, field + ".SecondHitDelay", effect.SecondHitDelay);
+            DataValidation.RequireNonNegative(errors, owner, field + ".ProjectileCount", effect.ProjectileCount);
+            DataValidation.RequireNonNegative(errors, owner, field + ".SpreadAngle", effect.SpreadAngle);
+            DataValidation.RequireNonNegative(errors, owner, field + ".MaxTargets", effect.MaxTargets);
+            DataValidation.RequireNonNegative(errors, owner, field + ".RepeatCount", effect.RepeatCount);
+            DataValidation.RequireNonNegative(errors, owner, field + ".RepeatInterval", effect.RepeatInterval);
+            DataValidation.RequireNonNegative(errors, owner, field + ".RetreatDistance", effect.RetreatDistance);
+            DataValidation.RequireNonNegative(errors, owner, field + ".RetreatDuration", effect.RetreatDuration);
+
+            if (effect.SecondHitCoefficient > 0f)
+            {
+                DataValidation.RequirePositive(errors, owner, field + ".SecondHitDelay", effect.SecondHitDelay);
+            }
+
+            if (effect.ProjectileCount > 1)
+            {
+                DataValidation.RequirePositive(errors, owner, field + ".SpreadAngle", effect.SpreadAngle);
+            }
+
+            if (effect.RepeatCount > 1)
+            {
+                DataValidation.RequirePositive(errors, owner, field + ".RepeatInterval", effect.RepeatInterval);
+            }
+
+            if (effect.RetreatDistance > 0f)
+            {
+                DataValidation.RequirePositive(errors, owner, field + ".RetreatDuration", effect.RetreatDuration);
+            }
         }
 
         // 직업마다 슬롯 0부터 3까지 한 번씩, 대표 기술은 하나만 있어야 한다
         private void ValidateClassSlots(List<string> errors, string owner)
         {
-            if (_skills == null)
-            {
-                return;
-            }
+            SkillDefinition[] all = GetAllSkills();
 
             int classCount = Enum.GetValues(typeof(EPlayerClass)).Length;
             for (int c = 0; c < classCount; ++c)
@@ -596,9 +745,9 @@ namespace Shinshi.Data
                 for (int slot = 0; slot < Constants.Player.SKILL_SLOT_COUNT; ++slot)
                 {
                     int slotHits = 0;
-                    for (int i = 0; i < _skills.Length; ++i)
+                    for (int i = 0; i < all.Length; ++i)
                     {
-                        SkillDefinition skill = _skills[i];
+                        SkillDefinition skill = all[i];
                         if ((skill != null) && (skill.PlayerClass == playerClass) && (skill.Slot == slot))
                         {
                             ++slotHits;
@@ -611,9 +760,9 @@ namespace Shinshi.Data
                     }
                 }
 
-                for (int i = 0; i < _skills.Length; ++i)
+                for (int i = 0; i < all.Length; ++i)
                 {
-                    SkillDefinition skill = _skills[i];
+                    SkillDefinition skill = all[i];
                     if ((skill == null) || (skill.PlayerClass != playerClass))
                     {
                         continue;
@@ -677,6 +826,7 @@ namespace Shinshi.Data
 
         private void InvalidateLookups()
         {
+            _allSkills = null;
             _skillLookup.Invalidate();
             _ascensionLookup.Invalidate();
         }

@@ -171,8 +171,24 @@ namespace Shinshi.Tests
         *        Tests - 알 수 없는 직업
         ****************************************/
 
+        [TestCase(ContractCodes.PlayerClass.SWORDSMAN)]
+        [TestCase(ContractCodes.PlayerClass.MAGEKNIGHT)]
+        [TestCase(ContractCodes.PlayerClass.ARCHER)]
+        public void TryCreate_NewClassId_AcceptsWithClassDefault(int classId)
+        {
+            JoinTokenExchangeResponse town    = BuildTownResponse(classId, null, null);
+            JoinTokenExchangeResponse dungeon = BuildDungeonResponse(classId, null, null);
+
+            Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE_ID, town, out JoinTokenClaims townClaims));
+            Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Dungeon, INSTANCE_ID, dungeon, out JoinTokenClaims dungeonClaims));
+            Assert.AreEqual((EPlayerClass)classId, townClaims.PlayerClass);
+            Assert.AreEqual((EPlayerClass)classId, dungeonClaims.PlayerClass);
+            AssertClassDefaultAppearance(classId, townClaims.Appearance);
+            AssertClassDefaultAppearance(classId, dungeonClaims.Appearance);
+        }
+
         [TestCase(-1)]
-        [TestCase(3)]
+        [TestCase(6)]
         public void TryCreate_UnknownClassId_RejectsAsTokenRevoked(int classId)
         {
             JoinTokenExchangeResponse response = BuildTownResponse(classId, null, null);

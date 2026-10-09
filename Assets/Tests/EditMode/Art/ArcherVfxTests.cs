@@ -1,0 +1,1015 @@
+// 시스템
+using System.Collections.Generic;
+using System.Reflection;
+
+// 서드파티
+using NUnit.Framework;
+
+// Unity
+using UnityEngine;
+
+// 프로젝트 내부
+using Shinshi.Art;
+using Shinshi.Combat;
+using Shinshi.Common;
+
+namespace Shinshi.Tests
+{
+    public class ArcherVfxTests
+    {
+        /****************************************
+        *                Fields
+        ****************************************/
+
+        // 시험용 값이며 밸런스 기준과 같은 모양이다. 실제 값은 뷰가 GameDB에서 읽는다
+        private const float BASIC_WINDUP = 0.2f;
+        private const float BASIC_SPEED  = 30f;
+        private const float BASIC_RANGE  = 12f;
+        private const float Q_SPEED      = 24f;
+        private const float Q_RANGE      = 10f;
+        private const float Q_INTERVAL   = 0.25f;
+        private const int   Q_REPEAT     = 3;
+        private const float W_SPEED      = 24f;
+        private const float W_RANGE      = 10f;
+        private const float E_SPEED      = 28f;
+        private const float E_RANGE      = 14f;
+        private const float R_SPEED      = 22f;
+        private const float R_RANGE      = 9f;
+        private const float R_SPREAD     = 10f;
+        private const int   R_PRONGS     = 5;
+
+        private const float  MAX_LATE           = 0.25f;
+        private const float  FLOAT_TOLERANCE    = 0.001f;
+        private const float  ANGLE_TOLERANCE    = 0.01f;
+        private const double AFTER_DELAY_MARGIN = 0.01;
+        private const int    POOL_SIZE          = 2;
+        private const int    VIEW_ARROW_POOL    = 16;
+
+        private const byte SLOT_Q = 0;
+        private const byte SLOT_W = 1;
+        private const byte SLOT_E = 2;
+        private const byte SLOT_R = 3;
+
+        private readonly List<ArcherVfxTracker.Play> _plays   = new List<ArcherVfxTracker.Play>();
+        private readonly List<Object>                _created = new List<Object>();
+
+        /****************************************
+        *                Setup
+        ****************************************/
+
+        [SetUp]
+        public void SetUp()
+        {
+            _plays.Clear();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            for (int i = 0; i < _created.Count; ++i)
+            {
+                if (_created[i] != null)
+                {
+                    Object.DestroyImmediate(_created[i]);
+                }
+            }
+
+            _created.Clear();
+        }
+
+        /****************************************
+        *            Tracker Tests
+        ****************************************/
+
+        [Test]
+        public void Update_FirstObservationWithPastAttackAndCast_PlaysNothing()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+
+            ArcherVfxTracker.Observation first = Idle(100.0);
+            first.AttackSequence = 5;
+            first.DodgeSequence  = 3;
+            first = Cast(first, 9, SLOT_R, ESkillPhase.Windup, 100.2);
+
+            Step(tracker, first);
+            Assert.That(tracker.HasBaseline, Is.True);
+            Assert.That(tracker.HasPending, Is.False);
+
+            first.Now        = 100.3;
+            first.SkillPhase = ESkillPhase.Active;
+            Step(tracker, first);
+            first.Now        = 100.5;
+            first.SkillPhase = ESkillPhase.Recovery;
+            Step(tracker, first);
+
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_ReEnabledAfterReset_DoesNotReplayPast()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(105.0));
+            Step(tracker, Cast(Idle(105.0), 1, SLOT_Q, ESkillPhase.Windup, 105.3));
+            Assert.That(tracker.HasPending, Is.True);
+
+            tracker.Reset();
+            Assert.That(tracker.HasPending, Is.False);
+            Assert.That(tracker.HasBaseline, Is.False);
+
+            // 다시 켜진 첫 관찰은 쌓인 시전과 공격을 재생하지 않는 새 기준값이다
+            ArcherVfxTracker.Observation back = Cast(Idle(105.4), 1, SLOT_Q, ESkillPhase.Recovery, 105.3);
+            back.AttackSequence = 4;
+            Step(tracker, back);
+            back.Now = 105.6;
+            Step(tracker, back);
+
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_BasicSequenceBumped_FiresOnceAlongFacingAfterWindup()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(10.0));
+
+            ArcherVfxTracker.Observation bump = Idle(10.0);
+            bump.AttackSequence = 1;
+            bump.Facing         = Vector3.right;
+            Step(tracker, bump);
+            bump.Now = 10.1;
+            Step(tracker, bump);
+            Assert.That(_plays, Is.Empty);
+
+            bump.Now = 10.0 + BASIC_WINDUP + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+            bump.Now = 11.0;
+            Step(tracker, bump);
+
+            Assert.That(_plays.Count, Is.EqualTo(2));
+            Assert.That(_plays[0].IsMuzzle, Is.True);
+            Assert.That(_plays[1].IsMuzzle, Is.False);
+            Assert.That(_plays[1].Kind, Is.EqualTo(EArcherVfxKind.Arrow));
+            Assert.That(Vector3.Distance(_plays[1].Direction, Vector3.right), Is.LessThan(FLOAT_TOLERANCE));
+            Assert.That(_plays[1].Speed, Is.EqualTo(BASIC_SPEED));
+            Assert.That(_plays[1].Range, Is.EqualTo(BASIC_RANGE));
+            Assert.That(_plays[1].StartAt, Is.EqualTo(10.0 + BASIC_WINDUP).Within(1e-6));
+        }
+
+        [Test]
+        public void Update_BasicMovesDuringWindup_CancelsWithoutFiring()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(20.0));
+
+            ArcherVfxTracker.Observation bump = Idle(20.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+
+            // 서버는 틱 끝에 이동 속도를 공개하므로 준비 직후 이동도 취소로 처리한다
+            bump.Now             = 20.05;
+            bump.LocomotionSpeed = 3f;
+            Step(tracker, bump);
+            Assert.That(tracker.HasPending, Is.False);
+
+            bump.Now             = 20.3;
+            bump.LocomotionSpeed = 0f;
+            Step(tracker, bump);
+
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_BasicObservedWithMovement_DoesNotFireAfterStopping()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(25.0));
+
+            // 관찰 가능한 이동으로 한 번 취소한 준비는 정지 후에도 복원하지 않는다
+            ArcherVfxTracker.Observation bump = Idle(25.0);
+            bump.AttackSequence  = 1;
+            bump.LocomotionSpeed = 3f;
+            Step(tracker, bump);
+
+            bump.Now             = 25.05;
+            bump.LocomotionSpeed = 0f;
+            Step(tracker, bump);
+            bump.Now = 25.0 + BASIC_WINDUP + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_BasicWithoutCancelOnMove_FiresWhileMoving()
+        {
+            ArcherVfxTracker tracker = CreateTracker(basicCancelOnMove: false);
+            Step(tracker, Idle(26.0));
+
+            ArcherVfxTracker.Observation bump = Idle(26.0);
+            bump.AttackSequence  = 1;
+            bump.LocomotionSpeed = 4f;
+            Step(tracker, bump);
+            bump.Now = 26.0 + BASIC_WINDUP + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+
+            Assert.That(_plays.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Update_BasicInterruptedByDodgeDeathOrSkill_DoesNotFireBasic()
+        {
+            // 회피
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(27.0));
+            ArcherVfxTracker.Observation bump = Idle(27.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+            ArcherVfxTracker.Observation dodge = Idle(27.1);
+            dodge.AttackSequence = 1;
+            dodge.DodgeSequence  = 1;
+            Step(tracker, dodge);
+            dodge.Now = 27.5;
+            Step(tracker, dodge);
+
+            // 사망
+            tracker = CreateTracker();
+            Step(tracker, Idle(28.0));
+            bump = Idle(28.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+            ArcherVfxTracker.Observation dead = Idle(28.1);
+            dead.AttackSequence = 1;
+            dead.LifeState      = EParticipantLifeState.Dead;
+            Step(tracker, dead);
+            dead.Now = 28.5;
+            Step(tracker, dead);
+
+            // 기술 시작
+            tracker = CreateTracker();
+            Step(tracker, Idle(29.0));
+            bump = Idle(29.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+            ArcherVfxTracker.Observation skill = Cast(Idle(29.1), 1, SLOT_E, ESkillPhase.Windup, 29.6);
+            skill.AttackSequence = 1;
+            Step(tracker, skill);
+
+            // 기본 공격은 사라지고 기술의 첫 발만 시점이 오면 나간다
+            Assert.That(_plays, Is.Empty);
+            skill.Now = 29.61;
+            Step(tracker, skill);
+            Assert.That(_plays.Count, Is.EqualTo(2));
+            Assert.That(_plays[1].Kind, Is.EqualTo(EArcherVfxKind.Wind));
+        }
+
+        [Test]
+        public void Update_RapidFire_FiresThreeShotsAtResolveAtPlusInterval()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(30.0));
+
+            ArcherVfxTracker.Observation cast = Cast(Idle(30.0), 1, SLOT_Q, ESkillPhase.Windup, 30.3);
+            cast.SkillAim = Vector3.right;
+            Step(tracker, cast);
+            Assert.That(_plays, Is.Empty);
+
+            cast.Now        = 30.31;
+            cast.SkillPhase = ESkillPhase.Active;
+            Step(tracker, cast);
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+
+            // 후속 발사의 방향은 시전 순간의 조준으로 고정이다
+            cast.SkillAim   = Vector3.left;
+            cast.Now        = 30.4;
+            cast.SkillPhase = ESkillPhase.Recovery;
+            Step(tracker, cast);
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+
+            cast.Now = 30.3 + Q_INTERVAL + AFTER_DELAY_MARGIN;
+            Step(tracker, cast);
+            Assert.That(CountProjectiles(), Is.EqualTo(2));
+
+            cast.Now = 30.3 + (2 * Q_INTERVAL) + AFTER_DELAY_MARGIN;
+            Step(tracker, cast);
+            Assert.That(CountProjectiles(), Is.EqualTo(3));
+
+            cast.Now = 31.5;
+            Step(tracker, cast);
+            Assert.That(CountProjectiles(), Is.EqualTo(Q_REPEAT));
+            Assert.That(tracker.HasPending, Is.False);
+
+            double[] startAt = { 30.3, 30.3 + Q_INTERVAL, 30.3 + (2 * Q_INTERVAL) };
+            int      shot    = 0;
+            for (int i = 0; i < _plays.Count; ++i)
+            {
+                if (_plays[i].IsMuzzle)
+                {
+                    continue;
+                }
+
+                Assert.That(_plays[i].StartAt, Is.EqualTo(startAt[shot]).Within(1e-6));
+                Assert.That(Vector3.Distance(_plays[i].Direction, Vector3.right), Is.LessThan(FLOAT_TOLERANCE));
+                Assert.That(_plays[i].Kind, Is.EqualTo(EArcherVfxKind.Arrow));
+                Assert.That(_plays[i].Speed, Is.EqualTo(Q_SPEED));
+                Assert.That(_plays[i].Range, Is.EqualTo(Q_RANGE));
+                ++shot;
+            }
+
+            Assert.That(CountMuzzles(), Is.EqualTo(Q_REPEAT));
+        }
+
+        [Test]
+        public void Update_RapidFireStoppedAfterFirstShot_DropsRemainingShots()
+        {
+            // Idle로 끝남
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(32.0));
+            Step(tracker, Cast(Idle(32.31), 1, SLOT_Q, ESkillPhase.Active, 32.3));
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+            Step(tracker, Cast(Idle(32.4), 1, SLOT_Q, ESkillPhase.Idle, 32.3));
+            Step(tracker, Cast(Idle(33.5), 1, SLOT_Q, ESkillPhase.Idle, 32.3));
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+            Assert.That(tracker.HasPending, Is.False);
+
+            // 회피
+            _plays.Clear();
+            tracker = CreateTracker();
+            Step(tracker, Idle(34.0));
+            Step(tracker, Cast(Idle(34.31), 1, SLOT_Q, ESkillPhase.Active, 34.3));
+            ArcherVfxTracker.Observation dodge = Cast(Idle(34.4), 1, SLOT_Q, ESkillPhase.Recovery, 34.3);
+            dodge.DodgeSequence = 1;
+            Step(tracker, dodge);
+            dodge.Now = 35.5;
+            Step(tracker, dodge);
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+
+            // 사망
+            _plays.Clear();
+            tracker = CreateTracker();
+            Step(tracker, Idle(36.0));
+            Step(tracker, Cast(Idle(36.31), 1, SLOT_Q, ESkillPhase.Active, 36.3));
+            ArcherVfxTracker.Observation dead = Cast(Idle(36.4), 1, SLOT_Q, ESkillPhase.Recovery, 36.3);
+            dead.LifeState = EParticipantLifeState.Dead;
+            Step(tracker, dead);
+            dead.Now = 37.5;
+            Step(tracker, dead);
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+
+            // 다른 시전으로 교체
+            _plays.Clear();
+            tracker = CreateTracker();
+            Step(tracker, Idle(38.0));
+            Step(tracker, Cast(Idle(38.31), 1, SLOT_Q, ESkillPhase.Active, 38.3));
+            Step(tracker, Cast(Idle(38.4), 2, SLOT_W, ESkillPhase.Windup, 38.5));
+            Step(tracker, Cast(Idle(38.51), 2, SLOT_W, ESkillPhase.Active, 38.5));
+            Step(tracker, Cast(Idle(39.5), 2, SLOT_W, ESkillPhase.Recovery, 38.5));
+
+            // Q 첫 발 하나와 W 한 발만 나가고, 교체된 Q의 남은 발사는 없다
+            Assert.That(CountProjectiles(), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Update_WindupCancelledToIdle_PlaysNothingForAnySlot()
+        {
+            byte[] slots = { SLOT_Q, SLOT_W, SLOT_E, SLOT_R };
+            for (int i = 0; i < slots.Length; ++i)
+            {
+                ArcherVfxTracker tracker = CreateTracker();
+                Step(tracker, Idle(50.0));
+
+                ArcherVfxTracker.Observation cast = Cast(Idle(50.0), 7, slots[i], ESkillPhase.Windup, 50.5);
+                Step(tracker, cast);
+
+                // 서버는 취소하면 Idle로 돌리되 시전 번호는 남긴다
+                cast.Now        = 50.2;
+                cast.SkillPhase = ESkillPhase.Idle;
+                Step(tracker, cast);
+                cast.Now = 50.6;
+                Step(tracker, cast);
+
+                Assert.That(tracker.HasPending, Is.False);
+            }
+
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_ScatterShot_FiresFiveProngsSymmetricAroundAim()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(40.0));
+
+            ArcherVfxTracker.Observation cast = Cast(Idle(40.0), 3, SLOT_R, ESkillPhase.Windup, 40.4);
+            cast.SkillAim = Vector3.right;
+            Step(tracker, cast);
+            cast.Now        = 40.41;
+            cast.SkillPhase = ESkillPhase.Active;
+            Step(tracker, cast);
+            cast.Now = 40.6;
+            Step(tracker, cast);
+
+            Assert.That(CountProjectiles(), Is.EqualTo(R_PRONGS));
+            Assert.That(CountMuzzles(), Is.EqualTo(1));
+
+            float[] expected = { -2f * R_SPREAD, -R_SPREAD, 0f, R_SPREAD, 2f * R_SPREAD };
+            int     prong    = 0;
+            for (int i = 0; i < _plays.Count; ++i)
+            {
+                if (_plays[i].IsMuzzle)
+                {
+                    Assert.That(Vector3.Distance(_plays[i].Direction, Vector3.right), Is.LessThan(FLOAT_TOLERANCE));
+                    continue;
+                }
+
+                float angle = Vector3.SignedAngle(Vector3.right, _plays[i].Direction, Vector3.up);
+                Assert.That(angle, Is.EqualTo(expected[prong]).Within(ANGLE_TOLERANCE));
+                Assert.That(_plays[i].Speed, Is.EqualTo(R_SPEED));
+                Assert.That(_plays[i].Range, Is.EqualTo(R_RANGE));
+                ++prong;
+            }
+        }
+
+        [Test]
+        public void Update_ScatterShotAroundDiagonalAim_StaysSymmetric()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(41.0));
+
+            Vector3 aim = new Vector3(1f, 0f, 1f).normalized;
+            ArcherVfxTracker.Observation cast = Cast(Idle(41.31), 3, SLOT_R, ESkillPhase.Active, 41.3);
+            cast.SkillAim = aim;
+            Step(tracker, cast);
+
+            Assert.That(CountProjectiles(), Is.EqualTo(R_PRONGS));
+            int prong = 0;
+            for (int i = 0; i < _plays.Count; ++i)
+            {
+                if (_plays[i].IsMuzzle)
+                {
+                    continue;
+                }
+
+                float expected = (prong - ((R_PRONGS - 1) * 0.5f)) * R_SPREAD;
+                float angle    = Vector3.SignedAngle(aim, _plays[i].Direction, Vector3.up);
+                Assert.That(angle, Is.EqualTo(expected).Within(ANGLE_TOLERANCE));
+                ++prong;
+            }
+        }
+
+        [Test]
+        public void Update_SkillSlots_MapToArrowOrWindWithSingleProngWhenNotSpread()
+        {
+            byte[]           slots  = { SLOT_W, SLOT_E };
+            EArcherVfxKind[] kinds  = { EArcherVfxKind.Arrow, EArcherVfxKind.Wind };
+            float[]          speeds = { W_SPEED, E_SPEED };
+            float[]          ranges = { W_RANGE, E_RANGE };
+
+            double now = 45.0;
+            for (int i = 0; i < slots.Length; ++i)
+            {
+                _plays.Clear();
+                ArcherVfxTracker tracker = CreateTracker();
+                Step(tracker, Idle(now));
+                Step(tracker, Cast(Idle(now), 1, slots[i], ESkillPhase.Windup, now + 0.3));
+                Step(tracker, Cast(Idle(now + 0.31), 1, slots[i], ESkillPhase.Active, now + 0.3));
+
+                Assert.That(_plays.Count, Is.EqualTo(2));
+                for (int p = 0; p < _plays.Count; ++p)
+                {
+                    Assert.That(_plays[p].Kind, Is.EqualTo(kinds[i]));
+                }
+
+                Assert.That(_plays[0].IsMuzzle, Is.True);
+                Assert.That(_plays[1].Speed, Is.EqualTo(speeds[i]));
+                Assert.That(_plays[1].Range, Is.EqualTo(ranges[i]));
+                now += 10.0;
+            }
+        }
+
+        [Test]
+        public void Update_ZeroActiveSkillJumpsFromWindupToRecovery_FiresFirstShotOnce()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(55.0));
+
+            ArcherVfxTracker.Observation cast = Cast(Idle(55.0), 2, SLOT_W, ESkillPhase.Windup, 55.3);
+            Step(tracker, cast);
+            Assert.That(_plays, Is.Empty);
+
+            // 서버 시각 추정이 resolveAt보다 이르더라도 Recovery 신호만으로 도달로 본다
+            cast.Now        = 55.28;
+            cast.SkillPhase = ESkillPhase.Recovery;
+            Step(tracker, cast);
+            cast.Now = 55.4;
+            Step(tracker, cast);
+
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Update_SameCastObservedOverManyFrames_FiresOnceAndNewIdFiresAgain()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(60.0));
+
+            ArcherVfxTracker.Observation cast = Cast(Idle(60.0), 4, SLOT_W, ESkillPhase.Windup, 60.25);
+            Step(tracker, cast);
+            cast.Now = 60.26;
+            Step(tracker, cast);
+            cast.Now        = 60.3;
+            cast.SkillPhase = ESkillPhase.Active;
+            Step(tracker, cast);
+            cast.Now        = 60.5;
+            cast.SkillPhase = ESkillPhase.Recovery;
+            Step(tracker, cast);
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+
+            ArcherVfxTracker.Observation next = Cast(Idle(61.0), 5, SLOT_W, ESkillPhase.Windup, 61.25);
+            Step(tracker, next);
+            next.Now = 61.26;
+            Step(tracker, next);
+            Assert.That(CountProjectiles(), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Update_CastObservedAlreadyIdle_IsSkipped()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(65.0));
+
+            Step(tracker, Cast(Idle(65.5), 1, SLOT_Q, ESkillPhase.Idle, 65.3));
+            Step(tracker, Cast(Idle(66.5), 1, SLOT_Q, ESkillPhase.Idle, 65.3));
+
+            Assert.That(_plays, Is.Empty);
+            Assert.That(tracker.HasPending, Is.False);
+        }
+
+        [Test]
+        public void Update_RapidFireObservedLate_ShowsOnlyLivingShotsAndNoStaleMuzzle()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(70.0));
+
+            // resolveAt 70.3, 지금 70.7: 첫 발은 0.4초(9.6m) 지났고 둘째 발은 0.15초 지났다
+            Step(tracker, Cast(Idle(70.7), 1, SLOT_Q, ESkillPhase.Recovery, 70.3));
+            Assert.That(CountProjectiles(), Is.EqualTo(2));
+            Assert.That(CountMuzzles(), Is.EqualTo(1));
+
+            ArcherVfxTracker.Play first = FirstProjectile();
+            Assert.That(first.StartAt, Is.EqualTo(70.3).Within(1e-9));
+            Assert.That(ArcherVfxTracker.Distance(first.Speed, first.Range, 70.7 - first.StartAt), Is.EqualTo(9.6f).Within(FLOAT_TOLERANCE));
+            for (int i = 0; i < _plays.Count; ++i)
+            {
+                if (_plays[i].IsMuzzle)
+                {
+                    Assert.That(_plays[i].StartAt, Is.EqualTo(70.3 + Q_INTERVAL).Within(1e-9));
+                }
+            }
+
+            // 셋째 발은 아직 오지 않았다가 때가 되면 나간다
+            Step(tracker, Cast(Idle(70.81), 1, SLOT_Q, ESkillPhase.Recovery, 70.3));
+            Assert.That(CountProjectiles(), Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Update_ShotsObservedBeyondRange_AreDropped()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(80.0));
+
+            // 첫째와 둘째 발은 사거리 10m를 이미 지났고 셋째 발만 살아 있다
+            Step(tracker, Cast(Idle(81.0), 1, SLOT_Q, ESkillPhase.Recovery, 80.3));
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+            Assert.That(FirstProjectile().StartAt, Is.EqualTo(80.3 + (2 * Q_INTERVAL)).Within(1e-9));
+
+            _plays.Clear();
+            Step(tracker, Cast(Idle(90.0), 2, SLOT_W, ESkillPhase.Recovery, 85.0));
+            Assert.That(_plays, Is.Empty);
+            Assert.That(tracker.HasPending, Is.False);
+        }
+
+        [Test]
+        public void Update_BasicObservedBeyondRangeAfterFireTime_IsDropped()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(95.0));
+
+            ArcherVfxTracker.Observation bump = Idle(95.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+
+            // 발사 시각 95.2에서 사거리 12m를 날아갈 시간(0.4초)을 넘겨 처음 도달을 보면 버린다
+            bump.Now = 95.0 + BASIC_WINDUP + (BASIC_RANGE / BASIC_SPEED) + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+            Assert.That(_plays, Is.Empty);
+            Assert.That(tracker.HasPending, Is.False);
+        }
+
+        [Test]
+        public void Update_BasicObservedLateWithinRange_ShowsArrowWithoutMuzzle()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(96.0));
+
+            ArcherVfxTracker.Observation bump = Idle(96.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+
+            // 발사 시각 96.2에서 0.3초 늦게 보면 총구 효과는 생략하고 화살만 9m 나간 자리에서 시작한다
+            bump.Now = 96.0 + BASIC_WINDUP + 0.3;
+            Step(tracker, bump);
+            Assert.That(CountMuzzles(), Is.EqualTo(0));
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+            Assert.That(ArcherVfxTracker.Distance(BASIC_SPEED, BASIC_RANGE, bump.Now - _plays[0].StartAt), Is.EqualTo(9f).Within(FLOAT_TOLERANCE));
+        }
+
+        [Test]
+        public void Update_OtherClassObservation_PlaysNothingAndRebaselines()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(100.0));
+            Assert.That(tracker.HasBaseline, Is.True);
+
+            ArcherVfxTracker.Observation other = Cast(Idle(100.1), 3, SLOT_Q, ESkillPhase.Windup, 100.2);
+            other.PlayerClass    = EPlayerClass.Swordsman;
+            other.AttackSequence = 9;
+            Step(tracker, other);
+            other.Now        = 100.3;
+            other.SkillPhase = ESkillPhase.Active;
+            Step(tracker, other);
+
+            Assert.That(_plays, Is.Empty);
+            Assert.That(tracker.HasBaseline, Is.False);
+
+            ArcherVfxTracker.Observation back = Cast(Idle(100.4), 3, SLOT_Q, ESkillPhase.Recovery, 100.2);
+            back.AttackSequence = 9;
+            Step(tracker, back);
+            back.Now = 100.6;
+            Step(tracker, back);
+
+            Assert.That(_plays, Is.Empty);
+            Assert.That(tracker.HasBaseline, Is.True);
+        }
+
+        [Test]
+        public void Update_InvalidSpeedOrRange_PlaysNothing()
+        {
+            var tracker = new ArcherVfxTracker();
+            var config  = new ArcherVfxTracker.Config();
+            config.BasicWindup    = BASIC_WINDUP;
+            config.MaxLateSeconds = MAX_LATE;
+            config.Basic          = Shot(0f, BASIC_RANGE);
+            tracker.Configure(in config);
+            tracker.SetSkill(SLOT_Q, Shot(-5f, Q_RANGE));
+            tracker.SetSkill(SLOT_W, Shot(W_SPEED, 0f));
+            tracker.SetSkill(SLOT_E, Shot(float.NaN, E_RANGE));
+            // R은 SetSkill을 부르지 않은 기본값(0)
+
+            Step(tracker, Idle(110.0));
+            ArcherVfxTracker.Observation bump = Idle(110.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+            Assert.That(tracker.HasPending, Is.False);
+
+            byte[] slots = { SLOT_Q, SLOT_W, SLOT_E, SLOT_R };
+            for (int i = 0; i < slots.Length; ++i)
+            {
+                Step(tracker, Cast(Idle(111.0 + i), i + 1, slots[i], ESkillPhase.Active, 111.0 + i));
+            }
+
+            Assert.That(_plays, Is.Empty);
+            Assert.That(tracker.HasPending, Is.False);
+        }
+
+        [Test]
+        public void Update_ZeroCountsAreNormalizedAndOutOfRangeSlotIsIgnored()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(120.0));
+
+            // W는 갈래와 반복 횟수가 0이라 한 갈래 한 번으로 다룬다
+            Step(tracker, Cast(Idle(120.31), 1, SLOT_W, ESkillPhase.Active, 120.3));
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+
+            _plays.Clear();
+            Step(tracker, Cast(Idle(121.31), 2, 9, ESkillPhase.Active, 121.3));
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Distance_IsPlainSpeedTimesElapsedClampedToRange()
+        {
+            Assert.That(ArcherVfxTracker.Distance(Q_SPEED, Q_RANGE, -1.0), Is.EqualTo(0f));
+            Assert.That(ArcherVfxTracker.Distance(Q_SPEED, Q_RANGE, 0.0), Is.EqualTo(0f));
+            Assert.That(ArcherVfxTracker.Distance(Q_SPEED, Q_RANGE, 0.1), Is.EqualTo(2.4f).Within(FLOAT_TOLERANCE));
+            Assert.That(ArcherVfxTracker.Distance(Q_SPEED, Q_RANGE, 0.3), Is.EqualTo(7.2f).Within(FLOAT_TOLERANCE));
+            Assert.That(ArcherVfxTracker.Distance(Q_SPEED, Q_RANGE, 5.0), Is.EqualTo(Q_RANGE));
+            Assert.That(ArcherVfxTracker.Distance(0f, Q_RANGE, 1.0), Is.EqualTo(0f));
+            Assert.That(ArcherVfxTracker.Distance(Q_SPEED, 0f, 1.0), Is.EqualTo(0f));
+        }
+
+        /****************************************
+        *              Pool Tests
+        ****************************************/
+
+        [Test]
+        public void Pool_ProjectileLateStart_BeginsAtElapsedDistanceAndMovesStraight()
+        {
+            ArcherVfxPool pool   = CreatePool(POOL_SIZE);
+            Vector3       origin = new Vector3(1f, 0f, 1f);
+
+            pool.PlayProjectile(origin, Vector3.forward, 200.0, Q_SPEED, Q_RANGE, 200.1);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(1f + 2.4f).Within(FLOAT_TOLERANCE));
+            Assert.That(pool.GetSlotPosition(0).x, Is.EqualTo(1f).Within(FLOAT_TOLERANCE));
+
+            pool.Tick(200.2);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(1f + 4.8f).Within(FLOAT_TOLERANCE));
+            pool.Tick(200.3);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(1f + 7.2f).Within(FLOAT_TOLERANCE));
+        }
+
+        [Test]
+        public void Pool_ProjectileReachesRange_StopsAtRangeAndCleansUp()
+        {
+            ArcherVfxPool pool = CreatePool(POOL_SIZE);
+
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 300.0, Q_SPEED, Q_RANGE, 300.0);
+            pool.Tick(300.4);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+            Assert.That(pool.GetSlotPosition(0).z, Is.LessThan(Q_RANGE));
+
+            pool.Tick(300.45);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(Q_RANGE).Within(FLOAT_TOLERANCE));
+
+            // 사거리 끝에서 더 나아가지 않고, 잠시 뒤 정리된다
+            pool.Tick(300.55);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(Q_RANGE).Within(FLOAT_TOLERANCE));
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+
+            pool.Tick(301.5);
+            Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Pool_FiredProjectileSurvivesIdleDeathAndDodge_UntilRange()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            ArcherVfxPool    pool    = CreatePool(POOL_SIZE);
+            Step(tracker, Idle(400.0));
+
+            ArcherVfxTracker.Observation cast = Cast(Idle(400.31), 1, SLOT_W, ESkillPhase.Active, 400.3);
+            cast.SkillAim = Vector3.forward;
+            Observe(tracker, pool, cast);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+
+            // 발사 뒤 Idle, 사망, 회피가 와도 이미 나간 화살은 그대로 날아간다
+            Observe(tracker, pool, Idle(400.35));
+            ArcherVfxTracker.Observation dead = Idle(400.4);
+            dead.LifeState = EParticipantLifeState.Dead;
+            Observe(tracker, pool, dead);
+            ArcherVfxTracker.Observation dodge = Idle(400.45);
+            dodge.DodgeSequence = 1;
+            Observe(tracker, pool, dodge);
+
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(W_SPEED * 0.15f).Within(FLOAT_TOLERANCE));
+
+            // 사거리 끝(약 0.417초)을 지나면 정리된다
+            Observe(tracker, pool, Idle(400.75));
+            Observe(tracker, pool, Idle(401.0));
+            Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Pool_MoreThanFixedSize_RecyclesWithoutGrowing()
+        {
+            var root   = new GameObject("ArcherVfxTestRoot");
+            var prefab = new GameObject("ArcherVfxTestPrefab");
+            prefab.AddComponent<ParticleSystem>();
+            _created.Add(root);
+            _created.Add(prefab);
+            var pool = new ArcherVfxPool(prefab, root.transform, POOL_SIZE);
+
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 500.0, Q_SPEED, Q_RANGE, 500.0);
+            pool.PlayProjectile(Vector3.one, Vector3.forward, 500.0, Q_SPEED, Q_RANGE, 500.0);
+            pool.PlayProjectile(Vector3.up, Vector3.forward, 500.0, Q_SPEED, Q_RANGE, 500.0);
+
+            Assert.That(pool.SlotCount, Is.EqualTo(POOL_SIZE));
+            Assert.That(pool.ActiveCount, Is.EqualTo(POOL_SIZE));
+            Assert.That(root.transform.childCount, Is.EqualTo(POOL_SIZE));
+            Assert.That(Vector3.Distance(pool.GetSlotPosition(0), Vector3.up), Is.LessThan(FLOAT_TOLERANCE));
+        }
+
+        [Test]
+        public void Pool_StopAll_ClearsEverySlot()
+        {
+            ArcherVfxPool pool = CreatePool(POOL_SIZE);
+
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 600.0, Q_SPEED, Q_RANGE, 600.0);
+            pool.PlayBrief(Vector3.zero, Quaternion.identity, 600.0, 1f);
+            Assert.That(pool.ActiveCount, Is.EqualTo(2));
+
+            pool.StopAll();
+            Assert.That(pool.ActiveCount, Is.EqualTo(0));
+            Assert.That(pool.IsSlotActive(0), Is.False);
+            Assert.That(pool.IsSlotActive(1), Is.False);
+        }
+
+        [Test]
+        public void Pool_BriefMuzzle_EndsAtMaxSeconds()
+        {
+            ArcherVfxPool pool = CreatePool(POOL_SIZE);
+
+            pool.PlayBrief(Vector3.zero, Quaternion.identity, 700.0, 1.5f);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+
+            pool.Tick(701.6);
+            Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Pool_MissingPrefabOrInvalidSpeed_NeverThrowsAndStaysEmpty()
+        {
+            var root = new GameObject("ArcherVfxTestRoot");
+            _created.Add(root);
+            var missing = new ArcherVfxPool(null, root.transform, POOL_SIZE);
+
+            Assert.That(missing.HasPrefab, Is.False);
+            Assert.DoesNotThrow(() =>
+            {
+                missing.PlayBrief(Vector3.zero, Quaternion.identity, 0.0, 1f);
+                missing.PlayProjectile(Vector3.zero, Vector3.forward, 0.0, Q_SPEED, Q_RANGE, 0.0);
+                missing.Tick(1.0);
+                missing.StopAll();
+            });
+            Assert.That(missing.ActiveCount, Is.EqualTo(0));
+            Assert.That(missing.IsSlotActive(0), Is.False);
+
+            ArcherVfxPool pool = CreatePool(POOL_SIZE);
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 0.0, 0f, Q_RANGE, 0.0);
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 0.0, Q_SPEED, -1f, 0.0);
+            Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        }
+
+        /****************************************
+        *              View Tests
+        ****************************************/
+
+        [Test]
+        public void View_PoolsBuiltOnlyForAssignedPrefabsAndRemovedOnDestroy()
+        {
+            const string POOL_ROOT_NAME = "ArcherVfxPool";
+
+            var prefab = new GameObject("ArcherVfxTestPrefab");
+            prefab.AddComponent<ParticleSystem>();
+            var host = new GameObject("ArcherVfxTestHost");
+            _created.Add(prefab);
+            _created.Add(host);
+            var view = host.AddComponent<ArcherVfxView>();
+
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            typeof(ArcherVfxView).GetField("_arrowPrefab", flags).SetValue(view, prefab);
+            typeof(ArcherVfxView).GetMethod("EnsurePools", flags).Invoke(view, null);
+
+            GameObject root = GameObject.Find(POOL_ROOT_NAME);
+            Assert.That(root, Is.Not.Null);
+            _created.Add(root);
+
+            // 화살 풀 칸만 만들어지고 프리팹이 없는 풀은 아무것도 만들지 않는다
+            Assert.That(root.transform.childCount, Is.EqualTo(VIEW_ARROW_POOL));
+
+            // 에디트 모드에서는 라이프사이클 호출이 보장되지 않아 정리 메서드를 직접 부른다
+            typeof(ArcherVfxView).GetMethod("OnDisable", flags).Invoke(view, null);
+            typeof(ArcherVfxView).GetMethod("OnDestroy", flags).Invoke(view, null);
+            Assert.That(GameObject.Find(POOL_ROOT_NAME), Is.Null);
+        }
+
+        /****************************************
+        *               Helpers
+        ****************************************/
+
+        private static ArcherVfxTracker.ShotSpec Shot(float speed, float range, int prongs = 1, float spread = 0f, int repeat = 1, float interval = 0f)
+        {
+            var spec = new ArcherVfxTracker.ShotSpec();
+            spec.Speed           = speed;
+            spec.Range           = range;
+            spec.ProjectileCount = prongs;
+            spec.SpreadAngle     = spread;
+            spec.RepeatCount     = repeat;
+            spec.RepeatInterval  = interval;
+            return spec;
+        }
+
+        private static ArcherVfxTracker CreateTracker(bool basicCancelOnMove = true)
+        {
+            var tracker = new ArcherVfxTracker();
+            var config  = new ArcherVfxTracker.Config();
+            config.BasicWindup       = BASIC_WINDUP;
+            config.BasicCancelOnMove = basicCancelOnMove;
+            config.Basic             = Shot(BASIC_SPEED, BASIC_RANGE);
+            config.MaxLateSeconds    = MAX_LATE;
+            tracker.Configure(in config);
+            tracker.SetSkill(SLOT_Q, Shot(Q_SPEED, Q_RANGE, 1, 0f, Q_REPEAT, Q_INTERVAL));
+            // W는 갈래와 반복 횟수를 0으로 두어도 한 갈래 한 번으로 다뤄야 한다
+            tracker.SetSkill(SLOT_W, Shot(W_SPEED, W_RANGE, 0, 0f, 0, 0f));
+            tracker.SetSkill(SLOT_E, Shot(E_SPEED, E_RANGE));
+            tracker.SetSkill(SLOT_R, Shot(R_SPEED, R_RANGE, R_PRONGS, R_SPREAD));
+            return tracker;
+        }
+
+        private ArcherVfxPool CreatePool(int size)
+        {
+            var prefab = new GameObject("ArcherVfxTestPrefab");
+            prefab.AddComponent<ParticleSystem>();
+            var root = new GameObject("ArcherVfxTestRoot");
+            _created.Add(prefab);
+            _created.Add(root);
+            return new ArcherVfxPool(prefab, root.transform, size);
+        }
+
+        private static ArcherVfxTracker.Observation Idle(double now)
+        {
+            var obs = new ArcherVfxTracker.Observation();
+            obs.PlayerClass = EPlayerClass.Archer;
+            obs.LifeState   = EParticipantLifeState.Alive;
+            obs.SkillPhase  = ESkillPhase.Idle;
+            obs.SkillKind   = ESkillRequestKind.Regular;
+            obs.Facing      = Vector3.forward;
+            obs.SkillAim    = Vector3.forward;
+            obs.Now         = now;
+            return obs;
+        }
+
+        private static ArcherVfxTracker.Observation Cast(ArcherVfxTracker.Observation source, int castId, byte slot, ESkillPhase phase, double resolveAt)
+        {
+            source.CastInstanceId = castId;
+            source.SkillSlot      = slot;
+            source.SkillPhase     = phase;
+            source.SkillResolveAt = resolveAt;
+            return source;
+        }
+
+        // 한 프레임을 반영하고, 그 프레임에 재생된 효과를 _plays에 쌓는다
+        private int Step(ArcherVfxTracker tracker, ArcherVfxTracker.Observation obs)
+        {
+            int count = tracker.Update(in obs);
+            for (int i = 0; i < count; ++i)
+            {
+                _plays.Add(tracker.GetPlay(i));
+            }
+
+            return count;
+        }
+
+        // 뷰의 Update와 같은 순서로 추적기를 갱신하고 투사체를 풀에 넘긴 뒤 풀을 갱신한다
+        private void Observe(ArcherVfxTracker tracker, ArcherVfxPool pool, ArcherVfxTracker.Observation obs)
+        {
+            int count = Step(tracker, obs);
+            for (int i = 0; i < count; ++i)
+            {
+                ArcherVfxTracker.Play play = tracker.GetPlay(i);
+                if (!play.IsMuzzle)
+                {
+                    pool.PlayProjectile(Vector3.zero, play.Direction, play.StartAt, play.Speed, play.Range, obs.Now);
+                }
+            }
+
+            pool.Tick(obs.Now);
+        }
+
+        private int CountProjectiles()
+        {
+            int count = 0;
+            for (int i = 0; i < _plays.Count; ++i)
+            {
+                if (!_plays[i].IsMuzzle)
+                {
+                    ++count;
+                }
+            }
+
+            return count;
+        }
+
+        private int CountMuzzles()
+        {
+            return _plays.Count - CountProjectiles();
+        }
+
+        private ArcherVfxTracker.Play FirstProjectile()
+        {
+            for (int i = 0; i < _plays.Count; ++i)
+            {
+                if (!_plays[i].IsMuzzle)
+                {
+                    return _plays[i];
+                }
+            }
+
+            Assert.Fail("투사체 재생이 없다");
+            return default;
+        }
+    }
+}

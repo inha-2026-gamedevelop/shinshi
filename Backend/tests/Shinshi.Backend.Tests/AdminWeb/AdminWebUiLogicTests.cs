@@ -227,6 +227,10 @@ namespace Shinshi.Backend.Tests.AdminWeb
         [InlineData(0, "무사")]
         [InlineData(1, "도술사")]
         [InlineData(2, "신령사")]
+        [InlineData(3, "검사")]
+        [InlineData(4, "마검사")]
+        [InlineData(5, "궁수")]
+        [InlineData(6, "알 수 없는 직업")]
         [InlineData(9, "알 수 없는 직업")]
         public void ClassCatalog_NamesKnownClassIds(int classId, string expected)
         {

@@ -28,7 +28,10 @@ namespace Shinshi.Data.Growth
         public const int MAX_ENHANCEMENT     = 25;
         public const int TRAINING_STAT_COUNT = 5;
         public const int MAX_EFFECT_LEVEL    = 5;
-        public const int EFFECT_COUNT        = 45;
+        public const int PLAYER_CLASS_COUNT  = 6;
+        public const int EFFECTS_PER_CLASS   = 15;
+        public const int EFFECT_COUNT        = PLAYER_CLASS_COUNT * EFFECTS_PER_CLASS;
+        public const int REGULAR_SKILL_COUNT = 24;
         public const int TIER_COUNT          = 3;
 
         // 등록 성공이 레벨 1이므로 강화 비용 표는 목표 레벨 2부터다
@@ -328,15 +331,39 @@ namespace Shinshi.Data.Growth
             RequireCount(errors, "talismans.levelBonusMultipliers", Talismans.LevelBonusMultipliers.Length, MAX_EFFECT_LEVEL);
             RequireCount(errors, "talismans.effects", Talismans.Effects.Length, EFFECT_COUNT);
             HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
+            HashSet<string> skills = new HashSet<string>(StringComparer.Ordinal);
+            int[] classCounts = new int[PLAYER_CLASS_COUNT];
             foreach (TalismanEffect effect in Talismans.Effects)
             {
-                if (!Regex.IsMatch(effect.DefinitionId ?? string.Empty, EFFECT_ID_PATTERN) || !ids.Add(effect.DefinitionId!)
-                    || (effect.PlayerClass < 0) || (effect.PlayerClass > 2) || string.IsNullOrWhiteSpace(effect.SkillId)
-                    || (effect.Tier < 0) || (effect.Tier >= TIER_COUNT) || (effect.Choice < 0))
+                bool idValid = Regex.IsMatch(effect.DefinitionId ?? string.Empty, EFFECT_ID_PATTERN);
+                if (!idValid || !ids.Add(effect.DefinitionId!)
+                    || (effect.PlayerClass < 0) || (effect.PlayerClass >= PLAYER_CLASS_COUNT)
+                    || string.IsNullOrWhiteSpace(effect.SkillId)
+                    || (effect.Tier < 0) || (effect.Tier >= TIER_COUNT) || (effect.Choice < 0)
+                    || !IsIdConsistent(effect.DefinitionId!, effect.Tier, effect.Choice))
                 {
                     errors.Add("talismans.effects[" + effect.DefinitionId + "]: invalid effect");
+                    continue;
                 }
+
+                ++classCounts[effect.PlayerClass];
+                skills.Add(effect.SkillId);
             }
+
+            // 직업마다 효과 15개를 가져야 한다. 한 직업의 부적 풀이 다른 직업과 섞이지 않는다
+            for (int playerClass = 0; playerClass < PLAYER_CLASS_COUNT; ++playerClass)
+            {
+                RequireCount(errors, "talismans.effects[class " + playerClass + "]", classCounts[playerClass], EFFECTS_PER_CLASS);
+            }
+            RequireCount(errors, "talismans.effects skills", skills.Count, REGULAR_SKILL_COUNT);
+        }
+
+        // ID 접미사의 숫자-1이 단계, 문자(A=0, B=1)가 선택이어야 한다. 접두 번호(Tnn)는 직업에 묶지 않는다
+        private static bool IsIdConsistent(string definitionId, int tier, int choice)
+        {
+            const int SUFFIX_INDEX = 4;
+            const int CHOICE_INDEX = 5;
+            return ((definitionId[SUFFIX_INDEX] - '1') == tier) && ((definitionId[CHOICE_INDEX] - 'A') == choice);
         }
 
         private void ValidateProgression(List<string> errors)

@@ -8,6 +8,12 @@ namespace Shinshi.Common
         // 도술사
         Sorcerer = 1,
         // 신령사
-        Summoner = 2
+        Summoner = 2,
+        // 검사
+        Swordsman = 3,
+        // 마검사
+        Mageknight = 4,
+        // 궁수
+        Archer = 5
     }
 }

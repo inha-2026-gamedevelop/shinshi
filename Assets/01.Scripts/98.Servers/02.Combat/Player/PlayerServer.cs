@@ -61,6 +61,17 @@ namespace Shinshi.Combat
         private bool                  _hasPendingAttack    = false;
         private ushort                _pendingAimYaw       = 0;
         private double                _nextAttackTime      = 0.0;
+        private bool                  _isWindingUp         = false;
+        private double                _windupFireAt        = 0.0;
+        private Vector3               _windupAim           = Vector3.forward;
+        private bool                  _arrowActive         = false;
+        private Vector3               _arrowOrigin         = Vector3.zero;
+        private Vector3               _arrowAim            = Vector3.forward;
+        private float                 _arrowTravelled      = 0f;
+        private double                _arrowLastTime       = 0.0;
+        private int                   _arrowCastId         = CombatIds.NONE;
+        private int                   _arrowActionId       = CombatIds.NONE;
+        private float                 _arrowDamage         = 0f;
         private readonly float        _dodgeDistance;
         private readonly float        _dodgeDuration;
         private readonly double       _dodgeCooldown;
@@ -247,6 +258,8 @@ namespace Shinshi.Combat
             }
             _hasPendingMove      = false;
             _hasPendingAttack    = false;
+            _isWindingUp         = false;
+            _arrowActive         = false;
             _hasPendingSkill     = false;
             _hasPendingDodge     = false;
             _isDodging           = false;
@@ -268,6 +281,7 @@ namespace Shinshi.Combat
             _input.SkillServerHandler = null;
             _hasPendingMove      = false;
             _hasPendingAttack    = false;
+            _isWindingUp         = false;
             _hasPendingSkill     = false;
             _hasReviveRequest    = false;
             _hasPendingDodge     = false;
@@ -330,8 +344,12 @@ namespace Shinshi.Combat
                 return;
             }
 
-            // 이동은 기본 공격 준비를 취소한다
+            // 이동은 기본 공격 준비를 취소한다. 준비 동작이 이동으로 끊기는 공격은 이미 시작한 준비도 버린다
             _hasPendingAttack = false;
+            if (_attack.CancelOnMove)
+            {
+                _isWindingUp = false;
+            }
 
             // 진행 중인 경로와 같은 곳이면 다시 계산하지 않는다. 앞서 보관한 다른 목적지도 이 의도로 덮는다
             if (admission == EMoveAdmission.SameDestination)
@@ -432,7 +450,7 @@ namespace Shinshi.Combat
         // 기술이 실제로 타격 중이면 회피로 끊지 못한다. 준비와 후딜, 반격 방어 창은 끊을 수 있다
         private bool IsSkillLockingDodge()
         {
-            return (_skills != null) && (_skills.Phase == ESkillPhase.Active) && (!_skills.IsGuardWindow);
+            return (_skills != null) && (_skills.LocksDodge);
         }
 
         // 부활은 요청만 받아 두고 실제 승인은 틱의 부활 단계(종료 판정 뒤)가 한다. 같은 틱의 전멸이 부활보다 먼저다
@@ -631,6 +649,7 @@ namespace Shinshi.Combat
                 _hasPendingSkill = false;
             }
             _hasPendingAttack = false;
+            _isWindingUp = false;
             _hasPendingMove = false;
             _path.Stop();
             _moveThrottle.ClearActive();
@@ -774,8 +793,11 @@ namespace Shinshi.Combat
 
         public void TickAttack(double serverTime)
         {
+            TickWindup(serverTime);
+            TickArrow(serverTime);
+
             // 회피 중에 받은 공격은 버리지 않고 회피가 끝난 틱에 쓴다
-            if ((!_hasPendingAttack) || (_lifeState != EParticipantLifeState.Alive) || (_isDodging)
+            if ((!_hasPendingAttack) || (_isWindingUp) || (_lifeState != EParticipantLifeState.Alive) || (_isDodging)
                 || ((_skills != null) && (_skills.BlocksMovement)))
             {
                 return;
@@ -786,7 +808,6 @@ namespace Shinshi.Combat
                 return;
             }
 
-            // TODO(민성): 타격 발생 시점(준비 시간)이 기획에서 정해지면 준비 상태를 두고 그 시각에 판정한다. 지금은 승인 틱에 바로 판정한다
             _hasPendingAttack = false;
             _nextAttackTime   = serverTime + _attack.Interval;
             _path.Stop();
@@ -794,7 +815,102 @@ namespace Shinshi.Combat
 
             Vector3 aim = FacingRules.DecodeYaw(_pendingAimYaw);
             SetFacing(aim);
-            ExecuteBasicAttack(aim);
+            if (_attack.Windup > 0f)
+            {
+                // 동작은 승인 시점에 시작하고 판정은 준비 시간 뒤에 한다
+                _combat.BumpAttackSequence();
+                _isWindingUp  = true;
+                _windupFireAt = serverTime + _attack.Windup;
+                _windupAim    = aim;
+                return;
+            }
+
+            _combat.BumpAttackSequence();
+            ResolveBasicAttack(aim, serverTime);
+        }
+
+        // 준비 중 회피, 사망, 기술 시전, 이동(취소형 공격)은 이 상태를 지운다. 여기서는 남은 방해만 확인하고 시각이 되면 판정한다
+        private void TickWindup(double serverTime)
+        {
+            if (!_isWindingUp)
+            {
+                return;
+            }
+
+            if ((_lifeState != EParticipantLifeState.Alive) || (_isDodging) || ((_skills != null) && (_skills.BlocksMovement)))
+            {
+                _isWindingUp = false;
+                return;
+            }
+
+            if (serverTime < _windupFireAt)
+            {
+                return;
+            }
+
+            _isWindingUp = false;
+            ResolveBasicAttack(_windupAim, _windupFireAt);
+        }
+
+        // 날아가는 기본 공격 화살. 이미 나간 화살은 시전자가 회피하거나 죽어도 사거리까지 이어 간다
+        private void TickArrow(double serverTime)
+        {
+            if (!_arrowActive)
+            {
+                return;
+            }
+
+            float distance = Mathf.Min(_attack.Range - _arrowTravelled,
+                _attack.ProjectileSpeed * (float)System.Math.Max(0.0, serverTime - _arrowLastTime));
+            float clear     = _lineOfSight.GetClearDistance(_arrowOrigin, _arrowAim, distance);
+            float halfWidth = _attack.ProjectileWidth * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
+            bool  wallCut   = clear < distance;
+
+            int   hitIndex = -1;
+            float hitAlong = float.MaxValue;
+            int   count    = _query.GetLivingInRadius(_arrowOrigin, clear + halfWidth, ECombatFaction.Enemy, true, _targetBuffer);
+            for (int i = 0; i < count; ++i)
+            {
+                Vector3 position = _targetBuffer[i].Position;
+                if ((!BasicAttackRules.TryProjectOnRay(_arrowOrigin, _arrowAim, position, clear, halfWidth, out float along))
+                    || (!BasicAttackRules.IsWithinHeight(_arrowOrigin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE)))
+                {
+                    continue;
+                }
+
+                // 벽과 대상이 같은 거리면 벽이 먼저다
+                if ((wallCut) && (along >= clear))
+                {
+                    continue;
+                }
+
+                if ((along < hitAlong) || ((along == hitAlong) && (_targetBuffer[i].CombatId < _targetBuffer[hitIndex].CombatId)))
+                {
+                    hitAlong = along;
+                    hitIndex = i;
+                }
+            }
+
+            if (hitIndex >= 0)
+            {
+                var request = new DamageRequest(_combatId, _targetBuffer[hitIndex].CombatId, _arrowCastId, _arrowActionId, _arrowDamage,
+                    EDamageFlags.None, _arrowOrigin, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+                _resolver.Apply(in request);
+                _arrowActive = false;
+            }
+            else
+            {
+                _arrowOrigin    += _arrowAim * clear;
+                _arrowTravelled += clear;
+                _arrowLastTime   = serverTime;
+                if ((wallCut) || (_arrowTravelled >= _attack.Range))
+                {
+                    _arrowActive = false;
+                }
+            }
+
+            // 반환된 참조는 이번 틱에만 쓴다
+            _targetBuffer.Clear();
         }
 
         // 이번 틱의 위치를 회피가 정했으면 참이다. 경로 이동과 기술의 이동 막기는 이 틱에 보지 않는다
@@ -859,6 +975,7 @@ namespace Shinshi.Combat
 
             _hasPendingMove   = false;
             _hasPendingAttack = false;
+            _isWindingUp      = false;
             _path.Stop();
             _moveThrottle.ClearActive();
 
@@ -929,14 +1046,26 @@ namespace Shinshi.Combat
             _input.SetMoveAuthority(in _publishedMove);
         }
 
-        private void ExecuteBasicAttack(Vector3 aim)
+        // 맞힐 대상이 없어도 휘두르는 모습은 보여야 하므로 호출 전에 동작 순번을 올려 둔다
+        private void ResolveBasicAttack(Vector3 aim, double serverTime)
         {
-            // 맞힐 대상이 없어도 휘두르는 모습은 보여야 하므로 판정 전에 올린다
-            _combat.BumpAttackSequence();
-
             Vector3 origin   = _transform.position;
             float   range    = _attack.Range;
             bool    isRanged = _attack.ArcAngle <= 0f;
+
+            if ((isRanged) && (_attack.ProjectileSpeed > 0f))
+            {
+                _arrowActive    = true;
+                _arrowOrigin    = origin;
+                _arrowAim       = aim;
+                _arrowTravelled = 0f;
+                _arrowLastTime  = serverTime;
+                _arrowCastId    = _resolver.IssueInstanceId();
+                _arrowActionId  = _resolver.IssueInstanceId();
+                _arrowDamage    = _attackPower * _attack.DamageCoefficient;
+                return;
+            }
+
             float   radius   = isRanged ? (range + Constants.Combat.BASIC_ATTACK_RAY_HALF_WIDTH) : range;
 
             int count = _query.GetLivingInRadius(origin, radius, ECombatFaction.Enemy, true, _targetBuffer);
@@ -1131,6 +1260,7 @@ namespace Shinshi.Combat
             _deathTime        = serverTime;
             _hasPendingMove   = false;
             _hasPendingAttack = false;
+            _isWindingUp      = false;
             if (_hasPendingSkill)
             {
                 _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.Dead);

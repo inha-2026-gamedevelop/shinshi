@@ -26,11 +26,19 @@ namespace Shinshi.Data
             [SerializeField] private float _interval;          // 초, 공격 주기
             [SerializeField] private float _range;             // m
             [SerializeField] private float _arcAngle;          // 도, 0이면 부채꼴이 아닌 투사체
+            [SerializeField] private float _windup;            // 초, 입력 승인부터 타격 발생까지. 0이면 승인 틱에 바로 판정
+            [SerializeField] private float _projectileSpeed;   // m/초, 0보다 크면 원거리 기본 공격이 이 속도로 날아가는 투사체
+            [SerializeField] private float _projectileWidth;   // m, 투사체 폭
+            [SerializeField] private bool  _cancelOnMove;      // 준비 중 이동, 회피 입력이 오면 발사하지 않고 취소한다
 
             public float DamageCoefficient => _damageCoefficient;
             public float Interval          => _interval;
             public float Range             => _range;
             public float ArcAngle          => _arcAngle;
+            public float Windup            => _windup;
+            public float ProjectileSpeed   => _projectileSpeed;
+            public float ProjectileWidth   => _projectileWidth;
+            public bool  CancelOnMove      => _cancelOnMove;
 
             /****************************************
             *                Methods
@@ -43,6 +51,16 @@ namespace Shinshi.Data
                 _range             = range;
                 _arcAngle          = arcAngle;
             }
+
+            public BasicAttackSpec(float damageCoefficient, float interval, float range, float arcAngle, float windup,
+                float projectileSpeed, float projectileWidth, bool cancelOnMove)
+                : this(damageCoefficient, interval, range, arcAngle)
+            {
+                _windup          = windup;
+                _projectileSpeed = projectileSpeed;
+                _projectileWidth = projectileWidth;
+                _cancelOnMove    = cancelOnMove;
+            }
         }
 
         /****************************************
@@ -52,6 +70,7 @@ namespace Shinshi.Data
         private const float MAX_RATE            = 1f;
         private const float MIN_CRIT_MULTIPLIER = 1f;
         private const float MAX_ARC_ANGLE       = 360f;
+        private const int   LEGACY_CLASS_COUNT  = 3;
 
         /****************************************
         *                Fields
@@ -100,6 +119,15 @@ namespace Shinshi.Data
             new BasicAttackSpec(0.6f, 0.8f, 8f, 0f)
         };
 
+        // 검사, 마검사, 궁수 순서(EPlayerClass 3, 4, 5). 기존 배열의 길이는 이미 저장된 자산이 가지므로 새 직업은 별도 배열로 둔다
+        [Header("신규 직업별 기본 공격 (검사, 마검사, 궁수)")]
+        [SerializeField] private BasicAttackSpec[] _classBasicAttacks =
+        {
+            new BasicAttackSpec(1.0f, 0.9f, 3f, 90f, 0.2f, 0f, 0f, false),
+            new BasicAttackSpec(0.9f, 0.85f, 2.5f, 90f, 0f, 0f, 0f, false),
+            new BasicAttackSpec(0.9f, 0.95f, 10f, 0f, 0.35f, 24f, 0.3f, true)
+        };
+
         public float MoveSpeed                => _moveSpeed;
         public float DodgeDistance            => _dodgeDistance;
         public float DodgeDuration            => _dodgeDuration;
@@ -127,12 +155,18 @@ namespace Shinshi.Data
         public BasicAttackSpec GetBasicAttack(EPlayerClass playerClass)
         {
             int index = (int)playerClass;
-            if ((index < 0) || (index >= _basicAttacks.Length))
+            if ((index >= 0) && (index < _basicAttacks.Length) && (index < LEGACY_CLASS_COUNT))
+            {
+                return _basicAttacks[index];
+            }
+
+            int classIndex = index - LEGACY_CLASS_COUNT;
+            if ((classIndex < 0) || (_classBasicAttacks == null) || (classIndex >= _classBasicAttacks.Length))
             {
                 throw new ArgumentOutOfRangeException(nameof(playerClass), "기본 공격 명세가 없는 직업이다");
             }
 
-            return _basicAttacks[index];
+            return _classBasicAttacks[classIndex];
         }
 
         protected override void ValidateValues(List<string> errors)
@@ -160,16 +194,24 @@ namespace Shinshi.Data
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_inputBufferDepth), _inputBufferDepth);
 
             int classCount = Enum.GetValues(typeof(EPlayerClass)).Length;
-            if ((_basicAttacks == null) || (_basicAttacks.Length != classCount))
+            int newCount   = classCount - LEGACY_CLASS_COUNT;
+            if ((_basicAttacks == null) || (_basicAttacks.Length != LEGACY_CLASS_COUNT))
             {
                 int count = (_basicAttacks == null) ? 0 : _basicAttacks.Length;
-                errors.Add($"{OWNER}.{nameof(_basicAttacks)}: 기본 공격 명세 개수가 직업 수와 다르다 {count} != {classCount}");
+                errors.Add($"{OWNER}.{nameof(_basicAttacks)}: 기존 직업 기본 공격 명세 개수가 다르다 {count} != {LEGACY_CLASS_COUNT}");
                 return;
             }
 
-            for (int i = 0; i < _basicAttacks.Length; ++i)
+            if ((_classBasicAttacks == null) || (_classBasicAttacks.Length != newCount))
             {
-                BasicAttackSpec spec  = _basicAttacks[i];
+                int count = (_classBasicAttacks == null) ? 0 : _classBasicAttacks.Length;
+                errors.Add($"{OWNER}.{nameof(_classBasicAttacks)}: 신규 직업 기본 공격 명세 개수가 다르다 {count} != {newCount}");
+                return;
+            }
+
+            for (int i = 0; i < classCount; ++i)
+            {
+                BasicAttackSpec spec  = (i < LEGACY_CLASS_COUNT) ? _basicAttacks[i] : _classBasicAttacks[i - LEGACY_CLASS_COUNT];
                 string          field = $"{nameof(_basicAttacks)}[{(EPlayerClass)i}]";
 
                 if (spec == null)
@@ -182,6 +224,13 @@ namespace Shinshi.Data
                 DataValidation.RequirePositive(errors, OWNER, field + ".Interval", spec.Interval);
                 DataValidation.RequirePositive(errors, OWNER, field + ".Range", spec.Range);
                 DataValidation.RequireRange(errors, OWNER, field + ".ArcAngle", spec.ArcAngle, 0f, MAX_ARC_ANGLE);
+                DataValidation.RequireNonNegative(errors, OWNER, field + ".Windup", spec.Windup);
+                DataValidation.RequireNonNegative(errors, OWNER, field + ".ProjectileSpeed", spec.ProjectileSpeed);
+                DataValidation.RequireNonNegative(errors, OWNER, field + ".ProjectileWidth", spec.ProjectileWidth);
+                if ((spec.ArcAngle <= 0f) && (spec.ProjectileSpeed > 0f))
+                {
+                    DataValidation.RequirePositive(errors, OWNER, field + ".ProjectileWidth", spec.ProjectileWidth);
+                }
             }
         }
     }

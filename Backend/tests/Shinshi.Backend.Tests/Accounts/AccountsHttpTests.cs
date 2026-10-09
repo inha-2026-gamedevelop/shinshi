@@ -713,6 +713,86 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(0, host.Characters.CreateCalls);
         }
 
+        [Theory]
+        [InlineData(6)]
+        [InlineData(-1)]
+        public async Task CharacterCreate_ClassOutsideZeroToFive_Returns400BeforeRepository(int classId)
+        {
+            using AccountApiHost host = new AccountApiHost(enabledClassIds: "0,1,2,3,4,5");
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+
+            using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, CharacterTestData.Appearance())));
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.INVALID_APPEARANCE,
+                AccountApiHost.Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(0, host.Characters.CreateCalls);
+        }
+
+        /// <summary> 새 직업(3 검사, 4 마검사, 5 궁수)은 설정을 비웠거나 기본값일 때 닫혀 있고 저장소를 부르지 않는다 </summary>
+        [Theory]
+        [InlineData(null, 3)]
+        [InlineData(null, 4)]
+        [InlineData(null, 5)]
+        [InlineData("0,1,2", 3)]
+        [InlineData("", 4)]
+        [InlineData("3", 5)]
+        public async Task CharacterCreate_NewClassWhileGateClosed_Returns409FeatureDisabled(string? enabledClassIds, int classId)
+        {
+            using AccountApiHost host = new AccountApiHost(enabledClassIds: enabledClassIds);
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+
+            using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, CharacterTestData.Appearance())));
+
+            // "3"은 3만 열고 5는 열지 않는다
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED,
+                AccountApiHost.Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(0, host.Characters.CreateCalls);
+        }
+
+        [Theory]
+        [InlineData(3)]
+        [InlineData(4)]
+        [InlineData(5)]
+        public async Task CharacterCreate_NewClassWhileGateOpen_ReachesRepository(int classId)
+        {
+            using AccountApiHost host = new AccountApiHost(enabledClassIds: "0,1,2,3,4,5");
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+
+            using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, CharacterTestData.Appearance())));
+
+            // 대역 저장소는 슬롯 부족(409)으로 답한다. 게이트 거절이 아니라 저장소까지 갔는지는 호출 수로 본다
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal(1, host.Characters.CreateCalls);
+            Assert.Equal(classId, host.Characters.LastClassId);
+        }
+
+        /// <summary> 기존 직업 0, 1, 2는 기본 설정에서 그대로 생성할 수 있다 </summary>
+        [Theory]
+        [InlineData(ContractCodes.PlayerClass.WARRIOR)]
+        [InlineData(ContractCodes.PlayerClass.SORCERER)]
+        [InlineData(ContractCodes.PlayerClass.SUMMONER)]
+        public async Task CharacterCreate_LegacyClassWithDefaultGate_ReachesRepository(int classId)
+        {
+            using AccountApiHost host = new AccountApiHost();
+            (Guid _, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+
+            using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, CharacterTestData.Appearance())));
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal(1, host.Characters.CreateCalls);
+            Assert.Equal(classId, host.Characters.LastClassId);
+        }
+
         /// <summary> 캐릭터 생성, 삭제는 계정별 1분 한도를 함께 쓴다. 넘으면 저장소 호출 없이 429이고, 저장된 24시간 삭제 상한
         /// 거절(RATE_LIMITED)도 429로 돌려준다 </summary>
         [Fact]

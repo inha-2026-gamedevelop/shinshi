@@ -873,7 +873,7 @@ namespace Shinshi.Combat
         }
 
         // 속박 중 정지 여부는 기획 미정이라 적용 사실만 남긴다. 제어 적용은 드물어서 이때만 문자열을 만든다
-        // TODO(민성): 속박 중 이동, 회전, 공격 정지가 정해지면 여기서 보스 동작에 붙인다
+        // TODO(기웅): 속박 중 이동, 회전, 공격 정지가 정해지면 여기서 보스 동작에 붙인다
         private void OnDirectControlApplied(BossDirectControlApplied applied)
         {
             Debug.Log($"[Boss] 직접 제어 적용, source={applied.Control.SourceId}, seconds={applied.AppliedSeconds}, " +

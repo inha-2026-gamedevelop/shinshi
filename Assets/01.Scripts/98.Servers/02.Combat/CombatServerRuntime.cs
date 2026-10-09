@@ -890,8 +890,8 @@ namespace Shinshi.Combat
 
         // 보스전 출정이 진행되는 첫 틱에 한 번만 시도한다. 보스 체력과 피해 배율은 출정 시작 때 고정되므로 그 전에는 만들 수 없다.
         // 데이터가 비어 전투를 열 수 없으면 보스 없이 진행한다. 개발 빌드는 TryCompleteBossForDevelopment로 끝낼 수 있다
-        // TODO(민성): 출시 전에 보스를 만들지 못한 보스전을 서비스 취소로 끝낼지 정한다
-        // TODO(민성): 던전 씬의 보스 생성 지점이 정해지면 원점 대신 그 위치와 방향을 쓴다
+        // TODO(기웅): 출시 전에 보스를 만들지 못한 보스전을 서비스 취소로 끝낼지 정한다
+        // TODO(기웅, 진욱): 던전 씬의 보스 생성 지점이 정해지면 원점 대신 그 위치와 방향을 쓴다
         private void TrySpawnBoss(double serverTime)
         {
             if ((_bossSpawnChecked) || (!_scalesApplied) || (!_host.IsSessionRunning))
@@ -906,7 +906,7 @@ namespace Shinshi.Combat
             }
 
             // 보스전 계약이면 계약 보스, 아니면 실행 설정 기본 보스다. 계약 보스는 호스트가 입장 때 카탈로그에 있는지 확인했다
-            // TODO(민성): 난이도(쉬움, 어려움)별 보스 능력치 차이가 기획에 생기면 _host.BossDifficulty를 보스 생성에 넘긴다.
+            // TODO(기웅): 난이도(쉬움, 어려움)별 보스 능력치 차이가 기획에 생기면 _host.BossDifficulty를 보스 생성에 넘긴다.
             // 지금 난이도는 보상 표(RewardCatalogSO.BossRewards)만 고른다(docs/design/growth-economy.md 보스 보상)
             string bossId = BossId;
 

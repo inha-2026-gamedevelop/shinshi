@@ -32,17 +32,19 @@ namespace Shinshi.Backend.Characters
         private readonly ICharacterRepository _characters;
         private readonly AccountRequestLimiter _accounts;
         private readonly TimeProvider _timeProvider;
+        private readonly PlayerClassPolicy _classPolicy;
 
         /****************************************
         *                Methods
         ****************************************/
 
         public CharactersController(ICharacterRepository characters, AccountRequestLimiter accounts,
-            TimeProvider timeProvider)
+            TimeProvider timeProvider, PlayerClassPolicy classPolicy)
         {
             _characters   = characters;
             _accounts     = accounts;
             _timeProvider = timeProvider;
+            _classPolicy  = classPolicy;
         }
 
         /// <summary> 인증된 계정의 캐릭터 목록을 반환한다. 계정 ID는 요청에서 받지 않는다 </summary>
@@ -81,7 +83,7 @@ namespace Shinshi.Backend.Characters
                 : ContractCodes.RejectReason.NONE));
         }
 
-        /// <summary> 200 확정, 409 거절(CHARACTER_NAME_TAKEN, NO_CAPACITY, IDEMPOTENCY_CONFLICT)이고 본문은 CharacterCreateResponse다. 계정별 1분 한도를 넘으면 429다.
+        /// <summary> 200 확정, 409 거절(CHARACTER_NAME_TAKEN, NO_CAPACITY, IDEMPOTENCY_CONFLICT)이고 본문은 CharacterCreateResponse다. 열리지 않은 새 직업(3~5)은 409 FEATURE_DISABLED이며 본문은 거절 코드뿐이고 작업으로 저장하지 않는다. 계정별 1분 한도를 넘으면 429다.
         /// 400은 형식 오류(INVALID_CHARACTER_NAME, INVALID_APPEARANCE)이며 작업으로 저장하지 않는다. 같은 operationId 재전송은 처음 결과와 같은 캐릭터다 </summary>
         [HttpPost(ApiRoutes.CHARACTERS)]
         public async Task<IActionResult> Create([FromBody] CharacterCreateRequest? request,
@@ -104,15 +106,24 @@ namespace Shinshi.Backend.Characters
             }
 
             // v1은 과거 요청을 소급 거절하지 않도록 구조 검사만 본다. v2는 등록된 face/hair/outfit과 중립값까지 본다
-            if (!IsKnownClass(request.ClassId) || (request.Appearance == null) || !request.Appearance.IsWellFormed())
+            if (!PlayerClassPolicy.IsKnown(request.ClassId) || (request.Appearance == null)
+                || !request.Appearance.IsWellFormed())
             {
                 return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_APPEARANCE);
             }
+            // 외형 규칙은 직업과 무관하다. Contracts 카탈로그가 새 직업(3~5)을 알기 전까지는 기존 직업 ID로 같은 규칙을 적용한다
+            int appearanceClassId = request.ClassId > PlayerClassPolicy.LEGACY_MAX_ID
+                ? ContractCodes.PlayerClass.WARRIOR : request.ClassId;
             bool appearanceAllowed = (request.Appearance.Version == CharacterAppearance.VERSION_1)
-                || CharacterAppearanceCatalog.IsAllowed(request.ClassId, request.Appearance);
+                || CharacterAppearanceCatalog.IsAllowed(appearanceClassId, request.Appearance);
             if (!appearanceAllowed)
             {
                 return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_APPEARANCE);
+            }
+            // 새 직업(3~5)은 Characters:EnabledClassIds로 열기 전까지 생성하지 못한다. 작업으로 저장하지 않는다
+            if (!_classPolicy.IsEnabled(request.ClassId))
+            {
+                return Reject(StatusCodes.Status409Conflict, ContractCodes.RejectReason.FEATURE_DISABLED);
             }
             if (!_accounts.TryAcquireCharacterWrite(accountId.Value))
             {
@@ -173,12 +184,6 @@ namespace Shinshi.Backend.Characters
                 : JsonConvert.DeserializeObject<CharacterAppearance>(character.AppearanceJson, ContractJson.CreateSettings());
             return new CharacterSummary(character.CharacterId.ToString("D"), character.Name, character.ClassId,
                 character.Revision, appearance);
-        }
-
-        private static bool IsKnownClass(int classId)
-        {
-            return (classId == ContractCodes.PlayerClass.WARRIOR) || (classId == ContractCodes.PlayerClass.SORCERER)
-                || (classId == ContractCodes.PlayerClass.SUMMONER);
         }
 
         private AvailabilityResponse Availability(int reasonCode)
