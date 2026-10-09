@@ -43,7 +43,6 @@ namespace Shinshi.Tests
         private const float DAMAGE       = 0.32f;
         private const float DASH_SECONDS = 0.75f;
         private const float REAIM_SECONDS = 0.6f;
-        private const float REAIM_TURN   = 90f;
         private const float TELEGRAPH    = 1.0f;
         private const float RECOVERY     = 1.8f;
         private const float ACTIVE_TWO   = 2.1f;   // 두 번: 0.75 + 0.6 + 0.75
@@ -56,16 +55,27 @@ namespace Shinshi.Tests
         *               Helpers
         ****************************************/
 
-        private static MucheolMultiDashSpec Spec(float reaimTurn = REAIM_TURN, int count = 2, int enhancedCount = 3)
+        private static MucheolMultiDashSpec Spec(int count = 2, int enhancedCount = 3)
         {
-            return new MucheolMultiDashSpec(count, enhancedCount, DASH_SECONDS, REAIM_SECONDS, reaimTurn);
+            return new MucheolMultiDashSpec(count, enhancedCount, DASH_SECONDS, REAIM_SECONDS);
         }
 
-        private static PatternDefinition MakeDefinition(float active)
+        // 정의의 회전 속도는 일부러 0이다. 이지 조준은 정의의 회전 속도와 상관없이 각도 제한이 없어야 한다
+        private static PatternDefinition MakeDefinition(float active, float tracking = 0f)
         {
             return new PatternDefinition("mucheol_ph2_p06", MucheolPatternFactory.BOSS_ID, 2, 10f,
                 new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f, 1f },
-                TELEGRAPH, 0f, 0f, active, RECOVERY, EnemyCatalogSO.AttackShapeSpec.Dash(RANGE, WIDTH), DAMAGE, false);
+                TELEGRAPH, tracking, 0f, active, RECOVERY, EnemyCatalogSO.AttackShapeSpec.Dash(RANGE, WIDTH), DAMAGE, false);
+        }
+
+        private static void AssertFacing(Vector3 expected, Vector3 actual, string message)
+        {
+            Assert.AreEqual(0f, Vector3.Angle(expected, actual), ANGLE_TOLERANCE, message);
+        }
+
+        private static Vector3 RightOf(Vector3 direction)
+        {
+            return new Vector3(direction.z, 0f, -direction.x);
         }
 
         private static void AssertInOrder(List<string> log, params string[] expected)
@@ -79,7 +89,7 @@ namespace Shinshi.Tests
             }
         }
 
-        // 공격 FSM에 올린 최소 구성. 보스는 원점에서 +z를 보고, 추적 대상(10번)은 정면 멀리에 선다. 예고 추적 시간은 0이라 방향은 시작 때 정면으로 고정된다
+        // 공격 FSM에 올린 최소 구성. 보스는 원점에서 +z를 보고, 추적 대상(10번)은 정면 멀리에 선다. 예고 추적 시간은 기본 0이라 방향은 시작 때 정해져 고정된다
         private sealed class Rig
         {
             public FakeCombatTarget   Self       { get; } = new FakeCombatTarget { CombatId = 1, Faction = ECombatFaction.Enemy, BodyRadius = BODY_RADIUS };
@@ -94,14 +104,14 @@ namespace Shinshi.Tests
             public PatternDefinition  Definition { get; }
             public BossPatternContext Context    { get; }
 
-            public Rig(MucheolMultiDashSpec spec, int dashCount, float active, float wallZ = float.PositiveInfinity)
+            public Rig(MucheolMultiDashSpec spec, int dashCount, float active, float wallZ = float.PositiveInfinity, float tracking = 0f)
             {
                 Query.Players.Add(Tracked);
                 Movement.Self = Self;
                 Movement.WallZ = wallZ;
                 Gate       = new BossDamageGate(Resolver);
                 Gate.Open();
-                Definition = MakeDefinition(active);
+                Definition = MakeDefinition(active, tracking);
                 Pattern    = new MucheolMultiDashPattern(TEST_HREF, Movement, spec, dashCount, Listener);
                 Context    = new BossPatternContext(Definition, Gate.IssueInstanceId(), Tracked.CombatId, Self, Query, Gate);
             }
@@ -171,13 +181,12 @@ namespace Shinshi.Tests
         [Test]
         public void Spec_InvalidValues_Throw()
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(0, 1, DASH_SECONDS, REAIM_SECONDS, REAIM_TURN));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(3, 2, DASH_SECONDS, REAIM_SECONDS, REAIM_TURN));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, 0f, REAIM_SECONDS, REAIM_TURN));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, float.NaN, REAIM_SECONDS, REAIM_TURN));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, DASH_SECONDS, -0.1f, REAIM_TURN));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, DASH_SECONDS, REAIM_SECONDS, -1f));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, DASH_SECONDS, REAIM_SECONDS, float.PositiveInfinity));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(0, 1, DASH_SECONDS, REAIM_SECONDS));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(3, 2, DASH_SECONDS, REAIM_SECONDS));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, 0f, REAIM_SECONDS));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, float.NaN, REAIM_SECONDS));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, DASH_SECONDS, -0.1f));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new MucheolMultiDashSpec(2, 3, DASH_SECONDS, float.PositiveInfinity));
         }
 
         [Test]
@@ -343,50 +352,189 @@ namespace Shinshi.Tests
         *            Re-aim Limit
         ****************************************/
 
-        [Test]
-        public void Reaim_TurnIsLimitedByRateTimesReaimSeconds()
+        // 이지 조준: 돌진마다 대상 쪽으로 각도 제한 없이 새로 잡고, 고정한 뒤에는 꺾이지 않는다
+
+        [TestCase(0f)]
+        [TestCase(90f)]
+        [TestCase(-90f)]
+        [TestCase(135f)]
+        [TestCase(180f)]
+        [TestCase(-150f)]
+        public void FirstDash_PlayerAnywhere_TelegraphLockMovementAndHitsFollowTheSameDirection(float degrees)
         {
             Rig rig = new Rig(Spec(), 2, ACTIVE_TWO);
-            rig.Tracked.Position = new Vector3(50f, 0f, 18f);  // 첫 돌진이 끝나 보스가 z=18에 서면 정확히 오른쪽 90도. 추적 시간이 0이라 첫 돌진 방향은 정면이다
+            Vector3 direction = Phase2Helpers.Polar(degrees, 1f);
+            Vector3 right = RightOf(direction);
+            rig.Tracked.Position = direction * 30f;
+            rig.AddPlayer(PLAYER_A, (direction * 9f) + (right * 1.4f));  // 폭의 절반(1.5m) 안
+            rig.AddPlayer(PLAYER_B, (direction * 9f) + (right * 1.6f));  // 폭의 절반 밖
             rig.Start();
 
-            rig.TickRange(0.0, DASH1_AT + 0.1, 0.01);
+            AssertFacing(direction, rig.Listener.TelegraphDirection, "예고 시작 방향");
 
-            Assert.AreEqual(54f, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE, "90도/초 x 0.6초");
-            Assert.AreEqual(54f, Vector3.Angle(Vector3.forward, rig.Listener.LastReaimDirection), ANGLE_TOLERANCE);
+            rig.TickRange(0.0, DASH0_AT + DASH_SECONDS + 0.01, 0.01);
+
+            AssertFacing(direction, rig.Listener.LockDirections[0], "고정 방향");
+            AssertFacing(direction, rig.Listener.StartDirections[0], "돌진 시작 방향");
+            Assert.AreEqual(0f, Vector3.Angle(direction, rig.Self.Position), ANGLE_TOLERANCE, "실제 이동 방향");
+            Assert.AreEqual(RANGE, rig.Self.Position.magnitude, POSITION_TOLERANCE);
+            Assert.AreEqual(1, rig.Count(PLAYER_A));
+            Assert.AreEqual(0, rig.Count(PLAYER_B));
         }
 
         [Test]
-        public void Reaim_HugeTick_StillTurnsOnlyTheLimitedAngleAndSecondDashFollowsIt()
+        public void FirstDash_PlayerBehind_HugeTick_MovesAndHitsTowardThePlayer()
         {
             Rig rig = new Rig(Spec(), 2, ACTIVE_TWO);
-            rig.Tracked.Position = new Vector3(50f, 0f, 18f);
-
-            // 첫 돌진 뒤 보스는 (0, 0, 18)에 선다. 54도 방향 10m 지점과 대상 쪽(오른쪽 90도) 10m 지점을 둘째 돌진의 후보로 둔다
-            Vector3 bossAfterFirst = new Vector3(0f, 0f, RANGE);
-            Vector3 alongAim = bossAfterFirst + (Phase2Helpers.Polar(54f, 10f));
-            Vector3 towardTracked = bossAfterFirst + (Vector3.right * 10f);
-            rig.AddPlayer(PLAYER_A, alongAim);
-            rig.AddPlayer(PLAYER_B, towardTracked);
+            rig.Tracked.Position = new Vector3(0f, 0f, -30f);
+            rig.AddPlayer(PLAYER_A, new Vector3(0f, 0f, -9f));
+            rig.AddPlayer(PLAYER_B, new Vector3(0f, 0f, 9f));  // 보스가 원래 보던 쪽
             rig.Start();
 
-            rig.Fsm.Tick(100.0);  // 한 번에 건너뛴다
+            rig.Fsm.Tick(100.0);
 
-            Assert.AreEqual(54f, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
-            Assert.AreEqual(1, rig.Count(PLAYER_A), "재조준한 방향의 돌진 경로");
-            Assert.AreEqual(0, rig.Count(PLAYER_B), "대상 쪽 정면은 한도 밖이라 맞지 않는다");
+            Assert.AreEqual(1, rig.Count(PLAYER_A));
+            Assert.AreEqual(0, rig.Count(PLAYER_B));
+            Assert.AreEqual(-RANGE * 2f, rig.Self.Position.z, POSITION_TOLERANCE, "두 번 모두 대상 쪽으로 간다");
         }
 
         [Test]
-        public void Reaim_ZeroTurnRate_KeepsTheFirstDirection()
+        public void TwoDashes_FirstStopsAtWall_SecondAimsAtThePlayerOnTheOppositeSide()
         {
-            Rig rig = new Rig(Spec(0f), 2, ACTIVE_TWO);
-            rig.Tracked.Position = new Vector3(50f, 0f, 18f);
+            Rig rig = new Rig(Spec(), 2, ACTIVE_TWO, 12f);
+            rig.AddPlayer(PLAYER_A, new Vector3(0f, 0f, -3f));  // 둘째 돌진 경로(11.5m에서 -6.5m)에만 있다
             rig.Start();
 
-            rig.TickRange(0.0, DASH1_AT + 0.1, 0.01);
+            rig.TickRange(0.0, DASH0_AT + DASH_SECONDS - 0.05, 0.01);
+            Assert.IsTrue(rig.Pattern.IsDashing);
+            Assert.AreEqual(12f - BODY_RADIUS, rig.Self.Position.z, POSITION_TOLERANCE, "첫 돌진은 벽 앞에서 멈춰 있다");
 
-            Assert.AreEqual(0f, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            rig.Tracked.Position = new Vector3(0f, 0f, -40f);  // 벽에 멈춘 보스의 반대편
+            rig.TickRange(DASH0_AT + DASH_SECONDS - 0.05, DASH1_AT + DASH_SECONDS + RECOVERY + 0.5, 0.01);
+
+            Assert.IsTrue(rig.Listener.StoppedByWall[0]);
+            Assert.IsFalse(rig.Listener.StoppedByWall[1]);
+            AssertFacing(Vector3.back, rig.Listener.ReaimDirections[0], "재조준 예고 방향");
+            AssertFacing(Vector3.back, rig.Listener.LockDirections[1], "둘째 고정 방향");
+            AssertFacing(Vector3.back, rig.Listener.StartDirections[1], "둘째 돌진 시작 방향");
+            Assert.AreEqual(1, rig.Count(PLAYER_A));
+            Assert.AreEqual((12f - BODY_RADIUS) - RANGE, rig.Self.Position.z, POSITION_TOLERANCE, "멈춘 자리에서 반대편으로 한 번 더 간다");
+        }
+
+        [Test]
+        public void ThreeDashes_EachDashAfterAWallStopAimsAgainFromWhereTheBossStands()
+        {
+            Rig rig = new Rig(Spec(3), 3, ACTIVE_THREE, 12f);
+            Vector3 wallStop = new Vector3(0f, 0f, 12f - BODY_RADIUS);
+            Vector3 secondEnd = wallStop + (Vector3.left * RANGE);
+            Vector3 thirdTarget = new Vector3(20f, 0f, -40f);
+            Vector3 thirdDirection = (thirdTarget - secondEnd).normalized;
+            rig.AddPlayer(PLAYER_A, wallStop + (Vector3.left * 9f));
+            rig.AddPlayer(PLAYER_B, secondEnd + (thirdDirection * 9f));
+            rig.Start();
+
+            double dash2At = DASH1_AT + DASH_SECONDS + REAIM_SECONDS;
+
+            rig.TickRange(0.0, DASH0_AT + DASH_SECONDS - 0.05, 0.01);
+            rig.Tracked.Position = wallStop + (Vector3.left * 40f);
+            rig.TickRange(DASH0_AT + DASH_SECONDS - 0.05, DASH1_AT + 0.35, 0.01);
+
+            rig.Tracked.Position = new Vector3(-40f, 0f, 40f);  // 둘째 돌진이 고정된 뒤에 움직여도 꺾이지 않는다
+            rig.TickRange(DASH1_AT + 0.35, DASH1_AT + DASH_SECONDS - 0.05, 0.01);
+            Assert.AreEqual(wallStop.z, rig.Self.Position.z, POSITION_TOLERANCE, "둘째 돌진은 -x 직선이다");
+
+            rig.Tracked.Position = thirdTarget;
+            rig.TickRange(DASH1_AT + DASH_SECONDS - 0.05, dash2At + DASH_SECONDS + RECOVERY + 0.5, 0.01);
+
+            Assert.IsTrue(rig.Listener.StoppedByWall[0]);
+            Assert.IsFalse(rig.Listener.StoppedByWall[1]);
+            Assert.IsFalse(rig.Listener.StoppedByWall[2]);
+            AssertFacing(Vector3.forward, rig.Listener.StartDirections[0], "첫 돌진");
+            AssertFacing(Vector3.left, rig.Listener.StartDirections[1], "둘째 돌진");
+            AssertFacing(thirdDirection, rig.Listener.StartDirections[2], "셋째 돌진");
+            AssertFacing(Vector3.left, rig.Listener.LockDirections[1], "둘째 고정 방향");
+            AssertFacing(thirdDirection, rig.Listener.LockDirections[2], "셋째 고정 방향");
+            Assert.AreEqual(1, rig.Count(PLAYER_A));
+            Assert.AreEqual(1, rig.Count(PLAYER_B));
+            Assert.AreEqual(3, rig.Pattern.CompletedDashCount);
+            Assert.AreEqual(0f, Vector3.Distance(secondEnd + (thirdDirection * RANGE), rig.Self.Position), POSITION_TOLERANCE);
+        }
+
+        [Test]
+        public void DirectionLocked_PlayerMovesAfterwards_DashDoesNotBend()
+        {
+            Rig rig = new Rig(Spec(), 2, ACTIVE_TWO, float.PositiveInfinity, 0.4f);
+            rig.Tracked.Position = new Vector3(0f, 0f, -30f);
+            rig.Start();
+
+            rig.TickRange(0.0, 0.3, 0.01);
+            rig.Tracked.Position = new Vector3(30f, 0f, 0f);  // 고정 전에는 따라간다
+            rig.TickRange(0.3, 0.5, 0.01);
+            AssertFacing(Vector3.right, rig.Listener.LockDirections[0], "고정 방향은 고정 시각의 대상 위치다");
+
+            int aimEventsAtLock = rig.Listener.Log.FindAll(entry => entry == "aim0").Count;
+            rig.Tracked.Position = new Vector3(-30f, 0f, 0f);  // 고정한 뒤에는 따라가지 않는다
+            rig.TickRange(0.5, DASH0_AT + DASH_SECONDS + 0.01, 0.01);
+
+            Assert.AreEqual(aimEventsAtLock, rig.Listener.Log.FindAll(entry => entry == "aim0").Count, "고정 뒤에 방향 변경 알림이 없다");
+            AssertFacing(Vector3.right, rig.Listener.StartDirections[0], "돌진 시작 방향");
+            Assert.AreEqual(0f, rig.Self.Position.z, POSITION_TOLERANCE);
+            Assert.Greater(rig.Self.Position.x, RANGE - 1f);
+        }
+
+        [Test]
+        public void TargetDead_AtStart_KeepsFacingAndNeverSwitchesToAnotherPlayer()
+        {
+            Rig rig = new Rig(Spec(), 2, ACTIVE_TWO);
+            rig.Tracked.Position = new Vector3(0f, 0f, -30f);
+            rig.Tracked.LifeState = EParticipantLifeState.Dead;
+            rig.AddPlayer(PLAYER_A, new Vector3(0f, 0f, -9f));
+            rig.AddPlayer(PLAYER_B, new Vector3(0f, 0f, 9f));
+            rig.Start();
+
+            rig.Fsm.Tick(100.0);
+
+            AssertFacing(Vector3.forward, rig.Listener.StartDirections[0], "죽은 대상 쪽으로도 다른 플레이어 쪽으로도 바꾸지 않는다");
+            Assert.AreEqual(0, rig.Count(PLAYER_A));
+            Assert.AreEqual(1, rig.Count(PLAYER_B));
+        }
+
+        [Test]
+        public void TargetGone_BetweenDashes_KeepsTheLastValidDirection()
+        {
+            Rig rig = new Rig(Spec(), 2, ACTIVE_TWO);
+            rig.Tracked.Position = new Vector3(0f, 0f, -40f);
+            rig.AddPlayer(PLAYER_A, new Vector3(0f, 0f, 5f));  // 첫 돌진이 가는 반대편에 남은 다른 플레이어
+            rig.Start();
+
+            rig.TickRange(0.0, DASH0_AT + DASH_SECONDS - 0.05, 0.01);
+            rig.Query.Players.Remove(rig.Tracked);
+            rig.TickRange(DASH0_AT + DASH_SECONDS - 0.05, DASH1_AT + DASH_SECONDS + RECOVERY + 0.5, 0.01);
+
+            AssertFacing(Vector3.back, rig.Listener.StartDirections[1], "사라진 대상의 마지막 방향을 유지한다");
+            Assert.AreEqual(0, rig.Count(PLAYER_A));
+            Assert.AreEqual(-RANGE * 2f, rig.Self.Position.z, POSITION_TOLERANCE);
+        }
+
+        [Test]
+        public void Cancel_DuringReaim_DoesNotAimOrMoveTowardThePlayerAfterwards()
+        {
+            Rig rig = new Rig(Spec(), 2, ACTIVE_TWO);
+            rig.Tracked.Position = new Vector3(0f, 0f, -40f);
+            rig.AddPlayer(PLAYER_A, new Vector3(0f, 0f, -27f));
+            rig.Start();
+
+            rig.TickRange(0.0, DASH0_AT + DASH_SECONDS + 0.2, 0.01);
+            Vector3 stopped = rig.Self.Position;
+            int aimEvents = rig.Listener.Log.FindAll(entry => entry.StartsWith("aim")).Count;
+            rig.Fsm.Cancel(EBossInterruptReason.DirectControl);
+            rig.Tracked.Position = new Vector3(40f, 0f, 0f);
+            rig.Fsm.Tick(100.0);
+
+            Assert.AreEqual(0f, Vector3.Distance(stopped, rig.Self.Position), TOLERANCE);
+            Assert.AreEqual(aimEvents, rig.Listener.Log.FindAll(entry => entry.StartsWith("aim")).Count);
+            Assert.AreEqual(1, rig.Listener.StartedCount);
+            Assert.AreEqual(0, rig.Count(PLAYER_A), "취소된 시전은 더 치지 않는다");
         }
 
         /****************************************

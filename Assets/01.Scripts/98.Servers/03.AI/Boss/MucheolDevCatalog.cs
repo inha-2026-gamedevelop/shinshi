@@ -217,8 +217,8 @@ namespace Shinshi.AI
                 MucheolSequenceStep.Fan(5f, 60f, 30f, 0.14f, 0.45f),
                 MucheolSequenceStep.Fan(5f, 70f, 0f, 0.26f, 1f));
 
-            return new MucheolPhase2Spec(p01, p02, new MucheolMultiDashSpec(2, 2, 0.5f, 0.4f, 90f), p04, p05,
-                new MucheolMultiDashSpec(2, 3, 0.75f, 0.6f, 90f));
+            return new MucheolPhase2Spec(p01, p02, new MucheolMultiDashSpec(2, 2, 0.5f, 0.4f), p04, p05,
+                new MucheolMultiDashSpec(2, 3, 0.75f, 0.6f));
         }
 
         // 2페이즈 여섯 패턴. 폭주 돌진(P06)의 실행 시간은 두 번(2.1초)이 아니라 세 번(3.45초)에 맞춘다. 공용 공격 FSM이 실행 시간을

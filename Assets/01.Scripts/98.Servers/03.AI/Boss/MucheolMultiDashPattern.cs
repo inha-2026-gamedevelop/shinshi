@@ -13,8 +13,11 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
 {
-    // 돌진 한 번의 거리, 폭, 피해, 방어 가능 여부는 패턴 정의에서, 예고와 추적과 회전 속도도 패턴 정의에서(첫 돌진),
-    // 돌진 시간과 재조준 시간과 회전 속도는 연속 돌진 데이터에서 읽는다. 이 클래스에는 밸런스 값이 없다.
+    // 돌진 한 번의 거리, 폭, 피해, 방어 가능 여부는 패턴 정의에서, 예고와 추적 시간도 패턴 정의에서(첫 돌진),
+    // 돌진 시간과 재조준 시간은 연속 돌진 데이터에서 읽는다. 이 클래스에는 밸런스 값이 없다.
+    // 이지 조준 규칙: 돌진마다 예고를 시작하는 순간(첫 돌진은 시전 시작, 이후는 앞 돌진이 끝난 자리) 대상 쪽으로 방향을 바로 잡고,
+    // 방향을 고정하는 시각까지 대상을 따라가다 고정한다. 회전 각도 제한은 없고, 고정한 뒤에는 돌진 중에도 꺾이지 않는다.
+    // 대상은 선택 때 고른 하나뿐이다. 대상이 사라졌거나 죽었으면 마지막 유효 방향을 유지하고 다른 플레이어로 바꾸지 않는다.
     // 월백 돌진(BossDashPattern)은 속도와 시간을 시전의 정의 하나에서 읽고 한 번 달리면 끝나, 같은 시전 안에서 방향을 다시 잡고
     // 시간을 다르게 줄 수 없다. 정의를 복제해 돌진을 여러 번 시작하면 시전 번호와 예고가 갈라지므로, 같은 판정 구조(지나간 구간의
     // 직사각형을 한 번씩 타격, 벽 앞 정지)를 시전 하나 안에서 돌진마다 되풀이하는 별도 실행으로 둔다. 월백 돌진은 고치지 않는다.
@@ -22,7 +25,7 @@ namespace Shinshi.AI
     // 돌진마다 피해 동작 번호를 새로 받고 피격 기록을 비워, 같은 시전 안에서 돌진마다 같은 대상이 한 번씩 맞는다.
     // 실행 구간의 길이는 공격 FSM이 정한다. 지금 FSM은 정의의 ActiveSeconds로 고정하므로 계획한 돌진을 다 달릴 시간이 없으면
     // 실행이 끝나는 경계에서 남은 돌진을 버리고 알린다. FSM이 IBossExecuteDuration을 읽으면 계획한 시간만큼 실행이 이어진다
-    /// <summary> 무철 연속 돌진, 첫 돌진은 추적 뒤 방향을 고정하고 이후 돌진마다 짧게 재조준해 같은 시전 안에서 여러 번 달린다 </summary>
+    /// <summary> 무철 연속 돌진, 돌진마다 대상 쪽으로 새로 조준하고 고정해 같은 시전 안에서 여러 번 달린다 </summary>
     public sealed class MucheolMultiDashPattern : BossPatternBase, IBossExecuteDuration
     {
         /****************************************
@@ -50,7 +53,6 @@ namespace Shinshi.AI
 
         private Vector3 _aim;
         private double  _trackStart;
-        private double  _trackedUntil;
         private bool    _isLocked;
         private float   _clearLength;
 
@@ -61,7 +63,6 @@ namespace Shinshi.AI
         private int     _dashIndex;
         private int     _completedDashes;
         private double  _nextStart;
-        private double  _reaimClock;
 
         private bool    _isDashing;
         private double  _dashStart;
@@ -145,7 +146,6 @@ namespace Shinshi.AI
         {
             _aim              = Flatten(Context.Self.Forward, Vector3.forward);
             _trackStart       = serverTime;
-            _trackedUntil     = serverTime;
             _isLocked         = false;
             _isExecuting      = false;
             _isEnded          = false;
@@ -154,7 +154,6 @@ namespace Shinshi.AI
             _dashIndex        = 0;
             _completedDashes  = 0;
             _nextStart        = 0.0;
-            _reaimClock       = 0.0;
             _isDashing        = false;
             _isStopped        = false;
             _traveled         = 0f;
@@ -164,6 +163,8 @@ namespace Shinshi.AI
             _position         = _origin;
             _handled.Clear();
 
+            // 예고가 처음부터 대상 쪽을 보이도록 알리기 전에 방향을 잡는다. 이 방향은 예고 시작 알림이 싣는다
+            TryAimAtTarget();
             _clearLength = MeasureClearLength(_aim);
 
             _listener?.OnTelegraphStarted(Context.CastInstanceId, _origin, _aim, _clearLength, Context.Definition.Shape.Width,
@@ -214,7 +215,7 @@ namespace Shinshi.AI
             _listener?.OnCancelled(Context.CastInstanceId, reason);
         }
 
-        // 추적 구간 밖의 시간은 회전량에 넣지 않는다. 틱이 거칠어도 총 회전은 회전 속도 x 추적 시간을 넘지 않는다
+        // 고정 시각까지는 틱마다 대상 쪽으로 다시 잡는다. 틱이 거칠어도 고정 때의 방향은 그 틱의 대상 위치로 정해진다
         private void AdvanceTracking(double serverTime)
         {
             if (_isLocked)
@@ -222,73 +223,60 @@ namespace Shinshi.AI
                 return;
             }
 
-            double trackEnd = _trackStart + Context.Definition.TrackingSeconds;
-            double until    = Math.Min(serverTime, trackEnd);
-            double elapsed  = until - _trackedUntil;
+            FollowTarget();
 
-            if (elapsed > 0.0)
-            {
-                RotateTowardTarget((float)elapsed * Context.Definition.TurnRate);
-                _trackedUntil = until;
-            }
-
-            if (serverTime >= trackEnd)
+            if (serverTime >= (_trackStart + Context.Definition.TrackingSeconds))
             {
                 LockDirection();
             }
         }
 
-        // 돌진 사이에는 재조준 시간만큼만 돌 수 있다. 틱이 거칠어도 총 회전은 회전 속도 x 재조준 시간을 넘지 않는다
-        private void AdvanceReaim(double until)
+        // 방향이 달라졌으면 예고에 알린다
+        private void FollowTarget()
         {
-            double elapsed = until - _reaimClock;
-            if (elapsed <= 0.0)
+            if (!TryAimAtTarget())
             {
                 return;
             }
 
-            _reaimClock = until;
-            RotateTowardTarget((float)elapsed * _spec.ReaimTurnRate);
+            _clearLength = MeasureClearLength(_aim);
+            _listener?.OnAimChanged(Context.CastInstanceId, _dashIndex, _aim, _clearLength);
         }
 
+        // 선택 때 고른 대상 한 명의 현재 위치를 향해 각도 제한 없이 방향을 바꾼다. 알림은 부르는 쪽이 한다.
         // 타깃이 사라졌거나 죽었으면 마지막 유효 방향을 유지한다
-        private void RotateTowardTarget(float maxDegrees)
+        private bool TryAimAtTarget()
         {
-            if (maxDegrees <= 0f)
-            {
-                return;
-            }
-
             if (!Context.Targets.TryGet(Context.TargetCombatId, out ICombatTarget target))
             {
-                return;
+                return false;
             }
 
             if (target.LifeState != EParticipantLifeState.Alive)
             {
-                return;
+                return false;
             }
 
             Vector3 toTarget = target.Position - Context.Self.Position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude < MIN_DIRECTION_SQR)
             {
-                return;
+                return false;
             }
+
+            Vector3 direction = toTarget.normalized;
 
             // 거의 같은 방향에서 acos 기반 SignedAngle은 흔들려 긴 경로 끝에서 어긋난다. atan2로 구한다
-            float cross = (_aim.z * toTarget.x) - (_aim.x * toTarget.z);
-            float dot   = (_aim.x * toTarget.x) + (_aim.z * toTarget.z);
+            float cross = (_aim.z * direction.x) - (_aim.x * direction.z);
+            float dot   = (_aim.x * direction.x) + (_aim.z * direction.z);
             float angle = Mathf.Atan2(cross, dot) * Mathf.Rad2Deg;
-            float step  = Mathf.Clamp(angle, -maxDegrees, maxDegrees);
-            if (Mathf.Abs(step) <= ANGLE_EPSILON)
+            if (Mathf.Abs(angle) <= ANGLE_EPSILON)
             {
-                return;
+                return false;
             }
 
-            _aim         = (Quaternion.AngleAxis(step, Vector3.up) * _aim).normalized;
-            _clearLength = MeasureClearLength(_aim);
-            _listener?.OnAimChanged(Context.CastInstanceId, _dashIndex, _aim, _clearLength);
+            _aim = direction;
+            return true;
         }
 
         private void LockDirection()
@@ -340,13 +328,13 @@ namespace Shinshi.AI
                     continue;
                 }
 
-                AdvanceReaim(Math.Min(serverTime, _nextStart));
+                // 재조준 구간에서도 방향을 고정하는 시각까지 대상을 따라간다
+                FollowTarget();
                 if (!IsReached(serverTime, _nextStart))
                 {
                     return;
                 }
 
-                AdvanceReaim(_nextStart);
                 LockDirectionForNextDash();
                 BeginDash(_nextStart);
             }
@@ -401,7 +389,8 @@ namespace Shinshi.AI
                 return;
             }
 
-            _reaimClock  = _dashEnd;
+            // 앞 돌진이 벽에 막혀 멈췄어도 멈춘 자리에서 대상 쪽으로 새로 조준한다
+            TryAimAtTarget();
             _clearLength = MeasureClearLength(_aim);
 
             _listener?.OnReaimStarted(Context.CastInstanceId, _dashIndex, Context.Self.Position, _aim, _clearLength,

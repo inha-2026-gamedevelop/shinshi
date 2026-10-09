@@ -174,6 +174,10 @@ namespace Shinshi.Tests
         public int     TelegraphDashCount;
         public float   TelegraphLength;
         public Vector3 LastReaimDirection;
+        public Vector3 TelegraphDirection;
+        public List<Vector3>              ReaimDirections = new List<Vector3>();
+        public List<Vector3>              LockDirections  = new List<Vector3>();
+        public List<Vector3>              StartDirections = new List<Vector3>();
         public List<EBossInterruptReason> Cancels = new List<EBossInterruptReason>();
         public List<bool>                 StoppedByWall = new List<bool>();
         public List<float>                StartDistances = new List<float>();
@@ -185,6 +189,7 @@ namespace Shinshi.Tests
         {
             TelegraphDashCount = dashCount;
             TelegraphLength    = length;
+            TelegraphDirection = direction;
             Log.Add("telegraph");
         }
 
@@ -197,12 +202,14 @@ namespace Shinshi.Tests
         public void OnDirectionLocked(int castInstanceId, int dashIndex, Vector3 direction, float length)
         {
             LastReaimDirection = direction;
+            LockDirections.Add(direction);
             Log.Add("lock" + dashIndex);
         }
 
         public void OnReaimStarted(int castInstanceId, int dashIndex, Vector3 origin, Vector3 direction, float length, float width,
             float reaimSeconds)
         {
+            ReaimDirections.Add(direction);
             Log.Add("reaim" + dashIndex);
         }
 
@@ -213,6 +220,7 @@ namespace Shinshi.Tests
             StartDistances.Add(distance);
             StartTimes.Add(startServerTime);
             StartSeconds.Add(seconds);
+            StartDirections.Add(direction);
             Log.Add("start" + dashIndex);
         }
 
