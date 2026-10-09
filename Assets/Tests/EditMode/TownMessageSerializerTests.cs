@@ -57,6 +57,48 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void PartyRoomState_RoundTrip_KeepsNewClassMembers()
+        {
+            var members = new[]
+            {
+                new PartyMemberView(1, "a", EPlayerClass.Swordsman, EPartyReadyState.Ready, 0, 0),
+                new PartyMemberView(2, "b", EPlayerClass.Mageknight, EPartyReadyState.Ready, 0, 0),
+                new PartyMemberView(3, "c", EPlayerClass.Archer, EPartyReadyState.Ready, 0, 0)
+            };
+            var source = new PartyRoomStateMessage(true, 9, 42, "room", EPartyMode.Boss, "battle_wolbaek_easy", 0, false, 1,
+                EPartyPhase.Open, 0f, members);
+
+            var writer = new NetworkWriter();
+            writer.WritePartyRoomStateMessage(source);
+            PartyRoomStateMessage read = new NetworkReader(writer.ToArraySegment()).ReadPartyRoomStateMessage();
+
+            Assert.AreEqual(EPlayerClass.Swordsman, read.Members[0].PlayerClass);
+            Assert.AreEqual(EPlayerClass.Mageknight, read.Members[1].PlayerClass);
+            Assert.AreEqual(EPlayerClass.Archer, read.Members[2].PlayerClass);
+        }
+
+        [Test]
+        public void PartyRoomList_RoundTrip_KeepsPerClassCounts()
+        {
+            var summary = new PartyRoomSummary(7, "room", EPartyMode.Boss, "battle_wolbaek_easy", 0, EPartyPhase.Open,
+                4, 2, false, 1, 2, 3, 4, 5, 6);
+
+            var writer = new NetworkWriter();
+            writer.WritePartyRoomListMessage(new PartyRoomListMessage(new[] { summary }));
+            PartyRoomListMessage read = new NetworkReader(writer.ToArraySegment()).ReadPartyRoomListMessage();
+
+            Assert.AreEqual(1, read.Rooms.Length);
+            PartyRoomSummary room = read.Rooms[0];
+            Assert.AreEqual(7, room.RoomId);
+            Assert.AreEqual(1, room.Warriors);
+            Assert.AreEqual(2, room.Sorcerers);
+            Assert.AreEqual(3, room.Summoners);
+            Assert.AreEqual(4, room.Swordsmen);
+            Assert.AreEqual(5, room.Mageknights);
+            Assert.AreEqual(6, room.Archers);
+        }
+
+        [Test]
         public void GrowthRequest_RoundTrip_KeepsArraysAndOperationId()
         {
             Guid operationId = Guid.NewGuid();

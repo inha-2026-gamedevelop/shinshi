@@ -28,6 +28,12 @@ namespace Shinshi.Network
                     return "도술사";
                 case ContractCodes.PlayerClass.SUMMONER:
                     return "신령사";
+                case ContractCodes.PlayerClass.SWORDSMAN:
+                    return "검사";
+                case ContractCodes.PlayerClass.MAGEKNIGHT:
+                    return "마검사";
+                case ContractCodes.PlayerClass.ARCHER:
+                    return "궁수";
                 default:
                     return "알 수 없는 직업";
             }
@@ -43,6 +49,12 @@ namespace Shinshi.Network
                     return "장판과 속박, 낙뢰로 싸우는 원거리 직업";
                 case ContractCodes.PlayerClass.SUMMONER:
                     return "동료를 부르고 강림하는 소환 직업";
+                case ContractCodes.PlayerClass.SWORDSMAN:
+                    return "검격의 방향과 접근을 조절하며 연격하는 근접 직업";
+                case ContractCodes.PlayerClass.MAGEKNIGHT:
+                    return "검에 술식을 실어 범위를 넓히고 적을 묶는 근접 직업";
+                case ContractCodes.PlayerClass.ARCHER:
+                    return "직접 조준한 화살로 일렬의 적을 꿰뚫는 원거리 직업";
                 default:
                     return string.Empty;
             }

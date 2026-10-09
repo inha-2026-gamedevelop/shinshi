@@ -18,8 +18,11 @@ namespace Shinshi.Tests
         private const int WARRIOR  = ContractCodes.PlayerClass.WARRIOR;
         private const int SORCERER = ContractCodes.PlayerClass.SORCERER;
         private const int SUMMONER = ContractCodes.PlayerClass.SUMMONER;
+        private const int SWORDSMAN  = ContractCodes.PlayerClass.SWORDSMAN;
+        private const int MAGEKNIGHT = ContractCodes.PlayerClass.MAGEKNIGHT;
+        private const int ARCHER     = ContractCodes.PlayerClass.ARCHER;
 
-        private static readonly int[] G_Classes = { WARRIOR, SORCERER, SUMMONER };
+        private static readonly int[] G_Classes = { WARRIOR, SORCERER, SUMMONER, SWORDSMAN, MAGEKNIGHT, ARCHER };
         private static readonly int[] G_Sexes   = { FEMALE, MALE };
 
         /****************************************
@@ -29,6 +32,9 @@ namespace Shinshi.Tests
         [TestCase(WARRIOR)]
         [TestCase(SORCERER)]
         [TestCase(SUMMONER)]
+        [TestCase(SWORDSMAN)]
+        [TestCase(MAGEKNIGHT)]
+        [TestCase(ARCHER)]
         public void Constructor_FillsClassDefaults(int classId)
         {
             CharacterP09Selection selection = new CharacterP09Selection(classId);

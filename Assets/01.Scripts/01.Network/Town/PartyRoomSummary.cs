@@ -20,6 +20,9 @@ namespace Shinshi.Network
         private readonly byte        _warriors;
         private readonly byte        _sorcerers;
         private readonly byte        _summoners;
+        private readonly byte        _swordsmen;
+        private readonly byte        _mageknights;
+        private readonly byte        _archers;
 
         /****************************************
         *              Properties
@@ -39,13 +42,17 @@ namespace Shinshi.Network
         public byte        Warriors    => _warriors;
         public byte        Sorcerers   => _sorcerers;
         public byte        Summoners   => _summoners;
+        public byte        Swordsmen   => _swordsmen;
+        public byte        Mageknights => _mageknights;
+        public byte        Archers     => _archers;
 
         /****************************************
         *                Methods
         ****************************************/
 
         public PartyRoomSummary(int roomId, string name, EPartyMode mode, string contentId, sbyte difficulty, EPartyPhase phase,
-            byte memberCount, byte readyCount, bool hasPassword, byte warriors, byte sorcerers, byte summoners)
+            byte memberCount, byte readyCount, bool hasPassword, byte warriors, byte sorcerers, byte summoners,
+            byte swordsmen, byte mageknights, byte archers)
         {
             _roomId      = roomId;
             _name        = name;
@@ -59,6 +66,9 @@ namespace Shinshi.Network
             _warriors    = warriors;
             _sorcerers   = sorcerers;
             _summoners   = summoners;
+            _swordsmen   = swordsmen;
+            _mageknights = mageknights;
+            _archers     = archers;
         }
     }
 }
