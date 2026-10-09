@@ -415,14 +415,15 @@ namespace Shinshi.Tests
             Assert.AreEqual(EBossInterruptReason.Death, rig.Listener.Cancels[0]);
         }
 
-        // 추적 구간 안에서는 회전 속도만큼, 구간이 끝나면 회전 속도 x 추적 시간에서 고정된다
+        // 추적 구간 안에서는 최단 경로로 부드럽게 돌아 절반 시각에 절반을 가고(최소 저크 곡선은 시간 대칭), 구간이 끝나면 대상 방향에서 고정된다
         [TestCase(MucheolPatternFactory.P01_ID)]
         [TestCase(MucheolPatternFactory.P02_ID)]
-        public void Tick_DuringTracking_RotatesAtMostTurnRateAndLocksAfterTrackingWindow(string patternId)
+        public void Tick_DuringTracking_TurnsSmoothlyAndReachesTargetAtLock(string patternId)
         {
             Rig rig = new Rig(patternId);
             Spec spec = rig.Spec;
-            rig.Tracked.Position = new Vector3(3f, 0f, 0f); // 정면 대비 90도, 두 패턴의 최대 회전량보다 크다
+            const float TARGET_DEGREES = 90f;
+            rig.Tracked.Position = new Vector3(3f, 0f, 0f); // 정면 대비 90도, 옛 방식의 최대 회전량(회전 속도 x 추적 시간)보다 크다
             rig.Start(0.0);
             BossFanBlastPattern fan = (BossFanBlastPattern)rig.Pattern;
             Vector3 initial = rig.Self.Forward;
@@ -430,13 +431,13 @@ namespace Shinshi.Tests
 
             rig.Fsm.Tick(midTime);
 
-            Assert.AreEqual(spec.TurnRate * midTime, Vector3.Angle(initial, fan.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(TARGET_DEGREES * 0.5f, Vector3.Angle(initial, fan.AimDirection), ANGLE_TOLERANCE);
             Assert.IsFalse(fan.IsDirectionLocked);
 
             rig.Fsm.Tick(spec.Tracking + TIME_MARGIN);
 
             Assert.IsTrue(fan.IsDirectionLocked);
-            Assert.AreEqual(spec.MaxTrackDegree, Vector3.Angle(initial, fan.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(TARGET_DEGREES, Vector3.Angle(initial, fan.AimDirection), ANGLE_TOLERANCE);
         }
 
         /****************************************

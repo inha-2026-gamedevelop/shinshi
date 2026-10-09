@@ -10,6 +10,8 @@ namespace Shinshi.AI
     // 두 팩토리를 한 두뇌에 넣는 일은 MucheolPatternFactoryChain이 한다.
     // 연속 돌진의 횟수는 시전을 만드는 순간의 체력으로 정한다. 시전은 만들어진 직후 시작되므로 시전 시작 시점의 체력이다.
     // 강화 구간 기준은 보스 정의의 EnhancedHealthRate를 카탈로그에서 읽어 선택 가중치의 강화 구간과 같은 기준을 쓴다.
+    // 방향이 있는 P01, P02, P05는 무철 전용 조준(naturalAim)을 켜 첫 조준이 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿는다.
+    // P04는 방향이 없는 원형이라 켜지 않고, P03과 P06은 돌진마다 예고 시작에 대상 쪽으로 바로 조준하는 연속 돌진 실행이다.
     // 운영 서버 두뇌는 아직 이 팩토리를 쓰지 않는다. 폭주 돌진(P06)은 공용 공격 FSM이 실행 시간을 고정해 횟수별 실행 시간을 줄 수 없어
     // 운영 후보에 넣지 않는다(승인 요청은 전달 문서에 있다)
     /// <summary> 무철 2페이즈 패턴 정의로 실행 객체를 만든다, mucheol_ph2_p01~p06 </summary>
@@ -99,13 +101,13 @@ namespace Shinshi.AI
             switch (definition.DefinitionId)
             {
                 case P01_ID:
-                    return new MucheolSequencePattern(_referenceHealth, _spec.P01, _sequenceListener);
+                    return new MucheolSequencePattern(_referenceHealth, _spec.P01, _sequenceListener, naturalAim: true);
                 case P02_ID:
-                    return new MucheolSequencePattern(_referenceHealth, _spec.P02, _sequenceListener);
+                    return new MucheolSequencePattern(_referenceHealth, _spec.P02, _sequenceListener, naturalAim: true);
                 case P04_ID:
                     return new MucheolSequencePattern(_referenceHealth, _spec.P04, _sequenceListener);
                 case P05_ID:
-                    return new MucheolSequencePattern(_referenceHealth, _spec.P05, _sequenceListener);
+                    return new MucheolSequencePattern(_referenceHealth, _spec.P05, _sequenceListener, naturalAim: true);
                 case P03_ID:
                     return new MucheolMultiDashPattern(_referenceHealth, _movement, _spec.P03, ResolveDashCount(_spec.P03), _dashListener);
                 default:

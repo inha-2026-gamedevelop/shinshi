@@ -115,7 +115,9 @@ namespace Shinshi.AI
         // P01(팔 휘두르기)과 P02(양손 내려찍기)는 월백 P02와 같은 부채꼴 예고, 방향 고정, 단발 타격이고
         // P03(어깨 돌진)은 월백 P01과 같은 단발 직선 돌진, P04(발구르기 충격파)는 월백 P03과 같은 보스 중심 원형 단발이다.
         // 사거리, 각도, 거리, 폭, 반경, 시간, 피해는 정의 값이 정한다. P05(2연타)는 한 시전에서 두 타를 관리하는 무철 전용 실행이고,
-        // P06(뿔 들이받기)은 같은 돌진 실행을 감싸 벽과 구조물 충돌의 결과를 정하는 무철 전용 실행이다
+        // P06(뿔 들이받기)은 같은 돌진 실행을 감싸 벽과 구조물 충돌의 결과를 정하는 무철 전용 실행이다.
+    // 방향이 있는 P01, P02, P03, P05는 무철 전용 조준(naturalAim)을 켜 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿고,
+    // P06은 예고 시작부터 대상 쪽으로 바로 조준한다. P04는 방향이 없는 원형이다
         public IBossPattern Create(PatternDefinition definition)
         {
             if (!CanCreate(definition))
@@ -125,7 +127,7 @@ namespace Shinshi.AI
 
             if (definition.DefinitionId == P03_ID)
             {
-                return new BossDashPattern(_referenceHealth, _movement, _dashListener);
+                return new BossDashPattern(_referenceHealth, _movement, _dashListener, naturalAim: true);
             }
 
             if (definition.DefinitionId == P04_ID)
@@ -135,7 +137,7 @@ namespace Shinshi.AI
 
             if (definition.DefinitionId == P05_ID)
             {
-                return new MucheolComboPattern(_referenceHealth, _comboSpec, _comboListener);
+                return new MucheolComboPattern(_referenceHealth, _comboSpec, _comboListener, naturalAim: true);
             }
 
             if (definition.DefinitionId == P06_ID)
@@ -144,7 +146,7 @@ namespace Shinshi.AI
                     _chargeListener, _chargeTracker);
             }
 
-            return new BossFanBlastPattern(_referenceHealth, _fanListener);
+            return new BossFanBlastPattern(_referenceHealth, _fanListener, naturalAim: true);
         }
     }
 }

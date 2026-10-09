@@ -513,22 +513,24 @@ namespace Shinshi.Tests
         *            Shared Direction
         ****************************************/
 
-        // 타깃이 오른쪽 90도에 있어도 처음 0.4초 동안 초당 150도로만 돌아 최대 60도에서 고정되고 두 타가 이 방향을 쓴다
+        // 타깃이 오른쪽 90도에 있으면 추적 시간 안에 최단 경로로 돌아 고정 시각에 90도에 닿고(절반 시각에는 절반), 두 타가 이 방향을 쓴다
         [Test]
         public void Tick_LocksDirectionAfterTrackingWindow_AndBothHitsShareIt()
         {
+            const float TARGET_DEGREES = 90f;
+
             Rig rig = new Rig();
             rig.Tracked.Position = new Vector3(10f, 0f, 0f);
-            FakeCombatTarget onAim = rig.AddPlayer(PROBE_ID, Polar(TURN_RATE * TRACKING, 3f));
+            FakeCombatTarget onAim = rig.AddPlayer(PROBE_ID, Polar(TARGET_DEGREES, 3f));
             rig.Start();
 
             rig.Fsm.Tick(TRACKING * 0.5f);
-            Assert.AreEqual(TURN_RATE * TRACKING * 0.5f, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(TARGET_DEGREES * 0.5f, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
             Assert.IsFalse(rig.Pattern.IsDirectionLocked);
 
             rig.Fsm.Tick(TRACKING + TIME_MARGIN);
             Assert.IsTrue(rig.Pattern.IsDirectionLocked);
-            Assert.AreEqual(TURN_RATE * TRACKING, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(TARGET_DEGREES, Vector3.Angle(Vector3.forward, rig.Pattern.AimDirection), ANGLE_TOLERANCE);
             Vector3 locked = rig.Pattern.AimDirection;
 
             // 고정 뒤 타깃이 반대편으로 가도 방향은 그대로다

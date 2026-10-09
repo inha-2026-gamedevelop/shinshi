@@ -432,10 +432,10 @@ namespace Shinshi.Tests
             Assert.AreEqual(72f, Vector3.Angle(Vector3.forward, rig.Listener.LockDirection), ANGLE_TOLERANCE);
         }
 
-        // 월백 P01과 무철 1페이즈 P03은 팩토리가 만든 패턴이 기본 조준을 쓴다
+        // 월백 P01은 팩토리가 만든 패턴이 기본 조준(회전 속도 x 추적 시간까지만)을 쓰고, 무철 1페이즈 P03은 최단 경로로 돌아 고정 시각에 대상 방향에 닿는다
         [TestCase(false, 72f)]
-        [TestCase(true, 72f)]
-        public void Default_FactoryCreatedWolbaekAndMucheolP03_KeepLimitedAim(bool isMucheol, float expectedDegrees)
+        [TestCase(true, 180f)]
+        public void Factory_WolbaekKeepsLimitedAim_MucheolP03ReachesTargetByLock(bool isMucheol, float expectedDegrees)
         {
             PatternDefinition definition = isMucheol
                 ? new PatternDefinition(MucheolPatternFactory.P03_ID, MucheolPatternFactory.BOSS_ID, 1, 15f,

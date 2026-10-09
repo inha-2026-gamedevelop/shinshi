@@ -17,7 +17,9 @@ namespace Shinshi.AI
     // 판정 경로는 예고와 같은 직사각형(시작점에서 방향으로 길이, 좌우 폭의 절반)이고 끝단은 평평하다. 길이는 몸체가 벽 앞에서 실제로 갈 수 있는 거리다
     // 대상은 중심점으로 판정한다. 부채꼴, 원형, 직사각형 패턴이 모두 같은 방식이라 BodyRadius는 이동 검사에만 쓴다
     // 기본은 추적 시간 동안 회전 속도로 제한해 돌며 월백 P01과 무철 P03이 이 방식이다. snapAimToTarget을 켜면(무철 P06) 예고를 시작하는 순간 선택된 대상
-    // 쪽으로 각도 제한 없이 방향을 잡고, 방향을 고정하는 시각까지 같은 대상을 따라간다. 켜도 고정한 뒤에는 돌진 중에 꺾이지 않는다    /// <summary> 월백 P01 돌진, 추적 회전 뒤 방향을 고정하고 일정한 속도로 직진하며 지나간 구간의 대상을 한 번씩 타격한다 </summary>
+    // 쪽으로 각도 제한 없이 방향을 잡고, 방향을 고정하는 시각까지 같은 대상을 따라간다. 켜도 고정한 뒤에는 돌진 중에 꺾이지 않는다
+    // naturalAim을 켜면(무철 P03) MucheolAimTracker로 최단 경로를 부드럽게 돌아 고정 시각에 대상 방향에 닿는다. snapAimToTarget과 같이 켤 수 없다
+    /// <summary> 월백 P01 돌진, 추적 회전 뒤 방향을 고정하고 일정한 속도로 직진하며 지나간 구간의 대상을 한 번씩 타격한다 </summary>
     public sealed class BossDashPattern : BossPatternBase
     {
         /****************************************
@@ -39,6 +41,7 @@ namespace Shinshi.AI
         private readonly IBossMovement             _movement;
         private readonly IBossDashTelegraphListener _listener;
         private readonly bool                      _snapAimToTarget;
+        private readonly MucheolAimTracker         _tracker;
         private readonly List<ICombatTarget>       _buffer  = new List<ICombatTarget>();
         private readonly HashSet<int>              _handled = new HashSet<int>();
 
@@ -82,13 +85,21 @@ namespace Shinshi.AI
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
         // snapAimToTarget은 예고를 시작할 때 대상 쪽으로 바로 조준하고 회전 속도 제한을 두지 않는다. 기본값 꺼짐은 기존 동작이다
+        // naturalAim은 무철 전용 조준이다. 기본값 꺼짐은 기존 동작(월백)이다
         public BossDashPattern(float referenceHealth, IBossMovement movement, IBossDashTelegraphListener listener = null,
-            bool snapAimToTarget = false)
+            bool snapAimToTarget = false, bool naturalAim = false)
         {
             if (movement == null)
             {
                 throw new ArgumentNullException(nameof(movement));
             }
+
+            if (snapAimToTarget && naturalAim)
+            {
+                throw new ArgumentException("바로 조준과 부드러운 조준은 같이 쓸 수 없다", nameof(naturalAim));
+            }
+
+            _tracker = naturalAim ? new MucheolAimTracker() : null;
 
             _referenceHealth = referenceHealth;
             _movement        = movement;
@@ -112,6 +123,8 @@ namespace Shinshi.AI
             _isDashing        = false;
             _isStopped        = false;
             _handled.Clear();
+
+            _tracker?.Begin(_aim, serverTime, definition.TrackingSeconds, definition.TurnRate);
 
             // 예고 시작 알림이 처음부터 대상 쪽 방향을 싣도록 알리기 전에 조준한다
             if (_snapAimToTarget)
@@ -171,7 +184,11 @@ namespace Shinshi.AI
             double until    = Math.Min(serverTime, trackEnd);
             double elapsed  = until - _trackedUntil;
 
-            if (_snapAimToTarget)
+            if (_tracker != null)
+            {
+                TrackNaturally(serverTime);
+            }
+            else if (_snapAimToTarget)
             {
                 // 고정 시각까지는 틱마다 대상 쪽으로 다시 잡는다. 틱이 거칠어도 고정 때의 방향은 그 틱의 대상 위치로 정해진다
                 RotateTowardTarget(SNAP_MAX_DEGREES);
@@ -187,6 +204,20 @@ namespace Shinshi.AI
             {
                 LockDirection();
             }
+        }
+
+        // 타깃이 사라졌거나 죽었으면 마지막으로 읽은 방향을 유지한다
+        private void TrackNaturally(double serverTime)
+        {
+            bool hasTarget = MucheolAimTracker.TryReadTarget(Context, Context.Self.Position, out Vector3 toTarget);
+            if (!_tracker.Advance(serverTime, hasTarget, toTarget))
+            {
+                return;
+            }
+
+            _aim         = _tracker.Aim;
+            _clearLength = MeasureClearLength(_aim);
+            _listener?.OnAimChanged(Context.CastInstanceId, _aim, _clearLength);
         }
 
         // 타깃이 사라졌거나 죽었으면 마지막 유효 방향을 유지한다

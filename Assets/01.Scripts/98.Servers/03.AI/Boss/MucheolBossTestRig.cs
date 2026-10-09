@@ -63,6 +63,8 @@ namespace Shinshi.AI
         private const float  BOUNDARY_TOLERANCE = 0.05f; // m, 경계에 붙었다고 보는 오차
         private const float  BOUNDARY_MARGIN    = 0.1f;  // m, 돌진이 전장 경계에 막힐 때 경계 안쪽에 남기는 거리
         private const float  CLAMP_DETECT_EPSILON = 0.001f; // m, 막혔다고 보기 전에 허용하는 부동소수 오차
+        private const float  BODY_TURN_RATE     = 360f;  // 도/초, 몸이 서버 방향으로 돌 때 도착 시간을 넉넉히 잡을 때의 최고 속도 기준
+        private const float  BODY_MIN_HORIZON   = 0.06f; // 초, 몸이 아주 작은 각도도 이보다 빠르게 돌지 않게 하는 최소 시간
 
         private static readonly Color BossColor = new Color(0.45f, 0.1f, 0.55f);
 
@@ -100,6 +102,9 @@ namespace Shinshi.AI
         private ChargeOutcomeLog        _chargeLog;
         private SequenceVisual          _sequence;
         private MultiDashVisual         _multiDash;
+        private readonly MucheolYawMotion _bodyMotion = new MucheolYawMotion(); // 화면의 몸이 서버 방향을 따라 도는 계산
+        private double                  _bodyDeadline;    // 돌진 시작 시각, 몸이 그때까지 서버 방향에 닿아야 한다
+        private float                   _bodyLagDegrees;  // 서버 방향과 화면의 몸 방향의 차이
         private Transform               _bossBody;
         private Transform               _bossNose;
         private Transform               _playerBody;
@@ -205,6 +210,7 @@ namespace Shinshi.AI
 
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("최근 순서 " + string.Join(" > ", _history));
+            GUILayout.Label($"몸 방향 차이: 서버 방향과 {_bodyLagDegrees:F1}도");
             GUILayout.Label("P05 마지막 타: " + _combo.LastEvent);
             GUILayout.Label("P06 마지막 결과: " + _chargeLog.LastText);
             if (_phaseTwoMode)
@@ -327,6 +333,36 @@ namespace Shinshi.AI
             return Time.timeAsDouble;
         }
 
+        // 돌진 예고가 시작될 때 몸이 돌진 시작 시각까지 서버 방향에 닿도록 마감을 정한다
+        private void SetBodyDeadline(double deadline)
+        {
+            _bodyDeadline = deadline;
+        }
+
+        // 서버 방향이 바로 바뀌는 돌진(P06, 2페이즈 연속 돌진)은 예고 동안 몸이 서버 방향(_body.Forward)으로 최단 경로를 따라 부드럽게 돌아
+        // 돌진 시작 시각까지 닿는다. 서버 방향이 이미 부드럽게 도는 패턴은 지연 없이 서버 방향 그대로 보인다.
+        // 서버의 조준, 이동, 판정은 이 표현과 상관없이 서버 방향을 쓴다
+        private Vector3 FollowBodyFacing()
+        {
+            double now  = ReadClock();
+            float  goal = Mathf.Atan2(_body.Forward.x, _body.Forward.z) * Mathf.Rad2Deg;
+
+            if (_bodyDeadline > now)
+            {
+                _bodyMotion.Advance(now, goal, _bodyDeadline, BODY_TURN_RATE, BODY_MIN_HORIZON);
+            }
+            else
+            {
+                _bodyMotion.Reset(goal, now);
+            }
+
+            float yaw = _bodyMotion.Yaw;
+            _bodyLagDegrees = Mathf.Abs(Mathf.DeltaAngle(yaw, goal));
+
+            float radians = yaw * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Sin(radians), 0f, Mathf.Cos(radians));
+        }
+
         // 보스와 플레이어와 지속물 관리자를 새로 만든다. 처음과 Reset이 같이 쓴다
         private void Build()
         {
@@ -351,12 +387,13 @@ namespace Shinshi.AI
             _registry.Register(_player);
             _registry.Register(_body);
 
-            var bridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock);
+            var bridge  = new BossTelegraphLocalBridge(_presenter, _body, ReadClock);
+            var dashTap = new DashDeadlineTap(bridge, ReadClock, () => _brain.ActivePatternId, SetBodyDeadline);
             _combo     = new ComboVisual(_presenter, _body, ReadClock);
             _chargeLog = new ChargeOutcomeLog();
 
             // 팩토리 인자 순서: 부채꼴(P01, P02), 이동 창구와 돌진(P03, P06), 원형(P04), 콤보 데이터와 표현(P05), 충돌 회복(P06)
-            var factory = new MucheolPatternFactory(_referenceHealth, bridge, new BoundaryMarginMovement(_body), bridge, bridge,
+            var factory = new MucheolPatternFactory(_referenceHealth, bridge, new BoundaryMarginMovement(_body), dashTap, bridge,
                 new MucheolComboSpec(new MucheolComboHit(5f, 120f, 0.14f, 0f), new MucheolComboHit(5f, 70f, 0.24f, 0.5f)), _combo,
                 new MucheolChargeSpec(2.5f), null, _chargeLog);
 
@@ -367,7 +404,7 @@ namespace Shinshi.AI
             if (_phaseTwoMode)
             {
                 _sequence  = new SequenceVisual(_presenter, _body, ReadClock, () => _brain.ActivePatternId);
-                _multiDash = new MultiDashVisual(_presenter, _body, ReadClock, () => _brain.ActivePatternId);
+                _multiDash = new MultiDashVisual(_presenter, _body, ReadClock, () => _brain.ActivePatternId, SetBodyDeadline);
                 var phaseTwo = new MucheolPhase2PatternFactory(_referenceHealth, MucheolDevCatalog.CreatePhaseTwoSpec(), _body, _catalog,
                     new BoundaryMarginMovement(_body), _sequence, _multiDash);
                 patterns = new MucheolPatternFactoryChain(factory, phaseTwo);
@@ -392,6 +429,8 @@ namespace Shinshi.AI
             _body.Brain = _brain;
 
             double now = ReadClock();
+            _bodyMotion.Reset(0f, now);
+            _bodyDeadline = 0.0;
             if (!_brain.Begin(now))
             {
                 Debug.LogError("[Boss] 전투를 열지 못했다");
@@ -479,11 +518,13 @@ namespace Shinshi.AI
             bool bossAlive = _body.LifeState == EParticipantLifeState.Alive;
             float bodyHeight = CAPSULE_HEIGHT_SCALE;
 
+            Vector3 facing = FollowBodyFacing();
+
             _bossBody.position = _body.Position + (Vector3.up * bodyHeight);
-            _bossBody.rotation = Quaternion.LookRotation(_body.Forward, Vector3.up);
+            _bossBody.rotation = Quaternion.LookRotation(facing, Vector3.up);
             _bossBody.gameObject.SetActive(bossAlive);
 
-            _bossNose.position = _body.Position + (_body.Forward * Constants.Combat.BOSS_BODY_RADIUS) + (Vector3.up * NOSE_HEIGHT);
+            _bossNose.position = _body.Position + (facing * Constants.Combat.BOSS_BODY_RADIUS) + (Vector3.up * NOSE_HEIGHT);
             _bossNose.rotation = _bossBody.rotation;
             _bossNose.gameObject.SetActive(bossAlive);
 
@@ -680,6 +721,67 @@ namespace Shinshi.AI
             }
         }
 
+        // 1페이즈 돌진(P03, P06)의 알림을 그대로 표현 연결부에 넘기면서, 예고 시작부터 대상 쪽으로 바로 조준하는 P06은 돌진 시작 시각(예고 끝)을
+        // 몸 회전의 마감으로 알린다. P03은 서버 방향이 이미 부드럽게 돌아 마감이 필요 없다
+        private sealed class DashDeadlineTap : IBossDashTelegraphListener
+        {
+            private readonly IBossDashTelegraphListener _inner;
+            private readonly Func<double>               _clock;
+            private readonly Func<string>               _activePatternId;
+            private readonly Action<double>             _onDeadline;
+
+            public DashDeadlineTap(IBossDashTelegraphListener inner, Func<double> clock, Func<string> activePatternId,
+                Action<double> onDeadline)
+            {
+                _inner           = inner;
+                _clock           = clock;
+                _activePatternId = activePatternId;
+                _onDeadline      = onDeadline;
+            }
+
+            public void OnTelegraphStarted(int castInstanceId, Vector3 origin, Vector3 direction, float length, float width,
+                float telegraphSeconds)
+            {
+                if (_activePatternId() == MucheolPatternFactory.P06_ID)
+                {
+                    _onDeadline(_clock() + telegraphSeconds);
+                }
+
+                _inner.OnTelegraphStarted(castInstanceId, origin, direction, length, width, telegraphSeconds);
+            }
+
+            public void OnAimChanged(int castInstanceId, Vector3 direction, float length)
+            {
+                _inner.OnAimChanged(castInstanceId, direction, length);
+            }
+
+            public void OnDirectionLocked(int castInstanceId, Vector3 direction, float length)
+            {
+                _inner.OnDirectionLocked(castInstanceId, direction, length);
+            }
+
+            public void OnDashStarted(int castInstanceId, Vector3 origin, Vector3 direction, float distance, float seconds, float speed,
+                double startServerTime)
+            {
+                _inner.OnDashStarted(castInstanceId, origin, direction, distance, seconds, speed, startServerTime);
+            }
+
+            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+            {
+                _inner.OnDashStopped(castInstanceId, position, stoppedByWall);
+            }
+
+            public void OnHit(int castInstanceId, int hitCount)
+            {
+                _inner.OnHit(castInstanceId, hitCount);
+            }
+
+            public void OnCancelled(int castInstanceId, EBossInterruptReason reason)
+            {
+                _inner.OnCancelled(castInstanceId, reason);
+            }
+        }
+
         // 2페이즈 연속 돌진을 예고 표현의 돌진으로 보인다. 돌진마다 예고 하나씩이고(첫 돌진은 시전 시작, 이후는 재조준 시작)
         // 같은 시전의 예고는 시전 번호를 묶음으로 달아 서로 지우지 않는다
         private sealed class MultiDashVisual : IMucheolMultiDashListener
@@ -688,17 +790,20 @@ namespace Shinshi.AI
             private readonly BossTestRigBody        _body;
             private readonly Func<double>           _clock;
             private readonly Func<string>           _activePatternId;
+            private readonly Action<double>         _onDeadline;
 
             private int _planned;
 
             public string LastEvent = "아직 없음";
 
-            public MultiDashVisual(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock, Func<string> activePatternId)
+            public MultiDashVisual(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock, Func<string> activePatternId,
+                Action<double> onDeadline)
             {
                 _presenter       = presenter;
                 _body            = body;
                 _clock           = clock;
                 _activePatternId = activePatternId;
+                _onDeadline      = onDeadline;
             }
 
             private static int Key(int castInstanceId, int dashIndex)
@@ -710,6 +815,7 @@ namespace Shinshi.AI
                 float width, float seconds)
             {
                 _body.Face(direction);
+                _onDeadline(_clock() + seconds);
                 _presenter.enabled = true;
 
                 var start = new BossTelegraphStart(_body.CombatId, Key(castInstanceId, dashIndex), castInstanceId, _activePatternId(),

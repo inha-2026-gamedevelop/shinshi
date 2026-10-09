@@ -14,6 +14,7 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 namespace Shinshi.AI
 {
     // 시간과 거리와 각도와 피해 배수는 모두 패턴 정의에서 읽는다. 이 클래스에는 밸런스 값이 없다
+    // 기본은 추적 시간 동안 회전 속도로 제한해 돈다(월백). naturalAim을 켜면(무철) MucheolAimTracker로 최단 경로를 부드럽게 돌아 고정 시각에 대상 방향에 닿는다
     /// <summary> 전방 부채꼴 요력 폭발, 추적 회전 뒤 방향을 고정하고 예고가 끝나면 한 번 타격한다 </summary>
     public sealed class BossFanBlastPattern : BossPatternBase
     {
@@ -30,6 +31,7 @@ namespace Shinshi.AI
 
         private readonly float                      _referenceHealth;
         private readonly IBossFanTelegraphListener  _listener;
+        private readonly MucheolAimTracker          _tracker;
         private readonly List<ICombatTarget>        _buffer = new List<ICombatTarget>();
 
         private Vector3 _aim;
@@ -52,10 +54,12 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
-        public BossFanBlastPattern(float referenceHealth, IBossFanTelegraphListener listener = null)
+        // naturalAim은 무철 전용 조준이다. 기본값 꺼짐은 기존 동작(월백)이다
+        public BossFanBlastPattern(float referenceHealth, IBossFanTelegraphListener listener = null, bool naturalAim = false)
         {
             _referenceHealth = referenceHealth;
             _listener        = listener;
+            _tracker         = naturalAim ? new MucheolAimTracker() : null;
         }
 
         protected override void OnBegin(double serverTime)
@@ -67,6 +71,8 @@ namespace Shinshi.AI
             _trackedUntil = serverTime;
             _isLocked     = false;
             _hasHit       = false;
+
+            _tracker?.Begin(_aim, serverTime, definition.TrackingSeconds, definition.TurnRate);
 
             _listener?.OnTelegraphStarted(Context.CastInstanceId, Context.Self.Position, _aim,
                 definition.Shape.Range, definition.Shape.ArcAngle, definition.TelegraphSeconds);
@@ -112,7 +118,11 @@ namespace Shinshi.AI
             double until    = Math.Min(serverTime, trackEnd);
             double elapsed  = until - _trackedUntil;
 
-            if (elapsed > 0.0)
+            if (_tracker != null)
+            {
+                TrackNaturally(serverTime);
+            }
+            else if (elapsed > 0.0)
             {
                 RotateTowardTarget((float)elapsed * Context.Definition.TurnRate);
                 _trackedUntil = until;
@@ -122,6 +132,19 @@ namespace Shinshi.AI
             {
                 LockDirection();
             }
+        }
+
+        // 타깃이 사라졌거나 죽었으면 마지막으로 읽은 방향을 유지한다
+        private void TrackNaturally(double serverTime)
+        {
+            bool hasTarget = MucheolAimTracker.TryReadTarget(Context, Context.Self.Position, out Vector3 toTarget);
+            if (!_tracker.Advance(serverTime, hasTarget, toTarget))
+            {
+                return;
+            }
+
+            _aim = _tracker.Aim;
+            _listener?.OnAimChanged(Context.CastInstanceId, _aim);
         }
 
         // 타깃이 사라졌거나 죽었으면 현재 방향을 유지한다

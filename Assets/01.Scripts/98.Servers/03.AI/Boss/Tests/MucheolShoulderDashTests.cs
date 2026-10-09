@@ -483,21 +483,23 @@ namespace Shinshi.Tests
         *            Direction Lock
         ****************************************/
 
-        // 타깃이 오른쪽 90도에 있어도 처음 0.4초 동안 초당 150도로만 돌아 최대 60도다
+        // 타깃이 오른쪽 90도에 있으면 처음 0.4초 안에 최단 경로로 돌아 고정 시각에 90도에 닿는다(절반 시각에는 절반)
         [Test]
-        public void Tick_RotatesAtMostTurnRate_AndLocksAfterTrackingEnd()
+        public void Tick_TurnsSmoothlyToTarget_AndLocksAfterTrackingEnd()
         {
+            const float TARGET_DEGREES = 90f;
+
             Rig rig = new Rig();
             rig.Tracked.Position = new Vector3(10f, 0f, 0f);
             rig.Start();
 
             rig.TickRange(0.0, 0.2);
-            Assert.AreEqual(TURN_RATE * 0.2f, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(TARGET_DEGREES * 0.5f, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
             Assert.IsFalse(rig.Pattern.IsDirectionLocked);
 
             rig.TickRange(0.2, 0.5);
             Assert.IsTrue(rig.Pattern.IsDirectionLocked);
-            Assert.AreEqual(TURN_RATE * TRACKING, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
+            Assert.AreEqual(TARGET_DEGREES, AimDegrees(rig.Pattern.AimDirection), ANGLE_TOLERANCE);
             Assert.AreEqual(1, rig.Listener.LockCount);
         }
 

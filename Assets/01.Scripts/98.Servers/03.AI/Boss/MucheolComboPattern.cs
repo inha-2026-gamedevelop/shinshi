@@ -35,6 +35,7 @@ namespace Shinshi.AI
         private readonly float                      _referenceHealth;
         private readonly MucheolComboSpec           _spec;
         private readonly IBossComboTelegraphListener _listener;
+        private readonly MucheolAimTracker          _tracker;
         private readonly List<ICombatTarget>        _buffer = new List<ICombatTarget>();
 
         private Vector3 _aim;
@@ -67,8 +68,12 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
-        public MucheolComboPattern(float referenceHealth, MucheolComboSpec spec, IBossComboTelegraphListener listener = null)
+        // naturalAim을 켜면 추적 회전이 MucheolAimTracker의 최단 경로 부드러운 회전이 된다. 기본값 꺼짐은 회전 속도로 제한하는 기존 동작이다
+        public MucheolComboPattern(float referenceHealth, MucheolComboSpec spec, IBossComboTelegraphListener listener = null,
+            bool naturalAim = false)
         {
+            _tracker = naturalAim ? new MucheolAimTracker() : null;
+
             if (spec == null)
             {
                 throw new ArgumentNullException(nameof(spec));
@@ -90,6 +95,8 @@ namespace Shinshi.AI
             _recoverEnd   = 0.0;
             _nextHit      = 0;
             _scheduledHitCount = 0;
+
+            _tracker?.Begin(_aim, serverTime, Context.Definition.TrackingSeconds, Context.Definition.TurnRate);
 
             _listener?.OnTelegraphStarted(Context.CastInstanceId, Context.Self.Position, _aim,
                 Context.Definition.TelegraphSeconds, _spec.Hits);
@@ -148,7 +155,11 @@ namespace Shinshi.AI
             double until    = Math.Min(serverTime, trackEnd);
             double elapsed  = until - _trackedUntil;
 
-            if (elapsed > 0.0)
+            if (_tracker != null)
+            {
+                TrackNaturally(serverTime);
+            }
+            else if (elapsed > 0.0)
             {
                 RotateTowardTarget((float)elapsed * Context.Definition.TurnRate);
                 _trackedUntil = until;
@@ -158,6 +169,19 @@ namespace Shinshi.AI
             {
                 LockDirection();
             }
+        }
+
+        // 타깃이 사라졌거나 죽었으면 마지막으로 읽은 방향을 유지한다
+        private void TrackNaturally(double serverTime)
+        {
+            bool hasTarget = MucheolAimTracker.TryReadTarget(Context, Context.Self.Position, out Vector3 toTarget);
+            if (!_tracker.Advance(serverTime, hasTarget, toTarget))
+            {
+                return;
+            }
+
+            _aim = _tracker.Aim;
+            _listener?.OnAimChanged(Context.CastInstanceId, _aim);
         }
 
         // 타깃이 사라졌거나 죽었으면 현재 방향을 유지한다
