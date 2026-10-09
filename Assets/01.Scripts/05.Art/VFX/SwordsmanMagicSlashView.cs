@@ -115,6 +115,7 @@ namespace Shinshi.Art
             observation.LifeState      = _combat.LifeState;
             observation.AttackSequence = _combat.AttackSequence;
             observation.DodgeSequence  = _combat.DodgeSequence;
+            observation.ActionCancelSequence = _combat.ActionCancelSequence;
             observation.CastInstanceId = _combat.CastInstanceId;
             observation.SkillPhase     = _combat.SkillPhase;
             observation.SkillKind      = _combat.SkillKind;
@@ -393,6 +394,7 @@ namespace Shinshi.Art
             public EParticipantLifeState LifeState;
             public byte                  AttackSequence;
             public byte                  DodgeSequence;
+            public byte                  ActionCancelSequence;
             public int                   CastInstanceId;
             public ESkillPhase           SkillPhase;
             public ESkillRequestKind     SkillKind;
@@ -435,6 +437,7 @@ namespace Shinshi.Art
         private bool _wasAlive;
         private byte _attackBaseline;
         private byte _dodgeBaseline;
+        private byte _cancelBaseline;
         private int  _castBaseline;
 
         /****************************************
@@ -539,6 +542,15 @@ namespace Shinshi.Art
                 return 0;
             }
 
+            if (obs.ActionCancelSequence != _cancelBaseline)
+            {
+                // 서버가 기절로 준비 중인 기술과 기본 공격을 끊었다
+                StopRequested = true;
+                ClearPending();
+                ConsumeBaselines(in obs);
+                return 0;
+            }
+
             bool isCastNew = (obs.CastInstanceId != 0) && (obs.CastInstanceId != _castBaseline);
             if (isCastNew)
             {
@@ -562,6 +574,7 @@ namespace Shinshi.Art
         {
             _attackBaseline = obs.AttackSequence;
             _dodgeBaseline  = obs.DodgeSequence;
+            _cancelBaseline = obs.ActionCancelSequence;
             _castBaseline   = obs.CastInstanceId;
         }
 

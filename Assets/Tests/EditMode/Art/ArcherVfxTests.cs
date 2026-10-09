@@ -264,6 +264,52 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Update_BasicWindupCancelledByServerCancelSignal_DoesNotFire()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(40.0));
+            ArcherVfxTracker.Observation bump = Idle(40.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+
+            // 기절로 준비가 끊기면 기술 단계도 이동도 변하지 않으므로 취소 신호만이 알린다
+            ArcherVfxTracker.Observation cancel = Idle(40.05);
+            cancel.AttackSequence       = 1;
+            cancel.ActionCancelSequence = 1;
+            Step(tracker, cancel);
+            Assert.That(tracker.HasPending, Is.False);
+
+            cancel.Now = 40.5;
+            Step(tracker, cancel);
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_RapidFireCancelledByServerCancelSignal_DropsRemainingShots()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(41.0));
+
+            ArcherVfxTracker.Observation cast = Cast(Idle(41.0), 1, SLOT_Q, ESkillPhase.Windup, 41.3);
+            Step(tracker, cast);
+            cast.Now        = 41.31;
+            cast.SkillPhase = ESkillPhase.Active;
+            Step(tracker, cast);
+            int firedBeforeCancel = _plays.Count;
+            Assert.That(firedBeforeCancel, Is.GreaterThan(0));
+
+            // 단계가 아직 Active로 보여도 취소 신호가 오면 남은 발사를 버린다
+            cast.Now                  = 41.4;
+            cast.ActionCancelSequence = 1;
+            Step(tracker, cast);
+            Assert.That(tracker.HasPending, Is.False);
+
+            cast.Now = 42.0;
+            Step(tracker, cast);
+            Assert.That(_plays.Count, Is.EqualTo(firedBeforeCancel));
+        }
+
+        [Test]
         public void Update_RapidFire_FiresThreeShotsAtResolveAtPlusInterval()
         {
             ArcherVfxTracker tracker = CreateTracker();

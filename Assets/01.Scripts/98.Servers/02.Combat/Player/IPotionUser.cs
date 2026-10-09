@@ -15,7 +15,7 @@ namespace Shinshi.Combat
         float                 Health          { get; }
         float                 MaxHealth       { get; }
 
-        // 기절, 이동 불가처럼 물약을 막는 제어 상태
+        // 기절처럼 물약을 막는 제어 상태, 속박은 막지 않는다
         bool                  IsControlLocked { get; }
 
         /****************************************

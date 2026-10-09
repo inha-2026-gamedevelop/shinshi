@@ -119,6 +119,7 @@ namespace Shinshi.Art
             observation.LifeState       = _combat.LifeState;
             observation.AttackSequence  = _combat.AttackSequence;
             observation.DodgeSequence   = _combat.DodgeSequence;
+            observation.ActionCancelSequence = _combat.ActionCancelSequence;
             observation.CastInstanceId  = _combat.CastInstanceId;
             observation.SkillPhase      = _combat.SkillPhase;
             observation.SkillKind       = _combat.SkillKind;

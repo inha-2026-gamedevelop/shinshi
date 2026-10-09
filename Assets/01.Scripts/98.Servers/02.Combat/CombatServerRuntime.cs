@@ -1257,8 +1257,9 @@ namespace Shinshi.Combat
                     continue;
                 }
 
-                // 평가할 요청이 있는 틱에만 한 번 읽는다. 지점 Transform이 움직여도 그 틱의 위치를 쓴다
-                if (!candidatesLoaded)
+                // 평가할 요청이 있는 틱에만 한 번 읽는다. 지점 Transform이 움직여도 그 틱의 위치를 쓴다.
+                // 안전 지점은 협동 보스에만 쓰므로 일반전은 읽지 않는다
+                if ((!candidatesLoaded) && (_host.Session.IsBossSession))
                 {
                     LoadRevivePoints();
                     candidatesLoaded = true;
@@ -1278,8 +1279,13 @@ namespace Shinshi.Combat
                 return;
             }
 
-            // 안전 지점이 없으면 횟수를 쓰지 않고 다음 재평가 시각까지 요청을 남긴다
-            if (!player.TryFindRevivePoint(_revivePoints, serverTime, out Vector3 point))
+            // 일반전은 안전 지점이나 위험 종료를 기다리지 않고 사망 위치에서 되살아난다. 협동 보스만 안전 지점을 고른다.
+            // 지점이 없으면 횟수를 쓰지 않고 다음 재평가 시각까지 요청을 남긴다
+            Vector3 point;
+            bool    found = (_host.Session.IsBossSession)
+                ? player.TryFindRevivePoint(_revivePoints, serverTime, out point)
+                : player.TryFindNormalRevivePoint(out point);
+            if (!found)
             {
                 player.DeferRevive(serverTime + _host.SafePointRetryInterval);
                 return;
@@ -1297,7 +1303,7 @@ namespace Shinshi.Combat
             player.ReportedLifeState = player.LifeState;
         }
 
-        // 씬에 지정 지점이 없으면 선택기를 비워 두고 PlayerServer가 사망 위치 근처 NavMesh로 대신한다(경고는 한 번만)
+        // 협동 보스 전용이다. 씬에 지정 지점이 없으면 선택기를 비워 두고 PlayerServer가 사망 위치 근처 NavMesh로 대신한다(경고는 한 번만)
         private void LoadRevivePoints()
         {
             if (_revivePoints == null)

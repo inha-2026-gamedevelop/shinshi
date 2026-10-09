@@ -103,6 +103,9 @@ namespace Shinshi.Common
             // 제어 허용 구간에 있는 보스에게 적용하는 최대 속박 시간(초)
             public const float BOSS_ROOT_MAX_SECONDS  = 1f;
 
+            // 플레이어에게 거는 제어 한 번의 안전 상한(초). 기획 최대는 1초이고 데이터 오류가 영구 제어가 되지 않게 막는 값이다
+            public const float PLAYER_CONTROL_MAX_SECONDS = 10f;
+
             // 출정 계약(예약, 입장 토큰)에 보스와 전장 지역이 없어 보스전은 이 값으로 연다. 체험판 기준 Aref, Href는 숲 지역에 있다
             // TODO(민성): 출정 계약에 보스와 지역이 생기면 그 값으로 바꾼다
             public const string DEV_BOSS_ID        = "boss_wolbaek";

@@ -155,6 +155,30 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, selector.CandidateCount);
         }
 
+        // 선택기는 협동 보스에서만 쓴다. 일반전은 후보와 적 위치에 상관없이 사망 위치를 그대로 쓴다
+        [Test]
+        public void NormalSession_IgnoresSelectorCandidatesAndNearbyEnemies()
+        {
+            RevivePointSelector selector = CreateSelector();
+            selector.AddCandidate(new Vector3(30f, 0f, 0f));
+            _targets.AddEnemy(new Vector3(1f, 0f, 0f), true);
+            _hazards.Hazardous.Add(Vector3.zero);
+
+            Assert.IsFalse(selector.IsSafe(Vector3.zero, NOW));
+            Assert.AreEqual(EReviveLocationPlan.DeathPosition, ReviveLocationRules.Decide(false, true, Vector3.zero));
+        }
+
+        [Test]
+        public void BossSession_StillSelectsSafePointPath()
+        {
+            RevivePointSelector selector = CreateSelector();
+            selector.AddCandidate(new Vector3(10f, 0f, 0f));
+
+            Assert.AreEqual(EReviveLocationPlan.SafePoint, ReviveLocationRules.Decide(true, true, Vector3.zero));
+            Assert.IsTrue(selector.TrySelect(Vector3.zero, NOW, out Vector3 point));
+            Assert.AreEqual(new Vector3(10f, 0f, 0f), point);
+        }
+
         [Test]
         public void CombatReviveHazardQuery_HasNoHazardSourceYet()
         {
