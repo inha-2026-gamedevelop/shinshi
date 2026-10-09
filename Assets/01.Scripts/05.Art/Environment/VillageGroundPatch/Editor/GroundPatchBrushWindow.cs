@@ -20,6 +20,12 @@ namespace Shinshi.Art.Editor
             Dirt
         }
 
+        public enum EBrushMode
+        {
+            Paint,
+            Erase
+        }
+
         /****************************************
         *                Fields
         ****************************************/
@@ -32,6 +38,9 @@ namespace Shinshi.Art.Editor
         private const string DIRT_MATERIAL      = "Assets/01.Scripts/05.Art/Environment/DungeonTripo/DVFX_Pack/Materials/M_DVFX_DirtTransition.mat";
         private const string ROOT_NAME          = "16_GroundPatches";
         private const string MESH_PREFIX        = "SM_VillageGroundPatch_";
+        private const string MESH_FILTER        = "t:Mesh";
+        private const string SCENE_FOLDER       = "Assets/00.Scenes";
+        private const string SCENE_FILTER       = "t:Scene";
         private const string PATCH_SUFFIX       = "Patch";
         private const int    GRID_CELLS         = 24;    // 한 변 칸 수, 굴곡을 따라가는 해상도
         private const float  MIN_GROUND_NORMAL  = 0.75f; // 바닥 법선 y가 이보다 작으면(약 41도 이상) 절벽면으로 보고 비운다
@@ -41,12 +50,20 @@ namespace Shinshi.Art.Editor
         private const float  RAY_HEIGHT         = 50f;   // 꼭짓점마다 위에서 쏘는 레이 시작 높이(m)
         private const float  RAY_LENGTH         = 100f;  // 시작 높이 아래로 같은 만큼 더 내려가 본다
         private const float  MAX_PICK_DISTANCE  = 2000f;
+
+        // 칠하기 전용 바닥 콜라이더는 게임 레이캐스트와 내비메시에서 빠지도록 Ignore Raycast 레이어에 둔다.
+        // 기본 마스크는 그 레이어를 건너뛰므로 브러시만 모든 레이어를 본다
+        private const int    PICK_LAYERS        = Physics.AllLayers;
         private const int    INDICES_PER_CELL   = 6;     // 칸 하나 = 삼각형 두 개
         private const float  SQRT_TWO           = 1.41421356f;
         private const float  FULL_TURN          = 360f;
         private const float  PREVIEW_THICKNESS  = 2f;
         private const float  TOGGLE_LINES       = 2f;    // 칠하기 버튼 높이(줄 수)
+        private const float  MIN_ERASE_RADIUS   = 0.1f;
+        private const int    VERTS_PER_TRIANGLE = 3;
 
+        [SerializeField] private EBrushMode       _mode           = EBrushMode.Paint;
+        [SerializeField] private float            _eraseRadius    = 1.5f;
         [SerializeField] private EGroundPatchKind _kind           = EGroundPatchKind.Grass;
         [SerializeField] private Material[]       _grassMaterials = new Material[0];
         [SerializeField] private Material[]       _dirtMaterials  = new Material[0];
@@ -60,6 +77,9 @@ namespace Shinshi.Art.Editor
         private bool             _painting       = false;
         private SerializedObject _serialized     = null;
         private Vector2          _scroll         = Vector2.zero;
+
+        // 한 번 드래그하는 동안 깎은 메쉬, 마우스를 뗄 때 한 번에 저장한다
+        private readonly HashSet<Mesh> _strokeMeshes = new HashSet<Mesh>();
 
         /****************************************
         *              Unity Event
@@ -97,7 +117,7 @@ namespace Shinshi.Art.Editor
             _serialized.Update();
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
-            EditorGUILayout.HelpBox("칠하기를 켜고 씬 뷰에서 바닥을 클릭하면 패치를 찍는다. Shift + 클릭은 커서 아래 패치를 지운다.", MessageType.Info);
+            EditorGUILayout.HelpBox("칠하기를 켜고 씬 뷰에서 바닥을 클릭한다.\n칠하기: 클릭한 곳에 패치를 찍는다\n지우기: 클릭하거나 드래그한 원 안의 패치를 깎는다\nShift + 클릭: 커서 아래 패치 하나를 통째로 지운다", MessageType.Info);
 
             Color previous = GUI.backgroundColor;
             GUI.backgroundColor = _painting ? Color.green : previous;
@@ -107,6 +127,10 @@ namespace Shinshi.Art.Editor
                 SceneView.RepaintAll();
             }
             GUI.backgroundColor = previous;
+
+            EditorGUILayout.Space();
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_mode)), new GUIContent("모드"));
+            EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_eraseRadius)), new GUIContent("지우개 반경(m)"));
 
             EditorGUILayout.Space();
             EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_kind)), new GUIContent("종류"));
@@ -132,6 +156,12 @@ namespace Shinshi.Art.Editor
                 RefitSelection();
             }
 
+            EditorGUILayout.Space();
+            if (GUILayout.Button("안 쓰는 패치 메쉬 정리"))
+            {
+                DeleteUnusedMeshes();
+            }
+
             EditorGUILayout.EndScrollView();
             _serialized.ApplyModifiedProperties();
         }
@@ -155,12 +185,22 @@ namespace Shinshi.Art.Editor
                 return;
             }
 
+            // 마우스를 떼는 이벤트는 커서가 바닥 밖이어도 받아야 저장과 hotControl 해제가 빠지지 않는다
+            if ((current.type == EventType.MouseUp) && (GUIUtility.hotControl == controlId))
+            {
+                GUIUtility.hotControl = 0;
+                FlushStroke();
+                current.Use();
+                return;
+            }
+
             Ray ray = HandleUtility.GUIPointToWorldRay(current.mousePosition);
-            if (!Physics.Raycast(ray, out RaycastHit hit, MAX_PICK_DISTANCE))
+            if (!Physics.Raycast(ray, out RaycastHit hit, MAX_PICK_DISTANCE, PICK_LAYERS, QueryTriggerInteraction.Ignore))
             {
                 return;
             }
 
+            bool primaryClick = (current.button == 0) && (!current.alt);
             switch (current.type)
             {
                 case EventType.Repaint:
@@ -170,7 +210,7 @@ namespace Shinshi.Art.Editor
                     view.Repaint();
                     break;
                 case EventType.MouseDown:
-                    if ((current.button != 0) || (current.alt))
+                    if (!primaryClick)
                     {
                         break;
                     }
@@ -179,10 +219,25 @@ namespace Shinshi.Art.Editor
                     {
                         ErasePatchAt(hit.point);
                     }
+                    else if (_mode == EBrushMode.Erase)
+                    {
+                        GUIUtility.hotControl = controlId;
+                        EraseArea(hit.point);
+                    }
                     else
                     {
                         StampPatch(hit);
                     }
+                    current.Use();
+                    break;
+                case EventType.MouseDrag:
+                    if ((!primaryClick) || (GUIUtility.hotControl != controlId))
+                    {
+                        break;
+                    }
+
+                    EraseArea(hit.point);
+                    view.Repaint();
                     current.Use();
                     break;
                 default:
@@ -190,16 +245,187 @@ namespace Shinshi.Art.Editor
             }
         }
 
-        private void DrawPreview(RaycastHit hit, bool erasing)
+        private void DrawPreview(RaycastHit hit, bool removeWhole)
         {
+            if (removeWhole)
+            {
+                Handles.color = Color.red;
+                Handles.DrawWireDisc(hit.point, Vector3.up, MIN_ERASE_RADIUS, PREVIEW_THICKNESS);
+                return;
+            }
+
+            if (_mode == EBrushMode.Erase)
+            {
+                Handles.color = Color.red;
+                Handles.DrawWireDisc(hit.point, Vector3.up, _eraseRadius, PREVIEW_THICKNESS);
+                return;
+            }
+
             float maxRadius = (_kind == EGroundPatchKind.Grass) ? _grassMaxRadius : _dirtMaxRadius;
             float minRadius = (_kind == EGroundPatchKind.Grass) ? _grassMinRadius : _dirtMinRadius;
-            Handles.color = erasing ? Color.red : ((_kind == EGroundPatchKind.Grass) ? Color.green : Color.yellow);
+            Handles.color = (_kind == EGroundPatchKind.Grass) ? Color.green : Color.yellow;
             Handles.DrawWireDisc(hit.point, Vector3.up, maxRadius, PREVIEW_THICKNESS);
-            if (!erasing)
+            Handles.DrawWireDisc(hit.point, Vector3.up, minRadius);
+        }
+
+        // 원 안의 꼭짓점을 원 둘레로 밀어내고, 세 꼭짓점이 모두 원 안이던 삼각형은 버린다.
+        // 칸째 버리면 잘린 면이 격자 계단으로 남는데, 밀어내면 원호를 따라 매끈하게 잘린다
+        private void EraseArea(Vector3 center)
+        {
+            float radius = Mathf.Max(MIN_ERASE_RADIUS, _eraseRadius);
+            float radiusSqr = radius * radius;
+            Scene scene = SceneManager.GetActiveScene();
+            var patches = new List<MeshRenderer>(EnumeratePatches(scene));
+            for (int p = 0; p < patches.Count; ++p)
             {
-                Handles.DrawWireDisc(hit.point, Vector3.up, minRadius);
+                MeshRenderer patch = patches[p];
+                if ((patch == null) || (!IsNearXZ(patch.bounds, center, radius)))
+                {
+                    continue;
+                }
+
+                if ((!patch.TryGetComponent(out MeshFilter filter)) || (filter.sharedMesh == null))
+                {
+                    continue;
+                }
+
+                Transform patchTransform = patch.transform;
+                Vector3[] vertices = filter.sharedMesh.vertices;
+                var moved = new bool[vertices.Length];
+                bool anyMoved = false;
+                for (int i = 0; i < vertices.Length; ++i)
+                {
+                    Vector3 world = patchTransform.TransformPoint(vertices[i]);
+                    var offset = new Vector2(world.x - center.x, world.z - center.z);
+                    if (offset.sqrMagnitude >= radiusSqr)
+                    {
+                        continue;
+                    }
+
+                    Vector2 direction = (offset.sqrMagnitude > 0f) ? offset.normalized : Vector2.right;
+                    var pushed = new Vector3(center.x + (direction.x * radius), world.y, center.z + (direction.y * radius));
+                    vertices[i] = patchTransform.InverseTransformPoint(pushed);
+                    moved[i] = true;
+                    anyMoved = true;
+                }
+
+                if (!anyMoved)
+                {
+                    continue;
+                }
+
+                int[] triangles = filter.sharedMesh.triangles;
+                var kept = new List<int>(triangles.Length);
+                for (int t = 0; t < triangles.Length; t += VERTS_PER_TRIANGLE)
+                {
+                    if ((moved[triangles[t]]) && (moved[triangles[t + 1]]) && (moved[triangles[t + 2]]))
+                    {
+                        continue;
+                    }
+
+                    kept.Add(triangles[t]);
+                    kept.Add(triangles[t + 1]);
+                    kept.Add(triangles[t + 2]);
+                }
+
+                if (kept.Count == 0)
+                {
+                    Undo.DestroyObjectImmediate(patch.gameObject);
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    continue;
+                }
+
+                Mesh mesh = GetStrokeMesh(patch.gameObject, filter);
+                mesh.vertices = vertices;
+                mesh.SetTriangles(kept, 0);
+                mesh.RecalculateNormals();
+                mesh.RecalculateTangents();
+                mesh.RecalculateBounds();
+                EditorSceneManager.MarkSceneDirty(scene);
             }
+        }
+
+        // 드래그마다 패치당 한 번 사본을 만들어 바꾸고 MeshFilter 참조만 Undo에 남긴다.
+        // 메쉬 에셋을 제자리에서 고치면 Undo가 꼭짓점을 되돌리지 못했고,
+        // 다른 씬이나 복제한 패치가 같은 메쉬를 쓰면 그쪽까지 깎인다
+        private Mesh GetStrokeMesh(GameObject patch, MeshFilter filter)
+        {
+            Mesh mesh = filter.sharedMesh;
+            if (_strokeMeshes.Contains(mesh))
+            {
+                return mesh;
+            }
+
+            Mesh copy = Instantiate(mesh);
+            SaveMeshAsset(copy, patch.name.Replace(PATCH_SUFFIX, string.Empty));
+            Undo.RecordObject(filter, WINDOW_TITLE);
+            filter.sharedMesh = copy;
+            _strokeMeshes.Add(copy);
+            return copy;
+        }
+
+        // 지우기와 Shift + 클릭으로 남은, 어느 씬도 쓰지 않는 패치 메쉬 파일을 지운다
+        private static void DeleteUnusedMeshes()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            string[] scenePaths = AssetDatabase.FindAssets(SCENE_FILTER, new[] { SCENE_FOLDER });
+            for (int i = 0; i < scenePaths.Length; ++i)
+            {
+                scenePaths[i] = AssetDatabase.GUIDToAssetPath(scenePaths[i]);
+            }
+
+            var used = new HashSet<string>(AssetDatabase.GetDependencies(scenePaths, false));
+            var unused = new List<string>();
+            foreach (string guid in AssetDatabase.FindAssets(MESH_FILTER, new[] { MESH_FOLDER }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!used.Contains(path))
+                {
+                    unused.Add(path);
+                }
+            }
+
+            if (unused.Count == 0)
+            {
+                EditorUtility.DisplayDialog(WINDOW_TITLE, "지울 메쉬가 없다", "확인");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog(WINDOW_TITLE, $"어느 씬도 쓰지 않는 패치 메쉬 {unused.Count}개를 지운다. 지운 메쉬를 쓰던 Undo 기록은 되돌릴 수 없게 된다", "지우기", "취소"))
+            {
+                return;
+            }
+
+            var failed = new List<string>();
+            AssetDatabase.DeleteAssets(unused.ToArray(), failed);
+            Debug.Log($"[GroundPatch] 안 쓰는 패치 메쉬 {unused.Count - failed.Count}개를 지웠다");
+        }
+
+        private void FlushStroke()
+        {
+            foreach (Mesh mesh in _strokeMeshes)
+            {
+                if (mesh == null)
+                {
+                    continue;
+                }
+
+                EditorUtility.SetDirty(mesh);
+                AssetDatabase.SaveAssetIfDirty(mesh);
+            }
+
+            _strokeMeshes.Clear();
+        }
+
+        private static bool IsNearXZ(Bounds bounds, Vector3 point, float radius)
+        {
+            float dx = Mathf.Max(0f, Mathf.Abs(point.x - bounds.center.x) - bounds.extents.x);
+            float dz = Mathf.Max(0f, Mathf.Abs(point.z - bounds.center.z) - bounds.extents.z);
+            return ((dx * dx) + (dz * dz)) < (radius * radius);
         }
 
         private void StampPatch(RaycastHit hit)
@@ -472,7 +698,7 @@ namespace Shinshi.Art.Editor
         // 위에서 내려다봤을 때 패치 높이에 가장 가까운 콜라이더를 바닥으로 본다. 맨 처음 닿는 것은 지붕일 수 있다
         private static Collider FindGroundBelow(Vector3 position)
         {
-            RaycastHit[] hits = Physics.RaycastAll(position + (Vector3.up * RAY_HEIGHT), Vector3.down, RAY_LENGTH);
+            RaycastHit[] hits = Physics.RaycastAll(position + (Vector3.up * RAY_HEIGHT), Vector3.down, RAY_LENGTH, PICK_LAYERS, QueryTriggerInteraction.Ignore);
             Collider best = null;
             float bestGap = float.MaxValue;
             for (int i = 0; i < hits.Length; ++i)
