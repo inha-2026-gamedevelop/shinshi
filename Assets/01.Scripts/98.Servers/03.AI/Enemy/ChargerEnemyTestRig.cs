@@ -75,10 +75,10 @@ namespace Shinshi.AI
                 return;
             }
 
-            // 프리팹이 몸체 판정 반경의 원본이다. 서버 몸체에는 생성 후 값으로 넘긴다
-            if (!_enemyPrefab.TryGetComponent(out CapsuleCollider bodyCollider))
+            // 프리팹이 두 반경의 원본이다. 감지와 피격 반경이 서버 몸체 반경(돌진 벽 정지 거리 기준)이고 간격 반경은 적끼리 간격이다
+            if (!_enemyPrefab.TryGetBodyRadii(out float bodyRadius, out float separationRadius))
             {
-                Debug.LogError("[Enemy] 프리팹에 몸체 판정 CapsuleCollider가 없다", _enemyPrefab);
+                Debug.LogError("[Enemy] 프리팹에 감지 또는 간격 콜라이더 참조가 비어 있다", _enemyPrefab);
                 enabled = false;
                 return;
             }
@@ -90,7 +90,7 @@ namespace Shinshi.AI
 
             _player = new EnemyTestRigPlayer(PLAYER_ID, transform.position, PLAYER_MAX_HP);
             _enemy  = new EnemyServer(definition, ENEMY_ID, transform.position + _enemyStart, -_enemyStart,
-                _referenceAttack, bodyCollider.radius);
+                _referenceAttack, bodyRadius, 1f, separationRadius);
             registry.Register(_player);
             registry.Register(_enemy);
 

@@ -30,6 +30,7 @@ namespace Shinshi.AI
 
         private const int   INITIAL_BUFFER_CAPACITY = 16;
         private const float RANGE_EPSILON           = 0.001f; // m, 접근 정지 거리의 부동소수 오차 흡수
+        private const float SEPARATION_EPSILON      = 0.0001f; // m, 겹침 방지가 위치를 바꿨는지 가르는 오차
 
         /****************************************
         *                Fields
@@ -42,6 +43,8 @@ namespace Shinshi.AI
         private readonly ICombatTargetQuery   _targets;
         private readonly EnemyTargetSelector  _selector;
         private readonly IDamageResolver      _damage;
+        private readonly EnemyCrowd           _crowd;
+        private EnemyCrowd.SidestepState      _sidestep;
         private readonly List<ICombatTarget>  _buffer = new List<ICombatTarget>(INITIAL_BUFFER_CAPACITY);
 
         private double  _lastTickTime;
@@ -95,9 +98,10 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceHealth는 전장 지역의 Href다. 방어 전 피해는 AttackDamageRef x Href이고
-        // 플레이어의 현재 체력으로 대신하지 않는다
+        // 플레이어의 현재 체력으로 대신하지 않는다. crowd가 null이면 적끼리 겹침 방지를 하지 않는다
         public MeleeEnemyBrain(EnemyServer self, EnemyDefinition definition, float referenceHealth,
-            ICombatTargetQuery targets, IDamageResolver damage, float recoverSeconds = PROTOTYPE_RECOVER_SECONDS)
+            ICombatTargetQuery targets, IDamageResolver damage, float recoverSeconds = PROTOTYPE_RECOVER_SECONDS,
+            EnemyCrowd crowd = null)
         {
             if (self == null)
             {
@@ -136,6 +140,8 @@ namespace Shinshi.AI
             _targets        = targets;
             _selector       = new EnemyTargetSelector(targets);
             _damage         = damage;
+            _crowd          = crowd;
+            _sidestep       = new EnemyCrowd.SidestepState { Side = ((self.CombatId & 1) == 0) ? 1 : -1 };
             _aim            = self.Forward;
         }
 
@@ -188,6 +194,7 @@ namespace Shinshi.AI
             if (target == null)
             {
                 State = EEnemyState.Idle;
+                MoveSelf(_self.Position, deltaSeconds, false);
                 return;
             }
 
@@ -197,23 +204,56 @@ namespace Shinshi.AI
             Vector3 toTarget   = target.Position - position;
             toTarget.y = 0f;
 
-            float distance   = toTarget.magnitude;
-            float engageDist = _definition.AttackShape.Range * PROTOTYPE_ENGAGE_RATIO;
+            float   distance   = toTarget.magnitude;
+            float   engageDist = _definition.AttackShape.Range * PROTOTYPE_ENGAGE_RATIO;
+            Vector3 desired    = position;
+            float   step       = 0f;
 
             if (distance > engageDist)
             {
-                float step = Mathf.Min(_definition.MoveSpeed * deltaSeconds, distance - engageDist);
-                Vector3 direction = toTarget / distance;
-                _self.SetPosition(position + (direction * step));
+                step    = Mathf.Min(_definition.MoveSpeed * deltaSeconds, distance - engageDist);
+                desired = position + ((toTarget / distance) * step);
+            }
+
+            // 공격 반경 안까지 들어온 개체는 막혀도 옆으로 더 파고들지 않고 그 자리에서 친다
+            bool separated = MoveSelf(desired, deltaSeconds, distance > _definition.AttackShape.Range);
+            if (separated)
+            {
+                toTarget   = target.Position - _self.Position;
+                toTarget.y = 0f;
+                distance   = toTarget.magnitude;
+            }
+            else
+            {
                 distance -= step;
             }
 
             _self.SetForward(toTarget);
 
-            if ((distance <= (engageDist + RANGE_EPSILON)) && (serverTime >= _nextTelegraphTime))
+            // 이웃에 막혀 접근 정지 거리까지 못 들어간 개체도 공격 반경 안이면 친다. 안 그러면 앞줄 뒤의 개체가 영영 못 때린다
+            float attackDist = separated ? _definition.AttackShape.Range : (engageDist + RANGE_EPSILON);
+            if ((distance <= attackDist) && (serverTime >= _nextTelegraphTime))
             {
                 BeginTelegraph(serverTime, toTarget);
             }
+        }
+
+        // 이동 결과를 서버 몸체에 넣는다. 이웃 몸체를 피하느라 위치가 바뀌었으면 true
+        private bool MoveSelf(Vector3 desired, float deltaSeconds, bool allowSidestep)
+        {
+            if (_crowd == null)
+            {
+                _self.SetPosition(desired);
+                return false;
+            }
+
+            float   maxStep  = (_definition.MoveSpeed + EnemyCrowd.PROTOTYPE_DEPENETRATION_SPEED) * deltaSeconds;
+            Vector3 resolved = _crowd.ResolveWithSidestep(_self, desired, maxStep, deltaSeconds, allowSidestep, ref _sidestep);
+            _self.SetPosition(resolved);
+
+            float x = resolved.x - desired.x;
+            float z = resolved.z - desired.z;
+            return ((x * x) + (z * z)) > (SEPARATION_EPSILON * SEPARATION_EPSILON);
         }
 
         // 방향은 이 시점에 한 번 정하고 예고가 끝날 때까지 바꾸지 않는다. 주기는 예고 시작부터 센다

@@ -7,7 +7,9 @@ using Shinshi.Common;
 namespace Shinshi.AI
 {
     // 서버 값을 받아 그리기만 한다. 외형은 프리팹의 Visual 자식이고 모델이 생기면 그 자식만 바꾼다.
-    // 몸체 판정 반경은 루트의 CapsuleCollider가, 공격 범위는 서버 정의가 정하므로 외형 크기와 서로 따로다
+    // 콜라이더는 둘이고 용도가 다르다. 루트의 큰 Trigger는 감지와 피격 범위이자 서버 몸체 반경(돌진 벽 정지 거리 기준)이고,
+    // SeparationBody 자식의 작은 비트리거는 적끼리 간격 반경이다. 어느 쪽이든 이 뷰가 읽는 값은 프리팹 크기 원본일 뿐이고
+    // 위치 판정은 서버가 한다. 공격 범위는 서버 정의가 정하므로 외형 크기와 서로 따로다
     /// <summary> 일반 적 시험용 표현, 외형 색과 공격 범위 부채꼴을 상태에 맞춰 보여 준다 </summary>
     public sealed class EnemyTestView : ClientView
     {
@@ -34,6 +36,10 @@ namespace Shinshi.AI
         [SerializeField] private Transform    _visual;    // 외형 루트, 이 아래 렌더러를 상태 색으로 칠한다
         [SerializeField] private LineRenderer _rangeLine; // 공격 범위 부채꼴
 
+        [Header("콜라이더")]
+        [SerializeField] private CapsuleCollider _detectionCollider;  // 루트의 큰 Trigger, 감지와 피격 범위
+        [SerializeField] private CapsuleCollider _separationCollider; // SeparationBody 자식의 비트리거, 적끼리 간격
+
         private Renderer[]            _renderers;
         private MaterialPropertyBlock _block;
         private Material              _lineMaterial;
@@ -59,6 +65,22 @@ namespace Shinshi.AI
             _rangeLine.positionCount   = ARC_SEGMENTS + 3;
             _lineMaterial              = new Material(Shader.Find(LINE_SHADER));
             _rangeLine.material        = _lineMaterial;
+        }
+
+        /// <summary> 프리팹이 정한 두 반경, 감지와 피격 반경이 서버 몸체 반경이고 간격 반경은 적끼리 간격이다. 콜라이더가 비면 false </summary>
+        public bool TryGetBodyRadii(out float detectionRadius, out float separationRadius)
+        {
+            detectionRadius  = 0f;
+            separationRadius = 0f;
+
+            if ((_detectionCollider == null) || (_separationCollider == null))
+            {
+                return false;
+            }
+
+            detectionRadius  = _detectionCollider.radius;
+            separationRadius = _separationCollider.radius;
+            return true;
         }
 
         private void OnDestroy()
