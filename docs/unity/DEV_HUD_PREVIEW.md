@@ -13,6 +13,16 @@
 
 2026-10-03 에디터 검증에서 베이크된 정점 5259개·삼각형 2393개를 확인했다. 중앙 출발점 주변 7곳의 완전 경로와 Play Mode의 MovePathRules/분리된 PathFollower 도달을 확인했다. 전체 구역 연결성, 소유된 네트워크 플레이어 입력·이동, M2/M3 및 Player 빌드는 미검증이다.
 
+## GroundPaint 씬 NavMesh (2026-10-10)
+
+`Dev_ShinshiVillageQuarterView_GroundPaint.unity`는 전용 데이터 `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView_GroundPaint/NavMesh-Navigation.asset`를 사용한다. Release의 ShinshiTown 데이터와 분리했다. Humanoid의 반경 0.5m·높이 2m·경사 45도·단차 0.75m를 유지하며, Physics Colliders·Default/Obstacle(mask 257)·Volume center `(5, 6, -5)`·size `(130, 36, 140)`·voxel 0.1m·Height Mesh로 베이크한다.
+
+씬의 NavMeshModifier는 배치 소품과 중앙 성소의 장애물·수면을 Not Walkable로 처리하고 바닥·계단·다리 상판·교각의 상단을 Walkable로 지정한다. 북서 전망대 입구의 낮은 돌 2개도 보행 표면으로 처리한다. `01_CA07_IslandBody`의 이전 외피 충돌체는 Ignore From Build로 제외한다. 이 충돌체는 현재 바닥 바깥의 공중 영역과 남쪽 계단 위의 평면을 생성했기 때문이다. 모델·물리 Collider·배치는 변경하지 않았다. 재베이크할 때 이 Modifier와 전용 데이터 참조를 유지한다.
+
+베이크 결과는 정점 5775개·삼각형 2581개다. 11개 지형 구역 중심·남쪽 착지대·계단 출입점 6개, 총 18개 지점 사이의 방향별 경로 306개가 모두 PathComplete였다. 저장된 데이터를 사용하는 Play Mode에서 반경 0.5m·높이 2m의 임시 NavMeshAgent가 광장과 나머지 11개 지점 사이를 왕복해 22/22회 도착했다. 연못·개울 표면 표본 42개와 섬 바깥 표본 4개에서 이동 영역이 검출되지 않았다. NavMesh 오버레이도 캡처로 확인했다. 최종 Console 오류·경고는 0이며 Edit Mode로 복귀했다.
+
+기존 CharacterController의 북쪽 계단 오르기 충돌과 남쪽 계단 위 이전 외피 Collider는 물리 충돌 문제로 남아 있다. NavMesh 경로 연결은 이 충돌체를 사용하는 실제 플레이어 이동의 통과를 보증하지 않는다. 소유된 네트워크 플레이어 이동·M2/M3·Player 빌드는 미검증이다.
+
 ## 씬 플레이어의 스폰 상태
 
 Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 것은 Mirror의 씬 NetworkIdentity 준비 처리다. 오브젝트는 남아 있으며 NavMesh가 삭제한 것이 아니다. 실제 플레이어는 인증된 서버의 스폰과 소유권 부여가 필요하다.

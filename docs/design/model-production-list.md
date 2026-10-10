@@ -288,6 +288,10 @@ GroundPaint 씬의 기존 Deck 11개에는 [VillageCliffUpgrade 외피 프리팹
 
 외피가 단조롭게 읽혀 GroundPaint 씬에서 `PF_VillageCliff_*` 외피 인스턴스 11개를 제거하고, 기존 섬 겉모델의 상단 높이·범위를 조정해 큰 암반 몸체로 대신했다. 외피 프리팹·재질 원본은 삭제하지 않았다. SW 구역에는 시각 전용 `PF_NaturalIslandBody_SW`를, EWatch에는 `PF_NaturalIslandAccents_EWatch`를 추가했으며 둘 다 Collider가 없다.
 
-궁궐·시장 조립의 선반 27개는 큰 선반 7개로 정리했고 식생 56개는 바뀐 암반 면에 다시 붙였다. 이 과정에서 씬의 `PF_CliffAssembly_Palace`·`PF_CliffAssembly_Market`은 프리팹 연결을 풀었으므로, 위 두 프리팹 에셋은 이전 27선반 상태이며 씬과 같지 않다.
+궁궐·시장 조립의 선반 27개는 큰 선반 7개로 정리했고 식생 56개는 바뀐 암반 면에 다시 붙였다. 기존 `PF_CliffAssembly_Palace`·`PF_CliffAssembly_Market` 에셋은 이전 27선반 상태다. 최신 조립은 같은 폴더의 [PF_NaturalCliffAssembly_Palace](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalCliffAssembly_Palace.prefab), [PF_NaturalCliffAssembly_Market](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalCliffAssembly_Market.prefab), [PF_NaturalIslandBody_SW](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalIslandBody_SW.prefab), [PF_NaturalIslandAccents_EWatch](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalIslandAccents_EWatch.prefab)로 별도 저장해 GroundPaint 씬에 연결했다. 네 프리팹 모두 장식용으로 Collider가 없으며 지면으로 쓰지 않는다. 연결 전후 메시·재질·월드 변환이 일치하고 프리팹 Mesh·Material·LOD·Script 참조와 `.meta`를 확인했다. 조립 전체의 접촉 AO는 새로 베이크하지 않았다.
 
-에디터 기준 기존 충돌체 712개와 보호 지면·배치 11875개가 변경 전과 일치하고 누락 Mesh·Material·Script 참조는 없다. 시장·Farm·EWatch·North 계단의 가림은 에디터 렌더로 확인했다. 강제·연속 LOD, 실제 보행, 성능·빌드는 미검증으로 **조건부 통과**다. 원본 QuarterView 씬에는 적용하지 않았다.
+에디터 기준 기존 충돌체 712개와 보호 지면·배치 11875개가 이전 커밋과 일치하고 누락 Mesh·Material·Script 참조는 없다. 전체 씬에는 이전 커밋에도 있던 `EdgeDressing/PF_CliffRockA`의 High LOD Renderer 누락 1건이 남아 있다. 몸체 23개의 강제 LOD0·1·2를 5개 구도에서 촬영했으며, 해당 화면에서 큰 관통 구멍은 확인되지 않았다. Low 단계의 실루엣 변화는 남는다. 식생 56개는 High 메시의 6방향 광선 검사에서 뿌리 위치와 표면 사이 거리가 5.9cm 이내였다.
+
+PlayMode의 임시 `DevQuarterViewWalker`(높이 2m, 반지름 0.5m인 CharacterController)로 Farm·Market 다리와 궁궐↔광장 계단 양방향, 북쪽 계단 하행에서 도착을 확인했다. 시장 경계에서는 낙하 없이 정지했다. 북쪽 계단 상행은 가로 위치 3곳에서 반복해서 막혔으며 **검증 실패·미수정**이다. 보존된 North Deck의 `top`·`rock` 충돌체를 PlayMode에서 함께 끄면 첫 막힘 구간을 지나 계단 끝에 도달했지만, 다음 지면이 없어 다시 멈췄다. 영구 충돌 설정은 변경하지 않았다. 실제 네트워크 플레이어 이동 검증을 대신하지 않는다.
+
+시장의 실제 씬 카메라·리그로 0→1→2→1→0 줌 전환 4회를 실행해 40개 프레임과 카메라 자세를 기록했다. 추가 거리 샘플 검사는 14.5~1500m에서 수행했으나 원거리 안개 때문에 모든 LOD 전환의 시각 품질을 보증하지 않는다. 전체 맵의 연속 LOD, 실제 네트워크 플레이어 보행, 성능·빌드는 미검증으로 **조건부 통과**다. 원본 QuarterView 씬에는 적용하지 않았다.
