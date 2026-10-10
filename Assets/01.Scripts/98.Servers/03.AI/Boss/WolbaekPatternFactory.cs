@@ -6,7 +6,7 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 namespace Shinshi.AI
 {
     // 방향이 있는 1페이즈 P01, P02(하드 포함), P04, P06과 2페이즈 P05는 naturalAim을 켜 이전 방향에서 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿는다.
-    // 원형 폭발, 장판, 전장 기준 패턴, 반월 연쇄는 조준 회전이 없거나 다른 기준이라 켜지 않는다
+    // 원형 폭발, 장판, 전장 기준 패턴, 반월 연쇄, 워프는 조준 회전이 없거나 다른 기준이라 켜지 않는다
     /// <summary> 월백 패턴 정의로 실행 객체를 만든다, 1페이즈 여섯 패턴(P01~P06)이 모두 있다 </summary>
     public sealed class WolbaekPatternFactory : IBossPatternFactory, IBossPatternAvailability
     {
@@ -37,6 +37,7 @@ namespace Shinshi.AI
         public const string P2_P04_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID;
         public const string P2_P05_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P05_ID;
         public const string P2_P06_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P06_ID;
+        public const string P2_P07_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P07_ID;
 
         /****************************************
         *                Fields
@@ -58,6 +59,7 @@ namespace Shinshi.AI
         private readonly IBossBeamTelegraphListener     _beamListener;
         private readonly IBossStarHost                  _stars;
         private readonly IBossStarTelegraphListener     _starListener;
+        private readonly IBossWarp                      _warp;
 
         /****************************************
         *                Methods
@@ -67,6 +69,7 @@ namespace Shinshi.AI
         // movement는 돌진이 보스 몸체를 옮기는 창구다. 서버 몸체가 구현해 넘기며, 비어 있으면 P01을 만들지 않는다
         // projectiles는 투사체 발사 창구(지속물 관리자)다. 비어 있으면 P04를 만들지 않는다
         // areas는 장판 예약과 활성 창구(장판 관리자)다. 비어 있으면 P05를 만들지 않는다
+        // warp는 보스 순간 이동과 착지 검사 창구이고 arena는 전장 입력이다. 둘 중 하나라도 비어 있으면 2페이즈 P07을 만들지 않는다
         // beams는 빔 예약과 활성 창구(빔 관리자)이고 arena는 전장 중심과 반경 입력이다. 둘 중 하나라도 비어 있으면 2페이즈 P02를 만들지 않는다
         public WolbaekPatternFactory(float referenceHealth, IBossFanTelegraphListener fanListener = null,
             IBossCircleTelegraphListener circleListener = null, IBossLineTelegraphListener lineListener = null,
@@ -75,8 +78,9 @@ namespace Shinshi.AI
             IBossAreaHost areas = null, IBossAreaTelegraphListener areaListener = null,
             IBossSweepTelegraphListener sweepListener = null, IBossBeamHost beams = null,
             IBossArenaSource arena = null, IBossBeamTelegraphListener beamListener = null, IBossStarHost stars = null,
-            IBossStarTelegraphListener starListener = null)
+            IBossStarTelegraphListener starListener = null, IBossWarp warp = null)
         {
+            _warp         = warp;
             _stars        = stars;
             _starListener = starListener;
             _beams        = beams;
@@ -132,6 +136,11 @@ namespace Shinshi.AI
             if (id == P2_P01_ID)
             {
                 return (_stars != null) && (_arena != null);
+            }
+
+            if (id == P2_P07_ID)
+            {
+                return (_warp != null) && (_arena != null);
             }
 
             return (id == P02_ID) || (id == HARD_P02_ID) || (id == P03_ID) || (id == HARD_P03_ID) || (id == P06_ID)
@@ -206,6 +215,14 @@ namespace Shinshi.AI
             if (definition.DefinitionId == P2_P04_ID)
             {
                 return (_areas == null) ? null : new BossAreaPattern(_referenceHealth, _areas, _areaListener);
+            }
+
+            // 2페이즈 P07은 워프 창구와 전장 입력으로 착지 후보를 검사하는 전용 실행이다. 창구나 전장 입력이 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == P2_P07_ID)
+            {
+                return ((_warp == null) || (_arena == null))
+                    ? null
+                    : new BossWarpBlastPattern(_referenceHealth, _warp, _arena, _circleListener);
             }
 
             if (definition.DefinitionId == P2_P05_ID)

@@ -795,6 +795,65 @@ MonoBehaviour:
     _starRingRadius: 0
     _starConnectStep: 0
     _starRotationDegrees: 0
+  - _definitionId: wolbaek_ph2_p07
+    _displayKey: wolbaek_ph2_p07.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _baseWeight: 6.5
+    _distanceMultipliers:
+    - 0
+    - 1
+    - 1
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1.5
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 1
+    _shape:
+      _shape: 1
+      _range: 5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.24
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 2
+    _enhancedBaseWeight: 7
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _warpMinTargetDistance: 5
+    _warpLandingDistance: 3
+    _warpCandidateCount: 8
   - _definitionId: wolbaek_hard_p01
     _displayKey: wolbaek_hard_p01.name
     _bossId: boss_wolbaek

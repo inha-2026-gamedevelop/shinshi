@@ -225,6 +225,11 @@ namespace Shinshi.Data
             [SerializeField] private int                            _starConnectStep;           // 꼭짓점 k를 몇 칸 뒤 꼭짓점과 잇는가(오각별은 2)
             [SerializeField] private float                          _starRotationDegrees;       // 도/초, 활성 순간부터 한 방향으로 도는 속도
 
+            // 워프 후 충격파만 쓴다. 0은 미지정이고 워프 패턴이 아니다. 충격파 반경은 형태의 Range, 피해는 DamageRef, 예고는 TelegraphSeconds, 회복은 RecoverySeconds다
+            [SerializeField] private float                          _warpMinTargetDistance;     // m, 선택 때 대상과의 최소 수평 거리
+            [SerializeField] private float                          _warpLandingDistance;       // m, 대상 둘레 착지 후보 반경, 후방 후보는 대상 뒤 이 거리다
+            [SerializeField] private int                            _warpCandidateCount;        // 후방, 대각, 측면, 전방 순서로 한 시전이 검사하는 착지 후보의 최대 수
+
             public string                         DefinitionId          => _definitionId;
             public string                         DisplayKey            => _displayKey;
             public string                         BossId                => _bossId;
@@ -301,6 +306,15 @@ namespace Shinshi.Data
             /// <summary> 도/초, 활성 순간부터 도는 속도 </summary>
             public float                          StarRotationDegrees   => _starRotationDegrees;
 
+            /// <summary> m, 워프 선택 때 대상과의 최소 수평 거리, 0이면 거리 조건이 없다 </summary>
+            public float                          WarpMinTargetDistance => _warpMinTargetDistance;
+
+            /// <summary> m, 착지 후보를 놓는 대상 둘레 반경, 후방 후보가 대상 뒤 이 거리에 놓인다 </summary>
+            public float                          WarpLandingDistance   => _warpLandingDistance;
+
+            /// <summary> 데이터에 입력된 착지 후보 수 그대로, 0이면 워프 패턴이 아니다 </summary>
+            public int                            WarpCandidateCount    => _warpCandidateCount;
+
             /****************************************
             *                Methods
             ****************************************/
@@ -329,8 +343,12 @@ namespace Shinshi.Data
                 bool areaSkipsMissedRounds = false, int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
                 int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f,
                 int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f,
-                EBossDifficulty difficulty = EBossDifficulty.Easy)
+                EBossDifficulty difficulty = EBossDifficulty.Easy,
+                float warpMinTargetDistance = 0f, float warpLandingDistance = 0f, int warpCandidateCount = 0)
             {
+                _warpMinTargetDistance     = warpMinTargetDistance;
+                _warpLandingDistance       = warpLandingDistance;
+                _warpCandidateCount        = warpCandidateCount;
                 _difficulty                = difficulty;
                 _starVertexCount           = starVertexCount;
                 _starRingRadius            = starRingRadius;
@@ -401,6 +419,7 @@ namespace Shinshi.Data
         public const string WOLBAEK_P2_P04_ID = "wolbaek_ph2_p04";
         public const string WOLBAEK_P2_P05_ID = "wolbaek_ph2_p05";
         public const string WOLBAEK_P2_P06_ID = "wolbaek_ph2_p06";
+        public const string WOLBAEK_P2_P07_ID = "wolbaek_ph2_p07";
 
         // 월백 하드 1페이즈 패턴 ID, 이지 ID와 겹치지 않는다. P01 돌진, P02 부채꼴, P03 중심 폭발만 있고 나머지는 아직 없다
         public const string WOLBAEK_HARD_P01_ID = "wolbaek_hard_p01";
@@ -422,6 +441,9 @@ namespace Shinshi.Data
         // 한 시전의 평행 빔 줄 수의 상한, 서버 빔 관리자의 슬롯 수와 같다
         private const int   MAX_BEAMS            = 4;
         private const float BEAM_LATERAL_FACTOR  = 2f;
+
+        // 워프 착지 후보 수의 상한, 대상 둘레를 45도씩 나눈 여덟 곳이다
+        private const int   MAX_WARP_CANDIDATES  = 8;
 
         // 별형 꼭짓점 수의 범위, 서버 별형 패턴의 기술적 상한과 같다
         private const int   MIN_STAR_VERTICES    = 5;
@@ -502,7 +524,7 @@ namespace Shinshi.Data
         // 기획이 수치를 정한 패턴만 넣고(지금은 P06) 나머지는 0으로 비워 둔다. 비운 패턴은 IsPatternReady가 거짓이라 뽑히지 않는다
         // TODO(기웅): 아래 형태 범주와 방어 가능 여부는 자리값이다. P01과 P02는 EEnemyAttackShape에 빔 형태가 없어 Line으로 두었고,
         // 형태 추가는 00.Common/Types 소유자와 협의해야 한다. 각 공격을 구현할 때 확정한다
-        /// <summary> 월백 2페이즈 여섯 패턴의 선택 데이터 기본값, 기존 에셋에 더할 때도 같은 값을 쓴다 </summary>
+        /// <summary> 월백 2페이즈 이지 일곱 패턴의 선택 데이터 기본값, 기존 에셋에 더할 때도 같은 값을 쓴다 </summary>
         public static PatternDefinition[] CreateWolbaekPhaseTwoDefaults()
         {
             float[] recent = { 0f, 0.3f, 0.7f, 1f };
@@ -547,7 +569,16 @@ namespace Shinshi.Data
                 // P06은 기획이 정한 실행 수치까지 넣었다. 예고 1.2초, 반경 5m, 방어 전 피해 0.28Href, 반격 가능, 회복 0.8초이고 체력 25% 이하에서도 같다
                 MakePhaseTwo(WOLBAEK_P2_P06_ID, EEnemyAttackShape.Circle, true, EPatternGroup.Pressure, 8f, 9f,
                     new[] { 1.7f, 0.4f, 0f }, flatDirection, new[] { 0.5f, 1.6f, 2.4f }, recent,
-                    new PhaseTwoExecution(1.2f, 0f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.28f))
+                    new PhaseTwoExecution(1.2f, 0f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.28f)),
+                // P07은 하드 설계안(2026-10-07)의 후방 우선 워프 수치를 이지 시험값으로 옮겼다. 확정 밸런스가 아니며 이지와 하드 정의를 따로 조정한다.
+                // 대상과 5m 이상일 때만 선택하고(근거리 배율 0), 시전 시작에 대상 뒤 3m를 먼저 두고 대각, 측면, 전방 순서로 최대 8곳만 검사해 착지한다.
+                // 착지 전 표식은 없고 착지한 보스 위치를 중심으로 반경 5m를 1.5초 예고한 뒤 한 번 타격한다. 방어 전 0.24Href, 반격 가능, 회복 1초, 직접 제어 없음이다.
+                // 기본값 6.5와 7은 같은 시점의 P01~P06 평균 기본값(13, 13.83)의 절반이다. 거리와 방향과 주변 배율은 중립이고 최근 배율은 P01~P06과 같다.
+                // 그룹은 보스 중심 폭발인 P06과 같은 Pressure로 뒀다
+                MakePhaseTwo(WOLBAEK_P2_P07_ID, EEnemyAttackShape.Circle, true, EPatternGroup.Pressure, 6.5f, 7f,
+                    new[] { 0f, 1f, 1f }, flatDirection, new[] { 1f, 1f, 1f }, recent,
+                    new PhaseTwoExecution(1.5f, 0f, 1f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.24f,
+                        warpMinTargetDistance: 5f, warpLandingDistance: 3f, warpCandidateCount: MAX_WARP_CANDIDATES))
             };
         }
 
@@ -602,6 +633,9 @@ namespace Shinshi.Data
             public readonly float                          StarRingRadius;
             public readonly int                            StarConnectStep;
             public readonly float                          StarRotationDegrees;
+            public readonly float                          WarpMinTargetDistance;
+            public readonly float                          WarpLandingDistance;
+            public readonly int                            WarpCandidateCount;
 
             public PhaseTwoExecution(float telegraphSeconds, float activeSeconds, float recoverySeconds,
                 EnemyCatalogSO.AttackShapeSpec shape, float damageRef, float trackingSeconds = 0f, float turnRate = 0f,
@@ -610,8 +644,12 @@ namespace Shinshi.Data
                 int maxConcurrentAreas = 0, int areaTargetCount = 0, bool areaSkipsMissedRounds = false,
                 int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
                 int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f,
-                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f)
+                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f,
+                float warpMinTargetDistance = 0f, float warpLandingDistance = 0f, int warpCandidateCount = 0)
             {
+                WarpMinTargetDistance = warpMinTargetDistance;
+                WarpLandingDistance   = warpLandingDistance;
+                WarpCandidateCount    = warpCandidateCount;
                 StarVertexCount       = starVertexCount;
                 StarRingRadius        = starRingRadius;
                 StarConnectStep       = starConnectStep;
@@ -659,7 +697,9 @@ namespace Shinshi.Data
                     sweepZoneCount: value.SweepZoneCount, sweepIntervalSeconds: value.SweepIntervalSeconds,
                     beamCount: value.BeamCount, beamLateralOffset: value.BeamLateralOffset, beamTickInterval: value.BeamTickInterval,
                     starVertexCount: value.StarVertexCount, starRingRadius: value.StarRingRadius,
-                    starConnectStep: value.StarConnectStep, starRotationDegrees: value.StarRotationDegrees);
+                    starConnectStep: value.StarConnectStep, starRotationDegrees: value.StarRotationDegrees,
+                    warpMinTargetDistance: value.WarpMinTargetDistance, warpLandingDistance: value.WarpLandingDistance,
+                    warpCandidateCount: value.WarpCandidateCount);
             }
 
             return new PatternDefinition(id, WOLBAEK_ID, SECOND_PHASE, baseWeight,
@@ -1023,6 +1063,40 @@ namespace Shinshi.Data
             ValidateSweep(errors, field, pattern);
             ValidateBeam(errors, field, pattern);
             ValidateStar(errors, field, pattern);
+            ValidateWarp(errors, field, pattern);
+        }
+
+        // 워프 후 충격파는 원형 형태여야 하고, 후보 수와 후보 반경이 있어야 한다. 후보 반경은 전장 반지름보다 작아야 후보가 전장 안에 들 수 있다
+        private void ValidateWarp(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireRange(errors, OWNER, field + ".WarpCandidateCount", pattern.WarpCandidateCount, 0, MAX_WARP_CANDIDATES);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".WarpMinTargetDistance", pattern.WarpMinTargetDistance);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".WarpLandingDistance", pattern.WarpLandingDistance);
+
+            if (pattern.WarpCandidateCount <= 0)
+            {
+                if ((pattern.WarpMinTargetDistance > UNSET) || (pattern.WarpLandingDistance > UNSET))
+                {
+                    errors.Add($"{OWNER}.{field}.WarpCandidateCount: 워프 거리 값이 있으면 후보 수가 필요하다");
+                }
+
+                return;
+            }
+
+            if ((pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Circle))
+            {
+                errors.Add($"{OWNER}.{field}.Shape: 워프 충격파는 원형 형태여야 한다");
+            }
+
+            if (pattern.WarpLandingDistance <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.WarpLandingDistance: 착지 후보 반경이 필요하다");
+            }
+            else if (TryGetBoss(pattern.BossId, out BossDefinition boss) && (boss.ArenaDiameter > UNSET)
+                && (pattern.WarpLandingDistance >= (boss.ArenaDiameter * 0.5f)))
+            {
+                errors.Add($"{OWNER}.{field}.WarpLandingDistance = {pattern.WarpLandingDistance}: 전장 반지름 {boss.ArenaDiameter * 0.5f}m 미만이어야 한다");
+            }
         }
 
         // 별형 회전 빔은 선 형태여야 하고, 꼭짓점 수와 연결 칸 수와 배치 반경과 회전 속도와 피해 간격이 있어야 한다

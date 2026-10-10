@@ -39,12 +39,12 @@ namespace Shinshi.Tests
         private const int    FIRST_PHASE  = 1;
         private const int    SECOND_PHASE = 2;
         private const int    PHASE_ONE_COUNT = 6;
-        private const int    PHASE_TWO_COUNT = 6;
+        private const int    PHASE_TWO_COUNT = 7;
 
         private static readonly string[] G_ExistingIds =
         {
             "wolbaek_p01", "wolbaek_p02", "wolbaek_p03", "wolbaek_p04", "wolbaek_p05", "wolbaek_p06",
-            "wolbaek_ph2_p01", "wolbaek_ph2_p02", "wolbaek_ph2_p03", "wolbaek_ph2_p04", "wolbaek_ph2_p05", "wolbaek_ph2_p06"
+            "wolbaek_ph2_p01", "wolbaek_ph2_p02", "wolbaek_ph2_p03", "wolbaek_ph2_p04", "wolbaek_ph2_p05", "wolbaek_ph2_p06", "wolbaek_ph2_p07"
         };
 
         /****************************************
