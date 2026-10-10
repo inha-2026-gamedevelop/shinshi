@@ -273,3 +273,25 @@ renderer bounds는 `rootBone` 공간의 실제 걷기·달리기와 얼굴 변�
 새 재료 맵은 BaseColor·Normal·실제 AO·거칠기 기반 Smoothness를 연결한다. 길 Low는 새 연결 토폴로지와 전용1K 맵으로 제작했다. 건물7종·성소의 축소 파손은 High 형상 유지로 처리해 삼각형 감면을 주장하지 않는다. 부유 지형7종은 닫힌 원본에서 연결감면·윗면UV 보호·실제 AO/Normal 재베이크와 새 상부 충돌 메시로 수리했다. High60000/Medium30000/Low21302~23172tris이며 Low의 근접 각짐·국소 UV 늘어짐은 먼 거리 사용 조건이다. Blender의 실제 출력 확인과 Unity의 축·정면 방향·크기·참조·정지 LOD 화면 검증을 구분한다.
 
 원화의 세부 구조·배치 대조 결과와 공용 경로·사용 조건은 [공용 환경 에셋 목록](../unity/SHARED_ENVIRONMENT_ASSET_CATALOG.md), 생성 ID·비용·원본 권리 확인 상태는 [에셋 대장](../licenses/ASSET_REGISTRY.md)을 따른다. 구름·폭포·수면 효과는 사용자 요청 범위에서 제외했다. 전체 보행·통합 게임·연속 LOD·성능·빌드와 유사도90% 수치 판정은 별도 미검증이다.
+
+### 궁궐·시장 절벽 조립 시안 — 2026-10-10
+
+GroundPaint 씬의 기존 Deck 11개에는 [VillageCliffUpgrade 외피 프리팹](../../Assets/02.Prefab/Environment/VillageCliffUpgrade/)을 적용했다. 원래 렌더 벽만 끄고 지면·충돌을 보존하며, 새 외피는 실제 Cycles 국소 AO·Normal·거칠기 기반 패킹 맵과 서로 다른 세 단계 LOD를 사용한다. 기존 장식 바위 4개는 비활성화했고, 아래 궁궐·시장 조립은 이 외피 위에 추가한 변경이다.
+
+[PF_CliffAssembly_Palace](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_CliffAssembly_Palace.prefab)와 [PF_CliffAssembly_Market](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_CliffAssembly_Market.prefab)은 기존 ReferenceIsland·FloatingRock·관목·약초를 재사용한 장식용 조립물이다. 원본 모델·텍스처는 수정하지 않고 별도 재질 5개의 색만 조정했다. 기존 Normal·AO·Smoothness와 식생 버텍스 색을 유지하며, 조립 전체의 접촉 AO는 새로 베이크하지 않았다. 이동 지면이나 Collider가 포함된 지형 프리팹으로 사용하지 않는다.
+
+맵 담당의 GroundPaint 개발 씬에서 두 구역에만 적용했다. 반복된 SE 섬 겉모델 두 개를 NW/SW로 바꾸고 선반·돌출부 27개와 식생 56개를 배치했다. 기존 충돌체 712개는 직렬화 값·변환이 동일하고 추가 충돌체는 없다. 원래 섬의 Collider는 보존하고 교체 대상의 기존 Renderer·LODGroup만 비활성화했다. 이 조립물만 끄면 교체한 본체도 사라지므로 비교·복구할 때는 해당 원래 섬의 Renderer·LODGroup도 복원해야 한다.
+
+55도 에디터 렌더·강제 정지 LOD·참조를 확인했다. 새 부유석 6개는 Low의 구멍을 피하기 위해 High/Medium 두 단계만 사용하며, 다른 암반은 기존 세 단계다. 실제 보행·연속 LOD·다인 접속·성능·빌드는 미검증으로 **조건부 통과**다. 원본 QuarterView 씬에는 적용하지 않았다.
+
+### 부유섬 몸체 교체 — 2026-10-10 후속
+
+외피가 단조롭게 읽혀 GroundPaint 씬에서 `PF_VillageCliff_*` 외피 인스턴스 11개를 제거하고, 기존 섬 겉모델의 상단 높이·범위를 조정해 큰 암반 몸체로 대신했다. 외피 프리팹·재질 원본은 삭제하지 않았다. SW 구역에는 시각 전용 `PF_NaturalIslandBody_SW`를, EWatch에는 `PF_NaturalIslandAccents_EWatch`를 추가했으며 둘 다 Collider가 없다.
+
+궁궐·시장 조립의 선반 27개는 큰 선반 7개로 정리했고 식생 56개는 바뀐 암반 면에 다시 붙였다. 기존 `PF_CliffAssembly_Palace`·`PF_CliffAssembly_Market` 에셋은 이전 27선반 상태다. 최신 조립은 같은 폴더의 [PF_NaturalCliffAssembly_Palace](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalCliffAssembly_Palace.prefab), [PF_NaturalCliffAssembly_Market](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalCliffAssembly_Market.prefab), [PF_NaturalIslandBody_SW](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalIslandBody_SW.prefab), [PF_NaturalIslandAccents_EWatch](../../Assets/02.Prefab/Environment/VillageCliffAssemblies/PF_NaturalIslandAccents_EWatch.prefab)로 별도 저장해 GroundPaint 씬에 연결했다. 네 프리팹 모두 장식용으로 Collider가 없으며 지면으로 쓰지 않는다. 연결 전후 메시·재질·월드 변환이 일치하고 프리팹 Mesh·Material·LOD·Script 참조와 `.meta`를 확인했다. 조립 전체의 접촉 AO는 새로 베이크하지 않았다.
+
+에디터 기준 기존 충돌체 712개와 보호 지면·배치 11875개가 이전 커밋과 일치하고 누락 Mesh·Material·Script 참조는 없다. 전체 씬에는 이전 커밋에도 있던 `EdgeDressing/PF_CliffRockA`의 High LOD Renderer 누락 1건이 남아 있다. 몸체 23개의 강제 LOD0·1·2를 5개 구도에서 촬영했으며, 해당 화면에서 큰 관통 구멍은 확인되지 않았다. Low 단계의 실루엣 변화는 남는다. 식생 56개는 High 메시의 6방향 광선 검사에서 뿌리 위치와 표면 사이 거리가 5.9cm 이내였다.
+
+PlayMode의 임시 `DevQuarterViewWalker`(높이 2m, 반지름 0.5m인 CharacterController)로 Farm·Market 다리와 궁궐↔광장 계단 양방향, 북쪽 계단 하행에서 도착을 확인했다. 시장 경계에서는 낙하 없이 정지했다. 북쪽 계단 상행은 가로 위치 3곳에서 반복해서 막혔으며 **검증 실패·미수정**이다. 보존된 North Deck의 `top`·`rock` 충돌체를 PlayMode에서 함께 끄면 첫 막힘 구간을 지나 계단 끝에 도달했지만, 다음 지면이 없어 다시 멈췄다. 영구 충돌 설정은 변경하지 않았다. 실제 네트워크 플레이어 이동 검증을 대신하지 않는다.
+
+시장의 실제 씬 카메라·리그로 0→1→2→1→0 줌 전환 4회를 실행해 40개 프레임과 카메라 자세를 기록했다. 추가 거리 샘플 검사는 14.5~1500m에서 수행했으나 원거리 안개 때문에 모든 LOD 전환의 시각 품질을 보증하지 않는다. 전체 맵의 연속 LOD, 실제 네트워크 플레이어 보행, 성능·빌드는 미검증으로 **조건부 통과**다. 원본 QuarterView 씬에는 적용하지 않았다.

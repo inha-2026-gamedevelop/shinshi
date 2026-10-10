@@ -19,6 +19,7 @@
 | `Assets/00.Scenes/Dev_ShinshiVillageQuarterView.unity`, `Dev_ShinshiVillageCA07.unity` (마을 원화 배치·대기 연출 검수) | **{팀장}** |
 | `Assets/00.Scenes/Dev_VFX/Dev_VFX_WideSlash.unity` (무사 넓게 베기 VFX 반복 재생 확인) | **{팀장}** |
 | `Assets/00.Scenes/Dev_HUD/Dev_Setting.unity` (환경설정 UI·저장·취소 복원 검수) | **UI (Jinwook)** |
+| `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView_GroundPaint.unity` (Release/ShinshiTown 사본, 바닥 패치 칠하기 작업용) | **맵 (Jinwook)** |
 | `Assets/{씬 폴더}/Dev_{파트}.unity` | {파트} ({팀원이름}) |
 | `Assets/00.Scenes/Release/` 실제 실행 흐름 씬: `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown` (Bootstrap에서 로비, 캐릭터 선택·생성을 거쳐 마을 서버의 마을로 접속) | **{팀장}** (통합 담당) |
 | `Assets/00.Scenes/Release/DungeonForest.unity` (숲 일반전 던전 전장, 네트워크 연결 전) | **{팀장}** (통합 담당) |
