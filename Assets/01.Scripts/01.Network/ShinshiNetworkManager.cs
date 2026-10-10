@@ -22,11 +22,14 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
+        // 던전 역할의 접속 씬 경로, 서버와 클라이언트 빌드 목록이 같은 경로를 쓴다
+        private const string DUNGEON_ONLINE_SCENE = Constants.Scene.RELEASE_FOLDER + Constants.Scene.DUNGEON_FOREST + Constants.Scene.EXTENSION;
+
         private readonly Dictionary<uint, GameObject> _spawnPrefabsByAssetId = new Dictionary<uint, GameObject>();
 
         private EServerRole _serverRole = EServerRole.Town;
 
-        // 씬에 저장한 onlineScene은 마을 씬이다. 던전은 아직 전장 씬이 없어 씬을 바꾸지 않는다.
+        // 씬에 저장한 onlineScene은 마을 씬이다. 던전 역할은 이 값이 있을 때만 던전 씬으로 바꾼다.
         // 서버와 클라이언트가 같은 역할 설정으로 같은 값을 써야 클라이언트가 서버의 씬 안내를 기다린다
         private string _townOnlineScene = string.Empty;
 
@@ -50,7 +53,7 @@ namespace Shinshi.Network
         // 이 동안 끊김은 캐릭터 선택 복귀로 다루지 않는다
         public bool IsTransferringServer { get; set; } = false;
 
-        // 클라이언트가 지금 접속 대상으로 지정한 서버 역할. 던전은 아직 전용 씬이 없어 화면이 이 값으로 마을과 구분한다
+        // 클라이언트가 지금 접속 대상으로 지정한 서버 역할. 화면이 이 값으로 마을과 던전을 구분한다
         public EServerRole ServerRole => _serverRole;
 
 #if !UNITY_SERVER
@@ -216,8 +219,22 @@ namespace Shinshi.Network
             }
 
             _serverRole = role;
-            onlineScene = (role == EServerRole.Town) ? _townOnlineScene : string.Empty;
+            onlineScene = ResolveOnlineScene(role, _townOnlineScene);
             ApplyNetworkSettings();
+        }
+
+        /// <summary> 역할이 접속할 씬 경로를 구한다, 마을 씬이 비어 있는 단일 씬 개발 구성은 던전도 씬을 바꾸지 않는다 </summary>
+        public static string ResolveOnlineScene(EServerRole role, string townOnlineScene)
+        {
+            switch (role)
+            {
+                case EServerRole.Town:
+                    return townOnlineScene ?? string.Empty;
+                case EServerRole.Dungeon:
+                    return string.IsNullOrEmpty(townOnlineScene) ? string.Empty : DUNGEON_ONLINE_SCENE;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(role));
+            }
         }
 
         public override void OnServerAddPlayer(NetworkConnectionToClient connection)
@@ -300,10 +317,11 @@ namespace Shinshi.Network
             }
 
 #if !UNITY_SERVER
-            if ((!IsTransferringServer) && (!string.IsNullOrEmpty(_townOnlineScene)) && (Utils.IsSceneActive(_townOnlineScene))
+            if ((!IsTransferringServer) && (!string.IsNullOrEmpty(_townOnlineScene))
+                && ((Utils.IsSceneActive(_townOnlineScene)) || (Utils.IsSceneActive(DUNGEON_ONLINE_SCENE)))
                 && (!NetworkServer.active))
             {
-                LobbyFlow.ReturnToCharacterSelect("마을 서버와 연결이 끊겼다. 다시 게임 시작을 누른다.");
+                LobbyFlow.ReturnToCharacterSelect("서버와 연결이 끊겼다. 다시 게임 시작을 누른다.");
             }
 #endif
         }

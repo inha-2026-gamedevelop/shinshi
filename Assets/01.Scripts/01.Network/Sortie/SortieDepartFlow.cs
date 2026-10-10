@@ -18,8 +18,8 @@ namespace Shinshi.Network
     // 마을 임대가 던전으로 옮겨지기 전에는 ALREADY_CONNECTED로 거절될 수 있다. 그 재시도는 클라이언트 인증기가 맡는다.
     // 입장권 만료는 던전 서버와 API가 판정한다(클라이언트 시계는 어긋날 수 있어 여기서 거절하지 않는다).
     // 입장권 확인 실패는 마을 연결을 그대로 두고, 던전 접속 단계 실패는 연결이 없는 상태로 끝난다. 그때 호출자가
-    // LobbyFlow.ReturnToCharacterSelect로 보낸다(SortieReturnFlow와 같은 규칙). 한 번에 하나만 돌린다
-    // TODO(민성): 던전 전장 씬이 없어 접속 뒤에도 마을 씬에 남는다(ShinshiNetworkManager.ConfigureServerRole 주석)
+    // LobbyFlow.ReturnToCharacterSelect로 보낸다(SortieReturnFlow와 같은 규칙). 한 번에 하나만 돌린다.
+    // 던전 씬(DungeonForest)은 던전 서버가 접속 직후 안내해 클라이언트가 불러온다(ShinshiNetworkManager.ConfigureServerRole)
     /// <summary> 마을에서 배정 던전으로 옮기는 클라이언트 흐름, 화면 표시는 하지 않고 결과 사유만 알린다 </summary>
     public sealed class SortieDepartFlow
     {
