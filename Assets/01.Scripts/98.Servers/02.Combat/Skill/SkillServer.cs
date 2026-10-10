@@ -100,6 +100,7 @@ namespace Shinshi.Combat
         private bool                               _guardSucceeded   = false;
         private bool                               _dashStopped      = false;
         private float                              _maxEnergy        = 0f;
+        private EPlayerControlKind                 _control          = EPlayerControlKind.None;
 
         /****************************************
         *              Properties
@@ -122,6 +123,7 @@ namespace Shinshi.Combat
         public double            ResolveAt          => _resolveAt;
         public double            AscensionReadyAt   => _ascensionReadyAt;
         public double            NextActionAt       => _recoveryEndsAt;
+        public EPlayerControlKind Control           => _control;
         public bool              BlocksMovement     => _phase != ESkillPhase.Idle;
         public bool              IsGuardWindow      => (_phase == ESkillPhase.Active) && (IsCounter);
 
@@ -187,6 +189,39 @@ namespace Shinshi.Combat
         public double GetReadyAt(int slot) => _readyAt[slot];
         public CompanionServer GetCompanion(int slot) => _companions[slot];
 
+        /// <summary> 소유자가 받은 제어를 알린다, 시전과 틱마다 소유자가 그 시각의 값을 넣는다. 기절이 새로 걸리면 진행 중 기술을 취소하고 취소했으면 참 </summary>
+        public bool SetControl(EPlayerControlKind control)
+        {
+            EPlayerControlKind previous = _control;
+            _control = control;
+            if (control == previous)
+            {
+                return false;
+            }
+
+            // 속박이면 돌진과 후퇴의 이동만 끝낸다. 이미 만든 사격 효과와 남은 발사는 이어 간다
+            if (control == EPlayerControlKind.Root)
+            {
+                _dashStopped = true;
+                return false;
+            }
+
+            // 비용과 쿨다운은 돌려주지 않고, 아직 나가지 않은 타격과 발사는 Cancel이 버린다
+            if ((control == EPlayerControlKind.Stun) && (_phase != ESkillPhase.Idle))
+            {
+                Cancel();
+                return true;
+            }
+
+            return false;
+        }
+
+        // 시전 중 몸이 움직이는 기술, 돌진(직선형)과 후퇴 사격
+        private static bool IsMovementSkill(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
+        {
+            return (skill.Area.Shape == ESkillShape.Line) || (TalismanModifierRules.GetRetreatDistance(skill, in modifiers) > 0f);
+        }
+
         /// <summary> 공통 입력 게이트 승인 뒤 호출, 거절은 자원과 쿨다운을 바꾸지 않는다 </summary>
         public bool TryCast(ESkillRequestKind kind, int slot, Vector3 point, ushort aimYaw, double now,
             bool phaseAllowsCombat, out ERejectReason reason)
@@ -200,6 +235,11 @@ namespace Shinshi.Combat
             if (_owner.LifeState != EParticipantLifeState.Alive)
             {
                 reason = ERejectReason.Dead;
+                return false;
+            }
+            if (PlayerControlRules.BlocksAction(_control))
+            {
+                reason = ERejectReason.Disabled;
                 return false;
             }
             SkillCatalogSO.SkillDefinition skill = null;
@@ -238,6 +278,11 @@ namespace Shinshi.Combat
             if (!IsValidModifiers(in modifier))
             {
                 reason = ERejectReason.InvalidTarget;
+                return false;
+            }
+            if ((skill != null) && (PlayerControlRules.BlocksMovementSkill(_control)) && (IsMovementSkill(skill, in modifier)))
+            {
+                reason = ERejectReason.Disabled;
                 return false;
             }
             bool isPoint = (ascension != null) || (skill.Area.AimMode == ESkillAimMode.Point);

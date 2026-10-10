@@ -105,6 +105,9 @@ namespace Shinshi.Data
         [SerializeField] private float _potionSharedCooldown    = 10f;   // 초, 소형과 대형이 함께 쓰는 재사용 대기, 부활해도 유지
         [SerializeField] private float _potionUseDisplaySeconds = 0.35f; // 초, 사용 표시 동작, 이동 가능하고 무적 없음
 
+        [Header("제어 면역")]
+        [SerializeField] private float _controlImmunitySeconds = 1f; // 초, 기절과 속박이 모두 끝난 뒤 새 제어를 받지 않고 피해만 받는 시간
+
         [Header("입력 보관")]
         [SerializeField] private float _inputBufferSeconds   = 0.15f;
         [SerializeField] private int   _inputBufferDepth     = 1;     // 다음 행동 하나만 보관
@@ -145,6 +148,7 @@ namespace Shinshi.Data
         public float DefenseReductionConstant => _defenseReductionConstant;
         public float PotionSharedCooldown     => _potionSharedCooldown;
         public float PotionUseDisplaySeconds  => _potionUseDisplaySeconds;
+        public float ControlImmunitySeconds   => _controlImmunitySeconds;
         public float InputBufferSeconds       => _inputBufferSeconds;
         public int   InputBufferDepth         => _inputBufferDepth;
 
@@ -190,6 +194,7 @@ namespace Shinshi.Data
             DataValidation.RequirePositive(errors, OWNER, nameof(_defenseReductionConstant), _defenseReductionConstant);
             DataValidation.RequirePositive(errors, OWNER, nameof(_potionSharedCooldown), _potionSharedCooldown);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_potionUseDisplaySeconds), _potionUseDisplaySeconds);
+            DataValidation.RequireNonNegative(errors, OWNER, nameof(_controlImmunitySeconds), _controlImmunitySeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_inputBufferSeconds), _inputBufferSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_inputBufferDepth), _inputBufferDepth);
 

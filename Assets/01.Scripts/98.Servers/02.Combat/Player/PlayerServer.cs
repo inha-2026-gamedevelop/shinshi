@@ -15,7 +15,8 @@ using Shinshi.Data;
 namespace Shinshi.Combat
 {
     /// <summary> 플레이어 한 명의 서버 판정, 입력 검증과 서버 권위 이동, 기본 공격, 체력과 사망을 맡는다 </summary>
-    public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant, IPotionUser
+    public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant, IPotionUser,
+        IPlayerControlTarget
     {
         // Command 처리기는 검증과 의도 보관만 하고, 실제 이동과 공격은 CombatServerRuntime의 틱에서 한다.
         // 한 틱에 이동 입력이 여러 개 와도 경로 계산은 마지막 것 한 번만 하고, 처리 순서를 틱 순서에 맞춘다
@@ -46,6 +47,7 @@ namespace Shinshi.Combat
         private readonly float                            _maxEnergy;
         private readonly float                            _critChance;
         private readonly double                           _attackBufferSeconds;
+        private readonly PlayerControlTracker             _control;
 
         private float                 _health              = 0f;
         private float                 _maxHealth           = 0f;
@@ -95,6 +97,9 @@ namespace Shinshi.Combat
         private uint                  _reviveSequence       = 0;
         private double                _nextReviveCheckTime  = 0.0;
         private bool                  _isWaitingSafePoint   = false;
+        private Vector3               _deathPosition        = Vector3.zero;
+        private bool                  _hasDeathPosition     = false;
+        private EPlayerControlKind    _controlKind          = EPlayerControlKind.None;
 
         /****************************************
         *              Properties
@@ -139,9 +144,11 @@ namespace Shinshi.Combat
         public bool IsInvulnerable  => false;
         public bool IsGuardingFront => false;
 
-        // 플레이어를 기절시키는 원인과 시간이 기획에 없어 그 상태가 아직 없다
-        // TODO(민성): 플레이어 이동 불가, 기절 상태가 생기면 물약과 회피를 함께 막는다
-        public bool IsControlLocked => false;
+        // 기절 중에는 물약을 쓰지 못하고 속박 중에는 쓸 수 있다
+        public bool IsControlLocked => PlayerControlRules.BlocksPotion(_control.Evaluate(NetworkTime.time));
+
+        // 마지막 틱에 확정한 제어, 입력 처리기는 시각을 새로 계산해 쓴다
+        public EPlayerControlKind ControlKind => _controlKind;
 
         // 기술 반격의 120도 방어는 SkillDamageResolver가 적중 원장과 함께 판정한다
 
@@ -184,6 +191,7 @@ namespace Shinshi.Combat
 
             // 보관 깊이가 0이면 쿨다운이 끝난 뒤의 입력만 받는다
             _attackBufferSeconds = (config.InputBufferDepth > 0) ? config.InputBufferSeconds : 0.0;
+            _control             = new PlayerControlTracker(config.ControlImmunitySeconds);
 
             _targetBuffer = new List<ICombatTarget>(Constants.Combat.MAX_COMBAT_TARGETS);
             _navPath      = new NavMeshPath();
@@ -218,18 +226,20 @@ namespace Shinshi.Combat
         public ParticipantCombatSnapshot CaptureSnapshot()
         {
             return new ParticipantCombatSnapshot(_health, _lifeState, _deathTime, _nextAttackTime, _gate.LastAcceptedSequence,
-                _gate.ViolationCount, _gate.ViolationWindowStart, _nextDodgeTime);
+                _gate.ViolationCount, _gate.ViolationWindowStart, _nextDodgeTime, _deathPosition, _hasDeathPosition);
         }
 
         /// <summary> 유예 안에 돌아온 참가자의 상태를 되돌린다, 만든 직후 스폰 메시지가 나가기 전에 부른다 </summary>
         public void Restore(in ParticipantCombatSnapshot snapshot)
         {
             // 최대 체력이 줄었으면 넘는 몫은 버린다. 회복은 하지 않는다
-            _health         = Mathf.Min(snapshot.Health, _maxHealth);
-            _lifeState      = snapshot.LifeState;
-            _deathTime      = snapshot.DeathTime;
-            _nextAttackTime = snapshot.NextAttackTime;
-            _nextDodgeTime  = snapshot.NextDodgeTime;
+            _health           = Mathf.Min(snapshot.Health, _maxHealth);
+            _lifeState        = snapshot.LifeState;
+            _deathTime        = snapshot.DeathTime;
+            _deathPosition    = snapshot.DeathPosition;
+            _hasDeathPosition = snapshot.HasDeathPosition;
+            _nextAttackTime   = snapshot.NextAttackTime;
+            _nextDodgeTime    = snapshot.NextDodgeTime;
             _input.SetDodgeReadyAt(_nextDodgeTime);
             if (_lifeState != EParticipantLifeState.Alive)
             {
@@ -330,6 +340,13 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 속박과 기절은 경로 이동을 막는다. 보관해 두지 않고 거절해 소유 예측이 서 있는 서버 위치로 맞춘다
+            if (PlayerControlRules.BlocksMovement(CurrentControl()))
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Disabled);
+                return;
+            }
+
             Vector3 destination = input.Destination;
             if (!IsFinite(destination))
             {
@@ -374,6 +391,13 @@ namespace Shinshi.Combat
             if (_lifeState != EParticipantLifeState.Alive)
             {
                 _input.SendInputRejected(sequence, ERejectReason.Dead);
+                return;
+            }
+
+            // 기절은 제자리 공격도 막는다. 속박은 막지 않는다
+            if (PlayerControlRules.BlocksAction(CurrentControl()))
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Disabled);
                 return;
             }
 
@@ -422,8 +446,12 @@ namespace Shinshi.Combat
                 return;
             }
 
-            // 기획은 이동 불가, 기절 중 회피를 막지만 플레이어를 기절시키는 원인과 시간이 정해지지 않아 그 상태가 아직 없다
-            // TODO(민성): 플레이어 이동 불가, 기절 상태가 생기면 여기서 거절한다
+            if (PlayerControlRules.BlocksDodge(CurrentControl()))
+            {
+                _input.SendInputRejected(sequence, ERejectReason.Disabled);
+                return;
+            }
+
             if (IsSkillLockingDodge())
             {
                 _input.SendInputRejected(sequence, ERejectReason.WrongPhase);
@@ -445,6 +473,13 @@ namespace Shinshi.Combat
 
             // 상충 입력은 회피가 먼저다
             _hasPendingAttack = false;
+        }
+
+        // 입력 처리기는 틱 사이에 불린다. 종료 시각이 이미 지났으면 틱 전이라도 풀린 것으로 보고 복제와 기술 서버까지 맞춘다
+        private EPlayerControlKind CurrentControl()
+        {
+            RefreshControl(NetworkTime.time);
+            return _controlKind;
         }
 
         // 기술이 실제로 타격 중이면 회피로 끊지 못한다. 준비와 후딜, 반격 방어 창은 끊을 수 있다
@@ -506,7 +541,21 @@ namespace Shinshi.Combat
             SetWaitingSafePoint(true);
         }
 
-        /// <summary> 복귀 지점을 찾는다. 지정 지점이 있으면 선택기로 고르고, 없으면 죽은 자리 근처의 걸을 수 있는 지점이다. 못 찾으면 거짓 </summary>
+        /// <summary> 일반전 복귀 지점, 서버가 기록한 사망 위치 그대로다. 기록이 무효면 죽은 자리 근처의 걸을 수 있는 지점으로 대신하고 못 찾으면 거짓 </summary>
+        public bool TryFindNormalRevivePoint(out Vector3 point)
+        {
+            if (ReviveLocationRules.Decide(false, _hasDeathPosition, _deathPosition) == EReviveLocationPlan.DeathPosition)
+            {
+                point = _deathPosition;
+                return true;
+            }
+
+            // TODO(민성): 지형 소실과 범위 밖 좌표의 최종 처리는 기획이 아직 정하지 않았다. 지금은 NavMesh 근처 지점으로 대신한다
+            Debug.LogWarning($"[Combat] 사망 위치가 무효라 근처 NavMesh 지점으로 부활시킨다, participantId={_participantId}");
+            return TrySampleNearbyWalkable(out point);
+        }
+
+        /// <summary> 협동 보스 복귀 지점을 찾는다. 지정 지점이 있으면 선택기로 고르고, 없으면 죽은 자리 근처의 걸을 수 있는 지점이다. 못 찾으면 거짓 </summary>
         public bool TryFindRevivePoint(RevivePointSelector selector, double serverTime, out Vector3 point)
         {
             if ((selector != null) && (selector.CandidateCount > 0))
@@ -514,6 +563,11 @@ namespace Shinshi.Combat
                 return selector.TrySelect(_transform.position, serverTime, out point);
             }
 
+            return TrySampleNearbyWalkable(out point);
+        }
+
+        private bool TrySampleNearbyWalkable(out Vector3 point)
+        {
             if (NavMesh.SamplePosition(_transform.position, out NavMeshHit hit, Constants.Combat.REVIVE_SAFE_POINT_SEARCH_RADIUS,
                 NavMesh.AllAreas))
             {
@@ -536,6 +590,7 @@ namespace Shinshi.Combat
             _lifeState          = EParticipantLifeState.Alive;
             _health             = PlayerLifeRules.ReviveHealth(_maxHealth, healthRate);
             _deathTime          = 0.0;
+            _hasDeathPosition   = false;
             _hasReviveRequest   = false;
             _isDodging          = false;
             _transform.position = point;
@@ -588,6 +643,7 @@ namespace Shinshi.Combat
                 _skills = new SkillServer(this, _playerClass, _participantId, catalog, player, registry, _resolver, _lineOfSight, now,
                     talismans, null, _maxEnergy);
             }
+            _skills.SetControl(_controlKind);
             _input.SkillServerHandler = this;
             ReplicateSkills();
         }
@@ -609,6 +665,9 @@ namespace Shinshi.Combat
                 return;
             }
             double now = NetworkTime.time;
+
+            // 기술 서버가 기절이면 시전을, 속박이면 이동 기술을 거절하도록 이 시각의 제어를 먼저 맞춘다
+            RefreshControl(now);
             if (!_skills.TryCast(input.Kind, input.Slot, input.Point, input.AimYaw, now,
                 _skillPhase.AllowsCombat, out ERejectReason reason))
             {
@@ -749,6 +808,9 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 틱마다 가장 먼저 제어 종료를 반영한다. 풀린 틱부터 이동과 회피를 다시 받는다
+            RefreshControl(serverTime);
+
             // 회피는 기술 준비와 후딜을 끊으므로 기술의 이동 막기보다 먼저 본다
             if (TickDodge(deltaTime, serverTime))
             {
@@ -756,6 +818,12 @@ namespace Shinshi.Combat
             }
 
             if ((_skills != null) && (_skills.BlocksMovement))
+            {
+                return;
+            }
+
+            // 걸리는 순간 경로와 보관 이동을 지웠다. 여기서는 그 뒤에 새로 들어온 의도가 없는지만 막는다
+            if (PlayerControlRules.BlocksMovement(_controlKind))
             {
                 return;
             }
@@ -798,7 +866,7 @@ namespace Shinshi.Combat
 
             // 회피 중에 받은 공격은 버리지 않고 회피가 끝난 틱에 쓴다
             if ((!_hasPendingAttack) || (_isWindingUp) || (_lifeState != EParticipantLifeState.Alive) || (_isDodging)
-                || ((_skills != null) && (_skills.BlocksMovement)))
+                || ((_skills != null) && (_skills.BlocksMovement)) || (PlayerControlRules.BlocksAction(_controlKind)))
             {
                 return;
             }
@@ -837,7 +905,8 @@ namespace Shinshi.Combat
                 return;
             }
 
-            if ((_lifeState != EParticipantLifeState.Alive) || (_isDodging) || ((_skills != null) && (_skills.BlocksMovement)))
+            if ((_lifeState != EParticipantLifeState.Alive) || (_isDodging) || ((_skills != null) && (_skills.BlocksMovement))
+                || (PlayerControlRules.BlocksAction(_controlKind)))
             {
                 _isWindingUp = false;
                 return;
@@ -930,6 +999,14 @@ namespace Shinshi.Combat
 
             if (!_hasPendingDodge)
             {
+                return false;
+            }
+
+            // 보관 중에 제어가 걸리면 걸리는 순간 지웠으므로 여기는 닿지 않는 안전 장치다
+            if (PlayerControlRules.BlocksDodge(_controlKind))
+            {
+                _hasPendingDodge = false;
+                _input.SendInputRejected(_pendingDodgeSequence, ERejectReason.Disabled);
                 return false;
             }
 
@@ -1258,6 +1335,10 @@ namespace Shinshi.Combat
             // 보스 공용 부활이 바닥났으면 틱의 부활 단계가 관전으로 옮긴다
             _lifeState        = EParticipantLifeState.Dead;
             _deathTime        = serverTime;
+
+            // 사망 순간의 서버 좌표, 일반전 부활이 이 자리를 그대로 쓴다. 사망 뒤 기술 이동이 위치를 옮겨도 바뀌지 않는다
+            _deathPosition    = _transform.position;
+            _hasDeathPosition = true;
             _hasPendingMove   = false;
             _hasPendingAttack = false;
             _isWindingUp      = false;
@@ -1275,7 +1356,95 @@ namespace Shinshi.Combat
             _path.Stop();
             _moveThrottle.ClearActive();
             _combat.SetLifeState(_lifeState);
+
+            // 죽으면 제어와 면역을 함께 지운다. 부활한 뒤에는 새 제어를 바로 받는다
+            _control.Clear();
+            _controlKind = EPlayerControlKind.None;
+            _combat.SetControl(EPlayerControlKind.None, 0.0);
+            _skills?.SetControl(EPlayerControlKind.None);
             _skills?.OnOwnerDeath();
+        }
+
+        /****************************************
+        *                Control
+        ****************************************/
+
+        /// <summary> 기절이나 속박을 건다, 피해를 적용한 뒤 적 두뇌가 부른다. 걸린 순간 몸이 움직이는 행동과 기절이면 공격과 시전도 끊는다 </summary>
+        public EPlayerControlResult ApplyControl(EPlayerControlKind kind, float seconds, double serverTime)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return EPlayerControlResult.NotAlive;
+            }
+
+            EPlayerControlResult result = _control.TryApply(kind, seconds, serverTime);
+            if ((result != EPlayerControlResult.Applied) && (result != EPlayerControlResult.Extended))
+            {
+                return result;
+            }
+
+            if (result == EPlayerControlResult.Applied)
+            {
+                BeginControl(kind);
+            }
+
+            RefreshControl(serverTime);
+
+            // 종류가 그대로여도 종료 시각만 늘 수 있어 표시를 다시 쓴다
+            _combat.SetControl(_controlKind, _control.GetEndsAt(_controlKind));
+            return result;
+        }
+
+        // 새로 걸린 종류가 끊는 것. 속박과 기절 모두 이동, 회피, 보관 이동을 끊고, 기절은 공격 준비와 보관 입력까지 끊는다.
+        // 기술은 RefreshControl이 기술 서버를 통해 끊는다. 비용과 쿨다운은 돌려주지 않는다
+        private void BeginControl(EPlayerControlKind kind)
+        {
+            _hasPendingMove = false;
+            _isDodging      = false;
+            _path.Stop();
+            _moveThrottle.ClearActive();
+            if (_hasPendingDodge)
+            {
+                _input.SendInputRejected(_pendingDodgeSequence, ERejectReason.Disabled);
+                _hasPendingDodge = false;
+            }
+
+            if (kind != EPlayerControlKind.Stun)
+            {
+                return;
+            }
+
+            bool wasWindingUp = _isWindingUp;
+            _isWindingUp      = false;
+            _hasPendingAttack = false;
+            if (_hasPendingSkill)
+            {
+                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.Disabled);
+                _hasPendingSkill = false;
+            }
+
+            if (wasWindingUp)
+            {
+                _combat.BumpActionCancelSequence();
+            }
+        }
+
+        // 지금 시각의 제어로 복제 상태와 기술 서버를 맞춘다, 바뀔 때만 일한다. 기절이 새로 걸려 기술이 끊겼으면 표현 취소 신호를 올린다
+        private void RefreshControl(double now)
+        {
+            EPlayerControlKind kind = _control.Evaluate(now);
+            if (kind == _controlKind)
+            {
+                return;
+            }
+
+            _controlKind = kind;
+            _combat.SetControl(kind, _control.GetEndsAt(kind));
+            if ((_skills != null) && (_skills.SetControl(kind)))
+            {
+                _combat.BumpActionCancelSequence();
+                ReplicateSkills();
+            }
         }
 
         private static bool IsFinite(Vector3 value)

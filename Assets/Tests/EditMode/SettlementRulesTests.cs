@@ -103,7 +103,6 @@ namespace Shinshi.Tests
         [TestCase(ESessionEndReason.AllDead)]
         [TestCase(ESessionEndReason.Abandon)]
         [TestCase(ESessionEndReason.DisconnectExpired)]
-        [TestCase(ESessionEndReason.ServiceCancelled)]
         public void CalculateEssence_NonSuccess_KeepsBaseAndHalfExtraRoundedDown(ESessionEndReason reason)
         {
             const long BASE      = 200;
@@ -115,6 +114,21 @@ namespace Shinshi.Tests
             Assert.AreEqual(HALF_DOWN, result.PaidExtraEssence);
             Assert.AreEqual(BASE + HALF_DOWN, result.Essence);
             Assert.AreEqual(ACCRUED, result.AccruedExtraEssence);
+        }
+
+        [Test]
+        public void CalculateEssence_ServiceCancelled_PaysBaseAndFullOddExtraWithoutBoss()
+        {
+            const long BASE    = 200;
+            const long ACCRUED = 101;
+            const long BOSS    = 600;
+
+            SettlementBreakdown result = SettlementRules.CalculateEssence(ESessionEndReason.ServiceCancelled, BASE, ACCRUED, BOSS);
+
+            Assert.AreEqual(ACCRUED, result.PaidExtraEssence, "홀수 적립도 전액");
+            Assert.AreEqual(BASE + ACCRUED, result.Essence, "보스 정기는 성공만");
+            Assert.AreEqual(ACCRUED, result.AccruedExtraEssence);
+            Assert.IsFalse(result.IsEssenceClamped);
         }
 
         [Test]

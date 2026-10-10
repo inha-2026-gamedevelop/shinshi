@@ -73,7 +73,10 @@ namespace Shinshi.Network
                 yield break;
             }
 
+            // 입장권 요청과 재시도 구간에 던전 연결이 끊겨도 캐릭터 선택으로 보내지 않게 처음부터 서버 이동 중으로 표시한다.
+            // 실패하면 호출자가 연결 상태를 보고 캐릭터 선택으로 보낸다
             _isRunning = true;
+            _manager.IsTransferringServer = true;
             ERejectReason result = ERejectReason.BackendUnavailable;
             _authenticator.Rejected           += OnJoinRejected;
             _authenticator.JoinRetryScheduled += OnJoinRetryScheduled;
@@ -163,8 +166,6 @@ namespace Shinshi.Network
                 yield break;
             }
 
-            // 마을 씬에서 던전을 끊어도 캐릭터 선택으로 돌아가지 않게 서버 이동 중으로 표시한다
-            _manager.IsTransferringServer = true;
             _authenticator.CancelJoinRetry();
             if (NetworkClient.active)
             {

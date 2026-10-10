@@ -1,3 +1,6 @@
+// Unity
+using UnityEngine;
+
 // 프로젝트 내부
 using Shinshi.Common;
 
@@ -21,6 +24,8 @@ namespace Shinshi.Combat
         private readonly int                   _violationCount;
         private readonly double                _violationWindowStart;
         private readonly double                _nextDodgeTime;
+        private readonly Vector3               _deathPosition;
+        private readonly bool                  _hasDeathPosition;
 
         /****************************************
         *              Properties
@@ -35,13 +40,20 @@ namespace Shinshi.Combat
         public double                ViolationWindowStart => _violationWindowStart;
         public double                NextDodgeTime        => _nextDodgeTime;
 
+        // 재접속으로 새로 만든 개체는 스폰 위치에서 시작하므로 일반전 부활 위치를 따로 보존한다
+        public Vector3               DeathPosition        => _deathPosition;
+        public bool                  HasDeathPosition     => _hasDeathPosition;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public ParticipantCombatSnapshot(float health, EParticipantLifeState lifeState, double deathTime, double nextAttackTime,
-            uint lastSequence, int violationCount, double violationWindowStart, double nextDodgeTime = 0.0)
+            uint lastSequence, int violationCount, double violationWindowStart, double nextDodgeTime = 0.0,
+            Vector3 deathPosition = default, bool hasDeathPosition = false)
         {
+            _deathPosition        = deathPosition;
+            _hasDeathPosition     = hasDeathPosition;
             _nextDodgeTime        = nextDodgeTime;
             _health               = health;
             _lifeState            = lifeState;

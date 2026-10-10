@@ -212,6 +212,9 @@ namespace Shinshi.Network
             writer.WriteByte(value.Warriors);
             writer.WriteByte(value.Sorcerers);
             writer.WriteByte(value.Summoners);
+            writer.WriteByte(value.Swordsmen);
+            writer.WriteByte(value.Mageknights);
+            writer.WriteByte(value.Archers);
         }
 
         private static PartyRoomSummary ReadSummary(NetworkReader reader)
@@ -228,8 +231,11 @@ namespace Shinshi.Network
             byte   warriors    = reader.ReadByte();
             byte   sorcerers   = reader.ReadByte();
             byte   summoners   = reader.ReadByte();
+            byte   swordsmen   = reader.ReadByte();
+            byte   mageknights = reader.ReadByte();
+            byte   archers     = reader.ReadByte();
             return new PartyRoomSummary(roomId, name, mode, contentId, difficulty, phase, memberCount, readyCount, hasPassword,
-                warriors, sorcerers, summoners);
+                warriors, sorcerers, summoners, swordsmen, mageknights, archers);
         }
 
         private static void WriteMember(NetworkWriter writer, in PartyMemberView value)

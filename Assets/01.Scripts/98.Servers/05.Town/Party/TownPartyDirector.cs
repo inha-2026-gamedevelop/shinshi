@@ -839,7 +839,9 @@ namespace Shinshi.Network
                 PartyRoom room = _rooms[i];
                 rooms[i] = new PartyRoomSummary(room.RoomId, room.Name, room.Mode, room.ContentId, room.Difficulty, room.Phase,
                     (byte)room.Count, (byte)room.CountReady(), room.HasPassword, (byte)room.CountClass(EPlayerClass.Warrior),
-                    (byte)room.CountClass(EPlayerClass.Sorcerer), (byte)room.CountClass(EPlayerClass.Summoner));
+                    (byte)room.CountClass(EPlayerClass.Sorcerer), (byte)room.CountClass(EPlayerClass.Summoner),
+                    (byte)room.CountClass(EPlayerClass.Swordsman), (byte)room.CountClass(EPlayerClass.Mageknight),
+                    (byte)room.CountClass(EPlayerClass.Archer));
             }
 
             _audience.Send(member.ParticipantId, new PartyRoomListMessage(rooms));

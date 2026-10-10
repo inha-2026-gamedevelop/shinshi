@@ -51,12 +51,13 @@ namespace Shinshi.Editor
         // 이동 예측과 회피를 서버, 클라이언트 빌드로 시험하는 씬. Bootstrap 구성에 바닥, 내비 메시, 쿼터뷰 카메라, 지연 시뮬레이션을 더했다
         public const string DEV_MOVEMENT_SCENE_PATH = "Assets/00.Scenes/Dev_PlayerMovement.unity";
 
-        // 클라이언트는 로비, 캐릭터 선택, 생성을 거쳐 마을로 간다. 서버는 Bootstrap에서 역할을 읽고 마을 씬을 연다.
+        // 클라이언트는 로비, 캐릭터 선택, 생성을 거쳐 마을로 가고 출정하면 던전 씬으로 간다. 서버는 Bootstrap에서 역할을 읽고 마을 또는 던전 씬을 연다.
         // SceneManager와 Mirror onlineScene은 Constants.Scene의 이름으로 찾으므로 빌드 목록에 빠지면 이동이 실패한다
         private static readonly string[] G_ClientScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.LOBBY),
             ScenePath(Constants.Scene.CHARACTER_SELECT), ScenePath(Constants.Scene.CHARACTER_CREATE),
-            ScenePath(Constants.Scene.SHINSHI_TOWN) };
-        private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN) };
+            ScenePath(Constants.Scene.SHINSHI_TOWN), ScenePath(Constants.Scene.DUNGEON_FOREST) };
+        private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN),
+            ScenePath(Constants.Scene.DUNGEON_FOREST) };
         private static readonly string[] G_DevMovementScenes = { DEV_MOVEMENT_SCENE_PATH };
 
         // 네트워크 없이 보스 패턴과 UI 화면, 마을 렌더링 비용을 확인하는 개발 씬 묶음. 서버 접속 없이 한 실행 파일에서 고르며(DevTestScenePicker),
@@ -140,6 +141,12 @@ namespace Shinshi.Editor
         public static string[] GetClientScenes()
         {
             return (string[])G_ClientScenes.Clone();
+        }
+
+        /// <summary> 서버 빌드에 넣는 씬 경로 </summary>
+        public static string[] GetServerScenes()
+        {
+            return (string[])G_ServerScenes.Clone();
         }
 
         /// <summary> 실제 실행 흐름 씬(Release 폴더)의 경로 </summary>

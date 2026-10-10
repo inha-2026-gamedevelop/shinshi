@@ -67,6 +67,14 @@ namespace Shinshi.Combat
         [SyncVar] private byte _attackSequence;
         [SyncVar] private byte _dodgeSequence;
 
+        // 서버가 기절로 진행 중인 기본 공격 준비나 기술을 끊을 때마다 1씩 올린다(255 다음 0). 회피와 사망에는 각자 신호가 있어 올리지 않는다.
+        // 클라이언트 표현은 값이 바뀌면 아직 나가지 않은 발사와 타격 재생을 버린다. 서버 판정은 이 값을 읽지 않는다
+        [SyncVar] private byte _actionCancelSequence;
+
+        // 지금 적용 중인 제어와 그 종료 서버 시각, 표시용이다. 판정은 서버 처리기가 자기 상태로 한다
+        [SyncVar] private EPlayerControlKind _controlKind;
+        [SyncVar] private double _controlEndsAt;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -96,6 +104,9 @@ namespace Shinshi.Combat
         public float LocomotionSpeed => _locomotionSpeed;
         public byte AttackSequence => _attackSequence;
         public byte DodgeSequence => _dodgeSequence;
+        public byte ActionCancelSequence => _actionCancelSequence;
+        public EPlayerControlKind ControlKind => _controlKind;
+        public double ControlEndsAt => _controlEndsAt;
 
         // 전용 서버에서는 hook이 불리지 않으므로 표현과 UI만 구독한다
         public event Action<float, float>           HealthChanged;
@@ -171,6 +182,20 @@ namespace Shinshi.Combat
         public void BumpDodgeSequence()
         {
             _dodgeSequence = unchecked((byte)(_dodgeSequence + 1));
+        }
+
+        [Server]
+        public void BumpActionCancelSequence()
+        {
+            _actionCancelSequence = unchecked((byte)(_actionCancelSequence + 1));
+        }
+
+        // 같은 값이면 SyncVar가 더럽혀지지 않으므로 매 틱 불러도 바뀔 때만 전송된다
+        [Server]
+        public void SetControl(EPlayerControlKind kind, double endsAt)
+        {
+            _controlKind   = kind;
+            _controlEndsAt = (kind == EPlayerControlKind.None) ? 0.0 : endsAt;
         }
 
         [Server]

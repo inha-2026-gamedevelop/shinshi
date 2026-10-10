@@ -10,7 +10,7 @@ using Shinshi.Common;
 
 namespace Shinshi.Combat
 {
-    /// <summary> 미리 지정한 복귀 지점 중 안전한 곳을 고른다. 살아 있는 적에서 최소 거리 이상, 위험 영역 밖, 사망 위치에서 가장 가까운 곳이다 </summary>
+    /// <summary> 협동 보스 전용. 미리 지정한 복귀 지점 중 안전한 곳을 고른다. 살아 있는 적에서 최소 거리 이상, 위험 영역 밖, 사망 위치에서 가장 가까운 곳이다 </summary>
     public sealed class RevivePointSelector
     {
         // 지점이 모두 위험하면 실패로 돌려주고 부활 단계가 횟수를 쓰지 않은 채 재평가 간격 뒤 다시 묻는다.
