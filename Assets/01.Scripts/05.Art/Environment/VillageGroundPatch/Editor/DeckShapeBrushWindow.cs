@@ -44,6 +44,7 @@ namespace Shinshi.Art.Editor
         private const float  LABEL_LIFT        = 0.5f;
         private const float  VERTEX_KEY_SCALE  = 1000f;
         private const int    KEY_SHIFT         = 32;
+        private const float  PAVING_DECK_GAP   = 0.3f; // 포장 높이에서 이 거리 안에 덱 윗면이 있어야 포장을 넓힌다(m)
 
         private static readonly Color G_GrowColor = new Color(0.3f, 1f, 0.4f, 1f);
         private static readonly Color G_CutColor  = new Color(1f, 0.35f, 0.3f, 1f);
@@ -121,7 +122,7 @@ namespace Shinshi.Art.Editor
                 _painting = false;
             }
 
-            EditorGUILayout.HelpBox("브러시를 켜고 씬 뷰에서 덱을 누르거나 드래그한다.\n넓히기: 원 안을 덱으로 채운다(덱 바깥 허공에서도 덱 높이 기준)\n깎기: 원 안의 덱을 지운다\n처음 고칠 때 원본 obj 대신 이 씬 전용 사본(FittedDecks)을 만들어 연결한다.\n고친 뒤 NavMesh 다시 굽기를 누른다.", MessageType.Info);
+            EditorGUILayout.HelpBox("브러시를 켜고 씬 뷰에서 덱이나 포장(돌판)을 누르거나 드래그한다.\n넓히기: 원 안을 채운다(바깥 허공에서도 대상 높이 기준)\n깎기: 원 안을 지운다\n처음 고칠 때 원본 obj 대신 이 씬 전용 사본(FittedDecks)을 만들어 연결한다.\n고친 뒤 NavMesh 다시 굽기를 누른다.", MessageType.Info);
 
             using (new EditorGUI.DisabledScope(!editable))
             {
@@ -139,12 +140,12 @@ namespace Shinshi.Art.Editor
                 }
                 GUI.backgroundColor = previous;
 
-                EditorGUILayout.LabelField("대상 덱", (_target != null) ? _target.Root.name : "씬 뷰에서 덱을 누르면 정해진다");
+                EditorGUILayout.LabelField("대상", (_target != null) ? _target.Root.name : "씬 뷰에서 덱이나 포장을 누르면 정해진다");
 
                 EditorGUILayout.Space();
                 EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_mode)), new GUIContent("모드"));
                 EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_radius)), new GUIContent("반경(m)"));
-                EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_rockOnly)), new GUIContent("돌 위로만 넓히기"));
+                EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_rockOnly)), new GUIContent("받침 위로만 넓히기", "덱은 덱 높이 근처 돌 위, 포장은 덱 윗면 위로만 넓힌다"));
                 EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_ledgeBelow)), new GUIContent("받침 돌 아래 허용(m)"));
                 EditorGUILayout.PropertyField(_serialized.FindProperty(nameof(_ledgeAbove)), new GUIContent("받침 돌 위 허용(m)"));
 
@@ -233,7 +234,13 @@ namespace Shinshi.Art.Editor
 
             Ray ray = HandleUtility.GUIPointToWorldRay(current.mousePosition);
             bool stroking = (_mask != null);
-            DeckShapeUtility.Deck deck = stroking ? _target : (PickDeck(ray) ?? _target);
+            // 화면 고르기는 그리기 중에 부르면 렌더링이 꼬이므로 누를 때만 하고, 커서 표시는 물리 레이로 찾는다
+            DeckShapeUtility.Deck deck = _target;
+            if (!stroking)
+            {
+                DeckShapeUtility.Deck picked = (current.type == EventType.MouseDown) ? PickDeck(current.mousePosition, ray) : PickDeckByRay(ray);
+                deck = picked ?? _target;
+            }
             if (deck == null)
             {
                 return;
@@ -283,8 +290,20 @@ namespace Shinshi.Art.Editor
             }
         }
 
-        // 커서 아래 가장 가까운 덱 윗면을 고른다. 투명 벽 콜라이더는 건너뛴다
-        private static DeckShapeUtility.Deck PickDeck(Ray ray)
+        // 커서 아래 보이는 덱 윗면이나 포장을 고른다. 포장은 콜라이더가 없어 화면 고르기로 찾고,
+        // 건물 등이 가리면 물리 레이로 덱 윗면을 찾는다. 투명 벽 콜라이더는 건너뛴다
+        private static DeckShapeUtility.Deck PickDeck(Vector2 mousePosition, Ray ray)
+        {
+            GameObject picked = HandleUtility.PickGameObject(mousePosition, false);
+            if ((picked != null) && (DeckShapeUtility.TryGetDeck(picked.transform, out DeckShapeUtility.Deck pickedDeck))
+                && (picked.transform == pickedDeck.TopFilter.transform))
+            {
+                return pickedDeck;
+            }
+            return PickDeckByRay(ray);
+        }
+
+        private static DeckShapeUtility.Deck PickDeckByRay(Ray ray)
         {
             RaycastHit[] hits = Physics.RaycastAll(ray, MAX_PICK_DISTANCE, Physics.AllLayers, QueryTriggerInteraction.Ignore);
             System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
@@ -321,7 +340,7 @@ namespace Shinshi.Art.Editor
             }
             DeckShapeUtility.GetWallRange(deck, _mask.Height, out _wallBottom, out _wallTop);
             _rockCache.Clear();
-            if ((_mode == EDeckBrushMode.Grow) && (_rockOnly))
+            if ((_mode == EDeckBrushMode.Grow) && (_rockOnly) && (!deck.IsPaving))
             {
                 PrepareRock(deck.Root.gameObject.scene);
             }
@@ -364,23 +383,39 @@ namespace Shinshi.Art.Editor
             DeckShapeUtility.WriteMeshes(_target, _mask, _strokeTop, _strokeWall, _wallBottom, _wallTop, false);
         }
 
+        // 덱은 덱 높이 근처 돌, 포장은 바로 아래 덱 윗면이 받칠 때만 넓힌다
         private bool HasRockSupport(float x, float z)
         {
-            if (_rockColliders == null)
-            {
-                return false;
-            }
-
             long key = ((long)Mathf.RoundToInt(x * VERTEX_KEY_SCALE) << KEY_SHIFT) ^ (uint)Mathf.RoundToInt(z * VERTEX_KEY_SCALE);
             if (_rockCache.TryGetValue(key, out bool supported))
             {
                 return supported;
             }
 
-            float top = DeckShapeUtility.SampleTop(x, z, _mask.Height, _rockColliders);
-            supported = (top >= (_mask.Height - _ledgeBelow)) && (top <= (_mask.Height + _ledgeAbove));
+            if (_target.IsPaving)
+            {
+                supported = HasDeckBelow(x, z);
+            }
+            else if (_rockColliders != null)
+            {
+                float top = DeckShapeUtility.SampleTop(x, z, _mask.Height, _rockColliders);
+                supported = (top >= (_mask.Height - _ledgeBelow)) && (top <= (_mask.Height + _ledgeAbove));
+            }
             _rockCache[key] = supported;
             return supported;
+        }
+
+        private bool HasDeckBelow(float x, float z)
+        {
+            var ray = new Ray(new Vector3(x, _mask.Height + PAVING_DECK_GAP, z), Vector3.down);
+            foreach (RaycastHit hit in Physics.RaycastAll(ray, PAVING_DECK_GAP * 2f, Physics.AllLayers, QueryTriggerInteraction.Ignore))
+            {
+                if ((DeckShapeUtility.TryGetDeck(hit.collider.transform, out DeckShapeUtility.Deck deck)) && (!deck.IsPaving) && (hit.collider == deck.TopCollider))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void EndStroke()
@@ -485,7 +520,7 @@ namespace Shinshi.Art.Editor
             EndStroke();
             ForgetMasks();
             int restored = 0;
-            foreach (DeckShapeUtility.Deck deck in DeckShapeUtility.FindDecks(SceneManager.GetActiveScene()))
+            foreach (DeckShapeUtility.Deck deck in DeckShapeUtility.FindShapes(SceneManager.GetActiveScene(), true))
             {
                 if ((IsSelected(deck)) && (DeckShapeUtility.RestoreOriginal(deck)))
                 {
@@ -509,16 +544,21 @@ namespace Shinshi.Art.Editor
 
         private void PushSnapshot(DeckShapeUtility.Deck deck)
         {
+            // 포장은 벽이 없어 윗면만 기록한다
+            Mesh wall = (deck.WallFilter != null) ? deck.WallFilter.sharedMesh : null;
             var snapshot = new Snapshot
             {
                 Root     = deck.Root,
                 Top      = deck.TopFilter.sharedMesh,
-                Wall     = deck.WallFilter.sharedMesh,
+                Wall     = wall,
                 TopCopy  = Instantiate(deck.TopFilter.sharedMesh),
-                WallCopy = Instantiate(deck.WallFilter.sharedMesh)
+                WallCopy = (wall != null) ? Instantiate(wall) : null
             };
-            snapshot.TopCopy.hideFlags  = HideFlags.HideAndDontSave;
-            snapshot.WallCopy.hideFlags = HideFlags.HideAndDontSave;
+            snapshot.TopCopy.hideFlags = HideFlags.HideAndDontSave;
+            if (snapshot.WallCopy != null)
+            {
+                snapshot.WallCopy.hideFlags = HideFlags.HideAndDontSave;
+            }
             _history.Add(snapshot);
 
             if (_history.Count > MAX_HISTORY)
@@ -541,11 +581,14 @@ namespace Shinshi.Art.Editor
             Snapshot snapshot = _history[_history.Count - 1];
             _history.RemoveAt(_history.Count - 1);
 
-            if ((snapshot.Root != null) && (snapshot.Top != null) && (snapshot.Wall != null)
+            if ((snapshot.Root != null) && (snapshot.Top != null)
                 && (DeckShapeUtility.TryGetDeck(snapshot.Root, out DeckShapeUtility.Deck deck)))
             {
                 DeckShapeUtility.CopyMesh(snapshot.TopCopy, snapshot.Top);
-                DeckShapeUtility.CopyMesh(snapshot.WallCopy, snapshot.Wall);
+                if ((snapshot.Wall != null) && (snapshot.WallCopy != null))
+                {
+                    DeckShapeUtility.CopyMesh(snapshot.WallCopy, snapshot.Wall);
+                }
                 DeckShapeUtility.RefreshColliders(deck, snapshot.Top, snapshot.Wall);
                 AssetDatabase.SaveAssets();
                 EditorSceneManager.MarkSceneDirty(snapshot.Root.gameObject.scene);
@@ -566,7 +609,10 @@ namespace Shinshi.Art.Editor
         private static void DestroySnapshot(Snapshot snapshot)
         {
             DestroyImmediate(snapshot.TopCopy);
-            DestroyImmediate(snapshot.WallCopy);
+            if (snapshot.WallCopy != null)
+            {
+                DestroyImmediate(snapshot.WallCopy);
+            }
         }
     }
 }

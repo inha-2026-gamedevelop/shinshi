@@ -20,23 +20,25 @@ namespace Shinshi.Art.Editor
         *                Types
         ****************************************/
 
-        /// <summary> 덱 하나의 윗면과 가장자리 벽 구성 요소 </summary>
+        /// <summary> 덱(윗면 + 가장자리 투명 벽) 또는 포장(콜라이더 없는 두께 있는 판) 하나의 구성 요소 </summary>
         internal sealed class Deck
         {
             public Transform    Root         { get; }
             public MeshFilter   TopFilter    { get; }
-            public MeshCollider TopCollider  { get; }
-            public MeshFilter   WallFilter   { get; }
-            public MeshCollider WallCollider { get; }
-            public string       Tag          { get { return Root.name.Substring(DECK_PREFIX.Length); } }
+            public MeshCollider TopCollider  { get; } // 포장은 없다
+            public MeshFilter   WallFilter   { get; } // 포장은 없다
+            public MeshCollider WallCollider { get; } // 포장은 없다
+            public bool         IsPaving     { get; }
+            public string       Tag          { get { return Root.name.Substring((IsPaving ? PAVING_PREFIX : DECK_PREFIX).Length); } }
 
-            public Deck(Transform root, MeshFilter topFilter, MeshCollider topCollider, MeshFilter wallFilter, MeshCollider wallCollider)
+            public Deck(Transform root, MeshFilter topFilter, MeshCollider topCollider, MeshFilter wallFilter, MeshCollider wallCollider, bool isPaving)
             {
                 Root         = root;
                 TopFilter    = topFilter;
                 TopCollider  = topCollider;
                 WallFilter   = wallFilter;
                 WallCollider = wallCollider;
+                IsPaving     = isPaving;
             }
         }
 
@@ -122,6 +124,7 @@ namespace Shinshi.Art.Editor
         ****************************************/
 
         public  const string DECK_PREFIX        = "SM_CA07_Deck_";
+        public  const string PAVING_PREFIX      = "SM_CA07_Paving_";
         public  const string FITTED_FOLDER      = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/FittedDecks";
         public  const float  CELL_SIZE          = 0.5f;
         private const string FITTED_PARENT      = "Assets/01.Scripts/05.Art/Environment/VillageGroundPatch";
@@ -135,6 +138,8 @@ namespace Shinshi.Art.Editor
         private const string WALL_SUBMESH       = "wall";
         private const string TOP_MESH_PREFIX    = "SM_GP_Deck_";
         private const string WALL_MESH_PREFIX   = "SM_GP_DeckWall_";
+        private const string PAVING_MESH_PREFIX = "SM_GP_Paving_";
+        private const float  DEFAULT_PAVING_THICKNESS = 0.12f; // 원본을 못 찾을 때 포장 옆면 높이(m)
         private const string LOW_LOD_MARK       = "Low";
         private const string MEDIUM_LOD_MARK    = "Medium";
         private const string TEMP_OBJECT_NAME   = "DeckShapeTemp";
@@ -152,6 +157,7 @@ namespace Shinshi.Art.Editor
         private const int    CORNERS            = 4;
         private const int    VERTS_PER_TRIANGLE = 3;
         private const int    BOX_CORNERS        = 8;
+        private const int    SKIRT_SIDES        = 2;
         private const float  RAY_HEIGHT         = 60f;   // 칸마다 위에서 쏘는 레이 시작 높이(m)
         private const float  RAY_LENGTH         = 300f;
         private const float  WALL_MARGIN        = 2f;    // 벽 콜라이더가 덱 위아래로 최소 이만큼 덮는다(m)
@@ -168,11 +174,12 @@ namespace Shinshi.Art.Editor
         *                Methods
         ****************************************/
 
+        // 덱이나 포장 루트, 또는 그 자식에서 구성 요소를 찾는다
         public static bool TryGetDeck(Transform from, out Deck deck)
         {
             deck = null;
             Transform current = from;
-            while ((current != null) && (!current.name.StartsWith(DECK_PREFIX)))
+            while ((current != null) && (!current.name.StartsWith(DECK_PREFIX)) && (!current.name.StartsWith(PAVING_PREFIX)))
             {
                 current = current.parent;
             }
@@ -182,34 +189,46 @@ namespace Shinshi.Art.Editor
                 return false;
             }
 
-            Transform top  = current.Find(TOP_CHILD);
-            Transform wall = current.Find(WALL_CHILD);
-            if ((top == null) || (wall == null))
+            Transform  top       = current.Find(TOP_CHILD);
+            MeshFilter topFilter = (top != null) ? top.GetComponent<MeshFilter>() : null;
+            if (topFilter == null)
             {
                 return false;
             }
 
-            MeshFilter   topFilter    = top.GetComponent<MeshFilter>();
+            if (current.name.StartsWith(PAVING_PREFIX))
+            {
+                deck = new Deck(current, topFilter, top.GetComponent<MeshCollider>(), null, null, true);
+                return true;
+            }
+
+            Transform    wall         = current.Find(WALL_CHILD);
             MeshCollider topCollider  = top.GetComponent<MeshCollider>();
-            MeshFilter   wallFilter   = wall.GetComponent<MeshFilter>();
-            MeshCollider wallCollider = wall.GetComponent<MeshCollider>();
-            if ((topFilter == null) || (topCollider == null) || (wallFilter == null) || (wallCollider == null))
+            MeshFilter   wallFilter   = (wall != null) ? wall.GetComponent<MeshFilter>() : null;
+            MeshCollider wallCollider = (wall != null) ? wall.GetComponent<MeshCollider>() : null;
+            if ((topCollider == null) || (wallFilter == null) || (wallCollider == null))
             {
                 return false;
             }
 
-            deck = new Deck(current, topFilter, topCollider, wallFilter, wallCollider);
+            deck = new Deck(current, topFilter, topCollider, wallFilter, wallCollider, false);
             return true;
         }
 
         public static List<Deck> FindDecks(Scene scene)
+        {
+            return FindShapes(scene, false);
+        }
+
+        public static List<Deck> FindShapes(Scene scene, bool includePaving)
         {
             var decks = new List<Deck>();
             foreach (GameObject root in scene.GetRootGameObjects())
             {
                 foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
                 {
-                    if ((child.name.StartsWith(DECK_PREFIX)) && (TryGetDeck(child, out Deck deck)) && (deck.Root == child))
+                    bool candidate = (child.name.StartsWith(DECK_PREFIX)) || ((includePaving) && (child.name.StartsWith(PAVING_PREFIX)));
+                    if ((candidate) && (TryGetDeck(child, out Deck deck)) && (deck.Root == child))
                     {
                         decks.Add(deck);
                     }
@@ -251,9 +270,9 @@ namespace Shinshi.Art.Editor
         public static void EnsureEditable(Deck deck, out Mesh top, out Mesh wall)
         {
             top  = deck.TopFilter.sharedMesh;
-            wall = deck.WallFilter.sharedMesh;
+            wall = (deck.WallFilter != null) ? deck.WallFilter.sharedMesh : null;
             bool topEditable  = IsFittedAsset(top);
-            bool wallEditable = IsFittedAsset(wall);
+            bool wallEditable = (deck.WallFilter == null) || (IsFittedAsset(wall));
             if ((topEditable) && (wallEditable))
             {
                 return;
@@ -264,12 +283,15 @@ namespace Shinshi.Art.Editor
                 AssetDatabase.CreateFolder(FITTED_PARENT, FITTED_NAME);
             }
 
-            Undo.RecordObjects(new Object[] { deck.TopFilter, deck.TopCollider, deck.WallFilter, deck.WallCollider }, UNDO_NAME);
+            Undo.RecordObjects(GetUndoTargets(deck), UNDO_NAME);
             if (!topEditable)
             {
-                top = CreateMeshAsset(top, TOP_MESH_PREFIX + deck.Tag);
-                deck.TopFilter.sharedMesh   = top;
-                deck.TopCollider.sharedMesh = top;
+                top = CreateMeshAsset(top, (deck.IsPaving ? PAVING_MESH_PREFIX : TOP_MESH_PREFIX) + deck.Tag);
+                deck.TopFilter.sharedMesh = top;
+                if (deck.TopCollider != null)
+                {
+                    deck.TopCollider.sharedMesh = top;
+                }
             }
 
             if (!wallEditable)
@@ -280,17 +302,22 @@ namespace Shinshi.Art.Editor
             }
         }
 
-        // 벽 콜라이더 높이 범위, 원본 벽이 있으면 그 범위를 따른다
+        // 벽 콜라이더 높이 범위, 원본 벽이 있으면 그 범위를 따른다. 벽이 없는 포장은 높이만 돌려준다
         public static void GetWallRange(Deck deck, float height, out float bottom, out float top)
         {
+            bottom = height - WALL_MARGIN;
+            top    = height + WALL_MARGIN;
+            if (deck.WallFilter == null)
+            {
+                return;
+            }
+
             Mesh source = LoadModelMesh(WALL_MODEL_PREFIX + deck.Tag, WALL_SUBMESH);
             if ((source == null) && (deck.WallFilter.sharedMesh != null) && (deck.WallFilter.sharedMesh.vertexCount > 0))
             {
                 source = deck.WallFilter.sharedMesh;
             }
 
-            bottom = height - WALL_MARGIN;
-            top    = height + WALL_MARGIN;
             if (source == null)
             {
                 return;
@@ -359,10 +386,14 @@ namespace Shinshi.Art.Editor
                 }
             }
 
-            FillTop(top, vertices, triangles, deck.TopFilter.transform.worldToLocalMatrix);
-            FillWall(wall, vertices, triangles, wallBottom, wallTop, deck.WallFilter.transform.worldToLocalMatrix);
+            float skirt = deck.IsPaving ? GetPavingThickness(deck) : 0f;
+            FillTop(top, vertices, triangles, deck.TopFilter.transform.worldToLocalMatrix, skirt);
             EditorUtility.SetDirty(top);
-            EditorUtility.SetDirty(wall);
+            if ((wall != null) && (deck.WallFilter != null))
+            {
+                FillWall(wall, vertices, triangles, wallBottom, wallTop, deck.WallFilter.transform.worldToLocalMatrix);
+                EditorUtility.SetDirty(wall);
+            }
 
             if (updateColliders)
             {
@@ -373,26 +404,35 @@ namespace Shinshi.Art.Editor
         public static void RefreshColliders(Deck deck, Mesh top, Mesh wall)
         {
             // 같은 메쉬를 다시 넣어야 바뀐 꼭짓점으로 충돌 데이터를 새로 굽는다
-            deck.TopCollider.sharedMesh  = null;
-            deck.TopCollider.sharedMesh  = top;
-            deck.WallCollider.sharedMesh = null;
-            deck.WallCollider.sharedMesh = wall;
+            if (deck.TopCollider != null)
+            {
+                deck.TopCollider.sharedMesh = null;
+                deck.TopCollider.sharedMesh = top;
+            }
+
+            if (deck.WallCollider != null)
+            {
+                deck.WallCollider.sharedMesh = null;
+                deck.WallCollider.sharedMesh = wall;
+            }
         }
 
         public static bool RestoreOriginal(Deck deck)
         {
             Mesh top  = LoadModelMesh(deck.Root.name, TOP_CHILD);
-            Mesh wall = LoadModelMesh(WALL_MODEL_PREFIX + deck.Tag, WALL_SUBMESH);
-            if ((top == null) || (wall == null))
+            Mesh wall = deck.IsPaving ? null : LoadModelMesh(WALL_MODEL_PREFIX + deck.Tag, WALL_SUBMESH);
+            if ((top == null) || ((!deck.IsPaving) && (wall == null)))
             {
                 return false;
             }
 
-            Undo.RecordObjects(new Object[] { deck.TopFilter, deck.TopCollider, deck.WallFilter, deck.WallCollider }, UNDO_NAME);
-            deck.TopFilter.sharedMesh    = top;
-            deck.TopCollider.sharedMesh  = top;
-            deck.WallFilter.sharedMesh   = wall;
-            deck.WallCollider.sharedMesh = wall;
+            Undo.RecordObjects(GetUndoTargets(deck), UNDO_NAME);
+            deck.TopFilter.sharedMesh = top;
+            if (!deck.IsPaving)
+            {
+                deck.WallFilter.sharedMesh = wall;
+            }
+            RefreshColliders(deck, top, wall);
             EditorSceneManager.MarkSceneDirty(deck.Root.gameObject.scene);
             return true;
         }
@@ -686,6 +726,30 @@ namespace Shinshi.Art.Editor
             return (mesh != null) && (AssetDatabase.GetAssetPath(mesh).StartsWith(FITTED_FOLDER));
         }
 
+        private static Object[] GetUndoTargets(Deck deck)
+        {
+            var targets = new List<Object> { deck.TopFilter };
+            if (deck.TopCollider != null)
+            {
+                targets.Add(deck.TopCollider);
+            }
+
+            if (deck.WallFilter != null)
+            {
+                targets.Add(deck.WallFilter);
+                targets.Add(deck.WallCollider);
+            }
+            return targets.ToArray();
+        }
+
+        // 포장 판의 두께, 원본 obj 윗면 메쉬의 높이 범위를 쓴다
+        private static float GetPavingThickness(Deck deck)
+        {
+            Mesh source = LoadModelMesh(deck.Root.name, TOP_CHILD);
+            float thickness = (source != null) ? source.bounds.size.y : DEFAULT_PAVING_THICKNESS;
+            return (thickness > 0f) ? thickness : DEFAULT_PAVING_THICKNESS;
+        }
+
         private static Mesh CreateMeshAsset(Mesh source, string baseName)
         {
             Mesh copy = (source != null) ? Object.Instantiate(source) : new Mesh();
@@ -946,11 +1010,13 @@ namespace Shinshi.Art.Editor
             return index;
         }
 
-        private static void FillTop(Mesh mesh, List<Vector3> worldVertices, List<int> triangles, Matrix4x4 toLocal)
+        // skirt가 0보다 크면 윤곽을 따라 그만큼 아래로 옆면을 붙인다(포장 판 두께)
+        private static void FillTop(Mesh mesh, List<Vector3> worldVertices, List<int> triangles, Matrix4x4 toLocal, float skirt)
         {
             var local   = new List<Vector3>(worldVertices.Count);
             var normals = new List<Vector3>(worldVertices.Count);
             var uvs     = new List<Vector2>(worldVertices.Count);
+            var indices = new List<int>(triangles);
             Vector3 up  = toLocal.MultiplyVector(Vector3.up).normalized;
             foreach (Vector3 point in worldVertices)
             {
@@ -959,18 +1025,57 @@ namespace Shinshi.Art.Editor
                 uvs.Add(new Vector2(point.x, point.z)); // 원본 덱과 같은 월드 xz 1m 타일
             }
 
+            if (skirt > 0f)
+            {
+                foreach (KeyValuePair<long, int> edge in CountEdges(triangles))
+                {
+                    if (edge.Value != 1)
+                    {
+                        continue;
+                    }
+
+                    Vector3 a = worldVertices[(int)(edge.Key >> KEY_SHIFT)];
+                    Vector3 b = worldVertices[(int)(edge.Key & uint.MaxValue)];
+                    Vector3 aLow = a + (Vector3.down * skirt);
+                    Vector3 bLow = b + (Vector3.down * skirt);
+                    Vector3 face = Vector3.Cross(b - a, bLow - a).normalized;
+
+                    // 바깥쪽을 따지지 않고 양면으로 세운다. 면마다 감김 방향과 법선을 맞춘다
+                    for (int side = 0; side < SKIRT_SIDES; ++side)
+                    {
+                        Vector3 normal = (side == 0) ? face : -face;
+                        int s = local.Count;
+                        foreach (Vector3 corner in new[] { a, b, bLow, aLow })
+                        {
+                            local.Add(toLocal.MultiplyPoint3x4(corner));
+                            normals.Add(toLocal.MultiplyVector(normal).normalized);
+                            uvs.Add(new Vector2(corner.x + corner.z, corner.y));
+                        }
+
+                        if (side == 0)
+                        {
+                            indices.AddRange(new[] { s, s + 1, s + 2, s, s + 2, s + 3 });
+                        }
+                        else
+                        {
+                            indices.AddRange(new[] { s, s + 2, s + 1, s, s + 3, s + 2 });
+                        }
+                    }
+                }
+            }
+
             mesh.Clear();
             mesh.indexFormat = IndexFormat.UInt32;
             mesh.SetVertices(local);
             mesh.SetNormals(normals);
             mesh.SetUVs(0, uvs);
-            mesh.SetTriangles(triangles, 0);
+            mesh.SetTriangles(indices, 0);
             mesh.RecalculateTangents();
             mesh.RecalculateBounds();
         }
 
-        // 한 삼각형만 쓰는 모서리가 윤곽이다. 그 모서리마다 양면 벽 사각형을 세운다
-        private static void FillWall(Mesh mesh, List<Vector3> worldVertices, List<int> triangles, float bottom, float top, Matrix4x4 toLocal)
+        // 모서리마다 몇 개의 삼각형이 쓰는지 센다. 1이면 윤곽이다
+        private static Dictionary<long, int> CountEdges(List<int> triangles)
         {
             var edgeUse = new Dictionary<long, int>();
             for (int t = 0; t < triangles.Count; t += VERTS_PER_TRIANGLE)
@@ -984,7 +1089,13 @@ namespace Shinshi.Art.Editor
                     edgeUse[key] = used + 1;
                 }
             }
+            return edgeUse;
+        }
 
+        // 한 삼각형만 쓰는 모서리가 윤곽이다. 그 모서리마다 양면 벽 사각형을 세운다
+        private static void FillWall(Mesh mesh, List<Vector3> worldVertices, List<int> triangles, float bottom, float top, Matrix4x4 toLocal)
+        {
+            Dictionary<long, int> edgeUse = CountEdges(triangles);
             var vertices = new List<Vector3>();
             var indices  = new List<int>();
             foreach (KeyValuePair<long, int> edge in edgeUse)
