@@ -150,7 +150,7 @@ JarWide/JarTall은 남던 검정 삼각·몸통 파손을 해결하려고 측정
 
 ## 마을 쿼터뷰 배치 씬
 
-[Dev_ShinshiVillageQuarterView](../../Assets/00.Scenes/Dev_ShinshiVillageQuarterView.unity)는 마을 환경을 기존 쿼터뷰 카메라로 검수하는 개발 씬이다. 2026-10-10에 지형·오브젝트를 아래 CA-07 배치 씬과 동일한 4개 루트(`01_CA07_IslandBody`, `02_CA07_GroundAndWater`, `03_CA07_Placements`, `02_CentralSanctuary`)로 교체했다. 건물·나무·소품·단 바닥·개울·연못·폭포와 프리팹 연결·재질·LOD·충돌 설정을 함께 복사했으며 기존 카메라·조명·대기는 유지했다. 아래 최초 CA-04 배치의 재질·연결길·LOD 설명은 교체 전 이력이다.
+[Dev_ShinshiVillageQuarterView](../../Assets/00.Scenes/Dev_ShinshiVillageQuarterView.unity)는 기존 환경 프리팹과 native 지형 청크를 배치한 별도 개발 씬이다. 중앙 성소·전각·공방·주거·시장·약초밭·정자·위성 문섬·다리를 구분한다. 구름·폭포·연못 수면 효과는 사용자 요청에 따라 제외했다.
 
 - 전체 검수 카메라 `QuarterView_Overview`는 orthographic74, 확대 검수용 `QuarterView_Gameplay`는 orthographic21이며 둘 다 Euler(42,-36,0)이다. 후자는 비활성이고 추적 로직은 없다.
 - [VillageWatchtower](../../Assets/02.Prefab/Environment/VillageAssembly/PF_VillageWatchtower.prefab)는 기존 모듈을 재조합한 망루다. 모듈의 local AO를 재사용하며 조립 접촉 AO/GI는 새로 베이크하지 않았다. 원본 모듈의 용도별 충돌을 유지한다.
@@ -237,9 +237,7 @@ CA-07 원화에 있지만 기존 Assets에 없던 4종이다. 단일 물체 시�
 
 ## CA-07 마을 배치 씬 — 2026-10-03
 
-[Dev_ShinshiVillageCA07](../../Assets/00.Scenes/Dev_ShinshiVillageCA07.unity)은 [CA-07 배치도](../design/concept-art.md#8-ca-07-신시-마을-배치도-2)를 게임 쿼터뷰 기준으로 배치한 원본 개발 씬이다. `Assets/00.Scenes/Dev_ShinshiVillageQuarterView.unity`도 같은 지형·배치를 사용하며 카메라·조명·대기는 QuarterView의 설정을 유지한다. Dev_HUD 폴더의 동명 씬은 별개다.
-
-- QuarterView 복사 검증(2026-10-10): 환경 오브젝트9447개·Collider1025개·프리팹 연결2416개와 원본 대비47674개 비교 항목의 차이0, 기존 카메라·조명·대기 변경0, 누락 메시·재질·스크립트0을 확인했다. 전체 쿼터뷰와 Play Mode 게임 카메라 렌더를 검수했다. QuarterView 시험 캐릭터의 시작점·숫자 키1~9 순간이동 지점은 CA-07 단 바닥에서 머리 위 공간이 확보되는 위치로 정합했다. Play Mode에서 순간이동 메서드를 직접 호출해 9/9 지점의 지면 안착과 카메라 추적을 확인했고 Console 오류·경고는0이었다. 실제 키 입력·전체 보행·연속 LOD·성능·M2/M3·빌드는 별도 미검증이다.
+[Dev_ShinshiVillageCA07](../../Assets/00.Scenes/Dev_ShinshiVillageCA07.unity)은 [CA-07 배치도](../design/concept-art.md#8-ca-07-신시-마을-배치도-2)를 게임 쿼터뷰 기준으로 배치한 별도 개발 씬이다. CA-04 기반 `Dev_ShinshiVillageQuarterView`는 그대로 둔다.
 
 - 기준 카메라는 [CameraConfig](../../Assets/09.Data/Combat/CameraConfig.asset) 기본 단계(원근 FOV30, 피치55, 요0, 거리14.5)다. 원화 위쪽을 북쪽(+Z)으로 보고, 피치55에서 원화와 같은 화면 비율이 되도록 깊이 축을 맞췄다. 씬의 `QuarterView_Gameplay`는 같은 값의 원근 카메라, `QuarterView_Overview`·`CA07_CompareCamera`는 피치55·요0 직교 검수 카메라다.
 - 섬 몸체는 기존 ReferenceIsland 청크를 재사용하고, 위에 원화 윤곽대로 만든 단 11개(잔디·판석·바위 절벽 테두리)를 높이별로 얹었다. 단·포장·개울·연못·폭포 메시와 타일 텍스처는 `Assets/01.Scripts/05.Art/Environment/VillageCA07/`, 물 셰이더는 `Assets/01.Scripts/05.Art/Shaders/Atmosphere/`(`SH_StreamWater`, `SH_Waterfall`)에 있다. 단 메시는 보행 MeshCollider를 가진다.
