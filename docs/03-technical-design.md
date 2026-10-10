@@ -350,7 +350,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 | API↔DB | 마이그레이션은 앞으로만 적용하고 API 배포 전에 실행한다. 배포 중 이전 API도 동작하도록 컬럼 추가→코드 전환→정리의 순서로 나눈다 | 마이그레이션 실패 시 API 배포 중단 |
 | 저장 데이터 | `saveSchemaVersion`을 행 또는 계정 단위로 기록한다. 체험판은 이전 테스트 계정 형식과의 호환을 보장하지 않으며, 초기화가 필요하면 참가 안내에 사전 표시한다([생활·서비스](design/experience-service.md)) | 초기화 공지 없이 형식을 바꾸지 않음 |
 
-`buildId`는 빌드마다 유일하게 만들고 로그·거절 응답에 포함한다. `ProjectSettings`의 `bundleVersion`(현재 0.1.0)은 표시용이며 호환 판정에 쓰지 않는다. `ProjectSettings.asset`의 스크립팅 정의에는 아직 Dedicated Server(`Server`) 대상 항목이 없다. 서버 빌드 프로필을 만들 때 Standalone의 `MIRROR`·`TMP_PRESENT` 등 필요한 정의를 맞추고 실제 Linux 서버 빌드로 확인한다.
+`buildId`는 빌드마다 유일하게 만들고 로그·거절 응답에 포함한다. `ProjectSettings`의 `bundleVersion`(현재 0.1.1)은 표시용이며 호환 판정에 쓰지 않는다. `ProjectSettings.asset`의 스크립팅 정의에는 아직 Dedicated Server(`Server`) 대상 항목이 없다. 서버 빌드 프로필을 만들 때 Standalone의 `MIRROR`·`TMP_PRESENT` 등 필요한 정의를 맞추고 실제 Linux 서버 빌드로 확인한다.
 
 ## 11. 검증과 배포 조건
 
