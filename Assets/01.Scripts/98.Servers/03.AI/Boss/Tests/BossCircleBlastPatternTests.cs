@@ -28,6 +28,7 @@ namespace Shinshi.Tests
 
         private const string P02_ID       = "wolbaek_p02";
         private const string P03_ID       = "wolbaek_p03";
+        private const string HARD_P03_ID  = "wolbaek_hard_p03";
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const string WOLBAEK_ID   = "boss_wolbaek";
         private const float  TEST_HREF    = 3541f; // 테스트가 명시적으로 주입하는 값이다
@@ -192,13 +193,14 @@ namespace Shinshi.Tests
             public PatternDefinition    Definition { get; }
             public BossPatternContext   Context  { get; }
 
-            public Rig(PatternDefinition definition = null)
+            // create가 있으면 그 팩토리 경로로 패턴을 만든다. 정의가 팩토리를 거쳐 실제 원형 폭발 실행이 되는지 확인하려는 용도다
+            public Rig(PatternDefinition definition = null, System.Func<CircleListener, BossCircleBlastPattern> create = null)
             {
                 Query.Players.Add(Tracked);
                 Gate       = new BossDamageGate(Resolver);
                 Gate.Open();
                 Definition = definition ?? MakeP03();
-                Pattern    = new BossCircleBlastPattern(TEST_HREF, Listener);
+                Pattern    = (create == null) ? new BossCircleBlastPattern(TEST_HREF, Listener) : create(Listener);
                 Context    = new BossPatternContext(Definition, Gate.IssueInstanceId(), Tracked.CombatId, Self, Query, Gate);
             }
 
@@ -901,5 +903,108 @@ namespace Shinshi.Tests
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
         }
 
+        /****************************************
+        *            Wolbaek Hard P03
+        ****************************************/
+
+        private static PatternDefinition LoadAssetPattern(string id)
+        {
+            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
+            Assert.IsTrue(catalog.TryGetPattern(id, out PatternDefinition pattern), id);
+            return pattern;
+        }
+
+        // 실제 에셋 정의를 팩토리가 만든 원형 폭발 실행에 올린다
+        private static Rig MakeAssetRig(string id)
+        {
+            PatternDefinition definition = LoadAssetPattern(id);
+            return new Rig(definition, listener =>
+                (BossCircleBlastPattern)new WolbaekPatternFactory(TEST_HREF, null, listener).Create(definition));
+        }
+
+        // 하드 P03도 같은 원형 폭발 실행을 만든다. 이동 창구 같은 추가 창구는 필요 없다
+        [Test]
+        public void Factory_HardP03_CreatesCircleLikeEasyP03()
+        {
+            PatternDefinition hard = LoadAssetPattern(HARD_P03_ID);
+            WolbaekPatternFactory factory = new WolbaekPatternFactory(TEST_HREF);
+
+            Assert.IsTrue(factory.CanCreate(hard));
+            Assert.IsInstanceOf<BossCircleBlastPattern>(factory.Create(hard));
+            Assert.AreNotSame(factory.Create(hard), factory.Create(hard));
+            Assert.IsTrue(factory.CanCreate(LoadAssetPattern(P03_ID)));
+        }
+
+        // 예고가 보여 주는 반경과 시간은 정의 값이다. 이지 P03은 5m, 1.2초 그대로다
+        [TestCase(HARD_P03_ID, 5.5f, 1.5f)]
+        [TestCase(P03_ID, 5f, 1.2f)]
+        public void Begin_AssetP03_ReportsItsOwnRadiusAndSeconds(string id, float expectedRadius, float expectedSeconds)
+        {
+            Rig rig = MakeAssetRig(id);
+            rig.Start(0.0);
+
+            Assert.AreEqual(expectedRadius, rig.Listener.StartRadius);
+            Assert.AreEqual(expectedSeconds, rig.Listener.StartSeconds);
+            Assert.AreEqual(BossStart, rig.Listener.StartCenter);
+        }
+
+        // 서버 피격 반경은 예고 반경과 같다. 5m와 5.5m 사이(5.25m, 5.49m)는 하드에서만 맞고, 5.5m 밖은 빗나간다
+        [TestCase(HARD_P03_ID, 5f, true)]
+        [TestCase(HARD_P03_ID, 5.01f, true)]
+        [TestCase(HARD_P03_ID, 5.25f, true)]
+        [TestCase(HARD_P03_ID, 5.49f, true)]
+        [TestCase(HARD_P03_ID, 5.5f, true)]
+        [TestCase(HARD_P03_ID, 5.51f, false)]
+        [TestCase(HARD_P03_ID, 12f, false)]
+        [TestCase(P03_ID, 5f, true)]
+        [TestCase(P03_ID, 5.01f, false)]
+        [TestCase(P03_ID, 5.25f, false)]
+        [TestCase(P03_ID, 5.49f, false)]
+        public void Strike_AssetP03_HitsOnlyInsideItsOwnRadius(string id, float distance, bool expectedHit)
+        {
+            Rig rig = MakeAssetRig(id);
+            rig.AddPlayer(PROBE_ID, BossStart + new Vector3(distance, 0f, 0f));
+            rig.Start(0.0);
+
+            rig.Fsm.Tick(BoundaryOf(rig.Definition, 0.0));
+
+            Assert.AreEqual(expectedHit ? 1 : 0, CountHits(rig.Resolver, PROBE_ID));
+            Assert.AreEqual(rig.Query.LastRadius, rig.Definition.Shape.Range);
+        }
+
+        // 타격 시각은 정의의 예고 시간이다. 하드는 1.5초에, 이지는 1.2초에 맞고 그 직전에는 맞지 않는다
+        [TestCase(HARD_P03_ID, 1.5)]
+        [TestCase(P03_ID, 1.2)]
+        public void Strike_AssetP03_HappensAtItsOwnTelegraphEnd(string id, double expectedSeconds)
+        {
+            Rig rig = MakeAssetRig(id);
+            rig.Start(0.0);
+
+            rig.Fsm.Tick(expectedSeconds - 0.01);
+            Assert.AreEqual(0, rig.Resolver.Requests.Count);
+
+            rig.Fsm.Tick(expectedSeconds + EPSILON);
+            Assert.AreEqual(1, CountHits(rig.Resolver, rig.Tracked.CombatId));
+        }
+
+        // 반경과 예고 시간 말고는 이지 P03과 같은 피해 요청을 보낸다
+        [Test]
+        public void Strike_HardP03_SendsSameDamageAsEasyWithOwnDefinitionId()
+        {
+            Rig hardRig = MakeAssetRig(HARD_P03_ID);
+            Rig easyRig = MakeAssetRig(P03_ID);
+            hardRig.Start(0.0);
+            easyRig.Start(0.0);
+
+            hardRig.Fsm.Tick(BoundaryOf(hardRig.Definition, 0.0));
+            easyRig.Fsm.Tick(BoundaryOf(easyRig.Definition, 0.0));
+
+            DamageRequest hardRequest = hardRig.Resolver.Requests.Find(r => r.HitTargetId == hardRig.Tracked.CombatId);
+            DamageRequest easyRequest = easyRig.Resolver.Requests.Find(r => r.HitTargetId == easyRig.Tracked.CombatId);
+            Assert.AreEqual(easyRequest.RawDamage, hardRequest.RawDamage);
+            Assert.AreEqual(easyRequest.Flags, hardRequest.Flags);
+            Assert.AreEqual(HARD_P03_ID, hardRequest.SourceDefinitionId);
+            Assert.AreEqual(P03_ID, easyRequest.SourceDefinitionId);
+        }
     }
 }

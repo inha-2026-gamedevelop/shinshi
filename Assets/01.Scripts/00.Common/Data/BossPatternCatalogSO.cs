@@ -402,6 +402,11 @@ namespace Shinshi.Data
         public const string WOLBAEK_P2_P05_ID = "wolbaek_ph2_p05";
         public const string WOLBAEK_P2_P06_ID = "wolbaek_ph2_p06";
 
+        // 월백 하드 1페이즈 패턴 ID, 이지 ID와 겹치지 않는다. P01 돌진, P02 부채꼴, P03 중심 폭발만 있고 나머지는 아직 없다
+        public const string WOLBAEK_HARD_P01_ID = "wolbaek_hard_p01";
+        public const string WOLBAEK_HARD_P02_ID = "wolbaek_hard_p02";
+        public const string WOLBAEK_HARD_P03_ID = "wolbaek_hard_p03";
+
         private const float NEUTRAL_MULTIPLIER = 1f;
 
         // 한 시전의 발 수 상한, 서버 지속물 관리자의 동시 비행 슬롯 수와 같다
