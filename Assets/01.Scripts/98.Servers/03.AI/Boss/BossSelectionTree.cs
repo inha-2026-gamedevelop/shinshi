@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // 프로젝트 내부
+using Shinshi.Combat;
 using Shinshi.Common;
 
 using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
@@ -72,11 +73,27 @@ namespace Shinshi.AI
         }
 
         // 살아 있는 참가 플레이어 중 균등 무작위 한 명, 아무도 없으면 실패한다
+        // 같은 선택에서 다시 고르는 평가(RetryTargetCombatId)는 새로 뽑지 않고 처음 대상을 쓰며, 그 대상이 더는 유효하지 않으면 실패한다
         private bool SelectTarget(BossBlackboard blackboard)
         {
             int count = blackboard.Targets.GetLivingPlayers(blackboard.TargetBuffer);
             if (count <= 0)
             {
+                return false;
+            }
+
+            if (blackboard.RetryTargetCombatId != CombatIds.NONE)
+            {
+                for (int i = 0; i < count; ++i)
+                {
+                    if (blackboard.TargetBuffer[i].CombatId == blackboard.RetryTargetCombatId)
+                    {
+                        blackboard.Target = blackboard.TargetBuffer[i];
+                        blackboard.TargetCombatId = blackboard.Target.CombatId;
+                        return true;
+                    }
+                }
+
                 return false;
             }
 
@@ -112,7 +129,7 @@ namespace Shinshi.AI
         {
             for (int i = 0; i < _rules.Count; ++i)
             {
-                if (_rules[i].TrySelect(blackboard, out PatternDefinition pattern))
+                if (_rules[i].TrySelect(blackboard, out PatternDefinition pattern) && (!IsExcluded(blackboard, pattern)))
                 {
                     blackboard.SelectedPattern = pattern;
                     return true;
@@ -122,9 +139,23 @@ namespace Shinshi.AI
             return false;
         }
 
+        private static bool IsExcluded(BossBlackboard blackboard, PatternDefinition pattern)
+        {
+            return (!string.IsNullOrEmpty(blackboard.ExcludedPatternId)) && (pattern.DefinitionId == blackboard.ExcludedPatternId);
+        }
+
         private bool SelectWeighted(BossBlackboard blackboard)
         {
             blackboard.Catalog.CollectPatterns(blackboard.Boss.DefinitionId, blackboard.Phase, blackboard.Candidates);
+
+            // 같은 선택에서 다시 고르는 평가가 시작이 거절된 정의를 뺀다
+            for (int i = blackboard.Candidates.Count - 1; i >= 0; --i)
+            {
+                if (IsExcluded(blackboard, blackboard.Candidates[i]))
+                {
+                    blackboard.Candidates.RemoveAt(i);
+                }
+            }
 
             // 동시 장판이 상한만큼 남아 있는 패턴은 후보에서 뺀다, 빈 슬롯이 하나도 없으면 여러 장판 패턴도 뺀다
             for (int i = blackboard.Candidates.Count - 1; i >= 0; --i)
