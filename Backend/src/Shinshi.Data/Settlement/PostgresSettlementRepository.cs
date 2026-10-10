@@ -88,9 +88,10 @@ namespace Shinshi.Data.Settlement
         public const string SETTLEMENT_KIND     = "game-session.settlement";
         public const string SERVICE_CANCEL_KIND = "game-session.service-cancel";
 
-        // 사용자 결정(2026-10-01): 서비스 장애 취소는 완료한 웨이브의 기본 정기 전액(base_essence_accrued)과
-        // 정산 전 추가 정기 적립분의 50%를 지급한다. 홀수 정기는 내림한다(101 -> 50)
-        public const long SERVICE_CANCEL_ESSENCE_PERCENT = 50;
+        // 사용자 결정(2026-10-08): 서비스 장애 취소는 기본 정기(base_essence_accrued)와 정산 전 추가 정기 적립분을
+        // 전액 지급한다. 강제 종료(격리 세션)는 정책 미정이라 추가 정기 50% 내림(101 -> 50)을 유지한다
+        public const long SERVICE_CANCEL_ESSENCE_PERCENT = 100;
+        public const long FORCE_CLOSE_ESSENCE_PERCENT    = 50;
         private const long PERCENT_BASE                  = 100;
 
         // 같은 세션의 복구가 이만큼 연속 실패하면 자동 복구에서 빼고 운영자 확인을 기다린다
@@ -166,7 +167,7 @@ namespace Shinshi.Data.Settlement
         }
 
         /// <summary> 종료 이벤트 없이 프로세스가 사라진 Running 출정을 장애 취소한다. 티켓, 사용 물약을 복구하고
-        /// 기본 정기 전액과 추가 정기 50%(내림)를 지급한다 </summary>
+        /// 기본 정기와 추가 정기를 전액 지급한다 </summary>
         public async Task<OperationResult?> ServiceCancelAsync(Guid sessionId, CancellationToken cancellationToken = default)
         {
             if (sessionId == Guid.Empty)
@@ -580,7 +581,7 @@ namespace Shinshi.Data.Settlement
             List<EconomyLedgerLine> ledger = new List<EconomyLedgerLine>();
             LedgerSource source = new LedgerSource(sessionId, operationId, EconomyLedgerCodes.ACTOR_SERVER, instanceId);
             List<ParticipantRow> participants = await CompensateCancelledSessionAsync(connection, transaction, sessionId,
-                source, ledger, cancellationToken);
+                source, ledger, SERVICE_CANCEL_ESSENCE_PERCENT, cancellationToken);
 
             await connection.ExecuteAsync(new CommandDefinition(
                 """
@@ -601,8 +602,8 @@ namespace Shinshi.Data.Settlement
             return OperationDecision.Committed(closed.Revision, Guid.NewGuid().ToString("D"));
         }
 
-        /// <summary> 자동 복구가 실패 한도에 닿아 격리한 Settling 출정을 서비스 장애 취소와 같은 지급 규칙(티켓, 물약 환급과
-        /// 기본 정기 전액, 추가 정기 50% 내림)으로 닫는다. 호출자의 작업 트랜잭션에서 actorKind, actorId, operationId로 원장을 쓴다.
+        /// <summary> 자동 복구가 실패 한도에 닿아 격리한 Settling 출정을 티켓, 물약 환급과 기본 정기 전액,
+        /// 추가 정기 50% 내림(정책 미정이라 현행 유지)으로 닫는다. 호출자의 작업 트랜잭션에서 actorKind, actorId, operationId로 원장을 쓴다.
         /// 이미 다른 경로로 닫혔거나 격리되지 않은 세션이면 아무것도 바꾸지 않고 null이다 </summary>
         public async Task<long?> ForceCloseQuarantinedAsync(OperationExecutionContext context, Guid sessionId,
             string actorKind, Guid actorId, Guid operationId, CancellationToken cancellationToken = default)
@@ -637,7 +638,7 @@ namespace Shinshi.Data.Settlement
             List<EconomyLedgerLine> ledger = new List<EconomyLedgerLine>();
             LedgerSource source = new LedgerSource(sessionId, operationId, actorKind, actorId);
             List<ParticipantRow> participants = await CompensateCancelledSessionAsync(connection, transaction, sessionId,
-                source, ledger, cancellationToken);
+                source, ledger, FORCE_CLOSE_ESSENCE_PERCENT, cancellationToken);
 
             // 정산을 끝내지 못한 프로세스가 살아 있을 수 있어 Offline으로 덮지 않고 정산 종결과 같이 Draining으로 돌려보낸다
             await CloseParticipantsAsync(connection, transaction, closed.InstanceId, sessionId,
@@ -649,7 +650,7 @@ namespace Shinshi.Data.Settlement
         // 장애 취소 지급: 참가 계정을 잠그고 티켓과 사용 물약을 환급한 뒤 정기를 지급한다. 참가자 상태와 임대는 호출자가 정리한다
         private static async Task<List<ParticipantRow>> CompensateCancelledSessionAsync(DbConnection connection,
             DbTransaction transaction, Guid sessionId, LedgerSource source, List<EconomyLedgerLine> ledger,
-            CancellationToken cancellationToken)
+            long extraEssencePercent, CancellationToken cancellationToken)
         {
             List<ParticipantRow> participants = await PostgresGameSessionRepository.ReadParticipantsAsync(connection,
                 transaction, sessionId, cancellationToken);
@@ -662,7 +663,8 @@ namespace Shinshi.Data.Settlement
             // 기본과 추가는 같은 캐릭터 정기 자산이라 원장 한 줄(ServiceCancelEssence)로 합친다. 구성은 참가자 행의 두 적립 열로 재현한다
             List<(ParticipantRow Participant, long Essence, long Shards)> essence = participants
                 .Where(row => row.State == GameSessionStates.PARTICIPANT_ACTIVE)
-                .Select(row => (row, CalculateServiceCancelEssence(row.BaseEssenceAccrued, row.EssenceAccrued), 0L))
+                .Select(row => (row, CalculateCancelledEssence(row.BaseEssenceAccrued, row.EssenceAccrued,
+                    extraEssencePercent), 0L))
                 .Where(entry => entry.Item2 > 0)
                 .ToList();
             await GrantCharacterAssetsAsync(connection, transaction, essence,
@@ -736,11 +738,22 @@ namespace Shinshi.Data.Settlement
                 EconomyLedgerCodes.REASON_SERVICE_CANCEL_REFUND)));
         }
 
-        /// <summary> 장애 취소 지급 정기. 기본 적립 전액 + floor(추가 적립 x 50%)이고 출정 정기 상한으로 자른다 </summary>
+        /// <summary> 장애 취소 지급 정기. 기본 적립 + 추가 적립 전액이고 출정 정기 상한으로 자른다 </summary>
         public static long CalculateServiceCancelEssence(long baseAccrued, long extraAccrued)
         {
+            return CalculateCancelledEssence(baseAccrued, extraAccrued, SERVICE_CANCEL_ESSENCE_PERCENT);
+        }
+
+        /// <summary> 강제 종료 지급 정기. 기본 적립 전액 + floor(추가 적립 x 50%)이고 출정 정기 상한으로 자른다 </summary>
+        public static long CalculateForceCloseEssence(long baseAccrued, long extraAccrued)
+        {
+            return CalculateCancelledEssence(baseAccrued, extraAccrued, FORCE_CLOSE_ESSENCE_PERCENT);
+        }
+
+        private static long CalculateCancelledEssence(long baseAccrued, long extraAccrued, long extraEssencePercent)
+        {
             // 두 적립은 각각 출정 상한 이하라 곱과 합이 long을 넘지 않는다
-            long paid = Math.Max(0L, baseAccrued) + (Math.Max(0L, extraAccrued) * SERVICE_CANCEL_ESSENCE_PERCENT / PERCENT_BASE);
+            long paid = Math.Max(0L, baseAccrued) + (Math.Max(0L, extraAccrued) * extraEssencePercent / PERCENT_BASE);
             return Math.Min(paid, SettlementSanityLimits.MAX_SESSION_ESSENCE);
         }
 

@@ -289,8 +289,8 @@ DB 점검은 로그인과 토큰 갱신 교환(`AuthBuildPolicy`)과 새 출정 
 **장애 세션 복구.** `GET /admin/v1/sessions`는 `state`가 없으면 복구 관심 대상(RecoveryPending, 자동 복구가 실패했거나 백오프 중인 Running/Settling, 정산 대기 시간이 지난 Settling, 배정 서버 생존 증거가 없는 Running, 멈춘 Auction: 항목의 `auctionOverdue`)을, 있으면 그 상태의 세션을 준다. `POST /admin/v1/sessions/{sessionId}/recovery {operationId, reason, action}`의 action은 셋이다.
 
 - `RetrySettlement`: 저장된 종료 이벤트가 있는 Settling을 자동 복구와 같은 배정 서버 actor, 같은 정산 operationId로 정산한다.
-- `ServiceCancel`: 배정 서버 소실이 확인된 Running을 장애 취소한다. 서버가 살아 있으면 `INVALID_STATE`다.
-- `ForceClose`: 정산이 반복 실패해 격리된 세션(`state=Settling` 이고 `recovery_failures >= 5`)을 장애 취소와 같은 보상 규칙(티켓·사용 물약 환급, 기본 정기 전액, 추가 정기 50% 내림)으로 닫는다. 운영자 작업 **한 트랜잭션**에서 종결, 원장(actor_kind `Admin`, actor_id 운영자 ID), 감사를 함께 쓴다. 결과는 `Closed`/`ServiceCancelled`이고 배정 서버는 Draining이 된다. 같은 세션 행 조건부 갱신이라 늦게 온 `/settlement`와 한쪽만 이기며, 강제 종료가 이기면 그 정산은 `ALREADY_SETTLED`다. 원장은 `GET /admin/v1/operations/{운영자 ID}/{operationId}`로 본다. 격리되지 않은 Settling이나 다른 상태는 `INVALID_STATE`다.
+- `ServiceCancel`: 배정 서버 소실이 확인된 Running을 장애 취소한다. 티켓·사용 물약을 환급하고 기본 정기와 서버 원장으로 확인된 미정산 추가 정기를 모두 100% 지급한다(2026-10-08 결정, `SERVICE_CANCEL_ESSENCE_PERCENT = 100`). 서버가 살아 있으면 `INVALID_STATE`다.
+- `ForceClose`: 정산이 반복 실패해 격리된 세션(`state=Settling` 이고 `recovery_failures >= 5`)을 닫는다. 티켓·사용 물약 환급과 기본 정기 전액은 장애 취소와 같지만, 추가 정기는 현행 유지로 50% 내림만 지급한다(`FORCE_CLOSE_ESSENCE_PERCENT = 50`). 장애 취소의 100% 결정을 자동 확대하지 않았고 ForceClose의 추가 정기 지급률은 기획 미정이다. 운영자 작업 **한 트랜잭션**에서 종결, 원장(actor_kind `Admin`, actor_id 운영자 ID), 감사를 함께 쓴다. 결과는 `Closed`/`ServiceCancelled`이고 배정 서버는 Draining이 된다. 같은 세션 행 조건부 갱신이라 늦게 온 `/settlement`와 한쪽만 이기며, 강제 종료가 이기면 그 정산은 `ALREADY_SETTLED`다. 원장은 `GET /admin/v1/operations/{운영자 ID}/{operationId}`로 본다. 격리되지 않은 Settling이나 다른 상태는 `INVALID_STATE`다.
 
 RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STATE`다. 격리 카운터 `recovery_failures`를 되돌리는 API는 없다.
 
@@ -306,7 +306,7 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 - 계정 강제 종료(kick)는 현재 접속을 유지하고 비밀번호 로그인을 막지 않는다. 계정 접속 임대는 서버 heartbeat가 계속 연장하고, 같은 아이디와 비밀번호로 새 토큰을 받을 수 있다. 로그인 차단과 즉시 차단은 제재(P1)나 서버 쪽 연결 종료 경로가 필요하다.
 - 어드민 쓰기는 커밋까지 행위자 행을 `FOR SHARE`로 잡고, 수동 복구는 서버 복구 동안 잡는다. 그 운영자의 비활성화나 로그인은 그동안 기다리고, 잠금 제한(2초, 실행기 재시도 3회)을 넘으면 503이다.
 - 운영자 작업 키 결속은 모든 업무 변경이 효과 전에 공유한다. 일반 쓰기가 진행 중인 경우와 복구가 먼저 결속한 경우 모두 다른 본문의 같은 operationId는 효과 없이 거절한다. 실제 PostgreSQL 회귀 테스트에서 복구의 결과 키도 보존되는 것을 확인했다. 일시 실패한 최초 요청도 키 결속은 남으므로 같은 본문으로 재시도하고, 다른 업무는 새 operationId를 쓴다.
-- 세션 강제 종료(`ForceClose`)는 원래 정산안 대신 장애 취소 보상을 적용한다. 원래 보상과 차이가 있으면 운영자가 `RecoveryCompensation` 보정 지급으로 메운다.
+- 세션 강제 종료(`ForceClose`)는 원래 정산안 대신 장애 취소 보상 틀(추가 정기만 50%)을 적용한다. 원래 보상과 차이가 있으면 운영자가 `RecoveryCompensation` 보정 지급으로 메운다.
 - 기능 차단 중에 처음 보낸 operationId는 저장되지 않으므로 차단이 풀린 뒤 같은 ID로 다시 오면 실행된다. 클라이언트가 차단 중 요청을 계속 재시도하면 해제 직후 실행될 수 있다.
 - 생존 판정 보류는 프로세스별이다. 한 인스턴스만 DB 단절을 겪었으면 다른 인스턴스의 수동 취소는 막히지 않는다. 풀 전체 heartbeat 공백은 장애 취소 SQL이 단절로 보고 거절한다.
 - 구조가 손상된 보상 JSON의 우편은 목록에서 빠지지만 그 우편의 수령과 어드민 조회는 500이다.

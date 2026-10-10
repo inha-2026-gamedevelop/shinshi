@@ -35,7 +35,7 @@ namespace Shinshi.Backend.Tests.Admin
         private const long   POTIONS_RESERVED = 2;
         private const long   ESSENCE_GRANT    = 70;
         private const long   EXTRA_ACCRUED    = 101;
-        private const long   CANCEL_ESSENCE   = 50;
+        private const long   CANCEL_ESSENCE   = EXTRA_ACCRUED;
         private const int    PAGE_SIZE        = 100;
         private const int    MISMATCH_BATCH   = 1000;
         private const int    DUNGEONS         = 4;

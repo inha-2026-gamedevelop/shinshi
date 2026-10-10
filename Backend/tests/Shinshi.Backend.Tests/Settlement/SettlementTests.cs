@@ -31,9 +31,9 @@ namespace Shinshi.Backend.Tests.Settlement
         private const long   ODD_ACCRUED      = 101;
         private const long   EVEN_ACCRUED     = 40;
 
-        // 50% 내림 기대값
-        private const long   ODD_HALF         = 50;
-        private const long   EVEN_HALF        = 20;
+        // 장애 취소는 추가 정기 전액이라 홀수 적립도 내림 없이 그대로 지급한다
+        private const long   ODD_PAID         = ODD_ACCRUED;
+        private const long   EVEN_PAID        = EVEN_ACCRUED;
         private const int    CONCURRENT_CALLS = 4;
         private const int    RECOVERY_BATCH   = 8;
 
@@ -113,9 +113,9 @@ namespace Shinshi.Backend.Tests.Settlement
             Assert.Equal(0L, (await environment.ReadWalletAsync(player.AccountId)).Essence);
         }
 
-        /// <summary> 종료 이벤트 없이 프로세스가 사라지면 티켓과 사용 물약을 복구하고 쌓인 추가 정기의 50%를 내림으로 지급한다 </summary>
+        /// <summary> 종료 이벤트 없이 프로세스가 사라지면 티켓과 사용 물약을 복구하고 쌓인 추가 정기를 전액 한 번만 지급한다 </summary>
         [PostgresFact]
-        public async Task ServiceCancel_LostInstance_RefundsAndGrantsHalfEssenceOnce()
+        public async Task ServiceCancel_LostInstance_RefundsAndGrantsFullEssenceOnce()
         {
             await using SessionTestEnvironment environment = await SessionTestEnvironment.CreateAsync();
             TestPlayer odd = await environment.CreatePlayerAsync(TICKETS, POTIONS);
@@ -146,8 +146,8 @@ namespace Shinshi.Backend.Tests.Settlement
             Assert.Equal(0, again.Cancelled + again.Settled);
             WalletSnapshot oddWallet = await environment.ReadWalletAsync(odd.AccountId);
             WalletSnapshot evenWallet = await environment.ReadWalletAsync(even.AccountId);
-            Assert.Equal(ODD_HALF, oddWallet.Essence);
-            Assert.Equal(EVEN_HALF, evenWallet.Essence);
+            Assert.Equal(ODD_PAID, oddWallet.Essence);
+            Assert.Equal(EVEN_PAID, evenWallet.Essence);
             foreach (WalletSnapshot wallet in new[] { oddWallet, evenWallet })
             {
                 Assert.Equal(TICKETS, wallet.Tickets);

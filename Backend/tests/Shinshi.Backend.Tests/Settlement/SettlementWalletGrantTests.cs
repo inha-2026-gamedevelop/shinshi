@@ -16,7 +16,7 @@ using Shinshi.Data.Settlement;
 
 namespace Shinshi.Backend.Tests.Settlement
 {
-    /// <summary> 정산안 지갑 칸(정련편, 티켓, 엽전)과 부적 칸의 1회 지급과 실제 원장, 장애 취소의 기본 전액 + 추가 50%를
+    /// <summary> 정산안 지갑 칸(정련편, 티켓, 엽전)과 부적 칸의 1회 지급과 실제 원장, 장애 취소의 기본 + 추가 전액 지급을
     /// 실제 PostgreSQL에서 검사한다 </summary>
     public sealed class SettlementWalletGrantTests
     {
@@ -43,10 +43,11 @@ namespace Shinshi.Backend.Tests.Settlement
         // 정기, 정련편, 티켓, 엽전, 부적 두 효과, 보스 재료 하나
         private const long   SETTLEMENT_LINES = 7;
 
-        // 장애 취소: 기본 전액 + 추가 floor(50%)
+        // 장애 취소: 기본 + 추가 전액(홀수 적립도 내림 없음). 강제 종료는 추가 floor(50%)를 유지한다
         private const long   ODD_BASE         = 200;
         private const long   ODD_EXTRA        = 101;
-        private const long   ODD_PAID         = 250;
+        private const long   ODD_PAID         = 301;
+        private const long   ODD_FORCE_PAID   = 250;
         private const long   EVEN_BASE        = 100;
         private const long   EVEN_EXTRA       = 0;
         private const long   EVEN_PAID        = 100;
@@ -134,9 +135,9 @@ namespace Shinshi.Backend.Tests.Settlement
                 """));
         }
 
-        /// <summary> 종료 이벤트 없이 프로세스가 사라지면 완료 웨이브 기본 정기 전액과 추가 정기 50%(내림)를 한 번 지급한다 </summary>
+        /// <summary> 종료 이벤트 없이 프로세스가 사라지면 기본 정기와 추가 정기를 전액 한 번 지급한다 </summary>
         [PostgresFact]
-        public async Task ServiceCancel_BaseAndExtraAccrued_GrantsFullBasePlusHalfExtraOnce()
+        public async Task ServiceCancel_BaseAndExtraAccrued_GrantsFullBaseAndFullExtraOnce()
         {
             await using SessionTestEnvironment environment = await SessionTestEnvironment.CreateAsync();
             TestPlayer odd = await environment.CreatePlayerAsync(TICKETS, POTIONS);
@@ -174,18 +175,31 @@ namespace Shinshi.Backend.Tests.Settlement
                 new { Reason = EconomyLedgerCodes.REASON_SERVICE_CANCEL_GRANT }));
         }
 
-        /// <summary> 장애 취소 지급 정기는 기본 전액 + floor(추가 / 2)이고 출정 상한을 넘지 않는다 </summary>
+        /// <summary> 장애 취소 지급 정기는 기본 + 추가 전액이고 출정 상한을 넘지 않는다 </summary>
         [Theory]
         [InlineData(ODD_BASE, ODD_EXTRA, ODD_PAID)]
+        [InlineData(EVEN_BASE, EVEN_EXTRA, EVEN_PAID)]
+        [InlineData(0, 1, 1)]
+        [InlineData(600, 1500, 2100)]
+        [InlineData(SettlementSanityLimits.MAX_SESSION_ESSENCE, SettlementSanityLimits.MAX_SESSION_ESSENCE,
+            SettlementSanityLimits.MAX_SESSION_ESSENCE)]
+        public void CalculateServiceCancelEssence_FullBasePlusFullExtra(long baseAccrued, long extraAccrued, long expected)
+        {
+            Assert.Equal(expected, PostgresSettlementRepository.CalculateServiceCancelEssence(baseAccrued, extraAccrued));
+        }
+
+        /// <summary> 강제 종료는 정책 미정이라 기본 전액 + floor(추가 / 2)를 유지한다 </summary>
+        [Theory]
+        [InlineData(ODD_BASE, ODD_EXTRA, ODD_FORCE_PAID)]
         [InlineData(EVEN_BASE, EVEN_EXTRA, EVEN_PAID)]
         [InlineData(0, 1, 0)]
         [InlineData(600, 1500, 1350)]
         [InlineData(SettlementSanityLimits.MAX_SESSION_ESSENCE, SettlementSanityLimits.MAX_SESSION_ESSENCE,
             SettlementSanityLimits.MAX_SESSION_ESSENCE)]
-        public void CalculateServiceCancelEssence_FullBasePlusHalfExtraRoundedDown(long baseAccrued, long extraAccrued,
+        public void CalculateForceCloseEssence_FullBasePlusHalfExtraRoundedDown(long baseAccrued, long extraAccrued,
             long expected)
         {
-            Assert.Equal(expected, PostgresSettlementRepository.CalculateServiceCancelEssence(baseAccrued, extraAccrued));
+            Assert.Equal(expected, PostgresSettlementRepository.CalculateForceCloseEssence(baseAccrued, extraAccrued));
         }
 
         /// <summary> 기본 정기 적립도 출정 누적 상한을 넘는 배치는 물약 소비까지 포함해 전부 거절한다. 추가 정기 상한과는 따로 센다 </summary>

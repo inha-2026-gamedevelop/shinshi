@@ -45,4 +45,4 @@ MonoBehaviour:
   _auctionExtendTo: 10
   _auctionMaxSeconds: 120
   _auctionFeeRate: 0
-  _serviceCancelExtraEssence: 1
+  _serviceCancelExtraEssence: 2

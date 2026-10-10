@@ -27,18 +27,27 @@ namespace Shinshi.Network
         private const int  TALISMAN_SEPARATOR_INDEX = 3;
         private const int  TALISMAN_CHOICE_INDEX    = 5;
 
+        // 장애 취소는 적립한 추가 정기를 전액 지급한다(2026-10-08 결정). 백엔드 SERVICE_CANCEL_ESSENCE_PERCENT와 같은 값이다
+        private const long SERVICE_CANCEL_EXTRA_ESSENCE_PERCENT = 100;
+
         private static readonly Comparison<SettlementItemGrant> _itemOrder = CompareItems;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        /// <summary> 추가 정기 지급률(%), 성공만 전액이고 실패, 포기, 유예 만료, 전멸, 장애 취소는 실패 비율이다 </summary>
+        /// <summary> 추가 정기 지급률(%), 성공과 장애 취소는 전액이고 실패, 포기, 유예 만료, 전멸은 실패 비율이다 </summary>
         public static long GetExtraEssencePercent(ESessionEndReason reason)
         {
-            return (reason == ESessionEndReason.Success)
-                ? Constants.Session.SUCCESS_EXTRA_ESSENCE_PERCENT
-                : Constants.Session.FAILURE_EXTRA_ESSENCE_PERCENT;
+            switch (reason)
+            {
+                case ESessionEndReason.Success:
+                    return Constants.Session.SUCCESS_EXTRA_ESSENCE_PERCENT;
+                case ESessionEndReason.ServiceCancelled:
+                    return SERVICE_CANCEL_EXTRA_ESSENCE_PERCENT;
+                default:
+                    return Constants.Session.FAILURE_EXTRA_ESSENCE_PERCENT;
+            }
         }
 
         /// <summary> 적립한 추가 정기 중 지급할 양, 정수 나눗셈으로 내림한다 </summary>

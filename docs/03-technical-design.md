@@ -261,9 +261,9 @@ DB를 직접 쓰는 것은 API뿐이다. 게임 서버도 API를 거친다. API�
 
 전투 상태 체크포인트는 30초마다 저장한다. `DungeonSessionHost`가 백엔드를 쓰는 진행 중 출정에서 30초(`Constants.Network.CHECKPOINT_INTERVAL_SECONDS`)마다 명단·진행 값과 전투 런타임이 준 참가자 체력·자원, 보스 체력 비율·페이즈를 이진으로 묶어 `/checkpoints`에 보낸다. 앞 요청이 응답을 기다리는 중이면 그 주기는 건너뛰고 재시도하지 않으며, 저장 상한을 넘는 상태는 보내지 않고 경고만 남긴다. 실제 서버 빌드·DB에서 주기 저장을 돌려 본 검증은 아직 없다. 체크포인트는 경제 원장의 대체물이 아니다. 체험판 초기안은 프로세스 생존 시 인메모리 권위 상태로 재접속하고, 프로세스 소실 시 오래된 체크포인트만으로 보스를 되살려 이어가지 않는다. 완전 복구 검증 전에는 **확인된 서비스 장애 취소**로 처리한다. 장애 취소는 소모 티켓·실제로 사용한 물약을 같은 보상 ID로 한 번 복구하며, 이미 확정된 전리품을 재추첨/재지급하지 않는다. 개인 연결 종료·의도적 포기는 장애 환급 사유가 아니다.
 
-서비스 장애 취소는 완료 웨이브 기본 정기 적립분과 정산 전 추가 정기 적립분을 모두 100% 지급한다(2026-10-08 사용자 결정, 2026-10-01의 추가 정기 50% 정책 대체). API는 `session_participants.base_essence_accrued`와 `essence_accrued`를 구분하고 장애 취소 트랜잭션에서 서버 원장으로 확인된 미정산분만 한 번 적용한다. 일반 종료의 정산안은 게임 서버가 계산하며 장애 취소는 저장된 출정 원장을 API가 보상 처리한다. 현재 API·서버 규칙은 추가 정기 50%이고 `SessionConfig.asset`의 `_serviceCancelExtraEssence`도 `HalfLoss`(1)다. 100% 정책 적용·회귀 검증은 후속 작업이며 일반 실패·포기의 50% 보존 규칙은 유지한다.
+서비스 장애 취소는 완료 웨이브 기본 정기 적립분과 정산 전 추가 정기 적립분을 모두 100% 지급한다(2026-10-08 사용자 결정, 2026-10-01의 추가 정기 50% 정책 대체). API는 `session_participants.base_essence_accrued`와 `essence_accrued`를 구분하고 장애 취소 트랜잭션에서 서버 원장으로 확인된 미정산분만 한 번 적용한다. 일반 종료의 정산안은 게임 서버가 계산하며 장애 취소는 저장된 출정 원장을 API가 보상 처리한다. 현재 구현은 이 결정을 따른다. `PostgresSettlementRepository`의 서비스 장애 취소는 100%, `SettlementRules`의 `ServiceCancelled`는 추가 정기 100%, `SessionConfig.asset`의 `_serviceCancelExtraEssence`는 `FullGrant`(2)다. 일반 실패·포기·유예 만료·전멸의 추가 정기 50% 보존 규칙은 유지한다. 관련 회귀 테스트는 실제 PostgreSQL 18 격리 컨테이너에서 Settlement·AdminSessionRecovery·AdminSessionForceClose 134/134(skip 0)로 통과했다(2026-10-10 실제 검증). 실제 서버 소실에서 장애 취소가 일어나는 실행(M2/M3)은 검증하지 않았다.
 
-**운영 강제 종료 경계.** 이미 종료되어 정산 실패로 격리된 `Settling`의 `ForceClose`는 진행 중 서버 소실로 취소하는 `ServiceCancel`과 구분한다. 현재 두 경로는 `CompensateCancelledSessionAsync`를 공유한다. 2026-10-08의 100% 결정을 `ForceClose`에 자동 확대하지 않는다. 원래 전투 결과의 지급률을 보존할지, 정산 오류도 100% 보상할지는 사용자 결정 대기이며 공용 함수의 비율만 일괄 변경하면 안 된다.
+**운영 강제 종료 경계.** 이미 종료되어 정산 실패로 격리된 `Settling`의 `ForceClose`는 진행 중 서버 소실로 취소하는 `ServiceCancel`과 구분한다. 두 경로는 `CompensateCancelledSessionAsync`를 공유하되 추가 정기 지급률을 인자로 받는다. 현재 `ServiceCancel`은 100%(`SERVICE_CANCEL_ESSENCE_PERCENT`), `ForceClose`는 기본 정기 전액에 추가 정기 50% 내림(`FORCE_CLOSE_ESSENCE_PERCENT`)으로 분리되어 있다. 2026-10-08의 100% 결정을 `ForceClose`에 자동 확대하지 않았다. 원래 전투 결과의 지급률을 보존할지, 정산 오류도 100% 보상할지는 기획 미정(사용자 결정 대기)이며 결정 전에는 `ForceClose`의 50%를 현행으로 유지한다.
 
 **종료·정산 장애 계약.** 일반 종료의 정산 규칙은 던전 서버의 `SettlementRules`가 계산하고 API는 저장된 정산안을 검증·적용한다. 종료 정산안이 없는 확인된 서비스 장애 취소는 위에 정한 원장 기반 보상 규칙을 API가 수행한다. 이를 위해 순서를 고정한다.
 
@@ -428,7 +428,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 | 항목 | 결정·적용 경계 |
 |---|---|
 | 동시 접속 | 새 연결 거절, “이미 접속 중인 계정”. 계정 접속 임대15초·heartbeat 연장 |
-| 서비스 장애 취소 | 2026-10-08 정책: 기본·추가 정기 적립분 전액. 현재 규칙/Backend/SessionConfig는 추가 50%이며 정책 변경 적용·검증 잔여 |
+| 서비스 장애 취소 | 2026-10-08 정책: 기본·추가 정기 적립분 전액. 구현됨(Backend 장애 취소 100%, `SettlementRules` `ServiceCancelled` 100%, `SessionConfig` `FullGrant`). 회귀 테스트는 실제 PostgreSQL 18 격리 컨테이너 134/134(2026-10-10). 실제 서버 소실 실행(M2/M3) 미검증. `ForceClose` 추가 50%는 현행 유지·기획 미정 |
 | 일반전 종료 경합 | 420초와 마지막 처치 같은 틱은 성공 우선 |
 | 보스 시험 순서 | 보스 전체 실행 시험은 마지막 M-Boss에서 수행. 생산 보스의 성공/종료 연결은 별도 구현 잔여 |
 | 체험판 운영 도구 | 어드민 API·CLI만, 별도 웹 화면 없음. P0 API·운영자 역할·감사 구현됨(U25), 명령줄 도구 `Backend/src/Shinshi.AdminCli`. 운영 실행 미검증 |
