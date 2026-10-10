@@ -27,6 +27,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         private const string P02_ID       = "wolbaek_p02";
+        private const string HARD_P02_ID  = "wolbaek_hard_p02";
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const string WOLBAEK_ID   = "boss_wolbaek";
         private const float  TEST_HREF    = 3541f; // 테스트가 명시적으로 주입하는 값이다
@@ -126,6 +127,8 @@ namespace Shinshi.Tests
         private sealed class FanListener : IBossFanTelegraphListener
         {
             public int                          StartCount;
+            public float                        StartRadius;
+            public float                        StartArc;
             public int                          LockCount;
             public int                          HitEventCount;
             public int                          LastHitCount = -1;
@@ -142,6 +145,8 @@ namespace Shinshi.Tests
                 Order.Add("start");
                 ++StartCount;
                 StartDirection = direction;
+                StartRadius    = radius;
+                StartArc       = arcAngle;
             }
 
             public void OnAimChanged(int castInstanceId, Vector3 direction)
@@ -185,13 +190,14 @@ namespace Shinshi.Tests
             public PatternDefinition    Definition { get; }
             public BossPatternContext   Context  { get; }
 
-            public Rig(PatternDefinition definition = null)
+            // create가 있으면 그 팩토리 경로로 패턴을 만든다. 정의가 팩토리를 거쳐 실제 부채꼴 실행이 되는지 확인하려는 용도다
+            public Rig(PatternDefinition definition = null, System.Func<FanListener, BossFanBlastPattern> create = null)
             {
                 Query.Players.Add(Tracked);
                 Gate       = new BossDamageGate(Resolver);
                 Gate.Open();
                 Definition = definition ?? MakeP02();
-                Pattern    = new BossFanBlastPattern(TEST_HREF, Listener);
+                Pattern    = (create == null) ? new BossFanBlastPattern(TEST_HREF, Listener) : create(Listener);
                 Context    = new BossPatternContext(Definition, Gate.IssueInstanceId(), Tracked.CombatId, Self, Query, Gate);
             }
 
@@ -814,6 +820,103 @@ namespace Shinshi.Tests
             Assert.AreEqual(0.5f, p02.RecoverySeconds);
 
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
+        }
+
+        /****************************************
+        *            Wolbaek Hard P02
+        ****************************************/
+
+        private static PatternDefinition LoadAssetPattern(string id)
+        {
+            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
+            Assert.IsTrue(catalog.TryGetPattern(id, out PatternDefinition pattern), id);
+            return pattern;
+        }
+
+        // 실제 에셋 정의를 팩토리가 만든 부채꼴 실행에 올린다
+        private static Rig MakeAssetRig(string id)
+        {
+            PatternDefinition definition = LoadAssetPattern(id);
+            return new Rig(definition, listener =>
+                (BossFanBlastPattern)new WolbaekPatternFactory(TEST_HREF, listener).Create(definition));
+        }
+
+        // 하드 P02도 같은 부채꼴 실행을 만든다. 이동 창구 같은 추가 창구는 필요 없다
+        [Test]
+        public void Factory_HardP02_CreatesFanLikeEasyP02()
+        {
+            PatternDefinition hard = LoadAssetPattern(HARD_P02_ID);
+            WolbaekPatternFactory factory = new WolbaekPatternFactory(TEST_HREF);
+
+            Assert.IsTrue(factory.CanCreate(hard));
+            Assert.IsInstanceOf<BossFanBlastPattern>(factory.Create(hard));
+            Assert.AreNotSame(factory.Create(hard), factory.Create(hard));
+            Assert.IsTrue(factory.CanCreate(LoadAssetPattern(P02_ID)));
+        }
+
+        // 예고가 보여 주는 사거리와 각도는 정의 값이다. 이지 P02는 6m, 100도 그대로다
+        [TestCase(HARD_P02_ID, 7f, 110f)]
+        [TestCase(P02_ID, 6f, 100f)]
+        public void Begin_AssetP02_ReportsItsOwnRangeAndArc(string id, float expectedRange, float expectedArc)
+        {
+            Rig rig = MakeAssetRig(id);
+            rig.Start(0.0);
+
+            Assert.AreEqual(expectedRange, rig.Listener.StartRadius);
+            Assert.AreEqual(expectedArc, rig.Listener.StartArc);
+            Assert.AreEqual(1f, rig.Definition.TelegraphSeconds);
+        }
+
+        // 두 난이도가 갈리는 위치를 포함한다. (0도, 6.5m)와 (+-52도, 5m)는 하드에서만 맞고, 7.01m와 55.1도는 둘 다 빗나간다
+        [TestCase(HARD_P02_ID, 0f, 6.99f, true)]
+        [TestCase(HARD_P02_ID, 0f, 7f, true)]
+        [TestCase(HARD_P02_ID, 0f, 7.01f, false)]
+        [TestCase(HARD_P02_ID, 0f, 6.5f, true)]
+        [TestCase(HARD_P02_ID, 52f, 5f, true)]
+        [TestCase(HARD_P02_ID, -52f, 5f, true)]
+        [TestCase(HARD_P02_ID, 54.9f, 5f, true)]
+        [TestCase(HARD_P02_ID, 55f, 5f, true)]
+        [TestCase(HARD_P02_ID, 55.1f, 5f, false)]
+        [TestCase(HARD_P02_ID, -55f, 5f, true)]
+        [TestCase(HARD_P02_ID, -55.1f, 5f, false)]
+        [TestCase(HARD_P02_ID, 60f, 5f, false)]
+        [TestCase(P02_ID, 0f, 6f, true)]
+        [TestCase(P02_ID, 0f, 6.01f, false)]
+        [TestCase(P02_ID, 0f, 6.5f, false)]
+        [TestCase(P02_ID, 50f, 5f, true)]
+        [TestCase(P02_ID, 50.1f, 5f, false)]
+        [TestCase(P02_ID, 52f, 5f, false)]
+        [TestCase(P02_ID, -52f, 5f, false)]
+        public void Strike_AssetP02_HitsOnlyInsideItsOwnSector(string id, float degrees, float distance, bool expectedHit)
+        {
+            Rig rig = MakeAssetRig(id);
+            rig.AddPlayer(PROBE_ID, Polar(degrees, distance));
+            rig.Start(0.0);
+
+            rig.Fsm.Tick(1.0);
+
+            Assert.AreEqual(expectedHit ? 1 : 0, CountHits(rig.Resolver, PROBE_ID));
+            Assert.AreEqual(1, CountHits(rig.Resolver, rig.Tracked.CombatId));
+        }
+
+        // 사거리와 각도 말고는 이지 P02와 같은 피해 요청을 보낸다
+        [Test]
+        public void Strike_HardP02_SendsSameDamageAsEasyWithOwnDefinitionId()
+        {
+            Rig hardRig = MakeAssetRig(HARD_P02_ID);
+            Rig easyRig = MakeAssetRig(P02_ID);
+            hardRig.Start(0.0);
+            easyRig.Start(0.0);
+
+            hardRig.Fsm.Tick(1.0);
+            easyRig.Fsm.Tick(1.0);
+
+            DamageRequest hardRequest = hardRig.Resolver.Requests.Find(r => r.HitTargetId == hardRig.Tracked.CombatId);
+            DamageRequest easyRequest = easyRig.Resolver.Requests.Find(r => r.HitTargetId == easyRig.Tracked.CombatId);
+            Assert.AreEqual(easyRequest.RawDamage, hardRequest.RawDamage);
+            Assert.AreEqual(easyRequest.Flags, hardRequest.Flags);
+            Assert.AreEqual(HARD_P02_ID, hardRequest.SourceDefinitionId);
+            Assert.AreEqual(P02_ID, easyRequest.SourceDefinitionId);
         }
     }
 }

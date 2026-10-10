@@ -170,6 +170,9 @@ namespace Shinshi.Data
             [SerializeField] private string                         _bossId;
             [SerializeField] private int                            _phase;                 // 1부터, 이 페이즈에서만 후보가 된다
 
+            // 이 패턴이 속한 난이도. 필드가 없는 기존 에셋과 기존 정의는 0인 Easy로 읽혀 값이 바뀌지 않는다
+            [SerializeField] private EBossDifficulty                _difficulty;
+
             [SerializeField] private float                          _baseWeight;
             [SerializeField] private float[]                        _distanceMultipliers;   // 근, 중, 원
             [SerializeField] private float[]                        _directionMultipliers;  // 전, 측, 후
@@ -226,6 +229,7 @@ namespace Shinshi.Data
             public string                         DisplayKey            => _displayKey;
             public string                         BossId                => _bossId;
             public int                            Phase                 => _phase;
+            public EBossDifficulty                Difficulty            => _difficulty;
             public float                          BaseWeight            => _baseWeight;
             public IReadOnlyList<float>           DistanceMultipliers   => _distanceMultipliers;
             public IReadOnlyList<float>           DirectionMultipliers  => _directionMultipliers;
@@ -304,12 +308,13 @@ namespace Shinshi.Data
             /// <summary> 범주만 정하고 수치를 모두 미지정으로 둔 패턴, 배율 표는 열 수만 맞춘다 </summary>
             public PatternDefinition(string definitionId, string bossId, int phase, EEnemyAttackShape shape, bool guardable,
                 EBossActionState controlPhase = NO_CONTROL_PHASE, bool controlCancelsPattern = false,
-                bool areaSkipsMissedRounds = false)
+                bool areaSkipsMissedRounds = false, EBossDifficulty difficulty = EBossDifficulty.Easy)
                 : this(definitionId, bossId, phase, UNSET,
                     new float[DISTANCE_BAND_COUNT], new float[DIRECTION_BAND_COUNT], new float[NEARBY_BAND_COUNT], new float[RECENT_USE_SLOTS],
                     UNSET, UNSET, UNSET, UNSET, UNSET,
                     new EnemyCatalogSO.AttackShapeSpec(shape, UNSET, UNSET, UNSET, UNSET), UNSET, guardable,
-                    controlPhase, UNSET, controlCancelsPattern, areaSkipsMissedRounds: areaSkipsMissedRounds)
+                    controlPhase, UNSET, controlCancelsPattern, areaSkipsMissedRounds: areaSkipsMissedRounds,
+                    difficulty: difficulty)
             {
             }
 
@@ -323,8 +328,10 @@ namespace Shinshi.Data
                 int projectileCount = 0, float projectileIntervalSeconds = 0f, int areaTargetCount = 0,
                 bool areaSkipsMissedRounds = false, int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
                 int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f,
-                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f)
+                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f,
+                EBossDifficulty difficulty = EBossDifficulty.Easy)
             {
+                _difficulty                = difficulty;
                 _starVertexCount           = starVertexCount;
                 _starRingRadius            = starRingRadius;
                 _starConnectStep           = starConnectStep;
@@ -395,6 +402,11 @@ namespace Shinshi.Data
         public const string WOLBAEK_P2_P05_ID = "wolbaek_ph2_p05";
         public const string WOLBAEK_P2_P06_ID = "wolbaek_ph2_p06";
 
+        // 월백 하드 1페이즈 패턴 ID, 이지 ID와 겹치지 않는다. P01 돌진, P02 부채꼴, P03 중심 폭발만 있고 나머지는 아직 없다
+        public const string WOLBAEK_HARD_P01_ID = "wolbaek_hard_p01";
+        public const string WOLBAEK_HARD_P02_ID = "wolbaek_hard_p02";
+        public const string WOLBAEK_HARD_P03_ID = "wolbaek_hard_p03";
+
         private const float NEUTRAL_MULTIPLIER = 1f;
 
         // 한 시전의 발 수 상한, 서버 지속물 관리자의 동시 비행 슬롯 수와 같다
@@ -426,6 +438,11 @@ namespace Shinshi.Data
         private const string CHEOLGAK_ID                     = "boss_cheolgak";
         private const string MUCHEOL_ID                      = "boss_mucheol";
         private const int    WOLBAEK_PHASE_ONE_PATTERN_COUNT = 6;
+
+        // 월백 하드 구성, 1페이즈 P01~P06 여섯 개와 2페이즈 P01~P07 일곱 개
+        private const int    WOLBAEK_HARD_PHASE_ONE_PATTERN_COUNT = 6;
+        private const int    WOLBAEK_HARD_PHASE_TWO_PATTERN_COUNT = 7;
+        private const int    NO_EXPECTED_COUNT                    = 0;
 
         /****************************************
         *                Fields
@@ -691,8 +708,15 @@ namespace Shinshi.Data
             return _patternLookup.TryGet(_patterns, patternId, out pattern);
         }
 
-        /// <summary> 보스와 페이즈에 속한 패턴을 결과 목록에 채운다, 서버 선택기가 전투 시작 때 한 번 만든다 </summary>
+        // 난이도를 받지 않는 호출은 모두 Easy로 본다. 하드 패턴이 같은 보스와 페이즈에 들어와도 기존 호출의 결과가 달라지지 않는다
+        /// <summary> 보스와 페이즈에 속한 이지 패턴을 결과 목록에 채운다, 서버 선택기가 전투 시작 때 한 번 만든다 </summary>
         public void CollectPatterns(string bossId, int phase, List<PatternDefinition> results)
+        {
+            CollectPatterns(bossId, phase, EBossDifficulty.Easy, results);
+        }
+
+        /// <summary> 보스, 페이즈, 난이도에 속한 패턴을 결과 목록에 채운다, 목록은 먼저 비운다 </summary>
+        public void CollectPatterns(string bossId, int phase, EBossDifficulty difficulty, List<PatternDefinition> results)
         {
             results.Clear();
             if (_patterns == null)
@@ -703,24 +727,36 @@ namespace Shinshi.Data
             for (int i = 0; i < _patterns.Length; ++i)
             {
                 PatternDefinition pattern = _patterns[i];
-                if ((pattern != null) && (pattern.BossId == bossId) && (pattern.Phase == phase))
+                if ((pattern != null) && (pattern.BossId == bossId) && (pattern.Phase == phase) && (pattern.Difficulty == difficulty))
                 {
                     results.Add(pattern);
                 }
             }
         }
 
-        /// <summary> 보스와 그 1페이즈 패턴의 필수 수치가 모두 지정됐고 범위가 맞는가. 서버 세션은 이 값이 거짓인 보스의 전투를 열지 않는다. 2페이즈 패턴은 IsPhaseTuned가 따로 본다 </summary>
+        /// <summary> 보스와 그 1페이즈 이지 패턴의 필수 수치가 모두 지정됐고 범위가 맞는가. 서버 세션은 이 값이 거짓인 보스의 전투를 열지 않는다. 2페이즈 패턴은 IsPhaseTuned가 따로 본다 </summary>
         public bool IsTuned(string bossId)
         {
-            return IsPhaseTuned(bossId, FIRST_PHASE);
+            return IsTuned(bossId, EBossDifficulty.Easy);
         }
 
-        /// <summary> 보스와 그 페이즈의 모든 패턴이 지정됐고 범위가 맞는가 </summary>
+        /// <summary> 보스와 그 난이도의 1페이즈 패턴 수치가 모두 지정됐고 범위가 맞는가 </summary>
+        public bool IsTuned(string bossId, EBossDifficulty difficulty)
+        {
+            return IsPhaseTuned(bossId, FIRST_PHASE, difficulty);
+        }
+
+        /// <summary> 보스와 그 페이즈의 모든 이지 패턴이 지정됐고 범위가 맞는가 </summary>
         public bool IsPhaseTuned(string bossId, int phase)
         {
+            return IsPhaseTuned(bossId, phase, EBossDifficulty.Easy);
+        }
+
+        /// <summary> 보스와 그 페이즈, 난이도의 모든 패턴이 지정됐고 범위가 맞는가 </summary>
+        public bool IsPhaseTuned(string bossId, int phase, EBossDifficulty difficulty)
+        {
             var errors = new List<string>();
-            ValidateTuning(bossId, phase, errors);
+            ValidateTuning(bossId, phase, difficulty, errors);
             return errors.Count == 0;
         }
 
@@ -743,16 +779,23 @@ namespace Shinshi.Data
             return errors.Count == 0;
         }
 
-        /// <summary> 보스와 그 1페이즈 패턴의 미지정 수치와 범위 오류를 결과 목록에 더한다. 미지정 수치를 기본값으로 대신 채워 전투를 열지 않는다 </summary>
+        /// <summary> 보스와 그 1페이즈 이지 패턴의 미지정 수치와 범위 오류를 결과 목록에 더한다. 미지정 수치를 기본값으로 대신 채워 전투를 열지 않는다 </summary>
         public void ValidateTuning(string bossId, List<string> errors)
         {
-            ValidateTuning(bossId, FIRST_PHASE, errors);
+            ValidateTuning(bossId, FIRST_PHASE, EBossDifficulty.Easy, errors);
+        }
+
+        /// <summary> 보스와 한 페이즈 이지 패턴의 미지정 수치와 범위 오류를 결과 목록에 더한다 </summary>
+        public void ValidateTuning(string bossId, int phase, List<string> errors)
+        {
+            ValidateTuning(bossId, phase, EBossDifficulty.Easy, errors);
         }
 
         // 페이즈별로 나누는 이유: 2페이즈 선택 데이터는 먼저 들어오고 공격 수치는 공격을 구현할 때 들어오므로, 한꺼번에 검사하면
         // 2페이즈 데이터를 넣는 순간 1페이즈 전투 시작까지 막힌다. 1페이즈 검사 기준은 그대로이고 2페이즈 검사를 우회하지 않는다
-        /// <summary> 보스와 한 페이즈 패턴의 미지정 수치와 범위 오류를 결과 목록에 더한다 </summary>
-        public void ValidateTuning(string bossId, int phase, List<string> errors)
+        // 난이도별로 나누는 이유도 같다. 하드 패턴이 미지정인 동안에도 이지 전투가 열려야 하고, 이지 패턴이 하드 검사를 채워 주면 안 된다
+        /// <summary> 보스와 한 페이즈, 난이도 패턴의 미지정 수치와 범위 오류를 결과 목록에 더한다 </summary>
+        public void ValidateTuning(string bossId, int phase, EBossDifficulty difficulty, List<string> errors)
         {
             if (!TryGetBoss(bossId, out BossDefinition boss))
             {
@@ -768,7 +811,7 @@ namespace Shinshi.Data
                 for (int i = 0; i < _patterns.Length; ++i)
                 {
                     PatternDefinition pattern = _patterns[i];
-                    if ((pattern == null) || (pattern.BossId != bossId) || (pattern.Phase != phase))
+                    if ((pattern == null) || (pattern.BossId != bossId) || (pattern.Phase != phase) || (pattern.Difficulty != difficulty))
                     {
                         continue;
                     }
@@ -784,8 +827,31 @@ namespace Shinshi.Data
 
             if (patternCount == 0)
             {
-                errors.Add($"{OWNER}.{nameof(_patterns)}: 보스 '{bossId}'의 {phase}페이즈 패턴이 없다");
+                errors.Add($"{OWNER}.{nameof(_patterns)}: 보스 '{bossId}'의 {difficulty} {phase}페이즈 패턴이 없다");
             }
+
+            // 하드 구성은 일부만 있어도 수치 검사는 통과하므로 개수를 따로 본다. 개수가 맞지 않으면 전투를 열지 않는다
+            int expectedHardCount = GetWolbaekHardPatternCount(bossId, phase, difficulty);
+            if ((expectedHardCount != NO_EXPECTED_COUNT) && (patternCount != expectedHardCount))
+            {
+                errors.Add($"{OWNER}.{nameof(_patterns)}: 월백 하드 {phase}페이즈 패턴 수 {patternCount} != {expectedHardCount}");
+            }
+        }
+
+        // 기대 개수가 정해진 조합만 값을 돌려주고 나머지는 NO_EXPECTED_COUNT다. 이지와 다른 보스는 기존 검사 그대로다
+        private static int GetWolbaekHardPatternCount(string bossId, int phase, EBossDifficulty difficulty)
+        {
+            if ((bossId != WOLBAEK_ID) || (difficulty != EBossDifficulty.Hard))
+            {
+                return NO_EXPECTED_COUNT;
+            }
+
+            if (phase == FIRST_PHASE)
+            {
+                return WOLBAEK_HARD_PHASE_ONE_PATTERN_COUNT;
+            }
+
+            return (phase == SECOND_PHASE) ? WOLBAEK_HARD_PHASE_TWO_PATTERN_COUNT : NO_EXPECTED_COUNT;
         }
 
         private static void ValidateSecondPhaseSelection(List<string> errors, BossDefinition boss, PatternDefinition pattern)
@@ -874,7 +940,8 @@ namespace Shinshi.Data
                     continue;
                 }
 
-                if ((pattern.BossId == WOLBAEK_ID) && (pattern.Phase == FIRST_PHASE))
+                // 6개는 이지 기획 기준이다. 하드 패턴을 세면 하드를 추가하는 순간 이지 구성이 깨진 것으로 보인다
+                if ((pattern.BossId == WOLBAEK_ID) && (pattern.Phase == FIRST_PHASE) && (pattern.Difficulty == EBossDifficulty.Easy))
                 {
                     ++wolbaekPhaseOneCount;
                 }

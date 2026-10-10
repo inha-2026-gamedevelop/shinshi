@@ -1,20 +1,22 @@
 namespace Shinshi.AI
 {
     // PatternDefinition에는 타별 형태와 연속 돌진 횟수가 없어 2페이즈 여섯 패턴의 패턴별 데이터를 한 묶음으로 받는다.
-    // 비어 있는 항목의 패턴은 팩토리가 만들지 않는다. 수치는 호출하는 쪽(데이터)이 정하며 이 클래스에는 값이 없다
-    /// <summary> 무철 2페이즈 패턴별 실행 데이터 묶음, P01 P02 P04 P05는 순차 타격이고 P03 P06은 연속 돌진이다 </summary>
+    // 비어 있는 항목의 패턴은 팩토리가 만들지 않는다. 수치는 호출하는 쪽(데이터)이 정하며 이 클래스에는 값이 없다.
+    // P07은 하드 전용 전장 공격이라 여섯 패턴의 기존 호출이 깨지지 않게 선택 인자로 둔다
+    /// <summary> 무철 2페이즈 패턴별 실행 데이터 묶음, P01 P02 P04 P05는 순차 타격이고 P03 P06은 연속 돌진이며 P07은 전장 공격이다 </summary>
     public sealed class MucheolPhase2Spec
     {
         /****************************************
         *                Fields
         ****************************************/
 
-        private readonly MucheolSequenceSpec  _p01;
-        private readonly MucheolSequenceSpec  _p02;
-        private readonly MucheolMultiDashSpec _p03;
-        private readonly MucheolSequenceSpec  _p04;
-        private readonly MucheolSequenceSpec  _p05;
-        private readonly MucheolMultiDashSpec _p06;
+        private readonly MucheolSequenceSpec    _p01;
+        private readonly MucheolSequenceSpec    _p02;
+        private readonly MucheolMultiDashSpec   _p03;
+        private readonly MucheolSequenceSpec    _p04;
+        private readonly MucheolSequenceSpec    _p05;
+        private readonly MucheolMultiDashSpec   _p06;
+        private readonly MucheolBattlefieldSpec _p07;
 
         /****************************************
         *              Properties
@@ -38,12 +40,15 @@ namespace Shinshi.AI
         /// <summary> 폭주 돌진 </summary>
         public MucheolMultiDashSpec P06 => _p06;
 
+        /// <summary> 하드 전용 전장 공격, 비어 있으면 만들지 않는다 </summary>
+        public MucheolBattlefieldSpec P07 => _p07;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public MucheolPhase2Spec(MucheolSequenceSpec p01, MucheolSequenceSpec p02, MucheolMultiDashSpec p03,
-            MucheolSequenceSpec p04, MucheolSequenceSpec p05, MucheolMultiDashSpec p06)
+            MucheolSequenceSpec p04, MucheolSequenceSpec p05, MucheolMultiDashSpec p06, MucheolBattlefieldSpec p07 = null)
         {
             _p01 = p01;
             _p02 = p02;
@@ -51,6 +56,7 @@ namespace Shinshi.AI
             _p04 = p04;
             _p05 = p05;
             _p06 = p06;
+            _p07 = p07;
         }
     }
 }

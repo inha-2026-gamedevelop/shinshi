@@ -19,6 +19,15 @@ namespace Shinshi.AI
         public const string P05_ID = "wolbaek_p05";
         public const string P06_ID = "wolbaek_p06";
 
+        // 하드 1페이즈 P01은 이지 P01과 같은 돌진 실행을 쓰고 폭과 선택 배율은 정의 값이 다르다
+        public const string HARD_P01_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P01_ID;
+
+        // 하드 1페이즈 P02는 이지 P02와 같은 부채꼴 실행을 쓰고 사거리, 각도, 선택 배율은 정의 값이 다르다
+        public const string HARD_P02_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P02_ID;
+
+        // 하드 1페이즈 P03은 이지 P03과 같은 원형 폭발 실행을 쓰고 반경, 예고 시간, 선택 배율은 정의 값이 다르다
+        public const string HARD_P03_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P03_ID;
+
         // 2페이즈 패턴 ID, 1페이즈 ID와 겹치지 않는다. 지금 Create가 만드는 것은 P01(별형 회전 빔), P02(고정 평행 빔), P03(반월 연쇄), P04(장판), P05(투사체), P06(원형 폭발)뿐이고 나머지는 null이다
         public const string P2_P01_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P01_ID;
         public const string P2_P02_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P02_ID;
@@ -98,7 +107,7 @@ namespace Shinshi.AI
             }
 
             string id = definition.DefinitionId;
-            if (id == P01_ID)
+            if ((id == P01_ID) || (id == HARD_P01_ID))
             {
                 return _movement != null;
             }
@@ -123,7 +132,8 @@ namespace Shinshi.AI
                 return (_stars != null) && (_arena != null);
             }
 
-            return (id == P02_ID) || (id == P03_ID) || (id == P06_ID) || (id == P2_P03_ID) || (id == P2_P06_ID);
+            return (id == P02_ID) || (id == HARD_P02_ID) || (id == P03_ID) || (id == HARD_P03_ID) || (id == P06_ID)
+                || (id == P2_P03_ID) || (id == P2_P06_ID);
         }
 
         public IBossPattern Create(PatternDefinition definition)
@@ -134,17 +144,17 @@ namespace Shinshi.AI
             }
 
             // 이동 창구 없이는 돌진을 만들 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
-            if (definition.DefinitionId == P01_ID)
+            if ((definition.DefinitionId == P01_ID) || (definition.DefinitionId == HARD_P01_ID))
             {
                 return (_movement == null) ? null : new BossDashPattern(_referenceHealth, _movement, _dashListener);
             }
 
-            if (definition.DefinitionId == P02_ID)
+            if ((definition.DefinitionId == P02_ID) || (definition.DefinitionId == HARD_P02_ID))
             {
                 return new BossFanBlastPattern(_referenceHealth, _fanListener);
             }
 
-            if (definition.DefinitionId == P03_ID)
+            if ((definition.DefinitionId == P03_ID) || (definition.DefinitionId == HARD_P03_ID))
             {
                 return new BossCircleBlastPattern(_referenceHealth, _circleListener);
             }

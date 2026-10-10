@@ -25,6 +25,7 @@ namespace Shinshi.AI
         private readonly float   _maxHealth;
         private readonly float   _defense;
         private readonly float   _bodyRadius;
+        private readonly float   _separationRadius;
 
         private Vector3               _position;
         private Vector3               _forward;
@@ -44,6 +45,10 @@ namespace Shinshi.AI
         public Vector3               Forward       => _forward;
         public float                 BodyRadius    => _bodyRadius;
 
+        // BodyRadius는 감지, 피격, 돌진의 벽 정지 거리 기준이고 이 값은 적끼리 벌어지는 간격 기준이다. 서로 바꿔 쓰지 않는다
+        /// <summary> 적끼리 겹치지 않게 하는 이동용 반경, 0이면 간격 계산에 참여하지 않는다 </summary>
+        public float SeparationRadius => _separationRadius;
+
         public float Health          => _health;
         public float MaxHealth       => _maxHealth;
         public float Defense         => _defense;
@@ -55,9 +60,10 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceAttack은 전장 지역의 Aref다. 플레이어의 현재 능력치를 대신 넣지 않는다.
-        // 몸체 반경은 기획에 값이 없어 호출자가 정한다. healthScale은 출정 시작 인원 체력 배율(SessionConfigSO)이고 기본 1이다
+        // 몸체 반경은 기획에 값이 없어 호출자가 정한다. healthScale은 출정 시작 인원 체력 배율(SessionConfigSO)이고 기본 1이다.
+        // separationRadius는 적끼리 간격용 반경이며 기본 0은 겹침 방지에 참여하지 않는 기존 동작이다
         public EnemyServer(EnemyDefinition definition, int combatId, Vector3 position, Vector3 forward,
-            float referenceAttack, float bodyRadius, float healthScale = 1f)
+            float referenceAttack, float bodyRadius, float healthScale = 1f, float separationRadius = 0f)
         {
             if (definition == null)
             {
@@ -79,13 +85,19 @@ namespace Shinshi.AI
                 throw new ArgumentOutOfRangeException(nameof(healthScale), "체력 배율은 0보다 큰 유한값이다");
             }
 
-            _combatId   = combatId;
-            _position   = position;
-            _forward    = BossTelegraphRules.Flatten(forward, Vector3.forward);
-            _maxHealth  = definition.HealthRef * referenceAttack * healthScale;
-            _health     = _maxHealth;
-            _defense    = definition.Defense;
-            _bodyRadius = bodyRadius;
+            if ((!(separationRadius >= 0f)) || (float.IsInfinity(separationRadius)))
+            {
+                throw new ArgumentOutOfRangeException(nameof(separationRadius), "간격 반경은 0 이상의 유한값이다");
+            }
+
+            _combatId         = combatId;
+            _position         = position;
+            _forward          = BossTelegraphRules.Flatten(forward, Vector3.forward);
+            _maxHealth        = definition.HealthRef * referenceAttack * healthScale;
+            _health           = _maxHealth;
+            _defense          = definition.Defense;
+            _bodyRadius       = bodyRadius;
+            _separationRadius = separationRadius;
         }
 
         public void ApplyDamage(float appliedAmount, bool isLethal, double serverTime)
