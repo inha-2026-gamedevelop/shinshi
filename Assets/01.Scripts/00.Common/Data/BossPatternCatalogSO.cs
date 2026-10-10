@@ -421,10 +421,13 @@ namespace Shinshi.Data
         public const string WOLBAEK_P2_P06_ID = "wolbaek_ph2_p06";
         public const string WOLBAEK_P2_P07_ID = "wolbaek_ph2_p07";
 
-        // 월백 하드 1페이즈 패턴 ID, 이지 ID와 겹치지 않는다. P01 돌진, P02 부채꼴, P03 중심 폭발만 있고 나머지는 아직 없다
+        // 월백 하드 1페이즈 패턴 ID, 이지 ID와 겹치지 않는다. P01~P06 여섯 개가 모두 있다
         public const string WOLBAEK_HARD_P01_ID = "wolbaek_hard_p01";
         public const string WOLBAEK_HARD_P02_ID = "wolbaek_hard_p02";
         public const string WOLBAEK_HARD_P03_ID = "wolbaek_hard_p03";
+        public const string WOLBAEK_HARD_P04_ID = "wolbaek_hard_p04";
+        public const string WOLBAEK_HARD_P05_ID = "wolbaek_hard_p05";
+        public const string WOLBAEK_HARD_P06_ID = "wolbaek_hard_p06";
 
         private const float NEUTRAL_MULTIPLIER = 1f;
 

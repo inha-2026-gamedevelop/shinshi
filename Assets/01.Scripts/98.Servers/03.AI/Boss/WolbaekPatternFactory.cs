@@ -5,8 +5,8 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
 {
-    // 방향이 있는 1페이즈 P01, P02(하드 포함), P04, P06과 2페이즈 P05는 naturalAim을 켜 이전 방향에서 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿는다.
-    // 원형 폭발, 장판, 전장 기준 패턴, 반월 연쇄, 워프는 조준 회전이 없거나 다른 기준이라 켜지 않는다
+    // 방향이 있는 1페이즈 P01, P02, P04, P06(하드 포함)과 2페이즈 P05는 naturalAim을 켜 이전 방향에서 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿는다.
+    // 원형 폭발, 장판, 전장 기준 패턴, 반월 연쇄, 워프(하드 포함)는 조준 회전이 없거나 다른 기준이라 켜지 않는다
     /// <summary> 월백 패턴 정의로 실행 객체를 만든다, 1페이즈 여섯 패턴(P01~P06)이 모두 있다 </summary>
     public sealed class WolbaekPatternFactory : IBossPatternFactory, IBossPatternAvailability
     {
@@ -29,6 +29,15 @@ namespace Shinshi.AI
 
         // 하드 1페이즈 P03은 이지 P03과 같은 원형 폭발 실행을 쓰고 반경, 예고 시간, 선택 배율은 정의 값이 다르다
         public const string HARD_P03_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P03_ID;
+
+        // 하드 1페이즈 P04는 이지 P04와 같은 투사체 실행을 쓰고 폭과 선택 배율은 정의 값이 다르다
+        public const string HARD_P04_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P04_ID;
+
+        // 하드 1페이즈 P05는 이지 P05와 같은 장판 실행을 쓰고 반경과 선택 배율은 정의 값이 다르다
+        public const string HARD_P05_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P05_ID;
+
+        // 하드 1페이즈 P06은 이지 P06과 같은 직선 폭발 실행을 쓰고 폭과 선택 배율은 정의 값이 다르다
+        public const string HARD_P06_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P06_ID;
 
         // 2페이즈 패턴 ID, 1페이즈 ID와 겹치지 않는다. 지금 Create가 만드는 것은 P01(별형 회전 빔), P02(고정 평행 빔), P03(반월 연쇄), P04(장판), P05(투사체), P06(원형 폭발)뿐이고 나머지는 null이다
         public const string P2_P01_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P01_ID;
@@ -118,12 +127,12 @@ namespace Shinshi.AI
                 return _movement != null;
             }
 
-            if ((id == P04_ID) || (id == P2_P05_ID))
+            if ((id == P04_ID) || (id == HARD_P04_ID) || (id == P2_P05_ID))
             {
                 return _projectiles != null;
             }
 
-            if ((id == P05_ID) || (id == P2_P04_ID))
+            if ((id == P05_ID) || (id == HARD_P05_ID) || (id == P2_P04_ID))
             {
                 return _areas != null;
             }
@@ -144,7 +153,7 @@ namespace Shinshi.AI
             }
 
             return (id == P02_ID) || (id == HARD_P02_ID) || (id == P03_ID) || (id == HARD_P03_ID) || (id == P06_ID)
-                || (id == P2_P03_ID) || (id == P2_P06_ID);
+                || (id == HARD_P06_ID) || (id == P2_P03_ID) || (id == P2_P06_ID);
         }
 
         public IBossPattern Create(PatternDefinition definition)
@@ -171,18 +180,18 @@ namespace Shinshi.AI
             }
 
             // 발사 창구 없이는 투사체를 낼 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
-            if (definition.DefinitionId == P04_ID)
+            if ((definition.DefinitionId == P04_ID) || (definition.DefinitionId == HARD_P04_ID))
             {
                 return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener, naturalAim: true);
             }
 
             // 장판 창구 없이는 장판을 만들 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
-            if (definition.DefinitionId == P05_ID)
+            if ((definition.DefinitionId == P05_ID) || (definition.DefinitionId == HARD_P05_ID))
             {
                 return (_areas == null) ? null : new BossAreaPattern(_referenceHealth, _areas, _areaListener);
             }
 
-            if (definition.DefinitionId == P06_ID)
+            if ((definition.DefinitionId == P06_ID) || (definition.DefinitionId == HARD_P06_ID))
             {
                 return new BossLineBlastPattern(_referenceHealth, _lineListener, naturalAim: true);
             }

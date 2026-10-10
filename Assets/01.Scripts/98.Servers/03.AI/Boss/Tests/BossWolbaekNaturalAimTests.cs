@@ -46,7 +46,7 @@ namespace Shinshi.Tests
         private static readonly string[] G_Keys =
         {
             "wolbaek_p01", "wolbaek_p02", "wolbaek_p04", "wolbaek_p06",
-            "wolbaek_hard_p01", "wolbaek_hard_p02",
+            "wolbaek_hard_p01", "wolbaek_hard_p02", "wolbaek_hard_p04", "wolbaek_hard_p06",
             "wolbaek_ph2_p05"
         };
 
