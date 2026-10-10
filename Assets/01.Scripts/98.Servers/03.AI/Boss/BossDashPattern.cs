@@ -18,7 +18,7 @@ namespace Shinshi.AI
     // 대상은 중심점으로 판정한다. 부채꼴, 원형, 직사각형 패턴이 모두 같은 방식이라 BodyRadius는 이동 검사에만 쓴다
     // 기본은 추적 시간 동안 회전 속도로 제한해 돌며 월백 P01과 무철 P03이 이 방식이다. snapAimToTarget을 켜면(무철 P06) 예고를 시작하는 순간 선택된 대상
     // 쪽으로 각도 제한 없이 방향을 잡고, 방향을 고정하는 시각까지 같은 대상을 따라간다. 켜도 고정한 뒤에는 돌진 중에 꺾이지 않는다
-    // naturalAim을 켜면(무철 P03) MucheolAimTracker로 최단 경로를 부드럽게 돌아 고정 시각에 대상 방향에 닿는다. snapAimToTarget과 같이 켤 수 없다
+    // naturalAim을 켜면(무철 P03, 월백 P01) MucheolAimTracker로 최단 경로를 부드럽게 돌아 고정 시각에 대상 방향에 닿는다. snapAimToTarget과 같이 켤 수 없다
     /// <summary> 월백 P01 돌진, 추적 회전 뒤 방향을 고정하고 일정한 속도로 직진하며 지나간 구간의 대상을 한 번씩 타격한다 </summary>
     public sealed class BossDashPattern : BossPatternBase
     {
@@ -85,7 +85,7 @@ namespace Shinshi.AI
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
         // snapAimToTarget은 예고를 시작할 때 대상 쪽으로 바로 조준하고 회전 속도 제한을 두지 않는다. 기본값 꺼짐은 기존 동작이다
-        // naturalAim은 무철 전용 조준이다. 기본값 꺼짐은 기존 동작(월백)이다
+        // naturalAim은 부드러운 조준이다. 기본값 꺼짐은 회전 속도로 제한하는 기존 동작이고 무철과 월백 팩토리가 켠다
         public BossDashPattern(float referenceHealth, IBossMovement movement, IBossDashTelegraphListener listener = null,
             bool snapAimToTarget = false, bool naturalAim = false)
         {

@@ -5,6 +5,8 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
 {
+    // 방향이 있는 1페이즈 P01, P02(하드 포함), P04, P06과 2페이즈 P05는 naturalAim을 켜 이전 방향에서 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿는다.
+    // 원형 폭발, 장판, 전장 기준 패턴, 반월 연쇄는 조준 회전이 없거나 다른 기준이라 켜지 않는다
     /// <summary> 월백 패턴 정의로 실행 객체를 만든다, 1페이즈 여섯 패턴(P01~P06)이 모두 있다 </summary>
     public sealed class WolbaekPatternFactory : IBossPatternFactory, IBossPatternAvailability
     {
@@ -146,12 +148,12 @@ namespace Shinshi.AI
             // 이동 창구 없이는 돌진을 만들 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
             if ((definition.DefinitionId == P01_ID) || (definition.DefinitionId == HARD_P01_ID))
             {
-                return (_movement == null) ? null : new BossDashPattern(_referenceHealth, _movement, _dashListener);
+                return (_movement == null) ? null : new BossDashPattern(_referenceHealth, _movement, _dashListener, naturalAim: true);
             }
 
             if ((definition.DefinitionId == P02_ID) || (definition.DefinitionId == HARD_P02_ID))
             {
-                return new BossFanBlastPattern(_referenceHealth, _fanListener);
+                return new BossFanBlastPattern(_referenceHealth, _fanListener, naturalAim: true);
             }
 
             if ((definition.DefinitionId == P03_ID) || (definition.DefinitionId == HARD_P03_ID))
@@ -162,7 +164,7 @@ namespace Shinshi.AI
             // 발사 창구 없이는 투사체를 낼 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
             if (definition.DefinitionId == P04_ID)
             {
-                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener);
+                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener, naturalAim: true);
             }
 
             // 장판 창구 없이는 장판을 만들 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
@@ -173,7 +175,7 @@ namespace Shinshi.AI
 
             if (definition.DefinitionId == P06_ID)
             {
-                return new BossLineBlastPattern(_referenceHealth, _lineListener);
+                return new BossLineBlastPattern(_referenceHealth, _lineListener, naturalAim: true);
             }
 
             // 2페이즈 P06은 1페이즈 P03과 같은 원형 실행을 쓰고 시간, 반경, 피해, 회복은 정의 값이 다르다
@@ -208,7 +210,7 @@ namespace Shinshi.AI
 
             if (definition.DefinitionId == P2_P05_ID)
             {
-                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener);
+                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener, naturalAim: true);
             }
 
             if (definition.DefinitionId == P2_P06_ID)
