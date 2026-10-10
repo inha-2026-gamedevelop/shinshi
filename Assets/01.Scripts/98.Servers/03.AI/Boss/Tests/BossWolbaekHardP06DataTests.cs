@@ -195,9 +195,9 @@ namespace Shinshi.Tests
             Assert.IsTrue(bare.CanCreate(BossWolbaekHardDataKit.Get(catalog, G_HardIds[5])));
         }
 
-        // 하드 1페이즈 여섯 개가 갖춰져 하드 1페이즈 튜닝과 IsTuned가 통과한다.
+        // 하드 1페이즈 여섯 개가 갖춰져 하드 1페이즈 튜닝과 IsTuned가 통과한다. 하드 2페이즈도 일곱 개가 갖춰져 통과한다
         [Test]
-        public void Tuning_HardPhaseOneComplete_Passes()
+        public void Tuning_HardPhaseOneComplete_PassesAndPhaseTwoHasSeven()
         {
             BossPatternCatalogSO catalog = BossWolbaekHardDataKit.LoadAsset();
             var errors = new List<string>();
@@ -207,6 +207,12 @@ namespace Shinshi.Tests
             Assert.IsTrue(catalog.IsPhaseTuned(BossWolbaekHardDataKit.WOLBAEK_ID, BossWolbaekHardDataKit.FIRST_PHASE, EBossDifficulty.Hard));
             Assert.IsTrue(catalog.IsTuned(BossWolbaekHardDataKit.WOLBAEK_ID, EBossDifficulty.Hard));
             Assert.IsTrue(new BossPatternCatalogSource(catalog, EBossDifficulty.Hard).IsTuned(BossWolbaekHardDataKit.WOLBAEK_ID));
+
+            var phaseTwoErrors = new List<string>();
+            catalog.ValidateTuning(BossWolbaekHardDataKit.WOLBAEK_ID, BossWolbaekHardDataKit.SECOND_PHASE, EBossDifficulty.Hard, phaseTwoErrors);
+            Assert.IsTrue(catalog.IsPhaseTuned(BossWolbaekHardDataKit.WOLBAEK_ID, BossWolbaekHardDataKit.SECOND_PHASE, EBossDifficulty.Hard),
+                "하드 2페이즈 일곱 개가 갖춰졌다");
+            Assert.IsEmpty(phaseTwoErrors, string.Join("\n", phaseTwoErrors));
 
             for (int i = 0; i < G_HardIds.Length; ++i)
             {

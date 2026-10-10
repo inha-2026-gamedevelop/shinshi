@@ -153,7 +153,11 @@ namespace Shinshi.Tests
             List<string> hardOne = Collect(hard, FIRST_PHASE);
             CollectionAssert.Contains(hardOne, hardId);
             CollectionAssert.DoesNotContain(hardOne, easyId);
-            Assert.IsEmpty(Collect(hard, SECOND_PHASE));
+            CollectionAssert.AreEqual(new[] { BossPatternCatalogSO.WOLBAEK_HARD_P2_P01_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P02_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P03_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P06_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P07_ID },
+                Collect(hard, SECOND_PHASE), "하드 2페이즈는 P01~P07 일곱 개다");
             CollectionAssert.DoesNotContain(Collect(easy, SECOND_PHASE), hardId);
         }
 

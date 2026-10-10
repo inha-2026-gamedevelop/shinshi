@@ -28,7 +28,7 @@ namespace Shinshi.AI
     //
     // 판정은 월백 원형 패턴과 같다. 중심에서 수평 거리가 반경 이하(경계 포함)인 살아 있는 플레이어와 소환물이 대상이고 대상 중심점으로 판정하며 BodyRadius는 쓰지 않는다. 표현이 같은 원이다
     /// <summary> 월백 장판의 수명 관리자, 슬롯 상한과 주기 피해와 정리를 맡는다 </summary>
-    public sealed class BossAreaManager : IBossEffectLifetime, IBossTickableEffects, IBossAreaHost, IBossAreaCapacity
+    public sealed class BossAreaManager : IBossEffectLifetime, IBossTickableEffects, IBossHardAreaHost, IBossAreaCapacity
     {
         /****************************************
         *              Constants
@@ -111,6 +111,47 @@ namespace Shinshi.AI
         public bool TryReserveWithinTotal(int castInstanceId, int areaId, string patternId, int maxTotal)
         {
             return Reserve(castInstanceId, areaId, patternId, maxTotal, true);
+        }
+
+        public bool TryReserveReplacing(int castInstanceId, int areaId, string patternId)
+        {
+            return Reserve(castInstanceId, areaId, patternId, 0, false);
+        }
+
+        public bool TryActivateReplacing(in BossAreaSpec spec, int maxActive)
+        {
+            Slot reserved = Find(spec.AreaId, ESlotState.Reserved);
+            if ((maxActive <= 0) || (reserved == null) || (reserved.CastInstanceId != spec.CastInstanceId)
+                || (reserved.PatternId != spec.DefinitionId)
+                || (spec.Gate == null) || (spec.Radius <= 0f) || (spec.DurationSeconds <= 0f) || (spec.TickInterval <= 0f))
+            {
+                return false;
+            }
+
+            int active = 0;
+            Slot oldest = null;
+            for (int i = 0; i < _slots.Length; ++i)
+            {
+                Slot slot = _slots[i];
+                if ((slot.State != ESlotState.Active) || (slot.PatternId != spec.DefinitionId))
+                {
+                    continue;
+                }
+
+                ++active;
+                if ((oldest == null) || (slot.Spec.ActivateServerTime < oldest.Spec.ActivateServerTime)
+                    || ((slot.Spec.ActivateServerTime == oldest.Spec.ActivateServerTime) && (slot.AreaId < oldest.AreaId)))
+                {
+                    oldest = slot;
+                }
+            }
+
+            if (active >= maxActive)
+            {
+                End(oldest, EBossAreaEnd.Cancelled, spec.ActivateServerTime);
+            }
+
+            return TryActivate(in spec);
         }
 
         // limitIsTotal이 참이면 limit을 보스의 모든 장판 수와 비교하고 거짓이면 같은 패턴의 장판 수와 비교한다. 검사와 예약이 한 번에 이뤄진다

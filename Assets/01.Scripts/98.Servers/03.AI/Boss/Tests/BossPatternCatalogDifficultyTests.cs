@@ -221,7 +221,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Asset_TuningChecks_WithoutDifficultyEqualEasyAndHardPhaseOneIsTuned()
+        public void Asset_TuningChecks_WithoutDifficultyEqualEasyAndHardPhaseTwoIsTunedWithSeven()
         {
             BossPatternCatalogSO catalog = LoadAsset();
 
@@ -231,9 +231,9 @@ namespace Shinshi.Tests
                 Assert.AreEqual(catalog.IsPhaseTuned(WOLBAEK_ID, phase), catalog.IsPhaseTuned(WOLBAEK_ID, phase, EBossDifficulty.Easy));
             }
 
-            // 하드 1페이즈는 여섯 개가 들어와 통과한다. 하드 2페이즈는 아직 비어 있어 통과하지 않는다. IsTuned는 1페이즈만 본다
+            // 하드 1페이즈는 여섯 개, 하드 2페이즈는 일곱 개가 들어와 통과한다. IsTuned는 1페이즈만 본다
             Assert.IsTrue(catalog.IsPhaseTuned(WOLBAEK_ID, FIRST_PHASE, EBossDifficulty.Hard), "phase 1 hard");
-            Assert.IsFalse(catalog.IsPhaseTuned(WOLBAEK_ID, SECOND_PHASE, EBossDifficulty.Hard), "phase 2 hard");
+            Assert.IsTrue(catalog.IsPhaseTuned(WOLBAEK_ID, SECOND_PHASE, EBossDifficulty.Hard), "phase 2 hard");
             Assert.AreEqual(catalog.IsTuned(WOLBAEK_ID), catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Easy));
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Hard));
 

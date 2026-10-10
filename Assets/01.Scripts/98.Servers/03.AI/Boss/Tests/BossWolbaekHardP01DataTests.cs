@@ -200,13 +200,17 @@ namespace Shinshi.Tests
 
             CollectionAssert.Contains(Collect(hard, FIRST_PHASE), HARD_P01_ID);
             CollectionAssert.DoesNotContain(Collect(hard, FIRST_PHASE), EASY_P01_ID);
-            Assert.IsEmpty(Collect(hard, SECOND_PHASE));
+            CollectionAssert.AreEqual(new[] { BossPatternCatalogSO.WOLBAEK_HARD_P2_P01_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P02_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P03_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P06_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P07_ID },
+                Collect(hard, SECOND_PHASE), "하드 2페이즈는 P01~P07 일곱 개다");
             CollectionAssert.DoesNotContain(Collect(easy, SECOND_PHASE), HARD_P01_ID);
         }
 
-        // 하드 1페이즈 여섯 개가 모두 들어와 하드 1페이즈 튜닝이 통과한다
+        // 하드 1페이즈 여섯 개가 모두 들어와 하드 1페이즈 튜닝이 통과한다. 하드 2페이즈도 일곱 개가 갖춰져 통과한다
         [Test]
-        public void Tuning_HardPhaseOneHasSixPatterns_Passes()
+        public void Tuning_HardPhaseOneHasSixPatterns_PassesAndPhaseTwoHasSeven()
         {
             BossPatternCatalogSO catalog = LoadAsset();
             var errors = new List<string>();
@@ -216,6 +220,7 @@ namespace Shinshi.Tests
             Assert.IsEmpty(errors, string.Join("\n", errors));
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Hard));
             Assert.IsTrue(new BossPatternCatalogSource(catalog, EBossDifficulty.Hard).IsTuned(WOLBAEK_ID));
+            Assert.IsTrue(catalog.IsPhaseTuned(WOLBAEK_ID, SECOND_PHASE, EBossDifficulty.Hard), "하드 2페이즈 일곱 개가 갖춰졌다");
             Assert.IsTrue(catalog.IsPatternReady(WOLBAEK_ID, Get(catalog, HARD_P01_ID)));
         }
 

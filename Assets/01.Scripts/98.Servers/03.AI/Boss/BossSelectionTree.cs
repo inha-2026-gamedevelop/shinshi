@@ -165,7 +165,9 @@ namespace Shinshi.AI
                 int used = ((candidate.RawAreaTargetCount > 1) && (blackboard.Effects is IBossAreaCapacity capacity))
                     ? capacity.TotalAreaCount
                     : blackboard.Effects.ActiveAreaCount(candidate.DefinitionId);
-                if ((candidate.MaxConcurrentAreas > 0) && (used >= candidate.MaxConcurrentAreas))
+                // 하드 P04는 새 장판 활성 순간에 오래된 장판을 교체하므로 기존 활성 수로 후보를 막지 않는다.
+                if ((candidate.DefinitionId != Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID)
+                    && (candidate.MaxConcurrentAreas > 0) && (used >= candidate.MaxConcurrentAreas))
                 {
                     blackboard.Candidates.RemoveAt(i);
                 }

@@ -401,8 +401,9 @@ namespace Shinshi.Tests
             {
                 Assert.AreNotEqual(P07_ID, hard[i].DefinitionId);
 
-                // 이지 P07의 워프 값은 하드 정의가 갖지 않는다
-                Assert.AreEqual(0, hard[i].WarpCandidateCount, hard[i].DefinitionId);
+                // 워프 값은 하드 P07만 갖는다, 하드 P01~P06은 워프 값이 없다
+                bool isHardP07 = hard[i].DefinitionId == BossPatternCatalogSO.WOLBAEK_HARD_P2_P07_ID;
+                Assert.AreEqual(isHardP07, hard[i].WarpCandidateCount > 0, hard[i].DefinitionId);
             }
         }
 
