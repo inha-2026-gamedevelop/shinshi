@@ -213,6 +213,7 @@ namespace Shinshi.Combat
             }
 
             LocalPlayerGauges gauges = LocalPlayerView.Current.ReadGauges();
+            _statusView.SetLevel(1);
             if (gauges.MaxHealth > 0f)
             {
                 _statusView.SetHp(LocalPlayerHudRules.ToDisplayInt(gauges.Health, gauges.MaxHealth),

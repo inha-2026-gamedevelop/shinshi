@@ -16,7 +16,7 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
-        /// <summary> 방 명단을 창의 칸 순서대로 옮긴다. 레벨과 전투력은 방 상태에 없어 0이다 </summary>
+        /// <summary> 방 명단을 창의 칸 순서대로 옮긴다. 성장 도입 전 레벨은 1이며 전투력은 미제공이다 </summary>
         public static void BuildMembers(in PartyRoomStateMessage room, List<SortieMemberData> into)
         {
             if (into == null)
@@ -35,7 +35,7 @@ namespace Shinshi.UI
             {
                 PartyMemberView member = members[i];
                 into.Add(new SortieMemberData(member.Name, member.PlayerClass, member.ParticipantId == room.LeaderParticipantId,
-                    member.Ready == EPartyReadyState.Ready, true, true, 0, 0));
+                    member.Ready == EPartyReadyState.Ready, true, true, 1, 0));
             }
         }
 

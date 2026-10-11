@@ -23,7 +23,7 @@ namespace Shinshi.Network
 
         private const string EMPTY_NAME    = "빈 칸";
         private const string UNKNOWN_POWER = "전투력 -";
-        private const string UNKNOWN_LEVEL = "Lv.-";
+        private const string INITIAL_LEVEL = "Lv.1";
 
         // 캐릭터가 있을 때만 켜는 것(무대 모델, 무대 표시 글자 묶음)
         [SerializeField] private GameObject[] _filledObjects = null;
@@ -75,9 +75,9 @@ namespace Shinshi.Network
             SetText(_nameTexts, filled ? characterName : EMPTY_NAME);
             SetText(_classTexts, filled ? className : string.Empty);
 
-            // 목록 API가 아직 전투력과 레벨을 주지 않는다. 받을 때까지 값 없음으로 둔다
+            // 경험치 성장 도입 전에는 모든 캐릭터가 레벨 1이다. 전투력은 아직 목록 API가 주지 않는다
             SetText(_powerTexts, filled ? UNKNOWN_POWER : string.Empty);
-            SetText(_levelTexts, filled ? UNKNOWN_LEVEL : string.Empty);
+            SetText(_levelTexts, filled ? INITIAL_LEVEL : string.Empty);
 
             // 빈 칸으로 다시 쓰이면 이전 캐릭터의 해석 실패 상태를 들고 있지 않는다. ShowLook이 다시 불리면 덮인다
             if (!filled)
