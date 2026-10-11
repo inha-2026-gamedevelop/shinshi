@@ -134,7 +134,7 @@ app.MapControllers();
 
 `IssueJoinTokenAsync`는 플레이어 자격을 사용하는 내부 발급 경로다. 예약의 `JoinTokenIssuer`는 서버 자격으로 계정 ID의 활성 게임 인증 family를 찾는 `IssueDungeonJoinTokenAsync`에 연결한다. 마을 서버 임대, 예약한 마을, 참가자 roster, 계정/캐릭터 소유, 현재 출정의 인스턴스와 역할, 살아 있는 던전 임대를 DB에서 재검증한다. 활성 family가 없으면 `TOKEN_REVOKED`다. 토큰은 최대 60초이며 예약 만료와 인증 계열 만료를 넘지 않는다.
 
-서버의 접속 토큰 교환은 `POST /v1/game-servers/join-tokens/exchange` 한 경로에서 공유 `JoinTokenExchangeRequest/Response`를 사용한다. 요청은 `{joinToken, instanceId, serverRole}`, 응답은 `{characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId}`다. `classId`는 토큰이 발급된 캐릭터의 직업(`ContractCodes.PlayerClass`, 0 무사·1 도술사·2 신령사·3 검사·4 마검사·5 궁수, 생성 허용은 `Characters:EnabledClassIds` 기본 `0,1,2`로 별도 제한)으로, 마을과 던전 입장 모두 같은 교환이 같은 트랜잭션에서 `characters.class_id`를 읽어 채운다. 게임 서버는 클라이언트가 아니라 이 값으로 전투 개체의 직업을 정하며, 키가 없거나 모르는 값이면 입장을 거절한다. `Authorization: Bearer <서비스 자격으로 발급된 서버 임대 토큰>`과 `X-Shinshi-Instance-Id: <등록 인스턴스 UUID>`를 함께 보낸다. 헤더와 본문 인스턴스/역할을 검증된 자격에 대조하고 참가자/출정/캐릭터는 DB 토큰에서만 읽는다. 토큰은 한 번 소비하며 응답을 잃은 서버는 같은 토큰 교환을 재시도하지 않는다. 이전 `/v1/auth/join/consume` 경로는 제공하지 않는다. Unity verifier와 메인 스레드 전달은 Unity 작업자가 연결한다.
+서버의 접속 토큰 교환은 `POST /v1/game-servers/join-tokens/exchange` 한 경로에서 공유 `JoinTokenExchangeRequest/Response`를 사용한다. 요청은 `{joinToken, instanceId, serverRole}`, 응답은 `{characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId}`다. `classId`는 토큰이 발급된 캐릭터의 직업(`ContractCodes.PlayerClass`, 0 무사·1 도술사·2 신령사·3 검사·4 마검사·5 궁수, 생성 허용은 `Characters:EnabledClassIds` 기본 `3,4,5`로 별도 제한)으로, 마을과 던전 입장 모두 같은 교환이 같은 트랜잭션에서 `characters.class_id`를 읽어 채운다. 게임 서버는 클라이언트가 아니라 이 값으로 전투 개체의 직업을 정하며, 키가 없거나 모르는 값이면 입장을 거절한다. `Authorization: Bearer <서비스 자격으로 발급된 서버 임대 토큰>`과 `X-Shinshi-Instance-Id: <등록 인스턴스 UUID>`를 함께 보낸다. 헤더와 본문 인스턴스/역할을 검증된 자격에 대조하고 참가자/출정/캐릭터는 DB 토큰에서만 읽는다. 토큰은 한 번 소비하며 응답을 잃은 서버는 같은 토큰 교환을 재시도하지 않는다. 이전 `/v1/auth/join/consume` 경로는 제공하지 않는다. Unity verifier와 메인 스레드 전달은 Unity 작업자가 연결한다.
 
 원장 쓰기는 `IdempotentOperationExecutor` 효과 콜백에서 받은 `OperationExecutionContext`로만 호출한다. 활성 PostgreSQL 연결과 같은 트랜잭션인지 검사하고 source operation이 Pending인지 확인한다. `PostgresEconomyLedgerWriter.AppendAsync`, `PostgresItemHistoryWriter.AppendAsync`, `PostgresOutboxWriter.EnqueueAsync`를 실제 잔액/재고 변경과 같은 callback에 넣는다. 업무 거절은 effect savepoint, 예외는 전체 트랜잭션을 롤백하므로 원장/장비 이력/outbox도 함께 롤백된다. 원장 중복 키 `(actor_id, operation_id, entry_key)`, 장비 이력 `(item_id, seq)`, outbox `event_id`가 같은 내용의 재기록을 허용하고 다른 내용은 거절한다. 원장은 직접 잔액을 바꾸지 않으므로 모든 경제 변경 담당자가 이 공용 경로를 연결해야 한다. 장비의 삭제 이력은 item_id 외래 키 없이 남겨 삭제 뒤에도 보존한다.
 
@@ -337,7 +337,7 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 
 설계는 `docs/design/account-and-website.md`다. 코드는 `Shinshi.Api/Accounts/`, `Shinshi.Api/Characters/`, `Shinshi.Data/Accounts/`, `Shinshi.Data/Characters/`, `PostgresAuthRepository.Accounts.cs`이고 등록은 `AddShinshiAuth`가 부르는 `AddShinshiAccounts`다. 형식 규칙은 Unity와 공유하는 `AccountCredentialRules`, `CharacterNameRules`(Contracts)에 있다.
 
-직업 ID 범위는 0~5다(0016 `player_class_range`가 `characters`, `market_listings`의 CHECK를 넓힌다). 새 직업 3(검사), 4(마검사), 5(궁수)는 설정 `Characters__EnabledClassIds`(쉼표 목록, 기본 `0,1,2`)에 넣기 전까지 닫혀 있다. 닫힌 직업의 캐릭터 생성은 `409 FEATURE_DISABLED`(작업으로 저장하지 않음), 마을 입장권 발급은 `FEATURE_DISABLED` 거절이다. 0, 1, 2는 항상 열려 있고 범위 밖(6 이상, 음수)은 400 `INVALID_APPEARANCE`다. 부적 효과는 `growth-content.json`에 직업 6개 x 15개 = 90개이며 효과 ID 형식(`^T[0-9]{2}-[1-3][A-Z]$`)은 그대로다. 0016 down은 직업 3~5 행이 있으면 데이터를 지우지 않고 중단한다.
+직업 ID 범위는 0~5다(0016 `player_class_range`가 `characters`, `market_listings`의 CHECK를 넓힌다). 신규 생성은 직업 3(검사), 4(마검사), 5(궁수)만 허용하며 설정 `Characters__EnabledClassIds`의 기본값은 `3,4,5`다. 구직업 0~2는 설정에 넣어도 생성되지 않는다. 닫힌 직업의 생성은 `409 FEATURE_DISABLED`(작업으로 저장하지 않음)다. 기존 구직업 캐릭터의 선택·마을 입장은 호환성을 유지하고, 새 직업의 마을 입장은 생성 허용 설정을 따른다. 범위 밖(6 이상, 음수)은 400 `INVALID_APPEARANCE`다. 부적 효과는 `growth-content.json`에 직업 6개 x 15개 = 90개이며 효과 ID 형식(`^T[0-9]{2}-[1-3][A-Z]$`)은 그대로다. 0016 down은 직업 3~5 행이 있으면 데이터를 지우지 않고 중단한다.
 
 | 경로 | 인증 | 결과 |
 |---|---|---|
@@ -367,7 +367,7 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 
 ## 성장, 장비, 초기 지급, 계정 진행 (0011)
 
-규칙 수치의 원본은 Unity SO(`EquipmentCatalogSO`, `GrowthConfigSO`, `TalismanCatalogSO`, `ProgressionCatalogSO`)다. 백엔드는 그 에셋 값을 옮긴 `src/Shinshi.Data/Content/growth-content.json`(내장 리소스 `Shinshi.Data.Content.growth-content.json`, `schemaVersion` 1, `contentVersion`은 GameDB 값)만 읽고 시작 시 개수, 범위, 참조를 검증한다. 코드는 `Shinshi.Data/Growth/`, `Shinshi.Api/Growth/`, `Shinshi.Api/Ledger/EconomyReconciliationService.cs`이고 등록은 `AddShinshiGrowth`(항상), `AddShinshiEconomyReconciliation`(연결 문자열이 있을 때만)이다.
+규칙 수치의 원본은 Unity SO(`EquipmentCatalogSO`, `GrowthConfigSO`, `TalismanCatalogSO`, `ProgressionCatalogSO`, `CharacterLevelConfigSO`)다. 백엔드는 그 에셋 값을 옮긴 `src/Shinshi.Data/Content/growth-content.json`(내장 리소스 `Shinshi.Data.Content.growth-content.json`, `schemaVersion` 3, `contentVersion`은 GameDB 값)만 읽고 시작 시 개수, 범위, 참조를 검증한다. 코드는 `Shinshi.Data/Growth/`, `Shinshi.Api/Growth/`, `Shinshi.Api/Ledger/EconomyReconciliationService.cs`이고 등록은 `AddShinshiGrowth`(항상), `AddShinshiEconomyReconciliation`(연결 문자열이 있을 때만)이다.
 
 | 경로 | 인증 | 결과 |
 |---|---|---|
