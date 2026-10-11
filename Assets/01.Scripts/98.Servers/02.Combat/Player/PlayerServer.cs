@@ -42,7 +42,7 @@ namespace Shinshi.Combat
         private readonly int                              _combatId;
         private readonly int                              _participantId;
         private readonly float                            _moveSpeed;
-        private readonly float                            _attackPower;
+        private float                                     _attackPower;
         private readonly float                            _defense;
         private readonly float                            _maxEnergy;
         private float                                     _critChance;
@@ -138,7 +138,6 @@ namespace Shinshi.Combat
         public float                 AttackPower     => _attackPower;
 
         // 0에서 1 사이, 상한 적용 뒤 값
-        // TODO(민성): 치명타와 시작 인원 피해 배율의 적용 위치가 기획에서 정해지면 피해 판정에서 이 값을 쓴다
         public float                 CritChance      => _critChance;
         public float                 MaxEnergy       => _maxEnergy;
         public SkillServer           Skills          => _skills;
@@ -194,9 +193,9 @@ namespace Shinshi.Combat
             _defense     = stats.Defense;
             _maxHealth   = stats.MaxHealth;
             _maxEnergy   = stats.MaxEnergy;
+            _critChance  = stats.CritChance;
             _lifeStealRate         = stats.LifeSteal;
             _lifeStealCapPerSecond = config.LifeStealCapPerSecond;
-            _critChance  = stats.CritChance;
             _health      = _maxHealth;
             _attack      = config.GetBasicAttack(playerClass);
 
@@ -256,9 +255,9 @@ namespace Shinshi.Combat
             _deathPosition    = snapshot.DeathPosition;
             _hasDeathPosition = snapshot.HasDeathPosition;
             _nextAttackTime   = snapshot.NextAttackTime;
+            _nextDodgeTime    = snapshot.NextDodgeTime;
             _lifeStealWindow       = snapshot.LifeStealWindow;
             _lifeStealWindowHealed = snapshot.LifeStealWindowHealed;
-            _nextDodgeTime    = snapshot.NextDodgeTime;
             _input.SetDodgeReadyAt(_nextDodgeTime);
             if (_lifeState != EParticipantLifeState.Alive)
             {
@@ -266,7 +265,9 @@ namespace Shinshi.Combat
             }
 
             _gate.Restore(snapshot.LastSequence);
+            _gate.RestoreTokenBucket(snapshot.TokenBucket, NetworkTime.time);
             _gate.RestoreViolations(snapshot.ViolationWindowStart, snapshot.ViolationCount);
+            _gate.RestoreRateViolations(snapshot.RateViolations, NetworkTime.time);
             _input.SetLastProcessedSequence(snapshot.LastSequence);
             _combat.SetHealth(_health, _maxHealth);
             _combat.SetLifeState(_lifeState);
@@ -753,7 +754,6 @@ namespace Shinshi.Combat
             _combat.SetHealth(_health, _maxHealth);
         }
 
-        private bool TryAcceptHeader(in PlayerInputHeader header, out double requestTime, bool reportSkill = false)
         // 죽었거나 부활을 기다리는 동안 남은 지속 기술이 준 피해는 회복을 만들지 않는다.
         // 구간 누계는 부활해도 지우지 않는다. 지우면 죽었다 살아나는 것으로 초당 상한을 다시 채울 수 있다
         public float ReceiveLifeSteal(float appliedDamage, double serverTime)
@@ -769,6 +769,7 @@ namespace Shinshi.Combat
             return healed;
         }
 
+        private bool TryAcceptHeader(in PlayerInputHeader header, out double requestTime, bool reportSkill = false)
         {
             requestTime = 0.0;
             if ((_isDisconnecting) || (_isDetached))
@@ -826,7 +827,7 @@ namespace Shinshi.Combat
         private void Kick(EInputVerdict verdict)
         {
             _isDisconnecting = true;
-            Debug.LogWarning($"[Combat] 입력 위반으로 연결을 끊는다, combatId={_combatId}, verdict={verdict}, violations={_gate.ViolationCount}");
+            Debug.LogWarning($"[Combat] 입력 위반으로 연결을 끊는다, combatId={_combatId}, verdict={verdict}, violations={_gate.ViolationCount}, rateViolations={_gate.RateViolationCount}");
             _input.DisconnectOwner();
         }
 
@@ -1185,7 +1186,8 @@ namespace Shinshi.Combat
                 return;
             }
 
-            // TODO(민성): 치명타와 시작 인원 피해 배율의 적용 위치가 기획에서 정해지면 여기서 곱한다
+            // 치명타는 공통 DamageResolver가 대상별로 판정한다
+            // TODO(민성): 시작 인원 피해 배율의 적용 위치가 기획에서 정해지면 여기서 곱한다
             float rawDamage = _attackPower * _attack.DamageCoefficient;
             int   castId    = _resolver.IssueInstanceId();
             int   actionId  = _resolver.IssueInstanceId();

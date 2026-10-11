@@ -1,5 +1,6 @@
-// System
+﻿// System
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 // 서드파티
@@ -10,12 +11,30 @@ using NUnit.Framework;
 using Shinshi.Common;
 using Shinshi.Contracts;
 using Shinshi.Network;
+using Shinshi.UI;
 
 namespace Shinshi.Tests
 {
     public class TownMessageSerializerTests
     {
         // 마을 메시지의 쓰기, 읽기 순서가 맞는지와 클라이언트가 보낸 배열 길이 상한, 마을 입장 결합의 계정 ID 전달을 본다
+
+        private readonly System.Collections.Generic.List<UnityEngine.Object> _created = new System.Collections.Generic.List<UnityEngine.Object>();
+
+        [SetUp]
+        public void SetUp()
+        {
+            Shinshi.Data.GameDB.ResetForTests();
+            Shinshi.Data.GameDB.Initialize(GameDBTestFixtures.CreateValidRoot(_created));
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Shinshi.Data.GameDB.ResetForTests();
+            foreach (UnityEngine.Object value in _created) UnityEngine.Object.DestroyImmediate(value);
+            _created.Clear();
+        }
 
         /****************************************
         *                Fields
@@ -32,6 +51,28 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
+        public void PartyRequest_RoundTrip_KeepsFieldsAndConsumesPayload()
+        {
+            var source = new PartyRequestMessage(EPartyAction.SetReady, 9, EPartyMode.Boss, "battle_wolbaek_easy",
+                "room", "password", true, 3, 1);
+            var writer = new NetworkWriter();
+            writer.WritePartyRequestMessage(source);
+            var reader = new NetworkReader(writer.ToArraySegment());
+            PartyRequestMessage read = reader.ReadPartyRequestMessage();
+
+            Assert.AreEqual(source.Action, read.Action);
+            Assert.AreEqual(source.RoomId, read.RoomId);
+            Assert.AreEqual(source.Mode, read.Mode);
+            Assert.AreEqual(source.ContentId, read.ContentId);
+            Assert.AreEqual(source.Name, read.Name);
+            Assert.AreEqual(source.Password, read.Password);
+            Assert.AreEqual(source.Ready, read.Ready);
+            Assert.AreEqual(source.SmallPotions, read.SmallPotions);
+            Assert.AreEqual(source.LargePotions, read.LargePotions);
+            Assert.AreEqual(0, reader.Remaining);
+        }
+
+        [Test]
         public void PartyRoomState_RoundTrip_KeepsMembersAndPhase()
         {
             var members = new[]
@@ -44,7 +85,8 @@ namespace Shinshi.Tests
 
             var writer = new NetworkWriter();
             writer.WritePartyRoomStateMessage(source);
-            PartyRoomStateMessage read = new NetworkReader(writer.ToArraySegment()).ReadPartyRoomStateMessage();
+            var reader = new NetworkReader(writer.ToArraySegment());
+            PartyRoomStateMessage read = reader.ReadPartyRoomStateMessage();
 
             Assert.IsTrue(read.InRoom);
             Assert.AreEqual(42, read.Revision);
@@ -54,6 +96,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(EPlayerClass.Summoner, read.Members[1].PlayerClass);
             Assert.AreEqual(EPartyReadyState.Ready, read.Members[0].Ready);
             Assert.AreEqual(3, read.Members[0].SmallPotions);
+            Assert.AreEqual(-1L, read.Members[0].TotalExperience);
+            Assert.AreEqual(0, reader.Remaining);
         }
 
         [Test]
@@ -61,20 +105,30 @@ namespace Shinshi.Tests
         {
             var members = new[]
             {
-                new PartyMemberView(1, "a", EPlayerClass.Swordsman, EPartyReadyState.Ready, 0, 0),
-                new PartyMemberView(2, "b", EPlayerClass.Mageknight, EPartyReadyState.Ready, 0, 0),
-                new PartyMemberView(3, "c", EPlayerClass.Archer, EPartyReadyState.Ready, 0, 0)
+                new PartyMemberView(1, "a", EPlayerClass.Swordsman, EPartyReadyState.Ready, 0, 0, 0),
+                new PartyMemberView(2, "b", EPlayerClass.Mageknight, EPartyReadyState.Ready, 0, 0, 2850),
+                new PartyMemberView(3, "c", EPlayerClass.Archer, EPartyReadyState.Ready, 0, 0, 120350)
             };
             var source = new PartyRoomStateMessage(true, 9, 42, "room", EPartyMode.Boss, "battle_wolbaek_easy", 0, false, 1,
                 EPartyPhase.Open, 0f, members);
 
             var writer = new NetworkWriter();
             writer.WritePartyRoomStateMessage(source);
-            PartyRoomStateMessage read = new NetworkReader(writer.ToArraySegment()).ReadPartyRoomStateMessage();
+            var reader = new NetworkReader(writer.ToArraySegment());
+            PartyRoomStateMessage read = reader.ReadPartyRoomStateMessage();
 
             Assert.AreEqual(EPlayerClass.Swordsman, read.Members[0].PlayerClass);
             Assert.AreEqual(EPlayerClass.Mageknight, read.Members[1].PlayerClass);
             Assert.AreEqual(EPlayerClass.Archer, read.Members[2].PlayerClass);
+            Assert.AreEqual(0L, read.Members[0].TotalExperience);
+            Assert.AreEqual(2850L, read.Members[1].TotalExperience);
+            Assert.AreEqual(120350L, read.Members[2].TotalExperience);
+            Assert.AreEqual(0, reader.Remaining);
+            var display = new List<SortieMemberData>();
+            SortiePrepRules.BuildMembers(in read, display);
+            Assert.AreEqual(1, display[0].Level);
+            Assert.AreEqual(5, display[1].Level);
+            Assert.AreEqual(30, display[2].Level);
         }
 
         [Test]
@@ -158,12 +212,15 @@ namespace Shinshi.Tests
             Assert.AreEqual(5, read.ClaimParticipantId);
         }
 
-        [Test]
-        public void TownJoin_AccountIdFromExchange_ReachesSessionBinding()
+        [TestCase(0L)]
+        [TestCase(2850L)]
+        [TestCase(120350L)]
+        public void TownJoin_AccountIdAndExperienceFromExchange_ReachesTownMember(long totalExperience)
         {
             var response = new JoinTokenExchangeResponse(CHARACTER_ID, INSTANCE_ID, ContractCodes.ServerRole.TOWN, null, null, 0,
                 LEASE_ID, (int)EPlayerClass.Warrior, null, JoinTokenExchangeResponse.NO_MODE, null, null, null,
-                GameSessionCodes.Difficulty.NONE, null, ACCOUNT_ID);
+                GameSessionCodes.Difficulty.NONE, null, ACCOUNT_ID, null, null,
+                new CharacterExperienceSnapshot(totalExperience, null, 0, CharacterLevelRules.SettingsHash(Shinshi.Data.GameDB.CharacterLevel.ToSettings())));
             Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE_ID, response,
                 out JoinTokenClaims claims));
 
@@ -174,6 +231,18 @@ namespace Shinshi.Tests
             Assert.AreEqual(CHARACTER_ID, binding.CharacterId);
             TownMember member = TownMember.FromBinding(binding);
             Assert.IsTrue(member.HasBackendIdentity);
+            Assert.AreEqual(totalExperience, binding.Experience.TotalExperience);
+            Assert.AreEqual(totalExperience, member.TotalExperience);
+        }
+
+        [Test]
+        public void FromBinding_DevelopmentIdentityWithoutExperience_UsesUnknown()
+        {
+            var binding = new SessionBinding("dev", 1, null, EPlayerClass.Archer, "궁수");
+
+            TownMember member = TownMember.FromBinding(binding);
+
+            Assert.AreEqual(-1L, member.TotalExperience);
         }
     }
 }

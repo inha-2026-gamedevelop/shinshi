@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 
 // Unity
@@ -23,7 +23,7 @@ namespace Shinshi.Network
 
         private const string EMPTY_NAME    = "빈 칸";
         private const string UNKNOWN_POWER = "전투력 -";
-        private const string INITIAL_LEVEL = "Lv.1";
+        private const string UNKNOWN_LEVEL = "Lv.-";
 
         // 캐릭터가 있을 때만 켜는 것(무대 모델, 무대 표시 글자 묶음)
         [SerializeField] private GameObject[] _filledObjects = null;
@@ -68,16 +68,16 @@ namespace Shinshi.Network
         ****************************************/
 
         /// <summary> 캐릭터 정보를 칸에 쓴다. 이름이 null이면 빈 칸으로 보인다 </summary>
-        public void Show(string characterName, string className)
+        public void Show(string characterName, string className, int level = 0)
         {
             bool filled = characterName != null;
             SetActive(_filledObjects, filled);
             SetText(_nameTexts, filled ? characterName : EMPTY_NAME);
             SetText(_classTexts, filled ? className : string.Empty);
 
-            // 경험치 성장 도입 전에는 모든 캐릭터가 레벨 1이다. 전투력은 아직 목록 API가 주지 않는다
+            // 전투력은 아직 목록 API가 주지 않는다
             SetText(_powerTexts, filled ? UNKNOWN_POWER : string.Empty);
-            SetText(_levelTexts, filled ? INITIAL_LEVEL : string.Empty);
+            SetText(_levelTexts, filled ? (level > 0 ? "Lv." + level.ToString(System.Globalization.CultureInfo.InvariantCulture) : UNKNOWN_LEVEL) : string.Empty);
 
             // 빈 칸으로 다시 쓰이면 이전 캐릭터의 해석 실패 상태를 들고 있지 않는다. ShowLook이 다시 불리면 덮인다
             if (!filled)

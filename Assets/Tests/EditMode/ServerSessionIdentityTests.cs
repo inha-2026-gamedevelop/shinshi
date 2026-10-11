@@ -1,4 +1,4 @@
-// 서드파티
+﻿// 서드파티
 using NUnit.Framework;
 
 // 프로젝트 내부
@@ -12,6 +12,23 @@ namespace Shinshi.Tests
     /// 번호가 던전(Release)과 마을(Forget)에서 서로 다르게 다뤄지는지 </summary>
     public class ServerSessionIdentityTests
     {
+        private readonly System.Collections.Generic.List<UnityEngine.Object> _created = new System.Collections.Generic.List<UnityEngine.Object>();
+
+        [SetUp]
+        public void SetUp()
+        {
+            Shinshi.Data.GameDB.ResetForTests();
+            Shinshi.Data.GameDB.Initialize(GameDBTestFixtures.CreateValidRoot(_created));
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Shinshi.Data.GameDB.ResetForTests();
+            foreach (UnityEngine.Object value in _created) UnityEngine.Object.DestroyImmediate(value);
+            _created.Clear();
+        }
+
         /****************************************
         *                Fields
         ****************************************/
@@ -102,7 +119,8 @@ namespace Shinshi.Tests
             CharacterAppearance mixed = CharacterAppearanceCatalog.Create(CharacterAppearanceCatalog.FACE_CUTE, 3, 2);
             string appearanceJson = BackendJson.Serialize(mixed);
             return new JoinTokenExchangeResponse(CHARACTER_ID, INSTANCE_ID, serverRole, participantId, sortieId, 0L,
-                null, (int)EPlayerClass.Warrior, "마을검증", appearanceJson);
+                null, (int)EPlayerClass.Warrior, "마을검증", JoinTokenExchangeResponse.NO_MODE, null, null, null, GameSessionCodes.Difficulty.NONE, null, null, null, appearanceJson,
+                new CharacterExperienceSnapshot(0, sortieId, 0, CharacterLevelRules.SettingsHash(Shinshi.Data.GameDB.CharacterLevel.ToSettings())));
         }
     }
 }

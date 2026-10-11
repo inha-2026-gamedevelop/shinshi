@@ -246,17 +246,19 @@ namespace Shinshi.Network
             writer.WriteByte((byte)value.Ready);
             writer.WriteInt(value.SmallPotions);
             writer.WriteInt(value.LargePotions);
+            writer.WriteLong(value.TotalExperience);
         }
 
         private static PartyMemberView ReadMember(NetworkReader reader)
         {
-            int    participantId = reader.ReadInt();
-            string name          = reader.ReadString();
-            var    playerClass   = (EPlayerClass)reader.ReadByte();
-            var    ready         = (EPartyReadyState)reader.ReadByte();
-            int    smallPotions  = reader.ReadInt();
-            int    largePotions  = reader.ReadInt();
-            return new PartyMemberView(participantId, name, playerClass, ready, smallPotions, largePotions);
+            int    participantId   = reader.ReadInt();
+            string name            = reader.ReadString();
+            var    playerClass     = (EPlayerClass)reader.ReadByte();
+            var    ready           = (EPartyReadyState)reader.ReadByte();
+            int    smallPotions    = reader.ReadInt();
+            int    largePotions    = reader.ReadInt();
+            long   totalExperience = reader.ReadLong();
+            return new PartyMemberView(participantId, name, playerClass, ready, smallPotions, largePotions, totalExperience);
         }
     }
 }

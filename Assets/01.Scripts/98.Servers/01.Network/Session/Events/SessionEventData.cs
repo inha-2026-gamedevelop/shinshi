@@ -24,6 +24,8 @@ namespace Shinshi.Network
 
         // EssenceAccrued, BaseEssenceAccrued의 적립량, 0보다 크다. 다른 종류는 0이다
         public long              Amount              { get; }
+        public int ExperienceSourceKind { get; }
+        public string ExperienceSettingsHash { get; }
 
         // SessionEnded의 참가자별 정산안, 종료 판정 때 한 번 만들고 저장 재시도에도 바꾸지 않는다
         public SettlementGrant[] Grants              { get; }
@@ -43,8 +45,10 @@ namespace Shinshi.Network
             string participantId = null, string sourceId = null, string killerParticipantId = null,
             long killSequence = 0, int waveIndex = 0, ESessionEndReason reason = default,
             bool isBossSession = false, in LootRollResult loot = default, SettlementGrant[] grants = null,
-            long amount = 0, string definitionId = null, string bindingKind = null, long revertsSequence = 0)
+            long amount = 0, string definitionId = null, string bindingKind = null, long revertsSequence = 0, int experienceSourceKind = 0, string experienceSettingsHash = null)
         {
+            ExperienceSourceKind = experienceSourceKind;
+            ExperienceSettingsHash = experienceSettingsHash;
             Type                = type;
             ServerTime          = serverTime;
             ParticipantId       = participantId;

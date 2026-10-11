@@ -53,6 +53,7 @@ namespace Shinshi.Network
 
         // 던전 입장만 채운다. 출정 예약 때 고정한 전투 준비와 남은 물약 예약분이며 전투 런타임이 능력치, 부적, 물약 수량을
         // 여기서 정한다. 개발 토큰, 0011 전 출정, 이 필드를 모르는 API면 null이다
+        public CharacterExperienceSnapshot Experience { get; internal set; }
         public CharacterCombatLoadout CombatLoadout   { get; internal set; }
         public ReservationPotion[]    ReservedPotions { get; internal set; }
 

@@ -98,7 +98,7 @@ namespace Shinshi.Network
 
             int[] training = (snapshot.Training != null) ? (int[])snapshot.Training.Clone() : Array.Empty<int>();
             return new GrowthSnapshotMessage(snapshot.ClassId, snapshot.LoadoutRevision, snapshot.Essence, snapshot.Shards, training,
-                equipment, pity, talismans, loadout, items, snapshot.StorageUsed, snapshot.StorageCapacity, snapshot.ContentVersion);
+                equipment, pity, talismans, loadout, items, snapshot.StorageUsed, snapshot.StorageCapacity, snapshot.ContentVersion, snapshot.TotalExperience);
         }
 
         public static LifeSnapshotMessage ToMessage(LifeSnapshotResponse snapshot)

@@ -13,7 +13,9 @@ namespace Shinshi.Common
             // 2: 플레이어 이름 SyncVar, 보스 예고 묶음 번호와 2페이즈 빔, 별형 빔, 반월 연쇄, 50% 결계 사건 추가(2026-10-03)
             // 3: 캐릭터 닉네임·외형 SyncVar와 공개 이동 속도 추가, 머리 위 이름을 닉네임 SyncVar로 합침(2026-10-06)
             // 4: 외형 v3(P09, 48바이트)와 기본 공격·회피 표현 시퀀스 SyncVar 추가(2026-10-06)
-            public const int PROTOCOL_VERSION = 4;
+            // 5: 캐릭터 누적 경험치·성장 입장 계약과 플레이어 경험치 SyncVar 추가(2026-10-11)
+            // 6: 파티 참가자 누적 경험치와 소유자 데미지 표시 TargetRpc 추가(2026-10-11)
+            public const int PROTOCOL_VERSION = 6;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;

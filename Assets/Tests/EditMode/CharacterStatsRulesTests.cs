@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System.Collections.Generic;
 
 // Unity
@@ -83,6 +83,35 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void TryCompute_LevelGrowth_AppliesBeforeTrainingOnce()
+        {
+            CharacterLevelConfigSO config = ScriptableObject.CreateInstance<CharacterLevelConfigSO>();
+            try
+            {
+                int[] training = new int[Constants.Combat.TRAINING_STAT_COUNT];
+                training[(int)ETrainingStat.Attack] = 2;
+                training[(int)ETrainingStat.Health] = 3;
+                var loadout = new CharacterCombatLoadout((int)EPlayerClass.Warrior,
+                    new CombatEquipmentEntry[Constants.Combat.EQUIPMENT_SLOT_COUNT], training,
+                    new CombatTalismanEntry[0], CONTENT_VERSION);
+                CharacterStats baseline = CharacterStatsRules.Compute(_player, _equipment, _growth, loadout);
+                Assert.IsTrue(CharacterStatsRules.TryCompute(_player, _equipment, _growth, loadout,
+                    config.ToSettings(), 2850, out CharacterStats grown, out string error), error);
+                float attackGain = 4f * (1f + _growth.GetTrainingStat(ETrainingStat.Attack).GainPerStep * 2);
+                Assert.AreEqual(baseline.Attack + attackGain, grown.Attack, ATTACK_TOLERANCE);
+                decimal healthRate = 1m + (decimal)_growth.GetTrainingStat(ETrainingStat.Health).GainPerStep * 3m;
+                Assert.AreEqual((float)decimal.Floor(((decimal)_player.BaseHealth + 60m) * healthRate), grown.MaxHealth);
+                Assert.AreEqual(baseline.Defense, grown.Defense);
+                Assert.AreEqual(baseline.CritChance, grown.CritChance);
+                Assert.AreEqual(baseline.MaxEnergy, grown.MaxEnergy);
+            }
+            finally
+            {
+                Object.DestroyImmediate(config);
+            }
+        }
+
+        [Test]
         public void Compute_RareSeventeen_DefenseAndFixedAccessoryCrit()
         {
             CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
@@ -92,35 +121,6 @@ namespace Shinshi.Tests
             Assert.AreEqual(326.8f, stats.Defense, ATTACK_TOLERANCE);
             Assert.AreEqual(0.07f, stats.CritChance, ATTACK_TOLERANCE);
         }
-
-        [Test]
-        public void Compute_TrainingGear_AccessoryCritIsHalf()
-        {
-            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
-                Loadout(TRAINING_SUFFIX, 0, true, 10, new int[Constants.Combat.TRAINING_STAT_COUNT]));
-
-            Assert.AreEqual(0.06f, stats.CritChance, ATTACK_TOLERANCE);
-        }
-
-        [Test]
-        public void Compute_AttackTrainingForty_AddsTwentyPercentOfPreTrainingAttack()
-        {
-            int[] training = new int[Constants.Combat.TRAINING_STAT_COUNT];
-            training[(int)ETrainingStat.Attack] = TRAINING_CAP;
-
-            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
-                Loadout(RARE_SUFFIX, 1, false, 17, training));
-
-            Assert.AreEqual(644.32f * 1.2f, stats.Attack, ATTACK_TOLERANCE);
-        }
-
-        [Test]
-        public void Compute_HealthAndEnergyTraining_FloorsOnlyFinalValues()
-        {
-            int[] training = new int[Constants.Combat.TRAINING_STAT_COUNT];
-            training[(int)ETrainingStat.Health]    = TRAINING_CAP;
-            training[(int)ETrainingStat.MaxEnergy] = TRAINING_CAP;
-            training[(int)ETrainingStat.Defense]   = 20;
 
         // 장신구 기본 1%에 등급 단계마다 0.5%p, 수련용은 일반의 절반. 강화는 곱하지 않는다
         [TestCase(TRAINING_SUFFIX, 0, true, 10, 0.005f)]
@@ -154,6 +154,35 @@ namespace Shinshi.Tests
         {
             Assert.AreEqual(0f, CharacterStatsRules.Base(_player).LifeSteal);
         }
+
+        [Test]
+        public void Compute_TrainingGear_AccessoryCritIsHalf()
+        {
+            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
+                Loadout(TRAINING_SUFFIX, 0, true, 10, new int[Constants.Combat.TRAINING_STAT_COUNT]));
+
+            Assert.AreEqual(0.06f, stats.CritChance, ATTACK_TOLERANCE);
+        }
+
+        [Test]
+        public void Compute_AttackTrainingForty_AddsTwentyPercentOfPreTrainingAttack()
+        {
+            int[] training = new int[Constants.Combat.TRAINING_STAT_COUNT];
+            training[(int)ETrainingStat.Attack] = TRAINING_CAP;
+
+            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
+                Loadout(RARE_SUFFIX, 1, false, 17, training));
+
+            Assert.AreEqual(644.32f * 1.2f, stats.Attack, ATTACK_TOLERANCE);
+        }
+
+        [Test]
+        public void Compute_HealthAndEnergyTraining_FloorsOnlyFinalValues()
+        {
+            int[] training = new int[Constants.Combat.TRAINING_STAT_COUNT];
+            training[(int)ETrainingStat.Health]    = TRAINING_CAP;
+            training[(int)ETrainingStat.MaxEnergy] = TRAINING_CAP;
+            training[(int)ETrainingStat.Defense]   = 20;
 
             CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
                 Loadout(RARE_SUFFIX, 1, false, 17, training));

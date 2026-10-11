@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -183,12 +183,19 @@ namespace Shinshi.Network
 
         private void ShowSlots()
         {
+            CharacterLevelSettings settings = Shinshi.Data.GameDB.IsInitialized
+                ? Shinshi.Data.GameDB.CharacterLevel.ToSettings() : null;
             for (int i = 0; i < _slots.Length; ++i)
             {
                 if (i < _characters.Count)
                 {
                     CharacterSummary character = _characters[i];
-                    _slots[i].Show(character.Name, LobbyText.ClassName(character.ClassId));
+                    int level = 0;
+                    if (HudExperienceRules.TryRead(settings, character.TotalExperience, out HudExperienceProgress progress))
+                    {
+                        level = progress.Level;
+                    }
+                    _slots[i].Show(character.Name, LobbyText.ClassName(character.ClassId), level);
                     _slots[i].ShowLook(character.ClassId, character.Appearance);
                 }
                 else

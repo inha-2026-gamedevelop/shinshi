@@ -1,3 +1,6 @@
+// System
+using System;
+
 // Unity
 using UnityEngine;
 
@@ -16,14 +19,18 @@ namespace Shinshi.Combat
         private readonly CombatTargetRegistry _registry;
         private readonly HitLedger            _ledger;
         private readonly float                _defenseConstant;
+        private readonly float                _playerDefenseConstant;
         private readonly float                _reductionCap;
+        private readonly float                _criticalMultiplier;
+        private readonly Func<float>          _roll;
+        private readonly Func<int, IDamageable> _retainedSource;
 
         private double _now                 = 0.0;
-        private readonly float                _playerDefenseConstant;
         private int    _lastInstanceId      = CombatIds.NONE;
         private double _nextFullReportTime  = 0.0;
         private long   _reportedFullCount   = 0;
         private long   _reportedForcedCount = 0;
+        private double _nextFeedbackErrorTime = 0.0;
 
         /****************************************
         *              Properties
@@ -31,6 +38,12 @@ namespace Shinshi.Combat
 
         // 지금 처리 중인 서버 틱 시각
         public double Now => _now;
+
+        // 전투 결과는 적용 뒤에만 알린다. 표현 수신자의 실패가 체력 판정을 되돌리지 않는다
+        public event Action<AppliedDamageNotice> DamageApplied;
+
+        // 생명력 흡수로 실제 오른 체력, 주인 전투 번호와 회복량. 전투 기록용이며 수신 실패가 회복을 되돌리지 않는다
+        public event Action<int, float> LifeStealApplied;
 
         /****************************************
         *                Methods
@@ -42,23 +55,21 @@ namespace Shinshi.Combat
             float criticalMultiplier = 1f, Func<float> roll = null, Func<int, IDamageable> retainedSource = null,
             float playerDefenseConstant = 0f)
         {
-        // 전투 결과는 적용 뒤에만 알린다. 표현 수신자의 실패가 체력 판정을 되돌리지 않는다
-        public event Action<AppliedDamageNotice> DamageApplied;
-
-        // 생명력 흡수로 실제 오른 체력, 주인 전투 번호와 회복량. 전투 기록용이며 수신 실패가 회복을 되돌리지 않는다
-        public event Action<int, float> LifeStealApplied;
-
             _registry        = registry;
             _ledger          = ledger;
             _defenseConstant = defenseConstant;
+            _playerDefenseConstant = (playerDefenseConstant > 0f) ? playerDefenseConstant : defenseConstant;
             _reductionCap    = reductionCap;
+            _criticalMultiplier = ((DamageFeedbackRules.IsFinite(criticalMultiplier)) && (criticalMultiplier >= 1f))
+                ? criticalMultiplier : 1f;
+            _roll = roll ?? Roll;
+            _retainedSource = retainedSource;
         }
 
         /// <summary> 틱 시작에 서버 시각을 넣고 오래된 적중 기록을 지운다 </summary>
         public void BeginTick(double serverTime)
         {
             _now = serverTime;
-            _playerDefenseConstant = (playerDefenseConstant > 0f) ? playerDefenseConstant : defenseConstant;
             _ledger.Prune(serverTime);
             ReportLedgerPressure(serverTime);
         }
@@ -93,8 +104,19 @@ namespace Shinshi.Combat
                 return DamageResult.Ignored(EDamageOutcome.TargetNotAlive);
             }
 
+            if ((!DamageFeedbackRules.IsFinite(request.RawDamage)) || (request.RawDamage <= 0f)
+                || (!DamageFeedbackRules.IsFinite(request.SourcePosition)) || (!DamageFeedbackRules.IsFinite(target.Position))
+                || (!DamageFeedbackRules.IsFinite(target.Forward)) || (!DamageFeedbackRules.IsFinite(target.Health))
+                || (target.Health <= 0f) || (!DamageFeedbackRules.IsFinite(target.Defense))
+                || (!DamageFeedbackRules.IsFinite(_defenseConstant)) || (!DamageFeedbackRules.IsFinite(_playerDefenseConstant))
+                || (!DamageFeedbackRules.IsFinite(_reductionCap)))
+            {
+                return DamageResult.Ignored(EDamageOutcome.InvalidRequest);
+            }
+
             // 공격자가 이미 전장에서 빠졌으면 소속을 확인할 수 없다. 죽은 적이 남긴 투사체도 맞아야 하므로 막지 않는다
-            if ((_registry.TryGetDamageable(request.AttackerId, out IDamageable attacker)) && (attacker.Faction == target.Faction))
+            IDamageable attacker = ResolveSource(request.AttackerId);
+            if ((attacker != null) && (attacker.Faction == target.Faction))
             {
                 return DamageResult.Ignored(EDamageOutcome.SameFaction);
             }
@@ -104,13 +126,16 @@ namespace Shinshi.Combat
                 return DamageResult.Ignored(EDamageOutcome.Invulnerable);
             }
 
-            if ((!DamageFeedbackRules.IsFinite(request.RawDamage)) || (request.RawDamage <= 0f)
-                || (!DamageFeedbackRules.IsFinite(request.SourcePosition)) || (!DamageFeedbackRules.IsFinite(target.Position))
-                || (!DamageFeedbackRules.IsFinite(target.Forward)) || (!DamageFeedbackRules.IsFinite(target.Health))
-                || (target.Health <= 0f) || (!DamageFeedbackRules.IsFinite(target.Defense))
-                || (!DamageFeedbackRules.IsFinite(_defenseConstant)) || (!DamageFeedbackRules.IsFinite(_playerDefenseConstant))
-                || (!DamageFeedbackRules.IsFinite(_reductionCap)))
+            bool isRear = DamageRules.IsRearHit(target.Position, target.Forward, request.SourcePosition,
+                Constants.Combat.REAR_HIT_MIN_ANGLE_DEGREES);
+            bool guarded = (target.IsGuardingFront) && (!isRear) && (!request.IsUnblockable);
+
+            // 플레이어와 플레이어의 소환물이 맞을 때만 플레이어용 상수를 쓴다. 적이 맞는 쪽은 바꾸지 않는다
+            float defenseConstant = (target.Faction == ECombatFaction.Player) ? _playerDefenseConstant : _defenseConstant;
+            float damage = guarded ? 0f : DamageRules.ApplyDefense(request.RawDamage, target.Defense, defenseConstant, _reductionCap);
+            if ((!DamageFeedbackRules.IsFinite(damage)) || (damage < 0f))
             {
+                // 유한 입력의 중간 계산도 넘칠 수 있다. 무효 요청은 같은 동작의 정상 재시도를 막지 않는다
                 return DamageResult.Ignored(EDamageOutcome.InvalidRequest);
             }
 
@@ -126,34 +151,32 @@ namespace Shinshi.Combat
             {
                 return DamageResult.Ignored(EDamageOutcome.DuplicateHit);
             }
-            bool isRear = DamageRules.IsRearHit(target.Position, target.Forward, request.SourcePosition,
-                Constants.Combat.REAR_HIT_MIN_ANGLE_DEGREES);
-            bool guarded = (target.IsGuardingFront) && (!isRear) && (!request.IsUnblockable);
 
-            // 플레이어와 플레이어의 소환물이 맞을 때만 플레이어용 상수를 쓴다. 적이 맞는 쪽은 바꾸지 않는다
-            float defenseConstant = (target.Faction == ECombatFaction.Player) ? _playerDefenseConstant : _defenseConstant;
-            float damage = guarded ? 0f : DamageRules.ApplyDefense(request.RawDamage, target.Defense, defenseConstant, _reductionCap);
-            if ((!DamageFeedbackRules.IsFinite(damage)) || (damage < 0f))
-            {
-                // 유한 입력의 중간 계산도 넘칠 수 있다. 무효 요청은 같은 동작의 정상 재시도를 막지 않는다
-                return DamageResult.Ignored(EDamageOutcome.InvalidRequest);
-            }
-
-
-            bool isRear = DamageRules.IsRearHit(target.Position, target.Forward, request.SourcePosition,
-                Constants.Combat.REAR_HIT_MIN_ANGLE_DEGREES);
-
-            if ((target.IsGuardingFront) && (!isRear) && (!request.IsUnblockable))
+            if (guarded)
             {
                 return DamageResult.Guarded();
             }
 
-            float damage   = DamageRules.ApplyDefense(request.RawDamage, target.Defense, _defenseConstant, _reductionCap);
+            // 주인이 없어진 기술도 보존된 anchor에서 확률을 읽는다. 소환물 자체의 확률은 사용하지 않는다
+            IDamageable owner = ((attacker != null) && (attacker.IsSummon)) ? ResolveSource(attacker.OwnerCombatId) : attacker;
+            int ownerId = ((owner != null) && (owner.Faction == ECombatFaction.Player) && (!owner.IsSummon))
+                ? owner.CombatId : CombatIds.NONE;
+            bool isCritical = (damage > 0f) && (ownerId != CombatIds.NONE) && (owner is ICriticalDamageSource critical)
+                && IsCritical(critical.CritChance);
+            if (isCritical)
+            {
+                // 방어와 치명 배율은 곱셈이라 동일한 공식이다. 중간 float 넘침은 실제 피해를 구한 뒤에만 포화시킨다
+                damage = (float)Math.Min(float.MaxValue, (double)damage * _criticalMultiplier);
+            }
             float health   = target.Health;
             float remained = health - damage;
             bool  isLethal = remained <= Constants.Combat.HEALTH_EPSILON;
             float applied  = isLethal ? health : damage;
 
+            // 사망이 registry 해제와 Transform 파괴를 일으킬 수 있어 좌표와 귀속은 ApplyDamage 전에 고정한다
+            Vector3 position = target.Position;
+            DamageResult result = DamageResult.Applied(applied, isLethal, isRear, isCritical);
+            var notice = new AppliedDamageNotice(ownerId, request.HitTargetId, position, result, _now);
             target.ApplyDamage(applied, isLethal, _now);
             ApplyLifeSteal(owner, ownerId, applied);
             Publish(in notice);

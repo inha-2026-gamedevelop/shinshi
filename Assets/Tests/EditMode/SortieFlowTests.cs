@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 
@@ -36,10 +36,11 @@ namespace Shinshi.Tests
         private const string BOSS_CHEOLGAK     = "boss_cheolgak";
         private const string BOSS_WOLBAEK      = "boss_wolbaek";
         private const string UNKNOWN_BOSS      = "boss_unknown";
-        private const string MAP_ID            = "map_forest";
+        private const string MAP_ID            = "region_forest";
         private const string BATTLE_ID         = "battle_forest";
         private const string AUCTION_ITEM      = "item_auction_test";
 
+        private readonly List<Object> _created = new List<Object>();
         private SessionConfigSO         _config;
         private WaveConfigSO            _waves;
         private RewardCatalogSO         _rewards;
@@ -57,6 +58,8 @@ namespace Shinshi.Tests
         [SetUp]
         public void SetUp()
         {
+            GameDB.ResetForTests();
+            GameDB.Initialize(GameDBTestFixtures.CreateValidRoot(_created));
             _config    = ScriptableObject.CreateInstance<SessionConfigSO>();
             _waves     = ScriptableObject.CreateInstance<WaveConfigSO>();
             _rewards   = ScriptableObject.CreateInstance<RewardCatalogSO>();
@@ -73,6 +76,9 @@ namespace Shinshi.Tests
         public void TearDown()
         {
             _host.Dispose();
+            GameDB.ResetForTests();
+            foreach (Object value in _created) Object.DestroyImmediate(value);
+            _created.Clear();
             Object.DestroyImmediate(_config);
             Object.DestroyImmediate(_waves);
             Object.DestroyImmediate(_rewards);

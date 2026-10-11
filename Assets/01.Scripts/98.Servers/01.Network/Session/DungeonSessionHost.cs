@@ -952,7 +952,13 @@ namespace Shinshi.Network
 
             DungeonSession session = DungeonSession.CreateNormal(_sessionId, _roster, _events, _config, _waves, _rewards, wave,
                 _lootSalt);
-            if (SortieContentRules.RegisterWaveSources(session, _waves, _rewards) != _waves.CountTotalEnemies())
+            if (GameDB.IsInitialized && !session.ConfigureExperience(GameDB.CharacterLevel.ToSettings(), _descriptor.MapId))
+            {
+                session.Dispose();
+                return null;
+            }
+            if (SortieContentRules.RegisterWaveSources(session, _waves, _rewards,
+                GameDB.IsInitialized ? GameDB.Enemies : null) != _waves.CountTotalEnemies())
             {
                 session.Dispose();
                 return null;

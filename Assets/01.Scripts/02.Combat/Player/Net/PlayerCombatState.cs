@@ -72,6 +72,8 @@ namespace Shinshi.Combat
         [SyncVar] private byte _actionCancelSequence;
 
         // 지금 적용 중인 제어와 그 종료 서버 시각, 표시용이다. 판정은 서버 처리기가 자기 상태로 한다
+        [SyncVar] private long _totalExperience;
+        public long TotalExperience => _totalExperience;
         [SyncVar] private EPlayerControlKind _controlKind;
         [SyncVar] private double _controlEndsAt;
 
@@ -118,6 +120,12 @@ namespace Shinshi.Combat
         /****************************************
         *                Server
         ****************************************/
+
+        [Server]
+        public void SetTotalExperience(long totalExperience)
+        {
+            _totalExperience = totalExperience;
+        }
 
         [Server]
         public void SetHealth(float health, float maxHealth)

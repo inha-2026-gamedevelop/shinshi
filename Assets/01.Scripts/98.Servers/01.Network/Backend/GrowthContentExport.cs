@@ -71,7 +71,7 @@ namespace Shinshi.Network
         public static JObject Build(GameDatabaseSO root)
         {
             if ((root == null) || (root.Equipment == null) || (root.Growth == null) || (root.Talismans == null)
-                || (root.Progression == null))
+                || (root.Progression == null) || (root.CharacterLevel == null))
             {
                 throw new ArgumentException("성장 콘텐츠를 만들 GameDB 참조가 없다", nameof(root));
             }
@@ -83,7 +83,8 @@ namespace Shinshi.Network
                 ["equipment"]      = BuildEquipment(root.Equipment),
                 ["growth"]         = BuildGrowth(root.Growth),
                 ["talismans"]      = BuildTalismans(root.Talismans),
-                ["progression"]    = BuildProgression(root.Progression)
+                ["progression"]    = BuildProgression(root.Progression),
+                ["characterLevel"] = JObject.FromObject(root.CharacterLevel.ToSettings())
             };
         }
 
@@ -158,8 +159,8 @@ namespace Shinshi.Network
                 ["gradeStatMultipliers"]     = grades,
                 ["enhancementStatRate"]      = Number(equipment.EnhancementStatRate),
                 ["trainingStatRate"]         = Number(equipment.TrainingStatRate),
-                ["enhancementSteps"]         = steps,
                 ["lifeStealPerGrade"]        = Number(equipment.LifeStealPerGrade),
+                ["enhancementSteps"]         = steps,
                 ["sameGradeInheritCost"]     = equipment.SameGradeInheritCost,
                 ["upperGradeInheritCost"]    = equipment.UpperGradeInheritCost,
                 ["upperGradeInheritance"]    = inheritance,

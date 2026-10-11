@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31e65cac36f106b4ea13d71f12798b4f, type: 3}
+  m_Name: CharacterLevelConfig
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.CharacterLevelConfigSO
+  _schemaVersion: 1
+  _maxLevel: 30
+  _firstLevelCost: 300
+  _levelCostStep: 275
+  _trialStartLevel: 5
+  _attackPerLevel: 1
+  _healthPerLevel: 15
+  _regions:
+  - _regionId: region_forest
+    _normalEnemy: 5
+    _eliteEnemy: 25
+    _waveCleared: 30
+  - _regionId: region_ruins
+    _normalEnemy: 5
+    _eliteEnemy: 30
+    _waveCleared: 40
+  - _regionId: region_altar
+    _normalEnemy: 5
+    _eliteEnemy: 35
+    _waveCleared: 50

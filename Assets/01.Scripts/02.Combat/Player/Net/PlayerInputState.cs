@@ -88,6 +88,7 @@ namespace Shinshi.Combat
         // 서버가 거절한 입력의 순번과 사유. 소유 클라이언트에서만 온다
         public event Action<uint, ERejectReason> InputRejected;
         public event Action<uint, int, ERejectReason> SkillResult;
+        public event Action<DamageFeedback> DamageFeedbackReceived;
 
         public PlayerMoveAuthority MoveAuthority => _moveAuthority;
         public float               MoveSpeed    => _moveSpeed;
@@ -236,6 +237,36 @@ namespace Shinshi.Combat
             _hasPendingRevive = false;
             _hasPendingDodge  = false;
             _hasPendingPotion = false;
+#if !UNITY_SERVER
+            if (isClient)
+            {
+                if (!TryGetComponent(out DamageNumberBinder binder))
+                {
+                    binder = gameObject.AddComponent<DamageNumberBinder>();
+                }
+                binder.Bind(this);
+            }
+#endif
+        }
+
+        public override void OnStopAuthority()
+        {
+#if !UNITY_SERVER
+            if (TryGetComponent(out DamageNumberBinder binder))
+            {
+                binder.Unbind();
+            }
+#endif
+        }
+
+        public override void OnStopClient()
+        {
+#if !UNITY_SERVER
+            if (TryGetComponent(out DamageNumberBinder binder))
+            {
+                binder.Unbind();
+            }
+#endif
         }
 
         /****************************************
@@ -483,6 +514,17 @@ namespace Shinshi.Combat
             connectionToClient?.Disconnect();
         }
 
+        [Server]
+        public void SendDamageFeedback(in DamageFeedback feedback)
+        {
+            if ((connectionToClient == null) || (!DamageFeedbackRules.IsValid(in feedback)))
+            {
+                return;
+            }
+            TargetDamageFeedback(feedback.SessionEpoch, feedback.Sequence, feedback.TargetCombatId,
+                feedback.WorldPosition, feedback.Amount, feedback.IsCritical, feedback.ServerTime);
+        }
+
         /****************************************
         *               TargetRpc
         ****************************************/
@@ -497,6 +539,19 @@ namespace Shinshi.Combat
         private void TargetSkillResult(uint sequence, int castInstanceId, ERejectReason reason)
         {
             SkillResult?.Invoke(sequence, castInstanceId, reason);
+        }
+
+        [TargetRpc]
+        private void TargetDamageFeedback(int sessionEpoch, uint sequence, int targetCombatId, Vector3 worldPosition,
+            float amount, bool isCritical, double serverTime)
+        {
+            if (!isOwned)
+            {
+                return;
+            }
+            var feedback = new DamageFeedback(sessionEpoch, sequence, targetCombatId, worldPosition,
+                amount, isCritical, serverTime);
+            DamageFeedbackReceived?.Invoke(feedback);
         }
     }
 }

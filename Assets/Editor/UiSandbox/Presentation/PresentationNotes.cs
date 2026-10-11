@@ -12,7 +12,7 @@ namespace Shinshi.Editor
             "CombatHudDemo의 고정 휴식 · 공명 최대 100 · 승천 비용 {60, 80, 40} 같은 값은 오래된 데모 값이다.";
 
         public const string LEVEL_NOTE =
-            "레벨 계약: Lv1~30, HUD는 레벨과 경험치를 함께 보여 줄 예정이다(2026-10-08 설계, 미구현). 현재 HudPlayerStatusView는 SetLevel만 있다.";
+            "레벨 계약: Lv1~30, HUD는 확정 누적 경험치에서 레벨과 단계 진행을 표시한다. 첫 바인딩에서는 레벨업 알림을 생략한다. 이 화면의 값은 표시 시험용이다.";
 
         public const string CLASS_NOTE =
             "직업 계약: 현행 3직업은 검사(3) · 마검사(4) · 궁수(5)다. 구 직업 무사(0) · 도술사(1) · 신령사(2)는 보존용이며 " +

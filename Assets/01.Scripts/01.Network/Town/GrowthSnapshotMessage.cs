@@ -15,6 +15,7 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
+        private readonly long _totalExperience;
         private readonly int                  _classId;
         private readonly long                 _loadoutRevision;
         private readonly long                 _essence;
@@ -33,6 +34,7 @@ namespace Shinshi.Network
         *              Properties
         ****************************************/
 
+        public long TotalExperience => _totalExperience;
         public int                  ClassId         => _classId;
         public long                 LoadoutRevision => _loadoutRevision;
         public long                 Essence         => _essence;
@@ -55,8 +57,9 @@ namespace Shinshi.Network
 
         public GrowthSnapshotMessage(int classId, long loadoutRevision, long essence, long shards, int[] training,
             TownEquipmentEntry[] equipment, TownPityEntry[] pity, TownTalismanEntry[] talismans, TownLoadoutEntry[] loadout,
-            TownItemEntry[] accountItems, int storageUsed, int storageCapacity, string contentVersion)
+            TownItemEntry[] accountItems, int storageUsed, int storageCapacity, string contentVersion, long totalExperience = 0)
         {
+            _totalExperience = totalExperience;
             _classId         = classId;
             _loadoutRevision = loadoutRevision;
             _essence         = essence;

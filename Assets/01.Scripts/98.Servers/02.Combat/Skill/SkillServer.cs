@@ -109,6 +109,7 @@ namespace Shinshi.Combat
         public float             Energy             => _energy;
         public EPlayerClass      PlayerClass        => _playerClass;
         public int               ParticipantId      => _participantId;
+        public IDamageable       DamageCaster       => _owner;
         public int               CompanionSlotCount => _companions.Length;
         public float             MaxEnergy          => _maxEnergy;
         public float             Resonance          => _resonance.Value;

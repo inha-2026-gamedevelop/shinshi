@@ -67,6 +67,16 @@ namespace Shinshi.Network
                 return ERejectReason.TokenRevoked;
             }
 
+            if ((requireCombatLoadout || Shinshi.Data.GameDB.IsInitialized) && ((response.Experience == null)
+                || (response.Experience.TotalExperience < 0) || (response.Experience.LastExperienceEventSeq < 0)
+                || !Shinshi.Data.GameDB.IsInitialized
+                || (response.Experience.SettingsHash != CharacterLevelRules.SettingsHash(Shinshi.Data.GameDB.CharacterLevel.ToSettings()))
+                || ((serverRole == EServerRole.Dungeon) && (response.Experience.SessionId != response.SortieId))
+                || ((serverRole == EServerRole.Town) && !string.IsNullOrEmpty(response.Experience.SessionId))))
+            {
+                return ERejectReason.SessionMismatch;
+            }
+
             bool hasParticipant = !string.IsNullOrEmpty(response.ParticipantId);
             bool hasSortie      = !string.IsNullOrEmpty(response.SortieId);
             if (serverRole == EServerRole.Dungeon)
@@ -93,7 +103,7 @@ namespace Shinshi.Network
                     response.CharacterId, response.InstanceId, response.SortieId, null, playerClass, characterName,
                     appearance)
                     .WithSortieLoadout(response.CombatLoadout, response.Potions)
-                    .WithSortie(in sortie);
+                    .WithSortie(in sortie).WithExperience(response.Experience);
                 return ERejectReason.None;
             }
 
@@ -105,7 +115,7 @@ namespace Shinshi.Network
 
             claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_TOWN_PREFIX + response.CharacterId,
                 response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass,
-                characterName, appearance).WithAccountId(ToAccountLeaseId(response.AccountId));
+                characterName, appearance).WithAccountId(ToAccountLeaseId(response.AccountId)).WithExperience(response.Experience);
             return ERejectReason.None;
         }
 

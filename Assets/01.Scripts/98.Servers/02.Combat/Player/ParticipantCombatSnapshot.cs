@@ -47,6 +47,8 @@ namespace Shinshi.Combat
         public uint                  LastSequence         => _lastSequence;
         public int                   ViolationCount       => _violationCount;
         public double                ViolationWindowStart => _violationWindowStart;
+        public PlayerInputGate.RateViolationSnapshot RateViolations => _rateViolations;
+        public PlayerInputGate.TokenBucketSnapshot   TokenBucket    => _tokenBucket;
         public double                NextDodgeTime        => _nextDodgeTime;
 
         // 재접속으로 새로 만든 개체는 스폰 위치에서 시작하므로 일반전 부활 위치를 따로 보존한다
@@ -64,12 +66,12 @@ namespace Shinshi.Combat
             PlayerInputGate.TokenBucketSnapshot tokenBucket = default,
             long lifeStealWindow = LifeStealRules.NO_WINDOW, float lifeStealWindowHealed = 0f)
         {
-            _deathPosition        = deathPosition;
-            _hasDeathPosition     = hasDeathPosition;
             _lifeStealWindow       = lifeStealWindow;
             _lifeStealWindowHealed = lifeStealWindowHealed;
             _rateViolations       = rateViolations;
             _tokenBucket          = tokenBucket;
+            _deathPosition        = deathPosition;
+            _hasDeathPosition     = hasDeathPosition;
             _nextDodgeTime        = nextDodgeTime;
             _health               = health;
             _lifeState            = lifeState;

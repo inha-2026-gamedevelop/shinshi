@@ -31,6 +31,14 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 
 ## 퀘스트·파티 HUD 시안
 
+### 경험치 표시 (2026-10-11)
+
+`HudPlayerStatusView.SetExperience(settings, total)`은 저장된 경험치 표시 참조를 사용하며, 배치가 없는 기존 HUD에만 단계 경험치 바·수치를 한 번 생성한다. Lv30은 `EXP MAX`이며, 연결 유지 중 레벨이 오르면 `LEVEL UP! Lv.N` 알림을 표시한다. `LocalPlayerHudBinder`가 확정 누적 경험치를 전달하고 최초 바인딩·씬 교체·재접속에는 알림을 생략한다. HP·MP 원본 배치를 유지한다. 후속 사용자 요청으로 Release/ShinshiTown에는 경험치 표시를 저장했고 Release/DungeonForest에는 상태 HUD 프리팹과 경험치 표시를 직접 배치했다.
+
+상태 HUD가 없는 다른 씬에서는 `Assets/02.Prefab/UI/HUD/Resources/PF_PlayerStatusHud.prefab`을 한 번 생성하고 바인딩 해제 시 소유한 HUD만 정리한다. 프리팹은 Dev_HUD의 상태 묶음 복제이며 HP·MP·레벨·경험치만 표시한다. 기술·물약·퀘스트·파티 HUD의 던전 연결 완료를 뜻하지 않는다. 기존 씬 HUD가 있으면 그것을 우선 사용한다.
+
+UI 샌드박스 HUD 상태 페이지에서 레벨과 `레벨 시작점부터 추가 경험치`를 조절할 수 있다. EditMode는 정지 표시 확인용이고 알림 페이드는 PlayMode에서 확인한다. 1920×1080 진행/레벨업, 1280×720 만렙의 임시 씬 사본 렌더와 관련 EditMode 82/82·PlayMode 2/2을 확인했다. 실제 서버 접속과 일반전 M2/M3 검증은 남았다.
+
 퀘스트와 파티 UI는 현재 개발용 예시 표시이며 게임의 실제 임무·파티 상태에 연결되지 않았다.
 
 - 퀘스트: 상단 `진행 중인 임무 목록`과 `(n/n)`, 최소화 버튼, 투명한 임무 본문 3개. `HudQuestTrackerView`의 버튼은 본문만 접고 펼치며 상단은 유지한다. 외부에서 `SetCount`로 개수를 전달할 수 있다.
@@ -65,7 +73,7 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 
 단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_CharSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
 
-아직 없는 서버 값: 아이템 표시 이름(번역 표 없음, 정의 ID 표시), 캐릭터 레벨, 퀘스트, 출정 준비의 레벨·전투력, 결과 창의 보상 내역, 던전 웨이브 진행도. 검증은 EditMode 테스트와 오프라인 Play Mode 단축키 확인까지이며 실제 서버 접속 흐름은 미검증이다.
+아직 없는 서버 값: 아이템 표시 이름(번역 표 없음, 정의 ID 표시), 퀘스트, 출정 준비의 레벨·전투력, 결과 창의 보상 내역, 던전 웨이브 진행도. 검증은 EditMode 테스트와 오프라인 Play Mode 단축키 확인까지이며 실제 서버 접속 흐름은 미검증이다.
 
 ## 캐릭터 선택 개발 씬 아이콘 (2026-10-07)
 
@@ -139,3 +147,5 @@ Play Mode 화면에서 인벤토리 하단의 두 아이콘·수치 1,250/2,100�
 입력은 `Assets/01.Scripts/06.UI/Inventory/InventorySlotInteraction.cs`에서 처리한다. 기능 활성화 기본값은 false이고 이번 연결 대상은 `Dev_ItemSlot`이다. 서버로부터 받은 화면용 사본의 로컬 배치이며 서버 저장·재접속 유지·수량 분할·자동 합치기·다른 창으로 이전은 이번 범위에 포함하지 않는다.
 
 Play Mode에서 EventSystem 드래그 이벤트와 실제 정렬 Dropdown/Button 콜백, UI 메서드로 34개 검증 항목이 통과했다. 이동·교환·잠금 표시·정렬 4종과 방향 전환·잠긴 아이템 이동 후 위치 유지·분류 탭 대응·수량 보존·아이콘 추적과 취소를 확인했다. Game View 캡처로 18/100칸 화면 표시를 확인했고 최종 Console 조회는 오류·경고0이었다. 물리 키보드의 Alt + 클릭 조합과 Player 빌드는 미검증이다.
+
+Release 씬 반영 후 저장본 재로드 검사: 두 씬 모두 HUD/경험치 표시 각 1개, 참조 유지, 최초 알림 없음, 레벨 상승 알림 정상, Missing Script 0. 1920×1080 저장본 렌더와 관련 EditMode18/18을 추가 확인했다. 실접속 검증은 별도다.

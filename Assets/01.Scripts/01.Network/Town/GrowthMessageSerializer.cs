@@ -121,6 +121,7 @@ namespace Shinshi.Network
             writer.WriteInt(value.StorageUsed);
             writer.WriteInt(value.StorageCapacity);
             writer.WriteString(value.ContentVersion);
+            writer.WriteLong(value.TotalExperience);
         }
 
         public static GrowthSnapshotMessage ReadGrowthSnapshotMessage(this NetworkReader reader)
@@ -175,8 +176,9 @@ namespace Shinshi.Network
             int                storageUsed     = reader.ReadInt();
             int                storageCapacity = reader.ReadInt();
             string             contentVersion  = reader.ReadString();
+            long totalExperience = reader.ReadLong();
             return new GrowthSnapshotMessage(classId, loadoutRevision, essence, shards, training, equipment, pity, talismans,
-                loadout, accountItems, storageUsed, storageCapacity, contentVersion);
+                loadout, accountItems, storageUsed, storageCapacity, contentVersion, totalExperience);
         }
 
         /// <summary> 수량형 아이템 배열, 생활 재고 메시지도 같은 형식을 쓴다 </summary>

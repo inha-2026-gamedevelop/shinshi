@@ -64,7 +64,19 @@ namespace Shinshi.Combat
         public static bool TryCompute(PlayerConfigSO player, EquipmentCatalogSO equipment, GrowthConfigSO growth,
             CharacterCombatLoadout loadout, out CharacterStats stats, out string error)
         {
+            return TryCompute(player, equipment, growth, loadout, null, 0, out stats, out error);
+        }
+
+        public static bool TryCompute(PlayerConfigSO player, EquipmentCatalogSO equipment, GrowthConfigSO growth,
+            CharacterCombatLoadout loadout, CharacterLevelSettings levels, long totalExperience,
+            out CharacterStats stats, out string error)
+        {
             stats = default;
+            if ((totalExperience < 0) || ((levels != null) && !levels.IsValid()))
+            {
+                error = "경험치 설정이나 누적 경험치가 유효하지 않다";
+                return false;
+            }
             if ((player == null) || (equipment == null) || (growth == null))
             {
                 error = "능력치 계산에 필요한 GameDB 참조가 없다";
@@ -94,6 +106,13 @@ namespace Shinshi.Combat
             decimal defense = (decimal)player.BaseDefense;
             decimal crit    = (decimal)player.BaseCritChance;
             decimal energy  = (decimal)player.BaseMaxEnergy;
+            decimal lifeSteal = 0m;
+            if (levels != null)
+            {
+                int gainedLevels = CharacterLevelRules.Level(levels, totalExperience) - 1;
+                attack += (decimal)levels.AttackPerLevel * gainedLevels;
+                health += (decimal)levels.HealthPerLevel * gainedLevels;
+            }
 
             for (int i = 0; i < Constants.Combat.EQUIPMENT_SLOT_COUNT; ++i)
             {
@@ -106,13 +125,6 @@ namespace Shinshi.Combat
                 if (!TryReadEquipment(equipment, (EEquipmentSlot)i, entry, out decimal statScale, out decimal critScale,
                     out decimal gradeLifeSteal, out error))
                 {
-            decimal lifeSteal = 0m;
-            if (levels != null)
-            {
-                int gainedLevels = CharacterLevelRules.Level(levels, totalExperience) - 1;
-                attack += (decimal)levels.AttackPerLevel * gainedLevels;
-                health += (decimal)levels.HealthPerLevel * gainedLevels;
-            }
                     return false;
                 }
 
@@ -121,6 +133,13 @@ namespace Shinshi.Combat
                 health  += (decimal)slotBase.Health * statScale;
                 defense += (decimal)slotBase.Defense * statScale;
                 crit    += (decimal)slotBase.CritChance * critScale;
+
+                // 기본 흡수가 없는 부위에 등급 증가분만 붙으면 장신구 없이도 흡수가 생긴다
+                decimal baseLifeSteal = (decimal)slotBase.LifeSteal;
+                if (baseLifeSteal > 0m)
+                {
+                    lifeSteal += (baseLifeSteal + gradeLifeSteal) * critScale;
+                }
             }
 
             if (!TryReadTraining(growth, loadout.Training, out error))
@@ -133,13 +152,6 @@ namespace Shinshi.Combat
             defense *= 1m + (Gain(growth, ETrainingStat.Defense) * loadout.Training[(int)ETrainingStat.Defense]);
             crit    += Gain(growth, ETrainingStat.CritChance) * loadout.Training[(int)ETrainingStat.CritChance];
             energy  += Gain(growth, ETrainingStat.MaxEnergy) * loadout.Training[(int)ETrainingStat.MaxEnergy];
-
-                // 기본 흡수가 없는 부위에 등급 증가분만 붙으면 장신구 없이도 흡수가 생긴다
-                decimal baseLifeSteal = (decimal)slotBase.LifeSteal;
-                if (baseLifeSteal > 0m)
-                {
-                    lifeSteal += (baseLifeSteal + gradeLifeSteal) * critScale;
-                }
 
             stats = Finish(player, attack, health, defense, crit, energy, lifeSteal);
             error = null;

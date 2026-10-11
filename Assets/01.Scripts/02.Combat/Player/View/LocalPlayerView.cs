@@ -26,6 +26,7 @@ namespace Shinshi.Combat
 
         private readonly List<Action<LocalPlayerSnapshot>> _handlers = new List<Action<LocalPlayerSnapshot>>();
 
+        public long TotalExperience => _combat != null ? _combat.TotalExperience : 0;
         private PlayerCombatState _combat         = null;
         private int               _bindingVersion = LocalPlayerSnapshot.UNBOUND_VERSION;
         private float             _resonanceMax   = 0f;

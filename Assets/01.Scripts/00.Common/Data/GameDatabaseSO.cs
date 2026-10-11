@@ -36,6 +36,7 @@ namespace Shinshi.Data
         [Header("성장")]
         [SerializeField] private EquipmentCatalogSO _equipment;
         [SerializeField] private GrowthConfigSO     _growth;
+        [SerializeField] private CharacterLevelConfigSO _characterLevel;
 
         [Header("보상, 생활, 진행")]
         [SerializeField] private RewardCatalogSO      _rewards;
@@ -58,6 +59,7 @@ namespace Shinshi.Data
         public WaveConfigSO         Waves          => _waves;
         public EquipmentCatalogSO   Equipment      => _equipment;
         public GrowthConfigSO       Growth         => _growth;
+        public CharacterLevelConfigSO CharacterLevel => _characterLevel;
         public RewardCatalogSO      Rewards        => _rewards;
         public LifeConfigSO         Life           => _life;
         public ProgressionCatalogSO Progression    => _progression;
@@ -89,12 +91,12 @@ namespace Shinshi.Data
             GameDataSO[] children =
             {
                 _player, _session, _skills, _talismans, _enemies, _bossPatterns,
-                _waves, _equipment, _growth, _rewards, _life, _progression, _avatar, _camera
+                _waves, _equipment, _growth, _characterLevel, _rewards, _life, _progression, _avatar, _camera
             };
             string[] names =
             {
                 nameof(_player), nameof(_session), nameof(_skills), nameof(_talismans), nameof(_enemies), nameof(_bossPatterns),
-                nameof(_waves), nameof(_equipment), nameof(_growth), nameof(_rewards), nameof(_life), nameof(_progression),
+                nameof(_waves), nameof(_equipment), nameof(_growth), nameof(_characterLevel), nameof(_rewards), nameof(_life), nameof(_progression),
                 nameof(_avatar), nameof(_camera)
             };
 

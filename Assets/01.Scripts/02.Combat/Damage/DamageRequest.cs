@@ -38,7 +38,7 @@ namespace Shinshi.Combat
         public int ActionInstanceId => _actionInstanceId;
 
         // 방어 감소 전 피해량, 방어 감소는 IDamageResolver 구현이 한다
-        // TODO(민성): 시작 인원 피해 배율과 플레이어 치명타를 요청 전에 곱할지 적용 창구에서 곱할지 기획 미정
+        // 플레이어 치명타는 공통 서버 판정기가 대상별로 판정한다. 시작 인원 배율은 적의 요청을 감싸는 판정기가 적용한다
         public float RawDamage => _rawDamage;
 
         public EDamageFlags Flags => _flags;

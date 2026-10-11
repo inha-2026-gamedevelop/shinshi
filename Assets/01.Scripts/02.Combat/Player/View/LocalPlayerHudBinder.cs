@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 
 // Unity
@@ -10,6 +10,7 @@ using Mirror;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Contracts;
 using Shinshi.Data;
 using Shinshi.UI;
 
@@ -28,12 +29,17 @@ namespace Shinshi.Combat
 
         // 기술 키 Q, W, E, R, Z, X, C 순서, ESkillInputKey에서 None을 뺀 개수다
         private const int KEY_COUNT = 7;
+        private const string STATUS_HUD_RESOURCE = "PF_PlayerStatusHud";
 
         private PlayerCombatState _combat = null;
         private PlayerInputState  _input  = null;
         private PlayerInputReader _reader = null;
 
         private HudPlayerStatusView _statusView = null;
+        private GameObject _ownedStatusHud;
+        private bool _warnedMissingStatusHud;
+        private CharacterLevelSettings _levelSettings;
+        private int _experienceBindingVersion = LocalPlayerSnapshot.UNBOUND_VERSION;
 
         private bool _isBound          = false;
         private bool _isResolvePending = false;
@@ -117,6 +123,14 @@ namespace Shinshi.Combat
         private void Unbind()
         {
             _isBound = false;
+            if (_statusView != null)
+            {
+                _statusView.ResetExperience();
+            }
+            ReleaseOwnedStatusHud();
+            _statusView = null;
+            _levelSettings = null;
+            _experienceBindingVersion = LocalPlayerSnapshot.UNBOUND_VERSION;
             SceneManager.sceneLoaded -= OnSceneLoaded;
             if (_reader != null)
             {
@@ -133,8 +147,16 @@ namespace Shinshi.Combat
         // 기술 칸은 이름 끝의 키 글자로 구분한다
         private void FindHud()
         {
-            _statusView = FindAnyObjectByType<HudPlayerStatusView>(FindObjectsInactive.Include);
+            if (_statusView != null)
+            {
+                _statusView.ResetExperience();
+            }
+            ResolveStatusHud(FindObjectsByType<HudPlayerStatusView>(FindObjectsInactive.Include, FindObjectsSortMode.None));
 
+            if (_statusView != null)
+            {
+                _statusView.ResetExperience();
+            }
             Array.Clear(_slotViews, 0, KEY_COUNT);
             HudSkillSlotView[] slots = FindObjectsByType<HudSkillSlotView>(FindObjectsInactive.Include);
             for (int i = 0; i < slots.Length; ++i)
@@ -146,9 +168,82 @@ namespace Shinshi.Combat
             }
         }
 
+        private void ResolveStatusHud(HudPlayerStatusView[] candidates)
+        {
+            for (int i = 0; i < candidates.Length; ++i)
+            {
+                HudPlayerStatusView candidate = candidates[i];
+                if ((candidate == null) || !candidate.enabled || candidate.IsRuntimeOwned || ((_ownedStatusHud != null)
+                    && candidate.transform.IsChildOf(_ownedStatusHud.transform)))
+                {
+                    continue;
+                }
+                ReleaseOwnedStatusHud();
+                _statusView = candidate;
+                return;
+            }
+            if (_ownedStatusHud != null)
+            {
+                _statusView = _ownedStatusHud.GetComponentInChildren<HudPlayerStatusView>(true);
+                return;
+            }
+            GameObject prefab = Resources.Load<GameObject>(STATUS_HUD_RESOURCE);
+            if (prefab != null)
+            {
+                _ownedStatusHud = Instantiate(prefab);
+                _ownedStatusHud.name = "PlayerStatusHud";
+                _ownedStatusHud.hideFlags = HideFlags.DontSave;
+                _statusView = _ownedStatusHud.GetComponentInChildren<HudPlayerStatusView>(true);
+                if (_statusView != null)
+                {
+                    _statusView.MarkRuntimeOwned();
+                    return;
+                }
+                ReleaseOwnedStatusHud();
+            }
+            _statusView = null;
+            if (!_warnedMissingStatusHud)
+            {
+                _warnedMissingStatusHud = true;
+                Debug.LogWarning("[HUD] PF_PlayerStatusHud 리소스나 상태 표시가 없어 플레이어 상태를 표시할 수 없다");
+            }
+        }
+
+        private void ReleaseOwnedStatusHud()
+        {
+            if (_ownedStatusHud == null)
+            {
+                return;
+            }
+            // Destroy가 프레임 끝으로 미뤄져도 다음 씬 콜백에서 이전 HUD를 다시 선택하지 않는다.
+            HudPlayerStatusView retiring = _ownedStatusHud.GetComponentInChildren<HudPlayerStatusView>(true);
+            if (retiring != null)
+            {
+                retiring.enabled = false;
+            }
+            _ownedStatusHud.SetActive(false);
+            if (Application.isPlaying)
+            {
+                Destroy(_ownedStatusHud);
+            }
+            else
+            {
+                DestroyImmediate(_ownedStatusHud);
+            }
+            _ownedStatusHud = null;
+        }
+
         // 직업이 바뀌거나 묶인 캐릭터가 바뀌면 칸이 보여 줄 기술을 다시 정한다
         private void OnSnapshot(LocalPlayerSnapshot snapshot)
         {
+            if (snapshot.BindingVersion != _experienceBindingVersion)
+            {
+                _experienceBindingVersion = snapshot.BindingVersion;
+                if (_statusView != null)
+                {
+                    _statusView.ResetExperience();
+                }
+            }
             if (!snapshot.IsBound)
             {
                 return;
@@ -163,6 +258,10 @@ namespace Shinshi.Combat
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            if (mode == LoadSceneMode.Single)
+            {
+                ReleaseOwnedStatusHud();
+            }
             FindHud();
             _isResolvePending = true;
         }
@@ -205,6 +304,7 @@ namespace Shinshi.Combat
         }
 
         // HUD가 값이 같으면 바로 돌아오고 바뀔 때만 글자를 다시 만든다. 최대치가 아직 복제되지 않았으면 기본 표시를 덮지 않는다
+
         private void PushGauges()
         {
             if (_statusView == null)
@@ -213,7 +313,18 @@ namespace Shinshi.Combat
             }
 
             LocalPlayerGauges gauges = LocalPlayerView.Current.ReadGauges();
-            _statusView.SetLevel(1);
+            if (GameDB.IsInitialized)
+            {
+                if (_levelSettings == null)
+                {
+                    _levelSettings = GameDB.CharacterLevel.ToSettings();
+                }
+                _statusView.SetExperience(_levelSettings, LocalPlayerView.Current.TotalExperience);
+            }
+            else
+            {
+                _statusView.SetExperience(null, -1);
+            }
             if (gauges.MaxHealth > 0f)
             {
                 _statusView.SetHp(LocalPlayerHudRules.ToDisplayInt(gauges.Health, gauges.MaxHealth),

@@ -53,7 +53,14 @@ namespace Shinshi.Common
             // TODO(민성): 입력 계약값이 늘면 네트워크 계약값으로 모은다
             public const int INPUT_RATE_BURST = 10;
 
-            // 위반(주기 초과, 순번 역행, 시각 이상)이 창 안에서 임계값에 닿으면 연결을 끊는다
+            // 토큰 한 개를 충전할 때 이진 소수 오차만 허용한다. 실제 입력 주기보다 이르게 온 입력은 계속 거절한다
+            public const double INPUT_RATE_TOKEN_EPSILON = 0.000001;
+
+            // 주기 초과는 서버 시각을 내림한 1초 구간마다 한 번 센다. 최근 10초 안의 서로 다른 구간 5개에서 끊는다
+            public const double INPUT_RATE_VIOLATION_WINDOW_SECONDS       = 10.0;
+            public const int    INPUT_RATE_VIOLATION_DISCONNECT_THRESHOLD = 5;
+
+            // 순번 역행과 시각 이상은 주기 초과와 별도로 세며 현행 임계값을 유지한다
             public const double INPUT_VIOLATION_WINDOW_SECONDS       = 10.0;
             public const int    INPUT_VIOLATION_DISCONNECT_THRESHOLD = 30;
 

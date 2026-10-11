@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 
@@ -43,9 +43,13 @@ namespace Shinshi.Combat
         private const double TICK_INTERVAL_SECONDS = 1.0 / Constants.Network.SERVER_TICK_RATE;
         private const byte   FIRST_METER_PHASE     = 1;
 
+        private readonly Dictionary<int, ExperienceBinding> _experience = new Dictionary<int, ExperienceBinding>();
+        private SessionEventQueue _experienceQueue;
+        private CharacterLevelSettings _levelSettings;
         private CombatTargetRegistry         _registry;
         private HitLedger                    _ledger;
         private DamageResolver               _resolver;
+        private DamageFeedbackBudget         _damageFeedbackBudget;
         private IDamageResolver              _skillResolver;
         private CombatMeterRecorder          _combatMeter;
         private SkillCatalogSO               _skillCatalog;
@@ -158,10 +162,6 @@ namespace Shinshi.Combat
 
         private void OnDestroy()
         {
-            if (_potions != null)
-            {
-                _potions.PotionApplied -= OnPotionApplied;
-            }
             if (_resolver != null)
             {
                 _resolver.DamageApplied -= OnDamageApplied;
@@ -172,6 +172,10 @@ namespace Shinshi.Combat
                 _experienceQueue.Committed -= OnExperienceCommitted;
             }
             _experience.Clear();
+            if (_potions != null)
+            {
+                _potions.PotionApplied -= OnPotionApplied;
+            }
 
             if (_host != null)
             {
@@ -265,10 +269,6 @@ namespace Shinshi.Combat
             _bossId = bossId;
         }
 
-        /// <summary> 던전 역할에서 서버를 열기 전에 한 번 부른다, 이후 참가 자격은 출정 명단으로 판단한다 </summary>
-        public void BindSession(DungeonSessionHost host)
-        {
-            if (host == null)
         // 최초 플레이어 생성 전에 공통 판정기에 연결하므로 일반전과 보스 미터 경로 모두 같은 알림을 쓴다
         private void OnDamageApplied(AppliedDamageNotice notice)
         {
@@ -331,6 +331,10 @@ namespace Shinshi.Combat
             return null;
         }
 
+        /// <summary> 던전 역할에서 서버를 열기 전에 한 번 부른다, 이후 참가 자격은 출정 명단으로 판단한다 </summary>
+        public void BindSession(DungeonSessionHost host)
+        {
+            if (host == null)
             {
                 throw new ArgumentNullException(nameof(host));
             }
@@ -519,6 +523,7 @@ namespace Shinshi.Combat
                 return false;
             }
 
+            BindExperience(binding);
             player.Reattach();
             _host.OnParticipantAttached(participantId, _lastTickTime);
             SendPotionState(player, 0, ERejectReason.None);
@@ -580,6 +585,7 @@ namespace Shinshi.Combat
                 ReleaseRetainedSkills(participantId);
             }
 
+            BindExperience(binding);
             if (!TryResolveStats(binding, playerClass, out CharacterStats stats))
             {
                 input.DisconnectOwner();
@@ -618,6 +624,7 @@ namespace Shinshi.Combat
             }
 
             _players.Add(player);
+            ApplyExperience(player);
             RegisterMeterParticipant(player, in stats);
             _host?.OnParticipantAttached(participantId, _lastTickTime);
             if ((_potions != null) && (!_potions.TryRegister(participantId, binding.ParticipantKey, binding.ReservedPotions)))
@@ -717,7 +724,9 @@ namespace Shinshi.Combat
             int                    participantId = binding.ParticipantId;
             CharacterCombatLoadout loadout       = binding.CombatLoadout;
             bool                   strict        = (_host != null) && (!Debug.isDebugBuild);
-            stats = CharacterStatsRules.Base(_playerConfig);
+            stats = CharacterStatsRules.Base(_playerConfig, _levelSettings,
+                _experience.TryGetValue(participantId, out ExperienceBinding initialExperience)
+                    ? initialExperience.Tracker.TotalExperience : 0);
             _talismans?.Unregister(participantId);
             if (loadout == null)
             {
@@ -735,13 +744,23 @@ namespace Shinshi.Combat
                 return true;
             }
 
+            // 고정 장비와 경험치 곡선이 같은 콘텐츠 버전이어야 저장과 전투 계산이 일치한다.
+            // 부적을 등록하기 전에 거절해 실패한 참가자가 합성 칸에 남지 않게 한다
+            if ((GameDB.IsInitialized) && (!string.Equals(loadout.ContentVersion, GameDB.ContentVersion, StringComparison.Ordinal)))
+            {
+                Debug.LogError($"[Combat] 전투 준비의 콘텐츠 버전이 서버와 다르다, participantId={participantId}, " +
+                    $"loadout={loadout.ContentVersion}, server={GameDB.ContentVersion}");
+                return false;
+            }
+
             string         error    = null;
             CharacterStats computed = stats;
             if (loadout.ClassId != (int)playerClass)
             {
                 error = $"직업이 결합과 다르다, loadout={loadout.ClassId}";
             }
-            else if (CharacterStatsRules.TryCompute(_playerConfig, _equipment, _growth, loadout, out computed, out error))
+            else if (CharacterStatsRules.TryCompute(_playerConfig, _equipment, _growth, loadout, _levelSettings,
+                _experience.TryGetValue(participantId, out ExperienceBinding xp) ? xp.Tracker.TotalExperience : 0, out computed, out error))
             {
                 if ((_talismans != null) && (!_talismans.TryRegister(participantId, playerClass, loadout.Talismans, out error)))
                 {
@@ -761,13 +780,6 @@ namespace Shinshi.Combat
                 Debug.LogWarning($"[Combat] 전투 준비가 콘텐츠와 맞지 않아 기본 능력치로 들인다(개발 빌드), participantId={participantId}, " +
                     error);
                 return true;
-            }
-
-            // TODO(민성): 예약 때 콘텐츠 버전과 서버 콘텐츠 버전이 다를 때 거절할지 정한다. 지금은 기록만 남긴다
-            if ((GameDB.IsInitialized) && (!string.Equals(loadout.ContentVersion, GameDB.ContentVersion, StringComparison.Ordinal)))
-            {
-                Debug.LogWarning($"[Combat] 전투 준비의 콘텐츠 버전이 서버와 다르다, participantId={participantId}, " +
-                    $"loadout={loadout.ContentVersion}, server={GameDB.ContentVersion}");
             }
 
             stats = computed;
@@ -846,6 +858,7 @@ namespace Shinshi.Combat
 
                 if (_host == null)
                 {
+                    _experience.Remove(player.ParticipantId);
                     player.Shutdown();
                     _registry.Unregister(player.CombatId);
                     _players.RemoveAt(i);
@@ -873,15 +886,117 @@ namespace Shinshi.Combat
             }
         }
 
+        private void BindExperience(SessionBinding binding)
+        {
+            if ((binding.Experience == null) || !GameDB.IsInitialized)
+            {
+                return;
+            }
+            if (_levelSettings == null)
+            {
+                _levelSettings = GameDB.CharacterLevel.ToSettings();
+            }
+            if (_experience.TryGetValue(binding.ParticipantId, out ExperienceBinding existing))
+            {
+                existing.Tracker.Merge(binding.Experience);
+                existing.Applied = -1;
+                existing.FailedTotal = -1;
+                return;
+            }
+            _experience.Add(binding.ParticipantId, new ExperienceBinding
+            {
+                Key = binding.ParticipantKey, Loadout = binding.CombatLoadout,
+                Tracker = new CharacterExperienceTracker(_levelSettings, binding.Experience)
+            });
+        }
+
+        private void EnsureExperienceObserver()
+        {
+            SessionEventQueue queue = _host?.Session?.Events;
+            if (queue == _experienceQueue)
+            {
+                return;
+            }
+            if (_experienceQueue != null)
+            {
+                _experienceQueue.Committed -= OnExperienceCommitted;
+            }
+            _experienceQueue = queue;
+            if (queue != null)
+            {
+                queue.Committed += OnExperienceCommitted;
+            }
+        }
+
+        private void OnExperienceCommitted(SessionEvent entry)
+        {
+            if (entry.Data.Type != ESessionEventType.ExperienceGranted)
+            {
+                return;
+            }
+            foreach (KeyValuePair<int, ExperienceBinding> pair in _experience)
+            {
+                if (pair.Value.Key == entry.Data.ParticipantId)
+                {
+                    pair.Value.Tracker.Commit(_experienceQueue.SessionId, entry.Seq, entry.Data.Amount);
+                    return;
+                }
+            }
+        }
+
+        private void ApplyExperience(PlayerServer player)
+        {
+            if (_roster.IsClosed(player.ParticipantId)
+                || !_experience.TryGetValue(player.ParticipantId, out ExperienceBinding experience))
+            {
+                return;
+            }
+            long total = experience.Tracker.TotalExperience;
+            if ((experience.Applied == total) || (experience.FailedTotal == total))
+            {
+                return;
+            }
+            bool levelChanged = (experience.Applied < 0)
+                || (CharacterLevelRules.Level(_levelSettings, experience.Applied) != CharacterLevelRules.Level(_levelSettings, total));
+            if ((experience.Loadout != null) && levelChanged)
+            {
+                if (!CharacterStatsRules.TryCompute(_playerConfig, _equipment, _growth, experience.Loadout,
+                    _levelSettings, total, out CharacterStats stats, out string error))
+                {
+                    experience.FailedTotal = total;
+                    Debug.LogError("[CharacterExperience] 확정 성장 능력치 적용 실패: " + error);
+                    return;
+                }
+                player.ApplyGrowth(in stats);
+            }
+            player.Combat.SetTotalExperience(total);
+            experience.Applied = total;
+        }
+
+        private sealed class ExperienceBinding
+        {
+            public string Key;
+            public CharacterCombatLoadout Loadout;
+            public CharacterExperienceTracker Tracker;
+            public long Applied = -1;
+            public long FailedTotal = -1;
+        }
+
         private void Step(double serverTime, float deltaTime)
         {
             AdoptSessionEpoch();
             EnsureCombatMeter();
+            EnsureExperienceObserver();
             bool sessionTick = (_host != null) && (_host.BeginTick(serverTime));
+            EnsureExperienceObserver();
             ApplySessionPhase();
             TrySpawnBoss(serverTime);
             DiscardClosedParticipants();
             CloseExpiredParticipants(serverTime);
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                ApplyExperience(_players[i]);
+            }
             _resolver.BeginTick(serverTime);
             _pathBudget.BeginTick();
 

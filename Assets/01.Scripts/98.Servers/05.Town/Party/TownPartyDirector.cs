@@ -854,7 +854,7 @@ namespace Shinshi.Network
             {
                 TownMember member = room.MemberAt(i);
                 members[i] = new PartyMemberView(member.ParticipantId, member.CharacterName, member.PlayerClass, room.ReadyAt(i),
-                    room.SmallPotionsAt(i), room.LargePotionsAt(i));
+                    room.SmallPotionsAt(i), room.LargePotionsAt(i), member.TotalExperience);
             }
 
             float countdown = (room.Phase == EPartyPhase.Countdown)

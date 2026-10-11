@@ -1,3 +1,7 @@
+using System.Collections.Generic;
+using UnityEngine;
+using Shinshi.Data;
+
 // 서드파티
 using NUnit.Framework;
 
@@ -22,6 +26,26 @@ namespace Shinshi.Tests
         private const string BINDING        = "Account";
         private const long   SERVER_TIME    = 1000;
         private const int    CAPACITY       = 4;
+
+        private readonly List<Object> _created = new List<Object>();
+
+        [SetUp]
+        public void SetUp()
+        {
+            GameDB.ResetForTests();
+            GameDB.Initialize(GameDBTestFixtures.CreateValidRoot(_created));
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            GameDB.ResetForTests();
+            for (int i = 0; i < _created.Count; ++i)
+            {
+                Object.DestroyImmediate(_created[i]);
+            }
+            _created.Clear();
+        }
 
         /****************************************
         *                Tests
@@ -100,7 +124,9 @@ namespace Shinshi.Tests
         {
             return new JoinTokenExchangeResponse(CHARACTER_ID, INSTANCE_ID, (int)EServerRole.Dungeon, PARTICIPANT_ID, SORTIE_ID,
                 SERVER_TIME, null, (int)EPlayerClass.Warrior, null, GameSessionCodes.Mode.NORMAL, "map", "battle", null,
-                GameSessionCodes.Difficulty.NONE, loadout, null, potions);
+                GameSessionCodes.Difficulty.NONE, loadout, null, potions, null,
+                new CharacterExperienceSnapshot(2850, SORTIE_ID, 0,
+                    CharacterLevelRules.SettingsHash(GameDB.CharacterLevel.ToSettings())));
         }
     }
 }

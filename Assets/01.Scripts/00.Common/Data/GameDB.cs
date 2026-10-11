@@ -28,6 +28,7 @@ namespace Shinshi.Data
         public static WaveConfigSO         Waves          => Root.Waves;
         public static EquipmentCatalogSO   Equipment      => Root.Equipment;
         public static GrowthConfigSO       Growth         => Root.Growth;
+        public static CharacterLevelConfigSO CharacterLevel => Root.CharacterLevel;
         public static RewardCatalogSO      Rewards        => Root.Rewards;
         public static LifeConfigSO         Life           => Root.Life;
         public static ProgressionCatalogSO Progression    => Root.Progression;

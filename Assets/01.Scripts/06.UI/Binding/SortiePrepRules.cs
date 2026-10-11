@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Contracts;
 using Shinshi.Data;
 using Shinshi.Network;
 
@@ -13,11 +14,18 @@ namespace Shinshi.UI
     public static class SortiePrepRules
     {
         /****************************************
+        *                Fields
+        ****************************************/
+
+        private const int UNKNOWN_LEVEL = -1;
+
+        /****************************************
         *                Methods
         ****************************************/
 
-        /// <summary> 방 명단을 창의 칸 순서대로 옮긴다. 성장 도입 전 레벨은 1이며 전투력은 미제공이다 </summary>
-        public static void BuildMembers(in PartyRoomStateMessage room, List<SortieMemberData> into)
+        /// <summary> 방 명단과 인증된 누적 경험치를 창의 칸 순서대로 옮긴다. 경험치나 설정이 없으면 레벨은 알 수 없음이다 </summary>
+        public static void BuildMembers(in PartyRoomStateMessage room, List<SortieMemberData> into,
+            CharacterLevelSettings levels = null)
         {
             if (into == null)
             {
@@ -30,12 +38,19 @@ namespace Shinshi.UI
                 return;
             }
 
+            if ((levels == null) && (GameDB.IsInitialized) && (GameDB.CharacterLevel != null))
+            {
+                levels = GameDB.CharacterLevel.ToSettings();
+            }
+
             PartyMemberView[] members = room.Members;
             for (int i = 0; i < members.Length; ++i)
             {
                 PartyMemberView member = members[i];
+                int level = ((levels != null) && (member.TotalExperience >= 0))
+                    ? CharacterLevelRules.Level(levels, member.TotalExperience) : UNKNOWN_LEVEL;
                 into.Add(new SortieMemberData(member.Name, member.PlayerClass, member.ParticipantId == room.LeaderParticipantId,
-                    member.Ready == EPartyReadyState.Ready, true, true, 1, 0));
+                    member.Ready == EPartyReadyState.Ready, true, true, level, 0));
             }
         }
 

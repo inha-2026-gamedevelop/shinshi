@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.IO;
 
@@ -47,9 +47,9 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
-        public void ProtocolVersion_CurrentConstant_IsFour()
+        public void ProtocolVersion_CurrentConstant_IsSix()
         {
-            Assert.AreEqual(4, Constants.Network.PROTOCOL_VERSION);
+            Assert.AreEqual(6, Constants.Network.PROTOCOL_VERSION);
         }
 
         [Test]

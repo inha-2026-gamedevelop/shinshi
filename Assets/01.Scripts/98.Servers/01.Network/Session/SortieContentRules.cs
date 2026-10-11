@@ -48,7 +48,17 @@ namespace Shinshi.Network
         }
 
         /// <summary> 배치 계획 전체의 source ID와 적 드롭을 세션에 등록한다, 등록한 수를 돌려준다(실패하면 그 자리에서 멈춘다) </summary>
-        public static int RegisterWaveSources(DungeonSession session, WaveConfigSO waves, RewardCatalogSO rewards)
+        private static int ExperienceKind(EnemyCatalogSO enemies, string enemyId)
+        {
+            if ((enemies == null) || !enemies.TryGetEnemy(enemyId, out EnemyCatalogSO.EnemyDefinition enemy))
+            {
+                return 0;
+            }
+            return enemy.Role == EEnemyRole.Elite ? Shinshi.Contracts.CharacterExperienceSource.ELITE_ENEMY
+                : Shinshi.Contracts.CharacterExperienceSource.NORMAL_ENEMY;
+        }
+
+        public static int RegisterWaveSources(DungeonSession session, WaveConfigSO waves, RewardCatalogSO rewards, EnemyCatalogSO enemies = null)
         {
             if ((session == null) || (waves == null) || (rewards == null) || (waves.Waves == null))
             {
@@ -64,7 +74,7 @@ namespace Shinshi.Network
                 {
                     if ((!TryGetEnemyId(wave, spawnIndex, out string enemyId))
                         || (!rewards.TryGetEnemyDrop(enemyId, out RewardCatalogSO.EnemyDropSpec drop))
-                        || (!session.RegisterEnemySource(waveIndex, waves.GetSourceId(waveIndex, spawnIndex), drop)))
+                        || (!session.RegisterEnemySource(waveIndex, waves.GetSourceId(waveIndex, spawnIndex), drop, ExperienceKind(enemies, enemyId))))
                     {
                         return registered;
                     }

@@ -10,6 +10,7 @@ using NUnit.Framework;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Contracts;
 using Shinshi.Data;
 using Shinshi.Network;
 using Shinshi.UI;
@@ -110,6 +111,55 @@ namespace Shinshi.Tests
             Assert.That(into[0].IsReady, Is.False);
             Assert.That(into[1].IsLeader, Is.False);
             Assert.That(into[1].IsReady, Is.True);
+            Assert.That(into[0].Level, Is.EqualTo(-1), "경험치가 없는 참가자를 Lv1로 꾸미지 않는다");
+        }
+
+        [TestCase(0L, 1)]
+        [TestCase(2850L, 5)]
+        [TestCase(120350L, 30)]
+        [TestCase(-1L, -1)]
+        public void BuildMembers_ServerExperience_UsesConfiguredLevelOrUnknown(long totalExperience, int expected)
+        {
+            CharacterLevelConfigSO config = ScriptableObject.CreateInstance<CharacterLevelConfigSO>();
+            try
+            {
+                var members = new[]
+                {
+                    new PartyMemberView(LEADER_ID, "검사", EPlayerClass.Swordsman, EPartyReadyState.Ready, 0, 0, totalExperience)
+                };
+                var room = new PartyRoomStateMessage(true, 1, 1, "room", EPartyMode.Boss, "battle_wolbaek_easy", 0, false,
+                    LEADER_ID, EPartyPhase.Open, 0f, members);
+                var into = new List<SortieMemberData>();
+
+                SortiePrepRules.BuildMembers(in room, into, config.ToSettings());
+
+                Assert.AreEqual(expected, into[0].Level);
+                Assert.AreEqual(EPlayerClass.Swordsman, into[0].PlayerClass);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(config);
+            }
+        }
+
+        [Test]
+        public void BuildMembers_ChangedLevelCurve_UsesPassedSettings()
+        {
+            var levels = new CharacterLevelSettings(30)
+            {
+                FirstLevelCost = 1000, LevelCostStep = 0
+            };
+            var members = new[]
+            {
+                new PartyMemberView(LEADER_ID, "궁수", EPlayerClass.Archer, EPartyReadyState.NotReady, 0, 0, 2850)
+            };
+            var room = new PartyRoomStateMessage(true, 1, 1, "room", EPartyMode.Boss, "battle_wolbaek_easy", 0, false,
+                LEADER_ID, EPartyPhase.Open, 0f, members);
+            var into = new List<SortieMemberData>();
+
+            SortiePrepRules.BuildMembers(in room, into, levels);
+
+            Assert.AreEqual(3, into[0].Level, "입장 경험치를 고정 레벨이나 기본 곡선으로 대신하지 않는다");
         }
 
         [Test]
