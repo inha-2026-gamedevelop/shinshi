@@ -49,7 +49,7 @@ namespace Shinshi.Network
 
         private readonly LobbyApiClient _api = new LobbyApiClient();
 
-        private int                    _classId         = ContractCodes.PlayerClass.WARRIOR;
+        private int                    _classId         = ContractCodes.PlayerClass.SWORDSMAN;
         private CharacterP09Selection  _selection       = null;
         private bool                   _isBusy          = false;
         private CharacterCreateRequest _pendingCreation = null;
@@ -69,7 +69,8 @@ namespace Shinshi.Network
 
         public Button GetClassButton(int classId)
         {
-            return ((_classButtons != null) && (classId >= 0) && (classId < _classButtons.Length)) ? _classButtons[classId] : null;
+            int index = classId - ContractCodes.PlayerClass.SWORDSMAN;
+            return ((_classButtons != null) && (index >= 0) && (index < _classButtons.Length)) ? _classButtons[index] : null;
         }
 
         /****************************************
@@ -89,7 +90,7 @@ namespace Shinshi.Network
 
             for (int i = 0; i < _classButtons.Length; ++i)
             {
-                int classId = i;
+                int classId = i + ContractCodes.PlayerClass.SWORDSMAN;
                 _classButtons[i].onClick.AddListener(() => SelectClass(classId));
             }
 
@@ -115,9 +116,9 @@ namespace Shinshi.Network
                 return;
             }
 
-            _selection = new CharacterP09Selection(ContractCodes.PlayerClass.WARRIOR);
+            _selection = new CharacterP09Selection(ContractCodes.PlayerClass.SWORDSMAN);
             _customizePanel.Bind(_selection);
-            SelectClass(ContractCodes.PlayerClass.WARRIOR);
+            SelectClass(ContractCodes.PlayerClass.SWORDSMAN);
             _status.text = $"직업과 외형을 고르고 {CharacterNameRules.MIN_LENGTH}~{CharacterNameRules.MAX_LENGTH}자 닉네임을 정한다.";
         }
 
@@ -159,7 +160,7 @@ namespace Shinshi.Network
                 {
                     if (_classHighlights[i] != null)
                     {
-                        _classHighlights[i].color = (i == classId) ? _selectedColor : _normalColor;
+                        _classHighlights[i].color = (i + ContractCodes.PlayerClass.SWORDSMAN == classId) ? _selectedColor : _normalColor;
                     }
                 }
             }
