@@ -79,8 +79,8 @@ namespace Shinshi.Data.Auth
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
                 }
-                // 새 직업(3~5)은 서버 설정으로 열기 전까지 마을 입장도 거절한다
-                if (!_classPolicy.IsEnabled(selected.ClassId))
+                // 생성 종료된 구직업의 저장 데이터는 선택할 수 있고 새 직업은 서버 허용 설정을 따른다
+                if (!_classPolicy.IsSelectable(selected.ClassId))
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.FEATURE_DISABLED);
                 }

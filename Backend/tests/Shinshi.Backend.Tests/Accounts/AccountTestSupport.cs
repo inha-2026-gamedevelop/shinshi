@@ -530,9 +530,10 @@ namespace Shinshi.Backend.Tests.Accounts
         *                Methods
         ****************************************/
 
-        /// <summary> enabledClassIds는 Characters:EnabledClassIds 값이다. null이면 설정을 비워 기본(0,1,2)이다 </summary>
+        /// <summary> enabledClassIds는 Characters:EnabledClassIds 값이다. null이면 설정을 비워 기본(3,4,5)이다 </summary>
         public AccountApiHost(bool maintenance = false, PasswordHashGate? gate = null,
-            int iterations = AccountPasswordHasherTests.TEST_ITERATIONS, string? enabledClassIds = null)
+            int iterations = AccountPasswordHasherTests.TEST_ITERATIONS, string? enabledClassIds = null,
+            ICharacterRepository? characterRepository = null)
         {
             Hasher = new CountingPasswordHasher(iterations);
 
@@ -555,7 +556,7 @@ namespace Shinshi.Backend.Tests.Accounts
                     services.AddShinshiAuth(new ConfigurationBuilder().Build());
                     services.AddSingleton<IAuthRepository>(Backend);
                     services.AddSingleton<IAccountRepository>(Backend);
-                    services.AddSingleton<ICharacterRepository>(Characters);
+                    services.AddSingleton<ICharacterRepository>(characterRepository ?? Characters);
                     services.AddSingleton<IAccountPasswordHasher>(Hasher);
                     services.AddSingleton(unreachable);
                     if (gate != null)

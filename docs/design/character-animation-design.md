@@ -109,7 +109,7 @@
 
 신규 직업 공개와 구 진도 이관 전에 아래를 함께 설계·검증한다.
 
-1. 직업 enum·공통 DTO·SQL은 0016에서 `class_id` 0~5를 수용하고, 카탈로그는 구·신규 합계 24기술·90효과다. 신규 생성/선택 공개 목록은 API `Characters:EnabledClassIds` 기본 `0,1,2`와 구분한다. 궁수의 이관 전 공개 차단과 구 캐릭터 접근/보존 정책을 함께 정한다.
+1. 직업 enum·공통 DTO·SQL은 0016에서 `class_id` 0~5를 수용하고, 카탈로그는 구·신규 합계 24기술·90효과다. 2026-10-11 결정으로 신규 생성 공개 목록은 API `Characters:EnabledClassIds` 기본 `3,4,5`이며 구직업0~2는 설정으로 재허용할 수 없다. 기존 enum·읽기/인증 계약은 보존하고 구 캐릭터 자동 변환은 하지 않는다. 사용자 진술상 구직업 DB 삭제는 끝났지만 이번 구현에서 운영 DB 삭제를 실행하거나 확인하지 않았다.
 2. [`growth-content.json`](../../Backend/src/Shinshi.Data/Content/growth-content.json), 카드 ID·`account_items`·보상 회수함·등록 레벨/실패 보정·조합·초기 지급/기존 장비 무기 표시. [`0011`](../../Backend/src/Shinshi.Data/Migrations/0011_growth_progression.up.sql)의 effect ID 형식 `^T[0-9]{2}-[1-3][A-Z]$`와 `(character_id,skill_id,tier)` 키를 점검한다. 문서 ID를 DB에 직접 쓰지 않는다.
 3. 열린 출정 `loadout_snapshot`·`loadout_revision`·캐릭터 잠금. 출정 중 변경을 거절하고 구 출정을 완료/정산한 뒤 전환한다. 구버전/이관 서버가 같은 출정을 처리하지 않게 한다.
 4. 신규 `contentHash`와 필요 시 protocolVersion으로 구클라/서버 혼합을 차단한다. 해시 검사는 저장 데이터 이관을 대신하지 않는다. 멱등 재시도·진도/비용/보상 중복 없음·백업/롤백을 실제 DB에서 확인한다. 정책/구현 확정 전에 새 카탈로그를 실제 서버에 배포하지 않는다.
