@@ -55,6 +55,8 @@ GRANT DELETE ON TABLE public.account_leases TO shinshi_runtime;
 -- 0006: 유지 작업이 보존 기간이 지난 만료 입장 토큰을 지운다
 GRANT DELETE ON TABLE public.auth_join_tokens TO shinshi_runtime;
 GRANT SELECT, INSERT ON TABLE public.session_events, public.session_checkpoints TO shinshi_runtime;
+-- 0017: 경험치 원장에는 수정·삭제 권한을 주지 않는다
+GRANT SELECT, INSERT ON TABLE public.character_experience_events TO shinshi_runtime;
 -- 원장과 감사/소비 이력은 추가 전용이다. 소유자나 상위 역할의 권한도 확인한다.
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE
     public.economy_ledger, public.item_history, public.outbox_inbox FROM shinshi_runtime;
@@ -402,6 +404,16 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 **원자성.** 잠금 순서는 계정(`FOR UPDATE`) -> 계정 임대(`FOR SHARE`) -> 지갑(`INSERT ... ON CONFLICT DO NOTHING` 뒤 `FOR UPDATE`) -> 아이템(정의 ID 순 `FOR UPDATE`)이다. 차감, 지급, 원장(`Gathering(19)` source_type `gathering` source_id `zoneId:nodeId`, `Craft(13)` source_type `potion_craft`), 작업 결과가 한 트랜잭션이다. 거절은 효과 전체를 되돌리고 거절 결과만 저장한다. 기능 차단 거절은 저장하지 않는다.
 
 **물약 되돌림.** `GameSessionCodes.EventKind.POTION_USE_REVERTED = 7`, `SessionEventEntry.revertsEventId`. 원 `POTION_USED`가 같은 세션, 같은 참가자에 저장돼 있거나 같은 배치 앞쪽에 있고 아직 되돌리지 않았으면 `reservations.consumed - 1`, `account_items.quantity + 1, reserved + 1`, 원장 `PotionReturn(21)`이다. 아니면 배치 전체가 `SESSION_MISMATCH`다. 0013의 `ux_session_events_potion_revert`(`payload->>'revertsEventId'`, `event_kind = 7`)가 중복 저장의 마지막 방어선이다. 보스전은 참가자별 `POTION_USED - POTION_USE_REVERTED`가 9(단일 원본 `GameSessionCodes.Potion.BOSS_USE_LIMIT`, 던전 `PotionServer`도 같은 상수, `SessionConfig.asset _bossPotionUseLimit`가 다르면 SO 검증 오류)를 넘으면 배치 전체를 `POTION_LIMIT(202)`로 거절한다. 0013 down은 7 행을 지울 수 없어 직전 범위 CHECK를 `NOT VALID`로 건다. 0013은 새 테이블이 없어 런타임 권한 추가가 없다.
+
+## 캐릭터 경험치 (0017)
+
+`0017_character_experience`는 기존 캐릭터의 `initial_experience`와 `total_experience`를 모두 2,850으로 이관한다(2026-10-11 사용자 결정). 장비·정기·부적·진행도는 보존한다. 새 캐릭터 생성은 Trial=2,850, Standard=0을 명시하며 두 열의 DB 기본값은 0이다. 레벨은 저장한 누계와 `CharacterLevelRules`에서 파생한다. 현재 상한은 Lv30·120,350이며 설정 원본은 Unity `CharacterLevelConfigSO`, 내보낸 콘텐츠는 0.1.2/schema 2다.
+
+인증된 던전 서버는 `/events`에 `EXPERIENCE_GRANTED`(8)를 보낸다. `experienceSourceKind`는 일반 적 1·정예 2·웨이브 3, `experienceSourceId`는 해당 출정의 고유 source, `experienceSettingsHash`는 예약 설정 hash, `amount`는 상한 적용 전 기본량이다. API는 예약 시 고정한 `game_sessions.experience_settings`, mode/map, 참가자와 이탈 순서, 지급량/hash를 검증하고 기존 세션→계정→캐릭터 잠금 순서에서 `character_experience_events`와 캐릭터 누계/마지막 경험치 세션·순번, `session_events`를 함께 커밋한다. 일반/정예는 같은 enemy source로 중복을 막으며 상한에서 실제 증가 0인 사건도 소비한다. 같은 operationId는 기존 결과를 재생한다. 부정 source를 다른 operationId로 재제출하면 거절하며 같은 배치를 건너뛰지 않는다.
+
+경험치 원장은 UPDATE/DELETE를 막는다. 실행 계정에는 위 권한 SQL의 SELECT/INSERT만 추가한다. 설정이 없는 이전 예약은 새 경험치 지급을 받지 않으며 새 빌드의 시작·입장 검증에서 거절한다. 시작·입장에는 현재 콘텐츠와 예약 설정의 일치가 필요하다. 이미 실행 중인 출정의 이벤트 검증은 고정 설정을 사용한다. 콘텐츠 교체로 이전 출정의 재접속이 막히지 않도록 배포 전 출정을 종료하거나 같은 콘텐츠를 유지해야 한다. down은 경험치 진행을 보존하는 롤백이 아니므로 운영에 실행하지 않는다.
+
+입장 응답의 `experience`는 예약 장비 구성과 별개인 최신 누계/세션/순번/hash다. 총량과 cursor를 한 캐릭터 행에서 읽으므로 저장 ACK보다 재접속 응답이 먼저 도착해도 서버가 중복 합산을 피할 수 있다. 확정된 경험치는 실패·포기·장애 취소 정산에서 차감하거나 다시 지급하지 않는다. 적의 실존과 분류·전투 보상 자격은 신뢰하는 던전 서버의 권위다. API는 실제 웨이브 계획의 처치 수를 재연산하지 않으므로 침해된 서버의 서로 다른 가짜 source 발급까지 증명하는 방어는 제공하지 않는다.
 
 ## 공지 분류 (0014)
 

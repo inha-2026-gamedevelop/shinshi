@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -31,7 +31,7 @@ namespace Shinshi.Backend.Tests.Growth
         [Fact]
         public void LoadEmbedded_AssetValues_MatchDesignTables()
         {
-            Assert.Equal("0.1.0", G_Content.ContentVersion);
+            Assert.Equal("0.1.2", G_Content.ContentVersion);
             Assert.Equal(30, G_Content.Equipment.Definitions.Length);
             Assert.Equal(90, G_Content.Talismans.Effects.Length);
             Assert.Equal(15, G_Content.Talismans.Effects.Count(effect => effect.PlayerClass == ContractCodes.PlayerClass.WARRIOR));
@@ -161,7 +161,7 @@ namespace Shinshi.Backend.Tests.Growth
         {
             string json = ReadEmbeddedJson();
             JObject wrongSchema = JObject.Parse(json);
-            wrongSchema["schemaVersion"] = 2;
+            wrongSchema["schemaVersion"] = GrowthContent.SUPPORTED_SCHEMA_VERSION + 1;
             Assert.Throws<InvalidDataException>(() => GrowthContent.Parse(wrongSchema.ToString()));
 
             JObject missingEffect = JObject.Parse(json);

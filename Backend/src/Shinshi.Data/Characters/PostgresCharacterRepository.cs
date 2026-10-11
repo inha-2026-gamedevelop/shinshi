@@ -103,11 +103,11 @@ namespace Shinshi.Data.Characters
             IEnumerable<CharacterRow> rows = await connection.QueryAsync<CharacterRow>(new CommandDefinition(
                 """
                 SELECT character_id AS "CharacterId", account_id AS "AccountId", name AS "Name", class_id AS "ClassId",
-                    revision AS "Revision", appearance::text AS "Appearance"
+                    revision AS "Revision", appearance::text AS "Appearance", total_experience AS "TotalExperience"
                 FROM characters WHERE account_id = @AccountId AND deleted_at IS NULL ORDER BY character_id;
                 """, new { AccountId = accountId }, cancellationToken: cancellationToken));
             return rows.Select(row => new CharacterRecord(row.CharacterId, row.AccountId, row.Name, row.ClassId,
-                row.Revision, row.Appearance)).ToArray();
+                row.Revision, row.Appearance, row.TotalExperience)).ToArray();
         }
 
         public Task<OperationResult> DeleteAsync(Guid accountId, Guid operationId, Guid characterId,
@@ -245,12 +245,12 @@ namespace Shinshi.Data.Characters
             Guid characterId = Guid.NewGuid();
             Guid? inserted = await connection.QuerySingleOrDefaultAsync<Guid?>(new CommandDefinition(
                 """
-                INSERT INTO characters (character_id, account_id, class_id, name, name_key, appearance)
-                VALUES (@CharacterId, @AccountId, @ClassId, @Name, @NameKey, CAST(@Appearance AS jsonb))
+                INSERT INTO characters (character_id, account_id, class_id, name, name_key, appearance, initial_experience, total_experience)
+                VALUES (@CharacterId, @AccountId, @ClassId, @Name, @NameKey, CAST(@Appearance AS jsonb), @Experience, @Experience)
                 ON CONFLICT (name_key) DO NOTHING
                 RETURNING character_id;
                 """, new { CharacterId = characterId, AccountId = accountId, ClassId = classId, Name = name,
-                    NameKey = nameKey, Appearance = appearanceJson }, transaction, cancellationToken: cancellationToken));
+                    NameKey = nameKey, Appearance = appearanceJson, Experience = _grants.InitialExperience }, transaction, cancellationToken: cancellationToken));
             if (!inserted.HasValue)
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_NAME_TAKEN);
@@ -268,11 +268,11 @@ namespace Shinshi.Data.Characters
             CharacterRow? row = await connection.QuerySingleOrDefaultAsync<CharacterRow>(new CommandDefinition(
                 """
                 SELECT character_id AS "CharacterId", account_id AS "AccountId", name AS "Name", class_id AS "ClassId",
-                    revision AS "Revision", appearance::text AS "Appearance"
+                    revision AS "Revision", appearance::text AS "Appearance", total_experience AS "TotalExperience"
                 FROM characters WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL;
                 """, new { CharacterId = characterId, AccountId = accountId }, cancellationToken: cancellationToken));
             return row == null ? null : new CharacterRecord(row.CharacterId, row.AccountId, row.Name, row.ClassId,
-                row.Revision, row.Appearance);
+                row.Revision, row.Appearance, row.TotalExperience);
         }
 
         /****************************************
@@ -286,6 +286,7 @@ namespace Shinshi.Data.Characters
             public string? Name { get; set; }
             public int ClassId { get; set; }
             public long Revision { get; set; }
+            public long TotalExperience { get; set; }
             public string? Appearance { get; set; }
         }
     }

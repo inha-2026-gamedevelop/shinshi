@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 
 // Third Party
 using Newtonsoft.Json;
+using Shinshi.Contracts;
 
 namespace Shinshi.Data.Growth
 {
@@ -50,6 +51,8 @@ namespace Shinshi.Data.Growth
         /****************************************
         *              Properties
         ****************************************/
+
+        [JsonProperty("characterLevel")] public CharacterLevelSettings CharacterLevel { get; set; } = null!;
 
         [JsonProperty("schemaVersion")]  public int              SchemaVersion  { get; set; }
         [JsonProperty("contentVersion")] public string           ContentVersion { get; set; } = string.Empty;
@@ -190,6 +193,10 @@ namespace Shinshi.Data.Growth
                 errors.Add("contentVersion is empty");
             }
 
+            if ((CharacterLevel == null) || !CharacterLevel.IsValid())
+            {
+                errors.Add("characterLevel is invalid");
+            }
             ValidateEquipment(errors);
             ValidateGrowth(errors);
             ValidateTalismans(errors);
@@ -248,6 +255,10 @@ namespace Shinshi.Data.Growth
                     errors.Add("equipment.slotBaseStats[" + index + "]: slot order or values are invalid");
                 }
             }
+            if ((section.LifeStealPerGrade < 0) || (section.LifeStealPerGrade > 1))
+            {
+                errors.Add("equipment.lifeStealPerGrade is out of range");
+            }
 
             RequireCount(errors, "equipment.gradeStatMultipliers", section.GradeStatMultipliers.Length, GRADE_COUNT);
             for (int index = 1; index < section.GradeStatMultipliers.Length; ++index)
@@ -255,10 +266,6 @@ namespace Shinshi.Data.Growth
                 if ((section.GradeStatMultipliers[index - 1] <= 0)
                     || (section.GradeStatMultipliers[index] <= section.GradeStatMultipliers[index - 1]))
                 {
-            if ((section.LifeStealPerGrade < 0) || (section.LifeStealPerGrade > 1))
-            {
-                errors.Add("equipment.lifeStealPerGrade is out of range");
-            }
                     errors.Add("equipment.gradeStatMultipliers must increase");
                 }
             }
@@ -426,6 +433,7 @@ namespace Shinshi.Data.Growth
             [JsonProperty("gradeStatMultipliers")]     public decimal[]             GradeStatMultipliers     { get; set; } = Array.Empty<decimal>();
             [JsonProperty("enhancementStatRate")]      public decimal               EnhancementStatRate      { get; set; }
             [JsonProperty("trainingStatRate")]         public decimal               TrainingStatRate         { get; set; }
+            [JsonProperty("lifeStealPerGrade")]        public decimal               LifeStealPerGrade        { get; set; }
             [JsonProperty("enhancementSteps")]         public EnhancementStep[]     EnhancementSteps         { get; set; } = Array.Empty<EnhancementStep>();
             [JsonProperty("sameGradeInheritCost")]     public long                  SameGradeInheritCost     { get; set; }
             [JsonProperty("upperGradeInheritCost")]    public long                  UpperGradeInheritCost    { get; set; }
@@ -433,7 +441,6 @@ namespace Shinshi.Data.Growth
             [JsonProperty("disassembleRefundRate")]    public decimal               DisassembleRefundRate    { get; set; }
             [JsonProperty("storageSlotsPerCharacter")] public int                   StorageSlotsPerCharacter { get; set; }
         }
-            [JsonProperty("lifeStealPerGrade")]        public decimal               LifeStealPerGrade        { get; set; }
 
         /// <summary> 장비 한 종류, 수련용은 재료가 없다 </summary>
         public sealed class EquipmentDefinition
@@ -464,6 +471,9 @@ namespace Shinshi.Data.Growth
             [JsonProperty("health")]     public decimal Health     { get; set; }
             [JsonProperty("defense")]    public decimal Defense    { get; set; }
             [JsonProperty("critChance")] public decimal CritChance { get; set; }
+
+            // 일반 등급의 생명력 흡수, 0이면 이 부위는 등급이 올라도 흡수가 없다
+            [JsonProperty("lifeSteal")]  public decimal LifeSteal  { get; set; }
         }
 
         /// <summary> 강화 목표 단계 하나의 시도 비용과 성공률(0에서 1) </summary>
@@ -471,9 +481,6 @@ namespace Shinshi.Data.Growth
         {
             /****************************************
             *              Properties
-
-            // 일반 등급의 생명력 흡수, 0이면 이 부위는 등급이 올라도 흡수가 없다
-            [JsonProperty("lifeSteal")]  public decimal LifeSteal  { get; set; }
             ****************************************/
 
             [JsonProperty("essenceCost")]     public long    EssenceCost     { get; set; }

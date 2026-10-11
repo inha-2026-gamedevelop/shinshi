@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Net;
 using System.Net.Http;
@@ -33,7 +33,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int    SERVER_MINUTES = 15;
         private const int    TOWN_PORT      = 7777;
         private const int    DUNGEON_PORT   = 7780;
-        private const string CONTENT        = "contract-http-test";
+        private const string CONTENT        = "0.1.2";
         private const string BOSS_ID        = "boss_wolbaek";
         private const string REGION_FOREST  = "region_forest";
         private const long   SEED_TICKETS   = 3;
@@ -77,7 +77,7 @@ namespace Shinshi.Backend.Tests.Auth
             string rejoinPath = string.Format(ApiRoutes.REJOIN_TICKET_FORMAT, reservation.SessionId);
             JoinTokenExchangeResponse running = await RejoinAndExchangeAsync(player, dungeon, rejoinPath, fixture);
             Assert.Equal(GameSessionCodes.Mode.BOSS, running.Mode);
-            Assert.Equal(CONTENT, running.MapId);
+            Assert.Equal("region_forest", running.MapId);
             Assert.Null(running.BattleId);
             Assert.Equal(BOSS_ID, running.BossId);
             Assert.Equal(GameSessionCodes.Difficulty.HARD, running.Difficulty);
@@ -346,7 +346,7 @@ namespace Shinshi.Backend.Tests.Auth
         private static ReservationRequest Reservation(Fixture fixture, int mode, string? battleId, string? bossId,
             int difficulty)
         {
-            return new ReservationRequest(Guid.NewGuid().ToString("D"), mode, CONTENT, CONTENT, new[]
+            return new ReservationRequest(Guid.NewGuid().ToString("D"), mode, "region_forest", CONTENT, new[]
             {
                 new ReservationParticipant(fixture.AccountId.ToString("D"), fixture.CharacterId.ToString("D"), 0,
                     Array.Empty<ReservationPotion>())

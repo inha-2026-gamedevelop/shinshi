@@ -570,7 +570,7 @@
       },
       {
         "stat": 1,
-        "gainPerStep": 0.01
+        "gainPerStep": 0.010
       },
       {
         "stat": 2,
@@ -1478,5 +1478,33 @@
       "equipment": [],
       "actionEnergy": 100
     }
+  },
+  "characterLevel": {
+    "maxLevel": 30,
+    "firstLevelCost": 300,
+    "levelCostStep": 275,
+    "trialStartLevel": 5,
+    "attackPerLevel": 1,
+    "healthPerLevel": 15,
+    "regions": [
+      {
+        "regionId": "region_forest",
+        "normalEnemy": 5,
+        "eliteEnemy": 25,
+        "waveCleared": 30
+      },
+      {
+        "regionId": "region_ruins",
+        "normalEnemy": 5,
+        "eliteEnemy": 30,
+        "waveCleared": 40
+      },
+      {
+        "regionId": "region_altar",
+        "normalEnemy": 5,
+        "eliteEnemy": 35,
+        "waveCleared": 50
+      }
+    ]
   }
 }

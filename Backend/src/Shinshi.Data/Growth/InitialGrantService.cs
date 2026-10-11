@@ -37,6 +37,8 @@ namespace Shinshi.Data.Growth
         ****************************************/
 
         public EGrowthContentProfile Profile { get; }
+        public long InitialExperience => Profile == EGrowthContentProfile.Standard ? 0
+            : Shinshi.Contracts.CharacterLevelRules.RequiredExperience(_content.CharacterLevel, _content.CharacterLevel.TrialStartLevel);
 
         /****************************************
         *                Methods

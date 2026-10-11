@@ -155,7 +155,8 @@ namespace Shinshi.Data.Sessions
                             AND instance.state <> 'Offline'
                             AND instance.heartbeat_at > clock_timestamp() - @HeartbeatTimeout)
                 RETURNING session.mode AS "Mode", session.revision AS "Revision",
-                    session.instance_boot_id AS "InstanceBootId";
+                    session.instance_boot_id AS "InstanceBootId", session.map_id AS "MapId",
+                    session.content_version AS "ContentVersion", session.experience_settings::text AS "ExperienceSettings";
                 """, new { SessionId = sessionId, InstanceId = dungeonInstanceId,
                     HeartbeatTimeout = ServerPoolTimings.HeartbeatTimeout },
                 transaction, cancellationToken: cancellationToken));
@@ -181,6 +182,19 @@ namespace Shinshi.Data.Sessions
                 }
 
                 return OperationDecision.Rejected(current.ClosedReason(), current.Revision);
+            }
+
+            if (started.ExperienceSettings != null)
+            {
+                Growth.GrowthContent content = Growth.GrowthContent.LoadEmbedded();
+                CharacterLevelSettings? reserved = Newtonsoft.Json.JsonConvert.DeserializeObject<CharacterLevelSettings>(started.ExperienceSettings);
+                if ((reserved == null) || !reserved.IsValid() || (started.ContentVersion != content.ContentVersion)
+                    || (CharacterLevelRules.SettingsHash(reserved) != CharacterLevelRules.SettingsHash(content.CharacterLevel))
+                    || ((started.Mode == GameSessionStates.MODE_NORMAL)
+                        && (reserved.GetGrant(started.MapId, CharacterExperienceSource.NORMAL_ENEMY) == 0)))
+                {
+                    return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
+                }
             }
 
             List<ParticipantRow> participants = await ReadParticipantsAsync(connection, transaction, sessionId,
@@ -248,7 +262,7 @@ namespace Shinshi.Data.Sessions
             SessionLockRow? session = await connection.QuerySingleOrDefaultAsync<SessionLockRow>(new CommandDefinition(
                 """
                 SELECT session.state AS "State", session.instance_id AS "InstanceId", session.mode AS "Mode",
-                    session.last_event_seq AS "LastEventSeq",
+                    session.last_event_seq AS "LastEventSeq", session.map_id AS "MapId", session.content_version AS "ContentVersion", session.experience_settings::text AS "ExperienceSettings",
                     EXISTS (SELECT 1 FROM server_instances AS instance
                         WHERE instance.instance_id = session.instance_id AND instance.boot_id = session.instance_boot_id
                             AND instance.state <> 'Offline'
@@ -309,7 +323,8 @@ namespace Shinshi.Data.Sessions
             await SessionDb.LockAccountsAsync(connection, transaction, events
                 .Where(entry => (entry.EventKind == GameSessionCodes.EventKind.POTION_USED)
                     || (entry.EventKind == GameSessionCodes.EventKind.POTION_USE_REVERTED)
-                    || (entry.EventKind == GameSessionCodes.EventKind.PARTICIPANT_DEPARTED))
+                    || (entry.EventKind == GameSessionCodes.EventKind.PARTICIPANT_DEPARTED)
+                    || (entry.EventKind == GameSessionCodes.EventKind.EXPERIENCE_GRANTED))
                 .Select(entry => participants[entry.ParticipantId!.Value].AccountId), cancellationToken);
 
             List<EconomyLedgerLine> ledger = new List<EconomyLedgerLine>();
@@ -328,6 +343,12 @@ namespace Shinshi.Data.Sessions
                     GameSessionCodes.EventKind.BASE_ESSENCE_ACCRUED, cancellationToken))
             {
                 return OperationDecision.Rejected(SettlementSanityLimits.REJECT_REASON, last);
+            }
+
+            if (!await CharacterExperienceWriter.ApplyAsync(connection, transaction, sessionId, session.Mode,
+                session.MapId, session.ExperienceSettings, events, participants, cancellationToken))
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH, last);
             }
 
             SessionEventInput final = events[events.Count - 1];
@@ -849,7 +870,7 @@ namespace Shinshi.Data.Sessions
             return (await connection.QueryAsync<ParticipantRow>(new CommandDefinition(
                 """
                 SELECT participant_id AS "ParticipantId", account_id AS "AccountId", character_id AS "CharacterId",
-                    state AS "State", essence_accrued AS "EssenceAccrued", base_essence_accrued AS "BaseEssenceAccrued"
+                    state AS "State", departed_at AS "DepartedAt", essence_accrued AS "EssenceAccrued", base_essence_accrued AS "BaseEssenceAccrued"
                 FROM session_participants WHERE session_id = @SessionId ORDER BY account_id;
                 """, new { SessionId = sessionId }, transaction, cancellationToken: cancellationToken))).ToList();
         }
@@ -866,6 +887,9 @@ namespace Shinshi.Data.Sessions
             public string Mode           { get; set; } = string.Empty;
             public long   Revision       { get; set; }
             public Guid?  InstanceBootId { get; set; }
+            public string MapId { get; set; } = string.Empty;
+            public string ContentVersion { get; set; } = string.Empty;
+            public string? ExperienceSettings { get; set; }
         }
 
         private sealed class SessionLockRow
@@ -877,6 +901,9 @@ namespace Shinshi.Data.Sessions
             public string State           { get; set; } = string.Empty;
             public Guid   InstanceId      { get; set; }
             public string Mode            { get; set; } = string.Empty;
+            public string MapId { get; set; } = string.Empty;
+            public string ContentVersion { get; set; } = string.Empty;
+            public string? ExperienceSettings { get; set; }
             public long   LastEventSeq    { get; set; }
             public bool   IsInstanceAlive { get; set; }
             public bool   IsBootOnline    { get; set; }
@@ -938,6 +965,7 @@ namespace Shinshi.Data.Sessions
         *              Properties
         ****************************************/
 
+        public DateTimeOffset? DepartedAt { get; set; }
         public Guid   ParticipantId  { get; set; }
         public Guid   AccountId      { get; set; }
         public Guid   CharacterId    { get; set; }

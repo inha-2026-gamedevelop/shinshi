@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Net;
 using System.Net.Http;
@@ -30,7 +30,7 @@ namespace Shinshi.Backend.Tests.Admin
 
         private const string ADMIN_NAME     = "replay.admin";
         private const string REASON         = "reservation replay check";
-        private const string CONTENT        = "replay-content";
+        private const string CONTENT        = "0.1.2";
         private const int    TOWN_PORT      = 7777;
         private const int    DUNGEON_PORT   = 7780;
         private const int    LEASE_MINUTES  = 15;
@@ -79,7 +79,7 @@ namespace Shinshi.Backend.Tests.Admin
 
         private static ReservationRequest CreateRequest(Seed seed)
         {
-            return new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL, CONTENT, CONTENT,
+            return new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL, "region_forest", CONTENT,
                 new[]
                 {
                     new ReservationParticipant(seed.AccountId.ToString("D"), seed.CharacterId.ToString("D"), 0,

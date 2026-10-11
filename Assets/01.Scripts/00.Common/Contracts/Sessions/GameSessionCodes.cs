@@ -64,6 +64,7 @@ namespace Shinshi.Contracts
             // 확정된 POTION_USED 한 건을 되돌린다(회복을 적용하지 못한 경우). revertsEventId에 원 이벤트 ID를 싣고,
             // 원 이벤트가 같은 세션, 같은 참가자에 있고 아직 되돌리지 않았을 때만 저장된다. 물약 1개가 예약분으로 돌아간다
             public const int POTION_USE_REVERTED = 7;
+            public const int EXPERIENCE_GRANTED = 8;
         }
 
         /// <summary> 출정 물약 규칙의 단일 원본. 던전 서버(PotionServer)와 API(세션 이벤트 저장)가 같은 값을 쓰고,

@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,6 +47,9 @@ namespace Shinshi.Data.Sessions
         *              Properties
         ****************************************/
 
+        public int ExperienceSourceKind { get; set; }
+        public string ExperienceSourceId { get; set; } = string.Empty;
+        public string ExperienceSettingsHash { get; set; } = string.Empty;
         public long                       EventSeq              { get; set; }
         public Guid                       EventId               { get; set; }
         public int                        EventKind             { get; set; }
@@ -153,6 +156,13 @@ namespace Shinshi.Data.Sessions
         {
             switch (entry.EventKind)
             {
+                case GameSessionCodes.EventKind.EXPERIENCE_GRANTED:
+                    return HasParticipant(entry) && (entry.Amount > 0)
+                        && (entry.ExperienceSourceKind >= CharacterExperienceSource.NORMAL_ENEMY)
+                        && (entry.ExperienceSourceKind <= CharacterExperienceSource.WAVE_CLEARED)
+                        && !string.IsNullOrWhiteSpace(entry.ExperienceSourceId) && (entry.ExperienceSourceId.Length <= 160)
+                        && (entry.ExperienceSettingsHash?.Length == 64)
+                        ? ContractCodes.RejectReason.NONE : ContractCodes.RejectReason.SESSION_MISMATCH;
                 case GameSessionCodes.EventKind.LOOT:
                     return ContractCodes.RejectReason.NONE;
                 case GameSessionCodes.EventKind.POTION_USED:

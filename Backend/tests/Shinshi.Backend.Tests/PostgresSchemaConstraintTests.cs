@@ -83,7 +83,7 @@ namespace Shinshi.Backend.Tests
                 """);
 
             Assert.True(validated);
-            Assert.Contains("7", definition, StringComparison.Ordinal);
+            Assert.Contains("8", definition, StringComparison.Ordinal);
             Assert.DoesNotContain("NOT VALID", definition, StringComparison.Ordinal);
             Assert.Equal(1L, deleteIndex);
         }

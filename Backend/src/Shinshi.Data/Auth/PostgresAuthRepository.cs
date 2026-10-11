@@ -314,7 +314,9 @@ namespace Shinshi.Data.Auth
                 SELECT character.class_id AS "ClassId", character.name AS "Name", character.appearance::text AS "Appearance",
                     participant.departed_at IS NOT NULL AS "Departed", session.mode AS "Mode", session.map_id AS "MapId",
                     session.battle_id AS "BattleId", session.boss_id AS "BossId", session.difficulty AS "Difficulty",
-                    participant.loadout_snapshot::text AS "Loadout"
+                    participant.loadout_snapshot::text AS "Loadout", character.total_experience AS "TotalExperience",
+                    character.last_experience_session_id AS "ExperienceSessionId",
+                    character.last_experience_event_seq AS "ExperienceEventSeq", session.content_version AS "ContentVersion", session.experience_settings::text AS "ExperienceSettings"
                 FROM session_participants AS participant
                 JOIN characters AS character
                     ON character.character_id = participant.character_id AND character.account_id = participant.account_id
@@ -325,6 +327,17 @@ namespace Shinshi.Data.Auth
                 """, new { SessionId = sessionId, ParticipantId = participantId, found.AccountId, found.CharacterId },
                 transaction, token));
             if (character == null)
+            {
+                return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
+            }
+            Growth.GrowthContent experienceContent = Growth.GrowthContent.LoadEmbedded();
+            CharacterLevelSettings? reservedExperience = string.IsNullOrEmpty(character.ExperienceSettings) ? null
+                : Newtonsoft.Json.JsonConvert.DeserializeObject<CharacterLevelSettings>(character.ExperienceSettings);
+            if ((reservedExperience == null) || !reservedExperience.IsValid()
+                || (CharacterLevelRules.SettingsHash(reservedExperience) != CharacterLevelRules.SettingsHash(experienceContent.CharacterLevel))
+                || (character.ContentVersion != experienceContent.ContentVersion)
+                || ((character.Mode == "Normal") && (experienceContent.CharacterLevel.GetGrant(character.MapId,
+                    CharacterExperienceSource.NORMAL_ENEMY) == 0)))
             {
                 return AuthValidationOutcome<JoinAuthIdentity>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
             }
@@ -394,7 +407,11 @@ namespace Shinshi.Data.Auth
                 consumed.CharacterId, character.ClassId, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
                 consumed.InstanceId, UnixMilliseconds(now), default, character.Name,
                 JoinSortieContract.FromRow(character.Mode, character.MapId, character.BattleId, character.BossId,
-                    character.Difficulty), character.Loadout, potions, character.Appearance));
+                    character.Difficulty), character.Loadout, potions, character.Appearance,
+                new CharacterExperienceSnapshot(character.TotalExperience,
+                    consumed.SessionId.Value.ToString("D"), character.ExperienceSessionId == consumed.SessionId
+                        ? character.ExperienceEventSeq : 0,
+                    CharacterLevelRules.SettingsHash(Growth.GrowthContent.LoadEmbedded().CharacterLevel))));
         }
 
         // 던전 입장 교환이 돌려주는 남은 물약 예약분 한 줄
@@ -409,6 +426,11 @@ namespace Shinshi.Data.Auth
         // 던전 입장은 이탈 여부와 출정 계약도 함께 읽는다(마을 입장은 기본값)
         private sealed class JoinCharacterRow
         {
+            public long TotalExperience { get; set; }
+            public Guid? ExperienceSessionId { get; set; }
+            public long ExperienceEventSeq { get; set; }
+            public string ContentVersion { get; set; } = string.Empty;
+            public string? ExperienceSettings { get; set; }
             public int ClassId { get; set; }
             public string? Name { get; set; }
             public string? Appearance { get; set; }

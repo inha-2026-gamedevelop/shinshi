@@ -65,7 +65,7 @@ namespace Shinshi.Data.Growth
                 """
                 SELECT character_id AS "CharacterId", account_id AS "AccountId", class_id AS "ClassId",
                     loadout_revision AS "LoadoutRevision", essence AS "Essence", shards AS "Shards",
-                    clock_timestamp() AS "ServerTime"
+                    clock_timestamp() AS "ServerTime", total_experience AS "TotalExperience"
                 FROM characters WHERE character_id = @CharacterId AND deleted_at IS NULL;
                 SELECT attack AS "Attack", health AS "Health", defense AS "Defense", crit AS "Crit", energy AS "Energy"
                 FROM character_training WHERE character_id = @CharacterId;
@@ -108,7 +108,7 @@ namespace Shinshi.Data.Growth
                 loadout.Select(row => new TalismanLoadoutEntry(row.SkillId, row.Tier, row.EffectId)).ToArray(),
                 items.Select(row => new GrowthItemView(row.DefinitionId, row.BindingKind, row.Quantity, row.Reserved)).ToArray(),
                 equipment.Count(row => !row.Equipped), _content.Equipment.StorageSlotsPerCharacter, _content.ContentVersion,
-                new DateTimeOffset(DateTime.SpecifyKind(character.ServerTime, DateTimeKind.Utc)).ToUnixTimeMilliseconds());
+                new DateTimeOffset(DateTime.SpecifyKind(character.ServerTime, DateTimeKind.Utc)).ToUnixTimeMilliseconds(), character.TotalExperience);
         }
 
         private static EquipmentView ToView(EquipmentRecord row)
@@ -123,6 +123,7 @@ namespace Shinshi.Data.Growth
 
         private sealed class CharacterRow
         {
+            public long TotalExperience { get; set; }
             public Guid     CharacterId     { get; set; }
             public Guid     AccountId       { get; set; }
             public int      ClassId         { get; set; }

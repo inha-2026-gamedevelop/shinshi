@@ -11,6 +11,7 @@ namespace Shinshi.Contracts
         *                Fields
         ****************************************/
 
+        [DataMember(Name = "totalExperience")] private long _totalExperience;
         [DataMember(Name = "characterId")]      private string                 _characterId;
         [DataMember(Name = "classId")]          private int                    _classId;
         // 성장 쓰기가 성공할 때마다 1 오른다. 출정 예약의 characterRevision도 이 값이다
@@ -35,6 +36,7 @@ namespace Shinshi.Contracts
         *              Properties
         ****************************************/
 
+        public long TotalExperience => _totalExperience;
         public string                 CharacterId      => _characterId;
         public int                    ClassId          => _classId;
         public long                   LoadoutRevision  => _loadoutRevision;
@@ -58,8 +60,9 @@ namespace Shinshi.Contracts
         public CharacterGrowthSnapshot(string characterId, int classId, long loadoutRevision, long essence,
             long shards, int[] training, EquipmentView[] equipment, EnhancementPityView[] enhancementPity,
             TalismanProgressView[] talismans, TalismanLoadoutEntry[] loadout, GrowthItemView[] accountItems,
-            int storageUsed, int storageCapacity, string contentVersion, long serverTimeUnixMs)
+            int storageUsed, int storageCapacity, string contentVersion, long serverTimeUnixMs, long totalExperience = 0)
         {
+            _totalExperience = totalExperience;
             _characterId      = characterId;
             _classId          = classId;
             _loadoutRevision  = loadoutRevision;

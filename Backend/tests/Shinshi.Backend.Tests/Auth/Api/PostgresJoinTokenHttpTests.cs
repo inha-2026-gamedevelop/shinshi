@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Linq;
 using System.Net;
@@ -35,7 +35,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int SERVER_MINUTES = 15;
         private const int TOWN_PORT = 7777;
         private const int DUNGEON_PORT = 7780;
-        private const string CONTENT = "join-http-test";
+        private const string CONTENT = "0.1.2";
         private const string BATTLE_ID = "battle_forest_1";
         private const long POTIONS_OWNED = 5;
         private const long POTIONS_CARRIED = 3;
@@ -97,14 +97,14 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(reservation.SessionId, result.SortieId);
             Assert.True(result.ServerTimeUnixMs >= ticket.ServerTimeUnixMs);
             Assert.Equal(new[] { "accountId", "accountLeaseId", "appearance", "battleId", "bossId", "characterId", "characterName",
-                    "classId", "combatLoadout", "difficulty", "instanceId", "mapId", "mode", "participantId", "potions",
+                    "classId", "combatLoadout", "difficulty", "experience", "instanceId", "mapId", "mode", "participantId", "potions",
                     "serverRole", "serverTimeUnixMs", "sortieId" },
                 JObject.Parse(responseBody).Properties().Select(property => property.Name).OrderBy(name => name).ToArray());
             Assert.Null(result.AccountLeaseId);
 
             // 출정 계약은 예약 때 저장한 값 그대로다. 일반전이라 bossId는 값 없음, 난이도는 NONE이다
             Assert.Equal(GameSessionCodes.Mode.NORMAL, result.Mode);
-            Assert.Equal(CONTENT, result.MapId);
+            Assert.Equal("region_forest", result.MapId);
             Assert.Equal(BATTLE_ID, result.BattleId);
             Assert.Null(result.BossId);
             Assert.Equal(GameSessionCodes.Difficulty.NONE, result.Difficulty);
@@ -338,7 +338,7 @@ namespace Shinshi.Backend.Tests.Auth
         private static async Task<ReservationResponse> ReserveAsync(HttpClient town, Fixture fixture, ReservationPotion[] potions)
         {
             ReservationRequest request = new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL,
-                CONTENT, CONTENT, new[] { new ReservationParticipant(fixture.AccountId.ToString("D"),
+                "region_forest", CONTENT, new[] { new ReservationParticipant(fixture.AccountId.ToString("D"),
                     fixture.CharacterId.ToString("D"), 0, potions) }, BATTLE_ID, null,
                 GameSessionCodes.Difficulty.NONE);
             using HttpResponseMessage response = await town.PostAsync(GameServerRoutes.RESERVATIONS, Body(request));
