@@ -1,6 +1,6 @@
 # Linux 게임서버 유닛
 
-마을 프로세스 하나와 던전 슬롯 `1..N`을 같은 Linux Dedicated Server 빌드로 실행하는 systemd 템플릿이다. 실제 서버 배포·클라우드 자원 생성·부하 측정은 아직 수행하지 않았다. 출시 인증·서버 임대·출정 종료 시 자동 드레인 코드는 있지만 이 유닛의 실제 실행 증거는 아니다. 운영자 개시·SIGTERM·정산 outbox 드레인은 별도 미확인이다.
+마을 프로세스 하나와 던전 슬롯 `1..N`을 같은 Linux Dedicated Server 빌드로 실행하는 systemd 템플릿이다. 실제 서버 배포·클라우드 자원 생성·부하 측정은 아직 수행하지 않았다. 출시 인증·서버 임대·출정 종료 시 자동 드레인 코드는 있지만 이 유닛의 실제 실행 증거는 아니다. 협조 종료 helper와 개발 서버의 PID 요청 파일·`DrainWaiting` 경로는 격리 Linux 환경에서 실행했다. 실제 systemd `ExecStop` 연동과 운영 출정 종료는 미검증이다. SIGTERM의 Unity 종료 연동·정산 outbox 드레인은 별도 미확인이다.
 
 | 파일 | 운영 서버의 경로·역할 |
 |---|---|
@@ -8,6 +8,7 @@
 | [shinshi-dungeon@.service](shinshi-dungeon@.service) | `/etc/systemd/system/shinshi-dungeon@.service`, `shinshi-dungeon@1`부터 `@N`까지 |
 | [town/.env.example](town/.env.example) | `/etc/shinshi/gameserver/town.env`의 비밀값 없는 예시 |
 | [dungeon/.env.example](dungeon/.env.example) | `/etc/shinshi/gameserver/dungeon-1.env`부터 `dungeon-N.env`까지의 비밀값 없는 예시 |
+| [cooperative-stop.sh](cooperative-stop.sh) | `/opt/shinshi/gameserver/cooperative-stop.sh`(root 소유 `0755`), 두 유닛의 `ExecStop`이 부르는 협조 종료 요청 스크립트 |
 | [journald-shinshi.conf](journald-shinshi.conf) | `/etc/systemd/journald.conf.d/shinshi.conf`, 로그 보존(90일·4G 상한)과 재부팅 뒤 보존 |
 
 ## 실행 계약과 포트
@@ -38,8 +39,8 @@
 운영 Linux에서 다음 전제를 먼저 갖춘다.
 
 - `shinshi-game` 시스템 사용자·그룹이 존재하고 로그인 셸이 없다. 프로세스는 이 계정으로 실행한다.
-- 검증한 Linux Dedicated Server 빌드 전체를 `/opt/shinshi/gameserver/releases/<buildId>/`에 두고, `/opt/shinshi/gameserver/current`가 선택한 릴리스를 가리킨다. 실행 파일의 배포 이름은 `ShinshiServer.x86_64`다. 실제 빌드 이름이 다르면 두 유닛의 `ExecStart`를 함께 맞춘다. 파일 소유자는 root이며 서비스 사용자는 읽기·실행만 할 수 있게 한다.
-- Unity 런타임이 필요한 공유 라이브러리가 설치되어 있고, 필요한 서버 빌드 정의와 씬을 실제 Linux 빌드로 검증했다.
+- 검증한 Linux Dedicated Server 빌드 전체를 `/opt/shinshi/gameserver/releases/<buildId>/`에 두고, `/opt/shinshi/gameserver/current`가 선택한 릴리스를 가리킨다. 실행 파일의 배포 이름은 `Shinshi.x86_64`다. 실제 빌드 이름이 다르면 두 유닛의 `ExecStart`를 함께 맞춘다. 파일 소유자는 root이며 서비스 사용자는 읽기·실행만 할 수 있게 한다.
+- Unity 런타임이 필요한 공유 라이브러리가 설치되어 있고, 필요한 서버 빌드 정의와 씬을 실제 Linux 빌드로 검증했다. 서버 PlayerSettings에는 `APPUI_PLATFORM_DISABLED`를 둬 App UI의 데스크톱 네이티브 초기화를 사용하지 않는다. 클라이언트 정의와 패키지 원본은 바꾸지 않는다. 이 정의만으로 네이티브 플러그인 파일 자체가 빌드에서 제외되지는 않는다.
 - `/etc/shinshi/gameserver/`는 root가 관리하고 환경파일은 root 소유 `0600`으로 둔다. 자리표시자를 모두 실제 비밀값 없는 설정으로 바꾼다.
 - 게임 수신은 UDP 마을 `7777`, 던전 `7780..(7780 + N - 1)`만 연다. API HTTPS와 DB 포트는 분리한다. 상세 방화벽·TLS·비밀값 경계는 [공통 배포 안내](../README.md)를 따른다.
 
@@ -47,6 +48,8 @@
 
 ```bash
 sudo useradd --system --user-group --home-dir /var/lib/shinshi/gameserver --no-create-home --shell /usr/sbin/nologin shinshi-game
+sudo install -d -m 0755 -o root -g root /opt/shinshi/gameserver
+sudo install -m 0755 -o root -g root deploy/gameserver/cooperative-stop.sh /opt/shinshi/gameserver/cooperative-stop.sh
 sudo install -d -m 0750 -o root -g root /etc/shinshi/gameserver
 sudo install -m 0600 -o root -g root deploy/gameserver/town/.env.example /etc/shinshi/gameserver/town.env
 sudo install -m 0600 -o root -g root deploy/gameserver/dungeon/.env.example /etc/shinshi/gameserver/dungeon-1.env
@@ -67,7 +70,7 @@ sudo systemctl enable --now shinshi-dungeon@1.service
 
 ## 재시작·로그·중지
 
-던전은 출정 하나가 끝나면 스스로 종료하고(종료 코드 0 재활용, 70 불변식 위반, 75 서버 풀 존재 상실), 새 bootId로 다시 떠야 하므로 `Restart=always`, 2초 뒤 재시작이다. 운영 알림은 70과 75에만 건다. 300초 동안 시작을 다섯 번으로 제한해 설정 오류나 지속 장애의 재시작 폭주를 막는다. 제한에 걸리면 원인을 해결한 뒤 해당 유닛의 `systemctl reset-failed`와 `start`로 재개한다. 명시적인 `systemctl stop`은 자동 재시작을 유발하지 않는다. `Restart=always`이므로 코드 0 종료도 재시작한다. 300초에 다섯 번 제한은 출정이 1분 안에 연달아 끝나는 경우에도 걸릴 수 있으니, 실측 뒤 던전 유닛의 `StartLimitBurst`를 조정한다.
+던전은 출정 하나가 끝나면 스스로 종료하고(종료 코드 0 재활용, 70 불변식 위반, 75 서버 풀 존재 상실), 새 bootId로 다시 떠야 하므로 `Restart=always`, 2초 뒤 재시작이다. 운영 알림은 70, 75와 운영 종료 기한 초과(76)에 건다. 300초 동안 시작을 다섯 번으로 제한해 설정 오류나 지속 장애의 재시작 폭주를 막는다. 제한에 걸리면 원인을 해결한 뒤 해당 유닛의 `systemctl reset-failed`와 `start`로 재개한다. 명시적인 `systemctl stop`은 자동 재시작을 유발하지 않는다. `Restart=always`이므로 코드 0 종료도 재시작한다. 300초에 다섯 번 제한은 출정이 1분 안에 연달아 끝나는 경우에도 걸릴 수 있으니, 실측 뒤 던전 유닛의 `StartLimitBurst`를 조정한다.
 
 Unity의 `-logFile -`와 stdout·stderr를 journald로 모은다(유닛의 `StandardOutput=journal`, `StandardError=journal`). 던전은 유닛 번호와 `SyslogIdentifier`(`shinshi-dungeon-<슬롯>`)로 구분한다. 로그를 구조화 JSON으로 바꾸거나 공통 필드를 자동 추가하는 기능은 유닛에 없다(서버 빌드의 `ServerJsonLogHandler`가 JSON 한 줄로 바꾼다). 프로세스가 재시작해도 journald에 남지만, 호스트 재부팅 뒤에도 남고 보존 기간·디스크 상한이 정해지려면 보존 설정을 설치해야 한다. 기본 설정은 호스트에 따라 메모리에만 두고 재부팅하면 사라진다.
 
@@ -87,14 +90,20 @@ sudo journalctl -u shinshi-dungeon@1.service -f
 sudo ss -lunp
 ```
 
-계획된 교체는 **신규 배정 중지 → 진행 세션 마감 → 정산 outbox 비우기 → 프로세스 종료** 순서다. 해당 절차를 구현한 제어 경로와 상태 확인이 마련되기 전에는 유닛의 중지만으로 안전한 세션 마감·정산을 보장할 수 없다. `ServerShutdownController`의 출정 종료·풀 이탈에 따른 내부 드레인→연결 정리→종료 경로는 구현됨·실행 미검증이다. 운영자가 시작하는 드레인, SIGTERM 신호 연동과 정산 outbox 비우기 경로는 확인되지 않았다.
+계획된 교체는 **신규 배정 중지 → 진행 세션 마감 → 연결 정리·flush → 프로세스 종료** 순서다. 정산 outbox 비우기는 이 경로에 없다(미구현). `ServerShutdownController`의 출정 종료·풀 이탈에 따른 내부 드레인→연결 정리→종료 경로와, 운영 종료 요청을 받는 `DrainWaiting` 단계는 구현됨·실행 미검증이다.
 
-`systemctl stop`은 `SIGTERM`을 유닛의 프로세스 그룹에 전달하고 종료를 최대 300초 기다린다. 남은 프로세스는 `SIGKILL`로 종료한다. `TimeoutStopSec=300`은 임시 대기 상한이며, 드레인 절차를 수행하거나 세션 종료·정산 성공을 판정하지 않는다. 실제 최대 세션 마감 시간·저장 재시도 시간을 측정해 상한을 맞춘다. 미확정 경제 작업이 있거나 강제 종료됐으면 정상 마감으로 기록하지 않고 API의 장애 확인·복구 절차가 필요하다. 근거: [systemd.kill](https://github.com/systemd/systemd/blob/main/man/systemd.kill.xml).
+운영 종료 요청은 두 입구가 같은 `DrainWaiting` 상태로 모인다. (1) Unity `Application.wantsToQuit`: 일반 종료 요청을 막고 `Exited`일 때만 허용한다(에디터에서는 등록하지 않는다). Linux `SIGTERM`이 이 이벤트를 부른다고 가정하지 않았고 확인하지 못했다. (2) 협조 요청 파일: 유닛이 `SHINSHI_SHUTDOWN_REQUEST_FILE`을 서비스 전용 `RuntimeDirectory`(`/run/shinshi/gameserver/town`, `dungeon-<슬롯>`, 모드 `0700`)에 지정하고, `ExecStop`이 [cooperative-stop.sh](cooperative-stop.sh)로 메인 PID(`$MAINPID`) 한 줄을 그 파일에 쓴 뒤 최대 270초 동안 프로세스가 스스로 내려가기를 기다린다. 서버는 이 환경변수가 있을 때만 1초 주기로 파일을 확인하고, 자기 PID와 다른 내용(이전 프로세스가 남긴 파일)은 지우고 무시한다. 같은 서비스 사용자의 로컬 파일이며 인증을 우회하는 공개 경로가 아니다. 스크립트가 쓰지 못하거나 종료가 지연되면 systemd가 `SIGTERM`, 이어서 `SIGKILL`로 내리는 기존 동작으로 돌아간다.
+
+`DrainWaiting`은 서버 풀 드레인을 보내 신규 배정을 막고 응답(최대 30초)을 확인한 뒤, 마을은 곧바로, 던전은 진행 중이거나 예약만 된 출정이 끝날 때까지 최대 210초 기다려 연결 정리로 넘어간다. 기한을 넘기면 정상 정산으로 처리하지 않고 종료 코드 76과 `server.shutdown.forced` 오류 로그로 남긴 뒤 연결을 끊는다. 이 경우 API의 장애 확인·복구 절차가 정산을 맡는다. 종료 코드 76은 운영 알림 대상에 추가한다(기존 70, 75와 같은 취급). 210초 + 연결 정리 시간 + 안전 여유 30초는 `TimeoutStopSec=300` 안에 들어가게 잡았다. 값은 `ServerShutdownController`의 상수이며 `TimeoutStopSec`을 바꾸면 함께 맞춘다.
+
+`systemctl stop`은 `ExecStop`이 끝나거나 실패한 뒤에도 프로세스가 남아 있으면 `SIGTERM`을 유닛의 프로세스 그룹에 전달하고, 전체 중지가 300초를 넘기면 `SIGKILL`로 종료한다. `TimeoutStopSec=300`은 `ExecStop` 대기를 포함한 전체 상한이다. 실제 최대 세션 마감 시간·저장 재시도 시간을 측정해 상한을 맞춘다. 미확정 경제 작업이 있거나 강제 종료됐으면 정상 마감으로 기록하지 않고 API의 장애 확인·복구 절차가 필요하다. 협조 요청 직전에 막 예약된 던전 배정은 서버가 마지막으로 받은 인스턴스 상태로만 가리므로 경합 창이 남는다. 근거: [systemd.kill](https://github.com/systemd/systemd/blob/main/man/systemd.kill.xml), [systemd.service의 ExecStop·RuntimeDirectory](https://github.com/systemd/systemd/blob/main/man/systemd.service.xml).
 
 ## 비밀값과 남은 검증
 
 예시는 서비스 자격·토큰·비밀번호를 포함하지 않는다. 그런 값을 실행 인자, URL, Unity 에셋·SO, 로그에 넣지 않는다. 게임서버의 API 서비스 자격 로딩 계약은 현재 실행 설정에 없으므로 임의 환경변수나 CLI 플래그를 추가하지 않았다. 후속 구현에서 외부 시크릿 공급과 실제 읽기 코드를 함께 연결한다. systemd의 `LoadCredential`을 선택할 경우에도 서버가 credential 파일을 읽는 코드와 해당 호스트 systemd 지원을 검증한 뒤 설정한다. 근거: [systemd.exec의 credential·환경 설정](https://github.com/systemd/systemd/blob/main/man/systemd.exec.xml).
 
-대상 Linux에서 `systemd-analyze verify`, 비루트 실행·런타임 파일 쓰기, 마을+N 던전 UDP 바인딩, API HTTPS·서비스 인증, crash 재시작·폭주 제한, journald 출력과 보존 설정 적용·재부팅 뒤 잔존·정산 추적 조회, SIGTERM 처리·시간 초과, 실제 세션 드레인·outbox·재접속을 확인해야 한다. 이 작업은 파일·실행 계약의 정적 확인만 수행했으며 유닛 실행·Linux 서버 빌드·네트워크 통합·부하 측정은 미검증이다.
+협조 종료 스크립트는 2026-10-11에 로컬 `postgres:18` 이미지의 일회성 Linux 컨테이너에서 9개 시나리오를 실행해 모두 통과했다. 이미지 다운로드·네트워크·DB 실행 없이 스크립트를 읽기 전용으로 마운트하고 컨테이너 안에서 만든 `sleep` 프로세스만 사용했다. `sh -n`, 누락·잘못된 PID의 즉시 반환, 이미 종료된 PID의 즉시 반환, 살아 있는 PID의 요청 파일 발행과 종료 대기, 1초 제한, 상대 경로 거절, 정수가 아니거나 음수인 대기 시간 거절, 0초 제한, 요청 파일 쓰기 실패 시 반환을 확인했다. 발행된 요청은 PID 한 줄과 `0600` 권한을 확인했고 발행 후 임시 파일이 남지 않았다. 시간 제한은 살아 있는 프로세스를 직접 종료하지 않고 systemd 후속 처리를 위해 반환했다.
+
+대상 Linux에서 `systemd-analyze verify`, 비루트 실행·런타임 파일 쓰기, 마을+N 던전 UDP 바인딩, API HTTPS·서비스 인증, crash 재시작·폭주 제한, journald 출력과 보존 설정 적용·재부팅 뒤 잔존·정산 추적 조회, 실제 `systemctl stop`의 `ExecStop`·`RuntimeDirectory` 동작과 요청 파일의 PID가 서버 프로세스 PID와 같은지(`$MAINPID`), `SIGTERM`의 Unity 종료 요청 연동 여부, 시간 초과, 실제 세션 드레인·outbox·재접속을 확인해야 한다. 협조 종료 코드(`ServerShutdownController`, `ServerShutdownRequestWatcher`, 시험 `ServerGracefulShutdownTests`)의 Unity·Linux 서버 실행은 미검증이다. 스크립트 단독 실행을 제외한 실제 유닛 실행·Linux 서버 빌드·네트워크 통합·부하 측정도 미검증이다.
 
 설계 근거: [기술 설계 3장·10장](../../docs/03-technical-design.md), [서버 운영 원칙 7장](../../docs/unity/NETWORK_AUTHORITY.md).

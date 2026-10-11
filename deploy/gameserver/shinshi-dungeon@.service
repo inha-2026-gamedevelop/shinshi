@@ -12,9 +12,11 @@ Group=shinshi-game
 WorkingDirectory=/opt/shinshi/gameserver/current
 EnvironmentFile=/etc/shinshi/gameserver/dungeon-%i.env
 Environment=HOME=/var/lib/shinshi/gameserver/dungeon-%i
-ExecStart=/opt/shinshi/gameserver/current/ShinshiServer.x86_64 -batchmode -nographics -logFile - -role dungeon -port ${GAME_PORT} -instance ${INSTANCE_ID} -backend-base-url ${BACKEND_BASE_URL} -content-version ${CONTENT_VERSION} -dungeon-pool-size ${DUNGEON_POOL_SIZE}
+ExecStart=/opt/shinshi/gameserver/current/Shinshi.x86_64 -batchmode -nographics -logFile - -role dungeon -port ${GAME_PORT} -instance ${INSTANCE_ID} -backend-base-url ${BACKEND_BASE_URL} -content-version ${CONTENT_VERSION} -dungeon-pool-size ${DUNGEON_POOL_SIZE}
 Restart=always
 RestartSec=2
+Environment=SHINSHI_SHUTDOWN_REQUEST_FILE=/run/shinshi/gameserver/dungeon-%i/shutdown-request
+ExecStop=/opt/shinshi/gameserver/cooperative-stop.sh $MAINPID ${SHINSHI_SHUTDOWN_REQUEST_FILE} 270
 KillSignal=SIGTERM
 KillMode=control-group
 TimeoutStopSec=300
@@ -24,6 +26,8 @@ StandardError=journal
 SyslogIdentifier=shinshi-dungeon-%i
 StateDirectory=shinshi/gameserver/dungeon-%i
 StateDirectoryMode=0700
+RuntimeDirectory=shinshi/gameserver/dungeon-%i
+RuntimeDirectoryMode=0700
 UMask=0077
 NoNewPrivileges=yes
 PrivateTmp=yes

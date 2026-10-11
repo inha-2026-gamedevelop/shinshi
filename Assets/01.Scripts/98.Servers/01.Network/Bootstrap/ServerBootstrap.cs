@@ -446,6 +446,7 @@ namespace Shinshi.Network
             }
 
             driver.Bind(presence, shutdown);
+            driver.BindShutdownWatcher(CreateShutdownWatcher());
 
             // 지표 설정이 틀려도 게임 서버는 연다. 수집기의 대상 끊김(up == 0) 경보로 드러난다
             if (!ServerMetricsSettings.TryParse(Environment.GetCommandLineArgs(), Environment.GetEnvironmentVariable,
@@ -472,6 +473,30 @@ namespace Shinshi.Network
 
             Presence = presence;
             Shutdown = shutdown;
+        }
+
+        // 환경변수가 없으면 null이라 파일을 감시하지 않는다. 자기 PID를 얻지 못해도 감시하지 않는다
+        private static ServerShutdownRequestWatcher CreateShutdownWatcher()
+        {
+            string path = Environment.GetEnvironmentVariable(ServerShutdownRequestWatcher.ENV_REQUEST_FILE);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            int ownPid;
+            try
+            {
+                ownPid = System.Diagnostics.Process.GetCurrentProcess().Id;
+            }
+            catch (Exception e)
+            {
+                LogBackendWarning($"[Shutdown] 자기 PID를 얻지 못해 협조 종료 파일을 감시하지 않는다, error={e.GetType().Name}");
+                return null;
+            }
+
+            return ServerShutdownRequestWatcher.TryCreate(path, ownPid, new SystemShutdownRequestFileSystem(),
+                BackendGateway.MonotonicSeconds, LogBackendWarning);
         }
 
         private static void StartMetricsExporter(ServerProcessDriver driver, ServerMetricsSampler metrics,
