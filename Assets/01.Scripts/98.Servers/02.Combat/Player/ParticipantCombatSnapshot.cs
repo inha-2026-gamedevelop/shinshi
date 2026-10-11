@@ -16,20 +16,29 @@ namespace Shinshi.Combat
         *                Fields
         ****************************************/
 
-        private readonly float                 _health;
-        private readonly EParticipantLifeState _lifeState;
-        private readonly double                _deathTime;
-        private readonly double                _nextAttackTime;
-        private readonly uint                  _lastSequence;
-        private readonly int                   _violationCount;
-        private readonly double                _violationWindowStart;
-        private readonly double                _nextDodgeTime;
-        private readonly Vector3               _deathPosition;
-        private readonly bool                  _hasDeathPosition;
+        private readonly float                                 _health;
+        private readonly EParticipantLifeState                 _lifeState;
+        private readonly double                                _deathTime;
+        private readonly double                                _nextAttackTime;
+        private readonly uint                                  _lastSequence;
+        private readonly int                                   _violationCount;
+        private readonly double                                _violationWindowStart;
+        private readonly PlayerInputGate.RateViolationSnapshot _rateViolations;
+        private readonly PlayerInputGate.TokenBucketSnapshot   _tokenBucket;
+        private readonly double                                _nextDodgeTime;
+        private readonly Vector3                               _deathPosition;
+        private readonly bool                                  _hasDeathPosition;
+        private readonly long                                  _lifeStealWindow;
+        private readonly float                                 _lifeStealWindowHealed;
 
         /****************************************
         *              Properties
         ****************************************/
+
+        // 담지 않으면 끊고 다시 붙는 것으로 같은 구간의 흡수 회복 상한을 다시 채울 수 있다
+        public long                  LifeStealWindow       => _lifeStealWindow;
+        public float                 LifeStealWindowHealed => _lifeStealWindowHealed;
+
 
         public float                 Health               => _health;
         public EParticipantLifeState LifeState            => _lifeState;
@@ -50,10 +59,17 @@ namespace Shinshi.Combat
 
         public ParticipantCombatSnapshot(float health, EParticipantLifeState lifeState, double deathTime, double nextAttackTime,
             uint lastSequence, int violationCount, double violationWindowStart, double nextDodgeTime = 0.0,
-            Vector3 deathPosition = default, bool hasDeathPosition = false)
+            Vector3 deathPosition = default, bool hasDeathPosition = false,
+            PlayerInputGate.RateViolationSnapshot rateViolations = default,
+            PlayerInputGate.TokenBucketSnapshot tokenBucket = default,
+            long lifeStealWindow = LifeStealRules.NO_WINDOW, float lifeStealWindowHealed = 0f)
         {
             _deathPosition        = deathPosition;
             _hasDeathPosition     = hasDeathPosition;
+            _lifeStealWindow       = lifeStealWindow;
+            _lifeStealWindowHealed = lifeStealWindowHealed;
+            _rateViolations       = rateViolations;
+            _tokenBucket          = tokenBucket;
             _nextDodgeTime        = nextDodgeTime;
             _health               = health;
             _lifeState            = lifeState;

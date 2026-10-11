@@ -29,7 +29,7 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        public const int    SCHEMA_VERSION = 1;
+        public const int    SCHEMA_VERSION = 3;
         public const string RELATIVE_PATH  = "Backend/src/Shinshi.Data/Content/growth-content.json";
 
         private const string WINDOWS_NEW_LINE = "\r\n";
@@ -116,7 +116,8 @@ namespace Shinshi.Network
                     ["attack"]     = Number(stats.Attack),
                     ["health"]     = Number(stats.Health),
                     ["defense"]    = Number(stats.Defense),
-                    ["critChance"] = Number(stats.CritChance)
+                    ["critChance"] = Number(stats.CritChance),
+                    ["lifeSteal"]  = Number(stats.LifeSteal)
                 });
             }
 
@@ -158,6 +159,7 @@ namespace Shinshi.Network
                 ["enhancementStatRate"]      = Number(equipment.EnhancementStatRate),
                 ["trainingStatRate"]         = Number(equipment.TrainingStatRate),
                 ["enhancementSteps"]         = steps,
+                ["lifeStealPerGrade"]        = Number(equipment.LifeStealPerGrade),
                 ["sameGradeInheritCost"]     = equipment.SameGradeInheritCost,
                 ["upperGradeInheritCost"]    = equipment.UpperGradeInheritCost,
                 ["upperGradeInheritance"]    = inheritance,

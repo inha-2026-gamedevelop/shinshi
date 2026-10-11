@@ -19,6 +19,7 @@ namespace Shinshi.Combat
         private readonly float                _reductionCap;
 
         private double _now                 = 0.0;
+        private readonly float                _playerDefenseConstant;
         private int    _lastInstanceId      = CombatIds.NONE;
         private double _nextFullReportTime  = 0.0;
         private long   _reportedFullCount   = 0;
@@ -35,9 +36,18 @@ namespace Shinshi.Combat
         *                Methods
         ****************************************/
 
-        // 방어 상수와 감소 상한은 PlayerConfigSO 값을 넘긴다. 적에게도 같은 공식을 쓴다
-        public DamageResolver(CombatTargetRegistry registry, HitLedger ledger, float defenseConstant, float reductionCap)
+        // 방어 상수와 감소 상한은 PlayerConfigSO 값을 넘긴다. 공식은 같고 상수만 맞는 쪽 진영으로 고른다.
+        // playerDefenseConstant를 넘기지 않으면 양쪽이 같은 상수를 쓴다. 상수 하나만 쓰던 시험 rig의 호출을 그대로 둔다
+        public DamageResolver(CombatTargetRegistry registry, HitLedger ledger, float defenseConstant, float reductionCap,
+            float criticalMultiplier = 1f, Func<float> roll = null, Func<int, IDamageable> retainedSource = null,
+            float playerDefenseConstant = 0f)
         {
+        // 전투 결과는 적용 뒤에만 알린다. 표현 수신자의 실패가 체력 판정을 되돌리지 않는다
+        public event Action<AppliedDamageNotice> DamageApplied;
+
+        // 생명력 흡수로 실제 오른 체력, 주인 전투 번호와 회복량. 전투 기록용이며 수신 실패가 회복을 되돌리지 않는다
+        public event Action<int, float> LifeStealApplied;
+
             _registry        = registry;
             _ledger          = ledger;
             _defenseConstant = defenseConstant;
@@ -48,6 +58,7 @@ namespace Shinshi.Combat
         public void BeginTick(double serverTime)
         {
             _now = serverTime;
+            _playerDefenseConstant = (playerDefenseConstant > 0f) ? playerDefenseConstant : defenseConstant;
             _ledger.Prune(serverTime);
             ReportLedgerPressure(serverTime);
         }
@@ -93,6 +104,16 @@ namespace Shinshi.Combat
                 return DamageResult.Ignored(EDamageOutcome.Invulnerable);
             }
 
+            if ((!DamageFeedbackRules.IsFinite(request.RawDamage)) || (request.RawDamage <= 0f)
+                || (!DamageFeedbackRules.IsFinite(request.SourcePosition)) || (!DamageFeedbackRules.IsFinite(target.Position))
+                || (!DamageFeedbackRules.IsFinite(target.Forward)) || (!DamageFeedbackRules.IsFinite(target.Health))
+                || (target.Health <= 0f) || (!DamageFeedbackRules.IsFinite(target.Defense))
+                || (!DamageFeedbackRules.IsFinite(_defenseConstant)) || (!DamageFeedbackRules.IsFinite(_playerDefenseConstant))
+                || (!DamageFeedbackRules.IsFinite(_reductionCap)))
+            {
+                return DamageResult.Ignored(EDamageOutcome.InvalidRequest);
+            }
+
             // 막힌 타격도 기록한다. 같은 동작이 방어 창이 닫힌 뒤 다시 맞히면 안 된다
             EHitRecord record = _ledger.TryRecord(request.ActionInstanceId, request.HitTargetId, _now);
             if (record == EHitRecord.Duplicate)
@@ -105,6 +126,19 @@ namespace Shinshi.Combat
             {
                 return DamageResult.Ignored(EDamageOutcome.DuplicateHit);
             }
+            bool isRear = DamageRules.IsRearHit(target.Position, target.Forward, request.SourcePosition,
+                Constants.Combat.REAR_HIT_MIN_ANGLE_DEGREES);
+            bool guarded = (target.IsGuardingFront) && (!isRear) && (!request.IsUnblockable);
+
+            // 플레이어와 플레이어의 소환물이 맞을 때만 플레이어용 상수를 쓴다. 적이 맞는 쪽은 바꾸지 않는다
+            float defenseConstant = (target.Faction == ECombatFaction.Player) ? _playerDefenseConstant : _defenseConstant;
+            float damage = guarded ? 0f : DamageRules.ApplyDefense(request.RawDamage, target.Defense, defenseConstant, _reductionCap);
+            if ((!DamageFeedbackRules.IsFinite(damage)) || (damage < 0f))
+            {
+                // 유한 입력의 중간 계산도 넘칠 수 있다. 무효 요청은 같은 동작의 정상 재시도를 막지 않는다
+                return DamageResult.Ignored(EDamageOutcome.InvalidRequest);
+            }
+
 
             bool isRear = DamageRules.IsRearHit(target.Position, target.Forward, request.SourcePosition,
                 Constants.Combat.REAR_HIT_MIN_ANGLE_DEGREES);
@@ -121,7 +155,76 @@ namespace Shinshi.Combat
             float applied  = isLethal ? health : damage;
 
             target.ApplyDamage(applied, isLethal, _now);
-            return DamageResult.Applied(applied, isLethal, isRear);
+            ApplyLifeSteal(owner, ownerId, applied);
+            Publish(in notice);
+            return result;
+        }
+
+        // 체력을 바꾸는 판정이라 표시용 이벤트 구독이 아니라 여기서 직접 부른다. 주인이 플레이어일 때만이고,
+        // 연결이 사라져 보존된 anchor는 받을 대상이 없어 스스로 0을 돌려준다
+        private void ApplyLifeSteal(IDamageable owner, int ownerId, float applied)
+        {
+            if ((ownerId == CombatIds.NONE) || (!(applied > 0f)) || (!(owner is ILifeStealSource source)))
+            {
+                return;
+            }
+
+            float healed = source.ReceiveLifeSteal(applied, _now);
+            if (!(healed > 0f))
+            {
+                return;
+            }
+
+            try
+            {
+                LifeStealApplied?.Invoke(ownerId, healed);
+            }
+            catch (Exception exception)
+            {
+                if (_now >= _nextFeedbackErrorTime)
+                {
+                    _nextFeedbackErrorTime = _now + Constants.Combat.HIT_LEDGER_FULL_LOG_INTERVAL_SECONDS;
+                    Debug.LogError($"[Combat] 생명력 흡수 기록 전달 실패: {exception.Message}");
+                }
+            }
+        }
+
+        private IDamageable ResolveSource(int combatId)
+        {
+            return _registry.TryGetDamageable(combatId, out IDamageable source) ? source : _retainedSource?.Invoke(combatId);
+        }
+
+        private bool IsCritical(float chance)
+        {
+            if ((!DamageFeedbackRules.IsFinite(chance)) || (chance <= 0f))
+            {
+                return false;
+            }
+            if (chance >= 1f)
+            {
+                return true;
+            }
+            float roll = _roll();
+            return (DamageFeedbackRules.IsFinite(roll)) && (roll >= 0f) && (roll < chance);
+        }
+
+        private static float Roll() => UnityEngine.Random.value;
+
+        private void Publish(in AppliedDamageNotice notice)
+        {
+            try
+            {
+                DamageApplied?.Invoke(notice);
+            }
+            catch (Exception exception)
+            {
+                // 전송 장애 반복 로그도 서버 틱을 압박하지 않게 기존 원장 로그와 같은 최소 간격을 둔다
+                if (_now >= _nextFeedbackErrorTime)
+                {
+                    _nextFeedbackErrorTime = _now + Constants.Combat.HIT_LEDGER_FULL_LOG_INTERVAL_SECONDS;
+                    Debug.LogError($"[Combat] 피해 적용 후 숫자 전달 실패: {exception.Message}");
+                }
+            }
         }
 
         // 가득 참과 강제 회수가 늘었을 때만, 최소 간격을 두고 남긴다. 문자열은 이 로그에서만 만든다

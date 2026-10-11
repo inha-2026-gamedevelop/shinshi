@@ -19,6 +19,8 @@ namespace Shinshi.Tests
         // PlayerConfigSO 초안과 같은 피해 감소 공식 값
         private const float DEFENSE_CONSTANT = 1000f;
         private const float REDUCTION_CAP    = 0.6f;
+        private const float PLAYER_DEFENSE_CONSTANT = 750f;
+        private const float LIFE_STEAL_RATE         = 0.1f;
 
         private const int    PLAYER_ID     = 1;
         private const int    ENEMY_ID      = 2;
@@ -256,6 +258,134 @@ namespace Shinshi.Tests
                 Vector3.forward, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
 
             Assert.AreEqual(EDamageOutcome.Applied, _resolver.Apply(request).Outcome);
+        }
+
+        [Test]
+        public void Apply_PlayerTargetWithPlayerConstant_UsesPlayerConstant()
+        {
+            var resolver = new DamageResolver(_registry, _ledger, DEFENSE_CONSTANT, REDUCTION_CAP, 1f, null, null,
+                PLAYER_DEFENSE_CONSTANT);
+            resolver.BeginTick(NOW);
+            float expected = RAW_DAMAGE * (1f - (DEFENSE / (DEFENSE + PLAYER_DEFENSE_CONSTANT)));
+
+            DamageResult result = resolver.Apply(Request(ENEMY_ID, PLAYER_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(expected, result.AppliedAmount, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_EnemyTargetWithPlayerConstant_KeepsEnemyConstant()
+        {
+            var resolver = new DamageResolver(_registry, _ledger, DEFENSE_CONSTANT, REDUCTION_CAP, 1f, null, null,
+                PLAYER_DEFENSE_CONSTANT);
+            resolver.BeginTick(NOW);
+            float expected = RAW_DAMAGE * (1f - (DEFENSE / (DEFENSE + DEFENSE_CONSTANT)));
+
+            DamageResult result = resolver.Apply(Request(PLAYER_ID, ENEMY_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(expected, result.AppliedAmount, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_PlayerTargetWithoutPlayerConstant_UsesSharedConstant()
+        {
+            float expected = RAW_DAMAGE * (1f - (DEFENSE / (DEFENSE + DEFENSE_CONSTANT)));
+
+            DamageResult result = _resolver.Apply(Request(ENEMY_ID, PLAYER_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(expected, result.AppliedAmount, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_PlayerWithLifeSteal_HealsByAppliedDamageAndNotifies()
+        {
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+            _player.Health        = PLAYER_HEALTH - RAW_DAMAGE;
+            int   notifiedOwner  = CombatIds.NONE;
+            float notifiedHealed = 0f;
+            _resolver.LifeStealApplied += (owner, healed) =>
+            {
+                notifiedOwner  = owner;
+                notifiedHealed = healed;
+            };
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, ENEMY_ID, 1, RAW_DAMAGE));
+
+            float expected = result.AppliedAmount * LIFE_STEAL_RATE;
+            Assert.AreEqual(result.AppliedAmount, _player.LastLifeStealDamage, TOLERANCE);
+            Assert.AreEqual((PLAYER_HEALTH - RAW_DAMAGE) + expected, _player.Health, TOLERANCE);
+            Assert.AreEqual(PLAYER_ID, notifiedOwner);
+            Assert.AreEqual(expected, notifiedHealed, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_LethalOverkillWithLifeSteal_UsesRemainingHealthOnly()
+        {
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+
+            _resolver.Apply(Request(PLAYER_ID, ENEMY_ID, 1, HUGE_DAMAGE));
+
+            Assert.AreEqual(ENEMY_HEALTH, _player.LastLifeStealDamage, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_GuardedInvulnerableOrDuplicate_NoLifeSteal()
+        {
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+            int action = _resolver.IssueInstanceId();
+
+            _enemy.IsInvulnerable = true;
+            _resolver.Apply(Request(PLAYER_ID, ENEMY_ID, action, RAW_DAMAGE));
+            _enemy.IsInvulnerable  = false;
+            _enemy.IsGuardingFront = true;
+            _resolver.Apply(Request(PLAYER_ID, ENEMY_ID, action, RAW_DAMAGE, Vector3.forward));
+            _enemy.IsGuardingFront = false;
+            _resolver.Apply(Request(PLAYER_ID, ENEMY_ID, action, RAW_DAMAGE, Vector3.forward));
+
+            Assert.AreEqual(0, _player.LifeStealCalls);
+        }
+
+        [Test]
+        public void Apply_SummonHit_LifeStealGoesToOwner()
+        {
+            const int SUMMON_ID = 5;
+
+            var summon = new FakeDamageable(SUMMON_ID, ECombatFaction.Player, PLAYER_HEALTH, DEFENSE)
+            {
+                IsSummon      = true,
+                OwnerCombatId = PLAYER_ID,
+                LifeStealRate = LIFE_STEAL_RATE
+            };
+            _registry.Register(summon);
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+
+            _resolver.Apply(Request(SUMMON_ID, ENEMY_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(1, _player.LifeStealCalls);
+            Assert.AreEqual(0, summon.LifeStealCalls);
+        }
+
+        [Test]
+        public void Apply_EnemyHitsPlayer_NoLifeStealForEnemy()
+        {
+            _enemy.LifeStealRate = LIFE_STEAL_RATE;
+
+            _resolver.Apply(Request(ENEMY_ID, PLAYER_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(0, _enemy.LifeStealCalls);
+        }
+
+        [Test]
+        public void Apply_DeadOwner_NoLifeStealNotice()
+        {
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+            _player.LifeState     = EParticipantLifeState.Dead;
+            bool notified = false;
+            _resolver.LifeStealApplied += (owner, healed) => notified = true;
+
+            _resolver.Apply(Request(PLAYER_ID, ENEMY_ID, 1, RAW_DAMAGE));
+
+            Assert.IsFalse(notified);
         }
 
         [Test]

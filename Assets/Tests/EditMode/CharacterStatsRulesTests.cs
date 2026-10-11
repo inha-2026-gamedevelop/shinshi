@@ -28,6 +28,8 @@ namespace Shinshi.Tests
         private const string COMMON_SUFFIX    = "common";
         private const string RARE_SUFFIX      = "rare";
         private const string EPIC_SUFFIX      = "epic";
+        private const string LEGENDARY_SUFFIX = "legendary";
+        private const float  LIFE_STEAL_TOLERANCE = 0.000001f;
         private const int    TRAINING_CAP     = 40;
         private const float  HIGH_BASE_CRIT   = 0.5f;
 
@@ -119,6 +121,39 @@ namespace Shinshi.Tests
             training[(int)ETrainingStat.Health]    = TRAINING_CAP;
             training[(int)ETrainingStat.MaxEnergy] = TRAINING_CAP;
             training[(int)ETrainingStat.Defense]   = 20;
+
+        // 장신구 기본 1%에 등급 단계마다 0.5%p, 수련용은 일반의 절반. 강화는 곱하지 않는다
+        [TestCase(TRAINING_SUFFIX, 0, true, 10, 0.005f)]
+        [TestCase(COMMON_SUFFIX, 0, false, 0, 0.01f)]
+        [TestCase(RARE_SUFFIX, 1, false, 17, 0.015f)]
+        [TestCase(EPIC_SUFFIX, 2, false, 10, 0.02f)]
+        [TestCase(LEGENDARY_SUFFIX, 3, false, 25, 0.025f)]
+        public void Compute_FullGear_LifeStealComesFromAccessoryGradeOnly(string suffix, int grade, bool isTraining,
+            int enhancement, float lifeSteal)
+        {
+            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
+                Loadout(suffix, grade, isTraining, enhancement, new int[Constants.Combat.TRAINING_STAT_COUNT]));
+
+            Assert.AreEqual(lifeSteal, stats.LifeSteal, LIFE_STEAL_TOLERANCE);
+        }
+
+        [Test]
+        public void Compute_NoAccessory_LifeStealIsZeroEvenWithHighGradeGear()
+        {
+            CharacterCombatLoadout loadout = Loadout(LEGENDARY_SUFFIX, 3, false, 25,
+                new int[Constants.Combat.TRAINING_STAT_COUNT]);
+            loadout.Equipped[(int)EEquipmentSlot.Accessory] = null;
+
+            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth, loadout);
+
+            Assert.AreEqual(0f, stats.LifeSteal);
+        }
+
+        [Test]
+        public void Base_NoGear_LifeStealIsZero()
+        {
+            Assert.AreEqual(0f, CharacterStatsRules.Base(_player).LifeSteal);
+        }
 
             CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
                 Loadout(RARE_SUFFIX, 1, false, 17, training));

@@ -7,7 +7,7 @@ using Shinshi.Common;
 namespace Shinshi.Combat
 {
     /// <summary> 연결 객체가 사라져도 남은 장판과 동료가 파괴된 Transform을 읽지 않게 한다 </summary>
-    public sealed class SkillCasterAnchor : ISkillCaster
+    public sealed class SkillCasterAnchor : ISkillCaster, ICriticalDamageSource, ILifeStealSource
     {
         /****************************************
         *                Fields
@@ -87,6 +87,12 @@ namespace Shinshi.Combat
         {
             if (_attached != null)
             {
+        // 치명 확률은 보존값을 쓰지만 회복은 받을 개체가 있을 때만 넘긴다
+        public float ReceiveLifeSteal(float appliedDamage, double serverTime)
+        {
+            return (_attached is ILifeStealSource source) ? source.ReceiveLifeSteal(appliedDamage, serverTime) : 0f;
+        }
+
                 _attached.ApplyDamage(appliedAmount, isLethal, serverTime);
                 return;
             }

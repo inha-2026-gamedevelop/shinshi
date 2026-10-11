@@ -162,6 +162,16 @@ namespace Shinshi.Combat
             {
                 _potions.PotionApplied -= OnPotionApplied;
             }
+            if (_resolver != null)
+            {
+                _resolver.DamageApplied -= OnDamageApplied;
+                _resolver.LifeStealApplied -= OnLifeStealApplied;
+            }
+            if (_experienceQueue != null)
+            {
+                _experienceQueue.Committed -= OnExperienceCommitted;
+            }
+            _experience.Clear();
 
             if (_host != null)
             {
@@ -214,7 +224,11 @@ namespace Shinshi.Combat
             _ledger                = new HitLedger(Constants.Combat.HIT_LEDGER_CAPACITY, Constants.Combat.HIT_LEDGER_RETENTION_SECONDS,
                 Constants.Combat.LONGEST_ACTION_SECONDS);
             _resolver              = new DamageResolver(_registry, _ledger, playerConfig.DefenseReductionConstant,
-                playerConfig.DamageReductionCap);
+                playerConfig.DamageReductionCap, playerConfig.CritDamageMultiplier, null, FindRetainedDamageSource,
+                playerConfig.PlayerDefenseReductionConstant);
+            _damageFeedbackBudget  = new DamageFeedbackBudget(Constants.Combat.MAX_COMBAT_TARGETS);
+            _resolver.DamageApplied += OnDamageApplied;
+            _resolver.LifeStealApplied += OnLifeStealApplied;
             _skillResolver         = new SkillDamageResolver(_resolver, _registry, _ledger);
             _retainedSkills        = new Dictionary<int, SkillServer>(Constants.Session.MAX_RECONNECT_RECORDS);
             _retainedSkillTicks    = new List<SkillServer>(Constants.Session.MAX_RECONNECT_RECORDS);
@@ -255,6 +269,68 @@ namespace Shinshi.Combat
         public void BindSession(DungeonSessionHost host)
         {
             if (host == null)
+        // 최초 플레이어 생성 전에 공통 판정기에 연결하므로 일반전과 보스 미터 경로 모두 같은 알림을 쓴다
+        private void OnDamageApplied(AppliedDamageNotice notice)
+        {
+            if ((notice.OwnerCombatId <= 0) || (!notice.Result.IsApplied) || (notice.Result.AppliedAmount <= 0f))
+            {
+                return;
+            }
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                PlayerServer player = _players[i];
+                if (player.CombatId != notice.OwnerCombatId)
+                {
+                    continue;
+                }
+                PlayerInputState input = player.InputState;
+                NetworkConnectionToClient connection = (input != null) ? input.connectionToClient : null;
+                if ((player.IsDetached) || (connection == null) || (!connection.isAuthenticated) || (!connection.isReady)
+                    || (!_damageFeedbackBudget.TryTake(player.ParticipantId, notice.ServerTime, out uint sequence)))
+                {
+                    return;
+                }
+                var feedback = new DamageFeedback(_sessionEpoch, sequence, notice.TargetCombatId, notice.TargetPosition,
+                    notice.Result.AppliedAmount, notice.Result.IsCritical, notice.ServerTime);
+                input.SendDamageFeedback(in feedback);
+                return;
+            }
+        }
+
+        // 전투 기록은 보스전에만 있다. 판정기는 전투 번호만 알아 참가자 번호로 바꿔 넘긴다
+        private void OnLifeStealApplied(int ownerCombatId, float healed)
+        {
+            if (_combatMeter == null)
+            {
+                return;
+            }
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                if (_players[i].CombatId == ownerCombatId)
+                {
+                    _combatMeter.RecordLifeSteal(_players[i].ParticipantId, healed);
+                    return;
+                }
+            }
+        }
+
+        private IDamageable FindRetainedDamageSource(int combatId)
+        {
+            if (_retainedSkillTicks == null)
+            {
+                return null;
+            }
+            for (int i = 0; i < _retainedSkillTicks.Count; ++i)
+            {
+                IDamageable caster = _retainedSkillTicks[i]?.DamageCaster;
+                if ((caster != null) && (caster.CombatId == combatId))
+                {
+                    return caster;
+                }
+            }
+            return null;
+        }
+
             {
                 throw new ArgumentNullException(nameof(host));
             }

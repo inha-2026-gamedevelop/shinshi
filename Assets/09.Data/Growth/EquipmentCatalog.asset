@@ -315,6 +315,7 @@ MonoBehaviour:
     _health: 150
     _defense: 0
     _critChance: 0.02
+    _lifeSteal: 0.01
   _gradeStatMultipliers:
   - 1
   - 1.35
@@ -322,6 +323,7 @@ MonoBehaviour:
   - 2.460375
   _enhancementStatRate: 0.04
   _trainingStatRate: 0.5
+  _lifeStealPerGrade: 0.005
   _enhancementSteps:
   - _essenceCost: 150
     _shardCost: 2

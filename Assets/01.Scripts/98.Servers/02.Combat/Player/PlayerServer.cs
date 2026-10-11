@@ -16,7 +16,7 @@ namespace Shinshi.Combat
 {
     /// <summary> 플레이어 한 명의 서버 판정, 입력 검증과 서버 권위 이동, 기본 공격, 체력과 사망을 맡는다 </summary>
     public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant, IPotionUser,
-        IPlayerControlTarget
+        IPlayerControlTarget, ICriticalDamageSource, ILifeStealSource
     {
         // Command 처리기는 검증과 의도 보관만 하고, 실제 이동과 공격은 CombatServerRuntime의 틱에서 한다.
         // 한 틱에 이동 입력이 여러 개 와도 경로 계산은 마지막 것 한 번만 하고, 처리 순서를 틱 순서에 맞춘다
@@ -45,7 +45,9 @@ namespace Shinshi.Combat
         private readonly float                            _attackPower;
         private readonly float                            _defense;
         private readonly float                            _maxEnergy;
-        private readonly float                            _critChance;
+        private float                                     _critChance;
+        private float                                     _lifeStealRate;
+        private readonly float                            _lifeStealCapPerSecond;
         private readonly double                           _attackBufferSeconds;
         private readonly PlayerControlTracker             _control;
 
@@ -100,6 +102,8 @@ namespace Shinshi.Combat
         private Vector3               _deathPosition        = Vector3.zero;
         private bool                  _hasDeathPosition     = false;
         private EPlayerControlKind    _controlKind          = EPlayerControlKind.None;
+        private long                  _lifeStealWindow      = LifeStealRules.NO_WINDOW;
+        private float                 _lifeStealWindowHealed = 0f;
 
         /****************************************
         *              Properties
@@ -121,6 +125,16 @@ namespace Shinshi.Combat
         public float                 MaxHealth       => _maxHealth;
         public float                 Defense         => _defense;
         public double                DeathTime       => _deathTime;
+        public void ApplyGrowth(in CharacterStats stats)
+        {
+            _attackPower = stats.Attack;
+            _critChance = stats.CritChance;
+            _lifeStealRate = stats.LifeSteal;
+            _maxHealth = stats.MaxHealth;
+            _health = Mathf.Min(_health, _maxHealth);
+            _combat.SetHealth(_health, _maxHealth);
+        }
+
         public float                 AttackPower     => _attackPower;
 
         // 0에서 1 사이, 상한 적용 뒤 값
@@ -180,6 +194,8 @@ namespace Shinshi.Combat
             _defense     = stats.Defense;
             _maxHealth   = stats.MaxHealth;
             _maxEnergy   = stats.MaxEnergy;
+            _lifeStealRate         = stats.LifeSteal;
+            _lifeStealCapPerSecond = config.LifeStealCapPerSecond;
             _critChance  = stats.CritChance;
             _health      = _maxHealth;
             _attack      = config.GetBasicAttack(playerClass);
@@ -226,7 +242,8 @@ namespace Shinshi.Combat
         public ParticipantCombatSnapshot CaptureSnapshot()
         {
             return new ParticipantCombatSnapshot(_health, _lifeState, _deathTime, _nextAttackTime, _gate.LastAcceptedSequence,
-                _gate.ViolationCount, _gate.ViolationWindowStart, _nextDodgeTime, _deathPosition, _hasDeathPosition);
+                _gate.ViolationCount, _gate.ViolationWindowStart, _nextDodgeTime, _deathPosition, _hasDeathPosition,
+                _gate.CaptureRateViolations(), _gate.CaptureTokenBucket(), _lifeStealWindow, _lifeStealWindowHealed);
         }
 
         /// <summary> 유예 안에 돌아온 참가자의 상태를 되돌린다, 만든 직후 스폰 메시지가 나가기 전에 부른다 </summary>
@@ -239,6 +256,8 @@ namespace Shinshi.Combat
             _deathPosition    = snapshot.DeathPosition;
             _hasDeathPosition = snapshot.HasDeathPosition;
             _nextAttackTime   = snapshot.NextAttackTime;
+            _lifeStealWindow       = snapshot.LifeStealWindow;
+            _lifeStealWindowHealed = snapshot.LifeStealWindowHealed;
             _nextDodgeTime    = snapshot.NextDodgeTime;
             _input.SetDodgeReadyAt(_nextDodgeTime);
             if (_lifeState != EParticipantLifeState.Alive)
@@ -722,7 +741,7 @@ namespace Shinshi.Combat
             return TryAcceptHeader(in header, out _);
         }
 
-        // 물약 회복, 최대 체력을 넘는 몫은 버린다. 저장 확정 뒤 PotionServer만 부른다
+        // 회복, 최대 체력을 넘는 몫은 버린다. 물약은 저장 확정 뒤 PotionServer가, 생명력 흡수는 ReceiveLifeSteal이 부른다
         public void Heal(float amount)
         {
             if ((_lifeState != EParticipantLifeState.Alive) || (!(amount > 0f)))
@@ -735,6 +754,21 @@ namespace Shinshi.Combat
         }
 
         private bool TryAcceptHeader(in PlayerInputHeader header, out double requestTime, bool reportSkill = false)
+        // 죽었거나 부활을 기다리는 동안 남은 지속 기술이 준 피해는 회복을 만들지 않는다.
+        // 구간 누계는 부활해도 지우지 않는다. 지우면 죽었다 살아나는 것으로 초당 상한을 다시 채울 수 있다
+        public float ReceiveLifeSteal(float appliedDamage, double serverTime)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return 0f;
+            }
+
+            float healed = LifeStealRules.Grant(appliedDamage, _lifeStealRate, _health, _maxHealth, _lifeStealCapPerSecond,
+                serverTime, ref _lifeStealWindow, ref _lifeStealWindowHealed);
+            Heal(healed);
+            return healed;
+        }
+
         {
             requestTime = 0.0;
             if ((_isDisconnecting) || (_isDetached))

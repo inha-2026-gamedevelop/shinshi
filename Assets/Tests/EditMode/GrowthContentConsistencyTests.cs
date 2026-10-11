@@ -73,7 +73,7 @@ namespace Shinshi.Tests
             string json = GrowthContentExport.Serialize(_root);
 
             Assert.IsEmpty(GrowthContentExport.Compare(_root, json));
-            StringAssert.Contains("\"schemaVersion\": 1", json);
+            StringAssert.Contains("\"schemaVersion\": 3", json);
         }
 
         [Test]
