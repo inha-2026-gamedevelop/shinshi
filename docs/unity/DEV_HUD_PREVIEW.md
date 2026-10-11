@@ -34,7 +34,7 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 퀘스트와 파티 UI는 현재 개발용 예시 표시이며 게임의 실제 임무·파티 상태에 연결되지 않았다.
 
 - 퀘스트: 상단 `진행 중인 임무 목록`과 `(n/n)`, 최소화 버튼, 투명한 임무 본문 3개. `HudQuestTrackerView`의 버튼은 본문만 접고 펼치며 상단은 유지한다. 외부에서 `SetCount`로 개수를 전달할 수 있다.
-- 파티: 4명 자리마다 원형 직업 아이콘, 위쪽 닉네임, 아래쪽 HP 바와 가운데 흰 수치를 표시한다. 멤버를 감싸는 판은 없으며 기존 MP 자리표시는 비활성화했다. 이름·직업·HP는 예시이고 파티 데이터 바인더는 아직 없다.
+- 파티: 4명 자리마다 원형 직업 아이콘, 위쪽 닉네임, 아래쪽 HP 바와 가운데 흰 수치를 표시한다. 멤버를 감싸는 판은 없으며 기존 MP 자리표시는 비활성화했다. 이 개발 씬의 이름·직업·HP는 예시다. 릴리즈 `ShinshiTown`은 `PartyHudBinder`로 마을 파티·던전 상태를 표시한다(실행 미검증). 배지는 구 직업 0~2만 처리하며 신규 직업 3~5는 남았다.
 
 | 용도 | 배치 에셋·코드 |
 |---|---|
@@ -56,11 +56,12 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 |---|---|---|---|
 | `HUDCanvas` | Dev_ShinshiVillageQuarterView | 항상 | HP·MP·기술(`LocalPlayerHudBinder`), 파티(`PartyHudBinder` → `HudPartyView`) |
 | `InventoryCanvas` | Dev_ItemSlot | `I`, HUD 가방 버튼 | 성장·생활 스냅숏(`InventoryBinder`) |
-| `AuctionCanvas` | Dev_Auction | `Y` | 없음(유저 경매장 서버 미구현) |
+| `AuctionCanvas` | Dev_Auction | `Y` | `AuctionBinder` → `TownMarketClient`(0015, 구현됨·실행 미검증) |
 | `SortiePrepCanvas` | Dev_SortiePrep | `P`, 파티 방 입장 | 파티 방(`SortiePrepBinder`) |
 | `ResultCanvas` | Dev_Result | 출정 종료 | 출정 상태·정산 단계(`SortieResultBinder`) |
 | `PopupCanvas` | Dev_ToastMessage | 필요 시 | 거절·초대·기술 거절(`NetworkFeedbackBinder`) |
-| `TradeCanvas`, `DungeonProgressCanvas` | Dev_Trade, Dev_DungeonProcess | 닫힌 채 배치 | 없음(개인거래·웨이브 진행 메시지 미구현) |
+| `TradeCanvas` | Dev_Trade | 거래 요청·초대 | `TradeBinder` → `TownTradeClient`(구현됨·실행 미검증) |
+| `DungeonProgressCanvas` | Dev_DungeonProcess | 닫힌 채 배치 | 웨이브 진행 연결 미완 |
 
 단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_CharSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
 
@@ -75,7 +76,7 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 | 무사·도술사·신령사 | `Assets/01.Scripts/05.Art/UI/Icons/Textures/Class/T_Icon_Class_{Warrior,Sorcerer,Summoner}.png` |
 | 뒤로·삭제·설정·종료·생성 | `Assets/01.Scripts/05.Art/UI/CharSelect/Textures/T_CharSelect_Icon_{Back,Delete,Settings,Exit,Create}_Silver.png` |
 
-기능 아이콘은 투명 알파·단일 Sprite·Full Rect·밉맵 없음·최대 256px 설정이다. Play Mode의 1211×677 화면에서 표시·문구 미잘림을 확인하고, 직업 마크 중앙을 EventSystem으로 raycast한 뒤 포인터 클릭 이벤트를 전달해 세 슬롯 각각 0/1/2 선택을 확인했다. 검사 후 Edit Mode로 복귀했으며 Console 오류·경고 0이었다. 기능 아이콘의 기존 오브젝트는 Image이며 실제 생성·삭제·설정·종료 동작은 이번 검증에 포함하지 않았다. 릴리즈 `CharacterSelect.unity`는 이 아이콘 교체를 아직 반영하지 않았다.
+기능 아이콘은 투명 알파·단일 Sprite·Full Rect·밉맵 없음·최대 256px 설정이다. Play Mode의 1211×677 화면에서 표시·문구 미잘림을 확인하고, 직업 마크 중앙을 EventSystem으로 raycast한 뒤 포인터 클릭 이벤트를 전달해 세 슬롯 각각 0/1/2 선택을 확인했다. 검사 후 Edit Mode로 복귀했으며 Console 오류·경고 0이었다. 기능 아이콘의 기존 오브젝트는 Image이며 실제 생성·삭제·설정·종료 동작은 이번 검증에 포함하지 않았다. 릴리즈 `CharacterSelect.unity`에도 이 아이콘 GUID 8개가 연결돼 있다(2026-10-11 정적 확인, 해당 릴리즈 화면 재생은 이번 검사에서 미확인).
 
 ## 캐릭터 상세 개발 씬 (2026-10-07)
 
@@ -100,7 +101,7 @@ Play Mode에서 미스폰 `PF_NetPlayer` 씬 인스턴스가 비활성화되는 
 
 구분선8개는 기존 `Assets/01.Scripts/05.Art/UI/GameStyle/Textures/T_UiLine_Fade.png`를 재사용한다. 능력치5줄은 alpha0.15, 수련·부적·세로선은 alpha0.30이며 세로선은 같은 Sprite를90도 회전해 양 끝 페이드를 유지한다. Play Mode 화면과8/8 Sprite 참조·TMP 잘림0·Console 오류/경고0을 확인했다.
 
-기존 `UiWindowDragHandle`과 Button의 직렬화된 이벤트로 제목줄 드래그·닫기·왼쪽 위 버튼으로 다시 열기를 연결했다. Play Mode 1059×677에서 화면 표시·47개 활성 TMP 미잘림, EventSystem raycast와 포인터 클릭으로 닫기/열기, 드래그 이벤트로 이동과 화면 경계 제한을 확인했다. Console 오류·경고0이며 실제 마우스 조작·다른 화면비·서버 데이터·Player 빌드는 미검증이다. 이 개발 씬은 릴리즈 흐름에 적용하지 않았다.
+기존 `UiWindowDragHandle`과 Button의 직렬화된 이벤트로 제목줄 드래그·닫기·왼쪽 위 버튼으로 다시 열기를 연결했다. Play Mode 1059×677에서 화면 표시·47개 활성 TMP 미잘림, EventSystem raycast와 포인터 클릭으로 닫기/열기, 드래그 이벤트로 이동과 화면 경계 제한을 확인했다. Console 오류·경고0이며 실제 마우스 조작·다른 화면비·서버 데이터·Player 빌드는 미검증이다. 개발 씬 원본과 별도로 릴리즈 `ShinshiTown`에는 `CharDetailBinder`·미리보기 프리팹이 연결돼 있다(정적 확인, 서버 응답·실제 화면 미검증).
 
 ## 재화 아이콘 (2026-10-07)
 

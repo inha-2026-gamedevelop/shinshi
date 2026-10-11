@@ -1,6 +1,6 @@
 # Linux 게임서버 유닛
 
-마을 프로세스 하나와 던전 슬롯 `1..N`을 같은 Linux Dedicated Server 빌드로 실행하는 systemd 템플릿이다. 실제 서버 배포·클라우드 자원 생성·부하 측정은 아직 수행하지 않았다. 출시 인증, 서버 임대와 드레인이 구현된 것으로 가정하지 않는다.
+마을 프로세스 하나와 던전 슬롯 `1..N`을 같은 Linux Dedicated Server 빌드로 실행하는 systemd 템플릿이다. 실제 서버 배포·클라우드 자원 생성·부하 측정은 아직 수행하지 않았다. 출시 인증·서버 임대·출정 종료 시 자동 드레인 코드는 있지만 이 유닛의 실제 실행 증거는 아니다. 운영자 개시·SIGTERM·정산 outbox 드레인은 별도 미확인이다.
 
 | 파일 | 운영 서버의 경로·역할 |
 |---|---|
@@ -12,7 +12,7 @@
 
 ## 실행 계약과 포트
 
-실제 계약은 [ServerLaunchConfig.cs](../../Assets/01.Scripts/98.Servers/01.Network/ServerLaunchConfig.cs)와 [Constants.network.cs](../../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)다. CLI가 환경변수보다 우선한다. 각 유닛은 역할을 `-role town` 또는 `-role dungeon`으로 고정하고, 아래 나머지 설정을 환경파일에서 한 인자씩 전달한다. 환경파일의 `SERVER_ROLE`은 해당 역할과 맞춰 둔다.
+실제 계약은 [ServerLaunchConfig.cs](../../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerLaunchConfig.cs)와 [Constants.network.cs](../../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)다. CLI가 환경변수보다 우선한다. 각 유닛은 역할을 `-role town` 또는 `-role dungeon`으로 고정하고, 아래 나머지 설정을 환경파일에서 한 인자씩 전달한다. 환경파일의 `SERVER_ROLE`은 해당 역할과 맞춰 둔다.
 
 | 환경변수 | CLI | 조건 |
 |---|---|---|
@@ -87,7 +87,7 @@ sudo journalctl -u shinshi-dungeon@1.service -f
 sudo ss -lunp
 ```
 
-계획된 교체는 **신규 배정 중지 → 진행 세션 마감 → 정산 outbox 비우기 → 프로세스 종료** 순서다. 해당 절차를 구현한 제어 경로와 상태 확인이 마련되기 전에는 유닛의 중지만으로 안전한 세션 마감·정산을 보장할 수 없다. 현재 게임서버에 이 드레인·outbox·SIGTERM 연동이 구현됐다는 근거는 없다.
+계획된 교체는 **신규 배정 중지 → 진행 세션 마감 → 정산 outbox 비우기 → 프로세스 종료** 순서다. 해당 절차를 구현한 제어 경로와 상태 확인이 마련되기 전에는 유닛의 중지만으로 안전한 세션 마감·정산을 보장할 수 없다. `ServerShutdownController`의 출정 종료·풀 이탈에 따른 내부 드레인→연결 정리→종료 경로는 구현됨·실행 미검증이다. 운영자가 시작하는 드레인, SIGTERM 신호 연동과 정산 outbox 비우기 경로는 확인되지 않았다.
 
 `systemctl stop`은 `SIGTERM`을 유닛의 프로세스 그룹에 전달하고 종료를 최대 300초 기다린다. 남은 프로세스는 `SIGKILL`로 종료한다. `TimeoutStopSec=300`은 임시 대기 상한이며, 드레인 절차를 수행하거나 세션 종료·정산 성공을 판정하지 않는다. 실제 최대 세션 마감 시간·저장 재시도 시간을 측정해 상한을 맞춘다. 미확정 경제 작업이 있거나 강제 종료됐으면 정상 마감으로 기록하지 않고 API의 장애 확인·복구 절차가 필요하다. 근거: [systemd.kill](https://github.com/systemd/systemd/blob/main/man/systemd.kill.xml).
 

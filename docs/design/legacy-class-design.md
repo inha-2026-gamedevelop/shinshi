@@ -4,7 +4,7 @@
 
 현재 코드·SO·백엔드가 사용하는 무사/도술사/신령사, 기술 12개와 T01~T12 효과 45개의 의미를 보존한다. 최신 목표는 [게임 디자인](../02-game-design.md), [신규 전투](combat-design.md), [신규 부적](talisman-catalog.md), [애니메이션·이관 설계](character-animation-design.md)다. 아래 신령사 규칙을 세 번째 직업의 확정안으로 삼지 않는다. 과거 규칙의 숫자는 이번에 다시 밸런스 검증한 값이 아니다.
 
-현재 식별자는 `EPlayerClass`의 Warrior=0/Sorcerer=1/Summoner=2, `SkillCatalogSO`의 12기술과 강림 3개, `TalismanCatalogSO` 및 백엔드 성장 콘텐츠의 45효과다. 새 설계로 이관하기 전까지 이 식별자와 저장 데이터의 의미를 유지한다. 구 기본 공격 타격 시점·원거리 속도/폭, 신령 이동 속도, T12-3A 대상 선택은 구설계의 미정 항목이며 신규 직업 결정으로 간주하지 않는다.
+이 보존본의 식별자는 `EPlayerClass`의 Warrior=0/Sorcerer=1/Summoner=2, `SkillCatalogSO`의 12기술과 강림 3개, `TalismanCatalogSO` 및 백엔드 성장 콘텐츠의 45효과다. 런타임에는 신규 Swordsman=3/Mageknight=4/Archer=5와 12기술·45효과가 공존한다. 구 진도 이관 전까지 이 보존본의 식별자와 저장 데이터의 의미를 유지한다. 구 기본 공격 타격 시점·원거리 속도/폭, 신령 이동 속도, T12-3A 대상 선택은 구설계의 미정 항목이며 신규 직업 결정으로 간주하지 않는다.
 
 ## 구 일반 기술과 기본 공격
 

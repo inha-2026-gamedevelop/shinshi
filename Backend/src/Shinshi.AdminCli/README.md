@@ -50,6 +50,15 @@ shinshi-admin login --user ops.kim
 - `accounts search`는 초대 코드 원문을 조회 문자열이 아니라 POST 본문으로 보낸다(요청 로그에 남지 않게).
 - `--reason`은 감사 로그에 그대로 남는다. 비밀값을 적지 않는다.
 
+## 경매 조회·허용 빌드 변경
+
+```text
+auctions list [--state Open|Closing] [--limit <n>] [--cursor <c>] [--all]
+service-state allow-build add|remove <buildId> --reason <사유>
+```
+
+경매의 상태를 생략하면 기한 경과·서버 소실로 멈춘 출정을 조회한다. 경매 닫기는 자동 복구가 맡는다. 허용 빌드 변경은 Admin 권한으로 목록의 한 항목만 더하거나 빼며, 이미 원하는 상태이면 저장하지 않는다. revision 경합은 거절한다. 쓰기 확인·operationId 재시도는 아래 규칙을 따른다.
+
 ## 쓰기와 재시도
 
 모든 쓰기는 실행 전에 요약을 보여 주고 `계속할까요? (y/N)`로 확인을 받는다. `y`/`yes`가 아니면 아무것도 보내지 않고 종료 코드 1이다. `--yes`로 생략한다. 실행, 취소처럼 대상이 있는 쓰기(`grants execute/cancel`)는 현재 지급 내용을 먼저 읽어 요약에 보여 준다.

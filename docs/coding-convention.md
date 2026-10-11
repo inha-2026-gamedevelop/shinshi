@@ -1100,7 +1100,7 @@ public void Hide() { _fadeTween.Restart(); }
 - **트윈은 표현 전용이다.** 서버 판정(피해 적용, 위치 권위, 판정 타이밍)을 트윈 진행이나 완료 콜백에 걸지 않는다. 클라이언트마다 프레임이 달라 끝나는 시점이 어긋난다 - [네트워크 권위](unity/NETWORK_AUTHORITY.md).
 - 연출 시퀀스 안의 대기는 `Sequence.AppendInterval`, 게임 논리의 대기는 코루틴을 쓴다 (15장).
 - asmdef를 만들어 DOTween을 참조할 때는 `DOTween.Modules`(Pro 기능은 `DOTweenPro.Scripts`)를 참조에 추가한다.
-- DOTween 전역 설정(`Assets/99.ThirdParty/Animation/Demigiant/DOTween/Resources/DOTweenSettings.asset`)과 DOTween Utility Panel의 Setup(스크립팅 심볼 변경)은 공용 설정이라 {팀장} 확인 후 바꾼다.
+- DOTween 전역 설정(`Assets/99.ThirdParty/Tools/Demigiant/DOTween/Resources/DOTweenSettings.asset`)과 DOTween Utility Panel의 Setup(스크립팅 심볼 변경)은 공용 설정이라 {팀장} 확인 후 바꾼다.
 
 ---
 

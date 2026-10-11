@@ -1,6 +1,6 @@
 # 캐릭터 커스터마이즈
 
-캐릭터 생성 화면에서 전투 직업, P09 모듈 캐릭터 외형, 닉네임을 정해 생성한다. 외형 선택은 전투 직업과 독립적이다. 2026-10-07 [신규 직업 설계](../design/character-animation-design.md)는 검사·마검사·미정 세 번째 직업이며 P09 외형을 유지한다. **현재 구현**의 직업 ID는 무사0·도술사1·신령사2다. 문서만으로 그 의미·생성 목록을 바꾸지 않으며 실제 코드/저장 데이터 이관은 후속이다. 외형 ID와 직업 ID를 혼용하지 않는다.
+캐릭터 생성 화면에서 전투 직업, P09 모듈 캐릭터 외형, 닉네임을 정해 생성한다. 외형 선택은 전투 직업과 독립적이다. 2026-10-08 [신규 직업 설계](../design/character-animation-design.md)는 검사·마검사·궁수이며 P09 외형을 유지한다. **현재 구현**은 무사0·도술사1·신령사2와 검사3·마검사4·궁수5를 보존하고 SQL 0016이 0~5를 허용한다. API 생성 허용 기본값은 `0,1,2`이며 구 진도를 신규 직업으로 변환하지 않는다. 외형 ID와 직업 ID를 혼용하지 않는다.
 
 ## 외형 항목(외형 계약 version 3)
 
@@ -18,7 +18,7 @@
 
 - 슬라이더 `face`(22개)·`body`(10개)는 모두 128, `browColor`·`lipColor`는 0이어야 한다.
 - 표정은 생성 화면 미리보기 전용이며 저장하지 않는다. 무기·방패는 표시하지 않는다.
-- 현재 구현의 직업 기본 외형(모두 여성, 장비 전부 착용, 가슴2): 무사 얼굴1·헤어1·헤어색1·눈1·피부1, 도술사 얼굴2·헤어2·헤어색5·눈4·피부2, 신령사 얼굴3·헤어2·헤어색8·눈3·피부1. 새 직업에 대한 외형 기본값/직업 코드 대응은 이관 전에 정하며 기존 캐릭터 외형을 직업 변경 이유로 임의 초기화하지 않는다.
+- 현재 구현의 직업 기본 외형(모두 여성, 장비 전부 착용, 가슴2): 무사 얼굴1·헤어1·헤어색1·눈1·피부1, 도술사 얼굴2·헤어2·헤어색5·눈4·피부2, 신령사 얼굴3·헤어2·헤어색8·눈3·피부1. 신규 직업 3~5도 `CharacterAppearanceCatalog.CreateDefault`의 직업별 기본값을 사용하며 기존 캐릭터 외형을 직업 변경 이유로 임의 초기화하지 않는다.
 
 ## 저장과 호환
 
@@ -36,18 +36,18 @@
 - 모델은 서드파티 P09 Modular Humanoid(`Assets/99.ThirdParty/Model/P09_Modular_Humanoid/`, Git 제외)다. 이 패키지가 없으면 캐릭터가 보이지 않는다.
 - 원본 재질은 lilToon 셰이더라 URP Lit 사본을 쓴다: `Assets/01.Scripts/05.Art/Characters/PlayerP09/Materials/`(변환 기록 `README.md`). 원본 HDRP 마스크는 선형으로 다시 임포트한 사본(`Textures/`)을 금속·AO 맵으로 쓴다. 헤어·눈·수염은 원본에 AO 데이터가 없다.
 - 프리팹은 원본 `P09_Human`의 변형 `Assets/02.Prefab/Characters/PlayerP09/PF_PlayerP09.prefab`이다. 재질만 사본으로 바꾸고 무기는 끈다.
-- 카탈로그 `Assets/09.Data/Avatar/PlayerCharacterLookCatalog.asset`. `PlayerCharacterLookApplier`가 부위 오브젝트를 켜고 끄며 색 재질 슬롯을 바꾼다. 필요한 부위가 하나라도 없으면 아무것도 바꾸지 않고 실패한다.
+- 구 카탈로그는 `Assets/09.Data/Avatar/PlayerCharacterLookCatalog.asset`, 출시 `PF_NetPlayer` 참조는 `PlayerCharacterLookCatalog_Classes.asset`이다. `PlayerCharacterLookApplier`가 부위 오브젝트를 켜고 끄며 색 재질 슬롯을 바꾼다. 필요한 부위가 하나라도 없으면 아무것도 바꾸지 않고 실패한다.
 - 위 에셋은 에디터 도구 `PlayerP09AssetBuilder.BuildAll`(재질·프리팹·클립·컨트롤러·카탈로그)과 `PlayerP09SceneWiring.WireAll`(생성·선택 씬, PF_NetPlayer 연결)로 다시 만들 수 있다.
 - 생성 화면 왼쪽의 외형 패널(`CharacterCustomizePanel`)이 항목별 이전/다음 버튼을 제공한다. 이전 Tripo 외형 탭은 씬에서 꺼 두었다.
 
 ## 애니메이션
 
-이 절의 클립·컨트롤러는 현재 구현 기록이다. 신규 검사는 CombatGirls 검 모션, 마검사는 MagicalKnight 검+마법 모션을 채택하는 설계이며 미정 직업은 전용 모션·전투 행동을 예약한다. 새 직업 일반8기술/30부적의 클립 선정·타격시각·리타깃·제자리 처리·무기 소켓과 실제 서버 타임라인의 일치는 후속 [직업 이관 게이트](../05-implementation-roadmap.md#직업-개편-구현이관-검증-게이트2026-10-07)에서 검증한다.
+출시 `PF_NetPlayer`는 `PlayerCombatAnimationProfile_Classes`와 Classes 외형 카탈로그를 참조한다. 신규 세 직업의 기본 공격·QWER 배정과 `AN_Release_*` 구간 클립 17개가 있으며 실제 재생·타격시각·리타깃·무기 소켓·서버 타임라인 수용은 [직업 이관 게이트](../05-implementation-roadmap.md#직업-개편-구현이관-검증-게이트2026-10-07)로 확인한다. 아래 CombatGirls 13클립·기본 컨트롤러 설명은 구 경로 기록이다.
 
 - 클립은 서드파티 CombatGirls Sword 팩(`Assets/99.ThirdParty/Animation/CombatGirlsCharacterPack/`, Git 제외)을 `.anim`으로 복사한 것이다: `Assets/01.Scripts/05.Art/Characters/PlayerP09/Animations/Clips/`. 애니메이션 이벤트를 지우고, 루트 XZ 이동·회전은 굽지 않고 애니메이터 루트 모션을 꺼 제자리에서 재생한다.
 - 컨트롤러 `AC_PlayerP09`: `Speed` 블렌드(Idle 0, Walk 2.5, Run 5m/s), 행동 trigger(공격 3단, 기술 7종, 회피, 피격), `Alive`(사망), 표정 레이어.
 - `PlayerCharacterCombatAnimationView`가 서버 공개 상태로 행동 모션을 재생한다. 기본 공격·회피는 `PlayerCombatState`의 표현 전용 순번(`AttackSequence`, `DodgeSequence`), 기술은 시전 번호와 단계, 피격은 체력 감소, 사망은 생사 상태를 쓴다. 판단은 SyncVar hook이 아니라 메시지 처리가 끝난 뒤의 `Update`에서 한다.
-- 현재 기술별 클립 배정과 재생 속도는 `Assets/09.Data/Avatar/PlayerCombatAnimationProfile.asset`, 배정표는 `Animations/README.md`다. 구도술사·구신령사는 전용 시전 모션이 없어 검 모션을 임시로 쓴다. 이 임시 배정은 새 검사/마검사의 전투 행동·부적 변형/마법 클립이 적용된 상태가 아니다. 현재 컨트롤러에는 일어서기 클립이 없다.
+- 구 경로의 기술별 클립 배정과 재생 속도는 `Assets/09.Data/Avatar/PlayerCombatAnimationProfile.asset`, 배정표는 `Animations/README.md`다. 구도술사·구신령사는 전용 시전 모션이 없어 검 모션을 임시로 쓴다. 출시 Classes 프로필은 이 구 임시 배정과 별도로 신규 행동을 연결한다. 연결 사실을 부적 변형·타격 연출의 실제 수용으로 해석하지 않는다. 현재 컨트롤러에는 일어서기 클립이 없다.
 
 ## 검증 상태
 

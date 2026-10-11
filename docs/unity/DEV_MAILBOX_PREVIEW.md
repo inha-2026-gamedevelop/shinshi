@@ -1,12 +1,12 @@
 # 우편함 개발 화면
 
-대상은 `Assets/00.Scenes/Dev_HUD/Dev_MailBox.unity`의 `MailBoxCanvas/Layout_인게임 HUD/우편함 창`이다. 릴리즈 흐름에는 연결하지 않은 UI 개발 시안이다.
+대상은 `Assets/00.Scenes/Dev_HUD/Dev_MailBox.unity`의 `MailBoxCanvas/Layout_인게임 HUD/우편함 창`이다. 이 경로는 초기 UI 시안이며, 별도 정식 `PF_MailBoxWindow`·`MailBoxBinder`·핫키 연결은 릴리즈 `ShinshiTown`에 존재한다(정적 확인·실제 서버 수령 미검증).
 
 ## 배치와 재사용 자원
 
 기준 해상도는 1920x1080이며 CanvasScaler의 Scale With Screen Size, Expand를 사용한다. 중앙의 1280x780 창 안에 왼쪽 우편 목록 12행과 오른쪽 상세 영역을 배치했다. 상세는 제목, 발신자와 날짜, 본문, 첨부 보상, 하단 버튼 순서다. 목록 글자는 17~19px, 상세 제목은 26px, 본문은 21px이다.
 
-기존 `Assets/01.Scripts/05.Art/UI/GameStyle/Textures/`의 창 프레임, 제목줄, 버튼, 페이드 구분선과 빈 슬롯을 사용한다. 삭제와 뒤로 아이콘은 기존 `CharSelect/Textures/`의 은색 아이콘이며 첨부 아이콘은 `UiIconLibrary.asset`의 `item_potion_small`이다. 한글은 `Assets/01.Scripts/06.UI/Hud/Fonts/`의 동적 Korean Regular/Bold 폰트를 사용한다. 새 그래픽이나 런타임 C#을 추가하지 않았다.
+기존 `Assets/01.Scripts/05.Art/UI/GameStyle/Textures/`의 창 프레임, 제목줄, 버튼, 페이드 구분선과 빈 슬롯을 사용한다. 삭제와 뒤로 아이콘은 기존 `CharSelect/Textures/`의 은색 아이콘이며 첨부 아이콘은 `UiIconLibrary.asset`의 `item_potion_small`이다. 한글은 `Assets/01.Scripts/06.UI/Hud/Fonts/`의 동적 Korean Regular/Bold 폰트를 사용한다. 초기 시안 작업(2026-10-07)에서는 새 그래픽이나 런타임 C#을 추가하지 않았다. 이후 정식 창·바인더는 아래 2026-10-08 절과 구분한다.
 
 원본 JSON의 ID 83개는 UiLayoutNote에 남아 있으나 배치는 후속 디자인 수정으로 바뀌었다. 목록의 중첩 Row1은 평탄화했으며 첨부 영역은 상세 아래로 옮겼다. 원본 JSON을 다시 적용하면 최종 위치와 부모 관계가 바뀌므로 재적용 전에 씬을 백업하고 대조한다. 공유되는 최종 배치의 기준은 씬이다.
 

@@ -94,4 +94,4 @@ SINCE="2 days ago"
 
 권장 이벤트는 `server.drain.requested`, `server.drain.started`, `server.drain.completed`, `server.shutdown.forced`, `storage.retry`, `storage.failed`, `reservation.mismatch`, `settlement.mismatch`다. 실제 상태 전이를 확인한 뒤에만 기록한다. `server.drain.completed`에는 활성 세션·저장 큐·정산 outbox가 모두 마감되었다는 근거가 필요하다. SIGTERM 전송, heartbeat 부재 또는 제한 시간 경과만으로 정상 마감이라고 기록하지 않는다.
 
-공통 키의 기준은 [기술 설계서 10장](../docs/03-technical-design.md#10-보안배포관측), 게임 서버 실행 계약은 [ServerLaunchConfig.cs](../Assets/01.Scripts/98.Servers/01.Network/ServerLaunchConfig.cs)와 [Constants.network.cs](../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)다.
+공통 키의 기준은 [기술 설계서 10장](../docs/03-technical-design.md#10-보안배포관측), 게임 서버 실행 계약은 [ServerLaunchConfig.cs](../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerLaunchConfig.cs)와 [Constants.network.cs](../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)다.

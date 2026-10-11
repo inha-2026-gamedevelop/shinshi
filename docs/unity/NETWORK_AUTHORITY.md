@@ -235,7 +235,7 @@ public override void OnClientConnect()
 
 현재 `PlayerInputHeader`는 session epoch·sequence·추정 서버 시각을 담고 `PlayerInputGate`가 결합된 참가자·순서·허용 시각을 검증한다. 시각 허용 창은 [Constants.network.cs](../../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)의 과거 150ms·미래 50ms다. 서버 틱은 30Hz, 플레이어 위치 복제는 초기 15Hz, 적·마을 원격은 10Hz이며 수용량·체감 측정 뒤 조정한다. 아래 판정 창 ID·소비 계약은 타이밍 창을 추가할 때의 요구사항이며 현재 모든 타이밍 기술이 구현됐다는 뜻은 아니다.
 
-입력 주기 상한(초당 30건, `INPUT_SEND_RATE_MAX`)을 넘긴 입력은 항상 버린다. 10초 창 안에서 상한을 넘긴 1초 구간이 5번이 되면 서버가 연결을 끊고 참가자 ID와 위반 횟수를 로그로 남긴다. 지연으로 묶여 온 패킷의 일시 초과는 이 횟수 안에서 허용한다(2026-10-08 팀장 결정, 미구현).
+입력 주기 상한(초당 30건, `INPUT_SEND_RATE_MAX`)을 넘긴 입력은 항상 버린다. 10초 창 안에서 상한을 넘긴 1초 구간이 5번이 되면 서버가 연결을 끊고 참가자 ID와 위반 횟수를 로그로 남긴다. 지연으로 묶여 온 패킷의 일시 초과는 이 횟수 안에서 허용한다(2026-10-08 팀장 결정). 현재 `PlayerInputGate`는 초당 30건 보충·버스트 10의 토큰 버킷으로 제한하고, 주기 초과·순번 역행·유효하지 않은 시각을 합친 10초 창 위반 30회에서 연결 해제를 요청한다. 같은 서버 시각의 주기 초과는 한 번만 센다. 따라서 제한 자체는 구현되어 있지만 **1초 구간 초과 5회라는 확정 규칙은 미적용**이다. 기획을 구현값으로 바꾸지 않으며 규칙 이관과 실행 검증이 남아 있다.
 
 ### 판정 창을 추가할 때
 
@@ -296,7 +296,7 @@ public override void OnClientConnect()
 
 ### 7.1.1 인증·경제 경계
 
-- 접속 프로토콜 version 2의 닉네임·외형은 API 토큰 교환 때 소유 캐릭터의 DB 값으로 읽고, 서버가 검증해 최초 생성·재결합 전에 적용한다. 외형 payload 버전과 기존 캐릭터 해석은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)를 따른다.
+- 접속 프로토콜은 `Constants.Network.PROTOCOL_VERSION`(현재 4)을 따르며 닉네임·외형은 API 토큰 교환 때 소유 캐릭터의 DB 값으로 읽고, 서버가 검증해 최초 생성·재결합 전에 적용한다. 외형 payload 버전과 기존 캐릭터 해석은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)를 따른다.
 
 - HTTP 토큰은 `Authorization: Bearer {token}`으로 보낸다. 게임 서버의 서비스 자격은 임대 발급에만 쓰고, 이후 서버 경로는 `ServerCredentials`의 유효한 서버 임대 토큰을 사용한다. 인스턴스 헤더만으로 서버를 인증하지 않는다. 실행 설정은 [ServerLaunchConfig](../../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerLaunchConfig.cs)·[BackendLaunchSettings](../../Assets/01.Scripts/98.Servers/01.Network/Backend/BackendLaunchSettings.cs)가 기준이다.
 - 서비스 자격은 `BACKEND_SERVICE_TOKEN` 또는 `-backend-service-token-file`의 파일로 공급한다. 토큰 원문을 CLI 인자·SO·로그에 넣지 않는다. 출시 서버는 API 검증기를 쓰고, `dev` 검증기는 에디터·개발 빌드 전용이며 형식만 확인한다. 출시 서버는 서비스 자격 없이 던전을 열지 않는다.

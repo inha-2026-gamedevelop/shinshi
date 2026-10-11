@@ -46,7 +46,7 @@
 
 ### 자동 검증 도구
 
-CI는 GitHub Actions 워크플로(`.github/workflows/`)로 둔다. main으로 가는 PR에서 `pr-guard.yml`이 `.meta` 누락 · LFS 미적용 파일을 검사하고 브랜치명 · PR 크기 · 씬 다중 수정을 경고하며, `docs-check.yml`이 문서의 상대 경로 링크를 검사한다. 빌드 워크플로 `build.yml`은 Unity 라이선스 시크릿이 등록되기 전까지 쓸 수 없다. 코드 컴파일과 테스트를 돌리는 CI는 없으므로 L1 · L2는 Unity 에디터 콘솔, Test Runner, 수동 재현으로 확인하고 실행 수단을 기록에 적는다.
+2026-10-11 작업 트리에는 `.github/workflows/`와 `.github/scripts/`가 없다. 따라서 PR의 `.meta`·LFS·문서 링크 검사나 Unity 빌드가 CI에서 자동 실행된다고 가정하지 않는다. 커밋·PR 전 해당 항목을 직접 검사하고 사용한 명령과 결과를 남긴다. L1 · L2는 Unity 에디터 콘솔, Test Runner, 백엔드 테스트와 수동 재현으로 확인한다. CI 도입은 별도 작업이며, 워크플로 파일과 실제 실행 결과를 확인한 뒤 이 절을 갱신한다.
 
 단위 · 통합 테스트는 Unity Test Framework를 쓴다. EditMode 테스트는 `Assets/Tests/EditMode/`, PlayMode 테스트는 `Assets/Tests/PlayMode/`에 둔다. 테스트 파일 · 메서드 이름 규칙은 [코딩 컨벤션](../coding-convention.md) 0장을 따른다.
 
