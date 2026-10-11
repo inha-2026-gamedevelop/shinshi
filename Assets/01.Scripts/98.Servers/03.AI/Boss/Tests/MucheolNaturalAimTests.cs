@@ -707,9 +707,10 @@ namespace Shinshi.Tests
             Assert.Throws<ArgumentException>(() => new BossDashPattern(TEST_HREF, new Phase2Movement(), null, true, true));
         }
 
-        // 월백은 무철 전용 조준을 켜지 않아 기존대로 회전 속도 x 추적 시간까지만 돈다
-        [Test]
-        public void Wolbaek_FanKeepsLimitedRotation_NaturalAimIsOptIn()
+        // 월백 팩토리가 만든 부채꼴은 부드러운 조준으로 대상 방향에 닿고, 옵트인 없이 직접 만들면 기존대로 회전 속도 x 추적 시간까지만 돈다
+        [TestCase(true, 180f)]
+        [TestCase(false, 54f)]
+        public void Wolbaek_FanNaturalAimIsOptIn_FactoryReachesTargetDefaultKeepsLimitedRotation(bool viaFactory, float expectedDegrees)
         {
             PatternDefinition definition = new PatternDefinition(WolbaekPatternFactory.P02_ID, "boss_wolbaek", 1, 10f,
                 new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f, 1f },
@@ -727,7 +728,9 @@ namespace Shinshi.Tests
             gate.Open();
             AimRecorder recorder = new AimRecorder();
 
-            BossFanBlastPattern pattern = (BossFanBlastPattern)new WolbaekPatternFactory(TEST_HREF, recorder).Create(definition);
+            BossFanBlastPattern pattern = viaFactory
+                ? (BossFanBlastPattern)new WolbaekPatternFactory(TEST_HREF, recorder).Create(definition)
+                : new BossFanBlastPattern(TEST_HREF, recorder);
             BossPatternContext context = new BossPatternContext(definition, gate.IssueInstanceId(), tracked.CombatId, self, query, gate);
             BossAttackFsm fsm = new BossAttackFsm();
             Assert.IsTrue(fsm.Start(definition, pattern, in context, 0.0));
@@ -738,7 +741,7 @@ namespace Shinshi.Tests
                 fsm.Tick(i * STEP);
             }
 
-            Assert.AreEqual(54f, Vector3.Angle(Vector3.forward, pattern.AimDirection), YAW_TOLERANCE, "월백은 90도/초 x 0.6초까지만 돈다");
+            Assert.AreEqual(expectedDegrees, Vector3.Angle(Vector3.forward, pattern.AimDirection), YAW_TOLERANCE);
         }
     }
 }

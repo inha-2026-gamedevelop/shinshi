@@ -28,6 +28,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         private const string P04_ID       = "wolbaek_p04";
+        private const string HARD_P04_ID  = "wolbaek_hard_p04";
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const float  TEST_HREF    = 3541f;
         private const float  TELEGRAPH    = 0.9f;
@@ -282,14 +283,17 @@ namespace Shinshi.Tests
             public PatternDefinition Definition { get; }
             public BossPatternContext Context { get; }
 
-            public Rig(bool guardable = true)
+            // 정의를 주면 팩토리가 그 정의로 실행 객체를 만든다
+            public Rig(bool guardable = true, PatternDefinition definition = null)
             {
                 Query.Targets.Add(Tracked);
                 Gate       = new BossDamageGate(Resolver);
                 Gate.Open();
-                Definition = MakeP04(guardable);
+                Definition = definition ?? MakeP04(guardable);
                 Manager    = new BossProjectileManager(Query, Wall, Listener);
-                Pattern    = new BossProjectilePattern(TEST_HREF, Manager, Listener);
+                Pattern    = (definition == null)
+                    ? new BossProjectilePattern(TEST_HREF, Manager, Listener)
+                    : (BossProjectilePattern)new WolbaekPatternFactory(TEST_HREF, null, null, null, null, null, Manager, Listener).Create(definition);
                 Context    = new BossPatternContext(Definition, Gate.IssueInstanceId(), Tracked.CombatId, Self, Query, Gate);
             }
 
@@ -1194,6 +1198,111 @@ namespace Shinshi.Tests
             string all = string.Join("\n", errors);
             Assert.IsTrue(catalog.IsTuned("boss_wolbaek"));
             Assert.AreEqual(0, errors.Count, all);
+        }
+
+        /****************************************
+        *            Wolbaek Hard P04
+        ****************************************/
+
+        private static PatternDefinition LoadAssetPattern(string id)
+        {
+            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
+            Assert.IsTrue(catalog.TryGetPattern(id, out PatternDefinition pattern), id);
+            return pattern;
+        }
+
+        // 하드 P04도 같은 투사체 실행을 만든다. 발사 창구가 없으면 이지와 같이 만들지 않고 만들 수 없다고 답한다
+        [Test]
+        public void Factory_HardP04_CreatesProjectileLikeEasyP04_AndNeedsLauncher()
+        {
+            PatternDefinition hard = LoadAssetPattern(HARD_P04_ID);
+            BossProjectileManager manager = new BossProjectileManager(new ProjQuery());
+            WolbaekPatternFactory with    = new WolbaekPatternFactory(TEST_HREF, null, null, null, null, null, manager);
+            WolbaekPatternFactory without = new WolbaekPatternFactory(TEST_HREF);
+
+            Assert.IsTrue(with.CanCreate(hard));
+            Assert.IsInstanceOf<BossProjectilePattern>(with.Create(hard));
+            Assert.AreNotSame(with.Create(hard), with.Create(hard));
+
+            Assert.IsFalse(without.CanCreate(hard));
+            Assert.IsNull(without.Create(hard));
+            Assert.IsTrue(with.CanCreate(LoadAssetPattern(P04_ID)));
+        }
+
+        // 예고와 발사가 보여 주는 폭은 정의의 폭이다. 이지 P04는 1m 그대로다
+        [TestCase(HARD_P04_ID, 1.2f)]
+        [TestCase(P04_ID, 1f)]
+        public void Launch_AssetP04_ReportsItsOwnWidth(string id, float expectedWidth)
+        {
+            Rig rig = new Rig(definition: LoadAssetPattern(id));
+            rig.Start();
+            Assert.AreEqual(expectedWidth, rig.Listener.StartWidth);
+
+            rig.TickRange(0.0, rig.RecoverEnd + 0.3);
+
+            Assert.AreEqual(expectedWidth, rig.Listener.LaunchWidth);
+            Assert.AreEqual(RANGE, rig.Listener.StartLength);
+            Assert.AreEqual(TELEGRAPH, rig.Listener.StartSeconds);
+            Assert.AreEqual(SPEED, rig.Listener.LaunchSpeed);
+        }
+
+        // 서버 피격 폭은 예고 폭과 같다. 중심선에서 0.55m는 하드(절반 0.6m)에서만 맞고, 0.65m는 둘 다 빗나간다
+        [TestCase(HARD_P04_ID, 0.45f, true)]
+        [TestCase(HARD_P04_ID, 0.55f, true)]
+        [TestCase(HARD_P04_ID, 0.65f, false)]
+        [TestCase(P04_ID, 0.45f, true)]
+        [TestCase(P04_ID, 0.55f, false)]
+        [TestCase(P04_ID, 0.65f, false)]
+        public void Hit_AssetP04_HitsOnlyInsideItsOwnHalfWidth(string id, float lateral, bool expectedHit)
+        {
+            Rig rig = new Rig(definition: LoadAssetPattern(id));
+            rig.Tracked.Position = new Vector3(0f, 0f, 30f);
+            rig.Add(11, new Vector3(lateral, 0f, 9f));
+            rig.Add(12, new Vector3(-lateral, 0f, 9f));
+            rig.Start();
+
+            rig.TickRange(0.0, rig.RecoverEnd + 0.5);
+
+            // 두 대상 중 먼저 닿는 한 명만 맞고 투사체는 사라지므로 맞은 수의 합으로 본다
+            Assert.AreEqual(expectedHit ? 1 : 0, rig.Resolver.Requests.Count, id);
+        }
+
+        // 벽에 줄어드는 경로 길이도 폭의 절반만큼이라 예고와 비행이 같은 값이다. 벽 20m 앞에서 하드 19.4m, 이지 19.5m
+        [TestCase(HARD_P04_ID, 19.4f)]
+        [TestCase(P04_ID, 19.5f)]
+        public void Wall_AssetP04_PathLengthFollowsItsOwnWidth(string id, float expectedLength)
+        {
+            Rig rig = new Rig(definition: LoadAssetPattern(id));
+            rig.Wall.WallZ = 20f;
+            rig.Start();
+            Assert.AreEqual(expectedLength, rig.Listener.StartLength, TOLERANCE);
+
+            rig.TickRange(0.0, rig.Launch + 0.1);
+
+            Assert.AreEqual(expectedLength, rig.Listener.LockLength, TOLERANCE);
+            Assert.AreEqual(expectedLength, rig.Listener.LaunchPathLength, TOLERANCE);
+        }
+
+        // 폭 말고는 이지 P04와 같은 피해 요청을 보낸다. 정의 ID만 각자 정의를 따른다
+        [Test]
+        public void Hit_HardP04_SendsSameDamageAsEasyWithOwnDefinitionId()
+        {
+            Rig hardRig = new Rig(definition: LoadAssetPattern(HARD_P04_ID));
+            Rig easyRig = new Rig(definition: LoadAssetPattern(P04_ID));
+            foreach (Rig rig in new[] { hardRig, easyRig })
+            {
+                rig.Tracked.Position = new Vector3(0f, 0f, 30f);
+                rig.Add(11, new Vector3(0f, 0f, 9f));
+                rig.Start();
+                rig.TickRange(0.0, rig.RecoverEnd + 0.5);
+            }
+
+            DamageRequest hardRequest = hardRig.Resolver.Requests.Find(r => r.HitTargetId == 11);
+            DamageRequest easyRequest = easyRig.Resolver.Requests.Find(r => r.HitTargetId == 11);
+            Assert.AreEqual(easyRequest.RawDamage, hardRequest.RawDamage);
+            Assert.AreEqual(easyRequest.Flags, hardRequest.Flags);
+            Assert.AreEqual(HARD_P04_ID, hardRequest.SourceDefinitionId);
+            Assert.AreEqual(P04_ID, easyRequest.SourceDefinitionId);
         }
     }
 }

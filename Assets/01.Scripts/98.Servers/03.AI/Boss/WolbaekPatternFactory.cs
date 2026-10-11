@@ -5,6 +5,8 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
 {
+    // 방향이 있는 1페이즈 P01, P02, P04, P06(하드 포함)과 2페이즈 P05는 naturalAim을 켜 이전 방향에서 최단 경로로 부드럽게 돌아 고정 시각에 대상 방향에 닿는다.
+    // 원형 폭발, 장판, 전장 기준 패턴, 반월 연쇄, 워프(하드 포함)는 조준 회전이 없거나 다른 기준이라 켜지 않는다
     /// <summary> 월백 패턴 정의로 실행 객체를 만든다, 1페이즈 여섯 패턴(P01~P06)이 모두 있다 </summary>
     public sealed class WolbaekPatternFactory : IBossPatternFactory, IBossPatternAvailability
     {
@@ -28,13 +30,44 @@ namespace Shinshi.AI
         // 하드 1페이즈 P03은 이지 P03과 같은 원형 폭발 실행을 쓰고 반경, 예고 시간, 선택 배율은 정의 값이 다르다
         public const string HARD_P03_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P03_ID;
 
-        // 2페이즈 패턴 ID, 1페이즈 ID와 겹치지 않는다. 지금 Create가 만드는 것은 P01(별형 회전 빔), P02(고정 평행 빔), P03(반월 연쇄), P04(장판), P05(투사체), P06(원형 폭발)뿐이고 나머지는 null이다
+        // 하드 1페이즈 P04는 이지 P04와 같은 투사체 실행을 쓰고 폭과 선택 배율은 정의 값이 다르다
+        public const string HARD_P04_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P04_ID;
+
+        // 하드 1페이즈 P05는 이지 P05와 같은 장판 실행을 쓰고 반경과 선택 배율은 정의 값이 다르다
+        public const string HARD_P05_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P05_ID;
+
+        // 하드 1페이즈 P06은 이지 P06과 같은 직선 폭발 실행을 쓰고 폭과 선택 배율은 정의 값이 다르다
+        public const string HARD_P06_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P06_ID;
+
+        // 2페이즈 패턴 ID, 1페이즈 ID와 겹치지 않는다. 하드 2페이즈는 P01~P06 실행을 만든다
         public const string P2_P01_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P01_ID;
         public const string P2_P02_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P02_ID;
         public const string P2_P03_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P03_ID;
         public const string P2_P04_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID;
         public const string P2_P05_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P05_ID;
         public const string P2_P06_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P06_ID;
+        public const string P2_P07_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P07_ID;
+
+        // 하드 2페이즈 P01은 이지 P01과 실행이 달라 단계형 별 빔 전용 실행을 쓴다
+        public const string HARD_P2_P01_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P01_ID;
+
+        // 하드 2페이즈 P02는 이지 P02(4줄 예약, 지속 피해)와 실행이 달라 격자 순차 빔 전용 실행을 쓴다. 이지 ID는 이 실행에 연결하지 않는다
+        public const string HARD_P2_P02_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P02_ID;
+
+        // 하드 2페이즈 P03은 이지 P03(반월 한 번 폭발, 잔류 없음)과 실행이 달라 잔류 부채꼴 연쇄 전용 실행을 쓴다. 이지 ID는 이 실행에 연결하지 않는다
+        public const string HARD_P2_P03_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P03_ID;
+
+        public const string HARD_P2_P04_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID;
+
+        // 하드 2페이즈 P05는 이지 2페이즈 P05(대상을 보고 한 방향으로 연사)와 실행이 달라 전방위 구역 난사 전용 실행을 쓴다. 이지 ID는 이 실행에 연결하지 않는다
+        public const string HARD_P2_P05_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P05_ID;
+
+        // 하드 2페이즈 P06은 이지 2페이즈 P06(보스 중심 원 하나)과 실행이 달라 13개 동시 원형 폭발 전용 실행을 쓴다. 이지 ID는 이 실행에 연결하지 않는다
+        public const string HARD_P2_P06_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P06_ID;
+
+        // 하드 2페이즈 P07은 이지 2페이즈 P07과 같은 후방 우선 워프 충격파 실행을 쓰고 선택 가중치와 최근 사용 배율은 정의 값이 다르다
+        // 이지는 예고 수신처 없이도 만들지만 하드는 충격파 표시 수신처가 있어야만 만든다
+        public const string HARD_P2_P07_ID = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_HARD_P2_P07_ID;
 
         /****************************************
         *                Fields
@@ -56,6 +89,14 @@ namespace Shinshi.AI
         private readonly IBossBeamTelegraphListener     _beamListener;
         private readonly IBossStarHost                  _stars;
         private readonly IBossStarTelegraphListener     _starListener;
+        private readonly IBossWarp                      _warp;
+        private readonly IBossStarStageListener         _starStageListener;
+        private readonly IBossGridBeamListener          _gridListener;
+        private readonly IBossChainFanListener          _chainFanListener;
+        private readonly IBossHardAreaListener           _hardAreaListener;
+        private readonly IBossParticipantConnection      _connections;
+        private readonly IBossBarrageListener            _barrageListener;
+        private readonly IBossCircleBurstListener        _burstListener;
 
         /****************************************
         *                Methods
@@ -65,7 +106,19 @@ namespace Shinshi.AI
         // movement는 돌진이 보스 몸체를 옮기는 창구다. 서버 몸체가 구현해 넘기며, 비어 있으면 P01을 만들지 않는다
         // projectiles는 투사체 발사 창구(지속물 관리자)다. 비어 있으면 P04를 만들지 않는다
         // areas는 장판 예약과 활성 창구(장판 관리자)다. 비어 있으면 P05를 만들지 않는다
+        // warp는 보스 순간 이동과 착지 검사 창구이고 arena는 전장 입력이다. 둘 중 하나라도 비어 있으면 2페이즈 P07을 만들지 않는다
         // beams는 빔 예약과 활성 창구(빔 관리자)이고 arena는 전장 중심과 반경 입력이다. 둘 중 하나라도 비어 있으면 2페이즈 P02를 만들지 않는다
+        // gridListener는 하드 2페이즈 P02의 예고와 타격 알림을 받는 쪽이다. 하드 P02는 24줄을 모두 예고해야 해서 알림을 받을 쪽 없이는 만들지 않는다
+        // 알림이 연결되지 않은 서버에서 화면에 보이지 않는 피해가 나가는 일을 막기 위해서다. 단계형 별 빔(하드 2페이즈 P01)의 리스너는 선택 입력이다
+        // chainFanListener는 하드 2페이즈 P03의 시작, 구역 폭발, 위험 종료, 취소 알림을 받는 쪽이다. 피난 방향 여우불과 바닥 예고 없이 구역이 잔류 피해를 내면
+        // 보이지 않는 피해가 되므로 하드 P03도 알림을 받을 쪽과 전장 입력이 모두 있을 때만 만든다
+        // 하드 P04는 이동 예고 알림과 접속 상태 입력이 모두 있을 때만 만든다
+        // 하드 P05는 발사 창구, 발별 예고 알림, 투사체 발사와 소멸을 알리는 표시 수신처가 모두 있을 때만 만든다. 어느 하나라도 없으면 화면에 보이지 않는 투사체가 피해를 내므로
+        // 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다. 표시 수신처 유무는 발사 창구가 IBossProjectileDisplay로 알린다
+        // 하드 P06은 전장 입력과 동시 폭발 알림이 모두 있을 때만 만든다. 13개 원을 예고할 알림 없이 피해가 나가면 화면에 보이지 않는 피해가 되므로
+        // 하나라도 없으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
+        // 하드 P07은 워프 창구, 전장 입력, 원형 예고 알림이 모두 있을 때만 만든다. 착지한 보스 위치의 반경 5m 충격파를 예고할 알림 없이 피해가 나가면
+        // 화면에 보이지 않는 피해가 되고, 워프 창구가 없으면 보스가 움직이지 않으므로 하나라도 없으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
         public WolbaekPatternFactory(float referenceHealth, IBossFanTelegraphListener fanListener = null,
             IBossCircleTelegraphListener circleListener = null, IBossLineTelegraphListener lineListener = null,
             IBossDashTelegraphListener dashListener = null, IBossMovement movement = null,
@@ -73,8 +126,20 @@ namespace Shinshi.AI
             IBossAreaHost areas = null, IBossAreaTelegraphListener areaListener = null,
             IBossSweepTelegraphListener sweepListener = null, IBossBeamHost beams = null,
             IBossArenaSource arena = null, IBossBeamTelegraphListener beamListener = null, IBossStarHost stars = null,
-            IBossStarTelegraphListener starListener = null)
+            IBossStarTelegraphListener starListener = null, IBossWarp warp = null,
+            IBossStarStageListener starStageListener = null, IBossGridBeamListener gridListener = null,
+            IBossChainFanListener chainFanListener = null, IBossHardAreaListener hardAreaListener = null,
+            IBossParticipantConnection connections = null, IBossBarrageListener barrageListener = null,
+            IBossCircleBurstListener burstListener = null)
         {
+            _burstListener    = burstListener;
+            _barrageListener  = barrageListener;
+            _hardAreaListener = hardAreaListener;
+            _connections      = connections;
+            _chainFanListener  = chainFanListener;
+            _gridListener      = gridListener;
+            _starStageListener = starStageListener;
+            _warp         = warp;
             _stars        = stars;
             _starListener = starListener;
             _beams        = beams;
@@ -98,7 +163,7 @@ namespace Shinshi.AI
             _sweepListener      = sweepListener;
         }
 
-        // Create가 null을 돌려줄 조건과 같아야 한다. 2페이즈 정의는 공격을 구현하는 단계에서 여기에 더한다(지금은 P03, P04, P05, P06)
+        // Create가 null을 돌려줄 조건과 같아야 한다. 2페이즈 정의는 공격을 구현하는 단계에서 여기에 더한다(지금은 P01~P07)
         public bool CanCreate(PatternDefinition definition)
         {
             if (definition == null)
@@ -112,12 +177,12 @@ namespace Shinshi.AI
                 return _movement != null;
             }
 
-            if ((id == P04_ID) || (id == P2_P05_ID))
+            if ((id == P04_ID) || (id == HARD_P04_ID) || (id == P2_P05_ID))
             {
                 return _projectiles != null;
             }
 
-            if ((id == P05_ID) || (id == P2_P04_ID))
+            if ((id == P05_ID) || (id == HARD_P05_ID) || (id == P2_P04_ID))
             {
                 return _areas != null;
             }
@@ -132,8 +197,48 @@ namespace Shinshi.AI
                 return (_stars != null) && (_arena != null);
             }
 
+            if (id == HARD_P2_P01_ID)
+            {
+                return _arena != null;
+            }
+
+            if (id == HARD_P2_P02_ID)
+            {
+                return (_arena != null) && (_gridListener != null);
+            }
+
+            if (id == HARD_P2_P03_ID)
+            {
+                return (_arena != null) && (_chainFanListener != null);
+            }
+
+            if (id == HARD_P2_P04_ID)
+            {
+                return (_areas is IBossHardAreaHost) && (_hardAreaListener != null) && (_connections != null);
+            }
+
+            if (id == HARD_P2_P05_ID)
+            {
+                return (_projectiles is IBossProjectileDisplay display) && display.IsDisplayConnected && (_barrageListener != null);
+            }
+
+            if (id == HARD_P2_P06_ID)
+            {
+                return (_arena != null) && (_burstListener != null);
+            }
+
+            if (id == P2_P07_ID)
+            {
+                return (_warp != null) && (_arena != null);
+            }
+
+            if (id == HARD_P2_P07_ID)
+            {
+                return (_warp != null) && (_arena != null) && (_circleListener != null);
+            }
+
             return (id == P02_ID) || (id == HARD_P02_ID) || (id == P03_ID) || (id == HARD_P03_ID) || (id == P06_ID)
-                || (id == P2_P03_ID) || (id == P2_P06_ID);
+                || (id == HARD_P06_ID) || (id == P2_P03_ID) || (id == P2_P06_ID);
         }
 
         public IBossPattern Create(PatternDefinition definition)
@@ -146,12 +251,12 @@ namespace Shinshi.AI
             // 이동 창구 없이는 돌진을 만들 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
             if ((definition.DefinitionId == P01_ID) || (definition.DefinitionId == HARD_P01_ID))
             {
-                return (_movement == null) ? null : new BossDashPattern(_referenceHealth, _movement, _dashListener);
+                return (_movement == null) ? null : new BossDashPattern(_referenceHealth, _movement, _dashListener, naturalAim: true);
             }
 
             if ((definition.DefinitionId == P02_ID) || (definition.DefinitionId == HARD_P02_ID))
             {
-                return new BossFanBlastPattern(_referenceHealth, _fanListener);
+                return new BossFanBlastPattern(_referenceHealth, _fanListener, naturalAim: true);
             }
 
             if ((definition.DefinitionId == P03_ID) || (definition.DefinitionId == HARD_P03_ID))
@@ -160,20 +265,20 @@ namespace Shinshi.AI
             }
 
             // 발사 창구 없이는 투사체를 낼 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
-            if (definition.DefinitionId == P04_ID)
+            if ((definition.DefinitionId == P04_ID) || (definition.DefinitionId == HARD_P04_ID))
             {
-                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener);
+                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener, naturalAim: true);
             }
 
             // 장판 창구 없이는 장판을 만들 수 없다. 만들지 않으면 두뇌가 구현 없음으로 알리고 다음 선택으로 넘어간다
-            if (definition.DefinitionId == P05_ID)
+            if ((definition.DefinitionId == P05_ID) || (definition.DefinitionId == HARD_P05_ID))
             {
                 return (_areas == null) ? null : new BossAreaPattern(_referenceHealth, _areas, _areaListener);
             }
 
-            if (definition.DefinitionId == P06_ID)
+            if ((definition.DefinitionId == P06_ID) || (definition.DefinitionId == HARD_P06_ID))
             {
-                return new BossLineBlastPattern(_referenceHealth, _lineListener);
+                return new BossLineBlastPattern(_referenceHealth, _lineListener, naturalAim: true);
             }
 
             // 2페이즈 P06은 1페이즈 P03과 같은 원형 실행을 쓰고 시간, 반경, 피해, 회복은 정의 값이 다르다
@@ -184,6 +289,51 @@ namespace Shinshi.AI
                 return ((_stars == null) || (_arena == null))
                     ? null
                     : new BossStarPattern(_referenceHealth, _stars, _arena, _starListener);
+            }
+
+            // 하드 2페이즈 P01은 별형 관리자(슬롯, 회전, 주기 피해)를 쓰지 않는 단계형 즉발 타격이다. 전장 입력이 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == HARD_P2_P01_ID)
+            {
+                return (_arena == null) ? null : new BossStarStagePattern(_referenceHealth, _arena, _starStageListener);
+            }
+
+            // 하드 2페이즈 P02는 빔 관리자를 쓰지 않는 월드 축 격자 즉발 타격이다. 전장 입력이나 알림 수신처가 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == HARD_P2_P02_ID)
+            {
+                return ((_arena == null) || (_gridListener == null))
+                    ? null
+                    : new BossGridBeamPattern(_referenceHealth, _arena, _gridListener);
+            }
+
+            // 하드 2페이즈 P03은 반월 연쇄(BossSweepBlastPattern)를 쓰지 않는 잔류 부채꼴 연쇄다. 전장 입력이나 알림 수신처가 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == HARD_P2_P03_ID)
+            {
+                return ((_arena == null) || (_chainFanListener == null))
+                    ? null
+                    : new BossChainFanPattern(_referenceHealth, _arena, _chainFanListener);
+            }
+
+            if (definition.DefinitionId == HARD_P2_P04_ID)
+            {
+                return ((_areas is IBossHardAreaHost host) && (_hardAreaListener != null) && (_connections != null))
+                    ? new BossHardAreaPattern(_referenceHealth, host, _hardAreaListener, _connections)
+                    : null;
+            }
+
+            // 하드 2페이즈 P05는 대상을 보지 않고 전방위 구역마다 한 발씩 쏘는 난사다. 발사 창구, 발별 예고 알림, 표시 수신처 중 하나라도 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == HARD_P2_P05_ID)
+            {
+                return ((_projectiles is IBossProjectileDisplay display) && display.IsDisplayConnected && (_barrageListener != null))
+                    ? new BossBarragePattern(_referenceHealth, _projectiles, _barrageListener)
+                    : null;
+            }
+
+            // 하드 2페이즈 P06은 보스 중심 원 하나(BossCircleBlastPattern)가 아니라 13개 원을 같은 순간에 터뜨리는 전용 실행이다. 전장 입력이나 알림 수신처가 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == HARD_P2_P06_ID)
+            {
+                return ((_arena == null) || (_burstListener == null))
+                    ? null
+                    : new BossCircleBurstPattern(_referenceHealth, _arena, _burstListener);
             }
 
             // 2페이즈 P02는 전장 기준으로 평행 빔을 고정하는 전용 실행이다. 빔 창구나 전장 입력이 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
@@ -206,9 +356,25 @@ namespace Shinshi.AI
                 return (_areas == null) ? null : new BossAreaPattern(_referenceHealth, _areas, _areaListener);
             }
 
+            // 2페이즈 P07은 워프 창구와 전장 입력으로 착지 후보를 검사하는 전용 실행이다. 창구나 전장 입력이 없으면 만들지 않아 두뇌가 구현 없음으로 알린다
+            if (definition.DefinitionId == P2_P07_ID)
+            {
+                return ((_warp == null) || (_arena == null))
+                    ? null
+                    : new BossWarpBlastPattern(_referenceHealth, _warp, _arena, _circleListener);
+            }
+
+            // 하드 2페이즈 P07은 이지와 같은 BossWarpBlastPattern 실행이다. 이지 동작은 바꾸지 않고, 충격파 예고를 받을 수신처까지 있을 때만 만들어 보이지 않는 피해를 막는다
+            if (definition.DefinitionId == HARD_P2_P07_ID)
+            {
+                return ((_warp == null) || (_arena == null) || (_circleListener == null))
+                    ? null
+                    : new BossWarpBlastPattern(_referenceHealth, _warp, _arena, _circleListener);
+            }
+
             if (definition.DefinitionId == P2_P05_ID)
             {
-                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener);
+                return (_projectiles == null) ? null : new BossProjectilePattern(_referenceHealth, _projectiles, _projectileListener, naturalAim: true);
             }
 
             if (definition.DefinitionId == P2_P06_ID)

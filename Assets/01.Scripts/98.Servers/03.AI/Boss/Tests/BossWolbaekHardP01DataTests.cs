@@ -17,7 +17,7 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 namespace Shinshi.Tests
 {
     // 에셋에 들어간 월백 하드 P01이 이지 P01과 ID, 난이도, 폭, 최근 사용 배율만 다르고, 이지 수집과 이지 검증, 기존 이지 P01 값을
-    // 바꾸지 않는지 확인한다. 하드 1페이즈는 아직 1/6개이므로 하드 튜닝은 통과하지 않는 것이 정상이다
+    // 바꾸지 않는지 확인한다
     public class BossWolbaekHardP01DataTests
     {
         /****************************************
@@ -200,24 +200,27 @@ namespace Shinshi.Tests
 
             CollectionAssert.Contains(Collect(hard, FIRST_PHASE), HARD_P01_ID);
             CollectionAssert.DoesNotContain(Collect(hard, FIRST_PHASE), EASY_P01_ID);
-            Assert.IsEmpty(Collect(hard, SECOND_PHASE));
+            CollectionAssert.AreEqual(new[] { BossPatternCatalogSO.WOLBAEK_HARD_P2_P01_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P02_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P03_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P06_ID,
+                BossPatternCatalogSO.WOLBAEK_HARD_P2_P07_ID },
+                Collect(hard, SECOND_PHASE), "하드 2페이즈는 P01~P07 일곱 개다");
             CollectionAssert.DoesNotContain(Collect(easy, SECOND_PHASE), HARD_P01_ID);
         }
 
-        // 하드 1페이즈는 6개가 안 돼 하드 튜닝이 통과하지 않는 것이 정상이다. 오류는 개수 하나뿐이고 하드 P01 자체의 수치 오류는 없다
+        // 하드 1페이즈 여섯 개가 모두 들어와 하드 1페이즈 튜닝이 통과한다. 하드 2페이즈도 일곱 개가 갖춰져 통과한다
         [Test]
-        public void Tuning_HardPhaseOneUnderSixPatterns_FailsOnCountAlone()
+        public void Tuning_HardPhaseOneHasSixPatterns_PassesAndPhaseTwoHasSeven()
         {
             BossPatternCatalogSO catalog = LoadAsset();
             var errors = new List<string>();
             catalog.ValidateTuning(WOLBAEK_ID, FIRST_PHASE, EBossDifficulty.Hard, errors);
 
-            Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Hard));
-            Assert.IsFalse(new BossPatternCatalogSource(catalog, EBossDifficulty.Hard).IsTuned(WOLBAEK_ID));
-            Assert.AreEqual(1, errors.Count, string.Join("\n", errors));
-            int hardCount = Collect(new BossPatternCatalogSource(catalog, EBossDifficulty.Hard), FIRST_PHASE).Count;
-            Assert.Less(hardCount, 6);
-            StringAssert.Contains($"월백 하드 1페이즈 패턴 수 {hardCount} != 6", errors[0]);
+            Assert.AreEqual(6, Collect(new BossPatternCatalogSource(catalog, EBossDifficulty.Hard), FIRST_PHASE).Count);
+            Assert.IsEmpty(errors, string.Join("\n", errors));
+            Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Hard));
+            Assert.IsTrue(new BossPatternCatalogSource(catalog, EBossDifficulty.Hard).IsTuned(WOLBAEK_ID));
+            Assert.IsTrue(catalog.IsPhaseTuned(WOLBAEK_ID, SECOND_PHASE, EBossDifficulty.Hard), "하드 2페이즈 일곱 개가 갖춰졌다");
             Assert.IsTrue(catalog.IsPatternReady(WOLBAEK_ID, Get(catalog, HARD_P01_ID)));
         }
 

@@ -28,6 +28,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         private const string P05_ID       = "wolbaek_p05";
+        private const string HARD_P05_ID  = "wolbaek_hard_p05";
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const float  TEST_HREF    = 3541f;
         private const float  TELEGRAPH    = 1f;
@@ -221,11 +222,15 @@ namespace Shinshi.Tests
             public AreaListener     Listener { get; } = new AreaListener();
             public BossDamageGate   Gate     { get; }
             public BossAreaManager  Manager  { get; }
-            public PatternDefinition Definition { get; } = MakeP05();
+            public PatternDefinition Definition { get; }
+            public bool             FromFactory { get; }
             public List<Cast>       Casts    { get; } = new List<Cast>();
 
-            public World()
+            // 정의를 주면 시전마다 팩토리가 그 정의로 실행 객체를 만든다
+            public World(PatternDefinition definition = null)
             {
+                Definition  = definition ?? MakeP05();
+                FromFactory = definition != null;
                 Gate    = new BossDamageGate(Resolver);
                 Gate.Open();
                 Manager = new BossAreaManager(Query, Listener);
@@ -295,7 +300,10 @@ namespace Shinshi.Tests
             {
                 _world    = world;
                 _targetId = targetId;
-                Pattern   = new BossAreaPattern(TEST_HREF, world.Manager, world.Listener);
+                Pattern   = world.FromFactory
+                    ? (BossAreaPattern)new WolbaekPatternFactory(TEST_HREF, null, null, null, null, null, null, null,
+                        world.Manager, world.Listener).Create(world.Definition)
+                    : new BossAreaPattern(TEST_HREF, world.Manager, world.Listener);
             }
 
             public void Start(double serverTime)
@@ -1137,6 +1145,97 @@ namespace Shinshi.Tests
             string all = string.Join("\n", errors);
             Assert.IsTrue(catalog.IsTuned("boss_wolbaek"));
             Assert.AreEqual(0, errors.Count, all);
+        }
+
+        /****************************************
+        *            Wolbaek Hard P05
+        ****************************************/
+
+        private static PatternDefinition LoadAssetPattern(string id)
+        {
+            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
+            Assert.IsTrue(catalog.TryGetPattern(id, out PatternDefinition pattern), id);
+            return pattern;
+        }
+
+        // 하드 P05도 같은 장판 실행을 만든다. 장판 창구가 없으면 이지와 같이 만들지 않고 만들 수 없다고 답한다
+        [Test]
+        public void Factory_HardP05_CreatesAreaLikeEasyP05_AndNeedsAreaHost()
+        {
+            PatternDefinition hard = LoadAssetPattern(HARD_P05_ID);
+            World world = new World();
+            WolbaekPatternFactory with    = new WolbaekPatternFactory(TEST_HREF, null, null, null, null, null, null, null, world.Manager);
+            WolbaekPatternFactory without = new WolbaekPatternFactory(TEST_HREF);
+
+            Assert.IsTrue(with.CanCreate(hard));
+            Assert.IsInstanceOf<BossAreaPattern>(with.Create(hard));
+            Assert.AreNotSame(with.Create(hard), with.Create(hard));
+
+            Assert.IsFalse(without.CanCreate(hard));
+            Assert.IsNull(without.Create(hard));
+            Assert.IsTrue(with.CanCreate(LoadAssetPattern(P05_ID)));
+        }
+
+        // 예고와 활성 장판이 보여 주는 반경은 정의의 반경이다. 지속, 틱, 예고 시간은 이지와 같다
+        [TestCase(HARD_P05_ID, 3.25f)]
+        [TestCase(P05_ID, 3f)]
+        public void Area_AssetP05_ReportsItsOwnRadius(string id, float expectedRadius)
+        {
+            World world = new World(LoadAssetPattern(id));
+            world.Add(10, AreaCenter);
+            world.StartCast(10, 0.0);
+
+            Assert.AreEqual(expectedRadius, world.Listener.TelegraphRadius);
+            Assert.AreEqual(TELEGRAPH, world.Listener.TelegraphSeconds);
+
+            world.TickRange(0.0, 1.2);
+
+            Assert.AreEqual(expectedRadius, world.Listener.ActivatedRadius);
+            Assert.AreEqual(DURATION, world.Listener.ActivatedDuration);
+            Assert.AreEqual(INTERVAL, world.Listener.ActivatedInterval);
+            Assert.AreEqual(AreaCenter, world.Listener.ActivatedCenter);
+        }
+
+        // 서버 피격 반경은 예고 반경과 같다. 3m와 3.25m 사이(3.1m, 3.24m)는 하드에서만 맞고, 3.25m 밖은 둘 다 빗나간다
+        [TestCase(HARD_P05_ID, 3f, true)]
+        [TestCase(HARD_P05_ID, 3.1f, true)]
+        [TestCase(HARD_P05_ID, 3.24f, true)]
+        [TestCase(HARD_P05_ID, 3.3f, false)]
+        [TestCase(P05_ID, 3f, true)]
+        [TestCase(P05_ID, 3.1f, false)]
+        [TestCase(P05_ID, 3.24f, false)]
+        public void Tick_AssetP05_HitsOnlyInsideItsOwnRadius(string id, float distance, bool expectedHit)
+        {
+            World world = new World(LoadAssetPattern(id));
+            world.Add(10, AreaCenter);
+            world.Add(11, AreaCenter + new Vector3(distance, 0f, 0f));
+            world.StartCast(10, 0.0);
+
+            world.TickRange(0.0, 1.2);
+
+            Assert.AreEqual(expectedHit ? 1 : 0, world.Hits(11), $"{id} {distance}");
+        }
+
+        // 반경 말고는 이지 P05와 같은 피해 요청을 보낸다. 정의 ID만 각자 정의를 따른다
+        [Test]
+        public void Tick_HardP05_SendsSameDamageAsEasyWithOwnDefinitionId()
+        {
+            World hardWorld = new World(LoadAssetPattern(HARD_P05_ID));
+            World easyWorld = new World(LoadAssetPattern(P05_ID));
+            foreach (World world in new[] { hardWorld, easyWorld })
+            {
+                world.Add(10, AreaCenter);
+                world.Add(11, AreaCenter + new Vector3(1f, 0f, 0f));
+                world.StartCast(10, 0.0);
+                world.TickRange(0.0, 1.2);
+            }
+
+            DamageRequest hardRequest = hardWorld.Resolver.Requests.Find(r => r.HitTargetId == 11);
+            DamageRequest easyRequest = easyWorld.Resolver.Requests.Find(r => r.HitTargetId == 11);
+            Assert.AreEqual(easyRequest.RawDamage, hardRequest.RawDamage);
+            Assert.AreEqual(easyRequest.Flags, hardRequest.Flags);
+            Assert.AreEqual(HARD_P05_ID, hardRequest.SourceDefinitionId);
+            Assert.AreEqual(P05_ID, easyRequest.SourceDefinitionId);
         }
 
         // 팩토리 시험용 이동 창구, 이동 자체는 쓰지 않는다

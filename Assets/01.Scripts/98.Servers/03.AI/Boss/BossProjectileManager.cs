@@ -22,15 +22,26 @@ namespace Shinshi.AI
     // 같은 거리의 캐릭터끼리는 CombatId가 작은 쪽이다. 첫 유효 플레이어나 소환물에 한 번 판정하고 사라지며 방어, 반격, 무적 결과와 상관없다
     // 판정은 다른 월백 패턴과 같다. 대상은 중심점이고 BodyRadius는 쓰지 않으며, 경로는 폭의 절반까지의 평평한 끝단 직사각형이다. 예고와 표현이 같은 직사각형이다
     // 벽은 폭의 절반을 반경으로 둔 몸체로 미리 한 번 재서 경로 길이로 삼는다. 정적 지형이라 비행 중에 다시 재지 않는다
+    //
+    // 대상당 피격 상한이 있는 발(스펙의 HitLimit)은 규칙이 조금 다르다
+    //   첫 유효 대상에 한 번 판정하고 사라지는 점은 같지만, 같은 시전에서 이미 상한만큼 맞은 대상은 지나친다
+    //   막힌 유효 타격(방어, 반격)은 횟수에 세고 무적이나 사망 등 피해가 들어가지 않은 요청은 세지 않는다. 어느 쪽이든 발은 사라진다
+    //   이전 시전의 발이 남아 있어도 다음 시전의 발이 빠지지 않도록 공용 슬롯이 가득 차도 예비 슬롯을 쓸 수 있다
+    //   예비 슬롯 수의 근거(하드 P05 값 기준): 마지막 발은 시전 시작 2.4초에 나가 사거리 35m를 10m/초로 3.5초 날면 5.9초에 사라진다.
+    //   다음 시전은 3.4초 이전에 시작할 수 없어 첫 발이 4.4초 이후에 나가고, 그다음 시전의 첫 발은 7.8초 이후라 5.9초 이후에는 앞선 시전의 발이 없다.
+    //   그래서 겹치는 시전은 최대 둘이고 최악은 앞선 8발 + 다음 시전 첫 발의 9개다. 두 시전 분 16개면 모자라지 않는다
     /// <summary> 월백 투사체의 수명 관리자, 패턴 종료와 상관없이 발사된 투사체를 진행하고 충돌과 소멸을 처리한다 </summary>
-    public sealed class BossProjectileManager : IBossEffectLifetime, IBossProjectileLauncher, IBossTickableEffects
+    public sealed class BossProjectileManager : IBossEffectLifetime, IBossProjectileLauncher, IBossTickableEffects, IBossProjectileDisplay
     {
         /****************************************
         *              Constants
         ****************************************/
 
-        // 동시에 날 수 있는 투사체 수, 한 시전이 여러 발을 쏘고 회복이 끝난 뒤에도 남을 수 있어 여유를 둔다. 가득 차면 새 발은 발사되지 않는다
+        // 공용 슬롯 수, 동시에 날 수 있는 투사체 수다. 한 시전이 여러 발을 쏘고 회복이 끝난 뒤에도 남을 수 있어 여유를 둔다. 가득 차면 새 발은 발사되지 않는다
         private const int   MAX_PROJECTILES   = 8;
+
+        // 대상당 피격 상한이 있는 난사만 쓰는 예비 슬롯 수, 공용 슬롯이 이전 시전의 잔류 투사체로 차도 한 시전 분 8발이 빠지지 않게 한다
+        private const int   RESERVED_PROJECTILES = 8;
         private const float MIN_DIRECTION_SQR = 0.000001f;
         private const float EDGE_EPSILON      = 0.001f; // m, 경계의 부동소수 오차 흡수
         private const float TIE_EPSILON       = 0.001f; // m, 이 안이면 같은 거리로 보고 벽 우선과 CombatId 순서를 적용한다
@@ -52,7 +63,7 @@ namespace Shinshi.AI
         private readonly ICombatTargetQuery     _targets;
         private readonly IBossWallQuery         _walls;
         private readonly IBossProjectileListener _listener;
-        private readonly Slot[]                 _slots  = new Slot[MAX_PROJECTILES];
+        private readonly Slot[]                 _slots  = new Slot[MAX_PROJECTILES + RESERVED_PROJECTILES];
         private readonly List<ICombatTarget>    _buffer = new List<ICombatTarget>();
 
         private int _activeCount;
@@ -63,6 +74,15 @@ namespace Shinshi.AI
 
         /// <summary> 지금 날고 있는 투사체 수 </summary>
         public int ActiveCount => _activeCount;
+
+        /// <summary> 대상 상한이 없는 발이 쓰는 공용 슬롯 수 </summary>
+        public static int SharedCapacity => MAX_PROJECTILES;
+
+        /// <summary> 대상 상한이 있는 발까지 합친 전체 슬롯 수 </summary>
+        public static int TotalCapacity => MAX_PROJECTILES + RESERVED_PROJECTILES;
+
+        /// <summary> 발사와 소멸을 알릴 수신처가 있다, 없으면 화면에 보이지 않는 투사체가 되므로 난사 패턴을 만들지 않는 근거다 </summary>
+        public bool IsDisplayConnected => _listener != null;
 
         /****************************************
         *                Methods
@@ -101,6 +121,12 @@ namespace Shinshi.AI
 
             if ((spec.Gate == null) || (spec.Speed <= 0f) || (spec.Range <= 0f) || (spec.Width < 0f)
                 || (spec.Direction.sqrMagnitude < MIN_DIRECTION_SQR) || (spec.CastInstanceId == CombatIds.NONE))
+            {
+                return false;
+            }
+
+            // 대상 상한이 없는 발은 공용 슬롯 수까지만, 있는 발은 예비 슬롯까지 쓴다
+            if ((spec.HitLimit == null) && (_activeCount >= MAX_PROJECTILES))
             {
                 return false;
             }
@@ -248,6 +274,13 @@ namespace Shinshi.AI
             for (int i = 0; i < _buffer.Count; ++i)
             {
                 ICombatTarget candidate = _buffer[i];
+
+                // 같은 시전에서 상한만큼 맞은 대상은 이 발이 지나친다
+                if ((spec.HitLimit != null) && spec.HitLimit.IsExhausted(candidate.CombatId))
+                {
+                    continue;
+                }
+
                 Vector3 offset = candidate.Position - spec.Origin;
                 offset.y = 0f;
 
@@ -280,7 +313,14 @@ namespace Shinshi.AI
                 spec.RawDamage, spec.Flags, spec.Origin, spec.DefinitionId);
 
             // 닫힌 게이트라 요청이 나가지 않아도, 방어와 무적으로 막혀도 투사체는 사라진다
-            spec.Gate.TryApply(in request, out DamageResult _);
+            bool isRequested = spec.Gate.TryApply(in request, out DamageResult result);
+
+            // 피해가 들어갔거나 방어, 반격으로 막힌 유효 타격만 대상 상한에 센다. 무적이나 사망 등 피해가 들어가지 않은 요청은 세지 않는다
+            if ((spec.HitLimit != null) && isRequested
+                && ((result.Outcome == EDamageOutcome.Applied) || (result.Outcome == EDamageOutcome.Guarded)))
+            {
+                spec.HitLimit.RecordHit(target.CombatId);
+            }
         }
 
         private void End(Slot slot, EBossProjectileEnd end, Vector3 position, int hitTargetId)

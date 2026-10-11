@@ -57,6 +57,13 @@ namespace Shinshi.AI
         public int                        NearbyBand      { get; set; }
         public PatternDefinition          SelectedPattern { get; set; }
 
+        // 시작이 거절된 패턴을 같은 선택에서 한 번만 다시 고를 때 두뇌가 채우고, 다시 고른 직후 비운다. 평소에는 비어 있다
+        /// <summary> 이번 평가에서만 후보와 규칙 선택에서 뺄 정의 ID, 비어 있으면 빼지 않는다 </summary>
+        public string                     ExcludedPatternId { get; set; }
+
+        /// <summary> 이번 평가가 새 대상을 뽑지 않고 쓸 대상 번호, CombatIds.NONE이면 평소처럼 균등 무작위로 뽑는다 </summary>
+        public int                        RetryTargetCombatId { get; set; } = CombatIds.NONE;
+
         public List<ICombatTarget>        TargetBuffer { get; } = new List<ICombatTarget>();
         public List<PatternDefinition>    Candidates   { get; } = new List<PatternDefinition>();
         public List<float>                Weights      { get; } = new List<float>();

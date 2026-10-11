@@ -28,6 +28,7 @@ namespace Shinshi.AI
         private readonly EDamageFlags    _flags;
         private readonly double          _launchServerTime;
         private readonly BossDamageGate  _gate;
+        private readonly BossProjectileHitLimit _hitLimit;
 
         /****************************************
         *              Properties
@@ -68,14 +69,18 @@ namespace Shinshi.AI
         /// <summary> 피해는 이 게이트로만 낸다, 사망과 전투 종료로 닫히면 나가지 않는다 </summary>
         public BossDamageGate Gate         => _gate;
 
+        /// <summary> 같은 시전의 발들이 함께 쓰는 대상별 피격 기록, 비어 있으면 대상 상한 없이 첫 명중에 사라지는 기존 규칙이다. 있으면 상한에 닿은 대상은 지나치고 예비 슬롯을 쓸 수 있다 </summary>
+        public BossProjectileHitLimit HitLimit => _hitLimit;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public BossProjectileSpec(int castInstanceId, int actionInstanceId, int attackerId, string definitionId, Vector3 origin,
             Vector3 direction, float speed, float range, float width, float rawDamage, EDamageFlags flags, double launchServerTime,
-            BossDamageGate gate)
+            BossDamageGate gate, BossProjectileHitLimit hitLimit = null)
         {
+            _hitLimit         = hitLimit;
             _castInstanceId   = castInstanceId;
             _actionInstanceId = actionInstanceId;
             _attackerId       = attackerId;

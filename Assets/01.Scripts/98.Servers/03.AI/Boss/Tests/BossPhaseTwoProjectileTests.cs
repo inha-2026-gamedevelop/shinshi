@@ -344,7 +344,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, r.Listener.Locks.Count);
             r.TickAt(0.45);
             Assert.AreEqual(1, r.Listener.Locks.Count);
-            Assert.AreEqual(54f, AimDegrees(r.Listener.Locks[0]), ANGLE_TOL, "최대 120도/초로 0.45초만 돈다");
+            Assert.AreEqual(90f, AimDegrees(r.Listener.Locks[0]), ANGLE_TOL, "부드러운 조준이라 0.45초 안에 대상 방향(90도)에 닿는다");
 
             r.Tracked.Position = new Vector3(-10f, 0f, 0f);
             r.TickRange(0.45, RecoverEnd + 0.2);
