@@ -1,4 +1,5 @@
 // System
+using System;
 using System.Collections.Generic;
 
 // Unity
@@ -8,6 +9,9 @@ using UnityEngine.UI;
 
 // 서드파티
 using TMPro;
+
+// 프로젝트 내부
+using Shinshi.Systems;
 
 namespace Shinshi.UI
 {
@@ -37,6 +41,7 @@ namespace Shinshi.UI
         };
 
         [Header("분류")]
+        [SerializeField] private HotkeyRouter _router = null;
         [SerializeField] private GameObject _graphicsBody = null;
         [SerializeField] private GameObject _audioBody    = null;
         [SerializeField] private GameObject _gameBody     = null;
@@ -96,6 +101,7 @@ namespace Shinshi.UI
         [SerializeField] private Color _idleTextColor   = new Color(0.64f, 0.67f, 0.69f, 1f);
 
         private readonly List<Vector2Int> _resolutions = new List<Vector2Int>();
+        private Func<bool> _onEscape = null;
         private SoundVolume _savedAudio;
         private int  _savedMode       = 0;
         private int  _savedResolution = 0;
@@ -149,10 +155,19 @@ namespace Shinshi.UI
             }
             ReadCurrentValues();
             ShowGraphics();
+            if (_router != null)
+            {
+                _onEscape = CloseFromHotkey;
+                _router.Register(EHotkeyAction.CloseWindow, _onEscape);
+            }
         }
 
         private void OnDisable()
         {
+            if (_router != null)
+            {
+                _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);
+            }
             if (_ready)
             {
                 _savedAudio.Preview();
@@ -167,7 +182,7 @@ namespace Shinshi.UI
             {
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if ((_router == null) && (Input.GetKeyDown(KeyCode.Escape)))
             {
                 Cancel();
             }
@@ -203,6 +218,16 @@ namespace Shinshi.UI
                 return;
             }
             gameObject.SetActive(true);
+        }
+
+        private bool CloseFromHotkey()
+        {
+            // 펼친 드롭다운은 TMP가 먼저 닫는다. 같은 Esc가 뒤의 메뉴까지 열지 않게 소비한다.
+            if ((!_screenMode.IsExpanded) && (!_resolution.IsExpanded) && (!_frameCap.IsExpanded) && (!_cursorSize.IsExpanded))
+            {
+                Cancel();
+            }
+            return true;
         }
 
         public void ShowGraphics() { SelectCategory(CATEGORY_GRAPHICS); }

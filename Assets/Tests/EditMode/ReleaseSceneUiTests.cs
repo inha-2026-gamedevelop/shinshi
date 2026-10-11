@@ -1,7 +1,14 @@
+// System
+using System.Collections;
+using System.Collections.Generic;
+
 // Unity
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 
 // 서드파티
@@ -9,6 +16,12 @@ using NUnit.Framework;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Systems;
+using Shinshi.UI;
+using Shinshi.Art;
+using Shinshi.Combat;
+using Shinshi.Contracts;
+using Mirror;
 
 namespace Shinshi.Tests
 {
@@ -48,6 +61,243 @@ namespace Shinshi.Tests
             {
                 EditorSceneManager.CloseScene(scene, true);
             }
+        }
+
+        [Test]
+        public void TownMenu_SavedScene_HasLiveTargetsAndNoPreviewController()
+        {
+            Scene scene = EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + Constants.Scene.SHINSHI_TOWN
+                + Constants.Scene.EXTENSION, OpenSceneMode.Additive);
+            try
+            {
+                HudMenuDropdown menu = InScene<HudMenuDropdown>(scene);
+                var panel = Reference<RectTransform>(menu, "_panel");
+                string[] names = { "인벤토리", "경매장", "우편함", "캐릭터 정보", "특성", "거래", "출정 준비", "환경설정", "캐릭터 선택", "게임 종료" };
+                foreach (string name in names)
+                {
+                    Button button = MenuButton(panel, name);
+                    Assert.That(button.gameObject.activeSelf, Is.True, name);
+                    Assert.That(button.interactable, Is.True, name);
+                    Assert.That(button.targetGraphic.raycastTarget, Is.True, name);
+                    Assert.That(button.onClick.GetPersistentEventCount(), Is.EqualTo(1), name);
+                    Assert.That(button.onClick.GetPersistentTarget(0), Is.Not.Null, name);
+                    Assert.That(button.onClick.GetPersistentMethodName(0), Is.Not.Empty, name);
+                }
+                Assert.That(InScene<ReleaseMenuActions>(scene), Is.Not.Null);
+                Assert.That(Reference<HotkeyRouter>(InScene<SettingsView>(scene), "_router"), Is.Not.Null);
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    Assert.That(root.GetComponentsInChildren<VillageUiPreview>(true), Is.Empty);
+                }
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TownMenu_PlayMode_PointerOpensWindowsAndEscapeClosesThem()
+        {
+            EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + Constants.Scene.SHINSHI_TOWN
+                + Constants.Scene.EXTENSION, OpenSceneMode.Single);
+            yield return new EnterPlayMode();
+            yield return null;
+
+            Scene scene = SceneManager.GetActiveScene();
+            HudMenuDropdown menu = InScene<HudMenuDropdown>(scene);
+            HotkeyRouter router = InScene<HotkeyRouter>(scene);
+            Button menuButton = Reference<Button>(menu, "_menuButton");
+            RectTransform panel = Reference<RectTransform>(menu, "_panel");
+            string[] names = { "인벤토리", "경매장", "우편함", "캐릭터 정보", "특성" };
+            EHotkeyAction[] actions = { EHotkeyAction.Inventory, EHotkeyAction.AuctionHouse, EHotkeyAction.MailBox,
+                EHotkeyAction.CharacterInfo, EHotkeyAction.CharacterInfo };
+            for (int i = 0; i < names.Length; ++i)
+            {
+                menuButton.onClick.Invoke();
+                yield return null;
+                ClickWithRaycast(MenuButton(panel, names[i]));
+                yield return null;
+                HotkeyWindowToggle toggle = Window(router, actions[i]);
+                Assert.That(toggle.IsOpen, Is.True, names[i]);
+                if (actions[i] == EHotkeyAction.CharacterInfo)
+                {
+                    Assert.That(Reference<GameObject>(InScene<CharDetailView>(scene), "_previewStage").activeSelf, Is.True);
+                }
+                Assert.That(panel.gameObject.activeSelf, Is.False, names[i]);
+                Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+                Assert.That(toggle.IsOpen, Is.False, names[i]);
+                if (actions[i] == EHotkeyAction.CharacterInfo)
+                {
+                    Assert.That(Reference<GameObject>(InScene<CharDetailView>(scene), "_previewStage").activeSelf, Is.False);
+                }
+                Assert.That(panel.gameObject.activeSelf, Is.False);
+            }
+
+            menuButton.onClick.Invoke();
+            yield return null;
+            yield return CaptureIfRequested("release-town-menu.png");
+            ClickWithRaycast(MenuButton(panel, "환경설정"));
+            yield return null;
+            SettingsView settings = InScene<SettingsView>(scene);
+            Assert.That(settings.gameObject.activeInHierarchy, Is.True);
+            yield return CaptureIfRequested("release-town-settings.png");
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(settings.gameObject.activeSelf, Is.False);
+            Assert.That(panel.gameObject.activeSelf, Is.False);
+
+            menuButton.onClick.Invoke();
+            yield return null;
+            ClickWithRaycast(MenuButton(panel, "게임 종료"));
+            yield return null;
+            var popup = (ConfirmPopupView)new SerializedObject(InScene<UiPopupHub>(scene))
+                .FindProperty("_confirms").GetArrayElementAtIndex((int)EPopupSize.Small).objectReferenceValue;
+            Assert.That(popup.gameObject.activeInHierarchy, Is.True);
+            Reference<Button>(popup, "_cancelButton").onClick.Invoke();
+            Assert.That(popup.gameObject.activeSelf, Is.False);
+
+            menuButton.onClick.Invoke();
+            yield return null;
+            ClickWithRaycast(MenuButton(panel, "캐릭터 선택"));
+            yield return null;
+            Assert.That(popup.gameObject.activeInHierarchy, Is.True);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(popup.gameObject.activeSelf, Is.False);
+            Assert.That(panel.gameObject.activeSelf, Is.False);
+            yield return new ExitPlayMode();
+        }
+
+        [UnityTest]
+        public IEnumerator CharacterPreview_LocalCharacterChanges_ReplacesLookAndHidesOnDisconnect()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            yield return new EnterPlayMode();
+            var stage = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/02.Prefab/UI/Windows/PF_CharDetailPreviewStage.prefab"));
+            stage.SetActive(true);
+            Assert.That(stage.transform.Find("무사 미리보기"), Is.Null);
+            var player = new GameObject("PreviewTestPlayer");
+            var identity = player.AddComponent<NetworkIdentity>();
+            var combat = player.AddComponent<PlayerCombatState>();
+            var localProperty = typeof(NetworkClient).GetProperty(nameof(NetworkClient.localPlayer));
+            var appearanceField = typeof(PlayerCombatState).GetField("_appearance",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            localProperty.SetValue(null, identity);
+            var preview = stage.GetComponent<PlayerFemaleLookPreviewView>();
+            Transform model = stage.transform.Find("CurrentCharacter");
+            for (int body = 0; body <= 1; ++body)
+            {
+                var appearance = CharacterAppearanceCatalog.CreateP09(body, 1, 1, 1, 1, 1, 0, body == 0 ? 2 : 0, 31);
+                appearanceField.SetValue(combat, appearance);
+                yield return null;
+                yield return null;
+                Assert.That(preview.IsReady, Is.True, preview.LastError);
+                Assert.That(preview.Look.BodyType, Is.EqualTo(body));
+                Assert.That(model.gameObject.activeSelf, Is.True);
+                CapturePreview(stage, "character-info-body-" + body + ".png");
+            }
+            localProperty.SetValue(null, null);
+            yield return null;
+            Assert.That(model.gameObject.activeSelf, Is.False);
+            Object.Destroy(player);
+            Object.Destroy(stage);
+            yield return null;
+            yield return new ExitPlayMode();
+        }
+
+        private static void CapturePreview(GameObject stage, string name)
+        {
+            string directory = System.Environment.GetEnvironmentVariable("SHINSHI_UI_CAPTURE_DIR");
+            if (string.IsNullOrEmpty(directory))
+            {
+                return;
+            }
+            Camera camera = stage.GetComponentInChildren<Camera>();
+            camera.Render();
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture.active = camera.targetTexture;
+            var texture = new Texture2D(camera.targetTexture.width, camera.targetTexture.height, TextureFormat.RGBA32, false);
+            texture.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
+            texture.Apply();
+            System.IO.Directory.CreateDirectory(directory);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(directory, name), texture.EncodeToPNG());
+            Object.Destroy(texture);
+            RenderTexture.active = previous;
+        }
+
+        private static IEnumerator CaptureIfRequested(string name)
+        {
+            string directory = System.Environment.GetEnvironmentVariable("SHINSHI_UI_CAPTURE_DIR");
+            if (!string.IsNullOrEmpty(directory))
+            {
+                System.IO.Directory.CreateDirectory(directory);
+                ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(directory, name));
+                yield return null;
+                yield return null;
+            }
+        }
+
+        private static void ClickWithRaycast(Button button)
+        {
+            Canvas.ForceUpdateCanvases();
+            var rect = (RectTransform)button.transform;
+            var pointer = new PointerEventData(EventSystem.current)
+            {
+                position = RectTransformUtility.WorldToScreenPoint(null, rect.TransformPoint(rect.rect.center)),
+                button = PointerEventData.InputButton.Left,
+            };
+            var hits = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointer, hits);
+            Assert.That(hits.Count, Is.GreaterThan(0), button.name);
+            GameObject target = ExecuteEvents.GetEventHandler<IPointerClickHandler>(hits[0].gameObject);
+            Assert.That(target, Is.EqualTo(button.gameObject), button.name + " 앞에 다른 UI가 클릭을 가립니다: "
+                + AnimationUtility.CalculateTransformPath(hits[0].gameObject.transform, null));
+            ExecuteEvents.Execute(target, pointer, ExecuteEvents.pointerClickHandler);
+        }
+
+        private static T InScene<T>(Scene scene) where T : Component
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                T component = root.GetComponentInChildren<T>(true);
+                if (component != null)
+                {
+                    return component;
+                }
+            }
+            Assert.Fail(typeof(T).Name + "이 없습니다.");
+            return null;
+        }
+
+        private static T Reference<T>(Object target, string field) where T : Object
+        {
+            return (T)new SerializedObject(target).FindProperty(field).objectReferenceValue;
+        }
+
+        private static Button MenuButton(Transform panel, string name)
+        {
+            foreach (Button button in panel.GetComponentsInChildren<Button>(true))
+            {
+                if (button.name == name)
+                {
+                    return button;
+                }
+            }
+            Assert.Fail(name + " 버튼이 없습니다.");
+            return null;
+        }
+
+        private static HotkeyWindowToggle Window(HotkeyRouter router, EHotkeyAction action)
+        {
+            foreach (HotkeyWindowToggle toggle in router.GetComponents<HotkeyWindowToggle>())
+            {
+                if (new SerializedObject(toggle).FindProperty("_action").intValue == (int)action)
+                {
+                    return toggle;
+                }
+            }
+            Assert.Fail(action + " 창이 없습니다.");
+            return null;
         }
     }
 }
