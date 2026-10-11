@@ -126,24 +126,22 @@ namespace Shinshi.Editor
 
         // 후보 순서대로 시간 예산을 시험하고 처음 통과한 후보만 임시 배정한다. 어느 후보도 통과하지 못하거나 문서 보류면 배정하지 않는다
         private static readonly MotionPlan[] G_ClassPlans = {
-            new MotionPlan(EPlayerClass.Swordsman, true, 0, "기본 1", null, new[] { "CG/Normal/S_Attack_1" }),
-            new MotionPlan(EPlayerClass.Swordsman, true, 1, "기본 2", null, new[] { "CG/Normal/S_Attack_2" }),
-            new MotionPlan(EPlayerClass.Swordsman, true, 2, "기본 3", null, new[] { "CG/Normal/S_Attack_3" }),
-            new MotionPlan(EPlayerClass.Swordsman, false, 0, "KS01 넓게 베기", HOLD_KS01, new[] { "CG/Special/S_Sp_Skill_1" }),
-            new MotionPlan(EPlayerClass.Swordsman, false, 1, "KS02 돌진 베기", HOLD_KS02,
-                new[] { "CG/Special/S_QuickShift_F", "CG/Normal/S_Attack_3" }),
-            new MotionPlan(EPlayerClass.Swordsman, false, 2, "KS03 집중 베기", HOLD_KS03, new[] { "CG/Special/S_Sp_Skill_3" }),
-            new MotionPlan(EPlayerClass.Swordsman, false, 3, "KS04 연환참", HOLD_KS04,
-                new[] { "CG/Normal/S_Attack_2", "CG/Normal/S_Attack_3" }),
+            new MotionPlan(EPlayerClass.Swordsman, true, 0, "기본 1", null, new[] { "CUT/SwordAttack1" }),
+            new MotionPlan(EPlayerClass.Swordsman, true, 1, "기본 2", null, new[] { "CUT/SwordAttack2" }),
+            new MotionPlan(EPlayerClass.Swordsman, true, 2, "기본 3", null, new[] { "CUT/SwordAttack3" }),
+            new MotionPlan(EPlayerClass.Swordsman, false, 0, "KS01 넓게 베기", null, new[] { "CUT/SwordWide" }),
+            new MotionPlan(EPlayerClass.Swordsman, false, 1, "KS02 돌진 베기", null, new[] { "CUT/SwordDash" }),
+            new MotionPlan(EPlayerClass.Swordsman, false, 2, "KS03 집중 베기", null, new[] { "CUT/SwordFocus" }),
+            new MotionPlan(EPlayerClass.Swordsman, false, 3, "KS04 연환참", null,
+                new[] { "CUT/SwordChain1", "CUT/SwordChain2" }),
 
-            new MotionPlan(EPlayerClass.Mageknight, true, 0, "기본 1", null, new[] { "MK/AttackSword01_inplace.fbx" }),
-            new MotionPlan(EPlayerClass.Mageknight, true, 1, "기본 2", null, new[] { "MK/AttackSword02_inplace.fbx" }),
-            new MotionPlan(EPlayerClass.Mageknight, true, 2, "기본 3", null, new[] { "MK/AttackSword03_inplace.fbx" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 0, "MK01 마력검격", null, new[] { "MK/AttackSword04_inplace.fbx" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 1, "MK02 화염검진", null, new[] { "MK/AttackEnergy03_inplace.fbx" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 2, "MK03 봉인검격", null,
-                new[] { "MK/AttackSword05_inplace.fbx" }, new[] { "MK/AttackEnergy02_inplace.fbx" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 3, "MK04 뇌광검파", null, new[] { "MK/AttackEnergy06_inplace.fbx" }),
+            new MotionPlan(EPlayerClass.Mageknight, true, 0, "기본 1", null, new[] { "CUT/MageAttack1" }),
+            new MotionPlan(EPlayerClass.Mageknight, true, 1, "기본 2", null, new[] { "CUT/MageAttack2" }),
+            new MotionPlan(EPlayerClass.Mageknight, true, 2, "기본 3", null, new[] { "CUT/MageAttack3" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 0, "MK01 마력검격", null, new[] { "CUT/MageArcane" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 1, "MK02 화염검진", null, new[] { "CUT/MageField" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 2, "MK03 봉인검격", null, new[] { "CUT/MageSeal" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 3, "MK04 뇌광검파", null, new[] { "CUT/MageWave" }),
 
             new MotionPlan(EPlayerClass.Archer, true, 0, "기본 단발", null,
                 new[] { "AR/1__1Shoot/Inplace/Archer@Attack_1Shoot_Start.FBX", "AR/1__1Shoot/Inplace/Archer@Attack_1Shoot_Loop.FBX",
@@ -152,8 +150,8 @@ namespace Shinshi.Editor
                 new[] { "AR/5__RapidShot/Archer@Attack_RapidShot_Start.FBX", "AR/5__RapidShot/Archer@Attack_RapidShot_Shoot_Loop.FBX",
                         "AR/5__RapidShot/Archer@Attack_RapidShot_Shoot_Loop.FBX", "AR/5__RapidShot/Archer@Attack_RapidShot_Shoot_Loop.FBX",
                         "AR/5__RapidShot/Archer@Attack_RapidShot_End.FBX" }),
-            new MotionPlan(EPlayerClass.Archer, false, 1, "AR02 후퇴사격", null, new[] { "AR/9__Dodge_Shot/Archer@Attack_Dodge_Shot.FBX" }),
-            new MotionPlan(EPlayerClass.Archer, false, 2, "AR03 관통시위", HOLD_AR_E, new[] { "AR/4__ChargeShot/Inplace/Archer@Attack_ChargeShot_1_Start.FBX" }),
+            new MotionPlan(EPlayerClass.Archer, false, 1, "AR02 후퇴사격", null, new[] { "CUT/ArcherRetreat" }),
+            new MotionPlan(EPlayerClass.Archer, false, 2, "AR03 관통시위", null, new[] { "CUT/ArcherPiercing" }),
             new MotionPlan(EPlayerClass.Archer, false, 3, "AR04 산개사격", null, new[] { "AR/1__1Shoot/Inplace/Archer@Attack_1Shoot_ALL.FBX" }) };
 
         /****************************************
@@ -862,6 +860,7 @@ namespace Shinshi.Editor
             }
 
             EnsureFolder(CLASS_CLIP_FOLDER);
+            ReleaseMotionClips.Build();
 
             var results = new List<PlanResult>();
             for (int i = 0; i < G_ClassPlans.Length; ++i)
@@ -1150,6 +1149,11 @@ namespace Shinshi.Editor
         {
             fbxPath  = null;
             clipPath = null;
+            if (key.StartsWith("CUT/", StringComparison.Ordinal))
+            {
+                clipPath = CLASS_CLIP_FOLDER + "/AN_Release_" + key.Substring(4) + ".anim";
+                return true;
+            }
             if (key.StartsWith(KEY_BASE, StringComparison.Ordinal))
             {
                 clipPath = CLIP_FOLDER + "/" + CLIP_PREFIX + Path.GetFileName(key.Substring(KEY_BASE.Length)) + ".anim";
@@ -1183,7 +1187,8 @@ namespace Shinshi.Editor
                 return null;
             }
 
-            return (fbxPath == null) ? AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath) : FindSourceClip(fbxPath);
+            return (fbxPath == null) ? AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath)
+                : FindSourceClip(fbxPath) ?? AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
         }
 
         // 합계 길이와 루트 XZ 이동 추정(평균 속도 x 길이)을 잰다. 루트 이동은 보고용이며 판정에 쓰지 않는다
@@ -1219,7 +1224,8 @@ namespace Shinshi.Editor
                     return null;
                 }
 
-                clips[i] = (fbxPath == null) ? AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath) : CopyClipAt(fbxPath, clipPath, false);
+                clips[i] = (fbxPath == null) ? AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath)
+                    : CopyClipAt(fbxPath, clipPath, false) ?? AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
                 if (clips[i] == null)
                 {
                     return null;

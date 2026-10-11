@@ -1,5 +1,9 @@
 # 캐릭터·애니메이션 개편 — 검사·마검사·궁수
 
+## 2026-10-10 출시 연결 보완
+
+출시 `PF_NetPlayer`는 `PlayerAppearanceCatalog_Classes`와 `PlayerCombatAnimationProfile_Classes`를 사용한다. `ReleaseMotionClips`가 프로젝트에 설치된 원본과 기존 사본에서 30fps 구간 클립을 만들고, `PlayerP09AssetBuilder`가 기본 공격·QWER 19개 동작을 모두 연결한다. 궁수 W/E는 기존 사격 클립의 구간을 재사용하며 이동은 서버 전투 상태를 따른다. 아래 2026-10-08의 보류 목록은 당시 전체 길이 후보의 조사 기록이다.
+
 > 기준일: 2026-10-08. 사용자 확정: 검사·마검사·궁수(세 번째 직업). 후속 요청으로 서버 전투·부적·저장 계약과 별도 애니메이션 생성기를 구현했다. 아래 모션 배정은 초기안이며 실제 생성에서 19후보 중 궁수 기본/Q/R 3개만 정적 시간 예산을 통과했다. 나머지 16개는 보류다. 기존 게임 프리팹 연결·실제 재생 검증은 미적용이며 [구현 로드맵](../05-implementation-roadmap.md#2026-10-08-세-직업-구현과-검증)에 검증 범위를 기록한다.
 
 [게임 디자인](../02-game-design.md) · [전투 규칙](combat-design.md) · [부적 목록](talisman-catalog.md) · [P09 외형 계약](../unity/CHARACTER_CUSTOMIZATION.md) · [설치·권리 대장](../licenses/ASSET_REGISTRY.md).

@@ -29,8 +29,8 @@ namespace Shinshi.Art
         public const int SKILL_COUNT  = 7;
         public const int HIT_COUNT    = 2;
 
-        public const int MAX_ATTACK_ACTIONS = 8;
-        public const int MAX_SKILL_ACTIONS  = 16;
+        public const int MAX_ATTACK_ACTIONS = 16;
+        public const int MAX_SKILL_ACTIONS  = 32;
         public const int MAX_SEGMENTS       = 6;
 
         [Serializable]

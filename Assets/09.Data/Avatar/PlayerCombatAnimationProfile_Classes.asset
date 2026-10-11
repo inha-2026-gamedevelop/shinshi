@@ -97,18 +97,76 @@ MonoBehaviour:
     _kind: 1
     _slot: 2
     _actionIndex: 5
-  - _playerClass: 5
+  - _playerClass: 3
     _kind: 0
     _slot: 0
     _actionIndex: 7
+  - _playerClass: 3
+    _kind: 0
+    _slot: 1
+    _actionIndex: 8
+  - _playerClass: 3
+    _kind: 0
+    _slot: 2
+    _actionIndex: 9
+  - _playerClass: 3
+    _kind: 0
+    _slot: 3
+    _actionIndex: 10
+  - _playerClass: 4
+    _kind: 0
+    _slot: 0
+    _actionIndex: 11
+  - _playerClass: 4
+    _kind: 0
+    _slot: 1
+    _actionIndex: 12
+  - _playerClass: 4
+    _kind: 0
+    _slot: 2
+    _actionIndex: 13
+  - _playerClass: 4
+    _kind: 0
+    _slot: 3
+    _actionIndex: 14
+  - _playerClass: 5
+    _kind: 0
+    _slot: 0
+    _actionIndex: 15
+  - _playerClass: 5
+    _kind: 0
+    _slot: 1
+    _actionIndex: 16
+  - _playerClass: 5
+    _kind: 0
+    _slot: 2
+    _actionIndex: 17
   - _playerClass: 5
     _kind: 0
     _slot: 3
-    _actionIndex: 8
+    _actionIndex: 18
   _attacks:
-  - _playerClass: 5
+  - _playerClass: 3
     _step: 0
     _actionIndex: 3
+  - _playerClass: 3
+    _step: 1
+    _actionIndex: 4
+  - _playerClass: 3
+    _step: 2
+    _actionIndex: 5
+  - _playerClass: 4
+    _step: 0
+    _actionIndex: 6
+  - _playerClass: 4
+    _step: 1
+    _actionIndex: 7
+  - _playerClass: 4
+    _step: 2
+    _actionIndex: 8
+  - _playerClass: 5
+    _step: 0
+    _actionIndex: 9
   _attackIntervals:
   - _playerClass: 3
     _seconds: 0.9
@@ -120,13 +178,17 @@ MonoBehaviour:
     _seconds: 0.95
     _comboResetSeconds: 0
   _attackSegments:
-  - _actionIndex: 3
+  - _actionIndex: 9
     _lengths:
     - 0.4666667
     - 0.53333336
     - 0.16666667
   _skillSegments:
-  - _actionIndex: 7
+  - _actionIndex: 10
+    _lengths:
+    - 0.6
+    - 0.44000003
+  - _actionIndex: 15
     _lengths:
     - 0.23333335
     - 0.33333334
@@ -137,6 +199,12 @@ MonoBehaviour:
   - 1.4000001
   - 1.4000001
   - 2.1666667
+  - 1.25
+  - 1.2
+  - 1.3
+  - 1.25
+  - 1.25
+  - 1
   - 1.1666666
   _skillClipLengths:
   - 4
@@ -146,7 +214,17 @@ MonoBehaviour:
   - 1
   - 1.4000001
   - 1.4000001
+  - 0.59999996
+  - 0.75
+  - 1.2
+  - 1.0400001
+  - 0.6
+  - 0.65
+  - 0.65
+  - 1.2
   - 1.5666668
+  - 0.9666667
+  - 1.0666667
   - 1.0666667
   _hitClipLengths:
   - 1.4666667
