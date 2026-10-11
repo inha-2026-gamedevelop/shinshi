@@ -889,8 +889,12 @@ namespace Shinshi.Combat
         }
 
         // 보스전 출정이 진행되는 첫 틱에 한 번만 시도한다. 보스 체력과 피해 배율은 출정 시작 때 고정되므로 그 전에는 만들 수 없다.
-        // 데이터가 비어 전투를 열 수 없으면 보스 없이 진행한다. 개발 빌드는 TryCompleteBossForDevelopment로 끝낼 수 있다
-        // TODO(기웅): 출시 전에 보스를 만들지 못한 보스전을 서비스 취소로 끝낼지 정한다
+        // 이지는 데이터가 비어 전투를 열 수 없으면 보스 없이 진행한다. 개발 빌드는 TryCompleteBossForDevelopment로 끝낼 수 있다
+        // 하드는 보스 없이 진행하지 않는다: 출정 준비 검사(BossServer.IsSortieReady)가 거짓이거나 보스를 만들지, 열지, 등록하지 못하면
+        // 서비스 취소(ServiceCancelled)로 끝낸다. 하드 2페이즈 일부가 표시 수신처 없이 준비되지 않았기 때문이다
+        // 취소는 이 틱 안에서 부른다: 세션 취소는 진행 중이고 시각이 BeginTick에 준 틱 시각과 같을 때만 받으므로 Step이 넘긴 serverTime을 그대로 쓴다.
+        // 취소로 명단이 닫혀도 DiscardClosedParticipants가 이 호출 바로 뒤에서 정리한다
+        // TODO(기웅): 이지에서 보스를 만들지 못한 보스전도 출시 전에 서비스 취소로 끝낼지 정한다
         // TODO(기웅, 진욱): 던전 씬의 보스 생성 지점이 정해지면 원점 대신 그 위치와 방향을 쓴다
         private void TrySpawnBoss(double serverTime)
         {
@@ -906,13 +910,15 @@ namespace Shinshi.Combat
             }
 
             // 보스전 계약이면 계약 보스, 아니면 실행 설정 기본 보스다. 계약 보스는 호스트가 입장 때 카탈로그에 있는지 확인했다
-            // TODO(기웅): 난이도(쉬움, 어려움)별 보스 능력치 차이가 기획에 생기면 _host.BossDifficulty를 보스 생성에 넘긴다.
-            // 지금 난이도는 보상 표(RewardCatalogSO.BossRewards)만 고른다(docs/design/growth-economy.md 보스 보상)
-            string bossId = BossId;
+            // 난이도는 패턴 카탈로그의 정의 집합(이지, 하드 패턴)과 하드 차단을 고른다. 보스 능력치는 난이도로 바꾸지 않고(기획 미정),
+            // 보상 표(RewardCatalogSO.BossRewards)는 호스트가 따로 난이도로 고른다(docs/design/growth-economy.md 보스 보상)
+            string          bossId     = BossId;
+            EBossDifficulty difficulty = _host.BossDifficulty;
 
             if (!GameDB.IsInitialized)
             {
                 Debug.LogError("[Boss] GameDB 초기화 전이라 보스를 만들지 않는다");
+                CancelHardSortie(difficulty, serverTime, "GameDB 초기화 전");
                 return;
             }
 
@@ -920,6 +926,7 @@ namespace Shinshi.Combat
             if (!progression.TryGetRegion(Constants.Combat.DEV_BOSS_REGION_ID, out ProgressionCatalogSO.RegionDefinition region))
             {
                 Debug.LogError($"[Boss] 전장 지역이 없어 보스를 만들지 않는다, region={Constants.Combat.DEV_BOSS_REGION_ID}");
+                CancelHardSortie(difficulty, serverTime, "전장 지역 없음");
                 return;
             }
 
@@ -929,6 +936,7 @@ namespace Shinshi.Combat
             {
                 Debug.LogError($"[Boss] 기준값이나 인원 배율이 0이라 보스를 만들지 않는다, Aref={referenceAttack}, " +
                     $"Href={referenceHealth}, health={BossHealthScale}, damage={DamageScale}");
+                CancelHardSortie(difficulty, serverTime, "기준값이나 인원 배율이 0");
                 return;
             }
 
@@ -937,25 +945,53 @@ namespace Shinshi.Combat
             Vector3 spawnForward  = Vector3.forward;
             var boss = new BossServer(bossId, _registry.IssueCombatId(), spawnPosition, spawnForward,
                 spawnPosition, referenceAttack, referenceHealth, BossHealthScale,
-                new BossPatternCatalogSource(GameDB.BossPatterns), _registry, new BossDamageScaler(_skillResolver, DamageScale),
-                new BossTerrainProbe(_obstacleMask), new SeededBossRandom(_sessionEpoch));
+                new BossPatternCatalogSource(GameDB.BossPatterns, difficulty), _registry,
+                new BossDamageScaler(_skillResolver, DamageScale), new BossTerrainProbe(_obstacleMask),
+                new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster));
+
+            // 이지는 준비되지 않은 정의가 있어도 기존처럼 연다(팩토리가 만들지 못한 패턴은 두뇌가 건너뛴다). 하드는 모든 정의가 준비돼야 연다
+            if ((difficulty == EBossDifficulty.Hard) && (!boss.IsSortieReady(out string notReadyReason)))
+            {
+                Debug.LogError($"[Boss] 하드 출정 준비가 안 돼 보스를 만들지 않는다, boss={bossId}, {notReadyReason}");
+                CancelHardSortie(difficulty, serverTime, "하드 출정 준비 안 됨");
+                return;
+            }
 
             if (!boss.Begin(serverTime))
             {
                 Debug.LogError($"[Boss] 보스 전투를 열지 못해 보스 없이 진행한다, boss={bossId}");
+                CancelHardSortie(difficulty, serverTime, "보스 전투를 열지 못함");
                 return;
             }
 
             if (!_registry.Register(boss))
             {
                 Debug.LogError($"[Boss] 전투 대상 등록이 거절돼 보스 없이 진행한다, boss={bossId}");
+                CancelHardSortie(difficulty, serverTime, "전투 대상 등록 거절");
                 return;
             }
 
             _boss = boss;
             SpawnBossObject();
-            Debug.Log($"[Boss] 보스 전투 시작, boss={bossId}, combatId={boss.CombatId}, " +
+            Debug.Log($"[Boss] 보스 전투 시작, boss={bossId}, difficulty={difficulty}, combatId={boss.CombatId}, " +
                 $"maxHealth={boss.MaxHealth}");
+        }
+
+        // 하드에서만 부른 쪽의 실패를 출정 취소로 바꾼다. 이지는 아무것도 하지 않아 보스 없이 진행하는 기존 동작을 지킨다
+        private void CancelHardSortie(EBossDifficulty difficulty, double serverTime, string reason)
+        {
+            if (difficulty != EBossDifficulty.Hard)
+            {
+                return;
+            }
+
+            if (_host.CancelSortieService(serverTime))
+            {
+                Debug.LogError($"[Boss] 하드 출정을 서비스 취소로 끝낸다, reason={reason}");
+                return;
+            }
+
+            Debug.LogError($"[Boss] 하드 출정 서비스 취소가 거절됐다, reason={reason}, sessionRunning={_host.IsSessionRunning}");
         }
 
         /// <summary> 서버를 열기 전에 한 번 부른다, 연결하지 않으면 보스 판정은 돌지만 클라이언트에 보스와 공격이 보이지 않는다 </summary>

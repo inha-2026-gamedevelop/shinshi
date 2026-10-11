@@ -1,5 +1,7 @@
 // System
 using System;
+using System.Collections.Generic;
+using System.Text;
 
 // Unity
 using UnityEngine;
@@ -32,12 +34,17 @@ namespace Shinshi.Combat
     // 패턴 팩토리는 보스 ID로 고른다. 무철은 패턴 없는 팩토리라 수치가 지정돼도 선택할 패턴이 없다.
     // 50% 전환 뒤 인계 대기는 월백이면 결계 전개(BossBarrierDirector)가 끝날 때까지 이어지고, 결계가 없는 보스는 다음 틱에 바로 끝난다.
     // 결계 위험 구역은 완료 뒤에도 사망이나 전투 종료까지 남아 2페이즈 동안 피해를 낸다
+    //
+    // 순간 이동(IBossWarp)의 최종 권한도 이 몸체다. 착지 검사는 전장 경계, 정적 지형(IBossStandQuery), 살아 있는 플레이어와 소환물의 몸체
+    // 순서이고 TryWarp가 패턴의 사전 검사를 믿지 않고 다시 한다. 경로 검사는 길찾기가 아니라 정적 지형을 향한 직선 한 번이다.
+    // 출정 준비 검사(IsSortieReady)는 1, 2페이즈의 모든 정의가 데이터 지정과 생성 연결을 마쳤는지 본다.
+    // 하드 난이도는 이 검사를 통과해야만 출정을 연다(CombatServerRuntime). 연결하지 않은 표시 수신처의 패턴은 만들 수 있다고 답하지 않는다
     /// <summary> 서버의 보스 개체, 피해를 받고 두뇌에 체력과 직접 제어를 넘기며 몸체 이동과 공격 사건 전달을 맡는다 </summary>
     public sealed class BossServer : IDamageable, ISkillControlTarget, IBossVitals, IBossControlSource, IBossMovement,
         IBossFanTelegraphListener, IBossCircleTelegraphListener, IBossLineTelegraphListener, IBossDashTelegraphListener,
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
         IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
-        IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener
+        IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp
     {
         /****************************************
         *                Fields
@@ -46,6 +53,11 @@ namespace Shinshi.Combat
         private const float ROOT_DURATION_SCALE = 1f;
         private const float DIRECTION_EPSILON   = 0.0001f;
         private const float HALF                = 0.5f;
+        private const float PATH_EPSILON        = 0.001f; // m, 스윕 거리가 목표에 닿았는지 보는 부동소수 여유
+
+        // 출정 준비 검사가 보는 페이즈 범위, 월백은 2페이즈까지다
+        private const int SORTIE_FIRST_PHASE = 1;
+        private const int SORTIE_LAST_PHASE  = 2;
 
         // 결계 전개를 쓰는 보스, 결계 설정이 카탈로그로 옮겨지면 정의 값으로 고른다
         private const string BARRIER_BOSS_ID = "boss_wolbaek";
@@ -57,6 +69,10 @@ namespace Shinshi.Combat
         private readonly float                 _maxHealth;
         private readonly float                 _defense;
         private readonly IBossWallQuery        _terrain;
+        private readonly IBossStandQuery       _standQuery;   // 지형이 겹침 검사를 지원할 때만 있다
+        private readonly ICombatTargetQuery    _targets;
+        private readonly IBossPatternCatalog   _catalog;
+        private readonly List<ICombatTarget>   _standBuffer;  // 착지 검사가 틱마다 불려도 할당하지 않도록 재사용한다
         private readonly BossProjectileManager _projectiles;
         private readonly BossAreaManager       _areas;
         private readonly BossBeamManager       _beams;
@@ -152,6 +168,10 @@ namespace Shinshi.Combat
         // 살아 있고 전투 중일 때만 몸체가 움직인다. 취소, 사망, 종료 뒤에 늦게 온 이동 요청은 무시한다
         private bool CanMove => (_lifeState == EParticipantLifeState.Alive) && (_brain.FlowState == EBossFlowState.Combat);
 
+        // 하드 2페이즈 P01(단계형 별 빔)의 표시 수신처(IBossStarStageListener) 연결 여부다. 이 서버는 아직 구현해 넘기지 않아 거짓이고,
+        // 팩토리가 수신처 없이도 P01을 만들 수 있다고 답하므로(보이지 않는 피해) CanCreatePattern이 이 값으로 막는다
+        private static bool HasStarStageListener => false;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -160,10 +180,12 @@ namespace Shinshi.Combat
         // arenaCenter는 원형 전장의 중심이고 반경은 보스 정의의 전장 지름에서 읽는다. terrain은 정적 지형 벽 검사이며
         // 비우면 전장 경계만 본다. targets는 패턴과 지속물 관리자가 함께 쓰는 전투 대상 조회다.
         // barrierSettings는 결계 전개를 쓰는 보스(월백)의 설정이고 비우면 임시 기본값이다. 다른 보스에는 쓰지 않는다
+        // connections는 전투 번호의 현재 접속 상태를 답하는 입력이고, 하드 2페이즈 P04(추적 장판)가 접속한 대상만 고르는 데 쓴다. 비우면 그 패턴을 만들지 않는다
         public BossServer(string bossId, int combatId, Vector3 position, Vector3 forward, Vector3 arenaCenter,
             float referenceAttack, float referenceHealth, float healthScale,
             IBossPatternCatalog catalog, ICombatTargetQuery targets, IDamageResolver damage,
-            IBossWallQuery terrain, IBossRandom random, BossBarrierSettings barrierSettings = null)
+            IBossWallQuery terrain, IBossRandom random, BossBarrierSettings barrierSettings = null,
+            IBossParticipantConnection connections = null)
         {
             if (string.IsNullOrEmpty(bossId))
             {
@@ -196,6 +218,10 @@ namespace Shinshi.Combat
             _forward     = Flatten(forward, Vector3.forward);
             _arenaCenter = arenaCenter;
             _terrain     = terrain;
+            _standQuery  = terrain as IBossStandQuery;
+            _targets     = targets;
+            _catalog     = catalog;
+            _standBuffer = new List<ICombatTarget>(Constants.Combat.MAX_COMBAT_TARGETS);
 
             // 정의가 없거나 수치가 비어 있으면 최대 체력 0으로 남고 Begin이 거절한다
             if (catalog.TryGetBoss(bossId, out BossDefinition boss))
@@ -213,7 +239,7 @@ namespace Shinshi.Combat
             _areas       = new BossAreaManager(targets, this);
             _beams       = new BossBeamManager(targets, this);
             _stars       = new BossStarManager(targets, this);
-            _patterns    = CreatePatterns(bossId, referenceHealth);
+            _patterns    = CreatePatterns(bossId, referenceHealth, connections);
 
             // 결계 피해는 패턴과 같은 피해 경로(damage)로 나가고 기준 체력도 패턴과 같은 Href다
             if (bossId == BARRIER_BOSS_ID)
@@ -281,7 +307,66 @@ namespace Shinshi.Combat
         /// <summary> 패턴 정의를 이 몸체의 팩토리가 만들 수 있는지, 2페이즈 창구 연결 확인과 진단용이다 </summary>
         public bool CanCreatePattern(PatternDefinition definition)
         {
+            // 팩토리는 하드 P01을 별 단계 수신처 없이도 만든다고 답하지만 그러면 표시 없이 피해가 나간다. 수신처가 연결되기 전에는 거짓으로 막는다
+            if ((definition != null) && (definition.DefinitionId == WolbaekPatternFactory.HARD_P2_P01_ID)
+                && (!HasStarStageListener))
+            {
+                return false;
+            }
+
             return (_patterns is IBossPatternAvailability availability) && (availability.CanCreate(definition));
+        }
+
+        // 출정 시작 때 한 번만 부르므로 목록과 문자열을 만든다. 카탈로그가 난이도로 걸러 모은 1, 2페이즈 정의를 모두 본다:
+        // 각 페이즈에 정의가 하나 이상, 카탈로그가 데이터 준비를 답하면(IBossPatternReadiness) 모두 준비됨, 그리고 모두 이 몸체가 만들 수 있어야 한다
+        /// <summary> 이 보스로 출정을 열 수 있는가, 거짓이면 부족한 페이즈와 정의 ID를 reason에 담는다 </summary>
+        public bool IsSortieReady(out string reason)
+        {
+            var                   definitions = new List<PatternDefinition>();
+            IBossPatternReadiness readiness   = _catalog as IBossPatternReadiness;
+            StringBuilder         builder     = null;
+
+            for (int phase = SORTIE_FIRST_PHASE; phase <= SORTIE_LAST_PHASE; ++phase)
+            {
+                _catalog.CollectPatterns(_bossId, phase, definitions);
+                if (definitions.Count == 0)
+                {
+                    builder = BeginFailure(builder);
+                    builder.Append("phase ").Append(phase).Append(": 정의 없음");
+                    continue;
+                }
+
+                for (int i = 0; i < definitions.Count; ++i)
+                {
+                    PatternDefinition definition = definitions[i];
+                    bool              isReady    = (readiness == null) || (readiness.IsPatternReady(_bossId, definition));
+                    bool              canCreate  = CanCreatePattern(definition);
+                    if ((isReady) && (canCreate))
+                    {
+                        continue;
+                    }
+
+                    builder = BeginFailure(builder);
+                    builder.Append("phase ").Append(phase).Append(' ').Append(definition.DefinitionId).Append(": ");
+                    if (!isReady)
+                    {
+                        builder.Append("데이터 미지정");
+                    }
+
+                    if ((!isReady) && (!canCreate))
+                    {
+                        builder.Append(", ");
+                    }
+
+                    if (!canCreate)
+                    {
+                        builder.Append("생성 불가");
+                    }
+                }
+            }
+
+            reason = (builder == null) ? string.Empty : builder.ToString();
+            return builder == null;
         }
 
         /// <summary> 늦은 접속 진단용 결계 현재 값, 결계가 없거나 예고 전, 정리 뒤에는 거짓이다 </summary>
@@ -386,6 +471,124 @@ namespace Shinshi.Combat
             Vector3 direction = delta / distance;
             _position = from + (direction * GetClearDistance(from, direction, distance, bodyRadius));
             return _position;
+        }
+
+        /****************************************
+        *                Warp
+        ****************************************/
+
+        // 전장 경계(몸체 반경만큼 안쪽), 정적 지형, 살아 있는 플레이어와 소환물 몸체 순서로 보고 앞 검사에서 걸리면 뒤는 하지 않는다.
+        // 지형 쪽은 IBossStandQuery일 때만 본다(스윕은 시작부터 겹친 벽을 못 잡는다)
+        public bool CanStandAt(Vector3 point)
+        {
+            // NaN, 무한대는 아래 비교가 모두 거짓이 되어 통과하지만 위치에 들어가면 안 되므로 먼저 거른다
+            float sum = point.x + point.y + point.z;
+            if ((float.IsNaN(sum)) || (float.IsInfinity(sum)))
+            {
+                return false;
+            }
+
+            if (!IsInsideStandArea(point))
+            {
+                return false;
+            }
+
+            if ((_standQuery != null) && (!_standQuery.CanStand(point, BodyRadius)))
+            {
+                return false;
+            }
+
+            return !OverlapsOtherBody(point);
+        }
+
+        // 길찾기(NavMesh)가 아니라 정적 지형을 향한 직선 검사다. 서버 NavMesh는 플레이어, 동료 이동용이고 보스 몸체 크기와 틱 예산이 정해져 있지 않다.
+        // 호출당 스윕 한 번이다. 목표 위치는 대상(플레이어)이 서 있는 자리라 몸체 반경만큼 못 미친 곳까지 닿으면 도달로 본다.
+        // 전장 경계는 출발점만 본다: 원은 볼록이라 안쪽 두 점 사이 직선이 밖으로 나가지 않고, 경계에 붙은 대상까지 경로를 경계로 막을 이유가 없다
+        public bool HasPath(Vector3 from, Vector3 to)
+        {
+            if (!IsInsideStandArea(from))
+            {
+                return false;
+            }
+
+            Vector3 delta = to - from;
+            delta.y = 0f;
+            float distance = delta.magnitude;
+            if ((float.IsNaN(distance)) || (float.IsInfinity(distance)))
+            {
+                return false;
+            }
+
+            // 이미 몸체 반경 안이면 더 갈 곳이 없고, 지형 검사가 없으면 막을 것이 없다
+            float reach = distance - BodyRadius;
+            if ((_terrain == null) || (!(reach > PATH_EPSILON)))
+            {
+                return true;
+            }
+
+            float clear = _terrain.GetClearDistance(from, delta / distance, reach, BodyRadius);
+            return clear >= (reach - PATH_EPSILON);
+        }
+
+        // 패턴의 사전 검사를 믿지 않고 여기서 다시 확인한다. 실패하면 위치는 그대로다
+        public bool TryWarp(Vector3 point, out Vector3 landed)
+        {
+            if ((!CanMove) || (!CanStandAt(point)))
+            {
+                landed = _position;
+                return false;
+            }
+
+            _position = point;
+            landed    = _position;
+            return true;
+        }
+
+        // 경계 위는 포함한다. 비교는 거리 제곱으로 해 제곱근을 피한다
+        private bool IsInsideStandArea(Vector3 point)
+        {
+            float   limit  = Mathf.Max(0f, _arenaRadius - BodyRadius);
+            Vector3 offset = new Vector3(point.x - _arenaCenter.x, 0f, point.z - _arenaCenter.z);
+            return offset.sqrMagnitude <= (limit * limit);
+        }
+
+        // 몸체가 겹치는가, 닿기만 한 것은 겹침이 아니다. 조회 반경은 가장 큰 몸체 반경으로 넉넉히 잡고 대상별 반경으로 다시 거른다
+        private bool OverlapsOtherBody(Vector3 point)
+        {
+            _targets.GetLivingInRadius(point, BodyRadius + Constants.Combat.MAX_BODY_RADIUS, ECombatFaction.Player, true,
+                _standBuffer);
+
+            bool overlaps = false;
+            for (int i = 0; i < _standBuffer.Count; ++i)
+            {
+                ICombatTarget other = _standBuffer[i];
+                if (other.CombatId == _combatId)
+                {
+                    continue;
+                }
+
+                float dx     = other.Position.x - point.x;
+                float dz     = other.Position.z - point.z;
+                float minGap = BodyRadius + other.BodyRadius;
+                if (((dx * dx) + (dz * dz)) < (minGap * minGap))
+                {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            _standBuffer.Clear();
+            return overlaps;
+        }
+
+        private static StringBuilder BeginFailure(StringBuilder builder)
+        {
+            if (builder == null)
+            {
+                return new StringBuilder();
+            }
+
+            return builder.Append("; ");
         }
 
         /****************************************
@@ -888,7 +1091,9 @@ namespace Shinshi.Combat
 
         // 보스 ID로 팩토리를 고른다. 무철 외의 ID는 월백 팩토리로 두어 기존 월백 경로와 시험 보스 정의가 그대로 돈다.
         // 무철의 2연타(P05)와 돌진(P06)은 이 서버가 아직 연타 예고, 돌진 구조물 수신자를 구현하지 않아 넘기지 않으며 팩토리가 고르지 않는다
-        private IBossPatternFactory CreatePatterns(string bossId, float referenceHealth)
+        // 월백에는 워프 창구(이 몸체)와 접속 상태 입력을 함께 넘긴다. 하드 2페이즈의 별 단계, 격자, 연쇄 부채꼴, 추적 장판, 난사, 동시 폭발 표시 수신처는
+        // 이 서버가 아직 구현하지 않아 넘기지 않으므로 팩토리가 그 패턴들을 만들지 않는다. 하드 P07은 원형 예고(this)가 수신처다
+        private IBossPatternFactory CreatePatterns(string bossId, float referenceHealth, IBossParticipantConnection connections)
         {
             if (bossId == MucheolPatternFactory.BOSS_ID)
             {
@@ -896,7 +1101,7 @@ namespace Shinshi.Combat
             }
 
             return new WolbaekPatternFactory(referenceHealth, this, this, this, this, this, _projectiles, this,
-                _areas, this, this, _beams, this, this, _stars, this);
+                _areas, this, this, _beams, this, this, _stars, this, warp: this, connections: connections);
         }
 
         // 페이즈 전환 뒤 인계 대기는 결계 전개 같은 별도 진행이 끝나기를 기다리는 자리다. 결계가 없는 보스는 전환한 틱의 다음 틱

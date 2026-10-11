@@ -55,6 +55,9 @@ namespace Shinshi.Tests
         private const float  LINE_WIDTH        = 4f;
         private const float  TELEGRAPH_SECONDS = 1.6f;
         private const float  PROJECTILE_SPEED  = 12f;
+        private const float  PLAYER_HEALTH     = 1000f;
+        private const float  BODY_RADIUS       = Constants.Combat.BOSS_BODY_RADIUS;
+        private const float  OVERLAP_MARGIN    = 0.5f;
 
         private FakeBossCatalog      _catalog;
         private CombatTargetRegistry _registry;
@@ -466,6 +469,150 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void TryWarp_InsideArena_MovesBodyAndReportsSamePoint()
+        {
+            BossServer boss = CreateBoss();
+            Assert.IsTrue(boss.Begin(0.0));
+            var point = new Vector3(5f, 0f, 3f);
+
+            Assert.IsTrue(boss.CanStandAt(point));
+            Assert.IsTrue(boss.TryWarp(point, out Vector3 landed));
+
+            Assert.AreEqual(point, boss.Position, "요청한 좌표로 옮긴다");
+            Assert.AreEqual(boss.Position, landed, "돌려주는 착지 위치가 몸체 위치와 같다");
+        }
+
+        [Test]
+        public void TryWarp_ArenaEdge_AllowsBodyRadiusMarginOnly()
+        {
+            BossServer boss = CreateBoss();
+            Assert.IsTrue(boss.Begin(0.0));
+
+            Assert.IsTrue(boss.CanStandAt(new Vector3(ARENA_LIMIT, 0f, 0f)), "몸체 반경만큼 안쪽 경계 위는 포함한다");
+
+            // 전장 반경(18m) 안이지만 몸체 반경 여유 밖이다
+            var outside = new Vector3(ARENA_LIMIT + 1f, 0f, 0f);
+            Assert.IsFalse(boss.CanStandAt(outside));
+            AssertWarpRefused(boss, outside);
+        }
+
+        [Test]
+        public void TryWarp_NonFinitePoint_Refuses()
+        {
+            BossServer boss = CreateBoss();
+            Assert.IsTrue(boss.Begin(0.0));
+
+            AssertWarpRefused(boss, new Vector3(float.NaN, 0f, 0f));
+            AssertWarpRefused(boss, new Vector3(0f, float.PositiveInfinity, 0f));
+        }
+
+        [Test]
+        public void TryWarp_BeforeBeginOrAfterEndOrDeath_Refuses()
+        {
+            var point = new Vector3(4f, 0f, 4f);
+
+            BossServer idle = CreateBoss();
+            AssertWarpRefused(idle, point);
+
+            BossServer ended = CreateBoss();
+            Assert.IsTrue(ended.Begin(0.0));
+            ended.EndCombat(TICK_TIME);
+            AssertWarpRefused(ended, point);
+
+            BossServer dead = CreateBoss();
+            Assert.IsTrue(dead.Begin(0.0));
+            dead.ApplyDamage(0f, true, 0.0);
+            AssertWarpRefused(dead, point);
+        }
+
+        [Test]
+        public void CanStandAt_OverlappingLivingPlayerBody_IsFalse()
+        {
+            BossServer boss = CreateBoss();
+            Assert.IsTrue(boss.Begin(0.0));
+            var player = new EnemyTestRigPlayer(_registry.IssueCombatId(), new Vector3(5f, 0f, 0f), PLAYER_HEALTH);
+            Assert.IsTrue(_registry.Register(player));
+
+            // 플레이어 몸체 반경이 0이라 보스 몸체 반경만큼 떨어지면 닿기만 한 것이다
+            Assert.IsFalse(boss.CanStandAt(new Vector3(5f, 0f, BODY_RADIUS - OVERLAP_MARGIN)), "몸체가 겹친다");
+            AssertWarpRefused(boss, new Vector3(5f, 0f, BODY_RADIUS - OVERLAP_MARGIN));
+            Assert.IsTrue(boss.CanStandAt(new Vector3(5f, 0f, BODY_RADIUS)), "닿기만 하면 설 수 있다");
+
+            player.ApplyDamage(0f, true, 0.0);
+            Assert.IsTrue(boss.CanStandAt(new Vector3(5f, 0f, 0f)), "죽은 플레이어 몸체는 막지 않는다");
+        }
+
+        [Test]
+        public void CanStandAt_TerrainOverlap_IsFalse()
+        {
+            var terrain = new FixedStandTerrain { CanStandHere = false };
+            BossServer boss = CreateBoss(terrain);
+            Assert.IsTrue(boss.Begin(0.0));
+            var point = new Vector3(2f, 0f, 2f);
+
+            Assert.IsFalse(boss.CanStandAt(point), "정적 지형과 겹치면 설 수 없다");
+            AssertWarpRefused(boss, point);
+
+            terrain.CanStandHere = true;
+            Assert.IsTrue(boss.TryWarp(point, out Vector3 landed));
+            Assert.AreEqual(point, landed);
+            Assert.AreEqual(BODY_RADIUS, terrain.LastBodyRadius, FLOAT_EPSILON, "몸체 반경으로 겹침을 묻는다");
+        }
+
+        [Test]
+        public void HasPath_TerrainBlocksStraightLine_IsFalse()
+        {
+            var terrain = new FixedTerrain { Clear = WALL_DISTANCE };
+            BossServer boss = CreateBoss(terrain);
+
+            Assert.IsFalse(boss.HasPath(Vector3.zero, new Vector3(10f, 0f, 0f)), "벽이 직선을 막는다");
+            Assert.AreEqual(1, terrain.Calls, "한 번의 경로 검사는 스윕 한 번이다");
+
+            terrain.Clear = FAR_DISTANCE;
+            Assert.IsTrue(boss.HasPath(Vector3.zero, new Vector3(10f, 0f, 0f)));
+            Assert.AreEqual(2, terrain.Calls);
+        }
+
+        [Test]
+        public void HasPath_TargetWithinBodyRadiusOrOutsideStart_UsesNoSweepOrRefuses()
+        {
+            var terrain = new FixedTerrain { Clear = 0f };
+            BossServer boss = CreateBoss(terrain);
+
+            Assert.IsTrue(boss.HasPath(Vector3.zero, new Vector3(BODY_RADIUS, 0f, 0f)), "이미 몸체 반경 안이면 더 갈 곳이 없다");
+            Assert.AreEqual(0, terrain.Calls);
+
+            Assert.IsFalse(boss.HasPath(new Vector3(ARENA_LIMIT + 1f, 0f, 0f), Vector3.zero), "출발점이 전장 밖이면 이어지지 않는다");
+            Assert.AreEqual(0, terrain.Calls);
+
+            Assert.IsTrue(CreateBoss().HasPath(Vector3.zero, new Vector3(10f, 0f, 0f)), "지형 검사가 없으면 막을 것이 없다");
+        }
+
+        [Test]
+        public void IsSortieReady_CatalogWithoutDefinitions_NamesBothPhases()
+        {
+            BossServer boss = CreateBoss();
+
+            Assert.IsFalse(boss.IsSortieReady(out string reason));
+            StringAssert.Contains("phase 1: 정의 없음", reason);
+            StringAssert.Contains("phase 2: 정의 없음", reason);
+        }
+
+        [Test]
+        public void Constructor_WithParticipantConnections_KeepsExistingBehavior()
+        {
+            var connections = new FakeConnections();
+            BossServer boss = CreateBoss(null, connections);
+
+            Assert.IsTrue(boss.Begin(0.0));
+            boss.Tick(TICK_TIME);
+
+            Assert.AreEqual(EBossFlowState.Combat, boss.FlowState);
+            Assert.IsTrue(boss.IsActive);
+            Assert.AreEqual(0, connections.Calls, "패턴이 없으면 접속 상태를 묻지 않는다");
+        }
+
+        [Test]
         public void DamageScaler_MultipliesRawDamageAndKeepsIds()
         {
             var scaler  = new BossDamageScaler(_resolver, DAMAGE_SCALE);
@@ -496,11 +643,21 @@ namespace Shinshi.Tests
         ****************************************/
 
         // 지형 검사를 넘기지 않으면 전장 경계만 본다
-        private BossServer CreateBoss(IBossWallQuery terrain = null)
+        private BossServer CreateBoss(IBossWallQuery terrain = null, IBossParticipantConnection connections = null)
         {
             return new BossServer(BOSS_ID, COMBAT_ID, Vector3.zero, Vector3.forward, Vector3.zero,
                 REFERENCE_ATTACK, REFERENCE_HEALTH, HEALTH_SCALE,
-                _catalog, _registry, _resolver, terrain, new SeededBossRandom(1));
+                _catalog, _registry, _resolver, terrain, new SeededBossRandom(1), null, connections);
+        }
+
+        // 워프가 거절되면 위치는 그대로이고 돌려주는 착지 위치도 현재 위치다
+        private static void AssertWarpRefused(BossServer boss, Vector3 point)
+        {
+            Vector3 before = boss.Position;
+
+            Assert.IsFalse(boss.TryWarp(point, out Vector3 landed));
+            Assert.AreEqual(before, boss.Position, "실패하면 위치는 그대로다");
+            Assert.AreEqual(before, landed);
         }
 
         // 페이즈 전환 비율 0은 전환을 시험하지 않으려는 값이다
@@ -552,10 +709,41 @@ namespace Shinshi.Tests
         private sealed class FixedTerrain : IBossWallQuery
         {
             public float Clear { get; set; }
+            public int   Calls { get; private set; }
 
             public float GetClearDistance(Vector3 origin, Vector3 direction, float maxDistance, float bodyRadius)
             {
+                ++Calls;
                 return Mathf.Min(Clear, maxDistance);
+            }
+        }
+
+        // 겹침 검사까지 지원하는 지형 대역
+        private sealed class FixedStandTerrain : IBossWallQuery, IBossStandQuery
+        {
+            public bool  CanStandHere   { get; set; } = true;
+            public float LastBodyRadius { get; private set; }
+
+            public float GetClearDistance(Vector3 origin, Vector3 direction, float maxDistance, float bodyRadius)
+            {
+                return maxDistance;
+            }
+
+            public bool CanStand(Vector3 point, float bodyRadius)
+            {
+                LastBodyRadius = bodyRadius;
+                return CanStandHere;
+            }
+        }
+
+        private sealed class FakeConnections : IBossParticipantConnection
+        {
+            public int Calls { get; private set; }
+
+            public bool IsConnected(int combatId)
+            {
+                ++Calls;
+                return true;
             }
         }
 
