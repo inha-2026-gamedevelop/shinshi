@@ -76,6 +76,71 @@ namespace Shinshi.Tests
             yield return new ExitPlayMode();
         }
 
+        [UnityTest]
+        public IEnumerator ReleaseEffects_Played_ProduceVisiblePixels()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            yield return new EnterPlayMode();
+            var camera = new GameObject("VfxCamera").AddComponent<Camera>();
+            camera.transform.position = new Vector3(0f, 5f, -5f);
+            camera.transform.LookAt(Vector3.up);
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Color.black;
+            camera.orthographic = true;
+            camera.orthographicSize = 2.5f;
+            var target = new RenderTexture(256, 256, 24);
+            camera.targetTexture = target;
+            string[] paths = {
+                "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_Basic", "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_Wide",
+                "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_Dash", "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_Focus",
+                "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_ChainFirst", "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_ChainSecond",
+                "Archer/PF_ArcherVfx_Arrow", "Archer/PF_ArcherVfx_Muzzle", "Archer/PF_ArcherVfx_Wind",
+                "Archer/PF_ArcherVfx_WindMuzzle", "Archer/PF_ArcherVfx_Impact", "Mageknight/PF_MageknightVfx_Basic",
+                "Mageknight/PF_MageknightVfx_Arcane", "Mageknight/PF_MageknightVfx_Field",
+                "Mageknight/PF_MageknightVfx_Seal", "Mageknight/PF_MageknightVfx_Wave"
+            };
+            foreach (string path in paths)
+            {
+                var effect = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/02.Prefab/VFX/" + path + ".prefab"));
+                foreach (ParticleSystem particle in effect.GetComponentsInChildren<ParticleSystem>())
+                {
+                    particle.Simulate(0.1f, false, true, false);
+                    particle.Pause(false);
+                }
+                yield return null;
+                camera.Render();
+                RenderTexture.active = target;
+                var image = new Texture2D(256, 256, TextureFormat.RGB24, false);
+                image.ReadPixels(new Rect(0, 0, 256, 256), 0, 0);
+                image.Apply();
+                int visible = 0;
+                foreach (Color32 pixel in image.GetPixels32())
+                {
+                    Assert.That(pixel.r > 240 && pixel.b > 240 && pixel.g < 10, Is.False,
+                        path + " contains error-shader pixels");
+                    if (pixel.r > 10 || pixel.g > 10 || pixel.b > 10)
+                    {
+                        ++visible;
+                    }
+                }
+                string directory = System.Environment.GetEnvironmentVariable("SHINSHI_UI_CAPTURE_DIR");
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    System.IO.Directory.CreateDirectory(directory);
+                    System.IO.File.WriteAllBytes(System.IO.Path.Combine(directory, System.IO.Path.GetFileName(path) + ".png"), image.EncodeToPNG());
+                }
+                Assert.That(visible, Is.GreaterThan(8), path);
+                Object.Destroy(image);
+                Object.Destroy(effect);
+                yield return null;
+            }
+            RenderTexture.active = null;
+            camera.targetTexture = null;
+            Object.Destroy(target);
+            Object.Destroy(camera.gameObject);
+            yield return new ExitPlayMode();
+        }
+
         private static void AssertMoving(Animator animator, string state)
         {
             Transform arm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);

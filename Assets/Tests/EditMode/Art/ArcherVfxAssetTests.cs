@@ -162,13 +162,13 @@ namespace Shinshi.Tests.EditMode.Art
         }
 
         [Test]
-        public void ArrowMaterial_Generated_UsesSeparateNeutralLut()
+        public void ArrowMaterial_Generated_UsesProjectOwnedSupportedShader()
         {
             Material material = AssetDatabase.LoadAssetAtPath<Material>(ROOT + "Materials/M_ArcherArrow.mat");
             Assert.That(material, Is.Not.Null);
-            Assert.That(material.IsKeywordEnabled("_LUT"), Is.True);
-            Assert.That(material.GetTexture("_RampTexture"), Is.Not.Null);
-            Assert.That(material.GetTexture("_BaseTexture"), Is.Not.Null);
+            Assert.That(material.shader.name, Is.EqualTo("Shinshi/VFX/ReleaseParticle"));
+            Assert.That(material.shader.isSupported, Is.True);
+            Assert.That(material.GetTexture("_BaseMap"), Is.Not.Null);
         }
 
         [Test]
