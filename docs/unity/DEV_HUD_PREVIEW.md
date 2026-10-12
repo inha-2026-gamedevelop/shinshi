@@ -2,6 +2,14 @@
 
 대상은 `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView.unity`이다. 원본 `Dev_HUD.unity`와 `Assets/09.Data/UI/Layout_HUD.json`은 별개이며, JSON을 다시 적용하면 수동 배치에 영향을 줄 수 있다.
 
+## Release 반영 (2026-10-12)
+
+`develop`의 `1cbd34ba` 기준 GroundPaint 맵을 `Assets/00.Scenes/Release/ShinshiTown.unity`에 복사했다. 기존 Release UI와 카메라·스폰 루트 16개와 실제 바인더를 보존했으며, `Release/ShinshiTown/NavMesh-Navigation.asset`의 GUID를 유지하고 최신 GroundPaint NavMesh 내용을 복사했다. 개발 씬과 NavMesh를 직접 참조하는 방식으로 합치지 않는다. 이후 GroundPaint를 고쳐도 Release 씬이 자동으로 갱신되는 것은 아니다.
+
+`Release/DungeonForest`에는 공용 HUD, 파티, 채팅, 기술 슬롯, 설정, 결과와 귀환 화면을 연결했다. 경제, 우편, 출정 준비 메뉴는 던전에서 비활성화한다. `Dev_CombatHud`의 뷰는 데모 구동기를 제외하고 가져왔으며 `ReleaseCombatHudBinder`가 실제 보스 HP, 전투 미터 단계, 물약 상태를 읽는다. 웨이브 진행, 부활 대기와 공용 부활 잔량은 복제 계약이 없어 숨긴다. 신규 세 직업은 공명을 사용하지 않아 공명 게이지를 숨긴다.
+
+관련 EditMode 41/41 통과(job `56568bbcda2b47be93fa6909d8f23e50`), 마을 설정과 던전 HUD의 Play Mode 표시, 주 카메라/EventSystem/HotkeyRouter 각 1개, 스폰 8곳 NavMesh 표본을 확인했다. 실서버 접속, 전체 맵 보행, M2/M3의 근거로 확대하지 않는다. 비포커스 상태에서도 최종 41/41 통과했으며 자동시험의 백그라운드 실행 설정은 종료 시 원복한다. 최종 Windows IL2CPP Release `build-bde9cbfa16`는 74.443346초, 오류 0건·경고 5건으로, Linux Mono 전용 서버 Release `build-fb5c281675`는 71.8607225초, 오류 0건·경고 80건으로 성공했다. 서버 백엔드는 `NamedBuildTarget.Server`의 `Mono2x`로 확인했다. Windows는 무화면으로 15초 기동을 유지했고 로그에서 Exception/Error가 없었다. 렌더·로그인 검증은 아니며 이번 Linux 실행은 미검증이다. 아래 개발 씬별 과거 검증은 각각 당시 범위로 유지한다.
+
 ## 이동용 NavMesh
 
 `Navigation` 루트의 NavMeshSurface는 Humanoid, Walkable, Physics Colliders, Volume 수집을 사용한다. 포함 레이어는 Default와 Obstacle(mask 257)이다. 수집 범위는 center `(16.203926, 8.5442295, 5.126976)`, size `(154.71117, 28.383587, 141.47272)`이며 기존 활성 Collider 범위에 여유를 둔 값이다.
