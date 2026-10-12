@@ -1,10 +1,8 @@
 // System
-using System.Collections;
 using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
-using UnityEngine.TestTools;
 
 // 서드파티
 using NUnit.Framework;
@@ -17,7 +15,8 @@ namespace Shinshi.Tests
 {
     // 월백 하드 2페이즈 P01~P06 표시 뷰를 서버 시각을 직접 주입해 검증한다. 서버 어셈블리를 참조하지 않으므로 서버 없이도 표현이 동작하는지 함께 보인다
     // 화면에 나온 모양과 색은 이 테스트가 확인하지 않고, 도형의 종류와 배치와 충전 비율과 풀 반환만 확인한다
-    public class BossHardTelegraphViewPlayTests
+    // EditMode라 Unity가 Awake를 부르지 않는다. 시작 처리는 ViewTestUtil로 직접 부르고, 프레임과 OnDisable이 필요한 시험은 PlayMode 시험이 맡는다
+    public class BossHardTelegraphViewTests
     {
         /****************************************
         *              Constants
@@ -46,8 +45,10 @@ namespace Shinshi.Tests
         [SetUp]
         public void SetUp()
         {
-            _root = new GameObject("BossHardTelegraphViewPlayTests");
+            _root = new GameObject("BossHardTelegraphViewTests");
             _hard = _root.AddComponent<BossHardPhaseView>();
+            ViewTestUtil.Awake(_hard);
+            ViewTestUtil.AwakeAll<BossHardTelegraphViewBase>(_root);
             _clock = START;
             _hard.SetServerClock(() => _clock);
         }
@@ -55,9 +56,14 @@ namespace Shinshi.Tests
         [TearDown]
         public void TearDown()
         {
+            if (_hard != null)
+            {
+                _hard.ShapePool.Dispose();
+            }
+
             if (_root != null)
             {
-                Object.Destroy(_root);
+                Object.DestroyImmediate(_root);
             }
         }
 
@@ -558,22 +564,6 @@ namespace Shinshi.Tests
             Assert.That(_hard.TrackingArea.FixCenter(7, new Vector3(1f, 0f, 1f), START + 4.1), Is.False);
         }
 
-        [UnityTest]
-        public IEnumerator TrackingArea_Moving_FollowsServerCenterWithoutOvershoot()
-        {
-            _hard.TrackingArea.BeginMoving(CAST, 7, 3, Vector3.zero, 6f, START, 4f, 2.5f);
-            _hard.TrackingArea.UpdateMoving(7, new Vector3(10f, 0f, 0f), START + 0.1);
-
-            for (int i = 0; i < 5; ++i)
-            {
-                yield return null;
-            }
-
-            _hard.TrackingArea.TryGetState(7, out Vector3 center, out _, out _, out _);
-            Assert.That(center.x, Is.GreaterThan(0f));
-            Assert.That(center.x, Is.LessThanOrEqualTo(10f));
-        }
-
         [Test]
         public void TrackingArea_StaleUpdate_IsIgnored()
         {
@@ -926,15 +916,33 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void DisabledView_ClearsItsShapes()
+        public void TrackingArea_ActivationArrivesBeforeStart_BlocksTheLateTelegraph()
         {
-            BeginBurst();
-            RefreshAll();
-            Assert.That(_hard.ShapePool.LeasedCount, Is.EqualTo(CIRCLE_COUNT));
+            _hard.NotifyAreaActivated(7);
 
-            _hard.CircleBurst.enabled = false;
+            Assert.That(_hard.TrackingArea.BeginMoving(CAST, 7, 3, Vector3.zero, 6f, START, 4f, 2.5f), Is.False);
+            Assert.That(_hard.TrackingArea.Count, Is.Zero);
+        }
 
-            Assert.That(_hard.ShapePool.LeasedCount, Is.Zero);
+        [Test]
+        public void ShapePool_Exhausted_CountsRejectedShapesInsteadOfHidingThem()
+        {
+            BossGroundShapePool pool = new BossGroundShapePool(2);
+            try
+            {
+                Assert.That(pool.Acquire(), Is.Not.Null);
+                Assert.That(pool.Acquire(), Is.Not.Null);
+                Assert.That(pool.RejectedCount, Is.Zero);
+
+                Assert.That(pool.Acquire(), Is.Null);
+
+                Assert.That(pool.RejectedCount, Is.EqualTo(1));
+                Assert.That(pool.LeasedCount, Is.EqualTo(2));
+            }
+            finally
+            {
+                pool.Dispose();
+            }
         }
     }
 }

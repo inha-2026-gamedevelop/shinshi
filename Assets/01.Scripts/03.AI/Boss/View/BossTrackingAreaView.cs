@@ -147,11 +147,17 @@ namespace Shinshi.AI
             return true;
         }
 
-        /// <summary> 같은 번호의 장판이 활성됐다, 이동 예고를 지우고 기존 장판 표현에 넘긴다. 모르는 번호면 무시한다 </summary>
+        /// <summary> 같은 번호의 장판이 활성됐다, 이동 예고를 지우고 기존 장판 표현에 넘긴다. 모르는 번호면 늦게 오는 이동 예고가 되살아나지 않게 기억해 둔다 </summary>
         public bool Activated(int areaId)
         {
-            if ((IsServerBuild) || (!TryFind(areaId, out Entry entry)))
+            if (IsServerBuild)
             {
+                return false;
+            }
+
+            if (!TryFind(areaId, out Entry entry))
+            {
+                _ended.Remember(areaId);
                 return false;
             }
 

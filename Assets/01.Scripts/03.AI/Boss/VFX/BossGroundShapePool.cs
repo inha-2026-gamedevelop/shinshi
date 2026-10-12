@@ -30,6 +30,7 @@ namespace Shinshi.Art
         private GameObject        _root;
         private Material          _material;
         private int               _createdCount;
+        private int               _rejectedCount;
 
         /****************************************
         *              Properties
@@ -43,6 +44,9 @@ namespace Shinshi.Art
         public int CreatedCount => _createdCount;
 
         public int MaxCount => _maxCount;
+
+        /// <summary> 재질이 없거나 상한에 닿아 빌려주지 못한 횟수, 표시가 조용히 생략되는 일을 시험과 진단에서 알아채게 한다 </summary>
+        public int RejectedCount => _rejectedCount;
 
         /****************************************
         *                Methods
@@ -64,6 +68,7 @@ namespace Shinshi.Art
         {
             if (_material == null)
             {
+                ++_rejectedCount;
                 return null;
             }
 
@@ -77,6 +82,7 @@ namespace Shinshi.Art
             {
                 if (_createdCount >= _maxCount)
                 {
+                    ++_rejectedCount;
                     return null;
                 }
 
