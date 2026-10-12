@@ -58,7 +58,7 @@ MonoBehaviour:
       _requiresIntro: 0
       _clearedRegionId: 
       _unlockedRegionId: 
-      _clearedBattleId: battle_cheolgak_easy
+      _clearedBattleId: battle_mucheol_easy
       _foxTraceCount: 0
     _referenceAttack: 553.6
     _referenceHealth: 3201
@@ -81,9 +81,9 @@ MonoBehaviour:
     _trialReferenceAttack: 0
     _trialReferenceHealth: 0
   _bossBattles:
-  - _definitionId: battle_cheolgak_easy
-    _displayKey: battle_cheolgak_easy.name
-    _bossId: boss_cheolgak
+  - _definitionId: battle_mucheol_easy
+    _displayKey: battle_mucheol_easy.name
+    _bossId: boss_mucheol
     _difficulty: 0
     _ticketCost: 1
     _availableInTrial: 0
@@ -94,18 +94,18 @@ MonoBehaviour:
       _unlockedRegionId: 
       _clearedBattleId: 
       _foxTraceCount: 0
-  - _definitionId: battle_cheolgak_hard
-    _displayKey: battle_cheolgak_hard.name
-    _bossId: boss_cheolgak
+  - _definitionId: battle_mucheol_hard
+    _displayKey: battle_mucheol_hard.name
+    _bossId: boss_mucheol
     _difficulty: 1
     _ticketCost: 1
     _availableInTrial: 0
     _trialPreUnlocked: 0
     _requirement:
       _requiresIntro: 0
-      _clearedRegionId: 
-      _unlockedRegionId: 
-      _clearedBattleId: battle_cheolgak_easy
+      _clearedRegionId:
+      _unlockedRegionId:
+      _clearedBattleId: battle_mucheol_easy
       _foxTraceCount: 0
   - _definitionId: battle_wolbaek_easy
     _displayKey: battle_wolbaek_easy.name
@@ -118,7 +118,7 @@ MonoBehaviour:
       _requiresIntro: 0
       _clearedRegionId: 
       _unlockedRegionId: region_wolbaek_barrier
-      _clearedBattleId: battle_cheolgak_hard
+      _clearedBattleId: battle_mucheol_hard
       _foxTraceCount: 0
   - _definitionId: battle_wolbaek_hard
     _displayKey: battle_wolbaek_hard.name

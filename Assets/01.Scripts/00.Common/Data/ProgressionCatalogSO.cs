@@ -265,21 +265,21 @@ namespace Shinshi.Data
             new RegionDefinition("region_ruins", true, 0, false, false,
                 new UnlockRequirement(clearedRegionId: "region_forest"), 268f, 2130f),
             new RegionDefinition("region_altar", true, 1, false, false,
-                new UnlockRequirement(clearedBattleId: "battle_cheolgak_easy"), 553.6f, 3201f),
+                new UnlockRequirement(clearedBattleId: "battle_mucheol_easy"), 553.6f, 3201f),
             new RegionDefinition("region_wolbaek_barrier", false, 0, true, true,
                 new UnlockRequirement(foxTraceCount: 3))
         };
 
-        // 철각은 체험판에 넣지 않는 후속 콘텐츠이고 체험판은 월백 이지를 미리 연 전투 시험이다
+        // 무철은 체험판에 넣지 않는 후속 콘텐츠이고 체험판은 월백 이지를 미리 연 전투 시험이다
         [Header("보스전")]
         [SerializeField] private BossBattleDefinition[] _bossBattles =
         {
-            new BossBattleDefinition("battle_cheolgak_easy", "boss_cheolgak", EBossDifficulty.Easy, 1, false, false,
+            new BossBattleDefinition("battle_mucheol_easy", "boss_mucheol", EBossDifficulty.Easy, 1, false, false,
                 new UnlockRequirement(clearedRegionId: "region_ruins")),
-            new BossBattleDefinition("battle_cheolgak_hard", "boss_cheolgak", EBossDifficulty.Hard, 1, false, false,
-                new UnlockRequirement(clearedBattleId: "battle_cheolgak_easy")),
+            new BossBattleDefinition("battle_mucheol_hard", "boss_mucheol", EBossDifficulty.Hard, 1, false, false,
+                new UnlockRequirement(clearedBattleId: "battle_mucheol_easy")),
             new BossBattleDefinition("battle_wolbaek_easy", "boss_wolbaek", EBossDifficulty.Easy, 1, true, true,
-                new UnlockRequirement(unlockedRegionId: "region_wolbaek_barrier", clearedBattleId: "battle_cheolgak_hard")),
+                new UnlockRequirement(unlockedRegionId: "region_wolbaek_barrier", clearedBattleId: "battle_mucheol_hard")),
             new BossBattleDefinition("battle_wolbaek_hard", "boss_wolbaek", EBossDifficulty.Hard, 1, false, false,
                 new UnlockRequirement(clearedBattleId: "battle_wolbaek_easy"))
         };

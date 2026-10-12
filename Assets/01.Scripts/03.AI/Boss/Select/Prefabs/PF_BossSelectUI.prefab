@@ -1234,8 +1234,8 @@ MonoBehaviour:
   _bossLabels:
   - BossId: boss_wolbaek
     DisplayName: "\uC6D4\uBC31"
-  - BossId: boss_cheolgak
-    DisplayName: "\uCCA0\uAC01"
+  - BossId: boss_mucheol
+    DisplayName: "\uBB34\uCCA0"
   _difficultyButtons:
   - {fileID: 3835213142326158446}
   - {fileID: 5461837396336098625}
