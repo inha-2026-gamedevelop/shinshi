@@ -31,6 +31,56 @@ namespace Shinshi.Tests
         // 마우스 클릭이 닿지 않는다(릴리즈 빌드 캐릭터 선택 화면에서 실제로 발생)
 
         /****************************************
+        *                Fields
+        ****************************************/
+
+        private bool _ownsPlayMode;
+        private bool _previousRunInBackground;
+        private bool _overrodeLocalPlayer;
+        private NetworkIdentity _previousLocalPlayer;
+        private GameObject _previewTestStage;
+        private GameObject _previewTestPlayer;
+
+        /****************************************
+        *               Cleanup
+        ****************************************/
+
+        [UnityTearDown]
+        public IEnumerator RestorePlayTestState()
+        {
+            if (!_ownsPlayMode)
+            {
+                yield break;
+            }
+            if (_overrodeLocalPlayer)
+            {
+                typeof(NetworkClient).GetProperty(nameof(NetworkClient.localPlayer)).SetValue(null, _previousLocalPlayer);
+                _overrodeLocalPlayer = false;
+                _previousLocalPlayer = null;
+            }
+            if (_previewTestPlayer != null)
+            {
+                Object.Destroy(_previewTestPlayer);
+            }
+            if (_previewTestStage != null)
+            {
+                Object.Destroy(_previewTestStage);
+            }
+            _previewTestPlayer = null;
+            _previewTestStage = null;
+            if (Application.isPlaying)
+            {
+                yield return null;
+            }
+            Application.runInBackground = _previousRunInBackground;
+            _ownsPlayMode = false;
+            if (Application.isPlaying)
+            {
+                yield return new ExitPlayMode();
+            }
+        }
+
+        /****************************************
         *                Tests
         ****************************************/
 
@@ -102,6 +152,7 @@ namespace Shinshi.Tests
             EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + Constants.Scene.SHINSHI_TOWN
                 + Constants.Scene.EXTENSION, OpenSceneMode.Single);
             yield return new EnterPlayMode();
+            ConfigurePlayTest();
             yield return null;
 
             Scene scene = SceneManager.GetActiveScene();
@@ -164,7 +215,6 @@ namespace Shinshi.Tests
             Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
             Assert.That(popup.gameObject.activeSelf, Is.False);
             Assert.That(panel.gameObject.activeSelf, Is.False);
-            yield return new ExitPlayMode();
         }
 
         [UnityTest]
@@ -172,16 +222,21 @@ namespace Shinshi.Tests
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             yield return new EnterPlayMode();
+            ConfigurePlayTest();
             var stage = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/02.Prefab/UI/Windows/PF_CharDetailPreviewStage.prefab"));
+            _previewTestStage = stage;
             stage.SetActive(true);
             Assert.That(stage.transform.Find("무사 미리보기"), Is.Null);
             var player = new GameObject("PreviewTestPlayer");
+            _previewTestPlayer = player;
             var identity = player.AddComponent<NetworkIdentity>();
             var combat = player.AddComponent<PlayerCombatState>();
             var localProperty = typeof(NetworkClient).GetProperty(nameof(NetworkClient.localPlayer));
             var appearanceField = typeof(PlayerCombatState).GetField("_appearance",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            _previousLocalPlayer = NetworkClient.localPlayer;
+            _overrodeLocalPlayer = true;
             localProperty.SetValue(null, identity);
             var preview = stage.GetComponent<PlayerFemaleLookPreviewView>();
             Transform model = stage.transform.Find("CurrentCharacter");
@@ -191,7 +246,10 @@ namespace Shinshi.Tests
                 appearanceField.SetValue(combat, appearance);
                 yield return null;
                 yield return null;
-                Assert.That(preview.IsReady, Is.True, preview.LastError);
+                Assert.That(preview.IsReady, Is.True,
+                    $"error='{preview.LastError}', stageActive={stage.activeInHierarchy}, previewEnabled={preview.isActiveAndEnabled}, "
+                    + $"localMatches={NetworkClient.localPlayer == identity}, modelActive={model.gameObject.activeSelf}, "
+                    + PlayTestDiagnostics());
                 Assert.That(preview.Look.BodyType, Is.EqualTo(body));
                 Assert.That(model.gameObject.activeSelf, Is.True);
                 CapturePreview(stage, "character-info-body-" + body + ".png");
@@ -199,10 +257,20 @@ namespace Shinshi.Tests
             localProperty.SetValue(null, null);
             yield return null;
             Assert.That(model.gameObject.activeSelf, Is.False);
-            Object.Destroy(player);
-            Object.Destroy(stage);
-            yield return null;
-            yield return new ExitPlayMode();
+        }
+
+        private void ConfigurePlayTest()
+        {
+            _previousRunInBackground = Application.runInBackground;
+            _ownsPlayMode = true;
+            // MCP 실행은 에디터가 비활성 창이어도 이어진다. 제품 설정 대신 이 시험의 Update 실행만 보장한다.
+            Application.runInBackground = true;
+        }
+
+        private static string PlayTestDiagnostics()
+        {
+            return $"focused={Application.isFocused}, background={Application.runInBackground}, "
+                + $"playing={Application.isPlaying}, frame={Time.frameCount}, screen={Screen.width}x{Screen.height}";
         }
 
         private static void CapturePreview(GameObject stage, string name)
@@ -248,7 +316,11 @@ namespace Shinshi.Tests
             };
             var hits = new List<RaycastResult>();
             EventSystem.current.RaycastAll(pointer, hits);
-            Assert.That(hits.Count, Is.GreaterThan(0), button.name);
+            Assert.That(hits.Count, Is.GreaterThan(0),
+                $"{button.name}: active={button.gameObject.activeInHierarchy}, enabled={button.enabled}, "
+                + $"interactable={button.interactable}, pointer={pointer.position}, rect={rect.rect}, "
+                + $"eventScene={EventSystem.current.gameObject.scene.path}, buttonScene={button.gameObject.scene.path}, "
+                + PlayTestDiagnostics());
             GameObject target = ExecuteEvents.GetEventHandler<IPointerClickHandler>(hits[0].gameObject);
             Assert.That(target, Is.EqualTo(button.gameObject), button.name + " 앞에 다른 UI가 클릭을 가립니다: "
                 + AnimationUtility.CalculateTransformPath(hits[0].gameObject.transform, null));
