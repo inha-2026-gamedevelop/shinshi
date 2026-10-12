@@ -41,9 +41,9 @@ namespace Shinshi.UI
         ****************************************/
 
         public ETrainingStat Stat         => _stat;
-        public Button         MinusButton  => _minusButton;
-        public Button         PlusButton   => _plusButton;
-        public Button         SelectButton => _selectButton;
+        public Button        MinusButton  => _minusButton;
+        public Button        PlusButton   => _plusButton;
+        public Button        SelectButton => _selectButton;
 
         /****************************************
         *                Methods

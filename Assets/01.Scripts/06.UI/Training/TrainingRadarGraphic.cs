@@ -2,6 +2,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+// 프로젝트 내부
+using Shinshi.Common;
+
 namespace Shinshi.UI
 {
     /// <summary>수련 배분을 5축 오각형과 반투명 영역으로 표시한다</summary>
@@ -12,7 +15,7 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        private const int   AXIS_COUNT       = 5;
+        private const int   AXIS_COUNT       = Constants.Combat.TRAINING_STAT_COUNT;
         private const int   GRID_RING_COUNT  = 5;
         private const int   NO_SELECTED_AXIS = -1;
         private const float FULL_CIRCLE      = 360f;
@@ -21,9 +24,12 @@ namespace Shinshi.UI
         private const float MAX_RADIUS_RATIO = 0.49f;
         private const float MAX_FILL_ALPHA   = 0.14f;
         private const float MIN_LINE_LENGTH  = 0.001f;
+        private const float MIN_RADIUS_RATIO = 0.1f;
+        private const int   THIRD_VERTEX     = 2;
+        private const int   FOURTH_VERTEX    = 3;
 
         [Header("크기")]
-        [Range(0.1f, MAX_RADIUS_RATIO)]
+        [Range(MIN_RADIUS_RATIO, MAX_RADIUS_RATIO)]
         [SerializeField] private float _radiusRatio      = 0.4f;
         [SerializeField] private float _gridThickness    = 1f;
         [SerializeField] private float _spokeThickness   = 0.8f;
@@ -172,7 +178,7 @@ namespace Shinshi.UI
             AddVertex(helper, a, triangleColor);
             AddVertex(helper, b, triangleColor);
             AddVertex(helper, c, triangleColor);
-            helper.AddTriangle(first, first + 1, first + 2);
+            helper.AddTriangle(first, first + 1, first + THIRD_VERTEX);
         }
 
         private void AddQuad(VertexHelper helper, Vector2 a, Vector2 b, Vector2 c, Vector2 d, Color quadColor)
@@ -182,8 +188,8 @@ namespace Shinshi.UI
             AddVertex(helper, b, quadColor);
             AddVertex(helper, c, quadColor);
             AddVertex(helper, d, quadColor);
-            helper.AddTriangle(first, first + 1, first + 2);
-            helper.AddTriangle(first + 2, first + 3, first);
+            helper.AddTriangle(first, first + 1, first + THIRD_VERTEX);
+            helper.AddTriangle(first + THIRD_VERTEX, first + FOURTH_VERTEX, first);
         }
 
         private void AddVertex(VertexHelper helper, Vector2 point, Color vertexColor)

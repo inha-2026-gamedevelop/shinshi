@@ -26,8 +26,9 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        private const int   STAT_COUNT = Constants.Combat.TRAINING_STAT_COUNT;
-        private const float PERCENT    = 100f;
+        private const int   STAT_COUNT    = Constants.Combat.TRAINING_STAT_COUNT;
+        private const float PERCENT       = 100f;
+        private const int   NO_STAT_INDEX = -1;
 
         private static readonly string[] G_StatNames = { "공격력", "체력", "방어력", "치명타", "기력" };
 
@@ -546,7 +547,7 @@ namespace Shinshi.UI
                 return;
             }
 
-            int index = -1;
+            int index = NO_STAT_INDEX;
             for (int i = 0; i < STAT_COUNT; ++i)
             {
                 if (_batchTarget[i] > _confirmed[i])
