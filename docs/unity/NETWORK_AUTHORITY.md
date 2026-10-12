@@ -1,11 +1,15 @@
 # 네트워크 권위 규칙
 
-> 2026-10-02 M-A 코드와 동기화. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정), 서버 구성과 호스팅은 [7장](#7-데디케이티드-서버-운영-원칙)을 따른다. 전투는 1~4인이고 공유 마을 포함 목표 동시 접속은 10~100명이며 실제 수용량은 미검증이다. 연결·인증·전투·출정·정산 코드는 있지만 서버 빌드·M2/M3·IL2CPP·배포는 `구현됨·실행 미검증`이다. 구체적 계약은 [기술설계서](../03-technical-design.md)와 [서버·클라이언트 협업](SERVER_CLIENT_WORKFLOW.md)을 함께 본다.
+> 2026-10-02 M-A 코드와 동기화. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정), 서버 구성과 호스팅은 [7장](#7-데디케이티드-서버-운영-원칙)을 따른다. 전투는 1~4인이고 공유 마을 포함 목표 동시 접속은 10~100명이며 실제 수용량은 미검증이다. 연결·인증·전투·출정·정산 코드는 있으며 빌드별 실행 근거는 [로드맵](../05-implementation-roadmap.md)에 기록한다. 실제 다인 접속 M2/M3와 배포 수용은 미검증이다. 구체적 계약은 [기술설계서](../03-technical-design.md)와 [서버·클라이언트 협업](SERVER_CLIENT_WORKFLOW.md)을 함께 본다.
 
 > 멀티플레이 게임에서 가장 자주, 가장 늦게 드러나는 결함이 권위 경계 위반이다.
 > 단일 플레이에서는 멀쩡하고 여러 명 접속에서만 깨지므로, 발견 시점에는 이미 여러 시스템이 그 위에 얹혀 있다.
 
 ---
+
+2026-10-12 Release 통합에서 `ReleaseCombatHudBinder`는 `BossState` HP, `CombatMeterClient`의 실제 단계, `PotionClient`의 잔량·쿨다운만 읽는다. `BossState.PhaseState`는 단계 번호가 아닌 FSM 상태다. 클라이언트에 오지 않는 웨이브 진행·부활 타이머·공용 부활 잔량은 추정하지 않고 숨긴다. 관련 EditMode 41/41(job `56568bbcda2b47be93fa6909d8f23e50`, 비포커스 실행)과 씬 Play Mode 표시를 확인했지만 실서버 접속·M2/M3 검증은 아니다.
+
+최종 Windows IL2CPP Release `build-bde9cbfa16`는 74.443346초, 오류 0건·경고 5건으로, Linux Mono 전용 서버 Release `build-fb5c281675`는 71.8607225초, 오류 0건·경고 80건으로 성공했다. 서버 백엔드는 `NamedBuildTarget.Server`의 `Mono2x`로 확인했다. Windows는 무화면으로 15초 기동을 유지했고 로그에서 Exception/Error가 없었다. 렌더·로그인 검증은 아니며 이번 Linux 실행은 미검증이다. 두 빌드의 버전 0.1.2·프로토콜 6·contentHash 일치와 빌드 당시 dirty 상태는 [로드맵](../05-implementation-roadmap.md)에 기록한다.
 
 ## 1. 판단 기준은 하나다
 
@@ -129,7 +133,7 @@
 | `PlayerInputState` | 소유 클라이언트의 요청을 Command로 서버 처리기 인터페이스에 전달. session epoch·sequence·입력 서버 시각은 서버에서 검증하며 승인 순번·참가자·권위 이동·쿨다운 등은 소유자에게 동기화 |
 | `PlayerCombatState` | 서버가 확정한 HP·생사·기력·공명·기술 단계·조준 상태를 동기화하며 클라이언트 hook은 표현 갱신에 사용 |
 | `CompanionCombatState` | 서버 스포너가 소환 때 서버 소유로 스폰하고 복귀·재호출 때 내리는 동료 개체. 수명·체력·타깃·yaw를 SyncVar로, 위치는 `NetworkTransformReliable`로 보낸다. Command가 없다 |
-| `BossState` | 서버 스포너가 보스전 시작 틱에 서버 소유로 스폰하는 보스 개체. 전투 번호·정의 ID·위치·yaw·체력·생사·흐름·페이즈를 SyncVar(10Hz)로, 예고·발동·돌진·투사체·장판 사건과 2페이즈 반월 연쇄·빔·별형 빔 사건, 50% 결계 예고·활성·완료·정리 사건을 서버 시각과 시전 번호(빔·구조·구역·결계는 서버 발급 번호)를 실은 ClientRpc로 보낸다. 진행 중인 사건(결계는 예고부터 정리 전까지)은 스폰 초기 상태에 실어 늦은 접속·재접속에 복원한다. 위치는 NetworkTransform 없이 SyncVar이고 돌진 중 몸체는 표현이 돌진 사건으로 그리는 계약이다. Command가 없다. 사건을 표현으로 넘기는 클라이언트 연결부는 아직 없어 클라이언트 화면에는 보스 동작과 예고가 나오지 않는다 |
+| `BossState` | 서버 스포너가 보스전 시작 틱에 서버 소유로 스폰하는 보스 개체. 전투 번호·정의 ID·위치·yaw·체력·생사·흐름·페이즈를 SyncVar(10Hz)로, 예고·발동·돌진·투사체·장판 사건과 2페이즈 반월 연쇄·빔·별형 빔 사건, 50% 결계 예고·활성·완료·정리 사건을 서버 시각과 시전 번호(빔·구조·구역·결계는 서버 발급 번호)를 실은 ClientRpc로 보낸다. 진행 중인 사건(결계는 예고부터 정리 전까지)은 스폰 초기 상태에 실어 늦은 접속·재접속에 복원한다. 위치는 NetworkTransform 없이 SyncVar이고 돌진 중 몸체는 표현이 돌진 사건으로 그리는 계약이다. Command가 없다. 2026-10-12 `BossNetworkViewBinder`를 네트워크 프리팹에 연결해 몸체·예고·지속 효과·결계를 표시한다. 효과 루트는 몸체에서 분리하고 재접속 시 표현 기록을 초기화한다. 관련 EditMode 통과와 실제 M-Boss 수용은 구분한다 |
 | `CombatServerRuntime`·`PlayerServer` | `Shinshi.Server`에서 이동·피해·사망·기술을 판정. 입력·피해 처리 뒤 세션 종료, 그 뒤 부활 승인·복제 |
 | `PlayerPrediction`·`PlayerMovePredictor` | 소유 클라이언트의 이동 표현을 예측하고 `PlayerMoveAuthority`의 처리 sequence·권위 경로로 재조정. 원격 위치는 서버 권위 `NetworkTransform`으로 보간 |
 | `ShinshiServerAuthenticator` | 인증 전 메시지로 버전·콘텐츠 해시·일회 토큰을 확인. 참가자 결합과 던전 입장 검증 뒤에만 플레이어 생성·Command 허용 |
@@ -273,7 +277,7 @@ public override void OnClientConnect()
 - `isLocalPlayer` 분기는 입력 · UI · 카메라에만
 - 서버 빌드는 화면 없이(헤드리스) 돈다. 카메라 · 오디오 · UI · VFX 같은 표현 컴포넌트는 서버에서 동작하지 않아도 판정이 깨지지 않게 둔다. 판정이 표현 컴포넌트의 값(애니메이션 이벤트, 파티클 수명 등)에 기대지 않는다
 - 에디터 호스트 모드는 개발 편의용이다. 호스트 모드에서만 확인한 기능은 완료로 보고하지 않는다 ([멀티플레이 테스트 절차](../ai/04_MULTIPLAYER_TEST_PROTOCOL.md))
-- 서버 실행 설정·인증·존재 신호·출정 종료 경로는 구현돼 있다. Dedicated Server·클라이언트·IL2CPP 빌드와 다인 접속·배포 실행은 미검증이다. 구조화 운영 텔레메트리와 OS 종료 신호의 자동 드레인 연동은 별도 확인이 필요하다
+- 서버 실행 설정·인증·존재 신호·출정 종료 경로는 구현돼 있다. 2026-10-11 Windows IL2CPP·Linux Mono 개발 빌드와 격리 Linux 서버 기동·협조 종료는 확인했다. 실제 다인 접속·배포·systemd 연동과 운영 텔레메트리 수용은 별도 확인이 필요하다
 
 ### 7.1 서버 구성 (확정, 2026-09-30)
 
@@ -310,7 +314,7 @@ public override void OnClientConnect()
 
 | 단계 | 구성 |
 |---|---|
-| 1. 로컬 개발 | 에디터 또는 헤드리스 빌드로 게임 서버 실행, 백엔드는 로컬 실행, DB는 [Docker Compose](../../Backend/docker-compose.yml). 구성 파일·M2 실행 도구는 있으며 서버 빌드·M2/M3 통합은 미검증 |
+| 1. 로컬 개발 | 에디터 또는 헤드리스 빌드로 게임 서버 실행, 백엔드는 로컬 실행, DB는 [Docker Compose](../../Backend/docker-compose.yml). 구성 파일·M2 실행 도구와 개발 빌드 근거는 있으며 M2/M3 통합은 미검증 |
 | 2. AWS 초기 | 게임 서버와 백엔드를 EC2(Linux) 한두 대에, DB는 RDS |
 | 3. AWS 확장 | 필요해지면 던전 서버를 자동 확장 풀이나 관리형 호스팅으로, 백엔드를 컨테이너로 옮긴다. 이때 채널 분할과 Redis를 검토한다 |
 
