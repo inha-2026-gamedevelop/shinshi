@@ -12,7 +12,7 @@ using Shinshi.Data;
 
 namespace Shinshi.AI
 {
-    /// <summary> 보스와 난이도를 고르고 닫는 선택 창. 고른 값을 기록만 하고 보스방 입장은 하지 않는다 </summary>
+    /// <summary> 보스와 난이도를 고르고 닫는 선택 창. 고른 값을 정확한 보스전 ID로 바꿔 알리기만 하고 보스방 입장이나 해금 판정은 하지 않는다 </summary>
     public sealed class BossSelectPanel : MonoBehaviour
     {
         // 목록은 카탈로그의 보스 정의를 읽어 만든다. 표시 이름은 아직 현지화 키를 풀 곳이 없어 이 컴포넌트의 표를 쓴다
@@ -45,6 +45,7 @@ namespace Shinshi.AI
         private const string SUMMARY_NONE_FORMAT     = "보스를 선택해 주세요";
         private const string SUMMARY_BOSS_FORMAT     = "{0} - 난이도를 선택해 주세요";
         private const string SUMMARY_SELECTED_FORMAT = "선택: {0}, {1}";
+        private const string SUMMARY_NO_BATTLE_FORMAT = "{0} - 선택할 수 있는 보스전이 없다";
 
         private const string LABEL_EASY = "이지";
         private const string LABEL_HARD = "하드";
@@ -81,6 +82,8 @@ namespace Shinshi.AI
         private bool            _hasDifficulty  = false;
         private bool            _isBuilt        = false;
 
+        private BossBattleSelection _selection = default;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -93,8 +96,14 @@ namespace Shinshi.AI
         public string          SelectedBossId     => _selectedBossId;
         public EBossDifficulty SelectedDifficulty => _difficulty;
 
+        /// <summary> 현재 선택, 정확한 보스전 ID로 이어졌으면 IsResolved이고 아직 고르지 않았거나 보스를 바꾸면 None이다 </summary>
+        public BossBattleSelection Selection => _selection;
+
         /// <summary> 보스와 난이도 선택이 확정될 때 알린다. 실제 입장 연결은 이 알림을 받는 쪽이 맡는다 </summary>
         public event Action<string, EBossDifficulty> SelectionChanged;
+
+        /// <summary> 선택이 보스전 ID와 함께 확정되거나 지워질 때 알린다, 지워지면 State가 None이다. 출정 준비 연결은 이 알림을 받는다 </summary>
+        public event Action<BossBattleSelection> BattleSelectionChanged;
 
         /****************************************
         *              Unity Event
@@ -189,11 +198,29 @@ namespace Shinshi.AI
             }
         }
 
+        /// <summary> 선택을 지운다, 보스 선택도 함께 풀린다 </summary>
+        public void ClearSelection()
+        {
+            _hasBoss        = false;
+            _hasDifficulty  = false;
+            _selectedBossId = null;
+            SetSelection(default);
+            RefreshView();
+        }
+
+        /// <summary> 정확한 보스전 ID로 이어진 선택이 있으면 참이다 </summary>
+        public bool TryGetSelection(out BossBattleSelection selection)
+        {
+            selection = _selection;
+            return _selection.IsResolved;
+        }
+
         private void SelectBoss(string bossId)
         {
             if (_selectedBossId != bossId)
             {
                 _hasDifficulty = false;
+                SetSelection(default);
             }
 
             _selectedBossId = bossId;
@@ -201,6 +228,7 @@ namespace Shinshi.AI
             RefreshView();
         }
 
+        // 대응하는 보스전이 없는 조합은 선택으로 받지 않는다, 다른 보스나 난이도의 보스전으로 바꾸지도 않는다
         private void SelectDifficulty(EBossDifficulty difficulty)
         {
             if (!_hasBoss)
@@ -208,10 +236,40 @@ namespace Shinshi.AI
                 return;
             }
 
+            BossBattleSelection selection = ResolveBattle(_selectedBossId, difficulty);
+            if (!selection.IsResolved)
+            {
+                _hasDifficulty = false;
+                SetSelection(default);
+                RefreshView();
+                return;
+            }
+
             _difficulty    = difficulty;
             _hasDifficulty = true;
+            SetSelection(selection);
             RefreshView();
             SelectionChanged?.Invoke(_selectedBossId, _difficulty);
+        }
+
+        private void SetSelection(BossBattleSelection selection)
+        {
+            bool changed = (_selection.State != selection.State) || (_selection.BattleId != selection.BattleId);
+            _selection = selection;
+            if (changed)
+            {
+                BattleSelectionChanged?.Invoke(_selection);
+            }
+        }
+
+        private static BossBattleSelection ResolveBattle(string bossId, EBossDifficulty difficulty)
+        {
+            if (!GameDB.IsInitialized)
+            {
+                return default;
+            }
+
+            return BossSelectRules.Resolve(GameDB.Progression, GameDB.BossPatterns, bossId, difficulty);
         }
 
         private void EnsureBuilt()
@@ -286,10 +344,14 @@ namespace Shinshi.AI
                 }
             }
 
+            // 진행 카탈로그에 그 보스의 그 난이도 보스전이 없으면 단추를 막는다
+            bool anyBattle = false;
             for (int i = 0; i < _difficultyButtons.Length; ++i)
             {
                 bool isSelected = (_hasDifficulty) && ((int)_difficulty == i);
-                _difficultyButtons[i].interactable = _hasBoss;
+                bool hasBattle  = (_hasBoss) && (ResolveBattle(_selectedBossId, (EBossDifficulty)i).IsResolved);
+                anyBattle |= hasBattle;
+                _difficultyButtons[i].interactable = hasBattle;
 
                 if (_difficultyButtons[i].TryGetComponent(out Image background))
                 {
@@ -305,6 +367,10 @@ namespace Shinshi.AI
             if (!_hasBoss)
             {
                 _summaryText.text = SUMMARY_NONE_FORMAT;
+            }
+            else if (!anyBattle)
+            {
+                _summaryText.text = string.Format(SUMMARY_NO_BATTLE_FORMAT, FindDisplayName(_selectedBossId));
             }
             else if (!_hasDifficulty)
             {
