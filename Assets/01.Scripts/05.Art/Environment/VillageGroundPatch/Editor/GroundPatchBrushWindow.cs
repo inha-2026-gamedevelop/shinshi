@@ -119,6 +119,7 @@ namespace Shinshi.Art.Editor
         [SerializeField] private float            _seamOuter      = 0.8f; // 경계 띠가 포장 바깥으로 번지는 폭(m)
 
         private bool             _painting       = false;
+        private int              _activeControlId = 0;
         private SerializedObject _serialized     = null;
         private Vector2          _scroll         = Vector2.zero;
 
@@ -171,10 +172,21 @@ namespace Shinshi.Art.Editor
 
             EditorGUILayout.HelpBox("칠하기를 켜고 씬 뷰에서 바닥을 클릭한다.\n칠하기: 클릭한 곳에 패치를 찍는다\n지우기: 클릭하거나 드래그한 원 안의 패치를 깎는다\nShift + 클릭: 커서 아래 패치 하나를 통째로 지운다", MessageType.Info);
 
+            if (GUILayout.Button("지형 높이 브러시 열기"))
+            {
+                FlushStroke();
+                _painting = false;
+                GroundSculptBrushWindow.Open();
+            }
+
             Color previous = GUI.backgroundColor;
             GUI.backgroundColor = _painting ? Color.green : previous;
             if (GUILayout.Button(_painting ? "칠하기 끄기" : "칠하기 켜기", GUILayout.Height(EditorGUIUtility.singleLineHeight * TOGGLE_LINES)))
             {
+                if (!_painting)
+                {
+                    GroundSculptBrushWindow.StopAllPainting();
+                }
                 _painting = !_painting;
                 SceneView.RepaintAll();
             }
@@ -246,6 +258,21 @@ namespace Shinshi.Art.Editor
         *                Methods
         ****************************************/
 
+        internal static void StopAllPainting()
+        {
+            foreach (GroundPatchBrushWindow window in Resources.FindObjectsOfTypeAll<GroundPatchBrushWindow>())
+            {
+                window.FlushStroke();
+                if ((window._activeControlId != 0) && (GUIUtility.hotControl == window._activeControlId))
+                {
+                    GUIUtility.hotControl = 0;
+                }
+                window._activeControlId = 0;
+                window._painting = false;
+                window.Repaint();
+            }
+        }
+
         private void OnSceneGui(SceneView view)
         {
             if (!_painting)
@@ -265,6 +292,7 @@ namespace Shinshi.Art.Editor
             if ((current.type == EventType.MouseUp) && (GUIUtility.hotControl == controlId))
             {
                 GUIUtility.hotControl = 0;
+                _activeControlId = 0;
                 FlushStroke();
                 current.Use();
                 return;
@@ -298,11 +326,13 @@ namespace Shinshi.Art.Editor
                     else if (_mode == EBrushMode.Erase)
                     {
                         GUIUtility.hotControl = controlId;
+                        _activeControlId = controlId;
                         EraseArea(hit.point);
                     }
                     else
                     {
                         GUIUtility.hotControl = controlId;
+                        _activeControlId = controlId;
                         StampPatch(hit);
                         _lastStampPoint = hit.point;
                     }
