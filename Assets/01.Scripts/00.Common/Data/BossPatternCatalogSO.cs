@@ -225,6 +225,41 @@ namespace Shinshi.Data
             [SerializeField] private int                            _starConnectStep;           // 꼭짓점 k를 몇 칸 뒤 꼭짓점과 잇는가(오각별은 2)
             [SerializeField] private float                          _starRotationDegrees;       // 도/초, 활성 순간부터 한 방향으로 도는 속도
 
+            // 단계형 별 모양 빔만 쓴다. 0은 미지정이고 회전형이다. 단계형은 회전 속도와 피해 간격을 쓰지 않는다
+            // 첫 단계 타격은 예고 시간(TelegraphSeconds)이 끝나는 순간이고 실행 시간(ActiveSeconds)은 첫 단계부터 마지막 단계까지다
+            [SerializeField] private int                            _starStageCount;            // 한 시전의 단계 수
+            [SerializeField] private float                          _starStageDegrees;          // 도, 단계마다 별을 돌리는 각도
+            [SerializeField] private float                          _starStageIntervalSeconds;  // 초, 단계와 단계 사이(다음 단계 예고 길이이기도 하다)
+
+            // 워프 후 충격파만 쓴다. 0은 미지정이고 워프 패턴이 아니다. 충격파 반경은 형태의 Range, 피해는 DamageRef, 예고는 TelegraphSeconds, 회복은 RecoverySeconds다
+            [SerializeField] private float                          _warpMinTargetDistance;     // m, 선택 때 대상과의 최소 수평 거리
+            [SerializeField] private float                          _warpLandingDistance;       // m, 대상 둘레 착지 후보 반경, 후방 후보는 대상 뒤 이 거리다
+            [SerializeField] private int                            _warpCandidateCount;        // 후방, 대각, 측면, 전방 순서로 한 시전이 검사하는 착지 후보의 최대 수
+
+            // 격자 순차 빔만 쓴다. 0은 미지정이고 격자 빔이 아니다. 줄 폭은 형태의 Width, 첫 타격은 예고 시간(TelegraphSeconds)이 끝나는 순간이다
+            // 실행 시간(ActiveSeconds)은 첫 타격부터 마지막 타격까지이고 마지막 타격이 실행 끝 경계에 놓인다
+            [SerializeField] private int                            _gridLineCount;             // 한 방향(가로, 세로)의 줄 수, 가로가 먼저이고 세로가 뒤다
+            [SerializeField] private float                          _gridLineSpacing;           // m, 이웃한 줄의 중심선 사이 거리
+            [SerializeField] private float                          _gridStrikeIntervalSeconds; // 초, 같은 방향의 이웃한 줄 타격 사이
+            [SerializeField] private float                          _gridAxisGapSeconds;        // 초, 가로 마지막 타격에서 세로 첫 타격까지
+
+            // 잔류 부채꼴 연쇄만 쓴다. 0은 미지정이고 잔류 연쇄가 아니다. 구역 수와 간격은 연쇄 값(SweepZoneCount, SweepIntervalSeconds)을 그대로 쓴다
+            // 형태의 ArcAngle은 폭발 구역 전체 각도이고 360도에서 뺀 나머지가 피난 방향이다. 형태의 Range는 최소 사거리이고 첫 폭발은 예고 시간(TelegraphSeconds)이 끝나는 순간이다
+            [SerializeField] private float                          _chainLingerSeconds;        // 초, 마지막 폭발 뒤 이미 폭발한 구역이 위험한 시간
+            [SerializeField] private float                          _chainSafeRevealSeconds;    // 초, 시전 시작부터 피난 방향만 보여 주는 시간, 이후 예고 시간이 끝날 때까지 바닥을 예고한다
+            [SerializeField] private float                          _chainHitCooldownSeconds;   // 초, 같은 대상이 다시 맞기까지의 최소 간격
+            [SerializeField] private int                            _chainMaxHitsPerTarget;     // 한 시전에서 대상 한 명이 맞는 최대 횟수, 막힌 유효 타격도 센다
+
+            // 전방위 투사체 난사만 쓴다. 0은 미지정이고 첫 명중에 사라지는 기존 규칙이다. 발 수(ProjectileCount)가 전방위를 나누는 구역 수이고
+            // 첫 발은 예고 시간(TelegraphSeconds)이 끝나는 순간이며 각 발의 예고는 발사 TelegraphSeconds 전에 시작한다. 실행 시간(ActiveSeconds)은 첫 발부터 마지막 발까지다
+            [SerializeField] private int                            _projectileMaxHitsPerTarget; // 한 시전에서 대상 한 명이 맞는 최대 횟수, 막힌 유효 타격도 센다
+
+            // 동시 원형 폭발만 쓴다. 0은 미지정이고 동시 폭발이 아니다. 보스 중심 원의 반경은 형태의 Range, 예고 시간(TelegraphSeconds)이 끝나는 순간이 모든 원의 판정 시각이다
+            // 사분면 네 곳(전장 중심 기준 부호 네 조합)에 같은 반경의 원을 세 개씩 놓는다. 한 사분면의 좌표는 (안쪽, 안쪽), (바깥쪽, 안쪽), (안쪽, 바깥쪽)이다
+            [SerializeField] private float                          _burstSpotRadius;           // m, 사분면 원 하나의 반경
+            [SerializeField] private float                          _burstNearOffset;           // m, 전장 중심에서 사분면 원 중심까지 안쪽 좌표 크기
+            [SerializeField] private float                          _burstFarOffset;            // m, 전장 중심에서 사분면 원 중심까지 바깥쪽 좌표 크기
+
             public string                         DefinitionId          => _definitionId;
             public string                         DisplayKey            => _displayKey;
             public string                         BossId                => _bossId;
@@ -301,6 +336,60 @@ namespace Shinshi.Data
             /// <summary> 도/초, 활성 순간부터 도는 속도 </summary>
             public float                          StarRotationDegrees   => _starRotationDegrees;
 
+            /// <summary> 데이터에 입력된 단계 수 그대로, 0이면 단계형이 아니라 회전형이다 </summary>
+            public int                            RawStarStageCount     => _starStageCount;
+
+            /// <summary> 도, 단계마다 별을 돌리는 각도 </summary>
+            public float                          StarStageDegrees      => _starStageDegrees;
+
+            /// <summary> 초, 단계와 단계 사이 </summary>
+            public float                          StarStageIntervalSeconds => _starStageIntervalSeconds;
+
+            /// <summary> m, 워프 선택 때 대상과의 최소 수평 거리, 0이면 거리 조건이 없다 </summary>
+            public float                          WarpMinTargetDistance => _warpMinTargetDistance;
+
+            /// <summary> m, 착지 후보를 놓는 대상 둘레 반경, 후방 후보가 대상 뒤 이 거리에 놓인다 </summary>
+            public float                          WarpLandingDistance   => _warpLandingDistance;
+
+            /// <summary> 데이터에 입력된 착지 후보 수 그대로, 0이면 워프 패턴이 아니다 </summary>
+            public int                            WarpCandidateCount    => _warpCandidateCount;
+
+            /// <summary> 데이터에 입력된 한 방향의 줄 수 그대로, 0이면 격자 빔이 아니다 </summary>
+            public int                            RawGridLineCount      => _gridLineCount;
+
+            /// <summary> m, 이웃한 줄의 중심선 사이 거리 </summary>
+            public float                          GridLineSpacing       => _gridLineSpacing;
+
+            /// <summary> 초, 같은 방향의 이웃한 줄 타격 사이 </summary>
+            public float                          GridStrikeIntervalSeconds => _gridStrikeIntervalSeconds;
+
+            /// <summary> 초, 가로 마지막 타격에서 세로 첫 타격까지 </summary>
+            public float                          GridAxisGapSeconds    => _gridAxisGapSeconds;
+
+            /// <summary> 초, 마지막 폭발 뒤 이미 폭발한 구역이 위험한 시간, 0이면 잔류 연쇄가 아니다 </summary>
+            public float                          ChainLingerSeconds    => _chainLingerSeconds;
+
+            /// <summary> 초, 시전 시작부터 피난 방향만 보여 주는 시간 </summary>
+            public float                          ChainSafeRevealSeconds => _chainSafeRevealSeconds;
+
+            /// <summary> 초, 같은 대상이 다시 맞기까지의 최소 간격 </summary>
+            public float                          ChainHitCooldownSeconds => _chainHitCooldownSeconds;
+
+            /// <summary> 한 시전에서 대상 한 명이 맞는 최대 횟수 </summary>
+            public int                            ChainMaxHitsPerTarget => _chainMaxHitsPerTarget;
+
+            /// <summary> 한 시전에서 대상 한 명이 투사체에 맞는 최대 횟수, 0이면 대상 상한 없이 첫 명중에 사라지는 기존 규칙이다 </summary>
+            public int                            ProjectileMaxHitsPerTarget => _projectileMaxHitsPerTarget;
+
+            /// <summary> m, 동시 원형 폭발의 사분면 원 하나의 반경, 0이면 동시 폭발이 아니다 </summary>
+            public float                          BurstSpotRadius       => _burstSpotRadius;
+
+            /// <summary> m, 전장 중심에서 사분면 원 중심까지 안쪽 좌표의 크기 </summary>
+            public float                          BurstNearOffset       => _burstNearOffset;
+
+            /// <summary> m, 전장 중심에서 사분면 원 중심까지 바깥쪽 좌표의 크기 </summary>
+            public float                          BurstFarOffset        => _burstFarOffset;
+
             /****************************************
             *                Methods
             ****************************************/
@@ -329,8 +418,32 @@ namespace Shinshi.Data
                 bool areaSkipsMissedRounds = false, int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
                 int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f,
                 int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f,
-                EBossDifficulty difficulty = EBossDifficulty.Easy)
+                EBossDifficulty difficulty = EBossDifficulty.Easy,
+                float warpMinTargetDistance = 0f, float warpLandingDistance = 0f, int warpCandidateCount = 0,
+                int starStageCount = 0, float starStageDegrees = 0f, float starStageIntervalSeconds = 0f,
+                int gridLineCount = 0, float gridLineSpacing = 0f, float gridStrikeIntervalSeconds = 0f, float gridAxisGapSeconds = 0f,
+                float chainLingerSeconds = 0f, float chainSafeRevealSeconds = 0f, float chainHitCooldownSeconds = 0f,
+                int chainMaxHitsPerTarget = 0, int projectileMaxHitsPerTarget = 0,
+                float burstSpotRadius = 0f, float burstNearOffset = 0f, float burstFarOffset = 0f)
             {
+                _burstSpotRadius            = burstSpotRadius;
+                _burstNearOffset            = burstNearOffset;
+                _burstFarOffset             = burstFarOffset;
+                _projectileMaxHitsPerTarget = projectileMaxHitsPerTarget;
+                _chainLingerSeconds        = chainLingerSeconds;
+                _chainSafeRevealSeconds    = chainSafeRevealSeconds;
+                _chainHitCooldownSeconds   = chainHitCooldownSeconds;
+                _chainMaxHitsPerTarget     = chainMaxHitsPerTarget;
+                _gridLineCount             = gridLineCount;
+                _gridLineSpacing           = gridLineSpacing;
+                _gridStrikeIntervalSeconds = gridStrikeIntervalSeconds;
+                _gridAxisGapSeconds        = gridAxisGapSeconds;
+                _starStageCount            = starStageCount;
+                _starStageDegrees          = starStageDegrees;
+                _starStageIntervalSeconds  = starStageIntervalSeconds;
+                _warpMinTargetDistance     = warpMinTargetDistance;
+                _warpLandingDistance       = warpLandingDistance;
+                _warpCandidateCount        = warpCandidateCount;
                 _difficulty                = difficulty;
                 _starVertexCount           = starVertexCount;
                 _starRingRadius            = starRingRadius;
@@ -401,16 +514,47 @@ namespace Shinshi.Data
         public const string WOLBAEK_P2_P04_ID = "wolbaek_ph2_p04";
         public const string WOLBAEK_P2_P05_ID = "wolbaek_ph2_p05";
         public const string WOLBAEK_P2_P06_ID = "wolbaek_ph2_p06";
+        public const string WOLBAEK_P2_P07_ID = "wolbaek_ph2_p07";
 
-        // 월백 하드 1페이즈 패턴 ID, 이지 ID와 겹치지 않는다. P01 돌진, P02 부채꼴, P03 중심 폭발만 있고 나머지는 아직 없다
+        // 월백 하드 1페이즈 패턴 ID, 이지 ID와 겹치지 않는다. P01~P06 여섯 개가 모두 있다
         public const string WOLBAEK_HARD_P01_ID = "wolbaek_hard_p01";
         public const string WOLBAEK_HARD_P02_ID = "wolbaek_hard_p02";
         public const string WOLBAEK_HARD_P03_ID = "wolbaek_hard_p03";
+        public const string WOLBAEK_HARD_P04_ID = "wolbaek_hard_p04";
+        public const string WOLBAEK_HARD_P05_ID = "wolbaek_hard_p05";
+        public const string WOLBAEK_HARD_P06_ID = "wolbaek_hard_p06";
+
+        // 월백 하드 2페이즈 패턴 ID, 이지 2페이즈 ID와 겹치지 않는다. P01~P07 일곱 개가 모두 있어야 하드 2페이즈가 준비된 것으로 본다
+        public const string WOLBAEK_HARD_P2_P01_ID = "wolbaek_hard_ph2_p01";
+        public const string WOLBAEK_HARD_P2_P02_ID = "wolbaek_hard_ph2_p02";
+        public const string WOLBAEK_HARD_P2_P03_ID = "wolbaek_hard_ph2_p03";
+        public const string WOLBAEK_HARD_P2_P04_ID = "wolbaek_hard_ph2_p04";
+        public const string WOLBAEK_HARD_P2_P05_ID = "wolbaek_hard_ph2_p05";
+        public const string WOLBAEK_HARD_P2_P06_ID = "wolbaek_hard_ph2_p06";
+        public const string WOLBAEK_HARD_P2_P07_ID = "wolbaek_hard_ph2_p07";
 
         private const float NEUTRAL_MULTIPLIER = 1f;
 
-        // 한 시전의 발 수 상한, 서버 지속물 관리자의 동시 비행 슬롯 수와 같다
+        // 한 시전의 발 수 상한, 서버 지속물 관리자의 공용 비행 슬롯 수와 같다. 대상당 피격 상한이 있는 난사는 이전 시전의 잔류 투사체와 겹쳐도
+        // 모든 발이 나가도록 관리자의 예비 슬롯까지 쓴다
         private const int   MAX_PROJECTILE_COUNT = 8;
+
+        // 투사체가 한 시전에서 대상 한 명을 맞힐 수 있는 횟수의 상한, 하드 P05 난사의 확정 횟수
+        private const int   MAX_PROJECTILE_HITS  = 8;
+        private const int   BARRAGE_MAX_HITS     = 2;
+
+        // 하드 P05 난사의 구역 수이자 발 수, 전방위를 45도씩 나눈 여덟 곳이다
+        private const int   BARRAGE_SHOTS        = 8;
+
+        // 하드 P04 추적 장판의 계약값, 서버 패턴이 기대하는 시간과 구조다. 추적 4초 뒤 고정 예고 2.5초를 거쳐 60초 동안 1초마다 피해를 준다
+        private const float HARD_AREA_TRACKING_SECONDS = 4f;
+        private const float HARD_AREA_FIXED_SECONDS    = 2.5f;
+        private const float HARD_AREA_RECOVERY_SECONDS = 1f;
+        private const float HARD_AREA_RADIUS           = 6f;
+        private const float HARD_AREA_DURATION_SECONDS = 60f;
+        private const float HARD_AREA_TICK_SECONDS     = 1f;
+        private const float HARD_AREA_DAMAGE_REF       = 0.08f;
+        private const int   HARD_AREA_TARGET_COUNT     = 2;
 
         // 한 시전이 장판을 설치할 수 있는 대상 수의 상한, 서버 패턴의 기술적 상한과 같다
         private const int   MAX_AREA_TARGETS     = 4;
@@ -423,9 +567,27 @@ namespace Shinshi.Data
         private const int   MAX_BEAMS            = 4;
         private const float BEAM_LATERAL_FACTOR  = 2f;
 
+        // 워프 착지 후보 수의 상한, 대상 둘레를 45도씩 나눈 여덟 곳이다
+        private const int   MAX_WARP_CANDIDATES  = 8;
+
         // 별형 꼭짓점 수의 범위, 서버 별형 패턴의 기술적 상한과 같다
         private const int   MIN_STAR_VERTICES    = 5;
         private const int   MAX_STAR_VERTICES    = 8;      // 두 줄 사이 중심선 거리는 좌우 거리의 두 배
+
+        // 단계형 별 빔의 단계 수 상한, 서버 단계형 패턴의 기술적 상한과 같다
+        private const int   MAX_STAR_STAGES      = 4;
+
+        // 격자 순차 빔의 한 방향 줄 수 상한, 서버 격자 패턴의 기술적 상한과 같다
+        private const int   MAX_GRID_LINES       = 16;
+        private const int   GRID_AXIS_COUNT      = 2;
+        private const float GRID_FIT_EPSILON     = 0.001f; // m, 줄 간격과 전장 지름을 비교할 때 부동소수 오차 흡수
+
+        // 잔류 부채꼴 연쇄의 대상당 최대 피격 횟수 상한, 서버 패턴의 기술적 상한과 같다
+        private const int   MAX_CHAIN_HITS       = 8;
+
+        // 동시 원형 폭발의 가장 먼 원이 전장 안에 드는지 볼 때 쓰는 값
+        private const float RADIUS_PER_DIAMETER  = 0.5f;
+        private const float BURST_FIT_EPSILON    = 0.001f; // m, 가장 먼 원과 전장 반지름을 비교할 때 부동소수 오차 흡수
 
         // 흐름 배율 표, 체력 구간 2 x 직전 그룹 3 x 다음 그룹 3
         private const int FLOW_BAND_COUNT  = 2;
@@ -502,7 +664,7 @@ namespace Shinshi.Data
         // 기획이 수치를 정한 패턴만 넣고(지금은 P06) 나머지는 0으로 비워 둔다. 비운 패턴은 IsPatternReady가 거짓이라 뽑히지 않는다
         // TODO(기웅): 아래 형태 범주와 방어 가능 여부는 자리값이다. P01과 P02는 EEnemyAttackShape에 빔 형태가 없어 Line으로 두었고,
         // 형태 추가는 00.Common/Types 소유자와 협의해야 한다. 각 공격을 구현할 때 확정한다
-        /// <summary> 월백 2페이즈 여섯 패턴의 선택 데이터 기본값, 기존 에셋에 더할 때도 같은 값을 쓴다 </summary>
+        /// <summary> 월백 2페이즈 이지 일곱 패턴의 선택 데이터 기본값, 기존 에셋에 더할 때도 같은 값을 쓴다 </summary>
         public static PatternDefinition[] CreateWolbaekPhaseTwoDefaults()
         {
             float[] recent = { 0f, 0.3f, 0.7f, 1f };
@@ -547,7 +709,16 @@ namespace Shinshi.Data
                 // P06은 기획이 정한 실행 수치까지 넣었다. 예고 1.2초, 반경 5m, 방어 전 피해 0.28Href, 반격 가능, 회복 0.8초이고 체력 25% 이하에서도 같다
                 MakePhaseTwo(WOLBAEK_P2_P06_ID, EEnemyAttackShape.Circle, true, EPatternGroup.Pressure, 8f, 9f,
                     new[] { 1.7f, 0.4f, 0f }, flatDirection, new[] { 0.5f, 1.6f, 2.4f }, recent,
-                    new PhaseTwoExecution(1.2f, 0f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.28f))
+                    new PhaseTwoExecution(1.2f, 0f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.28f)),
+                // P07은 하드 설계안(2026-10-07)의 후방 우선 워프 수치를 이지 시험값으로 옮겼다. 확정 밸런스가 아니며 이지와 하드 정의를 따로 조정한다.
+                // 대상과 5m 이상일 때만 선택하고(근거리 배율 0), 시전 시작에 대상 뒤 3m를 먼저 두고 대각, 측면, 전방 순서로 최대 8곳만 검사해 착지한다.
+                // 착지 전 표식은 없고 착지한 보스 위치를 중심으로 반경 5m를 1.5초 예고한 뒤 한 번 타격한다. 방어 전 0.24Href, 반격 가능, 회복 1초, 직접 제어 없음이다.
+                // 기본값 6.5와 7은 같은 시점의 P01~P06 평균 기본값(13, 13.83)의 절반이다. 거리와 방향과 주변 배율은 중립이고 최근 배율은 P01~P06과 같다.
+                // 그룹은 보스 중심 폭발인 P06과 같은 Pressure로 뒀다
+                MakePhaseTwo(WOLBAEK_P2_P07_ID, EEnemyAttackShape.Circle, true, EPatternGroup.Pressure, 6.5f, 7f,
+                    new[] { 0f, 1f, 1f }, flatDirection, new[] { 1f, 1f, 1f }, recent,
+                    new PhaseTwoExecution(1.5f, 0f, 1f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.24f,
+                        warpMinTargetDistance: 5f, warpLandingDistance: 3f, warpCandidateCount: MAX_WARP_CANDIDATES))
             };
         }
 
@@ -602,6 +773,9 @@ namespace Shinshi.Data
             public readonly float                          StarRingRadius;
             public readonly int                            StarConnectStep;
             public readonly float                          StarRotationDegrees;
+            public readonly float                          WarpMinTargetDistance;
+            public readonly float                          WarpLandingDistance;
+            public readonly int                            WarpCandidateCount;
 
             public PhaseTwoExecution(float telegraphSeconds, float activeSeconds, float recoverySeconds,
                 EnemyCatalogSO.AttackShapeSpec shape, float damageRef, float trackingSeconds = 0f, float turnRate = 0f,
@@ -610,8 +784,12 @@ namespace Shinshi.Data
                 int maxConcurrentAreas = 0, int areaTargetCount = 0, bool areaSkipsMissedRounds = false,
                 int sweepZoneCount = 0, float sweepIntervalSeconds = 0f,
                 int beamCount = 0, float beamLateralOffset = 0f, float beamTickInterval = 0f,
-                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f)
+                int starVertexCount = 0, float starRingRadius = 0f, int starConnectStep = 0, float starRotationDegrees = 0f,
+                float warpMinTargetDistance = 0f, float warpLandingDistance = 0f, int warpCandidateCount = 0)
             {
+                WarpMinTargetDistance = warpMinTargetDistance;
+                WarpLandingDistance   = warpLandingDistance;
+                WarpCandidateCount    = warpCandidateCount;
                 StarVertexCount       = starVertexCount;
                 StarRingRadius        = starRingRadius;
                 StarConnectStep       = starConnectStep;
@@ -659,7 +837,9 @@ namespace Shinshi.Data
                     sweepZoneCount: value.SweepZoneCount, sweepIntervalSeconds: value.SweepIntervalSeconds,
                     beamCount: value.BeamCount, beamLateralOffset: value.BeamLateralOffset, beamTickInterval: value.BeamTickInterval,
                     starVertexCount: value.StarVertexCount, starRingRadius: value.StarRingRadius,
-                    starConnectStep: value.StarConnectStep, starRotationDegrees: value.StarRotationDegrees);
+                    starConnectStep: value.StarConnectStep, starRotationDegrees: value.StarRotationDegrees,
+                    warpMinTargetDistance: value.WarpMinTargetDistance, warpLandingDistance: value.WarpLandingDistance,
+                    warpCandidateCount: value.WarpCandidateCount);
             }
 
             return new PatternDefinition(id, WOLBAEK_ID, SECOND_PHASE, baseWeight,
@@ -1020,9 +1200,175 @@ namespace Shinshi.Data
             ValidateControlWindow(errors, field, pattern, requireTuned);
             ValidateProjectileSequence(errors, field, pattern);
             ValidateAreaTargets(errors, field, pattern);
+            ValidateHardPhaseTwoArea(errors, field, pattern);
+            ValidateHardPhaseTwoBarrage(errors, field, pattern);
+            ValidateHardPhaseTwoBurst(errors, field, pattern);
+            ValidateHardPhaseTwoWarp(errors, field, pattern);
+            ValidateBurst(errors, field, pattern);
             ValidateSweep(errors, field, pattern);
             ValidateBeam(errors, field, pattern);
             ValidateStar(errors, field, pattern);
+            ValidateWarp(errors, field, pattern);
+            ValidateGrid(errors, field, pattern);
+            ValidateChain(errors, field, pattern);
+        }
+
+        // 잔류 부채꼴 연쇄는 구역 연쇄(SweepZoneCount)의 확장이라 구역 수와 간격은 그 값을 쓴다. 구역 전체 각도는 360도 미만이어야 피난 방향이 남는다
+        // 마지막 폭발이 실행 구간의 끝 경계에 놓여야 하므로 실행 시간은 첫 폭발부터 마지막 폭발까지와 같다
+        // 잔류 시간은 회복 시간 안에 끝나야 한다. 패턴은 회복이 끝나면 정리되므로 더 길면 잔류 위험이 설계보다 일찍 사라진다
+        // 예고 시간 안에 피난 방향 공개가 끝나야 바닥 예고가 남는다
+        private void ValidateChain(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".ChainLingerSeconds", pattern.ChainLingerSeconds);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".ChainSafeRevealSeconds", pattern.ChainSafeRevealSeconds);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".ChainHitCooldownSeconds", pattern.ChainHitCooldownSeconds);
+            DataValidation.RequireRange(errors, OWNER, field + ".ChainMaxHitsPerTarget", pattern.ChainMaxHitsPerTarget, 0, MAX_CHAIN_HITS);
+
+            bool hasAny = (pattern.ChainLingerSeconds > UNSET) || (pattern.ChainSafeRevealSeconds > UNSET)
+                || (pattern.ChainHitCooldownSeconds > UNSET) || (pattern.ChainMaxHitsPerTarget > 0);
+            if (!hasAny)
+            {
+                return;
+            }
+
+            if (pattern.RawSweepZoneCount <= 0)
+            {
+                errors.Add($"{OWNER}.{field}.SweepZoneCount: 잔류 연쇄 값이 있으면 구역 수가 필요하다");
+                return;
+            }
+
+            if ((pattern.RawBeamCount > 0) || (pattern.StarVertexCount > 0) || (pattern.RawGridLineCount > 0) || (pattern.WarpCandidateCount > 0))
+            {
+                errors.Add($"{OWNER}.{field}.ChainLingerSeconds: 잔류 연쇄는 빔, 별형, 격자, 워프 값과 섞을 수 없다");
+            }
+
+            if ((pattern.Shape != null) && ((pattern.Shape.ArcAngle <= UNSET) || (pattern.Shape.ArcAngle >= MAX_ARC_ANGLE)))
+            {
+                errors.Add($"{OWNER}.{field}.Shape.ArcAngle = {pattern.Shape.ArcAngle}: 0 초과 {MAX_ARC_ANGLE} 미만이어야 피난 방향이 남는다");
+            }
+
+            if (pattern.ChainLingerSeconds <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.ChainLingerSeconds: 잔류 시간이 필요하다");
+            }
+            else if (pattern.ChainLingerSeconds > (pattern.RecoverySeconds + SEQUENCE_EPSILON))
+            {
+                errors.Add($"{OWNER}.{field}.ChainLingerSeconds = {pattern.ChainLingerSeconds}: 회복 시간 {pattern.RecoverySeconds}초 이하여야 한다");
+            }
+
+            if ((pattern.ChainSafeRevealSeconds <= UNSET) || (pattern.ChainSafeRevealSeconds >= pattern.TelegraphSeconds))
+            {
+                errors.Add($"{OWNER}.{field}.ChainSafeRevealSeconds = {pattern.ChainSafeRevealSeconds}: 0 초과 예고 시간 {pattern.TelegraphSeconds}초 미만이어야 한다");
+            }
+
+            if (pattern.ChainHitCooldownSeconds <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.ChainHitCooldownSeconds: 재피격 간격이 필요하다");
+            }
+
+            if (pattern.ChainMaxHitsPerTarget < 1)
+            {
+                errors.Add($"{OWNER}.{field}.ChainMaxHitsPerTarget: 최대 피격 횟수가 필요하다");
+            }
+
+            if ((pattern.RawSweepZoneCount > 1) && (pattern.SweepIntervalSeconds > UNSET))
+            {
+                float sequence = (pattern.RawSweepZoneCount - 1) * pattern.SweepIntervalSeconds;
+                if (Mathf.Abs(pattern.ActiveSeconds - sequence) > SEQUENCE_EPSILON)
+                {
+                    errors.Add($"{OWNER}.{field}.ActiveSeconds = {pattern.ActiveSeconds}: 첫 폭발부터 마지막 폭발까지 {sequence}초와 같아야 한다");
+                }
+            }
+        }
+
+        // 격자 순차 빔은 선 형태여야 하고, 줄 폭이 줄 간격 이상이어야 줄 사이에 틈이 없으며 줄 전체가 전장 지름을 덮어야 한다
+        // 실행 시간은 첫 타격부터 마지막 타격까지와 정확히 같아야 한다. 더 길면 마지막 타격 뒤 회복이 설계 시간보다 길어지고, 짧으면 마지막 줄이 실행 밖으로 밀린다
+        // 가로와 세로 두 방향이 같은 간격으로 이어지므로 첫 타격부터 마지막 타격까지는 2 x (줄 수 - 1) x 타격 간격 + 방향 전환 간격이다
+        private void ValidateGrid(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireRange(errors, OWNER, field + ".GridLineCount", pattern.RawGridLineCount, 0, MAX_GRID_LINES);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".GridLineSpacing", pattern.GridLineSpacing);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".GridStrikeIntervalSeconds", pattern.GridStrikeIntervalSeconds);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".GridAxisGapSeconds", pattern.GridAxisGapSeconds);
+
+            if (pattern.RawGridLineCount <= 0)
+            {
+                if ((pattern.GridLineSpacing > UNSET) || (pattern.GridStrikeIntervalSeconds > UNSET) || (pattern.GridAxisGapSeconds > UNSET))
+                {
+                    errors.Add($"{OWNER}.{field}.GridLineCount: 격자 값이 있으면 줄 수가 필요하다");
+                }
+
+                return;
+            }
+
+            if ((pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Line))
+            {
+                errors.Add($"{OWNER}.{field}.Shape: 격자 빔은 선 형태여야 한다");
+            }
+
+            if ((pattern.RawBeamCount > 0) || (pattern.StarVertexCount > 0) || (pattern.RawSweepZoneCount > 0) || (pattern.BeamTickInterval > UNSET))
+            {
+                errors.Add($"{OWNER}.{field}.GridLineCount: 격자 빔은 평행 빔, 별형, 연쇄 값과 섞을 수 없다");
+            }
+
+            if (pattern.GridLineSpacing <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.GridLineSpacing: 줄 간격이 필요하다");
+            }
+            else if ((pattern.Shape != null) && (pattern.Shape.Width < (pattern.GridLineSpacing - GRID_FIT_EPSILON)))
+            {
+                errors.Add($"{OWNER}.{field}.Shape.Width = {pattern.Shape.Width}: 줄 간격 {pattern.GridLineSpacing}m 이상이어야 줄 사이에 틈이 없다");
+            }
+
+            if ((pattern.RawGridLineCount > 1) && (pattern.GridStrikeIntervalSeconds <= UNSET))
+            {
+                errors.Add($"{OWNER}.{field}.GridStrikeIntervalSeconds: 여러 줄이면 타격 간격이 필요하다");
+            }
+
+            float sequence = (GRID_AXIS_COUNT * (pattern.RawGridLineCount - 1) * pattern.GridStrikeIntervalSeconds) + pattern.GridAxisGapSeconds;
+            if (Mathf.Abs(pattern.ActiveSeconds - sequence) > SEQUENCE_EPSILON)
+            {
+                errors.Add($"{OWNER}.{field}.ActiveSeconds = {pattern.ActiveSeconds}: 첫 타격부터 마지막 타격까지 {sequence}초와 같아야 한다");
+            }
+
+            if (TryGetBoss(pattern.BossId, out BossDefinition boss) && (boss.ArenaDiameter > UNSET) && (pattern.GridLineSpacing > UNSET)
+                && ((pattern.RawGridLineCount * pattern.GridLineSpacing) + GRID_FIT_EPSILON < boss.ArenaDiameter))
+            {
+                errors.Add($"{OWNER}.{field}.GridLineCount = {pattern.RawGridLineCount}: 줄 전체 {pattern.RawGridLineCount * pattern.GridLineSpacing}m가 전장 지름 {boss.ArenaDiameter}m를 덮어야 한다");
+            }
+        }
+
+        // 워프 후 충격파는 원형 형태여야 하고, 후보 수와 후보 반경이 있어야 한다. 후보 반경은 전장 반지름보다 작아야 후보가 전장 안에 들 수 있다
+        private void ValidateWarp(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireRange(errors, OWNER, field + ".WarpCandidateCount", pattern.WarpCandidateCount, 0, MAX_WARP_CANDIDATES);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".WarpMinTargetDistance", pattern.WarpMinTargetDistance);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".WarpLandingDistance", pattern.WarpLandingDistance);
+
+            if (pattern.WarpCandidateCount <= 0)
+            {
+                if ((pattern.WarpMinTargetDistance > UNSET) || (pattern.WarpLandingDistance > UNSET))
+                {
+                    errors.Add($"{OWNER}.{field}.WarpCandidateCount: 워프 거리 값이 있으면 후보 수가 필요하다");
+                }
+
+                return;
+            }
+
+            if ((pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Circle))
+            {
+                errors.Add($"{OWNER}.{field}.Shape: 워프 충격파는 원형 형태여야 한다");
+            }
+
+            if (pattern.WarpLandingDistance <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.WarpLandingDistance: 착지 후보 반경이 필요하다");
+            }
+            else if (TryGetBoss(pattern.BossId, out BossDefinition boss) && (boss.ArenaDiameter > UNSET)
+                && (pattern.WarpLandingDistance >= (boss.ArenaDiameter * 0.5f)))
+            {
+                errors.Add($"{OWNER}.{field}.WarpLandingDistance = {pattern.WarpLandingDistance}: 전장 반지름 {boss.ArenaDiameter * 0.5f}m 미만이어야 한다");
+            }
         }
 
         // 별형 회전 빔은 선 형태여야 하고, 꼭짓점 수와 연결 칸 수와 배치 반경과 회전 속도와 피해 간격이 있어야 한다
@@ -1032,9 +1378,17 @@ namespace Shinshi.Data
             DataValidation.RequireRange(errors, OWNER, field + ".StarVertexCount", pattern.StarVertexCount, 0, MAX_STAR_VERTICES);
             DataValidation.RequireNonNegative(errors, OWNER, field + ".StarRingRadius", pattern.StarRingRadius);
             DataValidation.RequireNonNegative(errors, OWNER, field + ".StarRotationDegrees", pattern.StarRotationDegrees);
+            DataValidation.RequireRange(errors, OWNER, field + ".StarStageCount", pattern.RawStarStageCount, 0, MAX_STAR_STAGES);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".StarStageDegrees", pattern.StarStageDegrees);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".StarStageIntervalSeconds", pattern.StarStageIntervalSeconds);
 
             if (pattern.StarVertexCount <= 0)
             {
+                if ((pattern.RawStarStageCount > 0) || (pattern.StarStageDegrees > UNSET) || (pattern.StarStageIntervalSeconds > UNSET))
+                {
+                    errors.Add($"{OWNER}.{field}.StarVertexCount: 단계 값이 있으면 꼭짓점 수가 필요하다");
+                }
+
                 return;
             }
 
@@ -1064,6 +1418,17 @@ namespace Shinshi.Data
                 errors.Add($"{OWNER}.{field}.StarRingRadius = {pattern.StarRingRadius}: 전장 반지름 {boss.ArenaDiameter * 0.5f}m 이하여야 한다");
             }
 
+            if (pattern.RawStarStageCount > 0)
+            {
+                ValidateStarStages(errors, field, pattern);
+                return;
+            }
+
+            if ((pattern.StarStageDegrees > UNSET) || (pattern.StarStageIntervalSeconds > UNSET))
+            {
+                errors.Add($"{OWNER}.{field}.StarStageCount: 단계 각도나 간격이 있으면 단계 수가 필요하다");
+            }
+
             if (pattern.StarRotationDegrees <= UNSET)
             {
                 errors.Add($"{OWNER}.{field}.StarRotationDegrees: 회전 속도가 필요하다");
@@ -1081,6 +1446,38 @@ namespace Shinshi.Data
             else if (pattern.BeamTickInterval > (pattern.ActiveSeconds + SEQUENCE_EPSILON))
             {
                 errors.Add($"{OWNER}.{field}.BeamTickInterval = {pattern.BeamTickInterval}: 유지 시간 {pattern.ActiveSeconds}초 이하여야 한다");
+            }
+        }
+
+        // 단계형은 회전 속도와 피해 간격을 쓰지 않으므로 값이 남아 있으면 회전형과 섞인 것으로 보고 막는다
+        // 실행 시간이 첫 단계부터 마지막 단계까지를 덮어야 마지막 단계 타격이 실행 구간 밖으로 밀리지 않는다
+        private static void ValidateStarStages(List<string> errors, string field, PatternDefinition pattern)
+        {
+            if ((pattern.StarStageDegrees <= UNSET) || (pattern.StarStageDegrees > MAX_ANGLE))
+            {
+                errors.Add($"{OWNER}.{field}.StarStageDegrees = {pattern.StarStageDegrees}: 0 초과 {MAX_ANGLE} 이하여야 한다");
+            }
+
+            if ((pattern.StarRotationDegrees > UNSET) || (pattern.BeamTickInterval > UNSET))
+            {
+                errors.Add($"{OWNER}.{field}.StarRotationDegrees: 단계형은 회전 속도와 피해 간격을 쓰지 않는다");
+            }
+
+            if (pattern.RawStarStageCount == 1)
+            {
+                return;
+            }
+
+            if (pattern.StarStageIntervalSeconds <= UNSET)
+            {
+                errors.Add($"{OWNER}.{field}.StarStageIntervalSeconds: 여러 단계면 간격이 필요하다");
+                return;
+            }
+
+            float sequence = (pattern.RawStarStageCount - 1) * pattern.StarStageIntervalSeconds;
+            if (pattern.ActiveSeconds < (sequence - SEQUENCE_EPSILON))
+            {
+                errors.Add($"{OWNER}.{field}.ActiveSeconds = {pattern.ActiveSeconds}: 첫 단계부터 마지막 단계까지 {sequence}초를 덮어야 한다");
             }
         }
 
@@ -1184,11 +1581,143 @@ namespace Shinshi.Data
             }
         }
 
+        private static void ValidateHardPhaseTwoArea(List<string> errors, string field, PatternDefinition pattern)
+        {
+            if (pattern.DefinitionId != WOLBAEK_HARD_P2_P04_ID)
+            {
+                return;
+            }
+
+            if ((pattern.Shape == null) || (pattern.Shape.Shape != EEnemyAttackShape.TargetArea)
+                || (pattern.Difficulty != EBossDifficulty.Hard) || (pattern.Phase != SECOND_PHASE)
+                || (pattern.TelegraphSeconds != HARD_AREA_TRACKING_SECONDS) || (pattern.TrackingSeconds != HARD_AREA_TRACKING_SECONDS)
+                || (pattern.ActiveSeconds != HARD_AREA_FIXED_SECONDS) || (pattern.RecoverySeconds != HARD_AREA_RECOVERY_SECONDS)
+                || (pattern.Shape.Range != HARD_AREA_RADIUS) || (pattern.AreaDurationSeconds != HARD_AREA_DURATION_SECONDS)
+                || (pattern.AreaTickInterval != HARD_AREA_TICK_SECONDS) || (pattern.DamageRef != HARD_AREA_DAMAGE_REF)
+                || pattern.Guardable || (pattern.RawAreaTargetCount != HARD_AREA_TARGET_COUNT)
+                || (pattern.MaxConcurrentAreas != HARD_AREA_TARGET_COUNT)
+                || (!pattern.AreaSkipsMissedRounds))
+            {
+                errors.Add($"{OWNER}.{field}: 하드 P04의 추적 4초, 고정 예고 2.5초, 장판 2개와 60회 피해 계약이 맞지 않는다");
+            }
+        }
+
+        // 난사의 구조만 고정한다. 구역 수가 되는 발 수, 대상당 피격 횟수, 조준 추적 없음, 방어 가능은 서버 패턴이 기대는 계약이라 어긋나면 막는다
+        // 시간, 사거리, 폭, 속도, 피해량은 밸런스 값이라 에셋에서 조정한다. 다만 각 발의 예고가 발사 예고 시간만큼 앞서므로 예고 시간은 양수여야 한다
+        private static void ValidateHardPhaseTwoBarrage(List<string> errors, string field, PatternDefinition pattern)
+        {
+            if (pattern.DefinitionId != WOLBAEK_HARD_P2_P05_ID)
+            {
+                return;
+            }
+
+            if ((pattern.Shape == null) || (pattern.Shape.Shape != EEnemyAttackShape.Projectile)
+                || (pattern.Difficulty != EBossDifficulty.Hard) || (pattern.Phase != SECOND_PHASE)
+                || (pattern.RawProjectileCount != BARRAGE_SHOTS) || (pattern.ProjectileMaxHitsPerTarget != BARRAGE_MAX_HITS)
+                || (pattern.TrackingSeconds > UNSET) || (pattern.TurnRate > UNSET) || (!pattern.Guardable)
+                || (pattern.TelegraphSeconds <= UNSET) || (pattern.ProjectileIntervalSeconds <= UNSET))
+            {
+                errors.Add($"{OWNER}.{field}: 하드 P05의 8구역 8발, 대상당 2회 피격, 추적 없는 예고와 방어 가능 계약이 맞지 않는다");
+            }
+        }
+
+        // 동시 폭발의 구조만 고정한다. 원형 형태, 즉발(실행 시간 0), 방어 가능, 사분면 원의 반경과 좌표가 있어야 서버 패턴이 13개 원을 만들 수 있다
+        // 시간, 반경, 좌표 크기, 피해량은 밸런스 값이라 에셋에서 조정한다
+        private static void ValidateHardPhaseTwoBurst(List<string> errors, string field, PatternDefinition pattern)
+        {
+            if (pattern.DefinitionId != WOLBAEK_HARD_P2_P06_ID)
+            {
+                return;
+            }
+
+            if ((pattern.Shape == null) || (pattern.Shape.Shape != EEnemyAttackShape.Circle)
+                || (pattern.Difficulty != EBossDifficulty.Hard) || (pattern.Phase != SECOND_PHASE)
+                || (!pattern.Guardable) || (pattern.ActiveSeconds > UNSET) || (pattern.TelegraphSeconds <= UNSET)
+                || (pattern.BurstSpotRadius <= UNSET) || (pattern.BurstNearOffset <= UNSET)
+                || (pattern.BurstFarOffset <= pattern.BurstNearOffset))
+            {
+                errors.Add($"{OWNER}.{field}: 하드 P06의 즉발 판정, 방어 가능, 사분면 고정 원 계약이 맞지 않는다");
+            }
+        }
+
+        // 워프 충격파의 구조만 고정한다. 원형 형태, 즉발(실행 시간 0), 방어 가능, 후보 수와 착지 거리와 선택 최소 거리가 있어야 서버 패턴이 착지 후보를 검사할 수 있다
+        // 시간, 반경, 피해량은 밸런스 값이라 에셋에서 조정한다
+        private static void ValidateHardPhaseTwoWarp(List<string> errors, string field, PatternDefinition pattern)
+        {
+            if (pattern.DefinitionId != WOLBAEK_HARD_P2_P07_ID)
+            {
+                return;
+            }
+
+            if ((pattern.Shape == null) || (pattern.Shape.Shape != EEnemyAttackShape.Circle)
+                || (pattern.Difficulty != EBossDifficulty.Hard) || (pattern.Phase != SECOND_PHASE)
+                || (!pattern.Guardable) || (pattern.ActiveSeconds > UNSET) || (pattern.TelegraphSeconds <= UNSET)
+                || (pattern.WarpCandidateCount <= 0) || (pattern.WarpLandingDistance <= UNSET)
+                || (pattern.WarpMinTargetDistance <= UNSET))
+            {
+                errors.Add($"{OWNER}.{field}: 하드 P07의 즉발 원형 충격파, 방어 가능, 후방 우선 착지 후보 계약이 맞지 않는다");
+            }
+        }
+
+        // 동시 원형 폭발은 원형 형태여야 하고, 사분면 원의 반경과 안쪽, 바깥쪽 좌표가 함께 있어야 한다. 바깥쪽이 안쪽보다 커야 한 사분면의 세 원이 서로 다른 곳에 놓인다
+        // 가장 먼 원(바깥쪽 좌표와 안쪽 좌표의 대각 거리에 반경을 더한 값)이 전장 반지름 안이어야 예고가 전장 밖으로 나가지 않는다
+        private void ValidateBurst(List<string> errors, string field, PatternDefinition pattern)
+        {
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".BurstSpotRadius", pattern.BurstSpotRadius);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".BurstNearOffset", pattern.BurstNearOffset);
+            DataValidation.RequireNonNegative(errors, OWNER, field + ".BurstFarOffset", pattern.BurstFarOffset);
+
+            bool hasAny = (pattern.BurstSpotRadius > UNSET) || (pattern.BurstNearOffset > UNSET) || (pattern.BurstFarOffset > UNSET);
+            if (!hasAny)
+            {
+                return;
+            }
+
+            if ((pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Circle))
+            {
+                errors.Add($"{OWNER}.{field}.Shape: 동시 원형 폭발은 원형 형태여야 한다");
+            }
+
+            if ((pattern.BurstSpotRadius <= UNSET) || (pattern.BurstNearOffset <= UNSET) || (pattern.BurstFarOffset <= UNSET))
+            {
+                errors.Add($"{OWNER}.{field}.BurstSpotRadius: 사분면 원의 반경과 안쪽, 바깥쪽 좌표가 모두 필요하다");
+                return;
+            }
+
+            if (pattern.BurstFarOffset <= pattern.BurstNearOffset)
+            {
+                errors.Add($"{OWNER}.{field}.BurstFarOffset = {pattern.BurstFarOffset}: 안쪽 좌표 {pattern.BurstNearOffset}m보다 커야 한다");
+            }
+
+            if ((pattern.RawBeamCount > 0) || (pattern.StarVertexCount > 0) || (pattern.RawSweepZoneCount > 0) || (pattern.RawGridLineCount > 0)
+                || (pattern.WarpCandidateCount > 0) || (pattern.ChainLingerSeconds > UNSET) || (pattern.RawProjectileCount > 0)
+                || (pattern.RawAreaTargetCount > 0))
+            {
+                errors.Add($"{OWNER}.{field}.BurstSpotRadius: 동시 원형 폭발은 빔, 별형, 연쇄, 격자, 워프, 투사체, 장판 값과 섞을 수 없다");
+            }
+
+            if (TryGetBoss(pattern.BossId, out BossDefinition boss) && (boss.ArenaDiameter > UNSET))
+            {
+                float reach = Mathf.Sqrt((pattern.BurstFarOffset * pattern.BurstFarOffset) + (pattern.BurstNearOffset * pattern.BurstNearOffset))
+                    + pattern.BurstSpotRadius;
+                if (reach > ((boss.ArenaDiameter * RADIUS_PER_DIAMETER) + BURST_FIT_EPSILON))
+                {
+                    errors.Add($"{OWNER}.{field}.BurstFarOffset = {pattern.BurstFarOffset}: 가장 먼 원이 {reach}m까지 닿아 전장 반지름 {boss.ArenaDiameter * RADIUS_PER_DIAMETER}m를 넘는다");
+                }
+            }
+        }
+
         // 한 발이면(0 또는 1) 간격은 쓰지 않는다. 여러 발이면 간격이 있어야 하고, 실행 구간이 첫 발부터 마지막 발까지를 덮어야 마지막 발이 실행 밖으로 밀리지 않는다
         private static void ValidateProjectileSequence(List<string> errors, string field, PatternDefinition pattern)
         {
             DataValidation.RequireRange(errors, OWNER, field + ".ProjectileCount", pattern.RawProjectileCount, 0, MAX_PROJECTILE_COUNT);
             DataValidation.RequireNonNegative(errors, OWNER, field + ".ProjectileIntervalSeconds", pattern.ProjectileIntervalSeconds);
+            DataValidation.RequireRange(errors, OWNER, field + ".ProjectileMaxHitsPerTarget", pattern.ProjectileMaxHitsPerTarget, 0, MAX_PROJECTILE_HITS);
+
+            if ((pattern.ProjectileMaxHitsPerTarget > 0) && (pattern.Shape != null) && (pattern.Shape.Shape != EEnemyAttackShape.Projectile))
+            {
+                errors.Add($"{OWNER}.{field}.ProjectileMaxHitsPerTarget: 대상당 피격 상한은 투사체 형태에만 쓴다");
+            }
 
             if (pattern.RawProjectileCount <= 1)
             {

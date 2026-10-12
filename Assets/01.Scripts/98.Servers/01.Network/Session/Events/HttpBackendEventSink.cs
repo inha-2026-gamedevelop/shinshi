@@ -177,6 +177,11 @@ namespace Shinshi.Network
 
             // 적립은 API 출정 원장에 쌓여 장애 취소의 지급 기준이 된다. 대상이 GUID가 아니거나 양이 0 이하면 API가
             // 배치 전체를 거절하므로 그때는 진단 LOOT로만 남긴다
+            if (data.Type == ESessionEventType.ExperienceGranted)
+            {
+                return new SessionEventEntry(sessionEvent.Seq, eventId, participantId, data.Amount,
+                    data.ExperienceSourceKind, data.SourceId, data.ExperienceSettingsHash);
+            }
             int accrualKind = GetAccrualKind(data.Type);
             if ((accrualKind != GameSessionCodes.EventKind.LOOT) && (participantId != null) && (data.Amount > 0))
             {

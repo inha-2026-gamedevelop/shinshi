@@ -75,7 +75,7 @@ namespace Shinshi.UI
 
         // EPlayerClass 순서와 같아야 한다
         private static readonly string[] G_ClassIconIds = { "class_warrior", "class_sorcerer", "class_summoner" };
-        private static readonly string[] G_ClassNames   = { "무사", "도술사", "신령사" };
+        private static readonly string[] G_ClassNames   = { "무사", "도술사", "신령사", "검사", "마검사", "궁수" };
 
         // EBossDifficulty 순서와 같아야 한다
         private static readonly string[] G_DifficultyNames = { "쉬움", "어려움" };
@@ -238,6 +238,12 @@ namespace Shinshi.UI
 
                 if (!has)
                 {
+                    if (_members[i].ClassIcon != null)
+                    {
+                        _members[i].ClassIcon.sprite = null;
+                        _members[i].ClassIcon.enabled = false;
+                    }
+
                     SetActive(_members[i].LeaderIcon, false);
                     SetActive(_members[i].ReadyFx, false);
                     SetActive(_members[i].ProblemTint, false);
@@ -309,7 +315,7 @@ namespace Shinshi.UI
         private void ApplyMember(MemberRow row, SortieMemberData data)
         {
             int  classIndex = (int)data.PlayerClass;
-            bool knownClass = (classIndex >= 0) && (classIndex < G_ClassIconIds.Length);
+            bool knownClass = (classIndex >= 0) && (classIndex < G_ClassNames.Length);
 
             if (row.NameLabel != null)
             {
@@ -323,9 +329,11 @@ namespace Shinshi.UI
                 row.PowerLabel.text = (data.CombatPower > 0) ? string.Format(POWER_FORMAT, data.CombatPower) : UNKNOWN_POWER;
             }
 
-            if ((row.ClassIcon != null) && (_library != null))
+            if (row.ClassIcon != null)
             {
-                Sprite icon = knownClass ? _library.FindIcon(G_ClassIconIds[classIndex]) : null;
+                // 이름과 아이콘의 지원 범위는 다르다. 신규 직업 그림이 없어도 이름을 보이며 이전 그림은 지운다
+                Sprite icon = ((_library != null) && (classIndex >= 0) && (classIndex < G_ClassIconIds.Length))
+                    ? _library.FindIcon(G_ClassIconIds[classIndex]) : null;
                 row.ClassIcon.sprite  = icon;
                 row.ClassIcon.enabled = (icon != null);
             }

@@ -22,7 +22,7 @@
 | `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView_GroundPaint.unity` (Release/ShinshiTown 사본, 바닥 패치 칠하기 작업용) | **맵 (Jinwook)** |
 | `Assets/{씬 폴더}/Dev_{파트}.unity` | {파트} ({팀원이름}) |
 | `Assets/00.Scenes/Release/` 실제 실행 흐름 씬: `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown` (Bootstrap에서 로비, 캐릭터 선택·생성을 거쳐 마을 서버의 마을로 접속) | **{팀장}** (통합 담당) |
-| `Assets/00.Scenes/Release/DungeonForest.unity` (숲 일반전 던전 전장, 네트워크 연결 전) | **{팀장}** (통합 담당) |
+| `Assets/00.Scenes/Release/DungeonForest.unity` (숲 일반전 던전 전장, 던전 역할 씬 선택·빌드 목록 연결됨, 실제 접속 미검증) | **{팀장}** (통합 담당) |
 | 그 밖의 실제 런타임 흐름 씬 (게임 등) | 통합 담당자 ({팀원이름}) |
 | 메인 씬 (이름 미정) | **통합 담당자만** |
 
@@ -31,7 +31,7 @@
 - 남의 씬은 **열어도 되지만 저장하지 않는다.** 열기만 해도 Unity가 미세한 변경을 기록할 수 있다
 - 실수로 저장했으면 먼저 diff와 기존 작업 유무를 확인하고 자기 변경만 복구한다. 다른 사람의 변경까지 파일 단위로 되돌리지 않는다.
 - 통합은 정해진 주기(미정)에 통합 담당자가 진행한다
-- 한 PR에 씬 파일이 2개 이상 들어가면 이유를 PR에 적는다. [PR 검사 워크플로](../../.github/workflows/pr-guard.yml)가 이 경우 경고를 띄운다
+- 한 PR에 씬 파일이 2개 이상 들어가면 이유를 PR에 적는다. 현재 자동 PR 검사 워크플로는 없으므로 리뷰에서 직접 확인한다
 
 ### AI에게
 
@@ -71,7 +71,7 @@ Edit > Project Settings > Editor > Asset Serialization
 
 ### 자동 검사
 
-커밋 전에 `git status`로 새 에셋마다 `.meta`가 같이 올라가는지 직접 확인한다. main으로 가는 PR마다 [PR 검사 워크플로](../../.github/workflows/pr-guard.yml)가 `.meta` 누락을 검사하고(`.github/scripts/check_meta.py`), 누락이 있으면 실패한다. 실패하면 병합하지 않는다.
+커밋 전에 `git status`와 변경 목록으로 새 에셋마다 `.meta`가 같이 올라가는지 직접 확인한다. 2026-10-11 작업 트리에 `.github/workflows/pr-guard.yml`과 `.github/scripts/check_meta.py`는 없다. 자동 차단을 전제로 하지 않으며, 누락이 있으면 보완 전까지 병합하지 않는다.
 
 ---
 
@@ -101,7 +101,7 @@ git lfs pull
 
 ### 자동 검사
 
-main으로 가는 PR마다 [PR 검사 워크플로](../../.github/workflows/pr-guard.yml)가 LFS 대상 확장자가 LFS 포인터가 아닌 일반 파일로 들어오면 실패시키고, LFS 대상이 아닌 5MB 초과 파일은 경고한다(`.github/scripts/check_lfs.py`).
+2026-10-11 작업 트리에 LFS 자동 검사 워크플로·`check_lfs.py`는 없다. PR 전 `.gitattributes`와 `git lfs ls-files`를 대조하고, 추가한 대용량 에셋의 인덱스 내용이 LFS 포인터인지 직접 확인한다. 자동 검사 통과로 대신하지 않는다.
 
 ---
 

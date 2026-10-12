@@ -2,13 +2,13 @@
 
 ## 2026-10-10 출시 연결 보완
 
-출시 `PF_NetPlayer`는 `PlayerAppearanceCatalog_Classes`와 `PlayerCombatAnimationProfile_Classes`를 사용한다. `ReleaseMotionClips`가 프로젝트에 설치된 원본과 기존 사본에서 30fps 구간 클립을 만들고, `PlayerP09AssetBuilder`가 기본 공격·QWER 19개 동작을 모두 연결한다. 궁수 W/E는 기존 사격 클립의 구간을 재사용하며 이동은 서버 전투 상태를 따른다. 아래 2026-10-08의 보류 목록은 당시 전체 길이 후보의 조사 기록이다.
+출시 `PF_NetPlayer`는 `PlayerCharacterLookCatalog_Classes`와 `PlayerCombatAnimationProfile_Classes`를 사용한다. `ReleaseMotionClips`가 프로젝트에 설치된 원본과 기존 사본에서 30fps 구간 클립을 만들고, `PlayerP09AssetBuilder`가 기본 공격·QWER 19개 배정(검사7·마검사7·궁수5)을 구성한다. `AN_Release_*` 구간 사본은 17개로, 동작 배정 수와 파일 수는 다르다. 궁수 W/E는 기존 사격 클립의 구간을 재사용하며 이동은 서버 전투 상태를 따른다. 아래 2026-10-08의 보류 목록은 당시 전체 길이 후보의 조사 기록이다.
 
 재생성은 `Shinshi.Editor.ReleaseMenuWiring.BuildRelease`로 실행한다. `ReleaseVfxBuilder`는 누락된 외부 효과 대신 프로젝트 소유 검 궤적·화살·입자 재질을 만들고 마검사 입자에도 URP용 `Shinshi/VFX/ReleaseParticle` 재질을 연결한다. 생성 프리팹은 기존 GUID를 유지한다. 외부 에셋에 의존하는 이전 개별 VFX 생성기를 이후 실행하면 이 연결을 덮어쓸 수 있다.
 
-검증은 세 직업의 19개 Animator 상태에서 실제 본 회전 변화, 남녀 캐릭터 정보창 렌더링, 16개 VFX 프리팹의 화면 출력으로 확인한다. 서버와 두 클라이언트 간 전투 타이밍·피격 연출의 M2 검증은 별도 대상이다.
+남은 시각 수용 기준은 세 직업의 19개 동작 배정에서 실제 본 회전 변화, 남녀 캐릭터 정보창 렌더링, 16개 VFX 프리팹의 화면 출력이다. 이번 2026-10-11 검사는 코드·GUID 참조만 확인했고 이 시각 검증은 실행하지 않았다. 서버와 두 클라이언트 간 전투 타이밍·피격 연출의 M2 검증은 별도 대상이다.
 
-> 기준일: 2026-10-08. 사용자 확정: 검사·마검사·궁수(세 번째 직업). 후속 요청으로 서버 전투·부적·저장 계약과 별도 애니메이션 생성기를 구현했다. 아래 모션 배정은 초기안이며 실제 생성에서 19후보 중 궁수 기본/Q/R 3개만 정적 시간 예산을 통과했다. 나머지 16개는 보류다. 기존 게임 프리팹 연결·실제 재생 검증은 미적용이며 [구현 로드맵](../05-implementation-roadmap.md#2026-10-08-세-직업-구현과-검증)에 검증 범위를 기록한다.
+> 2026-10-08 후보 조사 기록: 사용자 확정: 검사·마검사·궁수(세 번째 직업). 후속 요청으로 서버 전투·부적·저장 계약과 별도 애니메이션 생성기를 구현했다. 아래 모션 배정은 초기안이며 실제 생성에서 19후보 중 궁수 기본/Q/R 3개만 정적 시간 예산을 통과했다. 당시 나머지 16개는 보류였다. 이 결과는 전체 길이 후보에 대한 과거 조사이며 2026-10-10 구간 클립 생성·연결과 구분한다. 당시 기존 게임 프리팹 연결·실제 재생은 미검증이었으며 [구현 로드맵](../05-implementation-roadmap.md#2026-10-08-세-직업-구현과-검증)에 검증 범위를 기록한다.
 
 [게임 디자인](../02-game-design.md) · [전투 규칙](combat-design.md) · [부적 목록](talisman-catalog.md) · [P09 외형 계약](../unity/CHARACTER_CUSTOMIZATION.md) · [설치·권리 대장](../licenses/ASSET_REGISTRY.md).
 
@@ -25,7 +25,7 @@
 
 원본/Inplace·콤보 전체/분절·Z 변형을 새로운 기술 수로 합산하지 않는다. 공급자 설명 PDF는 [Magical-Knight](../../Assets/99.ThirdParty/Animation/Magical-Knight_Set/Animation%20Asset%20Description.pdf)와 [Succubus](../../Assets/99.ThirdParty/Animation/Succubus_Anim_Set/Animation%20Asset%20Description.pdf)의 각 1쪽이다. Root Motion/In-Place 제공을 설명할 뿐 기술별 베기 방향·효과·타격 순간은 설명하지 않는다. `AttackEnergy`를 빔/폭발/검풍, `S_Sp_Skill`을 횡/종베기로 확인한 사실처럼 쓰지 않는다.
 
-현재 P09는 CombatGirls에서 만든 `.anim` 사본 13개와 `AC_PlayerP09`를 사용한다. [현재 배정표](../../Assets/01.Scripts/05.Art/Characters/PlayerP09/Animations/README.md)는 도술사/신령사에 검 모션을 임시 배정한 구현 설명이다. 이 문서의 마검사 모션으로 이미 교체됐다는 뜻이 아니다. 신규 세 직업은 P09 남녀·기존 외형 저장 계약을 유지한다. 공급자 몸·의상·세계관을 자동 채택하지 않는다.
+구 P09 경로는 CombatGirls에서 만든 `.anim` 사본 13개와 `AC_PlayerP09`를 사용한다. [구 배정표](../../Assets/01.Scripts/05.Art/Characters/PlayerP09/Animations/README.md)는 도술사/신령사에 검 모션을 임시 배정한 구현 설명이다. 이 문서의 마검사 모션으로 이미 교체됐다는 뜻이 아니다. 신규 세 직업은 P09 남녀·기존 외형 저장 계약을 유지한다. 공급자 몸·의상·세계관을 자동 채택하지 않는다.
 
 ## 2. 전투 방향
 
@@ -37,7 +37,7 @@
 
 ## 3. 클립 후보 배정
 
-접두부 아래의 실제 공급자 파일을 가리킨다. 사본 생성/Controller 연결은 후속 구현이다. 표에서 각 파일에 같은 셀의 접두부/하위 폴더를 적용한다.
+아래 표는 2026-10-08 전체 길이 후보 조사이며 출시 배정표가 아니다. 현재 `ReleaseMotionClips`·`BuildClassAssets` 생성과 Classes 프로필 연결은 구현됐고 재생 수용은 별도다. 접두부 아래의 실제 공급자 파일을 가리킨다. 표에서 각 파일에 같은 셀의 접두부/하위 폴더를 적용한다.
 
 - `CG`: `Assets/99.ThirdParty/Animation/CombatGirlsCharacterPack/Sword_Girl/Animations/`
 - `MK`: `Assets/99.ThirdParty/Animation/Magical-Knight_Set/Animation/Humanoid/Inplace/`
@@ -61,7 +61,7 @@
 
 마검사 이동/회피/피격/사망은 MK의 `move_`/`avoid_`/`hit_`/`dead` 계열에서 고른다. 8방향·시작/정지·구르기/step·기상이 있지만 최종 파일 배정은 재생 뒤 정한다. `AttackEnergy09_Start/Loop/End`와 `Buff01`은 지속시전/강화 확장 후보이며 4기술에 자동 추가하지 않는다. 공중 공격이 있어도 점프·비행 입력을 추가하지 않는다. 검사 팩에는 이름 기준 전용 방어·점프·기상이 확인되지 않았고 새 검사에 방어/반격을 배정하지 않은 이유다. 부활의 기상 연출은 이동/입력 복구와 별도로 해결한다.
 
-검풍·검진·속박·번개는 **추가 제작/선정할 VFX**다. 동명 FBX에 이 효과가 포함됐다고 주장하지 않는다. 정확한 원형/긴 준비/짧은 연격이 후보와 맞지 않으면 다른 검격 후보 또는 행동 수치를 다시 정한다. 재생 확인 전 표의 매핑은 채택 완료가 아니다. Succubus의 `idle_inplace`는 이미 [월백 대기 모션](../licenses/ASSET_REGISTRY.md#월백-대기-모션-파생물--2026-10-06)에 쓰인다. 궁수 주 모션은 Grruzam 팩을 사용하며 Succubus를 자동 채택하지 않는다.
+검풍·검진·속박·번개는 공급자 FBX와 별도로 구현·연결하는 VFX다. 현재 프로젝트의 View·생성기는 존재하며 실제 전투 수용과는 구분한다. 동명 FBX에 이 효과가 포함됐다고 주장하지 않는다. 정확한 원형/긴 준비/짧은 연격이 후보와 맞지 않으면 다른 검격 후보 또는 행동 수치를 다시 정한다. 재생 확인 전 표의 매핑은 채택 완료가 아니다. Succubus의 `idle_inplace`는 이미 [월백 대기 모션](../licenses/ASSET_REGISTRY.md#월백-대기-모션-파생물--2026-10-06)에 쓰인다. 궁수 주 모션은 Grruzam 팩을 사용하며 Succubus를 자동 채택하지 않는다.
 
 ### 궁수 후보와 정적 확인
 
@@ -83,7 +83,7 @@
 | Attack_2+3 KS04 연환참 | 3.5667초 | 0.3+0.2+0.2=0.7초 | 약 5.10배 | 초과·연결/회차 재설계 필요 |
 | QuickShift_F+Attack_3 KS02 | 1.0+2.1667초 | 0.3+0.2=0.5초 | 약 6.33배 | 전체 순차 재생 불가, 이동과 공격 구간 재검토 필수 |
 
-현재 생성기는 0.5~3배로 제한하고 지연이 0.5초를 넘으면 다른 기술 클립으로 대체한다. 기존 표에서도 Warrior E의 `S_Sp_Skill_3`는 `S_Attack_3`, R의 `S_Sp_Skill_1`은 `S_QuickShift_F`로 바뀌었다. 이 자동 대체는 의도한 검 궤적을 보장하지 않으므로 새 개편에서 사용하지 않는다. **초과 후보는 임시 타격 수치와 함께 정식 배정 보류**이며, 실제 검 궤적 구간을 측정해 다른 클립/부분 구간/준비·후속·후딜 중 무엇을 바꿀지 정한 뒤 양쪽 문서를 갱신해야 한다. 부분 잘라내기가 자연스럽다는 가정도 금지한다. Magical-Knight의 실제 임포트 길이·검/방출 시점은 아직 측정하지 않았고 같은 게이트를 적용한다.
+현재 생성기는 0.5~3배로 제한하고 지연이 0.5초를 넘으면 다른 기술 클립으로 대체한다. 기존 표에서도 Warrior E의 `S_Sp_Skill_3`는 `S_Attack_3`, R의 `S_Sp_Skill_1`은 `S_QuickShift_F`로 바뀌었다. 이 자동 대체는 의도한 검 궤적을 보장하지 않으므로 새 개편에서 사용하지 않는다. **당시 전체 길이 초과 후보는 보류했고 출시는 구간 사본으로 대체했다.** 실제 자연스러움·타격 일치는 미검증이며, 실제 검 궤적 구간을 측정해 다른 클립/부분 구간/준비·후속·후딜 중 무엇을 바꿀지 정한 뒤 양쪽 문서를 갱신해야 한다. 부분 잘라내기가 자연스럽다는 가정도 금지한다. Magical-Knight의 실제 임포트 길이·검/방출 시점은 아직 측정하지 않았고 같은 게이트를 적용한다.
 
 ## 4. 표현·타이밍 적용 계약
 
@@ -96,7 +96,7 @@
 
 ## 5. 구 구현·저장 데이터 이관
 
-현재 [`EPlayerClass`](../../Assets/01.Scripts/00.Common/Types/EPlayerClass.cs), [`PlayerConfigSO`](../../Assets/01.Scripts/00.Common/Data/PlayerConfigSO.cs), [`SkillCatalogSO`](../../Assets/01.Scripts/00.Common/Data/SkillCatalogSO.cs), [`TalismanCatalogSO`](../../Assets/01.Scripts/00.Common/Data/TalismanCatalogSO.cs)는 구 직업·12기술/45효과다. 도술사의 9m·각도 0 기본 공격은 서버에서 원거리로 판정한다. 검 모션만 교체해 마검사 근접 공격이 구현됐다고 보고할 수 없다.
+현재 [`EPlayerClass`](../../Assets/01.Scripts/00.Common/Types/EPlayerClass.cs), [`PlayerConfigSO`](../../Assets/01.Scripts/00.Common/Data/PlayerConfigSO.cs), [`SkillCatalogSO`](../../Assets/01.Scripts/00.Common/Data/SkillCatalogSO.cs), [`TalismanCatalogSO`](../../Assets/01.Scripts/00.Common/Data/TalismanCatalogSO.cs)는 구·신규 직업을 함께 보존하며 일반 기술24개·부적90효과다. 구 도술사의 9m·각도 0 기본 공격은 서버에서 원거리로 판정한다. 검 모션만 교체해 마검사 근접 공격이 구현됐다고 보고할 수 없다.
 
 | 구 코드·설계 | 신규 문서 대상 | 차이·이관 판단 |
 |---|---|---|
@@ -107,21 +107,21 @@
 
 구 직업 진도를 새 직업으로 변환하는 이관은 승인·구현되지 않았다. 후속 구현은 구 ID를 보존하고 Swordsman=3/Mageknight=4/Archer=5, 신규 기술 12개와 T13~T24 효과 45개를 추가했다. KS/MK/AR은 계속 문서용 코드다. 등록 진도 변환·보상 정책은 별도로 확정해야 한다.
 
-후속 구현 전에 아래를 함께 설계·검증한다.
+신규 직업 공개와 구 진도 이관 전에 아래를 함께 설계·검증한다.
 
-1. 직업 enum·공통 DTO·SQL `class_id IN(0,1,2)`, 기술 12개·부적 45개 고정 검증과 신규 생성/선택 공개 목록. 궁수의 이관 전 공개 차단과 구 캐릭터 접근/보존 정책을 함께 정한다.
+1. 직업 enum·공통 DTO·SQL은 0016에서 `class_id` 0~5를 수용하고, 카탈로그는 구·신규 합계 24기술·90효과다. 2026-10-11 결정으로 신규 생성 공개 목록은 API `Characters:EnabledClassIds` 기본 `3,4,5`이며 구직업0~2는 설정으로 재허용할 수 없다. 기존 enum·읽기/인증 계약은 보존하고 구 캐릭터 자동 변환은 하지 않는다. 사용자 진술상 구직업 DB 삭제는 끝났지만 이번 구현에서 운영 DB 삭제를 실행하거나 확인하지 않았다.
 2. [`growth-content.json`](../../Backend/src/Shinshi.Data/Content/growth-content.json), 카드 ID·`account_items`·보상 회수함·등록 레벨/실패 보정·조합·초기 지급/기존 장비 무기 표시. [`0011`](../../Backend/src/Shinshi.Data/Migrations/0011_growth_progression.up.sql)의 effect ID 형식 `^T[0-9]{2}-[1-3][A-Z]$`와 `(character_id,skill_id,tier)` 키를 점검한다. 문서 ID를 DB에 직접 쓰지 않는다.
 3. 열린 출정 `loadout_snapshot`·`loadout_revision`·캐릭터 잠금. 출정 중 변경을 거절하고 구 출정을 완료/정산한 뒤 전환한다. 구버전/이관 서버가 같은 출정을 처리하지 않게 한다.
 4. 신규 `contentHash`와 필요 시 protocolVersion으로 구클라/서버 혼합을 차단한다. 해시 검사는 저장 데이터 이관을 대신하지 않는다. 멱등 재시도·진도/비용/보상 중복 없음·백업/롤백을 실제 DB에서 확인한다. 정책/구현 확정 전에 새 카탈로그를 실제 서버에 배포하지 않는다.
 
-신규 설정·서버 판정·모션 사본/프로필·부적 resolver·UI·저장 이관은 **후속 구현**이다. 이번 문서 개편은 기존 코드·자산·SQL을 변경하지 않는다.
+신규 설정·서버 판정·카탈로그·부적 resolver와 모션 생성 경로는 **구현됨**이다. 출시 `PF_NetPlayer`는 Classes 카탈로그·프로필을 참조한다. 신규 직업 UI 표시는 `HudPartyView`·`SortiePrepView`·`CharDetailRules`에 남았고, 구 진도 이관·실제 다인 전투·모션 수용은 별도다. 이번 문서 현행화는 코드·자산·SQL을 변경하지 않는다.
 
 ## 6. 적용과 완료 게이트
 
 | 게이트 | 필요한 증거 | 현재 상태 |
 |---|---|---|
 | 문서 L1 | 신규 12기술/45효과·직업별 15·수치·후보 경로·문서 링크·구 구현과의 구분 | 이번 검증 대상 |
-| 모션 L2 | P09 남녀 후보 재생·검 궤적/접지/그립/무기/방향·Loop/Root·사망/부활, 기본 공격과 기술의 시각 구분·궁수 활/화살·발사/차지·후퇴·루프 종료 캡처 | 미실행·위 초과 후보 배정 보류 |
+| 모션 L2 | P09 남녀 후보 재생·검 궤적/접지/그립/무기/방향·Loop/Root·사망/부활, 기본 공격과 기술의 시각 구분·궁수 활/화살·발사/차지·후퇴·루프 종료 캡처 | 구간 사본 17개·프로필 연결 정적 확인, 이번 시각 재생 미실행 |
 | 전투 L2 | 검사/마검사 근접 기본/Q/E·돌진 벽·장판8회/폭발·궁수 관통/산개/W충돌·후속 취소·부적 대표 조합·보스 이동 금지 | 서버 규칙 구현·EditMode 검증, 실제 플레이/상태이상 연동 검증 대기 |
 | 이관 | 실제 DB 카드/진도/조합·중복 요청·출정 잠금·롤백·구버전 차단 | 미실행·정책 결정 필요 |
 | 통합 L3 | 전용 서버+2클라 M2·서로 다른 PC 지연 M3·본인/원격 타격/취소/사망·재접속 | 미실행 |

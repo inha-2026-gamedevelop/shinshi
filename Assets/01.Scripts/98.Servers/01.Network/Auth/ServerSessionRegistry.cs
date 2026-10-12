@@ -101,6 +101,7 @@ namespace Shinshi.Network
             binding.AccountId   = claims.AccountId;
             binding.CharacterId = claims.CharacterId;
 
+            binding.Experience      = claims.Experience;
             binding.CombatLoadout   = claims.CombatLoadout;
             binding.ReservedPotions = claims.ReservedPotions;
             binding.Sortie          = claims.Sortie;

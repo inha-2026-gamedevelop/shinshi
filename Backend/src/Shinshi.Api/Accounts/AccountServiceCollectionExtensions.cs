@@ -33,7 +33,7 @@ namespace Shinshi.Backend.Accounts
             services.TryAddSingleton<TimeProvider>(TimeProvider.System);
             services.Configure<AccountOptions>(configuration.GetSection(AccountOptions.SECTION_NAME));
             services.Configure<CharacterOptions>(configuration.GetSection(CharacterOptions.SECTION_NAME));
-            // 새 직업(3~5)은 Characters:EnabledClassIds로 열기 전까지 생성, 마을 입장이 닫혀 있다
+            // 생성할 새 직업은 Characters:EnabledClassIds로 좁히고 구직업 생성은 항상 막는다
             services.TryAddSingleton(provider => provider.GetRequiredService<IOptions<CharacterOptions>>().Value.ResolvePolicy());
             services.TryAddSingleton<IAccountPasswordHasher>(provider => new AccountPasswordHasher(
                 provider.GetRequiredService<IOptions<AccountOptions>>().Value.PasswordIterations));

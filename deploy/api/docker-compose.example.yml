@@ -12,6 +12,7 @@ services:
     environment:
       # Name without a value = take it from the environment that runs `docker compose`.
       - ConnectionStrings__Postgres
+      - Characters__EnabledClassIds=3,4,5
       - Observability__InstanceId=api-1
       - Observability__BuildId=REPLACE_WITH_BUILD_ID
       - Observability__ContentVersion=REPLACE_WITH_CONTENT_VERSION

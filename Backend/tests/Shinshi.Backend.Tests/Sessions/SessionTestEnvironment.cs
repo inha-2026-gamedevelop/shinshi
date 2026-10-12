@@ -29,10 +29,10 @@ namespace Shinshi.Backend.Tests.Sessions
         *                Fields
         ****************************************/
 
-        public const string CONTENT_VERSION = "test-content";
+        public const string CONTENT_VERSION = "0.1.2";
         public const string POTION_ID       = "potion-small";
         public const string BINDING         = SettlementSanityLimits.ACCOUNT_BINDING_KIND;
-        public const string MAP_ID          = "test-map";
+        public const string MAP_ID          = "region_forest";
         public const string BOSS_ID         = "boss_wolbaek";
 
         private const int    TEST_PORT        = 7777;

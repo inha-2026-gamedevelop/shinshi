@@ -14,7 +14,7 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 namespace Shinshi.AI
 {
     // 시간과 거리와 각도와 피해 배수는 모두 패턴 정의에서 읽는다. 이 클래스에는 밸런스 값이 없다
-    // 기본은 추적 시간 동안 회전 속도로 제한해 돈다(월백). naturalAim을 켜면(무철) MucheolAimTracker로 최단 경로를 부드럽게 돌아 고정 시각에 대상 방향에 닿는다
+    // 기본은 추적 시간 동안 회전 속도로 제한해 돈다. naturalAim을 켜면(무철, 월백) MucheolAimTracker로 최단 경로를 부드럽게 돌아 고정 시각에 대상 방향에 닿는다
     /// <summary> 전방 부채꼴 요력 폭발, 추적 회전 뒤 방향을 고정하고 예고가 끝나면 한 번 타격한다 </summary>
     public sealed class BossFanBlastPattern : BossPatternBase
     {
@@ -54,7 +54,7 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
-        // naturalAim은 무철 전용 조준이다. 기본값 꺼짐은 기존 동작(월백)이다
+        // naturalAim은 부드러운 조준이다. 기본값 꺼짐은 회전 속도로 제한하는 기존 동작이고 무철과 월백 팩토리가 켠다
         public BossFanBlastPattern(float referenceHealth, IBossFanTelegraphListener listener = null, bool naturalAim = false)
         {
             _referenceHealth = referenceHealth;

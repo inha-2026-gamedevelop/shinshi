@@ -120,7 +120,7 @@ namespace Shinshi.Backend.Characters
             {
                 return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_APPEARANCE);
             }
-            // 새 직업(3~5)은 Characters:EnabledClassIds로 열기 전까지 생성하지 못한다. 작업으로 저장하지 않는다
+            // 구직업과 설정에서 닫힌 새 직업은 작업으로 저장하지 않는다
             if (!_classPolicy.IsEnabled(request.ClassId))
             {
                 return Reject(StatusCodes.Status409Conflict, ContractCodes.RejectReason.FEATURE_DISABLED);
@@ -183,7 +183,7 @@ namespace Shinshi.Backend.Characters
             CharacterAppearance? appearance = character.AppearanceJson == null ? null
                 : JsonConvert.DeserializeObject<CharacterAppearance>(character.AppearanceJson, ContractJson.CreateSettings());
             return new CharacterSummary(character.CharacterId.ToString("D"), character.Name, character.ClassId,
-                character.Revision, appearance);
+                character.Revision, appearance, character.TotalExperience);
         }
 
         private AvailabilityResponse Availability(int reasonCode)

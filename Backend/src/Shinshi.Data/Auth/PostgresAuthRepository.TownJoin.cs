@@ -79,8 +79,8 @@ namespace Shinshi.Data.Auth
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
                 }
-                // 새 직업(3~5)은 서버 설정으로 열기 전까지 마을 입장도 거절한다
-                if (!_classPolicy.IsEnabled(selected.ClassId))
+                // 생성 종료된 구직업의 저장 데이터는 선택할 수 있고 새 직업은 서버 허용 설정을 따른다
+                if (!_classPolicy.IsSelectable(selected.ClassId))
                 {
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.FEATURE_DISABLED);
                 }
@@ -227,7 +227,9 @@ namespace Shinshi.Data.Auth
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             return AuthValidationOutcome<JoinAuthIdentity>.Success(new JoinAuthIdentity(consumed.AccountId,
                 consumed.CharacterId, character.ClassId, Guid.Empty, Guid.Empty, consumed.InstanceId, UnixMilliseconds(now),
-                accountLeaseId, character.Name, appearanceJson: character.Appearance));
+                accountLeaseId, character.Name, appearanceJson: character.Appearance,
+                experience: new Shinshi.Contracts.CharacterExperienceSnapshot(character.TotalExperience, null, 0,
+                    Shinshi.Contracts.CharacterLevelRules.SettingsHash(Growth.GrowthContent.LoadEmbedded().CharacterLevel))));
         }
 
         // 계정 소유 캐릭터를 잠그고 직업, 닉네임, 외형 원문을 돌려준다, 소유하지 않으면 null.
@@ -237,7 +239,7 @@ namespace Shinshi.Data.Auth
         {
             return connection.QuerySingleOrDefaultAsync<JoinCharacterRow>(Command(
                 """
-                SELECT class_id AS "ClassId", name AS "Name", appearance::text AS "Appearance" FROM characters
+                SELECT class_id AS "ClassId", name AS "Name", appearance::text AS "Appearance", total_experience AS "TotalExperience" FROM characters
                 WHERE account_id = @AccountId AND character_id = @CharacterId AND deleted_at IS NULL FOR SHARE;
                 """,
                 new { AccountId = accountId, CharacterId = characterId }, transaction, token));

@@ -233,6 +233,11 @@ namespace Shinshi.UI
         private void OnRealtimeCleared()
         {
             _nameCache.Clear();
+            if (_hudView != null)
+            {
+                _hudView.SetWindowVisible(false);
+                _hudView.SetSelfBreakdownVisible(false);
+            }
 
             // 출정 출발 때의 전체 초기화면 결과도 비었으므로 결과 패널을 다시 그려 숨긴다
             RefreshResult();

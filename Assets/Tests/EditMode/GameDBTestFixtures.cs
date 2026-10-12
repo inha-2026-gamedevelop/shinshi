@@ -32,6 +32,7 @@ namespace Shinshi.Tests
             ("_waves",        typeof(WaveConfigSO)),
             ("_equipment",    typeof(EquipmentCatalogSO)),
             ("_growth",       typeof(GrowthConfigSO)),
+            ("_characterLevel", typeof(CharacterLevelConfigSO)),
             ("_rewards",      typeof(RewardCatalogSO)),
             ("_life",         typeof(LifeConfigSO)),
             ("_progression",  typeof(ProgressionCatalogSO)),

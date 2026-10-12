@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 
@@ -21,7 +21,7 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        private const int PENDING_EVENTS_PER_PARTICIPANT = 6;
+        private const int PENDING_EVENTS_PER_PARTICIPANT = 7;
 
         private readonly string                   _sessionId;
         private readonly ParticipantRoster        _roster;
@@ -32,8 +32,13 @@ namespace Shinshi.Network
         private readonly int[]                    _expectedKills;
         private readonly int[]                    _killsPerWave;
         private readonly bool[]                   _clearedWaves;
+        private readonly string[]                 _waveExperienceSourceIds;
         private readonly Dictionary<string, int>  _sourceIndices;
         private readonly int[]                    _sourceWaves;
+        private readonly int[] _sourceExperienceKinds;
+        private CharacterLevelSettings _experienceSettings;
+        private string _experienceRegion;
+        private string _experienceHash;
         private readonly EnemyLootRule[]          _sourceRules;
         private readonly bool[]                   _defeatedSources;
         private readonly string[][]               _participantEffects;
@@ -159,8 +164,10 @@ namespace Shinshi.Network
             _expectedKills      = new int[waveCount];
             _killsPerWave       = new int[waveCount];
             _clearedWaves       = new bool[waveCount];
+            _waveExperienceSourceIds = new string[waveCount];
             _sourceIndices      = new Dictionary<string, int>(sourceCount, StringComparer.Ordinal);
             _sourceWaves        = new int[sourceCount];
+            _sourceExperienceKinds = new int[sourceCount];
             _sourceRules        = new EnemyLootRule[sourceCount];
             _defeatedSources    = new bool[sourceCount];
             _participantEffects = new string[Constants.Session.MAX_PARTY_SIZE][];
@@ -173,6 +180,7 @@ namespace Shinshi.Network
             for (int i = 0; i < waveCount; ++i)
             {
                 _expectedKills[i] = waveConfig.Waves[i].CountEnemies();
+                _waveExperienceSourceIds[i] = i.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
 
             _roster.ParticipantClosed += OnParticipantClosed;
@@ -234,9 +242,37 @@ namespace Shinshi.Network
         /// <summary> 실제 스폰 계획의 source ID와 적 드롭 명세를 시작 전에 등록한다, 등록 순서는 처치 순번과 무관하다 </summary>
         public bool RegisterEnemySource(int waveIndex, string sourceId, RewardCatalogSO.EnemyDropSpec drop)
         {
+            return RegisterEnemySource(waveIndex, sourceId, drop, 0);
+        }
+
+        public bool ConfigureExperience(CharacterLevelSettings settings, string regionId)
+        {
+            if (_started || (settings == null) || !settings.IsValid()
+                || (settings.GetGrant(regionId, CharacterExperienceSource.NORMAL_ENEMY) == 0))
+            {
+                return false;
+            }
+            for (int i = 0; i < _sourceIndices.Count; ++i)
+            {
+                if ((_sourceExperienceKinds[i] < CharacterExperienceSource.NORMAL_ENEMY)
+                    || (_sourceExperienceKinds[i] > CharacterExperienceSource.ELITE_ENEMY))
+                {
+                    return false;
+                }
+            }
+            _experienceSettings = settings;
+            _experienceRegion = regionId;
+            _experienceHash = CharacterLevelRules.SettingsHash(settings);
+            return true;
+        }
+
+        public bool RegisterEnemySource(int waveIndex, string sourceId, RewardCatalogSO.EnemyDropSpec drop, int experienceKind)
+        {
             if ((_started) || (_disposed) || (waveIndex < 0) || (waveIndex >= _expectedKills.Length)
                 || (string.IsNullOrEmpty(sourceId)) || (drop == null) || (_sourceIndices.ContainsKey(sourceId))
-                || (_sourceIndices.Count >= _sourceWaves.Length))
+                || (_sourceIndices.Count >= _sourceWaves.Length)
+                || ((_experienceSettings != null) && ((experienceKind < CharacterExperienceSource.NORMAL_ENEMY)
+                    || (experienceKind > CharacterExperienceSource.ELITE_ENEMY))))
             {
                 return false;
             }
@@ -259,6 +295,7 @@ namespace Shinshi.Network
             int index = _sourceIndices.Count;
             _sourceWaves[index] = waveIndex;
             _sourceRules[index] = rule;
+            _sourceExperienceKinds[index] = experienceKind;
             _sourceIndices.Add(sourceId, index);
             return true;
         }
@@ -588,6 +625,12 @@ namespace Shinshi.Network
                 return;
             }
 
+            if ((_experienceSettings != null) && ((_sourceExperienceKinds[index] < CharacterExperienceSource.NORMAL_ENEMY)
+                || (_sourceExperienceKinds[index] > CharacterExperienceSource.ELITE_ENEMY)))
+            {
+                _storageFault = true;
+                return;
+            }
             _defeatedSources[index] = true;
             ++_killSequence;
             ++_killsPerWave[waveIndex];
@@ -604,6 +647,7 @@ namespace Shinshi.Network
                 Save(new SessionEventData(ESessionEventType.EnemyKilled, _serverTime,
                     participantId: participant.ParticipantKey, sourceId: sourceId,
                     killerParticipantId: killerParticipantId, killSequence: _killSequence, waveIndex: waveIndex, loot: loot));
+                GrantExperience(participant.ParticipantKey, _sourceExperienceKinds[index], sourceId);
                 _ledger.AddLoot(i, in loot);
                 Accrue(i, participant.ParticipantKey, loot.ExtraEssence, waveIndex, _killSequence);
             }
@@ -627,6 +671,8 @@ namespace Shinshi.Network
                 {
                     Save(new SessionEventData(ESessionEventType.WaveCleared, _serverTime,
                         participantId: participant.ParticipantKey, waveIndex: waveIndex));
+                    GrantExperience(participant.ParticipantKey, CharacterExperienceSource.WAVE_CLEARED,
+                        _waveExperienceSourceIds[waveIndex]);
                     long baseEssence = _ledger.AddWaveBase(i, _rewardRule.BaseEssencePerWave,
                         _rewardRule.RefineShardsPerWave);
                     SaveAccrual(ESessionEventType.BaseEssenceAccrued, participant.ParticipantKey, baseEssence, waveIndex, 0);
@@ -863,6 +909,24 @@ namespace Shinshi.Network
                 $"quantityClamped={report.ClampedQuantity}, overflowDropped={report.DroppedOverflow}, " +
                 $"walletClamped={report.ClampedWallet}, talismanInvalidDropped={report.DroppedInvalidTalisman}, " +
                 $"talismanClamped={report.ClampedTalisman}, talismanOverflowDropped={report.DroppedTalismanOverflow}");
+        }
+
+        private void GrantExperience(string participantKey, int sourceKind, string sourceId)
+        {
+            if (_isBossSession || (_experienceSettings == null))
+            {
+                return;
+            }
+            long amount = _experienceSettings.GetGrant(_experienceRegion, sourceKind);
+            if (amount <= 0)
+            {
+                _storageFault = true;
+                return;
+            }
+            Save(new SessionEventData(ESessionEventType.ExperienceGranted, _serverTime,
+                participantId: participantKey, sourceId: sourceId, amount: amount,
+                experienceSourceKind: sourceKind, experienceSettingsHash: _experienceHash));
+            _events.RequestImmediateSend();
         }
 
         private void Save(in SessionEventData data)

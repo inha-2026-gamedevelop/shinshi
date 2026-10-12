@@ -19,6 +19,7 @@ namespace Shinshi.Contracts
         // 마을 입장이나 출정 계약을 받지 못한 응답의 mode. mode 키가 없는 응답을 일반전(0)으로 읽지 않게 한다
         public const int NO_MODE = -1;
 
+        [DataMember(Name = "experience")] private CharacterExperienceSnapshot _experience;
         [DataMember(Name = "characterId")]      private string _characterId;
         [DataMember(Name = "instanceId")]       private string _instanceId;
 
@@ -68,6 +69,7 @@ namespace Shinshi.Contracts
         *              Properties
         ****************************************/
 
+        public CharacterExperienceSnapshot Experience => _experience;
         public string CharacterId      => _characterId;
         public string InstanceId       => _instanceId;
         public int    ServerRole       => _serverRole;
@@ -147,8 +149,9 @@ namespace Shinshi.Contracts
         public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
             string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
             string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout,
-            string accountId, ReservationPotion[] potions, string appearanceJson)
+            string accountId, ReservationPotion[] potions, string appearanceJson, CharacterExperienceSnapshot experience = null)
         {
+            _experience       = experience;
             _characterId      = characterId;
             _instanceId       = instanceId;
             _serverRole       = serverRole;

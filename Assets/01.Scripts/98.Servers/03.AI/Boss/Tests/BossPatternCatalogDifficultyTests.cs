@@ -39,12 +39,12 @@ namespace Shinshi.Tests
         private const int    FIRST_PHASE  = 1;
         private const int    SECOND_PHASE = 2;
         private const int    PHASE_ONE_COUNT = 6;
-        private const int    PHASE_TWO_COUNT = 6;
+        private const int    PHASE_TWO_COUNT = 7;
 
         private static readonly string[] G_ExistingIds =
         {
             "wolbaek_p01", "wolbaek_p02", "wolbaek_p03", "wolbaek_p04", "wolbaek_p05", "wolbaek_p06",
-            "wolbaek_ph2_p01", "wolbaek_ph2_p02", "wolbaek_ph2_p03", "wolbaek_ph2_p04", "wolbaek_ph2_p05", "wolbaek_ph2_p06"
+            "wolbaek_ph2_p01", "wolbaek_ph2_p02", "wolbaek_ph2_p03", "wolbaek_ph2_p04", "wolbaek_ph2_p05", "wolbaek_ph2_p06", "wolbaek_ph2_p07"
         };
 
         /****************************************
@@ -221,7 +221,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Asset_TuningChecks_WithoutDifficultyEqualEasyAndHardIsNotTuned()
+        public void Asset_TuningChecks_WithoutDifficultyEqualEasyAndHardPhaseTwoIsTunedWithSeven()
         {
             BossPatternCatalogSO catalog = LoadAsset();
 
@@ -229,11 +229,13 @@ namespace Shinshi.Tests
             {
                 CollectionAssert.AreEqual(Tuning(catalog, phase), Tuning(catalog, phase, EBossDifficulty.Easy), $"phase {phase}");
                 Assert.AreEqual(catalog.IsPhaseTuned(WOLBAEK_ID, phase), catalog.IsPhaseTuned(WOLBAEK_ID, phase, EBossDifficulty.Easy));
-                Assert.IsFalse(catalog.IsPhaseTuned(WOLBAEK_ID, phase, EBossDifficulty.Hard), $"phase {phase} hard");
             }
 
+            // 하드 1페이즈는 여섯 개, 하드 2페이즈는 일곱 개가 들어와 통과한다. IsTuned는 1페이즈만 본다
+            Assert.IsTrue(catalog.IsPhaseTuned(WOLBAEK_ID, FIRST_PHASE, EBossDifficulty.Hard), "phase 1 hard");
+            Assert.IsTrue(catalog.IsPhaseTuned(WOLBAEK_ID, SECOND_PHASE, EBossDifficulty.Hard), "phase 2 hard");
             Assert.AreEqual(catalog.IsTuned(WOLBAEK_ID), catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Easy));
-            Assert.IsFalse(catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Hard));
+            Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID, EBossDifficulty.Hard));
 
             var legacy = new List<string>();
             catalog.ValidateTuning(WOLBAEK_ID, legacy);

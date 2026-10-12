@@ -6,9 +6,9 @@
 |---|---|
 | 플랫폼 | Windows PC, 키보드·마우스 (클릭 이동, 커서 방향 공격) |
 | 인원 | 솔로 또는 1~4인 파티 |
-| 직업 | 검사 · 마검사 · 미정 세 번째 직업 |
+| 직업 | 검사 · 마검사 · 궁수 |
 
-2026-10-07 [직업·애니메이션 개편 설계](docs/design/character-animation-design.md)는 검사·마검사의 일반 8기술/부적 30효과와 미정 직업의 4기술/15효과 예약을 구분한다. 현재 코드·데이터는 [기존 직업 설계](docs/design/legacy-class-design.md)의 무사·도술사·신령사 12기술/45효과이며 새 기획의 코드·에셋·저장 데이터 이관은 미적용이다. 외형은 P09를 유지한다.
+2026-10-11 코드 대조 기준, [신규 세 직업](docs/design/character-animation-design.md)의 12기술·45부적 효과는 서버 규칙·카탈로그·백엔드 계약에 구현되어 있다. [기존 직업](docs/design/legacy-class-design.md)의 ID 0/1/2와 12기술·45효과도 보존하므로 전체 런타임은 24기술·90효과다. 신규 직업 ID는 3/4/5이며 API의 `Characters:EnabledClassIds` 기본값은 `0,1,2`다. 신규 직업 공개 설정, 구 진도 이관, 실제 다인 전투 수용은 별도 작업이다. 외형은 P09를 유지한다. 실제 구현과 검증 범위는 [로드맵](docs/05-implementation-roadmap.md)을 따른다.
 
 ## 저장소 구성
 
@@ -56,8 +56,8 @@ Unity 메뉴 **Shinshi → Build**에서 만든다.
 
 | 메뉴 | 입력 씬 | 출력 |
 |---|---|---|
-| Windows Client (Development) | `Bootstrap`과 `Assets/00.Scenes/Release/`의 `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown` | `Builds/windows-client/` |
-| Windows Server / Linux Server (Development) | `Bootstrap`, `Release/ShinshiTown` | `Builds/{대상}/` |
+| Windows Client (Development) | `Bootstrap`과 `Assets/00.Scenes/Release/`의 `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown`, `DungeonForest` | `Builds/windows-client/` |
+| Windows Server / Linux Server (Development) | `Bootstrap`, `Release/ShinshiTown`, `Release/DungeonForest` | `Builds/{대상}/` |
 | Dev Movement → Windows Client / Windows Server (Development) | `Assets/00.Scenes/Dev_PlayerMovement.unity` | 위와 같은 위치 (덮어씀) |
 
 명령줄 빌드:

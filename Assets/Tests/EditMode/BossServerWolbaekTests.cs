@@ -48,7 +48,7 @@ namespace Shinshi.Tests
         private const float  BELOW_HANDOFF     = 0.02f;  // 전환 비율보다 이만큼 아래로 체력을 맞춘다
         private const float  POSITION_EPSILON  = 0.01f;
         private const int    RANDOM_SEED       = 20261003;
-        private const int    PHASE_TWO_COUNT   = 6;
+        private const int    PHASE_TWO_COUNT   = 7;
         private const int    PHASE_TWO_SECONDS = 30;     // 인계 뒤 첫 2페이즈 공격을 기다리는 상한
         private const int    PHASE_ONE         = 1;
         private const int    BARRIER_SECONDS   = 20;     // 결계 전개 시작, 완료를 기다리는 상한(임시값 합은 7초 이하)
@@ -60,7 +60,16 @@ namespace Shinshi.Tests
         {
             BossPatternCatalogSO.WOLBAEK_P2_P01_ID, BossPatternCatalogSO.WOLBAEK_P2_P02_ID,
             BossPatternCatalogSO.WOLBAEK_P2_P03_ID, BossPatternCatalogSO.WOLBAEK_P2_P04_ID,
-            BossPatternCatalogSO.WOLBAEK_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_P2_P06_ID
+            BossPatternCatalogSO.WOLBAEK_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_P2_P06_ID,
+            BossPatternCatalogSO.WOLBAEK_P2_P07_ID
+        };
+
+        // 이 서버가 표시 수신처를 아직 연결하지 않은 하드 2페이즈 P01~P06, 하드 P07만 워프와 원형 예고로 연결됐다
+        private static readonly string[] HARD_UNCONNECTED_IDS =
+        {
+            BossPatternCatalogSO.WOLBAEK_HARD_P2_P01_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P02_ID,
+            BossPatternCatalogSO.WOLBAEK_HARD_P2_P03_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID,
+            BossPatternCatalogSO.WOLBAEK_HARD_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P06_ID
         };
 
         private BossPatternCatalogSource _catalog;
@@ -230,18 +239,106 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void CanCreatePattern_AllPhaseTwoDefinitions_IncludingStarAndBeam()
+        public void CanCreatePattern_AllPhaseTwoDefinitions_IncludingStarBeamAndWarp()
         {
             Build();
 
             var definitions = new List<BossPatternCatalogSO.PatternDefinition>();
             _catalog.CollectPatterns(Constants.Combat.DEV_BOSS_ID, PHASE_TWO, definitions);
 
-            Assert.AreEqual(PHASE_TWO_COUNT, definitions.Count, "월백 2페이즈 정의는 여섯 개다");
+            Assert.AreEqual(PHASE_TWO_COUNT, definitions.Count, "월백 이지 2페이즈 정의는 일곱 개다(P01~P07)");
             for (int i = 0; i < definitions.Count; ++i)
             {
                 Assert.IsTrue(_boss.CanCreatePattern(definitions[i]),
-                    $"서버 몸체의 팩토리가 {definitions[i].DefinitionId}를 만들 수 있다(별형 빔, 빔 창구와 전장 입력 연결)");
+                    $"서버 몸체의 팩토리가 {definitions[i].DefinitionId}를 만들 수 있다(별형 빔, 빔, 워프 창구와 전장 입력 연결)");
+            }
+        }
+
+        [Test]
+        public void IsSortieReady_EasyCatalog_IsReady()
+        {
+            Build();
+
+            Assert.IsTrue(_boss.IsSortieReady(out string reason), reason);
+            Assert.IsEmpty(reason);
+        }
+
+        [Test]
+        public void IsSortieReady_HardCatalog_IsNotReadyAndNamesUnconnectedDefinitions()
+        {
+            BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource _);
+
+            Assert.IsFalse(hard.IsSortieReady(out string reason), "하드 2페이즈 P01~P06 표시가 연결되지 않아 출정을 열 수 없다");
+            for (int i = 0; i < HARD_UNCONNECTED_IDS.Length; ++i)
+            {
+                StringAssert.Contains(HARD_UNCONNECTED_IDS[i], reason, "준비되지 않은 정의 ID가 이유에 들어 있다");
+            }
+        }
+
+        [Test]
+        public void CanCreatePattern_HardPhaseTwo_OnlyWarpIsConnected()
+        {
+            BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource catalog);
+
+            var definitions = new List<BossPatternCatalogSO.PatternDefinition>();
+            catalog.CollectPatterns(Constants.Combat.DEV_BOSS_ID, PHASE_TWO, definitions);
+            Assume.That(definitions.Count, Is.GreaterThan(0), "월백 하드 2페이즈 정의가 없다");
+
+            bool foundWarp = false;
+            for (int i = 0; i < definitions.Count; ++i)
+            {
+                string id     = definitions[i].DefinitionId;
+                bool   isWarp = id == WolbaekPatternFactory.HARD_P2_P07_ID;
+                foundWarp     = foundWarp || isWarp;
+
+                Assert.AreEqual(isWarp, hard.CanCreatePattern(definitions[i]),
+                    $"{id}: 하드 P07만 만들 수 있다(P01은 별 단계 수신처 없이 만들지 않는다)");
+            }
+
+            Assert.IsTrue(foundWarp, "하드 P07 정의가 카탈로그에 있다");
+        }
+
+        [Test]
+        public void CanCreatePattern_HardPhaseOne_AllConnected()
+        {
+            BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource catalog);
+
+            var definitions = new List<BossPatternCatalogSO.PatternDefinition>();
+            catalog.CollectPatterns(Constants.Combat.DEV_BOSS_ID, PHASE_ONE, definitions);
+            Assume.That(definitions.Count, Is.GreaterThan(0), "월백 하드 1페이즈 정의가 없다");
+
+            for (int i = 0; i < definitions.Count; ++i)
+            {
+                Assert.IsTrue(hard.CanCreatePattern(definitions[i]), $"{definitions[i].DefinitionId}를 만들 수 있다");
+            }
+        }
+
+        [Test]
+        public void CollectPatterns_EasyAndHard_DefinitionIdsDoNotOverlap()
+        {
+            BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource hardCatalog);
+            BuildServer(EBossDifficulty.Easy, out BossPatternCatalogSource easyCatalog);
+
+            var easy = new List<BossPatternCatalogSO.PatternDefinition>();
+            var hard = new List<BossPatternCatalogSO.PatternDefinition>();
+            for (int phase = PHASE_ONE; phase <= PHASE_TWO; ++phase)
+            {
+                easyCatalog.CollectPatterns(Constants.Combat.DEV_BOSS_ID, phase, easy);
+                hardCatalog.CollectPatterns(Constants.Combat.DEV_BOSS_ID, phase, hard);
+                Assume.That(easy.Count, Is.GreaterThan(0), "월백 이지 정의가 없다");
+                Assume.That(hard.Count, Is.GreaterThan(0), "월백 하드 정의가 없다");
+
+                var easyIds = new HashSet<string>();
+                for (int i = 0; i < easy.Count; ++i)
+                {
+                    easyIds.Add(easy[i].DefinitionId);
+                }
+
+                for (int i = 0; i < hard.Count; ++i)
+                {
+                    Assert.IsFalse(easyIds.Contains(hard[i].DefinitionId),
+                        $"phase {phase}: {hard[i].DefinitionId}가 이지 정의와 겹친다");
+                }
             }
         }
 
@@ -293,6 +390,20 @@ namespace Shinshi.Tests
             _now = 0.0;
             Assert.IsTrue(_boss.Begin(_now));
             Assert.IsTrue(_registry.Register(_boss));
+        }
+
+        // 전투를 열지 않는 서버 몸체, 난이도별 카탈로그 소스로 정의 수집과 출정 준비 검사만 본다
+        private static BossServer BuildServer(EBossDifficulty difficulty, out BossPatternCatalogSource catalog)
+        {
+            BossPatternCatalogSO asset = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
+            Assume.That(asset, Is.Not.Null, "월백 카탈로그 에셋이 없다");
+
+            catalog = new BossPatternCatalogSource(asset, difficulty);
+            var registry = new CombatTargetRegistry(Constants.Combat.MAX_COMBAT_TARGETS);
+
+            return new BossServer(Constants.Combat.DEV_BOSS_ID, registry.IssueCombatId(), Vector3.zero, Vector3.forward,
+                Vector3.zero, REFERENCE_ATTACK, REFERENCE_HEALTH, HEALTH_SCALE, catalog, registry, new AlwaysAppliedResolver(),
+                null, new SeededBossRandom(RANDOM_SEED));
         }
 
         // 체력을 전환 비율 바로 아래로 맞추고 한 틱 돌려 2페이즈 전환을 일으킨다

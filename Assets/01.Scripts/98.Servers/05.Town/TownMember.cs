@@ -19,6 +19,7 @@ namespace Shinshi.Network
         private readonly string       _accountLeaseId;
         private readonly string       _characterName;
         private readonly EPlayerClass _playerClass;
+        private readonly long         _totalExperience;
 
         private TownRequestThrottle _party;
         private TownRequestThrottle _growth;
@@ -39,6 +40,9 @@ namespace Shinshi.Network
         public string       CharacterName  => _characterName;
         public EPlayerClass PlayerClass    => _playerClass;
 
+        // 마을에서는 경험치를 얻지 않는다. 재입장은 새 교환·새 개체로 최신 값을 다시 받는다
+        public long         TotalExperience => _totalExperience;
+
         // API 요청에 필요한 신원(계정, 캐릭터, 계정 임대)이 모두 있는지
         public bool HasBackendIdentity => (!string.IsNullOrEmpty(_accountId)) && (!string.IsNullOrEmpty(_characterId))
             && (!string.IsNullOrEmpty(_accountLeaseId));
@@ -48,21 +52,22 @@ namespace Shinshi.Network
         ****************************************/
 
         public TownMember(int participantId, string accountId, string characterId, string accountLeaseId, string characterName,
-            EPlayerClass playerClass)
+            EPlayerClass playerClass, long totalExperience = -1)
         {
-            _participantId  = participantId;
-            _accountId      = accountId;
-            _characterId    = characterId;
-            _accountLeaseId = accountLeaseId;
-            _characterName  = characterName;
-            _playerClass    = playerClass;
+            _participantId   = participantId;
+            _accountId       = accountId;
+            _characterId     = characterId;
+            _accountLeaseId  = accountLeaseId;
+            _characterName   = characterName;
+            _playerClass     = playerClass;
+            _totalExperience = totalExperience;
         }
 
         /// <summary> 인증된 결합에서 만든다 </summary>
         public static TownMember FromBinding(SessionBinding binding)
         {
             return new TownMember(binding.ParticipantId, binding.AccountId, binding.CharacterId, binding.AccountLeaseId,
-                binding.CharacterName, binding.PlayerClass);
+                binding.CharacterName, binding.PlayerClass, binding.Experience?.TotalExperience ?? -1);
         }
 
         /// <summary> 종류별 1초 창 안의 요청 수가 상한보다 적으면 하나를 세고 참 </summary>

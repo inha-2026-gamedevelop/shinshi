@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Linq;
 using System.Threading;
@@ -474,9 +474,9 @@ namespace Shinshi.Backend.Tests.Auth
                 INSERT INTO accounts(account_id) VALUES (@AccountId);
                 INSERT INTO characters(character_id,account_id,class_id) VALUES (@CharacterId,@AccountId,@Class);
                 INSERT INTO server_instances(instance_id,role,address,port,build_id,content_version,state)
-                    VALUES (@InstanceId,@Role,'127.0.0.1',7780,'auth-test','auth-test','Reserved');
+                    VALUES (@InstanceId,@Role,'127.0.0.1',7780,'auth-test','0.1.2','Reserved');
                 INSERT INTO server_instances(instance_id,role,address,port,build_id,content_version,state)
-                    VALUES (@TownInstanceId,@Town,'127.0.0.1',7777,'auth-test','auth-test','Idle');
+                    VALUES (@TownInstanceId,@Town,'127.0.0.1',7777,'auth-test','0.1.2','Idle');
                 """, new { fixture.AccountId, fixture.CharacterId, fixture.InstanceId, fixture.TownInstanceId, Town = ContractCodes.ServerRole.TOWN,
                     Class = ContractCodes.PlayerClass.WARRIOR, Role = ContractCodes.ServerRole.DUNGEON });
             fixture.TownLease = await fixture.Repository.IssueServerLeaseAsync(Guid.NewGuid(), fixture.TownInstanceId,
@@ -486,12 +486,12 @@ namespace Shinshi.Backend.Tests.Auth
             await connection.ExecuteAsync(
                 """
                 INSERT INTO game_sessions(session_id,mode,map_id,state,starting_count,content_version,instance_id,server_lease,
-                    expires_at,reserved_by_instance_id)
-                    VALUES (@SessionId,'Normal','auth-test','Reserved',1,'auth-test',@InstanceId,@LeaseId,
-                        clock_timestamp() + interval '150 seconds',@TownInstanceId);
+                    expires_at,reserved_by_instance_id,experience_settings)
+                    VALUES (@SessionId,'Normal','region_forest','Reserved',1,'0.1.2',@InstanceId,@LeaseId,
+                        clock_timestamp() + interval '150 seconds',@TownInstanceId,CAST(@ExperienceSettings AS jsonb));
                 INSERT INTO session_participants(session_id,participant_id,account_id,character_id,state)
                     VALUES (@SessionId,@ParticipantId,@AccountId,@CharacterId,'Reserved');
-                """, new { fixture.SessionId, fixture.InstanceId, fixture.TownInstanceId, fixture.ParticipantId, fixture.AccountId, fixture.CharacterId, LeaseId = fixture.ServerLease.TokenId });
+                """, new { fixture.SessionId, fixture.InstanceId, fixture.TownInstanceId, fixture.ParticipantId, fixture.AccountId, fixture.CharacterId, LeaseId = fixture.ServerLease.TokenId, ExperienceSettings = Newtonsoft.Json.JsonConvert.SerializeObject(Shinshi.Data.Growth.GrowthContent.LoadEmbedded().CharacterLevel) });
             return fixture;
         }
 

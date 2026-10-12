@@ -1,7 +1,7 @@
 # 런처·패치 설계
 
-> 기준일: 2026-10-02 · 상태: 설계 / 구현 중(Patch.Core, 게시 도구, 업데이트 엔진) · 담당: 민성(런처·패치·게임 세션 연결), 런처 화면 디자인은 착수 때 확정
-> 신시 전용 Windows 런처와 게임 패치 배포의 설계다. WPF 화면, 서명 매니페스트, Named Pipe 세션 전달로 구성하며 신시의 전용 서버·공유 마을 구조에 맞춘다. 코드는 `Launcher/`에 있으며 배포 저장소·서명 키는 아직 없다.
+> 기준일: 2026-10-11 · 상태: WPF UI·계정/게임 세션 전달·패치 엔진·게시 도구 구현됨, 실제 배포 미검증. 자체 업데이트는 후속 · 담당: 민성
+> 신시 전용 Windows 런처와 게임 패치 배포의 설계다. WPF 화면, 서명 매니페스트, Named Pipe 세션 전달로 구성하며 신시의 전용 서버·공유 마을 구조에 맞춘다. 코드는 `Launcher/`에 있으며 실제 배포 저장소·서명 키 배치와 게시·업로드는 이번 정적 검사에서 확인하지 않았다.
 
 ## 1. 목적과 범위
 
@@ -31,15 +31,15 @@ flowchart LR
   PUB -->|허용 buildId 등록| API
 ```
 
-| 구성 요소 | 책임 | 위치(예정) |
+| 구성 요소 | 책임 | 실제 위치(실행 수용은 별도) |
 |---|---|---|
-| `Launcher.UI` | WPF 화면, 설정, 실행 | `Launcher/src/Shinshi.Launcher.UI/` (예정) |
-| `Launcher.Account` | 로그인·토큰 보관·게임 세션 발급·전달 | `Launcher/src/Shinshi.Launcher.Account/` (예정) |
+| `Launcher.UI` | WPF 화면, 설정, 실행 | `Launcher/src/Shinshi.Launcher.UI/` |
+| `Launcher.Account` | 로그인·토큰 보관·게임 세션 발급·전달 | `Launcher/src/Shinshi.Launcher.Account/` |
 | `Patch.Core` | 매니페스트 형식·해시·서명 검증·경로 검사 | `Launcher/src/Shinshi.Patch.Core/` (게시 도구와 공유) |
 | `Patch.Client` | 다운로드·설치 배치·활성 버전 전환·복구 | `Launcher/src/Shinshi.Patch.Client/` |
 | `Release.Packager` | Unity 빌드 → 매니페스트·서명 → 게시 폴더·채널 갱신(업로드는 저장소 결정 뒤) | `Launcher/src/Shinshi.Release.Packager/` |
 | 빌드 신원 DTO | `build-identity.json` 형식, 게임·런처·게시 도구 공용 | `Assets/01.Scripts/00.Common/Contracts/Common/BuildIdentity.cs` |
-| 게임 쪽 수신기 | 파이프에서 세션을 받아 API·서버 인증에 사용 | `Assets/01.Scripts/01.Network/Session/` (민성, 예정) |
+| 게임 쪽 수신기 | 파이프에서 세션을 받아 API·서버 인증에 사용 | `Assets/01.Scripts/01.Network/Session/` (민성, 수신·자동 갱신 구현) |
 | 테스트 | 매니페스트·서명·경로·세션 전달 단위 시험 | `Launcher/tests/Shinshi.Launcher.Tests/` |
 
 솔루션은 `Launcher/Shinshi.Launcher.slnx`이고 백엔드와 같은 .NET 10 설정을 쓴다. 서명은 Ed25519(BouncyCastle.Cryptography)이며, JSON 정규화 없이 payload 원본 바이트에 `shinshi.patch.{kind}.v1` 접두를 붙여 서명한다. 게시 폴더는 콘텐츠 주소 배치(`{product}/blobs/{sha 앞 2자}/{sha}`, `{product}/releases/{releaseId}/manifest.json`, `{product}/channels/{채널}.json`)다.
@@ -111,6 +111,8 @@ Unity 빌드마다 `StreamingAssets/build-identity.json`을 만든다.
 **파일 검증·복구**: 사용자가 누르면 활성 버전 전체를 매니페스트와 비교하고 다른 파일만 다시 받는다.
 
 ### 4.5 런처 자체 업데이트
+
+아래는 후속 목표다. 현재 `minLauncherVersion` 검사만 확인됐으며, 별도 런처 채널 다운로드·실행 파일 교체·재시작 구현은 확인되지 않았다. 게임 패치 엔진을 런처 자체 업데이트 완료로 세지 않는다.
 
 런처 매니페스트와 채널을 게임과 **따로** 둔다. 새 런처는 옆 폴더에 받아 검증한 뒤 작은 교체 단계에서 바꾸고 재시작한다. 게임 매니페스트의 `최소 런처 버전`보다 낮으면 게임 업데이트 전에 런처부터 갱신한다.
 

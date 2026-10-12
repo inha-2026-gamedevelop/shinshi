@@ -188,6 +188,9 @@ namespace Shinshi.Backend.Sessions
 
                 SessionEventInput input = new SessionEventInput
                 {
+                    ExperienceSourceKind = entry.ExperienceSourceKind,
+                    ExperienceSourceId = entry.ExperienceSourceId ?? string.Empty,
+                    ExperienceSettingsHash = entry.ExperienceSettingsHash ?? string.Empty,
                     EventSeq = entry.EventSeq,
                     EventId = eventId,
                     EventKind = entry.EventKind,

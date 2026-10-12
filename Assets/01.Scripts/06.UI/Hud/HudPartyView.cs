@@ -52,10 +52,13 @@ namespace Shinshi.UI
         private const string VALUE_FORMAT = "{0:N0} / {1:N0}";
         private const string NO_HP_TEXT   = "-";
 
-        [SerializeField] private Slot[] _slots         = null;
-        [SerializeField] private Sprite _warriorBadge  = null;
-        [SerializeField] private Sprite _sorcererBadge = null;
-        [SerializeField] private Sprite _summonerBadge = null;
+        [SerializeField] private Slot[] _slots           = null;
+        [SerializeField] private Sprite _warriorBadge    = null;
+        [SerializeField] private Sprite _sorcererBadge   = null;
+        [SerializeField] private Sprite _summonerBadge   = null;
+        [SerializeField] private Sprite _swordsmanBadge  = null;
+        [SerializeField] private Sprite _mageknightBadge = null;
+        [SerializeField] private Sprite _archerBadge     = null;
 
         /****************************************
         *              Properties
@@ -101,9 +104,10 @@ namespace Shinshi.UI
             }
 
             Sprite badge = FindBadge(playerClass);
-            if ((slot.Badge != null) && (badge != null))
+            if (slot.Badge != null)
             {
                 slot.Badge.sprite = badge;
+                slot.Badge.enabled = (badge != null);
             }
 
             ApplyHp(slot, hasHp, hp, maxHp);
@@ -112,13 +116,18 @@ namespace Shinshi.UI
         public void ClearMember(int index)
         {
             Slot slot = GetSlot(index);
-            if ((slot == null) || ((!slot.HasValue) && (slot.Root != null) && (!slot.Root.activeSelf)))
+            if (slot == null)
             {
                 return;
             }
 
             slot.HasValue = false;
             SetActive(slot.Root, false);
+            if (slot.Badge != null)
+            {
+                slot.Badge.sprite = null;
+                slot.Badge.enabled = false;
+            }
         }
 
         private Slot GetSlot(int index)
@@ -141,6 +150,12 @@ namespace Shinshi.UI
                     return _sorcererBadge;
                 case EPlayerClass.Summoner:
                     return _summonerBadge;
+                case EPlayerClass.Swordsman:
+                    return _swordsmanBadge;
+                case EPlayerClass.Mageknight:
+                    return _mageknightBadge;
+                case EPlayerClass.Archer:
+                    return _archerBadge;
                 default:
                     return null;
             }

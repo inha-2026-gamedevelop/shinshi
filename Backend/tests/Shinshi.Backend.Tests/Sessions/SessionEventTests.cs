@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +21,19 @@ namespace Shinshi.Backend.Tests.Sessions
         /****************************************
         *                Fields
         ****************************************/
+
+        [Fact]
+        public void ExperienceEvent_NullSettingsHash_IsRejectedWithoutThrowing()
+        {
+            var entry = new SessionEventInput
+            {
+                EventId = Guid.NewGuid(), EventSeq = 1, ParticipantId = Guid.NewGuid(),
+                EventKind = GameSessionCodes.EventKind.EXPERIENCE_GRANTED, Amount = 5,
+                ExperienceSourceKind = CharacterExperienceSource.NORMAL_ENEMY,
+                ExperienceSourceId = "enemy-1", ExperienceSettingsHash = null!
+            };
+            Assert.False(SessionEventValidator.IsValid(new[] { entry }));
+        }
 
         private const long TICKETS          = 2;
         private const long POTIONS          = 5;

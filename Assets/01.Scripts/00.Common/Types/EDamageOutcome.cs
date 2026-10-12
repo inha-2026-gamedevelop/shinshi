@@ -22,6 +22,9 @@ namespace Shinshi.Common
         SameFaction    = 5,
 
         // 대상이 피해를 받지 않는 구간이다. 공명도 주지 않는다
-        Invulnerable   = 6
+        Invulnerable   = 6,
+
+        // 서버 내부 요청이나 대상 상태의 수치가 유효하지 않다
+        InvalidRequest = 7
     }
 }

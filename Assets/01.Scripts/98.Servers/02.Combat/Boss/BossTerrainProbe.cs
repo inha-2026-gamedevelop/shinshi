@@ -16,7 +16,7 @@ namespace Shinshi.Combat
     // 구의 중심은 발 위로 반경과 바닥 여유만큼 올려 평평한 바닥과 겹치지 않게 한다. 바닥은 장애물 레이어에 두지 않는 것을 전제로 하되,
     // 실수로 두어도 평평한 바닥은 막지 않는다. 실제 전장 지형에서의 동작은 지형 배치 뒤에 다시 확인해야 한다
     /// <summary> 보스 몸체와 투사체가 쓰는 정적 지형 벽 검사, 할당 없는 구 스윕 하나로 잰다 </summary>
-    public sealed class BossTerrainProbe : IBossWallQuery
+    public sealed class BossTerrainProbe : IBossWallQuery, IBossStandQuery
     {
         /****************************************
         *              Constants
@@ -77,6 +77,21 @@ namespace Shinshi.Combat
 
             float approachCos = Mathf.Max(MIN_APPROACH_COS, -Vector3.Dot(flat, hit.normal));
             return Mathf.Clamp(hit.distance - (SKIN / approachCos), 0f, maxDistance);
+        }
+
+        // 순간 이동의 도착 지점 검사다. 스윕과 같은 구(반경, 중심 높이)로 겹침만 본다. 스윕은 시작부터 겹친 콜라이더를 무시하므로
+        // 이 검사가 있어야 벽 안으로 건너뛰지 않는다. 장애물 레이어가 없으면 막을 벽이 없다
+        public bool CanStand(Vector3 point, float bodyRadius)
+        {
+            if (_layerMask == 0)
+            {
+                return true;
+            }
+
+            float   radius = Mathf.Max(MIN_PROBE_RADIUS, bodyRadius - SKIN);
+            Vector3 center = point + (Vector3.up * (radius + FOOT_CLEARANCE));
+
+            return !Physics.CheckSphere(center, radius, _layerMask, QueryTriggerInteraction.Ignore);
         }
     }
 }

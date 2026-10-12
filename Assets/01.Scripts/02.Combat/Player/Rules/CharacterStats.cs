@@ -15,10 +15,15 @@ namespace Shinshi.Combat
         private readonly float _critChance;
         private readonly float _maxEnergy;
         private readonly float _moveSpeed;
+        private readonly float _lifeSteal;
 
         /****************************************
         *              Properties
         ****************************************/
+
+        // 0에서 1 사이 비율, 상한을 이미 적용했다. 실제 적용 피해에 곱해 회복한다
+        public float LifeSteal  => _lifeSteal;
+
 
         // 소수 유지, 기술 계수와 곱하는 A
         public float Attack     => _attack;
@@ -40,8 +45,10 @@ namespace Shinshi.Combat
         *                Methods
         ****************************************/
 
-        public CharacterStats(float attack, float maxHealth, float defense, float critChance, float maxEnergy, float moveSpeed)
+        public CharacterStats(float attack, float maxHealth, float defense, float critChance, float maxEnergy, float moveSpeed,
+            float lifeSteal = 0f)
         {
+            _lifeSteal  = lifeSteal;
             _attack     = attack;
             _maxHealth  = maxHealth;
             _defense    = defense;

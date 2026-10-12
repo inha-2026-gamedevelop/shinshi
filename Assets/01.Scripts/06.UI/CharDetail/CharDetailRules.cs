@@ -25,7 +25,7 @@ namespace Shinshi.UI
         private const string PERCENT_FORMAT    = "{0:0.#}%";
         private const string NUMBER_FORMAT     = "{0:N0}";
 
-        private static readonly string[] G_ClassNames    = { "무사", "도술사", "신령사" };
+        private static readonly string[] G_ClassNames    = { "무사", "도술사", "신령사", "검사", "마검사", "궁수" };
         private static readonly string[] G_SlotNames     = { "무기", "머리", "몸통", "손", "발", "정기" };
         private static readonly string[] G_TrainingNames = { "공격", "체력", "방어", "치명타", "기력" };
 
@@ -77,11 +77,11 @@ namespace Shinshi.UI
 
         /// <summary> 표시용 능력치. GameDB가 없거나 계산이 맞지 않으면 거짓 </summary>
         public static bool TryComputeStats(in GrowthSnapshotMessage growth, PlayerConfigSO player, EquipmentCatalogSO equipment,
-            GrowthConfigSO growthConfig, out CharacterStats stats)
+            GrowthConfigSO growthConfig, out CharacterStats stats, CharacterLevelSettings levels = null)
         {
             stats = default;
             return (TryBuildLoadout(in growth, out CharacterCombatLoadout loadout))
-                && (CharacterStatsRules.TryCompute(player, equipment, growthConfig, loadout, out stats, out _));
+                && (CharacterStatsRules.TryCompute(player, equipment, growthConfig, loadout, levels, growth.TotalExperience, out stats, out _));
         }
 
         /// <summary> 부위의 착용 장비 이름과 강화 글자. 비었으면 "-" </summary>

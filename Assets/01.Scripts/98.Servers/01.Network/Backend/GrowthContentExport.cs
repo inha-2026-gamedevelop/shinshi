@@ -29,7 +29,7 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        public const int    SCHEMA_VERSION = 1;
+        public const int    SCHEMA_VERSION = 3;
         public const string RELATIVE_PATH  = "Backend/src/Shinshi.Data/Content/growth-content.json";
 
         private const string WINDOWS_NEW_LINE = "\r\n";
@@ -71,7 +71,7 @@ namespace Shinshi.Network
         public static JObject Build(GameDatabaseSO root)
         {
             if ((root == null) || (root.Equipment == null) || (root.Growth == null) || (root.Talismans == null)
-                || (root.Progression == null))
+                || (root.Progression == null) || (root.CharacterLevel == null))
             {
                 throw new ArgumentException("성장 콘텐츠를 만들 GameDB 참조가 없다", nameof(root));
             }
@@ -83,7 +83,8 @@ namespace Shinshi.Network
                 ["equipment"]      = BuildEquipment(root.Equipment),
                 ["growth"]         = BuildGrowth(root.Growth),
                 ["talismans"]      = BuildTalismans(root.Talismans),
-                ["progression"]    = BuildProgression(root.Progression)
+                ["progression"]    = BuildProgression(root.Progression),
+                ["characterLevel"] = JObject.FromObject(root.CharacterLevel.ToSettings())
             };
         }
 
@@ -116,7 +117,8 @@ namespace Shinshi.Network
                     ["attack"]     = Number(stats.Attack),
                     ["health"]     = Number(stats.Health),
                     ["defense"]    = Number(stats.Defense),
-                    ["critChance"] = Number(stats.CritChance)
+                    ["critChance"] = Number(stats.CritChance),
+                    ["lifeSteal"]  = Number(stats.LifeSteal)
                 });
             }
 
@@ -157,6 +159,7 @@ namespace Shinshi.Network
                 ["gradeStatMultipliers"]     = grades,
                 ["enhancementStatRate"]      = Number(equipment.EnhancementStatRate),
                 ["trainingStatRate"]         = Number(equipment.TrainingStatRate),
+                ["lifeStealPerGrade"]        = Number(equipment.LifeStealPerGrade),
                 ["enhancementSteps"]         = steps,
                 ["sameGradeInheritCost"]     = equipment.SameGradeInheritCost,
                 ["upperGradeInheritCost"]    = equipment.UpperGradeInheritCost,

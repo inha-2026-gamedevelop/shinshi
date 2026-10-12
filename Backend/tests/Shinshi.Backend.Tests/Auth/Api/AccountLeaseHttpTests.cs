@@ -38,7 +38,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int    DUNGEON_PORT     = 7781;
         private const int    STALE_SECONDS    = 20;
         private const int    NEAR_EXPIRY      = 2;
-        private const string CONTENT          = "lease-http-test";
+        private const string CONTENT          = "0.1.2";
         private const int    PURGE_LIMIT      = 100;
 
         /****************************************
@@ -70,7 +70,7 @@ namespace Shinshi.Backend.Tests.Auth
                 "SELECT extract(epoch FROM expires_at - clock_timestamp())::float8 FROM account_leases WHERE account_id = @Id;",
                 new { Id = fixture.AccountId });
             using HttpResponseMessage reserved = await town.PostAsync(GameServerRoutes.RESERVATIONS, Body(
-                new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL, CONTENT, CONTENT,
+                new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL, "region_forest", CONTENT,
                     new[] { new ReservationParticipant(fixture.AccountId.ToString("D"), fixture.CharacterId.ToString("D"), 0,
                         Array.Empty<ReservationPotion>()) })));
             string releasePath = string.Format(CultureInfo.InvariantCulture, GameServerRoutes.ACCOUNT_LEASE_RELEASE_FORMAT,
@@ -109,7 +109,7 @@ namespace Shinshi.Backend.Tests.Auth
             using HttpClient town = Server(factory, fixture.TownLease.Token, fixture.TownId);
             using HttpClient dungeon = Server(factory, fixture.DungeonLease.Token, fixture.DungeonId);
             using HttpResponseMessage reservedResponse = await town.PostAsync(GameServerRoutes.RESERVATIONS, Body(
-                new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL, CONTENT, CONTENT,
+                new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL, "region_forest", CONTENT,
                     new[] { new ReservationParticipant(fixture.AccountId.ToString("D"), fixture.CharacterId.ToString("D"), 0,
                         Array.Empty<ReservationPotion>()) })));
             ReservationResponse reservation = Read<ReservationResponse>(await reservedResponse.Content.ReadAsStringAsync());

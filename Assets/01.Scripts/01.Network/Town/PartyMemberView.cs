@@ -16,6 +16,7 @@ namespace Shinshi.Network
         private readonly EPartyReadyState _ready;
         private readonly int              _smallPotions;
         private readonly int              _largePotions;
+        private readonly long             _totalExperience;
 
         /****************************************
         *              Properties
@@ -31,19 +32,23 @@ namespace Shinshi.Network
         public int              SmallPotions  => _smallPotions;
         public int              LargePotions  => _largePotions;
 
+        // 마을 입장 교환이 확인한 누적 경험치. -1은 값이 없는 개발·시험 참가자다
+        public long             TotalExperience => _totalExperience;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public PartyMemberView(int participantId, string name, EPlayerClass playerClass, EPartyReadyState ready,
-            int smallPotions, int largePotions)
+            int smallPotions, int largePotions, long totalExperience = -1)
         {
-            _participantId = participantId;
-            _name          = name;
-            _playerClass   = playerClass;
-            _ready         = ready;
-            _smallPotions  = smallPotions;
-            _largePotions  = largePotions;
+            _participantId   = participantId;
+            _name            = name;
+            _playerClass     = playerClass;
+            _ready           = ready;
+            _smallPotions    = smallPotions;
+            _largePotions    = largePotions;
+            _totalExperience = totalExperience;
         }
     }
 }

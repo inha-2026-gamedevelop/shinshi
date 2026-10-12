@@ -14,6 +14,7 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
+        private readonly CharacterExperienceSnapshot _experience;
         private readonly string       _participantKey;
         private readonly string       _characterId;
         private readonly string       _instanceId;
@@ -33,6 +34,7 @@ namespace Shinshi.Network
 
         // 참가자를 영구히 가리키는 키. 같은 키로 다시 들어오면 재접속이다.
         // 던전은 출정 참가자 ID, 마을은 캐릭터 ID에서 만든다(JoinTokenClaimsRules)
+        public CharacterExperienceSnapshot Experience => _experience;
         public string ParticipantKey => _participantKey;
 
         public string CharacterId    => _characterId;
@@ -73,6 +75,7 @@ namespace Shinshi.Network
 
         public JoinTokenClaims(string participantKey)
         {
+            _experience = null;
             _participantKey = participantKey;
             _characterId    = null;
             _instanceId     = null;
@@ -119,6 +122,7 @@ namespace Shinshi.Network
         public JoinTokenClaims(string participantKey, string characterId, string instanceId, string sortieId,
             string accountLeaseId, EPlayerClass playerClass, string characterName, CharacterAppearance appearance)
         {
+            _experience = null;
             _participantKey = participantKey;
             _characterId    = characterId;
             _instanceId     = instanceId;
@@ -166,6 +170,17 @@ namespace Shinshi.Network
         }
 
         /// <summary> 계정 ID를 붙인 복사본, 마을 입장 결합 규칙만 부른다 </summary>
+        private JoinTokenClaims(in JoinTokenClaims source, CharacterExperienceSnapshot experience)
+        {
+            this = source;
+            _experience = experience;
+        }
+
+        public JoinTokenClaims WithExperience(CharacterExperienceSnapshot experience)
+        {
+            return new JoinTokenClaims(this, experience);
+        }
+
         public JoinTokenClaims WithAccountId(string accountId)
         {
             return new JoinTokenClaims(this, accountId);

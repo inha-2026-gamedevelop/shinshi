@@ -109,7 +109,7 @@ namespace Shinshi.UI
         {
             Shinshi.Combat.CharacterStats stats = default;
             bool ready = (GameDB.IsInitialized)
-                && (CharDetailRules.TryComputeStats(in growth, GameDB.Player, GameDB.Equipment, GameDB.Growth, out stats));
+                && (CharDetailRules.TryComputeStats(in growth, GameDB.Player, GameDB.Equipment, GameDB.Growth, out stats, GameDB.CharacterLevel.ToSettings()));
             if (!ready)
             {
                 _view.SetStats(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);

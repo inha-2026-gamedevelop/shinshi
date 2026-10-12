@@ -429,6 +429,14 @@ namespace Shinshi.Data.Reservations
                 return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
             }
 
+            GrowthContent experienceContent = GrowthContent.LoadEmbedded();
+            if ((input.ContentVersion != experienceContent.ContentVersion)
+                || ((input.Mode == GameSessionCodes.Mode.NORMAL)
+                    && (experienceContent.CharacterLevel.GetGrant(input.MapId, CharacterExperienceSource.NORMAL_ENEMY) == 0)))
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH);
+            }
+
             // 출시 프로필은 성장 콘텐츠에 없는 전장(테스트용 지도, 빈 battleId)의 출정을 열지 않는다
             int knownReason = _unlocks?.CheckKnownBattle(input.Mode, input.BattleId) ?? ContractCodes.RejectReason.NONE;
             if (knownReason != ContractCodes.RejectReason.NONE)
@@ -598,12 +606,13 @@ namespace Shinshi.Data.Reservations
             long revision = await connection.QuerySingleAsync<long>(new CommandDefinition(
                 """
                 INSERT INTO game_sessions (session_id, mode, map_id, state, starting_count, content_version, instance_id,
-                    server_lease, reserved_by_instance_id, instance_boot_id, expires_at, battle_id, boss_id, difficulty)
+                    server_lease, reserved_by_instance_id, instance_boot_id, expires_at, battle_id, boss_id, difficulty, experience_settings)
                 VALUES (@SessionId, @Mode, @MapId, 'Reserved', @StartingCount, @ContentVersion, @InstanceId,
-                    @ServerLease, @Town, @BootId, clock_timestamp() + @Lifetime, @BattleId, @BossId, @Difficulty)
+                    @ServerLease, @Town, @BootId, clock_timestamp() + @Lifetime, @BattleId, @BossId, @Difficulty, CAST(@ExperienceSettings AS jsonb))
                 RETURNING revision;
                 """, new
                 {
+                    ExperienceSettings = Newtonsoft.Json.JsonConvert.SerializeObject(GrowthContent.LoadEmbedded().CharacterLevel),
                     SessionId = sessionId,
                     Mode = boss ? GameSessionStates.MODE_BOSS : GameSessionStates.MODE_NORMAL,
                     BattleId = input.BattleId.Length == 0 ? null : input.BattleId,

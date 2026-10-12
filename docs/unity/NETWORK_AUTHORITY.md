@@ -25,7 +25,7 @@
 
 | 영역 | 항목 |
 |---|---|
-| 플레이어 | 위치, HP, 기력, 공명, 수련·장비·부적에서 계산한 능력치. 2026-10-08 추가된 캐릭터 경험치·레벨 및 레벨 기본 능력치도 서버 권위이며 코드·저장·동기화 적용은 미완료([레벨 기준안](../design/character-level-growth.md)) |
+| 플레이어 | 위치, HP, 기력, 공명, 수련·장비·부적·레벨에서 계산한 능력치. 경험치는 API 저장 ACK 후 서버 틱에서 반영하며 누적 XP를 복제한다. 클라이언트 레벨 표시는 검증된 같은 설정에서 파생한다. 저장·동기화는 구현, 실제 일반전·M2는 미검증([레벨 기준안](../design/character-level-growth.md)) |
 | 전투 | 공격 판정, 피격 판정, 타이밍 판정 성공 여부 |
 | 투사체 | 궤적, 유도 대상, 명중 판정 |
 | 적 | AI 상태, HP, 스폰 위치와 시점 |
@@ -235,7 +235,7 @@ public override void OnClientConnect()
 
 현재 `PlayerInputHeader`는 session epoch·sequence·추정 서버 시각을 담고 `PlayerInputGate`가 결합된 참가자·순서·허용 시각을 검증한다. 시각 허용 창은 [Constants.network.cs](../../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)의 과거 150ms·미래 50ms다. 서버 틱은 30Hz, 플레이어 위치 복제는 초기 15Hz, 적·마을 원격은 10Hz이며 수용량·체감 측정 뒤 조정한다. 아래 판정 창 ID·소비 계약은 타이밍 창을 추가할 때의 요구사항이며 현재 모든 타이밍 기술이 구현됐다는 뜻은 아니다.
 
-입력 주기 상한(초당 30건, `INPUT_SEND_RATE_MAX`)을 넘긴 입력은 항상 버린다. 10초 창 안에서 상한을 넘긴 1초 구간이 5번이 되면 서버가 연결을 끊고 참가자 ID와 위반 횟수를 로그로 남긴다. 지연으로 묶여 온 패킷의 일시 초과는 이 횟수 안에서 허용한다(2026-10-08 팀장 결정, 미구현).
+입력 주기 상한(초당 30건, `INPUT_SEND_RATE_MAX`)을 넘긴 입력은 버린다. 토큰 버킷은 초당30건 보충·버스트10이며, 초과가 발생한 서버 시각을 `Math.Floor`로 나눈 서로 다른 1초 구간이 10초 창 안에서5개가 되면 연결을 끊는다. 각 구간의 마지막 초과 시각으로 만료하며 정확히10초 지난 구간은 제외한다. 순번 역행·유효하지 않은 입력 시각의30회 차단은 별도 계수다. 재접속에는 위반 구간과 토큰 잔량·마지막 보충 시각을 함께 보존한다. 참가자ID·계수를 기록한다. 2026-10-11 규칙과 회귀시험을 반영했으며 실제 M3 지연·폭주 수용과 런타임 할당 실측은 미검증이다.
 
 ### 판정 창을 추가할 때
 
@@ -296,7 +296,7 @@ public override void OnClientConnect()
 
 ### 7.1.1 인증·경제 경계
 
-- 접속 프로토콜 version 2의 닉네임·외형은 API 토큰 교환 때 소유 캐릭터의 DB 값으로 읽고, 서버가 검증해 최초 생성·재결합 전에 적용한다. 외형 payload 버전과 기존 캐릭터 해석은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)를 따른다.
+- 접속 프로토콜은 `Constants.Network.PROTOCOL_VERSION`(현재 6)을 따르며 닉네임·외형·경험치는 API 토큰 교환 때 소유 캐릭터의 DB 값으로 읽고, 서버가 검증해 최초 생성·재결합 전에 적용한다. 경험치 누계와 마지막 사건 순번은 같은 캐릭터 행에서 읽고 예약 장비 스냅샷과 분리한다. 외형 payload 버전과 기존 캐릭터 해석은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)를 따른다.
 
 - HTTP 토큰은 `Authorization: Bearer {token}`으로 보낸다. 게임 서버의 서비스 자격은 임대 발급에만 쓰고, 이후 서버 경로는 `ServerCredentials`의 유효한 서버 임대 토큰을 사용한다. 인스턴스 헤더만으로 서버를 인증하지 않는다. 실행 설정은 [ServerLaunchConfig](../../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerLaunchConfig.cs)·[BackendLaunchSettings](../../Assets/01.Scripts/98.Servers/01.Network/Backend/BackendLaunchSettings.cs)가 기준이다.
 - 서비스 자격은 `BACKEND_SERVICE_TOKEN` 또는 `-backend-service-token-file`의 파일로 공급한다. 토큰 원문을 CLI 인자·SO·로그에 넣지 않는다. 출시 서버는 API 검증기를 쓰고, `dev` 검증기는 에디터·개발 빌드 전용이며 형식만 확인한다. 출시 서버는 서비스 자격 없이 던전을 열지 않는다.

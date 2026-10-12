@@ -20,6 +20,7 @@ namespace Shinshi.Network
         PotionUsed,
 
         // 저장 확정된 PotionUsed 한 건을 되돌린다(확정 뒤 회복을 적용하지 못한 경우), 예약분이 하나 돌아간다
-        PotionUseReverted
+        PotionUseReverted,
+        ExperienceGranted
     }
 }

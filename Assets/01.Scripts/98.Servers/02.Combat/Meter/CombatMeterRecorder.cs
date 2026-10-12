@@ -32,6 +32,7 @@ namespace Shinshi.Combat
         private const int    BUFFER_GROWTH_FACTOR          = 2;
         private const int    LOG_INITIAL_CAPACITY          = 1024;
         private const string SUMMARY_EVENT                = "combat.meter.closed";
+        private const string DEATH_EVENT                  = "combat.meter.death";
         private const string UNKNOWN_SOURCE_WARNING       = "[CombatMeter] 등록되지 않은 피해 출처를 기타 슬롯에 기록했다";
         private const string SOURCE_CAPACITY_WARNING      = "[CombatMeter] 받은 피해 출처 상한을 넘어 상세 출처 기록을 거절했다";
         private const string SUMMON_CACHE_WARNING          = "[CombatMeter] 소환물 귀속 캐시 상한에 닿았다, 활성 소환물은 주인 번호로 계속 기록한다";
@@ -80,6 +81,7 @@ namespace Shinshi.Combat
             public byte                          Deaths;
             public byte                          Revives;
             public byte                          PotionsUsed;
+            public float                         LifeStealHealed;
             public SlotRecord[]                  Slots;
             public float[]                       PhaseDamage;
             public SourceRecord[]                Sources;
@@ -305,6 +307,7 @@ namespace Shinshi.Combat
                 // 생사 통지가 Dead를 건너뛰고 부활 대기로 가도 활동 구간 종료는 사망 한 번이다.
                 participant.Deaths = CombatMeterRules.Increment(participant.Deaths);
                 SaveDeathRecap(ref participant, now);
+                LogDeath(in participant);
             }
             if (lifeState == EParticipantLifeState.Alive)
             {
@@ -438,6 +441,18 @@ namespace Shinshi.Combat
                 return;
             }
             _participants[index].PotionsUsed = CombatMeterRules.Increment(_participants[index].PotionsUsed);
+        }
+
+        /// <summary> 생명력 흡수로 실제 오른 체력을 더한다, 상한이나 가득 찬 체력으로 버려진 몫은 넘어오지 않는다 </summary>
+        public void RecordLifeSteal(int participantId, float healed)
+        {
+            int index = FindParticipant(participantId);
+            if ((_faulted) || (!_started) || (_closed) || (index == NONE_INDEX) || (_participants[index].Closed)
+                || (!(healed > 0f)) || (float.IsInfinity(healed)))
+            {
+                return;
+            }
+            _participants[index].LifeStealHealed += healed;
         }
 
         public void Record(in DamageRequest request, in DamageResult result, double serverTime)
@@ -1022,6 +1037,51 @@ namespace Shinshi.Combat
             }
         }
 
+        // 종료 요약에는 마지막 사망만 남는다. 사망 원인 분포를 모으려면 사망마다 직전 피해 출처를 따로 남겨야 한다
+        private void LogDeath(in ParticipantRecord participant)
+        {
+            try
+            {
+                var data = new StringBuilder(LOG_INITIAL_CAPACITY);
+                data.Append("{\"participantId\":").Append(participant.ParticipantId);
+                data.Append(",\"eventId\":");
+                ServerLogLine.AppendJsonString(data, _eventId);
+                data.Append(",\"deaths\":").Append(participant.Deaths);
+                data.Append(",\"potionsUsed\":").Append(participant.PotionsUsed);
+                AppendFloat(data, "lifeStealHealed", participant.LifeStealHealed);
+                data.Append(",\"hits\":[");
+                for (int i = 0; i < participant.LastDeathCount; ++i)
+                {
+                    if (i > 0)
+                    {
+                        data.Append(',');
+                    }
+                    CombatMeterDeathEntry entry = participant.LastDeathRecap[i];
+                    data.Append("{\"sourceId\":");
+                    ServerLogLine.AppendJsonString(data, entry.SourceId);
+                    AppendFloat(data, "amount", entry.Amount);
+                    AppendFloat(data, "secondsBeforeDeath", entry.SecondsBeforeDeath);
+                    data.Append('}');
+                }
+                data.Append("]}");
+
+                if (ServerJsonLogHandler.IsInstalled)
+                {
+                    ServerJsonLogHandler.LogParticipantEvent(ServerLogLine.LEVEL_INFO, DEATH_EVENT,
+                        participant.ApiParticipantId, data.ToString());
+                }
+                else
+                {
+                    Debug.Log($"[CombatMeter] death, sessionId={_sessionId}, {data}");
+                }
+            }
+            catch (Exception exception)
+            {
+                // 운영 로그 출력 장애가 생사 판정을 멈추지 않는다
+                Debug.LogWarning($"[CombatMeter] 사망 로그 실패: {exception.Message}");
+            }
+        }
+
         private double AdvanceTime(double serverTime)
         {
             _lastTime = Math.Max(_lastTime, serverTime);
@@ -1220,6 +1280,8 @@ namespace Shinshi.Combat
                 data.Append(",\"deaths\":").Append(participant.Deaths);
                 data.Append(",\"revives\":").Append(participant.Revives);
                 data.Append(",\"potionsUsed\":").Append(participant.PotionsUsed);
+                AppendFloat(data, "lifeSteal", participant.Stats.LifeSteal);
+                AppendFloat(data, "lifeStealHealed", participant.LifeStealHealed);
                 data.Append(",\"phases\":[");
                 for (int phaseIndex = 0; phaseIndex < _phaseCount; ++phaseIndex)
                 {

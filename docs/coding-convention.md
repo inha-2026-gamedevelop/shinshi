@@ -730,7 +730,7 @@ private IEnumerator CoApplyEffect()
 
 ### GameDB — ScriptableObject 기반 밸런스 DB
 
-GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO 14개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). `AvatarCatalogSO`는 2026-10-01 UMA 아바타 연동과 함께 추가했고, 같은 날 UMA를 쓰지 않기로 하면서 UMA 적용 뷰(`AvatarView`)는 지우고 카탈로그는 남겼다. 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
+GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 도메인 SO 15개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). `AvatarCatalogSO`는 2026-10-01 UMA 아바타 연동과 함께 추가했고, 같은 날 UMA를 쓰지 않기로 하면서 UMA 적용 뷰(`AvatarView`)는 지우고 카탈로그는 남겼다. 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
 
 ```
 스크립트: Assets/01.Scripts/00.Common/Data/     (namespace Shinshi.Data)
@@ -750,6 +750,7 @@ GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 SO
 | `WaveConfigSO` | `09.Data/AI/WaveConfig.asset` | 숲 6웨이브 배치, source ID, 활성 상한, 제한 시간 | 기웅 (세션 연결은 {팀장}) |
 | `EquipmentCatalogSO` | `09.Data/Growth/EquipmentCatalog.asset` | 장비 6부위 4등급, 제작, 25강, 계승표 | 진욱 |
 | `GrowthConfigSO` | `09.Data/Growth/GrowthConfig.asset` | 수련 5항목, 부적 등록 확률과 보정, 효과 강화 비용 | 진욱 |
+| `CharacterLevelConfigSO` | `09.Data/Growth/CharacterLevelConfig.asset` | 캐릭터 경험치 비용곡선·상한·초기값·레벨 육체 증가·지역별 적/웨이브 경험치 | 민성 |
 | `RewardCatalogSO` | `09.Data/Reward/RewardCatalog.asset` | 재화와 재료 아이템, 개인 드롭, 웨이브 기본 보상, 추가 정기, 보스 보상 | 진욱 (정산 규칙 수치는 `SessionConfigSO`) |
 | `LifeConfigSO` | `09.Data/Life/LifeConfig.asset` | 약초, 채집 선점과 재생, 행동력, 물약 레시피 | 진욱 |
 | `ProgressionCatalogSO` | `09.Data/Progression/ProgressionCatalog.asset` | 지역, 보스전 해금, 여우의 흔적, 최초 지원, 체험판 플래그 | 기웅 |
@@ -1100,7 +1101,7 @@ public void Hide() { _fadeTween.Restart(); }
 - **트윈은 표현 전용이다.** 서버 판정(피해 적용, 위치 권위, 판정 타이밍)을 트윈 진행이나 완료 콜백에 걸지 않는다. 클라이언트마다 프레임이 달라 끝나는 시점이 어긋난다 - [네트워크 권위](unity/NETWORK_AUTHORITY.md).
 - 연출 시퀀스 안의 대기는 `Sequence.AppendInterval`, 게임 논리의 대기는 코루틴을 쓴다 (15장).
 - asmdef를 만들어 DOTween을 참조할 때는 `DOTween.Modules`(Pro 기능은 `DOTweenPro.Scripts`)를 참조에 추가한다.
-- DOTween 전역 설정(`Assets/99.ThirdParty/Animation/Demigiant/DOTween/Resources/DOTweenSettings.asset`)과 DOTween Utility Panel의 Setup(스크립팅 심볼 변경)은 공용 설정이라 {팀장} 확인 후 바꾼다.
+- DOTween 전역 설정(`Assets/99.ThirdParty/Tools/Demigiant/DOTween/Resources/DOTweenSettings.asset`)과 DOTween Utility Panel의 Setup(스크립팅 심볼 변경)은 공용 설정이라 {팀장} 확인 후 바꾼다.
 
 ---
 

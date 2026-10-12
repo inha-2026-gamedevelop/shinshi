@@ -795,6 +795,65 @@ MonoBehaviour:
     _starRingRadius: 0
     _starConnectStep: 0
     _starRotationDegrees: 0
+  - _definitionId: wolbaek_ph2_p07
+    _displayKey: wolbaek_ph2_p07.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _baseWeight: 6.5
+    _distanceMultipliers:
+    - 0
+    - 1
+    - 1
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1.5
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 1
+    _shape:
+      _shape: 1
+      _range: 5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.24
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 2
+    _enhancedBaseWeight: 7
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _warpMinTargetDistance: 5
+    _warpLandingDistance: 3
+    _warpCandidateCount: 8
   - _definitionId: wolbaek_hard_p01
     _displayKey: wolbaek_hard_p01.name
     _bossId: boss_wolbaek
@@ -966,3 +1025,665 @@ MonoBehaviour:
     _starRingRadius: 0
     _starConnectStep: 0
     _starRotationDegrees: 0
+  - _definitionId: wolbaek_hard_p04
+    _displayKey: wolbaek_hard_p04.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 20
+    _distanceMultipliers:
+    - 0.5
+    - 1.4
+    - 1.7
+    _directionMultipliers:
+    - 1.3
+    - 1
+    - 0.6
+    _nearbyMultipliers:
+    - 1.2
+    - 0.9
+    - 0.6
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 0.9
+    _trackingSeconds: 0.45
+    _turnRate: 120
+    _activeSeconds: 0
+    _recoverySeconds: 0.5
+    _shape:
+      _shape: 3
+      _range: 35
+      _arcAngle: 0
+      _width: 1.2
+      _projectileSpeed: 10
+    _damageRef: 0.18
+    _guardable: 1
+    _controlPhase: 5
+    _controlWindowSeconds: 0.5
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+  - _definitionId: wolbaek_hard_p05
+    _displayKey: wolbaek_hard_p05.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 15
+    _distanceMultipliers:
+    - 0.8
+    - 1.3
+    - 1.5
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1.2
+    - 1.4
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 0.5
+    _shape:
+      _shape: 4
+      _range: 3.25
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.08
+    _guardable: 0
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 6
+    _areaTickInterval: 1
+    _maxConcurrentAreas: 3
+    _group: 0
+    _enhancedBaseWeight: 0
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 1
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+  - _definitionId: wolbaek_hard_p06
+    _displayKey: wolbaek_hard_p06.name
+    _bossId: boss_wolbaek
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 8
+    _distanceMultipliers:
+    - 0.9
+    - 1.2
+    - 1
+    _directionMultipliers:
+    - 1.6
+    - 0.6
+    - 0.1
+    _nearbyMultipliers:
+    - 1
+    - 1.2
+    - 1.3
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1.6
+    _trackingSeconds: 0.6
+    _turnRate: 90
+    _activeSeconds: 0
+    _recoverySeconds: 0.5
+    _shape:
+      _shape: 5
+      _range: 14
+      _arcAngle: 0
+      _width: 4.5
+      _projectileSpeed: 0
+    _damageRef: 0.45
+    _guardable: 0
+    _controlPhase: 3
+    _controlWindowSeconds: 0.4
+    _controlCancelsPattern: 1
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+  - _definitionId: wolbaek_hard_ph2_p01
+    _displayKey: wolbaek_hard_ph2_p01.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 10
+    _distanceMultipliers:
+    - 1
+    - 1.1
+    - 1.1
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1.1
+    - 1.2
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 2
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 1.6
+    _recoverySeconds: 1
+    _shape:
+      _shape: 5
+      _range: 27
+      _arcAngle: 0
+      _width: 1.5
+      _projectileSpeed: 0
+    _damageRef: 0.14
+    _guardable: 0
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 1
+    _enhancedBaseWeight: 12
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 5
+    _starRingRadius: 14
+    _starConnectStep: 2
+    _starRotationDegrees: 0
+    _starStageCount: 3
+    _starStageDegrees: 30
+    _starStageIntervalSeconds: 0.8
+  - _definitionId: wolbaek_hard_ph2_p02
+    _displayKey: wolbaek_hard_ph2_p02.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 10
+    _distanceMultipliers:
+    - 1
+    - 1.1
+    - 1.1
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1.1
+    - 1.2
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 12.5
+    _recoverySeconds: 1.5
+    _shape:
+      _shape: 5
+      _range: 36
+      _arcAngle: 0
+      _width: 3
+      _projectileSpeed: 0
+    _damageRef: 0.14
+    _guardable: 0
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 1
+    _enhancedBaseWeight: 12
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _starStageCount: 0
+    _starStageDegrees: 0
+    _starStageIntervalSeconds: 0
+    _warpMinTargetDistance: 0
+    _warpLandingDistance: 0
+    _warpCandidateCount: 0
+    _gridLineCount: 12
+    _gridLineSpacing: 3
+    _gridStrikeIntervalSeconds: 0.5
+    _gridAxisGapSeconds: 1.5
+  - _definitionId: wolbaek_hard_ph2_p03
+    _displayKey: wolbaek_hard_ph2_p03.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 12
+    _distanceMultipliers:
+    - 1.3
+    - 1.2
+    - 0.7
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1.15
+    - 1.3
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 2.5
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 3
+    _recoverySeconds: 1
+    _shape:
+      _shape: 0
+      _range: 16
+      _arcAngle: 315
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.18
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 1
+    _enhancedBaseWeight: 14
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 7
+    _sweepIntervalSeconds: 0.5
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _starStageCount: 0
+    _starStageDegrees: 0
+    _starStageIntervalSeconds: 0
+    _warpMinTargetDistance: 0
+    _warpLandingDistance: 0
+    _warpCandidateCount: 0
+    _gridLineCount: 0
+    _gridLineSpacing: 0
+    _gridStrikeIntervalSeconds: 0
+    _gridAxisGapSeconds: 0
+    _chainLingerSeconds: 0.8
+    _chainSafeRevealSeconds: 1
+    _chainHitCooldownSeconds: 0.5
+    _chainMaxHitsPerTarget: 2
+  - _definitionId: wolbaek_hard_ph2_p04
+    _displayKey: wolbaek_hard_ph2_p04.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 16
+    _distanceMultipliers:
+    - 0.9
+    - 1.2
+    - 1.4
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1.25
+    - 1.5
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 4
+    _trackingSeconds: 4
+    _turnRate: 0
+    _activeSeconds: 2.5
+    _recoverySeconds: 1
+    _shape:
+      _shape: 4
+      _range: 6
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.08
+    _guardable: 0
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 60
+    _areaTickInterval: 1
+    _maxConcurrentAreas: 2
+    _group: 2
+    _enhancedBaseWeight: 18
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 2
+    _areaSkipsMissedRounds: 1
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _starStageCount: 0
+    _starStageDegrees: 0
+    _starStageIntervalSeconds: 0
+    _warpMinTargetDistance: 0
+    _warpLandingDistance: 0
+    _warpCandidateCount: 0
+    _gridLineCount: 0
+    _gridLineSpacing: 0
+    _gridStrikeIntervalSeconds: 0
+    _gridAxisGapSeconds: 0
+    _chainLingerSeconds: 0
+    _chainSafeRevealSeconds: 0
+    _chainHitCooldownSeconds: 0
+    _chainMaxHitsPerTarget: 0
+  - _definitionId: wolbaek_hard_ph2_p05
+    _displayKey: wolbaek_hard_ph2_p05.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 22
+    _distanceMultipliers:
+    - 0.5
+    - 1.4
+    - 1.7
+    _directionMultipliers:
+    - 1.2
+    - 1
+    - 0.7
+    _nearbyMultipliers:
+    - 1.2
+    - 0.9
+    - 0.6
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 1.4
+    _recoverySeconds: 1
+    _shape:
+      _shape: 3
+      _range: 35
+      _arcAngle: 0
+      _width: 1
+      _projectileSpeed: 10
+    _damageRef: 0.18
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 3
+    _enhancedBaseWeight: 18
+    _projectileCount: 8
+    _projectileIntervalSeconds: 0.2
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _starStageCount: 0
+    _starStageDegrees: 0
+    _starStageIntervalSeconds: 0
+    _warpMinTargetDistance: 0
+    _warpLandingDistance: 0
+    _warpCandidateCount: 0
+    _gridLineCount: 0
+    _gridLineSpacing: 0
+    _gridStrikeIntervalSeconds: 0
+    _gridAxisGapSeconds: 0
+    _chainLingerSeconds: 0
+    _chainSafeRevealSeconds: 0
+    _chainHitCooldownSeconds: 0
+    _chainMaxHitsPerTarget: 0
+    _projectileMaxHitsPerTarget: 2
+  - _definitionId: wolbaek_hard_ph2_p06
+    _displayKey: wolbaek_hard_ph2_p06.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 8
+    _distanceMultipliers:
+    - 1.7
+    - 0.4
+    - 0
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 0.5
+    - 1.6
+    - 2.4
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 2
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 1
+    _shape:
+      _shape: 1
+      _range: 5.5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.28
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 2
+    _enhancedBaseWeight: 9
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _starStageCount: 0
+    _starStageDegrees: 0
+    _starStageIntervalSeconds: 0
+    _warpMinTargetDistance: 0
+    _warpLandingDistance: 0
+    _warpCandidateCount: 0
+    _gridLineCount: 0
+    _gridLineSpacing: 0
+    _gridStrikeIntervalSeconds: 0
+    _gridAxisGapSeconds: 0
+    _chainLingerSeconds: 0
+    _chainSafeRevealSeconds: 0
+    _chainHitCooldownSeconds: 0
+    _chainMaxHitsPerTarget: 0
+    _projectileMaxHitsPerTarget: 0
+    _burstSpotRadius: 3
+    _burstNearOffset: 5
+    _burstFarOffset: 11
+  - _definitionId: wolbaek_hard_ph2_p07
+    _displayKey: wolbaek_hard_ph2_p07.name
+    _bossId: boss_wolbaek
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 8
+    _distanceMultipliers:
+    - 0
+    - 1
+    - 1
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0.25
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1.5
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 1
+    _shape:
+      _shape: 1
+      _range: 5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.24
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 2
+    _enhancedBaseWeight: 8.5
+    _projectileCount: 0
+    _projectileIntervalSeconds: 0
+    _areaTargetCount: 0
+    _areaSkipsMissedRounds: 0
+    _sweepZoneCount: 0
+    _sweepIntervalSeconds: 0
+    _beamCount: 0
+    _beamLateralOffset: 0
+    _beamTickInterval: 0
+    _starVertexCount: 0
+    _starRingRadius: 0
+    _starConnectStep: 0
+    _starRotationDegrees: 0
+    _starStageCount: 0
+    _starStageDegrees: 0
+    _starStageIntervalSeconds: 0
+    _warpMinTargetDistance: 5
+    _warpLandingDistance: 3
+    _warpCandidateCount: 8
+    _gridLineCount: 0
+    _gridLineSpacing: 0
+    _gridStrikeIntervalSeconds: 0
+    _gridAxisGapSeconds: 0
+    _chainLingerSeconds: 0
+    _chainSafeRevealSeconds: 0
+    _chainHitCooldownSeconds: 0
+    _chainMaxHitsPerTarget: 0
+    _projectileMaxHitsPerTarget: 0
+    _burstSpotRadius: 0
+    _burstNearOffset: 0
+    _burstFarOffset: 0

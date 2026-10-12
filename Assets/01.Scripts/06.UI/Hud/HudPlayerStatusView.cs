@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System.Globalization;
 
 // Unity
@@ -6,6 +6,9 @@ using UnityEngine;
 
 // 서드파티
 using TMPro;
+
+// 프로젝트 내부
+using Shinshi.Contracts;
 
 namespace Shinshi.UI
 {
@@ -31,6 +34,7 @@ namespace Shinshi.UI
         [SerializeField] private RectTransform _mpFill = null;
         [SerializeField] private TMP_Text      _mpText = null;
 
+        [SerializeField] private HudExperienceView _experience;
         private int _level     = -1;
         private int _hpCurrent = -1;
         private int _hpMax     = -1;
@@ -41,6 +45,54 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
+        /// <summary> 로컬 바인더가 소유한 임시 HUD인지 나타낸다 </summary>
+        public bool IsRuntimeOwned { get; private set; }
+
+        /// <summary> 씬 HUD로 다른 바인더가 가져가지 않도록 런타임 소유를 표시한다 </summary>
+        public void MarkRuntimeOwned()
+        {
+            IsRuntimeOwned = true;
+        }
+
+        public void SetExperience(CharacterLevelSettings settings, long total)
+        {
+            if (!isActiveAndEnabled)
+            {
+                return;
+            }
+            if (!HudExperienceRules.TryRead(settings, total, out HudExperienceProgress progress))
+            {
+                ResetExperience();
+                if (_levelText != null)
+                {
+                    _levelText.text = "-";
+                }
+                _level = -1;
+                return;
+            }
+            if (_experience == null)
+            {
+                var child = new GameObject("ExperienceDisplay", typeof(RectTransform));
+                child.hideFlags = HideFlags.DontSave;
+                child.layer = gameObject.layer;
+                child.transform.SetParent(transform, false);
+                _experience = child.AddComponent<HudExperienceView>();
+                _experience.Initialize(_mpText != null ? _mpText : _levelText, _mpFill);
+            }
+            SetLevel(progress.Level);
+            _experience.Show(total, in progress);
+        }
+
+        public void ResetExperience()
+        {
+            if (_experience != null)
+            {
+                _experience.ResetDisplay();
+            }
+        }
+
+        private void OnDisable() => ResetExperience();
+
         public void SetLevel(int level)
         {
             if (level == _level)
@@ -49,7 +101,10 @@ namespace Shinshi.UI
             }
 
             _level = level;
-            _levelText.SetText(level.ToString(CultureInfo.InvariantCulture));
+            if (_levelText != null)
+            {
+                _levelText.SetText(level.ToString(CultureInfo.InvariantCulture));
+            }
         }
 
         public void SetHp(int current, int max)

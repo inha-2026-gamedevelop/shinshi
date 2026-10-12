@@ -31,7 +31,7 @@
 
 | 대상 | 이유 |
 |---|---|
-| 통합 씬 (미정. 현재는 `Assets/Scenes/SampleScene.unity`뿐) | 여러 파트가 공유. 소유자·세션 승인 확인 |
+| 통합 씬 (`Assets/00.Scenes/Bootstrap.unity`, `Assets/00.Scenes/Release/` 등; 실제 소유 표는 씬·에셋 안전 규칙 참조) | 여러 파트가 공유. 소유자·세션 승인 확인 |
 | 다른 파트의 `Assets/01.Scripts/` 폴더 | 병행 작업과 충돌 |
 | 각 도메인 `Net/`(상태 클래스), `01.Network/`, `98.Servers/`(서버 전용 어셈블리)와 공용 API 계약 | {팀장} 소유. 공용 계산은 파트 담당이 도메인 `Rules/`에, 서버 전용 AI는 AI 담당이 `98.Servers/`에 작성하고, 새 동기화 필드·Command·Rpc는 {팀장}에게 요청한다 ([협업 경계](../unity/SERVER_CLIENT_WORKFLOW.md)) |
 | 네트워크 권위 경계 변경 | 여러 시스템에 파급 |

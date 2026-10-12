@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Linq;
 using System.Threading;
@@ -111,6 +111,10 @@ namespace Shinshi.Backend.Tests.Market
                 """, new { seller.AccountId }));
 
             await connection.ExecuteAsync(await MigrationTestResources.ReadUpAsync(name));
+            foreach (var later in MigrationTestResources.All.Where(entry => entry.Version > version))
+            {
+                await connection.ExecuteAsync(await MigrationTestResources.ReadUpAsync(later.Name));
+            }
 
             Assert.Equal(3L, await connection.QuerySingleAsync<long>(
                 """

@@ -14,6 +14,7 @@ namespace Shinshi.Data.Auth
         *              Properties
         ****************************************/
 
+        public CharacterExperienceSnapshot? Experience { get; }
         public Guid AccountId { get; }
         public Guid CharacterId { get; }
 
@@ -50,8 +51,9 @@ namespace Shinshi.Data.Auth
             Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default, string? characterName = null,
             JoinSortieContract? sortie = null, string? combatLoadoutJson = null,
             IReadOnlyList<ReservationPotion>? potions = null,
-            string? appearanceJson = null)
+            string? appearanceJson = null, CharacterExperienceSnapshot? experience = null)
         {
+            Experience       = experience;
             AccountId        = accountId;
             CharacterId      = characterId;
             ClassId          = classId;

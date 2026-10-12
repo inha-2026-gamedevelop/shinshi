@@ -493,6 +493,14 @@ namespace Shinshi.Network
             return (_inTick) && (_session.ReportBossDefeated());
         }
 
+        // 보스를 열 수 없는 하드 출정을 보스 없이 진행하지 않고 닫는다. 서버 틱 안에서 그 틱의 서버 시각으로 부르면 받는다(세션이
+        // 같은 틱 시각만 허용). 서비스 장애 취소는 정산을 시작하지 않으므로 환급은 백엔드 복구 작업이 한다
+        /// <summary> 진행 중인 세션을 서비스 취소(ServiceCancelled)로 끝낸다, 진행 중이 아니거나 시각이 틀리면 거짓 </summary>
+        public bool CancelSortieService(double serverTime)
+        {
+            return (IsSessionRunning) && (_session.CancelService(serverTime));
+        }
+
         /// <summary> 연결이 끊긴 캐릭터를 유예 동안 남길지, 진행 중인 세션의 닫히지 않은 원래 참가자만 남긴다 </summary>
         public bool CanRetain(int participantId)
         {
@@ -944,7 +952,13 @@ namespace Shinshi.Network
 
             DungeonSession session = DungeonSession.CreateNormal(_sessionId, _roster, _events, _config, _waves, _rewards, wave,
                 _lootSalt);
-            if (SortieContentRules.RegisterWaveSources(session, _waves, _rewards) != _waves.CountTotalEnemies())
+            if (GameDB.IsInitialized && !session.ConfigureExperience(GameDB.CharacterLevel.ToSettings(), _descriptor.MapId))
+            {
+                session.Dispose();
+                return null;
+            }
+            if (SortieContentRules.RegisterWaveSources(session, _waves, _rewards,
+                GameDB.IsInitialized ? GameDB.Enemies : null) != _waves.CountTotalEnemies())
             {
                 session.Dispose();
                 return null;

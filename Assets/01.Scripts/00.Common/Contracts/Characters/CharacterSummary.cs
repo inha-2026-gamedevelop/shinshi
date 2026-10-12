@@ -11,6 +11,7 @@ namespace Shinshi.Contracts
         *                Fields
         ****************************************/
 
+        [DataMember(Name = "totalExperience")] private long _totalExperience;
         [DataMember(Name = "characterId")] private string _characterId;
         [DataMember(Name = "name")]        private string _name;
 
@@ -29,6 +30,7 @@ namespace Shinshi.Contracts
         *              Properties
         ****************************************/
 
+        public long TotalExperience => _totalExperience;
         public string              CharacterId => _characterId;
         public string              Name        => _name;
         public int                 ClassId     => _classId;
@@ -40,8 +42,9 @@ namespace Shinshi.Contracts
         ****************************************/
 
         public CharacterSummary(string characterId, string name, int classId, long revision,
-            CharacterAppearance appearance)
+            CharacterAppearance appearance, long totalExperience = 0)
         {
+            _totalExperience = totalExperience;
             _characterId = characterId;
             _name        = name;
             _classId     = classId;

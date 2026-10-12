@@ -17,6 +17,7 @@ namespace Shinshi.Combat
         private readonly float          _appliedAmount;
         private readonly bool           _isLethal;
         private readonly bool           _isRearHit;
+        private readonly bool           _isCritical;
 
         /****************************************
         *              Properties
@@ -33,6 +34,8 @@ namespace Shinshi.Combat
         // 대상 정면 기준 후방에서 맞았다. 후방 피격 기절이 반격을 끊는 판정에 쓴다
         public bool IsRearHit => _isRearHit;
 
+        public bool IsCritical => _isCritical;
+
         public bool IsApplied => _outcome == EDamageOutcome.Applied;
 
         // 공명이 인정하는 적중. 빗나감, 막힘, 무적은 0이고 과잉 피해로 처치한 마무리는 1회로 센다
@@ -42,17 +45,18 @@ namespace Shinshi.Combat
         *                Methods
         ****************************************/
 
-        private DamageResult(EDamageOutcome outcome, float appliedAmount, bool isLethal, bool isRearHit)
+        private DamageResult(EDamageOutcome outcome, float appliedAmount, bool isLethal, bool isRearHit, bool isCritical = false)
         {
             _outcome       = outcome;
             _appliedAmount = appliedAmount;
             _isLethal      = isLethal;
             _isRearHit     = isRearHit;
+            _isCritical    = isCritical;
         }
 
-        public static DamageResult Applied(float appliedAmount, bool isLethal, bool isRearHit)
+        public static DamageResult Applied(float appliedAmount, bool isLethal, bool isRearHit, bool isCritical = false)
         {
-            return new DamageResult(EDamageOutcome.Applied, appliedAmount, isLethal, isRearHit);
+            return new DamageResult(EDamageOutcome.Applied, appliedAmount, isLethal, isRearHit, isCritical);
         }
 
         // 막힌 공격은 정면이었으므로 후방 피격이 아니다

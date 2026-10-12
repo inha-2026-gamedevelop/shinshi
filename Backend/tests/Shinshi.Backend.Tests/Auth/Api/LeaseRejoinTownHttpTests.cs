@@ -34,7 +34,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int    SERVER_MINUTES = 15;
         private const int    TOWN_PORT      = 7777;
         private const int    DUNGEON_PORT   = 7780;
-        private const string CONTENT        = "rejoin-http-test";
+        private const string CONTENT        = "0.1.2";
 
         /****************************************
         *                Methods
@@ -324,7 +324,7 @@ namespace Shinshi.Backend.Tests.Auth
         private static async Task<ReservationResponse> ReserveAsync(HttpClient town, Fixture fixture)
         {
             ReservationRequest request = new ReservationRequest(Guid.NewGuid().ToString("D"), GameSessionCodes.Mode.NORMAL,
-                CONTENT, CONTENT, new[] { new ReservationParticipant(fixture.AccountId.ToString("D"),
+                "region_forest", CONTENT, new[] { new ReservationParticipant(fixture.AccountId.ToString("D"),
                     fixture.CharacterId.ToString("D"), 0, Array.Empty<ReservationPotion>()) });
             using HttpResponseMessage response = await town.PostAsync(GameServerRoutes.RESERVATIONS, Body(request));
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);

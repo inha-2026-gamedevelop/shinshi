@@ -74,7 +74,7 @@ Linux Dedicated Server 빌드 하나가 역할 인자로 마을/던전을 고른
 
 7778·7779는 이 계획에서 열지 않는다. UDP 포트 상한 때문에 한 호스트에서 이 범위를 사용하려면 `1 ≤ N ≤ 57756`이어야 하지만 이는 자원 수용량이 아니다. 실제 상한은 훨씬 앞에서 부하 시험으로 결정한다. 유닛은 산술을 수행하지 않으므로 인스턴스별 환경 설정에 계산한 `GAME_PORT`를 직접 넣고 중복을 확인한다. 호스트가 여러 개면 모든 프로세스의 `INSTANCE_ID`를 전체 풀에서 유일하게 부여한다.
 
-실제 실행 계약은 [ServerLaunchConfig.cs](../Assets/01.Scripts/98.Servers/01.Network/ServerLaunchConfig.cs)와 [Constants.network.cs](../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)다.
+실제 실행 계약은 [ServerLaunchConfig.cs](../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerLaunchConfig.cs)와 [Constants.network.cs](../Assets/01.Scripts/00.Common/Constants/Constants.network.cs)다.
 
 | 실행 인자 | 환경 키 | 유닛 사용 |
 |---|---|---|

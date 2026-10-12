@@ -60,7 +60,7 @@ dotnet run --project Backend/src/Shinshi.Api -- --bootstrap-owner
 | A11 | 강제 종료 한계 | (클라이언트 필요) 접속 중인 계정에 `accounts kick`, 접속 유지 여부와 같은 비밀번호 재로그인 | 출력 `현재 접속 유지`, 재로그인 가능(= 문서가 말한 한계) |
 | A12 | 감사와 ID 복구 | 터미널 기록이 없다고 치고 `audit --admin <adminId> --from <시각>`으로 직전 쓰기의 `operationId` 찾기 | 감사 표에 `operationId`와 사유 |
 | A13 | 복구 거절 경로 | `recover <임의 GUID> --action service-cancel --reason ...` | `NOT_FOUND`(종료 코드 2). 실제 복구는 (b)에서 |
-| A14 | 로컬 백업·복원 | `.\deploy\db\backup.ps1 -OutDir <폴더> -Container shinshi-release-db`, 빈 DB를 `CREATE DATABASE`로 만들고 `$env:PGDATABASE='shinshi_restore'; $env:RESTORE_CONFIRM_DB='shinshi_restore'; .\deploy\db\restore.ps1 <덤프> -Container shinshi-release-db` | 확인 SQL에서 마이그레이션 0013까지, 행 수가 백업 전과 같음 |
+| A14 | 로컬 백업·복원 | `.\deploy\db\backup.ps1 -OutDir <폴더> -Container shinshi-release-db`, 빈 DB를 `CREATE DATABASE`로 만들고 `$env:PGDATABASE='shinshi_restore'; $env:RESTORE_CONFIRM_DB='shinshi_restore'; .\deploy\db\restore.ps1 <덤프> -Container shinshi-release-db` | 확인 SQL에서 마이그레이션 이력과 행 수가 백업 전과 같음. 현재 전체 스키마는 0016까지이며 2026-10-07의 0013 백업 시험과 구분 |
 | A15 | 복원본으로 API 연결(선택) | 위 복원 DB의 연결 문자열로 API를 따로 실행(`ASPNETCORE_URLS`는 다른 포트), 일일 대사 로그와 `shinshi-admin login`(`--api` 다른 포트) | 대사 `0 mismatches`, 같은 `Admin__TotpKeyBase64`로 로그인 성공. 다른 키로는 실패(확인) |
 | A16 | 문서 대조 | 위를 하면서 런북의 명령과 출력이 다른 곳을 기록 | 문서 수정 항목 |
 

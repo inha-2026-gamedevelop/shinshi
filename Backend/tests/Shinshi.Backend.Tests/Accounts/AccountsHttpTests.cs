@@ -731,13 +731,12 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(0, host.Characters.CreateCalls);
         }
 
-        /// <summary> 새 직업(3 검사, 4 마검사, 5 궁수)은 설정을 비웠거나 기본값일 때 닫혀 있고 저장소를 부르지 않는다 </summary>
+        /// <summary> 설정에서 빠진 새 직업은 저장소 호출 전에 거절된다 </summary>
         [Theory]
-        [InlineData(null, 3)]
-        [InlineData(null, 4)]
-        [InlineData(null, 5)]
         [InlineData("0,1,2", 3)]
-        [InlineData("", 4)]
+        [InlineData("0,1,2", 4)]
+        [InlineData("0,1,2", 5)]
+        [InlineData("3", 4)]
         [InlineData("3", 5)]
         public async Task CharacterCreate_NewClassWhileGateClosed_Returns409FeatureDisabled(string? enabledClassIds, int classId)
         {
@@ -748,7 +747,6 @@ namespace Shinshi.Backend.Tests.Accounts
             using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
                 new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, CharacterTestData.Appearance())));
 
-            // "3"은 3만 열고 5는 열지 않는다
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
             Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED,
                 AccountApiHost.Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
@@ -756,12 +754,19 @@ namespace Shinshi.Backend.Tests.Accounts
         }
 
         [Theory]
-        [InlineData(3)]
-        [InlineData(4)]
-        [InlineData(5)]
-        public async Task CharacterCreate_NewClassWhileGateOpen_ReachesRepository(int classId)
+        [InlineData(null, 3)]
+        [InlineData(null, 4)]
+        [InlineData(null, 5)]
+        [InlineData("", 3)]
+        [InlineData("", 4)]
+        [InlineData("", 5)]
+        [InlineData("0,1,2,3,4,5", 3)]
+        [InlineData("0,1,2,3,4,5", 4)]
+        [InlineData("0,1,2,3,4,5", 5)]
+        public async Task CharacterCreate_NewClassWithDefaultOrExplicitGate_ReachesRepository(string? enabledClassIds,
+            int classId)
         {
-            using AccountApiHost host = new AccountApiHost(enabledClassIds: "0,1,2,3,4,5");
+            using AccountApiHost host = new AccountApiHost(enabledClassIds: enabledClassIds);
             (Guid _, string access) = host.Backend.AddInviteAccount();
             using HttpClient player = host.CreateClient(access);
 
@@ -774,14 +779,19 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(classId, host.Characters.LastClassId);
         }
 
-        /// <summary> 기존 직업 0, 1, 2는 기본 설정에서 그대로 생성할 수 있다 </summary>
+        /// <summary> 구직업은 기본 설정과 명시적인 구직업 재개방 설정 모두에서 생성되지 않는다 </summary>
         [Theory]
-        [InlineData(ContractCodes.PlayerClass.WARRIOR)]
-        [InlineData(ContractCodes.PlayerClass.SORCERER)]
-        [InlineData(ContractCodes.PlayerClass.SUMMONER)]
-        public async Task CharacterCreate_LegacyClassWithDefaultGate_ReachesRepository(int classId)
+        [InlineData(null, ContractCodes.PlayerClass.WARRIOR)]
+        [InlineData(null, ContractCodes.PlayerClass.SORCERER)]
+        [InlineData(null, ContractCodes.PlayerClass.SUMMONER)]
+        [InlineData("", ContractCodes.PlayerClass.WARRIOR)]
+        [InlineData("0,1,2,3,4,5", ContractCodes.PlayerClass.WARRIOR)]
+        [InlineData("0,1,2,3,4,5", ContractCodes.PlayerClass.SORCERER)]
+        [InlineData("0,1,2,3,4,5", ContractCodes.PlayerClass.SUMMONER)]
+        public async Task CharacterCreate_LegacyClassWithDefaultOrExplicitGate_Returns409BeforeRepository(
+            string? enabledClassIds, int classId)
         {
-            using AccountApiHost host = new AccountApiHost();
+            using AccountApiHost host = new AccountApiHost(enabledClassIds: enabledClassIds);
             (Guid _, string access) = host.Backend.AddInviteAccount();
             using HttpClient player = host.CreateClient(access);
 
@@ -789,8 +799,9 @@ namespace Shinshi.Backend.Tests.Accounts
                 new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, CharacterTestData.Appearance())));
 
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-            Assert.Equal(1, host.Characters.CreateCalls);
-            Assert.Equal(classId, host.Characters.LastClassId);
+            Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED,
+                AccountApiHost.Read<ApiRejection>(await response.Content.ReadAsStringAsync()).ReasonCode);
+            Assert.Equal(0, host.Characters.CreateCalls);
         }
 
         /// <summary> 캐릭터 생성, 삭제는 계정별 1분 한도를 함께 쓴다. 넘으면 저장소 호출 없이 429이고, 저장된 24시간 삭제 상한
@@ -810,13 +821,13 @@ namespace Shinshi.Backend.Tests.Accounts
             for (int i = 1; i < AccountRequestLimiter.MAX_CHARACTER_WRITES_PER_WINDOW; ++i)
             {
                 using HttpResponseMessage created = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
-                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.WARRIOR,
+                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.SWORDSMAN,
                         CharacterTestData.Appearance())));
                 Assert.Equal(HttpStatusCode.Conflict, created.StatusCode);
             }
 
             using HttpResponseMessage limited = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
-                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.WARRIOR,
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.SWORDSMAN,
                     CharacterTestData.Appearance())));
             host.Characters.DeleteReason = ContractCodes.RejectReason.NONE;
             using HttpResponseMessage limitedDelete = await player.PostAsync(deletePath, AccountApiHost.Json(
@@ -882,10 +893,10 @@ namespace Shinshi.Backend.Tests.Accounts
         // 허용된 v3(P09) 외형은 검증을 통과해 저장소까지 간다. 대역 저장소는 슬롯 부족(409)으로 답하므로
         // 400이 아니고 저장소 호출 1회와 v3 JSON 전달로 통과를 확인한다
         [Theory]
-        [InlineData(ContractCodes.PlayerClass.WARRIOR, CharacterAppearance.BODY_TYPE_FEMALE, 1, 1, 1, 1, 1, 0, 2, 31)]
-        [InlineData(ContractCodes.PlayerClass.SORCERER, CharacterAppearance.BODY_TYPE_FEMALE, 3, 3, 9, 5, 3, 0, 3, 0)]
-        [InlineData(ContractCodes.PlayerClass.SUMMONER, CharacterAppearance.BODY_TYPE_MALE, 2, 2, 4, 2, 2, 8, 0, 21)]
-        [InlineData(ContractCodes.PlayerClass.WARRIOR, CharacterAppearance.BODY_TYPE_MALE, 1, 3, 1, 1, 1, 0, 0, 31)]
+        [InlineData(ContractCodes.PlayerClass.SWORDSMAN, CharacterAppearance.BODY_TYPE_FEMALE, 1, 1, 1, 1, 1, 0, 2, 31)]
+        [InlineData(ContractCodes.PlayerClass.MAGEKNIGHT, CharacterAppearance.BODY_TYPE_FEMALE, 3, 3, 9, 5, 3, 0, 3, 0)]
+        [InlineData(ContractCodes.PlayerClass.ARCHER, CharacterAppearance.BODY_TYPE_MALE, 2, 2, 4, 2, 2, 8, 0, 21)]
+        [InlineData(ContractCodes.PlayerClass.SWORDSMAN, CharacterAppearance.BODY_TYPE_MALE, 1, 3, 1, 1, 1, 0, 0, 31)]
         public async Task CharacterCreate_V3AllowedAppearance_ReachesRepository(int classId, int bodyType, int faceId, int hairId,
             int hairColor, int eyeColor, int skinTone, int facialHair, int bustSize, int outfitMask)
         {
@@ -894,7 +905,7 @@ namespace Shinshi.Backend.Tests.Accounts
             using HttpClient player = host.CreateClient(access);
             CharacterAppearance appearance = CharacterAppearanceCatalog.CreateP09(bodyType, faceId, hairId, hairColor, eyeColor,
                 skinTone, facialHair, bustSize, outfitMask);
-            Assert.True(CharacterAppearanceCatalog.IsAllowed(classId, appearance));
+            Assert.True(CharacterAppearanceCatalog.IsAllowed(ContractCodes.PlayerClass.WARRIOR, appearance));
 
             using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
                 new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", classId, appearance)));
@@ -967,7 +978,7 @@ namespace Shinshi.Backend.Tests.Accounts
             using HttpClient player = host.CreateClient(access);
 
             using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
-                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.WARRIOR,
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.SWORDSMAN,
                     CharacterTestData.AppearanceV2(CharacterAppearanceCatalog.FACE_CUTE, 2, 3))));
 
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);

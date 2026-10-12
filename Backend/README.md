@@ -55,6 +55,8 @@ GRANT DELETE ON TABLE public.account_leases TO shinshi_runtime;
 -- 0006: 유지 작업이 보존 기간이 지난 만료 입장 토큰을 지운다
 GRANT DELETE ON TABLE public.auth_join_tokens TO shinshi_runtime;
 GRANT SELECT, INSERT ON TABLE public.session_events, public.session_checkpoints TO shinshi_runtime;
+-- 0017: 경험치 원장에는 수정·삭제 권한을 주지 않는다
+GRANT SELECT, INSERT ON TABLE public.character_experience_events TO shinshi_runtime;
 -- 원장과 감사/소비 이력은 추가 전용이다. 소유자나 상위 역할의 권한도 확인한다.
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE
     public.economy_ledger, public.item_history, public.outbox_inbox FROM shinshi_runtime;
@@ -132,13 +134,13 @@ app.MapControllers();
 
 `IssueJoinTokenAsync`는 플레이어 자격을 사용하는 내부 발급 경로다. 예약의 `JoinTokenIssuer`는 서버 자격으로 계정 ID의 활성 게임 인증 family를 찾는 `IssueDungeonJoinTokenAsync`에 연결한다. 마을 서버 임대, 예약한 마을, 참가자 roster, 계정/캐릭터 소유, 현재 출정의 인스턴스와 역할, 살아 있는 던전 임대를 DB에서 재검증한다. 활성 family가 없으면 `TOKEN_REVOKED`다. 토큰은 최대 60초이며 예약 만료와 인증 계열 만료를 넘지 않는다.
 
-서버의 접속 토큰 교환은 `POST /v1/game-servers/join-tokens/exchange` 한 경로에서 공유 `JoinTokenExchangeRequest/Response`를 사용한다. 요청은 `{joinToken, instanceId, serverRole}`, 응답은 `{characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId}`다. `classId`는 토큰이 발급된 캐릭터의 직업(`ContractCodes.PlayerClass`, 0 무사·1 도술사·2 신령사)으로, 마을과 던전 입장 모두 같은 교환이 같은 트랜잭션에서 `characters.class_id`를 읽어 채운다. 게임 서버는 클라이언트가 아니라 이 값으로 전투 개체의 직업을 정하며, 키가 없거나 모르는 값이면 입장을 거절한다. `Authorization: Bearer <서비스 자격으로 발급된 서버 임대 토큰>`과 `X-Shinshi-Instance-Id: <등록 인스턴스 UUID>`를 함께 보낸다. 헤더와 본문 인스턴스/역할을 검증된 자격에 대조하고 참가자/출정/캐릭터는 DB 토큰에서만 읽는다. 토큰은 한 번 소비하며 응답을 잃은 서버는 같은 토큰 교환을 재시도하지 않는다. 이전 `/v1/auth/join/consume` 경로는 제공하지 않는다. Unity verifier와 메인 스레드 전달은 Unity 작업자가 연결한다.
+서버의 접속 토큰 교환은 `POST /v1/game-servers/join-tokens/exchange` 한 경로에서 공유 `JoinTokenExchangeRequest/Response`를 사용한다. 요청은 `{joinToken, instanceId, serverRole}`, 응답은 `{characterId, instanceId, serverRole, participantId, sortieId, serverTimeUnixMs, accountLeaseId, classId}`다. `classId`는 토큰이 발급된 캐릭터의 직업(`ContractCodes.PlayerClass`, 0 무사·1 도술사·2 신령사·3 검사·4 마검사·5 궁수, 생성 허용은 `Characters:EnabledClassIds` 기본 `3,4,5`로 별도 제한)으로, 마을과 던전 입장 모두 같은 교환이 같은 트랜잭션에서 `characters.class_id`를 읽어 채운다. 게임 서버는 클라이언트가 아니라 이 값으로 전투 개체의 직업을 정하며, 키가 없거나 모르는 값이면 입장을 거절한다. `Authorization: Bearer <서비스 자격으로 발급된 서버 임대 토큰>`과 `X-Shinshi-Instance-Id: <등록 인스턴스 UUID>`를 함께 보낸다. 헤더와 본문 인스턴스/역할을 검증된 자격에 대조하고 참가자/출정/캐릭터는 DB 토큰에서만 읽는다. 토큰은 한 번 소비하며 응답을 잃은 서버는 같은 토큰 교환을 재시도하지 않는다. 이전 `/v1/auth/join/consume` 경로는 제공하지 않는다. Unity verifier와 메인 스레드 전달은 Unity 작업자가 연결한다.
 
 원장 쓰기는 `IdempotentOperationExecutor` 효과 콜백에서 받은 `OperationExecutionContext`로만 호출한다. 활성 PostgreSQL 연결과 같은 트랜잭션인지 검사하고 source operation이 Pending인지 확인한다. `PostgresEconomyLedgerWriter.AppendAsync`, `PostgresItemHistoryWriter.AppendAsync`, `PostgresOutboxWriter.EnqueueAsync`를 실제 잔액/재고 변경과 같은 callback에 넣는다. 업무 거절은 effect savepoint, 예외는 전체 트랜잭션을 롤백하므로 원장/장비 이력/outbox도 함께 롤백된다. 원장 중복 키 `(actor_id, operation_id, entry_key)`, 장비 이력 `(item_id, seq)`, outbox `event_id`가 같은 내용의 재기록을 허용하고 다른 내용은 거절한다. 원장은 직접 잔액을 바꾸지 않으므로 모든 경제 변경 담당자가 이 공용 경로를 연결해야 한다. 장비의 삭제 이력은 item_id 외래 키 없이 남겨 삭제 뒤에도 보존한다.
 
 `EEconomyReason`과 `ContractCodes.EconomyReason`은 동일 숫자의 공유 사유 계약이다. 세션의 다섯 사유는 `SessionStartTicket=1`, `SessionPotionUse=2`, `SessionSettlement=3`, `ServiceCancelRefund=4`, `ServiceCancelEssence=5`다. 그 뒤에는 운영 도구 설계의 경제 사유를 추가했다. `LedgerWriter`는 세션 원장 문자열을 이 숫자로 바꾸고 원래 entry key를 보존하며 각 행에 새 ledger UUID를 부여한다. 원장에 기존 별도 사유 enum은 없었다. 테스트의 `TEST_REASON_CODE`는 테스트 전용 값이다.
 
-`PostgresOutboxDispatcher.ProcessBatchAsync`는 같은 DB에 있는 소비자 전용 전달 작업이다. Committed 원본 operation의 미전달 행을 `FOR UPDATE SKIP LOCKED`로 최대 100개 잠근다. 소비 inbox `(consumer_key, event_id)` 유일 키, 짧은 DB 효과, `delivered_at`를 한 트랜잭션에서 확정한다. 소비 실패와 복원 가능한 PostgreSQL statement/lock timeout은 항목 savepoint로 효과/inbox를 되돌리고 1초 뒤 재시도한다. 직렬화 실패·데드락·드라이버 연결 타임아웃·호출자 취소/프로세스 소실은 배치 전체를 롤백한다. 해당 콜백에 네트워크/RPC/외부 I/O를 넣지 않는다. 외부 전송을 연결할 부모 전달자는 영속 claim 임대와 수신 측 동일 event_id 중복 소비 계약을 추가해야 한다. 지금 API는 background dispatcher를 자동 시작하지 않으므로 부모가 소비 종류별 callback과 주기를 등록한다. `EconomyLedgerReconciler`는 currency/tickets/essence/shards/account_items의 현재 잔액과 원장 numeric 합계를 읽기 전용 keyset 페이지로 비교한다. 초기 잔액도 원장에 기록해야 하며 일일 호출과 불일치 ERROR 보고는 부모 스케줄러가 연결한다.
+`PostgresOutboxDispatcher.ProcessBatchAsync`는 같은 DB에 있는 소비자 전용 전달 작업이다. Committed 원본 operation의 미전달 행을 `FOR UPDATE SKIP LOCKED`로 최대 100개 잠근다. 소비 inbox `(consumer_key, event_id)` 유일 키, 짧은 DB 효과, `delivered_at`를 한 트랜잭션에서 확정한다. 소비 실패와 복원 가능한 PostgreSQL statement/lock timeout은 항목 savepoint로 효과/inbox를 되돌리고 1초 뒤 재시도한다. 직렬화 실패·데드락·드라이버 연결 타임아웃·호출자 취소/프로세스 소실은 배치 전체를 롤백한다. 해당 콜백에 네트워크/RPC/외부 I/O를 넣지 않는다. 외부 전송을 연결할 부모 전달자는 영속 claim 임대와 수신 측 동일 event_id 중복 소비 계약을 추가해야 한다. 지금 API는 background dispatcher를 자동 시작하지 않으므로 부모가 소비 종류별 callback과 주기를 등록한다. `EconomyLedgerReconciler`는 currency/tickets/essence/shards/account_items의 현재 잔액과 원장 numeric 합계를 읽기 전용 keyset 페이지로 비교한다. 초기 잔액도 원장에 기록해야 하며 일일 호출과 불일치 ERROR 보고는 `EconomyReconciliationService`가 맡고 `GrowthServiceCollectionExtensions`에서 호스티드 서비스로 등록한다. 운영 실행은 미검증이다.
 
 추가 전용 `economy_ledger`, `item_history`, `outbox_inbox`에는 런타임 UPDATE/DELETE/TRUNCATE 권한을 주지 않는다. 0003의 트리거도 이 변경을 거절한다. 0008의 `admin_audit_log`도 동일하게 SELECT/INSERT만 부여하며(위 권한 SQL) 테이블/스키마 소유권 또는 역할 멤버십으로 권한을 상속하지 않게 한다. 위 권한 SQL의 outbox UPDATE는 전달 상태의 세 열로 제한한다. 기존 DB에서 이미 전체 outbox UPDATE를 부여했다면 먼저 그 전체 권한을 회수한 뒤 열 권한만 부여한다.
 
@@ -159,7 +161,7 @@ app.MapControllers();
 
 접근, 갱신, 서버 임대, 입장 토큰 원문은 길이와 문자 집합이 이전과 같지만 마지막 8바이트가 무작위 부분의 HMAC 태그다. 태그가 맞지 않는 bearer는 DB 조회 없이 거절한다. 0005 이전에 발급한 토큰과 초대는 태그가 없어 무효가 되므로 재로그인과 새 초대가 필요하다. 인증 실패(bearer 거절, 초대/갱신 교환 401, 서버 임대 자격 401)는 IP별로 1분에 20회까지 세고, 넘으면 창이 끝날 때까지 토큰 검증 없이 429(`Retry-After`)로 거절한다. 자격 교환 경로(`/v1/auth/exchange`, 마을 입장권, 복귀 입장권)는 IP별 1분 60회 ASP.NET Core 요청 한도도 받는다. 0006에서 서버 임대 경로의 실패 처리와 한도, 프록시 IP 복원이 바뀌었다(0006 절).
 
-`POST /v1/game-sessions/{sessionId}/rejoin-ticket`은 게임 하위 세션 토큰으로 부르며(접근 토큰은 403 `SESSION_MISMATCH`, 아래 "게임 하위 세션" 절) 응답은 `JoinTicket`이다. 출정 Running, 요청자 계정의 참가자 Active, 로그인 묶음이 살아 있을 때만 60초 일회 토큰을 발급하고 같은 참가자의 미교환 토큰은 폐기한다. 시작 전은 409 `WRONG_PHASE`, 다른 계정은 403 `SESSION_MISMATCH`, 정산된 참가자는 409 `ALREADY_SETTLED`다. 마을 입장 토큰은 `PostgresAuthRepository.IssueTownJoinTokenAsync`(플레이어 주체, 캐릭터, 마을 인스턴스)로 발급하며 HTTP 발급 경로는 아직 없다. 교환 응답의 `participantId`, `sortieId`는 null이다. 다른 살아 있는 서버에 계정 임대가 있으면 `ALREADY_CONNECTED`다.
+`POST /v1/game-sessions/{sessionId}/rejoin-ticket`은 게임 하위 세션 토큰으로 부르며(접근 토큰은 403 `SESSION_MISMATCH`, 아래 "게임 하위 세션" 절) 응답은 `JoinTicket`이다. 출정 Running, 요청자 계정의 참가자 Active, 로그인 묶음이 살아 있을 때만 60초 일회 토큰을 발급하고 같은 참가자의 미교환 토큰은 폐기한다. 시작 전은 409 `WRONG_PHASE`, 다른 계정은 403 `SESSION_MISMATCH`, 정산된 참가자는 409 `ALREADY_SETTLED`다. 마을 입장 토큰은 `PostgresAuthRepository.IssueTownJoinTokenAsync`(플레이어 주체, 캐릭터, 마을 인스턴스)로 발급하며 HTTP 발급 경로는 `POST /v1/town/join-ticket`(`TownJoinTicketController`)이다. 교환 응답의 `participantId`, `sortieId`는 null이다. 다른 살아 있는 서버에 계정 임대가 있으면 `ALREADY_CONNECTED`다.
 
 복구는 Running/Settling 중 배정 boot가 소실된 출정과, 종료 이벤트 저장 뒤 60초가 지나도 `/settlement`가 없는 Settling 출정을 같은 operationId로 종결한다. 세션별 예외는 그 세션의 `recovery_failures`만 올리고 다음 세션을 계속 처리한다. 실패가 적은 세션부터 처리하고 5회에 닿으면 자동 복구에서 빼고 ERROR로 남긴다. 격리된 세션은 원인을 고친 뒤 운영자가 `recovery_failures`를 0으로 되돌려야 다시 복구된다. `/events`는 참가자별 출정 누적 추가 정기, 정산 아이템 한 줄과 합산 수량, 허용 definitionId(`item_` 접두, 소문자, 숫자, 밑줄)를 상한으로 검사하며 값은 `SettlementSanityLimits`의 임시값이다. 같은 newLeaseId 임대 이관 재시도도 만료된 계정 임대를 성공으로 돌려주지 않는다. `session_events`는 TRUNCATE도 트리거로 거절한다.
 
@@ -185,7 +187,7 @@ app.MapControllers();
 
 ## 운영자 어드민 기반 (0008)
 
-체험판 어드민은 API와 명령줄 도구만 제공한다. 경로는 `/admin/v1` 아래이고 상수는 `Shinshi.Contracts.Admin.AdminApiRoutes`, DTO와 숫자 코드는 같은 이름 공간(`AdminContractCodes`)에 있다. Unity 공유 계약에는 넣지 않는다. 컨트롤러는 `Shinshi.Api/Admin/`(이름 공간 `Shinshi.Backend.Admin`), 데이터 계층은 `Shinshi.Data/Admin/`이다.
+체험판 어드민은 API·명령줄 도구와 2026-10-07 추가한 운영 웹(`Shinshi.Admin.Web`)을 제공한다. 웹도 어드민 API만 호출한다. 경로는 `/admin/v1` 아래이고 상수는 `Shinshi.Contracts.Admin.AdminApiRoutes`, DTO와 숫자 코드는 같은 이름 공간(`AdminContractCodes`)에 있다. Unity 공유 계약에는 넣지 않는다. 컨트롤러는 `Shinshi.Api/Admin/`(이름 공간 `Shinshi.Backend.Admin`), 데이터 계층은 `Shinshi.Data/Admin/`이다.
 
 **설정.** 모두 환경이나 비밀 저장소로 주입하며 값을 저장소에 넣지 않는다.
 
@@ -272,7 +274,7 @@ DB 점검은 로그인과 토큰 갱신 교환(`AuthBuildPolicy`)과 새 출정 
 
 공개 `ServiceStateResponse`는 기존 필드 의미를 유지하고 `notices` 배열(`ServiceNotice`: noticeId, title, body, target `Launcher`/`Game`/`Both`, severity 0~2, 시작·끝 시각)을 더했다. `notices`는 지금 노출 중인 공지만 중요도, 시작 시각 내림차순으로 최대 20개다. 기존 `notice` 문자열은 노출 중인 런처 대상 첫 공지의 제목이고, DB 모드에서 그런 공지가 없으면 빈 문자열이다. 공지 작성의 형식 검사(제목·본문 길이, 대상, 중요도, 시작 < 끝)는 작업 행 없이 400이다. 현재 시각과 비교하는 검사(끝 시각이 지금 이하)는 멱등 실행 안에서 DB 시각으로 하고 저장되는 409 `INVALID_REQUEST`다. 그래서 확정된 공지를 만료 뒤 같은 operationId로 재전송해도 처음 결과를 받는다.
 
-**기능 차단.** 키는 `ServiceFeatureKeys`의 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`이며 목록 밖 키는 저장에서 400이다. 진입점은 싱글턴 `ServiceFeatureGate`를 받아 `CheckFeatureAsync(ServiceFeatureKeys.X)`가 `FEATURE_DISABLED(1100)`이면 효과와 operations 저장 전에 409로 거절한다. 게이트 거절 자체는 저장하지 않는다. 막는 동안 같은 operationId 재전송은 `IdempotentOperationExecutor.FindStoredAsync`로 저장된 처음 결과를 돌려주고, 저장된 결과가 없으면 차단 거절이다. 그래서 차단 중에 처음 보낸 operationId는 차단이 풀린 뒤 다시 보내면 새로 실행된다. 철자가 틀린 키는 예외다. 이미 시작한 진행(정산, 경매 마감 등)은 막지 않는다. 현재 연결된 곳은 새 출정 예약(점검이면 `MAINTENANCE`, `dungeon_entry` 또는 보스전의 `boss_entry`가 꺼졌으면 `FEATURE_DISABLED`, `CheckNewSortieAsync`), `POST /v1/inbox/claim`(`inbox_claim`), 생활 채집(`gathering`)과 물약 제작(`crafting`), 경매 입찰(`auction`, 개시, 마감, 단계 종료는 막지 않음)이다. `enhance`, `inherit`와 장비 제작의 `crafting`은 각 기능의 API 진입점이 생길 때 연결한다.
+**기능 차단.** 키는 `ServiceFeatureKeys`의 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`, `market`, `trade`, `talisman`, `training`이며 목록 밖 키는 저장에서 400이다. 진입점은 싱글턴 `ServiceFeatureGate`를 받아 `CheckFeatureAsync(ServiceFeatureKeys.X)`가 `FEATURE_DISABLED(1100)`이면 효과와 operations 저장 전에 409로 거절한다. 게이트 거절 자체는 저장하지 않는다. 막는 동안 같은 operationId 재전송은 `IdempotentOperationExecutor.FindStoredAsync`로 저장된 처음 결과를 돌려주고, 저장된 결과가 없으면 차단 거절이다. 그래서 차단 중에 처음 보낸 operationId는 차단이 풀린 뒤 다시 보내면 새로 실행된다. 철자가 틀린 키는 예외다. 이미 시작한 진행(정산, 경매 마감 등)은 막지 않는다. 현재 연결된 곳은 새 출정 예약(점검이면 `MAINTENANCE`, `dungeon_entry` 또는 보스전의 `boss_entry`가 꺼졌으면 `FEATURE_DISABLED`, `CheckNewSortieAsync`), `POST /v1/inbox/claim`(`inbox_claim`), 생활 채집(`gathering`)과 물약 제작(`crafting`), 경매 입찰(`auction`, 개시, 마감, 단계 종료는 막지 않음)이다. 강화(`enhance`)·계승(`inherit`)·장비 제작(`crafting`)은 `TownEquipmentController`에 연결돼 있다. 유저 경매장(`market`)·개인 거래(`trade`)도 각 컨트롤러에서 검사한다.
 
 **운영자 지급과 우편함.** 지급은 `admin_grants` 한 건이다. 작성(`POST /admin/v1/grants {targetAccountIds 1~1000, rewards 1~50줄, claimDays 1~365(기본 30), sourceKind, sourceRef}`)은 Draft만 만들고 대상 계정이 하나라도 없으면 `NOT_FOUND`로 전체를 거절한다. 실행은 Draft만 받아 대상마다 우편 한 행을 한 트랜잭션에 넣는다(`(grant_id, account_id)` 유일이라 다시 넣지 않음, 기한은 DB 시각 + claimDays). 대상이 2명 이상인 일괄 지급과 `RecoveryCompensation` 지급의 실행은 Admin 이상만 할 수 있다(`AdminGrantPolicy`). Operator가 부르면 작업 행 없이 403 `FORBIDDEN_ROLE`이고, 실행 효과도 잠근 지급 행으로 같은 판정을 다시 한다. `RecoveryCompensation`은 같은 `sourceRef`에 취소되지 않은 지급이 이미 있으면 작성이 409 `INVALID_STATE`다(유일 인덱스가 동시 작성도 막음, 앞 지급을 취소하면 다시 작성 가능). P0에는 2인 승인이 없어 실행 감사 행을 `self_approved=true`로 남긴다. 취소는 Draft를 그대로 Cancelled로, Executed는 기한 안의 미수령 우편만 취소하고 수령·만료 수를 감사에 남긴다. 이미 수령한 우편은 되돌리지 않으며 회수는 개인 조정으로 한다. 자산은 `Currency`, `Tickets`(계정), `Essence`, `Shards`(캐릭터, 수령 때 고름), `AccountItem`(정산과 같은 허용 ID, 귀속 `Account`)이고 행동력은 지급 대상이 아니다. 한 줄 수량 상한 1,000,000은 오타 방지용 임시값이다(TODO, 기획 미정).
 
@@ -335,7 +337,7 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 
 설계는 `docs/design/account-and-website.md`다. 코드는 `Shinshi.Api/Accounts/`, `Shinshi.Api/Characters/`, `Shinshi.Data/Accounts/`, `Shinshi.Data/Characters/`, `PostgresAuthRepository.Accounts.cs`이고 등록은 `AddShinshiAuth`가 부르는 `AddShinshiAccounts`다. 형식 규칙은 Unity와 공유하는 `AccountCredentialRules`, `CharacterNameRules`(Contracts)에 있다.
 
-직업 ID 범위는 0~5다(0016 `player_class_range`가 `characters`, `market_listings`의 CHECK를 넓힌다). 새 직업 3(검사), 4(마검사), 5(궁수)는 설정 `Characters__EnabledClassIds`(쉼표 목록, 기본 `0,1,2`)에 넣기 전까지 닫혀 있다. 닫힌 직업의 캐릭터 생성은 `409 FEATURE_DISABLED`(작업으로 저장하지 않음), 마을 입장권 발급은 `FEATURE_DISABLED` 거절이다. 0, 1, 2는 항상 열려 있고 범위 밖(6 이상, 음수)은 400 `INVALID_APPEARANCE`다. 부적 효과는 `growth-content.json`에 직업 6개 x 15개 = 90개이며 효과 ID 형식(`^T[0-9]{2}-[1-3][A-Z]$`)은 그대로다. 0016 down은 직업 3~5 행이 있으면 데이터를 지우지 않고 중단한다.
+직업 ID 범위는 0~5다(0016 `player_class_range`가 `characters`, `market_listings`의 CHECK를 넓힌다). 신규 생성은 직업 3(검사), 4(마검사), 5(궁수)만 허용하며 설정 `Characters__EnabledClassIds`의 기본값은 `3,4,5`다. 구직업 0~2는 설정에 넣어도 생성되지 않는다. 닫힌 직업의 생성은 `409 FEATURE_DISABLED`(작업으로 저장하지 않음)다. 기존 구직업 캐릭터의 선택·마을 입장은 호환성을 유지하고, 새 직업의 마을 입장은 생성 허용 설정을 따른다. 범위 밖(6 이상, 음수)은 400 `INVALID_APPEARANCE`다. 부적 효과는 `growth-content.json`에 직업 6개 x 15개 = 90개이며 효과 ID 형식(`^T[0-9]{2}-[1-3][A-Z]$`)은 그대로다. 0016 down은 직업 3~5 행이 있으면 데이터를 지우지 않고 중단한다.
 
 | 경로 | 인증 | 결과 |
 |---|---|---|
@@ -365,7 +367,7 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 
 ## 성장, 장비, 초기 지급, 계정 진행 (0011)
 
-규칙 수치의 원본은 Unity SO(`EquipmentCatalogSO`, `GrowthConfigSO`, `TalismanCatalogSO`, `ProgressionCatalogSO`)다. 백엔드는 그 에셋 값을 옮긴 `src/Shinshi.Data/Content/growth-content.json`(내장 리소스 `Shinshi.Data.Content.growth-content.json`, `schemaVersion` 1, `contentVersion`은 GameDB 값)만 읽고 시작 시 개수, 범위, 참조를 검증한다. 코드는 `Shinshi.Data/Growth/`, `Shinshi.Api/Growth/`, `Shinshi.Api/Ledger/EconomyReconciliationService.cs`이고 등록은 `AddShinshiGrowth`(항상), `AddShinshiEconomyReconciliation`(연결 문자열이 있을 때만)이다.
+규칙 수치의 원본은 Unity SO(`EquipmentCatalogSO`, `GrowthConfigSO`, `TalismanCatalogSO`, `ProgressionCatalogSO`, `CharacterLevelConfigSO`)다. 백엔드는 그 에셋 값을 옮긴 `src/Shinshi.Data/Content/growth-content.json`(내장 리소스 `Shinshi.Data.Content.growth-content.json`, `schemaVersion` 3, `contentVersion`은 GameDB 값)만 읽고 시작 시 개수, 범위, 참조를 검증한다. 코드는 `Shinshi.Data/Growth/`, `Shinshi.Api/Growth/`, `Shinshi.Api/Ledger/EconomyReconciliationService.cs`이고 등록은 `AddShinshiGrowth`(항상), `AddShinshiEconomyReconciliation`(연결 문자열이 있을 때만)이다.
 
 | 경로 | 인증 | 결과 |
 |---|---|---|
@@ -402,6 +404,16 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 **원자성.** 잠금 순서는 계정(`FOR UPDATE`) -> 계정 임대(`FOR SHARE`) -> 지갑(`INSERT ... ON CONFLICT DO NOTHING` 뒤 `FOR UPDATE`) -> 아이템(정의 ID 순 `FOR UPDATE`)이다. 차감, 지급, 원장(`Gathering(19)` source_type `gathering` source_id `zoneId:nodeId`, `Craft(13)` source_type `potion_craft`), 작업 결과가 한 트랜잭션이다. 거절은 효과 전체를 되돌리고 거절 결과만 저장한다. 기능 차단 거절은 저장하지 않는다.
 
 **물약 되돌림.** `GameSessionCodes.EventKind.POTION_USE_REVERTED = 7`, `SessionEventEntry.revertsEventId`. 원 `POTION_USED`가 같은 세션, 같은 참가자에 저장돼 있거나 같은 배치 앞쪽에 있고 아직 되돌리지 않았으면 `reservations.consumed - 1`, `account_items.quantity + 1, reserved + 1`, 원장 `PotionReturn(21)`이다. 아니면 배치 전체가 `SESSION_MISMATCH`다. 0013의 `ux_session_events_potion_revert`(`payload->>'revertsEventId'`, `event_kind = 7`)가 중복 저장의 마지막 방어선이다. 보스전은 참가자별 `POTION_USED - POTION_USE_REVERTED`가 9(단일 원본 `GameSessionCodes.Potion.BOSS_USE_LIMIT`, 던전 `PotionServer`도 같은 상수, `SessionConfig.asset _bossPotionUseLimit`가 다르면 SO 검증 오류)를 넘으면 배치 전체를 `POTION_LIMIT(202)`로 거절한다. 0013 down은 7 행을 지울 수 없어 직전 범위 CHECK를 `NOT VALID`로 건다. 0013은 새 테이블이 없어 런타임 권한 추가가 없다.
+
+## 캐릭터 경험치 (0017)
+
+`0017_character_experience`는 기존 캐릭터의 `initial_experience`와 `total_experience`를 모두 2,850으로 이관한다(2026-10-11 사용자 결정). 장비·정기·부적·진행도는 보존한다. 새 캐릭터 생성은 Trial=2,850, Standard=0을 명시하며 두 열의 DB 기본값은 0이다. 레벨은 저장한 누계와 `CharacterLevelRules`에서 파생한다. 현재 상한은 Lv30·120,350이며 설정 원본은 Unity `CharacterLevelConfigSO`, 내보낸 콘텐츠는 0.1.2/schema 2다.
+
+인증된 던전 서버는 `/events`에 `EXPERIENCE_GRANTED`(8)를 보낸다. `experienceSourceKind`는 일반 적 1·정예 2·웨이브 3, `experienceSourceId`는 해당 출정의 고유 source, `experienceSettingsHash`는 예약 설정 hash, `amount`는 상한 적용 전 기본량이다. API는 예약 시 고정한 `game_sessions.experience_settings`, mode/map, 참가자와 이탈 순서, 지급량/hash를 검증하고 기존 세션→계정→캐릭터 잠금 순서에서 `character_experience_events`와 캐릭터 누계/마지막 경험치 세션·순번, `session_events`를 함께 커밋한다. 일반/정예는 같은 enemy source로 중복을 막으며 상한에서 실제 증가 0인 사건도 소비한다. 같은 operationId는 기존 결과를 재생한다. 부정 source를 다른 operationId로 재제출하면 거절하며 같은 배치를 건너뛰지 않는다.
+
+경험치 원장은 UPDATE/DELETE를 막는다. 실행 계정에는 위 권한 SQL의 SELECT/INSERT만 추가한다. 설정이 없는 이전 예약은 새 경험치 지급을 받지 않으며 새 빌드의 시작·입장 검증에서 거절한다. 시작·입장에는 현재 콘텐츠와 예약 설정의 일치가 필요하다. 이미 실행 중인 출정의 이벤트 검증은 고정 설정을 사용한다. 콘텐츠 교체로 이전 출정의 재접속이 막히지 않도록 배포 전 출정을 종료하거나 같은 콘텐츠를 유지해야 한다. down은 경험치 진행을 보존하는 롤백이 아니므로 운영에 실행하지 않는다.
+
+입장 응답의 `experience`는 예약 장비 구성과 별개인 최신 누계/세션/순번/hash다. 총량과 cursor를 한 캐릭터 행에서 읽으므로 저장 ACK보다 재접속 응답이 먼저 도착해도 서버가 중복 합산을 피할 수 있다. 확정된 경험치는 실패·포기·장애 취소 정산에서 차감하거나 다시 지급하지 않는다. 적의 실존과 분류·전투 보상 자격은 신뢰하는 던전 서버의 권위다. API는 실제 웨이브 계획의 처치 수를 재연산하지 않으므로 침해된 서버의 서로 다른 가짜 source 발급까지 증명하는 방어는 제공하지 않는다.
 
 ## 공지 분류 (0014)
 

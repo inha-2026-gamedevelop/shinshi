@@ -12,7 +12,8 @@ namespace Shinshi.Combat
     public static class CharacterStatsRules
     {
         // B = 육체 기본값 + 장비 합. 장비 하나는 부위 기본값 x 등급 배율 x (1 + 강화율 x 단계)이고 수련용은 여기에 수련용 비율을
-        // 곱한다. 장신구 치명은 등급, 강화 배율을 곱하지 않는 고정값(수련용은 비율만)이다. 수련은 B에 한 번만 곱하거나 더하며,
+        // 곱한다. 장신구 치명은 등급, 강화 배율을 곱하지 않는 고정값(수련용은 비율만)이다. 생명력 흡수는 기본 흡수가 있는
+        // 부위에만 등급 단계마다 더하고 강화와 수련은 올리지 않는다. 수련은 B에 한 번만 곱하거나 더하며,
         // 수련 결과를 다시 수련의 기초로 쓰지 않는다. 치명 상한은 마지막에 자르고 최대 생명, 최대 기력은 버림 정수다.
         //
         // 중간 계산은 decimal로 한다. SO의 float(0.04, 1.35)를 그대로 곱하면 2130 같은 정수 결과가 2129.9999로 내려가
@@ -32,7 +33,19 @@ namespace Shinshi.Combat
             }
 
             return Finish(player, (decimal)player.BaseAttack, (decimal)player.BaseHealth, (decimal)player.BaseDefense,
-                (decimal)player.BaseCritChance, (decimal)player.BaseMaxEnergy);
+                (decimal)player.BaseCritChance, (decimal)player.BaseMaxEnergy, 0m);
+        }
+
+        public static CharacterStats Base(PlayerConfigSO player, CharacterLevelSettings levels, long totalExperience)
+        {
+            if (levels == null)
+            {
+                return Base(player);
+            }
+            int gainedLevels = CharacterLevelRules.Level(levels, totalExperience) - 1;
+            return Finish(player, (decimal)player.BaseAttack + ((decimal)levels.AttackPerLevel * gainedLevels),
+                (decimal)player.BaseHealth + ((decimal)levels.HealthPerLevel * gainedLevels), (decimal)player.BaseDefense,
+                (decimal)player.BaseCritChance, (decimal)player.BaseMaxEnergy, 0m);
         }
 
         /// <summary> 전투 준비가 콘텐츠와 맞지 않으면 ArgumentException이다 </summary>
@@ -51,7 +64,19 @@ namespace Shinshi.Combat
         public static bool TryCompute(PlayerConfigSO player, EquipmentCatalogSO equipment, GrowthConfigSO growth,
             CharacterCombatLoadout loadout, out CharacterStats stats, out string error)
         {
+            return TryCompute(player, equipment, growth, loadout, null, 0, out stats, out error);
+        }
+
+        public static bool TryCompute(PlayerConfigSO player, EquipmentCatalogSO equipment, GrowthConfigSO growth,
+            CharacterCombatLoadout loadout, CharacterLevelSettings levels, long totalExperience,
+            out CharacterStats stats, out string error)
+        {
             stats = default;
+            if ((totalExperience < 0) || ((levels != null) && !levels.IsValid()))
+            {
+                error = "경험치 설정이나 누적 경험치가 유효하지 않다";
+                return false;
+            }
             if ((player == null) || (equipment == null) || (growth == null))
             {
                 error = "능력치 계산에 필요한 GameDB 참조가 없다";
@@ -81,6 +106,13 @@ namespace Shinshi.Combat
             decimal defense = (decimal)player.BaseDefense;
             decimal crit    = (decimal)player.BaseCritChance;
             decimal energy  = (decimal)player.BaseMaxEnergy;
+            decimal lifeSteal = 0m;
+            if (levels != null)
+            {
+                int gainedLevels = CharacterLevelRules.Level(levels, totalExperience) - 1;
+                attack += (decimal)levels.AttackPerLevel * gainedLevels;
+                health += (decimal)levels.HealthPerLevel * gainedLevels;
+            }
 
             for (int i = 0; i < Constants.Combat.EQUIPMENT_SLOT_COUNT; ++i)
             {
@@ -91,7 +123,7 @@ namespace Shinshi.Combat
                 }
 
                 if (!TryReadEquipment(equipment, (EEquipmentSlot)i, entry, out decimal statScale, out decimal critScale,
-                    out error))
+                    out decimal gradeLifeSteal, out error))
                 {
                     return false;
                 }
@@ -101,6 +133,13 @@ namespace Shinshi.Combat
                 health  += (decimal)slotBase.Health * statScale;
                 defense += (decimal)slotBase.Defense * statScale;
                 crit    += (decimal)slotBase.CritChance * critScale;
+
+                // 기본 흡수가 없는 부위에 등급 증가분만 붙으면 장신구 없이도 흡수가 생긴다
+                decimal baseLifeSteal = (decimal)slotBase.LifeSteal;
+                if (baseLifeSteal > 0m)
+                {
+                    lifeSteal += (baseLifeSteal + gradeLifeSteal) * critScale;
+                }
             }
 
             if (!TryReadTraining(growth, loadout.Training, out error))
@@ -114,25 +153,28 @@ namespace Shinshi.Combat
             crit    += Gain(growth, ETrainingStat.CritChance) * loadout.Training[(int)ETrainingStat.CritChance];
             energy  += Gain(growth, ETrainingStat.MaxEnergy) * loadout.Training[(int)ETrainingStat.MaxEnergy];
 
-            stats = Finish(player, attack, health, defense, crit, energy);
+            stats = Finish(player, attack, health, defense, crit, energy, lifeSteal);
             error = null;
             return true;
         }
 
         private static CharacterStats Finish(PlayerConfigSO player, decimal attack, decimal health, decimal defense,
-            decimal crit, decimal energy)
+            decimal crit, decimal energy, decimal lifeSteal)
         {
-            decimal critCap = (decimal)player.CritChanceCap;
+            decimal critCap      = (decimal)player.CritChanceCap;
+            decimal lifeStealCap = (decimal)player.LifeStealRateCap;
             return new CharacterStats((float)attack, (float)decimal.Floor(health), (float)defense,
-                (float)Math.Min(crit, critCap), (float)decimal.Floor(energy), player.MoveSpeed);
+                (float)Math.Min(crit, critCap), (float)decimal.Floor(energy), player.MoveSpeed,
+                (float)Math.Min(lifeSteal, lifeStealCap));
         }
 
         // 계약의 등급과 수련용 표시가 카탈로그 정의와 다르면 저장 데이터와 콘텐츠가 어긋난 것이다. 어느 쪽을 믿을지 정할 수 없어 거절한다
         private static bool TryReadEquipment(EquipmentCatalogSO equipment, EEquipmentSlot slot, CombatEquipmentEntry entry,
-            out decimal statScale, out decimal critScale, out string error)
+            out decimal statScale, out decimal critScale, out decimal gradeLifeSteal, out string error)
         {
-            statScale = 0m;
-            critScale = 0m;
+            statScale      = 0m;
+            critScale      = 0m;
+            gradeLifeSteal = 0m;
             if (!equipment.TryGetEquipment(entry.DefinitionId, out EquipmentCatalogSO.EquipmentDefinition definition))
             {
                 error = $"모르는 장비다, slot={slot}, definitionId={entry.DefinitionId}";
@@ -156,7 +198,10 @@ namespace Shinshi.Combat
             decimal enhancement   = 1m + ((decimal)equipment.EnhancementStatRate * entry.Enhancement);
             statScale = (decimal)equipment.GetGradeMultiplier(definition.Grade) * enhancement * trainingScale;
             critScale = trainingScale;
-            error     = null;
+
+            // 등급 순번은 일반 0부터다. 등급 배율이 아니라 단계 수를 곱해 더한다
+            gradeLifeSteal = (decimal)equipment.LifeStealPerGrade * (int)definition.Grade;
+            error          = null;
             return true;
         }
 

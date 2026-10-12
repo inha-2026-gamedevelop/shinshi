@@ -93,24 +93,28 @@ namespace Shinshi.Data
             [SerializeField] private float          _health;
             [SerializeField] private float          _defense;
             [SerializeField] private float          _critChance; // 0에서 1 사이 비율, 등급과 강화 배율을 곱하지 않는 고정 옵션
+            [SerializeField] private float          _lifeSteal;  // 0에서 1 사이 비율, 일반 등급의 생명력 흡수. 0이면 이 부위는 등급이 올라도 흡수가 없다
 
             public EEquipmentSlot Slot       => _slot;
             public float          Attack     => _attack;
             public float          Health     => _health;
             public float          Defense    => _defense;
             public float          CritChance => _critChance;
+            public float          LifeSteal  => _lifeSteal;
 
             /****************************************
             *                Methods
             ****************************************/
 
-            public SlotBaseStats(EEquipmentSlot slot, float attack, float health, float defense, float critChance)
+            public SlotBaseStats(EEquipmentSlot slot, float attack, float health, float defense, float critChance,
+                float lifeSteal = 0f)
             {
                 _slot       = slot;
                 _attack     = attack;
                 _health     = health;
                 _defense    = defense;
                 _critChance = critChance;
+                _lifeSteal  = lifeSteal;
             }
         }
 
@@ -268,14 +272,17 @@ namespace Shinshi.Data
             new SlotBaseStats(EEquipmentSlot.Body, 0f, 300f, 40f, 0f),
             new SlotBaseStats(EEquipmentSlot.Hands, 0f, 120f, 20f, 0f),
             new SlotBaseStats(EEquipmentSlot.Feet, 0f, 150f, 20f, 0f),
-            new SlotBaseStats(EEquipmentSlot.Accessory, 40f, 150f, 0f, 0.02f)
+            new SlotBaseStats(EEquipmentSlot.Accessory, 40f, 150f, 0f, 0.02f, 0.01f)
         };
 
         // EItemGrade 값을 인덱스로 쓰고 공격, 생명, 방어에만 곱한다
         [Header("등급과 강화 배율")]
         [SerializeField] private float[] _gradeStatMultipliers = { 1f, 1.35f, 1.8225f, 2.460375f };
         [SerializeField] private float   _enhancementStatRate  = 0.04f; // 강화 1단계마다 기본값에 더하는 비율
-        [SerializeField] private float   _trainingStatRate     = 0.5f;  // 수련용 = 같은 부위 일반 제작값의 비율, 장신구 치명 포함
+        [SerializeField] private float   _trainingStatRate     = 0.5f;  // 수련용 = 같은 부위 일반 제작값의 비율, 장신구 치명과 흡수 포함
+
+        // 등급 배율을 곱하지 않고 더한다. 기본 흡수가 0인 부위에는 더하지 않으며 강화와도 무관하다
+        [SerializeField] private float   _lifeStealPerGrade    = 0.005f; // 등급 한 단계마다 기본 흡수에 더하는 비율
 
         // 인덱스 0이 목표 +1이다. 비용은 등급, 부위와 무관하게 같아야 싼 장비로 보정을 쌓아 옮기는 차익이 생기지 않는다
         [Header("강화 (목표 +1부터 +25 순서)")]
@@ -342,6 +349,7 @@ namespace Shinshi.Data
         public int                                MaxEnhancement           => MAX_ENHANCEMENT;
         public float                              EnhancementStatRate      => _enhancementStatRate;
         public float                              TrainingStatRate         => _trainingStatRate;
+        public float                              LifeStealPerGrade        => _lifeStealPerGrade;
         public int                                SameGradeInheritCost     => _sameGradeInheritCost;
         public int                                UpperGradeInheritCost    => _upperGradeInheritCost;
         public float                              DisassembleRefundRate    => _disassembleRefundRate;
@@ -465,6 +473,7 @@ namespace Shinshi.Data
 
             DataValidation.RequirePositiveAtMost(errors, OWNER, nameof(_trainingStatRate), _trainingStatRate, MAX_RATE);
             DataValidation.RequireRange(errors, OWNER, nameof(_disassembleRefundRate), _disassembleRefundRate, 0f, MAX_RATE);
+            DataValidation.RequireRange(errors, OWNER, nameof(_lifeStealPerGrade), _lifeStealPerGrade, 0f, MAX_RATE);
             DataValidation.RequirePositive(errors, OWNER, nameof(_storageSlotsPerCharacter), _storageSlotsPerCharacter);
 
             ValidateDefinitions(errors);
@@ -647,6 +656,14 @@ namespace Shinshi.Data
                 DataValidation.RequireNonNegative(errors, OWNER, field + ".Health", stats.Health);
                 DataValidation.RequireNonNegative(errors, OWNER, field + ".Defense", stats.Defense);
                 DataValidation.RequireRange(errors, OWNER, field + ".CritChance", stats.CritChance, 0f, MAX_RATE);
+                DataValidation.RequireRange(errors, OWNER, field + ".LifeSteal", stats.LifeSteal, 0f, MAX_RATE);
+
+                // 최고 등급에서도 비율 범위를 넘지 않아야 한다
+                float topLifeSteal = stats.LifeSteal + (_lifeStealPerGrade * (GRADE_COUNT - 1));
+                if ((stats.LifeSteal > 0f) && (topLifeSteal > MAX_RATE))
+                {
+                    errors.Add($"{OWNER}.{field}.LifeSteal: 최고 등급 흡수 {topLifeSteal}가 1을 넘는다");
+                }
 
                 if ((stats.Attack + stats.Health + stats.Defense) <= 0f)
                 {

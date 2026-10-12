@@ -98,7 +98,15 @@ namespace Shinshi.Data
         [Header("전투 공통 상한")]
         [SerializeField] private float _critChanceCap            = 0.6f;  // 0에서 1 사이 비율, 버프까지 더한 최종 치명 확률 상한
         [SerializeField] private float _damageReductionCap       = 0.6f;  // 0에서 1 사이 비율, 방어로 얻는 피해 감소율 상한
-        [SerializeField] private float _defenseReductionConstant = 1000f; // 감소율 = 방어 / (방어 + 이 값), 물리와 도술에 같이 쓴다
+        [SerializeField] private float _defenseReductionConstant = 1000f; // 감소율 = 방어 / (방어 + 이 값), 적이 맞을 때 쓴다. 물리와 도술에 같이 쓴다
+
+        // 적 쪽 상수와 나눠 둔다. 하나를 같이 낮추면 적 방어의 감소율도 올라 플레이어 피해와 처치 시간이 함께 바뀐다
+        [SerializeField] private float _playerDefenseReductionConstant = 750f; // 플레이어와 소환물이 맞을 때 쓰는 값
+
+        // 흡수율은 장비에서 오고 여기는 상한만 둔다. 초당 상한이 없으면 범위 타격으로 대상 수만큼 회복이 늘어난다
+        [Header("생명력 흡수")]
+        [SerializeField] private float _lifeStealRateCap      = 0.1f;  // 0에서 1 사이 비율, 최종 흡수율 상한
+        [SerializeField] private float _lifeStealCapPerSecond = 0.02f; // 1초 구간마다 회복할 수 있는 최대 생명 비율
 
         // 생활 제작이 아니라 전투 중 사용 규칙이라 여기 둔다. 보스전 합산 사용 횟수 상한은 SessionConfigSO가 가진다
         [Header("물약 사용")]
@@ -146,6 +154,9 @@ namespace Shinshi.Data
         public float CritChanceCap            => _critChanceCap;
         public float DamageReductionCap       => _damageReductionCap;
         public float DefenseReductionConstant => _defenseReductionConstant;
+        public float PlayerDefenseReductionConstant => _playerDefenseReductionConstant;
+        public float LifeStealRateCap         => _lifeStealRateCap;
+        public float LifeStealCapPerSecond    => _lifeStealCapPerSecond;
         public float PotionSharedCooldown     => _potionSharedCooldown;
         public float PotionUseDisplaySeconds  => _potionUseDisplaySeconds;
         public float ControlImmunitySeconds   => _controlImmunitySeconds;
@@ -192,6 +203,9 @@ namespace Shinshi.Data
             DataValidation.RequireRange(errors, OWNER, nameof(_baseCritChance), _baseCritChance, 0f, Math.Min(_critChanceCap, MAX_RATE));
             DataValidation.RequireRange(errors, OWNER, nameof(_damageReductionCap), _damageReductionCap, 0f, MAX_RATE);
             DataValidation.RequirePositive(errors, OWNER, nameof(_defenseReductionConstant), _defenseReductionConstant);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_playerDefenseReductionConstant), _playerDefenseReductionConstant);
+            DataValidation.RequireRange(errors, OWNER, nameof(_lifeStealRateCap), _lifeStealRateCap, 0f, MAX_RATE);
+            DataValidation.RequireRange(errors, OWNER, nameof(_lifeStealCapPerSecond), _lifeStealCapPerSecond, 0f, MAX_RATE);
             DataValidation.RequirePositive(errors, OWNER, nameof(_potionSharedCooldown), _potionSharedCooldown);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_potionUseDisplaySeconds), _potionUseDisplaySeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_controlImmunitySeconds), _controlImmunitySeconds);

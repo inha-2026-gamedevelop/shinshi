@@ -1,4 +1,6 @@
 using Shinshi.UI;
+using Shinshi.Contracts;
+using Shinshi.Data;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,6 +17,7 @@ namespace Shinshi.Editor
         public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity";
 
         public const string KEY_LEVEL          = "hud.status.level";
+        public const string KEY_EXPERIENCE     = "hud.status.experience";
         public const string KEY_HP             = "hud.status.hp";
         public const string KEY_HP_MAX         = "hud.status.hpMax";
         public const string KEY_MP             = "hud.status.mp";
@@ -43,6 +46,7 @@ namespace Shinshi.Editor
         private static readonly string[] G_DefaultKeys = { "Q", "W", "E", "R" };
 
         private HudPlayerStatusView   _status;
+        private CharacterLevelSettings _levelSettings;
         private HudQuestTrackerView   _quest;
         private HudSkillSlotView[]    _slots = new HudSkillSlotView[0];
 
@@ -96,6 +100,7 @@ namespace Shinshi.Editor
         protected override void Seed(UiSandboxScenarioSO scenario)
         {
             scenario.SeedInt(KEY_LEVEL, DEFAULT_LEVEL);
+            scenario.SeedInt(KEY_EXPERIENCE, 0);
             scenario.SeedInt(KEY_HP, DEFAULT_HP);
             scenario.SeedInt(KEY_HP_MAX, DEFAULT_HP_MAX);
             scenario.SeedInt(KEY_MP, DEFAULT_MP);
@@ -114,6 +119,9 @@ namespace Shinshi.Editor
 
         protected override void OnAttach(UiSandboxContext context)
         {
+            GameDatabaseSO database = AssetDatabase.LoadAssetAtPath<GameDatabaseSO>("Assets/09.Data/Resources/GameDB.asset");
+            _levelSettings = ((database != null) && (database.CharacterLevel != null))
+                ? database.CharacterLevel.ToSettings() : null;
             _status = BindView<HudPlayerStatusView>(context, LABEL_STATUS,
                 new PresentationFixtureOptions(EFixtureAnchor.TopLeft).WithOffset(40.0f, -40.0f));
             _quest = BindView<HudQuestTrackerView>(context, LABEL_QUEST,
@@ -137,7 +145,17 @@ namespace Shinshi.Editor
 
             if (_status != null)
             {
-                _status.SetLevel(scenario.GetInt(KEY_LEVEL));
+                if (_levelSettings != null)
+                {
+                    int level = Mathf.Clamp(scenario.GetInt(KEY_LEVEL), 1, _levelSettings.MaxLevel);
+                    long total = CharacterLevelRules.RequiredExperience(_levelSettings, level)
+                        + Mathf.Max(0, scenario.GetInt(KEY_EXPERIENCE));
+                    _status.SetExperience(_levelSettings, total);
+                }
+                else
+                {
+                    _status.SetExperience(null, 0);
+                }
                 _status.SetHp(scenario.GetInt(KEY_HP), scenario.GetInt(KEY_HP_MAX));
                 _status.SetMp(scenario.GetInt(KEY_MP), scenario.GetInt(KEY_MP_MAX));
             }
@@ -167,6 +185,7 @@ namespace Shinshi.Editor
 
             DrawHeader(LABEL_STATUS);
             DrawInt(scenario, KEY_LEVEL, "레벨", 0, MAX_LEVEL);
+            DrawInt(scenario, KEY_EXPERIENCE, "레벨 시작점부터 추가 경험치", 0, MAX_VALUE);
             DrawInt(scenario, KEY_HP, "HP", 0, MAX_VALUE);
             DrawInt(scenario, KEY_HP_MAX, "HP 최대", 0, MAX_VALUE);
             DrawInt(scenario, KEY_MP, "MP", 0, MAX_VALUE);
@@ -190,7 +209,12 @@ namespace Shinshi.Editor
 
         protected override void OnDetach()
         {
+            if (_status != null)
+            {
+                _status.ResetExperience();
+            }
             _status = null;
+            _levelSettings = null;
             _quest  = null;
             _slots  = new HudSkillSlotView[0];
         }

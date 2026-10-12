@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 using System.Collections.Generic;
 
@@ -43,9 +43,13 @@ namespace Shinshi.Combat
         private const double TICK_INTERVAL_SECONDS = 1.0 / Constants.Network.SERVER_TICK_RATE;
         private const byte   FIRST_METER_PHASE     = 1;
 
+        private readonly Dictionary<int, ExperienceBinding> _experience = new Dictionary<int, ExperienceBinding>();
+        private SessionEventQueue _experienceQueue;
+        private CharacterLevelSettings _levelSettings;
         private CombatTargetRegistry         _registry;
         private HitLedger                    _ledger;
         private DamageResolver               _resolver;
+        private DamageFeedbackBudget         _damageFeedbackBudget;
         private IDamageResolver              _skillResolver;
         private CombatMeterRecorder          _combatMeter;
         private SkillCatalogSO               _skillCatalog;
@@ -158,6 +162,16 @@ namespace Shinshi.Combat
 
         private void OnDestroy()
         {
+            if (_resolver != null)
+            {
+                _resolver.DamageApplied -= OnDamageApplied;
+                _resolver.LifeStealApplied -= OnLifeStealApplied;
+            }
+            if (_experienceQueue != null)
+            {
+                _experienceQueue.Committed -= OnExperienceCommitted;
+            }
+            _experience.Clear();
             if (_potions != null)
             {
                 _potions.PotionApplied -= OnPotionApplied;
@@ -214,7 +228,11 @@ namespace Shinshi.Combat
             _ledger                = new HitLedger(Constants.Combat.HIT_LEDGER_CAPACITY, Constants.Combat.HIT_LEDGER_RETENTION_SECONDS,
                 Constants.Combat.LONGEST_ACTION_SECONDS);
             _resolver              = new DamageResolver(_registry, _ledger, playerConfig.DefenseReductionConstant,
-                playerConfig.DamageReductionCap);
+                playerConfig.DamageReductionCap, playerConfig.CritDamageMultiplier, null, FindRetainedDamageSource,
+                playerConfig.PlayerDefenseReductionConstant);
+            _damageFeedbackBudget  = new DamageFeedbackBudget(Constants.Combat.MAX_COMBAT_TARGETS);
+            _resolver.DamageApplied += OnDamageApplied;
+            _resolver.LifeStealApplied += OnLifeStealApplied;
             _skillResolver         = new SkillDamageResolver(_resolver, _registry, _ledger);
             _retainedSkills        = new Dictionary<int, SkillServer>(Constants.Session.MAX_RECONNECT_RECORDS);
             _retainedSkillTicks    = new List<SkillServer>(Constants.Session.MAX_RECONNECT_RECORDS);
@@ -249,6 +267,68 @@ namespace Shinshi.Combat
             }
 
             _bossId = bossId;
+        }
+
+        // 최초 플레이어 생성 전에 공통 판정기에 연결하므로 일반전과 보스 미터 경로 모두 같은 알림을 쓴다
+        private void OnDamageApplied(AppliedDamageNotice notice)
+        {
+            if ((notice.OwnerCombatId <= 0) || (!notice.Result.IsApplied) || (notice.Result.AppliedAmount <= 0f))
+            {
+                return;
+            }
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                PlayerServer player = _players[i];
+                if (player.CombatId != notice.OwnerCombatId)
+                {
+                    continue;
+                }
+                PlayerInputState input = player.InputState;
+                NetworkConnectionToClient connection = (input != null) ? input.connectionToClient : null;
+                if ((player.IsDetached) || (connection == null) || (!connection.isAuthenticated) || (!connection.isReady)
+                    || (!_damageFeedbackBudget.TryTake(player.ParticipantId, notice.ServerTime, out uint sequence)))
+                {
+                    return;
+                }
+                var feedback = new DamageFeedback(_sessionEpoch, sequence, notice.TargetCombatId, notice.TargetPosition,
+                    notice.Result.AppliedAmount, notice.Result.IsCritical, notice.ServerTime);
+                input.SendDamageFeedback(in feedback);
+                return;
+            }
+        }
+
+        // 전투 기록은 보스전에만 있다. 판정기는 전투 번호만 알아 참가자 번호로 바꿔 넘긴다
+        private void OnLifeStealApplied(int ownerCombatId, float healed)
+        {
+            if (_combatMeter == null)
+            {
+                return;
+            }
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                if (_players[i].CombatId == ownerCombatId)
+                {
+                    _combatMeter.RecordLifeSteal(_players[i].ParticipantId, healed);
+                    return;
+                }
+            }
+        }
+
+        private IDamageable FindRetainedDamageSource(int combatId)
+        {
+            if (_retainedSkillTicks == null)
+            {
+                return null;
+            }
+            for (int i = 0; i < _retainedSkillTicks.Count; ++i)
+            {
+                IDamageable caster = _retainedSkillTicks[i]?.DamageCaster;
+                if ((caster != null) && (caster.CombatId == combatId))
+                {
+                    return caster;
+                }
+            }
+            return null;
         }
 
         /// <summary> 던전 역할에서 서버를 열기 전에 한 번 부른다, 이후 참가 자격은 출정 명단으로 판단한다 </summary>
@@ -443,6 +523,7 @@ namespace Shinshi.Combat
                 return false;
             }
 
+            BindExperience(binding);
             player.Reattach();
             _host.OnParticipantAttached(participantId, _lastTickTime);
             SendPotionState(player, 0, ERejectReason.None);
@@ -504,6 +585,7 @@ namespace Shinshi.Combat
                 ReleaseRetainedSkills(participantId);
             }
 
+            BindExperience(binding);
             if (!TryResolveStats(binding, playerClass, out CharacterStats stats))
             {
                 input.DisconnectOwner();
@@ -542,6 +624,7 @@ namespace Shinshi.Combat
             }
 
             _players.Add(player);
+            ApplyExperience(player);
             RegisterMeterParticipant(player, in stats);
             _host?.OnParticipantAttached(participantId, _lastTickTime);
             if ((_potions != null) && (!_potions.TryRegister(participantId, binding.ParticipantKey, binding.ReservedPotions)))
@@ -641,7 +724,9 @@ namespace Shinshi.Combat
             int                    participantId = binding.ParticipantId;
             CharacterCombatLoadout loadout       = binding.CombatLoadout;
             bool                   strict        = (_host != null) && (!Debug.isDebugBuild);
-            stats = CharacterStatsRules.Base(_playerConfig);
+            stats = CharacterStatsRules.Base(_playerConfig, _levelSettings,
+                _experience.TryGetValue(participantId, out ExperienceBinding initialExperience)
+                    ? initialExperience.Tracker.TotalExperience : 0);
             _talismans?.Unregister(participantId);
             if (loadout == null)
             {
@@ -659,13 +744,23 @@ namespace Shinshi.Combat
                 return true;
             }
 
+            // 고정 장비와 경험치 곡선이 같은 콘텐츠 버전이어야 저장과 전투 계산이 일치한다.
+            // 부적을 등록하기 전에 거절해 실패한 참가자가 합성 칸에 남지 않게 한다
+            if ((GameDB.IsInitialized) && (!string.Equals(loadout.ContentVersion, GameDB.ContentVersion, StringComparison.Ordinal)))
+            {
+                Debug.LogError($"[Combat] 전투 준비의 콘텐츠 버전이 서버와 다르다, participantId={participantId}, " +
+                    $"loadout={loadout.ContentVersion}, server={GameDB.ContentVersion}");
+                return false;
+            }
+
             string         error    = null;
             CharacterStats computed = stats;
             if (loadout.ClassId != (int)playerClass)
             {
                 error = $"직업이 결합과 다르다, loadout={loadout.ClassId}";
             }
-            else if (CharacterStatsRules.TryCompute(_playerConfig, _equipment, _growth, loadout, out computed, out error))
+            else if (CharacterStatsRules.TryCompute(_playerConfig, _equipment, _growth, loadout, _levelSettings,
+                _experience.TryGetValue(participantId, out ExperienceBinding xp) ? xp.Tracker.TotalExperience : 0, out computed, out error))
             {
                 if ((_talismans != null) && (!_talismans.TryRegister(participantId, playerClass, loadout.Talismans, out error)))
                 {
@@ -685,13 +780,6 @@ namespace Shinshi.Combat
                 Debug.LogWarning($"[Combat] 전투 준비가 콘텐츠와 맞지 않아 기본 능력치로 들인다(개발 빌드), participantId={participantId}, " +
                     error);
                 return true;
-            }
-
-            // TODO(민성): 예약 때 콘텐츠 버전과 서버 콘텐츠 버전이 다를 때 거절할지 정한다. 지금은 기록만 남긴다
-            if ((GameDB.IsInitialized) && (!string.Equals(loadout.ContentVersion, GameDB.ContentVersion, StringComparison.Ordinal)))
-            {
-                Debug.LogWarning($"[Combat] 전투 준비의 콘텐츠 버전이 서버와 다르다, participantId={participantId}, " +
-                    $"loadout={loadout.ContentVersion}, server={GameDB.ContentVersion}");
             }
 
             stats = computed;
@@ -770,6 +858,7 @@ namespace Shinshi.Combat
 
                 if (_host == null)
                 {
+                    _experience.Remove(player.ParticipantId);
                     player.Shutdown();
                     _registry.Unregister(player.CombatId);
                     _players.RemoveAt(i);
@@ -797,15 +886,117 @@ namespace Shinshi.Combat
             }
         }
 
+        private void BindExperience(SessionBinding binding)
+        {
+            if ((binding.Experience == null) || !GameDB.IsInitialized)
+            {
+                return;
+            }
+            if (_levelSettings == null)
+            {
+                _levelSettings = GameDB.CharacterLevel.ToSettings();
+            }
+            if (_experience.TryGetValue(binding.ParticipantId, out ExperienceBinding existing))
+            {
+                existing.Tracker.Merge(binding.Experience);
+                existing.Applied = -1;
+                existing.FailedTotal = -1;
+                return;
+            }
+            _experience.Add(binding.ParticipantId, new ExperienceBinding
+            {
+                Key = binding.ParticipantKey, Loadout = binding.CombatLoadout,
+                Tracker = new CharacterExperienceTracker(_levelSettings, binding.Experience)
+            });
+        }
+
+        private void EnsureExperienceObserver()
+        {
+            SessionEventQueue queue = _host?.Session?.Events;
+            if (queue == _experienceQueue)
+            {
+                return;
+            }
+            if (_experienceQueue != null)
+            {
+                _experienceQueue.Committed -= OnExperienceCommitted;
+            }
+            _experienceQueue = queue;
+            if (queue != null)
+            {
+                queue.Committed += OnExperienceCommitted;
+            }
+        }
+
+        private void OnExperienceCommitted(SessionEvent entry)
+        {
+            if (entry.Data.Type != ESessionEventType.ExperienceGranted)
+            {
+                return;
+            }
+            foreach (KeyValuePair<int, ExperienceBinding> pair in _experience)
+            {
+                if (pair.Value.Key == entry.Data.ParticipantId)
+                {
+                    pair.Value.Tracker.Commit(_experienceQueue.SessionId, entry.Seq, entry.Data.Amount);
+                    return;
+                }
+            }
+        }
+
+        private void ApplyExperience(PlayerServer player)
+        {
+            if (_roster.IsClosed(player.ParticipantId)
+                || !_experience.TryGetValue(player.ParticipantId, out ExperienceBinding experience))
+            {
+                return;
+            }
+            long total = experience.Tracker.TotalExperience;
+            if ((experience.Applied == total) || (experience.FailedTotal == total))
+            {
+                return;
+            }
+            bool levelChanged = (experience.Applied < 0)
+                || (CharacterLevelRules.Level(_levelSettings, experience.Applied) != CharacterLevelRules.Level(_levelSettings, total));
+            if ((experience.Loadout != null) && levelChanged)
+            {
+                if (!CharacterStatsRules.TryCompute(_playerConfig, _equipment, _growth, experience.Loadout,
+                    _levelSettings, total, out CharacterStats stats, out string error))
+                {
+                    experience.FailedTotal = total;
+                    Debug.LogError("[CharacterExperience] 확정 성장 능력치 적용 실패: " + error);
+                    return;
+                }
+                player.ApplyGrowth(in stats);
+            }
+            player.Combat.SetTotalExperience(total);
+            experience.Applied = total;
+        }
+
+        private sealed class ExperienceBinding
+        {
+            public string Key;
+            public CharacterCombatLoadout Loadout;
+            public CharacterExperienceTracker Tracker;
+            public long Applied = -1;
+            public long FailedTotal = -1;
+        }
+
         private void Step(double serverTime, float deltaTime)
         {
             AdoptSessionEpoch();
             EnsureCombatMeter();
+            EnsureExperienceObserver();
             bool sessionTick = (_host != null) && (_host.BeginTick(serverTime));
+            EnsureExperienceObserver();
             ApplySessionPhase();
             TrySpawnBoss(serverTime);
             DiscardClosedParticipants();
             CloseExpiredParticipants(serverTime);
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                ApplyExperience(_players[i]);
+            }
             _resolver.BeginTick(serverTime);
             _pathBudget.BeginTick();
 
@@ -889,8 +1080,12 @@ namespace Shinshi.Combat
         }
 
         // 보스전 출정이 진행되는 첫 틱에 한 번만 시도한다. 보스 체력과 피해 배율은 출정 시작 때 고정되므로 그 전에는 만들 수 없다.
-        // 데이터가 비어 전투를 열 수 없으면 보스 없이 진행한다. 개발 빌드는 TryCompleteBossForDevelopment로 끝낼 수 있다
-        // TODO(기웅): 출시 전에 보스를 만들지 못한 보스전을 서비스 취소로 끝낼지 정한다
+        // 이지는 데이터가 비어 전투를 열 수 없으면 보스 없이 진행한다. 개발 빌드는 TryCompleteBossForDevelopment로 끝낼 수 있다
+        // 하드는 보스 없이 진행하지 않는다: 출정 준비 검사(BossServer.IsSortieReady)가 거짓이거나 보스를 만들지, 열지, 등록하지 못하면
+        // 서비스 취소(ServiceCancelled)로 끝낸다. 하드 2페이즈 일부가 표시 수신처 없이 준비되지 않았기 때문이다
+        // 취소는 이 틱 안에서 부른다: 세션 취소는 진행 중이고 시각이 BeginTick에 준 틱 시각과 같을 때만 받으므로 Step이 넘긴 serverTime을 그대로 쓴다.
+        // 취소로 명단이 닫혀도 DiscardClosedParticipants가 이 호출 바로 뒤에서 정리한다
+        // TODO(기웅): 이지에서 보스를 만들지 못한 보스전도 출시 전에 서비스 취소로 끝낼지 정한다
         // TODO(기웅, 진욱): 던전 씬의 보스 생성 지점이 정해지면 원점 대신 그 위치와 방향을 쓴다
         private void TrySpawnBoss(double serverTime)
         {
@@ -906,13 +1101,15 @@ namespace Shinshi.Combat
             }
 
             // 보스전 계약이면 계약 보스, 아니면 실행 설정 기본 보스다. 계약 보스는 호스트가 입장 때 카탈로그에 있는지 확인했다
-            // TODO(기웅): 난이도(쉬움, 어려움)별 보스 능력치 차이가 기획에 생기면 _host.BossDifficulty를 보스 생성에 넘긴다.
-            // 지금 난이도는 보상 표(RewardCatalogSO.BossRewards)만 고른다(docs/design/growth-economy.md 보스 보상)
-            string bossId = BossId;
+            // 난이도는 패턴 카탈로그의 정의 집합(이지, 하드 패턴)과 하드 차단을 고른다. 보스 능력치는 난이도로 바꾸지 않고(기획 미정),
+            // 보상 표(RewardCatalogSO.BossRewards)는 호스트가 따로 난이도로 고른다(docs/design/growth-economy.md 보스 보상)
+            string          bossId     = BossId;
+            EBossDifficulty difficulty = _host.BossDifficulty;
 
             if (!GameDB.IsInitialized)
             {
                 Debug.LogError("[Boss] GameDB 초기화 전이라 보스를 만들지 않는다");
+                CancelHardSortie(difficulty, serverTime, "GameDB 초기화 전");
                 return;
             }
 
@@ -920,6 +1117,7 @@ namespace Shinshi.Combat
             if (!progression.TryGetRegion(Constants.Combat.DEV_BOSS_REGION_ID, out ProgressionCatalogSO.RegionDefinition region))
             {
                 Debug.LogError($"[Boss] 전장 지역이 없어 보스를 만들지 않는다, region={Constants.Combat.DEV_BOSS_REGION_ID}");
+                CancelHardSortie(difficulty, serverTime, "전장 지역 없음");
                 return;
             }
 
@@ -929,6 +1127,7 @@ namespace Shinshi.Combat
             {
                 Debug.LogError($"[Boss] 기준값이나 인원 배율이 0이라 보스를 만들지 않는다, Aref={referenceAttack}, " +
                     $"Href={referenceHealth}, health={BossHealthScale}, damage={DamageScale}");
+                CancelHardSortie(difficulty, serverTime, "기준값이나 인원 배율이 0");
                 return;
             }
 
@@ -937,25 +1136,53 @@ namespace Shinshi.Combat
             Vector3 spawnForward  = Vector3.forward;
             var boss = new BossServer(bossId, _registry.IssueCombatId(), spawnPosition, spawnForward,
                 spawnPosition, referenceAttack, referenceHealth, BossHealthScale,
-                new BossPatternCatalogSource(GameDB.BossPatterns), _registry, new BossDamageScaler(_skillResolver, DamageScale),
-                new BossTerrainProbe(_obstacleMask), new SeededBossRandom(_sessionEpoch));
+                new BossPatternCatalogSource(GameDB.BossPatterns, difficulty), _registry,
+                new BossDamageScaler(_skillResolver, DamageScale), new BossTerrainProbe(_obstacleMask),
+                new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster));
+
+            // 이지는 준비되지 않은 정의가 있어도 기존처럼 연다(팩토리가 만들지 못한 패턴은 두뇌가 건너뛴다). 하드는 모든 정의가 준비돼야 연다
+            if ((difficulty == EBossDifficulty.Hard) && (!boss.IsSortieReady(out string notReadyReason)))
+            {
+                Debug.LogError($"[Boss] 하드 출정 준비가 안 돼 보스를 만들지 않는다, boss={bossId}, {notReadyReason}");
+                CancelHardSortie(difficulty, serverTime, "하드 출정 준비 안 됨");
+                return;
+            }
 
             if (!boss.Begin(serverTime))
             {
                 Debug.LogError($"[Boss] 보스 전투를 열지 못해 보스 없이 진행한다, boss={bossId}");
+                CancelHardSortie(difficulty, serverTime, "보스 전투를 열지 못함");
                 return;
             }
 
             if (!_registry.Register(boss))
             {
                 Debug.LogError($"[Boss] 전투 대상 등록이 거절돼 보스 없이 진행한다, boss={bossId}");
+                CancelHardSortie(difficulty, serverTime, "전투 대상 등록 거절");
                 return;
             }
 
             _boss = boss;
             SpawnBossObject();
-            Debug.Log($"[Boss] 보스 전투 시작, boss={bossId}, combatId={boss.CombatId}, " +
+            Debug.Log($"[Boss] 보스 전투 시작, boss={bossId}, difficulty={difficulty}, combatId={boss.CombatId}, " +
                 $"maxHealth={boss.MaxHealth}");
+        }
+
+        // 하드에서만 부른 쪽의 실패를 출정 취소로 바꾼다. 이지는 아무것도 하지 않아 보스 없이 진행하는 기존 동작을 지킨다
+        private void CancelHardSortie(EBossDifficulty difficulty, double serverTime, string reason)
+        {
+            if (difficulty != EBossDifficulty.Hard)
+            {
+                return;
+            }
+
+            if (_host.CancelSortieService(serverTime))
+            {
+                Debug.LogError($"[Boss] 하드 출정을 서비스 취소로 끝낸다, reason={reason}");
+                return;
+            }
+
+            Debug.LogError($"[Boss] 하드 출정 서비스 취소가 거절됐다, reason={reason}, sessionRunning={_host.IsSessionRunning}");
         }
 
         /// <summary> 서버를 열기 전에 한 번 부른다, 연결하지 않으면 보스 판정은 돌지만 클라이언트에 보스와 공격이 보이지 않는다 </summary>

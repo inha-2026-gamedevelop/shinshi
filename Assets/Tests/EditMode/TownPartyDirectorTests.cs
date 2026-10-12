@@ -111,6 +111,40 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
+        public void CreateRoom_AuthenticatedTownExperience_ReachesWireAndPrepLevel()
+        {
+            _memberA = new TownMember(PARTICIPANT_A, ACCOUNT_A, CHARACTER_A, LEASE_ID, NAME_A, EPlayerClass.Swordsman, 2850);
+            _directory.Add(_memberA);
+
+            CreateBossRoom();
+
+            Assert.IsTrue(_audience.TryGetLast(PARTICIPANT_A, out PartyRoomStateMessage message));
+            Assert.AreEqual(2850L, message.Members[0].TotalExperience);
+            var writer = new Mirror.NetworkWriter();
+            writer.WritePartyRoomStateMessage(message);
+            var reader = new Mirror.NetworkReader(writer.ToArraySegment());
+            PartyRoomStateMessage received = reader.ReadPartyRoomStateMessage();
+            Assert.AreEqual(0, reader.Remaining);
+            CharacterLevelConfigSO config = ScriptableObject.CreateInstance<CharacterLevelConfigSO>();
+            _created.Add(config);
+            var display = new List<Shinshi.UI.SortieMemberData>();
+
+            Shinshi.UI.SortiePrepRules.BuildMembers(in received, display, config.ToSettings());
+
+            Assert.AreEqual(5, display[0].Level);
+            Assert.AreEqual(EPlayerClass.Swordsman, display[0].PlayerClass);
+        }
+
+        [Test]
+        public void CreateRoom_MemberWithoutExperience_BroadcastsUnknown()
+        {
+            CreateBossRoom();
+
+            Assert.IsTrue(_audience.TryGetLast(PARTICIPANT_A, out PartyRoomStateMessage message));
+            Assert.AreEqual(-1L, message.Members[0].TotalExperience);
+        }
+
+        [Test]
         public void SetReady_ReadinessPasses_MarksReadyWithApiRevision()
         {
             PartyRoom room = CreateBossRoom();

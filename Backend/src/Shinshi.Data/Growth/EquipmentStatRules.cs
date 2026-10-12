@@ -25,8 +25,12 @@ namespace Shinshi.Data.Growth
             decimal training = definition.IsTraining ? content.Equipment.TrainingStatRate : 1m;
             decimal scale = content.GetGradeMultiplier(definition.Grade)
                 * (1m + (content.Equipment.EnhancementStatRate * enhancement)) * training;
+            // 흡수는 기본 흡수가 있는 부위에만 등급 단계마다 더한다. 등급 배율과 강화는 곱하지 않는다
+            decimal lifeSteal = (slot.LifeSteal > 0m)
+                ? (slot.LifeSteal + (content.Equipment.LifeStealPerGrade * definition.Grade)) * training
+                : 0m;
             return new EquipmentStats(slot.Attack * scale, slot.Health * scale, slot.Defense * scale,
-                slot.CritChance * training);
+                slot.CritChance * training, lifeSteal);
         }
     }
 }

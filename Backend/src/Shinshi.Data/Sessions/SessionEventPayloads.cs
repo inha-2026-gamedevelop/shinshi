@@ -23,6 +23,12 @@ namespace Shinshi.Data.Sessions
             ArgumentNullException.ThrowIfNull(entry);
             object payload = entry.EventKind switch
             {
+                GameSessionCodes.EventKind.EXPERIENCE_GRANTED => new
+                {
+                    participantId = entry.ParticipantId, amount = entry.Amount,
+                    sourceKind = entry.ExperienceSourceKind, sourceId = entry.ExperienceSourceId,
+                    settingsHash = entry.ExperienceSettingsHash
+                },
                 GameSessionCodes.EventKind.POTION_USED => new
                 {
                     participantId = entry.ParticipantId,

@@ -15,6 +15,7 @@ namespace Shinshi.Data.Characters
         public string? Name { get; }
         public int ClassId { get; }
         public long Revision { get; }
+        public long TotalExperience { get; }
         public string? AppearanceJson { get; }
 
         /****************************************
@@ -22,8 +23,9 @@ namespace Shinshi.Data.Characters
         ****************************************/
 
         public CharacterRecord(Guid characterId, Guid accountId, string? name, int classId, long revision,
-            string? appearanceJson)
+            string? appearanceJson, long totalExperience = 0)
         {
+            TotalExperience = totalExperience;
             CharacterId    = characterId;
             AccountId      = accountId;
             Name           = name;

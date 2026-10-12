@@ -147,7 +147,7 @@ namespace Shinshi.AI
                 return;
             }
 
-            StartSelectedPattern(serverTime);
+            StartSelectedPattern(serverTime, false);
         }
 
         // 실행 가능한 패턴이 생겼는지 EmptyWeightRetrySeconds 주기로 다시 본다. 없는 동안은 선택도 로그도 없다
@@ -232,9 +232,11 @@ namespace Shinshi.AI
             return Mathf.Min(requestedSeconds, _boss.DirectControlMaxSeconds);
         }
 
-        private void StartSelectedPattern(double serverTime)
+        // isRetry는 시작이 거절된 패턴을 대신해 같은 선택에서 다시 고른 패턴이다. 다시 고르는 일은 한 번뿐이라 이 패턴이 거절되면 기존 재조회로 간다
+        private void StartSelectedPattern(double serverTime, bool isRetry)
         {
             PatternDefinition definition = _blackboard.SelectedPattern;
+            int targetCombatId = _blackboard.TargetCombatId;
             _blackboard.SelectedPattern = null;
 
             IBossPattern pattern = _dependencies.Patterns.Create(definition);
@@ -255,12 +257,39 @@ namespace Shinshi.AI
             if ((pattern is IBossPatternStartResult startResult) && startResult.IsStartRejected)
             {
                 _attack.Cancel(EBossInterruptReason.None);
-                _blackboard.NextSelectionTime = serverTime + _boss.EmptyWeightRetrySeconds;
+
+                // 옵트인한 패턴만 같은 선택에서 그 정의를 빼고 한 번 더 고른다. 대안을 시작하지 못하면 기존 재조회 시간 뒤에 다시 고른다
+                bool isReplaced = (!isRetry) && (pattern is IBossPatternRetryOnReject)
+                    && TryReselectWithout(definition.DefinitionId, targetCombatId, serverTime);
+                if (!isReplaced)
+                {
+                    _blackboard.NextSelectionTime = serverTime + _boss.EmptyWeightRetrySeconds;
+                }
+
                 return;
             }
 
             // 예고를 실제로 시작한 순간 기록한다
             _blackboard.RecordUse(definition.DefinitionId, definition.Group);
+        }
+
+        // 거절된 정의를 이번 평가에서만 빼고 처음 대상으로 한 번 더 고른다. 대안이 실제로 시작했을 때만 참이다
+        // 처음 대상이 더는 유효하지 않거나 대안이 없으면 새 대상을 뽑지 않고 거짓을 돌려줘 호출한 쪽이 기존 재조회 대기로 돌아가게 한다
+        private bool TryReselectWithout(string rejectedPatternId, int targetCombatId, double serverTime)
+        {
+            _blackboard.ExcludedPatternId   = rejectedPatternId;
+            _blackboard.RetryTargetCombatId = targetCombatId;
+            bool isPicked = _tree.Evaluate(_blackboard);
+            _blackboard.ExcludedPatternId   = null;
+            _blackboard.RetryTargetCombatId = CombatIds.NONE;
+
+            if (!isPicked)
+            {
+                return false;
+            }
+
+            StartSelectedPattern(serverTime, true);
+            return _attack.State != EBossAttackState.Ready;
         }
 
         private void CancelAll(EBossInterruptReason reason)

@@ -1,17 +1,24 @@
 // System
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 // Third Party
 using Dapper;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Xunit;
 
 // Project
+using Shinshi.Backend.Accounts;
 using Shinshi.Backend.Characters;
 using Shinshi.Backend.Tests.Auth;
 using Shinshi.Contracts;
+using Shinshi.Data;
 using Shinshi.Data.Auth;
 using Shinshi.Data.Characters;
 
@@ -45,28 +52,70 @@ namespace Shinshi.Backend.Tests.Accounts
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        [InlineData("0,1,2")]
-        [InlineData("2")]
-        public void Parse_DefaultOrEmpty_OpensOnlyLegacyClasses(string? text)
+        [InlineData("3,4,5")]
+        public void Parse_DefaultOrEmpty_OpensOnlyNewClasses(string? text)
         {
             PlayerClassPolicy policy = PlayerClassPolicy.Parse(text);
 
-            Assert.Equal(new[] { 0, 1, 2 }, policy.EnabledClassIds());
-            Assert.False(policy.IsEnabled(3));
-            Assert.False(policy.IsEnabled(4));
-            Assert.False(policy.IsEnabled(5));
+            Assert.Equal(new[] { 3, 4, 5 }, policy.EnabledClassIds());
+            Assert.False(policy.IsEnabled(0));
+            Assert.False(policy.IsEnabled(1));
+            Assert.False(policy.IsEnabled(2));
             Assert.False(policy.IsEnabled(6));
         }
 
         [Fact]
-        public void Parse_ListWithNewClasses_OpensThemAndKeepsLegacyOpen()
+        public void Parse_ListWithNewClasses_OpensOnlyListedNewClasses()
         {
             PlayerClassPolicy policy = PlayerClassPolicy.Parse(" 3, 5 ");
 
-            Assert.Equal(new[] { 0, 1, 2, 3, 5 }, policy.EnabledClassIds());
+            Assert.Equal(new[] { 3, 5 }, policy.EnabledClassIds());
             Assert.True(policy.IsEnabled(3));
             Assert.False(policy.IsEnabled(4));
             Assert.True(policy.IsEnabled(5));
+        }
+
+        [Theory]
+        [InlineData("0,1,2")]
+        [InlineData("2")]
+        public void Parse_LegacyClassList_DoesNotReopenCreation(string text)
+        {
+            PlayerClassPolicy policy = PlayerClassPolicy.Parse(text);
+
+            Assert.Empty(policy.EnabledClassIds());
+        }
+
+        [Fact]
+        public void Parse_LegacyAndNewClassList_EnablesOnlyNewClasses()
+        {
+            PlayerClassPolicy policy = PlayerClassPolicy.Parse("0,1,2,3,4,5,3");
+
+            Assert.Equal(new[] { 3, 4, 5 }, policy.EnabledClassIds());
+        }
+
+        [Fact]
+        public void Constructor_EmptyList_DoesNotAutomaticallyEnableLegacyClasses()
+        {
+            PlayerClassPolicy policy = new PlayerClassPolicy(Array.Empty<int>());
+
+            Assert.Empty(policy.EnabledClassIds());
+        }
+
+        [Theory]
+        [InlineData(0, true)]
+        [InlineData(1, true)]
+        [InlineData(2, true)]
+        [InlineData(3, false)]
+        [InlineData(4, false)]
+        [InlineData(5, true)]
+        [InlineData(6, false)]
+        [InlineData(-1, false)]
+        public void IsSelectable_LegacyAndEnabledNewClasses_PreservesStoredCharacterCompatibility(int classId,
+            bool expected)
+        {
+            PlayerClassPolicy policy = PlayerClassPolicy.Parse("5");
+
+            Assert.Equal(expected, policy.IsSelectable(classId));
         }
 
         [Theory]
@@ -80,13 +129,75 @@ namespace Shinshi.Backend.Tests.Accounts
         }
 
         [Fact]
-        public void Options_DefaultValue_ClosesNewClasses()
+        public void Options_DefaultValue_OpensOnlyNewClasses()
         {
             PlayerClassPolicy policy = new CharacterOptions().ResolvePolicy();
 
             Assert.Equal(CharacterOptions.DEFAULT_ENABLED_CLASS_IDS, new CharacterOptions().EnabledClassIds);
-            Assert.False(policy.IsEnabled(NEW_CLASS));
-            Assert.True(policy.IsEnabled(ContractCodes.PlayerClass.SUMMONER));
+            Assert.Equal(new[] { 3, 4, 5 }, policy.EnabledClassIds());
+            Assert.False(policy.IsEnabled(ContractCodes.PlayerClass.SUMMONER));
+        }
+
+        [Theory]
+        [InlineData("3,4,5", new[] { 3, 4, 5 })]
+        [InlineData("3", new[] { 3 })]
+        [InlineData("", new[] { 3, 4, 5 })]
+        [InlineData("0,1,2,3,4,5", new[] { 3, 4, 5 })]
+        public void AddShinshiAccounts_ConfiguredClassList_ReplacesDefaultAndCannotReopenLegacyClasses(string text,
+            int[] expected)
+        {
+            IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
+                new Dictionary<string, string?> { ["Characters:EnabledClassIds"] = text }).Build();
+            ServiceCollection services = new ServiceCollection();
+            services.AddShinshiAccounts(configuration);
+            using ServiceProvider provider = services.BuildServiceProvider();
+
+            Assert.Equal(expected, provider.GetRequiredService<PlayerClassPolicy>().EnabledClassIds());
+        }
+
+        [PostgresFact]
+        public async Task CharacterCreate_DefaultPolicy_PersistsOnlyNewClassesAndDoesNotStoreLegacyRejections()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresCharacterRepository repository = new PostgresCharacterRepository(database.DataSource,
+                new IdempotentOperationExecutor(new PostgresOperationStore(database.DataSource)));
+            using AccountApiHost host = new AccountApiHost(characterRepository: repository);
+            (Guid accountId, string access) = host.Backend.AddInviteAccount();
+            using HttpClient player = host.CreateClient(access);
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync("INSERT INTO accounts(account_id) VALUES (@AccountId);",
+                new { AccountId = accountId });
+
+            for (int classId = PlayerClassPolicy.MIN_CLASS_ID; classId <= PlayerClassPolicy.LEGACY_MAX_ID; ++classId)
+            {
+                using HttpResponseMessage rejected = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "Legacy" + classId, classId,
+                        CharacterTestData.Appearance())));
+
+                Assert.Equal(HttpStatusCode.Conflict, rejected.StatusCode);
+                Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED,
+                    AccountApiHost.Read<ApiRejection>(await rejected.Content.ReadAsStringAsync()).ReasonCode);
+            }
+
+            Assert.Equal(0L, await connection.QuerySingleAsync<long>("SELECT count(*) FROM characters;"));
+            Assert.Equal(0L, await connection.QuerySingleAsync<long>("SELECT count(*) FROM operations;"));
+
+            foreach (int classId in PlayerClassPolicy.Default.EnabledClassIds())
+            {
+                using HttpResponseMessage created = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
+                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "NewClass" + classId, classId,
+                        CharacterTestData.Appearance())));
+
+                Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+                CharacterCreateResponse result = AccountApiHost.Read<CharacterCreateResponse>(
+                    await created.Content.ReadAsStringAsync());
+                Assert.Equal(ContractCodes.OperationStatus.COMMITTED, result.Result.Status);
+                Assert.Equal(classId, result.Character.ClassId);
+            }
+
+            Assert.Equal(new[] { 3, 4, 5 }, (await repository.ListAsync(accountId))
+                .Select(character => character.ClassId).OrderBy(classId => classId).ToArray());
+            Assert.Equal(3L, await connection.QuerySingleAsync<long>("SELECT count(*) FROM operations;"));
         }
 
         /// <summary> 0016 적용 뒤 CHECK 이름이 바뀌어 있고, 새 직업 행이 있으면 down이 데이터를 지우지 않고 중단하며, 행을 치우면 되돌아가고 다시 올라간다 </summary>
@@ -125,6 +236,10 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(PostgresErrorCodes.CheckViolation, restored.SqlState);
 
             await connection.ExecuteAsync(await MigrationTestResources.ReadUpAsync(name));
+            foreach ((long _, string later) in MigrationTestResources.All.Where(entry => entry.Version > version))
+            {
+                await connection.ExecuteAsync(await MigrationTestResources.ReadUpAsync(later));
+            }
 
             await connection.ExecuteAsync(
                 "INSERT INTO characters(character_id, account_id, class_id) VALUES (@Id, @AccountId, @Class);",
@@ -145,9 +260,9 @@ namespace Shinshi.Backend.Tests.Accounts
         {
             await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
             AuthTokenOptions options = AuthTokenHasherTests.CreateOptions();
-            PostgresAuthRepository closed = new PostgresAuthRepository(database.DataSource, options);
-            PostgresAuthRepository open = new PostgresAuthRepository(database.DataSource, options,
-                PlayerClassPolicy.Parse("3,4,5"));
+            PostgresAuthRepository closed = new PostgresAuthRepository(database.DataSource, options,
+                PlayerClassPolicy.Parse("0,1,2"));
+            PostgresAuthRepository open = new PostgresAuthRepository(database.DataSource, options);
             (Guid accountId, Guid newClassCharacter, Guid legacyCharacter) = await SeedAsync(database);
             PlayerAuthIdentity identity = await LoginAsync(closed, accountId);
             Guid missingTown = Guid.NewGuid();

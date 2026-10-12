@@ -1,4 +1,4 @@
-// System
+﻿// System
 using System;
 
 // Unity
@@ -48,6 +48,23 @@ namespace Shinshi.Network
         private bool   _sending                  = false;
         private bool   _retryPending             = false;
         private bool   _warningPending           = false;
+        private bool _acknowledging;
+        private long _immediateThroughSequence;
+        private Action<SessionEvent> _committed;
+        private Delegate[] _committedObservers = Array.Empty<Delegate>();
+        public event Action<SessionEvent> Committed
+        {
+            add
+            {
+                _committed += value;
+                _committedObservers = _committed?.GetInvocationList() ?? Array.Empty<Delegate>();
+            }
+            remove
+            {
+                _committed -= value;
+                _committedObservers = _committed?.GetInvocationList() ?? Array.Empty<Delegate>();
+            }
+        }
         private bool   _isTerminal               = false;
 
         /****************************************
@@ -155,7 +172,7 @@ namespace Shinshi.Network
         /// <summary> 첫 유효 호출부터 배치 시계를 시작한다, 비유한 시각과 이전 시각은 상태를 바꾸지 않고 무시한다 </summary>
         public void Tick(double serverTime)
         {
-            if ((_sending) || (double.IsNaN(serverTime)) || (double.IsInfinity(serverTime)) ||
+            if ((_sending) || (_acknowledging) || (double.IsNaN(serverTime)) || (double.IsInfinity(serverTime)) ||
                 ((_hasServerTime) && (serverTime < _serverTime)))
             {
                 return;
@@ -168,6 +185,10 @@ namespace Shinshi.Network
             }
 
             _serverTime = serverTime;
+            if ((_lastAcknowledgedSequence < _immediateThroughSequence) && !_retryPending && !_inFlight)
+            {
+                _nextSendTime = serverTime;
+            }
             WarnIfDue();
             TrySendIfDue();
         }
@@ -195,6 +216,11 @@ namespace Shinshi.Network
                     ScheduleRetry(retryAfterSeconds);
                     return;
             }
+        }
+
+        public void RequestImmediateSend()
+        {
+            _immediateThroughSequence = _lastSequence;
         }
 
         private void EnqueueUnchecked(in SessionEventData data)
@@ -294,7 +320,27 @@ namespace Shinshi.Network
 
         private void AcknowledgeBatch()
         {
+            _acknowledging = true;
             _lastAcknowledgedSequence = _batch[_batchCount - 1].Seq;
+            for (int i = 0; i < _batchCount; ++i)
+            {
+                Delegate[] observers = _committedObservers;
+                if (observers == null)
+                {
+                    continue;
+                }
+                for (int observer = 0; observer < observers.Length; ++observer)
+                {
+                    try
+                    {
+                        ((Action<SessionEvent>)observers[observer])(_batch[i]);
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.LogException(exception);
+                    }
+                }
+            }
             for (int i = 0; i < _batchCount; ++i)
             {
                 _ring[_head] = default;
@@ -302,6 +348,7 @@ namespace Shinshi.Network
                 _head        = (_head + 1) % _ring.Length;
             }
 
+            _acknowledging = false;
             _count            -= _batchCount;
             _batchCount        = 0;
             _retryPending      = false;

@@ -28,6 +28,9 @@ MonoBehaviour:
   _critChanceCap: 0.6
   _damageReductionCap: 0.6
   _defenseReductionConstant: 1000
+  _playerDefenseReductionConstant: 750
+  _lifeStealRateCap: 0.1
+  _lifeStealCapPerSecond: 0.02
   _potionSharedCooldown: 10
   _potionUseDisplaySeconds: 0.35
   _inputBufferSeconds: 0.15

@@ -12,6 +12,9 @@ namespace Shinshi.Contracts
         ****************************************/
 
         // 던전당 1부터 빈틈없이 증가한다. 중복, 역행, 건너뜀은 배치 전체를 거절한다
+        [DataMember(Name = "experienceSourceKind")] private int _experienceSourceKind;
+        [DataMember(Name = "experienceSourceId")] private string _experienceSourceId;
+        [DataMember(Name = "experienceSettingsHash")] private string _experienceSettingsHash;
         [DataMember(Name = "eventSeq")]              private long              _eventSeq;
         [DataMember(Name = "eventId")]               private string            _eventId;
 
@@ -48,6 +51,9 @@ namespace Shinshi.Contracts
         *              Properties
         ****************************************/
 
+        public int ExperienceSourceKind => _experienceSourceKind;
+        public string ExperienceSourceId => _experienceSourceId;
+        public string ExperienceSettingsHash => _experienceSettingsHash;
         public long              EventSeq              => _eventSeq;
         public string            EventId               => _eventId;
         public int               EventKind             => _eventKind;
@@ -90,6 +96,16 @@ namespace Shinshi.Contracts
                 settlementOperationId, grants, payloadJson)
         {
             _revertsEventId = revertsEventId;
+        }
+
+        public SessionEventEntry(long eventSeq, string eventId, string participantId, long amount,
+            int sourceKind, string sourceId, string settingsHash)
+            : this(eventSeq, eventId, GameSessionCodes.EventKind.EXPERIENCE_GRANTED, participantId,
+                null, null, amount, 0, null, null, null)
+        {
+            _experienceSourceKind = sourceKind;
+            _experienceSourceId = sourceId;
+            _experienceSettingsHash = settingsHash;
         }
 
         private SessionEventEntry() { }
