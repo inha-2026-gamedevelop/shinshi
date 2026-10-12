@@ -941,6 +941,30 @@ namespace Shinshi.AI
             return true;
         }
 
+        /// <summary> 네트워크 관찰을 다시 시작하기 전에 이전 연결의 표현과 중복 방지 기록을 비운다 </summary>
+        public void ResetNetworkSession()
+        {
+            ClearAll();
+            _endedIds.Clear();
+            _endedOrder.Clear();
+            _projectileEndedIds.Clear();
+            _projectileEndedOrder.Clear();
+            _areaEndedIds.Clear();
+            _areaEndedOrder.Clear();
+            _beamEndedIds.Clear();
+            _beamEndedOrder.Clear();
+            _beamPendingActivations.Clear();
+            _beamPendingOrder.Clear();
+            _beamExpiredStarts.Clear();
+            _beamExpiredOrder.Clear();
+            _cancelledGroupIds.Clear();
+            _cancelledGroupOrder.Clear();
+            if (_starView != null)
+            {
+                _starView.ResetNetworkSession();
+            }
+        }
+
         public void ClearAll()
         {
             if (_sweepCue != null)

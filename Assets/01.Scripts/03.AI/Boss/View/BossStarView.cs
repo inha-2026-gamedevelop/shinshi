@@ -286,6 +286,18 @@ namespace Shinshi.AI
             }
         }
 
+        /// <summary> 새 네트워크 관찰의 복원을 위해 이전 연결의 종료, 지연 활성 기록을 비운다 </summary>
+        public void ResetNetworkSession()
+        {
+            ClearAll();
+            _endedIds.Clear();
+            _endedOrder.Clear();
+            _pendingActivations.Clear();
+            _pendingOrder.Clear();
+            _expiredStarts.Clear();
+            _expiredOrder.Clear();
+        }
+
         // 이미 끝난 구조(서버 확정 없이 예고 대기 시간이 지났거나 소멸 연출까지 지난 것)는 그리지 않는다
         private bool TryAdd(BossStarTrack track)
         {
