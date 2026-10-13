@@ -26,8 +26,17 @@ namespace Shinshi.AI
         private const string COLOR_BASE     = "_BaseColor";
         private const string COLOR_LEGACY   = "_Color";
 
+        // 이 속도 아래로 움직이면 제자리로 보고 이동 애니메이션을 끈다
+        private const float  MOVING_SPEED   = 0.2f;
+
         // 돌진 구간 표시색, 예고의 노랑에서 빨강과 구분한다
         private static readonly Color DASH_COLOR = new Color(1f, 0.5f, 0f);
+
+        private static readonly int ANIM_MOVING  = Animator.StringToHash("Moving");
+        private static readonly int ANIM_DEAD    = Animator.StringToHash("Dead");
+        private static readonly int ANIM_ATTACK  = Animator.StringToHash("Attack");
+        private static readonly int ANIM_DAMAGE  = Animator.StringToHash("Damage");
+        private static readonly int ANIM_DASHING = Animator.StringToHash("Dashing");
 
         /****************************************
         *                Fields
@@ -35,6 +44,7 @@ namespace Shinshi.AI
 
         [SerializeField] private Transform    _visual;    // 외형 루트, 이 아래 렌더러를 상태 색으로 칠한다
         [SerializeField] private LineRenderer _rangeLine; // 공격 범위 부채꼴
+        [SerializeField] private Animator     _animator;  // 모델의 애니메이터, 비어 있으면 애니메이션 없이 그린다
 
         [Header("콜라이더")]
         [SerializeField] private CapsuleCollider _detectionCollider;  // 루트의 큰 Trigger, 감지와 피격 범위
@@ -43,6 +53,10 @@ namespace Shinshi.AI
         private Renderer[]            _renderers;
         private MaterialPropertyBlock _block;
         private Material              _lineMaterial;
+        private Vector3               _lastPosition;
+        private EEnemyState           _lastState;
+        private bool                  _hasPose;
+        private bool                  _hasDashingParam;
 
         /****************************************
         *                Methods
@@ -59,6 +73,19 @@ namespace Shinshi.AI
 
             _renderers = _visual.GetComponentsInChildren<Renderer>();
             _block     = new MaterialPropertyBlock();
+
+            // 돌진 동작이 없는 컨트롤러에 값을 넣으면 경고가 나므로 파라미터가 있을 때만 쓴다
+            if (_animator != null)
+            {
+                foreach (AnimatorControllerParameter parameter in _animator.parameters)
+                {
+                    if (parameter.nameHash == ANIM_DASHING)
+                    {
+                        _hasDashingParam = true;
+                        break;
+                    }
+                }
+            }
 
             _rangeLine.useWorldSpace   = true;
             _rangeLine.widthMultiplier = LINE_WIDTH;
@@ -135,6 +162,8 @@ namespace Shinshi.AI
                 transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
             }
 
+            ApplyAnimation(position, state);
+
             color = ColorOf(state, telegraphProgress);
             _block.SetColor(COLOR_BASE, color);
             _block.SetColor(COLOR_LEGACY, color);
@@ -146,6 +175,53 @@ namespace Shinshi.AI
             _rangeLine.startColor = color;
             _rangeLine.endColor   = color;
             return true;
+        }
+
+        /// <summary> 서버가 공격을 끊지 않는 피격의 동작만 한 번 재생한다. 예고 중 피격은 서버가 Hit 상태로 알리므로 여기서는 무시한다 </summary>
+        public void PlayHit()
+        {
+            if ((_animator == null) || (_lastState == EEnemyState.Telegraph) || (_lastState == EEnemyState.Dash)
+                || (_lastState == EEnemyState.Hit) || (_lastState == EEnemyState.Dead))
+            {
+                return;
+            }
+
+            _animator.SetTrigger(ANIM_DAMAGE);
+        }
+
+        // 서버 상태와 실제 이동량으로 애니메이터를 움직인다, 공격 동작은 예고가 시작되는 순간 한 번 시작한다
+        private void ApplyAnimation(Vector3 position, EEnemyState state)
+        {
+            if (_animator == null)
+            {
+                return;
+            }
+
+            float dt     = Time.deltaTime;
+            float speed  = (_hasPose && (dt > 0f)) ? ((position - _lastPosition).magnitude / dt) : 0f;
+            bool  moving = (state != EEnemyState.Dead) && (speed > MOVING_SPEED);
+
+            _animator.SetBool(ANIM_MOVING, moving);
+            _animator.SetBool(ANIM_DEAD, state == EEnemyState.Dead);
+            if (_hasDashingParam)
+            {
+                _animator.SetBool(ANIM_DASHING, state == EEnemyState.Dash);
+            }
+
+            if ((state == EEnemyState.Telegraph) && (_lastState != EEnemyState.Telegraph))
+            {
+                _animator.SetTrigger(ANIM_ATTACK);
+            }
+
+            // 예고 중 맞아 서버가 공격을 취소한 순간, 진행 중이던 공격 동작을 끊고 피격 동작으로 넘어간다
+            if ((state == EEnemyState.Hit) && (_lastState != EEnemyState.Hit))
+            {
+                _animator.SetTrigger(ANIM_DAMAGE);
+            }
+
+            _lastPosition = position;
+            _lastState    = state;
+            _hasPose      = true;
         }
 
         private void DrawFan(Vector3 position, Vector3 forward, Color color, float range, float arcAngle)
@@ -190,6 +266,8 @@ namespace Shinshi.AI
                     return DASH_COLOR;
                 case EEnemyState.Recover:
                     return Color.gray;
+                case EEnemyState.Hit:
+                    return Color.magenta;
                 case EEnemyState.Dead:
                     return Color.black;
                 case EEnemyState.Idle:

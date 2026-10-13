@@ -27,7 +27,8 @@ namespace Shinshi.AI
         private const float  DEFENSE_CONSTANT = 1000f; // PlayerConfigSO 초안과 같은 값
         private const float  REDUCTION_CAP    = 0.6f;
         private const float  GUI_WIDTH        = 340f;
-        private const float  GUI_HEIGHT       = 120f;
+        private const float  HIT_DAMAGE       = 100f; // 피격 모션 시험 버튼이 주는 피해
+        private const float  GUI_HEIGHT       = 150f;
         private const float  GUI_MARGIN       = 10f;
         private const string HORIZONTAL_AXIS  = "Horizontal";
         private const string VERTICAL_AXIS    = "Vertical";
@@ -50,6 +51,7 @@ namespace Shinshi.AI
         private DamageResolver  _resolver;
         private EnemyTestView   _enemyView;
         private Transform       _playerBody;
+        private float           _lastEnemyHealth;
 
         /****************************************
         *              Unity Event
@@ -92,6 +94,7 @@ namespace Shinshi.AI
             registry.Register(_player);
             registry.Register(_enemy);
             _brain = new MeleeEnemyBrain(_enemy, definition, _referenceHealth, registry, _resolver);
+            _lastEnemyHealth = _enemy.Health;
 
             _enemyView = Instantiate(_enemyPrefab, _enemy.Position, Quaternion.identity, transform);
 
@@ -124,6 +127,13 @@ namespace Shinshi.AI
             _playerBody.gameObject.SetActive(_player.LifeState == EParticipantLifeState.Alive);
             _enemyView.Apply(_enemy.Position, _enemy.Forward, _brain.State, _brain.TelegraphProgress(now),
                 _brain.AttackRange, _brain.AttackArcAngle);
+
+            if ((_enemy.Health < _lastEnemyHealth) && (_enemy.Health > 0f))
+            {
+                _enemyView.PlayHit();
+            }
+
+            _lastEnemyHealth = _enemy.Health;
         }
 
         private void OnGUI()
@@ -136,6 +146,11 @@ namespace Shinshi.AI
             GUILayout.BeginArea(new Rect(GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_WIDTH, GUI_HEIGHT), GUI.skin.box);
             GUILayout.Label($"State {_brain.State}  Attacks {_brain.ExecutedCount}  LastHit {_brain.LastHitCount}");
             GUILayout.Label($"Enemy HP {_enemy.Health:F0}/{_enemy.MaxHealth:F0}  Player HP {_player.Health:F0}");
+
+            if (GUILayout.Button("Hit enemy"))
+            {
+                _enemy.ApplyDamage(HIT_DAMAGE, false, Time.timeAsDouble);
+            }
 
             if (GUILayout.Button("Kill enemy"))
             {
