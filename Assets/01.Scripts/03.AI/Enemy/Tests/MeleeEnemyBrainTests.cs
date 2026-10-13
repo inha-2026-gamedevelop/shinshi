@@ -237,6 +237,66 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Hit_DuringTelegraph_CancelsStrikeAndEntersHit()
+        {
+            _playerA.Position = new Vector3(0f, 0f, 1f);
+            RunUntil(() => _brain.State == EEnemyState.Telegraph, 1f);
+
+            Step(0.2f);
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+
+            Assert.AreEqual(EEnemyState.Hit, _brain.State);
+
+            Step((float)_definition.TelegraphSeconds);
+            Assert.AreEqual(0, _brain.ExecutedCount, "취소된 예고는 타격하지 않는다");
+            Assert.AreEqual(0, _playerA.DamageCalls);
+        }
+
+        [Test]
+        public void Hit_WhileStunned_DoesNotExtendStun()
+        {
+            _playerA.Position = new Vector3(0f, 0f, 1f);
+            RunUntil(() => _brain.State == EEnemyState.Telegraph, 1f);
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+            Assert.AreEqual(EEnemyState.Hit, _brain.State);
+
+            Step(MeleeEnemyBrain.PROTOTYPE_HIT_STUN_SECONDS * 0.5f);
+            _enemy.ApplyDamage(10f, false, _now);
+            Step((MeleeEnemyBrain.PROTOTYPE_HIT_STUN_SECONDS * 0.5f) + (STEP_SECONDS * 2f));
+
+            Assert.AreNotEqual(EEnemyState.Hit, _brain.State, "굳는 동안 또 맞아도 시간이 늘지 않는다");
+        }
+
+        [Test]
+        public void Hit_AfterStun_AllowsImmediateNewTelegraph()
+        {
+            _playerA.Position = new Vector3(0f, 0f, 1f);
+            RunUntil(() => _brain.State == EEnemyState.Telegraph, 1f);
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+            Assert.AreEqual(EEnemyState.Hit, _brain.State);
+
+            RunUntil(() => _brain.State == EEnemyState.Telegraph, MeleeEnemyBrain.PROTOTYPE_HIT_STUN_SECONDS + 0.2f);
+
+            Assert.AreEqual(EEnemyState.Telegraph, _brain.State, "공격 간격이 남아 있어도 경직이 끝나면 바로 다시 예고한다");
+        }
+
+        [Test]
+        public void Hit_OutsideTelegraph_DoesNotInterrupt()
+        {
+            _playerA.Position = new Vector3(0f, 0f, FAR_DISTANCE);
+            Step(STEP_SECONDS * 3f);
+            Assert.AreEqual(EEnemyState.Chase, _brain.State);
+
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+
+            Assert.AreEqual(EEnemyState.Chase, _brain.State, "예고가 아닌 때의 피격은 행동을 끊지 않는다");
+        }
+
+        [Test]
         public void Target_StaysWhileValid_ThenReselectsNearestLivingPlayer()
         {
             _playerA.Position = new Vector3(0f, 0f, 4f);

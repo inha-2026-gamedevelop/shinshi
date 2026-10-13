@@ -26,7 +26,8 @@ namespace Shinshi.AI
         ****************************************/
 
         // 이번 프로토타입 제안값이다. 공유 기획의 확정값이 아니므로 EnemyCatalogSO에 넣지 않는다
-        public const float PROTOTYPE_RECOVER_SECONDS = 0.6f; // 돌진이 끝난 뒤 새 공격을 막는 시간
+        public const float PROTOTYPE_RECOVER_SECONDS  = 0.6f; // 돌진이 끝난 뒤 새 공격을 막는 시간
+        public const float PROTOTYPE_HIT_STUN_SECONDS = 1f;   // 예고나 돌진 중 맞아 공격이 취소된 뒤 굳는 시간, 피격 클립 길이에 맞춘 값
 
         private const float MIN_DIRECTION_SQR       = 0.000001f; // m^2, 이보다 가까우면 방향을 정할 수 없다
         private const float EDGE_EPSILON            = 0.001f;    // m, 직사각형 경계와 조회 반경의 부동소수 오차 흡수
@@ -60,6 +61,8 @@ namespace Shinshi.AI
         private double  _telegraphEndTime;
         private double  _dashStartTime;
         private double  _recoverEndTime;
+        private double  _hitEndTime;
+        private float   _lastHealth;
         private double  _nextTelegraphTime = double.NegativeInfinity;
         private Vector3 _aim;
         private Vector3 _origin;
@@ -175,6 +178,7 @@ namespace Shinshi.AI
             _selector       = new EnemyTargetSelector(targets);
             _aim            = self.Forward;
             _origin         = self.Position;
+            _lastHealth     = self.Health;
         }
 
         /// <summary> 서버 시각으로 한 틱 진행한다 </summary>
@@ -197,6 +201,26 @@ namespace Shinshi.AI
             float deltaSeconds = _hasTicked ? Mathf.Max(0f, (float)(serverTime - _lastTickTime)) : 0f;
             _lastTickTime = serverTime;
             _hasTicked    = true;
+
+            // 체력이 줄었는지는 틱마다 갱신한다. 예고가 끝나는 틱이나 돌진 중에 맞았으면 공격보다 피격이 먼저다
+            bool damaged = _self.Health < _lastHealth;
+            _lastHealth  = _self.Health;
+
+            if (damaged && ((State == EEnemyState.Telegraph) || (State == EEnemyState.Dash)))
+            {
+                InterruptByHit(serverTime);
+                return;
+            }
+
+            if (State == EEnemyState.Hit)
+            {
+                if (serverTime < _hitEndTime)
+                {
+                    return;
+                }
+
+                State = EEnemyState.Idle;
+            }
 
             if (State == EEnemyState.Telegraph)
             {
@@ -291,6 +315,18 @@ namespace Shinshi.AI
             float x = resolved.x - desired.x;
             float z = resolved.z - desired.z;
             return ((x * x) + (z * z)) > (SEPARATION_EPSILON * SEPARATION_EPSILON);
+        }
+
+        // 예고나 돌진 중 피해를 받으면 그 자리에서 공격을 버리고 굳는다. 이미 맞힌 대상의 피해는 남고 완료 횟수는 늘지 않는다.
+        // 굳는 동안 맞아도 시간은 늘지 않고, 끝나면 바로 다시 예고할 수 있다
+        private void InterruptByHit(double serverTime)
+        {
+            _castId            = CombatIds.NONE;
+            _actionId          = CombatIds.NONE;
+            _handled.Clear();
+            _hitEndTime        = serverTime + PROTOTYPE_HIT_STUN_SECONDS;
+            _nextTelegraphTime = _hitEndTime;
+            State              = EEnemyState.Hit;
         }
 
         // 위치와 방향은 이 시점에 한 번 정하고 돌진이 끝날 때까지 바꾸지 않는다. 주기는 예고 시작부터 센다
