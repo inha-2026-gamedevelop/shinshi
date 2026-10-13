@@ -62,6 +62,9 @@
 # TerrainData처럼 큰 .asset이 생기면 그 경로만 따로 적는다.
 *.terrainlayer filter=lfs diff=lfs merge=lfs -text
 *.raw  filter=lfs diff=lfs merge=lfs -text
+# 마을 지형 브러시가 씬마다 만드는 메시 사본. 한 개가 수 MB라 경로만 LFS로 보낸다.
+Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/CarvedMeshes/**/*.asset   filter=lfs diff=lfs merge=lfs -text
+Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/SculptedMeshes/**/*.asset filter=lfs diff=lfs merge=lfs -text
 
 # ─── Git LFS: 폰트 · 압축 ─────────────────────────────
 *.ttf filter=lfs diff=lfs merge=lfs -text
