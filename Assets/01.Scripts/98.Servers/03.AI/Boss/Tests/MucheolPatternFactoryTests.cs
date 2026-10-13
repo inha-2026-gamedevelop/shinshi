@@ -444,27 +444,29 @@ namespace Shinshi.Tests
         *            Production Catalog
         ****************************************/
 
+        // 운영 카탈로그에는 무철 보스 정의와 1페이즈 P01~P06 이지 정의가 있다. P06이 있다고 해서 운영 서버가 P06을 만들 수 있다는 뜻은 아니다
+        // (BossServer가 팩토리에 P06 생성 설정을 아직 넘기지 않는다). 그 위험은 이 시험이 아니라 서버 연결 요청에서 다룬다
         [Test]
-        public void CatalogAsset_HasMucheolBoss_ButIsNotTunedAndHasNoMucheolPatterns()
+        public void CatalogAsset_HasTunedMucheolBossWithPhaseOneP01ToP06AsEasy()
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assert.IsNotNull(catalog);
 
             Assert.IsTrue(catalog.TryGetBoss(MucheolPatternFactory.BOSS_ID, out _));
-            Assert.IsFalse(catalog.IsTuned(MucheolPatternFactory.BOSS_ID));
+            Assert.IsTrue(catalog.IsTuned(MucheolPatternFactory.BOSS_ID));
 
-            // 1페이즈 나머지가 미구현인 채 운영 카탈로그에 무철 패턴이 들어가면 미구현 패턴이 선택될 수 있다
-            for (int i = 0; i < catalog.Patterns.Count; ++i)
+            string[] phaseOneIds =
             {
-                Assert.AreNotEqual(MucheolPatternFactory.BOSS_ID, catalog.Patterns[i].BossId);
-            }
+                MucheolPatternFactory.P01_ID, MucheolPatternFactory.P02_ID, MucheolPatternFactory.P03_ID,
+                MucheolPatternFactory.P04_ID, MucheolPatternFactory.P05_ID, MucheolPatternFactory.P06_ID
+            };
 
-            // P06(뿔 들이받기)은 공용 FSM의 충돌 회복 승인, 서버와 맵 연결, 검증이 끝나기 전에는 운영 카탈로그에 넣지 않는다.
-            // 가중치를 0으로 두거나 팩토리가 만들지 못하게만 막는 방식은 쓰지 않는다. 1페이즈 선택은 만들 수 없는 후보를 미리 거르지 않아
-            // 정의가 있으면 후보가 되고 Create가 null이라 오류 로그가 반복된다
-            for (int i = 0; i < catalog.Patterns.Count; ++i)
+            for (int i = 0; i < phaseOneIds.Length; ++i)
             {
-                Assert.AreNotEqual(MucheolPatternFactory.P06_ID, catalog.Patterns[i].DefinitionId);
+                Assert.IsTrue(catalog.TryGetPattern(phaseOneIds[i], out PatternDefinition pattern), phaseOneIds[i]);
+                Assert.AreEqual(MucheolPatternFactory.BOSS_ID, pattern.BossId, phaseOneIds[i]);
+                Assert.AreEqual(1, pattern.Phase, phaseOneIds[i]);
+                Assert.AreEqual(EBossDifficulty.Easy, pattern.Difficulty, phaseOneIds[i]);
             }
 
             // 새 보스를 더해도 월백 수치는 그대로여야 한다

@@ -23,6 +23,7 @@ namespace Shinshi.AI
         private readonly BossBrainDependencies      _dependencies;
         private readonly BossDamageGate             _damageGate;
         private readonly List<IBossSelectionRule>   _pendingRules = new List<IBossSelectionRule>();
+        private readonly List<IBossGimmick>         _pendingGimmicks = new List<IBossGimmick>();
 
         private BossCombat      _combat;
         private BossDefinition  _boss;
@@ -83,6 +84,19 @@ namespace Shinshi.AI
             }
 
             _pendingRules.Add(rule);
+            return true;
+        }
+
+        // 기믹은 전투 틱 맨 앞에서 갱신되고 페이즈 전환과 새 패턴 선택을 보류하거나 막을 수 있다. 강제 선택 규칙으로도 등록된다
+        /// <summary> 체력 기믹을 더한다, 시작 전에만 받는다 </summary>
+        public bool AddGimmick(IBossGimmick gimmick)
+        {
+            if ((gimmick == null) || (FlowState != EBossFlowState.Inactive))
+            {
+                return false;
+            }
+
+            _pendingGimmicks.Add(gimmick);
             return true;
         }
 
@@ -187,6 +201,11 @@ namespace Shinshi.AI
             for (int i = 0; i < _pendingRules.Count; ++i)
             {
                 _combat.AddSelectionRule(_pendingRules[i]);
+            }
+
+            for (int i = 0; i < _pendingGimmicks.Count; ++i)
+            {
+                _combat.AddGimmick(_pendingGimmicks[i]);
             }
 
             _damageGate.Open();

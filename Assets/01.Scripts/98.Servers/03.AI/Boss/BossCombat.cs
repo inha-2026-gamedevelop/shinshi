@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -28,6 +29,7 @@ namespace Shinshi.AI
         private readonly BossBlackboard         _blackboard = new BossBlackboard();
 
         private readonly IBossTickableEffects _tickableEffects;
+        private readonly List<IBossGimmick>   _gimmicks = new List<IBossGimmick>();
 
         private double _controlImmuneUntil;
 
@@ -54,7 +56,7 @@ namespace Shinshi.AI
         public BossCombat(BossBrainDependencies dependencies, BossDamageGate damageGate, BossDefinition boss, double startTime)
         {
             _dependencies = dependencies;
-            _attack       = new BossAttackFsm(dependencies.Casts);
+            _attack       = new BossAttackFsm(new GimmickCastRelay(dependencies.Casts, _gimmicks));
             _tickableEffects = dependencies.Effects as IBossTickableEffects;
             _damageGate   = damageGate;
             _boss         = boss;
@@ -78,6 +80,19 @@ namespace Shinshi.AI
             _tree.AddRule(rule);
         }
 
+        /// <summary> 체력 기믹을 더한다, 강제 선택 규칙으로도 등록한다. 기믹이 없으면 한 틱의 순서는 이전과 같다 </summary>
+        public void AddGimmick(IBossGimmick gimmick)
+        {
+            // 같은 기믹을 두 번 받으면 틱과 시전 알림이 겹쳐 들어가므로 한 번만 둔다
+            if (_gimmicks.Contains(gimmick))
+            {
+                return;
+            }
+
+            _gimmicks.Add(gimmick);
+            _tree.AddRule(gimmick);
+        }
+
         /// <summary> 페이즈 전환 뒤 인계를 마친다, 2페이즈에 실행 가능한 패턴이 있으면 새 선택을 열고 없으면 준비를 기다린다. 인계 대기가 아니면 거짓이다 </summary>
         public bool CompleteHandoff()
         {
@@ -93,6 +108,14 @@ namespace Shinshi.AI
         /// <summary> 상위 FSM이 사망이나 전투 종료로 끊을 때 부른다, 지속물까지 모두 정리한다 </summary>
         public void Interrupt(EBossInterruptReason reason)
         {
+            for (int i = 0; i < _gimmicks.Count; ++i)
+            {
+                if (_gimmicks[i] is IBossGimmickCleanup cleanup)
+                {
+                    cleanup.Stop(reason);
+                }
+            }
+
             CancelAll(reason);
         }
 
@@ -103,12 +126,15 @@ namespace Shinshi.AI
             _tickableEffects?.Tick(serverTime);
         }
 
-        // 순서는 전환, 직접 제어, 공격 진행과 새 선택이다. 사망과 전투 종료는 상위 FSM이 이 앞에서 처리한다
+        // 순서는 기믹 갱신, 전환, 직접 제어, 공격 진행과 새 선택이다. 사망과 전투 종료는 상위 FSM이 이 앞에서 처리한다.
+        // 기믹 갱신이 전환 판정보다 먼저라서 같은 틱에 체력이 두 기준을 함께 넘어도 기믹이 먼저 전환을 보류한다
         private void TickCombat(double serverTime)
         {
             _blackboard.ServerTime = serverTime;
 
-            if (_phase.ShouldBeginTransition(_dependencies.Vitals, _boss))
+            TickGimmicks(serverTime);
+
+            if ((!IsTransitionDeferred()) && (_phase.ShouldBeginTransition(_dependencies.Vitals, _boss)))
             {
                 _phase.BeginTransition();
                 CancelAll(EBossInterruptReason.PhaseTransition);
@@ -142,12 +168,58 @@ namespace Shinshi.AI
                 return;
             }
 
+            if (IsSelectionBlocked())
+            {
+                return;
+            }
+
             if (!_tree.Evaluate(_blackboard))
             {
                 return;
             }
 
             StartSelectedPattern(serverTime, false);
+        }
+
+        // 기믹이 진입 정리를 요청하면 진행 중인 공격과 지속물을 모두 정리한다. 같은 틱의 뒤쪽 단계는 정리된 상태를 본다
+        private void TickGimmicks(double serverTime)
+        {
+            for (int i = 0; i < _gimmicks.Count; ++i)
+            {
+                IBossGimmick gimmick = _gimmicks[i];
+                gimmick.Tick(serverTime, _phase.Phase);
+
+                if ((gimmick is IBossGimmickCleanup cleanup) && (cleanup.ConsumeCleanupRequest()))
+                {
+                    CancelAll(EBossInterruptReason.GimmickEntry);
+                }
+            }
+        }
+
+        private bool IsTransitionDeferred()
+        {
+            for (int i = 0; i < _gimmicks.Count; ++i)
+            {
+                if (_gimmicks[i].DefersPhaseTransition)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsSelectionBlocked()
+        {
+            for (int i = 0; i < _gimmicks.Count; ++i)
+            {
+                if (_gimmicks[i].BlocksSelection)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // 실행 가능한 패턴이 생겼는지 EmptyWeightRetrySeconds 주기로 다시 본다. 없는 동안은 선택도 로그도 없다
@@ -296,6 +368,52 @@ namespace Shinshi.AI
         {
             _attack.Cancel(reason);
             _dependencies.Effects.Cancel(reason, CombatIds.NONE);
+        }
+
+        // 공격 FSM의 시전 알림은 몸체(dependencies.Casts)가 먼저 받고 등록된 기믹이 이어서 받는다.
+        // 기믹이 없으면 몸체에만 전달하므로 알림 횟수와 순서는 이전과 같다. 몸체가 이 기믹이거나 BossCastListenerComposite로 묶어 둔 경우는
+        // 이미 받으므로 건너뛴다. 그 밖의 래퍼가 기믹을 감싸 전달하는 구성은 지원하지 않는다(그 경우 기믹은 두 번 받을 수 있다, 종료 알림은 멱등)
+        private sealed class GimmickCastRelay : IBossCastListener
+        {
+            private readonly IBossCastListener   _body;
+            private readonly List<IBossGimmick>  _gimmicks;
+
+            public GimmickCastRelay(IBossCastListener body, List<IBossGimmick> gimmicks)
+            {
+                _body     = body;
+                _gimmicks = gimmicks;
+            }
+
+            private bool IsBody(IBossGimmick gimmick)
+            {
+                return ReferenceEquals(gimmick, _body) || ((_body is BossCastListenerComposite composite) && (composite.Contains(gimmick)));
+            }
+
+            public void OnCastExecuted(int castInstanceId, double serverTime)
+            {
+                _body?.OnCastExecuted(castInstanceId, serverTime);
+
+                for (int i = 0; i < _gimmicks.Count; ++i)
+                {
+                    if (!IsBody(_gimmicks[i]))
+                    {
+                        _gimmicks[i].OnCastExecuted(castInstanceId, serverTime);
+                    }
+                }
+            }
+
+            public void OnCastFinished(int castInstanceId, double serverTime)
+            {
+                _body?.OnCastFinished(castInstanceId, serverTime);
+
+                for (int i = 0; i < _gimmicks.Count; ++i)
+                {
+                    if (!IsBody(_gimmicks[i]))
+                    {
+                        _gimmicks[i].OnCastFinished(castInstanceId, serverTime);
+                    }
+                }
+            }
         }
     }
 }

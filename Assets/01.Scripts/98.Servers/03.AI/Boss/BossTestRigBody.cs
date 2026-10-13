@@ -55,8 +55,12 @@ namespace Shinshi.AI
         /// <summary> 두뇌가 연결된 뒤 채운다, 전투 중이 아니면 피해를 받지 않는다 </summary>
         public BossBrain Brain { get; set; }
 
+        /// <summary> 체력 기믹의 경계 멈춤과 무적, 비워 두면 이전과 같다. 운영에서는 실제 보스 몸체와 피해 판정기가 읽어야 하는 자리다 </summary>
+        public IBossDamageCap DamageCap { get; set; }
+
         public bool IsInvulnerable => (_lifeState != EParticipantLifeState.Alive) ||
-            ((Brain != null) && (Brain.FlowState != EBossFlowState.Combat));
+            ((Brain != null) && (Brain.FlowState != EBossFlowState.Combat)) ||
+            ((DamageCap != null) && (DamageCap.IsDamageBlocked));
 
         public float HealthRate   => (_maxHealth > 0f) ? Mathf.Clamp01(_health / _maxHealth) : 0f;
         public bool  IsHealthZero => _health <= Constants.Combat.HEALTH_EPSILON;
@@ -87,6 +91,7 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 치명 피해는 개발용 즉사 버튼이 쓰므로 경계를 거치지 않는다
             if (isLethal)
             {
                 _health    = 0f;
@@ -94,7 +99,8 @@ namespace Shinshi.AI
                 return;
             }
 
-            _health = Mathf.Max(0f, _health - appliedAmount);
+            float capped = (DamageCap != null) ? DamageCap.CapDamage(_health, _maxHealth, appliedAmount) : appliedAmount;
+            _health = Mathf.Max(0f, _health - capped);
         }
 
         /// <summary> 예고 방향으로 몸을 돌린다, 다음 선택의 방향 구간이 조준과 맞게 하려는 것이다 </summary>

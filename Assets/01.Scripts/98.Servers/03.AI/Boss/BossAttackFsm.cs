@@ -140,9 +140,17 @@ namespace Shinshi.AI
                     _casts?.OnCastExecuted(_castInstanceId, boundary);
                     break;
                 case EBossAttackState.Execute:
-                    State     = EBossAttackState.Recover;
-                    _stateEnd = boundary + _definition.RecoverySeconds;
+                    // 회복 시간을 패턴이 정하면(무철 P06의 충돌 회복) 실행 끝 경계의 결과가 정해진 뒤에 읽는다
+                    State = EBossAttackState.Recover;
                     _pattern.EnterState(State, boundary);
+                    if (State != EBossAttackState.Recover)
+                    {
+                        break;
+                    }
+
+                    _stateEnd = boundary + ((_pattern is IBossRecoveryDuration recovery)
+                        ? recovery.GetRecoverySeconds(_definition.RecoverySeconds)
+                        : _definition.RecoverySeconds);
                     break;
                 case EBossAttackState.Recover:
                     IBossPattern pattern        = _pattern;

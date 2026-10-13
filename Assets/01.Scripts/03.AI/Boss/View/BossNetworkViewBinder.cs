@@ -21,10 +21,13 @@ namespace Shinshi.AI
         [SerializeField] private BossView _view;
         [SerializeField] private BossTelegraphPresenter _presenter;
         [SerializeField] private BossBarrierView _barrierView;
+        [SerializeField] private BossHardPhaseView _hardPhaseView; // 월백 하드 2페이즈 표시, 비어 있으면 생략한다
+        [SerializeField] private BossMucheolPhaseView _mucheolPhaseView; // 무철 전용 표시, 비어 있으면 생략한다
         [SerializeField] private Transform _effectsRoot;
 
         private BossState _boundState;
         private Transform _detachedEffectsRoot;
+        private bool _wasDefeated;
 
         /****************************************
         *              Unity Event
@@ -57,11 +60,20 @@ namespace Shinshi.AI
             }
 
             Bind(_state);
+            bool isDefeated = _state.LifeState == EParticipantLifeState.Dead;
             if (_view != null)
             {
                 _view.SetPose(_state.Position, _state.Forward);
-                _view.SetDefeated(_state.LifeState == EParticipantLifeState.Dead);
+                _view.SetDefeated(isDefeated);
             }
+
+            // 서버가 사망 직전에 취소 사건을 모두 보내지 못해도 하드 2페이즈와 무철의 위험 구역이 남지 않게 한다
+            if ((isDefeated) && (!_wasDefeated))
+            {
+                ClearPhaseViews();
+            }
+
+            _wasDefeated = isDefeated;
         }
 
         private void OnDisable()
@@ -123,6 +135,18 @@ namespace Shinshi.AI
             {
                 _barrierView.SetServerClock(ReadServerTime);
             }
+            if (_hardPhaseView != null)
+            {
+                _hardPhaseView.ResetNetworkSession();
+                _hardPhaseView.SetServerClock(ReadServerTime);
+            }
+            if (_mucheolPhaseView != null)
+            {
+                _mucheolPhaseView.ResetNetworkSession();
+                _mucheolPhaseView.SetPresenter(_presenter);
+                _mucheolPhaseView.SetServerClock(ReadServerTime);
+            }
+            _wasDefeated = false;
             if (_view != null)
             {
                 _view.Bind(_presenter, ReadServerTime);
@@ -148,10 +172,24 @@ namespace Shinshi.AI
             {
                 _barrierView.Clear();
             }
+            ClearPhaseViews();
             if (_view != null)
             {
                 _view.Bind(null, null);
                 _view.ResetView();
+            }
+        }
+
+        // 보스별 전용 표시를 모두 지운다
+        private void ClearPhaseViews()
+        {
+            if (_hardPhaseView != null)
+            {
+                _hardPhaseView.ClearAll();
+            }
+            if (_mucheolPhaseView != null)
+            {
+                _mucheolPhaseView.ClearAll();
             }
         }
 
@@ -264,6 +302,12 @@ namespace Shinshi.AI
 
         public void OnAreaActivated(in BossAreaStart start)
         {
+            // 대상 추적 장판의 이동 예고는 같은 장판 번호가 활성되면 기존 장판 표현에 넘기고 지운다
+            if ((_boundState != null) && (_hardPhaseView != null))
+            {
+                _hardPhaseView.NotifyAreaActivated(start.AreaId);
+            }
+
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -426,6 +470,11 @@ namespace Shinshi.AI
 
         public void OnAreaRestored(in BossAreaSnapshot snapshot)
         {
+            if ((_boundState != null) && (_hardPhaseView != null))
+            {
+                _hardPhaseView.NotifyAreaActivated(snapshot.Start.AreaId);
+            }
+
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {

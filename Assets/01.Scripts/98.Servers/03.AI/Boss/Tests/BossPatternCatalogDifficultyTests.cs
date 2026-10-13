@@ -180,13 +180,52 @@ namespace Shinshi.Tests
                 Assert.AreEqual(WOLBAEK_ID, pattern.BossId, G_ExistingIds[i]);
             }
 
-            // 기존 12개 밖의 정의는 모두 하드 정의이고, 기존 12개는 하나도 하드가 되지 않는다
+            // 월백은 기존 12개 밖의 정의가 모두 하드 정의이고, 기존 12개는 하나도 하드가 되지 않는다
+            var existing = new List<string>(G_ExistingIds);
             for (int i = 0; i < catalog.Patterns.Count; ++i)
             {
                 PatternDefinition pattern = catalog.Patterns[i];
-                EBossDifficulty expected = new List<string>(G_ExistingIds).Contains(pattern.DefinitionId) ? EBossDifficulty.Easy : EBossDifficulty.Hard;
+                if (pattern.BossId != WOLBAEK_ID)
+                {
+                    continue;
+                }
+
+                EBossDifficulty expected = existing.Contains(pattern.DefinitionId) ? EBossDifficulty.Easy : EBossDifficulty.Hard;
                 Assert.AreEqual(expected, pattern.Difficulty, pattern.DefinitionId);
             }
+        }
+
+        // 무철은 현재 운영 에셋 기준으로 이지 P01~P06(1페이즈)과 이지 2페이즈 P01~P06, 하드 전용 2페이즈 P07이다
+        [Test]
+        public void Asset_MucheolPatterns_HaveExplicitPhaseAndDifficulty()
+        {
+            BossPatternCatalogSO catalog = LoadAsset();
+
+            var expected = new Dictionary<string, KeyValuePair<int, EBossDifficulty>>();
+            for (int n = 1; n <= 6; ++n)
+            {
+                expected["mucheol_p0" + n] = new KeyValuePair<int, EBossDifficulty>(FIRST_PHASE, EBossDifficulty.Easy);
+                expected["mucheol_ph2_p0" + n] = new KeyValuePair<int, EBossDifficulty>(SECOND_PHASE, EBossDifficulty.Easy);
+            }
+
+            expected["mucheol_ph2_p07"] = new KeyValuePair<int, EBossDifficulty>(SECOND_PHASE, EBossDifficulty.Hard);
+
+            int found = 0;
+            for (int i = 0; i < catalog.Patterns.Count; ++i)
+            {
+                PatternDefinition pattern = catalog.Patterns[i];
+                if (pattern.BossId != OTHER_BOSS_ID)
+                {
+                    continue;
+                }
+
+                ++found;
+                Assert.IsTrue(expected.TryGetValue(pattern.DefinitionId, out KeyValuePair<int, EBossDifficulty> want), "예상 밖 무철 정의 " + pattern.DefinitionId);
+                Assert.AreEqual(want.Key, pattern.Phase, pattern.DefinitionId);
+                Assert.AreEqual(want.Value, pattern.Difficulty, pattern.DefinitionId);
+            }
+
+            Assert.AreEqual(expected.Count, found, "무철 정의 수");
         }
 
         [Test]
