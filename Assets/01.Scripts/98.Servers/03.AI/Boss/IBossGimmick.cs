@@ -1,7 +1,7 @@
 namespace Shinshi.AI
 {
     // 보스 하나의 기믹(체력 구간에서 한 번 발동해 일반 선택을 대신하는 진행)이 공용 두뇌에 연결되는 계약이다.
-    // 강제 선택은 기존 선택 규칙(IBossSelectionRule)으로, 시전 종료 경계는 기존 시전 알림(IBossCastListener)으로 이미 받을 수 있다.
+    // 강제 선택은 기존 선택 규칙(IBossSelectionRule)으로, 시전 종료 경계는 기존 시전 알림(IBossCastListener)으로 받는다. BossCombat이 몸체(Casts)에 이어 등록된 기믹에도 전달한다.
     // 공용 두뇌는 BossBrain.AddGimmick으로 받은 기믹의 아래 셋을 읽는다. 기믹을 두뇌에 더하는 일은 보스 몸체를 만드는 쪽이 한다.
     //  - Tick: 전투 틱 맨 앞, 페이즈 전환 판정보다 먼저 부른다
     //  - DefersPhaseTransition: 페이즈 전환 판정의 조건에 더한다

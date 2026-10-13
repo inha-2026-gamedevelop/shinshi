@@ -56,7 +56,7 @@ namespace Shinshi.AI
         public BossCombat(BossBrainDependencies dependencies, BossDamageGate damageGate, BossDefinition boss, double startTime)
         {
             _dependencies = dependencies;
-            _attack       = new BossAttackFsm(dependencies.Casts);
+            _attack       = new BossAttackFsm(new GimmickCastRelay(dependencies.Casts, _gimmicks));
             _tickableEffects = dependencies.Effects as IBossTickableEffects;
             _damageGate   = damageGate;
             _boss         = boss;
@@ -83,6 +83,12 @@ namespace Shinshi.AI
         /// <summary> 체력 기믹을 더한다, 강제 선택 규칙으로도 등록한다. 기믹이 없으면 한 틱의 순서는 이전과 같다 </summary>
         public void AddGimmick(IBossGimmick gimmick)
         {
+            // 같은 기믹을 두 번 받으면 틱과 시전 알림이 겹쳐 들어가므로 한 번만 둔다
+            if (_gimmicks.Contains(gimmick))
+            {
+                return;
+            }
+
             _gimmicks.Add(gimmick);
             _tree.AddRule(gimmick);
         }
@@ -362,6 +368,52 @@ namespace Shinshi.AI
         {
             _attack.Cancel(reason);
             _dependencies.Effects.Cancel(reason, CombatIds.NONE);
+        }
+
+        // 공격 FSM의 시전 알림은 몸체(dependencies.Casts)가 먼저 받고 등록된 기믹이 이어서 받는다.
+        // 기믹이 없으면 몸체에만 전달하므로 알림 횟수와 순서는 이전과 같다. 몸체가 이 기믹이거나 BossCastListenerComposite로 묶어 둔 경우는
+        // 이미 받으므로 건너뛴다. 그 밖의 래퍼가 기믹을 감싸 전달하는 구성은 지원하지 않는다(그 경우 기믹은 두 번 받을 수 있다, 종료 알림은 멱등)
+        private sealed class GimmickCastRelay : IBossCastListener
+        {
+            private readonly IBossCastListener   _body;
+            private readonly List<IBossGimmick>  _gimmicks;
+
+            public GimmickCastRelay(IBossCastListener body, List<IBossGimmick> gimmicks)
+            {
+                _body     = body;
+                _gimmicks = gimmicks;
+            }
+
+            private bool IsBody(IBossGimmick gimmick)
+            {
+                return ReferenceEquals(gimmick, _body) || ((_body is BossCastListenerComposite composite) && (composite.Contains(gimmick)));
+            }
+
+            public void OnCastExecuted(int castInstanceId, double serverTime)
+            {
+                _body?.OnCastExecuted(castInstanceId, serverTime);
+
+                for (int i = 0; i < _gimmicks.Count; ++i)
+                {
+                    if (!IsBody(_gimmicks[i]))
+                    {
+                        _gimmicks[i].OnCastExecuted(castInstanceId, serverTime);
+                    }
+                }
+            }
+
+            public void OnCastFinished(int castInstanceId, double serverTime)
+            {
+                _body?.OnCastFinished(castInstanceId, serverTime);
+
+                for (int i = 0; i < _gimmicks.Count; ++i)
+                {
+                    if (!IsBody(_gimmicks[i]))
+                    {
+                        _gimmicks[i].OnCastFinished(castInstanceId, serverTime);
+                    }
+                }
+            }
         }
     }
 }
