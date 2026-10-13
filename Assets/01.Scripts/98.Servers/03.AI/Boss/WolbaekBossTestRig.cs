@@ -65,6 +65,11 @@ namespace Shinshi.AI
         private const float  PARTICIPANT_LABEL_WIDTH = 70f;
         private const float  BOSS_EDGE_MARGIN        = 0.1f;  // m, 보스를 가장자리로 옮길 때 경계 안쪽에 남기는 거리
 
+        // 색 결계 기믹 시험 배치와 표시용 값이다. 모두 시험 장치 안에서만 쓴다
+        private const float  HP_BEFORE_WARD          = 0.51f; // 50% 기믹 직전
+        private const int    WARD_COLOR_COUNT        = 2;
+        private const float  WARD_STRAY_DISTANCE     = 5f;    // m, 결계 이탈 버튼이 자기 결계 중심에서 옮기는 거리
+
         private static readonly Color DisconnectedColor = Color.gray;
 
         /****************************************
@@ -91,6 +96,9 @@ namespace Shinshi.AI
         [SerializeField] private int   _talismanParticipants = 2;    // 필수 참가자 수, 1에서 4까지
         [SerializeField] private float _talismanHardReferenceHealth = 4255f; // 하드 Href, 하드 시험의 공격 피해에 쓴다
 
+        [Header("색 결계 기믹 시험 (50%, 기본 꺼짐)")]
+        [SerializeField] private bool  _wardMode            = false; // 켜면 50%에서 색 결계가 발동한다, 부적진 시험과 함께 켜면 75%에서 이어진다
+
         private CombatTargetRegistry    _registry;
         private DamageResolver          _resolver;
         private BossTestRigBody         _body;
@@ -105,6 +113,9 @@ namespace Shinshi.AI
         private BossDefinition          _boss;
         private WolbaekTalismanFormation _talisman;
         private WolbaekTalismanDevView   _talismanView;
+        private WolbaekColorWard         _ward;
+        private WolbaekColorWardDevView  _wardView;
+        private bool                    _requestedWard;
         private RigDisplacer             _displacer;
         private readonly List<TalismanMember> _members = new List<TalismanMember>();
         private Vector2                 _panelScroll;
@@ -182,9 +193,10 @@ namespace Shinshi.AI
             public Renderer   Renderer;
             public bool       Connected = true;
             public bool       Revivable = true;
+            public bool       RevivePending;
         }
 
-        private sealed class RigRoster : IBossParticipantRoster
+        private sealed class RigRoster : IBossParticipantRoster, IBossParticipantHealth
         {
             private readonly List<TalismanMember> _members;
 
@@ -201,6 +213,21 @@ namespace Shinshi.AI
                 }
 
                 return combatIds.Count;
+            }
+
+            public bool TryGetMaxHealth(int combatId, out float maxHealth)
+            {
+                for (int i = 0; i < _members.Count; ++i)
+                {
+                    if (_members[i].Player.CombatId == combatId)
+                    {
+                        maxHealth = _members[i].Player.MaxHealth;
+                        return true;
+                    }
+                }
+
+                maxHealth = 0f;
+                return false;
             }
 
             public bool TryGetParticipant(int combatId, out BossParticipantInfo info)
@@ -337,6 +364,7 @@ namespace Shinshi.AI
             {
                 _rebuildRequested     = false;
                 _talismanMode         = _requestedMode;
+                _wardMode             = _requestedWard;
                 _talismanHard         = _requestedHard;
                 _talismanParticipants = _requestedParticipants;
                 Build();
@@ -363,10 +391,13 @@ namespace Shinshi.AI
                 _brain.CompleteHandoff();
             }
 
+            ApplyPendingRevives();
+
             _resolver.BeginTick(now);
             _body.Brain = _brain;
             _brain.Tick(now);
             _talismanView?.Update();
+            _wardView?.Update();
 
             TrackPattern();
             ApplyView();
@@ -415,6 +446,12 @@ namespace Shinshi.AI
                 RequestRebuild(wantTalisman, _talismanHard, _talismanParticipants);
             }
 
+            bool wantWard = GUILayout.Toggle(_wardMode, "50% 색 결계 시험 (바꾸면 전투를 새로 시작)");
+            if (wantWard != _wardMode)
+            {
+                RequestWardRebuild(wantWard, _talismanParticipants);
+            }
+
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("패턴 실행 횟수");
             for (int i = 1; i <= PATTERN_COUNT; ++i)
@@ -458,10 +495,11 @@ namespace Shinshi.AI
 
             GUILayout.EndArea();
 
-            if (_talisman != null)
+            if ((_talisman != null) || (_ward != null))
             {
-                DrawTalismanPanel();
+                DrawRightPanel();
                 DrawStructureLabels();
+                DrawWardLabels();
             }
         }
 
@@ -473,6 +511,7 @@ namespace Shinshi.AI
             }
 
             _talismanView?.ClearAll();
+            _wardView?.ClearAll();
         }
 
         /****************************************
@@ -484,17 +523,44 @@ namespace Shinshi.AI
             _rebuildRequested      = true;
             _requestedMode         = mode;
             _requestedHard         = isHard;
+            _requestedWard         = _wardMode;
             _requestedParticipants = Mathf.Clamp(participants, 1, MAX_TALISMAN_PARTICIPANTS);
         }
 
-        // 오른쪽 패널, 기믹 진행과 참가자 조작과 구조물 배정과 최근 알림을 보인다
-        private void DrawTalismanPanel()
+        private void RequestWardRebuild(bool ward, int participants)
         {
-            double now = ReadClock();
+            _rebuildRequested      = true;
+            _requestedMode         = _talismanMode;
+            _requestedHard         = _talismanHard;
+            _requestedWard         = ward;
+            _requestedParticipants = Mathf.Clamp(participants, 1, MAX_TALISMAN_PARTICIPANTS);
+        }
+
+        // 오른쪽 패널, 켜진 기믹마다 진행과 참가자 조작과 배정과 최근 알림을 보인다
+        private void DrawRightPanel()
+        {
             Rect area = new Rect(Screen.width - GUI_RIGHT_WIDTH - GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_RIGHT_WIDTH,
                 Screen.height - TestRigDisplay.GUI_TOP - GUI_MARGIN);
             GUILayout.BeginArea(area, GUI.skin.box);
             _panelScroll = GUILayout.BeginScrollView(_panelScroll);
+
+            if (_talisman != null)
+            {
+                DrawTalismanSection();
+            }
+
+            if (_ward != null)
+            {
+                DrawWardSection();
+            }
+
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        private void DrawTalismanSection()
+        {
+            double now = ReadClock();
 
             GUILayout.Label($"부적진 {(_talismanHard ? "하드" : "이지")}  상태 {_talisman.State}  필수 {_talisman.RequiredCount}명");
             GUILayout.Label($"Boss HP {_body.HealthRate * PERCENT:F1}%  무적 {_talisman.IsDamageBlocked}  일반 선택 차단 {_talisman.BlocksSelection}");
@@ -572,9 +638,6 @@ namespace Shinshi.AI
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("미연결: 상시 소형 낙하 여우불은 아직 구현되지 않아 멈추고 재개하는 자리만 있다");
             GUILayout.Label("경계 멈춤과 무적은 시험 몸체에서만 닿는다. 운영 보스 몸체와 피해 판정기 연결은 별도 작업이다");
-
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
         }
 
         private string DescribeProgress(double now)
@@ -653,7 +716,7 @@ namespace Shinshi.AI
         private void DrawStructureLabels()
         {
             Camera view = Camera.main;
-            if (view == null)
+            if ((view == null) || (_talisman == null))
             {
                 return;
             }
@@ -669,6 +732,246 @@ namespace Shinshi.AI
 
                 Rect rect = new Rect(screen.x - (LABEL_WIDTH * HALF), Screen.height - screen.y - (LABEL_HEIGHT * HALF), LABEL_WIDTH, LABEL_HEIGHT);
                 GUI.Label(rect, $"{structure.Color} / 문양 {structure.SymbolId}\n{DescribeOwner(structure.AssignedCombatId)}");
+            }
+        }
+
+        /****************************************
+        *              Ward Test
+        ****************************************/
+
+        // 두뇌 시작 전에 색 결계 기믹을 얹는다. 부적진이 같이 켜져 있으면 그 기믹을 앞선 기믹으로 넘겨 75% 반격 중 50% 도달을 이어 받게 하고
+        // 시험 몸체의 상한 계약은 두 기믹을 합성해 읽게 한다. 결계 후보는 시험용 임시 배치이고 운영 좌표가 아니다
+        private void AttachWard()
+        {
+            if (!_wardMode)
+            {
+                return;
+            }
+
+            _wardView = new WolbaekColorWardDevView(transform, ReadClock, ReadMemberPosition, transform.position,
+                _boss.ArenaDiameter * HALF);
+            RigRoster roster = new RigRoster(_members);
+
+            _ward = new WolbaekColorWard(WolbaekColorWardDevCatalog.CreateSpec(), _body, _body, roster, roster, _body,
+                new WolbaekWardDevSites(transform.position), _resolver, _registry, new SeededBossRandom(Environment.TickCount),
+                _displacer, _talisman, _wardView);
+
+            _brain.AddGimmick(_ward);
+            _body.DamageCap = (_talisman != null) ? new BossDamageCapComposite(_talisman, _ward) : (IBossDamageCap)_ward;
+        }
+
+        // 쓰러졌거나 명단에 없으면 거짓이다, 연결 띠 표시가 쓴다
+        private bool ReadMemberPosition(int combatId, out Vector3 position)
+        {
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                if ((_members[i].Player.CombatId == combatId) && (_members[i].Player.LifeState == EParticipantLifeState.Alive))
+                {
+                    position = _members[i].Player.Position;
+                    return true;
+                }
+            }
+
+            position = Vector3.zero;
+            return false;
+        }
+
+        // 부활 요청은 색 결계의 광역 공격이 끝날 때까지 보류한다, 운영에서는 세션이 같은 창구를 읽어야 한다
+        private void ApplyPendingRevives()
+        {
+            if ((_ward != null) && (!_ward.IsReviveWindowOpen))
+            {
+                return;
+            }
+
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                if (_members[i].RevivePending)
+                {
+                    _members[i].RevivePending = false;
+                    _members[i].Player.Revive();
+                }
+            }
+        }
+
+        private void DrawWardSection()
+        {
+            double now = ReadClock();
+
+            GUILayout.Label("---- 50% 색 결계 (시험용 임시 후보 좌표) ----");
+            GUILayout.Label($"상태 {_ward.State}  필수 {_ward.RequiredCount}명  Boss HP {_body.HealthRate * PERCENT:F1}%");
+            GUILayout.Label($"무적 {_ward.IsDamageBlocked}  일반 선택 차단 {_ward.BlocksSelection}  부활 창구 {(_ward.IsReviveWindowOpen ? "열림" : "닫힘")}");
+            GUILayout.Label(DescribeWardProgress(now));
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("HP 51%로"))
+            {
+                DamageBossToRate(HP_BEFORE_WARD);
+            }
+
+            if (GUILayout.Button("Boss HP -10%"))
+            {
+                DamageBossByRate(HP_STEP_RATE);
+            }
+
+            if (GUILayout.Button("모두 중앙으로"))
+            {
+                for (int i = 0; i < _members.Count; ++i)
+                {
+                    _members[i].Player.Position = transform.position;
+                }
+            }
+
+            if (GUILayout.Button("모두 자기 결계로"))
+            {
+                for (int i = 0; i < _members.Count; ++i)
+                {
+                    MoveToWard(i, Vector3.zero);
+                }
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("참가 인원", GUILayout.Width(PARTICIPANT_LABEL_WIDTH));
+            for (int count = 1; count <= MAX_TALISMAN_PARTICIPANTS; ++count)
+            {
+                if (GUILayout.Toggle(_talismanParticipants == count, count.ToString(), GUI.skin.button) && (_talismanParticipants != count))
+                {
+                    RequestWardRebuild(true, count);
+                }
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(GUI_SPACING);
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                DrawWardMemberRow(i, now);
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            for (int i = _wardView.Log.Count - 1; i >= 0; --i)
+            {
+                GUILayout.Label(_wardView.Log[i]);
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            GUILayout.Label("미연결: 운영 보스 몸체와 피해 판정기와 세션과 Net은 연결되지 않았다. 후보 좌표와 부활 위치는 맵 검증 전이다");
+        }
+
+        private string DescribeWardProgress(double now)
+        {
+            switch (_ward.State)
+            {
+                case EWolbaekWardState.Gather:
+                    return _ward.HasHold
+                        ? $"중앙 연속 집결 {now - _ward.HoldStartServerTime:F1}초 / {WolbaekColorWardDevCatalog.GATHER_HOLD_SECONDS:F0}초"
+                        : "필수 참가자 전원이 중앙 결계(반경 5m)에 모이면 연속 집결이 시작된다";
+                case EWolbaekWardState.Search:
+                    return $"지점 {_ward.StageIndex + 1}/{WolbaekColorWardDevCatalog.STAGE_COUNT} 탐색, 첫 광역 공격까지 {Math.Max(0d, _ward.Stage.FirstStrikeServerTime - now):F1}초";
+                case EWolbaekWardState.Strike:
+                    return $"지점 {_ward.StageIndex + 1}/{WolbaekColorWardDevCatalog.STAGE_COUNT} 광역 공격 중, 다음 공격 {_ward.NextStrikeIndex + 1}번";
+                case EWolbaekWardState.Halted:
+                    return $"정지 - {_ward.HaltReason}. 끝내는 방법은 정해지지 않아 Reset으로만 풀린다";
+                case EWolbaekWardState.Failed:
+                    return "실패 - 필수 참가자 전멸";
+                case EWolbaekWardState.Completed:
+                    return "성공 또는 종료, 무적 해제";
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private void DrawWardMemberRow(int index, double now)
+        {
+            TalismanMember member = _members[index];
+            string color = _ward.TryGetColor(member.Player.CombatId, out EWolbaekWardColor assigned) ? assigned.ToString() : "-";
+            string grace = _ward.IsInGrace(member.Player.CombatId, now) ? " 합류유예" : string.Empty;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"P{index} {(index == 0 ? "(WASD)" : string.Empty)} {color} {member.Player.LifeState} " +
+                $"{(member.Connected ? "접속" : "끊김")}{(member.Revivable ? string.Empty : " 부활불가")}" +
+                $"{(member.RevivePending ? " 부활대기" : string.Empty)}{grace}", GUILayout.Width(GUI_RIGHT_WIDTH * 0.42f));
+
+            if (GUILayout.Button("사망"))
+            {
+                member.Player.Kill();
+            }
+
+            if (GUILayout.Button("부활"))
+            {
+                member.RevivePending = true;
+            }
+
+            if (GUILayout.Button("접속"))
+            {
+                member.Connected = !member.Connected;
+            }
+
+            if (GUILayout.Button("중앙"))
+            {
+                member.Player.Position = transform.position;
+            }
+
+            if (GUILayout.Button("결계"))
+            {
+                MoveToWard(index, Vector3.zero);
+            }
+
+            if (GUILayout.Button("+5m"))
+            {
+                MoveToWard(index, Vector3.right * WARD_STRAY_DISTANCE);
+            }
+
+            if (GUILayout.Button("부활불가"))
+            {
+                member.Revivable = !member.Revivable;
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        private void MoveToWard(int index, Vector3 offset)
+        {
+            if ((!_wardView.TryGetStage(out WolbaekWardStage stage))
+                || (!_ward.TryGetColor(_members[index].Player.CombatId, out EWolbaekWardColor color)))
+            {
+                return;
+            }
+
+            _members[index].Player.Position = stage.GetCenter(color) + offset;
+        }
+
+        // 결계 위에 색과 배정된 참가자를 글자로 띄운다. 문양 그림은 확정되지 않았다
+        private void DrawWardLabels()
+        {
+            Camera view = Camera.main;
+            if ((view == null) || (_ward == null) || (!_wardView.TryGetStage(out WolbaekWardStage stage)))
+            {
+                return;
+            }
+
+            for (int color = 0; color < WARD_COLOR_COUNT; ++color)
+            {
+                EWolbaekWardColor ward = (EWolbaekWardColor)color;
+                Vector3 screen = view.WorldToScreenPoint(stage.GetCenter(ward) + (Vector3.up * LABEL_LIFT));
+                if (screen.z <= 0f)
+                {
+                    continue;
+                }
+
+                string owners = string.Empty;
+                for (int i = 0; i < _members.Count; ++i)
+                {
+                    if (_ward.TryGetColor(_members[i].Player.CombatId, out EWolbaekWardColor assigned) && (assigned == ward))
+                    {
+                        owners += "P" + i + " ";
+                    }
+                }
+
+                Rect rect = new Rect(screen.x - (LABEL_WIDTH * HALF), Screen.height - screen.y - (LABEL_HEIGHT * HALF), LABEL_WIDTH, LABEL_HEIGHT);
+                GUI.Label(rect, $"{ward} / 문양 {color}\n{owners}");
             }
         }
 
@@ -786,6 +1089,7 @@ namespace Shinshi.AI
             _brain      = new BossBrain(Constants.Combat.DEV_BOSS_ID, dependencies);
             _body.Brain = _brain;
             AttachTalisman();
+            AttachWard();
 
             double now = ReadClock();
             if (!_brain.Begin(now))
@@ -817,6 +1121,9 @@ namespace Shinshi.AI
             _talismanView?.ClearAll();
             _talismanView = null;
             _talisman     = null;
+            _wardView?.ClearAll();
+            _wardView     = null;
+            _ward         = null;
         }
 
         // 시험 모드가 켜져 있으면 WASD 플레이어 옆에 참가자 대역을 세운다. 대역도 피해 대상으로 등록해 같은 판정 경로로 맞는다
@@ -826,7 +1133,7 @@ namespace Shinshi.AI
             _displacer.Register(_player);
             _members.Add(new TalismanMember { Player = _player, Body = _playerBody, Renderer = _playerRenderer });
 
-            if (!_talismanMode)
+            if ((!_talismanMode) && (!_wardMode))
             {
                 return;
             }
