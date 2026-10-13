@@ -53,6 +53,20 @@ namespace Shinshi.AI
         private const float  DIRECTION_EPSILON       = 0.0001f;
         private const float  WARP_BEHIND_DISTANCE    = 3f;
 
+        // 부적진 기믹 시험 배치와 표시용 값이다. 모두 시험 장치 안에서만 쓴다
+        private const int    MAX_TALISMAN_PARTICIPANTS = 4;
+        private const float  BOT_SPREAD              = 2f;    // m, 참가자를 처음 세울 때 옆으로 벌리는 거리
+        private const float  OUT_OF_SEAT_DISTANCE    = 6f;    // m, 자리 이탈 버튼이 구조물 중심에서 바깥쪽으로 옮기는 거리
+        private const float  HP_BEFORE_TALISMAN      = 0.76f; // 75% 기믹 직전
+        private const float  GUI_RIGHT_WIDTH         = 440f;
+        private const float  LABEL_LIFT              = 1.5f;  // m, 구조물 글자를 바닥에서 띄우는 높이
+        private const float  LABEL_WIDTH             = 160f;
+        private const float  LABEL_HEIGHT            = 40f;
+        private const float  PARTICIPANT_LABEL_WIDTH = 70f;
+        private const float  BOSS_EDGE_MARGIN        = 0.1f;  // m, 보스를 가장자리로 옮길 때 경계 안쪽에 남기는 거리
+
+        private static readonly Color DisconnectedColor = Color.gray;
+
         /****************************************
         *                Fields
         ****************************************/
@@ -71,6 +85,12 @@ namespace Shinshi.AI
         [SerializeField] private bool _continueToPhaseTwo = true; // 전환 뒤 CompleteHandoff를 이 구동기가 대신 부른다, 운영에서는 서버 연결이 부른다
         [SerializeField] private bool _phaseTwoWarpOnly   = true; // 2페이즈에서 P07 워프 후 충격파만 쓴다
 
+        [Header("부적진 기믹 시험 (75%, 기본 꺼짐)")]
+        [SerializeField] private bool  _talismanMode        = false; // 켜면 75%에서 사방 부적진이 발동하고 참가자 대역이 생긴다
+        [SerializeField] private bool  _talismanHard        = true;  // 하드는 고리와 직선 공격이 있고 이지는 자리 유지만 있다
+        [SerializeField] private int   _talismanParticipants = 2;    // 필수 참가자 수, 1에서 4까지
+        [SerializeField] private float _talismanHardReferenceHealth = 4255f; // 하드 Href, 하드 시험의 공격 피해에 쓴다
+
         private CombatTargetRegistry    _registry;
         private DamageResolver          _resolver;
         private BossTestRigBody         _body;
@@ -83,6 +103,15 @@ namespace Shinshi.AI
         private Transform               _playerBody;
         private Renderer                _playerRenderer;
         private BossDefinition          _boss;
+        private WolbaekTalismanFormation _talisman;
+        private WolbaekTalismanDevView   _talismanView;
+        private RigDisplacer             _displacer;
+        private readonly List<TalismanMember> _members = new List<TalismanMember>();
+        private Vector2                 _panelScroll;
+        private bool                    _rebuildRequested;
+        private bool                    _requestedMode;
+        private bool                    _requestedHard;
+        private int                     _requestedParticipants;
         private float                   _lastPlayerHealth;
         private float                   _flashUntil;
         private string                  _lastPatternId = string.Empty;
@@ -128,6 +157,95 @@ namespace Shinshi.AI
                 }
 
                 Health = Mathf.Max(0f, Health - appliedAmount);
+            }
+
+            /// <summary> 시험 버튼용 즉사 </summary>
+            public void Kill()
+            {
+                Health    = 0f;
+                LifeState = EParticipantLifeState.Dead;
+            }
+
+            /// <summary> 시험 버튼용 부활, 체력을 가득 채운다 </summary>
+            public void Revive()
+            {
+                Health    = MaxHealth;
+                LifeState = EParticipantLifeState.Alive;
+            }
+        }
+
+        // 부적진 기믹의 필수 참가자 한 명, 첫 참가자는 WASD 플레이어고 나머지는 버튼으로만 움직이는 대역이다
+        private sealed class TalismanMember
+        {
+            public RigPlayer  Player;
+            public Transform  Body;
+            public Renderer   Renderer;
+            public bool       Connected = true;
+            public bool       Revivable = true;
+        }
+
+        private sealed class RigRoster : IBossParticipantRoster
+        {
+            private readonly List<TalismanMember> _members;
+
+            public RigRoster(List<TalismanMember> members)
+            {
+                _members = members;
+            }
+
+            public int CollectParticipants(List<int> combatIds)
+            {
+                for (int i = 0; i < _members.Count; ++i)
+                {
+                    combatIds.Add(_members[i].Player.CombatId);
+                }
+
+                return combatIds.Count;
+            }
+
+            public bool TryGetParticipant(int combatId, out BossParticipantInfo info)
+            {
+                for (int i = 0; i < _members.Count; ++i)
+                {
+                    TalismanMember member = _members[i];
+                    if (member.Player.CombatId == combatId)
+                    {
+                        info = new BossParticipantInfo(member.Player.LifeState, member.Connected, member.Revivable, member.Player.Position);
+                        return true;
+                    }
+                }
+
+                info = default;
+                return false;
+            }
+        }
+
+        // 맞은 시험 대역을 전장 경계 안에서만 민다. 운영 서버의 플레이어 이동 밀림은 이 대역이 대신하지 못한다
+        private sealed class RigDisplacer : IBossHitDisplacer
+        {
+            private readonly BossTestRigBody                _body;
+            private readonly Dictionary<int, RigPlayer>     _targets = new Dictionary<int, RigPlayer>();
+
+            public RigDisplacer(BossTestRigBody body)
+            {
+                _body = body;
+            }
+
+            public void Register(RigPlayer player)
+            {
+                _targets[player.CombatId] = player;
+            }
+
+            public float TryPush(int combatId, Vector3 direction, float maxDistance)
+            {
+                if ((!_targets.TryGetValue(combatId, out RigPlayer target)) || (maxDistance <= 0f))
+                {
+                    return 0f;
+                }
+
+                float distance = Mathf.Clamp(_body.GetClearDistance(target.Position, direction, maxDistance, target.BodyRadius), 0f, maxDistance);
+                target.Position += direction * distance;
+                return distance;
             }
         }
 
@@ -214,6 +332,17 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 시험 모드 변경은 GUI 이벤트 도중에 적용하면 컨트롤 수가 어긋나므로 요청만 받아 두고 여기서 적용한다
+            if (_rebuildRequested)
+            {
+                _rebuildRequested     = false;
+                _talismanMode         = _requestedMode;
+                _talismanHard         = _requestedHard;
+                _talismanParticipants = _requestedParticipants;
+                Build();
+                return;
+            }
+
             double now = ReadClock();
 
             if (_player.LifeState == EParticipantLifeState.Alive)
@@ -237,6 +366,7 @@ namespace Shinshi.AI
             _resolver.BeginTick(now);
             _body.Brain = _brain;
             _brain.Tick(now);
+            _talismanView?.Update();
 
             TrackPattern();
             ApplyView();
@@ -278,6 +408,12 @@ namespace Shinshi.AI
 
             _continueToPhaseTwo = GUILayout.Toggle(_continueToPhaseTwo, "전환 뒤 CompleteHandoff 자동 호출");
             _phaseTwoWarpOnly   = GUILayout.Toggle(_phaseTwoWarpOnly, "2페이즈는 P07 워프만 사용");
+
+            bool wantTalisman = GUILayout.Toggle(_talismanMode, "75% 사방 부적진 시험 (바꾸면 전투를 새로 시작)");
+            if (wantTalisman != _talismanMode)
+            {
+                RequestRebuild(wantTalisman, _talismanHard, _talismanParticipants);
+            }
 
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("패턴 실행 횟수");
@@ -321,6 +457,12 @@ namespace Shinshi.AI
             }
 
             GUILayout.EndArea();
+
+            if (_talisman != null)
+            {
+                DrawTalismanPanel();
+                DrawStructureLabels();
+            }
         }
 
         private void OnDestroy()
@@ -329,6 +471,257 @@ namespace Shinshi.AI
             {
                 _presenter.ClearAll();
             }
+
+            _talismanView?.ClearAll();
+        }
+
+        /****************************************
+        *            Talisman Test
+        ****************************************/
+
+        private void RequestRebuild(bool mode, bool isHard, int participants)
+        {
+            _rebuildRequested      = true;
+            _requestedMode         = mode;
+            _requestedHard         = isHard;
+            _requestedParticipants = Mathf.Clamp(participants, 1, MAX_TALISMAN_PARTICIPANTS);
+        }
+
+        // 오른쪽 패널, 기믹 진행과 참가자 조작과 구조물 배정과 최근 알림을 보인다
+        private void DrawTalismanPanel()
+        {
+            double now = ReadClock();
+            Rect area = new Rect(Screen.width - GUI_RIGHT_WIDTH - GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_RIGHT_WIDTH,
+                Screen.height - TestRigDisplay.GUI_TOP - GUI_MARGIN);
+            GUILayout.BeginArea(area, GUI.skin.box);
+            _panelScroll = GUILayout.BeginScrollView(_panelScroll);
+
+            GUILayout.Label($"부적진 {(_talismanHard ? "하드" : "이지")}  상태 {_talisman.State}  필수 {_talisman.RequiredCount}명");
+            GUILayout.Label($"Boss HP {_body.HealthRate * PERCENT:F1}%  무적 {_talisman.IsDamageBlocked}  일반 선택 차단 {_talisman.BlocksSelection}");
+            GUILayout.Label(DescribeProgress(now));
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("HP 76%로"))
+            {
+                DamageBossToRate(HP_BEFORE_TALISMAN);
+            }
+
+            if (GUILayout.Button("Boss HP -10%"))
+            {
+                DamageBossByRate(HP_STEP_RATE);
+            }
+
+            if (GUILayout.Button("모두 자리로"))
+            {
+                SeatEveryone();
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("보스 가장자리(+x)로"))
+            {
+                MoveBossToEdge();
+            }
+
+            if (GUILayout.Button("보스 중앙으로"))
+            {
+                _body.Move(_body.Position, transform.position, _body.BodyRadius);
+            }
+
+            GUILayout.EndHorizontal();
+            GUILayout.Label($"보스 위치 ({_body.Position.x:F1}, {_body.Position.z:F1})  중앙까지 {Vector3.Distance(new Vector3(_body.Position.x, 0f, _body.Position.z), new Vector3(transform.position.x, 0f, transform.position.z)):F1}m");
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("참가 인원", GUILayout.Width(PARTICIPANT_LABEL_WIDTH));
+            for (int count = 1; count <= MAX_TALISMAN_PARTICIPANTS; ++count)
+            {
+                if (GUILayout.Toggle(_talismanParticipants == count, count.ToString(), GUI.skin.button) && (_talismanParticipants != count))
+                {
+                    RequestRebuild(true, _talismanHard, count);
+                }
+            }
+
+            GUILayout.EndHorizontal();
+
+            bool wantHard = GUILayout.Toggle(_talismanHard, "하드 (고리와 직선 공격), 끄면 이지 (공격 없음)");
+            if (wantHard != _talismanHard)
+            {
+                RequestRebuild(true, wantHard, _talismanParticipants);
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                DrawMemberRow(i);
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            for (int i = 0; i < _talisman.Structures.Count; ++i)
+            {
+                WolbaekTalismanStructure structure = _talisman.Structures[i];
+                GUILayout.Label($"구조물 방위 {structure.DirectionIndex}  {structure.Color}  문양 {structure.SymbolId}  배정 {DescribeOwner(structure.AssignedCombatId)}");
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            for (int i = _talismanView.Log.Count - 1; i >= 0; --i)
+            {
+                GUILayout.Label(_talismanView.Log[i]);
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            GUILayout.Label("미연결: 상시 소형 낙하 여우불은 아직 구현되지 않아 멈추고 재개하는 자리만 있다");
+            GUILayout.Label("경계 멈춤과 무적은 시험 몸체에서만 닿는다. 운영 보스 몸체와 피해 판정기 연결은 별도 작업이다");
+
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        private string DescribeProgress(double now)
+        {
+            switch (_talisman.State)
+            {
+                case EWolbaekTalismanState.Transition:
+                    return $"전환 시간 {Math.Max(0d, _talisman.TransitionEndServerTime - now):F1}초 남음, 월백이 중앙으로 이동 중";
+                case EWolbaekTalismanState.Active:
+                    return _talisman.HasHold
+                        ? $"전원 자리 유지 {now - _talisman.HoldStartServerTime:F1}초 / {WolbaekTalismanDevCatalog.HOLD_SECONDS:F0}초"
+                        : "전원이 자기 자리에 모이면 유지 시간이 시작된다";
+                case EWolbaekTalismanState.Counter:
+                    return $"반격 시간 {Math.Max(0d, _talisman.CounterEndServerTime - now):F1}초 남음";
+                case EWolbaekTalismanState.Halted:
+                    return $"정지 - {_talisman.HaltReason}. 끝내는 방법은 정해지지 않아 Reset으로만 풀린다";
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private void DrawMemberRow(int index)
+        {
+            TalismanMember member = _members[index];
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"P{index} {(index == 0 ? "(WASD)" : string.Empty)} {member.Player.LifeState}  {(member.Connected ? "접속" : "끊김")}  " +
+                $"{(member.Revivable ? string.Empty : "부활불가")}  HP {member.Player.Health:F0}", GUILayout.Width(GUI_RIGHT_WIDTH * 0.5f));
+
+            if (GUILayout.Button("사망"))
+            {
+                member.Player.Kill();
+            }
+
+            if (GUILayout.Button("부활"))
+            {
+                member.Player.Revive();
+            }
+
+            if (GUILayout.Button("접속"))
+            {
+                member.Connected = !member.Connected;
+            }
+
+            if (GUILayout.Button("이탈"))
+            {
+                MoveOutOfSeat(index);
+            }
+
+            if (GUILayout.Button("복귀"))
+            {
+                MoveToSeat(index);
+            }
+
+            if (GUILayout.Button("부활불가"))
+            {
+                member.Revivable = !member.Revivable;
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        private string DescribeOwner(int combatId)
+        {
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                if (_members[i].Player.CombatId == combatId)
+                {
+                    return "P" + i;
+                }
+            }
+
+            return "없음";
+        }
+
+        // 구조물 위에 색과 문양 번호와 배정된 참가자를 글자로 띄운다. 문양 그림은 확정되지 않았다
+        private void DrawStructureLabels()
+        {
+            Camera view = Camera.main;
+            if (view == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _talisman.Structures.Count; ++i)
+            {
+                WolbaekTalismanStructure structure = _talisman.Structures[i];
+                Vector3 screen = view.WorldToScreenPoint(structure.Center + (Vector3.up * LABEL_LIFT));
+                if (screen.z <= 0f)
+                {
+                    continue;
+                }
+
+                Rect rect = new Rect(screen.x - (LABEL_WIDTH * HALF), Screen.height - screen.y - (LABEL_HEIGHT * HALF), LABEL_WIDTH, LABEL_HEIGHT);
+                GUI.Label(rect, $"{structure.Color} / 문양 {structure.SymbolId}\n{DescribeOwner(structure.AssignedCombatId)}");
+            }
+        }
+
+        // 75% 직전에 중앙 밖에서 시작하는 경우를 보려는 시험 도구다, 전장 경계 안에서만 움직인다
+        private void MoveBossToEdge()
+        {
+            Vector3 edge = transform.position + (Vector3.right * ((_boss.ArenaDiameter * HALF) - _body.BodyRadius - BOSS_EDGE_MARGIN));
+            _body.Move(_body.Position, edge, _body.BodyRadius);
+        }
+
+        private void MoveToSeat(int index)
+        {
+            if (!TryGetSeat(index, out Vector3 center))
+            {
+                return;
+            }
+
+            _members[index].Player.Position = center;
+        }
+
+        private void MoveOutOfSeat(int index)
+        {
+            if (!TryGetSeat(index, out Vector3 center))
+            {
+                return;
+            }
+
+            Vector3 outward = new Vector3(center.x, 0f, center.z).normalized;
+            _members[index].Player.Position = center + (outward * OUT_OF_SEAT_DISTANCE);
+        }
+
+        private void SeatEveryone()
+        {
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                MoveToSeat(i);
+            }
+        }
+
+        private bool TryGetSeat(int index, out Vector3 center)
+        {
+            int combatId = _members[index].Player.CombatId;
+            for (int i = 0; i < _talisman.Structures.Count; ++i)
+            {
+                if (_talisman.Structures[i].AssignedCombatId == combatId)
+                {
+                    center = _talisman.Structures[i].Center;
+                    return true;
+                }
+            }
+
+            center = Vector3.zero;
+            return false;
         }
 
         /****************************************
@@ -345,6 +738,7 @@ namespace Shinshi.AI
         {
             _presenter.ClearAll();
             _bossView.ResetView();
+            ClearTalismanTest();
 
             var catalog = new BossPatternCatalogSource(GameDB.BossPatterns);
             if ((!catalog.TryGetBoss(Constants.Combat.DEV_BOSS_ID, out _boss)) || (!catalog.IsTuned(Constants.Combat.DEV_BOSS_ID)))
@@ -369,6 +763,7 @@ namespace Shinshi.AI
             _player = new RigPlayer(_registry.IssueCombatId(), center + _playerStart, PLAYER_MAX_HP);
             _registry.Register(_player);
             _registry.Register(_body);
+            BuildTalismanParticipants();
 
             var bridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock);
             _projectiles = new BossProjectileManager(_registry, _body, bridge);
@@ -390,6 +785,7 @@ namespace Shinshi.AI
 
             _brain      = new BossBrain(Constants.Combat.DEV_BOSS_ID, dependencies);
             _body.Brain = _brain;
+            AttachTalisman();
 
             double now = ReadClock();
             if (!_brain.Begin(now))
@@ -404,6 +800,71 @@ namespace Shinshi.AI
             _history.Clear();
             _counts.Clear();
             Debug.Log($"[Boss] 월백 시험 시작, maxHealth={_body.MaxHealth:F0}, 전장 지름={_boss.ArenaDiameter}");
+        }
+
+        // 이전 시험의 참가자 대역과 도형을 치운다. 첫 참가자(WASD 플레이어)의 몸은 Start가 한 번만 만든다
+        private void ClearTalismanTest()
+        {
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                if (_members[i].Body != _playerBody)
+                {
+                    Destroy(_members[i].Body.gameObject);
+                }
+            }
+
+            _members.Clear();
+            _talismanView?.ClearAll();
+            _talismanView = null;
+            _talisman     = null;
+        }
+
+        // 시험 모드가 켜져 있으면 WASD 플레이어 옆에 참가자 대역을 세운다. 대역도 피해 대상으로 등록해 같은 판정 경로로 맞는다
+        private void BuildTalismanParticipants()
+        {
+            _displacer = new RigDisplacer(_body);
+            _displacer.Register(_player);
+            _members.Add(new TalismanMember { Player = _player, Body = _playerBody, Renderer = _playerRenderer });
+
+            if (!_talismanMode)
+            {
+                return;
+            }
+
+            int count = Mathf.Clamp(_talismanParticipants, 1, MAX_TALISMAN_PARTICIPANTS);
+            for (int i = 1; i < count; ++i)
+            {
+                Vector3 position = _player.Position + (Vector3.right * (BOT_SPREAD * i));
+                RigPlayer bot = new RigPlayer(_registry.IssueCombatId(), position, PLAYER_MAX_HP);
+                _registry.Register(bot);
+                _displacer.Register(bot);
+
+                GameObject body = TestRigDisplay.CreatePrimitive(PrimitiveType.Capsule);
+                body.name = "TalismanBot" + i;
+                Destroy(body.GetComponent<Collider>());
+                body.transform.SetParent(transform, false);
+                _members.Add(new TalismanMember { Player = bot, Body = body.transform, Renderer = body.GetComponent<Renderer>() });
+            }
+        }
+
+        // 두뇌 시작 전에 기믹을 얹고 시험 몸체에 경계 멈춤과 무적을 연결한다
+        private void AttachTalisman()
+        {
+            if (!_talismanMode)
+            {
+                return;
+            }
+
+            _talismanView = new WolbaekTalismanDevView(transform, ReadClock);
+            WolbaekTalismanSpec spec = WolbaekTalismanDevCatalog.CreateSpec(_talismanHard, _boss.PhaseTransitionHealthRate);
+            float href = _talismanHard ? _talismanHardReferenceHealth : _referenceHealth;
+
+            // 하드 공격이 없으면 밀림 창구는 쓰이지 않지만 이 대역은 항상 넘겨도 무해하다
+            _talisman = new WolbaekTalismanFormation(spec, _body, href, _body, new RigRoster(_members), _body, _body, _resolver,
+                _registry, new SeededBossRandom(Environment.TickCount), _displacer, null, _talismanView);
+
+            _brain.AddGimmick(_talisman);
+            _body.DamageCap = _talisman;
         }
 
         private void CreateBossView()
@@ -460,6 +921,15 @@ namespace Shinshi.AI
             _playerBody.position = _player.Position + Vector3.up;
             _playerBody.rotation = Quaternion.LookRotation(_player.Forward, Vector3.up);
             _playerBody.gameObject.SetActive(_player.LifeState == EParticipantLifeState.Alive);
+
+            // 참가자 대역은 접속이 끊기면 회색으로 보인다
+            for (int i = 1; i < _members.Count; ++i)
+            {
+                TalismanMember member = _members[i];
+                member.Body.position = member.Player.Position + Vector3.up;
+                member.Body.gameObject.SetActive(member.Player.LifeState == EParticipantLifeState.Alive);
+                member.Renderer.material.color = member.Connected ? Color.white : DisconnectedColor;
+            }
 
             // 맞으면 잠깐 붉게 보여 판정이 났음을 알린다
             if (_player.Health < _lastPlayerHealth)
