@@ -70,6 +70,10 @@ namespace Shinshi.AI
         private const int    WARD_COLOR_COUNT        = 2;
         private const float  WARD_STRAY_DISTANCE     = 5f;    // m, 결계 이탈 버튼이 자기 결계 중심에서 옮기는 거리
 
+        // 여우불 유도와 봉인 핵 기믹 시험 배치와 표시용 값이다. 모두 시험 장치 안에서만 쓴다
+        private const float  HP_BEFORE_SEAL          = 0.26f; // 25% 기믹 직전
+        private const float  SEAL_CORE_STEP_DISTANCE = 1f;    // m, 핵 옆 버튼이 핵 중심에서 비켜 서는 거리
+
         private static readonly Color DisconnectedColor = Color.gray;
 
         /****************************************
@@ -99,6 +103,10 @@ namespace Shinshi.AI
         [Header("색 결계 기믹 시험 (50%, 기본 꺼짐)")]
         [SerializeField] private bool  _wardMode            = false; // 켜면 50%에서 색 결계가 발동한다, 부적진 시험과 함께 켜면 75%에서 이어진다
 
+        [Header("여우불 유도와 봉인 핵 기믹 시험 (25%, 기본 꺼짐)")]
+        [SerializeField] private bool  _sealMode            = false; // 켜면 25%에서 발동한다, 색 결계 시험과 함께 켜면 50%에서 이어진다
+        [SerializeField] private bool  _sealHard            = true;  // 하드는 휩쓸기가 있고 반격 중 0%에서 멈추며, 이지는 휩쓸기가 없고 처치 규칙을 따른다
+
         private CombatTargetRegistry    _registry;
         private DamageResolver          _resolver;
         private BossTestRigBody         _body;
@@ -115,7 +123,12 @@ namespace Shinshi.AI
         private WolbaekTalismanDevView   _talismanView;
         private WolbaekColorWard         _ward;
         private WolbaekColorWardDevView  _wardView;
+        private WolbaekFoxfireSeal       _seal;
+        private WolbaekFoxfireSealDevView _sealView;
+        private BossGimmickDeathPolicy   _deathPolicy;
         private bool                    _requestedWard;
+        private bool                    _requestedSeal;
+        private bool                    _requestedSealHard;
         private RigDisplacer             _displacer;
         private readonly List<TalismanMember> _members = new List<TalismanMember>();
         private Vector2                 _panelScroll;
@@ -365,6 +378,8 @@ namespace Shinshi.AI
                 _rebuildRequested     = false;
                 _talismanMode         = _requestedMode;
                 _wardMode             = _requestedWard;
+                _sealMode             = _requestedSeal;
+                _sealHard             = _requestedSealHard;
                 _talismanHard         = _requestedHard;
                 _talismanParticipants = _requestedParticipants;
                 Build();
@@ -398,6 +413,7 @@ namespace Shinshi.AI
             _brain.Tick(now);
             _talismanView?.Update();
             _wardView?.Update();
+            _sealView?.Update();
 
             TrackPattern();
             ApplyView();
@@ -452,6 +468,18 @@ namespace Shinshi.AI
                 RequestWardRebuild(wantWard, _talismanParticipants);
             }
 
+            bool wantSeal = GUILayout.Toggle(_sealMode, "25% 여우불 유도와 봉인 핵 시험 (바꾸면 전투를 새로 시작)");
+            if (wantSeal != _sealMode)
+            {
+                RequestSealRebuild(wantSeal, _sealHard, _talismanParticipants);
+            }
+
+            bool wantSealHard = GUILayout.Toggle(_sealHard, "  25% 시험은 하드 (휩쓸기 있음, 반격 중 0%에서 멈춤)");
+            if (wantSealHard != _sealHard)
+            {
+                RequestSealRebuild(_sealMode, wantSealHard, _talismanParticipants);
+            }
+
             GUILayout.Space(GUI_SPACING);
             GUILayout.Label("패턴 실행 횟수");
             for (int i = 1; i <= PATTERN_COUNT; ++i)
@@ -495,7 +523,7 @@ namespace Shinshi.AI
 
             GUILayout.EndArea();
 
-            if ((_talisman != null) || (_ward != null))
+            if ((_talisman != null) || (_ward != null) || (_seal != null))
             {
                 DrawRightPanel();
                 DrawStructureLabels();
@@ -512,6 +540,7 @@ namespace Shinshi.AI
 
             _talismanView?.ClearAll();
             _wardView?.ClearAll();
+            _sealView?.ClearAll();
         }
 
         /****************************************
@@ -524,6 +553,8 @@ namespace Shinshi.AI
             _requestedMode         = mode;
             _requestedHard         = isHard;
             _requestedWard         = _wardMode;
+            _requestedSeal         = _sealMode;
+            _requestedSealHard     = _sealHard;
             _requestedParticipants = Mathf.Clamp(participants, 1, MAX_TALISMAN_PARTICIPANTS);
         }
 
@@ -533,6 +564,19 @@ namespace Shinshi.AI
             _requestedMode         = _talismanMode;
             _requestedHard         = _talismanHard;
             _requestedWard         = ward;
+            _requestedSeal         = _sealMode;
+            _requestedSealHard     = _sealHard;
+            _requestedParticipants = Mathf.Clamp(participants, 1, MAX_TALISMAN_PARTICIPANTS);
+        }
+
+        private void RequestSealRebuild(bool seal, bool isHard, int participants)
+        {
+            _rebuildRequested      = true;
+            _requestedMode         = _talismanMode;
+            _requestedHard         = _talismanHard;
+            _requestedWard         = _wardMode;
+            _requestedSeal         = seal;
+            _requestedSealHard     = isHard;
             _requestedParticipants = Mathf.Clamp(participants, 1, MAX_TALISMAN_PARTICIPANTS);
         }
 
@@ -552,6 +596,11 @@ namespace Shinshi.AI
             if (_ward != null)
             {
                 DrawWardSection();
+            }
+
+            if (_seal != null)
+            {
+                DrawSealSection();
             }
 
             GUILayout.EndScrollView();
@@ -975,6 +1024,183 @@ namespace Shinshi.AI
             }
         }
 
+        /****************************************
+        *              Seal Test
+        ****************************************/
+
+        // 두뇌 시작 전에 여우불 유도와 봉인 핵 기믹을 얹는다. 앞선 기믹은 색 결계, 없으면 부적진이다. 켜진 기믹의 상한 계약은 모두 합성해
+        // 시험 몸체가 읽게 한다. 하드는 반격 중 0%에서 사망을 보류해 0% 기믹의 인계를 기다리는데, 0% 기믹은 없어 그 상태에서 멈춘다. 핵 후보는 임시 배치다
+        private void AttachSeal()
+        {
+            if (!_sealMode)
+            {
+                return;
+            }
+
+            _sealView = new WolbaekFoxfireSealDevView(transform, ReadClock, ReadMemberPosition);
+            RigRoster roster = new RigRoster(_members);
+            IBossGimmick preceding = (_ward != null) ? (IBossGimmick)_ward : _talisman;
+
+            _seal = new WolbaekFoxfireSeal(WolbaekFoxfireSealDevCatalog.CreateSpec(_sealHard), _body, _body, roster, roster, _body,
+                new WolbaekSealDevSites(transform.position), _resolver, _registry, new SeededBossRandom(Environment.TickCount),
+                _displacer, preceding, _sealView);
+
+            _brain.AddGimmick(_seal);
+            _deathPolicy.AddHold(_seal);
+
+            List<IBossDamageCap> caps = new List<IBossDamageCap>();
+            if (_talisman != null)
+            {
+                caps.Add(_talisman);
+            }
+
+            if (_ward != null)
+            {
+                caps.Add(_ward);
+            }
+
+            caps.Add(_seal);
+            _body.DamageCap = (caps.Count == 1) ? caps[0] : new BossDamageCapComposite(caps.ToArray());
+        }
+
+        private void DrawSealSection()
+        {
+            double now = ReadClock();
+
+            GUILayout.Label("---- 25% 여우불 유도와 봉인 핵 (시험용 임시 핵 후보) ----");
+            GUILayout.Label($"상태 {_seal.State}  단계 {_seal.Step}  {(_sealHard ? "하드" : "이지")}  성공 {_seal.SuccessCount}/{WolbaekFoxfireSealDevCatalog.REQUIRED_SUCCESSES}  Boss HP {_body.HealthRate * PERCENT:F1}%");
+            GUILayout.Label($"무적 {_seal.IsDamageBlocked}  일반 선택 차단 {_seal.BlocksSelection}  사망 보류 {_seal.IsDeathHeld}");
+            GUILayout.Label(DescribeSealProgress(now));
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("HP 26%로"))
+            {
+                DamageBossToRate(HP_BEFORE_SEAL);
+            }
+
+            if (GUILayout.Button("Boss HP -10%"))
+            {
+                DamageBossByRate(HP_STEP_RATE);
+            }
+
+            if (GUILayout.Button("모두 중앙으로"))
+            {
+                for (int i = 0; i < _members.Count; ++i)
+                {
+                    _members[i].Player.Position = transform.position;
+                }
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("참가 인원", GUILayout.Width(PARTICIPANT_LABEL_WIDTH));
+            for (int count = 1; count <= MAX_TALISMAN_PARTICIPANTS; ++count)
+            {
+                if (GUILayout.Toggle(_talismanParticipants == count, count.ToString(), GUI.skin.button) && (_talismanParticipants != count))
+                {
+                    RequestSealRebuild(true, _sealHard, count);
+                }
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(GUI_SPACING);
+            for (int i = 0; i < _members.Count; ++i)
+            {
+                DrawSealMemberRow(i);
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            for (int i = _sealView.Log.Count - 1; i >= 0; --i)
+            {
+                GUILayout.Label(_sealView.Log[i]);
+            }
+
+            GUILayout.Space(GUI_SPACING);
+            GUILayout.Label("미연결: 운영 보스 몸체와 피해 판정기와 세션과 Net은 연결되지 않았다. 핵 후보와 휩쓸기 범위는 임시 값이고 맵 검증 전이다. 하드 0% 기믹은 없다");
+        }
+
+        private string DescribeSealProgress(double now)
+        {
+            switch (_seal.State)
+            {
+                case EWolbaekSealState.Dormant:
+                    return "HP가 25%에 닿으면 발동한다";
+                case EWolbaekSealState.Active:
+                    return $"차례 {_seal.TurnIndex + 1}, 핵 {_seal.Cores.Count}개, 판정까지 {Math.Max(0d, _seal.Turn.ResolveServerTime - now):F1}초, 전체 남은 {Math.Max(0d, _seal.LimitEndServerTime - now):F1}초";
+                case EWolbaekSealState.Counter:
+                    return $"반격 {Math.Max(0d, _seal.CounterEndServerTime - now):F1}초 남음";
+                case EWolbaekSealState.NextBoundaryPending:
+                    return "반격 끝, 다음 경계(0%)에서 사망 보류 중. 0% 기믹이 없어 인계를 기다리며 Reset으로만 풀린다";
+                case EWolbaekSealState.Halted:
+                    return $"정지 - {_seal.HaltReason}. 끝내는 방법은 정해지지 않아 Reset으로만 풀린다";
+                case EWolbaekSealState.Failed:
+                    return $"실패 - {_seal.FailReason}";
+                case EWolbaekSealState.Completed:
+                    return "반격까지 마침, 일반전 재개";
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private void DrawSealMemberRow(int index)
+        {
+            TalismanMember member = _members[index];
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"P{index} {(index == 0 ? "(WASD)" : string.Empty)} {member.Player.LifeState} " +
+                $"{(member.Connected ? "접속" : "끊김")}{(member.RevivePending ? " 부활대기" : string.Empty)}",
+                GUILayout.Width(GUI_RIGHT_WIDTH * 0.42f));
+
+            if (GUILayout.Button("사망"))
+            {
+                member.Player.Kill();
+            }
+
+            if (GUILayout.Button("부활"))
+            {
+                member.RevivePending = true;
+            }
+
+            if (GUILayout.Button("접속"))
+            {
+                member.Connected = !member.Connected;
+            }
+
+            if (GUILayout.Button("중앙"))
+            {
+                member.Player.Position = transform.position;
+            }
+
+            if (GUILayout.Button("핵 위"))
+            {
+                MoveToCore(index, Vector3.zero);
+            }
+
+            if (GUILayout.Button("핵 옆"))
+            {
+                MoveToCore(index, Vector3.right * SEAL_CORE_STEP_DISTANCE);
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        // 참가자 번호와 같은 번호의 핵으로 옮긴다, 핵이 그보다 적으면 마지막 핵으로 옮긴다
+        private void MoveToCore(int index, Vector3 offset)
+        {
+            int count = _sealView.CoreCount;
+            if (count == 0)
+            {
+                return;
+            }
+
+            if (_sealView.TryGetCoreCenter(Mathf.Min(index, count - 1), out Vector3 center))
+            {
+                _members[index].Player.Position = center + offset;
+            }
+        }
+
         // 75% 직전에 중앙 밖에서 시작하는 경우를 보려는 시험 도구다, 전장 경계 안에서만 움직인다
         private void MoveBossToEdge()
         {
@@ -1072,6 +1298,8 @@ namespace Shinshi.AI
             _projectiles = new BossProjectileManager(_registry, _body, bridge);
             _areas       = new BossAreaManager(_registry, bridge);
 
+            _deathPolicy = new BossGimmickDeathPolicy(new ImmediateBossDeathPolicy());
+
             var dependencies = new BossBrainDependencies
             {
                 Catalog  = catalog,
@@ -1083,13 +1311,15 @@ namespace Shinshi.AI
                     _projectiles, bridge, _areas, bridge, arena: _body, warp: _body), () => _phaseTwoWarpOnly),
                 Effects  = new BossEffectComposite(_projectiles, _areas),
                 Control  = _body,
-                Random   = new SeededBossRandom(Environment.TickCount)
+                Random   = new SeededBossRandom(Environment.TickCount),
+                DeathPolicy = _deathPolicy
             };
 
             _brain      = new BossBrain(Constants.Combat.DEV_BOSS_ID, dependencies);
             _body.Brain = _brain;
             AttachTalisman();
             AttachWard();
+            AttachSeal();
 
             double now = ReadClock();
             if (!_brain.Begin(now))
@@ -1124,6 +1354,9 @@ namespace Shinshi.AI
             _wardView?.ClearAll();
             _wardView     = null;
             _ward         = null;
+            _sealView?.ClearAll();
+            _sealView     = null;
+            _seal         = null;
         }
 
         // 시험 모드가 켜져 있으면 WASD 플레이어 옆에 참가자 대역을 세운다. 대역도 피해 대상으로 등록해 같은 판정 경로로 맞는다
@@ -1133,7 +1366,7 @@ namespace Shinshi.AI
             _displacer.Register(_player);
             _members.Add(new TalismanMember { Player = _player, Body = _playerBody, Renderer = _playerRenderer });
 
-            if ((!_talismanMode) && (!_wardMode))
+            if ((!_talismanMode) && (!_wardMode) && (!_sealMode))
             {
                 return;
             }
