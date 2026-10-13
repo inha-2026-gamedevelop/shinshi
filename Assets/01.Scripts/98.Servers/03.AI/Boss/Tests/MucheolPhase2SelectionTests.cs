@@ -533,15 +533,39 @@ namespace Shinshi.Tests
             Assert.IsNull(chain.Create(unknown));
         }
 
+        // 운영 에셋에는 무철 2페이즈 이지 P01~P06이 있고, P07은 하드 전용이다
         [Test]
-        public void Asset_ProductionCatalog_HasNoPhaseTwoMucheolPatterns()
+        public void Asset_ProductionCatalog_HasEasyPhaseTwoP01ToP06AndHardOnlyP07()
         {
             BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assert.IsNotNull(catalog);
 
             for (int i = 0; i < PhaseTwoIds.Length; ++i)
             {
-                Assert.IsFalse(catalog.TryGetPattern(PhaseTwoIds[i], out PatternDefinition _), PhaseTwoIds[i]);
+                Assert.IsTrue(catalog.TryGetPattern(PhaseTwoIds[i], out PatternDefinition pattern), PhaseTwoIds[i]);
+                Assert.AreEqual(MucheolPatternFactory.BOSS_ID, pattern.BossId, PhaseTwoIds[i]);
+                Assert.AreEqual(2, pattern.Phase, PhaseTwoIds[i]);
+                Assert.AreEqual(EBossDifficulty.Easy, pattern.Difficulty, PhaseTwoIds[i]);
+            }
+
+            Assert.IsTrue(catalog.TryGetPattern(MucheolPhase2PatternFactory.P07_ID, out PatternDefinition p07));
+            Assert.AreEqual(MucheolPatternFactory.BOSS_ID, p07.BossId);
+            Assert.AreEqual(2, p07.Phase);
+            Assert.AreEqual(EBossDifficulty.Hard, p07.Difficulty);
+
+            // 이지 수집에는 P07이 없다. 무철 하드는 이지 정의를 같이 담으므로(카탈로그 계약) 하드 수집은 P01~P06에 P07을 더한 7개다
+            var easy = new List<PatternDefinition>();
+            catalog.CollectPatterns(MucheolPatternFactory.BOSS_ID, 2, EBossDifficulty.Easy, easy);
+            Assert.AreEqual(PhaseTwoIds.Length, easy.Count);
+            Assert.IsFalse(easy.Exists(p => p.DefinitionId == MucheolPhase2PatternFactory.P07_ID));
+
+            var hard = new List<PatternDefinition>();
+            catalog.CollectPatterns(MucheolPatternFactory.BOSS_ID, 2, EBossDifficulty.Hard, hard);
+            Assert.AreEqual(PhaseTwoIds.Length + 1, hard.Count);
+            Assert.AreEqual(1, hard.FindAll(p => p.DefinitionId == MucheolPhase2PatternFactory.P07_ID).Count);
+            for (int i = 0; i < PhaseTwoIds.Length; ++i)
+            {
+                Assert.IsTrue(hard.Exists(p => p.DefinitionId == PhaseTwoIds[i]), PhaseTwoIds[i]);
             }
         }
     }
