@@ -396,9 +396,12 @@ namespace Shinshi.Art
             _extraTargets = new Transform[targetCount];
             _extraActive  = new bool[targetCount];
 
-            int  next      = 0;
-            bool hasBounds = false;
-            Bounds bounds  = default;
+            int start = _pieces.Length;
+            Array.Resize(ref _pieces, start + targetCount);
+
+            // 사당은 북쪽, 입구 문은 남쪽에 있어 하나로 묶으면 기울어지는 방향이 어긋난다.
+            // 그래서 오브젝트마다 자기 렌더러 범위 중심을 축으로 자기 바깥 방향으로 기울인다
+            int next = 0;
             for (int i = 0; i < _extraFallers.Length; ++i)
             {
                 Transform target = _extraFallers[i];
@@ -409,8 +412,9 @@ namespace Shinshi.Art
 
                 _extraTargets[next] = target;
                 _extraActive[next]  = target.gameObject.activeSelf;
-                ++next;
 
+                bool   hasBounds = false;
+                Bounds bounds    = default;
                 Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
                 for (int r = 0; r < renderers.Length; ++r)
                 {
@@ -424,17 +428,11 @@ namespace Shinshi.Art
                         bounds.Encapsulate(renderers[r].bounds);
                     }
                 }
-            }
 
-            Vector3 center  = hasBounds ? transform.InverseTransformPoint(bounds.center) : Vector3.zero;
-            Vector3 outward = new Vector3(center.x, 0f, center.z).normalized;
+                Vector3 center  = transform.InverseTransformPoint(hasBounds ? bounds.center : target.position);
+                Vector3 outward = new Vector3(center.x, 0f, center.z).normalized;
 
-            int start = _pieces.Length;
-            Array.Resize(ref _pieces, start + targetCount);
-            for (int i = 0; i < targetCount; ++i)
-            {
-                Transform target = _extraTargets[i];
-                _pieces[start + i] = new Piece
+                _pieces[start + next] = new Piece
                 {
                     Target          = target,
                     InitialPosition = transform.InverseTransformPoint(target.position),
@@ -449,6 +447,8 @@ namespace Shinshi.Art
                     Duration        = Mathf.Max(_extraDuration, Mathf.Epsilon),
                     Kept            = false
                 };
+
+                ++next;
             }
 
             _endTime = Mathf.Max(_endTime, _swapTime + _extraDelay + _extraDuration);
