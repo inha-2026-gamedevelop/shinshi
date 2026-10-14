@@ -155,6 +155,22 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 `ObjectPool<T>.defaultCapacity`는 내부 용량이지 미리 생성된 인스턴스 수가 아니며, `maxSize`는 유휴 객체 보존 제한이지 `Get()`의 동시 활성 상한이 아니다. 초기 생성 수·최대 활성 수·유휴 보존 수·메모리 예산을 별도로 정의한다. 공통 풀 구현은 아직 확인되지 않았으므로 이 계약이 이미 적용됐다고 쓰지 않는다.
 
+### 등록된 필수 대상 — 월백 워프
+
+2026-10-14 등록·아트 보완 후 갱신. 월백 P2P07 전장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Warp/`. 실제 AssetDatabase 재귀 조회 결과는 프리팹 포함 Breakup 37개·Reform 37개·Landing 40개, 전체 고유 의존성 66개다. Absent는 소수 잔류 꽃잎·광점이 감쇠하는 상태로 별도 프리팹이 없다.
+
+| 프리팹 | GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekWarp_Breakup.prefab` | `6adf6b023b0febc46962e9092538e8aa` | 높이별 중성 proxy dissolve·표면 꽃잎·몸체 안개·소멸 |
+| `PF_WolbaekWarp_Reform.prefab` | `966423ed48ef1354d9fc4bcc52d1303f` | 확정 body Bounds에 수렴하는 꽃잎·proxy 재결합·완료 |
+| `PF_WolbaekWarp_Landing.prefab` | `4ea9c4bf2e17e2d42a13f19a157eb1d4` | 실제 착지 후 고정 반경 예고·외부 확정 충격파·취소/종료 |
+
+- Warp 재질은 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Warp/Materials/M_Warp_{Body,Mist,Petals,Core,Motes,Boundary}.mat`. Body는 전용 `Shinshi/VFX/WarpProxyDissolve`, 나머지는 기존 `Shinshi/VFX/Particle`이며 로컬 키워드 0개다. Beams의 `Textures/M_Beam_VeilCloud.png`, `M_Beam_Boundary.png`와 자체 `Materials/T_Warp_MoteGlow.png`를 참조한다. 곡면 꽃잎·core·지면층·광점 및 정상 잔류를 준비 범위에 포함한다.
+- Landing은 검증한 Piloto Studio 한 시스템의 메시·UV를 주 파동/희미한 보조 2층에 재사용한다. 실제 재질은 Warp 복제 `M_Warp_Wave_0.mat`~`2.mat`, 메시 `UV_Distorted_PolarCord_InOut.fbx`다. 실제 재귀 텍스처는 `Tx_Line_06_Up.png`, `Gradient_maker_Y_Fade_tappered.png`, `Tapered_HorizontalGrad.png`이며 재질의 회색 기본 noise도 사용한다. `Piloto Studio/UberFXSG` 로컬 키워드는 `_ALPHATEST_ON`, `_BUILTIN_ALPHATEST_ON`, `_BUILTIN_AlphaClip`, `_BUILTIN_SURFACE_TYPE_TRANSPARENT`, `_SURFACE_TYPE_TRANSPARENT`, `_USEALPHAOVERRIDE`, `_USEUVOFFSET`, `_DOUBLESIDED_ON`이다. 원본 전체 패키지/공유 재질을 수정하거나 준비 대상으로 확대하지 않는다.
+- 현재 공용 `Assets/09.Data/Prewarm/PrewarmCatalog.asset`(24개 항목), `ClientPrewarmRunner`, `IPrewarmTarget` 소비 구조가 존재한다. **Warp 3PF는 해당 실행 카탈로그에 미등록이며 IPrewarmTarget도 미연결**이다. 여기서는 대상/GUID·의존성 문서 등록만 수행했다. 공용 카탈로그 담당의 등록·표현 재생 어댑터 및 실제 GPU/API variant 준비는 후속 작업이다. 앞선 목록의 런타임 미구현 서술은 각 확인 시점의 상태다.
+- 실제 캐릭터 dissolve는 미연결이다. 중성 proxy는 명시적 개발 옵션이다. 예고·진행·확정·취소·풀 반환은 [워프 사용 안내](WOLBAEK_WARP_VFX_USAGE.md)를 따른다. 초기 생성 수·최대 동시 수·메모리·첫 사용 지연·PSO는 미측정이며 문서 등록을 워밍업 실행 완료로 해석하지 않는다.
+- 등록 근거는 실제 GUID·참조·의존성 재조회(L1)이며 표현 기능은 잔류 정리를 포함한 전용 씬 PlayMode 28/28 PASS와 24fps·192프레임 Unity 렌더로 확인했다(L2). Warp 전용 검수 Bloom 프로필은 배치 프리팹 의존성에 포함되지 않는다. 원화 실루엣·광산란·충격파 부피 차이가 남은 조건부 검토본이며 실보스 연결·Player/API별 프리워밍·성능은 미검증이다.
+
 ### 안전한 준비·반환 순서
 
 1. 자산 로드가 끝난 뒤 해당 씬 소유의 풀을 만든다. 생성은 로딩 화면 안에서 프레임별로 나누고 총량·상주 메모리·시간을 측정한다. 씬이나 스킬 목록이 바뀌면 목록 버전을 갱신한다.
