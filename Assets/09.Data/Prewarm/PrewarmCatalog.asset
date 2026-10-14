@@ -1,0 +1,192 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: adbfeba7c87008348b1b02384a4c03a8, type: 3}
+  m_Name: PrewarmCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PrewarmCatalogSO
+  _entries:
+  - _prefab: {fileID: 3620229305196540495, guid: 222c1b034fe90ab47a0fbba4c8f87b02, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 188683641221598548, guid: 6a10759e25bd2ad43a351a54cb91140c, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 5246000443518733147, guid: a00aee7ab56c8014d9aa51c20be13d8a, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 831998015095478791, guid: 7f822fb59a611ae49b0ce2791a54870d, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 792755643059424191, guid: e078137535efca143a674f71d8e0014f, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 3063658003728123891, guid: 7ee697859b3538d44b89ee61e93bfccb, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 223175418192766026, guid: 3bc2891cd978f6546b860b63c7c5f3c0, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 4401836618647935956, guid: 7547c47df363fe34b9ec851f973a197c, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 3181935672943181347, guid: 233c55ce434826444aead7c0a1b823fc, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 4023686897370039170, guid: 876b03aa451a003449aa0271094656bd, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 5636803044710103467, guid: ea0aca9bba3e176478fb4937762b9857, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.9
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 3150555367362999579, guid: 156154de3e00a734e8cc7ca5f509aa0b, type: 3}
+    _kind: 0
+    _visibleFrames: 4
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 1
+  - _prefab: {fileID: 5249418338576633219, guid: 832286be7a104c14f8b6fc35d03b9d81, type: 3}
+    _kind: 0
+    _visibleFrames: 4
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 1
+  - _prefab: {fileID: 6914791226151446844, guid: a38dc3650a052ca47859f451e7282470, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 3281536283908561520, guid: da3342042f8469049a2f8303635eb003, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 3626040475360929490, guid: 456f9eb2bb4ac6744b4903b6f6decca7, type: 3}
+    _kind: 1
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.7
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 8306143030749351453, guid: a1d04ddb9bcd5cf4b85724e668b1b167, type: 3}
+    _kind: 1
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.6
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 2034812012721883504, guid: fdd68b2ba89329a448931f2b2234040e, type: 3}
+    _kind: 1
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.6
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 8279772207432954365, guid: fbc26a4727ef14147bdff3a9c867127d, type: 3}
+    _kind: 1
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.7
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 5866148473364208090, guid: f1ab98cb1154a8e43a871eb105569570, type: 3}
+    _kind: 1
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.4
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 6659505800591994744, guid: e38407cf79fbb544b901b17c25059d24, type: 3}
+    _kind: 1
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.6
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 1386105864024582237, guid: b428d76bffe48434998e2fd46c40cb82, type: 3}
+    _kind: 1
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.2
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 2187510881409781005, guid: 78ae17dbaba9ff24f9ecacf09d4422fe, type: 3}
+    _kind: 1
+    _visibleFrames: 5
+    _sampleSeconds:
+    - 0.2
+    _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 1289852489252288786, guid: 4dbe54c4863042e45aa4c53adfee8f89, type: 3}
+    _kind: 2
+    _visibleFrames: 5
+    _sampleSeconds: []
+    _required: 1
+    _moveTrail: 0
+  _frameBudgetMs: 8
+  _totalTimeoutSeconds: 10
+  _maxConcurrentVisible: 8
+  _stageDistance: 12
+  _stageSpacing: 2
+  _variantCollection: {fileID: 0}
+  _variantsPerFrame: 8
+  _graphicsStateFileName: 
+  _graphicsStatesPerFrame: 16

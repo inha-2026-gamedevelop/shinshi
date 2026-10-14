@@ -34,10 +34,10 @@ Assets/
 │ ├ 04.Systems/       게임플레이 시스템 (Shinshi.Systems) - Wave, Outpost, Reward, BossTicket, Essence,
 │ │                   Talisman, Equipment, Inventory, Growth, FoxTrace, Interaction,
 │ │                   Life, Crafting, Auction
-│ ├ 05.Art/           표현 (Shinshi.Art) - Camera, Environment, Telegraph, VFX
+│ ├ 05.Art/           표현 (Shinshi.Art) - Camera, Environment, Prewarm, Telegraph, VFX
 │ │                   + 팀 제작 모델링 에셋 - Characters, Environment, Props, Shaders, UI
 │ │                     (규칙: docs/unity/SCENE_AND_ASSET_SAFETY.md 4장)
-│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Lobby, Systems
+│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Loading, Lobby, Systems
 │ ├ 98.Servers/       서버 전용 코드 (Shinshi.Server 어셈블리) - 9장
 │ │ ├ 01.Network/     서버 프로세스·접속·백엔드 연결
 │ │ │ ├ Bootstrap/    부트스트랩·실행 설정·프로세스 제어·종료
@@ -756,6 +756,7 @@ GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 �
 | `ProgressionCatalogSO` | `09.Data/Progression/ProgressionCatalog.asset` | 지역, 보스전 해금, 여우의 흔적, 최초 지원, 체험판 플래그 | 기웅 |
 | `AvatarCatalogSO` | `09.Data/Avatar/AvatarCatalog.asset` | 외형 슬라이더와 UMA DNA 대응, 색 팔레트, 직업별 고정 헤어, 장비 부위의 UMA 의상 슬롯, UMA 생성기 설정. 지금 값은 UMA 기본 종족 기준 임시값이다. UMA를 뺐으므로 이 값을 적용하는 코드가 없고, 새 아바타 방식이 정해지면 필드와 값을 다시 정한다 | {팀장} |
 | `CameraConfigSO` | `09.Data/Combat/CameraConfig.asset` | 쿼터뷰 카메라 줌 단계별 시점(각도, 시야각, 거리, 초점 높이), 전환 시간, 방위, 따라가기 감쇠, 가림 투명화 범위. 로컬 표현 전용이며 서버 판정에 쓰지 않는다 | {팀장} |
+| `PrewarmCatalogSO` | `09.Data/Prewarm/PrewarmCatalog.asset` | 부팅 로딩 화면에서 실제로 그려 데울 VFX·모델 프리팹 목록, 항목별 표시 프레임·표본 시점, 프레임 예산·전체 제한 시간, 선택적 셰이더 수집본. 로컬 표현 전용이며 GameDB 루트에 넣지 않고 Bootstrap 씬의 `ClientPrewarmRunner`가 직접 참조한다. 스크립트는 `01.Scripts/05.Art/Prewarm/`(`Shinshi.Art`) | {팀장} |
 | {이름}SO | `09.Data/{도메인}/{이름}.asset` | {값 설명} | {파트} |
 
 - 도메인 SO는 `GameDataSO`를 상속하고 `ValidateValues`를 구현한다. 다른 카탈로그 ID를 참조하면 `ValidateReferences`에서 상대 카탈로그의 `Contains*` 메서드로 검사한다. 참조 검사는 모든 SO의 값 검사가 통과한 뒤에만 돈다.

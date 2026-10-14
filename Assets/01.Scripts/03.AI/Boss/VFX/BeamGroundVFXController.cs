@@ -11,7 +11,7 @@ namespace Shinshi.Art
     /// <summary> 전장에 고정된 평행 빔 한 줄을 그린다, 피해 판정과 네트워크는 다루지 않는다 </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-    public sealed class BeamGroundVFXController : MonoBehaviour
+    public sealed class BeamGroundVFXController : MonoBehaviour, IPrewarmTarget
     {
         /****************************************
         *              Constants
@@ -26,6 +26,10 @@ namespace Shinshi.Art
         private const int    VERTEX_COUNT          = SAMPLE_COUNT * 2;
         private const int    INDEX_COUNT           = ARC_SEGMENTS * 6;
         private const string MESH_NAME             = "BeamGroundVFX Runtime Mesh";
+        private const float  PREWARM_ARENA_RADIUS  = 3f;
+        private const float  PREWARM_WIDTH         = 1.5f;
+        private const float  PREWARM_TELEGRAPH     = 0.25f;
+        private const float  PREWARM_ACTIVE        = 0.35f;
 
         private static readonly int _stateId = Shader.PropertyToID("_State");
         private static readonly int _sizeId  = Shader.PropertyToID("_Size");
@@ -159,6 +163,29 @@ namespace Shinshi.Art
             {
                 _surface.enabled = false;
             }
+        }
+
+        /// <summary> 운영 표시와 같은 Show로 메시를 만들고 예고에서 활성으로 넘어가는 두 상태를 그린다 </summary>
+        public void BeginPrewarm()
+        {
+            Show(transform.position, PREWARM_ARENA_RADIUS, transform.forward, 0f, PREWARM_WIDTH);
+        }
+
+        public void TickPrewarm(float elapsedSeconds)
+        {
+            if (elapsedSeconds < PREWARM_TELEGRAPH)
+            {
+                Render(false, elapsedSeconds / PREWARM_TELEGRAPH, float.MaxValue, 1f);
+                return;
+            }
+
+            float activeAge = elapsedSeconds - PREWARM_TELEGRAPH;
+            Render(true, 1f - Mathf.Clamp01(activeAge / PREWARM_ACTIVE), activeAge, 1f);
+        }
+
+        public void EndPrewarm()
+        {
+            Hide();
         }
 
         // 폭 띠의 양 변을 전장 안쪽으로 자르고 그 사이를 같은 간격으로 나눠 각 표본마다 전장 원과 만나는 앞뒤 두 점을 만든다

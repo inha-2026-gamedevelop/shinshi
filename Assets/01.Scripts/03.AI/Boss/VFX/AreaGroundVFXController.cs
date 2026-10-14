@@ -8,7 +8,7 @@ namespace Shinshi.Art
     /// <summary> 원형 지속 장판 한 개를 그린다, 피해 판정과 네트워크는 다루지 않는다 </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-    public sealed class AreaGroundVFXController : MonoBehaviour
+    public sealed class AreaGroundVFXController : MonoBehaviour, IPrewarmTarget
     {
         /****************************************
         *              Constants
@@ -19,6 +19,8 @@ namespace Shinshi.Art
         private const float  HALF                  = 0.5f;
         private const float  DIAMETER_SCALE        = 2f;
         private const string MESH_NAME             = "AreaGroundVFX Runtime Mesh";
+        private const float  PREWARM_RADIUS        = 2f;
+        private const float  PREWARM_LIFE          = 0.4f;
 
         private static readonly int _stateId = Shader.PropertyToID("_State");
         private static readonly int _sizeId  = Shader.PropertyToID("_Size");
@@ -120,6 +122,24 @@ namespace Shinshi.Art
             {
                 _surface.enabled = false;
             }
+        }
+
+        /// <summary> 운영 표시와 같은 Show로 켜고 유지, 타격 맥동, 옅어짐을 차례로 그린다 </summary>
+        public void BeginPrewarm()
+        {
+            Show(transform.position, PREWARM_RADIUS);
+        }
+
+        public void TickPrewarm(float elapsedSeconds)
+        {
+            float fadeAge = Mathf.Max(0f, elapsedSeconds - PREWARM_LIFE);
+            Render(1f - Mathf.Clamp01(elapsedSeconds / PREWARM_LIFE), elapsedSeconds,
+                1f - Mathf.Clamp01(fadeAge / _fadeSeconds));
+        }
+
+        public void EndPrewarm()
+        {
+            Hide();
         }
 
         private void Initialize()
