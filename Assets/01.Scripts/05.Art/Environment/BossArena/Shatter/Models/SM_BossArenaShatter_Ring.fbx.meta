@@ -7,6 +7,26 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: MI_KoreanBrick_2
+    second: {fileID: 2100000, guid: f4eb15aafd1eb89458decdaf85ff13fc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MI_KoreanBrick_4
+    second: {fileID: 2100000, guid: d560208a337c71348bc644483d203871, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MI_KoreanStone_1
+    second: {fileID: 2100000, guid: 7f287a5043d475e4ca12b5a99c791616, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MI_R_Roof
+    second: {fileID: 2100000, guid: 72dbc8c47bcce6f4881a62682c8457db, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_BossArenaShatter_Fracture
     second: {fileID: 2100000, guid: d8632d736907db644b410dbb767248d2, type: 2}
   - first:
