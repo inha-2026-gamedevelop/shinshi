@@ -111,6 +111,30 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 필수 목록은 **그 맵의 공격 예고, 현재 파티의 장착 스킬·동료, 등장할 적·보스의 효과**로 좁힌다. 실제 프리팹 GUID·재질·텍스처·셰이더 키워드·사용 품질·예상 동시 인스턴스·풀 반환 조건을 기록한다. `maxParticles` 합계를 실제 활성 입자나 필요 풀 수로 쓰지 않는다.
 
+### 등록된 필수 대상 — 무철 01~07
+
+2026-10-14 등록. 적용 범위는 **무철이 등장하는 전장 입장 준비**이며 마을 공통 상주 대상은 아니다. 이 표는 프리워밍 대상 목록이다. 부팅 로더의 실행 카탈로그(`Assets/09.Data/Prewarm/PrewarmCatalog.asset`)에는 아직 넣지 않았다. 무철 VFX가 보스 이벤트 바인더로 운영 경로에 연결될 때 `IPrewarmTarget` 어댑터와 함께 등록하므로, 목록 등록을 런타임 워밍업 완료로 해석하지 않는다.
+
+프리팹 폴더는 `Assets/02.Prefab/VFX/Mucheol/`이다. Unity AssetDatabase로 7개 GUID와 재귀 의존성을 확인했다. 재질/PNG 수는 프리팹별 의존성 수이며 공유 항목을 더한 메모리 용량이 아니다.
+
+| 대상 | 프리팹 | GUID | 재질 / PNG |
+|---|---|---|---:|
+| 01 부채꼴 | `PF_Mucheol_01_ImpactV4.prefab` | `2dd58f00a425e6d4fb35cfb053f10606` | 9 / 6 |
+| 02 원형 | `PF_Mucheol_02.prefab` | `97bfbd4a23032584ea026b2db1c9ed72` | 9 / 6 |
+| 03 직선 | `PF_Mucheol_03.prefab` | `5ef5e97f4f0197543bbd2d3dc94a91dc` | 9 / 6 |
+| 04 소충격파 | `PF_Mucheol_04.prefab` | `ad7521ef3a7f4f145b864d33789d4b95` | 9 / 6 |
+| 05 별도 2타 | `PF_Mucheol_05.prefab` | `b9bd4aea755bc894481d3139ed1fe326` | 9 / 6 |
+| 06 돌진 | `PF_Mucheol_06.prefab` | `27dfc0c389d264b48b0e969c502e0809` | 10 / 7 |
+| 07 후방 안전구역 | `PF_Mucheol_07.prefab` | `3dbb458840f753c45a33ad7463aab8a1` | 9 / 6 |
+
+- 재질·텍스처 위치: 01은 `Assets/01.Scripts/05.Art/VFX/Mucheol/ImpactV4/`, 02~07은 `ImpactBatch/NN/` 아래다. 실행 대상 의존성은 프리팹 참조로 추적하고 미리보기 지면·카메라·개발 씬은 제외한다. 06의 `charge-head.png`도 포함한다.
+- 공통 셰이더는 `Shinshi/VFX/MucheolImpactLayer`, `Shinshi/VFX/MucheolImpactParticle`이다. 바위는 01의 `Universal Render Pipeline/Lit`, 02~07의 `Shinshi/VFX/MucheolBatchRock`을 준비 대상으로 포함한다. 확인 시 재질별 활성 로컬 키워드는 모두 비어 있었다. 전역 조명·그림자·안개·품질 variant와 PSO 준비까지 보장하는 결과는 아니다.
+- 품질은 실제 전장에 선택된 URP 품질·그래픽스 API와 동일하게 준비하고 별도 검증한다. 초기 인스턴스 수·최대 동시 수·메모리 예산은 전투 연결 후 실측으로 확정한다. 04와 05의 중첩 꼬리를 하나의 슬롯으로 가정하지 않는다.
+- 예고, 타격 확산, 지면 유지/소멸, 파편과 06 돌진 머리를 준비 범위에 포함한다. 필수 예고를 장식과 함께 생략하지 않는다. 일회성 효과에 ParticleSystem의 루프용 `prewarm`을 켜는 것으로 대체하지 않는다.
+- 반환은 루트 재생기의 `Stop()` 후 비활성화한다. 정상 재생 종료는 `IsRunning == false`로 확인하며, 취소·전장 이탈 때에도 `Stop()`을 호출한다. 01과 02~07의 루트 타입 차이 및 시간 API는 [무철 VFX 사용 안내](MUCHEOL_VFX_USAGE.md)를 따른다.
+
+등록 검증은 L1/증거 등급1(7개 경로·GUID·의존성 조회, 중복 없음)이다. 실제 로딩 연결·GPU 워밍업·첫 사용 끊김 개선과 풀 수용량은 미검증이다.
+
 ### 등록된 필수 대상 — 월백 여우불
 
 2026-10-14 등록, 자연스러운 유동 리그 반영 후 재조회. **월백 여우불이 등장하는 전장 입장 준비** 대상으로, 마을 공통 상주 목록이 아니다. 실제 프리팹은 `Assets/02.Prefab/VFX/Wolbaek/Foxfire/PF_WolbaekFoxfire.prefab`, GUID는 `0a5b5eafeccd22a4daa6bc81857c5609`다. Unity AssetDatabase 재귀 조회로 프리팹 포함 고유 의존성 50개(메시 39·설정 SO 1·재질 3·PNG 2·스크립트 3·셰이더 1·프리팹 1)를 확인했다. 개발 씬·지원 바닥·카메라·검수 Volume은 제외된다.
