@@ -493,6 +493,18 @@ namespace Shinshi.Network
             return (_inTick) && (_session.ReportBossDefeated());
         }
 
+        /// <summary> 보스 기믹이 최종 성공을 내준 틱에 부른다, 같은 틱 전원 사망보다 앞선다. BeginTick과 CompleteTick 사이에서만 받는다 </summary>
+        public bool ReportBossFinalSuccess()
+        {
+            return (_inTick) && (_session.ReportBossFinalSuccess());
+        }
+
+        /// <summary> 보스 기믹이 실패한 틱에 부른다, 사유는 Timeout과 AllDead만 받는다. BeginTick과 CompleteTick 사이에서만 받는다 </summary>
+        public bool ReportBossFightFailed(ESessionEndReason reason)
+        {
+            return (_inTick) && (_session.ReportBossFightFailed(reason));
+        }
+
         // 보스를 열 수 없는 하드 출정을 보스 없이 진행하지 않고 닫는다. 서버 틱 안에서 그 틱의 서버 시각으로 부르면 받는다(세션이
         // 같은 틱 시각만 허용). 서비스 장애 취소는 정산을 시작하지 않으므로 환급은 백엔드 복구 작업이 한다
         /// <summary> 진행 중인 세션을 서비스 취소(ServiceCancelled)로 끝낸다, 진행 중이 아니거나 시각이 틀리면 거짓 </summary>
