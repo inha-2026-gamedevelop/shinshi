@@ -29,7 +29,8 @@ namespace Shinshi.AI
         private const float  REDUCTION_CAP    = 0.6f;
         private const float  LINE_OF_SIGHT_HEIGHT = 0.5f; // 시험용 벽 검사 높이
         private const float  GUI_WIDTH        = 360f;
-        private const float  GUI_HEIGHT       = 130f;
+        private const float  HIT_DAMAGE       = 100f; // 피격 모션 시험 버튼이 주는 피해
+        private const float  GUI_HEIGHT       = 160f;
         private const float  GUI_MARGIN       = 10f;
         private const string HORIZONTAL_AXIS  = "Horizontal";
         private const string VERTICAL_AXIS    = "Vertical";
@@ -52,6 +53,7 @@ namespace Shinshi.AI
         private DamageResolver      _resolver;
         private EnemyTestView       _enemyView;
         private Transform           _playerBody;
+        private float               _lastEnemyHealth;
 
         /****************************************
         *              Unity Event
@@ -97,6 +99,7 @@ namespace Shinshi.AI
             int obstacleMask = CombatLineOfSight.ResolveLayerMask(Constants.Combat.OBSTACLE_LAYER_NAME);
             var movement = new EnemyTestRigMovement(_enemy, new CombatLineOfSight(obstacleMask, LINE_OF_SIGHT_HEIGHT));
             _brain = new ChargerEnemyBrain(_enemy, definition, _referenceHealth, registry, _resolver, movement);
+            _lastEnemyHealth = _enemy.Health;
 
             _enemyView = Instantiate(_enemyPrefab, _enemy.Position, Quaternion.identity, transform);
 
@@ -129,6 +132,13 @@ namespace Shinshi.AI
             _playerBody.gameObject.SetActive(_player.LifeState == EParticipantLifeState.Alive);
             _enemyView.ApplyDash(_enemy.Position, _enemy.Forward, _brain.State, _brain.TelegraphProgress(now),
                 _brain.DashOrigin, _brain.AimDirection, _brain.DashLength, _brain.DashWidth);
+
+            if ((_enemy.Health < _lastEnemyHealth) && (_enemy.Health > 0f))
+            {
+                _enemyView.PlayHit();
+            }
+
+            _lastEnemyHealth = _enemy.Health;
         }
 
         private void OnGUI()
@@ -141,6 +151,11 @@ namespace Shinshi.AI
             GUILayout.BeginArea(new Rect(GUI_MARGIN, TestRigDisplay.GUI_TOP, GUI_WIDTH, GUI_HEIGHT), GUI.skin.box);
             GUILayout.Label($"State {_brain.State}  Dashes {_brain.ExecutedCount}  LastHit {_brain.LastHitCount}");
             GUILayout.Label($"Enemy HP {_enemy.Health:F0}/{_enemy.MaxHealth:F0}  Player HP {_player.Health:F0}");
+
+            if (GUILayout.Button("Hit enemy"))
+            {
+                _enemy.ApplyDamage(HIT_DAMAGE, false, Time.timeAsDouble);
+            }
 
             if (GUILayout.Button("Kill enemy"))
             {
