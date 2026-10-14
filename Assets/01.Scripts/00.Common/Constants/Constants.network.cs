@@ -15,7 +15,8 @@ namespace Shinshi.Common
             // 4: 외형 v3(P09, 48바이트)와 기본 공격·회피 표현 시퀀스 SyncVar 추가(2026-10-06)
             // 5: 캐릭터 누적 경험치·성장 입장 계약과 플레이어 경험치 SyncVar 추가(2026-10-11)
             // 6: 파티 참가자 누적 경험치와 소유자 데미지 표시 TargetRpc 추가(2026-10-11)
-            public const int PROTOCOL_VERSION = 6;
+            // 7: 무철, 월백 하드 2페이즈 전용 보스 사건과 복원 기록 추가, 투사체와 장판 시작 값에 시전 번호 추가(2026-10-13)
+            public const int PROTOCOL_VERSION = 7;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -47,6 +48,13 @@ namespace Shinshi.Common
             public const int BOSS_RESTORE_MAX_AREAS       = 16;
             public const int BOSS_RESTORE_MAX_BEAMS       = 16;
             public const int BOSS_RESTORE_MAX_STARS       = 8;
+
+            // 전용 사건(무철, 월백 하드 2페이즈)이 한 메시지에 싣는 목록의 상한. 데이터의 실제 수(타 3, 원 13, 발 8)보다 크게 두고
+            // 넘는 값은 프로토콜 불일치로 읽기를 멈춘다. 추적 장판은 파티 인원만큼 동시에 예고될 수 있다
+            public const int BOSS_STRIKE_CHAIN_MAX_STEPS     = 8;
+            public const int BOSS_CIRCLE_BURST_MAX_CIRCLES   = 16;
+            public const int BOSS_BARRAGE_MAX_SHOTS          = 16;
+            public const int BOSS_RESTORE_MAX_TRACKING_AREAS = 8;
 
             // 서버 시각 기준으로 입력을 받아 주는 창
             public const float INPUT_PAST_TOLERANCE_SECONDS   = 0.15f;
