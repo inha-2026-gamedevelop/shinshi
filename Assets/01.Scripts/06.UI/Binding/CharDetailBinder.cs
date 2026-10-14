@@ -113,12 +113,17 @@ namespace Shinshi.UI
             if (!ready)
             {
                 _view.SetStats(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
+                _view.SetLifeSteal(string.Empty);
+                _view.SetCombatPower(CharDetailRules.CombatPowerText(0));
                 return;
             }
 
             _view.SetStats(CharDetailRules.Number(stats.Attack), CharDetailRules.Number(stats.MaxHealth),
                 CharDetailRules.Number(stats.Defense), CharDetailRules.Percent(stats.CritChance), CharDetailRules.Number(stats.MaxEnergy),
                 CharDetailRules.Number(stats.MoveSpeed));
+            _view.SetLifeSteal(CharDetailRules.Percent(stats.LifeSteal));
+            _view.SetCombatPower(CharDetailRules.CombatPowerText(
+                Shinshi.Combat.CombatPowerRules.Compute(in stats, GameDB.Player)));
         }
     }
 }

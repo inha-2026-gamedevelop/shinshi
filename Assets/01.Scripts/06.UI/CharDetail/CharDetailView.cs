@@ -30,6 +30,8 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text _critLabel    = null;
         [SerializeField] private TMP_Text _energyLabel  = null;
         [SerializeField] private TMP_Text _speedLabel   = null;
+        [SerializeField] private TMP_Text _lifeStealLabel   = null;
+        [SerializeField] private TMP_Text _combatPowerLabel = null;
 
         [Header("장비 (부위 순서)")]
         [SerializeField] private TMP_Text[] _slotNameLabels    = null;
@@ -115,6 +117,18 @@ namespace Shinshi.UI
             SetText(_critLabel, crit);
             SetText(_energyLabel, energy);
             SetText(_speedLabel, speed);
+        }
+
+        // SetStats와 나눠 둔다. 인자를 늘리면 샌드박스와 미리보기의 기존 호출이 모두 깨진다
+        public void SetLifeSteal(string lifeSteal)
+        {
+            SetText(_lifeStealLabel, lifeSteal);
+        }
+
+        /// <summary> 종합 전투력 글자, 계산하지 못했으면 빈 글자로 둔다 </summary>
+        public void SetCombatPower(string combatPower)
+        {
+            SetText(_combatPowerLabel, combatPower);
         }
 
         public void SetSlot(int slot, string equipmentName, string enhancement)

@@ -456,6 +456,8 @@ namespace Shinshi.Editor
             float talismanY = trainingTop + (CHAR_LINE_HEIGHT * TRAINING_COUNT) + B.MARGIN;
             TMP_Text talisman = B.CreateLabel(t, "TalismanLabel", string.Empty, B.MARGIN, talismanY, CHAR_WIDTH - (B.MARGIN * 2f), B.LABEL_HEIGHT);
             GameObject preview = B.CreateRect(t, "PreviewStage", 520f, trainingTop, B.MARGIN, B.MARGIN).gameObject;
+            TMP_Text lifeSteal   = B.CreateLabel(t, "LifeStealLabel", string.Empty, 300f, talismanY + CHAR_LINE_HEIGHT, 200f, B.LABEL_HEIGHT);
+            TMP_Text combatPower = B.CreateLabel(t, "CombatPowerLabel", string.Empty, 520f, talismanY + CHAR_LINE_HEIGHT, 220f, B.LABEL_HEIGHT);
 
             CharDetailView view = window.gameObject.AddComponent<CharDetailView>();
             B.SetRef(view, "_closeButton", close);
@@ -467,6 +469,8 @@ namespace Shinshi.Editor
             B.SetRef(view, "_critLabel", statLabels[3]);
             B.SetRef(view, "_energyLabel", statLabels[4]);
             B.SetRef(view, "_speedLabel", statLabels[5]);
+            B.SetRef(view, "_lifeStealLabel", lifeSteal);
+            B.SetRef(view, "_combatPowerLabel", combatPower);
             B.SetRefs<TMP_Text>(view, "_slotNameLabels", slotNames);
             B.SetRefs<TMP_Text>(view, "_slotEnhanceLabels", slotEnhances);
             B.SetRefs<TMP_Text>(view, "_trainingLabels", training);
