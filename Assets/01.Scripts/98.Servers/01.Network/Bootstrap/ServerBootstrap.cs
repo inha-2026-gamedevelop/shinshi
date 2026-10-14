@@ -404,7 +404,8 @@ namespace Shinshi.Network
                 return;
             }
 
-            CombatServerInstaller.Runtime.EnableBossObjects(new BossNetworkSpawner(prefab));
+            // 보스 ID가 지정된 프리팹(BossState.PrefabBossId)이 등록돼 있으면 그 보스는 그 프리팹으로 스폰한다
+            CombatServerInstaller.Runtime.EnableBossObjects(new BossNetworkSpawner(prefab, manager.spawnPrefabs));
         }
 
         private static ShinshiServerAuthenticator InstallAuthenticator(ShinshiNetworkManager manager, ServerSessionRegistry sessions,
