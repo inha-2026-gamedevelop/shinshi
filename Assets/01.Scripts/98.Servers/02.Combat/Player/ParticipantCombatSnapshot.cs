@@ -30,6 +30,7 @@ namespace Shinshi.Combat
         private readonly bool                                  _hasDeathPosition;
         private readonly long                                  _lifeStealWindow;
         private readonly float                                 _lifeStealWindowHealed;
+        private readonly double                                _lastReviveTime;
 
         /****************************************
         *              Properties
@@ -55,6 +56,9 @@ namespace Shinshi.Combat
         public Vector3               DeathPosition        => _deathPosition;
         public bool                  HasDeathPosition     => _hasDeathPosition;
 
+        // 담지 않으면 끊고 다시 붙은 참가자의 부활 직후 보호와 낙하 이력이 부활 전 기준으로 돌아간다. 부활한 적이 없으면 NO_REVIVE_TIME이다
+        public double                LastReviveTime       => _lastReviveTime;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -64,8 +68,10 @@ namespace Shinshi.Combat
             Vector3 deathPosition = default, bool hasDeathPosition = false,
             PlayerInputGate.RateViolationSnapshot rateViolations = default,
             PlayerInputGate.TokenBucketSnapshot tokenBucket = default,
-            long lifeStealWindow = LifeStealRules.NO_WINDOW, float lifeStealWindowHealed = 0f)
+            long lifeStealWindow = LifeStealRules.NO_WINDOW, float lifeStealWindowHealed = 0f,
+            double lastReviveTime = PlayerServer.NO_REVIVE_TIME)
         {
+            _lastReviveTime        = lastReviveTime;
             _lifeStealWindow       = lifeStealWindow;
             _lifeStealWindowHealed = lifeStealWindowHealed;
             _rateViolations       = rateViolations;

@@ -23,6 +23,13 @@ namespace Shinshi.Combat
         // 소유 클라이언트는 PlayerPrediction의 PlayerMovePredictor가 같은 이동 순번, 경과 시간의 위치로 예측 오차를 보정한다
 
         /****************************************
+        *              Constants
+        ****************************************/
+
+        // 서버 시각은 0 이상이라 음수가 부활한 적 없음의 표식이다
+        public const double NO_REVIVE_TIME = -1.0;
+
+        /****************************************
         *                Fields
         ****************************************/
 
@@ -104,6 +111,8 @@ namespace Shinshi.Combat
         private EPlayerControlKind    _controlKind          = EPlayerControlKind.None;
         private long                  _lifeStealWindow      = LifeStealRules.NO_WINDOW;
         private float                 _lifeStealWindowHealed = 0f;
+        private double                _lastReviveTime       = NO_REVIVE_TIME;
+        private bool                  _isServerProtected    = false;
 
         /****************************************
         *              Properties
@@ -125,6 +134,9 @@ namespace Shinshi.Combat
         public float                 MaxHealth       => _maxHealth;
         public float                 Defense         => _defense;
         public double                DeathTime       => _deathTime;
+
+        // 부활 단계가 승인한 서버 시각, 부활한 적이 없으면 NO_REVIVE_TIME이다. 보스 기믹의 부활 직후 보호가 이 시각에서 잰다
+        public double                LastReviveTime  => _lastReviveTime;
         public void ApplyGrowth(in CharacterStats stats)
         {
             _attackPower = stats.Attack;
@@ -152,9 +164,10 @@ namespace Shinshi.Combat
         // 출정 명단에 마지막으로 알린 생사, 틱 끝에서 LifeState와 다를 때만 다시 알린다
         public EParticipantLifeState ReportedLifeState { get; set; } = EParticipantLifeState.Alive;
 
-        // 기획상 복귀 뒤 무적 시간은 없다. 공격 예고와 실제 범위가 피격을 정하므로 부활 직후에도 거짓이다
+        // 기획상 복귀 뒤 무적 시간은 없다. 공격 예고와 실제 범위가 피격을 정하므로 부활 직후에도 거짓이다.
+        // 서버 보호(SetServerProtection)가 켜진 동안만 참이다. 판정기를 거치지 않는 KillByServer는 이 값을 보지 않는다
         // TODO(민성): 입장 직후 같은 다른 스폰 보호가 기획에 생기면 그 기간만 무적 상태를 반영한다
-        public bool IsInvulnerable  => false;
+        public bool IsInvulnerable  => _isServerProtected;
         public bool IsGuardingFront => false;
 
         // 기절 중에는 물약을 쓰지 못하고 속박 중에는 쓸 수 있다
@@ -248,7 +261,8 @@ namespace Shinshi.Combat
         {
             return new ParticipantCombatSnapshot(_health, _lifeState, _deathTime, _nextAttackTime, _gate.LastAcceptedSequence,
                 _gate.ViolationCount, _gate.ViolationWindowStart, _nextDodgeTime, _deathPosition, _hasDeathPosition,
-                _gate.CaptureRateViolations(), _gate.CaptureTokenBucket(), _lifeStealWindow, _lifeStealWindowHealed);
+                _gate.CaptureRateViolations(), _gate.CaptureTokenBucket(), _lifeStealWindow, _lifeStealWindowHealed,
+                _lastReviveTime);
         }
 
         /// <summary> 유예 안에 돌아온 참가자의 상태를 되돌린다, 만든 직후 스폰 메시지가 나가기 전에 부른다 </summary>
@@ -264,6 +278,7 @@ namespace Shinshi.Combat
             _nextDodgeTime    = snapshot.NextDodgeTime;
             _lifeStealWindow       = snapshot.LifeStealWindow;
             _lifeStealWindowHealed = snapshot.LifeStealWindowHealed;
+            _lastReviveTime        = snapshot.LastReviveTime;
             _input.SetDodgeReadyAt(_nextDodgeTime);
             if (_lifeState != EParticipantLifeState.Alive)
             {
@@ -605,8 +620,8 @@ namespace Shinshi.Combat
             return false;
         }
 
-        /// <summary> 부활 단계가 승인한 뒤 부른다, 지점으로 옮기고 체력 비율만큼 되살린다 </summary>
-        public void Revive(Vector3 point, float healthRate)
+        /// <summary> 부활 단계가 승인한 뒤 부른다, 지점으로 옮기고 체력 비율만큼 되살린다. serverTime은 승인한 서버 시각이다 </summary>
+        public void Revive(Vector3 point, float healthRate, double serverTime)
         {
             if (_lifeState == EParticipantLifeState.Alive)
             {
@@ -614,6 +629,7 @@ namespace Shinshi.Combat
             }
 
             _lifeState          = EParticipantLifeState.Alive;
+            _lastReviveTime     = serverTime;
             _health             = PlayerLifeRules.ReviveHealth(_maxHealth, healthRate);
             _deathTime          = 0.0;
             _hasDeathPosition   = false;
@@ -1366,13 +1382,41 @@ namespace Shinshi.Combat
                 return;
             }
 
-            _health = isLethal ? 0f : Mathf.Max(0f, _health - appliedAmount);
-            _combat.SetHealth(_health, _maxHealth);
-
             if (!isLethal)
             {
+                _health = Mathf.Max(0f, _health - appliedAmount);
+                _combat.SetHealth(_health, _maxHealth);
                 return;
             }
+
+            ConfirmDeath(serverTime);
+        }
+
+        // 추락 같은 서버 사망 확정이다. 방어, 반격, 무적이 개입하지 않아야 하므로 피해 판정기를 거치지 않고 피해 통지, 미터, 흡혈도 만들지 않는다.
+        // 서버 보호 중에도 죽인다. 보호가 막을지는 부르는 쪽이 정한다
+        /// <summary> 판정기를 거치지 않고 사망을 확정한다, 살아 있을 때만 참이다 </summary>
+        public bool KillByServer(double serverTime)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return false;
+            }
+
+            ConfirmDeath(serverTime);
+            return true;
+        }
+
+        /// <summary> 서버 보호를 켜거나 끈다, 켜진 동안 피해 판정기가 이 참가자를 무적으로 본다 </summary>
+        public void SetServerProtection(bool isProtected)
+        {
+            _isServerProtected = isProtected;
+        }
+
+        // 치명타(ApplyDamage)와 서버 사망 확정(KillByServer)이 같이 쓰는 사망 정리다. 살아 있는지는 부르는 쪽이 확인한다
+        private void ConfirmDeath(double serverTime)
+        {
+            _health = 0f;
+            _combat.SetHealth(_health, _maxHealth);
 
             // 보스 공용 부활이 바닥났으면 틱의 부활 단계가 관전으로 옮긴다
             _lifeState        = EParticipantLifeState.Dead;
