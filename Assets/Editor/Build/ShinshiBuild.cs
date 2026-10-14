@@ -36,9 +36,11 @@ namespace Shinshi.Editor
         public const string TARGET_WINDOWS_SERVER = "windows-server";
         public const string TARGET_LINUX_SERVER   = "linux-server";
         public const string TARGET_WINDOWS_DEVTEST = "windows-devtest";
+        public const string TARGET_WINDOWS_PERF    = "windows-perf";
 
         private const string SERVER_DEFINE      = "UNITY_SERVER";
         private const string DEV_TEST_DEFINE    = "SHINSHI_DEV_TEST";
+        private const string PERF_LOG_DEFINE    = "SHINSHI_PERF_LOG";
         private const string SERVER_ASSEMBLY    = "Shinshi.Server.dll";
         private const string COMPILE_CHECK_ROOT = "Temp/ShinshiCompileCheck";
 
@@ -80,6 +82,9 @@ namespace Shinshi.Editor
             ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_DevTestDefines    = { DEV_TEST_DEFINE };
 
+        // 릴리즈 클라이언트와 같은 씬으로 만드는 계측 빌드. DevPerfLogger만 SHINSHI_PERF_LOG로 넣고 서버 어셈블리와 시험 장치는 넣지 않는다
+        private static readonly string[] G_PerfDefines       = { PERF_LOG_DEFINE };
+
         /****************************************
         *                 Menu
         ****************************************/
@@ -119,6 +124,13 @@ namespace Shinshi.Editor
         private static void BuildDevTestMenu()
         {
             Build(TARGET_WINDOWS_DEVTEST, true);
+        }
+
+        // Builds/windows-perf에 만든다. 프로파일러 자동 연결은 켜지 않는다
+        [MenuItem(MENU_ROOT + "Perf/Windows Client (Development, Perf Log)")]
+        private static void BuildPerfMenu()
+        {
+            Build(TARGET_WINDOWS_PERF, true);
         }
 
         [MenuItem(MENU_ROOT + "Check Client Compile")]
@@ -172,6 +184,11 @@ namespace Shinshi.Editor
                 return Build(targetName, true, G_DevTestScenes, G_DevTestDefines);
             }
 
+            if (targetName == TARGET_WINDOWS_PERF)
+            {
+                return Build(targetName, true, G_ClientScenes, G_PerfDefines);
+            }
+
             bool server = (targetName == TARGET_WINDOWS_SERVER) || (targetName == TARGET_LINUX_SERVER);
             return Build(targetName, development, server ? G_ServerScenes : G_ClientScenes);
         }
@@ -210,9 +227,9 @@ namespace Shinshi.Editor
             // 클라이언트 플레이가 서버 부트스트랩에서 멈추므로 빌드 전 설정으로 되돌린다
             StandaloneBuildSubtarget editorSubtarget = EditorUserBuildSettings.standaloneBuildSubtarget;
 
-            // 시험 빌드의 프레임 기록(DevPerfLogger)이 GPU 시간을 읽으려면 Frame Timing 통계가 켜져 있어야 한다. 다른 빌드에는 남기지 않는다
+            // 시험, 계측 빌드의 프레임 기록(DevPerfLogger)이 GPU 시간을 읽으려면 Frame Timing 통계가 켜져 있어야 한다. 다른 빌드에는 남기지 않는다
             bool frameTimingStats = PlayerSettings.enableFrameTimingStats;
-            if (Array.IndexOf(extraDefines, DEV_TEST_DEFINE) >= 0)
+            if ((Array.IndexOf(extraDefines, DEV_TEST_DEFINE) >= 0) || (Array.IndexOf(extraDefines, PERF_LOG_DEFINE) >= 0))
             {
                 PlayerSettings.enableFrameTimingStats = true;
             }
@@ -292,6 +309,7 @@ namespace Shinshi.Editor
             {
                 case TARGET_WINDOWS_CLIENT:
                 case TARGET_WINDOWS_DEVTEST:
+                case TARGET_WINDOWS_PERF:
                     target    = BuildTarget.StandaloneWindows64;
                     subtarget = StandaloneBuildSubtarget.Player;
                     extension = WINDOWS_EXTENSION;
