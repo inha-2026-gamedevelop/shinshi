@@ -107,7 +107,7 @@ MonoBehaviour:
     _talismanChance: 0.02
     _talismanQuantity: 1
   _bossRewards:
-  - _bossId: boss_cheolgak
+  - _bossId: boss_mucheol
     _difficulty: 0
     _essence: 600
     _tradeCurrency: 120
@@ -118,7 +118,7 @@ MonoBehaviour:
     _auctionItemId: item_auction_material_common
     _auctionChance: 0.35
     _auctionQuantity: 1
-  - _bossId: boss_cheolgak
+  - _bossId: boss_mucheol
     _difficulty: 1
     _essence: 800
     _tradeCurrency: 160
