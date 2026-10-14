@@ -22,6 +22,18 @@ namespace Shinshi.Art
         private const float IMPACT_DELAY_RANGE = 0.18f;
         private const float IMPACT_MIN_SCALE = 0.015f;
         private const float IMPACT_FRAGMENT_LIFE_FLOOR = 0.68f;
+        private const float WAVE_VERTICAL_RATIO     = 0.22f;
+        private const float CORE_PATH_INFLUENCE     = 0.35f;
+        private const float TAIL_TAPER              = 0.18f;
+        private const float PETAL_BASE_SPEED        = 0.35f;
+        private const float PETAL_SPEED_VARIATION   = 0.22f;
+        private const float PETAL_X_WAVE_RATIO      = 0.51f;
+        private const float PETAL_Z_WAVE_RATIO      = 0.67f;
+        private const float PETAL_BASE_RISE         = 0.75f;
+        private const float PETAL_DRIFT_RISE_RATIO  = 3f;
+        private const float PETAL_Y_TURN_RATIO      = 0.53f;
+        private const float PETAL_Z_TURN_RATIO      = 0.3f;
+        private const float IMPACT_BASE_RISE        = 0.7f;
 
         [SerializeField] private Transform[] _bones = null;
         [SerializeField] private Vector3[] _restPositions = null;
@@ -84,7 +96,7 @@ namespace Shinshi.Art
                 Vector3 rest = _restPositions[i];
                 Vector4 data = _motionData[i];
                 float phase = waveTime - rest.y * WAVE_HEIGHT_FREQUENCY + data.y;
-                Vector3 displacement = new Vector3(Mathf.Sin(phase), Mathf.Sin(phase * SECOND_WAVE_RATIO) * 0.22f,
+                Vector3 displacement = new Vector3(Mathf.Sin(phase), Mathf.Sin(phase * SECOND_WAVE_RATIO) * WAVE_VERTICAL_RATIO,
                     Mathf.Cos(phase * SECOND_WAVE_RATIO)) * bend * data.w;
                 Vector3 position = rest + displacement;
                 Quaternion rotation = Quaternion.Euler(Mathf.Cos(phase) * TWIST_DEGREES * data.x,
@@ -99,23 +111,25 @@ namespace Shinshi.Art
                     path.Sample(now - delay - _sampleDelay, out point, out heading);
                     Vector3 crossSection = new Vector3(rest.x, rest.y, Mathf.Max(0f, rest.z));
                     Vector3 followed = owner.InverseTransformPoint(point + heading * crossSection);
-                    float influence = data.z > 0f ? path.MovementStrength : 0.35f * path.MovementStrength;
+                    float influence = data.z > 0f ? path.MovementStrength : CORE_PATH_INFLUENCE * path.MovementStrength;
                     position = Vector3.LerpUnclamped(rest, followed, influence) + displacement;
                     rotation = Quaternion.SlerpUnclamped(Quaternion.identity, inverse * heading, influence) * rotation;
                     // 원본 끝단 alpha와 폭에 더해 구간별 시간 위상이 다른 가늘어짐을 보존한다.
-                    scale = 1f - Mathf.Clamp01(-rest.z / WolbaekFoxfirePath.REST_LENGTH) * 0.18f
+                    scale = 1f - Mathf.Clamp01(-rest.z / WolbaekFoxfirePath.REST_LENGTH) * TAIL_TAPER
                         * (0.5f + 0.5f * Mathf.Sin(phase));
                 }
 
                 if (_petals)
                 {
-                    float speed = 0.35f + data.w * 0.22f;
+                    float speed = PETAL_BASE_SPEED + data.w * PETAL_SPEED_VARIATION;
                     float cycle = Mathf.Repeat(time * speed + data.y / TAU, 1f);
                     float birth = Mathf.Repeat(data.y / TAU, 1f);
-                    position += new Vector3(Mathf.Cos(phase * 0.51f) * drift,
-                        (cycle - birth) * (0.75f + drift * 3f), Mathf.Sin(phase * 0.67f) * drift);
+                    position += new Vector3(Mathf.Cos(phase * PETAL_X_WAVE_RATIO) * drift,
+                        (cycle - birth) * (PETAL_BASE_RISE + drift * PETAL_DRIFT_RISE_RATIO),
+                        Mathf.Sin(phase * PETAL_Z_WAVE_RATIO) * drift);
                     rotation *= Quaternion.Euler(time * PETAL_TURN_DEGREES * data.w,
-                        time * PETAL_TURN_DEGREES * 0.53f, Mathf.Sin(phase) * PETAL_TURN_DEGREES * 0.3f);
+                        time * PETAL_TURN_DEGREES * PETAL_Y_TURN_RATIO,
+                        Mathf.Sin(phase) * PETAL_TURN_DEGREES * PETAL_Z_TURN_RATIO);
                     scale *= Mathf.Max(PETAL_MIN_SCALE, Mathf.Sin(cycle * Mathf.PI));
                 }
 
@@ -129,7 +143,7 @@ namespace Shinshi.Art
                     Vector3 radial = new Vector3(rest.x, 0f, rest.z);
                     position = rest * progress + displacement * progress
                         + radial * fragmentAge * spread * data.w
-                        + Vector3.up * fragmentAge * rise * (0.7f + data.w);
+                        + Vector3.up * fragmentAge * rise * (IMPACT_BASE_RISE + data.w);
                     float end = lifetime * (IMPACT_FRAGMENT_LIFE_FLOOR + (1f - IMPACT_FRAGMENT_LIFE_FLOOR) * piece);
                     float localFade = Mathf.Clamp01((end - time) / fadeSeconds);
                     scale *= time < delay ? 0f : (IMPACT_MIN_SCALE + (1f - IMPACT_MIN_SCALE) * progress) * localFade;
