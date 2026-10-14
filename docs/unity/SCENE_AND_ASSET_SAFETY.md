@@ -18,6 +18,7 @@
 | `Assets/00.Scenes/Dev_PlayerMovement.unity` (이동 예측, 회피 시험) | **{팀장}** |
 | `Assets/00.Scenes/Dev_ShinshiVillageQuarterView.unity`, `Dev_ShinshiVillageCA07.unity` (마을 원화 배치·대기 연출 검수) | **{팀장}** |
 | `Assets/00.Scenes/Dev_VFX/Dev_VFX_WideSlash.unity` (무사 넓게 베기 VFX 반복 재생 확인) | **{팀장}** |
+| `Assets/00.Scenes/Dev_VFX/Dev_Mucheol_01_ImpactV4.unity` (무철 01 VFX·Inspector 시간 설정 미리보기, 전투 연결 전) | **{팀장}** |
 | `Assets/00.Scenes/Dev_HUD/Dev_Setting.unity` (환경설정 UI·저장·취소 복원 검수) | **UI (Jinwook)** |
 | `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView_GroundPaint.unity` (Release/ShinshiTown 사본, 바닥 패치 칠하기 작업용) | **맵 (Jinwook)** |
 | `Assets/{씬 폴더}/Dev_{파트}.unity` | {파트} ({팀원이름}) |
