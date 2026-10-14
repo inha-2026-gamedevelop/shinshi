@@ -168,7 +168,26 @@ namespace Shinshi.Combat
                 // 방어와 치명 배율은 곱셈이라 동일한 공식이다. 중간 float 넘침은 실제 피해를 구한 뒤에만 포화시킨다
                 damage = (float)Math.Min(float.MaxValue, (double)damage * _criticalMultiplier);
             }
-            float health   = target.Health;
+            float health = target.Health;
+
+            // 상한은 방어와 치명 배율 뒤, 치명 여부와 적용량을 정하기 전에 건다. 그래야 경계를 넘는 초과분이 미터와 흡혈과 피해 숫자에 들어가지 않는다.
+            // 상한은 피해를 줄이기만 한다. 비유한, 음수, 원래보다 큰 값은 대상 쪽 결함이므로 자르지 않고 무시해 원래 피해를 쓴다
+            if (target is IDamageCapTarget capTarget)
+            {
+                float capped = capTarget.CapIncomingDamage(health, damage);
+                if ((DamageFeedbackRules.IsFinite(capped)) && (capped >= 0f) && (capped <= damage))
+                {
+                    // 전부 깎였으면 없던 피해다. 0짜리 적용으로 남기면 피해 숫자와 적중 판정이 무적 구간의 타격에도 나간다.
+                    // 적중 기록은 이미 남았으므로 같은 동작이 이 대상을 다시 맞히지는 못한다(막힌 타격과 같다)
+                    if ((damage > 0f) && (!(capped > 0f)))
+                    {
+                        return DamageResult.Ignored(EDamageOutcome.Invulnerable);
+                    }
+
+                    damage = capped;
+                }
+            }
+
             float remained = health - damage;
             bool  isLethal = remained <= Constants.Combat.HEALTH_EPSILON;
             float applied  = isLethal ? health : damage;

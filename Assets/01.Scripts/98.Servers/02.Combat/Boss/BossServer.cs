@@ -18,8 +18,15 @@ namespace Shinshi.Combat
     // 보스 두뇌(BossBrain)가 읽고 쓰는 서버 쪽 몸체다. 체력, 생사, 무적, 받은 속박, 위치를 한곳에 두어 두뇌와 피해 판정이
     // 같은 상태를 본다. CombatServerRuntime이 만들고 틱마다 Tick을 부르며, 레지스트리에는 적 진영으로 등록된다.
     //
-    // 치명타는 IDamageable 계약대로 그 자리에서 Dead로 바꾼다. 체력 0인 채 Alive로 남기면 조회 후보로 남아
-    // 플레이어 투사체를 흡수하고 돌진을 멈추기 때문이다. 사망을 미루는 정책(최종 발악)이 생기면 이 전이를 다시 정한다.
+    // 치명타는 사망 정책(BossGimmickDeathPolicy)이 확정할 때만 그 자리에서 Dead로 바꾼다. 붙은 기믹이 없으면 정책이 곧바로 참이라
+    // IDamageable 계약대로 즉시 Dead다. 체력 0인 채 Alive로 남기면 조회 후보로 남아 플레이어 투사체를 흡수하고 돌진을 멈추므로
+    // 보류가 없는 보스를 그렇게 두지 않는다. 기믹이 사망을 보류하면(하드 월백의 0% 인계와 최후의 영역) 체력 0인 채 Alive로 남고,
+    // 그동안은 무적이라 같은 치명타가 다시 적용되지 않는다. 보류가 풀린 틱에 두뇌가 사망을 확정하면 Tick이 Dead로 맞춘다.
+    // 보류 중에도 몸체는 살아 있는 대상이라 조회에 남는다. 기믹이 이 몸체를 기준으로 삼기 때문이다.
+    // 두뇌와 이 몸체는 같은 정책 객체를 읽는다. 따로 판단하면 한쪽만 사망으로 보는 틱이 생긴다.
+    //
+    // 체력 기믹 묶음(BossGimmickSet)은 AttachGimmicks로 전투를 열기 전에 한 번 받는다. 받는 피해 상한은 IDamageCapTarget으로
+    // 피해 판정기에 내주고, 기믹 중 무적은 IsInvulnerable에 더한다. 묶음이 결계를 대신하면 결계 전개를 쓰지 않는다.
     //
     // 받은 속박은 한 칸에 담고 Tick 끝에 비운다. 두뇌는 한 틱에 한 건만 꺼내고 페이즈 전환 틱에는 꺼내지 않으므로,
     // 비우지 않으면 지난 틱의 속박이 다음 패턴의 허용 구간에서 뒤늦게 적용된다.
@@ -50,7 +57,7 @@ namespace Shinshi.Combat
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
         IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
         IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp, IBossEventRelayHost,
-        IBossHitDisplacer
+        IBossHitDisplacer, IDamageCapTarget
     {
         /****************************************
         *                Fields
@@ -92,6 +99,18 @@ namespace Shinshi.Combat
         private readonly BossHardPhaseEventRelay _hardRelay;
         private readonly MucheolChargeGimmick    _chargeGimmick;   // 무철일 때만 있다
         private readonly IBossDisplaceLookup     _displaceTargets; // 없으면 아무도 밀지 않는다
+
+        // 두뇌에 넘긴 것과 같은 객체다. 치명타 처리가 두뇌와 같은 보류를 읽는다
+        private readonly BossGimmickDeathPolicy _deathPolicy;
+
+        // AttachGimmicks가 채운다. 붙이지 않은 보스는 모두 비어 있어 상한 없음, 즉시 사망, 결계 전개 그대로다
+        private BossGimmickSet         _gimmicks;
+        private IBossDamageCap         _damageCap;
+        private IBossFinalSuccess      _finalSuccess;
+        private IBossGimmickStopSource _stopSource;
+        private IBossGimmickReviveGate _reviveGate;
+        private bool                   _gimmickAttachTried = false;
+        private bool                   _barrierSuppressed  = false; // 기믹이 결계를 대신한다, _barrier는 만들어져 있어도 쓰지 않는다
 
         private Vector3               _position;
         private Vector3               _forward;
@@ -140,8 +159,10 @@ namespace Shinshi.Combat
         public float Defense         => _defense;
         public bool  IsGuardingFront => false;
 
-        // 등장 대기와 종료 뒤에는 피해와 공명을 받지 않는다
-        public bool IsInvulnerable => (_lifeState != EParticipantLifeState.Alive) || (_brain.FlowState != EBossFlowState.Combat);
+        // 등장 대기와 종료 뒤에는 피해와 공명을 받지 않는다. 기믹이 막는 구간(기믹 중 무적, 경계에 닿은 체력)과
+        // 사망이 보류돼 체력 0인 채 살아 있는 동안에도 받지 않는다. 뒤의 것이 없으면 보류 중 같은 치명타가 틱마다 다시 적용된다
+        public bool IsInvulnerable => (_lifeState != EParticipantLifeState.Alive) || (_brain.FlowState != EBossFlowState.Combat)
+            || ((_damageCap != null) && (_damageCap.IsDamageBlocked)) || (IsHealthZero);
 
         public float HealthRate   => (_maxHealth > 0f) ? Mathf.Clamp01(_health / _maxHealth) : 0f;
         public bool  IsHealthZero => _health <= Constants.Combat.HEALTH_EPSILON;
@@ -175,10 +196,20 @@ namespace Shinshi.Combat
         public int ActiveStarCount => _stars.ActiveCount;
 
         /// <summary> 50% 전환 뒤 결계 전개를 쓰는 보스다, 거짓이면 인계 대기는 다음 틱에 바로 끝난다 </summary>
-        public bool HasBarrier => _barrier != null;
+        public bool HasBarrier => ActiveBarrier != null;
 
         /// <summary> 결계 전개 진행 상태, 결계가 없는 보스는 Idle에 머문다 </summary>
-        public EBossBarrierState BarrierState => (_barrier != null) ? _barrier.State : EBossBarrierState.Idle;
+        public EBossBarrierState BarrierState => (ActiveBarrier != null) ? ActiveBarrier.State : EBossBarrierState.Idle;
+
+        /// <summary> 체력 기믹 묶음이 붙었다, 생성자가 더하는 무철 돌진 유도 기믹은 세지 않는다 </summary>
+        public bool HasGimmicks => _gimmicks != null;
+
+        /// <summary> 지금 공용 부활을 해도 되는가, 기믹이 없으면 참이다 </summary>
+        public bool IsReviveWindowOpen => (_reviveGate == null) || (_reviveGate.IsReviveWindowOpen);
+
+        // 결계는 생성자에서 만들어지고 기믹은 그 뒤에 붙으므로, 기믹이 결계를 대신하면 만들어 둔 결계를 없는 것으로 읽는다.
+        // 결계를 읽는 곳은 모두 이 값을 거친다
+        private BossBarrierDirector ActiveBarrier => _barrierSuppressed ? null : _barrier;
 
         // 살아 있고 전투 중일 때만 몸체가 움직인다. 취소, 사망, 종료 뒤에 늦게 온 이동 요청은 무시한다
         private bool CanMove => (_lifeState == EParticipantLifeState.Alive) && (_brain.FlowState == EBossFlowState.Combat);
@@ -269,18 +300,22 @@ namespace Shinshi.Combat
                     _arenaCenter, _arenaRadius, referenceHealth, this);
             }
 
+            // 보류 창구는 기믹이 붙을 때 더한다. 비어 있는 동안에는 기본 정책(체력 0이면 사망)과 같다
+            _deathPolicy = new BossGimmickDeathPolicy(new ImmediateBossDeathPolicy());
+
             var dependencies = new BossBrainDependencies
             {
-                Catalog  = catalog,
-                Self     = this,
-                Vitals   = this,
-                Targets  = targets,
-                Damage   = damage,
-                Patterns = _patterns,
-                Effects  = new BossEffectComposite(_projectiles, _areas, _beams, _stars),
-                Control  = this,
-                Random   = random,
-                Casts    = this
+                Catalog     = catalog,
+                Self        = this,
+                Vitals      = this,
+                Targets     = targets,
+                Damage      = damage,
+                Patterns    = _patterns,
+                Effects     = new BossEffectComposite(_projectiles, _areas, _beams, _stars),
+                Control     = this,
+                Random      = random,
+                Casts       = this,
+                DeathPolicy = _deathPolicy
             };
 
             _brain = new BossBrain(bossId, dependencies);
@@ -300,6 +335,108 @@ namespace Shinshi.Combat
             _events = listener;
             _mucheolRelay.SetListener(listener as IBossMucheolEventListener);
             _hardRelay.SetListener(listener as IBossHardPhaseEventListener);
+        }
+
+        // 두뇌가 기믹을 전투 시작 전에만 받으므로 Begin 전에만 받는다. 두 번째 호출은 첫 호출이 실패했어도 거절한다.
+        // 묶음의 빈 칸은 두뇌에 손대기 전에 거르지만, 두뇌가 도중에 거절하면 이미 더한 기믹을 되돌릴 수 없다. 그때는 상한과 보류를 잇지 않고
+        // 거짓을 돌려주며, 일부 기믹만 두뇌에 남은 몸체가 되므로 호출 쪽은 이 보스로 전투를 열지 말고 버려야 한다
+        /// <summary> 체력 기믹 묶음을 붙인다, 전투를 열기 전에 한 번만 받고 거짓이면 이 몸체를 쓰지 않는다 </summary>
+        public bool AttachGimmicks(BossGimmickSet set)
+        {
+            if ((set == null) || (_gimmickAttachTried) || (_brain.FlowState != EBossFlowState.Inactive))
+            {
+                return false;
+            }
+
+            _gimmickAttachTried = true;
+
+            for (int i = 0; i < set.Gimmicks.Count; ++i)
+            {
+                if (set.Gimmicks[i] == null)
+                {
+                    Debug.LogError($"[Boss] 기믹 묶음의 {i}번 기믹이 비어 있어 붙이지 않는다, combatId={_combatId}");
+                    return false;
+                }
+            }
+
+            for (int i = 0; i < set.DeathHolds.Count; ++i)
+            {
+                if (set.DeathHolds[i] == null)
+                {
+                    Debug.LogError($"[Boss] 기믹 묶음의 {i}번 사망 보류 창구가 비어 있어 붙이지 않는다, combatId={_combatId}");
+                    return false;
+                }
+            }
+
+            for (int i = 0; i < set.Gimmicks.Count; ++i)
+            {
+                if (!_brain.AddGimmick(set.Gimmicks[i]))
+                {
+                    Debug.LogError($"[Boss] 두뇌가 {i}번 기믹을 거절했다, 앞선 {i}개는 이미 더해져 이 몸체를 쓸 수 없다, " +
+                        $"combatId={_combatId}");
+                    return false;
+                }
+            }
+
+            for (int i = 0; i < set.DeathHolds.Count; ++i)
+            {
+                _deathPolicy.AddHold(set.DeathHolds[i]);
+            }
+
+            _gimmicks          = set;
+            _damageCap         = set.DamageCap;
+            _finalSuccess      = set.FinalSuccess;
+            _stopSource        = set.StopSource;
+            _reviveGate        = set.ReviveGate;
+            _barrierSuppressed = set.ReplacesBarrier;
+            return true;
+        }
+
+        /// <summary> 기믹의 정지나 전멸 아닌 실패를 읽는다, 기믹이 없거나 멈춘 것이 없으면 거짓이다 </summary>
+        public bool TryGetGimmickStop(out EBossGimmickStop kind, out ESessionEndReason failureReason, out string detail)
+        {
+            if (_stopSource == null)
+            {
+                kind          = EBossGimmickStop.None;
+                failureReason = default;
+                detail        = string.Empty;
+                return false;
+            }
+
+            return _stopSource.TryGetStop(out kind, out failureReason, out detail);
+        }
+
+        // 기믹은 체력 비율이 0에 닿았는지로 판단하므로 부동소수 오차로 양수 체력이 남을 수 있다. 남으면 보류가 풀려도
+        // 기본 정책이 사망을 확정하지 않아 보스가 죽지 않으므로, 성공을 내주는 순간 체력을 0으로 맞춘다
+        /// <summary> 하드 최종 성공을 한 번 소비한다, 참이면 보스 체력을 0으로 확정해 다음 두뇌 틱에 사망이 확정된다 </summary>
+        public bool TryConsumeFinalSuccess(out BossFinalSuccess success)
+        {
+            if ((_finalSuccess == null) || (!_finalSuccess.TryConsumeFinalSuccess(out success)))
+            {
+                success = default;
+                return false;
+            }
+
+            _health = 0f;
+            return true;
+        }
+
+        /// <summary> 기믹이 정한 부활 지점을 묻는다, 기믹이 없으면 NotManaged다 </summary>
+        public EBossRevivePoint TryGetGimmickRevivePoint(int combatId, out Vector3 point)
+        {
+            if (_reviveGate == null)
+            {
+                point = default;
+                return EBossRevivePoint.NotManaged;
+            }
+
+            return _reviveGate.TryGetRevivePoint(combatId, out point);
+        }
+
+        // 기믹이 없으면 그대로 돌려준다. 최대 체력은 이 몸체가 알고 판정기는 모르므로 여기서 채운다
+        public float CapIncomingDamage(float currentHealth, float damage)
+        {
+            return (_damageCap == null) ? damage : _damageCap.CapDamage(currentHealth, _maxHealth, damage);
         }
 
         /// <summary> 등장 대기 없이 전투를 연다, 정의가 없거나 수치가 비었으면 거짓이고 전투를 열지 않는다 </summary>
@@ -330,6 +467,13 @@ namespace Shinshi.Combat
             _tickTime = serverTime;
             CompleteHandoffIfReady();
             _brain.Tick(serverTime);
+
+            // 보류가 풀려 두뇌가 이 틱에 사망을 확정했으면 몸체도 맞춘다. 치명타 때 바로 Dead가 된 보스는 이미 Dead라 지나간다
+            if ((_brain.IsBossDeathRecorded) && (_lifeState == EParticipantLifeState.Alive))
+            {
+                _lifeState = EParticipantLifeState.Dead;
+            }
+
             TickBarrier(serverTime);
             _hasPendingControl = false;
         }
@@ -395,13 +539,14 @@ namespace Shinshi.Combat
         /// <summary> 늦은 접속 진단용 결계 현재 값, 결계가 없거나 예고 전, 정리 뒤에는 거짓이다 </summary>
         public bool TryGetBarrierSnapshot(out BossBarrierStart start)
         {
-            if (_barrier == null)
+            BossBarrierDirector barrier = ActiveBarrier;
+            if (barrier == null)
             {
                 start = default;
                 return false;
             }
 
-            return _barrier.TryGetSnapshot(out start);
+            return barrier.TryGetSnapshot(out start);
         }
 
         // 지정 구조물이 필요한 수만큼 정해지기 전에는 기믹이 발동하지 않는다. 구조물 식별자는 맵이 정하며 돌진 구조물 조회가 쓰는 번호와 같아야 한다
@@ -439,10 +584,16 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 체력을 먼저 0으로 만든 뒤 정책에 묻는다. 보류와 기본 정책이 모두 이 몸체의 체력을 읽는다.
+            // 보류 중이면 Alive로 남기고 Tick이 두뇌의 사망 확정에 맞춰 Dead로 바꾼다
             if (isLethal)
             {
-                _health    = 0f;
-                _lifeState = EParticipantLifeState.Dead;
+                _health = 0f;
+                if (_deathPolicy.IsDeathConfirmed(this, serverTime))
+                {
+                    _lifeState = EParticipantLifeState.Dead;
+                }
+
                 return;
             }
 
@@ -1233,7 +1384,8 @@ namespace Shinshi.Combat
                 return;
             }
 
-            if ((_barrier != null) && (!_barrier.IsCompleted))
+            BossBarrierDirector barrier = ActiveBarrier;
+            if ((barrier != null) && (!barrier.IsCompleted))
             {
                 return;
             }
@@ -1245,18 +1397,19 @@ namespace Shinshi.Combat
         // 전투가 끝났으면(사망, 종료 요청) 진행 중이든 완료 뒤든 위험 구역을 정리한다
         private void TickBarrier(double serverTime)
         {
-            if (_barrier == null)
+            BossBarrierDirector barrier = ActiveBarrier;
+            if (barrier == null)
             {
                 return;
             }
 
             if (_brain.FlowState != EBossFlowState.Combat)
             {
-                _barrier.Cancel(_brain.IsBossDeathRecorded ? EBossInterruptReason.Death : EBossInterruptReason.CombatEnd);
+                barrier.Cancel(_brain.IsBossDeathRecorded ? EBossInterruptReason.Death : EBossInterruptReason.CombatEnd);
                 return;
             }
 
-            _barrier.Tick(serverTime, _brain.PhaseState == EBossPhaseState.AwaitingHandoff);
+            barrier.Tick(serverTime, _brain.PhaseState == EBossPhaseState.AwaitingHandoff);
             CompleteHandoffIfReady();
         }
 
