@@ -111,6 +111,29 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 필수 목록은 **그 맵의 공격 예고, 현재 파티의 장착 스킬·동료, 등장할 적·보스의 효과**로 좁힌다. 실제 프리팹 GUID·재질·텍스처·셰이더 키워드·사용 품질·예상 동시 인스턴스·풀 반환 조건을 기록한다. `maxParticles` 합계를 실제 활성 입자나 필요 풀 수로 쓰지 않는다.
 
+### 등록된 필수 대상 — 월백 여우불
+
+2026-10-14 등록, 자연스러운 유동 리그 반영 후 재조회. **월백 여우불이 등장하는 전장 입장 준비** 대상으로, 마을 공통 상주 목록이 아니다. 실제 프리팹은 `Assets/02.Prefab/VFX/Wolbaek/Foxfire/PF_WolbaekFoxfire.prefab`, GUID는 `0a5b5eafeccd22a4daa6bc81857c5609`다. Unity AssetDatabase 재귀 조회로 프리팹 포함 고유 의존성 50개(메시 39·설정 SO 1·재질 3·PNG 2·스크립트 3·셰이더 1·프리팹 1)를 확인했다. 개발 씬·지원 바닥·카메라·검수 Volume은 제외된다.
+
+개별 배치용 프리팹도 같은 폴더에 등록했다. 각 프리팹은 필요한 상태만 가진 Regular 에셋이며 독립 설정 SO를 사용한다. 의존성 수는 프리팹 자신을 포함한 재귀 조회 결과다. 공유 메시·재질을 중복 메모리로 더하지 않는다.
+
+| 개별 대상 | 프리팹 파일 | GUID | 의존성 |
+|---|---|---|---:|
+| Flight | `PF_WolbaekFoxfire_Flight.prefab` | `ba4169c67060ab34792c769d4fe25c57` | 16 |
+| Locked | `PF_WolbaekFoxfire_Locked.prefab` | `6d232d78856b0174c98c81c125727c0e` | 16 |
+| Impact 3색 | `PF_WolbaekFoxfire_Impact.prefab` | `fa16c2982e34a084294d066c28a5a620` | 29 |
+| GoldTarget | `PF_WolbaekFoxfire_GoldTarget.prefab` | `11a2ce0c44fffec45b75cf47b4270d87` | 18 |
+| RedHazard | `PF_WolbaekFoxfire_RedHazard.prefab` | `03dfbdeff0696fb45827636c602f7c03` | 17 |
+
+전장이 실제 선택한 개별 프리팹 또는 통합 프리팹을 준비한다. 개별 예고는 `Stop(id)`으로 반환하고 실제 확정 이벤트에서 별도 Impact의 `PlayImpact`를 시작한다. 단독 Preview와 색상별 타격 skinning도 렌더 준비에 포함한다. 자세한 지원 API/설정은 사용 안내를 따른다.
+
+- 준비 단계: 이동 머리/경로를 지연 추종하는 3갈래 꼬리·꽃잎/잔상, 완전한 원/4표식 잠금과 상향 유동, 조각별 상향 타격/소멸, 고정 GoldTarget 꽃문양·RedHazard 마름모와 각 색상의 타격. 한 인스턴스는 활성 상태 한 묶음만 표시한다. 각 구간/조각의 skinning 경로도 실제 렌더 준비 대상에 포함한다.
+- 재질/텍스처는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Foxfire/{Materials,Textures}/`, 셰이더는 기존 `Shinshi/VFX/Particle`이다. 재질의 활성 로컬 키워드는 비어 있으며 전역/품질/API variant·PSO 전체를 확인한 결과가 아니다. 원근 카메라·URP depth texture를 요구한다.
+- 정상 종료는 `IsRunning == false` 또는 `Completed(playbackId)`, 취소/풀 반환은 `Stop(playbackId)` 또는 `Stop()` 후 비활성화다. 재사용 이전 ID의 확정·Tick·취소를 거절한다. 호출자가 cast/effect 식별과 풀 슬롯을 관리한다. 시간/반경/확정 계약은 [여우불 사용 안내](WOLBAEK_FOXFIRE_VFX_USAGE.md)를 따른다.
+- 초기 생성 수·최대 동시 수·상주 예산은 미확정이다. 실제 전장 품질·그래픽스 API별 첫 사용 지연과 GPU 준비는 미검증이다. 저폴리 메시 꽃잎/sparks를 ParticleSystem 루프용 `prewarm`과 혼동하지 않는다.
+
+등록은 L1/증거 등급1(실제 경로·GUID·재귀 의존성 확인)이며 여우불의 런타임 카탈로그 소비 연결은 이 작업에서 검증하지 않았다. 이 목록 등록을 런타임 GPU 워밍업 완료나 첫 사용 끊김 개선으로 보고하지 않는다.
+
 풀 수는 동시 최대값과 재생/잔상 수명을 측정해 정한다. 빈 풀 정책은 중요 예고 보존 → 저우선 장식 축소를 기본 제안으로 하고, 어떤 효과를 생략할 수 있는지는 기획 기준으로 확정한다. 필수 예고에는 예약된 최소 표현을 마련해 정상 효과 고갈 시에도 범위·시작/종료 시각을 표시한다. 대체 표현까지 실패하면 클라이언트 표현 결함으로 기록한다. 표현 실패가 서버의 공격 시각·피해 판정을 멈추거나 취소하는 권한이 되지 않는다. 예산이 검증된 제한적 추가 생성은 별도 후보이며 무제한 Instantiate를 기본으로 두지 않는다. 최소 표현과 풀 고갈 처리는 아직 구현할 제안이다.
 
 `ObjectPool<T>.defaultCapacity`는 내부 용량이지 미리 생성된 인스턴스 수가 아니며, `maxSize`는 유휴 객체 보존 제한이지 `Get()`의 동시 활성 상한이 아니다. 초기 생성 수·최대 활성 수·유휴 보존 수·메모리 예산을 별도로 정의한다. 공통 풀 구현은 아직 확인되지 않았으므로 이 계약이 이미 적용됐다고 쓰지 않는다.
