@@ -1,11 +1,9 @@
 // System
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 // Unity
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 // 서드파티
 using NUnit.Framework;
@@ -24,7 +22,8 @@ namespace Shinshi.Tests
         // 50% 인계 대기에 들어갈 때 남은 투사체와 장판과 예고가 복원 기록에서도 사라지는지 본다. 물리 벽은 넣지 않는다.
         // 월백은 전환 틱에 결계 전개가 시작되고 전개가 끝난 틱에 서버 몸체가 인계를 마치므로 그 뒤 2페이즈 선택이 이어지고,
         // 별형 빔, 빔, 반월 연쇄 사건도 나가는지 본다. 결계는 사망과 전투 종료에 정리되고 복원 기록에서도 사라지는지 본다.
-        // 무철은 패턴 없는 팩토리를 쓰고 수치가 비어 전투를 열지 않는지 본다
+        // 무철은 무철 팩토리 묶음을 써서 이지 1, 2페이즈 정의를 모두 만들 수 있고 전투를 여는지 본다.
+        // 하드 2페이즈는 P01~P07이 모두 연결됐고, 접속 상태 입력이 없을 때만 추적 장판(P04) 하나가 빠지는지 본다
 
         /****************************************
         *                Fields
@@ -64,12 +63,13 @@ namespace Shinshi.Tests
             BossPatternCatalogSO.WOLBAEK_P2_P07_ID
         };
 
-        // 이 서버가 표시 수신처를 아직 연결하지 않은 하드 2페이즈 P01~P06, 하드 P07만 워프와 원형 예고로 연결됐다
-        private static readonly string[] HARD_UNCONNECTED_IDS =
+        // 하드 2페이즈 일곱 정의, P01~P06의 표시 수신처는 하드 중계이고 P07은 워프와 원형 예고다
+        private static readonly string[] HARD_PHASE_TWO_IDS =
         {
             BossPatternCatalogSO.WOLBAEK_HARD_P2_P01_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P02_ID,
             BossPatternCatalogSO.WOLBAEK_HARD_P2_P03_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID,
-            BossPatternCatalogSO.WOLBAEK_HARD_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P06_ID
+            BossPatternCatalogSO.WOLBAEK_HARD_P2_P05_ID, BossPatternCatalogSO.WOLBAEK_HARD_P2_P06_ID,
+            BossPatternCatalogSO.WOLBAEK_HARD_P2_P07_ID
         };
 
         private BossPatternCatalogSource _catalog;
@@ -208,7 +208,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Constructor_MucheolBossId_UsesPatternlessFactoryAndBeginRefuses()
+        public void Constructor_MucheolBossId_UsesMucheolFactoriesAndBeginOpensCombat()
         {
             BossPatternCatalogSO asset = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assume.That(asset, Is.Not.Null, "보스 카탈로그 에셋이 없다");
@@ -216,7 +216,7 @@ namespace Shinshi.Tests
             var registry = new CombatTargetRegistry(Constants.Combat.MAX_COMBAT_TARGETS);
             Assume.That(catalog.TryGetBoss(MucheolPatternFactory.BOSS_ID, out BossPatternCatalogSO.BossDefinition _), Is.True,
                 "무철 정의가 카탈로그에 없다");
-            Assume.That(catalog.IsTuned(MucheolPatternFactory.BOSS_ID), Is.False, "무철 수치가 지정돼 이 시험의 전제가 바뀌었다");
+            Assume.That(catalog.IsTuned(MucheolPatternFactory.BOSS_ID), Is.True, "무철 수치가 지정되지 않았다");
 
             var boss = new BossServer(MucheolPatternFactory.BOSS_ID, registry.IssueCombatId(), Vector3.zero, Vector3.forward,
                 Vector3.zero, REFERENCE_ATTACK, REFERENCE_HEALTH, HEALTH_SCALE, catalog, registry, new AlwaysAppliedResolver(),
@@ -230,12 +230,22 @@ namespace Shinshi.Tests
                 Assert.IsFalse(boss.CanCreatePattern(definitions[i]), "무철 팩토리는 월백 패턴을 만들지 않는다");
             }
 
-            Assert.IsFalse(boss.HasBarrier, "결계 전개는 월백만 쓴다");
+            for (int phase = PHASE_ONE; phase <= PHASE_TWO; ++phase)
+            {
+                catalog.CollectPatterns(MucheolPatternFactory.BOSS_ID, phase, definitions);
+                Assert.AreEqual(PATTERN_COUNT, definitions.Count, $"무철 이지 {phase}페이즈 정의는 여섯 개다");
+                for (int i = 0; i < definitions.Count; ++i)
+                {
+                    Assert.IsTrue(boss.CanCreatePattern(definitions[i]), $"{definitions[i].DefinitionId}를 만들 수 있다");
+                }
+            }
 
-            LogAssert.Expect(LogType.Error, new Regex("최대 체력이 0"));
-            Assert.IsFalse(boss.Begin(0.0), "수치가 비어 전투를 열지 않는다");
-            Assert.AreEqual(EBossFlowState.Inactive, boss.FlowState);
-            Assert.IsFalse(boss.IsActive);
+            Assert.IsFalse(boss.HasBarrier, "결계 전개는 월백만 쓴다");
+            Assert.IsTrue(boss.IsSortieReady(out string reason), reason);
+
+            Assert.IsTrue(boss.Begin(0.0), "수치가 지정된 무철은 전투를 연다");
+            Assert.AreEqual(EBossFlowState.Combat, boss.FlowState);
+            Assert.IsTrue(boss.IsActive);
         }
 
         [Test]
@@ -264,19 +274,55 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void IsSortieReady_HardCatalog_IsNotReadyAndNamesUnconnectedDefinitions()
+        public void IsSortieReady_HardCatalogWithConnections_IsReady()
         {
-            BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource _);
+            BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource _, true);
 
-            Assert.IsFalse(hard.IsSortieReady(out string reason), "하드 2페이즈 P01~P06 표시가 연결되지 않아 출정을 열 수 없다");
-            for (int i = 0; i < HARD_UNCONNECTED_IDS.Length; ++i)
-            {
-                StringAssert.Contains(HARD_UNCONNECTED_IDS[i], reason, "준비되지 않은 정의 ID가 이유에 들어 있다");
-            }
+            Assert.IsTrue(hard.IsSortieReady(out string reason), reason);
+            Assert.IsEmpty(reason);
         }
 
         [Test]
-        public void CanCreatePattern_HardPhaseTwo_OnlyWarpIsConnected()
+        public void IsSortieReady_HardCatalogWithoutConnections_NamesOnlyTrackingAreaDefinition()
+        {
+            BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource _);
+
+            Assert.IsFalse(hard.IsSortieReady(out string reason), "접속 상태 입력이 없으면 추적 장판을 만들 수 없어 출정을 열지 않는다");
+            for (int i = 0; i < HARD_PHASE_TWO_IDS.Length; ++i)
+            {
+                if (HARD_PHASE_TWO_IDS[i] == BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID)
+                {
+                    StringAssert.Contains(HARD_PHASE_TWO_IDS[i], reason, "준비되지 않은 정의 ID가 이유에 들어 있다");
+                    continue;
+                }
+
+                StringAssert.DoesNotContain(HARD_PHASE_TWO_IDS[i], reason, "접속 상태가 필요 없는 정의는 준비됐다");
+            }
+
+            StringAssert.DoesNotContain("phase 1", reason, "1페이즈는 모두 준비됐다");
+        }
+
+        [Test]
+        public void CanCreatePattern_HardPhaseTwoWithConnections_AllSevenConnected()
+        {
+            BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource catalog, true);
+
+            var definitions = new List<BossPatternCatalogSO.PatternDefinition>();
+            catalog.CollectPatterns(Constants.Combat.DEV_BOSS_ID, PHASE_TWO, definitions);
+
+            var ids = new List<string>();
+            for (int i = 0; i < definitions.Count; ++i)
+            {
+                ids.Add(definitions[i].DefinitionId);
+                Assert.IsTrue(hard.CanCreatePattern(definitions[i]),
+                    $"{definitions[i].DefinitionId}를 만들 수 있다(하드 중계가 P01~P06의 표시 수신처다)");
+            }
+
+            CollectionAssert.AreEquivalent(HARD_PHASE_TWO_IDS, ids, "월백 하드 2페이즈 정의는 P01~P07 일곱 개다");
+        }
+
+        [Test]
+        public void CanCreatePattern_HardPhaseTwoWithoutConnections_OnlyTrackingAreaIsRefused()
         {
             BossServer hard = BuildServer(EBossDifficulty.Hard, out BossPatternCatalogSource catalog);
 
@@ -284,18 +330,14 @@ namespace Shinshi.Tests
             catalog.CollectPatterns(Constants.Combat.DEV_BOSS_ID, PHASE_TWO, definitions);
             Assume.That(definitions.Count, Is.GreaterThan(0), "월백 하드 2페이즈 정의가 없다");
 
-            bool foundWarp = false;
             for (int i = 0; i < definitions.Count; ++i)
             {
-                string id     = definitions[i].DefinitionId;
-                bool   isWarp = id == WolbaekPatternFactory.HARD_P2_P07_ID;
-                foundWarp     = foundWarp || isWarp;
+                string id         = definitions[i].DefinitionId;
+                bool   isTracking = id == WolbaekPatternFactory.HARD_P2_P04_ID;
 
-                Assert.AreEqual(isWarp, hard.CanCreatePattern(definitions[i]),
-                    $"{id}: 하드 P07만 만들 수 있다(P01은 별 단계 수신처 없이 만들지 않는다)");
+                Assert.AreEqual(!isTracking, hard.CanCreatePattern(definitions[i]),
+                    $"{id}: 접속한 대상만 고르는 추적 장판만 접속 상태 입력 없이 만들지 않는다");
             }
-
-            Assert.IsTrue(foundWarp, "하드 P07 정의가 카탈로그에 있다");
         }
 
         [Test]
@@ -393,7 +435,8 @@ namespace Shinshi.Tests
         }
 
         // 전투를 열지 않는 서버 몸체, 난이도별 카탈로그 소스로 정의 수집과 출정 준비 검사만 본다
-        private static BossServer BuildServer(EBossDifficulty difficulty, out BossPatternCatalogSource catalog)
+        private static BossServer BuildServer(EBossDifficulty difficulty, out BossPatternCatalogSource catalog,
+            bool withConnections = false)
         {
             BossPatternCatalogSO asset = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
             Assume.That(asset, Is.Not.Null, "월백 카탈로그 에셋이 없다");
@@ -403,7 +446,7 @@ namespace Shinshi.Tests
 
             return new BossServer(Constants.Combat.DEV_BOSS_ID, registry.IssueCombatId(), Vector3.zero, Vector3.forward,
                 Vector3.zero, REFERENCE_ATTACK, REFERENCE_HEALTH, HEALTH_SCALE, catalog, registry, new AlwaysAppliedResolver(),
-                null, new SeededBossRandom(RANDOM_SEED));
+                null, new SeededBossRandom(RANDOM_SEED), null, withConnections ? new AlwaysConnected() : null);
         }
 
         // 체력을 전환 비율 바로 아래로 맞추고 한 틱 돌려 2페이즈 전환을 일으킨다
@@ -471,6 +514,14 @@ namespace Shinshi.Tests
                 int id = _nextId;
                 ++_nextId;
                 return id;
+            }
+        }
+
+        private sealed class AlwaysConnected : IBossParticipantConnection
+        {
+            public bool IsConnected(int combatId)
+            {
+                return true;
             }
         }
 

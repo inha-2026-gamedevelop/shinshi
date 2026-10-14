@@ -1138,7 +1138,8 @@ namespace Shinshi.Combat
                 spawnPosition, referenceAttack, referenceHealth, BossHealthScale,
                 new BossPatternCatalogSource(GameDB.BossPatterns, difficulty), _registry,
                 new BossDamageScaler(_skillResolver, DamageScale), new BossTerrainProbe(_obstacleMask),
-                new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster));
+                new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster),
+                displaceTargets: new BossPlayerDisplaceLookup(_players));
 
             // 이지는 준비되지 않은 정의가 있어도 기존처럼 연다(팩토리가 만들지 못한 패턴은 두뇌가 건너뛴다). 하드는 모든 정의가 준비돼야 연다
             if ((difficulty == EBossDifficulty.Hard) && (!boss.IsSortieReady(out string notReadyReason)))
