@@ -27,7 +27,9 @@ namespace Shinshi.Data.Market
             item_id AS "ItemId", account_id AS "AccountId", character_id AS "CharacterId",
             definition_id AS "DefinitionId", slot AS "Slot", grade AS "Grade", is_training AS "IsTraining",
             origin AS "Origin", enhancement AS "Enhancement", equipped AS "Equipped", locked AS "Locked", bound AS "Bound",
-            escrow_kind AS "EscrowKind", escrow_ref AS "EscrowRef"
+            escrow_kind AS "EscrowKind", escrow_ref AS "EscrowRef",
+            option1_kind::integer AS "Option1Kind", option1_value AS "Option1Value",
+            option2_kind::integer AS "Option2Kind", option2_value AS "Option2Value"
             """;
 
         /****************************************

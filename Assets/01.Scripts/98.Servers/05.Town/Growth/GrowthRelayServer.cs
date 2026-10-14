@@ -14,8 +14,9 @@ namespace Shinshi.Network
         // 연결마다 1초에 REQUESTS_PER_SECOND번까지 받고, 쓰기 작업은 한 번에 하나만 API로 보낸다. 같은 캐릭터의 작업을
         // 동시에 보내면 뒤 작업이 STALE_REVISION으로 거절되기만 한다. 처리 중인 operationId가 다시 오면 무시하고(결과는 곧 간다),
         // 다른 작업이 오면 PendingCommit으로 거절한다.
-        // 확률 판정 값은 서버가 뽑아 operationId별로 기억한다. 응답을 잃은 클라이언트가 같은 operationId로 다시 보내면 같은 값을
-        // 쓴다(API도 재전송에는 처음 결과를 돌려준다). 기대 revision은 서버가 받은 마지막 성장 상태 값이고, 아직 모르면
+        // 확률 판정 값은 서버가 동작에 필요한 개수(대부분 1개, 옵션 재설정은 4개)만큼 뽑아 operationId별로 기억한다. 응답을 잃은
+        // 클라이언트가 같은 operationId로 다시 보내면 같은 값을 쓴다(API도 재전송에는 처음 결과를 돌려준다). 기억하는 배열은 요청당
+        // 한 번만 만들고 고쳐 쓰지 않는다. 기대 revision은 서버가 받은 마지막 성장 상태 값이고, 아직 모르면
         // 조회를 먼저 보낸 뒤 작업을 보낸다. 같은 operationId 재전송은 처음 보낸 revision을 다시 쓴다(API 멱등 actor는 계정이고
         // 해시에 revision을 넣지 않으므로 다른 마을로 옮겨 revision이 달라져도 저장 결과를 받는다). 작업이 확정되면 파티 준비를 풀도록 characterChanged를 부른다
 
@@ -24,6 +25,9 @@ namespace Shinshi.Network
         ****************************************/
 
         private const string OPERATION_ID_FORMAT = "D";
+
+        // 난수를 쓰지 않는 작업이 넘기는 빈 배열, 읽기만 하므로 공유한다
+        private static readonly int[] NO_ROLLS = Array.Empty<int>();
 
         private readonly BackendGateway                 _gateway;
         private readonly ITownAudience                  _audience;
@@ -123,8 +127,9 @@ namespace Shinshi.Network
                 return;
             }
 
-            int roll = GrowthRequestRules.UsesRoll(message.Action) ? state.RollFor(message.OperationId, _roll) : 0;
-            ERejectReason formatReason = GrowthRequestRules.TryBuild(in message, member.CharacterId, 0, roll,
+            int rollCount = GrowthRequestRules.RollCount(message.Action);
+            int[] rolls   = (rollCount > 0) ? state.RollsFor(message.OperationId, _roll, rollCount) : NO_ROLLS;
+            ERejectReason formatReason = GrowthRequestRules.TryBuild(in message, member.CharacterId, 0, rolls,
                 _trainingTotalCap, out _, out _);
             if (formatReason != ERejectReason.None)
             {
@@ -134,7 +139,7 @@ namespace Shinshi.Network
 
             state.InFlight    = message;
             state.HasInFlight = true;
-            state.Roll        = roll;
+            state.Rolls       = rolls;
             if (!state.HasRevision)
             {
                 if (state.SnapshotRequestId == 0)
@@ -175,10 +180,17 @@ namespace Shinshi.Network
             return (_states.TryGetValue(participantId, out MemberState state)) ? state.FindRevision(operationId) : -1;
         }
 
-        /// <summary> 이 참가자가 operationId에 기억한 확률 판정 값, 없으면 -1 </summary>
+        /// <summary> 이 참가자가 operationId에 기억한 첫 확률 판정 값, 없으면 -1 </summary>
         public int RememberedRoll(int participantId, Guid operationId)
         {
-            return (_states.TryGetValue(participantId, out MemberState state)) ? state.FindRoll(operationId) : -1;
+            int[] rolls = RememberedRolls(participantId, operationId);
+            return ((rolls != null) && (rolls.Length > 0)) ? rolls[0] : -1;
+        }
+
+        /// <summary> 이 참가자가 operationId에 기억한 확률 판정 값 전체, 없으면 null. 돌려준 배열을 고치지 않는다 </summary>
+        public int[] RememberedRolls(int participantId, Guid operationId)
+        {
+            return (_states.TryGetValue(participantId, out MemberState state)) ? state.FindRolls(operationId) : null;
         }
 
         // 게이트웨이가 메인 스레드의 Pump에서 부른다
@@ -219,7 +231,7 @@ namespace Shinshi.Network
         {
             GrowthRequestMessage message = state.InFlight;
             long revision = state.RevisionFor(message.OperationId, state.Revision);
-            ERejectReason reason = GrowthRequestRules.TryBuild(in message, state.CharacterId, revision, state.Roll,
+            ERejectReason reason = GrowthRequestRules.TryBuild(in message, state.CharacterId, revision, state.Rolls,
                 _trainingTotalCap, out string path, out object body);
             if (reason != ERejectReason.None)
             {
@@ -340,8 +352,8 @@ namespace Shinshi.Network
         // 참가자 한 명의 성장 중계 상태. 연결 수명 동안 한 번 만들고 요청마다 고쳐 쓴다
         private sealed class MemberState
         {
-            private readonly Guid[] _rollIds    = new Guid[Constants.Town.GROWTH_ROLL_MEMORY];
-            private readonly int[]  _rollValues = new int[Constants.Town.GROWTH_ROLL_MEMORY];
+            private readonly Guid[]  _rollIds    = new Guid[Constants.Town.GROWTH_ROLL_MEMORY];
+            private readonly int[][] _rollValues = new int[Constants.Town.GROWTH_ROLL_MEMORY][];
 
             private readonly Guid[] _revisionIds    = new Guid[Constants.Town.GROWTH_ROLL_MEMORY];
             private readonly long[] _revisionValues = new long[Constants.Town.GROWTH_ROLL_MEMORY];
@@ -357,7 +369,7 @@ namespace Shinshi.Network
             public int                  OperationRequestId { get; set; }
             public GrowthRequestMessage InFlight           { get; set; }
             public bool                 HasInFlight        { get; set; }
-            public int                  Roll               { get; set; }
+            public int[]                Rolls              { get; set; }
 
             public MemberState(int participantId, string characterId)
             {
@@ -365,13 +377,19 @@ namespace Shinshi.Network
                 CharacterId   = characterId;
             }
 
-            public int FindRoll(Guid operationId)
+            public int[] FindRolls(Guid operationId)
+            {
+                int index = IndexOfRoll(operationId);
+                return (index >= 0) ? _rollValues[index] : null;
+            }
+
+            private int IndexOfRoll(Guid operationId)
             {
                 for (int i = 0; i < _rollIds.Length; ++i)
                 {
-                    if (_rollIds[i] == operationId)
+                    if ((_rollValues[i] != null) && (_rollIds[i] == operationId))
                     {
-                        return _rollValues[i];
+                        return i;
                     }
                 }
 
@@ -406,20 +424,31 @@ namespace Shinshi.Network
                 return current;
             }
 
-            // 기억한 값이 있으면 그대로, 없으면 새로 뽑아 가장 오래된 칸에 덮어쓴다
-            public int RollFor(Guid operationId, Func<int> roll)
+            // 기억한 값이 개수까지 맞으면 그대로, 없으면 count개를 새로 뽑아 가장 오래된 칸에 덮어쓴다. 같은 operationId를 다른
+            // 동작에 다시 쓰면 개수가 달라 같은 칸을 새 값으로 바꾼다(정상 클라이언트는 그러지 않고, API 멱등 검사가 어차피 거절한다)
+            public int[] RollsFor(Guid operationId, Func<int> roll, int count)
             {
-                int remembered = FindRoll(operationId);
-                if (remembered >= 0)
+                int index = IndexOfRoll(operationId);
+                if ((index >= 0) && (_rollValues[index].Length == count))
                 {
-                    return remembered;
+                    return _rollValues[index];
                 }
 
-                int value = roll();
-                _rollIds[_rollNext]    = operationId;
-                _rollValues[_rollNext] = value;
-                _rollNext = (_rollNext + 1) % _rollIds.Length;
-                return value;
+                var values = new int[count];
+                for (int i = 0; i < count; ++i)
+                {
+                    values[i] = roll();
+                }
+
+                if (index < 0)
+                {
+                    index     = _rollNext;
+                    _rollNext = (_rollNext + 1) % _rollIds.Length;
+                }
+
+                _rollIds[index]    = operationId;
+                _rollValues[index] = values;
+                return values;
             }
         }
     }

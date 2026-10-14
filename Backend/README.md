@@ -57,6 +57,8 @@ GRANT DELETE ON TABLE public.auth_join_tokens TO shinshi_runtime;
 GRANT SELECT, INSERT ON TABLE public.session_events, public.session_checkpoints TO shinshi_runtime;
 -- 0017: 경험치 원장에는 수정·삭제 권한을 주지 않는다
 GRANT SELECT, INSERT ON TABLE public.character_experience_events TO shinshi_runtime;
+-- 0018: 옵션 재설정 누계. 행을 지우지 않는다. equipment_instances의 옵션 열과 growth_receipts.roll_values는 기존 테이블 권한을 따른다
+GRANT SELECT, INSERT, UPDATE ON TABLE public.option_reroll_pity TO shinshi_runtime;
 -- 원장과 감사/소비 이력은 추가 전용이다. 소유자나 상위 역할의 권한도 확인한다.
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE
     public.economy_ledger, public.item_history, public.outbox_inbox FROM shinshi_runtime;
@@ -274,7 +276,7 @@ DB 점검은 로그인과 토큰 갱신 교환(`AuthBuildPolicy`)과 새 출정 
 
 공개 `ServiceStateResponse`는 기존 필드 의미를 유지하고 `notices` 배열(`ServiceNotice`: noticeId, title, body, target `Launcher`/`Game`/`Both`, severity 0~2, 시작·끝 시각)을 더했다. `notices`는 지금 노출 중인 공지만 중요도, 시작 시각 내림차순으로 최대 20개다. 기존 `notice` 문자열은 노출 중인 런처 대상 첫 공지의 제목이고, DB 모드에서 그런 공지가 없으면 빈 문자열이다. 공지 작성의 형식 검사(제목·본문 길이, 대상, 중요도, 시작 < 끝)는 작업 행 없이 400이다. 현재 시각과 비교하는 검사(끝 시각이 지금 이하)는 멱등 실행 안에서 DB 시각으로 하고 저장되는 409 `INVALID_REQUEST`다. 그래서 확정된 공지를 만료 뒤 같은 operationId로 재전송해도 처음 결과를 받는다.
 
-**기능 차단.** 키는 `ServiceFeatureKeys`의 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`, `market`, `trade`, `talisman`, `training`이며 목록 밖 키는 저장에서 400이다. 진입점은 싱글턴 `ServiceFeatureGate`를 받아 `CheckFeatureAsync(ServiceFeatureKeys.X)`가 `FEATURE_DISABLED(1100)`이면 효과와 operations 저장 전에 409로 거절한다. 게이트 거절 자체는 저장하지 않는다. 막는 동안 같은 operationId 재전송은 `IdempotentOperationExecutor.FindStoredAsync`로 저장된 처음 결과를 돌려주고, 저장된 결과가 없으면 차단 거절이다. 그래서 차단 중에 처음 보낸 operationId는 차단이 풀린 뒤 다시 보내면 새로 실행된다. 철자가 틀린 키는 예외다. 이미 시작한 진행(정산, 경매 마감 등)은 막지 않는다. 현재 연결된 곳은 새 출정 예약(점검이면 `MAINTENANCE`, `dungeon_entry` 또는 보스전의 `boss_entry`가 꺼졌으면 `FEATURE_DISABLED`, `CheckNewSortieAsync`), `POST /v1/inbox/claim`(`inbox_claim`), 생활 채집(`gathering`)과 물약 제작(`crafting`), 경매 입찰(`auction`, 개시, 마감, 단계 종료는 막지 않음)이다. 강화(`enhance`)·계승(`inherit`)·장비 제작(`crafting`)은 `TownEquipmentController`에 연결돼 있다. 유저 경매장(`market`)·개인 거래(`trade`)도 각 컨트롤러에서 검사한다.
+**기능 차단.** 키는 `ServiceFeatureKeys`의 `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`, `market`, `trade`, `talisman`, `training`이며 목록 밖 키는 저장에서 400이다. 진입점은 싱글턴 `ServiceFeatureGate`를 받아 `CheckFeatureAsync(ServiceFeatureKeys.X)`가 `FEATURE_DISABLED(1100)`이면 효과와 operations 저장 전에 409로 거절한다. 게이트 거절 자체는 저장하지 않는다. 막는 동안 같은 operationId 재전송은 `IdempotentOperationExecutor.FindStoredAsync`로 저장된 처음 결과를 돌려주고, 저장된 결과가 없으면 차단 거절이다. 그래서 차단 중에 처음 보낸 operationId는 차단이 풀린 뒤 다시 보내면 새로 실행된다. 철자가 틀린 키는 예외다. 이미 시작한 진행(정산, 경매 마감 등)은 막지 않는다. 현재 연결된 곳은 새 출정 예약(점검이면 `MAINTENANCE`, `dungeon_entry` 또는 보스전의 `boss_entry`가 꺼졌으면 `FEATURE_DISABLED`, `CheckNewSortieAsync`), `POST /v1/inbox/claim`(`inbox_claim`), 생활 채집(`gathering`)과 물약 제작(`crafting`), 경매 입찰(`auction`, 개시, 마감, 단계 종료는 막지 않음)이다. 강화(`enhance`)·계승(`inherit`)·장비 제작(`crafting`)·옵션 재설정(`reroll_options`)은 `TownEquipmentController`에 연결돼 있다. 유저 경매장(`market`)·개인 거래(`trade`)도 각 컨트롤러에서 검사한다.
 
 **운영자 지급과 우편함.** 지급은 `admin_grants` 한 건이다. 작성(`POST /admin/v1/grants {targetAccountIds 1~1000, rewards 1~50줄, claimDays 1~365(기본 30), sourceKind, sourceRef}`)은 Draft만 만들고 대상 계정이 하나라도 없으면 `NOT_FOUND`로 전체를 거절한다. 실행은 Draft만 받아 대상마다 우편 한 행을 한 트랜잭션에 넣는다(`(grant_id, account_id)` 유일이라 다시 넣지 않음, 기한은 DB 시각 + claimDays). 대상이 2명 이상인 일괄 지급과 `RecoveryCompensation` 지급의 실행은 Admin 이상만 할 수 있다(`AdminGrantPolicy`). Operator가 부르면 작업 행 없이 403 `FORBIDDEN_ROLE`이고, 실행 효과도 잠근 지급 행으로 같은 판정을 다시 한다. `RecoveryCompensation`은 같은 `sourceRef`에 취소되지 않은 지급이 이미 있으면 작성이 409 `INVALID_STATE`다(유일 인덱스가 동시 작성도 막음, 앞 지급을 취소하면 다시 작성 가능). P0에는 2인 승인이 없어 실행 감사 행을 `self_approved=true`로 남긴다. 취소는 Draft를 그대로 Cancelled로, Executed는 기한 안의 미수령 우편만 취소하고 수령·만료 수를 감사에 남긴다. 이미 수령한 우편은 되돌리지 않으며 회수는 개인 조정으로 한다. 자산은 `Currency`, `Tickets`(계정), `Essence`, `Shards`(캐릭터, 수령 때 고름), `AccountItem`(정산과 같은 허용 ID, 귀속 `Account`)이고 행동력은 지급 대상이 아니다. 한 줄 수량 상한 1,000,000은 오타 방지용 임시값이다(TODO, 기획 미정).
 
@@ -367,7 +369,7 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 
 ## 성장, 장비, 초기 지급, 계정 진행 (0011)
 
-규칙 수치의 원본은 Unity SO(`EquipmentCatalogSO`, `GrowthConfigSO`, `TalismanCatalogSO`, `ProgressionCatalogSO`, `CharacterLevelConfigSO`)다. 백엔드는 그 에셋 값을 옮긴 `src/Shinshi.Data/Content/growth-content.json`(내장 리소스 `Shinshi.Data.Content.growth-content.json`, `schemaVersion` 3, `contentVersion`은 GameDB 값)만 읽고 시작 시 개수, 범위, 참조를 검증한다. 코드는 `Shinshi.Data/Growth/`, `Shinshi.Api/Growth/`, `Shinshi.Api/Ledger/EconomyReconciliationService.cs`이고 등록은 `AddShinshiGrowth`(항상), `AddShinshiEconomyReconciliation`(연결 문자열이 있을 때만)이다.
+규칙 수치의 원본은 Unity SO(`EquipmentCatalogSO`, `GrowthConfigSO`, `TalismanCatalogSO`, `ProgressionCatalogSO`, `CharacterLevelConfigSO`)다. 백엔드는 그 에셋 값을 옮긴 `src/Shinshi.Data/Content/growth-content.json`(내장 리소스 `Shinshi.Data.Content.growth-content.json`, `schemaVersion` 4, `contentVersion`은 GameDB 값)만 읽고 시작 시 개수, 범위, 참조를 검증한다. 코드는 `Shinshi.Data/Growth/`, `Shinshi.Api/Growth/`, `Shinshi.Api/Ledger/EconomyReconciliationService.cs`이고 등록은 `AddShinshiGrowth`(항상), `AddShinshiEconomyReconciliation`(연결 문자열이 있을 때만)이다.
 
 | 경로 | 인증 | 결과 |
 |---|---|---|
@@ -375,6 +377,7 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 | `POST .../talismans/{register,upgrade,loadout,disassemble}` | 마을 서버 임대, 기능 키 `talisman` | `GrowthOperationResponse` |
 | `POST .../training`, `.../training/respec` | 마을 서버 임대, 기능 키 `training` | `GrowthOperationResponse` |
 | `POST .../equipment/craft`, `.../equipment/{itemId}/enhance`, `.../equipment/inherit` | 마을 서버 임대, 기능 키 `crafting`, `enhance`, `inherit` | `GrowthOperationResponse` |
+| `POST .../equipment/{itemId}/reroll-options` `EquipmentRerollOptionsRequest{operationId, expectedRevision, rolls[4]}` | 마을 서버 임대, 기능 키 `reroll_options` | `GrowthOperationResponse`(아래 "장비 옵션 재설정 (0018)") |
 | `POST .../equipment/{itemId}/{equip,unequip,lock,dismantle}` | 마을 서버 임대 | `GrowthOperationResponse` |
 | `GET /v1/accounts/me/progress` | 플레이어 | 200 `AccountProgressResponse` |
 | `POST /v1/town/accounts/{accountId}/progress/intro` `IntroCompleteRequest{operationId}` | 마을 서버 임대 | 200 `OperationResult`(영수증 ID = 계정 ID, 이미 완료도 확정), 409 `SESSION_MISMATCH`(그 계정의 접속 임대가 호출 마을에 없음), `INVALID_TARGET`(없는 계정). 계정 actor 멱등 |
@@ -386,6 +389,22 @@ RecoveryPending 세션은 처리 경로가 없어 세 action 모두 `INVALID_STA
 출정 준비 확인(readiness)이 돌려주는 `characterRevision`도 `loadout_revision`이고, 출정 예약은 참가자의 `characterRevision`을 `loadout_revision`과 대조하며 삭제한 캐릭터(0012 `deleted_at`)는 `SESSION_MISMATCH`로 거절하고 `session_participants.loadout_snapshot`에 `CharacterCombatLoadout`을 고정한다. 던전 입장, 재입장 교환 응답 `JoinTokenExchangeResponse.combatLoadout`이 이 값이다. 같은 응답의 `potions`는 그 참가자의 남은 물약 예약분(예약 수량 - 확정 사용, 지참하지 않았으면 빈 배열)이며, 던전 서버는 이 수량과 보스 사용 상한 안에서만 `POTION_USED`를 보낸다(넘는 사용은 `/events`가 `POTION_LIMIT`로 거절하고 저장 큐가 멈춘다). 일일 대사는 `economy_reconciliation_runs`(UTC 날짜 PK)를 먼저 넣은 API 인스턴스만 돌고, 불일치마다 금액 없이 ID만 ERROR 로그로 남긴다. 대사는 계정 ID 순서의 계정 창(기본 200개)마다 그 계정들의 잔액과 원장만 집계하고, 창마다 선점 `started_at`을 갱신(heartbeat)해 오래 걸려도 다른 인스턴스가 stale로 보고 이어받지 않는다. 선점을 잃으면 결과를 기록하지 않고 멈춘다.
 
 **계정 진행 기록.** 성공 정산(`end_reason = SUCCESS`) 트랜잭션이 계정 행을 잠근 뒤, 떠나지 않은(`departed_at IS NULL`) 참가자에게 일반전은 `battle_id`(지역 ID)의 `RegionCleared`와 그 지역의 `foxTracesPerClear`(상한 `foxTraceCap`), 보스전은 `boss_id`와 `difficulty`로 찾은 보스전의 `BattleCleared`를 기록한다. 실패, 장애 취소, 콘텐츠에 없는 지도는 기록하지 않는다. 정산 효과는 `settlement_operation_id` 조건부 갱신으로 한 번만 돌므로 진행도 한 번만 오른다. 설정 `Growth__RejectUnknownBattles=true`(출시 프로필)면 예약이 성장 콘텐츠에 없는 battleId(테스트용 지도, 빈 값)를 `INVALID_TARGET`으로 거절한다(기본 false, 개발, 테스트는 판정만 생략). 0011 down은 장비, 성장 상태를 모두 지우므로 운영 DB에서 실행하지 않는다.
+
+## 장비 옵션 재설정 (0018)
+
+장비 하나는 옵션 두 줄(`option1_kind`, `option1_value`, `option2_kind`, `option2_value`)을 갖는다. 종류는 `EquipmentOptionRules.KIND_*`(0 없음, 1 공격%, 2 생명%, 3 방어%, 4 치명 확률), 값은 만분율 정수(100 = 1%)이며 `(0, 0)`이 옵션 없는 정상 상태다. 제작, 지급 직후에는 옵션이 없다. DB는 형식만 지킨다(종류 0~4, 값 0~10000, 종류가 0이면 값도 0). 부위별 후보와 등급별 범위는 `growth-content.json`의 `equipment.option*` 키가 정하고 `GrowthContent`가 시작 시 검증한다: 부위 6개, 빈 후보 없음, 종류 1~4가 한 번씩, 등급 4칸, `EquipmentOptionRules.IsValidRange`, 비용 > 0, 천장 >= 1, 상급 기준 0~10000, 등급이 오를 때 범위가 내려가지 않고 min이 값 간격 위에 있을 것(상위 등급 계승이 옮긴 값이 대상 범위를 벗어나지 않게 하는 조건).
+
+`POST /v1/town/characters/{characterId}/equipment/{itemId}/reroll-options`는 마을 서버만 부른다. `rolls`는 마을 서버가 뽑은 0~9999 정수 네 개(줄1 종류, 줄1 값, 줄2 종류, 줄2 값)다. `itemId`가 UUID가 아니거나 `rolls`가 네 개가 아니거나 범위 밖이면 400이고 작업으로 저장하지 않는다. 뽑기와 상급 판정은 공용 `EquipmentOptionRules`(`PickKind`, `PickValue`, `IsHighTier`)를 그대로 쓰며 백엔드는 난수를 만들지 않는다. 판정은 `OptionRerollRules`, 효과는 `PostgresEquipmentRepository.RerollOptionsAsync`다.
+
+효과는 기존 성장 실행기의 한 트랜잭션이다. 계정 -> 캐릭터 잠금과 공통 검사(`WRONG_LOCATION`, `LOCKED`, `STALE_REVISION`) 뒤에 장비 행 `FOR UPDATE` -> 없는 장비, 다른 캐릭터의 장비, 수련용이면 `INVALID_TARGET` -> 경매장 보관 중이면 `MARKET_ESCROWED` -> 정기 300, 정련편 3 차감(모자라면 `INSUFFICIENT_ITEM`, 먼저 뺀 쪽도 함께 되돌림) -> `option_reroll_pity` 행 `FOR UPDATE` -> 판정 -> 누계 UPSERT -> 옵션 네 값과 `bound = true` 저장, `item_history`에 `OptionsRerolled` -> `loadout_revision` + 1과 영수증이다. 착용, 잠금 여부는 보지 않는다. 결과 코드는 `SUCCEEDED`뿐이고 원장 사유는 `REROLL_OPTIONS`(38)다. 영수증의 `growth_receipts.roll_values`(integer[4])에 뽑기 네 개를 남기며 기존 `roll_basis_points`는 비워 둔다.
+
+누계(`option_reroll_pity`, 키는 캐릭터와 부위)는 상급 줄(값이 `min + 0.75 x (max - min)` 이상)이 하나도 없던 재설정의 연속 횟수다. 누계가 9 이상인 상태에서 하는 재설정은 줄1의 값을 그 종류, 등급의 max로 확정한다(종류는 난수대로). 결과에 상급 줄이 있으면 0, 없으면 +1이다. 장비 ID와 등급은 키에 없어 같은 부위의 다른 장비가 누계를 공유한다. 성장 조회의 `optionRerollPity`는 부위 순서 6칸이다.
+
+`rolls`와 `expectedRevision`은 요청 해시에서 빠진다. 같은 operationId 재전송은 다시 뽑지 않고 비용도 한 번만 들며, 응답의 성장 스냅숏은 현재 상태다(그때 확정된 옵션은 `item_history`와 `roll_values`로 추적한다). 기능 키 `reroll_options`가 꺼져 있으면 저장된 결과만 돌려주고 처음 보는 operationId는 저장 없이 409 `FEATURE_DISABLED`다.
+
+다른 작업과의 관계: 강화, 착용, 해제, 잠금은 옵션을 그대로 둔다(`GrowthEffectContext`의 장비 UPDATE가 옵션 열을 함께 쓴다). 계승은 원본의 두 줄을 대상으로 옮기고 대상의 옵션은 버리며, 상위 등급 계승이면 종류가 0이 아닌 줄의 값이 대상 등급 min보다 작을 때 min으로 올린다(`InheritanceRules.CarryOption`). 분해는 옵션과 함께 장비를 지운다. 재설정과 계승은 장비를 귀속시키므로 옵션이 있는 장비는 유저 경매장, 1:1 거래 대상이 아니고 소유 이전 경로는 옵션 열을 건드리지 않는다. 출정 예약은 `CharacterCombatLoadout`의 착용 장비마다 옵션 네 값을 함께 고정한다. 장비 이력 JSON은 옵션이 있을 때만 끝에 `option1Kind`~`option2Value`를 붙여 기존 키와 순서를 유지한다. 운영 어드민의 장비 표시는 옵션을 보여 주지 않는다.
+
+0018 down은 옵션 열, 누계 테이블, `roll_values`를 지워 옵션을 복구할 수 없으므로 운영 DB에서 실행하지 않는다. 원장의 38 행과 `OptionsRerolled` 이력은 남는다. 콘텐츠 스키마(4)와 계약(`EquipmentView`, `CombatEquipmentEntry`, `CharacterGrowthSnapshot`)이 함께 바뀌므로 클라이언트, 전용 서버, API를 같이 교체한다. 테스트는 `tests/Shinshi.Backend.Tests/Growth/`의 `OptionRerollRulesTests`, `EquipmentOptionPostgresTests`, `GrowthHttpTests`, `ReservationLoadoutPostgresTests`에 있다.
 
 ## 생활(행동력, 채집, 물약 제작)과 물약 되돌림 (0013)
 

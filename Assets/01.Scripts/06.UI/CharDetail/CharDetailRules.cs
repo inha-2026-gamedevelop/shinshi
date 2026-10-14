@@ -70,7 +70,8 @@ namespace Shinshi.UI
                     continue;
                 }
 
-                equipped[entry.Slot] = new CombatEquipmentEntry(entry.DefinitionId, entry.Grade, entry.IsTraining, entry.Enhancement);
+                equipped[entry.Slot] = new CombatEquipmentEntry(entry.DefinitionId, entry.Grade, entry.IsTraining, entry.Enhancement,
+                    entry.Option1Kind, entry.Option1Value, entry.Option2Kind, entry.Option2Value);
             }
 
             loadout = new CharacterCombatLoadout(growth.ClassId, equipped, training, new CombatTalismanEntry[0], growth.ContentVersion);
@@ -116,7 +117,6 @@ namespace Shinshi.UI
             return string.Format(CultureInfo.InvariantCulture, NUMBER_FORMAT, value);
         }
 
-        /// <summary> 0~1 비율을 퍼센트 글자로 </summary>
         /// <summary> 종합 전투력 글자, 0 이하면 아직 계산하지 못한 값이다 </summary>
         public static string CombatPowerText(int combatPower)
         {
@@ -125,6 +125,7 @@ namespace Shinshi.UI
                 : UNKNOWN_POWER;
         }
 
+        /// <summary> 0~1 비율을 퍼센트 글자로 </summary>
         public static string Percent(float ratio)
         {
             return string.Format(CultureInfo.InvariantCulture, PERCENT_FORMAT, ratio * 100f);

@@ -167,6 +167,59 @@ namespace Shinshi.Data
             }
         }
 
+        /// <summary> 부위 하나에서 나올 수 있는 옵션 종류 </summary>
+        [Serializable]
+        public class OptionSlotPool
+        {
+            /****************************************
+            *                Fields
+            ****************************************/
+
+            [SerializeField] private EEquipmentSlot         _slot;
+            [SerializeField] private EEquipmentOptionKind[] _kinds;
+
+            public EEquipmentSlot                      Slot  => _slot;
+            public IReadOnlyList<EEquipmentOptionKind> Kinds => _kinds;
+
+            /****************************************
+            *                Methods
+            ****************************************/
+
+            public OptionSlotPool(EEquipmentSlot slot, params EEquipmentOptionKind[] kinds)
+            {
+                _slot  = slot;
+                _kinds = kinds;
+            }
+        }
+
+        /// <summary> 옵션 종류 하나의 등급별 값 범위, 값은 만분율 정수다 </summary>
+        [Serializable]
+        public class OptionRange
+        {
+            /****************************************
+            *                Fields
+            ****************************************/
+
+            [SerializeField] private EEquipmentOptionKind _kind;
+            [SerializeField] private int[]                _min; // EItemGrade 순서
+            [SerializeField] private int[]                _max; // EItemGrade 순서
+
+            public EEquipmentOptionKind Kind => _kind;
+            public IReadOnlyList<int>   Min  => _min;
+            public IReadOnlyList<int>   Max  => _max;
+
+            /****************************************
+            *                Methods
+            ****************************************/
+
+            public OptionRange(EEquipmentOptionKind kind, int[] min, int[] max)
+            {
+                _kind = kind;
+                _min  = min;
+                _max  = max;
+            }
+        }
+
         /// <summary> 상위 등급 계승의 원본 단계와 결과 단계 </summary>
         [Serializable]
         public class InheritanceRow
@@ -333,6 +386,36 @@ namespace Shinshi.Data
             new InheritanceRow(25, 20)
         };
 
+        // 옵션은 장비마다 두 줄이고 재설정하면 두 줄을 함께 새로 뽑는다. 값은 만분율 정수이며 수련과 같은 단계에서 더한다.
+        // 비용은 등급, 부위와 무관하게 같다. 상급 줄 없이 연속으로 뽑은 횟수가 천장에 닿으면 첫 줄의 값을 최고로 확정한다
+        [Header("옵션 재설정")]
+        [SerializeField] private int _optionRerollEssenceCost   = 300;  // 정기, 재설정마다
+        [SerializeField] private int _optionRerollShardCost     = 3;    // 정련편, 재설정마다
+        [SerializeField] private int _optionPityThreshold       = 10;   // 이 횟수째 재설정에서 첫 줄 값을 최고로 확정한다
+        [SerializeField] private int _optionHighTierBasisPoints = 7500; // 만분율, 범위에서 이 비율 이상이면 상급 줄
+        [SerializeField] private int _optionValueStep           = 10;   // 만분율, 값이 나오는 간격
+
+        // EEquipmentSlot 값을 인덱스로 쓴다
+        [SerializeField] private OptionSlotPool[] _optionSlotPools =
+        {
+            new OptionSlotPool(EEquipmentSlot.Weapon, EEquipmentOptionKind.AttackRate, EEquipmentOptionKind.CritChance),
+            new OptionSlotPool(EEquipmentSlot.Head, EEquipmentOptionKind.HealthRate, EEquipmentOptionKind.DefenseRate),
+            new OptionSlotPool(EEquipmentSlot.Body, EEquipmentOptionKind.HealthRate, EEquipmentOptionKind.DefenseRate),
+            new OptionSlotPool(EEquipmentSlot.Hands, EEquipmentOptionKind.HealthRate, EEquipmentOptionKind.DefenseRate),
+            new OptionSlotPool(EEquipmentSlot.Feet, EEquipmentOptionKind.HealthRate, EEquipmentOptionKind.DefenseRate),
+            new OptionSlotPool(EEquipmentSlot.Accessory, EEquipmentOptionKind.AttackRate, EEquipmentOptionKind.HealthRate,
+                EEquipmentOptionKind.DefenseRate, EEquipmentOptionKind.CritChance)
+        };
+
+        // 종류 1부터 순서대로 둔다. 치명 확률은 %p라 비율 옵션의 절반 수준이다
+        [SerializeField] private OptionRange[] _optionRanges =
+        {
+            new OptionRange(EEquipmentOptionKind.AttackRate, new[] { 50, 100, 150, 200 }, new[] { 100, 200, 300, 400 }),
+            new OptionRange(EEquipmentOptionKind.HealthRate, new[] { 50, 100, 150, 200 }, new[] { 100, 200, 300, 400 }),
+            new OptionRange(EEquipmentOptionKind.DefenseRate, new[] { 50, 100, 150, 200 }, new[] { 100, 200, 300, 400 }),
+            new OptionRange(EEquipmentOptionKind.CritChance, new[] { 20, 50, 70, 100 }, new[] { 50, 100, 150, 200 })
+        };
+
         // 경매 재료, 강화와 계승 비용은 돌려주지 않는다
         [Header("분해")]
         [SerializeField] private float _disassembleRefundRate = 0.25f; // 일반 보스 재료 반환 비율, 버림
@@ -342,6 +425,17 @@ namespace Shinshi.Data
         [SerializeField] private int _storageSlotsPerCharacter = 100; // 칸, 캐릭터별, 착용 중인 6부위는 세지 않는다
 
         [NonSerialized] private DefinitionLookup<EquipmentDefinition> _lookup = new DefinitionLookup<EquipmentDefinition>();
+
+        // 판정과 검증이 정수 목록을 받으므로 부위별 후보를 한 번만 정수 배열로 바꿔 둔다
+        [NonSerialized] private int[][] _optionPoolCache;
+
+        public int OptionRerollEssenceCost   => _optionRerollEssenceCost;
+        public int OptionRerollShardCost     => _optionRerollShardCost;
+        public int OptionPityThreshold       => _optionPityThreshold;
+        public int OptionHighTierBasisPoints => _optionHighTierBasisPoints;
+        public int OptionValueStep           => _optionValueStep;
+        public IReadOnlyList<OptionSlotPool> OptionSlotPools => _optionSlotPools;
+        public IReadOnlyList<OptionRange>    OptionRanges    => _optionRanges;
 
         public IReadOnlyList<EquipmentDefinition> Equipment                => _equipment;
         public IReadOnlyList<EnhancementStep>     EnhancementSteps         => _enhancementSteps;
@@ -362,11 +456,13 @@ namespace Shinshi.Data
         private void OnEnable()
         {
             _lookup.Invalidate();
+            _optionPoolCache = null;
         }
 
         protected override void OnValidate()
         {
             _lookup.Invalidate();
+            _optionPoolCache = null;
             base.OnValidate();
         }
 
@@ -439,6 +535,85 @@ namespace Shinshi.Data
             return _gradeStatMultipliers[index];
         }
 
+        /// <summary> 부위에서 나올 수 있는 옵션 종류를 EquipmentOptionRules의 KIND 값으로, 정의가 없으면 빈 목록 </summary>
+        public IReadOnlyList<int> GetOptionPool(EEquipmentSlot slot)
+        {
+            if (_optionPoolCache == null)
+            {
+                _optionPoolCache = BuildOptionPoolCache();
+            }
+
+            int index = (int)slot;
+            if ((index < 0) || (index >= _optionPoolCache.Length))
+            {
+                return Array.Empty<int>();
+            }
+
+            return _optionPoolCache[index];
+        }
+
+        /// <summary> 종류와 등급의 값 범위(만분율), 정의가 없으면 false </summary>
+        public bool TryGetOptionRange(int kind, EItemGrade grade, out int min, out int max)
+        {
+            min = 0;
+            max = 0;
+            int gradeIndex = (int)grade;
+            if ((_optionRanges == null) || (gradeIndex < 0))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _optionRanges.Length; ++i)
+            {
+                OptionRange range = _optionRanges[i];
+                if ((range == null) || ((int)range.Kind != kind) || (range.Min == null) || (range.Max == null)
+                    || (gradeIndex >= range.Min.Count) || (gradeIndex >= range.Max.Count))
+                {
+                    continue;
+                }
+
+                min = range.Min[gradeIndex];
+                max = range.Max[gradeIndex];
+                return true;
+            }
+
+            return false;
+        }
+
+        private int[][] BuildOptionPoolCache()
+        {
+            var cache = new int[SLOT_COUNT][];
+            for (int i = 0; i < cache.Length; ++i)
+            {
+                cache[i] = Array.Empty<int>();
+            }
+
+            if (_optionSlotPools == null)
+            {
+                return cache;
+            }
+
+            for (int i = 0; i < _optionSlotPools.Length; ++i)
+            {
+                OptionSlotPool pool = _optionSlotPools[i];
+                int            slot = (pool == null) ? -1 : (int)pool.Slot;
+                if ((slot < 0) || (slot >= SLOT_COUNT) || (pool.Kinds == null))
+                {
+                    continue;
+                }
+
+                var kinds = new int[pool.Kinds.Count];
+                for (int k = 0; k < kinds.Length; ++k)
+                {
+                    kinds[k] = (int)pool.Kinds[k];
+                }
+
+                cache[slot] = kinds;
+            }
+
+            return cache;
+        }
+
         /// <summary> 목표 단계(현재 단계 + 1)의 시도 비용과 성공률, 1부터 MaxEnhancement까지 </summary>
         public EnhancementStep GetEnhancementStep(int targetLevel)
         {
@@ -481,6 +656,76 @@ namespace Shinshi.Data
             bool scaleValid = ValidateStatScales(errors);
             ValidateEnhancementSteps(errors);
             ValidateInheritance(errors, scaleValid);
+            ValidateOptions(errors);
+        }
+
+        private void ValidateOptions(List<string> errors)
+        {
+            const string OWNER = nameof(EquipmentCatalogSO);
+
+            DataValidation.RequirePositive(errors, OWNER, nameof(_optionRerollEssenceCost), _optionRerollEssenceCost);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_optionRerollShardCost), _optionRerollShardCost);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_optionPityThreshold), _optionPityThreshold);
+            DataValidation.RequireRange(errors, OWNER, nameof(_optionHighTierBasisPoints), _optionHighTierBasisPoints, 0f,
+                Shinshi.Contracts.EquipmentOptionRules.VALUE_SCALE);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_optionValueStep), _optionValueStep);
+            DataValidation.RequireCount(errors, OWNER, nameof(_optionSlotPools), _optionSlotPools, SLOT_COUNT);
+            DataValidation.RequireCount(errors, OWNER, nameof(_optionRanges), _optionRanges,
+                Shinshi.Contracts.EquipmentOptionRules.KIND_MAX);
+            if ((_optionRanges == null) || (_optionSlotPools == null))
+            {
+                return;
+            }
+
+            for (int i = 0; i < _optionRanges.Length; ++i)
+            {
+                OptionRange range = _optionRanges[i];
+                string      field = $"{nameof(_optionRanges)}[{i}]";
+                if ((range == null) || (range.Min == null) || (range.Max == null) || (range.Min.Count != GRADE_COUNT)
+                    || (range.Max.Count != GRADE_COUNT))
+                {
+                    errors.Add($"{OWNER}.{field}: 등급 {GRADE_COUNT}개의 최소, 최대가 있어야 한다");
+                    continue;
+                }
+
+                // 종류 1부터 빈틈 없이 두어야 내보낸 표와 백엔드 검증이 같은 순서를 본다
+                if ((int)range.Kind != (i + 1))
+                {
+                    errors.Add($"{OWNER}.{field}: 종류 순서가 다르다 {range.Kind} != {(EEquipmentOptionKind)(i + 1)}");
+                }
+
+                for (int g = 0; g < GRADE_COUNT; ++g)
+                {
+                    if (!Shinshi.Contracts.EquipmentOptionRules.IsValidRange(range.Min[g], range.Max[g], _optionValueStep))
+                    {
+                        errors.Add($"{OWNER}.{field}[{(EItemGrade)g}]: 범위 {range.Min[g]}~{range.Max[g]}가 간격 {_optionValueStep}에 맞지 않는다");
+                    }
+                }
+            }
+
+            for (int i = 0; i < _optionSlotPools.Length; ++i)
+            {
+                OptionSlotPool pool  = _optionSlotPools[i];
+                string         field = $"{nameof(_optionSlotPools)}[{(EEquipmentSlot)i}]";
+                if ((pool == null) || (pool.Kinds == null) || (pool.Kinds.Count == 0))
+                {
+                    errors.Add($"{OWNER}.{field}: 후보가 비어 있다");
+                    continue;
+                }
+
+                if ((int)pool.Slot != i)
+                {
+                    errors.Add($"{OWNER}.{field}: 부위 순서가 EEquipmentSlot과 다르다 {pool.Slot}");
+                }
+
+                for (int k = 0; k < pool.Kinds.Count; ++k)
+                {
+                    if (!TryGetOptionRange((int)pool.Kinds[k], EItemGrade.Common, out _, out _))
+                    {
+                        errors.Add($"{OWNER}.{field}: 범위 표에 없는 종류다 {pool.Kinds[k]}");
+                    }
+                }
+            }
         }
 
         public override void ValidateReferences(GameDatabaseSO root, List<string> errors)

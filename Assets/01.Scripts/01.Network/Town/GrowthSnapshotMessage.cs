@@ -29,6 +29,7 @@ namespace Shinshi.Network
         private readonly int                  _storageUsed;
         private readonly int                  _storageCapacity;
         private readonly string               _contentVersion;
+        private readonly int[]                _optionPity;
 
         /****************************************
         *              Properties
@@ -51,14 +52,19 @@ namespace Shinshi.Network
         public int                  StorageCapacity => _storageCapacity;
         public string               ContentVersion  => _contentVersion;
 
+        // EEquipmentSlot 순서의 옵션 재설정 누계, 상급 줄 없이 연속으로 재설정한 횟수. 값이 없으면 빈 배열이다
+        public int[]                OptionPity      => _optionPity ?? Array.Empty<int>();
+
         /****************************************
         *                Methods
         ****************************************/
 
         public GrowthSnapshotMessage(int classId, long loadoutRevision, long essence, long shards, int[] training,
             TownEquipmentEntry[] equipment, TownPityEntry[] pity, TownTalismanEntry[] talismans, TownLoadoutEntry[] loadout,
-            TownItemEntry[] accountItems, int storageUsed, int storageCapacity, string contentVersion, long totalExperience = 0)
+            TownItemEntry[] accountItems, int storageUsed, int storageCapacity, string contentVersion, long totalExperience = 0,
+            int[] optionPity = null)
         {
+            _optionPity      = optionPity;
             _totalExperience = totalExperience;
             _classId         = classId;
             _loadoutRevision = loadoutRevision;

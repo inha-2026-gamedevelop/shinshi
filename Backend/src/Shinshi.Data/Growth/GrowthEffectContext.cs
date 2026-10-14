@@ -29,7 +29,9 @@ namespace Shinshi.Data.Growth
             item_id AS "ItemId", account_id AS "AccountId", character_id AS "CharacterId",
             definition_id AS "DefinitionId", slot AS "Slot", grade AS "Grade", is_training AS "IsTraining",
             origin AS "Origin", enhancement AS "Enhancement", equipped AS "Equipped", locked AS "Locked", bound AS "Bound",
-            escrow_kind AS "EscrowKind"
+            escrow_kind AS "EscrowKind",
+            option1_kind::integer AS "Option1Kind", option1_value AS "Option1Value",
+            option2_kind::integer AS "Option2Kind", option2_value AS "Option2Value"
             """;
 
         private readonly IEconomyLedgerEntryWriter _ledger;
@@ -197,9 +199,10 @@ namespace Shinshi.Data.Growth
             await Connection.ExecuteAsync(new CommandDefinition(
                 """
                 INSERT INTO equipment_instances (item_id, account_id, character_id, definition_id, slot, grade, is_training,
-                    origin, enhancement, equipped, locked, bound)
+                    origin, enhancement, equipped, locked, bound, option1_kind, option1_value, option2_kind, option2_value)
                 VALUES (@ItemId, @AccountId, @CharacterId, @DefinitionId, @Slot, @Grade, @IsTraining,
-                    @Origin, @Enhancement, @Equipped, @Locked, @Bound);
+                    @Origin, @Enhancement, @Equipped, @Locked, @Bound,
+                    @Option1Kind, @Option1Value, @Option2Kind, @Option2Value);
                 """, record, Transaction, cancellationToken: cancellationToken));
             await AppendHistoryAsync(record.ItemId, eventKind, null, record, isNew: true, cancellationToken);
         }
@@ -213,7 +216,9 @@ namespace Shinshi.Data.Growth
             await Connection.ExecuteAsync(new CommandDefinition(
                 """
                 UPDATE equipment_instances
-                SET enhancement = @Enhancement, equipped = @Equipped, locked = @Locked, bound = @Bound
+                SET enhancement = @Enhancement, equipped = @Equipped, locked = @Locked, bound = @Bound,
+                    option1_kind = @Option1Kind, option1_value = @Option1Value,
+                    option2_kind = @Option2Kind, option2_value = @Option2Value
                 WHERE item_id = @ItemId;
                 """, after, Transaction, cancellationToken: cancellationToken));
             await AppendHistoryAsync(after.ItemId, eventKind, before, after, isNew: false, cancellationToken);

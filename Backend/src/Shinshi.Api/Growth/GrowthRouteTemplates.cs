@@ -25,6 +25,8 @@ namespace Shinshi.Backend.Growth
         public const string EQUIPMENT_LOCK       = ITEM + "/lock";
         public const string EQUIPMENT_DISMANTLE  = ITEM + "/dismantle";
 
+        public const string EQUIPMENT_REROLL_OPTIONS = ITEM + "/reroll-options";
+
         // GrowthRoutes.INTRO_COMPLETE_FORMAT
         public const string INTRO_COMPLETE = "/v1/town/accounts/{accountId}/progress/intro";
     }

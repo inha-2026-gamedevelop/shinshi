@@ -33,7 +33,9 @@ namespace Shinshi.Data.Growth
                 """
                 SELECT character_id AS "CharacterId", class_id AS "ClassId" FROM characters WHERE character_id = ANY(@Ids);
                 SELECT character_id AS "CharacterId", slot AS "Slot", definition_id AS "DefinitionId", grade AS "Grade",
-                    is_training AS "IsTraining", enhancement AS "Enhancement"
+                    is_training AS "IsTraining", enhancement AS "Enhancement",
+                    option1_kind::integer AS "Option1Kind", option1_value AS "Option1Value",
+                    option2_kind::integer AS "Option2Kind", option2_value AS "Option2Value"
                 FROM equipment_instances WHERE character_id = ANY(@Ids) AND equipped;
                 SELECT character_id AS "CharacterId", attack AS "Attack", health AS "Health", defense AS "Defense",
                     crit AS "Crit", energy AS "Energy"
@@ -58,7 +60,8 @@ namespace Shinshi.Data.Growth
                 CombatEquipmentEntry[] equipped = new CombatEquipmentEntry[GrowthContent.SLOT_COUNT];
                 foreach (EquipmentRow row in equipment[characterId])
                 {
-                    equipped[row.Slot] = new CombatEquipmentEntry(row.DefinitionId, row.Grade, row.IsTraining, row.Enhancement);
+                    equipped[row.Slot] = new CombatEquipmentEntry(row.DefinitionId, row.Grade, row.IsTraining, row.Enhancement,
+                        row.Option1Kind, row.Option1Value, row.Option2Kind, row.Option2Value);
                 }
 
                 int[] allocation = training.TryGetValue(characterId, out PostgresGrowthReader.TrainingRow? stats)
@@ -90,6 +93,10 @@ namespace Shinshi.Data.Growth
             public int    Grade        { get; set; }
             public bool   IsTraining   { get; set; }
             public int    Enhancement  { get; set; }
+            public int    Option1Kind  { get; set; }
+            public int    Option1Value { get; set; }
+            public int    Option2Kind  { get; set; }
+            public int    Option2Value { get; set; }
         }
 
         private sealed class TalismanRow

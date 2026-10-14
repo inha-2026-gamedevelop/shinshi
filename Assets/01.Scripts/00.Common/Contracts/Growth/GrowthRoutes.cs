@@ -29,6 +29,7 @@ namespace Shinshi.Contracts
         public const string EQUIPMENT_UNEQUIP_FORMAT   = "/v1/town/characters/{0}/equipment/{1}/unequip";
         public const string EQUIPMENT_LOCK_FORMAT      = "/v1/town/characters/{0}/equipment/{1}/lock";
         public const string EQUIPMENT_DISMANTLE_FORMAT = "/v1/town/characters/{0}/equipment/{1}/dismantle";
+        public const string EQUIPMENT_REROLL_OPTIONS_FORMAT = "/v1/town/characters/{0}/equipment/{1}/reroll-options";
 
         // POST, IntroCompleteRequest -> OperationResult. 마을 서버 임대 Bearer가 필요하고 {0}의 계정 접속 임대가 호출한 마을에 있어야 한다.
         // 신시 안내 완료를 기록한다. 이미 완료한 계정도 확정이다

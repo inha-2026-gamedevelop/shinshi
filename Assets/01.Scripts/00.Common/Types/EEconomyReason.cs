@@ -39,6 +39,7 @@ namespace Shinshi.Common
         MarketProceeds       = 34,
         MarketReceive        = 35,
         TradeGive            = 36,
-        TradeReceive         = 37
+        TradeReceive         = 37,
+        RerollOptions        = 38
     }
 }

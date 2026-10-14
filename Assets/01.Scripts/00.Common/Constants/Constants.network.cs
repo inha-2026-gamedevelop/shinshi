@@ -16,7 +16,8 @@ namespace Shinshi.Common
             // 5: 캐릭터 누적 경험치·성장 입장 계약과 플레이어 경험치 SyncVar 추가(2026-10-11)
             // 6: 파티 참가자 누적 경험치와 소유자 데미지 표시 TargetRpc 추가(2026-10-11)
             // 7: 무철, 월백 하드 2페이즈 전용 보스 사건과 복원 기록 추가, 투사체와 장판 시작 값에 시전 번호 추가(2026-10-13)
-            public const int PROTOCOL_VERSION = 7;
+            // 8: 장비 옵션 필드와 재설정 누계 추가, 성장 요청 종류 장비 옵션 재설정 추가(2026-10-13)
+            public const int PROTOCOL_VERSION = 8;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;

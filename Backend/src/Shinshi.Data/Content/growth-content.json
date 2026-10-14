@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "contentVersion": "0.1.2",
   "equipment": {
     "definitions": [
@@ -363,6 +363,101 @@
     "enhancementStatRate": 0.04,
     "trainingStatRate": 0.5,
     "lifeStealPerGrade": 0.005,
+    "optionRerollEssenceCost": 300,
+    "optionRerollShardCost": 3,
+    "optionPityThreshold": 10,
+    "optionHighTierBasisPoints": 7500,
+    "optionValueStep": 10,
+    "optionSlotPools": [
+      [
+        1,
+        4
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ]
+    ],
+    "optionRanges": [
+      {
+        "kind": 1,
+        "min": [
+          50,
+          100,
+          150,
+          200
+        ],
+        "max": [
+          100,
+          200,
+          300,
+          400
+        ]
+      },
+      {
+        "kind": 2,
+        "min": [
+          50,
+          100,
+          150,
+          200
+        ],
+        "max": [
+          100,
+          200,
+          300,
+          400
+        ]
+      },
+      {
+        "kind": 3,
+        "min": [
+          50,
+          100,
+          150,
+          200
+        ],
+        "max": [
+          100,
+          200,
+          300,
+          400
+        ]
+      },
+      {
+        "kind": 4,
+        "min": [
+          20,
+          50,
+          70,
+          100
+        ],
+        "max": [
+          50,
+          100,
+          150,
+          200
+        ]
+      }
+    ],
     "enhancementSteps": [
       {
         "essenceCost": 150,

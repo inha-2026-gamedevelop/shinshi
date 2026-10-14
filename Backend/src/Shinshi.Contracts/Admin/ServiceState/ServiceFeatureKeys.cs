@@ -29,9 +29,13 @@ namespace Shinshi.Contracts.Admin
         public const string MARKET        = "market";
         public const string TRADE         = "trade";
 
+        // 장비 옵션 재설정
+        public const string REROLL_OPTIONS = "reroll_options";
+
         private static readonly string[] G_All =
         {
-            AUCTION, CRAFTING, ENHANCE, INHERIT, GATHERING, BOSS_ENTRY, INBOX_CLAIM, DUNGEON_ENTRY, TALISMAN, TRAINING, MARKET, TRADE
+            AUCTION, CRAFTING, ENHANCE, INHERIT, GATHERING, BOSS_ENTRY, INBOX_CLAIM, DUNGEON_ENTRY, TALISMAN, TRAINING, MARKET, TRADE,
+            REROLL_OPTIONS
         };
 
         /****************************************

@@ -184,6 +184,121 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void GrowthSnapshot_RoundTrip_KeepsEquipmentOptionsAndPity()
+        {
+            var equipment = new[]
+            {
+                new TownEquipmentEntry("a", "equip_a", 0, 3, false, "craft", 7, true, false, true, false, 1, 380, 4, 190),
+                new TownEquipmentEntry("b", "equip_b", 1, 0, false, "craft", 0, false, false, false),
+                new TownEquipmentEntry("c", "equip_c", 5, 2, false, "craft", 2, false, true, true, true, 3, 10000, 0, 0)
+            };
+            var source = new GrowthSnapshotMessage(1, 9, 10, 20, new[] { 1, 2, 3, 4, 5 }, equipment, new[] { new TownPityEntry(0, 1, 2) },
+                null, null, new[] { new TownItemEntry("item", "account", 3, 1) }, 4, 40, "v1", 777L, new[] { 0, 9, 3, 0, 1, 5 });
+
+            var writer = new NetworkWriter();
+            writer.WriteGrowthSnapshotMessage(source);
+            GrowthSnapshotMessage read = new NetworkReader(writer.ToArraySegment()).ReadGrowthSnapshotMessage();
+
+            Assert.AreEqual(3, read.Equipment.Length);
+            Assert.AreEqual(1, read.Equipment[0].Option1Kind);
+            Assert.AreEqual(380, read.Equipment[0].Option1Value);
+            Assert.AreEqual(4, read.Equipment[0].Option2Kind);
+            Assert.AreEqual(190, read.Equipment[0].Option2Value);
+            Assert.IsTrue(read.Equipment[0].Bound);
+            Assert.AreEqual(0, read.Equipment[1].Option1Kind);
+            Assert.AreEqual(0, read.Equipment[1].Option1Value);
+            Assert.AreEqual(0, read.Equipment[1].Option2Kind);
+            Assert.AreEqual(0, read.Equipment[1].Option2Value);
+            Assert.AreEqual(3, read.Equipment[2].Option1Kind);
+            Assert.AreEqual(10000, read.Equipment[2].Option1Value);
+            Assert.IsTrue(read.Equipment[2].InMarket);
+            Assert.AreEqual(new[] { 0, 9, 3, 0, 1, 5 }, read.OptionPity);
+
+            // 옵션 뒤에 오는 필드가 밀리지 않았는지 본다
+            Assert.AreEqual(777L, read.TotalExperience);
+            Assert.AreEqual(40, read.StorageCapacity);
+            Assert.AreEqual("v1", read.ContentVersion);
+            Assert.AreEqual(2, read.Pity[0].Failures);
+        }
+
+        [Test]
+        public void GrowthSnapshot_RoundTripWithoutOptionPity_ReadsEmptyArray()
+        {
+            var source = new GrowthSnapshotMessage(0, 0, 0, 0, null, null, null, null, null, null, 0, 0, "v");
+
+            var writer = new NetworkWriter();
+            writer.WriteGrowthSnapshotMessage(source);
+            GrowthSnapshotMessage read = new NetworkReader(writer.ToArraySegment()).ReadGrowthSnapshotMessage();
+
+            Assert.AreEqual(0, read.OptionPity.Length);
+            Assert.AreEqual(0, source.OptionPity.Length);
+        }
+
+        [Test]
+        public void GrowthSnapshot_OptionPityOverLimit_FailsToRead()
+        {
+            // 성장 상태 배열 한 칸 수 상한(1024)을 넘기는 길이
+            const int OPTION_PITY_OVER_LIMIT = 2048;
+
+            var source = new GrowthSnapshotMessage(0, 0, 0, 0, null, null, null, null, null, null, 0, 0, "v", 0L,
+                new int[OPTION_PITY_OVER_LIMIT]);
+
+            var writer = new NetworkWriter();
+            writer.WriteGrowthSnapshotMessage(source);
+            var reader = new NetworkReader(writer.ToArraySegment());
+
+            Assert.Throws<InvalidDataException>(() => reader.ReadGrowthSnapshotMessage());
+        }
+
+        [Test]
+        public void GrowthResult_RerollOptionsAction_RoundTripKeepsAction()
+        {
+            Guid operationId = Guid.NewGuid();
+            var source = new GrowthResultMessage(operationId, EGrowthAction.EquipmentRerollOptions, ERejectReason.None, 1, "item");
+
+            var writer = new NetworkWriter();
+            writer.WriteGrowthResultMessage(source);
+            GrowthResultMessage read = new NetworkReader(writer.ToArraySegment()).ReadGrowthResultMessage();
+
+            Assert.AreEqual(14, (int)EGrowthAction.EquipmentRerollOptions);
+            Assert.AreEqual(EGrowthAction.EquipmentRerollOptions, read.Action);
+            Assert.AreEqual(operationId, read.OperationId);
+        }
+
+        [Test]
+        public void ToMessage_EquipmentOptionsAndPity_ReachesMessage()
+        {
+            var equipment = new[]
+            {
+                new EquipmentView("a", "equip_a", 0, 3, false, GrowthCodes.EquipmentOrigin.CRAFT, 7, true, false, true, false, 1, 380, 4, 190),
+                new EquipmentView("b", "equip_b", 1, 0, false, GrowthCodes.EquipmentOrigin.CRAFT, 0, false, false, false)
+            };
+            var snapshot = new CharacterGrowthSnapshot("c", 0, 5, 0, 0, new int[5], equipment, null, null, null, null, 0, 0, "v", 0L, 0L,
+                new[] { 0, 9, 3, 0, 1, 5 });
+
+            GrowthSnapshotMessage message = TownSnapshotConverter.ToMessage(snapshot);
+
+            Assert.AreEqual(2, message.Equipment.Length);
+            Assert.AreEqual(1, message.Equipment[0].Option1Kind);
+            Assert.AreEqual(380, message.Equipment[0].Option1Value);
+            Assert.AreEqual(4, message.Equipment[0].Option2Kind);
+            Assert.AreEqual(190, message.Equipment[0].Option2Value);
+            Assert.AreEqual(0, message.Equipment[1].Option1Kind);
+            Assert.AreEqual(0, message.Equipment[1].Option2Value);
+            Assert.AreEqual(new[] { 0, 9, 3, 0, 1, 5 }, message.OptionPity);
+        }
+
+        [Test]
+        public void ToMessage_NullOptionPity_BecomesSixZeros()
+        {
+            var snapshot = new CharacterGrowthSnapshot("c", 0, 5, 0, 0, new int[5], null, null, null, null, null, 0, 0, "v", 0L);
+
+            GrowthSnapshotMessage message = TownSnapshotConverter.ToMessage(snapshot);
+
+            Assert.AreEqual(new int[Constants.Combat.EQUIPMENT_SLOT_COUNT], message.OptionPity);
+        }
+
+        [Test]
         public void LifeSnapshot_RoundTrip_KeepsPotions()
         {
             var source = new LifeSnapshotMessage(80, 100, 123, "item_herb", 7, 9999,

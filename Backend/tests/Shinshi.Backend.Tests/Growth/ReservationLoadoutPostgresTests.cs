@@ -68,5 +68,50 @@ namespace Shinshi.Backend.Tests.Growth
                 environment.CreateReservation(Guid.NewGuid(), GameSessionCodes.Mode.NORMAL, new[] { player }, 0));
             Assert.Equal(ContractCodes.RejectReason.STALE_REVISION, stale.Result.ReasonCode);
         }
+
+        /// <summary> 예약이 고정한 전투 준비에 착용 장비의 옵션 두 줄이 들어간다. 옵션 없는 장비는 (0, 0)이고 미착용 장비의 옵션은 빠진다 </summary>
+        [PostgresFact]
+        public async Task Reserve_FreezesEquippedOptionsIntoLoadoutSnapshot()
+        {
+            await using SessionTestEnvironment environment = await SessionTestEnvironment.CreateAsync();
+            TestPlayer player = await environment.CreatePlayerAsync(tickets: 0, potions: 0);
+            await environment.ExecuteAsync(
+                """
+                INSERT INTO equipment_instances (item_id, account_id, character_id, definition_id, slot, grade, is_training,
+                    origin, enhancement, equipped, bound, option1_kind, option1_value, option2_kind, option2_value)
+                VALUES (gen_random_uuid(), @AccountId, @CharacterId, 'equip_weapon_rare', 0, 1, false, 'Craft', 17, true, true,
+                        1, 150, 4, 60),
+                    (gen_random_uuid(), @AccountId, @CharacterId, 'equip_head_common', 1, 0, false, 'Craft', 0, true, true,
+                        0, 0, 0, 0),
+                    (gen_random_uuid(), @AccountId, @CharacterId, 'equip_accessory_common', 5, 0, false, 'Craft', 0, true, true,
+                        0, 0, 3, 70),
+                    (gen_random_uuid(), @AccountId, @CharacterId, 'equip_body_common', 2, 0, false, 'Craft', 0, false, true,
+                        2, 100, 2, 100);
+                """, new { player.AccountId, player.CharacterId });
+
+            ReservedSessionView session = await environment.ReserveAsync(GameSessionCodes.Mode.NORMAL, new[] { player }, 0);
+            string json = await environment.TextAsync(
+                "SELECT loadout_snapshot::text FROM session_participants WHERE session_id = @SessionId;",
+                new { session.SessionId });
+            CharacterCombatLoadout loadout = JsonConvert.DeserializeObject<CharacterCombatLoadout>(json,
+                ContractJson.CreateSettings())!;
+
+            Assert.Equal((EquipmentOptionRules.KIND_ATTACK_RATE, 150, EquipmentOptionRules.KIND_CRIT_CHANCE, 60),
+                Options(loadout.Equipped[0]));
+            Assert.Equal((EquipmentOptionRules.KIND_NONE, 0, EquipmentOptionRules.KIND_NONE, 0), Options(loadout.Equipped[1]));
+            Assert.Equal((EquipmentOptionRules.KIND_NONE, 0, EquipmentOptionRules.KIND_DEFENSE_RATE, 70),
+                Options(loadout.Equipped[5]));
+            Assert.Null(loadout.Equipped[2]);
+
+            // 저장한 JSON 자체에 옵션 키가 있어야 던전 서버가 받는 값도 같다
+            Assert.Contains("\"option1Value\": 150", json);
+            Assert.Contains("\"option2Kind\": 4", json);
+        }
+
+        private static (int, int, int, int) Options(CombatEquipmentEntry entry)
+        {
+            Assert.NotNull(entry);
+            return (entry.Option1Kind, entry.Option1Value, entry.Option2Kind, entry.Option2Value);
+        }
     }
 }

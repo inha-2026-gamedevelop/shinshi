@@ -13,6 +13,7 @@ namespace Shinshi.Systems
         CombatMeter  = 6,
         MailBox       = 7,
         CharacterInfo = 8,
-        Trade         = 9
+        Trade         = 9,
+        EquipmentOption = 10
     }
 }

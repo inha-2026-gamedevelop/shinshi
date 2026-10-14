@@ -18,16 +18,32 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        private const string GUID_FORMAT = "D";
+        private const string GUID_FORMAT       = "D";
+        private const int    SINGLE_ROLL_COUNT = 1;
 
         /****************************************
         *                Methods
         ****************************************/
 
-        /// <summary> 확률 판정을 쓰는 작업인지(부적 등록, 장비 강화) </summary>
+        /// <summary> 확률 판정을 쓰는 작업인지(부적 등록, 장비 강화, 장비 옵션 재설정) </summary>
         public static bool UsesRoll(EGrowthAction action)
         {
-            return (action == EGrowthAction.TalismanRegister) || (action == EGrowthAction.EquipmentEnhance);
+            return RollCount(action) > 0;
+        }
+
+        /// <summary> 작업이 요청마다 필요로 하는 난수 개수, 난수를 쓰지 않는 작업은 0 </summary>
+        public static int RollCount(EGrowthAction action)
+        {
+            switch (action)
+            {
+                case EGrowthAction.TalismanRegister:
+                case EGrowthAction.EquipmentEnhance:
+                    return SINGLE_ROLL_COUNT;
+                case EGrowthAction.EquipmentRerollOptions:
+                    return EquipmentOptionRules.ROLL_COUNT;
+                default:
+                    return 0;
+            }
         }
 
         /// <summary> 조회 경로 </summary>
@@ -36,8 +52,9 @@ namespace Shinshi.Network
             return string.Format(CultureInfo.InvariantCulture, GrowthRoutes.GROWTH_FORMAT, characterId);
         }
 
-        /// <summary> 쓰기 작업의 경로와 본문을 만든다, 형식이 틀리면 InvalidTarget. 수련 단계는 trainingTotalCap 이하만 받는다 </summary>
-        public static ERejectReason TryBuild(in GrowthRequestMessage message, string characterId, long expectedRevision, int roll,
+        /// <summary> 쓰기 작업의 경로와 본문을 만든다, 형식이 틀리면 InvalidTarget. 수련 단계는 trainingTotalCap 이하만 받는다.
+        /// rolls는 RollCount(action)개여야 하고(난수를 쓰지 않는 작업은 무시한다) 본문은 이 배열을 복사하지 않고 직렬화에만 쓴다 </summary>
+        public static ERejectReason TryBuild(in GrowthRequestMessage message, string characterId, long expectedRevision, int[] rolls,
             int trainingTotalCap, out string path, out object body)
         {
             path = null;
@@ -47,7 +64,7 @@ namespace Shinshi.Network
                 return ERejectReason.InvalidTarget;
             }
 
-            if ((roll < 0) || (roll > GrowthCodes.MAX_ROLL_BASIS_POINTS))
+            if (!AreRollsValid(message.Action, rolls))
             {
                 return ERejectReason.InvalidTarget;
             }
@@ -63,7 +80,7 @@ namespace Shinshi.Network
                     }
 
                     path = Format(GrowthRoutes.TALISMAN_REGISTER_FORMAT, characterId);
-                    body = new TalismanRegisterRequest(operationId, expectedRevision, message.TargetId, roll);
+                    body = new TalismanRegisterRequest(operationId, expectedRevision, message.TargetId, rolls[0]);
                     return ERejectReason.None;
                 case EGrowthAction.TalismanUpgrade:
                     if (!IsShortId(message.TargetId))
@@ -138,7 +155,16 @@ namespace Shinshi.Network
                     }
 
                     path = Format(GrowthRoutes.EQUIPMENT_ENHANCE_FORMAT, characterId, itemId);
-                    body = new EquipmentEnhanceRequest(operationId, expectedRevision, roll);
+                    body = new EquipmentEnhanceRequest(operationId, expectedRevision, rolls[0]);
+                    return ERejectReason.None;
+                case EGrowthAction.EquipmentRerollOptions:
+                    if (!TryNormalizeItemId(message.TargetId, out itemId))
+                    {
+                        return ERejectReason.InvalidTarget;
+                    }
+
+                    path = Format(GrowthRoutes.EQUIPMENT_REROLL_OPTIONS_FORMAT, characterId, itemId);
+                    body = new EquipmentRerollOptionsRequest(operationId, expectedRevision, rolls);
                     return ERejectReason.None;
                 case EGrowthAction.EquipmentEquip:
                 case EGrowthAction.EquipmentUnequip:
@@ -163,6 +189,31 @@ namespace Shinshi.Network
                 default:
                     return ERejectReason.InvalidTarget;
             }
+        }
+
+        // 난수를 쓰지 않는 작업은 배열을 보지 않는다. 쓰는 작업은 개수가 정확히 맞고 모두 0 이상 MAX_ROLL_BASIS_POINTS 이하여야 한다
+        private static bool AreRollsValid(EGrowthAction action, int[] rolls)
+        {
+            int required = RollCount(action);
+            if (required == 0)
+            {
+                return true;
+            }
+
+            if ((rolls == null) || (rolls.Length != required))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < rolls.Length; ++i)
+            {
+                if ((rolls[i] < 0) || (rolls[i] > GrowthCodes.MAX_ROLL_BASIS_POINTS))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static string ActionRoute(EGrowthAction action)

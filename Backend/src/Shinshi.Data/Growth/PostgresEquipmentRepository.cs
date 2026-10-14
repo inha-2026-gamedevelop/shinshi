@@ -15,7 +15,7 @@ using Shinshi.Data.Ledger;
 
 namespace Shinshi.Data.Growth
 {
-    /// <summary> 장비 제작, 강화, 계승, 착용과 해제, 잠금, 분해. 모든 장비 변경은 item_history에 이전, 이후 상태를 남긴다 </summary>
+    /// <summary> 장비 제작, 강화, 옵션 재설정, 계승, 착용과 해제, 잠금, 분해. 모든 장비 변경은 item_history에 이전, 이후 상태를 남긴다 </summary>
     public sealed class PostgresEquipmentRepository
     {
         /****************************************
@@ -29,6 +29,8 @@ namespace Shinshi.Data.Growth
         public const string UNEQUIP_KIND   = "growth.equipment.unequip";
         public const string LOCK_KIND      = "growth.equipment.lock";
         public const string DISMANTLE_KIND = "growth.equipment.dismantle";
+
+        public const string REROLL_OPTIONS_KIND = "growth.equipment.reroll_options";
 
         private readonly GrowthOperationRunner _runner;
 
@@ -67,7 +69,28 @@ namespace Shinshi.Data.Growth
                 replayOnly, cancellationToken);
         }
 
-        /// <summary> 원본 단계를 같은 부위 +0 미착용 대상에 옮기고 원본을 지운다. 대상 단계의 보정 기록은 건드리지 않는다 </summary>
+        /// <summary> 정기와 정련편을 쓰고 옵션 두 줄을 새로 뽑아 바꾼다. rolls는 마을 서버가 뽑은 네 값이며 요청 해시에서 빠진다.
+        /// 재설정한 장비는 캐릭터에 귀속된다 </summary>
+        public Task<GrowthOperationOutcome> RerollOptionsAsync(Guid townInstanceId, Guid operationId, Guid characterId,
+            long expectedRevision, Guid itemId, IReadOnlyList<int> rolls, bool replayOnly,
+            CancellationToken cancellationToken = default)
+        {
+            if (!EquipmentOptionRules.IsValidRolls(rolls))
+            {
+                throw new ArgumentException("Option rolls must be four values from 0 to 9999.", nameof(rolls));
+            }
+
+            // 호출자가 배열을 바꿔도 직렬화 실패 재시도가 같은 입력으로 다시 판정하도록 복사해 둔다
+            int[] fixedRolls = rolls.ToArray();
+            GrowthCommand command = new GrowthCommand(townInstanceId, operationId, characterId, expectedRevision,
+                REROLL_OPTIONS_KIND, ContractCodes.EconomyReason.REROLL_OPTIONS, new { itemId = itemId.ToString("D") },
+                rollValues: fixedRolls);
+            return _runner.RunAsync(command,
+                (context, token) => RerollOptionsEffectAsync(context, itemId, fixedRolls, token), replayOnly,
+                cancellationToken);
+        }
+
+        /// <summary> 원본 단계와 옵션을 같은 부위 +0 미착용 대상에 옮기고 원본을 지운다. 대상 단계의 보정 기록은 건드리지 않는다 </summary>
         public Task<GrowthOperationOutcome> InheritAsync(Guid townInstanceId, Guid operationId, Guid characterId,
             long expectedRevision, Guid sourceItemId, Guid targetItemId, bool replayOnly,
             CancellationToken cancellationToken = default)
@@ -219,6 +242,56 @@ namespace Shinshi.Data.Growth
             return GrowthEffectResult.Committed(GrowthCodes.Outcome.FAILED, item.ItemId);
         }
 
+        private static async Task<GrowthEffectResult> RerollOptionsEffectAsync(GrowthEffectContext context, Guid itemId,
+            int[] rolls, CancellationToken cancellationToken)
+        {
+            Dictionary<Guid, EquipmentRecord> items = await context.LockEquipmentAsync(new[] { itemId }, cancellationToken);
+            GrowthContent content = context.Content;
+            if (!items.TryGetValue(itemId, out EquipmentRecord? item) || item.IsTraining
+                || !content.TryGetEquipment(item.DefinitionId, out GrowthContent.EquipmentDefinition definition)
+                || !OptionRerollRules.CanReroll(definition))
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);
+            }
+            if (item.EscrowKind != null)
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
+            }
+
+            (long essence, long shards) = OptionRerollRules.Cost(content);
+            if (!await context.TryDebitAsync(context.Essence(), essence, cancellationToken)
+                || !await context.TryDebitAsync(context.Shards(), shards, cancellationToken))
+            {
+                return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INSUFFICIENT_ITEM);
+            }
+
+            // 누계 키는 캐릭터, 부위다. 장비 ID나 등급을 넣지 않아 같은 부위의 다른 장비도 누계를 공유한다.
+            // 행이 아직 없어도 같은 캐릭터의 성장 쓰기는 캐릭터 행 잠금으로 직렬화되어 두 작업이 동시에 처음 넣지 못한다
+            int misses = await context.Connection.QuerySingleOrDefaultAsync<int?>(new CommandDefinition(
+                """
+                SELECT misses FROM option_reroll_pity
+                WHERE character_id = @CharacterId AND slot = @Slot FOR UPDATE;
+                """, new { context.CharacterId, item.Slot }, context.Transaction,
+                cancellationToken: cancellationToken)) ?? 0;
+            OptionRerollDecision decision = OptionRerollRules.Roll(content, definition, rolls, misses);
+            await context.Connection.ExecuteAsync(new CommandDefinition(
+                """
+                INSERT INTO option_reroll_pity (character_id, slot, misses)
+                VALUES (@CharacterId, @Slot, @Misses)
+                ON CONFLICT (character_id, slot) DO UPDATE SET misses = EXCLUDED.misses;
+                """, new { context.CharacterId, item.Slot, Misses = decision.NextMisses },
+                context.Transaction, cancellationToken: cancellationToken));
+
+            EquipmentRecord after = item.Clone();
+            after.Bound = true;
+            after.Option1Kind = decision.Line1.Kind;
+            after.Option1Value = decision.Line1.Value;
+            after.Option2Kind = decision.Line2.Kind;
+            after.Option2Value = decision.Line2.Value;
+            await context.UpdateEquipmentAsync(item, after, GrowthAssets.HISTORY_OPTIONS_REROLLED, cancellationToken);
+            return GrowthEffectResult.Committed(GrowthCodes.Outcome.SUCCEEDED, item.ItemId);
+        }
+
         private static async Task<GrowthEffectResult> InheritEffectAsync(GrowthEffectContext context, Guid sourceItemId,
             Guid targetItemId, CancellationToken cancellationToken)
         {
@@ -256,6 +329,16 @@ namespace Shinshi.Data.Growth
             EquipmentRecord after = target.Clone();
             after.Enhancement = decision.ResultLevel;
             after.Bound = true;
+
+            // 옵션은 원본 것을 옮기고 대상이 갖고 있던 옵션은 버린다
+            EquipmentOptionLine line1 = InheritanceRules.CarryOption(content, sourceDefinition, targetDefinition,
+                new EquipmentOptionLine(source.Option1Kind, source.Option1Value));
+            EquipmentOptionLine line2 = InheritanceRules.CarryOption(content, sourceDefinition, targetDefinition,
+                new EquipmentOptionLine(source.Option2Kind, source.Option2Value));
+            after.Option1Kind = line1.Kind;
+            after.Option1Value = line1.Value;
+            after.Option2Kind = line2.Kind;
+            after.Option2Value = line2.Value;
             await context.UpdateEquipmentAsync(target, after, GrowthAssets.HISTORY_INHERITED, cancellationToken);
             return GrowthEffectResult.Committed(GrowthCodes.Outcome.SUCCEEDED, target.ItemId);
         }

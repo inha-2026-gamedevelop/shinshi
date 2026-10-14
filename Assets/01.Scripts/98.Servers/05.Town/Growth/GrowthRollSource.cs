@@ -7,7 +7,7 @@ using Shinshi.Contracts;
 
 namespace Shinshi.Network
 {
-    // 부적 등록과 장비 강화의 성공 여부를 가르는 값이라 예측할 수 없는 난수를 쓴다. System.Random은 시드를 알면 다음 값을
+    // 부적 등록, 장비 강화, 장비 옵션 재설정(요청마다 네 번 호출)의 결과를 가르는 값이라 예측할 수 없는 난수를 쓴다. System.Random은 시드를 알면 다음 값을
     // 맞출 수 있다. 나머지 편향이 없도록 4바이트 값 중 균등하게 나눠지는 범위만 받는다. 메인 스레드에서만 부른다
     /// <summary> 마을 서버가 뽑는 확률 판정 값(0 이상 GrowthCodes.BASIS_POINTS 미만) </summary>
     public sealed class GrowthRollSource : IDisposable

@@ -253,7 +253,8 @@ namespace Shinshi.Backend.Tests.Admin
             Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED,
                 await gate.CheckFeatureAsync(ServiceFeatureKeys.AUCTION));
             Assert.Throws<ArgumentException>(() => gate.IsDisabled("Auction"));
-            Assert.Equal(12, ServiceFeatureKeys.All.Count);
+            Assert.Equal(13, ServiceFeatureKeys.All.Count);
+            Assert.True(ServiceFeatureKeys.IsKnown(ServiceFeatureKeys.REROLL_OPTIONS));
         }
 
         private static ServiceNoticeRecord Notice(string title, string target, int severity, DateTimeOffset startsAt,

@@ -124,7 +124,7 @@ namespace Shinshi.Admin.Web.Models
         {
             "auction" => "경매", "crafting" => "제작", "enhance" => "강화", "inherit" => "계승", "gathering" => "채집",
             "boss_entry" => "보스 입장", "inbox_claim" => "우편 수령", "dungeon_entry" => "던전 입장",
-            "talisman" => "부적", "training" => "정기 수련", _ => feature
+            "talisman" => "부적", "training" => "정기 수련", "reroll_options" => "옵션 재설정", _ => feature
         };
 
         public static string NoticeStatus(string status) => status switch
