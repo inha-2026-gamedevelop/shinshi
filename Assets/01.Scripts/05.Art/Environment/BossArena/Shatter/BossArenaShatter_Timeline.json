@@ -1,0 +1,5597 @@
+{
+  "angle_units": "degrees",
+  "coordinate_system": "Unity left handed: X east, Y up, Z north",
+  "crack_glow_end": 1.3,
+  "crack_glow_peak": 0.6,
+  "crack_glow_start": 0.0,
+  "evaluator": "u=clamp((t-swap_time-start_delay)/duration,0,1); e=u*u; q=AngleAxis(total_spin_angle*u,spin_axis); position=rotation_center+q*(initial_position-rotation_center)+outward_drift_vector*e+[0,-fall_distance*e,0]; rotation=q*initial_rotation",
+  "glow_evaluator": "0 outside start/end; linear rise start-to-peak, linear fade peak-to-end; multiply white mask by low-saturation moonwhite colour and strength 4",
+  "objects": [
+    {
+      "duration": 2.2827482,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.6740709,
+      "initial_position": [
+        1.9687153,
+        -1.1373012,
+        18.8736782
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_000",
+      "object_name": "Chunk_000",
+      "outward_drift_vector": [
+        0.4280433,
+        0.0,
+        4.1035652
+      ],
+      "rotation_center": [
+        1.9687153,
+        -1.1373012,
+        18.8736782
+      ],
+      "spin_axis": [
+        0.9924921,
+        0.0651269,
+        -0.103527
+      ],
+      "start_delay": 0.238422,
+      "total_spin_angle": 54.3551556
+    },
+    {
+      "duration": 2.2637835,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.6064741,
+      "initial_position": [
+        2.1120932,
+        -0.6913477,
+        20.8805714
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_001",
+      "object_name": "Chunk_001",
+      "outward_drift_vector": [
+        0.2816921,
+        0.0,
+        2.7848642
+      ],
+      "rotation_center": [
+        2.1120932,
+        -0.6913477,
+        20.8805714
+      ],
+      "spin_axis": [
+        0.994763,
+        -0.017942,
+        -0.1006214
+      ],
+      "start_delay": 0.5891968,
+      "total_spin_angle": 40.7175966
+    },
+    {
+      "duration": 2.0639414,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 41.6497682,
+      "initial_position": [
+        5.8544097,
+        -0.6753812,
+        18.0264473
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_002",
+      "object_name": "Chunk_002",
+      "outward_drift_vector": [
+        1.7528704,
+        0.0,
+        5.3973036
+      ],
+      "rotation_center": [
+        5.8544097,
+        -0.6753812,
+        18.0264473
+      ],
+      "spin_axis": [
+        0.9306728,
+        -0.2061349,
+        -0.3022526
+      ],
+      "start_delay": 0.1668663,
+      "total_spin_angle": 70.9022301
+    },
+    {
+      "duration": 2.1903048,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 42.7729345,
+      "initial_position": [
+        5.9744444,
+        -1.1480772,
+        20.0828991
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_003",
+      "object_name": "Chunk_003",
+      "outward_drift_vector": [
+        0.876461,
+        0.0,
+        2.9461951
+      ],
+      "rotation_center": [
+        5.9744444,
+        -1.1480772,
+        20.0828991
+      ],
+      "spin_axis": [
+        0.958172,
+        0.0255991,
+        -0.2850458
+      ],
+      "start_delay": 0.5689047,
+      "total_spin_angle": 110.0021898
+    },
+    {
+      "duration": 2.1612232,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 41.1229892,
+      "initial_position": [
+        9.3740873,
+        -0.9977327,
+        16.5978317
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_004",
+      "object_name": "Chunk_004",
+      "outward_drift_vector": [
+        2.1132765,
+        0.0,
+        3.7417836
+      ],
+      "rotation_center": [
+        9.3740873,
+        -0.9977327,
+        16.5978317
+      ],
+      "spin_axis": [
+        0.8626046,
+        -0.1362678,
+        -0.48718
+      ],
+      "start_delay": 0.196331,
+      "total_spin_angle": 98.7879885
+    },
+    {
+      "duration": 2.2036231,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 42.5157095,
+      "initial_position": [
+        9.4254332,
+        -0.9997519,
+        18.6810474
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_005",
+      "object_name": "Chunk_005",
+      "outward_drift_vector": [
+        2.7004061,
+        0.0,
+        5.3521585
+      ],
+      "rotation_center": [
+        9.4254332,
+        -0.9997519,
+        18.6810474
+      ],
+      "spin_axis": [
+        0.8754531,
+        -0.1961582,
+        -0.4417056
+      ],
+      "start_delay": 0.5785891,
+      "total_spin_angle": 112.973722
+    },
+    {
+      "duration": 2.0101557,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.1422762,
+      "initial_position": [
+        12.2895823,
+        -0.9274381,
+        14.5635433
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_006",
+      "object_name": "Chunk_006",
+      "outward_drift_vector": [
+        3.2139482,
+        0.0,
+        3.8086302
+      ],
+      "rotation_center": [
+        12.2895823,
+        -0.9274381,
+        14.5635433
+      ],
+      "spin_axis": [
+        0.7638118,
+        0.0338724,
+        -0.6445497
+      ],
+      "start_delay": 0.1230522,
+      "total_spin_angle": 41.6667317
+    },
+    {
+      "duration": 2.0835391,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.7316433,
+      "initial_position": [
+        12.9411907,
+        -0.9345744,
+        16.6094475
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_007",
+      "object_name": "Chunk_007",
+      "outward_drift_vector": [
+        1.6308466,
+        0.0,
+        2.0931199
+      ],
+      "rotation_center": [
+        12.9411907,
+        -0.9345744,
+        16.6094475
+      ],
+      "spin_axis": [
+        0.7682638,
+        -0.2268499,
+        -0.59859
+      ],
+      "start_delay": 0.6282017,
+      "total_spin_angle": 72.2120857
+    },
+    {
+      "duration": 2.1753218,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.6796792,
+      "initial_position": [
+        14.9461489,
+        -0.9130985,
+        11.9130201
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_008",
+      "object_name": "Chunk_008",
+      "outward_drift_vector": [
+        3.6719923,
+        0.0,
+        2.9268086
+      ],
+      "rotation_center": [
+        14.9461489,
+        -0.9130985,
+        11.9130201
+      ],
+      "spin_axis": [
+        0.6140455,
+        -0.1716239,
+        -0.7703853
+      ],
+      "start_delay": 0.2159428,
+      "total_spin_angle": 115.2505485
+    },
+    {
+      "duration": 2.1289159,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.0754566,
+      "initial_position": [
+        15.991538,
+        -1.2774855,
+        13.6852274
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_009",
+      "object_name": "Chunk_009",
+      "outward_drift_vector": [
+        3.5642507,
+        0.0,
+        3.0502119
+      ],
+      "rotation_center": [
+        15.991538,
+        -1.2774855,
+        13.6852274
+      ],
+      "spin_axis": [
+        0.6414059,
+        0.1638577,
+        -0.7494993
+      ],
+      "start_delay": 0.676653,
+      "total_spin_angle": 115.932796
+    },
+    {
+      "duration": 2.191784,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.9198056,
+      "initial_position": [
+        16.8175678,
+        -0.8808095,
+        8.7726059
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_010",
+      "object_name": "Chunk_010",
+      "outward_drift_vector": [
+        3.3868139,
+        0.0,
+        1.7666754
+      ],
+      "rotation_center": [
+        16.8175678,
+        -0.8808095,
+        8.7726059
+      ],
+      "spin_axis": [
+        0.4587471,
+        0.1270058,
+        -0.8794433
+      ],
+      "start_delay": 0.1707549,
+      "total_spin_angle": 102.1521164
+    },
+    {
+      "duration": 2.2000496,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.2837066,
+      "initial_position": [
+        18.2801056,
+        -1.1683669,
+        10.1875286
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_011",
+      "object_name": "Chunk_011",
+      "outward_drift_vector": [
+        2.5111303,
+        0.0,
+        1.3994564
+      ],
+      "rotation_center": [
+        18.2801056,
+        -1.1683669,
+        10.1875286
+      ],
+      "spin_axis": [
+        0.4818979,
+        0.1416706,
+        -0.8646988
+      ],
+      "start_delay": 0.6174399,
+      "total_spin_angle": 102.4136217
+    },
+    {
+      "duration": 2.2103606,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 54.4493713,
+      "initial_position": [
+        17.8757553,
+        -1.04396,
+        5.8521538
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_012",
+      "object_name": "Chunk_012",
+      "outward_drift_vector": [
+        4.6638885,
+        0.0,
+        1.5268608
+      ],
+      "rotation_center": [
+        17.8757553,
+        -1.04396,
+        5.8521538
+      ],
+      "spin_axis": [
+        0.3106869,
+        0.0533866,
+        -0.9490119
+      ],
+      "start_delay": 0.0548257,
+      "total_spin_angle": 79.0812906
+    },
+    {
+      "duration": 2.182031,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 54.5120029,
+      "initial_position": [
+        19.8097763,
+        -0.8080523,
+        6.4445367
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_013",
+      "object_name": "Chunk_013",
+      "outward_drift_vector": [
+        2.9390781,
+        0.0,
+        0.9561439
+      ],
+      "rotation_center": [
+        19.8097763,
+        -0.8080523,
+        6.4445367
+      ],
+      "spin_axis": [
+        0.3093216,
+        -0.0162044,
+        -0.9508194
+      ],
+      "start_delay": 0.6341852,
+      "total_spin_angle": 86.7809749
+    },
+    {
+      "duration": 2.3830049,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.8382676,
+      "initial_position": [
+        18.9136295,
+        -1.2176815,
+        2.0789537
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_014",
+      "object_name": "Chunk_014",
+      "outward_drift_vector": [
+        4.184267,
+        0.0,
+        0.4599275
+      ],
+      "rotation_center": [
+        18.9136295,
+        -1.2176815,
+        2.0789537
+      ],
+      "spin_axis": [
+        0.1077989,
+        0.1630066,
+        -0.9807182
+      ],
+      "start_delay": 0.1360534,
+      "total_spin_angle": 53.6047351
+    },
+    {
+      "duration": 2.207104,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.3657964,
+      "initial_position": [
+        20.8749046,
+        -0.8053465,
+        2.3855278
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_015",
+      "object_name": "Chunk_015",
+      "outward_drift_vector": [
+        3.2012348,
+        0.0,
+        0.3658285
+      ],
+      "rotation_center": [
+        20.8749046,
+        -0.8053465,
+        2.3855278
+      ],
+      "spin_axis": [
+        0.1133327,
+        0.060161,
+        -0.991734
+      ],
+      "start_delay": 0.5557084,
+      "total_spin_angle": 50.7215142
+    },
+    {
+      "duration": 2.2133031,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 53.8339033,
+      "initial_position": [
+        18.8658752,
+        -1.2466167,
+        -2.1976032
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_016",
+      "object_name": "Chunk_016",
+      "outward_drift_vector": [
+        4.7628179,
+        0.0,
+        -0.5547997
+      ],
+      "rotation_center": [
+        18.8658752,
+        -1.2466167,
+        -2.1976032
+      ],
+      "spin_axis": [
+        -0.1155958,
+        -0.0430883,
+        -0.9923613
+      ],
+      "start_delay": 0.1254081,
+      "total_spin_angle": 109.5656876
+    },
+    {
+      "duration": 2.077182,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.4109886,
+      "initial_position": [
+        20.8021622,
+        -1.2701352,
+        -2.5013299
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_017",
+      "object_name": "Chunk_017",
+      "outward_drift_vector": [
+        2.5164769,
+        0.0,
+        -0.3025906
+      ],
+      "rotation_center": [
+        20.8021622,
+        -1.2701352,
+        -2.5013299
+      ],
+      "spin_axis": [
+        -0.1193466,
+        -0.0249418,
+        -0.9925393
+      ],
+      "start_delay": 0.6198832,
+      "total_spin_angle": 109.3403656
+    },
+    {
+      "duration": 2.2087097,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 44.648639,
+      "initial_position": [
+        17.9391594,
+        -0.7104815,
+        -6.1484346
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_018",
+      "object_name": "Chunk_018",
+      "outward_drift_vector": [
+        5.3067594,
+        0.0,
+        -1.8188289
+      ],
+      "rotation_center": [
+        17.9391594,
+        -0.7104815,
+        -6.1484346
+      ],
+      "spin_axis": [
+        -0.3150654,
+        0.2359984,
+        -0.9192598
+      ],
+      "start_delay": 0.1606739,
+      "total_spin_angle": 84.3011073
+    },
+    {
+      "duration": 2.1269102,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.6367478,
+      "initial_position": [
+        20.0106716,
+        -0.7458963,
+        -6.4822254
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_019",
+      "object_name": "Chunk_019",
+      "outward_drift_vector": [
+        1.9995933,
+        0.0,
+        -0.6477451
+      ],
+      "rotation_center": [
+        20.0106716,
+        -0.7458963,
+        -6.4822254
+      ],
+      "spin_axis": [
+        -0.2963166,
+        0.2747055,
+        -0.9147313
+      ],
+      "start_delay": 0.678142,
+      "total_spin_angle": 35.315912
+    },
+    {
+      "duration": 2.3426109,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.228647,
+      "initial_position": [
+        16.5504971,
+        -0.6729879,
+        -9.5305176
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_020",
+      "object_name": "Chunk_020",
+      "outward_drift_vector": [
+        4.447257,
+        0.0,
+        -2.5609298
+      ],
+      "rotation_center": [
+        16.5504971,
+        -0.6729879,
+        -9.5305176
+      ],
+      "spin_axis": [
+        -0.4975549,
+        -0.0766043,
+        -0.8640434
+      ],
+      "start_delay": 0.1409374,
+      "total_spin_angle": 93.6539824
+    },
+    {
+      "duration": 2.2690873,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.1882854,
+      "initial_position": [
+        18.6175423,
+        -0.9608235,
+        -9.6180305
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_021",
+      "object_name": "Chunk_021",
+      "outward_drift_vector": [
+        5.1435466,
+        0.0,
+        -2.6572137
+      ],
+      "rotation_center": [
+        18.6175423,
+        -0.9608235,
+        -9.6180305
+      ],
+      "spin_axis": [
+        -0.4571435,
+        -0.0893943,
+        -0.8848889
+      ],
+      "start_delay": 0.6464456,
+      "total_spin_angle": 47.8276461
+    },
+    {
+      "duration": 2.2518099,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 43.2319138,
+      "initial_position": [
+        14.4814863,
+        -1.1773854,
+        -12.4575901
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_022",
+      "object_name": "Chunk_022",
+      "outward_drift_vector": [
+        3.3043602,
+        0.0,
+        -2.8425512
+      ],
+      "rotation_center": [
+        14.4814863,
+        -1.1773854,
+        -12.4575901
+      ],
+      "spin_axis": [
+        -0.6513867,
+        0.048207,
+        -0.7572129
+      ],
+      "start_delay": 0.2372781,
+      "total_spin_angle": 117.2567095
+    },
+    {
+      "duration": 2.2580292,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.2263934,
+      "initial_position": [
+        16.4077511,
+        -1.1382655,
+        -13.1612625
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_023",
+      "object_name": "Chunk_023",
+      "outward_drift_vector": [
+        2.0181961,
+        0.0,
+        -1.6188697
+      ],
+      "rotation_center": [
+        16.4077511,
+        -1.1382655,
+        -13.1612625
+      ],
+      "spin_axis": [
+        -0.6247528,
+        0.0553203,
+        -0.7788604
+      ],
+      "start_delay": 0.6951686,
+      "total_spin_angle": 90.6810667
+    },
+    {
+      "duration": 2.0968572,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.8042491,
+      "initial_position": [
+        12.2177582,
+        -1.2238458,
+        -14.510232
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_024",
+      "object_name": "Chunk_024",
+      "outward_drift_vector": [
+        2.3920441,
+        0.0,
+        -2.8408742
+      ],
+      "rotation_center": [
+        12.2177582,
+        -1.2238458,
+        -14.510232
+      ],
+      "spin_axis": [
+        -0.7546768,
+        0.1633168,
+        -0.6354453
+      ],
+      "start_delay": 0.1843012,
+      "total_spin_angle": 61.2285468
+    },
+    {
+      "duration": 2.2047015,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 43.1446297,
+      "initial_position": [
+        12.8497,
+        -0.8385929,
+        -16.5093746
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_025",
+      "object_name": "Chunk_025",
+      "outward_drift_vector": [
+        1.2422161,
+        0.0,
+        -1.596007
+      ],
+      "rotation_center": [
+        12.8497,
+        -0.8385929,
+        -16.5093746
+      ],
+      "spin_axis": [
+        -0.7694804,
+        0.2218318,
+        -0.5989078
+      ],
+      "start_delay": 0.5237868,
+      "total_spin_angle": 106.9311132
+    },
+    {
+      "duration": 2.33918,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.4508612,
+      "initial_position": [
+        9.5285177,
+        -0.9756103,
+        -16.4892864
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_026",
+      "object_name": "Chunk_026",
+      "outward_drift_vector": [
+        1.2113553,
+        0.0,
+        -2.0962741
+      ],
+      "rotation_center": [
+        9.5285177,
+        -0.9756103,
+        -16.4892864
+      ],
+      "spin_axis": [
+        -0.8368738,
+        -0.2564691,
+        -0.4835968
+      ],
+      "start_delay": 0.1778292,
+      "total_spin_angle": 57.5164717
+    },
+    {
+      "duration": 2.3208796,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.7889557,
+      "initial_position": [
+        9.4085932,
+        -0.6845768,
+        -18.6752949
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_027",
+      "object_name": "Chunk_027",
+      "outward_drift_vector": [
+        2.2795637,
+        0.0,
+        -4.5247493
+      ],
+      "rotation_center": [
+        9.4085932,
+        -0.6845768,
+        -18.6752949
+      ],
+      "spin_axis": [
+        -0.8840795,
+        0.1415051,
+        -0.4453983
+      ],
+      "start_delay": 0.5701255,
+      "total_spin_angle": 91.0386479
+    },
+    {
+      "duration": 2.208531,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 50.2663878,
+      "initial_position": [
+        6.000463,
+        -0.6633291,
+        -17.8430176
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_028",
+      "object_name": "Chunk_028",
+      "outward_drift_vector": [
+        1.661544,
+        0.0,
+        -4.9407783
+      ],
+      "rotation_center": [
+        6.000463,
+        -0.6633291,
+        -17.8430176
+      ],
+      "spin_axis": [
+        -0.9425862,
+        0.1051301,
+        -0.3169842
+      ],
+      "start_delay": 0.1618039,
+      "total_spin_angle": 45.4688286
+    },
+    {
+      "duration": 2.1614374,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.6486777,
+      "initial_position": [
+        6.3005767,
+        -0.6687501,
+        -19.8929577
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_029",
+      "object_name": "Chunk_029",
+      "outward_drift_vector": [
+        0.8095095,
+        0.0,
+        -2.5558829
+      ],
+      "rotation_center": [
+        6.3005767,
+        -0.6687501,
+        -19.8929577
+      ],
+      "spin_axis": [
+        -0.9284198,
+        0.2270896,
+        -0.2940528
+      ],
+      "start_delay": 0.5223968,
+      "total_spin_angle": 110.1864726
+    },
+    {
+      "duration": 2.1306953,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.0983787,
+      "initial_position": [
+        1.5115925,
+        -0.9625943,
+        -19.0946732
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_030",
+      "object_name": "Chunk_030",
+      "outward_drift_vector": [
+        0.3851673,
+        0.0,
+        -4.8654938
+      ],
+      "rotation_center": [
+        1.5115925,
+        -0.9625943,
+        -19.0946732
+      ],
+      "spin_axis": [
+        -0.9807537,
+        -0.1791483,
+        -0.0776395
+      ],
+      "start_delay": 0.1647596,
+      "total_spin_angle": 65.5889679
+    },
+    {
+      "duration": 2.1602448,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.6341531,
+      "initial_position": [
+        3.045424,
+        -0.8753467,
+        -20.5425301
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_031",
+      "object_name": "Chunk_031",
+      "outward_drift_vector": [
+        0.592581,
+        0.0,
+        -3.9971817
+      ],
+      "rotation_center": [
+        3.045424,
+        -0.8753467,
+        -20.5425301
+      ],
+      "spin_axis": [
+        -0.9891302,
+        0.0108988,
+        -0.1466383
+      ],
+      "start_delay": 0.5935934,
+      "total_spin_angle": 74.7958287
+    },
+    {
+      "duration": 2.3003414,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.7588259,
+      "initial_position": [
+        -2.3448873,
+        -1.0756607,
+        -18.7074375
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_032",
+      "object_name": "Chunk_032",
+      "outward_drift_vector": [
+        -0.4011742,
+        0.0,
+        -3.2005553
+      ],
+      "rotation_center": [
+        -2.3448873,
+        -1.0756607,
+        -18.7074375
+      ],
+      "spin_axis": [
+        -0.9879959,
+        0.0923449,
+        0.1238405
+      ],
+      "start_delay": 0.2147473,
+      "total_spin_angle": 30.6886956
+    },
+    {
+      "duration": 2.0626443,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.2497721,
+      "initial_position": [
+        -1.4868121,
+        -0.7713243,
+        -20.8151608
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_033",
+      "object_name": "Chunk_033",
+      "outward_drift_vector": [
+        -0.2482606,
+        0.0,
+        -3.4756138
+      ],
+      "rotation_center": [
+        -1.4868121,
+        -0.7713243,
+        -20.8151608
+      ],
+      "spin_axis": [
+        -0.9671553,
+        0.2446181,
+        0.0690832
+      ],
+      "start_delay": 0.504623,
+      "total_spin_angle": 59.7944853
+    },
+    {
+      "duration": 2.2599422,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 50.6478315,
+      "initial_position": [
+        -6.344758,
+        -0.7614136,
+        -17.8897247
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_034",
+      "object_name": "Chunk_034",
+      "outward_drift_vector": [
+        -1.5836031,
+        0.0,
+        -4.4651384
+      ],
+      "rotation_center": [
+        -6.344758,
+        -0.7614136,
+        -17.8897247
+      ],
+      "spin_axis": [
+        -0.9158074,
+        0.2362244,
+        0.3247997
+      ],
+      "start_delay": 0.2121266,
+      "total_spin_angle": 50.3526219
+    },
+    {
+      "duration": 2.2900688,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.1984604,
+      "initial_position": [
+        -5.4012575,
+        -1.2800752,
+        -20.0194302
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_035",
+      "object_name": "Chunk_035",
+      "outward_drift_vector": [
+        -1.4008561,
+        0.0,
+        -5.1921873
+      ],
+      "rotation_center": [
+        -5.4012575,
+        -1.2800752,
+        -20.0194302
+      ],
+      "spin_axis": [
+        -0.9369941,
+        0.2411086,
+        0.2528017
+      ],
+      "start_delay": 0.5067088,
+      "total_spin_angle": 66.2347994
+    },
+    {
+      "duration": 2.26583,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 59.5065669,
+      "initial_position": [
+        -9.4149485,
+        -0.7116097,
+        -16.6421509
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_036",
+      "object_name": "Chunk_036",
+      "outward_drift_vector": [
+        -2.8974292,
+        0.0,
+        -5.1215844
+      ],
+      "rotation_center": [
+        -9.4149485,
+        -0.7116097,
+        -16.6421509
+      ],
+      "spin_axis": [
+        -0.8567798,
+        0.1760383,
+        0.4847052
+      ],
+      "start_delay": 0.2255001,
+      "total_spin_angle": 110.320866
+    },
+    {
+      "duration": 2.3588828,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.2154213,
+      "initial_position": [
+        -9.4020491,
+        -0.9945659,
+        -18.829483
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_037",
+      "object_name": "Chunk_037",
+      "outward_drift_vector": [
+        -1.1451799,
+        0.0,
+        -2.2934515
+      ],
+      "rotation_center": [
+        -9.4020491,
+        -0.9945659,
+        -18.829483
+      ],
+      "spin_axis": [
+        -0.8882897,
+        0.1191983,
+        0.4435461
+      ],
+      "start_delay": 0.5456559,
+      "total_spin_angle": 79.4478343
+    },
+    {
+      "duration": 2.1857564,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 57.4712844,
+      "initial_position": [
+        -12.042922,
+        -0.6743023,
+        -14.5647545
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_038",
+      "object_name": "Chunk_038",
+      "outward_drift_vector": [
+        -1.6896176,
+        0.0,
+        -2.0434299
+      ],
+      "rotation_center": [
+        -12.042922,
+        -0.6743023,
+        -14.5647545
+      ],
+      "spin_axis": [
+        -0.7628669,
+        0.1419564,
+        0.6307794
+      ],
+      "start_delay": 0.1223958,
+      "total_spin_angle": 76.0508726
+    },
+    {
+      "duration": 2.091894,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 44.5124293,
+      "initial_position": [
+        -12.8427057,
+        -0.9491194,
+        -16.5281124
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_039",
+      "object_name": "Chunk_039",
+      "outward_drift_vector": [
+        -3.04018,
+        0.0,
+        -3.9126053
+      ],
+      "rotation_center": [
+        -12.8427057,
+        -0.9491194,
+        -16.5281124
+      ],
+      "spin_axis": [
+        -0.7896374,
+        0.0031783,
+        0.6135656
+      ],
+      "start_delay": 0.5349293,
+      "total_spin_angle": 57.7059349
+    },
+    {
+      "duration": 2.1599566,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.7968091,
+      "initial_position": [
+        -15.0681467,
+        -1.2958804,
+        -11.685235
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_040",
+      "object_name": "Chunk_040",
+      "outward_drift_vector": [
+        -4.6626964,
+        0.0,
+        -3.615886
+      ],
+      "rotation_center": [
+        -15.0681467,
+        -1.2958804,
+        -11.685235
+      ],
+      "spin_axis": [
+        -0.602146,
+        0.1857839,
+        0.7764692
+      ],
+      "start_delay": 0.1767233,
+      "total_spin_angle": 112.0727495
+    },
+    {
+      "duration": 2.0268338,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 57.1220582,
+      "initial_position": [
+        -15.6079006,
+        -1.0651168,
+        -13.7990112
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_041",
+      "object_name": "Chunk_041",
+      "outward_drift_vector": [
+        -3.5385609,
+        0.0,
+        -3.1284564
+      ],
+      "rotation_center": [
+        -15.6079006,
+        -1.0651168,
+        -13.7990112
+      ],
+      "spin_axis": [
+        -0.6590006,
+        -0.1005729,
+        0.745388
+      ],
+      "start_delay": 0.6037869,
+      "total_spin_angle": 82.4568406
+    },
+    {
+      "duration": 2.1962558,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.1603354,
+      "initial_position": [
+        -16.9145641,
+        -1.1713895,
+        -8.7208614
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_042",
+      "object_name": "Chunk_042",
+      "outward_drift_vector": [
+        -3.1379251,
+        0.0,
+        -1.6178608
+      ],
+      "rotation_center": [
+        -16.9145641,
+        -1.1713895,
+        -8.7208614
+      ],
+      "spin_axis": [
+        -0.4581873,
+        -0.0177581,
+        0.8886781
+      ],
+      "start_delay": 0.1412843,
+      "total_spin_angle": 90.7486377
+    },
+    {
+      "duration": 2.3355343,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.783229,
+      "initial_position": [
+        -18.5906048,
+        -1.3041,
+        -9.7979975
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_043",
+      "object_name": "Chunk_043",
+      "outward_drift_vector": [
+        -3.8452904,
+        0.0,
+        -2.0266228
+      ],
+      "rotation_center": [
+        -18.5906048,
+        -1.3041,
+        -9.7979975
+      ],
+      "spin_axis": [
+        -0.4469422,
+        0.2847809,
+        0.8480228
+      ],
+      "start_delay": 0.5655925,
+      "total_spin_angle": 108.5494634
+    },
+    {
+      "duration": 2.1276546,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.4723714,
+      "initial_position": [
+        -18.2357292,
+        -0.7615429,
+        -5.2590442
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_044",
+      "object_name": "Chunk_044",
+      "outward_drift_vector": [
+        -2.8755796,
+        0.0,
+        -0.8292952
+      ],
+      "rotation_center": [
+        -18.2357292,
+        -0.7615429,
+        -5.2590442
+      ],
+      "spin_axis": [
+        -0.2684865,
+        0.2473816,
+        0.9309766
+      ],
+      "start_delay": 0.1273859,
+      "total_spin_angle": 118.9559609
+    },
+    {
+      "duration": 2.1456868,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.4303118,
+      "initial_position": [
+        -20.2599926,
+        -1.2288733,
+        -5.4874811
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_045",
+      "object_name": "Chunk_045",
+      "outward_drift_vector": [
+        -4.8583012,
+        0.0,
+        -1.3158858
+      ],
+      "rotation_center": [
+        -20.2599926,
+        -1.2288733,
+        -5.4874811
+      ],
+      "spin_axis": [
+        -0.2595391,
+        -0.1201571,
+        0.9582283
+      ],
+      "start_delay": 0.5528814,
+      "total_spin_angle": 69.3178778
+    },
+    {
+      "duration": 2.2741003,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.7457336,
+      "initial_position": [
+        -18.9242363,
+        -1.2320976,
+        -1.7268486
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_046",
+      "object_name": "Chunk_046",
+      "outward_drift_vector": [
+        -3.938693,
+        0.0,
+        -0.3594082
+      ],
+      "rotation_center": [
+        -18.9242363,
+        -1.2320976,
+        -1.7268486
+      ],
+      "spin_axis": [
+        -0.0889177,
+        -0.2063331,
+        0.9744334
+      ],
+      "start_delay": 0.160878,
+      "total_spin_angle": 95.3873297
+    },
+    {
+      "duration": 2.1726662,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 40.1561431,
+      "initial_position": [
+        -20.9735622,
+        -1.1716558,
+        -1.5844805
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_047",
+      "object_name": "Chunk_047",
+      "outward_drift_vector": [
+        -2.8251011,
+        0.0,
+        -0.2134267
+      ],
+      "rotation_center": [
+        -20.9735622,
+        -1.1716558,
+        -1.5844805
+      ],
+      "spin_axis": [
+        -0.0752779,
+        -0.0378532,
+        0.9964439
+      ],
+      "start_delay": 0.6088717,
+      "total_spin_angle": 81.5137687
+    },
+    {
+      "duration": 2.2820691,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 57.0709271,
+      "initial_position": [
+        -18.9737263,
+        -0.6799847,
+        1.4448718
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_048",
+      "object_name": "Chunk_048",
+      "outward_drift_vector": [
+        -4.2918048,
+        0.0,
+        0.326826
+      ],
+      "rotation_center": [
+        -18.9737263,
+        -0.6799847,
+        1.4448718
+      ],
+      "spin_axis": [
+        0.0744517,
+        -0.1964498,
+        0.9776832
+      ],
+      "start_delay": 0.1473331,
+      "total_spin_angle": 101.9088339
+    },
+    {
+      "duration": 2.1636605,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.6537225,
+      "initial_position": [
+        -20.738657,
+        -0.8979093,
+        2.3564811
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_049",
+      "object_name": "Chunk_049",
+      "outward_drift_vector": [
+        -5.3686595,
+        0.0,
+        0.6100272
+      ],
+      "rotation_center": [
+        -20.738657,
+        -0.8979093,
+        2.3564811
+      ],
+      "spin_axis": [
+        0.1121669,
+        0.1138459,
+        0.9871462
+      ],
+      "start_delay": 0.5705846,
+      "total_spin_angle": 41.9815515
+    },
+    {
+      "duration": 2.1277871,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.736057,
+      "initial_position": [
+        -18.2062263,
+        -0.9496039,
+        5.5644665
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_050",
+      "object_name": "Chunk_050",
+      "outward_drift_vector": [
+        -2.1983275,
+        0.0,
+        0.6718866
+      ],
+      "rotation_center": [
+        -18.2062263,
+        -0.9496039,
+        5.5644665
+      ],
+      "spin_axis": [
+        0.2867411,
+        -0.1938993,
+        0.9381804
+      ],
+      "start_delay": 0.0973725,
+      "total_spin_angle": 34.6774215
+    },
+    {
+      "duration": 2.1281786,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.4009566,
+      "initial_position": [
+        -20.1806774,
+        -1.2220925,
+        5.7839441
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_051",
+      "object_name": "Chunk_051",
+      "outward_drift_vector": [
+        -3.7030394,
+        0.0,
+        1.0613208
+      ],
+      "rotation_center": [
+        -20.1806774,
+        -1.2220925,
+        5.7839441
+      ],
+      "spin_axis": [
+        0.2673709,
+        -0.2413448,
+        0.9328802
+      ],
+      "start_delay": 0.598987,
+      "total_spin_angle": 80.1485542
+    },
+    {
+      "duration": 2.3982548,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 59.0884029,
+      "initial_position": [
+        -16.8062973,
+        -0.6983846,
+        8.9701262
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_052",
+      "object_name": "Chunk_052",
+      "outward_drift_vector": [
+        -4.8671794,
+        0.0,
+        2.5977888
+      ],
+      "rotation_center": [
+        -16.8062973,
+        -0.6983846,
+        8.9701262
+      ],
+      "spin_axis": [
+        0.4669197,
+        -0.1291761,
+        0.874814
+      ],
+      "start_delay": 0.1456533,
+      "total_spin_angle": 93.0759685
+    },
+    {
+      "duration": 2.1362809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.4986937,
+      "initial_position": [
+        -18.8348122,
+        -1.2614801,
+        9.455862
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_053",
+      "object_name": "Chunk_053",
+      "outward_drift_vector": [
+        -4.2687163,
+        0.0,
+        2.1430736
+      ],
+      "rotation_center": [
+        -18.8348122,
+        -1.2614801,
+        9.455862
+      ],
+      "spin_axis": [
+        0.4301132,
+        0.2846399,
+        0.856728
+      ],
+      "start_delay": 0.6734001,
+      "total_spin_angle": 71.4831965
+    },
+    {
+      "duration": 2.1566793,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.2132357,
+      "initial_position": [
+        -14.6509647,
+        -0.6629857,
+        11.9834852
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_054",
+      "object_name": "Chunk_054",
+      "outward_drift_vector": [
+        -3.3091586,
+        0.0,
+        2.7066648
+      ],
+      "rotation_center": [
+        -14.6509647,
+        -0.6629857,
+        11.9834852
+      ],
+      "spin_axis": [
+        0.6221021,
+        0.1857608,
+        0.7605798
+      ],
+      "start_delay": 0.1157348,
+      "total_spin_angle": 92.539024
+    },
+    {
+      "duration": 2.3464882,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.1825262,
+      "initial_position": [
+        -16.60676,
+        -1.240384,
+        12.6861153
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_055",
+      "object_name": "Chunk_055",
+      "outward_drift_vector": [
+        -3.2797105,
+        0.0,
+        2.5054126
+      ],
+      "rotation_center": [
+        -16.60676,
+        -1.240384,
+        12.6861153
+      ],
+      "spin_axis": [
+        0.6065115,
+        0.0422016,
+        0.7939539
+      ],
+      "start_delay": 0.5074701,
+      "total_spin_angle": 119.1180268
+    },
+    {
+      "duration": 2.0292408,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 40.0569649,
+      "initial_position": [
+        -12.0439701,
+        -0.8716845,
+        14.9211702
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_056",
+      "object_name": "Chunk_056",
+      "outward_drift_vector": [
+        -1.7362189,
+        0.0,
+        2.1509864
+      ],
+      "rotation_center": [
+        -12.0439701,
+        -0.8716845,
+        14.9211702
+      ],
+      "spin_axis": [
+        0.7674058,
+        0.1655156,
+        0.6194295
+      ],
+      "start_delay": 0.1741255,
+      "total_spin_angle": 94.9706068
+    },
+    {
+      "duration": 2.0341955,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.6015252,
+      "initial_position": [
+        -13.8258095,
+        -1.2206848,
+        15.8836546
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_057",
+      "object_name": "Chunk_057",
+      "outward_drift_vector": [
+        -3.5439568,
+        0.0,
+        4.0714421
+      ],
+      "rotation_center": [
+        -13.8258095,
+        -1.2206848,
+        15.8836546
+      ],
+      "spin_axis": [
+        0.7415414,
+        -0.1829913,
+        0.6454692
+      ],
+      "start_delay": 0.6409037,
+      "total_spin_angle": 114.204402
+    },
+    {
+      "duration": 2.1931688,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 44.5755013,
+      "initial_position": [
+        -9.4946356,
+        -0.8694561,
+        16.7817764
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_058",
+      "object_name": "Chunk_058",
+      "outward_drift_vector": [
+        -2.261935,
+        0.0,
+        3.9979718
+      ],
+      "rotation_center": [
+        -9.4946356,
+        -0.8694561,
+        16.7817764
+      ],
+      "spin_axis": [
+        0.8482015,
+        -0.2241923,
+        0.4798875
+      ],
+      "start_delay": 0.3103981,
+      "total_spin_angle": 38.9887873
+    },
+    {
+      "duration": 2.217809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 59.0730167,
+      "initial_position": [
+        -9.447937,
+        -0.7572955,
+        18.760643
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_059",
+      "object_name": "Chunk_059",
+      "outward_drift_vector": [
+        -2.6507235,
+        0.0,
+        5.2635064
+      ],
+      "rotation_center": [
+        -9.447937,
+        -0.7572955,
+        18.760643
+      ],
+      "spin_axis": [
+        0.8735582,
+        -0.2082306,
+        0.4399275
+      ],
+      "start_delay": 0.571425,
+      "total_spin_angle": 81.5512703
+    },
+    {
+      "duration": 2.1941356,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.2911563,
+      "initial_position": [
+        -5.7505288,
+        -1.091472,
+        17.913866
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_060",
+      "object_name": "Chunk_060",
+      "outward_drift_vector": [
+        -1.6157354,
+        0.0,
+        5.033288
+      ],
+      "rotation_center": [
+        -5.7505288,
+        -1.091472,
+        17.913866
+      ],
+      "spin_axis": [
+        0.9320053,
+        0.2045864,
+        0.299183
+      ],
+      "start_delay": 0.1996399,
+      "total_spin_angle": 56.8645045
+    },
+    {
+      "duration": 2.001912,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 43.5369078,
+      "initial_position": [
+        -6.0524888,
+        -0.853891,
+        19.8905888
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_061",
+      "object_name": "Chunk_061",
+      "outward_drift_vector": [
+        -1.3456241,
+        0.0,
+        4.4221897
+      ],
+      "rotation_center": [
+        -6.0524888,
+        -0.853891,
+        19.8905888
+      ],
+      "spin_axis": [
+        0.9549252,
+        0.060704,
+        0.2905733
+      ],
+      "start_delay": 0.5005597,
+      "total_spin_angle": 30.2228242
+    },
+    {
+      "duration": 2.143838,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.9906813,
+      "initial_position": [
+        -1.7101893,
+        -1.2182957,
+        19.0418854
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_062",
+      "object_name": "Chunk_062",
+      "outward_drift_vector": [
+        -0.2908236,
+        0.0,
+        3.2381387
+      ],
+      "rotation_center": [
+        -1.7101893,
+        -1.2182957,
+        19.0418854
+      ],
+      "spin_axis": [
+        0.9579791,
+        -0.2736301,
+        0.086038
+      ],
+      "start_delay": 0.2699348,
+      "total_spin_angle": 65.9236374
+    },
+    {
+      "duration": 2.3348195,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.9437066,
+      "initial_position": [
+        -2.5712664,
+        -0.9388101,
+        20.8595905
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_063",
+      "object_name": "Chunk_063",
+      "outward_drift_vector": [
+        -0.4858692,
+        0.0,
+        3.9416499
+      ],
+      "rotation_center": [
+        -2.5712664,
+        -0.9388101,
+        20.8595905
+      ],
+      "spin_axis": [
+        0.9817054,
+        -0.1470073,
+        0.1210103
+      ],
+      "start_delay": 0.6643205,
+      "total_spin_angle": 119.5550421
+    },
+    {
+      "duration": 2.207104,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.3657964,
+      "initial_position": [
+        21.8029442,
+        1.1339082,
+        3.2129188
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_015",
+      "object_name": "WallPiece_000",
+      "outward_drift_vector": [
+        3.2012348,
+        0.0,
+        0.3658285
+      ],
+      "rotation_center": [
+        20.8749046,
+        -0.8053465,
+        2.3855278
+      ],
+      "spin_axis": [
+        0.1133327,
+        0.060161,
+        -0.991734
+      ],
+      "start_delay": 0.5557084,
+      "total_spin_angle": 50.7215142
+    },
+    {
+      "duration": 2.207104,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.3657964,
+      "initial_position": [
+        21.9175472,
+        1.0314931,
+        1.9029852
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_015",
+      "object_name": "WallPiece_001",
+      "outward_drift_vector": [
+        3.2012348,
+        0.0,
+        0.3658285
+      ],
+      "rotation_center": [
+        20.8749046,
+        -0.8053465,
+        2.3855278
+      ],
+      "spin_axis": [
+        0.1133327,
+        0.060161,
+        -0.991734
+      ],
+      "start_delay": 0.5557084,
+      "total_spin_angle": 50.7215142
+    },
+    {
+      "duration": 2.207104,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.3657964,
+      "initial_position": [
+        22.0308266,
+        1.1376479,
+        0.6081907
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_015",
+      "object_name": "WallPiece_002",
+      "outward_drift_vector": [
+        3.2012348,
+        0.0,
+        0.3658285
+      ],
+      "rotation_center": [
+        20.8749046,
+        -0.8053465,
+        2.3855278
+      ],
+      "spin_axis": [
+        0.1133327,
+        0.060161,
+        -0.991734
+      ],
+      "start_delay": 0.5557084,
+      "total_spin_angle": 50.7215142
+    },
+    {
+      "duration": 2.182031,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 54.5120029,
+      "initial_position": [
+        20.8604145,
+        1.1571956,
+        7.1493478
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_013",
+      "object_name": "WallPiece_003",
+      "outward_drift_vector": [
+        2.9390781,
+        0.0,
+        0.9561439
+      ],
+      "rotation_center": [
+        19.8097763,
+        -0.8080523,
+        6.4445367
+      ],
+      "spin_axis": [
+        0.3093216,
+        -0.0162044,
+        -0.9508194
+      ],
+      "start_delay": 0.6341852,
+      "total_spin_angle": 86.7809749
+    },
+    {
+      "duration": 2.182031,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 54.5120029,
+      "initial_position": [
+        21.1122265,
+        1.0391617,
+        6.2095709
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_013",
+      "object_name": "WallPiece_004",
+      "outward_drift_vector": [
+        2.9390781,
+        0.0,
+        0.9561439
+      ],
+      "rotation_center": [
+        19.8097763,
+        -0.8080523,
+        6.4445367
+      ],
+      "spin_axis": [
+        0.3093216,
+        -0.0162044,
+        -0.9508194
+      ],
+      "start_delay": 0.6341852,
+      "total_spin_angle": 86.7809749
+    },
+    {
+      "duration": 2.182031,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 54.5120029,
+      "initial_position": [
+        21.3792362,
+        1.133647,
+        5.2130747
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_013",
+      "object_name": "WallPiece_005",
+      "outward_drift_vector": [
+        2.9390781,
+        0.0,
+        0.9561439
+      ],
+      "rotation_center": [
+        19.8097763,
+        -0.8080523,
+        6.4445367
+      ],
+      "spin_axis": [
+        0.3093216,
+        -0.0162044,
+        -0.9508194
+      ],
+      "start_delay": 0.6341852,
+      "total_spin_angle": 86.7809749
+    },
+    {
+      "duration": 2.207104,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.3657964,
+      "initial_position": [
+        21.6303864,
+        1.0816941,
+        4.2757692
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_015",
+      "object_name": "WallPiece_006",
+      "outward_drift_vector": [
+        3.2012348,
+        0.0,
+        0.3658285
+      ],
+      "rotation_center": [
+        20.8749046,
+        -0.8053465,
+        2.3855278
+      ],
+      "spin_axis": [
+        0.1133327,
+        0.060161,
+        -0.991734
+      ],
+      "start_delay": 0.5557084,
+      "total_spin_angle": 50.7215142
+    },
+    {
+      "duration": 2.2000496,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.2837066,
+      "initial_position": [
+        19.390131,
+        1.1344644,
+        10.4741631
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_011",
+      "object_name": "WallPiece_007",
+      "outward_drift_vector": [
+        2.5111303,
+        0.0,
+        1.3994564
+      ],
+      "rotation_center": [
+        18.2801056,
+        -1.1683669,
+        10.1875286
+      ],
+      "spin_axis": [
+        0.4818979,
+        0.1416706,
+        -0.8646988
+      ],
+      "start_delay": 0.6174399,
+      "total_spin_angle": 102.4136217
+    },
+    {
+      "duration": 2.2000496,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.2837066,
+      "initial_position": [
+        19.9605598,
+        1.0806141,
+        9.2508745
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_011",
+      "object_name": "WallPiece_008",
+      "outward_drift_vector": [
+        2.5111303,
+        0.0,
+        1.3994564
+      ],
+      "rotation_center": [
+        18.2801056,
+        -1.1683669,
+        10.1875286
+      ],
+      "spin_axis": [
+        0.4818979,
+        0.1416706,
+        -0.8646988
+      ],
+      "start_delay": 0.6174399,
+      "total_spin_angle": 102.4136217
+    },
+    {
+      "duration": 2.182031,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 54.5120029,
+      "initial_position": [
+        20.5105057,
+        1.0853139,
+        8.0715103
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_013",
+      "object_name": "WallPiece_009",
+      "outward_drift_vector": [
+        2.9390781,
+        0.0,
+        0.9561439
+      ],
+      "rotation_center": [
+        19.8097763,
+        -0.8080523,
+        6.4445367
+      ],
+      "spin_axis": [
+        0.3093216,
+        -0.0162044,
+        -0.9508194
+      ],
+      "start_delay": 0.6341852,
+      "total_spin_angle": 86.7809749
+    },
+    {
+      "duration": 2.1289159,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.0754566,
+      "initial_position": [
+        17.1963329,
+        1.1550983,
+        13.7969227
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_009",
+      "object_name": "WallPiece_010",
+      "outward_drift_vector": [
+        3.5642507,
+        0.0,
+        3.0502119
+      ],
+      "rotation_center": [
+        15.991538,
+        -1.2774855,
+        13.6852274
+      ],
+      "spin_axis": [
+        0.6414059,
+        0.1638577,
+        -0.7494993
+      ],
+      "start_delay": 0.676653,
+      "total_spin_angle": 115.932796
+    },
+    {
+      "duration": 2.1289159,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.0754566,
+      "initial_position": [
+        17.7856445,
+        1.0399761,
+        12.9552975
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_009",
+      "object_name": "WallPiece_011",
+      "outward_drift_vector": [
+        3.5642507,
+        0.0,
+        3.0502119
+      ],
+      "rotation_center": [
+        15.991538,
+        -1.2774855,
+        13.6852274
+      ],
+      "spin_axis": [
+        0.6414059,
+        0.1638577,
+        -0.7494993
+      ],
+      "start_delay": 0.676653,
+      "total_spin_angle": 115.932796
+    },
+    {
+      "duration": 2.2000496,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.2837066,
+      "initial_position": [
+        18.3385201,
+        1.1315179,
+        12.1657085
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_011",
+      "object_name": "WallPiece_012",
+      "outward_drift_vector": [
+        2.5111303,
+        0.0,
+        1.3994564
+      ],
+      "rotation_center": [
+        18.2801056,
+        -1.1683669,
+        10.1875286
+      ],
+      "spin_axis": [
+        0.4818979,
+        0.1416706,
+        -0.8646988
+      ],
+      "start_delay": 0.6174399,
+      "total_spin_angle": 102.4136217
+    },
+    {
+      "duration": 2.2000496,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.2837066,
+      "initial_position": [
+        18.8628368,
+        1.079308,
+        11.4169064
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_011",
+      "object_name": "WallPiece_013",
+      "outward_drift_vector": [
+        2.5111303,
+        0.0,
+        1.3994564
+      ],
+      "rotation_center": [
+        18.2801056,
+        -1.1683669,
+        10.1875286
+      ],
+      "spin_axis": [
+        0.4818979,
+        0.1416706,
+        -0.8646988
+      ],
+      "start_delay": 0.6174399,
+      "total_spin_angle": 102.4136217
+    },
+    {
+      "duration": 2.0835391,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.7316433,
+      "initial_position": [
+        14.6231527,
+        1.1295446,
+        16.4895439
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_007",
+      "object_name": "WallPiece_014",
+      "outward_drift_vector": [
+        1.6308466,
+        0.0,
+        2.0931199
+      ],
+      "rotation_center": [
+        12.9411907,
+        -0.9345744,
+        16.6094475
+      ],
+      "spin_axis": [
+        0.7682638,
+        -0.2268499,
+        -0.59859
+      ],
+      "start_delay": 0.6282017,
+      "total_spin_angle": 72.2120857
+    },
+    {
+      "duration": 2.1289159,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.0754566,
+      "initial_position": [
+        15.4937668,
+        1.045607,
+        15.6189308
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_009",
+      "object_name": "WallPiece_015",
+      "outward_drift_vector": [
+        3.5642507,
+        0.0,
+        3.0502119
+      ],
+      "rotation_center": [
+        15.991538,
+        -1.2774855,
+        13.6852274
+      ],
+      "spin_axis": [
+        0.6414059,
+        0.1638577,
+        -0.7494993
+      ],
+      "start_delay": 0.676653,
+      "total_spin_angle": 115.932796
+    },
+    {
+      "duration": 2.1289159,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 49.0754566,
+      "initial_position": [
+        16.4278355,
+        1.1199323,
+        14.6848621
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_009",
+      "object_name": "WallPiece_016",
+      "outward_drift_vector": [
+        3.5642507,
+        0.0,
+        3.0502119
+      ],
+      "rotation_center": [
+        15.991538,
+        -1.2774855,
+        13.6852274
+      ],
+      "spin_axis": [
+        0.6414059,
+        0.1638577,
+        -0.7494993
+      ],
+      "start_delay": 0.676653,
+      "total_spin_angle": 115.932796
+    },
+    {
+      "duration": 2.2036231,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 42.5157095,
+      "initial_position": [
+        11.5314054,
+        1.0905368,
+        18.7826653
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_005",
+      "object_name": "WallPiece_017",
+      "outward_drift_vector": [
+        2.7004061,
+        0.0,
+        5.3521585
+      ],
+      "rotation_center": [
+        9.4254332,
+        -0.9997519,
+        18.6810474
+      ],
+      "spin_axis": [
+        0.8754531,
+        -0.1961582,
+        -0.4417056
+      ],
+      "start_delay": 0.5785891,
+      "total_spin_angle": 112.973722
+    },
+    {
+      "duration": 2.0835391,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.7316433,
+      "initial_position": [
+        12.5446062,
+        1.1054828,
+        18.0732136
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_007",
+      "object_name": "WallPiece_018",
+      "outward_drift_vector": [
+        1.6308466,
+        0.0,
+        2.0931199
+      ],
+      "rotation_center": [
+        12.9411907,
+        -0.9345744,
+        16.6094475
+      ],
+      "spin_axis": [
+        0.7682638,
+        -0.2268499,
+        -0.59859
+      ],
+      "start_delay": 0.6282017,
+      "total_spin_angle": 72.2120857
+    },
+    {
+      "duration": 2.0835391,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.7316433,
+      "initial_position": [
+        13.6320715,
+        1.1035371,
+        17.3117619
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_007",
+      "object_name": "WallPiece_019",
+      "outward_drift_vector": [
+        1.6308466,
+        0.0,
+        2.0931199
+      ],
+      "rotation_center": [
+        12.9411907,
+        -0.9345744,
+        16.6094475
+      ],
+      "spin_axis": [
+        0.7682638,
+        -0.2268499,
+        -0.59859
+      ],
+      "start_delay": 0.6282017,
+      "total_spin_angle": 72.2120857
+    },
+    {
+      "duration": 2.1903048,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 42.7729345,
+      "initial_position": [
+        8.090888,
+        1.1394415,
+        20.5014725
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_003",
+      "object_name": "WallPiece_020",
+      "outward_drift_vector": [
+        0.876461,
+        0.0,
+        2.9461951
+      ],
+      "rotation_center": [
+        5.9744444,
+        -1.1480772,
+        20.0828991
+      ],
+      "spin_axis": [
+        0.958172,
+        0.0255991,
+        -0.2850458
+      ],
+      "start_delay": 0.5689047,
+      "total_spin_angle": 110.0021898
+    },
+    {
+      "duration": 2.2036231,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 42.5157095,
+      "initial_position": [
+        9.2108707,
+        1.0270009,
+        19.9792156
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_005",
+      "object_name": "WallPiece_021",
+      "outward_drift_vector": [
+        2.7004061,
+        0.0,
+        5.3521585
+      ],
+      "rotation_center": [
+        9.4254332,
+        -0.9997519,
+        18.6810474
+      ],
+      "spin_axis": [
+        0.8754531,
+        -0.1961582,
+        -0.4417056
+      ],
+      "start_delay": 0.5785891,
+      "total_spin_angle": 112.973722
+    },
+    {
+      "duration": 2.2036231,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 42.5157095,
+      "initial_position": [
+        10.4188442,
+        1.1297259,
+        19.4159279
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_005",
+      "object_name": "WallPiece_022",
+      "outward_drift_vector": [
+        2.7004061,
+        0.0,
+        5.3521585
+      ],
+      "rotation_center": [
+        9.4254332,
+        -0.9997519,
+        18.6810474
+      ],
+      "spin_axis": [
+        0.8754531,
+        -0.1961582,
+        -0.4417056
+      ],
+      "start_delay": 0.5785891,
+      "total_spin_angle": 112.973722
+    },
+    {
+      "duration": 2.217809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 59.0730167,
+      "initial_position": [
+        -10.2402439,
+        1.0712386,
+        19.4992104
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_059",
+      "object_name": "WallPiece_023",
+      "outward_drift_vector": [
+        -2.6507235,
+        0.0,
+        5.2635064
+      ],
+      "rotation_center": [
+        -9.447937,
+        -0.7572955,
+        18.760643
+      ],
+      "spin_axis": [
+        0.8735582,
+        -0.2082306,
+        0.4399275
+      ],
+      "start_delay": 0.571425,
+      "total_spin_angle": 81.5512703
+    },
+    {
+      "duration": 2.217809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 59.0730167,
+      "initial_position": [
+        -8.4761019,
+        1.125066,
+        20.3218422
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_059",
+      "object_name": "WallPiece_024",
+      "outward_drift_vector": [
+        -2.6507235,
+        0.0,
+        5.2635064
+      ],
+      "rotation_center": [
+        -9.447937,
+        -0.7572955,
+        18.760643
+      ],
+      "spin_axis": [
+        0.8735582,
+        -0.2082306,
+        0.4399275
+      ],
+      "start_delay": 0.571425,
+      "total_spin_angle": 81.5512703
+    },
+    {
+      "duration": 2.0341955,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.6015252,
+      "initial_position": [
+        -13.6974268,
+        1.126047,
+        17.2659969
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_057",
+      "object_name": "WallPiece_025",
+      "outward_drift_vector": [
+        -3.5439568,
+        0.0,
+        4.0714421
+      ],
+      "rotation_center": [
+        -13.8258095,
+        -1.2206848,
+        15.8836546
+      ],
+      "spin_axis": [
+        0.7415414,
+        -0.1829913,
+        0.6454692
+      ],
+      "start_delay": 0.6409037,
+      "total_spin_angle": 114.204402
+    },
+    {
+      "duration": 2.0341955,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.6015252,
+      "initial_position": [
+        -12.6667118,
+        1.0894294,
+        17.9877129
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_057",
+      "object_name": "WallPiece_026",
+      "outward_drift_vector": [
+        -3.5439568,
+        0.0,
+        4.0714421
+      ],
+      "rotation_center": [
+        -13.8258095,
+        -1.2206848,
+        15.8836546
+      ],
+      "spin_axis": [
+        0.7415414,
+        -0.1829913,
+        0.6454692
+      ],
+      "start_delay": 0.6409037,
+      "total_spin_angle": 114.204402
+    },
+    {
+      "duration": 2.217809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 59.0730167,
+      "initial_position": [
+        -11.5868149,
+        1.0857612,
+        18.7438641
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_059",
+      "object_name": "WallPiece_027",
+      "outward_drift_vector": [
+        -2.6507235,
+        0.0,
+        5.2635064
+      ],
+      "rotation_center": [
+        -9.447937,
+        -0.7572955,
+        18.760643
+      ],
+      "spin_axis": [
+        0.8735582,
+        -0.2082306,
+        0.4399275
+      ],
+      "start_delay": 0.571425,
+      "total_spin_angle": 81.5512703
+    },
+    {
+      "duration": 2.3464882,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.1825262,
+      "initial_position": [
+        -16.2545929,
+        1.1074375,
+        14.8581038
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_055",
+      "object_name": "WallPiece_028",
+      "outward_drift_vector": [
+        -3.2797105,
+        0.0,
+        2.5054126
+      ],
+      "rotation_center": [
+        -16.60676,
+        -1.240384,
+        12.6861153
+      ],
+      "spin_axis": [
+        0.6065115,
+        0.0422016,
+        0.7939539
+      ],
+      "start_delay": 0.5074701,
+      "total_spin_angle": 119.1180268
+    },
+    {
+      "duration": 2.0341955,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.6015252,
+      "initial_position": [
+        -14.8759203,
+        1.0927523,
+        16.2367764
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_057",
+      "object_name": "WallPiece_029",
+      "outward_drift_vector": [
+        -3.5439568,
+        0.0,
+        4.0714421
+      ],
+      "rotation_center": [
+        -13.8258095,
+        -1.2206848,
+        15.8836546
+      ],
+      "spin_axis": [
+        0.7415414,
+        -0.1829913,
+        0.6454692
+      ],
+      "start_delay": 0.6409037,
+      "total_spin_angle": 114.204402
+    },
+    {
+      "duration": 2.3464882,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.1825262,
+      "initial_position": [
+        -18.5745487,
+        1.1268532,
+        11.8286238
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_055",
+      "object_name": "WallPiece_030",
+      "outward_drift_vector": [
+        -3.2797105,
+        0.0,
+        2.5054126
+      ],
+      "rotation_center": [
+        -16.60676,
+        -1.240384,
+        12.6861153
+      ],
+      "spin_axis": [
+        0.6065115,
+        0.0422016,
+        0.7939539
+      ],
+      "start_delay": 0.5074701,
+      "total_spin_angle": 119.1180268
+    },
+    {
+      "duration": 2.3464882,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.1825262,
+      "initial_position": [
+        -17.4581108,
+        1.07266,
+        13.4230633
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_055",
+      "object_name": "WallPiece_031",
+      "outward_drift_vector": [
+        -3.2797105,
+        0.0,
+        2.5054126
+      ],
+      "rotation_center": [
+        -16.60676,
+        -1.240384,
+        12.6861153
+      ],
+      "spin_axis": [
+        0.6065115,
+        0.0422016,
+        0.7939539
+      ],
+      "start_delay": 0.5074701,
+      "total_spin_angle": 119.1180268
+    },
+    {
+      "duration": 2.1362809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.4986937,
+      "initial_position": [
+        -20.5420132,
+        1.1461946,
+        8.0039454
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_053",
+      "object_name": "WallPiece_032",
+      "outward_drift_vector": [
+        -4.2687163,
+        0.0,
+        2.1430736
+      ],
+      "rotation_center": [
+        -18.8348122,
+        -1.2614801,
+        9.455862
+      ],
+      "spin_axis": [
+        0.4301132,
+        0.2846399,
+        0.856728
+      ],
+      "start_delay": 0.6734001,
+      "total_spin_angle": 71.4831965
+    },
+    {
+      "duration": 2.1362809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.4986937,
+      "initial_position": [
+        -20.1322155,
+        1.0706495,
+        8.8827591
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_053",
+      "object_name": "WallPiece_033",
+      "outward_drift_vector": [
+        -4.2687163,
+        0.0,
+        2.1430736
+      ],
+      "rotation_center": [
+        -18.8348122,
+        -1.2614801,
+        9.455862
+      ],
+      "spin_axis": [
+        0.4301132,
+        0.2846399,
+        0.856728
+      ],
+      "start_delay": 0.6734001,
+      "total_spin_angle": 71.4831965
+    },
+    {
+      "duration": 2.1362809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.4986937,
+      "initial_position": [
+        -19.7492962,
+        1.0247524,
+        9.7039299
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_053",
+      "object_name": "WallPiece_034",
+      "outward_drift_vector": [
+        -4.2687163,
+        0.0,
+        2.1430736
+      ],
+      "rotation_center": [
+        -18.8348122,
+        -1.2614801,
+        9.455862
+      ],
+      "spin_axis": [
+        0.4301132,
+        0.2846399,
+        0.856728
+      ],
+      "start_delay": 0.6734001,
+      "total_spin_angle": 71.4831965
+    },
+    {
+      "duration": 2.1362809,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.4986937,
+      "initial_position": [
+        -19.3392239,
+        1.143328,
+        10.583334
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_053",
+      "object_name": "WallPiece_035",
+      "outward_drift_vector": [
+        -4.2687163,
+        0.0,
+        2.1430736
+      ],
+      "rotation_center": [
+        -18.8348122,
+        -1.2614801,
+        9.455862
+      ],
+      "spin_axis": [
+        0.4301132,
+        0.2846399,
+        0.856728
+      ],
+      "start_delay": 0.6734001,
+      "total_spin_angle": 71.4831965
+    },
+    {
+      "duration": 2.1281786,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.4009566,
+      "initial_position": [
+        -21.5796738,
+        1.1141554,
+        4.4650331
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_051",
+      "object_name": "WallPiece_036",
+      "outward_drift_vector": [
+        -3.7030394,
+        0.0,
+        1.0613208
+      ],
+      "rotation_center": [
+        -20.1806774,
+        -1.2220925,
+        5.7839441
+      ],
+      "spin_axis": [
+        0.2673709,
+        -0.2413448,
+        0.9328802
+      ],
+      "start_delay": 0.598987,
+      "total_spin_angle": 80.1485542
+    },
+    {
+      "duration": 2.1281786,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.4009566,
+      "initial_position": [
+        -21.2441235,
+        1.100771,
+        5.717329
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_051",
+      "object_name": "WallPiece_037",
+      "outward_drift_vector": [
+        -3.7030394,
+        0.0,
+        1.0613208
+      ],
+      "rotation_center": [
+        -20.1806774,
+        -1.2220925,
+        5.7839441
+      ],
+      "spin_axis": [
+        0.2673709,
+        -0.2413448,
+        0.9328802
+      ],
+      "start_delay": 0.598987,
+      "total_spin_angle": 80.1485542
+    },
+    {
+      "duration": 2.1281786,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.4009566,
+      "initial_position": [
+        -20.9148388,
+        1.0845906,
+        6.9462342
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_051",
+      "object_name": "WallPiece_038",
+      "outward_drift_vector": [
+        -3.7030394,
+        0.0,
+        1.0613208
+      ],
+      "rotation_center": [
+        -20.1806774,
+        -1.2220925,
+        5.7839441
+      ],
+      "spin_axis": [
+        0.2673709,
+        -0.2413448,
+        0.9328802
+      ],
+      "start_delay": 0.598987,
+      "total_spin_angle": 80.1485542
+    },
+    {
+      "duration": 2.1726662,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 40.1561431,
+      "initial_position": [
+        -22.045599,
+        1.043638,
+        0.4393288
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_047",
+      "object_name": "WallPiece_039",
+      "outward_drift_vector": [
+        -2.8251011,
+        0.0,
+        -0.2134267
+      ],
+      "rotation_center": [
+        -20.9735622,
+        -1.1716558,
+        -1.5844805
+      ],
+      "spin_axis": [
+        -0.0752779,
+        -0.0378532,
+        0.9964439
+      ],
+      "start_delay": 0.6088717,
+      "total_spin_angle": 81.5137687
+    },
+    {
+      "duration": 2.1636605,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.6537225,
+      "initial_position": [
+        -21.960537,
+        1.1484538,
+        1.4115978
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_049",
+      "object_name": "WallPiece_040",
+      "outward_drift_vector": [
+        -5.3686595,
+        0.0,
+        0.6100272
+      ],
+      "rotation_center": [
+        -20.738657,
+        -0.8979093,
+        2.3564811
+      ],
+      "spin_axis": [
+        0.1121669,
+        0.1138459,
+        0.9871462
+      ],
+      "start_delay": 0.5705846,
+      "total_spin_angle": 41.9815515
+    },
+    {
+      "duration": 2.1636605,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.6537225,
+      "initial_position": [
+        -21.87603,
+        1.1660149,
+        2.377527
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_049",
+      "object_name": "WallPiece_041",
+      "outward_drift_vector": [
+        -5.3686595,
+        0.0,
+        0.6100272
+      ],
+      "rotation_center": [
+        -20.738657,
+        -0.8979093,
+        2.3564811
+      ],
+      "spin_axis": [
+        0.1121669,
+        0.1138459,
+        0.9871462
+      ],
+      "start_delay": 0.5705846,
+      "total_spin_angle": 41.9815515
+    },
+    {
+      "duration": 2.1636605,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 47.6537225,
+      "initial_position": [
+        -21.7924576,
+        1.046167,
+        3.3327515
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_049",
+      "object_name": "WallPiece_042",
+      "outward_drift_vector": [
+        -5.3686595,
+        0.0,
+        0.6100272
+      ],
+      "rotation_center": [
+        -20.738657,
+        -0.8979093,
+        2.3564811
+      ],
+      "spin_axis": [
+        0.1121669,
+        0.1138459,
+        0.9871462
+      ],
+      "start_delay": 0.5705846,
+      "total_spin_angle": 41.9815515
+    },
+    {
+      "duration": 2.1726662,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 40.1561431,
+      "initial_position": [
+        -21.7901611,
+        1.084806,
+        -3.3590226
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_047",
+      "object_name": "WallPiece_043",
+      "outward_drift_vector": [
+        -2.8251011,
+        0.0,
+        -0.2134267
+      ],
+      "rotation_center": [
+        -20.9735622,
+        -1.1716558,
+        -1.5844805
+      ],
+      "spin_axis": [
+        -0.0752779,
+        -0.0378532,
+        0.9964439
+      ],
+      "start_delay": 0.6088717,
+      "total_spin_angle": 81.5137687
+    },
+    {
+      "duration": 2.1726662,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 40.1561431,
+      "initial_position": [
+        -21.8712521,
+        1.0791138,
+        -2.4321458
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_047",
+      "object_name": "WallPiece_044",
+      "outward_drift_vector": [
+        -2.8251011,
+        0.0,
+        -0.2134267
+      ],
+      "rotation_center": [
+        -20.9735622,
+        -1.1716558,
+        -1.5844805
+      ],
+      "spin_axis": [
+        -0.0752779,
+        -0.0378532,
+        0.9964439
+      ],
+      "start_delay": 0.6088717,
+      "total_spin_angle": 81.5137687
+    },
+    {
+      "duration": 2.1726662,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 40.1561431,
+      "initial_position": [
+        -21.9490681,
+        1.0921754,
+        -1.5427139
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_047",
+      "object_name": "WallPiece_045",
+      "outward_drift_vector": [
+        -2.8251011,
+        0.0,
+        -0.2134267
+      ],
+      "rotation_center": [
+        -20.9735622,
+        -1.1716558,
+        -1.5844805
+      ],
+      "spin_axis": [
+        -0.0752779,
+        -0.0378532,
+        0.9964439
+      ],
+      "start_delay": 0.6088717,
+      "total_spin_angle": 81.5137687
+    },
+    {
+      "duration": 2.1726662,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 40.1561431,
+      "initial_position": [
+        -22.0377922,
+        1.136464,
+        -0.5285798
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_047",
+      "object_name": "WallPiece_046",
+      "outward_drift_vector": [
+        -2.8251011,
+        0.0,
+        -0.2134267
+      ],
+      "rotation_center": [
+        -20.9735622,
+        -1.1716558,
+        -1.5844805
+      ],
+      "spin_axis": [
+        -0.0752779,
+        -0.0378532,
+        0.9964439
+      ],
+      "start_delay": 0.6088717,
+      "total_spin_angle": 81.5137687
+    },
+    {
+      "duration": 2.1456868,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.4303118,
+      "initial_position": [
+        -21.0003967,
+        1.0951684,
+        -6.626924
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_045",
+      "object_name": "WallPiece_047",
+      "outward_drift_vector": [
+        -4.8583012,
+        0.0,
+        -1.3158858
+      ],
+      "rotation_center": [
+        -20.2599926,
+        -1.2288733,
+        -5.4874811
+      ],
+      "spin_axis": [
+        -0.2595391,
+        -0.1201571,
+        0.9582283
+      ],
+      "start_delay": 0.5528814,
+      "total_spin_angle": 69.3178778
+    },
+    {
+      "duration": 2.1456868,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.4303118,
+      "initial_position": [
+        -21.505064,
+        1.104924,
+        -4.7434802
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_045",
+      "object_name": "WallPiece_048",
+      "outward_drift_vector": [
+        -4.8583012,
+        0.0,
+        -1.3158858
+      ],
+      "rotation_center": [
+        -20.2599926,
+        -1.2288733,
+        -5.4874811
+      ],
+      "spin_axis": [
+        -0.2595391,
+        -0.1201571,
+        0.9582283
+      ],
+      "start_delay": 0.5528814,
+      "total_spin_angle": 69.3178778
+    },
+    {
+      "duration": 2.3355343,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.783229,
+      "initial_position": [
+        -19.3144779,
+        1.1278135,
+        -10.6364031
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_043",
+      "object_name": "WallPiece_049",
+      "outward_drift_vector": [
+        -3.8452904,
+        0.0,
+        -2.0266228
+      ],
+      "rotation_center": [
+        -18.5906048,
+        -1.3041,
+        -9.7979975
+      ],
+      "spin_axis": [
+        -0.4469422,
+        0.2847809,
+        0.8480228
+      ],
+      "start_delay": 0.5655925,
+      "total_spin_angle": 108.5494634
+    },
+    {
+      "duration": 2.3355343,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.783229,
+      "initial_position": [
+        -19.7298279,
+        1.0881991,
+        -9.7456856
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_043",
+      "object_name": "WallPiece_050",
+      "outward_drift_vector": [
+        -3.8452904,
+        0.0,
+        -2.0266228
+      ],
+      "rotation_center": [
+        -18.5906048,
+        -1.3041,
+        -9.7979975
+      ],
+      "spin_axis": [
+        -0.4469422,
+        0.2847809,
+        0.8480228
+      ],
+      "start_delay": 0.5655925,
+      "total_spin_angle": 108.5494634
+    },
+    {
+      "duration": 2.3355343,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.783229,
+      "initial_position": [
+        -20.1342754,
+        1.04703,
+        -8.8783436
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_043",
+      "object_name": "WallPiece_051",
+      "outward_drift_vector": [
+        -3.8452904,
+        0.0,
+        -2.0266228
+      ],
+      "rotation_center": [
+        -18.5906048,
+        -1.3041,
+        -9.7979975
+      ],
+      "spin_axis": [
+        -0.4469422,
+        0.2847809,
+        0.8480228
+      ],
+      "start_delay": 0.5655925,
+      "total_spin_angle": 108.5494634
+    },
+    {
+      "duration": 2.1456868,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 45.4303118,
+      "initial_position": [
+        -20.5413456,
+        1.1313168,
+        -8.0053778
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_045",
+      "object_name": "WallPiece_052",
+      "outward_drift_vector": [
+        -4.8583012,
+        0.0,
+        -1.3158858
+      ],
+      "rotation_center": [
+        -20.2599926,
+        -1.2288733,
+        -5.4874811
+      ],
+      "spin_axis": [
+        -0.2595391,
+        -0.1201571,
+        0.9582283
+      ],
+      "start_delay": 0.5528814,
+      "total_spin_angle": 69.3178778
+    },
+    {
+      "duration": 2.0268338,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 57.1220582,
+      "initial_position": [
+        -17.4923115,
+        1.1062731,
+        -13.3742199
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_041",
+      "object_name": "WallPiece_053",
+      "outward_drift_vector": [
+        -3.5385609,
+        0.0,
+        -3.1284564
+      ],
+      "rotation_center": [
+        -15.6079006,
+        -1.0651168,
+        -13.7990112
+      ],
+      "spin_axis": [
+        -0.6590006,
+        -0.1005729,
+        0.745388
+      ],
+      "start_delay": 0.6037869,
+      "total_spin_angle": 82.4568406
+    },
+    {
+      "duration": 2.3355343,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 52.783229,
+      "initial_position": [
+        -18.6106644,
+        1.0930114,
+        -11.7770462
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_043",
+      "object_name": "WallPiece_054",
+      "outward_drift_vector": [
+        -3.8452904,
+        0.0,
+        -2.0266228
+      ],
+      "rotation_center": [
+        -18.5906048,
+        -1.3041,
+        -9.7979975
+      ],
+      "spin_axis": [
+        -0.4469422,
+        0.2847809,
+        0.8480228
+      ],
+      "start_delay": 0.5655925,
+      "total_spin_angle": 108.5494634
+    },
+    {
+      "duration": 2.091894,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 44.5124293,
+      "initial_position": [
+        -14.6064692,
+        1.1023555,
+        -16.5062294
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_039",
+      "object_name": "WallPiece_055",
+      "outward_drift_vector": [
+        -3.04018,
+        0.0,
+        -3.9126053
+      ],
+      "rotation_center": [
+        -12.8427057,
+        -0.9491194,
+        -16.5281124
+      ],
+      "spin_axis": [
+        -0.7896374,
+        0.0031783,
+        0.6135656
+      ],
+      "start_delay": 0.5349293,
+      "total_spin_angle": 57.7059349
+    },
+    {
+      "duration": 2.0268338,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 57.1220582,
+      "initial_position": [
+        -15.5287457,
+        1.0653309,
+        -15.5839539
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_041",
+      "object_name": "WallPiece_056",
+      "outward_drift_vector": [
+        -3.5385609,
+        0.0,
+        -3.1284564
+      ],
+      "rotation_center": [
+        -15.6079006,
+        -1.0651168,
+        -13.7990112
+      ],
+      "spin_axis": [
+        -0.6590006,
+        -0.1005729,
+        0.745388
+      ],
+      "start_delay": 0.6037869,
+      "total_spin_angle": 82.4568406
+    },
+    {
+      "duration": 2.0268338,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 57.1220582,
+      "initial_position": [
+        -16.4759464,
+        1.1350484,
+        -14.6367521
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_041",
+      "object_name": "WallPiece_057",
+      "outward_drift_vector": [
+        -3.5385609,
+        0.0,
+        -3.1284564
+      ],
+      "rotation_center": [
+        -15.6079006,
+        -1.0651168,
+        -13.7990112
+      ],
+      "spin_axis": [
+        -0.6590006,
+        -0.1005729,
+        0.745388
+      ],
+      "start_delay": 0.6037869,
+      "total_spin_angle": 82.4568406
+    },
+    {
+      "duration": 2.3588828,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.2154213,
+      "initial_position": [
+        -11.5639019,
+        1.1208797,
+        -18.7599106
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_037",
+      "object_name": "WallPiece_058",
+      "outward_drift_vector": [
+        -1.1451799,
+        0.0,
+        -2.2934515
+      ],
+      "rotation_center": [
+        -9.4020491,
+        -0.9945659,
+        -18.829483
+      ],
+      "spin_axis": [
+        -0.8882897,
+        0.1191983,
+        0.4435461
+      ],
+      "start_delay": 0.5456559,
+      "total_spin_angle": 79.4478343
+    },
+    {
+      "duration": 2.091894,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 44.5124293,
+      "initial_position": [
+        -12.5765524,
+        1.1225728,
+        -18.0508442
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_039",
+      "object_name": "WallPiece_059",
+      "outward_drift_vector": [
+        -3.04018,
+        0.0,
+        -3.9126053
+      ],
+      "rotation_center": [
+        -12.8427057,
+        -0.9491194,
+        -16.5281124
+      ],
+      "spin_axis": [
+        -0.7896374,
+        0.0031783,
+        0.6135656
+      ],
+      "start_delay": 0.5349293,
+      "total_spin_angle": 57.7059349
+    },
+    {
+      "duration": 2.091894,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 44.5124293,
+      "initial_position": [
+        -13.6280241,
+        1.0626065,
+        -17.3145962
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_039",
+      "object_name": "WallPiece_060",
+      "outward_drift_vector": [
+        -3.04018,
+        0.0,
+        -3.9126053
+      ],
+      "rotation_center": [
+        -12.8427057,
+        -0.9491194,
+        -16.5281124
+      ],
+      "spin_axis": [
+        -0.7896374,
+        0.0031783,
+        0.6135656
+      ],
+      "start_delay": 0.5349293,
+      "total_spin_angle": 57.7059349
+    },
+    {
+      "duration": 2.3588828,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.2154213,
+      "initial_position": [
+        -8.0981464,
+        1.1450202,
+        -20.4980869
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_037",
+      "object_name": "WallPiece_061",
+      "outward_drift_vector": [
+        -1.1451799,
+        0.0,
+        -2.2934515
+      ],
+      "rotation_center": [
+        -9.4020491,
+        -0.9945659,
+        -18.829483
+      ],
+      "spin_axis": [
+        -0.8882897,
+        0.1191983,
+        0.4435461
+      ],
+      "start_delay": 0.5456559,
+      "total_spin_angle": 79.4478343
+    },
+    {
+      "duration": 2.3588828,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.2154213,
+      "initial_position": [
+        -9.2208843,
+        1.0359131,
+        -19.9745445
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_037",
+      "object_name": "WallPiece_062",
+      "outward_drift_vector": [
+        -1.1451799,
+        0.0,
+        -2.2934515
+      ],
+      "rotation_center": [
+        -9.4020491,
+        -0.9945659,
+        -18.829483
+      ],
+      "spin_axis": [
+        -0.8882897,
+        0.1191983,
+        0.4435461
+      ],
+      "start_delay": 0.5456559,
+      "total_spin_angle": 79.4478343
+    },
+    {
+      "duration": 2.3588828,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 55.2154213,
+      "initial_position": [
+        -10.4250898,
+        1.1166393,
+        -19.4130154
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_037",
+      "object_name": "WallPiece_063",
+      "outward_drift_vector": [
+        -1.1451799,
+        0.0,
+        -2.2934515
+      ],
+      "rotation_center": [
+        -9.4020491,
+        -0.9945659,
+        -18.829483
+      ],
+      "spin_axis": [
+        -0.8882897,
+        0.1191983,
+        0.4435461
+      ],
+      "start_delay": 0.5456559,
+      "total_spin_angle": 79.4478343
+    },
+    {
+      "duration": 2.2900688,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.1984604,
+      "initial_position": [
+        -4.7295585,
+        1.0816698,
+        -21.5087967
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_035",
+      "object_name": "WallPiece_064",
+      "outward_drift_vector": [
+        -1.4008561,
+        0.0,
+        -5.1921873
+      ],
+      "rotation_center": [
+        -5.4012575,
+        -1.2800752,
+        -20.0194302
+      ],
+      "spin_axis": [
+        -0.9369941,
+        0.2411086,
+        0.2528017
+      ],
+      "start_delay": 0.5067088,
+      "total_spin_angle": 66.2347994
+    },
+    {
+      "duration": 2.2900688,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.1984604,
+      "initial_position": [
+        -6.6116214,
+        1.1174397,
+        -21.0044994
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_035",
+      "object_name": "WallPiece_065",
+      "outward_drift_vector": [
+        -1.4008561,
+        0.0,
+        -5.1921873
+      ],
+      "rotation_center": [
+        -5.4012575,
+        -1.2800752,
+        -20.0194302
+      ],
+      "spin_axis": [
+        -0.9369941,
+        0.2411086,
+        0.2528017
+      ],
+      "start_delay": 0.5067088,
+      "total_spin_angle": 66.2347994
+    },
+    {
+      "duration": 2.1614374,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.6486777,
+      "initial_position": [
+        6.9483657,
+        1.1395448,
+        -20.9142666
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_029",
+      "object_name": "WallPiece_066",
+      "outward_drift_vector": [
+        0.8095095,
+        0.0,
+        -2.5558829
+      ],
+      "rotation_center": [
+        6.3005767,
+        -0.6687501,
+        -19.8929577
+      ],
+      "spin_axis": [
+        -0.9284198,
+        0.2270896,
+        -0.2940528
+      ],
+      "start_delay": 0.5223968,
+      "total_spin_angle": 110.1864726
+    },
+    {
+      "duration": 2.1614374,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.6486777,
+      "initial_position": [
+        5.7484121,
+        1.0178882,
+        -21.2357941
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_029",
+      "object_name": "WallPiece_067",
+      "outward_drift_vector": [
+        0.8095095,
+        0.0,
+        -2.5558829
+      ],
+      "rotation_center": [
+        6.3005767,
+        -0.6687501,
+        -19.8929577
+      ],
+      "spin_axis": [
+        -0.9284198,
+        0.2270896,
+        -0.2940528
+      ],
+      "start_delay": 0.5223968,
+      "total_spin_angle": 110.1864726
+    },
+    {
+      "duration": 2.1602448,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.6341531,
+      "initial_position": [
+        4.4930196,
+        1.1330773,
+        -21.5721741
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_031",
+      "object_name": "WallPiece_068",
+      "outward_drift_vector": [
+        0.592581,
+        0.0,
+        -3.9971817
+      ],
+      "rotation_center": [
+        3.045424,
+        -0.8753467,
+        -20.5425301
+      ],
+      "spin_axis": [
+        -0.9891302,
+        0.0108988,
+        -0.1466383
+      ],
+      "start_delay": 0.5935934,
+      "total_spin_angle": 74.7958287
+    },
+    {
+      "duration": 2.3208796,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.7889557,
+      "initial_position": [
+        10.2376394,
+        1.0975616,
+        -19.5004253
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_027",
+      "object_name": "WallPiece_069",
+      "outward_drift_vector": [
+        2.2795637,
+        0.0,
+        -4.5247493
+      ],
+      "rotation_center": [
+        9.4085932,
+        -0.6845768,
+        -18.6752949
+      ],
+      "spin_axis": [
+        -0.8840795,
+        0.1415051,
+        -0.4453983
+      ],
+      "start_delay": 0.5701255,
+      "total_spin_angle": 91.0386479
+    },
+    {
+      "duration": 2.3208796,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.7889557,
+      "initial_position": [
+        8.4703617,
+        1.1021458,
+        -20.3245201
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_027",
+      "object_name": "WallPiece_070",
+      "outward_drift_vector": [
+        2.2795637,
+        0.0,
+        -4.5247493
+      ],
+      "rotation_center": [
+        9.4085932,
+        -0.6845768,
+        -18.6752949
+      ],
+      "spin_axis": [
+        -0.8840795,
+        0.1415051,
+        -0.4453983
+      ],
+      "start_delay": 0.5701255,
+      "total_spin_angle": 91.0386479
+    },
+    {
+      "duration": 2.2047015,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 43.1446297,
+      "initial_position": [
+        13.6371984,
+        1.0972043,
+        -17.3081722
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_025",
+      "object_name": "WallPiece_071",
+      "outward_drift_vector": [
+        1.2422161,
+        0.0,
+        -1.596007
+      ],
+      "rotation_center": [
+        12.8497,
+        -0.8385929,
+        -16.5093746
+      ],
+      "spin_axis": [
+        -0.7694804,
+        0.2218318,
+        -0.5989078
+      ],
+      "start_delay": 0.5237868,
+      "total_spin_angle": 106.9311132
+    },
+    {
+      "duration": 2.2047015,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 43.1446297,
+      "initial_position": [
+        12.5262222,
+        1.1260698,
+        -18.0860863
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_025",
+      "object_name": "WallPiece_072",
+      "outward_drift_vector": [
+        1.2422161,
+        0.0,
+        -1.596007
+      ],
+      "rotation_center": [
+        12.8497,
+        -0.8385929,
+        -16.5093746
+      ],
+      "spin_axis": [
+        -0.7694804,
+        0.2218318,
+        -0.5989078
+      ],
+      "start_delay": 0.5237868,
+      "total_spin_angle": 106.9311132
+    },
+    {
+      "duration": 2.3208796,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 51.7889557,
+      "initial_position": [
+        11.50914,
+        1.0748757,
+        -18.798254
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_027",
+      "object_name": "WallPiece_073",
+      "outward_drift_vector": [
+        2.2795637,
+        0.0,
+        -4.5247493
+      ],
+      "rotation_center": [
+        9.4085932,
+        -0.6845768,
+        -18.6752949
+      ],
+      "spin_axis": [
+        -0.8840795,
+        0.1415051,
+        -0.4453983
+      ],
+      "start_delay": 0.5701255,
+      "total_spin_angle": 91.0386479
+    },
+    {
+      "duration": 2.2580292,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.2263934,
+      "initial_position": [
+        16.4496899,
+        1.0983137,
+        -14.6630068
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_023",
+      "object_name": "WallPiece_074",
+      "outward_drift_vector": [
+        2.0181961,
+        0.0,
+        -1.6188697
+      ],
+      "rotation_center": [
+        16.4077511,
+        -1.1382655,
+        -13.1612625
+      ],
+      "spin_axis": [
+        -0.6247528,
+        0.0553203,
+        -0.7788604
+      ],
+      "start_delay": 0.6951686,
+      "total_spin_angle": 90.6810667
+    },
+    {
+      "duration": 2.2580292,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.2263934,
+      "initial_position": [
+        15.5493584,
+        1.1223291,
+        -15.5633392
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_023",
+      "object_name": "WallPiece_075",
+      "outward_drift_vector": [
+        2.0181961,
+        0.0,
+        -1.6188697
+      ],
+      "rotation_center": [
+        16.4077511,
+        -1.1382655,
+        -13.1612625
+      ],
+      "spin_axis": [
+        -0.6247528,
+        0.0553203,
+        -0.7788604
+      ],
+      "start_delay": 0.6951686,
+      "total_spin_angle": 90.6810667
+    },
+    {
+      "duration": 2.2047015,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 43.1446297,
+      "initial_position": [
+        14.6568003,
+        1.0823891,
+        -16.4558964
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_025",
+      "object_name": "WallPiece_076",
+      "outward_drift_vector": [
+        1.2422161,
+        0.0,
+        -1.596007
+      ],
+      "rotation_center": [
+        12.8497,
+        -0.8385929,
+        -16.5093746
+      ],
+      "spin_axis": [
+        -0.7694804,
+        0.2218318,
+        -0.5989078
+      ],
+      "start_delay": 0.5237868,
+      "total_spin_angle": 106.9311132
+    },
+    {
+      "duration": 2.2690873,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.1882854,
+      "initial_position": [
+        18.7651272,
+        1.1273396,
+        -11.5564508
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_021",
+      "object_name": "WallPiece_077",
+      "outward_drift_vector": [
+        5.1435466,
+        0.0,
+        -2.6572137
+      ],
+      "rotation_center": [
+        18.6175423,
+        -0.9608235,
+        -9.6180305
+      ],
+      "spin_axis": [
+        -0.4571435,
+        -0.0893943,
+        -0.8848889
+      ],
+      "start_delay": 0.6464456,
+      "total_spin_angle": 47.8276461
+    },
+    {
+      "duration": 2.2580292,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.2263934,
+      "initial_position": [
+        18.0282459,
+        1.0900251,
+        -12.6088257
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_023",
+      "object_name": "WallPiece_078",
+      "outward_drift_vector": [
+        2.0181961,
+        0.0,
+        -1.6188697
+      ],
+      "rotation_center": [
+        16.4077511,
+        -1.1382655,
+        -13.1612625
+      ],
+      "spin_axis": [
+        -0.6247528,
+        0.0553203,
+        -0.7788604
+      ],
+      "start_delay": 0.6951686,
+      "total_spin_angle": 90.6810667
+    },
+    {
+      "duration": 2.2580292,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 56.2263934,
+      "initial_position": [
+        17.283638,
+        1.0826697,
+        -13.6722383
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_023",
+      "object_name": "WallPiece_079",
+      "outward_drift_vector": [
+        2.0181961,
+        0.0,
+        -1.6188697
+      ],
+      "rotation_center": [
+        16.4077511,
+        -1.1382655,
+        -13.1612625
+      ],
+      "spin_axis": [
+        -0.6247528,
+        0.0553203,
+        -0.7788604
+      ],
+      "start_delay": 0.6951686,
+      "total_spin_angle": 90.6810667
+    },
+    {
+      "duration": 2.1269102,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.6367478,
+      "initial_position": [
+        20.583849,
+        1.1064396,
+        -7.9142318
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_019",
+      "object_name": "WallPiece_080",
+      "outward_drift_vector": [
+        1.9995933,
+        0.0,
+        -0.6477451
+      ],
+      "rotation_center": [
+        20.0106716,
+        -0.7458963,
+        -6.4822254
+      ],
+      "spin_axis": [
+        -0.2963166,
+        0.2747055,
+        -0.9147313
+      ],
+      "start_delay": 0.678142,
+      "total_spin_angle": 35.315912
+    },
+    {
+      "duration": 2.2690873,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.1882854,
+      "initial_position": [
+        20.17626,
+        1.0420312,
+        -8.7883072
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_021",
+      "object_name": "WallPiece_081",
+      "outward_drift_vector": [
+        5.1435466,
+        0.0,
+        -2.6572137
+      ],
+      "rotation_center": [
+        18.6175423,
+        -0.9608235,
+        -9.6180305
+      ],
+      "spin_axis": [
+        -0.4571435,
+        -0.0893943,
+        -0.8848889
+      ],
+      "start_delay": 0.6464456,
+      "total_spin_angle": 47.8276461
+    },
+    {
+      "duration": 2.2690873,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.1882854,
+      "initial_position": [
+        19.7485104,
+        1.1834064,
+        -9.7056189
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_021",
+      "object_name": "WallPiece_082",
+      "outward_drift_vector": [
+        5.1435466,
+        0.0,
+        -2.6572137
+      ],
+      "rotation_center": [
+        18.6175423,
+        -0.9608235,
+        -9.6180305
+      ],
+      "spin_axis": [
+        -0.4571435,
+        -0.0893943,
+        -0.8848889
+      ],
+      "start_delay": 0.6464456,
+      "total_spin_angle": 47.8276461
+    },
+    {
+      "duration": 2.2690873,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 48.1882854,
+      "initial_position": [
+        19.3292866,
+        1.07675,
+        -10.6046486
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_021",
+      "object_name": "WallPiece_083",
+      "outward_drift_vector": [
+        5.1435466,
+        0.0,
+        -2.6572137
+      ],
+      "rotation_center": [
+        18.6175423,
+        -0.9608235,
+        -9.6180305
+      ],
+      "spin_axis": [
+        -0.4571435,
+        -0.0893943,
+        -0.8848889
+      ],
+      "start_delay": 0.6464456,
+      "total_spin_angle": 47.8276461
+    },
+    {
+      "duration": 2.077182,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.4109886,
+      "initial_position": [
+        21.5722561,
+        1.0984937,
+        -4.4927197
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_017",
+      "object_name": "WallPiece_084",
+      "outward_drift_vector": [
+        2.5164769,
+        0.0,
+        -0.3025906
+      ],
+      "rotation_center": [
+        20.8021622,
+        -1.2701352,
+        -2.5013299
+      ],
+      "spin_axis": [
+        -0.1193466,
+        -0.0249418,
+        -0.9925393
+      ],
+      "start_delay": 0.6198832,
+      "total_spin_angle": 109.3403656
+    },
+    {
+      "duration": 2.1269102,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.6367478,
+      "initial_position": [
+        21.2523041,
+        1.1079475,
+        -5.6867909
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_019",
+      "object_name": "WallPiece_085",
+      "outward_drift_vector": [
+        1.9995933,
+        0.0,
+        -0.6477451
+      ],
+      "rotation_center": [
+        20.0106716,
+        -0.7458963,
+        -6.4822254
+      ],
+      "spin_axis": [
+        -0.2963166,
+        0.2747055,
+        -0.9147313
+      ],
+      "start_delay": 0.678142,
+      "total_spin_angle": 35.315912
+    },
+    {
+      "duration": 2.1269102,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 46.6367478,
+      "initial_position": [
+        20.9304333,
+        1.0955907,
+        -6.8880267
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_019",
+      "object_name": "WallPiece_086",
+      "outward_drift_vector": [
+        1.9995933,
+        0.0,
+        -0.6477451
+      ],
+      "rotation_center": [
+        20.0106716,
+        -0.7458963,
+        -6.4822254
+      ],
+      "spin_axis": [
+        -0.2963166,
+        0.2747055,
+        -0.9147313
+      ],
+      "start_delay": 0.678142,
+      "total_spin_angle": 35.315912
+    },
+    {
+      "duration": 2.077182,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.4109886,
+      "initial_position": [
+        22.047205,
+        1.106846,
+        -0.4209777
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_017",
+      "object_name": "WallPiece_087",
+      "outward_drift_vector": [
+        2.5164769,
+        0.0,
+        -0.3025906
+      ],
+      "rotation_center": [
+        20.8021622,
+        -1.2701352,
+        -2.5013299
+      ],
+      "spin_axis": [
+        -0.1193466,
+        -0.0249418,
+        -0.9925393
+      ],
+      "start_delay": 0.6198832,
+      "total_spin_angle": 109.3403656
+    },
+    {
+      "duration": 2.077182,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.4109886,
+      "initial_position": [
+        21.9666862,
+        1.0465355,
+        -1.3413112
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_017",
+      "object_name": "WallPiece_088",
+      "outward_drift_vector": [
+        2.5164769,
+        0.0,
+        -0.3025906
+      ],
+      "rotation_center": [
+        20.8021622,
+        -1.2701352,
+        -2.5013299
+      ],
+      "spin_axis": [
+        -0.1193466,
+        -0.0249418,
+        -0.9925393
+      ],
+      "start_delay": 0.6198832,
+      "total_spin_angle": 109.3403656
+    },
+    {
+      "duration": 2.077182,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.4109886,
+      "initial_position": [
+        21.8763905,
+        1.1471677,
+        -2.37341
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_017",
+      "object_name": "WallPiece_089",
+      "outward_drift_vector": [
+        2.5164769,
+        0.0,
+        -0.3025906
+      ],
+      "rotation_center": [
+        20.8021622,
+        -1.2701352,
+        -2.5013299
+      ],
+      "spin_axis": [
+        -0.1193466,
+        -0.0249418,
+        -0.9925393
+      ],
+      "start_delay": 0.6198832,
+      "total_spin_angle": 109.3403656
+    },
+    {
+      "duration": 2.077182,
+      "easing": "ease_in_quadratic",
+      "fall_distance": 58.4109886,
+      "initial_position": [
+        21.7865658,
+        1.0902642,
+        -3.4000993
+      ],
+      "initial_rotation_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "kept": false,
+      "motion_group": "Chunk_017",
+      "object_name": "WallPiece_090",
+      "outward_drift_vector": [
+        2.5164769,
+        0.0,
+        -0.3025906
+      ],
+      "rotation_center": [
+        20.8021622,
+        -1.2701352,
+        -2.5013299
+      ],
+      "spin_axis": [
+        -0.1193466,
+        -0.0249418,
+        -0.9925393
+      ],
+      "start_delay": 0.6198832,
+      "total_spin_angle": 109.3403656
+    }
+  ],
+  "rotation_convention": "Unity Quaternion.AngleAxis positive left-handed; Blender uses negative angle on reflected axis",
+  "schema_version": 1,
+  "seed": 20261014,
+  "start_delay_origin": "relative to swap_time",
+  "swap_time": 0.6,
+  "units": "metres"
+}
