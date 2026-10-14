@@ -1166,7 +1166,7 @@ namespace Shinshi.AI
         *              Final Test
         ****************************************/
 
-        // 두뇌 시작 전에 최후의 영역 기믹을 얹는다. 앞선 기믹은 25% 봉인이며 그 인계로 시작한다. 바닥 제거와 추락은 중앙 거리만 보는 임시 판정이고
+        // 두뇌 시작 전에 최후의 영역 기믹을 얹는다. 앞선 기믹은 25% 봉인이며 그 인계로 시작한다. 바닥 제거와 낙하는 중앙 거리만 보는 임시 판정이고
         // 노란 여우불 위치도 임시 배치다. 운영의 바닥 구조와 서버 추락 판정과 세션 연결은 이 구동기에 없다
         private void AttachFinal()
         {
@@ -1179,11 +1179,10 @@ namespace Shinshi.AI
             float   arenaRadius = _boss.ArenaDiameter * HALF;
 
             _finalView  = new WolbaekFinalAreaDevView(transform, center, arenaRadius, ReadMemberPosition);
-            _finalJudge = new WolbaekFinalDevJudge(center, WolbaekFinalAreaDevCatalog.CENTRAL_RADIUS, ReadMemberPosition, KillMember,
-                _registry);
-
             RigRoster roster = new RigRoster(_members);
-            _final = new WolbaekFinalArea(WolbaekFinalAreaDevCatalog.CreateSpec(), _body, _body, roster, roster, _body,
+            _finalJudge = new WolbaekFinalDevJudge(center, WolbaekFinalAreaDevCatalog.CENTRAL_RADIUS, roster, KillMember, _registry);
+
+            _final =new WolbaekFinalArea(WolbaekFinalAreaDevCatalog.CreateSpec(), _body, _body, roster, roster, _body,
                 new WolbaekFinalDevSites(center), _finalJudge, _finalJudge, _finalJudge, _finalJudge, _finalJudge, _resolver,
                 _registry, _seal, _finalView);
 

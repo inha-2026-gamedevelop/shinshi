@@ -7,6 +7,7 @@ using UnityEngine;
 namespace Shinshi.AI
 {
     // 시험 구동기 전용 임시 도형 표시다. 중앙 바닥은 파란 원판, 외곽 바닥은 회색 원판이며 바닥 제거 알림에서 사라진다(실제 바닥이 아니라 표시만).
+    // 추락 사망은 바닥 제거 뒤 따로 오는 알림을 기록에만 남긴다.
     // 노란 여우불은 노란 원기둥, 빨간 여우불은 낙하 중심의 납작한 원판(추적 중 주황, 고정 뒤 빨강, 대상을 놓치면 회색)이다.
     // 최종 아트가 아니다. 서버 알림(IWolbaekFinalAreaListener)을 그대로 받아 그리며 판정이나 상태는 만들지 않는다.
     // 빨간 여우불이 대상을 따라가는 모습은 알림이 아니라 매 프레임 참가자 위치를 읽어 표시만 한다
@@ -133,7 +134,12 @@ namespace Shinshi.AI
         {
             DestroyObject(_outerFloor);
             _outerFloor = null;
-            Add("외곽 바닥 제거, 추락 사망 " + fallen.Count + "명");
+            Add("외곽 바닥 제거");
+        }
+
+        public void OnParticipantsFell(int castInstanceId, double serverTime, IReadOnlyList<int> fallen)
+        {
+            Add("추락 사망 " + fallen.Count + "명");
         }
 
         public void OnYellowsSpawned(int castInstanceId, double serverTime, IReadOnlyList<WolbaekFinalYellow> yellows)

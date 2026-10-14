@@ -159,17 +159,19 @@ namespace Shinshi.Tests
             public List<string> Lines { get; } = new List<string>();
         }
 
+        // 낙하 판정은 창구의 몫이라 위치를 보지 않는다. 시험이 Report로 넣어 둔 번호를 다음 CollectFallen 한 번에만 내준다
         private sealed class FakeFloor : IWolbaekFinalFloor
         {
-            private readonly List<FakeCombatTarget> _players;
+            private readonly List<int> _pending = new List<int>();
 
-            public bool Accept   { get; set; } = true;
-            public bool Removed  { get; private set; }
-            public int  Requests { get; private set; }
+            public bool         Accept       { get; set; } = true;
+            public bool         Removed      { get; private set; }
+            public int          Requests     { get; private set; }
+            public List<double> CollectTimes { get; } = new List<double>();
 
-            public FakeFloor(List<FakeCombatTarget> players)
+            public void Report(params int[] combatIds)
             {
-                _players = players;
+                _pending.AddRange(combatIds);
             }
 
             public bool TryRemoveOuterFloor(int castInstanceId, double serverTime)
@@ -183,23 +185,18 @@ namespace Shinshi.Tests
                 return Accept;
             }
 
-            public bool IsOnRemovedFloor(int combatId)
+            public int CollectFallen(double serverTime, List<int> results)
             {
+                CollectTimes.Add(serverTime);
+                results.Clear();
                 if (!Removed)
                 {
-                    return false;
+                    return 0;
                 }
 
-                for (int i = 0; i < _players.Count; ++i)
-                {
-                    if (_players[i].CombatId == combatId)
-                    {
-                        Vector3 p = _players[i].Position;
-                        return Mathf.Sqrt((p.x * p.x) + (p.z * p.z)) > CENTRAL;
-                    }
-                }
-
-                return false;
+                results.AddRange(_pending);
+                _pending.Clear();
+                return results.Count;
             }
 
             public bool TryGetSafeRevivePoint(int combatId, out Vector3 point)
@@ -380,6 +377,7 @@ namespace Shinshi.Tests
             public List<Vector3[]>            Locks      { get; } = new List<Vector3[]>();
             public List<WolbaekFinalBundle>   Bundles    { get; } = new List<WolbaekFinalBundle>();
             public List<int>                  Fallen     { get; } = new List<int>();
+            public List<int[]>                Fells      { get; } = new List<int[]>();
             public List<int[]>                Resolved   { get; } = new List<int[]>();
             public WolbaekFinalStart          Start      { get; private set; }
 
@@ -412,6 +410,13 @@ namespace Shinshi.Tests
             {
                 Fallen.AddRange(fallen);
                 Events.Add("floor@" + serverTime);
+            }
+
+            // fallen은 호출 뒤 재사용되는 버퍼라 복사해 둔다
+            public void OnParticipantsFell(int castInstanceId, double serverTime, IReadOnlyList<int> fallen)
+            {
+                Fells.Add(new List<int>(fallen).ToArray());
+                Events.Add("fell:" + fallen.Count + "@" + serverTime);
             }
 
             public void OnYellowsSpawned(int castInstanceId, double serverTime, IReadOnlyList<WolbaekFinalYellow> yellows)
@@ -509,7 +514,7 @@ namespace Shinshi.Tests
                     Query.Players.Add(target);
                 }
 
-                Floor    = new FakeFloor(Query.Players);
+                Floor    = new FakeFloor();
                 Killer   = new FakeKiller(Query.Players);
                 Guard    = new FakeGuard(Log);
                 Listener = new Recorder(Log);
@@ -714,24 +719,27 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Collapse_KillsOnlyLivingPlayersStandingOnTheRemovedFloor()
+        public void Collapse_RemovalMomentKillsNobody_EvenThoseStandingOnTheOuterFloor()
         {
-            Rig r = new Rig(4);
+            Rig r = new Rig(2);
             r.Player(0).Position = new Vector3(14f, 0f, 0f);
-            r.Player(1).Position = new Vector3(0f, 0f, 8.0f);
-            r.Player(2).Position = new Vector3(0f, 0f, 20f);
-            r.Player(2).LifeState = EParticipantLifeState.Dead;
             r.ReachHunt();
 
-            Assert.AreEqual(1, r.Killer.Kills.Count);
-            Assert.AreEqual(FIRST_PLAYER, r.Killer.Kills[0].CombatId);
-            Assert.AreEqual(EWolbaekFinalDeath.Fall, r.Killer.Kills[0].Cause);
-            CollectionAssert.AreEqual(new[] { FIRST_PLAYER }, r.Listener.Fallen);
-            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(1).LifeState);
+            Assert.IsTrue(r.Gimmick.IsOuterFloorRemoved);
+            Assert.AreEqual(0, r.Killer.Kills.Count);
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(0).LifeState);
+            Assert.AreEqual(1, r.Listener.Count("floor@"));
+            Assert.AreEqual(0, r.Listener.Fallen.Count);
+            Assert.AreEqual(0, r.Listener.Count("fell"));
+
+            // 외곽에 서 있는 사람도 살아 있으므로 노란 여우불과 첫 묶음이 그대로 시작되고 빨간 여우불도 받는다
+            Assert.AreEqual(EWolbaekFinalStep.Hunt, r.Gimmick.Step);
+            Assert.AreEqual(3, r.Registry.Registered.Count);
+            Assert.AreEqual(2, r.Gimmick.Bundle.Reds.Count);
         }
 
         [Test]
-        public void Collapse_NoDamageOverTimeOrGraceExists_OnlyOneFallJudgment()
+        public void Collapse_StandingOutsideAfterTheRemoval_IsNotAFallUntilTheFloorReportsIt()
         {
             Rig r = new Rig(2);
             r.Player(0).Position = new Vector3(14f, 0f, 0f);
@@ -739,7 +747,10 @@ namespace Shinshi.Tests
             r.Tick(5.0);
             r.Tick(6.0);
 
-            Assert.AreEqual(1, r.Killer.Kills.Count);
+            // 기믹은 위치로 추락을 정하지 않는다. 창구가 내주지 않는 한 외곽에 있어도 죽지 않고 지속 피해도 없다
+            Assert.AreEqual(0, r.Killer.Kills.Count);
+            Assert.AreEqual(0, r.Blasts().Count);
+            Assert.AreEqual(EWolbaekFinalState.Active, r.Gimmick.State);
             Assert.AreEqual(1, r.Listener.Count("floor@"));
         }
 
@@ -761,21 +772,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Collapse_EveryoneFalls_FailsWithoutSpawningYellows()
-        {
-            Rig r = new Rig(2);
-            r.Player(0).Position = new Vector3(14f, 0f, 0f);
-            r.Player(1).Position = new Vector3(-14f, 0f, 0f);
-            r.ReachHunt();
-
-            Assert.AreEqual(EWolbaekFinalState.Failed, r.Gimmick.State);
-            Assert.AreEqual(EWolbaekFinalFail.Wipe, r.Gimmick.FailReason);
-            Assert.AreEqual(0, r.Registry.Registered.Count);
-            Assert.AreEqual(0, r.Listener.Count("bundle"));
-        }
-
-        [Test]
-        public void Collapse_WipeWithRevivablePlayers_StillFailsImmediately()
+        public void Entry_EveryoneDownWithRevivablePlayers_StillFailsImmediately()
         {
             Rig r = new Rig(2);
             r.Player(0).LifeState = EParticipantLifeState.ReviveWaiting;
@@ -784,6 +781,215 @@ namespace Shinshi.Tests
             r.Enter();
 
             Assert.AreEqual(EWolbaekFinalState.Failed, r.Gimmick.State);
+        }
+
+        /****************************************
+        *                 Fall
+        ****************************************/
+
+        [Test]
+        public void Fall_FloorIsAskedOncePerActiveTickAndOnlyAfterTheRemoval()
+        {
+            Rig r = new Rig(2);
+            r.Enter();
+            r.Tick(2.0);
+            r.Tick(3.75);
+            Assert.AreEqual(0, r.Floor.CollectTimes.Count);
+
+            // 추락 처리는 예약된 사건보다 먼저라 바닥을 제거한 틱에는 묻지 않는다
+            r.Tick(4.0);
+            Assert.AreEqual(0, r.Floor.CollectTimes.Count);
+
+            r.Tick(4.5);
+            r.Tick(5.0);
+            CollectionAssert.AreEqual(new[] { 4.5, 5.0 }, r.Floor.CollectTimes);
+        }
+
+        [Test]
+        public void Fall_KillsOnlyOnTheTickTheFloorReportsAndOnlyOncePerReport()
+        {
+            Rig r = new Rig(2);
+            r.ReachHunt();
+            r.Tick(5.0);
+            Assert.AreEqual(0, r.Killer.Kills.Count);
+
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(5.5);
+
+            Assert.AreEqual(1, r.Killer.Kills.Count);
+            Assert.AreEqual(FIRST_PLAYER, r.Killer.Kills[0].CombatId);
+            Assert.AreEqual(EWolbaekFinalDeath.Fall, r.Killer.Kills[0].Cause);
+            Assert.Contains("fell:1@5.5", r.Listener.Events);
+            CollectionAssert.AreEqual(new[] { FIRST_PLAYER }, r.Listener.Fells[0]);
+
+            r.Tick(6.0);
+            r.Tick(7.0);
+
+            Assert.AreEqual(1, r.Killer.Kills.Count);
+            Assert.AreEqual(1, r.Listener.Count("fell"));
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(1).LifeState);
+            Assert.AreEqual(EWolbaekFinalState.Active, r.Gimmick.State);
+        }
+
+        [Test]
+        public void Fall_KillsOnlyTheReportedParticipants_NotThoseMerelyStandingOutside()
+        {
+            Rig r = new Rig(3);
+            r.Player(1).Position = new Vector3(0f, 0f, 14f);
+            r.ReachHunt();
+            r.Floor.Report(FIRST_PLAYER + 2);
+            r.Tick(4.5);
+
+            Assert.AreEqual(1, r.Killer.Kills.Count);
+            Assert.AreEqual(FIRST_PLAYER + 2, r.Killer.Kills[0].CombatId);
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(0).LifeState);
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(1).LifeState);
+        }
+
+        [Test]
+        public void Fall_AlreadyDownOrRevivedAfterTheEventTime_IsNeitherKilledNorReported()
+        {
+            Rig r = new Rig(3);
+            r.ReachHunt();
+
+            // 첫째는 이미 쓰러져 있고, 둘째는 이 틱 시각보다 뒤에 부활해 그 시각에는 쓰러져 있었다
+            r.Player(0).LifeState = EParticipantLifeState.Dead;
+            r.Revive.Stamps[FIRST_PLAYER + 1] = 5.0;
+            r.Floor.Report(FIRST_PLAYER, FIRST_PLAYER + 1, FIRST_PLAYER + 2);
+            r.Tick(4.5);
+
+            Assert.AreEqual(1, r.Killer.Kills.Count);
+            Assert.AreEqual(FIRST_PLAYER + 2, r.Killer.Kills[0].CombatId);
+            Assert.AreEqual(1, r.Listener.Fells.Count);
+            CollectionAssert.AreEqual(new[] { FIRST_PLAYER + 2 }, r.Listener.Fells[0]);
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(1).LifeState);
+            Assert.AreEqual(EWolbaekFinalState.Active, r.Gimmick.State);
+        }
+
+        [Test]
+        public void Fall_NobodyActuallyKilled_SendsNoFellNotice()
+        {
+            Rig r = new Rig(2);
+            r.ReachHunt();
+            r.Player(0).LifeState = EParticipantLifeState.Dead;
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(4.5);
+
+            Assert.AreEqual(0, r.Killer.Kills.Count);
+            Assert.AreEqual(0, r.Listener.Count("fell"));
+            Assert.AreEqual(EWolbaekFinalState.Active, r.Gimmick.State);
+        }
+
+        [Test]
+        public void Fall_RevivedParticipantCanFallAgainWhenTheFloorReportsTheNewLife()
+        {
+            Rig r = new Rig(2);
+            r.ReachHunt();
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(4.5);
+            Assert.AreEqual(EParticipantLifeState.Dead, r.Player(0).LifeState);
+
+            r.Player(0).LifeState = EParticipantLifeState.Alive;
+            r.Revive.Stamps[FIRST_PLAYER] = 5.0;
+            r.Tick(5.0);
+            Assert.AreEqual(1, r.Killer.Kills.Count);
+
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(6.0);
+
+            Assert.AreEqual(2, r.Killer.Kills.Count);
+            Assert.AreEqual(FIRST_PLAYER, r.Killer.Kills[1].CombatId);
+            Assert.AreEqual(EWolbaekFinalDeath.Fall, r.Killer.Kills[1].Cause);
+            Assert.AreEqual(2, r.Listener.Count("fell"));
+        }
+
+        [Test]
+        public void Fall_IsProcessedBeforeTheBlastDueOnTheSameTick()
+        {
+            Rig r = new Rig(2);
+            r.ReachHunt();
+            r.Tick(8.0);
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(10.0);
+
+            Assert.AreEqual(1, r.Killer.Kills.Count);
+            Assert.AreEqual(EWolbaekFinalDeath.Fall, r.Killer.Kills[0].Cause);
+            Assert.AreEqual(0, r.BlastsOn(FIRST_PLAYER));
+            Assert.AreEqual(1, r.BlastsOn(FIRST_PLAYER + 1));
+            Assert.Less(r.Listener.Events.IndexOf("fell:1@10"), r.Listener.Events.IndexOf("blast:0@10"));
+            Assert.GreaterOrEqual(r.Listener.Events.IndexOf("fell:1@10"), 0);
+        }
+
+        [Test]
+        public void Fall_EveryoneFalls_FailsWithWipeOnThatTickAndNothingMoreHappens()
+        {
+            Rig r = new Rig(2);
+            r.ReachHunt();
+            r.Floor.Report(FIRST_PLAYER, FIRST_PLAYER + 1);
+            r.Tick(4.5);
+
+            Assert.AreEqual(EWolbaekFinalState.Failed, r.Gimmick.State);
+            Assert.AreEqual(EWolbaekFinalFail.Wipe, r.Gimmick.FailReason);
+            Assert.AreEqual(2, r.Killer.Kills.Count);
+            Assert.AreEqual(EWolbaekFinalDeath.Fall, r.Killer.Kills[0].Cause);
+            Assert.AreEqual(EWolbaekFinalDeath.Fall, r.Killer.Kills[1].Cause);
+            Assert.Less(r.Listener.Events.IndexOf("fell:2@4.5"), r.Listener.Events.IndexOf("fail:Wipe"));
+            Assert.GreaterOrEqual(r.Listener.Events.IndexOf("fell:2@4.5"), 0);
+
+            // 바닥 제거 때 세운 노란 여우불은 실패와 함께 거둔다
+            Assert.AreEqual(3, r.Registry.Unregistered.Count);
+            Assert.IsTrue(r.Gimmick.IsDeathHeld);
+
+            r.Tick(10.0);
+            r.Tick(20.0);
+
+            Assert.AreEqual(1, r.Listener.Count("fail"));
+            Assert.AreEqual(1, r.Gimmick.BundleCount);
+            Assert.AreEqual(0, r.Blasts().Count);
+            Assert.AreEqual(0, r.Listener.Count("blast"));
+        }
+
+        [Test]
+        public void Fall_LastLivingFallsWhileOthersAreRevivable_StillFailsOnThatTick()
+        {
+            Rig r = new Rig(2);
+            r.ReachHunt();
+            r.Player(1).LifeState         = EParticipantLifeState.ReviveWaiting;
+            r.Roster.Members[1].Revivable = true;
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(4.5);
+
+            Assert.AreEqual(1, r.Killer.Kills.Count);
+            Assert.AreEqual(EWolbaekFinalState.Failed, r.Gimmick.State);
+            Assert.AreEqual(EWolbaekFinalFail.Wipe, r.Gimmick.FailReason);
+            Assert.Contains("fail:Wipe", r.Listener.Events);
+        }
+
+        [Test]
+        public void Fall_AfterSuccessOrStop_TheGateIsClosedAndNobodyIsKilled()
+        {
+            Rig succeeded = new Rig(2);
+            succeeded.ReachHunt();
+            succeeded.DestroyAllYellows(9.0);
+            succeeded.Tick(9.0);
+            succeeded.Floor.Report(FIRST_PLAYER);
+            succeeded.Tick(9.5);
+            succeeded.Tick(20.0);
+
+            Assert.AreEqual(EWolbaekFinalState.Succeeded, succeeded.Gimmick.State);
+            Assert.AreEqual(0, succeeded.Killer.Kills.Count);
+            Assert.AreEqual(0, succeeded.Listener.Count("fell"));
+            Assert.AreEqual(EParticipantLifeState.Alive, succeeded.Player(0).LifeState);
+
+            Rig stopped = new Rig(2);
+            stopped.ReachHunt();
+            stopped.Gimmick.Stop(EBossInterruptReason.CombatEnd);
+            stopped.Floor.Report(FIRST_PLAYER);
+            stopped.Tick(5.0);
+
+            Assert.AreEqual(0, stopped.Killer.Kills.Count);
+            Assert.AreEqual(0, stopped.Listener.Count("fell"));
+            Assert.AreEqual(EParticipantLifeState.Alive, stopped.Player(0).LifeState);
         }
 
         /****************************************
@@ -1107,13 +1313,17 @@ namespace Shinshi.Tests
         [Test]
         public void Protection_DoesNotPreventTheFall()
         {
+            // 부활 4.25, 보호는 7.25까지다. 보호 중인 4.5에 창구가 낙하를 내주면 추락 사망이다
             Rig r = new Rig(2);
-            r.Player(0).Position = new Vector3(14f, 0f, 0f);
-            r.Revive.Stamps[FIRST_PLAYER] = 3.5;
             r.ReachHunt();
+            r.Revive.Stamps[FIRST_PLAYER] = 4.25;
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(4.5);
 
             Assert.AreEqual(1, r.Killer.Kills.Count);
+            Assert.AreEqual(FIRST_PLAYER, r.Killer.Kills[0].CombatId);
             Assert.AreEqual(EWolbaekFinalDeath.Fall, r.Killer.Kills[0].Cause);
+            CollectionAssert.AreEqual(new[] { FIRST_PLAYER }, r.Listener.Fells[0]);
         }
 
         [Test]
@@ -1273,6 +1483,25 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(EWolbaekFinalState.Succeeded, r.Gimmick.State);
             Assert.AreEqual(0, r.Listener.Count("fail"));
+        }
+
+        [Test]
+        public void Success_BeatsTheFallWipeOnTheSameTick()
+        {
+            Rig r = new Rig(2);
+            r.ReachHunt();
+            r.DestroyAllYellows(9.0);
+            r.Floor.Report(FIRST_PLAYER, FIRST_PLAYER + 1);
+            r.Tick(9.0);
+
+            Assert.AreEqual(EWolbaekFinalState.Succeeded, r.Gimmick.State);
+            Assert.IsTrue(r.Gimmick.HasFinalSuccess);
+            Assert.AreEqual(1, r.Guard.Calls);
+            Assert.AreEqual(0, r.Killer.Kills.Count);
+            Assert.AreEqual(0, r.Listener.Count("fell"));
+            Assert.AreEqual(0, r.Listener.Count("fail"));
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(0).LifeState);
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(1).LifeState);
         }
 
         [Test]

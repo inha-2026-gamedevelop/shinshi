@@ -9,14 +9,17 @@ namespace Shinshi.AI
     // 최후의 영역의 상태 알림이다. 복제 계층이 클라이언트로 전달하는 구성을 가정하며 구현은 아직 없다.
     // 서버 프로세스의 C# 호출은 원격 클라이언트에 닿지 않으므로 실제 연결에서는 ClientRpc와 늦은 접속 복원이 따로 필요하다.
     // 성공, 실패, 정지, 정리 알림은 모두 노란 여우불과 빨간 여우불과 바닥 표시 정리를 뜻한다
-    /// <summary> 최후의 영역의 시작, 바닥 제거, 노란 여우불, 빨간 묶음, 판정, 성공과 실패와 정리 알림 </summary>
+    /// <summary> 최후의 영역의 시작, 바닥 제거, 추락, 노란 여우불, 빨간 묶음, 판정, 성공과 실패와 정리 알림 </summary>
     public interface IWolbaekFinalAreaListener
     {
         /// <summary> 기믹에 진입해 중앙만 남는다는 예고가 시작됐다 </summary>
         void OnFinalStarted(in WolbaekFinalStart start);
 
-        /// <summary> 외곽 바닥이 사라졌다, fallen은 그 순간 서버가 사망 처리한 참가자다. 낙하 연출은 이 결과를 표시한다 </summary>
+        /// <summary> 외곽 바닥이 사라졌다, 제거 순간에는 아무도 죽이지 않으므로 fallen은 항상 비어 있다. 추락 사망은 OnParticipantsFell로 온다 </summary>
         void OnOuterFloorRemoved(int castInstanceId, double serverTime, IReadOnlyList<int> fallen);
+
+        /// <summary> 외곽 제거 뒤 서버가 낙하를 확정해 추락 사망으로 처리한 참가자다. fallen은 호출 뒤 재사용되는 버퍼라 보관하려면 복사해야 한다 </summary>
+        void OnParticipantsFell(int castInstanceId, double serverTime, IReadOnlyList<int> fallen);
 
         /// <summary> 노란 여우불이 중앙 바닥에 생겼다, 수는 진입 순간에 고정된 값이다 </summary>
         void OnYellowsSpawned(int castInstanceId, double serverTime, IReadOnlyList<WolbaekFinalYellow> yellows);

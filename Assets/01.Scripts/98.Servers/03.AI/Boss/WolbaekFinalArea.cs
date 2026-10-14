@@ -25,20 +25,28 @@ namespace Shinshi.AI
     // TryTakeHandoff를 정확히 한 번 불러 받은 틱에 진입한다. 앞선 기믹이 아직 반격 중이면 체력이 0이어도 기다린다.
     // 앞선 기믹은 Tick 순서상 이 기믹보다 먼저 등록해야 같은 틱에 이어서 시작한다.
     //
-    // 진행: 예고 4초 동안 중앙만 남는다고 알린 뒤 외곽 바닥을 제거하고(IWolbaekFinalFloor), 그 순간 사라진 바닥 위에 있던 생존자를 서버가 사망
-    // 처리한다(IWolbaekFinalKiller). 경계 밖 지속 피해와 첫 피해 유예는 없다. 바닥을 제거한 같은 순간 노란 여우불을 진입 시점 생존자 수로
+    // 진행: 예고 4초 동안 중앙만 남는다고 알린 뒤 외곽 바닥을 제거한다(IWolbaekFinalFloor). 제거 순간 외곽에 서 있다는 이유만으로는
+    // 아무도 죽이지 않는다. 바닥을 제거한 같은 순간 노란 여우불을 진입 시점 생존자 수로
     // 고정한 수만큼 중앙 바닥의 검증된 위치에 세우고(IWolbaekFinalSiteSource, IWolbaekYellowRegistry) 첫 빨간 묶음을 시작한다.
+    //
+    // 추락: 외곽 제거 뒤 진행 중인 틱마다 바닥 창구에 낙하가 확정된 참가자를 묻고(CollectFallen), 받은 사람 중 그 시각에 살아 있는
+    // 참가자만 서버가 추락 사망으로 처리한다(IWolbaekFinalKiller). 누가 떨어졌는지는 창구가 서버 위치로 정하며 이 클래스는 위치를 보지
+    // 않는다. 제거 순간에 서 있던 사람이든 뒤에 걸어 나가거나 밀려난 사람이든 같은 규칙이고, 경계 밖 지속 피해는 없다.
+    // 추락으로 마지막 생존자가 쓰러지면 그 틱에 전멸 실패다.
+    //
     // 노란 여우불이 남아 있는 동안 빨간 묶음을 반복한다. 묶음은 시작 순간의 생존자마다 한 개이고 4초 추적, 위치 고정, 2초 뒤 폭발이다.
     // 대상이 쓰러지거나 끊기면 마지막 서버 위치에 머물러 예정대로 터지며 도중 부활자는 다음 묶음부터 대상이 된다.
     //
     // 빨간 폭발: 한 개에만 실제로 닿으면 최대 체력 비율의 방어 전 피해(방어와 반격 불가), 같은 순간 둘 이상에 닿으면 즉사다. 표시만 겹친 것은
     // 즉사가 아니다. 최대 체력 비율 피해에는 시작 인원별 공격 피해 배율을 곱하지 않으므로 배율 이전의 판정기를 넘겨야 한다.
-    // 이 기믹 중 부활한 참가자는 부활 시각부터 보호 시간 동안 빨간 폭발 피해와 즉사를 받지 않는다. 추락은 막지 않는다.
+    // 이 기믹 중 부활한 참가자는 부활 시각부터 보호 시간 동안 빨간 폭발 피해와 즉사를 받지 않는다. 이 보호는 추락을 막지 않아, 보호 중에도
+    // 창구가 낙하를 내주면 추락 사망이다. 부활한 사람은 새 생명이므로 창구가 다시 낙하를 내줄 수 있다.
     // 빨간 폭발은 플레이어만 겨냥하므로 노란 여우불을 파괴하지 못한다.
     //
-    // 한 틱의 순서는 노란 여우불 파괴 확인(모두 부서졌으면 최종 성공이 전멸과 폭발보다 먼저다), 참가자 확인(전멸이면 실패), 대상 관찰,
-    // 시각 순서의 사건 처리 순이다. 최종 성공은 플레이어 보호(IWolbaekFinalGuard)를 먼저 확정하고 피해 게이트를 닫아 남은 빨간 폭발을
-    // 무해하게 만든다. 거친 틱에서도 사건을 시각 순서대로 모두 처리하지만 과거 위치를 기록하지 않아 현재 위치로 판정한다.
+    // 한 틱의 순서는 노란 여우불 파괴 확인(모두 부서졌으면 최종 성공이 추락과 전멸과 폭발보다 먼저다), 참가자 확인(전멸이면 실패),
+    // 추락 처리(전멸이면 실패), 대상 관찰, 시각 순서의 사건 처리 순이다. 추락은 틱 시각의 사건이고 예약된 사건보다 먼저 처리하므로
+    // 바닥을 제거한 틱에는 추락을 묻지 않고 다음 틱부터 묻는다. 최종 성공은 플레이어 보호(IWolbaekFinalGuard)를 먼저 확정하고 피해
+    // 게이트를 닫아 남은 빨간 폭발을 무해하게 만든다. 거친 틱에서도 사건을 시각 순서대로 모두 처리하지만 과거 위치를 기록하지 않아 현재 위치로 판정한다.
     // 전체 20분 만료는 세션이 정하므로 이 클래스는 최종 성공을 IBossFinalSuccess로 먼저 읽히게 하기만 한다.
     //
     // 정지(Halted)는 기믹을 건너뛰는 것도 성공이나 실패도 아니다. 보스는 무적으로 남고 사망도 보류된 채 원인만 알린다
@@ -107,6 +115,7 @@ namespace Shinshi.AI
         private readonly List<ICombatTarget>      _hitBuffer  = new List<ICombatTarget>();
         private readonly List<Vector3>            _rawSites   = new List<Vector3>();
         private readonly List<Vector3>            _yellowSites = new List<Vector3>();
+        private readonly List<int>                _fallBuffer = new List<int>();
         private readonly List<int>                _fallen     = new List<int>();
         private readonly List<AreaEvent>          _events     = new List<AreaEvent>();
 
@@ -585,7 +594,7 @@ namespace Shinshi.AI
 
         private void TickActive(double serverTime)
         {
-            // 최종 성공이 같은 틱의 빨간 폭발과 전멸보다 앞선다. 그래서 어떤 판정보다 먼저 노란 여우불을 확인한다
+            // 최종 성공이 같은 틱의 추락과 빨간 폭발과 전멸보다 앞선다. 그래서 어떤 판정보다 먼저 노란 여우불을 확인한다
             if (ObserveYellows())
             {
                 Succeed(serverTime);
@@ -597,6 +606,16 @@ namespace Shinshi.AI
             {
                 Fail(EWolbaekFinalFail.Wipe, serverTime);
                 return;
+            }
+
+            if (_outerRemoved && ApplyFalls(serverTime))
+            {
+                ReadRoster();
+                if (CountLiving() == 0)
+                {
+                    Fail(EWolbaekFinalFail.Wipe, serverTime);
+                    return;
+                }
             }
 
             ObserveTargets(serverTime);
@@ -612,7 +631,7 @@ namespace Shinshi.AI
                 ++_eventCursor;
                 Execute(next);
 
-                // 폭발과 추락으로 마지막 생존자가 쓰러졌다면 바로 실패이고 이어지는 사건은 일어나지 않는다
+                // 폭발로 마지막 생존자가 쓰러졌다면 바로 실패이고 이어지는 사건은 일어나지 않는다
                 if ((_state == EWolbaekFinalState.Active) && ((next.Kind == EEventKind.Collapse) || (next.Kind == EEventKind.Blast)))
                 {
                     ReadRoster();
@@ -653,8 +672,8 @@ namespace Shinshi.AI
         *                Collapse
         ****************************************/
 
-        // 바닥 제거를 먼저 요청하고 받아들여지면 그 순간 사라진 바닥 위의 생존자를 사망 처리한다. 거절되면 아무도 죽이지 않고 정지한다.
-        // 전원이 떨어지면 노란 여우불을 세우지 않고 실패한다
+        // 바닥 제거를 요청하고 받아들여지면 노란 여우불을 세우고 첫 묶음을 시작한다. 거절되면 정지한다.
+        // 제거 순간에는 외곽에 서 있어도 아무도 죽이지 않는다. 추락은 그 뒤 틱에서 바닥 창구가 낙하를 내줄 때 처리한다
         private void Collapse(double eventTime)
         {
             if (!_floor.TryRemoveOuterFloor(_castId, eventTime))
@@ -666,24 +685,8 @@ namespace Shinshi.AI
 
             _outerRemoved = true;
 
-            ReadRoster();
             _fallen.Clear();
-            for (int i = 0; i < _infos.Count; ++i)
-            {
-                int id = _ids[i];
-                if ((!IsAliveAt(i, eventTime)) || (!_floor.IsOnRemovedFloor(id)))
-                {
-                    continue;
-                }
-
-                if (_gate.IsOpen && _killer.TryKill(id, _castId, EWolbaekFinalDeath.Fall))
-                {
-                    _fallen.Add(id);
-                }
-            }
-
             _listener?.OnOuterFloorRemoved(_castId, eventTime, _fallen);
-            _fallen.Clear();
 
             ReadRoster();
             if (CountLiving() == 0)
@@ -699,6 +702,45 @@ namespace Shinshi.AI
 
             _step = EWolbaekFinalStep.Hunt;
             StartBundle(eventTime);
+        }
+
+        // 바닥 창구가 낙하를 확정해 내준 참가자 중 이 시각에 살아 있는 사람만 추락 사망으로 처리하고, 한 명이라도 죽였으면 참이다.
+        // 방금 읽은 명단을 쓰므로 부르기 전에 ReadRoster가 끝나 있어야 한다. 이미 쓰러졌거나 이 시각 뒤에 부활한 사람은 죽이지 않고
+        // 알림에도 넣지 않는다. 창구는 한 생명에 한 번만 내주므로 걸러진 사람은 부활해 새 생명이 되기 전에는 다시 오지 않는다.
+        // 부활 직후 보호는 추락을 막지 않아 보호 여부를 보지 않는다
+        private bool ApplyFalls(double serverTime)
+        {
+            if (_floor.CollectFallen(serverTime, _fallBuffer) <= 0)
+            {
+                return false;
+            }
+
+            _fallen.Clear();
+            for (int i = 0; i < _fallBuffer.Count; ++i)
+            {
+                int id        = _fallBuffer[i];
+                int infoIndex = _ids.IndexOf(id);
+                if ((infoIndex < 0) || (!IsAliveAt(infoIndex, serverTime)))
+                {
+                    continue;
+                }
+
+                if (_gate.IsOpen && _killer.TryKill(id, _castId, EWolbaekFinalDeath.Fall))
+                {
+                    _fallen.Add(id);
+                }
+            }
+
+            _fallBuffer.Clear();
+
+            if (_fallen.Count == 0)
+            {
+                return false;
+            }
+
+            _listener?.OnParticipantsFell(_castId, serverTime, _fallen);
+            _fallen.Clear();
+            return true;
         }
 
         // 고정된 수만큼 목록 앞에서부터 세운다. 하나라도 등록하지 못하면 세운 것을 거두고 정지한다
