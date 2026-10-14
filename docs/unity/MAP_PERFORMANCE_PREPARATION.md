@@ -134,6 +134,23 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 등록은 L1/증거 등급1(실제 경로·GUID·재귀 의존성 확인)이며 여우불의 런타임 카탈로그 소비 연결은 이 작업에서 검증하지 않았다. 이 목록 등록을 런타임 GPU 워밍업 완료나 첫 사용 끊김 개선으로 보고하지 않는다.
 
+### 등록된 필수 대상 — 월백 요력파·지속빔
+
+2026-10-14 등록. 월백 P1P06/P2P01/P2P02가 등장하는 전장 입장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Beams/`. Unity AssetDatabase 재귀 조회로 각 프리팹 포함 16개, 전체 고유 의존성 23개를 확인했다. 개발 씬·지원 바닥·카메라·검수 Volume은 배치 프리팹 의존성에서 제외된다.
+
+| 프리팹 | GUID | 실제 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekBeam_Release.prefab` | `6a049864c7331ba47bb9272f0abe831d` | 고정 직사각 예고·폭 방향 전진 파면·소멸 |
+| `PF_WolbaekBeam_Sustain.prefab` | `b97ea249908d0cb4da8566b58d3901be` | 평행 2선 개별 예고·확정 유지·안개/꽃잎 유동·종료 |
+| `PF_WolbaekBeam_Star.prefab` | `da2e10b5ebed9d54989a3ad07ab6977f` | 5선과 5 ghost·외부 끝점 회전/불연속 단계·확정/취소 |
+| `PF_WolbaekBeam_Grid.prefab` | `d74f4f458f0905c4ebb076a4e39fb927` | 현재 선+다음 1예고·원 교집합 clipping·지난 선 즉시 안전 |
+
+- 재질/텍스처는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Beams/{Materials,Textures}/`: 실제 사용 재질 `M_Beam_CoreSoft`, `M_Beam_VeilCloud`, `M_Beam_Boundary`와 같은 이름 PNG 3개. Mesh 5개·독립 SO 4개·런타임 스크립트 3개·프리팹 4개·공용 셰이더 1개가 전체 고유 의존성에 포함된다.
+- 셰이더는 기존 `Shinshi/VFX/Particle`이며 재질의 활성 로컬 키워드 0개를 확인했다. 전역/품질/API variant·PSO 전체 확인 결과가 아니다. 원근 카메라·URP depth texture를 요구한다. 검수는 RX 9060 XT/Direct3D11 Unity Editor에서 했다.
+- 생성만으로 준비 완료라고 보지 않는다. 첫 clipping의 캐시/메시 생성과 Gaussian 코어·cloud alpha·구간별 skinning·꽃잎·예고/활성/소멸을 실제 렌더 경로로 준비할 후보에 포함한다. 초기 생성 수·최대 동시 수·상주 메모리 예산은 미확정이다.
+- cast 전체 종료/취소/풀 반환은 `Stop(playbackId)` 또는 `Stop()` 후 비활성화다. `IsRunning`은 가시 선 없이도 입력을 기다릴 수 있으므로 자동 풀 반환 신호로 쓰지 않는다. 오래된 playback/revision 거절, 개별 `StopLine`과 외부 시계·확정 계약은 [빔 사용 안내](WOLBAEK_BEAMS_VFX_USAGE.md)를 따른다.
+- 등록 근거는 실제 GUID/참조·의존성 조회(L1), 별도 기능 근거는 PlayMode 70/70 PASS와 24fps Unity 렌더(L2)다. 아트는 원화 부피·빛 퍼짐 차이가 남은 조건부 검토본이다. 빔의 런타임 카탈로그 소비 연결은 이 작업에서 검증하지 않았으며 문서 등록을 GPU 워밍업·첫 사용 끊김 개선으로 보고하지 않는다.
+
 풀 수는 동시 최대값과 재생/잔상 수명을 측정해 정한다. 빈 풀 정책은 중요 예고 보존 → 저우선 장식 축소를 기본 제안으로 하고, 어떤 효과를 생략할 수 있는지는 기획 기준으로 확정한다. 필수 예고에는 예약된 최소 표현을 마련해 정상 효과 고갈 시에도 범위·시작/종료 시각을 표시한다. 대체 표현까지 실패하면 클라이언트 표현 결함으로 기록한다. 표현 실패가 서버의 공격 시각·피해 판정을 멈추거나 취소하는 권한이 되지 않는다. 예산이 검증된 제한적 추가 생성은 별도 후보이며 무제한 Instantiate를 기본으로 두지 않는다. 최소 표현과 풀 고갈 처리는 아직 구현할 제안이다.
 
 `ObjectPool<T>.defaultCapacity`는 내부 용량이지 미리 생성된 인스턴스 수가 아니며, `maxSize`는 유휴 객체 보존 제한이지 `Get()`의 동시 활성 상한이 아니다. 초기 생성 수·최대 활성 수·유휴 보존 수·메모리 예산을 별도로 정의한다. 공통 풀 구현은 아직 확인되지 않았으므로 이 계약이 이미 적용됐다고 쓰지 않는다.
