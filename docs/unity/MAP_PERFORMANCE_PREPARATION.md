@@ -195,6 +195,25 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 - 실제 캐릭터 dissolve는 미연결이다. 중성 proxy는 명시적 개발 옵션이다. 예고·진행·확정·취소·풀 반환은 [워프 사용 안내](WOLBAEK_WARP_VFX_USAGE.md)를 따른다. 초기 생성 수·최대 동시 수·메모리·첫 사용 지연·PSO는 미측정이며 문서 등록을 워밍업 실행 완료로 해석하지 않는다.
 - 등록 근거는 실제 GUID·참조·의존성 재조회(L1)이며 표현 기능은 잔류 정리를 포함한 전용 씬 PlayMode 28/28 PASS와 24fps·192프레임 Unity 렌더로 확인했다(L2). Warp 전용 검수 Bloom 프로필은 배치 프리팹 의존성에 포함되지 않는다. 원화 실루엣·광산란·충격파 부피 차이가 남은 조건부 검토본이며 실보스 연결·Player/API별 프리워밍·성능은 미검증이다.
 
+### 등록된 필수 대상 — 월백 사방 부적진
+
+2026-10-14 등록, v04 표현 보완과 실제 검증 반영. 월백 HP75% 부적진이 등장하는 전장 입장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Talismans/`. 현재 서버의 `Start.Structures.Count`에 따라 1~4곳을 준비하며, 문양/색을 방위에 고정하지 않는다. v04의 실제 Unity AssetDatabase 재귀 조회는 프리팹 포함 각 45개, 전체 고유 51개다. 네 프리팹의 GUID는 v03과 동일하다.
+
+| 프리팹 | 실제 GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekTalisman_Moon.prefab` | `6781b2be8eb473840ac5268c96393f9d` | 초승달, 부적, 경계/공용 진행, 초기화, 성공 상승/소멸 |
+| `PF_WolbaekTalisman_Flower.prefab` | `947845629ca1a384f956cd28015d88a4` | 꽃, 동일 단계, 독립 SO |
+| `PF_WolbaekTalisman_Star.prefab` | `59b9f5a604fcd5945be7bfc783c48bd9` | 별, 동일 단계, 독립 SO |
+| `PF_WolbaekTalisman_Diamond.prefab` | `83da97017db231b4bba53752bfb9eb5b` | 마름모, 동일 단계, 독립 SO |
+
+- 각 프리팹에 네 문양 메시가 있어 외부 배정을 받을 수 있다. 같은 단계에서 필요한 구조물 수는 서버 목록을 따른다. 초기 풀 크기/동시 시전 수/상주 예산은 실보스 연결 후 실측으로 확정한다. 프리팹 네 개를 각각 4배 상주시키는 것으로 고정하지 않는다.
+- 실제 의존 재질은 Talismans의 부적/필획/문양/꽃잎/광점/지면 core/짧은 안개/경계/진행 띠와 석주 PBR 재질이다. v04는 `M_Talisman_AirWisps`, `M_Talisman_SuccessWisps`의 공중 흐름/외부 성공 상승 잔상을 추가했다. 셰이더는 기존 `Shinshi/VFX/Particle`과 URP Lit을 유지한다. v04 재조회에서 Particle 로컬 키워드는 0개, Lit은 `_METALLICSPECGLOSSMAP`, `_NORMALMAP`, `_OCCLUSIONMAP`이다. 빈 로컬 키워드는 전역/품질/API variant나 PSO 검증 결과가 아니다.
+- 실제 재귀 PNG는 자체 석주 `BaseColor/Normal/AO/MetallicSmoothness` 4개, 진행 마스크 1개, 종이용 `Textures/T_Talisman_PaperVeil.png`, Wisps/AirWisps/SuccessWisps용 `Textures/T_Talisman_WispVeil.png`, 기존 Warp의 `T_Warp_MoteGlow.png`로 총 8개다. 스킨닝된 부적/필획/꽃잎/안개/광점과 문양, 진행 마스크, 불투명 석주 3 LOD 렌더 경로를 준비한다. 개발 씬 바닥/카메라/Bloom과 원본 SpectralSource FBX·Roughness는 배치 프리팹 의존성에서 제외된다. 석주 FBX는 실행 메시 원본이므로 의존성에 포함된다.
+- 구조물당 그림자 없는 Point 광원 하나를 포함한다. 한 기믹의 네 구조물 기준 최대 4개이며 SO `GroundLightIntensity = 0`으로 끌 수 있다. 발광 메시의 `GroundLightStrength`와 별도 설정이다. 외부 배정 색, 초기화, 성공, 소멸 상태에 맞춰 표현하고 `Stop()`에서 광원을 비활성/강도 0으로 돌린다. 추가 투명 레이어와 조명의 GPU 시간/오버드로/드로우콜은 실제 전장 품질/API에서 실측 미검증이다. SO의 추가 표현 설정 11개는 [사용 안내](WOLBAEK_TALISMANS_VFX_USAGE.md)를 따른다.
+- 준비 시작/현재 상태 복원/진행/초기화/명시 성공 입력은 [사용 안내](WOLBAEK_TALISMANS_VFX_USAGE.md)의 `Begin/Reconcile/Tick` 계약을 따른다. Holding의 진행도 1이나 로컬 5초 경과만으로 Success를 만들지 않는다. 정상 종료는 `Completed`/`IsRunning`, 즉시 반환은 `Stop()` 후 비활성화다.
+- 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner` 소비 구조가 존재하지만 **이 4PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 공용 로더·Net/실보스 바인더를 임의 수정하지 않았다. 전투 연동 시 표현 전용 워밍 어댑터와 함께 카탈로그 담당이 연결해야 한다.
+- v04 L1은 GUID/의존성/참조와 .meta 확인, L2는 전용 씬 PlayMode 사용자 정의 169/169 검사(설정 기본값·유한값 포함)와 실제 1280×720·24fps·576프레임 영상으로 확인했다. Unity Test Runner 실행 건수가 아니다. 8개 고유 텍스처의 Editor `Profiler.GetRuntimeMemorySizeLong` 합계는 9,837,957bytes(약 9.38MiB)이며 GPU VRAM/Player 상주 예산을 확정한 값이 아니다. 이전 v03의 55/55 검사·40/46개 의존성·7개 텍스처 9,138,005bytes 근거는 개인 기록에 보존했다. 실제 GPU 프리워밍, 첫 사용 끊김 개선, API별 variant/PSO와 성능은 미검증이다.
+
 ### 안전한 준비·반환 순서
 
 1. 자산 로드가 끝난 뒤 해당 씬 소유의 풀을 만든다. 생성은 로딩 화면 안에서 프레임별로 나누고 총량·상주 메모리·시간을 측정한다. 씬이나 스킬 목록이 바뀌면 목록 버전을 갱신한다.
