@@ -24,8 +24,9 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        private const int    INITIAL_CAPACITY = 32;
-        private const string REQUEST_SENT_TEXT = "거래를 요청했습니다";
+        private const int    INITIAL_CAPACITY     = 32;
+        private const int    NO_COUNTDOWN_SECONDS = -1;
+        private const string REQUEST_SENT_TEXT    = "거래를 요청했습니다";
 
         [SerializeField] private TradeView  _view     = null;
         [SerializeField] private UiPopupHub _popupHub = null;
@@ -40,6 +41,7 @@ namespace Shinshi.UI
         private Guid              _inviteTradeId;
         private double            _inviteExpireAt;
         private bool              _inventoryDirty = true;
+        private int               _shownCountdownSeconds = NO_COUNTDOWN_SECONDS;
 
         /****************************************
         *              Unity Event
@@ -100,10 +102,16 @@ namespace Shinshi.UI
 
             if ((_hasState) && (_state.State == ETradeState.Countdown))
             {
+                // 두 글자 모두 올림한 정수 초만 담으므로 초가 바뀔 때만 문자열을 만든다
                 float remaining = TradeViewRules.RemainingAt(_countdownEnd, Time.unscaledTimeAsDouble);
-                _view.SetCountdown(TradeViewRules.CeilSeconds(remaining).ToString(CultureInfo.InvariantCulture));
-                _view.SetStatus(TradeViewRules.StatusText(ETradeState.Countdown, _state.Reason, _state.MyLocked, _state.MyAccepted,
-                    _state.PartnerAccepted, remaining));
+                int   seconds   = TradeViewRules.CeilSeconds(remaining);
+                if (seconds != _shownCountdownSeconds)
+                {
+                    _shownCountdownSeconds = seconds;
+                    _view.SetCountdown(seconds.ToString(CultureInfo.InvariantCulture));
+                    _view.SetStatus(TradeViewRules.StatusText(ETradeState.Countdown, _state.Reason, _state.MyLocked, _state.MyAccepted,
+                        _state.PartnerAccepted, remaining));
+                }
             }
 
             if ((_inventoryDirty) && (_view.IsOpen))
@@ -149,6 +157,7 @@ namespace Shinshi.UI
 
             _state    = state;
             _hasState = true;
+            _shownCountdownSeconds = NO_COUNTDOWN_SECONDS;
             if (_view == null)
             {
                 return;
@@ -214,6 +223,7 @@ namespace Shinshi.UI
                 if (_hasState)
                 {
                     _view.SetStatus(text);
+                    _shownCountdownSeconds = NO_COUNTDOWN_SECONDS;
                 }
             }
 
