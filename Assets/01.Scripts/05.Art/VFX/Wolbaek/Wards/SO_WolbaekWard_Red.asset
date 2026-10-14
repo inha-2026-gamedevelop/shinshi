@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88d14902b9a81334c8940fc16b13c863, type: 3}
+  m_Name: SO_WolbaekWard_Red
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWardSettingsSO
+  _defaultSign: 0
+  _defaultColor: {r: 1.5, g: 0.35, b: 0.3, a: 1}
+  _appearSeconds: 0.65
+  _switchSeconds: 0.45
+  _fadeSeconds: 0.8
+  _domeHeight: 2.1
+  _flowCycle: 2.4
+  _waveAmplitude: 0.055
+  _petalDrift: 0.045
+  _shellOpacity: 0.3
+  _ribbonOpacity: 0.6
+  _petalOpacity: 0.75
+  _moteOpacity: 0.45
+  _glyphOpacity: 0.9
+  _glyphStrength: 1.5
+  _switchWhiteShare: 0.35
+  _petalTint: {r: 1.2, g: 0.65, b: 1, a: 1}
+  _assignedPetalTintShare: 0.3

@@ -214,6 +214,23 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 - 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner` 소비 구조가 존재하지만 **이 4PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 공용 로더·Net/실보스 바인더를 임의 수정하지 않았다. 전투 연동 시 표현 전용 워밍 어댑터와 함께 카탈로그 담당이 연결해야 한다.
 - v04 L1은 GUID/의존성/참조와 .meta 확인, L2는 전용 씬 PlayMode 사용자 정의 169/169 검사(설정 기본값·유한값 포함)와 실제 1280×720·24fps·576프레임 영상으로 확인했다. Unity Test Runner 실행 건수가 아니다. 8개 고유 텍스처의 Editor `Profiler.GetRuntimeMemorySizeLong` 합계는 9,837,957bytes(약 9.38MiB)이며 GPU VRAM/Player 상주 예산을 확정한 값이 아니다. 이전 v03의 55/55 검사·40/46개 의존성·7개 텍스처 9,138,005bytes 근거는 개인 기록에 보존했다. 실제 GPU 프리워밍, 첫 사용 끊김 개선, API별 variant/PSO와 성능은 미검증이다.
 
+### 등록된 필수 대상 — 월백 색 결계·연결선
+
+2026-10-14 등록, v02 장식 보정 반영. 월백 색 결계가 등장하는 전장 입장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Wards/`. 서버가 확정한 현재 지점과 같은 색 두 참가자의 연결만 표시한다. 실제 Unity AssetDatabase 재귀 조회는 Ward 각 26개·Link 각 17개, 전체 고유 의존성 44개다. v02에서도 네 GUID를 유지했다.
+
+| 프리팹 | 실제 GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekWard_Red.prefab` | `1ce921dcf38f2e04ab8477238bd28633` | 빨강·마름모, 현재 Mark/Active, 구름 막·꽃잎·광점·종료 |
+| `PF_WolbaekWard_Blue.prefab` | `1264c47f5d6f1b04e9726e59b13fbfae` | 파랑·초승달, 동일 단계, 독립 SO |
+| `PF_WolbaekLink_Red.prefab` | `041e207b2fdae854a99cb4dcd41b1ae0` | 빨강·마름모, 현재 3D 발밑 끝점·띠·위험 단계·숨김/복원·종료 |
+| `PF_WolbaekLink_Blue.prefab` | `ee8da2184d88d364d8ab720171bd912f` | 파랑·초승달, 동일 단계, 독립 SO |
+
+- 재질과 native 메시, SO는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Wards/` 아래에 있다. 실제 PNG 의존성은 자체 선형 알파 `Textures/T_Ward_Veil.png`, `T_Ward_Flow.png`(각 256×256), 기존 Warp `Materials/T_Warp_MoteGlow.png`(64×64) 총 3개다. 모두 Read/Write를 끈 실제 임포트 자산이다. Editor `Profiler.GetRuntimeMemorySizeLong` 합계는 1,411,784bytes(약 1.35MiB)이며 GPU VRAM·Player 상주 예산을 확정한 값이 아니다. 개발 씬 바닥·카메라·Bloom은 배치 프리팹 의존성에서 제외된다.
+- 기존 `Shinshi/VFX/Particle` 셰이더를 사용하며 재조회한 실제 재질의 활성 로컬 키워드는 0개다. 전역/품질/API variant·PSO 검증은 미실행이다. URP depth texture가 필요하다. 결계 막·흐름·꽃잎·광점과 연결선 띠는 장식 LOD에 포함하며, 필수 경계·문양·끝점은 유지한다.
+- 준비 렌더 범위는 Mark와 Active, Link의 Normal/Warning/Danger, 외부 숨김과 복원, Expired 감쇠다. 입력 계약과 동일 시계의 늦은 상태 복원, `Stop()`의 속성·포즈·Bounds 정리는 [사용 안내](WOLBAEK_WARDS_VFX_USAGE.md)를 따른다. Mark는 미래 목적지 예고가 아니며 거리만으로 피해나 pair 해제를 만들지 않는다. 초기 풀 크기·최대 동시 수와 예산은 실보스 연결 후 측정해야 한다.
+- 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner` 구조가 존재하지만 **이 4PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 표현 전용 워밍 어댑터·공용 카탈로그 연결과 API별 GPU 준비는 담당 후속 작업이다.
+- L1은 실제 GUID/참조·의존성 및 .meta 확인, L2는 전용 씬 PlayMode 사용자 정의 78/78 검사, 실제 1280×720·24fps·720프레임 영상과 장식 LOD 캡처로 확인했다. Unity Test Runner 실행 건수가 아니다. 실보스 원격 복제·Net Binder·M2/M3·Profiler GC/성능·출시 빌드는 미검증이며 문서 등록을 GPU 워밍업이나 첫 사용 끊김 개선 완료로 보고하지 않는다.
+
 ### 안전한 준비·반환 순서
 
 1. 자산 로드가 끝난 뒤 해당 씬 소유의 풀을 만든다. 생성은 로딩 화면 안에서 프레임별로 나누고 총량·상주 메모리·시간을 측정한다. 씬이나 스킬 목록이 바뀌면 목록 버전을 갱신한다.
