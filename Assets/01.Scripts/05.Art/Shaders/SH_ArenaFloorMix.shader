@@ -31,6 +31,15 @@ Shader "Shinshi/ArenaFloorMix"
         _DamageTint("Weathering Tint", Color) = (1, 1, 1, 1)
         _DamageSize("Weathering Tile Size (m)", Float) = 4
 
+        [Header(Mesh UV Mode)]
+        [Toggle] _UseMeshUV("Use Mesh UV (falling pieces)", Float) = 0
+        _MeshUVScale("Mesh UV To Metres", Float) = 44
+        _MeshUVOffset("Mesh UV Offset (m)", Float) = -22
+
+        [Header(Emission)]
+        _EmissionMap("Emission Map", 2D) = "black" {}
+        [HDR] _EmissionColor("Emission Color", Color) = (0, 0, 0, 1)
+
         [Header(Mix)]
         _MaskMap("Blotch Mask", 2D) = "black" {}
         _MacroSize("Blotch Size (m)", Float) = 16
@@ -66,12 +75,17 @@ Shader "Shinshi/ArenaFloorMix"
             float  _DamageStrength;
             float  _Softness;
             float  _NormalStrength;
+            float  _UseMeshUV;
+            float  _MeshUVScale;
+            float  _MeshUVOffset;
+            float4 _EmissionColor;
         CBUFFER_END
 
         TEXTURE2D(_BaseColorMap);      TEXTURE2D(_NormalMap);       TEXTURE2D(_RoughnessMap);       TEXTURE2D(_AOMap);
         TEXTURE2D(_DirtColorMap);      TEXTURE2D(_DirtNormalMap);   TEXTURE2D(_DirtRoughnessMap);
         TEXTURE2D(_DamageColorMap);    TEXTURE2D(_DamageNormalMap); TEXTURE2D(_DamageRoughnessMap);
         TEXTURE2D(_MaskMap);
+        TEXTURE2D(_EmissionMap);
         ENDHLSL
 
         Pass
@@ -103,6 +117,7 @@ Shader "Shinshi/ArenaFloorMix"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
+                float2 uv         : TEXCOORD0;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -112,6 +127,7 @@ Shader "Shinshi/ArenaFloorMix"
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS   : TEXCOORD1;
                 half   fogFactor  : TEXCOORD2;
+                float2 uv         : TEXCOORD3;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -126,6 +142,7 @@ Shader "Shinshi/ArenaFloorMix"
                 output.positionWS = positions.positionWS;
                 output.normalWS   = TransformObjectToWorldNormal(input.normalOS);
                 output.fogFactor  = ComputeFogFactor(positions.positionCS.z);
+                output.uv         = input.uv;
                 return output;
             }
 
@@ -170,7 +187,9 @@ Shader "Shinshi/ArenaFloorMix"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
 
-                float2 p = input.positionWS.xz;
+                // 떨어지는 조각은 월드 좌표를 쓰면 무늬가 미끄러지므로 메시 UV(쉬는 자리의 월드 XZ)로 샘플한다
+                bool useMeshUV = _UseMeshUV > 0.5;
+                float2 p = useMeshUV ? input.uv * _MeshUVScale + _MeshUVOffset : input.positionWS.xz;
 
                 float dirtW   = Blotch(p, float2(0.13, 0.71), 0.0,  _DirtThreshold)   * _DirtStrength;
                 float damageW = Blotch(p, float2(0.57, 0.29), 0.65, _DamageThreshold) * _DamageStrength;
@@ -208,7 +227,9 @@ Shader "Shinshi/ArenaFloorMix"
 
                 // 바닥은 위를 보는 면이라 월드 X, Z를 탄젠트, 바이탄젠트로 쓴다 (uv가 월드 xz이므로 u는 +X, v는 +Z)
                 float3 normalWS = normalize(input.normalWS);
-                float3 worldNormal = normalize(float3(1, 0, 0) * normalTS.x + float3(0, 0, 1) * normalTS.y + normalWS * normalTS.z);
+                float3 tangentWS   = useMeshUV ? normalize(TransformObjectToWorldDir(float3(1, 0, 0))) : float3(1, 0, 0);
+                float3 bitangentWS = useMeshUV ? normalize(TransformObjectToWorldDir(float3(0, 0, 1))) : float3(0, 0, 1);
+                float3 worldNormal = normalize(tangentWS * normalTS.x + bitangentWS * normalTS.y + normalWS * normalTS.z);
 
                 InputData inputData = (InputData)0;
                 inputData.positionWS = input.positionWS;
@@ -229,7 +250,7 @@ Shader "Shinshi/ArenaFloorMix"
                 surfaceData.smoothness = 1.0 - saturate(roughness);
                 surfaceData.occlusion = occlusion;
                 surfaceData.normalTS = half3(0, 0, 1);
-                surfaceData.emission = half3(0, 0, 0);
+                surfaceData.emission = SAMPLE_TEXTURE2D(_EmissionMap, sampler_LinearRepeat, input.uv).rgb * _EmissionColor.rgb;
                 surfaceData.alpha = 1;
 
                 half4 color = UniversalFragmentPBR(inputData, surfaceData);
