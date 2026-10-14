@@ -37,6 +37,8 @@ Codex용 스킬은 [`.agents/skills/`](../../.agents/skills/), Claude Code용 �
 | [present-alternatives](../../.agents/skills/present-alternatives/SKILL.md) | 기술 대안의 프로젝트 적합성과 비용 비교 |
 | [write-comments](../../.agents/skills/write-comments/SKILL.md) | 코딩 컨벤션에 맞춘 의도·제약 주석 작성 |
 | [write-handoff](../../.agents/skills/write-handoff/SKILL.md) | 미완료 작업의 근거·차단 조건·다음 행동 기록 |
+| [register-vfx-prewarming](../../.agents/skills/register-vfx-prewarming/SKILL.md) | VFX 프리팹·의존성 확인 후 프리워밍 대상 목록 등록·갱신 |
+| [create-game-vfx](../../.agents/skills/create-game-vfx/SKILL.md) | 컨셉 검토·Blender GPU 제작·Unity 적용·시간 제어·캡처 검수·담당자 안내까지 VFX 제작 |
 
 Codex에서는 `$guided-commit`처럼 스킬 이름을 지정하거나 목적을 직접 요청한다. 명시적인 초안 요청은 게시·커밋 요청으로 바꾸지 않고, 이미 허용된 실행을 다시 승인받지 않는다. `.github`의 이슈 · PR 템플릿은 실제 파일을 읽어 따르고, `CODEOWNERS`도 실제 파일을 읽어 따르고, 없는 규칙이나 계정을 가정하지 않는다. 개인 기록 위치는 루트 [`AGENTS.md`](../../AGENTS.md)를 따른다.
 
