@@ -16,7 +16,7 @@ namespace Shinshi.Combat
 {
     /// <summary> 플레이어 한 명의 서버 판정, 입력 검증과 서버 권위 이동, 기본 공격, 체력과 사망을 맡는다 </summary>
     public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant, IPotionUser,
-        IPlayerControlTarget, ICriticalDamageSource, ILifeStealSource
+        IPlayerControlTarget, ICriticalDamageSource, ILifeStealSource, IBossDisplaceTarget
     {
         // Command 처리기는 검증과 의도 보관만 하고, 실제 이동과 공격은 CombatServerRuntime의 틱에서 한다.
         // 한 틱에 이동 입력이 여러 개 와도 경로 계산은 마지막 것 한 번만 하고, 처리 순서를 틱 순서에 맞춘다
@@ -162,6 +162,12 @@ namespace Shinshi.Combat
 
         // 마지막 틱에 확정한 제어, 입력 처리기는 시각을 새로 계산해 쓴다
         public EPlayerControlKind ControlKind => _controlKind;
+
+        // 회피는 매 틱 시작점과 끝점 사이의 절대 위치를 다시 쓰므로 그 사이에 밀면 다음 틱에 되돌아간다.
+        // 돌진과 후퇴 기술은 시전 때 고정한 원점에서 목표 위치를 계산해 준비 중에 밀려도 이동 거리가 어긋난다.
+        // 기술 서버가 이동 기술인지 밖에 알리지 않아 준비와 타격 구간은 기술 종류와 무관하게 막고, 위치를 쓰지 않는 후딜만 받는다
+        public bool CanBeDisplaced => (_lifeState == EParticipantLifeState.Alive) && (!_isDodging)
+            && ((_skills == null) || (_skills.Phase == ESkillPhase.Idle) || (_skills.Phase == ESkillPhase.Recovery));
 
         // 기술 반격의 120도 방어는 SkillDamageResolver가 적중 원장과 함께 판정한다
 
@@ -1399,6 +1405,32 @@ namespace Shinshi.Combat
             _combat.SetControl(EPlayerControlKind.None, 0.0);
             _skills?.SetControl(EPlayerControlKind.None);
             _skills?.OnOwnerDeath();
+        }
+
+        /****************************************
+        *             Displacement
+        ****************************************/
+
+        // 보스 틱은 이동, 기술 틱 뒤이고 PublishMovement 앞이라 이 틱의 위치를 다시 쓰는 계층이 없고, 틱 끝 위치가 바뀌었으므로
+        // 서 있던 대상도 권위 값이 다시 나간다. 그래서 시각은 여기서 쓰지 않는다
+        public void Displace(Vector3 position, double serverTime)
+        {
+            if ((!CanBeDisplaced) || (!IsFinite(position)))
+            {
+                return;
+            }
+
+            // 밀린 자리에서 남은 모서리로 곧장 가면 경로가 벽을 스칠 수 있어 순간 이동처럼 경로를 버린다.
+            // 소유 예측은 서버가 멈춘 것을 권위 값만으로는 알지 못해 옛 경로를 끝까지 가므로 그 이동의 거절을 보내 멈추게 한다.
+            // 아직 경로를 만들지 않은 보관 이동은 다음 틱에 밀린 자리에서 시작하면 되므로 남긴다
+            if (_path.IsMoving)
+            {
+                _path.Stop();
+                _moveThrottle.ClearActive();
+                _input.SendInputRejected(_moveSequence, ERejectReason.Disabled);
+            }
+
+            _transform.position = position;
         }
 
         /****************************************
