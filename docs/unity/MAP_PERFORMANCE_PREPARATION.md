@@ -231,6 +231,24 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 - 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner` 구조가 존재하지만 **이 4PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 표현 전용 워밍 어댑터·공용 카탈로그 연결과 API별 GPU 준비는 담당 후속 작업이다.
 - L1은 실제 GUID/참조·의존성 및 .meta 확인, L2는 전용 씬 PlayMode 사용자 정의 78/78 검사, 실제 1280×720·24fps·720프레임 영상과 장식 LOD 캡처로 확인했다. Unity Test Runner 실행 건수가 아니다. 실보스 원격 복제·Net Binder·M2/M3·Profiler GC/성능·출시 빌드는 미검증이며 문서 등록을 GPU 워밍업이나 첫 사용 끊김 개선 완료로 보고하지 않는다.
 
+### 등록된 필수 대상 — 월백 봉인핵·낙하 여우불
+
+2026-10-14 최초 준비 목록 등록, 2026-10-15 v04 구성 갱신. 월백 봉인핵 차례가 등장하는 전장 입장 준비 대상이며, 폴더는 `Assets/02.Prefab/VFX/Wolbaek/SealCore/`다. 고정된 핵과 낙하 여우불은 독립 인스턴스로 준비한다. 핵 Index와 여우불 Index를 임의로 짝짓지 않는다.
+
+| 프리팹 | 실제 GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekSealCore.prefab` | `464da5e840389df4489375b453d8e777` | Dormant, 외부 Opened, 개별 Destroyed 파편, Expired 정리 |
+| `PF_WolbaekSealDrop.prefab` | `fa0c4664c20805b40b437f8e55e7f13a` | Tracking, 고정 Locked, 외부 Resolved 순간광, Expired 정리 |
+
+- 재질·native 메시·SO·텍스처는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/SealCore/`에 있다. Stone/Band는 URP Lit와 실제 조각별 AO·Normal·MetallicSmoothness를 사용한다. 활성 로컬 키워드는 `_METALLICSPECGLOSSMAP`, `_NORMALMAP`, `_OCCLUSIONMAP`이다. Core/Flow/DropFlame/Flash와 별도 veil은 자체 `Shinshi/VFX/WolbaekSpectral`, Ground/Petal은 기존 `Shinshi/VFX/Particle`을 사용하며 이 투명 재질의 활성 로컬 키워드는 0개다. 자체 셰이더의 RG Repeat 노이즈는 256×256이며 Core UV와 Flow/DropFlame의 V는 Repeat다. URP depth texture가 필요하다. 품질/API별 전체 variant·PSO는 미검증이다.
+- 핵 지면은 장식이며 낙하 지면 원만 외부 `BlastRadius`에 맞춘다. 핵의 Opened는 시각 상태로 HP·취약·공격 가능을 뜻하지 않는다. 개별 Destroyed는 외부 확정 입력이 필요하며 현행 서버 집계만으로 클라이언트가 파괴 대상을 추론하지 않는다. 정확한 외부 API·수명·늦은 복원 조건은 [사용 안내](WOLBAEK_SEAL_CORE_VFX_USAGE.md)를 따른다.
+- 핵 Renderer 78개(원본 63+FlowVeil 15), 낙하 Renderer 4개다. 장식 LOD는 Flow/FlowVeil 30개와 Petal 12개, 총 42개만 컬링하며 핵·돌·부적·지면을 보존한다. FlowVeil은 opacity 0.24·폭 0.24m, Bounds Y 크기 총 0.24m 확장, DropVeil은 opacity 0.24·폭 0.09m, Bounds XYZ 크기 각 0.18m 확장을 준비 조건으로 보존한다. 재질의 펼침 값을 바꾸면 메시 Bounds도 함께 맞춘다.
+- Flow/FlowVeil은 premultiplied `One/OneMinusSrcAlpha`, 핵·낙하 불꽃·플래시는 additive 경로로 준비한다. 런타임은 외부 절대 clock의 순환 phase를 MPB `_BaseMap_ST.w`로 전달한다. Core의 shell 부유·기울임과 조각별 꽃잎 회전, veil·Point Light·동적 그림자까지 실제 품질 조건의 렌더 준비 대상에 포함한다.
+- `Stop()`/비활성화는 표시와 원본 포즈·속성 블록을 정리하고 보조광을 끈다. 루트와 모든 부모는 단위 스케일로 사용하며 낙하 재생 중 계층·스케일 변경은 Stop으로 정리된다. 인스턴스 수명 전체의 입력 Sequence를 유지하고 오래된 재생 ID를 재사용된 인스턴스에 적용하지 않는다. terminal의 다른 상태 전환은 거부하므로 즉시 반환에는 Stop을 사용한다. 초기 풀 크기·최대 동시 수·성능 예산은 실보스 연결 후 측정해야 한다.
+- 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner`는 존재하지만 **이 2PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 외부 입력을 만드는 표현 전용 어댑터와 공용 카탈로그 연결은 후속 범위이며 실제 GPU 워밍업이나 첫 사용 끊김 개선 완료를 뜻하지 않는다.
+- v04 실제 AssetDatabase 재귀 조회는 핵/낙하 각각 93/17개, 전체 고유 의존성 101개다. 고유 원본/native 메시 64개는 69,793삼각형이다. PNG 15개의 Editor `Profiler.GetRuntimeMemorySizeLong` 합계는 23,607,391bytes(약 22.51MiB), native 메시는 28,575,384bytes(약 27.25MiB)다. GPU VRAM·Player 상주 예산이 아니다. 개발 씬·바닥·카메라·검수 Bloom은 배치 프리팹의 준비 대상에서 제외한다.
+- 핵의 선택형 Point Light와 Stone/Band의 동적 그림자·투명 veil 비용은 동시 수에 따라 실측한다. 보조광은 Destroyed·Stop·비활성화 때 꺼진다. 최종 Flame/Flash 보완 뒤 Build·재검사에서 사용자 정의 PlayMode 91/91과 Inspector/실제 외곽 반경 11/11, 합계 102/102를 확인했다. ShaderUtil messages=[]·compilationFailed=false·콘솔 오류 0·Seal 신규 경고 0이며 실제 H.264 1280×720·24fps·720프레임/30초 영상과 디코딩 contact sheet, LOD 42개와 2.59/2.61초 주기 경계도 직접 확인했다. 독립 아트 범위는 L1+L2 조건부 통과이며 Unity Test Runner 실행 건수나 성능 통과를 뜻하지 않는다. 원화 느낌 90%는 품질 목표이고 검사 통과 수로 환산하지 않는다. 실보스·Net·M2/M3·Player·Profiler 성능과 실제 GPU 프리워밍은 미검증이다.
+
 ### 안전한 준비·반환 순서
 
 1. 자산 로드가 끝난 뒤 해당 씬 소유의 풀을 만든다. 생성은 로딩 화면 안에서 프레임별로 나누고 총량·상주 메모리·시간을 측정한다. 씬이나 스킬 목록이 바뀌면 목록 버전을 갱신한다.

@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66fdc6818e09fba4aab87722a50a4b7d, type: 3}
+  m_Name: SO_WolbaekSealCore
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekSealCoreSettingsSO
+  _defaultColor: {r: 0.62, g: 1.05, b: 1.65, a: 1}
+  _appearSeconds: 0.5
+  _openSeconds: 0.55
+  _shatterSeconds: 0.85
+  _fadeSeconds: 0.65
+  _coreHeight: 1.65
+  _openDistance: 0.55
+  _openTiltDegrees: 18
+  _openLift: 0.12
+  _openPieceScale: 0.78
+  _shatterDistance: 0.65
+  _shatterLift: 0.24
+  _shatterTurns: 0.8
+  _shatterShrinkStart: 0.35
+  _flowCycle: 2.6
+  _flowAmplitude: 0.075
+  _shellDrift: 0.035
+  _shellTiltDegrees: 3.2
+  _petalDrift: 0.1
+  _petalTurns: 0.12
+  _dormantGlow: 0.55
+  _openedGlow: 1.25
+  _flowOpacity: 0.8
+  _petalOpacity: 0.8
+  _groundOpacity: 0.42
+  _coreOpacity: 0.86
+  _flashStrength: 2.2
+  _lightRange: 2.6
+  _dormantLightIntensity: 0.35
+  _openedLightIntensity: 2.4

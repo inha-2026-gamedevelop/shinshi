@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e91d184133432934db473ff640526800, type: 3}
+  m_Name: SO_WolbaekSealDrop
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekSealDropSettingsSO
+  _defaultColor: {r: 0.62, g: 1.05, b: 1.65, a: 1}
+  _appearSeconds: 0.45
+  _resolvedSeconds: 0.6
+  _fadeSeconds: 0.65
+  _dropHeight: 6
+  _hoverAmplitude: 0.14
+  _flowCycle: 1.9
+  _flameOpacity: 0.88
+  _groundOpacity: 0.5
+  _flashStrength: 2.5
