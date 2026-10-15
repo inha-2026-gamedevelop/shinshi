@@ -111,9 +111,143 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 필수 목록은 **그 맵의 공격 예고, 현재 파티의 장착 스킬·동료, 등장할 적·보스의 효과**로 좁힌다. 실제 프리팹 GUID·재질·텍스처·셰이더 키워드·사용 품질·예상 동시 인스턴스·풀 반환 조건을 기록한다. `maxParticles` 합계를 실제 활성 입자나 필요 풀 수로 쓰지 않는다.
 
+### 등록된 필수 대상 — 무철 01~07
+
+2026-10-14 등록. 적용 범위는 **무철이 등장하는 전장 입장 준비**이며 마을 공통 상주 대상은 아니다. 이 표는 프리워밍 대상 목록이다. 부팅 로더의 실행 카탈로그(`Assets/09.Data/Prewarm/PrewarmCatalog.asset`)에는 아직 넣지 않았다. 무철 VFX가 보스 이벤트 바인더로 운영 경로에 연결될 때 `IPrewarmTarget` 어댑터와 함께 등록하므로, 목록 등록을 런타임 워밍업 완료로 해석하지 않는다.
+
+프리팹 폴더는 `Assets/02.Prefab/VFX/Mucheol/`이다. Unity AssetDatabase로 7개 GUID와 재귀 의존성을 확인했다. 재질/PNG 수는 프리팹별 의존성 수이며 공유 항목을 더한 메모리 용량이 아니다.
+
+| 대상 | 프리팹 | GUID | 재질 / PNG |
+|---|---|---|---:|
+| 01 부채꼴 | `PF_Mucheol_01_ImpactV4.prefab` | `2dd58f00a425e6d4fb35cfb053f10606` | 9 / 6 |
+| 02 원형 | `PF_Mucheol_02.prefab` | `97bfbd4a23032584ea026b2db1c9ed72` | 9 / 6 |
+| 03 직선 | `PF_Mucheol_03.prefab` | `5ef5e97f4f0197543bbd2d3dc94a91dc` | 9 / 6 |
+| 04 소충격파 | `PF_Mucheol_04.prefab` | `ad7521ef3a7f4f145b864d33789d4b95` | 9 / 6 |
+| 05 별도 2타 | `PF_Mucheol_05.prefab` | `b9bd4aea755bc894481d3139ed1fe326` | 9 / 6 |
+| 06 돌진 | `PF_Mucheol_06.prefab` | `27dfc0c389d264b48b0e969c502e0809` | 10 / 7 |
+| 07 후방 안전구역 | `PF_Mucheol_07.prefab` | `3dbb458840f753c45a33ad7463aab8a1` | 9 / 6 |
+
+- 재질·텍스처 위치: 01은 `Assets/01.Scripts/05.Art/VFX/Mucheol/ImpactV4/`, 02~07은 `ImpactBatch/NN/` 아래다. 실행 대상 의존성은 프리팹 참조로 추적하고 미리보기 지면·카메라·개발 씬은 제외한다. 06의 `charge-head.png`도 포함한다.
+- 공통 셰이더는 `Shinshi/VFX/MucheolImpactLayer`, `Shinshi/VFX/MucheolImpactParticle`이다. 바위는 01의 `Universal Render Pipeline/Lit`, 02~07의 `Shinshi/VFX/MucheolBatchRock`을 준비 대상으로 포함한다. 확인 시 재질별 활성 로컬 키워드는 모두 비어 있었다. 전역 조명·그림자·안개·품질 variant와 PSO 준비까지 보장하는 결과는 아니다.
+- 품질은 실제 전장에 선택된 URP 품질·그래픽스 API와 동일하게 준비하고 별도 검증한다. 초기 인스턴스 수·최대 동시 수·메모리 예산은 전투 연결 후 실측으로 확정한다. 04와 05의 중첩 꼬리를 하나의 슬롯으로 가정하지 않는다.
+- 예고, 타격 확산, 지면 유지/소멸, 파편과 06 돌진 머리를 준비 범위에 포함한다. 필수 예고를 장식과 함께 생략하지 않는다. 일회성 효과에 ParticleSystem의 루프용 `prewarm`을 켜는 것으로 대체하지 않는다.
+- 반환은 루트 재생기의 `Stop()` 후 비활성화한다. 정상 재생 종료는 `IsRunning == false`로 확인하며, 취소·전장 이탈 때에도 `Stop()`을 호출한다. 01과 02~07의 루트 타입 차이 및 시간 API는 [무철 VFX 사용 안내](MUCHEOL_VFX_USAGE.md)를 따른다.
+
+등록 검증은 L1/증거 등급1(7개 경로·GUID·의존성 조회, 중복 없음)이다. 실제 로딩 연결·GPU 워밍업·첫 사용 끊김 개선과 풀 수용량은 미검증이다.
+
+### 등록된 필수 대상 — 월백 여우불
+
+2026-10-14 등록, 자연스러운 유동 리그 반영 후 재조회. **월백 여우불이 등장하는 전장 입장 준비** 대상으로, 마을 공통 상주 목록이 아니다. 실제 프리팹은 `Assets/02.Prefab/VFX/Wolbaek/Foxfire/PF_WolbaekFoxfire.prefab`, GUID는 `0a5b5eafeccd22a4daa6bc81857c5609`다. Unity AssetDatabase 재귀 조회로 프리팹 포함 고유 의존성 50개(메시 39·설정 SO 1·재질 3·PNG 2·스크립트 3·셰이더 1·프리팹 1)를 확인했다. 개발 씬·지원 바닥·카메라·검수 Volume은 제외된다.
+
+개별 배치용 프리팹도 같은 폴더에 등록했다. 각 프리팹은 필요한 상태만 가진 Regular 에셋이며 독립 설정 SO를 사용한다. 의존성 수는 프리팹 자신을 포함한 재귀 조회 결과다. 공유 메시·재질을 중복 메모리로 더하지 않는다.
+
+| 개별 대상 | 프리팹 파일 | GUID | 의존성 |
+|---|---|---|---:|
+| Flight | `PF_WolbaekFoxfire_Flight.prefab` | `ba4169c67060ab34792c769d4fe25c57` | 16 |
+| Locked | `PF_WolbaekFoxfire_Locked.prefab` | `6d232d78856b0174c98c81c125727c0e` | 16 |
+| Impact 3색 | `PF_WolbaekFoxfire_Impact.prefab` | `fa16c2982e34a084294d066c28a5a620` | 29 |
+| GoldTarget | `PF_WolbaekFoxfire_GoldTarget.prefab` | `11a2ce0c44fffec45b75cf47b4270d87` | 18 |
+| RedHazard | `PF_WolbaekFoxfire_RedHazard.prefab` | `03dfbdeff0696fb45827636c602f7c03` | 17 |
+
+전장이 실제 선택한 개별 프리팹 또는 통합 프리팹을 준비한다. 개별 예고는 `Stop(id)`으로 반환하고 실제 확정 이벤트에서 별도 Impact의 `PlayImpact`를 시작한다. 단독 Preview와 색상별 타격 skinning도 렌더 준비에 포함한다. 자세한 지원 API/설정은 사용 안내를 따른다.
+
+- 준비 단계: 이동 머리/경로를 지연 추종하는 3갈래 꼬리·꽃잎/잔상, 완전한 원/4표식 잠금과 상향 유동, 조각별 상향 타격/소멸, 고정 GoldTarget 꽃문양·RedHazard 마름모와 각 색상의 타격. 한 인스턴스는 활성 상태 한 묶음만 표시한다. 각 구간/조각의 skinning 경로도 실제 렌더 준비 대상에 포함한다.
+- 재질/텍스처는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Foxfire/{Materials,Textures}/`, 셰이더는 기존 `Shinshi/VFX/Particle`이다. 재질의 활성 로컬 키워드는 비어 있으며 전역/품질/API variant·PSO 전체를 확인한 결과가 아니다. 원근 카메라·URP depth texture를 요구한다.
+- 정상 종료는 `IsRunning == false` 또는 `Completed(playbackId)`, 취소/풀 반환은 `Stop(playbackId)` 또는 `Stop()` 후 비활성화다. 재사용 이전 ID의 확정·Tick·취소를 거절한다. 호출자가 cast/effect 식별과 풀 슬롯을 관리한다. 시간/반경/확정 계약은 [여우불 사용 안내](WOLBAEK_FOXFIRE_VFX_USAGE.md)를 따른다.
+- 초기 생성 수·최대 동시 수·상주 예산은 미확정이다. 실제 전장 품질·그래픽스 API별 첫 사용 지연과 GPU 준비는 미검증이다. 저폴리 메시 꽃잎/sparks를 ParticleSystem 루프용 `prewarm`과 혼동하지 않는다.
+
+등록은 L1/증거 등급1(실제 경로·GUID·재귀 의존성 확인)이며 여우불의 런타임 카탈로그 소비 연결은 이 작업에서 검증하지 않았다. 이 목록 등록을 런타임 GPU 워밍업 완료나 첫 사용 끊김 개선으로 보고하지 않는다.
+
+### 등록된 필수 대상 — 월백 요력파·지속빔
+
+2026-10-14 등록. 월백 P1P06/P2P01/P2P02가 등장하는 전장 입장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Beams/`. Unity AssetDatabase 재귀 조회로 각 프리팹 포함 16개, 전체 고유 의존성 23개를 확인했다. 개발 씬·지원 바닥·카메라·검수 Volume은 배치 프리팹 의존성에서 제외된다.
+
+| 프리팹 | GUID | 실제 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekBeam_Release.prefab` | `6a049864c7331ba47bb9272f0abe831d` | 고정 직사각 예고·폭 방향 전진 파면·소멸 |
+| `PF_WolbaekBeam_Sustain.prefab` | `b97ea249908d0cb4da8566b58d3901be` | 평행 2선 개별 예고·확정 유지·안개/꽃잎 유동·종료 |
+| `PF_WolbaekBeam_Star.prefab` | `da2e10b5ebed9d54989a3ad07ab6977f` | 5선과 5 ghost·외부 끝점 회전/불연속 단계·확정/취소 |
+| `PF_WolbaekBeam_Grid.prefab` | `d74f4f458f0905c4ebb076a4e39fb927` | 현재 선+다음 1예고·원 교집합 clipping·지난 선 즉시 안전 |
+
+- 재질/텍스처는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Beams/{Materials,Textures}/`: 실제 사용 재질 `M_Beam_CoreSoft`, `M_Beam_VeilCloud`, `M_Beam_Boundary`와 같은 이름 PNG 3개. Mesh 5개·독립 SO 4개·런타임 스크립트 3개·프리팹 4개·공용 셰이더 1개가 전체 고유 의존성에 포함된다.
+- 셰이더는 기존 `Shinshi/VFX/Particle`이며 재질의 활성 로컬 키워드 0개를 확인했다. 전역/품질/API variant·PSO 전체 확인 결과가 아니다. 원근 카메라·URP depth texture를 요구한다. 검수는 RX 9060 XT/Direct3D11 Unity Editor에서 했다.
+- 생성만으로 준비 완료라고 보지 않는다. 첫 clipping의 캐시/메시 생성과 Gaussian 코어·cloud alpha·구간별 skinning·꽃잎·예고/활성/소멸을 실제 렌더 경로로 준비할 후보에 포함한다. 초기 생성 수·최대 동시 수·상주 메모리 예산은 미확정이다.
+- cast 전체 종료/취소/풀 반환은 `Stop(playbackId)` 또는 `Stop()` 후 비활성화다. `IsRunning`은 가시 선 없이도 입력을 기다릴 수 있으므로 자동 풀 반환 신호로 쓰지 않는다. 오래된 playback/revision 거절, 개별 `StopLine`과 외부 시계·확정 계약은 [빔 사용 안내](WOLBAEK_BEAMS_VFX_USAGE.md)를 따른다.
+- 등록 근거는 실제 GUID/참조·의존성 조회(L1), 별도 기능 근거는 PlayMode 70/70 PASS와 24fps Unity 렌더(L2)다. 아트는 원화 부피·빛 퍼짐 차이가 남은 조건부 검토본이다. 빔의 런타임 카탈로그 소비 연결은 이 작업에서 검증하지 않았으며 문서 등록을 GPU 워밍업·첫 사용 끊김 개선으로 보고하지 않는다.
+
 풀 수는 동시 최대값과 재생/잔상 수명을 측정해 정한다. 빈 풀 정책은 중요 예고 보존 → 저우선 장식 축소를 기본 제안으로 하고, 어떤 효과를 생략할 수 있는지는 기획 기준으로 확정한다. 필수 예고에는 예약된 최소 표현을 마련해 정상 효과 고갈 시에도 범위·시작/종료 시각을 표시한다. 대체 표현까지 실패하면 클라이언트 표현 결함으로 기록한다. 표현 실패가 서버의 공격 시각·피해 판정을 멈추거나 취소하는 권한이 되지 않는다. 예산이 검증된 제한적 추가 생성은 별도 후보이며 무제한 Instantiate를 기본으로 두지 않는다. 최소 표현과 풀 고갈 처리는 아직 구현할 제안이다.
 
 `ObjectPool<T>.defaultCapacity`는 내부 용량이지 미리 생성된 인스턴스 수가 아니며, `maxSize`는 유휴 객체 보존 제한이지 `Get()`의 동시 활성 상한이 아니다. 초기 생성 수·최대 활성 수·유휴 보존 수·메모리 예산을 별도로 정의한다. 공통 풀 구현은 아직 확인되지 않았으므로 이 계약이 이미 적용됐다고 쓰지 않는다.
+
+### 등록된 필수 대상 — 월백 워프
+
+2026-10-14 등록·아트 보완 후 갱신. 월백 P2P07 전장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Warp/`. 실제 AssetDatabase 재귀 조회 결과는 프리팹 포함 Breakup 37개·Reform 37개·Landing 40개, 전체 고유 의존성 66개다. Absent는 소수 잔류 꽃잎·광점이 감쇠하는 상태로 별도 프리팹이 없다.
+
+| 프리팹 | GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekWarp_Breakup.prefab` | `6adf6b023b0febc46962e9092538e8aa` | 높이별 중성 proxy dissolve·표면 꽃잎·몸체 안개·소멸 |
+| `PF_WolbaekWarp_Reform.prefab` | `966423ed48ef1354d9fc4bcc52d1303f` | 확정 body Bounds에 수렴하는 꽃잎·proxy 재결합·완료 |
+| `PF_WolbaekWarp_Landing.prefab` | `4ea9c4bf2e17e2d42a13f19a157eb1d4` | 실제 착지 후 고정 반경 예고·외부 확정 충격파·취소/종료 |
+
+- Warp 재질은 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Warp/Materials/M_Warp_{Body,Mist,Petals,Core,Motes,Boundary}.mat`. Body는 전용 `Shinshi/VFX/WarpProxyDissolve`, 나머지는 기존 `Shinshi/VFX/Particle`이며 로컬 키워드 0개다. Beams의 `Textures/M_Beam_VeilCloud.png`, `M_Beam_Boundary.png`와 자체 `Materials/T_Warp_MoteGlow.png`를 참조한다. 곡면 꽃잎·core·지면층·광점 및 정상 잔류를 준비 범위에 포함한다.
+- Landing은 검증한 Piloto Studio 한 시스템의 메시·UV를 주 파동/희미한 보조 2층에 재사용한다. 실제 재질은 Warp 복제 `M_Warp_Wave_0.mat`~`2.mat`, 메시 `UV_Distorted_PolarCord_InOut.fbx`다. 실제 재귀 텍스처는 `Tx_Line_06_Up.png`, `Gradient_maker_Y_Fade_tappered.png`, `Tapered_HorizontalGrad.png`이며 재질의 회색 기본 noise도 사용한다. `Piloto Studio/UberFXSG` 로컬 키워드는 `_ALPHATEST_ON`, `_BUILTIN_ALPHATEST_ON`, `_BUILTIN_AlphaClip`, `_BUILTIN_SURFACE_TYPE_TRANSPARENT`, `_SURFACE_TYPE_TRANSPARENT`, `_USEALPHAOVERRIDE`, `_USEUVOFFSET`, `_DOUBLESIDED_ON`이다. 원본 전체 패키지/공유 재질을 수정하거나 준비 대상으로 확대하지 않는다.
+- 현재 공용 `Assets/09.Data/Prewarm/PrewarmCatalog.asset`(24개 항목), `ClientPrewarmRunner`, `IPrewarmTarget` 소비 구조가 존재한다. **Warp 3PF는 해당 실행 카탈로그에 미등록이며 IPrewarmTarget도 미연결**이다. 여기서는 대상/GUID·의존성 문서 등록만 수행했다. 공용 카탈로그 담당의 등록·표현 재생 어댑터 및 실제 GPU/API variant 준비는 후속 작업이다. 앞선 목록의 런타임 미구현 서술은 각 확인 시점의 상태다.
+- 실제 캐릭터 dissolve는 미연결이다. 중성 proxy는 명시적 개발 옵션이다. 예고·진행·확정·취소·풀 반환은 [워프 사용 안내](WOLBAEK_WARP_VFX_USAGE.md)를 따른다. 초기 생성 수·최대 동시 수·메모리·첫 사용 지연·PSO는 미측정이며 문서 등록을 워밍업 실행 완료로 해석하지 않는다.
+- 등록 근거는 실제 GUID·참조·의존성 재조회(L1)이며 표현 기능은 잔류 정리를 포함한 전용 씬 PlayMode 28/28 PASS와 24fps·192프레임 Unity 렌더로 확인했다(L2). Warp 전용 검수 Bloom 프로필은 배치 프리팹 의존성에 포함되지 않는다. 원화 실루엣·광산란·충격파 부피 차이가 남은 조건부 검토본이며 실보스 연결·Player/API별 프리워밍·성능은 미검증이다.
+
+### 등록된 필수 대상 — 월백 사방 부적진
+
+2026-10-14 등록, v04 표현 보완과 실제 검증 반영. 월백 HP75% 부적진이 등장하는 전장 입장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Talismans/`. 현재 서버의 `Start.Structures.Count`에 따라 1~4곳을 준비하며, 문양/색을 방위에 고정하지 않는다. v04의 실제 Unity AssetDatabase 재귀 조회는 프리팹 포함 각 45개, 전체 고유 51개다. 네 프리팹의 GUID는 v03과 동일하다.
+
+| 프리팹 | 실제 GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekTalisman_Moon.prefab` | `6781b2be8eb473840ac5268c96393f9d` | 초승달, 부적, 경계/공용 진행, 초기화, 성공 상승/소멸 |
+| `PF_WolbaekTalisman_Flower.prefab` | `947845629ca1a384f956cd28015d88a4` | 꽃, 동일 단계, 독립 SO |
+| `PF_WolbaekTalisman_Star.prefab` | `59b9f5a604fcd5945be7bfc783c48bd9` | 별, 동일 단계, 독립 SO |
+| `PF_WolbaekTalisman_Diamond.prefab` | `83da97017db231b4bba53752bfb9eb5b` | 마름모, 동일 단계, 독립 SO |
+
+- 각 프리팹에 네 문양 메시가 있어 외부 배정을 받을 수 있다. 같은 단계에서 필요한 구조물 수는 서버 목록을 따른다. 초기 풀 크기/동시 시전 수/상주 예산은 실보스 연결 후 실측으로 확정한다. 프리팹 네 개를 각각 4배 상주시키는 것으로 고정하지 않는다.
+- 실제 의존 재질은 Talismans의 부적/필획/문양/꽃잎/광점/지면 core/짧은 안개/경계/진행 띠와 석주 PBR 재질이다. v04는 `M_Talisman_AirWisps`, `M_Talisman_SuccessWisps`의 공중 흐름/외부 성공 상승 잔상을 추가했다. 셰이더는 기존 `Shinshi/VFX/Particle`과 URP Lit을 유지한다. v04 재조회에서 Particle 로컬 키워드는 0개, Lit은 `_METALLICSPECGLOSSMAP`, `_NORMALMAP`, `_OCCLUSIONMAP`이다. 빈 로컬 키워드는 전역/품질/API variant나 PSO 검증 결과가 아니다.
+- 실제 재귀 PNG는 자체 석주 `BaseColor/Normal/AO/MetallicSmoothness` 4개, 진행 마스크 1개, 종이용 `Textures/T_Talisman_PaperVeil.png`, Wisps/AirWisps/SuccessWisps용 `Textures/T_Talisman_WispVeil.png`, 기존 Warp의 `T_Warp_MoteGlow.png`로 총 8개다. 스킨닝된 부적/필획/꽃잎/안개/광점과 문양, 진행 마스크, 불투명 석주 3 LOD 렌더 경로를 준비한다. 개발 씬 바닥/카메라/Bloom과 원본 SpectralSource FBX·Roughness는 배치 프리팹 의존성에서 제외된다. 석주 FBX는 실행 메시 원본이므로 의존성에 포함된다.
+- 구조물당 그림자 없는 Point 광원 하나를 포함한다. 한 기믹의 네 구조물 기준 최대 4개이며 SO `GroundLightIntensity = 0`으로 끌 수 있다. 발광 메시의 `GroundLightStrength`와 별도 설정이다. 외부 배정 색, 초기화, 성공, 소멸 상태에 맞춰 표현하고 `Stop()`에서 광원을 비활성/강도 0으로 돌린다. 추가 투명 레이어와 조명의 GPU 시간/오버드로/드로우콜은 실제 전장 품질/API에서 실측 미검증이다. SO의 추가 표현 설정 11개는 [사용 안내](WOLBAEK_TALISMANS_VFX_USAGE.md)를 따른다.
+- 준비 시작/현재 상태 복원/진행/초기화/명시 성공 입력은 [사용 안내](WOLBAEK_TALISMANS_VFX_USAGE.md)의 `Begin/Reconcile/Tick` 계약을 따른다. Holding의 진행도 1이나 로컬 5초 경과만으로 Success를 만들지 않는다. 정상 종료는 `Completed`/`IsRunning`, 즉시 반환은 `Stop()` 후 비활성화다.
+- 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner` 소비 구조가 존재하지만 **이 4PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 공용 로더·Net/실보스 바인더를 임의 수정하지 않았다. 전투 연동 시 표현 전용 워밍 어댑터와 함께 카탈로그 담당이 연결해야 한다.
+- v04 L1은 GUID/의존성/참조와 .meta 확인, L2는 전용 씬 PlayMode 사용자 정의 169/169 검사(설정 기본값·유한값 포함)와 실제 1280×720·24fps·576프레임 영상으로 확인했다. Unity Test Runner 실행 건수가 아니다. 8개 고유 텍스처의 Editor `Profiler.GetRuntimeMemorySizeLong` 합계는 9,837,957bytes(약 9.38MiB)이며 GPU VRAM/Player 상주 예산을 확정한 값이 아니다. 이전 v03의 55/55 검사·40/46개 의존성·7개 텍스처 9,138,005bytes 근거는 개인 기록에 보존했다. 실제 GPU 프리워밍, 첫 사용 끊김 개선, API별 variant/PSO와 성능은 미검증이다.
+
+### 등록된 필수 대상 — 월백 색 결계·연결선
+
+2026-10-14 등록, v02 장식 보정 반영. 월백 색 결계가 등장하는 전장 입장 준비 대상이다. 폴더는 `Assets/02.Prefab/VFX/Wolbaek/Wards/`. 서버가 확정한 현재 지점과 같은 색 두 참가자의 연결만 표시한다. 실제 Unity AssetDatabase 재귀 조회는 Ward 각 26개·Link 각 17개, 전체 고유 의존성 44개다. v02에서도 네 GUID를 유지했다.
+
+| 프리팹 | 실제 GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekWard_Red.prefab` | `1ce921dcf38f2e04ab8477238bd28633` | 빨강·마름모, 현재 Mark/Active, 구름 막·꽃잎·광점·종료 |
+| `PF_WolbaekWard_Blue.prefab` | `1264c47f5d6f1b04e9726e59b13fbfae` | 파랑·초승달, 동일 단계, 독립 SO |
+| `PF_WolbaekLink_Red.prefab` | `041e207b2fdae854a99cb4dcd41b1ae0` | 빨강·마름모, 현재 3D 발밑 끝점·띠·위험 단계·숨김/복원·종료 |
+| `PF_WolbaekLink_Blue.prefab` | `ee8da2184d88d364d8ab720171bd912f` | 파랑·초승달, 동일 단계, 독립 SO |
+
+- 재질과 native 메시, SO는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/Wards/` 아래에 있다. 실제 PNG 의존성은 자체 선형 알파 `Textures/T_Ward_Veil.png`, `T_Ward_Flow.png`(각 256×256), 기존 Warp `Materials/T_Warp_MoteGlow.png`(64×64) 총 3개다. 모두 Read/Write를 끈 실제 임포트 자산이다. Editor `Profiler.GetRuntimeMemorySizeLong` 합계는 1,411,784bytes(약 1.35MiB)이며 GPU VRAM·Player 상주 예산을 확정한 값이 아니다. 개발 씬 바닥·카메라·Bloom은 배치 프리팹 의존성에서 제외된다.
+- 기존 `Shinshi/VFX/Particle` 셰이더를 사용하며 재조회한 실제 재질의 활성 로컬 키워드는 0개다. 전역/품질/API variant·PSO 검증은 미실행이다. URP depth texture가 필요하다. 결계 막·흐름·꽃잎·광점과 연결선 띠는 장식 LOD에 포함하며, 필수 경계·문양·끝점은 유지한다.
+- 준비 렌더 범위는 Mark와 Active, Link의 Normal/Warning/Danger, 외부 숨김과 복원, Expired 감쇠다. 입력 계약과 동일 시계의 늦은 상태 복원, `Stop()`의 속성·포즈·Bounds 정리는 [사용 안내](WOLBAEK_WARDS_VFX_USAGE.md)를 따른다. Mark는 미래 목적지 예고가 아니며 거리만으로 피해나 pair 해제를 만들지 않는다. 초기 풀 크기·최대 동시 수와 예산은 실보스 연결 후 측정해야 한다.
+- 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner` 구조가 존재하지만 **이 4PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 표현 전용 워밍 어댑터·공용 카탈로그 연결과 API별 GPU 준비는 담당 후속 작업이다.
+- L1은 실제 GUID/참조·의존성 및 .meta 확인, L2는 전용 씬 PlayMode 사용자 정의 78/78 검사, 실제 1280×720·24fps·720프레임 영상과 장식 LOD 캡처로 확인했다. Unity Test Runner 실행 건수가 아니다. 실보스 원격 복제·Net Binder·M2/M3·Profiler GC/성능·출시 빌드는 미검증이며 문서 등록을 GPU 워밍업이나 첫 사용 끊김 개선 완료로 보고하지 않는다.
+
+### 등록된 필수 대상 — 월백 봉인핵·낙하 여우불
+
+2026-10-14 최초 준비 목록 등록, 2026-10-15 v04 구성 갱신. 월백 봉인핵 차례가 등장하는 전장 입장 준비 대상이며, 폴더는 `Assets/02.Prefab/VFX/Wolbaek/SealCore/`다. 고정된 핵과 낙하 여우불은 독립 인스턴스로 준비한다. 핵 Index와 여우불 Index를 임의로 짝짓지 않는다.
+
+| 프리팹 | 실제 GUID | 준비할 표현 |
+|---|---|---|
+| `PF_WolbaekSealCore.prefab` | `464da5e840389df4489375b453d8e777` | Dormant, 외부 Opened, 개별 Destroyed 파편, Expired 정리 |
+| `PF_WolbaekSealDrop.prefab` | `fa0c4664c20805b40b437f8e55e7f13a` | Tracking, 고정 Locked, 외부 Resolved 순간광, Expired 정리 |
+
+- 재질·native 메시·SO·텍스처는 `Assets/01.Scripts/05.Art/VFX/Wolbaek/SealCore/`에 있다. Stone/Band는 URP Lit와 실제 조각별 AO·Normal·MetallicSmoothness를 사용한다. 활성 로컬 키워드는 `_METALLICSPECGLOSSMAP`, `_NORMALMAP`, `_OCCLUSIONMAP`이다. Core/Flow/DropFlame/Flash와 별도 veil은 자체 `Shinshi/VFX/WolbaekSpectral`, Ground/Petal은 기존 `Shinshi/VFX/Particle`을 사용하며 이 투명 재질의 활성 로컬 키워드는 0개다. 자체 셰이더의 RG Repeat 노이즈는 256×256이며 Core UV와 Flow/DropFlame의 V는 Repeat다. URP depth texture가 필요하다. 품질/API별 전체 variant·PSO는 미검증이다.
+- 핵 지면은 장식이며 낙하 지면 원만 외부 `BlastRadius`에 맞춘다. 핵의 Opened는 시각 상태로 HP·취약·공격 가능을 뜻하지 않는다. 개별 Destroyed는 외부 확정 입력이 필요하며 현행 서버 집계만으로 클라이언트가 파괴 대상을 추론하지 않는다. 정확한 외부 API·수명·늦은 복원 조건은 [사용 안내](WOLBAEK_SEAL_CORE_VFX_USAGE.md)를 따른다.
+- 핵 Renderer 78개(원본 63+FlowVeil 15), 낙하 Renderer 4개다. 장식 LOD는 Flow/FlowVeil 30개와 Petal 12개, 총 42개만 컬링하며 핵·돌·부적·지면을 보존한다. FlowVeil은 opacity 0.24·폭 0.24m, Bounds Y 크기 총 0.24m 확장, DropVeil은 opacity 0.24·폭 0.09m, Bounds XYZ 크기 각 0.18m 확장을 준비 조건으로 보존한다. 재질의 펼침 값을 바꾸면 메시 Bounds도 함께 맞춘다.
+- Flow/FlowVeil은 premultiplied `One/OneMinusSrcAlpha`, 핵·낙하 불꽃·플래시는 additive 경로로 준비한다. 런타임은 외부 절대 clock의 순환 phase를 MPB `_BaseMap_ST.w`로 전달한다. Core의 shell 부유·기울임과 조각별 꽃잎 회전, veil·Point Light·동적 그림자까지 실제 품질 조건의 렌더 준비 대상에 포함한다.
+- `Stop()`/비활성화는 표시와 원본 포즈·속성 블록을 정리하고 보조광을 끈다. 루트와 모든 부모는 단위 스케일로 사용하며 낙하 재생 중 계층·스케일 변경은 Stop으로 정리된다. 인스턴스 수명 전체의 입력 Sequence를 유지하고 오래된 재생 ID를 재사용된 인스턴스에 적용하지 않는다. terminal의 다른 상태 전환은 거부하므로 즉시 반환에는 Stop을 사용한다. 초기 풀 크기·최대 동시 수·성능 예산은 실보스 연결 후 측정해야 한다.
+- 공용 `PrewarmCatalog.asset`/`ClientPrewarmRunner`는 존재하지만 **이 2PF는 실행 카탈로그에 미등록이며 IPrewarmTarget 미연결**이다. 이번 등록은 준비 문서 목록이다. 외부 입력을 만드는 표현 전용 어댑터와 공용 카탈로그 연결은 후속 범위이며 실제 GPU 워밍업이나 첫 사용 끊김 개선 완료를 뜻하지 않는다.
+- v04 실제 AssetDatabase 재귀 조회는 핵/낙하 각각 93/17개, 전체 고유 의존성 101개다. 고유 원본/native 메시 64개는 69,793삼각형이다. PNG 15개의 Editor `Profiler.GetRuntimeMemorySizeLong` 합계는 23,607,391bytes(약 22.51MiB), native 메시는 28,575,384bytes(약 27.25MiB)다. GPU VRAM·Player 상주 예산이 아니다. 개발 씬·바닥·카메라·검수 Bloom은 배치 프리팹의 준비 대상에서 제외한다.
+- 핵의 선택형 Point Light와 Stone/Band의 동적 그림자·투명 veil 비용은 동시 수에 따라 실측한다. 보조광은 Destroyed·Stop·비활성화 때 꺼진다. 최종 Flame/Flash 보완 뒤 Build·재검사에서 사용자 정의 PlayMode 91/91과 Inspector/실제 외곽 반경 11/11, 합계 102/102를 확인했다. ShaderUtil messages=[]·compilationFailed=false·콘솔 오류 0·Seal 신규 경고 0이며 실제 H.264 1280×720·24fps·720프레임/30초 영상과 디코딩 contact sheet, LOD 42개와 2.59/2.61초 주기 경계도 직접 확인했다. 독립 아트 범위는 L1+L2 조건부 통과이며 Unity Test Runner 실행 건수나 성능 통과를 뜻하지 않는다. 원화 느낌 90%는 품질 목표이고 검사 통과 수로 환산하지 않는다. 실보스·Net·M2/M3·Player·Profiler 성능과 실제 GPU 프리워밍은 미검증이다.
 
 ### 안전한 준비·반환 순서
 

@@ -22,7 +22,7 @@ namespace Shinshi.Data.Growth
         ****************************************/
 
         public const string RESOURCE_NAME            = "Shinshi.Data.Content.growth-content.json";
-        public const int    SUPPORTED_SCHEMA_VERSION = 3;
+        public const int    SUPPORTED_SCHEMA_VERSION = 4;
 
         public const int SLOT_COUNT          = 6;
         public const int GRADE_COUNT         = 4;
@@ -47,6 +47,7 @@ namespace Shinshi.Data.Growth
 
         private Dictionary<string, EquipmentDefinition> _equipmentById = new Dictionary<string, EquipmentDefinition>();
         private Dictionary<string, TalismanEffect> _effectById = new Dictionary<string, TalismanEffect>();
+        private Dictionary<int, OptionRange> _optionRangeByKind = new Dictionary<int, OptionRange>();
 
         /****************************************
         *              Properties
@@ -136,6 +137,27 @@ namespace Shinshi.Data.Growth
             return Equipment.EnhancementSteps[targetLevel - 1];
         }
 
+        /// <summary> 그 부위에서 나올 수 있는 옵션 종류, EquipmentOptionRules의 KIND_* 값 </summary>
+        public IReadOnlyList<int> GetOptionPool(int slot)
+        {
+            return Equipment.OptionSlotPools[slot];
+        }
+
+        /// <summary> 옵션 종류와 등급의 값 범위(만분율). 종류 0이나 모르는 종류는 범위가 없다 </summary>
+        public bool TryGetOptionRange(int kind, int grade, out int min, out int max)
+        {
+            if (!IsGrade(grade) || !_optionRangeByKind.TryGetValue(kind, out OptionRange? range))
+            {
+                min = 0;
+                max = 0;
+                return false;
+            }
+
+            min = range.Min[grade];
+            max = range.Max[grade];
+            return true;
+        }
+
         public bool TryGetUpperInheritResult(int sourceLevel, out int resultLevel)
         {
             InheritanceRow? row = Equipment.UpperGradeInheritance.FirstOrDefault(entry => entry.SourceLevel == sourceLevel);
@@ -179,6 +201,7 @@ namespace Shinshi.Data.Growth
         {
             _equipmentById = Equipment.Definitions.ToDictionary(definition => definition.DefinitionId, StringComparer.Ordinal);
             _effectById = Talismans.Effects.ToDictionary(effect => effect.DefinitionId, StringComparer.Ordinal);
+            _optionRangeByKind = Equipment.OptionRanges.ToDictionary(range => range.Kind);
         }
 
         private List<string> Validate()
@@ -297,6 +320,62 @@ namespace Shinshi.Data.Growth
                 if ((row.SourceLevel != firstSource + index) || (row.ResultLevel < 0) || (row.ResultLevel > MAX_ENHANCEMENT))
                 {
                     errors.Add("equipment.upperGradeInheritance[" + index + "]: invalid row");
+                }
+            }
+
+            ValidateOptions(errors, section);
+        }
+
+        private static void ValidateOptions(List<string> errors, EquipmentSection section)
+        {
+            if ((section.OptionRerollEssenceCost <= 0) || (section.OptionRerollShardCost <= 0)
+                || (section.OptionPityThreshold < 1) || (section.OptionHighTierBasisPoints < 0)
+                || (section.OptionHighTierBasisPoints > EquipmentOptionRules.VALUE_SCALE) || (section.OptionValueStep <= 0))
+            {
+                errors.Add("equipment option reroll cost, pity, high tier ratio or value step is out of range");
+            }
+
+            RequireCount(errors, "equipment.optionRanges", section.OptionRanges.Length, EquipmentOptionRules.KIND_MAX);
+            HashSet<int> kinds = new HashSet<int>();
+            foreach (OptionRange range in section.OptionRanges)
+            {
+                string field = "equipment.optionRanges[" + range.Kind + "]";
+                if ((range.Kind <= EquipmentOptionRules.KIND_NONE) || (range.Kind > EquipmentOptionRules.KIND_MAX)
+                    || !kinds.Add(range.Kind))
+                {
+                    errors.Add(field + ": kind is out of range or duplicated");
+                }
+                if ((range.Min.Length != GRADE_COUNT) || (range.Max.Length != GRADE_COUNT))
+                {
+                    errors.Add(field + ": min and max need one value per grade");
+                    continue;
+                }
+
+                for (int grade = 0; grade < GRADE_COUNT; ++grade)
+                {
+                    if (!EquipmentOptionRules.IsValidRange(range.Min[grade], range.Max[grade], section.OptionValueStep))
+                    {
+                        errors.Add(field + ": grade " + grade + " range is invalid");
+                        continue;
+                    }
+
+                    // 상위 등급 계승은 값이 대상 등급의 min보다 작을 때만 min으로 올린다. 등급이 오를 때 범위가 내려가거나
+                    // 단계 눈금이 어긋나면 옮긴 값이 대상 범위를 벗어나 전투 준비 검증에서 거절된다
+                    if ((grade > 0) && ((range.Min[grade] < range.Min[grade - 1]) || (range.Max[grade] < range.Max[grade - 1])
+                        || (((range.Min[grade] - range.Min[grade - 1]) % section.OptionValueStep) != 0)))
+                    {
+                        errors.Add(field + ": grade " + grade + " range must not fall below the previous grade or leave its step grid");
+                    }
+                }
+            }
+
+            RequireCount(errors, "equipment.optionSlotPools", section.OptionSlotPools.Length, SLOT_COUNT);
+            for (int slot = 0; slot < section.OptionSlotPools.Length; ++slot)
+            {
+                int[] pool = section.OptionSlotPools[slot];
+                if ((pool == null) || (pool.Length == 0) || pool.Any(kind => !kinds.Contains(kind)))
+                {
+                    errors.Add("equipment.optionSlotPools[" + slot + "]: pool is empty or names a kind without a range");
                 }
             }
         }
@@ -434,6 +513,18 @@ namespace Shinshi.Data.Growth
             [JsonProperty("enhancementStatRate")]      public decimal               EnhancementStatRate      { get; set; }
             [JsonProperty("trainingStatRate")]         public decimal               TrainingStatRate         { get; set; }
             [JsonProperty("lifeStealPerGrade")]        public decimal               LifeStealPerGrade        { get; set; }
+
+            // 옵션 재설정 한 번의 비용, 천장 횟수, 상급 줄 기준(만분율), 값 간격(만분율)
+            [JsonProperty("optionRerollEssenceCost")]   public long          OptionRerollEssenceCost   { get; set; }
+            [JsonProperty("optionRerollShardCost")]     public long          OptionRerollShardCost     { get; set; }
+            [JsonProperty("optionPityThreshold")]       public int           OptionPityThreshold       { get; set; }
+            [JsonProperty("optionHighTierBasisPoints")] public int           OptionHighTierBasisPoints { get; set; }
+            [JsonProperty("optionValueStep")]           public int           OptionValueStep           { get; set; }
+
+            // 부위 순서(0 무기, 1 머리, 2 몸통, 3 손, 4 발, 5 장신구)의 후보 종류
+            [JsonProperty("optionSlotPools")]           public int[][]       OptionSlotPools           { get; set; } = Array.Empty<int[]>();
+            [JsonProperty("optionRanges")]              public OptionRange[] OptionRanges              { get; set; } = Array.Empty<OptionRange>();
+
             [JsonProperty("enhancementSteps")]         public EnhancementStep[]     EnhancementSteps         { get; set; } = Array.Empty<EnhancementStep>();
             [JsonProperty("sameGradeInheritCost")]     public long                  SameGradeInheritCost     { get; set; }
             [JsonProperty("upperGradeInheritCost")]    public long                  UpperGradeInheritCost    { get; set; }
@@ -457,6 +548,18 @@ namespace Shinshi.Data.Growth
             [JsonProperty("bossMaterialCount")]    public int    BossMaterialCount    { get; set; }
             [JsonProperty("auctionMaterialId")]    public string AuctionMaterialId    { get; set; } = string.Empty;
             [JsonProperty("auctionMaterialCount")] public int    AuctionMaterialCount { get; set; }
+        }
+
+        /// <summary> 옵션 종류 하나의 등급별 값 범위(만분율), 배열은 등급 순서(0 일반부터 3 전설) </summary>
+        public sealed class OptionRange
+        {
+            /****************************************
+            *              Properties
+            ****************************************/
+
+            [JsonProperty("kind")] public int   Kind { get; set; }
+            [JsonProperty("min")]  public int[] Min  { get; set; } = Array.Empty<int>();
+            [JsonProperty("max")]  public int[] Max  { get; set; } = Array.Empty<int>();
         }
 
         /// <summary> 부위별 일반 제작 장비의 강화 전 기본값, 치명은 0에서 1 사이 비율 </summary>

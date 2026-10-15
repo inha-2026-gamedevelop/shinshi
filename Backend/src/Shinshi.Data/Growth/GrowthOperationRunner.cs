@@ -184,9 +184,9 @@ namespace Shinshi.Data.Growth
             await connection.ExecuteAsync(new CommandDefinition(
                 """
                 INSERT INTO growth_receipts (receipt_id, actor_id, operation_id, account_id, character_id, operation_kind,
-                    outcome, item_id, loadout_revision, town_instance_id, roll_basis_points)
+                    outcome, item_id, loadout_revision, town_instance_id, roll_basis_points, roll_values)
                 VALUES (@ReceiptId, @ActorId, @OperationId, @AccountId, @CharacterId, @Kind, @Outcome, @ItemId, @Revision,
-                    @Town, @Roll);
+                    @Town, @Roll, @RollValues::integer[]);
                 """, new
                 {
                     ReceiptId = receiptId,
@@ -195,6 +195,7 @@ namespace Shinshi.Data.Growth
                     AccountId = accountId,
                     Town = command.TownInstanceId,
                     Roll = command.RollBasisPoints,
+                    command.RollValues,
                     command.CharacterId,
                     Kind = command.OperationKind,
                     outcome.Outcome,

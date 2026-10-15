@@ -108,6 +108,12 @@ namespace Shinshi.Data
         [SerializeField] private float _lifeStealRateCap      = 0.1f;  // 0에서 1 사이 비율, 최종 흡수율 상한
         [SerializeField] private float _lifeStealCapPerSecond = 0.02f; // 1초 구간마다 회복할 수 있는 최대 생명 비율
 
+        // 표시용 종합 수치다. 판정에는 쓰지 않는다. 환산 공격과 환산 생존을 곱으로 묶어 한쪽만 올려 부풀리지 못하게 한다
+        [Header("전투력")]
+        [SerializeField] private float _combatPowerScale           = 10f;  // 최종 수치에 곱하는 배율, 성장 한 단계가 숫자로 보이게 한다
+        [SerializeField] private float _combatPowerOffenseWeight   = 0.7f; // 0에서 1 사이, 환산 공격의 지수. 환산 생존은 1에서 뺀 값
+        [SerializeField] private float _combatPowerLifeStealFactor = 20f;  // 흡수율 1당 환산 생존에 더하는 배수
+
         // 생활 제작이 아니라 전투 중 사용 규칙이라 여기 둔다. 보스전 합산 사용 횟수 상한은 SessionConfigSO가 가진다
         [Header("물약 사용")]
         [SerializeField] private float _potionSharedCooldown    = 10f;   // 초, 소형과 대형이 함께 쓰는 재사용 대기, 부활해도 유지
@@ -157,6 +163,9 @@ namespace Shinshi.Data
         public float PlayerDefenseReductionConstant => _playerDefenseReductionConstant;
         public float LifeStealRateCap         => _lifeStealRateCap;
         public float LifeStealCapPerSecond    => _lifeStealCapPerSecond;
+        public float CombatPowerScale           => _combatPowerScale;
+        public float CombatPowerOffenseWeight   => _combatPowerOffenseWeight;
+        public float CombatPowerLifeStealFactor => _combatPowerLifeStealFactor;
         public float PotionSharedCooldown     => _potionSharedCooldown;
         public float PotionUseDisplaySeconds  => _potionUseDisplaySeconds;
         public float ControlImmunitySeconds   => _controlImmunitySeconds;
@@ -206,6 +215,9 @@ namespace Shinshi.Data
             DataValidation.RequirePositive(errors, OWNER, nameof(_playerDefenseReductionConstant), _playerDefenseReductionConstant);
             DataValidation.RequireRange(errors, OWNER, nameof(_lifeStealRateCap), _lifeStealRateCap, 0f, MAX_RATE);
             DataValidation.RequireRange(errors, OWNER, nameof(_lifeStealCapPerSecond), _lifeStealCapPerSecond, 0f, MAX_RATE);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_combatPowerScale), _combatPowerScale);
+            DataValidation.RequireRange(errors, OWNER, nameof(_combatPowerOffenseWeight), _combatPowerOffenseWeight, 0f, MAX_RATE);
+            DataValidation.RequireNonNegative(errors, OWNER, nameof(_combatPowerLifeStealFactor), _combatPowerLifeStealFactor);
             DataValidation.RequirePositive(errors, OWNER, nameof(_potionSharedCooldown), _potionSharedCooldown);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_potionUseDisplaySeconds), _potionUseDisplaySeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_controlImmunitySeconds), _controlImmunitySeconds);

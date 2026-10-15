@@ -29,7 +29,7 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        public const int    SCHEMA_VERSION = 3;
+        public const int    SCHEMA_VERSION = 4;
         public const string RELATIVE_PATH  = "Backend/src/Shinshi.Data/Content/growth-content.json";
 
         private const string WINDOWS_NEW_LINE = "\r\n";
@@ -152,6 +152,32 @@ namespace Shinshi.Network
                 });
             }
 
+            // 부위 순서의 후보 종류와 종류별 등급 범위, 키 이름과 모양은 백엔드 GrowthContent와 같다
+            var optionPools = new JArray();
+            for (int slot = 0; slot < Constants.Combat.EQUIPMENT_SLOT_COUNT; ++slot)
+            {
+                var kinds = new JArray();
+                IReadOnlyList<int> pool = equipment.GetOptionPool((EEquipmentSlot)slot);
+                for (int i = 0; i < pool.Count; ++i)
+                {
+                    kinds.Add(pool[i]);
+                }
+
+                optionPools.Add(kinds);
+            }
+
+            var optionRanges = new JArray();
+            for (int i = 0; i < equipment.OptionRanges.Count; ++i)
+            {
+                EquipmentCatalogSO.OptionRange range = equipment.OptionRanges[i];
+                optionRanges.Add(new JObject
+                {
+                    ["kind"] = (int)range.Kind,
+                    ["min"]  = new JArray(range.Min),
+                    ["max"]  = new JArray(range.Max)
+                });
+            }
+
             return new JObject
             {
                 ["definitions"]              = definitions,
@@ -160,6 +186,13 @@ namespace Shinshi.Network
                 ["enhancementStatRate"]      = Number(equipment.EnhancementStatRate),
                 ["trainingStatRate"]         = Number(equipment.TrainingStatRate),
                 ["lifeStealPerGrade"]        = Number(equipment.LifeStealPerGrade),
+                ["optionRerollEssenceCost"]   = equipment.OptionRerollEssenceCost,
+                ["optionRerollShardCost"]     = equipment.OptionRerollShardCost,
+                ["optionPityThreshold"]       = equipment.OptionPityThreshold,
+                ["optionHighTierBasisPoints"] = equipment.OptionHighTierBasisPoints,
+                ["optionValueStep"]           = equipment.OptionValueStep,
+                ["optionSlotPools"]           = optionPools,
+                ["optionRanges"]              = optionRanges,
                 ["enhancementSteps"]         = steps,
                 ["sameGradeInheritCost"]     = equipment.SameGradeInheritCost,
                 ["upperGradeInheritCost"]    = equipment.UpperGradeInheritCost,

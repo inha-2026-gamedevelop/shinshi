@@ -1,5 +1,7 @@
 // System
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Shinshi.Data.Growth
 {
@@ -23,6 +25,9 @@ namespace Shinshi.Data.Growth
         // 마을 서버가 뽑은 확률 입력(0~9999). 확률 판정이 없는 작업은 null이다. 영수증에 기록한다
         public int?   RollBasisPoints  { get; }
 
+        // 마을 서버가 뽑은 입력 여러 개(옵션 재설정의 네 값). 쓰지 않는 작업은 null이다. 영수증에 기록하고 해시 본문에는 넣지 않는다
+        public int[]? RollValues       { get; }
+
         // 요청 해시 본문. 같은 operationId 재전송이 확률 입력이나 마을 서버가 다시 읽은 revision만 달라도 처음 결과를 받도록 둘을 뺀다
         public string RequestJson      { get; }
 
@@ -31,7 +36,8 @@ namespace Shinshi.Data.Growth
         ****************************************/
 
         public GrowthCommand(Guid townInstanceId, Guid operationId, Guid characterId, long expectedRevision,
-            string operationKind, int reasonCode, object requestBody, int? rollBasisPoints = null)
+            string operationKind, int reasonCode, object requestBody, int? rollBasisPoints = null,
+            IReadOnlyList<int>? rollValues = null)
         {
             if ((townInstanceId == Guid.Empty) || (operationId == Guid.Empty) || (characterId == Guid.Empty))
             {
@@ -51,6 +57,7 @@ namespace Shinshi.Data.Growth
             OperationKind    = operationKind;
             ReasonCode       = reasonCode;
             RollBasisPoints  = rollBasisPoints;
+            RollValues       = rollValues?.ToArray();
             RequestJson      = Sessions.SessionDb.ToRequestJson(new
             {
                 characterId = characterId.ToString("D"),

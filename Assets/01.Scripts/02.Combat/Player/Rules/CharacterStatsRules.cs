@@ -107,6 +107,9 @@ namespace Shinshi.Combat
             decimal crit    = (decimal)player.BaseCritChance;
             decimal energy  = (decimal)player.BaseMaxEnergy;
             decimal lifeSteal = 0m;
+
+            // 장비 옵션 합, EquipmentOptionRules의 KIND 값을 인덱스로 쓴다. 0번(옵션 없음)은 쓰지 않는다
+            Span<decimal> optionRates = stackalloc decimal[EquipmentOptionRules.KIND_MAX + 1];
             if (levels != null)
             {
                 int gainedLevels = CharacterLevelRules.Level(levels, totalExperience) - 1;
@@ -140,6 +143,12 @@ namespace Shinshi.Combat
                 {
                     lifeSteal += (baseLifeSteal + gradeLifeSteal) * critScale;
                 }
+
+                if ((!TryAddOption(equipment, (EEquipmentSlot)i, entry, entry.Option1Kind, entry.Option1Value, optionRates, out error))
+                    || (!TryAddOption(equipment, (EEquipmentSlot)i, entry, entry.Option2Kind, entry.Option2Value, optionRates, out error)))
+                {
+                    return false;
+                }
             }
 
             if (!TryReadTraining(growth, loadout.Training, out error))
@@ -147,10 +156,15 @@ namespace Shinshi.Combat
                 return false;
             }
 
-            attack  *= 1m + (Gain(growth, ETrainingStat.Attack) * loadout.Training[(int)ETrainingStat.Attack]);
-            health  *= 1m + (Gain(growth, ETrainingStat.Health) * loadout.Training[(int)ETrainingStat.Health]);
-            defense *= 1m + (Gain(growth, ETrainingStat.Defense) * loadout.Training[(int)ETrainingStat.Defense]);
-            crit    += Gain(growth, ETrainingStat.CritChance) * loadout.Training[(int)ETrainingStat.CritChance];
+            // 옵션은 수련과 같은 괄호 안에서 더한다. 따로 곱하면 수련과 옵션이 서로를 키워 기준 수치가 무너진다
+            attack  *= 1m + (Gain(growth, ETrainingStat.Attack) * loadout.Training[(int)ETrainingStat.Attack])
+                + optionRates[EquipmentOptionRules.KIND_ATTACK_RATE];
+            health  *= 1m + (Gain(growth, ETrainingStat.Health) * loadout.Training[(int)ETrainingStat.Health])
+                + optionRates[EquipmentOptionRules.KIND_HEALTH_RATE];
+            defense *= 1m + (Gain(growth, ETrainingStat.Defense) * loadout.Training[(int)ETrainingStat.Defense])
+                + optionRates[EquipmentOptionRules.KIND_DEFENSE_RATE];
+            crit    += (Gain(growth, ETrainingStat.CritChance) * loadout.Training[(int)ETrainingStat.CritChance])
+                + optionRates[EquipmentOptionRules.KIND_CRIT_CHANCE];
             energy  += Gain(growth, ETrainingStat.MaxEnergy) * loadout.Training[(int)ETrainingStat.MaxEnergy];
 
             stats = Finish(player, attack, health, defense, crit, energy, lifeSteal);
@@ -202,6 +216,35 @@ namespace Shinshi.Combat
             // 등급 순번은 일반 0부터다. 등급 배율이 아니라 단계 수를 곱해 더한다
             gradeLifeSteal = (decimal)equipment.LifeStealPerGrade * (int)definition.Grade;
             error          = null;
+            return true;
+        }
+
+        // 옵션 없음(종류 0, 값 0)은 정상이라 그대로 통과한다. 종류가 그 부위 후보에 없거나 값이 등급 범위 밖이면
+        // 저장 데이터와 콘텐츠가 어긋난 것이라 거절한다
+        private static bool TryAddOption(EquipmentCatalogSO equipment, EEquipmentSlot slot, CombatEquipmentEntry entry,
+            int kind, int value, Span<decimal> optionRates, out string error)
+        {
+            error = null;
+            if (kind == EquipmentOptionRules.KIND_NONE)
+            {
+                if (value == 0)
+                {
+                    return true;
+                }
+
+                error = $"옵션 종류 없이 값만 있다, slot={slot}, definitionId={entry.DefinitionId}, value={value}";
+                return false;
+            }
+
+            if ((kind < 0) || (kind > EquipmentOptionRules.KIND_MAX)
+                || (!equipment.TryGetOptionRange(kind, (EItemGrade)entry.Grade, out int min, out int max))
+                || (!EquipmentOptionRules.IsValidLine(kind, value, equipment.GetOptionPool(slot), min, max, equipment.OptionValueStep)))
+            {
+                error = $"장비 옵션이 콘텐츠 범위와 다르다, slot={slot}, definitionId={entry.DefinitionId}, kind={kind}, value={value}";
+                return false;
+            }
+
+            optionRates[kind] += (decimal)value / EquipmentOptionRules.VALUE_SCALE;
             return true;
         }
 

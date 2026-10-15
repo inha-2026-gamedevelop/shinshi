@@ -72,10 +72,14 @@ namespace Shinshi.Data.Growth
                 SELECT item_id AS "ItemId", definition_id AS "DefinitionId", slot AS "Slot", grade AS "Grade",
                     is_training AS "IsTraining", origin AS "Origin", enhancement AS "Enhancement", equipped AS "Equipped",
                     locked AS "Locked", bound AS "Bound",
-                    escrow_kind AS "EscrowKind"
+                    escrow_kind AS "EscrowKind",
+                    option1_kind::integer AS "Option1Kind", option1_value AS "Option1Value",
+                    option2_kind::integer AS "Option2Kind", option2_value AS "Option2Value"
                 FROM equipment_instances WHERE character_id = @CharacterId ORDER BY slot, item_id;
                 SELECT slot AS "Slot", stage AS "Stage", failures AS "Failures"
                 FROM enhancement_pity WHERE character_id = @CharacterId AND failures > 0 ORDER BY slot, stage;
+                SELECT slot AS "Slot", misses AS "Misses"
+                FROM option_reroll_pity WHERE character_id = @CharacterId AND misses > 0;
                 SELECT effect_id AS "EffectId", level AS "Level", register_failures AS "RegisterFailures"
                 FROM talisman_progress WHERE character_id = @CharacterId ORDER BY effect_id;
                 SELECT skill_id AS "SkillId", tier AS "Tier", effect_id AS "EffectId"
@@ -91,6 +95,7 @@ namespace Shinshi.Data.Growth
             TrainingRow? training = await grid.ReadSingleOrDefaultAsync<TrainingRow>();
             List<EquipmentRecord> equipment = (await grid.ReadAsync<EquipmentRecord>()).ToList();
             List<PityRow> pity = (await grid.ReadAsync<PityRow>()).ToList();
+            List<OptionPityRow> optionPity = (await grid.ReadAsync<OptionPityRow>()).ToList();
             List<ProgressRow> progress = (await grid.ReadAsync<ProgressRow>()).ToList();
             List<LoadoutRow> loadout = (await grid.ReadAsync<LoadoutRow>()).ToList();
             List<ItemRow> items = (await grid.ReadAsync<ItemRow>()).ToList();
@@ -100,6 +105,14 @@ namespace Shinshi.Data.Growth
             }
 
             int[] allocation = training?.ToArray() ?? new int[GrowthContent.TRAINING_STAT_COUNT];
+
+            // 부위마다 한 칸, 행이 없는 부위는 0이다
+            int[] optionRerollPity = new int[GrowthContent.SLOT_COUNT];
+            foreach (OptionPityRow row in optionPity)
+            {
+                optionRerollPity[row.Slot] = row.Misses;
+            }
+
             return new CharacterGrowthSnapshot(character.CharacterId.ToString("D"), character.ClassId,
                 character.LoadoutRevision, character.Essence, character.Shards, allocation,
                 equipment.Select(ToView).ToArray(),
@@ -108,13 +121,15 @@ namespace Shinshi.Data.Growth
                 loadout.Select(row => new TalismanLoadoutEntry(row.SkillId, row.Tier, row.EffectId)).ToArray(),
                 items.Select(row => new GrowthItemView(row.DefinitionId, row.BindingKind, row.Quantity, row.Reserved)).ToArray(),
                 equipment.Count(row => !row.Equipped), _content.Equipment.StorageSlotsPerCharacter, _content.ContentVersion,
-                new DateTimeOffset(DateTime.SpecifyKind(character.ServerTime, DateTimeKind.Utc)).ToUnixTimeMilliseconds(), character.TotalExperience);
+                new DateTimeOffset(DateTime.SpecifyKind(character.ServerTime, DateTimeKind.Utc)).ToUnixTimeMilliseconds(), character.TotalExperience,
+                optionRerollPity);
         }
 
         private static EquipmentView ToView(EquipmentRecord row)
         {
             return new EquipmentView(row.ItemId.ToString("D"), row.DefinitionId, row.Slot, row.Grade, row.IsTraining,
-                row.Origin, row.Enhancement, row.Equipped, row.Locked, row.Bound, row.EscrowKind != null);
+                row.Origin, row.Enhancement, row.Equipped, row.Locked, row.Bound, row.EscrowKind != null,
+                row.Option1Kind, row.Option1Value, row.Option2Kind, row.Option2Value);
         }
 
         /****************************************
@@ -174,6 +189,12 @@ namespace Shinshi.Data.Growth
             public int Slot     { get; set; }
             public int Stage    { get; set; }
             public int Failures { get; set; }
+        }
+
+        private sealed class OptionPityRow
+        {
+            public int Slot   { get; set; }
+            public int Misses { get; set; }
         }
 
         private sealed class ProgressRow

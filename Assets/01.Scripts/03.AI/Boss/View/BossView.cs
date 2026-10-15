@@ -112,7 +112,8 @@ namespace Shinshi.AI
         [SerializeField] private Vector3 _gatherCircle   = new Vector3(8f, 25f, -10f);   // 원형: 웅크려 모은다
         [SerializeField] private Vector3 _gatherThrow    = new Vector3(-10f, 20f, 55f);  // 투사체, 장판: 팔을 앞으로 든다
 
-        private readonly List<BoneRef> _bones = new List<BoneRef>();
+        private readonly List<BoneRef>  _bones            = new List<BoneRef>();
+        private readonly List<Material> _runtimeMaterials = new List<Material>();
 
         private BossTelegraphPresenter _presenter;
         private Func<double>           _serverClock;
@@ -147,13 +148,14 @@ namespace Shinshi.AI
                 return;
             }
 
-            ConvertMaterials();
+            ConvertToUrpLit(_pivot.GetComponentsInChildren<Renderer>(), _runtimeMaterials);
             CacheBones();
         }
 
         private void OnDestroy()
         {
             Unbind();
+            DestroyRuntimeMaterials();
         }
 
         private void Update()
@@ -527,7 +529,9 @@ namespace Shinshi.AI
 
         // 외부 모델의 재질은 내장 파이프라인용 Standard 셰이더라 URP에서 분홍색으로 깨진다. 원본 에셋은 고치지 않고
         // 이 인스턴스에만 같은 텍스처를 쓰는 URP Lit 재질을 입힌다. 정식 재질 가공은 아트 제작 절차에서 따로 한다
-        private void ConvertMaterials()
+        // 만든 재질은 created에 담는다, 부른 쪽이 파괴할 책임을 진다. 프리워밍 어댑터가 같은 변환을 쓰려고 공개해 둔다
+        /// <summary> 렌더러의 비 URP Lit 재질을 URP Lit 사본으로 바꾼다 </summary>
+        public static void ConvertToUrpLit(Renderer[] renderers, List<Material> created)
         {
             Shader lit = Shader.Find(URP_LIT_SHADER);
             if (lit == null)
@@ -536,7 +540,7 @@ namespace Shinshi.AI
             }
 
             var converted = new Dictionary<Material, Material>();
-            foreach (Renderer renderer in _pivot.GetComponentsInChildren<Renderer>())
+            foreach (Renderer renderer in renderers)
             {
                 Material[] materials = renderer.sharedMaterials;
                 for (int i = 0; i < materials.Length; ++i)
@@ -551,6 +555,7 @@ namespace Shinshi.AI
                     {
                         target = CreateUrpMaterial(source, lit);
                         converted.Add(source, target);
+                        created.Add(target);
                     }
 
                     materials[i] = target;
@@ -558,6 +563,19 @@ namespace Shinshi.AI
 
                 renderer.sharedMaterials = materials;
             }
+        }
+
+        private void DestroyRuntimeMaterials()
+        {
+            for (int i = 0; i < _runtimeMaterials.Count; ++i)
+            {
+                if (_runtimeMaterials[i] != null)
+                {
+                    Destroy(_runtimeMaterials[i]);
+                }
+            }
+
+            _runtimeMaterials.Clear();
         }
 
         private static Material CreateUrpMaterial(Material source, Shader lit)

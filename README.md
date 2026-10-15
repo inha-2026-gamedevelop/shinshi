@@ -58,6 +58,7 @@ Unity 메뉴 **Shinshi → Build**에서 만든다.
 |---|---|---|
 | Windows Client (Development) | `Bootstrap`과 `Assets/00.Scenes/Release/`의 `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown`, `DungeonForest` | `Builds/windows-client/` |
 | Windows Server / Linux Server (Development) | `Bootstrap`, `Release/ShinshiTown`, `Release/DungeonForest` | `Builds/{대상}/` |
+| Perf → Windows Client (Development, Perf Log) | Windows Client와 같다. `SHINSHI_PERF_LOG`로 계측 로거(`99.Dev/DevPerfLogger.cs`)를 넣는다 | `Builds/windows-perf/` |
 | Dev Movement → Windows Client / Windows Server (Development) | `Assets/00.Scenes/Dev_PlayerMovement.unity` | 위와 같은 위치 (덮어씀) |
 
 명령줄 빌드:
@@ -66,7 +67,7 @@ Unity 메뉴 **Shinshi → Build**에서 만든다.
 & '<Unity 설치 경로>\Editor\Unity.exe' -batchmode -projectPath (Get-Location).Path -executeMethod Shinshi.Editor.ShinshiBuild.BuildFromCommandLine -shinshiTarget windows-server -logFile 'server-build.log'
 ```
 
-`-shinshiTarget`은 `windows-client`, `windows-server`, `linux-server`를 받고, `-shinshiRelease`를 붙이면 개발 옵션을 끈다. 개발 빌드 실행 파일은 `-dev-latency-ms <ms>`(보내는 메시지 지연)와 `-dev-autopilot`(클라이언트 자동 이동, 회피)을 받는다. Windows 서버 1개와 클라이언트 여러 개를 한 PC에서 띄우려면 [tools/Start-M2.ps1](tools/Start-M2.ps1)을 쓴다.
+`-shinshiTarget`은 `windows-client`, `windows-server`, `linux-server`, `windows-perf`를 받고, `-shinshiRelease`를 붙이면 개발 옵션을 끈다(`windows-perf`는 항상 Development). 클라이언트는 Bootstrap에서 VFX·모델 프리워밍을 마친 뒤 로비로 간다. `-skip-prewarm`을 주면 건너뛴다. 에디터에서는 메뉴 **Shinshi → Prewarm → Run In Editor**를 켜거나 `-force-prewarm`을 줄 때만 돈다. 개발 빌드 실행 파일은 `-dev-latency-ms <ms>`(보내는 메시지 지연)와 `-dev-autopilot`(클라이언트 자동 이동, 회피)을 받는다. Windows 서버 1개와 클라이언트 여러 개를 한 PC에서 띄우려면 [tools/Start-M2.ps1](tools/Start-M2.ps1)을 쓴다.
 
 ## 릴리즈 브랜치 실행
 

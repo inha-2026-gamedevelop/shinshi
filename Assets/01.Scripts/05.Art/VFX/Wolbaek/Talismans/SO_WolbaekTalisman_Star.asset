@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 127dc070a19926d4486e27795a6a24e4, type: 3}
+  m_Name: SO_WolbaekTalisman_Star
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekTalismanSettingsSO
+  _defaultSign: 2
+  _defaultColor: {r: 1.55, g: 1.1, b: 0.62, a: 1}
+  _appearSeconds: 0.8
+  _resetSeconds: 0.8
+  _successSeconds: 1.6
+  _fadeSeconds: 1.1
+  _flowCycle: 1.8
+  _petalCycle: 3.2
+  _petalDrift: 0.22
+  _mistOpacity: 0.28
+  _paperOpacity: 0.62
+  _runeStrength: 1.4
+  _petalTint: {r: 1.5, g: 0.85, b: 1, a: 1}
+  _assignedPetalTintShare: 0.25
+  _groundLightStrength: 0.7
+  _groundLightIntensity: 0.6
+  _groundLightRange: 2.3
+  _airMistOpacity: 0.12
+  _successMistOpacity: 0.45
+  _successRise: 2.4
+  _paperSuccessRise: 1.4

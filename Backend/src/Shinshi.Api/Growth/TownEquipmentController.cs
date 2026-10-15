@@ -17,7 +17,7 @@ using Shinshi.Data.Sessions;
 
 namespace Shinshi.Backend.Growth
 {
-    /// <summary> 마을 서버의 장비 제작(crafting), 강화(enhance), 계승(inherit), 착용, 해제, 잠금, 분해.
+    /// <summary> 마을 서버의 장비 제작(crafting), 강화(enhance), 옵션 재설정(reroll_options), 계승(inherit), 착용, 해제, 잠금, 분해.
     /// 착용, 해제, 잠금, 분해는 기능 키가 없어 막지 않는다 </summary>
     [ApiController]
     public sealed class TownEquipmentController : TownGrowthControllerBase
@@ -74,6 +74,18 @@ namespace Shinshi.Backend.Growth
             return RunAsync(ServiceFeatureKeys.ENHANCE, characterId, request?.OperationId, request?.ExpectedRevision ?? 0,
                 valid, (town, character, operation, replayOnly, token) => _equipment.EnhanceAsync(town, operation, character,
                     request!.ExpectedRevision, Guid.Parse(itemId), request.RollBasisPoints, replayOnly, token),
+                cancellationToken);
+        }
+
+        [HttpPost(GrowthRouteTemplates.EQUIPMENT_REROLL_OPTIONS)]
+        public Task<IActionResult> RerollOptions(string characterId, string itemId,
+            [FromBody] EquipmentRerollOptionsRequest? request, CancellationToken cancellationToken)
+        {
+            bool valid = (request != null) && TryParseId(itemId, out _) && EquipmentOptionRules.IsValidRolls(request.Rolls);
+            return RunAsync(ServiceFeatureKeys.REROLL_OPTIONS, characterId, request?.OperationId,
+                request?.ExpectedRevision ?? 0, valid, (town, character, operation, replayOnly, token) =>
+                    _equipment.RerollOptionsAsync(town, operation, character, request!.ExpectedRevision, Guid.Parse(itemId),
+                        request.Rolls, replayOnly, token),
                 cancellationToken);
         }
 

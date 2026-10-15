@@ -1163,11 +1163,10 @@ namespace Shinshi.Tests
         *               Recovery
         ****************************************/
 
-        // 지금 공용 공격 FSM은 회복 시간을 정의의 값으로 고정한다. 충돌로 끝나도 일반 회복 시간 뒤에 끝나며,
-        // 패턴이 정한 충돌 회복(2.5초)은 FSM이 IBossRecoveryDuration을 읽도록 바뀌기 전까지 반영되지 않는다.
-        // FSM 변경을 승인받아 적용하면 이 시험의 기대를 충돌 회복 시간으로 바꿔야 한다
+        // 공용 공격 FSM은 패턴이 IBossRecoveryDuration으로 정한 회복 시간을 읽는다. 충돌로 끝나면 일반 회복 시간이 지나도
+        // 아직 회복 중이고 충돌 회복(2.5초)이 지나야 끝난다
         [Test]
-        public void RealFsm_CollisionRecovery_IsNotAppliedUntilFsmReadsRecoveryContract()
+        public void RealFsm_CollisionRecovery_IsAppliedFromExecuteEndBoundary()
         {
             Rig rig = new Rig();
             rig.Movement.WallZ = 12f;
@@ -1175,9 +1174,13 @@ namespace Shinshi.Tests
 
             rig.Fsm.Tick(ExecuteEnd + RECOVERY + TIME_MARGIN);
 
-            Assert.AreEqual(EBossAttackState.Ready, rig.Fsm.State);
+            Assert.AreEqual(EBossAttackState.Recover, rig.Fsm.State);
             Assert.IsTrue(rig.Pattern.IsStopped);
             Assert.AreEqual(COLLISION_RECOVERY, rig.Pattern.GetRecoverySeconds(RECOVERY), 0.0001f);
+
+            rig.Fsm.Tick(ExecuteEnd + COLLISION_RECOVERY + TIME_MARGIN);
+
+            Assert.AreEqual(EBossAttackState.Ready, rig.Fsm.State);
         }
 
         // 제안하는 FSM 변경의 수용 기준, 일반 종료는 실행 종료 경계 + 1.5초에 끝난다

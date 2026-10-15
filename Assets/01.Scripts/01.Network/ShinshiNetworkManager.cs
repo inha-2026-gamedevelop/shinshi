@@ -11,6 +11,7 @@ using UnityEngine.SceneManagement;
 using Mirror;
 
 // 프로젝트 내부
+using Shinshi.Art;
 using Shinshi.Common;
 
 namespace Shinshi.Network
@@ -122,7 +123,11 @@ namespace Shinshi.Network
                 // Bootstrap으로 시작한 클라이언트만 로비로 간다. 네트워크 매니저를 직접 둔 개발 씬은 그 자리에 남는다
                 if (string.Equals(SceneManager.GetActiveScene().name, Constants.Scene.BOOTSTRAP, StringComparison.Ordinal))
                 {
-                    LobbyFlow.GoToLobby();
+                    // 로딩 화면 뒤에서 표현 자산을 미리 그린 다음 로비로 간다. 러너가 없거나 건너뛰면 곧바로 로비다
+                    if (!ClientPrewarmGate.TryBegin(LobbyFlow.GoToLobby))
+                    {
+                        LobbyFlow.GoToLobby();
+                    }
                 }
 #endif
                 return;

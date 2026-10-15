@@ -536,6 +536,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1289852489252288786, guid: 4dbe54c4863042e45aa4c53adfee8f89, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1955123177421894889}
+    - targetCorrespondingSourceObject: {fileID: 1289852489252288786, guid: 4dbe54c4863042e45aa4c53adfee8f89, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2163559805353765595}
+    - targetCorrespondingSourceObject: {fileID: 1289852489252288786, guid: 4dbe54c4863042e45aa4c53adfee8f89, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4504427681846275324}
   m_SourcePrefab: {fileID: 100100000, guid: 4dbe54c4863042e45aa4c53adfee8f89, type: 3}
 --- !u!1 &4772396923966413489 stripped
 GameObject:
@@ -575,6 +581,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  _prefabBossId: 
 --- !u!114 &1955123177421894889
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -591,7 +598,47 @@ MonoBehaviour:
   _view: {fileID: 8928735583666256924}
   _presenter: {fileID: 4431458370035143045}
   _barrierView: {fileID: 862569179745421829}
+  _hardPhaseView: {fileID: 2163559805353765595}
+  _mucheolPhaseView: {fileID: 4504427681846275324}
   _effectsRoot: {fileID: 3894515961609312694}
+--- !u!114 &2163559805353765595
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4772396923966413489}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7d925d014967d64cab6287f0c1a7e17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossHardPhaseView
+  _starStage: {fileID: 0}
+  _gridBeam: {fileID: 0}
+  _chainFan: {fileID: 0}
+  _trackingArea: {fileID: 0}
+  _barrage: {fileID: 0}
+  _circleBurst: {fileID: 0}
+  _maxShapes: 96
+--- !u!114 &4504427681846275324
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4772396923966413489}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19f975a3ac55ef2459493e42ea0825ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossMucheolPhaseView
+  _presenter: {fileID: 4431458370035143045}
+  _combo: {fileID: 0}
+  _sequence: {fileID: 0}
+  _multiDash: {fileID: 0}
+  _battlefield: {fileID: 0}
+  _chargeImpact: {fileID: 0}
+  _maxShapes: 24
 --- !u!4 &7297723238510466198 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3934517869569767221, guid: 4dbe54c4863042e45aa4c53adfee8f89, type: 3}

@@ -24,6 +24,8 @@ namespace Shinshi.UI
         private const string ENHANCE_FORMAT    = "+{0}";
         private const string PERCENT_FORMAT    = "{0:0.#}%";
         private const string NUMBER_FORMAT     = "{0:N0}";
+        private const string POWER_FORMAT      = "전투력 {0:N0}";
+        private const string UNKNOWN_POWER     = "전투력 -";
 
         private static readonly string[] G_ClassNames    = { "무사", "도술사", "신령사", "검사", "마검사", "궁수" };
         private static readonly string[] G_SlotNames     = { "무기", "머리", "몸통", "손", "발", "정기" };
@@ -68,7 +70,8 @@ namespace Shinshi.UI
                     continue;
                 }
 
-                equipped[entry.Slot] = new CombatEquipmentEntry(entry.DefinitionId, entry.Grade, entry.IsTraining, entry.Enhancement);
+                equipped[entry.Slot] = new CombatEquipmentEntry(entry.DefinitionId, entry.Grade, entry.IsTraining, entry.Enhancement,
+                    entry.Option1Kind, entry.Option1Value, entry.Option2Kind, entry.Option2Value);
             }
 
             loadout = new CharacterCombatLoadout(growth.ClassId, equipped, training, new CombatTalismanEntry[0], growth.ContentVersion);
@@ -112,6 +115,14 @@ namespace Shinshi.UI
         public static string Number(float value)
         {
             return string.Format(CultureInfo.InvariantCulture, NUMBER_FORMAT, value);
+        }
+
+        /// <summary> 종합 전투력 글자, 0 이하면 아직 계산하지 못한 값이다 </summary>
+        public static string CombatPowerText(int combatPower)
+        {
+            return (combatPower > 0)
+                ? string.Format(CultureInfo.InvariantCulture, POWER_FORMAT, combatPower)
+                : UNKNOWN_POWER;
         }
 
         /// <summary> 0~1 비율을 퍼센트 글자로 </summary>

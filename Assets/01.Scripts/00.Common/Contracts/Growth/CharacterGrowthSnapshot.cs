@@ -31,10 +31,14 @@ namespace Shinshi.Contracts
         // API가 규칙 판정에 쓴 성장 콘텐츠 버전
         [DataMember(Name = "contentVersion")]   private string                 _contentVersion;
         [DataMember(Name = "serverTimeUnixMs")] private long                   _serverTimeUnixMs;
+        // EEquipmentSlot 순서의 여섯 칸, 상급 줄 없이 연속으로 재설정한 횟수. 예전 응답에는 없어 null일 수 있다
+        [DataMember(Name = "optionRerollPity")] private int[]                  _optionRerollPity;
 
         /****************************************
         *              Properties
         ****************************************/
+
+        public int[]                  OptionRerollPity => _optionRerollPity;
 
         public long TotalExperience => _totalExperience;
         public string                 CharacterId      => _characterId;
@@ -60,8 +64,10 @@ namespace Shinshi.Contracts
         public CharacterGrowthSnapshot(string characterId, int classId, long loadoutRevision, long essence,
             long shards, int[] training, EquipmentView[] equipment, EnhancementPityView[] enhancementPity,
             TalismanProgressView[] talismans, TalismanLoadoutEntry[] loadout, GrowthItemView[] accountItems,
-            int storageUsed, int storageCapacity, string contentVersion, long serverTimeUnixMs, long totalExperience = 0)
+            int storageUsed, int storageCapacity, string contentVersion, long serverTimeUnixMs, long totalExperience = 0,
+            int[] optionRerollPity = null)
         {
+            _optionRerollPity = optionRerollPity;
             _totalExperience = totalExperience;
             _characterId      = characterId;
             _classId          = classId;

@@ -25,13 +25,16 @@ namespace Shinshi.Combat
         *                Fields
         ****************************************/
 
-        private readonly GameObject _prefab;
+        private readonly GameObject                _prefab;
+        private readonly IReadOnlyList<GameObject> _candidates; // 보스 ID로 고를 후보, 없으면 기본 프리팹만 쓴다
 
         /****************************************
         *                Methods
         ****************************************/
 
-        public BossNetworkSpawner(GameObject prefab)
+        // prefab은 맞는 프리팹이 없는 보스가 쓰는 기본 프리팹이다. candidates는 매니저의 spawnPrefabs를 그대로 넘기면 되고
+        // 그 안에서 BossState.PrefabBossId가 보스 ID와 같은 프리팹을 먼저 고른다. 클라이언트도 같은 목록을 등록해 두어야 스폰을 받는다
+        public BossNetworkSpawner(GameObject prefab, IReadOnlyList<GameObject> candidates = null)
         {
             if (prefab == null)
             {
@@ -43,10 +46,12 @@ namespace Shinshi.Combat
                 throw new ArgumentException("보스 프리팹 루트에 NetworkIdentity와 BossState가 필요하다", nameof(prefab));
             }
 
-            _prefab = prefab;
+            _prefab     = prefab;
+            _candidates = candidates;
         }
 
-        /// <summary> 매니저의 spawnPrefabs에서 BossState가 붙은 프리팹을 찾는다, 서버 설치 때 한 번만 부른다 </summary>
+        // 보스 ID를 지정하지 않은 프리팹이 기본이다. 모두 지정돼 있으면 처음 찾은 보스 프리팹을 기본으로 쓴다
+        /// <summary> 매니저의 spawnPrefabs에서 기본 보스 프리팹을 찾는다, 서버 설치 때 한 번만 부른다 </summary>
         public static GameObject FindPrefab(NetworkManager manager)
         {
             if (manager == null)
@@ -54,16 +59,48 @@ namespace Shinshi.Combat
                 return null;
             }
 
+            GameObject       first   = null;
             List<GameObject> prefabs = manager.spawnPrefabs;
             for (int i = 0; i < prefabs.Count; ++i)
             {
-                if ((prefabs[i] != null) && (prefabs[i].TryGetComponent(out BossState _)))
+                if ((prefabs[i] == null) || (!prefabs[i].TryGetComponent(out BossState state)))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(state.PrefabBossId))
                 {
                     return prefabs[i];
                 }
+
+                if (first == null)
+                {
+                    first = prefabs[i];
+                }
             }
 
-            return null;
+            return first;
+        }
+
+        /// <summary> 보스 정의 ID에 맞는 프리팹을 고른다, 후보에 없으면 fallback이다 </summary>
+        public static GameObject SelectPrefab(IReadOnlyList<GameObject> candidates, GameObject fallback, string bossId)
+        {
+            if ((candidates == null) || (string.IsNullOrEmpty(bossId)))
+            {
+                return fallback;
+            }
+
+            for (int i = 0; i < candidates.Count; ++i)
+            {
+                GameObject candidate = candidates[i];
+                if ((candidate != null) && (candidate.TryGetComponent(out BossState state)) && (state.PrefabBossId == bossId)
+                    && (candidate.TryGetComponent(out NetworkIdentity _)))
+                {
+                    return candidate;
+                }
+            }
+
+            return fallback;
         }
 
         public bool TrySpawn(BossServer boss, out BossState state)
@@ -74,7 +111,8 @@ namespace Shinshi.Combat
                 return false;
             }
 
-            GameObject instance = Object.Instantiate(_prefab, boss.Position, Quaternion.LookRotation(boss.Forward, Vector3.up));
+            GameObject prefab   = SelectPrefab(_candidates, _prefab, boss.BossId);
+            GameObject instance = Object.Instantiate(prefab, boss.Position, Quaternion.LookRotation(boss.Forward, Vector3.up));
             if (!instance.TryGetComponent(out BossState candidate))
             {
                 Object.Destroy(instance);

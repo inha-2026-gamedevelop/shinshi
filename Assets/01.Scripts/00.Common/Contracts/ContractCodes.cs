@@ -197,6 +197,7 @@ namespace Shinshi.Contracts
             public const int MARKET_RECEIVE         = 35;
             public const int TRADE_GIVE             = 36;
             public const int TRADE_RECEIVE          = 37;
+            public const int REROLL_OPTIONS         = 38;
         }
 
         /// <summary> EPlayerClass와 같은 값, 캐릭터마다 고정 </summary>

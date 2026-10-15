@@ -43,6 +43,12 @@ namespace Shinshi.Combat
         private const double TICK_INTERVAL_SECONDS = 1.0 / Constants.Network.SERVER_TICK_RATE;
         private const byte   FIRST_METER_PHASE     = 1;
 
+        // 체력 기믹 묶음이 있는 보스 정의 ID
+        private const string GIMMICK_BOSS_ID       = "boss_wolbaek";
+
+        // 기믹 난수 시드에 섞는 값. 보스 패턴 선택과 같은 출정 시드에서 나오되 난수열은 따로 쓴다
+        private const int    GIMMICK_RANDOM_SALT   = 0x5F3759DF;
+
         private readonly Dictionary<int, ExperienceBinding> _experience = new Dictionary<int, ExperienceBinding>();
         private SessionEventQueue _experienceQueue;
         private CharacterLevelSettings _levelSettings;
@@ -74,6 +80,8 @@ namespace Shinshi.Combat
         private BossServer                   _boss;
         private string                       _bossId                = Constants.Combat.DEV_BOSS_ID;
         private bool                         _bossSpawnChecked      = false;
+        private bool                         _finalSuccessUnreported = false;
+        private bool                         _gimmickStopHandled    = false;
         private IBossObjectHost              _bossHost;
         private BossState                    _bossState;
         private int                          _obstacleMask          = 0;
@@ -113,6 +121,11 @@ namespace Shinshi.Combat
 
         // 보스전에서 열 보스 정의 ID. 보스전 출정 계약이 있으면 계약 값이고, 없으면 실행 설정(-boss-id, 기본 개발 보스)이다
         public string               BossId         => ((_host != null) && (_host.Sortie.IsBoss)) ? _host.Sortie.BossId : _bossId;
+
+        // 기믹 사건의 복제와 클라이언트 표시가 없어 기본은 꺼 둔다. 표시 없이 켜면 보스가 무적인 채 보이지 않는 기믹이 돈다.
+        // 보스를 만드는 틱에 한 번 읽으므로 출정 시작 전에 정한다
+        /// <summary> 보스 체력 기믹 묶음을 붙일지, 서버 부트스트랩이 실행 설정으로 켠다 </summary>
+        public bool                 EnableBossGimmicks { get; set; } = false;
 
         // 일반 적 네트워크 개체 스포너, 프리팹이 없는 씬이면 null이다. 웨이브 구현(적 담당)이 적을 만들 때 쓴다
         public IEnemyObjectHost     EnemyObjects   => _enemyHost;
@@ -1134,17 +1147,29 @@ namespace Shinshi.Combat
             // 전장 맵이 없어 생성 지점을 원점으로 두고 전장 중심도 생성 지점으로 본다
             Vector3 spawnPosition = Vector3.zero;
             Vector3 spawnForward  = Vector3.forward;
+
+            // 보스 패턴과 기믹이 같은 배율 적용 판정기를 쓴다
+            var scaledResolver = new BossDamageScaler(_skillResolver, DamageScale);
             var boss = new BossServer(bossId, _registry.IssueCombatId(), spawnPosition, spawnForward,
                 spawnPosition, referenceAttack, referenceHealth, BossHealthScale,
                 new BossPatternCatalogSource(GameDB.BossPatterns, difficulty), _registry,
-                new BossDamageScaler(_skillResolver, DamageScale), new BossTerrainProbe(_obstacleMask),
-                new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster));
+                scaledResolver, new BossTerrainProbe(_obstacleMask),
+                new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster),
+                displaceTargets: new BossPlayerDisplaceLookup(_players));
 
             // 이지는 준비되지 않은 정의가 있어도 기존처럼 연다(팩토리가 만들지 못한 패턴은 두뇌가 건너뛴다). 하드는 모든 정의가 준비돼야 연다
             if ((difficulty == EBossDifficulty.Hard) && (!boss.IsSortieReady(out string notReadyReason)))
             {
                 Debug.LogError($"[Boss] 하드 출정 준비가 안 돼 보스를 만들지 않는다, boss={bossId}, {notReadyReason}");
                 CancelHardSortie(difficulty, serverTime, "하드 출정 준비 안 됨");
+                return;
+            }
+
+            // 기믹은 전투를 열기 전에만 붙는다. 일부만 붙은 보스는 인계가 끊겨 교착되므로 버린다
+            if (!TryAttachBossGimmicks(boss, bossId, difficulty, referenceHealth, scaledResolver))
+            {
+                Debug.LogError($"[Boss] 기믹 묶음을 붙이지 못해 보스 없이 진행한다, boss={bossId}");
+                CancelHardSortie(difficulty, serverTime, "기믹 묶음을 붙이지 못함");
                 return;
             }
 
@@ -1165,7 +1190,40 @@ namespace Shinshi.Combat
             _boss = boss;
             SpawnBossObject();
             Debug.Log($"[Boss] 보스 전투 시작, boss={bossId}, difficulty={difficulty}, combatId={boss.CombatId}, " +
-                $"maxHealth={boss.MaxHealth}");
+                $"maxHealth={boss.MaxHealth}, gimmicks={boss.HasGimmicks}");
+        }
+
+        // 꺼져 있거나 기믹이 없는 보스면 아무것도 하지 않고 참이다. 묶음을 만들지 못하면 기믹 없이 열도록 참이고,
+        // 만든 묶음을 보스가 받지 않았을 때만 거짓이다. 보스를 만드는 틱에 한 번 돌아 입력 묶음과 조회 대리자를 새로 만든다
+        private bool TryAttachBossGimmicks(BossServer boss, string bossId, EBossDifficulty difficulty, float referenceHealth,
+            IDamageResolver scaledResolver)
+        {
+            if ((!EnableBossGimmicks) || (!string.Equals(bossId, GIMMICK_BOSS_ID, StringComparison.Ordinal)))
+            {
+                return true;
+            }
+
+            // 부적진의 다음 경계는 보스 정의의 2페이즈 전환 비율이다. 정의가 없으면 0을 넘겨 팩토리가 사유와 함께 거절하게 한다
+            float phaseTransitionHealthRate = GameDB.BossPatterns.TryGetBoss(bossId, out BossPatternCatalogSO.BossDefinition definition)
+                ? definition.PhaseTransitionHealthRate
+                : 0f;
+
+            // 기믹이 보스 패턴 선택의 난수열을 소비해 바꾸지 않도록 난수기를 따로 둔다
+            var random = new SeededBossRandom(_sessionEpoch ^ GIMMICK_RANDOM_SALT);
+            var inputs = new WolbaekGimmickInputs(boss, difficulty, referenceHealth, scaledResolver, _skillResolver, _registry,
+                random, _players, _host.Roster, ReadRemainingRevives, phaseTransitionHealthRate);
+            if (!WolbaekGimmickFactory.TryCreate(inputs, out BossGimmickSet set, out string reason))
+            {
+                Debug.LogError($"[Boss] 기믹 묶음을 만들지 못해 기믹 없이 연다, boss={bossId}, difficulty={difficulty}, {reason}");
+                return true;
+            }
+
+            return boss.AttachGimmicks(set);
+        }
+
+        private int ReadRemainingRevives()
+        {
+            return _host.Session.RemainingRevives;
         }
 
         // 하드에서만 부른 쪽의 실패를 출정 취소로 바꾼다. 이지는 아무것도 하지 않아 보스 없이 진행하는 기존 동작을 지킨다
@@ -1258,12 +1316,73 @@ namespace Shinshi.Combat
                 _boss.Tick(serverTime);
             }
 
+            if (sessionTick)
+            {
+                ReportBossGimmicks(serverTime);
+            }
+
             // 세션 틱이 열리지 않은 틱이면 받지 않으므로 다음 틱에 다시 알린다
             if ((sessionTick) && (_boss.HasUnreportedDefeat) && (_host.ReportBossDefeated()))
             {
                 _boss.MarkDefeatReported();
                 Debug.Log($"[Boss] 보스 처치를 세션에 알렸다, combatId={_boss.CombatId}");
             }
+        }
+
+        // 세션 틱 안에서만 부른다. 최종 성공은 기믹이 한 번만 내주므로 세션이 받을 때까지 여기서 들고 다음 세션 틱에 다시 알린다.
+        // 정지와 실패는 종료 판정보다 앞에서 알려야 같은 틱의 종료 순서(최종 성공, 기믹 실패, 전멸)가 세션에서 정해진다.
+        // 로그 문자열은 성공, 정지, 실패가 처리되는 틱에만 만든다
+        private void ReportBossGimmicks(double serverTime)
+        {
+            if (!_boss.HasGimmicks)
+            {
+                return;
+            }
+
+            if (_boss.TryConsumeFinalSuccess(out _))
+            {
+                _finalSuccessUnreported = true;
+            }
+
+            if (_finalSuccessUnreported)
+            {
+                if (_host.ReportBossFinalSuccess())
+                {
+                    _finalSuccessUnreported = false;
+                    Debug.Log($"[Boss] 기믹 최종 성공을 세션에 알렸다, combatId={_boss.CombatId}");
+
+                    // 성공이 이 틱의 종료 사유다. 같은 틱의 정지를 서비스 취소로 바꾸지 않는다
+                    return;
+                }
+
+                // 끝난 출정은 다시 받지 않는다
+                if (!_host.IsSessionRunning)
+                {
+                    _finalSuccessUnreported = false;
+                }
+            }
+
+            if ((_gimmickStopHandled)
+                || (!_boss.TryGetGimmickStop(out EBossGimmickStop kind, out ESessionEndReason failureReason, out string detail))
+                || (kind == EBossGimmickStop.None))
+            {
+                return;
+            }
+
+            // 같은 정지를 틱마다 다시 알리지 않는다. 세션이 거절하는 경우는 이미 끝났거나 저장 장애로 이 틱에 끝나는 출정이다
+            _gimmickStopHandled = true;
+            bool accepted = (kind == EBossGimmickStop.Halted)
+                ? _host.CancelSortieService(serverTime)
+                : _host.ReportBossFightFailed(failureReason);
+            if (accepted)
+            {
+                Debug.LogError($"[Boss] 기믹이 멈춰 출정을 끝낸다, combatId={_boss.CombatId}, kind={kind}, " +
+                    $"reason={((kind == EBossGimmickStop.Halted) ? ESessionEndReason.ServiceCancelled : failureReason)}, {detail}");
+                return;
+            }
+
+            Debug.LogError($"[Boss] 기믹 정지를 세션이 받지 않았다, combatId={_boss.CombatId}, kind={kind}, " +
+                $"reason={failureReason}, sessionRunning={_host.IsSessionRunning}, {detail}");
         }
 
         // 피해 처리 뒤 정본 단계와 대기를 함께 반영한다. 전환 틱 피해는 이전 단계에 남고 인계 대기는 새 단계에 쌓인다
@@ -1510,7 +1629,7 @@ namespace Shinshi.Combat
             // 지점이 없으면 횟수를 쓰지 않고 다음 재평가 시각까지 요청을 남긴다
             Vector3 point;
             bool    found = (_host.Session.IsBossSession)
-                ? player.TryFindRevivePoint(_revivePoints, serverTime, out point)
+                ? TryFindBossRevivePoint(player, serverTime, out point)
                 : player.TryFindNormalRevivePoint(out point);
             if (!found)
             {
@@ -1525,9 +1644,31 @@ namespace Shinshi.Combat
                 return;
             }
 
-            player.Revive(point, healthRate);
+            player.Revive(point, healthRate, serverTime);
             _combatMeter?.RecordRevive(participantId, serverTime);
             player.ReportedLifeState = player.LifeState;
+        }
+
+        // 진행 중인 보스 기믹이 부활을 막거나 지점을 정하면 그것을 따른다. 거짓이면 부른 쪽이 횟수를 쓰지 않고 요청을 미룬다.
+        // 기믹이 지점을 맡았는데 줄 곳이 없으면 기존 지점 선택으로 되돌아가지 않는다. 사라진 바닥 위로 되살리지 않기 위해서다
+        private bool TryFindBossRevivePoint(PlayerServer player, double serverTime, out Vector3 point)
+        {
+            point = default;
+            if ((_boss != null) && (_boss.IsActive))
+            {
+                if (!_boss.IsReviveWindowOpen)
+                {
+                    return false;
+                }
+
+                EBossRevivePoint managed = _boss.TryGetGimmickRevivePoint(player.CombatId, out point);
+                if (managed != EBossRevivePoint.NotManaged)
+                {
+                    return managed == EBossRevivePoint.Available;
+                }
+            }
+
+            return player.TryFindRevivePoint(_revivePoints, serverTime, out point);
         }
 
         // 협동 보스 전용이다. 씬에 지정 지점이 없으면 선택기를 비워 두고 PlayerServer가 사망 위치 근처 NavMesh로 대신한다(경고는 한 번만)

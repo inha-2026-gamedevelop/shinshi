@@ -2,6 +2,7 @@
 using System;
 
 // 프로젝트 내부
+using Shinshi.Common;
 using Shinshi.Contracts;
 
 namespace Shinshi.Network
@@ -34,7 +35,8 @@ namespace Shinshi.Network
                 }
 
                 equipment[next] = new TownEquipmentEntry(view.ItemId, view.DefinitionId, (byte)view.Slot, (byte)view.Grade,
-                    view.IsTraining, view.Origin, view.Enhancement, view.Equipped, view.Locked, view.Bound, view.InMarket);
+                    view.IsTraining, view.Origin, view.Enhancement, view.Equipped, view.Locked, view.Bound, view.InMarket,
+                    (byte)view.Option1Kind, view.Option1Value, (byte)view.Option2Kind, view.Option2Value);
                 ++next;
             }
 
@@ -97,8 +99,12 @@ namespace Shinshi.Network
             }
 
             int[] training = (snapshot.Training != null) ? (int[])snapshot.Training.Clone() : Array.Empty<int>();
+
+            // 예전 응답에는 재설정 누계가 없어 null이다. 부위 수만큼 0으로 채워 화면이 항상 여섯 칸을 읽게 한다
+            int[] optionPity = CopyOptionPity(snapshot.OptionRerollPity);
             return new GrowthSnapshotMessage(snapshot.ClassId, snapshot.LoadoutRevision, snapshot.Essence, snapshot.Shards, training,
-                equipment, pity, talismans, loadout, items, snapshot.StorageUsed, snapshot.StorageCapacity, snapshot.ContentVersion, snapshot.TotalExperience);
+                equipment, pity, talismans, loadout, items, snapshot.StorageUsed, snapshot.StorageCapacity, snapshot.ContentVersion, snapshot.TotalExperience,
+                optionPity);
         }
 
         public static LifeSnapshotMessage ToMessage(LifeSnapshotResponse snapshot)
@@ -126,6 +132,23 @@ namespace Shinshi.Network
             LifeHerbStock herb = snapshot.Herb;
             return new LifeSnapshotMessage(snapshot.ActionValue, snapshot.ActionMax, snapshot.NextRecoverAtUnixMs, herb?.DefinitionId,
                 (herb != null) ? herb.Quantity : 0, (herb != null) ? herb.Cap : 0, potions);
+        }
+
+        private static int[] CopyOptionPity(int[] source)
+        {
+            var copy = new int[Constants.Combat.EQUIPMENT_SLOT_COUNT];
+            if (source == null)
+            {
+                return copy;
+            }
+
+            int count = Math.Min(source.Length, copy.Length);
+            for (int i = 0; i < count; ++i)
+            {
+                copy[i] = source[i];
+            }
+
+            return copy;
         }
 
         private static int CountNonNull<T>(T[] values) where T : class

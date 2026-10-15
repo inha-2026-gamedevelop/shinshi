@@ -96,6 +96,10 @@ namespace Shinshi.Network
                 writer.WriteBool(entry.Locked);
                 writer.WriteBool(entry.Bound);
                 writer.WriteBool(entry.InMarket);
+                writer.WriteByte(entry.Option1Kind);
+                writer.WriteInt(entry.Option1Value);
+                writer.WriteByte(entry.Option2Kind);
+                writer.WriteInt(entry.Option2Value);
             }
 
             TownPityEntry[] pity = value.Pity;
@@ -122,6 +126,7 @@ namespace Shinshi.Network
             writer.WriteInt(value.StorageCapacity);
             writer.WriteString(value.ContentVersion);
             writer.WriteLong(value.TotalExperience);
+            WriteInts(writer, value.OptionPity);
         }
 
         public static GrowthSnapshotMessage ReadGrowthSnapshotMessage(this NetworkReader reader)
@@ -147,8 +152,12 @@ namespace Shinshi.Network
                 bool   locked       = reader.ReadBool();
                 bool   bound        = reader.ReadBool();
                 bool   inMarket     = reader.ReadBool();
+                byte   option1Kind  = reader.ReadByte();
+                int    option1Value = reader.ReadInt();
+                byte   option2Kind  = reader.ReadByte();
+                int    option2Value = reader.ReadInt();
                 equipment[i] = new TownEquipmentEntry(itemId, definitionId, slot, grade, isTraining, origin, enhancement,
-                    equipped, locked, bound, inMarket);
+                    equipped, locked, bound, inMarket, option1Kind, option1Value, option2Kind, option2Value);
             }
 
             int pityCount = PartyMessageSerializer.ReadCount(reader, MAX_SNAPSHOT_ENTRIES);
@@ -177,8 +186,9 @@ namespace Shinshi.Network
             int                storageCapacity = reader.ReadInt();
             string             contentVersion  = reader.ReadString();
             long totalExperience = reader.ReadLong();
+            int[] optionPity     = ReadInts(reader, MAX_SNAPSHOT_ENTRIES);
             return new GrowthSnapshotMessage(classId, loadoutRevision, essence, shards, training, equipment, pity, talismans,
-                loadout, accountItems, storageUsed, storageCapacity, contentVersion, totalExperience);
+                loadout, accountItems, storageUsed, storageCapacity, contentVersion, totalExperience, optionPity);
         }
 
         /// <summary> 수량형 아이템 배열, 생활 재고 메시지도 같은 형식을 쓴다 </summary>

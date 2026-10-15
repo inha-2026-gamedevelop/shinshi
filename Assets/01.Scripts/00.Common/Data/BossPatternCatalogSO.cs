@@ -533,6 +533,21 @@ namespace Shinshi.Data
         public const string WOLBAEK_HARD_P2_P06_ID = "wolbaek_hard_ph2_p06";
         public const string WOLBAEK_HARD_P2_P07_ID = "wolbaek_hard_ph2_p07";
 
+        // 무철 패턴 ID, 이지 1페이즈(mucheol_p01~06)와 2페이즈(mucheol_ph2_p01~06)를 하드가 같은 정의로 다시 쓴다. 하드 전용은 P07 하나다
+        public const string MUCHEOL_P01_ID = "mucheol_p01";
+        public const string MUCHEOL_P02_ID = "mucheol_p02";
+        public const string MUCHEOL_P03_ID = "mucheol_p03";
+        public const string MUCHEOL_P04_ID = "mucheol_p04";
+        public const string MUCHEOL_P05_ID = "mucheol_p05";
+        public const string MUCHEOL_P06_ID = "mucheol_p06";
+        public const string MUCHEOL_P2_P01_ID = "mucheol_ph2_p01";
+        public const string MUCHEOL_P2_P02_ID = "mucheol_ph2_p02";
+        public const string MUCHEOL_P2_P03_ID = "mucheol_ph2_p03";
+        public const string MUCHEOL_P2_P04_ID = "mucheol_ph2_p04";
+        public const string MUCHEOL_P2_P05_ID = "mucheol_ph2_p05";
+        public const string MUCHEOL_P2_P06_ID = "mucheol_ph2_p06";
+        public const string MUCHEOL_HARD_P2_P07_ID = "mucheol_ph2_p07";
+
         private const float NEUTRAL_MULTIPLIER = 1f;
 
         // 한 시전의 발 수 상한, 서버 지속물 관리자의 공용 비행 슬롯 수와 같다. 대상당 피격 상한이 있는 난사는 이전 시전의 잔류 투사체와 겹쳐도
@@ -597,7 +612,6 @@ namespace Shinshi.Data
         private const int    FIRST_PHASE                     = 1;
         private const int    SECOND_PHASE                    = 2;
         private const string WOLBAEK_ID                     = "boss_wolbaek";
-        private const string CHEOLGAK_ID                     = "boss_cheolgak";
         private const string MUCHEOL_ID                      = "boss_mucheol";
         private const int    WOLBAEK_PHASE_ONE_PATTERN_COUNT = 6;
 
@@ -605,6 +619,11 @@ namespace Shinshi.Data
         private const int    WOLBAEK_HARD_PHASE_ONE_PATTERN_COUNT = 6;
         private const int    WOLBAEK_HARD_PHASE_TWO_PATTERN_COUNT = 7;
         private const int    NO_EXPECTED_COUNT                    = 0;
+
+        // 무철 구성, 이지와 하드 모두 1페이즈 P01~P06 여섯 개이고 2페이즈는 이지 여섯 개, 하드는 이지 여섯 개에 하드 전용 P07을 더한 일곱 개다
+        private const int    MUCHEOL_PHASE_ONE_PATTERN_COUNT      = 6;
+        private const int    MUCHEOL_EASY_PHASE_TWO_PATTERN_COUNT = 6;
+        private const int    MUCHEOL_HARD_PHASE_TWO_PATTERN_COUNT = 7;
 
         /****************************************
         *                Fields
@@ -617,10 +636,8 @@ namespace Shinshi.Data
         [SerializeField] private BossDefinition[] _bosses =
         {
             new BossDefinition(WOLBAEK_ID),
-            // 보상과 진행 카탈로그가 철각 보스전을 참조하므로 ID만 둔다. 체험판에 넣지 않고 패턴도 없다
-            new BossDefinition(CHEOLGAK_ID),
-            // 산문지기 무철, 월백 뼈대를 그대로 쓰는 새 보스다. 수치와 패턴은 비어 있어 IsTuned가 거짓이라 전투를 열지 않는다
-            new BossDefinition(MUCHEOL_ID)
+            // 산문지기 무철, 월백 뼈대를 그대로 쓰는 새 보스다. 수치는 MucheolDevCatalog의 임시 시작값이며 확정 밸런스가 아니다
+            CreateMucheolBossDefault()
         };
 
         // 번호는 기획표의 P01~P06 순서와 같다. ID 앞에 보스를 붙여 다음 보스 패턴과 겹치지 않게 한다
@@ -657,6 +674,7 @@ namespace Shinshi.Data
             };
 
             patterns.AddRange(CreateWolbaekPhaseTwoDefaults());
+            patterns.AddRange(CreateMucheolDefaults());
             return patterns.ToArray();
         }
 
@@ -743,6 +761,141 @@ namespace Shinshi.Data
                 // 직전 Basic
                 1.3f, 1.1f, 1.0f
             };
+        }
+
+        // 무철 운영 데이터는 MucheolDevCatalog의 임시 시작값을 그대로 옮긴 것이다. 확정 밸런스가 아니며 플레이 테스트 뒤에 에셋에서 조정한다.
+        // 전장 지름 44m는 시험 장치(MucheolBossTestRig)의 값을 시작값으로 쓴 것이다. 방어 가능 여부도 임시 가정이다.
+        // 하드는 이지 1, 2페이즈 P01~P06 정의를 같은 값으로 다시 쓰고(CollectPatterns, ValidateTuning이 이어 준다) 하드 전용 P07만 따로 둔다
+        /// <summary> 무철 보스 정의의 임시 시작값, 이지와 하드가 같은 정의를 쓴다. 55%에서 2페이즈로 넘어가고 25% 이하가 강화 구간이다 </summary>
+        public static BossDefinition CreateMucheolBossDefault()
+        {
+            return new BossDefinition(MUCHEOL_ID, 44f, 700f, 200f, 0.55f, 0.5f, 5f, 12f, 60f, 120f, 5f, 0.25f, 1f, 2f,
+                0f, 0.25f, CreateMucheolFlowDefaults());
+        }
+
+        /// <summary> 무철 흐름 배율 18칸의 임시 시작값, 체력 구간(초과, 이하) x 직전 그룹(Large, Pressure, Basic) x 다음 그룹 순서 </summary>
+        public static float[] CreateMucheolFlowDefaults()
+        {
+            return new[]
+            {
+                // 25% 초과, 직전 Large
+                0.25f, 1.25f, 1.6f,
+                // 직전 Pressure
+                1.15f, 0.6f, 1.2f,
+                // 직전 Basic
+                1.3f, 1.1f, 1.0f,
+                // 25% 이하, 직전 Large
+                0.45f, 1.35f, 1.25f,
+                // 직전 Pressure
+                1.15f, 0.6f, 1.2f,
+                // 직전 Basic
+                1.3f, 1.1f, 1.0f
+            };
+        }
+
+        /// <summary> 무철 이지 1페이즈 여섯, 이지 2페이즈 여섯, 하드 전용 2페이즈 P07 하나의 임시 시작값 </summary>
+        public static PatternDefinition[] CreateMucheolDefaults()
+        {
+            var patterns = new List<PatternDefinition>();
+            patterns.AddRange(CreateMucheolPhaseOneDefaults());
+            patterns.AddRange(CreateMucheolPhaseTwoDefaults());
+            patterns.Add(CreateMucheolHardPhaseTwoDefault());
+            return patterns.ToArray();
+        }
+
+        // 1페이즈는 거리 구간이 맞는 곳에서만 고르고, 방향과 주변 배율은 중립이다. 최근 사용 배율은 구간 밖으로 가중치가 0이 되지 않게 0보다 크게 둔다.
+        // 이 패턴들은 그룹이 None이고 강화 기본값이 0이다
+        private static PatternDefinition[] CreateMucheolPhaseOneDefaults()
+        {
+            float[] neutral    = { 1f, 1f, 1f };
+            float[] nearOnly   = { 1f, 0f, 0f };
+            float[] midOnly    = { 0f, 1f, 0f };
+            float[] midAndFar  = { 0f, 1f, 1f };
+            float[] recentSoft = { 0.5f, 0.8f, 1f, 1f };
+
+            return new[]
+            {
+                // P01 팔 휘두르기, 부채꼴 5m 120도
+                MakeMucheol(MUCHEOL_P01_ID, FIRST_PHASE, EBossDifficulty.Easy, EPatternGroup.None, 30f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 0.7f, 0.35f, 180f, 0f, 0.6f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 120f), 0.20f, true),
+                // P02 양손 내려찍기, 부채꼴 5m 70도
+                MakeMucheol(MUCHEOL_P02_ID, FIRST_PHASE, EBossDifficulty.Easy, EPatternGroup.None, 25f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 1.2f, 0.6f, 120f, 0f, 1.2f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.32f, true),
+                // P03 어깨 돌진, 8m 폭 2.5m
+                MakeMucheol(MUCHEOL_P03_ID, FIRST_PHASE, EBossDifficulty.Easy, EPatternGroup.None, 15f, 0f,
+                    midOnly, neutral, neutral, recentSoft, 0.9f, 0.4f, 150f, 0.5f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Dash(8f, 2.5f), 0.22f, true),
+                // P04 발구르기 충격파, 원형 5m
+                MakeMucheol(MUCHEOL_P04_ID, FIRST_PHASE, EBossDifficulty.Easy, EPatternGroup.None, 10f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 1.0f, 0f, 0f, 0f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.26f, true),
+                // P05 2연타, 타별 형태와 피해는 서버 콤보 데이터가 정한다. 이 정의의 형태와 피해는 선택 문맥과 최소 검증용이다
+                MakeMucheol(MUCHEOL_P05_ID, FIRST_PHASE, EBossDifficulty.Easy, EPatternGroup.None, 10f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 0.8f, 0.4f, 150f, 0.5f, 1.2f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 120f), 0.14f, true),
+                // P06 뿔 들이받기, 18m 폭 3m 방어 불가
+                MakeMucheol(MUCHEOL_P06_ID, FIRST_PHASE, EBossDifficulty.Easy, EPatternGroup.None, 10f, 0f,
+                    midAndFar, neutral, neutral, recentSoft, 1.6f, 0.6f, 90f, 0.75f, 1.5f, EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3f), 0.40f, false)
+            };
+        }
+
+        // 2페이즈 선택 가중치, 배율, 흐름 배율은 모두 시작안이다. 거리는 근 중 원, 방향은 전 측 후, 주변은 1명 2명 3명, 최근 사용은 직전부터 네 칸이다.
+        // TODO(기웅): P06 폭주 돌진의 실행 시간 3.45초는 두 번이 아니라 세 번(강화 구간) 기준이다. 공용 공격 FSM이 실행 시간을 정의 하나로 고정해
+        // 횟수별로 줄 수 없어서이며, 두 번 달리는 시전은 남는 구간 동안 서 있는다. 동적 실행 시간 연결은 팀장 승인 대기이고 승인되면 이 값은 2.1초가 된다
+        private static PatternDefinition[] CreateMucheolPhaseTwoDefaults()
+        {
+            float[] neutral = { 1f, 1f, 1f };
+            float[] recent  = { 0f, 0.3f, 0.7f, 1f };
+
+            return new[]
+            {
+                // P01 연속 휘두르기, 좌우 구역
+                MakeMucheol(MUCHEOL_P2_P01_ID, SECOND_PHASE, EBossDifficulty.Easy, EPatternGroup.Basic, 22f, 18f,
+                    new[] { 1.8f, 0f, 0f }, new[] { 1.3f, 1.2f, 0.6f }, new[] { 1f, 1.1f, 1.2f }, recent,
+                    0.9f, 0.4f, 150f, 0.45f, 0.7f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 120f), 0.16f, true),
+                // P02 충격 내려찍기, 부채꼴 뒤 전방 충격파
+                MakeMucheol(MUCHEOL_P2_P02_ID, SECOND_PHASE, EBossDifficulty.Easy, EPatternGroup.Large, 12f, 14f,
+                    new[] { 1.6f, 0f, 0f }, new[] { 1.6f, 0.8f, 0.3f }, new[] { 1f, 1.2f, 1.3f }, recent,
+                    1.2f, 0.6f, 120f, 0.5f, 1.2f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.30f, true),
+                // P03 연속 어깨 돌진, 8m 두 번
+                MakeMucheol(MUCHEOL_P2_P03_ID, SECOND_PHASE, EBossDifficulty.Easy, EPatternGroup.Pressure, 16f, 18f,
+                    new[] { 0.3f, 1.8f, 1.1f }, neutral, new[] { 1.2f, 1f, 0.8f }, new[] { 0.25f, 0.5f, 0.8f, 1f },
+                    0.9f, 0.4f, 150f, 1.4f, 0.9f, EnemyCatalogSO.AttackShapeSpec.Dash(8f, 2.5f), 0.22f, true),
+                // P04 이중 지면 충격파, 원형 두 번
+                MakeMucheol(MUCHEOL_P2_P04_ID, SECOND_PHASE, EBossDifficulty.Easy, EPatternGroup.Pressure, 14f, 16f,
+                    new[] { 1.8f, 0f, 0f }, neutral, new[] { 0.7f, 1.4f, 2f }, recent,
+                    1.0f, 0f, 0f, 0.7f, 0.9f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.22f, true),
+                // P05 폭주 연타, 좌우 구역 뒤 내려찍기
+                MakeMucheol(MUCHEOL_P2_P05_ID, SECOND_PHASE, EBossDifficulty.Easy, EPatternGroup.Large, 12f, 16f,
+                    new[] { 1.7f, 0f, 0f }, new[] { 1.4f, 1f, 0.4f }, new[] { 1f, 1f, 1.1f }, recent,
+                    0.9f, 0.4f, 150f, 1.0f, 1.5f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.26f, true),
+                // P06 폭주 돌진, 18m 두 번(강화 구간 세 번), 방어 불가
+                MakeMucheol(MUCHEOL_P2_P06_ID, SECOND_PHASE, EBossDifficulty.Easy, EPatternGroup.Large, 10f, 14f,
+                    new[] { 0.2f, 1.4f, 1.8f }, new[] { 1.5f, 1f, 0.6f }, new[] { 1f, 1.1f, 1f }, recent,
+                    2.0f, 0.8f, 90f, 3.45f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3f), 0.32f, false)
+            };
+        }
+
+        // 하드 전용 P07 전장 공격, 방어 불가 단발이다. 실행 시간이 없어 예고가 끝나는 순간 타격하고 회복으로 넘어간다.
+        // 추적 시간과 회전 속도가 0인 것은 방향을 예고 시작 순간에 고정한다는 뜻이다. 반경 44m는 지름 44m 전장에서 가장자리에 선 보스가 반대편까지 덮는 값이고
+        // 각도 315도는 등 쪽 45도 안전지대의 나머지다. 거리, 방향, 주변 인원 배율은 전 구간 1이고 최근 사용 배율이 최근 세 번 안에 쓴 패턴을 다시 고르지 않게 한다.
+        // 밀림 거리 1m는 정의가 아니라 서버 실행 데이터(MucheolBattlefieldSpec)가 가진다
+        private static PatternDefinition CreateMucheolHardPhaseTwoDefault()
+        {
+            float[] neutral = { 1f, 1f, 1f };
+
+            return MakeMucheol(MUCHEOL_HARD_P2_P07_ID, SECOND_PHASE, EBossDifficulty.Hard, EPatternGroup.Large, 3f, 3f,
+                neutral, neutral, neutral, new[] { 0f, 0f, 0f, 1f },
+                4f, 0f, 0f, 0f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Fan(44f, 315f), 0.30f, false);
+        }
+
+        private static PatternDefinition MakeMucheol(string id, int phase, EBossDifficulty difficulty, EPatternGroup group,
+            float baseWeight, float enhancedBaseWeight, float[] distance, float[] direction, float[] nearby, float[] recent,
+            float telegraphSeconds, float trackingSeconds, float turnRate, float activeSeconds, float recoverySeconds,
+            EnemyCatalogSO.AttackShapeSpec shape, float damageRef, bool guardable)
+        {
+            return new PatternDefinition(id, MUCHEOL_ID, phase, baseWeight,
+                (float[])distance.Clone(), (float[])direction.Clone(), (float[])nearby.Clone(), (float[])recent.Clone(),
+                telegraphSeconds, trackingSeconds, turnRate, activeSeconds, recoverySeconds,
+                shape, damageRef, guardable,
+                group: group, enhancedBaseWeight: enhancedBaseWeight, difficulty: difficulty);
         }
 
         // 공격이 구현된 패턴만 실행 수치를 넣는다. 나머지는 비워 둬서 IsPatternReady가 거짓으로 남는다
@@ -895,7 +1048,7 @@ namespace Shinshi.Data
             CollectPatterns(bossId, phase, EBossDifficulty.Easy, results);
         }
 
-        /// <summary> 보스, 페이즈, 난이도에 속한 패턴을 결과 목록에 채운다, 목록은 먼저 비운다 </summary>
+        /// <summary> 보스, 페이즈, 난이도에 속한 패턴을 결과 목록에 채운다, 목록은 먼저 비운다. 무철 하드는 이지 정의를 같이 담는다 </summary>
         public void CollectPatterns(string bossId, int phase, EBossDifficulty difficulty, List<PatternDefinition> results)
         {
             results.Clear();
@@ -907,11 +1060,23 @@ namespace Shinshi.Data
             for (int i = 0; i < _patterns.Length; ++i)
             {
                 PatternDefinition pattern = _patterns[i];
-                if ((pattern != null) && (pattern.BossId == bossId) && (pattern.Phase == phase) && (pattern.Difficulty == difficulty))
+                if ((pattern != null) && (pattern.BossId == bossId) && (pattern.Phase == phase) && BelongsToDifficulty(pattern, difficulty))
                 {
                     results.Add(pattern);
                 }
             }
+        }
+
+        // 난이도가 정확히 같은 패턴이 속한다. 무철 하드만 예외로 이지 정의를 같은 값으로 다시 쓴다(하드는 P07만 따로 정의한다).
+        // 월백과 다른 보스는 기존대로 난이도가 정확히 같아야 한다. 이지는 하드 정의를 절대 받지 않는다
+        private static bool BelongsToDifficulty(PatternDefinition pattern, EBossDifficulty difficulty)
+        {
+            if (pattern.Difficulty == difficulty)
+            {
+                return true;
+            }
+
+            return (pattern.BossId == MUCHEOL_ID) && (difficulty == EBossDifficulty.Hard) && (pattern.Difficulty == EBossDifficulty.Easy);
         }
 
         /// <summary> 보스와 그 1페이즈 이지 패턴의 필수 수치가 모두 지정됐고 범위가 맞는가. 서버 세션은 이 값이 거짓인 보스의 전투를 열지 않는다. 2페이즈 패턴은 IsPhaseTuned가 따로 본다 </summary>
@@ -973,7 +1138,8 @@ namespace Shinshi.Data
 
         // 페이즈별로 나누는 이유: 2페이즈 선택 데이터는 먼저 들어오고 공격 수치는 공격을 구현할 때 들어오므로, 한꺼번에 검사하면
         // 2페이즈 데이터를 넣는 순간 1페이즈 전투 시작까지 막힌다. 1페이즈 검사 기준은 그대로이고 2페이즈 검사를 우회하지 않는다
-        // 난이도별로 나누는 이유도 같다. 하드 패턴이 미지정인 동안에도 이지 전투가 열려야 하고, 이지 패턴이 하드 검사를 채워 주면 안 된다
+        // 난이도별로 나누는 이유도 같다. 하드 패턴이 미지정인 동안에도 이지 전투가 열려야 하고, 이지 패턴이 하드 검사를 채워 주면 안 된다.
+        // 무철 하드만 예외다. 이지 P01~P06을 같은 값으로 다시 쓰므로 검사도 이지 정의를 함께 본다(BelongsToDifficulty)
         /// <summary> 보스와 한 페이즈, 난이도 패턴의 미지정 수치와 범위 오류를 결과 목록에 더한다 </summary>
         public void ValidateTuning(string bossId, int phase, EBossDifficulty difficulty, List<string> errors)
         {
@@ -991,7 +1157,7 @@ namespace Shinshi.Data
                 for (int i = 0; i < _patterns.Length; ++i)
                 {
                     PatternDefinition pattern = _patterns[i];
-                    if ((pattern == null) || (pattern.BossId != bossId) || (pattern.Phase != phase) || (pattern.Difficulty != difficulty))
+                    if ((pattern == null) || (pattern.BossId != bossId) || (pattern.Phase != phase) || !BelongsToDifficulty(pattern, difficulty))
                     {
                         continue;
                     }
@@ -1016,6 +1182,34 @@ namespace Shinshi.Data
             {
                 errors.Add($"{OWNER}.{nameof(_patterns)}: 월백 하드 {phase}페이즈 패턴 수 {patternCount} != {expectedHardCount}");
             }
+
+            // 무철은 이지도 개수를 본다. 일부만 들어온 데이터가 수치 검사만으로 준비된 것으로 통과하지 않게 한다
+            int expectedMucheolCount = GetMucheolPatternCount(bossId, phase, difficulty);
+            if ((expectedMucheolCount != NO_EXPECTED_COUNT) && (patternCount != expectedMucheolCount))
+            {
+                errors.Add($"{OWNER}.{nameof(_patterns)}: 무철 {difficulty} {phase}페이즈 패턴 수 {patternCount} != {expectedMucheolCount}");
+            }
+        }
+
+        // 무철 이지는 1, 2페이즈 여섯 개씩, 하드는 1페이즈 여섯 개와 2페이즈 일곱 개다. 다른 보스는 NO_EXPECTED_COUNT다
+        private static int GetMucheolPatternCount(string bossId, int phase, EBossDifficulty difficulty)
+        {
+            if (bossId != MUCHEOL_ID)
+            {
+                return NO_EXPECTED_COUNT;
+            }
+
+            if (phase == FIRST_PHASE)
+            {
+                return MUCHEOL_PHASE_ONE_PATTERN_COUNT;
+            }
+
+            if (phase != SECOND_PHASE)
+            {
+                return NO_EXPECTED_COUNT;
+            }
+
+            return (difficulty == EBossDifficulty.Hard) ? MUCHEOL_HARD_PHASE_TWO_PATTERN_COUNT : MUCHEOL_EASY_PHASE_TWO_PATTERN_COUNT;
         }
 
         // 기대 개수가 정해진 조합만 값을 돌려주고 나머지는 NO_EXPECTED_COUNT다. 이지와 다른 보스는 기존 검사 그대로다

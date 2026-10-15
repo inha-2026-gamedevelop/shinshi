@@ -5,6 +5,9 @@ using System;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+// Project
+using Shinshi.Contracts;
+
 namespace Shinshi.Data.Growth
 {
     /// <summary> equipment_instances 한 행. item_history의 이전, 이후 상태 JSON도 이 값으로 만든다 </summary>
@@ -26,6 +29,12 @@ namespace Shinshi.Data.Growth
         public bool   Equipped     { get; set; }
         public bool   Locked       { get; set; }
         public bool   Bound        { get; set; }
+
+        // 옵션 두 줄. 종류는 EquipmentOptionRules의 KIND_* 값, 값은 만분율 정수이고 (0, 0)이 옵션 없음이다
+        public int    Option1Kind  { get; set; }
+        public int    Option1Value { get; set; }
+        public int    Option2Kind  { get; set; }
+        public int    Option2Value { get; set; }
 
         // 경매장 보관 중이면 "Market", 아니면 null. 성장 쓰기는 이 값이 있으면 MarketEscrowed로 거절한다
         public string? EscrowKind  { get; set; }
@@ -62,6 +71,15 @@ namespace Shinshi.Data.Growth
             if (EscrowKind != null)
             {
                 state["escrowKind"] = EscrowKind;
+            }
+
+            // 옵션도 있을 때만 끝에 붙인다. 옵션 없는 장비의 이력은 옵션 도입 전과 같은 모양이다
+            if ((Option1Kind != EquipmentOptionRules.KIND_NONE) || (Option2Kind != EquipmentOptionRules.KIND_NONE))
+            {
+                state["option1Kind"] = Option1Kind;
+                state["option1Value"] = Option1Value;
+                state["option2Kind"] = Option2Kind;
+                state["option2Value"] = Option2Value;
             }
 
             return state.ToString(Formatting.None);

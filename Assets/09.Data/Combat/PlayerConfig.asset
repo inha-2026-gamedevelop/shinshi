@@ -31,6 +31,9 @@ MonoBehaviour:
   _playerDefenseReductionConstant: 750
   _lifeStealRateCap: 0.1
   _lifeStealCapPerSecond: 0.02
+  _combatPowerScale: 10
+  _combatPowerOffenseWeight: 0.7
+  _combatPowerLifeStealFactor: 20
   _potionSharedCooldown: 10
   _potionUseDisplaySeconds: 0.35
   _inputBufferSeconds: 0.15

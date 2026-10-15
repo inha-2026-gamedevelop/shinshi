@@ -23,6 +23,9 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
+        // 환경 변수 스위치를 켜는 값
+        private const string BOSS_GIMMICKS_ON = "1";
+
         // 서비스 자격과 현재 서버 임대, 전송 계층과 ServerPresence가 함께 쓴다
         private static ServerCredentials _credentials;
 
@@ -249,6 +252,7 @@ namespace Shinshi.Network
                 // TODO(기웅): 일반전 웨이브 진행기(스폰 디렉터, 적 두뇌) 구현이 생기면 여기서 dungeonHost.WaveFactory에 넣는다.
                 // 없으면 일반전 계약도 경고와 함께 웨이브 없는 개발 세션으로 열린다(IWaveSessionFactory 주석의 규칙을 지킨다)
                 CombatServerInstaller.Runtime.ConfigureBoss(bossId);
+                CombatServerInstaller.Runtime.EnableBossGimmicks = ReadBossGimmicks(args, Environment.GetEnvironmentVariable);
                 CombatServerInstaller.Runtime.BindSession(dungeonHost);
                 manager.PlayerRetention = CombatServerInstaller.Runtime;
                 DungeonHost             = dungeonHost;
@@ -335,6 +339,36 @@ namespace Shinshi.Network
             return GameDB.BossPatterns.TryGetBoss(bossId, out _);
         }
 
+        // 인자는 값 없이 있기만 하면 켜고, 환경 변수는 1일 때만 켠다. 기믹 표시가 없어 기본은 꺼짐이고 켠 사실을 로그로 남긴다
+        private static bool ReadBossGimmicks(string[] args, Func<string, string> readEnvironment)
+        {
+            bool enabled = false;
+            if (args != null)
+            {
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    if (string.Equals(args[i], Constants.Network.ARG_BOSS_GIMMICKS, StringComparison.OrdinalIgnoreCase))
+                    {
+                        enabled = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!enabled)
+            {
+                string value = readEnvironment(Constants.Network.ENV_BOSS_GIMMICKS);
+                enabled = (value != null) && (value.Trim() == BOSS_GIMMICKS_ON);
+            }
+
+            if (enabled)
+            {
+                Debug.LogWarning("[Boss] 보스 체력 기믹을 켠다, 기믹 표시가 클라이언트에 없어 개발 확인용이다");
+            }
+
+            return enabled;
+        }
+
         private static bool TryCreateDungeonHost(ServerSessionRegistry sessions, out DungeonSessionHost host, out string error)
         {
             host  = null;
@@ -404,7 +438,8 @@ namespace Shinshi.Network
                 return;
             }
 
-            CombatServerInstaller.Runtime.EnableBossObjects(new BossNetworkSpawner(prefab));
+            // 보스 ID가 지정된 프리팹(BossState.PrefabBossId)이 등록돼 있으면 그 보스는 그 프리팹으로 스폰한다
+            CombatServerInstaller.Runtime.EnableBossObjects(new BossNetworkSpawner(prefab, manager.spawnPrefabs));
         }
 
         private static ShinshiServerAuthenticator InstallAuthenticator(ShinshiNetworkManager manager, ServerSessionRegistry sessions,

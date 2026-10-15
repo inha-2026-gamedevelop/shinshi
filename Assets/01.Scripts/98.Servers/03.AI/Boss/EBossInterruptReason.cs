@@ -7,6 +7,9 @@ namespace Shinshi.AI
         Death           = 1,
         CombatEnd       = 2,
         PhaseTransition = 3,
-        DirectControl   = 4
+        DirectControl   = 4,
+
+        // 체력 기믹이 시작되어 진행 중인 공격과 지속물을 모두 정리한다
+        GimmickEntry    = 5
     }
 }

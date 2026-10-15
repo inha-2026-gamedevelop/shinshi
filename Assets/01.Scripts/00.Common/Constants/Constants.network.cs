@@ -15,7 +15,9 @@ namespace Shinshi.Common
             // 4: 외형 v3(P09, 48바이트)와 기본 공격·회피 표현 시퀀스 SyncVar 추가(2026-10-06)
             // 5: 캐릭터 누적 경험치·성장 입장 계약과 플레이어 경험치 SyncVar 추가(2026-10-11)
             // 6: 파티 참가자 누적 경험치와 소유자 데미지 표시 TargetRpc 추가(2026-10-11)
-            public const int PROTOCOL_VERSION = 6;
+            // 7: 무철, 월백 하드 2페이즈 전용 보스 사건과 복원 기록 추가, 투사체와 장판 시작 값에 시전 번호 추가(2026-10-13)
+            // 8: 장비 옵션 필드와 재설정 누계 추가, 성장 요청 종류 장비 옵션 재설정 추가(2026-10-13)
+            public const int PROTOCOL_VERSION = 8;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -47,6 +49,13 @@ namespace Shinshi.Common
             public const int BOSS_RESTORE_MAX_AREAS       = 16;
             public const int BOSS_RESTORE_MAX_BEAMS       = 16;
             public const int BOSS_RESTORE_MAX_STARS       = 8;
+
+            // 전용 사건(무철, 월백 하드 2페이즈)이 한 메시지에 싣는 목록의 상한. 데이터의 실제 수(타 3, 원 13, 발 8)보다 크게 두고
+            // 넘는 값은 프로토콜 불일치로 읽기를 멈춘다. 추적 장판은 파티 인원만큼 동시에 예고될 수 있다
+            public const int BOSS_STRIKE_CHAIN_MAX_STEPS     = 8;
+            public const int BOSS_CIRCLE_BURST_MAX_CIRCLES   = 16;
+            public const int BOSS_BARRAGE_MAX_SHOTS          = 16;
+            public const int BOSS_RESTORE_MAX_TRACKING_AREAS = 8;
 
             // 서버 시각 기준으로 입력을 받아 주는 창
             public const float INPUT_PAST_TOLERANCE_SECONDS   = 0.15f;
@@ -135,6 +144,10 @@ namespace Shinshi.Common
             // 없으면 Constants.Combat.DEV_BOSS_ID이고 보스 카탈로그에 있는 ID만 받는다
             public const string ENV_BOSS_ID = "BOSS_ID";
             public const string ARG_BOSS_ID = "-boss-id";
+
+            // 보스 체력 기믹을 켠다(환경 변수는 1이면 켬, 인자는 값 없이 있으면 켬). 기믹 표시가 없는 동안 기본은 꺼짐이다
+            public const string ENV_BOSS_GIMMICKS = "BOSS_GIMMICKS";
+            public const string ARG_BOSS_GIMMICKS = "-boss-gimmicks";
 
             // Prometheus가 긁어 가는 지표 내보내기. 포트가 없거나 0이면 끈다. 수신 주소 기본값은 루프백이며
             // 수집기가 다른 호스트에 있을 때만 내부망 주소를 준다. 게임 포트와 달리 외부에 열지 않는다

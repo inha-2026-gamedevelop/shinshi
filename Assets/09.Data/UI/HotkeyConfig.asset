@@ -37,3 +37,6 @@ MonoBehaviour:
   - _action: 8
     _key: 117
     _label: "\uCE90\uB9AD\uD130 \uC815\uBCF4"
+  - _action: 10
+    _key: 111
+    _label: "\uC635\uC158 \uC7AC\uC124\uC815"

@@ -67,6 +67,7 @@ namespace Shinshi.Backend.Tests.Growth
             Assert.Equal(GrowthRouteTemplates.EQUIPMENT_UNEQUIP, Format(GrowthRoutes.EQUIPMENT_UNEQUIP_FORMAT));
             Assert.Equal(GrowthRouteTemplates.EQUIPMENT_LOCK, Format(GrowthRoutes.EQUIPMENT_LOCK_FORMAT));
             Assert.Equal(GrowthRouteTemplates.EQUIPMENT_DISMANTLE, Format(GrowthRoutes.EQUIPMENT_DISMANTLE_FORMAT));
+            Assert.Equal(GrowthRouteTemplates.EQUIPMENT_REROLL_OPTIONS, Format(GrowthRoutes.EQUIPMENT_REROLL_OPTIONS_FORMAT));
             Assert.Equal(GrowthRouteTemplates.INTRO_COMPLETE, string.Format(GrowthRoutes.INTRO_COMPLETE_FORMAT, "{accountId}"));
         }
 
@@ -79,6 +80,7 @@ namespace Shinshi.Backend.Tests.Growth
         [InlineData(GrowthRoutes.EQUIPMENT_INHERIT_FORMAT)]
         [InlineData(GrowthRoutes.EQUIPMENT_ENHANCE_FORMAT)]
         [InlineData(GrowthRoutes.EQUIPMENT_DISMANTLE_FORMAT)]
+        [InlineData(GrowthRoutes.EQUIPMENT_REROLL_OPTIONS_FORMAT)]
         [InlineData(GrowthRoutes.INTRO_COMPLETE_FORMAT)]
         public async Task Post_WithoutServerCredential_Returns401(string format)
         {
@@ -96,6 +98,7 @@ namespace Shinshi.Backend.Tests.Growth
         [InlineData(GrowthRoutes.TRAINING_FORMAT)]
         [InlineData(GrowthRoutes.EQUIPMENT_ENHANCE_FORMAT)]
         [InlineData(GrowthRoutes.EQUIPMENT_EQUIP_FORMAT)]
+        [InlineData(GrowthRoutes.EQUIPMENT_REROLL_OPTIONS_FORMAT)]
         [InlineData(GrowthRoutes.INTRO_COMPLETE_FORMAT)]
         public async Task Post_DungeonServer_Returns403(string format)
         {
@@ -111,6 +114,33 @@ namespace Shinshi.Backend.Tests.Growth
             using HttpResponseMessage response = await client.SendAsync(request);
 
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        /// <summary> 형식이 틀린 옵션 재설정은 마을 서버 임대가 맞아도 DB에 닿기 전에 400이다 </summary>
+        [Theory]
+        [InlineData(ITEM, "[0,0,0]")]
+        [InlineData(ITEM, "[0,0,0,0,0]")]
+        [InlineData(ITEM, "[0,0,0,10000]")]
+        [InlineData(ITEM, "[-1,0,0,0]")]
+        [InlineData(ITEM, "null")]
+        [InlineData("not-an-item", "[0,0,0,0]")]
+        [InlineData("00000000-0000-0000-0000-000000000000", "[0,0,0,0]")]
+        public async Task RerollOptions_MalformedItemOrRolls_Returns400(string itemId, string rolls)
+        {
+            using GrowthGuardFactory factory = new GrowthGuardFactory(ContractCodes.ServerRole.TOWN);
+            using HttpClient client = factory.CreateClient();
+            string body = "{\"operationId\":\"" + Guid.NewGuid().ToString("D") + "\",\"expectedRevision\":0,\"rolls\":" + rolls + "}";
+            using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post,
+                string.Format(GrowthRoutes.EQUIPMENT_REROLL_OPTIONS_FORMAT, CHARACTER, itemId))
+            {
+                Content = new StringContent(body, Encoding.UTF8, JSON_MEDIA)
+            };
+            request.Headers.Add(ApiRoutes.AUTHORIZATION_HEADER, ApiRoutes.BEARER_PREFIX + IntegrationAuthRepository.TOKEN);
+            request.Headers.Add(JoinApiRoutes.SERVER_INSTANCE_HEADER, factory.Repository.Server.InstanceId.ToString("D"));
+
+            using HttpResponseMessage response = await client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         [Fact]
@@ -163,6 +193,96 @@ namespace Shinshi.Backend.Tests.Growth
             Authorize(get, seed);
             using HttpResponseMessage growth = await client.SendAsync(get);
             Assert.Equal(HttpStatusCode.OK, growth.StatusCode);
+        }
+
+        [PostgresFact]
+        public async Task RerollOptions_FeatureDisabled_ReplaysStoredAndRefusesNewWithoutSaving()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            using AdminApiTestHost host = new AdminApiTestHost(database.DataSource, true);
+            using HttpClient client = host.CreateHttpsClient();
+            (Guid _, byte[] secret) = await host.CreateAdminAsync(ADMIN_NAME, EAdminRole.Admin);
+            string admin = await AdminApiTestHost.LoginAsync(client, ADMIN_NAME, secret);
+            Seed seed = await SeedAsync(database.DataSource, host.AuthOptions);
+            Guid item = Guid.NewGuid();
+            await using (NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync())
+            {
+                await connection.ExecuteAsync(
+                    """
+                    UPDATE characters SET shards = 10 WHERE character_id = @CharacterId;
+                    INSERT INTO equipment_instances (item_id, account_id, character_id, definition_id, slot, grade,
+                        is_training, origin)
+                    VALUES (@ItemId, @AccountId, @CharacterId, 'equip_weapon_common', 0, 0, false, 'Craft');
+                    """, new { seed.AccountId, seed.CharacterId, ItemId = item });
+            }
+            await UpdateStateAsync(client, admin, Array.Empty<string>(), 0);
+            string route = string.Format(GrowthRoutes.EQUIPMENT_REROLL_OPTIONS_FORMAT, seed.CharacterId, item);
+
+            // 형식 오류는 400이고 작업으로 저장하지 않는다
+            EquipmentRerollOptionsRequest malformed = new EquipmentRerollOptionsRequest(Guid.NewGuid().ToString("D"), 0,
+                new[] { 0, 0, 0, EquipmentOptionRules.ROLL_RANGE });
+            (HttpStatusCode malformedStatus, GrowthOperationResponse? _) = await PostAsync(client, seed, route, malformed);
+            Assert.Equal(HttpStatusCode.BadRequest, malformedStatus);
+            Assert.Equal(0L, await AdminTestSupport.CountAsync(database.DataSource,
+                "SELECT count(*) FROM operations WHERE operation_id = @OperationId;",
+                new { OperationId = Guid.Parse(malformed.OperationId) }));
+
+            // 줄1 공격 100, 줄2 치명 20
+            EquipmentRerollOptionsRequest first = new EquipmentRerollOptionsRequest(Guid.NewGuid().ToString("D"), 0,
+                new[] { 0, 9999, 5000, 0 });
+            (HttpStatusCode firstStatus, GrowthOperationResponse? rerolled) = await PostAsync(client, seed, route, first);
+            Assert.Equal(HttpStatusCode.OK, firstStatus);
+            Assert.NotNull(rerolled);
+            Assert.Equal(GrowthCodes.Outcome.SUCCEEDED, rerolled.Outcome);
+            Assert.Equal(item.ToString("D"), rerolled.ItemId);
+            Assert.Equal((1L, 700L, 7L), (rerolled.Growth.LoadoutRevision, rerolled.Growth.Essence, rerolled.Growth.Shards));
+            EquipmentView view = Assert.Single(rerolled.Growth.Equipment);
+            Assert.Equal((EquipmentOptionRules.KIND_ATTACK_RATE, 100, EquipmentOptionRules.KIND_CRIT_CHANCE, 20, true),
+                (view.Option1Kind, view.Option1Value, view.Option2Kind, view.Option2Value, view.Bound));
+            Assert.Equal(new int[6], rerolled.Growth.OptionRerollPity);
+
+            await UpdateStateAsync(client, admin, new[] { ServiceFeatureKeys.REROLL_OPTIONS }, 1);
+            (HttpStatusCode replayStatus, GrowthOperationResponse? replayed) = await PostAsync(client, seed, route,
+                new EquipmentRerollOptionsRequest(first.OperationId, 1, new[] { 0, 0, 0, 0 }));
+            EquipmentRerollOptionsRequest second = new EquipmentRerollOptionsRequest(Guid.NewGuid().ToString("D"), 1,
+                new[] { 0, 0, 0, 0 });
+            (HttpStatusCode blockedStatus, GrowthOperationResponse? blocked) = await PostAsync(client, seed, route, second);
+
+            Assert.Equal(HttpStatusCode.OK, replayStatus);
+            Assert.NotNull(replayed);
+            Assert.Equal(rerolled.Result.ReceiptId, replayed.Result.ReceiptId);
+            Assert.Equal((700L, 100), (replayed.Growth.Essence, Assert.Single(replayed.Growth.Equipment).Option1Value));
+            Assert.Equal(HttpStatusCode.Conflict, blockedStatus);
+            Assert.NotNull(blocked);
+            Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED, blocked.Result.ReasonCode);
+            Assert.Null(blocked.Growth);
+            Assert.Equal(0L, await AdminTestSupport.CountAsync(database.DataSource,
+                "SELECT count(*) FROM operations WHERE operation_id = @OperationId;",
+                new { OperationId = Guid.Parse(second.OperationId) }));
+
+            // 다른 기능 키(강화)는 옵션 재설정 차단과 무관하다
+            await UpdateStateAsync(client, admin, new[] { ServiceFeatureKeys.ENHANCE }, 2);
+            (HttpStatusCode reopenedStatus, GrowthOperationResponse? reopened) = await PostAsync(client, seed, route, second);
+            Assert.Equal(HttpStatusCode.OK, reopenedStatus);
+            Assert.NotNull(reopened);
+            Assert.Equal((2L, 400L, 1), (reopened.Growth.LoadoutRevision, reopened.Growth.Essence,
+                reopened.Growth.OptionRerollPity[0]));
+        }
+
+        private static async Task<(HttpStatusCode Status, GrowthOperationResponse? Body)> PostAsync(HttpClient client,
+            Seed seed, string route, EquipmentRerollOptionsRequest body)
+        {
+            using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, route)
+            {
+                Content = new StringContent(JsonConvert.SerializeObject(body, ContractJson.CreateSettings()),
+                    Encoding.UTF8, JSON_MEDIA)
+            };
+            Authorize(request, seed);
+            using HttpResponseMessage response = await client.SendAsync(request);
+            string text = await response.Content.ReadAsStringAsync();
+            GrowthOperationResponse? parsed = response.StatusCode == HttpStatusCode.BadRequest
+                ? null : JsonConvert.DeserializeObject<GrowthOperationResponse>(text, ContractJson.CreateSettings());
+            return (response.StatusCode, parsed);
         }
 
         private static string Format(string format)

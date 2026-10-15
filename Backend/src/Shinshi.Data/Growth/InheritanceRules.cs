@@ -66,5 +66,28 @@ namespace Shinshi.Data.Growth
 
             return InheritanceDecision.Accepted(resultLevel, cost);
         }
+
+        /// <summary> 원본의 옵션 한 줄을 대상 장비로 옮긴 값. 대상이 갖고 있던 옵션은 쓰지 않는다.
+        /// 상위 등급 계승이면 값이 대상 등급 범위의 min보다 작을 때 min으로 올리고, 옵션 없는 줄은 그대로 없음이다 </summary>
+        public static EquipmentOptionLine CarryOption(GrowthContent content, GrowthContent.EquipmentDefinition source,
+            GrowthContent.EquipmentDefinition target, EquipmentOptionLine line)
+        {
+            ArgumentNullException.ThrowIfNull(content);
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(target);
+            if (line.IsNone)
+            {
+                return new EquipmentOptionLine(EquipmentOptionRules.KIND_NONE, 0);
+            }
+
+            // 등급이 오르면 범위도 올라간다. 범위 위로 벗어나는 값은 콘텐츠 검증이 막으므로 아래쪽만 맞춘다
+            if ((target.Grade > source.Grade) && content.TryGetOptionRange(line.Kind, target.Grade, out int min, out _)
+                && (line.Value < min))
+            {
+                return new EquipmentOptionLine(line.Kind, min);
+            }
+
+            return line;
+        }
     }
 }

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d695c56e54e497248a1363b9188ea316, type: 3}
+  m_Name: SO_WolbaekBeam_Sustain
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamSettingsSO
+  _appearSeconds: 0.12
+  _fadeSeconds: 0.16
+  _confirmationGrace: 1
+  _flowCycle: 1.1
+  _height: 1.3
+  _veilOpacity: 0.95
+  _coreOpacity: 0.75
+  _previewWarning: 1.2
+  _previewActive: 1.4
+  _previewWidth: 0.65
+  _previewLength: 6

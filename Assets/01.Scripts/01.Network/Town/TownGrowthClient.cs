@@ -93,6 +93,12 @@ namespace Shinshi.Network
             return Send(EGrowthAction.EquipmentEnhance, itemId, null, 0, 0, false, null, null);
         }
 
+        /// <summary> 장비 옵션 두 줄을 새로 뽑아 바꾼다, 난수는 서버가 넣는다. 결과를 모르면 RetryLast로 같은 요청을 확인한다 </summary>
+        public static Guid RerollEquipmentOptions(string itemId)
+        {
+            return Send(EGrowthAction.EquipmentRerollOptions, itemId, null, 0, 0, false, null, null);
+        }
+
         public static Guid InheritEquipment(string sourceItemId, string targetItemId)
         {
             return Send(EGrowthAction.EquipmentInherit, sourceItemId, targetItemId, 0, 0, false, null, null);
@@ -118,7 +124,7 @@ namespace Shinshi.Network
             return Send(EGrowthAction.EquipmentDismantle, itemId, null, 0, 0, false, null, null);
         }
 
-        /// <summary> 마지막 요청을 같은 operationId로 다시 보낸다, 서버와 API가 처음 결과를 돌려준다 </summary>
+        /// <summary> 마지막 쓰기 요청(조회 제외)을 같은 operationId로 다시 보낸다, 서버와 API가 처음 결과를 돌려준다 </summary>
         public static bool RetryLast()
         {
             if ((!NetworkClient.isConnected) || (!_hasLastRequest))
@@ -139,10 +145,17 @@ namespace Shinshi.Network
             }
 
             Guid operationId = Guid.NewGuid();
-            _lastRequest    = new GrowthRequestMessage(operationId, action, targetId, secondaryId, intArg, intArg2, flag,
+            var  request     = new GrowthRequestMessage(operationId, action, targetId, secondaryId, intArg, intArg2, flag,
                 allocation, loadout);
-            _hasLastRequest = true;
-            NetworkClient.Send(_lastRequest);
+
+            // 조회는 멱등 확인이 필요 없다. 기억하면 다른 창의 조회가 응답 불명인 쓰기 요청의 RetryLast를 가로챈다
+            if (action != EGrowthAction.Snapshot)
+            {
+                _lastRequest    = request;
+                _hasLastRequest = true;
+            }
+
+            NetworkClient.Send(request);
             return operationId;
         }
 

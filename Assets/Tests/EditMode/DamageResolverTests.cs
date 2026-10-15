@@ -1,3 +1,6 @@
+// System
+using System;
+
 // Unity
 using UnityEngine;
 
@@ -26,6 +29,9 @@ namespace Shinshi.Tests
         private const int    ENEMY_ID      = 2;
         private const int    SECOND_ENEMY  = 3;
         private const int    ALLY_ID       = 4;
+        private const int    CAPPED_ID     = 6;    // 받는 피해 상한을 가진 적
+        private const float  CAPPED_AMOUNT    = 30f;  // 방어 적용 피해보다 작은 상한
+        private const float  CAPPED_REMAINDER = 100f; // 상한이 남기는 체력
         private const float  PLAYER_HEALTH = 1500f;
         private const float  ENEMY_HEALTH  = 500f;
         private const float  DEFENSE       = 100f;
@@ -389,6 +395,108 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Apply_CapTarget_UsesCappedAmountForHealthLifeStealAndNotice()
+        {
+            CappedDamageable capped = RegisterCapped((health, damage) => CAPPED_AMOUNT);
+            float uncapped = RAW_DAMAGE * (1f - (DEFENSE / (DEFENSE + DEFENSE_CONSTANT)));
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+            int   notices        = 0;
+            float noticedAmount  = 0f;
+            _resolver.DamageApplied += notice =>
+            {
+                ++notices;
+                noticedAmount = notice.Result.AppliedAmount;
+            };
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, CAPPED_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(EDamageOutcome.Applied, result.Outcome);
+            Assert.AreEqual(CAPPED_AMOUNT, result.AppliedAmount, TOLERANCE);
+            Assert.IsFalse(result.IsLethal);
+            Assert.AreEqual(ENEMY_HEALTH - CAPPED_AMOUNT, capped.Health, TOLERANCE);
+            Assert.AreEqual(1, capped.CapCalls);
+            Assert.AreEqual(ENEMY_HEALTH, capped.LastCapHealth, TOLERANCE, "상한에는 적용 전 체력을 넘긴다");
+            Assert.AreEqual(uncapped, capped.LastCapDamage, TOLERANCE, "상한에는 방어를 적용한 피해를 넘긴다");
+            Assert.AreEqual(CAPPED_AMOUNT, _player.LastLifeStealDamage, TOLERANCE, "흡혈은 깎인 값으로 계산한다");
+            Assert.AreEqual(1, notices);
+            Assert.AreEqual(CAPPED_AMOUNT, noticedAmount, TOLERANCE, "피해 통지는 깎인 값을 싣는다");
+        }
+
+        [Test]
+        public void Apply_CapTarget_OverkillCappedAboveZeroHealth_IsNotLethal()
+        {
+            CappedDamageable capped = RegisterCapped((health, damage) => health - CAPPED_REMAINDER);
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, CAPPED_ID, 1, HUGE_DAMAGE));
+
+            Assert.AreEqual(EDamageOutcome.Applied, result.Outcome);
+            Assert.IsFalse(result.IsLethal, "치명 여부는 깎인 값으로 정한다");
+            Assert.AreEqual(ENEMY_HEALTH - CAPPED_REMAINDER, result.AppliedAmount, TOLERANCE);
+            Assert.AreEqual(CAPPED_REMAINDER, capped.Health, TOLERANCE);
+            Assert.AreEqual(EParticipantLifeState.Alive, capped.LifeState);
+        }
+
+        [Test]
+        public void Apply_CapTarget_CapAllowsAllRemainingHealth_IsLethal()
+        {
+            CappedDamageable capped = RegisterCapped((health, damage) => health);
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, CAPPED_ID, 1, HUGE_DAMAGE));
+
+            Assert.IsTrue(result.IsLethal);
+            Assert.AreEqual(ENEMY_HEALTH, result.AppliedAmount, TOLERANCE);
+            Assert.AreEqual(EParticipantLifeState.Dead, capped.LifeState);
+        }
+
+        // 상한은 피해를 줄이기만 한다. 줄인 값이 아닌 반환은 자르지 않고 버려 원래 피해를 쓴다
+        [TestCase(float.NaN)]
+        [TestCase(float.PositiveInfinity)]
+        [TestCase(float.NegativeInfinity)]
+        [TestCase(-1f)]
+        [TestCase(HUGE_DAMAGE)]
+        public void Apply_CapTarget_InvalidOrLargerCap_IgnoresCapAndUsesOriginalDamage(float returned)
+        {
+            CappedDamageable capped = RegisterCapped((health, damage) => returned);
+            float expected = RAW_DAMAGE * (1f - (DEFENSE / (DEFENSE + DEFENSE_CONSTANT)));
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, CAPPED_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(EDamageOutcome.Applied, result.Outcome);
+            Assert.AreEqual(expected, result.AppliedAmount, TOLERANCE);
+            Assert.AreEqual(ENEMY_HEALTH - expected, capped.Health, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_CapTarget_CapReturnsSameDamage_SameAsUncappedTarget()
+        {
+            CappedDamageable capped = RegisterCapped((health, damage) => damage);
+
+            DamageResult cappedResult = _resolver.Apply(Request(PLAYER_ID, CAPPED_ID, 1, RAW_DAMAGE));
+            DamageResult plainResult  = _resolver.Apply(Request(PLAYER_ID, ENEMY_ID, 2, RAW_DAMAGE));
+
+            Assert.AreEqual(plainResult.AppliedAmount, cappedResult.AppliedAmount, TOLERANCE);
+            Assert.AreEqual(_enemy.Health, capped.Health, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_CapTarget_CapReturnsZero_IgnoredWithoutDamageNoticeOrLifeSteal()
+        {
+            CappedDamageable capped = RegisterCapped((health, damage) => 0f);
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+            int notices = 0;
+            _resolver.DamageApplied += notice => ++notices;
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, CAPPED_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(EDamageOutcome.Invulnerable, result.Outcome, "전부 깎인 피해는 없던 것이다");
+            Assert.IsFalse(result.CountsAsHit);
+            Assert.AreEqual(0, capped.DamageCalls);
+            Assert.AreEqual(ENEMY_HEALTH, capped.Health);
+            Assert.AreEqual(0, notices);
+            Assert.AreEqual(0, _player.LifeStealCalls);
+        }
+
+        [Test]
         public void IssueInstanceId_RepeatedCalls_NeverReturnsNoneAndIncreases()
         {
             int first  = _resolver.IssueInstanceId();
@@ -411,6 +519,58 @@ namespace Shinshi.Tests
         {
             return new DamageRequest(attacker, target, actionId, actionId, rawDamage, EDamageFlags.None, source,
                 Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+        }
+
+        private CappedDamageable RegisterCapped(Func<float, float, float> cap)
+        {
+            var capped = new CappedDamageable(new FakeDamageable(CAPPED_ID, ECombatFaction.Enemy, ENEMY_HEALTH, DEFENSE), cap);
+            Assert.IsTrue(_registry.Register(capped));
+            return capped;
+        }
+
+        // FakeDamageable을 감싸 받는 피해 상한만 더한 대상, 상한이 받은 인자를 남긴다
+        private sealed class CappedDamageable : IDamageable, IDamageCapTarget
+        {
+            private readonly FakeDamageable            _inner;
+            private readonly Func<float, float, float> _cap;
+
+            public int                   CombatId        => _inner.CombatId;
+            public ECombatFaction        Faction         => _inner.Faction;
+            public EParticipantLifeState LifeState       => _inner.LifeState;
+            public bool                  IsSummon        => _inner.IsSummon;
+            public int                   OwnerCombatId   => _inner.OwnerCombatId;
+            public Vector3               Position        => _inner.Position;
+            public Vector3               Forward         => _inner.Forward;
+            public float                 BodyRadius      => _inner.BodyRadius;
+            public float                 Health          => _inner.Health;
+            public float                 MaxHealth       => _inner.MaxHealth;
+            public float                 Defense         => _inner.Defense;
+            public bool                  IsInvulnerable  => _inner.IsInvulnerable;
+            public bool                  IsGuardingFront => _inner.IsGuardingFront;
+            public int                   DamageCalls     => _inner.DamageCalls;
+
+            public int   CapCalls      { get; private set; }
+            public float LastCapHealth { get; private set; }
+            public float LastCapDamage { get; private set; }
+
+            public CappedDamageable(FakeDamageable inner, Func<float, float, float> cap)
+            {
+                _inner = inner;
+                _cap   = cap;
+            }
+
+            public float CapIncomingDamage(float currentHealth, float damage)
+            {
+                ++CapCalls;
+                LastCapHealth = currentHealth;
+                LastCapDamage = damage;
+                return _cap(currentHealth, damage);
+            }
+
+            public void ApplyDamage(float appliedAmount, bool isLethal, double serverTime)
+            {
+                _inner.ApplyDamage(appliedAmount, isLethal, serverTime);
+            }
         }
     }
 }

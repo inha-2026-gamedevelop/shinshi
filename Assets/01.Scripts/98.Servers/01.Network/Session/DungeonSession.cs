@@ -74,9 +74,12 @@ namespace Shinshi.Network
         private bool              _inTick              = false;
         private bool              _successPending      = false;
         private bool              _timeoutPending      = false;
+        private bool              _finalSuccessPending = false;
+        private bool              _failurePending      = false;
         private bool              _storageFault        = false;
         private bool              _disposed            = false;
         private ESessionEndReason _endReason;
+        private ESessionEndReason _failureReason       = ESessionEndReason.AllDead;
         private ESessionEndReason _lastDepartureReason = ESessionEndReason.Abandon;
 
         /****************************************
@@ -425,10 +428,19 @@ namespace Shinshi.Network
             {
                 bool storageStopped = (_storageFault) || (_events.IsTerminal);
 
-                // 같은 틱의 최종 처치와 전원 사망은 전멸 실패를 우선한다
+                // 같은 틱에 겹치면 저장 장애, 보스 기믹의 최종 성공, 기믹 실패, 전멸, 일반 성공, 전원 이탈, 시간 초과 순으로 하나만 적용한다.
+                // 일반 보스 처치는 같은 틱 전원 사망에 지고, 기믹이 내준 최종 성공만 전멸보다 앞선다
                 if (storageStopped)
                 {
                     Finish(ESessionEndReason.ServiceCancelled);
+                }
+                else if (_finalSuccessPending)
+                {
+                    Finish(ESessionEndReason.Success);
+                }
+                else if (_failurePending)
+                {
+                    Finish(_failureReason);
                 }
                 else if (IsWiped())
                 {
@@ -700,7 +712,7 @@ namespace Shinshi.Network
             }
         }
 
-        // 종료는 CompleteTick이 판정한다. 같은 틱에 전원이 죽었으면 전멸 실패가 먼저라 이 성공은 버려진다
+        // 종료는 CompleteTick이 판정한다. 같은 틱에 기믹이 실패했거나 전원이 죽었으면 그쪽이 먼저라 이 성공은 버려진다
         /// <summary> 보스 사망이 확정된 틱 안에서 부른다, 보스전이 진행 중일 때만 받는다 </summary>
         public bool ReportBossDefeated()
         {
@@ -710,6 +722,39 @@ namespace Shinshi.Network
             }
 
             _successPending = true;
+            return true;
+        }
+
+        // 일반 처치(ReportBossDefeated)와 달리 같은 틱 전원 사망보다 앞선다. 보상과 정산은 일반 성공과 같은 종료 경로 한 번이다
+        /// <summary> 보스 기믹이 최종 성공을 내준 틱 안에서 부른다, 보스전이 진행 중일 때만 받는다 </summary>
+        public bool ReportBossFinalSuccess()
+        {
+            if ((!IsRunning) || (!_inTick) || (!_isBossSession) || (_storageFault))
+            {
+                return false;
+            }
+
+            _finalSuccessPending = true;
+            return true;
+        }
+
+        // 전멸이 아닌데 더 진행할 수 없는 보스전을 닫는다. 새 종료 사유를 만들면 정산과 백엔드 계약이 바뀌므로 기존 값만 받는다.
+        // 같은 틱에 두 번 오면 먼저 온 사유를 지킨다
+        /// <summary> 보스 기믹이 실패한 틱 안에서 부른다, 사유는 Timeout과 AllDead만 받고 보스전이 진행 중일 때만 받는다 </summary>
+        public bool ReportBossFightFailed(ESessionEndReason reason)
+        {
+            if ((!IsRunning) || (!_inTick) || (!_isBossSession) || (_storageFault)
+                || ((reason != ESessionEndReason.Timeout) && (reason != ESessionEndReason.AllDead)))
+            {
+                return false;
+            }
+
+            if (!_failurePending)
+            {
+                _failurePending = true;
+                _failureReason  = reason;
+            }
+
             return true;
         }
 

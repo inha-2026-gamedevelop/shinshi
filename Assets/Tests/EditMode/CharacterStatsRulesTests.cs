@@ -150,6 +150,65 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Compute_WeaponAttackOption_AddsToTrainingBracketOnce()
+        {
+            int[] training = new int[Constants.Combat.TRAINING_STAT_COUNT];
+            training[(int)ETrainingStat.Attack] = TRAINING_CAP;
+            CharacterCombatLoadout loadout = Loadout(RARE_SUFFIX, 1, false, 17, training);
+            SetOptions(loadout, EEquipmentSlot.Weapon, EquipmentOptionRules.KIND_ATTACK_RATE, 200,
+                EquipmentOptionRules.KIND_CRIT_CHANCE, 100);
+
+            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth, loadout);
+
+            // 수련 +20%와 옵션 +2%를 같은 괄호에서 더한다, 치명은 5% + 장신구 2%p + 옵션 1%p
+            Assert.AreEqual(644.32f * 1.22f, stats.Attack, ATTACK_TOLERANCE);
+            Assert.AreEqual(0.08f, stats.CritChance, ATTACK_TOLERANCE);
+        }
+
+        [Test]
+        public void Compute_ArmorHealthAndDefenseOptions_Apply()
+        {
+            CharacterCombatLoadout loadout = Loadout(RARE_SUFFIX, 1, false, 17,
+                new int[Constants.Combat.TRAINING_STAT_COUNT]);
+            SetOptions(loadout, EEquipmentSlot.Body, EquipmentOptionRules.KIND_HEALTH_RATE, 200,
+                EquipmentOptionRules.KIND_DEFENSE_RATE, 100);
+
+            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth, loadout);
+
+            Assert.AreEqual((float)decimal.Floor(3541.2m * 1.02m), stats.MaxHealth);
+            Assert.AreEqual(326.8f * 1.01f, stats.Defense, ATTACK_TOLERANCE);
+        }
+
+        [Test]
+        public void Compute_NoOptions_SameAsBefore()
+        {
+            CharacterStats stats = CharacterStatsRules.Compute(_player, _equipment, _growth,
+                Loadout(RARE_SUFFIX, 1, false, 17, new int[Constants.Combat.TRAINING_STAT_COUNT]));
+
+            Assert.AreEqual(644.32f, stats.Attack, ATTACK_TOLERANCE);
+            Assert.AreEqual(3541f, stats.MaxHealth);
+        }
+
+        // 종류가 부위 후보에 없음, 등급 범위 밖, 간격 어긋남, 종류 없이 값만 있음
+        [TestCase(EquipmentOptionRules.KIND_HEALTH_RATE, 100)]
+        [TestCase(EquipmentOptionRules.KIND_ATTACK_RATE, 210)]
+        [TestCase(EquipmentOptionRules.KIND_ATTACK_RATE, 90)]
+        [TestCase(EquipmentOptionRules.KIND_ATTACK_RATE, 105)]
+        [TestCase(EquipmentOptionRules.KIND_NONE, 100)]
+        [TestCase(99, 100)]
+        public void TryCompute_InvalidWeaponOption_Rejects(int kind, int value)
+        {
+            CharacterCombatLoadout loadout = Loadout(RARE_SUFFIX, 1, false, 17,
+                new int[Constants.Combat.TRAINING_STAT_COUNT]);
+            SetOptions(loadout, EEquipmentSlot.Weapon, kind, value, EquipmentOptionRules.KIND_NONE, 0);
+
+            bool computed = CharacterStatsRules.TryCompute(_player, _equipment, _growth, loadout, out _, out string error);
+
+            Assert.IsFalse(computed);
+            Assert.IsNotEmpty(error);
+        }
+
+        [Test]
         public void Base_NoGear_LifeStealIsZero()
         {
             Assert.AreEqual(0f, CharacterStatsRules.Base(_player).LifeSteal);
@@ -263,6 +322,14 @@ namespace Shinshi.Tests
 
             yield return new TestCaseData("shortEquipment", new CharacterCombatLoadout(0, new CombatEquipmentEntry[1], none,
                 new CombatTalismanEntry[0], CONTENT_VERSION));
+        }
+
+        private static void SetOptions(CharacterCombatLoadout loadout, EEquipmentSlot slot, int kind1, int value1, int kind2,
+            int value2)
+        {
+            CombatEquipmentEntry entry = loadout.Equipped[(int)slot];
+            loadout.Equipped[(int)slot] = new CombatEquipmentEntry(entry.DefinitionId, entry.Grade, entry.IsTraining,
+                entry.Enhancement, kind1, value1, kind2, value2);
         }
 
         private static CharacterCombatLoadout Loadout(string suffix, int grade, bool isTraining, int enhancement, int[] training)

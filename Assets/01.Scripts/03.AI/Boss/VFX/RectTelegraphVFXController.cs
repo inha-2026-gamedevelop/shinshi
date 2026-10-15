@@ -8,7 +8,7 @@ namespace Shinshi.Art
     /// <summary> 직사각형 지면 예고 한 개를 그린다, 피해 판정과 네트워크는 다루지 않는다 </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-    public sealed class RectTelegraphVFXController : MonoBehaviour
+    public sealed class RectTelegraphVFXController : MonoBehaviour, IPrewarmTarget
     {
         /****************************************
         *              Constants
@@ -20,6 +20,10 @@ namespace Shinshi.Art
         private const float  HALF                  = 0.5f;
         private const float  NOT_EXECUTED          = -1f;
         private const string MESH_NAME             = "RectTelegraphVFX Runtime Mesh";
+        private const float  PREWARM_WIDTH         = 1.5f;
+        private const float  PREWARM_LENGTH        = 4f;
+        private const float  PREWARM_CHARGE        = 0.25f;
+        private const float  MIN_DIRECTION         = 0.0001f;
 
         private static readonly int _stateId  = Shader.PropertyToID("_State");
         private static readonly int _sizeId   = Shader.PropertyToID("_Size");
@@ -149,6 +153,37 @@ namespace Shinshi.Art
             {
                 _surface.enabled = false;
             }
+        }
+
+        /// <summary> 운영 예고와 같은 Show로 켜고 충전, 발동 번쩍임, 소멸을 차례로 그린다 </summary>
+        public void BeginPrewarm()
+        {
+            Vector3 direction = transform.forward;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < MIN_DIRECTION)
+            {
+                direction = Vector3.forward;
+            }
+
+            Show(transform.position, direction.normalized, PREWARM_WIDTH, PREWARM_LENGTH);
+        }
+
+        public void TickPrewarm(float elapsedSeconds)
+        {
+            if (elapsedSeconds < PREWARM_CHARGE)
+            {
+                Render(elapsedSeconds / PREWARM_CHARGE, NOT_EXECUTED, 0f, NOT_EXECUTED, false);
+                return;
+            }
+
+            float executeAge  = elapsedSeconds - PREWARM_CHARGE;
+            float dissolveAge = executeAge - _flashSeconds;
+            Render(1f, executeAge, 0f, (dissolveAge >= 0f) ? dissolveAge : NOT_EXECUTED, false);
+        }
+
+        public void EndPrewarm()
+        {
+            Hide();
         }
 
         private void Initialize()

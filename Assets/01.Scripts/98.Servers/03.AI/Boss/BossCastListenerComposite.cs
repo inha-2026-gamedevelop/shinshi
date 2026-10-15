@@ -19,6 +19,21 @@ namespace Shinshi.AI
             _listeners = (listeners == null) ? new IBossCastListener[0] : (IBossCastListener[])listeners.Clone();
         }
 
+        /// <summary> 이 묶음이 전달하는 수신자 중에 있는지 본다, 묶음 안의 묶음도 찾는다 </summary>
+        public bool Contains(IBossCastListener listener)
+        {
+            for (int i = 0; i < _listeners.Length; ++i)
+            {
+                if ((ReferenceEquals(_listeners[i], listener))
+                    || ((_listeners[i] is BossCastListenerComposite inner) && (inner.Contains(listener))))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void OnCastExecuted(int castInstanceId, double serverTime)
         {
             for (int i = 0; i < _listeners.Length; ++i)

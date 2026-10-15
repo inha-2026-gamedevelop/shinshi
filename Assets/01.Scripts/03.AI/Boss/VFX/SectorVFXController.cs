@@ -9,7 +9,7 @@ namespace Shinshi.Art
     /// <summary> 부채꼴 지면 폭발 연출 한 개를 재생한다, 피해 판정과 네트워크는 다루지 않는다 </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-    public sealed class SectorVFXController : MonoBehaviour
+    public sealed class SectorVFXController : MonoBehaviour, IPrewarmTarget
     {
         /****************************************
         *                Fields
@@ -31,6 +31,9 @@ namespace Shinshi.Art
         private const float  DEBRIS_SIZE_MAX       = 0.18f;
         private const string MESH_NAME             = "SectorGroundVFX Runtime Mesh";
         private const float  HOLD_MARGIN           = 0.001f;
+        private const float  PREWARM_ANGLE         = 120f;
+        private const float  PREWARM_RADIUS        = 3f;
+        private const float  PREWARM_TELEGRAPH     = 0.3f;
 
         [SerializeField] private SectorShape _shape = SectorShape.Default;
         [SerializeField] private SectorBehaviour _behaviour = SectorBehaviour.Default;
@@ -223,6 +226,33 @@ namespace Shinshi.Art
             _properties.SetVector(_shapeId, new Vector4(_activeShape.InnerRadius, _activeShape.Radius,
                 _activeShape.Angle * Mathf.Deg2Rad, _groundOffset));
             UpdateVisual();
+        }
+
+        /// <summary> 운영 예고와 같은 동시 폭발 설정으로 Play를 불러 충전, 폭발, 소멸 구간을 데운다 </summary>
+        public void BeginPrewarm()
+        {
+            SectorShape shape = SectorShape.Default;
+            shape.Angle       = PREWARM_ANGLE;
+            shape.Radius      = PREWARM_RADIUS;
+            shape.InnerRadius = 0f;
+
+            SectorBehaviour behaviour = SectorBehaviour.Default;
+            behaviour.Mode              = ESectorExplosionMode.Simultaneous;
+            behaviour.SegmentCount      = 1;
+            behaviour.SegmentDelay      = 0f;
+            behaviour.TelegraphDuration = PREWARM_TELEGRAPH;
+
+            Play(shape, behaviour, 0f, false);
+        }
+
+        // 시간은 Update가 스스로 센다, 러너가 프레임을 건너뛰어도 입자는 실제 시간 기준으로 나온다
+        public void TickPrewarm(float elapsedSeconds)
+        {
+        }
+
+        public void EndPrewarm()
+        {
+            Stop();
         }
 
         /// <summary> 서버가 발동을 확정했다, 충전 끝에서 멈춰 있던 예고가 이어서 폭발한다. 멈추지 않은 재생에는 영향이 없다 </summary>

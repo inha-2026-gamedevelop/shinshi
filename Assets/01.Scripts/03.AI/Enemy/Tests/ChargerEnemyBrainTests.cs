@@ -328,6 +328,70 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Hit_DuringTelegraph_CancelsDashAndEntersHit()
+        {
+            _playerA.Position = new Vector3(0f, 0f, 5f);
+            RunUntil(() => _brain.State == EEnemyState.Telegraph, 1f);
+
+            Step(0.2f);
+            Vector3 position = _enemy.Position;
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+
+            Assert.AreEqual(EEnemyState.Hit, _brain.State);
+            Step(0.5f);
+            Assert.AreEqual(0, _brain.ExecutedCount);
+            Assert.AreEqual(0, _playerA.DamageCalls, "취소된 예고는 돌진하지 않는다");
+            Assert.AreEqual(position, _enemy.Position);
+        }
+
+        [Test]
+        public void Hit_DuringDash_StopsMovementAndPendingDamage()
+        {
+            _playerA.Position = new Vector3(0f, 0f, 5f);
+            RunUntil(() => _brain.State == EEnemyState.Dash, 2f);
+            Step(0.1f);
+
+            Assert.Less(_brain.TraveledDistance, 5f, "플레이어에 닿기 전에 때린다");
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+            Vector3 position = _enemy.Position;
+            Step(0.5f);
+
+            Assert.AreEqual(EEnemyState.Hit, _brain.State);
+            Assert.AreEqual(0, _playerA.DamageCalls, "돌진이 끊기면 닿지 못한 대상은 맞지 않는다");
+            Assert.AreEqual(0, _brain.ExecutedCount);
+            Assert.AreEqual(position, _enemy.Position, "굳는 동안 더 이동하지 않는다");
+        }
+
+        [Test]
+        public void Hit_AfterStun_AllowsImmediateNewTelegraph()
+        {
+            _playerA.Position = new Vector3(0f, 0f, 5f);
+            RunUntil(() => _brain.State == EEnemyState.Telegraph, 1f);
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+            Assert.AreEqual(EEnemyState.Hit, _brain.State);
+
+            RunUntil(() => _brain.State == EEnemyState.Telegraph, ChargerEnemyBrain.PROTOTYPE_HIT_STUN_SECONDS + 0.2f);
+
+            Assert.AreEqual(EEnemyState.Telegraph, _brain.State, "공격 간격이 남아 있어도 경직이 끝나면 바로 다시 예고한다");
+        }
+
+        [Test]
+        public void Hit_OutsideAttack_DoesNotInterrupt()
+        {
+            _playerA.Position = new Vector3(0f, 0f, FAR_DISTANCE);
+            Step(STEP_SECONDS * 3f);
+            Assert.AreEqual(EEnemyState.Chase, _brain.State);
+
+            _enemy.ApplyDamage(10f, false, _now);
+            Step(STEP_SECONDS);
+
+            Assert.AreEqual(EEnemyState.Chase, _brain.State, "공격 중이 아닌 피격은 행동을 끊지 않는다");
+        }
+
+        [Test]
         public void Death_AfterHit_KeepsAppliedDamage()
         {
             _playerA.Position = new Vector3(0f, 0f, 5f);
