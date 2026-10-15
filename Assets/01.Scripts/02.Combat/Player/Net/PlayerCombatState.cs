@@ -52,6 +52,17 @@ namespace Shinshi.Combat
         [SyncVar] private float _energy;
         [SyncVar] private float _maxEnergy;
         [SyncVar] private float _resonance;
+        // 마검사, 궁수 스택, 다른 직업은 늘 0이다. 표시 전용이며 서버 판정은 기술 서버가 가진 값을 쓴다
+        [SyncVar] private byte _classStacks;
+
+        // 궁수 기본 공격에 지금 실린 속성, 다른 직업은 늘 None이다. 화살 표현과 입력 간격 짐작에만 쓴다
+        [SyncVar] private EArcherElement _archerElement;
+
+        // 궁수 기본 공격 화살이 적을 맞힐 때마다 서버가 1씩 올린다(255 다음 0). 위치와 속성은 그 화살의 값이며 적중 효과 표시에만 쓴다.
+        // 한 동기화 주기에 두 발이 맞으면 마지막 것만 보이는데, 화살은 1초에 두 발을 넘지 않아 표시 누락은 드물다
+        [SyncVar] private byte           _arrowHitSequence;
+        [SyncVar] private Vector3        _arrowHitPosition;
+        [SyncVar] private EArcherElement _arrowHitElement;
         [SyncVar] private ESkillPhase _skillPhase;
         [SyncVar] private int _castInstanceId;
         [SyncVar] private int _actionInstanceId;
@@ -66,6 +77,9 @@ namespace Shinshi.Combat
         // 클라이언트는 값이 바뀌었는지만 본다. 서버 판정은 이 값을 읽지 않는다
         [SyncVar] private byte _attackSequence;
         [SyncVar] private byte _dodgeSequence;
+
+        // 서버 콤보 기본 공격이면 이번 순번이 쓴 단계(0부터)다. 콤보가 없는 직업은 늘 0이다. 순번과 같은 갱신에 실려 함께 바뀐다
+        [SyncVar] private byte _attackComboStep;
 
         // 서버가 기절로 진행 중인 기본 공격 준비나 기술을 끊을 때마다 1씩 올린다(255 다음 0). 회피와 사망에는 각자 신호가 있어 올리지 않는다.
         // 클라이언트 표현은 값이 바뀌면 아직 나가지 않은 발사와 타격 재생을 버린다. 서버 판정은 이 값을 읽지 않는다
@@ -92,6 +106,11 @@ namespace Shinshi.Combat
         public float Energy => _energy;
         public float MaxEnergy => _maxEnergy;
         public float Resonance => _resonance;
+        public byte ClassStacks => _classStacks;
+        public EArcherElement ArcherElement => _archerElement;
+        public byte ArrowHitSequence => _arrowHitSequence;
+        public Vector3 ArrowHitPosition => _arrowHitPosition;
+        public EArcherElement ArrowHitElement => _arrowHitElement;
         public ESkillPhase SkillPhase => _skillPhase;
         public int CastInstanceId => _castInstanceId;
         public int ActionInstanceId => _actionInstanceId;
@@ -105,6 +124,7 @@ namespace Shinshi.Combat
         public CharacterAppearance Appearance => _appearance;
         public float LocomotionSpeed => _locomotionSpeed;
         public byte AttackSequence => _attackSequence;
+        public byte AttackComboStep => _attackComboStep;
         public byte DodgeSequence => _dodgeSequence;
         public byte ActionCancelSequence => _actionCancelSequence;
         public EPlayerControlKind ControlKind => _controlKind;
@@ -172,6 +192,28 @@ namespace Shinshi.Combat
             _locomotionSpeed = locomotionSpeed;
         }
 
+        // 같은 값이면 SyncVar가 더럽혀지지 않으므로 매 틱 불러도 바뀔 때만 전송된다
+        [Server]
+        public void SetClassStacks(byte stacks)
+        {
+            _classStacks = stacks;
+        }
+
+        // 같은 값이면 SyncVar가 더럽혀지지 않으므로 매 틱 불러도 바뀔 때만 전송된다
+        [Server]
+        public void SetArcherElement(EArcherElement element)
+        {
+            _archerElement = element;
+        }
+
+        [Server]
+        public void BumpArrowHit(Vector3 position, EArcherElement element)
+        {
+            _arrowHitPosition = position;
+            _arrowHitElement  = element;
+            _arrowHitSequence = unchecked((byte)(_arrowHitSequence + 1));
+        }
+
         [Server]
         public void SetSkillResources(float energy, float maxEnergy, float resonance)
         {
@@ -181,9 +223,10 @@ namespace Shinshi.Combat
         }
 
         [Server]
-        public void BumpAttackSequence()
+        public void BumpAttackSequence(byte comboStep)
         {
-            _attackSequence = unchecked((byte)(_attackSequence + 1));
+            _attackComboStep = comboStep;
+            _attackSequence  = unchecked((byte)(_attackSequence + 1));
         }
 
         [Server]

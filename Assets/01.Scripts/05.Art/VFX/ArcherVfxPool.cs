@@ -10,7 +10,7 @@ namespace Shinshi.Art
         *                Fields
         ****************************************/
 
-        // 투사체가 사거리 끝에 닿은 뒤 남은 입자가 흩어지도록 두는 시간, 적중 위치는 알 수 없어 끝에서 멈춘다
+        // 투사체가 사거리 끝에 닿거나 서버 적중 신호로 멈춘 뒤 남은 입자가 흩어지도록 두는 시간
         private const double FADE_SECONDS = 0.2;
 
         private enum ESlotMode : byte
@@ -184,6 +184,38 @@ namespace Shinshi.Art
             }
         }
 
+        /// <summary> 적중 위치에서 수평으로 maxDistance 안에 있는 가장 가까운 비행 투사체를 그 자리에서 흩어지게 한다, 없으면 거짓 </summary>
+        public bool FadeNearestProjectile(Vector3 position, float maxDistance, double now)
+        {
+            int   nearest = -1;
+            float best    = maxDistance * maxDistance;
+            for (int i = 0; i < SlotCount; ++i)
+            {
+                if ((_modes[i] != ESlotMode.Projectile) || (_objects[i] == null))
+                {
+                    continue;
+                }
+
+                Vector3 current = _transforms[i].position;
+                float   x       = current.x - position.x;
+                float   z       = current.z - position.z;
+                float   sqr     = (x * x) + (z * z);
+                if (sqr <= best)
+                {
+                    best    = sqr;
+                    nearest = i;
+                }
+            }
+
+            if (nearest < 0)
+            {
+                return false;
+            }
+
+            BeginFade(nearest, now);
+            return true;
+        }
+
         public void StopAll()
         {
             for (int i = 0; i < SlotCount; ++i)
@@ -201,6 +233,12 @@ namespace Shinshi.Art
                 return;
             }
 
+            BeginFade(index, now);
+        }
+
+        // 입자 방출만 멈추고 남은 입자와 궤적이 잠깐 흩어진 뒤 정리한다
+        private void BeginFade(int index, double now)
+        {
             ParticleSystem[] systems = _systems[index];
             for (int i = 0; i < systems.Length; ++i)
             {

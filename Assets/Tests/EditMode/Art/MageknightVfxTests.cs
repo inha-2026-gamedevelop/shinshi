@@ -21,6 +21,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         private const float  BASIC_DELAY        = 0.2f;
+        private const float  SHIELD_DURATION    = 3f;
         private const float  FIELD_DURATION     = 4f;
         private const float  WAVE_SPEED         = 18f;
         private const float  WAVE_RANGE         = 9f;
@@ -112,7 +113,9 @@ namespace Shinshi.Tests
             Assert.That(_plays[0].Kind, Is.EqualTo(EMageknightVfxKind.Basic));
             Assert.That(_plays[0].Direction, Is.EqualTo(Vector3.right));
             Assert.That(MageknightVfxTracker.UsesActorPosition(EMageknightVfxKind.Basic), Is.True);
-            Assert.That(MageknightVfxTracker.UsesActorPosition(EMageknightVfxKind.Arcane), Is.False);
+            Assert.That(MageknightVfxTracker.UsesActorPosition(EMageknightVfxKind.Shield), Is.True);
+            Assert.That(MageknightVfxTracker.FollowsActor(EMageknightVfxKind.Shield), Is.True);
+            Assert.That(MageknightVfxTracker.UsesActorPosition(EMageknightVfxKind.Jump), Is.False);
         }
 
         [Test]
@@ -142,10 +145,10 @@ namespace Shinshi.Tests
             byte[]  slots  = { SLOT_Q, SLOT_W, SLOT_E, SLOT_R };
             EMageknightVfxKind[] expected =
             {
-                EMageknightVfxKind.Arcane,
+                EMageknightVfxKind.Shield,
+                EMageknightVfxKind.Wave,
                 EMageknightVfxKind.Field,
-                EMageknightVfxKind.Seal,
-                EMageknightVfxKind.Wave
+                EMageknightVfxKind.Jump
             };
 
             double now = 20.0;
@@ -153,6 +156,7 @@ namespace Shinshi.Tests
             {
                 MageknightVfxTracker.Observation cast = Cast(Idle(now), i + 1, slots[i], ESkillPhase.Windup, now + 0.3);
                 cast.SkillOrigin = origin;
+                cast.SkillPoint  = origin;
                 cast.SkillAim    = aim;
                 Step(tracker, cast);
                 cast.Now = now + 0.31;
@@ -202,7 +206,7 @@ namespace Shinshi.Tests
             MageknightVfxTracker tracker = CreateTracker();
             Step(tracker, Idle(40.0));
 
-            MageknightVfxTracker.Observation cast = Cast(Idle(40.0), 2, SLOT_E, ESkillPhase.Windup, 40.3);
+            MageknightVfxTracker.Observation cast = Cast(Idle(40.0), 2, SLOT_R, ESkillPhase.Windup, 40.3);
             Step(tracker, cast);
             Assert.That(_plays, Is.Empty);
 
@@ -214,7 +218,7 @@ namespace Shinshi.Tests
             Step(tracker, cast);
 
             Assert.That(_plays.Count, Is.EqualTo(1));
-            Assert.That(_plays[0].Kind, Is.EqualTo(EMageknightVfxKind.Seal));
+            Assert.That(_plays[0].Kind, Is.EqualTo(EMageknightVfxKind.Jump));
         }
 
         [Test]
@@ -249,11 +253,11 @@ namespace Shinshi.Tests
             Step(tracker, Idle(60.0));
 
             Step(tracker, Cast(Idle(60.0), 1, SLOT_Q, ESkillPhase.Windup, 60.25));
-            Step(tracker, Cast(Idle(60.1), 2, SLOT_E, ESkillPhase.Windup, 60.4));
-            Step(tracker, Cast(Idle(60.41), 2, SLOT_E, ESkillPhase.Active, 60.4));
+            Step(tracker, Cast(Idle(60.1), 2, SLOT_R, ESkillPhase.Windup, 60.4));
+            Step(tracker, Cast(Idle(60.41), 2, SLOT_R, ESkillPhase.Active, 60.4));
 
             Assert.That(_plays.Count, Is.EqualTo(1));
-            Assert.That(_plays[0].Kind, Is.EqualTo(EMageknightVfxKind.Seal));
+            Assert.That(_plays[0].Kind, Is.EqualTo(EMageknightVfxKind.Jump));
         }
 
         [Test]
@@ -333,14 +337,14 @@ namespace Shinshi.Tests
             Step(tracker, Idle(100.0));
 
             // resolveAt 100.3에서 3초 늦게 처음 본 장판은 남은 1초만 보이고 서버와 같은 시각에 끝난다
-            Step(tracker, Cast(Idle(103.3), 1, SLOT_W, ESkillPhase.Recovery, 100.3));
+            Step(tracker, Cast(Idle(103.3), 1, SLOT_E, ESkillPhase.Recovery, 100.3));
             Assert.That(_plays.Count, Is.EqualTo(1));
             Assert.That(_plays[0].Kind, Is.EqualTo(EMageknightVfxKind.Field));
             Assert.That(_plays[0].StartAt, Is.EqualTo(100.3).Within(1e-9));
             Assert.That(_plays[0].EndAt, Is.EqualTo(100.3 + FIELD_DURATION).Within(1e-9));
 
             _plays.Clear();
-            Step(tracker, Cast(Idle(110.0), 2, SLOT_W, ESkillPhase.Recovery, 105.0));
+            Step(tracker, Cast(Idle(110.0), 2, SLOT_E, ESkillPhase.Recovery, 105.0));
             Assert.That(_plays, Is.Empty);
         }
 
@@ -349,8 +353,8 @@ namespace Shinshi.Tests
         {
             MageknightVfxTracker tracker = CreateTracker();
             Step(tracker, Idle(120.0));
-            Step(tracker, Cast(Idle(120.0), 1, SLOT_W, ESkillPhase.Windup, 120.3));
-            Step(tracker, Cast(Idle(120.31), 1, SLOT_W, ESkillPhase.Active, 120.3));
+            Step(tracker, Cast(Idle(120.0), 1, SLOT_E, ESkillPhase.Windup, 120.3));
+            Step(tracker, Cast(Idle(120.31), 1, SLOT_E, ESkillPhase.Active, 120.3));
             Assert.That(_plays.Count, Is.EqualTo(1));
 
             Step(tracker, Idle(120.5));
@@ -371,7 +375,7 @@ namespace Shinshi.Tests
             MageknightVfxTracker tracker = CreateTracker();
             Step(tracker, Idle(130.0));
 
-            MageknightVfxTracker.Observation cast = Cast(Idle(130.5), 1, SLOT_R, ESkillPhase.Active, 130.3);
+            MageknightVfxTracker.Observation cast = Cast(Idle(130.5), 1, SLOT_W, ESkillPhase.Active, 130.3);
             cast.SkillOrigin = new Vector3(5f, 0f, 5f);
             cast.SkillAim    = Vector3.forward;
             Step(tracker, cast);
@@ -405,18 +409,19 @@ namespace Shinshi.Tests
             Step(tracker, Idle(140.0));
 
             // 사거리 9m를 18m/s로 지나는 데 0.5초가 걸리므로 그 뒤 첫 관찰은 지난 일이다
-            Step(tracker, Cast(Idle(141.0), 1, SLOT_R, ESkillPhase.Recovery, 140.3));
+            Step(tracker, Cast(Idle(141.0), 1, SLOT_W, ESkillPhase.Recovery, 140.3));
             Assert.That(_plays, Is.Empty);
         }
 
         [Test]
-        public void Update_UnconfiguredWaveAndField_PlayNothing()
+        public void Update_UnconfiguredWaveFieldAndShield_PlayNothing()
         {
             var tracker = new MageknightVfxTracker();
-            tracker.Configure(BASIC_DELAY, 0f, 0f, 0f, MAX_LATE);
+            tracker.Configure(BASIC_DELAY, 0f, 0f, 0f, 0f, MAX_LATE);
             Step(tracker, Idle(150.0));
             Step(tracker, Cast(Idle(150.0), 1, SLOT_W, ESkillPhase.Active, 150.0));
-            Step(tracker, Cast(Idle(151.0), 2, SLOT_R, ESkillPhase.Active, 151.0));
+            Step(tracker, Cast(Idle(151.0), 2, SLOT_E, ESkillPhase.Active, 151.0));
+            Step(tracker, Cast(Idle(152.0), 3, SLOT_Q, ESkillPhase.Active, 152.0));
 
             Assert.That(_plays, Is.Empty);
         }
@@ -426,9 +431,52 @@ namespace Shinshi.Tests
         {
             MageknightVfxTracker tracker = CreateTracker();
             Step(tracker, Idle(160.0));
-            Step(tracker, Cast(Idle(161.0), 1, SLOT_Q, ESkillPhase.Recovery, 160.3));
+            Step(tracker, Cast(Idle(161.0), 1, SLOT_R, ESkillPhase.Recovery, 160.3));
 
             Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_ShieldResolved_LastsForImmunityDurationAtActor()
+        {
+            MageknightVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(170.0));
+            Step(tracker, Cast(Idle(170.0), 1, SLOT_Q, ESkillPhase.Windup, 170.1));
+            Step(tracker, Cast(Idle(170.11), 1, SLOT_Q, ESkillPhase.Recovery, 170.1));
+
+            Assert.That(_plays.Count, Is.EqualTo(1));
+            Assert.That(_plays[0].Kind, Is.EqualTo(EMageknightVfxKind.Shield));
+            Assert.That(_plays[0].EndAt, Is.EqualTo(170.1 + SHIELD_DURATION).Within(1e-9));
+        }
+
+        [Test]
+        public void Update_FieldCast_UsesServerPointNotCasterOrigin()
+        {
+            MageknightVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(180.0));
+            MageknightVfxTracker.Observation cast = Cast(Idle(180.31), 1, SLOT_E, ESkillPhase.Active, 180.3);
+            cast.SkillOrigin = Vector3.zero;
+            cast.SkillPoint  = new Vector3(4f, 0f, 5f);
+            Step(tracker, cast);
+
+            Assert.That(_plays.Count, Is.EqualTo(1));
+            Assert.That(_plays[0].Origin, Is.EqualTo(new Vector3(4f, 0f, 5f)));
+        }
+
+        [Test]
+        public void Update_BasicSwing_CarriesComboStep()
+        {
+            MageknightVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(190.0));
+            MageknightVfxTracker.Observation bump = Idle(190.0);
+            bump.AttackSequence  = 1;
+            bump.AttackComboStep = 2;
+            Step(tracker, bump);
+            bump.Now = 190.0 + BASIC_DELAY + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+
+            Assert.That(_plays.Count, Is.EqualTo(1));
+            Assert.That(_plays[0].Variant, Is.EqualTo(2));
         }
 
         /****************************************
@@ -459,8 +507,8 @@ namespace Shinshi.Tests
             MageknightVfxPool    pool    = CreatePool();
             Step(tracker, Idle(300.0));
 
-            MageknightVfxTracker.Observation cast = Cast(Idle(300.31), 1, SLOT_W, ESkillPhase.Active, 300.3);
-            cast.SkillOrigin = new Vector3(2f, 0f, 3f);
+            MageknightVfxTracker.Observation cast = Cast(Idle(300.31), 1, SLOT_E, ESkillPhase.Active, 300.3);
+            cast.SkillPoint = new Vector3(2f, 0f, 3f);
             int count = tracker.Update(in cast);
             Assert.That(count, Is.EqualTo(1));
             MageknightVfxTracker.Play play = tracker.GetPlay(0);
@@ -562,7 +610,7 @@ namespace Shinshi.Tests
             MageknightVfxPool    pool    = CreatePool();
             Step(tracker, Idle(800.0));
 
-            MageknightVfxTracker.Observation cast = Cast(Idle(800.31), 1, SLOT_R, ESkillPhase.Active, 800.3);
+            MageknightVfxTracker.Observation cast = Cast(Idle(800.31), 1, SLOT_W, ESkillPhase.Active, 800.3);
             cast.SkillAim = Vector3.forward;
             int count = tracker.Update(in cast);
             Assert.That(count, Is.EqualTo(1));
@@ -578,6 +626,39 @@ namespace Shinshi.Tests
 
             pool.StopAll();
             Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Pool_BriefGroup_EnablesOnlySelectedGroupAndTimedRestoresAll()
+        {
+            var prefab = new GameObject("MageknightVfxGroupPrefab");
+            var effect = new GameObject("Effect");
+            effect.transform.SetParent(prefab.transform, false);
+            for (int i = 0; i < 3; ++i)
+            {
+                var group = new GameObject("Group" + i);
+                group.transform.SetParent(effect.transform, false);
+                group.AddComponent<ParticleSystem>();
+            }
+
+            var root = new GameObject("MageknightVfxTestRoot");
+            _created.Add(prefab);
+            _created.Add(root);
+            var pool = new MageknightVfxPool(prefab, root.transform, 1);
+            Assert.That(pool.GroupCount, Is.EqualTo(3));
+
+            pool.PlayBrief(Vector3.zero, Quaternion.identity, 0.0, 1f, 5);
+            Transform played = root.transform.GetChild(0).GetChild(0);
+            Assert.That(played.GetChild(0).gameObject.activeSelf, Is.False);
+            Assert.That(played.GetChild(1).gameObject.activeSelf, Is.False);
+            Assert.That(played.GetChild(2).gameObject.activeSelf, Is.True);
+
+            pool.PlayTimed(Vector3.zero, Quaternion.identity, 2.0);
+            Assert.That(played.GetChild(0).gameObject.activeSelf, Is.True);
+            Assert.That(played.GetChild(1).gameObject.activeSelf, Is.True);
+
+            pool.MoveActive(Vector3.one);
+            Assert.That(pool.GetSlotPosition(0), Is.EqualTo(Vector3.one));
         }
 
         [Test]
@@ -607,7 +688,7 @@ namespace Shinshi.Tests
         private static MageknightVfxTracker CreateTracker()
         {
             var tracker = new MageknightVfxTracker();
-            tracker.Configure(BASIC_DELAY, FIELD_DURATION, WAVE_SPEED, WAVE_RANGE, MAX_LATE);
+            tracker.Configure(BASIC_DELAY, SHIELD_DURATION, FIELD_DURATION, WAVE_SPEED, WAVE_RANGE, MAX_LATE);
             return tracker;
         }
 

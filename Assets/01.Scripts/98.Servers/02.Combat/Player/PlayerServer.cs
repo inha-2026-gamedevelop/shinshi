@@ -16,7 +16,7 @@ namespace Shinshi.Combat
 {
     /// <summary> 플레이어 한 명의 서버 판정, 입력 검증과 서버 권위 이동, 기본 공격, 체력과 사망을 맡는다 </summary>
     public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant, IPotionUser,
-        IPlayerControlTarget, ICriticalDamageSource, ILifeStealSource, IBossDisplaceTarget
+        IPlayerControlTarget, ICriticalDamageSource, ILifeStealSource, IBossDisplaceTarget, IHitImmunityTarget
     {
         // Command 처리기는 검증과 의도 보관만 하고, 실제 이동과 공격은 CombatServerRuntime의 틱에서 한다.
         // 한 틱에 이동 입력이 여러 개 와도 경로 계산은 마지막 것 한 번만 하고, 처리 순서를 틱 순서에 맞춘다
@@ -75,6 +75,10 @@ namespace Shinshi.Combat
         private bool                  _isWindingUp         = false;
         private double                _windupFireAt        = 0.0;
         private Vector3               _windupAim           = Vector3.forward;
+        private float                 _windupCoefficient   = 0f;
+        private int                   _comboStep           = BasicAttackComboRules.NO_STEP;
+        private double                _comboImmuneUntil    = 0.0;
+        private double                _grantedImmuneUntil  = 0.0;
         private bool                  _arrowActive         = false;
         private Vector3               _arrowOrigin         = Vector3.zero;
         private Vector3               _arrowAim            = Vector3.forward;
@@ -83,6 +87,8 @@ namespace Shinshi.Combat
         private int                   _arrowCastId         = CombatIds.NONE;
         private int                   _arrowActionId       = CombatIds.NONE;
         private float                 _arrowDamage         = 0f;
+        private float                 _arrowSpeed          = 0f;
+        private EArcherElement        _arrowElement        = EArcherElement.None;
         private readonly float        _dodgeDistance;
         private readonly float        _dodgeDuration;
         private readonly double       _dodgeCooldown;
@@ -179,7 +185,7 @@ namespace Shinshi.Combat
         // 회피는 매 틱 시작점과 끝점 사이의 절대 위치를 다시 쓰므로 그 사이에 밀면 다음 틱에 되돌아간다.
         // 돌진과 후퇴 기술은 시전 때 고정한 원점에서 목표 위치를 계산해 준비 중에 밀려도 이동 거리가 어긋난다.
         // 기술 서버가 이동 기술인지 밖에 알리지 않아 준비와 타격 구간은 기술 종류와 무관하게 막고, 위치를 쓰지 않는 후딜만 받는다
-        public bool CanBeDisplaced => (_lifeState == EParticipantLifeState.Alive) && (!_isDodging)
+        public bool CanBeDisplaced => (_lifeState == EParticipantLifeState.Alive) && (!_isDodging) && (!IsHitImmune(NetworkTime.time))
             && ((_skills == null) || (_skills.Phase == ESkillPhase.Idle) || (_skills.Phase == ESkillPhase.Recovery));
 
         // 기술 반격의 120도 방어는 SkillDamageResolver가 적중 원장과 함께 판정한다
@@ -408,6 +414,9 @@ namespace Shinshi.Combat
             {
                 _isWindingUp = false;
             }
+
+            // 움직이면 콤보 동작은 끝난 것이다. 단계는 이어 가되 동작에 붙은 피격이상 면역은 거둔다
+            _comboImmuneUntil = 0.0;
 
             // 진행 중인 경로와 같은 곳이면 다시 계산하지 않는다. 앞서 보관한 다른 목적지도 이 의도로 덮는다
             if (admission == EMoveAdmission.SameDestination)
@@ -751,6 +760,7 @@ namespace Shinshi.Combat
             }
             _hasPendingAttack = false;
             _isWindingUp = false;
+            ResetCombo();
             _hasPendingMove = false;
             _path.Stop();
             _moveThrottle.ClearActive();
@@ -933,25 +943,55 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 쉰 시간은 다음 공격이 가능해진 시각부터 잰다. 콤보가 없는 직업은 늘 0단이다
+            int step = BasicAttackComboRules.SelectStep(_comboStep, serverTime - _nextAttackTime, _attack.ComboResetSeconds,
+                _attack.ComboStepCount);
+            float coefficient = _attack.GetDamageCoefficient(step);
+            float windup      = _attack.GetWindup(step);
+
+            // 궁수 바람 속성은 단계 주기만 줄이고 준비 시간과 단계 순서는 그대로 둔다
+            float intervalScale = (_skills != null) ? _skills.BasicAttackIntervalScale : 1f;
+
+            _comboStep        = step;
             _hasPendingAttack = false;
-            _nextAttackTime   = serverTime + _attack.Interval;
+            _nextAttackTime   = serverTime + (_attack.GetInterval(step) * intervalScale);
+            _comboImmuneUntil = _attack.IsHitImmune(step) ? _nextAttackTime : 0.0;
             _path.Stop();
             _moveThrottle.ClearActive();
 
             Vector3 aim = FacingRules.DecodeYaw(_pendingAimYaw);
             SetFacing(aim);
-            if (_attack.Windup > 0f)
+            _combat.BumpAttackSequence((byte)step);
+            if (windup > 0f)
             {
                 // 동작은 승인 시점에 시작하고 판정은 준비 시간 뒤에 한다
-                _combat.BumpAttackSequence();
-                _isWindingUp  = true;
-                _windupFireAt = serverTime + _attack.Windup;
-                _windupAim    = aim;
+                _isWindingUp       = true;
+                _windupFireAt      = serverTime + windup;
+                _windupAim         = aim;
+                _windupCoefficient = coefficient;
                 return;
             }
 
-            _combat.BumpAttackSequence();
-            ResolveBasicAttack(aim, serverTime);
+            ResolveBasicAttack(aim, serverTime, coefficient);
+        }
+
+        /// <summary> 기절, 속박, 밀림을 받지 않는 시각까지 늘린다. 피해는 그대로 받는다. 기술처럼 콤보 밖에서 거는 면역이다 </summary>
+        public void GrantHitImmunity(double untilServerTime)
+        {
+            _grantedImmuneUntil = System.Math.Max(_grantedImmuneUntil, untilServerTime);
+        }
+
+        /// <summary> 콤보 동작이나 기술이 건 피격이상 면역 중이면 참 </summary>
+        public bool IsHitImmune(double serverTime)
+        {
+            return (serverTime < _comboImmuneUntil) || (serverTime < _grantedImmuneUntil);
+        }
+
+        // 회피, 기술, 사망, 기절로 끊기면 다음 기본 공격은 1단부터다
+        private void ResetCombo()
+        {
+            _comboStep        = BasicAttackComboRules.NO_STEP;
+            _comboImmuneUntil = 0.0;
         }
 
         // 준비 중 회피, 사망, 기술 시전, 이동(취소형 공격)은 이 상태를 지운다. 여기서는 남은 방해만 확인하고 시각이 되면 판정한다
@@ -975,7 +1015,7 @@ namespace Shinshi.Combat
             }
 
             _isWindingUp = false;
-            ResolveBasicAttack(_windupAim, _windupFireAt);
+            ResolveBasicAttack(_windupAim, _windupFireAt, _windupCoefficient);
         }
 
         // 날아가는 기본 공격 화살. 이미 나간 화살은 시전자가 회피하거나 죽어도 사거리까지 이어 간다
@@ -987,7 +1027,7 @@ namespace Shinshi.Combat
             }
 
             float distance = Mathf.Min(_attack.Range - _arrowTravelled,
-                _attack.ProjectileSpeed * (float)System.Math.Max(0.0, serverTime - _arrowLastTime));
+                _arrowSpeed * (float)System.Math.Max(0.0, serverTime - _arrowLastTime));
             float clear     = _lineOfSight.GetClearDistance(_arrowOrigin, _arrowAim, distance);
             float halfWidth = _attack.ProjectileWidth * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
             bool  wallCut   = clear < distance;
@@ -1019,10 +1059,18 @@ namespace Shinshi.Combat
 
             if (hitIndex >= 0)
             {
-                var request = new DamageRequest(_combatId, _targetBuffer[hitIndex].CombatId, _arrowCastId, _arrowActionId, _arrowDamage,
+                ICombatTarget target  = _targetBuffer[hitIndex];
+                var           request = new DamageRequest(_combatId, target.CombatId, _arrowCastId, _arrowActionId, _arrowDamage,
                     EDamageFlags.None, _arrowOrigin, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
-                _resolver.Apply(in request);
+                DamageResult result = _resolver.Apply(in request);
                 _arrowActive = false;
+
+                // 속성 스택과 화상, 둔화는 화살이 나갈 때의 속성으로 판정한다. 날아가는 중에 속성을 바꿔도 이 화살은 그대로다
+                _skills?.OnArrowHit(_arrowElement, target, in result, serverTime);
+                if (result.CountsAsHit)
+                {
+                    _combat.BumpArrowHit(target.Position, _arrowElement);
+                }
             }
             else
             {
@@ -1110,6 +1158,7 @@ namespace Shinshi.Combat
             _hasPendingMove   = false;
             _hasPendingAttack = false;
             _isWindingUp      = false;
+            ResetCombo();
             _path.Stop();
             _moveThrottle.ClearActive();
 
@@ -1181,7 +1230,7 @@ namespace Shinshi.Combat
         }
 
         // 맞힐 대상이 없어도 휘두르는 모습은 보여야 하므로 호출 전에 동작 순번을 올려 둔다
-        private void ResolveBasicAttack(Vector3 aim, double serverTime)
+        private void ResolveBasicAttack(Vector3 aim, double serverTime, float coefficient)
         {
             Vector3 origin   = _transform.position;
             float   range    = _attack.Range;
@@ -1196,7 +1245,9 @@ namespace Shinshi.Combat
                 _arrowLastTime  = serverTime;
                 _arrowCastId    = _resolver.IssueInstanceId();
                 _arrowActionId  = _resolver.IssueInstanceId();
-                _arrowDamage    = _attackPower * _attack.DamageCoefficient;
+                _arrowDamage    = _attackPower * coefficient;
+                _arrowElement   = (_skills != null) ? _skills.ArcherElement : EArcherElement.None;
+                _arrowSpeed     = _attack.ProjectileSpeed * ((_skills != null) ? _skills.BasicProjectileSpeedScale : 1f);
                 return;
             }
 
@@ -1210,7 +1261,7 @@ namespace Shinshi.Combat
 
             // 치명타는 공통 DamageResolver가 대상별로 판정한다
             // TODO(민성): 시작 인원 피해 배율의 적용 위치가 기획에서 정해지면 여기서 곱한다
-            float rawDamage = _attackPower * _attack.DamageCoefficient;
+            float rawDamage = _attackPower * coefficient;
             int   castId    = _resolver.IssueInstanceId();
             int   actionId  = _resolver.IssueInstanceId();
 
@@ -1365,6 +1416,8 @@ namespace Shinshi.Combat
                 return;
             }
             _combat.SetSkillResources(_skills.Energy, _skills.MaxEnergy, _skills.Resonance);
+            _combat.SetClassStacks((byte)_skills.ClassStacks);
+            _combat.SetArcherElement(_skills.ArcherElement);
             _combat.SetSkillExecution(_skills.Phase, _skills.CastInstanceId, _skills.ActionInstanceId, (byte)_skills.Slot,
                 _skills.Kind, _skills.Origin, _skills.Aim, _skills.Point, _skills.ResolveAt);
             _input.SetSkillCooldowns(_skills.GetReadyAt(Constants.Combat.SKILL_SLOT_Q), _skills.GetReadyAt(Constants.Combat.SKILL_SLOT_W),
@@ -1428,6 +1481,8 @@ namespace Shinshi.Combat
             _hasPendingMove   = false;
             _hasPendingAttack = false;
             _isWindingUp      = false;
+            ResetCombo();
+            _grantedImmuneUntil = 0.0;
             if (_hasPendingSkill)
             {
                 _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.Dead);
@@ -1489,6 +1544,12 @@ namespace Shinshi.Combat
                 return EPlayerControlResult.NotAlive;
             }
 
+            // 콤보 동작이나 기술의 피격이상 면역 중에는 걸지 않는다. 직후 제어 면역과 같이 피해는 이미 받았다
+            if (IsHitImmune(serverTime))
+            {
+                return EPlayerControlResult.Immune;
+            }
+
             EPlayerControlResult result = _control.TryApply(kind, seconds, serverTime);
             if ((result != EPlayerControlResult.Applied) && (result != EPlayerControlResult.Extended))
             {
@@ -1529,6 +1590,7 @@ namespace Shinshi.Combat
             bool wasWindingUp = _isWindingUp;
             _isWindingUp      = false;
             _hasPendingAttack = false;
+            ResetCombo();
             if (_hasPendingSkill)
             {
                 _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.Disabled);

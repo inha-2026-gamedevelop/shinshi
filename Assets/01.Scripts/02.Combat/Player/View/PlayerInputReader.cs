@@ -40,6 +40,10 @@ namespace Shinshi.Combat
         private Vector3           _lastRequestedMove     = Vector3.zero;
         private double            _nextAttackRequestTime = 0.0;
 
+        // 서버 콤보 직업이 누르고 있을 때 다음 요청 간격을 맞추려고 서버와 같은 규칙으로 단계를 짐작한다. 판정에는 쓰지 않는다
+        private int               _predictedComboStep    = BasicAttackComboRules.NO_STEP;
+        private double            _predictedReadyTime    = 0.0;
+
         // 지점 기술 지정 상태. 확정 전에는 서버가 모르므로 소유 클라이언트에만 있다
         private bool              _isTargeting  = false;
         private ESkillRequestKind _targetKind   = ESkillRequestKind.Regular;
@@ -212,8 +216,14 @@ namespace Shinshi.Combat
                 return;
             }
 
-            PlayerConfigSO config   = GameDB.Player;
-            float          interval = config.GetBasicAttack(_combat.PlayerClass).Interval;
+            PlayerConfigSO                 config = GameDB.Player;
+            PlayerConfigSO.BasicAttackSpec spec   = config.GetBasicAttack(_combat.PlayerClass);
+            int step = BasicAttackComboRules.SelectStep(_predictedComboStep, now - _predictedReadyTime, spec.ComboResetSeconds,
+                spec.ComboStepCount);
+            // 궁수 바람 속성은 서버가 주기를 줄이므로 누르고 있을 때의 요청 간격도 같이 줄인다
+            float interval = spec.GetInterval(step) * ArcherElementRules.GetAttackIntervalScale(GameDB.Skills, _combat.ArcherElement);
+            _predictedComboStep = step;
+            _predictedReadyTime = System.Math.Max(now, _predictedReadyTime) + interval;
 
             // 서버는 남은 쿨다운이 보관 시간 안이면 받아 두므로 그만큼 일찍 보낸다
             _nextAttackRequestTime = now + Mathf.Max(0f, interval - config.InputBufferSeconds);

@@ -86,27 +86,8 @@ namespace Shinshi.Editor
                     projectile ? material : glow, projectile ? arrow : null, projectile, 1f,
                     new Color(0.65f, 1f, 0.82f, 0.65f));
             }
-            foreach (string effect in new[] { "Basic", "Arcane", "Field", "Seal", "Wave" })
-            {
-                string fieldPath = "Assets/02.Prefab/VFX/Mageknight/PF_MageknightVfx_" + effect + ".prefab";
-                GameObject field = PrefabUtility.LoadPrefabContents(fieldPath);
-                try
-                {
-                    foreach (ParticleSystem particle in field.GetComponentsInChildren<ParticleSystem>(true))
-                    {
-                        var renderer = particle.GetComponent<ParticleSystemRenderer>();
-                        renderer.sharedMaterials = particle.trails.enabled ? new[] { glow, glow } : new[] { glow };
-                    }
-                    PrefabUtility.SaveAsPrefabAsset(field, fieldPath);
-                }
-                finally
-                {
-                    PrefabUtility.UnloadPrefabContents(field);
-                }
-            }
-            Mesh ring = SaveMesh("M_ReleaseField", Arc(360f));
-            BuildEffect("Assets/02.Prefab/VFX/Mageknight/PF_MageknightVfx_Field.prefab", "PF_MageknightVfx_Field",
-                material, ring, true, 1f, new Color(1f, 0.45f, 0.12f, 0.7f), true);
+            // 마검사 효과는 MageknightVfxBuilder가 기획에서 고른 외부 효과의 원본 재질로 만든다.
+            // 여기서 공용 발광 재질로 바꾸거나 장판을 고리로 다시 만들면 고른 모양이 사라지므로 손대지 않는다
         }
 
         private static void BuildEffect(string path, string name, Material material, Mesh mesh, bool loop,

@@ -302,8 +302,9 @@ CA-07(`docs/design/references/concept-art/village-layout-02.webp`)에서 기존 
 | 게임용 사본 | 외부 출처 | 사용 조건 |
 |---|---|---|
 | `Assets/02.Prefab/VFX/SwordsmanMagicSlash/` | `Magic Slashes FX`의 `Eff1_Left`, `Eff1_Right`, `Eff7_Slash` | 원본 메시·텍스처·재질 의존성을 유지한다. 동일 버전 패키지와 공급자 라이선스가 필요하다. |
-| `Assets/02.Prefab/VFX/Mageknight/` | Hovl Studio `Sword slash VFX`의 `Sword Slash 13`, `Spatial section`, `Slash wave`; PixPlays `ElementalAOE`의 `FireAoeVFX` | 원본 재질·텍스처 의존성을 유지한다. 해당 패키지 설치와 공급자 라이선스가 필요하다. |
+| `Assets/02.Prefab/VFX/Mageknight/` | 2026-10-15 스택형 개편부터 Hovl Studio `Sword slash VFX`의 `Sword Slash Combo 6`, `Slash wave`, `Spatial section`; PixPlays `ElementalShields`의 `WaterShield`(Version_BuiltIn); `Magic Slashes FX`의 `Eff11_Jump` | 원본 재질·텍스처·메시 의존성을 유지한다(출시 발광 재질로 바꾸지 않는다). 해당 패키지 설치와 공급자 라이선스가 필요하다. 원본 프리팹은 수정하지 않고 `MageknightVfxBuilder`가 사본을 만든다. |
 | `Assets/02.Prefab/VFX/Archer/` | `MasterStylizedProjectiles`의 `ArrowBullet`, `ArrowMuzzle`, `WindBullet`, `WindStart`, `WindHit` | 원본 재질·텍스처·셰이더 의존성을 유지한다. 해당 패키지 설치와 공급자 라이선스가 필요하다. |
+| `Assets/02.Prefab/VFX/Archer/PF_ArcherVfx_{IceArrow,IceMuzzle,IceHit,WindArrow,WindStart,WindHit,FireArrow,FireMuzzle,FireHit,Charge,Burst}` (2026-10-15 궁수 속성형) | `MasterStylizedProjectiles`의 `SmallIceBullet`(`SmallIceBullet`, `SmallIceMuzzle`, `SmallIceBulletHit`), `WindShoot`(`WindBullet`, `WindStart`, `WindHit`), `SmallFireBullet`(`SmallFireBullet`, `SmallFireMuzzle`, `SmallFireBulletHit`), `EnergyExplosion`(`EnergyExplosionCharge`, `EnergyExplosionHit`) | 원본 재질·색을 유지한 `ArcherVfxBuilder` 사본(스크립트·조명·충돌체 제거, URP 미지원 내장 셰이더 입자만 끔). 해당 패키지 설치와 공급자 라이선스가 필요하다. 기획서의 불 "FireShoot"은 팩에 없어 `SmallFireBullet`을 썼다(대안 `Fireball`). 속성 없는 `Arrow`/`Muzzle`/`Impact`는 `ReleaseVfxBuilder`의 프로젝트 소유 사본을 그대로 쓴다. |
 
 외부 원본은 `Assets/99.ThirdParty/VFX/`에 보존하며 팀 독자 제작 에셋으로 취급하지 않는다.
 

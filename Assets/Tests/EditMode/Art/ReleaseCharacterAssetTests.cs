@@ -25,7 +25,7 @@ namespace Shinshi.Tests
 
         [TestCase(EPlayerClass.Swordsman, 3)]
         [TestCase(EPlayerClass.Mageknight, 3)]
-        [TestCase(EPlayerClass.Archer, 1)]
+        [TestCase(EPlayerClass.Archer, 3)]
         public void ClassProfile_AllActions_HaveAssignedHumanoidClips(EPlayerClass playerClass, int steps)
         {
             var profile = AssetDatabase.LoadAssetAtPath<PlayerCombatAnimationProfileSO>(PROFILE);
@@ -96,8 +96,8 @@ namespace Shinshi.Tests
                 "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_ChainFirst", "SwordsmanMagicSlash/PF_SwordsmanMagicSlash_ChainSecond",
                 "Archer/PF_ArcherVfx_Arrow", "Archer/PF_ArcherVfx_Muzzle", "Archer/PF_ArcherVfx_Wind",
                 "Archer/PF_ArcherVfx_WindMuzzle", "Archer/PF_ArcherVfx_Impact", "Mageknight/PF_MageknightVfx_Basic",
-                "Mageknight/PF_MageknightVfx_Arcane", "Mageknight/PF_MageknightVfx_Field",
-                "Mageknight/PF_MageknightVfx_Seal", "Mageknight/PF_MageknightVfx_Wave"
+                "Mageknight/PF_MageknightVfx_Shield", "Mageknight/PF_MageknightVfx_Wave",
+                "Mageknight/PF_MageknightVfx_Field", "Mageknight/PF_MageknightVfx_Jump"
             };
             foreach (string path in paths)
             {

@@ -53,10 +53,12 @@ namespace Shinshi.Art
         private float _lastHealth     = -1f;
         private int   _hitSide        = 0;
 
-        private bool         _hasIntervalCache = false;
-        private bool         _hasInterval      = false;
-        private EPlayerClass _intervalClass    = EPlayerClass.Warrior;
-        private float        _interval         = 0f;
+        // 피격이상 면역 콤보 단계를 재생하는 동안은 피격 모션으로 끊지 않는다
+        private float _hitSuppressedUntil = float.NegativeInfinity;
+
+        private bool                           _hasSpecCache = false;
+        private EPlayerClass                   _specClass    = EPlayerClass.Warrior;
+        private PlayerConfigSO.BasicAttackSpec _spec;
 
         /****************************************
         *              Unity Event
@@ -154,7 +156,8 @@ namespace Shinshi.Art
             _needsBaseline = true;
             _attackIndex   = -1;
 
-            _hasIntervalCache = false;
+            _hasSpecCache       = false;
+            _hitSuppressedUntil = float.NegativeInfinity;
             if (_combat != null)
             {
                 _combat.HealthChanged += OnHealthChanged;
@@ -215,6 +218,7 @@ namespace Shinshi.Art
             float target = Mathf.Max(GameDB.Player.DodgeDuration, _profile.MinDodgeSeconds);
             float speed  = CombatAnimationTriggerRules.ComputeSpeed(_profile.DodgeClipLength, target, _profile.MinSpeed, _profile.MaxSpeed);
             Fire(_dodgeHash, 0, speed, "Dodge");
+            _hitSuppressedUntil = float.NegativeInfinity;
         }
 
         // 신규 직업은 프로필에 배정된 단계만 재생한다. 배정이 없으면(정식 배정 보류) 대체 클립도 속도 강제도 없이 아무것도 재생하지 않는다
@@ -228,10 +232,19 @@ namespace Shinshi.Art
                 return;
             }
 
+            if (!TryGetAttackSpec(playerClass, out PlayerConfigSO.BasicAttackSpec spec))
+            {
+                return;
+            }
+
+            // 서버 콤보 직업은 서버가 고른 단계를 그대로 쓴다. 아니면 모션만 클라이언트가 돌려 쓴다
             int comboCount = isLegacy ? PlayerCombatAnimationProfileSO.ATTACK_COUNT : stepCount;
+            int serverStep = spec.HasCombo ? _combat.AttackComboStep : 0;
             float now = Time.unscaledTime;
-            _attackIndex    = CombatAnimationTriggerRules.NextAttackIndex(_attackIndex, now - _lastAttackTime,
-                _profile.GetComboResetSeconds(playerClass), comboCount);
+            _attackIndex    = spec.HasCombo
+                ? Mathf.Min(serverStep, comboCount - 1)
+                : CombatAnimationTriggerRules.NextAttackIndex(_attackIndex, now - _lastAttackTime,
+                    _profile.GetComboResetSeconds(playerClass), comboCount);
             _lastAttackTime = now;
 
             int actionIndex = _attackIndex;
@@ -240,9 +253,15 @@ namespace Shinshi.Art
                 return;
             }
 
-            if (!TryGetAttackInterval(playerClass, out float target))
+            float target = spec.GetInterval(serverStep);
+            if (target <= 0f)
             {
                 return;
+            }
+
+            if (spec.IsHitImmune(serverStep))
+            {
+                _hitSuppressedUntil = now + target;
             }
 
             float clipLength = _profile.GetAttackClipLength(actionIndex);
@@ -255,22 +274,18 @@ namespace Shinshi.Art
             Fire(_attackHash, actionIndex, speed, "Attack");
         }
 
-        // 서버 기본 공격 명세(PlayerConfigSO)의 간격을 직업별로 한 번만 읽는다. 간격이 0 이하면 재생하지 않는다
-        private bool TryGetAttackInterval(EPlayerClass playerClass, out float interval)
+        // 서버 기본 공격 명세(PlayerConfigSO)를 직업별로 한 번만 읽는다
+        private bool TryGetAttackSpec(EPlayerClass playerClass, out PlayerConfigSO.BasicAttackSpec spec)
         {
-            if ((_hasIntervalCache) && (_intervalClass == playerClass))
+            if ((!_hasSpecCache) || (_specClass != playerClass))
             {
-                interval = _interval;
-                return _hasInterval;
+                _hasSpecCache = true;
+                _specClass    = playerClass;
+                _spec         = GameDB.Player.GetBasicAttack(playerClass);
             }
 
-            _hasIntervalCache = true;
-            _intervalClass    = playerClass;
-            _interval         = GameDB.Player.GetBasicAttack(playerClass).Interval;
-            _hasInterval      = _interval > 0f;
-
-            interval = _interval;
-            return _hasInterval;
+            spec = _spec;
+            return spec != null;
         }
 
         // 새 시전을 재생한다. 아직 시작 전이면 거짓을 돌려 시전 기준값을 소비하지 않게 한다
@@ -334,7 +349,7 @@ namespace Shinshi.Art
 
             _hasHealthDrop = false;
             float now = Time.unscaledTime;
-            if ((IsSkillCasting(_combat.SkillPhase)) || ((now - _lastHitTime) < _profile.HitRepeatSeconds))
+            if ((IsSkillCasting(_combat.SkillPhase)) || ((now - _lastHitTime) < _profile.HitRepeatSeconds) || (now < _hitSuppressedUntil))
             {
                 return;
             }

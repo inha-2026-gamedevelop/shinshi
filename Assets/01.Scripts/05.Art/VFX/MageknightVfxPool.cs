@@ -25,6 +25,7 @@ namespace Shinshi.Art
         private readonly GameObject[]       _objects;
         private readonly Transform[]        _transforms;
         private readonly ParticleSystem[][] _systems;
+        private readonly GameObject[][]     _groups;
         private readonly ESlotMode[]        _modes;
         private readonly double[]           _expireAt;
         private readonly Vector3[]          _waveOrigin;
@@ -41,6 +42,9 @@ namespace Shinshi.Art
         public bool HasPrefab { get; }
 
         public int SlotCount => (_objects != null) ? _objects.Length : 0;
+
+        /// <summary> 효과 하나를 이루는 묶음 수, 기본 공격 콤보처럼 묶음 하나만 골라 재생할 때 쓴다 </summary>
+        public int GroupCount => ((_groups != null) && (_groups.Length > 0)) ? _groups[0].Length : 0;
 
         public int ActiveCount
         {
@@ -74,6 +78,7 @@ namespace Shinshi.Art
             _objects       = new GameObject[size];
             _transforms    = new Transform[size];
             _systems       = new ParticleSystem[size][];
+            _groups        = new GameObject[size][];
             _modes         = new ESlotMode[size];
             _expireAt      = new double[size];
             _waveOrigin    = new Vector3[size];
@@ -88,6 +93,7 @@ namespace Shinshi.Art
                 _objects[i]    = instance;
                 _transforms[i] = instance.transform;
                 _systems[i]    = instance.GetComponentsInChildren<ParticleSystem>(true);
+                _groups[i]     = CollectGroups(instance.transform);
             }
         }
 
@@ -101,8 +107,8 @@ namespace Shinshi.Art
             return _transforms[index].position;
         }
 
-        /// <summary> 짧은 베기, 입자가 모두 끝나거나 상한 시간이 지나면 정리한다 </summary>
-        public void PlayBrief(Vector3 position, Quaternion rotation, double now, float maxSeconds)
+        /// <summary> 짧은 베기, 입자가 모두 끝나거나 상한 시간이 지나면 정리한다. group이 0 이상이면 그 묶음만 재생한다 </summary>
+        public void PlayBrief(Vector3 position, Quaternion rotation, double now, float maxSeconds, int group = -1)
         {
             if (!HasPrefab)
             {
@@ -111,7 +117,20 @@ namespace Shinshi.Art
 
             int index = Acquire();
             _transforms[index].SetPositionAndRotation(position, rotation);
+            SelectGroup(index, group);
             Begin(index, ESlotMode.Brief, now + maxSeconds);
+        }
+
+        /// <summary> 재생 중인 모든 칸을 한 위치로 옮긴다, 캐릭터를 따라다니는 방벽에 쓴다 </summary>
+        public void MoveActive(Vector3 position)
+        {
+            for (int i = 0; i < SlotCount; ++i)
+            {
+                if ((_modes[i] != ESlotMode.Idle) && (_objects[i] != null))
+                {
+                    _transforms[i].position = position;
+                }
+            }
         }
 
         /// <summary> 제자리 지속 효과, 입자 상태와 무관하게 종료 시각까지 유지한다 </summary>
@@ -124,6 +143,7 @@ namespace Shinshi.Art
 
             int index = Acquire();
             _transforms[index].SetPositionAndRotation(position, rotation);
+            SelectGroup(index, -1);
             Begin(index, ESlotMode.Timed, expireAt);
         }
 
@@ -221,6 +241,43 @@ namespace Shinshi.Art
 
             _modes[index]    = ESlotMode.Fading;
             _expireAt[index] = now + WAVE_FADE_SECONDS;
+        }
+
+        // 생성 사본은 루트 아래 효과 하나를 두고, 그 효과의 자식이 따로 재생할 수 있는 묶음이다
+        private static GameObject[] CollectGroups(Transform root)
+        {
+            if (root.childCount == 0)
+            {
+                return new GameObject[0];
+            }
+
+            Transform effect = root.GetChild(0);
+            var groups = new GameObject[effect.childCount];
+            for (int i = 0; i < groups.Length; ++i)
+            {
+                groups[i] = effect.GetChild(i).gameObject;
+            }
+
+            return groups;
+        }
+
+        // 음수면 모든 묶음, 아니면 group번 묶음 하나만 켠다. 묶음 수를 넘으면 마지막 묶음이다
+        private void SelectGroup(int index, int group)
+        {
+            GameObject[] groups = _groups[index];
+            if ((groups == null) || (groups.Length == 0))
+            {
+                return;
+            }
+
+            int selected = (group < 0) ? -1 : Mathf.Min(group, groups.Length - 1);
+            for (int i = 0; i < groups.Length; ++i)
+            {
+                if (groups[i] != null)
+                {
+                    groups[i].SetActive((selected < 0) || (i == selected));
+                }
+            }
         }
 
         // 비어 있는 칸을 먼저 쓰고, 모두 재생 중이면 돌아가며 가장 먼저 쓴 칸을 다시 시작한다

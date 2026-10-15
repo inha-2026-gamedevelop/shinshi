@@ -36,6 +36,7 @@ MonoBehaviour:
   _combatPowerLifeStealFactor: 20
   _potionSharedCooldown: 10
   _potionUseDisplaySeconds: 0.35
+  _controlImmunitySeconds: 1
   _inputBufferSeconds: 0.15
   _inputBufferDepth: 1
   _basicAttacks:
@@ -43,11 +44,84 @@ MonoBehaviour:
     _interval: 0.9
     _range: 3
     _arcAngle: 90
+    _windup: 0
+    _projectileSpeed: 0
+    _projectileWidth: 0
+    _cancelOnMove: 0
+    _comboResetSeconds: 0
+    _comboSteps: []
   - _damageCoefficient: 0.7
     _interval: 0.8
     _range: 9
     _arcAngle: 0
+    _windup: 0
+    _projectileSpeed: 0
+    _projectileWidth: 0
+    _cancelOnMove: 0
+    _comboResetSeconds: 0
+    _comboSteps: []
   - _damageCoefficient: 0.6
     _interval: 0.8
     _range: 8
     _arcAngle: 0
+    _windup: 0
+    _projectileSpeed: 0
+    _projectileWidth: 0
+    _cancelOnMove: 0
+    _comboResetSeconds: 0
+    _comboSteps: []
+  _classBasicAttacks:
+  - _damageCoefficient: 1
+    _interval: 0.9
+    _range: 3
+    _arcAngle: 90
+    _windup: 0.2
+    _projectileSpeed: 0
+    _projectileWidth: 0
+    _cancelOnMove: 0
+    _comboResetSeconds: 0
+    _comboSteps: []
+  - _damageCoefficient: 0.9
+    _interval: 0.85
+    _range: 2.5
+    _arcAngle: 90
+    _windup: 0
+    _projectileSpeed: 0
+    _projectileWidth: 0
+    _cancelOnMove: 0
+    _comboResetSeconds: 1.2
+    _comboSteps:
+    - _damageCoefficient: 0.9
+      _interval: 0.85
+      _windup: 0
+      _hitImmune: 0
+    - _damageCoefficient: 0.9
+      _interval: 0.85
+      _windup: 0
+      _hitImmune: 0
+    - _damageCoefficient: 0.9
+      _interval: 0.85
+      _windup: 0
+      _hitImmune: 0
+  - _damageCoefficient: 0.9
+    _interval: 0.95
+    _range: 10
+    _arcAngle: 0
+    _windup: 0.35
+    _projectileSpeed: 24
+    _projectileWidth: 0.3
+    _cancelOnMove: 1
+    _comboResetSeconds: 1.2
+    _comboSteps:
+    - _damageCoefficient: 0.65
+      _interval: 0.6
+      _windup: 0.25
+      _hitImmune: 0
+    - _damageCoefficient: 0.75
+      _interval: 0.75
+      _windup: 0.22
+      _hitImmune: 0
+    - _damageCoefficient: 1.1
+      _interval: 1.3
+      _windup: 0.33
+      _hitImmune: 1

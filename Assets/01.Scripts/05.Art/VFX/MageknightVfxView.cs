@@ -3,6 +3,7 @@ using System;
 
 // Unity
 using UnityEngine;
+using UnityEngine.Serialization;
 
 // 서드파티
 using Mirror;
@@ -30,12 +31,15 @@ namespace Shinshi.Art
         [Header("관찰 대상")]
         [SerializeField] private PlayerCombatState _combat;
 
+        // 스택형 개편 전 Q, R 칸의 프리팹 참조를 그대로 이어받아 플레이어 프리팹을 다시 저장하지 않아도 된다
         [Header("효과 프리팹")]
         [SerializeField] private GameObject _basicPrefab;
-        [SerializeField] private GameObject _arcanePrefab;
-        [SerializeField] private GameObject _fieldPrefab;
-        [SerializeField] private GameObject _sealPrefab;
+        [FormerlySerializedAs("_arcanePrefab")]
+        [SerializeField] private GameObject _shieldPrefab;
         [SerializeField] private GameObject _wavePrefab;
+        [SerializeField] private GameObject _fieldPrefab;
+        [FormerlySerializedAs("_sealPrefab")]
+        [SerializeField] private GameObject _jumpPrefab;
 
         [Header("풀과 재생")]
         [SerializeField] private int   _poolSizePerPrefab = 2;
@@ -52,6 +56,7 @@ namespace Shinshi.Art
         private bool      _wasRunning;
         private float     _waveSpeed;
         private float     _waveRange;
+        private int       _basicStepCount;
 
         /****************************************
         *              Unity Event
@@ -104,10 +109,11 @@ namespace Shinshi.Art
 
             // SyncVar hook의 중간값이 아니라 이번 프레임에 모인 현재값으로만 판단한다
             double now = NetworkTime.time;
-            MageknightVfxTracker.Observation observation;
+            MageknightVfxTracker.Observation observation = default;
             observation.PlayerClass    = _combat.PlayerClass;
             observation.LifeState      = _combat.LifeState;
             observation.AttackSequence = _combat.AttackSequence;
+            observation.AttackComboStep = _combat.AttackComboStep;
             observation.DodgeSequence  = _combat.DodgeSequence;
             observation.ActionCancelSequence = _combat.ActionCancelSequence;
             observation.CastInstanceId = _combat.CastInstanceId;
@@ -117,6 +123,7 @@ namespace Shinshi.Art
             observation.SkillResolveAt = _combat.SkillResolveAt;
             observation.SkillOrigin    = _combat.SkillOrigin;
             observation.SkillAim       = _combat.SkillAim;
+            observation.SkillPoint     = _combat.SkillPoint;
             observation.Facing         = FacingRules.DecodeYaw(_combat.FacingYaw);
             observation.Now            = now;
 
@@ -128,6 +135,7 @@ namespace Shinshi.Art
             }
 
             TickPools(now);
+            FollowActor();
         }
 
         /****************************************
@@ -154,10 +162,10 @@ namespace Shinshi.Art
             _poolRoot = new GameObject(POOL_ROOT_NAME).transform;
             int size = Mathf.Max(MIN_POOL_SIZE, _poolSizePerPrefab);
             _pools[(int)EMageknightVfxKind.Basic]  = new MageknightVfxPool(_basicPrefab, _poolRoot, size);
-            _pools[(int)EMageknightVfxKind.Arcane] = new MageknightVfxPool(_arcanePrefab, _poolRoot, size);
-            _pools[(int)EMageknightVfxKind.Field]  = new MageknightVfxPool(_fieldPrefab, _poolRoot, size);
-            _pools[(int)EMageknightVfxKind.Seal]   = new MageknightVfxPool(_sealPrefab, _poolRoot, size);
+            _pools[(int)EMageknightVfxKind.Shield] = new MageknightVfxPool(_shieldPrefab, _poolRoot, size);
             _pools[(int)EMageknightVfxKind.Wave]   = new MageknightVfxPool(_wavePrefab, _poolRoot, size);
+            _pools[(int)EMageknightVfxKind.Field]  = new MageknightVfxPool(_fieldPrefab, _poolRoot, size);
+            _pools[(int)EMageknightVfxKind.Jump]   = new MageknightVfxPool(_jumpPrefab, _poolRoot, size);
         }
 
         // GameDB는 Awake 시점에 준비되지 않을 수 있어 초기화될 때까지 다음 프레임에 다시 시도한다
@@ -170,30 +178,39 @@ namespace Shinshi.Art
 
             // 명세를 읽지 못한 값은 0으로 두어 해당 효과만 재생하지 않거나 즉시 재생한다
             float basicDelay = 0f;
+            _basicStepCount  = 0;
             try
             {
-                basicDelay = GameDB.Player.GetBasicAttack(EPlayerClass.Mageknight).Windup;
+                PlayerConfigSO.BasicAttackSpec basic = GameDB.Player.GetBasicAttack(EPlayerClass.Mageknight);
+                basicDelay      = basic.Windup;
+                _basicStepCount = basic.ComboStepCount;
             }
             catch (ArgumentOutOfRangeException)
             {
                 basicDelay = 0f;
             }
 
+            float shieldDuration = 0f;
+            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_Q, out SkillCatalogSO.SkillDefinition shield))
+            {
+                shieldDuration = shield.Effect.HitImmunityDuration;
+            }
+
             float fieldDuration = 0f;
-            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_W, out SkillCatalogSO.SkillDefinition field))
+            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_E, out SkillCatalogSO.SkillDefinition field))
             {
                 fieldDuration = field.Effect.Duration;
             }
 
             _waveSpeed = 0f;
             _waveRange = 0f;
-            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_R, out SkillCatalogSO.SkillDefinition wave))
+            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_W, out SkillCatalogSO.SkillDefinition wave))
             {
                 _waveSpeed = wave.Area.ProjectileSpeed;
                 _waveRange = wave.Area.CastRange;
             }
 
-            _tracker.Configure(basicDelay, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds);
+            _tracker.Configure(basicDelay, shieldDuration, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds);
             _hasConfig = true;
             return true;
         }
@@ -215,7 +232,12 @@ namespace Shinshi.Art
 
             switch (play.Kind)
             {
+                case EMageknightVfxKind.Basic:
+                    pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds),
+                        GetBasicGroup(play.Variant, pool.GroupCount));
+                    break;
                 case EMageknightVfxKind.Field:
+                case EMageknightVfxKind.Shield:
                     pool.PlayTimed(position, ToRotation(direction), play.EndAt);
                     break;
                 case EMageknightVfxKind.Wave:
@@ -225,6 +247,35 @@ namespace Shinshi.Art
                     pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
                     break;
             }
+        }
+
+        // 콤보 효과 묶음 수와 콤보 단계 수가 달라도 마지막 단계는 마지막 묶음(마무리 베기)을 쓴다
+        private int GetBasicGroup(int step, int groupCount)
+        {
+            if (groupCount <= 0)
+            {
+                return -1;
+            }
+
+            if ((_basicStepCount > 1) && (step >= _basicStepCount - 1))
+            {
+                return groupCount - 1;
+            }
+
+            return Mathf.Clamp(step, 0, groupCount - 1);
+        }
+
+        private void FollowActor()
+        {
+            MageknightVfxPool shield = _pools[(int)EMageknightVfxKind.Shield];
+            if (shield == null)
+            {
+                return;
+            }
+
+            Vector3 position = _combat.transform.position;
+            position.y += _heightOffset;
+            shield.MoveActive(position);
         }
 
         private static Quaternion ToRotation(Vector3 direction)

@@ -116,24 +116,40 @@ namespace Shinshi.Data
             [SerializeField] private float _retreatDistance;      // m, 조준 반대 방향 후퇴 거리
             [SerializeField] private float _retreatDuration;      // 초, 후퇴 이동 시간
 
-            public float DamageCoefficient          => _damageCoefficient;
-            public float TickCoefficient            => _tickCoefficient;
-            public float TickInterval               => _tickInterval;
-            public float Duration                   => _duration;
-            public float RootDuration               => _rootDuration;
-            public float AllyDamageBonus            => _allyDamageBonus;
-            public float CompanionAttackCoefficient => _companionAttackCoefficient;
-            public float CompanionAttackInterval    => _companionAttackInterval;
-            public float CompanionAttackRange       => _companionAttackRange;
-            public float SecondHitCoefficient       => _secondHitCoefficient;
-            public float SecondHitDelay             => _secondHitDelay;
-            public int   ProjectileCount            => _projectileCount;
-            public float SpreadAngle                => _spreadAngle;
-            public int   MaxTargets                 => _maxTargets;
-            public int   RepeatCount                => _repeatCount;
-            public float RepeatInterval             => _repeatInterval;
-            public float RetreatDistance            => _retreatDistance;
-            public float RetreatDuration            => _retreatDuration;
+            // 마검사 스택 기술이 쓰는 값. 다른 직업 기술은 모두 0이다
+            [SerializeField] private int   _stackGain;            // 발동이 끝나면 얻는 스택. 장판은 생성 때, 순간 이동 베기는 도착 때
+            [SerializeField] private float _stackCoefficient;     // 공격력 배율, 스택 하나당 첫 타격에 더하는 계수. 0보다 크면 시전 확정 때 스택을 모두 쓴다
+            [SerializeField] private float _hitImmunityDuration;  // 초, 발동 순간부터 기절, 속박, 밀림을 받지 않는 시간. 피해는 그대로 받는다
+            [SerializeField] private bool  _teleportToEnd;        // 직선 기술이 경로를 지나며 베고 발동 구간이 끝날 때 경로 끝으로 순간 이동한다
+
+            // 궁수 속성 기술이 쓰는 값. 다른 직업 기술은 모두 0이다
+            [SerializeField] private EArcherElement _archerElement;  // 자기 강화 기술이 이후 기본 공격에 싣는 속성. None이면 속성을 바꾸지 않는다
+            [SerializeField] private int            _requiredStacks; // 시전에 필요한 스택, 0보다 크면 시전 확정 때 이만큼 쓴다. 모자라면 거절한다
+
+            public float          DamageCoefficient          => _damageCoefficient;
+            public float          TickCoefficient            => _tickCoefficient;
+            public float          TickInterval               => _tickInterval;
+            public float          Duration                   => _duration;
+            public float          RootDuration               => _rootDuration;
+            public float          AllyDamageBonus            => _allyDamageBonus;
+            public float          CompanionAttackCoefficient => _companionAttackCoefficient;
+            public float          CompanionAttackInterval    => _companionAttackInterval;
+            public float          CompanionAttackRange       => _companionAttackRange;
+            public float          SecondHitCoefficient       => _secondHitCoefficient;
+            public float          SecondHitDelay             => _secondHitDelay;
+            public int            ProjectileCount            => _projectileCount;
+            public float          SpreadAngle                => _spreadAngle;
+            public int            MaxTargets                 => _maxTargets;
+            public int            RepeatCount                => _repeatCount;
+            public float          RepeatInterval             => _repeatInterval;
+            public float          RetreatDistance            => _retreatDistance;
+            public float          RetreatDuration            => _retreatDuration;
+            public int            StackGain                  => _stackGain;
+            public float          StackCoefficient           => _stackCoefficient;
+            public float          HitImmunityDuration        => _hitImmunityDuration;
+            public bool           TeleportToEnd              => _teleportToEnd;
+            public EArcherElement ArcherElement              => _archerElement;
+            public int            RequiredStacks             => _requiredStacks;
 
             /****************************************
             *                Methods
@@ -144,7 +160,8 @@ namespace Shinshi.Data
                 float companionAttackCoefficient = 0f, float companionAttackInterval = 0f, float companionAttackRange = 0f,
                 float secondHitCoefficient = 0f, float secondHitDelay = 0f, int projectileCount = 0, float spreadAngle = 0f,
                 int maxTargets = 0, int repeatCount = 0, float repeatInterval = 0f, float retreatDistance = 0f,
-                float retreatDuration = 0f)
+                float retreatDuration = 0f, int stackGain = 0, float stackCoefficient = 0f, float hitImmunityDuration = 0f,
+                bool teleportToEnd = false, EArcherElement archerElement = EArcherElement.None, int requiredStacks = 0)
             {
                 _damageCoefficient          = damageCoefficient;
                 _tickCoefficient            = tickCoefficient;
@@ -164,6 +181,12 @@ namespace Shinshi.Data
                 _repeatInterval             = repeatInterval;
                 _retreatDistance            = retreatDistance;
                 _retreatDuration            = retreatDuration;
+                _stackGain                  = stackGain;
+                _stackCoefficient           = stackCoefficient;
+                _hitImmunityDuration        = hitImmunityDuration;
+                _teleportToEnd              = teleportToEnd;
+                _archerElement              = archerElement;
+                _requiredStacks             = requiredStacks;
             }
         }
 
@@ -380,42 +403,51 @@ namespace Shinshi.Data
                 new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 90f),
                 new SkillEffectSpec(damageCoefficient: 1.75f, secondHitCoefficient: 1.75f, secondHitDelay: 0.2f)),
 
-            new SkillDefinition("skill_mageknight_arcane_slash", EPlayerClass.Mageknight, slot: 0, isSignature: false, energyCost: 15f, cooldown: 4f,
-                new SkillTimeline(0.25f, 0f, 0.15f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 100f),
-                new SkillEffectSpec(damageCoefficient: 1.6f)),
-            // 시전자 발동 위치 중심에 고정, 4초 동안 0.5초마다 8회, 총 4.5A
-            new SkillDefinition("skill_mageknight_flame_field", EPlayerClass.Mageknight, slot: 1, isSignature: true, energyCost: 30f, cooldown: 12f,
+            // 마검사는 스택형이다. 기존 ID와 부적 연결을 지키려고 ID를 판정 형태가 맞는 슬롯으로 옮겼다.
+            // 투사체 부적(T20)이 붙은 thunder_wave는 W 검파, 장판 부적(T18)이 붙은 flame_field는 E 장판으로 쓴다
+            // Q 수류 방벽, 3초 동안 기절, 속박, 밀림 면역
+            new SkillDefinition("skill_mageknight_arcane_slash", EPlayerClass.Mageknight, slot: 0, isSignature: false, energyCost: 20f, cooldown: 14f,
+                new SkillTimeline(0.1f, 0f, 0.15f),
+                new SkillArea(ESkillAimMode.Self, ESkillShape.Buff),
+                new SkillEffectSpec(hitImmunityDuration: 3f)),
+            // W 검파 해방, 기본 1.0A에 스택당 0.2A를 더해 20스택이면 5.0A. 관통하며 시전 확정 때 스택을 0으로 만든다
+            new SkillDefinition("skill_mageknight_thunder_wave", EPlayerClass.Mageknight, slot: 1, isSignature: false, energyCost: 25f, cooldown: 8f,
+                new SkillTimeline(0.35f, 0f, 0.2f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 9f, width: 2f, projectileSpeed: 20f),
+                new SkillEffectSpec(damageCoefficient: 1.0f, maxTargets: 8, stackCoefficient: 0.2f)),
+            // E 공간 절단진, 지정 지점에 고정, 4초 동안 0.5초마다 8회 총 4.5A, 생성 때 스택 +5
+            new SkillDefinition("skill_mageknight_flame_field", EPlayerClass.Mageknight, slot: 2, isSignature: true, energyCost: 30f, cooldown: 12f,
                 new SkillTimeline(0.3f, 0f, 0.15f),
-                new SkillArea(ESkillAimMode.Self, ESkillShape.Circle, radius: 2.5f),
-                new SkillEffectSpec(tickCoefficient: 0.5625f, tickInterval: 0.5f, duration: 4f)),
-            new SkillDefinition("skill_mageknight_seal_slash", EPlayerClass.Mageknight, slot: 2, isSignature: false, energyCost: 25f, cooldown: 14f,
-                new SkillTimeline(0.3f, 0f, 0.15f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Cone, radius: 3f, arcAngle: 120f),
-                new SkillEffectSpec(damageCoefficient: 1.0f, rootDuration: 2f)),
-            new SkillDefinition("skill_mageknight_thunder_wave", EPlayerClass.Mageknight, slot: 3, isSignature: false, energyCost: 30f, cooldown: 10f,
-                new SkillTimeline(0.7f, 0f, 0.15f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 9f, width: 1.5f, projectileSpeed: 18f),
-                new SkillEffectSpec(damageCoefficient: 3.8f)),
+                new SkillArea(ESkillAimMode.Point, ESkillShape.Circle, castRange: 7f, radius: 2.5f),
+                new SkillEffectSpec(tickCoefficient: 0.5625f, tickInterval: 0.5f, duration: 4f, stackGain: 5)),
+            // R 섬광 일섬, 6m 경로를 지나며 3.0A로 한 번 베고 발동 구간 0.45초가 끝날 때 경로 끝으로 순간 이동, 도착 때 스택 +10
+            new SkillDefinition("skill_mageknight_seal_slash", EPlayerClass.Mageknight, slot: 3, isSignature: false, energyCost: 30f, cooldown: 12f,
+                new SkillTimeline(0.15f, 0.45f, 0.2f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Line, castRange: 6f, width: 2f),
+                new SkillEffectSpec(damageCoefficient: 3.0f, stackGain: 10, teleportToEnd: true)),
 
-            // 첫 발은 준비 끝(0.35초)에 나가고 나머지는 0.25초 간격, Active가 그 구간이다
-            new SkillDefinition("skill_archer_rapid_shot", EPlayerClass.Archer, slot: 0, isSignature: false, energyCost: 20f, cooldown: 7f,
-                new SkillTimeline(0.35f, 0.5f, 0.25f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 10f, width: 0.3f, projectileSpeed: 24f),
-                new SkillEffectSpec(damageCoefficient: 0.8f, repeatCount: 3, repeatInterval: 0.25f)),
-            // 발사 뒤 같은 순간부터 조준 반대로 3m 후퇴, Active가 후퇴 시간이다
-            new SkillDefinition("skill_archer_retreat_shot", EPlayerClass.Archer, slot: 1, isSignature: false, energyCost: 20f, cooldown: 10f,
-                new SkillTimeline(0.15f, 0.35f, 0.2f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 10f, width: 0.3f, projectileSpeed: 24f),
-                new SkillEffectSpec(damageCoefficient: 1.0f, retreatDistance: 3f, retreatDuration: 0.35f)),
-            new SkillDefinition("skill_archer_piercing_shot", EPlayerClass.Archer, slot: 2, isSignature: true, energyCost: 30f, cooldown: 12f,
-                new SkillTimeline(0.9f, 0f, 0.3f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 14f, width: 0.5f, projectileSpeed: 28f),
-                new SkillEffectSpec(damageCoefficient: 3.2f, maxTargets: 4)),
-            new SkillDefinition("skill_archer_scatter_shot", EPlayerClass.Archer, slot: 3, isSignature: false, energyCost: 25f, cooldown: 10f,
-                new SkillTimeline(0.45f, 0f, 0.3f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 9f, width: 0.3f, projectileSpeed: 22f),
-                new SkillEffectSpec(damageCoefficient: 1.6f, projectileCount: 5, spreadAngle: 10f))
+            // 궁수는 속성형이다. 기존 ID와 부적 연결을 지키려고 ID를 형태가 맞는 슬롯으로 옮겼다.
+            // 대표 기술 piercing_shot(T23 6효과)은 R 폭발, scatter_shot은 E 불이다. Q, W, E는 이후 기본 공격의 속성만 바꾼다
+            // Q 얼음 부여, 맞힌 일반 적의 이동 속도를 잠시 늦춘다
+            new SkillDefinition("skill_archer_rapid_shot", EPlayerClass.Archer, slot: 0, isSignature: false, energyCost: 10f, cooldown: 6f,
+                new SkillTimeline(0.1f, 0f, 0.2f),
+                new SkillArea(ESkillAimMode.Self, ESkillShape.Buff),
+                new SkillEffectSpec(archerElement: EArcherElement.Ice)),
+            // W 바람 부여, 바람인 동안 기본 공격 주기가 짧아지고 화살이 빨라진다
+            new SkillDefinition("skill_archer_retreat_shot", EPlayerClass.Archer, slot: 1, isSignature: false, energyCost: 10f, cooldown: 6f,
+                new SkillTimeline(0.1f, 0f, 0.2f),
+                new SkillArea(ESkillAimMode.Self, ESkillShape.Buff),
+                new SkillEffectSpec(archerElement: EArcherElement.Wind)),
+            // E 불 부여, 맞힌 적에게 화상 지속 피해를 건다
+            new SkillDefinition("skill_archer_scatter_shot", EPlayerClass.Archer, slot: 2, isSignature: false, energyCost: 10f, cooldown: 6f,
+                new SkillTimeline(0.1f, 0f, 0.2f),
+                new SkillArea(ESkillAimMode.Self, ESkillShape.Buff),
+                new SkillEffectSpec(archerElement: EArcherElement.Fire)),
+            // R 속성 폭발, 20스택을 모두 써서 사거리 안 커서 지점에 큰 원형 폭발. 준비 0.7초가 차지 동작이다
+            new SkillDefinition("skill_archer_piercing_shot", EPlayerClass.Archer, slot: 3, isSignature: true, energyCost: 20f, cooldown: 3f,
+                new SkillTimeline(0.7f, 0f, 0.3f),
+                new SkillArea(ESkillAimMode.Point, ESkillShape.Circle, castRange: 12f, radius: 5f),
+                new SkillEffectSpec(damageCoefficient: 8.0f, requiredStacks: 20))
         };
 
         // TODO(민성): 강림 후딜은 기획에 없어 신령사 공통 후딜 0.15초를 자리값으로 둔다. 기획 확정 뒤 교체
@@ -451,6 +483,23 @@ namespace Shinshi.Data
         // TODO(민성): 돌등, 솔빛 이동 속도는 기획 미정이라 플레이어 이동 속도와 같은 자리값을 둔다
         [SerializeField] private float _companionMoveSpeed      = 5f;   // m/s
 
+        // 상한은 마검사와 궁수가 같이 쓴다. 마검사는 적을 하나 이상 맞힌 기본 공격 한 번에 얻고 기술 적중은 기술의 StackGain만 준다
+        [Header("직업 스택 (마검사, 궁수)")]
+        [SerializeField] private int _classStackMax          = 20;
+        [SerializeField] private int _classStackPerBasicSwing = 1;
+
+        // 기본 공격 화살이 적을 맞혔을 때만 쌓는다. 직전에 맞힌 속성과 다르면 전환 값, 같으면 유지 값이다. 상한은 위 스택 상한을 같이 쓴다
+        [Header("궁수 속성")]
+        [SerializeField] private int   _archerStackPerSameHit    = 1;
+        [SerializeField] private int   _archerStackPerSwitchHit  = 2;
+        [SerializeField] private float _windAttackIntervalScale  = 0.8f; // 바람인 동안 기본 공격 단계 주기에 곱한다
+        [SerializeField] private float _windProjectileSpeedScale = 1.5f; // 바람인 동안 기본 공격 화살 속도에 곱한다
+        [SerializeField] private float _burnDuration             = 3f;   // 초, 불 화살 적중 뒤 화상 유지. 다시 맞으면 이 시간으로 갱신한다
+        [SerializeField] private float _burnTickInterval         = 0.5f; // 초
+        [SerializeField] private float _burnTickCoefficient      = 0.1f; // 공격력 배율, 화상 1회분
+        [SerializeField] private float _chillDuration            = 1.5f; // 초, 얼음 화살 적중 뒤 둔화 유지
+        [SerializeField] private float _chillSlowRate            = 0.4f; // 0에서 1 사이, 이동 속도 감소율. 보스는 받지 않는다
+
         [NonSerialized] private DefinitionLookup<SkillDefinition>     _skillLookup     = new DefinitionLookup<SkillDefinition>();
         [NonSerialized] private DefinitionLookup<AscensionDefinition> _ascensionLookup = new DefinitionLookup<AscensionDefinition>();
         [NonSerialized] private SkillDefinition[]                     _allSkills;
@@ -472,6 +521,17 @@ namespace Shinshi.Data
         public float                              CompanionStuckSeconds    => _companionStuckSeconds;
         public float                              CompanionWarpOffset      => _companionWarpOffset;
         public float                              CompanionMoveSpeed       => _companionMoveSpeed;
+        public int                                ClassStackMax            => _classStackMax;
+        public int                                ClassStackPerBasicSwing  => _classStackPerBasicSwing;
+        public int                                ArcherStackPerSameHit    => _archerStackPerSameHit;
+        public int                                ArcherStackPerSwitchHit  => _archerStackPerSwitchHit;
+        public float                              WindAttackIntervalScale  => _windAttackIntervalScale;
+        public float                              WindProjectileSpeedScale => _windProjectileSpeedScale;
+        public float                              BurnDuration             => _burnDuration;
+        public float                              BurnTickInterval         => _burnTickInterval;
+        public float                              BurnTickCoefficient      => _burnTickCoefficient;
+        public float                              ChillDuration            => _chillDuration;
+        public float                              ChillSlowRate            => _chillSlowRate;
 
         /****************************************
         *              Unity Event
@@ -581,6 +641,17 @@ namespace Shinshi.Data
             DataValidation.RequirePositive(errors, OWNER, nameof(_companionStuckSeconds), _companionStuckSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_companionWarpOffset), _companionWarpOffset);
             DataValidation.RequirePositive(errors, OWNER, nameof(_companionMoveSpeed), _companionMoveSpeed);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_classStackMax), _classStackMax);
+            DataValidation.RequireRange(errors, OWNER, nameof(_classStackPerBasicSwing), _classStackPerBasicSwing, 0f, _classStackMax);
+            DataValidation.RequireRange(errors, OWNER, nameof(_archerStackPerSameHit), _archerStackPerSameHit, 0f, _classStackMax);
+            DataValidation.RequireRange(errors, OWNER, nameof(_archerStackPerSwitchHit), _archerStackPerSwitchHit, 0f, _classStackMax);
+            DataValidation.RequirePositiveAtMost(errors, OWNER, nameof(_windAttackIntervalScale), _windAttackIntervalScale, 1f);
+            DataValidation.RequireRange(errors, OWNER, nameof(_windProjectileSpeedScale), _windProjectileSpeedScale, 1f, float.MaxValue);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_burnDuration), _burnDuration);
+            DataValidation.RequirePositiveAtMost(errors, OWNER, nameof(_burnTickInterval), _burnTickInterval, _burnDuration);
+            DataValidation.RequireNonNegative(errors, OWNER, nameof(_burnTickCoefficient), _burnTickCoefficient);
+            DataValidation.RequireNonNegative(errors, OWNER, nameof(_chillDuration), _chillDuration);
+            DataValidation.RequireRange(errors, OWNER, nameof(_chillSlowRate), _chillSlowRate, 0f, 1f);
 
             ValidateSkills(errors, OWNER);
             ValidateClassSlots(errors, OWNER);
@@ -624,6 +695,7 @@ namespace Shinshi.Data
 
                 ValidateArea(errors, owner, field, skill);
                 ValidateEffect(errors, owner, field, skill.Effect);
+                DataValidation.RequireRange(errors, owner, field + ".Effect.RequiredStacks", skill.Effect.RequiredStacks, 0f, _classStackMax);
             }
         }
 
@@ -658,6 +730,14 @@ namespace Shinshi.Data
                     DataValidation.RequirePositive(errors, owner, areaField + ".Width", area.Width);
                     DataValidation.RequirePositive(errors, owner, areaField + ".ProjectileSpeed", area.ProjectileSpeed);
                     break;
+                case ESkillShape.Buff:
+                    // 자기 강화는 피격이상 면역이나 궁수 속성 부여 중 하나는 있어야 한다
+                    if ((skill.Effect.HitImmunityDuration <= 0f) && (skill.Effect.ArcherElement == EArcherElement.None))
+                    {
+                        errors.Add($"{owner}.{field}.Effect: 자기 강화에 면역 시간과 궁수 속성이 모두 없다");
+                    }
+
+                    break;
                 case ESkillShape.Summon:
                     DataValidation.RequirePositive(errors, owner, field + ".Effect.Duration", skill.Effect.Duration);
                     DataValidation.RequirePositive(errors, owner, field + ".Effect.CompanionAttackInterval", skill.Effect.CompanionAttackInterval);
@@ -667,6 +747,22 @@ namespace Shinshi.Data
                 default:
                     errors.Add($"{owner}.{areaField}.Shape: 처리하지 않는 형태 {area.Shape}");
                     break;
+            }
+
+            if ((skill.Effect.TeleportToEnd) && (area.Shape != ESkillShape.Line))
+            {
+                errors.Add($"{owner}.{field}.Effect.TeleportToEnd: 경로 끝 순간 이동은 직선 형태에만 쓴다");
+            }
+
+            if ((skill.Effect.ArcherElement != EArcherElement.None)
+                && ((skill.PlayerClass != EPlayerClass.Archer) || (area.Shape != ESkillShape.Buff)))
+            {
+                errors.Add($"{owner}.{field}.Effect.ArcherElement: 속성 부여는 궁수의 자기 강화 기술에만 쓴다");
+            }
+
+            if ((skill.Effect.RequiredStacks > 0) && (skill.Effect.StackCoefficient > 0f))
+            {
+                errors.Add($"{owner}.{field}.Effect.RequiredStacks: 필요 스택과 스택 계수를 함께 쓰지 않는다");
             }
         }
 
@@ -681,10 +777,11 @@ namespace Shinshi.Data
             DataValidation.RequireNonNegative(errors, owner, field + ".AllyDamageBonus", effect.AllyDamageBonus);
             DataValidation.RequireNonNegative(errors, owner, field + ".CompanionAttackCoefficient", effect.CompanionAttackCoefficient);
 
-            bool dealsDamage = (effect.DamageCoefficient > 0f) || (effect.TickCoefficient > 0f) || (effect.CompanionAttackCoefficient > 0f);
+            bool dealsDamage = (effect.DamageCoefficient > 0f) || (effect.TickCoefficient > 0f) || (effect.CompanionAttackCoefficient > 0f)
+                || (effect.HitImmunityDuration > 0f) || (effect.ArcherElement != EArcherElement.None);
             if (!dealsDamage)
             {
-                errors.Add($"{owner}.{field}: 직접 피해, 지속 피해, 동료 공격 계수가 모두 0이다");
+                errors.Add($"{owner}.{field}: 직접 피해, 지속 피해, 동료 공격 계수, 면역 시간, 궁수 속성이 모두 0이다");
             }
 
             if (effect.TickCoefficient > 0f)
@@ -707,6 +804,10 @@ namespace Shinshi.Data
             DataValidation.RequireNonNegative(errors, owner, field + ".RepeatInterval", effect.RepeatInterval);
             DataValidation.RequireNonNegative(errors, owner, field + ".RetreatDistance", effect.RetreatDistance);
             DataValidation.RequireNonNegative(errors, owner, field + ".RetreatDuration", effect.RetreatDuration);
+            DataValidation.RequireNonNegative(errors, owner, field + ".StackGain", effect.StackGain);
+            DataValidation.RequireNonNegative(errors, owner, field + ".StackCoefficient", effect.StackCoefficient);
+            DataValidation.RequireNonNegative(errors, owner, field + ".HitImmunityDuration", effect.HitImmunityDuration);
+            DataValidation.RequireNonNegative(errors, owner, field + ".RequiredStacks", effect.RequiredStacks);
 
             if (effect.SecondHitCoefficient > 0f)
             {
