@@ -167,6 +167,12 @@ MonoBehaviour:
   - _playerClass: 5
     _step: 0
     _actionIndex: 9
+  - _playerClass: 5
+    _step: 1
+    _actionIndex: 10
+  - _playerClass: 5
+    _step: 2
+    _actionIndex: 11
   _attackIntervals:
   - _playerClass: 3
     _seconds: 0.9
@@ -176,25 +182,17 @@ MonoBehaviour:
     _comboResetSeconds: 1.2
   - _playerClass: 5
     _seconds: 0.95
-    _comboResetSeconds: 0
-  _attackSegments:
-  - _actionIndex: 9
-    _lengths:
-    - 0.4666667
-    - 0.53333336
-    - 0.16666667
+    _comboResetSeconds: 1.2
+  _attackSegments: []
   _skillSegments:
   - _actionIndex: 10
     _lengths:
     - 0.6
     - 0.44000003
-  - _actionIndex: 15
+  - _actionIndex: 18
     _lengths:
-    - 0.23333335
-    - 0.33333334
-    - 0.33333334
-    - 0.33333334
-    - 0.33333334
+    - 0.90000004
+    - 0.40000004
   _attackClipLengths:
   - 1.4000001
   - 1.4000001
@@ -205,7 +203,9 @@ MonoBehaviour:
   - 1.25
   - 1.25
   - 1
-  - 1.1666666
+  - 0.5666667
+  - 0.73333335
+  - 1.9000001
   _skillClipLengths:
   - 4
   - 2.4
@@ -218,14 +218,14 @@ MonoBehaviour:
   - 0.75
   - 1.2
   - 1.0400001
-  - 0.6
-  - 0.65
-  - 0.65
-  - 1.2
-  - 1.5666668
-  - 0.9666667
-  - 1.0666667
-  - 1.0666667
+  - 0.35
+  - 0.75
+  - 0.59999996
+  - 1.15
+  - 0.4
+  - 0.4
+  - 0.4
+  - 1.3000001
   _hitClipLengths:
   - 1.4666667
   - 1.4666667
