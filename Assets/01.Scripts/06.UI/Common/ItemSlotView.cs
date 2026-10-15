@@ -19,12 +19,18 @@ namespace Shinshi.UI
         ****************************************/
 
         private const string COUNT_FORMAT = "{0:N0}";
+        private const int TALISMAN_ID_LENGTH = 6;
+        private const int TALISMAN_TIER_INDEX = 4;
+        private const int TALISMAN_CHOICE_INDEX = 5;
+        private const int VARIANT_LENGTH = 2;
 
         [Header("표시")]
         [SerializeField] private Image      _background   = null;
         [SerializeField] private Image      _frame        = null;
         [SerializeField] private Image      _icon         = null;
         [SerializeField] private TMP_Text   _countLabel   = null;
+        [SerializeField] private TMP_Text   _variantLabel = null;
+        [SerializeField] private GameObject _variantBadge = null;
         [SerializeField] private GameObject _lockMark     = null;
         [SerializeField] private GameObject _equippedMark = null;
         [SerializeField] private GameObject _selectedMark = null;
@@ -38,6 +44,7 @@ namespace Shinshi.UI
         [SerializeField] private TooltipView     _tooltip = null;
 
         private ItemSlotData _data;
+        private readonly char[] _variantCharacters = new char[VARIANT_LENGTH];
 
         /****************************************
         *              Properties
@@ -146,12 +153,34 @@ namespace Shinshi.UI
             SetActive(_itemBackground, !empty);
             SetActive(_lockMark, !empty && data.IsLocked);
             SetActive(_equippedMark, !empty && data.IsEquipped);
+            UpdateVariant(data.Id, empty);
         }
 
         /// <summary>코드로 칸을 만들 때 툴팁을 연결한다</summary>
         public void Bind(TooltipView tooltip) { _tooltip = tooltip; }
 
         public void SetSelected(bool selected) { SetActive(_selectedMark, selected); }
+
+        private void UpdateVariant(string id, bool empty)
+        {
+            if (_variantLabel == null)
+            {
+                return;
+            }
+
+            bool isCard = !empty && (id != null) && (id.Length == TALISMAN_ID_LENGTH)
+                && (id[0] == 'T') && char.IsDigit(id[1]) && char.IsDigit(id[2]) && (id[3] == '-')
+                && (id[TALISMAN_TIER_INDEX] >= '1') && (id[TALISMAN_TIER_INDEX] <= '3')
+                && ((id[TALISMAN_CHOICE_INDEX] == 'A') || (id[TALISMAN_CHOICE_INDEX] == 'B'));
+            SetActive(_variantBadge, isCard);
+            _variantLabel.gameObject.SetActive(isCard);
+            if (isCard)
+            {
+                _variantCharacters[0] = id[TALISMAN_TIER_INDEX];
+                _variantCharacters[1] = id[TALISMAN_CHOICE_INDEX];
+                _variantLabel.SetCharArray(_variantCharacters);
+            }
+        }
 
         private static void SetActive(GameObject target, bool active)
         {

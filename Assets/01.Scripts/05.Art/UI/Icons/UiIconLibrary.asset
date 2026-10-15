@@ -26,49 +26,49 @@ MonoBehaviour:
   - _id: class_warrior
     _sprite: {fileID: 21300000, guid: ae4f1ed8d09314e489238c548441e7ef, type: 3}
   - _id: equip_accessory
-    _sprite: {fileID: 21300000, guid: 4e04df2fcb07e1b4488de119bc8ed3e8, type: 3}
+    _sprite: {fileID: 21300000, guid: 3d39036a654b76e46981dcf707268628, type: 3}
   - _id: equip_body
-    _sprite: {fileID: 21300000, guid: 3299a78f470cf0b409440b095af837d3, type: 3}
+    _sprite: {fileID: 21300000, guid: 8c264163224307d4380129874a6e27b6, type: 3}
   - _id: equip_feet
-    _sprite: {fileID: 21300000, guid: 961a2b56b0f89f243844f01530110820, type: 3}
+    _sprite: {fileID: 21300000, guid: 78e79d3ef9e3172428292f862ee84123, type: 3}
   - _id: equip_hands
-    _sprite: {fileID: 21300000, guid: 3ad5497804cbe02458791f7e2e60b28d, type: 3}
+    _sprite: {fileID: 21300000, guid: b75da3ae8e289214ab9cc5277ec5473e, type: 3}
   - _id: equip_head
-    _sprite: {fileID: 21300000, guid: 5d2e9265e80cb3d448a8835fc98ed8fd, type: 3}
+    _sprite: {fileID: 21300000, guid: 0f85aae641a3f0b4e9e271e835431639, type: 3}
   - _id: equip_weapon
-    _sprite: {fileID: 21300000, guid: e10e32d9e80e7e04caca82613f318a7d, type: 3}
+    _sprite: {fileID: 21300000, guid: ce10165a051cd5a4c944ed7bfcce2df8, type: 3}
   - _id: item_auction_material_common
-    _sprite: {fileID: 21300000, guid: dcbec4680f259d24fb76a1a4d5772628, type: 3}
+    _sprite: {fileID: 21300000, guid: 1a8d4a95a73045a49a2e44c5cc6e7f9f, type: 3}
   - _id: item_auction_material_epic
-    _sprite: {fileID: 21300000, guid: f377d735c1eec37419b097acee64eb66, type: 3}
+    _sprite: {fileID: 21300000, guid: 08c50c88b16b937489e9e3e7c658a2e8, type: 3}
   - _id: item_auction_material_legendary
-    _sprite: {fileID: 21300000, guid: 39ab59b1c955ef242a7a9e4a0d7387da, type: 3}
+    _sprite: {fileID: 21300000, guid: ea81622c8729bab4aa51746dfd1a999f, type: 3}
   - _id: item_auction_material_rare
-    _sprite: {fileID: 21300000, guid: 5b59566c93a6a6340acae524dab8b18b, type: 3}
+    _sprite: {fileID: 21300000, guid: 3a3f9e82e6d23584f969bad41a149cf3, type: 3}
   - _id: item_boss_material_common
-    _sprite: {fileID: 21300000, guid: 53aa68ee26e11644eae9c330d29ae269, type: 3}
+    _sprite: {fileID: 21300000, guid: 86e8708390c12d940b35ced205dae1a2, type: 3}
   - _id: item_boss_material_epic
-    _sprite: {fileID: 21300000, guid: 76af483a31762374ca65e5df3308d286, type: 3}
+    _sprite: {fileID: 21300000, guid: b5d5272d41c4f8c46bc0a33f66d0481d, type: 3}
   - _id: item_boss_material_legendary
-    _sprite: {fileID: 21300000, guid: 6bf9e3d3631976c49b8739a812826991, type: 3}
+    _sprite: {fileID: 21300000, guid: 2b0440506d32bce4bb2adece89718a5a, type: 3}
   - _id: item_boss_material_rare
-    _sprite: {fileID: 21300000, guid: 36287988d53020741a3ffe2e61b65676, type: 3}
+    _sprite: {fileID: 21300000, guid: d6e2b1efb3e5eb34599b8f0b94824a87, type: 3}
   - _id: item_boss_ticket
-    _sprite: {fileID: 21300000, guid: b16efdf65be019b4d96b4d76451e2b4f, type: 3}
+    _sprite: {fileID: 21300000, guid: 3e8b64f48f73a98459f466bbd742aaab, type: 3}
   - _id: item_essence
-    _sprite: {fileID: 21300000, guid: 26e50c3711efc3240ba8e0292525f4fc, type: 3}
+    _sprite: {fileID: 21300000, guid: e00100caccf83e149bbc45c37af3b7bd, type: 3}
   - _id: item_fox_trace
     _sprite: {fileID: 21300000, guid: 0ea014e255608344ea9d8016daaccab9, type: 3}
   - _id: item_herb
-    _sprite: {fileID: 21300000, guid: 32ce1a9e5b3741849a0e7f76524a6201, type: 3}
+    _sprite: {fileID: 21300000, guid: 1a270ca85aa3da24cbe132763f3e52fb, type: 3}
   - _id: item_potion_large
-    _sprite: {fileID: 21300000, guid: d4fa6b2bb5a352d4c81d9ed706dd9102, type: 3}
+    _sprite: {fileID: 21300000, guid: edbad88536d35e94b864702bf8475217, type: 3}
   - _id: item_potion_small
-    _sprite: {fileID: 21300000, guid: 457c1cd5b72721741beac6465912b53a, type: 3}
+    _sprite: {fileID: 21300000, guid: 11f838616d22c1e4a955bb410b4f078e, type: 3}
   - _id: item_refine_shard
-    _sprite: {fileID: 21300000, guid: 8076679ce69903742871fa879789eb2c, type: 3}
+    _sprite: {fileID: 21300000, guid: f7334bf37f487bd4abbcbca5c7cef5d0, type: 3}
   - _id: item_yeopjeon
-    _sprite: {fileID: 21300000, guid: b8208a41b102e36428b5d75a26ec3004, type: 3}
+    _sprite: {fileID: 21300000, guid: 03f7e1372043da5499bfb6063cd75b19, type: 3}
   - _id: mark_equipped
     _sprite: {fileID: 21300000, guid: 8dfd1fc092ebf8d42b7261ca3e809e70, type: 3}
   - _id: mark_lock
@@ -177,6 +177,246 @@ MonoBehaviour:
     _sprite: {fileID: 21300000, guid: 3569121c422cae8478629b609e2d3e01, type: 3}
   - _id: train_health
     _sprite: {fileID: 21300000, guid: d06b788b658fd454784858ea2687c7a2, type: 3}
+  - _id: equip_weapon_common
+    _sprite: {fileID: 21300000, guid: ce10165a051cd5a4c944ed7bfcce2df8, type: 3}
+  - _id: equip_weapon_rare
+    _sprite: {fileID: 21300000, guid: ce10165a051cd5a4c944ed7bfcce2df8, type: 3}
+  - _id: equip_weapon_epic
+    _sprite: {fileID: 21300000, guid: ce10165a051cd5a4c944ed7bfcce2df8, type: 3}
+  - _id: equip_weapon_legendary
+    _sprite: {fileID: 21300000, guid: ce10165a051cd5a4c944ed7bfcce2df8, type: 3}
+  - _id: equip_head_common
+    _sprite: {fileID: 21300000, guid: 0f85aae641a3f0b4e9e271e835431639, type: 3}
+  - _id: equip_head_rare
+    _sprite: {fileID: 21300000, guid: 0f85aae641a3f0b4e9e271e835431639, type: 3}
+  - _id: equip_head_epic
+    _sprite: {fileID: 21300000, guid: 0f85aae641a3f0b4e9e271e835431639, type: 3}
+  - _id: equip_head_legendary
+    _sprite: {fileID: 21300000, guid: 0f85aae641a3f0b4e9e271e835431639, type: 3}
+  - _id: equip_body_common
+    _sprite: {fileID: 21300000, guid: 8c264163224307d4380129874a6e27b6, type: 3}
+  - _id: equip_body_rare
+    _sprite: {fileID: 21300000, guid: 8c264163224307d4380129874a6e27b6, type: 3}
+  - _id: equip_body_epic
+    _sprite: {fileID: 21300000, guid: 8c264163224307d4380129874a6e27b6, type: 3}
+  - _id: equip_body_legendary
+    _sprite: {fileID: 21300000, guid: 8c264163224307d4380129874a6e27b6, type: 3}
+  - _id: equip_hands_common
+    _sprite: {fileID: 21300000, guid: b75da3ae8e289214ab9cc5277ec5473e, type: 3}
+  - _id: equip_hands_rare
+    _sprite: {fileID: 21300000, guid: b75da3ae8e289214ab9cc5277ec5473e, type: 3}
+  - _id: equip_hands_epic
+    _sprite: {fileID: 21300000, guid: b75da3ae8e289214ab9cc5277ec5473e, type: 3}
+  - _id: equip_hands_legendary
+    _sprite: {fileID: 21300000, guid: b75da3ae8e289214ab9cc5277ec5473e, type: 3}
+  - _id: equip_feet_common
+    _sprite: {fileID: 21300000, guid: 78e79d3ef9e3172428292f862ee84123, type: 3}
+  - _id: equip_feet_rare
+    _sprite: {fileID: 21300000, guid: 78e79d3ef9e3172428292f862ee84123, type: 3}
+  - _id: equip_feet_epic
+    _sprite: {fileID: 21300000, guid: 78e79d3ef9e3172428292f862ee84123, type: 3}
+  - _id: equip_feet_legendary
+    _sprite: {fileID: 21300000, guid: 78e79d3ef9e3172428292f862ee84123, type: 3}
+  - _id: equip_accessory_common
+    _sprite: {fileID: 21300000, guid: 3d39036a654b76e46981dcf707268628, type: 3}
+  - _id: equip_accessory_rare
+    _sprite: {fileID: 21300000, guid: 3d39036a654b76e46981dcf707268628, type: 3}
+  - _id: equip_accessory_epic
+    _sprite: {fileID: 21300000, guid: 3d39036a654b76e46981dcf707268628, type: 3}
+  - _id: equip_accessory_legendary
+    _sprite: {fileID: 21300000, guid: 3d39036a654b76e46981dcf707268628, type: 3}
+  - _id: equip_weapon_training
+    _sprite: {fileID: 21300000, guid: ce10165a051cd5a4c944ed7bfcce2df8, type: 3}
+  - _id: equip_head_training
+    _sprite: {fileID: 21300000, guid: 0f85aae641a3f0b4e9e271e835431639, type: 3}
+  - _id: equip_body_training
+    _sprite: {fileID: 21300000, guid: 8c264163224307d4380129874a6e27b6, type: 3}
+  - _id: equip_hands_training
+    _sprite: {fileID: 21300000, guid: b75da3ae8e289214ab9cc5277ec5473e, type: 3}
+  - _id: equip_feet_training
+    _sprite: {fileID: 21300000, guid: 78e79d3ef9e3172428292f862ee84123, type: 3}
+  - _id: equip_accessory_training
+    _sprite: {fileID: 21300000, guid: 3d39036a654b76e46981dcf707268628, type: 3}
+  - _id: T01-1A
+    _sprite: {fileID: 21300000, guid: 7c443566d147f6b4cb0c0ca1f45f571e, type: 3}
+  - _id: T01-1B
+    _sprite: {fileID: 21300000, guid: 7c443566d147f6b4cb0c0ca1f45f571e, type: 3}
+  - _id: T01-2A
+    _sprite: {fileID: 21300000, guid: 7c443566d147f6b4cb0c0ca1f45f571e, type: 3}
+  - _id: T01-2B
+    _sprite: {fileID: 21300000, guid: 7c443566d147f6b4cb0c0ca1f45f571e, type: 3}
+  - _id: T01-3A
+    _sprite: {fileID: 21300000, guid: 7c443566d147f6b4cb0c0ca1f45f571e, type: 3}
+  - _id: T01-3B
+    _sprite: {fileID: 21300000, guid: 7c443566d147f6b4cb0c0ca1f45f571e, type: 3}
+  - _id: T02-1A
+    _sprite: {fileID: 21300000, guid: d83942d3edbadf84790942dc81d472b4, type: 3}
+  - _id: T02-2A
+    _sprite: {fileID: 21300000, guid: d83942d3edbadf84790942dc81d472b4, type: 3}
+  - _id: T02-3A
+    _sprite: {fileID: 21300000, guid: d83942d3edbadf84790942dc81d472b4, type: 3}
+  - _id: T03-1A
+    _sprite: {fileID: 21300000, guid: 8d8482b2f5955fd45a5a0800adbc965b, type: 3}
+  - _id: T03-2A
+    _sprite: {fileID: 21300000, guid: 8d8482b2f5955fd45a5a0800adbc965b, type: 3}
+  - _id: T03-3A
+    _sprite: {fileID: 21300000, guid: 8d8482b2f5955fd45a5a0800adbc965b, type: 3}
+  - _id: T04-1A
+    _sprite: {fileID: 21300000, guid: ff0907525301813408ad86135628c063, type: 3}
+  - _id: T04-2A
+    _sprite: {fileID: 21300000, guid: ff0907525301813408ad86135628c063, type: 3}
+  - _id: T04-3A
+    _sprite: {fileID: 21300000, guid: ff0907525301813408ad86135628c063, type: 3}
+  - _id: T05-1A
+    _sprite: {fileID: 21300000, guid: deda28d42088d7c4d8a205d0d46a57a2, type: 3}
+  - _id: T05-2A
+    _sprite: {fileID: 21300000, guid: deda28d42088d7c4d8a205d0d46a57a2, type: 3}
+  - _id: T05-3A
+    _sprite: {fileID: 21300000, guid: deda28d42088d7c4d8a205d0d46a57a2, type: 3}
+  - _id: T06-1A
+    _sprite: {fileID: 21300000, guid: 8d7e9702fa2282b4ab8c9c8f965afb76, type: 3}
+  - _id: T06-1B
+    _sprite: {fileID: 21300000, guid: 8d7e9702fa2282b4ab8c9c8f965afb76, type: 3}
+  - _id: T06-2A
+    _sprite: {fileID: 21300000, guid: 8d7e9702fa2282b4ab8c9c8f965afb76, type: 3}
+  - _id: T06-2B
+    _sprite: {fileID: 21300000, guid: 8d7e9702fa2282b4ab8c9c8f965afb76, type: 3}
+  - _id: T06-3A
+    _sprite: {fileID: 21300000, guid: 8d7e9702fa2282b4ab8c9c8f965afb76, type: 3}
+  - _id: T06-3B
+    _sprite: {fileID: 21300000, guid: 8d7e9702fa2282b4ab8c9c8f965afb76, type: 3}
+  - _id: T07-1A
+    _sprite: {fileID: 21300000, guid: cf4fa99c516c1f74c90b76d90a35c447, type: 3}
+  - _id: T07-2A
+    _sprite: {fileID: 21300000, guid: cf4fa99c516c1f74c90b76d90a35c447, type: 3}
+  - _id: T07-3A
+    _sprite: {fileID: 21300000, guid: cf4fa99c516c1f74c90b76d90a35c447, type: 3}
+  - _id: T08-1A
+    _sprite: {fileID: 21300000, guid: 18bac714f0ba3e349a1fb434e952d2db, type: 3}
+  - _id: T08-2A
+    _sprite: {fileID: 21300000, guid: 18bac714f0ba3e349a1fb434e952d2db, type: 3}
+  - _id: T08-3A
+    _sprite: {fileID: 21300000, guid: 18bac714f0ba3e349a1fb434e952d2db, type: 3}
+  - _id: T09-1A
+    _sprite: {fileID: 21300000, guid: 2098d166d6824824ba3d631eae8b7fe5, type: 3}
+  - _id: T09-1B
+    _sprite: {fileID: 21300000, guid: 2098d166d6824824ba3d631eae8b7fe5, type: 3}
+  - _id: T09-2A
+    _sprite: {fileID: 21300000, guid: 2098d166d6824824ba3d631eae8b7fe5, type: 3}
+  - _id: T09-2B
+    _sprite: {fileID: 21300000, guid: 2098d166d6824824ba3d631eae8b7fe5, type: 3}
+  - _id: T09-3A
+    _sprite: {fileID: 21300000, guid: 2098d166d6824824ba3d631eae8b7fe5, type: 3}
+  - _id: T09-3B
+    _sprite: {fileID: 21300000, guid: 2098d166d6824824ba3d631eae8b7fe5, type: 3}
+  - _id: T10-1A
+    _sprite: {fileID: 21300000, guid: 6374ff5e26a135b4cbb889d38fe19694, type: 3}
+  - _id: T10-2A
+    _sprite: {fileID: 21300000, guid: 6374ff5e26a135b4cbb889d38fe19694, type: 3}
+  - _id: T10-3A
+    _sprite: {fileID: 21300000, guid: 6374ff5e26a135b4cbb889d38fe19694, type: 3}
+  - _id: T11-1A
+    _sprite: {fileID: 21300000, guid: e2da889559ab62649a71d25e0b9b7128, type: 3}
+  - _id: T11-2A
+    _sprite: {fileID: 21300000, guid: e2da889559ab62649a71d25e0b9b7128, type: 3}
+  - _id: T11-3A
+    _sprite: {fileID: 21300000, guid: e2da889559ab62649a71d25e0b9b7128, type: 3}
+  - _id: T12-1A
+    _sprite: {fileID: 21300000, guid: 664d1772a741ef84db114253d8b802e5, type: 3}
+  - _id: T12-2A
+    _sprite: {fileID: 21300000, guid: 664d1772a741ef84db114253d8b802e5, type: 3}
+  - _id: T12-3A
+    _sprite: {fileID: 21300000, guid: 664d1772a741ef84db114253d8b802e5, type: 3}
+  - _id: T13-1A
+    _sprite: {fileID: 21300000, guid: dd034b293368297478db8a70cdf39f97, type: 3}
+  - _id: T13-1B
+    _sprite: {fileID: 21300000, guid: dd034b293368297478db8a70cdf39f97, type: 3}
+  - _id: T13-2A
+    _sprite: {fileID: 21300000, guid: dd034b293368297478db8a70cdf39f97, type: 3}
+  - _id: T13-2B
+    _sprite: {fileID: 21300000, guid: dd034b293368297478db8a70cdf39f97, type: 3}
+  - _id: T13-3A
+    _sprite: {fileID: 21300000, guid: dd034b293368297478db8a70cdf39f97, type: 3}
+  - _id: T13-3B
+    _sprite: {fileID: 21300000, guid: dd034b293368297478db8a70cdf39f97, type: 3}
+  - _id: T14-1A
+    _sprite: {fileID: 21300000, guid: f70ec7162bdf82f41a4813770393ee2f, type: 3}
+  - _id: T14-2A
+    _sprite: {fileID: 21300000, guid: f70ec7162bdf82f41a4813770393ee2f, type: 3}
+  - _id: T14-3A
+    _sprite: {fileID: 21300000, guid: f70ec7162bdf82f41a4813770393ee2f, type: 3}
+  - _id: T15-1A
+    _sprite: {fileID: 21300000, guid: 057eb22a86f9c5e4caebffda50dd5f8c, type: 3}
+  - _id: T15-2A
+    _sprite: {fileID: 21300000, guid: 057eb22a86f9c5e4caebffda50dd5f8c, type: 3}
+  - _id: T15-3A
+    _sprite: {fileID: 21300000, guid: 057eb22a86f9c5e4caebffda50dd5f8c, type: 3}
+  - _id: T16-1A
+    _sprite: {fileID: 21300000, guid: 62ac11f09dce05e40beb27abbe5b98f8, type: 3}
+  - _id: T16-2A
+    _sprite: {fileID: 21300000, guid: 62ac11f09dce05e40beb27abbe5b98f8, type: 3}
+  - _id: T16-3A
+    _sprite: {fileID: 21300000, guid: 62ac11f09dce05e40beb27abbe5b98f8, type: 3}
+  - _id: T17-1A
+    _sprite: {fileID: 21300000, guid: 48a67a62a10d535488f401e46eb02d82, type: 3}
+  - _id: T17-2A
+    _sprite: {fileID: 21300000, guid: 48a67a62a10d535488f401e46eb02d82, type: 3}
+  - _id: T17-3A
+    _sprite: {fileID: 21300000, guid: 48a67a62a10d535488f401e46eb02d82, type: 3}
+  - _id: T18-1A
+    _sprite: {fileID: 21300000, guid: 6bea58852398b7146be55a0a64bd3667, type: 3}
+  - _id: T18-1B
+    _sprite: {fileID: 21300000, guid: 6bea58852398b7146be55a0a64bd3667, type: 3}
+  - _id: T18-2A
+    _sprite: {fileID: 21300000, guid: 6bea58852398b7146be55a0a64bd3667, type: 3}
+  - _id: T18-2B
+    _sprite: {fileID: 21300000, guid: 6bea58852398b7146be55a0a64bd3667, type: 3}
+  - _id: T18-3A
+    _sprite: {fileID: 21300000, guid: 6bea58852398b7146be55a0a64bd3667, type: 3}
+  - _id: T18-3B
+    _sprite: {fileID: 21300000, guid: 6bea58852398b7146be55a0a64bd3667, type: 3}
+  - _id: T19-1A
+    _sprite: {fileID: 21300000, guid: bc916a6e81025b449928e47306fa152f, type: 3}
+  - _id: T19-2A
+    _sprite: {fileID: 21300000, guid: bc916a6e81025b449928e47306fa152f, type: 3}
+  - _id: T19-3A
+    _sprite: {fileID: 21300000, guid: bc916a6e81025b449928e47306fa152f, type: 3}
+  - _id: T20-1A
+    _sprite: {fileID: 21300000, guid: e6cd25667bb78d54c8ccf7e7bc8f5cbc, type: 3}
+  - _id: T20-2A
+    _sprite: {fileID: 21300000, guid: e6cd25667bb78d54c8ccf7e7bc8f5cbc, type: 3}
+  - _id: T20-3A
+    _sprite: {fileID: 21300000, guid: e6cd25667bb78d54c8ccf7e7bc8f5cbc, type: 3}
+  - _id: T21-1A
+    _sprite: {fileID: 21300000, guid: 7ae0d03bbe763c8459810105f1574657, type: 3}
+  - _id: T21-2A
+    _sprite: {fileID: 21300000, guid: 7ae0d03bbe763c8459810105f1574657, type: 3}
+  - _id: T21-3A
+    _sprite: {fileID: 21300000, guid: 7ae0d03bbe763c8459810105f1574657, type: 3}
+  - _id: T22-1A
+    _sprite: {fileID: 21300000, guid: d523c42f98b81ad48be29c61d085b34c, type: 3}
+  - _id: T22-2A
+    _sprite: {fileID: 21300000, guid: d523c42f98b81ad48be29c61d085b34c, type: 3}
+  - _id: T22-3A
+    _sprite: {fileID: 21300000, guid: d523c42f98b81ad48be29c61d085b34c, type: 3}
+  - _id: T23-1A
+    _sprite: {fileID: 21300000, guid: 12a00a7a8c0b82a48b918029d2e88f9f, type: 3}
+  - _id: T23-1B
+    _sprite: {fileID: 21300000, guid: 12a00a7a8c0b82a48b918029d2e88f9f, type: 3}
+  - _id: T23-2A
+    _sprite: {fileID: 21300000, guid: 12a00a7a8c0b82a48b918029d2e88f9f, type: 3}
+  - _id: T23-2B
+    _sprite: {fileID: 21300000, guid: 12a00a7a8c0b82a48b918029d2e88f9f, type: 3}
+  - _id: T23-3A
+    _sprite: {fileID: 21300000, guid: 12a00a7a8c0b82a48b918029d2e88f9f, type: 3}
+  - _id: T23-3B
+    _sprite: {fileID: 21300000, guid: 12a00a7a8c0b82a48b918029d2e88f9f, type: 3}
+  - _id: T24-1A
+    _sprite: {fileID: 21300000, guid: 60c73f244462f354080318be9dd9f9ff, type: 3}
+  - _id: T24-2A
+    _sprite: {fileID: 21300000, guid: 60c73f244462f354080318be9dd9f9ff, type: 3}
+  - _id: T24-3A
+    _sprite: {fileID: 21300000, guid: 60c73f244462f354080318be9dd9f9ff, type: 3}
   _gradeFrames:
   - {fileID: 21300000, guid: 824954f161e077446b911562b25229e7, type: 3}
   - {fileID: 21300000, guid: bff35a7c8955cee41be0752fd83bdf2a, type: 3}
