@@ -20,6 +20,7 @@ namespace Shinshi.Editor
         private const string PREFAB    = "Assets/02.Prefab/Environment/MucheolPillar/PF_MucheolPillar.prefab";
         private const string SCENE     = "Assets/00.Scenes/Dev_HUD/Dev_BossMucheol.unity";
         private const string LIT_SHADER = "Universal Render Pipeline/Lit";
+        private const string CLOTH_SHADER = "Shinshi/Environment/Lit Occlusion Fade Wind Cloth";
 
         private const string GROUP_NAME   = "MucheolPillars";
         private const string GROUND_NAME  = "Collider_Ground";
@@ -39,6 +40,11 @@ namespace Shinshi.Editor
         private const float COLLIDER_HEIGHT = 3.4f;
 
         private const float BANNER_SMOOTHNESS = 0.2f;
+        private const float CLOTH_TOP_Y       = 2.8f;
+        private const float CLOTH_LENGTH      = 1.68f;
+        private const float WIND_AMPLITUDE    = 0.14f;
+        private const float WIND_SPEED        = 1.4f;
+        private const float WIND_FLUTTER      = 0.04f;
 
         private static readonly string[] LOD_NAMES = { "High", "Medium", "Low" };
 
@@ -122,7 +128,7 @@ namespace Shinshi.Editor
 
         private static Material BuildStoneMaterial()
         {
-            Material material = LoadOrCreateMaterial("M_MucheolPillar_Stone");
+            Material material = LoadOrCreateMaterial("M_MucheolPillar_Stone", LIT_SHADER);
             material.SetTexture("_BaseMap", Load("T_MucheolPillar_Meshy_base_color.png"));
             material.SetTexture("_BumpMap", Load("T_MucheolPillar_Meshy_normal.png"));
             material.SetTexture("_MetallicGlossMap", Load("T_MucheolPillar_MetallicSmoothness.png"));
@@ -139,7 +145,13 @@ namespace Shinshi.Editor
 
         private static Material BuildBannerMaterial()
         {
-            Material material = LoadOrCreateMaterial("M_MucheolPillar_Banner");
+            Material material = LoadOrCreateMaterial("M_MucheolPillar_Banner", CLOTH_SHADER);
+            material.SetFloat("_ClothTopY", CLOTH_TOP_Y);
+            material.SetFloat("_ClothLength", CLOTH_LENGTH);
+            material.SetFloat("_WindAmplitude", WIND_AMPLITUDE);
+            material.SetFloat("_WindSpeed", WIND_SPEED);
+            material.SetFloat("_WindFlutter", WIND_FLUTTER);
+            material.SetVector("_WindDir", new Vector4(1f, 0.4f, 0f, 0f));
             material.SetTexture("_BaseMap", Load("T_MucheolPillar_Banner_BaseColor.png"));
             material.SetColor("_BaseColor", Color.white);
             material.SetFloat("_Smoothness", BANNER_SMOOTHNESS);
@@ -154,14 +166,18 @@ namespace Shinshi.Editor
             return AssetDatabase.LoadAssetAtPath<Texture2D>(ROOT + "/Textures/" + fileName);
         }
 
-        private static Material LoadOrCreateMaterial(string materialName)
+        private static Material LoadOrCreateMaterial(string materialName, string shaderName)
         {
             string path = ROOT + "/Materials/" + materialName + ".mat";
+            Shader shader = Shader.Find(shaderName);
             Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (material != null)
+            {
+                material.shader = shader;
                 return material;
+            }
 
-            material = new Material(Shader.Find(LIT_SHADER)) { name = materialName };
+            material = new Material(shader) { name = materialName };
             AssetDatabase.CreateAsset(material, path);
             return material;
         }
