@@ -15310,6 +15310,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   _slashColor: {r: 1, g: 0.85, b: 0.4, a: 0.6}
+  _arrowColor: {r: 1, g: 0.9, b: 0.2, a: 1}
 --- !u!143 &580735307
 CharacterController:
   m_ObjectHideFlags: 0
@@ -15344,7 +15345,7 @@ Transform:
   m_GameObject: {fileID: 580735305}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.38268346, z: 0, w: 0.9238795}
-  m_LocalPosition: {x: -9.747, y: 1, z: -14.053}
+  m_LocalPosition: {x: -5.37, y: 1, z: -9.68}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -38365,6 +38366,55 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 841351124203372615, guid: 314b6cc070ebb8f418ad4ac4dcb51083, type: 3}
   m_PrefabInstance: {fileID: 1451347676}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1454901485
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1454901487}
+  - component: {fileID: 1454901486}
+  m_Layer: 0
+  m_Name: DevHitFeedbackSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1454901486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1454901485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3b7dee95326db54a856e0300f38835d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackSpawner
+  _player: {fileID: 580735306}
+  _groupSize: 24
+  _hitsToDie: 5
+  _spawnRadius: 9
+  _respawnDelay: 3
+--- !u!4 &1454901487
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1454901485}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1456329674
 GameObject:
   m_ObjectHideFlags: 0
@@ -56527,3 +56577,4 @@ SceneRoots:
   - {fileID: 17552875}
   - {fileID: 1477303607}
   - {fileID: 580735308}
+  - {fileID: 1454901487}
