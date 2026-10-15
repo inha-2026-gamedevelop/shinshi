@@ -119,29 +119,17 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1001 &61933431
+--- !u!1001 &341776630
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 927875171}
+    m_TransformParent: {fileID: 1623620679}
     m_Modifications:
     - target: {fileID: 3391909400293815611, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_Name
       value: Pillar_1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalPosition.x
@@ -153,7 +141,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -8.5
+      value: -6.7499995
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalRotation.w
@@ -188,10 +176,10 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
---- !u!4 &61933432 stripped
+--- !u!4 &341776631 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-  m_PrefabInstance: {fileID: 61933431}
+  m_PrefabInstance: {fileID: 341776630}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &350319046
 GameObject:
@@ -364,7 +352,7 @@ Transform:
   m_GameObject: {fileID: 770000022}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 5, y: -22, z: 5}
+  m_LocalPosition: {x: 5, y: -12.5, z: 5}
   m_LocalScale: {x: 60, y: 1, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -454,7 +442,7 @@ Transform:
   m_GameObject: {fileID: 770000050}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5, y: -32, z: 5}
+  m_LocalPosition: {x: 5, y: -7.3, z: 5}
   m_LocalScale: {x: 60, y: 1, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -544,7 +532,7 @@ Transform:
   m_GameObject: {fileID: 770000078}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5, y: -43, z: 5}
+  m_LocalPosition: {x: 5, y: -23.4, z: 5}
   m_LocalScale: {x: 60, y: 1, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -634,7 +622,7 @@ Transform:
   m_GameObject: {fileID: 770000106}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5, y: -56, z: 5}
+  m_LocalPosition: {x: 5, y: -0.1, z: 5}
   m_LocalScale: {x: 60, y: 1, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10387,6 +10375,143 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
+--- !u!1 &777212966
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 777212971}
+  - component: {fileID: 777212970}
+  - component: {fileID: 777212969}
+  - component: {fileID: 777212968}
+  - component: {fileID: 777212967}
+  m_Layer: 0
+  m_Name: DevRammerCapsule
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &777212967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 777212966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6ed235950d5c5c40b10e2a4c7dfd307, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevPillarRammer
+  _walkSpeed: 6
+  _sprintSpeed: 16
+  _acceleration: 30
+  _viewCamera: {fileID: 2017679014}
+  _pillars:
+  - {fileID: 1096435254}
+  - {fileID: 786973050}
+  - {fileID: 1400137848}
+--- !u!143 &777212968
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 777212966}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &777212969
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 777212966}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &777212970
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 777212966}
+  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &777212971
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 777212966}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &779000001
 GameObject:
   m_ObjectHideFlags: 0
@@ -10421,6 +10546,17 @@ Transform:
   - {fileID: 770000155}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &786973050 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6325234793106107383, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
+  m_PrefabInstance: {fileID: 341776630}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dce8dac3d4f6f1c4888e04e32ec23102, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.MucheolPillarShatter
 --- !u!1001 &876290903
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10463,11 +10599,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3773795827645970805, guid: 43bffd5330f0cdf469b9db012289743c, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1.18
+      value: 1.49
       objectReference: {fileID: 0}
     - target: {fileID: 3773795827645970805, guid: 43bffd5330f0cdf469b9db012289743c, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.58
+      value: 1.66
       objectReference: {fileID: 0}
     - target: {fileID: 3773795827645970805, guid: 43bffd5330f0cdf469b9db012289743c, type: 3}
       propertyPath: m_LocalPosition.x
@@ -10534,40 +10670,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 43bffd5330f0cdf469b9db012289743c, type: 3}
---- !u!1 &927875170
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 927875171}
-  m_Layer: 0
-  m_Name: MucheolPillars
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &927875171
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 927875170}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1031756183}
-  - {fileID: 61933432}
-  - {fileID: 1699599428}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &932637592
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10629,29 +10731,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9d66d055039f9864ba84b6d1063eb8c6, type: 3}
---- !u!1001 &1031756182
+--- !u!1001 &1096435250
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 927875171}
+    m_TransformParent: {fileID: 1623620679}
     m_Modifications:
     - target: {fileID: 3391909400293815611, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_Name
       value: Pillar_0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalPosition.x
@@ -10663,7 +10753,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 11.75
+      value: 13.5
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalRotation.w
@@ -10698,34 +10788,33 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
---- !u!4 &1031756183 stripped
+--- !u!4 &1096435251 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-  m_PrefabInstance: {fileID: 1031756182}
+  m_PrefabInstance: {fileID: 1096435250}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &1699599427
+--- !u!114 &1096435254 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6325234793106107383, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
+  m_PrefabInstance: {fileID: 1096435250}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dce8dac3d4f6f1c4888e04e32ec23102, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.MucheolPillarShatter
+--- !u!1001 &1400137844
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 927875171}
+    m_TransformParent: {fileID: 1623620679}
     m_Modifications:
     - target: {fileID: 3391909400293815611, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_Name
       value: Pillar_2
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalPosition.x
@@ -10737,7 +10826,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -8.500003
+      value: -6.7500024
       objectReference: {fileID: 0}
     - target: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
       propertyPath: m_LocalRotation.w
@@ -10772,11 +10861,56 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
---- !u!4 &1699599428 stripped
+--- !u!4 &1400137845 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8125572205683406851, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
-  m_PrefabInstance: {fileID: 1699599427}
+  m_PrefabInstance: {fileID: 1400137844}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1400137848 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6325234793106107383, guid: 1f58e245728a988448a12640a0ec5cee, type: 3}
+  m_PrefabInstance: {fileID: 1400137844}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dce8dac3d4f6f1c4888e04e32ec23102, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.MucheolPillarShatter
+--- !u!1 &1623620678
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1623620679}
+  m_Layer: 0
+  m_Name: MucheolPillars
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1623620679
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1623620678}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1096435251}
+  - {fileID: 341776631}
+  - {fileID: 1400137845}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2017679011
 GameObject:
   m_ObjectHideFlags: 0
@@ -10878,4 +11012,5 @@ SceneRoots:
   - {fileID: 350319048}
   - {fileID: 932637592}
   - {fileID: 876290903}
-  - {fileID: 927875171}
+  - {fileID: 1623620679}
+  - {fileID: 777212971}
