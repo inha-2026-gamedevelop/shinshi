@@ -40,19 +40,18 @@ namespace Shinshi.Editor
         private const float COLLIDER_HEIGHT = 3.4f;
 
         private const float BANNER_SMOOTHNESS = 0.2f;
-        private const float CLOTH_TOP_Y       = 2.8f;
+        private const float CLOTH_TOP_Y       = 2.96f;
         private const float CLOTH_LENGTH      = 1.68f;
         private const float WIND_AMPLITUDE    = 0.14f;
         private const float WIND_SPEED        = 1.4f;
         private const float WIND_FLUTTER      = 0.04f;
-        private const float WIND_DIR_X        = -0.57f;
-        private const float WIND_DIR_Z        = 0.82f;
+        private const float WIND_DIR_X        = -0.968f;
+        private const float WIND_DIR_Z        = -0.249f;
 
         private const string BANNER_NODE      = "SM_MucheolPillar_RedBanner";
-        private const float BANNER_OFFSET_X   = 0.24f;
-        private const float BANNER_OFFSET_Y   = 0.16f;
-        private const float BANNER_OFFSET_Z   = 0.71f;
-        private const float BANNER_YAW        = 290.52f;
+        private const float BANNER_MOVE_X     = -0.98f;
+        private const float BANNER_MOVE_Y     = -0.2f;
+        private const float BANNER_TILT_Z     = -17.96f;
 
         private static readonly string[] LOD_NAMES = { "High", "Medium", "Low" };
 
@@ -194,6 +193,7 @@ namespace Shinshi.Editor
         /// <summary> High, Medium, Low FBX를 LODGroup으로 묶고 충돌체를 붙인 프리팹을 만든다 </summary>
         private static GameObject BuildPrefab(Material stone, Material banner)
         {
+            Mesh fitted = MucheolPillarBannerFitter.Fit();
             GameObject root = new GameObject("PF_MucheolPillar");
             LOD[] lods = new LOD[LOD_NAMES.Length];
             float[] heights = { LOD0_HEIGHT, LOD1_HEIGHT, LOD2_HEIGHT };
@@ -207,8 +207,10 @@ namespace Shinshi.Editor
                 Transform bannerNode = instance.transform.Find(BANNER_NODE);
                 if (bannerNode != null)
                 {
-                    bannerNode.localPosition = new Vector3(BANNER_OFFSET_X, BANNER_OFFSET_Y, BANNER_OFFSET_Z);
-                    bannerNode.localRotation = Quaternion.Euler(0f, BANNER_YAW, 0f);
+                    // 천 메시는 석주 좌표로 이미 굽혀 있으므로 FBX 노드의 회전과 크기를 지우고 손으로 맞춘 자리만 준다
+                    bannerNode.SetLocalPositionAndRotation(new Vector3(BANNER_MOVE_X, BANNER_MOVE_Y, 0f), Quaternion.Euler(0f, 0f, BANNER_TILT_Z));
+                    bannerNode.localScale = Vector3.one;
+                    bannerNode.GetComponent<MeshFilter>().sharedMesh = fitted;
                 }
 
                 Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
