@@ -89,7 +89,9 @@ namespace Shinshi.Editor
 
             Rigidbody[] fragments = BuildFragments(root, fracture, stone, banner, debrisLayer);
             BuildFloor(root, debrisLayer);
-            AttachShatter(root, fragments);
+            Material[] solids = { stone, fracture, banner };
+            Material[] fades  = { BuildFadeMaterial(stone), BuildFadeMaterial(fracture), BuildFadeMaterial(banner) };
+            AttachShatter(root, fragments, solids, fades);
 
             PrefabUtility.SaveAsPrefabAsset(root, PREFAB);
             PrefabUtility.UnloadPrefabContents(root);
@@ -222,6 +224,33 @@ namespace Shinshi.Editor
             material.SetFloat("_Cull", 0f);
             EditorUtility.SetDirty(material);
             return material;
+        }
+
+        /// <summary> 불투명 재질을 그대로 베껴 알파 블렌딩으로 바꾼 짝 재질을 만든다. 사라지는 연출에서 투명도를 줄이는 데 쓴다 </summary>
+        private static Material BuildFadeMaterial(Material source)
+        {
+            string path = ROOT + "/Materials/" + source.name + "_Fade.mat";
+            Material fade = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (fade == null)
+            {
+                fade = new Material(source);
+                AssetDatabase.CreateAsset(fade, path);
+            }
+
+            EditorUtility.CopySerialized(source, fade);
+            fade.name = source.name + "_Fade";
+            fade.SetFloat("_Surface", 1f);
+            fade.SetFloat("_Blend", 0f);
+            fade.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            fade.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            fade.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            fade.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            fade.SetFloat("_ZWrite", 0f);
+            fade.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            fade.SetOverrideTag("RenderType", "Transparent");
+            fade.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            EditorUtility.SetDirty(fade);
+            return fade;
         }
 
         private static Texture2D LoadTexture(string fileName)
@@ -457,7 +486,7 @@ namespace Shinshi.Editor
             ball.isTrigger = true;
         }
 
-        private static void AttachShatter(GameObject root, Rigidbody[] fragments)
+        private static void AttachShatter(GameObject root, Rigidbody[] fragments, Material[] solids, Material[] fades)
         {
             MucheolPillarShatter shatter = root.AddComponent<MucheolPillarShatter>();
             SerializedObject so = new SerializedObject(shatter);
@@ -485,6 +514,16 @@ namespace Shinshi.Editor
             for (int i = 0; i < s_cloths.Count; i++)
             {
                 cloths.GetArrayElementAtIndex(i).objectReferenceValue = s_cloths[i];
+            }
+
+            SerializedProperty solidList = so.FindProperty("_solidMaterials");
+            SerializedProperty fadeList  = so.FindProperty("_fadeMaterials");
+            solidList.arraySize = solids.Length;
+            fadeList.arraySize  = fades.Length;
+            for (int i = 0; i < solids.Length; i++)
+            {
+                solidList.GetArrayElementAtIndex(i).objectReferenceValue = solids[i];
+                fadeList.GetArrayElementAtIndex(i).objectReferenceValue  = fades[i];
             }
 
             so.FindProperty("_clothFloor").objectReferenceValue = root.transform.Find(CLOTH_FLOOR_NAME).GetComponent<SphereCollider>();

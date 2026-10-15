@@ -16,17 +16,24 @@ namespace Shinshi.Art
         *                Fields
         ****************************************/
 
+        private static readonly int BASE_COLOR_ID = Shader.PropertyToID("_BaseColor");
+
         [Header("온전한 석주")]
         [SerializeField] private GameObject[] _intactObjects;
         [SerializeField] private Collider     _intactCollider;
 
         [Header("파편")]
-        [SerializeField] private GameObject _fragmentRoot;
+        [SerializeField] private GameObject  _fragmentRoot;
         [SerializeField] private Rigidbody[] _fragments;
 
         [Header("천")]
         [SerializeField] private Cloth[]        _cloths;
         [SerializeField] private SphereCollider _clothFloor;
+
+        [Header("사라짐")]
+        // 같은 순서로 짝을 이룬다. 불투명 재질을 같은 모양의 반투명 재질로 바꿔 서서히 투명하게 만든다
+        [SerializeField] private Material[] _solidMaterials;
+        [SerializeField] private Material[] _fadeMaterials;
 
         [Header("연출")]
         [SerializeField] private Vector3 _defaultImpactLocal = new Vector3(0f, 1.2f, 0f);
@@ -34,20 +41,23 @@ namespace Shinshi.Art
         [SerializeField] private float   _blastRadius        = 8f;
         [SerializeField] private float   _upwardModifier     = 0.8f;
         [SerializeField] private float   _spinSpeed          = 4f;
-        [SerializeField] private float   _vanishDelay        = 2f;
-        [SerializeField] private float   _sinkSeconds        = 1.5f;
-        [SerializeField] private float   _sinkDepth          = 2.5f;
+        [SerializeField] private float   _vanishDelay        = 4f;
+        [SerializeField] private float   _fadeSeconds        = 1f;
 
-        private Vector3[]    _homePositions;
-        private Quaternion[] _homeRotations;
-        private Collider[]   _fragmentColliders;
-        private Tween[]      _sinkTweens;
-        private Tween        _clothFloorTween;
-        private Vector3      _clothFloorHome;
+        private Vector3[]      _homePositions;
+        private Quaternion[]   _homeRotations;
+        private Collider[]     _fragmentColliders;
+        private Renderer[]     _fragmentRenderers;
+        private Material[][]   _solidSlots;
+        private Material[][]   _fadeSlots;
+        private Material[]     _fadeInstances;
+        private Color[]        _fadeBaseColors;
+        private Tween          _fadeTween;
+        private Vector3        _clothFloorHome;
         private WaitForSeconds _vanishWait;
-        private WaitForSeconds _sinkWait;
-        private Coroutine    _vanishRoutine;
-        private bool         _isShattered;
+        private Coroutine      _vanishRoutine;
+        private float          _alpha;
+        private bool           _isShattered;
 
         public bool IsShattered => _isShattered;
 
@@ -58,12 +68,10 @@ namespace Shinshi.Art
         private void Awake()
         {
             int count = _fragments.Length;
-            _homePositions    = new Vector3[count];
-            _homeRotations    = new Quaternion[count];
+            _homePositions     = new Vector3[count];
+            _homeRotations     = new Quaternion[count];
             _fragmentColliders = new Collider[count];
-            _sinkTweens       = new Tween[count];
-            _vanishWait       = new WaitForSeconds(_vanishDelay);
-            _sinkWait         = new WaitForSeconds(_sinkSeconds);
+            _vanishWait        = new WaitForSeconds(_vanishDelay);
 
             for (int i = 0; i < count; i++)
             {
@@ -84,18 +92,28 @@ namespace Shinshi.Art
                 _cloths[i].sphereColliders = pair;
             }
 
+            BuildFadeSlots();
             _fragmentRoot.SetActive(false);
         }
 
         private void OnDestroy()
         {
-            KillSink();
+            KillFade();
 
             if (_clothFloor != null)
             {
                 Destroy(_clothFloor.gameObject);
             }
 
+            if (_fadeInstances == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _fadeInstances.Length; i++)
+            {
+                Destroy(_fadeInstances[i]);
+            }
         }
 
         /****************************************
@@ -150,7 +168,8 @@ namespace Shinshi.Art
                 _vanishRoutine = null;
             }
 
-            KillSink();
+            KillFade();
+            SwapMaterials(_solidSlots);
 
             for (int i = 0; i < _fragments.Length; i++)
             {
@@ -165,27 +184,81 @@ namespace Shinshi.Art
             _isShattered = false;
         }
 
-        /// <summary> 파괴 뒤 잠시 두었다가 파편을 바닥 아래로 가라앉혀 지운다 </summary>
+        /// <summary> 파괴 뒤 잠시 두었다가 파편을 서서히 투명하게 만들어 지운다 </summary>
         private IEnumerator CoVanish()
         {
             yield return _vanishWait;
 
-            // 가라앉는 동안 물리가 간섭하지 않게 멈춘다
+            // 투명해지는 동안 물리가 간섭하지 않게 멈춘다
             for (int i = 0; i < _fragments.Length; i++)
             {
                 _fragments[i].isKinematic = true;
                 _fragmentColliders[i].enabled = false;
-                _sinkTweens[i] = _fragments[i].transform
-                    .DOMoveY(_fragments[i].position.y - _sinkDepth, _sinkSeconds)
-                    .SetEase(Ease.InQuad);
             }
 
-            _clothFloorTween = _clothFloor.transform.DOMoveY(_clothFloor.transform.position.y - _sinkDepth, _sinkSeconds).SetEase(Ease.InQuad);
+            SwapMaterials(_fadeSlots);
+            _alpha = 1f;
+            ApplyAlpha();
+            _fadeTween = DOTween.To(() => _alpha, value => { _alpha = value; ApplyAlpha(); }, 0f, _fadeSeconds)
+                .SetEase(Ease.Linear)
+                .OnComplete(FinishVanish);
 
-            yield return _sinkWait;
-
-            _fragmentRoot.SetActive(false);
             _vanishRoutine = null;
+        }
+
+        private void FinishVanish()
+        {
+            _fadeTween = null;
+            _fragmentRoot.SetActive(false);
+            SwapMaterials(_solidSlots);
+        }
+
+        /// <summary> 파편 렌더러마다 불투명 재질 배열과 반투명 재질 배열을 미리 만들어 둔다 </summary>
+        private void BuildFadeSlots()
+        {
+            _fadeInstances  = new Material[_fadeMaterials.Length];
+            _fadeBaseColors = new Color[_fadeMaterials.Length];
+            for (int i = 0; i < _fadeMaterials.Length; i++)
+            {
+                _fadeInstances[i]  = new Material(_fadeMaterials[i]);
+                _fadeBaseColors[i] = _fadeMaterials[i].GetColor(BASE_COLOR_ID);
+            }
+
+            _fragmentRenderers = _fragmentRoot.GetComponentsInChildren<Renderer>(true);
+            _solidSlots        = new Material[_fragmentRenderers.Length][];
+            _fadeSlots         = new Material[_fragmentRenderers.Length][];
+
+            for (int i = 0; i < _fragmentRenderers.Length; i++)
+            {
+                Material[] solid = _fragmentRenderers[i].sharedMaterials;
+                Material[] fade  = new Material[solid.Length];
+                for (int slot = 0; slot < solid.Length; slot++)
+                {
+                    int pair = System.Array.IndexOf(_solidMaterials, solid[slot]);
+                    fade[slot] = pair >= 0 ? _fadeInstances[pair] : solid[slot];
+                }
+
+                _solidSlots[i] = solid;
+                _fadeSlots[i]  = fade;
+            }
+        }
+
+        private void SwapMaterials(Material[][] slots)
+        {
+            for (int i = 0; i < _fragmentRenderers.Length; i++)
+            {
+                _fragmentRenderers[i].sharedMaterials = slots[i];
+            }
+        }
+
+        private void ApplyAlpha()
+        {
+            for (int i = 0; i < _fadeInstances.Length; i++)
+            {
+                Color color = _fadeBaseColors[i];
+                color.a = _alpha;
+                _fadeInstances[i].SetColor(BASE_COLOR_ID, color);
+            }
         }
 
         private void PlaceClothFloor()
@@ -194,21 +267,10 @@ namespace Shinshi.Art
             _clothFloor.transform.position = new Vector3(position.x, position.y - _clothFloor.radius, position.z);
         }
 
-        private void KillSink()
+        private void KillFade()
         {
-            _clothFloorTween?.Kill();
-            _clothFloorTween = null;
-
-            if (_sinkTweens == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _sinkTweens.Length; i++)
-            {
-                _sinkTweens[i]?.Kill();
-                _sinkTweens[i] = null;
-            }
+            _fadeTween?.Kill();
+            _fadeTween = null;
         }
 
         private void SetIntact(bool visible)
