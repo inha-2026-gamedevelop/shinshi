@@ -11,7 +11,7 @@ namespace Shinshi.Dev
 {
     /// <summary> 네트워크 없이 캡슐 하나를 마우스로 움직이고 좌클릭으로 공격해 피격 연출을 확인하는 시험용 플레이어 </summary>
     [RequireComponent(typeof(CharacterController))]
-    public sealed class DevHitFeedbackPlayer : MonoBehaviour
+    public sealed class DevHitFeedbackPlayer : MonoBehaviour, IHitLagTarget
     {
         // 서버, 인증, 내비 메시가 없는 시험 씬용이다. 마우스 버튼 배치는 실제 값(오른쪽 이동, 왼쪽 공격)을 따르고,
         // 이동은 경로 탐색 없이 커서 지면 지점으로 직선으로 걷는다. 공격은 바라보는 부채꼴 안의 충돌체를 모아 Hit 이벤트로 알린다
@@ -41,9 +41,6 @@ namespace Shinshi.Dev
         private const int    SLASH_SEGMENTS      = 14;
         private const float  SLASH_TRAIL_ANGLE   = 60f;  // 도, 띠가 뒤로 늘어진 각
         private const float  SLASH_INNER_RATIO   = 0.55f; // 사거리 대비 띠 안쪽 반지름
-
-        // 타격감
-        private const float SHAKE_FREQUENCY = 38f; // rad/s
 
         // 콤보. 마지막 단계가 강공격이다
         private const int HEAVY_COMBO_STEP = 3;
@@ -76,20 +73,10 @@ namespace Shinshi.Dev
         [SerializeField] private float _comboWindow     = 1f;    // 초, 이 안에 다음 공격을 눌러야 콤보가 이어진다
         [SerializeField] private float _heavyLockTime   = 0.35f; // 초
         [SerializeField] private Color _heavySlashTint  = new Color(1f, 0.45f, 0.25f, 1f);
+        [SerializeField] private float _slamReach       = 1.75f; // m, 충격 중심이 캐릭터 앞으로 떨어진 거리
 
         [Header("표시")]
         [SerializeField] private Color _arrowColor = new Color(1f, 0.9f, 0.2f, 1f);
-
-        [Header("타격감")]
-        [SerializeField] private bool  _useHitLag        = true;
-        [SerializeField] private int   _lightHitLagFrames = 3; // 프레임, 맞은 순간 화면이 완전히 멈추는 길이
-        [SerializeField] private int   _heavyHitLagFrames = 9; // 프레임
-        [SerializeField] private int   _killHitLagFrames  = 3; // 프레임, 처치한 타격에 더한다
-        [SerializeField] private bool  _useCameraShake   = true;
-        [SerializeField] private float _shakeAmount      = 0.06f; // m, 맞은 방향으로 밀리는 크기
-        [SerializeField] private float _killShakeAmount  = 0.12f; // m
-        [SerializeField] private float _heavyShakeAmount = 0.2f;  // m
-        [SerializeField] private float _shakeSeconds     = 0.2f;  // 초, 멈춤이 풀린 뒤부터 센다
 
         private readonly RaycastHit[] _rayHits    = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[HIT_BUFFER_SIZE];
@@ -97,10 +84,7 @@ namespace Shinshi.Dev
         private CharacterController _controller     = null;
         private GameObject          _slash          = null;
         private Material            _slashMaterial  = null;
-        private Vector3             _shakeDirection = Vector3.zero;
-        private float               _shakeStrength  = 0f;
-        private float               _shakeEndTime   = 0f;  // Time.time 기준
-        private float               _pendingShake   = 0f;  // 렉프레임이 끝나면 시작할 흔들림 크기, 0이면 없다
+        private HitFeedbackCamera   _feedbackCamera = null;
         private int                 _hitLagFramesLeft = 0;
         private bool                _attackBuffered = false;
         private int                 _comboStep      = 0;
@@ -119,6 +103,12 @@ namespace Shinshi.Dev
         /// <summary> 공격이 맞힌 충돌체마다 한 번씩 알린다. 값은 맞은 충돌체, 몸 중심에서 가장 가까운 맞은 지점, 강공격 여부다 </summary>
         public event Action<Collider, Vector3, bool> Hit;
 
+        /// <summary> 강공격이 바닥을 내려칠 때 한 번 알린다. 값은 충격 중심이다 </summary>
+        public event Action<Vector3> Slam;
+
+        /// <summary> 이 플레이어의 카메라 흔들림과 줌을 맡는 도우미 </summary>
+        public HitFeedbackCamera FeedbackCamera => _feedbackCamera;
+
         /****************************************
         *              Unity Event
         ****************************************/
@@ -130,6 +120,8 @@ namespace Shinshi.Dev
             _spawnRotation = transform.rotation;
             _slash         = CreateSlashVisual();
             CreateFacingArrow();
+
+            _feedbackCamera = gameObject.AddComponent<HitFeedbackCamera>();
         }
 
         private void Start()
@@ -142,6 +134,7 @@ namespace Shinshi.Dev
             }
 
             _cameraOffset = -_outputCamera.transform.forward * _cameraDistance;
+            _feedbackCamera.Init(_outputCamera);
         }
 
         private void Update()
@@ -182,7 +175,8 @@ namespace Shinshi.Dev
 
         private void LateUpdate()
         {
-            _outputCamera.transform.position = transform.position + _cameraOffset + ReadShakeOffset();
+            _outputCamera.transform.position = transform.position + _cameraOffset + _feedbackCamera.ReadShakeOffset();
+            _feedbackCamera.ApplyZoom();
         }
 
         private void OnDestroy()
@@ -257,6 +251,20 @@ namespace Shinshi.Dev
 
             ShowSlash(isHeavy, lockTime);
             DealDamageInCone(isHeavy);
+
+            if (isHeavy)
+            {
+                PlaySlam();
+            }
+        }
+
+        // 캐릭터 앞 발밑 높이에서 내려친다
+        private void PlaySlam()
+        {
+            Vector3 center = transform.position + (transform.forward * _slamReach);
+            center.y = _controller.bounds.min.y;
+
+            Slam?.Invoke(center);
         }
 
         // 몸 중심 구 안에서 바라보는 방향과의 각도가 반각 이하인 충돌체만 맞힌 것으로 본다
@@ -287,37 +295,11 @@ namespace Shinshi.Dev
             }
         }
 
-        /// <summary> 맞힌 타격의 렉프레임(화면 정지)과 카메라 흔들림을 시작하고 멈춘 프레임 수를 돌려준다. direction은 공격이 향한 수평 방향이다 </summary>
-        public int PlayHitFeedback(Vector3 direction, bool isKill, bool isHeavy)
+        /// <inheritdoc/>
+        public void Freeze(int frames)
         {
-            int lagFrames = 0;
-            if (_useHitLag)
-            {
-                lagFrames = isHeavy ? _heavyHitLagFrames : _lightHitLagFrames;
-                if (isKill)
-                {
-                    lagFrames += _killHitLagFrames;
-                }
-
-                // 한 번 휘두르다 여럿을 맞혀도 멈춤이 겹쳐 길어지지 않고 가장 긴 것만 쓴다
-                _hitLagFramesLeft = Mathf.Max(_hitLagFramesLeft, lagFrames);
-            }
-
-            if (_useCameraShake)
-            {
-                float strength = isHeavy ? _heavyShakeAmount : (isKill ? _killShakeAmount : _shakeAmount);
-                if (strength >= ReadShakeStrength())
-                {
-                    _shakeDirection = direction;
-                    _pendingShake   = strength;
-                    if (_hitLagFramesLeft <= 0)
-                    {
-                        StartShake();
-                    }
-                }
-            }
-
-            return lagFrames;
+            // 한 번 휘두르다 여럿을 맞혀도 멈춤이 겹쳐 길어지지 않고 가장 긴 것만 쓴다
+            _hitLagFramesLeft = Mathf.Max(_hitLagFramesLeft, frames);
         }
 
         // 렉프레임은 프레임 수로 센다. 굳은 만큼 공격, 콤보, 슬래시 시각을 뒤로 밀어 멈춘 시간이 소모되지 않게 한다
@@ -330,42 +312,6 @@ namespace Shinshi.Dev
             _nextAttackTime += frozen;
             _comboEndTime   += frozen;
             _slashStartTime += frozen;
-
-            if (_hitLagFramesLeft == 0)
-            {
-                StartShake();
-            }
-        }
-
-        private void StartShake()
-        {
-            if (_pendingShake <= 0f)
-            {
-                return;
-            }
-
-            _shakeStrength = _pendingShake;
-            _shakeEndTime  = Time.time + _shakeSeconds;
-            _pendingShake  = 0f;
-        }
-
-        private float ReadShakeStrength()
-        {
-            float remain = (_shakeEndTime - Time.time) / _shakeSeconds;
-            return (remain > 0f) ? (_shakeStrength * remain) : 0f;
-        }
-
-        // 맞은 방향으로 확 밀렸다가 감쇠하며 되돌아오는 진동. 렉프레임이 풀린 뒤에 시작한다
-        private Vector3 ReadShakeOffset()
-        {
-            float remain = (_shakeEndTime - Time.time) / _shakeSeconds;
-            if (remain <= 0f)
-            {
-                return Vector3.zero;
-            }
-
-            float wave = Mathf.Cos((1f - remain) * _shakeSeconds * SHAKE_FREQUENCY);
-            return _shakeDirection * (_shakeStrength * remain * remain * wave);
         }
 
         private void ShowSlash(bool isHeavy, float seconds)

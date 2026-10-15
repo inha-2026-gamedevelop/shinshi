@@ -15313,16 +15313,8 @@ MonoBehaviour:
   _comboWindow: 1
   _heavyLockTime: 0.35
   _heavySlashTint: {r: 1, g: 0.45, b: 0.25, a: 1}
+  _slamReach: 1.75
   _arrowColor: {r: 1, g: 0.9, b: 0.2, a: 1}
-  _useHitLag: 1
-  _lightHitLagFrames: 3
-  _heavyHitLagFrames: 9
-  _killHitLagFrames: 3
-  _useCameraShake: 1
-  _shakeAmount: 0.06
-  _killShakeAmount: 0.12
-  _heavyShakeAmount: 0.2
-  _shakeSeconds: 0.2
 --- !u!143 &580735307
 CharacterController:
   m_ObjectHideFlags: 0
@@ -38388,6 +38380,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1454901487}
   - component: {fileID: 1454901486}
+  - component: {fileID: 1454901488}
   m_Layer: 0
   m_Name: DevHitFeedbackSpawner
   m_TagString: Untagged
@@ -38408,8 +38401,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackSpawner
   _player: {fileID: 580735306}
+  _director: {fileID: 1454901488}
   _groupSize: 24
   _hitsToDie: 3
+  _chaseSpeed: 2.5
   _spawnRadius: 9
   _respawnDelay: 3
 --- !u!4 &1454901487
@@ -38427,6 +38422,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1454901488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1454901485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc2873112e74e494f8326aca89103ac3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.HitFeedbackDirector
+  _lightProfile: {fileID: 11400000, guid: 7679c132714f19f47a1a223196812645, type: 2}
+  _heavyProfile: {fileID: 11400000, guid: 0ce5bfa516330b5438ef25f143b1ecac, type: 2}
+  _useHitLag: 1
+  _useCameraShake: 1
+  _useSparks: 1
+  _useShockwave: 1
 --- !u!1 &1456329674
 GameObject:
   m_ObjectHideFlags: 0

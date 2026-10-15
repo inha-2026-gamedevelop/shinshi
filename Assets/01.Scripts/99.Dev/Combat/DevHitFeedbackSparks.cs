@@ -16,8 +16,6 @@ namespace Shinshi.Dev
 
         private const int   POOL_SIZE        = 12;
         private const int   MAX_PARTICLES    = 64;
-        private const int   HIT_COUNT        = 10;
-        private const int   KILL_COUNT       = 28;
         private const float LIFETIME_MIN     = 0.2f;
         private const float LIFETIME_MAX     = 0.4f;
         private const float SPEED_MIN        = 3f;  // m/s
@@ -72,8 +70,8 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        /// <summary> point에서 direction 쪽으로 불똥을 터뜨린다. 처치 때는 더 많이 튄다 </summary>
-        public void Burst(Vector3 point, Vector3 direction, bool isKill)
+        /// <summary> point에서 direction 쪽으로 불똥을 count개 터뜨린다 </summary>
+        public void Burst(Vector3 point, Vector3 direction, int count)
         {
             if (!enabled)
             {
@@ -91,7 +89,7 @@ namespace Shinshi.Dev
 
             system.transform.SetPositionAndRotation(point, Quaternion.LookRotation(aim.normalized, Vector3.up));
             system.Play();
-            system.Emit(isKill ? KILL_COUNT : HIT_COUNT);
+            system.Emit(count);
         }
 
         private ParticleSystem CreateSystem(int index)

@@ -27,6 +27,7 @@ namespace Shinshi.Dev
 
         [Header("참조")]
         [SerializeField] private DevHitFeedbackPlayer _player;
+        [SerializeField] private HitFeedbackDirector  _director;
 
         [Header("무리")]
         [SerializeField] private int   _groupSize        = 24;
@@ -38,44 +39,42 @@ namespace Shinshi.Dev
         private readonly RaycastHit[] _rayHits     = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[OVERLAP_BUFFER_SIZE];
 
-        private DevHitFeedbackSparks _sparks        = null;
-        private Collider             _playerCollider = null;
-        private int                  _alive         = 0;
-        private float                _nextSpawnTime = 0f;
+        private Collider _playerCollider = null;
+        private int      _alive          = 0;
+        private float    _nextSpawnTime  = 0f;
 
         /****************************************
         *              Unity Event
         ****************************************/
 
-        private void Awake()
-        {
-            _sparks = new GameObject("DevSparks").AddComponent<DevHitFeedbackSparks>();
-            _sparks.transform.SetParent(transform, false);
-        }
-
         private void OnEnable()
         {
-            if (_player == null)
+            if ((_player == null) || (_director == null))
             {
-                Debug.LogError("[DevSpawner] 플레이어가 연결되지 않았다", this);
+                Debug.LogError("[DevSpawner] 플레이어나 타격감 재생기가 연결되지 않았다", this);
                 enabled = false;
                 return;
             }
 
             _playerCollider = _player.GetComponent<Collider>();
-            _player.Hit += OnPlayerHit;
+            _player.Hit  += OnPlayerHit;
+            _player.Slam += OnPlayerSlam;
         }
 
         private void OnDisable()
         {
             if (_player != null)
             {
-                _player.Hit -= OnPlayerHit;
+                _player.Hit  -= OnPlayerHit;
+                _player.Slam -= OnPlayerSlam;
             }
         }
 
         private void Start()
         {
+            // 플레이어의 카메라 도우미는 플레이어 Awake에서 만들어지므로 모든 Awake가 끝난 Start에서 잇는다
+            _director.Init(_player.FeedbackCamera);
+
             SpawnGroup();
         }
 
@@ -91,6 +90,7 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
+        // 서버가 보내 줄 타격 결과를 대신해 플레이어가 맞힌 몬스터를 받는다. 맞힌 것으로 확정되면 프로필대로 타격감을 재생한다
         private void OnPlayerHit(Collider target, Vector3 hitPoint, bool isHeavy)
         {
             if (!target.TryGetComponent(out DevHitFeedbackMonster monster))
@@ -98,8 +98,9 @@ namespace Shinshi.Dev
                 return;
             }
 
-            Vector3 attacker = _player.transform.position;
-            if (!monster.TakeHit(attacker, isHeavy, out bool isKill))
+            HitFeedbackProfile profile  = _director.GetProfile(isHeavy);
+            Vector3            attacker = _player.transform.position;
+            if (!monster.TakeHit(attacker, profile, out bool isKill))
             {
                 return;
             }
@@ -110,13 +111,19 @@ namespace Shinshi.Dev
             direction   = direction.normalized;
 
             hitPoint.y = target.bounds.center.y;
-            if (_sparks != null)
-            {
-                _sparks.Burst(hitPoint, direction, isKill || isHeavy);
-            }
+            _director.PlayHit(profile, hitPoint, direction, isKill, _player, monster.LagTarget);
+        }
 
-            int lagFrames = _player.PlayHitFeedback(direction, isKill, isHeavy);
-            monster.Vibrate(lagFrames);
+        // 강공격이 내려친 자리에서 링과 먼지를 터뜨리고, 반지름 안의 몬스터를 한꺼번에 밀어낸다
+        private void OnPlayerSlam(Vector3 center)
+        {
+            HitFeedbackProfile profile = _director.GetProfile(true);
+            _director.PlaySlam(profile, center);
+
+            if (profile.ShockwaveRadius > 0f)
+            {
+                DevHitFeedbackMonster.ShoveAround(center, profile.ShockwaveRadius, profile.ShockwaveSpeed);
+            }
         }
 
         private void OnMonsterDied(DevHitFeedbackMonster monster)
