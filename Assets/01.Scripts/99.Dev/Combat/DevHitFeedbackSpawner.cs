@@ -30,7 +30,7 @@ namespace Shinshi.Dev
 
         [Header("무리")]
         [SerializeField] private int   _groupSize        = 24;
-        [SerializeField] private int   _hitsToDie        = 5;
+        [SerializeField] private int   _hitsToDie        = 3;
         [SerializeField] private float _spawnRadius      = 9f;  // m
         [SerializeField] private float _respawnDelay     = 3f;  // 초, 무리가 모두 죽은 뒤 다음 무리까지
 
@@ -90,7 +90,7 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        private void OnPlayerHit(Collider target, Vector3 hitPoint)
+        private void OnPlayerHit(Collider target, Vector3 hitPoint, bool isHeavy)
         {
             if (!target.TryGetComponent(out DevHitFeedbackMonster monster))
             {
@@ -98,7 +98,7 @@ namespace Shinshi.Dev
             }
 
             Vector3 attacker = _player.transform.position;
-            if (!monster.TakeHit(attacker, out bool isKill))
+            if (!monster.TakeHit(attacker, isHeavy, out bool isKill))
             {
                 return;
             }
@@ -111,10 +111,11 @@ namespace Shinshi.Dev
             hitPoint.y = target.bounds.center.y;
             if (_sparks != null)
             {
-                _sparks.Burst(hitPoint, direction, isKill);
+                _sparks.Burst(hitPoint, direction, isKill || isHeavy);
             }
 
-            _player.PlayHitFeedback(direction, isKill);
+            int lagFrames = _player.PlayHitFeedback(direction, isKill, isHeavy);
+            monster.Vibrate(lagFrames);
         }
 
         private void OnMonsterDied(DevHitFeedbackMonster monster)

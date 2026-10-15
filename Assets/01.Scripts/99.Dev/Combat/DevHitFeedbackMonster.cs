@@ -33,6 +33,14 @@ namespace Shinshi.Dev
         private const float KNOCKBACK_DRAG  = 12f; // 1/s
         private const float KNOCKBACK_STOP_SQR = 0.0001f;
 
+        // 강공격에 맞으면 훨씬 멀리 밀려난다. 속도는 크게, 감속은 느리게 해서 3m 가까이 미끄러진다
+        private const float HEAVY_KNOCKBACK_SPEED = 16f; // m/s
+        private const float HEAVY_KNOCKBACK_DRAG  = 5f;  // 1/s
+        private const float HEAVY_FLY_MULTIPLIER  = 1.8f;
+
+        // 렉프레임 동안 맞은 몸이 떠는 크기
+        private const float VIBRATE_AMOUNT = 0.05f; // m
+
         // 처치 시 날아가기
         private const float DEATH_FLY_SECONDS   = 0.8f;
         private const float DEATH_FLY_SPEED     = 8f;  // m/s, 수평
@@ -53,6 +61,9 @@ namespace Shinshi.Dev
         private MaterialPropertyBlock _block         = null;
         private Vector3               _baseScale     = Vector3.one;
         private Vector3               _knockVelocity = Vector3.zero;
+        private Vector3               _vibrateOffset = Vector3.zero;
+        private float                 _knockDrag     = KNOCKBACK_DRAG;
+        private int                   _vibrateFrames = 0;
         private int                   _hitsLeft      = 0;
         private float                 _flashLeft     = 0f;
         private float                 _flashSeconds  = FLASH_SECONDS;
@@ -72,6 +83,7 @@ namespace Shinshi.Dev
 
         private void Update()
         {
+            UpdateVibrate();
             UpdateFlash();
 
             if (_isDying)
@@ -105,8 +117,14 @@ namespace Shinshi.Dev
             }
         }
 
-        /// <summary> 공격자 위치 쪽에서 한 대 맞는다. 맞은 횟수가 다 차면 날아가며 죽는다. 맞은 것으로 쳤으면 true, 이미 죽는 중이면 false </summary>
-        public bool TakeHit(Vector3 attackerPosition, out bool isKill)
+        /// <summary> 렉프레임 동안 몸을 떨게 한다. 화면이 멈춘 동안에도 프레임마다 흔들려 맞은 몸이 부들거려 보인다 </summary>
+        public void Vibrate(int frames)
+        {
+            _vibrateFrames = Mathf.Max(_vibrateFrames, frames);
+        }
+
+        /// <summary> 공격자 위치 쪽에서 한 대 맞는다. 강공격이면 훨씬 멀리 날아간다. 맞은 횟수가 다 차면 날아가며 죽는다. 맞은 것으로 쳤으면 true, 이미 죽는 중이면 false </summary>
+        public bool TakeHit(Vector3 attackerPosition, bool isHeavy, out bool isKill)
         {
             isKill = false;
             if (_isDying)
@@ -122,18 +140,21 @@ namespace Shinshi.Dev
             if (_hitsLeft <= 0)
             {
                 isKill = true;
-                StartDeath(away);
+                StartDeath(away, isHeavy);
                 return true;
             }
 
-            _knockVelocity = away * KNOCKBACK_SPEED;
+            _knockVelocity = away * (isHeavy ? HEAVY_KNOCKBACK_SPEED : KNOCKBACK_SPEED);
+            _knockDrag     = isHeavy ? HEAVY_KNOCKBACK_DRAG : KNOCKBACK_DRAG;
             _punchLeft     = PUNCH_SECONDS;
             StartFlash(FLASH_SECONDS);
             return true;
         }
 
-        private void StartDeath(Vector3 away)
+        private void StartDeath(Vector3 away, bool isHeavy)
         {
+            float power = isHeavy ? HEAVY_FLY_MULTIPLIER : 1f;
+
             _isDying = true;
             transform.localScale = _baseScale;
             StartFlash(DEATH_FLASH_SECONDS);
@@ -141,7 +162,7 @@ namespace Shinshi.Dev
             _body              = gameObject.AddComponent<Rigidbody>();
             _body.linearDamping = DEATH_BODY_DRAG;
             _body.interpolation = RigidbodyInterpolation.Interpolate;
-            _body.AddForce((away * DEATH_FLY_SPEED) + (Vector3.up * DEATH_FLY_UP_SPEED), ForceMode.VelocityChange);
+            _body.AddForce(((away * DEATH_FLY_SPEED) + (Vector3.up * DEATH_FLY_UP_SPEED)) * power, ForceMode.VelocityChange);
             _body.AddTorque(UnityEngine.Random.onUnitSphere * DEATH_SPIN_SPEED, ForceMode.VelocityChange);
         }
 
@@ -172,7 +193,24 @@ namespace Shinshi.Dev
             }
 
             transform.position += _knockVelocity * Time.deltaTime;
-            _knockVelocity     *= Mathf.Exp(-KNOCKBACK_DRAG * Time.deltaTime);
+            _knockVelocity     *= Mathf.Exp(-_knockDrag * Time.deltaTime);
+        }
+
+        // 프레임마다 직전 떨림을 되돌리고 새로 떨어, 끝나면 원래 자리로 돌아온다
+        private void UpdateVibrate()
+        {
+            transform.position -= _vibrateOffset;
+            _vibrateOffset      = Vector3.zero;
+
+            if (_vibrateFrames <= 0)
+            {
+                return;
+            }
+
+            --_vibrateFrames;
+            Vector2 shake = UnityEngine.Random.insideUnitCircle * VIBRATE_AMOUNT;
+            _vibrateOffset      = new Vector3(shake.x, 0f, shake.y);
+            transform.position += _vibrateOffset;
         }
 
         // 높이가 눌렸다 되튀는 감쇠 진동. 눌린 만큼 옆으로 퍼져 부피가 비슷해 보이게 한다

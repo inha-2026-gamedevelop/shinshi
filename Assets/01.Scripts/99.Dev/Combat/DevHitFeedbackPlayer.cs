@@ -43,9 +43,12 @@ namespace Shinshi.Dev
         private const float  SLASH_INNER_RATIO   = 0.55f; // 사거리 대비 띠 안쪽 반지름
 
         // 타격감
-        private const float HIT_STOP_TIME_SCALE = 0.02f;
-        private const float SHAKE_FREQUENCY     = 38f; // rad/s
-        private const float NORMAL_TIME_SCALE   = 1f;
+        private const float FROZEN_TIME_SCALE = 0f;
+        private const float NORMAL_TIME_SCALE = 1f;
+        private const float SHAKE_FREQUENCY   = 38f; // rad/s
+
+        // 콤보. 마지막 단계가 강공격이다
+        private const int HEAVY_COMBO_STEP = 3;
 
         // 정면 화살표. 바닥 위에 얹은 막대 하나와 양옆으로 꺾인 머리 막대 둘이다
         private const string ARROW_NAME           = "DevFacingArrow";
@@ -71,17 +74,24 @@ namespace Shinshi.Dev
         [SerializeField] private LayerMask _hitLayers       = ~0;
         [SerializeField] private Color     _slashColor      = new Color(1f, 0.85f, 0.4f, 0.6f);
 
+        [Header("강공격 (3타)")]
+        [SerializeField] private float _comboWindow     = 1f;    // 초, 이 안에 다음 공격을 눌러야 콤보가 이어진다
+        [SerializeField] private float _heavyLockTime   = 0.35f; // 초
+        [SerializeField] private Color _heavySlashTint  = new Color(1f, 0.45f, 0.25f, 1f);
+
         [Header("표시")]
         [SerializeField] private Color _arrowColor = new Color(1f, 0.9f, 0.2f, 1f);
 
         [Header("타격감")]
-        [SerializeField] private bool  _useHitStop      = true;
-        [SerializeField] private float _hitStopSeconds  = 0.06f; // 초, 실제 시간 기준
-        [SerializeField] private float _killStopSeconds = 0.13f; // 초, 처치한 타격
-        [SerializeField] private bool  _useCameraShake  = true;
-        [SerializeField] private float _shakeAmount     = 0.35f; // m, 맞은 방향으로 밀리는 크기
-        [SerializeField] private float _killShakeAmount = 0.8f;  // m
-        [SerializeField] private float _shakeSeconds    = 0.25f; // 초, 실제 시간 기준
+        [SerializeField] private bool  _useHitLag        = true;
+        [SerializeField] private int   _lightHitLagFrames = 3; // 프레임, 맞은 순간 화면이 완전히 멈추는 길이
+        [SerializeField] private int   _heavyHitLagFrames = 9; // 프레임
+        [SerializeField] private int   _killHitLagFrames  = 3; // 프레임, 처치한 타격에 더한다
+        [SerializeField] private bool  _useCameraShake   = true;
+        [SerializeField] private float _shakeAmount      = 0.06f; // m, 맞은 방향으로 밀리는 크기
+        [SerializeField] private float _killShakeAmount  = 0.12f; // m
+        [SerializeField] private float _heavyShakeAmount = 0.2f;  // m
+        [SerializeField] private float _shakeSeconds     = 0.2f;  // 초, 멈춤이 풀린 뒤부터 센다
 
         private readonly RaycastHit[] _rayHits    = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[HIT_BUFFER_SIZE];
@@ -91,9 +101,12 @@ namespace Shinshi.Dev
         private Material            _slashMaterial  = null;
         private Vector3             _shakeDirection = Vector3.zero;
         private float               _shakeStrength  = 0f;
-        private float               _shakeEndTime   = 0f;  // Time.unscaledTime 기준
-        private float               _hitStopEndTime = 0f;  // Time.unscaledTime 기준
+        private float               _shakeEndTime   = 0f;  // Time.time 기준, 멈춘 동안은 흐르지 않는다
+        private int                 _hitLagFramesLeft = 0;
+        private int                 _comboStep      = 0;
+        private float               _comboEndTime   = 0f;
         private float               _slashStartTime = 0f;
+        private float               _slashSeconds   = 0f;
         private Vector3             _spawnPosition  = Vector3.zero;
         private Quaternion          _spawnRotation  = Quaternion.identity;
         private Vector3             _destination    = Vector3.zero;
@@ -103,8 +116,8 @@ namespace Shinshi.Dev
         private float               _nextAttackTime = 0f;
         private float               _attackEndTime  = 0f;
 
-        /// <summary> 공격이 맞힌 충돌체마다 한 번씩 알린다. 두 번째 값은 몸 중심에서 가장 가까운 맞은 지점이다 </summary>
-        public event Action<Collider, Vector3> Hit;
+        /// <summary> 공격이 맞힌 충돌체마다 한 번씩 알린다. 값은 맞은 충돌체, 몸 중심에서 가장 가까운 맞은 지점, 강공격 여부다 </summary>
+        public event Action<Collider, Vector3, bool> Hit;
 
         /****************************************
         *              Unity Event
@@ -133,6 +146,8 @@ namespace Shinshi.Dev
 
         private void Update()
         {
+            UpdateHitLag();
+
             bool isAttacking = Time.time < _attackEndTime;
 
             if ((!isAttacking) && (Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK)))
@@ -152,7 +167,6 @@ namespace Shinshi.Dev
             }
 
             UpdateSlash(isAttacking);
-            UpdateHitStop();
         }
 
         private void LateUpdate()
@@ -220,16 +234,27 @@ namespace Shinshi.Dev
                 transform.rotation = Quaternion.LookRotation(aim.normalized, Vector3.up);
             }
 
+            // 콤보 시간 안에 이어 누르면 단계가 오르고, 강공격 뒤나 시간이 지나면 처음으로 돌아간다
+            _comboStep = (Time.time < _comboEndTime) ? (_comboStep + 1) : 1;
+            bool isHeavy = _comboStep >= HEAVY_COMBO_STEP;
+            if (isHeavy)
+            {
+                _comboStep = 0;
+            }
+
+            _comboEndTime = Time.time + _comboWindow;
+
+            float lockTime = isHeavy ? _heavyLockTime : _attackLockTime;
             _hasDestination = false;
             _nextAttackTime = Time.time + _attackCooldown;
-            _attackEndTime  = Time.time + _attackLockTime;
+            _attackEndTime  = Time.time + lockTime;
 
-            ShowSlash();
-            DealDamageInCone();
+            ShowSlash(isHeavy, lockTime);
+            DealDamageInCone(isHeavy);
         }
 
         // 몸 중심 구 안에서 바라보는 방향과의 각도가 반각 이하인 충돌체만 맞힌 것으로 본다
-        private void DealDamageInCone()
+        private void DealDamageInCone(bool isHeavy)
         {
             Vector3 origin  = transform.position;
             Vector3 forward = transform.forward;
@@ -252,54 +277,66 @@ namespace Shinshi.Dev
                 }
 
                 Vector3 hitPoint = target.ClosestPoint(origin);
-                Hit?.Invoke(target, hitPoint);
+                Hit?.Invoke(target, hitPoint, isHeavy);
             }
         }
 
-        /// <summary> 맞힌 타격의 히트스톱과 카메라 흔들림을 시작한다. direction은 공격이 향한 수평 방향이다 </summary>
-        public void PlayHitFeedback(Vector3 direction, bool isKill)
+        /// <summary> 맞힌 타격의 렉프레임(화면 정지)과 카메라 흔들림을 시작하고 멈춘 프레임 수를 돌려준다. direction은 공격이 향한 수평 방향이다 </summary>
+        public int PlayHitFeedback(Vector3 direction, bool isKill, bool isHeavy)
         {
-            if (_useHitStop)
+            int lagFrames = 0;
+            if (_useHitLag)
             {
-                float stop    = isKill ? _killStopSeconds : _hitStopSeconds;
-                float endTime = Time.unscaledTime + stop;
+                lagFrames = isHeavy ? _heavyHitLagFrames : _lightHitLagFrames;
+                if (isKill)
+                {
+                    lagFrames += _killHitLagFrames;
+                }
 
-                _hitStopEndTime = Mathf.Max(_hitStopEndTime, endTime);
-                Time.timeScale  = HIT_STOP_TIME_SCALE;
+                // 한 번 휘두르다 여럿을 맞혀도 멈춤이 겹쳐 길어지지 않고 가장 긴 것만 쓴다
+                _hitLagFramesLeft = Mathf.Max(_hitLagFramesLeft, lagFrames);
+                Time.timeScale    = FROZEN_TIME_SCALE;
             }
 
             if (_useCameraShake)
             {
-                float strength = isKill ? _killShakeAmount : _shakeAmount;
+                float strength = isHeavy ? _heavyShakeAmount : (isKill ? _killShakeAmount : _shakeAmount);
                 if (strength >= ReadShakeStrength())
                 {
                     _shakeDirection = direction;
                     _shakeStrength  = strength;
-                    _shakeEndTime   = Time.unscaledTime + _shakeSeconds;
+                    _shakeEndTime   = Time.time + _shakeSeconds;
                 }
             }
+
+            return lagFrames;
         }
 
-        // 실제 시간으로 끝을 재서 timeScale이 낮아도 풀리게 한다
-        private void UpdateHitStop()
+        // 렉프레임은 프레임 수로 센다. timeScale이 0이어도 Update는 돈다
+        private void UpdateHitLag()
         {
-            if ((_hitStopEndTime > 0f) && (Time.unscaledTime >= _hitStopEndTime))
+            if (_hitLagFramesLeft <= 0)
             {
-                _hitStopEndTime = 0f;
-                Time.timeScale  = NORMAL_TIME_SCALE;
+                return;
+            }
+
+            --_hitLagFramesLeft;
+            if (_hitLagFramesLeft == 0)
+            {
+                Time.timeScale = NORMAL_TIME_SCALE;
             }
         }
 
         private float ReadShakeStrength()
         {
-            float remain = (_shakeEndTime - Time.unscaledTime) / _shakeSeconds;
+            float remain = (_shakeEndTime - Time.time) / _shakeSeconds;
             return (remain > 0f) ? (_shakeStrength * remain) : 0f;
         }
 
-        // 맞은 방향으로 확 밀렸다가 감쇠하며 되돌아오는 진동
+        // 맞은 방향으로 확 밀렸다가 감쇠하며 되돌아오는 진동. 멈춘 동안은 시간이 안 흘러 풀린 뒤에 시작한다
         private Vector3 ReadShakeOffset()
         {
-            float remain = (_shakeEndTime - Time.unscaledTime) / _shakeSeconds;
+            float remain = (_shakeEndTime - Time.time) / _shakeSeconds;
             if (remain <= 0f)
             {
                 return Vector3.zero;
@@ -309,9 +346,16 @@ namespace Shinshi.Dev
             return _shakeDirection * (_shakeStrength * remain * remain * wave);
         }
 
-        private void ShowSlash()
+        private void ShowSlash(bool isHeavy, float seconds)
         {
+            if (_slashMaterial == null)
+            {
+                return;
+            }
+
             _slashStartTime = Time.time;
+            _slashSeconds   = seconds;
+            _slashMaterial.color = isHeavy ? _heavySlashTint : Color.white;
             _slash.transform.localPosition = new Vector3(0f, SLASH_HEIGHT, 0f);
             _slash.SetActive(true);
             UpdateSlash(true);
@@ -331,7 +375,7 @@ namespace Shinshi.Dev
                 return;
             }
 
-            float t = Mathf.Clamp01((Time.time - _slashStartTime) / _attackLockTime);
+            float t = Mathf.Clamp01((Time.time - _slashStartTime) / _slashSeconds);
             _slash.transform.localRotation = Quaternion.Euler(0f, Mathf.Lerp(-_attackHalfAngle, _attackHalfAngle, t), 0f);
         }
 

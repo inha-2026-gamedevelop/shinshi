@@ -15310,7 +15310,19 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   _slashColor: {r: 1, g: 0.85, b: 0.4, a: 0.6}
+  _comboWindow: 1
+  _heavyLockTime: 0.35
+  _heavySlashTint: {r: 1, g: 0.45, b: 0.25, a: 1}
   _arrowColor: {r: 1, g: 0.9, b: 0.2, a: 1}
+  _useHitLag: 1
+  _lightHitLagFrames: 3
+  _heavyHitLagFrames: 9
+  _killHitLagFrames: 3
+  _useCameraShake: 1
+  _shakeAmount: 0.06
+  _killShakeAmount: 0.12
+  _heavyShakeAmount: 0.2
+  _shakeSeconds: 0.2
 --- !u!143 &580735307
 CharacterController:
   m_ObjectHideFlags: 0
@@ -38397,7 +38409,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackSpawner
   _player: {fileID: 580735306}
   _groupSize: 24
-  _hitsToDie: 5
+  _hitsToDie: 3
   _spawnRadius: 9
   _respawnDelay: 3
 --- !u!4 &1454901487
