@@ -36,6 +36,15 @@ namespace Shinshi.Dev
         private const float SLASH_THICKNESS = 0.05f; // m
         private const float SLASH_HEIGHT    = 0.9f;  // m, 몸통 높이에 띄운다
 
+        // 정면 화살표. 바닥 위에 얹은 막대 하나와 양옆으로 꺾인 머리 막대 둘이다
+        private const string ARROW_NAME           = "DevFacingArrow";
+        private const float  ARROW_HEIGHT         = 0.05f; // m, 바닥에 파묻히지 않게 띄운다
+        private const float  ARROW_SHAFT_START    = 0.8f;  // m, 캡슐 앞쪽 시작 거리
+        private const float  ARROW_SHAFT_LENGTH   = 0.8f;  // m
+        private const float  ARROW_WIDTH          = 0.14f; // m
+        private const float  ARROW_HEAD_LENGTH    = 0.45f; // m
+        private const float  ARROW_HEAD_ANGLE     = 40f;   // 도, 진행 방향 축에서 벌어지는 각
+
         [Header("참조")]
         [SerializeField] private Camera _outputCamera;
 
@@ -50,6 +59,9 @@ namespace Shinshi.Dev
         [SerializeField] private float     _attackLockTime  = 0.2f;  // 초, 공격 중에는 걷지 않고 휘두르는 방향을 유지한다
         [SerializeField] private LayerMask _hitLayers       = ~0;
         [SerializeField] private Color     _slashColor      = new Color(1f, 0.85f, 0.4f, 0.6f);
+
+        [Header("표시")]
+        [SerializeField] private Color _arrowColor = new Color(1f, 0.9f, 0.2f, 1f);
 
         private readonly RaycastHit[] _rayHits    = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[HIT_BUFFER_SIZE];
@@ -78,6 +90,7 @@ namespace Shinshi.Dev
             _spawnPosition = transform.position;
             _spawnRotation = transform.rotation;
             _slash         = CreateSlashVisual();
+            CreateFacingArrow();
         }
 
         private void Start()
@@ -229,6 +242,47 @@ namespace Shinshi.Dev
 
             slash.SetActive(false);
             return slash;
+        }
+
+        // 시험용 표시가 판정이나 커서 레이캐스트를 가로막지 않게 충돌체를 없앤 막대를 만든다
+        private Transform CreateBar(Transform parent, string barName, Vector3 localPosition, Quaternion localRotation, Vector3 scale)
+        {
+            GameObject bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            bar.name = barName;
+            Destroy(bar.GetComponent<Collider>());
+
+            Transform barTransform = bar.transform;
+            barTransform.SetParent(parent, false);
+            barTransform.SetLocalPositionAndRotation(localPosition, localRotation);
+            barTransform.localScale = scale;
+
+            var block = new MaterialPropertyBlock();
+            block.SetColor(COLOR_PROPERTY, _arrowColor);
+            bar.GetComponent<Renderer>().SetPropertyBlock(block);
+            return barTransform;
+        }
+
+        // 몸이 둥글어 정면이 안 보이므로 앞쪽 바닥에 화살표를 놓는다. 머리 막대 끝이 화살촉 끝점에 모인다
+        private void CreateFacingArrow()
+        {
+            var root = new GameObject(ARROW_NAME).transform;
+            root.SetParent(transform, false);
+
+            float tipZ = ARROW_SHAFT_START + ARROW_SHAFT_LENGTH;
+            CreateBar(root, "Shaft", new Vector3(0f, ARROW_HEIGHT, ARROW_SHAFT_START + (ARROW_SHAFT_LENGTH * HALF)),
+                Quaternion.identity, new Vector3(ARROW_WIDTH, SLASH_THICKNESS, ARROW_SHAFT_LENGTH));
+
+            float   rad  = ARROW_HEAD_ANGLE * Mathf.Deg2Rad;
+            Vector3 back = new Vector3(Mathf.Sin(rad), 0f, -Mathf.Cos(rad));
+            Vector3 headScale = new Vector3(ARROW_WIDTH, SLASH_THICKNESS, ARROW_HEAD_LENGTH);
+            Vector3 tip = new Vector3(0f, ARROW_HEIGHT, tipZ);
+
+            // 오른쪽 머리는 뒤로 오른쪽, 왼쪽 머리는 뒤로 왼쪽으로 뻗는다
+            CreateBar(root, "HeadRight", tip + (back * (ARROW_HEAD_LENGTH * HALF)),
+                Quaternion.LookRotation(back, Vector3.up), headScale);
+            Vector3 backLeft = new Vector3(-back.x, 0f, back.z);
+            CreateBar(root, "HeadLeft", tip + (backLeft * (ARROW_HEAD_LENGTH * HALF)),
+                Quaternion.LookRotation(backLeft, Vector3.up), headScale);
         }
 
         private void FaceTowards(Vector3 direction)
