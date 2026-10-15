@@ -43,9 +43,7 @@ namespace Shinshi.Dev
         private const float  SLASH_INNER_RATIO   = 0.55f; // 사거리 대비 띠 안쪽 반지름
 
         // 타격감
-        private const float FROZEN_TIME_SCALE = 0f;
-        private const float NORMAL_TIME_SCALE = 1f;
-        private const float SHAKE_FREQUENCY   = 38f; // rad/s
+        private const float SHAKE_FREQUENCY = 38f; // rad/s
 
         // 콤보. 마지막 단계가 강공격이다
         private const int HEAVY_COMBO_STEP = 3;
@@ -101,8 +99,10 @@ namespace Shinshi.Dev
         private Material            _slashMaterial  = null;
         private Vector3             _shakeDirection = Vector3.zero;
         private float               _shakeStrength  = 0f;
-        private float               _shakeEndTime   = 0f;  // Time.time 기준, 멈춘 동안은 흐르지 않는다
+        private float               _shakeEndTime   = 0f;  // Time.time 기준
+        private float               _pendingShake   = 0f;  // 렉프레임이 끝나면 시작할 흔들림 크기, 0이면 없다
         private int                 _hitLagFramesLeft = 0;
+        private bool                _attackBuffered = false;
         private int                 _comboStep      = 0;
         private float               _comboEndTime   = 0f;
         private float               _slashStartTime = 0f;
@@ -146,11 +146,22 @@ namespace Shinshi.Dev
 
         private void Update()
         {
-            UpdateHitLag();
+            bool attackPressed = Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK);
+
+            // 렉프레임 동안은 나만 굳는다. 전역 timeScale은 건드리지 않아 다른 몬스터와 다른 플레이어는 그대로 흐른다
+            if (_hitLagFramesLeft > 0)
+            {
+                _attackBuffered |= attackPressed;
+                UpdateHitLag();
+                return;
+            }
+
+            attackPressed |= _attackBuffered;
+            _attackBuffered = false;
 
             bool isAttacking = Time.time < _attackEndTime;
 
-            if ((!isAttacking) && (Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK)))
+            if ((!isAttacking) && (attackPressed))
             {
                 TryAttack();
                 isAttacking = Time.time < _attackEndTime;
@@ -172,11 +183,6 @@ namespace Shinshi.Dev
         private void LateUpdate()
         {
             _outputCamera.transform.position = transform.position + _cameraOffset + ReadShakeOffset();
-        }
-
-        private void OnDisable()
-        {
-            Time.timeScale = NORMAL_TIME_SCALE;
         }
 
         private void OnDestroy()
@@ -295,7 +301,6 @@ namespace Shinshi.Dev
 
                 // 한 번 휘두르다 여럿을 맞혀도 멈춤이 겹쳐 길어지지 않고 가장 긴 것만 쓴다
                 _hitLagFramesLeft = Mathf.Max(_hitLagFramesLeft, lagFrames);
-                Time.timeScale    = FROZEN_TIME_SCALE;
             }
 
             if (_useCameraShake)
@@ -304,27 +309,44 @@ namespace Shinshi.Dev
                 if (strength >= ReadShakeStrength())
                 {
                     _shakeDirection = direction;
-                    _shakeStrength  = strength;
-                    _shakeEndTime   = Time.time + _shakeSeconds;
+                    _pendingShake   = strength;
+                    if (_hitLagFramesLeft <= 0)
+                    {
+                        StartShake();
+                    }
                 }
             }
 
             return lagFrames;
         }
 
-        // 렉프레임은 프레임 수로 센다. timeScale이 0이어도 Update는 돈다
+        // 렉프레임은 프레임 수로 센다. 굳은 만큼 공격, 콤보, 슬래시 시각을 뒤로 밀어 멈춘 시간이 소모되지 않게 한다
         private void UpdateHitLag()
         {
-            if (_hitLagFramesLeft <= 0)
+            --_hitLagFramesLeft;
+
+            float frozen = Time.deltaTime;
+            _attackEndTime  += frozen;
+            _nextAttackTime += frozen;
+            _comboEndTime   += frozen;
+            _slashStartTime += frozen;
+
+            if (_hitLagFramesLeft == 0)
+            {
+                StartShake();
+            }
+        }
+
+        private void StartShake()
+        {
+            if (_pendingShake <= 0f)
             {
                 return;
             }
 
-            --_hitLagFramesLeft;
-            if (_hitLagFramesLeft == 0)
-            {
-                Time.timeScale = NORMAL_TIME_SCALE;
-            }
+            _shakeStrength = _pendingShake;
+            _shakeEndTime  = Time.time + _shakeSeconds;
+            _pendingShake  = 0f;
         }
 
         private float ReadShakeStrength()
@@ -333,7 +355,7 @@ namespace Shinshi.Dev
             return (remain > 0f) ? (_shakeStrength * remain) : 0f;
         }
 
-        // 맞은 방향으로 확 밀렸다가 감쇠하며 되돌아오는 진동. 멈춘 동안은 시간이 안 흘러 풀린 뒤에 시작한다
+        // 맞은 방향으로 확 밀렸다가 감쇠하며 되돌아오는 진동. 렉프레임이 풀린 뒤에 시작한다
         private Vector3 ReadShakeOffset()
         {
             float remain = (_shakeEndTime - Time.time) / _shakeSeconds;

@@ -31,6 +31,7 @@ namespace Shinshi.Dev
         [Header("무리")]
         [SerializeField] private int   _groupSize        = 24;
         [SerializeField] private int   _hitsToDie        = 3;
+        [SerializeField] private float _chaseSpeed       = 2.5f; // m/s, 플레이어를 쫓는 속도
         [SerializeField] private float _spawnRadius      = 9f;  // m
         [SerializeField] private float _respawnDelay     = 3f;  // 초, 무리가 모두 죽은 뒤 다음 무리까지
 
@@ -160,7 +161,7 @@ namespace Shinshi.Dev
             body.transform.position = position + (Vector3.up * (MONSTER_HEIGHT * HALF));
 
             var monster = body.AddComponent<DevHitFeedbackMonster>();
-            monster.Init(_hitsToDie, _playerCollider);
+            monster.Init(_hitsToDie, _playerCollider, _chaseSpeed);
             monster.Died += OnMonsterDied;
             ++_alive;
         }

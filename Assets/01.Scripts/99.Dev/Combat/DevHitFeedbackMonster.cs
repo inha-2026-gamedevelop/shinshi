@@ -1,16 +1,18 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
 
 namespace Shinshi.Dev
 {
-    /// <summary> 정해진 횟수만 맞으면 죽는 제자리 시험용 몬스터. 맞으면 번쩍이고 밀리고 찌그러지며, 죽으면 물리로 날아간 뒤 줄어들며 사라진다 </summary>
+    /// <summary> 정해진 횟수만 맞으면 죽는 시험용 몬스터. 플레이어를 쫓아오며 서로 겹치지 않고, 맞으면 번쩍이고 밀리고 찌그러지며, 죽으면 물리로 날아간 뒤 줄어들며 사라진다 </summary>
     public sealed class DevHitFeedbackMonster : MonoBehaviour
     {
-        // 판정, 이동, AI는 없다. 피격 연출 확인용 표적이라 체력 대신 맞은 횟수로 죽는다.
-        // 연출 시간은 모두 Time.deltaTime으로 센다. 히트스톱으로 timeScale이 내려가면 연출도 같이 멈칫해야 한다
+        // 판정과 경로 탐색은 없다. 플레이어 쪽으로 직선으로 걷고, 나무나 바위는 피하지 않는다.
+        // 피격 연출 확인용 표적이라 체력 대신 맞은 횟수로 죽는다.
+        // 렉프레임은 전역 timeScale을 건드리지 않고 이 몬스터의 Update만 건너뛰어 만든다. 멀티에서 남의 화면과 다른 몬스터는 그대로 흐른다
 
         /****************************************
         *                Fields
@@ -38,6 +40,15 @@ namespace Shinshi.Dev
         private const float HEAVY_KNOCKBACK_DRAG  = 5f;  // 1/s
         private const float HEAVY_FLY_MULTIPLIER  = 1.8f;
 
+        // 추격. 맞아 밀려나는 동안은 걷지 않고, 몬스터끼리는 몸통이 겹치지 않게 서로 민다
+        private const float CHASE_STOP_DISTANCE   = 1.2f;  // m, 플레이어와 이만큼 남기고 선다
+        private const float SEPARATION_DISTANCE   = 0.9f;  // m, 몬스터 중심끼리 이보다 가까우면 벌린다
+        private const float PLAYER_MIN_DISTANCE   = 0.9f;  // m, 플레이어 몸통 반지름과 몬스터 반지름의 합에 여유를 더한 값
+        private const float STUN_SPEED_SQR       = 1f;    // 넉백 속도가 이 값(제곱) 아래로 식어야 다시 걷는다
+        private const float GROUND_PROBE_UP       = 0.5f;  // m, 몸 중심 위 이 높이에서 아래로 땅을 찾는다
+        private const float GROUND_PROBE_DISTANCE = 4f;    // m
+        private const float GROUND_FOLLOW_SPEED   = 20f;   // 1/s
+
         // 렉프레임 동안 맞은 몸이 떠는 크기
         private const float VIBRATE_AMOUNT = 0.05f; // m
 
@@ -55,6 +66,10 @@ namespace Shinshi.Dev
         private static readonly Color s_normalColor = new Color(0.55f, 0.2f, 0.2f, 1f);
         private static readonly Color s_flashColor  = Color.white;
 
+        // 살아서 걷는 몬스터. 서로 겹침을 풀 때 훑는다
+        private static readonly List<DevHitFeedbackMonster> s_alive = new List<DevHitFeedbackMonster>();
+
+        private Transform             _target        = null;
         private Renderer              _renderer      = null;
         private Collider              _collider      = null;
         private Rigidbody             _body          = null;
@@ -62,8 +77,12 @@ namespace Shinshi.Dev
         private Vector3               _baseScale     = Vector3.one;
         private Vector3               _knockVelocity = Vector3.zero;
         private Vector3               _vibrateOffset = Vector3.zero;
+        private float                 _chaseSpeed    = 0f;
         private float                 _knockDrag     = KNOCKBACK_DRAG;
         private int                   _vibrateFrames = 0;
+        private bool                  _launchPending = false;
+        private Vector3               _launchAway    = Vector3.zero;
+        private float                 _launchPower   = 1f;
         private int                   _hitsLeft      = 0;
         private float                 _flashLeft     = 0f;
         private float                 _flashSeconds  = FLASH_SECONDS;
@@ -81,9 +100,36 @@ namespace Shinshi.Dev
         *              Unity Event
         ****************************************/
 
+        // 플레이 모드 진입 때 도메인 리로드를 끄면 지난 판의 목록이 남는다
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            s_alive.Clear();
+        }
+
+        private void OnEnable()
+        {
+            s_alive.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            s_alive.Remove(this);
+        }
+
         private void Update()
         {
-            UpdateVibrate();
+            // 렉프레임 동안은 떨기만 하고 나머지 시간은 흐르지 않는다. 처치한 몬스터도 멈춤이 풀린 뒤에 날아간다
+            if (UpdateVibrate())
+            {
+                return;
+            }
+
+            if (_launchPending)
+            {
+                Launch();
+            }
+
             UpdateFlash();
 
             if (_isDying)
@@ -93,6 +139,7 @@ namespace Shinshi.Dev
             }
 
             UpdateKnockback();
+            UpdateChase();
             UpdatePunch();
         }
 
@@ -100,9 +147,12 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        /// <summary> 몬스터 렌더러를 잡고 죽기까지 맞아야 하는 횟수를 정한다. ignoredCollider와는 죽어 날아갈 때 부딪히지 않는다 </summary>
-        public void Init(int hitsToDie, Collider ignoredCollider)
+        /// <summary> 몬스터 렌더러를 잡고 죽기까지 맞아야 하는 횟수를 정한다. playerCollider를 쫓아가며, 죽어 날아갈 때는 부딪히지 않는다 </summary>
+        public void Init(int hitsToDie, Collider playerCollider, float chaseSpeed)
         {
+            _chaseSpeed = chaseSpeed;
+            _target     = (playerCollider != null) ? playerCollider.transform : null;
+
             _renderer  = GetComponentInChildren<Renderer>();
             _collider  = GetComponent<Collider>();
             _block     = new MaterialPropertyBlock();
@@ -111,9 +161,9 @@ namespace Shinshi.Dev
             ApplyColor(s_normalColor);
 
             // 날아가는 시체가 플레이어를 밀거나 막지 않게 한다
-            if ((ignoredCollider != null) && (_collider != null))
+            if ((playerCollider != null) && (_collider != null))
             {
-                Physics.IgnoreCollision(_collider, ignoredCollider);
+                Physics.IgnoreCollision(_collider, playerCollider);
             }
         }
 
@@ -153,16 +203,26 @@ namespace Shinshi.Dev
 
         private void StartDeath(Vector3 away, bool isHeavy)
         {
-            float power = isHeavy ? HEAVY_FLY_MULTIPLIER : 1f;
-
             _isDying = true;
+            s_alive.Remove(this);
             transform.localScale = _baseScale;
             StartFlash(DEATH_FLASH_SECONDS);
 
-            _body              = gameObject.AddComponent<Rigidbody>();
+            // 렉프레임이 풀린 뒤에 날아가도록 물리는 Update에서 붙인다
+            _launchPending = true;
+            _launchAway    = away;
+            _launchPower   = isHeavy ? HEAVY_FLY_MULTIPLIER : 1f;
+        }
+
+        private void Launch()
+        {
+            _launchPending = false;
+
+            _body               = gameObject.AddComponent<Rigidbody>();
             _body.linearDamping = DEATH_BODY_DRAG;
             _body.interpolation = RigidbodyInterpolation.Interpolate;
-            _body.AddForce(((away * DEATH_FLY_SPEED) + (Vector3.up * DEATH_FLY_UP_SPEED)) * power, ForceMode.VelocityChange);
+            _body.AddForce(((_launchAway * DEATH_FLY_SPEED) + (Vector3.up * DEATH_FLY_UP_SPEED)) * _launchPower,
+                ForceMode.VelocityChange);
             _body.AddTorque(UnityEngine.Random.onUnitSphere * DEATH_SPIN_SPEED, ForceMode.VelocityChange);
         }
 
@@ -196,21 +256,111 @@ namespace Shinshi.Dev
             _knockVelocity     *= Mathf.Exp(-_knockDrag * Time.deltaTime);
         }
 
+        // 플레이어 쪽으로 걷고, 겹친 몬스터를 밀어내고, 땅 높이에 맞춘다
+        private void UpdateChase()
+        {
+            Vector3 position = transform.position;
+
+            if ((_target != null) && (_knockVelocity.sqrMagnitude <= STUN_SPEED_SQR))
+            {
+                Vector3 toTarget = _target.position - position;
+                toTarget.y = 0f;
+
+                float distance = toTarget.magnitude;
+                if (distance > CHASE_STOP_DISTANCE)
+                {
+                    float step = Mathf.Min(_chaseSpeed * Time.deltaTime, distance - CHASE_STOP_DISTANCE);
+                    position  += (toTarget / distance) * step;
+                }
+            }
+
+            position += ReadSeparation(position);
+
+            // 뒤에서 밀려도 플레이어 몸속으로는 못 들어온다. 마지막에 적용해 이 거리가 우선한다
+            if (_target != null)
+            {
+                Vector3 fromTarget = position - _target.position;
+                fromTarget.y = 0f;
+
+                float sqr = fromTarget.sqrMagnitude;
+                if ((sqr < (PLAYER_MIN_DISTANCE * PLAYER_MIN_DISTANCE)) && (sqr > MIN_DIRECTION_SQR))
+                {
+                    position += fromTarget.normalized * (PLAYER_MIN_DISTANCE - Mathf.Sqrt(sqr));
+                }
+            }
+
+            position.y = FollowGround(position);
+            transform.position = position;
+        }
+
+        // 가까운 몬스터마다 겹친 길이의 절반씩 밀려난다. 상대도 같은 계산을 해서 한 프레임에 겹침이 풀린다
+        private Vector3 ReadSeparation(Vector3 position)
+        {
+            Vector3 push = Vector3.zero;
+
+            for (int i = 0; i < s_alive.Count; ++i)
+            {
+                DevHitFeedbackMonster other = s_alive[i];
+                if (other == this)
+                {
+                    continue;
+                }
+
+                Vector3 away = position - other.transform.position;
+                away.y = 0f;
+
+                float sqr = away.sqrMagnitude;
+                if (sqr >= (SEPARATION_DISTANCE * SEPARATION_DISTANCE))
+                {
+                    continue;
+                }
+
+                // 정확히 겹쳐 방향이 없으면 아무 쪽으로나 민다
+                if (sqr <= MIN_DIRECTION_SQR)
+                {
+                    Vector2 random = UnityEngine.Random.insideUnitCircle.normalized;
+                    push += new Vector3(random.x, 0f, random.y) * (SEPARATION_DISTANCE * HALF);
+                    continue;
+                }
+
+                float distance = Mathf.Sqrt(sqr);
+                push += (away / distance) * ((SEPARATION_DISTANCE - distance) * HALF);
+            }
+
+            return push;
+        }
+
+        // 몸 안에서 아래로 쏘면 자기 충돌체는 맞지 않는다. 캡슐 높이의 절반이 곧 스케일 y다
+        private float FollowGround(Vector3 position)
+        {
+            Vector3 origin = position + (Vector3.up * GROUND_PROBE_UP);
+            if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, GROUND_PROBE_DISTANCE,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                return position.y;
+            }
+
+            float targetY = hit.point.y + _baseScale.y;
+            return Mathf.Lerp(position.y, targetY, Mathf.Clamp01(GROUND_FOLLOW_SPEED * Time.deltaTime));
+        }
+
         // 프레임마다 직전 떨림을 되돌리고 새로 떨어, 끝나면 원래 자리로 돌아온다
-        private void UpdateVibrate()
+        // 이번 프레임이 렉프레임이라 떨었으면 true
+        private bool UpdateVibrate()
         {
             transform.position -= _vibrateOffset;
             _vibrateOffset      = Vector3.zero;
 
             if (_vibrateFrames <= 0)
             {
-                return;
+                return false;
             }
 
             --_vibrateFrames;
             Vector2 shake = UnityEngine.Random.insideUnitCircle * VIBRATE_AMOUNT;
             _vibrateOffset      = new Vector3(shake.x, 0f, shake.y);
             transform.position += _vibrateOffset;
+            return true;
         }
 
         // 높이가 눌렸다 되튀는 감쇠 진동. 눌린 만큼 옆으로 퍼져 부피가 비슷해 보이게 한다
