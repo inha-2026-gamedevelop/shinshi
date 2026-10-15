@@ -34,7 +34,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int    SERVER_MINUTES = 15;
         private const int    TOWN_PORT      = 7777;
         private const int    DUNGEON_PORT   = 7780;
-        private const string CONTENT        = "0.1.2";
+        private const string CONTENT        = "0.1.3";
 
         /****************************************
         *                Methods

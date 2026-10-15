@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9500d9709ca47946adcbc555b271b3f, type: 3}
   m_Name: GameDB
   m_EditorClassIdentifier: Assembly-CSharp::Shinshi.Data.GameDatabaseSO
-  _contentVersion: 0.1.2
+  _contentVersion: 0.1.3
   _player: {fileID: 11400000, guid: 2021a386e8409a04fae7009d9cfef252, type: 2}
   _session: {fileID: 11400000, guid: ebd4ed8253e26a241b033f0c7995832d, type: 2}
   _skills: {fileID: 11400000, guid: c895b4d05b38e5d4898e1337bca025ed, type: 2}
