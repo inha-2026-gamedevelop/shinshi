@@ -9,6 +9,8 @@ Shader "Shinshi/Environment/CloudPuff"
         _RimColor ("Rim Color", Color) = (1, 0.93, 0.9, 1)
         _RimStrength ("Rim Strength", Range(0, 1)) = 0.35
         _SunInfluence ("Sun Color Influence", Range(0, 1)) = 0.4
+        _SunScatterColor ("Sun Scatter Color", Color) = (1, 0.52, 0.2, 1)
+        _SunScatter ("Sun Scatter Strength", Range(0, 1)) = 0
         _Opacity ("Opacity", Range(0, 1)) = 1
         _IntersectionFade ("Intersection Fade (m)", Float) = 8
     }
@@ -43,6 +45,8 @@ Shader "Shinshi/Environment/CloudPuff"
                 half4 _RimColor;
                 float _RimStrength;
                 float _SunInfluence;
+                half4 _SunScatterColor;
+                float _SunScatter;
                 float _Opacity;
                 float _IntersectionFade;
             CBUFFER_END
@@ -86,6 +90,9 @@ Shader "Shinshi/Environment/CloudPuff"
                 half3 color = lerp(_ShadowColor.rgb, _LitColor.rgb * sunTint, puff.g);
                 color = lerp(color, _RimColor.rgb * sunTint, puff.b * _RimStrength);
                 color *= input.color.rgb;
+                // 태양광이 대기에서 산란돼 빛을 받는 윗면이 주황으로 물드는 효과. 강도가 0이면 꺼지고 기존 모습 그대로다
+                half3 scatterTint = _SunScatterColor.rgb / max(max(_SunScatterColor.r, _SunScatterColor.g), max(_SunScatterColor.b, 0.001));
+                color = lerp(color, color * scatterTint, _SunScatter * puff.g);
 
                 float softFade = ShinshiSoftIntersection(input.positionCS, input.positionWS, _IntersectionFade);
                 float alpha = puff.r * input.color.a * softFade * _Opacity;
