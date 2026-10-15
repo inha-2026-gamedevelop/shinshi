@@ -40,6 +40,9 @@ namespace Shinshi.Editor
         private const float FLOOR_SIZE      = 16f;
         private const float FLOOR_THICKNESS = 0.5f;
 
+        // 절단면 텍스처가 외피보다 밝아 대비가 컸다. 외피 평균 색에 갓 갈라진 돌의 밝기만 조금 얹은 값이다
+        private static readonly Color FRACTURE_TINT = new Color(0.742f, 0.700f, 0.650f, 1f);
+
         private const string BANNER_MESH_PATH = ROOT + "/Models/SM_MucheolPillarBannerFragment.asset";
         private const string CLOTH_FLOOR_NAME = "ClothFloor";
 
@@ -199,7 +202,7 @@ namespace Shinshi.Editor
             material.SetTexture("_BaseMap", LoadTexture("T_MucheolPillar_Fracture_BaseColor_Warm.png"));
             material.SetTexture("_BumpMap", LoadTexture("T_MucheolPillar_Fracture_Normal.png"));
             material.SetTexture("_MetallicGlossMap", LoadTexture("T_MucheolPillar_Fracture_MetallicSmoothness.png"));
-            material.SetColor("_BaseColor", Color.white);
+            material.SetColor("_BaseColor", FRACTURE_TINT);
             material.SetFloat("_Smoothness", 1f);
             material.SetFloat("_Metallic", 0f);
             material.EnableKeyword("_NORMALMAP");
