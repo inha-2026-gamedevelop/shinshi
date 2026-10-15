@@ -206,9 +206,9 @@ namespace Shinshi.Data
         [Header("보스 처치 보상")]
         [SerializeField] private BossRewardSpec[] _bossRewards =
         {
-            new BossRewardSpec("boss_cheolgak", EBossDifficulty.Easy, 600, 120,
+            new BossRewardSpec("boss_mucheol", EBossDifficulty.Easy, 600, 120,
                 "item_boss_material_common", 2, 0.75f, 3, "item_auction_material_common", 0.35f, 1),
-            new BossRewardSpec("boss_cheolgak", EBossDifficulty.Hard, 800, 160,
+            new BossRewardSpec("boss_mucheol", EBossDifficulty.Hard, 800, 160,
                 "item_boss_material_rare", 2, 0.75f, 4, "item_auction_material_rare", 0.35f, 1),
             new BossRewardSpec("boss_wolbaek", EBossDifficulty.Easy, 1000, 200,
                 "item_boss_material_epic", 2, 0.75f, 5, "item_auction_material_epic", 0.35f, 1),

@@ -33,7 +33,7 @@ namespace Shinshi.Tests
         private const string API_TWO           = "0a1b2c3d-4e5f-4a6b-8c7d-8899aabbcc02";
         private const string API_THREE         = "0a1b2c3d-4e5f-4a6b-8c7d-8899aabbcc03";
         private const string API_FOUR          = "0a1b2c3d-4e5f-4a6b-8c7d-8899aabbcc04";
-        private const string BOSS_CHEOLGAK     = "boss_cheolgak";
+        private const string BOSS_CHEOLGAK     = "boss_mucheol";
         private const string BOSS_WOLBAEK      = "boss_wolbaek";
         private const string UNKNOWN_BOSS      = "boss_unknown";
         private const string MAP_ID            = "region_forest";

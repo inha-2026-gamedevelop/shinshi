@@ -1394,7 +1394,7 @@
           "requiresIntro": false,
           "clearedRegionId": "",
           "unlockedRegionId": "",
-          "clearedBattleId": "battle_cheolgak_easy",
+          "clearedBattleId": "battle_mucheol_easy",
           "foxTraceCount": 0
         }
       },
@@ -1415,8 +1415,8 @@
     ],
     "bossBattles": [
       {
-        "definitionId": "battle_cheolgak_easy",
-        "bossId": "boss_cheolgak",
+        "definitionId": "battle_mucheol_easy",
+        "bossId": "boss_mucheol",
         "difficulty": 0,
         "ticketCost": 1,
         "availableInTrial": false,
@@ -1430,8 +1430,8 @@
         }
       },
       {
-        "definitionId": "battle_cheolgak_hard",
-        "bossId": "boss_cheolgak",
+        "definitionId": "battle_mucheol_hard",
+        "bossId": "boss_mucheol",
         "difficulty": 1,
         "ticketCost": 1,
         "availableInTrial": false,
@@ -1440,7 +1440,7 @@
           "requiresIntro": false,
           "clearedRegionId": "",
           "unlockedRegionId": "",
-          "clearedBattleId": "battle_cheolgak_easy",
+          "clearedBattleId": "battle_mucheol_easy",
           "foxTraceCount": 0
         }
       },
@@ -1455,7 +1455,7 @@
           "requiresIntro": false,
           "clearedRegionId": "",
           "unlockedRegionId": "region_wolbaek_barrier",
-          "clearedBattleId": "battle_cheolgak_hard",
+          "clearedBattleId": "battle_mucheol_hard",
           "foxTraceCount": 0
         }
       },

@@ -379,7 +379,7 @@ namespace Shinshi.Backend.Tests.Growth
             Assert.False(ProgressionRules.BossBattles(G_Content, EGrowthContentProfile.Standard, intro)
                 .Single(view => view.TargetId == "battle_wolbaek_easy").Unlocked);
             AccountProgressState veteran = new AccountProgressState(true, 3, 2,
-                new[] { (EAccountProgressKind.BattleCleared, "battle_cheolgak_hard") });
+                new[] { (EAccountProgressKind.BattleCleared, "battle_mucheol_hard") });
             Assert.True(ProgressionRules.BossBattles(G_Content, EGrowthContentProfile.Standard, veteran)
                 .Single(view => view.TargetId == "battle_wolbaek_easy").Unlocked);
         }

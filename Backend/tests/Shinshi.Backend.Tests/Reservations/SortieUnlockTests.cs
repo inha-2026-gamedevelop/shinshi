@@ -24,7 +24,7 @@ namespace Shinshi.Backend.Tests.Reservations
         private const string REGION_FOREST   = "region_forest";
         private const string REGION_RUINS    = "region_ruins";
         private const string BATTLE_WOLBAEK  = "battle_wolbaek_easy";
-        private const string BATTLE_CHEOLGAK = "battle_cheolgak_easy";
+        private const string BATTLE_CHEOLGAK = "battle_mucheol_easy";
         private const string UNKNOWN_BATTLE  = "battle_forest_1";
         private const long   TICKETS         = 2;
         private const long   POTIONS         = 3;
