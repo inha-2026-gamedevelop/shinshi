@@ -17,7 +17,8 @@ MonoBehaviour:
   _uvFlowSpeed: 0.11
   _petalDriftDistance: 0.12
   _impactPetalRiseSpeed: 0.45
-  _tailLagSeconds: 1.05
+  _tailLagSeconds: 0.5
+  _tailGrowSeconds: 2
   _teleportResetDistance: 4
   _flowBendDistance: 0.14
   _impactFragmentSpread: 0.45

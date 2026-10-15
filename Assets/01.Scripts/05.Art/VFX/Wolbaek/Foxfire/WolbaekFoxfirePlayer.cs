@@ -114,6 +114,7 @@ namespace Shinshi.Art
         private float _snapPreviewLocked;
         private float _snapPreviewDistance;
         private float _snapTailLag;
+        private float _snapTailGrow;
         private float _snapTeleportDistance;
         private float _snapBend;
         private float _snapFragmentSpread;
@@ -606,6 +607,7 @@ namespace Shinshi.Art
             _snapPreviewLocked   = Seconds(_settings.PreviewLockedSeconds);
             _snapPreviewDistance = Finite(_settings.PreviewFlightDistance) ? _settings.PreviewFlightDistance : 0f;
             _snapTailLag = Seconds(_settings.TailLagSeconds);
+            _snapTailGrow = Mathf.Max(0f, Finite(_settings.TailGrowSeconds) ? _settings.TailGrowSeconds : 0f);
             _snapTeleportDistance = Seconds(_settings.TeleportResetDistance);
             _snapBend = Mathf.Max(0f, Finite(_settings.FlowBendDistance) ? _settings.FlowBendDistance : 0f);
             _snapFragmentSpread = Mathf.Max(0f, Finite(_settings.ImpactFragmentSpread) ? _settings.ImpactFragmentSpread : 0f);
@@ -662,8 +664,10 @@ namespace Shinshi.Art
                 {
                     skin.SetBlendShapeWeight(0, 0f);
                 }
+                // 꼬리 성장 시간이 0이면 처음부터 전체 길이이고, 0보다 크면 길이 0에서 그 시간 동안 늘어난다
+                float tailGrow = _snapTailGrow > 0f ? Mathf.Clamp01(age / _snapTailGrow) : 1f;
                 rig?.Sample(transform, _flightPath, _lastNow, age, _snapFlowCycle, _snapBend,
-                    _snapTailLag, _snapPetalDrift, _snapPetalRise, _snapExpansion,
+                    _snapTailLag * tailGrow, _snapPetalDrift, _snapPetalRise, _snapExpansion,
                     _snapExpansion + _snapHold + _snapFade, _snapFade, _snapFragmentSpread);
             }
         }
