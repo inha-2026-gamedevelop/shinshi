@@ -206,8 +206,9 @@ namespace Shinshi.Network
 
             sessions.Forget(binding);
 
+            // 던전으로 떠나는 참가자의 임대는 던전이 이관 경로로 옮긴다. 여기서 풀면 이관이 거절된다
             // 해제가 끝내 실패해도 계정 임대는 heartbeat 만료로 풀린다(백엔드 계약)
-            if (binding.AccountLeaseId != null)
+            if ((binding.AccountLeaseId != null) && (!binding.IsDeparting))
             {
                 accountLeases?.Release(binding.AccountLeaseId);
             }
