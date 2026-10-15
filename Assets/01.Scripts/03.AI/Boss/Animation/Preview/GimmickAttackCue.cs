@@ -134,6 +134,7 @@ namespace Shinshi.AI
         [SerializeField] private Transform _origin;
         [SerializeField] private string[] _motionLabels;
         [SerializeField] private string[] _attackLabels;
+        [SerializeField] private string[] _holdLabels;
         [SerializeField] private string _replayLabel;
         [SerializeField] private Group[] _groups;
         [SerializeField] private int _attackCount = 4;
@@ -337,7 +338,12 @@ namespace Shinshi.AI
             ClearBeams();
             ClearRanges();
 
-            if (Array.IndexOf(_motionLabels, label) >= 0)
+            if (Array.IndexOf(_holdLabels, label) >= 0)
+            {
+                // 2페이즈 전환 전까지 이어지는 기믹은 발동 즉시 그로기에 들어가 유지한다
+                PlayMotion(Selected(SUCCESS_GROUP), 1f);
+            }
+            else if (Array.IndexOf(_motionLabels, label) >= 0)
             {
                 PlayMotion(Selected(START_GROUP), 1f);
             }
@@ -367,7 +373,7 @@ namespace Shinshi.AI
         // 성공 판정 시각에 쓰러지는 모션을 재생한다
         private void OnStruck(string label, int shotIndex)
         {
-            if (Array.IndexOf(_motionLabels, label) >= 0)
+            if ((Array.IndexOf(_motionLabels, label) >= 0) && (Array.IndexOf(_holdLabels, label) < 0))
             {
                 Option success = Selected(SUCCESS_GROUP);
                 PlayMotion(success, 1f);
