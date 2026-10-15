@@ -235,6 +235,25 @@ CA-07 원화에 있지만 기존 Assets에 없던 4종이다. 단일 물체 시�
 - 확인 범위: 저장 씬의 누락 프리팹·재질·스크립트 0, NavMesh 범위 ±15.3m, 피치55·FOV30 카메라 렌더 검수. 미검증: 플레이 모드·실제 플레이어 보행·적 출현, 실제 던전 접속(2026-10-10에 `ShinshiNetworkManager.ResolveOnlineScene`의 던전 역할 선택과 `ShinshiBuild` 씬 목록은 연결됨), 성능·LOD 전환·Player 빌드, 화로·횃불 불꽃 파티클의 실제 표시. 전장 바닥 텍스처는 기존 32m 조립물 그대로라 근거리에서 흐리다.
 - 원화의 숲→폐허→제단→끝 광장 동선은 배경 배치일 뿐 이동형 던전이나 진행 순서를 확정하지 않는다.
 
+## 숲 일반전 고원 지형 — 2026-10-13
+
+[CA-02 숲](../design/concept-art.md#4-ca-02-숲-맵) 구성을 따라 [진행형 6구역](../design/combat-design.md#진행형-배치일반-적-행동-초기값-2026-10-08-위임-결정)을 하나의 휘어진 대각선 고원으로 만든 지형이다. Blender 절차 생성(지형만, 나무·건물·소품 없음)이며 `Release/DungeonForest`는 바꾸지 않았다.
+
+| 종류 | 경로 |
+|---|---|
+| 조립 프리팹 | [PF_ForestPlateau_Layout](../../Assets/02.Prefab/Environment/ForestPlateau/PF_ForestPlateau_Layout.prefab) — (0,0,0)에 두면 배치 JSON 좌표와 맞는다 |
+| 청크 프리팹 11개 | `Assets/02.Prefab/Environment/ForestPlateau/PF_ForestPlateau_{Zone01~06, Link01_02~Link05_06}.prefab` (LODGroup 3단계 + 충돌 MeshCollider) |
+| 물 | `PF_ForestPlateau_Water.prefab` (계류 1, 폭포 5). 재질 값은 마을 CA-07 물 재질에서 복사 |
+| 모델·텍스처·재질 | `Assets/01.Scripts/05.Art/Environment/ForestPlateau/{Models,Textures,Materials}/` (구역 2K, 통로 1K, BaseColor·Normal·MetallicSmoothness·AO) |
+| 배치 JSON | `ForestPlateau_Layout.json` — 구역·통로·다음 웨이브 지점·출현 후보(구역당 16)·출정 위치·다리 자리·소품 자리·나무 자리(Unity 좌표, +Z 북쪽) |
+| 검수 씬 | [Dev_ForestPlateau](../../Assets/00.Scenes/Dev_HUD/Dev_ForestPlateau.unity) — 게임 카메라, 표식, DungeonForest 스카이박스, 고원 북쪽의 오브젝트 팔레트(DungeonForest 환경·소품 프리팹 45종) |
+
+- 치수: 구역 28m×28m 6개(바닥 0/1/1/2/3/3m), 통로 12m×6.4m 5개(경사 4.8°). Zone02→03(계류 협곡)과 Zone05→06(폭포 틈)은 **다리 자리로 끊겨 있어** 다리 프리팹을 놓기 전에는 지나갈 수 없다. 다리 길이와 양 끝 좌표는 배치 JSON의 `bridge_slots`를 따른다. 다리에는 보행 충돌체와 NavMesh 연결이 필요하다.
+- 카메라 쪽 규칙: 정북 12m 안에 보행 영역이 있는 지점은 바닥에서 1.2m를 넘지 않는다. 바닥 판은 URP Lit, 절벽 바위는 `Lit Occlusion Fade`다.
+- 축: 원본 FBX는 Blender 축이라 프리팹 안에서 메시를 Y 180° 돌려 두었다. FBX를 직접 씬에 놓으면 북쪽이 -Z가 된다.
+- 확인 범위: 구역 사각형 5,046점·표식 105개 물리 레이캐스트 바닥 일치, 빠진 재질·메시 0, 경사 통로 3곳 NavMesh 경로 완성(메모리 빌드), 플레이 모드 계류 표시. 미검증: 실제 플레이어 보행·적 출현, 다리 연결 뒤 전체 통과, 폭포 표시(절벽 바위에 가려짐), 라이트맵(UV1 없음), LOD 전환 거리, 성능·Player·전용 서버 빌드.
+- Blender 원본·생성 스크립트는 저장소 밖 작업 폴더에 있다(원본 보관처 미정). 메시를 다시 임포트한 뒤에는 열린 씬의 충돌체가 바로 갱신되지 않으므로 씬을 다시 연다.
+
 ## CA-07 마을 배치 씬 — 2026-10-03
 
 [Dev_ShinshiVillageCA07](../../Assets/00.Scenes/Dev_ShinshiVillageCA07.unity)은 [CA-07 배치도](../design/concept-art.md#8-ca-07-신시-마을-배치도-2)를 게임 쿼터뷰 기준으로 배치한 별도 개발 씬이다. CA-04 기반 `Dev_ShinshiVillageQuarterView`는 그대로 둔다.

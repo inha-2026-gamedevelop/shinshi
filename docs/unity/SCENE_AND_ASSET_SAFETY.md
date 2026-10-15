@@ -21,7 +21,10 @@
 | `Assets/00.Scenes/Dev_VFX/Dev_Mucheol_01_ImpactV4.unity` (무철 01 VFX·Inspector 시간 설정 미리보기, 전투 연결 전) | **{팀장}** |
 | `Assets/00.Scenes/Dev_VFX/Dev_Mucheol_02_07.unity` (무철 02~07 VFX·개별 시간 설정 미리보기, 전투 연결 전) | **{팀장}** |
 | `Assets/00.Scenes/Dev_HUD/Dev_Setting.unity` (환경설정 UI·저장·취소 복원 검수) | **UI (Jinwook)** |
+| `Assets/00.Scenes/Dev_HUD/Dev_EquipmentEnhance.unity` (장비 강화 UI 검수) | **UI (Jinwook)** |
+| `Assets/00.Scenes/Dev_HUD/Dev_Training.unity` (정기 수련 UI 검수) | **UI (Jinwook)** |
 | `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView_GroundPaint.unity` (Release/ShinshiTown 사본, 바닥 패치 칠하기 작업용) | **맵 (Jinwook)** |
+| `Assets/00.Scenes/Dev_HUD/Dev_ForestPlateau.unity` (숲 일반전 6구역 고원 지형 검수, 배치용 오브젝트 팔레트) | **맵 (Jinwook)** |
 | `Assets/{씬 폴더}/Dev_{파트}.unity` | {파트} ({팀원이름}) |
 | `Assets/00.Scenes/Release/` 실제 실행 흐름 씬: `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown` (Bootstrap에서 로비, 캐릭터 선택·생성을 거쳐 마을 서버의 마을로 접속) | **{팀장}** (통합 담당) |
 | `Assets/00.Scenes/Release/DungeonForest.unity` (숲 일반전 던전 전장, 던전 역할 씬 선택·빌드 목록 연결됨, 실제 접속 미검증) | **{팀장}** (통합 담당) |

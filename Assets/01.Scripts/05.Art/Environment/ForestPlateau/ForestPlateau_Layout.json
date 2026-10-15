@@ -1,0 +1,3615 @@
+{
+  "coordinate_system": "Unity world metres: X east, Y up, Z north (Blender x, z, y)",
+  "source": "ForestRidge, ridge-layout.json",
+  "zones": [
+    {
+      "name": "Zone01",
+      "type": "zone",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "heading_deg": 40,
+      "floor": 0.0,
+      "walkable_square_m": 28.0
+    },
+    {
+      "name": "Zone02",
+      "type": "zone",
+      "position": [
+        32.196,
+        1.0,
+        23.824
+      ],
+      "heading_deg": 33,
+      "floor": 1.0,
+      "walkable_square_m": 28.0
+    },
+    {
+      "name": "Zone03",
+      "type": "zone",
+      "position": [
+        67.792,
+        1.0,
+        42.354
+      ],
+      "heading_deg": 22,
+      "floor": 1.0,
+      "walkable_square_m": 28.0
+    },
+    {
+      "name": "Zone04",
+      "type": "zone",
+      "position": [
+        106.146,
+        2.0,
+        54.08
+      ],
+      "heading_deg": 12,
+      "floor": 2.0,
+      "walkable_square_m": 28.0
+    },
+    {
+      "name": "Zone05",
+      "type": "zone",
+      "position": [
+        145.415,
+        3.0,
+        61.713
+      ],
+      "heading_deg": 10,
+      "floor": 3.0,
+      "walkable_square_m": 28.0
+    },
+    {
+      "name": "Zone06",
+      "type": "zone",
+      "position": [
+        183.869,
+        3.0,
+        73.469
+      ],
+      "heading_deg": 24,
+      "floor": 3.0,
+      "walkable_square_m": 28.0
+    }
+  ],
+  "links": [
+    {
+      "id": "Link01_02",
+      "kind": "ramp",
+      "length": 12.0,
+      "width": 6.4,
+      "floor_start": 0.0,
+      "floor_end": 1.0,
+      "slope_deg": 4.76,
+      "start": [
+        11.275,
+        0.0,
+        8.343
+      ],
+      "end": [
+        20.921,
+        1.0,
+        15.481
+      ]
+    },
+    {
+      "id": "Link02_03",
+      "kind": "crossing",
+      "length": 12.0,
+      "width": 6.4,
+      "floor_start": 1.0,
+      "floor_end": 1.0,
+      "slope_deg": 0.0,
+      "start": [
+        44.672,
+        1.0,
+        30.318
+      ],
+      "end": [
+        55.316,
+        1.0,
+        35.859
+      ]
+    },
+    {
+      "id": "Link03_04",
+      "kind": "ramp",
+      "length": 12.0,
+      "width": 6.4,
+      "floor_start": 1.0,
+      "floor_end": 2.0,
+      "slope_deg": 4.76,
+      "start": [
+        81.231,
+        1.0,
+        46.463
+      ],
+      "end": [
+        92.707,
+        2.0,
+        49.971
+      ]
+    },
+    {
+      "id": "Link04_05",
+      "kind": "ramp",
+      "length": 12.0,
+      "width": 6.4,
+      "floor_start": 2.0,
+      "floor_end": 3.0,
+      "slope_deg": 4.76,
+      "start": [
+        119.891,
+        2.0,
+        56.752
+      ],
+      "end": [
+        131.671,
+        3.0,
+        59.041
+      ]
+    },
+    {
+      "id": "Link05_06",
+      "kind": "crossing",
+      "length": 12.0,
+      "width": 6.4,
+      "floor_start": 3.0,
+      "floor_end": 3.0,
+      "slope_deg": 0.0,
+      "start": [
+        158.904,
+        3.0,
+        65.837
+      ],
+      "end": [
+        170.38,
+        3.0,
+        69.345
+      ]
+    }
+  ],
+  "next_wave_points": [
+    {
+      "name": "Zone02_NextWave",
+      "type": "next_wave",
+      "position": [
+        23.333,
+        1.0,
+        17.265
+      ],
+      "radius": 3.0,
+      "zone": "Zone02"
+    },
+    {
+      "name": "Zone03_NextWave",
+      "type": "next_wave",
+      "position": [
+        57.977,
+        1.0,
+        37.245
+      ],
+      "radius": 3.0,
+      "zone": "Zone03"
+    },
+    {
+      "name": "Zone04_NextWave",
+      "type": "next_wave",
+      "position": [
+        95.576,
+        2.0,
+        50.848
+      ],
+      "radius": 3.0,
+      "zone": "Zone04"
+    },
+    {
+      "name": "Zone05_NextWave",
+      "type": "next_wave",
+      "position": [
+        134.615,
+        3.0,
+        59.614
+      ],
+      "radius": 3.0,
+      "zone": "Zone05"
+    },
+    {
+      "name": "Zone06_NextWave",
+      "type": "next_wave",
+      "position": [
+        173.249,
+        3.0,
+        70.223
+      ],
+      "radius": 3.0,
+      "zone": "Zone06"
+    }
+  ],
+  "spawns": [
+    {
+      "name": "Zone01_Spawn_0_inner",
+      "type": "spawn",
+      "position": [
+        -2.77,
+        0.0,
+        -5.322
+      ],
+      "zone": "Zone01",
+      "direction": 0,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_0_outer",
+      "type": "spawn",
+      "position": [
+        -5.31,
+        0.0,
+        -10.201
+      ],
+      "zone": "Zone01",
+      "direction": 0,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone01_Spawn_1_inner",
+      "type": "spawn",
+      "position": [
+        1.804,
+        0.0,
+        -5.722
+      ],
+      "zone": "Zone01",
+      "direction": 1,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_1_outer",
+      "type": "spawn",
+      "position": [
+        3.458,
+        0.0,
+        -10.968
+      ],
+      "zone": "Zone01",
+      "direction": 1,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone01_Spawn_2_inner",
+      "type": "spawn",
+      "position": [
+        5.322,
+        0.0,
+        -2.77
+      ],
+      "zone": "Zone01",
+      "direction": 2,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_2_outer",
+      "type": "spawn",
+      "position": [
+        10.201,
+        0.0,
+        -5.31
+      ],
+      "zone": "Zone01",
+      "direction": 2,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone01_Spawn_3_inner",
+      "type": "spawn",
+      "position": [
+        5.722,
+        0.0,
+        1.804
+      ],
+      "zone": "Zone01",
+      "direction": 3,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_3_outer",
+      "type": "spawn",
+      "position": [
+        10.968,
+        0.0,
+        3.458
+      ],
+      "zone": "Zone01",
+      "direction": 3,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone01_Spawn_4_inner",
+      "type": "spawn",
+      "position": [
+        2.77,
+        0.0,
+        5.322
+      ],
+      "zone": "Zone01",
+      "direction": 4,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_4_outer",
+      "type": "spawn",
+      "position": [
+        5.31,
+        0.0,
+        10.201
+      ],
+      "zone": "Zone01",
+      "direction": 4,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone01_Spawn_5_inner",
+      "type": "spawn",
+      "position": [
+        -1.804,
+        0.0,
+        5.722
+      ],
+      "zone": "Zone01",
+      "direction": 5,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_5_outer",
+      "type": "spawn",
+      "position": [
+        -3.458,
+        0.0,
+        10.968
+      ],
+      "zone": "Zone01",
+      "direction": 5,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone01_Spawn_6_inner",
+      "type": "spawn",
+      "position": [
+        -5.322,
+        0.0,
+        2.77
+      ],
+      "zone": "Zone01",
+      "direction": 6,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_6_outer",
+      "type": "spawn",
+      "position": [
+        -10.201,
+        0.0,
+        5.31
+      ],
+      "zone": "Zone01",
+      "direction": 6,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone01_Spawn_7_inner",
+      "type": "spawn",
+      "position": [
+        -5.722,
+        0.0,
+        -1.804
+      ],
+      "zone": "Zone01",
+      "direction": 7,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone01_Spawn_7_outer",
+      "type": "spawn",
+      "position": [
+        -10.968,
+        0.0,
+        -3.458
+      ],
+      "zone": "Zone01",
+      "direction": 7,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_0_inner",
+      "type": "spawn",
+      "position": [
+        29.106,
+        1.0,
+        18.681
+      ],
+      "zone": "Zone02",
+      "direction": 0,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_0_outer",
+      "type": "spawn",
+      "position": [
+        26.273,
+        1.0,
+        13.967
+      ],
+      "zone": "Zone02",
+      "direction": 0,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_1_inner",
+      "type": "spawn",
+      "position": [
+        33.648,
+        1.0,
+        18.002
+      ],
+      "zone": "Zone02",
+      "direction": 1,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_1_outer",
+      "type": "spawn",
+      "position": [
+        34.978,
+        1.0,
+        12.666
+      ],
+      "zone": "Zone02",
+      "direction": 1,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_2_inner",
+      "type": "spawn",
+      "position": [
+        37.339,
+        1.0,
+        20.734
+      ],
+      "zone": "Zone02",
+      "direction": 2,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_2_outer",
+      "type": "spawn",
+      "position": [
+        42.054,
+        1.0,
+        17.901
+      ],
+      "zone": "Zone02",
+      "direction": 2,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_3_inner",
+      "type": "spawn",
+      "position": [
+        38.018,
+        1.0,
+        25.276
+      ],
+      "zone": "Zone02",
+      "direction": 3,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_3_outer",
+      "type": "spawn",
+      "position": [
+        43.424,
+        1.0,
+        26.313
+      ],
+      "zone": "Zone02",
+      "direction": 3,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_4_inner",
+      "type": "spawn",
+      "position": [
+        35.287,
+        1.0,
+        28.967
+      ],
+      "zone": "Zone02",
+      "direction": 4,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_4_outer",
+      "type": "spawn",
+      "position": [
+        38.119,
+        1.0,
+        33.681
+      ],
+      "zone": "Zone02",
+      "direction": 4,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_5_inner",
+      "type": "spawn",
+      "position": [
+        30.745,
+        1.0,
+        29.646
+      ],
+      "zone": "Zone02",
+      "direction": 5,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_5_outer",
+      "type": "spawn",
+      "position": [
+        29.414,
+        1.0,
+        34.982
+      ],
+      "zone": "Zone02",
+      "direction": 5,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_6_inner",
+      "type": "spawn",
+      "position": [
+        27.053,
+        1.0,
+        26.914
+      ],
+      "zone": "Zone02",
+      "direction": 6,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_6_outer",
+      "type": "spawn",
+      "position": [
+        22.339,
+        1.0,
+        29.747
+      ],
+      "zone": "Zone02",
+      "direction": 6,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone02_Spawn_7_inner",
+      "type": "spawn",
+      "position": [
+        26.375,
+        1.0,
+        22.373
+      ],
+      "zone": "Zone02",
+      "direction": 7,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone02_Spawn_7_outer",
+      "type": "spawn",
+      "position": [
+        21.038,
+        1.0,
+        21.042
+      ],
+      "zone": "Zone02",
+      "direction": 7,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_0_inner",
+      "type": "spawn",
+      "position": [
+        63.935,
+        1.0,
+        37.758
+      ],
+      "zone": "Zone03",
+      "direction": 0,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_0_outer",
+      "type": "spawn",
+      "position": [
+        60.4,
+        1.0,
+        33.544
+      ],
+      "zone": "Zone03",
+      "direction": 0,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_1_inner",
+      "type": "spawn",
+      "position": [
+        68.315,
+        1.0,
+        36.377
+      ],
+      "zone": "Zone03",
+      "direction": 1,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_1_outer",
+      "type": "spawn",
+      "position": [
+        68.794,
+        1.0,
+        30.898
+      ],
+      "zone": "Zone03",
+      "direction": 1,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_2_inner",
+      "type": "spawn",
+      "position": [
+        72.388,
+        1.0,
+        38.497
+      ],
+      "zone": "Zone03",
+      "direction": 2,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_2_outer",
+      "type": "spawn",
+      "position": [
+        76.601,
+        1.0,
+        34.962
+      ],
+      "zone": "Zone03",
+      "direction": 2,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_3_inner",
+      "type": "spawn",
+      "position": [
+        73.769,
+        1.0,
+        42.877
+      ],
+      "zone": "Zone03",
+      "direction": 3,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_3_outer",
+      "type": "spawn",
+      "position": [
+        79.285,
+        1.0,
+        42.755
+      ],
+      "zone": "Zone03",
+      "direction": 3,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_4_inner",
+      "type": "spawn",
+      "position": [
+        71.648,
+        1.0,
+        46.95
+      ],
+      "zone": "Zone03",
+      "direction": 4,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_4_outer",
+      "type": "spawn",
+      "position": [
+        75.184,
+        1.0,
+        51.163
+      ],
+      "zone": "Zone03",
+      "direction": 4,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_5_inner",
+      "type": "spawn",
+      "position": [
+        67.269,
+        1.0,
+        48.331
+      ],
+      "zone": "Zone03",
+      "direction": 5,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_5_outer",
+      "type": "spawn",
+      "position": [
+        66.789,
+        1.0,
+        53.81
+      ],
+      "zone": "Zone03",
+      "direction": 5,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_6_inner",
+      "type": "spawn",
+      "position": [
+        63.195,
+        1.0,
+        46.211
+      ],
+      "zone": "Zone03",
+      "direction": 6,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_6_outer",
+      "type": "spawn",
+      "position": [
+        58.982,
+        1.0,
+        49.746
+      ],
+      "zone": "Zone03",
+      "direction": 6,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone03_Spawn_7_inner",
+      "type": "spawn",
+      "position": [
+        61.814,
+        1.0,
+        41.831
+      ],
+      "zone": "Zone03",
+      "direction": 7,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone03_Spawn_7_outer",
+      "type": "spawn",
+      "position": [
+        56.335,
+        1.0,
+        41.351
+      ],
+      "zone": "Zone03",
+      "direction": 7,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_0_inner",
+      "type": "spawn",
+      "position": [
+        101.516,
+        2.0,
+        50.263
+      ],
+      "zone": "Zone04",
+      "direction": 0,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_0_outer",
+      "type": "spawn",
+      "position": [
+        97.272,
+        2.0,
+        46.765
+      ],
+      "zone": "Zone04",
+      "direction": 0,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_1_inner",
+      "type": "spawn",
+      "position": [
+        105.571,
+        2.0,
+        48.108
+      ],
+      "zone": "Zone04",
+      "direction": 1,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_1_outer",
+      "type": "spawn",
+      "position": [
+        105.044,
+        2.0,
+        42.633
+      ],
+      "zone": "Zone04",
+      "direction": 1,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_2_inner",
+      "type": "spawn",
+      "position": [
+        109.963,
+        2.0,
+        49.45
+      ],
+      "zone": "Zone04",
+      "direction": 2,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_2_outer",
+      "type": "spawn",
+      "position": [
+        113.461,
+        2.0,
+        45.206
+      ],
+      "zone": "Zone04",
+      "direction": 2,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_3_inner",
+      "type": "spawn",
+      "position": [
+        112.118,
+        2.0,
+        53.505
+      ],
+      "zone": "Zone04",
+      "direction": 3,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_3_outer",
+      "type": "spawn",
+      "position": [
+        117.593,
+        2.0,
+        52.978
+      ],
+      "zone": "Zone04",
+      "direction": 3,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_4_inner",
+      "type": "spawn",
+      "position": [
+        110.776,
+        2.0,
+        57.896
+      ],
+      "zone": "Zone04",
+      "direction": 4,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_4_outer",
+      "type": "spawn",
+      "position": [
+        115.02,
+        2.0,
+        61.395
+      ],
+      "zone": "Zone04",
+      "direction": 4,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_5_inner",
+      "type": "spawn",
+      "position": [
+        106.721,
+        2.0,
+        60.052
+      ],
+      "zone": "Zone04",
+      "direction": 5,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_5_outer",
+      "type": "spawn",
+      "position": [
+        107.248,
+        2.0,
+        65.527
+      ],
+      "zone": "Zone04",
+      "direction": 5,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_6_inner",
+      "type": "spawn",
+      "position": [
+        102.33,
+        2.0,
+        58.71
+      ],
+      "zone": "Zone04",
+      "direction": 6,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_6_outer",
+      "type": "spawn",
+      "position": [
+        98.831,
+        2.0,
+        62.954
+      ],
+      "zone": "Zone04",
+      "direction": 6,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone04_Spawn_7_inner",
+      "type": "spawn",
+      "position": [
+        100.174,
+        2.0,
+        54.655
+      ],
+      "zone": "Zone04",
+      "direction": 7,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone04_Spawn_7_outer",
+      "type": "spawn",
+      "position": [
+        94.699,
+        2.0,
+        55.182
+      ],
+      "zone": "Zone04",
+      "direction": 7,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_0_inner",
+      "type": "spawn",
+      "position": [
+        140.412,
+        3.0,
+        58.401
+      ],
+      "zone": "Zone05",
+      "direction": 0,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_0_outer",
+      "type": "spawn",
+      "position": [
+        135.826,
+        3.0,
+        55.366
+      ],
+      "zone": "Zone05",
+      "direction": 0,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_1_inner",
+      "type": "spawn",
+      "position": [
+        144.219,
+        3.0,
+        55.834
+      ],
+      "zone": "Zone05",
+      "direction": 1,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_1_outer",
+      "type": "spawn",
+      "position": [
+        143.123,
+        3.0,
+        50.444
+      ],
+      "zone": "Zone05",
+      "direction": 1,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_2_inner",
+      "type": "spawn",
+      "position": [
+        148.727,
+        3.0,
+        56.71
+      ],
+      "zone": "Zone05",
+      "direction": 2,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_2_outer",
+      "type": "spawn",
+      "position": [
+        151.763,
+        3.0,
+        52.123
+      ],
+      "zone": "Zone05",
+      "direction": 2,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_3_inner",
+      "type": "spawn",
+      "position": [
+        151.295,
+        3.0,
+        60.517
+      ],
+      "zone": "Zone05",
+      "direction": 3,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_3_outer",
+      "type": "spawn",
+      "position": [
+        156.685,
+        3.0,
+        59.42
+      ],
+      "zone": "Zone05",
+      "direction": 3,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_4_inner",
+      "type": "spawn",
+      "position": [
+        150.419,
+        3.0,
+        65.025
+      ],
+      "zone": "Zone05",
+      "direction": 4,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_4_outer",
+      "type": "spawn",
+      "position": [
+        155.005,
+        3.0,
+        68.06
+      ],
+      "zone": "Zone05",
+      "direction": 4,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_5_inner",
+      "type": "spawn",
+      "position": [
+        146.612,
+        3.0,
+        67.593
+      ],
+      "zone": "Zone05",
+      "direction": 5,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_5_outer",
+      "type": "spawn",
+      "position": [
+        147.708,
+        3.0,
+        72.982
+      ],
+      "zone": "Zone05",
+      "direction": 5,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_6_inner",
+      "type": "spawn",
+      "position": [
+        142.104,
+        3.0,
+        66.716
+      ],
+      "zone": "Zone05",
+      "direction": 6,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_6_outer",
+      "type": "spawn",
+      "position": [
+        139.068,
+        3.0,
+        71.303
+      ],
+      "zone": "Zone05",
+      "direction": 6,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone05_Spawn_7_inner",
+      "type": "spawn",
+      "position": [
+        139.536,
+        3.0,
+        62.909
+      ],
+      "zone": "Zone05",
+      "direction": 7,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone05_Spawn_7_outer",
+      "type": "spawn",
+      "position": [
+        134.146,
+        3.0,
+        64.006
+      ],
+      "zone": "Zone05",
+      "direction": 7,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_0_inner",
+      "type": "spawn",
+      "position": [
+        179.239,
+        3.0,
+        69.653
+      ],
+      "zone": "Zone06",
+      "direction": 0,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_0_outer",
+      "type": "spawn",
+      "position": [
+        174.995,
+        3.0,
+        66.155
+      ],
+      "zone": "Zone06",
+      "direction": 0,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_1_inner",
+      "type": "spawn",
+      "position": [
+        183.294,
+        3.0,
+        67.497
+      ],
+      "zone": "Zone06",
+      "direction": 1,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_1_outer",
+      "type": "spawn",
+      "position": [
+        182.766,
+        3.0,
+        62.022
+      ],
+      "zone": "Zone06",
+      "direction": 1,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_2_inner",
+      "type": "spawn",
+      "position": [
+        187.685,
+        3.0,
+        68.84
+      ],
+      "zone": "Zone06",
+      "direction": 2,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_2_outer",
+      "type": "spawn",
+      "position": [
+        191.184,
+        3.0,
+        64.596
+      ],
+      "zone": "Zone06",
+      "direction": 2,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_3_inner",
+      "type": "spawn",
+      "position": [
+        189.841,
+        3.0,
+        72.894
+      ],
+      "zone": "Zone06",
+      "direction": 3,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_3_outer",
+      "type": "spawn",
+      "position": [
+        195.316,
+        3.0,
+        72.367
+      ],
+      "zone": "Zone06",
+      "direction": 3,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_4_inner",
+      "type": "spawn",
+      "position": [
+        188.498,
+        3.0,
+        77.286
+      ],
+      "zone": "Zone06",
+      "direction": 4,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_4_outer",
+      "type": "spawn",
+      "position": [
+        192.742,
+        3.0,
+        80.784
+      ],
+      "zone": "Zone06",
+      "direction": 4,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_5_inner",
+      "type": "spawn",
+      "position": [
+        184.444,
+        3.0,
+        79.442
+      ],
+      "zone": "Zone06",
+      "direction": 5,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_5_outer",
+      "type": "spawn",
+      "position": [
+        184.971,
+        3.0,
+        84.916
+      ],
+      "zone": "Zone06",
+      "direction": 5,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_6_inner",
+      "type": "spawn",
+      "position": [
+        180.052,
+        3.0,
+        78.099
+      ],
+      "zone": "Zone06",
+      "direction": 6,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_6_outer",
+      "type": "spawn",
+      "position": [
+        176.554,
+        3.0,
+        82.343
+      ],
+      "zone": "Zone06",
+      "direction": 6,
+      "ring": "outer"
+    },
+    {
+      "name": "Zone06_Spawn_7_inner",
+      "type": "spawn",
+      "position": [
+        177.896,
+        3.0,
+        74.045
+      ],
+      "zone": "Zone06",
+      "direction": 7,
+      "ring": "inner"
+    },
+    {
+      "name": "Zone06_Spawn_7_outer",
+      "type": "spawn",
+      "position": [
+        172.422,
+        3.0,
+        74.572
+      ],
+      "zone": "Zone06",
+      "direction": 7,
+      "ring": "outer"
+    }
+  ],
+  "player_starts": [
+    {
+      "name": "PlayerStart01",
+      "type": "player_start",
+      "position": [
+        -9.747,
+        0.0,
+        -14.053
+      ]
+    },
+    {
+      "name": "PlayerStart02",
+      "type": "player_start",
+      "position": [
+        -11.676,
+        0.0,
+        -11.755
+      ]
+    },
+    {
+      "name": "PlayerStart03",
+      "type": "player_start",
+      "position": [
+        -13.604,
+        0.0,
+        -9.457
+      ]
+    },
+    {
+      "name": "PlayerStart04",
+      "type": "player_start",
+      "position": [
+        -15.532,
+        0.0,
+        -7.159
+      ]
+    }
+  ],
+  "prop_slots": [
+    {
+      "name": "Prop_ruined_house_0",
+      "type": "ruined_house",
+      "position": [
+        93.0805,
+        2.0,
+        72.2608
+      ],
+      "yaw_deg_blender": 12,
+      "size_m": [
+        9.0,
+        7.2
+      ],
+      "pad": "flat terrain pad"
+    },
+    {
+      "name": "Prop_ruined_house_1",
+      "type": "ruined_house",
+      "position": [
+        101.8838,
+        2.0,
+        74.132
+      ],
+      "yaw_deg_blender": 12,
+      "size_m": [
+        9.0,
+        7.2
+      ],
+      "pad": "flat terrain pad"
+    },
+    {
+      "name": "Prop_ruined_house_2",
+      "type": "ruined_house",
+      "position": [
+        110.6871,
+        2.0,
+        76.0032
+      ],
+      "yaw_deg_blender": 12,
+      "size_m": [
+        9.0,
+        7.2
+      ],
+      "pad": "flat terrain pad"
+    },
+    {
+      "name": "Prop_stele_3",
+      "type": "stele",
+      "position": [
+        142.2025,
+        3.0,
+        79.9319
+      ],
+      "yaw_deg_blender": 10,
+      "size_m": [
+        6.4,
+        6.4
+      ],
+      "pad": "flat terrain pad"
+    },
+    {
+      "name": "Prop_white_sacred_tree_4",
+      "type": "white_sacred_tree",
+      "position": [
+        198.369,
+        3.0,
+        87.469
+      ],
+      "yaw_deg_blender": 45.0,
+      "size_m": [
+        11.0,
+        11.0
+      ],
+      "pad": "flat terrain pad"
+    },
+    {
+      "name": "Prop_entrance_gate_5",
+      "type": "entrance_gate",
+      "position": [
+        -17.313,
+        0.0,
+        -14.527
+      ],
+      "yaw_deg_blender": 40,
+      "size_m": [
+        3.2,
+        12.0
+      ],
+      "pad": "flat terrain pad"
+    },
+    {
+      "name": "Prop_brazier_Z5_-1",
+      "type": "brazier",
+      "position": [
+        127.4589,
+        3.0,
+        74.286
+      ]
+    },
+    {
+      "name": "Prop_brazier_Z5_1",
+      "type": "brazier",
+      "position": [
+        157.988,
+        3.0,
+        79.6691
+      ]
+    },
+    {
+      "name": "Prop_red_gate_Z5",
+      "type": "red_gate",
+      "position": [
+        131.671,
+        3.0,
+        59.041
+      ],
+      "yaw_deg_blender": 10.996251255066731,
+      "note": "gate across the link mouth; keep >= 6 m clear opening"
+    },
+    {
+      "name": "Prop_cyan_pillar_0",
+      "type": "cyan_fire_pillar",
+      "position": [
+        193.5675,
+        3.0,
+        86.8178
+      ]
+    },
+    {
+      "name": "Prop_cyan_pillar_1",
+      "type": "cyan_fire_pillar",
+      "position": [
+        177.1579,
+        3.0,
+        88.5425
+      ]
+    },
+    {
+      "name": "Prop_cyan_pillar_2",
+      "type": "cyan_fire_pillar",
+      "position": [
+        167.4594,
+        3.0,
+        75.1937
+      ]
+    },
+    {
+      "name": "Prop_cyan_pillar_3",
+      "type": "cyan_fire_pillar",
+      "position": [
+        174.1705,
+        3.0,
+        60.1202
+      ]
+    },
+    {
+      "name": "Prop_cyan_pillar_4",
+      "type": "cyan_fire_pillar",
+      "position": [
+        190.5802,
+        3.0,
+        58.3955
+      ]
+    },
+    {
+      "name": "Prop_cyan_pillar_5",
+      "type": "cyan_fire_pillar",
+      "position": [
+        200.2786,
+        3.0,
+        71.7443
+      ]
+    },
+    {
+      "name": "Prop_campfire_Z2",
+      "type": "campfire",
+      "position": [
+        19.5825,
+        1.6021,
+        35.9028
+      ]
+    },
+    {
+      "name": "Prop_torch_entrance_-1",
+      "type": "torch",
+      "position": [
+        -13.1349,
+        0.0,
+        -19.5063
+      ]
+    },
+    {
+      "name": "Prop_torch_entrance_1",
+      "type": "torch",
+      "position": [
+        -21.4911,
+        0.0,
+        -9.5477
+      ]
+    }
+  ],
+  "bridge_slots": [
+    {
+      "name": "BridgeSlot_Link02_03",
+      "position": [
+        49.5948,
+        1.0,
+        32.8807
+      ],
+      "span_m": 10.1,
+      "deck_height_m": 1.0,
+      "deck_width_min_m": 6.4,
+      "yaw_deg_blender": 27.5,
+      "abutment_a": [
+        45.115,
+        1.0,
+        30.549
+      ],
+      "abutment_b": [
+        54.074,
+        1.0,
+        35.213
+      ],
+      "zone": "Link02_03"
+    },
+    {
+      "name": "BridgeSlot_Link05_06",
+      "position": [
+        164.642,
+        3.0,
+        67.591
+      ],
+      "span_m": 6.8,
+      "deck_height_m": 3.0,
+      "deck_width_min_m": 6.4,
+      "yaw_deg_blender": 17.0,
+      "abutment_a": [
+        161.391,
+        3.0,
+        66.597
+      ],
+      "abutment_b": [
+        167.893,
+        3.0,
+        68.585
+      ],
+      "zone": "Link05_06"
+    }
+  ],
+  "vegetation": [
+    {
+      "name": "Veg_001_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        204.0,
+        4.5871,
+        82.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_002_pine",
+      "type": "pine",
+      "position": [
+        -5.5,
+        1.9022,
+        24.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_003_shrub",
+      "type": "shrub",
+      "position": [
+        147.0,
+        3.4129,
+        45.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_004_pine",
+      "type": "pine",
+      "position": [
+        68.5,
+        2.2906,
+        64.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_005_shrub",
+      "type": "shrub",
+      "position": [
+        115.5,
+        2.3504,
+        39.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_006_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        103.0,
+        2.4172,
+        70.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_007_pine",
+      "type": "pine",
+      "position": [
+        -21.5,
+        1.3594,
+        13.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_008_shrub",
+      "type": "shrub",
+      "position": [
+        88.5,
+        1.7029,
+        41.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_009_shrub",
+      "type": "shrub",
+      "position": [
+        43.5,
+        1.4904,
+        11.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_010_shrub",
+      "type": "shrub",
+      "position": [
+        -23.0,
+        0.2698,
+        0.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_011_pine",
+      "type": "pine",
+      "position": [
+        38.0,
+        1.0,
+        45.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_012_maple",
+      "type": "maple",
+      "position": [
+        -3.0,
+        0.9506,
+        19.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_013_pine",
+      "type": "pine",
+      "position": [
+        -22.0,
+        0.8894,
+        5.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_014_shrub",
+      "type": "shrub",
+      "position": [
+        91.0414,
+        -0.2086,
+        34.7634
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_015_shrub",
+      "type": "shrub",
+      "position": [
+        -21.0,
+        0.6487,
+        -4.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_016_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        49.5,
+        4.1204,
+        55.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_017_pine",
+      "type": "pine",
+      "position": [
+        15.0,
+        2.4128,
+        37.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_018_shrub",
+      "type": "shrub",
+      "position": [
+        192.0,
+        3.4918,
+        59.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_019_shrub",
+      "type": "shrub",
+      "position": [
+        127.0,
+        2.7649,
+        53.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_020_shrub",
+      "type": "shrub",
+      "position": [
+        34.0,
+        1.0274,
+        4.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_021_pine",
+      "type": "pine",
+      "position": [
+        202.5,
+        3.3972,
+        71.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_022_maple",
+      "type": "maple",
+      "position": [
+        0.5,
+        1.2066,
+        22.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_023_shrub",
+      "type": "shrub",
+      "position": [
+        62.5,
+        3.1991,
+        62.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_024_maple",
+      "type": "maple",
+      "position": [
+        27.5,
+        1.7339,
+        41.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_025_pine",
+      "type": "pine",
+      "position": [
+        13.0,
+        3.4349,
+        32.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_026_shrub",
+      "type": "shrub",
+      "position": [
+        24.736,
+        -0.5839,
+        2.7096
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_027_shrub",
+      "type": "shrub",
+      "position": [
+        14.5,
+        2.15,
+        18.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_028_shrub",
+      "type": "shrub",
+      "position": [
+        160.1271,
+        1.3923,
+        44.6929
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_029_maple",
+      "type": "maple",
+      "position": [
+        58.5,
+        4.7066,
+        58.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_030_shrub",
+      "type": "shrub",
+      "position": [
+        146.0,
+        7.7545,
+        82.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_031_shrub",
+      "type": "shrub",
+      "position": [
+        -21.0,
+        0.6288,
+        -14.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_032_shrub",
+      "type": "shrub",
+      "position": [
+        85.0875,
+        -0.8773,
+        29.6978
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_033_shrub",
+      "type": "shrub",
+      "position": [
+        131.5,
+        3.446,
+        49.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_034_shrub",
+      "type": "shrub",
+      "position": [
+        92.5,
+        2.144,
+        39.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_035_shrub",
+      "type": "shrub",
+      "position": [
+        8.5,
+        0.3106,
+        -14.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_036_shrub",
+      "type": "shrub",
+      "position": [
+        54.5,
+        3.5527,
+        55.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_037_maple",
+      "type": "maple",
+      "position": [
+        138.0,
+        3.9439,
+        77.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_038_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        10.0,
+        3.2006,
+        29.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_039_pine",
+      "type": "pine",
+      "position": [
+        137.0,
+        5.3836,
+        85.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_040_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        22.4505,
+        -0.0356,
+        43.0569
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_041_shrub",
+      "type": "shrub",
+      "position": [
+        -10.4819,
+        -1.6532,
+        -19.0145
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_042_shrub",
+      "type": "shrub",
+      "position": [
+        88.5,
+        2.4232,
+        56.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_043_pine",
+      "type": "pine",
+      "position": [
+        175.3423,
+        6.149,
+        94.0425
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_044_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        180.5,
+        7.4393,
+        93.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_045_maple",
+      "type": "maple",
+      "position": [
+        131.5,
+        4.1721,
+        82.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_046_shrub",
+      "type": "shrub",
+      "position": [
+        23.5,
+        1.3789,
+        7.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_047_shrub",
+      "type": "shrub",
+      "position": [
+        132.5,
+        3.1625,
+        44.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_048_shrub",
+      "type": "shrub",
+      "position": [
+        85.5687,
+        0.2832,
+        64.3832
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_049_pine",
+      "type": "pine",
+      "position": [
+        -13.5,
+        1.3781,
+        15.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_050_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        204.5,
+        3.8837,
+        76.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_051_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        79.0037,
+        -0.1067,
+        64.378
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_052_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        110.5,
+        3.6206,
+        80.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_053_pine",
+      "type": "pine",
+      "position": [
+        66.5,
+        1.5366,
+        59.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_054_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        83.5,
+        1.9151,
+        54.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_055_shrub",
+      "type": "shrub",
+      "position": [
+        128.0,
+        3.4244,
+        66.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_056_pine",
+      "type": "pine",
+      "position": [
+        53.2828,
+        3.0931,
+        59.5872
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_057_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        194.0,
+        4.0469,
+        95.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_058_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        -10.0,
+        1.324,
+        19.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_059_shrub",
+      "type": "shrub",
+      "position": [
+        78.5,
+        1.127,
+        28.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_060_shrub",
+      "type": "shrub",
+      "position": [
+        -24.5,
+        0.4581,
+        -7.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_061_shrub",
+      "type": "shrub",
+      "position": [
+        152.5,
+        3.4107,
+        45.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_062_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        33.5,
+        4.8939,
+        47.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_063_pine",
+      "type": "pine",
+      "position": [
+        -16.5,
+        0.647,
+        9.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_064_maple",
+      "type": "maple",
+      "position": [
+        9.5,
+        4.8268,
+        17.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_065_shrub",
+      "type": "shrub",
+      "position": [
+        201.0,
+        2.9764,
+        61.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_066_shrub",
+      "type": "shrub",
+      "position": [
+        73.5,
+        1.1901,
+        27.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_067_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        169.5,
+        4.4248,
+        86.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_068_shrub",
+      "type": "shrub",
+      "position": [
+        14.5,
+        0.2047,
+        -9.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_069_shrub",
+      "type": "shrub",
+      "position": [
+        105.7199,
+        0.7153,
+        35.0217
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_070_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        132.0,
+        4.3655,
+        77.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_071_maple",
+      "type": "maple",
+      "position": [
+        117.5,
+        2.8297,
+        73.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_072_shrub",
+      "type": "shrub",
+      "position": [
+        13.0,
+        0.93,
+        22.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_073_shrub",
+      "type": "shrub",
+      "position": [
+        98.5,
+        2.3628,
+        36.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_074_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        23.0,
+        1.3763,
+        37.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_075_maple",
+      "type": "maple",
+      "position": [
+        75.0385,
+        0.3925,
+        67.5871
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_076_shrub",
+      "type": "shrub",
+      "position": [
+        0.5476,
+        -1.805,
+        -21.656
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_077_shrub",
+      "type": "shrub",
+      "position": [
+        126.6658,
+        1.972,
+        45.853
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_078_shrub",
+      "type": "shrub",
+      "position": [
+        22.0,
+        0.1546,
+        -2.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_079_maple",
+      "type": "maple",
+      "position": [
+        179.0,
+        3.6025,
+        89.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_080_shrub",
+      "type": "shrub",
+      "position": [
+        18.5,
+        0.1421,
+        -7.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_081_shrub",
+      "type": "shrub",
+      "position": [
+        52.7913,
+        -1.2,
+        15.7231
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_082_pine",
+      "type": "pine",
+      "position": [
+        174.0,
+        4.9755,
+        89.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_083_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        9.0218,
+        3.3095,
+        34.3997
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_084_shrub",
+      "type": "shrub",
+      "position": [
+        -15.5,
+        1.2432,
+        19.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_085_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        188.0,
+        4.7208,
+        93.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_086_shrub",
+      "type": "shrub",
+      "position": [
+        185.0,
+        3.6629,
+        54.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_087_pine",
+      "type": "pine",
+      "position": [
+        120.0,
+        2.3262,
+        66.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_088_pine",
+      "type": "pine",
+      "position": [
+        108.5,
+        2.5356,
+        71.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_089_shrub",
+      "type": "shrub",
+      "position": [
+        39.5,
+        1.2654,
+        9.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_090_pine",
+      "type": "pine",
+      "position": [
+        31.6683,
+        1.5893,
+        51.1964
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_091_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        98.0,
+        4.5888,
+        77.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_092_shrub",
+      "type": "shrub",
+      "position": [
+        4.5,
+        0.2255,
+        -17.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_093_shrub",
+      "type": "shrub",
+      "position": [
+        150.0,
+        5.9621,
+        80.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_094_shrub",
+      "type": "shrub",
+      "position": [
+        67.5,
+        0.9575,
+        24.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_095_shrub",
+      "type": "shrub",
+      "position": [
+        197.0,
+        3.8406,
+        57.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_096_shrub",
+      "type": "shrub",
+      "position": [
+        -15.0,
+        0.6374,
+        -20.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_097_pine",
+      "type": "pine",
+      "position": [
+        90.5,
+        2.5194,
+        68.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_098_shrub",
+      "type": "shrub",
+      "position": [
+        -19.5,
+        -0.0899,
+        -19.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_099_pine",
+      "type": "pine",
+      "position": [
+        79.0,
+        1.3119,
+        59.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_100_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        103.5,
+        3.407,
+        78.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_101_shrub",
+      "type": "shrub",
+      "position": [
+        141.0317,
+        0.8649,
+        41.3835
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_102_pine",
+      "type": "pine",
+      "position": [
+        147.0,
+        9.9488,
+        86.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_103_shrub",
+      "type": "shrub",
+      "position": [
+        63.5,
+        0.8345,
+        22.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_104_pine",
+      "type": "pine",
+      "position": [
+        25.5441,
+        0.4667,
+        45.9889
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_105_shrub",
+      "type": "shrub",
+      "position": [
+        204.3878,
+        1.0634,
+        65.3634
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_106_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        75.0,
+        1.3408,
+        62.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_107_pine",
+      "type": "pine",
+      "position": [
+        141.0,
+        5.0336,
+        83.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_108_shrub",
+      "type": "shrub",
+      "position": [
+        179.9973,
+        1.3802,
+        52.5303
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_109_maple",
+      "type": "maple",
+      "position": [
+        193.5,
+        3.7096,
+        91.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_110_shrub",
+      "type": "shrub",
+      "position": [
+        -5.5621,
+        -1.7288,
+        -19.5495
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_111_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        124.0,
+        4.8844,
+        64.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_112_shrub",
+      "type": "shrub",
+      "position": [
+        109.5,
+        1.7827,
+        37.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_113_shrub",
+      "type": "shrub",
+      "position": [
+        28.9263,
+        -0.8661,
+        2.2217
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_114_maple",
+      "type": "maple",
+      "position": [
+        113.5,
+        2.4534,
+        72.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_115_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        87.298,
+        1.1555,
+        70.8586
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_116_shrub",
+      "type": "shrub",
+      "position": [
+        19.5,
+        1.2709,
+        4.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_117_shrub",
+      "type": "shrub",
+      "position": [
+        -26.0451,
+        -1.2598,
+        -13.5375
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_118_shrub",
+      "type": "shrub",
+      "position": [
+        163.2649,
+        1.1405,
+        47.8579
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_119_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        170.0385,
+        3.635,
+        91.3466
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_120_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        -10.5,
+        1.4889,
+        23.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_121_shrub",
+      "type": "shrub",
+      "position": [
+        190.5,
+        3.8378,
+        54.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_122_shrub",
+      "type": "shrub",
+      "position": [
+        137.0,
+        3.3391,
+        44.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_123_shrub",
+      "type": "shrub",
+      "position": [
+        123.6105,
+        0.3635,
+        40.3163
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_124_pine",
+      "type": "pine",
+      "position": [
+        95.0,
+        2.4339,
+        68.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_125_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        199.5,
+        3.7163,
+        79.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_126_shrub",
+      "type": "shrub",
+      "position": [
+        152.1811,
+        4.0566,
+        83.9712
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_127_shrub",
+      "type": "shrub",
+      "position": [
+        45.0,
+        0.8446,
+        56.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_128_pine",
+      "type": "pine",
+      "position": [
+        4.5,
+        1.1998,
+        20.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_129_shrub",
+      "type": "shrub",
+      "position": [
+        127.5,
+        3.1788,
+        72.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_130_shrub",
+      "type": "shrub",
+      "position": [
+        154.5,
+        4.1041,
+        79.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_131_pine",
+      "type": "pine",
+      "position": [
+        18.5,
+        1.597,
+        35.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_132_shrub",
+      "type": "shrub",
+      "position": [
+        91.5,
+        1.9504,
+        44.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_133_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        19.0,
+        1.7563,
+        40.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_134_shrub",
+      "type": "shrub",
+      "position": [
+        -10.5,
+        0.2485,
+        12.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_135_pine",
+      "type": "pine",
+      "position": [
+        127.5,
+        4.567,
+        77.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_136_shrub",
+      "type": "shrub",
+      "position": [
+        123.5,
+        2.8404,
+        49.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_137_maple",
+      "type": "maple",
+      "position": [
+        31.0,
+        2.429,
+        43.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_138_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        199.1674,
+        5.5501,
+        95.3493
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_139_pine",
+      "type": "pine",
+      "position": [
+        40.0,
+        1.0,
+        41.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_140_pine",
+      "type": "pine",
+      "position": [
+        114.8488,
+        2.1799,
+        78.3475
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_141_shrub",
+      "type": "shrub",
+      "position": [
+        -6.0,
+        0.3293,
+        16.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_142_shrub",
+      "type": "shrub",
+      "position": [
+        48.0,
+        1.461,
+        14.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_143_shrub",
+      "type": "shrub",
+      "position": [
+        156.5,
+        3.292,
+        47.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_144_shrub",
+      "type": "shrub",
+      "position": [
+        196.5,
+        3.4019,
+        61.5
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_145_shrub",
+      "type": "shrub",
+      "position": [
+        85.5423,
+        0.4295,
+        59.5594
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_146_shrub",
+      "type": "shrub",
+      "position": [
+        87.0,
+        1.1811,
+        37.0
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_147_maple",
+      "type": "maple",
+      "position": [
+        93.5,
+        3.933,
+        76.5
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_148_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        136.0,
+        4.8427,
+        81.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_149_dead_tree",
+      "type": "dead_tree",
+      "position": [
+        202.0,
+        6.9715,
+        92.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_150_pine",
+      "type": "pine",
+      "position": [
+        184.0012,
+        5.5453,
+        95.9337
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_151_shrub",
+      "type": "shrub",
+      "position": [
+        175.3864,
+        1.102,
+        53.2324
+      ],
+      "outside_walkable": true,
+      "camera_side": true
+    },
+    {
+      "name": "Veg_152_bent_pine",
+      "type": "bent_pine",
+      "position": [
+        70.4754,
+        0.3924,
+        68.0976
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_153_pine",
+      "type": "pine",
+      "position": [
+        -18.5,
+        1.5009,
+        16.0
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    },
+    {
+      "name": "Veg_154_pine",
+      "type": "pine",
+      "position": [
+        166.074,
+        1.8667,
+        83.6372
+      ],
+      "outside_walkable": true,
+      "camera_side": false
+    }
+  ],
+  "large_rocks": [
+    {
+      "name": "Rock_00",
+      "type": "large_rock",
+      "position": [
+        175.3423,
+        6.149,
+        94.0425
+      ]
+    },
+    {
+      "name": "Rock_01",
+      "type": "large_rock",
+      "position": [
+        51.3924,
+        4.8886,
+        58.7967
+      ]
+    },
+    {
+      "name": "Rock_02",
+      "type": "large_rock",
+      "position": [
+        147.0,
+        7.3066,
+        83.5
+      ]
+    },
+    {
+      "name": "Rock_03",
+      "type": "large_rock",
+      "position": [
+        201.5,
+        7.5902,
+        92.5
+      ]
+    }
+  ],
+  "water": [
+    {
+      "mesh": "SM_ForestRidge_Water_Fall01_StreamOutlet",
+      "type": "waterfall",
+      "centre": [
+        56.8846,
+        -15.0,
+        23.197
+      ],
+      "top_z_unity_y": -1.5
+    },
+    {
+      "mesh": "SM_ForestRidge_Water_Fall02_Chasm",
+      "type": "waterfall",
+      "centre": [
+        162.7289,
+        -8.5,
+        73.8496
+      ],
+      "top_z_unity_y": 6.5
+    },
+    {
+      "mesh": "SM_ForestRidge_Water_Fall03_ChasmLow",
+      "type": "waterfall",
+      "centre": [
+        166.6753,
+        -11.0,
+        60.9393
+      ],
+      "top_z_unity_y": 2.0
+    },
+    {
+      "mesh": "SM_ForestRidge_Water_Fall04_EndPlaza",
+      "type": "waterfall",
+      "centre": [
+        204.4066,
+        -8.8,
+        65.9939
+      ],
+      "top_z_unity_y": 3.2
+    },
+    {
+      "mesh": "SM_ForestRidge_Water_Fall05_EndPlaza",
+      "type": "waterfall",
+      "centre": [
+        205.9427,
+        -8.8,
+        83.7622
+      ],
+      "top_z_unity_y": 3.2
+    },
+    {
+      "mesh": "SM_ForestRidge_Water_Stream01",
+      "type": "stream",
+      "centre": [
+        47.608,
+        -1.5,
+        38.0471
+      ],
+      "top_z_unity_y": -1.5
+    }
+  ],
+  "chunks": [
+    {
+      "name": "Zone01",
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Zone02",
+      "pivot": [
+        32.196,
+        1.0,
+        23.824
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Zone03",
+      "pivot": [
+        67.792,
+        1.0,
+        42.354
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Zone04",
+      "pivot": [
+        106.146,
+        2.0,
+        54.08
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Zone05",
+      "pivot": [
+        145.415,
+        3.0,
+        61.713
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Zone06",
+      "pivot": [
+        183.869,
+        3.0,
+        73.469
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Link01_02",
+      "pivot": [
+        16.098,
+        0.5,
+        11.912
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Link02_03",
+      "pivot": [
+        49.994,
+        1.0,
+        33.0885
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Link03_04",
+      "pivot": [
+        86.969,
+        1.5,
+        48.217
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Link04_05",
+      "pivot": [
+        125.781,
+        2.5,
+        57.8965
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Link05_06",
+      "pivot": [
+        164.642,
+        3.0,
+        67.591
+      ],
+      "assembly_position": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

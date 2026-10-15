@@ -25,7 +25,7 @@
 
 `Dev_ShinshiVillageQuarterView_GroundPaint.unity`는 전용 데이터 `Assets/00.Scenes/Dev_HUD/Dev_ShinshiVillageQuarterView_GroundPaint/NavMesh-Navigation.asset`를 사용한다. Release의 ShinshiTown 데이터와 분리했다. Humanoid의 반경 0.5m·높이 2m·경사 45도·단차 0.75m를 유지하며, Physics Colliders·Default/Obstacle(mask 257)·Volume center `(5, 6, -5)`·size `(130, 36, 140)`·voxel 0.1m·Height Mesh로 베이크한다.
 
-씬의 NavMeshModifier는 배치 소품과 중앙 성소의 장애물·수면을 Not Walkable로 처리하고 바닥·계단·다리 상판·교각의 상단을 Walkable로 지정한다. 북서 전망대 입구의 낮은 돌 2개도 보행 표면으로 처리한다. `01_CA07_IslandBody`의 이전 외피 충돌체는 Ignore From Build로 제외한다. 이 충돌체는 현재 바닥 바깥의 공중 영역과 남쪽 계단 위의 평면을 생성했기 때문이다. 모델·물리 Collider·배치는 변경하지 않았다. 재베이크할 때 이 Modifier와 전용 데이터 참조를 유지한다.
+씬의 NavMeshModifier는 배치 소품과 중앙 성소의 장애물·수면을 Not Walkable로 처리하고 바닥·계단·다리 상판·교각의 상단을 Walkable로 지정한다. 북서 전망대 입구의 낮은 돌 2개도 보행 표면으로 처리한다. `01_CA07_IslandBody`는 이전 외피 충돌체 때문에 Ignore From Build로 제외했었다. 2026-10-13에 외피 충돌체가 없고 섬 윗면 `NativeUpperCollision` 12개만 남은 것을 확인하고 제외를 풀었다. 섬 10개는 LOD만 옮기거나 늘리고 `NativeUpperCollision`은 원래 자리에 남아 보이는 잔디와 충돌 윗면이 어긋나 있었으므로 충돌체 Transform을 `LOD0_High`와 같게 맞췄다. 섬 LOD를 옮기면 충돌체도 같이 옮긴다. 이후 덱 바깥 잔디 윗면 약 640m²가 NavMesh에 들어간다. 같은 날 `SM_CA07_Deck_West/rock`(덱 가장자리 투명 벽)에만 Ignore From Build NavMeshModifier를 달아 서쪽 집 앞 잔디까지 굽는다. 다른 덱의 벽은 굽기에 포함한다. 물리 벽은 그대로라 이 구역의 NavMesh는 플레이어가 못 가는 곳까지 포함하며 적·NPC 경로용이다. 절벽과 집 사이 1m 안쪽은 에이전트 반경 때문에 비어 있다. `SM_CA07_Deck_Plaza` 루트가 y −1로 내려가 섬 윗면 아래에 묻혀 있어 0으로 되돌렸다(섬 윗면보다 약 5cm 위, 소품 높이와 일치). 이어서 광장 덱 메시의 떨어진 동쪽 조각(x 18~36, E_PondTerrace 위)을 `SM_CA07_Deck_PlazaEast`(사본 `SM_GP_Deck_PlazaEast`, `SM_GP_DeckWall_PlazaEast`)로 분리하고 루트를 y −1로 내려 섬 윗면에 맞췄다. 예전 덱 높이에 떠 있던 소품 36개도 1m 내렸다. 동쪽 연못은 `SM_CA07_Ponds` 아래 `top_East`·`rock_East`(사본 `SM_GP_Pond_*_East`, 나머지 연못은 `SM_GP_Pond_*_Main`)로 떼어 물높이를 1.56에서 1.40으로 내렸다. 연못 밑 섬 윗면이 1.33으로 평평해 이보다 낮추면 물이 가려진다. 정자(`PF_ReferencePavilion`)를 같이 내리고 연못 둘레 바위 25개를 땅에 10cm 묻히게 내렸다. 두 덱 사이 1m 단차를 잇는 계단이 없어 광장에서 PlazaEast로의 NavMesh 경로는 없다. 이 시점에 광장에서 West 외 덱 중심으로의 경로는 PathPartial이며 덱 높이와 무관하게 이전부터 끊겨 있었다. 모델·물리 Collider·배치는 변경하지 않았다. 재베이크할 때 이 Modifier와 전용 데이터 참조를 유지한다.
 
 베이크 결과는 정점 5775개·삼각형 2581개다. 11개 지형 구역 중심·남쪽 착지대·계단 출입점 6개, 총 18개 지점 사이의 방향별 경로 306개가 모두 PathComplete였다. 저장된 데이터를 사용하는 Play Mode에서 반경 0.5m·높이 2m의 임시 NavMeshAgent가 광장과 나머지 11개 지점 사이를 왕복해 22/22회 도착했다. 연못·개울 표면 표본 42개와 섬 바깥 표본 4개에서 이동 영역이 검출되지 않았다. NavMesh 오버레이도 캡처로 확인했다. 최종 Console 오류·경고는 0이며 Edit Mode로 복귀했다.
 
@@ -61,6 +61,19 @@
 원본 obj는 Release/ShinshiTown(팀장 소유)도 쓰므로 고치지 않는다. 처음 고칠 때 이 씬 전용 사본을 `Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/FittedDecks/`에 `SM_GP_Deck_*`, `SM_GP_DeckWall_*`로 만들어 연결하며, 같은 이름이 있으면 번호를 붙인다. 브러시는 `Assets/00.Scenes/Dev_HUD/` 아래 씬에서만 켜진다. `선택한 덱 원본으로 되돌리기`는 원본 obj 메쉬를 다시 연결하고 사본 파일은 지우지 않는다. 돌·물·소품 루트 이름은 창의 접힌 항목에서 바꾼다.
 
 확인 범위: GroundPaint 씬의 SEMarket 덱에서 넓히기·깎기·되돌리기와 콜라이더 갱신, 돌 위로만 넓히기의 허공 거절, 전체 덱 맞추기 후 소품 1,328개 중 1,315개의 받침 유지(나머지 13개는 가장자리 0.5m 이내 난간·풀), NavMesh 재베이크를 에디터 코드 호출로 확인했다. Scene 뷰 마우스 조작·보행·Player 빌드는 미검증이다. 창을 새로 열거나 되돌린 뒤 첫 칠하기는 메쉬에서 윤곽을 다시 읽어 가장자리가 약간(큰 덱 기준 수 m²) 달라질 수 있다.
+
+## 바위 깎기 브러시 (2026-10-13)
+
+메뉴 `Shinshi > Art > Environment > 바위 깎기 브러시`로 연다. 지형 높이 브러시가 다루지 못하는 LOD 묶음(섬 청크 `PF_ReferenceIsland_*`, 절벽 바위 등)을 깎는다. 계단·덱을 뚫고 나온 바위 옆면을 정리하는 용도다.
+
+1. 바위(또는 그 자식)를 선택하고 `선택한 바위 사용`, `선택 바위의 편집 사본 준비`를 누른다. LODGroup의 모든 LOD 메시와 그 아래 MeshCollider 메시를 이 씬 전용 사본으로 바꿔 연결한다. 사본은 `Assets/01.Scripts/05.Art/Environment/VillageGroundPatch/CarvedMeshes/{씬 이름}/`에 `SM_Carve_{바위 이름}_{원본 메시}`로 만든다. 이미 사본이면 이어서 편집한다.
+2. `브러시 켜기` 뒤 Scene 뷰에서 누르거나 드래그한다. 깎기는 누른 면 안쪽으로 밀고 Shift는 바깥으로 부풀린다. Ctrl은 부드럽게, Alt는 카메라 조작, Esc는 브러시 종료다.
+3. 평면 자르기는 Shift+클릭으로 기준 평면을 잡는다. 바위보다 먼저 맞은 다른 충돌체(계단 등)의 면을 쓰고, 없으면 바위 면을 쓴다. 칠하면 평면 바깥으로 나온 바위를 평면 3cm 뒤로 민다.
+4. Ctrl+Z는 한 번의 드래그를 되돌린다. 드래그마다 파일을 만들지 않고 정점·법선을 메모리에 기록하므로 에디터를 다시 시작하면 되돌리기 기록은 사라진다.
+
+모든 LOD와 충돌 메시에 같은 월드 공간 변위를 적용해 LOD가 바뀌어도 깎인 모양이 같다. 움직인 정점만 법선·접선을 다시 계산한다. 원본 FBX와 다른 씬은 바뀌지 않는다. 브러시는 `Assets/00.Scenes/Dev_HUD/` 아래 씬에서만 켜진다. 텍스처·AO는 원본 그대로라 크게 깎으면 무늬가 늘어난다. 편집 후 씬을 저장하고 NavMesh를 다시 굽는다.
+
+확인 범위: 임시 Dev_HUD 씬의 `PF_ReferenceIsland_Core`에서 사본 준비(LOD 3, 충돌 1), 깎기 시 네 메시가 같은 위치에서 같은 높이(-0.03m -> -1.77m)로 움직임, Ctrl+Z 복구를 에디터 코드 호출로 확인했다. 부드럽게·평면 자르기·Scene 뷰 마우스 조작·보행·Player 빌드는 미검증이다.
 
 ## 씬 플레이어의 스폰 상태
 

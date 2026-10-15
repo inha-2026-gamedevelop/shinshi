@@ -1,0 +1,90 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_ArenaFloor_MixOuter
+  m_Shader: {fileID: 4800000, guid: e6891156966a1a549bf56ee1e01fbbe0, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _AOMap:
+        m_Texture: {fileID: 2800000, guid: 71491e7f8b507064099b6c367eb9a45c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _BaseColorMap:
+        m_Texture: {fileID: 2800000, guid: c7364b9832c78354f89c861edf8c5f6c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DamageColorMap:
+        m_Texture: {fileID: 2800000, guid: 7bc55a4b437d8e54cae2f92e78fd8da9, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DamageNormalMap:
+        m_Texture: {fileID: 2800000, guid: b7d55687e937c374cac332081b61778c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DamageRoughnessMap:
+        m_Texture: {fileID: 2800000, guid: 6c38faf27d24d1341873d1d6f3fb74f7, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DirtColorMap:
+        m_Texture: {fileID: 2800000, guid: 57ae1ac13bb9e044c8e0d3c7a7aae72e, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DirtNormalMap:
+        m_Texture: {fileID: 2800000, guid: 393d2fbbf8ba5f44dadfa062649911ae, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DirtRoughnessMap:
+        m_Texture: {fileID: 2800000, guid: 475ddea1f4de11642afaab7671feb863, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskMap:
+        m_Texture: {fileID: 2800000, guid: b437a069f4b6a8b448802bd4b2881a01, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: c23ec58d023eefd43af6e18ce2662371, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RoughnessMap:
+        m_Texture: {fileID: 2800000, guid: fd5646e9349835b4aae9052dc9a81ef3, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _DamageSize: 4
+    - _DamageStrength: 0.5
+    - _DamageThreshold: 0.35
+    - _DirtSize: 4
+    - _DirtStrength: 0.55
+    - _DirtThreshold: 0.25
+    - _MacroSize: 16
+    - _NormalStrength: 1
+    - _Softness: 0.12
+    - _TileSize: 3
+    - _TileVariation: 0
+    - _TilesPerRepeat: 4
+    m_Colors:
+    - _BaseTint: {r: 0.72, g: 0.72, b: 0.72, a: 1}
+    - _DamageTint: {r: 1, g: 1, b: 1, a: 1}
+    - _DirtTint: {r: 1, g: 1, b: 1, a: 1}
+    - _TileGridOffset: {r: 0.135, g: 0.135, b: 0, a: 0}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
