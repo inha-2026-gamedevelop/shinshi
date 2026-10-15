@@ -32,7 +32,7 @@
 ### 2.0 현재 실행 도구
 
 - [`tools/Start-M2.ps1`](../../tools/Start-M2.ps1)은 미리 만든 Windows 전용 서버와 클라이언트 N개를 실행한다. 빌드는 만들지 않는다. `ClientCount 1`은 M1, 2 이상은 M2 구성이고 프로세스 기동만으로 접속·동작 통과를 판정하지 않는다.
-- [`tools/Start-ReleaseStack.ps1`](../../tools/Start-ReleaseStack.ps1)은 로컬 PostgreSQL·마이그레이션·API·마을 서버·개발 클라이언트를 실행한다. `-Build`를 지정할 때만 Unity 빌드를 만들며 이때 에디터를 닫아야 한다. 이 스택은 마을 진입 경로이고 던전 풀까지 자동 구성하는 도구가 아니다.
+- [`tools/Start-ReleaseStack.ps1`](../../tools/Start-ReleaseStack.ps1)은 로컬 PostgreSQL·마이그레이션·API·마을 서버·개발 클라이언트를 실행한다. `-Build`를 지정할 때만 Unity 빌드를 만들며 이때 에디터를 닫아야 한다. 던전 서버도 `-DungeonCount`(기본 1)만큼 띄우고, 출정 1회가 끝나 던전이 종료되면 `tools/Watch-ReleaseDungeons.ps1`이 같은 인스턴스 ID로 새로 띄운다. 이 스택은 로컬 리허설용이며 운영 서버 풀 확장과 장애 복구 시험이 아니다.
 - 에디터 [`ShinshiPlayMenu`](../../Assets/Editor/ShinshiPlayMenu.cs)의 `Shinshi/Play/` 메뉴는 에디터의 역할·접속 실행을 담당한다. 위 PowerShell 스크립트와 같은 도구로 간주하지 않는다.
 - 빌드 경로·필수 환경과 실행 예시는 [루트 안내](../../README.md), [게임 서버 안내](../../deploy/gameserver/README.md)를 따른다. 개발 토큰 우회로 하는 이동 시험과 API 입장 토큰을 검증하는 실제 출정을 구분한다.
 
