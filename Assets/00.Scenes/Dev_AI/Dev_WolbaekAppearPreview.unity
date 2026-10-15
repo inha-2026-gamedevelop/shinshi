@@ -250,7 +250,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -449,7 +449,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -8652,7 +8652,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -8720,6 +8720,225 @@ MonoBehaviour:
   m_Property:
     m_Name: Transform
   Target: {fileID: 0}
+--- !u!1001 &375119241
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_5
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &375119242 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 375119241}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &375119243 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 375119241}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &375766896
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &375766897 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 375766896}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &375766898 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 375766896}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &446099586
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3226807998348431418, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_Name
+      value: Beam_Grid
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+--- !u!4 &446099587 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+  m_PrefabInstance: {fileID: 446099586}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &446099588 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2110885350038532057, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+  m_PrefabInstance: {fileID: 446099586}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
 --- !u!1 &452529735
 GameObject:
   m_ObjectHideFlags: 0
@@ -8770,6 +8989,79 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1869113430}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &452653133
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &452653134 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 452653133}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &452653135 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 452653133}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1001 &490591114
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8831,6 +9123,79 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3357bcce39346144fa3ed028e61206e5, type: 3}
+--- !u!1001 &502948910
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 2776616617909379349, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_Name
+      value: Warp_Breakup
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+--- !u!4 &502948911 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+  m_PrefabInstance: {fileID: 502948910}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &502948912 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 32581169471880884, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+  m_PrefabInstance: {fileID: 502948910}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10cd8751cc75c1043868360208ed1fdd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWarpPlayer
 --- !u!1 &543022426
 GameObject:
   m_ObjectHideFlags: 0
@@ -8962,7 +9327,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -11016,6 +11381,79 @@ Transform:
   m_Children: []
   m_Father: {fileID: 756638704}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &702463465
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_4
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &702463466 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 702463465}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &702463467 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 702463465}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &710721349
 GameObject:
   m_ObjectHideFlags: 0
@@ -12525,6 +12963,79 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ac18fd5a128cfc54ea061b238fdb2e5a, type: 3}
+--- !u!1001 &779281396
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_7
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &779281397 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 779281396}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &779281398 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 779281396}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &789753039
 GameObject:
   m_ObjectHideFlags: 0
@@ -12575,7 +13086,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 200
-  field of view: 35
+  field of view: 30
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -12601,13 +13112,232 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 789753039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: -0.00000004371139}
-  m_LocalPosition: {x: 0, y: 4.5, z: 22}
+  m_LocalRotation: {x: -0.000000020183673, y: 0.8870109, z: -0.46174863, w: -0.000000038772477}
+  m_LocalPosition: {x: 0.0000015043094, y: 25.57456, z: 17.20729}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &797963983
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_6
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &797963984 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 797963983}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &797963985 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 797963983}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &826811065
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_3
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &826811066 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 826811065}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &826811067 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 826811065}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &893681338
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &893681339 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 893681338}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &893681340 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 893681338}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &959671015
 GameObject:
   m_ObjectHideFlags: 0
@@ -12658,6 +13388,152 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1725209128}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &961722760
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_7
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &961722761 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 961722760}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &961722762 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 961722760}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &980002867
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_5
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &980002868 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 980002867}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &980002869 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 980002867}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &1004331466
 GameObject:
   m_ObjectHideFlags: 0
@@ -13710,6 +14586,79 @@ Transform:
   - {fileID: 615176557}
   m_Father: {fileID: 8532063875398675803}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1045806625
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_6
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &1045806626 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 1045806625}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1045806627 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 1045806625}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &1102193464
 GameObject:
   m_ObjectHideFlags: 0
@@ -13760,6 +14709,79 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1661223122}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1175927955
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_3
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &1175927956 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1175927955}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1175927957 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1175927955}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &1244303275
 GameObject:
   m_ObjectHideFlags: 0
@@ -14334,6 +15356,152 @@ MonoBehaviour:
   glareWidth: 0
   glareSmoothness: 0.3
   glareOffset: 0
+--- !u!1001 &1252190230
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 710935769119523207, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_Name
+      value: Warp_Landing
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+--- !u!4 &1252190231 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+  m_PrefabInstance: {fileID: 1252190230}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1252190232 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2731860125790292044, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+  m_PrefabInstance: {fileID: 1252190230}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10cd8751cc75c1043868360208ed1fdd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWarpPlayer
+--- !u!1001 &1376558531
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Impact_1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &1376558532 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 1376558531}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1376558533 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 1376558531}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &1380853753
 GameObject:
   m_ObjectHideFlags: 0
@@ -14384,6 +15552,152 @@ Transform:
   m_Children: []
   m_Father: {fileID: 569748170}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1425765011
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 3558519868465093142, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_Name
+      value: Beam_Sustain
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+--- !u!4 &1425765012 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+  m_PrefabInstance: {fileID: 1425765011}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1425765013 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1916846355363160181, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+  m_PrefabInstance: {fileID: 1425765011}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
+--- !u!1001 &1470889998
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 1378000902524995575, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_Name
+      value: Warp_Reform
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+--- !u!4 &1470889999 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+  m_PrefabInstance: {fileID: 1470889998}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1470890000 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1644830767786538444, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+  m_PrefabInstance: {fileID: 1470889998}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10cd8751cc75c1043868360208ed1fdd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWarpPlayer
 --- !u!1 &1479489700
 GameObject:
   m_ObjectHideFlags: 0
@@ -14642,7 +15956,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -14760,6 +16074,152 @@ Transform:
   m_Children: []
   m_Father: {fileID: 137112308}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1542504214
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &1542504215 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1542504214}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1542504216 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1542504214}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &1589795344
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &1589795345 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1589795344}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1589795346 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1589795344}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1 &1595543844
 GameObject:
   m_ObjectHideFlags: 0
@@ -14891,7 +16351,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -14959,6 +16419,79 @@ MonoBehaviour:
   m_Property:
     m_Name: Transform
   Target: {fileID: 0}
+--- !u!1001 &1640867241
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 4142500908610037942, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_Name
+      value: Beam_Star_Hard
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+--- !u!4 &1640867242 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+  m_PrefabInstance: {fileID: 1640867241}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1640867243 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 981570840521838311, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+  m_PrefabInstance: {fileID: 1640867241}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
 --- !u!1 &1661223120
 GameObject:
   m_ObjectHideFlags: 0
@@ -23207,6 +24740,61 @@ Transform:
   - {fileID: 959671017}
   m_Father: {fileID: 8532063875398675803}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1746286222
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1746286223}
+  m_Layer: 0
+  m_Name: WolbaekVfx
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1746286223
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1746286222}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1589795345}
+  - {fileID: 375766897}
+  - {fileID: 893681339}
+  - {fileID: 1376558532}
+  - {fileID: 1542504215}
+  - {fileID: 452653134}
+  - {fileID: 1175927956}
+  - {fileID: 826811066}
+  - {fileID: 2042040212}
+  - {fileID: 702463466}
+  - {fileID: 980002868}
+  - {fileID: 375119242}
+  - {fileID: 797963984}
+  - {fileID: 1045806626}
+  - {fileID: 961722761}
+  - {fileID: 779281397}
+  - {fileID: 2077251961}
+  - {fileID: 1784327368}
+  - {fileID: 1640867242}
+  - {fileID: 1425765012}
+  - {fileID: 446099587}
+  - {fileID: 502948911}
+  - {fileID: 1470889999}
+  - {fileID: 1252190231}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1766339866
 GameObject:
   m_ObjectHideFlags: 0
@@ -23338,7 +24926,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -23406,6 +24994,79 @@ MonoBehaviour:
   m_Property:
     m_Name: Transform
   Target: {fileID: 0}
+--- !u!1001 &1784327367
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 4142500908610037942, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_Name
+      value: Beam_Star
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+--- !u!4 &1784327368 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+  m_PrefabInstance: {fileID: 1784327367}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1784327369 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 981570840521838311, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+  m_PrefabInstance: {fileID: 1784327367}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
 --- !u!1 &1869113428
 GameObject:
   m_ObjectHideFlags: 0
@@ -25559,7 +27220,7 @@ VisualEffect:
       m_Array: []
     m_Vector4f:
       m_Array:
-      - m_Value: {x: 0, y: -0.029999906, z: 0, w: 0}
+      - m_Value: {x: 0, y: 12, z: 0, w: 0}
         m_Name: Mask Position
         m_Overridden: 1
       - m_Value: {x: 1, y: 1, z: 1, w: 0}
@@ -25627,6 +27288,152 @@ MonoBehaviour:
   m_Property:
     m_Name: Transform
   Target: {fileID: 0}
+--- !u!1001 &2042040211
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Foxfire_Flight_4
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &2042040212 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 2042040211}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2042040213 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 2042040211}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &2077251960
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1746286223}
+    m_Modifications:
+    - target: {fileID: 873246452727580880, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_Name
+      value: Beam_Release
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+--- !u!4 &2077251961 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+  m_PrefabInstance: {fileID: 2077251960}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2077251962 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1033706568510610358, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+  m_PrefabInstance: {fileID: 2077251960}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
 --- !u!1 &2082014265
 GameObject:
   m_ObjectHideFlags: 0
@@ -82110,6 +83917,17 @@ GameObject:
   - component: {fileID: 8532063875398675805}
   - component: {fileID: 8532063875398675806}
   - component: {fileID: 8532063875398675807}
+  - component: {fileID: 8532063875398675808}
+  - component: {fileID: 8532063875398675809}
+  - component: {fileID: 8532063875398675810}
+  - component: {fileID: 8532063875398675811}
+  - component: {fileID: 8532063875398675812}
+  - component: {fileID: 8532063875398675813}
+  - component: {fileID: 8532063875398675814}
+  - component: {fileID: 8532063875398675815}
+  - component: {fileID: 8532063875398675816}
+  - component: {fileID: 8532063875398675817}
+  - component: {fileID: 8532063875398675818}
   m_Layer: 0
   m_Name: WolbaekAppearPreview
   m_TagString: Untagged
@@ -113636,32 +115454,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MotionPreviewButtons
   _animator: {fileID: 7147051561535763435}
   _states:
-  - "---\uD655\uC815 \uBAA8\uC158"
+  - "---\uD655\uC815 \uBAA8\uC158 (@ \uD328\uD134\uC740 \uD655\uC815 \uD0C0\uC774\uBC0D\uC73C\uB85C
+    \uC7AC\uC0DD)"
   - Idle|Idle
   - "\uB4F1\uC7A5|Appear"
   - "2P \uC804\uD658|Combo_Up_Normal"
   - "---1\uD398\uC774\uC988 (\uC774\uC9C0\xB7\uD558\uB4DC \uB3D9\uC77C)"
-  - "1P P02 \uC804\uBC29 \uBD80\uCC44\uAF34|attack09_inplace"
-  - "1P P03 \uC911\uC2EC \uC6D0\uD615 \uD3ED\uBC1C|combo03_3_inplace"
-  - "1P P04 \uC5EC\uC6B0\uBD88 \uD22C\uC0AC\uCCB4|combo02_1_inplace"
-  - "1P P05 \uC9C0\uC815 \uC704\uCE58 \uC7A5\uD310|attack10_inplace"
-  - "1P P06 \uB300\uD615 \uC804\uBC29 \uBC29\uCD9C|attack03_inplace"
+  - "@1P P02 \uC804\uBC29 \uBD80\uCC44\uAF34"
+  - "@1P P03 \uC911\uC2EC \uC6D0\uD615 \uD3ED\uBC1C"
+  - "@1P P04 \uC5EC\uC6B0\uBD88 \uD22C\uC0AC\uCCB4"
+  - "@1P P05 \uC9C0\uC815 \uC704\uCE58 \uC7A5\uD310"
+  - "@1P P06 \uB300\uD615 \uC804\uBC29 \uBC29\uCD9C"
   - "---2\uD398\uC774\uC988 (\uC774\uC9C0)"
-  - "2P P01 \uBCC4 \uBE54|attack_drain_inplace"
-  - "2P P02 \uACA9\uC790 \uBE54|attack04_inplace"
-  - "2P P03 \uBC18\uC6D4 \uD3ED\uBC1C|attack05_inplace"
-  - "2P P04 \uC7A5\uD310 \uC9C0\uC815|attack10_inplace"
-  - "2P P05 3\uC5F0 \uD22C\uC0AC\uCCB4|combo02_1_inplace"
-  - "2P P06 \uC6D0\uD615 \uD3ED\uBC1C|combo03_3_inplace"
-  - "2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C|attack06_inplace"
-  - "---2\uD398\uC774\uC988 (\uD558\uB4DC, \uC2E4\uD589\uC774 \uB2E4\uB978 \uAC83)"
-  - "\uD558\uB4DC2P P01 \uB2E8\uACC4\uD615 \uBCC4 \uBE54|attack_drain_inplace"
-  - "\uD558\uB4DC2P P02 \uC21C\uCC28 \uACA9\uC790 \uBE54|attack04_inplace"
-  - "\uD558\uB4DC2P P03 \uC794\uB958 \uBD80\uCC44\uAF34 \uC5F0\uC1C4|attack05_inplace"
-  - "\uD558\uB4DC2P P04 \uC7A5\uD310 \uC9C0\uC815|attack10_inplace"
-  - "\uD558\uB4DC2P P05 8\uBC1C \uB09C\uC0AC|combo02_1_inplace"
-  - "\uD558\uB4DC2P P06 \uC6D0\uD615 \uD3ED\uBC1C|combo03_3_inplace"
-  - "\uD558\uB4DC2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C|attack06_inplace"
+  - "@2P P01 \uBCC4 \uBE54"
+  - "@2P P02 \uACA9\uC790 \uBE54"
+  - "@2P P03 \uBC18\uC6D4 \uD3ED\uBC1C"
+  - "@2P P04 \uC7A5\uD310 \uC9C0\uC815"
+  - "@2P P05 3\uC5F0 \uD22C\uC0AC\uCCB4"
+  - "@2P P06 \uC6D0\uD615 \uD3ED\uBC1C"
+  - "@2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C"
+  - "---2\uD398\uC774\uC988 (\uD558\uB4DC)"
+  - "@\uD558\uB4DC2P P01 \uB2E8\uACC4\uD615 \uBCC4 \uBE54"
+  - "@\uD558\uB4DC2P P02 \uC21C\uCC28 \uACA9\uC790 \uBE54"
+  - "@\uD558\uB4DC2P P03 \uC794\uB958 \uBD80\uCC44\uAF34 \uC5F0\uC1C4"
+  - "@\uD558\uB4DC2P P04 \uC7A5\uD310 \uC9C0\uC815"
+  - "@\uD558\uB4DC2P P05 8\uBC1C \uB09C\uC0AC"
+  - "@\uD558\uB4DC2P P06 \uC6D0\uD615 \uD3ED\uBC1C"
+  - "@\uD558\uB4DC2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C"
+  _patternPlayer: {fileID: 8532063875398675807}
 --- !u!114 &8532063875398675805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113722,11 +115542,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PatternMotionPreview
   _animator: {fileID: 7147051561535763435}
   _entries:
-  - _label: "1P P02 \uBD80\uCC44\uAF34 (attack09)"
-    _stateName: attack09_inplace
-    _strikeSeconds: 1
-    _clipPeakSeconds: 0.61
-    _recoverySeconds: 0.5
+  - _label: "2P P01 \uBCC4 \uBE54"
+    _stateName: attack_drain_inplace
+    _strikeSeconds: 2
+    _clipPeakSeconds: 0.4
+    _recoverySeconds: 7
     _shots: 1
     _shotInterval: 0
     _repeatFromSeconds: 0
@@ -113737,124 +115557,17 @@ MonoBehaviour:
     _holdSpeed: 0
     _holdAmplitude: 0
     _releaseSpeed: 1
-    _slowFromClip: 0
-    _slowToClip: 0
-    _slowSpeed: 0
-  - _label: "1P P03 \uC6D0\uD615 \uD3ED\uBC1C (combo03_3)"
-    _stateName: combo03_3_inplace
-    _strikeSeconds: 1.2
-    _clipPeakSeconds: 0.93
-    _recoverySeconds: 0.5
-    _shots: 1
-    _shotInterval: 0
-    _repeatFromSeconds: 0
-    _restartOnShots: 0
-    _forcedSpeed: 0
-    _holdClipSeconds: 0
-    _holdReleaseSeconds: 0
-    _holdSpeed: 0
-    _holdAmplitude: 0
-    _releaseSpeed: 1
-    _slowFromClip: 0
-    _slowToClip: 0
-    _slowSpeed: 0
-  - _label: "1P P04 \uD22C\uC0AC\uCCB4 (combo02_1)"
-    _stateName: combo02_1_inplace
-    _strikeSeconds: 0.9
-    _clipPeakSeconds: 0.44
-    _recoverySeconds: 0.5
-    _shots: 1
-    _shotInterval: 0
-    _repeatFromSeconds: 0
-    _restartOnShots: 0
-    _forcedSpeed: 0
-    _holdClipSeconds: 0
-    _holdReleaseSeconds: 0
-    _holdSpeed: 0
-    _holdAmplitude: 0
-    _releaseSpeed: 1
-    _slowFromClip: 0
-    _slowToClip: 0
-    _slowSpeed: 0
-  - _label: "1P P05 \uC7A5\uD310 (attack10)"
-    _stateName: attack10_inplace
-    _strikeSeconds: 1
-    _clipPeakSeconds: 0.47
-    _recoverySeconds: 0.5
-    _shots: 1
-    _shotInterval: 0
-    _repeatFromSeconds: 0
-    _restartOnShots: 0
-    _forcedSpeed: 0
-    _holdClipSeconds: 0
-    _holdReleaseSeconds: 0
-    _holdSpeed: 0
-    _holdAmplitude: 0
-    _releaseSpeed: 1
-    _slowFromClip: 0
-    _slowToClip: 0
-    _slowSpeed: 0
-  - _label: "1P P06 \uB300\uD615 \uBC29\uCD9C (attack03, 1.44\uBC30)"
-    _stateName: attack03_inplace
-    _strikeSeconds: 1.6
-    _clipPeakSeconds: 2.3
-    _recoverySeconds: 0.5
-    _shots: 1
-    _shotInterval: 0
-    _repeatFromSeconds: 0
-    _restartOnShots: 0
-    _forcedSpeed: 0
-    _holdClipSeconds: 0
-    _holdReleaseSeconds: 0
-    _holdSpeed: 0
-    _holdAmplitude: 0
-    _releaseSpeed: 1
-    _slowFromClip: 0
-    _slowToClip: 0
-    _slowSpeed: 0
-  - _label: "2P P05 \uC774\uC9C0 3\uC5F0 (combo02_1, 0.49\uBC30)"
-    _stateName: combo02_1_inplace
-    _strikeSeconds: 0.9
-    _clipPeakSeconds: 0.44
-    _recoverySeconds: 0.5
-    _shots: 3
-    _shotInterval: 0.3
-    _repeatFromSeconds: 0
-    _restartOnShots: 0
-    _forcedSpeed: 0.49
-    _holdClipSeconds: 0
-    _holdReleaseSeconds: 0
-    _holdSpeed: 0
-    _holdAmplitude: 0
-    _releaseSpeed: 1
-    _slowFromClip: 0
-    _slowToClip: 0
-    _slowSpeed: 0
-  - _label: "\uD558\uB4DC2P P05 8\uBC1C \uB09C\uC0AC (combo02_1 \uB298\uB824\uC11C)"
-    _stateName: combo02_1_inplace
-    _strikeSeconds: 1
-    _clipPeakSeconds: 0.44
+    _slowFromClip: 0.4
+    _slowToClip: 2.2
+    _slowSpeed: 0.29999998
+    _isConfirmed: 1
+  - _label: "\uD558\uB4DC2P P01 \uB2E8\uACC4\uD615 \uBCC4 \uBE54"
+    _stateName: attack_drain_inplace
+    _strikeSeconds: 2
+    _clipPeakSeconds: 0.4
     _recoverySeconds: 1
-    _shots: 8
-    _shotInterval: 0.2
-    _repeatFromSeconds: 0
-    _restartOnShots: 0
-    _forcedSpeed: 0.44
-    _holdClipSeconds: 0.415
-    _holdReleaseSeconds: 2.5
-    _holdSpeed: 0.23076923
-    _holdAmplitude: 0.03
-    _releaseSpeed: 0.4
-    _slowFromClip: 0
-    _slowToClip: 0
-    _slowSpeed: 0
-  - _label: "2P P03 \uBC18\uC6D4 \uD3ED\uBC1C (attack05)"
-    _stateName: attack05_inplace
-    _strikeSeconds: 1.2
-    _clipPeakSeconds: 1.15
-    _recoverySeconds: 0.8
-    _shots: 4
-    _shotInterval: 0.25
+    _shots: 3
+    _shotInterval: 0.8
     _repeatFromSeconds: 0
     _restartOnShots: 0
     _forcedSpeed: 0
@@ -113866,8 +115579,46 @@ MonoBehaviour:
     _slowFromClip: 0
     _slowToClip: 0
     _slowSpeed: 0
-  - _label: "\uD558\uB4DC2P P03 \uBD80\uCC44\uAF34 \uC5F0\uC1C4 (attack05 \uB290\uB9AC\uAC8C
-      \uC4F8\uAE30)"
+    _isConfirmed: 1
+  - _label: "2P P02 \uACA9\uC790 \uBE54"
+    _stateName: attack04_inplace
+    _strikeSeconds: 1.5
+    _clipPeakSeconds: 0.8
+    _recoverySeconds: 4.8
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0.8
+    _slowToClip: 1.6
+    _slowSpeed: 0.2
+    _isConfirmed: 1
+  - _label: "\uD558\uB4DC2P P02 \uC21C\uCC28 \uACA9\uC790 \uBE54"
+    _stateName: attack04_inplace
+    _strikeSeconds: 1
+    _clipPeakSeconds: 0.8
+    _recoverySeconds: 14
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0.8
+    _slowToClip: 1.6
+    _slowSpeed: 0.064
+    _isConfirmed: 1
+  - _label: "\uD558\uB4DC2P P03 \uC794\uB958 \uBD80\uCC44\uAF34 \uC5F0\uC1C4"
     _stateName: attack05_inplace
     _strikeSeconds: 2.5
     _clipPeakSeconds: 1.15
@@ -113885,7 +115636,668 @@ MonoBehaviour:
     _slowFromClip: 1.15
     _slowToClip: 1.85
     _slowSpeed: 0.23333333
+    _isConfirmed: 1
+  - _label: "\uD558\uB4DC2P P05 8\uBC1C \uB09C\uC0AC"
+    _stateName: combo02_1_inplace
+    _strikeSeconds: 1
+    _clipPeakSeconds: 0.44
+    _recoverySeconds: 1
+    _shots: 8
+    _shotInterval: 0.2
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0.44
+    _slowToClip: 0.65
+    _slowSpeed: 0.14999999
+    _isConfirmed: 1
+  - _label: "1P P02 \uC804\uBC29 \uBD80\uCC44\uAF34"
+    _stateName: attack09_inplace
+    _strikeSeconds: 1
+    _clipPeakSeconds: 0.61
+    _recoverySeconds: 0.5
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "1P P03 \uC911\uC2EC \uC6D0\uD615 \uD3ED\uBC1C"
+    _stateName: combo03_3_inplace
+    _strikeSeconds: 1.2
+    _clipPeakSeconds: 0.93
+    _recoverySeconds: 0.5
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "1P P04 \uC5EC\uC6B0\uBD88 \uD22C\uC0AC\uCCB4"
+    _stateName: combo02_1_inplace
+    _strikeSeconds: 0.9
+    _clipPeakSeconds: 0.44
+    _recoverySeconds: 0.5
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "1P P05 \uC9C0\uC815 \uC704\uCE58 \uC7A5\uD310"
+    _stateName: attack10_inplace
+    _strikeSeconds: 1
+    _clipPeakSeconds: 0.47
+    _recoverySeconds: 0.5
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "1P P06 \uB300\uD615 \uC804\uBC29 \uBC29\uCD9C"
+    _stateName: attack03_inplace
+    _strikeSeconds: 1.6
+    _clipPeakSeconds: 2.3
+    _recoverySeconds: 0.5
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "2P P03 \uBC18\uC6D4 \uD3ED\uBC1C"
+    _stateName: attack05_inplace
+    _strikeSeconds: 1.2
+    _clipPeakSeconds: 1.15
+    _recoverySeconds: 0.8
+    _shots: 4
+    _shotInterval: 0.25
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "2P P04 \uC7A5\uD310 \uC9C0\uC815"
+    _stateName: attack10_inplace
+    _strikeSeconds: 1
+    _clipPeakSeconds: 0.47
+    _recoverySeconds: 0.5
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "2P P05 3\uC5F0 \uD22C\uC0AC\uCCB4"
+    _stateName: combo02_1_inplace
+    _strikeSeconds: 0.9
+    _clipPeakSeconds: 0.44
+    _recoverySeconds: 0.5
+    _shots: 3
+    _shotInterval: 0.3
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0.49
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "2P P06 \uC6D0\uD615 \uD3ED\uBC1C"
+    _stateName: combo03_3_inplace
+    _strikeSeconds: 1.2
+    _clipPeakSeconds: 0.93
+    _recoverySeconds: 0.8
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "\uD558\uB4DC2P P04 \uC7A5\uD310 \uC9C0\uC815"
+    _stateName: attack10_inplace
+    _strikeSeconds: 4
+    _clipPeakSeconds: 0.47
+    _recoverySeconds: 3.5
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "\uD558\uB4DC2P P06 \uC6D0\uD615 \uD3ED\uBC1C"
+    _stateName: combo03_3_inplace
+    _strikeSeconds: 2
+    _clipPeakSeconds: 0.93
+    _recoverySeconds: 1
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C"
+    _stateName: attack06_inplace
+    _strikeSeconds: 1.5
+    _clipPeakSeconds: 2.55
+    _recoverySeconds: 1
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
+  - _label: "\uD558\uB4DC2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C"
+    _stateName: attack06_inplace
+    _strikeSeconds: 1.5
+    _clipPeakSeconds: 2.55
+    _recoverySeconds: 1
+    _shots: 1
+    _shotInterval: 0
+    _repeatFromSeconds: 0
+    _restartOnShots: 0
+    _forcedSpeed: 0
+    _holdClipSeconds: 0
+    _holdReleaseSeconds: 0
+    _holdSpeed: 0
+    _holdAmplitude: 0
+    _releaseSpeed: 1
+    _slowFromClip: 0
+    _slowToClip: 0
+    _slowSpeed: 0
+    _isConfirmed: 1
   _flashSeconds: 0.18
+--- !u!114 &8532063875398675808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f74accaf368795a40a5f69581c653059, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.FoxfireProjectileCue
+  _pattern: {fileID: 8532063875398675807}
+  _animator: {fileID: 7147051561535763435}
+  _cues:
+  - _label: "1P P04 \uC5EC\uC6B0\uBD88 \uD22C\uC0AC\uCCB4"
+    _aimMode: 0
+    _shots: 1
+    _distance: 16
+    _originBone: 18
+  - _label: "2P P05 3\uC5F0 \uD22C\uC0AC\uCCB4"
+    _aimMode: 0
+    _shots: 3
+    _distance: 16
+    _originBone: 18
+  - _label: "\uD558\uB4DC2P P05 8\uBC1C \uB09C\uC0AC"
+    _aimMode: 1
+    _shots: 8
+    _distance: 10
+    _originBone: 8
+  _flightPlayers:
+  - {fileID: 1589795346}
+  - {fileID: 893681340}
+  - {fileID: 1542504216}
+  - {fileID: 1175927957}
+  - {fileID: 2042040213}
+  - {fileID: 980002869}
+  - {fileID: 797963985}
+  - {fileID: 961722762}
+  _impactPlayers:
+  - {fileID: 375766898}
+  - {fileID: 1376558533}
+  - {fileID: 452653135}
+  - {fileID: 826811067}
+  - {fileID: 702463467}
+  - {fileID: 375119243}
+  - {fileID: 1045806627}
+  - {fileID: 779281398}
+  _speed: 10
+  _endHeight: 1
+--- !u!114 &8532063875398675809
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55a88753dbad02643827e659eaf1b62d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BeamReleaseCue
+  _pattern: {fileID: 8532063875398675807}
+  _player: {fileID: 2077251962}
+  _origin: {fileID: 3877389632312224145}
+  _patternLabel: "1P P06 \uB300\uD615 \uC804\uBC29 \uBC29\uCD9C"
+  _length: 14
+  _width: 4
+  _activeSeconds: 1.4
+--- !u!114 &8532063875398675810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3082d46626c46234092b5722222ba370, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.StarBeamCue
+  _pattern: {fileID: 8532063875398675807}
+  _player: {fileID: 1784327369}
+  _origin: {fileID: 3877389632312224145}
+  _patternLabel: "2P P01 \uBCC4 \uBE54"
+  _ringRadius: 14
+  _vertexCount: 5
+  _connectStep: 2
+  _beamWidth: 1.5
+  _heightOffset: 2
+  _degreesPerSecond: 20
+  _rotatesRight: 1
+  _activeSeconds: 6
+  _stageCount: 0
+  _stageDegrees: 30
+  _stageIntervalSeconds: 0.8
+--- !u!114 &8532063875398675811
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3082d46626c46234092b5722222ba370, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.StarBeamCue
+  _pattern: {fileID: 8532063875398675807}
+  _player: {fileID: 1640867243}
+  _origin: {fileID: 3877389632312224145}
+  _patternLabel: "\uD558\uB4DC2P P01 \uB2E8\uACC4\uD615 \uBCC4 \uBE54"
+  _ringRadius: 14
+  _vertexCount: 5
+  _connectStep: 2
+  _beamWidth: 1.5
+  _heightOffset: 2
+  _degreesPerSecond: 20
+  _rotatesRight: 1
+  _activeSeconds: 0.8
+  _stageCount: 3
+  _stageDegrees: 30
+  _stageIntervalSeconds: 0.8
+--- !u!114 &8532063875398675812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3789ea5f76003be41be95a92f113c1c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.ParallelBeamCue
+  _pattern: {fileID: 8532063875398675807}
+  _player: {fileID: 1425765013}
+  _origin: {fileID: 3877389632312224145}
+  _patternLabel: "2P P02 \uACA9\uC790 \uBE54"
+  _arenaRadius: 18
+  _beamCount: 2
+  _lateralOffset: 5
+  _beamWidth: 2
+  _heightOffset: 2
+  _activeSeconds: 4
+--- !u!114 &8532063875398675813
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95232cc8bb459c840a93f6d41d10d868, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.GridBeamCue
+  _pattern: {fileID: 8532063875398675807}
+  _player: {fileID: 446099588}
+  _origin: {fileID: 3877389632312224145}
+  _patternLabel: "\uD558\uB4DC2P P02 \uC21C\uCC28 \uACA9\uC790 \uBE54"
+  _arenaRadius: 18
+  _lineCountPerAxis: 12
+  _lineSpacing: 3
+  _lineWidth: 3
+  _hitIntervalSeconds: 0.5
+  _turnIntervalSeconds: 1.5
+  _hitSeconds: 0.4
+  _heightOffset: 2
+--- !u!114 &8532063875398675814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be0ab97ee4e203b489074f89ad60e65f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WarpCue
+  _pattern: {fileID: 8532063875398675807}
+  _animator: {fileID: 7147051561535763435}
+  _bossRoot: {fileID: 897064309587222544}
+  _breakup: {fileID: 502948912}
+  _reform: {fileID: 1470890000}
+  _landing: {fileID: 1252190232}
+  _patternLabels:
+  - "2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C"
+  - "\uD558\uB4DC2P P07 \uC6CC\uD504 \uD6C4 \uCDA9\uACA9\uD30C"
+  _landingOffset: {x: 8, y: 0, z: 4}
+  _radius: 5
+  _breakupSeconds: 1
+  _reformSeconds: 1.15
+  _showSeconds: 1.4
+  _restoreSeconds: 2.5
+--- !u!114 &8532063875398675815
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b86de916c21b19744b4071a0e0070c29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.PatternVfxCandidates
+  _pattern: {fileID: 8532063875398675807}
+  _origin: {fileID: 3877389632312224145}
+  _groups:
+  - _title: "1P P05 \uC9C0\uC815 \uC704\uCE58 \uC7A5\uD310 (\uBC18\uACBD 3m, 6\uCD08)"
+    _patternLabel: "1P P05 \uC9C0\uC815 \uC704\uCE58 \uC7A5\uD310"
+    _spawnOnEveryStrike: 1
+    _candidates:
+    - _label: "Piloto \uCDA9\uACA9\uD30C \uB8E8\uD504"
+      _prefab: {fileID: 6324543892426623063, guid: c4a063dde832c1e40bdd6c726e377a69, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Piloto \uC800\uC8FC"
+      _prefab: {fileID: 2171842528694290003, guid: 44b92a1a15c4cf244b15a5b849dc143d, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Piloto \uC601\uD63C \uAF43"
+      _prefab: {fileID: 1738908033529176800, guid: 01a0dd37ff29c34488d2b73be01951b8, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Piloto \uC18C\uC6A9\uB3CC\uC774"
+      _prefab: {fileID: 8980452605197532111, guid: 4f3b758df26849a468e922df42f1e205, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Piloto \uB8EC \uB099\uD558"
+      _prefab: {fileID: 3192088472575271139, guid: 3357bcce39346144fa3ed028e61206e5, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Piloto \uC5D0\uB108\uC9C0 \uBC29\uCD9C \uB8E8\uD504"
+      _prefab: {fileID: 1735958253688742670, guid: b68982d798c62f6478f5599908487045, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Piloto \uD750\uB984"
+      _prefab: {fileID: 8358425798578516274, guid: 192e89d4123b7ab4a8d01c405888e989, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Piloto \uB3D4"
+      _prefab: {fileID: 6824548573856417009, guid: 0474d0c421ae4c243aa1f4528ba3ff0e, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "PixPlays \uBB3C \uAD11\uC5ED"
+      _prefab: {fileID: 96566848741554304, guid: 743d81eb82b906a46a44ee2e8c3f4eaf, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "PixPlays \uB300\uC9C0 \uC624\uB77C"
+      _prefab: {fileID: 6530448752386012335, guid: db8a26dbfe6511b4a86e870b66ca27b8, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "PixPlays \uBD88 \uC624\uB77C"
+      _prefab: {fileID: 2692375763741349971, guid: a047b1cf5e54c6b43a92f67dd966d4b1, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+    - _label: "Master \uC6D0"
+      _prefab: {fileID: 8512924350664263622, guid: f477aa498d145f14cb7d0386453be27d, type: 3}
+      _offset: {x: 0, y: 0.1, z: 8}
+      _eulerOffset: {x: 0, y: 0, z: 0}
+      _scale: 1
+      _lifetime: 7
+--- !u!114 &8532063875398675816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd01f004e73da974aafb0317dcfa40fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.FanBlastCue
+  _pattern: {fileID: 8532063875398675807}
+  _origin: {fileID: 3877389632312224145}
+  _prefab: {fileID: 3346786265420216650, guid: 27e72fed3f0b5c14babc12d0b81c0c98, type: 3}
+  _heightOffset: 2
+  _prefabYawOffset: 180
+  _lifetime: 4
+  _cues:
+  - _label: "1P P02 \uC804\uBC29 \uBD80\uCC44\uAF34"
+    _firstYaw: 0
+    _stepYaw: 0
+    _spreadYaws:
+    - -20
+    - 20
+    _scale: 3
+  - _label: "2P P03 \uBC18\uC6D4 \uD3ED\uBC1C"
+    _firstYaw: 22.5
+    _stepYaw: 45
+    _spreadYaws:
+    - 0
+    _scale: 3
+  - _label: "\uD558\uB4DC2P P03 \uC794\uB958 \uBD80\uCC44\uAF34 \uC5F0\uC1C4"
+    _firstYaw: 225
+    _stepYaw: 45
+    _spreadYaws:
+    - 0
+    _scale: 6
+--- !u!114 &8532063875398675817
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6933126e768b424dbcd70a0f86a1c58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.CircleBlastCue
+  _pattern: {fileID: 8532063875398675807}
+  _origin: {fileID: 3877389632312224145}
+  _prefab: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
+  _heightOffset: 0.1
+  _lifetime: 4
+  _referenceRadius: 5
+  _referenceScale: 1.92
+  _spotRadius: 3
+  _nearOffset: 5
+  _farOffset: 11
+  _cues:
+  - _label: "1P P03 \uC911\uC2EC \uC6D0\uD615 \uD3ED\uBC1C"
+    _bossRadius: 5
+    _includeSpots: 0
+    _scaleMultiplier: 1
+  - _label: "2P P06 \uC6D0\uD615 \uD3ED\uBC1C"
+    _bossRadius: 5
+    _includeSpots: 0
+    _scaleMultiplier: 1
+  - _label: "\uD558\uB4DC2P P06 \uC6D0\uD615 \uD3ED\uBC1C"
+    _bossRadius: 5.5
+    _includeSpots: 1
+    _scaleMultiplier: 0.8
+--- !u!114 &8532063875398675818
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5844467022049338236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4914f326a3ba41439ee2e1d0f96e983, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.ZoneCue
+  _pattern: {fileID: 8532063875398675807}
+  _origin: {fileID: 3877389632312224145}
+  _prefab: {fileID: 1526207556128958582, guid: 173b4366ef4cc864eb43fbc9ee03c34c, type: 3}
+  _heightOffset: 0.1
+  _cues:
+  - _label: "1P P05 \uC9C0\uC815 \uC704\uCE58 \uC7A5\uD310"
+    _scale: 1
+    _lifetime: 7
+    _offsets:
+    - {x: 0, y: 0, z: 8}
+  - _label: "2P P04 \uC7A5\uD310 \uC9C0\uC815"
+    _scale: 1
+    _lifetime: 7
+    _offsets:
+    - {x: -6, y: 0, z: 6}
+    - {x: 6, y: 0, z: 10}
+  - _label: "\uD558\uB4DC2P P04 \uC7A5\uD310 \uC9C0\uC815"
+    _scale: 2
+    _lifetime: 12
+    _offsets:
+    - {x: -8, y: 0, z: 4}
+    - {x: 8, y: 0, z: 8}
 --- !u!4 &8588145700449657011
 Transform:
   m_ObjectHideFlags: 0
@@ -119540,3 +121952,4 @@ SceneRoots:
   - {fileID: 772151166}
   - {fileID: 610557949}
   - {fileID: 4981267801410465468}
+  - {fileID: 1746286223}
