@@ -184,7 +184,7 @@ namespace Shinshi.Art
             _isShattered = false;
         }
 
-        /// <summary> 파괴 뒤 잠시 두었다가 파편을 서서히 투명하게 만들어 지운다 </summary>
+        /// <summary> 파괴 뒤 잠시 두었다가 파편을 서서히 투명하게 만들고 다 사라지면 석주를 지운다 </summary>
         private IEnumerator CoVanish()
         {
             yield return _vanishWait;
@@ -206,11 +206,11 @@ namespace Shinshi.Art
             _vanishRoutine = null;
         }
 
+        // 다 투명해지면 석주 오브젝트를 통째로 지운다. 천 바닥 구와 투명 재질 복사본은 OnDestroy에서 함께 정리한다
         private void FinishVanish()
         {
             _fadeTween = null;
-            _fragmentRoot.SetActive(false);
-            SwapMaterials(_solidSlots);
+            Destroy(gameObject);
         }
 
         /// <summary> 파편 렌더러마다 불투명 재질 배열과 반투명 재질 배열을 미리 만들어 둔다 </summary>

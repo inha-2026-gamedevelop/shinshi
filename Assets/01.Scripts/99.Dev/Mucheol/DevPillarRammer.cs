@@ -9,7 +9,7 @@ namespace Shinshi.Dev
 {
     /// <summary>
     /// 무철 보스 시험 씬에서 캡슐을 직접 몰아 석주에 부딪히면 부서지는 연출을 확인한다.
-    /// 키: WASD 이동, Left Shift 가속, R 석주 복구와 제자리 복귀
+    /// 키: WASD 이동, Left Shift 가속, R 남은 석주 복구와 제자리 복귀
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public sealed class DevPillarRammer : MonoBehaviour
@@ -119,9 +119,13 @@ namespace Shinshi.Dev
 
         private void ResetAll()
         {
+            // 다 사라져 지워진 석주는 되살릴 수 없으므로 남아 있는 것만 복구한다
             for (int i = 0; i < _pillars.Length; ++i)
             {
-                _pillars[i].ResetPillar();
+                if (_pillars[i] != null)
+                {
+                    _pillars[i].ResetPillar();
+                }
             }
 
             _lastHitCollider = null;
