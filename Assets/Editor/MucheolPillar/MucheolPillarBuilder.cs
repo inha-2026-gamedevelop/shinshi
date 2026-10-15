@@ -70,6 +70,7 @@ namespace Shinshi.Editor
             Material stone  = BuildStoneMaterial();
             Material banner = BuildBannerMaterial();
             GameObject prefab = BuildPrefab(stone, banner);
+            MucheolPillarShatterBuilder.Apply();
             PlacePillars(prefab);
 
             AssetDatabase.SaveAssets();
