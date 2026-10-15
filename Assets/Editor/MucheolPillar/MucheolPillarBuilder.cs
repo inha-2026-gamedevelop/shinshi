@@ -45,6 +45,14 @@ namespace Shinshi.Editor
         private const float WIND_AMPLITUDE    = 0.14f;
         private const float WIND_SPEED        = 1.4f;
         private const float WIND_FLUTTER      = 0.04f;
+        private const float WIND_DIR_X        = -0.57f;
+        private const float WIND_DIR_Z        = 0.82f;
+
+        private const string BANNER_NODE      = "SM_MucheolPillar_RedBanner";
+        private const float BANNER_OFFSET_X   = 0.24f;
+        private const float BANNER_OFFSET_Y   = 0.16f;
+        private const float BANNER_OFFSET_Z   = 0.71f;
+        private const float BANNER_YAW        = 290.52f;
 
         private static readonly string[] LOD_NAMES = { "High", "Medium", "Low" };
 
@@ -151,7 +159,7 @@ namespace Shinshi.Editor
             material.SetFloat("_WindAmplitude", WIND_AMPLITUDE);
             material.SetFloat("_WindSpeed", WIND_SPEED);
             material.SetFloat("_WindFlutter", WIND_FLUTTER);
-            material.SetVector("_WindDir", new Vector4(1f, 0.4f, 0f, 0f));
+            material.SetVector("_WindDir", new Vector4(WIND_DIR_X, WIND_DIR_Z, 0f, 0f));
             material.SetTexture("_BaseMap", Load("T_MucheolPillar_Banner_BaseColor.png"));
             material.SetColor("_BaseColor", Color.white);
             material.SetFloat("_Smoothness", BANNER_SMOOTHNESS);
@@ -194,6 +202,13 @@ namespace Shinshi.Editor
                 GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(ROOT + "/Models/SM_MucheolPillar_" + LOD_NAMES[i] + ".fbx");
                 GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(model, root.transform);
                 instance.name = "LOD" + i + "_" + LOD_NAMES[i];
+
+                Transform bannerNode = instance.transform.Find(BANNER_NODE);
+                if (bannerNode != null)
+                {
+                    bannerNode.localPosition = new Vector3(BANNER_OFFSET_X, BANNER_OFFSET_Y, BANNER_OFFSET_Z);
+                    bannerNode.localRotation = Quaternion.Euler(0f, BANNER_YAW, 0f);
+                }
 
                 Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
                 for (int r = 0; r < renderers.Length; r++)
