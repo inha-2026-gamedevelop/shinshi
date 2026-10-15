@@ -116,6 +116,8 @@ namespace Shinshi.AI
             [FormerlySerializedAs("slowSpeed")]
             [SerializeField] private float _slowSpeed;
 
+            [SerializeField] private bool _isConfirmed;
+
             public string Label              => _label;
             public string StateName          => _stateName;
             public float  StrikeSeconds      => _strikeSeconds;
@@ -134,6 +136,7 @@ namespace Shinshi.AI
             public float  SlowFromClip       => _slowFromClip;
             public float  SlowToClip         => _slowToClip;
             public float  SlowSpeed          => _slowSpeed;
+            public bool   IsConfirmed        => _isConfirmed;
 
             public float TotalSeconds => _strikeSeconds + ((Shots - 1) * _shotInterval) + _recoverySeconds;
         }
@@ -158,6 +161,16 @@ namespace Shinshi.AI
         private Entry     _current;
 
         /****************************************
+        *              Properties
+        ****************************************/
+
+        /// <summary> 서버 판정 시각마다 패턴 라벨과 몇 번째 판정인지(0부터)를 알린다 </summary>
+        public event Action<string, int> Struck;
+
+        /// <summary> 패턴이 시작될 때 패턴 라벨과 첫 판정까지의 시간(초)을 알린다 </summary>
+        public event Action<string, float> Started;
+
+        /****************************************
         *              Unity Event
         ****************************************/
 
@@ -176,14 +189,14 @@ namespace Shinshi.AI
 
             for (int i = 0; i < _entries.Length; ++i)
             {
+                if (_entries[i].IsConfirmed)
+                {
+                    continue;
+                }
+
                 if (GUI.Button(new Rect(x, y, BUTTON_WIDTH, BUTTON_HEIGHT), _entries[i].Label))
                 {
-                    if (_running != null)
-                    {
-                        StopCoroutine(_running);
-                    }
-
-                    _running = StartCoroutine(Play(_entries[i]));
+                    StartEntry(_entries[i]);
                 }
 
                 y += BUTTON_STEP;
@@ -196,6 +209,50 @@ namespace Shinshi.AI
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 라벨이 같은 패턴을 확정한 타이밍으로 재생하고, 없으면 false를 돌려준다 </summary>
+        public bool PlayByLabel(string label)
+        {
+            if (_entries == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _entries.Length; ++i)
+            {
+                if (_entries[i].Label == label)
+                {
+                    StartEntry(_entries[i]);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary> 재생 중인 패턴을 멈추고 재생 속도를 되돌린다 </summary>
+        public void StopPlaying()
+        {
+            if (_running == null)
+            {
+                return;
+            }
+
+            StopCoroutine(_running);
+            _running = null;
+            _current = null;
+            _animator.speed = 1f;
+        }
+
+        private void StartEntry(Entry entry)
+        {
+            if (_running != null)
+            {
+                StopCoroutine(_running);
+            }
+
+            _running = StartCoroutine(Play(entry));
+        }
 
         private void DrawStatus(float x, float y)
         {
@@ -283,6 +340,7 @@ namespace Shinshi.AI
             _status = BuildStatus(entry, speed, delay);
 
             _patternStart = Time.time;
+            Started?.Invoke(entry.Label, entry.StrikeSeconds);
             float firstStrike = _patternStart + entry.StrikeSeconds;
             float end         = _patternStart + entry.TotalSeconds;
 
@@ -314,6 +372,7 @@ namespace Shinshi.AI
                 if ((nextFlash < entry.Shots) && (Time.time >= (firstStrike + (nextFlash * entry.ShotInterval))))
                 {
                     _flashUntil = Time.time + _flashSeconds;
+                    Struck?.Invoke(entry.Label, nextFlash);
                     ++nextFlash;
                 }
 
