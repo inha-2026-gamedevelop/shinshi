@@ -44,6 +44,10 @@ namespace Shinshi.Network
 
         public bool IsActive { get; internal set; }
 
+        // 마을이 던전 입장권을 보낸 참가자다. 이 연결이 끊겨도 마을은 계정 접속 임대를 풀지 않는다. 던전이 이관 경로로 옮기고,
+        // 이관되지 않으면 heartbeat 만료로 풀린다. 먼저 풀면 던전의 이관이 SESSION_MISMATCH로 거절된다
+        public bool IsDeparting { get; set; }
+
         // 둘 다 ServerSessionRegistry가 결합을 만든 직후 토큰 내용(JoinTokenClaims)에서 넣고 이후 바꾸지 않는다.
         // 계정 ID는 마을 입장 교환만 준다(생활, 준비 확인, 출정 예약에 쓴다). 던전과 개발 토큰은 null이다
         public string AccountId   { get; internal set; }

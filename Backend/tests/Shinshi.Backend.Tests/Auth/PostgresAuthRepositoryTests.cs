@@ -12,6 +12,7 @@ using Xunit;
 // Project
 using Shinshi.Contracts;
 using Shinshi.Data.Auth;
+using Shinshi.Data.Growth;
 using Shinshi.Data.Sessions;
 
 namespace Shinshi.Backend.Tests.Auth
@@ -466,6 +467,7 @@ namespace Shinshi.Backend.Tests.Auth
         }
         private static async Task<Fixture> CreateFixtureAsync(PostgresTestDatabase database)
         {
+            GrowthContent content = GrowthContent.LoadEmbedded();
             AuthTokenOptions options = AuthTokenHasherTests.CreateOptions();
             Fixture fixture = new Fixture(new PostgresAuthRepository(database.DataSource, options), options);
             await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
@@ -474,11 +476,11 @@ namespace Shinshi.Backend.Tests.Auth
                 INSERT INTO accounts(account_id) VALUES (@AccountId);
                 INSERT INTO characters(character_id,account_id,class_id) VALUES (@CharacterId,@AccountId,@Class);
                 INSERT INTO server_instances(instance_id,role,address,port,build_id,content_version,state)
-                    VALUES (@InstanceId,@Role,'127.0.0.1',7780,'auth-test','0.1.2','Reserved');
+                    VALUES (@InstanceId,@Role,'127.0.0.1',7780,'auth-test',@ContentVersion,'Reserved');
                 INSERT INTO server_instances(instance_id,role,address,port,build_id,content_version,state)
-                    VALUES (@TownInstanceId,@Town,'127.0.0.1',7777,'auth-test','0.1.2','Idle');
+                    VALUES (@TownInstanceId,@Town,'127.0.0.1',7777,'auth-test',@ContentVersion,'Idle');
                 """, new { fixture.AccountId, fixture.CharacterId, fixture.InstanceId, fixture.TownInstanceId, Town = ContractCodes.ServerRole.TOWN,
-                    Class = ContractCodes.PlayerClass.WARRIOR, Role = ContractCodes.ServerRole.DUNGEON });
+                    Class = ContractCodes.PlayerClass.WARRIOR, Role = ContractCodes.ServerRole.DUNGEON, content.ContentVersion });
             fixture.TownLease = await fixture.Repository.IssueServerLeaseAsync(Guid.NewGuid(), fixture.TownInstanceId,
                 ContractCodes.ServerRole.TOWN, TimeSpan.FromMinutes(SERVER_DURATION_MINUTES));
             fixture.ServerLease = await fixture.Repository.IssueServerLeaseAsync(Guid.NewGuid(), fixture.InstanceId,
@@ -487,11 +489,11 @@ namespace Shinshi.Backend.Tests.Auth
                 """
                 INSERT INTO game_sessions(session_id,mode,map_id,state,starting_count,content_version,instance_id,server_lease,
                     expires_at,reserved_by_instance_id,experience_settings)
-                    VALUES (@SessionId,'Normal','region_forest','Reserved',1,'0.1.2',@InstanceId,@LeaseId,
+                    VALUES (@SessionId,'Normal','region_forest','Reserved',1,@ContentVersion,@InstanceId,@LeaseId,
                         clock_timestamp() + interval '150 seconds',@TownInstanceId,CAST(@ExperienceSettings AS jsonb));
                 INSERT INTO session_participants(session_id,participant_id,account_id,character_id,state)
                     VALUES (@SessionId,@ParticipantId,@AccountId,@CharacterId,'Reserved');
-                """, new { fixture.SessionId, fixture.InstanceId, fixture.TownInstanceId, fixture.ParticipantId, fixture.AccountId, fixture.CharacterId, LeaseId = fixture.ServerLease.TokenId, ExperienceSettings = Newtonsoft.Json.JsonConvert.SerializeObject(Shinshi.Data.Growth.GrowthContent.LoadEmbedded().CharacterLevel) });
+                """, new { fixture.SessionId, fixture.InstanceId, fixture.TownInstanceId, fixture.ParticipantId, fixture.AccountId, fixture.CharacterId, LeaseId = fixture.ServerLease.TokenId, content.ContentVersion, ExperienceSettings = Newtonsoft.Json.JsonConvert.SerializeObject(content.CharacterLevel) });
             return fixture;
         }
 

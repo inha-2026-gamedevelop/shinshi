@@ -31,7 +31,7 @@ namespace Shinshi.Backend.Tests.Growth
         [Fact]
         public void LoadEmbedded_AssetValues_MatchDesignTables()
         {
-            Assert.Equal("0.1.2", G_Content.ContentVersion);
+            Assert.Equal("0.1.3", G_Content.ContentVersion);
             Assert.Equal(30, G_Content.Equipment.Definitions.Length);
             Assert.Equal(90, G_Content.Talismans.Effects.Length);
             Assert.Equal(15, G_Content.Talismans.Effects.Count(effect => effect.PlayerClass == ContractCodes.PlayerClass.WARRIOR));
@@ -375,11 +375,11 @@ namespace Shinshi.Backend.Tests.Growth
             Assert.True(forest.Unlocked);
             Assert.True(forest.Cleared);
 
-            // 정식판은 체험판 선해금이 없어 흔적 3개와 철각 하드 처치가 필요하다
+            // 정식판은 체험판 선해금이 없어 흔적 3개와 무철 하드 처치가 필요하다
             Assert.False(ProgressionRules.BossBattles(G_Content, EGrowthContentProfile.Standard, intro)
                 .Single(view => view.TargetId == "battle_wolbaek_easy").Unlocked);
             AccountProgressState veteran = new AccountProgressState(true, 3, 2,
-                new[] { (EAccountProgressKind.BattleCleared, "battle_cheolgak_hard") });
+                new[] { (EAccountProgressKind.BattleCleared, "battle_mucheol_hard") });
             Assert.True(ProgressionRules.BossBattles(G_Content, EGrowthContentProfile.Standard, veteran)
                 .Single(view => view.TargetId == "battle_wolbaek_easy").Unlocked);
         }

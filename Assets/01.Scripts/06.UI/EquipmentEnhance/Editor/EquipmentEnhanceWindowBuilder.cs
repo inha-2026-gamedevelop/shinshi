@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 // System
 using System;
 using System.IO;
@@ -16,6 +16,7 @@ using TMPro;
 // 프로젝트 내부
 using Shinshi.Data;
 using Shinshi.UI;
+using Shinshi.UI.Editor;
 
 namespace Shinshi.Editor
 {
@@ -32,8 +33,8 @@ namespace Shinshi.Editor
         private const string CATALOG_PATH   = "Assets/09.Data/Growth/EquipmentCatalog.asset";
         private const string SKIN_FOLDER    = "Assets/01.Scripts/05.Art/UI/GameStyle/Textures/";
         private const string ICON_FOLDER    = "Assets/01.Scripts/05.Art/UI/Icons/Textures/";
-        private const string ESSENCE_ICON   = ICON_FOLDER + "Currency/T_Icon_Currency_Essence_White.png";
-        private const string SHARD_ICON     = ICON_FOLDER + "T_Icon_item_refine_shard.png";
+        private const string ESSENCE_ICON   = ICON_FOLDER + "Items64/T_Item64_item_essence.png";
+        private const string SHARD_ICON     = ICON_FOLDER + "Items64/T_Item64_item_refine_shard.png";
         private const string CHEVRON_ICON   = SKIN_FOLDER + "T_UiIcon_Chevron.png";
 
         // 셰브런 원본은 아래를 가리킨다. 오른쪽(현재 -> 강화 후)을 가리키도록 돌린다
@@ -53,19 +54,19 @@ namespace Shinshi.Editor
 
         private const float LEFT_X      = 24f;
         private const float LEFT_Y      = 96f;
-        private const float LEFT_WIDTH  = 372f;
+        private const float LEFT_WIDTH  = 216f;
         private const float LEFT_HEIGHT = 596f;
 
-        private const float RIGHT_X      = 416f;
+        private const float RIGHT_X      = 260f;
         private const float RIGHT_Y      = 96f;
-        private const float RIGHT_WIDTH  = 700f;
+        private const float RIGHT_WIDTH  = 856f;
         private const float RIGHT_HEIGHT = 596f;
 
         private const float ROW_TOP    = 60f;
-        private const float ROW_HEIGHT = 64f;
+        private const float ROW_HEIGHT = 72f;
         private const float ROW_GAP    = 7f;
 
-        private const float STAT_TOP      = 346f;
+        private const float STAT_TOP      = 334f;
         private const float STAT_ROW_STEP = 30f;
 
         private const float REFERENCE_WIDTH       = 1920f;
@@ -75,19 +76,18 @@ namespace Shinshi.Editor
         private const int SLOT_COUNT     = 6;
         private const int STAT_ROW_COUNT = 3;
 
-        private static readonly Color G_Window  = new Color(0.065f, 0.083f, 0.102f, 1f);
-        private static readonly Color G_Control = new Color(0.055f, 0.075f, 0.095f, 1f);
-        private static readonly Color G_Row     = new Color(0.085f, 0.105f, 0.13f, 1f);
-        private static readonly Color G_Border  = new Color(0.29f, 0.32f, 0.34f, 1f);
-        private static readonly Color G_Gold    = new Color(0.68f, 0.6f, 0.43f, 1f);
-        private static readonly Color G_Accent  = new Color(0.84f, 0.75f, 0.57f, 1f);
-        private static readonly Color G_Text    = new Color(0.9f, 0.92f, 0.92f, 1f);
-        private static readonly Color G_Muted   = new Color(0.64f, 0.69f, 0.71f, 1f);
+        private static readonly Color G_Window  = EquipmentGrowthStyle.Canvas;
+        private static readonly Color G_Control = EquipmentGrowthStyle.Canvas;
+        private static readonly Color G_Row     = EquipmentGrowthStyle.Panel;
+        private static readonly Color G_Border  = EquipmentGrowthStyle.Border;
+        private static readonly Color G_Gold    = EquipmentGrowthStyle.Gold;
+        private static readonly Color G_Accent  = EquipmentGrowthStyle.Mint;
+        private static readonly Color G_Text    = EquipmentGrowthStyle.Text;
+        private static readonly Color G_Muted   = EquipmentGrowthStyle.Muted;
         private static readonly Color G_Shade   = new Color(0.02f, 0.03f, 0.04f, 0.95f);
 
         // EEquipmentSlot, EItemGrade 순서
         private static readonly string[] G_SlotKeys   = { "Weapon", "Head", "Body", "Hands", "Feet", "Accessory" };
-        private static readonly string[] G_SlotIcons  = { "weapon", "head", "body", "hands", "feet", "accessory" };
         private static readonly string[] G_GradeSkins = { "Common", "Rare", "Epic", "Legendary" };
 
         private static TMP_FontAsset        G_Regular;
@@ -138,6 +138,7 @@ namespace Shinshi.Editor
             G_View = window.gameObject.AddComponent<EquipmentEnhanceView>();
 
             BuildFrame(window);
+            EquipmentGrowthStyle.Finish(window, G_Gold);
             BuildHeader(window);
             BuildLeftPanel(window);
             RectTransform right = BuildRightPanel(window);
@@ -169,6 +170,45 @@ namespace Shinshi.Editor
         *               Validation
         ****************************************/
 
+        /// <summary> 활성 씬과 공유 폰트를 저장하지 않고 프리팹만 갱신한다 </summary>
+        public static string BuildPrefabOnly()
+        {
+            if (EditorApplication.isPlaying)
+            {
+                throw new InvalidOperationException("장비 강화 창 제작은 편집 모드에서 실행한다");
+            }
+
+            G_Regular = LoadAsset<TMP_FontAsset>(REGULAR_FONT_PATH);
+            G_Bold    = LoadAsset<TMP_FontAsset>(BOLD_FONT_PATH);
+            UnityEngine.SceneManagement.Scene preview = EditorSceneManager.NewPreviewScene();
+            GameObject temporary = new GameObject("EquipmentEnhancePrefabBuild", typeof(RectTransform));
+            UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(temporary, preview);
+            try
+            {
+                RectTransform window = Rect((RectTransform)temporary.transform, ROOT_NAME, 0f, 0f, WINDOW_WIDTH, WINDOW_HEIGHT);
+                window.anchorMin = window.anchorMax = window.pivot = new Vector2(0.5f, 0.5f);
+                window.anchoredPosition = Vector2.zero;
+                window.gameObject.SetActive(false);
+                G_View = window.gameObject.AddComponent<EquipmentEnhanceView>();
+                BuildFrame(window);
+                EquipmentGrowthStyle.Finish(window, G_Gold);
+                BuildHeader(window);
+                BuildLeftPanel(window);
+                RectTransform right = BuildRightPanel(window);
+                BuildResultOverlay(right);
+                AssignSprites();
+                window.gameObject.SetActive(true);
+                EnsureFolder(PREFAB_FOLDER);
+                PrefabUtility.SaveAsPrefabAsset(window.gameObject, PREFAB_PATH);
+                return PREFAB_PATH;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(temporary);
+                EditorSceneManager.ClosePreviewScene(preview);
+                G_View = null;
+            }
+        }
         private static void ValidateContext()
         {
             if (EditorApplication.isPlaying)
@@ -208,13 +248,13 @@ namespace Shinshi.Editor
 
             Image background = Panel(window, "Background", 0f, 0f, WINDOW_WIDTH, WINDOW_HEIGHT, G_Window);
             background.raycastTarget = true;
-            Skin(background, "T_UiWindow_Frame", Color.white);
+            EquipmentGrowthStyle.Surface(background, G_Window);
         }
 
         private static void BuildHeader(RectTransform window)
         {
             Image header = Panel(window, "HeaderSurface", 1f, 1f, WINDOW_WIDTH - 2f, HEADER_HEIGHT - 1f, Color.white);
-            Skin(header, "T_UiWindow_TitleBar", new Color(0.7f, 0.8f, 0.9f, 0.8f));
+            EquipmentGrowthStyle.Surface(header, EquipmentGrowthStyle.Panel);
 
             Text(Rect(window, "Title", 32f, 20f, 200f, 32f), "장비 강화", 30f, G_Text, true, TextAlignmentOptions.Left);
             Text(Rect(window, "Subtitle", 200f, 30f, 260f, 20f), "장인 담우의 대장간", 14f, G_Muted, false, TextAlignmentOptions.Left);
@@ -242,8 +282,8 @@ namespace Shinshi.Editor
         private static void BuildLeftPanel(RectTransform window)
         {
             RectTransform panel = InsetPanel(window, "LeftPanel", LEFT_X, LEFT_Y, LEFT_WIDTH, LEFT_HEIGHT);
-            Text(Rect(panel, "LeftTitle", 20f, 18f, 200f, 26f), "착용 장비", 20f, G_Gold, true, TextAlignmentOptions.Left);
-            Text(Rect(panel, "LeftHint", 180f, 22f, 172f, 20f), "부위를 눌러 선택", 13f, G_Muted, false, TextAlignmentOptions.Right);
+            Text(Rect(panel, "LeftTitle", 16f, 14f, 180f, 24f), "착용 장비", 20f, G_Gold, true, TextAlignmentOptions.Left);
+            Text(Rect(panel, "LeftHint", 16f, 38f, 180f, 18f), "부위를 눌러 선택", 12f, G_Muted, false, TextAlignmentOptions.Left);
 
             var buttons    = new Button[SLOT_COUNT];
             var frames     = new Image[SLOT_COUNT];
@@ -251,13 +291,13 @@ namespace Shinshi.Editor
             var names      = new TMP_Text[SLOT_COUNT];
             var levels     = new TMP_Text[SLOT_COUNT];
             var selections = new GameObject[SLOT_COUNT];
-            float rowWidth = LEFT_WIDTH - 40f;
+            float rowWidth = LEFT_WIDTH - 24f;
             for (int i = 0; i < SLOT_COUNT; ++i)
             {
                 float y = ROW_TOP + ((ROW_HEIGHT + ROW_GAP) * i);
-                RectTransform row = Rect(panel, "Slot" + G_SlotKeys[i], 20f, y, rowWidth, ROW_HEIGHT);
+                RectTransform row = Rect(panel, "Slot" + G_SlotKeys[i], 12f, y, rowWidth, ROW_HEIGHT);
                 Image rowImage = row.gameObject.AddComponent<Image>();
-                rowImage.color = G_Row;
+                EquipmentGrowthStyle.Surface(rowImage, G_Row);
                 Button button = row.gameObject.AddComponent<Button>();
                 button.targetGraphic = rowImage;
                 button.transition    = Selectable.Transition.None;
@@ -265,18 +305,19 @@ namespace Shinshi.Editor
                 AddFeedback(row.gameObject, rowImage, G_Row);
 
                 Image selection = Rect(row, "Selection", 0f, 0f, rowWidth, ROW_HEIGHT).gameObject.AddComponent<Image>();
-                Skin(selection, "T_UiSelect_Outline", G_Accent);
+                EquipmentGrowthStyle.Surface(selection, new Color(G_Accent.r, G_Accent.g, G_Accent.b, 0.28f));
+                Panel((RectTransform)selection.transform, "SelectionAccent", 0f, 8f, 4f, ROW_HEIGHT - 16f, G_Accent);
                 selection.raycastTarget = false;
 
-                Image frame = Rect(row, "GradeFrame", 8f, 6f, 52f, 52f).gameObject.AddComponent<Image>();
+                Image frame = Rect(row, "GradeFrame", 8f, 9f, 54f, 54f).gameObject.AddComponent<Image>();
                 frame.raycastTarget = false;
-                Image icon = Rect((RectTransform)frame.transform, "Icon", 6f, 6f, 40f, 40f).gameObject.AddComponent<Image>();
+                Image icon = Rect((RectTransform)frame.transform, "Icon", 4f, 4f, 46f, 46f).gameObject.AddComponent<Image>();
                 icon.preserveAspect = true;
                 icon.raycastTarget  = false;
 
-                TMP_Text name  = Text(Rect(row, "Name", 74f, 12f, 190f, 40f), string.Empty, 17f, G_Text, true, TextAlignmentOptions.Left);
-                TMP_Text level = Text(Rect(row, "Level", rowWidth - 82f, 12f, 70f, 40f), string.Empty, 22f, G_Accent, true,
-                    TextAlignmentOptions.Right);
+                TMP_Text name  = Text(Rect(row, "Name", 70f, 6f, 112f, 38f), string.Empty, 14f, G_Text, true, TextAlignmentOptions.Left);
+                TMP_Text level = Text(Rect(row, "Level", 70f, 45f, 112f, 22f), string.Empty, 22f, G_Accent, true,
+                    TextAlignmentOptions.Left);
 
                 buttons[i]    = button;
                 frames[i]     = frame;
@@ -286,9 +327,7 @@ namespace Shinshi.Editor
                 selections[i] = selection.gameObject;
             }
 
-            Panel(panel, "FooterDivider", 20f, 494f, rowWidth, 1f, G_Border);
-            TMP_Text essence = Balance(panel, "Essence", 510f, ESSENCE_ICON, "보유 정기");
-            TMP_Text shard   = Balance(panel, "Shard", 548f, SHARD_ICON, "보유 정련편");
+            Text(Rect(panel, "FooterCaption", 16f, 548f, LEFT_WIDTH - 32f, 28f), "장비 성장 / 강화", 13f, G_Muted, false, TextAlignmentOptions.Left);
 
             SetReference(G_View, "_slotButtons", buttons);
             SetReference(G_View, "_slotFrames", frames);
@@ -296,19 +335,6 @@ namespace Shinshi.Editor
             SetReference(G_View, "_slotNameTexts", names);
             SetReference(G_View, "_slotLevelTexts", levels);
             SetReference(G_View, "_slotSelections", selections);
-            SetReference(G_View, "_essenceText", essence);
-            SetReference(G_View, "_shardText", shard);
-        }
-
-        private static TMP_Text Balance(RectTransform panel, string key, float y, string iconPath, string caption)
-        {
-            Image icon = Rect(panel, key + "Icon", 20f, y, 28f, 30f).gameObject.AddComponent<Image>();
-            icon.sprite         = LoadAsset<Sprite>(iconPath);
-            icon.color          = G_Accent;
-            icon.preserveAspect = true;
-            icon.raycastTarget  = false;
-            Text(Rect(panel, key + "Caption", 58f, y, 140f, 30f), caption, 16f, G_Muted, false, TextAlignmentOptions.Left);
-            return Text(Rect(panel, key + "Text", 180f, y, 172f, 30f), string.Empty, 22f, G_Gold, true, TextAlignmentOptions.Right);
         }
 
         /****************************************
@@ -317,39 +343,36 @@ namespace Shinshi.Editor
 
         private static RectTransform BuildRightPanel(RectTransform window)
         {
-            RectTransform panel = InsetPanel(window, "RightPanel", RIGHT_X, RIGHT_Y, RIGHT_WIDTH, RIGHT_HEIGHT);
+            RectTransform panel = Rect(window, "RightPanel", RIGHT_X, RIGHT_Y, RIGHT_WIDTH, RIGHT_HEIGHT);
+            EquipmentGrowthStyle.Card(panel, "ItemSurface", 0f, 0f, RIGHT_WIDTH, 84f, EquipmentGrowthStyle.Panel);
+            EquipmentGrowthStyle.Card(panel, "ForgeSurface", 0f, 96f, 420f, 326f, G_Control);
+            EquipmentGrowthStyle.Card(panel, "PreviewSurface", 432f, 96f, 424f, 326f, EquipmentGrowthStyle.Panel);
+            EquipmentGrowthStyle.Orbit(panel, "ForgeOrbit", 72f, 130f, 276f, G_Gold);
+            EquipmentGrowthStyle.Icon(panel, "ForgeArtwork", "Assets/01.Scripts/05.Art/UI/EquipmentGrowth/Textures/T_EquipmentGrowth_Forge.png",
+                96f, 142f, 228f, Color.white);
+            Text(Rect(panel, "ForgeCaption", 48f, 106f, 324f, 24f), "장비 강화", 14f, G_Gold, true);
+            Text(Rect(panel, "ForgeHint", 48f, 402f, 324f, 18f), "실패해도 강화 단계는 유지됩니다", 12f, G_Muted);
             BuildItemBlock(panel);
-            Panel(panel, "DividerItem", 28f, 148f, RIGHT_WIDTH - 56f, 1f, G_Border);
             BuildRateBlock(panel);
-            Panel(panel, "DividerRate", 28f, 304f, RIGHT_WIDTH - 56f, 1f, G_Border);
             BuildStatBlock(panel);
-            Panel(panel, "DividerStat", 28f, 446f, RIGHT_WIDTH - 56f, 1f, G_Border);
             BuildCostBlock(panel);
             return panel;
         }
 
         private static void BuildItemBlock(RectTransform panel)
         {
-            RectTransform glow = Rect(panel, "ItemGlow", 4f, -4f, 152f, 152f);
-            Image glowImage = glow.gameObject.AddComponent<Image>();
-            glowImage.sprite        = LoadAsset<Sprite>(SKIN_FOLDER + "T_UiFx_Glow.png");
-            glowImage.color         = new Color(G_Gold.r, G_Gold.g, G_Gold.b, 0.22f);
-            glowImage.raycastTarget = false;
-
-            Image frame = Rect(panel, "ItemFrame", 28f, 20f, 104f, 104f).gameObject.AddComponent<Image>();
+            Image frame = Rect(panel, "ItemFrame", 14f, 10f, 64f, 64f).gameObject.AddComponent<Image>();
             frame.raycastTarget = false;
-            Border((RectTransform)frame.transform, new Color(G_Gold.r, G_Gold.g, G_Gold.b, 0.6f), 1f);
-            Image icon = Rect((RectTransform)frame.transform, "Icon", 14f, 14f, 76f, 76f).gameObject.AddComponent<Image>();
+            Image icon = Rect((RectTransform)frame.transform, "Icon", 4f, 4f, 56f, 56f).gameObject.AddComponent<Image>();
             icon.preserveAspect = true;
             icon.raycastTarget  = false;
-
-            TMP_Text name  = Text(Rect(panel, "ItemName", 152f, 34f, 290f, 36f), string.Empty, 26f, G_Text, true, TextAlignmentOptions.Left);
-            TMP_Text grade = Text(Rect(panel, "ItemGrade", 152f, 76f, 290f, 22f), string.Empty, 15f, G_Muted, false, TextAlignmentOptions.Left);
-
-            TMP_Text from = Text(Rect(panel, "LevelFrom", 440f, 44f, 92f, 56f), string.Empty, 34f, G_Muted, true, TextAlignmentOptions.Right);
-            GameObject arrow = Arrow(panel, "LevelArrow", 540f, 56f, 32f);
-            TMP_Text to = Text(Rect(panel, "LevelTo", 580f, 40f, 100f, 64f), string.Empty, 44f, G_Accent, true, TextAlignmentOptions.Left);
-
+            TMP_Text name  = Text(Rect(panel, "ItemName", 96f, 10f, 470f, 32f), string.Empty, 26f, G_Text, true, TextAlignmentOptions.Left);
+            EquipmentGrowthStyle.Card(panel, "GradeBadge", 96f, 44f, 388f, 30f, Color.Lerp(G_Control, G_Gold, 0.12f));
+            EquipmentGrowthStyle.Card(panel, "StageBadge", 598f, 18f, 238f, 48f, Color.Lerp(G_Control, G_Gold, 0.12f));
+            TMP_Text grade = Text(Rect(panel, "ItemGrade", 108f, 48f, 360f, 22f), string.Empty, 15f, G_Muted, false, TextAlignmentOptions.Left);
+            TMP_Text from = Text(Rect(panel, "LevelFrom", 612f, 22f, 80f, 40f), string.Empty, 30f, G_Muted, true, TextAlignmentOptions.Right);
+            GameObject arrow = Arrow(panel, "LevelArrow", 704f, 30f, 24f);
+            TMP_Text to = Text(Rect(panel, "LevelTo", 744f, 20f, 80f, 44f), string.Empty, 34f, G_Gold, true, TextAlignmentOptions.Left);
             SetReference(G_View, "_itemFrame", frame);
             SetReference(G_View, "_itemIcon", icon);
             SetReference(G_View, "_itemNameText", name);
@@ -361,21 +384,18 @@ namespace Shinshi.Editor
 
         private static void BuildRateBlock(RectTransform panel)
         {
-            TMP_Text caption = Text(Rect(panel, "RateCaption", 28f, 166f, 270f, 22f), string.Empty, 15f, G_Muted, false, TextAlignmentOptions.Left);
-            TMP_Text rate    = Text(Rect(panel, "RateText", 28f, 188f, 270f, 96f), string.Empty, 64f, G_Text, true, TextAlignmentOptions.Left);
-
-            Text(Rect(panel, "PityTitle", 320f, 172f, 352f, 24f), "실패 보정", 17f, G_Gold, true, TextAlignmentOptions.Left);
-            Image gaugeFrame = Panel(panel, "PityGaugeFrame", 320f, 206f, 352f, 20f, Color.white);
-            Skin(gaugeFrame, "T_UiGauge_Frame", new Color(0.75f, 0.8f, 0.85f, 0.9f));
-            Image fill = Rect((RectTransform)gaugeFrame.transform, "Fill", 4f, 4f, 344f, 12f).gameObject.AddComponent<Image>();
+            TMP_Text caption = Text(Rect(panel, "RateCaption", 452f, 112f, 384f, 22f), string.Empty, 15f, G_Muted, false, TextAlignmentOptions.Left);
+            TMP_Text rate    = Text(Rect(panel, "RateText", 452f, 140f, 384f, 56f), string.Empty, 42f, G_Accent, true, TextAlignmentOptions.Left);
+            Text(Rect(panel, "PityTitle", 452f, 210f, 384f, 24f), "실패 보정", 16f, G_Gold, true, TextAlignmentOptions.Left);
+            Image gaugeFrame = Panel(panel, "PityGaugeFrame", 452f, 242f, 384f, 10f, G_Control);
+            Image fill = Rect((RectTransform)gaugeFrame.transform, "Fill", 0f, 0f, 384f, 10f).gameObject.AddComponent<Image>();
             fill.sprite        = LoadAsset<Sprite>(SKIN_FOLDER + "T_UiGauge_Fill.png");
             fill.type          = Image.Type.Filled;
             fill.fillMethod    = Image.FillMethod.Horizontal;
             fill.fillOrigin    = (int)Image.OriginHorizontal.Left;
-            fill.color         = G_Accent;
+            fill.color         = G_Gold;
             fill.raycastTarget = false;
-            TMP_Text pity = Text(Rect(panel, "PityText", 320f, 236f, 352f, 52f), string.Empty, 15f, G_Muted, false, TextAlignmentOptions.TopLeft);
-
+            TMP_Text pity = Text(Rect(panel, "PityText", 452f, 260f, 384f, 48f), string.Empty, 13f, G_Muted, false, TextAlignmentOptions.TopLeft);
             SetReference(G_View, "_rateCaption", caption);
             SetReference(G_View, "_rateText", rate);
             SetReference(G_View, "_pityFill", fill);
@@ -384,9 +404,9 @@ namespace Shinshi.Editor
 
         private static void BuildStatBlock(RectTransform panel)
         {
-            Text(Rect(panel, "StatTitle", 28f, 316f, 200f, 24f), "장비 능력치", 17f, G_Gold, true, TextAlignmentOptions.Left);
-            Text(Rect(panel, "StatBeforeCaption", 200f, 318f, 120f, 20f), "현재", 13f, G_Muted, false, TextAlignmentOptions.Right);
-            Text(Rect(panel, "StatAfterCaption", 380f, 318f, 160f, 20f), "강화 후", 13f, G_Muted, false, TextAlignmentOptions.Left);
+            Text(Rect(panel, "StatTitle", 452f, 308f, 180f, 22f), "능력치 미리보기", 15f, G_Gold, true, TextAlignmentOptions.Left);
+            Text(Rect(panel, "StatBeforeCaption", 618f, 308f, 90f, 20f), "현재", 13f, G_Muted, false, TextAlignmentOptions.Right);
+            Text(Rect(panel, "StatAfterCaption", 754f, 308f, 80f, 20f), "강화 후", 13f, G_Muted, false, TextAlignmentOptions.Left);
 
             var rows    = new GameObject[STAT_ROW_COUNT];
             var names   = new TMP_Text[STAT_ROW_COUNT];
@@ -395,11 +415,11 @@ namespace Shinshi.Editor
             var arrows  = new GameObject[STAT_ROW_COUNT];
             for (int i = 0; i < STAT_ROW_COUNT; ++i)
             {
-                RectTransform row = Rect(panel, "StatRow" + i, 28f, STAT_TOP + (STAT_ROW_STEP * i), RIGHT_WIDTH - 56f, 28f);
-                names[i]   = Text(Rect(row, "Name", 0f, 0f, 150f, 28f), string.Empty, 17f, G_Muted, false, TextAlignmentOptions.Left);
-                befores[i] = Text(Rect(row, "Before", 172f, 0f, 120f, 28f), string.Empty, 18f, G_Text, false, TextAlignmentOptions.Right);
-                arrows[i]  = Arrow(row, "Arrow", 310f, 4f, 20f);
-                afters[i]  = Text(Rect(row, "After", 352f, 0f, 290f, 28f), string.Empty, 18f, G_Accent, true, TextAlignmentOptions.Left);
+                RectTransform row = Rect(panel, "StatRow" + i, 452f, STAT_TOP + (STAT_ROW_STEP * i), 384f, 28f);
+                names[i]   = Text(Rect(row, "Name", 0f, 0f, 136f, 28f), string.Empty, 17f, G_Muted, false, TextAlignmentOptions.Left);
+                befores[i] = Text(Rect(row, "Before", 136f, 0f, 120f, 28f), string.Empty, 18f, G_Text, false, TextAlignmentOptions.Right);
+                arrows[i]  = Arrow(row, "Arrow", 266f, 7f, 14f);
+                afters[i]  = Text(Rect(row, "After", 292f, 0f, 92f, 28f), string.Empty, 18f, G_Accent, true, TextAlignmentOptions.Left);
                 rows[i]    = row.gameObject;
             }
 
@@ -412,17 +432,15 @@ namespace Shinshi.Editor
 
         private static void BuildCostBlock(RectTransform panel)
         {
-            Text(Rect(panel, "CostTitle", 28f, 458f, 200f, 24f), "강화 비용", 17f, G_Gold, true, TextAlignmentOptions.Left);
-            TMP_Text essenceCost = Cost(panel, "Essence", 28f, ESSENCE_ICON, "정기");
-            TMP_Text shardCost   = Cost(panel, "Shard", 236f, SHARD_ICON, "정련편");
-
-            TMP_Text note   = Text(Rect(panel, "NoteText", 28f, 528f, 450f, 22f), string.Empty, 14f, G_Muted, false, TextAlignmentOptions.Left);
-            TMP_Text status = Text(Rect(panel, "StatusText", 28f, 552f, 450f, 26f), string.Empty, 15f, G_Text, false, TextAlignmentOptions.Left);
-
-            Button enhance = Button(panel, "EnhanceButton", 500f, 516f, 172f, 56f, "T_UiButton_Primary");
-            TMP_Text label = Text(Rect((RectTransform)enhance.transform, "Label", 0f, 0f, 172f, 56f), "강화", 24f, G_Accent, true);
-            Border((RectTransform)enhance.transform, new Color(G_Gold.r, G_Gold.g, G_Gold.b, 0.6f), 1f);
-
+            Text(Rect(panel, "CostTitle", 0f, 434f, 400f, 24f), "필요 재료", 17f, G_Text, true, TextAlignmentOptions.Left);
+            Text(Rect(panel, "CostHint", 576f, 438f, 280f, 20f), "필요 수량 / 보유 수량", 12f, G_Muted, false, TextAlignmentOptions.Right);
+            TMP_Text essenceCost = Cost(panel, "Essence", 0f, ESSENCE_ICON, "정기", "_essenceText");
+            TMP_Text shardCost   = Cost(panel, "Shard", 432f, SHARD_ICON, "정련편", "_shardText");
+            TMP_Text note = Text(Rect(panel, "NoteText", 0f, 538f, 496f, 22f), string.Empty, 13f, G_Muted, false, TextAlignmentOptions.Left);
+            TMP_Text status = Text(Rect(panel, "StatusText", 0f, 564f, 496f, 28f), string.Empty, 14f, G_Text, false, TextAlignmentOptions.Left);
+            Button enhance = Button(panel, "EnhanceButton", 512f, 538f, 344f, 54f, "T_UiButton_Primary");
+            EquipmentGrowthStyle.Primary(enhance);
+            TMP_Text label = Text(Rect((RectTransform)enhance.transform, "Label", 0f, 0f, 344f, 54f), "장비 강화", 22f, G_Window, true);
             SetReference(G_View, "_essenceCostText", essenceCost);
             SetReference(G_View, "_shardCostText", shardCost);
             SetReference(G_View, "_noteText", note);
@@ -431,17 +449,17 @@ namespace Shinshi.Editor
             SetReference(G_View, "_enhanceLabel", label);
         }
 
-        private static TMP_Text Cost(RectTransform panel, string key, float x, string iconPath, string caption)
+        private static TMP_Text Cost(RectTransform panel, string key, float x, string iconPath, string caption, string balanceField)
         {
-            Image icon = Rect(panel, key + "CostIcon", x, 490f, 26f, 28f).gameObject.AddComponent<Image>();
-            icon.sprite         = LoadAsset<Sprite>(iconPath);
-            icon.color          = G_Accent;
-            icon.preserveAspect = true;
-            icon.raycastTarget  = false;
-            Text(Rect(panel, key + "CostCaption", x + 34f, 490f, 64f, 28f), caption, 16f, G_Muted, false, TextAlignmentOptions.Left);
-            return Text(Rect(panel, key + "CostText", x + 96f, 488f, 96f, 32f), string.Empty, 22f, G_Text, true, TextAlignmentOptions.Left);
+            RectTransform card = EquipmentGrowthStyle.Card(panel, key + "CostCard", x, 464f, 424f, 66f, EquipmentGrowthStyle.Panel);
+            EquipmentGrowthStyle.Icon(card, key + "CostIcon", iconPath, 12f, 7f, 50f, Color.white);
+            Text(Rect(card, key + "CostCaption", 78f, 6f, 324f, 20f), caption, 13f, G_Muted, false, TextAlignmentOptions.Left);
+            TMP_Text cost = Text(Rect(card, key + "CostText", 78f, 31f, 128f, 28f), string.Empty, 20f, G_Text, true, TextAlignmentOptions.Left);
+            Text(Rect(card, key + "Separator", 210f, 31f, 24f, 28f), "/", 18f, G_Muted);
+            TMP_Text balance = Text(Rect(card, key + "Text", 244f, 31f, 164f, 28f), string.Empty, 20f, G_Accent, true, TextAlignmentOptions.Left);
+            SetReference(G_View, balanceField, balance);
+            return cost;
         }
-
         /****************************************
         *            Result Overlay
         ****************************************/
@@ -481,9 +499,12 @@ namespace Shinshi.Editor
             var slots = new Sprite[SLOT_COUNT];
             for (int i = 0; i < SLOT_COUNT; ++i)
             {
-                slots[i] = LoadAsset<Sprite>(ICON_FOLDER + "T_Icon_equip_" + G_SlotIcons[i] + ".png");
+                slots[i] = EquipmentGrowthStyle.EquipmentIcon(i);
             }
 
+            SetColor(G_View, "_successColor", G_Gold);
+            SetColor(G_View, "_normalColor", G_Text);
+            SetColor(G_View, "_mutedColor", G_Muted);
             SetReference(G_View, "_gradeFrames", grades);
             SetReference(G_View, "_slotSprites", slots);
         }
@@ -536,7 +557,7 @@ namespace Shinshi.Editor
             RectTransform panel = Rect(parent, name, x, y, width, height);
             Image background = panel.gameObject.AddComponent<Image>();
             background.color = G_Control;
-            Skin(background, "T_UiPanel_Inset", new Color(0.8f, 0.9f, 1f, 1f));
+            EquipmentGrowthStyle.Surface(background, G_Control);
             Border(panel, new Color(G_Border.r, G_Border.g, G_Border.b, 0.5f), 1f);
             return panel;
         }
@@ -545,7 +566,7 @@ namespace Shinshi.Editor
         {
             RectTransform rect = Rect(parent, name, x, y, width, height);
             Image image = rect.gameObject.AddComponent<Image>();
-            Skin(image, skin, Color.white);
+            EquipmentGrowthStyle.Surface(image, EquipmentGrowthStyle.Panel);
 
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
@@ -605,7 +626,7 @@ namespace Shinshi.Editor
             UiButtonFeedback feedback = target.AddComponent<UiButtonFeedback>();
             SetReference(feedback, "_graphic", graphic);
             SetColor(feedback, "_normalColor", normal);
-            SetColor(feedback, "_hoverColor", Color.Lerp(normal, Color.white, 0.18f));
+            SetColor(feedback, "_hoverColor", Color.Lerp(normal, G_Accent, 0.34f));
             SetColor(feedback, "_pressedColor", Color.Lerp(normal, Color.black, 0.2f));
         }
 
@@ -619,6 +640,9 @@ namespace Shinshi.Editor
             text.color            = color;
             text.alignment        = alignment;
             text.textWrappingMode = TextWrappingModes.Normal;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = size * 0.8f;
+            text.fontSizeMax = size;
             text.raycastTarget    = false;
             return text;
         }

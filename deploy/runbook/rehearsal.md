@@ -10,7 +10,7 @@
 
 | 방법 | 필요한 것 | 비고 |
 |---|---|---|
-| `tools/Start-ReleaseStack.ps1` | Windows, Docker Desktop, .NET 10 SDK, `Builds/windows-server`(클라이언트까지 쓰려면 `Builds/windows-client`) | 마을 서버와 개발 클라이언트까지 띄운다. Unity 빌드가 없으면 `-Build`(Unity 에디터를 닫아야 함, 수 분 소요) |
+| `tools/Start-ReleaseStack.ps1` | Windows, Docker Desktop, .NET 10 SDK, `Builds/windows-server`(클라이언트까지 쓰려면 `Builds/windows-client`) | 마을 서버, 던전 서버(감시 루프가 출정마다 새로 띄움), 개발 클라이언트까지 띄운다. Unity 빌드가 없으면 `-Build`(Unity 에디터를 닫아야 함, 수 분 소요) |
 | 백엔드 단독([Backend/README.md](../../Backend/README.md)의 로컬 실행) | Docker, .NET 10 SDK | Unity 빌드 불필요. DB와 API만 있어 클라이언트가 필요한 시험(재접속, kick 뒤 접속 유지, 우편 수령)은 못 한다 |
 
 ### Start-ReleaseStack.ps1 제약 (스크립트에서 확인)
@@ -20,8 +20,8 @@
 3. API는 `ASPNETCORE_ENVIRONMENT=Development`, HTTP(TLS·프록시 없음), `ServiceState__Maintenance=false`로 뜬다. 운영 설정(Production, `Admin__AllowedNetworks__*` 지정, 프록시 뒤 IP 판정)은 시험되지 않는다. `Admin__AllowedNetworks`가 없으므로 어드민은 같은 PC의 루프백(`http://127.0.0.1:5080`, CLI 기본값과 같음)에서만 열린다.
 4. **운영자(Owner)를 만들지 않는다.** 아래 준비 단계에서 `--bootstrap-owner`를 직접 실행한다.
 5. DB 컨테이너(`postgres:18`)는 사용자 `shinshi` 하나가 전부 소유한다. 마이그레이션 역할과 런타임 역할의 분리, 권한 SQL은 시험되지 않는다.
-6. 마을 서버 **하나**만 뜬다(`-dungeon-pool-size 1`이지만 던전 프로세스는 시작하지 않는다). 그래서 진행 중 세션이 없고 `sessions`, `auctions list`는 비어 있다. **장애 세션 복구(`recover`), 경매, 서버 소실 판정은 실제 데이터로 시험할 수 없다.** `recover`는 없는 세션 ID로 거절 경로만 볼 수 있다.
-7. `-Stop`은 `taskkill /T /F`로 프로세스 트리를 강제 종료한다. SIGTERM 처리, 드레인, 종료 제한 시간 시험이 아니다.
+6. 마을 서버 하나와 던전 서버 `-DungeonCount`개(기본 1, 포트 `-DungeonPort`(기본 7780)부터)가 뜬다. 던전은 출정 1회가 끝나면 스스로 종료하므로 `tools/Watch-ReleaseDungeons.ps1`(숨김 백그라운드 프로세스)이 같은 인스턴스 ID로 새 프로세스를 몇 초 안에 다시 띄운다. 출정 시험을 하지 않으면 진행 중 세션이 없고 `sessions`, `auctions list`는 비어 있다. **장애 세션 복구(`recover`), 경매, 서버 소실 판정은 실제 데이터로 시험할 수 없다.** `recover`는 없는 세션 ID로 거절 경로만 볼 수 있다.
+7. `-Stop`은 감시 루프를 먼저 끄고 던전 프로세스까지 `taskkill /T /F`로 프로세스 트리를 강제 종료한다. SIGTERM 처리, 드레인, 종료 제한 시간 시험이 아니다.
 8. 클라이언트는 개발 빌드와 개발 로그인(아이디·비밀번호·이메일 가입)이다. 릴리스 클라이언트는 런처 세션만 받으므로 런처 흐름은 시험되지 않는다.
 9. Prometheus, Grafana, Alertmanager는 이 스크립트가 시작하지 않는다. 경보 시험이 아니다.
 10. 비밀값(DB 비밀번호, 인증 키, 어드민 TOTP 키, 서비스 토큰)은 `%LOCALAPPDATA%\Shinshi\release-stack\`에 파일로 생긴다. 화면에 나오지 않으며 저장소 밖이다. 채팅·문서에 옮기지 않는다. `-Stop -RemoveDatabase`는 컨테이너와 `db_password`만 지우고 다른 비밀 파일은 남긴다.

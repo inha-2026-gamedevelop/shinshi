@@ -317,3 +317,15 @@ CA-07(`docs/design/references/concept-art/village-layout-02.webp`)에서 기존 
 | 뒤로·삭제·설정·종료·생성 아이콘 5개 | built-in image_gen 생성, 2026-10-07 | `Assets/01.Scripts/05.Art/UI/CharSelect/Textures/T_CharSelect_Icon_{Back,Delete,Settings,Exit,Create}_Silver.png`, 알파·밉맵 없음·최대 256px | Unity 임포트·Play Mode 표시 확인 |
 
 출력의 별도 라이선스 검토는 미완료다. 세부 사용 위치·실행 검증 한계는 [개발 씬 아이콘 기록](../unity/DEV_HUD_PREVIEW.md#캐릭터-선택-개발-씬-아이콘-2026-10-07)을 따른다.
+
+## 장비 성장 UI 장식 (2026-10-15)
+
+같은 경로의 `T_EquipmentGrowth_EquipmentAtlas.png`와 `T_EquipmentGrowth_RefineShard.png`도 built-in `image_gen`으로 생성했다. Atlas는 3×2 셀의 무기·머리·몸통·손·발·장신구 대표 그림이며 Unity Multiple Sprite로 분할한다. RefineShard는 이 두 성장 창의 정련편 표시용이다. 모두 원본 PNG를 보존하고 픽셀 수정 없이 복사했다. 외부 에셋 의존성이 없으며 별도 라이선스 검토는 미완료다.
+
+`Assets/01.Scripts/05.Art/UI/EquipmentGrowth/Textures/T_EquipmentGrowth_{Crystal,Forge}.png` 두 이미지는 built-in `image_gen`으로 독립 생성한 투명 PNG다. 원본 픽셀을 바꾸지 않고 프로젝트에 복사했으며 기존 외부 에셋 의존성이 없다. 옵션 재설정과 강화 창의 장식으로 사용하며 실제 장비·소비 재료 아이콘으로 취급하지 않는다. 별도 라이선스 검토는 미완료다. 프롬프트와 원본 경로는 Git 제외 개인 제작 기록에 보존한다. 배치·사용 조건은 [장비 성장 UI](../unity/EQUIPMENT_GROWTH_UI.md)를 따른다.
+
+## 아이템 64픽셀 아이콘 (2026-10-15)
+
+`Assets/01.Scripts/05.Art/UI/Icons/Textures/Items64/`의 PNG 45종은 프로젝트의 아이템·기술 정의를 바탕으로 built-in `image_gen`에서 각각 생성했다. 장비 6부위, 재화·재료·소모품 15종, 부적 24기술이다. 고해상도 원본과 프롬프트는 개인 제작 기록에 보존하며, 런타임용 파일은 알파를 유지한 64×64 축소본이다. 기존 외부 패키지 의존성이 없고 별도 라이선스 검토는 미완료다.
+
+PNG 크기·알파·전체 시각 검수, Unity Sprite 등록과 135개 정의 연결·프리팹 적용을 완료했다. 두 성장 창 Play Mode 화면과 실제 아이템 칸 렌더를 확인했고 관련 EditMode 테스트 55개를 통과했다. 적용 메뉴와 검증 범위는 [아이템 아이콘 적용 문서](../unity/ITEM_ICONS_64.md)에 적었다.

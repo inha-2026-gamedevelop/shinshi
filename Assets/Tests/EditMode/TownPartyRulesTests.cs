@@ -29,7 +29,7 @@ namespace Shinshi.Tests
         private const string REGION_FOREST    = "region_forest";
         private const string REGION_RUINS     = "region_ruins";
         private const string BATTLE_WOLBAEK   = "battle_wolbaek_easy";
-        private const string BATTLE_CHEOLGAK  = "battle_cheolgak_easy";
+        private const string BATTLE_MUCHEOL   = "battle_mucheol_easy";
         private const string BOSS_WOLBAEK     = "boss_wolbaek";
         private const string SMALL_POTION     = "item_potion_small";
         private const string LARGE_POTION     = "item_potion_large";
@@ -99,7 +99,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.MissingUnlock,
                 ReadyRules.CheckContent(_progression, EPartyMode.Normal, REGION_RUINS, out _));
             Assert.AreEqual(ERejectReason.MissingUnlock,
-                ReadyRules.CheckContent(_progression, EPartyMode.Boss, BATTLE_CHEOLGAK, out _));
+                ReadyRules.CheckContent(_progression, EPartyMode.Boss, BATTLE_MUCHEOL, out _));
         }
 
         [Test]

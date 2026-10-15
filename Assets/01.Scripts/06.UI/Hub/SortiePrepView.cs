@@ -213,6 +213,27 @@ namespace Shinshi.UI
             SetActive(_hardFx, difficulty == EBossDifficulty.Hard);
         }
 
+        /// <summary>난이도가 없는 방(카오스 던전)에서는 난이도 이름, 점, 화살표를 숨긴다</summary>
+        public void SetDifficultyVisible(bool visible)
+        {
+            SetActive(_prevDifficultyButton != null ? _prevDifficultyButton.gameObject : null, visible);
+            SetActive(_nextDifficultyButton != null ? _nextDifficultyButton.gameObject : null, visible);
+            SetActive(_difficultyLabel != null ? _difficultyLabel.gameObject : null, visible);
+
+            if (_difficultyDots != null)
+            {
+                for (int i = 0; i < _difficultyDots.Length; ++i)
+                {
+                    SetActive(_difficultyDots[i] != null ? _difficultyDots[i].gameObject : null, visible);
+                }
+            }
+
+            if (!visible)
+            {
+                SetActive(_hardFx, false);
+            }
+        }
+
         /// <summary>준비 인원은 방장을 뺀 파티원 기준으로 센다</summary>
         public void SetMembers(IReadOnlyList<SortieMemberData> members)
         {

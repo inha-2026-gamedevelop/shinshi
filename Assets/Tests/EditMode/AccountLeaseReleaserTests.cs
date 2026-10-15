@@ -184,6 +184,21 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void ForgetTownBinding_DepartingToDungeon_KeepsLeaseForTransfer()
+        {
+            var registry = new ServerSessionRegistry(REGISTRY_CAPACITY);
+            var claims   = new JoinTokenClaims(TOWN_KEY, CHARACTER_ID, INSTANCE_ID, null, LEASE_ID);
+            Assert.AreEqual(ERejectReason.None, registry.TryAdmit(in claims, out SessionBinding binding));
+            binding.IsDeparting = true;
+
+            ShinshiServerAuthenticator.ForgetTownBinding(registry, binding, _releaser);
+
+            Assert.AreEqual(0, registry.ParticipantCount);
+            Assert.AreEqual(0, _releaser.PendingCount, "던전 이관 전에 임대를 풀면 이관이 거절된다");
+            Assert.AreEqual(0, _transport.Calls);
+        }
+
+        [Test]
         public void ForgetTownBinding_WithoutLease_SendsNothing()
         {
             var registry = new ServerSessionRegistry(REGISTRY_CAPACITY);

@@ -208,7 +208,9 @@ namespace Shinshi.UI
             for (int slot = 0; slot < Constants.Combat.EQUIPMENT_SLOT_COUNT; ++slot)
             {
                 bool hasItem = EquipmentOptionViewRules.TryFindEquipped(snapshot.Equipment, slot, out TownEquipmentEntry worn);
-                _view.SetSlot(slot, EquipmentOptionViewRules.SlotText(slot, hasItem, worn.DefinitionId, worn.Enhancement));
+                string displayName = hasItem ? EquipmentEnhanceRules.DisplayName(equipment, worn.DefinitionId) : string.Empty;
+                _view.SetSlot(slot, hasItem ? displayName + "\n+" + worn.Enhancement
+                    : EquipmentOptionViewRules.SlotName(slot) + "\n착용 장비 없음");
             }
 
             _view.SetCost(EquipmentOptionViewRules.CostText(equipment.OptionRerollEssenceCost, equipment.OptionRerollShardCost,
@@ -219,7 +221,7 @@ namespace Shinshi.UI
                 return;
             }
 
-            _view.SetItem(entry.DefinitionId);
+            _view.SetItem(EquipmentEnhanceRules.DisplayName(equipment, entry.DefinitionId));
             ApplyLine(equipment, in entry, 0, entry.Option1Kind, entry.Option1Value);
             ApplyLine(equipment, in entry, 1, entry.Option2Kind, entry.Option2Value);
 
