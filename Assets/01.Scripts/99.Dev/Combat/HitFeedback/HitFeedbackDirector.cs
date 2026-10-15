@@ -23,7 +23,9 @@ namespace Shinshi.Dev
         [SerializeField] private bool _useCameraShake = true;
         [SerializeField] private bool _useSparks      = true;
         [SerializeField] private bool _useShockwave   = true;
+        [SerializeField] private bool _useScreenFx    = true;
 
+        private HitFeedbackScreenFx     _screenFx  = null;
         private HitFeedbackCamera       _camera    = null;
         private DevHitFeedbackSparks    _sparks    = null;
         private DevHitFeedbackShockwave _shockwave = null;
@@ -46,6 +48,9 @@ namespace Shinshi.Dev
 
             _shockwave = new GameObject("DevShockwave").AddComponent<DevHitFeedbackShockwave>();
             _shockwave.transform.SetParent(transform, false);
+
+            _screenFx = new GameObject("DevScreenFx").AddComponent<HitFeedbackScreenFx>();
+            _screenFx.transform.SetParent(transform, false);
         }
 
         /****************************************
@@ -64,8 +69,8 @@ namespace Shinshi.Dev
             return isHeavy ? _heavyProfile : _lightProfile;
         }
 
-        /// <summary> 맞은 지점에서 프로필대로 타격감을 재생하고 렉프레임 수를 돌려준다. direction은 공격이 향한 수평 방향이다 </summary>
-        public int PlayHit(HitFeedbackProfile profile, Vector3 point, Vector3 direction, bool isKill,
+        /// <summary> 맞은 지점에서 프로필대로 타격감을 재생하고 렉프레임 수를 돌려준다. direction은 공격이 향한 수평 방향이고, 치명타 여부는 서버가 정해 준 값이다 </summary>
+        public int PlayHit(HitFeedbackProfile profile, Vector3 point, Vector3 direction, bool isKill, bool isCritical,
             IHitLagTarget attacker, IHitLagTarget target)
         {
             int lagFrames = 0;
@@ -76,7 +81,8 @@ namespace Shinshi.Dev
 
             if (_useHitLag)
             {
-                lagFrames = profile.HitLagFrames + (isKill ? profile.KillExtraLagFrames : 0);
+                lagFrames = profile.HitLagFrames + (isKill ? profile.KillExtraLagFrames : 0)
+                    + (isCritical ? profile.CritExtraLagFrames : 0);
                 attacker?.Freeze(lagFrames);
                 target?.Freeze(lagFrames);
             }
@@ -90,6 +96,12 @@ namespace Shinshi.Dev
             if (_useSparks)
             {
                 _sparks.Burst(point, direction, isKill ? profile.KillSparkCount : profile.SparkCount);
+            }
+
+            if ((_useScreenFx) && (isCritical))
+            {
+                _screenFx.Flash(profile.CritFlashAlpha, profile.CritFlashSeconds);
+                _screenFx.Vignette(profile.CritVignetteColor, profile.CritVignetteAlpha, profile.CritVignetteSeconds);
             }
 
             return lagFrames;

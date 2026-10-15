@@ -39,6 +39,14 @@ namespace Shinshi.Dev
         [SerializeField, Min(0)] private int _sparkCount     = 10;
         [SerializeField, Min(0)] private int _killSparkCount = 28;
 
+        [Header("치명타 (서버가 치명타로 알렸을 때만)")]
+        [SerializeField, Min(0)]          private int   _critExtraLagFrames   = 2;     // 렉프레임에 더한다
+        [SerializeField, Range(0f, 1f)]   private float _critFlashAlpha       = 0.25f;  // 화면 번쩍임의 세기. 0이면 없다
+        [SerializeField, Min(0.01f)]      private float _critFlashSeconds     = 0.08f;
+        [SerializeField, Range(0f, 1f)]   private float _critVignetteAlpha    = 0.5f;   // 화면 가장자리 비네트의 세기. 0이면 없다
+        [SerializeField, Min(0.01f)]      private float _critVignetteSeconds  = 0.35f;
+        [SerializeField]                  private Color _critVignetteColor    = new Color(1f, 0.25f, 0.1f, 1f);
+
         [Header("충격파 (반지름이 0이면 없음)")]
         [SerializeField, Min(0f)]         private float _shockwaveRadius = 0f;  // m
         [SerializeField, Min(0f)]         private float _shockwaveSpeed  = 14f; // m/s, 중심에서 밀리는 속도
@@ -58,6 +66,12 @@ namespace Shinshi.Dev
         public float FlyMultiplier      => _flyMultiplier;
         public int   SparkCount         => _sparkCount;
         public int   KillSparkCount     => _killSparkCount;
+        public int   CritExtraLagFrames  => _critExtraLagFrames;
+        public float CritFlashAlpha      => _critFlashAlpha;
+        public float CritFlashSeconds    => _critFlashSeconds;
+        public float CritVignetteAlpha   => _critVignetteAlpha;
+        public float CritVignetteSeconds => _critVignetteSeconds;
+        public Color CritVignetteColor   => _critVignetteColor;
         public float ShockwaveRadius    => _shockwaveRadius;
         public float ShockwaveSpeed     => _shockwaveSpeed;
         public float ZoomPunch          => _zoomPunch;

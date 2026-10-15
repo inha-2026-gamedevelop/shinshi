@@ -25,6 +25,12 @@ MonoBehaviour:
   _flyMultiplier: 1
   _sparkCount: 10
   _killSparkCount: 28
+  _critExtraLagFrames: 2
+  _critFlashAlpha: 0
+  _critFlashSeconds: 0.08
+  _critVignetteAlpha: 0.2
+  _critVignetteSeconds: 0.35
+  _critVignetteColor: {r: 1, g: 0.25, b: 0.1, a: 1}
   _shockwaveRadius: 0
   _shockwaveSpeed: 14
   _zoomPunch: 0

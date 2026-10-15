@@ -29,6 +29,9 @@ namespace Shinshi.Dev
         [SerializeField] private DevHitFeedbackPlayer _player;
         [SerializeField] private HitFeedbackDirector  _director;
 
+        [Header("서버 대역")]
+        [SerializeField, Range(0f, 1f)] private float _devCritChance = 0.25f; // 서버가 정해 줄 치명타를 시험하려고 무작위로 내는 확률
+
         [Header("무리")]
         [SerializeField] private int   _groupSize        = 24;
         [SerializeField] private int   _hitsToDie        = 3;
@@ -111,7 +114,9 @@ namespace Shinshi.Dev
             direction   = direction.normalized;
 
             hitPoint.y = target.bounds.center.y;
-            _director.PlayHit(profile, hitPoint, direction, isKill, _player, monster.LagTarget);
+            // 실제로는 서버가 치명타를 정해 보내 준다. 서버가 없는 시험 씬에서는 그 대역으로 무작위로 정한다
+            bool isCritical = Random.value < _devCritChance;
+            _director.PlayHit(profile, hitPoint, direction, isKill, isCritical, _player, monster.LagTarget);
         }
 
         // 강공격이 내려친 자리에서 링과 먼지를 터뜨리고, 반지름 안의 몬스터를 한꺼번에 밀어낸다
