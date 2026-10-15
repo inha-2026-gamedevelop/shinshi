@@ -38,7 +38,7 @@ namespace Shinshi.Dev
         // 강공격에 맞으면 훨씬 멀리 밀려난다. 속도는 크게, 감속은 느리게 해서 3m 가까이 미끄러진다
         private const float HEAVY_KNOCKBACK_SPEED = 16f; // m/s
         private const float HEAVY_KNOCKBACK_DRAG  = 5f;  // 1/s
-        private const float HEAVY_FLY_MULTIPLIER  = 1.8f;
+        private const float HEAVY_FLY_MULTIPLIER  = 1.5f;
 
         // 추격. 맞아 밀려나는 동안은 걷지 않고, 몬스터끼리는 몸통이 겹치지 않게 서로 민다
         private const float CHASE_STOP_DISTANCE   = 1.2f;  // m, 플레이어와 이만큼 남기고 선다
@@ -53,11 +53,17 @@ namespace Shinshi.Dev
         private const float VIBRATE_AMOUNT = 0.05f; // m
 
         // 처치 시 날아가기
-        private const float DEATH_FLY_SECONDS   = 0.8f;
-        private const float DEATH_FLY_SPEED     = 8f;  // m/s, 수평
-        private const float DEATH_FLY_UP_SPEED  = 5f;  // m/s
-        private const float DEATH_SPIN_SPEED    = 14f; // rad/s
-        private const float DEATH_BODY_DRAG     = 0.3f;
+        private const float CORPSE_SECONDS      = 10f; // 날아가 쓰러진 채 남아 있는 시간
+        private const float DEATH_FLY_SPEED     = 10f; // m/s, 수평
+        private const float DEATH_FLY_UP_SPEED  = 6f;  // m/s
+        private const float DEATH_SPIN_SPEED    = 22f; // rad/s
+        private const float DEATH_BODY_DRAG     = 0.2f;
+        private const float DEATH_BOUNCINESS    = 0.45f; // 땅에 떨어지면 몇 번 튄다
+
+        // 날아가는 시체에 부딪힌 산 몬스터는 같이 튕겨 나간다
+        private const float SHOVE_MIN_SPEED = 4f;   // m/s, 이 속도 이상으로 부딪혀야 민다
+        private const float SHOVE_RATIO     = 0.8f; // 부딪힌 속도 대비 밀려나는 속도
+        private const float SHOVE_MAX_SPEED = 14f;  // m/s
         private const float DEATH_FLASH_SECONDS = 0.2f;
 
         private const float MIN_DIRECTION_SQR = 0.0001f;
@@ -65,6 +71,7 @@ namespace Shinshi.Dev
 
         private static readonly Color s_normalColor = new Color(0.55f, 0.2f, 0.2f, 1f);
         private static readonly Color s_flashColor  = Color.white;
+        private static readonly Color s_corpseColor = new Color(0.32f, 0.12f, 0.09f, 1f); // 원래 색에 검정을 섞은 적갈색
 
         // 살아서 걷는 몬스터. 서로 겹침을 풀 때 훑는다
         private static readonly List<DevHitFeedbackMonster> s_alive = new List<DevHitFeedbackMonster>();
@@ -90,7 +97,7 @@ namespace Shinshi.Dev
         private float                 _deathElapsed  = 0f;
         private bool                  _isDying       = false;
 
-        /// <summary> 죽는 연출이 끝나 사라지기 직전에 한 번 알린다 </summary>
+        /// <summary> 죽는 순간 한 번 알린다. 사체는 이 뒤로도 한동안 남아 있다 </summary>
         public event Action<DevHitFeedbackMonster> Died;
 
         /// <summary> 죽는 연출 중이거나 이미 죽었는지 </summary>
@@ -212,11 +219,50 @@ namespace Shinshi.Dev
             _launchPending = true;
             _launchAway    = away;
             _launchPower   = isHeavy ? HEAVY_FLY_MULTIPLIER : 1f;
+
+            // 사체가 남아 있는 동안에도 다음 무리가 나올 수 있게 죽는 순간 알린다
+            Died?.Invoke(this);
+        }
+
+        // 날아가는 시체가 산 몬스터에 부딪히면 부딪힌 방향으로 같이 튕겨 보낸다
+        private void OnCollisionEnter(Collision collision)
+        {
+            if ((_body == null) || (!collision.collider.TryGetComponent(out DevHitFeedbackMonster other)) || (other._isDying))
+            {
+                return;
+            }
+
+            Vector3 velocity = _body.linearVelocity;
+            velocity.y = 0f;
+
+            float speed = velocity.magnitude;
+            if (speed >= SHOVE_MIN_SPEED)
+            {
+                other.Shove(velocity / speed, Mathf.Min(speed * SHOVE_RATIO, SHOVE_MAX_SPEED));
+            }
+        }
+
+        private void Shove(Vector3 direction, float speed)
+        {
+            _knockVelocity = direction * speed;
+            _knockDrag     = HEAVY_KNOCKBACK_DRAG;
+            _punchLeft     = PUNCH_SECONDS;
+            StartFlash(FLASH_SECONDS);
         }
 
         private void Launch()
         {
             _launchPending = false;
+
+            // 튀어 오르도록 탄성이 있는 재질을 입힌다. 시험용이라 몬스터마다 만들어 쓴다
+            if (_collider != null)
+            {
+                _collider.sharedMaterial = new PhysicsMaterial
+                {
+                    bounciness     = DEATH_BOUNCINESS,
+                    bounceCombine  = PhysicsMaterialCombine.Maximum
+                };
+            }
 
             _body               = gameObject.AddComponent<Rigidbody>();
             _body.linearDamping = DEATH_BODY_DRAG;
@@ -242,7 +288,8 @@ namespace Shinshi.Dev
             }
 
             _flashLeft = Mathf.Max(0f, _flashLeft - Time.deltaTime);
-            ApplyColor(Color.Lerp(s_normalColor, s_flashColor, _flashLeft / _flashSeconds));
+            Color settled = _isDying ? s_corpseColor : s_normalColor;
+            ApplyColor(Color.Lerp(settled, s_flashColor, _flashLeft / _flashSeconds));
         }
 
         private void UpdateKnockback()
@@ -381,17 +428,16 @@ namespace Shinshi.Dev
             transform.localScale = new Vector3(_baseScale.x * spread, _baseScale.y * (1f - squash), _baseScale.z * spread);
         }
 
-        // 한참 날아가다 줄어들며 사라진다
+        // 날아가 쓰러진 채 한동안 남아 있다가 줄어들며 사라진다
         private void UpdateDeath()
         {
             _deathElapsed += Time.deltaTime;
 
-            float shrink = Mathf.Clamp01(1f - ((_deathElapsed - DEATH_FLY_SECONDS) / DEATH_SECONDS));
+            float shrink = Mathf.Clamp01(1f - ((_deathElapsed - CORPSE_SECONDS) / DEATH_SECONDS));
             transform.localScale = _baseScale * shrink;
 
             if (shrink <= 0f)
             {
-                Died?.Invoke(this);
                 Destroy(gameObject);
             }
         }
