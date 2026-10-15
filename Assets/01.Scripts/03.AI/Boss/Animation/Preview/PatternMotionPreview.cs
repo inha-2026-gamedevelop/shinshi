@@ -359,7 +359,12 @@ namespace Shinshi.AI
                 {
                     isStarted = true;
                     _animator.speed = speed;
-                    _animator.CrossFade(entry.StateName, CLIP_ENTER_SECONDS, 0, 0f);
+
+                    // 상태 이름이 비어 있으면 월백 모션은 다른 도구가 정하고 이 도구는 시각과 판정만 알린다
+                    if (!string.IsNullOrEmpty(entry.StateName))
+                    {
+                        _animator.CrossFade(entry.StateName, CLIP_ENTER_SECONDS, 0, 0f);
+                    }
                 }
 
                 if (isStarted)
