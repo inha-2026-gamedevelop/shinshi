@@ -24,7 +24,7 @@ namespace Shinshi.Backend.Tests.Reservations
         private const string REGION_FOREST   = "region_forest";
         private const string REGION_RUINS    = "region_ruins";
         private const string BATTLE_WOLBAEK  = "battle_wolbaek_easy";
-        private const string BATTLE_CHEOLGAK = "battle_mucheol_easy";
+        private const string BATTLE_MUCHEOL  = "battle_mucheol_easy";
         private const string UNKNOWN_BATTLE  = "battle_forest_1";
         private const long   TICKETS         = 2;
         private const long   POTIONS         = 3;
@@ -78,7 +78,7 @@ namespace Shinshi.Backend.Tests.Reservations
             Assert.Null(policy.TargetOf(GameSessionCodes.Mode.NORMAL, UNKNOWN_BATTLE));
             Assert.Null(policy.TargetOf(GameSessionCodes.Mode.NORMAL, BATTLE_WOLBAEK));
             Assert.Null(policy.TargetOf(GameSessionCodes.Mode.BOSS, REGION_FOREST));
-            Assert.Equal(BATTLE_CHEOLGAK, policy.TargetOf(GameSessionCodes.Mode.BOSS, BATTLE_CHEOLGAK));
+            Assert.Equal(BATTLE_MUCHEOL, policy.TargetOf(GameSessionCodes.Mode.BOSS, BATTLE_MUCHEOL));
         }
 
         /// <summary> 예약은 안내 미완료 계정이 있으면 MISSING_UNLOCK으로 아무것도 예약하지 않고, 기록 뒤에는 확정한다 </summary>
@@ -146,12 +146,12 @@ namespace Shinshi.Backend.Tests.Reservations
                 INSERT INTO account_unlocks (account_id, unlock_kind, target_id, operation_id) VALUES
                     (@Id, 'RegionCleared', @Ruins, gen_random_uuid()),
                     (@Id, 'RegionCleared', @Forest, gen_random_uuid()),
-                    (@Id, 'BattleCleared', @Cheolgak, gen_random_uuid()),
+                    (@Id, 'BattleCleared', @Mucheol, gen_random_uuid()),
                     (@Id, 'BattleUnlocked', @Wolbaek, gen_random_uuid());
                 """, new
                 {
                     Id = recorded.AccountId, Fox = FOX_TRACES, Ruins = REGION_RUINS, Forest = REGION_FOREST,
-                    Cheolgak = BATTLE_CHEOLGAK, Wolbaek = BATTLE_WOLBAEK
+                    Mucheol = BATTLE_MUCHEOL, Wolbaek = BATTLE_WOLBAEK
                 });
             PostgresReadinessRepository readiness = new PostgresReadinessRepository(environment.DataSource);
 
@@ -169,7 +169,7 @@ namespace Shinshi.Backend.Tests.Reservations
             Assert.Equal(FOX_TRACES, progress.FoxTraces);
             Assert.Equal(new[] { REGION_FOREST, REGION_RUINS }, progress.ClearedRegionIds);
             Assert.Empty(progress.UnlockedRegionIds);
-            Assert.Equal(new[] { BATTLE_CHEOLGAK }, progress.ClearedBattleIds);
+            Assert.Equal(new[] { BATTLE_MUCHEOL }, progress.ClearedBattleIds);
             Assert.Equal(new[] { BATTLE_WOLBAEK }, progress.UnlockedBattleIds);
             ReadinessProgress empty = Assert.IsType<ReadinessProgress>(statuses[1].Progress);
             Assert.False(empty.IntroCompleted);

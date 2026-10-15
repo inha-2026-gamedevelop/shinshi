@@ -202,7 +202,7 @@ namespace Shinshi.Data
             new EnemyDropSpec("enemy_elite",   8, 0.005f, 1, 0.02f, 1)
         };
 
-        // 철각 이지, 하드는 일반, 희귀 재료, 월백 이지, 하드는 영웅, 전설 재료를 준다
+        // 무철 이지, 하드는 일반, 희귀 재료, 월백 이지, 하드는 영웅, 전설 재료를 준다
         [Header("보스 처치 보상")]
         [SerializeField] private BossRewardSpec[] _bossRewards =
         {
