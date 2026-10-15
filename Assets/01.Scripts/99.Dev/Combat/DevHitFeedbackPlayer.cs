@@ -36,6 +36,17 @@ namespace Shinshi.Dev
         private const float SLASH_THICKNESS = 0.05f; // m
         private const float SLASH_HEIGHT    = 0.9f;  // m, 몸통 높이에 띄운다
 
+        // 휘두르는 호. 뒤로 갈수록 투명해지는 띠가 부채꼴을 왼쪽에서 오른쪽으로 훑는다
+        private const string SLASH_SHADER_NAME   = "Sprites/Default";
+        private const int    SLASH_SEGMENTS      = 14;
+        private const float  SLASH_TRAIL_ANGLE   = 60f;  // 도, 띠가 뒤로 늘어진 각
+        private const float  SLASH_INNER_RATIO   = 0.55f; // 사거리 대비 띠 안쪽 반지름
+
+        // 타격감
+        private const float HIT_STOP_TIME_SCALE = 0.02f;
+        private const float SHAKE_FREQUENCY     = 38f; // rad/s
+        private const float NORMAL_TIME_SCALE   = 1f;
+
         // 정면 화살표. 바닥 위에 얹은 막대 하나와 양옆으로 꺾인 머리 막대 둘이다
         private const string ARROW_NAME           = "DevFacingArrow";
         private const float  ARROW_HEIGHT         = 0.05f; // m, 바닥에 파묻히지 않게 띄운다
@@ -63,11 +74,26 @@ namespace Shinshi.Dev
         [Header("표시")]
         [SerializeField] private Color _arrowColor = new Color(1f, 0.9f, 0.2f, 1f);
 
+        [Header("타격감")]
+        [SerializeField] private bool  _useHitStop      = true;
+        [SerializeField] private float _hitStopSeconds  = 0.06f; // 초, 실제 시간 기준
+        [SerializeField] private float _killStopSeconds = 0.13f; // 초, 처치한 타격
+        [SerializeField] private bool  _useCameraShake  = true;
+        [SerializeField] private float _shakeAmount     = 0.35f; // m, 맞은 방향으로 밀리는 크기
+        [SerializeField] private float _killShakeAmount = 0.8f;  // m
+        [SerializeField] private float _shakeSeconds    = 0.25f; // 초, 실제 시간 기준
+
         private readonly RaycastHit[] _rayHits    = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[HIT_BUFFER_SIZE];
 
         private CharacterController _controller     = null;
         private GameObject          _slash          = null;
+        private Material            _slashMaterial  = null;
+        private Vector3             _shakeDirection = Vector3.zero;
+        private float               _shakeStrength  = 0f;
+        private float               _shakeEndTime   = 0f;  // Time.unscaledTime 기준
+        private float               _hitStopEndTime = 0f;  // Time.unscaledTime 기준
+        private float               _slashStartTime = 0f;
         private Vector3             _spawnPosition  = Vector3.zero;
         private Quaternion          _spawnRotation  = Quaternion.identity;
         private Vector3             _destination    = Vector3.zero;
@@ -77,8 +103,8 @@ namespace Shinshi.Dev
         private float               _nextAttackTime = 0f;
         private float               _attackEndTime  = 0f;
 
-        /// <summary> 공격이 맞힌 충돌체마다 한 번씩 알린다 </summary>
-        public event Action<Collider> Hit;
+        /// <summary> 공격이 맞힌 충돌체마다 한 번씩 알린다. 두 번째 값은 몸 중심에서 가장 가까운 맞은 지점이다 </summary>
+        public event Action<Collider, Vector3> Hit;
 
         /****************************************
         *              Unity Event
@@ -125,15 +151,26 @@ namespace Shinshi.Dev
                 Teleport();
             }
 
-            if ((_slash.activeSelf) && (!isAttacking))
-            {
-                _slash.SetActive(false);
-            }
+            UpdateSlash(isAttacking);
+            UpdateHitStop();
         }
 
         private void LateUpdate()
         {
-            _outputCamera.transform.position = transform.position + _cameraOffset;
+            _outputCamera.transform.position = transform.position + _cameraOffset + ReadShakeOffset();
+        }
+
+        private void OnDisable()
+        {
+            Time.timeScale = NORMAL_TIME_SCALE;
+        }
+
+        private void OnDestroy()
+        {
+            if (_slashMaterial != null)
+            {
+                Destroy(_slashMaterial);
+            }
         }
 
         /****************************************
@@ -214,31 +251,143 @@ namespace Shinshi.Dev
                     continue;
                 }
 
-                Hit?.Invoke(target);
+                Vector3 hitPoint = target.ClosestPoint(origin);
+                Hit?.Invoke(target, hitPoint);
             }
+        }
+
+        /// <summary> 맞힌 타격의 히트스톱과 카메라 흔들림을 시작한다. direction은 공격이 향한 수평 방향이다 </summary>
+        public void PlayHitFeedback(Vector3 direction, bool isKill)
+        {
+            if (_useHitStop)
+            {
+                float stop    = isKill ? _killStopSeconds : _hitStopSeconds;
+                float endTime = Time.unscaledTime + stop;
+
+                _hitStopEndTime = Mathf.Max(_hitStopEndTime, endTime);
+                Time.timeScale  = HIT_STOP_TIME_SCALE;
+            }
+
+            if (_useCameraShake)
+            {
+                float strength = isKill ? _killShakeAmount : _shakeAmount;
+                if (strength >= ReadShakeStrength())
+                {
+                    _shakeDirection = direction;
+                    _shakeStrength  = strength;
+                    _shakeEndTime   = Time.unscaledTime + _shakeSeconds;
+                }
+            }
+        }
+
+        // 실제 시간으로 끝을 재서 timeScale이 낮아도 풀리게 한다
+        private void UpdateHitStop()
+        {
+            if ((_hitStopEndTime > 0f) && (Time.unscaledTime >= _hitStopEndTime))
+            {
+                _hitStopEndTime = 0f;
+                Time.timeScale  = NORMAL_TIME_SCALE;
+            }
+        }
+
+        private float ReadShakeStrength()
+        {
+            float remain = (_shakeEndTime - Time.unscaledTime) / _shakeSeconds;
+            return (remain > 0f) ? (_shakeStrength * remain) : 0f;
+        }
+
+        // 맞은 방향으로 확 밀렸다가 감쇠하며 되돌아오는 진동
+        private Vector3 ReadShakeOffset()
+        {
+            float remain = (_shakeEndTime - Time.unscaledTime) / _shakeSeconds;
+            if (remain <= 0f)
+            {
+                return Vector3.zero;
+            }
+
+            float wave = Mathf.Cos((1f - remain) * _shakeSeconds * SHAKE_FREQUENCY);
+            return _shakeDirection * (_shakeStrength * remain * remain * wave);
         }
 
         private void ShowSlash()
         {
-            // 공격 범위 길이만큼 앞으로 뻗은 얇은 판. 부채꼴 대신 사거리와 방향을 읽을 수 있는 정도로만 보여 준다
-            float width = 2f * _attackRange * Mathf.Sin(_attackHalfAngle * Mathf.Deg2Rad);
-            _slash.transform.localScale    = new Vector3(Mathf.Max(width, SLASH_THICKNESS), SLASH_THICKNESS, _attackRange);
-            _slash.transform.localPosition = new Vector3(0f, SLASH_HEIGHT, _attackRange * HALF);
+            _slashStartTime = Time.time;
+            _slash.transform.localPosition = new Vector3(0f, SLASH_HEIGHT, 0f);
             _slash.SetActive(true);
+            UpdateSlash(true);
         }
 
+        // 띠의 앞끝이 부채꼴 왼쪽 끝에서 오른쪽 끝까지 공격 잠금 시간 동안 지나간다
+        private void UpdateSlash(bool isAttacking)
+        {
+            if (!_slash.activeSelf)
+            {
+                return;
+            }
+
+            if (!isAttacking)
+            {
+                _slash.SetActive(false);
+                return;
+            }
+
+            float t = Mathf.Clamp01((Time.time - _slashStartTime) / _attackLockTime);
+            _slash.transform.localRotation = Quaternion.Euler(0f, Mathf.Lerp(-_attackHalfAngle, _attackHalfAngle, t), 0f);
+        }
+
+        // 앞끝(로컬 각 0)은 불투명하고 뒤로 갈수록 투명해지는 부채꼴 띠. 각은 정면에서 오른쪽이 양수다
         private GameObject CreateSlashVisual()
         {
-            GameObject slash = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            slash.name = "DevSlash";
-
-            // 시험용 표시가 판정이나 커서 레이캐스트를 가로막지 않게 충돌체를 없앤다
-            Destroy(slash.GetComponent<Collider>());
+            var slash = new GameObject("DevSlash");
             slash.transform.SetParent(transform, false);
 
-            var block = new MaterialPropertyBlock();
-            block.SetColor(COLOR_PROPERTY, _slashColor);
-            slash.GetComponent<Renderer>().SetPropertyBlock(block);
+            // 시험용 씬이라 머티리얼 에셋을 따로 두지 않고 Awake에서 한 번만 이름으로 찾는다
+            Shader shader = Shader.Find(SLASH_SHADER_NAME);
+            if (shader == null)
+            {
+                Debug.LogError($"[DevHitPlayer] 셰이더를 찾지 못했다: {SLASH_SHADER_NAME}", this);
+                slash.SetActive(false);
+                return slash;
+            }
+
+            _slashMaterial = new Material(shader);
+
+            int vertexCount = (SLASH_SEGMENTS + 1) * 2;
+            var vertices    = new Vector3[vertexCount];
+            var colors      = new Color[vertexCount];
+            var triangles   = new int[SLASH_SEGMENTS * 6];
+
+            float inner = _attackRange * SLASH_INNER_RATIO;
+            for (int i = 0; i <= SLASH_SEGMENTS; ++i)
+            {
+                float   ratio = (float)i / SLASH_SEGMENTS;
+                float   rad   = -SLASH_TRAIL_ANGLE * (1f - ratio) * Mathf.Deg2Rad;
+                Vector3 dir   = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
+                Color   color = new Color(_slashColor.r, _slashColor.g, _slashColor.b, _slashColor.a * ratio * ratio);
+
+                vertices[i * 2]     = dir * inner;
+                vertices[(i * 2) + 1] = dir * _attackRange;
+                colors[i * 2]       = color;
+                colors[(i * 2) + 1] = color;
+            }
+
+            for (int i = 0; i < SLASH_SEGMENTS; ++i)
+            {
+                int v = i * 2;
+                int t = i * 6;
+                triangles[t]     = v;
+                triangles[t + 1] = v + 1;
+                triangles[t + 2] = v + 2;
+                triangles[t + 3] = v + 2;
+                triangles[t + 4] = v + 1;
+                triangles[t + 5] = v + 3;
+            }
+
+            var mesh = new Mesh { name = "DevSlashArc", vertices = vertices, colors = colors, triangles = triangles };
+            mesh.RecalculateBounds();
+
+            slash.AddComponent<MeshFilter>().sharedMesh = mesh;
+            slash.AddComponent<MeshRenderer>().sharedMaterial = _slashMaterial;
 
             slash.SetActive(false);
             return slash;

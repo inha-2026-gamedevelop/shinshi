@@ -37,12 +37,20 @@ namespace Shinshi.Dev
         private readonly RaycastHit[] _rayHits     = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[OVERLAP_BUFFER_SIZE];
 
-        private int   _alive         = 0;
-        private float _nextSpawnTime = 0f;
+        private DevHitFeedbackSparks _sparks        = null;
+        private Collider             _playerCollider = null;
+        private int                  _alive         = 0;
+        private float                _nextSpawnTime = 0f;
 
         /****************************************
         *              Unity Event
         ****************************************/
+
+        private void Awake()
+        {
+            _sparks = new GameObject("DevSparks").AddComponent<DevHitFeedbackSparks>();
+            _sparks.transform.SetParent(transform, false);
+        }
 
         private void OnEnable()
         {
@@ -53,6 +61,7 @@ namespace Shinshi.Dev
                 return;
             }
 
+            _playerCollider = _player.GetComponent<Collider>();
             _player.Hit += OnPlayerHit;
         }
 
@@ -81,12 +90,31 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        private void OnPlayerHit(Collider target)
+        private void OnPlayerHit(Collider target, Vector3 hitPoint)
         {
-            if (target.TryGetComponent(out DevHitFeedbackMonster monster))
+            if (!target.TryGetComponent(out DevHitFeedbackMonster monster))
             {
-                monster.TakeHit();
+                return;
             }
+
+            Vector3 attacker = _player.transform.position;
+            if (!monster.TakeHit(attacker, out bool isKill))
+            {
+                return;
+            }
+
+            // 불똥은 몸통 높이에서 공격이 향한 쪽으로 튄다
+            Vector3 direction = target.bounds.center - attacker;
+            direction.y = 0f;
+            direction   = direction.normalized;
+
+            hitPoint.y = target.bounds.center.y;
+            if (_sparks != null)
+            {
+                _sparks.Burst(hitPoint, direction, isKill);
+            }
+
+            _player.PlayHitFeedback(direction, isKill);
         }
 
         private void OnMonsterDied(DevHitFeedbackMonster monster)
@@ -131,7 +159,7 @@ namespace Shinshi.Dev
             body.transform.position = position + (Vector3.up * (MONSTER_HEIGHT * HALF));
 
             var monster = body.AddComponent<DevHitFeedbackMonster>();
-            monster.Init(_hitsToDie);
+            monster.Init(_hitsToDie, _playerCollider);
             monster.Died += OnMonsterDied;
             ++_alive;
         }
