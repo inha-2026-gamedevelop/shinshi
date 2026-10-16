@@ -81,6 +81,11 @@ namespace Shinshi.Combat
         // 서버 콤보 기본 공격이면 이번 순번이 쓴 단계(0부터)다. 콤보가 없는 직업은 늘 0이다. 순번과 같은 갱신에 실려 함께 바뀐다
         [SyncVar] private byte _attackComboStep;
 
+        // 순번을 올린 서버 시각과 공개 이동 속도가 정지에서 움직임으로 바뀐 마지막 서버 시각, 표현 전용이며 서버 판정은 읽지 않는다.
+        // 두 값의 차로 이동이 기본 공격 발사 전에 시작했는지(준비 취소) 후에 시작했는지를 수신 순서와 지터 없이 가른다
+        [SyncVar] private double _attackStartedAt;
+        [SyncVar] private double _locomotionStartedAt;
+
         // 서버가 기절로 진행 중인 기본 공격 준비나 기술을 끊을 때마다 1씩 올린다(255 다음 0). 회피와 사망에는 각자 신호가 있어 올리지 않는다.
         // 클라이언트 표현은 값이 바뀌면 아직 나가지 않은 발사와 타격 재생을 버린다. 서버 판정은 이 값을 읽지 않는다
         [SyncVar] private byte _actionCancelSequence;
@@ -125,6 +130,8 @@ namespace Shinshi.Combat
         public float LocomotionSpeed => _locomotionSpeed;
         public byte AttackSequence => _attackSequence;
         public byte AttackComboStep => _attackComboStep;
+        public double AttackStartedAt => _attackStartedAt;
+        public double LocomotionStartedAt => _locomotionStartedAt;
         public byte DodgeSequence => _dodgeSequence;
         public byte ActionCancelSequence => _actionCancelSequence;
         public EPlayerControlKind ControlKind => _controlKind;
@@ -189,6 +196,11 @@ namespace Shinshi.Combat
         [Server]
         public void SetLocomotionSpeed(float locomotionSpeed)
         {
+            if ((_locomotionSpeed <= 0f) && (locomotionSpeed > 0f))
+            {
+                _locomotionStartedAt = NetworkTime.time;
+            }
+
             _locomotionSpeed = locomotionSpeed;
         }
 
@@ -226,6 +238,7 @@ namespace Shinshi.Combat
         public void BumpAttackSequence(byte comboStep)
         {
             _attackComboStep = comboStep;
+            _attackStartedAt = NetworkTime.time;
             _attackSequence  = unchecked((byte)(_attackSequence + 1));
         }
 

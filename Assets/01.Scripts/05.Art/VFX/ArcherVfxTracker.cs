@@ -45,6 +45,10 @@ namespace Shinshi.Art
         private const int MAX_PLAYS       = (MAX_REPEAT * (MAX_PRONGS + 1)) + NON_ARROW_PLAYS;
 
         private const float CENTER_INDEX_SCALE = 0.5f;
+        // 준비 시간을 틱 수로 올림할 때 부동소수 오차로 한 틱 더 올라가지 않게 빼는 값
+        private const double TICK_ROUNDING     = 1e-4;
+        // 서버 틱 시각으로 가른 이동 시작과 발사 사이에 두는 여유, 틱 간격에 곱한다
+        private const float  TICK_MARGIN_SCALE = 0.5f;
 
         private enum EPendingKind : byte
         {
@@ -84,6 +88,8 @@ namespace Shinshi.Art
             public int      BurstSlot;
             // 폭발 시각을 이만큼 넘겨 관찰하면 폭발을 재생하지 않는다
             public float    MaxBurstLateSeconds;
+            // 서버 전투 틱 간격, 서버는 준비가 끝난 뒤 첫 틱에 쏜다. 0이면 준비 시간 그대로 본다
+            public float    ServerTickSeconds;
         }
 
         /// <summary> 한 프레임에 모은 공개 상태 현재값 </summary>
@@ -93,6 +99,9 @@ namespace Shinshi.Art
             public EParticipantLifeState LifeState;
             public byte                  AttackSequence;
             public byte                  AttackComboStep;
+            // 서버가 공격을 승인한 시각과 이동을 시작한 마지막 시각(서버 시각), 둘 중 하나라도 0이면 관찰된 이동을 모두 취소로 본다
+            public double                AttackStartedAt;
+            public double                LocomotionStartedAt;
             public byte                  DodgeSequence;
             public byte                  ActionCancelSequence;
             public int                   CastInstanceId;
@@ -140,6 +149,10 @@ namespace Shinshi.Art
             // 기본 공격은 관찰 시각에서 정한 발사 시각, 기술은 서버 SkillResolveAt
             public double         ResolveAt;
             public int            NextShot;
+            // 기본 공격만 쓴다. 서버가 발사하는 틱에 맞춘 재생 판단 시각, 승인 서버 시각, 틱으로 올림한 준비 시간
+            public double         DecideAt;
+            public double         ServerStartAt;
+            public float          FireDelay;
         }
 
         private readonly Pending[]        _pending  = new Pending[MAX_PENDING];
@@ -155,6 +168,7 @@ namespace Shinshi.Art
         private float    _windSpeedScale = 1f;
         private int      _burstSlot      = NO_SLOT;
         private float    _maxBurstLate;
+        private float    _serverTick;
 
         private bool _hasBaseline;
         private bool _wasAlive;
@@ -201,6 +215,7 @@ namespace Shinshi.Art
             _windSpeedScale    = (config.WindSpeedScale > 0f) ? config.WindSpeedScale : 1f;
             _burstSlot         = ((config.HasBurstSlot) && (config.BurstSlot >= 0) && (config.BurstSlot < SLOT_COUNT)) ? config.BurstSlot : NO_SLOT;
             _maxBurstLate      = Mathf.Max(0f, config.MaxBurstLateSeconds);
+            _serverTick        = Mathf.Max(0f, config.ServerTickSeconds);
         }
 
         /// <summary> 기술 슬롯(Q 0, W 1, E 2, R 3)의 발사 규격, 속도나 사거리가 0 이하이면 그 기술은 화살을 재생하지 않는다 </summary>
@@ -313,7 +328,7 @@ namespace Shinshi.Art
             _attackBaseline = obs.AttackSequence;
             if (isAttackNew && (!isCastNew) && (obs.SkillPhase == ESkillPhase.Idle))
             {
-                RegisterBasic(in obs);
+                count = RegisterBasic(in obs, count);
             }
 
             return Resolve(in obs, count);
@@ -367,35 +382,67 @@ namespace Shinshi.Art
             return Mathf.Max(0f, _basicStepWindups[step]);
         }
 
-        private void RegisterBasic(in Observation obs)
+        private int RegisterBasic(in Observation obs, int count)
         {
-            // 기본 공격은 한 번에 하나만 준비되므로 이전 준비는 새 값으로 바꾼다
+            // 서버는 단계 주기가 준비 시간보다 길어 앞 공격을 쏜 뒤에만 다음 공격을 승인한다. 지터로 앞 준비가 아직 남아 있으면
+            // 취소 신호(이동, 회피, 기절, 기술)를 받지 않은 것이므로 서버에서는 이미 나간 화살이다. 버리지 않고 지금 내보낸다
             for (int i = 0; i < _pending.Length; ++i)
             {
                 if (_pending[i].Active && (_pending[i].Kind == EPendingKind.Basic))
                 {
-                    _pending[i].Active = false;
+                    count = FireBasic(i, count, obs.Now);
                 }
             }
 
             if (!IsUsable(in _basic))
             {
-                return;
+                return count;
             }
 
             int slot = FreeSlot();
             if (slot < 0)
             {
-                return;
+                return count;
             }
 
-            // 서버가 공개하는 값에는 윈드업 시작 시각이 없어, 승인을 처음 본 시각에 윈드업을 더해 발사 시각으로 삼는다.
+            // 화살 위치는 적중 신호와 같은 수신 기준이 되도록 승인을 처음 본 시각에 준비 시간을 더한 시각에서 출발시키고,
+            // 재생 판단은 서버가 실제로 쏘는 틱까지 미뤄 그 사이에 도착한 이동 취소를 놓치지 않는다.
             // 속성은 승인 순간 값이다. 준비 중에 속성 기술을 쓰면 서버가 이 공격을 버린다
+            float windup    = GetBasicWindup(obs.AttackComboStep);
+            float fireDelay = GetFireDelay(windup);
             _pending[slot] = new Pending
             {
                 Active = true, Kind = EPendingKind.Basic, Direction = obs.Facing, Element = obs.ArcherElement,
-                ResolveAt = obs.Now + GetBasicWindup(obs.AttackComboStep)
+                ResolveAt = obs.Now + windup, DecideAt = obs.Now + fireDelay, ServerStartAt = obs.AttackStartedAt,
+                FireDelay = fireDelay
             };
+            return count;
+        }
+
+        // 서버는 준비 시각이 지난 첫 틱에 쏘므로 준비 시간을 틱 간격의 배수로 올린다
+        private float GetFireDelay(float windup)
+        {
+            if ((_serverTick <= 0f) || (windup <= 0f))
+            {
+                return windup;
+            }
+
+            double ticks = Math.Ceiling((windup / (double)_serverTick) - TICK_ROUNDING);
+            return (float)(Math.Max(1.0, ticks) * _serverTick);
+        }
+
+        // 관찰한 이동이 서버에서 준비를 끊은 이동이면 참. 서버 시각이 없으면 관찰된 이동을 모두 취소로 본다.
+        // 준비를 끊은 이동은 발사 틱까지 시작하고, 발사 뒤의 이동은 그다음 틱부터 시작하므로 그 사이 반 틱을 경계로 삼는다
+        private bool IsMoveBeforeFire(in Observation obs, int index)
+        {
+            double startedAt = _pending[index].ServerStartAt;
+            if ((startedAt <= 0.0) || (obs.LocomotionStartedAt <= startedAt))
+            {
+                return true;
+            }
+
+            double limit = _pending[index].FireDelay + (_serverTick * TICK_MARGIN_SCALE);
+            return (obs.LocomotionStartedAt - startedAt) < limit;
         }
 
         private int RegisterCast(in Observation obs, int count)
@@ -496,18 +543,23 @@ namespace Shinshi.Art
                 return count;
             }
 
-            // 이동하면 준비 중인 기본 공격은 발사 없이 취소된다
-            if (_basicCancelOnMove && (obs.LocomotionSpeed > LOCOMOTION_EPSILON))
+            // 준비 중에 시작한 이동은 기본 공격을 발사 없이 취소한다. 발사 뒤에 시작한 이동은 지터로 먼저 보여도 취소가 아니다
+            if ((_basicCancelOnMove) && (obs.LocomotionSpeed > LOCOMOTION_EPSILON) && (IsMoveBeforeFire(in obs, index)))
             {
                 _pending[index].Active = false;
                 return count;
             }
 
-            if (obs.Now < _pending[index].ResolveAt)
+            if (obs.Now < _pending[index].DecideAt)
             {
                 return count;
             }
 
+            return FireBasic(index, count, obs.Now);
+        }
+
+        private int FireBasic(int index, int count, double now)
+        {
             _pending[index].Active = false;
             ShotSpec spec = _basic;
             if (_pending[index].Element == EArcherElement.Wind)
@@ -516,7 +568,7 @@ namespace Shinshi.Art
             }
 
             return EmitShot(in spec, _pending[index].Element, ToHorizontal(_pending[index].Direction, Vector3.forward),
-                _pending[index].ResolveAt, obs.Now, count);
+                _pending[index].ResolveAt, now, count);
         }
 
         private int ResolveCast(int index, int count, in Observation obs)

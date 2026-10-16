@@ -45,6 +45,8 @@ namespace Shinshi.Tests
         private const int    POOL_SIZE          = 2;
         private const int    VIEW_ARROW_POOL    = 8;
         private const float  WIND_SPEED_SCALE   = 1.5f;
+        private const float  SERVER_TICK        = 1f / 30f;
+        private const float  TICK_WINDUP        = 0.25f;
 
         private const byte SLOT_Q = 0;
         private const byte SLOT_W = 1;
@@ -232,6 +234,83 @@ namespace Shinshi.Tests
             Step(tracker, bump);
 
             Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_MoveStartedAfterServerFireButSeenBeforeWindup_StillFires()
+        {
+            // 서버 30Hz에서 준비 0.25초는 승인 뒤 8틱(0.2667초)에 쏘고, 쏜 뒤의 이동은 그다음 틱부터 시작한다
+            const double SERVER_START = 500.0;
+            ArcherVfxTracker tracker = CreateTickTracker();
+            Step(tracker, Idle(10.0));
+
+            ArcherVfxTracker.Observation bump = Idle(10.0);
+            bump.AttackSequence  = 1;
+            bump.AttackStartedAt = SERVER_START;
+            Step(tracker, bump);
+
+            // 지터로 발사 뒤의 이동이 클라이언트 준비 시간보다 먼저 도착했다. 서버는 이미 쐈으므로 취소하지 않는다
+            bump.Now                 = 10.22;
+            bump.LocomotionSpeed     = 4f;
+            bump.LocomotionStartedAt = SERVER_START + (9.0 * SERVER_TICK);
+            Step(tracker, bump);
+            Assert.That(tracker.HasPending, Is.True);
+
+            bump.Now = 10.0 + (8.0 * SERVER_TICK) + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+            Assert.That(FirstProjectile().StartAt, Is.EqualTo(10.0 + TICK_WINDUP).Within(1e-6));
+        }
+
+        [Test]
+        public void Update_MoveStartedAtServerFireTickButSeenAfterWindup_Cancels()
+        {
+            const double SERVER_START = 600.0;
+            ArcherVfxTracker tracker = CreateTickTracker();
+            Step(tracker, Idle(20.0));
+
+            ArcherVfxTracker.Observation bump = Idle(20.0);
+            bump.AttackSequence  = 1;
+            bump.AttackStartedAt = SERVER_START;
+            Step(tracker, bump);
+
+            // 준비 시간은 지났지만 서버 발사 틱 전이다. 그 틱에 시작한 이동은 서버에서 준비를 끊었다
+            bump.Now = 20.0 + TICK_WINDUP + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+            Assert.That(_plays, Is.Empty);
+
+            bump.Now                 = 20.26;
+            bump.LocomotionSpeed     = 4f;
+            bump.LocomotionStartedAt = SERVER_START + (8.0 * SERVER_TICK);
+            Step(tracker, bump);
+            bump.Now             = 20.5;
+            bump.LocomotionSpeed = 0f;
+            Step(tracker, bump);
+
+            Assert.That(_plays, Is.Empty);
+        }
+
+        [Test]
+        public void Update_NextBasicArrivesWhileEarlierStillPending_FiresEarlierInsteadOfDropping()
+        {
+            ArcherVfxTracker tracker = CreateTracker();
+            Step(tracker, Idle(30.0));
+
+            ArcherVfxTracker.Observation bump = Idle(30.0);
+            bump.AttackSequence = 1;
+            Step(tracker, bump);
+
+            // 앞 승인이 늦게 도착해 다음 승인이 준비 시간 안에 겹쳤다. 서버는 앞 화살을 이미 쐈다
+            bump.Now            = 30.15;
+            bump.AttackSequence = 2;
+            Step(tracker, bump);
+            Assert.That(CountProjectiles(), Is.EqualTo(1));
+            Assert.That(FirstProjectile().StartAt, Is.EqualTo(30.0 + BASIC_WINDUP).Within(1e-6));
+
+            bump.Now = 30.15 + BASIC_WINDUP + AFTER_DELAY_MARGIN;
+            Step(tracker, bump);
+            Assert.That(CountProjectiles(), Is.EqualTo(2));
         }
 
         [Test]
@@ -1142,6 +1221,20 @@ namespace Shinshi.Tests
             tracker.SetSkill(SLOT_W, Shot(W_SPEED, W_RANGE, 0, 0f, 0, 0f));
             tracker.SetSkill(SLOT_E, Shot(E_SPEED, E_RANGE));
             tracker.SetSkill(SLOT_R, Shot(R_SPEED, R_RANGE, R_PRONGS, R_SPREAD));
+            return tracker;
+        }
+
+        // 서버 틱 간격을 아는 실제 뷰 구성과 같은 모양이다
+        private static ArcherVfxTracker CreateTickTracker()
+        {
+            var tracker = new ArcherVfxTracker();
+            var config  = new ArcherVfxTracker.Config();
+            config.BasicWindup       = TICK_WINDUP;
+            config.BasicCancelOnMove = true;
+            config.Basic             = Shot(BASIC_SPEED, BASIC_RANGE);
+            config.MaxLateSeconds    = MAX_LATE;
+            config.ServerTickSeconds = SERVER_TICK;
+            tracker.Configure(in config);
             return tracker;
         }
 

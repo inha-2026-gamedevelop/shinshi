@@ -146,6 +146,8 @@ namespace Shinshi.Art
             observation.LifeState            = _combat.LifeState;
             observation.AttackSequence       = _combat.AttackSequence;
             observation.AttackComboStep      = _combat.AttackComboStep;
+            observation.AttackStartedAt      = _combat.AttackStartedAt;
+            observation.LocomotionStartedAt  = _combat.LocomotionStartedAt;
             observation.DodgeSequence        = _combat.DodgeSequence;
             observation.ActionCancelSequence = _combat.ActionCancelSequence;
             observation.CastInstanceId       = _combat.CastInstanceId;
@@ -225,6 +227,7 @@ namespace Shinshi.Art
             var config = new ArcherVfxTracker.Config();
             config.MaxLateSeconds      = MAX_LATE_SECONDS;
             config.MaxBurstLateSeconds = MAX_BURST_LATE_SECONDS;
+            config.ServerTickSeconds   = 1f / Constants.Network.SERVER_TICK_RATE;
             config.WindSpeedScale      = ArcherElementRules.GetProjectileSpeedScale(GameDB.Skills, EArcherElement.Wind);
             try
             {
