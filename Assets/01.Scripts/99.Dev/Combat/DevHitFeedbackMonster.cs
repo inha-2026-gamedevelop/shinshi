@@ -199,9 +199,35 @@ namespace Shinshi.Dev
             _isDying = true;
             s_alive.Remove(this);
             _reactor.Die(away, profile);
+            IgnoreOtherMonsters();
 
             // 사체가 남아 있는 동안에도 다음 무리가 나올 수 있게 죽는 순간 알린다
             Died?.Invoke(this);
+        }
+
+        // 죽는 순간부터 다른 몬스터(산 것과 사체 모두)와는 부딪히지 않는다. 바닥과는 계속 부딪혀 튄다
+        private void IgnoreOtherMonsters()
+        {
+            Collider ownCollider = GetComponent<Collider>();
+            if (ownCollider == null)
+            {
+                return;
+            }
+
+            DevHitFeedbackMonster[] monsters = FindObjectsByType<DevHitFeedbackMonster>(FindObjectsSortMode.None);
+            for (int i = 0; i < monsters.Length; ++i)
+            {
+                if (monsters[i] == this)
+                {
+                    continue;
+                }
+
+                Collider other = monsters[i].GetComponent<Collider>();
+                if (other != null)
+                {
+                    Physics.IgnoreCollision(ownCollider, other);
+                }
+            }
         }
 
         private void Shove(Vector3 direction, float speed)
