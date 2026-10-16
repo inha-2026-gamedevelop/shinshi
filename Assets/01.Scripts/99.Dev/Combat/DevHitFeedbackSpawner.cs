@@ -1,9 +1,13 @@
+// System
+using System.Collections.Generic;
+
 // Unity
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Shinshi.Dev
 {
-    /// <summary> 정해진 구역 안에 몬스터 한 무리를 세우고, 모두 죽으면 잠시 뒤 다음 무리를 세우는 시험용 스포너 </summary>
+    /// <summary> 구역마다 문 앞에 몬스터 한 무리를 한 번만 세우고, 구역별 처치 수를 세는 시험용 스포너 </summary>
     public sealed class DevHitFeedbackSpawner : MonoBehaviour
     {
         // 플레이어의 Hit 이벤트를 받아 맞은 충돌체가 몬스터면 한 대 때린다. 위치는 구역 중심 원 안에서 무작위로 고르고,
@@ -48,18 +52,38 @@ namespace Shinshi.Dev
 
         [Header("무리")]
         [SerializeField, Min(0.1f)] private float _sizeMultiplier = 1.3f; // 몬스터 전체(충돌체와 모델) 크기 배율
-        [SerializeField] private int   _groupSize        = 48;
+        [SerializeField] private int   _groupSize        = 24;
         [SerializeField] private int   _hitsToDie        = 3;
         [SerializeField] private float _chaseSpeed       = 2.5f; // m/s, 플레이어를 쫓는 속도
-        [SerializeField] private float _spawnRadius      = 9f;  // m
-        [SerializeField] private float _respawnDelay     = 3f;  // 초, 무리가 모두 죽은 뒤 다음 무리까지
+        [SerializeField] private float _spawnRadius      = 6f;  // m, 문 앞 출현 지점 주위
+        [FormerlySerializedAs("_respawnDelay")]
+        [SerializeField] private float _retryDelay       = 3f;  // 초, 자리가 없어 한 마리도 못 세웠을 때 다시 시도하기까지
+
+        [Header("구역 (구역마다 문 앞 출현 지점 하나. 비우면 이 오브젝트 자리 한 곳)")]
+        [SerializeField] private Transform[] _zoneAnchors;
+        [SerializeField, Min(0f)] private float _activateRadius    = 25f; // m, 플레이어가 출현 지점에 이만큼 다가오면 그 구역 무리를 세운다
+        [SerializeField, Min(0f)] private float _minPlayerDistance = 4f;  // m, 플레이어와 이 거리 안에는 세우지 않는다
 
         private readonly RaycastHit[] _rayHits     = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[OVERLAP_BUFFER_SIZE];
+        private readonly Dictionary<DevHitFeedbackMonster, int> _zoneOfMonster = new Dictionary<DevHitFeedbackMonster, int>();
 
         private Collider _playerCollider = null;
-        private int      _alive          = 0;
-        private float    _nextSpawnTime  = 0f;
+        private int[]    _zoneAlive      = null;
+        private int[]    _zonePlanned    = null; // 구역에 실제로 세운 마리 수
+        private int[]    _zoneKilled     = null;
+        private bool[]   _zoneSpawned    = null; // 구역 무리는 한 번만 세운다
+        private float[]  _zoneNextTry    = null;
+        private float    _firstSpawnTime = -1f;
+
+        /****************************************
+        *               Properties
+        ****************************************/
+
+        public int ZoneCount => (_zoneAlive != null) ? _zoneAlive.Length : 0;
+
+        /// <summary> 첫 무리를 세운 시각(Time.time), 아직이면 음수. 제한 시간은 여기서부터 센다 </summary>
+        public float FirstSpawnTime => _firstSpawnTime;
 
         /****************************************
         *              Unity Event
@@ -93,14 +117,31 @@ namespace Shinshi.Dev
             // 플레이어의 카메라 도우미는 플레이어 Awake에서 만들어지므로 모든 Awake가 끝난 Start에서 잇는다
             _director.Init(_player.FeedbackCamera);
 
-            SpawnGroup();
+            int zoneCount  = ((_zoneAnchors != null) && (_zoneAnchors.Length > 0)) ? _zoneAnchors.Length : 1;
+            _zoneAlive   = new int[zoneCount];
+            _zonePlanned = new int[zoneCount];
+            _zoneKilled  = new int[zoneCount];
+            _zoneSpawned = new bool[zoneCount];
+            _zoneNextTry = new float[zoneCount];
         }
 
         private void Update()
         {
-            if ((_alive == 0) && (Time.time >= _nextSpawnTime))
+            Vector3 playerPosition = _player.transform.position;
+
+            for (int zone = 0; zone < _zoneAlive.Length; ++zone)
             {
-                SpawnGroup();
+                if ((_zoneSpawned[zone]) || (Time.time < _zoneNextTry[zone]))
+                {
+                    continue;
+                }
+
+                Vector3 toPlayer = playerPosition - GetAnchor(zone).position;
+                toPlayer.y = 0f;
+                if (toPlayer.sqrMagnitude <= (_activateRadius * _activateRadius))
+                {
+                    SpawnGroup(zone);
+                }
             }
         }
 
@@ -150,35 +191,62 @@ namespace Shinshi.Dev
         private void OnMonsterDied(DevHitFeedbackMonster monster)
         {
             monster.Died -= OnMonsterDied;
-            --_alive;
 
-            if (_alive == 0)
+            if (!_zoneOfMonster.Remove(monster, out int zone))
             {
-                _nextSpawnTime = Time.time + _respawnDelay;
+                return;
             }
+
+            --_zoneAlive[zone];
+            ++_zoneKilled[zone];
         }
 
-        private void SpawnGroup()
+        public bool IsZoneSpawned(int zone) { return _zoneSpawned[zone]; }
+
+        /// <summary> 아직 세우기 전에는 계획한 마리 수(무리 크기)를 돌려준다 </summary>
+        public int GetZonePlanned(int zone) { return _zoneSpawned[zone] ? _zonePlanned[zone] : _groupSize; }
+
+        public int GetZoneKilled(int zone) { return _zoneKilled[zone]; }
+
+        public bool IsZoneCleared(int zone) { return _zoneSpawned[zone] && (_zoneAlive[zone] == 0); }
+
+        private Transform GetAnchor(int zone)
         {
+            return ((_zoneAnchors != null) && (_zoneAnchors.Length > 0)) ? _zoneAnchors[zone] : transform;
+        }
+
+        private void SpawnGroup(int zone)
+        {
+            Vector3 anchor = GetAnchor(zone).position;
+
             for (int i = 0; i < _groupSize; ++i)
             {
-                if (!TryFindSpot(out Vector3 position))
+                if (!TryFindSpot(anchor, out Vector3 position))
                 {
-                    Debug.LogWarning($"[DevSpawner] 자리를 못 찾아 {i}마리만 세웠다", this);
+                    Debug.LogWarning($"[DevSpawner] {zone + 1}구역에서 자리를 못 찾아 {i}마리만 세웠다", this);
                     break;
                 }
 
-                CreateMonster(position);
+                CreateMonster(zone, position);
             }
 
             // 한 마리도 못 세웠으면 다음 프레임에 계속 재시도하지 않게 대기 시간을 둔다
-            if (_alive == 0)
+            if (_zoneAlive[zone] == 0)
             {
-                _nextSpawnTime = Time.time + _respawnDelay;
+                _zoneNextTry[zone] = Time.time + _retryDelay;
+                return;
+            }
+
+            _zoneSpawned[zone] = true;
+            _zonePlanned[zone] = _zoneAlive[zone];
+
+            if (_firstSpawnTime < 0f)
+            {
+                _firstSpawnTime = Time.time;
             }
         }
 
-        private void CreateMonster(Vector3 position)
+        private void CreateMonster(int zone, Vector3 position)
         {
             bool       hasModel = (_models != null) && (_models.Length > 0);
             GameObject body     = hasModel ? new GameObject(MONSTER_NAME) : GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -194,7 +262,8 @@ namespace Shinshi.Dev
             var monster = body.AddComponent<DevHitFeedbackMonster>();
             monster.Init(_hitsToDie, _playerCollider, _chaseSpeed, animator);
             monster.Died += OnMonsterDied;
-            ++_alive;
+            _zoneOfMonster.Add(monster, zone);
+            ++_zoneAlive[zone];
         }
 
         // 보이지 않는 캡슐 충돌체 아래에 모델을 발이 땅에 닿게 붙이고, 모델의 애니메이터를 돌려준다
@@ -225,16 +294,16 @@ namespace Shinshi.Dev
             return animator;
         }
 
-        private bool TryFindSpot(out Vector3 position)
+        private bool TryFindSpot(Vector3 anchor, out Vector3 position)
         {
             position = Vector3.zero;
 
             for (int attempt = 0; attempt < PLACE_ATTEMPTS_PER_MONSTER; ++attempt)
             {
                 Vector2 offset = Random.insideUnitCircle * _spawnRadius;
-                Vector3 probe  = transform.position + new Vector3(offset.x, GROUND_PROBE_HEIGHT, offset.y);
+                Vector3 probe  = anchor + new Vector3(offset.x, GROUND_PROBE_HEIGHT, offset.y);
 
-                if ((!TryFindGround(probe, out Vector3 ground)) || (!IsSpotFree(ground)))
+                if ((!TryFindGround(probe, out Vector3 ground)) || (!IsSpotFree(ground)) || (IsNearPlayer(ground)))
                 {
                     continue;
                 }
@@ -270,6 +339,13 @@ namespace Shinshi.Dev
             }
 
             return found;
+        }
+
+        private bool IsNearPlayer(Vector3 ground)
+        {
+            Vector3 toPlayer = _player.transform.position - ground;
+            toPlayer.y = 0f;
+            return toPlayer.sqrMagnitude < (_minPlayerDistance * _minPlayerDistance);
         }
 
         // 몸통 높이에서 겹치는 충돌체가 하나라도 있으면(나무, 바위, 다른 몬스터, 플레이어) 쓰지 않는다
