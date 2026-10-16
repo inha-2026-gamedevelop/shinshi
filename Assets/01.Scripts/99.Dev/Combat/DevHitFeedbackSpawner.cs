@@ -60,6 +60,8 @@ namespace Shinshi.Dev
         [SerializeField, Min(1)] private int _hitsToDie  = 1; // 한 대 맞으면 죽는다
         [SerializeField] private float _chaseSpeed       = 2.5f; // m/s, 플레이어를 쫓는 속도
         [SerializeField] private float _spawnRadius      = 6f;  // m, 문 앞 출현 지점 주위
+        [SerializeField, Min(0f)] private float _attackWindup   = 0.5f; // 초, 공격 애니메이션을 틀고 맞히기까지
+        [SerializeField, Min(0f)] private float _attackCooldown = 2f;   // 초, 한 번 공격하고 다음 공격까지
         [SerializeField, Min(0f)] private float _maxSpawnRadius = 12f; // m, 기본 반경에 자리가 모자라면 여기까지 넓혀서 찾는다
         [SerializeField, Min(0f)] private float _radiusStep     = 2f;  // m, 반경을 넓히는 단계
         [FormerlySerializedAs("_respawnDelay")]
@@ -348,7 +350,7 @@ namespace Shinshi.Dev
             Animator animator = hasModel ? AttachModel(body.transform, size) : null;
 
             var monster = body.AddComponent<DevHitFeedbackMonster>();
-            monster.Init(hitsToDie, _playerCollider, _chaseSpeed, animator);
+            monster.Init(hitsToDie, _playerCollider, _chaseSpeed, animator, _attackWindup, _attackCooldown);
             monster.Died += OnMonsterDied;
             _zoneOfMonster.Add(monster, zone);
             ++_zoneAlive[zone];

@@ -21,6 +21,8 @@ namespace Shinshi.Dev
         private static readonly Color s_normalColor = new Color(0.55f, 0.2f, 0.2f, 1f);
         private static readonly Color s_modelColor  = Color.white; // 모델은 원래 색을 그대로 보여 준다
         private static readonly int   s_movingHash  = Animator.StringToHash("Moving");
+        private static readonly int   s_attackHash  = Animator.StringToHash("Attack");
+        private static readonly int   s_dashingHash = Animator.StringToHash("Dashing");
         private static readonly Color s_corpseColor = new Color(0.32f, 0.12f, 0.09f, 1f); // 원래 색에 검정을 섞은 적갈색
 
         private const float DEATH_SECONDS = 0.25f;
@@ -45,6 +47,10 @@ namespace Shinshi.Dev
         private const float SHOVE_MIN_SPEED = 4f;   // m/s, 이 속도 이상으로 부딪혀야 민다
         private const float SHOVE_RATIO     = 0.8f; // 부딪힌 속도 대비 밀려나는 속도
         private const float SHOVE_MAX_SPEED = 14f;  // m/s
+
+        // 공격. 걷다가 플레이어 몸에 닿을 거리에 서면 애니메이션을 틀고, 선딜이 지난 순간에도 닿아 있으면 한 대 맞힌다
+        private const float ATTACK_REACH_EXTRA  = 0.6f; // m, 멈춰 서는 거리에서 더 뻗어 닿는 거리
+        private const float ATTACK_DASH_SECONDS = 0.4f; // 초, 돌진형 모델이 공격 뒤 달리는 자세를 유지하는 시간
 
         private const float TURN_SPEED        = 10f;   // 1/s, 플레이어 쪽으로 몸을 돌리는 속도
         private const float MIN_DIRECTION_SQR = 0.0001f;
@@ -71,6 +77,15 @@ namespace Shinshi.Dev
         private float      _deathElapsed  = 0f;
         private bool       _isDying       = false;
         private bool       _isAshing      = false;
+
+        private DevHitFeedbackPlayer _player = null;
+        private float _attackWindup   = 0f;
+        private float _attackCooldown = 0f;
+        private float _nextAttackTime = 0f;
+        private float _attackHitTime  = -1f; // 선딜이 끝나 맞히는 시각, 공격 중이 아니면 음수
+        private float _dashEndTime    = -1f;
+        private bool  _hasAttackTrigger = false;
+        private bool  _hasDashingBool   = false;
 
         /// <summary> 죽는 순간 한 번 알린다. 사체는 이 뒤로도 한동안 남아 있다 </summary>
         public event Action<DevHitFeedbackMonster> Died;
@@ -122,6 +137,7 @@ namespace Shinshi.Dev
                 return;
             }
 
+            UpdateDash();
             UpdateKnockback();
             UpdateChase();
         }
@@ -150,8 +166,26 @@ namespace Shinshi.Dev
         ****************************************/
 
         /// <summary> 죽기까지 맞아야 하는 횟수를 정하고 연출을 준비한다. animator가 있으면 걷는 동안 이동 애니메이션을 재생한다. playerCollider를 쫓아가며, 죽어 날아갈 때는 부딪히지 않는다 </summary>
-        public void Init(int hitsToDie, Collider playerCollider, float chaseSpeed, Animator animator)
+        public void Init(int hitsToDie, Collider playerCollider, float chaseSpeed, Animator animator, float attackWindup, float attackCooldown)
         {
+            _attackWindup   = attackWindup;
+            _attackCooldown = attackCooldown;
+            _nextAttackTime = Time.time + attackCooldown;
+
+            if (playerCollider != null)
+            {
+                playerCollider.TryGetComponent(out _player);
+            }
+
+            if (animator != null)
+            {
+                foreach (AnimatorControllerParameter parameter in animator.parameters)
+                {
+                    _hasAttackTrigger |= (parameter.nameHash == s_attackHash);
+                    _hasDashingBool   |= (parameter.nameHash == s_dashingHash);
+                }
+            }
+
             _animator   = animator;
             _chaseSpeed = chaseSpeed;
             _target     = (playerCollider != null) ? playerCollider.transform : null;
@@ -200,6 +234,7 @@ namespace Shinshi.Dev
                 return true;
             }
 
+            _attackHitTime = -1f; // 맞으면 휘두르던 공격은 끊긴다
             _knockVelocity = away * (profile.KnockbackSpeed * (isCritical ? profile.CritKnockbackMultiplier : 1f));
             _knockDrag     = profile.KnockbackDrag;
             _reactor.React(profile, isCritical);
@@ -333,21 +368,25 @@ namespace Shinshi.Dev
         {
             Vector3 position = transform.position;
             bool    isWalking = false;
+            bool    playerAlive = (_player == null) || (!_player.IsDead);
 
-            if ((_target != null) && (_knockVelocity.sqrMagnitude <= STUN_SPEED_SQR))
+            if ((_target != null) && (playerAlive) && (_knockVelocity.sqrMagnitude <= STUN_SPEED_SQR))
             {
                 Vector3 toTarget = _target.position - position;
                 toTarget.y = 0f;
 
                 float distance = toTarget.magnitude;
-                if (distance > _chaseStopDistance)
+                bool  isAttacking = _attackHitTime >= 0f;
+                if ((distance > _chaseStopDistance) && (!isAttacking))
                 {
                     float step = Mathf.Min(_chaseSpeed * Time.deltaTime, distance - _chaseStopDistance);
                     position  += (toTarget / distance) * step;
                     isWalking  = true;
                 }
 
-                if (distance > MIN_DIRECTION_SQR)
+                UpdateAttack(distance);
+
+                if ((distance > MIN_DIRECTION_SQR) && (_attackHitTime < 0f))
                 {
                     Quaternion look = Quaternion.LookRotation(toTarget / distance, Vector3.up);
                     transform.rotation = Quaternion.Slerp(transform.rotation, look, TURN_SPEED * Time.deltaTime);
@@ -376,6 +415,60 @@ namespace Shinshi.Dev
 
             position.y = FollowGround(position);
             transform.position = position;
+        }
+
+        // 닿는 거리 안에 섰고 쉴 시간이 지났으면 공격을 시작하고, 선딜이 끝난 순간 아직 닿아 있으면 플레이어를 맞힌다
+        private void UpdateAttack(float distance)
+        {
+            float reach = _chaseStopDistance + ATTACK_REACH_EXTRA;
+
+            if (_attackHitTime < 0f)
+            {
+                if ((distance <= reach) && (Time.time >= _nextAttackTime))
+                {
+                    _attackHitTime = Time.time + _attackWindup;
+                    if ((_animator != null) && (_hasAttackTrigger))
+                    {
+                        _animator.SetTrigger(s_attackHash);
+                    }
+                }
+
+                return;
+            }
+
+            if (Time.time < _attackHitTime)
+            {
+                return;
+            }
+
+            _attackHitTime  = -1f;
+            _nextAttackTime = Time.time + _attackCooldown;
+
+            if ((_player != null) && (distance <= reach))
+            {
+                _player.TakeHit(transform.position);
+            }
+
+            // 돌진형 모델은 공격 자세 뒤 달리기 자세로 넘어가야 공격 상태에서 빠져나온다
+            if ((_animator != null) && (_hasDashingBool))
+            {
+                _animator.SetBool(s_dashingHash, true);
+                _dashEndTime = Time.time + ATTACK_DASH_SECONDS;
+            }
+        }
+
+        private void UpdateDash()
+        {
+            if ((_dashEndTime < 0f) || (Time.time < _dashEndTime))
+            {
+                return;
+            }
+
+            _dashEndTime = -1f;
+            if (_animator != null)
+            {
+                _animator.SetBool(s_dashingHash, false);
+            }
         }
 
         // 가까운 몬스터마다 겹친 길이의 절반씩 밀려난다. 상대도 같은 계산을 해서 한 프레임에 겹침이 풀린다

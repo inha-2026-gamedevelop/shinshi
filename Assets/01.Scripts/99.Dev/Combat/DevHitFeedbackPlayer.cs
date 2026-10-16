@@ -29,6 +29,7 @@ namespace Shinshi.Dev
         private const float FALL_RESET_DEPTH   = 30f;   // m, 시작 높이보다 이만큼 떨어지면 시작 지점으로 되돌린다
         private const float MIN_DIRECTION_SQR  = 0.0001f;
         private const float HALF               = 0.5f;
+        private const float DEAD_TILT_DEGREES  = 90f;  // 도, 죽으면 옆으로 눕는다
 
         private const int RAYCAST_MAX_HITS = 8;
         private const int HIT_BUFFER_SIZE  = 32;
@@ -75,6 +76,10 @@ namespace Shinshi.Dev
         [SerializeField] private Color _heavySlashTint  = new Color(1f, 0.45f, 0.25f, 1f);
         [SerializeField] private float _slamReach       = 1.75f; // m, 충격 중심이 캐릭터 앞으로 떨어진 거리
 
+        [Header("체력 (몬스터에게 이만큼 맞으면 죽는다)")]
+        [SerializeField, Min(1)] private int   _maxHits          = 3;
+        [SerializeField, Min(0f)] private float _invincibleSeconds = 0.6f; // 초, 맞은 직후 연달아 맞지 않게 막는 시간
+
         [Header("표시")]
         [SerializeField] private Color _arrowColor = new Color(1f, 0.9f, 0.2f, 1f);
 
@@ -99,12 +104,27 @@ namespace Shinshi.Dev
         private float               _verticalSpeed  = 0f;
         private float               _nextAttackTime = 0f;
         private float               _attackEndTime  = 0f;
+        private int                 _hitsLeft       = 0;
+        private float               _invincibleEnd  = 0f;
+        private bool                _isDead         = false;
 
         /// <summary> 공격이 맞힌 충돌체마다 한 번씩 알린다. 값은 맞은 충돌체, 몸 중심에서 가장 가까운 맞은 지점, 강공격 여부다 </summary>
         public event Action<Collider, Vector3, bool> Hit;
 
         /// <summary> 강공격이 바닥을 내려칠 때 한 번 알린다. 값은 충격 중심이다 </summary>
         public event Action<Vector3> Slam;
+
+        /// <summary> 몬스터에게 맞을 때마다 알린다. 값은 남은 체력이다 </summary>
+        public event Action<int> Damaged;
+
+        /// <summary> 체력이 다해 죽을 때 한 번 알린다 </summary>
+        public event Action Died;
+
+        public bool IsDead => _isDead;
+
+        public int HitsLeft => _hitsLeft;
+
+        public int MaxHits => _maxHits;
 
         /// <summary> 이 플레이어의 카메라 흔들림과 줌을 맡는 도우미 </summary>
         public HitFeedbackCamera FeedbackCamera => _feedbackCamera;
@@ -118,6 +138,7 @@ namespace Shinshi.Dev
             _controller    = GetComponent<CharacterController>();
             _spawnPosition = transform.position;
             _spawnRotation = transform.rotation;
+            _hitsLeft      = _maxHits;
             _slash         = CreateSlashVisual();
             CreateFacingArrow();
 
@@ -139,6 +160,11 @@ namespace Shinshi.Dev
 
         private void Update()
         {
+            if (_isDead)
+            {
+                return;
+            }
+
             bool attackPressed = Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK);
 
             // 렉프레임 동안은 나만 굳는다. 전역 timeScale은 건드리지 않아 다른 몬스터와 다른 플레이어는 그대로 흐른다
@@ -190,6 +216,29 @@ namespace Shinshi.Dev
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 몬스터에게 한 대 맞는다. 맞은 직후 잠깐은 무적이고, 체력이 다하면 쓰러져 조작할 수 없다 </summary>
+        public void TakeHit(Vector3 attackerPosition)
+        {
+            if ((_isDead) || (Time.time < _invincibleEnd))
+            {
+                return;
+            }
+
+            --_hitsLeft;
+            _invincibleEnd = Time.time + _invincibleSeconds;
+            _hasDestination = false;
+            Damaged?.Invoke(_hitsLeft);
+
+            if (_hitsLeft > 0)
+            {
+                return;
+            }
+
+            _isDead = true;
+            transform.rotation = Quaternion.Euler(DEAD_TILT_DEGREES, transform.eulerAngles.y, 0f);
+            Died?.Invoke();
+        }
 
         // 이동 버튼을 누르는 동안 커서 지점을 목적지로 갱신하고, 도착하면 선다
         private Vector3 ReadMoveStep()
