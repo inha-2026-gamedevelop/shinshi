@@ -14,13 +14,14 @@ namespace Shinshi.Launcher.Account
 
         NoStoredLogin,
 
-        // API 호출이 실패했다. 저장된 로그인은 그대로이고 ApiError, ReasonCode에 이유가 있다
+        // API 호출이 실패했다. 저장된 로그인은 그대로이고 ApiError, ReasonCode에 이유가 있다.
+        // 갱신 응답을 잃었으면(IsOutcomeUnknown) 같은 토큰을 바로 다시 보내지 않게 메모리 로그인만 버려 LoggedOut이 된다
         ApiFailed,
 
         // 게임이 도는 중이라 갱신하지 않았다. 갱신하면 서버가 그 게임의 세션을 폐기한다
         RefreshSuspended,
 
-        // 갱신 토큰이 거절됐거나 갱신 응답을 잃었다. 저장된 로그인을 지웠으니 다시 로그인해야 한다
+        // 서버가 갱신 토큰을 만료, 폐기로 거절했다(401). 저장된 로그인을 지웠으니 다시 로그인해야 한다
         SessionLost
     }
 }

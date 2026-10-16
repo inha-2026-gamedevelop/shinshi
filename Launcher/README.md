@@ -16,6 +16,8 @@ dotnet test Launcher/Shinshi.Launcher.slnx
 | `src/Shinshi.Launcher.UI` | WPF 런처 화면. `launcher.json`의 `apiBaseUrl`(로그인·게임 시작), `websiteUrl`(회원가입 링크)을 읽는다 |
 | `tests/Shinshi.Launcher.Tests` | 위 프로젝트(화면 제외)의 단위 시험. Windows 전용(net10.0-windows) |
 
+런처는 시작할 때 업데이트가 있으면 로그인 여부와 무관하게 바로 받고, 자동 로그인은 그와 동시에 진행한다. 자동 로그인 갱신 응답을 잃어도(시간 초과, 502·504) 저장된 토큰은 지우지 않고 다음 자동 로그인에서 다시 시도하며, 서버가 401로 거절할 때만 지운다.
+
 서비스 상태의 공지 제목(`notice`)이 비어 있으면 `notices` 목록에서 제목이 있는 Launcher 또는 Both 대상의 첫 공지를 표시한다.
 
 런처 세션을 받은 클라이언트는 Release 로비·캐릭터 선택/생성 흐름을 거쳐 마을 입장권을 요청한다. 신규 직업 생성 UI와 API 기본 허용 직업(0,1,2)의 공개 정책 대조는 남아 있다. `GameSessionRefresher`가 만료 5분 전 게임 세션을 회전하며, 회전 응답 유실 시 기존 토큰 재사용 복구는 하지 않고 재로그인을 안내한다. 실제 런처 경유 전체 흐름·다인 접속은 미검증이다.

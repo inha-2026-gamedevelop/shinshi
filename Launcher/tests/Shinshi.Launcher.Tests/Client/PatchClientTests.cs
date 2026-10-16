@@ -13,6 +13,7 @@ using Xunit;
 
 // Project
 using Shinshi.Contracts;
+using Shinshi.Launcher.Account;
 using Shinshi.Patch;
 using Shinshi.Patch.Client;
 
@@ -40,6 +41,9 @@ namespace Shinshi.Launcher.Tests.Client
         private const string IDENTITY_V1 = "{\"buildId\":\"one\"}";
         private const string NEW_V2      = "new-in-v2";
         private const string EXE_V3      = "exe-v3";
+
+        private const string ACCOUNT_FOLDER = "Account";
+        private const string STORED_REFRESH = "refresh-token-kept-across-updates";
 
         private const long TINY_FREE_SPACE = 1;
         private const int  OVERSIZE_EXTRA  = 1024 * 1024;
@@ -330,6 +334,29 @@ namespace Shinshi.Launcher.Tests.Client
             Assert.False(File.Exists(Path.Combine(client.Layout.ManifestsPath, RELEASE_1 + ".json")));
             Assert.True(File.Exists(Path.Combine(client.Layout.ManifestsPath, RELEASE_2 + ".json")));
             Assert.Equal(EXE_V3, PatchPublishFixture.ReadText(_fixture.GetInstalledFile(RELEASE_3, EXE_PATH)));
+        }
+
+        [Fact]
+        public async Task UpdateAndRepair_DefaultLayoutWithStoredLogin_KeepsRefreshTokenFile()
+        {
+            // 기본 설정에서는 자동 로그인 저장소(Account)가 설치 루트 바로 아래에 있다. 업데이트, 보관 정리, 복구가 토큰 파일을 지우면 안 된다
+            RefreshTokenStore store = new RefreshTokenStore(Path.Combine(_fixture.InstallRoot, ACCOUNT_FOLDER, RefreshTokenStore.FILE_NAME));
+            Assert.True(store.TrySave(STORED_REFRESH));
+            PatchClient client = _fixture.CreateClient();
+
+            _fixture.Publish(RELEASE_1, 1, CreateRelease1());
+            Assert.True((await client.UpdateAsync(null, G_GameNotRunning)).IsSuccess);
+            _fixture.Publish(RELEASE_2, 2, CreateRelease2());
+            Assert.True((await client.UpdateAsync(null, G_GameNotRunning)).IsSuccess);
+            _fixture.Publish(RELEASE_3, 3, CreateRelease3());
+            PatchOperationResult updated = await client.UpdateAsync(null, G_GameNotRunning);
+            PatchOperationResult repaired = await client.VerifyAndRepairAsync(null, G_GameNotRunning);
+
+            Assert.True(updated.IsSuccess, updated.Error.ToString());
+            Assert.Equal(1, updated.RemovedVersions);
+            Assert.True(repaired.IsSuccess, repaired.Error.ToString());
+            Assert.True(new RefreshTokenStore(store.FilePath).TryLoad(out string? loaded));
+            Assert.Equal(STORED_REFRESH, loaded);
         }
 
         [Fact]
