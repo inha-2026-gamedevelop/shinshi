@@ -83,6 +83,11 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.reward_inbox_lines TO shinshi_runti
 -- 0015: 유저 경매장 등록, 1:1 거래 실행. 성사 기록은 추가 전용이다. equipment_instances의 새 열(escrow_kind, escrow_ref)은 기존 테이블 권한을 따른다
 GRANT SELECT, INSERT, UPDATE ON TABLE public.market_listings, public.player_trade_executions TO shinshi_runtime;
 GRANT SELECT, INSERT ON TABLE public.market_trades TO shinshi_runtime;
+-- 0019: 소셜. 해체한 길드 행은 남긴다. account_leases의 새 열(character_id)은 기존 테이블 권한을 따른다
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+    public.friendships, public.friend_requests, public.guild_members, public.guild_join_requests, public.social_deliveries
+    TO shinshi_runtime;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.guilds TO shinshi_runtime;
 -- 0008: 운영자 계정, 어드민 세션, 지급, 우편함, 공지. service_state는 0008이 넣은 단일 행만 갱신한다(INSERT 없음)
 GRANT SELECT, INSERT, UPDATE ON TABLE
     public.admin_users, public.admin_sessions, public.admin_grants, public.reward_inbox, public.service_notices
@@ -555,3 +560,14 @@ dotnet run --project Backend/src/Shinshi.Admin.Web --no-restore --no-launch-prof
 Data Protection 공급자와 키 관리 저장소도 프로세스 메모리에 둔다. Windows 사용자 키 저장소나 디스크에 키를 기록하지 않는다. 메모리 XML 저장소에는 별도 XML 암호화를 두지 않아 시작 시 프레임워크가 암호화 저장 경고를 남길 수 있으나 키를 파일에 보존하지 않는다.
 
 운영 배치는 사설 HTTPS와 단일 웹 인스턴스를 전제로 한다. 프로세스 재시작 시 메모리 세션을 잃어 모든 운영자가 다시 로그인한다. 여러 인스턴스는 공유 세션 저장소와 sticky session 검토가 필요하며 현재 구현만으로 확장 배치를 검증했다고 보지 않는다. Dockerfile과 배치 설정은 [운영 웹 컨테이너](../deploy/admin-web/README.md)에 있다. 실제 API를 향한 운영자 조작·브라우저 시각 확인·컨테이너 배포·프록시 뒤 HTTPS 접속은 자동 HTTP 대역 테스트와 별도로 검증해야 한다.
+
+## 소셜: 친구, 귓속말, 길드, 길드 채팅 (0019)
+
+설계는 `docs/design/social-system.md`. 경제 효과가 없어 operations, 원장, outbox를 쓰지 않고 **상태 기준 멱등**이다(같은 요청 재전송은 이미 목표 상태면 성공, 탈퇴와 추방은 `membershipId`, 위임은 `expectedLeaderVersion`, 길드 생성은 `createRequestId`로 늦은 재전송을 막는다). 경로 상수는 `Shinshi.Contracts.SocialRoutes`, 템플릿은 `Shinshi.Api/Social/SocialRouteTemplates.cs`, 거절 코드는 `ContractCodes.RejectReason`의 1600대다. 모든 경로는 서버 임대 Bearer와 `X-Shinshi-Instance-Id`가 필요하다. 관리 경로와 스냅샷은 마을만(던전 403), 귓속말, 길드 채팅, 전달함 꺼내기는 마을과 던전이 부른다. 경로의 행위 캐릭터는 호출 인스턴스에 만료 전 계정 임대(`account_leases.character_id`)가 있어야 하며 없으면 409 `SOCIAL_NOT_CONNECTED`다. 판정 순서는 서버 자격(401/403) -> 형식(400) -> 기능 차단(`social`, 409 `FEATURE_DISABLED`, 스냅샷, 탈퇴, 추방, 꺼내기는 막지 않음) -> 캐릭터별 인메모리 한도(관리 쓰기 1분 30회, 친구 요청과 길드 초대 1시간 30회, 채팅 1분 60회, 429와 `Retry-After`) -> 저장소다.
+
+쓰기는 `SessionDb.BeginAsync` 한 트랜잭션이며 `SessionDb.RetryAsync`로 경합, 제한 초과만 다시 시도한다. 잠금 순서는 캐릭터 행(`FOR NO KEY UPDATE`, uuid 오름차순, 한 문장) -> 길드 행(`FOR UPDATE`)이고, 캐릭터 삭제는 계정 -> 삭제 캐릭터(이번에 `FOR UPDATE`에서 `FOR NO KEY UPDATE`로 낮춤) -> 길드다. 정원은 조건부 갱신(`member_count < 30`)의 영향 행 수와 CHECK(30)로, 같은 이름 동시 생성은 `ON CONFLICT (name_key) WHERE disbanded_at IS NULL DO NOTHING`으로 판정한다. 업무 거절은 롤백하므로 부분 적용이 없다. 길드원이 있는 길드장의 캐릭터 삭제는 409 `CHARACTER_IS_GUILD_LEADER`, 혼자인 길드장은 해체, 길드원은 탈퇴하고 친구, 요청, 본인 앞 전달함 행을 지운다. 관계 행은 키 순서로 잠근 뒤 지워 서로 친구인 두 캐릭터의 동시 삭제가 교착되지 않는다.
+
+전달함(`social_deliveries`)은 귓속말(kind 0), 길드 채팅(1), 소셜 알림(2) 모두 행을 먼저 남기고 클라이언트 수신 확인을 받은 행만 지운다(60초 만료). 발신 응답의 `localDeliveries`는 호출 인스턴스에 있는 수신자의 남은 행(새 행 이하)을 수신자별 오름차순으로 주고(수신자당 20개 넘으면 그 수신자는 꺼내기에 맡김), 돌려준 행은 `next_attempt_at`을 5초 뒤로 미룬다. 꺼내기는 확인(`delivery_id`와 수신 캐릭터가 모두 맞고 그 캐릭터 임대가 호출 인스턴스에 있는 행만)을 먼저 지우고 `next_attempt_at`이 지난 행을 수신자당 20개, 전체 200개 `delivery_id` 순으로 골라 같은 문장에서 5초 뒤로 미룬다. 알림 행은 접속 중인 상대에게만 넣고 그 대상이 응답의 `changedCharacterIds`다. `SocialMaintenanceService`(DB 연결이 있을 때만 등록)가 60초마다 만료된 요청과 전달함 행을 지운다. 계정 임대의 `character_id`는 마을 입장 교환이 채우고(재입장 `ON CONFLICT DO UPDATE` 포함), 던전 이관은 그대로 두며, `TryAcquireAsync`는 비운다.
+
+0019 down은 소셜 상태를 모두 지우므로 운영 DB에서 실행하지 않는다. 시험은 `tests/Shinshi.Backend.Tests/Social/`에 있다.
+

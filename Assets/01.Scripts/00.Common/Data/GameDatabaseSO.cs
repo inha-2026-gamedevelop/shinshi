@@ -28,6 +28,9 @@ namespace Shinshi.Data
         [SerializeField] private SkillCatalogSO    _skills;
         [SerializeField] private TalismanCatalogSO _talismans;
 
+        [Header("화면 표시")]
+        [SerializeField] private SkillDisplayCatalogSO _skillDisplay;
+
         [Header("적과 보스")]
         [SerializeField] private EnemyCatalogSO       _enemies;
         [SerializeField] private BossPatternCatalogSO _bossPatterns;
@@ -54,6 +57,7 @@ namespace Shinshi.Data
         public SessionConfigSO      Session        => _session;
         public SkillCatalogSO       Skills         => _skills;
         public TalismanCatalogSO    Talismans      => _talismans;
+        public SkillDisplayCatalogSO SkillDisplay  => _skillDisplay;
         public EnemyCatalogSO       Enemies        => _enemies;
         public BossPatternCatalogSO BossPatterns   => _bossPatterns;
         public WaveConfigSO         Waves          => _waves;
@@ -91,13 +95,13 @@ namespace Shinshi.Data
             GameDataSO[] children =
             {
                 _player, _session, _skills, _talismans, _enemies, _bossPatterns,
-                _waves, _equipment, _growth, _characterLevel, _rewards, _life, _progression, _avatar, _camera
+                _waves, _equipment, _growth, _characterLevel, _rewards, _life, _progression, _avatar, _camera, _skillDisplay
             };
             string[] names =
             {
                 nameof(_player), nameof(_session), nameof(_skills), nameof(_talismans), nameof(_enemies), nameof(_bossPatterns),
                 nameof(_waves), nameof(_equipment), nameof(_growth), nameof(_characterLevel), nameof(_rewards), nameof(_life), nameof(_progression),
-                nameof(_avatar), nameof(_camera)
+                nameof(_avatar), nameof(_camera), nameof(_skillDisplay)
             };
 
             int errorCountBefore = errors.Count;

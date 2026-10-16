@@ -52,6 +52,9 @@ namespace Shinshi.Network
         // 서버가 열린 뒤 항상 있다. 전체, 파티 채팅을 검증하고 방송한다
         public static ChatServerHost     Chat        { get; private set; }
 
+        // 서버가 열린 뒤 항상 있다. 친구, 길드 관리 중계(마을), 귓속말, 길드 채팅 중계와 전달함 꺼내기(두 역할)를 맡는다
+        public static SocialServerHost   Social      { get; private set; }
+
         // 서비스 자격이 있을 때만 있다. 임대 발급, 풀 등록, heartbeat를 맡는다
         public static ServerPresence     Presence    { get; private set; }
 
@@ -99,6 +102,7 @@ namespace Shinshi.Network
             DungeonHost  = null;
             Town         = null;
             Chat         = null;
+            Social       = null;
             Presence     = null;
             Shutdown     = null;
             _credentials = null;
@@ -304,9 +308,12 @@ namespace Shinshi.Network
                         LogBackendWarning, config.InstanceId);
                 }
 
+                // 소셜은 두 역할 모두 연다. 관리 요청은 마을만 받고 던전은 거절한다. bootId는 서버가 열린 뒤 존재 신호가 정한다
+                Social = SocialServerInstaller.Install(manager, Backend, config.Role, config.InstanceId, ReadBootId, LogBackendWarning);
+
                 // 채팅은 두 역할 모두 연다. 마을 파티 채팅은 같은 방, 던전은 프로세스 하나가 세션 하나라 모든 참가자다
                 IChatPartyLookup chatParty = (Town != null) ? new TownChatPartyLookup(Town.Runtime.Party) : null;
-                Chat = ChatServerInstaller.Install(manager, chatParty);
+                Chat = ChatServerInstaller.Install(manager, chatParty, Social.Chat);
             }
             catch (Exception exception)
             {
@@ -563,6 +570,12 @@ namespace Shinshi.Network
         private static string ReadSessionId()
         {
             return DungeonHost?.SessionId;
+        }
+
+        // 존재 신호가 서버를 연 뒤에 만들어진다. 그 전과 서비스 자격이 없을 때는 null이라 전달함 꺼내기가 쉰다
+        private static string ReadBootId()
+        {
+            return Presence?.BootId;
         }
 
         // 출시 빌드는 백엔드 교환 검증기만 쓴다. 개발 검증기는 형식만 보므로 출시 서버 빌드에는 컴파일되지도 않는다.

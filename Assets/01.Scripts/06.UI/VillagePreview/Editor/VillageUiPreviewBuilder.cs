@@ -133,6 +133,8 @@ namespace Shinshi.UI.Editor
             Reference(interaction, "_partyInviteButton", Button(other, "파티초대"));
             Reference(interaction, "_whisperButton", Button(other, "귓속말"));
             Reference(interaction, "_infoButton", Button(other, "캐릭터 정보"));
+            Reference(interaction, "_friendRequestButton", Button(other, "친구 요청"));
+            Reference(interaction, "_guildInviteButton", Button(other, "길드 초대"));
             var self = (RectTransform)interactionData.FindProperty("_selfPanel").objectReferenceValue;
             Connect(Button(self, "캐릭터 정보"), controller.OpenCharacter);
 

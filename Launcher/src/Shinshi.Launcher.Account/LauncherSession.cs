@@ -12,7 +12,7 @@ namespace Shinshi.Launcher.Account
     public sealed class LauncherSession : IDisposable
     {
         // 토큰을 바꾸는 작업(로그인, 갱신, 로그아웃)은 모두 _gate 하나로 직렬화한다.
-        // 갱신 토큰은 회전형이라 두 갱신이 같은 토큰을 동시에 보내면 서버는 두 번째를 재사용으로 보고 계정 세션 전체를 폐기한다.
+        // 갱신 토큰은 회전형이라 두 갱신이 같은 토큰을 동시에 보내면 서버는 두 번째를 재사용으로 보고 그 로그인 묶음 전체를 폐기한다.
         // 서버는 갱신 토큰을 회전할 때 그 토큰 아래에서 발급한 게임 세션도 모두 폐기한다. 그래서 갱신은 필요할 때만 하고
         // (게임 시작, 자동 로그인, 사용자 동작) 백그라운드 타이머로 하지 않으며, 게임이 도는 동안(IsRefreshSuspended)에는
         // 접근 토큰이 만료돼도 갱신하지 않는다. 갱신하면 실행 중인 게임의 세션이 끊긴다
@@ -350,11 +350,20 @@ namespace Shinshi.Launcher.Account
 
             AuthApiResult failure = ToFailure(result);
 
-            // 응답을 잃었으면 서버가 이미 회전했을 수 있다. 이전 토큰을 다시 보내면 재사용으로 계정 세션 전체가 폐기되므로 재로그인을 요구한다
-            if (failure.IsOutcomeUnknown || (failure.Error == EAuthApiError.Unauthorized))
+            // 서버가 토큰이 만료, 폐기됐다고 답했다. 이 경우만 저장된 로그인을 지우고 재로그인을 요구한다
+            if (failure.Error == EAuthApiError.Unauthorized)
             {
                 ClearLocked();
                 return SessionResult.Fail(ESessionError.SessionLost, failure);
+            }
+
+            // 응답을 잃었으면 서버가 회전했는지 알 수 없다. 이번 실행에서는 같은 토큰을 바로 다시 보내지 않게 메모리 로그인만 버리고,
+            // 저장된 토큰은 남겨 다음 자동 로그인에서 한 번 더 보낸다. 서버가 처리하지 않았으면 그대로 이어지고, 이미 회전했으면
+            // 서버가 재사용으로 보고 그 로그인 묶음만 폐기해 401을 돌려주므로 그때 지운다. 업데이트 배포 중 API 재시작(502, 504)이나
+            // 다운로드로 생긴 시간 초과 때문에 자동 로그인이 사라지던 문제를 막는다
+            if (failure.IsOutcomeUnknown)
+            {
+                ForgetInMemoryLocked();
             }
 
             return SessionResult.Fail(ESessionError.ApiFailed, failure);
@@ -387,6 +396,12 @@ namespace Shinshi.Launcher.Account
 
         private void ClearLocked()
         {
+            _store.Clear();
+            ForgetInMemoryLocked();
+        }
+
+        private void ForgetInMemoryLocked()
+        {
             lock (_lock)
             {
                 _accountId    = null;
@@ -395,7 +410,6 @@ namespace Shinshi.Launcher.Account
                 _isRemembered = false;
             }
 
-            _store.Clear();
             SetState(ELauncherSessionState.LoggedOut);
         }
 

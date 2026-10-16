@@ -30,10 +30,10 @@ namespace Shinshi.Tests
         private const double LEDGER_AGE     = 30.0;
         private const double ACTION_AGE     = 10.0;
         private const int    PATH_BUDGET    = 4;
-        private const float  ENEMY_DISTANCE = 3f;
 
         private const int SLOT_Q = Constants.Combat.SKILL_SLOT_Q;
         private const int SLOT_W = Constants.Combat.SKILL_SLOT_W;
+        private const int SLOT_R = Constants.Combat.SKILL_SLOT_R;
 
         private SkillCatalogSO       _catalog;
         private PlayerConfigSO       _player;
@@ -129,19 +129,19 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void TryCast_RootedRetreatShot_RejectsDisabledAndSpendsNothing()
+        public void TryCast_RootedBlinkSlash_RejectsDisabledAndSpendsNothing()
         {
-            CreateServer(EPlayerClass.Archer);
+            CreateServer(EPlayerClass.Mageknight);
             float energyBefore = _server.Energy;
             _server.SetControl(EPlayerControlKind.Root);
 
-            bool cast = _server.TryCast(ESkillRequestKind.Regular, SLOT_W, Vector3.zero, FacingRules.EncodeYaw(Vector3.forward),
+            bool cast = _server.TryCast(ESkillRequestKind.Regular, SLOT_R, Vector3.zero, FacingRules.EncodeYaw(Vector3.forward),
                 START_TIME, true, out ERejectReason reason);
 
             Assert.IsFalse(cast);
             Assert.AreEqual(ERejectReason.Disabled, reason);
             Assert.AreEqual(energyBefore, _server.Energy, TOLERANCE);
-            Assert.AreEqual(0.0, _server.GetReadyAt(SLOT_W), TOLERANCE);
+            Assert.AreEqual(0.0, _server.GetReadyAt(SLOT_R), TOLERANCE);
         }
 
         [Test]
@@ -158,60 +158,57 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void RapidShot_StunBetweenShots_DropsRemainingVolleyWithoutRefund()
+        public void ChainSlash_StunBetweenHits_DropsSecondHitWithoutRefund()
         {
-            CreateServer(EPlayerClass.Archer);
-            FakeCaster enemy = Enemy(Vector3.forward * ENEMY_DISTANCE);
+            CreateServer(EPlayerClass.Swordsman);
+            FakeCaster enemy = Enemy(Vector3.forward * 2f);
 
-            Cast(SLOT_Q);
+            Cast(SLOT_R);
+            Tick(START_TIME + 0.3);
             Tick(START_TIME + 0.35);
-            Tick(START_TIME + 0.5);
             Assert.AreEqual(1, enemy.DamageCalls);
-            double readyAt = _server.GetReadyAt(SLOT_Q);
+            double readyAt = _server.GetReadyAt(SLOT_R);
 
             Assert.IsTrue(_server.SetControl(EPlayerControlKind.Stun));
             Assert.AreEqual(ESkillPhase.Idle, _server.Phase);
             Tick(START_TIME + 1.5);
 
             Assert.AreEqual(1, enemy.DamageCalls);
-            Assert.AreEqual(readyAt, _server.GetReadyAt(SLOT_Q), TOLERANCE);
+            Assert.AreEqual(readyAt, _server.GetReadyAt(SLOT_R), TOLERANCE);
             Assert.Greater(readyAt, START_TIME);
         }
 
         [Test]
-        public void RapidShot_RootBetweenShots_KeepsVolley()
+        public void ChainSlash_RootBetweenHits_KeepsSecondHit()
         {
-            CreateServer(EPlayerClass.Archer);
-            FakeCaster enemy = Enemy(Vector3.forward * ENEMY_DISTANCE);
+            CreateServer(EPlayerClass.Swordsman);
+            FakeCaster enemy = Enemy(Vector3.forward * 2f);
 
-            Cast(SLOT_Q);
+            Cast(SLOT_R);
+            Tick(START_TIME + 0.3);
             Tick(START_TIME + 0.35);
-            Tick(START_TIME + 0.5);
             Assert.AreEqual(1, enemy.DamageCalls);
 
             Assert.IsFalse(_server.SetControl(EPlayerControlKind.Root));
-            Tick(START_TIME + 0.75);
-            Tick(START_TIME + 1.0);
-            Tick(START_TIME + 1.3);
+            Tick(START_TIME + 0.5);
+            Tick(START_TIME + 0.8);
 
-            Assert.AreEqual(3, enemy.DamageCalls);
+            Assert.AreEqual(2, enemy.DamageCalls);
         }
 
         [Test]
-        public void RetreatShot_RootedMidway_StopsMovementButKeepsAction()
+        public void Dash_RootedMidway_StopsMovementButKeepsAction()
         {
-            CreateServer(EPlayerClass.Archer);
-            Enemy(Vector3.forward * (ENEMY_DISTANCE + 1f));
+            CreateServer(EPlayerClass.Swordsman);
 
             Cast(SLOT_W);
-            Tick(START_TIME + 0.15);
-            Tick(START_TIME + 0.3);
+            Tick(START_TIME + 0.1);
             float before = _owner.Position.z;
-            Assert.Less(before, 0f, "후퇴가 시작되어야 속박을 시험할 수 있다");
+            Assert.Greater(before, 0f, "돌진이 시작되어야 속박을 시험할 수 있다");
 
             Assert.IsFalse(_server.SetControl(EPlayerControlKind.Root));
             Assert.AreNotEqual(ESkillPhase.Idle, _server.Phase);
-            Tick(START_TIME + 0.6);
+            Tick(START_TIME + 0.3);
 
             Assert.AreEqual(before, _owner.Position.z, TOLERANCE);
         }

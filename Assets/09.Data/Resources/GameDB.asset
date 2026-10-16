@@ -17,6 +17,7 @@ MonoBehaviour:
   _session: {fileID: 11400000, guid: ebd4ed8253e26a241b033f0c7995832d, type: 2}
   _skills: {fileID: 11400000, guid: c895b4d05b38e5d4898e1337bca025ed, type: 2}
   _talismans: {fileID: 11400000, guid: 813a9e7d759b38b43bff15f8f1f74e82, type: 2}
+  _skillDisplay: {fileID: 11400000, guid: 50a9ee78ec98e004ea21375e72f66a14, type: 2}
   _enemies: {fileID: 11400000, guid: 172dd332122be304593b4df204799664, type: 2}
   _bossPatterns: {fileID: 11400000, guid: 719c28580b6059547a4311242dfe0a6c, type: 2}
   _waves: {fileID: 11400000, guid: 3a15a240df08efc4392185cdd5d2dc6a, type: 2}

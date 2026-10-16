@@ -1,5 +1,6 @@
 // System
 using System.Collections.Generic;
+using System.Reflection;
 
 // Unity
 using UnityEditor;
@@ -11,7 +12,9 @@ using NUnit.Framework;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Network;
 using Shinshi.Systems;
+using Shinshi.UI;
 
 namespace Shinshi.Tests
 {
@@ -20,6 +23,8 @@ namespace Shinshi.Tests
         /****************************************
         *                Fields
         ****************************************/
+
+        private const string CONFIG_PATH = "Assets/09.Data/UI/HotkeyConfig.asset";
 
         private HotkeyConfigSO _config = null;
         private GameObject     _host   = null;
@@ -131,6 +136,143 @@ namespace Shinshi.Tests
             HotkeyRouter router = _host.AddComponent<HotkeyRouter>();
 
             Assert.That(router.Trigger(EHotkeyAction.Inventory), Is.False);
+        }
+
+        [Test]
+        public void Validate_DefaultConfig_SkillWindowIsKAndCombatMeterIsL()
+        {
+            Assert.That(_config.TryGetKey(EHotkeyAction.SkillWindow, out KeyCode skill), Is.True);
+            Assert.That(skill, Is.EqualTo(KeyCode.K));
+            Assert.That(_config.TryGetKey(EHotkeyAction.CombatMeter, out KeyCode meter), Is.True);
+            Assert.That(meter, Is.EqualTo(KeyCode.L));
+        }
+
+        [Test]
+        public void Validate_DefaultConfig_FriendsIsNAndGuildIsG()
+        {
+            Assert.That((int)EHotkeyAction.Friends, Is.EqualTo(12));
+            Assert.That((int)EHotkeyAction.Guild, Is.EqualTo(13));
+            Assert.That(_config.TryGetKey(EHotkeyAction.Friends, out KeyCode friends), Is.True);
+            Assert.That(friends, Is.EqualTo(KeyCode.N));
+            Assert.That(_config.TryGetKey(EHotkeyAction.Guild, out KeyCode guild), Is.True);
+            Assert.That(guild, Is.EqualTo(KeyCode.G));
+        }
+
+        [Test]
+        public void Validate_ProjectAsset_FriendsIsNAndGuildIsG()
+        {
+            var asset  = AssetDatabase.LoadAssetAtPath<HotkeyConfigSO>(CONFIG_PATH);
+            var errors = new List<string>();
+            asset.Validate(errors);
+
+            Assert.That(errors, Is.Empty, string.Join("\n", errors));
+            Assert.That(asset.TryGetKey(EHotkeyAction.Friends, out KeyCode friends), Is.True);
+            Assert.That(friends, Is.EqualTo(KeyCode.N));
+            Assert.That(asset.TryGetKey(EHotkeyAction.Guild, out KeyCode guild), Is.True);
+            Assert.That(guild, Is.EqualTo(KeyCode.G));
+        }
+
+        [Test]
+        public void Validate_ProjectAsset_HasNoErrorsAndSkillWindowIsK()
+        {
+            var asset  = AssetDatabase.LoadAssetAtPath<HotkeyConfigSO>(CONFIG_PATH);
+            var errors = new List<string>();
+            asset.Validate(errors);
+
+            Assert.That(errors, Is.Empty, string.Join("\n", errors));
+            Assert.That(asset.TryGetKey(EHotkeyAction.SkillWindow, out KeyCode skill), Is.True);
+            Assert.That(skill, Is.EqualTo(KeyCode.K));
+            Assert.That(asset.TryGetKey(EHotkeyAction.CombatMeter, out KeyCode meter), Is.True);
+            Assert.That(meter, Is.EqualTo(KeyCode.L));
+        }
+
+        [Test]
+        public void CloseGuard_UnsavedChanges_EscapeToggleAndMenuKeepWindowOpen()
+        {
+            HotkeyWindowToggle toggle = CreateGuardedToggle(out GameObject window, out SkillWindowBinder binder,
+                out HotkeyRouter router);
+            MakeUnsaved(binder);
+            toggle.SetOpen(true);
+
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(window.activeSelf, Is.True);
+            Assert.That(PendingConfirm(binder), Is.Not.Null);
+
+            // 확인이 떠 있을 때 다시 닫기를 누르면 확인만 접는다
+            toggle.Toggle();
+            Assert.That(PendingConfirm(binder), Is.Null);
+            toggle.SetOpen(false);
+            Assert.That(PendingConfirm(binder), Is.Not.Null);
+            Assert.That(window.activeSelf, Is.True);
+        }
+
+        [Test]
+        public void CloseGuard_ConfirmAccepted_ClosesWindowAndDropsDraft()
+        {
+            HotkeyWindowToggle toggle = CreateGuardedToggle(out GameObject window, out SkillWindowBinder binder,
+                out HotkeyRouter router);
+            MakeUnsaved(binder);
+            toggle.SetOpen(true);
+            router.Trigger(EHotkeyAction.CloseWindow);
+
+            typeof(SkillWindowBinder).GetMethod("OnCloseConfirmed", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(binder, null);
+
+            Assert.That(window.activeSelf, Is.False);
+            Assert.That(binder.HasUnsavedChanges, Is.False);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.False);
+        }
+
+        [Test]
+        public void CloseGuard_NoUnsavedChanges_ClosesImmediately()
+        {
+            HotkeyWindowToggle toggle = CreateGuardedToggle(out GameObject window, out SkillWindowBinder binder, out _);
+            toggle.SetOpen(true);
+
+            toggle.Toggle();
+
+            Assert.That(window.activeSelf, Is.False);
+            Assert.That(PendingConfirm(binder), Is.Null);
+        }
+
+        // 에디트 모드에서는 Awake가 돌지 않으므로 토글이 처음 쓰일 때 가드를 읽는다
+        private HotkeyWindowToggle CreateGuardedToggle(out GameObject window, out SkillWindowBinder binder,
+            out HotkeyRouter router)
+        {
+            router = _host.AddComponent<HotkeyRouter>();
+            window = new GameObject("GuardedWindow");
+            window.transform.SetParent(_host.transform);
+            window.SetActive(false);
+            SkillWindowView view = window.AddComponent<SkillWindowView>();
+            binder = _host.AddComponent<SkillWindowBinder>();
+            var binderData = new SerializedObject(binder);
+            binderData.FindProperty("_view").objectReferenceValue = view;
+            binderData.ApplyModifiedPropertiesWithoutUndo();
+
+            HotkeyWindowToggle toggle = _host.AddComponent<HotkeyWindowToggle>();
+            var serialized = new SerializedObject(toggle);
+            serialized.FindProperty("_router").objectReferenceValue     = router;
+            serialized.FindProperty("_window").objectReferenceValue     = window;
+            serialized.FindProperty("_closeGuard").objectReferenceValue = binder;
+            serialized.FindProperty("_action").intValue                 = (int)EHotkeyAction.SkillWindow;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return toggle;
+        }
+
+        // 서버 조합이 비어 있는 상태에서 임시 조합에 한 칸을 넣어 저장하지 않은 변경을 만든다
+        private static void MakeUnsaved(SkillWindowBinder binder)
+        {
+            const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.NonPublic;
+            var draft = (List<TownLoadoutEntry>)typeof(SkillWindowBinder).GetField("_draft", FLAGS).GetValue(binder);
+            draft.Add(new TownLoadoutEntry("skill_swordsman_slash", 0, "T13-1A"));
+            typeof(SkillWindowBinder).GetField("_draftChanged", FLAGS).SetValue(binder, true);
+            Assert.That(binder.HasUnsavedChanges, Is.True);
+        }
+
+        private static object PendingConfirm(SkillWindowBinder binder)
+        {
+            return typeof(SkillWindowBinder).GetField("_confirmClose", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(binder);
         }
 
         private List<string> CollectErrors()

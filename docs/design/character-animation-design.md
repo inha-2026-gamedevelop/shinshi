@@ -31,9 +31,9 @@
 
 검사는 검격 방향·접근·후속 타격을 조절하는 근접 직업이다. 대검 고정·지면 내려찍기·전방 방어 자세가 필요한 구 무사 규칙을 강제하지 않는다. 기본 3단 모션과 Q 넓게 베기/W 돌진 베기/E 집중 베기/R 연환참을 쓴다.
 
-마검사는 근접 검 기본 공격에 술식을 실어 범위를 바꾼다. Q 마력검격/W 자기 위치 화염검진/E 근접 봉인검격/R 방향 뇌광검파로 제어와 중거리 견제를 섞는다. 부적 없는 Q/E는 근접이다. 별도 마나·마력 스택·공명·강림을 추가하지 않고 공통 기력만 쓴다. 검인·정기·부적 표현으로 세계관에 맞춘다.
+마검사는 2026-10-15부터 최대 20스택의 스택형이다. 기본 공격 콤보로 스택을 쌓고 Q 수류 방벽(피격이상 면역)/W 검파 해방(스택 소모 피해)/E 공간 절단진(지점 장판, +5)/R 섬광 일섬(경로 베기 뒤 끝으로 순간 이동, +10)을 쓴다. 공통 기력도 그대로 쓴다. 기술 동작 클립은 2026-10-15에 새 기술에 맞춰 다시 배정했다(아래 표의 `MageShield/MageWave/MageField/MageDash` 구간 사본). 프레임 시트로 동작 모양만 확인했고 P09 실제 재생·타격 시점 일치는 미검증이다. 효과는 Hovl `Sword Slash Combo 6`(기본), PixPlays `WaterShield`(Q), Hovl `Slash wave`(W), Hovl `Spatial section`(E), Magic Slashes FX `Eff11_Jump`(R)의 사본이다.
 
-궁수는 직접 조준하는 원거리 직업으로 Q 속사/W 후퇴사격/E 관통시위/R 산개사격과 무료 원거리 기본 공격을 쓴다. 대표 E의 6효과와 나머지 각3효과를 [궁수 기준안](archer-design.md)에 정의한다. 공통 기력을 쓰고 동료·공명·강림·비행은 추가하지 않는다. 구 신령사의 4기술·15효과·동료/강림은 [구설계](legacy-class-design.md)에 보존한다. 세 직업의 설계 합계는 **12기술/45효과**이며 실제 이관 완료와 구분한다.
+궁수는 직접 조준하는 원거리 직업으로 무료 원거리 3단 기본 공격과 2026-10-15 속성형 Q 얼음/W 바람/E 불 부여·R 속성 폭발을 쓴다. 기술 동작은 Grruzam `4__ChargeShot/Inplace/Archer@Attack_ChargeShot_1_Start` 0~0.4초 구간 사본(`AN_Release_ArcherInfuse`, Q/W/E 공용, 목표 0.3초·1.33배, 활을 크게 휘둘러 올리는 동작)과 R `ChargeShot_1_Start`+`ChargeShot_3_Shoot`(1.3초, 목표 1.0초·1.30배, 0.9초 차지 뒤 발사)이다. 원본 모델 프레임 시트로 모양만 확인했고 P09 실제 재생·발사 시점 일치는 미검증이다. 이전 `AN_Release_ArcherRetreat/ArcherPiercing`은 배정에서 빠졌다(파일은 남아 있음). 대표 E의 6효과와 나머지 각3효과를 [궁수 기준안](archer-design.md)에 정의한다. 공통 기력을 쓰고 동료·공명·강림·비행은 추가하지 않는다. 구 신령사의 4기술·15효과·동료/강림은 [구설계](legacy-class-design.md)에 보존한다. 세 직업의 설계 합계는 **12기술/45효과**이며 실제 이관 완료와 구분한다.
 
 ## 3. 클립 후보 배정
 
@@ -52,11 +52,10 @@
 | KS04 연환참 | CG `Normal/S_Attack_2.fbx`+`Normal/S_Attack_3.fbx` | **예산 초과·배정 보류**, 후속 간격·연결 구간 재설계 필요 |
 | 검사 이동·회피·피격·사망 | CG `Normal/S_Idle.fbx`, `Normal/S_Walk.fbx`, `Normal/S_Run.fbx`, `Normal/S_Evade.fbx`, `Normal/S_Hit_L.fbx`, `Normal/S_Hit_R.fbx`, `Normal/S_Die.fbx` | 속도/회피 방향·접지·원샷 종료 |
 | 마검사 기본 1/2/3 | MK `AttackSword01_inplace.fbx`, `AttackSword02_inplace.fbx`, `AttackSword03_inplace.fbx` | 1타씩·근접 검/몸 방향·접지 |
-| MK01 마력검격 | MK `AttackSword04_inplace.fbx` | 100도 전방 검격·검인/VFX 소켓 |
-| MK01 삼갈래 핵심 | MK `AttackEnergy01_inplace.fbx` | 근접 교체·3갈래 방출 시점 |
-| MK02 화염검진·단일/잔불 | MK `AttackEnergy03_inplace.fbx` | 자기 위치 시전·독립된 장판/폭발 VFX |
-| MK03 봉인검격 | MK `AttackSword05_inplace.fbx` 또는 `AttackEnergy02_inplace.fbx` | 근접 판정 가독성·당김 시각 |
-| MK04 뇌광검파·연속 핵심 | MK `AttackEnergy06_inplace.fbx` | 정면 방출·두 번째 방출, Z 변형 자동 대체 금지 |
+| Q 수류 방벽 | MK `AttackEnergy08_inplace.fbx` 0~0.35초(`AN_Release_MageShield`, 0.25초 목표·1.40배) | 검을 수평으로 세우는 방어 자세. 방벽 VFX가 몸을 따라감 |
+| W 검파 해방 | MK `AttackSword04_inplace.fbx` 0.05~0.8초(`AN_Release_MageWave`, 0.55초·1.36배) | 머리 위에서 크게 내려베기·검파 방출 시점 |
+| E 공간 절단진 | MK `AttackEnergy10_inplace.fbx` 0.05~0.65초(`AN_Release_MageField`, 0.45초·1.33배) | 찌른 뒤 칼끝을 지면으로·지점 장판 지시 |
+| R 섬광 일섬 | MK `AttackEnergy03_inplace.fbx` 0.15~1.3초(`AN_Release_MageDash`, 0.8초·1.44배) | 몸을 눕혀 날아드는 돌진 베기. 비행 구간이 서버 순간 이동(발동 끝 0.6초)과 대략 맞음 |
 | 마검사 이동·회피·피격·사망·기상 | MK `idle_inplace.fbx`, `move_walk_front_inplace.fbx`, `move_run_front_inplace.fbx`, `avoid_front_inplace.fbx`, `hit_body_front_inplace.fbx`, `dead01_inplace.fbx`, `down_rise_inplace.fbx` | 최초 후보·다른 방향으로 확장, 접지·원샷/기상 종료 |
 
 마검사 이동/회피/피격/사망은 MK의 `move_`/`avoid_`/`hit_`/`dead` 계열에서 고른다. 8방향·시작/정지·구르기/step·기상이 있지만 최종 파일 배정은 재생 뒤 정한다. `AttackEnergy09_Start/Loop/End`와 `Buff01`은 지속시전/강화 확장 후보이며 4기술에 자동 추가하지 않는다. 공중 공격이 있어도 점프·비행 입력을 추가하지 않는다. 검사 팩에는 이름 기준 전용 방어·점프·기상이 확인되지 않았고 새 검사에 방어/반격을 배정하지 않은 이유다. 부활의 기상 연출은 이동/입력 복구와 별도로 해결한다.

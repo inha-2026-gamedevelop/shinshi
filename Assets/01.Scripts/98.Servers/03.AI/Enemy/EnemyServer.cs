@@ -15,7 +15,7 @@ namespace Shinshi.AI
     // 체력, 생사, 위치만 가진다. 어디로 움직이고 언제 때릴지는 두뇌(MeleeEnemyBrain)가 정하고,
     // 화면 표현은 이 값을 읽는 View가 맡는다. 치명타는 BossServer와 같이 그 자리에서 Dead로 바꾼다
     /// <summary> 서버의 일반 적 개체, 피해를 받는 몸체 </summary>
-    public sealed class EnemyServer : IDamageable
+    public sealed class EnemyServer : IDamageable, ISkillSlowTarget
     {
         /****************************************
         *                Fields
@@ -31,6 +31,8 @@ namespace Shinshi.AI
         private Vector3               _forward;
         private float                 _health;
         private EParticipantLifeState _lifeState = EParticipantLifeState.Alive;
+        private float                 _slowRate  = 0f;
+        private double                _slowUntil = 0.0;
 
         /****************************************
         *              Properties
@@ -115,6 +117,25 @@ namespace Shinshi.AI
             }
 
             _health = Mathf.Max(0f, _health - appliedAmount);
+        }
+
+        public void ApplySlow(float rate, float duration, double serverTime)
+        {
+            if ((_lifeState != EParticipantLifeState.Alive) || (!(rate > 0f)) || (!(duration > 0f)))
+            {
+                return;
+            }
+
+            // 이미 풀린 둔화의 감소율은 이어 받지 않는다
+            float current = (serverTime < _slowUntil) ? _slowRate : 0f;
+            _slowRate  = Mathf.Clamp01(Mathf.Max(current, rate));
+            _slowUntil = System.Math.Max(_slowUntil, serverTime + duration);
+        }
+
+        /// <summary> 두뇌가 이동 속도에 곱하는 배율, 둔화가 없으면 1이다 </summary>
+        public float GetMoveSpeedScale(double serverTime)
+        {
+            return (serverTime < _slowUntil) ? (1f - _slowRate) : 1f;
         }
 
         /// <summary> 두뇌가 이동 결과를 넣는다 </summary>

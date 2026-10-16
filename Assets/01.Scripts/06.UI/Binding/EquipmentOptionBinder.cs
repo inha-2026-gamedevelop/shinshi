@@ -50,8 +50,9 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
-            TownGrowthClient.SnapshotChanged += OnSnapshot;
-            TownGrowthClient.ResultReceived  += OnResult;
+            TownGrowthClient.SnapshotChanged  += OnSnapshot;
+            TownGrowthClient.ResultReceived   += OnResult;
+            TownGrowthClient.WriteLockChanged += OnWriteLockChanged;
             if (_view != null)
             {
                 _view.SlotSelected    += OnSlotSelected;
@@ -61,8 +62,9 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
-            TownGrowthClient.SnapshotChanged -= OnSnapshot;
-            TownGrowthClient.ResultReceived  -= OnResult;
+            TownGrowthClient.SnapshotChanged  -= OnSnapshot;
+            TownGrowthClient.ResultReceived   -= OnResult;
+            TownGrowthClient.WriteLockChanged -= OnWriteLockChanged;
             if (_view != null)
             {
                 _view.SlotSelected    -= OnSlotSelected;
@@ -111,6 +113,11 @@ namespace Shinshi.UI
             _isDirty = true;
         }
 
+        private void OnWriteLockChanged()
+        {
+            _isDirty = true;
+        }
+
         private void OnSlotSelected(int slot)
         {
             if ((slot < 0) || (slot >= Constants.Combat.EQUIPMENT_SLOT_COUNT))
@@ -131,8 +138,9 @@ namespace Shinshi.UI
         {
             if (_isOutcomeUnknown)
             {
-                // 같은 요청을 같은 번호로 다시 보낸다. 서버와 API가 처음 결과를 돌려주고 다시 뽑거나 차감하지 않는다
-                if (TownGrowthClient.RetryLast())
+                // 같은 요청을 같은 번호로 다시 보낸다. 서버와 API가 처음 결과를 돌려주고 다시 뽑거나 차감하지 않는다.
+                // 공용 보관 칸이 이 창의 요청을 들고 있을 때만 보낸다. 아니면 다른 창의 요청을 다시 보내게 된다
+                if ((TownGrowthClient.UnresolvedOperationId == _pendingOperation) && (TownGrowthClient.RetryLast()))
                 {
                     _status = CHECKING_TEXT;
                     _isDirty = true;
@@ -141,7 +149,8 @@ namespace Shinshi.UI
                 return;
             }
 
-            if ((_pendingOperation != Guid.Empty) || (!TownGrowthClient.HasSnapshot) || (!ClientRoles.IsTown()))
+            if ((_pendingOperation != Guid.Empty) || (!TownGrowthClient.HasSnapshot) || (!ClientRoles.IsTown())
+                || (GrowthWriteGuard.IsBlockedByOther(_pendingOperation)))
             {
                 return;
             }
@@ -261,6 +270,10 @@ namespace Shinshi.UI
             if (!ClientRoles.IsTown())
             {
                 blocked = TOWN_ONLY_TEXT;
+            }
+            else if (GrowthWriteGuard.IsBlockedByOther(_pendingOperation))
+            {
+                blocked = GrowthWriteGuard.OTHER_WINDOW_TEXT;
             }
             else if (!EquipmentOptionViewRules.CanReroll(in entry))
             {

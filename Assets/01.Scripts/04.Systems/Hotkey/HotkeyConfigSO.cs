@@ -64,7 +64,14 @@ namespace Shinshi.Systems
             new Binding(EHotkeyAction.AuctionHouse, KeyCode.Y, "경매장"),
             new Binding(EHotkeyAction.CloseWindow, KeyCode.Escape, "창 닫기"),
             new Binding(EHotkeyAction.SortiePrep, KeyCode.P, "출정 준비"),
-            new Binding(EHotkeyAction.Chat, KeyCode.Return, "채팅")
+            new Binding(EHotkeyAction.Chat, KeyCode.Return, "채팅"),
+            new Binding(EHotkeyAction.CombatMeter, KeyCode.L, "딜미터"),
+            new Binding(EHotkeyAction.MailBox, KeyCode.M, "우편함"),
+            new Binding(EHotkeyAction.CharacterInfo, KeyCode.U, "캐릭터 정보"),
+            new Binding(EHotkeyAction.EquipmentOption, KeyCode.O, "옵션 재설정"),
+            new Binding(EHotkeyAction.SkillWindow, KeyCode.K, "스킬"),
+            new Binding(EHotkeyAction.Friends, KeyCode.N, "친구"),
+            new Binding(EHotkeyAction.Guild, KeyCode.G, "길드")
         };
 
         public IReadOnlyList<Binding> Bindings => _bindings;

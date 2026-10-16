@@ -122,7 +122,10 @@ namespace Shinshi.Editor
 
         private static readonly EPlayerClass[] G_ClassOrder           = { EPlayerClass.Swordsman, EPlayerClass.Mageknight, EPlayerClass.Archer };
         private static readonly float[]        G_ClassAttackIntervals = { 0.9f, 0.85f, 0.95f };
-        private static readonly float[]        G_ClassComboResets     = { 1.2f, 1.2f, 0f };
+        private static readonly float[]        G_ClassComboResets     = { 1.2f, 1.2f, 1.2f };
+
+        // 서버 콤보 직업의 단계별 주기(PlayerConfigSO 단계 명세와 같은 값). 없는 직업은 직업 주기 하나를 모든 단계에 쓴다
+        private static readonly float[]        G_ArcherStepIntervals  = { 0.6f, 0.75f, 1.3f };
 
         // 후보 순서대로 시간 예산을 시험하고 처음 통과한 후보만 임시 배정한다. 어느 후보도 통과하지 못하거나 문서 보류면 배정하지 않는다
         private static readonly MotionPlan[] G_ClassPlans = {
@@ -138,21 +141,20 @@ namespace Shinshi.Editor
             new MotionPlan(EPlayerClass.Mageknight, true, 0, "기본 1", null, new[] { "CUT/MageAttack1" }),
             new MotionPlan(EPlayerClass.Mageknight, true, 1, "기본 2", null, new[] { "CUT/MageAttack2" }),
             new MotionPlan(EPlayerClass.Mageknight, true, 2, "기본 3", null, new[] { "CUT/MageAttack3" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 0, "MK01 마력검격", null, new[] { "CUT/MageArcane" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 1, "MK02 화염검진", null, new[] { "CUT/MageField" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 2, "MK03 봉인검격", null, new[] { "CUT/MageSeal" }),
-            new MotionPlan(EPlayerClass.Mageknight, false, 3, "MK04 뇌광검파", null, new[] { "CUT/MageWave" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 0, "Q 수류 방벽", null, new[] { "CUT/MageShield" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 1, "W 검파 해방", null, new[] { "CUT/MageWave" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 2, "E 공간 절단진", null, new[] { "CUT/MageField" }),
+            new MotionPlan(EPlayerClass.Mageknight, false, 3, "R 섬광 일섬", null, new[] { "CUT/MageDash" }),
 
-            new MotionPlan(EPlayerClass.Archer, true, 0, "기본 단발", null,
-                new[] { "AR/1__1Shoot/Inplace/Archer@Attack_1Shoot_Start.FBX", "AR/1__1Shoot/Inplace/Archer@Attack_1Shoot_Loop.FBX",
-                        "AR/1__1Shoot/Inplace/Archer@Attack_1Shoot_End.FBX" }),
-            new MotionPlan(EPlayerClass.Archer, false, 0, "AR01 속사", null,
-                new[] { "AR/5__RapidShot/Archer@Attack_RapidShot_Start.FBX", "AR/5__RapidShot/Archer@Attack_RapidShot_Shoot_Loop.FBX",
-                        "AR/5__RapidShot/Archer@Attack_RapidShot_Shoot_Loop.FBX", "AR/5__RapidShot/Archer@Attack_RapidShot_Shoot_Loop.FBX",
-                        "AR/5__RapidShot/Archer@Attack_RapidShot_End.FBX" }),
-            new MotionPlan(EPlayerClass.Archer, false, 1, "AR02 후퇴사격", null, new[] { "CUT/ArcherRetreat" }),
-            new MotionPlan(EPlayerClass.Archer, false, 2, "AR03 관통시위", null, new[] { "CUT/ArcherPiercing" }),
-            new MotionPlan(EPlayerClass.Archer, false, 3, "AR04 산개사격", null, new[] { "AR/1__1Shoot/Inplace/Archer@Attack_1Shoot_ALL.FBX" }) };
+            new MotionPlan(EPlayerClass.Archer, true, 0, "기본 1", null, new[] { "AR/3__3Combo/Inplace/Archer@Attack_3Combo_1.FBX" }),
+            new MotionPlan(EPlayerClass.Archer, true, 1, "기본 2", null, new[] { "AR/3__3Combo/Inplace/Archer@Attack_3Combo_2.FBX" }),
+            new MotionPlan(EPlayerClass.Archer, true, 2, "기본 3 공중 사격", null, new[] { "AR/3__3Combo/Inplace/Archer@Attack_3Combo_3.FBX" }),
+            // 속성 부여 Q/W/E는 시위에 화살을 거는 짧은 동작, R 속성 폭발은 차지 시작 전체 + 발사다
+            new MotionPlan(EPlayerClass.Archer, false, 0, "Q 얼음 부여", null, new[] { "CUT/ArcherInfuse" }),
+            new MotionPlan(EPlayerClass.Archer, false, 1, "W 바람 부여", null, new[] { "CUT/ArcherInfuse" }),
+            new MotionPlan(EPlayerClass.Archer, false, 2, "E 불 부여", null, new[] { "CUT/ArcherInfuse" }),
+            new MotionPlan(EPlayerClass.Archer, false, 3, "R 속성 폭발", null,
+                new[] { "AR/4__ChargeShot/Inplace/Archer@Attack_ChargeShot_1_Start.FBX", "AR/4__ChargeShot/Inplace/Archer@Attack_ChargeShot_3_Shoot.FBX" }) };
 
         /****************************************
         *                Methods
@@ -1036,7 +1038,9 @@ namespace Shinshi.Editor
             bool  hasTarget;
             if (plan.IsAttack)
             {
-                target    = G_ClassAttackIntervals[Array.IndexOf(G_ClassOrder, plan.PlayerClass)];
+                target    = ((plan.PlayerClass == EPlayerClass.Archer) && (plan.Slot < G_ArcherStepIntervals.Length))
+                    ? G_ArcherStepIntervals[plan.Slot]
+                    : G_ClassAttackIntervals[Array.IndexOf(G_ClassOrder, plan.PlayerClass)];
                 hasTarget = true;
             }
             else

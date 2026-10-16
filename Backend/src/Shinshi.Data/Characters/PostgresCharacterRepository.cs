@@ -15,6 +15,7 @@ using Shinshi.Contracts;
 using Shinshi.Data.Growth;
 using Shinshi.Data.Ledger;
 using Shinshi.Data.Sessions;
+using Shinshi.Data.Social;
 
 namespace Shinshi.Data.Characters
 {
@@ -129,7 +130,9 @@ namespace Shinshi.Data.Characters
         {
             (DbConnection connection, DbTransaction transaction) = SessionDb.Require(context);
 
-            // 잠금 순서: 계정 -> 캐릭터. 생성, 예약, 마을 입장 교환과 같은 계정 행에서 줄을 선다
+            // 잠금 순서: 계정 -> 캐릭터 -> 길드. 생성, 예약, 마을 입장 교환과 같은 계정 행에서 줄을 선다.
+            // 소프트 삭제는 키를 바꾸지 않아 캐릭터 행을 FOR NO KEY UPDATE로 잡는다. 소셜 작업과는 같은 강도로 줄을 서고,
+            // 다른 삭제가 넣는 알림 행의 FK 검사(FOR KEY SHARE)와는 충돌하지 않아 서로 길드원인 두 캐릭터의 동시 삭제가 교착되지 않는다
             if (await SessionDb.LockAccountsAsync(connection, transaction, new[] { accountId }, cancellationToken) != 1)
             {
                 throw new InvalidOperationException("Character owner account is missing.");
@@ -139,7 +142,7 @@ namespace Shinshi.Data.Characters
                 """
                 SELECT revision FROM characters
                 WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL
-                FOR UPDATE;
+                FOR NO KEY UPDATE;
                 """, new { CharacterId = characterId, AccountId = accountId }, transaction,
                 cancellationToken: cancellationToken));
             if (!revision.HasValue)
@@ -198,6 +201,13 @@ namespace Shinshi.Data.Characters
             if (recentDeletes >= MAX_DELETES_PER_WINDOW)
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.RATE_LIMITED, revision.Value);
+            }
+
+            // 길드원이 있는 길드장은 위임 뒤 삭제한다. 그 밖에는 탈퇴(혼자면 해체)와 친구, 요청, 전달함을 정리한다
+            int social = await SocialCharacterCleanup.ApplyAsync(connection, transaction, characterId, cancellationToken);
+            if (social != ContractCodes.RejectReason.NONE)
+            {
+                return OperationDecision.Rejected(social, revision.Value);
             }
 
             // 삭제 전에 받은 미교환 입장 토큰(마을, 출정)은 더 쓸 수 없게 한다

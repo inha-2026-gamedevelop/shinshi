@@ -17,6 +17,7 @@ using Shinshi.Backend.Life;
 using Shinshi.Backend.Market;
 using Shinshi.Backend.Observability;
 using Shinshi.Backend.Sessions;
+using Shinshi.Backend.Social;
 using Shinshi.Contracts;
 using Shinshi.Data;
 using Shinshi.Data.Ledger;
@@ -88,6 +89,7 @@ namespace Shinshi.Backend
             builder.Services.AddShinshiLife();
             builder.Services.AddShinshiGrowth(builder.Configuration);
             builder.Services.AddShinshiMarket();
+            builder.Services.AddShinshiSocial();
             builder.Services.AddShinshiObservability(builder.Configuration,
                 !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Postgres")));
             builder.Services.AddShinshiAdmin(builder.Configuration);
@@ -95,6 +97,7 @@ namespace Shinshi.Backend
             {
                 builder.Services.AddShinshiGameSessionMaintenance();
                 builder.Services.AddShinshiMarketMaintenance();
+                builder.Services.AddShinshiSocialMaintenance();
                 builder.Services.AddShinshiEconomyReconciliation();
             }
 
