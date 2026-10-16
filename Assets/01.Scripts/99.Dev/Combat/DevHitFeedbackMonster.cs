@@ -25,6 +25,8 @@ namespace Shinshi.Dev
 
         private const float DEATH_SECONDS = 0.25f;
         private const float CORPSE_SECONDS = 10f; // 날아가 쓰러진 채 남아 있는 시간
+        private const float ASH_SECONDS        = 1.6f; // 래그돌 사체가 재가 되어 사라지는 데 걸리는 시간
+        private const float ASH_LINGER_SECONDS = 1.5f; // 몸이 다 사라진 뒤 재 입자가 흩어지길 기다리는 시간
 
         // 넉백. 맞은 순간의 속도가 지수로 줄어든다
         private const float KNOCKBACK_STOP_SQR = 0.0001f;
@@ -51,6 +53,9 @@ namespace Shinshi.Dev
         // 살아서 걷는 몬스터. 서로 겹침을 풀 때 훑는다
         private static readonly List<DevHitFeedbackMonster> s_alive = new List<DevHitFeedbackMonster>();
 
+        private const int GROUND_HIT_BUFFER = 8;
+        private static readonly RaycastHit[] s_groundHits = new RaycastHit[GROUND_HIT_BUFFER];
+
         private HitReactor _reactor       = null;
         private Animator   _animator      = null;
         private Collider   _playerCollider = null;
@@ -62,6 +67,7 @@ namespace Shinshi.Dev
         private int        _hitsLeft      = 0;
         private float      _deathElapsed  = 0f;
         private bool       _isDying       = false;
+        private bool       _isAshing      = false;
 
         /// <summary> 죽는 순간 한 번 알린다. 사체는 이 뒤로도 한동안 남아 있다 </summary>
         public event Action<DevHitFeedbackMonster> Died;
@@ -397,17 +403,37 @@ namespace Shinshi.Dev
             return push;
         }
 
-        // 몸 안에서 아래로 쏘면 자기 충돌체는 맞지 않는다. 캡슐 높이의 절반이 곧 스케일 y다
+        // 몸 안에서 아래로 쏘면 자기 충돌체는 맞지 않는다. 캡슐 높이의 절반이 곧 스케일 y다.
+        // 다른 몬스터(산 것과 사체)와 플레이어는 땅이 아니므로 건너뛴다. 안 그러면 머리 위로 올라타 쌓인다
         private float FollowGround(Vector3 position)
         {
             Vector3 origin = position + (Vector3.up * GROUND_PROBE_UP);
-            if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, GROUND_PROBE_DISTANCE,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            int     count  = Physics.RaycastNonAlloc(new Ray(origin, Vector3.down), s_groundHits, GROUND_PROBE_DISTANCE,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+
+            float nearest = float.MaxValue;
+            float groundY = 0f;
+            bool  found   = false;
+            for (int i = 0; i < count; ++i)
+            {
+                RaycastHit hit = s_groundHits[i];
+                if ((hit.distance >= nearest) || (hit.collider.GetComponentInParent<DevHitFeedbackMonster>() != null)
+                    || (hit.collider.GetComponentInParent<DevHitFeedbackPlayer>() != null))
+                {
+                    continue;
+                }
+
+                nearest = hit.distance;
+                groundY = hit.point.y;
+                found   = true;
+            }
+
+            if (!found)
             {
                 return position.y;
             }
 
-            float targetY = hit.point.y + _baseScale.y;
+            float targetY = groundY + _baseScale.y;
             return Mathf.Lerp(position.y, targetY, Mathf.Clamp01(GROUND_FOLLOW_SPEED * Time.deltaTime));
         }
 
@@ -416,10 +442,16 @@ namespace Shinshi.Dev
         {
             _deathElapsed += Time.deltaTime;
 
-            // 래그돌은 뼈가 월드에서 움직이므로 루트 스케일로 줄이지 않고 때가 되면 한 번에 지운다
+            // 래그돌은 뼈가 월드에서 움직이므로 루트 스케일로 줄이지 않는다. 시체 시간이 끝나면 재처럼 타들어 가며 사라지고, 입자가 흩어진 뒤 지운다
             if (_reactor.HasRagdoll)
             {
-                if (_deathElapsed >= (CORPSE_SECONDS + DEATH_SECONDS))
+                if ((!_isAshing) && (_deathElapsed >= CORPSE_SECONDS))
+                {
+                    _isAshing = true;
+                    HitAshDissolve.Begin(gameObject, ASH_SECONDS);
+                }
+
+                if (_deathElapsed >= (CORPSE_SECONDS + ASH_SECONDS + ASH_LINGER_SECONDS))
                 {
                     Destroy(gameObject);
                 }

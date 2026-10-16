@@ -15304,14 +15304,14 @@ MonoBehaviour:
   _cameraDistance: 40
   _attackRange: 2.5
   _attackHalfAngle: 60
-  _attackCooldown: 0.4
-  _attackLockTime: 0.2
+  _attackCooldown: 0.2
+  _attackLockTime: 0.1
   _hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
   _slashColor: {r: 1, g: 0.85, b: 0.4, a: 0.6}
   _comboWindow: 1
-  _heavyLockTime: 0.35
+  _heavyLockTime: 0.175
   _heavySlashTint: {r: 1, g: 0.45, b: 0.25, a: 1}
   _slamReach: 1.75
   _arrowColor: {r: 1, g: 0.9, b: 0.2, a: 1}
