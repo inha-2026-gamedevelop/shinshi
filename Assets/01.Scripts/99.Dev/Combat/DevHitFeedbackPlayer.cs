@@ -64,14 +64,14 @@ namespace Shinshi.Dev
         [Header("공격")]
         [SerializeField] private float     _attackRange     = 2.5f;  // m
         [SerializeField] private float     _attackHalfAngle = 60f;   // 도
-        [SerializeField] private float     _attackCooldown  = 0.4f;  // 초
-        [SerializeField] private float     _attackLockTime  = 0.2f;  // 초, 공격 중에는 걷지 않고 휘두르는 방향을 유지한다
+        [SerializeField] private float     _attackCooldown  = 0.2f;  // 초
+        [SerializeField] private float     _attackLockTime  = 0.1f;  // 초, 공격 중에는 걷지 않고 휘두르는 방향을 유지한다
         [SerializeField] private LayerMask _hitLayers       = ~0;
         [SerializeField] private Color     _slashColor      = new Color(1f, 0.85f, 0.4f, 0.6f);
 
         [Header("강공격 (3타)")]
         [SerializeField] private float _comboWindow     = 1f;    // 초, 이 안에 다음 공격을 눌러야 콤보가 이어진다
-        [SerializeField] private float _heavyLockTime   = 0.35f; // 초
+        [SerializeField] private float _heavyLockTime   = 0.175f; // 초
         [SerializeField] private Color _heavySlashTint  = new Color(1f, 0.45f, 0.25f, 1f);
         [SerializeField] private float _slamReach       = 1.75f; // m, 충격 중심이 캐릭터 앞으로 떨어진 거리
 
