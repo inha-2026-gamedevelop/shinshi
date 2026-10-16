@@ -23,7 +23,7 @@ namespace Shinshi.Dev
         private static readonly int   s_movingHash  = Animator.StringToHash("Moving");
         private static readonly int   s_attackHash  = Animator.StringToHash("Attack");
         private static readonly int   s_dashingHash = Animator.StringToHash("Dashing");
-        private static readonly Color s_corpseColor = new Color(0.16f, 0.15f, 0.14f, 1f); // 원래 색에 검정을 섞은 회흑색. 붉은 기가 돌면 사라지기 직전 적갈색으로 보인다
+        private static readonly Color s_corpseColor = new Color(0.32f, 0.12f, 0.09f, 1f); // 원래 색에 검정을 섞은 적갈색
 
         private const float DEATH_SECONDS = 0.25f;
         private const float CORPSE_SECONDS = 10f; // 날아가 쓰러진 채 남아 있는 시간
