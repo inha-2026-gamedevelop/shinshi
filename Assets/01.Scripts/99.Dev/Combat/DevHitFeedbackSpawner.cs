@@ -61,8 +61,10 @@ namespace Shinshi.Dev
 
         [Header("구역 (구역마다 문 앞 출현 지점 하나. 비우면 이 오브젝트 자리 한 곳)")]
         [SerializeField] private Transform[] _zoneAnchors;
-        [SerializeField, Min(0f)] private float _activateRadius    = 25f; // m, 플레이어가 출현 지점에 이만큼 다가오면 그 구역 무리를 세운다
+        [SerializeField, Min(0f)] private float _enterRadius       = 3f;  // m, 구역 입구 지점에서 이 수평 반경 안에 들어서야 그 구역 무리를 세운다
+        [SerializeField, Min(0f)] private float _enterHeight       = 3f;  // m, 입구 지점과 이 높이 차 안일 때만 들어선 것으로 본다 (같은 보행 층)
         [SerializeField, Min(0f)] private float _minPlayerDistance = 4f;  // m, 플레이어와 이 거리 안에는 세우지 않는다
+        [SerializeField] private bool _spawnFirstZoneAtStart = true;      // 첫 구역은 입구 없이 출정 시작과 함께 세운다
 
         private readonly RaycastHit[] _rayHits     = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[OVERLAP_BUFFER_SIZE];
@@ -136,9 +138,7 @@ namespace Shinshi.Dev
                     continue;
                 }
 
-                Vector3 toPlayer = playerPosition - GetAnchor(zone).position;
-                toPlayer.y = 0f;
-                if (toPlayer.sqrMagnitude <= (_activateRadius * _activateRadius))
+                if (((zone == 0) && (_spawnFirstZoneAtStart)) || (HasEntered(zone, playerPosition)))
                 {
                     SpawnGroup(zone);
                 }
@@ -209,6 +209,19 @@ namespace Shinshi.Dev
         public int GetZoneKilled(int zone) { return _zoneKilled[zone]; }
 
         public bool IsZoneCleared(int zone) { return _zoneSpawned[zone] && (_zoneAlive[zone] == 0); }
+
+        // 구역 입구 지점 반경 안, 같은 높이 층에 들어서야 진입으로 본다
+        private bool HasEntered(int zone, Vector3 playerPosition)
+        {
+            Vector3 toPlayer = playerPosition - GetAnchor(zone).position;
+            if (Mathf.Abs(toPlayer.y) > _enterHeight)
+            {
+                return false;
+            }
+
+            toPlayer.y = 0f;
+            return toPlayer.sqrMagnitude <= (_enterRadius * _enterRadius);
+        }
 
         private Transform GetAnchor(int zone)
         {
