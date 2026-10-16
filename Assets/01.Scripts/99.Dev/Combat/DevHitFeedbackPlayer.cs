@@ -114,6 +114,9 @@ namespace Shinshi.Dev
         /// <summary> 강공격이 바닥을 내려칠 때 한 번 알린다. 값은 충격 중심이다 </summary>
         public event Action<Vector3> Slam;
 
+        /// <summary> 이동 버튼을 새로 누를 때마다 커서가 가리킨 지면 지점과 함께 알린다. 누르고 있는 동안 따라가는 이동에는 알리지 않는다 </summary>
+        public event Action<Vector3> MoveClicked;
+
         /// <summary> 몬스터에게 맞을 때마다 알린다. 값은 남은 체력이다 </summary>
         public event Action<int> Damaged;
 
@@ -177,6 +180,11 @@ namespace Shinshi.Dev
 
             attackPressed |= _attackBuffered;
             _attackBuffered = false;
+
+            if ((Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_MOVE)) && (TryGetCursorPoint(out Vector3 clickPoint)))
+            {
+                MoveClicked?.Invoke(clickPoint);
+            }
 
             bool isAttacking = Time.time < _attackEndTime;
 
