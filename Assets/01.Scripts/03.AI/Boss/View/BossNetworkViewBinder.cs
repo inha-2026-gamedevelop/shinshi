@@ -1,3 +1,6 @@
+// System
+using System.Collections.Generic;
+
 // Unity
 using UnityEngine;
 
@@ -23,6 +26,10 @@ namespace Shinshi.AI
         [SerializeField] private BossBarrierView _barrierView;
         [SerializeField] private BossHardPhaseView _hardPhaseView; // 월백 하드 2페이즈 표시, 비어 있으면 생략한다
         [SerializeField] private BossMucheolPhaseView _mucheolPhaseView; // 무철 전용 표시, 비어 있으면 생략한다
+        [SerializeField] private WolbaekTalismanView _talismanView; // 서버 복제 계약 연결 전에는 수신 준비만 한다
+        [SerializeField] private WolbaekColorWardView _colorWardView; // 50% 복제 계약의 클라이언트 입력점
+        [SerializeField] private WolbaekFoxfireSealView _foxfireSealView; // 25% 복제 계약의 클라이언트 입력점
+        [SerializeField] private WolbaekFinalAreaView _finalAreaView; // 0% 복제 계약의 클라이언트 입력점
         [SerializeField] private Transform _effectsRoot;
 
         private BossState _boundState;
@@ -42,6 +49,22 @@ namespace Shinshi.AI
             if (_state == null)
             {
                 _state = GetComponent<BossState>();
+            }
+            if ((_talismanView == null) && (_view != null))
+            {
+                _talismanView = _view.GetComponent<WolbaekTalismanView>();
+            }
+            if ((_colorWardView == null) && (_view != null))
+            {
+                _colorWardView = _view.GetComponent<WolbaekColorWardView>();
+            }
+            if ((_foxfireSealView == null) && (_view != null))
+            {
+                _foxfireSealView = _view.GetComponent<WolbaekFoxfireSealView>();
+            }
+            if ((_finalAreaView == null) && (_view != null))
+            {
+                _finalAreaView = _view.GetComponent<WolbaekFinalAreaView>();
             }
 
             // 공격 예고는 서버의 월드 좌표다. 보스가 이동해도 풀에서 빌린 지면 표현은 따라가지 않는다.
@@ -157,6 +180,26 @@ namespace Shinshi.AI
                 _mucheolPhaseView.SetPresenter(_presenter);
                 _mucheolPhaseView.SetServerClock(ReadServerTime);
             }
+            if (_talismanView != null)
+            {
+                _talismanView.ResetNetworkSession();
+                _talismanView.SetServerClock(ReadServerTime);
+            }
+            if (_colorWardView != null)
+            {
+                _colorWardView.ResetNetworkSession();
+                _colorWardView.SetServerClock(ReadServerTime);
+            }
+            if (_foxfireSealView != null)
+            {
+                _foxfireSealView.ResetNetworkSession();
+                _foxfireSealView.SetServerClock(ReadServerTime);
+            }
+            if (_finalAreaView != null)
+            {
+                _finalAreaView.ResetNetworkSession();
+                _finalAreaView.SetServerClock(ReadServerTime);
+            }
             _wasDefeated = false;
             _justBound = true;
             _trackingCasts.Clear();
@@ -165,6 +208,7 @@ namespace Shinshi.AI
             {
                 _view.Bind(_presenter, ReadServerTime);
             }
+            state.PhaseStateChanged += OnPhaseStateChanged;
             // 시계를 먼저 연결해야 늦은 접속 복원이 로컬 경과 시간으로 재생되지 않는다.
             state.SetListener(this);
         }
@@ -174,6 +218,7 @@ namespace Shinshi.AI
         {
             if (_boundState != null)
             {
+                _boundState.PhaseStateChanged -= OnPhaseStateChanged;
                 _boundState.SetListener(null);
             }
 
@@ -207,6 +252,329 @@ namespace Shinshi.AI
             {
                 _mucheolPhaseView.ClearAll();
             }
+            if (_talismanView != null)
+            {
+                _talismanView.Clear();
+            }
+            if (_colorWardView != null)
+            {
+                _colorWardView.Clear();
+            }
+            if (_foxfireSealView != null)
+            {
+                _foxfireSealView.Clear();
+            }
+            if (_finalAreaView != null)
+            {
+                _finalAreaView.Clear();
+            }
+        }
+
+        // BossState에 최후의 영역 복제 계약이 추가되면 아래 입력을 사건과 스냅샷에서 호출한다.
+        // 서버 전용 IWolbaekFinalAreaListener를 클라이언트 어셈블리에서 직접 구현하지 않는다.
+        public void OnFinalStarted(in WolbaekFinalStart start)
+        {
+            if (_finalAreaView != null) _finalAreaView.StartFinal(in start, ReadServerTime());
+        }
+
+        public void OnFinalRestored(in WolbaekFinalSnapshot snapshot)
+        {
+            if (_finalAreaView != null) _finalAreaView.Restore(in snapshot, ReadServerTime());
+        }
+
+        public void OnFinalOuterFloorRemoved(int castId, double serverTime)
+        {
+            if (_finalAreaView != null) _finalAreaView.OuterFloorRemoved(castId, serverTime, ReadServerTime());
+        }
+
+        public void OnFinalYellowsSpawned(int castId, IReadOnlyList<WolbaekFinalYellow> yellows)
+        {
+            if (_finalAreaView != null) _finalAreaView.YellowsSpawned(castId, yellows, ReadServerTime());
+        }
+
+        public void OnFinalYellowDestroyed(int castId, int yellowIndex, double serverTime)
+        {
+            if (_finalAreaView != null)
+                _finalAreaView.YellowDestroyed(castId, yellowIndex, serverTime, ReadServerTime());
+        }
+
+        public void OnFinalBundleStarted(int castId, in WolbaekFinalBundle bundle)
+        {
+            if (_finalAreaView != null) _finalAreaView.BundleStarted(castId, in bundle, ReadServerTime());
+        }
+
+        public void OnFinalRedDetached(int castId, int bundleIndex, int redIndex, double serverTime, Vector3 position)
+        {
+            if (_finalAreaView != null)
+                _finalAreaView.RedDetached(castId, bundleIndex, redIndex, serverTime, position, ReadServerTime());
+        }
+
+        public void OnFinalRedsLocked(int castId, int bundleIndex, double serverTime, IReadOnlyList<Vector3> centers)
+        {
+            if (_finalAreaView != null)
+                _finalAreaView.LockReds(castId, bundleIndex, serverTime, centers, ReadServerTime());
+        }
+
+        public void OnFinalBundleResolved(int castId, int bundleIndex, double serverTime)
+        {
+            if (_finalAreaView != null)
+                _finalAreaView.BundleResolved(castId, bundleIndex, serverTime, ReadServerTime());
+        }
+
+        public void OnFinalSucceeded(int castId, double serverTime)
+        {
+            if (_finalAreaView != null) _finalAreaView.Succeeded(castId, serverTime, ReadServerTime());
+        }
+
+        public void OnFinalFailed(int castId) { OnFinalCleared(castId); }
+        public void OnFinalHalted(int castId) { OnFinalCleared(castId); }
+
+        public void OnFinalCleared(int castId)
+        {
+            if (_finalAreaView != null) _finalAreaView.ClearCast(castId);
+        }
+
+        public void SetFinalParticipantAnchor(int combatId, Transform anchor)
+        {
+            if (_finalAreaView != null) _finalAreaView.SetParticipantAnchor(combatId, anchor);
+        }
+
+        // BossState에 색 결계 복제 사건과 스냅샷이 들어오면 아래 입력을 연결한다.
+        // 서버 전용 IWolbaekColorWardListener를 클라이언트 어셈블리에서 직접 구현하지 않는다.
+        public void OnWardStarted(in WolbaekWardStart start)
+        {
+            if (_colorWardView != null) _colorWardView.StartWard(in start, ReadServerTime());
+        }
+
+        public void OnWardRestored(in WolbaekWardSnapshot snapshot)
+        {
+            if (_colorWardView != null) _colorWardView.Restore(in snapshot, ReadServerTime());
+        }
+
+        public void OnGatherHoldStarted(int castId, double serverTime)
+        {
+            if (_colorWardView != null) _colorWardView.HoldStarted(castId, serverTime);
+        }
+
+        public void OnGatherHoldReset(int castId)
+        {
+            if (_colorWardView != null) _colorWardView.HoldReset(castId);
+        }
+
+        public void OnGatherCompleted(int castId)
+        {
+            if (_colorWardView != null) _colorWardView.GatherCompleted(castId);
+        }
+
+        public void OnStageStarted(int castId, in WolbaekWardStage stage)
+        {
+            if (_colorWardView != null) _colorWardView.StageStarted(castId, in stage, ReadServerTime());
+        }
+
+        public void OnStrikeTelegraphed(int castId, in WolbaekWardStrike strike)
+        {
+            if (_colorWardView != null) _colorWardView.StrikeTelegraphed(castId, in strike, ReadServerTime());
+        }
+
+        public void OnStrikeResolved(int castId, int stageIndex, int strikeIndex, double strikeServerTime)
+        {
+            if (_colorWardView != null) _colorWardView.StrikeResolved(castId, stageIndex, strikeIndex, strikeServerTime, ReadServerTime());
+        }
+
+        public void OnGraceStarted(int castId, int combatId, double graceEndServerTime)
+        {
+            if (_colorWardView != null) _colorWardView.GraceStarted(castId, combatId, graceEndServerTime);
+        }
+
+        public void OnGraceEnded(int castId, int combatId)
+        {
+            if (_colorWardView != null) _colorWardView.GraceEnded(castId, combatId);
+        }
+
+        public void OnLinkDamaged(int castId, double serverTime)
+        {
+            if (_colorWardView != null) _colorWardView.LinkDamaged(castId, serverTime);
+        }
+
+        public void OnReviveWindowOpened(int castId)
+        {
+            if (_colorWardView != null) _colorWardView.ReviveWindowOpenedAt(castId);
+        }
+
+        public void SetWardMemberAnchor(int combatId, Transform anchor)
+        {
+            if (_colorWardView != null) _colorWardView.SetMemberAnchor(combatId, anchor);
+        }
+
+        public void OnWardSucceeded(int castId)
+        {
+            if (_colorWardView == null) return;
+            _colorWardView.Succeeded(castId);
+            if ((_boundState != null) && (_boundState.PhaseState != EBossPhaseState.Active))
+            {
+                _colorWardView.PhaseTransitionStarted();
+            }
+        }
+        public void OnWardFailed(int castId) { OnWardCleared(castId); }
+        public void OnWardHalted(int castId) { OnWardCleared(castId); }
+
+        public void OnWardCleared(int castId)
+        {
+            if (_colorWardView != null) _colorWardView.ClearCast(castId);
+        }
+
+        private void OnPhaseStateChanged(EBossPhaseState state)
+        {
+            if ((state != EBossPhaseState.Active) && (_colorWardView != null))
+            {
+                _colorWardView.PhaseTransitionStarted();
+            }
+        }
+
+        // BossState에 25% 봉인 사건과 스냅샷이 들어오면 아래 입력을 연결한다.
+        // 서버 전용 IWolbaekFoxfireSealListener를 클라이언트 어셈블리에서 직접 구현하지 않는다.
+        public void OnSealStarted(in WolbaekSealStart start)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.StartSeal(in start, ReadServerTime());
+        }
+
+        public void OnSealRestored(in WolbaekSealSnapshot snapshot)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.Restore(in snapshot, ReadServerTime());
+        }
+
+        public void OnSealTurnStarted(int castId, in WolbaekSealTurn turn)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.TurnStarted(castId, in turn, ReadServerTime());
+        }
+
+        public void OnSealTrackingStarted(int castId, int turnIndex, double serverTime)
+        {
+            if (_foxfireSealView != null)
+                _foxfireSealView.TrackingStarted(castId, turnIndex, serverTime, ReadServerTime());
+        }
+
+        public void OnSealFoxfireDetached(int castId, int turnIndex, int foxfireIndex, double serverTime, Vector3 position)
+        {
+            if (_foxfireSealView != null)
+                _foxfireSealView.FoxfireDetached(castId, turnIndex, foxfireIndex, serverTime, position, ReadServerTime());
+        }
+
+        public void OnSealSweepTelegraphed(int castId, in WolbaekSealSweep sweep)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.SweepTelegraphed(castId, in sweep, ReadServerTime());
+        }
+
+        public void OnSealSweepResolved(int castId, int turnIndex, int sweepIndex, double serverTime, int hitCount)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.SweepResolved(castId, turnIndex, sweepIndex, serverTime);
+        }
+
+        public void OnSealFoxfiresLocked(int castId, int turnIndex, double serverTime, IReadOnlyList<Vector3> centers)
+        {
+            if (_foxfireSealView != null)
+                _foxfireSealView.FoxfiresLocked(castId, turnIndex, serverTime, centers, ReadServerTime());
+        }
+
+        public void OnSealTurnResolved(int castId, int turnIndex, double serverTime, int destroyedCores,
+            int totalCores, int playerHits, bool succeeded, int successCount)
+        {
+            if (_foxfireSealView != null)
+                _foxfireSealView.TurnResolved(castId, turnIndex, serverTime, successCount, ReadServerTime());
+        }
+
+        public void OnSealSucceeded(int castId, double serverTime, double counterEndServerTime)
+        {
+            if (_foxfireSealView != null)
+                _foxfireSealView.Succeeded(castId, serverTime, counterEndServerTime, ReadServerTime());
+        }
+
+        public void OnSealCounterEnded(int castId, double serverTime, bool reachedNextBoundary)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.CounterEnded(castId);
+        }
+
+        public void OnSealFailed(int castId, double serverTime, EWolbaekSealFail reason)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.ClearCast(castId);
+        }
+
+        public void OnSealHalted(int castId, double serverTime, EWolbaekSealHaltReason reason)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.ClearCast(castId);
+        }
+
+        // EBossInterruptReason은 서버 전용 어셈블리에 있으므로 복제 계층은 정리 사건에서 시전 번호만 넘긴다.
+        public void OnSealCleared(int castId)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.ClearCast(castId);
+        }
+
+        public void SetSealMemberAnchor(int combatId, Transform anchor)
+        {
+            if (_foxfireSealView != null) _foxfireSealView.SetMemberAnchor(combatId, anchor);
+        }
+
+        // BossState에 부적진 복제 계약이 추가되면 아래 입력을 해당 사건과 스냅샷에서 호출한다.
+        // 현재 BossState에는 그 사건이 없어 이 메서드만으로 실제 서버 표시가 시작되지는 않는다.
+        public void OnTalismanStarted(in WolbaekTalismanStart start)
+        {
+            if (_talismanView != null) _talismanView.StartFormation(in start, ReadServerTime());
+        }
+
+        public void OnTalismanRestored(in WolbaekTalismanSnapshot snapshot)
+        {
+            if (_talismanView != null) _talismanView.Restore(in snapshot, ReadServerTime());
+        }
+
+        public void OnTalismanHoldStarted(int castId, double serverTime)
+        {
+            if (_talismanView != null) _talismanView.HoldStarted(castId, serverTime, ReadServerTime());
+        }
+
+        public void OnTalismanHoldReset(int castId, double serverTime)
+        {
+            if (_talismanView != null) _talismanView.HoldReset(castId, serverTime, ReadServerTime());
+        }
+
+        public void OnTalismanAttackTelegraphed(int castId, in WolbaekTalismanAttack attack)
+        {
+            if (_talismanView != null) _talismanView.AttackTelegraphed(castId, in attack, ReadServerTime());
+        }
+
+        public void OnTalismanAttackStruck(int castId, int attackId, double strikeServerTime)
+        {
+            if (_talismanView != null) _talismanView.AttackStruck(castId, attackId, strikeServerTime, ReadServerTime());
+        }
+
+        public void OnTalismanAttackCancelled(int castId, int attackId)
+        {
+            if (_talismanView != null) _talismanView.AttackCancelled(castId, attackId);
+        }
+
+        public void OnTalismanSucceeded(int castId, double serverTime, double counterEndServerTime)
+        {
+            if (_talismanView != null) _talismanView.Succeeded(castId, serverTime, counterEndServerTime, ReadServerTime());
+        }
+
+        public void OnTalismanCounterEnded(int castId)
+        {
+            if (_talismanView != null) _talismanView.CounterEnded(castId);
+        }
+
+        public void OnTalismanCleared(int castId)
+        {
+            if (_talismanView != null) _talismanView.ClearCast(castId);
+        }
+
+        public void OnTalismanFailed(int castId)
+        {
+            OnTalismanCleared(castId);
+        }
+
+        public void OnTalismanHalted(int castId)
+        {
+            OnTalismanCleared(castId);
         }
 
         private static double ReadServerTime()

@@ -64,6 +64,10 @@ GameObject:
   - component: {fileID: 1550198058047714701}
   - component: {fileID: 2573852722824582184}
   - component: {fileID: 3943905421948782661}
+  - component: {fileID: 4303203048784122037}
+  - component: {fileID: 3000000000000000001}
+  - component: {fileID: 7128344566713420138}
+  - component: {fileID: 3000000000000000002}
   m_Layer: 0
   m_Name: PF_WolbaekBoss
   m_TagString: Untagged
@@ -101,7 +105,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 858f267480844724fa82143eacd8cabe, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossView
   _pivot: {fileID: 5516574155397790334}
   _animator: {fileID: 2581301787005299077}
@@ -112,28 +116,6 @@ MonoBehaviour:
   _gatherSideArms: {x: -6, y: 60, z: 25}
   _gatherCircle: {x: 8, y: 25, z: -10}
   _gatherThrow: {x: -10, y: 20, z: 55}
---- !u!114 &3943905421948782661
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1289852489252288786}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56f9c5033edc43c5ac63a811b07ab44e, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekDissolveView
-  _controllers: []
-  _burnMaterials:
-  - {fileID: 2100000, guid: 3bfc4ef8c35771444be5fc67969a9ecc, type: 2}
-  - {fileID: 2100000, guid: 8f337920c921d444dbd3497c317e3555, type: 2}
-  - {fileID: 2100000, guid: 6b5df5801f5520846a81151c0a6b63de, type: 2}
-  - {fileID: 2100000, guid: c1aaa4a5a26aab043ba0948c9856b9f7, type: 2}
-  - {fileID: 2100000, guid: 43e17e5d4ebaee4418216294d0abfcb8, type: 2}
-  - {fileID: 2100000, guid: ba725ad567232974d8e55e7c61e77bfd, type: 2}
-  - {fileID: 2100000, guid: 5ff7324b75e46a747a2a51f8931ff172, type: 2}
-  - {fileID: 2100000, guid: 03e98a238e298164abf6a626975329b6, type: 2}
 --- !u!114 &1550198058047714701
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -144,7 +126,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6649846251db7b84e8954544a3b3a9c5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekWarpView
   _bossView: {fileID: 2897417657671704511}
   _breakup: {fileID: 1874501517624299581}
@@ -160,7 +142,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1edfe6b2cf9eddc4fb90a828f88ed18b, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekPatternVfxView
   _animator: {fileID: 2581301787005299077}
   _flights:
@@ -189,6 +171,103 @@ MonoBehaviour:
   _fanEffect: {fileID: 3346786265420216650, guid: 27e72fed3f0b5c14babc12d0b81c0c98, type: 3}
   _circleEffect: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
   _zoneEffect: {fileID: 1526207556128958582, guid: 173b4366ef4cc864eb43fbc9ee03c34c, type: 3}
+--- !u!114 &3943905421948782661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56f9c5033edc43c5ac63a811b07ab44e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekDissolveView
+  _controllers: []
+  _burnMaterials:
+  - {fileID: 2100000, guid: 3bfc4ef8c35771444be5fc67969a9ecc, type: 2}
+  - {fileID: 2100000, guid: 8f337920c921d444dbd3497c317e3555, type: 2}
+  - {fileID: 2100000, guid: 6b5df5801f5520846a81151c0a6b63de, type: 2}
+  - {fileID: 2100000, guid: c1aaa4a5a26aab043ba0948c9856b9f7, type: 2}
+  - {fileID: 2100000, guid: 43e17e5d4ebaee4418216294d0abfcb8, type: 2}
+  - {fileID: 2100000, guid: ba725ad567232974d8e55e7c61e77bfd, type: 2}
+  - {fileID: 2100000, guid: 5ff7324b75e46a747a2a51f8931ff172, type: 2}
+  - {fileID: 2100000, guid: 03e98a238e298164abf6a626975329b6, type: 2}
+--- !u!114 &4303203048784122037
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b38989ed8d19e704eaff1f444f915990, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekTalismanView
+  _bossView: {fileID: 2897417657671704511}
+  _animator: {fileID: 2581301787005299077}
+  _structurePrefabs:
+  - {fileID: 2670286049662564468, guid: 947845629ca1a384f956cd28015d88a4, type: 3}
+  - {fileID: 2911831572781800030, guid: 6781b2be8eb473840ac5268c96393f9d, type: 3}
+  - {fileID: 4665761078757613200, guid: 59b9f5a604fcd5945be7bfc783c48bd9, type: 3}
+  - {fileID: 8106308538555630352, guid: 83da97017db231b4bba53752bfb9eb5b, type: 3}
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _ringEffectPrefab: {fileID: 7755711838538548615, guid: 5676a61314787f947822701233c8669c, type: 3}
+  _lineEffectPrefab: {fileID: 1033706568510610358, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+--- !u!114 &3000000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95696c6a2e65419c8ac75672189abd23, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekColorWardView
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _gatherPrefab: {fileID: 7004568119999708516, guid: 0a3357f39d15c7a409ecc42c799cb5ef, type: 3}
+  _redWardPrefab: {fileID: 1272824891276550453, guid: 1ce921dcf38f2e04ab8477238bd28633, type: 3}
+  _blueWardPrefab: {fileID: 1807744419520374344, guid: 1264c47f5d6f1b04e9726e59b13fbfae, type: 3}
+  _redLinkPrefab: {fileID: 884514136964743, guid: 041e207b2fdae854a99cb4dcd41b1ae0, type: 3}
+  _blueLinkPrefab: {fileID: 763579330733141528, guid: ee8da2184d88d364d8ab720171bd912f, type: 3}
+  _strikeTelegraphPrefab: {fileID: 280056518885622441, guid: 93583d4c2dc1a5c4ea9fb96bae28b8b2, type: 3}
+  _strikePrefab: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
+--- !u!114 &7128344566713420138
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 404d44155d9096b4fba42c2a9b208545, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekFoxfireSealView
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _corePrefab: {fileID: 2008495056718390370, guid: 464da5e840389df4489375b453d8e777, type: 3}
+  _dropPrefab: {fileID: 5375477807891639723, guid: fa0c4664c20805b40b437f8e55e7f13a, type: 3}
+  _sweepPrefab: {fileID: 3346786265420216650, guid: 27e72fed3f0b5c14babc12d0b81c0c98, type: 3}
+--- !u!114 &3000000000000000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30b5c6043c8a45ccb44fe244022d773a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekFinalAreaView
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _foxfirePrefab: {fileID: 4460296218332427879, guid: 0a5b5eafeccd22a4daa6bc81857c5609, type: 3}
+  _floorTelegraphPrefab: {fileID: 280056518885622441, guid: 93583d4c2dc1a5c4ea9fb96bae28b8b2, type: 3}
+  _floorCollapsePrefab: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
+  _redLockPrefab: {fileID: 3818512665175147759, guid: 859531144da1a6942891dc37fa8fe52f, type: 3}
 --- !u!1 &5490748374979100770
 GameObject:
   m_ObjectHideFlags: 0

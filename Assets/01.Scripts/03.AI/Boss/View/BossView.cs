@@ -138,6 +138,10 @@ namespace Shinshi.AI
         private bool       _hasPose;
 
         private WolbaekMotionDirector _motion;
+        private WolbaekTalismanView _talismanView;
+        private WolbaekColorWardView _colorWardView;
+        private WolbaekFoxfireSealView _foxfireSealView;
+        private WolbaekFinalAreaView _finalAreaView;
         private Renderer[]            _modelRenderers;
         private Vector3               _stablePosition;
         private bool                  _hasStablePosition;
@@ -167,6 +171,10 @@ namespace Shinshi.AI
             ConvertToUrpLit(_modelRenderers, _runtimeMaterials);
             CacheBones();
             _motion = new WolbaekMotionDirector(_animator);
+            _talismanView = GetComponent<WolbaekTalismanView>();
+            _colorWardView = GetComponent<WolbaekColorWardView>();
+            _foxfireSealView = GetComponent<WolbaekFoxfireSealView>();
+            _finalAreaView = GetComponent<WolbaekFinalAreaView>();
         }
 
         private void OnDestroy()
@@ -279,6 +287,22 @@ namespace Shinshi.AI
             // 확정한 처치 모션이 컨트롤러에 있으면 그것을 쓰고 없으면 임시 도형 자세로 쓰러진다
             if (isDefeated)
             {
+                if (_talismanView != null)
+                {
+                    _talismanView.Clear();
+                }
+                if (_colorWardView != null)
+                {
+                    _colorWardView.Clear();
+                }
+                if (_foxfireSealView != null)
+                {
+                    _foxfireSealView.Clear();
+                }
+                if (_finalAreaView != null)
+                {
+                    _finalAreaView.Clear();
+                }
                 _motion.PlayDeath(isLate);
 
                 // 처치 시각이 서버에 없어 재접속이면 쓰러짐을 건너뛰고 지금부터 정지와 디졸브를 진행한다
@@ -341,6 +365,25 @@ namespace Shinshi.AI
         /// <summary> 패턴 VFX 표현, 서버 사건을 받는 연결부가 효과를 부를 때 쓴다 </summary>
         public WolbaekPatternVfxView PatternVfx => _patternVfx;
 
+        /// <summary> 서버 기믹 사건으로 정해진 월백 모션을 재생하고 패턴 모션 계획을 비운다 </summary>
+        public void PlayGimmickMotion(string state, float speed, float blend)
+        {
+            if ((_isDefeated) || (_animator == null) || (_motion == null) || (string.IsNullOrEmpty(state)))
+            {
+                return;
+            }
+
+            int hash = Animator.StringToHash(_animator.GetLayerName(0) + "." + state);
+            if (!_animator.HasState(0, hash))
+            {
+                return;
+            }
+
+            _motion.Reset();
+            _animator.speed = Mathf.Max(0.01f, speed);
+            _animator.CrossFade(hash, blend, 0, 0f);
+        }
+
         /// <summary> 서버 사건 종류로 정하는 패턴의 모션을 첫 판정 시각에 맞춰 시작하도록 계획한다 </summary>
         public void BeginEventMotion(int castId, EWolbaekEventMotion kind, double castStartServerTime, float strikeSeconds)
         {
@@ -399,6 +442,7 @@ namespace Shinshi.AI
         /// <summary> 모션과 위치 기억을 처음으로 되돌린다, 전투를 다시 시작할 때 쓴다 </summary>
         public void ResetView()
         {
+            bool wasDefeated = _isDefeated;
             _hasPose    = false;
             _hasCast    = false;
             _isDefeated = false;
@@ -408,7 +452,27 @@ namespace Shinshi.AI
 
             if (_motion != null)
             {
+                if (wasDefeated)
+                {
+                    _motion.ClearDeath();
+                }
                 _motion.Reset();
+            }
+            if (_talismanView != null)
+            {
+                _talismanView.ResetNetworkSession();
+            }
+            if (_colorWardView != null)
+            {
+                _colorWardView.ResetNetworkSession();
+            }
+            if (_foxfireSealView != null)
+            {
+                _foxfireSealView.ResetNetworkSession();
+            }
+            if (_finalAreaView != null)
+            {
+                _finalAreaView.ResetNetworkSession();
             }
 
             if (_dissolve != null)
