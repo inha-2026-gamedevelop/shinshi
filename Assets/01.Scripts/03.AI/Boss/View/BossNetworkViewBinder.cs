@@ -14,7 +14,8 @@ namespace Shinshi.AI
 {
     /// <summary> 서버 복제 상태와 공격 기록을 클라이언트 보스 표현에 연결한다 </summary>
     [DisallowMultipleComponent]
-    public sealed class BossNetworkViewBinder : ClientView, IBossStateListener, IBossHardPhaseStateListener
+    public sealed class BossNetworkViewBinder : ClientView, IBossStateListener, IBossHardPhaseStateListener,
+        IBossMucheolStateListener
     {
         /****************************************
         *                Fields
@@ -26,6 +27,8 @@ namespace Shinshi.AI
         [SerializeField] private BossBarrierView _barrierView;
         [SerializeField] private BossHardPhaseView _hardPhaseView; // 월백 하드 2페이즈 표시, 비어 있으면 생략한다
         [SerializeField] private BossMucheolPhaseView _mucheolPhaseView; // 무철 전용 표시, 비어 있으면 생략한다
+        [SerializeField] private MucheolMotionView _mucheolMotion; // 무철 몸 동작, 비어 있으면 같은 오브젝트에서 한 번 찾는다
+        [SerializeField] private MucheolPatternVfxView _mucheolVfx; // 무철 일반 패턴 VFX, 비어 있으면 같은 오브젝트에서 한 번 찾는다
         [SerializeField] private WolbaekTalismanView _talismanView; // 서버 복제 계약 연결 전에는 수신 준비만 한다
         [SerializeField] private WolbaekColorWardView _colorWardView; // 50% 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekFoxfireSealView _foxfireSealView; // 25% 복제 계약의 클라이언트 입력점
@@ -66,6 +69,14 @@ namespace Shinshi.AI
             {
                 _finalAreaView = _view.GetComponent<WolbaekFinalAreaView>();
             }
+            if (_mucheolMotion == null)
+            {
+                TryGetComponent(out _mucheolMotion);
+            }
+            if (_mucheolVfx == null)
+            {
+                TryGetComponent(out _mucheolVfx);
+            }
 
             // 공격 예고는 서버의 월드 좌표다. 보스가 이동해도 풀에서 빌린 지면 표현은 따라가지 않는다.
             if ((_effectsRoot != null) && (_effectsRoot != transform) && (_effectsRoot.IsChildOf(transform)))
@@ -98,6 +109,15 @@ namespace Shinshi.AI
                     _lastFlowState = _state.FlowState;
                     _view.SetFlowState(_lastFlowState);
                 }
+            }
+
+            if (_mucheolMotion != null)
+            {
+                _mucheolMotion.SetDefeated(isDefeated);
+            }
+            if (_mucheolVfx != null)
+            {
+                _mucheolVfx.SetDefeated(isDefeated);
             }
 
             // 서버가 사망 직전에 취소 사건을 모두 보내지 못해도 하드 2페이즈와 무철의 위험 구역이 남지 않게 한다
@@ -180,6 +200,17 @@ namespace Shinshi.AI
                 _mucheolPhaseView.SetPresenter(_presenter);
                 _mucheolPhaseView.SetServerClock(ReadServerTime);
             }
+            if (_mucheolMotion != null)
+            {
+                _mucheolMotion.ResetSession();
+                _mucheolMotion.SetServerClock(ReadServerTime);
+            }
+            if (_mucheolVfx != null)
+            {
+                _mucheolVfx.ResetSession();
+                _mucheolVfx.SetServerClock(ReadServerTime);
+                _mucheolVfx.BindPresenter(_presenter);
+            }
             if (_talismanView != null)
             {
                 _talismanView.ResetNetworkSession();
@@ -234,6 +265,14 @@ namespace Shinshi.AI
                 _barrierView.Clear();
             }
             ClearPhaseViews();
+            if (_mucheolMotion != null)
+            {
+                _mucheolMotion.ResetSession();
+            }
+            if (_mucheolVfx != null)
+            {
+                _mucheolVfx.ResetSession();
+            }
             if (_view != null)
             {
                 _view.Bind(null, null);
@@ -601,6 +640,15 @@ namespace Shinshi.AI
             {
                 presenter.BeginTelegraph(in start);
             }
+
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginTelegraph(start.CastId, start.PatternId, start.StartServerTime, start.TelegraphSeconds);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.BeginBasic(in start);
+            }
         }
 
         public void OnAimChanged(int castId, Vector3 direction, float length, double serverTime)
@@ -609,6 +657,11 @@ namespace Shinshi.AI
             if (presenter != null)
             {
                 presenter.UpdateAim(castId, direction, length, serverTime);
+            }
+
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.UpdateAim(castId, direction);
             }
         }
 
@@ -619,6 +672,11 @@ namespace Shinshi.AI
             {
                 presenter.LockDirection(castId, direction, length);
             }
+
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.UpdateAim(castId, direction);
+            }
         }
 
         public void OnStruck(int castId, double serverTime)
@@ -627,6 +685,11 @@ namespace Shinshi.AI
             if (presenter != null)
             {
                 presenter.Strike(castId, serverTime);
+            }
+
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.ConfirmBasicStrike(castId, serverTime);
             }
         }
 
@@ -637,6 +700,15 @@ namespace Shinshi.AI
             {
                 presenter.BeginDash(castId, distance, seconds, speed, startServerTime);
             }
+
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginDash(castId, distance, seconds, speed, startServerTime);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.BeginBasicDash(castId, distance, seconds, speed, startServerTime);
+            }
         }
 
         public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
@@ -645,6 +717,15 @@ namespace Shinshi.AI
             if (presenter != null)
             {
                 presenter.StopDash(castId, position, stoppedByWall);
+            }
+
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.StopDash(castId, 0);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.StopBasicDash(castId, position);
             }
         }
 
@@ -655,6 +736,15 @@ namespace Shinshi.AI
             {
                 presenter.Finish(castId);
             }
+
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.FinishCast(castId);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.FinishCast(castId);
+            }
         }
 
         public void OnCancelled(int castId)
@@ -663,6 +753,15 @@ namespace Shinshi.AI
             if (presenter != null)
             {
                 presenter.Cancel(castId);
+            }
+
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.CancelCast(castId);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.CancelCast(castId);
             }
         }
 
@@ -844,6 +943,25 @@ namespace Shinshi.AI
             if (presenter != null)
             {
                 presenter.Restore(in snapshot);
+            }
+
+            if (IsMucheolMotion)
+            {
+                BossTelegraphStart start = snapshot.Start;
+                _mucheolMotion.BeginTelegraph(start.CastId, start.PatternId, start.StartServerTime, start.TelegraphSeconds);
+                if ((snapshot.Phase == EBossTelegraphPhase.Execute) && (start.Shape == EBossTelegraphShape.Dash))
+                {
+                    _mucheolMotion.BeginDash(start.CastId, snapshot.DashDistance, snapshot.DashSeconds, snapshot.DashSpeed,
+                        snapshot.ExecuteServerTime);
+                    if (snapshot.DashStoppedDistance > 0f)
+                    {
+                        _mucheolMotion.StopDash(start.CastId, 0);
+                    }
+                }
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.RestoreBasic(in snapshot);
             }
         }
 
@@ -1342,6 +1460,266 @@ namespace Shinshi.AI
             {
                 PatternVfx.RestoreCircleBurst(in snapshot);
             }
+        }
+
+        /****************************************
+        *        Mucheol State Listener
+        ****************************************/
+
+        // 무철 전용 사건을 받으면 BossState가 이 사건과 복원을 넘긴다. 이 수신부는 몸 동작(MucheolMotionView)과
+        // 일반 패턴 VFX(MucheolPatternVfxView)를 잇는다. VFX 원본이 바닥 예고까지 그리므로 단순 도형 표시(BossMucheolPhaseView)는 잇지 않는다.
+        // 시각은 모두 서버 시각이고 시전 번호로 중복과 늦은 사건을 거른다. 같은 번호의 사건이 다시 오면 모션이 서버 시각 기준으로 다시 계산된다
+        private bool IsMucheolMotion => (_boundState != null) && (_mucheolMotion != null);
+
+        private bool IsMucheolVfx => (_boundState != null) && (_mucheolVfx != null);
+
+        public void OnStrikeChainStarted(in BossStrikeChainStart start)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginStrikeChain(in start);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.BeginStrikeChain(in start);
+            }
+        }
+
+        public void OnStrikeChainAimChanged(EBossStrikeChainKind kind, int castId, Vector3 direction, double serverTime)
+        {
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.UpdateAim(castId, direction);
+            }
+        }
+
+        public void OnStrikeChainDirectionLocked(EBossStrikeChainKind kind, int castId, Vector3 direction)
+        {
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.UpdateAim(castId, direction);
+            }
+        }
+
+        // 모션은 시작 사건이 알려 준 타 확정 시각을 이미 키에 넣었다. VFX는 이 확정 사건이 와야 터진다
+        public void OnStrikeChainHit(EBossStrikeChainKind kind, int castId, int stepIndex, double serverTime)
+        {
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.ConfirmStrikeChainHit(castId, stepIndex, serverTime);
+            }
+        }
+
+        public void OnStrikeChainCancelled(EBossStrikeChainKind kind, int castId)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.CancelCast(castId);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.CancelCast(castId);
+            }
+        }
+
+        public void OnMultiDashStarted(in BossMultiDashStart start)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginMultiDash(in start);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.BeginMultiDash(in start);
+            }
+        }
+
+        public void OnMultiDashAimChanged(int castId, int dashIndex, Vector3 direction, float length, double serverTime)
+        {
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.UpdateMultiDashAim(castId, dashIndex, direction);
+            }
+        }
+
+        public void OnMultiDashDirectionLocked(int castId, int dashIndex, Vector3 direction, float length)
+        {
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.UpdateMultiDashAim(castId, dashIndex, direction);
+            }
+        }
+
+        public void OnMultiDashReaimStarted(in BossMultiDashReaim reaim)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginMultiDashReaim(in reaim);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.BeginMultiDashReaim(in reaim);
+            }
+        }
+
+        public void OnMultiDashDashStarted(int castId, int dashIndex, float distance, float seconds, float speed, double startServerTime)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginMultiDashRun(castId, dashIndex, distance, seconds, speed, startServerTime);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.BeginMultiDashRun(castId, dashIndex, distance, seconds, speed, startServerTime);
+            }
+        }
+
+        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.StopDash(castId, dashIndex);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.StopMultiDashRun(castId, dashIndex, position);
+            }
+        }
+
+        public void OnMultiDashTruncated(int castId, int plannedDashCount, int completedDashCount)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.EndMultiDashEarly(castId);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.EndMultiDashEarly(castId);
+            }
+        }
+
+        public void OnMultiDashCancelled(int castId)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.CancelCast(castId);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.CancelCast(castId);
+            }
+        }
+
+        public void OnBattlefieldStarted(in BossBattlefieldStart start)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginBattlefield(in start);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.BeginBattlefield(in start);
+            }
+        }
+
+        public void OnBattlefieldHit(int castId, double serverTime)
+        {
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.ConfirmBattlefield(castId, serverTime);
+            }
+        }
+
+        public void OnBattlefieldCancelled(int castId)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.CancelCast(castId);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.CancelCast(castId);
+            }
+        }
+
+        // 충돌이 기믹 1의 마지막 구조물 파괴인지 서버가 아직 알리지 않아 모든 충돌을 중간 충돌 반동으로 보인다.
+        // TODO(기웅): 서버가 마지막 충돌과 그로기 끝 시각을 보내면 그 충돌만 MucheolMotionView.BeginGroggy로 넘긴다
+        public void OnChargeEnded(in BossChargeOutcome outcome)
+        {
+            if (IsMucheolMotion && outcome.IsCollision)
+            {
+                _mucheolMotion.PlayChargeImpact(outcome.CastId, outcome.ServerTime);
+            }
+        }
+
+        public void OnStrikeChainRestored(in BossStrikeChainSnapshot snapshot)
+        {
+            if (IsMucheolMotion)
+            {
+                BossStrikeChainStart start = snapshot.Start;
+                _mucheolMotion.BeginStrikeChain(in start);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.RestoreStrikeChain(in snapshot);
+            }
+        }
+
+        // 지금 돌진 하나만 온다. 돌진 중이면 들이받는 구간을, 아니면 모으는 구간을 서버 시각부터 이어 간다
+        public void OnMultiDashRestored(in BossMultiDashSnapshot snapshot)
+        {
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.RestoreMultiDash(in snapshot);
+            }
+
+            if (!IsMucheolMotion)
+            {
+                return;
+            }
+
+            BossMultiDashStart start = snapshot.Start;
+            _mucheolMotion.BeginMultiDash(in start);
+            if (snapshot.DashIndex > 0)
+            {
+                var reaim = new BossMultiDashReaim(start.CastId, snapshot.DashIndex, snapshot.Origin, snapshot.Direction,
+                    snapshot.Length, snapshot.Width, snapshot.TelegraphStartServerTime, snapshot.TelegraphSeconds);
+                _mucheolMotion.BeginMultiDashReaim(in reaim);
+            }
+
+            if (snapshot.HasDashStarted)
+            {
+                _mucheolMotion.BeginMultiDashRun(start.CastId, snapshot.DashIndex, snapshot.DashDistance, snapshot.DashSeconds,
+                    snapshot.DashSpeed, snapshot.DashStartServerTime);
+                if (snapshot.StoppedDistance > 0f)
+                {
+                    _mucheolMotion.StopDash(start.CastId, snapshot.DashIndex);
+                }
+            }
+
+            if (snapshot.IsTruncated)
+            {
+                _mucheolMotion.EndMultiDashEarly(start.CastId);
+            }
+        }
+
+        public void OnBattlefieldRestored(in BossBattlefieldSnapshot snapshot)
+        {
+            if (IsMucheolMotion)
+            {
+                BossBattlefieldStart start = snapshot.Start;
+                _mucheolMotion.BeginBattlefield(in start);
+            }
+            if (IsMucheolVfx)
+            {
+                _mucheolVfx.RestoreBattlefield(in snapshot);
+            }
+        }
+
+        // 회복 중에 접속했으면 반동은 이미 끝났다. 반동 구간이 남아 있을 때만 이어 보인다
+        public void OnChargeRestored(in BossChargeOutcome outcome)
+        {
+            OnChargeEnded(in outcome);
         }
     }
 }

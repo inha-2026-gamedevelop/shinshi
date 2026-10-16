@@ -624,9 +624,9 @@ namespace Shinshi.AI
             }
             else if ((_hasCast) && (_presenter != null) &&
                 (_presenter.TryGetVisuals(_castId, out BossTelegraphCast cast, out _, out _))
-                && (!WolbaekMotionDirector.Handles(cast.PatternId)))
+                && (!WolbaekMotionDirector.Handles(cast.PatternId)) && (!MucheolMotionCatalog.Handles(cast.PatternId)))
             {
-                // 확정한 모션이 있는 패턴은 클립이 몸을 쓰므로 임시 도형 자세를 덧붙이지 않는다
+                // 확정한 모션이 있는 패턴(월백, 무철)은 클립이 몸을 쓰므로 임시 도형 자세를 덧붙이지 않는다
                 target = CastPose(cast, ref smooth);
             }
 
