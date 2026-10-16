@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Shinshi.Dev
 {
-    /// <summary> 사체가 재처럼 타들어 가며 사라지게 하는 연출. 재질을 타는 셰이더로 바꾸고, 몸 표면에서 재와 불씨 입자를 날린다 </summary>
+    /// <summary> 사체가 재처럼 타들어 가며 사라지게 하는 연출. 재질을 타는 셰이더로 바꾸고, 몸 표면에서 재 입자를 날린다 </summary>
     public sealed class HitAshDissolve : MonoBehaviour
     {
         // 이 클라이언트 화면에만 보이는 표현이다. 시작하면 seconds 동안 진행되고, 끝나면 소유자를 지우지 않고 스스로만 정리한다.
@@ -32,8 +32,11 @@ namespace Shinshi.Dev
         private const float NOISE_STRENGTH = 0.6f;
         private const float GRAVITY        = -0.05f;
 
-        private static readonly Color s_ashColor   = new Color(0.12f, 0.11f, 0.1f, 1f);
-        private static readonly Color s_emberColor = new Color(1f, 0.45f, 0.1f, 1f);
+        // 불씨의 주황빛은 쓰지 않는다. 사라지기 직전 몸 가장자리와 입자가 적갈색으로 물들어 보여, 재의 어두운 색만 남긴다
+        private const string EMBER_COLOR = "_EmberColor";
+
+        private static readonly Color s_ashColor      = new Color(0.12f, 0.11f, 0.1f, 1f);
+        private static readonly Color s_ashLightColor = new Color(0.3f, 0.28f, 0.26f, 1f);
 
         private Material[] _materials = null;
         private float      _seconds   = 1f;
@@ -104,6 +107,7 @@ namespace Shinshi.Dev
                     }
 
                     burning[i].SetFloat(DISSOLVE, DISSOLVE_START);
+                    burning[i].SetColor(EMBER_COLOR, Color.black);
                     materials.Add(burning[i]);
                 }
 
@@ -118,7 +122,7 @@ namespace Shinshi.Dev
             ash._materials = materials.ToArray();
         }
 
-        // 몸 표면(스킨 메시)에서 재와 불씨를 위로 날린다. 입자는 월드에 남아 몸이 사라진 뒤에도 잠시 떠돈다
+        // 몸 표면(스킨 메시)에서 재를 위로 날린다. 입자는 월드에 남아 몸이 사라진 뒤에도 잠시 떠돈다
         private void CreateAshParticles(Transform parent, SkinnedMeshRenderer skinned)
         {
             var go = new GameObject("DevAshParticles");
@@ -136,7 +140,7 @@ namespace Shinshi.Dev
             main.gravityModifier = GRAVITY;
             main.startLifetime   = new ParticleSystem.MinMaxCurve(LIFETIME_MIN, LIFETIME_MAX);
             main.startSize       = new ParticleSystem.MinMaxCurve(SIZE_MIN, SIZE_MAX);
-            main.startColor      = new ParticleSystem.MinMaxGradient(s_ashColor, s_emberColor);
+            main.startColor      = new ParticleSystem.MinMaxGradient(s_ashColor, s_ashLightColor);
 
             var emission = system.emission;
             emission.rateOverTime = EMIT_RATE;
