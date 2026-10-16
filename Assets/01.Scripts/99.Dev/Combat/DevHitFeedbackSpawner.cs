@@ -57,7 +57,7 @@ namespace Shinshi.Dev
         [Header("무리")]
         [SerializeField, Min(0.1f)] private float _sizeMultiplier = 1.3f; // 몬스터 전체(충돌체와 모델) 크기 배율
         [SerializeField] private int   _groupSize        = 24;
-        [SerializeField] private int   _hitsToDie        = 3;
+        [SerializeField, Min(1)] private int _hitsToDie  = 1; // 한 대 맞으면 죽는다
         [SerializeField] private float _chaseSpeed       = 2.5f; // m/s, 플레이어를 쫓는 속도
         [SerializeField] private float _spawnRadius      = 6f;  // m, 문 앞 출현 지점 주위
         [SerializeField, Min(0f)] private float _maxSpawnRadius = 12f; // m, 기본 반경에 자리가 모자라면 여기까지 넓혀서 찾는다
@@ -72,6 +72,12 @@ namespace Shinshi.Dev
         [SerializeField, Min(0f)] private float _minPlayerDistance = 4f;  // m, 플레이어와 이 거리 안에는 세우지 않는다
         [SerializeField, Min(0f)] private float _groundHeightTolerance = 1f; // m, 입구 지점과 이 높이 차 안의 땅에만 세운다 (지붕, 위층 방지)
         [SerializeField] private bool _spawnFirstZoneAtStart = true;      // 첫 구역은 입구 없이 출정 시작과 함께 세운다
+
+        [Header("엘리트 (이 구역에 일반 무리와 함께 세운다. 엘리트까지 잡아야 구역 처치가 끝난다)")]
+        [SerializeField, Min(0)] private int   _eliteZoneIndex = 5;    // 0부터 센 구역 번호, 5가 6구역
+        [SerializeField, Min(0)] private int   _eliteCount     = 2;
+        [SerializeField, Min(1)] private int   _eliteHitsToDie = 2;
+        [SerializeField, Min(0.1f)] private float _eliteSizeScale = 2f; // 일반 몬스터 대비 몸집 배율
 
         private readonly RaycastHit[] _rayHits     = new RaycastHit[RAYCAST_MAX_HITS];
         private readonly Collider[]   _overlapHits = new Collider[OVERLAP_BUFFER_SIZE];
@@ -259,7 +265,7 @@ namespace Shinshi.Dev
         public bool IsZoneSpawned(int zone) { return _zoneSpawned[zone]; }
 
         /// <summary> 아직 세우기 전에는 계획한 마리 수(무리 크기)를 돌려준다 </summary>
-        public int GetZonePlanned(int zone) { return _zoneSpawned[zone] ? _zonePlanned[zone] : _groupSize; }
+        public int GetZonePlanned(int zone) { return _zoneSpawned[zone] ? _zonePlanned[zone] : (_groupSize + ((zone == _eliteZoneIndex) ? _eliteCount : 0)); }
 
         public int GetZoneKilled(int zone) { return _zoneKilled[zone]; }
 
@@ -287,15 +293,29 @@ namespace Shinshi.Dev
         {
             Vector3 anchor = GetAnchor(zone).position;
 
+            // 몸집이 큰 엘리트가 자리를 먼저 잡도록 일반 무리보다 앞서 세운다
+            int eliteCount = (zone == _eliteZoneIndex) ? _eliteCount : 0;
+            for (int i = 0; i < eliteCount; ++i)
+            {
+                float size = _sizeMultiplier * _eliteSizeScale;
+                if (!TryFindSpot(anchor, size, out Vector3 position))
+                {
+                    Debug.LogWarning($"[DevSpawner] {zone + 1}구역에서 엘리트 자리를 못 찾아 {i}마리만 세웠다", this);
+                    break;
+                }
+
+                CreateMonster(zone, position, size, _eliteHitsToDie);
+            }
+
             for (int i = 0; i < _groupSize; ++i)
             {
-                if (!TryFindSpot(anchor, out Vector3 position))
+                if (!TryFindSpot(anchor, _sizeMultiplier, out Vector3 position))
                 {
                     Debug.LogWarning($"[DevSpawner] {zone + 1}구역에서 자리를 못 찾아 {i}마리만 세웠다", this);
                     break;
                 }
 
-                CreateMonster(zone, position);
+                CreateMonster(zone, position, _sizeMultiplier, _hitsToDie);
             }
 
             // 한 마리도 못 세웠으면 다음 프레임에 계속 재시도하지 않게 대기 시간을 둔다
@@ -314,28 +334,28 @@ namespace Shinshi.Dev
             }
         }
 
-        private void CreateMonster(int zone, Vector3 position)
+        private void CreateMonster(int zone, Vector3 position, float size, int hitsToDie)
         {
             bool       hasModel = (_models != null) && (_models.Length > 0);
             GameObject body     = hasModel ? new GameObject(MONSTER_NAME) : GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = MONSTER_NAME;
             body.transform.SetParent(transform, false);
-            body.transform.localScale = new Vector3(MONSTER_RADIUS * 2f, MONSTER_HEIGHT * HALF, MONSTER_RADIUS * 2f) * _sizeMultiplier;
+            body.transform.localScale = new Vector3(MONSTER_RADIUS * 2f, MONSTER_HEIGHT * HALF, MONSTER_RADIUS * 2f) * size;
 
             // 캡슐 기본 높이가 2m라 스케일 반이 곧 높이 절반이다. 발이 땅에 닿게 높이 절반만큼 올린다
-            body.transform.position = position + (Vector3.up * (MONSTER_HEIGHT * HALF * _sizeMultiplier));
+            body.transform.position = position + (Vector3.up * (MONSTER_HEIGHT * HALF * size));
 
-            Animator animator = hasModel ? AttachModel(body.transform) : null;
+            Animator animator = hasModel ? AttachModel(body.transform, size) : null;
 
             var monster = body.AddComponent<DevHitFeedbackMonster>();
-            monster.Init(_hitsToDie, _playerCollider, _chaseSpeed, animator);
+            monster.Init(hitsToDie, _playerCollider, _chaseSpeed, animator);
             monster.Died += OnMonsterDied;
             _zoneOfMonster.Add(monster, zone);
             ++_zoneAlive[zone];
         }
 
         // 보이지 않는 캡슐 충돌체 아래에 모델을 발이 땅에 닿게 붙이고, 모델의 애니메이터를 돌려준다
-        private Animator AttachModel(Transform root)
+        private Animator AttachModel(Transform root, float size)
         {
             ModelEntry entry = _models[Random.Range(0, _models.Length)];
 
@@ -350,7 +370,7 @@ namespace Shinshi.Dev
             Vector3 rootScale = root.localScale;
             model.transform.localPosition = Vector3.down * (CAPSULE_DEFAULT_HEIGHT * HALF);
             model.transform.localRotation = Quaternion.identity;
-            model.transform.localScale    = new Vector3(scale * _sizeMultiplier / rootScale.x, scale * _sizeMultiplier / rootScale.y, scale * _sizeMultiplier / rootScale.z);
+            model.transform.localScale    = new Vector3(scale * size / rootScale.x, scale * size / rootScale.y, scale * size / rootScale.z);
 
             Animator animator = model.GetComponentInChildren<Animator>();
             if (animator != null)
@@ -362,7 +382,7 @@ namespace Shinshi.Dev
             return animator;
         }
 
-        private bool TryFindSpot(Vector3 anchor, out Vector3 position)
+        private bool TryFindSpot(Vector3 anchor, float size, out Vector3 position)
         {
             position = Vector3.zero;
 
@@ -374,7 +394,7 @@ namespace Shinshi.Dev
                     Vector2 offset = Random.insideUnitCircle * radius;
                     Vector3 probe  = anchor + new Vector3(offset.x, GROUND_PROBE_HEIGHT, offset.y);
 
-                    if ((!TryFindGround(probe, anchor.y, out Vector3 ground)) || (!IsSpotFree(ground)) || (IsNearPlayer(ground)))
+                    if ((!TryFindGround(probe, anchor.y, out Vector3 ground)) || (!IsSpotFree(ground, size)) || (IsNearPlayer(ground)))
                     {
                         continue;
                     }
@@ -428,10 +448,10 @@ namespace Shinshi.Dev
         }
 
         // 몸통 높이에서 겹치는 충돌체가 하나라도 있으면(나무, 바위, 다른 몬스터, 플레이어) 쓰지 않는다
-        private bool IsSpotFree(Vector3 ground)
+        private bool IsSpotFree(Vector3 ground, float size)
         {
-            Vector3 center = ground + (Vector3.up * (MONSTER_HEIGHT * HALF * _sizeMultiplier));
-            int     count  = Physics.OverlapSphereNonAlloc(center, (MONSTER_RADIUS * _sizeMultiplier) + OVERLAP_PADDING, _overlapHits,
+            Vector3 center = ground + (Vector3.up * (MONSTER_HEIGHT * HALF * size));
+            int     count  = Physics.OverlapSphereNonAlloc(center, (MONSTER_RADIUS * size) + OVERLAP_PADDING, _overlapHits,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             return count == 0;
         }
