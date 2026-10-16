@@ -101,7 +101,6 @@ namespace Shinshi.Dev
             if ((_useScreenFx) && (isCritical))
             {
                 _screenFx.Flash(profile.CritFlashAlpha, profile.CritFlashSeconds);
-                _screenFx.Vignette(profile.CritVignetteColor, profile.CritVignetteAlpha, profile.CritVignetteSeconds);
             }
 
             return lagFrames;
