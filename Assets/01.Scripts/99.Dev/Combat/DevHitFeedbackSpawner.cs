@@ -29,7 +29,7 @@ namespace Shinshi.Dev
         }
 
         private const int   PLACE_ATTEMPTS_PER_MONSTER = 30;
-        private const int   RAYCAST_MAX_HITS           = 8;
+        private const int   RAYCAST_MAX_HITS           = 16; // 나무 가지와 지붕 충돌체에 가려 진짜 땅이 잘리지 않게 넉넉히 둔다
         private const int   OVERLAP_BUFFER_SIZE        = 4;
         private const float GROUND_PROBE_HEIGHT        = 30f;  // m, 구역 중심 위 이 높이에서 아래로 땅을 찾는다
         private const float GROUND_PROBE_DEPTH         = 60f;  // m
@@ -39,6 +39,10 @@ namespace Shinshi.Dev
         private const float HALF                       = 0.5f;
         private const float CAPSULE_DEFAULT_RADIUS     = 0.5f; // 캡슐 기본 지름 1m, 높이 2m. 루트 스케일이 실제 크기를 정한다
         private const float CAPSULE_DEFAULT_HEIGHT     = 2f;
+        private const float RADIUS_EPSILON             = 0.001f;
+        private const int   GIZMO_SEGMENTS            = 48;
+        private const float GIZMO_LIFT                 = 0.2f; // m, 땅에 묻히지 않게 띄우는 높이
+        private const float GIZMO_POLE_HEIGHT          = 6f;   // m, 멀리서도 보이는 기둥 높이
 
         [Header("참조")]
         [SerializeField] private DevHitFeedbackPlayer _player;
@@ -56,6 +60,8 @@ namespace Shinshi.Dev
         [SerializeField] private int   _hitsToDie        = 3;
         [SerializeField] private float _chaseSpeed       = 2.5f; // m/s, 플레이어를 쫓는 속도
         [SerializeField] private float _spawnRadius      = 6f;  // m, 문 앞 출현 지점 주위
+        [SerializeField, Min(0f)] private float _maxSpawnRadius = 12f; // m, 기본 반경에 자리가 모자라면 여기까지 넓혀서 찾는다
+        [SerializeField, Min(0f)] private float _radiusStep     = 2f;  // m, 반경을 넓히는 단계
         [FormerlySerializedAs("_respawnDelay")]
         [SerializeField] private float _retryDelay       = 3f;  // 초, 자리가 없어 한 마리도 못 세웠을 때 다시 시도하기까지
 
@@ -64,6 +70,7 @@ namespace Shinshi.Dev
         [SerializeField, Min(0f)] private float _enterRadius       = 3f;  // m, 구역 입구 지점에서 이 수평 반경 안에 들어서야 그 구역 무리를 세운다
         [SerializeField, Min(0f)] private float _enterHeight       = 3f;  // m, 입구 지점과 이 높이 차 안일 때만 들어선 것으로 본다 (같은 보행 층)
         [SerializeField, Min(0f)] private float _minPlayerDistance = 4f;  // m, 플레이어와 이 거리 안에는 세우지 않는다
+        [SerializeField, Min(0f)] private float _groundHeightTolerance = 1f; // m, 입구 지점과 이 높이 차 안의 땅에만 세운다 (지붕, 위층 방지)
         [SerializeField] private bool _spawnFirstZoneAtStart = true;      // 첫 구역은 입구 없이 출정 시작과 함께 세운다
 
         private readonly RaycastHit[] _rayHits     = new RaycastHit[RAYCAST_MAX_HITS];
@@ -104,6 +111,54 @@ namespace Shinshi.Dev
             _player.Hit  += OnPlayerHit;
             _player.Slam += OnPlayerSlam;
         }
+
+#if UNITY_EDITOR
+        // 씬 뷰에서 구역마다 출현 범위(노랑)와 진입 판정 범위(하늘색)를 보여 준다. 위치를 옮길 때 눈으로 맞추기 위한 것이다
+        private void OnDrawGizmos()
+        {
+            if ((_zoneAnchors == null) || (_zoneAnchors.Length == 0))
+            {
+                return;
+            }
+
+            for (int zone = 0; zone < _zoneAnchors.Length; ++zone)
+            {
+                Transform anchor = _zoneAnchors[zone];
+                if (anchor == null)
+                {
+                    continue;
+                }
+
+                Vector3 center = anchor.position + (Vector3.up * GIZMO_LIFT);
+
+                Gizmos.color = Color.yellow;
+                DrawGizmoCircle(center, _spawnRadius);
+
+                Gizmos.color = new Color(1f, 0.5f, 0f, 0.6f);
+                DrawGizmoCircle(center, _maxSpawnRadius);
+
+                Gizmos.color = Color.cyan;
+                DrawGizmoCircle(center, _enterRadius);
+
+                Gizmos.color = Color.magenta;
+                Gizmos.DrawLine(center, center + (Vector3.up * GIZMO_POLE_HEIGHT));
+
+                UnityEditor.Handles.Label(center + (Vector3.up * (GIZMO_POLE_HEIGHT + GIZMO_LIFT)), $"{zone + 1}구역 ({_groupSize}마리)");
+            }
+        }
+
+        private static void DrawGizmoCircle(Vector3 center, float radius)
+        {
+            Vector3 previous = center + (Vector3.right * radius);
+            for (int i = 1; i <= GIZMO_SEGMENTS; ++i)
+            {
+                float   angle = (Mathf.PI * 2f * i) / GIZMO_SEGMENTS;
+                Vector3 next  = center + (new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius);
+                Gizmos.DrawLine(previous, next);
+                previous = next;
+            }
+        }
+#endif
 
         private void OnDisable()
         {
@@ -311,42 +366,53 @@ namespace Shinshi.Dev
         {
             position = Vector3.zero;
 
-            for (int attempt = 0; attempt < PLACE_ATTEMPTS_PER_MONSTER; ++attempt)
+            // 기본 반경에서 자리를 못 찾으면 반경을 단계적으로 넓혀 최대 반경까지 찾는다. 무리 수를 다 채우는 것이 우선이다
+            for (float radius = _spawnRadius; radius <= (_maxSpawnRadius + RADIUS_EPSILON); radius += _radiusStep)
             {
-                Vector2 offset = Random.insideUnitCircle * _spawnRadius;
-                Vector3 probe  = anchor + new Vector3(offset.x, GROUND_PROBE_HEIGHT, offset.y);
-
-                if ((!TryFindGround(probe, out Vector3 ground)) || (!IsSpotFree(ground)) || (IsNearPlayer(ground)))
+                for (int attempt = 0; attempt < PLACE_ATTEMPTS_PER_MONSTER; ++attempt)
                 {
-                    continue;
+                    Vector2 offset = Random.insideUnitCircle * radius;
+                    Vector3 probe  = anchor + new Vector3(offset.x, GROUND_PROBE_HEIGHT, offset.y);
+
+                    if ((!TryFindGround(probe, anchor.y, out Vector3 ground)) || (!IsSpotFree(ground)) || (IsNearPlayer(ground)))
+                    {
+                        continue;
+                    }
+
+                    position = ground;
+                    return true;
                 }
 
-                position = ground;
-                return true;
+                if (_radiusStep <= 0f)
+                {
+                    break;
+                }
             }
 
             return false;
         }
 
-        // 나무, 지붕 같은 위쪽 충돌체가 아니라 가장 낮은 땅 면을 쓰기 위해 모은 충돌 중 몬스터가 아닌 가장 가까운 것을 쓴다
-        private bool TryFindGround(Vector3 from, out Vector3 ground)
+        // 위에서 쏜 광선이 지붕, 나무, 위층 바닥에 먼저 맞으면 몬스터가 한 층 위에 서므로, 맞은 면 중 입구 지점 높이에
+        // 가장 가까운 것을 쓰고 높이 차가 허용치를 넘으면 그 자리는 버린다
+        private bool TryFindGround(Vector3 from, float referenceY, out Vector3 ground)
         {
             ground = Vector3.zero;
 
             int count = Physics.RaycastNonAlloc(new Ray(from, Vector3.down), _rayHits, GROUND_PROBE_DEPTH,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
 
-            float nearest = float.MaxValue;
+            float closest = float.MaxValue;
             bool  found   = false;
             for (int i = 0; i < count; ++i)
             {
-                RaycastHit hit = _rayHits[i];
-                if ((hit.distance >= nearest) || (hit.collider.GetComponentInParent<DevHitFeedbackMonster>() != null))
+                RaycastHit hit       = _rayHits[i];
+                float      heightGap = Mathf.Abs(hit.point.y - referenceY);
+                if ((heightGap >= closest) || (heightGap > _groundHeightTolerance) || (hit.collider.GetComponentInParent<DevHitFeedbackMonster>() != null))
                 {
                     continue;
                 }
 
-                nearest = hit.distance;
+                closest = heightGap;
                 ground  = hit.point;
                 found   = true;
             }
