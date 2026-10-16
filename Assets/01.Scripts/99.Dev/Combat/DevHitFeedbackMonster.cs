@@ -33,9 +33,9 @@ namespace Shinshi.Dev
         private const float SHOVE_DRAG         = 5f; // 1/s, 충격파나 시체에 밀릴 때의 감속
 
         // 추격. 맞아 밀려나는 동안은 걷지 않고, 몬스터끼리는 몸통이 겹치지 않게 서로 민다
-        private const float CHASE_STOP_DISTANCE   = 1.2f;  // m, 플레이어와 이만큼 남기고 선다
-        private const float SEPARATION_DISTANCE   = 0.9f;  // m, 몬스터 중심끼리 이보다 가까우면 벌린다
-        private const float PLAYER_MIN_DISTANCE   = 0.9f;  // m, 플레이어 몸통 반지름과 몬스터 반지름의 합에 여유를 더한 값
+        // 거리는 몬스터 크기에 맞춰 Init에서 정한다. 크기를 키웠는데 거리를 그대로 두면 몸통이 서로, 또 플레이어와 겹쳐 올라탄 것처럼 보인다
+        private const float BODY_GAP              = 0.1f;  // m, 몸통 표면 사이에 두는 여유
+        private const float CHASE_STOP_EXTRA      = 0.3f;  // m, 플레이어 몸통에 닿을 거리에서 더 물러서 서는 거리
         private const float STUN_SPEED_SQR        = 1f;    // 넉백 속도가 이 값(제곱) 아래로 식어야 다시 걷는다
         private const float GROUND_PROBE_UP       = 0.5f;  // m, 몸 중심 위 이 높이에서 아래로 땅을 찾는다
         private const float GROUND_PROBE_DISTANCE = 4f;    // m
@@ -63,6 +63,9 @@ namespace Shinshi.Dev
         private Vector3    _baseScale     = Vector3.one;
         private Vector3    _knockVelocity = Vector3.zero;
         private float      _chaseSpeed    = 0f;
+        private float      _chaseStopDistance  = 0f; // m, 플레이어와 이만큼 남기고 선다
+        private float      _separationDistance = 0f; // m, 몬스터 중심끼리 이보다 가까우면 벌린다
+        private float      _playerMinDistance  = 0f; // m, 플레이어 중심과 이보다 가까워지지 않는다
         private float      _knockDrag     = 0f;
         private int        _hitsLeft      = 0;
         private float      _deathElapsed  = 0f;
@@ -155,6 +158,15 @@ namespace Shinshi.Dev
             _baseScale  = transform.localScale;
             _hitsLeft   = hitsToDie;
             _playerCollider = playerCollider;
+
+            // 캡슐 기본 반지름 0.5m에 루트 스케일이 곱해진 것이 몬스터의 실제 몸통 반지름이다
+            float bodyRadius   = transform.localScale.x * HALF;
+            float playerRadius = (playerCollider != null) ? playerCollider.bounds.extents.x : 0f;
+
+            _separationDistance = (bodyRadius * 2f) + BODY_GAP;
+            _playerMinDistance  = bodyRadius + playerRadius + BODY_GAP;
+            _chaseStopDistance  = _playerMinDistance + CHASE_STOP_EXTRA;
+
             _reactor    = new HitReactor(gameObject, (animator != null) ? s_modelColor : s_normalColor, s_corpseColor);
 
             _reactor.Launched += IgnoreRagdollCollisions;
@@ -328,9 +340,9 @@ namespace Shinshi.Dev
                 toTarget.y = 0f;
 
                 float distance = toTarget.magnitude;
-                if (distance > CHASE_STOP_DISTANCE)
+                if (distance > _chaseStopDistance)
                 {
-                    float step = Mathf.Min(_chaseSpeed * Time.deltaTime, distance - CHASE_STOP_DISTANCE);
+                    float step = Mathf.Min(_chaseSpeed * Time.deltaTime, distance - _chaseStopDistance);
                     position  += (toTarget / distance) * step;
                     isWalking  = true;
                 }
@@ -356,9 +368,9 @@ namespace Shinshi.Dev
                 fromTarget.y = 0f;
 
                 float sqr = fromTarget.sqrMagnitude;
-                if ((sqr < (PLAYER_MIN_DISTANCE * PLAYER_MIN_DISTANCE)) && (sqr > MIN_DIRECTION_SQR))
+                if ((sqr < (_playerMinDistance * _playerMinDistance)) && (sqr > MIN_DIRECTION_SQR))
                 {
-                    position += fromTarget.normalized * (PLAYER_MIN_DISTANCE - Mathf.Sqrt(sqr));
+                    position += fromTarget.normalized * (_playerMinDistance - Mathf.Sqrt(sqr));
                 }
             }
 
@@ -383,7 +395,7 @@ namespace Shinshi.Dev
                 away.y = 0f;
 
                 float sqr = away.sqrMagnitude;
-                if (sqr >= (SEPARATION_DISTANCE * SEPARATION_DISTANCE))
+                if (sqr >= (_separationDistance * _separationDistance))
                 {
                     continue;
                 }
@@ -392,12 +404,12 @@ namespace Shinshi.Dev
                 if (sqr <= MIN_DIRECTION_SQR)
                 {
                     Vector2 random = UnityEngine.Random.insideUnitCircle.normalized;
-                    push += new Vector3(random.x, 0f, random.y) * (SEPARATION_DISTANCE * HALF);
+                    push += new Vector3(random.x, 0f, random.y) * (_separationDistance * HALF);
                     continue;
                 }
 
                 float distance = Mathf.Sqrt(sqr);
-                push += (away / distance) * ((SEPARATION_DISTANCE - distance) * HALF);
+                push += (away / distance) * ((_separationDistance - distance) * HALF);
             }
 
             return push;
