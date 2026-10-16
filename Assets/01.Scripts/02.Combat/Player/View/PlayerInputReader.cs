@@ -264,7 +264,10 @@ namespace Shinshi.Combat
                 return false;
             }
 
-            bool isReady = SkillInputRules.IsReady(_input.GetSkillReadyAt(kind, slot), NetworkTime.time, GameDB.Player.InputBufferSeconds);
+            // 스택이 모자란 기술(궁수 속성 폭발)은 서버가 거절하므로 쿨다운 중처럼 보내지 않는다
+            int  requiredStacks = SkillInputRules.GetRequiredStacks(GameDB.Skills, playerClass, kind, slot);
+            bool isReady        = (SkillInputRules.IsReady(_input.GetSkillReadyAt(kind, slot), NetworkTime.time,
+                GameDB.Player.InputBufferSeconds)) && (SkillInputRules.HasRequiredStacks(requiredStacks, _combat.ClassStacks));
             ESkillInputDecision decision = SkillInputRules.DecideKey(aimMode, isReady, _isTargeting, _targetKind, _targetSlot,
                 kind, slot);
             switch (decision)

@@ -104,6 +104,24 @@ namespace Shinshi.Combat
             return (now + bufferSeconds) >= readyAt;
         }
 
+        /// <summary> 일반 기술이 시전에 요구하는 직업 스택, 요구가 없거나 직업에 없는 기술이면 0이다 </summary>
+        public static int GetRequiredStacks(SkillCatalogSO catalog, EPlayerClass playerClass, ESkillRequestKind kind, int slot)
+        {
+            if ((catalog == null) || (kind != ESkillRequestKind.Regular)
+                || (!catalog.TryGetSkillBySlot(playerClass, slot, out SkillCatalogSO.SkillDefinition skill)))
+            {
+                return 0;
+            }
+
+            return skill.Effect.RequiredStacks;
+        }
+
+        /// <summary> 복제된 스택이 필요 스택을 채웠는지, 서버도 모자라면 거절하므로 클라이언트는 미리 막기만 한다 </summary>
+        public static bool HasRequiredStacks(int requiredStacks, int stacks)
+        {
+            return (requiredStacks <= 0) || (stacks >= requiredStacks);
+        }
+
         /// <summary> 기술 키 입력에 대한 다음 행동, 같은 지점 기술을 다시 누르면 지정을 유지한다 </summary>
         public static ESkillInputDecision DecideKey(ESkillAimMode aimMode, bool isReady, bool isTargeting,
             ESkillRequestKind targetingKind, int targetingSlot, ESkillRequestKind kind, int slot)

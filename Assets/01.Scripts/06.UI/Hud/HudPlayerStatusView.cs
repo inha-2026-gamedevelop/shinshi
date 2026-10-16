@@ -23,6 +23,11 @@ namespace Shinshi.UI
 
         private const string VALUE_FORMAT = "{0:N0} / {1:N0}";
 
+        // 체력바 바로 위 직업 스택 글자. 씬과 프리팹을 고치지 않으려고 처음 보일 때 HP 막대 위에 만든다
+        private const float STACK_FONT_SIZE = 14f;
+        private const float STACK_GAP       = 2f;
+        private const float STACK_HEIGHT    = 18f;
+
         [Header("레벨")]
         [SerializeField] private TMP_Text _levelText = null;
 
@@ -40,6 +45,9 @@ namespace Shinshi.UI
         private int _hpMax     = -1;
         private int _mpCurrent = -1;
         private int _mpMax     = -1;
+
+        private TMP_Text          _stackText;
+        private ClassStackDisplay _stackDisplay = ClassStackDisplay.Hidden;
 
         /****************************************
         *                Methods
@@ -129,6 +137,65 @@ namespace Shinshi.UI
             _mpCurrent = current;
             _mpMax = max;
             ApplyBar(_mpFill, _mpText, current, max);
+        }
+
+        /// <summary> 체력바 위 직업 스택 글자를 갱신한다, 값이 같으면 바로 돌아온다 </summary>
+        public void SetClassStacks(in ClassStackDisplay display)
+        {
+            if (display.SameAs(in _stackDisplay))
+            {
+                return;
+            }
+
+            _stackDisplay = display;
+            if (!display.IsVisible)
+            {
+                if (_stackText != null)
+                {
+                    _stackText.enabled = false;
+                }
+
+                return;
+            }
+
+            if ((_stackText == null) && (!TryCreateStackText()))
+            {
+                return;
+            }
+
+            _stackText.enabled = true;
+            _stackText.color   = ClassStackHudRules.GetColor(in display);
+            _stackText.SetText(ClassStackHudRules.FormatHud(in display));
+        }
+
+        // HP 막대의 트랙(채움 칸의 부모) 위쪽 바깥에 붙인다. 씬마다 HUD 배치가 달라도 막대 기준이라 위치가 같다
+        private bool TryCreateStackText()
+        {
+            if ((_hpFill == null) || (_hpText == null) || (!(_hpFill.parent is RectTransform track)))
+            {
+                return false;
+            }
+
+            var child = new GameObject("ClassStackDisplay", typeof(RectTransform));
+            child.hideFlags = HideFlags.DontSave;
+            child.layer     = gameObject.layer;
+            var rect = (RectTransform)child.transform;
+            rect.SetParent(track, false);
+            rect.anchorMin        = new Vector2(0f, 1f);
+            rect.anchorMax        = new Vector2(1f, 1f);
+            rect.pivot            = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, STACK_GAP);
+            rect.sizeDelta        = new Vector2(0f, STACK_HEIGHT);
+
+            var text = child.AddComponent<TextMeshProUGUI>();
+            text.font               = _hpText.font;
+            text.fontSharedMaterial = _hpText.fontSharedMaterial;
+            text.fontSize           = STACK_FONT_SIZE;
+            text.alignment          = TextAlignmentOptions.BottomLeft;
+            text.textWrappingMode   = TextWrappingModes.NoWrap;
+            text.raycastTarget      = false;
+            _stackText = text;
+            return true;
         }
 
         // Image의 Filled 방식은 바 끝의 둥근 모양을 잘라 버린다.

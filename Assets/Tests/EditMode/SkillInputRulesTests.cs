@@ -248,6 +248,39 @@ namespace Shinshi.Tests
             Assert.IsFalse(SkillInputRules.IsRoutineRejection(ERejectReason.Disabled));
         }
 
+        [Test]
+        public void GetRequiredStacks_ArcherBurst_RequiresFullStacks()
+        {
+            int required = SkillInputRules.GetRequiredStacks(_catalog, EPlayerClass.Archer, ESkillRequestKind.Regular,
+                Constants.Combat.SKILL_SLOT_R);
+
+            Assert.AreEqual(_catalog.ClassStackMax, required);
+            Assert.Greater(required, 0);
+        }
+
+        [Test]
+        public void GetRequiredStacks_SkillsWithoutRequirement_Zero()
+        {
+            Assert.AreEqual(0, SkillInputRules.GetRequiredStacks(_catalog, EPlayerClass.Archer, ESkillRequestKind.Regular,
+                Constants.Combat.SKILL_SLOT_Q));
+            Assert.AreEqual(0, SkillInputRules.GetRequiredStacks(_catalog, EPlayerClass.Mageknight, ESkillRequestKind.Regular,
+                Constants.Combat.SKILL_SLOT_R));
+            Assert.AreEqual(0, SkillInputRules.GetRequiredStacks(_catalog, EPlayerClass.Summoner, ESkillRequestKind.Ascension, 0));
+            Assert.AreEqual(0, SkillInputRules.GetRequiredStacks(null, EPlayerClass.Archer, ESkillRequestKind.Regular,
+                Constants.Combat.SKILL_SLOT_R));
+        }
+
+        [Test]
+        public void HasRequiredStacks_BelowRequirementFalse_OtherwiseTrue()
+        {
+            int max = _catalog.ClassStackMax;
+
+            Assert.IsFalse(SkillInputRules.HasRequiredStacks(max, max - 1));
+            Assert.IsFalse(SkillInputRules.HasRequiredStacks(max, 0));
+            Assert.IsTrue(SkillInputRules.HasRequiredStacks(max, max));
+            Assert.IsTrue(SkillInputRules.HasRequiredStacks(0, 0));
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
