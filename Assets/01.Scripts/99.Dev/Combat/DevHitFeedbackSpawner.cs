@@ -15,6 +15,15 @@ namespace Shinshi.Dev
 
         private const string MONSTER_NAME = "DevMonster";
 
+        // 몬스터 한 종의 모델. 컨트롤러는 이동 애니메이션(Moving)을 가진 것을 쓴다
+        [System.Serializable]
+        private struct ModelEntry
+        {
+            public GameObject                prefab;
+            public RuntimeAnimatorController controller;
+            public float                     scale; // 모델 크기 배율. 0이면 1로 본다
+        }
+
         private const int   PLACE_ATTEMPTS_PER_MONSTER = 30;
         private const int   RAYCAST_MAX_HITS           = 8;
         private const int   OVERLAP_BUFFER_SIZE        = 4;
@@ -24,6 +33,8 @@ namespace Shinshi.Dev
         private const float MONSTER_RADIUS             = 0.4f; // m
         private const float OVERLAP_PADDING            = 0.15f; // m, 몬스터끼리 닿지 않게 벌려 두는 여유
         private const float HALF                       = 0.5f;
+        private const float CAPSULE_DEFAULT_RADIUS     = 0.5f; // 캡슐 기본 지름 1m, 높이 2m. 루트 스케일이 실제 크기를 정한다
+        private const float CAPSULE_DEFAULT_HEIGHT     = 2f;
 
         [Header("참조")]
         [SerializeField] private DevHitFeedbackPlayer _player;
@@ -32,8 +43,12 @@ namespace Shinshi.Dev
         [Header("서버 대역")]
         [SerializeField, Range(0f, 1f)] private float _devCritChance = 0.25f; // 서버가 정해 줄 치명타를 시험하려고 무작위로 내는 확률
 
+        [Header("모델 (비우면 캡슐, 여러 종이면 섞어서 세운다)")]
+        [SerializeField] private ModelEntry[] _models;
+
         [Header("무리")]
-        [SerializeField] private int   _groupSize        = 24;
+        [SerializeField, Min(0.1f)] private float _sizeMultiplier = 1.3f; // 몬스터 전체(충돌체와 모델) 크기 배율
+        [SerializeField] private int   _groupSize        = 48;
         [SerializeField] private int   _hitsToDie        = 3;
         [SerializeField] private float _chaseSpeed       = 2.5f; // m/s, 플레이어를 쫓는 속도
         [SerializeField] private float _spawnRadius      = 9f;  // m
@@ -103,7 +118,10 @@ namespace Shinshi.Dev
 
             HitFeedbackProfile profile  = _director.GetProfile(isHeavy);
             Vector3            attacker = _player.transform.position;
-            if (!monster.TakeHit(attacker, profile, out bool isKill))
+
+            // 실제로는 서버가 치명타를 정해 보내 준다. 서버가 없는 시험 씬에서는 그 대역으로 무작위로 정한다
+            bool isCritical = Random.value < _devCritChance;
+            if (!monster.TakeHit(attacker, profile, isCritical, out bool isKill))
             {
                 return;
             }
@@ -114,8 +132,6 @@ namespace Shinshi.Dev
             direction   = direction.normalized;
 
             hitPoint.y = target.bounds.center.y;
-            // 실제로는 서버가 치명타를 정해 보내 준다. 서버가 없는 시험 씬에서는 그 대역으로 무작위로 정한다
-            bool isCritical = Random.value < _devCritChance;
             _director.PlayHit(profile, hitPoint, direction, isKill, isCritical, _player, monster.LagTarget);
         }
 
@@ -164,18 +180,49 @@ namespace Shinshi.Dev
 
         private void CreateMonster(Vector3 position)
         {
-            GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            bool       hasModel = (_models != null) && (_models.Length > 0);
+            GameObject body     = hasModel ? new GameObject(MONSTER_NAME) : GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = MONSTER_NAME;
             body.transform.SetParent(transform, false);
-            body.transform.localScale = new Vector3(MONSTER_RADIUS * 2f, MONSTER_HEIGHT * HALF, MONSTER_RADIUS * 2f);
+            body.transform.localScale = new Vector3(MONSTER_RADIUS * 2f, MONSTER_HEIGHT * HALF, MONSTER_RADIUS * 2f) * _sizeMultiplier;
 
             // 캡슐 기본 높이가 2m라 스케일 반이 곧 높이 절반이다. 발이 땅에 닿게 높이 절반만큼 올린다
-            body.transform.position = position + (Vector3.up * (MONSTER_HEIGHT * HALF));
+            body.transform.position = position + (Vector3.up * (MONSTER_HEIGHT * HALF * _sizeMultiplier));
+
+            Animator animator = hasModel ? AttachModel(body.transform) : null;
 
             var monster = body.AddComponent<DevHitFeedbackMonster>();
-            monster.Init(_hitsToDie, _playerCollider, _chaseSpeed);
+            monster.Init(_hitsToDie, _playerCollider, _chaseSpeed, animator);
             monster.Died += OnMonsterDied;
             ++_alive;
+        }
+
+        // 보이지 않는 캡슐 충돌체 아래에 모델을 발이 땅에 닿게 붙이고, 모델의 애니메이터를 돌려준다
+        private Animator AttachModel(Transform root)
+        {
+            ModelEntry entry = _models[Random.Range(0, _models.Length)];
+
+            var capsule = root.gameObject.AddComponent<CapsuleCollider>();
+            capsule.radius = CAPSULE_DEFAULT_RADIUS;
+            capsule.height = CAPSULE_DEFAULT_HEIGHT;
+
+            GameObject model = Instantiate(entry.prefab, root);
+            float      scale = (entry.scale > 0f) ? entry.scale : 1f;
+
+            // 루트 크기를 상쇄해 모델 크기가 월드 기준으로 나오게 하고, 몸 중심에서 발 높이만큼 내린다
+            Vector3 rootScale = root.localScale;
+            model.transform.localPosition = Vector3.down * (CAPSULE_DEFAULT_HEIGHT * HALF);
+            model.transform.localRotation = Quaternion.identity;
+            model.transform.localScale    = new Vector3(scale * _sizeMultiplier / rootScale.x, scale * _sizeMultiplier / rootScale.y, scale * _sizeMultiplier / rootScale.z);
+
+            Animator animator = model.GetComponentInChildren<Animator>();
+            if (animator != null)
+            {
+                animator.runtimeAnimatorController = entry.controller;
+                animator.applyRootMotion           = false;
+            }
+
+            return animator;
         }
 
         private bool TryFindSpot(out Vector3 position)
@@ -228,8 +275,8 @@ namespace Shinshi.Dev
         // 몸통 높이에서 겹치는 충돌체가 하나라도 있으면(나무, 바위, 다른 몬스터, 플레이어) 쓰지 않는다
         private bool IsSpotFree(Vector3 ground)
         {
-            Vector3 center = ground + (Vector3.up * (MONSTER_HEIGHT * HALF));
-            int     count  = Physics.OverlapSphereNonAlloc(center, MONSTER_RADIUS + OVERLAP_PADDING, _overlapHits,
+            Vector3 center = ground + (Vector3.up * (MONSTER_HEIGHT * HALF * _sizeMultiplier));
+            int     count  = Physics.OverlapSphereNonAlloc(center, (MONSTER_RADIUS * _sizeMultiplier) + OVERLAP_PADDING, _overlapHits,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             return count == 0;
         }

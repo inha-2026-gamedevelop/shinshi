@@ -19,6 +19,8 @@ namespace Shinshi.Dev
         ****************************************/
 
         private static readonly Color s_normalColor = new Color(0.55f, 0.2f, 0.2f, 1f);
+        private static readonly Color s_modelColor  = Color.white; // 모델은 원래 색을 그대로 보여 준다
+        private static readonly int   s_movingHash  = Animator.StringToHash("Moving");
         private static readonly Color s_corpseColor = new Color(0.32f, 0.12f, 0.09f, 1f); // 원래 색에 검정을 섞은 적갈색
 
         private const float DEATH_SECONDS = 0.25f;
@@ -42,6 +44,7 @@ namespace Shinshi.Dev
         private const float SHOVE_RATIO     = 0.8f; // 부딪힌 속도 대비 밀려나는 속도
         private const float SHOVE_MAX_SPEED = 14f;  // m/s
 
+        private const float TURN_SPEED        = 10f;   // 1/s, 플레이어 쪽으로 몸을 돌리는 속도
         private const float MIN_DIRECTION_SQR = 0.0001f;
         private const float HALF              = 0.5f;
 
@@ -49,6 +52,8 @@ namespace Shinshi.Dev
         private static readonly List<DevHitFeedbackMonster> s_alive = new List<DevHitFeedbackMonster>();
 
         private HitReactor _reactor       = null;
+        private Animator   _animator      = null;
+        private Collider   _playerCollider = null;
         private Transform  _target        = null;
         private Vector3    _baseScale     = Vector3.one;
         private Vector3    _knockVelocity = Vector3.zero;
@@ -91,7 +96,13 @@ namespace Shinshi.Dev
         private void Update()
         {
             // 렉프레임 동안은 떨기만 하고 나머지 시간은 흐르지 않는다. 처치한 몬스터도 멈춤이 풀린 뒤에 날아간다
-            if (_reactor.Tick())
+            bool isLagged = _reactor.Tick();
+            if (_animator != null)
+            {
+                _animator.speed = isLagged ? 0f : 1f;
+            }
+
+            if (isLagged)
             {
                 return;
             }
@@ -129,14 +140,18 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        /// <summary> 죽기까지 맞아야 하는 횟수를 정하고 연출을 준비한다. playerCollider를 쫓아가며, 죽어 날아갈 때는 부딪히지 않는다 </summary>
-        public void Init(int hitsToDie, Collider playerCollider, float chaseSpeed)
+        /// <summary> 죽기까지 맞아야 하는 횟수를 정하고 연출을 준비한다. animator가 있으면 걷는 동안 이동 애니메이션을 재생한다. playerCollider를 쫓아가며, 죽어 날아갈 때는 부딪히지 않는다 </summary>
+        public void Init(int hitsToDie, Collider playerCollider, float chaseSpeed, Animator animator)
         {
+            _animator   = animator;
             _chaseSpeed = chaseSpeed;
             _target     = (playerCollider != null) ? playerCollider.transform : null;
             _baseScale  = transform.localScale;
             _hitsLeft   = hitsToDie;
-            _reactor    = new HitReactor(gameObject, s_normalColor, s_corpseColor);
+            _playerCollider = playerCollider;
+            _reactor    = new HitReactor(gameObject, (animator != null) ? s_modelColor : s_normalColor, s_corpseColor);
+
+            _reactor.Launched += IgnoreRagdollCollisions;
 
             // 날아가는 시체가 플레이어를 밀거나 막지 않게 한다
             Collider ownCollider = GetComponent<Collider>();
@@ -146,8 +161,8 @@ namespace Shinshi.Dev
             }
         }
 
-        /// <summary> 공격자 위치 쪽에서 profile의 타격으로 한 대 맞는다. 맞은 횟수가 다 차면 날아가며 죽는다. 맞은 것으로 쳤으면 true, 이미 죽는 중이면 false </summary>
-        public bool TakeHit(Vector3 attackerPosition, HitFeedbackProfile profile, out bool isKill)
+        /// <summary> 공격자 위치 쪽에서 profile의 타격으로 한 대 맞는다(치명타면 더 세게 밀리고 찌그러진다). 맞은 횟수가 다 차면 날아가며 죽는다. 맞은 것으로 쳤으면 true, 이미 죽는 중이면 false </summary>
+        public bool TakeHit(Vector3 attackerPosition, HitFeedbackProfile profile, bool isCritical, out bool isKill)
         {
             isKill = false;
             if (_isDying)
@@ -167,9 +182,9 @@ namespace Shinshi.Dev
                 return true;
             }
 
-            _knockVelocity = away * profile.KnockbackSpeed;
+            _knockVelocity = away * (profile.KnockbackSpeed * (isCritical ? profile.CritKnockbackMultiplier : 1f));
             _knockDrag     = profile.KnockbackDrag;
-            _reactor.React(profile);
+            _reactor.React(profile, isCritical);
             return true;
         }
 
@@ -198,6 +213,13 @@ namespace Shinshi.Dev
         {
             _isDying = true;
             s_alive.Remove(this);
+
+            // 날아가는 동안 걷는 자세로 굳어 있게 애니메이션을 멈춘다
+            if (_animator != null)
+            {
+                _animator.enabled = false;
+            }
+
             _reactor.Die(away, profile);
             IgnoreOtherMonsters();
 
@@ -214,7 +236,7 @@ namespace Shinshi.Dev
                 return;
             }
 
-            DevHitFeedbackMonster[] monsters = FindObjectsByType<DevHitFeedbackMonster>(FindObjectsSortMode.None);
+            DevHitFeedbackMonster[] monsters = FindObjectsByType<DevHitFeedbackMonster>();
             for (int i = 0; i < monsters.Length; ++i)
             {
                 if (monsters[i] == this)
@@ -226,6 +248,42 @@ namespace Shinshi.Dev
                 if (other != null)
                 {
                     Physics.IgnoreCollision(ownCollider, other);
+                }
+            }
+        }
+
+        // 래그돌 뼈가 켜지는 순간, 플레이어와 다른 몬스터(산 것, 이미 날아간 사체의 뼈)와는 부딪히지 않게 한다. 바닥과는 부딪힌다
+        private void IgnoreRagdollCollisions()
+        {
+            DevHitFeedbackMonster[] monsters = FindObjectsByType<DevHitFeedbackMonster>();
+            foreach (Collider bone in _reactor.RagdollColliders)
+            {
+                if (_playerCollider != null)
+                {
+                    Physics.IgnoreCollision(bone, _playerCollider);
+                }
+
+                for (int i = 0; i < monsters.Length; ++i)
+                {
+                    DevHitFeedbackMonster other = monsters[i];
+                    if (other == this)
+                    {
+                        continue;
+                    }
+
+                    Collider otherRoot = other.GetComponent<Collider>();
+                    if ((otherRoot != null) && (otherRoot.enabled))
+                    {
+                        Physics.IgnoreCollision(bone, otherRoot);
+                    }
+
+                    foreach (Collider otherBone in other._reactor.RagdollColliders)
+                    {
+                        if (otherBone.enabled)
+                        {
+                            Physics.IgnoreCollision(bone, otherBone);
+                        }
+                    }
                 }
             }
         }
@@ -256,6 +314,7 @@ namespace Shinshi.Dev
         private void UpdateChase()
         {
             Vector3 position = transform.position;
+            bool    isWalking = false;
 
             if ((_target != null) && (_knockVelocity.sqrMagnitude <= STUN_SPEED_SQR))
             {
@@ -267,7 +326,19 @@ namespace Shinshi.Dev
                 {
                     float step = Mathf.Min(_chaseSpeed * Time.deltaTime, distance - CHASE_STOP_DISTANCE);
                     position  += (toTarget / distance) * step;
+                    isWalking  = true;
                 }
+
+                if (distance > MIN_DIRECTION_SQR)
+                {
+                    Quaternion look = Quaternion.LookRotation(toTarget / distance, Vector3.up);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, look, TURN_SPEED * Time.deltaTime);
+                }
+            }
+
+            if (_animator != null)
+            {
+                _animator.SetBool(s_movingHash, isWalking);
             }
 
             position += ReadSeparation(position);
@@ -344,6 +415,17 @@ namespace Shinshi.Dev
         private void UpdateDeath()
         {
             _deathElapsed += Time.deltaTime;
+
+            // 래그돌은 뼈가 월드에서 움직이므로 루트 스케일로 줄이지 않고 때가 되면 한 번에 지운다
+            if (_reactor.HasRagdoll)
+            {
+                if (_deathElapsed >= (CORPSE_SECONDS + DEATH_SECONDS))
+                {
+                    Destroy(gameObject);
+                }
+
+                return;
+            }
 
             float shrink = Mathf.Clamp01(1f - ((_deathElapsed - CORPSE_SECONDS) / DEATH_SECONDS));
             transform.localScale = _baseScale * shrink;

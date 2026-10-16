@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.HitFeedbackProfile
   _hitLagFrames: 9
   _killExtraLagFrames: 3
+  _targetExtraLagFrames: 6
   _shakeAmount: 0.2
   _killShakeAmount: 0.25
   _shakeSeconds: 0.2
@@ -25,13 +26,14 @@ MonoBehaviour:
   _flyMultiplier: 1.5
   _sparkCount: 28
   _killSparkCount: 28
-  _critExtraLagFrames: 2
+  _critExtraLagFrames: 5
   _critFlashAlpha: 0
   _critFlashSeconds: 0.08
-  _critVignetteAlpha: 0.2
-  _critVignetteSeconds: 0.35
-  _critVignetteColor: {r: 1, g: 0.25, b: 0.1, a: 1}
+  _critSparkMultiplier: 2.5
+  _critPunchMultiplier: 1.6
+  _critKnockbackMultiplier: 1.5
+  _critRingRadius: 1.4
   _shockwaveRadius: 4
   _shockwaveSpeed: 14
-  _zoomPunch: 0.08
+  _zoomPunch: 0.015
   _zoomSeconds: 0.3

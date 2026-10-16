@@ -28,6 +28,9 @@ namespace Shinshi.Dev
         private const float UP_BIAS          = 0.4f; // 튀는 방향에 더하는 위쪽 비율
         private const float MIN_DIRECTION_SQR = 0.0001f;
 
+        private const float CRIT_SIZE_RATIO = 1.8f; // 치명타 불똥의 크기 배율
+
+        private static readonly Color s_critColor = new Color(1f, 0.8f, 0.15f, 1f);
         private static readonly Color s_hotColor  = new Color(1f, 0.95f, 0.6f, 1f);
         private static readonly Color s_warmColor = new Color(1f, 0.55f, 0.15f, 1f);
 
@@ -70,8 +73,8 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        /// <summary> point에서 direction 쪽으로 불똥을 count개 터뜨린다 </summary>
-        public void Burst(Vector3 point, Vector3 direction, int count)
+        /// <summary> point에서 direction 쪽으로 불똥을 count개 터뜨린다. 치명타면 금색의 큰 불똥이다 </summary>
+        public void Burst(Vector3 point, Vector3 direction, int count, bool isCritical)
         {
             if (!enabled)
             {
@@ -89,7 +92,20 @@ namespace Shinshi.Dev
 
             system.transform.SetPositionAndRotation(point, Quaternion.LookRotation(aim.normalized, Vector3.up));
             system.Play();
-            system.Emit(count);
+
+            if (!isCritical)
+            {
+                system.Emit(count);
+                return;
+            }
+
+            var emitParams = new ParticleSystem.EmitParams
+            {
+                startColor           = s_critColor,
+                startSize            = SIZE_MAX * CRIT_SIZE_RATIO,
+                applyShapeToPosition = true
+            };
+            system.Emit(emitParams, count);
         }
 
         private ParticleSystem CreateSystem(int index)

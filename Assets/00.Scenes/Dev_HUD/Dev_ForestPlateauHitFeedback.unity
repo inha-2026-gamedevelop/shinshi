@@ -38402,7 +38402,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackSpawner
   _player: {fileID: 580735306}
   _director: {fileID: 1454901488}
-  _groupSize: 24
+  _devCritChance: 0.25
+  _models:
+  - prefab: {fileID: 1777741422645656350, guid: bc5002bca5295a14f9267fcf48c89d87, type: 3}
+    controller: {fileID: 9100000, guid: 48fe150c963fab246939e6882651b524, type: 2}
+    scale: 0.75
+  - prefab: {fileID: 6968674439942556120, guid: 065206d4ef0d93b448048503cbe914b0, type: 3}
+    controller: {fileID: 9100000, guid: 3702cabca710a134ca5a6b2f3ddf96bc, type: 2}
+    scale: 0.6
+  _sizeMultiplier: 1.69
+  _groupSize: 48
   _hitsToDie: 3
   _chaseSpeed: 2.5
   _spawnRadius: 9
@@ -38440,6 +38449,7 @@ MonoBehaviour:
   _useCameraShake: 1
   _useSparks: 1
   _useShockwave: 1
+  _useScreenFx: 1
 --- !u!1 &1456329674
 GameObject:
   m_ObjectHideFlags: 0

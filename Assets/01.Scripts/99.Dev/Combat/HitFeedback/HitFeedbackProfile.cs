@@ -17,6 +17,7 @@ namespace Shinshi.Dev
         [Header("렉프레임 (프레임 수)")]
         [SerializeField, Min(0)] private int _hitLagFrames       = 3;
         [SerializeField, Min(0)] private int _killExtraLagFrames = 3; // 처치한 타격에 더한다
+        [SerializeField, Min(0)] private int _targetExtraLagFrames = 0; // 맞은 몬스터만 더 오래 멈춘다. 공격자는 더하지 않는다
 
         [Header("카메라 흔들림 (m)")]
         [SerializeField, Min(0f)]    private float _shakeAmount     = 0.06f;
@@ -43,6 +44,10 @@ namespace Shinshi.Dev
         [SerializeField, Min(0)]          private int   _critExtraLagFrames   = 2;     // 렉프레임에 더한다
         [SerializeField, Range(0f, 1f)]   private float _critFlashAlpha       = 0.25f;  // 화면 번쩍임의 세기. 0이면 없다
         [SerializeField, Min(0.01f)]      private float _critFlashSeconds     = 0.08f;
+        [SerializeField, Min(1f)]         private float _critSparkMultiplier  = 2.5f;   // 불똥 개수 배율
+        [SerializeField, Min(1f)]         private float _critPunchMultiplier  = 1.6f;   // 맞은 몸 찌그러짐 배율
+        [SerializeField, Min(1f)]         private float _critKnockbackMultiplier = 1.5f; // 넉백 속도 배율
+        [SerializeField, Min(0f)]         private float _critRingRadius       = 1.4f;   // m, 맞은 자리의 충격 링. 0이면 없다
 
         [Header("충격파 (반지름이 0이면 없음)")]
         [SerializeField, Min(0f)]         private float _shockwaveRadius = 0f;  // m
@@ -52,6 +57,7 @@ namespace Shinshi.Dev
 
         public int   HitLagFrames       => _hitLagFrames;
         public int   KillExtraLagFrames => _killExtraLagFrames;
+        public int   TargetExtraLagFrames => _targetExtraLagFrames;
         public float ShakeAmount        => _shakeAmount;
         public float KillShakeAmount    => _killShakeAmount;
         public float ShakeSeconds       => _shakeSeconds;
@@ -66,6 +72,10 @@ namespace Shinshi.Dev
         public int   CritExtraLagFrames  => _critExtraLagFrames;
         public float CritFlashAlpha      => _critFlashAlpha;
         public float CritFlashSeconds    => _critFlashSeconds;
+        public float CritSparkMultiplier => _critSparkMultiplier;
+        public float CritPunchMultiplier => _critPunchMultiplier;
+        public float CritKnockbackMultiplier => _critKnockbackMultiplier;
+        public float CritRingRadius      => _critRingRadius;
         public float ShockwaveRadius    => _shockwaveRadius;
         public float ShockwaveSpeed     => _shockwaveSpeed;
         public float ZoomPunch          => _zoomPunch;

@@ -84,7 +84,7 @@ namespace Shinshi.Dev
                 lagFrames = profile.HitLagFrames + (isKill ? profile.KillExtraLagFrames : 0)
                     + (isCritical ? profile.CritExtraLagFrames : 0);
                 attacker?.Freeze(lagFrames);
-                target?.Freeze(lagFrames);
+                target?.Freeze(lagFrames + profile.TargetExtraLagFrames);
             }
 
             if ((_useCameraShake) && (_camera != null))
@@ -95,7 +95,9 @@ namespace Shinshi.Dev
 
             if (_useSparks)
             {
-                _sparks.Burst(point, direction, isKill ? profile.KillSparkCount : profile.SparkCount);
+                int sparkCount = isKill ? profile.KillSparkCount : profile.SparkCount;
+                sparkCount     = isCritical ? Mathf.RoundToInt(sparkCount * profile.CritSparkMultiplier) : sparkCount;
+                _sparks.Burst(point, direction, sparkCount, isCritical);
             }
 
             if ((_useScreenFx) && (isCritical))
@@ -103,7 +105,21 @@ namespace Shinshi.Dev
                 _screenFx.Flash(profile.CritFlashAlpha, profile.CritFlashSeconds);
             }
 
+            if (isCritical)
+            {
+                PlayCritical(profile, point);
+            }
+
             return lagFrames;
+        }
+
+        // 치명타만 더하는 연출: 맞은 자리의 충격 링
+        private void PlayCritical(HitFeedbackProfile profile, Vector3 point)
+        {
+            if ((_useShockwave) && (profile.CritRingRadius > 0f))
+            {
+                _shockwave.Play(point, profile.CritRingRadius, false);
+            }
         }
 
         /// <summary> 프로필에 충격파가 있으면 center에서 링과 먼지를 터뜨리고 화면을 당긴다. 몬스터를 미는 일은 호출한 쪽이 한다 </summary>
@@ -114,7 +130,7 @@ namespace Shinshi.Dev
                 return;
             }
 
-            _shockwave.Play(center, profile.ShockwaveRadius);
+            _shockwave.Play(center, profile.ShockwaveRadius, true);
 
             if (_camera != null)
             {

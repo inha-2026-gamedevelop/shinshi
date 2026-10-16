@@ -117,8 +117,8 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        /// <summary> center 바닥에서 radius까지 퍼지는 충격 링과 먼지를 터뜨린다 </summary>
-        public void Play(Vector3 center, float radius)
+        /// <summary> center에서 radius까지 퍼지는 충격 링을 터뜨린다. withDust면 바닥 먼지도 함께 낸다 </summary>
+        public void Play(Vector3 center, float radius, bool withDust)
         {
             if (!enabled)
             {
@@ -131,6 +131,11 @@ namespace Shinshi.Dev
             _ring.position = center + (Vector3.up * RING_HEIGHT);
             _ring.localScale = new Vector3(RING_START_RADIUS, 1f, RING_START_RADIUS);
             _ring.gameObject.SetActive(true);
+
+            if (!withDust)
+            {
+                return;
+            }
 
             _dust.transform.position = center;
             var shape = _dust.shape;
