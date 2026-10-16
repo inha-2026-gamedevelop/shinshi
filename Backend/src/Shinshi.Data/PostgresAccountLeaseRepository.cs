@@ -301,6 +301,8 @@ namespace Shinshi.Data
                 return new AccountLeaseOutcome(EAccountLeaseStatus.ServerUnavailable, null);
             }
 
+            // 이 경로는 캐릭터를 모른다(운영 호출자 없음, 시험과 이전 경로용). 덮어쓸 때 이전 캐릭터의 접속 표시가 남지 않게
+            // character_id를 비운다(소셜에서는 오프라인)
             LeaseRow? acquired = await connection.QuerySingleOrDefaultAsync<LeaseRow>(new CommandDefinition(
                 """
                 INSERT INTO account_leases (account_id, lease_id, instance_id, role, expires_at)
@@ -310,7 +312,8 @@ namespace Shinshi.Data
                         AND target.state IN ('Idle', 'Reserved', 'Active')
                         AND target.heartbeat_at > clock_timestamp() - @HeartbeatTimeout)
                 ON CONFLICT (account_id) DO UPDATE SET lease_id = EXCLUDED.lease_id,
-                    instance_id = EXCLUDED.instance_id, role = EXCLUDED.role, expires_at = EXCLUDED.expires_at
+                    instance_id = EXCLUDED.instance_id, role = EXCLUDED.role, expires_at = EXCLUDED.expires_at,
+                    character_id = NULL
                     WHERE account_leases.expires_at <= clock_timestamp()
                         OR NOT EXISTS (SELECT 1 FROM server_instances AS previous_instance
                             WHERE previous_instance.instance_id = account_leases.instance_id

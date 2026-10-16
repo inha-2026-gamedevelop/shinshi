@@ -151,6 +151,34 @@ namespace Shinshi.Contracts
             public const int TRADE_TOO_FAR               = 1507;
             public const int TRADE_REQUEST_EXPIRED       = 1508;
             public const int TRADE_EXPIRED               = 1509;
+
+            // 친구, 귓속말, 길드
+            public const int SOCIAL_TARGET_NOT_FOUND     = 1600;
+            public const int SOCIAL_TARGET_SELF          = 1601;
+            public const int SOCIAL_NOT_CONNECTED        = 1602;
+            public const int FRIEND_ALREADY              = 1610;
+            public const int FRIEND_LIMIT                = 1611;
+            public const int FRIEND_TARGET_LIMIT         = 1612;
+            public const int FRIEND_REQUEST_LIMIT        = 1613;
+            public const int FRIEND_TARGET_REQUESTS_FULL = 1614;
+            public const int FRIEND_REQUEST_NOT_FOUND    = 1615;
+            public const int WHISPER_TARGET_OFFLINE      = 1620;
+            public const int GUILD_NAME_INVALID          = 1630;
+            public const int GUILD_NAME_TAKEN            = 1631;
+            public const int GUILD_ALREADY_MEMBER        = 1632;
+            public const int GUILD_TARGET_IN_GUILD       = 1633;
+            public const int GUILD_NOT_FOUND             = 1634;
+            public const int GUILD_NOT_MEMBER            = 1635;
+            public const int GUILD_NOT_LEADER            = 1636;
+            public const int GUILD_FULL                  = 1637;
+            public const int GUILD_LEADER_MUST_DELEGATE  = 1638;
+            public const int GUILD_APPLICATION_NOT_FOUND = 1639;
+            public const int GUILD_INVITE_NOT_FOUND      = 1640;
+            public const int GUILD_APPLICATION_LIMIT     = 1641;
+            public const int GUILD_PENDING_FULL          = 1642;
+            public const int CHARACTER_IS_GUILD_LEADER   = 1643;
+            public const int GUILD_TARGET_INVITES_FULL   = 1644;
+            public const int GUILD_LEADER_CHANGED        = 1645;
         }
 
         /// <summary> EEconomyReason과 같은 값, 경제 원장에 기록되므로 기존 값을 바꾸거나 재배열하지 않는다 </summary>

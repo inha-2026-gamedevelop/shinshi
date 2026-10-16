@@ -32,10 +32,13 @@ namespace Shinshi.Contracts.Admin
         // 장비 옵션 재설정
         public const string REROLL_OPTIONS = "reroll_options";
 
+        // 친구, 길드 관리와 귓속말, 길드 채팅. 스냅샷, 전달함 꺼내기, 탈퇴, 추방은 막지 않는다
+        public const string SOCIAL        = "social";
+
         private static readonly string[] G_All =
         {
             AUCTION, CRAFTING, ENHANCE, INHERIT, GATHERING, BOSS_ENTRY, INBOX_CLAIM, DUNGEON_ENTRY, TALISMAN, TRAINING, MARKET, TRADE,
-            REROLL_OPTIONS
+            REROLL_OPTIONS, SOCIAL
         };
 
         /****************************************

@@ -23,9 +23,10 @@ Assets/
 ├ 00.Scenes/          씬
 ├ 01.Scripts/
 │ ├ 00.Common/        공통 (Shinshi.Common) - Constants, Events, Interfaces, Pooling, Sound, Types, Utility
-│ │ ├ Contracts/      Unity·백엔드 공용 엔진 비의존 DTO (Shinshi.Contracts)
+│ │ ├ Contracts/      Unity·백엔드 공용 엔진 비의존 DTO (Shinshi.Contracts) - 도메인별 하위 폴더, Social/(소셜 API 계약·상한·길드 이름 규칙)
 │ │ └ Data/           GameDB ScriptableObject 정의 (Shinshi.Data) - 16장
-│ ├ 01.Network/       세션, 동기화 (Shinshi.Network) - Lobby, Session, Town(마을 요청 메시지·클라이언트 송신 창구)
+│ ├ 01.Network/       세션, 동기화 (Shinshi.Network) - Lobby, Session, Town(마을 요청 메시지·클라이언트 송신 창구),
+│ │                 Social(친구·길드 요청 메시지·클라이언트 창구 `SocialClient`·전달 중복 제거)
 │ ├ 02.Combat/        플레이어 전투 (Shinshi.Combat)
 │ │ ├ Player/         입력·이동·생사 상태와 공용 Rules, 클라이언트 View
 │ │ ├ Damage/         피해 계약·공용 Rules
@@ -37,17 +38,19 @@ Assets/
 │ ├ 05.Art/           표현 (Shinshi.Art) - Camera, Environment, Prewarm, Telegraph, VFX
 │ │                   + 팀 제작 모델링 에셋 - Characters, Environment, Props, Shaders, UI
 │ │                     (규칙: docs/unity/SCENE_AND_ASSET_SAFETY.md 4장)
-│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Loading, Lobby, Systems
+│ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Loading, Lobby, Systems,
+│ │                   SkillWindow(스킬창 화면·규칙), Social(Friends/·Guild/ 화면·규칙, Editor/ 프리팹 빌더)
 │ ├ 98.Servers/       서버 전용 코드 (Shinshi.Server 어셈블리) - 9장
 │ │ ├ 01.Network/     서버 프로세스·접속·백엔드 연결
 │ │ │ ├ Bootstrap/    부트스트랩·실행 설정·프로세스 제어·종료
 │ │ │ ├ Presence/     서버 풀 등록·존재 신호·공개 주소 검사
 │ │ │ ├ Backend/      백엔드 게이트웨이·HTTP 전송·차단기·서버 자격
 │ │ │ ├ Auth/         입장 토큰 검증·인증 대기·참가 명단·계정 임대 해제
-│ │ │ └ Session/      출정 진행(DungeonSession·명단)
-│ │ │   ├ Events/     이벤트 저장 큐·백엔드 저장 경로
-│ │ │   ├ Settlement/ 정산 요청·원장·규칙
-│ │ │   └ Reward/     보스 보상·적 드롭 판정
+│ │ │ ├ Session/      출정 진행(DungeonSession·명단)
+│ │ │ │ ├ Events/     이벤트 저장 큐·백엔드 저장 경로
+│ │ │ │ ├ Settlement/ 정산 요청·원장·규칙
+│ │ │ │ └ Reward/     보스 보상·적 드롭 판정
+│ │ │ └ Social/       소셜 서버 중계·전달함 펌프·길드 채팅 중계 (마을·던전 공용 설치, 마을 관리 요청은 마을만)
 │ │ ├ 02.Combat/      서버 전투 틱·Player/·Damage/·Skill/·Boss/
 │ │ ├ 03.AI/          Boss/(보스 두뇌·패턴), Enemy/(근접·돌진 산귀 두뇌 프로토타입), Spawn/(스폰 경계 계약)
 │ │ ├ 04.Systems/Wave/ 웨이브 경계 계약 (실행 구현 예정)
@@ -730,7 +733,7 @@ private IEnumerator CoApplyEffect()
 
 ### GameDB — ScriptableObject 기반 밸런스 DB
 
-GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 도메인 SO 15개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). `AvatarCatalogSO`는 2026-10-01 UMA 아바타 연동과 함께 추가했고, 같은 날 UMA를 쓰지 않기로 하면서 UMA 적용 뷰(`AvatarView`)는 지우고 카탈로그는 남겼다. 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
+GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 도메인 SO 16개는 클래스와 에셋이 있다(EditMode 검증 테스트 통과, 플레이 모드와 서버 부트는 미검증). `AvatarCatalogSO`는 2026-10-01 UMA 아바타 연동과 함께 추가했고, 같은 날 UMA를 쓰지 않기로 하면서 UMA 적용 뷰(`AvatarView`)는 지우고 카탈로그는 남겼다. 2026-10-01에 넣은 도메인 SO 10개의 값은 기획 부록에서 옮긴 **초안**이며, 문서가 정하지 않은 값은 `TODO(담당자)`로 표시한 자리값이다. 값과 필드는 담당 파트가 조정한다. **SO 대상 목록은 아래 표가 기준이다** - 새 데이터 종류를 추가할 때는 이 표부터 갱신한다. 기술 설계 문서가 생기면 표를 그쪽으로 옮기고 여기서는 링크한다.
 
 ```
 스크립트: Assets/01.Scripts/00.Common/Data/     (namespace Shinshi.Data)
@@ -756,6 +759,7 @@ GameDB 루트(`GameDatabaseSO`, `GameDB`, `GameDBBootstrap`)와 아래 표의 �
 | `ProgressionCatalogSO` | `09.Data/Progression/ProgressionCatalog.asset` | 지역, 보스전 해금, 여우의 흔적, 최초 지원, 체험판 플래그 | 기웅 |
 | `AvatarCatalogSO` | `09.Data/Avatar/AvatarCatalog.asset` | 외형 슬라이더와 UMA DNA 대응, 색 팔레트, 직업별 고정 헤어, 장비 부위의 UMA 의상 슬롯, UMA 생성기 설정. 지금 값은 UMA 기본 종족 기준 임시값이다. UMA를 뺐으므로 이 값을 적용하는 코드가 없고, 새 아바타 방식이 정해지면 필드와 값을 다시 정한다 | {팀장} |
 | `CameraConfigSO` | `09.Data/Combat/CameraConfig.asset` | 쿼터뷰 카메라 줌 단계별 시점(각도, 시야각, 거리, 초점 높이), 전환 시간, 방위, 따라가기 감쇠, 가림 투명화 범위. 로컬 표현 전용이며 서버 판정에 쓰지 않는다 | {팀장} |
+| `SkillDisplayCatalogSO` | `09.Data/Combat/SkillDisplayCatalog.asset` | 스킬창이 보여 줄 기술·부적 효과의 한국어 이름·설명·강화 항목 설명, 효과 없음 표시, 직업 기본 공격 설명. 판정 값은 `SkillCatalogSO`·`TalismanCatalogSO`가 갖고 여기는 글자만 둔다. GameDB 콘텐츠 해시에 포함되므로 바꾸면 서버·클라이언트를 함께 빌드한다 | {팀장} |
 | `PrewarmCatalogSO` | `09.Data/Prewarm/PrewarmCatalog.asset` | 부팅 로딩 화면에서 실제로 그려 데울 VFX·모델 프리팹 목록, 항목별 표시 프레임·표본 시점, 프레임 예산·전체 제한 시간, 선택적 셰이더 수집본. 로컬 표현 전용이며 GameDB 루트에 넣지 않고 Bootstrap 씬의 `ClientPrewarmRunner`가 직접 참조한다. 스크립트는 `01.Scripts/05.Art/Prewarm/`(`Shinshi.Art`) | {팀장} |
 | {이름}SO | `09.Data/{도메인}/{이름}.asset` | {값 설명} | {파트} |
 

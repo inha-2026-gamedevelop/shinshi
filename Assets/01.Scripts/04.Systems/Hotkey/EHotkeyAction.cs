@@ -15,6 +15,8 @@ namespace Shinshi.Systems
         CharacterInfo = 8,
         Trade         = 9,
         EquipmentOption = 10,
-        SkillWindow     = 11
+        SkillWindow     = 11,
+        Friends         = 12,
+        Guild           = 13
     }
 }

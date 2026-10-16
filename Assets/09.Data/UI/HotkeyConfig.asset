@@ -43,3 +43,9 @@ MonoBehaviour:
   - _action: 11
     _key: 107
     _label: "\uC2A4\uD0AC"
+  - _action: 12
+    _key: 110
+    _label: "\uCE5C\uAD6C"
+  - _action: 13
+    _key: 103
+    _label: "\uAE38\uB4DC"

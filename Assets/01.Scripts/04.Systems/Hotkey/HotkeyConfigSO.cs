@@ -69,7 +69,9 @@ namespace Shinshi.Systems
             new Binding(EHotkeyAction.MailBox, KeyCode.M, "우편함"),
             new Binding(EHotkeyAction.CharacterInfo, KeyCode.U, "캐릭터 정보"),
             new Binding(EHotkeyAction.EquipmentOption, KeyCode.O, "옵션 재설정"),
-            new Binding(EHotkeyAction.SkillWindow, KeyCode.K, "스킬")
+            new Binding(EHotkeyAction.SkillWindow, KeyCode.K, "스킬"),
+            new Binding(EHotkeyAction.Friends, KeyCode.N, "친구"),
+            new Binding(EHotkeyAction.Guild, KeyCode.G, "길드")
         };
 
         public IReadOnlyList<Binding> Bindings => _bindings;

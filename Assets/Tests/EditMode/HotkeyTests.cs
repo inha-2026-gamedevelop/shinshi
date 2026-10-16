@@ -148,6 +148,31 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Validate_DefaultConfig_FriendsIsNAndGuildIsG()
+        {
+            Assert.That((int)EHotkeyAction.Friends, Is.EqualTo(12));
+            Assert.That((int)EHotkeyAction.Guild, Is.EqualTo(13));
+            Assert.That(_config.TryGetKey(EHotkeyAction.Friends, out KeyCode friends), Is.True);
+            Assert.That(friends, Is.EqualTo(KeyCode.N));
+            Assert.That(_config.TryGetKey(EHotkeyAction.Guild, out KeyCode guild), Is.True);
+            Assert.That(guild, Is.EqualTo(KeyCode.G));
+        }
+
+        [Test]
+        public void Validate_ProjectAsset_FriendsIsNAndGuildIsG()
+        {
+            var asset  = AssetDatabase.LoadAssetAtPath<HotkeyConfigSO>(CONFIG_PATH);
+            var errors = new List<string>();
+            asset.Validate(errors);
+
+            Assert.That(errors, Is.Empty, string.Join("\n", errors));
+            Assert.That(asset.TryGetKey(EHotkeyAction.Friends, out KeyCode friends), Is.True);
+            Assert.That(friends, Is.EqualTo(KeyCode.N));
+            Assert.That(asset.TryGetKey(EHotkeyAction.Guild, out KeyCode guild), Is.True);
+            Assert.That(guild, Is.EqualTo(KeyCode.G));
+        }
+
+        [Test]
         public void Validate_ProjectAsset_HasNoErrorsAndSkillWindowIsK()
         {
             var asset  = AssetDatabase.LoadAssetAtPath<HotkeyConfigSO>(CONFIG_PATH);

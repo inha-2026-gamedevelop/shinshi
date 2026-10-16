@@ -17,6 +17,8 @@ namespace Shinshi.Network
         private const string CHANNEL_ALL      = "All";
         private const string CHANNEL_PARTY    = "Party";
         private const string CHANNEL_SYSTEM   = "System";
+        private const string CHANNEL_GUILD    = "Guild";
+        private const string CHANNEL_WHISPER  = "Whisper";
         private const int    INITIAL_CAPACITY = 256;
 
         /****************************************
@@ -51,6 +53,12 @@ namespace Shinshi.Network
                     return CHANNEL_ALL;
                 case EChatChannel.Party:
                     return CHANNEL_PARTY;
+                case EChatChannel.Guild:
+                    return CHANNEL_GUILD;
+                // 보낸 귓속말은 보낸 사람 쪽 기록 한 줄만 남긴다
+                case EChatChannel.Whisper:
+                case EChatChannel.WhisperSent:
+                    return CHANNEL_WHISPER;
                 default:
                     return CHANNEL_SYSTEM;
             }

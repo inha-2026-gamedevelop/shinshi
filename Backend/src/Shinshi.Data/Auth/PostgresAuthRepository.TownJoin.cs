@@ -212,15 +212,16 @@ namespace Shinshi.Data.Auth
             }
 
             // 토큰 소비와 같은 트랜잭션에서 계정 접속 임대를 얻는다. 계정 행을 잠근 채라 다른 입장과 이관이 끼어들지 못한다.
-            // 위에서 살아 있는 임대가 없음을 확인했으므로 남은 행(만료, 소실 서버)은 덮어쓴다. 연장은 마을 heartbeat가 한다
+            // 위에서 살아 있는 임대가 없음을 확인했으므로 남은 행(만료, 소실 서버)은 덮어쓴다. 연장은 마을 heartbeat가 한다.
+            // character_id는 소셜 접속 표시와 전달함 주소다. 던전 이관(UPDATE)은 이 값을 그대로 둔다
             Guid accountLeaseId = Guid.NewGuid();
             await connection.ExecuteAsync(Command(
                 """
-                INSERT INTO account_leases (account_id, lease_id, instance_id, role, expires_at)
-                VALUES (@AccountId, @LeaseId, @InstanceId, @Town, clock_timestamp() + @Duration)
+                INSERT INTO account_leases (account_id, lease_id, instance_id, role, expires_at, character_id)
+                VALUES (@AccountId, @LeaseId, @InstanceId, @Town, clock_timestamp() + @Duration, @CharacterId)
                 ON CONFLICT (account_id) DO UPDATE SET lease_id = EXCLUDED.lease_id, instance_id = EXCLUDED.instance_id,
-                    role = EXCLUDED.role, expires_at = EXCLUDED.expires_at;
-                """, new { consumed.AccountId, LeaseId = accountLeaseId, InstanceId = instanceId,
+                    role = EXCLUDED.role, expires_at = EXCLUDED.expires_at, character_id = EXCLUDED.character_id;
+                """, new { consumed.AccountId, consumed.CharacterId, LeaseId = accountLeaseId, InstanceId = instanceId,
                     Town = ContractCodes.ServerRole.TOWN, Duration = ServerPoolTimings.AccountLease }, transaction, token));
 
             // 마을 입장은 출정과 참가자가 없다. 빈 ID는 응답에서 값 없음으로 바뀐다
