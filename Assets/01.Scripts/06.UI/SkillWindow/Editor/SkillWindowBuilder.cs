@@ -33,11 +33,12 @@ namespace Shinshi.UI.Editor
         private const string FONT_REGULAR    = "Assets/01.Scripts/06.UI/Hud/Fonts/HudQuestKorean-Regular.asset";
         private const string FONT_BOLD       = "Assets/01.Scripts/06.UI/Hud/Fonts/HudQuestKorean-Bold.asset";
         private const string ICON_LIBRARY    = "Assets/01.Scripts/05.Art/UI/Icons/UiIconLibrary.asset";
-        private const string TOWN_SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
-        private const string UI_LAYER        = "UI";
-        private const string MENU_BUTTON     = "스킬";
-        private const string MENU_TEMPLATE   = "옵션 재설정";
-        private const string MENU_SECTION    = "제목 경제";
+        private const string TOWN_SCENE_PATH    = "Assets/00.Scenes/Release/ShinshiTown.unity";
+        private const string DUNGEON_SCENE_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
+        private const string UI_LAYER           = "UI";
+        private const string MENU_BUTTON        = "스킬";
+        private const string MENU_TEMPLATE      = "옵션 재설정";
+        private const string MENU_SECTION       = "제목 경제";
 
         private const float WINDOW_WIDTH  = 1140f;
         private const float WINDOW_HEIGHT = 780f;
@@ -112,6 +113,18 @@ namespace Shinshi.UI.Editor
         [MenuItem("Shinshi/UI/스킬창을 마을 씬에 연결")]
         public static void WireTownScene()
         {
+            WireScene(TOWN_SCENE_PATH, true);
+        }
+
+        /// <summary> 던전 출시 씬에 스킬창과 바인더, 단축키 토글을 놓는다. 던전 HUD에는 메뉴가 없어 단축키로만 연다 </summary>
+        [MenuItem("Shinshi/UI/스킬창을 던전 씬에 연결")]
+        public static void WireDungeonScene()
+        {
+            WireScene(DUNGEON_SCENE_PATH, false);
+        }
+
+        private static void WireScene(string scenePath, bool addMenuButton)
+        {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PREFAB_PATH);
             UiIconLibrarySO icons = AssetDatabase.LoadAssetAtPath<UiIconLibrarySO>(ICON_LIBRARY);
             if ((prefab == null) || (icons == null))
@@ -119,7 +132,7 @@ namespace Shinshi.UI.Editor
                 throw new InvalidOperationException("스킬창 프리팹이나 아이콘 표가 없습니다. 먼저 창을 만드세요");
             }
 
-            UnityEngine.SceneManagement.Scene scene = EditorSceneManager.OpenScene(TOWN_SCENE_PATH, OpenSceneMode.Single);
+            UnityEngine.SceneManagement.Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
             if (UnityEngine.Object.FindObjectsByType<SkillWindowBinder>(FindObjectsInactive.Include).Length > 0)
             {
                 Debug.Log("[UI] 스킬창이 이미 연결돼 있다");
@@ -130,9 +143,9 @@ namespace Shinshi.UI.Editor
             CharDetailView[] views = UnityEngine.Object.FindObjectsByType<CharDetailView>(FindObjectsInactive.Include);
             HotkeyRouter[] routers = UnityEngine.Object.FindObjectsByType<HotkeyRouter>(FindObjectsInactive.Include);
             HudMenuDropdown[] menus = UnityEngine.Object.FindObjectsByType<HudMenuDropdown>(FindObjectsInactive.Include);
-            if ((anchors.Length == 0) || (views.Length == 0) || (routers.Length == 0) || (menus.Length == 0))
+            if ((anchors.Length == 0) || (views.Length == 0) || (routers.Length == 0) || ((addMenuButton) && (menus.Length == 0)))
             {
-                throw new InvalidOperationException("마을 씬에서 캐릭터 상세창 연결, 단축키 라우터, HUD 메뉴를 찾지 못했습니다");
+                throw new InvalidOperationException("씬에서 캐릭터 상세창 연결, 단축키 라우터, HUD 메뉴를 찾지 못했습니다: " + scenePath);
             }
 
             // 캐릭터 상세창의 캔버스 설정을 따르고 정렬은 이미 놓인 성장창보다 하나 위에 둔다
@@ -182,11 +195,14 @@ namespace Shinshi.UI.Editor
             serializedToggle.FindProperty("_action").intValue = (int)EHotkeyAction.SkillWindow;
             serializedToggle.ApplyModifiedPropertiesWithoutUndo();
 
-            AddMenuButton(menus[0], toggle);
+            if (addMenuButton)
+            {
+                AddMenuButton(menus[0], toggle);
+            }
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log("[UI] 스킬창을 마을 씬에 연결했다");
+            Debug.Log("[UI] 스킬창을 씬에 연결했다: " + scenePath);
         }
 
         // 캐릭터 묶음의 빈 줄에 "스킬"을 넣고, 아래 묶음(경제, 시스템)을 한 줄 내린다
