@@ -19,6 +19,9 @@ namespace Shinshi.AI
         private const float LATE_SKIP_SECONDS    = 0.25f;
         private const int   NO_CAST              = -1;
 
+        // 반월(이지 2P P03)은 구역마다 따로 예고가 오지만 몸 모션은 반월 시작 사건이 정한다
+        private const string SWEEP_ZONE_PATTERN = "wolbaek_ph2_p03";
+
         /****************************************
         *                Fields
         ****************************************/
@@ -45,6 +48,8 @@ namespace Shinshi.AI
         private float              _dashPlaySpeed = 1f;
         private float              _recoverElapsed;
         private bool               _isDeathPlayed;
+        private int                _entryHash;
+        private bool               _hasEnteredClip;
 
         /****************************************
         *              Properties
@@ -80,6 +85,12 @@ namespace Shinshi.AI
             return WolbaekMotionCatalog.IsDash(patternId) || WolbaekMotionCatalog.TryGet(patternId, out _);
         }
 
+        /// <summary> 이 패턴의 몸 동작은 확정한 모션이 정한다, 임시 도형 자세를 덧붙이지 않는다. 사건 종류로 모션을 정하는 반월 구역 예고도 포함한다 </summary>
+        public static bool OwnsBody(string patternId)
+        {
+            return (Handles(patternId)) || (patternId == SWEEP_ZONE_PATTERN);
+        }
+
         /// <summary> 예고 시작과 발동 알림을 받는다. 예고가 시작되면 판정 시각에 맞춘 모션을 계획하고, 돌진은 발동을 받은 뒤에 시작한다 </summary>
         public void OnCastPhase(BossTelegraphCast cast, EBossTelegraphPhase phase, double serverNow)
         {
@@ -110,6 +121,7 @@ namespace Shinshi.AI
 
             Reset();
             _entry     = entry;
+            _entryHash = Animator.StringToHash(entry.StateName);
             _castId    = castId;
             _isPlanned = true;
 
@@ -120,7 +132,8 @@ namespace Shinshi.AI
         /// <summary> 시전이 정상 종료되거나 취소됐다. 맡고 있던 모션이면 Idle로 돌아간다 </summary>
         public void OnCastEnded(int castId, bool isCancelled)
         {
-            if (_castId != castId)
+            // 처치 모션 중에는 끝난 시전 알림이 재생 속도나 상태를 건드리지 않는다
+            if ((_isDeathPlayed) || (_castId != castId))
             {
                 return;
             }
@@ -145,6 +158,13 @@ namespace Shinshi.AI
             if (_isDash)
             {
                 TickDash(serverNow, deltaTime);
+                return;
+            }
+
+            // 클립이 컨트롤러 전이로 스스로 Idle에 도착했으면 서버 종료 알림이 없어도(사건형, 투사체, 장판형) 배속을 1배로 돌리고 모션을 마친다
+            if ((_isStarted) && (IsSettledInIdle()))
+            {
+                Reset();
                 return;
             }
 
@@ -177,11 +197,12 @@ namespace Shinshi.AI
 
             if (isLate && _animator.HasState(0, _deathHoldStateId))
             {
-                _animator.CrossFade(_deathHoldHash, 0f, 0, 0f);
+                _animator.CrossFadeInFixedTime(_deathHoldHash, 0f, 0, 0f);
                 return;
             }
 
-            _animator.CrossFade(_deathHash, DEATH_BLEND_SECONDS, 0, 0f);
+            // 정지 상태(속도 0)에서 정규화 길이로 섞으면 전이가 진행되지 않으므로 초 단위로 섞는다
+            _animator.CrossFadeInFixedTime(_deathHash, DEATH_BLEND_SECONDS, 0, 0f);
         }
 
         /// <summary> 처치 상태에서 다시 일어선다, 전투를 다시 시작할 때 쓴다 </summary>
@@ -194,7 +215,9 @@ namespace Shinshi.AI
 
             _isDeathPlayed = false;
             _animator.speed = 1f;
-            _animator.CrossFade(_idleHash, DEATH_BLEND_SECONDS, 0, 0f);
+
+            // 처치 정지 상태는 속도가 0이라 정규화 길이 전이가 끝나지 않는다, 초 단위로 섞어 다음 처치가 쓰러짐부터 재생되게 한다
+            _animator.CrossFadeInFixedTime(_idleHash, DEATH_BLEND_SECONDS, 0, 0f);
         }
 
         /// <summary> 등장 모션을 처음부터 재생한다, 끝은 컨트롤러 전이가 Idle로 이어 준다 </summary>
@@ -220,19 +243,37 @@ namespace Shinshi.AI
             _castId        = NO_CAST;
             _cast          = null;
             _clipTime      = 0f;
+            _hasEnteredClip = false;
             _animator.speed = 1f;
+        }
+
+        // 시작한 클립 상태에 한 번 들어간 뒤 전이 없이 Idle에 머물러 있다
+        private bool IsSettledInIdle()
+        {
+            int current = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+            if (current == _entryHash)
+            {
+                _hasEnteredClip = true;
+                return false;
+            }
+
+            return (_hasEnteredClip) && (current == _idleHash) && (!_animator.IsInTransition(0));
         }
 
         // 판정 시각까지의 시간으로 시작 지연과 속도를 정한다. 시작 시각은 서버 시각이라 늦게 받아도 같은 시각에 시작한다
         private void Plan(BossTelegraphCast cast, double serverNow)
         {
+            // 맡지 않는 시전(반월 구역 예고 등)이 진행 중인 사건 모션의 값을 덮어쓰지 않게 지역 변수로 먼저 찾는다
             bool isDash = WolbaekMotionCatalog.IsDash(cast.PatternId);
-            if ((!isDash) && (!WolbaekMotionCatalog.TryGet(cast.PatternId, out _entry)))
+            WolbaekMotionEntry entry = default;
+            if ((!isDash) && (!WolbaekMotionCatalog.TryGet(cast.PatternId, out entry)))
             {
                 return;
             }
 
             Reset();
+            _entry     = entry;
+            _entryHash = isDash ? 0 : Animator.StringToHash(entry.StateName);
             _castId    = cast.CastId;
             _cast      = cast;
             _isPlanned = true;
@@ -333,9 +374,12 @@ namespace Shinshi.AI
             bool wasPlaying = _isStarted;
             Reset();
 
-            if (wasPlaying && (_animator.GetCurrentAnimatorStateInfo(0).shortNameHash != _idleHash))
+            // 클립이 스스로 Idle로 넘어가는 중이면 그대로 둔다. 시험 씬처럼 남은 클립을 초 단위로 섞어 자른다
+            bool isIdle = (_animator.GetCurrentAnimatorStateInfo(0).shortNameHash == _idleHash)
+                || ((_animator.IsInTransition(0)) && (_animator.GetNextAnimatorStateInfo(0).shortNameHash == _idleHash));
+            if ((wasPlaying) && (!isIdle))
             {
-                _animator.CrossFade(_idleHash, FINISH_BLEND_SECONDS, 0, 0f);
+                _animator.CrossFadeInFixedTime(_idleHash, FINISH_BLEND_SECONDS, 0, 0f);
             }
         }
     }

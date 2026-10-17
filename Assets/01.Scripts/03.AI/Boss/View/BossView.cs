@@ -303,6 +303,12 @@ namespace Shinshi.AI
                 {
                     _finalAreaView.Clear();
                 }
+
+                // 서버 취소 사건을 다 받지 못해도 공격 효과가 처치 연출 위에 남지 않게 끊는다. 처치 모션과 디졸브는 아래에서 그대로 이어 간다
+                if (_patternVfx != null)
+                {
+                    _patternVfx.StopAttackEffects();
+                }
                 _motion.PlayDeath(isLate);
 
                 // 처치 시각이 서버에 없어 재접속이면 쓰러짐을 건너뛰고 지금부터 정지와 디졸브를 진행한다
@@ -388,6 +394,15 @@ namespace Shinshi.AI
         public void BeginEventMotion(int castId, EWolbaekEventMotion kind, double castStartServerTime, float strikeSeconds)
         {
             _motion.PlanEvent(castId, kind, castStartServerTime, strikeSeconds);
+        }
+
+        /// <summary> 서버가 시전의 회복까지 끝났다고 알렸다. 클립이 아직 남아 있으면 Idle로 섞어 자르고, 이미 Idle로 가는 중이면 그대로 둔다 </summary>
+        public void EndServerCast(int castId)
+        {
+            if (_motion != null)
+            {
+                _motion.OnCastEnded(castId, false);
+            }
         }
 
         /// <summary> 사건으로 정한 패턴이 끝났거나 취소됐다 </summary>
@@ -532,7 +547,11 @@ namespace Shinshi.AI
 
             if (isEnded)
             {
-                _motion.OnCastEnded(castId, phase == EBossTelegraphPhase.Cancelled);
+                // 예고 표현의 정상 종료는 지면 연출이 끝났다는 뜻이라 공격 모션의 끝이 아니다. 모션은 서버 시전 종료(EndServerCast)나 클립 끝에서 끝난다
+                if (phase == EBossTelegraphPhase.Cancelled)
+                {
+                    _motion.OnCastEnded(castId, true);
+                }
 
                 if (_warp != null)
                 {
@@ -624,7 +643,7 @@ namespace Shinshi.AI
             }
             else if ((_hasCast) && (_presenter != null) &&
                 (_presenter.TryGetVisuals(_castId, out BossTelegraphCast cast, out _, out _))
-                && (!WolbaekMotionDirector.Handles(cast.PatternId)) && (!MucheolMotionCatalog.Handles(cast.PatternId)))
+                && (!WolbaekMotionDirector.OwnsBody(cast.PatternId)) && (!MucheolMotionCatalog.Handles(cast.PatternId)))
             {
                 // 확정한 모션이 있는 패턴(월백, 무철)은 클립이 몸을 쓰므로 임시 도형 자세를 덧붙이지 않는다
                 target = CastPose(cast, ref smooth);

@@ -292,6 +292,12 @@ namespace Shinshi.AI
             StopAll();
         }
 
+        /// <summary> 진행 중인 공격 효과(여우불 비행, 장판, 빔, 별, 격자, 대형 방출)를 끊는다. 보스 처치 때 서버 취소 사건이 없어도 남지 않게 쓴다 </summary>
+        public void StopAttackEffects()
+        {
+            StopAll();
+        }
+
         /// <summary> 매 프레임 서버 시계를 전달한다 </summary>
         public void Tick(double now)
         {

@@ -37,6 +37,9 @@ namespace Shinshi.AI
 
         private BossState _boundState;
         private readonly BossTrackingCastMap _trackingCasts = new BossTrackingCastMap();
+        // 이지 2P 빔과 별의 취소 사건은 빔, 별 번호만 싣는다. 시작 사건의 시전 번호와 짝을 지어 그 시전의 모션만 끝낸다
+        private readonly BossTrackingCastMap _beamCasts = new BossTrackingCastMap();
+        private readonly BossTrackingCastMap _starCasts = new BossTrackingCastMap();
         private Transform _detachedEffectsRoot;
         private bool _wasDefeated;
         private bool _justBound;
@@ -234,6 +237,8 @@ namespace Shinshi.AI
             _wasDefeated = false;
             _justBound = true;
             _trackingCasts.Clear();
+            _beamCasts.Clear();
+            _starCasts.Clear();
             _lastFlowState = EBossFlowState.Combat;
             if (_view != null)
             {
@@ -256,6 +261,8 @@ namespace Shinshi.AI
             _boundState = null;
             _justBound = false;
             _trackingCasts.Clear();
+            _beamCasts.Clear();
+            _starCasts.Clear();
             if (_presenter != null)
             {
                 _presenter.ClearAll();
@@ -737,6 +744,12 @@ namespace Shinshi.AI
                 presenter.Finish(castId);
             }
 
+            // 지면 예고가 먼저 끝나 표현 기록이 지워졌어도 서버 시전 종료(회복 끝)는 월백 모션에 직접 알린다
+            if ((_view != null) && (IsWolbaek))
+            {
+                _view.EndServerCast(castId);
+            }
+
             if (IsMucheolMotion)
             {
                 _mucheolMotion.FinishCast(castId);
@@ -848,6 +861,7 @@ namespace Shinshi.AI
         public void OnBeamTelegraphStarted(in BossBeamStart start)
         {
             BeginEventMotion(start.CastId, EWolbaekEventMotion.BeamPair, start.StartServerTime, start.TelegraphSeconds);
+            _beamCasts.Add(start.BeamId, start.CastId);
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -857,6 +871,11 @@ namespace Shinshi.AI
 
         public void OnBeamCancelled(int beamId)
         {
+            // 짝이 확인된 빔만 그 시전 모션을 끝낸다. 지난 시전의 빔이면 모션의 시전 번호와 달라 무시된다
+            if (_beamCasts.TryCancel(beamId, out int castId, out _))
+            {
+                EndEventMotion(castId);
+            }
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -884,6 +903,7 @@ namespace Shinshi.AI
 
         public void OnBeamEnded(int beamId, EBossAreaFate fate)
         {
+            _beamCasts.Remove(beamId);
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -894,6 +914,7 @@ namespace Shinshi.AI
         public void OnStarTelegraphStarted(in BossStarStart start)
         {
             BeginEventMotion(start.CastId, EWolbaekEventMotion.StarRotating, start.StartServerTime, start.TelegraphSeconds);
+            _starCasts.Add(start.StarId, start.CastId);
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -903,6 +924,10 @@ namespace Shinshi.AI
 
         public void OnStarCancelled(int starId)
         {
+            if (_starCasts.TryCancel(starId, out int castId, out _))
+            {
+                EndEventMotion(castId);
+            }
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -930,6 +955,7 @@ namespace Shinshi.AI
 
         public void OnStarEnded(int starId, EBossAreaFate fate)
         {
+            _starCasts.Remove(starId);
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -1008,6 +1034,7 @@ namespace Shinshi.AI
 
         public void OnSweepCancelled(int castId)
         {
+            EndEventMotion(castId);
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
