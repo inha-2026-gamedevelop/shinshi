@@ -159,7 +159,7 @@ namespace Shinshi.AI
             _clientStarted = true;
 
             // 호스트는 스폰 초기 상태를 역직렬화하지 않아 서버가 스폰 전에 넣은 배치를 받지 못한다. 서버 기록에서 직접 옮긴다
-            if ((isServer) && (_serverStructureLedger.HasLayout))
+            if ((NetworkServer.active) && (isServer) && (_serverStructureLedger.HasLayout))
             {
                 BossChargeStructureSnapshot layout = _serverStructureLedger.CreateSnapshot();
                 _clientStructureLedger.SetLayout(in layout);

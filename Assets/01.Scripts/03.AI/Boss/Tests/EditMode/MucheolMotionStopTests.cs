@@ -165,6 +165,8 @@ namespace Shinshi.Tests
         public void Groggy_PendingThenEnd_HoldsUntilEnd()
         {
             MucheolMotionView view = CreateView();
+            // 무철 클립은 Git에서 제외된 외부 애니메이션 에셋이라 없는 PC에서는 그로기 구간을 만들 수 없다
+            Assume.That(view.Director.HasClip(MucheolMotionCatalog.STUN_START_CLIP), "무철 그로기 클립이 없다");
             _now = START;
             view.BeginGroggy(CAST_ID, START, double.NaN);
             Assert.IsTrue(view.Director.IsGroggy);
