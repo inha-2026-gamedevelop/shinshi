@@ -9,6 +9,7 @@
         "Unity.Cinemachine",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
+        "DOTween.Modules",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"
     ],

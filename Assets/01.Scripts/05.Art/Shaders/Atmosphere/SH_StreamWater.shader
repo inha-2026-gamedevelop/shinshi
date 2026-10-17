@@ -16,6 +16,8 @@ Shader "Shinshi/Environment/StreamWater"
         _Smoothness ("Specular Sharpness", Range(8, 512)) = 160
         _SpecularStrength ("Specular Strength", Range(0, 4)) = 1.4
         _Opacity ("Opacity", Range(0, 1)) = 0.88
+        _FoamSoftness ("Foam Edge Softness", Range(0.005, 0.4)) = 0.02
+        _SpecularAlpha ("Specular Adds Opacity", Range(0, 1)) = 1
     }
 
     SubShader
@@ -55,6 +57,8 @@ Shader "Shinshi/Environment/StreamWater"
                 float _Smoothness;
                 float _SpecularStrength;
                 float _Opacity;
+                float _FoamSoftness;
+                float _SpecularAlpha;
             CBUFFER_END
 
             struct Attributes
@@ -116,10 +120,11 @@ Shader "Shinshi/Environment/StreamWater"
                 color += mainLight.color * specular;
 
                 float foam = 1.0 - saturate(waterDepth / max(_FoamDistance, 0.001));
-                foam *= step(0.45, SampleRipple(flowUV * 2.3) + foam * 0.5);
+                // 거품 경계를 딱 자르면 흐르는 노이즈를 따라 흰 점이 켜졌다 꺼져 반짝여 보인다. 경계를 부드럽게 푼다
+                foam *= smoothstep(0.45 - _FoamSoftness, 0.45 + _FoamSoftness, SampleRipple(flowUV * 2.3) + foam * 0.5);
                 color = lerp(color, _FoamColor.rgb, saturate(foam));
 
-                float alpha = saturate(_Opacity * saturate(waterDepth / 0.15) + foam * 0.5 + specular);
+                float alpha = saturate(_Opacity * saturate(waterDepth / 0.15) + foam * 0.5 + specular * _SpecularAlpha);
                 color = MixFog(color, input.fogFactor);
                 return half4(color, alpha);
             }

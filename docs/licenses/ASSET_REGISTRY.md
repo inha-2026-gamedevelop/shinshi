@@ -39,6 +39,7 @@
 | Master Stylized Projectile | 1.0 | 미확인 | `VFX/MasterStylizedProjectiles/`, 일부 공용 파일 `VFX/Hovl Studio/HSFiles/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 255608 |
 | Elemental Spells Full Pack VFX | 1.0.1 | 미확인(설치 상위 폴더명 `PixPlays`) | `VFX/PixPlays/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 297318 |
 | Simple Water Shader URP | 1.0.0 | 미확인 | `VFX/Simple Water Shader/` | Asset Store 패키지, 유·무료 미확인 | 미확인 | 설치 `.meta`: productId 191449 |
+| Stylized Elemental Shield VFX | 1.0 | TvitchiVFX | `VFX/Stylized Elemental Shield/` | 유료($20, 2026-10-17 스토어 페이지 기준), 일부만 이식 | Standard Unity Asset Store EULA·Single Entity·조건부 | [Asset Store 346144](https://assetstore.unity.com/packages/vfx/particles/stylized-elemental-shield-vfx-346144) |
 
 ### 추가 설치·버전 대조 — 2026-10-08
 

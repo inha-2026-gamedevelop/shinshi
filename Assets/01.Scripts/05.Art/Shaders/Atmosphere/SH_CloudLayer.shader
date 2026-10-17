@@ -13,6 +13,8 @@ Shader "Shinshi/Environment/CloudLayer"
         _LitColor ("Lit Color", Color) = (1, 0.98, 0.96, 1)
         _ShadowColor ("Shadow Color", Color) = (0.78, 0.76, 0.9, 1)
         _SunInfluence ("Sun Color Influence", Range(0, 1)) = 0.35
+        _SunScatterColor ("Sun Scatter Color", Color) = (1, 0.52, 0.2, 1)
+        _SunScatter ("Sun Scatter Strength", Range(0, 1)) = 0
         _Opacity ("Opacity", Range(0, 1)) = 0.92
         _IntersectionFade ("Intersection Fade (m)", Float) = 6
         _FadeCenter ("Edge Fade Center (XZ)", Vector) = (0, 0, 0, 0)
@@ -53,6 +55,8 @@ Shader "Shinshi/Environment/CloudLayer"
                 half4 _LitColor;
                 half4 _ShadowColor;
                 float _SunInfluence;
+                half4 _SunScatterColor;
+                float _SunScatter;
                 float _Opacity;
                 float _IntersectionFade;
                 float4 _FadeCenter;
@@ -100,6 +104,9 @@ Shader "Shinshi/Environment/CloudLayer"
                 half maxChannel = max(max(mainLight.color.r, mainLight.color.g), max(mainLight.color.b, 0.001));
                 half3 sunTint = lerp(half3(1, 1, 1), saturate(mainLight.color / maxChannel), _SunInfluence);
                 half3 color = lerp(_ShadowColor.rgb, _LitColor.rgb * sunTint, lit);
+                // 태양광이 대기에서 산란돼 빛을 받는 윗면이 주황으로 물드는 효과. 강도가 0이면 꺼지고 기존 모습 그대로다
+                half3 scatterTint = _SunScatterColor.rgb / max(max(_SunScatterColor.r, _SunScatterColor.g), max(_SunScatterColor.b, 0.001));
+                color = lerp(color, color * scatterTint, _SunScatter * lit);
 
                 float edgeDistance = distance(worldXZ, _FadeCenter.xy);
                 float edgeFade = 1.0 - smoothstep(_FadeRadius.x, _FadeRadius.y, edgeDistance);
