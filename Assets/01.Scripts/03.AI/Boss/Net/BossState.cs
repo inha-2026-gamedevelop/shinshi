@@ -186,6 +186,7 @@ namespace Shinshi.AI
         public void OnTelegraphStarted(in BossTelegraphStart start)
         {
             _serverLedger.OnTelegraphStarted(in start);
+            _serverPhaseLedger.OnCastStarted(start.CastId);
             RpcTelegraphStarted(start);
         }
 
@@ -218,10 +219,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
-            _serverLedger.OnDashStopped(castId, position, stoppedByWall);
-            RpcDashStopped(castId, position, stoppedByWall);
+            _serverLedger.OnDashStopped(castId, position, stoppedByWall, stopServerTime);
+            RpcDashStopped(castId, position, stoppedByWall, stopServerTime);
         }
 
         [Server]
@@ -312,10 +313,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnBeamCancelled(int beamId)
+        public void OnBeamCancelled(int castId, int beamId)
         {
-            _serverLedger.OnBeamCancelled(beamId);
-            RpcBeamCancelled(beamId);
+            _serverLedger.OnBeamCancelled(castId, beamId);
+            RpcBeamCancelled(castId, beamId);
         }
 
         [Server]
@@ -347,10 +348,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnStarCancelled(int starId)
+        public void OnStarCancelled(int castId, int starId)
         {
-            _serverLedger.OnStarCancelled(starId);
-            RpcStarCancelled(starId);
+            _serverLedger.OnStarCancelled(castId, starId);
+            RpcStarCancelled(castId, starId);
         }
 
         [Server]
@@ -478,10 +479,11 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
-            _serverPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
-            RpcMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
+            _serverPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
+            RpcMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
         }
 
         [Server]
@@ -524,6 +526,27 @@ namespace Shinshi.AI
         {
             _serverPhaseLedger.OnChargeEnded(in outcome);
             RpcChargeEnded(outcome);
+        }
+
+        [Server]
+        public void OnChargeGroggyPending(in BossChargeGroggy groggy)
+        {
+            _serverPhaseLedger.OnChargeGroggyPending(in groggy);
+            RpcChargeGroggyPending(groggy);
+        }
+
+        [Server]
+        public void OnChargeGroggyStarted(in BossChargeGroggy groggy)
+        {
+            _serverPhaseLedger.OnChargeGroggyStarted(in groggy);
+            RpcChargeGroggyStarted(groggy);
+        }
+
+        [Server]
+        public void OnChargeGroggyCancelled(int castId)
+        {
+            _serverPhaseLedger.OnChargeGroggyCancelled(castId);
+            RpcChargeGroggyCancelled(castId);
         }
 
         [Server]
@@ -628,10 +651,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnTrackingAreaCancelled(int areaId)
+        public void OnTrackingAreaCancelled(int castId, int areaId)
         {
-            _serverPhaseLedger.OnTrackingAreaCancelled(areaId);
-            RpcTrackingAreaCancelled(areaId);
+            _serverPhaseLedger.OnTrackingAreaCancelled(castId, areaId);
+            RpcTrackingAreaCancelled(castId, areaId);
         }
 
         [Server]
@@ -692,6 +715,7 @@ namespace Shinshi.AI
         private void RpcTelegraphStarted(BossTelegraphStart start)
         {
             _clientLedger.OnTelegraphStarted(in start);
+            _clientPhaseLedger.OnCastStarted(start.CastId);
             _listener?.OnTelegraphStarted(in start);
         }
 
@@ -724,10 +748,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcDashStopped(int castId, Vector3 position, bool stoppedByWall)
+        private void RpcDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
-            _clientLedger.OnDashStopped(castId, position, stoppedByWall);
-            _listener?.OnDashStopped(castId, position, stoppedByWall);
+            _clientLedger.OnDashStopped(castId, position, stoppedByWall, stopServerTime);
+            _listener?.OnDashStopped(castId, position, stoppedByWall, stopServerTime);
         }
 
         [ClientRpc]
@@ -818,10 +842,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcBeamCancelled(int beamId)
+        private void RpcBeamCancelled(int castId, int beamId)
         {
-            _clientLedger.OnBeamCancelled(beamId);
-            _listener?.OnBeamCancelled(beamId);
+            _clientLedger.OnBeamCancelled(castId, beamId);
+            _listener?.OnBeamCancelled(castId, beamId);
         }
 
         [ClientRpc]
@@ -853,10 +877,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcStarCancelled(int starId)
+        private void RpcStarCancelled(int castId, int starId)
         {
-            _clientLedger.OnStarCancelled(starId);
-            _listener?.OnStarCancelled(starId);
+            _clientLedger.OnStarCancelled(castId, starId);
+            _listener?.OnStarCancelled(castId, starId);
         }
 
         [ClientRpc]
@@ -984,10 +1008,11 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        private void RpcMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
-            _clientPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
-            _mucheolListener?.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
+            _clientPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
+            _mucheolListener?.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
         }
 
         [ClientRpc]
@@ -1030,6 +1055,27 @@ namespace Shinshi.AI
         {
             _clientPhaseLedger.OnChargeEnded(in outcome);
             _mucheolListener?.OnChargeEnded(in outcome);
+        }
+
+        [ClientRpc]
+        private void RpcChargeGroggyPending(BossChargeGroggy groggy)
+        {
+            _clientPhaseLedger.OnChargeGroggyPending(in groggy);
+            _mucheolListener?.OnChargeGroggyPending(in groggy);
+        }
+
+        [ClientRpc]
+        private void RpcChargeGroggyStarted(BossChargeGroggy groggy)
+        {
+            _clientPhaseLedger.OnChargeGroggyStarted(in groggy);
+            _mucheolListener?.OnChargeGroggyStarted(in groggy);
+        }
+
+        [ClientRpc]
+        private void RpcChargeGroggyCancelled(int castId)
+        {
+            _clientPhaseLedger.OnChargeGroggyCancelled(castId);
+            _mucheolListener?.OnChargeGroggyCancelled(castId);
         }
 
         [ClientRpc]
@@ -1135,10 +1181,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcTrackingAreaCancelled(int areaId)
+        private void RpcTrackingAreaCancelled(int castId, int areaId)
         {
-            _clientPhaseLedger.OnTrackingAreaCancelled(areaId);
-            _hardListener?.OnTrackingAreaCancelled(areaId);
+            _clientPhaseLedger.OnTrackingAreaCancelled(castId, areaId);
+            _hardListener?.OnTrackingAreaCancelled(castId, areaId);
         }
 
         [ClientRpc]

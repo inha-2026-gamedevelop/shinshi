@@ -373,7 +373,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void CastFinished_AfterProjectileLaunch_SendsNoFinish()
+        public void CastFinished_AfterProjectileLaunch_SendsFinishAtRecoveryEnd()
         {
             BossServer boss = CreateBoss();
             var events = new RecordingEvents();
@@ -388,7 +388,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, events.Projectiles.Count);
             Assert.AreEqual(COMBAT_ID, events.Projectiles[0].BossId);
             Assert.AreEqual(CAST_ID, events.Projectiles[0].ProjectileId);
-            Assert.AreEqual(0, events.Finished.Count, "발사로 이미 예고가 끝났다");
+            CollectionAssert.AreEqual(new[] { CAST_ID }, events.Finished, "발사로 예고가 끝났어도 회복 끝에서 모션을 끝낼 종료 사건이 간다");
         }
 
         [Test]
@@ -404,6 +404,80 @@ namespace Shinshi.Tests
             boss.OnCastFinished(CAST_ID, BOUNDARY_TIME);
 
             Assert.AreEqual(1, events.Finished.Count);
+        }
+
+        [Test]
+        public void CastFinished_AfterAreaActivated_SendsFinishAtRecoveryEnd()
+        {
+            BossServer boss = CreateBoss();
+            var events = new RecordingEvents();
+            boss.SetEventListener(events);
+
+            ((IBossAreaTelegraphListener)boss).OnTelegraphStarted(CAST_ID, CAST_ID, Vector3.zero, FAN_RADIUS, TELEGRAPH_SECONDS);
+            ((IBossAreaListener)boss).OnAreaActivated(CAST_ID, CAST_ID, Vector3.zero, FAN_RADIUS, TELEGRAPH_SECONDS, 1f,
+                BOUNDARY_TIME);
+            boss.OnCastExecuted(CAST_ID, BOUNDARY_TIME);
+            boss.OnCastFinished(CAST_ID, BOUNDARY_TIME + TELEGRAPH_SECONDS);
+
+            Assert.AreEqual(0, events.Cancelled.Count, "활성된 장판의 시전은 중단이 아니다");
+            CollectionAssert.AreEqual(new[] { CAST_ID }, events.Finished);
+        }
+
+        [Test]
+        public void CastFinished_EasyPhaseTwoEventCasts_SendFinishOnce()
+        {
+            BossServer sweepBoss = CreateBoss();
+            var sweepEvents = new RecordingEvents();
+            sweepBoss.SetEventListener(sweepEvents);
+            ((IBossSweepTelegraphListener)sweepBoss).OnSweepStarted(CAST_ID, Vector3.zero, Vector3.forward, true, FAN_RADIUS,
+                FAN_ARC, 4, TELEGRAPH_SECONDS, 1f);
+            sweepBoss.OnCastFinished(CAST_ID, BOUNDARY_TIME);
+            sweepBoss.OnCastFinished(CAST_ID, BOUNDARY_TIME);
+
+            BossServer beamBoss = CreateBoss();
+            var beamEvents = new RecordingEvents();
+            beamBoss.SetEventListener(beamEvents);
+            var beamShape = new BossBeamShape(Vector3.zero, ARENA_LIMIT, Vector3.forward, 0f, LINE_WIDTH);
+            ((IBossBeamTelegraphListener)beamBoss).OnTelegraphStarted(CAST_ID, CAST_ID + 1, in beamShape, TELEGRAPH_SECONDS, 2f, 1f);
+            ((IBossBeamTelegraphListener)beamBoss).OnTelegraphStarted(CAST_ID, CAST_ID + 2, in beamShape, TELEGRAPH_SECONDS, 2f, 1f);
+            beamBoss.OnCastFinished(CAST_ID, BOUNDARY_TIME);
+
+            BossServer starBoss = CreateBoss();
+            var starEvents = new RecordingEvents();
+            starBoss.SetEventListener(starEvents);
+            var starShape = new BossStarShape(Vector3.zero, ARENA_LIMIT, Vector3.forward, FAN_RADIUS, 5, 2, LINE_WIDTH, 30f);
+            ((IBossStarTelegraphListener)starBoss).OnTelegraphStarted(CAST_ID, CAST_ID + 1, in starShape, TELEGRAPH_SECONDS, 2f, 1f);
+            starBoss.OnCastFinished(CAST_ID, BOUNDARY_TIME);
+
+            CollectionAssert.AreEqual(new[] { CAST_ID }, sweepEvents.Finished, "반월 연쇄");
+            CollectionAssert.AreEqual(new[] { CAST_ID }, beamEvents.Finished, "빔");
+            CollectionAssert.AreEqual(new[] { CAST_ID }, starEvents.Finished, "별형 빔");
+        }
+
+        [Test]
+        public void BeamAndStarCancelled_CarryCastId()
+        {
+            BossServer boss = CreateBoss();
+            var events = new BossEventRecorder();
+            boss.SetEventListener(events);
+
+            var beamShape = new BossBeamShape(Vector3.zero, ARENA_LIMIT, Vector3.forward, 0f, LINE_WIDTH);
+            var starShape = new BossStarShape(Vector3.zero, ARENA_LIMIT, Vector3.forward, FAN_RADIUS, 5, 2, LINE_WIDTH, 30f);
+            ((IBossBeamTelegraphListener)boss).OnTelegraphStarted(CAST_ID, CAST_ID + 1, in beamShape, TELEGRAPH_SECONDS, 2f, 1f);
+            ((IBossBeamTelegraphListener)boss).OnCancelled(CAST_ID, CAST_ID + 1, EBossInterruptReason.PhaseTransition);
+            ((IBossStarTelegraphListener)boss).OnTelegraphStarted(CAST_ID, CAST_ID + 2, in starShape, TELEGRAPH_SECONDS, 2f, 1f);
+            ((IBossStarTelegraphListener)boss).OnCancelled(CAST_ID, CAST_ID + 2, EBossInterruptReason.PhaseTransition);
+
+            Assert.AreEqual(1, events.Count(nameof(IBossEventListener.OnBeamCancelled), EBossRecordKey.Beam, CAST_ID + 1));
+            Assert.AreEqual(1, events.Count(nameof(IBossEventListener.OnStarCancelled), EBossRecordKey.Star, CAST_ID + 2));
+            foreach (BossEventRecord record in events.Records)
+            {
+                if ((record.Name == nameof(IBossEventListener.OnBeamCancelled))
+                    || (record.Name == nameof(IBossEventListener.OnStarCancelled)))
+                {
+                    Assert.AreEqual(CAST_ID, record.Index, record.Name);
+                }
+            }
         }
 
         [Test]
@@ -786,7 +860,7 @@ namespace Shinshi.Tests
             {
             }
 
-            public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
             }
 
@@ -843,7 +917,7 @@ namespace Shinshi.Tests
             {
             }
 
-            public void OnBeamCancelled(int beamId)
+            public void OnBeamCancelled(int castId, int beamId)
             {
             }
 
@@ -863,7 +937,7 @@ namespace Shinshi.Tests
             {
             }
 
-            public void OnStarCancelled(int starId)
+            public void OnStarCancelled(int castId, int starId)
             {
             }
 

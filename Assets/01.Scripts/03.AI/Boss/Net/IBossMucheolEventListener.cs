@@ -40,8 +40,8 @@ namespace Shinshi.AI
         /// <summary> dashIndex번째 돌진 시작, startServerTime부터 speed로 가고 최대 distance에서 멈춘다 </summary>
         void OnMultiDashDashStarted(int castId, int dashIndex, float distance, float seconds, float speed, double startServerTime);
 
-        /// <summary> dashIndex번째 돌진 정지 </summary>
-        void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall);
+        /// <summary> dashIndex번째 돌진 정지, stopServerTime은 서버가 정지를 판정한 시각이다 </summary>
+        void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall, double stopServerTime);
 
         /// <summary> 실행 구간이 짧아 계획한 돌진을 다 달리지 못했다, 남은 돌진은 나오지 않는다 </summary>
         void OnMultiDashTruncated(int castId, int plannedDashCount, int completedDashCount);
@@ -60,5 +60,14 @@ namespace Shinshi.AI
 
         /// <summary> 뿔 들이받기(P1 P06) 돌진의 끝, 예고와 돌진 자체는 기본 돌진 사건으로 온다. 한 시전에 한 번이다 </summary>
         void OnChargeEnded(in BossChargeOutcome outcome);
+
+        /// <summary> 기믹 1의 마지막 구조물 파괴가 확인됐다, 같은 시전의 OnChargeEnded 뒤에 온다. 그로기 시작과 끝은 아직 모르면 NaN이다 </summary>
+        void OnChargeGroggyPending(in BossChargeGroggy groggy);
+
+        /// <summary> 기믹 1의 그로기가 시작됐다, 시작과 끝 서버 시각이 채워져 있고 끝 시각에 스스로 끝난다 </summary>
+        void OnChargeGroggyStarted(in BossChargeGroggy groggy);
+
+        /// <summary> 대기 중이거나 진행 중인 그로기를 사망과 전투 종료가 아닌 이유로 접었다 </summary>
+        void OnChargeGroggyCancelled(int castId);
     }
 }

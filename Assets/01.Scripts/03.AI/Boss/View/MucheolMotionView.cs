@@ -26,6 +26,9 @@ namespace Shinshi.AI
         private const int   NO_DASH            = -1;
         private const float EARLY_STOP_EPSILON = 0.05f; // m, 정의 거리보다 이만큼 짧아야 일찍 멈춘 돌진으로 본다
 
+        // 초, 서버 정지 시각과 미리 잡은 정지 시각이 서버 한 틱 안이면 같은 정지로 본다. 다시 끊으면 섞기가 한 번 더 보인다
+        private const double STOP_TIME_TOLERANCE = 1.0 / Constants.Network.SERVER_TICK_RATE;
+
         /****************************************
         *                Fields
         ****************************************/
@@ -126,31 +129,38 @@ namespace Shinshi.AI
         }
 
         // distance는 서버가 돌진 시작 순간 잰 막힘 없는 거리다. 정의 거리보다 짧으면 그 거리에 닿는 시각(시작 + 거리 / 속도)에 멈추는 것으로 미리 잡는다.
-        // 이 시각은 서버가 알린 값으로 계산한 예정 시각이고 서버가 정지를 확정한 시각이 아니다
+        // 이 시각은 정지 사건이 늦게 와도 벽을 지나 달리지 않게 하는 예정 시각이고, 정지 사건의 서버 시각이 오면 그 시각으로 고친다
         /// <summary> 기본 돌진 시작, 서버가 정한 시작 시각과 돌진 시간으로 들이받는 구간을 잇는다 </summary>
         public void BeginDash(int castId, float distance, float seconds, float speed, double startServerTime)
         {
             AppendDashRun(castId, 0, distance, seconds, speed, startServerTime, false);
         }
 
-        // 정지 사건에는 서버 시각이 없다. 받은 순간(로컬에서 읽은 서버 시계 값)부터 들이받는 구간을 끝 자세로 몰아 마친다.
-        // 이 시각은 표시 기준일 뿐 서버가 정지를 확정한 시각이 아니다. 우선순위는 그로기, 충돌 반동, 정지 순이라
-        // 반동이나 그로기가 몸을 쓰는 중이면 받지 않는다. 같은 돌진의 두 번째 정지, 지난 시전, 다른 돌진 순번, 예정 끝 이후의 정지는 무시한다
+        // stopServerTime은 서버가 정지를 판정한 시각이고, 그 시각부터 들이받는 구간을 끝 자세로 몰아 마친다. 미리 잡은 정지와 한 틱 넘게 다르면
+        // 서버 시각으로 다시 끊는다. 시각이 없으면(NaN) 받은 순간(로컬에서 읽은 서버 시계 값)을 쓰고 이미 잡은 정지가 지났으면 그대로 둔다.
+        // 우선순위는 그로기, 충돌 반동, 정지 순이라 반동이나 그로기가 몸을 쓰는 중이면 받지 않는다. 지난 시전, 다른 돌진 순번, 예정 끝 이후의 정지는 무시한다
         /// <summary> 서버 돌진 정지 사건을 받았다, 아직 달리는 중이면 제자리 달리기 없이 끝 자세로 마친다 </summary>
-        public void StopDash(int castId, int dashIndex)
+        public void StopDash(int castId, int dashIndex, double stopServerTime)
         {
             if ((_director == null) || (castId != _dashCastId) || (dashIndex != _runIndex) || (_runTrack == null))
             {
                 return;
             }
 
-            double now = ReadClock();
-            if ((now >= _runTrack.EndTime) || ((!double.IsNaN(_stopAt)) && (now >= _stopAt)))
+            bool   hasServerTime = !double.IsNaN(stopServerTime);
+            double at            = hasServerTime ? stopServerTime : ReadClock();
+            bool   isStopped     = !double.IsNaN(_stopAt);
+            if (at >= _runTrack.EndTime)
             {
                 return;
             }
 
-            ApplyStop(castId, now);
+            if (isStopped && ((!hasServerTime) ? (at >= _stopAt) : (Math.Abs(at - _stopAt) <= STOP_TIME_TOLERANCE)))
+            {
+                return;
+            }
+
+            ApplyStop(castId, at);
         }
 
         /// <summary> 콤보(1페이즈 P05)와 순차 타격(2페이즈 P01, P02, P04, P05), 타 확정 시각마다 타격 키를 맞춘다 </summary>
@@ -246,7 +256,7 @@ namespace Shinshi.AI
             PlayStrikes(start.CastId, segments, in anchors);
         }
 
-        // 그로기로 이어지는 마지막 충돌은 이 반동을 쓰지 않는다. 마지막인지 서버가 알려야 BeginGroggy로 간다
+        // 그로기로 이어지는 마지막 충돌은 서버의 그로기 대기 사건이 BeginGroggy로 이 반동을 대신한다
         /// <summary> 마지막이 아닌 돌진 충돌의 반동, serverTime은 서버가 충돌 결과를 알린 시각이다 </summary>
         public void PlayChargeImpact(int castId, double serverTime)
         {
@@ -266,7 +276,6 @@ namespace Shinshi.AI
         // 마지막 충돌부터 그로기 끝까지 낮아진 자세를 유지하고 그로기 끝에 맞춰 일어선다. 서버 상태와 행동 가능 시각은 바꾸지 않는다.
         // 그로기 시작은 충돌한 시전의 회복이 끝난 뒤라, 충돌 순간에는 끝 시각을 모를 수 있다. 그때는 NaN을 넘기고 SetGroggyEnd로 잇는다.
         // 늦게 받으면 내려앉기를 건너뛰고 유지 자세로 바로 간다
-        // TODO(기웅): 서버가 마지막 구조물 충돌과 그로기 끝 시각을 클라이언트로 보내면 수신부에서 이 메서드를 부른다
         /// <summary> 기믹 1 마지막 충돌의 그로기, collisionServerTime부터 내려앉고 groggyEndServerTime에 다 일어선다. 끝을 모르면 NaN이다 </summary>
         public void BeginGroggy(int castId, double collisionServerTime, double groggyEndServerTime)
         {
@@ -303,6 +312,15 @@ namespace Shinshi.AI
             anchors.GroggyEnd = groggyEndServerTime;
             MucheolMotionTrack rise = MucheolMotionPlan.Resolve(MucheolMotionCatalog.GroggyUp, in anchors);
             _director.Append(castId, rise, false, ReadClock());
+        }
+
+        /// <summary> 서버가 그로기를 사망과 전투 종료가 아닌 이유로 접었다, 이 시전의 그로기만 끊는다 </summary>
+        public void CancelGroggy(int castId)
+        {
+            if (_director != null)
+            {
+                _director.CancelGroggy(castId);
+            }
         }
 
         /// <summary> 시전 정상 종료 </summary>
@@ -421,7 +439,8 @@ namespace Shinshi.AI
             }
         }
 
-        // at부터 들이받는 구간을 끝 자세까지 짧게 몰아 마친다. 다음 돌진을 기다리는 연속 돌진은 그 자세에서 재조준을 기다린다
+        // at부터 들이받는 구간을 끝 자세까지 짧게 몰아 마친다. 다음 돌진을 기다리는 연속 돌진은 그 자세에서 재조준을 기다린다.
+        // 이미 끊은 돌진이면 원래 들이받는 구간부터 다시 끊는다
         private void ApplyStop(int castId, double at)
         {
             if ((_runTrack == null) || (at <= _runTrack.StartTime) || (at >= _runTrack.EndTime))
@@ -432,7 +451,10 @@ namespace Shinshi.AI
             MucheolMotionPlan.Sample(_runTrack, at, out float clipAt, out _);
             MucheolMotionTrack tail = MucheolMotionPlan.Span(MucheolMotionCatalog.DASH_CLIP, at, clipAt,
                 MucheolMotionCatalog.DashRunEndClip, MucheolMotionCatalog.DASH_STOP_SECONDS);
-            if (_director.ReplaceFrom(castId, at, tail, ReadClock()))
+            bool isReplaced = double.IsNaN(_stopAt)
+                ? _director.ReplaceFrom(castId, at, tail, ReadClock())
+                : _director.ReplaceRunFrom(castId, _runTrack, at, tail, ReadClock());
+            if (isReplaced)
             {
                 _stopAt = at;
             }

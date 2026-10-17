@@ -180,6 +180,7 @@ namespace Shinshi.Tests
         public List<Vector3>              StartDirections = new List<Vector3>();
         public List<EBossInterruptReason> Cancels = new List<EBossInterruptReason>();
         public List<bool>                 StoppedByWall = new List<bool>();
+        public List<double>               StopTimes = new List<double>();
         public List<float>                StartDistances = new List<float>();
         public List<double>               StartTimes = new List<double>();
         public List<float>                StartSeconds = new List<float>();
@@ -224,9 +225,11 @@ namespace Shinshi.Tests
             Log.Add("start" + dashIndex);
         }
 
-        public void OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall)
+        public void OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
             StoppedByWall.Add(stoppedByWall);
+            StopTimes.Add(stopServerTime);
             Log.Add("stop" + dashIndex);
         }
 

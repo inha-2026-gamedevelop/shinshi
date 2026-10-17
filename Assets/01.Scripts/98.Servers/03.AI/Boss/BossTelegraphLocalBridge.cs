@@ -179,7 +179,8 @@ namespace Shinshi.AI
             _presenter.BeginDash(castInstanceId, distance, seconds, speed, startServerTime);
         }
 
-        void IBossDashTelegraphListener.OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+        void IBossDashTelegraphListener.OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
             _presenter.StopDash(castInstanceId, position, stoppedByWall);
         }

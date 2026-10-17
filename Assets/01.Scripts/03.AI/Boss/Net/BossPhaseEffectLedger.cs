@@ -20,6 +20,8 @@ namespace Shinshi.AI
     //  - 타 목록, 연속 돌진, 전장 공격, 돌진 결과, 별 단계, 격자, 난사, 동시 폭발: 시전 종료(OnCastEnded)나 중단
     //  - 잔류 부채꼴: 위험 종료나 중단. 잔류 위험이 시전의 회복보다 길 수 있어 시전 종료로는 지우지 않는다
     //  - 추적 장판: 같은 번호의 장판 활성(OnAreaActivated)이나 활성 전 취소. 예고가 시전보다 오래 남는다
+    //  - 돌진 유도 그로기: 그로기 취소나 다음 시전의 시작(OnCastStarted). 그로기는 시전 회복 뒤에 시작해 시전 종료로는 지우지 않고,
+    //    끝은 시각으로 정해져 끝 사건이 없다. 그로기 중에는 서버가 새 선택을 막으므로 다음 시전이 시작됐으면 그로기는 끝났다
     // 판정은 하지 않는다. 돌진 정지 거리만 표현 계약(스냅샷)의 정의대로 환산한다
     /// <summary> 무철과 월백 하드 2페이즈 전용 공격의 진행 중 기록, 늦은 접속 복원에 쓴다 </summary>
     public sealed class BossPhaseEffectLedger : IBossMucheolEventListener, IBossHardPhaseEventListener
@@ -47,6 +49,8 @@ namespace Shinshi.AI
         private bool                    _hasBattlefield = false;
         private BossChargeOutcome       _charge;
         private bool                    _hasCharge      = false;
+        private BossChargeGroggy        _groggy;
+        private bool                    _hasGroggy      = false;
         private BossStarStageSnapshot   _starStage;
         private bool                    _hasStarStage   = false;
         private BossGridBeamSnapshot    _gridBeam;
@@ -79,6 +83,11 @@ namespace Shinshi.AI
 
         public BossChargeOutcome Charge => _charge;
 
+        /// <summary> 대기 중이거나 진행 중인 돌진 유도 그로기가 있다, 끝 시각이 지났어도 다음 시전 전까지 남는다 </summary>
+        public bool HasGroggy => _hasGroggy;
+
+        public BossChargeGroggy Groggy => _groggy;
+
         public bool HasStarStage => _hasStarStage;
 
         public BossStarStageSnapshot StarStage => _starStage;
@@ -107,7 +116,8 @@ namespace Shinshi.AI
         public BossCircleBurstSnapshot CircleBurst => _circleBurst;
 
         /// <summary> 남은 기록이 하나도 없다 </summary>
-        public bool IsEmpty => (!_hasStrikeChain) && (!_hasMultiDash) && (!_hasBattlefield) && (!_hasCharge) && (!_hasStarStage)
+        public bool IsEmpty => (!_hasStrikeChain) && (!_hasMultiDash) && (!_hasBattlefield) && (!_hasCharge) && (!_hasGroggy)
+            && (!_hasStarStage)
             && (!_hasGridBeam) && (!_hasChainFan) && (!_hasBarrage) && (!_hasCircleBurst) && (_trackingAreas.Count == 0);
 
         /****************************************
@@ -129,6 +139,8 @@ namespace Shinshi.AI
             _battlefield    = default;
             _hasCharge      = false;
             _charge         = default;
+            _hasGroggy      = false;
+            _groggy         = default;
             _hasStarStage   = false;
             _starStage      = default;
             _hasGridBeam    = false;
@@ -193,6 +205,16 @@ namespace Shinshi.AI
             }
         }
 
+        /// <summary> 새 시전이 시작됐다, 다른 시전의 그로기 기록은 끝난 것이라 지운다 </summary>
+        public void OnCastStarted(int castId)
+        {
+            if ((_hasGroggy) && (_groggy.CastId != castId))
+            {
+                _hasGroggy = false;
+                _groggy    = default;
+            }
+        }
+
         /// <summary> 같은 번호의 장판이 활성됐다, 이동 예고는 끝났고 장판은 기본 기록이 이어 맡는다 </summary>
         public void OnAreaActivated(int areaId)
         {
@@ -205,6 +227,7 @@ namespace Shinshi.AI
 
         public void OnStrikeChainStarted(in BossStrikeChainStart start)
         {
+            OnCastStarted(start.CastId);
             _strikeChain = new BossStrikeChainSnapshot
             {
                 Start             = start,
@@ -261,6 +284,7 @@ namespace Shinshi.AI
 
         public void OnMultiDashStarted(in BossMultiDashStart start)
         {
+            OnCastStarted(start.CastId);
             _multiDash = new BossMultiDashSnapshot
             {
                 Start                    = start,
@@ -273,7 +297,8 @@ namespace Shinshi.AI
                 TelegraphStartServerTime = start.StartServerTime,
                 TelegraphSeconds         = start.TelegraphSeconds,
                 HasDashStarted           = false,
-                StoppedDistance          = NOT_STOPPED
+                StoppedDistance          = NOT_STOPPED,
+                StoppedServerTime        = double.NaN
             };
             _hasMultiDash = true;
         }
@@ -324,6 +349,7 @@ namespace Shinshi.AI
             _multiDash.DashSpeed                = 0f;
             _multiDash.StoppedDistance          = NOT_STOPPED;
             _multiDash.StoppedByWall            = false;
+            _multiDash.StoppedServerTime        = double.NaN;
         }
 
         public void OnMultiDashDashStarted(int castId, int dashIndex, float distance, float seconds, float speed,
@@ -342,10 +368,11 @@ namespace Shinshi.AI
             _multiDash.DashSpeed           = speed;
             _multiDash.StoppedDistance     = NOT_STOPPED;
             _multiDash.StoppedByWall       = false;
+            _multiDash.StoppedServerTime   = double.NaN;
         }
 
         // 정지 거리는 그 돌진의 시작 위치에서 고정 방향으로 잰 거리다. 기본 기록의 돌진 정지와 같은 정의다
-        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
             if ((!IsCurrentDash(castId, dashIndex)) || (!_multiDash.HasDashStarted))
             {
@@ -356,8 +383,9 @@ namespace Shinshi.AI
             Vector3 direction = _multiDash.Direction;
             float   along     = (offset.x * direction.x) + (offset.z * direction.z);
 
-            _multiDash.StoppedDistance = Mathf.Clamp(along, 0f, _multiDash.DashDistance);
-            _multiDash.StoppedByWall   = stoppedByWall;
+            _multiDash.StoppedDistance   = Mathf.Clamp(along, 0f, _multiDash.DashDistance);
+            _multiDash.StoppedByWall     = stoppedByWall;
+            _multiDash.StoppedServerTime = stopServerTime;
         }
 
         public void OnMultiDashTruncated(int castId, int plannedDashCount, int completedDashCount)
@@ -383,6 +411,7 @@ namespace Shinshi.AI
 
         public void OnBattlefieldStarted(in BossBattlefieldStart start)
         {
+            OnCastStarted(start.CastId);
             _battlefield = new BossBattlefieldSnapshot
             {
                 Start    = start,
@@ -417,6 +446,30 @@ namespace Shinshi.AI
         {
             _charge    = outcome;
             _hasCharge = true;
+        }
+
+        // 대기와 시작은 같은 그로기의 앞뒤 값이라 늘 덮어쓴다. 보스는 한 번에 한 그로기만 한다
+        public void OnChargeGroggyPending(in BossChargeGroggy groggy)
+        {
+            _groggy    = groggy;
+            _hasGroggy = true;
+        }
+
+        public void OnChargeGroggyStarted(in BossChargeGroggy groggy)
+        {
+            _groggy    = groggy;
+            _hasGroggy = true;
+        }
+
+        public void OnChargeGroggyCancelled(int castId)
+        {
+            if ((!_hasGroggy) || (_groggy.CastId != castId))
+            {
+                return;
+            }
+
+            _hasGroggy = false;
+            _groggy    = default;
         }
 
         /****************************************
@@ -580,7 +633,7 @@ namespace Shinshi.AI
             _trackingAreas[index] = area;
         }
 
-        public void OnTrackingAreaCancelled(int areaId)
+        public void OnTrackingAreaCancelled(int castId, int areaId)
         {
             RemoveTrackingArea(areaId);
         }
@@ -689,6 +742,11 @@ namespace Shinshi.AI
                 {
                     mucheol.OnChargeRestored(in _charge);
                 }
+
+                if (_hasGroggy)
+                {
+                    mucheol.OnChargeGroggyRestored(in _groggy);
+                }
             }
 
             if (hard == null)
@@ -756,6 +814,12 @@ namespace Shinshi.AI
                 writer.WriteBossChargeOutcome(_charge);
             }
 
+            writer.WriteBool(_hasGroggy);
+            if (_hasGroggy)
+            {
+                writer.WriteBossChargeGroggy(_groggy);
+            }
+
             writer.WriteBool(_hasStarStage);
             if (_hasStarStage)
             {
@@ -820,6 +884,12 @@ namespace Shinshi.AI
             if (_hasCharge)
             {
                 _charge = reader.ReadBossChargeOutcome();
+            }
+
+            _hasGroggy = reader.ReadBool();
+            if (_hasGroggy)
+            {
+                _groggy = reader.ReadBossChargeGroggy();
             }
 
             _hasStarStage = reader.ReadBool();

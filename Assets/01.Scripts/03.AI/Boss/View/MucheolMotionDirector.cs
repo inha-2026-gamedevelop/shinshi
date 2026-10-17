@@ -183,6 +183,44 @@ namespace Shinshi.AI
             return true;
         }
 
+        // 이미 한 번 끊은 돌진을 다른 시각에서 다시 끊는다. run은 끊기 전 원래 구간이고, 같은 시작 시각과 클립의 구간부터 뒤를 모두 갈아 끼운다.
+        // 이미 갈아 끼운 뒤 구간을 재생 중이었으면 재생 위치를 다시 잡도록 다음 Tick에서 새로 들어간다
+        /// <summary> run을 at에서 끊고 그 뒤를 tail로 바꾼다, run이 이 시전에 없거나 at이 run 밖이면 거짓이다 </summary>
+        public bool ReplaceRunFrom(int castId, MucheolMotionTrack run, double at, MucheolMotionTrack tail, double now)
+        {
+            if ((_isBlocked) || (run == null) || (tail == null) || (castId != _castId) || (_owner != EOwner.Cast))
+            {
+                return false;
+            }
+
+            int index = NO_TRACK;
+            for (int i = _tracks.Count - 1; i >= 0; --i)
+            {
+                if ((_tracks[i].StartTime == run.StartTime) && (_tracks[i].ClipName == run.ClipName))
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            MucheolMotionTrack cut = MucheolMotionPlan.TruncateAt(run, at);
+            if ((index == NO_TRACK) || (cut == null))
+            {
+                return false;
+            }
+
+            _tracks.RemoveRange(index, _tracks.Count - index);
+            _tracks.Add(cut);
+            _tracks.Add(tail);
+            if (_playingIndex > index)
+            {
+                _playingIndex = NO_TRACK;
+            }
+
+            Tick(now);
+            return true;
+        }
+
         /// <summary> 다음 구간을 더 기다리지 않는다, 마지막 키를 지나면 Idle로 돌아간다 </summary>
         public void StopAwaiting(int castId, double now)
         {
@@ -212,6 +250,17 @@ namespace Shinshi.AI
         public void Cancel(int castId)
         {
             if ((castId != _castId) || (_owner == EOwner.Groggy))
+            {
+                return;
+            }
+
+            Exit(EXIT_BLEND_SECONDS);
+        }
+
+        /// <summary> 서버가 그로기를 접었다, 이 시전의 그로기만 끊고 Idle로 돌아간다 </summary>
+        public void CancelGroggy(int castId)
+        {
+            if ((castId != _castId) || (_owner != EOwner.Groggy))
             {
                 return;
             }

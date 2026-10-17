@@ -37,13 +37,14 @@ namespace Shinshi.AI
 
         private BossState _boundState;
         private readonly BossTrackingCastMap _trackingCasts = new BossTrackingCastMap();
-        // 이지 2P 빔과 별의 취소 사건은 빔, 별 번호만 싣는다. 시작 사건의 시전 번호와 짝을 지어 그 시전의 모션만 끝낸다
+        // 이지 2P 빔과 별의 취소 사건은 시전 번호를 함께 싣는다. 시전 번호가 없는(0) 사건만 시작 사건과 지은 짝으로 그 시전의 모션을 끝낸다
         private readonly BossTrackingCastMap _beamCasts = new BossTrackingCastMap();
         private readonly BossTrackingCastMap _starCasts = new BossTrackingCastMap();
         private Transform _detachedEffectsRoot;
         private bool _wasDefeated;
         private bool _justBound;
         private const string WOLBAEK_BOSS_ID = "boss_wolbaek";
+        private const int NO_CAST_ID = 0; // 공용 시전 번호의 없음 값(CombatIds.NONE)과 같다
         private EBossFlowState _lastFlowState = EBossFlowState.Combat;
 
         /****************************************
@@ -718,7 +719,7 @@ namespace Shinshi.AI
             }
         }
 
-        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
@@ -728,11 +729,11 @@ namespace Shinshi.AI
 
             if (IsMucheolMotion)
             {
-                _mucheolMotion.StopDash(castId, 0);
+                _mucheolMotion.StopDash(castId, 0, stopServerTime);
             }
             if (IsMucheolVfx)
             {
-                _mucheolVfx.StopBasicDash(castId, position);
+                _mucheolVfx.StopBasicDash(castId, position, stopServerTime);
             }
         }
 
@@ -869,13 +870,10 @@ namespace Shinshi.AI
             }
         }
 
-        public void OnBeamCancelled(int beamId)
+        // 지난 시전의 빔이면 모션의 시전 번호와 달라 무시된다
+        public void OnBeamCancelled(int castId, int beamId)
         {
-            // 짝이 확인된 빔만 그 시전 모션을 끝낸다. 지난 시전의 빔이면 모션의 시전 번호와 달라 무시된다
-            if (_beamCasts.TryCancel(beamId, out int castId, out _))
-            {
-                EndEventMotion(castId);
-            }
+            EndPairedEventMotion(_beamCasts, castId, beamId);
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -922,12 +920,9 @@ namespace Shinshi.AI
             }
         }
 
-        public void OnStarCancelled(int starId)
+        public void OnStarCancelled(int castId, int starId)
         {
-            if (_starCasts.TryCancel(starId, out int castId, out _))
-            {
-                EndEventMotion(castId);
-            }
+            EndPairedEventMotion(_starCasts, castId, starId);
             BossTelegraphPresenter presenter = PreparePresenter();
             if (presenter != null)
             {
@@ -979,9 +974,9 @@ namespace Shinshi.AI
                 {
                     _mucheolMotion.BeginDash(start.CastId, snapshot.DashDistance, snapshot.DashSeconds, snapshot.DashSpeed,
                         snapshot.ExecuteServerTime);
-                    if (snapshot.DashStoppedDistance > 0f)
+                    if (snapshot.DashStoppedDistance >= 0f)
                     {
-                        _mucheolMotion.StopDash(start.CastId, 0);
+                        _mucheolMotion.StopDash(start.CastId, 0, snapshot.DashStoppedServerTime);
                     }
                 }
             }
@@ -1083,6 +1078,20 @@ namespace Shinshi.AI
             if ((_view != null) && IsWolbaek)
             {
                 _view.BeginEventMotion(castId, kind, castStartServerTime, strikeSeconds);
+            }
+        }
+
+        // 시전 번호가 있으면 그 시전의 모션을 바로 끝내고, 없으면 시작 사건에서 지은 짝으로 찾는다
+        private void EndPairedEventMotion(BossTrackingCastMap casts, int castId, int itemId)
+        {
+            bool isPaired = casts.TryCancel(itemId, out int pairedCastId, out _);
+            if (castId != NO_CAST_ID)
+            {
+                EndEventMotion(castId);
+            }
+            else if (isPaired)
+            {
+                EndEventMotion(pairedCastId);
             }
         }
 
@@ -1272,16 +1281,21 @@ namespace Shinshi.AI
             }
         }
 
-        public void OnTrackingAreaCancelled(int areaId)
+        // 한 시전이 장판을 여럿 깔 수 있어 그 시전의 마지막 장판이 취소될 때만 모션을 끝낸다. 짝을 모르는 장판도 시전 번호가 있으면
+        // 그 시전의 남은 장판이 없을 때 끝낸다
+        public void OnTrackingAreaCancelled(int castId, int areaId)
         {
             if (_hardPhaseView != null)
             {
                 _hardPhaseView.TrackingArea.Cancel(areaId);
             }
 
-            if (_trackingCasts.TryCancel(areaId, out int castId, out bool isLastOfCast) && isLastOfCast)
+            bool isPaired = _trackingCasts.TryCancel(areaId, out int pairedCastId, out bool isLastOfCast);
+            int  endCast  = (castId != NO_CAST_ID) ? castId : pairedCastId;
+            bool isLast   = isPaired ? isLastOfCast : ((castId != NO_CAST_ID) && (!_trackingCasts.HasCast(castId)));
+            if ((isPaired || (castId != NO_CAST_ID)) && isLast)
             {
-                EndEventMotion(castId);
+                EndEventMotion(endCast);
             }
         }
 
@@ -1601,15 +1615,15 @@ namespace Shinshi.AI
             }
         }
 
-        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
             if (IsMucheolMotion)
             {
-                _mucheolMotion.StopDash(castId, dashIndex);
+                _mucheolMotion.StopDash(castId, dashIndex, stopServerTime);
             }
             if (IsMucheolVfx)
             {
-                _mucheolVfx.StopMultiDashRun(castId, dashIndex, position);
+                _mucheolVfx.StopMultiDashRun(castId, dashIndex, position, stopServerTime);
             }
         }
 
@@ -1669,13 +1683,48 @@ namespace Shinshi.AI
             }
         }
 
-        // 충돌이 기믹 1의 마지막 구조물 파괴인지 서버가 아직 알리지 않아 모든 충돌을 중간 충돌 반동으로 보인다.
-        // TODO(기웅): 서버가 마지막 충돌과 그로기 끝 시각을 보내면 그 충돌만 MucheolMotionView.BeginGroggy로 넘긴다
+        // 충돌은 우선 중간 충돌 반동으로 보인다. 기믹 1의 마지막 구조물 파괴면 서버가 같은 시전의 결과 뒤에 그로기 대기를 보내
+        // 그로기가 반동을 대신한다(그로기 VFX는 아직 없다)
         public void OnChargeEnded(in BossChargeOutcome outcome)
         {
             if (IsMucheolMotion && outcome.IsCollision)
             {
                 _mucheolMotion.PlayChargeImpact(outcome.CastId, outcome.ServerTime);
+            }
+        }
+
+        // 그로기 시작은 충돌한 시전의 회복이 끝난 뒤라 대기 때는 끝 시각을 모른다. 충돌 시각부터 내려앉아 시작 사건을 기다린다
+        public void OnChargeGroggyPending(in BossChargeGroggy groggy)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginGroggy(groggy.CastId, groggy.CollisionServerTime, groggy.GroggyEndServerTime);
+            }
+        }
+
+        // 대기로 이미 내려앉았으면 끝 시각만 잇고, 대기를 받지 못했으면 충돌 시각부터 끝까지 새로 재생한다
+        public void OnChargeGroggyStarted(in BossChargeGroggy groggy)
+        {
+            if (!IsMucheolMotion)
+            {
+                return;
+            }
+
+            MucheolMotionDirector director = _mucheolMotion.Director;
+            if ((director != null) && (director.IsGroggy) && (director.CastId == groggy.CastId))
+            {
+                _mucheolMotion.SetGroggyEnd(groggy.CastId, groggy.GroggyEndServerTime);
+                return;
+            }
+
+            _mucheolMotion.BeginGroggy(groggy.CastId, groggy.CollisionServerTime, groggy.GroggyEndServerTime);
+        }
+
+        public void OnChargeGroggyCancelled(int castId)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.CancelGroggy(castId);
             }
         }
 
@@ -1718,9 +1767,9 @@ namespace Shinshi.AI
             {
                 _mucheolMotion.BeginMultiDashRun(start.CastId, snapshot.DashIndex, snapshot.DashDistance, snapshot.DashSeconds,
                     snapshot.DashSpeed, snapshot.DashStartServerTime);
-                if (snapshot.StoppedDistance > 0f)
+                if (snapshot.StoppedDistance >= 0f)
                 {
-                    _mucheolMotion.StopDash(start.CastId, snapshot.DashIndex);
+                    _mucheolMotion.StopDash(start.CastId, snapshot.DashIndex, snapshot.StoppedServerTime);
                 }
             }
 
@@ -1747,6 +1796,15 @@ namespace Shinshi.AI
         public void OnChargeRestored(in BossChargeOutcome outcome)
         {
             OnChargeEnded(in outcome);
+        }
+
+        // 끝 시각이 지난 그로기는 모션이 그리지 않는다. 대기 중이면 충돌 시각부터 낮은 자세로 이어 간다
+        public void OnChargeGroggyRestored(in BossChargeGroggy groggy)
+        {
+            if (IsMucheolMotion)
+            {
+                _mucheolMotion.BeginGroggy(groggy.CastId, groggy.CollisionServerTime, groggy.GroggyEndServerTime);
+            }
         }
     }
 }

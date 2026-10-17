@@ -16,5 +16,8 @@ namespace Shinshi.AI
 
         /// <summary> 시전이 아직 끝나지 않은 돌진의 충돌 결과, 회복 표시는 ServerTime과 RecoverySeconds로 이어 그린다 </summary>
         void OnChargeRestored(in BossChargeOutcome outcome);
+
+        /// <summary> 대기 중이거나 진행 중인 기믹 1 그로기, 돌진 결과 복원 뒤에 온다. 끝 시각이 지났으면 표현이 그리지 않는다 </summary>
+        void OnChargeGroggyRestored(in BossChargeGroggy groggy);
     }
 }

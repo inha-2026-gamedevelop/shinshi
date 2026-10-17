@@ -139,7 +139,7 @@ namespace Shinshi.Tests
             Assert.That(isFixed, Is.True);
             Assert.That(center, Is.EqualTo(new Vector3(2f, 0f, 2f)));
 
-            _binder.OnTrackingAreaCancelled(9);
+            _binder.OnTrackingAreaCancelled(CAST_ID, 9);
             Assert.That(_hard.TrackingArea.Count, Is.EqualTo(0));
         }
 

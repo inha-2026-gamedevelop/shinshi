@@ -128,8 +128,10 @@ namespace Shinshi.Combat
         private float               _castLength;
         private bool                _castIsArea = false;
 
-        // 중계가 전용 사건으로 예고한 시전, 정상 종료를 기본 사건으로 보내는 데만 쓴다. 중단된 시전은 종료 알림이 오지 않아 다음 시전이 덮어쓴다
-        private int _phaseCastId = CombatIds.NONE;
+        // 표현에 시작 사건을 보낸 시전, 회복 끝 경계의 정상 종료를 기본 사건(OnFinished)으로 보내는 데만 쓴다.
+        // _castId는 발사, 활성에서 비워지고 반월 연쇄, 빔, 별형 빔과 중계 시전은 아예 쓰지 않아 따로 둔다. 그러지 않으면 그 시전들은
+        // 종료 사건을 받지 못해 표현 모션이 클립 끝까지 남는다. 중단된 시전은 종료 알림이 오지 않아 다음 시전이 덮어쓴다
+        private int _finishCastId = CombatIds.NONE;
 
         // 반월 연쇄의 고정한 중심과 반경, 구역 예고 알림에 없어 시작 알림에서 받아 둔다. 시전은 한 번에 하나다
         private Vector3 _sweepOrigin;
@@ -941,9 +943,10 @@ namespace Shinshi.Combat
             _events?.OnDashStarted(castInstanceId, distance, seconds, speed, startServerTime);
         }
 
-        void IBossDashTelegraphListener.OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+        void IBossDashTelegraphListener.OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
-            _events?.OnDashStopped(castInstanceId, position, stoppedByWall);
+            _events?.OnDashStopped(castInstanceId, position, stoppedByWall, stopServerTime);
         }
 
         void IBossDashTelegraphListener.OnHit(int castInstanceId, int hitCount)
@@ -1047,13 +1050,15 @@ namespace Shinshi.Combat
         *        P03 (Phase 2) Sweep
         ****************************************/
 
-        // 반월 연쇄는 시전 예고(BeginCast)를 쓰지 않는다. 구역마다 따로 예고가 나가고 구역 폭발이 발동이라 시전 발동, 종료 알림과 겹치지 않는다
+        // 반월 연쇄는 시전 예고(BeginCast)를 쓰지 않는다. 구역마다 따로 예고가 나가고 구역 폭발이 발동이라 시전 발동 알림과 겹치지 않는다.
+        // 회복 끝의 종료 사건은 시전 번호로 보낸다
         void IBossSweepTelegraphListener.OnSweepStarted(int castInstanceId, Vector3 origin, Vector3 baseDirection, bool isRight,
             float radius, float totalArcAngle, int zoneCount, float telegraphSeconds, float blastSpanSeconds)
         {
             Face(baseDirection);
-            _sweepOrigin = origin;
-            _sweepRadius = radius;
+            _finishCastId = castInstanceId;
+            _sweepOrigin  = origin;
+            _sweepRadius  = radius;
             var start = new BossSweepStart(_combatId, castInstanceId, origin, baseDirection, isRight, radius, totalArcAngle,
                 telegraphSeconds, blastSpanSeconds, _tickTime);
             _events?.OnSweepStarted(in start);
@@ -1083,10 +1088,11 @@ namespace Shinshi.Combat
         *       P02 (Phase 2) Field Beam
         ****************************************/
 
-        // 빔은 줄마다 빔 번호가 키다. 시전 예고(BeginCast)를 쓰지 않으므로 시전 발동, 종료 알림은 이 시전에서 아무것도 보내지 않는다
+        // 빔은 줄마다 빔 번호가 키다. 시전 예고(BeginCast)를 쓰지 않아 발동 알림은 보내지 않고, 회복 끝의 종료 사건만 시전 번호로 보낸다
         void IBossBeamTelegraphListener.OnTelegraphStarted(int castInstanceId, int beamId, in BossBeamShape shape,
             float telegraphSeconds, float durationSeconds, float tickInterval)
         {
+            _finishCastId = castInstanceId;
             var start = new BossBeamStart(_combatId, beamId, castInstanceId, in shape, _tickTime, telegraphSeconds,
                 durationSeconds, tickInterval);
             _events?.OnBeamTelegraphStarted(in start);
@@ -1094,7 +1100,7 @@ namespace Shinshi.Combat
 
         void IBossBeamTelegraphListener.OnCancelled(int castInstanceId, int beamId, EBossInterruptReason reason)
         {
-            _events?.OnBeamCancelled(beamId);
+            _events?.OnBeamCancelled(castInstanceId, beamId);
         }
 
         void IBossBeamListener.OnBeamActivated(int castInstanceId, int beamId, float durationSeconds, float tickInterval,
@@ -1122,6 +1128,7 @@ namespace Shinshi.Combat
             float telegraphSeconds, float durationSeconds, float tickInterval)
         {
             Face(shape.BaseDirection);
+            _finishCastId = castInstanceId;
             var start = new BossStarStart(_combatId, starId, castInstanceId, in shape, _tickTime, telegraphSeconds,
                 durationSeconds, tickInterval);
             _events?.OnStarTelegraphStarted(in start);
@@ -1129,7 +1136,7 @@ namespace Shinshi.Combat
 
         void IBossStarTelegraphListener.OnCancelled(int castInstanceId, int starId, EBossInterruptReason reason)
         {
-            _events?.OnStarCancelled(starId);
+            _events?.OnStarCancelled(castInstanceId, starId);
         }
 
         void IBossStarListener.OnStarActivated(int castInstanceId, int starId, float durationSeconds, float tickInterval,
@@ -1216,19 +1223,19 @@ namespace Shinshi.Combat
             }
         }
 
-        // 발사, 활성으로 이미 예고가 끝난 시전은 알릴 것이 없다. 중계가 전용 사건으로 예고한 시전은 복원 기록이 이 종료 사건으로 지워진다.
+        // 발사, 활성으로 예고가 먼저 끝난 시전(투사체, 장판)과 시전 예고를 쓰지 않는 시전(반월 연쇄, 빔, 별형 빔)도 회복 끝에서 종료 사건을 보낸다.
+        // 표현 모션은 이 사건으로 끝나고, 중계가 전용 사건으로 예고한 시전은 복원 기록이 이 사건으로 지워진다.
         // 한 시전이 두 번호에 모두 걸려도 종료 사건은 한 번만 보낸다
         public void OnCastFinished(int castInstanceId, double serverTime)
         {
-            bool isPhaseCast = castInstanceId == _phaseCastId;
-            if ((castInstanceId != _castId) && (!isPhaseCast))
+            if ((castInstanceId != _castId) && (castInstanceId != _finishCastId))
             {
                 return;
             }
 
-            if (isPhaseCast)
+            if (castInstanceId == _finishCastId)
             {
-                _phaseCastId = CombatIds.NONE;
+                _finishCastId = CombatIds.NONE;
             }
 
             ClearCast(castInstanceId);
@@ -1243,15 +1250,16 @@ namespace Shinshi.Combat
         // 발동 알림(OnCastExecuted)은 _castId만 보므로 이 시전에는 나가지 않는다. 타격 확정은 중계가 타별 사건으로 보낸다
         void IBossEventRelayHost.BeginPhaseCast(int castInstanceId)
         {
-            _phaseCastId = castInstanceId;
+            _finishCastId = castInstanceId;
         }
 
         private void BeginCast(int castInstanceId, EBossTelegraphShape shape, float length)
         {
-            _castId     = castInstanceId;
-            _castShape  = shape;
-            _castLength = length;
-            _castIsArea = false;
+            _finishCastId = castInstanceId;
+            _castId       = castInstanceId;
+            _castShape    = shape;
+            _castLength   = length;
+            _castIsArea   = false;
         }
 
         private void ClearCast(int castInstanceId)
@@ -1309,9 +1317,15 @@ namespace Shinshi.Combat
             _events?.OnDirectionLocked(castInstanceId, direction, length);
         }
 
-        // 발동 뒤 회복 중의 취소도 그대로 보낸다. 표현은 발동한 시전의 취소를 무시하고 복원 기록은 그 시전을 지운다
+        // 발동 뒤 회복 중의 취소도 그대로 보낸다. 표현은 발동한 시전의 취소를 무시하고 복원 기록은 그 시전을 지운다.
+        // 설치에 실패한 장판처럼 FSM이 이어서 회복을 마치는 시전도 있어, 취소로 끝낸 시전에는 종료 사건을 보내지 않게 비운다
         private void CancelCast(int castInstanceId)
         {
+            if (castInstanceId == _finishCastId)
+            {
+                _finishCastId = CombatIds.NONE;
+            }
+
             ClearCast(castInstanceId);
             _events?.OnCancelled(castInstanceId);
         }
@@ -1354,7 +1368,7 @@ namespace Shinshi.Combat
                 barrageListener: _hardRelay, burstListener: _hardRelay);
         }
 
-        // 1페이즈의 부채꼴, 돌진, 원형 예고는 월백과 같은 기본 알림이라 이 몸체가 받고, 콤보와 돌진 결과, 2페이즈 전부는 무철 중계가 받는다.
+        // 1페이즈의 부채꼴, 돌진, 원형 예고는 월백과 같은 기본 알림이라 이 몸체가 받고, 콤보와 돌진 결과, 돌진 유도 그로기, 2페이즈 전부는 무철 중계가 받는다.
         // 돌진 구조물 조회는 맵 쪽 구현이 아직 없어 넘기지 않으므로 P06은 벽과 전장 경계에만 막힌다.
         // 밀림 창구는 대상 조회가 있을 때만 넘긴다. 없이 넘기면 팩토리가 하드 P07을 만들고 밀림 규칙이 빠진 채 시전된다.
         //
@@ -1369,7 +1383,8 @@ namespace Shinshi.Combat
             var phaseTwo = new MucheolPhase2PatternFactory(referenceHealth, MucheolSortieData.CreatePhaseTwoSpec(), this, _catalog,
                 this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay);
 
-            chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec());
+            chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec(),
+                _mucheolRelay);
             phaseOne.SetChargeCastTracker(chargeGimmick);
 
             return new MucheolPatternFactoryChain(phaseOne, phaseTwo);

@@ -19,7 +19,8 @@ namespace Shinshi.Common
             // 8: 장비 옵션 필드와 재설정 누계 추가, 성장 요청 종류 장비 옵션 재설정 추가(2026-10-13)
             // 9: 궁수 속성, 화살 적중, 직업 스택, 기본 공격 콤보 단계와 공격, 이동 시작 시각 SyncVar 추가(2026-10-16)
             // 10: 소셜 메시지, 길드, 귓속말 채팅 채널 추가(2026-10-16)
-            public const int PROTOCOL_VERSION = 10;
+            // 11: 보스 돌진 정지 서버 시각, 빔, 별, 추적 장판 취소의 시전 번호, 무철 돌진 유도 그로기 사건과 복원 추가(2026-10-17)
+            public const int PROTOCOL_VERSION = 11;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;

@@ -117,8 +117,43 @@ namespace Shinshi.Tests
             }
         }
 
+        // 그로기 알림을 온 순서대로 적는다
+        private sealed class GroggyLog : IMucheolChargeGimmickListener
+        {
+            public List<string> Order     { get; } = new List<string>();
+            public int          CastId    { get; private set; }
+            public int          Structure { get; private set; }
+            public double       Confirm   { get; private set; }
+            public double       Start     { get; private set; }
+            public double       End       { get; private set; }
+
+            public void OnGroggyPending(int castInstanceId, int structureId, double confirmServerTime)
+            {
+                Order.Add("pending");
+                CastId    = castInstanceId;
+                Structure = structureId;
+                Confirm   = confirmServerTime;
+            }
+
+            public void OnGroggyStarted(int castInstanceId, int structureId, double startServerTime, double endServerTime)
+            {
+                Order.Add("started");
+                CastId    = castInstanceId;
+                Structure = structureId;
+                Start     = startServerTime;
+                End       = endServerTime;
+            }
+
+            public void OnGroggyCancelled(int castInstanceId)
+            {
+                Order.Add("cancelled");
+                CastId = castInstanceId;
+            }
+        }
+
         private sealed class Env
         {
+            public GroggyLog        Groggy  { get; } = new GroggyLog();
             public FakeBossVitals   Vitals  { get; } = new FakeBossVitals();
             public FakeBossCatalog  Catalog { get; } = new FakeBossCatalog();
             public RecordingFactory Factory { get; } = new RecordingFactory();
@@ -134,7 +169,7 @@ namespace Shinshi.Tests
                 }
 
                 Gimmick = new MucheolChargeGimmick(Vitals, Catalog, Factory, BossTestFixtures.BOSS_ID,
-                    new MucheolChargeGimmickSpec(TRIGGER_RATE, REQUIRED, GROGGY));
+                    new MucheolChargeGimmickSpec(TRIGGER_RATE, REQUIRED, GROGGY), Groggy);
                 Factory.Tracker = Gimmick;
 
                 if (designate)
@@ -1303,6 +1338,86 @@ namespace Shinshi.Tests
             rig.Gimmick.Tick(0.0, 1);
 
             Assert.AreEqual(EMucheolChargeGimmickState.Active, rig.Gimmick.State);
+        }
+
+        /****************************************
+        *           Groggy Notifications
+        ****************************************/
+
+        // 마지막 파괴가 시전 중에 확인되면 대기를 먼저 알리고, 그 시전의 회복 끝 경계에서 시작과 끝을 채워 알린다
+        [Test]
+        public void GroggyListener_FinalDestructionDuringCast_PendingThenStartedAtBoundary()
+        {
+            Env env = new Env();
+            env.Activate();
+            env.SelectChargeCast(7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_A, 2.0, 7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_B, 2.1, 7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_C, 2.2, 7);
+
+            CollectionAssert.AreEqual(new[] { "pending" }, env.Groggy.Order);
+            Assert.AreEqual(7, env.Groggy.CastId);
+            Assert.AreEqual(STRUCTURE_C, env.Groggy.Structure);
+            Assert.AreEqual(2.2, env.Groggy.Confirm);
+
+            double boundary = 10.0;
+            env.Gimmick.OnCastFinished(7, boundary);
+
+            CollectionAssert.AreEqual(new[] { "pending", "started" }, env.Groggy.Order);
+            Assert.AreEqual(boundary, env.Groggy.Start);
+            Assert.AreEqual(boundary + GROGGY, env.Groggy.End);
+        }
+
+        // 시전 사이에 확인되면 대기와 시작이 같은 순간에 이어서 온다
+        [Test]
+        public void GroggyListener_FinalDestructionBetweenCasts_PendingThenStartedAtConfirmation()
+        {
+            Env env = new Env();
+            env.Activate();
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_A, 2.0);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_B, 2.1);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_C, 2.2);
+
+            CollectionAssert.AreEqual(new[] { "pending", "started" }, env.Groggy.Order);
+            Assert.AreEqual(0, env.Groggy.CastId, "부순 시전을 모르면 0이다");
+            Assert.AreEqual(2.2, env.Groggy.Start);
+            Assert.AreEqual(2.2 + GROGGY, env.Groggy.End);
+        }
+
+        // 시전 추적 연결이 풀려 대기 중인 그로기를 접으면 취소를 알린다
+        [Test]
+        public void GroggyListener_TrackerUnwiredWhileAwaiting_SendsCancelled()
+        {
+            Env env = new Env();
+            env.Activate();
+            env.SelectChargeCast(7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_A, 2.0, 7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_B, 2.0, 7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_C, 2.0, 7);
+
+            env.Factory.Tracker = null;
+            env.Gimmick.Tick(2.5, 1);
+
+            CollectionAssert.AreEqual(new[] { "pending", "cancelled" }, env.Groggy.Order);
+            Assert.AreEqual(7, env.Groggy.CastId);
+        }
+
+        // 사망과 전투 종료로 멈추면 복제 상태가 기록을 비우므로 취소를 알리지 않는다
+        [Test]
+        public void GroggyListener_DeathWhileAwaiting_SendsNoCancel()
+        {
+            Env env = new Env();
+            env.Activate();
+            env.SelectChargeCast(7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_A, 2.0, 7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_B, 2.0, 7);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_C, 2.0, 7);
+
+            env.Gimmick.OnChargeCastCancelled(7, EBossInterruptReason.Death);
+            env.Gimmick.Tick(2.5, 1);
+
+            Assert.AreEqual(EMucheolChargeGimmickState.Stopped, env.Gimmick.State);
+            CollectionAssert.AreEqual(new[] { "pending" }, env.Groggy.Order);
         }
 
         /****************************************

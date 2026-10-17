@@ -180,7 +180,7 @@ namespace Shinshi.Combat
 
         void IBossHardAreaListener.OnCancelled(int castInstanceId, int areaId, EBossInterruptReason reason)
         {
-            _sink?.OnTrackingAreaCancelled(areaId);
+            _sink?.OnTrackingAreaCancelled(castInstanceId, areaId);
         }
 
         /****************************************

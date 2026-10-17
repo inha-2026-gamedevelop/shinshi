@@ -138,23 +138,25 @@ namespace Shinshi.AI
             writer.WriteFloat(value.DashSpeed);
             writer.WriteFloat(value.DashStoppedDistance);
             writer.WriteBool(value.DashStoppedByWall);
+            writer.WriteDouble(value.DashStoppedServerTime);
         }
 
         public static BossTelegraphSnapshot ReadBossTelegraphSnapshot(this NetworkReader reader)
         {
             return new BossTelegraphSnapshot
             {
-                Start               = reader.ReadBossTelegraphStart(),
-                Direction           = reader.ReadVector3(),
-                Length              = reader.ReadFloat(),
-                IsDirectionLocked   = reader.ReadBool(),
-                Phase               = (EBossTelegraphPhase)ReadEnumByte(reader, MAX_TELEGRAPH_PHASE),
-                ExecuteServerTime   = reader.ReadDouble(),
-                DashDistance        = reader.ReadFloat(),
-                DashSeconds         = reader.ReadFloat(),
-                DashSpeed           = reader.ReadFloat(),
-                DashStoppedDistance = reader.ReadFloat(),
-                DashStoppedByWall   = reader.ReadBool()
+                Start                 = reader.ReadBossTelegraphStart(),
+                Direction             = reader.ReadVector3(),
+                Length                = reader.ReadFloat(),
+                IsDirectionLocked     = reader.ReadBool(),
+                Phase                 = (EBossTelegraphPhase)ReadEnumByte(reader, MAX_TELEGRAPH_PHASE),
+                ExecuteServerTime     = reader.ReadDouble(),
+                DashDistance          = reader.ReadFloat(),
+                DashSeconds           = reader.ReadFloat(),
+                DashSpeed             = reader.ReadFloat(),
+                DashStoppedDistance   = reader.ReadFloat(),
+                DashStoppedByWall     = reader.ReadBool(),
+                DashStoppedServerTime = reader.ReadDouble()
             };
         }
 
@@ -552,6 +554,7 @@ namespace Shinshi.AI
             writer.WriteFloat(value.DashSpeed);
             writer.WriteFloat(value.StoppedDistance);
             writer.WriteBool(value.StoppedByWall);
+            writer.WriteDouble(value.StoppedServerTime);
             writer.WriteBool(value.IsTruncated);
         }
 
@@ -575,6 +578,7 @@ namespace Shinshi.AI
                 DashSpeed                = reader.ReadFloat(),
                 StoppedDistance          = reader.ReadFloat(),
                 StoppedByWall            = reader.ReadBool(),
+                StoppedServerTime        = reader.ReadDouble(),
                 IsTruncated              = reader.ReadBool()
             };
         }
@@ -644,6 +648,27 @@ namespace Shinshi.AI
             float   recovery    = reader.ReadFloat();
             double  serverTime  = reader.ReadDouble();
             return new BossChargeOutcome(bossId, castId, isCollision, position, travel, structureId, recovery, serverTime);
+        }
+
+        public static void WriteBossChargeGroggy(this NetworkWriter writer, BossChargeGroggy value)
+        {
+            writer.WriteInt(value.BossId);
+            writer.WriteInt(value.CastId);
+            writer.WriteInt(value.StructureId);
+            writer.WriteDouble(value.CollisionServerTime);
+            writer.WriteDouble(value.GroggyStartServerTime);
+            writer.WriteDouble(value.GroggyEndServerTime);
+        }
+
+        public static BossChargeGroggy ReadBossChargeGroggy(this NetworkReader reader)
+        {
+            int    bossId      = reader.ReadInt();
+            int    castId      = reader.ReadInt();
+            int    structureId = reader.ReadInt();
+            double collision   = reader.ReadDouble();
+            double start       = reader.ReadDouble();
+            double end         = reader.ReadDouble();
+            return new BossChargeGroggy(bossId, castId, structureId, collision, start, end);
         }
 
         /****************************************
