@@ -27,7 +27,7 @@ Landing은 **실제 착지 성공 이후**에만 호출한다. 후보 목적지�
 
 몸체 표현은 외부 `Bounds`에 맞춘 꽃잎·안개뿐이며 **실제 캐릭터의 메시·렌더러·재질은 변경하지 않는다**. `PlayBody(..., neutralProxy: true)`는 개발용 중성 인체의 높이별 dissolve를 명시적으로 켠다. 실제 보스 모델의 dissolve·숨김·재결합 인계는 미연결이다. 호출자는 캐릭터 표현을 직접 소유하고 중첩 효과의 복원 경합을 관리해야 한다. 현재 서버에는 출발/착지 전 표현 이벤트가 없어 Breakup은 개발 시연용 외부 신호로만 재생한다.
 
-SO의 `BodySeconds`(기본 0.95초), `ResidualSeconds`(1.4초), `ImpactSeconds`(0.65초), `FlowCycle`(1.5초), `PetalDrift`(0.65m), `MistOpacity`(0.8), `ConfirmationGrace`(0.5초)를 조절한다. 값은 재생 시작에 고정되므로 실행 중 변경은 다음 재생에 적용된다. 꽃잎은 몸체 크기를 바꿔도 원래 월드 크기를 유지하도록 보정한다. Body 전환이 끝나면 proxy와 키 큰 리본은 숨기고 소수 잔류 꽃잎·광점만 `ResidualSeconds` 동안 감쇠한다. Body의 `Completed`는 이 잔류까지 끝나는 기본 2.35초 시점에 발생한다. 캐릭터 표현 인계는 Body 전환 완료 시점에 호출자가 처리한다. `Stop`·비활성화·재사용은 잔류도 즉시 정리한다.
+SO의 `BodySeconds`(기본 0.95초, 월백 모션 시험 씬의 공중제비 워프에 맞춰 `SO_WolbaekWarp_Breakup`은 0.4초, `SO_WolbaekWarp_Reform`은 0.35초로 줄임), `ResidualSeconds`(1.4초), `ImpactSeconds`(0.65초), `FlowCycle`(1.5초), `PetalDrift`(0.65m), `MistOpacity`(0.8), `ConfirmationGrace`(0.5초)를 조절한다. 값은 재생 시작에 고정되므로 실행 중 변경은 다음 재생에 적용된다. 꽃잎은 몸체 크기를 바꿔도 원래 월드 크기를 유지하도록 보정한다. Body 전환이 끝나면 proxy와 키 큰 리본은 숨기고 소수 잔류 꽃잎·광점만 `ResidualSeconds` 동안 감쇠한다. Body의 `Completed`는 이 잔류까지 끝나는 기본 2.35초 시점에 발생한다. 캐릭터 표현 인계는 Body 전환 완료 시점에 호출자가 처리한다. `Stop`·비활성화·재사용은 잔류도 즉시 정리한다.
 
 개발 씬은 `Assets/00.Scenes/Dev_VFX/Dev_Wolbaek_Warp.unity`다. `WolbaekWarpPreview`의 확정 신호와 중성 인체 인계는 개발 전용이며 서버 연결 증거가 아니다. `Assets/Editor/WolbaekWarp/WolbaekWarpBuilder.cs`는 보존된 Blender 내보내기 자료를 읽어 메시·프리팹을 재생성한다. 원본과 제작 스크립트는 Git 제외 `.claude/docs/2026-10-14/wolbaek-warp-blender/`에 있다.
 

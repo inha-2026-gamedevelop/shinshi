@@ -647,10 +647,10 @@ namespace Shinshi.Tests
                 Ledger.OnDashStarted(castId, distance, seconds, speed, startServerTime);
             }
 
-            public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
                 ++DashStops;
-                Ledger.OnDashStopped(castId, position, stoppedByWall);
+                Ledger.OnDashStopped(castId, position, stoppedByWall, stopServerTime);
             }
 
             public void OnFinished(int castId)
@@ -729,9 +729,9 @@ namespace Shinshi.Tests
                 Ledger.OnBeamTelegraphStarted(in start);
             }
 
-            public void OnBeamCancelled(int beamId)
+            public void OnBeamCancelled(int castId, int beamId)
             {
-                Ledger.OnBeamCancelled(beamId);
+                Ledger.OnBeamCancelled(castId, beamId);
             }
 
             public void OnBeamActivated(int beamId, double activateServerTime)
@@ -759,9 +759,9 @@ namespace Shinshi.Tests
                 Ledger.OnStarTelegraphStarted(in start);
             }
 
-            public void OnStarCancelled(int starId)
+            public void OnStarCancelled(int castId, int starId)
             {
-                Ledger.OnStarCancelled(starId);
+                Ledger.OnStarCancelled(castId, starId);
             }
 
             public void OnStarActivated(int starId, double activateServerTime)

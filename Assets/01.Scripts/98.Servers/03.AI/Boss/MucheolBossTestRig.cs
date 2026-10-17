@@ -980,9 +980,9 @@ namespace Shinshi.AI
                 _inner.OnDashStarted(castInstanceId, origin, direction, distance, seconds, speed, startServerTime);
             }
 
-            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
-                _inner.OnDashStopped(castInstanceId, position, stoppedByWall);
+                _inner.OnDashStopped(castInstanceId, position, stoppedByWall, stopServerTime);
             }
 
             public void OnHit(int castInstanceId, int hitCount)
@@ -1071,7 +1071,8 @@ namespace Shinshi.AI
                 LastEvent = $"{dashIndex + 1}/{_planned}번째 돌진 시작, 거리 {distance:F1}m";
             }
 
-            public void OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall,
+                double stopServerTime)
             {
                 _presenter.StopDash(Key(castInstanceId, dashIndex), position, stoppedByWall);
                 LastEvent = $"{dashIndex + 1}번째 돌진 정지{(stoppedByWall ? "(벽)" : string.Empty)}";

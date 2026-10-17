@@ -26,8 +26,8 @@ namespace Shinshi.AI
         void OnDashStarted(int castInstanceId, int dashIndex, Vector3 origin, Vector3 direction, float distance, float seconds,
             float speed, double startServerTime);
 
-        /// <summary> dashIndex번째 돌진이 더 이상 가지 않는다, 정해진 거리에 닿았거나 벽에 막혔거나 실행이 끝나 잘렸다 </summary>
-        void OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall);
+        /// <summary> dashIndex번째 돌진이 더 이상 가지 않는다, 정해진 거리에 닿았거나 벽에 막혔거나 실행이 끝나 잘렸다. stopServerTime은 정지를 판정한 시각이다 </summary>
+        void OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall, double stopServerTime);
 
         /// <summary> dashIndex번째 돌진의 한 틱에 피해 요청이 실제로 나간 대상 수, 나간 것이 없으면 부르지 않는다 </summary>
         void OnHit(int castInstanceId, int dashIndex, int hitCount);

@@ -119,6 +119,8 @@ namespace Shinshi.AI
         private BossBrain               _brain;
         private BossProjectileManager   _projectiles;
         private BossAreaManager         _areas;
+        private BossBeamManager         _beams;
+        private BossStarManager         _stars;
         private RigPlayer               _player;
         private BossTelegraphPresenter  _presenter;
         private BossView                _bossView;
@@ -1517,7 +1519,8 @@ namespace Shinshi.AI
         // 보스와 플레이어와 지속물 관리자를 새로 만든다. 처음과 Reset이 같이 쓴다
         private void Build()
         {
-            _presenter.ClearAll();
+            // 새 전투는 시전 번호를 다시 1부터 매긴다. 끝난 번호 기록까지 비우지 않으면 새 예고가 이전 시전으로 오인되어 버려진다
+            _presenter.ResetNetworkSession();
             _bossView.ResetView();
             ClearTalismanTest();
 
@@ -1546,9 +1549,11 @@ namespace Shinshi.AI
             _registry.Register(_body);
             BuildTalismanParticipants();
 
-            var bridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock);
+            var bridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock, () => (_brain != null) ? _brain.ActivePatternId : null);
             _projectiles = new BossProjectileManager(_registry, _body, bridge);
             _areas       = new BossAreaManager(_registry, bridge);
+            _beams       = new BossBeamManager(_registry, bridge);
+            _stars       = new BossStarManager(_registry, bridge);
 
             _deathPolicy = new BossGimmickDeathPolicy(new ImmediateBossDeathPolicy());
 
@@ -1560,8 +1565,9 @@ namespace Shinshi.AI
                 Targets  = _registry,
                 Damage   = _resolver,
                 Patterns = new PhaseTwoFilter(new WolbaekPatternFactory(_referenceHealth, bridge, bridge, bridge, bridge, _body,
-                    _projectiles, bridge, _areas, bridge, arena: _body, warp: _body), () => _phaseTwoWarpOnly),
-                Effects  = new BossEffectComposite(_projectiles, _areas),
+                    _projectiles, bridge, _areas, bridge, sweepListener: bridge, beams: _beams, arena: _body, beamListener: bridge,
+                    stars: _stars, starListener: bridge, warp: _body), () => _phaseTwoWarpOnly),
+                Effects  = new BossEffectComposite(_projectiles, _areas, _beams, _stars),
                 Control  = _body,
                 Random   = new SeededBossRandom(Environment.TickCount),
                 DeathPolicy = _deathPolicy

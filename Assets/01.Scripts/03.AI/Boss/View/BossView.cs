@@ -44,6 +44,9 @@ namespace Shinshi.AI
         private const float  DASH_WINDUP_PITCH    = -12f; // 도, 돌진 예고 동안 몸을 뒤로 모은다
         private const float  RELEASE_ARM_SCALE    = 1.5f; // 발동 때 팔을 모으던 각도보다 더 내미는 배율
         private const float  HALF                 = 0.5f;
+        private const float  APPEAR_EFFECT_HEIGHT = 0.02f; // m, 등장 마법진을 바닥에서 띄우는 높이
+        private const float  APPEAR_EFFECT_LIFE   = 6f;    // 초, 생성을 멈춘 뒤 남은 파티클이 사라지기를 기다리는 시간
+        private const float  STABLE_RADIUS        = 0.5f;  // m, 표시 위치가 서버 위치에 이만큼 가까우면 자리를 잡은 것으로 본다
         private const float  DIRECTION_EPSILON    = 0.0001f;
         // 클라이언트 어셈블리는 서버 어셈블리의 패턴 팩토리 상수를 볼 수 없어 장판 패턴의 ID를 따로 둔다. 모양은 원형이어도 자세가 달라서다
         private const string AREA_PATTERN_ID     = "wolbaek_p05";
@@ -106,6 +109,10 @@ namespace Shinshi.AI
         [Header("연결")]
         [SerializeField] private Transform _pivot;    // 몸 전체를 숙이고 띄우는 자식, 모델이 이 아래에 있다
         [SerializeField] private Animator  _animator; // 휴머노이드 아바타를 가진 모델의 애니메이터
+        [SerializeField] private WolbaekWarpView _warp; // 2페이즈 P07 워프 표현, 비어 있으면 생략한다
+        [SerializeField] private WolbaekPatternVfxView _patternVfx; // 패턴 VFX 표현, 비어 있으면 생략한다
+        [SerializeField] private WolbaekDissolveView _dissolve; // 처치 뒤 정지와 디졸브 표현, 비어 있으면 쓰러진 자세로 남는다
+        [SerializeField] private GameObject _appearEffectPrefab; // 등장 마법진, 서버 등장 상태 동안 보이고 비어 있으면 생략한다
 
         [Header("자세")]
         [SerializeField] private Vector3 _gatherSideArms = new Vector3(-6f, 60f, 25f);   // 부채꼴, 직선: 몸을 뒤로 젖히고 팔을 벌린다. x 상체, y 팔 옆, z 팔 앞
@@ -130,6 +137,18 @@ namespace Shinshi.AI
         private Vector3    _targetForward = Vector3.forward;
         private bool       _hasPose;
 
+        private WolbaekMotionDirector _motion;
+        private WolbaekTalismanView _talismanView;
+        private WolbaekColorWardView _colorWardView;
+        private WolbaekFoxfireSealView _foxfireSealView;
+        private WolbaekFinalAreaView _finalAreaView;
+        private Renderer[]            _modelRenderers;
+        private Vector3               _stablePosition;
+        private bool                  _hasStablePosition;
+        private Vector3               _holdPosition;
+        private bool                  _isHeld;
+        private GameObject            _appearEffect;
+
         private int                _castId;
         private bool               _hasCast;
         private bool               _isDefeated;
@@ -148,19 +167,48 @@ namespace Shinshi.AI
                 return;
             }
 
-            ConvertToUrpLit(_pivot.GetComponentsInChildren<Renderer>(), _runtimeMaterials);
+            _modelRenderers = _pivot.GetComponentsInChildren<Renderer>();
+            ConvertToUrpLit(_modelRenderers, _runtimeMaterials);
             CacheBones();
+            _motion = new WolbaekMotionDirector(_animator);
+            _talismanView = GetComponent<WolbaekTalismanView>();
+            _colorWardView = GetComponent<WolbaekColorWardView>();
+            _foxfireSealView = GetComponent<WolbaekFoxfireSealView>();
+            _finalAreaView = GetComponent<WolbaekFinalAreaView>();
         }
 
         private void OnDestroy()
         {
             Unbind();
             DestroyRuntimeMaterials();
+
+            if (_appearEffect != null)
+            {
+                Destroy(_appearEffect);
+            }
         }
 
         private void Update()
         {
             FollowPose(Time.deltaTime);
+
+            double now = ReadClock();
+            _motion.Tick(now, Time.deltaTime);
+
+            if (_warp != null)
+            {
+                _warp.Tick(now);
+            }
+
+            if (_patternVfx != null)
+            {
+                _patternVfx.Tick(now);
+            }
+
+            if (_isDefeated && (_dissolve != null))
+            {
+                _dissolve.Tick(Time.deltaTime, _motion.IsDeathFalling);
+            }
         }
 
         // 본은 애니메이터가 쓴 뒤에 얹어야 하므로 LateUpdate다
@@ -190,6 +238,20 @@ namespace Shinshi.AI
             if (_presenter != null)
             {
                 _presenter.PhaseChanged += OnPhaseChanged;
+
+                // 워프 충격파 예고는 워프 표현이 직접 그리므로 기본 지면 예고는 겹치지 않게 생략한다
+                if (_warp != null)
+                {
+                    for (int i = 0; i < WolbaekMotionCatalog.WarpPatternIds.Length; ++i)
+                    {
+                        _presenter.RegisterExternalVisual(WolbaekMotionCatalog.WarpPatternIds[i]);
+                    }
+                }
+
+                if (_patternVfx != null)
+                {
+                    _patternVfx.Bind(_presenter, _serverClock);
+                }
             }
         }
 
@@ -212,19 +274,242 @@ namespace Shinshi.AI
             }
         }
 
-        /// <summary> 쓰러진 모습을 보인다, 보스 사망이다. 되돌리면 다시 일어선다 </summary>
-        public void SetDefeated(bool isDefeated)
+        // lateElapsedSeconds는 서버 처치 시각부터 지난 시간이고 모르면 음수다. 재접속이면 정지와 디졸브를 이 시간만큼 지난 지점부터 잇는다
+        /// <summary> 쓰러진 모습을 보인다, 보스 사망이다. 되돌리면 다시 일어선다. isLate가 참이면 재접속으로 이미 쓰러진 상태를 받은 것이다 </summary>
+        public void SetDefeated(bool isDefeated, bool isLate = false, float lateElapsedSeconds = WolbaekDeathTimeline.UNKNOWN_ELAPSED)
         {
+            if (_isDefeated == isDefeated)
+            {
+                return;
+            }
+
             _isDefeated = isDefeated;
+
+            // 확정한 처치 모션이 컨트롤러에 있으면 그것을 쓰고 없으면 임시 도형 자세로 쓰러진다
+            if (isDefeated)
+            {
+                if (_talismanView != null)
+                {
+                    _talismanView.Clear();
+                }
+                if (_colorWardView != null)
+                {
+                    _colorWardView.Clear();
+                }
+                if (_foxfireSealView != null)
+                {
+                    _foxfireSealView.Clear();
+                }
+                if (_finalAreaView != null)
+                {
+                    _finalAreaView.Clear();
+                }
+
+                // 서버 취소 사건을 다 받지 못해도 공격 효과가 처치 연출 위에 남지 않게 끊는다. 처치 모션과 디졸브는 아래에서 그대로 이어 간다
+                if (_patternVfx != null)
+                {
+                    _patternVfx.StopAttackEffects();
+                }
+                _motion.PlayDeath(isLate);
+
+                // 재접속이면 쓰러짐을 건너뛴다. 서버 처치 시각을 알면 그만큼 지난 정지와 디졸브 지점부터 잇는다
+                if (_dissolve != null)
+                {
+                    _dissolve.Begin(isLate, lateElapsedSeconds);
+                }
+            }
+            else
+            {
+                _motion.ClearDeath();
+
+                if (_dissolve != null)
+                {
+                    _dissolve.ResetDeath();
+                }
+            }
+        }
+
+        // appearElapsedSeconds는 서버가 등장을 시작한 시각부터 지난 시간이다. 늦게 받은 등장 모션을 처음부터 다시 틀지 않고 그 지점부터 잇는다
+        /// <summary> 서버 흐름 상태가 바뀌었다. 등장 상태가 시작되면 등장 모션을 재생한다 </summary>
+        public void SetFlowState(EBossFlowState flowState, float appearElapsedSeconds = 0f)
+        {
+            if (flowState == EBossFlowState.Appearing)
+            {
+                _motion.PlayAppear(appearElapsedSeconds);
+                ShowAppearEffect();
+                return;
+            }
+
+            // 등장 상태가 끝나면 마법진은 새 파티클만 멈추고 남은 파티클은 자연 소멸한다
+            HideAppearEffect();
+        }
+
+        private void ShowAppearEffect()
+        {
+            if ((_appearEffectPrefab == null) || (_appearEffect != null))
+            {
+                return;
+            }
+
+            _appearEffect = Instantiate(_appearEffectPrefab, transform.position + (Vector3.up * APPEAR_EFFECT_HEIGHT), Quaternion.identity);
+        }
+
+        private void HideAppearEffect()
+        {
+            if (_appearEffect == null)
+            {
+                return;
+            }
+
+            foreach (ParticleSystem system in _appearEffect.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                system.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+            }
+
+            Destroy(_appearEffect, APPEAR_EFFECT_LIFE);
+            _appearEffect = null;
+        }
+
+        /// <summary> 패턴 VFX 표현, 서버 사건을 받는 연결부가 효과를 부를 때 쓴다 </summary>
+        public WolbaekPatternVfxView PatternVfx => _patternVfx;
+
+        /// <summary> 서버 기믹 사건으로 정해진 월백 모션을 재생하고 패턴 모션 계획을 비운다 </summary>
+        public void PlayGimmickMotion(string state, float speed, float blend)
+        {
+            if ((_isDefeated) || (_animator == null) || (_motion == null) || (string.IsNullOrEmpty(state)))
+            {
+                return;
+            }
+
+            int hash = Animator.StringToHash(_animator.GetLayerName(0) + "." + state);
+            if (!_animator.HasState(0, hash))
+            {
+                return;
+            }
+
+            _motion.Reset();
+            _animator.speed = Mathf.Max(0.01f, speed);
+            _animator.CrossFade(hash, blend, 0, 0f);
+        }
+
+        /// <summary> 서버 사건 종류로 정하는 패턴의 모션을 첫 판정 시각에 맞춰 시작하도록 계획한다 </summary>
+        public void BeginEventMotion(int castId, EWolbaekEventMotion kind, double castStartServerTime, float strikeSeconds)
+        {
+            _motion.PlanEvent(castId, kind, castStartServerTime, strikeSeconds);
+        }
+
+        /// <summary> 서버가 시전의 회복까지 끝났다고 알렸다. 클립이 아직 남아 있으면 Idle로 섞어 자르고, 이미 Idle로 가는 중이면 그대로 둔다 </summary>
+        public void EndServerCast(int castId)
+        {
+            if (_motion != null)
+            {
+                _motion.OnCastEnded(castId, false);
+            }
+        }
+
+        /// <summary> 사건으로 정한 패턴이 끝났거나 취소됐다 </summary>
+        public void EndEventMotion(int castId, bool isCancelled)
+        {
+            _motion.OnCastEnded(castId, isCancelled);
+        }
+
+        /// <summary> 서버가 알린 P07 워프 직전 출발 위치를 워프 표현에 넘긴다 </summary>
+        public void SetWarpDeparture(int castId, Vector3 departure)
+        {
+            if (_warp != null)
+            {
+                _warp.SetDeparture(castId, departure, ReadClock());
+            }
+        }
+
+        /// <summary> 모델을 이루는 렌더러, 워프 표현이 숨기고 보일 때 쓴다 </summary>
+        public Renderer[] ModelRenderers => _modelRenderers;
+
+        /// <summary> 마지막으로 서버 위치에 자리를 잡았던 표시 위치, 서버가 위치를 갑자기 옮기기 직전의 출발 위치를 알 때 쓴다 </summary>
+        public bool TryGetStablePosition(out Vector3 position)
+        {
+            position = _stablePosition;
+            return _hasStablePosition;
+        }
+
+        /// <summary> 서버 위치가 바뀌어도 모델을 이 위치에 붙잡아 둔다, 서버 판정 위치와 모델 표시 위치를 분리할 때 쓴다 </summary>
+        public void BeginPositionHold(Vector3 position)
+        {
+            _isHeld       = true;
+            _holdPosition = position;
+            transform.position = position;
+        }
+
+        /// <summary> 모델을 서버 위치로 바로 옮긴다, 늦게 받은 사건처럼 부드럽게 따라갈 때가 아닐 때 쓴다 </summary>
+        public void SnapToServerPosition()
+        {
+            if (_hasPose)
+            {
+                transform.position = _targetPosition;
+            }
+        }
+
+        /// <summary> 붙잡기를 푼다. snapToServer가 참이면 서버 위치로 바로 옮기고 거짓이면 부드럽게 따라간다 </summary>
+        public void EndPositionHold(bool snapToServer)
+        {
+            if (!_isHeld)
+            {
+                return;
+            }
+
+            _isHeld = false;
+
+            if (snapToServer && _hasPose)
+            {
+                transform.position = _targetPosition;
+            }
         }
 
         /// <summary> 모션과 위치 기억을 처음으로 되돌린다, 전투를 다시 시작할 때 쓴다 </summary>
         public void ResetView()
         {
+            bool wasDefeated = _isDefeated;
             _hasPose    = false;
             _hasCast    = false;
             _isDefeated = false;
+            _isHeld     = false;
+            _hasStablePosition = false;
             _current    = default;
+
+            if (_motion != null)
+            {
+                if (wasDefeated)
+                {
+                    _motion.ClearDeath();
+                }
+                _motion.Reset();
+            }
+            if (_talismanView != null)
+            {
+                _talismanView.ResetNetworkSession();
+            }
+            if (_colorWardView != null)
+            {
+                _colorWardView.ResetNetworkSession();
+            }
+            if (_foxfireSealView != null)
+            {
+                _foxfireSealView.ResetNetworkSession();
+            }
+            if (_finalAreaView != null)
+            {
+                _finalAreaView.ResetNetworkSession();
+            }
+
+            if (_dissolve != null)
+            {
+                _dissolve.ResetDeath();
+            }
+
+            if (_warp != null)
+            {
+                _warp.Reset();
+            }
         }
 
         private void Unbind()
@@ -232,6 +517,11 @@ namespace Shinshi.AI
             if (_presenter != null)
             {
                 _presenter.PhaseChanged -= OnPhaseChanged;
+
+                if (_patternVfx != null)
+                {
+                    _patternVfx.Unbind();
+                }
             }
 
             _presenter = null;
@@ -245,6 +535,8 @@ namespace Shinshi.AI
         // 새 시전이 시작되면 그것을 따라가고, 따라가던 시전이 끝나면 놓는다
         private void OnPhaseChanged(int castId, EBossTelegraphPhase phase)
         {
+            ForwardToMotion(castId, phase);
+
             if (phase == EBossTelegraphPhase.Telegraph)
             {
                 _castId  = castId;
@@ -259,6 +551,51 @@ namespace Shinshi.AI
             }
         }
 
+        // 확정한 모션과 워프 표현에 시전 단계를 전한다. 끝난 시전은 번호만으로도 정리한다
+        private void ForwardToMotion(int castId, EBossTelegraphPhase phase)
+        {
+            bool isEnded = (phase == EBossTelegraphPhase.Finished) || (phase == EBossTelegraphPhase.Cancelled);
+
+            if (isEnded)
+            {
+                // 예고 표현의 정상 종료는 지면 연출이 끝났다는 뜻이라 공격 모션의 끝이 아니다. 모션은 서버 시전 종료(EndServerCast)나 클립 끝에서 끝난다
+                if (phase == EBossTelegraphPhase.Cancelled)
+                {
+                    _motion.OnCastEnded(castId, true);
+                }
+
+                if (_warp != null)
+                {
+                    _warp.OnCastEnded(castId, phase == EBossTelegraphPhase.Cancelled);
+                }
+
+                if (_patternVfx != null)
+                {
+                    _patternVfx.OnCastEnded(castId, phase == EBossTelegraphPhase.Cancelled);
+                }
+
+                return;
+            }
+
+            if ((_presenter == null) || (!_presenter.TryGetVisuals(castId, out BossTelegraphCast cast, out _, out _)))
+            {
+                return;
+            }
+
+            double now = ReadClock();
+            _motion.OnCastPhase(cast, phase, now);
+
+            if (_warp != null)
+            {
+                _warp.OnCastPhase(cast, phase, now);
+            }
+
+            if (_patternVfx != null)
+            {
+                _patternVfx.OnCastPhase(cast, phase, now);
+            }
+        }
+
         // 위치는 서버 값을 부드럽게 따라가되 돌진 중에는 서버가 보낸 시작 위치와 방향과 속도로 직접 계산한다.
         // 복제 위치는 돌진처럼 짧고 빠른 이동을 성기게 보내기 때문이다
         private void FollowPose(float deltaTime)
@@ -268,13 +605,20 @@ namespace Shinshi.AI
                 return;
             }
 
-            Vector3 target = _targetPosition;
-            if (TryGetDashPosition(out Vector3 dashPosition))
+            Vector3 target = _isHeld ? _holdPosition : _targetPosition;
+            if ((!_isHeld) && TryGetDashPosition(out Vector3 dashPosition))
             {
                 target = dashPosition;
             }
 
             transform.position = Vector3.Lerp(transform.position, target, 1f - Mathf.Exp(-POSITION_SMOOTH * deltaTime));
+
+            // 서버 위치가 갑자기 멀리 옮겨 가기 직전의 표시 위치를 출발 위치로 쓰려고 자리를 잡은 마지막 위치를 기억한다
+            if ((!_isHeld) && ((transform.position - _targetPosition).sqrMagnitude <= (STABLE_RADIUS * STABLE_RADIUS)))
+            {
+                _stablePosition    = transform.position;
+                _hasStablePosition = true;
+            }
 
             Quaternion look = Quaternion.LookRotation(_targetForward, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, look, 1f - Mathf.Exp(-TURN_SMOOTH * deltaTime));
@@ -306,11 +650,13 @@ namespace Shinshi.AI
 
             if (_isDefeated)
             {
-                target = DownPose();
+                target = _motion.HasDeathState ? default : DownPose();
             }
             else if ((_hasCast) && (_presenter != null) &&
-                (_presenter.TryGetVisuals(_castId, out BossTelegraphCast cast, out _, out _)))
+                (_presenter.TryGetVisuals(_castId, out BossTelegraphCast cast, out _, out _))
+                && (!WolbaekMotionDirector.OwnsBody(cast.PatternId)) && (!MucheolMotionCatalog.Handles(cast.PatternId)))
             {
+                // 확정한 모션이 있는 패턴(월백, 무철)은 클립이 몸을 쓰므로 임시 도형 자세를 덧붙이지 않는다
                 target = CastPose(cast, ref smooth);
             }
 

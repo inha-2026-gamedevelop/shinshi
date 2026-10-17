@@ -1155,7 +1155,8 @@ namespace Shinshi.Combat
                 new BossPatternCatalogSource(GameDB.BossPatterns, difficulty), _registry,
                 scaledResolver, new BossTerrainProbe(_obstacleMask),
                 new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster),
-                displaceTargets: new BossPlayerDisplaceLookup(_players));
+                displaceTargets: new BossPlayerDisplaceLookup(_players),
+                chargeStructures: CreateChargeStructures(bossId, spawnPosition));
 
             // 이지는 준비되지 않은 정의가 있어도 기존처럼 연다(팩토리가 만들지 못한 패턴은 두뇌가 건너뛴다). 하드는 모든 정의가 준비돼야 연다
             if ((difficulty == EBossDifficulty.Hard) && (!boss.IsSortieReady(out string notReadyReason)))
@@ -1191,6 +1192,38 @@ namespace Shinshi.Combat
             SpawnBossObject();
             Debug.Log($"[Boss] 보스 전투 시작, boss={bossId}, difficulty={difficulty}, combatId={boss.CombatId}, " +
                 $"maxHealth={boss.MaxHealth}, gimmicks={boss.HasGimmicks}");
+        }
+
+        // 무철만 돌진 구조물을 쓴다. 씬에 맵 담당의 표식 목록이 있으면 그것을, 없으면 기믹이 켜졌을 때만 전장 중심 기준 임시 개발 지점을 쓴다
+        // 기믹이 꺼진 운영 기본값에서 임시 지점을 두면 보이지 않는 맵에 돌진만 막히므로 구조물 없이 연다
+        // 표식 목록이 어긋나면 임시 지점으로 바꾸지 않고 구조물 없이 연다. 맵이 의도한 배치를 임시값으로 덮으면 잘못을 가린다
+        // TODO(진욱): 무철 전장 맵에 BossChargeStructureSet과 표식을 두면 임시 개발 지점은 쓰이지 않는다
+        private BossChargeStructureField CreateChargeStructures(string bossId, Vector3 arenaCenter)
+        {
+            if (!string.Equals(bossId, MucheolPatternFactory.BOSS_ID, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            BossChargeStructureSet scene = BossChargeStructureSet.Current;
+            if (scene == null)
+            {
+                if (!EnableBossGimmicks)
+                {
+                    return null;
+                }
+
+                Debug.LogWarning("[Boss] 씬에 돌진 구조물 표식 목록이 없어 임시 개발 지점을 쓴다");
+                return BossChargeStructureField.CreateDevSites(arenaCenter);
+            }
+
+            if (!BossChargeStructureField.TryCreateFromScene(scene, out BossChargeStructureField field, out string reason))
+            {
+                Debug.LogError($"[Boss] 씬 돌진 구조물 표식이 어긋나 구조물 없이 연다, {reason}");
+                return null;
+            }
+
+            return field;
         }
 
         // 꺼져 있거나 기믹이 없는 보스면 아무것도 하지 않고 참이다. 묶음을 만들지 못하면 기믹 없이 열도록 참이고,

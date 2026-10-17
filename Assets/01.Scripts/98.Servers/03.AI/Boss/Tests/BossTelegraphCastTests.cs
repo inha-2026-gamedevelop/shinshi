@@ -395,7 +395,7 @@ namespace Shinshi.Tests
                 Casts[castInstanceId].TryBeginDash(distance, seconds, speed, startServerTime);
             }
 
-            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
                 Casts[castInstanceId].TryStopDash(position, stoppedByWall);
             }

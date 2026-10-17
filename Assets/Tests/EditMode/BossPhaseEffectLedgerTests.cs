@@ -45,11 +45,15 @@ namespace Shinshi.Tests
         private const float  ROTATION      = 36f;
         private const double EVENT_TIME    = 11.5;
         private const double LATER_TIME    = 12.75;
+        private const double STOP_TIME     = 11.9;
+        private const int    STRUCTURE_ID  = 7;
+        private const double GROGGY_START  = 14.0;
+        private const double GROGGY_END    = 17.0;
         private const float  FLOAT_EPSILON = 0.0001f;
         private const double TIME_EPSILON  = 0.000001;
 
-        // 추적 장판 수보다 앞에 쓰는 한 건짜리 기록 수(타 목록, 연속 돌진, 전장 공격, 돌진 결과, 별 단계, 격자, 연쇄 부채꼴)
-        private const int SINGLE_RECORDS_BEFORE_AREAS = 7;
+        // 추적 장판 수보다 앞에 쓰는 한 건짜리 기록 수(타 목록, 연속 돌진, 전장 공격, 돌진 결과, 돌진 유도 그로기, 별 단계, 격자, 연쇄 부채꼴)
+        private const int SINGLE_RECORDS_BEFORE_AREAS = 8;
 
         private static readonly Vector3 MOVED_CENTER = new Vector3(4f, 0f, 5f);
         private static readonly Vector3 FIXED_CENTER = new Vector3(6f, 0f, 7f);
@@ -148,8 +152,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(Vector3.forward, ledger.MultiDash.Direction, "고정 뒤에 늦게 온 조준은 무시한다");
             Assert.AreEqual(Samples.DASH_LENGTH, ledger.MultiDash.Length, FLOAT_EPSILON);
 
-            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(0f, 0f, STOP_DISTANCE), false);
+            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(0f, 0f, STOP_DISTANCE), false, STOP_TIME);
             Assert.Less(ledger.MultiDash.StoppedDistance, 0f, "달리기 전에 온 정지는 무시한다");
+            Assert.IsTrue(double.IsNaN(ledger.MultiDash.StoppedServerTime));
 
             ledger.OnMultiDashDashStarted(CAST_ID, 0, Samples.DASH_LENGTH, DASH_SECONDS, DASH_SPEED, EVENT_TIME);
             Assert.IsTrue(ledger.MultiDash.HasDashStarted);
@@ -158,11 +163,12 @@ namespace Shinshi.Tests
             Assert.AreEqual(DASH_SECONDS, ledger.MultiDash.DashSeconds, FLOAT_EPSILON);
             Assert.AreEqual(DASH_SPEED, ledger.MultiDash.DashSpeed, FLOAT_EPSILON);
 
-            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(SIDE_OFFSET, 0f, STOP_DISTANCE), true);
+            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(SIDE_OFFSET, 0f, STOP_DISTANCE), true, STOP_TIME);
             Assert.AreEqual(STOP_DISTANCE, ledger.MultiDash.StoppedDistance, FLOAT_EPSILON);
             Assert.IsTrue(ledger.MultiDash.StoppedByWall);
+            Assert.AreEqual(STOP_TIME, ledger.MultiDash.StoppedServerTime, TIME_EPSILON);
 
-            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(0f, 0f, FAR_DISTANCE), false);
+            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(0f, 0f, FAR_DISTANCE), false, LATER_TIME);
             Assert.AreEqual(Samples.DASH_LENGTH, ledger.MultiDash.StoppedDistance, FLOAT_EPSILON, "정지 거리는 돌진 거리를 넘지 않는다");
         }
 
@@ -173,7 +179,7 @@ namespace Shinshi.Tests
             BossMultiDashStart start = Samples.MakeMultiDash(CAST_ID);
             ledger.OnMultiDashStarted(in start);
             ledger.OnMultiDashDashStarted(CAST_ID, 0, Samples.DASH_LENGTH, DASH_SECONDS, DASH_SPEED, EVENT_TIME);
-            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(0f, 0f, STOP_DISTANCE), true);
+            ledger.OnMultiDashDashStopped(CAST_ID, 0, new Vector3(0f, 0f, STOP_DISTANCE), true, STOP_TIME);
 
             BossMultiDashReaim reaim = Samples.MakeReaim(CAST_ID, 1);
             ledger.OnMultiDashReaimStarted(in reaim);
@@ -190,6 +196,7 @@ namespace Shinshi.Tests
             Assert.IsFalse(current.HasDashStarted, "새 돌진은 아직 달리지 않았다");
             Assert.Less(current.StoppedDistance, 0f);
             Assert.IsFalse(current.StoppedByWall);
+            Assert.IsTrue(double.IsNaN(current.StoppedServerTime), "새 돌진은 정지 시각이 없다");
             Samples.AssertSame(in start, current.Start);
 
             ledger.OnMultiDashDashStarted(CAST_ID, 0, Samples.DASH_LENGTH, DASH_SECONDS, DASH_SPEED, LATER_TIME);
@@ -264,6 +271,83 @@ namespace Shinshi.Tests
 
             ledger.OnCastEnded(CAST_ID);
             Assert.IsFalse(ledger.HasCharge, "돌진 결과는 중단 사건이 따로 없어 시전 종료로 지운다");
+        }
+
+        [Test]
+        public void ChargeGroggy_PendingThenStarted_SurvivesCastEndUntilNextCast()
+        {
+            var ledger = new BossPhaseEffectLedger();
+            var pending = new BossChargeGroggy(Samples.BOSS_ID, CAST_ID, STRUCTURE_ID, EVENT_TIME, double.NaN, double.NaN);
+            ledger.OnChargeGroggyPending(in pending);
+
+            Assert.IsTrue(ledger.HasGroggy);
+            Assert.IsFalse(ledger.Groggy.HasStarted);
+
+            ledger.OnCastEnded(CAST_ID);
+            Assert.IsTrue(ledger.HasGroggy, "그로기는 부순 시전의 회복 뒤에 시작하므로 시전 종료로 지우지 않는다");
+
+            var started = new BossChargeGroggy(Samples.BOSS_ID, CAST_ID, STRUCTURE_ID, EVENT_TIME, GROGGY_START, GROGGY_END);
+            ledger.OnChargeGroggyStarted(in started);
+            Assert.AreEqual(GROGGY_END, ledger.Groggy.GroggyEndServerTime, TIME_EPSILON);
+
+            ledger.OnCastStarted(CAST_ID);
+            Assert.IsTrue(ledger.HasGroggy, "같은 시전의 시작 알림은 그로기를 끝내지 않는다");
+
+            ledger.OnCastStarted(OTHER_ID);
+            Assert.IsFalse(ledger.HasGroggy, "그로기 중에는 선택이 막혀 새 시전이 시작됐으면 그로기는 끝났다");
+            Assert.IsTrue(ledger.IsEmpty);
+        }
+
+        [Test]
+        public void ChargeGroggy_CancelledOtherCast_KeepsAndSameCast_Removes()
+        {
+            var ledger = new BossPhaseEffectLedger();
+            var pending = new BossChargeGroggy(Samples.BOSS_ID, CAST_ID, STRUCTURE_ID, EVENT_TIME, double.NaN, double.NaN);
+            ledger.OnChargeGroggyPending(in pending);
+
+            ledger.OnChargeGroggyCancelled(OTHER_ID);
+            Assert.IsTrue(ledger.HasGroggy);
+
+            ledger.OnChargeGroggyCancelled(CAST_ID);
+            Assert.IsFalse(ledger.HasGroggy);
+        }
+
+        [Test]
+        public void ChargeGroggy_WriteReadReplay_RestoresAfterCharge()
+        {
+            var source = new BossPhaseEffectLedger();
+            BossChargeOutcome charge = Samples.MakeCharge(CAST_ID);
+            source.OnChargeEnded(in charge);
+            var started = new BossChargeGroggy(Samples.BOSS_ID, CAST_ID, STRUCTURE_ID, EVENT_TIME, GROGGY_START, GROGGY_END);
+            source.OnChargeGroggyStarted(in started);
+
+            var target = new BossPhaseEffectLedger();
+            RoundTripGroggy(source, target);
+
+            var listener = new BossEventRecorder();
+            target.Replay(listener, null);
+
+            Assert.AreEqual(1, listener.RestoredCharges.Count);
+            Assert.AreEqual(1, listener.RestoredGroggies.Count);
+            BossChargeGroggy restored = listener.RestoredGroggies[0];
+            Assert.AreEqual(CAST_ID, restored.CastId);
+            Assert.AreEqual(STRUCTURE_ID, restored.StructureId);
+            Assert.AreEqual(EVENT_TIME, restored.CollisionServerTime, TIME_EPSILON);
+            Assert.AreEqual(GROGGY_START, restored.GroggyStartServerTime, TIME_EPSILON);
+            Assert.AreEqual(GROGGY_END, restored.GroggyEndServerTime, TIME_EPSILON);
+        }
+
+        private static void RoundTripGroggy(BossPhaseEffectLedger source, BossPhaseEffectLedger target)
+        {
+            using (NetworkWriterPooled writer = NetworkWriterPool.Get())
+            {
+                source.Write(writer);
+                using (NetworkReaderPooled reader = NetworkReaderPool.Get(writer.ToArraySegment()))
+                {
+                    target.Read(reader);
+                    Assert.AreEqual(0, reader.Remaining, "쓴 만큼 정확히 읽는다");
+                }
+            }
         }
 
         /****************************************
@@ -395,10 +479,10 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, ledger.TrackingAreaCount, "활성된 장판은 기본 기록이 이어 맡는다");
             Assert.AreEqual(OTHER_AREA_ID, ledger.GetTrackingArea(0).Start.AreaId);
 
-            ledger.OnTrackingAreaCancelled(AREA_ID);
+            ledger.OnTrackingAreaCancelled(CAST_ID, AREA_ID);
             Assert.AreEqual(1, ledger.TrackingAreaCount);
 
-            ledger.OnTrackingAreaCancelled(OTHER_AREA_ID);
+            ledger.OnTrackingAreaCancelled(CAST_ID, OTHER_AREA_ID);
             Assert.AreEqual(0, ledger.TrackingAreaCount);
             Assert.IsTrue(ledger.IsEmpty);
         }
@@ -766,7 +850,7 @@ namespace Shinshi.Tests
                 EVENT_TIME, 0.6f);
             ledger.OnMultiDashReaimStarted(in reaim);
             ledger.OnMultiDashDashStarted(dashCast, 1, Samples.DASH_LENGTH, DASH_SECONDS, DASH_SPEED, LATER_TIME);
-            ledger.OnMultiDashDashStopped(dashCast, 1, new Vector3(0f, 0f, STOP_DISTANCE), true);
+            ledger.OnMultiDashDashStopped(dashCast, 1, new Vector3(0f, 0f, STOP_DISTANCE), true, STOP_TIME);
             ledger.OnMultiDashTruncated(dashCast, Samples.DASH_COUNT, 2);
 
             int battlefieldCast = CAST_ID + 2;

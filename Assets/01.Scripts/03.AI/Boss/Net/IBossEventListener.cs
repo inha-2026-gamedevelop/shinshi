@@ -26,8 +26,8 @@ namespace Shinshi.AI
         /// <summary> 돌진 시작, startServerTime부터 speed로 가고 최대 distance에서 멈춘다 </summary>
         void OnDashStarted(int castId, float distance, float seconds, float speed, double startServerTime);
 
-        /// <summary> 돌진 정지 </summary>
-        void OnDashStopped(int castId, Vector3 position, bool stoppedByWall);
+        /// <summary> 돌진 정지, stopServerTime은 서버가 정지를 판정한 틱 시각이나 실행 끝 경계다 </summary>
+        void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime);
 
         /// <summary> 회복까지 정상 종료 </summary>
         void OnFinished(int castId);
@@ -65,8 +65,8 @@ namespace Shinshi.AI
         /// <summary> 빔 한 줄의 예고 시작, 빔 번호가 키다 </summary>
         void OnBeamTelegraphStarted(in BossBeamStart start);
 
-        /// <summary> 활성 전 빔 취소 </summary>
-        void OnBeamCancelled(int beamId);
+        /// <summary> 활성 전 빔 취소, castId는 그 빔을 낸 시전 번호다 </summary>
+        void OnBeamCancelled(int castId, int beamId);
 
         /// <summary> 빔 활성, 활성 순간이 첫 타격이다 </summary>
         void OnBeamActivated(int beamId, double activateServerTime);
@@ -80,8 +80,8 @@ namespace Shinshi.AI
         /// <summary> 별형 빔 구조 하나의 예고 시작, 구조 번호가 키다 </summary>
         void OnStarTelegraphStarted(in BossStarStart start);
 
-        /// <summary> 활성 전 별형 빔 취소 </summary>
-        void OnStarCancelled(int starId);
+        /// <summary> 활성 전 별형 빔 취소, castId는 그 구조를 낸 시전 번호다 </summary>
+        void OnStarCancelled(int castId, int starId);
 
         /// <summary> 별형 빔 활성, 이 서버 시각부터 회전한다 </summary>
         void OnStarActivated(int starId, double activateServerTime);

@@ -203,8 +203,9 @@ namespace Shinshi.AI
             else if (state == EBossAttackState.Recover)
             {
                 // 실행 마지막 틱이 거칠었어도 실행 끝 경계까지의 이동과 타격은 여기서 마무리하고, 그 뒤에 남은 돌진은 버린다
-                AdvanceExecution(Math.Min(serverTime, _executeBoundary));
-                CutRemainingDashes();
+                double boundary = Math.Min(serverTime, _executeBoundary);
+                AdvanceExecution(boundary);
+                CutRemainingDashes(boundary);
             }
         }
 
@@ -385,7 +386,7 @@ namespace Shinshi.AI
             // 다음 돌진이 실행 구간 안에서 시작할 수 없으면 재조준을 보이지 않고 여기서 남은 돌진을 버린다
             if (!IsReached(_executeBoundary, _nextStart))
             {
-                CutRemainingDashes();
+                CutRemainingDashes(_dashEnd);
                 return;
             }
 
@@ -397,8 +398,8 @@ namespace Shinshi.AI
                 Context.Definition.Shape.Width, _spec.ReaimSeconds);
         }
 
-        // 실행이 끝나는 경계에서 아직 달리는 돌진은 그 자리에서 멈추고 남은 돌진은 버린다
-        private void CutRemainingDashes()
+        // 실행이 끝나는 경계에서 아직 달리는 돌진은 그 자리에서 멈추고 남은 돌진은 버린다. stopServerTime은 그 경계 시각이다
+        private void CutRemainingDashes(double stopServerTime)
         {
             if ((!_isExecuting) || _isEnded || IsCancelled)
             {
@@ -408,7 +409,7 @@ namespace Shinshi.AI
             if (_isDashing)
             {
                 _isDashing = false;
-                _listener?.OnDashStopped(Context.CastInstanceId, _dashIndex, _position, false);
+                _listener?.OnDashStopped(Context.CastInstanceId, _dashIndex, _position, false, stopServerTime);
             }
 
             _isEnded = true;
@@ -470,7 +471,7 @@ namespace Shinshi.AI
             {
                 _isStopped = true;
                 _listener?.OnDashStopped(Context.CastInstanceId, _dashIndex, _position,
-                    _maxDistance < (Context.Definition.Shape.Range - STOP_EPSILON));
+                    _maxDistance < (Context.Definition.Shape.Range - STOP_EPSILON), serverTime);
             }
         }
 

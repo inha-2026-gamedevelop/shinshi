@@ -227,7 +227,7 @@ namespace Shinshi.Tests
                 DashStartTime = startServerTime;
             }
 
-            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
                 ++StopCount;
                 StopPosition = position;

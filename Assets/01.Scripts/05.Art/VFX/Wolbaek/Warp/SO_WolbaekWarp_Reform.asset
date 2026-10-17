@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e94f74d9e0c93e4c8163d48ce614e6f, type: 3}
   m_Name: SO_WolbaekWarp_Reform
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWarpSettingsSO
-  _bodySeconds: 0.95
+  _bodySeconds: 0.35
   _impactSeconds: 0.65
   _flowCycle: 1.5
   _petalDrift: 0.65
   _mistOpacity: 0.8
   _confirmationGrace: 0.5
+  _residualSeconds: 1.4

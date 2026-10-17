@@ -37,6 +37,7 @@ namespace Shinshi.Tests
         private const float  DASH_SECONDS  = 0.45f;
         private const float  DASH_SPEED    = 17.7f;
         private const float  STOP_DISTANCE = 5f;
+        private const double STOP_TIME     = 11.5;
         private const float  SIDE_OFFSET   = 1f; // m, 옆으로 비껴 멈춰도 진행 방향 거리만 센다
         private const float  SPEED         = 12f;
         private const float  RADIUS        = 3f;
@@ -111,12 +112,39 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(EBossTelegraphPhase.Execute, ledger.Cast.Phase);
             Assert.Less(ledger.Cast.DashStoppedDistance, 0f, "가는 중이면 음수다");
+            Assert.IsTrue(double.IsNaN(ledger.Cast.DashStoppedServerTime), "가는 중이면 정지 시각이 없다");
 
-            ledger.OnDashStopped(CAST_ID, new Vector3(SIDE_OFFSET, 0f, STOP_DISTANCE), true);
+            ledger.OnDashStopped(CAST_ID, new Vector3(SIDE_OFFSET, 0f, STOP_DISTANCE), true, STOP_TIME);
 
             Assert.AreEqual(STOP_DISTANCE, ledger.Cast.DashStoppedDistance, FLOAT_EPSILON);
             Assert.IsTrue(ledger.Cast.DashStoppedByWall);
             Assert.AreEqual(LENGTH, ledger.Cast.DashDistance, FLOAT_EPSILON);
+            Assert.AreEqual(STOP_TIME, ledger.Cast.DashStoppedServerTime, TIME_EPSILON);
+        }
+
+        [Test]
+        public void WriteRead_StoppedDash_KeepsStopServerTime()
+        {
+            var source = new BossEffectLedger();
+            BossTelegraphStart start = BossTelegraphStart.Dash(BOSS_ID, CAST_ID, PATTERN_ID, Vector3.zero, Vector3.forward,
+                LENGTH, WIDTH, START_TIME, TELEGRAPH);
+            source.OnTelegraphStarted(in start);
+            source.OnDashStarted(CAST_ID, LENGTH, DASH_SECONDS, DASH_SPEED, EXECUTE_TIME);
+            source.OnDashStopped(CAST_ID, new Vector3(0f, 0f, STOP_DISTANCE), true, STOP_TIME);
+
+            var target = new BossEffectLedger();
+            using (NetworkWriterPooled writer = NetworkWriterPool.Get())
+            {
+                source.Write(writer);
+                using (NetworkReaderPooled reader = NetworkReaderPool.Get(writer.ToArraySegment()))
+                {
+                    target.Read(reader);
+                    Assert.AreEqual(0, reader.Remaining, "쓴 만큼 정확히 읽는다");
+                }
+            }
+
+            Assert.AreEqual(STOP_DISTANCE, target.Cast.DashStoppedDistance, FLOAT_EPSILON);
+            Assert.AreEqual(STOP_TIME, target.Cast.DashStoppedServerTime, TIME_EPSILON);
         }
 
         [Test]
@@ -265,7 +293,7 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(1, ledger.StarCount);
 
-            ledger.OnStarCancelled(STAR_ID);
+            ledger.OnStarCancelled(CAST_ID, STAR_ID);
 
             Assert.AreEqual(0, ledger.StarCount, "활성 전에 취소된 별형 빔은 복원에 넣지 않는다");
         }
@@ -507,7 +535,7 @@ namespace Shinshi.Tests
             {
             }
 
-            public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
             }
 
@@ -559,7 +587,7 @@ namespace Shinshi.Tests
             {
             }
 
-            public void OnBeamCancelled(int beamId)
+            public void OnBeamCancelled(int castId, int beamId)
             {
             }
 
@@ -579,7 +607,7 @@ namespace Shinshi.Tests
             {
             }
 
-            public void OnStarCancelled(int starId)
+            public void OnStarCancelled(int castId, int starId)
             {
             }
 

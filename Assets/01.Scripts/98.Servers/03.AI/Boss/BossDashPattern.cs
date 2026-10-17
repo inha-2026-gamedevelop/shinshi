@@ -369,7 +369,7 @@ namespace Shinshi.AI
             {
                 _isStopped = true;
                 _listener?.OnDashStopped(Context.CastInstanceId, _position,
-                    _maxDistance < (Context.Definition.Shape.Range - STOP_EPSILON));
+                    _maxDistance < (Context.Definition.Shape.Range - STOP_EPSILON), serverTime);
             }
         }
 

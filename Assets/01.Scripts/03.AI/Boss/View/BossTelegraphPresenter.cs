@@ -111,6 +111,7 @@ namespace Shinshi.AI
         private readonly HashSet<int>   _cancelledGroupIds   = new HashSet<int>();
         private readonly Queue<int>     _cancelledGroupOrder = new Queue<int>();
 
+        private readonly HashSet<string> _externalVisualPatterns = new HashSet<string>();
         private Func<double> _serverClock;
         private Func<double> _readClock;
         private bool         _isServerBuild;
@@ -121,6 +122,9 @@ namespace Shinshi.AI
 
         /// <summary> 진행 중인 표현 수 </summary>
         public int ActiveCount => _active.Count;
+
+        /// <summary> 재접속 스냅샷을 복원하는 알림 안에서만 참이다. 구독자는 이미 지난 일회성 타격을 다시 만들지 않는 데 쓴다 </summary>
+        public bool IsRestoring { get; private set; }
 
         /// <summary> 단계가 바뀔 때 알린다, 시전 번호와 새 단계. 시험과 진단용이다 </summary>
         public event Action<int, EBossTelegraphPhase> PhaseChanged;
@@ -148,6 +152,31 @@ namespace Shinshi.AI
 
         /// <summary> 별형 빔 표현, 시험과 진단용이다 </summary>
         public BossStarView Stars => _starView;
+
+        // 아래 사건은 서버 알림을 받아 표현을 추가한 순간에만 알린다. 월백 패턴 VFX 표현이 서버 값으로 효과를 부르는 진입점이다
+        /// <summary> 투사체가 추가됐다 </summary>
+        public event Action<BossProjectileStart> ProjectileStarted;
+
+        /// <summary> 투사체가 사라졌다, 서버가 알린 위치다. 취소면 위치는 원점이다 </summary>
+        public event Action<int, EBossProjectileFate, Vector3> ProjectileEnded;
+
+        /// <summary> 장판이 활성됐다 </summary>
+        public event Action<BossAreaStart> AreaStarted;
+
+        /// <summary> 빔 예고가 시작됐다 </summary>
+        public event Action<BossBeamStart> BeamStarted;
+
+        /// <summary> 빔이 서버 확정으로 활성됐다, 빔 번호와 활성 서버 시각 </summary>
+        public event Action<int, double> BeamActivated;
+
+        /// <summary> 별형 빔 예고가 시작됐다 </summary>
+        public event Action<BossStarStart> StarStarted;
+
+        /// <summary> 별형 빔이 서버 확정으로 활성됐다, 별 번호와 활성 서버 시각 </summary>
+        public event Action<int, double> StarActivated;
+
+        /// <summary> 별형 빔이 끝났거나 취소됐다 </summary>
+        public event Action<int, EBossAreaFate> StarEnded;
 
         /****************************************
         *              Unity Event
@@ -215,6 +244,34 @@ namespace Shinshi.AI
         public void SetServerClock(Func<double> serverClock)
         {
             _serverClock = serverClock;
+        }
+
+        /// <summary> 참이면 투사체의 기본 표현을 그리지 않는다, 투사체 기록과 사건은 그대로 유지한다. 다른 표현이 그릴 때 쓴다 </summary>
+        public bool HasExternalProjectileVisual { get; set; }
+
+        /// <summary> 참이면 장판의 기본 표현을 그리지 않는다 </summary>
+        public bool HasExternalAreaVisual { get; set; }
+
+        /// <summary> 참이면 빔의 기본 표현을 그리지 않는다 </summary>
+        public bool HasExternalBeamVisual { get; set; }
+
+        /// <summary> 참이면 별형 빔의 기본 표현을 그리지 않는다 </summary>
+        public bool HasExternalStarVisual
+        {
+            get => (_starView != null) && _starView.HasExternalVisual;
+            set
+            {
+                if (_starView != null)
+                {
+                    _starView.HasExternalVisual = value;
+                }
+            }
+        }
+
+        /// <summary> 다른 표현이 지면 예고를 직접 그리는 패턴을 등록한다. 등록한 패턴은 시전 기록과 단계 알림은 그대로 두고 기본 지면 예고만 그리지 않는다 </summary>
+        public void RegisterExternalVisual(string patternId)
+        {
+            _externalVisualPatterns.Add(patternId);
         }
 
         /// <summary> 예고를 시작한다. 이미 있는 시전 번호나 이미 끝난 시전 번호면 무시한다. 늦게 받았으면 흐른 만큼 건너뛰어 그린다 </summary>
@@ -380,7 +437,17 @@ namespace Shinshi.AI
             }
 
             RetireSameBoss(snapshot.Start.BossId, snapshot.Start.GroupId);
-            return Add(BossTelegraphCast.FromSnapshot(in snapshot), now);
+
+            // 복원 알림을 받는 쪽이 이미 지난 일회성 타격을 다시 만들지 않게 알린다
+            IsRestoring = true;
+            try
+            {
+                return Add(BossTelegraphCast.FromSnapshot(in snapshot), now);
+            }
+            finally
+            {
+                IsRestoring = false;
+            }
         }
 
         /// <summary> 진행 중인 표현의 현재 상태, 복원에 넘길 값이다 </summary>
@@ -422,6 +489,7 @@ namespace Shinshi.AI
             }
 
             AddProjectile(track);
+            ProjectileStarted?.Invoke(start);
             return true;
         }
 
@@ -450,6 +518,7 @@ namespace Shinshi.AI
             }
 
             ProjectileFateChanged?.Invoke(projectileId, fate);
+            ProjectileEnded?.Invoke(projectileId, fate, position);
             return true;
         }
 
@@ -474,6 +543,7 @@ namespace Shinshi.AI
 
             RemoveProjectile(entry);
             ProjectileFateChanged?.Invoke(projectileId, EBossProjectileFate.Cancelled);
+            ProjectileEnded?.Invoke(projectileId, EBossProjectileFate.Cancelled, Vector3.zero);
             return true;
         }
 
@@ -501,6 +571,22 @@ namespace Shinshi.AI
             }
 
             AddProjectile(track);
+
+            // 아직 날고 있는 투사체만 외부 표현에 알린다. 이미 소멸한 투사체의 타격은 지난 일회성 사건이다
+            if (snapshot.Fate == EBossProjectileFate.Flying)
+            {
+                BossProjectileStart start = snapshot.Start;
+                IsRestoring = true;
+                try
+                {
+                    ProjectileStarted?.Invoke(start);
+                }
+                finally
+                {
+                    IsRestoring = false;
+                }
+            }
+
             return true;
         }
 
@@ -557,6 +643,7 @@ namespace Shinshi.AI
             }
 
             AddArea(track);
+            AreaStarted?.Invoke(start);
             return true;
         }
 
@@ -641,6 +728,22 @@ namespace Shinshi.AI
             }
 
             AddArea(track);
+
+            // 지속 시간 안의 장판만 외부 표현에 알린다
+            if (snapshot.Fate == EBossAreaFate.Active)
+            {
+                BossAreaStart start = snapshot.Start;
+                IsRestoring = true;
+                try
+                {
+                    AreaStarted?.Invoke(start);
+                }
+                finally
+                {
+                    IsRestoring = false;
+                }
+            }
+
             return true;
         }
 
@@ -748,7 +851,14 @@ namespace Shinshi.AI
                 track.TryActivate(activateTime);
             }
 
-            return TryAddBeam(track);
+            bool isAdded = TryAddBeam(track);
+
+            if (isAdded)
+            {
+                BeamStarted?.Invoke(start);
+            }
+
+            return isAdded;
         }
 
         /// <summary> 서버가 알린 빔 활성, 서버 확정이 있어야만 지속 빔으로 그린다. 예고가 없으면 활성 시각을 기억해 두었다가 예고가 오면 쓴다. 이미 활성했거나 끝난 빔이면 무시한다 </summary>
@@ -761,7 +871,14 @@ namespace Shinshi.AI
 
             if (TryFindBeam(beamId, out BeamEntry entry))
             {
-                return entry.Track.TryActivate(activateServerTime);
+                bool isActivated = entry.Track.TryActivate(activateServerTime);
+
+                if (isActivated)
+                {
+                    BeamActivated?.Invoke(beamId, activateServerTime);
+                }
+
+                return isActivated;
             }
 
             // 서버 확정 없이 예고가 지나 지운 빔이 뒤늦게 활성되면 예고 때 받은 값으로 이어서 그린다
@@ -861,7 +978,33 @@ namespace Shinshi.AI
                 return false;
             }
 
-            return TryAddBeam(BossBeamTrack.FromSnapshot(in snapshot));
+            bool isAdded = TryAddBeam(BossBeamTrack.FromSnapshot(in snapshot));
+            if (!isAdded)
+            {
+                return false;
+            }
+
+            // 끝나 가는 빔은 외부 표현에 알리지 않는다. 활성 확정까지 담긴 스냅샷은 활성도 함께 알린다
+            if (snapshot.Fate == EBossAreaFate.Active)
+            {
+                BossBeamStart start = snapshot.Start;
+                IsRestoring = true;
+                try
+                {
+                    BeamStarted?.Invoke(start);
+
+                    if (snapshot.IsActivated)
+                    {
+                        BeamActivated?.Invoke(start.BeamId, snapshot.ActivateServerTime);
+                    }
+                }
+                finally
+                {
+                    IsRestoring = false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary> 진행 중인 빔의 현재 상태, 복원에 넘길 값이다 </summary>
@@ -895,13 +1038,27 @@ namespace Shinshi.AI
         /// <summary> 별형 회전 빔 예고를 시작한다. 서버가 확정한 배치와 회전 방향과 속도를 그대로 그리며 활성 확정 전에는 회전하지 않는다 </summary>
         public bool BeginStar(in BossStarStart start)
         {
-            return UseStars() && _starView.Begin(in start);
+            bool isBegun = UseStars() && _starView.Begin(in start);
+
+            if (isBegun)
+            {
+                StarStarted?.Invoke(start);
+            }
+
+            return isBegun;
         }
 
         /// <summary> 서버가 알린 별형 빔 활성, 이 시각부터 서버 시각 기준으로 회전한다 </summary>
         public bool ActivateStar(int starId, double activateServerTime)
         {
-            return UseStars() && _starView.Activate(starId, activateServerTime);
+            bool isActivated = UseStars() && _starView.Activate(starId, activateServerTime);
+
+            if (isActivated)
+            {
+                StarActivated?.Invoke(starId, activateServerTime);
+            }
+
+            return isActivated;
         }
 
         public bool TickStar(int starId, int hitIndex, double roundServerTime)
@@ -911,17 +1068,55 @@ namespace Shinshi.AI
 
         public bool EndStar(int starId, EBossAreaFate fate)
         {
-            return UseStars() && _starView.End(starId, fate);
+            bool isEnded = UseStars() && _starView.End(starId, fate);
+
+            if (isEnded)
+            {
+                StarEnded?.Invoke(starId, fate);
+            }
+
+            return isEnded;
         }
 
         public bool CancelStar(int starId)
         {
-            return UseStars() && _starView.Cancel(starId);
+            bool isCancelled = UseStars() && _starView.Cancel(starId);
+
+            if (isCancelled)
+            {
+                StarEnded?.Invoke(starId, EBossAreaFate.Cancelled);
+            }
+
+            return isCancelled;
         }
 
         public bool RestoreStar(in BossStarSnapshot snapshot)
         {
-            return UseStars() && _starView.Restore(in snapshot);
+            if (!(UseStars() && _starView.Restore(in snapshot)))
+            {
+                return false;
+            }
+
+            if (snapshot.Fate == EBossAreaFate.Active)
+            {
+                BossStarStart start = snapshot.Start;
+                IsRestoring = true;
+                try
+                {
+                    StarStarted?.Invoke(start);
+
+                    if (snapshot.IsActivated)
+                    {
+                        StarActivated?.Invoke(start.StarId, snapshot.ActivateServerTime);
+                    }
+                }
+                finally
+                {
+                    IsRestoring = false;
+                }
+            }
+
+            return true;
         }
 
         // 별형 표현이 연결돼 있으면 서버 시각 읽기를 맞춰 준다
@@ -1113,6 +1308,11 @@ namespace Shinshi.AI
         {
             BossTelegraphCast cast = entry.Cast;
 
+            if (_externalVisualPatterns.Contains(cast.PatternId))
+            {
+                return;
+            }
+
             if ((cast.Shape == EBossTelegraphShape.Fan) || (cast.Shape == EBossTelegraphShape.Circle))
             {
                 if (_sectorPool == null)
@@ -1277,7 +1477,7 @@ namespace Shinshi.AI
                 Rotation = Quaternion.LookRotation(track.Direction, Vector3.up)
             };
 
-            if (_rectPool != null)
+            if ((_rectPool != null) && (!HasExternalProjectileVisual))
             {
                 entry.Rect = _rectPool.Acquire();
                 if (entry.Rect != null)
@@ -1375,7 +1575,7 @@ namespace Shinshi.AI
         {
             AreaEntry entry = new AreaEntry { Track = track };
 
-            if (_areaPool != null)
+            if ((_areaPool != null) && (!HasExternalAreaVisual))
             {
                 entry.Visual = _areaPool.Acquire();
                 if (entry.Visual != null)
@@ -1489,7 +1689,7 @@ namespace Shinshi.AI
             }
 
             BeamEntry entry = new BeamEntry { Track = track };
-            if (_beamPool != null)
+            if ((_beamPool != null) && (!HasExternalBeamVisual))
             {
                 entry.Visual = _beamPool.Acquire();
                 if (entry.Visual != null)

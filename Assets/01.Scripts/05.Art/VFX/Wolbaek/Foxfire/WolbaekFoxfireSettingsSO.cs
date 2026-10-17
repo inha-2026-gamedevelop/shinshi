@@ -18,6 +18,7 @@ namespace Shinshi.Art
         [SerializeField, Min(0f)] private float _petalDriftDistance = 0.12f;
         [SerializeField, Min(0f)] private float _impactPetalRiseSpeed = 0.45f;
         [SerializeField, Min(0.001f)] private float _tailLagSeconds = 1.05f;
+        [SerializeField, Min(0f)] private float _tailGrowSeconds = 0f;
         [SerializeField, Min(0.001f)] private float _teleportResetDistance = 4f;
         [SerializeField, Min(0f)] private float _flowBendDistance = 0.14f;
         [SerializeField, Min(0f)] private float _impactFragmentSpread = 0.45f;
@@ -46,6 +47,7 @@ namespace Shinshi.Art
         public float PetalDriftDistance        => _petalDriftDistance;
         public float ImpactPetalRiseSpeed      => _impactPetalRiseSpeed;
         public float TailLagSeconds            => _tailLagSeconds;
+        public float TailGrowSeconds           => _tailGrowSeconds;
         public float TeleportResetDistance     => _teleportResetDistance;
         public float FlowBendDistance          => _flowBendDistance;
         public float ImpactFragmentSpread     => _impactFragmentSpread;

@@ -472,7 +472,7 @@ namespace Shinshi.Tests
         private sealed class BossChainFanNoGridListener : IBossGridBeamListener
         {
             public void OnGridStarted(int castInstanceId, in BossGridBeamLayout layout, double castStartServerTime,
-                float firstStrikeSeconds, float strikeIntervalSeconds, float axisGapSeconds)
+                float firstStrikeSeconds, float strikeIntervalSeconds, float axisGapSeconds, int firstLineId)
             {
             }
 
