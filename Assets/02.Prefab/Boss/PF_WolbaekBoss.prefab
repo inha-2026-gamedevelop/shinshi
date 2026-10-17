@@ -1,5 +1,56 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &457011537323626831
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 504288607902876658}
+  m_Layer: 0
+  m_Name: PatternVfx
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &504288607902876658
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457011537323626831}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2980761400291396289}
+  - {fileID: 3115792563440964968}
+  - {fileID: 2106204339462081911}
+  - {fileID: 4227149662251084075}
+  - {fileID: 6582251880689015203}
+  - {fileID: 4297467743635320944}
+  - {fileID: 6121331018263783603}
+  - {fileID: 4442437226263759092}
+  - {fileID: 7435328367270170960}
+  - {fileID: 8064122286123153016}
+  - {fileID: 973419452065703733}
+  - {fileID: 1032227354138883325}
+  - {fileID: 1034379495883666561}
+  - {fileID: 9106215225208937213}
+  - {fileID: 4763378815449748754}
+  - {fileID: 5497868177008790759}
+  - {fileID: 5982841572530068498}
+  - {fileID: 3627883953788080397}
+  - {fileID: 4519230318865498025}
+  - {fileID: 3753472686404461903}
+  m_Father: {fileID: 3934517869569767221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1289852489252288786
 GameObject:
   m_ObjectHideFlags: 0
@@ -10,6 +61,13 @@ GameObject:
   m_Component:
   - component: {fileID: 3934517869569767221}
   - component: {fileID: 2897417657671704511}
+  - component: {fileID: 1550198058047714701}
+  - component: {fileID: 2573852722824582184}
+  - component: {fileID: 3943905421948782661}
+  - component: {fileID: 4303203048784122037}
+  - component: {fileID: 3000000000000000001}
+  - component: {fileID: 7128344566713420138}
+  - component: {fileID: 3000000000000000002}
   m_Layer: 0
   m_Name: PF_WolbaekBoss
   m_TagString: Untagged
@@ -31,6 +89,10 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5516574155397790334}
+  - {fileID: 6142480743608650982}
+  - {fileID: 8710729930598743386}
+  - {fileID: 2164354355392623783}
+  - {fileID: 504288607902876658}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2897417657671704511
@@ -43,13 +105,169 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 858f267480844724fa82143eacd8cabe, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossView
   _pivot: {fileID: 5516574155397790334}
   _animator: {fileID: 2581301787005299077}
+  _warp: {fileID: 1550198058047714701}
+  _patternVfx: {fileID: 2573852722824582184}
+  _dissolve: {fileID: 3943905421948782661}
+  _appearEffectPrefab: {fileID: 1238879637261762528, guid: 81d022a27375a5b4697abb622e601dd4, type: 3}
   _gatherSideArms: {x: -6, y: 60, z: 25}
   _gatherCircle: {x: 8, y: 25, z: -10}
   _gatherThrow: {x: -10, y: 20, z: 55}
+--- !u!114 &1550198058047714701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6649846251db7b84e8954544a3b3a9c5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekWarpView
+  _bossView: {fileID: 2897417657671704511}
+  _breakup: {fileID: 1874501517624299581}
+  _reform: {fileID: 1994867009346206785}
+  _landing: {fileID: 5935708611767889918}
+--- !u!114 &2573852722824582184
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1edfe6b2cf9eddc4fb90a828f88ed18b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekPatternVfxView
+  _animator: {fileID: 2581301787005299077}
+  _flights:
+  - {fileID: 3023273385589930733}
+  - {fileID: 2131227519451168091}
+  - {fileID: 6625290541652765071}
+  - {fileID: 6078258273656182943}
+  - {fileID: 7459806318340891004}
+  - {fileID: 948955804315064089}
+  - {fileID: 1077419385074582701}
+  - {fileID: 4806451690191103294}
+  _impacts:
+  - {fileID: 3083873927977776197}
+  - {fileID: 4276238297583618054}
+  - {fileID: 4202480841509753181}
+  - {fileID: 4347995871421114841}
+  - {fileID: 7933124098080216917}
+  - {fileID: 1126655704357426640}
+  - {fileID: 9200392981265447888}
+  - {fileID: 5601848817961889226}
+  _release: {fileID: 6956968949780649067}
+  _sustain: {fileID: 5153472707393830086}
+  _star: {fileID: 8190114912778715410}
+  _grid: {fileID: 133383588302467392}
+  _dashTelegraphEffect: {fileID: 1754709177373251933, guid: ca109cf3c4825be4b8b9a9982c819829, type: 3}
+  _fanEffect: {fileID: 3346786265420216650, guid: 27e72fed3f0b5c14babc12d0b81c0c98, type: 3}
+  _circleEffect: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
+  _zoneEffect: {fileID: 1526207556128958582, guid: 173b4366ef4cc864eb43fbc9ee03c34c, type: 3}
+--- !u!114 &3943905421948782661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56f9c5033edc43c5ac63a811b07ab44e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekDissolveView
+  _controllers: []
+  _burnMaterials:
+  - {fileID: 2100000, guid: 3bfc4ef8c35771444be5fc67969a9ecc, type: 2}
+  - {fileID: 2100000, guid: 8f337920c921d444dbd3497c317e3555, type: 2}
+  - {fileID: 2100000, guid: 6b5df5801f5520846a81151c0a6b63de, type: 2}
+  - {fileID: 2100000, guid: c1aaa4a5a26aab043ba0948c9856b9f7, type: 2}
+  - {fileID: 2100000, guid: 43e17e5d4ebaee4418216294d0abfcb8, type: 2}
+  - {fileID: 2100000, guid: ba725ad567232974d8e55e7c61e77bfd, type: 2}
+  - {fileID: 2100000, guid: 5ff7324b75e46a747a2a51f8931ff172, type: 2}
+  - {fileID: 2100000, guid: 03e98a238e298164abf6a626975329b6, type: 2}
+--- !u!114 &4303203048784122037
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b38989ed8d19e704eaff1f444f915990, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekTalismanView
+  _bossView: {fileID: 2897417657671704511}
+  _animator: {fileID: 2581301787005299077}
+  _structurePrefabs:
+  - {fileID: 2670286049662564468, guid: 947845629ca1a384f956cd28015d88a4, type: 3}
+  - {fileID: 2911831572781800030, guid: 6781b2be8eb473840ac5268c96393f9d, type: 3}
+  - {fileID: 4665761078757613200, guid: 59b9f5a604fcd5945be7bfc783c48bd9, type: 3}
+  - {fileID: 8106308538555630352, guid: 83da97017db231b4bba53752bfb9eb5b, type: 3}
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _ringEffectPrefab: {fileID: 7755711838538548615, guid: 5676a61314787f947822701233c8669c, type: 3}
+  _lineEffectPrefab: {fileID: 1033706568510610358, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+--- !u!114 &3000000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95696c6a2e65419c8ac75672189abd23, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekColorWardView
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _gatherPrefab: {fileID: 7004568119999708516, guid: 0a3357f39d15c7a409ecc42c799cb5ef, type: 3}
+  _redWardPrefab: {fileID: 1272824891276550453, guid: 1ce921dcf38f2e04ab8477238bd28633, type: 3}
+  _blueWardPrefab: {fileID: 1807744419520374344, guid: 1264c47f5d6f1b04e9726e59b13fbfae, type: 3}
+  _redLinkPrefab: {fileID: 884514136964743, guid: 041e207b2fdae854a99cb4dcd41b1ae0, type: 3}
+  _blueLinkPrefab: {fileID: 763579330733141528, guid: ee8da2184d88d364d8ab720171bd912f, type: 3}
+  _strikeTelegraphPrefab: {fileID: 280056518885622441, guid: 93583d4c2dc1a5c4ea9fb96bae28b8b2, type: 3}
+  _strikePrefab: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
+--- !u!114 &7128344566713420138
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 404d44155d9096b4fba42c2a9b208545, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekFoxfireSealView
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _corePrefab: {fileID: 2008495056718390370, guid: 464da5e840389df4489375b453d8e777, type: 3}
+  _dropPrefab: {fileID: 5375477807891639723, guid: fa0c4664c20805b40b437f8e55e7f13a, type: 3}
+  _sweepPrefab: {fileID: 3346786265420216650, guid: 27e72fed3f0b5c14babc12d0b81c0c98, type: 3}
+--- !u!114 &3000000000000000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30b5c6043c8a45ccb44fe244022d773a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekFinalAreaView
+  _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+  _foxfirePrefab: {fileID: 4460296218332427879, guid: 0a5b5eafeccd22a4daa6bc81857c5609, type: 3}
+  _floorTelegraphPrefab: {fileID: 280056518885622441, guid: 93583d4c2dc1a5c4ea9fb96bae28b8b2, type: 3}
+  _floorCollapsePrefab: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
+  _redLockPrefab: {fileID: 3818512665175147759, guid: 859531144da1a6942891dc37fa8fe52f, type: 3}
 --- !u!1 &5490748374979100770
 GameObject:
   m_ObjectHideFlags: 0
@@ -82,6 +300,1101 @@ Transform:
   - {fileID: 8444966835970241535}
   m_Father: {fileID: 3934517869569767221}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &971840905654126989
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3934517869569767221}
+    m_Modifications:
+    - target: {fileID: 1378000902524995575, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_Name
+      value: Warp_Reform
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+--- !u!114 &1994867009346206785 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1644830767786538444, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+  m_PrefabInstance: {fileID: 971840905654126989}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10cd8751cc75c1043868360208ed1fdd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWarpPlayer
+--- !u!4 &8710729930598743386 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8475236425074619607, guid: 966423ed48ef1354d9fc4bcc52d1303f, type: 3}
+  m_PrefabInstance: {fileID: 971840905654126989}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1141469948367311435
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight7
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &4763378815449748754 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1141469948367311435}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4806451690191103294 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1141469948367311435}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &1627312545031970554
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &6582251880689015203 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1627312545031970554}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6625290541652765071 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1627312545031970554}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &1671569753135667911
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact5
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &1032227354138883325 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 1671569753135667911}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1126655704357426640 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 1671569753135667911}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &1819152108633862122
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight3
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!114 &6078258273656182943 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1819152108633862122}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!4 &6121331018263783603 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 1819152108633862122}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1905112064810135177
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3934517869569767221}
+    m_Modifications:
+    - target: {fileID: 2776616617909379349, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_Name
+      value: Warp_Breakup
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+--- !u!114 &1874501517624299581 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 32581169471880884, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+  m_PrefabInstance: {fileID: 1905112064810135177}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10cd8751cc75c1043868360208ed1fdd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWarpPlayer
+--- !u!4 &6142480743608650982 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5714549942839222895, guid: 6adf6b023b0febc46962e9092538e8aa, type: 3}
+  m_PrefabInstance: {fileID: 1905112064810135177}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2058849404567019161
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3226807998348431418, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+      propertyPath: m_Name
+      value: BeamGrid
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+--- !u!114 &133383588302467392 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2110885350038532057, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+  m_PrefabInstance: {fileID: 2058849404567019161}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
+--- !u!4 &3753472686404461903 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2919884130746973142, guid: d74f4f458f0905c4ebb076a4e39fb927, type: 3}
+  m_PrefabInstance: {fileID: 2058849404567019161}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2504567358359002698
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!114 &4202480841509753181 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 2504567358359002698}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!4 &4297467743635320944 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 2504567358359002698}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2578439027496617745
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &4227149662251084075 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 2578439027496617745}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4276238297583618054 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 2578439027496617745}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &2650117159522379470
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact3
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!114 &4347995871421114841 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 2650117159522379470}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!4 &4442437226263759092 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 2650117159522379470}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &3090081587068491273
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight4
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &7435328367270170960 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 3090081587068491273}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7459806318340891004 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 3090081587068491273}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &3628821917531650898
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!114 &3083873927977776197 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 3628821917531650898}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!4 &3115792563440964968 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 3628821917531650898}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &4634200446546976876
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight5
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!114 &948955804315064089 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 4634200446546976876}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!4 &973419452065703733 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 4634200446546976876}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &4870468993189721048
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight6
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &1034379495883666561 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 4870468993189721048}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1077419385074582701 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 4870468993189721048}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &5834139149593037358
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &2106204339462081911 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 5834139149593037358}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2131227519451168091 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 5834139149593037358}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
 --- !u!1001 &5986907257307175852
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -161,3 +1474,587 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2749246319921293395, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
   m_PrefabInstance: {fileID: 5986907257307175852}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &6137833861727085277
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact7
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &5497868177008790759 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 6137833861727085277}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5601848817961889226 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 6137833861727085277}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &6710030864921484467
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 3558519868465093142, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_Name
+      value: BeamSustain
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+--- !u!4 &3627883953788080397 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8018101380141911486, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+  m_PrefabInstance: {fileID: 6710030864921484467}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5153472707393830086 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1916846355363160181, guid: b97ea249908d0cb4da8566b58d3901be, type: 3}
+  m_PrefabInstance: {fileID: 6710030864921484467}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
+--- !u!1001 &7246416759075884440
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8907481257599260122, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+      propertyPath: m_Name
+      value: Flight0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+--- !u!4 &2980761400291396289 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5606342811553580889, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 7246416759075884440}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3023273385589930733 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5576760937112483701, guid: ba4169c67060ab34792c769d4fe25c57, type: 3}
+  m_PrefabInstance: {fileID: 7246416759075884440}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &7439498099246429383
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact6
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!4 &9106215225208937213 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 7439498099246429383}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &9200392981265447888 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 7439498099246429383}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!1001 &7986123229301903325
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 873246452727580880, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_Name
+      value: BeamRelease
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+--- !u!4 &5982841572530068498 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4454968734629565391, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+  m_PrefabInstance: {fileID: 7986123229301903325}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6956968949780649067 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1033706568510610358, guid: 6a049864c7331ba47bb9272f0abe831d, type: 3}
+  m_PrefabInstance: {fileID: 7986123229301903325}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer
+--- !u!1001 &8541123854930384962
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189072953638137546, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+      propertyPath: m_Name
+      value: Impact4
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+--- !u!114 &7933124098080216917 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1769972589890113303, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 8541123854930384962}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2e2907c29ecf324cab80ac5aa23ec2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekFoxfirePlayer
+--- !u!4 &8064122286123153016 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1828934903527632442, guid: fa16c2982e34a084294d066c28a5a620, type: 3}
+  m_PrefabInstance: {fileID: 8541123854930384962}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &8626183050481248178
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3934517869569767221}
+    m_Modifications:
+    - target: {fileID: 710935769119523207, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_Name
+      value: Warp_Landing
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+--- !u!4 &2164354355392623783 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7619825682810475285, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+  m_PrefabInstance: {fileID: 8626183050481248178}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5935708611767889918 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2731860125790292044, guid: 4ea9c4bf2e17e2d42a13f19a157eb1d4, type: 3}
+  m_PrefabInstance: {fileID: 8626183050481248178}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10cd8751cc75c1043868360208ed1fdd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekWarpPlayer
+--- !u!1001 &8950375824522055669
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 504288607902876658}
+    m_Modifications:
+    - target: {fileID: 4142500908610037942, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_Name
+      value: BeamStar
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+--- !u!4 &4519230318865498025 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4792277933660483676, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+  m_PrefabInstance: {fileID: 8950375824522055669}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8190114912778715410 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 981570840521838311, guid: da2e10b5ebed9d54989a3ad07ab6977f, type: 3}
+  m_PrefabInstance: {fileID: 8950375824522055669}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9215e6921d5a5064fbd99c35c46a838b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.WolbaekBeamPlayer

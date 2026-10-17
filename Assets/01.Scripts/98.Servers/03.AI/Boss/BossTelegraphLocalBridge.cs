@@ -98,8 +98,10 @@ namespace Shinshi.AI
         void IBossCircleTelegraphListener.OnTelegraphStarted(int castInstanceId, Vector3 center, float radius,
             float telegraphSeconds)
         {
-            string patternId = (_activePatternId != null) && (_activePatternId() == WolbaekPatternFactory.P2_P06_ID)
-                ? WolbaekPatternFactory.P2_P06_ID
+            // 서버는 활성 패턴 ID를 그대로 싣는다. 대역도 2페이즈 P06과 P07은 자기 ID를 실어야 화면이 P03으로 오인하지 않는다
+            string activeId  = (_activePatternId != null) ? _activePatternId() : null;
+            string patternId = ((activeId == WolbaekPatternFactory.P2_P06_ID) || (activeId == WolbaekPatternFactory.P2_P07_ID))
+                ? activeId
                 : WolbaekPatternFactory.P03_ID;
             Begin(BossTelegraphStart.Circle(Boss, castInstanceId, patternId, center, radius, Now, telegraphSeconds));
         }

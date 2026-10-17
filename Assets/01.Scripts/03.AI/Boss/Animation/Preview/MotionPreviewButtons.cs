@@ -17,6 +17,7 @@ namespace Shinshi.AI
         ****************************************/
 
         private const string HEADER_PREFIX    = "---";
+        private const string PATTERN_PREFIX   = "@";
         private const char   LABEL_SEPARATOR  = '|';
         private const char   CHAIN_SEPARATOR  = '>';
         private const string LABEL_JOIN       = "  -  ";
@@ -46,6 +47,8 @@ namespace Shinshi.AI
         [FormerlySerializedAs("states")]
         [SerializeField] private string[] _states;
 
+        [SerializeField] private PatternMotionPreview _patternPlayer;
+
         private static GUIStyle s_headerStyle;
 
         private Coroutine _running;
@@ -59,6 +62,11 @@ namespace Shinshi.AI
             if (_animator == null)
             {
                 _animator = GetComponentInChildren<Animator>();
+            }
+
+            if (_patternPlayer == null)
+            {
+                _patternPlayer = GetComponent<PatternMotionPreview>();
             }
         }
 
@@ -95,6 +103,18 @@ namespace Shinshi.AI
                 return;
             }
 
+            if (entry.StartsWith(PATTERN_PREFIX))
+            {
+                string pattern = entry.Substring(PATTERN_PREFIX.Length);
+
+                if (GUI.Button(rect, pattern))
+                {
+                    PlayPattern(pattern);
+                }
+
+                return;
+            }
+
             string label = entry;
             string state = entry;
             int    bar   = entry.IndexOf(LABEL_SEPARATOR);
@@ -123,8 +143,30 @@ namespace Shinshi.AI
             return s_headerStyle;
         }
 
+        // 확정한 시작 지연과 배속이 들어 있는 패턴 재생으로 넘긴다, 이어 재생 중인 클립 체인은 끊는다
+        private void PlayPattern(string pattern)
+        {
+            if (_patternPlayer == null)
+            {
+                return;
+            }
+
+            if (_running != null)
+            {
+                StopCoroutine(_running);
+                _running = null;
+            }
+
+            _patternPlayer.PlayByLabel(pattern);
+        }
+
         private void Play(string entry)
         {
+            if (_patternPlayer != null)
+            {
+                _patternPlayer.StopPlaying();
+            }
+
             if (_running != null)
             {
                 StopCoroutine(_running);

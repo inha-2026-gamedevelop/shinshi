@@ -66,6 +66,9 @@ namespace Shinshi.AI
         /// <summary> 빌려줄 수 있는 표현 수, 시험용이다 </summary>
         public int FreeCount => _free.Count;
 
+        /// <summary> 참이면 기본 별형 표현을 그리지 않고 서버 사건 기록만 유지한다, 다른 표현이 그릴 때 쓴다 </summary>
+        public bool HasExternalVisual { get; set; }
+
         /// <summary> 소멸이 확인될 때 알린다, 구조 번호와 이유. 시험과 진단용이다 </summary>
         public event Action<int, EBossAreaFate> FateChanged;
 
@@ -321,7 +324,7 @@ namespace Shinshi.AI
             }
 
             Entry entry = new Entry { Track = track };
-            if (_free.Count > 0)
+            if ((_free.Count > 0) && (!HasExternalVisual))
             {
                 entry.Visual = _free.Pop();
                 entry.Visual.gameObject.SetActive(true);
