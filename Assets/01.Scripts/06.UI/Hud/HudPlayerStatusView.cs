@@ -23,6 +23,7 @@ namespace Shinshi.UI
         ****************************************/
 
         private const string VALUE_FORMAT = "{0:N0} / {1:N0}";
+        private const float TRAIL_HIDE_EPSILON = 0.001f;
 
         [Header("레벨")]
         [SerializeField] private TMP_Text _levelText = null;
@@ -31,10 +32,10 @@ namespace Shinshi.UI
         [SerializeField] private RectTransform _hpFill = null;
         [SerializeField] private TMP_Text      _hpText = null;
 
-        [Header("HP 피해 잔상 (맞은 만큼 노랗게 남았다가 서서히 줄어든다)")]
-        [SerializeField] private RectTransform _hpTrail         = null; // 채움 칸 뒤에 겹쳐 둔 노란 칸
+        [Header("HP 피해 잔상 (맞은 만큼 하얗게 남았다가 서서히 줄어든다)")]
+        [SerializeField] private RectTransform _hpTrail         = null; // 채움 칸 뒤에 겹쳐 둔 하얀 칸
         [SerializeField, Min(0f)] private float _trailDelay     = 0.35f; // 초, 맞은 뒤 줄어들기 시작하기까지
-        [SerializeField, Min(0f)] private float _trailDuration  = 0.8f;  // 초, 노란 칸이 다 줄어드는 시간
+        [SerializeField, Min(0f)] private float _trailDuration  = 0.8f;  // 초, 하얀 칸이 다 줄어드는 시간
 
         [Header("MP")]
         [SerializeField] private RectTransform _mpFill = null;
@@ -48,6 +49,7 @@ namespace Shinshi.UI
         private int _mpMax     = -1;
 
         private Tween _trailTween = null;
+        private float _hpRatio    = 0f;
 
         /****************************************
         *                Methods
@@ -135,8 +137,9 @@ namespace Shinshi.UI
             ApplyTrail(current, max, isDamaged);
         }
 
-        // 줄어든 만큼은 노란 칸이 이전 길이에 그대로 남아 있다가, 잠깐 있다가 새 길이까지 줄어든다.
-        // 연달아 맞으면 지금 길이에서 이어서 줄여 잔상이 끊기지 않는다. 늘거나 최대치가 바뀌면 바로 맞춘다
+        // 줄어든 만큼은 하얀 칸이 이전 길이에 그대로 남아 있다가, 잠깐 있다가 새 길이까지 줄어든다.
+        // 연달아 맞으면 지금 길이에서 이어서 줄여 잔상이 끊기지 않는다. 늘거나 최대치가 바뀌면 바로 맞춘다.
+        // 잔상이 채움보다 길 때만 켠다. 같은 길이로 겹쳐 두면 채움 가장자리의 반투명 픽셀 뒤로 잔상 색이 비쳐 튀어나와 보인다
         private void ApplyTrail(int current, int max, bool isDamaged)
         {
             if (_hpTrail == null)
@@ -148,12 +151,14 @@ namespace Shinshi.UI
             _trailTween = null;
 
             float ratio = (max > 0) ? Mathf.Clamp01((float)current / max) : 0f;
+            _hpRatio = ratio;
             if (!isDamaged)
             {
                 SetTrailRatio(ratio);
                 return;
             }
 
+            _hpTrail.gameObject.SetActive(_hpTrail.anchorMax.x > ratio + TRAIL_HIDE_EPSILON);
             _trailTween = DOTween.To(() => _hpTrail.anchorMax.x, SetTrailRatio, ratio, _trailDuration)
                 .SetDelay(_trailDelay)
                 .SetEase(Ease.OutQuad)
@@ -165,6 +170,7 @@ namespace Shinshi.UI
             Vector2 anchorMax = _hpTrail.anchorMax;
             anchorMax.x = ratio;
             _hpTrail.anchorMax = anchorMax;
+            _hpTrail.gameObject.SetActive(ratio > _hpRatio + TRAIL_HIDE_EPSILON);
         }
 
         public void SetMp(int current, int max)
