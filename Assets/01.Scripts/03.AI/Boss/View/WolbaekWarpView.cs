@@ -15,7 +15,8 @@ namespace Shinshi.AI
     //   t=1.4  모델 표시
     //   t=1.5  서버 타격 확정 사건(OnStruck)을 받은 경우에만 충격파를 재생한다. 예정 시각만으로 재생하지 않는다
     // 시험 씬의 t=2.5 출발 위치 복귀는 시험 전용이라 옮기지 않는다, 모델은 착지 위치에 남는다
-    // 서버 사건에는 출발 위치가 없다. 시전 직전에 화면에 있던 안정 위치를 쓰고, 알 수 없으면(재접속 등) 분해 없이 착지 위치에 모델을 보인다
+    // 출발 위치는 서버가 워프 직전 몸체 위치를 원형 예고보다 먼저 보낸다(SetDeparture). 받지 못했을 때만 시전 직전에 화면에 있던 안정 위치를 쓰고,
+    // 둘 다 없으면 분해 없이 착지 위치에 모델을 보인다. 재접속 복원은 예고 복원 뒤에 출발 위치가 오므로 공중제비 구간이면 그때 붙잡는다
     /// <summary> 월백 워프 후 충격파의 분해, 재결합, 착지 예고, 충격파 확정을 서버 시각에 맞춰 호출하는 표현 </summary>
     public sealed class WolbaekWarpView : ClientView
     {
@@ -43,6 +44,9 @@ namespace Shinshi.AI
         private uint      _breakupId;
         private uint      _reformId;
         private uint      _landingId;
+        private int       _serverDepartureCastId;
+        private Vector3   _serverDeparture;
+        private bool      _hasServerDeparture;
 
         /****************************************
         *              Properties
@@ -108,6 +112,25 @@ namespace Shinshi.AI
             }
         }
 
+        /// <summary> 서버가 알린 워프 직전 출발 위치, 예고보다 먼저 오면 다음 시작에 쓰고 진행 중인 같은 시전이면 지금 붙잡는다 </summary>
+        public void SetDeparture(int castId, Vector3 departure, double serverNow)
+        {
+            _serverDepartureCastId = castId;
+            _serverDeparture       = departure;
+            _hasServerDeparture    = true;
+
+            if ((_bossView == null) || (!_isCasting) || (_castId != castId) || (_hasDeparture) || (_didShow)
+                || (WolbaekMotionPlan.ResolveWarpStage(serverNow - _castStart) != WolbaekMotionPlan.EWarpStage.Somersault))
+            {
+                return;
+            }
+
+            _departure      = departure;
+            _hasDeparture   = true;
+            _standingBounds = CalculateBounds();
+            _bossView.BeginPositionHold(_departure);
+        }
+
         /// <summary> 시전이 정상 종료되거나 취소됐다, 취소면 남은 효과를 끊는다. 모델은 항상 보이게 하고 서버 위치를 따른다 </summary>
         public void OnCastEnded(int castId, bool isCancelled)
         {
@@ -160,8 +183,16 @@ namespace Shinshi.AI
             _landingId = _landing.PlayLandedWarning((ulong)cast.CastId, _landed, cast.Length, _castStart,
                 _castStart + _telegraphSeconds, serverNow);
 
-            _hasDeparture = _bossView.TryGetStablePosition(out _departure)
-                && (WolbaekMotionPlan.ResolveWarpStage(serverNow - _castStart) == WolbaekMotionPlan.EWarpStage.Somersault);
+            bool isSomersault = WolbaekMotionPlan.ResolveWarpStage(serverNow - _castStart) == WolbaekMotionPlan.EWarpStage.Somersault;
+            if ((_hasServerDeparture) && (_serverDepartureCastId == _castId))
+            {
+                _departure    = _serverDeparture;
+                _hasDeparture = isSomersault;
+            }
+            else
+            {
+                _hasDeparture = _bossView.TryGetStablePosition(out _departure) && isSomersault;
+            }
 
             if (_hasDeparture)
             {
@@ -260,6 +291,8 @@ namespace Shinshi.AI
         public void Reset()
         {
             Cancel();
+            _hasServerDeparture    = false;
+            _serverDepartureCastId = 0;
         }
 
         // 진행 중인 시전을 끊고 모델을 보이게 한다. 새 시전이 시작될 때와 비활성화 때 부른다

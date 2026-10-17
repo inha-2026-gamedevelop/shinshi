@@ -166,6 +166,7 @@ namespace Shinshi.Tests
             public List<float>                 FirstStrikes  = new List<float>();
             public List<float>                 Intervals     = new List<float>();
             public List<float>                 AxisGaps      = new List<float>();
+            public List<int>                   FirstLineIds  = new List<int>();
             public List<Telegraph>             Telegraphs    = new List<Telegraph>();
             public List<Strike>                Strikes       = new List<Strike>();
             public List<TimelineEntry>         Timeline      = new List<TimelineEntry>();
@@ -174,7 +175,7 @@ namespace Shinshi.Tests
             public List<EBossInterruptReason>  CancelReasons = new List<EBossInterruptReason>();
 
             public void OnGridStarted(int castInstanceId, in BossGridBeamLayout layout, double castStartServerTime,
-                float firstStrikeSeconds, float strikeIntervalSeconds, float axisGapSeconds)
+                float firstStrikeSeconds, float strikeIntervalSeconds, float axisGapSeconds, int firstLineId)
             {
                 StartedCasts.Add(castInstanceId);
                 StartedLayouts.Add(layout);
@@ -182,6 +183,7 @@ namespace Shinshi.Tests
                 FirstStrikes.Add(firstStrikeSeconds);
                 Intervals.Add(strikeIntervalSeconds);
                 AxisGaps.Add(axisGapSeconds);
+                FirstLineIds.Add(firstLineId);
             }
 
             public void OnLineTelegraphed(int castInstanceId, int lineId, EBossGridBeamAxis axis, int lineIndex,
@@ -984,6 +986,23 @@ namespace Shinshi.Tests
                 Assert.IsTrue(ids.Add(r.Pattern.GetLineId(k)), "줄 번호 " + k);
                 Assert.AreNotEqual(CombatIds.NONE, r.Pattern.GetLineId(k));
             }
+        }
+
+        // 클라이언트 복원은 시작 알림의 첫 줄 번호에 발사 순서를 더해 줄 번호를 만든다
+        [Test]
+        public void Start_FirstLineId_IsTheFirstLineAndTheRestFollowInFiringOrder()
+        {
+            Run r = StandardRun();
+            r.Start(10);
+
+            Assert.AreEqual(1, r.Listener.FirstLineIds.Count);
+            int first = r.Listener.FirstLineIds[0];
+            for (int k = 0; k < TOTAL_LINES; ++k)
+            {
+                Assert.AreEqual(first + k, r.Pattern.GetLineId(k), "발사 순서 " + k);
+            }
+
+            Assert.AreEqual(first, r.Listener.Telegraphs[0].LineId);
         }
 
         /****************************************

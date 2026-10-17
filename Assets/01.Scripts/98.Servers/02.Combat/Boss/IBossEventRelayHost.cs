@@ -20,6 +20,9 @@ namespace Shinshi.Combat
         /// <summary> 지금 시전 중인 패턴 정의 ID </summary>
         string ActivePatternId { get; }
 
+        /// <summary> 페이즈 번호가 바뀔 때마다 오르는 세대, 틱 안에서는 그 틱이 시작될 때의 값이다 </summary>
+        ushort PhaseGeneration { get; }
+
         /// <summary> 몸체의 정면을 direction으로 돌린다, 수평 성분이 없으면 그대로 둔다 </summary>
         void Face(Vector3 direction);
 

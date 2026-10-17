@@ -731,6 +731,7 @@ namespace Shinshi.AI
             writer.WriteFloat(value.FirstStrikeSeconds);
             writer.WriteFloat(value.StrikeIntervalSeconds);
             writer.WriteFloat(value.AxisGapSeconds);
+            writer.WriteInt(value.FirstLineId);
         }
 
         public static BossGridBeamStart ReadBossGridBeamStart(this NetworkReader reader)
@@ -746,8 +747,9 @@ namespace Shinshi.AI
             float   firstStrike = reader.ReadFloat();
             float   interval    = reader.ReadFloat();
             float   axisGap     = reader.ReadFloat();
+            int     firstLineId = reader.ReadInt();
             return new BossGridBeamStart(bossId, castId, arenaCenter, arenaRadius, lineCount, lineWidth, lineSpacing,
-                startTime, firstStrike, interval, axisGap);
+                startTime, firstStrike, interval, axisGap, firstLineId);
         }
 
         public static void WriteBossGridBeamSnapshot(this NetworkWriter writer, BossGridBeamSnapshot value)

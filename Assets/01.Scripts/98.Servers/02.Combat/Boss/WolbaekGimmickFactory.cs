@@ -15,7 +15,8 @@ namespace Shinshi.Combat
     // 하나라도 만들지 못하면 묶음을 내지 않는다: 일부만 붙이면 인계가 끊겨 교착된다(봉인의 하드 인계 대기는 최후의 영역이 없으면 끝나지 않는다).
     //
     // 설정(Wolbaek*DevCatalog)과 지점(Wolbaek*DevSites, 전장 중심 기준)은 맵과 운영 데이터가 정해지기 전의 임시값이다.
-    // 기믹 사건의 수신처(listener)는 아직 없어 비운다. 색 결계가 50% 구간을 대신하므로 결계 전개는 쓰지 않는다(ReplacesBarrier)
+    // 기믹 사건의 수신처는 몸체가 가진 월백 기믹 중계다. 중계는 복제 상태가 연결되기 전에는 사건을 버린다.
+    // 색 결계가 50% 구간을 대신하므로 결계 전개는 쓰지 않는다(ReplacesBarrier)
     /// <summary> 월백 체력 기믹 묶음 생성 </summary>
     public static class WolbaekGimmickFactory
     {
@@ -210,9 +211,10 @@ namespace Shinshi.Combat
 
         private static BossGimmickSet Create(WolbaekGimmickInputs inputs)
         {
-            BossServer boss   = inputs.Boss;
-            bool       isHard = inputs.Difficulty == EBossDifficulty.Hard;
-            Vector3    center = boss.ArenaCenter;
+            BossServer                   boss   = inputs.Boss;
+            bool                         isHard = inputs.Difficulty == EBossDifficulty.Hard;
+            Vector3                      center = boss.ArenaCenter;
+            BossWolbaekGimmickEventRelay relay  = boss.WolbaekGimmickRelay;
 
             // 사망 확정 창구에는 시각 인자가 없다. 기믹은 보스 틱 안에서만 죽이므로 몸체가 가진 이번 틱의 시각을 읽는다
             IBossEventRelayHost clock = boss;
@@ -220,13 +222,17 @@ namespace Shinshi.Combat
 
             var talisman = new WolbaekTalismanFormation(
                 WolbaekTalismanDevCatalog.CreateSpec(isHard, inputs.PhaseTransitionHealthRate), boss, inputs.ReferenceHealth, boss,
-                source, boss, boss, inputs.ScaledResolver, inputs.Registry, inputs.Random, boss);
+                source, boss, boss, inputs.ScaledResolver, inputs.Registry, inputs.Random, boss,
+                listener: relay);
 
             var ward = new WolbaekColorWard(WolbaekColorWardDevCatalog.CreateSpec(), boss, boss, source, source, boss,
-                new WolbaekWardDevSites(center), inputs.UnscaledResolver, inputs.Registry, inputs.Random, boss, talisman);
+                new WolbaekWardDevSites(center), inputs.UnscaledResolver, inputs.Registry, inputs.Random, boss, talisman,
+                listener: relay);
 
             var seal = new WolbaekFoxfireSeal(WolbaekFoxfireSealDevCatalog.CreateSpec(isHard), boss, boss, source, source, boss,
-                new WolbaekSealDevSites(center), inputs.UnscaledResolver, inputs.Registry, inputs.Random, boss, ward);
+                new WolbaekSealDevSites(center), inputs.UnscaledResolver, inputs.Registry, inputs.Random, boss, ward,
+                listener: relay);
+            relay.BindSeal(seal);
 
             if (!isHard)
             {
@@ -240,7 +246,8 @@ namespace Shinshi.Combat
             var floor   = new BossArenaFloor(source, source, center, finalSpec.CentralRadius, null, terrain);
 
             var final = new WolbaekFinalArea(finalSpec, boss, boss, source, source, boss, new WolbaekFinalDevSites(center), floor,
-                source, source, new BossYellowRegistry(inputs.Registry), source, inputs.UnscaledResolver, inputs.Registry, seal);
+                source, source, new BossYellowRegistry(inputs.Registry), source, inputs.UnscaledResolver, inputs.Registry, seal,
+                listener: relay);
 
             return new BossGimmickSet(new IBossGimmick[] { talisman, ward, seal, final },
                 new BossDamageCapComposite(talisman, ward, seal, final), new IBossDeathHold[] { seal, final }, final,

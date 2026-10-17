@@ -85,12 +85,12 @@ namespace Shinshi.AI
         *                Methods
         ****************************************/
 
-        /// <summary> 처치 연출을 시작한다. isLate가 참이면 재접속으로 이미 쓰러진 보스라 정지부터 시작한다 </summary>
-        public void Begin(bool isLate)
+        /// <summary> 처치 연출을 시작한다. isLate가 참이면 재접속으로 이미 쓰러진 보스라 정지부터, 처치 뒤 지난 시간을 알면 그 지점부터 시작한다 </summary>
+        public void Begin(bool isLate, float elapsedSinceDefeat = WolbaekDeathTimeline.UNKNOWN_ELAPSED)
         {
             InstallBurnMaterials();
             SetMask(0f);
-            _timeline.Begin(isLate);
+            _timeline.Begin(isLate, elapsedSinceDefeat);
         }
 
         /// <summary> 처치 연출을 끊고 소멸 진행을 되돌린다, 보스가 다시 일어서거나 전투를 다시 시작할 때 쓴다 </summary>

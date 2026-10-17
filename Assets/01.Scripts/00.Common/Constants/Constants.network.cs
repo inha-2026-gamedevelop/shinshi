@@ -20,7 +20,8 @@ namespace Shinshi.Common
             // 9: 궁수 속성, 화살 적중, 직업 스택, 기본 공격 콤보 단계와 공격, 이동 시작 시각 SyncVar 추가(2026-10-16)
             // 10: 소셜 메시지, 길드, 귓속말 채팅 채널 추가(2026-10-16)
             // 11: 보스 돌진 정지 서버 시각, 빔, 별, 추적 장판 취소의 시전 번호, 무철 돌진 유도 그로기 사건과 복원 추가(2026-10-17)
-            public const int PROTOCOL_VERSION = 11;
+            // 12: 월백 체력 기믹 4종과 워프 출발 사건, 복원, 등장, 처치, 페이즈 세대 SyncVar, 격자 첫 줄 번호 추가(2026-10-17)
+            public const int PROTOCOL_VERSION = 12;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -59,6 +60,16 @@ namespace Shinshi.Common
             public const int BOSS_CIRCLE_BURST_MAX_CIRCLES   = 16;
             public const int BOSS_BARRAGE_MAX_SHOTS          = 16;
             public const int BOSS_RESTORE_MAX_TRACKING_AREAS = 8;
+
+            // 월백 체력 기믹 사건이 한 메시지에 싣는 목록의 상한. 파티 최대 4명 기준 실제 수(구조물 4, 결계 명단 4, 핵과 여우불 4,
+            // 노란 여우불 4, 빨간 여우불 4)보다 크게 두고 넘는 값은 프로토콜 불일치로 읽기를 멈춘다.
+            // 봉인 핵은 파괴 여부를 바이트 비트 마스크로 보내므로 8을 넘길 수 없다
+            public const int BOSS_WOLBAEK_MAX_STRUCTURES = 8;
+            public const int BOSS_WOLBAEK_MAX_MEMBERS    = 8;
+            public const int BOSS_WOLBAEK_MAX_CORES      = 8;
+            public const int BOSS_WOLBAEK_MAX_FOXFIRES   = 8;
+            public const int BOSS_WOLBAEK_MAX_YELLOWS    = 16;
+            public const int BOSS_WOLBAEK_MAX_REDS       = 8;
 
             // 서버 시각 기준으로 입력을 받아 주는 창
             public const float INPUT_PAST_TOLERANCE_SECONDS   = 0.15f;

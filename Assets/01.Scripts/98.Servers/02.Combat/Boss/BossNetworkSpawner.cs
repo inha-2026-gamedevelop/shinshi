@@ -142,6 +142,8 @@ namespace Shinshi.Combat
 
             state.SetCombatSnapshot(boss.CombatId, boss.BossId, boss.Position, FacingRules.EncodeYaw(boss.Forward), boss.Health,
                 boss.MaxHealth, boss.LifeState, boss.FlowState, boss.PhaseState);
+            state.SetTimelineSnapshot(boss.AppearStartServerTime, boss.DefeatServerTime, boss.PhaseGeneration,
+                boss.PhaseTransitionServerTime);
         }
 
         public void Despawn(BossServer boss, BossState state)

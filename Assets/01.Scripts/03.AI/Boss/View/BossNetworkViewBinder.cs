@@ -1,5 +1,5 @@
 // System
-using System.Collections.Generic;
+using System;
 
 // Unity
 using UnityEngine;
@@ -15,7 +15,7 @@ namespace Shinshi.AI
     /// <summary> 서버 복제 상태와 공격 기록을 클라이언트 보스 표현에 연결한다 </summary>
     [DisallowMultipleComponent]
     public sealed class BossNetworkViewBinder : ClientView, IBossStateListener, IBossHardPhaseStateListener,
-        IBossMucheolStateListener
+        IBossMucheolStateListener, IBossWolbaekGimmickStateListener
     {
         /****************************************
         *                Fields
@@ -46,6 +46,11 @@ namespace Shinshi.AI
         private const string WOLBAEK_BOSS_ID = "boss_wolbaek";
         private const int NO_CAST_ID = 0; // 공용 시전 번호의 없음 값(CombatIds.NONE)과 같다
         private EBossFlowState _lastFlowState = EBossFlowState.Combat;
+
+        // 50% 성공 뒤 그로기는 서버 페이즈 세대가 성공 순간의 세대보다 커질 때 끝낸다. 성공 Rpc와 세대 SyncVar 중 무엇이 먼저 와도 같다
+        private BossParticipantAnchorTracker _anchorTracker;
+        private ushort _pendingWardGeneration;
+        private bool   _hasPendingWardGeneration;
 
         /****************************************
         *              Unity Event
@@ -82,6 +87,8 @@ namespace Shinshi.AI
                 TryGetComponent(out _mucheolVfx);
             }
 
+            _anchorTracker = new BossParticipantAnchorTracker(SetParticipantAnchor);
+
             // 공격 예고는 서버의 월드 좌표다. 보스가 이동해도 풀에서 빌린 지면 표현은 따라가지 않는다.
             if ((_effectsRoot != null) && (_effectsRoot != transform) && (_effectsRoot.IsChildOf(transform)))
             {
@@ -106,13 +113,18 @@ namespace Shinshi.AI
             if (_view != null)
             {
                 _view.SetPose(_state.Position, _state.Forward);
-                _view.SetDefeated(isDefeated, _justBound && isDefeated);
+                _view.SetDefeated(isDefeated, _justBound && isDefeated, ElapsedSince(_state.DefeatServerTime));
 
                 if (_state.FlowState != _lastFlowState)
                 {
                     _lastFlowState = _state.FlowState;
-                    _view.SetFlowState(_lastFlowState);
+                    _view.SetFlowState(_lastFlowState, Mathf.Max(0f, ElapsedSince(_state.AppearStartServerTime)));
                 }
+            }
+
+            if ((IsWolbaek) && (_anchorTracker != null))
+            {
+                _anchorTracker.Tick(Time.unscaledTimeAsDouble);
             }
 
             if (_mucheolMotion != null)
@@ -241,11 +253,20 @@ namespace Shinshi.AI
             _beamCasts.Clear();
             _starCasts.Clear();
             _lastFlowState = EBossFlowState.Combat;
+            _hasPendingWardGeneration = false;
+            if (_anchorTracker != null)
+            {
+                _anchorTracker.Clear();
+                if (IsWolbaek)
+                {
+                    _anchorTracker.Tick(Time.unscaledTimeAsDouble);
+                }
+            }
             if (_view != null)
             {
                 _view.Bind(_presenter, ReadServerTime);
             }
-            state.PhaseStateChanged += OnPhaseStateChanged;
+            state.PhaseGenerationChanged += OnPhaseGenerationChanged;
             // 시계를 먼저 연결해야 늦은 접속 복원이 로컬 경과 시간으로 재생되지 않는다.
             state.SetListener(this);
         }
@@ -255,12 +276,17 @@ namespace Shinshi.AI
         {
             if (_boundState != null)
             {
-                _boundState.PhaseStateChanged -= OnPhaseStateChanged;
+                _boundState.PhaseGenerationChanged -= OnPhaseGenerationChanged;
                 _boundState.SetListener(null);
             }
 
             _boundState = null;
             _justBound = false;
+            _hasPendingWardGeneration = false;
+            if (_anchorTracker != null)
+            {
+                _anchorTracker.Clear();
+            }
             _trackingCasts.Clear();
             _beamCasts.Clear();
             _starCasts.Clear();
@@ -317,11 +343,21 @@ namespace Shinshi.AI
             }
         }
 
-        // BossState에 최후의 영역 복제 계약이 추가되면 아래 입력을 사건과 스냅샷에서 호출한다.
-        // 서버 전용 IWolbaekFinalAreaListener를 클라이언트 어셈블리에서 직접 구현하지 않는다.
+        /****************************************
+        *        Wolbaek Gimmick Listener
+        ****************************************/
+
+        // BossState가 월백 기믹 사건(IBossWolbaekGimmickStateListener)을 넘긴다. 서버 전용 기믹 리스너를 클라이언트 어셈블리에서 직접 구현하지 않는다.
+        // 표현은 기믹 시작과 복원 때 참가자 앵커를 비우므로 그 직후 추적기가 아는 앵커를 모두 다시 넣는다
         public void OnFinalStarted(in WolbaekFinalStart start)
         {
-            if (_finalAreaView != null) _finalAreaView.StartFinal(in start, ReadServerTime());
+            if (_finalAreaView == null)
+            {
+                return;
+            }
+
+            _finalAreaView.StartFinal(in start, ReadServerTime());
+            InjectAnchors();
         }
 
         public void OnFinalRestored(in WolbaekFinalSnapshot snapshot)
@@ -329,12 +365,24 @@ namespace Shinshi.AI
             if (_finalAreaView != null) _finalAreaView.Restore(in snapshot, ReadServerTime());
         }
 
+        public void OnFinalRestored(in BossWolbaekFinalRestore restore)
+        {
+            if (_finalAreaView == null)
+            {
+                return;
+            }
+
+            WolbaekFinalSnapshot snapshot = restore.Snapshot;
+            _finalAreaView.Restore(in snapshot, ReadServerTime());
+            InjectAnchors();
+        }
+
         public void OnFinalOuterFloorRemoved(int castId, double serverTime)
         {
             if (_finalAreaView != null) _finalAreaView.OuterFloorRemoved(castId, serverTime, ReadServerTime());
         }
 
-        public void OnFinalYellowsSpawned(int castId, IReadOnlyList<WolbaekFinalYellow> yellows)
+        public void OnFinalYellowsSpawned(int castId, WolbaekFinalYellow[] yellows)
         {
             if (_finalAreaView != null) _finalAreaView.YellowsSpawned(castId, yellows, ReadServerTime());
         }
@@ -356,7 +404,7 @@ namespace Shinshi.AI
                 _finalAreaView.RedDetached(castId, bundleIndex, redIndex, serverTime, position, ReadServerTime());
         }
 
-        public void OnFinalRedsLocked(int castId, int bundleIndex, double serverTime, IReadOnlyList<Vector3> centers)
+        public void OnFinalRedsLocked(int castId, int bundleIndex, double serverTime, Vector3[] centers)
         {
             if (_finalAreaView != null)
                 _finalAreaView.LockReds(castId, bundleIndex, serverTime, centers, ReadServerTime());
@@ -386,16 +434,40 @@ namespace Shinshi.AI
             if (_finalAreaView != null) _finalAreaView.SetParticipantAnchor(combatId, anchor);
         }
 
-        // BossState에 색 결계 복제 사건과 스냅샷이 들어오면 아래 입력을 연결한다.
-        // 서버 전용 IWolbaekColorWardListener를 클라이언트 어셈블리에서 직접 구현하지 않는다.
         public void OnWardStarted(in WolbaekWardStart start)
         {
-            if (_colorWardView != null) _colorWardView.StartWard(in start, ReadServerTime());
+            if (_colorWardView == null)
+            {
+                return;
+            }
+
+            _colorWardView.StartWard(in start, ReadServerTime());
+            InjectAnchors();
         }
 
         public void OnWardRestored(in WolbaekWardSnapshot snapshot)
         {
             if (_colorWardView != null) _colorWardView.Restore(in snapshot, ReadServerTime());
+        }
+
+        // 진행 중인 광역 예고는 규칙 스냅샷에 없어 복원 기록이 따로 준다. 예고는 결계 복원 뒤에 다시 그린다
+        public void OnWardRestored(in BossWolbaekWardRestore restore)
+        {
+            if (_colorWardView == null)
+            {
+                return;
+            }
+
+            WolbaekWardSnapshot snapshot = restore.Snapshot;
+            double              now      = ReadServerTime();
+            _colorWardView.Restore(in snapshot, now);
+            if (restore.HasPendingStrike)
+            {
+                WolbaekWardStrike strike = restore.PendingStrike;
+                _colorWardView.StrikeTelegraphed(snapshot.Start.CastInstanceId, in strike, now);
+            }
+
+            InjectAnchors();
         }
 
         public void OnGatherHoldStarted(int castId, double serverTime)
@@ -462,6 +534,31 @@ namespace Shinshi.AI
                 _colorWardView.PhaseTransitionStarted();
             }
         }
+
+        // 서버는 성공 틱이 끝난 뒤 세대를 올린다. 세대가 이미 성공 값보다 크면 Rpc가 SyncVar보다 늦은 것이라 바로 그로기를 끝낸다
+        public void OnWardSucceeded(int castId, ushort phaseGenerationAtSuccess)
+        {
+            if (_colorWardView == null)
+            {
+                return;
+            }
+
+            _colorWardView.Succeeded(castId);
+            if (_boundState == null)
+            {
+                return;
+            }
+
+            if (_boundState.PhaseGeneration > phaseGenerationAtSuccess)
+            {
+                _hasPendingWardGeneration = false;
+                _colorWardView.PhaseTransitionStarted();
+                return;
+            }
+
+            _pendingWardGeneration    = phaseGenerationAtSuccess;
+            _hasPendingWardGeneration = true;
+        }
         public void OnWardFailed(int castId) { OnWardCleared(castId); }
         public void OnWardHalted(int castId) { OnWardCleared(castId); }
 
@@ -470,24 +567,47 @@ namespace Shinshi.AI
             if (_colorWardView != null) _colorWardView.ClearCast(castId);
         }
 
-        private void OnPhaseStateChanged(EBossPhaseState state)
+        // 페이즈 상태가 아니라 세대로 본다. 결계 전개가 없으면 전환 대기가 한 틱이라 10Hz 상태 복제에서 Active 아닌 값이 보이지 않을 수 있다
+        private void OnPhaseGenerationChanged(ushort generation)
         {
-            if ((state != EBossPhaseState.Active) && (_colorWardView != null))
+            if ((!_hasPendingWardGeneration) || (generation <= _pendingWardGeneration))
+            {
+                return;
+            }
+
+            _hasPendingWardGeneration = false;
+            if (_colorWardView != null)
             {
                 _colorWardView.PhaseTransitionStarted();
             }
         }
 
-        // BossState에 25% 봉인 사건과 스냅샷이 들어오면 아래 입력을 연결한다.
-        // 서버 전용 IWolbaekFoxfireSealListener를 클라이언트 어셈블리에서 직접 구현하지 않는다.
         public void OnSealStarted(in WolbaekSealStart start)
         {
-            if (_foxfireSealView != null) _foxfireSealView.StartSeal(in start, ReadServerTime());
+            if (_foxfireSealView == null)
+            {
+                return;
+            }
+
+            _foxfireSealView.StartSeal(in start, ReadServerTime());
+            InjectAnchors();
         }
 
         public void OnSealRestored(in WolbaekSealSnapshot snapshot)
         {
             if (_foxfireSealView != null) _foxfireSealView.Restore(in snapshot, ReadServerTime());
+        }
+
+        public void OnSealRestored(in BossWolbaekSealRestore restore)
+        {
+            if (_foxfireSealView == null)
+            {
+                return;
+            }
+
+            WolbaekSealSnapshot snapshot = restore.Snapshot;
+            _foxfireSealView.Restore(in snapshot, ReadServerTime());
+            InjectAnchors();
         }
 
         public void OnSealTurnStarted(int castId, in WolbaekSealTurn turn)
@@ -512,22 +632,23 @@ namespace Shinshi.AI
             if (_foxfireSealView != null) _foxfireSealView.SweepTelegraphed(castId, in sweep, ReadServerTime());
         }
 
-        public void OnSealSweepResolved(int castId, int turnIndex, int sweepIndex, double serverTime, int hitCount)
+        public void OnSealSweepResolved(int castId, int turnIndex, int sweepIndex, double serverTime)
         {
             if (_foxfireSealView != null) _foxfireSealView.SweepResolved(castId, turnIndex, sweepIndex, serverTime);
         }
 
-        public void OnSealFoxfiresLocked(int castId, int turnIndex, double serverTime, IReadOnlyList<Vector3> centers)
+        public void OnSealFoxfiresLocked(int castId, int turnIndex, double serverTime, Vector3[] centers)
         {
             if (_foxfireSealView != null)
                 _foxfireSealView.FoxfiresLocked(castId, turnIndex, serverTime, centers, ReadServerTime());
         }
 
-        public void OnSealTurnResolved(int castId, int turnIndex, double serverTime, int destroyedCores,
-            int totalCores, int playerHits, bool succeeded, int successCount)
+        public void OnSealTurnResolved(int castId, int turnIndex, double serverTime, int successCount, byte destroyedCoreMask)
         {
             if (_foxfireSealView != null)
-                _foxfireSealView.TurnResolved(castId, turnIndex, serverTime, successCount, ReadServerTime());
+            {
+                _foxfireSealView.TurnResolved(castId, turnIndex, serverTime, successCount, destroyedCoreMask, ReadServerTime());
+            }
         }
 
         public void OnSealSucceeded(int castId, double serverTime, double counterEndServerTime)
@@ -538,7 +659,15 @@ namespace Shinshi.AI
 
         public void OnSealCounterEnded(int castId, double serverTime, bool reachedNextBoundary)
         {
-            if (_foxfireSealView != null) _foxfireSealView.CounterEnded(castId);
+            OnSealCounterEnded(castId);
+        }
+
+        public void OnSealCounterEnded(int castId)
+        {
+            if (_foxfireSealView != null)
+            {
+                _foxfireSealView.CounterEnded(castId);
+            }
         }
 
         public void OnSealFailed(int castId, double serverTime, EWolbaekSealFail reason)
@@ -562,8 +691,6 @@ namespace Shinshi.AI
             if (_foxfireSealView != null) _foxfireSealView.SetMemberAnchor(combatId, anchor);
         }
 
-        // BossState에 부적진 복제 계약이 추가되면 아래 입력을 해당 사건과 스냅샷에서 호출한다.
-        // 현재 BossState에는 그 사건이 없어 이 메서드만으로 실제 서버 표시가 시작되지는 않는다.
         public void OnTalismanStarted(in WolbaekTalismanStart start)
         {
             if (_talismanView != null) _talismanView.StartFormation(in start, ReadServerTime());
@@ -574,6 +701,27 @@ namespace Shinshi.AI
             if (_talismanView != null) _talismanView.Restore(in snapshot, ReadServerTime());
         }
 
+        // 성공 시각과 마지막 유지 초기화는 규칙 스냅샷에 없어 복원 기록이 따로 준다
+        public void OnTalismanRestored(in BossWolbaekTalismanRestore restore)
+        {
+            if (_talismanView == null)
+            {
+                return;
+            }
+
+            WolbaekTalismanSnapshot snapshot = restore.Snapshot;
+            double                  now      = ReadServerTime();
+            if (!_talismanView.Restore(in snapshot, now, restore.SuccessServerTime))
+            {
+                return;
+            }
+
+            if ((restore.HasLastReset) && (!snapshot.HasHold) && (snapshot.State != EWolbaekTalismanState.Counter))
+            {
+                _talismanView.HoldReset(snapshot.Start.CastInstanceId, restore.LastResetServerTime, now);
+            }
+        }
+
         public void OnTalismanHoldStarted(int castId, double serverTime)
         {
             if (_talismanView != null) _talismanView.HoldStarted(castId, serverTime, ReadServerTime());
@@ -582,6 +730,11 @@ namespace Shinshi.AI
         public void OnTalismanHoldReset(int castId, double serverTime)
         {
             if (_talismanView != null) _talismanView.HoldReset(castId, serverTime, ReadServerTime());
+        }
+
+        public void OnTalismanHoldReset(int castId, double serverTime, EWolbaekHoldReset reason, int combatId)
+        {
+            OnTalismanHoldReset(castId, serverTime);
         }
 
         public void OnTalismanAttackTelegraphed(int castId, in WolbaekTalismanAttack attack)
@@ -622,6 +775,46 @@ namespace Shinshi.AI
         public void OnTalismanHalted(int castId)
         {
             OnTalismanCleared(castId);
+        }
+
+        public void OnWarpDeparted(int castId, Vector3 departure, double serverTime)
+        {
+            if ((_view != null) && (IsWolbaek))
+            {
+                _view.SetWarpDeparture(castId, departure);
+            }
+        }
+
+        public void OnWarpRestored(int castId, Vector3 departure, double serverTime)
+        {
+            OnWarpDeparted(castId, departure, serverTime);
+        }
+
+        // 추적기가 찾은 참가자 몸체를 앵커가 필요한 세 표현에 함께 넣는다. null이면 지운다
+        private void SetParticipantAnchor(int combatId, Transform anchor)
+        {
+            SetWardMemberAnchor(combatId, anchor);
+            SetSealMemberAnchor(combatId, anchor);
+            SetFinalParticipantAnchor(combatId, anchor);
+        }
+
+        private void InjectAnchors()
+        {
+            if (_anchorTracker != null)
+            {
+                _anchorTracker.InjectAll();
+            }
+        }
+
+        // 서버 시각을 모르면(NaN) 처치 연출의 모름 값(음수)을 준다
+        private static float ElapsedSince(double serverTime)
+        {
+            if (double.IsNaN(serverTime))
+            {
+                return WolbaekDeathTimeline.UNKNOWN_ELAPSED;
+            }
+
+            return (float)Math.Max(0d, ReadServerTime() - serverTime);
         }
 
         private static double ReadServerTime()
@@ -1410,7 +1603,7 @@ namespace Shinshi.AI
             BossGridBeamStart start = snapshot.Start;
             _hardPhaseView.GridBeam.Begin(start.CastId, start.ArenaCenter, start.ArenaRadius, start.LineCount, start.LineWidth,
                 start.LineSpacing, start.CastStartServerTime, start.FirstStrikeSeconds, start.StrikeIntervalSeconds, start.AxisGapSeconds,
-                snapshot.TelegraphedCount, snapshot.StruckCount);
+                snapshot.TelegraphedCount, snapshot.StruckCount, start.FirstLineId);
 
             BeginEventMotion(start.CastId, EWolbaekEventMotion.GridBeam, start.CastStartServerTime, start.FirstStrikeSeconds);
         }

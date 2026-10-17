@@ -25,6 +25,7 @@ namespace Shinshi.AI
         private const int   MAX_LINES_PER_AXIS = 16;
         private const float SAFE_LINGER_SECONDS = 1f; // 마지막 줄이 타격된 뒤 안전한 줄을 더 보여 주는 시간
         private const float HALF               = 0.5f;
+        private const int   NO_LINE_ID         = 0;  // 서버 줄 번호를 모른다, 공용 번호의 없음 값과 같다
 
         /****************************************
         *                Fields
@@ -76,10 +77,11 @@ namespace Shinshi.AI
         *                Methods
         ****************************************/
 
+        // firstLineId는 서버가 발사 순서 0번 줄에 발급한 번호다. 줄 번호가 이어서 발급되므로 복원한 줄도 서버 번호를 갖는다. 0이면 발사 순서를 번호로 쓴다
         /// <summary> 시전을 시작한다. 이미 있는 시전 번호나 끝난 번호면 무시한다. telegraphedCount와 struckCount는 발사 순서로 센 지금까지의 예고와 타격 수다 </summary>
         public bool Begin(int castInstanceId, Vector3 arenaCenter, float arenaRadius, int lineCount, float lineWidth, float lineSpacing,
             double castStartServerTime, float firstStrikeSeconds, float strikeIntervalSeconds, float axisGapSeconds,
-            int telegraphedCount = 0, int struckCount = 0)
+            int telegraphedCount = 0, int struckCount = 0, int firstLineId = NO_LINE_ID)
         {
             if (IsServerBuild || IsKnown(castInstanceId))
             {
@@ -127,7 +129,7 @@ namespace Shinshi.AI
                 double strike = GetStrikeTime(entry, k);
                 entry.StrikeAt[k]    = strike;
                 entry.TelegraphAt[k] = strike - entry.FirstStrike;
-                entry.LineIds[k]     = k;
+                entry.LineIds[k]     = (firstLineId != NO_LINE_ID) ? (firstLineId + k) : k;
                 if (k < struck)
                 {
                     entry.States[k]  = ELineState.Struck;

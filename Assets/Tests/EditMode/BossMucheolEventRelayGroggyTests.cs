@@ -174,6 +174,7 @@ namespace Shinshi.Tests
             public Vector3 Position        => Vector3.zero;
             public double  TickTime        { get; set; }
             public string  ActivePatternId => MucheolPatternFactory.P06_ID;
+            public ushort  PhaseGeneration => 0;
 
             public void Face(Vector3 direction)
             {

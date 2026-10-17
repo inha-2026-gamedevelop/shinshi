@@ -78,7 +78,7 @@ namespace Shinshi.Combat
         ****************************************/
 
         void IBossGridBeamListener.OnGridStarted(int castInstanceId, in BossGridBeamLayout layout, double castStartServerTime,
-            float firstStrikeSeconds, float strikeIntervalSeconds, float axisGapSeconds)
+            float firstStrikeSeconds, float strikeIntervalSeconds, float axisGapSeconds, int firstLineId)
         {
             _host.BeginPhaseCast(castInstanceId);
             if (_sink == null)
@@ -88,7 +88,7 @@ namespace Shinshi.Combat
 
             var start = new BossGridBeamStart(_host.CombatId, castInstanceId, layout.ArenaCenter, layout.ArenaRadius,
                 layout.LineCount, layout.LineWidth, layout.LineSpacing, castStartServerTime, firstStrikeSeconds,
-                strikeIntervalSeconds, axisGapSeconds);
+                strikeIntervalSeconds, axisGapSeconds, firstLineId);
             _sink.OnGridBeamStarted(in start);
         }
 

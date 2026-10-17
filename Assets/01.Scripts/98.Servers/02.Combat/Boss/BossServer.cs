@@ -39,7 +39,8 @@ namespace Shinshi.Combat
     // 시각은 틱 시각이나 FSM 단계 경계인 서버 시각만 쓴다. 표현 값(색, 진행도)은 만들지 않는다.
     // 무철 전용 패턴과 월백 하드 2페이즈 패턴의 알림은 이 몸체가 아니라 중계 둘(BossMucheolEventRelay, BossHardPhaseEventRelay)이 받아
     // 선택 계약(IBossMucheolEventListener, IBossHardPhaseEventListener)으로 보낸다. 리스너를 더 구현하면 이 클래스가 사건 변환으로만 채워지기 때문이다.
-    // 중계는 정면과 시전 번호만 이 몸체에 남기고(IBossEventRelayHost), 그 시전의 정상 종료는 이 몸체가 기본 사건으로 보낸다
+    // 중계는 정면과 시전 번호만 이 몸체에 남기고(IBossEventRelayHost), 그 시전의 정상 종료는 이 몸체가 기본 사건으로 보낸다.
+    // 월백 체력 기믹 4종의 알림은 같은 방식의 세 번째 중계(BossWolbaekGimmickEventRelay)가 받고, 기믹 팩토리가 그 중계를 기믹에 넘긴다
     //
     // 패턴 팩토리는 보스 ID로 고른다. 무철은 1페이즈와 2페이즈 팩토리를 묶어 쓰고 실행 데이터는 임시 시작값(MucheolSortieData)이다.
     // 무철 돌진 유도 기믹도 여기서 만들어 두뇌에 더하지만, 맵이 지정 구조물을 알려 주기 전에는 발동하지 않는다.
@@ -67,6 +68,7 @@ namespace Shinshi.Combat
         private const float DIRECTION_EPSILON   = 0.0001f;
         private const float HALF                = 0.5f;
         private const float PATH_EPSILON        = 0.001f; // m, 스윕 거리가 목표에 닿았는지 보는 부동소수 여유
+        private const int   NO_PHASE            = 0;      // 전투가 열리기 전 두뇌가 답하는 페이즈 번호
 
         // 출정 준비 검사가 보는 페이즈 범위, 월백은 2페이즈까지다
         private const int SORTIE_FIRST_PHASE = 1;
@@ -97,6 +99,9 @@ namespace Shinshi.Combat
         // 무철과 월백 하드 2페이즈의 패턴 알림을 선택 계약 사건으로 바꾸는 중계, 팩토리보다 먼저 만들어 수신처로 넘긴다
         private readonly BossMucheolEventRelay   _mucheolRelay;
         private readonly BossHardPhaseEventRelay _hardRelay;
+
+        // 월백 체력 기믹 알림의 중계, 기믹 묶음은 몸체보다 나중에 만들어지므로 팩토리가 이 중계를 기믹의 수신처로 넘긴다
+        private readonly BossWolbaekGimmickEventRelay _wolbaekRelay;
         private readonly MucheolChargeGimmick    _chargeGimmick;   // 무철일 때만 있다
         private readonly IBossDisplaceLookup     _displaceTargets; // 없으면 아무도 밀지 않는다
 
@@ -136,6 +141,16 @@ namespace Shinshi.Combat
         // 반월 연쇄의 고정한 중심과 반경, 구역 예고 알림에 없어 시작 알림에서 받아 둔다. 시전은 한 번에 하나다
         private Vector3 _sweepOrigin;
         private float   _sweepRadius;
+
+        // 표현이 추정하지 않도록 복제 상태에 싣는 서버 시각과 페이즈 세대다. 모르면 NaN이다
+        private double _appearStartServerTime     = double.NaN;
+        private double _defeatServerTime          = double.NaN;
+        private double _phaseTransitionServerTime = double.NaN;
+        private ushort _phaseGeneration;
+
+        // 워프는 착지 위치로 몸체를 옮긴 뒤 같은 호출 안에서 원형 예고를 알린다. 출발 위치를 그 예고보다 먼저 보내려고 예고까지 들고 있는다
+        private Vector3 _warpDeparture;
+        private bool    _hasWarpDeparture = false;
 
         /****************************************
         *              Properties
@@ -197,6 +212,21 @@ namespace Shinshi.Combat
         /// <summary> 활성되어 회전하고 있는 별형 빔 구조 수 </summary>
         public int ActiveStarCount => _stars.ActiveCount;
 
+        /// <summary> 전투를 연 서버 시각(등장 대기 시작), 열기 전이면 NaN이다 </summary>
+        public double AppearStartServerTime => _appearStartServerTime;
+
+        /// <summary> 몸체가 사망으로 바뀐 서버 시각, 살아 있으면 NaN이다 </summary>
+        public double DefeatServerTime => _defeatServerTime;
+
+        /// <summary> 페이즈 번호가 바뀔 때마다 오르는 세대, 틱이 끝난 뒤에 오른다 </summary>
+        public ushort PhaseGeneration => _phaseGeneration;
+
+        /// <summary> 마지막 페이즈 전환이 일어난 틱의 서버 시각, 없으면 NaN이다 </summary>
+        public double PhaseTransitionServerTime => _phaseTransitionServerTime;
+
+        /// <summary> 월백 체력 기믹 알림의 중계, 기믹 팩토리가 기믹의 수신처로 넘긴다 </summary>
+        public BossWolbaekGimmickEventRelay WolbaekGimmickRelay => _wolbaekRelay;
+
         /// <summary> 50% 전환 뒤 결계 전개를 쓰는 보스다, 거짓이면 인계 대기는 다음 틱에 바로 끝난다 </summary>
         public bool HasBarrier => ActiveBarrier != null;
 
@@ -218,6 +248,7 @@ namespace Shinshi.Combat
 
         double IBossEventRelayHost.TickTime        => _tickTime;
         string IBossEventRelayHost.ActivePatternId => _brain.ActivePatternId;
+        ushort IBossEventRelayHost.PhaseGeneration => _phaseGeneration;
 
         /****************************************
         *                Methods
@@ -293,6 +324,7 @@ namespace Shinshi.Combat
             // 중계는 팩토리가 수신처로 받으므로 팩토리보다 먼저 만든다. 사건을 받을 복제 상태는 SetEventListener가 나중에 잇는다
             _mucheolRelay = new BossMucheolEventRelay(this);
             _hardRelay    = new BossHardPhaseEventRelay(this);
+            _wolbaekRelay = new BossWolbaekGimmickEventRelay(this);
             _patterns     = CreatePatterns(bossId, referenceHealth, connections, out _chargeGimmick);
 
             // 결계 피해는 패턴과 같은 피해 경로(damage)로 나가고 기준 체력도 패턴과 같은 Href다
@@ -337,6 +369,7 @@ namespace Shinshi.Combat
             _events = listener;
             _mucheolRelay.SetListener(listener as IBossMucheolEventListener);
             _hardRelay.SetListener(listener as IBossHardPhaseEventListener);
+            _wolbaekRelay.SetListener(listener as IBossWolbaekGimmickEventListener);
         }
 
         // 두뇌가 기믹을 전투 시작 전에만 받으므로 Begin 전에만 받는다. 두 번째 호출은 첫 호출이 실패했어도 거절한다.
@@ -459,21 +492,38 @@ namespace Shinshi.Combat
             }
 
             _tickTime = serverTime;
-            return _brain.Begin(serverTime);
+            if (!_brain.Begin(serverTime))
+            {
+                return false;
+            }
+
+            _appearStartServerTime = serverTime;
+            return true;
         }
 
-        // 두뇌가 이 틱에 사망이나 종료를 확정하면 같은 틱에 결계도 정리한다. 이후에는 IsActive가 거짓이라 Tick이 오지 않는다
+        // 두뇌가 이 틱에 사망이나 종료를 확정하면 같은 틱에 결계도 정리한다. 이후에는 IsActive가 거짓이라 Tick이 오지 않는다.
+        // 페이즈 세대는 두뇌 틱이 끝난 뒤 올린다. 그래서 같은 틱의 기믹 알림(50% 성공)은 전환 전 세대를 싣는다
         /// <summary> 플레이어 기술과 공격이 끝난 뒤 한 번 부른다 </summary>
         public void Tick(double serverTime)
         {
-            _tickTime = serverTime;
+            _tickTime         = serverTime;
+            _hasWarpDeparture = false;
             CompleteHandoffIfReady();
+
+            // 등장 대기 동안 두뇌의 페이즈는 0이고 전투가 열리는 틱에 1이 된다. 그 변화는 전환이 아니라 세지 않는다
+            int phaseBefore = _brain.Phase;
             _brain.Tick(serverTime);
+            if ((phaseBefore != NO_PHASE) && (_brain.Phase != phaseBefore))
+            {
+                ++_phaseGeneration;
+                _phaseTransitionServerTime = serverTime;
+            }
 
             // 보류가 풀려 두뇌가 이 틱에 사망을 확정했으면 몸체도 맞춘다. 치명타 때 바로 Dead가 된 보스는 이미 Dead라 지나간다
             if ((_brain.IsBossDeathRecorded) && (_lifeState == EParticipantLifeState.Alive))
             {
-                _lifeState = EParticipantLifeState.Dead;
+                _lifeState        = EParticipantLifeState.Dead;
+                _defeatServerTime = serverTime;
             }
 
             TickBarrier(serverTime);
@@ -593,7 +643,8 @@ namespace Shinshi.Combat
                 _health = 0f;
                 if (_deathPolicy.IsDeathConfirmed(this, serverTime))
                 {
-                    _lifeState = EParticipantLifeState.Dead;
+                    _lifeState        = EParticipantLifeState.Dead;
+                    _defeatServerTime = serverTime;
                 }
 
                 return;
@@ -769,8 +820,10 @@ namespace Shinshi.Combat
                 return false;
             }
 
-            _position = point;
-            landed    = _position;
+            _warpDeparture    = _position;
+            _hasWarpDeparture = true;
+            _position         = point;
+            landed            = _position;
             return true;
         }
 
@@ -861,9 +914,16 @@ namespace Shinshi.Combat
         *              P03 Circle
         ****************************************/
 
+        // 워프 후 충격파는 착지한 뒤에 이 예고를 알린다. 이번 틱에 워프했으면 출발 위치를 예고보다 먼저 보낸다
         void IBossCircleTelegraphListener.OnTelegraphStarted(int castInstanceId, Vector3 center, float radius,
             float telegraphSeconds)
         {
+            if (_hasWarpDeparture)
+            {
+                _hasWarpDeparture = false;
+                _wolbaekRelay.NotifyWarpDeparted(castInstanceId, _warpDeparture, _tickTime);
+            }
+
             BeginCast(castInstanceId, EBossTelegraphShape.Circle, radius);
             var start = BossTelegraphStart.Circle(_combatId, castInstanceId, _brain.ActivePatternId, center, radius,
                 _tickTime, telegraphSeconds);

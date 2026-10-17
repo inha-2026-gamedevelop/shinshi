@@ -23,6 +23,7 @@ namespace Shinshi.AI
         private readonly float   _firstStrikeSeconds;
         private readonly float   _strikeIntervalSeconds;
         private readonly float   _axisGapSeconds;
+        private readonly int     _firstLineId;
 
         /****************************************
         *              Properties
@@ -57,13 +58,17 @@ namespace Shinshi.AI
         /// <summary> 가로 마지막 타격에서 세로 첫 타격까지(초) </summary>
         public float AxisGapSeconds => _axisGapSeconds;
 
+        // 서버는 한 시전의 줄 번호를 발사 순서대로 이어서 발급한다. 발사 순서 k의 줄 번호는 FirstLineId + k다
+        /// <summary> 발사 순서 0번 줄의 서버 발급 번호, 0이면 모른다 </summary>
+        public int FirstLineId => _firstLineId;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public BossGridBeamStart(int bossId, int castId, Vector3 arenaCenter, float arenaRadius, int lineCount,
             float lineWidth, float lineSpacing, double castStartServerTime, float firstStrikeSeconds,
-            float strikeIntervalSeconds, float axisGapSeconds)
+            float strikeIntervalSeconds, float axisGapSeconds, int firstLineId = 0)
         {
             _bossId                = bossId;
             _castId                = castId;
@@ -76,6 +81,7 @@ namespace Shinshi.AI
             _firstStrikeSeconds    = firstStrikeSeconds;
             _strikeIntervalSeconds = strikeIntervalSeconds;
             _axisGapSeconds        = axisGapSeconds;
+            _firstLineId           = firstLineId;
         }
     }
 }

@@ -274,8 +274,9 @@ namespace Shinshi.AI
             }
         }
 
+        // lateElapsedSeconds는 서버 처치 시각부터 지난 시간이고 모르면 음수다. 재접속이면 정지와 디졸브를 이 시간만큼 지난 지점부터 잇는다
         /// <summary> 쓰러진 모습을 보인다, 보스 사망이다. 되돌리면 다시 일어선다. isLate가 참이면 재접속으로 이미 쓰러진 상태를 받은 것이다 </summary>
-        public void SetDefeated(bool isDefeated, bool isLate = false)
+        public void SetDefeated(bool isDefeated, bool isLate = false, float lateElapsedSeconds = WolbaekDeathTimeline.UNKNOWN_ELAPSED)
         {
             if (_isDefeated == isDefeated)
             {
@@ -311,10 +312,10 @@ namespace Shinshi.AI
                 }
                 _motion.PlayDeath(isLate);
 
-                // 처치 시각이 서버에 없어 재접속이면 쓰러짐을 건너뛰고 지금부터 정지와 디졸브를 진행한다
+                // 재접속이면 쓰러짐을 건너뛴다. 서버 처치 시각을 알면 그만큼 지난 정지와 디졸브 지점부터 잇는다
                 if (_dissolve != null)
                 {
-                    _dissolve.Begin(isLate);
+                    _dissolve.Begin(isLate, lateElapsedSeconds);
                 }
             }
             else
@@ -328,12 +329,13 @@ namespace Shinshi.AI
             }
         }
 
+        // appearElapsedSeconds는 서버가 등장을 시작한 시각부터 지난 시간이다. 늦게 받은 등장 모션을 처음부터 다시 틀지 않고 그 지점부터 잇는다
         /// <summary> 서버 흐름 상태가 바뀌었다. 등장 상태가 시작되면 등장 모션을 재생한다 </summary>
-        public void SetFlowState(EBossFlowState flowState)
+        public void SetFlowState(EBossFlowState flowState, float appearElapsedSeconds = 0f)
         {
             if (flowState == EBossFlowState.Appearing)
             {
-                _motion.PlayAppear();
+                _motion.PlayAppear(appearElapsedSeconds);
                 ShowAppearEffect();
                 return;
             }
@@ -409,6 +411,15 @@ namespace Shinshi.AI
         public void EndEventMotion(int castId, bool isCancelled)
         {
             _motion.OnCastEnded(castId, isCancelled);
+        }
+
+        /// <summary> 서버가 알린 P07 워프 직전 출발 위치를 워프 표현에 넘긴다 </summary>
+        public void SetWarpDeparture(int castId, Vector3 departure)
+        {
+            if (_warp != null)
+            {
+                _warp.SetDeparture(castId, departure, ReadClock());
+            }
         }
 
         /// <summary> 모델을 이루는 렌더러, 워프 표현이 숨기고 보일 때 쓴다 </summary>
