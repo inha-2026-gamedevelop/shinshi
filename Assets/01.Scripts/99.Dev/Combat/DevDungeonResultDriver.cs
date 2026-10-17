@@ -15,7 +15,7 @@ namespace Shinshi.Dev
     public sealed class DevDungeonResultDriver : MonoBehaviour
     {
         // 실제로는 서버가 출정 종료 사유와 정산 결과를 내려 준다. 서버가 없는 시험 씬에서는 플레이어 사망과 스포너의 구역 처치 판정을 그 대역으로 쓴다.
-        // 보상 내역은 시험 씬에 없어 비워 둔다. 귀환은 마을 접속 대신 씬을 다시 불러 처음부터 다시 시험한다
+        // 보상 내역은 시험 씬에 없어 비워 둔다. 귀환은 서버 접속 없이 마을 씬을 바로 불러온다
 
         /****************************************
         *                Fields
@@ -32,6 +32,8 @@ namespace Shinshi.Dev
         [Header("규칙")]
         [SerializeField] private string _regionName = "숲 고원";
         [SerializeField, Min(0f)] private float _showDelay = 1.5f; // 초, 마지막 몬스터가 쓰러지거나 내가 쓰러지는 연출을 본 뒤 띄운다
+        [SerializeField] private string _townScenePath = "Assets/00.Scenes/Release/ShinshiTown.unity"; // 귀환하면 가는 마을 씬
+        [SerializeField] private string _townSceneName = "ShinshiTown";
 
         private bool              _isEnded  = false;
         private bool              _isShown  = false;
@@ -136,14 +138,13 @@ namespace Shinshi.Dev
             _view.SetSaveStatus(ESaveStatus.Saved);
         }
 
-        // 시험 씬은 빌드 설정에 없어 인덱스로 부를 수 없다. 에디터에서는 경로로 플레이 모드 안에서 다시 불러온다
+        // 마을 씬은 빌드 설정에 있어 빌드에서는 이름으로 부른다. 에디터에서는 경로로 플레이 모드 안에서 불러온다
         private void OnReturnClicked()
         {
-            Scene scene = SceneManager.GetActiveScene();
 #if UNITY_EDITOR
-            UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(scene.path, new LoadSceneParameters(LoadSceneMode.Single));
+            UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(_townScenePath, new LoadSceneParameters(LoadSceneMode.Single));
 #else
-            SceneManager.LoadScene(scene.name);
+            SceneManager.LoadScene(_townSceneName);
 #endif
         }
     }
