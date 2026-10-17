@@ -65,8 +65,7 @@ namespace Shinshi.AI
 
             if (GUI.Button(new Rect(x, PANEL_MARGIN, BUTTON_WIDTH, BUTTON_HEIGHT), "처치 + 디졸브"))
             {
-                StopRunning();
-                _running = StartCoroutine(Play());
+                PlayDeath();
             }
 
             if (GUI.Button(new Rect(x, SECOND_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT), "되돌리기 (Idle)"))
@@ -80,6 +79,20 @@ namespace Shinshi.AI
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 처치 모션과 디졸브를 처음부터 재생한다, 기믹 성공 뒤 처치 연출로 이어갈 때 쓴다 </summary>
+        public void PlayDeath()
+        {
+            StopRunning();
+            _running = StartCoroutine(Play());
+        }
+
+        /// <summary> 진행 중인 처치 연출을 끊고 디졸브를 되돌린다, 모션은 부르는 쪽이 정한다 </summary>
+        public void ResetDeath()
+        {
+            StopRunning();
+            SetMask(0f);
+        }
 
         private void StopRunning()
         {

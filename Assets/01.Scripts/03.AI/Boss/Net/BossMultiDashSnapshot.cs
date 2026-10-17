@@ -49,6 +49,9 @@ namespace Shinshi.AI
 
         public bool StoppedByWall { get; set; }
 
+        /// <summary> 서버가 지금 돌진의 정지를 판정한 서버 시각, 아직 가는 중이거나 모르면 NaN이다 </summary>
+        public double StoppedServerTime { get; set; }
+
         /// <summary> 실행 구간이 짧아 남은 돌진이 잘렸다 </summary>
         public bool IsTruncated { get; set; }
     }

@@ -133,8 +133,9 @@ namespace Shinshi.UI
                 return;
             }
 
-            TownGrowthClient.SnapshotChanged += OnSnapshotChanged;
-            TownGrowthClient.ResultReceived  += OnResultReceived;
+            TownGrowthClient.SnapshotChanged  += OnSnapshotChanged;
+            TownGrowthClient.ResultReceived   += OnResultReceived;
+            TownGrowthClient.WriteLockChanged += OnWriteLockChanged;
             if (_runtimeStarted)
             {
                 ReadServerState();
@@ -165,8 +166,9 @@ namespace Shinshi.UI
         private void OnDisable()
         {
             UnbindButtons();
-            TownGrowthClient.SnapshotChanged -= OnSnapshotChanged;
-            TownGrowthClient.ResultReceived  -= OnResultReceived;
+            TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
+            TownGrowthClient.ResultReceived   -= OnResultReceived;
+            TownGrowthClient.WriteLockChanged -= OnWriteLockChanged;
             if (_requestInFlight)
             {
                 // 숨겨진 창은 다음 항목을 자동으로 구매하지 않는다. 재개 전에 서버 상태를 다시 조회한다.
@@ -351,6 +353,12 @@ namespace Shinshi.UI
             if ((!Application.isPlaying) || (!_hasServerSnapshot) || (!ClientRoles.IsTown()))
             {
                 SetStatus("마을 서버에 연결한 뒤 강화할 수 있습니다");
+                return;
+            }
+
+            if (GrowthWriteGuard.IsBlockedByOther(_pendingOperation))
+            {
+                SetStatus(GrowthWriteGuard.OTHER_WINDOW_TEXT);
                 return;
             }
 
@@ -722,6 +730,8 @@ namespace Shinshi.UI
             SetStatus(status);
         }
 
+        // 묶음 중단이나 시간 초과로 끝내면 서버 상태를 다시 읽고 새 요청으로 시작하므로 공용 잠금도 푼다.
+        // 결과가 온 요청이면 잠금이 이미 풀려 아무 일도 없다
         private void ClearRequest()
         {
             if (_requestWatcher != null)
@@ -730,10 +740,19 @@ namespace Shinshi.UI
                 _requestWatcher = null;
             }
 
+            TownGrowthClient.ReleaseWrite(_pendingOperation);
             _requestInFlight      = false;
             _pendingAccepted      = false;
             _pendingSnapshotReady = false;
             _pendingOperation     = Guid.Empty;
+        }
+
+        private void OnWriteLockChanged()
+        {
+            if ((Application.isPlaying) && (!_requestInFlight))
+            {
+                RefreshAll();
+            }
         }
 
         private void ResetDraft()
@@ -796,7 +815,8 @@ namespace Shinshi.UI
                 ? _working[_selectedIndex] > 0
                 : _working[_selectedIndex] > _confirmed[_selectedIndex];
             bool hasDraft = (_respecMode) || (workingTotal > confirmedTotal);
-            bool canCommit = (ready) && (hasDraft) && ((!_respecMode) || (_pool == 0)) && (cost <= _essence);
+            bool canCommit = (ready) && (hasDraft) && ((!_respecMode) || (_pool == 0)) && (cost <= _essence)
+                && ((!Application.isPlaying) || (!GrowthWriteGuard.IsBlockedByOther(_pendingOperation)));
             SetInteractable(_minusButton, (canEdit) && (canDecrease));
             SetInteractable(_plusButton, (canEdit) && (canIncrease));
             SetInteractable(_trainButton, (canEdit) && (canCommit));

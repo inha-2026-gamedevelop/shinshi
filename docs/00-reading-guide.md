@@ -35,6 +35,8 @@
 | [세계관·서사](design/world-and-narrative.md) | 단군·월백·산귀 설정과 서사 제작 경계 | 기웅, 전원 |
 | [운영 도구·로그 설계](design/operations-admin.md) | 어드민 페이지, 운영자 지급·이벤트·공지·점검·제재·장애 복구, 경제 원장·감사 로그·지표 | 민성 |
 | [런처·패치 설계](design/launcher-and-patch.md) | 런처 로그인·세션 전달, 서명 패치·설치·자체 업데이트, 서버 버전 맞춤, 체험판 범위 선택지 | 민성 |
+| [스킬창 설계](design/skill-window.md) | 기본 공격·Q/W/E/R 정보, 기술별 부적 3단계 등록·강화·분해·조합 저장 화면과 요청 흐름 (구현됨·실행 미검증) | 민성, 진욱 |
+| [소셜 설계](design/social-system.md) | 친구·귓속말·길드·길드 채팅의 데이터, 서버 간 전달, 화면, 구현 메모 (구현됨·실행 미검증) | 민성, 진욱 |
 | [컨셉아트 기록](design/concept-art.md) | 월백 전장·숲 맵·신시 마을 컨셉아트의 보이는 요소와 기획 대조 | 진욱, 기웅 |
 | [3D 모델 제작 목록](design/model-production-list.md) | 공용 모델·지역 조립·캐릭터 후보, Meshy CLI → Blender 제작 흐름·수량 제안 | 진욱, 기웅, 아트 제작자 |
 | [아트 제작 기본 과정](unity/ART_ASSET_PRODUCTION_WORKFLOW.md) | 원화·ChatGPT 목표 이미지, 기본 AO/PBR 처리, Blender·URP·LOD·프리팹 생성·검증 | 아트 제작자, AI 작업자 |

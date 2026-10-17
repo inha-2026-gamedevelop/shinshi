@@ -36,6 +36,9 @@ namespace Shinshi.Common
 
             // 공지 한 줄의 최대 길이(UTF-16 단위), 넘으면 자르고 말줄임표를 붙인다. 채팅 본문 한도와 별개다
             public const int NOTICE_MAX_LENGTH = 200;
+
+            // 클라이언트가 기억하는 최근 전달 ID 수. 같은 전달 ID의 귓속말, 길드 채팅, 소셜 알림이 다시 오면 버린다
+            public const int DELIVERY_DEDUPE_CAPACITY = 256;
         }
     }
 }

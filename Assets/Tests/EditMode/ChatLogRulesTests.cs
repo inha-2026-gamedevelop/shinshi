@@ -106,6 +106,8 @@ namespace Shinshi.Tests
             Assert.That(ChatLogRules.ChannelName(EChatChannel.All), Is.EqualTo("All"));
             Assert.That(ChatLogRules.ChannelName(EChatChannel.Party), Is.EqualTo("Party"));
             Assert.That(ChatLogRules.ChannelName(EChatChannel.System), Is.EqualTo("System"));
+            Assert.That(ChatLogRules.ChannelName(EChatChannel.Guild), Is.EqualTo("Guild"));
+            Assert.That(ChatLogRules.ChannelName(EChatChannel.Whisper), Is.EqualTo("Whisper"));
         }
 
         /****************************************

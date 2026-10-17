@@ -32,6 +32,7 @@ namespace Shinshi.Network
         public void RegisterHandlers()
         {
             NetworkServer.ReplaceHandler<ChatRequestMessage>(OnChat);
+            NetworkServer.ReplaceHandler<ChatWhisperRequestMessage>(OnWhisper);
         }
 
         /// <summary> 매니저의 연결 종료 알림에 건다 </summary>
@@ -53,6 +54,17 @@ namespace Shinshi.Network
             // API 참가자 ID는 던전 키에서만 나온다. 마을 키와 개발 토큰은 null이다
             SessionContractIds.TryGetApiParticipantId(binding.ParticipantKey, out string apiParticipantId);
             _server.Handle(binding.ParticipantId, binding.CharacterName, in message, binding.CharacterId, apiParticipantId);
+        }
+
+        private void OnWhisper(NetworkConnectionToClient connection, ChatWhisperRequestMessage message)
+        {
+            if ((!(connection.authenticationData is SessionBinding binding)) || (!binding.IsActive))
+            {
+                return;
+            }
+
+            SessionContractIds.TryGetApiParticipantId(binding.ParticipantKey, out string apiParticipantId);
+            _server.HandleWhisper(binding.ParticipantId, binding.CharacterName, in message, binding.CharacterId, apiParticipantId);
         }
     }
 }

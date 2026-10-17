@@ -26,7 +26,9 @@ namespace Shinshi.AI
     //
     // 기믹 중 체력이 2페이즈 기준 이하가 되어도 구조물 파괴와 그로기를 먼저 마치도록 전환을 보류하고(DefersPhaseTransition),
     // 그로기 중에는 새 선택을 막는다(BlocksSelection). 사망과 전투 종료는 보스 두뇌가 이 틱 앞에서 처리하므로 기믹보다 앞선다.
-    // 기믹 상태는 피해 처리와 무관하다, 그로기 중에도 피해를 받는다
+    // 기믹 상태는 피해 처리와 무관하다, 그로기 중에도 피해를 받는다.
+    // 표현 알림(IMucheolChargeGimmickListener)은 마지막 파괴 확인, 그로기 시작, 사망과 전투 종료가 아닌 이유로 접은 그로기만 알린다.
+    // 그로기 끝은 시작 알림의 끝 시각으로 정해져 따로 알리지 않는다
     /// <summary> 무철 돌진 유도 기믹, 체력 구간에서 한 번 발동해 P06을 반복하고 지정 구조물 파괴가 확인되면 그로기에 들어간다 </summary>
     public sealed class MucheolChargeGimmick : IBossGimmick, IBossChargeCastTracker
     {
@@ -41,14 +43,15 @@ namespace Shinshi.AI
         *                Fields
         ****************************************/
 
-        private readonly IBossVitals               _vitals;
-        private readonly IBossPatternCatalog       _catalog;
-        private readonly IBossPatternFactory       _factory;
-        private readonly string                    _bossId;
-        private readonly MucheolChargeGimmickSpec  _spec;
-        private readonly HashSet<int>              _designated = new HashSet<int>();
-        private readonly HashSet<int>              _destroyed  = new HashSet<int>();
-        private readonly List<PatternDefinition>   _buffer     = new List<PatternDefinition>();
+        private readonly IBossVitals                    _vitals;
+        private readonly IBossPatternCatalog            _catalog;
+        private readonly IBossPatternFactory            _factory;
+        private readonly string                         _bossId;
+        private readonly MucheolChargeGimmickSpec       _spec;
+        private readonly IMucheolChargeGimmickListener  _listener;
+        private readonly HashSet<int>                   _designated = new HashSet<int>();
+        private readonly HashSet<int>                   _destroyed  = new HashSet<int>();
+        private readonly List<PatternDefinition>        _buffer     = new List<PatternDefinition>();
 
         private EMucheolChargeGimmickState _state = EMucheolChargeGimmickState.Dormant;
         private bool                       _selectionPending;
@@ -59,6 +62,8 @@ namespace Shinshi.AI
         private int                        _failedStartCount;
         private double                     _groggyStart;
         private double                     _groggyEnd;
+        private int                        _groggyCastId        = NO_CAST_ID; // 마지막 구조물을 부순 시전, 모르면 0이다
+        private int                        _groggyStructureId;
 
         /****************************************
         *              Properties
@@ -110,9 +115,10 @@ namespace Shinshi.AI
         *                Methods
         ****************************************/
 
-        // catalog와 factory는 P06을 지금 고를 수 있는지 확인하는 데 쓴다. 운영 카탈로그에 P06 정의가 없으면 기믹은 발동하지 않는다
+        // catalog와 factory는 P06을 지금 고를 수 있는지 확인하는 데 쓴다. 운영 카탈로그에 P06 정의가 없으면 기믹은 발동하지 않는다.
+        // listener는 그로기 표현 알림을 받는 서버 연결이고 비우면 알리지 않는다
         public MucheolChargeGimmick(IBossVitals vitals, IBossPatternCatalog catalog, IBossPatternFactory factory, string bossId,
-            MucheolChargeGimmickSpec spec)
+            MucheolChargeGimmickSpec spec, IMucheolChargeGimmickListener listener = null)
         {
             if (vitals == null)
             {
@@ -142,8 +148,9 @@ namespace Shinshi.AI
             _vitals  = vitals;
             _catalog = catalog;
             _factory = factory;
-            _bossId  = bossId;
-            _spec    = spec;
+            _bossId   = bossId;
+            _spec     = spec;
+            _listener = listener;
         }
 
         /// <summary> 파괴해야 하는 지정 구조물의 식별자를 정한다, 발동 전에만 받는다. 식별자는 0보다 크고 서로 달라야 하며 어긋나면 아무것도 바꾸지 않고 거짓이다 </summary>
@@ -177,7 +184,13 @@ namespace Shinshi.AI
             if (((_state == EMucheolChargeGimmickState.Active) || (_state == EMucheolChargeGimmickState.AwaitingFinalRecovery))
                 && (!IsCastTrackerWired()))
             {
+                bool wasAwaiting = _state == EMucheolChargeGimmickState.AwaitingFinalRecovery;
                 Stop();
+                if (wasAwaiting)
+                {
+                    _listener?.OnGroggyCancelled(_groggyCastId);
+                }
+
                 return;
             }
 
@@ -227,7 +240,7 @@ namespace Shinshi.AI
 
             if (_destroyed.Count >= _spec.RequiredStructureCount)
             {
-                ArriveAtFinalDestruction(serverTime, castInstanceId);
+                ArriveAtFinalDestruction(serverTime, castInstanceId, structureId);
             }
 
             return true;
@@ -329,9 +342,13 @@ namespace Shinshi.AI
 
         // 마지막 구조물 파괴가 확인됐을 때 그로기 시작 방식을 정한다. 순서는 파괴를 낸 시전이 진행 중인 경우, 방금 정상 종료한 경우,
         // 다른 시전이 진행 중인 경우(한계), 시전 사이인 경우다
-        private void ArriveAtFinalDestruction(double serverTime, int castInstanceId)
+        private void ArriveAtFinalDestruction(double serverTime, int castInstanceId, int structureId)
         {
             bool hasCast = castInstanceId != NO_CAST_ID;
+
+            _groggyCastId      = castInstanceId;
+            _groggyStructureId = structureId;
+            _listener?.OnGroggyPending(castInstanceId, structureId, serverTime);
 
             if ((hasCast) && (castInstanceId == _trackedCastId))
             {
@@ -361,6 +378,7 @@ namespace Shinshi.AI
             _state                 = EMucheolChargeGimmickState.Groggy;
             _selectionPending      = false;
             _beginGroggyOnNextTick = false;
+            _listener?.OnGroggyStarted(_groggyCastId, _groggyStructureId, _groggyStart, _groggyEnd);
         }
 
         // 지정 구조물이 필요한 수만큼 있어야 끝낼 수 있는 기믹이다. P06도 지금 고를 수 있어야 하고, 시전 추적 연결도 검증돼야 한다

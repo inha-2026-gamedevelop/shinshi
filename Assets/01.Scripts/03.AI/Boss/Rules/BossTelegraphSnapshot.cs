@@ -42,5 +42,8 @@ namespace Shinshi.AI
 
         /// <summary> 정해진 거리가 아니라 벽에서 멈췄다 </summary>
         public bool DashStoppedByWall { get; set; }
+
+        /// <summary> 서버가 돌진 정지를 판정한 서버 시각, 아직 가는 중이거나 모르면 NaN이다 </summary>
+        public double DashStoppedServerTime { get; set; }
     }
 }

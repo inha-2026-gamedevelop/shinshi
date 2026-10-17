@@ -26,7 +26,8 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        private const int TAB_COUNT = 3;
+        private const int    TAB_COUNT          = 5;
+        private const string WHISPER_USAGE_TEXT = "귓속말은 /w 이름 내용 으로 보냅니다.";
 
         [Header("연결")]
         [SerializeField] private HotkeyRouter   _router   = null;
@@ -34,7 +35,7 @@ namespace Shinshi.UI
         [SerializeField] private TMP_InputField _input    = null;
         [SerializeField] private TMP_Dropdown   _channel  = null;
 
-        [Header("탭 (전체, 파티, 시스템 순)")]
+        [Header("탭 (전체, 파티, 시스템, 길드, 귓속말 순)")]
         [SerializeField] private Button[]     _tabs       = new Button[TAB_COUNT];
         [SerializeField] private TMP_Text[]   _tabLabels  = new TMP_Text[TAB_COUNT];
         [SerializeField] private GameObject[] _underlines = new GameObject[TAB_COUNT];
@@ -42,6 +43,8 @@ namespace Shinshi.UI
         [Header("색")]
         [SerializeField] private Color _partyColor         = new Color(0.561f, 0.827f, 1f, 1f);
         [SerializeField] private Color _systemColor        = new Color(0.914f, 0.788f, 0.478f, 1f);
+        [SerializeField] private Color _guildColor         = new Color(0.463f, 0.902f, 0.741f, 1f);
+        [SerializeField] private Color _whisperColor       = new Color(0.906f, 0.612f, 0.914f, 1f);
         [SerializeField] private Color _selectedTabColor   = new Color(0.02f, 0.03f, 0.05f, 0.55f);
         [SerializeField] private Color _unselectedTabColor = new Color(0.02f, 0.03f, 0.05f, 0f);
         [SerializeField] private Color _selectedLabelColor = new Color(0.92f, 0.94f, 0.97f, 1f);
@@ -53,6 +56,8 @@ namespace Shinshi.UI
         private UnityAction<string> _onSubmit    = null;
         private string              _partyHex    = null;
         private string              _systemHex   = null;
+        private string              _guildHex    = null;
+        private string              _whisperHex  = null;
         private EChatTab            _tab         = EChatTab.All;
         private int                 _submitFrame = -1;
 
@@ -62,16 +67,21 @@ namespace Shinshi.UI
 
         public EChatTab ActiveTab => _tab;
 
+        // 켜져 있는 HUD 채팅 창. 상호작용 패널처럼 HUD 밖 프리팹이 귓속말 입력을 채울 때 쓴다. 마을, 던전 씬마다 하나다
+        public static HudChatView Active { get; private set; }
+
         /****************************************
         *              Unity Event
         ****************************************/
 
         private void Awake()
         {
-            _onOpen    = OpenInput;
-            _onSubmit  = Submit;
-            _partyHex  = ColorUtility.ToHtmlStringRGB(_partyColor);
-            _systemHex = ColorUtility.ToHtmlStringRGB(_systemColor);
+            _onOpen     = OpenInput;
+            _onSubmit   = Submit;
+            _partyHex   = ColorUtility.ToHtmlStringRGB(_partyColor);
+            _systemHex  = ColorUtility.ToHtmlStringRGB(_systemColor);
+            _guildHex   = ColorUtility.ToHtmlStringRGB(_guildColor);
+            _whisperHex = ColorUtility.ToHtmlStringRGB(_whisperColor);
             for (int i = 0; i < _tabs.Length; ++i)
             {
                 if (_tabs[i] == null)
@@ -84,8 +94,15 @@ namespace Shinshi.UI
             }
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatic()
+        {
+            Active = null;
+        }
+
         private void OnEnable()
         {
+            Active = this;
             ChatLog.Changed += Refresh;
             if (_input != null)
             {
@@ -102,6 +119,11 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
+            if (Active == this)
+            {
+                Active = null;
+            }
+
             ChatLog.Changed -= Refresh;
             if (_input != null)
             {
@@ -140,8 +162,8 @@ namespace Shinshi.UI
                 }
             }
 
-            // 시스템 탭은 보낼 채널이 아니라 입력 채널을 바꾸지 않는다
-            if ((_channel != null) && (tab != EChatTab.System))
+            // 시스템, 귓속말 탭은 보낼 채널이 아니라 입력 채널을 바꾸지 않는다
+            if ((_channel != null) && (ChatViewRules.ChangesInputChannel(tab)))
             {
                 _channel.SetValueWithoutNotify(ChatViewRules.ToDropdownIndex(tab));
             }
@@ -166,21 +188,53 @@ namespace Shinshi.UI
             return true;
         }
 
+        // 친구 창의 귓속말 버튼이 부른다. 다른 창이 열려 있어도 입력 칸에 "/w 이름 "을 채우고 포커스를 준다
+        /// <summary> 귓속말 명령을 채운 채 입력을 연다 </summary>
+        public void BeginWhisper(string characterName)
+        {
+            if ((_input == null) || (string.IsNullOrEmpty(characterName)))
+            {
+                return;
+            }
+
+            _input.text = ChatViewRules.WhisperPrefix(characterName);
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(_input.gameObject);
+            }
+
+            _input.ActivateInputField();
+            _input.caretPosition = _input.text.Length;
+        }
+
         // 거절되면 쓴 문장을 남겨 고쳐 보낼 수 있게 한다. 빈 Enter는 입력만 닫는다
         private void Submit(string text)
         {
             _submitFrame = Time.frameCount;
-            if (!string.IsNullOrWhiteSpace(text))
+            if ((!string.IsNullOrWhiteSpace(text)) && (Send(text) != EChatReject.None))
             {
-                EChatChannel channel = (_channel != null) ? ChatViewRules.ToSendChannel(_channel.value) : EChatChannel.All;
-                if (ChatClient.Send(channel, text) != EChatReject.None)
-                {
-                    return;
-                }
+                return;
             }
 
             _input.text = string.Empty;
             CloseInput();
+        }
+
+        private EChatReject Send(string text)
+        {
+            switch (ChatViewRules.TryParseCommand(text, out string target, out string body))
+            {
+                case EChatCommand.Whisper:
+                    return ChatClient.SendWhisper(target, body);
+                case EChatCommand.Reply:
+                    return ChatClient.SendReply(body);
+                case EChatCommand.Invalid:
+                    ChatLog.AddSystem(WHISPER_USAGE_TEXT);
+                    return EChatReject.WhisperTargetNotFound;
+                default:
+                    EChatChannel channel = (_channel != null) ? ChatViewRules.ToSendChannel(_channel.value) : EChatChannel.All;
+                    return ChatClient.Send(channel, text);
+            }
         }
 
         private void CloseInput()
@@ -206,7 +260,7 @@ namespace Shinshi.UI
                 ChatEntry entry = entries[i];
                 if (ChatViewRules.Matches(_tab, entry.Channel))
                 {
-                    ChatViewRules.AppendLine(_buffer, in entry, null, _partyHex, _systemHex);
+                    ChatViewRules.AppendLine(_buffer, in entry, null, _partyHex, _systemHex, _guildHex, _whisperHex);
                 }
             }
 

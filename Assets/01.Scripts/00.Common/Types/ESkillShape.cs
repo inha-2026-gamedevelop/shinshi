@@ -12,6 +12,8 @@ namespace Shinshi.Common
         // 첫 적에서 소멸하는 투사체
         Projectile = 3,
         // 계약 동료 호출, 기술 자체는 판정 범위가 없다
-        Summon     = 4
+        Summon     = 4,
+        // 시전자 자신에게 거는 효과, 피해 판정 범위가 없다
+        Buff       = 5
     }
 }

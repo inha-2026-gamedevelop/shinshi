@@ -235,7 +235,7 @@ namespace Shinshi.AI
 
             if (distance > engageDist)
             {
-                step    = Mathf.Min(_definition.MoveSpeed * deltaSeconds, distance - engageDist);
+                step    = Mathf.Min(_definition.MoveSpeed * _self.GetMoveSpeedScale(serverTime) * deltaSeconds, distance - engageDist);
                 desired = position + ((toTarget / distance) * step);
             }
 

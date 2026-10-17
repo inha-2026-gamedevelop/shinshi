@@ -113,7 +113,7 @@ namespace Shinshi.Tests
                 DashStartDirection = direction;
             }
 
-            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
             }
 

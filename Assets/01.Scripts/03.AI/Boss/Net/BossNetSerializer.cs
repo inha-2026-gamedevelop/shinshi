@@ -138,23 +138,25 @@ namespace Shinshi.AI
             writer.WriteFloat(value.DashSpeed);
             writer.WriteFloat(value.DashStoppedDistance);
             writer.WriteBool(value.DashStoppedByWall);
+            writer.WriteDouble(value.DashStoppedServerTime);
         }
 
         public static BossTelegraphSnapshot ReadBossTelegraphSnapshot(this NetworkReader reader)
         {
             return new BossTelegraphSnapshot
             {
-                Start               = reader.ReadBossTelegraphStart(),
-                Direction           = reader.ReadVector3(),
-                Length              = reader.ReadFloat(),
-                IsDirectionLocked   = reader.ReadBool(),
-                Phase               = (EBossTelegraphPhase)ReadEnumByte(reader, MAX_TELEGRAPH_PHASE),
-                ExecuteServerTime   = reader.ReadDouble(),
-                DashDistance        = reader.ReadFloat(),
-                DashSeconds         = reader.ReadFloat(),
-                DashSpeed           = reader.ReadFloat(),
-                DashStoppedDistance = reader.ReadFloat(),
-                DashStoppedByWall   = reader.ReadBool()
+                Start                 = reader.ReadBossTelegraphStart(),
+                Direction             = reader.ReadVector3(),
+                Length                = reader.ReadFloat(),
+                IsDirectionLocked     = reader.ReadBool(),
+                Phase                 = (EBossTelegraphPhase)ReadEnumByte(reader, MAX_TELEGRAPH_PHASE),
+                ExecuteServerTime     = reader.ReadDouble(),
+                DashDistance          = reader.ReadFloat(),
+                DashSeconds           = reader.ReadFloat(),
+                DashSpeed             = reader.ReadFloat(),
+                DashStoppedDistance   = reader.ReadFloat(),
+                DashStoppedByWall     = reader.ReadBool(),
+                DashStoppedServerTime = reader.ReadDouble()
             };
         }
 
@@ -552,6 +554,7 @@ namespace Shinshi.AI
             writer.WriteFloat(value.DashSpeed);
             writer.WriteFloat(value.StoppedDistance);
             writer.WriteBool(value.StoppedByWall);
+            writer.WriteDouble(value.StoppedServerTime);
             writer.WriteBool(value.IsTruncated);
         }
 
@@ -575,6 +578,7 @@ namespace Shinshi.AI
                 DashSpeed                = reader.ReadFloat(),
                 StoppedDistance          = reader.ReadFloat(),
                 StoppedByWall            = reader.ReadBool(),
+                StoppedServerTime        = reader.ReadDouble(),
                 IsTruncated              = reader.ReadBool()
             };
         }
@@ -646,6 +650,66 @@ namespace Shinshi.AI
             return new BossChargeOutcome(bossId, castId, isCollision, position, travel, structureId, recovery, serverTime);
         }
 
+        public static void WriteBossChargeGroggy(this NetworkWriter writer, BossChargeGroggy value)
+        {
+            writer.WriteInt(value.BossId);
+            writer.WriteInt(value.CastId);
+            writer.WriteInt(value.StructureId);
+            writer.WriteDouble(value.CollisionServerTime);
+            writer.WriteDouble(value.GroggyStartServerTime);
+            writer.WriteDouble(value.GroggyEndServerTime);
+        }
+
+        public static BossChargeGroggy ReadBossChargeGroggy(this NetworkReader reader)
+        {
+            int    bossId      = reader.ReadInt();
+            int    castId      = reader.ReadInt();
+            int    structureId = reader.ReadInt();
+            double collision   = reader.ReadDouble();
+            double start       = reader.ReadDouble();
+            double end         = reader.ReadDouble();
+            return new BossChargeGroggy(bossId, castId, structureId, collision, start, end);
+        }
+
+        // 배치 수 하나와 구조물별 식별자, 중심, 반경, 지정 여부, 파괴 여부를 보낸다. 늦은 접속 복원에만 쓴다
+        public static void WriteBossChargeStructureSnapshot(this NetworkWriter writer, BossChargeStructureSnapshot value)
+        {
+            if (!value.IsWritable)
+            {
+                throw new InvalidDataException($"무철 돌진 구조물 배치가 어긋났거나 상한을 넘는다, count={value.Count}");
+            }
+
+            writer.WriteByte((byte)value.Count);
+            for (int i = 0; i < value.Count; ++i)
+            {
+                BossChargeStructureInfo info = value.GetStructure(i);
+                writer.WriteInt(info.Id);
+                writer.WriteVector3(info.Center);
+                writer.WriteFloat(info.Radius);
+                writer.WriteBool(info.IsGimmickTarget);
+                writer.WriteBool(value.IsDestroyed(i));
+            }
+        }
+
+        public static BossChargeStructureSnapshot ReadBossChargeStructureSnapshot(this NetworkReader reader)
+        {
+            int count = ReadCount(reader, Constants.Network.BOSS_CHARGE_STRUCTURE_MAX_COUNT);
+
+            var structures = new BossChargeStructureInfo[count];
+            var destroyed  = new bool[count];
+            for (int i = 0; i < count; ++i)
+            {
+                int     id       = reader.ReadInt();
+                Vector3 center   = reader.ReadVector3();
+                float   radius   = reader.ReadFloat();
+                bool    isTarget = reader.ReadBool();
+                structures[i] = new BossChargeStructureInfo(id, center, radius, isTarget);
+                destroyed[i]  = reader.ReadBool();
+            }
+
+            return new BossChargeStructureSnapshot(structures, destroyed, count);
+        }
+
         /****************************************
         *          Wolbaek Hard Phase 2
         ****************************************/
@@ -706,6 +770,7 @@ namespace Shinshi.AI
             writer.WriteFloat(value.FirstStrikeSeconds);
             writer.WriteFloat(value.StrikeIntervalSeconds);
             writer.WriteFloat(value.AxisGapSeconds);
+            writer.WriteInt(value.FirstLineId);
         }
 
         public static BossGridBeamStart ReadBossGridBeamStart(this NetworkReader reader)
@@ -721,8 +786,9 @@ namespace Shinshi.AI
             float   firstStrike = reader.ReadFloat();
             float   interval    = reader.ReadFloat();
             float   axisGap     = reader.ReadFloat();
+            int     firstLineId = reader.ReadInt();
             return new BossGridBeamStart(bossId, castId, arenaCenter, arenaRadius, lineCount, lineWidth, lineSpacing,
-                startTime, firstStrike, interval, axisGap);
+                startTime, firstStrike, interval, axisGap, firstLineId);
         }
 
         public static void WriteBossGridBeamSnapshot(this NetworkWriter writer, BossGridBeamSnapshot value)

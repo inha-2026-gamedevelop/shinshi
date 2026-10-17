@@ -10,14 +10,14 @@ using Shinshi.Common;
 
 namespace Shinshi.Art
 {
-    /// <summary> 마검사 효과 종류, 기본 공격과 기술 Q, W, E, R에 하나씩 대응한다 </summary>
+    /// <summary> 마검사 효과 종류, 기본 공격과 기술 Q 방벽, W 검파, E 장판, R 순간 이동 베기에 하나씩 대응한다 </summary>
     public enum EMageknightVfxKind
     {
         Basic,
-        Arcane,
+        Shield,
+        Wave,
         Field,
-        Seal,
-        Wave
+        Jump
     }
 
     /// <summary> 공개 전투 상태의 현재값만으로 마검사 효과의 재생 시점과 취소를 정하는 순수 추적기, 엔진 오브젝트에 의존하지 않아 EditMode에서 시험한다 </summary>
@@ -35,6 +35,7 @@ namespace Shinshi.Art
             public EPlayerClass          PlayerClass;
             public EParticipantLifeState LifeState;
             public byte                  AttackSequence;
+            public byte                  AttackComboStep;
             public byte                  DodgeSequence;
             public byte                  ActionCancelSequence;
             public int                   CastInstanceId;
@@ -44,6 +45,7 @@ namespace Shinshi.Art
             public double                SkillResolveAt;
             public Vector3               SkillOrigin;
             public Vector3               SkillAim;
+            public Vector3               SkillPoint;
             public Vector3               Facing;
             public double                Now;
         }
@@ -55,8 +57,10 @@ namespace Shinshi.Art
             public Vector3            Origin;
             public Vector3            Direction;
             public double             StartAt;
-            // 장판만 서버와 같은 종료 시각을 갖고, 나머지는 0이다
+            // 장판과 방벽만 서버와 같은 종료 시각을 갖고, 나머지는 0이다
             public double             EndAt;
+            // 기본 공격의 콤보 단계, 다른 효과는 0이다
+            public int                Variant;
         }
 
         private struct Pending
@@ -69,12 +73,14 @@ namespace Shinshi.Art
             public double             Time;
             public Vector3            Origin;
             public Vector3            Direction;
+            public int                Variant;
         }
 
         private readonly Pending[] _pending = new Pending[MAX_PENDING];
         private readonly Play[]    _plays   = new Play[MAX_PENDING];
 
         private float _basicDelay;
+        private float _shieldDuration;
         private float _fieldDuration;
         private float _waveSpeed;
         private float _waveRange;
@@ -114,14 +120,16 @@ namespace Shinshi.Art
         *                Methods
         ****************************************/
 
-        /// <summary> 기본 공격 준비 시간, 장판 지속 시간(0 이하면 재생하지 않음), 검기 속도와 사거리(0 이하면 재생하지 않음), 재생 시각을 넘겨 관찰해도 허용하는 시간 </summary>
-        public void Configure(float basicDelay, float fieldDuration, float waveSpeed, float waveRange, float maxLateSeconds)
+        /// <summary> 기본 공격 준비 시간, 방벽과 장판 지속 시간(0 이하면 재생하지 않음), 검파 속도와 사거리(0 이하면 재생하지 않음), 재생 시각을 넘겨 관찰해도 허용하는 시간 </summary>
+        public void Configure(float basicDelay, float shieldDuration, float fieldDuration, float waveSpeed, float waveRange,
+            float maxLateSeconds)
         {
-            _basicDelay    = Mathf.Max(0f, basicDelay);
-            _fieldDuration = fieldDuration;
-            _waveSpeed     = waveSpeed;
-            _waveRange     = waveRange;
-            _maxLate       = Mathf.Max(0f, maxLateSeconds);
+            _basicDelay     = Mathf.Max(0f, basicDelay);
+            _shieldDuration = shieldDuration;
+            _fieldDuration  = fieldDuration;
+            _waveSpeed      = waveSpeed;
+            _waveRange      = waveRange;
+            _maxLate        = Mathf.Max(0f, maxLateSeconds);
         }
 
         /// <summary> 대기 중인 효과를 모두 버리고 다음 관찰을 새 기준값으로 삼는다 </summary>
@@ -136,10 +144,16 @@ namespace Shinshi.Art
             return _plays[index];
         }
 
-        /// <summary> 기본 공격은 재생 순간의 캐릭터 위치, 나머지는 서버가 공개한 시전 위치에서 터진다 </summary>
+        /// <summary> 기본 공격과 방벽은 캐릭터 위치, 나머지는 서버가 공개한 시전 위치나 지정 지점에서 터진다 </summary>
         public static bool UsesActorPosition(EMageknightVfxKind kind)
         {
-            return kind == EMageknightVfxKind.Basic;
+            return (kind == EMageknightVfxKind.Basic) || (kind == EMageknightVfxKind.Shield);
+        }
+
+        /// <summary> 재생 중에도 캐릭터를 따라다니는 효과, 방벽만 해당한다 </summary>
+        public static bool FollowsActor(EMageknightVfxKind kind)
+        {
+            return kind == EMageknightVfxKind.Shield;
         }
 
         /// <summary> 출발 후 경과 시간에 대해 검기가 나아간 거리, 감속 없이 속도 곱하기 시간이며 사거리에서 멈춘다 </summary>
@@ -263,6 +277,7 @@ namespace Shinshi.Art
             _pending[slot].Time      = obs.Now + _basicDelay;
             _pending[slot].Origin    = Vector3.zero;
             _pending[slot].Direction = obs.Facing;
+            _pending[slot].Variant   = obs.AttackComboStep;
         }
 
         private void RegisterCast(in Observation obs)
@@ -294,8 +309,10 @@ namespace Shinshi.Art
             _pending[slot].Kind      = kind;
             _pending[slot].CastId    = obs.CastInstanceId;
             _pending[slot].Time      = 0.0;
-            _pending[slot].Origin    = obs.SkillOrigin;
+            // E 장판은 지정 지점에 놓이므로 서버가 공개한 지점에서 터진다
+            _pending[slot].Origin    = (kind == EMageknightVfxKind.Field) ? obs.SkillPoint : obs.SkillOrigin;
             _pending[slot].Direction = obs.SkillAim;
+            _pending[slot].Variant   = 0;
         }
 
         private int Resolve(in Observation obs)
@@ -368,7 +385,9 @@ namespace Shinshi.Art
             switch (_pending[index].Kind)
             {
                 case EMageknightVfxKind.Field:
-                    return ResolveField(index, count, startAt, elapsed);
+                    return ResolveTimed(index, count, startAt, elapsed, _fieldDuration);
+                case EMageknightVfxKind.Shield:
+                    return ResolveTimed(index, count, startAt, elapsed, _shieldDuration);
                 case EMageknightVfxKind.Wave:
                     return ResolveWave(index, count, startAt, elapsed);
                 default:
@@ -382,15 +401,15 @@ namespace Shinshi.Art
             }
         }
 
-        private int ResolveField(int index, int count, double startAt, double elapsed)
+        private int ResolveTimed(int index, int count, double startAt, double elapsed, float duration)
         {
-            // 서버 장판은 resolveAt부터 지속 시간만큼 살아 있으므로 늦게 관찰해도 남은 시간만큼은 보인다
-            if ((_fieldDuration <= 0f) || (elapsed >= _fieldDuration))
+            // 서버 장판과 면역은 resolveAt부터 지속 시간만큼 살아 있으므로 늦게 관찰해도 남은 시간만큼은 보인다
+            if ((duration <= 0f) || (elapsed >= duration))
             {
                 return count;
             }
 
-            return Emit(in _pending[index], startAt, startAt + _fieldDuration, count);
+            return Emit(in _pending[index], startAt, startAt + duration, count);
         }
 
         private int ResolveWave(int index, int count, double startAt, double elapsed)
@@ -411,6 +430,7 @@ namespace Shinshi.Art
             _plays[count].Direction = pending.Direction;
             _plays[count].StartAt   = startAt;
             _plays[count].EndAt     = endAt;
+            _plays[count].Variant   = pending.Variant;
             return count + 1;
         }
 
@@ -440,16 +460,16 @@ namespace Shinshi.Art
             switch (slot)
             {
                 case Constants.Combat.SKILL_SLOT_Q:
-                    kind = EMageknightVfxKind.Arcane;
+                    kind = EMageknightVfxKind.Shield;
                     return true;
                 case Constants.Combat.SKILL_SLOT_W:
-                    kind = EMageknightVfxKind.Field;
+                    kind = EMageknightVfxKind.Wave;
                     return true;
                 case Constants.Combat.SKILL_SLOT_E:
-                    kind = EMageknightVfxKind.Seal;
+                    kind = EMageknightVfxKind.Field;
                     return true;
                 case Constants.Combat.SKILL_SLOT_R:
-                    kind = EMageknightVfxKind.Wave;
+                    kind = EMageknightVfxKind.Jump;
                     return true;
                 default:
                     kind = EMageknightVfxKind.Basic;

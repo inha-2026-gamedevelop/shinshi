@@ -388,7 +388,7 @@ API 타임아웃은 초기 3초, 동일 ID로 1/2/4초 후 재시도한다. 미�
 |---|---|---|
 | 1 | Windows용 Editor와 Linux Dedicated Server 빌드 모듈 확인 | 같은 프로젝트로 클라이언트·헤드리스 서버 생성 가능 |
 | 2 | GameDB·Bootstrap·`ShinshiBuild` 진입점 존재, SO 설정 잔여와 실제 빌드 확인 | `town`/`dungeon` 역할과 콘텐츠 버전 보고 |
-| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0017 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
+| 3 | `Backend/` .NET 10 API·PostgreSQL 18 Compose·SQL 0001~0019 존재 | 건강 검사·DB 연결·유일 키·롤백 검증 |
 | 4 | 개발용 서버 URL/포트/자격을 환경 설정에 주입 | 코드·문서·클라이언트에 실제 비밀값 없음 |
 | 5 | 마을 프로세스1·던전 프로세스1·클라이언트2부터 실행 | 로그인→입장→권위 이동→정산→재접속 |
 | 6 | 승인된 AWS 환경에 같은 서버 빌드 배포 | 외부 PC 접속·버전 거절·로그 추적·종료/복구 |

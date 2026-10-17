@@ -190,6 +190,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(expected.DashSpeed, actual.DashSpeed, FLOAT_EPSILON);
             Assert.AreEqual(expected.StoppedDistance, actual.StoppedDistance, FLOAT_EPSILON);
             Assert.AreEqual(expected.StoppedByWall, actual.StoppedByWall);
+            Assert.AreEqual(expected.StoppedServerTime, actual.StoppedServerTime, TIME_EPSILON);
             Assert.AreEqual(expected.IsTruncated, actual.IsTruncated);
         }
 

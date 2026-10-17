@@ -63,6 +63,24 @@ namespace Shinshi.Backend.Sessions
             return (caller, null);
         }
 
+        /// <summary> 마을 또는 던전 서버를 받는 경로(소셜 채팅, 전달함)의 호출 서버를 확인한다. 임대가 없으면 401이다
+        /// (인증기가 두 역할 밖의 임대를 이미 거절한다) </summary>
+        protected async Task<(ServerCaller? Caller, IActionResult? Rejection)> RequireGameServerCallerAsync(
+            CancellationToken cancellationToken)
+        {
+            ServerCaller? caller = await _callers.AuthenticateAsync(HttpContext, cancellationToken);
+            if (caller == null)
+            {
+                return (null, StatusCode(StatusCodes.Status401Unauthorized));
+            }
+            if ((caller.Role != ContractCodes.ServerRole.TOWN) && (caller.Role != ContractCodes.ServerRole.DUNGEON))
+            {
+                return (null, StatusCode(StatusCodes.Status403Forbidden));
+            }
+
+            return (caller, null);
+        }
+
         /// <summary> 빈 GUID를 형식 오류로 본다 </summary>
         protected static bool TryParseId(string? value, out Guid id)
         {

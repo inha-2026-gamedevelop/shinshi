@@ -129,6 +129,7 @@ namespace Shinshi.Tests
         [TestCase(nameof(GameDatabaseSO.Progression))]
         [TestCase(nameof(GameDatabaseSO.Avatar))]
         [TestCase(nameof(GameDatabaseSO.Camera))]
+        [TestCase(nameof(GameDatabaseSO.SkillDisplay))]
         public void Compute_CatalogSchemaVersionChanged_ChangesHash(string catalogProperty)
         {
             GameDatabaseSO root     = CreateRoot();

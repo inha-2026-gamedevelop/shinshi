@@ -21,6 +21,13 @@ namespace Shinshi.UI
         [SerializeField] private Image    _cooldown = null;
         [SerializeField] private TMP_Text _keyText  = null;
 
+        // 쓸 수 없는 칸은 아이콘을 이만큼 어둡게 곱한다
+        private static readonly Color G_LockedTint = new Color(0.3f, 0.3f, 0.3f, 1f);
+
+        private Color _iconColor    = Color.white;
+        private bool  _hasIconColor = false;
+        private bool  _isLocked     = false;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -32,6 +39,24 @@ namespace Shinshi.UI
         }
 
         public void SetKeyLabel(string label) { _keyText.SetText(label); }
+
+        // 스택 부족처럼 쿨다운과 별개로 지금 쓸 수 없는 칸을 회색으로 보인다. 값이 같으면 바로 돌아와 매 프레임 불러도 된다
+        public void SetLocked(bool locked)
+        {
+            if ((locked == _isLocked) || (_icon == null))
+            {
+                return;
+            }
+
+            if (!_hasIconColor)
+            {
+                _iconColor    = _icon.color;
+                _hasIconColor = true;
+            }
+
+            _isLocked   = locked;
+            _icon.color = locked ? (_iconColor * G_LockedTint) : _iconColor;
+        }
 
         // 쿨타임이 지날수록 게이지가 위쪽에서 시계 방향으로 차오르고, 다 차서 쓸 수 있게 되면 숨긴다.
         // 매 프레임 불러도 할당이 없다

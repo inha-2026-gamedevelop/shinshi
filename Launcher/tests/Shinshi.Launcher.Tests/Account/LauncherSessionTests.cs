@@ -132,7 +132,7 @@ namespace Shinshi.Launcher.Tests.Account
         }
 
         [Fact]
-        public async Task EnsureAccessTokenAsync_RefreshResponseLost_ClearsStoreAndDoesNotResend()
+        public async Task EnsureAccessTokenAsync_RefreshResponseLost_KeepsStoreAndDoesNotResendInSameRun()
         {
             int refreshCalls = 0;
             FakeHttpHandler handler = new FakeHttpHandler(request =>
@@ -153,13 +153,93 @@ namespace Shinshi.Launcher.Tests.Account
             SessionResult result = await session.EnsureAccessTokenAsync(CancellationToken.None);
             SessionResult again  = await session.EnsureAccessTokenAsync(CancellationToken.None);
 
-            Assert.Equal(ESessionError.SessionLost, result.Error);
+            Assert.Equal(ESessionError.ApiFailed, result.Error);
             Assert.Equal(EAuthApiError.ResponseLost, result.ApiError);
             Assert.Equal(ELauncherSessionState.LoggedOut, session.State);
             Assert.Null(session.AccountId);
-            Assert.Null(store.Token);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, store.Token);
+            Assert.True(session.HasStoredLogin);
             Assert.Equal(ESessionError.NotLoggedIn, again.Error);
             Assert.Equal(1, refreshCalls);
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.BadGateway)]
+        [InlineData(HttpStatusCode.GatewayTimeout)]
+        public async Task TryAutoLoginAsync_GatewayErrorDuringDeploy_KeepsStoredTokenAndNextStartLogsIn(HttpStatusCode status)
+        {
+            int calls = 0;
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(Interlocked.Increment(ref calls) == 1
+                ? new HttpResponseMessage(status)
+                : ExchangeOk(ROTATED_ACCESS, ROTATED_REFRESH, AccountTestData.LONG_LIFE_MS)));
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
+            using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
+
+            SessionResult first  = await session.TryAutoLoginAsync(CancellationToken.None);
+            SessionResult second = await session.TryAutoLoginAsync(CancellationToken.None);
+
+            Assert.Equal(ESessionError.ApiFailed, first.Error);
+            Assert.Equal(EAuthApiError.ResponseLost, first.ApiError);
+            Assert.True(second.IsSuccess);
+            Assert.Equal(ELauncherSessionState.LoggedIn, session.State);
+            Assert.Equal(ROTATED_REFRESH, store.Token);
+            Assert.All(handler.Requests,
+                request => Assert.Equal(AccountTestData.REFRESH_TOKEN, request.ReadBody<AuthExchangeRequest>()!.RefreshToken));
+        }
+
+        [Fact]
+        public async Task TryAutoLoginAsync_ResponseLostThenServerReportsReuse_ClearsStore()
+        {
+            int calls = 0;
+            FakeHttpHandler handler = new FakeHttpHandler(_ =>
+            {
+                if (Interlocked.Increment(ref calls) == 1)
+                {
+                    throw new HttpRequestException(HttpRequestError.ResponseEnded, "response lost");
+                }
+
+                return Task.FromResult(FakeHttpHandler.Reject(HttpStatusCode.Unauthorized, ContractCodes.RejectReason.TOKEN_REVOKED));
+            });
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
+            using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
+
+            SessionResult first  = await session.TryAutoLoginAsync(CancellationToken.None);
+            SessionResult second = await session.TryAutoLoginAsync(CancellationToken.None);
+
+            Assert.Equal(ESessionError.ApiFailed, first.Error);
+            Assert.Equal(ESessionError.SessionLost, second.Error);
+            Assert.Null(store.Token);
+            Assert.False(session.HasStoredLogin);
+            Assert.Equal(ELauncherSessionState.LoggedOut, session.State);
+        }
+
+        [Fact]
+        public async Task TryAutoLoginAsync_TokenExpired_ClearsStore()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(FakeHttpHandler.Reject(HttpStatusCode.Unauthorized,
+                ContractCodes.RejectReason.TOKEN_EXPIRED)));
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
+            using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
+
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
+
+            Assert.Equal(ESessionError.SessionLost, result.Error);
+            Assert.Null(store.Token);
+        }
+
+        [Fact]
+        public async Task TryAutoLoginAsync_Maintenance_KeepsStoredToken()
+        {
+            FakeHttpHandler handler = new FakeHttpHandler(_ => Task.FromResult(FakeHttpHandler.Reject(HttpStatusCode.Forbidden,
+                ContractCodes.RejectReason.MAINTENANCE)));
+            MemoryRefreshTokenStore store = new MemoryRefreshTokenStore(AccountTestData.REFRESH_TOKEN);
+            using LauncherSession session = new LauncherSession(AccountTestData.Client(handler), store);
+
+            SessionResult result = await session.TryAutoLoginAsync(CancellationToken.None);
+
+            Assert.Equal(ESessionError.ApiFailed, result.Error);
+            Assert.Equal(EAuthApiError.Maintenance, result.ApiError);
+            Assert.Equal(AccountTestData.REFRESH_TOKEN, store.Token);
         }
 
         [Fact]

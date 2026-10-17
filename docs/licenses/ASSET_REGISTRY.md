@@ -181,6 +181,7 @@ UMA 3.1f1(GitHub 릴리스 `V3.1f1`)은 2026-10-01 들였다가 같은 날 쓰�
 - Mirror 96.11.3은 무료 오픈소스(MIT, `Assets/Mirror/LICENSE`)이며 [공식 GitHub 릴리스](https://github.com/MirrorNetworking/Mirror/releases/tag/v96.11.3)의 `.unitypackage`로 2026-09-30 설치했다. 팀 전원이 같은 버전을 써야 하므로 Git에 포함하고, Mirror 기본 위치인 `Assets/Mirror/`를 유지한다(재임포트·업데이트 경로와 같음). 동봉 스크립트 템플릿(`ScriptTemplates/`)은 팀 템플릿과 섞이지 않도록 설치하지 않았다. 동봉 트랜스포트·예제 에셋의 개별 라이선스(`Transports/*/LICENSE`, `Examples/_Common/` 내 고지)는 원본대로 보존한다.
 - `Assets/Plugins/TextMesh Pro/`는 TMP 필수 폰트·리소스·셰이더이며 데모가 아니다. 2026-10-01 Unity 에디터에서 `Assets/TextMesh Pro/`에서 옮겼다(GUID 유지). `TMP Settings`는 `Resources.Load`로 찾으므로 `Resources/` 구조와 파일명, 동봉 라이선스를 유지한다. TMP 필수 리소스를 다시 임포트하면 `Assets/TextMesh Pro/`에 새로 풀리니 중복을 지우거나 이 위치로 옮긴다.
 - `Assets/Gizmos/`의 `DialogueDatabase Icon.png`, `StringAsset Icon.png`, `TextTable Icon.png`는 Dialogue System의 에디터 아이콘이다. 플러그인 코드와 Unity Gizmos가 이 위치를 사용하므로 유지하고 유료 패키지와 함께 Git에서 제외한다.
+- Realistic 3D Giant Character 1.0(무철 외형, Asset Store productId 295823, 설치 `.meta`의 packageName 기준, 제작자 폴더명 `Rallba`)은 무료 에셋으로, 2026-10-17 사용자 결정에 따라 `Assets/99.ThirdParty/`로 옮기지 않고 `Assets/Rallba/Realistic 3D Giant Character/`에 둔 채 Git(LFS)에 포함한다. 팀원이 따로 설치하지 않아도 `PF_MucheolBoss`와 `05.Art/Characters/Mucheol/` 재질 참조가 풀리게 하기 위해서다. 텍스처는 8K PNG라 LFS 용량이 약 460MB이고, 이 경로는 `ThirdPartyModelTextureLimiter`(`99.ThirdParty/Model/` 대상)의 임포트 상한을 받지 않는다. 적용 EULA 원문, 상업 이용 조건, 취득일은 미확인이다.
 - DOTween 설정의 2026-10-07 확인 경로는 `Assets/99.ThirdParty/Tools/Demigiant/DOTween/Resources/DOTweenSettings.asset`이다. `Resources.Load("DOTweenSettings")`가 참조하는 파일명과 `Resources/` 구조를 유지한다. 아래 실제 검증 표의 로드 성공은 2026-09-30 정리 당시 결과이며 이번에 재실행하지 않았다.
 
 ## 정리 내역과 유지한 의존 에셋
@@ -303,8 +304,9 @@ CA-07(`docs/design/references/concept-art/village-layout-02.webp`)에서 기존 
 | 게임용 사본 | 외부 출처 | 사용 조건 |
 |---|---|---|
 | `Assets/02.Prefab/VFX/SwordsmanMagicSlash/` | `Magic Slashes FX`의 `Eff1_Left`, `Eff1_Right`, `Eff7_Slash` | 원본 메시·텍스처·재질 의존성을 유지한다. 동일 버전 패키지와 공급자 라이선스가 필요하다. |
-| `Assets/02.Prefab/VFX/Mageknight/` | Hovl Studio `Sword slash VFX`의 `Sword Slash 13`, `Spatial section`, `Slash wave`; PixPlays `ElementalAOE`의 `FireAoeVFX` | 원본 재질·텍스처 의존성을 유지한다. 해당 패키지 설치와 공급자 라이선스가 필요하다. |
+| `Assets/02.Prefab/VFX/Mageknight/` | 2026-10-15 스택형 개편부터 Hovl Studio `Sword slash VFX`의 `Sword Slash Combo 6`, `Slash wave`, `Spatial section`; PixPlays `ElementalShields`의 `WaterShield`(Version_BuiltIn); `Magic Slashes FX`의 `Eff11_Jump` | 원본 재질·텍스처·메시 의존성을 유지한다(출시 발광 재질로 바꾸지 않는다). 해당 패키지 설치와 공급자 라이선스가 필요하다. 원본 프리팹은 수정하지 않고 `MageknightVfxBuilder`가 사본을 만든다. |
 | `Assets/02.Prefab/VFX/Archer/` | `MasterStylizedProjectiles`의 `ArrowBullet`, `ArrowMuzzle`, `WindBullet`, `WindStart`, `WindHit` | 원본 재질·텍스처·셰이더 의존성을 유지한다. 해당 패키지 설치와 공급자 라이선스가 필요하다. |
+| `Assets/02.Prefab/VFX/Archer/PF_ArcherVfx_{IceArrow,IceMuzzle,IceHit,WindArrow,WindStart,WindHit,FireArrow,FireMuzzle,FireHit,Charge,Burst}` (2026-10-15 궁수 속성형) | `MasterStylizedProjectiles`의 `SmallIceBullet`(`SmallIceBullet`, `SmallIceMuzzle`, `SmallIceBulletHit`), `WindShoot`(`WindBullet`, `WindStart`, `WindHit`), `SmallFireBullet`(`SmallFireBullet`, `SmallFireMuzzle`, `SmallFireBulletHit`), `EnergyExplosion`(`EnergyExplosionCharge`, `EnergyExplosionHit`) | 원본 재질·색을 유지한 `ArcherVfxBuilder` 사본(스크립트·조명·충돌체 제거, URP 미지원 내장 셰이더 입자만 끔). 해당 패키지 설치와 공급자 라이선스가 필요하다. 기획서의 불 "FireShoot"은 팩에 없어 `SmallFireBullet`을 썼다(대안 `Fireball`). 속성 없는 `Arrow`/`Muzzle`/`Impact`는 `ReleaseVfxBuilder`의 프로젝트 소유 사본을 그대로 쓴다. |
 
 외부 원본은 `Assets/99.ThirdParty/VFX/`에 보존하며 팀 독자 제작 에셋으로 취급하지 않는다.
 

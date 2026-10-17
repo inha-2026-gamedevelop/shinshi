@@ -13,6 +13,7 @@ using TMPro;
 
 // 프로젝트 내부
 using Shinshi.Combat;
+using Shinshi.Data;
 
 namespace Shinshi.UI
 {
@@ -34,6 +35,8 @@ namespace Shinshi.UI
         private const float  NAMEPLATE_MAX_DIST_SQR   = NAMEPLATE_MAX_DISTANCE * NAMEPLATE_MAX_DISTANCE;
         private const float  STATS_FONT_SIZE          = 20f;
         private const float  NAMEPLATE_FONT_SIZE      = 22f;
+        private const float  STACK_FONT_SIZE          = 18f;
+        private const float  STACK_OFFSET_Y           = 24f;
         private const float  TEXT_OUTLINE_WIDTH       = 0.2f;
         private const int    SORTING_ORDER            = 30000;
         private const float  REFERENCE_WIDTH          = 1920f;
@@ -319,6 +322,46 @@ namespace Shinshi.UI
             {
                 nameplate.Text.rectTransform.position = new Vector3(screen.x, screen.y, 0f);
             }
+
+            DrawStacks(nameplate, visible, screen);
+        }
+
+        // 머리 위에는 체력바가 없어 이름 바로 위에 마검사, 궁수 스택 줄을 하나 더 그린다. 글자는 값이 바뀔 때만 다시 만든다
+        private void DrawStacks(Nameplate nameplate, bool nameVisible, Vector3 screen)
+        {
+            PlayerCombatState state   = nameplate.State;
+            int               max     = GameDB.IsInitialized ? GameDB.Skills.ClassStackMax : 0;
+            ClassStackDisplay display = ClassStackHudRules.Build(state.PlayerClass, state.ClassStacks, max, state.ArcherElement);
+            bool              visible = (nameVisible) && (display.IsVisible);
+            if (nameplate.StackText == null)
+            {
+                if (!visible)
+                {
+                    return;
+                }
+
+                nameplate.StackText = CreateText("NameplateStacks", _nameplateRoot, STACK_FONT_SIZE, TextAlignmentOptions.Center);
+                nameplate.StackText.rectTransform.sizeDelta = NAMEPLATE_SIZE;
+            }
+
+            if (!display.SameAs(in nameplate.ShownStacks))
+            {
+                nameplate.ShownStacks     = display;
+                nameplate.StackText.color = ClassStackHudRules.GetColor(in display);
+                nameplate.StackText.text  = ClassStackHudRules.FormatNameplate(in display);
+            }
+
+            if (nameplate.StackText.enabled != visible)
+            {
+                nameplate.StackText.enabled = visible;
+            }
+
+            // 캔버스 배율을 곱해야 해상도가 달라도 이름과의 간격이 같다
+            if (visible)
+            {
+                float offset = STACK_OFFSET_Y * _nameplateRoot.lossyScale.y;
+                nameplate.StackText.rectTransform.position = new Vector3(screen.x, screen.y + offset, 0f);
+            }
         }
 
         private void RemoveStaleNameplates(bool removeAll)
@@ -334,8 +377,13 @@ namespace Shinshi.UI
 
             for (int i = 0; i < _removeIds.Count; ++i)
             {
-                uint netId = _removeIds[i];
-                Destroy(_nameplates[netId].Text.gameObject);
+                uint      netId   = _removeIds[i];
+                Nameplate removed = _nameplates[netId];
+                Destroy(removed.Text.gameObject);
+                if (removed.StackText != null)
+                {
+                    Destroy(removed.StackText.gameObject);
+                }
                 _nameplates.Remove(netId);
             }
 
@@ -365,12 +413,16 @@ namespace Shinshi.UI
             public readonly PlayerCombatState State;
             public readonly TextMeshProUGUI   Text;
             public string                     ShownName;
+            public TextMeshProUGUI            StackText;
+            public ClassStackDisplay          ShownStacks;
 
             public Nameplate(PlayerCombatState state, TextMeshProUGUI text)
             {
-                State     = state;
-                Text      = text;
-                ShownName = null;
+                State       = state;
+                Text        = text;
+                ShownName   = null;
+                StackText   = null;
+                ShownStacks = ClassStackDisplay.Hidden;
             }
         }
     }

@@ -27,6 +27,17 @@ namespace Shinshi.Editor
         private const string ARCHER = "Assets/99.ThirdParty/Animation/Grruzam Archer Animation/Animation/Archer/2_Attack/";
         private const int SHOW_LAYER = 31;
 
+        // 마검사 시연 효과 시각과 수명, 슬롯 순서는 기본 공격, Q 방벽, W 검파, E 장판, R 일섬이다
+        private const float MAGE_CUE_TIME     = 0.5f;
+        private const int   MAGE_SHIELD_INDEX = 1;
+        private const int   MAGE_WAVE_INDEX   = 2;
+        private const int   MAGE_FIELD_INDEX  = 3;
+        private const float MAGE_SHIELD_LIFE  = 3f;
+        private const float MAGE_WAVE_SPEED   = 20f;
+        private const float MAGE_WAVE_RANGE   = 9f;
+        private const float MAGE_WAVE_LIFE    = 0.7f;
+        private const float MAGE_FIELD_LIFE   = 4f;
+
         [MenuItem("Shinshi/Art/Skill Showcase/Create Scene")]
         public static void Build()
         {
@@ -173,13 +184,28 @@ namespace Shinshi.Editor
             entries.Add(Entry(0, "E · 집중 베기", new[] { SWORD + "Special/S_Sp_Skill_3.fbx" }, Cue(0, "Focus", 1.8f)));
             entries.Add(Entry(0, "R · 연환참", new[] { SWORD + "Normal/S_Attack_2.fbx", SWORD + "Normal/S_Attack_3.fbx" }, Cue(0, "ChainFirst", 0.45f), Cue(0, "ChainSecond", 2.05f)));
             string[] mageClips = { "AttackSword01", "AttackSword04", "AttackEnergy03", "AttackSword05", "AttackEnergy06" };
-            string[] mageTitles = { "기본 공격", "Q · 마력검격", "W · 화염검진", "E · 봉인검격", "R · 뇌광검파" };
-            string[] mageEffects = { "Basic", "Arcane", "Field", "Seal", "Wave" };
+            string[] mageTitles = { "기본 공격", "Q 수류 방벽", "W 검파 해방", "E 공간 절단진", "R 섬광 일섬" };
+            string[] mageEffects = { "Basic", "Shield", "Wave", "Field", "Jump" };
             for (int i = 0; i < mageClips.Length; ++i)
             {
-                DevSkillShowcase.Cue cue = Cue(1, mageEffects[i], (i == 4) ? 0.85f : 0.5f);
-                if (i == 2) { cue.Life = 4f; }
-                if (i == 4) { cue.Speed = 18f; cue.Range = 9f; cue.Life = 0.7f; }
+                DevSkillShowcase.Cue cue = Cue(1, mageEffects[i], MAGE_CUE_TIME);
+                if (i == MAGE_SHIELD_INDEX)
+                {
+                    cue.Life = MAGE_SHIELD_LIFE;
+                }
+
+                if (i == MAGE_WAVE_INDEX)
+                {
+                    cue.Speed = MAGE_WAVE_SPEED;
+                    cue.Range = MAGE_WAVE_RANGE;
+                    cue.Life  = MAGE_WAVE_LIFE;
+                }
+
+                if (i == MAGE_FIELD_INDEX)
+                {
+                    cue.Life = MAGE_FIELD_LIFE;
+                }
+
                 entries.Add(Entry(1, mageTitles[i], new[] { MAGE + mageClips[i] + "_inplace.fbx" }, cue));
             }
             string shoot = ARCHER + "1__1Shoot/Inplace/Archer@Attack_1Shoot_";

@@ -11,9 +11,9 @@ namespace Shinshi.AI
     /// <summary> 격자 순차 빔의 시작, 줄 예고, 줄 타격, 취소 알림 </summary>
     public interface IBossGridBeamListener
     {
-        /// <summary> 시작, 배치는 이 시점에 고정되며 시전이 끝날 때까지 바뀌지 않는다. 시전 시작 시각은 서버 시각이다 </summary>
+        /// <summary> 시작, 배치는 이 시점에 고정되며 시전이 끝날 때까지 바뀌지 않는다. firstLineId는 발사 순서 0번 줄의 번호이고 뒤 줄은 1씩 이어진다 </summary>
         void OnGridStarted(int castInstanceId, in BossGridBeamLayout layout, double castStartServerTime, float firstStrikeSeconds,
-            float strikeIntervalSeconds, float axisGapSeconds);
+            float strikeIntervalSeconds, float axisGapSeconds, int firstLineId);
 
         /// <summary> 줄 하나의 강조 예고가 시작됐다. 예정 시각보다 늦게 처리돼도 예고 시작 시각은 예정 시각 그대로 알린다 </summary>
         void OnLineTelegraphed(int castInstanceId, int lineId, EBossGridBeamAxis axis, int lineIndex, double telegraphServerTime,

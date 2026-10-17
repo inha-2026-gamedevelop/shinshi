@@ -175,8 +175,9 @@ namespace Shinshi.AI
 
             _isStarted  = true;
             _isRejected = false;
+            // 번호는 위 반복에서 한 계수기로 연달아 발급해 발사 순서대로 1씩 이어진다. 클라이언트 복원은 첫 번호로 나머지를 만든다
             _listener?.OnGridStarted(Context.CastInstanceId, in _layout, _castStart, definition.TelegraphSeconds,
-                definition.GridStrikeIntervalSeconds, definition.GridAxisGapSeconds);
+                definition.GridStrikeIntervalSeconds, definition.GridAxisGapSeconds, _lineIds[0]);
 
             // 첫 줄의 예고 예정 시각이 시전 시작이라 시작 순간에 알린다
             ProcessDue(serverTime);

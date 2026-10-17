@@ -18,10 +18,10 @@ namespace Shinshi.Tests.EditMode.Art
         private const string PLAYER = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
 
         [TestCase("Basic")]
-        [TestCase("Arcane")]
-        [TestCase("Field")]
-        [TestCase("Seal")]
+        [TestCase("Shield")]
         [TestCase("Wave")]
+        [TestCase("Field")]
+        [TestCase("Jump")]
         public void Prefab_Generated_HasControlledParticlesAndSupportedMaterials(string name)
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ROOT + name + ".prefab");
@@ -33,14 +33,10 @@ namespace Shinshi.Tests.EditMode.Art
             foreach (ParticleSystem particle in particles)
             {
                 Assert.That(particle.main.playOnAwake, Is.False);
-                Assert.That(particle.main.loop, Is.EqualTo(name == "Field"));
+                Assert.That(particle.main.loop, Is.EqualTo(name == "Shield"));
                 Assert.That(particle.main.stopAction, Is.EqualTo(ParticleSystemStopAction.None));
                 Assert.That(particle.main.maxParticles, Is.LessThanOrEqualTo(64));
-                if (name == "Field")
-                {
-                    Assert.That(particle.emission.rateOverTime.constantMax, Is.GreaterThan(0f));
-                    Assert.That(particle.emission.burstCount, Is.Zero);
-                }
+                Assert.That(particle.name.IndexOf("Distortion", System.StringComparison.OrdinalIgnoreCase), Is.LessThan(0));
 
                 if (name == "Wave")
                 {
@@ -50,7 +46,13 @@ namespace Shinshi.Tests.EditMode.Art
                     Assert.That(particle.forceOverLifetime.enabled, Is.False);
                 }
 
+                // 원본에서 꺼 둔 렌더러는 재질 없이 하위 방출만 맡는다
                 ParticleSystemRenderer renderer = particle.GetComponent<ParticleSystemRenderer>();
+                if (!renderer.enabled)
+                {
+                    continue;
+                }
+
                 Assert.That(renderer.sharedMaterial, Is.Not.Null);
                 if (particle.trails.enabled)
                 {
@@ -73,6 +75,37 @@ namespace Shinshi.Tests.EditMode.Art
         }
 
         [Test]
+        public void BasicCombo_EveryGroupStartsImmediately()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ROOT + "Basic.prefab");
+            Transform effect = prefab.transform.GetChild(0);
+            Assert.That(effect.childCount, Is.GreaterThanOrEqualTo(3));
+            for (int g = 0; g < effect.childCount; ++g)
+            {
+                float first = float.MaxValue;
+                foreach (ParticleSystem particle in effect.GetChild(g).GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    for (int b = 0; b < particle.emission.burstCount; ++b)
+                    {
+                        first = Mathf.Min(first, particle.emission.GetBurst(b).time);
+                    }
+                }
+
+                Assert.That(first, Is.EqualTo(0f).Within(0.001f), effect.GetChild(g).name);
+            }
+        }
+
+        [Test]
+        public void Shield_KeepsSpawnAnimationWithoutSourceScript()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ROOT + "Shield.prefab");
+            Animation animation = prefab.GetComponentInChildren<Animation>(true);
+            Assert.That(animation, Is.Not.Null);
+            Assert.That(animation.clip, Is.Not.Null);
+            Assert.That(animation.playAutomatically, Is.True);
+        }
+
+        [Test]
         public void Player_Prefab_KeepsSwordsmanAndConnectsFiveMageknightEffects()
         {
             GameObject player = AssetDatabase.LoadAssetAtPath<GameObject>(PLAYER);
@@ -80,9 +113,13 @@ namespace Shinshi.Tests.EditMode.Art
             Assert.That(player.GetComponents<SwordsmanMagicSlashView>().Length, Is.EqualTo(1));
             var serialized = new SerializedObject(player.GetComponent<MageknightVfxView>());
             Assert.That(serialized.FindProperty("_combat").objectReferenceValue, Is.SameAs(player.GetComponent<PlayerCombatState>()));
-            foreach (string field in new[] { "_basicPrefab", "_arcanePrefab", "_fieldPrefab", "_sealPrefab", "_wavePrefab" })
+            string[] fields = { "_basicPrefab", "_shieldPrefab", "_wavePrefab", "_fieldPrefab", "_jumpPrefab" };
+            string[] names  = { "Basic", "Shield", "Wave", "Field", "Jump" };
+            for (int i = 0; i < fields.Length; ++i)
             {
-                Assert.That(serialized.FindProperty(field).objectReferenceValue, Is.Not.Null, field);
+                Object reference = serialized.FindProperty(fields[i]).objectReferenceValue;
+                Assert.That(reference, Is.Not.Null, fields[i]);
+                Assert.That(AssetDatabase.GetAssetPath(reference), Is.EqualTo(ROOT + names[i] + ".prefab"), fields[i]);
             }
         }
     }

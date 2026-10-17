@@ -54,6 +54,7 @@ namespace Shinshi.Combat
         private readonly float[]             _slotCatalogCooldown = new float[KEY_COUNT];
         private readonly float[]             _slotDuration        = new float[KEY_COUNT];
         private readonly double[]            _slotReadyAt         = new double[KEY_COUNT];
+        private readonly int[]               _slotRequiredStacks  = new int[KEY_COUNT];
 
         /****************************************
         *              Unity Event
@@ -99,6 +100,7 @@ namespace Shinshi.Combat
 
             PushGauges();
             PushCooldowns();
+            PushStacks();
         }
 
         /****************************************
@@ -126,6 +128,14 @@ namespace Shinshi.Combat
             if (_statusView != null)
             {
                 _statusView.ResetExperience();
+                _statusView.SetClassStacks(ClassStackDisplay.Hidden);
+            }
+            for (int i = 0; i < KEY_COUNT; ++i)
+            {
+                if (_slotViews[i] != null)
+                {
+                    _slotViews[i].SetLocked(false);
+                }
             }
             ReleaseOwnedStatusHud();
             _statusView = null;
@@ -282,6 +292,9 @@ namespace Shinshi.Combat
                 _slotSeeded[i] = false;
                 _slotMapped[i] = LocalPlayerHudRules.TryResolveSlot(catalog, playerClass, key, out _slotKind[i],
                     out _slotIndex[i], out _slotCatalogCooldown[i], out Sprite icon);
+                _slotRequiredStacks[i] = _slotMapped[i]
+                    ? SkillInputRules.GetRequiredStacks(catalog, playerClass, _slotKind[i], _slotIndex[i])
+                    : 0;
 
                 HudSkillSlotView view = _slotViews[i];
                 if (view == null)
@@ -292,6 +305,7 @@ namespace Shinshi.Combat
                 if (!_slotMapped[i])
                 {
                     view.SetCooldown(0f, 0f);
+                    view.SetLocked(false);
                     continue;
                 }
 
@@ -375,6 +389,32 @@ namespace Shinshi.Combat
                     view.SetCooldown(0f, 0f);
                 }
             }
+        }
+
+        // 스택은 서버가 복제한 표시 값이다. 칸 잠금은 입력이 요청을 보내지 않는 기준과 같고, 판정은 서버가 다시 한다.
+        // 뷰가 값이 같으면 바로 돌아오므로 매 프레임 넣어도 바뀔 때만 다시 그린다
+        private void PushStacks()
+        {
+            int stacks = _combat.ClassStacks;
+            for (int i = 0; i < KEY_COUNT; ++i)
+            {
+                HudSkillSlotView view = _slotViews[i];
+                if (view == null)
+                {
+                    continue;
+                }
+
+                view.SetLocked((_slotMapped[i]) && (!SkillInputRules.HasRequiredStacks(_slotRequiredStacks[i], stacks)));
+            }
+
+            if (_statusView == null)
+            {
+                return;
+            }
+
+            int max = GameDB.IsInitialized ? GameDB.Skills.ClassStackMax : 0;
+            ClassStackDisplay display = ClassStackHudRules.Build(_combat.PlayerClass, stacks, max, _combat.ArcherElement);
+            _statusView.SetClassStacks(in display);
         }
     }
 }

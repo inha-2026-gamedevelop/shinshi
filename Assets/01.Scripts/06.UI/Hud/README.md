@@ -7,3 +7,7 @@ The class badges and empty HP track come from `Assets/01.Scripts/05.Art/UI/HudPa
 Nickname and Value are TextMesh Pro objects using the local Korean Bold font documented in `Fonts/README.md`. Names, class icons and HP values in the development scene are preview examples. In Release/ShinshiTown, PartyHudBinder updates HudPartyView from town party and dungeon state; live multiplayer remains unverified. HudPartyView currently handles only the three legacy class badges; class IDs 3–5 still need badge mappings and art.
 
 Editor Play Mode rendering, text overflow, centered Value positions and inactive MP placeholders were checked. A Player build and live multiplayer party updates have not been verified.
+
+# Class stack display (temporary)
+
+Mageknight and Archer stacks (`PlayerCombatState.ClassStacks`, max `SkillCatalogSO.ClassStackMax`) are shown as text until stack icons exist. `HudPlayerStatusView` creates a `ClassStackDisplay` label above the HP track at runtime (ASCII, because the HUD font has no Korean glyphs), and `NetworkOverlayView` draws a Korean stack line above each overhead nameplate. Archers also show the current element. Other classes show nothing. Skills with `RequiredStacks` (Archer R) are dimmed by `HudSkillSlotView.SetLocked` and the input reader does not send them until the replicated stacks are enough; the server still rejects on its own count. Play Mode rendering is not verified.

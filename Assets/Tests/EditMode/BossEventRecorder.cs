@@ -91,6 +91,7 @@ namespace Shinshi.Tests
         public List<BossMultiDashReaim>    Reaims        { get; } = new List<BossMultiDashReaim>();
         public List<BossBattlefieldStart>  Battlefields  { get; } = new List<BossBattlefieldStart>();
         public List<BossChargeOutcome>     Charges       { get; } = new List<BossChargeOutcome>();
+        public List<BossChargeGroggy>      Groggies      { get; } = new List<BossChargeGroggy>();
         public List<BossStarStageStart>    StarStages    { get; } = new List<BossStarStageStart>();
         public List<BossGridBeamStart>     GridBeams     { get; } = new List<BossGridBeamStart>();
         public List<BossChainFanStart>     ChainFans     { get; } = new List<BossChainFanStart>();
@@ -103,6 +104,7 @@ namespace Shinshi.Tests
         public List<BossMultiDashSnapshot>    RestoredMultiDashes   { get; } = new List<BossMultiDashSnapshot>();
         public List<BossBattlefieldSnapshot>  RestoredBattlefields  { get; } = new List<BossBattlefieldSnapshot>();
         public List<BossChargeOutcome>        RestoredCharges       { get; } = new List<BossChargeOutcome>();
+        public List<BossChargeGroggy>         RestoredGroggies      { get; } = new List<BossChargeGroggy>();
         public List<BossStarStageSnapshot>    RestoredStarStages    { get; } = new List<BossStarStageSnapshot>();
         public List<BossGridBeamSnapshot>     RestoredGridBeams     { get; } = new List<BossGridBeamSnapshot>();
         public List<BossChainFanSnapshot>     RestoredChainFans     { get; } = new List<BossChainFanSnapshot>();
@@ -110,9 +112,12 @@ namespace Shinshi.Tests
         public List<BossBarrageSnapshot>      RestoredBarrages      { get; } = new List<BossBarrageSnapshot>();
         public List<BossCircleBurstSnapshot>  RestoredCircleBursts  { get; } = new List<BossCircleBurstSnapshot>();
 
+        // 구조물 복원은 진행 중 공격이 아니라 전장 상태라 RestoreCount에 넣지 않는다
+        public List<BossChargeStructureSnapshot> RestoredStructures { get; } = new List<BossChargeStructureSnapshot>();
+
         /// <summary> 받은 복원의 총 건수 </summary>
         public int RestoreCount => RestoredStrikeChains.Count + RestoredMultiDashes.Count + RestoredBattlefields.Count
-            + RestoredCharges.Count + RestoredStarStages.Count + RestoredGridBeams.Count + RestoredChainFans.Count
+            + RestoredCharges.Count + RestoredGroggies.Count + RestoredStarStages.Count + RestoredGridBeams.Count + RestoredChainFans.Count
             + RestoredTrackingAreas.Count + RestoredBarrages.Count + RestoredCircleBursts.Count;
 
         /****************************************
@@ -254,6 +259,7 @@ namespace Shinshi.Tests
 
         public void OnTelegraphStarted(in BossTelegraphStart start)
         {
+            PhaseLedger.OnCastStarted(start.CastId);
             Telegraphs.Add(start);
             Add(nameof(OnTelegraphStarted), EBossRecordKey.Cast, start.CastId, start.GroupId, false, start.StartServerTime,
                 start.PatternId);
@@ -279,9 +285,9 @@ namespace Shinshi.Tests
             Add(nameof(OnDashStarted), EBossRecordKey.Cast, castId, NO_INDEX, false, startServerTime);
         }
 
-        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
-            Add(nameof(OnDashStopped), EBossRecordKey.Cast, castId, NO_INDEX, stoppedByWall);
+            Add(nameof(OnDashStopped), EBossRecordKey.Cast, castId, NO_INDEX, stoppedByWall, stopServerTime);
         }
 
         public void OnFinished(int castId)
@@ -351,9 +357,10 @@ namespace Shinshi.Tests
             Add(nameof(OnBeamTelegraphStarted), EBossRecordKey.Beam, start.BeamId, start.CastId, false, start.StartServerTime);
         }
 
-        public void OnBeamCancelled(int beamId)
+        // 시전 번호는 Index에 적는다
+        public void OnBeamCancelled(int castId, int beamId)
         {
-            Add(nameof(OnBeamCancelled), EBossRecordKey.Beam, beamId);
+            Add(nameof(OnBeamCancelled), EBossRecordKey.Beam, beamId, castId);
         }
 
         public void OnBeamActivated(int beamId, double activateServerTime)
@@ -376,9 +383,10 @@ namespace Shinshi.Tests
             Add(nameof(OnStarTelegraphStarted), EBossRecordKey.Star, start.StarId, start.CastId, false, start.StartServerTime);
         }
 
-        public void OnStarCancelled(int starId)
+        // 시전 번호는 Index에 적는다
+        public void OnStarCancelled(int castId, int starId)
         {
-            Add(nameof(OnStarCancelled), EBossRecordKey.Star, starId);
+            Add(nameof(OnStarCancelled), EBossRecordKey.Star, starId, castId);
         }
 
         public void OnStarActivated(int starId, double activateServerTime)
@@ -494,10 +502,10 @@ namespace Shinshi.Tests
             Add(nameof(OnMultiDashDashStarted), EBossRecordKey.Cast, castId, dashIndex, false, startServerTime);
         }
 
-        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
-            PhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
-            Add(nameof(OnMultiDashDashStopped), EBossRecordKey.Cast, castId, dashIndex, stoppedByWall);
+            PhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
+            Add(nameof(OnMultiDashDashStopped), EBossRecordKey.Cast, castId, dashIndex, stoppedByWall, stopServerTime);
         }
 
         public void OnMultiDashTruncated(int castId, int plannedDashCount, int completedDashCount)
@@ -539,6 +547,36 @@ namespace Shinshi.Tests
             Charges.Add(outcome);
             Add(nameof(OnChargeEnded), EBossRecordKey.Cast, outcome.CastId, outcome.StructureId, outcome.IsCollision,
                 outcome.ServerTime);
+        }
+
+        // 그로기 사건의 시각은 대기면 충돌 시각, 시작이면 그로기 시작 시각을 적는다
+        public void OnChargeGroggyPending(in BossChargeGroggy groggy)
+        {
+            PhaseLedger.OnChargeGroggyPending(in groggy);
+            Groggies.Add(groggy);
+            Add(nameof(OnChargeGroggyPending), EBossRecordKey.Cast, groggy.CastId, groggy.StructureId, false,
+                groggy.CollisionServerTime);
+        }
+
+        public void OnChargeGroggyStarted(in BossChargeGroggy groggy)
+        {
+            PhaseLedger.OnChargeGroggyStarted(in groggy);
+            Groggies.Add(groggy);
+            Add(nameof(OnChargeGroggyStarted), EBossRecordKey.Cast, groggy.CastId, groggy.StructureId, true,
+                groggy.GroggyStartServerTime);
+        }
+
+        public void OnChargeGroggyCancelled(int castId)
+        {
+            PhaseLedger.OnChargeGroggyCancelled(castId);
+            Add(nameof(OnChargeGroggyCancelled), EBossRecordKey.Cast, castId);
+        }
+
+        // 번호는 시전, 순번 칸에 구조물 식별자를 적는다
+        public void OnChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+            PhaseLedger.OnChargeStructureDestroyed(castId, structureId, serverTime);
+            Add(nameof(OnChargeStructureDestroyed), EBossRecordKey.Cast, castId, structureId, true, serverTime);
         }
 
         /****************************************
@@ -642,10 +680,11 @@ namespace Shinshi.Tests
             Add(nameof(OnTrackingAreaFixed), EBossRecordKey.Area, areaId, NO_INDEX, false, fixedServerTime);
         }
 
-        public void OnTrackingAreaCancelled(int areaId)
+        // 시전 번호는 Index에 적는다
+        public void OnTrackingAreaCancelled(int castId, int areaId)
         {
-            PhaseLedger.OnTrackingAreaCancelled(areaId);
-            Add(nameof(OnTrackingAreaCancelled), EBossRecordKey.Area, areaId);
+            PhaseLedger.OnTrackingAreaCancelled(castId, areaId);
+            Add(nameof(OnTrackingAreaCancelled), EBossRecordKey.Area, areaId, castId);
         }
 
         public void OnBarrageStarted(in BossBarrageStart start)
@@ -725,6 +764,16 @@ namespace Shinshi.Tests
         public void OnChargeRestored(in BossChargeOutcome outcome)
         {
             RestoredCharges.Add(outcome);
+        }
+
+        public void OnChargeGroggyRestored(in BossChargeGroggy groggy)
+        {
+            RestoredGroggies.Add(groggy);
+        }
+
+        public void OnChargeStructuresRestored(in BossChargeStructureSnapshot snapshot)
+        {
+            RestoredStructures.Add(snapshot);
         }
 
         public void OnStarStageRestored(in BossStarStageSnapshot snapshot)
