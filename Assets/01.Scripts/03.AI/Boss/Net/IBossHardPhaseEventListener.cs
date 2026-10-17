@@ -53,8 +53,8 @@ namespace Shinshi.AI
         /// <summary> P04 중심 고정, 이후 활성까지 움직이지 않는다 </summary>
         void OnTrackingAreaFixed(int areaId, Vector3 center, double fixedServerTime);
 
-        /// <summary> P04 활성 전 취소 </summary>
-        void OnTrackingAreaCancelled(int areaId);
+        /// <summary> P04 활성 전 취소, castId는 그 장판을 낸 시전 번호다 </summary>
+        void OnTrackingAreaCancelled(int castId, int areaId);
 
         /// <summary> P05 전방위 난사 시작, 방향은 발별 예고에서 처음 알린다 </summary>
         void OnBarrageStarted(in BossBarrageStart start);

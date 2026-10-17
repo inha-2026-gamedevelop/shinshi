@@ -24,6 +24,7 @@ namespace Shinshi.AI
         private const float SWEEP_LIFE_SECONDS = 4f;
         private const float SWEEP_RANGE_HEIGHT = 0.05f;
         private const int SWEEP_SEGMENTS = 24;
+        private const byte NO_DESTROYED_CORES = 0; // 파괴 핵을 모르는 판정, 모든 핵을 일반 만료로 정리한다
         private const string DEFENSE_STATE = "defense_inplace";
         private const string SUCCESS_STATE = "down_groggy02_loop_inplace";
         private const string IDLE_STATE = "Idle";
@@ -229,9 +230,16 @@ namespace Shinshi.AI
 
         public void TurnResolved(int castId, int turnIndex, double serverTime, int successCount, double now)
         {
+            TurnResolved(castId, turnIndex, serverTime, successCount, NO_DESTROYED_CORES, now);
+        }
+
+        // destroyedCoreMask는 서버가 판정한 파괴 핵이다(i번째 비트가 i번 핵). 파괴된 핵만 파쇄로, 나머지는 일반 만료로 정리한다
+        public void TurnResolved(int castId, int turnIndex, double serverTime, int successCount, byte destroyedCoreMask, double now)
+        {
             if (_gate.MustDefer(serverTime, now))
             {
-                _gate.Defer(serverTime, now, () => TurnResolved(castId, turnIndex, serverTime, successCount, Now()));
+                _gate.Defer(serverTime, now,
+                    () => TurnResolved(castId, turnIndex, serverTime, successCount, destroyedCoreMask, Now()));
                 return;
             }
             if (!MatchesTurn(castId, turnIndex) || _turnResolved || (serverTime > now)) return;
@@ -248,13 +256,13 @@ namespace Shinshi.AI
                     serverTime, now);
                 _drops[i].Reconcile(_dropPlayback[i], drop, now);
             }
-            // 개별 파괴 핵 ID가 없어 Destroyed를 추측하지 않는다. 모든 핵은 일반 만료로 정리한다.
             for (int i = 0; i < _cores.Length; ++i)
             {
                 if ((_cores[i] == null) || (_corePlayback[i] == 0)) continue;
                 ++_sequence;
-                WolbaekSealCorePlayer.Snapshot core = CoreSnapshot(i, WolbaekSealCorePlayer.EPhase.Expired,
-                    serverTime, now);
+                WolbaekSealCorePlayer.EPhase phase = BossWolbaekGimmickLedger.IsCoreDestroyed(destroyedCoreMask, i)
+                    ? WolbaekSealCorePlayer.EPhase.Destroyed : WolbaekSealCorePlayer.EPhase.Expired;
+                WolbaekSealCorePlayer.Snapshot core = CoreSnapshot(i, phase, serverTime, now);
                 _cores[i].Reconcile(_corePlayback[i], core, now);
             }
         }

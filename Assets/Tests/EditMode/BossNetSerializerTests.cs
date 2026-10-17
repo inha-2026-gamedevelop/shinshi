@@ -211,6 +211,7 @@ namespace Shinshi.Tests
                 DashSpeed                = 8f,
                 StoppedDistance          = 4.25f,
                 StoppedByWall            = true,
+                StoppedServerTime        = 13.4,
                 IsTruncated              = true
             };
 
@@ -506,6 +507,34 @@ namespace Shinshi.Tests
             writer.WriteVector3(Vector3.forward);
             writer.WriteDouble(Samples.START_TIME);
             writer.WriteFloat(1f);
+        }
+
+        [Test]
+        public void ChargeGroggy_WriteRead_KeepsEveryFieldAndUnknownTimes()
+        {
+            const int    STRUCTURE_ID = 7;
+            const double COLLISION    = 20.5;
+            const double START        = 22.0;
+            const double END          = 25.0;
+
+            var pending = new BossChargeGroggy(Samples.BOSS_ID, CAST_ID, STRUCTURE_ID, COLLISION, double.NaN, double.NaN);
+            var started = new BossChargeGroggy(Samples.BOSS_ID, CAST_ID, STRUCTURE_ID, COLLISION, START, END);
+
+            BossChargeGroggy pendingCopy = RoundTrip(writer => writer.WriteBossChargeGroggy(pending),
+                reader => reader.ReadBossChargeGroggy());
+            BossChargeGroggy startedCopy = RoundTrip(writer => writer.WriteBossChargeGroggy(started),
+                reader => reader.ReadBossChargeGroggy());
+
+            Assert.AreEqual(Samples.BOSS_ID, startedCopy.BossId);
+            Assert.AreEqual(CAST_ID, startedCopy.CastId);
+            Assert.AreEqual(STRUCTURE_ID, startedCopy.StructureId);
+            Assert.AreEqual(COLLISION, startedCopy.CollisionServerTime, TIME_EPSILON);
+            Assert.AreEqual(START, startedCopy.GroggyStartServerTime, TIME_EPSILON);
+            Assert.AreEqual(END, startedCopy.GroggyEndServerTime, TIME_EPSILON);
+            Assert.IsTrue(startedCopy.HasStarted);
+            Assert.IsTrue(double.IsNaN(pendingCopy.GroggyStartServerTime));
+            Assert.IsTrue(double.IsNaN(pendingCopy.GroggyEndServerTime));
+            Assert.IsFalse(pendingCopy.HasStarted);
         }
 
         private static T RoundTrip<T>(Action<NetworkWriter> write, Func<NetworkReader, T> read)

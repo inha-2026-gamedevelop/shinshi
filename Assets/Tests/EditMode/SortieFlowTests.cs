@@ -33,7 +33,7 @@ namespace Shinshi.Tests
         private const string API_TWO           = "0a1b2c3d-4e5f-4a6b-8c7d-8899aabbcc02";
         private const string API_THREE         = "0a1b2c3d-4e5f-4a6b-8c7d-8899aabbcc03";
         private const string API_FOUR          = "0a1b2c3d-4e5f-4a6b-8c7d-8899aabbcc04";
-        private const string BOSS_CHEOLGAK     = "boss_cheolgak";
+        private const string BOSS_MUCHEOL      = "boss_mucheol";
         private const string BOSS_WOLBAEK      = "boss_wolbaek";
         private const string UNKNOWN_BOSS      = "boss_unknown";
         private const string MAP_ID            = "region_forest";
@@ -92,10 +92,10 @@ namespace Shinshi.Tests
         [Test]
         public void Admit_FirstTokenFixesSortie_DifferentContractRejected()
         {
-            SortieDescriptor boss = Boss(BOSS_CHEOLGAK, GameSessionCodes.Difficulty.EASY);
+            SortieDescriptor boss = Boss(BOSS_MUCHEOL, GameSessionCodes.Difficulty.EASY);
             Assert.AreEqual(ERejectReason.None, AdmitReason(API_ONE, boss, out _));
 
-            Assert.AreEqual(ERejectReason.SessionMismatch, AdmitReason(API_TWO, Boss(BOSS_CHEOLGAK, GameSessionCodes.Difficulty.HARD), out _),
+            Assert.AreEqual(ERejectReason.SessionMismatch, AdmitReason(API_TWO, Boss(BOSS_MUCHEOL, GameSessionCodes.Difficulty.HARD), out _),
                 "같은 출정 ID라도 계약이 다르면 받지 않는다");
             Assert.AreEqual(ERejectReason.SessionMismatch, AdmitReason(API_TWO, default, out _), "계약 없는 토큰도 다르다");
             Assert.AreEqual(ERejectReason.None, AdmitReason(API_TWO, boss, out _));
@@ -129,7 +129,7 @@ namespace Shinshi.Tests
         [Test]
         public void BossDescriptor_SelectsContractBossDifficultyAndRewardTable()
         {
-            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_CHEOLGAK, IsKnownBoss);
+            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_MUCHEOL, IsKnownBoss);
             Admit(API_ONE, Boss(BOSS_WOLBAEK, GameSessionCodes.Difficulty.HARD));
 
             Assert.AreEqual(BOSS_WOLBAEK, _host.BossId);
@@ -152,13 +152,13 @@ namespace Shinshi.Tests
         [Test]
         public void Admit_NoContract_UsesDefaultBoss_UnknownContractBossRejected()
         {
-            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_CHEOLGAK, IsKnownBoss);
+            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_MUCHEOL, IsKnownBoss);
             Assert.AreEqual(ERejectReason.SessionMismatch, AdmitReason(API_ONE, Boss(UNKNOWN_BOSS, GameSessionCodes.Difficulty.EASY),
                 out _), "서버 콘텐츠에 없는 보스로는 출정을 열지 않는다");
             Assert.IsNull(_host.SessionId);
 
             Admit(API_ONE, default);
-            Assert.AreEqual(BOSS_CHEOLGAK, _host.BossId);
+            Assert.AreEqual(BOSS_MUCHEOL, _host.BossId);
             Assert.AreEqual(EBossDifficulty.Easy, _host.BossDifficulty);
         }
 
@@ -167,7 +167,7 @@ namespace Shinshi.Tests
         {
             var factory = new FakeWaveFactory();
             _host.WaveFactory = factory;
-            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_CHEOLGAK, IsKnownBoss);
+            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_MUCHEOL, IsKnownBoss);
             Admit(API_ONE, Normal(), EPlayerClass.Warrior);
             Admit(API_TWO, Normal(), EPlayerClass.Summoner);
 
@@ -227,7 +227,7 @@ namespace Shinshi.Tests
         [Test]
         public void BeginSession_NormalWithoutFactory_WarnsAndOpensDevelopmentSession()
         {
-            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_CHEOLGAK, IsKnownBoss);
+            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_MUCHEOL, IsKnownBoss);
             Admit(API_ONE, Normal());
 
             StartSession();
@@ -371,7 +371,7 @@ namespace Shinshi.Tests
 
         private static bool IsKnownBoss(string bossId)
         {
-            return (bossId == BOSS_CHEOLGAK) || (bossId == BOSS_WOLBAEK);
+            return (bossId == BOSS_MUCHEOL) || (bossId == BOSS_WOLBAEK);
         }
 
         private static bool IsWaveMissingWarning(string warning)

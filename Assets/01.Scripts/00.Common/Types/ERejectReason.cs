@@ -123,6 +123,34 @@ namespace Shinshi.Common
         TradeBusy                 = 1506, // 이미 진행 중인 실행이 있다
         TradeTooFar               = 1507,
         TradeRequestExpired       = 1508, // 거래 요청 수락 시간이 지났다
-        TradeExpired              = 1509  // prepare 뒤 120초가 지났다
+        TradeExpired              = 1509, // prepare 뒤 120초가 지났다
+
+        // 친구, 귓속말, 길드
+        SocialTargetNotFound      = 1600, // 이름이나 ID의 살아 있는 캐릭터가 없다
+        SocialTargetSelf          = 1601,
+        SocialNotConnected        = 1602, // 행위 캐릭터의 임대가 호출 서버에 없다
+        FriendAlready             = 1610,
+        FriendLimit               = 1611, // 내 친구가 50명이다
+        FriendTargetLimit         = 1612, // 상대 친구가 50명이다
+        FriendRequestLimit        = 1613, // 보낸 대기 요청이 20건이다
+        FriendTargetRequestsFull  = 1614, // 상대가 받은 대기 요청이 50건이다
+        FriendRequestNotFound     = 1615, // 요청이 없거나 만료됐다
+        WhisperTargetOffline      = 1620,
+        GuildNameInvalid          = 1630,
+        GuildNameTaken            = 1631, // 살아 있는 길드와 이름 키가 겹친다
+        GuildAlreadyMember        = 1632, // 내가 이미 길드에 있다
+        GuildTargetInGuild        = 1633, // 상대가 이미 길드에 있다
+        GuildNotFound             = 1634, // 없거나 해체됐다
+        GuildNotMember            = 1635,
+        GuildNotLeader            = 1636,
+        GuildFull                 = 1637, // 정원 30명이다
+        GuildLeaderMustDelegate   = 1638, // 다른 길드원이 있어 길드장은 탈퇴할 수 없다
+        GuildApplicationNotFound  = 1639,
+        GuildInviteNotFound       = 1640,
+        GuildApplicationLimit     = 1641, // 내 대기 가입 신청이 5건이다
+        GuildPendingFull          = 1642, // 길드 대기 신청과 초대가 50건이다
+        CharacterIsGuildLeader    = 1643, // 길드원이 있는 길드장은 캐릭터를 삭제할 수 없다
+        GuildTargetInvitesFull    = 1644, // 상대가 받은 대기 길드 초대가 5건이다
+        GuildLeaderChanged        = 1645  // 요청 뒤 길드장이 바뀌어 위임 기대 버전이 맞지 않는다
     }
 }

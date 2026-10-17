@@ -35,6 +35,23 @@ namespace Shinshi.AI.Tests
         }
 
         [Test]
+        public void HasCast_TrueOnlyWhileThatCastHasAreasLeft()
+        {
+            var map = new BossTrackingCastMap();
+            map.Add(10, 100);
+            map.Add(11, 100);
+            map.Add(20, 200);
+
+            Assert.That(map.HasCast(100), Is.True);
+            map.TryCancel(10, out _, out _);
+            Assert.That(map.HasCast(100), Is.True);
+            map.TryCancel(11, out _, out _);
+            Assert.That(map.HasCast(100), Is.False);
+            Assert.That(map.HasCast(200), Is.True);
+            Assert.That(map.HasCast(300), Is.False);
+        }
+
+        [Test]
         public void Clear_ReconnectDiscardOldAreaIds()
         {
             var map = new BossTrackingCastMap();

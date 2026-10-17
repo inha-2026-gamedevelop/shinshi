@@ -102,13 +102,25 @@ namespace Shinshi.Tests.EditMode.Art
             };
         }
 
-        [TestCase("Arrow", true)]
-        [TestCase("Muzzle", false)]
-        [TestCase("Wind", true)]
-        [TestCase("WindMuzzle", false)]
-        [TestCase("Impact", false)]
-        public void Prefab_Generated_HasSafeRenderingAndControlledMotion(string name, bool isProjectile)
+        [TestCase("Arrow", true, 0.25f)]
+        [TestCase("Muzzle", false, 0.25f)]
+        [TestCase("Wind", true, 0.25f)]
+        [TestCase("WindMuzzle", false, 0.25f)]
+        [TestCase("Impact", false, 0.25f)]
+        [TestCase("WindArrow", true, 0.5f)]
+        [TestCase("WindStart", false, 0.5f)]
+        [TestCase("WindHit", false, 0.5f)]
+        [TestCase("IceArrow", true, 0.5f)]
+        [TestCase("IceMuzzle", false, 0.5f)]
+        [TestCase("IceHit", false, 0.5f)]
+        [TestCase("FireArrow", true, 0.5f)]
+        [TestCase("FireMuzzle", false, 0.5f)]
+        [TestCase("FireHit", false, 0.5f)]
+        [TestCase("Charge", false, 1.5f)]
+        [TestCase("Burst", false, 1.5f)]
+        public void Prefab_Generated_HasSafeRenderingAndControlledMotion(string name, bool isProjectile, float maxLifetime)
         {
+            int maxParticles = ((name == "Charge") || (name == "Burst")) ? 64 : 24;
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ROOT + "PF_ArcherVfx_" + name + ".prefab");
             Assert.That(prefab, Is.Not.Null);
             Assert.That(prefab.GetComponentsInChildren<MonoBehaviour>(true), Is.Empty);
@@ -119,7 +131,7 @@ namespace Shinshi.Tests.EditMode.Art
                 Assert.That(particle.main.playOnAwake, Is.False);
                 Assert.That(particle.main.stopAction, Is.EqualTo(ParticleSystemStopAction.None));
                 Assert.That(particle.main.loop, Is.EqualTo(isProjectile));
-                Assert.That(particle.main.maxParticles, Is.LessThanOrEqualTo(24));
+                Assert.That(particle.main.maxParticles, Is.LessThanOrEqualTo(maxParticles));
                 if (isProjectile)
                 {
                     Assert.That(particle.main.startSpeed.constantMax, Is.Zero);
@@ -129,7 +141,7 @@ namespace Shinshi.Tests.EditMode.Art
                 }
                 else
                 {
-                    Assert.That(particle.main.startLifetime.constantMax, Is.LessThanOrEqualTo(0.25f));
+                    Assert.That(particle.main.startLifetime.constantMax, Is.LessThanOrEqualTo(maxLifetime));
                 }
             }
 
@@ -201,7 +213,9 @@ namespace Shinshi.Tests.EditMode.Art
             Assert.That(target, Is.Not.Null);
             var serialized = new SerializedObject(target);
             Assert.That(serialized.FindProperty("_combat").objectReferenceValue, Is.SameAs(player.GetComponent<PlayerCombatState>()));
-            foreach (string field in new[] { "_arrowPrefab", "_muzzlePrefab", "_windPrefab", "_windMuzzlePrefab" })
+            foreach (string field in new[] { "_arrowPrefab", "_muzzlePrefab", "_impactPrefab", "_iceArrowPrefab", "_iceMuzzlePrefab",
+                "_iceHitPrefab", "_windPrefab", "_windMuzzlePrefab", "_windHitPrefab", "_fireArrowPrefab", "_fireMuzzlePrefab",
+                "_fireHitPrefab", "_chargePrefab", "_burstPrefab" })
             {
                 Assert.That(serialized.FindProperty(field).objectReferenceValue, Is.Not.Null, field);
             }

@@ -29,7 +29,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         private const string SESSION_ID     = "session";
-        private const string BOSS_ID        = "boss_cheolgak";
+        private const string BOSS_ID        = "boss_mucheol";
         private const string PLAYER_ONE_KEY = "player_one";
         private const string PLAYER_TWO_KEY = "player_two";
         private const string EFFECT_ONE     = "T01-1A";

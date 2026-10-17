@@ -23,6 +23,7 @@ namespace Shinshi.Data
         public static SessionConfigSO      Session        => Root.Session;
         public static SkillCatalogSO       Skills         => Root.Skills;
         public static TalismanCatalogSO    Talismans      => Root.Talismans;
+        public static SkillDisplayCatalogSO SkillDisplay  => Root.SkillDisplay;
         public static EnemyCatalogSO       Enemies        => Root.Enemies;
         public static BossPatternCatalogSO BossPatterns   => Root.BossPatterns;
         public static WaveConfigSO         Waves          => Root.Waves;

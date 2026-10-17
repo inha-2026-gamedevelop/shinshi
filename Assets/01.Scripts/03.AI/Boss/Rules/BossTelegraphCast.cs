@@ -120,8 +120,9 @@ namespace Shinshi.AI
                 DashDistance        = _dashDistance,
                 DashSeconds         = _dashSeconds,
                 DashSpeed           = _dashSpeed,
-                DashStoppedDistance = _dashStoppedDistance,
-                DashStoppedByWall   = _dashStoppedByWall
+                DashStoppedDistance   = _dashStoppedDistance,
+                DashStoppedByWall     = _dashStoppedByWall,
+                DashStoppedServerTime = double.NaN
             };
         }
 

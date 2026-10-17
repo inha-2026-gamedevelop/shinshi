@@ -115,8 +115,9 @@ namespace Shinshi.AI
                 Direction           = start.Direction,
                 Length              = start.Length,
                 IsDirectionLocked   = false,
-                Phase               = EBossTelegraphPhase.Telegraph,
-                DashStoppedDistance = NOT_STOPPED
+                Phase                 = EBossTelegraphPhase.Telegraph,
+                DashStoppedDistance   = NOT_STOPPED,
+                DashStoppedServerTime = double.NaN
             };
             _hasCast = true;
         }
@@ -169,12 +170,13 @@ namespace Shinshi.AI
             _cast.DashDistance        = distance;
             _cast.DashSeconds         = seconds;
             _cast.DashSpeed           = speed;
-            _cast.DashStoppedDistance = NOT_STOPPED;
-            _cast.DashStoppedByWall   = false;
+            _cast.DashStoppedDistance   = NOT_STOPPED;
+            _cast.DashStoppedByWall     = false;
+            _cast.DashStoppedServerTime = double.NaN;
         }
 
         // 정지 거리는 예고 기준점에서 고정 방향으로 잰 거리다. 표현의 돌진 정지 처리와 같은 정의다
-        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
             if ((!IsCurrentCast(castId)) || (_cast.Phase != EBossTelegraphPhase.Execute))
             {
@@ -185,8 +187,9 @@ namespace Shinshi.AI
             Vector3 direction = _cast.Direction;
             float   along     = (offset.x * direction.x) + (offset.z * direction.z);
 
-            _cast.DashStoppedDistance = Mathf.Clamp(along, 0f, _cast.DashDistance);
-            _cast.DashStoppedByWall   = stoppedByWall;
+            _cast.DashStoppedDistance   = Mathf.Clamp(along, 0f, _cast.DashDistance);
+            _cast.DashStoppedByWall     = stoppedByWall;
+            _cast.DashStoppedServerTime = stopServerTime;
         }
 
         public void OnFinished(int castId)
@@ -304,7 +307,7 @@ namespace Shinshi.AI
             });
         }
 
-        public void OnBeamCancelled(int beamId)
+        public void OnBeamCancelled(int castId, int beamId)
         {
             RemoveBeam(beamId);
         }
@@ -371,7 +374,7 @@ namespace Shinshi.AI
             });
         }
 
-        public void OnStarCancelled(int starId)
+        public void OnStarCancelled(int castId, int starId)
         {
             RemoveStar(starId);
         }

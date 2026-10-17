@@ -262,6 +262,7 @@ namespace Shinshi.Tests
             public int                        StopCount;
             public Vector3                    StopPosition;
             public bool                       StopByWall;
+            public double                     StopTime = double.NaN;
             public int                        HitTotal;
             public List<EBossInterruptReason> Cancels = new List<EBossInterruptReason>();
             public List<string>               Order   = new List<string>();
@@ -304,12 +305,13 @@ namespace Shinshi.Tests
                 DashSpeed    = speed;
             }
 
-            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+            public void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall, double stopServerTime)
             {
                 Order.Add("stop");
                 ++StopCount;
                 StopPosition = position;
                 StopByWall   = stoppedByWall;
+                StopTime     = stopServerTime;
             }
 
             public void OnHit(int castInstanceId, int hitCount)
@@ -883,6 +885,39 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, rig.Listener.StopCount);
             Assert.IsTrue(rig.Listener.StopByWall);
             Assert.AreEqual(3f, rig.Listener.StopPosition.z, POSITION_TOLERANCE);
+        }
+
+        // 정지 시각은 계산한 도착 시각이 아니라 서버가 정지를 판정한 틱 시각이다. 몸체도 그 틱에 멈춘 자리에 닿는다
+        [Test]
+        public void Wall_StopTime_IsTickWhereStopWasDetected()
+        {
+            Rig rig = new Rig();
+            rig.Movement.WallZ = 5f;
+            rig.Start();
+
+            rig.TickRange(0.0, rig.ExecuteStart);
+            double beforeReach = rig.ExecuteStart + 0.1; // 1.78m, 벽 앞 3m에 아직 닿지 않았다
+            double afterReach  = rig.ExecuteStart + 0.3;
+            rig.Fsm.Tick(beforeReach);
+            Assert.AreEqual(0, rig.Listener.StopCount);
+
+            rig.Fsm.Tick(afterReach);
+
+            Assert.AreEqual(1, rig.Listener.StopCount);
+            Assert.AreEqual(afterReach, rig.Listener.StopTime, EPSILON / 1000.0);
+        }
+
+        [Test]
+        public void OpenField_StopTime_IsExecuteEndWhenTickLandsThere()
+        {
+            Rig rig = new Rig();
+            rig.Start();
+
+            rig.TickRange(0.0, rig.ExecuteStart);
+            rig.Fsm.Tick(rig.ExecuteEnd);
+
+            Assert.AreEqual(1, rig.Listener.StopCount);
+            Assert.AreEqual(rig.ExecuteEnd, rig.Listener.StopTime, EPSILON / 1000.0);
         }
 
         [Test]

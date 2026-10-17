@@ -181,8 +181,9 @@ namespace Shinshi.UI
                 return;
             }
 
-            TownGrowthClient.SnapshotChanged += OnSnapshotChanged;
-            TownGrowthClient.ResultReceived  += OnResultReceived;
+            TownGrowthClient.SnapshotChanged  += OnSnapshotChanged;
+            TownGrowthClient.ResultReceived   += OnResultReceived;
+            TownGrowthClient.WriteLockChanged += OnWriteLockChanged;
             if (_runtimeStarted)
             {
                 ReadServerState();
@@ -217,8 +218,9 @@ namespace Shinshi.UI
         private void OnDisable()
         {
             UnbindButtons();
-            TownGrowthClient.SnapshotChanged -= OnSnapshotChanged;
-            TownGrowthClient.ResultReceived  -= OnResultReceived;
+            TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
+            TownGrowthClient.ResultReceived   -= OnResultReceived;
+            TownGrowthClient.WriteLockChanged -= OnWriteLockChanged;
             if (_requestInFlight)
             {
                 // 결과를 못 본 채 닫혔다. 다시 열면 서버 상태부터 다시 읽는다
@@ -395,6 +397,12 @@ namespace Shinshi.UI
         private bool TryValidateSelected(out string reason)
         {
             reason = string.Empty;
+            if ((Application.isPlaying) && (GrowthWriteGuard.IsBlockedByOther(_pendingOperation)))
+            {
+                reason = GrowthWriteGuard.OTHER_WINDOW_TEXT;
+                return false;
+            }
+
             if (string.IsNullOrEmpty(_itemIds[_selectedIndex]))
             {
                 reason = NO_ITEM_TEXT;
@@ -562,6 +570,8 @@ namespace Shinshi.UI
             SetStatus(status);
         }
 
+        // 시간 초과나 백엔드 장애로 끝내면 이 창은 같은 번호로 다시 묻지 않고 서버 상태를 다시 읽는다.
+        // 그래서 공용 잠금도 함께 푼다. 이미 결과가 온 요청이면 잠금이 먼저 풀려 아무 일도 없다
         private void ClearRequest()
         {
             if (_requestWatcher != null)
@@ -570,8 +580,19 @@ namespace Shinshi.UI
                 _requestWatcher = null;
             }
 
+            TownGrowthClient.ReleaseWrite(_pendingOperation);
             _requestInFlight  = false;
             _pendingOperation = Guid.Empty;
+        }
+
+        private void OnWriteLockChanged()
+        {
+            if ((!Application.isPlaying) || (_requestInFlight))
+            {
+                return;
+            }
+
+            SetStatus(ReadyStatus());
         }
 
         // 부위마다 착용한 장비 하나만 읽는다. 카탈로그에 없는 정의나 범위를 벗어난 단계가 있으면 거절한다

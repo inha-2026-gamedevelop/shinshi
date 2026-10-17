@@ -31,6 +31,10 @@ namespace Shinshi.Data
             [SerializeField] private float _projectileWidth;   // m, 투사체 폭
             [SerializeField] private bool  _cancelOnMove;      // 준비 중 이동, 회피 입력이 오면 발사하지 않고 취소한다
 
+            // 단계 명세가 2개 이상일 때만 서버 콤보다. 아니면 단일 공격 값(위 계수, 주기, 준비 시간)을 매번 쓴다
+            [SerializeField] private float           _comboResetSeconds;              // 초, 다음 공격이 가능해진 뒤 이만큼 쉬면 1단으로 돌아간다
+            [SerializeField] private ComboStepSpec[] _comboSteps = Array.Empty<ComboStepSpec>();
+
             public float DamageCoefficient => _damageCoefficient;
             public float Interval          => _interval;
             public float Range             => _range;
@@ -60,6 +64,53 @@ namespace Shinshi.Data
                 _projectileSpeed = projectileSpeed;
                 _projectileWidth = projectileWidth;
                 _cancelOnMove    = cancelOnMove;
+            }
+
+            public BasicAttackSpec(float damageCoefficient, float interval, float range, float arcAngle, float windup,
+                float projectileSpeed, float projectileWidth, bool cancelOnMove, float comboResetSeconds, ComboStepSpec[] comboSteps)
+                : this(damageCoefficient, interval, range, arcAngle, windup, projectileSpeed, projectileWidth, cancelOnMove)
+            {
+                _comboResetSeconds = comboResetSeconds;
+                _comboSteps        = comboSteps;
+            }
+
+            public bool  HasCombo          => (_comboSteps != null) && (_comboSteps.Length > 1);
+            public int   ComboStepCount    => HasCombo ? _comboSteps.Length : 1;
+            public float ComboResetSeconds => _comboResetSeconds;
+
+            public float GetDamageCoefficient(int step) { return HasStep(step) ? _comboSteps[step].DamageCoefficient : _damageCoefficient; }
+            public float GetInterval(int step)          { return HasStep(step) ? _comboSteps[step].Interval : _interval; }
+            public float GetWindup(int step)            { return HasStep(step) ? _comboSteps[step].Windup : _windup; }
+            public bool  IsHitImmune(int step)          { return HasStep(step) && _comboSteps[step].HitImmune; }
+
+            public ComboStepSpec GetComboStep(int index) { return _comboSteps[index]; }
+
+            private bool HasStep(int step)
+            {
+                return HasCombo && (step >= 0) && (step < _comboSteps.Length);
+            }
+        }
+
+        /// <summary> 서버 콤보 기본 공격의 한 단계, 사거리와 투사체는 직업 명세를 같이 쓴다 </summary>
+        [Serializable]
+        public class ComboStepSpec
+        {
+            [SerializeField] private float _damageCoefficient; // 공격력 배율
+            [SerializeField] private float _interval;          // 초, 이 단계 시작부터 다음 공격까지
+            [SerializeField] private float _windup;            // 초, 이 단계 승인부터 판정까지
+            [SerializeField] private bool  _hitImmune;         // 이 단계 동작 동안(주기만큼) 기절, 속박, 밀림을 받지 않는다. 피해는 받는다
+
+            public float DamageCoefficient => _damageCoefficient;
+            public float Interval          => _interval;
+            public float Windup            => _windup;
+            public bool  HitImmune         => _hitImmune;
+
+            public ComboStepSpec(float damageCoefficient, float interval, float windup, bool hitImmune)
+            {
+                _damageCoefficient = damageCoefficient;
+                _interval          = interval;
+                _windup            = windup;
+                _hitImmune         = hitImmune;
             }
         }
 
@@ -141,8 +192,19 @@ namespace Shinshi.Data
         [SerializeField] private BasicAttackSpec[] _classBasicAttacks =
         {
             new BasicAttackSpec(1.0f, 0.9f, 3f, 90f, 0.2f, 0f, 0f, false),
-            new BasicAttackSpec(0.9f, 0.85f, 2.5f, 90f, 0f, 0f, 0f, false),
-            new BasicAttackSpec(0.9f, 0.95f, 10f, 0f, 0.35f, 24f, 0.3f, true)
+            new BasicAttackSpec(0.9f, 0.85f, 2.5f, 90f, 0f, 0f, 0f, false, 1.2f, new[]
+            {
+                // 단계마다 피해는 같고 모션과 베기 효과만 단계를 따른다
+                new ComboStepSpec(0.9f, 0.85f, 0f, false),
+                new ComboStepSpec(0.9f, 0.85f, 0f, false),
+                new ComboStepSpec(0.9f, 0.85f, 0f, false)
+            }),
+            new BasicAttackSpec(0.9f, 0.95f, 10f, 0f, 0.35f, 24f, 0.3f, true, 1.2f, new[]
+            {
+                new ComboStepSpec(0.65f, 0.6f, 0.25f, false),
+                new ComboStepSpec(0.75f, 0.75f, 0.22f, false),
+                new ComboStepSpec(1.1f, 1.3f, 0.33f, true)
+            })
         };
 
         public float MoveSpeed                => _moveSpeed;
@@ -261,6 +323,27 @@ namespace Shinshi.Data
                 if ((spec.ArcAngle <= 0f) && (spec.ProjectileSpeed > 0f))
                 {
                     DataValidation.RequirePositive(errors, OWNER, field + ".ProjectileWidth", spec.ProjectileWidth);
+                }
+
+                if (!spec.HasCombo)
+                {
+                    continue;
+                }
+
+                DataValidation.RequirePositive(errors, OWNER, field + ".ComboResetSeconds", spec.ComboResetSeconds);
+                for (int s = 0; s < spec.ComboStepCount; ++s)
+                {
+                    ComboStepSpec step      = spec.GetComboStep(s);
+                    string        stepField = $"{field}.ComboSteps[{s}]";
+                    if (step == null)
+                    {
+                        errors.Add($"{OWNER}.{stepField}: 단계 명세가 비어 있다");
+                        continue;
+                    }
+
+                    DataValidation.RequirePositive(errors, OWNER, stepField + ".DamageCoefficient", step.DamageCoefficient);
+                    DataValidation.RequirePositive(errors, OWNER, stepField + ".Interval", step.Interval);
+                    DataValidation.RequireRange(errors, OWNER, stepField + ".Windup", step.Windup, 0f, step.Interval);
                 }
             }
         }

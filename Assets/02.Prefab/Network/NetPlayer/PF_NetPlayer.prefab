@@ -458,10 +458,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.MageknightVfxView
   _combat: {fileID: 7582053140134925329}
   _basicPrefab: {fileID: 223175418192766026, guid: 3bc2891cd978f6546b860b63c7c5f3c0, type: 3}
-  _arcanePrefab: {fileID: 4401836618647935956, guid: 7547c47df363fe34b9ec851f973a197c, type: 3}
-  _fieldPrefab: {fileID: 3181935672943181347, guid: 233c55ce434826444aead7c0a1b823fc, type: 3}
-  _sealPrefab: {fileID: 5636803044710103467, guid: ea0aca9bba3e176478fb4937762b9857, type: 3}
+  _shieldPrefab: {fileID: 4401836618647935956, guid: 7547c47df363fe34b9ec851f973a197c, type: 3}
   _wavePrefab: {fileID: 4023686897370039170, guid: 876b03aa451a003449aa0271094656bd, type: 3}
+  _fieldPrefab: {fileID: 3181935672943181347, guid: 233c55ce434826444aead7c0a1b823fc, type: 3}
+  _jumpPrefab: {fileID: 5636803044710103467, guid: ea0aca9bba3e176478fb4937762b9857, type: 3}
   _poolSizePerPrefab: 2
   _maxPlaySeconds: 3
   _maxLateSeconds: 0.25
@@ -481,5 +481,15 @@ MonoBehaviour:
   _combat: {fileID: 7582053140134925329}
   _arrowPrefab: {fileID: 3150555367362999579, guid: 156154de3e00a734e8cc7ca5f509aa0b, type: 3}
   _muzzlePrefab: {fileID: 6914791226151446844, guid: a38dc3650a052ca47859f451e7282470, type: 3}
-  _windPrefab: {fileID: 5249418338576633219, guid: 832286be7a104c14f8b6fc35d03b9d81, type: 3}
-  _windMuzzlePrefab: {fileID: 3281536283908561520, guid: da3342042f8469049a2f8303635eb003, type: 3}
+  _impactPrefab: {fileID: 1177811641028294398, guid: e650f6762cec93542bb7c6e81a5578b4, type: 3}
+  _iceArrowPrefab: {fileID: 2682960241579685217, guid: 07ad157073756e44bbd1ac8773f285c6, type: 3}
+  _iceMuzzlePrefab: {fileID: 7059153792879836106, guid: caa75c6ebc8c08248ab413113e01d368, type: 3}
+  _iceHitPrefab: {fileID: 903281530415090140, guid: 07bef5f5af043614ca2ca4ca7bbf0576, type: 3}
+  _windPrefab: {fileID: 3350526677311507371, guid: a9def26c4960a1043bea127c43a5d0f7, type: 3}
+  _windMuzzlePrefab: {fileID: 6065556663463694477, guid: ba662e0273739f54abd10123e0aa2b62, type: 3}
+  _windHitPrefab: {fileID: 2779136345013675175, guid: 337c0ac7572120540a5d4bb36a7fea1f, type: 3}
+  _fireArrowPrefab: {fileID: 3902253304092743793, guid: 9d3c1e071c50a6f47910babb85f1ff55, type: 3}
+  _fireMuzzlePrefab: {fileID: 3635461990612121688, guid: f443572d11cd54948ac5fbb52fe9c999, type: 3}
+  _fireHitPrefab: {fileID: 7384983536714631708, guid: b1d6ecd0f5cc96f4aa3cef59be0084f3, type: 3}
+  _chargePrefab: {fileID: 4863434451703385222, guid: 0845a9730a7a6b4419d3c10d0e216503, type: 3}
+  _burstPrefab: {fileID: 9209284992191710387, guid: 6c68251e9da51b14cb30719ad3c6fd13, type: 3}

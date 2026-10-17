@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Shinshi.AI
 {
-    // 하드 2P P04 추적 장판의 취소 사건은 장판 번호만 싣고 시전 번호가 없다. 시작 사건에는 둘 다 있으므로 그때 짝을 기억해 둔다
+    // 취소 사건에 시전 번호가 없던 때의 대체 경로이자, 한 시전의 남은 장판(빔, 별) 수를 아는 데 쓴다. 시작 사건에는 둘 다 있으므로 그때 짝을 기억해 둔다
     // 한 시전이 장판을 여럿 예고하고 취소는 장판마다 오므로, 그 시전의 마지막 장판이 취소될 때만 시전이 끝난 것으로 본다
     /// <summary> 추적 장판 번호와 시전 번호의 짝을 기억해 장판 취소를 시전 종료로 바꾼다 </summary>
     public sealed class BossTrackingCastMap
@@ -59,6 +59,20 @@ namespace Shinshi.AI
             }
 
             return true;
+        }
+
+        /// <summary> 이 시전의 짝이 하나라도 남아 있다 </summary>
+        public bool HasCast(int castId)
+        {
+            foreach (KeyValuePair<int, int> pair in _castByArea)
+            {
+                if (pair.Value == castId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public void Clear()

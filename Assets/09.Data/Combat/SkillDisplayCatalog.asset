@@ -1,0 +1,361 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20bdba8f43db91a458c2218061fb4cbf, type: 3}
+  m_Name: SkillDisplayCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.SkillDisplayCatalogSO
+  _schemaVersion: 1
+  _skills:
+  - _definitionId: skill_swordsman_slash
+    _displayName: "\uB113\uAC8C \uBCA0\uAE30"
+    _description: "\uC804\uBC29 \uB113\uC740 \uBD80\uCC44\uAF34\uC744 \uBCA0\uC5B4
+      \uC55E\uC758 \uC801\uC744 \uBAA8\uB450 \uBCA4\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_swordsman_dash
+    _displayName: "\uB3CC\uC9C4 \uBCA0\uAE30"
+    _description: "\uCEE4\uC11C \uBC29\uD5A5\uC73C\uB85C \uB3CC\uC9C4\uD558\uBA70
+      \uACBD\uB85C\uC758 \uC801\uC744 \uBCA4\uB2E4. \uCCAB \uC801 \uBAB8\uCCB4 \uC55E\uC5D0\uC11C
+      \uBA48\uCD98\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_swordsman_focus_slash
+    _displayName: "\uC9D1\uC911 \uBCA0\uAE30"
+    _description: "\uD798\uC744 \uBAA8\uC544 \uC881\uC740 \uC804\uBC29\uC744 \uAC15\uD558\uAC8C
+      \uBCA4\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_swordsman_chain_slash
+    _displayName: "\uC5F0\uD658\uCC38"
+    _description: "\uC804\uBC29\uC744 \uB450 \uBC88 \uC5F0\uB2EC\uC544 \uBCA4\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_mageknight_arcane_slash
+    _displayName: "\uC218\uB958 \uBC29\uBCBD"
+    _description: "3\uCD08 \uB3D9\uC548 \uAE30\uC808, \uC18D\uBC15, \uBC00\uB9BC\uC744
+      \uBC1B\uC9C0 \uC54A\uB294\uB2E4. \uD53C\uD574\uB294 \uADF8\uB300\uB85C \uBC1B\uB294\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_mageknight_thunder_wave
+    _displayName: "\uAC80\uD30C \uD574\uBC29"
+    _description: "\uBAA8\uC740 \uC2A4\uD0DD\uC744 \uBAA8\uB450 \uC368\uC11C \uAD00\uD1B5\uD558\uB294
+      \uAC80\uD30C\uB97C \uB0A0\uB9B0\uB2E4. \uC2A4\uD0DD\uC774 \uB9CE\uC744\uC218\uB85D
+      \uAC15\uD558\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_mageknight_flame_field
+    _displayName: "\uACF5\uAC04 \uC808\uB2E8\uC9C4"
+    _description: "\uC9C0\uC815\uD55C \uC9C0\uC810\uC5D0 4\uCD08 \uB3D9\uC548 \uBCA0\uB294
+      \uC9C4\uC744 \uD3BC\uCE5C\uB2E4. \uC0DD\uC131 \uB54C \uC2A4\uD0DD +5."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_mageknight_seal_slash
+    _displayName: "\uC12C\uAD11 \uC77C\uC12C"
+    _description: "\uC9C1\uC120 \uACBD\uB85C\uB97C \uBCA0\uACE0 \uB05D\uC73C\uB85C
+      \uC21C\uAC04 \uC774\uB3D9\uD55C\uB2E4. \uB3C4\uCC29 \uB54C \uC2A4\uD0DD +10."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_archer_rapid_shot
+    _displayName: "\uC5BC\uC74C \uBD80\uC5EC"
+    _description: "\uC774\uD6C4 \uAE30\uBCF8 \uACF5\uACA9\uC774 \uC5BC\uC74C \uC18D\uC131\uC774
+      \uB41C\uB2E4. \uB9DE\uD78C \uC77C\uBC18 \uC801\uC744 \uC7A0\uC2DC \uB290\uB9AC\uAC8C
+      \uD55C\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_archer_retreat_shot
+    _displayName: "\uBC14\uB78C \uBD80\uC5EC"
+    _description: "\uC774\uD6C4 \uAE30\uBCF8 \uACF5\uACA9\uC774 \uBC14\uB78C \uC18D\uC131\uC774
+      \uB41C\uB2E4. \uACF5\uACA9 \uC8FC\uAE30\uAC00 \uC9E7\uC544\uC9C0\uACE0 \uD654\uC0B4\uC774
+      \uBE68\uB77C\uC9C4\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_archer_scatter_shot
+    _displayName: "\uBD88 \uBD80\uC5EC"
+    _description: "\uC774\uD6C4 \uAE30\uBCF8 \uACF5\uACA9\uC774 \uBD88 \uC18D\uC131\uC774
+      \uB41C\uB2E4. \uB9DE\uD78C \uC801\uC5D0\uAC8C \uD654\uC0C1\uC744 \uAC74\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  - _definitionId: skill_archer_piercing_shot
+    _displayName: "\uC18D\uC131 \uD3ED\uBC1C"
+    _description: "\uC2A4\uD0DD\uC744 \uBAA8\uB450 \uC368\uC11C \uC9C0\uC815\uD55C
+      \uC9C0\uC810\uC5D0 \uD070 \uC6D0\uD615 \uD3ED\uBC1C\uC744 \uC77C\uC73C\uD0A8\uB2E4."
+    _upgradeDescription: 
+    _noEffect: 0
+  _effects:
+  - _definitionId: T13-1A
+    _displayName: "\uBE60\uB978 \uC900\uBE44"
+    _description: "\uCFE8\uB2E4\uC6B4\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uCFE8\uB2E4\uC6B4 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T13-1B
+    _displayName: "\uAE30\uB825 \uC808\uC57D"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T13-2A
+    _displayName: "\uB113\uC740 \uAC80\uC138"
+    _description: "\uBD80\uCC44\uAF34 \uAC01\uB3C4\uB97C \uB113\uD78C\uB2E4. \uC6D0\uD615
+      \uAD50\uCCB4\uC5D0\uB294 \uBC18\uACBD\uC744 \uB298\uB9B0\uB2E4."
+    _upgradeDescription: "\uAC01\uB3C4, \uBC18\uACBD"
+    _noEffect: 0
+  - _definitionId: T13-2B
+    _displayName: "\uC9D1\uC911 \uAC80\uC138"
+    _description: "\uBD80\uCC44\uAF34\uC744 80\uB3C4\uB85C \uC881\uD788\uACE0 \uD53C\uD574\uB97C
+      \uB192\uC778\uB2E4. \uC6D0\uD615\uC740 \uBC18\uACBD\uC744 0.5m \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uD53C\uD574 \uC99D\uAC00\uC728"
+    _noEffect: 0
+  - _definitionId: T13-3A
+    _displayName: "\uC5F0\uC18D \uCC38\uACA9"
+    _description: "\uCCAB \uD0C0\uACA9 0.15\uCD08 \uB4A4\uC5D0 \uB450 \uBC88\uC9F8
+      \uD0C0\uACA9\uC744 \uB354\uD55C\uB2E4."
+    _upgradeDescription: "\uD6C4\uC18D \uD0C0\uACA9 \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T13-3B
+    _displayName: "\uD68C\uC804 \uCC38\uACA9"
+    _description: "\uC804\uBC29 1\uD0C0\uB97C \uC81C\uC790\uB9AC \uC6D0\uD615 1\uD0C0\uB85C
+      \uBC14\uAFBC\uB2E4."
+    _upgradeDescription: "\uCD94\uAC00 \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T14-1A
+    _displayName: "\uAC00\uBCBC\uC6B4 \uBC1C\uAC78\uC74C"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T14-2A
+    _displayName: "\uAE34 \uBCF4\uD3ED"
+    _description: "\uAC19\uC740 0.3\uCD08 \uB3D9\uC548 \uB354 \uBA40\uB9AC \uC9C4\uC785\uD55C\uB2E4."
+    _upgradeDescription: "\uC774\uB3D9 \uAC70\uB9AC"
+    _noEffect: 0
+  - _definitionId: T14-3A
+    _displayName: "\uAD00\uD1B5 \uB3CC\uC9C4"
+    _description: "\uC801 \uBAB8\uCCB4\uB97C \uC9C0\uB098\uBA70 \uB300\uC0C1\uB9C8\uB2E4
+      \uD55C \uBC88 \uACBD\uB85C \uD53C\uD574\uB97C \uC900\uB2E4. \uBCBD\uACFC \uC9C0\uD615
+      \uC55E\uC5D0\uC11C\uB294 \uBA48\uCD98\uB2E4."
+    _upgradeDescription: "\uCD94\uAC00 \uACBD\uB85C \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T15-1A
+    _displayName: "\uBE60\uB978 \uC900\uBE44"
+    _description: "\uCFE8\uB2E4\uC6B4\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uCFE8\uB2E4\uC6B4 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T15-2A
+    _displayName: "\uAC15\uD55C \uAC80\uACA9"
+    _description: "\uBCF8\uD0C0\uACA9\uACFC \uC794\uD5A5 \uAC80\uD48D\uC758 \uD53C\uD574\uB97C
+      \uB192\uC778\uB2E4."
+    _upgradeDescription: "\uD53C\uD574 \uC99D\uAC00\uC728"
+    _noEffect: 0
+  - _definitionId: T15-3A
+    _displayName: "\uC794\uD5A5 \uAC80\uD48D"
+    _description: "\uBCF8\uD0C0\uACA9 0.2\uCD08 \uB4A4\uC5D0 \uC9E7\uC740 \uAC80\uD48D\uC744
+      \uB354\uD55C\uB2E4. \uCCAB \uC801\uC774\uB098 \uBCBD\uC5D0\uC11C \uC0AC\uB77C\uC9C4\uB2E4."
+    _upgradeDescription: "\uAC80\uD48D \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T16-1A
+    _displayName: "\uAE30\uB825 \uC808\uC57D"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T16-2A
+    _displayName: "\uB113\uC740 \uC5F0\uACA9"
+    _description: "\uB450 \uD0C0\uACA9\uC758 \uBD80\uCC44\uAF34\uC744 \uD568\uAED8
+      \uB113\uD78C\uB2E4."
+    _upgradeDescription: "\uAC01\uB3C4"
+    _noEffect: 0
+  - _definitionId: T16-3A
+    _displayName: "\uAC80\uD48D \uB9C8\uBB34\uB9AC"
+    _description: "\uB450 \uBC88\uC9F8 \uD0C0\uACA9 0.2\uCD08 \uB4A4\uC5D0 \uAC80\uD48D\uC744
+      \uB354\uD55C\uB2E4. \uCCAB \uC801\uC774\uB098 \uBCBD\uC5D0\uC11C \uC0AC\uB77C\uC9C4\uB2E4."
+    _upgradeDescription: "\uAC80\uD48D \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T17-1A
+    _displayName: "\uAE30\uB825 \uC808\uC57D"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T17-2A
+    _displayName: "\uAE34 \uCE7C\uB0A0"
+    _description: "\uADFC\uC811 \uAE38\uC774\uB97C \uB298\uB9B0\uB2E4. \uC0BC\uAC08\uB798
+      \uAD50\uCCB4\uC5D0\uB294 \uD22C\uC0AC\uCCB4 \uC0AC\uAC70\uB9AC\uB97C \uB298\uB9B0\uB2E4."
+    _upgradeDescription: "\uAE38\uC774, \uC0AC\uAC70\uB9AC"
+    _noEffect: 1
+  - _definitionId: T17-3A
+    _displayName: "\uC0BC\uAC08\uB798 \uAC80\uD48D"
+    _description: "\uADFC\uC811 \uD0C0\uACA9\uC744 \uC138 \uBC29\uD5A5 \uAC80\uD48D\uC73C\uB85C
+      \uBC14\uAFBC\uB2E4."
+    _upgradeDescription: "\uAC08\uB798\uBCC4 \uCD94\uAC00 \uD53C\uD574"
+    _noEffect: 1
+  - _definitionId: T18-1A
+    _displayName: "\uBE60\uB978 \uC900\uBE44"
+    _description: "\uCFE8\uB2E4\uC6B4\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uCFE8\uB2E4\uC6B4 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T18-1B
+    _displayName: "\uAE30\uB825 \uC808\uC57D"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T18-2A
+    _displayName: "\uB113\uC740 \uAC80\uC9C4"
+    _description: "\uC9C4\uACFC \uB450 \uD3ED\uBC1C \uD615\uD0DC\uC758 \uBC18\uACBD\uC744
+      \uB298\uB9B0\uB2E4."
+    _upgradeDescription: "\uBC18\uACBD"
+    _noEffect: 0
+  - _definitionId: T18-2B
+    _displayName: "\uC751\uCD95 \uD654\uB825"
+    _description: "\uBC18\uACBD\uC744 2m\uB85C \uC881\uD788\uACE0 \uC9C0\uC18D \uD53C\uD574\uC640
+      \uD3ED\uBC1C \uD53C\uD574\uB97C \uB192\uC778\uB2E4."
+    _upgradeDescription: "\uD53C\uD574 \uC99D\uAC00\uC728"
+    _noEffect: 0
+  - _definitionId: T18-3A
+    _displayName: "\uD654\uC5FC \uBD84\uCD9C"
+    _description: "8\uD68C \uC9C0\uC18D \uD53C\uD574\uB97C \uC0DD\uC131 0.8\uCD08
+      \uB4A4 \uD55C \uBC88\uC758 \uD3ED\uBC1C\uB85C \uBC14\uAFBC\uB2E4."
+    _upgradeDescription: "\uCD94\uAC00 \uD3ED\uBC1C \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T18-3B
+    _displayName: "\uC794\uBD88 \uD3ED\uBC1C"
+    _description: "8\uD68C \uC9C0\uC18D \uD53C\uD574\uB97C \uC720\uC9C0\uD558\uACE0
+      \uB9C8\uC9C0\uB9C9 \uD68C\uCC28\uC5D0 \uD3ED\uBC1C \uD55C \uBC88\uC744 \uB354\uD55C\uB2E4."
+    _upgradeDescription: "\uB9C8\uC9C0\uB9C9 \uD3ED\uBC1C \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T19-1A
+    _displayName: "\uAE30\uB825 \uC808\uC57D"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T19-2A
+    _displayName: "\uB113\uC740 \uBD09\uC778"
+    _description: "\uC804\uBC29 \uBD09\uC778 \uAC80\uACA9\uC758 \uAC01\uB3C4\uB97C
+      \uB113\uD78C\uB2E4."
+    _upgradeDescription: "\uAC01\uB3C4"
+    _noEffect: 1
+  - _definitionId: T19-3A
+    _displayName: "\uAC80\uC778 \uC751\uC9D1"
+    _description: "\uB9DE\uD78C \uC77C\uBC18 \uC801\uC744 \uC804\uBC29 \uCABD\uC73C\uB85C
+      \uB2F9\uAE30\uACE0 \uC18D\uBC15\uC744 \uB298\uB9B0\uB2E4."
+    _upgradeDescription: "\uCD94\uAC00 \uC18D\uBC15 \uC2DC\uAC04"
+    _noEffect: 1
+  - _definitionId: T20-1A
+    _displayName: "\uBE60\uB978 \uC900\uBE44"
+    _description: "\uCFE8\uB2E4\uC6B4\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uCFE8\uB2E4\uC6B4 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T20-2A
+    _displayName: "\uB113\uC740 \uAC80\uD30C"
+    _description: "\uAC80\uD30C\uC758 \uD3ED\uC744 \uB298\uB9B0\uB2E4. \uC5F0\uC18D
+      \uAC80\uD30C\uC5D0\uB3C4 \uBAA8\uB450 \uC801\uC6A9\uD55C\uB2E4."
+    _upgradeDescription: "\uD22C\uC0AC\uCCB4 \uD3ED"
+    _noEffect: 0
+  - _definitionId: T20-3A
+    _displayName: "\uC5F0\uC18D \uAC80\uD30C"
+    _description: "\uCCAB \uAC80\uD30C 0.35\uCD08 \uB4A4\uC5D0 \uAC19\uC740 \uBC29\uD5A5\uC73C\uB85C
+      \uB450 \uBC88\uC9F8 \uAC80\uD30C\uB97C \uB354\uD55C\uB2E4."
+    _upgradeDescription: "\uB450 \uBC88\uC9F8 \uAC80\uD30C \uD53C\uD574"
+    _noEffect: 0
+  - _definitionId: T21-1A
+    _displayName: "\uAC00\uBCBC\uC6B4 \uC2DC\uC704"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T21-2A
+    _displayName: "\uAE34 \uC0AC\uC120"
+    _description: "\uBAA8\uB4E0 \uBC1C\uC0AC \uC0AC\uAC70\uB9AC\uB97C \uB298\uB9B0\uB2E4."
+    _upgradeDescription: "\uC0AC\uAC70\uB9AC"
+    _noEffect: 1
+  - _definitionId: T21-3A
+    _displayName: "\uB05D\uB9FA\uC74C \uD654\uC0B4"
+    _description: "\uB9C8\uC9C0\uB9C9 \uBC1C\uC0AC 0.25\uCD08 \uB4A4\uC5D0 \uD55C
+      \uBC1C\uC744 \uB354 \uC3DC\uB2E4."
+    _upgradeDescription: "\uCD94\uAC00 \uD654\uC0B4 \uD53C\uD574"
+    _noEffect: 1
+  - _definitionId: T22-1A
+    _displayName: "\uBE60\uB978 \uC7AC\uC815\uBE44"
+    _description: "\uCFE8\uB2E4\uC6B4\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uCFE8\uB2E4\uC6B4 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T22-2A
+    _displayName: "\uAE34 \uB4B7\uAC78\uC74C"
+    _description: "\uD6C4\uD1F4 \uC774\uB3D9 \uAC70\uB9AC\uB97C \uB298\uB9B0\uB2E4."
+    _upgradeDescription: "\uC774\uB3D9 \uAC70\uB9AC"
+    _noEffect: 1
+  - _definitionId: T22-3A
+    _displayName: "\uAC08\uB9BC \uD654\uC0B4"
+    _description: "\uB2E8\uBC1C\uC744 \uC138 \uAC08\uB798 \uD654\uC0B4\uB85C \uBC14\uAFBC\uB2E4."
+    _upgradeDescription: "\uAC08\uB798\uBCC4 \uCD94\uAC00 \uD53C\uD574"
+    _noEffect: 1
+  - _definitionId: T23-1A
+    _displayName: "\uBE60\uB978 \uC7AC\uC815\uBE44"
+    _description: "\uCFE8\uB2E4\uC6B4\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uCFE8\uB2E4\uC6B4 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T23-1B
+    _displayName: "\uAC00\uBCBC\uC6B4 \uC2DC\uC704"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T23-2A
+    _displayName: "\uB113\uC740 \uD654\uC0B4\uAE38"
+    _description: "\uAD00\uD1B5 \uD654\uC0B4\uC758 \uD3ED\uC744 \uB298\uB9B0\uB2E4."
+    _upgradeDescription: "\uD3ED"
+    _noEffect: 1
+  - _definitionId: T23-2B
+    _displayName: "\uC9D1\uC911 \uAD00\uD1B5"
+    _description: "\uD53C\uD574\uB97C \uB192\uC778\uB2E4. \uD3ED\uC744 \uACE0\uC815\uD558\uB294
+      \uBD80\uBD84\uC740 \uC9C0\uAE08 \uAE30\uC220\uC5D0 \uC801\uC6A9\uB418\uC9C0
+      \uC54A\uB294\uB2E4."
+    _upgradeDescription: "\uD53C\uD574 \uC99D\uAC00\uC728"
+    _noEffect: 0
+  - _definitionId: T23-3A
+    _displayName: "\uAFF0\uB6AB\uB294 \uC2DC\uC704"
+    _description: "\uCD5C\uB300 \uB300\uC0C1\uC744 6\uC73C\uB85C \uBC14\uAFB8\uACE0
+      \uD53C\uD574\uB97C \uB354\uD55C\uB2E4."
+    _upgradeDescription: "\uCD94\uAC00 \uD53C\uD574"
+    _noEffect: 1
+  - _definitionId: T23-3B
+    _displayName: "\uC30D\uC5F0 \uC2DC\uC704"
+    _description: "0.3\uCD08 \uB4A4\uC5D0 \uB450 \uBC88\uC9F8 \uAD00\uD1B5 \uD654\uC0B4\uC744
+      \uB354 \uC3DC\uB2E4."
+    _upgradeDescription: "\uB450 \uBC88\uC9F8 \uD654\uC0B4 \uD53C\uD574"
+    _noEffect: 1
+  - _definitionId: T24-1A
+    _displayName: "\uAC00\uBCBC\uC6B4 \uC2DC\uC704"
+    _description: "\uAE30\uB825 \uBE44\uC6A9\uC744 \uC904\uC778\uB2E4."
+    _upgradeDescription: "\uAE30\uB825 \uAC10\uC18C\uC728"
+    _noEffect: 0
+  - _definitionId: T24-2A
+    _displayName: "\uB113\uC740 \uBD80\uCC44"
+    _description: "\uBD80\uCC44\uAF34 \uC591 \uB05D \uAC01\uB3C4\uB97C \uB113\uD78C\uB2E4."
+    _upgradeDescription: "\uAC01\uB3C4"
+    _noEffect: 1
+  - _definitionId: T24-3A
+    _displayName: "\uAD00\uD1B5 \uC0B0\uAC1C"
+    _description: "\uAC01 \uD654\uC0B4\uC774 \uCD5C\uB300 2\uBA85\uAE4C\uC9C0 \uAD00\uD1B5\uD55C\uB2E4."
+    _upgradeDescription: "\uCD94\uAC00 \uD53C\uD574"
+    _noEffect: 1
+  _classes:
+  - _playerClass: 3
+    _basicAttackDescription: "\uC804\uBC29 \uBD80\uCC44\uAF34\uC744 \uBCA0\uB294
+      \uBB34\uB8CC \uADFC\uC811 \uACF5\uACA9\uC774\uB2E4."
+    _stackRule: 
+  - _playerClass: 4
+    _basicAttackDescription: "\uC804\uBC29\uC744 \uBCA0\uB294 \uBB34\uB8CC \uADFC\uC811
+      3\uB2E8 \uACF5\uACA9\uC774\uB2E4. \uB2E8\uACC4\uB9C8\uB2E4 \uD53C\uD574\uB294
+      \uAC19\uB2E4."
+    _stackRule: "\uC801\uC744 \uB9DE\uD78C \uAE30\uBCF8 \uACF5\uACA9 +1, E \uC0DD\uC131
+      +5, R \uB3C4\uCC29 +10. W\uAC00 \uBAA8\uB450 \uC368\uC11C \uD53C\uD574\uB85C
+      \uBC14\uAFBC\uB2E4. \uC0AC\uB9DD\uD558\uBA74 0"
+  - _playerClass: 5
+    _basicAttackDescription: "\uD654\uC0B4\uC744 \uC3D8\uB294 \uBB34\uB8CC \uC6D0\uAC70\uB9AC
+      3\uB2E8 \uACF5\uACA9\uC774\uB2E4. 3\uB2E8\uC740 \uD53C\uACA9\uC774\uC0C1\uC744
+      \uBC1B\uC9C0 \uC54A\uB294\uB2E4."
+    _stackRule: "\uC18D\uC131 \uD654\uC0B4\uC774 \uC801\uC744 \uB9DE\uD788\uBA74
+      \uC9C1\uC804\uACFC \uAC19\uC740 \uC18D\uC131 +1, \uB2E4\uB978 \uC18D\uC131
+      +2. R\uC774 \uBAA8\uB450 \uC4F4\uB2E4. \uC0AC\uB9DD\uD558\uBA74 0"

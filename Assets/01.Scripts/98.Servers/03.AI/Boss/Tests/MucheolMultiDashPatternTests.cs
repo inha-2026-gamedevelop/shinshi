@@ -717,6 +717,23 @@ namespace Shinshi.Tests
             Assert.AreEqual(36f, rig.Self.Position.z, POSITION_TOLERANCE);
         }
 
+        // 한 틱에 여러 돌진이 끝나면 정지 시각은 큰 틱 시각이 아니라 각 돌진이 끝난 경계다
+        [Test]
+        public void HugeTick_StopTimes_AreEachDashEndBoundary()
+        {
+            Rig rig = new Rig(Spec(), 3, ACTIVE_TWO);
+            rig.Start();
+
+            rig.Fsm.Tick(100.0);
+
+            Assert.AreEqual(2, rig.Listener.StopTimes.Count);
+            for (int i = 0; i < rig.Listener.StopTimes.Count; ++i)
+            {
+                Assert.AreEqual(rig.Listener.StartTimes[i] + rig.Listener.StartSeconds[i], rig.Listener.StopTimes[i], 0.0001,
+                    $"{i}번째 돌진");
+            }
+        }
+
         [Test]
         public void SharedFsm_ThreeDashPlanOnTwoDashDefinition_HugeTickAlsoDropsThirdDash()
         {

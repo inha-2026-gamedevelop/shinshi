@@ -10,14 +10,14 @@ using Shinshi.AI;
 
 namespace Shinshi.Combat
 {
-    // 무철 전용 패턴(콤보, 순차 타격, 연속 돌진, 전장 공격, 돌진 결과)의 서버 알림을 표현용 사건(IBossMucheolEventListener)으로 바꿔 보낸다.
+    // 무철 전용 패턴(콤보, 순차 타격, 연속 돌진, 전장 공격, 돌진 결과)과 돌진 구조물 파괴, 돌진 유도 기믹 그로기의 서버 알림을 표현용 사건(IBossMucheolEventListener)으로 바꿔 보낸다.
     // 서버 전용 타 값에서 피해 배수를 빼고, 알림에 없는 시각은 몸체의 틱 시각으로 채운다. 적중 수와 밀림은 표현에 쓰지 않아 보내지 않는다.
     //
     // 수신처가 없어도 정면 갱신과 시전 번호 알림은 한다. 정면은 다음 선택의 방향 구간과 후방 판정의 입력이라 표시 연결과 무관하게 맞아야 한다.
     // 여러 리스너에 같은 형식의 알림이 있어 모두 인터페이스별로 나눠 구현한다
     /// <summary> 무철 패턴 알림을 복제 상태가 받는 무철 사건으로 바꾸는 중계 </summary>
     public sealed class BossMucheolEventRelay : IBossComboTelegraphListener, IMucheolSequenceTelegraphListener,
-        IMucheolMultiDashListener, IMucheolBattlefieldListener, IBossChargeOutcomeListener
+        IMucheolMultiDashListener, IMucheolBattlefieldListener, IBossChargeOutcomeListener, IMucheolChargeGimmickListener
     {
         /****************************************
         *                Fields
@@ -26,6 +26,22 @@ namespace Shinshi.Combat
         private readonly IBossEventRelayHost _host;
 
         private IBossMucheolEventListener _sink;
+
+        // 마지막으로 보낸 돌진 결과, 그로기 사건의 충돌 시각을 여기서 읽는다
+        private int    _chargeCastId      = CombatIds.NONE;
+        private int    _chargeStructureId = CombatIds.NONE;
+        private double _chargeServerTime;
+        private bool   _isChargeCollision = false;
+
+        // 같은 시전의 돌진 결과보다 먼저 온 그로기 대기, 그 결과를 보낸 뒤에 보낸다
+        private bool   _hasHeldGroggy     = false;
+        private int    _heldCastId        = CombatIds.NONE;
+        private int    _heldStructureId;
+        private double _heldConfirmTime;
+
+        // 보낸 대기의 충돌 시각, 같은 그로기의 시작 사건에 같은 값을 싣는다
+        private int    _pendingCastId     = CombatIds.NONE;
+        private double _pendingCollision  = double.NaN;
 
         /****************************************
         *                Methods
@@ -215,9 +231,11 @@ namespace Shinshi.Combat
             _sink?.OnMultiDashDashStarted(castInstanceId, dashIndex, distance, seconds, speed, startServerTime);
         }
 
-        void IMucheolMultiDashListener.OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall)
+        // 정지 시각은 틱 시각이 아니라 패턴이 정지를 판정한 시각이라 그대로 싣는다
+        void IMucheolMultiDashListener.OnDashStopped(int castInstanceId, int dashIndex, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
-            _sink?.OnMultiDashDashStopped(castInstanceId, dashIndex, position, stoppedByWall);
+            _sink?.OnMultiDashDashStopped(castInstanceId, dashIndex, position, stoppedByWall, stopServerTime);
         }
 
         // 돌진 중 적중은 표시가 없어 보내지 않는다
@@ -288,11 +306,108 @@ namespace Shinshi.Combat
             var     outcome     = new BossChargeOutcome(_host.CombatId, castInstanceId, isCollision, position,
                 collision.TravelDistance, collision.StructureId, recoverySeconds, _host.TickTime);
             _sink.OnChargeEnded(in outcome);
+
+            _chargeCastId      = castInstanceId;
+            _chargeStructureId = collision.StructureId;
+            _chargeServerTime  = _host.TickTime;
+            _isChargeCollision = isCollision;
+
+            if ((_hasHeldGroggy) && (_heldCastId == castInstanceId))
+            {
+                SendHeldGroggy();
+            }
+        }
+
+        // 구조물 연결(BossChargeStructureDirector)이 같은 시전의 돌진 결과를 보낸 뒤, 기믹 확인보다 먼저 부른다
+        /// <summary> 서버가 확정한 돌진 구조물 파괴를 표현 사건으로 보낸다 </summary>
+        public void NotifyChargeStructureDestroyed(int castInstanceId, int structureId)
+        {
+            _sink?.OnChargeStructureDestroyed(castInstanceId, structureId, _host.TickTime);
+        }
+
+        /****************************************
+        *        P1 Charge Gimmick Groggy
+        ****************************************/
+
+        // 파괴 확인이 같은 시전의 돌진 결과보다 먼저 오면 결과를 보낼 때까지 미룬다. 표현은 충돌 반동 뒤에 그로기를 받아야 한다
+        void IMucheolChargeGimmickListener.OnGroggyPending(int castInstanceId, int structureId, double confirmServerTime)
+        {
+            _hasHeldGroggy   = true;
+            _heldCastId      = castInstanceId;
+            _heldStructureId = structureId;
+            _heldConfirmTime = confirmServerTime;
+
+            if ((castInstanceId == CombatIds.NONE) || (castInstanceId == _chargeCastId))
+            {
+                SendHeldGroggy();
+            }
+        }
+
+        // 결과를 기다리던 대기가 있으면 먼저 보내 대기 뒤에 시작이 가게 한다
+        void IMucheolChargeGimmickListener.OnGroggyStarted(int castInstanceId, int structureId, double startServerTime,
+            double endServerTime)
+        {
+            if (_hasHeldGroggy)
+            {
+                SendHeldGroggy();
+            }
+
+            if (_sink == null)
+            {
+                return;
+            }
+
+            double collision = ((castInstanceId == _pendingCastId) && (!double.IsNaN(_pendingCollision)))
+                ? _pendingCollision
+                : ReadCollisionTime(castInstanceId, structureId, startServerTime);
+            var groggy = new BossChargeGroggy(_host.CombatId, castInstanceId, structureId, collision, startServerTime,
+                endServerTime);
+            _sink.OnChargeGroggyStarted(in groggy);
+        }
+
+        // 아직 보내지 않은 대기는 클라이언트가 모르므로 버리기만 한다
+        void IMucheolChargeGimmickListener.OnGroggyCancelled(int castInstanceId)
+        {
+            if (_hasHeldGroggy)
+            {
+                _hasHeldGroggy = false;
+                return;
+            }
+
+            _sink?.OnChargeGroggyCancelled(castInstanceId);
         }
 
         /****************************************
         *               Shared
         ****************************************/
+
+        private void SendHeldGroggy()
+        {
+            _hasHeldGroggy    = false;
+            _pendingCastId    = _heldCastId;
+            _pendingCollision = ReadCollisionTime(_heldCastId, _heldStructureId, _heldConfirmTime);
+            if (_sink == null)
+            {
+                return;
+            }
+
+            var groggy = new BossChargeGroggy(_host.CombatId, _heldCastId, _heldStructureId, _pendingCollision, double.NaN,
+                double.NaN);
+            _sink.OnChargeGroggyPending(in groggy);
+        }
+
+        // 부순 시전을 알면 그 시전의 충돌 결과를, 모르면 같은 구조물에 막힌 마지막 충돌을 쓴다. 둘 다 없으면 fallback(확인 시각)이다
+        private double ReadCollisionTime(int castInstanceId, int structureId, double fallback)
+        {
+            if (!_isChargeCollision)
+            {
+                return fallback;
+            }
+
+            bool sameCast      = (castInstanceId != CombatIds.NONE) && (castInstanceId == _chargeCastId);
+            bool sameStructure = (castInstanceId == CombatIds.NONE) && (structureId == _chargeStructureId);
+            return ((sameCast) || (sameStructure)) ? _chargeServerTime : fallback;
+        }
 
         private void AimStrikeChain(EBossStrikeChainKind kind, int castInstanceId, Vector3 direction)
         {

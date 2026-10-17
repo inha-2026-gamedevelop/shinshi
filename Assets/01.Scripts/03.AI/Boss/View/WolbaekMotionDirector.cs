@@ -220,8 +220,8 @@ namespace Shinshi.AI
             _animator.CrossFadeInFixedTime(_idleHash, DEATH_BLEND_SECONDS, 0, 0f);
         }
 
-        /// <summary> 등장 모션을 처음부터 재생한다, 끝은 컨트롤러 전이가 Idle로 이어 준다 </summary>
-        public void PlayAppear()
+        /// <summary> 등장 모션을 재생한다, elapsedSeconds는 서버 등장 시작부터 지난 초다. 끝은 컨트롤러 전이가 Idle로 이어 준다 </summary>
+        public void PlayAppear(float elapsedSeconds = 0f)
         {
             if ((_isDeathPlayed) || (!HasAppearState))
             {
@@ -230,7 +230,7 @@ namespace Shinshi.AI
 
             Reset();
             _animator.speed = 1f;
-            _animator.CrossFade(_appearHash, 0f, 0, 0f);
+            _animator.CrossFadeInFixedTime(_appearHash, 0f, 0, Mathf.Max(0f, elapsedSeconds));
         }
 
         /// <summary> 진행 중인 계획을 버리고 재생 속도를 되돌린다 </summary>

@@ -338,7 +338,7 @@ namespace Shinshi.AI
 
             WolbaekFinalBundle restoredBundle = snapshot.Bundle;
             if (snapshot.HasBundle && ValidBundle(in restoredBundle)
-                && ValidPositions(snapshot.RedPositions, restoredBundle.Reds.Count)
+                && ValidRestoredPositions(snapshot.RedPositions, restoredBundle.Reds.Count, snapshot.RedsLocked)
                 && ValidFlags(snapshot.RedDetached, restoredBundle.Reds.Count))
             {
                 StartBundle(in restoredBundle, snapshot.RedPositions, snapshot.RedDetached,
@@ -819,6 +819,18 @@ namespace Shinshi.AI
                 }
             }
             return true;
+        }
+
+        // 고정 전 빨간 여우불은 서버가 틱마다 옮겨 복원 기록에 위치가 없다(NaN). 그 자리는 StartBundle이 대상의 발밑으로 그리므로
+        // 고정된 묶음만 모든 위치를 요구한다
+        private static bool ValidRestoredPositions(IReadOnlyList<Vector3> positions, int count, bool locked)
+        {
+            if (locked)
+            {
+                return ValidPositions(positions, count);
+            }
+
+            return (positions != null) && (positions.Count == count);
         }
 
         private static bool ValidFlags(IReadOnlyList<bool> values, int count)

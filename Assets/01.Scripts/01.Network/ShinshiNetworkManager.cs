@@ -315,7 +315,11 @@ namespace Shinshi.Network
             // 보스전 미터는 접속이 끊기면 실시간 값만 비운다. 결과 화면은 다음 보스전의 새 SessionEpoch 수신 때 교체된다
             Shinshi.Combat.CombatMeterClient.ClearRealtime();
 
-            // 마을과 던전 사이를 옮길 때는 대화를 이어서 보여 준다
+            // 소셜 스냅샷, 쓰기 잠금, 수신 확인 대기와 귓속말 답장 상대는 연결마다 비운다. 전달 ID 중복 기억은 대화 기록을 따른다
+            SocialClient.ResetConnection();
+            ChatClient.ResetConnection();
+
+            // 마을과 던전 사이를 옮길 때는 대화와 전달 ID 중복 기억을 이어서 둔다. 새 서버가 다시 보낸 줄도 걸러진다
             if (!IsTransferringServer)
             {
                 ChatClient.ClearHistory();
@@ -369,6 +373,7 @@ namespace Shinshi.Network
             TownTradeClient.RegisterHandlers();
             TownProgressClient.RegisterHandlers();
             ChatClient.RegisterHandlers();
+            SocialClient.RegisterHandlers();
             Shinshi.Combat.PotionClient.RegisterHandlers();
             Shinshi.Combat.CombatMeterClient.RegisterHandlers();
             RegisterEnemyReplicas();

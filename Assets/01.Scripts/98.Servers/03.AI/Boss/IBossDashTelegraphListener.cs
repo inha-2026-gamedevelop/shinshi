@@ -21,8 +21,8 @@ namespace Shinshi.AI
         void OnDashStarted(int castInstanceId, Vector3 origin, Vector3 direction, float distance, float seconds, float speed,
             double startServerTime);
 
-        /// <summary> 더 이상 가지 않는다, 정해진 거리에 닿았거나 벽 앞에서 멈췄다. 정지 위치는 position이고 이후 피해는 나오지 않는다 </summary>
-        void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall);
+        /// <summary> 더 이상 가지 않는다, 정해진 거리에 닿았거나 벽 앞에서 멈췄다. 정지 위치는 position이고 이후 피해는 나오지 않는다. stopServerTime은 정지를 판정한 틱 시각이나 실행 끝 경계다 </summary>
+        void OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall, double stopServerTime);
 
         /// <summary> 한 틱에 피해 요청이 실제로 나간 대상 수, 나간 것이 없으면 부르지 않는다 </summary>
         void OnHit(int castInstanceId, int hitCount);

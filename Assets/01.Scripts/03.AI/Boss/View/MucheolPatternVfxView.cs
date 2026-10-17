@@ -14,7 +14,7 @@ namespace Shinshi.AI
 {
     // 프리뷰(Dev_MucheolMotionVfxPreview)에서 확정한 무철 일반 패턴 VFX를 서버 사건으로 재생한다. 사건을 받아 부르는 일은 네트워크 수신부가 한다.
     // 위치와 방향은 서버 사건의 원점과 조준 방향, 시각은 서버 시각이다. 타격은 서버 확정 사건(OnStruck, 단계 타격, 전장 타격, 돌진 정지)이 와야만 터진다.
-    // 단, 돌진 정지 사건에는 시각이 없어 끝 타격의 기준 시각은 서버 이동 모델로 계산한 추정값이다(StopRun).
+    // 돌진 끝 타격은 정지 사건의 서버 정지 시각에 맞춘다. 시각이 없는 사건(NaN)만 서버 이동 모델로 계산한 추정값을 쓴다(StopRun).
     // 확정이 예정보다 늦으면 예고 끝 자세로 기다리고, 끝내 오지 않으면 예고를 거둔다. 로컬 타이머로 타격을 만들지 않는다.
     // 늦게 받은 사건과 늦은 접속 복원은 아직 터지지 않은 예고만 이어 그리고, 이미 지난 일회성 타격은 다시 만들지 않는다.
     // 효과는 보스를 따라 움직이지 않는 별도 루트 아래 둔다. 원본 프리팹과 프로필은 읽기만 한다
@@ -245,10 +245,10 @@ namespace Shinshi.AI
             BeginRun(castId, 0, distance, seconds, speed, startServerTime);
         }
 
-        /// <summary> 기본 돌진 정지, 멈춘 자리에서 끝 타격을 낸다 </summary>
-        public void StopBasicDash(int castId, Vector3 position)
+        /// <summary> 기본 돌진 정지, 멈춘 자리에서 서버 정지 시각에 끝 타격을 낸다. 시각을 모르면 NaN이다 </summary>
+        public void StopBasicDash(int castId, Vector3 position, double stopServerTime)
         {
-            StopRun(castId, 0, position);
+            StopRun(castId, 0, position, stopServerTime);
         }
 
         // 발동 뒤에 들어왔으면 단발은 이미 터졌으므로 만들지 않는다. 돌진은 아직 달리는 중일 때만 이어 그린다
@@ -268,10 +268,13 @@ namespace Shinshi.AI
                 return;
             }
 
-            bool isRunning = (snapshot.Phase == EBossTelegraphPhase.Execute) && (source == EMucheolVfxSource.BasicDash)
-                && (snapshot.DashStoppedDistance <= 0f)
-                && (ReadClock() < snapshot.ExecuteServerTime + snapshot.DashSeconds);
-            if (!isRunning)
+            bool isDash    = (snapshot.Phase == EBossTelegraphPhase.Execute) && (source == EMucheolVfxSource.BasicDash);
+            bool isStopped = snapshot.DashStoppedDistance >= 0f;
+            bool isRunning = isDash && (!isStopped) && (ReadClock() < snapshot.ExecuteServerTime + snapshot.DashSeconds);
+
+            // 멈춘 시각을 알면 끝 타격의 남은 꼬리만 이어 그린다. 꼬리까지 지났으면 Confirm이 바로 거둔다
+            bool isStopTail = isDash && isStopped && (!double.IsNaN(snapshot.DashStoppedServerTime));
+            if ((!isRunning) && (!isStopTail))
             {
                 Remember(Key(start.CastId, 0));
                 return;
@@ -280,6 +283,11 @@ namespace Shinshi.AI
             BeginBasic(in start);
             UpdateAim(start.CastId, snapshot.Direction);
             BeginRun(start.CastId, 0, snapshot.DashDistance, snapshot.DashSeconds, snapshot.DashSpeed, snapshot.ExecuteServerTime);
+            if (isStopTail)
+            {
+                Vector3 stopAt = start.Origin + (Flatten(snapshot.Direction) * snapshot.DashStoppedDistance);
+                StopRun(start.CastId, 0, stopAt, snapshot.DashStoppedServerTime);
+            }
         }
 
         // firstStep 앞의 단계는 이미 터졌다(복원의 StruckCount)
@@ -374,9 +382,9 @@ namespace Shinshi.AI
             BeginRun(castId, dashIndex, distance, seconds, speed, startServerTime);
         }
 
-        public void StopMultiDashRun(int castId, int dashIndex, Vector3 position)
+        public void StopMultiDashRun(int castId, int dashIndex, Vector3 position, double stopServerTime)
         {
-            StopRun(castId, dashIndex, position);
+            StopRun(castId, dashIndex, position, stopServerTime);
         }
 
         // 남은 돌진을 하지 않는다. 이미 낸 타격은 끝까지 두고 기다리던 예고만 거둔다
@@ -402,8 +410,11 @@ namespace Shinshi.AI
                 Remember(Key(start.CastId, i));
             }
 
-            if (snapshot.HasDashStarted
-                && ((snapshot.StoppedDistance > 0f) || (ReadClock() >= snapshot.DashStartServerTime + snapshot.DashSeconds)))
+            // 멈춘 시각을 알면 끝 타격의 남은 꼬리만 이어 그린다. 꼬리까지 지났으면 Confirm이 바로 거둔다
+            bool isStopped  = snapshot.HasDashStarted && (snapshot.StoppedDistance >= 0f);
+            bool isStopTail = isStopped && (!double.IsNaN(snapshot.StoppedServerTime));
+            if ((!isStopTail) && snapshot.HasDashStarted
+                && (isStopped || (ReadClock() >= snapshot.DashStartServerTime + snapshot.DashSeconds)))
             {
                 Remember(Key(start.CastId, snapshot.DashIndex));
                 return;
@@ -415,6 +426,12 @@ namespace Shinshi.AI
             {
                 BeginRun(start.CastId, snapshot.DashIndex, snapshot.DashDistance, snapshot.DashSeconds, snapshot.DashSpeed,
                     snapshot.DashStartServerTime);
+            }
+
+            if (isStopTail)
+            {
+                Vector3 stopAt = snapshot.Origin + (Flatten(snapshot.Direction) * snapshot.StoppedDistance);
+                StopRun(start.CastId, snapshot.DashIndex, stopAt, snapshot.StoppedServerTime);
             }
         }
 
@@ -617,11 +634,12 @@ namespace Shinshi.AI
             slot.Deadline     = slot.ImpactTime + CONFIRM_GRACE_SECONDS;
         }
 
-        // 정지 사건에는 서버 시각이 없다. 끝 타격 시각은 서버 이동 모델로 거꾸로 계산한 추정값이다:
+        // 끝 타격 시각은 서버가 정지를 판정한 시각(stopServerTime)이다. 서버 몸체도 그 틱에 멈춘 자리에 닿는다.
+        // 시각이 없는 사건(NaN)이면 서버 이동 모델로 거꾸로 계산한 추정값을 쓴다:
         //   추정 정지 시각 = 돌진 시작 시각 + (시작점에서 정지 위치까지 조준 방향 거리 / 서버 속도)
-        // 서버는 이 시각 이후 첫 틱에서 정지를 감지하므로 실제 감지 틱보다 최대 한 틱 이르다. 정의 거리를 다 갔으면 예정 끝 시각과 같다.
+        // 서버는 이 시각 이후 첫 틱에서 정지를 감지하므로 추정은 실제 감지 틱보다 최대 한 틱 이르다. 정의 거리를 다 갔으면 예정 끝 시각과 같다.
         // 일찍 멈추면 경로 끝의 타격 자리를 멈춘 곳으로 당긴다. 예고는 타격과 함께 사라지므로 경로 모양은 남지 않는다
-        private void StopRun(int castId, int index, Vector3 position)
+        private void StopRun(int castId, int index, Vector3 position, double stopServerTime)
         {
             Slot slot = Find(castId, index);
             if ((slot == null) || (!slot.IsDash) || double.IsNaN(slot.DashStart))
@@ -643,8 +661,9 @@ namespace Shinshi.AI
                 Place(slot);
             }
 
-            slot.IsHitEstimated = true;
-            Confirm(slot, Math.Min(estimate, ReadClock()));
+            bool hasServerTime = !double.IsNaN(stopServerTime);
+            slot.IsHitEstimated = !hasServerTime;
+            Confirm(slot, hasServerTime ? stopServerTime : Math.Min(estimate, ReadClock()));
         }
 
         private void Confirm(Slot slot, double hitTime)

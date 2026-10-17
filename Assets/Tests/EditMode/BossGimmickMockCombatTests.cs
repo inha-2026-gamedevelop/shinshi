@@ -75,6 +75,13 @@ namespace Shinshi.Tests
 
         private static readonly Vector3 BLOCKED_SPAWN = new Vector3(6f, 0f, 0f);
 
+        // 워프 순서 시험의 착지 지점, 플레이어 자리(중심에서 3m)와 겹치지 않고 전장(18m) 안이다
+        private static readonly Vector3 WARP_POINT = new Vector3(0f, 0f, -8f);
+
+        private const int   WARP_CAST_ID           = 900001; // 시험이 직접 알리는 시전 번호, 두뇌가 발급하는 번호와 겹치지 않게 크게 둔다
+        private const float WARP_RADIUS            = 3f;
+        private const float WARP_TELEGRAPH_SECONDS = 1f;
+
         private static readonly string[] EASY_HISTORY =
         {
             "Talisman:Transition", "Talisman:Active", "Talisman:Counter", "Talisman:Completed",
@@ -519,6 +526,125 @@ namespace Shinshi.Tests
             Assert.IsTrue(_boss.IsBossDeathRecorded);
             Assert.IsTrue(_boss.HasUnreportedDefeat);
             Assert.IsFalse(_boss.TryConsumeFinalSuccess(out _));
+        }
+
+        /****************************************
+        *        Wolbaek Gimmick Replication
+        ****************************************/
+
+        // 실제 기믹이 몸체의 월백 기믹 중계를 거쳐 복제 상태 계약(IBossWolbaekGimmickEventListener)에 닿는지 본다.
+        // 수신처는 복제 상태(BossState)가 서버 기록을 이어 가는 것과 같은 연결로 기록도 만든다
+        [Test]
+        public void Tick_EasyFight_GimmickEventsReachTheReplicationContractAndWardSuccessPrecedesTheGeneration()
+        {
+            Assert.IsTrue(typeof(IBossWolbaekGimmickEventListener).IsAssignableFrom(typeof(BossState)),
+                "복제 상태가 계약을 구현해야 몸체가 SetEventListener로 기믹 사건을 넘긴다");
+            Build(EBossDifficulty.Easy, TWO_PLAYERS, true);
+            BossWolbaekEventRecorder recorder = AttachWolbaekRecorder();
+
+            RunToWardCompleted();
+
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnTalismanStarted)));
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnTalismanSucceeded)));
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnTalismanCounterEnded)));
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnWardStarted)));
+            Assert.AreEqual(WolbaekColorWardDevCatalog.STAGE_COUNT,
+                recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnStageStarted)));
+            Assert.Greater(recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnStrikeResolved)), 0);
+            Assert.AreEqual(1, recorder.WardSuccessCount);
+            Assert.Less(recorder.IndexOf(nameof(IBossWolbaekGimmickEventListener.OnTalismanCounterEnded)),
+                recorder.IndexOf(nameof(IBossWolbaekGimmickEventListener.OnWardStarted)), "75% 반격이 끝난 뒤 50%가 시작된다");
+
+            // 성공 알림은 성공 틱 안에서 나가고 세대는 그 틱의 두뇌 틱이 끝난 뒤 오른다
+            Assert.AreEqual(0, recorder.WardSuccessGeneration, "성공에는 전환 전 세대가 실린다");
+            Assert.AreEqual(0, recorder.GenerationAtWardSuccessCallback, "성공이 온 순간 몸체 세대는 아직 오르지 않았다");
+            Assert.AreEqual(1, _boss.PhaseGeneration, "같은 틱의 전환으로 세대가 오른다");
+            Assert.AreEqual(_now, _boss.PhaseTransitionServerTime, TIME_SLACK);
+            Assert.Greater(_boss.PhaseGeneration, recorder.WardSuccessGeneration, "클라이언트는 세대가 성공 값보다 커질 때 그로기를 끝낸다");
+            Assert.IsTrue(recorder.Ledger.IsEmpty, "끝난 75%와 50%는 늦은 접속에 넘기지 않는다");
+            Assert.IsFalse(double.IsNaN(_boss.AppearStartServerTime), "전투를 연 시각을 복제한다");
+            Assert.IsTrue(double.IsNaN(_boss.DefeatServerTime));
+        }
+
+        [Test]
+        public void Tick_EasySeal_TurnEventsCarryTheDestroyedCoreMaskAndCounterIsRestorable()
+        {
+            Build(EBossDifficulty.Easy, TWO_PLAYERS, true);
+            BossWolbaekEventRecorder recorder = AttachWolbaekRecorder();
+            RunToWardCompleted();
+            Step();
+
+            RunToSealCounter();
+
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnSealStarted)));
+            Assert.AreEqual(WolbaekFoxfireSealDevCatalog.REQUIRED_SUCCESSES,
+                recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnSealTurnResolved)));
+            Assert.Greater(recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnSealFoxfiresLocked)), 0);
+            Assert.AreNotEqual(0, recorder.LastCoreMask, "여우불로 부순 핵이 마스크에 실린다");
+            Assert.IsTrue(BossWolbaekGimmickLedger.IsCoreDestroyed(recorder.LastCoreMask, 0) == _seal.IsCoreDestroyed(0));
+            Assert.IsTrue(recorder.Ledger.HasSeal);
+            Assert.AreEqual(EWolbaekSealState.Counter, recorder.Ledger.Seal.Snapshot.State);
+
+            Strike(_boss.CombatId);
+            Step();
+
+            Assert.IsFalse(double.IsNaN(_boss.DefeatServerTime), "처치 시각을 복제한다");
+            Assert.LessOrEqual(_boss.DefeatServerTime, _now);
+        }
+
+        [Test]
+        public void Tick_HardFinal_FinalEventsReachTheReplicationContract()
+        {
+            Build(EBossDifficulty.Hard, TWO_PLAYERS, true);
+            BossWolbaekEventRecorder recorder = AttachWolbaekRecorder();
+
+            RunToFinalSuccess();
+
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnFinalStarted)));
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnFinalOuterFloorRemoved)));
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnFinalYellowsSpawned)));
+            Assert.Greater(recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnFinalYellowDestroyed)), 0);
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnFinalSucceeded)));
+            Assert.IsFalse(recorder.Ledger.HasFinal, "성공한 최후의 영역은 늦은 접속에 넘기지 않는다");
+        }
+
+        // 워프는 착지 위치로 몸체를 옮긴 뒤 같은 호출에서 원형 예고를 알린다. 출발 위치가 그 예고보다 먼저 나가야 한다
+        [Test]
+        public void TryWarp_ThenCircleTelegraph_SendsTheDepartureBeforeTheTelegraphOnlyInThatTick()
+        {
+            Build(EBossDifficulty.Easy, TWO_PLAYERS, false);
+            BossWolbaekEventRecorder recorder = AttachWolbaekRecorder();
+            Assert.IsTrue(StepUntil(() => _boss.FlowState == EBossFlowState.Combat, null, TALISMAN_SECONDS));
+
+            IBossWarp                    warp      = _boss;
+            IBossCircleTelegraphListener telegraph = _boss;
+            Vector3                      departure = _boss.Position;
+            Assert.IsTrue(warp.TryWarp(WARP_POINT, out Vector3 landed));
+            telegraph.OnTelegraphStarted(WARP_CAST_ID, landed, WARP_RADIUS, WARP_TELEGRAPH_SECONDS);
+
+            int departed    = recorder.IndexOf(nameof(IBossWolbaekGimmickEventListener.OnWarpDeparted));
+            int telegraphed = recorder.IndexOf(nameof(IBossEventListener.OnTelegraphStarted));
+            Assert.GreaterOrEqual(departed, 0);
+            Assert.Less(departed, telegraphed, "출발 위치가 원형 예고보다 먼저다");
+            Assert.AreEqual(WARP_CAST_ID, recorder.LastDepartureCastId);
+            Assert.AreEqual(departure, recorder.LastDeparture);
+            Assert.AreEqual(WARP_POINT, _boss.Position);
+
+            telegraph.OnTelegraphStarted(WARP_CAST_ID + 1, landed, WARP_RADIUS, WARP_TELEGRAPH_SECONDS);
+            Assert.IsTrue(warp.TryWarp(departure, out _));
+            Step();
+            telegraph.OnTelegraphStarted(WARP_CAST_ID + 2, departure, WARP_RADIUS, WARP_TELEGRAPH_SECONDS);
+
+            Assert.AreEqual(1, recorder.Count(nameof(IBossWolbaekGimmickEventListener.OnWarpDeparted)),
+                "워프 없는 예고와 다음 틱의 예고에는 출발 위치를 싣지 않는다");
+        }
+
+        private BossWolbaekEventRecorder AttachWolbaekRecorder()
+        {
+            BossServer boss = _boss;
+            var recorder = new BossWolbaekEventRecorder(() => boss.PhaseGeneration);
+            _boss.SetEventListener(recorder);
+            return recorder;
         }
 
         /****************************************

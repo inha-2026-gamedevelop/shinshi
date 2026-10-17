@@ -39,10 +39,12 @@ namespace Shinshi.Combat
     // 시각은 틱 시각이나 FSM 단계 경계인 서버 시각만 쓴다. 표현 값(색, 진행도)은 만들지 않는다.
     // 무철 전용 패턴과 월백 하드 2페이즈 패턴의 알림은 이 몸체가 아니라 중계 둘(BossMucheolEventRelay, BossHardPhaseEventRelay)이 받아
     // 선택 계약(IBossMucheolEventListener, IBossHardPhaseEventListener)으로 보낸다. 리스너를 더 구현하면 이 클래스가 사건 변환으로만 채워지기 때문이다.
-    // 중계는 정면과 시전 번호만 이 몸체에 남기고(IBossEventRelayHost), 그 시전의 정상 종료는 이 몸체가 기본 사건으로 보낸다
+    // 중계는 정면과 시전 번호만 이 몸체에 남기고(IBossEventRelayHost), 그 시전의 정상 종료는 이 몸체가 기본 사건으로 보낸다.
+    // 월백 체력 기믹 4종의 알림은 같은 방식의 세 번째 중계(BossWolbaekGimmickEventRelay)가 받고, 기믹 팩토리가 그 중계를 기믹에 넘긴다
     //
     // 패턴 팩토리는 보스 ID로 고른다. 무철은 1페이즈와 2페이즈 팩토리를 묶어 쓰고 실행 데이터는 임시 시작값(MucheolSortieData)이다.
-    // 무철 돌진 유도 기믹도 여기서 만들어 두뇌에 더하지만, 맵이 지정 구조물을 알려 주기 전에는 발동하지 않는다.
+    // 무철 돌진 유도 기믹도 여기서 만들어 두뇌에 더한다. 돌진 구조물 배치(BossChargeStructureField)를 받으면 P06의 구조물 조회와
+    // 지정 구조물로 넘기고, 구조물 연결(BossChargeStructureDirector)이 돌진 결과로 파괴를 확정한다. 배치가 없으면 기믹은 발동하지 않는다.
     // 맞은 대상을 미는 창구(IBossHitDisplacer)도 이 몸체다. 막힘은 보스 이동과 같은 검사로 재고 실제 위치는 대상의 서버 이동이 옮긴다.
     // 50% 전환 뒤 인계 대기는 월백이면 결계 전개(BossBarrierDirector)가 끝날 때까지 이어지고, 결계가 없는 보스는 다음 틱에 바로 끝난다.
     // 결계 위험 구역은 완료 뒤에도 사망이나 전투 종료까지 남아 2페이즈 동안 피해를 낸다
@@ -67,6 +69,7 @@ namespace Shinshi.Combat
         private const float DIRECTION_EPSILON   = 0.0001f;
         private const float HALF                = 0.5f;
         private const float PATH_EPSILON        = 0.001f; // m, 스윕 거리가 목표에 닿았는지 보는 부동소수 여유
+        private const int   NO_PHASE            = 0;      // 전투가 열리기 전 두뇌가 답하는 페이즈 번호
 
         // 출정 준비 검사가 보는 페이즈 범위, 월백은 2페이즈까지다
         private const int SORTIE_FIRST_PHASE = 1;
@@ -97,7 +100,14 @@ namespace Shinshi.Combat
         // 무철과 월백 하드 2페이즈의 패턴 알림을 선택 계약 사건으로 바꾸는 중계, 팩토리보다 먼저 만들어 수신처로 넘긴다
         private readonly BossMucheolEventRelay   _mucheolRelay;
         private readonly BossHardPhaseEventRelay _hardRelay;
+
+        // 월백 체력 기믹 알림의 중계, 기믹 묶음은 몸체보다 나중에 만들어지므로 팩토리가 이 중계를 기믹의 수신처로 넘긴다
+        private readonly BossWolbaekGimmickEventRelay _wolbaekRelay;
         private readonly MucheolChargeGimmick    _chargeGimmick;   // 무철일 때만 있다
+
+        // 무철 돌진 구조물 배치와 그 파괴 연결, 무철이고 배치를 받았을 때만 있다
+        private readonly BossChargeStructureField    _chargeStructures;
+        private readonly BossChargeStructureDirector _structureDirector;
         private readonly IBossDisplaceLookup     _displaceTargets; // 없으면 아무도 밀지 않는다
 
         // 두뇌에 넘긴 것과 같은 객체다. 치명타 처리가 두뇌와 같은 보류를 읽는다
@@ -128,12 +138,24 @@ namespace Shinshi.Combat
         private float               _castLength;
         private bool                _castIsArea = false;
 
-        // 중계가 전용 사건으로 예고한 시전, 정상 종료를 기본 사건으로 보내는 데만 쓴다. 중단된 시전은 종료 알림이 오지 않아 다음 시전이 덮어쓴다
-        private int _phaseCastId = CombatIds.NONE;
+        // 표현에 시작 사건을 보낸 시전, 회복 끝 경계의 정상 종료를 기본 사건(OnFinished)으로 보내는 데만 쓴다.
+        // _castId는 발사, 활성에서 비워지고 반월 연쇄, 빔, 별형 빔과 중계 시전은 아예 쓰지 않아 따로 둔다. 그러지 않으면 그 시전들은
+        // 종료 사건을 받지 못해 표현 모션이 클립 끝까지 남는다. 중단된 시전은 종료 알림이 오지 않아 다음 시전이 덮어쓴다
+        private int _finishCastId = CombatIds.NONE;
 
         // 반월 연쇄의 고정한 중심과 반경, 구역 예고 알림에 없어 시작 알림에서 받아 둔다. 시전은 한 번에 하나다
         private Vector3 _sweepOrigin;
         private float   _sweepRadius;
+
+        // 표현이 추정하지 않도록 복제 상태에 싣는 서버 시각과 페이즈 세대다. 모르면 NaN이다
+        private double _appearStartServerTime     = double.NaN;
+        private double _defeatServerTime          = double.NaN;
+        private double _phaseTransitionServerTime = double.NaN;
+        private ushort _phaseGeneration;
+
+        // 워프는 착지 위치로 몸체를 옮긴 뒤 같은 호출 안에서 원형 예고를 알린다. 출발 위치를 그 예고보다 먼저 보내려고 예고까지 들고 있는다
+        private Vector3 _warpDeparture;
+        private bool    _hasWarpDeparture = false;
 
         /****************************************
         *              Properties
@@ -195,6 +217,21 @@ namespace Shinshi.Combat
         /// <summary> 활성되어 회전하고 있는 별형 빔 구조 수 </summary>
         public int ActiveStarCount => _stars.ActiveCount;
 
+        /// <summary> 전투를 연 서버 시각(등장 대기 시작), 열기 전이면 NaN이다 </summary>
+        public double AppearStartServerTime => _appearStartServerTime;
+
+        /// <summary> 몸체가 사망으로 바뀐 서버 시각, 살아 있으면 NaN이다 </summary>
+        public double DefeatServerTime => _defeatServerTime;
+
+        /// <summary> 페이즈 번호가 바뀔 때마다 오르는 세대, 틱이 끝난 뒤에 오른다 </summary>
+        public ushort PhaseGeneration => _phaseGeneration;
+
+        /// <summary> 마지막 페이즈 전환이 일어난 틱의 서버 시각, 없으면 NaN이다 </summary>
+        public double PhaseTransitionServerTime => _phaseTransitionServerTime;
+
+        /// <summary> 월백 체력 기믹 알림의 중계, 기믹 팩토리가 기믹의 수신처로 넘긴다 </summary>
+        public BossWolbaekGimmickEventRelay WolbaekGimmickRelay => _wolbaekRelay;
+
         /// <summary> 50% 전환 뒤 결계 전개를 쓰는 보스다, 거짓이면 인계 대기는 다음 틱에 바로 끝난다 </summary>
         public bool HasBarrier => ActiveBarrier != null;
 
@@ -216,6 +253,7 @@ namespace Shinshi.Combat
 
         double IBossEventRelayHost.TickTime        => _tickTime;
         string IBossEventRelayHost.ActivePatternId => _brain.ActivePatternId;
+        ushort IBossEventRelayHost.PhaseGeneration => _phaseGeneration;
 
         /****************************************
         *                Methods
@@ -227,11 +265,13 @@ namespace Shinshi.Combat
         // barrierSettings는 결계 전개를 쓰는 보스(월백)의 설정이고 비우면 임시 기본값이다. 다른 보스에는 쓰지 않는다
         // connections는 전투 번호의 현재 접속 상태를 답하는 입력이고, 하드 2페이즈 P04(추적 장판)가 접속한 대상만 고르는 데 쓴다. 비우면 그 패턴을 만들지 않는다
         // displaceTargets는 밀 수 있는 대상을 전투 번호로 찾는 입력이고, 비우면 밀림이 필요한 패턴(무철 하드 P07)을 만들지 않는다
+        // chargeStructures는 무철 돌진 구조물 배치이고 무철에만 쓴다. 비우면 P06은 벽과 전장 경계에만 막히고 돌진 유도 기믹은 발동하지 않는다
         public BossServer(string bossId, int combatId, Vector3 position, Vector3 forward, Vector3 arenaCenter,
             float referenceAttack, float referenceHealth, float healthScale,
             IBossPatternCatalog catalog, ICombatTargetQuery targets, IDamageResolver damage,
             IBossWallQuery terrain, IBossRandom random, BossBarrierSettings barrierSettings = null,
-            IBossParticipantConnection connections = null, IBossDisplaceLookup displaceTargets = null)
+            IBossParticipantConnection connections = null, IBossDisplaceLookup displaceTargets = null,
+            BossChargeStructureField chargeStructures = null)
         {
             if (string.IsNullOrEmpty(bossId))
             {
@@ -291,6 +331,15 @@ namespace Shinshi.Combat
             // 중계는 팩토리가 수신처로 받으므로 팩토리보다 먼저 만든다. 사건을 받을 복제 상태는 SetEventListener가 나중에 잇는다
             _mucheolRelay = new BossMucheolEventRelay(this);
             _hardRelay    = new BossHardPhaseEventRelay(this);
+            _wolbaekRelay = new BossWolbaekGimmickEventRelay(this);
+
+            // 구조물 연결은 P06의 돌진 결과 수신처라 팩토리보다 먼저 만든다. 기믹은 팩토리와 함께 만들어져 그 뒤에 잇는다
+            if ((bossId == MucheolPatternFactory.BOSS_ID) && (chargeStructures != null))
+            {
+                _chargeStructures  = chargeStructures;
+                _structureDirector = new BossChargeStructureDirector(_mucheolRelay, chargeStructures, this);
+            }
+
             _patterns     = CreatePatterns(bossId, referenceHealth, connections, out _chargeGimmick);
 
             // 결계 피해는 패턴과 같은 피해 경로(damage)로 나가고 기준 체력도 패턴과 같은 Href다
@@ -335,6 +384,7 @@ namespace Shinshi.Combat
             _events = listener;
             _mucheolRelay.SetListener(listener as IBossMucheolEventListener);
             _hardRelay.SetListener(listener as IBossHardPhaseEventListener);
+            _wolbaekRelay.SetListener(listener as IBossWolbaekGimmickEventListener);
         }
 
         // 두뇌가 기믹을 전투 시작 전에만 받으므로 Begin 전에만 받는다. 두 번째 호출은 첫 호출이 실패했어도 거절한다.
@@ -457,21 +507,38 @@ namespace Shinshi.Combat
             }
 
             _tickTime = serverTime;
-            return _brain.Begin(serverTime);
+            if (!_brain.Begin(serverTime))
+            {
+                return false;
+            }
+
+            _appearStartServerTime = serverTime;
+            return true;
         }
 
-        // 두뇌가 이 틱에 사망이나 종료를 확정하면 같은 틱에 결계도 정리한다. 이후에는 IsActive가 거짓이라 Tick이 오지 않는다
+        // 두뇌가 이 틱에 사망이나 종료를 확정하면 같은 틱에 결계도 정리한다. 이후에는 IsActive가 거짓이라 Tick이 오지 않는다.
+        // 페이즈 세대는 두뇌 틱이 끝난 뒤 올린다. 그래서 같은 틱의 기믹 알림(50% 성공)은 전환 전 세대를 싣는다
         /// <summary> 플레이어 기술과 공격이 끝난 뒤 한 번 부른다 </summary>
         public void Tick(double serverTime)
         {
-            _tickTime = serverTime;
+            _tickTime         = serverTime;
+            _hasWarpDeparture = false;
             CompleteHandoffIfReady();
+
+            // 등장 대기 동안 두뇌의 페이즈는 0이고 전투가 열리는 틱에 1이 된다. 그 변화는 전환이 아니라 세지 않는다
+            int phaseBefore = _brain.Phase;
             _brain.Tick(serverTime);
+            if ((phaseBefore != NO_PHASE) && (_brain.Phase != phaseBefore))
+            {
+                ++_phaseGeneration;
+                _phaseTransitionServerTime = serverTime;
+            }
 
             // 보류가 풀려 두뇌가 이 틱에 사망을 확정했으면 몸체도 맞춘다. 치명타 때 바로 Dead가 된 보스는 이미 Dead라 지나간다
             if ((_brain.IsBossDeathRecorded) && (_lifeState == EParticipantLifeState.Alive))
             {
-                _lifeState = EParticipantLifeState.Dead;
+                _lifeState        = EParticipantLifeState.Dead;
+                _defeatServerTime = serverTime;
             }
 
             TickBarrier(serverTime);
@@ -564,6 +631,20 @@ namespace Shinshi.Combat
                 && (_chargeGimmick.ConfirmStructureDestroyed(structureId, serverTime, castInstanceId));
         }
 
+        // 복제 상태가 스폰 전에 받아 늦은 접속 복원에 싣는다. 스폰 직후라 파괴 여부는 보통 모두 거짓이다
+        /// <summary> 무철 돌진 구조물 배치와 파괴 여부, 배치가 없으면 거짓이다 </summary>
+        public bool TryGetChargeStructureLayout(out BossChargeStructureSnapshot layout)
+        {
+            if (_chargeStructures == null)
+            {
+                layout = default;
+                return false;
+            }
+
+            layout = _chargeStructures.CreateSnapshot();
+            return true;
+        }
+
         /// <summary> 세션이 끝났을 때 부른다, 같은 시각에 바로 정리해 남은 타격이 다음 틱으로 밀리지 않게 한다 </summary>
         public void EndCombat(double serverTime)
         {
@@ -591,7 +672,8 @@ namespace Shinshi.Combat
                 _health = 0f;
                 if (_deathPolicy.IsDeathConfirmed(this, serverTime))
                 {
-                    _lifeState = EParticipantLifeState.Dead;
+                    _lifeState        = EParticipantLifeState.Dead;
+                    _defeatServerTime = serverTime;
                 }
 
                 return;
@@ -705,8 +787,9 @@ namespace Shinshi.Combat
         *                Warp
         ****************************************/
 
-        // 전장 경계(몸체 반경만큼 안쪽), 정적 지형, 살아 있는 플레이어와 소환물 몸체 순서로 보고 앞 검사에서 걸리면 뒤는 하지 않는다.
-        // 지형 쪽은 IBossStandQuery일 때만 본다(스윕은 시작부터 겹친 벽을 못 잡는다)
+        // 전장 경계(몸체 반경만큼 안쪽), 정적 지형, 부서지지 않은 돌진 구조물, 살아 있는 플레이어와 소환물 몸체 순서로 보고
+        // 앞 검사에서 걸리면 뒤는 하지 않는다. 지형 쪽은 IBossStandQuery일 때만 본다(스윕은 시작부터 겹친 벽을 못 잡는다).
+        // 구조물은 배치를 받은 무철만 본다. 구조물 앞에 멈춘 자리처럼 닿기만 한 것은 겹침이 아니다
         public bool CanStandAt(Vector3 point)
         {
             // NaN, 무한대는 아래 비교가 모두 거짓이 되어 통과하지만 위치에 들어가면 안 되므로 먼저 거른다
@@ -722,6 +805,11 @@ namespace Shinshi.Combat
             }
 
             if ((_standQuery != null) && (!_standQuery.CanStand(point, BodyRadius)))
+            {
+                return false;
+            }
+
+            if ((_chargeStructures != null) && (_chargeStructures.OverlapsIntact(point, BodyRadius)))
             {
                 return false;
             }
@@ -767,8 +855,10 @@ namespace Shinshi.Combat
                 return false;
             }
 
-            _position = point;
-            landed    = _position;
+            _warpDeparture    = _position;
+            _hasWarpDeparture = true;
+            _position         = point;
+            landed            = _position;
             return true;
         }
 
@@ -859,9 +949,16 @@ namespace Shinshi.Combat
         *              P03 Circle
         ****************************************/
 
+        // 워프 후 충격파는 착지한 뒤에 이 예고를 알린다. 이번 틱에 워프했으면 출발 위치를 예고보다 먼저 보낸다
         void IBossCircleTelegraphListener.OnTelegraphStarted(int castInstanceId, Vector3 center, float radius,
             float telegraphSeconds)
         {
+            if (_hasWarpDeparture)
+            {
+                _hasWarpDeparture = false;
+                _wolbaekRelay.NotifyWarpDeparted(castInstanceId, _warpDeparture, _tickTime);
+            }
+
             BeginCast(castInstanceId, EBossTelegraphShape.Circle, radius);
             var start = BossTelegraphStart.Circle(_combatId, castInstanceId, _brain.ActivePatternId, center, radius,
                 _tickTime, telegraphSeconds);
@@ -941,9 +1038,10 @@ namespace Shinshi.Combat
             _events?.OnDashStarted(castInstanceId, distance, seconds, speed, startServerTime);
         }
 
-        void IBossDashTelegraphListener.OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall)
+        void IBossDashTelegraphListener.OnDashStopped(int castInstanceId, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
-            _events?.OnDashStopped(castInstanceId, position, stoppedByWall);
+            _events?.OnDashStopped(castInstanceId, position, stoppedByWall, stopServerTime);
         }
 
         void IBossDashTelegraphListener.OnHit(int castInstanceId, int hitCount)
@@ -1047,13 +1145,15 @@ namespace Shinshi.Combat
         *        P03 (Phase 2) Sweep
         ****************************************/
 
-        // 반월 연쇄는 시전 예고(BeginCast)를 쓰지 않는다. 구역마다 따로 예고가 나가고 구역 폭발이 발동이라 시전 발동, 종료 알림과 겹치지 않는다
+        // 반월 연쇄는 시전 예고(BeginCast)를 쓰지 않는다. 구역마다 따로 예고가 나가고 구역 폭발이 발동이라 시전 발동 알림과 겹치지 않는다.
+        // 회복 끝의 종료 사건은 시전 번호로 보낸다
         void IBossSweepTelegraphListener.OnSweepStarted(int castInstanceId, Vector3 origin, Vector3 baseDirection, bool isRight,
             float radius, float totalArcAngle, int zoneCount, float telegraphSeconds, float blastSpanSeconds)
         {
             Face(baseDirection);
-            _sweepOrigin = origin;
-            _sweepRadius = radius;
+            _finishCastId = castInstanceId;
+            _sweepOrigin  = origin;
+            _sweepRadius  = radius;
             var start = new BossSweepStart(_combatId, castInstanceId, origin, baseDirection, isRight, radius, totalArcAngle,
                 telegraphSeconds, blastSpanSeconds, _tickTime);
             _events?.OnSweepStarted(in start);
@@ -1083,10 +1183,11 @@ namespace Shinshi.Combat
         *       P02 (Phase 2) Field Beam
         ****************************************/
 
-        // 빔은 줄마다 빔 번호가 키다. 시전 예고(BeginCast)를 쓰지 않으므로 시전 발동, 종료 알림은 이 시전에서 아무것도 보내지 않는다
+        // 빔은 줄마다 빔 번호가 키다. 시전 예고(BeginCast)를 쓰지 않아 발동 알림은 보내지 않고, 회복 끝의 종료 사건만 시전 번호로 보낸다
         void IBossBeamTelegraphListener.OnTelegraphStarted(int castInstanceId, int beamId, in BossBeamShape shape,
             float telegraphSeconds, float durationSeconds, float tickInterval)
         {
+            _finishCastId = castInstanceId;
             var start = new BossBeamStart(_combatId, beamId, castInstanceId, in shape, _tickTime, telegraphSeconds,
                 durationSeconds, tickInterval);
             _events?.OnBeamTelegraphStarted(in start);
@@ -1094,7 +1195,7 @@ namespace Shinshi.Combat
 
         void IBossBeamTelegraphListener.OnCancelled(int castInstanceId, int beamId, EBossInterruptReason reason)
         {
-            _events?.OnBeamCancelled(beamId);
+            _events?.OnBeamCancelled(castInstanceId, beamId);
         }
 
         void IBossBeamListener.OnBeamActivated(int castInstanceId, int beamId, float durationSeconds, float tickInterval,
@@ -1122,6 +1223,7 @@ namespace Shinshi.Combat
             float telegraphSeconds, float durationSeconds, float tickInterval)
         {
             Face(shape.BaseDirection);
+            _finishCastId = castInstanceId;
             var start = new BossStarStart(_combatId, starId, castInstanceId, in shape, _tickTime, telegraphSeconds,
                 durationSeconds, tickInterval);
             _events?.OnStarTelegraphStarted(in start);
@@ -1129,7 +1231,7 @@ namespace Shinshi.Combat
 
         void IBossStarTelegraphListener.OnCancelled(int castInstanceId, int starId, EBossInterruptReason reason)
         {
-            _events?.OnStarCancelled(starId);
+            _events?.OnStarCancelled(castInstanceId, starId);
         }
 
         void IBossStarListener.OnStarActivated(int castInstanceId, int starId, float durationSeconds, float tickInterval,
@@ -1216,19 +1318,19 @@ namespace Shinshi.Combat
             }
         }
 
-        // 발사, 활성으로 이미 예고가 끝난 시전은 알릴 것이 없다. 중계가 전용 사건으로 예고한 시전은 복원 기록이 이 종료 사건으로 지워진다.
+        // 발사, 활성으로 예고가 먼저 끝난 시전(투사체, 장판)과 시전 예고를 쓰지 않는 시전(반월 연쇄, 빔, 별형 빔)도 회복 끝에서 종료 사건을 보낸다.
+        // 표현 모션은 이 사건으로 끝나고, 중계가 전용 사건으로 예고한 시전은 복원 기록이 이 사건으로 지워진다.
         // 한 시전이 두 번호에 모두 걸려도 종료 사건은 한 번만 보낸다
         public void OnCastFinished(int castInstanceId, double serverTime)
         {
-            bool isPhaseCast = castInstanceId == _phaseCastId;
-            if ((castInstanceId != _castId) && (!isPhaseCast))
+            if ((castInstanceId != _castId) && (castInstanceId != _finishCastId))
             {
                 return;
             }
 
-            if (isPhaseCast)
+            if (castInstanceId == _finishCastId)
             {
-                _phaseCastId = CombatIds.NONE;
+                _finishCastId = CombatIds.NONE;
             }
 
             ClearCast(castInstanceId);
@@ -1243,15 +1345,16 @@ namespace Shinshi.Combat
         // 발동 알림(OnCastExecuted)은 _castId만 보므로 이 시전에는 나가지 않는다. 타격 확정은 중계가 타별 사건으로 보낸다
         void IBossEventRelayHost.BeginPhaseCast(int castInstanceId)
         {
-            _phaseCastId = castInstanceId;
+            _finishCastId = castInstanceId;
         }
 
         private void BeginCast(int castInstanceId, EBossTelegraphShape shape, float length)
         {
-            _castId     = castInstanceId;
-            _castShape  = shape;
-            _castLength = length;
-            _castIsArea = false;
+            _finishCastId = castInstanceId;
+            _castId       = castInstanceId;
+            _castShape    = shape;
+            _castLength   = length;
+            _castIsArea   = false;
         }
 
         private void ClearCast(int castInstanceId)
@@ -1309,9 +1412,15 @@ namespace Shinshi.Combat
             _events?.OnDirectionLocked(castInstanceId, direction, length);
         }
 
-        // 발동 뒤 회복 중의 취소도 그대로 보낸다. 표현은 발동한 시전의 취소를 무시하고 복원 기록은 그 시전을 지운다
+        // 발동 뒤 회복 중의 취소도 그대로 보낸다. 표현은 발동한 시전의 취소를 무시하고 복원 기록은 그 시전을 지운다.
+        // 설치에 실패한 장판처럼 FSM이 이어서 회복을 마치는 시전도 있어, 취소로 끝낸 시전에는 종료 사건을 보내지 않게 비운다
         private void CancelCast(int castInstanceId)
         {
+            if (castInstanceId == _finishCastId)
+            {
+                _finishCastId = CombatIds.NONE;
+            }
+
             ClearCast(castInstanceId);
             _events?.OnCancelled(castInstanceId);
         }
@@ -1354,23 +1463,38 @@ namespace Shinshi.Combat
                 barrageListener: _hardRelay, burstListener: _hardRelay);
         }
 
-        // 1페이즈의 부채꼴, 돌진, 원형 예고는 월백과 같은 기본 알림이라 이 몸체가 받고, 콤보와 돌진 결과, 2페이즈 전부는 무철 중계가 받는다.
-        // 돌진 구조물 조회는 맵 쪽 구현이 아직 없어 넘기지 않으므로 P06은 벽과 전장 경계에만 막힌다.
+        // 1페이즈의 부채꼴, 돌진, 원형 예고는 월백과 같은 기본 알림이라 이 몸체가 받고, 콤보와 돌진 유도 그로기, 2페이즈 전부는 무철 중계가 받는다.
+        // 돌진 결과는 구조물 배치가 있으면 구조물 연결이 받아 중계로 먼저 보낸 뒤 파괴를 확정하고, 없으면 중계가 바로 받는다.
+        // 구조물 배치는 P06의 구조물 조회로도 넘기며, 없으면 P06은 벽과 전장 경계에만 막힌다.
         // 밀림 창구는 대상 조회가 있을 때만 넘긴다. 없이 넘기면 팩토리가 하드 P07을 만들고 밀림 규칙이 빠진 채 시전된다.
         //
         // 기믹에는 묶음이 아니라 1페이즈 팩토리를 넘긴다. 기믹은 받은 팩토리가 시전 추적 수신자를 밝히는지(IBossChargeCastTrackerSource)로
         // 자신이 연결됐는지 확인하는데 묶음은 그 계약을 전달하지 않아, 묶음을 넘기면 기믹이 발동하지 않는다. P06 생성 가능 여부도 1페이즈 팩토리가 답한다
         private IBossPatternFactory CreateMucheolPatterns(float referenceHealth, out MucheolChargeGimmick chargeGimmick)
         {
+            IBossChargeOutcomeListener chargeListener = (_structureDirector != null)
+                ? (IBossChargeOutcomeListener)_structureDirector
+                : _mucheolRelay;
             var phaseOne = new MucheolPatternFactory(referenceHealth, this, this, this, this, MucheolSortieData.CreateComboSpec(),
-                _mucheolRelay, MucheolSortieData.CreateChargeSpec(), null, _mucheolRelay);
+                _mucheolRelay, MucheolSortieData.CreateChargeSpec(), _chargeStructures, chargeListener);
 
             IBossHitDisplacer displacer = (_displaceTargets != null) ? this : null;
             var phaseTwo = new MucheolPhase2PatternFactory(referenceHealth, MucheolSortieData.CreatePhaseTwoSpec(), this, _catalog,
                 this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay);
 
-            chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec());
+            chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec(),
+                _mucheolRelay);
             phaseOne.SetChargeCastTracker(chargeGimmick);
+
+            // 지정 구조물이 필요 수보다 적어도 받기는 한다. 기믹은 발동 조건에서 수를 다시 보고 발동하지 않는다
+            if (_structureDirector != null)
+            {
+                _structureDirector.BindGimmick(chargeGimmick);
+                if (!chargeGimmick.SetDesignatedStructures(_chargeStructures.GimmickTargetIds))
+                {
+                    Debug.LogError($"[Boss] 돌진 유도 기믹이 지정 구조물을 받지 않았다, count={_chargeStructures.GimmickTargetIds.Count}");
+                }
+            }
 
             return new MucheolPatternFactoryChain(phaseOne, phaseTwo);
         }

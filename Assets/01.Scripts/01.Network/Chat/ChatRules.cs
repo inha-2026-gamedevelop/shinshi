@@ -105,10 +105,28 @@ namespace Shinshi.Network
             return string.Format(CultureInfo.InvariantCulture, FALLBACK_SENDER_FORMAT, participantId);
         }
 
-        /// <summary> 클라이언트가 보낼 수 있는 채널인지 </summary>
+        // 귓속말은 대상 이름이 필요해 ChatWhisperRequestMessage로만 보낸다. 그래서 보낼 수 있는 채널과 받아 표시할 채널이 다르다
+        /// <summary> 클라이언트가 ChatRequestMessage로 보낼 수 있는 채널인지 </summary>
         public static bool IsSendable(EChatChannel channel)
         {
-            return (channel == EChatChannel.All) || (channel == EChatChannel.Party);
+            return (channel == EChatChannel.All) || (channel == EChatChannel.Party) || (channel == EChatChannel.Guild);
+        }
+
+        // System은 서버 방송이 아니라 ChatLog.AddSystem으로만 넣는다
+        /// <summary> 서버가 보낸 채팅 줄로 표시할 채널인지 </summary>
+        public static bool IsDisplayable(EChatChannel channel)
+        {
+            switch (channel)
+            {
+                case EChatChannel.All:
+                case EChatChannel.Party:
+                case EChatChannel.Guild:
+                case EChatChannel.Whisper:
+                case EChatChannel.WhisperSent:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary> 거절 이유의 시스템 안내 문구 </summary>
@@ -130,6 +148,18 @@ namespace Shinshi.Network
                     return "이 채널로는 보낼 수 없습니다.";
                 case EChatReject.NotConnected:
                     return "서버에 연결된 뒤 채팅을 보낼 수 있습니다.";
+                case EChatReject.NoGuild:
+                    return "길드에 가입한 뒤 길드 채팅을 보낼 수 있습니다.";
+                case EChatReject.WhisperTargetNotFound:
+                    return "해당 이름의 캐릭터가 없습니다.";
+                case EChatReject.WhisperTargetOffline:
+                    return "상대가 접속 중이 아닙니다.";
+                case EChatReject.WhisperSelf:
+                    return "자기 자신에게는 귓속말을 보낼 수 없습니다.";
+                case EChatReject.BackendUnavailable:
+                    return "잠시 후 다시 보내 주세요. 서버가 메시지를 전달하지 못했습니다.";
+                case EChatReject.FeatureDisabled:
+                    return "현재 사용할 수 없는 기능입니다.";
                 default:
                     return string.Empty;
             }

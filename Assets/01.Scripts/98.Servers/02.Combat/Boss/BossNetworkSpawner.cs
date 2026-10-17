@@ -120,6 +120,13 @@ namespace Shinshi.Combat
             }
 
             Publish(boss, candidate);
+
+            // 구조물 배치는 전투 내내 바뀌지 않아 스폰 전에 한 번만 싣는다. 첫 관찰자의 스폰 초기 상태부터 들어간다
+            if (boss.TryGetChargeStructureLayout(out BossChargeStructureSnapshot layout))
+            {
+                candidate.SetChargeStructureLayout(in layout);
+            }
+
             NetworkServer.Spawn(instance);
             if (candidate.netId == 0)
             {
@@ -142,6 +149,8 @@ namespace Shinshi.Combat
 
             state.SetCombatSnapshot(boss.CombatId, boss.BossId, boss.Position, FacingRules.EncodeYaw(boss.Forward), boss.Health,
                 boss.MaxHealth, boss.LifeState, boss.FlowState, boss.PhaseState);
+            state.SetTimelineSnapshot(boss.AppearStartServerTime, boss.DefeatServerTime, boss.PhaseGeneration,
+                boss.PhaseTransitionServerTime);
         }
 
         public void Despawn(BossServer boss, BossState state)

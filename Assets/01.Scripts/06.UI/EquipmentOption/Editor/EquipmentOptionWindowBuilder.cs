@@ -4,6 +4,7 @@ using System;
 
 // Unity
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,27 +34,25 @@ namespace Shinshi.UI.Editor
         private const string UI_LAYER     = "UI";
         private const string TOWN_SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
-        private const float WINDOW_WIDTH   = 760f;
-        private const float WINDOW_HEIGHT  = 500f;
-        private const float TITLE_HEIGHT   = 56f;
+        private const float WINDOW_WIDTH   = 1140f;
+        private const float WINDOW_HEIGHT  = 720f;
+        private const float TITLE_HEIGHT   = 72f;
         private const float MARGIN         = 24f;
-        private const float SLOT_WIDTH     = 250f;
-        private const float SLOT_HEIGHT    = 52f;
-        private const float SLOT_GAP       = 60f;
-        private const float SLOT_TOP       = 76f;
-        private const float DETAIL_LEFT    = 304f;
-        private const float DETAIL_WIDTH   = 432f;
-        private const float LINE_TOP       = 132f;
-        private const float LINE_GAP       = 68f;
+        private const float SLOT_WIDTH     = 184f;
+        private const float SLOT_HEIGHT    = 64f;
+        private const float SLOT_GAP       = 76f;
+        private const float SLOT_TOP       = 152f;
+        private const float DETAIL_LEFT    = 650f;
+        private const float DETAIL_WIDTH   = 446f;
+        private const float LINE_TOP       = 256f;
+        private const float LINE_GAP       = 88f;
         private const float CLOSE_SIZE     = 28f;
-        private const float BUTTON_WIDTH   = 200f;
-        private const float BUTTON_HEIGHT  = 48f;
+        private const float BUTTON_WIDTH   = 486f;
+        private const float BUTTON_HEIGHT  = 52f;
         private const int   LINE_COUNT     = 2;
 
-        private static readonly Color G_Text   = new Color(0.9f, 0.92f, 0.94f, 1f);
-        private static readonly Color G_Muted  = new Color(0.57f, 0.62f, 0.68f, 1f);
-        private static readonly Color G_Title  = new Color(0.75f, 0.79f, 0.82f, 1f);
-        private static readonly Color G_Accent = new Color(0.94f, 0.82f, 0.55f, 1f);
+        private static readonly Color G_Text   = EquipmentGrowthStyle.Text;
+        private static readonly Color G_Muted  = EquipmentGrowthStyle.Muted;
         private static readonly Color G_Panel  = new Color(1f, 1f, 1f, 0.9f);
         private static readonly Color G_Line   = new Color(1f, 1f, 1f, 0.35f);
 
@@ -74,9 +73,12 @@ namespace Shinshi.UI.Editor
                 throw new InvalidOperationException("옵션 재설정 창 글꼴을 찾을 수 없습니다");
             }
 
+            UnityEngine.SceneManagement.Scene preview = EditorSceneManager.NewPreviewScene();
             GameObject root = new GameObject("PF_EquipmentOptionWindow", typeof(RectTransform));
+            UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(root, preview);
             try
             {
+                root.SetActive(false);
                 root.layer = LayerMask.NameToLayer(UI_LAYER);
                 BuildWindow((RectTransform)root.transform);
 
@@ -87,9 +89,9 @@ namespace Shinshi.UI.Editor
             finally
             {
                 UnityEngine.Object.DestroyImmediate(root);
+                EditorSceneManager.ClosePreviewScene(preview);
             }
 
-            AssetDatabase.SaveAssets();
             Debug.Log("[UI] 옵션 재설정 창 프리팹을 만들었다: " + PREFAB_PATH);
         }
 
@@ -170,78 +172,103 @@ namespace Shinshi.UI.Editor
             root.sizeDelta        = new Vector2(WINDOW_WIDTH, WINDOW_HEIGHT);
 
             Image frame = root.gameObject.AddComponent<Image>();
-            Skin(frame, "T_UiWindow_Frame", Color.white);
+            EquipmentGrowthStyle.Surface(frame, EquipmentGrowthStyle.Canvas);
             frame.raycastTarget = true;
-
             var view = root.gameObject.AddComponent<EquipmentOptionView>();
 
-            // 제목줄을 끌어 창을 옮긴다. 글자보다 먼저 만들어 글자 아래에 깔리게 한다
-            Image titleBar = Panel(root, "제목줄", 0f, 0f, WINDOW_WIDTH, TITLE_HEIGHT, Color.clear);
+            // 직렬화 참조를 모두 연결한 뒤에만 창이 켜져야 Awake가 입력을 등록한다.
+            Image titleBar = Panel(root, "제목줄", 0f, 0f, WINDOW_WIDTH, TITLE_HEIGHT, EquipmentGrowthStyle.Panel);
             titleBar.raycastTarget = true;
             var drag = titleBar.gameObject.AddComponent<UiWindowDragHandle>();
             SetReference(drag, "_window", root);
-            Label(root, "제목", "장비 옵션 재설정", MARGIN, 14f, 360f, 30f, 24f, G_Text, true, TextAlignmentOptions.MidlineLeft);
-
-            Button close = MakeButton(root, "닫기 버튼", WINDOW_WIDTH - MARGIN - CLOSE_SIZE, 14f, CLOSE_SIZE, CLOSE_SIZE,
+            Label(root, "제목", "장비 옵션 재설정", MARGIN, 18f, 420f, 36f, 28f, G_Text, true, TextAlignmentOptions.MidlineLeft);
+            Label(root, "분류", "장비 성장  /  큐브", 770f, 24f, 260f, 24f, 14f, G_Muted, false, TextAlignmentOptions.MidlineRight);
+            Button close = MakeButton(root, "닫기 버튼", WINDOW_WIDTH - MARGIN - CLOSE_SIZE, 22f, CLOSE_SIZE, CLOSE_SIZE,
                 "T_UiIcon_Close", false);
             Line(root, "제목 구분선", MARGIN, TITLE_HEIGHT, WINDOW_WIDTH - (MARGIN * 2f));
 
+            EquipmentGrowthStyle.Card(root, "착용 장비 패널", MARGIN, 96f, 216f, 596f, EquipmentGrowthStyle.Panel);
+            Label(root, "부위 안내", "착용 장비", 40f, 112f, SLOT_WIDTH, 24f, 17f, G_Muted, true, TextAlignmentOptions.MidlineLeft);
             int slotCount = Constants.Combat.EQUIPMENT_SLOT_COUNT;
             var slotButtons = new UnityEngine.Object[slotCount];
             var slotLabels  = new UnityEngine.Object[slotCount];
             var slotMarks   = new UnityEngine.Object[slotCount];
             for (int i = 0; i < slotCount; ++i)
             {
-                string name   = EquipmentOptionViewRules.SlotName(i);
-                Button button = MakeButton(root, name + " 줄", MARGIN, SLOT_TOP + (SLOT_GAP * i), SLOT_WIDTH, SLOT_HEIGHT,
+                string name = EquipmentOptionViewRules.SlotName(i);
+                Button button = MakeButton(root, name + " 줄", 40f, SLOT_TOP + (SLOT_GAP * i), SLOT_WIDTH, SLOT_HEIGHT,
                     "T_UiPanel_Inset", true);
+                EquipmentGrowthStyle.Surface(button.image, EquipmentGrowthStyle.Canvas);
                 RectTransform rect = (RectTransform)button.transform;
                 slotButtons[i] = button;
-                TMP_Text slotLabel = Label(rect, "이름", name, 14f, 0f, SLOT_WIDTH - 28f, SLOT_HEIGHT, 15f, G_Text, false,
+                Image slotIcon = Panel(rect, "부위 아이콘", 10f, 12f, 40f, 40f, Color.white);
+                slotIcon.sprite = EquipmentGrowthStyle.EquipmentIcon(i);
+                slotIcon.preserveAspect = true;
+                TMP_Text slotLabel = Label(rect, "이름", name, 58f, 4f, SLOT_WIDTH - 66f, SLOT_HEIGHT - 8f, 14f, G_Text, false,
                     TextAlignmentOptions.MidlineLeft);
-
-                // 장비 이름이 길어도 한 줄에 두고 넘치면 줄임표로 자른다
-                slotLabel.textWrappingMode = TextWrappingModes.NoWrap;
-                slotLabel.overflowMode     = TextOverflowModes.Ellipsis;
+                slotLabel.textWrappingMode = TextWrappingModes.Normal;
+                slotLabel.overflowMode = TextOverflowModes.Ellipsis;
                 slotLabels[i] = slotLabel;
-
-                Image mark = Panel(rect, "선택 표시", 0f, 0f, SLOT_WIDTH, SLOT_HEIGHT, G_Accent);
-                Skin(mark, "T_UiSelect_Outline", G_Accent);
+                Image mark = Panel(rect, "선택 표시", 0f, 0f, 4f, SLOT_HEIGHT, EquipmentGrowthStyle.Mint);
                 mark.gameObject.SetActive(false);
                 slotMarks[i] = mark.gameObject;
             }
-
-            Label(root, "선택 장비 제목", "선택한 장비", DETAIL_LEFT, SLOT_TOP - 4f, DETAIL_WIDTH, 24f, 18f, G_Title, true,
-                TextAlignmentOptions.MidlineLeft);
-            TMP_Text item = Label(root, "장비 이름", string.Empty, DETAIL_LEFT, SLOT_TOP + 22f, DETAIL_WIDTH, 30f, 22f, G_Text, true,
+            Label(root, "선택 안내", "재설정할 부위를 선택하세요", 40f, 644f, SLOT_WIDTH, 28f, 13f, G_Muted, false,
                 TextAlignmentOptions.MidlineLeft);
 
-            var lineLabels  = new UnityEngine.Object[LINE_COUNT];
+            EquipmentGrowthStyle.Card(root, "장비 정보 패널", 260f, 96f, 856f, 88f, EquipmentGrowthStyle.Panel);
+            Label(root, "선택 장비 제목", "재설정 대상", 280f, 108f, 760f, 22f, 14f, G_Muted, false, TextAlignmentOptions.MidlineLeft);
+            TMP_Text item = Label(root, "장비 이름", string.Empty, 280f, 136f, 816f, 34f, 24f, G_Text, true,
+                TextAlignmentOptions.MidlineLeft);
+            item.textWrappingMode = TextWrappingModes.NoWrap;
+            item.overflowMode = TextOverflowModes.Ellipsis;
+
+            EquipmentGrowthStyle.Card(root, "재설정 문양 패널", 260f, 200f, 350f, 330f, EquipmentGrowthStyle.Canvas);
+            Label(root, "문양 제목", "EQUIPMENT  REFORGING", 280f, 202f, 310f, 18f, 10f, EquipmentGrowthStyle.Soul, true,
+                TextAlignmentOptions.Center);
+            EquipmentGrowthStyle.Orbit(root, "재설정 문양", 295f, 224f, 280f, EquipmentGrowthStyle.Soul);
+            EquipmentGrowthStyle.Icon(root, "재설정 결정 장식", "Assets/01.Scripts/05.Art/UI/EquipmentGrowth/Textures/T_EquipmentGrowth_Crystal.png",
+                295f, 224f, 280f, Color.white);
+            Label(root, "문양 안내", "새로운 가능성을 새깁니다", 280f, 506f, 310f, 18f, 13f, EquipmentGrowthStyle.Soul, true,
+                TextAlignmentOptions.Center);
+
+            EquipmentGrowthStyle.Card(root, "옵션 패널", 630f, 200f, 486f, 330f, EquipmentGrowthStyle.Panel);
+            Label(root, "옵션 제목", "현재 장비 옵션", DETAIL_LEFT, 216f, DETAIL_WIDTH, 28f, 22f, G_Text, true,
+                TextAlignmentOptions.MidlineLeft);
+            var lineLabels = new UnityEngine.Object[LINE_COUNT];
             var rangeLabels = new UnityEngine.Object[LINE_COUNT];
             for (int i = 0; i < LINE_COUNT; ++i)
             {
                 float y = LINE_TOP + (LINE_GAP * i);
-                Line(root, "옵션 구분선_" + i, DETAIL_LEFT, y, DETAIL_WIDTH);
-                lineLabels[i]  = Label(root, "옵션 " + (i + 1), string.Empty, DETAIL_LEFT, y + 8f, DETAIL_WIDTH, 28f, 22f, G_Text, false,
-                    TextAlignmentOptions.MidlineLeft);
-                rangeLabels[i] = Label(root, "옵션 범위 " + (i + 1), string.Empty, DETAIL_LEFT, y + 36f, DETAIL_WIDTH, 22f, 16f, G_Muted,
-                    false, TextAlignmentOptions.MidlineLeft);
+                EquipmentGrowthStyle.Card(root, "옵션 구분선_" + i, DETAIL_LEFT, y, DETAIL_WIDTH, 76f, EquipmentGrowthStyle.Canvas);
+                Label(root, "옵션 번호 " + i, (i + 1).ToString("00"), DETAIL_LEFT + 10f, y + 12f, 36f, 48f, 20f,
+                    EquipmentGrowthStyle.Soul, true, TextAlignmentOptions.Center);
+                lineLabels[i] = Label(root, "옵션 " + (i + 1), string.Empty, DETAIL_LEFT + 58f, y + 8f, DETAIL_WIDTH - 74f,
+                    32f, 24f, G_Text, true, TextAlignmentOptions.MidlineLeft);
+                rangeLabels[i] = Label(root, "옵션 범위 " + (i + 1), string.Empty, DETAIL_LEFT + 58f, y + 44f,
+                    DETAIL_WIDTH - 74f, 22f, 14f, G_Muted, false, TextAlignmentOptions.MidlineLeft);
             }
+            TMP_Text pity = Label(root, "천장", string.Empty, DETAIL_LEFT, 440f, DETAIL_WIDTH, 30f, 18f,
+                EquipmentGrowthStyle.Soul, true, TextAlignmentOptions.MidlineLeft);
+            Label(root, "옵션 변경 안내", "옵션 2줄을 함께 재설정합니다", DETAIL_LEFT, 482f, DETAIL_WIDTH, 24f, 14f,
+                G_Muted, false, TextAlignmentOptions.MidlineLeft);
 
-            float footerTop = LINE_TOP + (LINE_GAP * LINE_COUNT);
-            Line(root, "비용 구분선", DETAIL_LEFT, footerTop, DETAIL_WIDTH);
-            TMP_Text cost = Label(root, "비용", string.Empty, DETAIL_LEFT, footerTop + 12f, DETAIL_WIDTH, 24f, 18f, G_Text, false,
+            EquipmentGrowthStyle.Card(root, "필요 재료 패널", 260f, 542f, 856f, 84f, EquipmentGrowthStyle.Canvas);
+            EquipmentGrowthStyle.Icon(root, "정기 아이콘", "Assets/01.Scripts/05.Art/UI/Icons/Textures/Items64/T_Item64_item_essence.png",
+                280f, 556f, 36f, Color.white);
+            EquipmentGrowthStyle.Icon(root, "정련편 아이콘", "Assets/01.Scripts/05.Art/UI/Icons/Textures/Items64/T_Item64_item_refine_shard.png",
+                322f, 556f, 36f, Color.white);
+            Label(root, "재료 제목", "필요 재료", 370f, 554f, 300f, 24f, 15f, G_Text, true, TextAlignmentOptions.MidlineLeft);
+            Label(root, "재료 표기 안내", "필요 / 보유", 896f, 556f, 200f, 22f, 13f, G_Muted, false, TextAlignmentOptions.MidlineRight);
+            TMP_Text cost = Label(root, "비용", string.Empty, 280f, 586f, 816f, 26f, 19f, EquipmentGrowthStyle.Mint, true,
                 TextAlignmentOptions.MidlineLeft);
-            TMP_Text pity = Label(root, "천장", string.Empty, DETAIL_LEFT, footerTop + 40f, DETAIL_WIDTH, 22f, 16f, G_Muted, false,
+            TMP_Text status = Label(root, "상태", string.Empty, 280f, 636f, 330f, 56f, 15f, EquipmentGrowthStyle.Soul, false,
                 TextAlignmentOptions.MidlineLeft);
-            TMP_Text status = Label(root, "상태", string.Empty, DETAIL_LEFT, footerTop + 70f, DETAIL_WIDTH, 44f, 16f, G_Accent, false,
-                TextAlignmentOptions.TopLeft);
-
             Button reroll = MakeButton(root, "재설정 버튼", WINDOW_WIDTH - MARGIN - BUTTON_WIDTH,
                 WINDOW_HEIGHT - MARGIN - BUTTON_HEIGHT, BUTTON_WIDTH, BUTTON_HEIGHT, "T_UiButton_Primary", true);
-            TMP_Text rerollLabel = Label((RectTransform)reroll.transform, "글자", "재설정", 0f, 0f, BUTTON_WIDTH, BUTTON_HEIGHT, 20f,
-                G_Text, true, TextAlignmentOptions.Center);
-
+            TMP_Text rerollLabel = Label((RectTransform)reroll.transform, "글자", "재설정", 0f, 0f, BUTTON_WIDTH, BUTTON_HEIGHT, 22f,
+                EquipmentGrowthStyle.Canvas, true, TextAlignmentOptions.Center);
+            EquipmentGrowthStyle.Primary(reroll);
             SetReference(view, "_closeButton", close);
             SetArray(view, "_slotButtons", slotButtons);
             SetArray(view, "_slotLabels", slotLabels);
@@ -254,6 +281,7 @@ namespace Shinshi.UI.Editor
             SetReference(view, "_statusLabel", status);
             SetReference(view, "_rerollButton", reroll);
             SetReference(view, "_rerollLabel", rerollLabel);
+            EquipmentGrowthStyle.Finish(root, EquipmentGrowthStyle.Soul);
         }
 
         private static Button MakeButton(RectTransform parent, string name, float x, float y, float width, float height,

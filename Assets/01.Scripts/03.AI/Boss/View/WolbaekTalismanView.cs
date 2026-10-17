@@ -186,7 +186,8 @@ namespace Shinshi.AI
             return true;
         }
 
-        public bool Restore(in WolbaekTalismanSnapshot snapshot, double now)
+        // successServerTime은 서버 복원 기록이 함께 주는 성공 시각이다. 모르면 NaN이고 반격 진행을 지금부터 센다
+        public bool Restore(in WolbaekTalismanSnapshot snapshot, double now, double successServerTime = double.NaN)
         {
             if ((snapshot.State != EWolbaekTalismanState.Transition)
                 && (snapshot.State != EWolbaekTalismanState.Active)
@@ -203,11 +204,10 @@ namespace Shinshi.AI
             _restoreTime = now;
             if (snapshot.State == EWolbaekTalismanState.Counter)
             {
-                // 스냅샷에는 성공 시작 시각이 없으므로 성공 애니메이션의 경과 시간은 복원할 수 없다.
-                // 현재 반격 상태만 표시하고, 지난 타격 효과는 재생하지 않는다.
+                // 성공 시각을 알면 반격 진행을 그 시각부터 이어 간다. 지난 타격 효과는 재생하지 않는다
                 _counter = true;
                 _counterEnd = snapshot.CounterEndServerTime;
-                _phaseStart = now;
+                _phaseStart = ((!double.IsNaN(successServerTime)) && (successServerTime <= now)) ? successServerTime : now;
                 _idleStarted = now >= _counterEnd - SUCCESS_IDLE_LEAD_SECONDS;
                 StopShield();
                 ReconcileStructures(now);

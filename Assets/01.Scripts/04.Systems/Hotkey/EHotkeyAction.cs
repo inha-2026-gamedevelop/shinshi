@@ -14,6 +14,9 @@ namespace Shinshi.Systems
         MailBox       = 7,
         CharacterInfo = 8,
         Trade         = 9,
-        EquipmentOption = 10
+        EquipmentOption = 10,
+        SkillWindow     = 11,
+        Friends         = 12,
+        Guild           = 13
     }
 }

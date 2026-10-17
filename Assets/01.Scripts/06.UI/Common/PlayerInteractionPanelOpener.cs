@@ -24,7 +24,9 @@ namespace Shinshi.UI
         // 누른 자리의 캐릭터와 뗀 자리의 캐릭터가 같고 짧게 눌렀을 때만 연다.
         // 대상은 카메라 광선이 맞힌 콜라이더 부모의 PlayerCombatState로 찾는다(내 캐릭터는 isLocalPlayer). 콜라이더를 직접 연결해 두면(개발 씬) 그것이 우선이다.
         // 닉네임은 서버가 내려준 캐릭터 이름(PlayerCombatState)을 쓰고, 그것이 없는 개체만 맞은 오브젝트의 이름을 쓴다.
-        // 기본은 거래와 파티 초대를 클라이언트 창구로 보낸다. 개발 씬은 예시 이벤트로 보내며 미구현 기능은 안내 화면을 연다
+        // 기본은 거래와 파티 초대를 클라이언트 창구로 보낸다. 개발 씬은 예시 이벤트로 보내며 미구현 기능은 안내 화면을 연다.
+        // 귓속말은 채팅 입력 칸에 "/w 이름 "을 채우고, 친구 요청과 길드 초대(길드장만)는 SocialClient로 보낸다. 관계 판정은 마을 서버와
+        // API가 하고 여기서는 보낼 수 있는 상태인지만 본다. 결과는 시스템 채팅 한 줄로 알린다
 
         /****************************************
         *                Fields
@@ -49,10 +51,15 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text      _otherName  = null;
 
         [Header("다른 유저 패널 버튼")]
-        [SerializeField] private Button _tradeButton       = null;
-        [SerializeField] private Button _partyInviteButton = null;
-        [SerializeField] private Button _whisperButton     = null;
-        [SerializeField] private Button _infoButton        = null;
+        [SerializeField] private Button _tradeButton         = null;
+        [SerializeField] private Button _partyInviteButton   = null;
+        [SerializeField] private Button _whisperButton       = null;
+        [SerializeField] private Button _infoButton          = null;
+        [SerializeField] private Button _friendRequestButton = null;
+        [SerializeField] private Button _guildInviteButton   = null;
+
+        // 비워 두면 활성 HUD 채팅(HudChatView.Active)에 채운다
+        [SerializeField] private HudChatView _chat = null;
 
         [Header("개발 씬 조작")]
         [SerializeField] private bool _previewActions = false;
@@ -62,6 +69,8 @@ namespace Shinshi.UI
         public event Action<string> PartyInviteRequested;
         public event Action<string> WhisperRequested;
         public event Action<string> InfoRequested;
+        public event Action<string> FriendRequestRequested;
+        public event Action<string> GuildInviteRequested;
 
         private Func<bool> _onEscape = null;
 
@@ -71,6 +80,7 @@ namespace Shinshi.UI
         private PlayerInteractionRules.ETarget _pressedKind = PlayerInteractionRules.ETarget.None;
         private float         _pressedTime     = 0f;
         private string        _targetName      = string.Empty;
+        private Guid          _socialRequestId = Guid.Empty;
 
         /****************************************
         *              Unity Event
@@ -89,8 +99,7 @@ namespace Shinshi.UI
             _selfPanel.gameObject.SetActive(false);
             _otherPanel.gameObject.SetActive(false);
 
-            // 귓속말 채널과 다른 플레이어 정보는 아직 없다
-            SetInteractable(_whisperButton, _previewActions);
+            // 다른 플레이어 정보는 아직 없다
             SetInteractable(_infoButton, _previewActions);
         }
 
@@ -101,6 +110,9 @@ namespace Shinshi.UI
             AddListener(_partyInviteButton, OnPartyInviteClicked);
             AddListener(_whisperButton, OnWhisperClicked);
             AddListener(_infoButton, OnInfoClicked);
+            AddListener(_friendRequestButton, OnFriendRequestClicked);
+            AddListener(_guildInviteButton, OnGuildInviteClicked);
+            SocialClient.ResultReceived += OnSocialResult;
         }
 
         private void OnDisable()
@@ -109,6 +121,10 @@ namespace Shinshi.UI
             RemoveListener(_partyInviteButton, OnPartyInviteClicked);
             RemoveListener(_whisperButton, OnWhisperClicked);
             RemoveListener(_infoButton, OnInfoClicked);
+            RemoveListener(_friendRequestButton, OnFriendRequestClicked);
+            RemoveListener(_guildInviteButton, OnGuildInviteClicked);
+            SocialClient.ResultReceived -= OnSocialResult;
+            _socialRequestId = Guid.Empty;
             Close();
         }
 
@@ -225,6 +241,10 @@ namespace Shinshi.UI
 
             _targetName = ResolveName(target);
             label.text  = _targetName;
+            if (kind == PlayerInteractionRules.ETarget.Other)
+            {
+                RefreshSocialButtons();
+            }
 
             // 패널 왼쪽 위를 마우스 자리에 맞춘다. 부모는 가운데 기준이라 변환한 값이 그대로 위치가 된다
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_parentRect, point, null, out Vector2 local);
@@ -291,8 +311,85 @@ namespace Shinshi.UI
 
         private void OnWhisperClicked()
         {
-            WhisperRequested?.Invoke(_targetName);
+            if (_previewActions)
+            {
+                WhisperRequested?.Invoke(_targetName);
+            }
+            else
+            {
+                HudChatView chat = (_chat != null) ? _chat : HudChatView.Active;
+                if ((chat != null) && (!string.IsNullOrEmpty(_targetName)))
+                {
+                    chat.BeginWhisper(_targetName);
+                }
+            }
+
             Close();
+        }
+
+        private void OnFriendRequestClicked()
+        {
+            if (!string.IsNullOrEmpty(_targetName))
+            {
+                if (_previewActions)
+                {
+                    FriendRequestRequested?.Invoke(_targetName);
+                }
+                else
+                {
+                    _socialRequestId = SocialClient.SendFriendRequest(_targetName);
+                }
+            }
+
+            Close();
+        }
+
+        private void OnGuildInviteClicked()
+        {
+            if (!string.IsNullOrEmpty(_targetName))
+            {
+                if (_previewActions)
+                {
+                    GuildInviteRequested?.Invoke(_targetName);
+                }
+                else
+                {
+                    _socialRequestId = SocialClient.InviteToGuild(_targetName);
+                }
+            }
+
+            Close();
+        }
+
+        // 이 패널이 보낸 요청의 결과만 알린다. 친구, 길드 창이 보낸 요청은 그 창이 알린다
+        private void OnSocialResult(SocialResultMessage result)
+        {
+            if ((_socialRequestId == Guid.Empty) || (result.RequestId != _socialRequestId))
+            {
+                return;
+            }
+
+            _socialRequestId = Guid.Empty;
+            ChatLog.AddSystem(PlayerInteractionRules.DescribeSocialResult(in result));
+        }
+
+        // 패널을 열 때마다 지금 상태로 정한다. 개발 씬은 예시 이벤트라 늘 켠다
+        private void RefreshSocialButtons()
+        {
+            HudChatView chat = (_chat != null) ? _chat : HudChatView.Active;
+            SetInteractable(_whisperButton, (_previewActions) || (chat != null));
+            if (_previewActions)
+            {
+                SetInteractable(_friendRequestButton, true);
+                SetInteractable(_guildInviteButton, true);
+                return;
+            }
+
+            bool canSend = PlayerInteractionRules.CanSendSocialRequest(SocialClient.IsTownConnection(), SocialClient.HasPendingWrite,
+                SocialClient.IsSnapshotFailed);
+            SocialGuildView guild = SocialClient.HasSnapshot ? SocialClient.Snapshot.Guild : SocialGuildView.None;
+            SetInteractable(_friendRequestButton, canSend);
+            SetInteractable(_guildInviteButton, PlayerInteractionRules.CanInviteToGuild(canSend, guild.HasGuild, guild.MyRole));
         }
 
         private void OnInfoClicked()

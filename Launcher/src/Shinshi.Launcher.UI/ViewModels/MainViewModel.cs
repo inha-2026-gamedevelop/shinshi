@@ -429,11 +429,44 @@ namespace Shinshi.Launcher.ViewModels
 
             CreateClient();
             CreateAccount();
-            await CheckAsync();
 
-            // 패치 확인과 별개다. 패치 원본이 죽어도 이미 설치한 게임으로 로그인할 수 있다
-            await RefreshServiceStateAsync();
-            await TryAutoLoginAsync();
+            // 계정과 패치는 서로 기다리지 않는다. 로그인 전이든 자동 로그인이 실패하든 업데이트는 진행되고,
+            // 패치 원본이 죽어도 이미 설치한 게임으로 로그인할 수 있다. 둘 다 UI 스레드에서 이어지므로 상태를 함께 써도 된다
+            Task account = StartAccountAsync();
+            await CheckAsync();
+            await AutoUpdateAsync();
+            await account;
+        }
+
+        private async Task StartAccountAsync()
+        {
+            // 여기서 난 예외를 RunGuarded로 올리면 진행 중인 업데이트 상태를 확인 실패로 바꾼다. 계정 쪽에서 끝낸다
+            try
+            {
+                await RefreshServiceStateAsync();
+                await TryAutoLoginAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                LauncherLog.Info("Account start cancelled.");
+            }
+            catch (Exception exception)
+            {
+                LauncherLog.Error("Unexpected account start error.", exception);
+                LoginErrorText = UNEXPECTED_ERROR_TEXT;
+            }
+        }
+
+        // 시작할 때 받을 업데이트가 있으면 사용자가 누르지 않아도 바로 받는다. 새 설치는 크기와 위치를 사용자가 보고 고르게 자동으로 하지 않는다
+        private async Task AutoUpdateAsync()
+        {
+            if (_state != ELauncherState.UpdateAvailable)
+            {
+                return;
+            }
+
+            LauncherLog.Info("Auto update started. loggedIn=" + IsLoggedIn);
+            await RunOperationAsync(false);
         }
 
         private void CreateAccount()
@@ -642,9 +675,28 @@ namespace Shinshi.Launcher.ViewModels
 
             if (_session.State != ELauncherSessionState.LoggedIn)
             {
-                LoginErrorText = LOGIN_REQUIRED_TEXT;
-                CurrentView    = ELauncherView.Login;
-                return;
+                // 시작할 때 서버 응답을 못 받아 자동 로그인이 미뤄졌으면 저장된 로그인으로 한 번 더 시도한다
+                State          = ELauncherState.Launching;
+                LoginErrorText = string.Empty;
+                try
+                {
+                    await TryAutoLoginAsync();
+                }
+                finally
+                {
+                    State = ELauncherState.Ready;
+                }
+
+                if (!IsLoggedIn)
+                {
+                    if (LoginErrorText.Length == 0)
+                    {
+                        LoginErrorText = LOGIN_REQUIRED_TEXT;
+                    }
+
+                    CurrentView = ELauncherView.Login;
+                    return;
+                }
             }
 
             if (!TryReadInstalledBuild(out InstalledRelease? install, out ClientBuildInfo? build, out string buildError))
@@ -662,6 +714,7 @@ namespace Shinshi.Launcher.ViewModels
             {
                 ErrorMessage = blockReason;
                 await CheckAsync();
+                await AutoUpdateAsync();
                 return;
             }
 
@@ -674,12 +727,15 @@ namespace Shinshi.Launcher.ViewModels
                 // 로그인은 빌드와 무관하게 유지된다. 서버가 설치 빌드를 거절하면 업데이트 안내를 띄우고 패치 확인을 다시 한다
                 bool isVersionMismatch = (issued.Error == ESessionError.ApiFailed) && (issued.ApiError == EAuthApiError.VersionMismatch);
                 ErrorMessage = isVersionMismatch ? AccountErrorText.UPDATE_REQUIRED : AccountErrorText.ToLoginMessage(issued);
-                if (!IsLoggedIn)
+
+                // 응답을 잃어 메모리 로그인만 버렸으면 저장된 로그인이 남아 있다. 다시 시작을 누르면 그것으로 이어 간다
+                if (!IsLoggedIn && !_session.HasStoredLogin)
                 {
                     CurrentView = ELauncherView.Login;
                 }
 
                 await CheckAsync();
+                await AutoUpdateAsync();
                 return;
             }
 
@@ -829,7 +885,7 @@ namespace Shinshi.Launcher.ViewModels
 
         private async Task TryAutoLoginAsync()
         {
-            if ((_session == null) || !_session.HasStoredLogin || IsLoggedIn)
+            if ((_session == null) || !_session.HasStoredLogin || (_session.State != ELauncherSessionState.LoggedOut))
             {
                 return;
             }

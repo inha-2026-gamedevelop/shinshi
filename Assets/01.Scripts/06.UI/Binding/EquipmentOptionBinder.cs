@@ -50,8 +50,9 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
-            TownGrowthClient.SnapshotChanged += OnSnapshot;
-            TownGrowthClient.ResultReceived  += OnResult;
+            TownGrowthClient.SnapshotChanged  += OnSnapshot;
+            TownGrowthClient.ResultReceived   += OnResult;
+            TownGrowthClient.WriteLockChanged += OnWriteLockChanged;
             if (_view != null)
             {
                 _view.SlotSelected    += OnSlotSelected;
@@ -61,8 +62,9 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
-            TownGrowthClient.SnapshotChanged -= OnSnapshot;
-            TownGrowthClient.ResultReceived  -= OnResult;
+            TownGrowthClient.SnapshotChanged  -= OnSnapshot;
+            TownGrowthClient.ResultReceived   -= OnResult;
+            TownGrowthClient.WriteLockChanged -= OnWriteLockChanged;
             if (_view != null)
             {
                 _view.SlotSelected    -= OnSlotSelected;
@@ -111,6 +113,11 @@ namespace Shinshi.UI
             _isDirty = true;
         }
 
+        private void OnWriteLockChanged()
+        {
+            _isDirty = true;
+        }
+
         private void OnSlotSelected(int slot)
         {
             if ((slot < 0) || (slot >= Constants.Combat.EQUIPMENT_SLOT_COUNT))
@@ -131,8 +138,9 @@ namespace Shinshi.UI
         {
             if (_isOutcomeUnknown)
             {
-                // 같은 요청을 같은 번호로 다시 보낸다. 서버와 API가 처음 결과를 돌려주고 다시 뽑거나 차감하지 않는다
-                if (TownGrowthClient.RetryLast())
+                // 같은 요청을 같은 번호로 다시 보낸다. 서버와 API가 처음 결과를 돌려주고 다시 뽑거나 차감하지 않는다.
+                // 공용 보관 칸이 이 창의 요청을 들고 있을 때만 보낸다. 아니면 다른 창의 요청을 다시 보내게 된다
+                if ((TownGrowthClient.UnresolvedOperationId == _pendingOperation) && (TownGrowthClient.RetryLast()))
                 {
                     _status = CHECKING_TEXT;
                     _isDirty = true;
@@ -141,7 +149,8 @@ namespace Shinshi.UI
                 return;
             }
 
-            if ((_pendingOperation != Guid.Empty) || (!TownGrowthClient.HasSnapshot) || (!ClientRoles.IsTown()))
+            if ((_pendingOperation != Guid.Empty) || (!TownGrowthClient.HasSnapshot) || (!ClientRoles.IsTown())
+                || (GrowthWriteGuard.IsBlockedByOther(_pendingOperation)))
             {
                 return;
             }
@@ -208,7 +217,9 @@ namespace Shinshi.UI
             for (int slot = 0; slot < Constants.Combat.EQUIPMENT_SLOT_COUNT; ++slot)
             {
                 bool hasItem = EquipmentOptionViewRules.TryFindEquipped(snapshot.Equipment, slot, out TownEquipmentEntry worn);
-                _view.SetSlot(slot, EquipmentOptionViewRules.SlotText(slot, hasItem, worn.DefinitionId, worn.Enhancement));
+                string displayName = hasItem ? EquipmentEnhanceRules.DisplayName(equipment, worn.DefinitionId) : string.Empty;
+                _view.SetSlot(slot, hasItem ? displayName + "\n+" + worn.Enhancement
+                    : EquipmentOptionViewRules.SlotName(slot) + "\n착용 장비 없음");
             }
 
             _view.SetCost(EquipmentOptionViewRules.CostText(equipment.OptionRerollEssenceCost, equipment.OptionRerollShardCost,
@@ -219,7 +230,7 @@ namespace Shinshi.UI
                 return;
             }
 
-            _view.SetItem(entry.DefinitionId);
+            _view.SetItem(EquipmentEnhanceRules.DisplayName(equipment, entry.DefinitionId));
             ApplyLine(equipment, in entry, 0, entry.Option1Kind, entry.Option1Value);
             ApplyLine(equipment, in entry, 1, entry.Option2Kind, entry.Option2Value);
 
@@ -259,6 +270,10 @@ namespace Shinshi.UI
             if (!ClientRoles.IsTown())
             {
                 blocked = TOWN_ONLY_TEXT;
+            }
+            else if (GrowthWriteGuard.IsBlockedByOther(_pendingOperation))
+            {
+                blocked = GrowthWriteGuard.OTHER_WINDOW_TEXT;
             }
             else if (!EquipmentOptionViewRules.CanReroll(in entry))
             {

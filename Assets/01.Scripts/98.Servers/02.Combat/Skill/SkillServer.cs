@@ -57,8 +57,21 @@ namespace Shinshi.Combat
             public float                          HalfWidth;        // m, 투사체 반폭
         }
 
+        // 궁수 불 화살이 건 화상 하나, 대상마다 하나만 두고 다시 맞으면 끝 시각만 늘린다. 틱 주기는 처음 건 시각에서 이어 간다
+        private struct Burn
+        {
+            public bool   Active;
+            public int    TargetId;
+            public int    CastId;
+            public double NextTick;
+            public double EndsAt;
+        }
+
         // 갈래 수의 가운데 번호를 구하는 배율, 세 갈래면 -1, 0, +1 칸으로 퍼진다
         private const float CENTER_INDEX_SCALE = 0.5f;
+
+        // 한 궁수가 동시에 화상을 거는 대상 수 상한, 넘으면 새 대상에는 화상을 걸지 않는다
+        private const int MAX_BURNS = 16;
 
         private readonly SkillCasterAnchor                _owner;
         private readonly EPlayerClass                     _playerClass;
@@ -79,6 +92,8 @@ namespace Shinshi.Combat
         private readonly CompanionCombatState[]           _companionStates;
         private readonly ResonanceLedger                  _resonance;
         private readonly bool                             _discardPending;
+        private readonly Burn[]                           _burns;
+        private readonly string                           _burnSourceId;
 
         private SkillCatalogSO.SkillDefinition     _skill;
         private SkillCatalogSO.AscensionDefinition _ascension;
@@ -101,6 +116,12 @@ namespace Shinshi.Combat
         private bool                               _dashStopped      = false;
         private float                              _maxEnergy        = 0f;
         private EPlayerControlKind                 _control          = EPlayerControlKind.None;
+        private int                                _stacks           = 0;
+        private int                                _lastStackCastId  = CombatIds.NONE;
+        private float                              _castStackBonus   = 0f;
+        private Vector3                            _blinkEnd;
+        private EArcherElement                     _element          = EArcherElement.None;
+        private EArcherElement                     _lastHitElement   = EArcherElement.None;
 
         /****************************************
         *              Properties
@@ -125,6 +146,12 @@ namespace Shinshi.Combat
         public double            AscensionReadyAt   => _ascensionReadyAt;
         public double            NextActionAt       => _recoveryEndsAt;
         public EPlayerControlKind Control           => _control;
+        public int               ClassStacks        => _stacks;
+        public EArcherElement    ArcherElement      => _element;
+
+        // 궁수 기본 공격이 지금 속성으로 받는 보정, 다른 직업과 바람이 아닌 속성은 1이다
+        public float             BasicAttackIntervalScale  => ArcherElementRules.GetAttackIntervalScale(_catalog, _element);
+        public float             BasicProjectileSpeedScale => ArcherElementRules.GetProjectileSpeedScale(_catalog, _element);
         public bool              BlocksMovement     => _phase != ESkillPhase.Idle;
         public bool              IsGuardWindow      => (_phase == ESkillPhase.Active) && (IsCounter);
 
@@ -165,6 +192,7 @@ namespace Shinshi.Combat
             _resonance       = new ResonanceLedger(catalog, Constants.Combat.RESONANCE_LEDGER_CAPACITY);
             _companions      = new CompanionServer[Constants.Combat.COMPANIONS_PER_PLAYER];
             _companionStates = new CompanionCombatState[Constants.Combat.COMPANIONS_PER_PLAYER];
+            _burns           = new Burn[MAX_BURNS];
             for (int i = 0; i < _skills.Length; ++i)
             {
                 if (!catalog.TryGetSkillBySlot(playerClass, i, out _skills[i]))
@@ -185,6 +213,16 @@ namespace Shinshi.Combat
             _maxEnergy = (maxEnergy > 0f) ? maxEnergy : player.BaseMaxEnergy;
             _energy    = _maxEnergy;
             _lastTick  = now;
+
+            // 화상 피해는 불 부여 기술의 피해로 집계한다. 궁수가 아니면 쓰지 않는다
+            _burnSourceId = Constants.Combat.BASIC_ATTACK_SOURCE_ID;
+            for (int i = 0; i < _skills.Length; ++i)
+            {
+                if (_skills[i].Effect.ArcherElement == EArcherElement.Fire)
+                {
+                    _burnSourceId = _skills[i].DefinitionId;
+                }
+            }
         }
 
         public double GetReadyAt(int slot) => _readyAt[slot];
@@ -281,6 +319,10 @@ namespace Shinshi.Combat
                 reason = ERejectReason.InvalidTarget;
                 return false;
             }
+            if ((skill != null) && (IgnoresTalismanShape(skill)))
+            {
+                modifier = new SkillModifiers(modifier.EnergyScale, modifier.CooldownScale, modifier.DamageScale, 0f);
+            }
             if ((skill != null) && (PlayerControlRules.BlocksMovementSkill(_control)) && (IsMovementSkill(skill, in modifier)))
             {
                 reason = ERejectReason.Disabled;
@@ -334,6 +376,12 @@ namespace Shinshi.Combat
                 reason = ERejectReason.Cooldown;
                 return false;
             }
+            // 스택도 기술 자원이라 기력 부족과 같은 사유로 알린다
+            if ((skill != null) && (skill.Effect.RequiredStacks > 0) && (_stacks < skill.Effect.RequiredStacks))
+            {
+                reason = ERejectReason.InsufficientEnergy;
+                return false;
+            }
             if ((skill != null) && (RequiredEffectSlots(skill, in modifier) > CountFreeEffects()))
             {
                 reason = ERejectReason.NoCapacity;
@@ -367,6 +415,17 @@ namespace Shinshi.Combat
             {
                 _resonance.TrySpend(cost);
                 _ascensionReadyAt = now + _catalog.AscensionSharedCooldown;
+            }
+            // 스택 소모 기술은 확정 때 쓴 스택으로 계수를 고정한다. 준비 중 취소돼도 비용처럼 돌려주지 않는다
+            _castStackBonus = 0f;
+            if ((skill != null) && (skill.Effect.StackCoefficient > 0f))
+            {
+                _castStackBonus = _stacks * skill.Effect.StackCoefficient;
+                _stacks         = 0;
+            }
+            if ((skill != null) && (skill.Effect.RequiredStacks > 0))
+            {
+                _stacks -= skill.Effect.RequiredStacks;
             }
             _skill         = skill;
             _ascension     = ascension;
@@ -466,6 +525,13 @@ namespace Shinshi.Combat
             return tail;
         }
 
+        // 궁수 속성 부여와 속성 폭발은 화살 부적이 바꾸던 형태(사거리, 폭, 관통, 후속 화살, 후퇴)를 쓰지 않는다.
+        // 기력, 쿨다운, 피해 비율만 남기고 나머지 변형은 버린다. 남기면 관통 변형이 폭발 계수를 3.6A로 바꿔 버린다
+        private static bool IgnoresTalismanShape(SkillCatalogSO.SkillDefinition skill)
+        {
+            return (skill.Effect.ArcherElement != EArcherElement.None) || (skill.Effect.RequiredStacks > 0);
+        }
+
         private static bool IsWeaponClass(EPlayerClass playerClass)
         {
             return (playerClass == EPlayerClass.Swordsman) || (playerClass == EPlayerClass.Mageknight)
@@ -485,6 +551,7 @@ namespace Shinshi.Combat
             }
             _lastTick = now;
             TickEffects(now);
+            TickBurns(now);
             for (int i = 0; i < _companions.Length; ++i)
             {
                 _companions[i].Tick(deltaTime, now, pathBudget);
@@ -499,7 +566,8 @@ namespace Shinshi.Combat
                 _phase = ESkillPhase.Active;
                 Activate(now);
             }
-            if ((_phase == ESkillPhase.Active) && (_skill != null) && (_skill.Area.Shape == ESkillShape.Line))
+            if ((_phase == ESkillPhase.Active) && (_skill != null) && (_skill.Area.Shape == ESkillShape.Line)
+                && (!_skill.Effect.TeleportToEnd))
             {
                 TickDash(now);
             }
@@ -512,6 +580,10 @@ namespace Shinshi.Combat
                 if ((IsCounter) && (_guardSucceeded))
                 {
                     ApplyCounter(now);
+                }
+                if ((_skill != null) && (_skill.Effect.TeleportToEnd))
+                {
+                    ApplyBlink(now);
                 }
                 _phase = ESkillPhase.Recovery;
             }
@@ -532,6 +604,16 @@ namespace Shinshi.Combat
                 ApplyAscension(now);
                 return;
             }
+            if (_skill.Area.Shape == ESkillShape.Buff)
+            {
+                ApplyBuff();
+                return;
+            }
+            if ((_skill.Area.Shape == ESkillShape.Line) && (_skill.Effect.TeleportToEnd))
+            {
+                _blinkEnd = GetBlinkEnd();
+                return;
+            }
             if ((IsCounter) || (_skill.Area.Shape == ESkillShape.Line))
             {
                 return;
@@ -544,6 +626,8 @@ namespace Shinshi.Combat
                 }
                 return;
             }
+
+            AddStacks(_skill.Effect.StackGain);
 
             // 핵심 변형이 정한 형태(원형 교체, 근접의 갈래 투사체 교체)와 보조가 바꾼 반경, 각도로 첫 타격과 뒤따르는 타격을 모두 판정한다
             SkillCoreVariant core   = _castModifiers.Core;
@@ -636,7 +720,7 @@ namespace Shinshi.Combat
             float            range        = TalismanModifierRules.GetCastRange(_skill, in _castModifiers);
             float            speed        = TalismanModifierRules.GetProjectileSpeed(_skill, in _castModifiers);
             float            halfWidth    = TalismanModifierRules.GetProjectileWidth(_skill, in _castModifiers) * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
-            float            coefficient  = TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers);
+            float            coefficient  = TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers) + _castStackBonus;
             if (speed <= 0f)
             {
                 return;
@@ -889,6 +973,161 @@ namespace Shinshi.Combat
             }
             _owner.SetSkillPosition(stopped);
             _targets.Clear();
+        }
+
+        // 자기 강화, 발동 순간부터 정한 시간 동안 피격이상 면역. 궁수 속성 부여는 발동 순간부터 다음 기본 공격의 속성을 바꾼다
+        private void ApplyBuff()
+        {
+            if (_skill.Effect.HitImmunityDuration > 0f)
+            {
+                _owner.GrantHitImmunity(_resolveAt + _skill.Effect.HitImmunityDuration);
+            }
+            if (_skill.Effect.ArcherElement != EArcherElement.None)
+            {
+                _element = _skill.Effect.ArcherElement;
+            }
+            AddStacks(_skill.Effect.StackGain);
+        }
+
+        /// <summary> 궁수 기본 공격 화살 한 발이 적을 맞힌 뒤 부른다, element는 그 화살이 나갈 때의 속성이다 </summary>
+        public void OnArrowHit(EArcherElement element, ICombatTarget target, in DamageResult result, double now)
+        {
+            if ((_playerClass != EPlayerClass.Archer) || (!result.CountsAsHit) || (target == null))
+            {
+                return;
+            }
+
+            _stacks = ArcherElementRules.AddStacks(_stacks, ArcherElementRules.GetStackGain(_catalog, element, _lastHitElement),
+                _catalog.ClassStackMax);
+            if (element != EArcherElement.None)
+            {
+                _lastHitElement = element;
+            }
+
+            if (target.LifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            switch (element)
+            {
+                case EArcherElement.Ice:
+                    if (target is ISkillSlowTarget slow)
+                    {
+                        slow.ApplySlow(_catalog.ChillSlowRate, _catalog.ChillDuration, now);
+                    }
+                    break;
+                case EArcherElement.Fire:
+                    ApplyBurn(target.CombatId, now);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void ApplyBurn(int targetId, double now)
+        {
+            int free = -1;
+            for (int i = 0; i < _burns.Length; ++i)
+            {
+                if ((_burns[i].Active) && (_burns[i].TargetId == targetId))
+                {
+                    _burns[i].EndsAt = now + _catalog.BurnDuration;
+                    return;
+                }
+                if ((!_burns[i].Active) && (free < 0))
+                {
+                    free = i;
+                }
+            }
+            if (free < 0)
+            {
+                return;
+            }
+            _burns[free] = new Burn
+            {
+                Active = true, TargetId = targetId, CastId = _resolver.IssueInstanceId(),
+                NextTick = now + _catalog.BurnTickInterval, EndsAt = now + _catalog.BurnDuration
+            };
+        }
+
+        // 끝 시각의 마지막 틱까지 포함한다. 대상이 죽거나 사라지면 남은 틱을 버린다. 시전자가 죽어도 이미 건 화상은 끝까지 탄다
+        private void TickBurns(double now)
+        {
+            for (int i = 0; i < _burns.Length; ++i)
+            {
+                ref Burn burn = ref _burns[i];
+                if (!burn.Active)
+                {
+                    continue;
+                }
+                while ((burn.NextTick <= now) && (burn.NextTick <= burn.EndsAt))
+                {
+                    if ((!_registry.TryGet(burn.TargetId, out ICombatTarget target)) || (target.LifeState != EParticipantLifeState.Alive))
+                    {
+                        burn.Active = false;
+                        break;
+                    }
+                    ApplyHit(target, _burnSourceId, burn.CastId, _resolver.IssueInstanceId(), target.Position,
+                        _catalog.BurnTickCoefficient, 0f, 0f, false, now);
+                    burn.NextTick += _catalog.BurnTickInterval;
+                }
+                if ((now >= burn.EndsAt) || (burn.NextTick > burn.EndsAt))
+                {
+                    burn.Active = false;
+                }
+            }
+        }
+
+        // 순간 이동 도착점은 발동 순간 정한다. 벽 앞에서는 몸 반경만큼 떨어져 멈추고, 이동 불가 지형은 NavMesh가 막은 자리까지만 간다
+        private Vector3 GetBlinkEnd()
+        {
+            float   range = TalismanModifierRules.GetCastRange(_skill, in _castModifiers);
+            Vector3 from  = _owner.Position;
+            float   clear = _lineOfSight.GetClearDistance(from, _aim, range);
+            if (clear < range)
+            {
+                clear = Mathf.Max(0f, clear - Constants.Combat.PLAYER_BODY_RADIUS);
+            }
+            Vector3 desired       = from + (_aim * clear);
+            Vector3 navigationEnd = _navigation.Move(from, desired);
+            if (HorizontalDistanceSqr(from, navigationEnd) < (clear * clear))
+            {
+                return navigationEnd;
+            }
+            if (_navigation.TrySample(desired, out Vector3 sampled))
+            {
+                desired.y = sampled.y;
+            }
+            return desired;
+        }
+
+        // 지나온 경로의 적을 한 번씩 베고 경로 끝으로 옮긴다. 발동 중 속박되면 베기만 하고 자리에 남는다
+        private void ApplyBlink(double now)
+        {
+            Vector3 from   = _origin;
+            Vector3 delta  = _blinkEnd - from;
+            delta.y = 0f;
+            float   length = delta.magnitude;
+            float   width  = TalismanModifierRules.GetProjectileWidth(_skill, in _castModifiers);
+            ApplyLine(_skill, in _castModifiers, from, _aim, length + Constants.Combat.SKILL_TARGET_BODY_RADIUS,
+                width * Constants.Combat.SKILL_HALF_WIDTH_SCALE, _castId, _actionId,
+                TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers), now);
+            if ((_dashStopped) || (_owner.LifeState != EParticipantLifeState.Alive))
+            {
+                return;
+            }
+            _owner.SetSkillPosition(_blinkEnd);
+            AddStacks(_skill.Effect.StackGain);
+        }
+
+        private void AddStacks(int amount)
+        {
+            if ((amount <= 0) || (_playerClass != EPlayerClass.Mageknight))
+            {
+                return;
+            }
+            _stacks = Math.Min(_catalog.ClassStackMax, _stacks + amount);
         }
 
         // 후퇴 사격, 조준 반대 방향으로 시전 때 고정한 거리만큼 물러난다. 벽, 이동 불가 지형, 적 몸체 앞에서 멈추고 아군은 지나간다
@@ -1162,6 +1401,12 @@ namespace Shinshi.Combat
 
         public void OnBasicHit(in DamageRequest request, in DamageResult result)
         {
+            // 한 번 휘두르기는 한 시전 번호를 쓰므로 여러 적을 맞혀도 스택은 한 번만 오른다
+            if ((_playerClass == EPlayerClass.Mageknight) && (result.CountsAsHit) && (request.CastInstanceId != _lastStackCastId))
+            {
+                _lastStackCastId = request.CastInstanceId;
+                AddStacks(_catalog.ClassStackPerBasicSwing);
+            }
             if (_playerClass == EPlayerClass.Summoner)
             {
                 _resonance.Record(in request, in result, EResonanceSource.Basic);
@@ -1262,13 +1507,19 @@ namespace Shinshi.Combat
                     _effects[i].Active = false;
                 }
             }
+            for (int i = 0; i < _burns.Length; ++i)
+            {
+                _burns[i].Active = false;
+            }
             ReplicateCompanions();
         }
 
-        /// <summary> 본체 사망은 동료만 즉시 복귀시키고 생성된 장판은 원래 수명을 유지한다 </summary>
+        /// <summary> 본체 사망은 동료만 즉시 복귀시키고 마검사, 궁수 스택을 비운다, 생성된 장판과 화상은 원래 수명을 유지한다. 궁수 속성은 유지한다 </summary>
         public void OnOwnerDeath()
         {
             Cancel();
+            _stacks         = 0;
+            _lastHitElement = EArcherElement.None;
             for (int i = 0; i < _companions.Length; ++i)
             {
                 _companions[i].Stop();

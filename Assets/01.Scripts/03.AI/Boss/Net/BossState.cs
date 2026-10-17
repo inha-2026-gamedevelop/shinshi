@@ -14,7 +14,8 @@ using Shinshi.Common;
 namespace Shinshi.AI
 {
     /// <summary> 보스 네트워크 개체의 복제 상태와 공격 사건 전달, 판정은 서버의 BossServer가 한다 </summary>
-    public class BossState : NetworkBehaviour, IBossEventListener, IBossMucheolEventListener, IBossHardPhaseEventListener
+    public class BossState : NetworkBehaviour, IBossEventListener, IBossMucheolEventListener, IBossHardPhaseEventListener,
+        IBossWolbaekGimmickEventListener
     {
         // 서버 스포너(BossNetworkSpawner)가 보스전 시작 틱에 서버 소유로 스폰한다. Command가 없어 클라이언트는 보스 상태를 바꿀 수 없다.
         //
@@ -30,10 +31,22 @@ namespace Shinshi.AI
         // 무철과 월백 하드 2페이즈 전용 사건은 선택 계약(IBossMucheolEventListener, IBossHardPhaseEventListener)으로 받아 같은 방식으로 보낸다.
         // 기록은 따로 두고(BossPhaseEffectLedger) 스폰 초기 상태에는 기본 기록 뒤에 싣는다. 클라이언트 수신부가 전용 계약을 구현하지 않으면
         // 사건은 기록에만 쌓이고 표현으로 가지 않는다. 사망과 전투 종료에는 중단 사건을 다 받지 못해도 전용 기록을 비운다
+        //
+        // 월백 체력 기믹 4종과 P07 워프 출발도 선택 계약(IBossWolbaekGimmickEventListener)으로 같은 방식을 따른다. 기록(BossWolbaekGimmickLedger)은
+        // 하드 페이즈 기록 뒤에 싣고 일회성 효과(판정, 폭발)는 기록하지 않아 재접속에서 다시 재생되지 않는다.
+        // 등장 시작, 처치, 페이즈 세대와 전환 시각은 서버가 정한 시각이라 표현이 추정하지 않도록 SyncVar로 보낸다.
+        // 페이즈 세대는 50% 성공 Rpc와 페이즈 SyncVar의 도착 순서와 상관없이 그로기 끝을 정하는 데 쓴다
+        //
+        // 무철 돌진 구조물은 진행 중인 공격이 아니라 전투 내내 남는 전장 상태라 기록(BossChargeStructureLedger)을 따로 둔다.
+        // 배치는 스폰 전에 서버가 넣고, 파괴는 서버 확정 사건으로만 쌓으며 전투가 끝날 때만 파괴 기록을 지운다.
+        // 스폰 초기 상태에는 월백 기록 뒤에 싣고, 복원은 진행 중 공격 복원보다 먼저 넘겨 그로기 복원이 구조물 상태 위에 그려지게 한다
 
         /****************************************
         *                Fields
         ****************************************/
+
+        /// <summary> 서버가 아직 정하지 않은 시각, double.IsNaN으로 확인한다 </summary>
+        public const double NO_SERVER_TIME = double.NaN;
 
         // 이 프리팹이 표현하는 보스 정의 ID(예: boss_mucheol), 서버 스포너가 보스 ID로 프리팹을 고르는 데만 쓴다.
         // 비우면 맞는 프리팹이 없는 보스가 쓰는 기본 프리팹이다
@@ -55,6 +68,13 @@ namespace Shinshi.AI
         [SyncVar(hook = nameof(OnPhaseStateSynced))]
         private EBossPhaseState _phaseState = EBossPhaseState.Active;
 
+        [SyncVar] private double _appearStartServerTime     = NO_SERVER_TIME;
+        [SyncVar] private double _defeatServerTime          = NO_SERVER_TIME;
+        [SyncVar] private double _phaseTransitionServerTime = NO_SERVER_TIME;
+
+        [SyncVar(hook = nameof(OnPhaseGenerationSynced))]
+        private ushort _phaseGeneration;
+
         // 서버 기록과 클라이언트 기록을 나눠 호스트에서 같은 사건이 두 번 쌓이지 않게 한다
         private readonly BossEffectLedger _serverLedger = new BossEffectLedger();
         private readonly BossEffectLedger _clientLedger = new BossEffectLedger();
@@ -62,10 +82,17 @@ namespace Shinshi.AI
         private readonly BossPhaseEffectLedger _serverPhaseLedger = new BossPhaseEffectLedger();
         private readonly BossPhaseEffectLedger _clientPhaseLedger = new BossPhaseEffectLedger();
 
-        private IBossStateListener          _listener;
-        private IBossMucheolStateListener   _mucheolListener; // 수신부가 구현했을 때만 있다
-        private IBossHardPhaseStateListener _hardListener;    // 수신부가 구현했을 때만 있다
-        private bool                        _clientStarted = false;
+        private readonly BossWolbaekGimmickLedger _serverWolbaekLedger = new BossWolbaekGimmickLedger();
+        private readonly BossWolbaekGimmickLedger _clientWolbaekLedger = new BossWolbaekGimmickLedger();
+
+        private readonly BossChargeStructureLedger _serverStructureLedger = new BossChargeStructureLedger();
+        private readonly BossChargeStructureLedger _clientStructureLedger = new BossChargeStructureLedger();
+
+        private IBossStateListener               _listener;
+        private IBossMucheolStateListener        _mucheolListener; // 수신부가 구현했을 때만 있다
+        private IBossHardPhaseStateListener      _hardListener;    // 수신부가 구현했을 때만 있다
+        private IBossWolbaekGimmickStateListener _wolbaekListener; // 수신부가 구현했을 때만 있다
+        private bool                             _clientStarted = false;
 
         /****************************************
         *              Properties
@@ -97,12 +124,31 @@ namespace Shinshi.AI
         /// <summary> 클라이언트가 받은 무철, 월백 하드 2페이즈 전용 공격 기록, 표현 확인과 진단용이다 </summary>
         public BossPhaseEffectLedger ClientPhaseLedger => _clientPhaseLedger;
 
+        /// <summary> 클라이언트가 받은 월백 체력 기믹과 워프 출발 기록, 표현 확인과 진단용이다 </summary>
+        public BossWolbaekGimmickLedger ClientWolbaekLedger => _clientWolbaekLedger;
+
+        /// <summary> 클라이언트가 받은 무철 돌진 구조물 배치와 파괴 기록, 표현 확인과 진단용이다 </summary>
+        public BossChargeStructureLedger ClientStructureLedger => _clientStructureLedger;
+
         /// <summary> 이 프리팹이 표현하는 보스 정의 ID, 비어 있으면 기본 프리팹이다 </summary>
         public string PrefabBossId => _prefabBossId;
+
+        /// <summary> 서버가 전투를 연 시각(등장 대기 시작), 아직 없으면 NaN이다 </summary>
+        public double AppearStartServerTime => _appearStartServerTime;
+
+        /// <summary> 서버가 보스 사망을 확정한 시각, 살아 있으면 NaN이다 </summary>
+        public double DefeatServerTime => _defeatServerTime;
+
+        /// <summary> 페이즈 번호가 바뀔 때마다 1씩 오르는 세대, 전투 시작은 0이다 </summary>
+        public ushort PhaseGeneration => _phaseGeneration;
+
+        /// <summary> 마지막 페이즈 전환 시각, 전환이 없었으면 NaN이다 </summary>
+        public double PhaseTransitionServerTime => _phaseTransitionServerTime;
 
         public event Action<EParticipantLifeState> LifeStateChanged;
         public event Action<EBossFlowState>        FlowStateChanged;
         public event Action<EBossPhaseState>       PhaseStateChanged;
+        public event Action<ushort>                PhaseGenerationChanged;
 
         /****************************************
         *            Client Callbacks
@@ -111,8 +157,18 @@ namespace Shinshi.AI
         public override void OnStartClient()
         {
             _clientStarted = true;
+
+            // 호스트는 스폰 초기 상태를 역직렬화하지 않아 서버가 스폰 전에 넣은 배치를 받지 못한다. 서버 기록에서 직접 옮긴다
+            if ((NetworkServer.active) && (isServer) && (_serverStructureLedger.HasLayout))
+            {
+                BossChargeStructureSnapshot layout = _serverStructureLedger.CreateSnapshot();
+                _clientStructureLedger.SetLayout(in layout);
+            }
+
             _clientLedger.Replay(_listener);
+            _clientStructureLedger.Replay(_mucheolListener);
             _clientPhaseLedger.Replay(_mucheolListener, _hardListener);
+            _clientWolbaekLedger.Replay(_wolbaekListener);
         }
 
         public override void OnStopClient()
@@ -120,6 +176,8 @@ namespace Shinshi.AI
             _clientStarted = false;
             _clientLedger.Clear();
             _clientPhaseLedger.Clear();
+            _clientWolbaekLedger.Clear();
+            _clientStructureLedger.Clear();
         }
 
         /****************************************
@@ -141,10 +199,13 @@ namespace Shinshi.AI
             _listener        = listener;
             _mucheolListener = listener as IBossMucheolStateListener;
             _hardListener    = listener as IBossHardPhaseStateListener;
+            _wolbaekListener = listener as IBossWolbaekGimmickStateListener;
             if (_clientStarted)
             {
                 _clientLedger.Replay(_listener);
+                _clientStructureLedger.Replay(_mucheolListener);
                 _clientPhaseLedger.Replay(_mucheolListener, _hardListener);
+                _clientWolbaekLedger.Replay(_wolbaekListener);
             }
         }
 
@@ -171,7 +232,21 @@ namespace Shinshi.AI
             if (!IsFighting(lifeState, flowState))
             {
                 _serverPhaseLedger.Clear();
+                _serverWolbaekLedger.Clear();
+                _serverStructureLedger.ClearDestroyed();
             }
+        }
+
+        // 시각을 모르면 NaN을 넘긴다. 같은 값이면 SyncVar가 더럽혀지지 않으므로 매 틱 불러도 된다
+        /// <summary> 등장 시작, 처치, 페이즈 세대와 전환 시각을 싣는다 </summary>
+        [Server]
+        public void SetTimelineSnapshot(double appearStartServerTime, double defeatServerTime, ushort phaseGeneration,
+            double phaseTransitionServerTime)
+        {
+            _appearStartServerTime     = appearStartServerTime;
+            _defeatServerTime          = defeatServerTime;
+            _phaseGeneration           = phaseGeneration;
+            _phaseTransitionServerTime = phaseTransitionServerTime;
         }
 
         /// <summary> 다음 스폰에 다시 쓸 때 이전 전투의 기록을 지운다 </summary>
@@ -180,12 +255,31 @@ namespace Shinshi.AI
         {
             _serverLedger.Clear();
             _serverPhaseLedger.Clear();
+            _serverWolbaekLedger.Clear();
+            _serverStructureLedger.Clear();
+        }
+
+        // 스폰 전에 불러야 첫 관찰자부터 배치를 받는다. 스폰 뒤에 바꾸면 이미 접속한 관찰자에게는 가지 않는다.
+        // 상한을 넘는 배치는 스폰 쓰기에서 예외가 나 스폰을 깨므로 싣지 않고 남긴다
+        /// <summary> 무철 돌진 구조물 배치를 늦은 접속 복원 기록에 넣는다, 넣지 못하면 거짓이다 </summary>
+        [Server]
+        public bool SetChargeStructureLayout(in BossChargeStructureSnapshot layout)
+        {
+            if (!_serverStructureLedger.SetLayout(in layout))
+            {
+                Debug.LogError($"[Boss] 돌진 구조물 배치가 어긋났거나 상한을 넘어 복원에 싣지 않는다, count={layout.Count}, " +
+                    $"max={Constants.Network.BOSS_CHARGE_STRUCTURE_MAX_COUNT}");
+                return false;
+            }
+
+            return true;
         }
 
         [Server]
         public void OnTelegraphStarted(in BossTelegraphStart start)
         {
             _serverLedger.OnTelegraphStarted(in start);
+            _serverPhaseLedger.OnCastStarted(start.CastId);
             RpcTelegraphStarted(start);
         }
 
@@ -218,10 +312,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall)
+        public void OnDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
-            _serverLedger.OnDashStopped(castId, position, stoppedByWall);
-            RpcDashStopped(castId, position, stoppedByWall);
+            _serverLedger.OnDashStopped(castId, position, stoppedByWall, stopServerTime);
+            RpcDashStopped(castId, position, stoppedByWall, stopServerTime);
         }
 
         [Server]
@@ -229,6 +323,7 @@ namespace Shinshi.AI
         {
             _serverLedger.OnFinished(castId);
             _serverPhaseLedger.OnCastEnded(castId);
+            _serverWolbaekLedger.OnCastEnded(castId);
             RpcFinished(castId);
         }
 
@@ -237,6 +332,7 @@ namespace Shinshi.AI
         {
             _serverLedger.OnCancelled(castId);
             _serverPhaseLedger.OnCastEnded(castId);
+            _serverWolbaekLedger.OnCastEnded(castId);
             RpcCancelled(castId);
         }
 
@@ -312,10 +408,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnBeamCancelled(int beamId)
+        public void OnBeamCancelled(int castId, int beamId)
         {
-            _serverLedger.OnBeamCancelled(beamId);
-            RpcBeamCancelled(beamId);
+            _serverLedger.OnBeamCancelled(castId, beamId);
+            RpcBeamCancelled(castId, beamId);
         }
 
         [Server]
@@ -347,10 +443,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnStarCancelled(int starId)
+        public void OnStarCancelled(int castId, int starId)
         {
-            _serverLedger.OnStarCancelled(starId);
-            RpcStarCancelled(starId);
+            _serverLedger.OnStarCancelled(castId, starId);
+            RpcStarCancelled(castId, starId);
         }
 
         [Server]
@@ -478,10 +574,11 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        public void OnMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
-            _serverPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
-            RpcMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
+            _serverPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
+            RpcMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
         }
 
         [Server]
@@ -524,6 +621,40 @@ namespace Shinshi.AI
         {
             _serverPhaseLedger.OnChargeEnded(in outcome);
             RpcChargeEnded(outcome);
+        }
+
+        [Server]
+        public void OnChargeGroggyPending(in BossChargeGroggy groggy)
+        {
+            _serverPhaseLedger.OnChargeGroggyPending(in groggy);
+            RpcChargeGroggyPending(groggy);
+        }
+
+        [Server]
+        public void OnChargeGroggyStarted(in BossChargeGroggy groggy)
+        {
+            _serverPhaseLedger.OnChargeGroggyStarted(in groggy);
+            RpcChargeGroggyStarted(groggy);
+        }
+
+        [Server]
+        public void OnChargeGroggyCancelled(int castId)
+        {
+            _serverPhaseLedger.OnChargeGroggyCancelled(castId);
+            RpcChargeGroggyCancelled(castId);
+        }
+
+        // 배치에 없거나 이미 부서진 구조물은 클라이언트가 다시 전환하지 않도록 보내지 않는다
+        [Server]
+        public void OnChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+            if (!_serverStructureLedger.MarkDestroyed(structureId))
+            {
+                Debug.LogWarning($"[Boss] 배치에 없거나 이미 부서진 돌진 구조물이라 파괴 사건을 보내지 않는다, structureId={structureId}");
+                return;
+            }
+
+            RpcChargeStructureDestroyed(castId, structureId, serverTime);
         }
 
         [Server]
@@ -628,10 +759,10 @@ namespace Shinshi.AI
         }
 
         [Server]
-        public void OnTrackingAreaCancelled(int areaId)
+        public void OnTrackingAreaCancelled(int castId, int areaId)
         {
-            _serverPhaseLedger.OnTrackingAreaCancelled(areaId);
-            RpcTrackingAreaCancelled(areaId);
+            _serverPhaseLedger.OnTrackingAreaCancelled(castId, areaId);
+            RpcTrackingAreaCancelled(castId, areaId);
         }
 
         [Server]
@@ -685,6 +816,365 @@ namespace Shinshi.AI
         }
 
         /****************************************
+        *     Server (Wolbaek Gimmick Events)
+        ****************************************/
+
+        // 목록이 상한을 넘는 값은 Rpc 쓰기에서 예외가 나 서버 틱을 멈추므로 보내기 전에 버리고 남긴다
+
+        [Server]
+        public void OnTalismanStarted(in WolbaekTalismanStart start)
+        {
+            if (!BossWolbaekNetSerializer.CanWrite(in start))
+            {
+                LogWolbaekDrop("부적진 시작", start.CastInstanceId);
+                return;
+            }
+
+            _serverWolbaekLedger.OnTalismanStarted(in start);
+            RpcTalismanStarted(start);
+        }
+
+        [Server]
+        public void OnTalismanHoldStarted(int castId, double serverTime)
+        {
+            _serverWolbaekLedger.OnTalismanHoldStarted(castId, serverTime);
+            RpcTalismanHoldStarted(castId, serverTime);
+        }
+
+        [Server]
+        public void OnTalismanHoldReset(int castId, double serverTime, EWolbaekHoldReset reason, int combatId)
+        {
+            _serverWolbaekLedger.OnTalismanHoldReset(castId, serverTime, reason, combatId);
+            RpcTalismanHoldReset(castId, serverTime, reason, combatId);
+        }
+
+        [Server]
+        public void OnTalismanAttackTelegraphed(int castId, in WolbaekTalismanAttack attack)
+        {
+            _serverWolbaekLedger.OnTalismanAttackTelegraphed(castId, in attack);
+            RpcTalismanAttackTelegraphed(castId, attack);
+        }
+
+        [Server]
+        public void OnTalismanAttackStruck(int castId, int attackId, double strikeServerTime)
+        {
+            _serverWolbaekLedger.OnTalismanAttackStruck(castId, attackId, strikeServerTime);
+            RpcTalismanAttackStruck(castId, attackId, strikeServerTime);
+        }
+
+        [Server]
+        public void OnTalismanAttackCancelled(int castId, int attackId)
+        {
+            _serverWolbaekLedger.OnTalismanAttackCancelled(castId, attackId);
+            RpcTalismanAttackCancelled(castId, attackId);
+        }
+
+        [Server]
+        public void OnTalismanSucceeded(int castId, double serverTime, double counterEndServerTime)
+        {
+            _serverWolbaekLedger.OnTalismanSucceeded(castId, serverTime, counterEndServerTime);
+            RpcTalismanSucceeded(castId, serverTime, counterEndServerTime);
+        }
+
+        [Server]
+        public void OnTalismanCounterEnded(int castId)
+        {
+            _serverWolbaekLedger.OnTalismanCounterEnded(castId);
+            RpcTalismanCounterEnded(castId);
+        }
+
+        [Server]
+        public void OnTalismanCleared(int castId)
+        {
+            _serverWolbaekLedger.OnTalismanCleared(castId);
+            RpcTalismanCleared(castId);
+        }
+
+        [Server]
+        public void OnWardStarted(in WolbaekWardStart start)
+        {
+            if (!BossWolbaekNetSerializer.CanWrite(in start))
+            {
+                LogWolbaekDrop("색 결계 시작", start.CastInstanceId);
+                return;
+            }
+
+            _serverWolbaekLedger.OnWardStarted(in start);
+            RpcWardStarted(start);
+        }
+
+        [Server]
+        public void OnGatherHoldStarted(int castId, double serverTime)
+        {
+            _serverWolbaekLedger.OnGatherHoldStarted(castId, serverTime);
+            RpcGatherHoldStarted(castId, serverTime);
+        }
+
+        [Server]
+        public void OnGatherHoldReset(int castId)
+        {
+            _serverWolbaekLedger.OnGatherHoldReset(castId);
+            RpcGatherHoldReset(castId);
+        }
+
+        [Server]
+        public void OnGatherCompleted(int castId)
+        {
+            _serverWolbaekLedger.OnGatherCompleted(castId);
+            RpcGatherCompleted(castId);
+        }
+
+        [Server]
+        public void OnStageStarted(int castId, in WolbaekWardStage stage)
+        {
+            _serverWolbaekLedger.OnStageStarted(castId, in stage);
+            RpcWardStageStarted(castId, stage);
+        }
+
+        [Server]
+        public void OnStrikeTelegraphed(int castId, in WolbaekWardStrike strike)
+        {
+            _serverWolbaekLedger.OnStrikeTelegraphed(castId, in strike);
+            RpcWardStrikeTelegraphed(castId, strike);
+        }
+
+        [Server]
+        public void OnStrikeResolved(int castId, int stageIndex, int strikeIndex, double strikeServerTime)
+        {
+            _serverWolbaekLedger.OnStrikeResolved(castId, stageIndex, strikeIndex, strikeServerTime);
+            RpcWardStrikeResolved(castId, stageIndex, strikeIndex, strikeServerTime);
+        }
+
+        [Server]
+        public void OnLinkDamaged(int castId, double serverTime)
+        {
+            RpcWardLinkDamaged(castId, serverTime);
+        }
+
+        [Server]
+        public void OnGraceStarted(int castId, int combatId, double graceEndServerTime)
+        {
+            _serverWolbaekLedger.OnGraceStarted(castId, combatId, graceEndServerTime);
+            RpcWardGraceStarted(castId, combatId, graceEndServerTime);
+        }
+
+        [Server]
+        public void OnGraceEnded(int castId, int combatId)
+        {
+            _serverWolbaekLedger.OnGraceEnded(castId, combatId);
+            RpcWardGraceEnded(castId, combatId);
+        }
+
+        [Server]
+        public void OnReviveWindowOpened(int castId)
+        {
+            RpcWardReviveWindowOpened(castId);
+        }
+
+        [Server]
+        public void OnWardSucceeded(int castId, ushort phaseGenerationAtSuccess)
+        {
+            _serverWolbaekLedger.OnWardSucceeded(castId, phaseGenerationAtSuccess);
+            RpcWardSucceeded(castId, phaseGenerationAtSuccess);
+        }
+
+        [Server]
+        public void OnWardCleared(int castId)
+        {
+            _serverWolbaekLedger.OnWardCleared(castId);
+            RpcWardCleared(castId);
+        }
+
+        [Server]
+        public void OnSealStarted(in WolbaekSealStart start)
+        {
+            _serverWolbaekLedger.OnSealStarted(in start);
+            RpcSealStarted(start);
+        }
+
+        [Server]
+        public void OnSealTurnStarted(int castId, in WolbaekSealTurn turn)
+        {
+            if (!BossWolbaekNetSerializer.CanWrite(in turn))
+            {
+                LogWolbaekDrop("봉인 차례", castId);
+                return;
+            }
+
+            _serverWolbaekLedger.OnSealTurnStarted(castId, in turn);
+            RpcSealTurnStarted(castId, turn);
+        }
+
+        [Server]
+        public void OnSealTrackingStarted(int castId, int turnIndex, double serverTime)
+        {
+            _serverWolbaekLedger.OnSealTrackingStarted(castId, turnIndex, serverTime);
+            RpcSealTrackingStarted(castId, turnIndex, serverTime);
+        }
+
+        [Server]
+        public void OnSealFoxfireDetached(int castId, int turnIndex, int foxfireIndex, double serverTime, Vector3 position)
+        {
+            _serverWolbaekLedger.OnSealFoxfireDetached(castId, turnIndex, foxfireIndex, serverTime, position);
+            RpcSealFoxfireDetached(castId, turnIndex, foxfireIndex, serverTime, position);
+        }
+
+        [Server]
+        public void OnSealSweepTelegraphed(int castId, in WolbaekSealSweep sweep)
+        {
+            _serverWolbaekLedger.OnSealSweepTelegraphed(castId, in sweep);
+            RpcSealSweepTelegraphed(castId, sweep);
+        }
+
+        [Server]
+        public void OnSealSweepResolved(int castId, int turnIndex, int sweepIndex, double serverTime)
+        {
+            _serverWolbaekLedger.OnSealSweepResolved(castId, turnIndex, sweepIndex, serverTime);
+            RpcSealSweepResolved(castId, turnIndex, sweepIndex, serverTime);
+        }
+
+        [Server]
+        public void OnSealFoxfiresLocked(int castId, int turnIndex, double serverTime, Vector3[] centers)
+        {
+            if (!BossWolbaekNetSerializer.IsWithin(centers, Constants.Network.BOSS_WOLBAEK_MAX_FOXFIRES))
+            {
+                LogWolbaekDrop("봉인 여우불 고정", castId);
+                return;
+            }
+
+            _serverWolbaekLedger.OnSealFoxfiresLocked(castId, turnIndex, serverTime, centers);
+            RpcSealFoxfiresLocked(castId, turnIndex, serverTime, centers);
+        }
+
+        [Server]
+        public void OnSealTurnResolved(int castId, int turnIndex, double serverTime, int successCount, byte destroyedCoreMask)
+        {
+            _serverWolbaekLedger.OnSealTurnResolved(castId, turnIndex, serverTime, successCount, destroyedCoreMask);
+            RpcSealTurnResolved(castId, turnIndex, serverTime, successCount, destroyedCoreMask);
+        }
+
+        [Server]
+        public void OnSealSucceeded(int castId, double serverTime, double counterEndServerTime)
+        {
+            _serverWolbaekLedger.OnSealSucceeded(castId, serverTime, counterEndServerTime);
+            RpcSealSucceeded(castId, serverTime, counterEndServerTime);
+        }
+
+        [Server]
+        public void OnSealCounterEnded(int castId)
+        {
+            _serverWolbaekLedger.OnSealCounterEnded(castId);
+            RpcSealCounterEnded(castId);
+        }
+
+        [Server]
+        public void OnSealCleared(int castId)
+        {
+            _serverWolbaekLedger.OnSealCleared(castId);
+            RpcSealCleared(castId);
+        }
+
+        [Server]
+        public void OnFinalStarted(in WolbaekFinalStart start)
+        {
+            _serverWolbaekLedger.OnFinalStarted(in start);
+            RpcFinalStarted(start);
+        }
+
+        [Server]
+        public void OnFinalOuterFloorRemoved(int castId, double serverTime)
+        {
+            _serverWolbaekLedger.OnFinalOuterFloorRemoved(castId, serverTime);
+            RpcFinalOuterFloorRemoved(castId, serverTime);
+        }
+
+        [Server]
+        public void OnFinalYellowsSpawned(int castId, WolbaekFinalYellow[] yellows)
+        {
+            if (!BossWolbaekNetSerializer.CanWrite(yellows))
+            {
+                LogWolbaekDrop("노란 여우불 생성", castId);
+                return;
+            }
+
+            _serverWolbaekLedger.OnFinalYellowsSpawned(castId, yellows);
+            RpcFinalYellowsSpawned(castId, yellows);
+        }
+
+        [Server]
+        public void OnFinalYellowDestroyed(int castId, int yellowIndex, double serverTime)
+        {
+            _serverWolbaekLedger.OnFinalYellowDestroyed(castId, yellowIndex, serverTime);
+            RpcFinalYellowDestroyed(castId, yellowIndex, serverTime);
+        }
+
+        [Server]
+        public void OnFinalBundleStarted(int castId, in WolbaekFinalBundle bundle)
+        {
+            if (!BossWolbaekNetSerializer.CanWrite(in bundle))
+            {
+                LogWolbaekDrop("빨간 여우불 묶음", castId);
+                return;
+            }
+
+            _serverWolbaekLedger.OnFinalBundleStarted(castId, in bundle);
+            RpcFinalBundleStarted(castId, bundle);
+        }
+
+        [Server]
+        public void OnFinalRedDetached(int castId, int bundleIndex, int redIndex, double serverTime, Vector3 position)
+        {
+            _serverWolbaekLedger.OnFinalRedDetached(castId, bundleIndex, redIndex, serverTime, position);
+            RpcFinalRedDetached(castId, bundleIndex, redIndex, serverTime, position);
+        }
+
+        [Server]
+        public void OnFinalRedsLocked(int castId, int bundleIndex, double serverTime, Vector3[] centers)
+        {
+            if (!BossWolbaekNetSerializer.IsWithin(centers, Constants.Network.BOSS_WOLBAEK_MAX_REDS))
+            {
+                LogWolbaekDrop("빨간 여우불 고정", castId);
+                return;
+            }
+
+            _serverWolbaekLedger.OnFinalRedsLocked(castId, bundleIndex, serverTime, centers);
+            RpcFinalRedsLocked(castId, bundleIndex, serverTime, centers);
+        }
+
+        [Server]
+        public void OnFinalBundleResolved(int castId, int bundleIndex, double serverTime)
+        {
+            _serverWolbaekLedger.OnFinalBundleResolved(castId, bundleIndex, serverTime);
+            RpcFinalBundleResolved(castId, bundleIndex, serverTime);
+        }
+
+        [Server]
+        public void OnFinalSucceeded(int castId, double serverTime)
+        {
+            _serverWolbaekLedger.OnFinalSucceeded(castId, serverTime);
+            RpcFinalSucceeded(castId, serverTime);
+        }
+
+        [Server]
+        public void OnFinalCleared(int castId)
+        {
+            _serverWolbaekLedger.OnFinalCleared(castId);
+            RpcFinalCleared(castId);
+        }
+
+        [Server]
+        public void OnWarpDeparted(int castId, Vector3 departure, double serverTime)
+        {
+            _serverWolbaekLedger.OnWarpDeparted(castId, departure, serverTime);
+            RpcWarpDeparted(castId, departure, serverTime);
+        }
+
+        private static void LogWolbaekDrop(string name, int castId)
+        {
+            Debug.LogError($"[Boss] 월백 기믹 {name} 목록이 상한을 넘어 보내지 않는다, castId={castId}");
+        }
+
+        /****************************************
         *               ClientRpc
         ****************************************/
 
@@ -692,6 +1182,7 @@ namespace Shinshi.AI
         private void RpcTelegraphStarted(BossTelegraphStart start)
         {
             _clientLedger.OnTelegraphStarted(in start);
+            _clientPhaseLedger.OnCastStarted(start.CastId);
             _listener?.OnTelegraphStarted(in start);
         }
 
@@ -724,10 +1215,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcDashStopped(int castId, Vector3 position, bool stoppedByWall)
+        private void RpcDashStopped(int castId, Vector3 position, bool stoppedByWall, double stopServerTime)
         {
-            _clientLedger.OnDashStopped(castId, position, stoppedByWall);
-            _listener?.OnDashStopped(castId, position, stoppedByWall);
+            _clientLedger.OnDashStopped(castId, position, stoppedByWall, stopServerTime);
+            _listener?.OnDashStopped(castId, position, stoppedByWall, stopServerTime);
         }
 
         [ClientRpc]
@@ -735,6 +1226,7 @@ namespace Shinshi.AI
         {
             _clientLedger.OnFinished(castId);
             _clientPhaseLedger.OnCastEnded(castId);
+            _clientWolbaekLedger.OnCastEnded(castId);
             _listener?.OnFinished(castId);
         }
 
@@ -743,6 +1235,7 @@ namespace Shinshi.AI
         {
             _clientLedger.OnCancelled(castId);
             _clientPhaseLedger.OnCastEnded(castId);
+            _clientWolbaekLedger.OnCastEnded(castId);
             _listener?.OnCancelled(castId);
         }
 
@@ -818,10 +1311,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcBeamCancelled(int beamId)
+        private void RpcBeamCancelled(int castId, int beamId)
         {
-            _clientLedger.OnBeamCancelled(beamId);
-            _listener?.OnBeamCancelled(beamId);
+            _clientLedger.OnBeamCancelled(castId, beamId);
+            _listener?.OnBeamCancelled(castId, beamId);
         }
 
         [ClientRpc]
@@ -853,10 +1346,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcStarCancelled(int starId)
+        private void RpcStarCancelled(int castId, int starId)
         {
-            _clientLedger.OnStarCancelled(starId);
-            _listener?.OnStarCancelled(starId);
+            _clientLedger.OnStarCancelled(castId, starId);
+            _listener?.OnStarCancelled(castId, starId);
         }
 
         [ClientRpc]
@@ -984,10 +1477,11 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall)
+        private void RpcMultiDashDashStopped(int castId, int dashIndex, Vector3 position, bool stoppedByWall,
+            double stopServerTime)
         {
-            _clientPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
-            _mucheolListener?.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall);
+            _clientPhaseLedger.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
+            _mucheolListener?.OnMultiDashDashStopped(castId, dashIndex, position, stoppedByWall, stopServerTime);
         }
 
         [ClientRpc]
@@ -1030,6 +1524,39 @@ namespace Shinshi.AI
         {
             _clientPhaseLedger.OnChargeEnded(in outcome);
             _mucheolListener?.OnChargeEnded(in outcome);
+        }
+
+        [ClientRpc]
+        private void RpcChargeGroggyPending(BossChargeGroggy groggy)
+        {
+            _clientPhaseLedger.OnChargeGroggyPending(in groggy);
+            _mucheolListener?.OnChargeGroggyPending(in groggy);
+        }
+
+        [ClientRpc]
+        private void RpcChargeGroggyStarted(BossChargeGroggy groggy)
+        {
+            _clientPhaseLedger.OnChargeGroggyStarted(in groggy);
+            _mucheolListener?.OnChargeGroggyStarted(in groggy);
+        }
+
+        [ClientRpc]
+        private void RpcChargeGroggyCancelled(int castId)
+        {
+            _clientPhaseLedger.OnChargeGroggyCancelled(castId);
+            _mucheolListener?.OnChargeGroggyCancelled(castId);
+        }
+
+        // 같은 구조물이 두 번 오면 표현이 연출을 다시 재생하지 않도록 기록이 처음 바꿨을 때만 넘긴다
+        [ClientRpc]
+        private void RpcChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+            if (!_clientStructureLedger.MarkDestroyed(structureId))
+            {
+                return;
+            }
+
+            _mucheolListener?.OnChargeStructureDestroyed(castId, structureId, serverTime);
         }
 
         [ClientRpc]
@@ -1135,10 +1662,10 @@ namespace Shinshi.AI
         }
 
         [ClientRpc]
-        private void RpcTrackingAreaCancelled(int areaId)
+        private void RpcTrackingAreaCancelled(int castId, int areaId)
         {
-            _clientPhaseLedger.OnTrackingAreaCancelled(areaId);
-            _hardListener?.OnTrackingAreaCancelled(areaId);
+            _clientPhaseLedger.OnTrackingAreaCancelled(castId, areaId);
+            _hardListener?.OnTrackingAreaCancelled(castId, areaId);
         }
 
         [ClientRpc]
@@ -1192,6 +1719,327 @@ namespace Shinshi.AI
         }
 
         /****************************************
+        *   ClientRpc (Wolbaek Gimmick Events)
+        ****************************************/
+
+        [ClientRpc]
+        private void RpcTalismanStarted(WolbaekTalismanStart start)
+        {
+            _clientWolbaekLedger.OnTalismanStarted(in start);
+            _wolbaekListener?.OnTalismanStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanHoldStarted(int castId, double serverTime)
+        {
+            _clientWolbaekLedger.OnTalismanHoldStarted(castId, serverTime);
+            _wolbaekListener?.OnTalismanHoldStarted(castId, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanHoldReset(int castId, double serverTime, EWolbaekHoldReset reason, int combatId)
+        {
+            _clientWolbaekLedger.OnTalismanHoldReset(castId, serverTime, reason, combatId);
+            _wolbaekListener?.OnTalismanHoldReset(castId, serverTime, reason, combatId);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanAttackTelegraphed(int castId, WolbaekTalismanAttack attack)
+        {
+            _clientWolbaekLedger.OnTalismanAttackTelegraphed(castId, in attack);
+            _wolbaekListener?.OnTalismanAttackTelegraphed(castId, in attack);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanAttackStruck(int castId, int attackId, double strikeServerTime)
+        {
+            _clientWolbaekLedger.OnTalismanAttackStruck(castId, attackId, strikeServerTime);
+            _wolbaekListener?.OnTalismanAttackStruck(castId, attackId, strikeServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanAttackCancelled(int castId, int attackId)
+        {
+            _clientWolbaekLedger.OnTalismanAttackCancelled(castId, attackId);
+            _wolbaekListener?.OnTalismanAttackCancelled(castId, attackId);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanSucceeded(int castId, double serverTime, double counterEndServerTime)
+        {
+            _clientWolbaekLedger.OnTalismanSucceeded(castId, serverTime, counterEndServerTime);
+            _wolbaekListener?.OnTalismanSucceeded(castId, serverTime, counterEndServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanCounterEnded(int castId)
+        {
+            _clientWolbaekLedger.OnTalismanCounterEnded(castId);
+            _wolbaekListener?.OnTalismanCounterEnded(castId);
+        }
+
+        [ClientRpc]
+        private void RpcTalismanCleared(int castId)
+        {
+            _clientWolbaekLedger.OnTalismanCleared(castId);
+            _wolbaekListener?.OnTalismanCleared(castId);
+        }
+
+        [ClientRpc]
+        private void RpcWardStarted(WolbaekWardStart start)
+        {
+            _clientWolbaekLedger.OnWardStarted(in start);
+            _wolbaekListener?.OnWardStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcGatherHoldStarted(int castId, double serverTime)
+        {
+            _clientWolbaekLedger.OnGatherHoldStarted(castId, serverTime);
+            _wolbaekListener?.OnGatherHoldStarted(castId, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcGatherHoldReset(int castId)
+        {
+            _clientWolbaekLedger.OnGatherHoldReset(castId);
+            _wolbaekListener?.OnGatherHoldReset(castId);
+        }
+
+        [ClientRpc]
+        private void RpcGatherCompleted(int castId)
+        {
+            _clientWolbaekLedger.OnGatherCompleted(castId);
+            _wolbaekListener?.OnGatherCompleted(castId);
+        }
+
+        [ClientRpc]
+        private void RpcWardStageStarted(int castId, WolbaekWardStage stage)
+        {
+            _clientWolbaekLedger.OnStageStarted(castId, in stage);
+            _wolbaekListener?.OnStageStarted(castId, in stage);
+        }
+
+        [ClientRpc]
+        private void RpcWardStrikeTelegraphed(int castId, WolbaekWardStrike strike)
+        {
+            _clientWolbaekLedger.OnStrikeTelegraphed(castId, in strike);
+            _wolbaekListener?.OnStrikeTelegraphed(castId, in strike);
+        }
+
+        [ClientRpc]
+        private void RpcWardStrikeResolved(int castId, int stageIndex, int strikeIndex, double strikeServerTime)
+        {
+            _clientWolbaekLedger.OnStrikeResolved(castId, stageIndex, strikeIndex, strikeServerTime);
+            _wolbaekListener?.OnStrikeResolved(castId, stageIndex, strikeIndex, strikeServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcWardLinkDamaged(int castId, double serverTime)
+        {
+            _wolbaekListener?.OnLinkDamaged(castId, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcWardGraceStarted(int castId, int combatId, double graceEndServerTime)
+        {
+            _clientWolbaekLedger.OnGraceStarted(castId, combatId, graceEndServerTime);
+            _wolbaekListener?.OnGraceStarted(castId, combatId, graceEndServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcWardGraceEnded(int castId, int combatId)
+        {
+            _clientWolbaekLedger.OnGraceEnded(castId, combatId);
+            _wolbaekListener?.OnGraceEnded(castId, combatId);
+        }
+
+        [ClientRpc]
+        private void RpcWardReviveWindowOpened(int castId)
+        {
+            _wolbaekListener?.OnReviveWindowOpened(castId);
+        }
+
+        [ClientRpc]
+        private void RpcWardSucceeded(int castId, ushort phaseGenerationAtSuccess)
+        {
+            _clientWolbaekLedger.OnWardSucceeded(castId, phaseGenerationAtSuccess);
+            _wolbaekListener?.OnWardSucceeded(castId, phaseGenerationAtSuccess);
+        }
+
+        [ClientRpc]
+        private void RpcWardCleared(int castId)
+        {
+            _clientWolbaekLedger.OnWardCleared(castId);
+            _wolbaekListener?.OnWardCleared(castId);
+        }
+
+        [ClientRpc]
+        private void RpcSealStarted(WolbaekSealStart start)
+        {
+            _clientWolbaekLedger.OnSealStarted(in start);
+            _wolbaekListener?.OnSealStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcSealTurnStarted(int castId, WolbaekSealTurn turn)
+        {
+            _clientWolbaekLedger.OnSealTurnStarted(castId, in turn);
+            _wolbaekListener?.OnSealTurnStarted(castId, in turn);
+        }
+
+        [ClientRpc]
+        private void RpcSealTrackingStarted(int castId, int turnIndex, double serverTime)
+        {
+            _clientWolbaekLedger.OnSealTrackingStarted(castId, turnIndex, serverTime);
+            _wolbaekListener?.OnSealTrackingStarted(castId, turnIndex, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcSealFoxfireDetached(int castId, int turnIndex, int foxfireIndex, double serverTime, Vector3 position)
+        {
+            _clientWolbaekLedger.OnSealFoxfireDetached(castId, turnIndex, foxfireIndex, serverTime, position);
+            _wolbaekListener?.OnSealFoxfireDetached(castId, turnIndex, foxfireIndex, serverTime, position);
+        }
+
+        [ClientRpc]
+        private void RpcSealSweepTelegraphed(int castId, WolbaekSealSweep sweep)
+        {
+            _clientWolbaekLedger.OnSealSweepTelegraphed(castId, in sweep);
+            _wolbaekListener?.OnSealSweepTelegraphed(castId, in sweep);
+        }
+
+        [ClientRpc]
+        private void RpcSealSweepResolved(int castId, int turnIndex, int sweepIndex, double serverTime)
+        {
+            _clientWolbaekLedger.OnSealSweepResolved(castId, turnIndex, sweepIndex, serverTime);
+            _wolbaekListener?.OnSealSweepResolved(castId, turnIndex, sweepIndex, serverTime);
+        }
+
+        // 배열은 Weaver 기본 읽기라 상한을 여기서 본다. 넘으면 프로토콜 불일치로 보고 버린다
+        [ClientRpc]
+        private void RpcSealFoxfiresLocked(int castId, int turnIndex, double serverTime, Vector3[] centers)
+        {
+            if (!BossWolbaekNetSerializer.IsWithin(centers, Constants.Network.BOSS_WOLBAEK_MAX_FOXFIRES))
+            {
+                return;
+            }
+
+            _clientWolbaekLedger.OnSealFoxfiresLocked(castId, turnIndex, serverTime, centers);
+            _wolbaekListener?.OnSealFoxfiresLocked(castId, turnIndex, serverTime, centers);
+        }
+
+        [ClientRpc]
+        private void RpcSealTurnResolved(int castId, int turnIndex, double serverTime, int successCount, byte destroyedCoreMask)
+        {
+            _clientWolbaekLedger.OnSealTurnResolved(castId, turnIndex, serverTime, successCount, destroyedCoreMask);
+            _wolbaekListener?.OnSealTurnResolved(castId, turnIndex, serverTime, successCount, destroyedCoreMask);
+        }
+
+        [ClientRpc]
+        private void RpcSealSucceeded(int castId, double serverTime, double counterEndServerTime)
+        {
+            _clientWolbaekLedger.OnSealSucceeded(castId, serverTime, counterEndServerTime);
+            _wolbaekListener?.OnSealSucceeded(castId, serverTime, counterEndServerTime);
+        }
+
+        [ClientRpc]
+        private void RpcSealCounterEnded(int castId)
+        {
+            _clientWolbaekLedger.OnSealCounterEnded(castId);
+            _wolbaekListener?.OnSealCounterEnded(castId);
+        }
+
+        [ClientRpc]
+        private void RpcSealCleared(int castId)
+        {
+            _clientWolbaekLedger.OnSealCleared(castId);
+            _wolbaekListener?.OnSealCleared(castId);
+        }
+
+        [ClientRpc]
+        private void RpcFinalStarted(WolbaekFinalStart start)
+        {
+            _clientWolbaekLedger.OnFinalStarted(in start);
+            _wolbaekListener?.OnFinalStarted(in start);
+        }
+
+        [ClientRpc]
+        private void RpcFinalOuterFloorRemoved(int castId, double serverTime)
+        {
+            _clientWolbaekLedger.OnFinalOuterFloorRemoved(castId, serverTime);
+            _wolbaekListener?.OnFinalOuterFloorRemoved(castId, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcFinalYellowsSpawned(int castId, WolbaekFinalYellow[] yellows)
+        {
+            _clientWolbaekLedger.OnFinalYellowsSpawned(castId, yellows);
+            _wolbaekListener?.OnFinalYellowsSpawned(castId, yellows);
+        }
+
+        [ClientRpc]
+        private void RpcFinalYellowDestroyed(int castId, int yellowIndex, double serverTime)
+        {
+            _clientWolbaekLedger.OnFinalYellowDestroyed(castId, yellowIndex, serverTime);
+            _wolbaekListener?.OnFinalYellowDestroyed(castId, yellowIndex, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcFinalBundleStarted(int castId, WolbaekFinalBundle bundle)
+        {
+            _clientWolbaekLedger.OnFinalBundleStarted(castId, in bundle);
+            _wolbaekListener?.OnFinalBundleStarted(castId, in bundle);
+        }
+
+        [ClientRpc]
+        private void RpcFinalRedDetached(int castId, int bundleIndex, int redIndex, double serverTime, Vector3 position)
+        {
+            _clientWolbaekLedger.OnFinalRedDetached(castId, bundleIndex, redIndex, serverTime, position);
+            _wolbaekListener?.OnFinalRedDetached(castId, bundleIndex, redIndex, serverTime, position);
+        }
+
+        [ClientRpc]
+        private void RpcFinalRedsLocked(int castId, int bundleIndex, double serverTime, Vector3[] centers)
+        {
+            if (!BossWolbaekNetSerializer.IsWithin(centers, Constants.Network.BOSS_WOLBAEK_MAX_REDS))
+            {
+                return;
+            }
+
+            _clientWolbaekLedger.OnFinalRedsLocked(castId, bundleIndex, serverTime, centers);
+            _wolbaekListener?.OnFinalRedsLocked(castId, bundleIndex, serverTime, centers);
+        }
+
+        [ClientRpc]
+        private void RpcFinalBundleResolved(int castId, int bundleIndex, double serverTime)
+        {
+            _clientWolbaekLedger.OnFinalBundleResolved(castId, bundleIndex, serverTime);
+            _wolbaekListener?.OnFinalBundleResolved(castId, bundleIndex, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcFinalSucceeded(int castId, double serverTime)
+        {
+            _clientWolbaekLedger.OnFinalSucceeded(castId, serverTime);
+            _wolbaekListener?.OnFinalSucceeded(castId, serverTime);
+        }
+
+        [ClientRpc]
+        private void RpcFinalCleared(int castId)
+        {
+            _clientWolbaekLedger.OnFinalCleared(castId);
+            _wolbaekListener?.OnFinalCleared(castId);
+        }
+
+        [ClientRpc]
+        private void RpcWarpDeparted(int castId, Vector3 departure, double serverTime)
+        {
+            _clientWolbaekLedger.OnWarpDeparted(castId, departure, serverTime);
+            _wolbaekListener?.OnWarpDeparted(castId, departure, serverTime);
+        }
+
+        /****************************************
         *              SyncVar Hooks
         ****************************************/
 
@@ -1200,6 +2048,7 @@ namespace Shinshi.AI
             if (!IsFighting(next, _flowState))
             {
                 _clientPhaseLedger.Clear();
+                _clientWolbaekLedger.Clear();
             }
 
             LifeStateChanged?.Invoke(next);
@@ -1210,6 +2059,7 @@ namespace Shinshi.AI
             if (!IsFighting(_lifeState, next))
             {
                 _clientPhaseLedger.Clear();
+                _clientWolbaekLedger.Clear();
             }
 
             FlowStateChanged?.Invoke(next);
@@ -1218,6 +2068,11 @@ namespace Shinshi.AI
         private void OnPhaseStateSynced(EBossPhaseState previous, EBossPhaseState next)
         {
             PhaseStateChanged?.Invoke(next);
+        }
+
+        private void OnPhaseGenerationSynced(ushort previous, ushort next)
+        {
+            PhaseGenerationChanged?.Invoke(next);
         }
 
         // 등장 대기와 전투 중에만 전용 공격이 진행된다
@@ -1239,6 +2094,8 @@ namespace Shinshi.AI
             {
                 _serverLedger.Write(writer);
                 _serverPhaseLedger.Write(writer);
+                _serverWolbaekLedger.Write(writer);
+                _serverStructureLedger.Write(writer);
             }
         }
 
@@ -1249,6 +2106,8 @@ namespace Shinshi.AI
             {
                 _clientLedger.Read(reader);
                 _clientPhaseLedger.Read(reader);
+                _clientWolbaekLedger.Read(reader);
+                _clientStructureLedger.Read(reader);
             }
         }
     }

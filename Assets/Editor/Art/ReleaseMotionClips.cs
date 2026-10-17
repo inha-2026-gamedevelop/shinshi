@@ -14,6 +14,7 @@ namespace Shinshi.Editor
     {
         private const string CG = "Assets/01.Scripts/05.Art/Characters/PlayerP09/Animations/Clips/AN_P09_";
         private const string MK = "Assets/99.ThirdParty/Animation/Magical-Knight_Set/Animation/Humanoid/Inplace/";
+        private const string AR = "Assets/99.ThirdParty/Animation/Grruzam Archer Animation/Animation/Archer/2_Attack/";
 
         public static void Build()
         {
@@ -28,13 +29,13 @@ namespace Shinshi.Editor
             Copy("MageAttack1", MK + "AttackSword01_inplace.fbx", 0f, 1.25f);
             Copy("MageAttack2", MK + "AttackSword02_inplace.fbx", 0f, 1.25f);
             Copy("MageAttack3", MK + "AttackSword03_inplace.fbx", 0f, 1f);
-            Copy("MageArcane", MK + "AttackSword04_inplace.fbx", 0f, 0.6f);
-            Copy("MageField", MK + "AttackEnergy03_inplace.fbx", 0.1f, 0.75f);
-            Copy("MageSeal", MK + "AttackSword05_inplace.fbx", 0f, 0.65f);
-            Copy("MageWave", MK + "AttackSword04_inplace.fbx", 0f, 1.2f);
-            string shot = PlayerP09AssetBuilder.CLASS_CLIP_FOLDER + "/AN_P09_AR_Archer_Attack_1Shoot_ALL.anim";
-            Copy("ArcherRetreat", shot, 0.1f, 1.0666667f);
-            Copy("ArcherPiercing", shot, 0f, 1.0666667f);
+            // 마검사 스택형 기술: Q 방벽은 검을 수평으로 세우는 구간, W 검파는 내려베기, E 장판은 찌른 뒤 땅을 가리키는 구간, R은 몸을 눕혀 날아드는 돌진
+            Copy("MageShield", MK + "AttackEnergy08_inplace.fbx", 0f, 0.35f);
+            Copy("MageWave", MK + "AttackSword04_inplace.fbx", 0.05f, 0.8f);
+            Copy("MageField", MK + "AttackEnergy10_inplace.fbx", 0.05f, 0.65f);
+            Copy("MageDash", MK + "AttackEnergy03_inplace.fbx", 0.15f, 1.3f);
+            // 궁수 속성 부여는 차지 시작에서 화살을 시위에 거는 앞 구간만 쓴다
+            Copy("ArcherInfuse", AR + "4__ChargeShot/Inplace/Archer@Attack_ChargeShot_1_Start.FBX", 0f, 0.4f);
         }
 
         private static void Copy(string name, string sourcePath, float start, float end)

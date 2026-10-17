@@ -239,9 +239,12 @@ namespace Shinshi.UI
                 return;
             }
 
+            // 카오스 던전(일반전) 방은 난이도가 없어 난이도 선택을 숨긴다
             _difficulty = SortiePrepRules.ToDifficulty(room.Difficulty);
-            _view.SetDungeon(room.ContentId, room.Name, null);
+            _view.SetDungeon(DungeonEntryRules.ContentName(GameDB.IsInitialized ? GameDB.Progression : null, room.Mode, room.ContentId),
+                room.Name, null);
             _view.SetDifficulty(_difficulty);
+            _view.SetDifficultyVisible(room.Mode == EPartyMode.Boss);
 
             bool isLeader = false;
             bool isReady  = false;
