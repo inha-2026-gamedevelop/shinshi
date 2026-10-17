@@ -21,7 +21,8 @@ namespace Shinshi.Common
             // 10: 소셜 메시지, 길드, 귓속말 채팅 채널 추가(2026-10-16)
             // 11: 보스 돌진 정지 서버 시각, 빔, 별, 추적 장판 취소의 시전 번호, 무철 돌진 유도 그로기 사건과 복원 추가(2026-10-17)
             // 12: 월백 체력 기믹 4종과 워프 출발 사건, 복원, 등장, 처치, 페이즈 세대 SyncVar, 격자 첫 줄 번호 추가(2026-10-17)
-            public const int PROTOCOL_VERSION = 12;
+            // 13: 무철 돌진 구조물 배치, 파괴 사건과 복원 추가(2026-10-17)
+            public const int PROTOCOL_VERSION = 13;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -70,6 +71,10 @@ namespace Shinshi.Common
             public const int BOSS_WOLBAEK_MAX_FOXFIRES   = 8;
             public const int BOSS_WOLBAEK_MAX_YELLOWS    = 16;
             public const int BOSS_WOLBAEK_MAX_REDS       = 8;
+
+            // 무철 돌진 구조물 배치 복원이 싣는 구조물 수의 상한. 임시 배치(4)와 기믹 필요 수(3)보다 크게 두고
+            // 넘는 배치는 서버가 싣지 않으며 받은 값이 넘으면 프로토콜 불일치로 읽기를 멈춘다
+            public const int BOSS_CHARGE_STRUCTURE_MAX_COUNT = 16;
 
             // 서버 시각 기준으로 입력을 받아 주는 창
             public const float INPUT_PAST_TOLERANCE_SECONDS   = 0.15f;

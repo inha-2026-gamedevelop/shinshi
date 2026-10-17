@@ -472,6 +472,11 @@ namespace Shinshi.AI
             _groggy    = default;
         }
 
+        // 구조물 파괴는 진행 중인 공격이 아니라 전투 내내 남는 상태라 구조물 기록(BossChargeStructureLedger)이 맡는다
+        public void OnChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+        }
+
         /****************************************
         *          Wolbaek Hard Phase 2
         ****************************************/

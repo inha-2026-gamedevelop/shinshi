@@ -36,6 +36,9 @@ namespace Shinshi.AI
         [SerializeField] private Transform _effectsRoot;
 
         private BossState _boundState;
+
+        // 무철 돌진 구조물 표현, 프리팹에 붙이지 않고 이 바인더가 소유한다. 연결을 끊을 때 임시 기둥을 지운다
+        private readonly MucheolChargeStructureView _chargeStructures = new MucheolChargeStructureView();
         private readonly BossTrackingCastMap _trackingCasts = new BossTrackingCastMap();
         // 이지 2P 빔과 별의 취소 사건은 시전 번호를 함께 싣는다. 시전 번호가 없는(0) 사건만 시작 사건과 지은 짝으로 그 시전의 모션을 끝낸다
         private readonly BossTrackingCastMap _beamCasts = new BossTrackingCastMap();
@@ -299,6 +302,7 @@ namespace Shinshi.AI
                 _barrierView.Clear();
             }
             ClearPhaseViews();
+            _chargeStructures.Clear();
             if (_mucheolMotion != null)
             {
                 _mucheolMotion.ResetSession();
@@ -1921,6 +1925,17 @@ namespace Shinshi.AI
             }
         }
 
+        // 연결 중일 때만 받는다. 복원으로 배치를 받기 전의 사건은 모르는 구조물이라 표현이 무시한다
+        public void OnChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+            if (_boundState == null)
+            {
+                return;
+            }
+
+            _chargeStructures.ApplyDestroyed(structureId);
+        }
+
         public void OnStrikeChainRestored(in BossStrikeChainSnapshot snapshot)
         {
             if (IsMucheolMotion)
@@ -1998,6 +2013,16 @@ namespace Shinshi.AI
             {
                 _mucheolMotion.BeginGroggy(groggy.CastId, groggy.CollisionServerTime, groggy.GroggyEndServerTime);
             }
+        }
+
+        public void OnChargeStructuresRestored(in BossChargeStructureSnapshot snapshot)
+        {
+            if (_boundState == null)
+            {
+                return;
+            }
+
+            _chargeStructures.Restore(in snapshot);
         }
     }
 }

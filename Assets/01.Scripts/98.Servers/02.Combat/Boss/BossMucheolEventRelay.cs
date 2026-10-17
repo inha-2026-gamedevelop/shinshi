@@ -10,7 +10,7 @@ using Shinshi.AI;
 
 namespace Shinshi.Combat
 {
-    // 무철 전용 패턴(콤보, 순차 타격, 연속 돌진, 전장 공격, 돌진 결과)과 돌진 유도 기믹 그로기의 서버 알림을 표현용 사건(IBossMucheolEventListener)으로 바꿔 보낸다.
+    // 무철 전용 패턴(콤보, 순차 타격, 연속 돌진, 전장 공격, 돌진 결과)과 돌진 구조물 파괴, 돌진 유도 기믹 그로기의 서버 알림을 표현용 사건(IBossMucheolEventListener)으로 바꿔 보낸다.
     // 서버 전용 타 값에서 피해 배수를 빼고, 알림에 없는 시각은 몸체의 틱 시각으로 채운다. 적중 수와 밀림은 표현에 쓰지 않아 보내지 않는다.
     //
     // 수신처가 없어도 정면 갱신과 시전 번호 알림은 한다. 정면은 다음 선택의 방향 구간과 후방 판정의 입력이라 표시 연결과 무관하게 맞아야 한다.
@@ -316,6 +316,13 @@ namespace Shinshi.Combat
             {
                 SendHeldGroggy();
             }
+        }
+
+        // 구조물 연결(BossChargeStructureDirector)이 같은 시전의 돌진 결과를 보낸 뒤, 기믹 확인보다 먼저 부른다
+        /// <summary> 서버가 확정한 돌진 구조물 파괴를 표현 사건으로 보낸다 </summary>
+        public void NotifyChargeStructureDestroyed(int castInstanceId, int structureId)
+        {
+            _sink?.OnChargeStructureDestroyed(castInstanceId, structureId, _host.TickTime);
         }
 
         /****************************************

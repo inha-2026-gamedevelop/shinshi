@@ -43,7 +43,8 @@ namespace Shinshi.Combat
     // 월백 체력 기믹 4종의 알림은 같은 방식의 세 번째 중계(BossWolbaekGimmickEventRelay)가 받고, 기믹 팩토리가 그 중계를 기믹에 넘긴다
     //
     // 패턴 팩토리는 보스 ID로 고른다. 무철은 1페이즈와 2페이즈 팩토리를 묶어 쓰고 실행 데이터는 임시 시작값(MucheolSortieData)이다.
-    // 무철 돌진 유도 기믹도 여기서 만들어 두뇌에 더하지만, 맵이 지정 구조물을 알려 주기 전에는 발동하지 않는다.
+    // 무철 돌진 유도 기믹도 여기서 만들어 두뇌에 더한다. 돌진 구조물 배치(BossChargeStructureField)를 받으면 P06의 구조물 조회와
+    // 지정 구조물로 넘기고, 구조물 연결(BossChargeStructureDirector)이 돌진 결과로 파괴를 확정한다. 배치가 없으면 기믹은 발동하지 않는다.
     // 맞은 대상을 미는 창구(IBossHitDisplacer)도 이 몸체다. 막힘은 보스 이동과 같은 검사로 재고 실제 위치는 대상의 서버 이동이 옮긴다.
     // 50% 전환 뒤 인계 대기는 월백이면 결계 전개(BossBarrierDirector)가 끝날 때까지 이어지고, 결계가 없는 보스는 다음 틱에 바로 끝난다.
     // 결계 위험 구역은 완료 뒤에도 사망이나 전투 종료까지 남아 2페이즈 동안 피해를 낸다
@@ -103,6 +104,10 @@ namespace Shinshi.Combat
         // 월백 체력 기믹 알림의 중계, 기믹 묶음은 몸체보다 나중에 만들어지므로 팩토리가 이 중계를 기믹의 수신처로 넘긴다
         private readonly BossWolbaekGimmickEventRelay _wolbaekRelay;
         private readonly MucheolChargeGimmick    _chargeGimmick;   // 무철일 때만 있다
+
+        // 무철 돌진 구조물 배치와 그 파괴 연결, 무철이고 배치를 받았을 때만 있다
+        private readonly BossChargeStructureField    _chargeStructures;
+        private readonly BossChargeStructureDirector _structureDirector;
         private readonly IBossDisplaceLookup     _displaceTargets; // 없으면 아무도 밀지 않는다
 
         // 두뇌에 넘긴 것과 같은 객체다. 치명타 처리가 두뇌와 같은 보류를 읽는다
@@ -260,11 +265,13 @@ namespace Shinshi.Combat
         // barrierSettings는 결계 전개를 쓰는 보스(월백)의 설정이고 비우면 임시 기본값이다. 다른 보스에는 쓰지 않는다
         // connections는 전투 번호의 현재 접속 상태를 답하는 입력이고, 하드 2페이즈 P04(추적 장판)가 접속한 대상만 고르는 데 쓴다. 비우면 그 패턴을 만들지 않는다
         // displaceTargets는 밀 수 있는 대상을 전투 번호로 찾는 입력이고, 비우면 밀림이 필요한 패턴(무철 하드 P07)을 만들지 않는다
+        // chargeStructures는 무철 돌진 구조물 배치이고 무철에만 쓴다. 비우면 P06은 벽과 전장 경계에만 막히고 돌진 유도 기믹은 발동하지 않는다
         public BossServer(string bossId, int combatId, Vector3 position, Vector3 forward, Vector3 arenaCenter,
             float referenceAttack, float referenceHealth, float healthScale,
             IBossPatternCatalog catalog, ICombatTargetQuery targets, IDamageResolver damage,
             IBossWallQuery terrain, IBossRandom random, BossBarrierSettings barrierSettings = null,
-            IBossParticipantConnection connections = null, IBossDisplaceLookup displaceTargets = null)
+            IBossParticipantConnection connections = null, IBossDisplaceLookup displaceTargets = null,
+            BossChargeStructureField chargeStructures = null)
         {
             if (string.IsNullOrEmpty(bossId))
             {
@@ -325,6 +332,14 @@ namespace Shinshi.Combat
             _mucheolRelay = new BossMucheolEventRelay(this);
             _hardRelay    = new BossHardPhaseEventRelay(this);
             _wolbaekRelay = new BossWolbaekGimmickEventRelay(this);
+
+            // 구조물 연결은 P06의 돌진 결과 수신처라 팩토리보다 먼저 만든다. 기믹은 팩토리와 함께 만들어져 그 뒤에 잇는다
+            if ((bossId == MucheolPatternFactory.BOSS_ID) && (chargeStructures != null))
+            {
+                _chargeStructures  = chargeStructures;
+                _structureDirector = new BossChargeStructureDirector(_mucheolRelay, chargeStructures, this);
+            }
+
             _patterns     = CreatePatterns(bossId, referenceHealth, connections, out _chargeGimmick);
 
             // 결계 피해는 패턴과 같은 피해 경로(damage)로 나가고 기준 체력도 패턴과 같은 Href다
@@ -616,6 +631,20 @@ namespace Shinshi.Combat
                 && (_chargeGimmick.ConfirmStructureDestroyed(structureId, serverTime, castInstanceId));
         }
 
+        // 복제 상태가 스폰 전에 받아 늦은 접속 복원에 싣는다. 스폰 직후라 파괴 여부는 보통 모두 거짓이다
+        /// <summary> 무철 돌진 구조물 배치와 파괴 여부, 배치가 없으면 거짓이다 </summary>
+        public bool TryGetChargeStructureLayout(out BossChargeStructureSnapshot layout)
+        {
+            if (_chargeStructures == null)
+            {
+                layout = default;
+                return false;
+            }
+
+            layout = _chargeStructures.CreateSnapshot();
+            return true;
+        }
+
         /// <summary> 세션이 끝났을 때 부른다, 같은 시각에 바로 정리해 남은 타격이 다음 틱으로 밀리지 않게 한다 </summary>
         public void EndCombat(double serverTime)
         {
@@ -758,8 +787,9 @@ namespace Shinshi.Combat
         *                Warp
         ****************************************/
 
-        // 전장 경계(몸체 반경만큼 안쪽), 정적 지형, 살아 있는 플레이어와 소환물 몸체 순서로 보고 앞 검사에서 걸리면 뒤는 하지 않는다.
-        // 지형 쪽은 IBossStandQuery일 때만 본다(스윕은 시작부터 겹친 벽을 못 잡는다)
+        // 전장 경계(몸체 반경만큼 안쪽), 정적 지형, 부서지지 않은 돌진 구조물, 살아 있는 플레이어와 소환물 몸체 순서로 보고
+        // 앞 검사에서 걸리면 뒤는 하지 않는다. 지형 쪽은 IBossStandQuery일 때만 본다(스윕은 시작부터 겹친 벽을 못 잡는다).
+        // 구조물은 배치를 받은 무철만 본다. 구조물 앞에 멈춘 자리처럼 닿기만 한 것은 겹침이 아니다
         public bool CanStandAt(Vector3 point)
         {
             // NaN, 무한대는 아래 비교가 모두 거짓이 되어 통과하지만 위치에 들어가면 안 되므로 먼저 거른다
@@ -775,6 +805,11 @@ namespace Shinshi.Combat
             }
 
             if ((_standQuery != null) && (!_standQuery.CanStand(point, BodyRadius)))
+            {
+                return false;
+            }
+
+            if ((_chargeStructures != null) && (_chargeStructures.OverlapsIntact(point, BodyRadius)))
             {
                 return false;
             }
@@ -1428,16 +1463,20 @@ namespace Shinshi.Combat
                 barrageListener: _hardRelay, burstListener: _hardRelay);
         }
 
-        // 1페이즈의 부채꼴, 돌진, 원형 예고는 월백과 같은 기본 알림이라 이 몸체가 받고, 콤보와 돌진 결과, 돌진 유도 그로기, 2페이즈 전부는 무철 중계가 받는다.
-        // 돌진 구조물 조회는 맵 쪽 구현이 아직 없어 넘기지 않으므로 P06은 벽과 전장 경계에만 막힌다.
+        // 1페이즈의 부채꼴, 돌진, 원형 예고는 월백과 같은 기본 알림이라 이 몸체가 받고, 콤보와 돌진 유도 그로기, 2페이즈 전부는 무철 중계가 받는다.
+        // 돌진 결과는 구조물 배치가 있으면 구조물 연결이 받아 중계로 먼저 보낸 뒤 파괴를 확정하고, 없으면 중계가 바로 받는다.
+        // 구조물 배치는 P06의 구조물 조회로도 넘기며, 없으면 P06은 벽과 전장 경계에만 막힌다.
         // 밀림 창구는 대상 조회가 있을 때만 넘긴다. 없이 넘기면 팩토리가 하드 P07을 만들고 밀림 규칙이 빠진 채 시전된다.
         //
         // 기믹에는 묶음이 아니라 1페이즈 팩토리를 넘긴다. 기믹은 받은 팩토리가 시전 추적 수신자를 밝히는지(IBossChargeCastTrackerSource)로
         // 자신이 연결됐는지 확인하는데 묶음은 그 계약을 전달하지 않아, 묶음을 넘기면 기믹이 발동하지 않는다. P06 생성 가능 여부도 1페이즈 팩토리가 답한다
         private IBossPatternFactory CreateMucheolPatterns(float referenceHealth, out MucheolChargeGimmick chargeGimmick)
         {
+            IBossChargeOutcomeListener chargeListener = (_structureDirector != null)
+                ? (IBossChargeOutcomeListener)_structureDirector
+                : _mucheolRelay;
             var phaseOne = new MucheolPatternFactory(referenceHealth, this, this, this, this, MucheolSortieData.CreateComboSpec(),
-                _mucheolRelay, MucheolSortieData.CreateChargeSpec(), null, _mucheolRelay);
+                _mucheolRelay, MucheolSortieData.CreateChargeSpec(), _chargeStructures, chargeListener);
 
             IBossHitDisplacer displacer = (_displaceTargets != null) ? this : null;
             var phaseTwo = new MucheolPhase2PatternFactory(referenceHealth, MucheolSortieData.CreatePhaseTwoSpec(), this, _catalog,
@@ -1446,6 +1485,16 @@ namespace Shinshi.Combat
             chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec(),
                 _mucheolRelay);
             phaseOne.SetChargeCastTracker(chargeGimmick);
+
+            // 지정 구조물이 필요 수보다 적어도 받기는 한다. 기믹은 발동 조건에서 수를 다시 보고 발동하지 않는다
+            if (_structureDirector != null)
+            {
+                _structureDirector.BindGimmick(chargeGimmick);
+                if (!chargeGimmick.SetDesignatedStructures(_chargeStructures.GimmickTargetIds))
+                {
+                    Debug.LogError($"[Boss] 돌진 유도 기믹이 지정 구조물을 받지 않았다, count={_chargeStructures.GimmickTargetIds.Count}");
+                }
+            }
 
             return new MucheolPatternFactoryChain(phaseOne, phaseTwo);
         }

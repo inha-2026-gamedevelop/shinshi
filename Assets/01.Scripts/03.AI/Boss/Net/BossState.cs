@@ -36,6 +36,10 @@ namespace Shinshi.AI
         // 하드 페이즈 기록 뒤에 싣고 일회성 효과(판정, 폭발)는 기록하지 않아 재접속에서 다시 재생되지 않는다.
         // 등장 시작, 처치, 페이즈 세대와 전환 시각은 서버가 정한 시각이라 표현이 추정하지 않도록 SyncVar로 보낸다.
         // 페이즈 세대는 50% 성공 Rpc와 페이즈 SyncVar의 도착 순서와 상관없이 그로기 끝을 정하는 데 쓴다
+        //
+        // 무철 돌진 구조물은 진행 중인 공격이 아니라 전투 내내 남는 전장 상태라 기록(BossChargeStructureLedger)을 따로 둔다.
+        // 배치는 스폰 전에 서버가 넣고, 파괴는 서버 확정 사건으로만 쌓으며 전투가 끝날 때만 파괴 기록을 지운다.
+        // 스폰 초기 상태에는 월백 기록 뒤에 싣고, 복원은 진행 중 공격 복원보다 먼저 넘겨 그로기 복원이 구조물 상태 위에 그려지게 한다
 
         /****************************************
         *                Fields
@@ -81,6 +85,9 @@ namespace Shinshi.AI
         private readonly BossWolbaekGimmickLedger _serverWolbaekLedger = new BossWolbaekGimmickLedger();
         private readonly BossWolbaekGimmickLedger _clientWolbaekLedger = new BossWolbaekGimmickLedger();
 
+        private readonly BossChargeStructureLedger _serverStructureLedger = new BossChargeStructureLedger();
+        private readonly BossChargeStructureLedger _clientStructureLedger = new BossChargeStructureLedger();
+
         private IBossStateListener               _listener;
         private IBossMucheolStateListener        _mucheolListener; // 수신부가 구현했을 때만 있다
         private IBossHardPhaseStateListener      _hardListener;    // 수신부가 구현했을 때만 있다
@@ -120,6 +127,9 @@ namespace Shinshi.AI
         /// <summary> 클라이언트가 받은 월백 체력 기믹과 워프 출발 기록, 표현 확인과 진단용이다 </summary>
         public BossWolbaekGimmickLedger ClientWolbaekLedger => _clientWolbaekLedger;
 
+        /// <summary> 클라이언트가 받은 무철 돌진 구조물 배치와 파괴 기록, 표현 확인과 진단용이다 </summary>
+        public BossChargeStructureLedger ClientStructureLedger => _clientStructureLedger;
+
         /// <summary> 이 프리팹이 표현하는 보스 정의 ID, 비어 있으면 기본 프리팹이다 </summary>
         public string PrefabBossId => _prefabBossId;
 
@@ -147,7 +157,16 @@ namespace Shinshi.AI
         public override void OnStartClient()
         {
             _clientStarted = true;
+
+            // 호스트는 스폰 초기 상태를 역직렬화하지 않아 서버가 스폰 전에 넣은 배치를 받지 못한다. 서버 기록에서 직접 옮긴다
+            if ((isServer) && (_serverStructureLedger.HasLayout))
+            {
+                BossChargeStructureSnapshot layout = _serverStructureLedger.CreateSnapshot();
+                _clientStructureLedger.SetLayout(in layout);
+            }
+
             _clientLedger.Replay(_listener);
+            _clientStructureLedger.Replay(_mucheolListener);
             _clientPhaseLedger.Replay(_mucheolListener, _hardListener);
             _clientWolbaekLedger.Replay(_wolbaekListener);
         }
@@ -158,6 +177,7 @@ namespace Shinshi.AI
             _clientLedger.Clear();
             _clientPhaseLedger.Clear();
             _clientWolbaekLedger.Clear();
+            _clientStructureLedger.Clear();
         }
 
         /****************************************
@@ -183,6 +203,7 @@ namespace Shinshi.AI
             if (_clientStarted)
             {
                 _clientLedger.Replay(_listener);
+                _clientStructureLedger.Replay(_mucheolListener);
                 _clientPhaseLedger.Replay(_mucheolListener, _hardListener);
                 _clientWolbaekLedger.Replay(_wolbaekListener);
             }
@@ -212,6 +233,7 @@ namespace Shinshi.AI
             {
                 _serverPhaseLedger.Clear();
                 _serverWolbaekLedger.Clear();
+                _serverStructureLedger.ClearDestroyed();
             }
         }
 
@@ -234,6 +256,23 @@ namespace Shinshi.AI
             _serverLedger.Clear();
             _serverPhaseLedger.Clear();
             _serverWolbaekLedger.Clear();
+            _serverStructureLedger.Clear();
+        }
+
+        // 스폰 전에 불러야 첫 관찰자부터 배치를 받는다. 스폰 뒤에 바꾸면 이미 접속한 관찰자에게는 가지 않는다.
+        // 상한을 넘는 배치는 스폰 쓰기에서 예외가 나 스폰을 깨므로 싣지 않고 남긴다
+        /// <summary> 무철 돌진 구조물 배치를 늦은 접속 복원 기록에 넣는다, 넣지 못하면 거짓이다 </summary>
+        [Server]
+        public bool SetChargeStructureLayout(in BossChargeStructureSnapshot layout)
+        {
+            if (!_serverStructureLedger.SetLayout(in layout))
+            {
+                Debug.LogError($"[Boss] 돌진 구조물 배치가 어긋났거나 상한을 넘어 복원에 싣지 않는다, count={layout.Count}, " +
+                    $"max={Constants.Network.BOSS_CHARGE_STRUCTURE_MAX_COUNT}");
+                return false;
+            }
+
+            return true;
         }
 
         [Server]
@@ -603,6 +642,19 @@ namespace Shinshi.AI
         {
             _serverPhaseLedger.OnChargeGroggyCancelled(castId);
             RpcChargeGroggyCancelled(castId);
+        }
+
+        // 배치에 없거나 이미 부서진 구조물은 클라이언트가 다시 전환하지 않도록 보내지 않는다
+        [Server]
+        public void OnChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+            if (!_serverStructureLedger.MarkDestroyed(structureId))
+            {
+                Debug.LogWarning($"[Boss] 배치에 없거나 이미 부서진 돌진 구조물이라 파괴 사건을 보내지 않는다, structureId={structureId}");
+                return;
+            }
+
+            RpcChargeStructureDestroyed(castId, structureId, serverTime);
         }
 
         [Server]
@@ -1495,6 +1547,18 @@ namespace Shinshi.AI
             _mucheolListener?.OnChargeGroggyCancelled(castId);
         }
 
+        // 같은 구조물이 두 번 오면 표현이 연출을 다시 재생하지 않도록 기록이 처음 바꿨을 때만 넘긴다
+        [ClientRpc]
+        private void RpcChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+            if (!_clientStructureLedger.MarkDestroyed(structureId))
+            {
+                return;
+            }
+
+            _mucheolListener?.OnChargeStructureDestroyed(castId, structureId, serverTime);
+        }
+
         [ClientRpc]
         private void RpcStarStageStarted(BossStarStageStart start)
         {
@@ -2031,6 +2095,7 @@ namespace Shinshi.AI
                 _serverLedger.Write(writer);
                 _serverPhaseLedger.Write(writer);
                 _serverWolbaekLedger.Write(writer);
+                _serverStructureLedger.Write(writer);
             }
         }
 
@@ -2042,6 +2107,7 @@ namespace Shinshi.AI
                 _clientLedger.Read(reader);
                 _clientPhaseLedger.Read(reader);
                 _clientWolbaekLedger.Read(reader);
+                _clientStructureLedger.Read(reader);
             }
         }
     }

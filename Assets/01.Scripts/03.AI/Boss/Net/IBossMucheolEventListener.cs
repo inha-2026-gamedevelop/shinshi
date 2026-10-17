@@ -7,7 +7,7 @@ namespace Shinshi.AI
     // 복제 상태(BossState)는 클라이언트 수신부가 IBossMucheolStateListener를 구현할 때만 넘긴다.
     // 시각은 모두 서버 시각이다. 시전 번호가 키이고 연속 돌진은 그 안에서 돌진 번호로 나눈다.
     // 시전의 정상 종료는 기본 사건의 OnFinished(castId)로 오며 복원 기록은 그때 지운다
-    /// <summary> 무철 전용 공격 표현에 필요한 서버 확정 사건, 콤보와 순차 타격, 연속 돌진, 전장 공격, 돌진 충돌 결과 </summary>
+    /// <summary> 무철 전용 공격 표현에 필요한 서버 확정 사건, 콤보와 순차 타격, 연속 돌진, 전장 공격, 돌진 충돌 결과, 구조물 파괴 </summary>
     public interface IBossMucheolEventListener
     {
         /// <summary> 콤보(P1 P05)나 순차 타격(P2 P01, P02, P04, P05)의 예고 시작, 타 목록은 시전이 끝날 때까지 바뀌지 않는다 </summary>
@@ -69,5 +69,9 @@ namespace Shinshi.AI
 
         /// <summary> 대기 중이거나 진행 중인 그로기를 사망과 전투 종료가 아닌 이유로 접었다 </summary>
         void OnChargeGroggyCancelled(int castId);
+
+        // 기믹이 진행 중일 때 돌진이 부딪힌 구조물만 부서진다. 한 구조물에 한 번이고 그 시전의 OnChargeEnded 뒤, 그로기 대기보다 먼저 온다
+        /// <summary> 서버가 돌진 구조물 파괴를 확정했다, castId는 부순 돌진의 시전 번호다 </summary>
+        void OnChargeStructureDestroyed(int castId, int structureId, double serverTime);
     }
 }

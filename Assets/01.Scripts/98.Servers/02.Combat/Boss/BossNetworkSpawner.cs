@@ -120,6 +120,13 @@ namespace Shinshi.Combat
             }
 
             Publish(boss, candidate);
+
+            // 구조물 배치는 전투 내내 바뀌지 않아 스폰 전에 한 번만 싣는다. 첫 관찰자의 스폰 초기 상태부터 들어간다
+            if (boss.TryGetChargeStructureLayout(out BossChargeStructureSnapshot layout))
+            {
+                candidate.SetChargeStructureLayout(in layout);
+            }
+
             NetworkServer.Spawn(instance);
             if (candidate.netId == 0)
             {

@@ -112,6 +112,9 @@ namespace Shinshi.Tests
         public List<BossBarrageSnapshot>      RestoredBarrages      { get; } = new List<BossBarrageSnapshot>();
         public List<BossCircleBurstSnapshot>  RestoredCircleBursts  { get; } = new List<BossCircleBurstSnapshot>();
 
+        // 구조물 복원은 진행 중 공격이 아니라 전장 상태라 RestoreCount에 넣지 않는다
+        public List<BossChargeStructureSnapshot> RestoredStructures { get; } = new List<BossChargeStructureSnapshot>();
+
         /// <summary> 받은 복원의 총 건수 </summary>
         public int RestoreCount => RestoredStrikeChains.Count + RestoredMultiDashes.Count + RestoredBattlefields.Count
             + RestoredCharges.Count + RestoredGroggies.Count + RestoredStarStages.Count + RestoredGridBeams.Count + RestoredChainFans.Count
@@ -569,6 +572,13 @@ namespace Shinshi.Tests
             Add(nameof(OnChargeGroggyCancelled), EBossRecordKey.Cast, castId);
         }
 
+        // 번호는 시전, 순번 칸에 구조물 식별자를 적는다
+        public void OnChargeStructureDestroyed(int castId, int structureId, double serverTime)
+        {
+            PhaseLedger.OnChargeStructureDestroyed(castId, structureId, serverTime);
+            Add(nameof(OnChargeStructureDestroyed), EBossRecordKey.Cast, castId, structureId, true, serverTime);
+        }
+
         /****************************************
         *          Wolbaek Hard Phase 2
         ****************************************/
@@ -759,6 +769,11 @@ namespace Shinshi.Tests
         public void OnChargeGroggyRestored(in BossChargeGroggy groggy)
         {
             RestoredGroggies.Add(groggy);
+        }
+
+        public void OnChargeStructuresRestored(in BossChargeStructureSnapshot snapshot)
+        {
+            RestoredStructures.Add(snapshot);
         }
 
         public void OnStarStageRestored(in BossStarStageSnapshot snapshot)
