@@ -57,9 +57,12 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekBeamPlayer _lineEffectPrefab;
 
         private readonly WolbaekTalismanPlayer[] _structures = new WolbaekTalismanPlayer[STRUCTURE_COUNT];
+        private readonly WolbaekServerEventGate _gate = new WolbaekServerEventGate(); // 시계 오차로 서버 시각이 아직 오지 않은 사건을 그 시각까지 보류한다
+        private Transform _viewer; // 문양을 돌려 보일 카메라, 주입하거나 기믹 시작 때 한 번 찾는다
         private readonly uint[] _playbackIds = new uint[STRUCTURE_COUNT];
         private readonly WolbaekTalismanStructure[] _placements = new WolbaekTalismanStructure[STRUCTURE_COUNT];
         private readonly List<GameObject> _effects = new List<GameObject>(4);
+        private readonly WolbaekEffectTails _tails = new WolbaekEffectTails();
         private readonly List<WolbaekBeamPlayer> _beams = new List<WolbaekBeamPlayer>(2);
         private Func<double> _serverClock;
         private WolbaekTalismanStart _start;
@@ -117,6 +120,10 @@ namespace Shinshi.AI
 
         private void Update()
         {
+            if (_serverClock != null)
+            {
+                _gate.Flush(_serverClock());
+            }
             if ((_active) && (_serverClock != null))
             {
                 Tick(_serverClock());
@@ -128,8 +135,19 @@ namespace Shinshi.AI
             _serverClock = serverClock;
         }
 
+        private double Now()
+        {
+            return (_serverClock != null) ? _serverClock() : Time.timeAsDouble;
+        }
+
         public bool StartFormation(in WolbaekTalismanStart start, double now)
         {
+            WolbaekTalismanStart pending = start;
+            if (_gate.MustDefer(start.StartServerTime, now))
+            {
+                _gate.Defer(start.StartServerTime, now, () => StartFormation(in pending, Now()));
+                return false;
+            }
             if ((!ValidStart(in start)) || (now < start.StartServerTime)
                 || (_active && (start.CastInstanceId <= _castId))
                 || (start.CastInstanceId <= _lastEndedCastId))
@@ -143,6 +161,12 @@ namespace Shinshi.AI
             _phaseStart = start.StartServerTime;
             _sequence = 1;
             _active = true;
+            // 주입받은 카메라가 없으면 기믹이 시작될 때 한 번만 찾는다. 프레임마다 찾지 않고, 카메라가 아직 없으면 문양을 돌리지 않는다
+            if (_viewer == null)
+            {
+                Camera main = Camera.main;
+                _viewer = (main != null) ? main.transform : null;
+            }
             for (int i = 0; i < STRUCTURE_COUNT; ++i)
             {
                 WolbaekTalismanStructure structure = start.Structures[i];
@@ -205,6 +229,11 @@ namespace Shinshi.AI
 
         public void HoldStarted(int castId, double serverTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => HoldStarted(castId, serverTime, Now()));
+                return;
+            }
             if ((!SameCast(castId)) || (serverTime > now) || (_counter))
             {
                 return;
@@ -218,6 +247,11 @@ namespace Shinshi.AI
 
         public void HoldReset(int castId, double serverTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => HoldReset(castId, serverTime, Now()));
+                return;
+            }
             if ((!SameCast(castId)) || (serverTime > now) || (_counter))
             {
                 return;
@@ -230,6 +264,12 @@ namespace Shinshi.AI
 
         public void AttackTelegraphed(int castId, in WolbaekTalismanAttack attack, double now)
         {
+            WolbaekTalismanAttack pending = attack;
+            if (_gate.MustDefer(attack.TelegraphServerTime, now))
+            {
+                _gate.Defer(attack.TelegraphServerTime, now, () => AttackTelegraphed(castId, in pending, Now()));
+                return;
+            }
             if ((!SameCast(castId)) || (_counter) || (attack.AttackId <= _lastStruckAttackId)
                 || ((_hasAttack) && (attack.AttackId <= _attackId))
                 || (attack.StrikeServerTime <= now) || (attack.TelegraphServerTime > now))
@@ -276,6 +316,11 @@ namespace Shinshi.AI
 
         public void Succeeded(int castId, double serverTime, double counterEndServerTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => Succeeded(castId, serverTime, counterEndServerTime, Now()));
+                return;
+            }
             if ((!SameCast(castId)) || (counterEndServerTime < serverTime) || (serverTime > now))
             {
                 return;
@@ -315,6 +360,7 @@ namespace Shinshi.AI
 
         public void Clear()
         {
+            _gate.Clear();
             if (_active) _lastEndedCastId = Math.Max(_lastEndedCastId, _castId);
             _active = false;
             _holding = false;
@@ -330,6 +376,7 @@ namespace Shinshi.AI
             ResetMotionSpeed();
             ClearRange();
             StopShield(true);
+            _tails.Clear();
             for (int i = 0; i < STRUCTURE_COUNT; ++i)
             {
                 if (_structures[i] != null)
@@ -366,6 +413,7 @@ namespace Shinshi.AI
         /// <summary> 새 전투 또는 새 복제 세션에서만 이전 시전의 종료 번호를 지운다 </summary>
         public void ResetNetworkSession()
         {
+            _gate.Clear();
             Clear();
             _lastEndedCastId = 0;
         }
@@ -390,6 +438,7 @@ namespace Shinshi.AI
                     }
                 }
             }
+            FaceGlyphs();
             if (_hasAttack)
             {
                 TickAttack(now);
@@ -400,6 +449,30 @@ namespace Shinshi.AI
                 PlayMotion(IDLE_STATE, 1f, SUCCESS_EXIT_BLEND_SECONDS);
             }
             TickEffects(now);
+        }
+
+        /// <summary> 문양이 향할 카메라를 넘긴다. 비우면 다음 기믹 시작 때 주 카메라를 한 번 찾는다 </summary>
+        public void SetViewer(Transform viewer)
+        {
+            _viewer = viewer;
+        }
+
+        // 시험 씬처럼 구조물 문양이 보는 쪽을 향하게 한다
+        private void FaceGlyphs()
+        {
+            if (_viewer == null)
+            {
+                return;
+            }
+
+            Vector3 viewerPosition = _viewer.position;
+            for (int i = 0; i < STRUCTURE_COUNT; ++i)
+            {
+                if ((_structures[i] != null) && (_structures[i].IsRunning))
+                {
+                    _structures[i].FaceGlyph(_playbackIds[i], viewerPosition);
+                }
+            }
         }
 
         private bool SameCast(int castId)
@@ -480,6 +553,10 @@ namespace Shinshi.AI
             for (int i = 0; i < particles.Length; ++i)
             {
                 particles[i].Stop(false, ParticleSystemStopBehavior.StopEmitting);
+            }
+            if (!immediate)
+            {
+                _tails.Keep(_shield);
             }
             Destroy(_shield, immediate ? 0f : 2.5f);
             _shield = null;

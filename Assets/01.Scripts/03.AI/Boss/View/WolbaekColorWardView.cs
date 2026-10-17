@@ -20,6 +20,11 @@ namespace Shinshi.AI
         private const float STRIKE_SCALE = 6.9f;
         private const float STRIKE_LIFE = 4f;
         private const float MOTION_BLEND_SECONDS = 0.05f;
+        private const float GROGGY_ENTER_BLEND = 0.3f;      // 시험 씬 GimmickAttackCue 그로기 진입 섞기와 같은 정규화 값
+        private const float STRIKE_LATE_GRACE_SECONDS = 0.5f; // 판정 시각 뒤 확정 사건을 받아도 표현하는 한계, 기본 예고의 CONFIRM_GRACE_SECONDS와 같다
+        private const float SHIELD_FADE_SECONDS = 2.5f;     // 정상 성공 때 새 파티클을 멈춘 뒤 남은 파티클이 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
+        private static readonly Color G_RedWardColor = new Color(1f, 0.25f, 0.3f, 1f);  // 시험 씬 ColorWardCue 확정 색
+        private static readonly Color G_BlueWardColor = new Color(0.3f, 0.55f, 1f, 1f);
         private const string GROGGY_STATE = "down_groggy02_loop_inplace";
         private const string IDLE_STATE = "Idle";
 
@@ -36,6 +41,7 @@ namespace Shinshi.AI
         private readonly List<GameObject> _strikes = new List<GameObject>();
         private readonly double[] _graceEnds = new double[4];
         private Func<double> _clock;
+        private readonly WolbaekEffectTails _tails = new WolbaekEffectTails();
         private WolbaekWardStart _start;
         private WolbaekWardStage _stage;
         private WolbaekWardStrike _telegraph;
@@ -193,8 +199,8 @@ namespace Shinshi.AI
             _nextStrikeIndex = 0;
             _resolvedStrikeIndex = -1;
             ++_sequence;
-            _redWard = SpawnWard(_redWardPrefab, stage.RedCenter, stage.Radius, EWolbaekWardSign.Diamond, Color.red, now);
-            _blueWard = SpawnWard(_blueWardPrefab, stage.BlueCenter, stage.Radius, EWolbaekWardSign.Moon, Color.blue, now);
+            _redWard = SpawnWard(_redWardPrefab, stage.RedCenter, stage.Radius, EWolbaekWardSign.Diamond, G_RedWardColor, now);
+            _blueWard = SpawnWard(_blueWardPrefab, stage.BlueCenter, stage.Radius, EWolbaekWardSign.Moon, G_BlueWardColor, now);
             _redLink = SpawnLink(_redLinkPrefab);
             _blueLink = SpawnLink(_blueLinkPrefab);
         }
@@ -227,7 +233,11 @@ namespace Shinshi.AI
             StopTelegraph();
             _resolvedStrikeIndex = strikeIndex;
             _nextStrikeIndex = strikeIndex + 1;
-            if (strikeServerTime < now || _strikePrefab == null) return;
+            // 실네트워크의 확정 사건은 판정 시각보다 늦게 온다. 짧은 지연은 받은 순간부터 재생하고, 한계를 넘긴 지난 타격과 복원 이전 타격은 다시 만들지 않는다
+            if (((now - strikeServerTime) > STRIKE_LATE_GRACE_SECONDS) || (_strikePrefab == null))
+            {
+                return;
+            }
             GameObject effect = Instantiate(_strikePrefab, origin + Vector3.up * STRIKE_HEIGHT, Quaternion.identity);
             effect.transform.localScale = _strikePrefab.transform.localScale * STRIKE_SCALE;
             _strikes.Add(effect);
@@ -303,7 +313,14 @@ namespace Shinshi.AI
         {
             if (!Matches(castId)) return;
             _endedCastId = Math.Max(_endedCastId, castId);
-            ClearVisuals();
+            // 정상 성공은 보호막의 새 파티클만 멈춰 자연 소멸시키고, 성공과 같은 순간의 마지막 광역 효과는 제 수명대로 둔다
+            FadeShield();
+            for (int i = 0; i < _strikes.Count; ++i)
+            {
+                _tails.Keep(_strikes[i]);
+            }
+            _strikes.Clear();
+            ClearVisuals(true);
             _anchors.Clear();
             _awaitingPhaseTransition = true;
         }
@@ -385,7 +402,7 @@ namespace Shinshi.AI
             bool red = color == EWolbaekWardColor.Red;
             var value = new WolbaekLinkPlayer.Snapshot((ulong)_castId, ++_sequence,
                 red ? EWolbaekWardSign.Diamond : EWolbaekWardSign.Moon,
-                red ? Color.red : Color.blue, first.position, second.position,
+                red ? G_RedWardColor : G_BlueWardColor, first.position, second.position,
                 _stage.StartServerTime, now, WolbaekLinkPlayer.EPhase.Active,
                 _stage.StartServerTime, severity, amount, true);
             if (!player.IsRunning) player.Begin(value, now);
@@ -409,8 +426,12 @@ namespace Shinshi.AI
             DestroyOwned(ref _telegraphEffect);
         }
 
-        private void ClearVisuals()
+        private void ClearVisuals(bool preserveTails = false)
         {
+            if (!preserveTails)
+            {
+                _tails.Clear();
+            }
             _active = false;
             _gathering = false;
             _holding = false;
@@ -439,6 +460,22 @@ namespace Shinshi.AI
             }
         }
 
+        private void FadeShield()
+        {
+            if (_shield == null)
+            {
+                return;
+            }
+
+            foreach (ParticleSystem particle in _shield.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                particle.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+            }
+            _tails.Keep(_shield);
+            Destroy(_shield, SHIELD_FADE_SECONDS);
+            _shield = null;
+        }
+
         private void ClearHoldLine()
         {
             if (_holdLine != null) Destroy(_holdLine.gameObject);
@@ -453,7 +490,7 @@ namespace Shinshi.AI
             if (_bossView == null) return;
             _awaitingPhaseTransition = false;
             _wardMotionActive = true;
-            _bossView.PlayGimmickMotion(GROGGY_STATE, 1f, MOTION_BLEND_SECONDS);
+            _bossView.PlayGimmickMotion(GROGGY_STATE, 1f, GROGGY_ENTER_BLEND);
         }
 
         private void EndWardMotion(bool returnToIdle)

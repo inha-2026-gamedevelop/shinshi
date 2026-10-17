@@ -110,13 +110,17 @@ namespace Shinshi.Tests
             _view.Succeeded(51, 110d, 116d, _clock);
             yield return null;
             Assert.IsTrue(_view.IsCounter);
-            Assert.AreEqual(0, CountClones("SB_Shield_Blue"));
+            Assert.AreEqual(0, CountEmitting("SB_Shield_Blue"), "성공 뒤 보호막은 새 파티클을 내지 않고 자연 소멸한다");
             Assert.AreEqual(0, _view.VisibleCoreCount);
             Assert.AreEqual(0, _view.VisibleDropCount);
             Assert.IsTrue(IsPlaying("down_groggy02_loop_inplace"));
-            _clock = 116d;
+            _clock = 115d;
             yield return null;
-            Assert.IsTrue(IsPlaying("down_groggy02_loop_inplace"), "클라이언트 시각만으로 반격을 끝내면 안 된다");
+            Assert.IsTrue(IsPlaying("down_groggy02_loop_inplace"), "서버 반격 종료 시각 0.6초 전까지는 그로기를 유지한다");
+            // 성공 사건이 실어 준 서버 반격 종료 시각(116)에 Idle이 되도록 0.6초 앞서 섞기 시작한다
+            _clock = 115.5d;
+            yield return null;
+            Assert.IsTrue(IsPlaying("Idle"));
             _binder.OnSealCounterEnded(51, 116d, false);
             yield return null;
             Assert.IsFalse(_view.IsCounter);
@@ -314,6 +318,19 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, _view.VisibleDropCount);
             Assert.IsFalse(_view.HasPendingSweep);
             Assert.IsTrue(IsPlaying("Idle"));
+        }
+
+        private static int CountEmitting(string name)
+        {
+            int count = 0;
+            foreach (ParticleSystem particle in Object.FindObjectsByType<ParticleSystem>())
+            {
+                if ((particle.isEmitting) && (particle.transform.root.name == (name + "(Clone)")))
+                {
+                    ++count;
+                }
+            }
+            return count;
         }
 
         private static int CountClones(string name)

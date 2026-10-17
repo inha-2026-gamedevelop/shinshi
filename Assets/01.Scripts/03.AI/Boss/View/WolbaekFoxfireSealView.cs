@@ -16,6 +16,10 @@ namespace Shinshi.AI
         private const float SHIELD_HEIGHT = 1.4f;
         private const float SHIELD_SCALE = 0.9f;
         private const float MOTION_BLEND_SECONDS = 0.05f;
+        private const float SUCCESS_ENTER_BLEND = 0.3f;        // 시험 씬 반격 그로기 진입 섞기, 75%와 같은 값
+        private const float SUCCESS_EXIT_BLEND = 0.6f;         // 반격 끝에 Idle로 섞는 길이
+        private const float SUCCESS_IDLE_LEAD_SECONDS = 0.6f;  // 서버 반격 종료 시각보다 이만큼 먼저 Idle로 섞기 시작해 종료 시각에 Idle이 된다
+        private const float SHIELD_FADE_SECONDS = 2.5f;        // 정상 성공 때 보호막의 남은 파티클이 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
         private const float SWEEP_HEIGHT = 2f;
         private const float SWEEP_LIFE_SECONDS = 4f;
         private const float SWEEP_RANGE_HEIGHT = 0.05f;
@@ -37,6 +41,8 @@ namespace Shinshi.AI
         private readonly HashSet<int> _resolvedSweeps = new HashSet<int>();
         private readonly List<GameObject> _sweepEffects = new List<GameObject>();
         private Func<double> _clock;
+        private readonly WolbaekEffectTails _tails = new WolbaekEffectTails();
+        private readonly WolbaekServerEventGate _gate = new WolbaekServerEventGate(); // 시계 오차로 서버 시각이 아직 오지 않은 사건을 그 시각까지 보류한다
         private BossView _bossView;
         private WolbaekSealStart _start;
         private WolbaekSealTurn _turn;
@@ -59,6 +65,7 @@ namespace Shinshi.AI
         private bool _locked;
         private bool _turnResolved;
         private bool _counter;
+        private bool _counterIdleStarted;
 
         public bool IsActive => _active;
         public bool IsCounter => _counter;
@@ -77,6 +84,7 @@ namespace Shinshi.AI
         private void Update()
         {
             double now = Now();
+            _gate.Flush(now);
             if (_shield != null)
             {
                 _shield.transform.position = transform.position + (Vector3.up * SHIELD_HEIGHT);
@@ -92,6 +100,12 @@ namespace Shinshi.AI
             for (int i = _sweepEffects.Count - 1; i >= 0; --i)
             {
                 if (_sweepEffects[i] == null) _sweepEffects.RemoveAt(i);
+            }
+            // 반격 종료는 서버가 성공 사건에 실어 준 시각이다. 그 시각에 Idle이 되도록 조금 앞서 섞기 시작한다
+            if ((_counter) && (!_counterIdleStarted) && (now >= (_counterEndServerTime - SUCCESS_IDLE_LEAD_SECONDS)))
+            {
+                _counterIdleStarted = true;
+                PlayMotion(IDLE_STATE, SUCCESS_EXIT_BLEND);
             }
         }
 
@@ -140,6 +154,11 @@ namespace Shinshi.AI
 
         public void TrackingStarted(int castId, int turnIndex, double serverTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => TrackingStarted(castId, turnIndex, serverTime, Now()));
+                return;
+            }
             if (!MatchesTurn(castId, turnIndex) || _turnResolved || (serverTime > now)) return;
             _tracking = true;
             OpenCores(serverTime, now);
@@ -149,6 +168,11 @@ namespace Shinshi.AI
         public void FoxfireDetached(int castId, int turnIndex, int foxfireIndex, double serverTime,
             Vector3 position, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => FoxfireDetached(castId, turnIndex, foxfireIndex, serverTime, position, Now()));
+                return;
+            }
             if (!MatchesTurn(castId, turnIndex) || _turnResolved || !ValidIndex(foxfireIndex, _drops.Length)
                 || (serverTime > now) || !Finite(position)) return;
             _detached[foxfireIndex] = true;
@@ -160,6 +184,11 @@ namespace Shinshi.AI
         public void FoxfiresLocked(int castId, int turnIndex, double serverTime,
             IReadOnlyList<Vector3> centers, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => FoxfiresLocked(castId, turnIndex, serverTime, centers, Now()));
+                return;
+            }
             if (!MatchesTurn(castId, turnIndex) || _turnResolved || (centers == null)
                 || (centers.Count != _drops.Length) || (serverTime > now)) return;
             for (int i = 0; i < centers.Count; ++i)
@@ -200,6 +229,11 @@ namespace Shinshi.AI
 
         public void TurnResolved(int castId, int turnIndex, double serverTime, int successCount, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => TurnResolved(castId, turnIndex, serverTime, successCount, Now()));
+                return;
+            }
             if (!MatchesTurn(castId, turnIndex) || _turnResolved || (serverTime > now)) return;
             _turnResolved = true;
             _tracking = false;
@@ -227,14 +261,19 @@ namespace Shinshi.AI
 
         public void Succeeded(int castId, double serverTime, double counterEndServerTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => Succeeded(castId, serverTime, counterEndServerTime, Now()));
+                return;
+            }
             if (!Matches(castId) || (serverTime > now) || (counterEndServerTime < serverTime)) return;
             _endedCastId = Math.Max(_endedCastId, castId);
             ClearTurn();
-            StopShield();
+            FadeShield();
             _active = false;
             _counter = true;
             _counterEndServerTime = counterEndServerTime;
-            PlayMotion(SUCCESS_STATE);
+            BeginCounterMotion(now);
         }
 
         public void CounterEnded(int castId)
@@ -242,7 +281,12 @@ namespace Shinshi.AI
             if (!_counter || (castId != _castId)) return;
             _counter = false;
             _counterEndServerTime = 0d;
-            PlayMotion(IDLE_STATE);
+            // 종료 시각 전에 이미 Idle로 섞기 시작했으면 다시 섞지 않는다
+            if (!_counterIdleStarted)
+            {
+                PlayMotion(IDLE_STATE, SUCCESS_EXIT_BLEND);
+            }
+            _counterIdleStarted = false;
         }
 
         public bool Restore(in WolbaekSealSnapshot snapshot, double now)
@@ -258,7 +302,7 @@ namespace Shinshi.AI
                 _successCount = snapshot.SuccessCount;
                 _counter = true;
                 _counterEndServerTime = snapshot.CounterEndServerTime;
-                PlayMotion(SUCCESS_STATE);
+                BeginCounterMotion(now);
                 return true;
             }
             if ((snapshot.State != EWolbaekSealState.Active) || !ValidStart(in start)
@@ -311,6 +355,7 @@ namespace Shinshi.AI
 
         public void Clear()
         {
+            _gate.Clear();
             if (_active || _counter) _endedCastId = Math.Max(_endedCastId, _castId);
             bool hadMotion = _active || _counter;
             ClearVisuals();
@@ -320,6 +365,7 @@ namespace Shinshi.AI
 
         public void ResetNetworkSession()
         {
+            _gate.Clear();
             bool hadMotion = _active || _counter;
             ClearVisuals();
             _endedCastId = 0;
@@ -457,6 +503,36 @@ namespace Shinshi.AI
             _shield = null;
         }
 
+        private void FadeShield()
+        {
+            if (_shield == null)
+            {
+                return;
+            }
+
+            foreach (ParticleSystem particle in _shield.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                particle.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+            }
+            _tails.Keep(_shield);
+            Destroy(_shield, SHIELD_FADE_SECONDS);
+            _shield = null;
+        }
+
+        // 반격 중 늦게 받았거나 재접속했으면 이미 지난 진입을 다시 하지 않고, Idle로 넘어갈 시각이면 곧장 Idle로 섞는다
+        private void BeginCounterMotion(double now)
+        {
+            _counterIdleStarted = now >= (_counterEndServerTime - SUCCESS_IDLE_LEAD_SECONDS);
+            if (_counterIdleStarted)
+            {
+                PlayMotion(IDLE_STATE, SUCCESS_EXIT_BLEND);
+            }
+            else
+            {
+                PlayMotion(SUCCESS_STATE, SUCCESS_ENTER_BLEND);
+            }
+        }
+
         private GameObject CreateSweepRange(in WolbaekSealSweep sweep)
         {
             Vector3[] vertices = new Vector3[SWEEP_SEGMENTS + 2];
@@ -554,8 +630,10 @@ namespace Shinshi.AI
 
         private void ClearVisuals()
         {
+            _tails.Clear();
             _active = false;
             _counter = false;
+            _counterIdleStarted = false;
             _counterEndServerTime = 0d;
             ClearTurn();
             StopShield();
@@ -564,10 +642,13 @@ namespace Shinshi.AI
             _sweepEffects.Clear();
         }
 
-        private void PlayMotion(string state)
+        private void PlayMotion(string state, float blend = MOTION_BLEND_SECONDS)
         {
             if (_bossView == null) _bossView = GetComponent<BossView>();
-            if (_bossView != null) _bossView.PlayGimmickMotion(state, 1f, MOTION_BLEND_SECONDS);
+            if (_bossView != null)
+            {
+                _bossView.PlayGimmickMotion(state, 1f, blend);
+            }
         }
 
         private bool Matches(int castId) { return _active && (castId == _castId); }

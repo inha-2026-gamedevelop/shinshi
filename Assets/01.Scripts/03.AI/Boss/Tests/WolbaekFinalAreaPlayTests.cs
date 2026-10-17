@@ -154,8 +154,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, CountClones("SB_Shockwave_Flash_Red"));
         }
 
+        // 처치는 서버 사망 상태가 시작한다. 성공 사건은 기믹 표현만 정리하고 보호막은 새 파티클만 멈추며, 사망 상태가 올 때까지 그로기를 유지한다
         [UnityTest]
-        public IEnumerator FinalSuccess_ClearsGimmickAndUsesExistingDeathDissolvePath()
+        public IEnumerator FinalSuccess_KeepsGroggyUntilServerDeathThenUsesDeathDissolvePath()
         {
             WolbaekFinalStart start = Start(74);
             Assert.IsTrue(_view.StartFinal(in start, _clock));
@@ -169,8 +170,15 @@ namespace Shinshi.Tests
             yield return null;
 
             Assert.IsFalse(_view.IsActive);
+            Assert.IsTrue(_view.IsAwaitingDeath);
             Assert.AreEqual(0, _view.VisibleYellowCount);
-            Assert.AreEqual(0, CountClones("SB_Shield_Blue"));
+            Assert.AreEqual(0, CountEmitting("SB_Shield_Blue"), "성공 뒤 보호막은 새 파티클을 내지 않는다");
+            Assert.IsTrue(IsPlaying("down_groggy02_loop_inplace"), "성공 사건만으로 처치 모션을 시작하지 않는다");
+
+            BossView bossView = _boss.GetComponent<BossView>();
+            bossView.SetDefeated(true);
+            yield return null;
+            Assert.IsFalse(_view.IsAwaitingDeath);
             Assert.IsTrue(IsPlaying("dead01_inplace") || IsPlaying("dead01_hold"));
         }
 
@@ -255,6 +263,19 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, CountClones("SB_Shield_Blue"));
             Assert.IsNull(GameObject.Find("WolbaekFinalSafeBoundary"));
             Assert.IsTrue(IsPlaying("Idle"));
+        }
+
+        private static int CountEmitting(string name)
+        {
+            int count = 0;
+            foreach (ParticleSystem particle in Object.FindObjectsByType<ParticleSystem>())
+            {
+                if ((particle.isEmitting) && (particle.transform.root.name == name + "(Clone)"))
+                {
+                    ++count;
+                }
+            }
+            return count;
         }
 
         private static int CountClones(string name)

@@ -28,6 +28,8 @@ namespace Shinshi.AI
         private const float RING_HEIGHT            = 0.06f;
         private const float RING_HALF_WIDTH        = 0.18f;
         private const float MOTION_BLEND_SECONDS   = 0.05f;
+        private const float GROGGY_ENTER_BLEND     = 0.3f;  // 시험 씬 GimmickAttackCue 그로기 진입 섞기와 같은 정규화 값
+        private const float SHIELD_FADE_SECONDS    = 2.5f;  // 정상 성공 때 보호막의 남은 파티클이 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
         private const int   RING_SEGMENTS          = 64;
         private const string GROGGY_STATE          = "down_groggy02_loop_inplace";
         private const string IDLE_STATE            = "Idle";
@@ -47,6 +49,8 @@ namespace Shinshi.AI
         private readonly Dictionary<int, Transform> _anchors = new Dictionary<int, Transform>();
         private readonly List<GameObject> _oneShots = new List<GameObject>();
         private Func<double> _clock;
+        private readonly WolbaekEffectTails _tails = new WolbaekEffectTails();
+        private readonly WolbaekServerEventGate _gate = new WolbaekServerEventGate(); // 시계 오차로 서버 시각이 아직 오지 않은 사건을 그 시각까지 보류한다
         private BossView _bossView;
         private WolbaekFinalStart _start;
         private WolbaekFinalBundle _bundle;
@@ -65,6 +69,7 @@ namespace Shinshi.AI
         private int _endedCastId;
         private int _bundleIndex = -1;
         private bool _active;
+        private bool _awaitingDeath; // 성공 뒤 서버 사망 상태가 올 때까지 그로기 자세를 유지한다
         private bool _floorRemoved;
         private bool _redsLocked;
         private bool _bundleResolved;
@@ -74,6 +79,7 @@ namespace Shinshi.AI
         ****************************************/
 
         public bool IsActive => _active;
+        public bool IsAwaitingDeath => _awaitingDeath;
         public bool IsFloorRemoved => _floorRemoved;
         public int VisibleYellowCount => CountRunning(_yellows);
         public int VisibleRedCount => CountRunning(_reds);
@@ -92,6 +98,7 @@ namespace Shinshi.AI
         private void Update()
         {
             double now = Now();
+            _gate.Flush(now);
             if (_shield != null)
             {
                 _shield.transform.position = transform.position + (Vector3.up * SHIELD_HEIGHT);
@@ -148,12 +155,17 @@ namespace Shinshi.AI
             _active = true;
             BeginShield();
             ShowFloorTelegraph();
-            PlayMotion(GROGGY_STATE);
+            PlayMotion(GROGGY_STATE, GROGGY_ENTER_BLEND);
             return true;
         }
 
         public void OuterFloorRemoved(int castId, double serverTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => OuterFloorRemoved(castId, serverTime, Now()));
+                return;
+            }
             if (!Matches(castId) || _floorRemoved || (serverTime > now))
             {
                 return;
@@ -176,6 +188,11 @@ namespace Shinshi.AI
 
         public void YellowDestroyed(int castId, int yellowIndex, double serverTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => YellowDestroyed(castId, yellowIndex, serverTime, Now()));
+                return;
+            }
             if (!Matches(castId) || (serverTime > now) || !ValidIndex(yellowIndex, _yellows.Length))
             {
                 return;
@@ -206,6 +223,11 @@ namespace Shinshi.AI
         public void RedDetached(int castId, int bundleIndex, int redIndex, double serverTime,
             Vector3 position, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => RedDetached(castId, bundleIndex, redIndex, serverTime, position, Now()));
+                return;
+            }
             if (!MatchesBundle(castId, bundleIndex) || _bundleResolved || _redsLocked
                 || !ValidIndex(redIndex, _reds.Length) || (serverTime > now) || !Finite(position))
             {
@@ -220,6 +242,11 @@ namespace Shinshi.AI
         public void LockReds(int castId, int bundleIndex, double serverTime,
             IReadOnlyList<Vector3> centers, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => LockReds(castId, bundleIndex, serverTime, centers, Now()));
+                return;
+            }
             if (!MatchesBundle(castId, bundleIndex) || _bundleResolved || _redsLocked
                 || (serverTime > now) || !ValidPositions(centers, _reds.Length))
             {
@@ -231,6 +258,11 @@ namespace Shinshi.AI
 
         public void BundleResolved(int castId, int bundleIndex, double serverTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => BundleResolved(castId, bundleIndex, serverTime, Now()));
+                return;
+            }
             if (!MatchesBundle(castId, bundleIndex) || _bundleResolved || (serverTime > now))
             {
                 return;
@@ -257,21 +289,22 @@ namespace Shinshi.AI
 
         public void Succeeded(int castId, double serverTime, double now)
         {
+            if (_gate.MustDefer(serverTime, now))
+            {
+                _gate.Defer(serverTime, now, () => Succeeded(castId, serverTime, Now()));
+                return;
+            }
             if (!Matches(castId) || (serverTime > now))
             {
                 return;
             }
 
+            // 처치는 서버의 사망 상태(LifeState)가 시작한다. 성공 사건은 보호막을 자연 소멸시키고 기믹 표현만 정리하며,
+            // 사망 상태가 올 때까지 그로기 자세를 유지한다. 클라이언트가 처치를 먼저 확정하지 않는다
             _endedCastId = Math.Max(_endedCastId, castId);
-            ClearVisuals();
-            if (_bossView == null)
-            {
-                _bossView = GetComponent<BossView>();
-            }
-            if (_bossView != null)
-            {
-                _bossView.SetDefeated(true);
-            }
+            FadeShield();
+            ClearVisuals(true);
+            _awaitingDeath = true;
         }
 
         public bool Restore(in WolbaekFinalSnapshot snapshot, double now)
@@ -291,7 +324,7 @@ namespace Shinshi.AI
             _active = true;
             _floorRemoved = snapshot.OuterFloorRemoved;
             BeginShield();
-            PlayMotion(GROGGY_STATE);
+            PlayMotion(GROGGY_STATE, GROGGY_ENTER_BLEND);
 
             if (!_floorRemoved && (start.CollapseServerTime > now))
             {
@@ -329,7 +362,9 @@ namespace Shinshi.AI
 
         public void Clear()
         {
-            bool hadMotion = _active;
+            _gate.Clear();
+            bool hadMotion = (_active) || (_awaitingDeath);
+            _awaitingDeath = false;
             if (_active)
             {
                 _endedCastId = Math.Max(_endedCastId, _castId);
@@ -344,7 +379,9 @@ namespace Shinshi.AI
 
         public void ResetNetworkSession()
         {
-            bool hadMotion = _active;
+            _gate.Clear();
+            bool hadMotion = (_active) || (_awaitingDeath);
+            _awaitingDeath = false;
             ClearVisuals();
             _endedCastId = 0;
             _castId = 0;
@@ -597,8 +634,12 @@ namespace Shinshi.AI
             Destroy(instance, ONE_SHOT_LIFE_SECONDS);
         }
 
-        private void ClearVisuals()
+        private void ClearVisuals(bool preserveTails = false)
         {
+            if (!preserveTails)
+            {
+                _tails.Clear();
+            }
             _active = false;
             _floorRemoved = false;
             StopFloorTelegraph();
@@ -663,7 +704,22 @@ namespace Shinshi.AI
             }
         }
 
-        private void PlayMotion(string state)
+        private void FadeShield()
+        {
+            if (_shield == null)
+            {
+                return;
+            }
+            foreach (ParticleSystem particle in _shield.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                particle.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+            }
+            _tails.Keep(_shield);
+            Destroy(_shield, SHIELD_FADE_SECONDS);
+            _shield = null;
+        }
+
+        private void PlayMotion(string state, float blend = MOTION_BLEND_SECONDS)
         {
             if (_bossView == null)
             {
@@ -671,7 +727,7 @@ namespace Shinshi.AI
             }
             if (_bossView != null)
             {
-                _bossView.PlayGimmickMotion(state, 1f, MOTION_BLEND_SECONDS);
+                _bossView.PlayGimmickMotion(state, 1f, blend);
             }
         }
 
