@@ -22,7 +22,7 @@ namespace Shinshi.AI
         private const float MOTION_BLEND_SECONDS = 0.05f;
         private const float GROGGY_ENTER_BLEND = 0.3f;      // 시험 씬 GimmickAttackCue 그로기 진입 섞기와 같은 정규화 값
         private const float STRIKE_LATE_GRACE_SECONDS = 0.5f; // 판정 시각 뒤 확정 사건을 받아도 표현하는 한계, 기본 예고의 CONFIRM_GRACE_SECONDS와 같다
-        private const float SHIELD_FADE_SECONDS = 2.5f;     // 정상 성공 때 새 파티클을 멈춘 뒤 남은 파티클이 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
+        private const float SHIELD_FADE_SECONDS = 2.5f;     // 정상 성공 때 새 파티클을 멈춘 뒤 남은 파티클이 투명해지며 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
         private static readonly Color G_RedWardColor = new Color(1f, 0.25f, 0.3f, 1f);  // 시험 씬 ColorWardCue 확정 색
         private static readonly Color G_BlueWardColor = new Color(0.3f, 0.55f, 1f, 1f);
         private const string GROGGY_STATE = "down_groggy02_loop_inplace";
@@ -467,10 +467,8 @@ namespace Shinshi.AI
                 return;
             }
 
-            foreach (ParticleSystem particle in _shield.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                particle.Stop(false, ParticleSystemStopBehavior.StopEmitting);
-            }
+            // 새 파티클을 멈추고 남은 파티클을 제거 시각에 투명해지도록 낮춘다. 사망, 취소, Reset은 _tails가 즉시 지운다
+            WolbaekShieldFade.Begin(_shield, SHIELD_FADE_SECONDS);
             _tails.Keep(_shield);
             Destroy(_shield, SHIELD_FADE_SECONDS);
             _shield = null;

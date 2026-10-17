@@ -19,7 +19,7 @@ namespace Shinshi.AI
         private const float SUCCESS_ENTER_BLEND = 0.3f;        // 시험 씬 반격 그로기 진입 섞기, 75%와 같은 값
         private const float SUCCESS_EXIT_BLEND = 0.6f;         // 반격 끝에 Idle로 섞는 길이
         private const float SUCCESS_IDLE_LEAD_SECONDS = 0.6f;  // 서버 반격 종료 시각보다 이만큼 먼저 Idle로 섞기 시작해 종료 시각에 Idle이 된다
-        private const float SHIELD_FADE_SECONDS = 2.5f;        // 정상 성공 때 보호막의 남은 파티클이 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
+        private const float SHIELD_FADE_SECONDS = 2.5f;        // 정상 성공 때 보호막의 남은 파티클이 투명해지며 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
         private const float SWEEP_HEIGHT = 2f;
         private const float SWEEP_LIFE_SECONDS = 4f;
         private const float SWEEP_RANGE_HEIGHT = 0.05f;
@@ -510,10 +510,8 @@ namespace Shinshi.AI
                 return;
             }
 
-            foreach (ParticleSystem particle in _shield.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                particle.Stop(false, ParticleSystemStopBehavior.StopEmitting);
-            }
+            // 새 파티클을 멈추고 남은 파티클을 제거 시각에 투명해지도록 낮춘다. 사망, 취소, Reset은 _tails가 즉시 지운다
+            WolbaekShieldFade.Begin(_shield, SHIELD_FADE_SECONDS);
             _tails.Keep(_shield);
             Destroy(_shield, SHIELD_FADE_SECONDS);
             _shield = null;

@@ -18,6 +18,7 @@ namespace Shinshi.AI
         private const int RING_SEGMENTS = 96;
         private const float SHIELD_HEIGHT = 1.4f;
         private const float SHIELD_SCALE = 0.9f;
+        private const float SHIELD_FADE_SECONDS = 2.5f; // 정상 성공 때 보호막의 남은 파티클이 투명해지며 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
         private const float RING_HEIGHT = 0.1f;
         private const float RANGE_HEIGHT = 0.05f;
         private const float LINE_HEIGHT = 1f;
@@ -549,16 +550,22 @@ namespace Shinshi.AI
             {
                 return;
             }
-            ParticleSystem[] particles = _shield.GetComponentsInChildren<ParticleSystem>(true);
-            for (int i = 0; i < particles.Length; ++i)
+            if (immediate)
             {
-                particles[i].Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                ParticleSystem[] particles = _shield.GetComponentsInChildren<ParticleSystem>(true);
+                for (int i = 0; i < particles.Length; ++i)
+                {
+                    particles[i].Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                }
+                Destroy(_shield, 0f);
+                _shield = null;
+                return;
             }
-            if (!immediate)
-            {
-                _tails.Keep(_shield);
-            }
-            Destroy(_shield, immediate ? 0f : 2.5f);
+
+            // 새 파티클을 멈추고 남은 파티클을 제거 시각에 투명해지도록 낮춘다. 사망, 취소, Reset은 _tails가 즉시 지운다
+            WolbaekShieldFade.Begin(_shield, SHIELD_FADE_SECONDS);
+            _tails.Keep(_shield);
+            Destroy(_shield, SHIELD_FADE_SECONDS);
             _shield = null;
         }
 
