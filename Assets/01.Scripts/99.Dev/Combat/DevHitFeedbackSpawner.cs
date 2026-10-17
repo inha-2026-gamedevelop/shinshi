@@ -64,6 +64,7 @@ namespace Shinshi.Dev
         [SerializeField, Min(0f)] private float _attackCooldown = 2f;   // 초, 한 번 공격하고 다음 공격까지
         [SerializeField, Min(0f)] private float _maxSpawnRadius = 12f; // m, 기본 반경에 자리가 모자라면 여기까지 넓혀서 찾는다
         [SerializeField, Min(0f)] private float _radiusStep     = 2f;  // m, 반경을 넓히는 단계
+        [SerializeField, Min(0f)] private float _activityRadius = 15f; // m, 플레이어가 구역 출현 지점에서 이 반경 안에 들어서면 몬스터가 쫓기 시작한다. 한 번 시작하면 밖으로 나가도 쫓는다. 0이면 처음부터 쫓는다
         [FormerlySerializedAs("_respawnDelay")]
         [SerializeField] private float _retryDelay       = 3f;  // 초, 자리가 없어 한 마리도 못 세웠을 때 다시 시도하기까지
 
@@ -74,6 +75,7 @@ namespace Shinshi.Dev
         [SerializeField, Min(0f)] private float _minPlayerDistance = 4f;  // m, 플레이어와 이 거리 안에는 세우지 않는다
         [SerializeField, Min(0f)] private float _groundHeightTolerance = 1f; // m, 입구 지점과 이 높이 차 안의 땅에만 세운다 (지붕, 위층 방지)
         [SerializeField] private bool _spawnFirstZoneAtStart = true;      // 첫 구역은 입구 없이 출정 시작과 함께 세운다
+        [SerializeField] private bool _spawnOnPreviousClear  = true;      // 이전 구역을 모두 처치해 그 사이 결계가 풀리면 다음 구역을 세운다. 끄면 입구에 들어설 때 세운다
 
         [Header("엘리트 (이 구역에 일반 무리와 함께 세운다. 엘리트까지 잡아야 구역 처치가 끝난다)")]
         [SerializeField, Min(0)] private int   _eliteZoneIndex = 5;    // 0부터 센 구역 번호, 5가 6구역
@@ -121,7 +123,7 @@ namespace Shinshi.Dev
         }
 
 #if UNITY_EDITOR
-        // 씬 뷰에서 구역마다 출현 범위(노랑)와 진입 판정 범위(하늘색)를 보여 준다. 위치를 옮길 때 눈으로 맞추기 위한 것이다
+        // 씬 뷰에서 구역마다 출현 범위(노랑), 진입 판정 범위(하늘색), 몬스터 활동 반경(빨강)을 보여 준다. 위치를 옮길 때 눈으로 맞추기 위한 것이다
         private void OnDrawGizmos()
         {
             if ((_zoneAnchors == null) || (_zoneAnchors.Length == 0))
@@ -147,6 +149,12 @@ namespace Shinshi.Dev
 
                 Gizmos.color = Color.cyan;
                 DrawGizmoCircle(center, _enterRadius);
+
+                if (_activityRadius > 0f)
+                {
+                    Gizmos.color = Color.red;
+                    DrawGizmoCircle(center, _activityRadius);
+                }
 
                 Gizmos.color = Color.magenta;
                 Gizmos.DrawLine(center, center + (Vector3.up * GIZMO_POLE_HEIGHT));
@@ -201,7 +209,7 @@ namespace Shinshi.Dev
                     continue;
                 }
 
-                if (((zone == 0) && (_spawnFirstZoneAtStart)) || (HasEntered(zone, playerPosition)))
+                if (ShouldSpawn(zone, playerPosition))
                 {
                     SpawnGroup(zone);
                 }
@@ -272,6 +280,22 @@ namespace Shinshi.Dev
         public int GetZoneKilled(int zone) { return _zoneKilled[zone]; }
 
         public bool IsZoneCleared(int zone) { return _zoneSpawned[zone] && (_zoneAlive[zone] == 0); }
+
+        // 구역 사이 결계는 앞 구역을 모두 처치하면 풀리므로, 그 시점이 곧 다음 구역을 세울 때다
+        private bool ShouldSpawn(int zone, Vector3 playerPosition)
+        {
+            if ((zone == 0) && (_spawnFirstZoneAtStart))
+            {
+                return true;
+            }
+
+            if ((_spawnOnPreviousClear) && (zone > 0))
+            {
+                return IsZoneCleared(zone - 1);
+            }
+
+            return HasEntered(zone, playerPosition);
+        }
 
         // 구역 입구 지점 반경 안, 같은 높이 층에 들어서야 진입으로 본다
         private bool HasEntered(int zone, Vector3 playerPosition)
@@ -351,6 +375,7 @@ namespace Shinshi.Dev
 
             var monster = body.AddComponent<DevHitFeedbackMonster>();
             monster.Init(hitsToDie, _playerCollider, _chaseSpeed, animator, _attackWindup, _attackCooldown);
+            monster.SetLeash(GetAnchor(zone).position, _activityRadius);
             monster.Died += OnMonsterDied;
             _zoneOfMonster.Add(monster, zone);
             ++_zoneAlive[zone];

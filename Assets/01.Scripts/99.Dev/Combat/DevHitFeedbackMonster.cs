@@ -55,7 +55,6 @@ namespace Shinshi.Dev
         private const float TURN_SPEED        = 10f;   // 1/s, 플레이어 쪽으로 몸을 돌리는 속도
         private const float MIN_DIRECTION_SQR = 0.0001f;
         private const float HALF              = 0.5f;
-
         // 살아서 걷는 몬스터. 서로 겹침을 풀 때 훑는다
         private static readonly List<DevHitFeedbackMonster> s_alive = new List<DevHitFeedbackMonster>();
 
@@ -73,6 +72,9 @@ namespace Shinshi.Dev
         private float      _separationDistance = 0f; // m, 몬스터 중심끼리 이보다 가까우면 벌린다
         private float      _playerMinDistance  = 0f; // m, 플레이어 중심과 이보다 가까워지지 않는다
         private float      _knockDrag     = 0f;
+        private Vector3    _leashCenter   = Vector3.zero; // 활동 반경의 중심
+        private float      _leashRadius   = 0f;           // m, 플레이어가 이 안에 들어서면 쫓기 시작한다. 0이면 처음부터 쫓는다
+        private bool       _isChasing     = false;        // 한 번 쫓기 시작하면 계속 쫓는다
         private int        _hitsLeft      = 0;
         private float      _deathElapsed  = 0f;
         private bool       _isDying       = false;
@@ -211,6 +213,35 @@ namespace Shinshi.Dev
             {
                 Physics.IgnoreCollision(ownCollider, playerCollider);
             }
+        }
+
+        /// <summary> center에서 수평 radius 안에 플레이어가 들어서면 쫓기 시작한다. 한 번 쫓기 시작하면 플레이어가 밖으로 나가도 계속 쫓는다. radius가 0이면 처음부터 쫓는다 </summary>
+        public void SetLeash(Vector3 center, float radius)
+        {
+            _leashCenter = center;
+            _leashRadius = radius;
+        }
+
+        // 플레이어가 반경 안에 들어선 순간 추적을 시작하고, 이후에는 반경과 상관없이 쫓는다
+        private bool IsChasing()
+        {
+            if (_isChasing)
+            {
+                return true;
+            }
+
+            if (_leashRadius > 0f)
+            {
+                Vector3 fromCenter = _target.position - _leashCenter;
+                fromCenter.y = 0f;
+                if (fromCenter.sqrMagnitude > (_leashRadius * _leashRadius))
+                {
+                    return false;
+                }
+            }
+
+            _isChasing = true;
+            return true;
         }
 
         /// <summary> 공격자 위치 쪽에서 profile의 타격으로 한 대 맞는다(치명타면 더 세게 밀리고 찌그러진다). 맞은 횟수가 다 차면 날아가며 죽는다. 맞은 것으로 쳤으면 true, 이미 죽는 중이면 false </summary>
@@ -370,7 +401,7 @@ namespace Shinshi.Dev
             bool    isWalking = false;
             bool    playerAlive = (_player == null) || (!_player.IsDead);
 
-            if ((_target != null) && (playerAlive) && (_knockVelocity.sqrMagnitude <= STUN_SPEED_SQR))
+            if ((_target != null) && (playerAlive) && (IsChasing()) && (_knockVelocity.sqrMagnitude <= STUN_SPEED_SQR))
             {
                 Vector3 toTarget = _target.position - position;
                 toTarget.y = 0f;
