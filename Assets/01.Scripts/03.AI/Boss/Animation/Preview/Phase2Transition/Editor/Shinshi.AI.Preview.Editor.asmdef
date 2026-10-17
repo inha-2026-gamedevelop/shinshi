@@ -1,0 +1,22 @@
+{
+    "name": "Shinshi.AI.Preview.Editor",
+    "rootNamespace": "Shinshi.Editor",
+    "references": [
+        "Shinshi.Runtime",
+        "Shinshi.AI.Preview",
+        "Shinshi.AI.Cutscene",
+        "Unity.Timeline",
+        "Unity.Cinemachine"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

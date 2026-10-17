@@ -70,6 +70,9 @@ namespace Shinshi.AI
         private BossView _bossView;
         private bool _wardMotionActive;
         private bool _awaitingPhaseTransition;
+        private GameObject _fadingShield;      // 정상 성공으로 2.5초 소멸 중인 이 기믹의 보호막, 컷신 인계 때 이것만 정확히 넘긴다
+        private int _fadingShieldCastId;
+        private int _handoverCastId;           // 보호막을 컷신에 넘긴 시전, 이 시전의 늦은 성공이나 복원은 보호막을 다시 만들지 않는다
 
         public bool IsActive => _active;
         public bool IsGathering => _active && _gathering;
@@ -82,6 +85,8 @@ namespace Shinshi.AI
         public bool ReviveWindowOpened => _reviveWindowOpened;
         public double LastLinkDamageServerTime => _lastLinkDamageServerTime;
         public bool IsAwaitingPhaseTransition => _awaitingPhaseTransition;
+        public bool HasFadingShield => _fadingShield != null;
+        public int HandoverCastId => _handoverCastId;
 
         private void Awake()
         {
@@ -304,9 +309,47 @@ namespace Shinshi.AI
             if (!Matches(castId) && ((!_awaitingPhaseTransition) || (castId != _castId))) return;
             _endedCastId = Math.Max(_endedCastId, castId);
             ClearVisuals();
+            ForgetShieldHandover();
             _anchors.Clear();
             _awaitingPhaseTransition = false;
             EndWardMotion(true);
+        }
+
+        /// <summary> 컷신에 넘길 이 50% 시전의 보호막이 있다(반복 중이거나 성공 뒤 소멸 중) </summary>
+        public bool HasShieldForCutscene => _active ? (_shield != null) : (_fadingShield != null);
+
+        // 2페이즈 전환 컷신이 장비 연결까지 끝내고 실제 재생을 시작하는 순간에만 부른다. 사건 수신이나 재생 시도만으로는 부르지 않는다.
+        // 실제 인스턴스를 그대로 넘긴다. 같은 오브젝트라 인계 순간 위치(보스 위 1.4m), 크기(0.9배), 밝기, 파티클 배치가 끊기지 않는다.
+        // 넘긴 뒤 수명과 정리는 컷신 쪽만 책임진다: 소멸 목록(_tails)에서 빼고 소유 참조를 비운다. 성공 때 걸어 둔 2.5초 지연 제거는
+        // 취소할 수 없지만 컷신이 0.75초에 먼저 지우므로 이미 사라진 대상을 가리켜 아무 일도 하지 않는다.
+        // 넘긴 시전은 종료 기록에 올려 늦은 성공, 중복 성공, 같은 시전 재시작, 복원이 보호막을 다시 만들지 않게 한다.
+        // 타격 VFX와 다른 잔여 효과는 그대로 둔다
+        /// <summary> 이 50% 시전의 보호막 인스턴스를 컷신에 넘긴다. 넘길 것이 없으면 null이다 </summary>
+        public GameObject TakeShieldForCutscene(out EWolbaekShieldHandover kind)
+        {
+            GameObject shield = null;
+            kind = EWolbaekShieldHandover.None;
+            if (_active)
+            {
+                // 전환 사건이 성공 사건보다 먼저 왔다
+                _handoverCastId = _castId;
+                _endedCastId = Math.Max(_endedCastId, _castId);
+                shield = _shield;
+                _shield = null;
+                kind = (shield != null) ? EWolbaekShieldHandover.ActiveShield : EWolbaekShieldHandover.None;
+                return shield;
+            }
+
+            if (_fadingShield != null)
+            {
+                _handoverCastId = _fadingShieldCastId;
+                shield = _fadingShield;
+                _tails.Release(shield);
+                _fadingShield = null;
+                kind = EWolbaekShieldHandover.FadingShield;
+            }
+
+            return shield;
         }
 
         public void Succeeded(int castId)
@@ -337,6 +380,7 @@ namespace Shinshi.AI
         {
             if (_active || _awaitingPhaseTransition) _endedCastId = Math.Max(_endedCastId, _castId);
             ClearVisuals();
+            ForgetShieldHandover();
             _anchors.Clear();
             _awaitingPhaseTransition = false;
             EndWardMotion(true);
@@ -344,6 +388,7 @@ namespace Shinshi.AI
         public void ResetNetworkSession()
         {
             ClearVisuals();
+            ForgetShieldHandover();
             _endedCastId = 0;
             _castId = 0;
             _anchors.Clear();
@@ -462,7 +507,8 @@ namespace Shinshi.AI
 
         private void FadeShield()
         {
-            if (_shield == null)
+            // 컷신에 이미 넘긴 시전이면 지울 보호막도 없고 새로 만들지도 않는다
+            if ((_shield == null) || (_handoverCastId == _castId))
             {
                 return;
             }
@@ -471,7 +517,16 @@ namespace Shinshi.AI
             WolbaekShieldFade.Begin(_shield, SHIELD_FADE_SECONDS);
             _tails.Keep(_shield);
             Destroy(_shield, SHIELD_FADE_SECONDS);
+            _fadingShield = _shield;
+            _fadingShieldCastId = _castId;
             _shield = null;
+        }
+
+        private void ForgetShieldHandover()
+        {
+            _fadingShield = null;
+            _fadingShieldCastId = 0;
+            _handoverCastId = 0;
         }
 
         private void ClearHoldLine()

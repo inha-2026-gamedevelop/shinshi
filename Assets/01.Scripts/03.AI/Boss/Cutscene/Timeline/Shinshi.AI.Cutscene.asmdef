@@ -1,0 +1,16 @@
+{
+    "name": "Shinshi.AI.Cutscene",
+    "rootNamespace": "Shinshi.AI",
+    "references": [
+        "Unity.Timeline"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

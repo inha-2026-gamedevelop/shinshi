@@ -26,6 +26,12 @@ namespace Shinshi.AI
             }
         }
 
+        /// <summary> 다른 소유자에게 넘긴 효과를 목록에서 뺀다. 이후 Clear가 그 효과를 지우지 않는다 </summary>
+        public void Release(GameObject effect)
+        {
+            _effects.Remove(effect);
+        }
+
         public void Clear()
         {
             for (int i = 0; i < _effects.Count; ++i)

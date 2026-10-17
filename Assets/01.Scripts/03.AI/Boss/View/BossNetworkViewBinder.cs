@@ -33,6 +33,7 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekColorWardView _colorWardView; // 50% 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekFoxfireSealView _foxfireSealView; // 25% 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekFinalAreaView _finalAreaView; // 0% 복제 계약의 클라이언트 입력점
+        [SerializeField] private WolbaekPhase2TransitionPlayer _phase2Transition; // 50% 뒤 2페이즈 전환 컷신, 비어 있으면 보스 표현에서 한 번 찾는다
         [SerializeField] private Transform _effectsRoot;
 
         private BossState _boundState;
@@ -71,6 +72,10 @@ namespace Shinshi.AI
             if ((_finalAreaView == null) && (_view != null))
             {
                 _finalAreaView = _view.GetComponent<WolbaekFinalAreaView>();
+            }
+            if ((_phase2Transition == null) && (_view != null))
+            {
+                _phase2Transition = _view.GetComponent<WolbaekPhase2TransitionPlayer>();
             }
             if (_mucheolMotion == null)
             {
@@ -234,6 +239,12 @@ namespace Shinshi.AI
                 _finalAreaView.ResetNetworkSession();
                 _finalAreaView.SetServerClock(ReadServerTime);
             }
+            if (_phase2Transition != null)
+            {
+                // 전환 번호 기록은 전투 번호 기준이다. 새 연결은 지난 연결의 번호를 이어 쓰지 않는다
+                _phase2Transition.SetServerClock(ReadServerTime);
+                _phase2Transition.ResetSession(state.CombatId);
+            }
             _wasDefeated = false;
             _justBound = true;
             _trackingCasts.Clear();
@@ -279,6 +290,10 @@ namespace Shinshi.AI
             if (_mucheolVfx != null)
             {
                 _mucheolVfx.ResetSession();
+            }
+            if (_phase2Transition != null)
+            {
+                _phase2Transition.EndSession();
             }
             if (_view != null)
             {
@@ -475,6 +490,26 @@ namespace Shinshi.AI
             {
                 _colorWardView.PhaseTransitionStarted();
             }
+        }
+
+        // BossState에 2페이즈 전환 구간 계약(전투 번호, 전환 번호, 서버 시작과 종료 시각, 접속 스냅샷)이 생기면 사건과 복원에서 아래 둘을 호출한다.
+        // OnWardSucceeded나 PhaseState 변화로는 컷신을 시작하지 않는다. 그 둘에는 구간 시각과 번호가 없고,
+        // 지금 서버는 50% 성공과 같은 틱에 전환을 끝내고 다음 틱에 인계해 바로 2페이즈 선택을 연다(연출 시간과 무적이 없다)
+        /// <summary> 서버 전환 구간 사건, 같은 구간이 복원으로 다시 와도 한 번만 재생한다 </summary>
+        public EWolbaekPhase2TransitionDecision OnPhase2TransitionStarted(in WolbaekPhase2TransitionCue cue)
+        {
+            if (_phase2Transition == null)
+            {
+                return EWolbaekPhase2TransitionDecision.Invalid;
+            }
+
+            return _phase2Transition.Receive(in cue, ReadServerTime());
+        }
+
+        /// <summary> 늦은 접속, 재접속 스냅샷의 진행 중 전환 구간, 서버 경과 시간부터 재생하고 끝난 구간은 재생하지 않는다 </summary>
+        public EWolbaekPhase2TransitionDecision OnPhase2TransitionRestored(in WolbaekPhase2TransitionCue cue)
+        {
+            return OnPhase2TransitionStarted(in cue);
         }
 
         // BossState에 25% 봉인 사건과 스냅샷이 들어오면 아래 입력을 연결한다.
