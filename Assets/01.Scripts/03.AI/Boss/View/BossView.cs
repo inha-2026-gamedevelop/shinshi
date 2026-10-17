@@ -48,6 +48,9 @@ namespace Shinshi.AI
         private const float  APPEAR_EFFECT_LIFE   = 6f;    // 초, 생성을 멈춘 뒤 남은 파티클이 사라지기를 기다리는 시간
         private const float  STABLE_RADIUS        = 0.5f;  // m, 표시 위치가 서버 위치에 이만큼 가까우면 자리를 잡은 것으로 본다
         private const float  DIRECTION_EPSILON    = 0.0001f;
+        private const string IDLE_STATE           = "Idle";
+        private const float  CONTROL_RETURN_SPEED = 1f;    // 외부 제어를 돌려받으면 정상 재생 속도로 돌아간다
+        private const float  CONTROL_RETURN_BLEND = 0.05f; // 외부 제어(컷신)를 돌려받을 때 Idle로 섞는 정규화 시간, 색 결계 모션 복귀와 같은 값
         // 클라이언트 어셈블리는 서버 어셈블리의 패턴 팩토리 상수를 볼 수 없어 장판 패턴의 ID를 따로 둔다. 모양은 원형이어도 자세가 달라서다
         private const string AREA_PATTERN_ID     = "wolbaek_p05";
         private const string AREA_PHASE_TWO_ID   = Shinshi.Data.BossPatternCatalogSO.WOLBAEK_P2_P04_ID; // 2페이즈 지정 장판도 같은 던지는 자세다
@@ -154,6 +157,8 @@ namespace Shinshi.AI
         private bool               _isDefeated;
         private Pose               _current;
 
+        private IBossViewControlOwner _controlOwner; // 컷신처럼 몸 표현을 잠시 넘겨받은 쪽, 없으면 이 클래스가 직접 그린다
+
         /****************************************
         *              Unity Event
         ****************************************/
@@ -179,6 +184,7 @@ namespace Shinshi.AI
 
         private void OnDestroy()
         {
+            RevokeExternalControl(EBossViewControlRevoke.Destroyed, false);
             Unbind();
             DestroyRuntimeMaterials();
 
@@ -188,12 +194,16 @@ namespace Shinshi.AI
             }
         }
 
+        // 외부 제어 중에는 위치 따라가기와 모션 진행을 멈춘다. 컷신이 보스를 전환 시작 자리에 두고 Animator를 직접 쓰기 때문이다.
+        // 워프와 패턴 VFX는 서버 사건 표현이라 계속 진행한다
         private void Update()
         {
-            FollowPose(Time.deltaTime);
-
             double now = ReadClock();
-            _motion.Tick(now, Time.deltaTime);
+            if (_controlOwner == null)
+            {
+                FollowPose(Time.deltaTime);
+                _motion.Tick(now, Time.deltaTime);
+            }
 
             if (_warp != null)
             {
@@ -214,7 +224,7 @@ namespace Shinshi.AI
         // 본은 애니메이터가 쓴 뒤에 얹어야 하므로 LateUpdate다
         private void LateUpdate()
         {
-            if (!_hasBones)
+            if ((!_hasBones) || (_controlOwner != null))
             {
                 return;
             }
@@ -288,6 +298,9 @@ namespace Shinshi.AI
             // 확정한 처치 모션이 컨트롤러에 있으면 그것을 쓰고 없으면 임시 도형 자세로 쓰러진다
             if (isDefeated)
             {
+                // 컷신 장비와 컷신이 바꾼 모델 자세를 먼저 걷어 내야 처치 모션이 원래 자리에서 시작한다
+                RevokeExternalControl(EBossViewControlRevoke.Defeated, false);
+
                 if (_talismanView != null)
                 {
                     _talismanView.Clear();
@@ -333,6 +346,11 @@ namespace Shinshi.AI
         /// <summary> 서버 흐름 상태가 바뀌었다. 등장 상태가 시작되면 등장 모션을 재생한다 </summary>
         public void SetFlowState(EBossFlowState flowState, float appearElapsedSeconds = 0f)
         {
+            if ((flowState == EBossFlowState.Defeated) || (flowState == EBossFlowState.Ended))
+            {
+                RevokeExternalControl(EBossViewControlRevoke.CombatEnded, !_isDefeated);
+            }
+
             if (flowState == EBossFlowState.Appearing)
             {
                 _motion.PlayAppear(appearElapsedSeconds);
@@ -376,7 +394,7 @@ namespace Shinshi.AI
         /// <summary> 서버 기믹 사건으로 정해진 월백 모션을 재생하고 패턴 모션 계획을 비운다 </summary>
         public void PlayGimmickMotion(string state, float speed, float blend)
         {
-            if ((_isDefeated) || (_animator == null) || (_motion == null) || (string.IsNullOrEmpty(state)))
+            if ((_isDefeated) || (_controlOwner != null) || (_animator == null) || (_motion == null) || (string.IsNullOrEmpty(state)))
             {
                 return;
             }
@@ -411,6 +429,64 @@ namespace Shinshi.AI
         public void EndEventMotion(int castId, bool isCancelled)
         {
             _motion.OnCastEnded(castId, isCancelled);
+        }
+
+        /// <summary> 휴머노이드 모델의 애니메이터, 외부 제어를 받은 쪽이 Timeline에 연결할 때 쓴다 </summary>
+        public Animator ModelAnimator => _animator;
+
+        /// <summary> 컷신처럼 몸 표현을 넘겨받은 쪽이 있다 </summary>
+        public bool IsExternallyControlled => _controlOwner != null;
+
+        // 넘겨주는 것은 모션 진행, 본 덧입힘, 서버 위치 따라가기다. 처치된 뒤에는 넘기지 않는다.
+        // 다른 소유자가 이미 있으면 그쪽을 먼저 정리시키고 넘긴다
+        /// <summary> 몸 표현 제어권을 넘겨받는다. 처치됐거나 모델이 없으면 거짓이다 </summary>
+        public bool AcquireExternalControl(IBossViewControlOwner owner)
+        {
+            if ((owner == null) || (_isDefeated) || (_animator == null))
+            {
+                return false;
+            }
+
+            if (_controlOwner == owner)
+            {
+                return true;
+            }
+
+            RevokeExternalControl(EBossViewControlRevoke.Replaced, false);
+            _controlOwner = owner;
+            return true;
+        }
+
+        /// <summary> 넘겨받은 제어권을 돌려준다. returnToIdle이 참이면 모션 계획을 비우고 정상 속도의 Idle로 돌아간다 </summary>
+        public void ReleaseExternalControl(IBossViewControlOwner owner, bool returnToIdle)
+        {
+            if ((owner == null) || (_controlOwner != owner))
+            {
+                return;
+            }
+
+            _controlOwner = null;
+            if (returnToIdle)
+            {
+                PlayGimmickMotion(IDLE_STATE, CONTROL_RETURN_SPEED, CONTROL_RETURN_BLEND);
+            }
+        }
+
+        // 소유자에게 알린 뒤 거둔다. 소유자는 자기 장비와 모델 자세만 되돌리고 이 클래스의 모션은 건드리지 않는다
+        private void RevokeExternalControl(EBossViewControlRevoke reason, bool returnToIdle)
+        {
+            IBossViewControlOwner owner = _controlOwner;
+            if (owner == null)
+            {
+                return;
+            }
+
+            _controlOwner = null;
+            owner.OnViewControlRevoked(reason);
+            if (returnToIdle)
+            {
+                PlayGimmickMotion(IDLE_STATE, CONTROL_RETURN_SPEED, CONTROL_RETURN_BLEND);
+            }
         }
 
         /// <summary> 서버가 알린 P07 워프 직전 출발 위치를 워프 표현에 넘긴다 </summary>
@@ -468,6 +544,8 @@ namespace Shinshi.AI
         /// <summary> 모션과 위치 기억을 처음으로 되돌린다, 전투를 다시 시작할 때 쓴다 </summary>
         public void ResetView()
         {
+            RevokeExternalControl(EBossViewControlRevoke.Reset, false);
+
             bool wasDefeated = _isDefeated;
             _hasPose    = false;
             _hasCast    = false;

@@ -29,7 +29,7 @@ namespace Shinshi.AI
         private const float RING_HALF_WIDTH        = 0.18f;
         private const float MOTION_BLEND_SECONDS   = 0.05f;
         private const float GROGGY_ENTER_BLEND     = 0.3f;  // 시험 씬 GimmickAttackCue 그로기 진입 섞기와 같은 정규화 값
-        private const float SHIELD_FADE_SECONDS    = 2.5f;  // 정상 성공 때 보호막의 남은 파티클이 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
+        private const float SHIELD_FADE_SECONDS    = 2.5f;  // 정상 성공 때 보호막의 남은 파티클이 투명해지며 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
         private const int   RING_SEGMENTS          = 64;
         private const string GROGGY_STATE          = "down_groggy02_loop_inplace";
         private const string IDLE_STATE            = "Idle";
@@ -710,10 +710,9 @@ namespace Shinshi.AI
             {
                 return;
             }
-            foreach (ParticleSystem particle in _shield.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                particle.Stop(false, ParticleSystemStopBehavior.StopEmitting);
-            }
+
+            // 새 파티클을 멈추고 남은 파티클을 제거 시각에 투명해지도록 낮춘다. 사망, 취소, Reset은 _tails가 즉시 지운다
+            WolbaekShieldFade.Begin(_shield, SHIELD_FADE_SECONDS);
             _tails.Keep(_shield);
             Destroy(_shield, SHIELD_FADE_SECONDS);
             _shield = null;

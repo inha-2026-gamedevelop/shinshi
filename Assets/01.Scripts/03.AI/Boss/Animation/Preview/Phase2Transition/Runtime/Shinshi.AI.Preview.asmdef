@@ -1,0 +1,16 @@
+{
+    "name": "Shinshi.AI.Preview",
+    "rootNamespace": "Shinshi.AI.Preview",
+    "references": [
+        "Unity.Timeline"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
