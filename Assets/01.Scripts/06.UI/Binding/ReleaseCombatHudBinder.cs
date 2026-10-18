@@ -91,7 +91,7 @@ namespace Shinshi.UI
                         _lastPhase = -1;
                         if (_bossView != null)
                         {
-                            _bossView.SetBossName(candidate.BossId == "boss_wolbaek" ? "월백" : candidate.BossId);
+                            _bossView.SetBossName(DungeonEntryRules.BossName(candidate.BossId));
                         }
                         break;
                     }
