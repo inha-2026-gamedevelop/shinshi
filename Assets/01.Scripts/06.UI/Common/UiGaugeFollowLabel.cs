@@ -224,6 +224,18 @@ namespace Shinshi.UI
             Apply(ratio);
         }
 
+        /// <summary> 채움 색을 바꾼다, 번쩍임이 되돌아올 기준색도 함께 바뀐다 </summary>
+        public void SetFillColor(Color color)
+        {
+            if (_fill == null)
+            {
+                return;
+            }
+
+            _fillBaseColor = color;
+            _fill.color    = color;
+        }
+
         private float GetRatio() { return _ratio; }
 
         // 한 칸 오를 때마다 번쩍이고, 틀이 부풀고, 끝에서 불꽃이 튄다
