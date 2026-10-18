@@ -95,6 +95,7 @@ namespace Shinshi.UI
         private bool           _pendingSnapshotReady;
         private bool           _awaitingFreshSnapshot;
         private bool           _selectActionsReady;
+        private bool           _modernAlternate = true;
         private string         _status = "능력치를 선택하고 강화할 단계를 조절하세요";
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -118,11 +119,42 @@ namespace Shinshi.UI
             }
         }
 
+        /// <summary> 신체 강화(참) · 수련(거짓) 표시 모드. 같은 성장 데이터를 다르게 보여 줄 뿐이다 </summary>
+        public bool ModernAlternate => _modernAlternate;
+
+        /****************************************
+        *              Public Methods
+        ****************************************/
+
+        /// <summary> 시안 레이아웃을 한 번만 적용한다. 여러 번 불러도 같은 결과다 </summary>
+        public void EnsureModernLayout()
+        {
+            TrainingModernLayout.Apply(this);
+        }
+
+        /// <summary> 표시 모드만 바꾼다. 서버 데이터 · 초안 · 요청 상태는 그대로다 </summary>
+        public void SetModernPresentation(bool alternate)
+        {
+            _modernAlternate = alternate;
+            TrainingModernLayout.Present(this, alternate);
+            if ((transform.Find(ModernDarkKit.APPLIED_NAME) != null) && (isActiveAndEnabled))
+            {
+                RefreshAll();
+            }
+        }
+
         /****************************************
         *              Unity Event
         ****************************************/
 
-        private void Awake() { BindButtons(); }
+        private void Awake()
+        {
+            BindButtons();
+            if (Application.isPlaying)
+            {
+                EnsureModernLayout();
+            }
+        }
 
         private void OnEnable()
         {
@@ -835,6 +867,8 @@ namespace Shinshi.UI
             {
                 _previewTag.SetActive(PreviewMode);
             }
+
+            TrainingModernLayout.Refresh(this, _selectedIndex, _confirmed[_selectedIndex], _working[_selectedIndex], _working, statCap, workingTotal, totalCap);
         }
 
         private string EffectSummary(int index, int steps)

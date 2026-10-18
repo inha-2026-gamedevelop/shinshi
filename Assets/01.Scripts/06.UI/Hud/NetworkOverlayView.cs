@@ -29,6 +29,10 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
+        // 통계는 항상 맨 위, 이름표는 HUD와 창(씬 UI 0~50, HUD 10, 설정 100)보다 아래에 그린다
+        public const int SORTING_ORDER           = 30000;
+        public const int NAMEPLATE_SORTING_ORDER = -10;
+
         private const float  REFRESH_INTERVAL_SECONDS = 0.5f;
         private const float  NAMEPLATE_HEIGHT         = 2.1f;
         private const float  NAMEPLATE_MAX_DISTANCE   = 40f;
@@ -38,8 +42,7 @@ namespace Shinshi.UI
         private const float  STACK_FONT_SIZE          = 18f;
         private const float  STACK_OFFSET_Y           = 24f;
         private const float  TEXT_OUTLINE_WIDTH       = 0.2f;
-        private const int    SORTING_ORDER            = 30000;
-        private const float  REFERENCE_WIDTH          = 1920f;
+        private const float  REFERENCE_WIDTH         = 1920f;
         private const float  REFERENCE_HEIGHT         = 1080f;
         private const float  WIDTH_HEIGHT_MATCH       = 0.5f;
         private const double PING_GOOD_MS             = 80.0;
@@ -158,7 +161,6 @@ namespace Shinshi.UI
             scaler.referenceResolution = new Vector2(REFERENCE_WIDTH, REFERENCE_HEIGHT);
             scaler.matchWidthOrHeight  = WIDTH_HEIGHT_MATCH;
 
-            // 이름표를 먼저 만들어 통계 글자가 그 위에 그려지게 한다
             var nameplateObject = new GameObject("Nameplates", typeof(RectTransform));
             _nameplateRoot = (RectTransform)nameplateObject.transform;
             _nameplateRoot.SetParent(transform, false);
@@ -166,7 +168,7 @@ namespace Shinshi.UI
             _nameplateRoot.anchorMax = Vector2.one;
             _nameplateRoot.offsetMin = Vector2.zero;
             _nameplateRoot.offsetMax = Vector2.zero;
-            nameplateObject.AddComponent<Canvas>();
+            ConfigureNameplateCanvas(nameplateObject.AddComponent<Canvas>());
 
             // 밝은 하늘, UI 위에서도 읽히게 글자 크기에 맞춘 반투명 배경을 깐다
             var backObject = new GameObject("StatsBack", typeof(RectTransform));
@@ -187,6 +189,13 @@ namespace Shinshi.UI
             rect.pivot            = new Vector2(0f, 1f);
             rect.anchoredPosition = STATS_OFFSET;
             rect.sizeDelta        = STATS_SIZE;
+        }
+
+        // 부모 캔버스의 정렬값을 상속하면 이름표가 모든 창 위에 그려지므로 독립 정렬로 낮춘다
+        public static void ConfigureNameplateCanvas(Canvas canvas)
+        {
+            canvas.overrideSorting = true;
+            canvas.sortingOrder    = NAMEPLATE_SORTING_ORDER;
         }
 
         private TextMeshProUGUI CreateText(string objectName, Transform parent, float fontSize, TextAlignmentOptions alignment)

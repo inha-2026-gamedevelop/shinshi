@@ -1,9 +1,14 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
+
+// 서드파티
+using TMPro;
 
 // 프로젝트 내부
 using Shinshi.Common;
@@ -23,7 +28,20 @@ namespace Shinshi.UI
         ****************************************/
 
         // Input.GetMouseButton 번호. 0 왼쪽
-        private const int MOUSE_BUTTON = 0;
+        private const int    MOUSE_BUTTON = 0;
+        private const string ENTRY_PREFIX = "MD_Entry_";
+        private const string CLOSE_TEXT   = "닫기";
+        private const float  ENTRY_GAP    = 8f;
+
+        private const string CONTENT_NAME        = "MD_MenuContent";
+        private const float  SECTION_GAP         = 24f;
+        private const float  BOTTOM_MARGIN       = 16f;
+        private const float  SCROLL_SENSITIVITY  = 40f;
+        private const float  COLUMN_EPSILON      = 1f;
+        private const int    MAX_COLUMNS         = 2;
+        private const int    CORNER_BOTTOM_LEFT  = 0;
+        private const int    CORNER_TOP_LEFT     = 1;
+        private const int    CORNER_COUNT        = 4;
 
         [SerializeField] private Button        _menuButton = null;
         [SerializeField] private RectTransform _panel      = null;
@@ -40,6 +58,8 @@ namespace Shinshi.UI
         // 숨기기 전에 켜져 있던 것만 닫을 때 되살린다
         private bool[] _wasActive = null;
 
+        private readonly Vector3[] _corners = new Vector3[CORNER_COUNT];
+
         /****************************************
         *              Unity Event
         ****************************************/
@@ -54,6 +74,7 @@ namespace Shinshi.UI
             }
 
             _wasActive = new bool[(_hideWhileOpen != null) ? _hideWhileOpen.Length : 0];
+            ApplyKoreanFont();
             _panel.gameObject.SetActive(false);
         }
 
@@ -110,6 +131,291 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 메뉴 항목을 하나 더한다. 같은 이름 항목이 있으면 새로 만들지 않고 돌려준다. 눌리면 onClick 뒤에 메뉴를 접는다 </summary>
+        public Button AddEntry(string label, UnityAction onClick)
+        {
+            if ((_panel == null) || (string.IsNullOrEmpty(label)))
+            {
+                return null;
+            }
+
+            string entryName = ENTRY_PREFIX + label;
+            Button existing = FindEntry(entryName);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            RectTransform container = FindEntryContainer();
+            if (container == null)
+            {
+                return null;
+            }
+
+            Button template = null;
+            int insertIndex = 0;
+            for (int i = 0; i < container.childCount; ++i)
+            {
+                Button item = container.GetChild(i).GetComponent<Button>();
+                if ((item == null) || (IsCloseEntry(item)))
+                {
+                    continue;
+                }
+
+                if (!IsAddedEntry(item.transform))
+                {
+                    template = item;
+                }
+
+                insertIndex = i + 1;
+            }
+
+            if (template == null)
+            {
+                return null;
+            }
+
+            Button entry = Instantiate(template, container);
+            entry.name = entryName;
+            entry.onClick.RemoveAllListeners();
+            for (int i = 0; i < entry.onClick.GetPersistentEventCount(); ++i)
+            {
+                entry.onClick.SetPersistentListenerState(i, UnityEventCallState.Off);
+            }
+
+            TMP_Text text = entry.GetComponentInChildren<TMP_Text>(true);
+            if (text != null)
+            {
+                text.text = label;
+            }
+
+            entry.transform.SetSiblingIndex(insertIndex);
+            if (onClick != null)
+            {
+                entry.onClick.AddListener(onClick);
+            }
+
+            entry.onClick.AddListener(Close);
+            PlaceEntry(entry, template, container);
+            ApplyKoreanFont();
+            return entry;
+        }
+
+        // 씬에 저장된 메뉴 폰트에는 한글 글리프가 빠져 있어, 한국어 검증을 마친 공통 폰트(ModernDark 카탈로그)를 실행 중에만 씌운다. 원본 폰트 에셋은 건드리지 않는다
+        private void ApplyKoreanFont()
+        {
+            ModernDarkUiCatalog catalog = ModernDarkUiCatalog.Load();
+            TMP_FontAsset font = (catalog != null) ? catalog.Font : null;
+            if ((font == null) || (_panel == null))
+            {
+                return;
+            }
+
+            foreach (TMP_Text text in _panel.GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (text.font != font)
+                {
+                    text.font = font;
+                }
+            }
+        }
+
+        private Button FindEntry(string entryName)
+        {
+            foreach (Button item in _panel.GetComponentsInChildren<Button>(true))
+            {
+                if (item.name == entryName)
+                {
+                    return item;
+                }
+            }
+
+            return null;
+        }
+
+        // 항목 버튼이 가장 많이 직접 달린 부모가 실제 본문이다. 패널 바로 아래가 아니어도 찾는다
+        private RectTransform FindEntryContainer()
+        {
+            RectTransform best      = null;
+            int           bestCount = 0;
+            var           counts    = new Dictionary<Transform, int>();
+            foreach (Button item in _panel.GetComponentsInChildren<Button>(true))
+            {
+                Transform parent = item.transform.parent;
+                if ((IsCloseEntry(item)) || (!(parent is RectTransform rect)))
+                {
+                    continue;
+                }
+
+                counts.TryGetValue(parent, out int count);
+                ++count;
+                counts[parent] = count;
+                if (count > bestCount)
+                {
+                    best      = rect;
+                    bestCount = count;
+                }
+            }
+
+            return best;
+        }
+
+        private static bool IsAddedEntry(Transform item)
+        {
+            return item.name.StartsWith(ENTRY_PREFIX, StringComparison.Ordinal);
+        }
+
+        private static bool IsCloseEntry(Button item)
+        {
+            TMP_Text text = item.GetComponentInChildren<TMP_Text>(true);
+            return (item.name.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0)
+                || ((text != null) && (!string.IsNullOrEmpty(text.text)) && (text.text.Contains(CLOSE_TEXT)));
+        }
+
+        // 배치 그룹이 없는 본문이면 기존 내용 맨 아래에 열 격자로 이어 붙인다. 기존 항목은 옮기지 않는다
+        private void PlaceEntry(Button entry, Button template, RectTransform container)
+        {
+            if (container.GetComponent<LayoutGroup>() != null)
+            {
+                LayoutRebuilder.MarkLayoutForRebuild(container);
+                return;
+            }
+
+            var rect         = (RectTransform)entry.transform;
+            var templateRect = (RectTransform)template.transform;
+            float step       = templateRect.rect.height + ENTRY_GAP;
+
+            var columns = new List<float>();
+            float bottom = GetCorner(container, templateRect, CORNER_BOTTOM_LEFT).y;
+            int slot     = 0;
+            for (int i = 0; i < container.childCount; ++i)
+            {
+                var child = container.GetChild(i) as RectTransform;
+                if ((child == null) || (child == rect) || (!child.gameObject.activeSelf))
+                {
+                    continue;
+                }
+
+                if (IsAddedEntry(child))
+                {
+                    ++slot;
+                    continue;
+                }
+
+                if ((!Mathf.Approximately(child.anchorMin.y, 1f)) || (!Mathf.Approximately(child.anchorMax.y, 1f)))
+                {
+                    continue;
+                }
+
+                bottom = Mathf.Min(bottom, GetCorner(container, child, CORNER_BOTTOM_LEFT).y);
+                Button button = child.GetComponent<Button>();
+                if ((button != null) && (!IsCloseEntry(button)))
+                {
+                    AddColumn(columns, GetCorner(container, child, CORNER_BOTTOM_LEFT).x);
+                }
+            }
+
+            Vector2 templateTopLeft = GetCorner(container, templateRect, CORNER_TOP_LEFT);
+            if (columns.Count == 0)
+            {
+                columns.Add(templateTopLeft.x);
+            }
+
+            int columnCount = Mathf.Min(columns.Count, MAX_COLUMNS);
+            float left      = columns[slot % columnCount];
+            float top       = bottom - SECTION_GAP - ((slot / columnCount) * step);
+            rect.anchoredPosition = templateRect.anchoredPosition + new Vector2(left - templateTopLeft.x, top - templateTopLeft.y);
+
+            float depth = container.rect.yMax - (top - templateRect.rect.height) + BOTTOM_MARGIN;
+            RectTransform viewport = (container.name == CONTENT_NAME) ? (RectTransform)container.parent : container;
+            if (depth > viewport.rect.height)
+            {
+                EnsureScroll(container, depth);
+            }
+        }
+
+        private static void AddColumn(List<float> columns, float left)
+        {
+            for (int i = 0; i < columns.Count; ++i)
+            {
+                if (Mathf.Abs(columns[i] - left) < COLUMN_EPSILON)
+                {
+                    return;
+                }
+            }
+
+            columns.Add(left);
+            columns.Sort();
+        }
+
+        private Vector2 GetCorner(RectTransform container, RectTransform target, int corner)
+        {
+            target.GetWorldCorners(_corners);
+            return container.InverseTransformPoint(_corners[corner]);
+        }
+
+        // 화면보다 길어지면 본문을 세로 스크롤 안에 넣는다. 기존 자식은 같은 좌표로 내용 상자로 옮긴다
+        private static void EnsureScroll(RectTransform container, float depth)
+        {
+            RectTransform content = container;
+            if (container.name != CONTENT_NAME)
+            {
+                var go = new GameObject(CONTENT_NAME, typeof(RectTransform));
+                go.layer = container.gameObject.layer;
+                content  = (RectTransform)go.transform;
+                content.SetParent(container, false);
+                content.anchorMin        = new Vector2(0f, 1f);
+                content.anchorMax        = new Vector2(1f, 1f);
+                content.pivot            = new Vector2(0f, 1f);
+                content.anchoredPosition = Vector2.zero;
+                content.sizeDelta        = new Vector2(0f, container.rect.height);
+
+                var children = new List<Transform>();
+                for (int i = 0; i < container.childCount; ++i)
+                {
+                    Transform child = container.GetChild(i);
+                    if (child != content)
+                    {
+                        children.Add(child);
+                    }
+                }
+
+                for (int i = 0; i < children.Count; ++i)
+                {
+                    children[i].SetParent(content, false);
+                }
+
+                if (container.GetComponent<RectMask2D>() == null)
+                {
+                    container.gameObject.AddComponent<RectMask2D>();
+                }
+
+                if (container.GetComponent<Graphic>() == null)
+                {
+                    var hit = container.gameObject.AddComponent<Image>();
+                    hit.color = Color.clear;
+                }
+
+                ScrollRect scroll = container.GetComponent<ScrollRect>();
+                if (scroll == null)
+                {
+                    scroll = container.gameObject.AddComponent<ScrollRect>();
+                }
+
+                scroll.viewport           = container;
+                scroll.content            = content;
+                scroll.horizontal         = false;
+                scroll.vertical           = true;
+                scroll.movementType       = ScrollRect.MovementType.Clamped;
+                scroll.scrollSensitivity  = SCROLL_SENSITIVITY;
+            }
+
+            if (depth > content.rect.height)
+            {
+                content.sizeDelta = new Vector2(content.sizeDelta.x, depth);
+            }
+        }
 
         private bool OnEscape()
         {

@@ -24,6 +24,9 @@ namespace Shinshi.UI
         private const float  WARNING_RATIO   = 0.9f;
         private const float  FULL_RATIO      = 1f;
         private const int    NO_SELECTION    = -1;
+        private const int    HIDE_UNKNOWN    = 0;
+        private const int    HIDE_YES        = 1;
+        private const int    HIDE_NO         = 2;
 
         // EInventorySort 값 순서와 같아야 한다
         private static readonly string[] G_SortLabels = { "등급순", "최근 획득순", "종류순", "이름순" };
@@ -64,12 +67,17 @@ namespace Shinshi.UI
 
         [SerializeField] private bool _enableSlotInteraction = false;
 
+        // 장면에 이 필드가 저장돼 있지 않아도 기본값으로 켜진다. 거래 창 옆에 붙는 사본은 건드리지 않는다
+        [SerializeField] private bool _modernLayout = true;
+
+        private InventoryModernLayout         _layout;
         private Comparison<InventoryItemData> _compare;
         private EInventoryCategory            _category      = EInventoryCategory.All;
         private EInventorySort                _sort          = EInventorySort.Grade;
         private bool                          _ascending     = false;
         private int                           _capacity      = 0;
         private int                           _selectedIndex = NO_SELECTION;
+        private int                           _hideEquipped  = HIDE_UNKNOWN;
 
         /****************************************
         *              Properties
@@ -86,6 +94,7 @@ namespace Shinshi.UI
             _compare   = Compare;
             _ascending = IsAscendingByDefault(_sort);
 
+            EnsureLayout();
             BindTabs();
 
             if (_sortDropdown != null)
@@ -167,13 +176,21 @@ namespace Shinshi.UI
         public void SetItems(IReadOnlyList<InventoryItemData> items, int capacity)
         {
             _items.Clear();
-            int itemCount = (items != null) ? items.Count : 0;
+            int sourceCount = (items != null) ? items.Count : 0;
+            bool hideEquipped = HidesEquipped();
 
-            for (int i = 0; i < itemCount; ++i)
+            // 착용 중인 장비는 장비 창에서 보므로 가방 목록에서 뺀다. 원본 데이터는 바꾸지 않고, 착용을 풀어 다시 받으면 나타난다
+            for (int i = 0; i < sourceCount; ++i)
             {
+                if (hideEquipped && !items[i].IsEmpty && items[i].Slot.IsEquipped)
+                {
+                    continue;
+                }
+
                 _items.Add(items[i]);
             }
 
+            int itemCount = _items.Count;
             _capacity = Mathf.Max(capacity, itemCount);
 
             while (_items.Count < _capacity)
@@ -189,6 +206,34 @@ namespace Shinshi.UI
         {
             SetText(_yeopjeonLabel, string.Format(CURRENCY_FORMAT, yeopjeon));
             SetText(_essenceLabel, string.Format(CURRENCY_FORMAT, essence));
+        }
+
+        /// <summary>넓은 어두운 배치와 상세 패널을 한 번만 적용한다. Awake가 부르며, 실행 전에 화면을 만들 때도 쓴다</summary>
+        public void EnsureLayout()
+        {
+            if ((_layout != null) || (!_modernLayout) || (_grid == null))
+            {
+                return;
+            }
+
+            // 거래 창 옆에 붙는 사본은 거래 창과 겹치지 않도록 옛 크기를 쓴다
+            if (transform.root.GetComponentInChildren<TradeView>(true) != null)
+            {
+                return;
+            }
+
+            TMP_FontAsset regular = ((_tabLabels != null) && (_tabLabels.Length > 0) && (_tabLabels[0] != null)) ? _tabLabels[0].font : null;
+            TMP_FontAsset bold    = (_capacityLabel != null) ? _capacityLabel.font : null;
+            _layout = new InventoryModernLayout(regular, bold);
+            _layout.Apply((RectTransform)transform, _tabs, _grid, _sortDropdown, _orderButton, _arrangeButton, _capacityLabel);
+            RefreshDetail(NO_SELECTION);
+        }
+
+        /// <summary>칸 번호(빈 칸 포함)의 아이템을 선택하고 상세를 갱신한다</summary>
+        public void SelectItem(int itemIndex)
+        {
+            _selectedIndex = ((itemIndex >= 0) && (itemIndex < _items.Count)) ? itemIndex : NO_SELECTION;
+            Refresh();
         }
 
         public void SetOpen(bool open) { gameObject.SetActive(open); }
@@ -285,6 +330,17 @@ namespace Shinshi.UI
                 ? _visibleToItem[index] : NO_SELECTION;
         }
 
+        // 거래 창 옆에 붙는 보조 인벤토리는 옛 동작대로 착용 장비도 그대로 보여 준다
+        private bool HidesEquipped()
+        {
+            if (_hideEquipped == HIDE_UNKNOWN)
+            {
+                _hideEquipped = (transform.root.GetComponentInChildren<TradeView>(true) == null) ? HIDE_YES : HIDE_NO;
+            }
+
+            return _hideEquipped == HIDE_YES;
+        }
+
         private void BindTabs()
         {
             if (_tabs == null)
@@ -343,6 +399,29 @@ namespace Shinshi.UI
 
             _selectedIndex = _visibleToItem[visibleIndex];
             _grid.SetSelectedIndex(visibleIndex);
+            RefreshDetail(visibleIndex);
+        }
+
+        private void RefreshDetail(int visibleIndex)
+        {
+            if (_layout == null)
+            {
+                return;
+            }
+
+            bool has = (visibleIndex >= 0) && (_selectedIndex >= 0) && (_selectedIndex < _items.Count) && (!_items[_selectedIndex].IsEmpty);
+            if (!has)
+            {
+                _layout.ShowItem(false, default, null, null);
+                return;
+            }
+
+            InventoryItemData item = _items[_selectedIndex];
+            int tabIndex = (int)item.Category;
+            string category = ((_tabLabels != null) && (tabIndex >= 0) && (tabIndex < _tabLabels.Length) && (_tabLabels[tabIndex] != null))
+                ? _tabLabels[tabIndex].text : null;
+            ItemSlotView slot = _grid.GetSlot(visibleIndex);
+            _layout.ShowItem(true, item.Slot, category, (slot != null) ? slot.IconSprite : null);
         }
 
         private void Refresh()
@@ -403,6 +482,7 @@ namespace Shinshi.UI
                 _grid.SetSelectedIndex(selectedVisible);
             }
 
+            RefreshDetail(selectedVisible);
             RefreshCapacity();
         }
 

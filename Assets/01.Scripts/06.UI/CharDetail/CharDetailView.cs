@@ -58,6 +58,8 @@ namespace Shinshi.UI
 
         private void Awake()
         {
+            CharDetailModernLayout.Apply(this);
+
             if (_closeButton != null)
             {
                 _closeButton.onClick.AddListener(OnCloseClicked);

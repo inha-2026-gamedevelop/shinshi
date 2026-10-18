@@ -64,6 +64,8 @@ namespace Shinshi.UI
 
         private void Awake()
         {
+            MailBoxModernLayout.Apply(this);
+
             if (_closeButton != null)
             {
                 _closeButton.onClick.AddListener(OnCloseClicked);
