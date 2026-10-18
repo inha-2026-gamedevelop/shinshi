@@ -120,7 +120,7 @@ namespace Shinshi.Network
                 return reason;
             }
 
-            if ((!NetworkClient.isConnected) || (NetworkClient.connection == null))
+            if (!ShinshiClientAuthenticator.IsAuthenticatedConnection())
             {
                 return EChatReject.NotConnected;
             }
@@ -142,7 +142,7 @@ namespace Shinshi.Network
                 return reason;
             }
 
-            if ((!NetworkClient.isConnected) || (NetworkClient.connection == null))
+            if (!ShinshiClientAuthenticator.IsAuthenticatedConnection())
             {
                 return EChatReject.NotConnected;
             }

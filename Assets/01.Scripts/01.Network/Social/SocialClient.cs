@@ -249,7 +249,7 @@ namespace Shinshi.Network
         public static bool FlushAcks(double now)
         {
             int pending = DeliveryDedupe.PendingAckCount;
-            if ((pending == 0) || (!NetworkClient.isConnected))
+            if ((pending == 0) || (!ShinshiClientAuthenticator.IsAuthenticatedConnection()))
             {
                 return false;
             }
@@ -290,11 +290,12 @@ namespace Shinshi.Network
             return requestId;
         }
 
-        // 관리 요청은 마을 서버만 받는다. 던전은 채팅과 알림만 받으므로 보내지 않는다
-        /// <summary> 마을 서버에 접속해 있으면 참 </summary>
+        // 관리 요청은 마을 서버만 받는다. 던전은 채팅과 알림만 받으므로 보내지 않는다.
+        // 인증 전 연결에 요청을 보내면 서버가 연결을 끊으므로 인증이 끝나야 참이다. 그 전에 호출한 쪽은 다음 호출에서 다시 시도한다
+        /// <summary> 마을 서버에 접속해 인증까지 끝났으면 참 </summary>
         public static bool IsTownConnection()
         {
-            return (NetworkClient.isConnected) && (NetworkManager.singleton is ShinshiNetworkManager manager)
+            return (ShinshiClientAuthenticator.IsAuthenticatedConnection()) && (NetworkManager.singleton is ShinshiNetworkManager manager)
                 && (manager.ServerRole == EServerRole.Town);
         }
 
