@@ -169,9 +169,9 @@ namespace Shinshi.Common
             public const string ENV_BOSS_ID = "BOSS_ID";
             public const string ARG_BOSS_ID = "-boss-id";
 
-            // 보스 체력 기믹을 켠다(환경 변수는 1이면 켬, 인자는 값 없이 있으면 켬). 기믹 표시가 없는 동안 기본은 꺼짐이다
-            public const string ENV_BOSS_GIMMICKS = "BOSS_GIMMICKS";
-            public const string ARG_BOSS_GIMMICKS = "-boss-gimmicks";
+            // 보스 체력 기믹 스위치. 기본은 켬이고 환경 변수 0이나 끄는 인자(값 없음)로 끈다
+            public const string ENV_BOSS_GIMMICKS    = "BOSS_GIMMICKS";
+            public const string ARG_NO_BOSS_GIMMICKS = "-no-boss-gimmicks";
 
             // Prometheus가 긁어 가는 지표 내보내기. 포트가 없거나 0이면 끈다. 수신 주소 기본값은 루프백이며
             // 수집기가 다른 호스트에 있을 때만 내부망 주소를 준다. 게임 포트와 달리 외부에 열지 않는다

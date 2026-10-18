@@ -23,8 +23,8 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        // 환경 변수 스위치를 켜는 값
-        private const string BOSS_GIMMICKS_ON = "1";
+        // 환경 변수로 보스 기믹을 끄는 값
+        private const string BOSS_GIMMICKS_OFF = "0";
 
         // 서비스 자격과 현재 서버 임대, 전송 계층과 ServerPresence가 함께 쓴다
         private static ServerCredentials _credentials;
@@ -353,31 +353,32 @@ namespace Shinshi.Network
             return GameDB.BossPatterns.TryGetBoss(bossId, out _);
         }
 
-        // 인자는 값 없이 있기만 하면 켜고, 환경 변수는 1일 때만 켠다. 기믹 표시가 없어 기본은 꺼짐이고 켠 사실을 로그로 남긴다
+        // 기믹 사건의 복제와 클라이언트 표시가 연결돼 기본은 켬이다. 끄는 인자가 있거나 환경 변수가 0일 때만 끄고
+        // 끈 사실을 로그로 남긴다
         private static bool ReadBossGimmicks(string[] args, Func<string, string> readEnvironment)
         {
-            bool enabled = false;
+            bool enabled = true;
             if (args != null)
             {
                 for (int i = 0; i < args.Length; ++i)
                 {
-                    if (string.Equals(args[i], Constants.Network.ARG_BOSS_GIMMICKS, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(args[i], Constants.Network.ARG_NO_BOSS_GIMMICKS, StringComparison.OrdinalIgnoreCase))
                     {
-                        enabled = true;
+                        enabled = false;
                         break;
                     }
                 }
             }
 
-            if (!enabled)
-            {
-                string value = readEnvironment(Constants.Network.ENV_BOSS_GIMMICKS);
-                enabled = (value != null) && (value.Trim() == BOSS_GIMMICKS_ON);
-            }
-
             if (enabled)
             {
-                Debug.LogWarning("[Boss] 보스 체력 기믹을 켠다, 기믹 표시가 클라이언트에 없어 개발 확인용이다");
+                string value = readEnvironment(Constants.Network.ENV_BOSS_GIMMICKS);
+                enabled = (value == null) || (value.Trim() != BOSS_GIMMICKS_OFF);
+            }
+
+            if (!enabled)
+            {
+                Debug.LogWarning("[Boss] 보스 체력 기믹을 끈다, 월백은 상한 없이 즉시 사망하고 기존 결계로 진행한다");
             }
 
             return enabled;
