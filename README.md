@@ -79,7 +79,7 @@ git switch release/0.1.0
 ```
 
 - `-Build`는 Unity 에디터를 닫은 상태에서 Windows 서버·클라이언트 개발 빌드를 만든다. 이미 빌드가 있거나 메뉴로 만들었으면 `-Build`를 빼고 실행한다.
-- 스크립트가 PostgreSQL 컨테이너(`shinshi-release-db`, 127.0.0.1:55440), 마이그레이션, API(5080), 마을 서버(7777, API 입장 토큰 검증), 던전 서버(7780, 기본 1개)를 차례로 띄우고 클라이언트 1개를 연다. 클라이언트 수는 `-ClientCount`, 던전 수는 `-DungeonCount`, 던전 시작 포트는 `-DungeonPort`로 정한다. 던전 서버는 출정 1회가 끝나면 스스로 종료하도록 설계돼 있어서, 백그라운드 감시 루프(`tools/Watch-ReleaseDungeons.ps1`)가 몇 초 안에 새 던전을 띄워 다음 출정을 받게 한다. 던전 로그는 프로세스마다 `dungeon-<슬롯>-<시각>.log`(슬롯당 최근 5개)로, 감시 루프 기록은 `dungeon-watcher.log`로 남는다.
+- 스크립트가 PostgreSQL 컨테이너(`shinshi-release-db`, 127.0.0.1:55440), 마이그레이션, API(5080), 마을 서버(7777, API 입장 토큰 검증), 던전 서버(7780, 기본 4개)를 차례로 띄우고 클라이언트 1개를 연다. 클라이언트 수는 `-ClientCount`, 던전 수는 `-DungeonCount`, 던전 시작 포트는 `-DungeonPort`로 정한다. 던전 서버는 출정 1회가 끝나면 스스로 종료하도록 설계돼 있어서, 백그라운드 감시 루프(`tools/Watch-ReleaseDungeons.ps1`)가 몇 초 안에 새 던전을 띄워 다음 출정을 받게 한다. 던전 로그는 프로세스마다 `dungeon-<슬롯>-<시각>.log`(슬롯당 최근 5개)로, 감시 루프 기록은 `dungeon-watcher.log`로 남는다.
 - 처음에는 클라이언트 로비의 개발 로그인에 아이디, 비밀번호(8자 이상, 영문과 숫자), 이메일을 넣고 **가입 후 로그인**을 누른다. 다음부터는 **로그인**만 누른다. 이어서 캐릭터 생성, 게임 시작을 누르면 마을에 들어간다.
 - 다른 PC에서 접속하려면 서버 PC에서 `-PublicAddress <서버 PC의 IP>`로 실행하고 방화벽에서 5080(TCP)과 7777, 7780(UDP, 던전 수만큼 이어서)을 연다. 다른 PC는 `Builds\windows-client\Shinshi.exe -api-base-url http://<서버 PC의 IP>:5080`으로 실행한다.
 - 비밀값(DB 비밀번호, 인증 키, 서버 서비스 토큰)은 `%LOCALAPPDATA%\Shinshi\release-stack`에 한 번 만들어 재사용하고 출력하지 않는다. 로그도 같은 곳에 남는다.

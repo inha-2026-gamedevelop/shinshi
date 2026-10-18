@@ -10,16 +10,18 @@ Linux .x86_64 servers cannot run here; use Linux for those builds and M3 verific
 The server must write its ServerBoot ready message before clients are started.
 Client auto-connect is a development-build feature. Check every client log for
 connection success; process launch alone does not establish M2 verification.
+DungeonPoolSize only labels the server log and the pool size the operator planned; it does not start processes.
+One dungeon server process serves one expedition, so run one process per party that must play at the same time.
 ClientCount 1 is M1; 2 or more is M2. DurationSeconds 0 leaves processes running.
 ContentVersion must exactly match the GameDB.ContentVersion included in both builds.
 Server settings and conventional credential variables are removed from client environments.
 Arguments, environment values, and original process exceptions are never logged.
 .EXAMPLE
-.\tools\Start-M2.ps1 -BackendBaseUrl http://127.0.0.1:5000 -ContentVersion 0.1.0 -DungeonPoolSize 1 -VisibleClients
+.\tools\Start-M2.ps1 -BackendBaseUrl http://127.0.0.1:5000 -ContentVersion 0.1.0 -DungeonPoolSize 4 -VisibleClients
 .EXAMPLE
-.\tools\Start-M2.ps1 -BackendBaseUrl http://127.0.0.1:5000 -ContentVersion 0.1.0 -DungeonPoolSize 1 -ClientCount 4 -Role dungeon -DurationSeconds 60
+.\tools\Start-M2.ps1 -BackendBaseUrl http://127.0.0.1:5000 -ContentVersion 0.1.0 -DungeonPoolSize 4 -ClientCount 4 -Role dungeon -DurationSeconds 60
 .EXAMPLE
-.\tools\Start-M2.ps1 -BackendBaseUrl http://127.0.0.1:5000 -ContentVersion 0.1.0 -DungeonPoolSize 1 -ValidateOnly
+.\tools\Start-M2.ps1 -BackendBaseUrl http://127.0.0.1:5000 -ContentVersion 0.1.0 -DungeonPoolSize 4 -ValidateOnly
 #>
 [CmdletBinding()]
 param(
