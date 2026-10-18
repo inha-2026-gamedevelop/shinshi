@@ -36,6 +36,8 @@ namespace Shinshi.AI
         // 하드 페이즈 기록 뒤에 싣고 일회성 효과(판정, 폭발)는 기록하지 않아 재접속에서 다시 재생되지 않는다.
         // 등장 시작, 처치, 페이즈 세대와 전환 시각은 서버가 정한 시각이라 표현이 추정하지 않도록 SyncVar로 보낸다.
         // 페이즈 세대는 50% 성공 Rpc와 페이즈 SyncVar의 도착 순서와 상관없이 그로기 끝을 정하는 데 쓴다
+        // 2페이즈 전환 컷신 구간(번호, 서버 시작과 종료 시각)도 SyncVar다. 늦은 접속과 재접속이 스폰 상태만으로 중간부터 재생하고,
+        // 같은 구간을 두 번 받아도 재생기의 번호 판정이 한 번만 재생한다
         //
         // 무철 돌진 구조물은 진행 중인 공격이 아니라 전투 내내 남는 전장 상태라 기록(BossChargeStructureLedger)을 따로 둔다.
         // 배치는 스폰 전에 서버가 넣고, 파괴는 서버 확정 사건으로만 쌓으며 전투가 끝날 때만 파괴 기록을 지운다.
@@ -74,6 +76,10 @@ namespace Shinshi.AI
 
         [SyncVar(hook = nameof(OnPhaseGenerationSynced))]
         private ushort _phaseGeneration;
+
+        [SyncVar] private int    _phase2TransitionId;
+        [SyncVar] private double _phase2TransitionStartServerTime = NO_SERVER_TIME;
+        [SyncVar] private double _phase2TransitionEndServerTime   = NO_SERVER_TIME;
 
         // 서버 기록과 클라이언트 기록을 나눠 호스트에서 같은 사건이 두 번 쌓이지 않게 한다
         private readonly BossEffectLedger _serverLedger = new BossEffectLedger();
@@ -144,6 +150,12 @@ namespace Shinshi.AI
 
         /// <summary> 마지막 페이즈 전환 시각, 전환이 없었으면 NaN이다 </summary>
         public double PhaseTransitionServerTime => _phaseTransitionServerTime;
+
+        /// <summary> 마지막 2페이즈 전환 컷신 구간 번호, 없으면 0이다 </summary>
+        public int Phase2TransitionId => _phase2TransitionId;
+
+        public double Phase2TransitionStartServerTime => _phase2TransitionStartServerTime;
+        public double Phase2TransitionEndServerTime   => _phase2TransitionEndServerTime;
 
         public event Action<EParticipantLifeState> LifeStateChanged;
         public event Action<EBossFlowState>        FlowStateChanged;
@@ -247,6 +259,15 @@ namespace Shinshi.AI
             _defeatServerTime          = defeatServerTime;
             _phaseGeneration           = phaseGeneration;
             _phaseTransitionServerTime = phaseTransitionServerTime;
+        }
+
+        /// <summary> 2페이즈 전환 컷신 구간을 싣는다, 구간이 없으면 번호 0과 NaN이다 </summary>
+        [Server]
+        public void SetPhase2TransitionSnapshot(int transitionId, double startServerTime, double endServerTime)
+        {
+            _phase2TransitionId              = transitionId;
+            _phase2TransitionStartServerTime = startServerTime;
+            _phase2TransitionEndServerTime   = endServerTime;
         }
 
         /// <summary> 다음 스폰에 다시 쓸 때 이전 전투의 기록을 지운다 </summary>

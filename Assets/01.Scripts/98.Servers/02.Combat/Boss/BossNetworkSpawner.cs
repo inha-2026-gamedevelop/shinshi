@@ -151,6 +151,8 @@ namespace Shinshi.Combat
                 boss.MaxHealth, boss.LifeState, boss.FlowState, boss.PhaseState);
             state.SetTimelineSnapshot(boss.AppearStartServerTime, boss.DefeatServerTime, boss.PhaseGeneration,
                 boss.PhaseTransitionServerTime);
+            state.SetPhase2TransitionSnapshot(boss.Phase2TransitionId, boss.Phase2TransitionStartServerTime,
+                boss.Phase2TransitionEndServerTime);
         }
 
         public void Despawn(BossServer boss, BossState state)

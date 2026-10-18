@@ -47,9 +47,9 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
-        public void ProtocolVersion_CurrentConstant_IsThirteen()
+        public void ProtocolVersion_CurrentConstant_IsFourteen()
         {
-            Assert.AreEqual(13, Constants.Network.PROTOCOL_VERSION);
+            Assert.AreEqual(14, Constants.Network.PROTOCOL_VERSION);
         }
 
         [Test]

@@ -22,7 +22,8 @@ namespace Shinshi.Common
             // 11: 보스 돌진 정지 서버 시각, 빔, 별, 추적 장판 취소의 시전 번호, 무철 돌진 유도 그로기 사건과 복원 추가(2026-10-17)
             // 12: 월백 체력 기믹 4종과 워프 출발 사건, 복원, 등장, 처치, 페이즈 세대 SyncVar, 격자 첫 줄 번호 추가(2026-10-17)
             // 13: 무철 돌진 구조물 배치, 파괴 사건과 복원 추가(2026-10-17)
-            public const int PROTOCOL_VERSION = 13;
+            // 14: 월백 2페이즈 전환 컷신 구간(번호, 서버 시작과 종료 시각) SyncVar 추가(2026-10-18)
+            public const int PROTOCOL_VERSION = 14;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
