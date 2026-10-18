@@ -2,6 +2,9 @@
 using System;
 using System.Globalization;
 
+// 서드파티
+using Mirror;
+
 // 프로젝트 내부
 using Shinshi.Common;
 using Shinshi.Contracts;
@@ -86,6 +89,11 @@ namespace Shinshi.Network
         public int                  InstanceState => _instanceState;
 
         public bool                 IsDrainCompleted => _drainCompleted;
+
+        // heartbeat에 실을 현재 접속 수와 정원을 읽는 함수, 기본은 Mirror 서버의 연결 수와 NetworkManager.maxConnections다.
+        // 값을 알 수 없으면 음수나 0을 돌려주고, 그 값은 보고하지 않아 API가 정원을 제한하지 않는다(구버전 서버와 같다)
+        public Func<int>            ConnectionCountReader { get; set; } = ReadMirrorConnectionCount;
+        public Func<int>            CapacityReader        { get; set; } = ReadMirrorCapacity;
 
         /****************************************
         *                Methods
@@ -293,11 +301,25 @@ namespace Shinshi.Network
 
         private void SendHeartbeat(double now)
         {
-            BackendRequest request = BackendRequest.Post(_heartbeatPath, new ServerHeartbeatRequest(_bootId),
+            int connections = ConnectionCountReader?.Invoke() ?? -1;
+            int capacity    = CapacityReader?.Invoke() ?? 0;
+            BackendRequest request = BackendRequest.Post(_heartbeatPath,
+                new ServerHeartbeatRequest(_bootId, (connections >= 0) ? connections : (int?)null,
+                    (capacity > 0) ? capacity : (int?)null),
                 typeof(ServerInstanceResponse), null, Constants.Network.API_TIMEOUT_SECONDS, true);
             _heartbeatSentAt    = now;
             _nextHeartbeatTime  = now + Constants.Network.SERVER_HEARTBEAT_INTERVAL_SECONDS;
             _heartbeatRequestId = _gateway.Send(request, this);
+        }
+
+        private static int ReadMirrorConnectionCount()
+        {
+            return NetworkServer.active ? NetworkServer.connections.Count : -1;
+        }
+
+        private static int ReadMirrorCapacity()
+        {
+            return (NetworkManager.singleton != null) ? NetworkManager.singleton.maxConnections : 0;
         }
 
         private void SendDrain(double now)

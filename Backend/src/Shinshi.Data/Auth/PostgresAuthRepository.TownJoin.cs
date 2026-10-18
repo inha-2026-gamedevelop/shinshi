@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,6 +16,59 @@ namespace Shinshi.Data.Auth
 {
     public sealed partial class PostgresAuthRepository
     {
+        /****************************************
+        *                Fields
+        ****************************************/
+
+        // 마을 하나의 사용 중 슬롯 = 살아 있는 계정 임대나 아직 소비되지 않은 미만료 입장권을 가진 서로 다른 계정 수.
+        // 접속 중인 계정이 토큰을 재발급하면 임대와 입장권이 함께 남으므로 account_id 기준 UNION으로 계정마다 한 번만 센다.
+        // 요청한 계정은 새 발급이 대체하거나 입장 시 덮어쓰므로 뺀다. 정원이 NULL이면(보고 전, 구버전 서버) 제한하지 않는다
+        private const string TOWN_LOAD_LATERAL =
+            """
+            CROSS JOIN LATERAL (
+                SELECT count(*) AS used FROM (
+                    SELECT held.account_id FROM account_leases AS held
+                    WHERE held.instance_id = instance.instance_id AND held.role = @Town
+                        AND held.expires_at > clock_timestamp() AND held.account_id <> @AccountId
+                    UNION
+                    SELECT ticket.account_id FROM auth_join_tokens AS ticket
+                    WHERE ticket.instance_id = instance.instance_id AND ticket.server_role = @Town
+                        AND ticket.consumed_at IS NULL AND ticket.revoked_at IS NULL
+                        AND ticket.expires_at > clock_timestamp() AND ticket.account_id <> @AccountId
+                ) AS occupied
+            ) AS load
+            """;
+
+        // 지정한 마을은 정원 검사를 잠근 뒤 재확인에 맡겨 가득 참과 존재하지 않음을 구분한다
+        private const string SELECT_TOWN_HEAD =
+            """
+            SELECT lease.lease_id AS "LeaseId", instance.instance_id AS "InstanceId",
+                instance.address AS "Address", instance.port AS "Port"
+            FROM auth_server_leases AS lease JOIN server_instances AS instance
+                ON instance.instance_id = lease.instance_id AND instance.role = lease.role
+            """ + " " + TOWN_LOAD_LATERAL + " " +
+            """
+            WHERE (CAST(@TownInstanceId AS uuid) IS NULL OR lease.instance_id = @TownInstanceId)
+                AND lease.role = @Town
+                AND lease.revoked_at IS NULL AND lease.expires_at > clock_timestamp()
+                AND instance.state IN ('Idle','Reserved','Active') AND lease.boot_id = instance.boot_id
+                AND instance.heartbeat_at > clock_timestamp() - @Heartbeat
+                AND instance.instance_id <> ALL(@Tried)
+                AND (CAST(@TownInstanceId AS uuid) IS NOT NULL OR instance.capacity IS NULL
+                    OR load.used < instance.capacity)
+            ORDER BY load.used, instance.instance_id, lease.expires_at DESC, lease.lease_id DESC
+            LIMIT 1
+            """;
+
+        private const string SELECT_TOWN_SKIP_LOCKED =
+            " FOR NO KEY UPDATE OF instance SKIP LOCKED FOR SHARE OF lease SKIP LOCKED;";
+
+        private const string SELECT_TOWN_WAIT = " FOR NO KEY UPDATE OF instance FOR SHARE OF lease;";
+
+        private const string RECHECK_TOWN_SLOT =
+            "SELECT instance.capacity IS NULL OR load.used < instance.capacity FROM server_instances AS instance "
+            + TOWN_LOAD_LATERAL + " WHERE instance.instance_id = @InstanceId;";
+
         /****************************************
         *                Methods
         ****************************************/
@@ -85,25 +139,13 @@ namespace Shinshi.Data.Auth
                     return AuthValidationOutcome<TownJoinIssuance>.Rejected(ContractCodes.RejectReason.FEATURE_DISABLED);
                 }
 
-                // 선택과 발급 사이에 등록 boot나 임대가 바뀌지 않도록 같은 트랜잭션에서 잠근다
-                TownJoinTarget? target = await connection.QuerySingleOrDefaultAsync<TownJoinTarget>(Command(
-                    """
-                    SELECT lease.lease_id AS "LeaseId", instance.instance_id AS "InstanceId",
-                        instance.address AS "Address", instance.port AS "Port"
-                    FROM auth_server_leases AS lease JOIN server_instances AS instance
-                        ON instance.instance_id = lease.instance_id AND instance.role = lease.role
-                    WHERE (CAST(@TownInstanceId AS uuid) IS NULL OR lease.instance_id = @TownInstanceId)
-                        AND lease.role = @Town
-                        AND lease.revoked_at IS NULL AND lease.expires_at > clock_timestamp()
-                        AND instance.state IN ('Idle','Reserved','Active') AND lease.boot_id = instance.boot_id
-                        AND instance.heartbeat_at > clock_timestamp() - @Heartbeat
-                    ORDER BY instance.instance_id, lease.expires_at DESC, lease.lease_id DESC
-                    LIMIT 1 FOR SHARE OF instance, lease;
-                    """, new { TownInstanceId = townInstanceId, Town = ContractCodes.ServerRole.TOWN,
-                        Heartbeat = TimeSpan.FromSeconds(HEARTBEAT_SECONDS) }, transaction, token));
+                // 선택과 발급 사이에 등록 boot, 임대, 정원이 바뀌지 않도록 같은 트랜잭션에서 마을 행을 잠그고 슬롯을 확보한다.
+                // 확보한 슬롯은 아래 입장권 INSERT가 커밋될 때 사용 중으로 세어진다
+                (TownJoinTarget? target, bool full) = await ReserveTownSlotAsync(connection, transaction,
+                    identity.AccountId, townInstanceId, token);
                 if (target == null)
                 {
-                    return AuthValidationOutcome<TownJoinIssuance>.Rejected(townInstanceId.HasValue
+                    return AuthValidationOutcome<TownJoinIssuance>.Rejected(townInstanceId.HasValue && !full
                         ? ContractCodes.RejectReason.SESSION_MISMATCH : ContractCodes.RejectReason.NO_CAPACITY);
                 }
 
@@ -135,6 +177,44 @@ namespace Shinshi.Data.Auth
                 return AuthValidationOutcome<TownJoinIssuance>.Success(new TownJoinIssuance(new IssuedAuthToken(raw, id,
                     UnixMilliseconds(expires), UnixMilliseconds(now)), target));
             }, cancellationToken);
+        }
+
+        // 살아 있는 마을을 사용량이 가장 적은 순으로 하나 잠그고 정원을 다시 센 뒤 확보한다. 지정한 마을이면 그 마을만 본다.
+        // 후보 선택은 잠금 전 스냅샷이라 다른 발급이 막 커밋한 입장권을 놓칠 수 있다. 그래서 행을 잠근 다음 별도 문장
+        // (새 스냅샷)으로 다시 세어 정원 안일 때만 확보한다. 먼저 SKIP LOCKED로 다른 발급이 쥔 마을을 건너뛰어 대기를 피하고,
+        // 남은 후보가 없으면 대기하며 한 번 더 본다. full은 살아 있는 마을이 있었지만 모두 가득 찼다는 뜻이다
+        private static async Task<(TownJoinTarget? Target, bool Full)> ReserveTownSlotAsync(NpgsqlConnection connection,
+            NpgsqlTransaction transaction, Guid accountId, Guid? townInstanceId, CancellationToken token)
+        {
+            List<Guid> tried = new List<Guid>();
+            bool full = false;
+            foreach (string lockClause in new[] { SELECT_TOWN_SKIP_LOCKED, SELECT_TOWN_WAIT })
+            {
+                while (true)
+                {
+                    TownJoinTarget? candidate = await connection.QuerySingleOrDefaultAsync<TownJoinTarget>(Command(
+                        SELECT_TOWN_HEAD + lockClause, new { TownInstanceId = townInstanceId, AccountId = accountId,
+                            Town = ContractCodes.ServerRole.TOWN, Tried = tried.ToArray(),
+                            Heartbeat = TimeSpan.FromSeconds(HEARTBEAT_SECONDS) }, transaction, token));
+                    if (candidate == null)
+                    {
+                        break;
+                    }
+
+                    tried.Add(candidate.InstanceId);
+                    bool hasSlot = await connection.QuerySingleAsync<bool>(Command(RECHECK_TOWN_SLOT,
+                        new { candidate.InstanceId, AccountId = accountId, Town = ContractCodes.ServerRole.TOWN },
+                        transaction, token));
+                    if (hasSlot)
+                    {
+                        return (candidate, false);
+                    }
+
+                    full = true;
+                }
+            }
+
+            return (null, full);
         }
 
         private async Task<AuthValidationOutcome<JoinAuthIdentity>> ConsumeTownJoinAsync(NpgsqlConnection connection,

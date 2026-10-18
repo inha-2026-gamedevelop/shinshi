@@ -24,6 +24,9 @@ namespace Shinshi.Backend.Sessions
         *                Fields
         ****************************************/
 
+        // 서버가 보고할 수 있는 접속 수, 정원의 상한. Mirror maxConnections보다 훨씬 크게 잡은 오설정 방지선이다
+        private const int MAX_REPORTED_CAPACITY = 100000;
+
         private readonly IServerCallerAuthenticator _callers;
         private readonly PostgresServerPoolRepository _pool;
         private readonly PostgresAccountLeaseRepository _leases;
@@ -83,7 +86,15 @@ namespace Shinshi.Backend.Sessions
                 return rejection;
             }
 
-            return ToResponse(id, await _pool.HeartbeatAsync(id, bootId, cancellationToken));
+            // 보고값은 선택이다. 범위를 벗어난 값은 오설정이므로 거절해 정원이 조용히 틀어지지 않게 한다
+            if ((request.Connections < 0) || (request.Capacity <= 0) || (request.Capacity > MAX_REPORTED_CAPACITY)
+                || (request.Connections > MAX_REPORTED_CAPACITY))
+            {
+                return BadRequest();
+            }
+
+            return ToResponse(id, await _pool.HeartbeatAsync(id, bootId, request.Connections, request.Capacity,
+                cancellationToken));
         }
 
         [HttpPost(GameServerRouteTemplates.SERVER_DRAIN)]
