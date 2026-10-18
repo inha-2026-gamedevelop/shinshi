@@ -1,4 +1,5 @@
 // System
+using System;
 using System.Collections.Generic;
 
 // Unity
@@ -199,6 +200,13 @@ namespace Shinshi.Network
         public static void ForgetTownBinding(ServerSessionRegistry sessions, SessionBinding binding,
             AccountLeaseReleaser accountLeases)
         {
+            ForgetTownBinding(sessions, binding, accountLeases, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        }
+
+        /// <summary> nowUnixMs를 받는 판, 출정 입장권 기한 판정을 시계 없이 시험하려고 나눴다 </summary>
+        public static void ForgetTownBinding(ServerSessionRegistry sessions, SessionBinding binding,
+            AccountLeaseReleaser accountLeases, long nowUnixMs)
+        {
             if ((sessions == null) || (binding == null))
             {
                 return;
@@ -208,10 +216,21 @@ namespace Shinshi.Network
 
             // 던전으로 떠나는 참가자의 임대는 던전이 이관 경로로 옮긴다. 여기서 풀면 이관이 거절된다
             // 해제가 끝내 실패해도 계정 임대는 heartbeat 만료로 풀린다(백엔드 계약)
-            if ((binding.AccountLeaseId != null) && (!binding.IsDeparting))
+            // 입장권 만료와 여유가 지나도록 이관이 없으면 표시가 풀려 바로 푼다. 아직 기다리는 중이면 그 시각까지 해제를 미룬다.
+            // 이관 없이 입장권만 받고 끊긴 경우 마을 heartbeat가 임대를 계속 연장하므로, 미루지 않으면 재로그인이 무기한 막힌다.
+            // 미룬 해제는 원래 마을 인스턴스 소유일 때만 효력이 있어(백엔드 임대 ID와 인스턴스 일치 검사) 이관된 임대는 건드리지 않는다
+            if (binding.AccountLeaseId == null)
+            {
+                return;
+            }
+
+            if (!binding.IsDepartingAt(nowUnixMs))
             {
                 accountLeases?.Release(binding.AccountLeaseId);
+                return;
             }
+
+            accountLeases?.ReleaseAfter(binding.AccountLeaseId, binding.SecondsUntilDepartingExpires(nowUnixMs));
         }
 
         private void OnJoinRequest(NetworkConnectionToClient conn, JoinRequestMessage message)
@@ -244,20 +263,31 @@ namespace Shinshi.Network
         // 검증기가 메인 스레드에서 부른다. 그 사이 연결이 끊겼거나 시간 초과로 닫혔을 수 있어 현재 상태를 다시 본다
         public void OnJoinTokenVerified(int requestId, ERejectReason reason, in JoinTokenClaims claims)
         {
-            if (!_pending.TryFindVerifying(requestId, out int connectionId))
+            // 마감 시간 초과나 연결 끊김으로 이미 닫힌 요청이다. 성공 결과는 계정 임대를 잡았으므로 풀고 교환 기억도 지운다
+            if (!_pending.TryFindVerifying(requestId, out int connectionId, out double deadline))
             {
+                AbandonVerified(requestId, reason, in claims);
                 return;
             }
 
             if (!NetworkServer.connections.TryGetValue(connectionId, out NetworkConnectionToClient conn))
             {
                 _pending.Remove(connectionId);
+                AbandonVerified(requestId, reason, in claims);
                 return;
             }
 
             if (reason != ERejectReason.None)
             {
                 Reject(conn, reason);
+                return;
+            }
+
+            // 응답 Pump가 마감 처리(Update)보다 먼저 돌면 마감이 지난 요청이 아직 검증 중으로 남아 있다. 늦은 성공은 받지 않는다
+            if (Time.unscaledTimeAsDouble >= deadline)
+            {
+                AbandonVerified(requestId, reason, in claims);
+                Reject(conn, ERejectReason.TokenExpired);
                 return;
             }
 
@@ -300,6 +330,16 @@ namespace Shinshi.Network
 
             // 입장한 토큰은 검증기가 다시 받아 주지 않게 한다. 이미 접속 중으로 거절된 토큰만 재시도를 위해 남는다
             _verifier.OnAdmitted(requestId);
+        }
+
+        // 쓰지 못하고 버린 검증 결과 정리. 실패 결과는 잡은 임대가 없다. 새 교환마다 새 임대라 접속 중인 다른 연결의 임대와 겹치지 않는다
+        private void AbandonVerified(int requestId, ERejectReason reason, in JoinTokenClaims claims)
+        {
+            _verifier?.OnAbandoned(requestId);
+            if ((reason == ERejectReason.None) && (claims.AccountLeaseId != null))
+            {
+                _accountLeases?.Release(claims.AccountLeaseId);
+            }
         }
 
         // 거절 응답이 전송 배치에 실려 나간 뒤 Update가 끊는다. 바로 끊으면 응답이 버려져 클라이언트가 사유를 모른다

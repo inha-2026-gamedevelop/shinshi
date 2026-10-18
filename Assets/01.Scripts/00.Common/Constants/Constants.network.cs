@@ -112,6 +112,11 @@ namespace Shinshi.Common
             public const double ACCOUNT_LEASE_RELEASE_RETRY_SECONDS = 2.0;
             public const int    MAX_PENDING_ACCOUNT_LEASE_RELEASES  = 256;
 
+            // 던전 이관을 기다리며 미뤄 둔 임대 해제 목록 상한. 가득 차면 미루지 않고 heartbeat 만료에 맡긴다.
+            // 입장권에 만료 시각이 없을 때는 이 시간 뒤에 푼다
+            public const int    MAX_DEFERRED_ACCOUNT_LEASE_RELEASES  = 256;
+            public const double DEFERRED_RELEASE_NO_DEADLINE_SECONDS = 60.0;
+
             // 초, 참가자 접속 임대 이관이 일시 실패했을 때 같은 newLeaseId로 다시 부르는 간격
             public const double LEASE_TRANSFER_RETRY_SECONDS = 2.0;
 
@@ -212,8 +217,14 @@ namespace Shinshi.Common
             // 거절 응답이 전송 배치에 실려 나갈 시간을 준 뒤 끊는다. 바로 끊으면 응답이 버려진다
             public const double AUTH_REJECT_DISCONNECT_DELAY_SECONDS = 0.5;
 
-            // 인증 대기 중인 연결 상한. 넘으면 요청을 기다리지 않고 바로 끊어 인증 전 연결로 메모리를 채우지 못하게 한다
-            public const int MAX_PENDING_AUTH_CONNECTIONS = 128;
+            // 인증 대기 중인 연결 상한. 넘으면 요청을 기다리지 않고 바로 끊어 인증 전 연결로 메모리를 채우지 못하게 한다.
+            // 서버 매니저의 Mirror maxConnections(100)보다 크게 두지 않는다. 연결이 그 수를 넘으면 Mirror가 인증기에 닿기 전에
+            // 사유 없이 끊으므로, 이보다 큰 대기 상한은 쓸모없이 메모리만 잡는다
+            public const int MAX_PENDING_AUTH_CONNECTIONS = 100;
+
+            // 출정 입장권 만료 뒤에도 던전 이관을 기다려 주는 여유(초). 이 시각까지 마을 연결이 끊겨도 임대를 풀지 않는다.
+            // 그 뒤에도 이관이 없으면 입장권은 이미 쓸 수 없으므로 마을 끊김이 임대를 푼다
+            public const double DEPARTING_TRANSFER_GRACE_SECONDS = 10.0;
 
             // 인증 요청 문자열 상한(UTF-16 글자 수). 넘으면 검증기에 넘기지 않고 거절한다
             public const int MAX_JOIN_TOKEN_LENGTH = 512;

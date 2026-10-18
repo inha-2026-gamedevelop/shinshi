@@ -116,6 +116,16 @@ namespace Shinshi.Network
 
         public void OnAdmitted(int requestId)
         {
+            Forget(requestId);
+        }
+
+        public void OnAbandoned(int requestId)
+        {
+            Forget(requestId);
+        }
+
+        private void Forget(int requestId)
+        {
             string admittedKey = null;
             foreach (KeyValuePair<string, ExchangedClaims> pair in _exchanged)
             {
@@ -144,17 +154,20 @@ namespace Shinshi.Network
             double        now    = _clock();
             ERejectReason reason = ToClaims(in response, out JoinTokenClaims claims);
 
-            // 늦게 왔어도 교환은 끝났으므로 기억해 둔다. 클라이언트가 같은 토큰으로 다시 오면 API를 다시 부르지 않고 받는다
-            if (reason == ERejectReason.None)
-            {
-                Remember(pending.TokenHash, in claims, pending.AuthRequestId, now);
-            }
-
+            // 마감 뒤 결과는 기억하지 않는다. 기억하면 같은 토큰이 임대를 푼 뒤에도 재검증 없이 다시 성공한다.
+            // 인증기에는 그대로 알려, 이미 닫힌 연결의 요청이므로 성공 결과가 잡은 계정 임대를 풀게 한다
             if (now > pending.Deadline)
             {
                 _warn?.Invoke($"[Auth] 토큰 교환 결과가 인증 마감 뒤에 와서 버린다, requestId={pending.AuthRequestId}, " +
                     $"outcome={response.Outcome}, reason={reason}");
+                pending.Listener.OnJoinTokenVerified(pending.AuthRequestId, reason, claims);
                 return;
+            }
+
+            // 마감 안에 왔으면 기억해 둔다. 클라이언트가 같은 토큰으로 다시 오면 API를 다시 부르지 않고 받는다
+            if (reason == ERejectReason.None)
+            {
+                Remember(pending.TokenHash, in claims, pending.AuthRequestId, now);
             }
 
             pending.Listener.OnJoinTokenVerified(pending.AuthRequestId, reason, claims);

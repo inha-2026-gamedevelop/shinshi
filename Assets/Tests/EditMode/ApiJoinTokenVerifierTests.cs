@@ -142,7 +142,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Verify_ResultAfterAuthDeadline_IsDropped()
+        public void Verify_ResultAfterAuthDeadline_NotifiesListenerButIsNotRemembered()
         {
             var       transport = Answer(DungeonResponse(INSTANCE));
             using var gateway   = CreateGateway(transport);
@@ -156,7 +156,9 @@ namespace Shinshi.Tests
             _now += Constants.Network.JOIN_TOKEN_VERIFY_DEADLINE_SECONDS + 1.0;
             gateway.Pump();
 
-            Assert.AreEqual(0, listener.Calls.Count);
+            // 인증기가 닫힌 연결의 성공 결과를 받아 임대를 풀 수 있게 알리되, 같은 토큰이 재검증 없이 다시 성공하지 못하게 기억하지 않는다
+            Assert.AreEqual(1, listener.Calls.Count);
+            Assert.AreEqual(0, verifier.RememberedCount);
             Assert.AreEqual(0, verifier.PendingCount);
         }
 

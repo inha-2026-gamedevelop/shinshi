@@ -1,3 +1,6 @@
+// System
+using System;
+
 // 프로젝트 내부
 using Shinshi.Common;
 using Shinshi.Contracts;
@@ -12,6 +15,8 @@ namespace Shinshi.Network
         /****************************************
         *                Fields
         ****************************************/
+
+        private const double MS_PER_SECOND = 1000.0;
 
         private readonly string              _participantKey;
         private readonly int                 _participantId;
@@ -47,6 +52,9 @@ namespace Shinshi.Network
         // 마을이 던전 입장권을 보낸 참가자다. 이 연결이 끊겨도 마을은 계정 접속 임대를 풀지 않는다. 던전이 이관 경로로 옮기고,
         // 이관되지 않으면 heartbeat 만료로 풀린다. 먼저 풀면 던전의 이관이 SESSION_MISMATCH로 거절된다
         public bool IsDeparting { get; set; }
+
+        // 입장권 만료 시각(Unix 밀리초). 0이면 기한 없이 이관을 기다린다
+        public long DepartingExpiresAtUnixMs { get; private set; }
 
         // 둘 다 ServerSessionRegistry가 결합을 만든 직후 토큰 내용(JoinTokenClaims)에서 넣고 이후 바꾸지 않는다.
         // 계정 ID는 마을 입장 교환만 준다(생활, 준비 확인, 출정 예약에 쓴다). 던전과 개발 토큰은 null이다
@@ -92,6 +100,42 @@ namespace Shinshi.Network
             _characterName  = characterName;
             _appearance     = appearance;
             IsActive        = true;
+        }
+
+        /// <summary> 던전 입장권을 보낸 참가자로 표시한다, 기한이 지나도 이관이 없으면 IsDepartingAt이 거짓이 된다 </summary>
+        public void MarkDeparting(long ticketExpiresAtUnixMs)
+        {
+            IsDeparting              = true;
+            DepartingExpiresAtUnixMs = ticketExpiresAtUnixMs;
+        }
+
+        /// <summary> 지금도 던전 이관을 기다리는 중인가, 입장권 만료와 여유 시간이 지났으면 표시를 되돌리고 거짓 </summary>
+        public bool IsDepartingAt(long nowUnixMs)
+        {
+            if (!IsDeparting)
+            {
+                return false;
+            }
+
+            if ((DepartingExpiresAtUnixMs > 0L)
+                && (nowUnixMs >= DepartingExpiresAtUnixMs + (long)(Constants.Network.DEPARTING_TRANSFER_GRACE_SECONDS * MS_PER_SECOND)))
+            {
+                IsDeparting = false;
+            }
+
+            return IsDeparting;
+        }
+
+        /// <summary> 입장권 만료와 여유가 지나기까지 남은 초, 이미 지났거나 기한이 없으면 기한 없음 기본값 </summary>
+        public double SecondsUntilDepartingExpires(long nowUnixMs)
+        {
+            if (DepartingExpiresAtUnixMs <= 0L)
+            {
+                return Constants.Network.DEFERRED_RELEASE_NO_DEADLINE_SECONDS;
+            }
+
+            long dueMs = DepartingExpiresAtUnixMs + (long)(Constants.Network.DEPARTING_TRANSFER_GRACE_SECONDS * MS_PER_SECOND);
+            return Math.Max(0.0, (dueMs - nowUnixMs) / MS_PER_SECOND);
         }
     }
 }
