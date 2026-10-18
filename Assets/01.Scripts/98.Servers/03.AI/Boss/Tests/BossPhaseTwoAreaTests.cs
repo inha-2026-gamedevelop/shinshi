@@ -36,8 +36,8 @@ namespace Shinshi.Tests
         private const float  HREF         = 1000f;
         private const float  TOLERANCE    = 0.001f;
         private const double TIME_TOL     = 0.0001;
-        private const double TELEGRAPH_END = 1.0;
-        private const double AREA_END      = 7.0;
+        private const double TELEGRAPH_END = 2.0;
+        private const double AREA_END      = 8.0;
         private const float  RAW_DAMAGE    = 0.08f * HREF;
 
         /****************************************
@@ -333,9 +333,9 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EPatternGroup.Pressure, p.Group);
-            Assert.AreEqual(1f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0f, p.ActiveSeconds);
-            Assert.AreEqual(0.5f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.TargetArea, p.Shape.Shape);
             Assert.AreEqual(3f, p.Shape.Range, TOLERANCE);
             Assert.AreEqual(6f, p.AreaDurationSeconds, TOLERANCE);
@@ -360,7 +360,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, p5.AreaTargetCount);
             Assert.AreEqual(0, p5.RawAreaTargetCount);
             Assert.IsTrue(p5.AreaSkipsMissedRounds, "1페이즈 P05도 지연 시 장판당 한 틱에 한 회, 이전 회차 생략");
-            Assert.AreEqual(1f, p5.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(2f, p5.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(3, p5.MaxConcurrentAreas);
         }
 
@@ -583,14 +583,14 @@ namespace Shinshi.Tests
             r.Start(10);
 
             r.TickSeconds(0.0, 0.0);
-            r.TickAt(0.99);
+            r.TickAt(TELEGRAPH_END - 0.01);
             Assert.AreEqual(0, r.Listener.ActivatedAreas.Count, "예고 중에는 활성하지 않는다");
             Assert.AreEqual(0, r.Resolver.Requests.Count);
 
-            r.TickSeconds(1.0, 8.0);
+            r.TickSeconds(TELEGRAPH_END, AREA_END);
 
             Assert.AreEqual(2, r.Listener.ActivatedAreas.Count);
-            Assert.AreEqual(1.0, r.Listener.ActivatedTimes[0], TIME_TOL);
+            Assert.AreEqual(TELEGRAPH_END, r.Listener.ActivatedTimes[0], TIME_TOL);
             for (int i = 0; i < 2; ++i)
             {
                 int area = r.Listener.ActivatedAreas[i];
@@ -599,7 +599,7 @@ namespace Shinshi.Tests
 
             for (int i = 0; i < r.Listener.Ticks.Count; ++i)
             {
-                Assert.AreEqual(1.0 + r.Listener.Ticks[i].Index, r.Listener.Ticks[i].Time, TIME_TOL);
+                Assert.AreEqual(TELEGRAPH_END + r.Listener.Ticks[i].Index, r.Listener.Ticks[i].Time, TIME_TOL);
             }
 
             Assert.AreEqual(2, r.Listener.Ends.Count);
@@ -612,7 +612,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tick_RecoveryHalfSecondAndFinishDoNotRemoveAreas()
+        public void Tick_RecoveryEndsAfterRecoverySecondsAndFinishDoesNotRemoveAreas()
         {
             Run r = new Run();
             r.Add(10, PosA);
@@ -620,9 +620,9 @@ namespace Shinshi.Tests
 
             r.TickAt(TELEGRAPH_END);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.TickAt(1.49);
-            Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.TickAt(1.5);
+            r.TickAt(TELEGRAPH_END + 0.99);
+            Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State, "후딜이 끝나기 전에는 다음 선택이 없다");
+            r.TickAt(TELEGRAPH_END + 1.0);
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
             Assert.AreEqual(1, r.Manager.ActiveCount, "정상 종료는 장판을 지우지 않는다");
 
@@ -670,7 +670,7 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.Add(10, PosA);
             r.Add(11, PosA);
-            r.AddLegacyArea(PosA, 1.0);
+            r.AddLegacyArea(PosA, TELEGRAPH_END);
             r.Random.Enqueue(0);
             r.Start(10);
 
@@ -738,16 +738,16 @@ namespace Shinshi.Tests
             r.TickAt(TELEGRAPH_END);
             int afterActivation = r.Resolver.Requests.Count;
 
-            r.TickAt(4.5); // 활성 기준 3.5초, 회차 1, 2, 3이 밀렸다
+            r.TickAt(TELEGRAPH_END + 3.5); // 활성 기준 3.5초, 회차 1, 2, 3이 밀렸다
 
             Assert.AreEqual(afterActivation + 2, r.Resolver.Requests.Count, "장판 둘이 각각 한 번");
             Tick latest = r.Listener.Ticks[r.Listener.Ticks.Count - 1];
             Assert.AreEqual(3, latest.Index, "가장 최근 회차만 판정하고 이전 회차는 건너뛴다");
-            Assert.AreEqual(4.0, latest.Time, TIME_TOL);
+            Assert.AreEqual(TELEGRAPH_END + 3.0, latest.Time, TIME_TOL);
 
-            r.TickAt(4.9);
+            r.TickAt(TELEGRAPH_END + 3.9);
             Assert.AreEqual(afterActivation + 2, r.Resolver.Requests.Count);
-            r.TickAt(5.0);
+            r.TickAt(TELEGRAPH_END + 4.0);
             Assert.AreEqual(afterActivation + 4, r.Resolver.Requests.Count, "다음 회차는 원래 활성 시각 기준이다");
             Assert.AreEqual(4, r.Listener.Ticks[r.Listener.Ticks.Count - 1].Index);
         }
@@ -1017,7 +1017,7 @@ namespace Shinshi.Tests
                 }
 
                 // 첫 시전의 예고와 활성까지만 본다
-                if ((started >= 0.0) && (t >= (started + 1.25)))
+                if ((started >= 0.0) && (t >= (started + TELEGRAPH_END + 0.25)))
                 {
                     break;
                 }
@@ -1025,7 +1025,7 @@ namespace Shinshi.Tests
 
             Assert.GreaterOrEqual(started, 0.0);
             Assert.AreEqual(2, r.Listener.ActivatedAreas.Count, "대상 수는 체력으로 바뀌지 않는다");
-            Assert.AreEqual(started + 1.0, r.Listener.ActivatedTimes[0], TIME_TOL, "예고 1초도 그대로다");
+            Assert.AreEqual(started + TELEGRAPH_END, r.Listener.ActivatedTimes[0], TIME_TOL, "예고 시간도 그대로다");
         }
     }
 }

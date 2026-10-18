@@ -35,9 +35,9 @@ namespace Shinshi.Tests
         private const float  RAW_DAMAGE   = 0.03f * HREF;
         private const float  TOLERANCE    = 0.001f;
         private const double TIME_TOL     = 0.0001;
-        private const double ACTIVATE     = 2.0;
-        private const double END          = 8.0;
-        private const double RECOVERY_END = 9.0;
+        private const double ACTIVATE     = 4.0;
+        private const double END          = 10.0;
+        private const double RECOVERY_END = 12.0;
         private const float  ARENA_RADIUS = 18f;
         private const float  DURATION     = 6f;
         private const float  APOTHEM      = 4.326f;
@@ -322,9 +322,9 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EPatternGroup.Large, p.Group);
-            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(4f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(6f, p.ActiveSeconds, TOLERANCE);
-            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Line, p.Shape.Shape);
             Assert.AreEqual(1.5f, p.Shape.Width, TOLERANCE);
             Assert.AreEqual(5, p.StarVertexCount);
@@ -385,7 +385,7 @@ namespace Shinshi.Tests
             Assert.IsFalse(r.Pattern.IsStartRejected);
             Assert.AreEqual(1, r.Listener.TelegraphStars.Count);
             Assert.AreEqual(r.CastId, r.Listener.TelegraphCasts[0]);
-            Assert.AreEqual(2f, r.Listener.TelegraphSeconds[0], TOLERANCE);
+            Assert.AreEqual(4f, r.Listener.TelegraphSeconds[0], TOLERANCE);
 
             BossStarShape shape = r.Listener.TelegraphShapes[0];
             Assert.AreEqual(ArenaCenter, shape.ArenaCenter, "보스 위치가 아니라 전장 중심");
@@ -507,8 +507,8 @@ namespace Shinshi.Tests
             // 별 중심선 가운데에서 시작하는 점은 처음에 맞는다
             r.Add(11, r.Polar(72f, APOTHEM));
 
-            r.TickAt(1.0);
-            r.TickAt(1.99);
+            r.TickAt(ACTIVATE / 2.0);
+            r.TickAt(ACTIVATE - 0.01);
             Assert.AreEqual(0, r.Resolver.Requests.Count);
             Assert.AreEqual(0, r.Listener.ActivatedStars.Count);
 
@@ -517,7 +517,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(ACTIVATE, r.Listener.ActivatedTimes[0], TIME_TOL);
             Assert.AreEqual(1, r.Hits(11), "활성 순간이 첫 타격이다");
 
-            r.TickRange(2.25, 7.75);
+            r.TickRange(ACTIVATE + 0.25, ACTIVATE + 5.75);
             r.TickAt(END);
 
             Assert.AreEqual(24, r.Listener.Ticks.Count);
@@ -532,7 +532,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(END, r.Listener.Ends[0].Time, TIME_TOL);
             int hitsAtEnd = r.Resolver.Requests.Count;
 
-            r.TickRange(8.25, 12.0);
+            r.TickRange(END + 0.25, RECOVERY_END);
             Assert.AreEqual(hitsAtEnd, r.Resolver.Requests.Count, "종료 뒤 밀린 피해가 없다");
             Assert.AreEqual(0, r.Manager.ActiveCount);
             Assert.AreEqual(0, r.Manager.ReservedCount);
@@ -544,11 +544,11 @@ namespace Shinshi.Tests
             Run r = StandardRun();
             r.Start(10);
 
-            r.TickAt(1.0);
+            r.TickAt(ACTIVATE / 2.0);
             Assert.AreEqual(EBossAttackState.Telegraph, r.Fsm.State);
             r.TickAt(ACTIVATE);
             Assert.AreEqual(EBossAttackState.Execute, r.Fsm.State);
-            r.TickAt(7.5);
+            r.TickAt(ACTIVATE + 5.5);
             Assert.AreEqual(EBossAttackState.Execute, r.Fsm.State, "6초 동안 다음 패턴을 고르지 않는다");
             r.TickAt(END);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
@@ -564,7 +564,7 @@ namespace Shinshi.Tests
             r.Start(10);
             r.Add(11, r.Polar(72f, APOTHEM));
             r.Add(12, r.Polar(72f + 72f, APOTHEM)); // 다른 빔 위, 같은 회차에 둘이 함께 맞는다
-            r.TickRange(2.0, 3.0);
+            r.TickRange(ACTIVATE, ACTIVATE + 1.0);
 
             Assert.AreEqual(10, r.Resolver.Requests.Count, "5회차 x 둘, 대상마다 한 번");
             HashSet<int> roundIds = new HashSet<int>();
@@ -595,7 +595,7 @@ namespace Shinshi.Tests
             r.Add(12, r.Polar(72f, APOTHEM), true);
             r.Add(13, r.Polar(72f, APOTHEM)).LifeState = EParticipantLifeState.Dead;
             r.Add(14, r.Polar(72f, APOTHEM)).Faction = ECombatFaction.Enemy;
-            r.TickRange(2.0, 7.75);
+            r.TickRange(ACTIVATE, ACTIVATE + 5.75);
 
             Assert.AreEqual(0, r.Hits(11), "정중앙 안전 구역");
             Assert.GreaterOrEqual(r.Hits(12), 1, "소환물도 피해를 받는다");
@@ -638,9 +638,9 @@ namespace Shinshi.Tests
 
             Assert.IsTrue(found);
             right.Add(11, point);
-            right.TickRange(2.0, 7.75);
+            right.TickRange(ACTIVATE, ACTIVATE + 5.75);
             left.Add(11, point);
-            left.TickRange(2.0, 7.75);
+            left.TickRange(ACTIVATE, ACTIVATE + 5.75);
 
             Assert.AreEqual(expectedRight, right.Hits(11), "회차 시각의 별 각도에서 판정한다(오른쪽)");
             Assert.AreEqual(expectedLeft, left.Hits(11), "회차 시각의 별 각도에서 판정한다(왼쪽)");
@@ -682,11 +682,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, r.Hits(11));
 
             mover.Position = ArenaCenter;
-            r.TickRange(2.25, 3.0);
+            r.TickRange(ACTIVATE + 0.25, ACTIVATE + 1.0);
             Assert.AreEqual(1, r.Hits(11), "안전 구역으로 옮기면 맞지 않는다");
 
             mover.Position = r.Polar(72f + (BossStarGeometry.RotationAt(r.Pattern.Shape, 1.25, DURATION)), APOTHEM);
-            r.TickAt(3.25);
+            r.TickAt(ACTIVATE + 1.25);
             Assert.AreEqual(2, r.Hits(11), "다시 빔 위로 오면 다시 맞는다");
         }
 
@@ -703,14 +703,14 @@ namespace Shinshi.Tests
             r.Add(11, r.Polar(72f, APOTHEM));
 
             r.TickAt(ACTIVATE);
-            r.TickAt(3.55); // 회차 6이 도래, 1~5는 건너뛴다
+            r.TickAt(ACTIVATE + 1.55); // 회차 6이 도래, 1~5는 건너뛴다
             Assert.AreEqual(2, r.Listener.Ticks.Count);
             Assert.AreEqual(6, r.Listener.Ticks[1].Index);
-            Assert.AreEqual(3.5, r.Listener.Ticks[1].Time, TIME_TOL, "회차 시각은 원래 일정이다");
+            Assert.AreEqual(ACTIVATE + 1.5, r.Listener.Ticks[1].Time, TIME_TOL, "회차 시각은 원래 일정이다");
 
-            r.TickAt(3.7);
+            r.TickAt(ACTIVATE + 1.7);
             Assert.AreEqual(2, r.Listener.Ticks.Count, "이미 처리한 회차를 다시 치지 않는다");
-            r.TickAt(3.75);
+            r.TickAt(ACTIVATE + 1.75);
             Assert.AreEqual(3, r.Listener.Ticks.Count);
             Assert.AreEqual(7, r.Listener.Ticks[2].Index, "다음 회차는 원래 일정 기준");
         }
@@ -722,7 +722,7 @@ namespace Shinshi.Tests
             r.Start(10);
             BossStarShape shape = r.Pattern.Shape;
 
-            // 서버 시각 3.1에서는 2.2초 흘러 44도, 회차 시각 3.0에서는 40도다. 두 각도의 판정이 다른 점을 찾는다
+            // 활성 1.1초 뒤 서버 시각에서는 2.2초 흘러 44도, 회차 시각 활성 1초 뒤에서는 40도다. 두 각도의 판정이 다른 점을 찾는다
             float tickRotation  = BossStarGeometry.RotationAt(in shape, 1.1, DURATION);
             float roundRotation = BossStarGeometry.RotationAt(in shape, 1.0, DURATION);
             Vector3 found = Vector3.zero;
@@ -745,7 +745,7 @@ namespace Shinshi.Tests
             r.Add(11, found);
             r.TickAt(ACTIVATE);
             int before = r.Hits(11);
-            r.TickAt(3.1);
+            r.TickAt(ACTIVATE + 1.1);
 
             Assert.AreEqual(before + 1, r.Hits(11), "지연된 틱은 현재 서버 시각의 회전 배치로 판정한다");
         }
@@ -805,11 +805,11 @@ namespace Shinshi.Tests
             Run r = StandardRun();
             r.Add(11, r.Self.Position);
             r.Start(10);
-            r.TickAt(1.0);
+            r.TickAt(ACTIVATE / 2.0);
 
             r.CancelAll(EBossInterruptReason.Death);
             r.CancelAll(EBossInterruptReason.Death);
-            r.TickRange(2.0, 9.0);
+            r.TickRange(ACTIVATE, END + 1.0);
 
             Assert.AreEqual(1, r.Listener.CancelledStars.Count);
             Assert.AreEqual(0, r.Listener.ActivatedStars.Count);
@@ -826,12 +826,12 @@ namespace Shinshi.Tests
             Run r = StandardRun();
             r.Start(10);
             r.Add(11, r.Polar(72f, APOTHEM));
-            r.TickRange(2.0, 2.5);
+            r.TickRange(ACTIVATE, ACTIVATE + 0.5);
             int before = r.Resolver.Requests.Count;
             Assert.GreaterOrEqual(before, 1);
 
             r.CancelAll(reason);
-            r.TickRange(2.75, 10.0);
+            r.TickRange(ACTIVATE + 0.75, END + 2.0);
 
             Assert.AreEqual(before, r.Resolver.Requests.Count);
             Assert.AreEqual(1, r.Listener.Ends.Count);
@@ -852,7 +852,7 @@ namespace Shinshi.Tests
 
             int before = r.Hits(11);
             r.Gate.CloseForGood();
-            r.TickRange(2.25, 8.5);
+            r.TickRange(ACTIVATE + 0.25, END + 0.5);
             Assert.AreEqual(before, r.Hits(11));
             Assert.AreEqual(0, r.Manager.ActiveCount);
         }
@@ -951,7 +951,7 @@ namespace Shinshi.Tests
 
             double started = -1.0;
             string firstId = null;
-            for (double t = 0.5; t < 9.5; t += 0.25)
+            for (double t = 0.5; t < 14.0; t += 0.25)
             {
                 r.Brain.Tick(t);
                 if ((started < 0.0) && (r.Brain.AttackState != EBossAttackState.Ready))
@@ -982,7 +982,7 @@ namespace Shinshi.Tests
             r.Random.Roll = 0f;
 
             double started = -1.0;
-            for (double t = 0.5; t < 9.0; t += 0.25)
+            for (double t = 0.5; t < 14.0; t += 0.25)
             {
                 r.Brain.Tick(t);
                 if ((started < 0.0) && (r.Brain.AttackState != EBossAttackState.Ready))
@@ -990,7 +990,7 @@ namespace Shinshi.Tests
                     started = t;
                 }
 
-                if ((started >= 0.0) && (t >= (started + 3.0)))
+                if ((started >= 0.0) && (t >= (started + ACTIVATE + 1.0)))
                 {
                     r.Vitals.HealthRate = 0.2f;
                 }
@@ -1026,7 +1026,7 @@ namespace Shinshi.Tests
             r.TransitionAndHandoff();
             r.Random.Roll = 0f;
 
-            for (double t = 0.5; t < 5.0; t += 0.25)
+            for (double t = 0.5; t < 7.0; t += 0.25)
             {
                 r.Brain.Tick(t);
             }
@@ -1034,7 +1034,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, r.Manager.ActiveCount);
             int before = r.Damage.Requests.Count;
             r.Brain.RequestCombatEnd();
-            for (double t = 5.0; t < 11.0; t += 0.25)
+            for (double t = 7.0; t < 14.0; t += 0.25)
             {
                 r.Brain.Tick(t);
             }

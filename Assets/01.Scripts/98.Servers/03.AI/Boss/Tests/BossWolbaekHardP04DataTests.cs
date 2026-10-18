@@ -66,15 +66,15 @@ namespace Shinshi.Tests
             Assert.AreEqual(35f, easy.Shape.Range);
             Assert.AreEqual(EASY_WIDTH, easy.Shape.Width);
             Assert.AreEqual(10f, easy.Shape.ProjectileSpeed);
-            Assert.AreEqual(0.9f, easy.TelegraphSeconds);
+            Assert.AreEqual(1.8f, easy.TelegraphSeconds);
             Assert.AreEqual(0.45f, easy.TrackingSeconds);
             Assert.AreEqual(120f, easy.TurnRate);
             Assert.AreEqual(0f, easy.ActiveSeconds);
-            Assert.AreEqual(0.5f, easy.RecoverySeconds);
+            Assert.AreEqual(1f, easy.RecoverySeconds);
             Assert.AreEqual(0.18f, easy.DamageRef);
             Assert.IsTrue(easy.Guardable);
             Assert.AreEqual(EBossActionState.Recover, easy.ControlPhase);
-            Assert.AreEqual(0.5f, easy.ControlWindowSeconds);
+            Assert.AreEqual(1f, easy.ControlWindowSeconds, "제어 구간이 후딜 전체다");
             Assert.IsFalse(easy.ControlCancelsPattern);
             BossWolbaekHardDataKit.AssertTable(BossWolbaekHardDataKit.G_EasyRecent, easy.RecentUseMultipliers, "easy recent");
             BossWolbaekHardDataKit.AssertTable(new[] { 0.5f, 1.4f, 1.7f }, easy.DistanceMultipliers, "easy distance");

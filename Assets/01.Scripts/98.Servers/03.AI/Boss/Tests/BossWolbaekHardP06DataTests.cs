@@ -101,11 +101,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(EEnemyAttackShape.Line, easy.Shape.Shape);
             Assert.AreEqual(14f, easy.Shape.Range);
             Assert.AreEqual(EASY_WIDTH, easy.Shape.Width);
-            Assert.AreEqual(1.6f, easy.TelegraphSeconds);
+            Assert.AreEqual(3.2f, easy.TelegraphSeconds);
             Assert.AreEqual(0.6f, easy.TrackingSeconds);
             Assert.AreEqual(90f, easy.TurnRate);
             Assert.AreEqual(0f, easy.ActiveSeconds);
-            Assert.AreEqual(0.5f, easy.RecoverySeconds);
+            Assert.AreEqual(1f, easy.RecoverySeconds);
             Assert.AreEqual(0.45f, easy.DamageRef);
             Assert.IsFalse(easy.Guardable);
             Assert.AreEqual(EBossActionState.Telegraph, easy.ControlPhase);

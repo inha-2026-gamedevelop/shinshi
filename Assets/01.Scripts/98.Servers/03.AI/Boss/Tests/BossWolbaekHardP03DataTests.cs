@@ -32,8 +32,8 @@ namespace Shinshi.Tests
         private const string HARD_P02_ID  = "wolbaek_hard_p02";
         private const float  EASY_RANGE   = 5f;
         private const float  HARD_RANGE   = 5.5f;
-        private const float  EASY_TELEGRAPH = 1.2f;
-        private const float  HARD_TELEGRAPH = 1.5f;
+        private const float  EASY_TELEGRAPH = 2.4f;
+        private const float  HARD_TELEGRAPH = 3f;
         private const int    FIRST_PHASE  = 1;
         private const int    SECOND_PHASE = 2;
         private const int    EASY_PHASE_ONE_COUNT = 6;
@@ -175,7 +175,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(0f, easy.TrackingSeconds);
             Assert.AreEqual(0f, easy.TurnRate);
             Assert.AreEqual(0f, easy.ActiveSeconds);
-            Assert.AreEqual(0.5f, easy.RecoverySeconds);
+            Assert.AreEqual(1f, easy.RecoverySeconds);
             Assert.AreEqual(0.28f, easy.DamageRef);
             Assert.IsTrue(easy.Guardable);
             AssertTable(G_EasyRecent, easy.RecentUseMultipliers, "easy recent");

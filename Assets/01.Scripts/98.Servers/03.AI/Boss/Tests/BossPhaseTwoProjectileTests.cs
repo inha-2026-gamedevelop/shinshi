@@ -38,12 +38,12 @@ namespace Shinshi.Tests
         private const float  ANGLE_TOL    = 0.1f;
         private const float  STEP         = 0.05f;
 
-        // 1.2초 예고가 아니라 0.9초이고 실행 구간 0.6초가 첫 발부터 마지막 발까지다
-        private static readonly double FirstShot  = (double)0.9f;
+        // 예고 1.8초 뒤 첫 발, 실행 구간 0.6초가 첫 발부터 마지막 발까지고 회복은 1초다
+        private static readonly double FirstShot  = (double)1.8f;
         private static readonly double SecondShot = FirstShot + (double)0.3f;
         private static readonly double ThirdShot  = FirstShot + ((double)0.3f * 2.0);
         private static readonly double ExecuteEnd = FirstShot + (double)0.6f;
-        private static readonly double RecoverEnd = ExecuteEnd + (double)0.5f;
+        private static readonly double RecoverEnd = ExecuteEnd + (double)1f;
 
         /****************************************
         *               Fakes
@@ -280,11 +280,11 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EPatternGroup.Basic, p.Group);
-            Assert.AreEqual(0.9f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(1.8f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0.45f, p.TrackingSeconds, TOLERANCE);
             Assert.AreEqual(120f, p.TurnRate, TOLERANCE);
             Assert.AreEqual(0.6f, p.ActiveSeconds, TOLERANCE, "첫 발부터 마지막 발까지");
-            Assert.AreEqual(0.5f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(3, p.ProjectileCount);
             Assert.AreEqual(0.3f, p.ProjectileIntervalSeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Projectile, p.Shape.Shape);
@@ -294,7 +294,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(0.18f, p.DamageRef, TOLERANCE);
             Assert.IsTrue(p.Guardable);
             Assert.AreEqual(EBossActionState.Recover, p.ControlPhase);
-            Assert.AreEqual(0.5f, p.ControlWindowSeconds, TOLERANCE);
+            Assert.AreEqual(1f, p.ControlWindowSeconds, TOLERANCE, "제어 구간이 후딜 전체다");
             Assert.IsFalse(p.ControlCancelsPattern);
             Assert.AreEqual(22f, p.BaseWeight, TOLERANCE);
             Assert.AreEqual(18f, p.EnhancedBaseWeight, TOLERANCE);
@@ -323,9 +323,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, p4.Phase);
             Assert.AreEqual(1, p4.ProjectileCount, "단발");
             Assert.AreEqual(0, p4.RawProjectileCount);
-            Assert.AreEqual(0.9f, p4.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(1.8f, p4.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0f, p4.ActiveSeconds);
-            Assert.AreEqual(0.5f, p4.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1f, p4.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EPatternGroup.None, p4.Group);
         }
 
@@ -414,8 +414,8 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.Start();
 
-            r.TickAt(0.85);
-            r.TickAt(0.95);
+            r.TickAt(FirstShot - 0.05);
+            r.TickAt(FirstShot + 0.05);
 
             Assert.AreEqual(1, r.Listener.Launches.Count);
             Assert.AreEqual(FirstShot, r.Listener.Launches[0].Time, TIME_TOL, "발사 시각은 틱 시각이 아니라 경계다");
@@ -596,7 +596,12 @@ namespace Shinshi.Tests
             r.TickAt(SecondShot);
             Assert.IsFalse(r.Fsm.IsControlWindowOpen(SecondShot), "발사 중 없음");
             r.TickAt(ExecuteEnd + 0.01);
+            Assert.IsFalse(r.Fsm.IsControlWindowOpen(ExecuteEnd - 0.01), "마지막 발이 나가는 실행 구간에는 닫혀 있다");
+            Assert.IsTrue(r.Fsm.IsControlWindowOpen(ExecuteEnd), "후딜 시작 순간부터 열린다");
             Assert.IsTrue(r.Fsm.IsControlWindowOpen(ExecuteEnd + 0.01), "회복 중 허용");
+            Assert.IsTrue(r.Fsm.IsControlWindowOpen(RecoverEnd - 0.001), "후딜이 끝나기 직전까지 열려 있다");
+            r.TickAt(RecoverEnd);
+            Assert.IsFalse(r.Fsm.IsControlWindowOpen(RecoverEnd), "후딜이 끝난 뒤에는 닫혀 있다");
         }
 
         [Test]
@@ -717,7 +722,7 @@ namespace Shinshi.Tests
             r.TransitionAndHandoff();
 
             double started = -1.0;
-            for (double t = 0.5; t < 6.0; t += 0.25)
+            for (double t = 0.5; t < 10.0; t += 0.25)
             {
                 r.Brain.Tick(t);
                 if ((started < 0.0) && (r.Brain.AttackState != EBossAttackState.Ready))
@@ -754,7 +759,7 @@ namespace Shinshi.Tests
             r.TransitionAndHandoff();
 
             double started = -1.0;
-            for (double t = 0.5; t < 3.0; t += 0.25)
+            for (double t = 0.5; t < 6.0; t += 0.25)
             {
                 r.Brain.Tick(t);
                 if ((started < 0.0) && (r.Brain.AttackState != EBossAttackState.Ready))
@@ -762,7 +767,7 @@ namespace Shinshi.Tests
                     started = t;
                 }
 
-                if ((started >= 0.0) && (t >= (started + 1.25)))
+                if ((started >= 0.0) && (t >= (started + FirstShot + 0.35)))
                 {
                     r.Vitals.HealthRate = 0f;
                     r.Vitals.IsHealthZero = true;

@@ -20,6 +20,14 @@ namespace Shinshi.Tests
         private const string P04_ID = BossPatternCatalogSO.WOLBAEK_HARD_P2_P04_ID;
         private const float HREF = 1000f;
 
+        // 시전 시작 기준: 0~4초 추적, 4초 위치 고정, 8초 예고가 끝나 실행 진입, 10.5초(실행 2.5초 뒤) 장판 활성, 12.5초(회복 2초 뒤) 다음 패턴 가능
+        private const double TRACKING_END  = 4.0;
+        private const double TELEGRAPH_END = 8.0;
+        private const double ACTIVATE_AT   = 10.5;
+        private const double COMPLETE_AT   = 12.5;
+        private const double EPSILON       = 0.0001;
+        private const float  TOLERANCE     = 0.001f;
+
         private sealed class Query : ICombatTargetQuery
         {
             public readonly List<FakeCombatTarget> Targets = new List<FakeCombatTarget>();
@@ -81,6 +89,10 @@ namespace Shinshi.Tests
         {
             public readonly HashSet<int> Disconnected = new HashSet<int>();
             public readonly List<Vector3> Fixed = new List<Vector3>();
+            public readonly List<double> FixedTimes = new List<double>();
+            public int MovedCount;
+            public float StartFollowSeconds = -1f;
+            public float StartFixedSeconds  = -1f;
             public readonly List<Vector3> Activated = new List<Vector3>();
             public readonly List<double> ActivatedTimes = new List<double>();
             public readonly List<int> HitIndices = new List<int>();
@@ -90,13 +102,21 @@ namespace Shinshi.Tests
             public bool IsConnected(int combatId) => !Disconnected.Contains(combatId);
 
             public void OnMovingStarted(int castInstanceId, int areaId, int targetCombatId, Vector3 center, float radius,
-                double startServerTime, float followSeconds, float fixedSeconds) { }
+                double startServerTime, float followSeconds, float fixedSeconds)
+            {
+                StartFollowSeconds = followSeconds;
+                StartFixedSeconds  = fixedSeconds;
+            }
 
-            public void OnMovingUpdated(int castInstanceId, int areaId, Vector3 center, double serverTime) { }
+            public void OnMovingUpdated(int castInstanceId, int areaId, Vector3 center, double serverTime)
+            {
+                ++MovedCount;
+            }
 
             public void OnCenterFixed(int castInstanceId, int areaId, Vector3 center, double fixedServerTime)
             {
                 Fixed.Add(center);
+                FixedTimes.Add(fixedServerTime);
             }
 
             public void OnCancelled(int castInstanceId, int areaId, EBossInterruptReason reason)
@@ -185,10 +205,10 @@ namespace Shinshi.Tests
         public void Asset_HardP04_HasTrackingAndSixtyRounds()
         {
             Run run = new Run();
-            Assert.AreEqual(4f, run.Definition.TelegraphSeconds);
+            Assert.AreEqual(8f, run.Definition.TelegraphSeconds);
             Assert.AreEqual(4f, run.Definition.TrackingSeconds);
             Assert.AreEqual(2.5f, run.Definition.ActiveSeconds);
-            Assert.AreEqual(1f, run.Definition.RecoverySeconds);
+            Assert.AreEqual(2f, run.Definition.RecoverySeconds);
             Assert.AreEqual(6f, run.Definition.Shape.Range);
             Assert.AreEqual(60, BossAreaManager.ComputeHitCount(run.Definition.AreaDurationSeconds,
                 run.Definition.AreaTickInterval));
@@ -206,24 +226,112 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tracking_FixesAtFourAndActivatesAtSixPointFive()
+        public void Tracking_FollowsUntilFourThenFixesAndActivatesAtTenPointFive()
         {
             Run run = new Run();
             FakeCombatTarget target = run.Add(10, Vector3.zero);
             run.Start(10);
             target.Position = new Vector3(5f, 0f, 0f);
             run.Tick(3.9);
-            run.Tick(4.0);
+            run.Tick(TRACKING_END);
             target.Position = new Vector3(20f, 0f, 0f);
-            run.Tick(6.499);
+            run.Tick(ACTIVATE_AT - EPSILON);
             Assert.AreEqual(0, run.Events.Activated.Count);
-            run.Tick(6.5);
+            run.Tick(ACTIVATE_AT);
             Assert.AreEqual(new Vector3(5f, 0f, 0f), run.Events.Fixed[0]);
             Assert.AreEqual(run.Events.Fixed[0], run.Events.Activated[0]);
-            Assert.AreEqual(6.5, run.Events.ActivatedTimes[0]);
+            Assert.AreEqual(ACTIVATE_AT, run.Events.ActivatedTimes[0]);
             Assert.AreEqual(EBossAttackState.Recover, run.Fsm.State);
-            run.Tick(7.5);
+            run.Tick(COMPLETE_AT);
             Assert.AreEqual(EBossAttackState.Ready, run.Fsm.State);
+        }
+
+        [Test]
+        public void Start_ReportsFollowFourAndFixedSixPointFiveThatSumToActivation()
+        {
+            Run run = new Run();
+            run.Add(10, Vector3.zero);
+            run.Start(10);
+            Assert.AreEqual(4f, run.Events.StartFollowSeconds, TOLERANCE);
+            Assert.AreEqual(6.5f, run.Events.StartFixedSeconds, TOLERANCE);
+            Assert.AreEqual(ACTIVATE_AT, run.Events.StartFollowSeconds + run.Events.StartFixedSeconds, TOLERANCE);
+        }
+
+        [Test]
+        public void Fixed_AtFour_NotifiesOnceAndCenterNeverMovesAfterwards()
+        {
+            Run run = new Run();
+            FakeCombatTarget target = run.Add(10, Vector3.zero);
+            run.Start(10);
+            target.Position = new Vector3(3f, 0f, 0f);
+            run.Tick(2.0);
+            Assert.AreEqual(0, run.Events.Fixed.Count, "추적 중에는 고정 알림이 없다");
+
+            run.Tick(TRACKING_END);
+            Assert.AreEqual(1, run.Events.Fixed.Count);
+            Assert.AreEqual(TRACKING_END, run.Events.FixedTimes[0], EPSILON);
+            Assert.AreEqual(new Vector3(3f, 0f, 0f), run.Events.Fixed[0]);
+            int moved = run.Events.MovedCount;
+
+            target.Position = new Vector3(9f, 0f, 9f);
+            run.Tick(5.0);
+            run.Tick(TELEGRAPH_END - EPSILON);
+            run.Tick(TELEGRAPH_END);
+            run.Tick(9.0);
+            run.Tick(ACTIVATE_AT);
+
+            Assert.AreEqual(moved, run.Events.MovedCount, "고정 뒤에는 중심 갱신 알림이 없다");
+            Assert.AreEqual(1, run.Events.Fixed.Count, "실행 진입에서 고정 알림이 다시 나가지 않는다");
+            Assert.AreEqual(new Vector3(3f, 0f, 0f), run.Events.Activated[0]);
+        }
+
+        [Test]
+        public void NoAreaOrDamage_BeforeTenPointFive_ThenFirstRoundAtTenPointFive()
+        {
+            Run run = new Run();
+            run.Add(10, Vector3.zero);
+            run.Start(10);
+            run.Tick(TRACKING_END);
+            run.Tick(TELEGRAPH_END - EPSILON);
+            run.Tick(TELEGRAPH_END);
+            run.Tick(10.0);
+            run.Tick(ACTIVATE_AT - EPSILON);
+            Assert.AreEqual(0, run.Events.Activated.Count);
+            Assert.AreEqual(0, run.Areas.ActiveCount);
+            Assert.AreEqual(0, run.Resolver.Requests.Count, "예고 8초가 끝나도 실행이 끝나기 전에는 피해가 없다");
+            Assert.AreEqual(0, run.Events.HitIndices.Count);
+
+            run.Tick(ACTIVATE_AT);
+            Assert.AreEqual(1, run.Events.Activated.Count);
+            Assert.AreEqual(1, run.Areas.ActiveCount);
+            Assert.AreEqual(1, run.Events.HitIndices.Count, "활성 순간 첫 회차 피해");
+        }
+
+        [Test]
+        public void NextPattern_CannotStartBeforeRecoveryEnds_AndStartsAtTwelvePointFive()
+        {
+            Run run = new Run();
+            run.Add(10, Vector3.zero);
+            run.Start(10);
+            run.Tick(ACTIVATE_AT);
+            Assert.AreEqual(EBossAttackState.Recover, run.Fsm.State);
+
+            run.Tick(COMPLETE_AT - EPSILON);
+            Assert.AreEqual(EBossAttackState.Recover, run.Fsm.State, "후딜 중에는 다음 패턴이 시작되지 않는다");
+            Assert.IsFalse(StartNext(run, COMPLETE_AT - EPSILON));
+
+            run.Tick(COMPLETE_AT);
+            Assert.AreEqual(EBossAttackState.Ready, run.Fsm.State);
+            Assert.IsTrue(StartNext(run, COMPLETE_AT));
+        }
+
+        private static bool StartNext(Run run, double time)
+        {
+            var factory = new WolbaekPatternFactory(HREF, areas: run.Areas, hardAreaListener: run.Events, connections: run.Events);
+            BossHardAreaPattern pattern = (BossHardAreaPattern)factory.Create(run.Definition);
+            int cast = run.Gate.IssueInstanceId();
+            BossPatternContext context = new BossPatternContext(run.Definition, cast, 10, run.Self, run.Targets, run.Gate, new Random());
+            return run.Fsm.Start(run.Definition, pattern, in context, time);
         }
 
         [Test]
@@ -238,8 +346,8 @@ namespace Shinshi.Tests
             target.Position = new Vector3(8f, 0f, 0f);
             run.Tick(2.0);
             run.Events.Disconnected.Remove(10);
-            run.Tick(4.0);
-            run.Tick(6.5);
+            run.Tick(TRACKING_END);
+            run.Tick(ACTIVATE_AT);
             Assert.AreEqual(new Vector3(3f, 0f, 0f), run.Events.Activated[0]);
         }
 
@@ -250,10 +358,10 @@ namespace Shinshi.Tests
             FakeCombatTarget target = run.Add(10, Vector3.zero);
             run.Start(10);
             target.Position = new Vector3(20f, 0f, 0f);
-            run.Tick(10.0);
+            run.Tick(20.0);
             Assert.AreEqual(Vector3.zero, run.Events.Fixed[0]);
             Assert.AreEqual(Vector3.zero, run.Events.Activated[0]);
-            Assert.AreEqual(6.5, run.Events.ActivatedTimes[0]);
+            Assert.AreEqual(ACTIVATE_AT, run.Events.ActivatedTimes[0]);
         }
 
         [Test]
@@ -262,10 +370,10 @@ namespace Shinshi.Tests
             Run run = new Run();
             run.Add(10, Vector3.zero);
             run.Start(10);
-            run.Tick(6.5);
+            run.Tick(ACTIVATE_AT);
             Assert.AreEqual(1, run.Areas.ActiveCount);
-            run.Tick(7.5);
-            run.Start(10, 8.0);
+            run.Tick(COMPLETE_AT);
+            run.Start(10, 13.0);
             run.Fsm.Cancel(EBossInterruptReason.PhaseTransition);
             Assert.AreEqual(1, run.Areas.ActiveCount);
             Assert.AreEqual(1, run.Events.CancelCount);
@@ -277,16 +385,16 @@ namespace Shinshi.Tests
             Run run = new Run();
             run.Add(10, Vector3.zero);
             run.Start(10);
-            run.Tick(6.5);
-            run.Tick(7.5);
-            run.Start(10, 8.0);
+            run.Tick(ACTIVATE_AT);
+            run.Tick(COMPLETE_AT);
+            run.Start(10, 13.0);
             Assert.AreEqual(1, run.Areas.ActiveCount);
-            run.Tick(14.5);
+            run.Tick(13.0 + ACTIVATE_AT);
             Assert.AreEqual(2, run.Areas.ActiveCount);
-            run.Tick(15.5);
-            run.Start(10, 16.0);
+            run.Tick(13.0 + COMPLETE_AT);
+            run.Start(10, 26.0);
             Assert.AreEqual(2, run.Areas.ActiveCount);
-            run.Tick(22.5);
+            run.Tick(26.0 + ACTIVATE_AT);
             Assert.AreEqual(2, run.Areas.ActiveCount);
             Assert.AreEqual(1, run.Events.EndedAreas.Count);
         }
@@ -300,7 +408,7 @@ namespace Shinshi.Tests
             BossHardAreaPattern pattern = run.Start(10);
             Assert.AreEqual(2, pattern.AreaCount);
             Assert.AreNotEqual(pattern.GetAreaId(0), pattern.GetAreaId(1));
-            run.Tick(6.5);
+            run.Tick(ACTIVATE_AT);
             Assert.AreEqual(2, run.Areas.ActiveCount);
             Assert.AreEqual(4, run.Resolver.Requests.Count);
             Assert.AreEqual(2, run.Events.HitIndices.Count);
@@ -312,11 +420,11 @@ namespace Shinshi.Tests
             Run run = new Run();
             run.Add(10, Vector3.zero);
             run.Start(10);
-            run.Tick(6.5);
+            run.Tick(ACTIVATE_AT);
             int hits = run.Resolver.Requests.Count;
             run.Fsm.Cancel(EBossInterruptReason.PhaseTransition);
             run.Areas.Cancel(EBossInterruptReason.PhaseTransition, CombatIds.NONE);
-            run.Tick(7.5);
+            run.Tick(COMPLETE_AT);
             Assert.AreEqual(0, run.Areas.TotalAreaCount);
             Assert.AreEqual(hits, run.Resolver.Requests.Count);
         }
@@ -327,15 +435,15 @@ namespace Shinshi.Tests
             Run run = new Run();
             run.Add(10, Vector3.zero);
             run.Start(10);
-            run.Tick(6.5);
+            run.Tick(ACTIVATE_AT);
             for (int i = 1; i < 60; ++i)
             {
-                run.Tick(6.5 + i);
+                run.Tick(ACTIVATE_AT + i);
             }
 
             Assert.AreEqual(60, run.Events.HitIndices.Count);
             Assert.AreEqual(59, run.Events.HitIndices[59]);
-            run.Tick(66.5);
+            run.Tick(ACTIVATE_AT + 60.0);
             Assert.AreEqual(60, run.Events.HitIndices.Count);
             Assert.AreEqual(0, run.Areas.ActiveCount);
         }

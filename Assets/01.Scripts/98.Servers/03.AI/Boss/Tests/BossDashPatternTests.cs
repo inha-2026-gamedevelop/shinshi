@@ -34,11 +34,11 @@ namespace Shinshi.Tests
         private const float  TEST_HREF    = 3541f; // 테스트가 명시적으로 주입하는 값이다
         private const float  RANGE        = 8f;
         private const float  WIDTH        = 2f;
-        private const float  TELEGRAPH    = 0.8f;
+        private const float  TELEGRAPH    = 1.6f;
         private const float  TRACKING     = 0.4f;
         private const float  TURN_RATE    = 180f;
         private const float  ACTIVE       = 0.45f;
-        private const float  RECOVERY     = 0.8f;
+        private const float  RECOVERY     = 1.6f;
         private const float  DAMAGE_REF   = 0.18f;
         private const float  BODY_RADIUS  = 2f;
         private const float  POSITION_TOLERANCE = 0.002f;
@@ -1404,11 +1404,11 @@ namespace Shinshi.Tests
             Assert.IsTrue(catalog.TryGetPattern(P01_ID, out PatternDefinition p01));
 
             Assert.AreEqual(EEnemyAttackShape.Dash, p01.Shape.Shape);
-            Assert.AreEqual(0.8f, p01.TelegraphSeconds);
+            Assert.AreEqual(1.6f, p01.TelegraphSeconds);
             Assert.AreEqual(0.4f, p01.TrackingSeconds);
             Assert.AreEqual(180f, p01.TurnRate);
             Assert.AreEqual(0.45f, p01.ActiveSeconds);
-            Assert.AreEqual(0.8f, p01.RecoverySeconds);
+            Assert.AreEqual(1.6f, p01.RecoverySeconds);
             Assert.AreEqual(8f, p01.Shape.Range);
             Assert.AreEqual(2f, p01.Shape.Width);
             Assert.AreEqual(0.18f, p01.DamageRef);

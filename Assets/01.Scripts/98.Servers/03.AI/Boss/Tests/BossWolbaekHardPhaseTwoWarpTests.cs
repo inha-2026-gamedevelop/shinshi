@@ -28,7 +28,7 @@ namespace Shinshi.Tests
     // 워프 창구(IBossWarp), 전장 입력, 충격파 알림은 가짜이며 실제 서버 몸체의 순간 이동, 충돌, 경로 검사와 복제, 화면은 거치지 않는다
     // 수치는 Play Mode와 다인 접속 검증 전의 초기값이라 값 자체의 정답을 보장하지 않는다
     //
-    // 시각(시전 시작 기준): 예고 1.5초 끝에 한 번 타격하고, 회복 1초 뒤 t=2.5에 다음 선택이 열린다. 시각은 이진 분수로만 넘긴다
+    // 시각(시전 시작 기준): 예고 3초 끝에 한 번 타격하고, 회복 2초 뒤 t=5에 다음 선택이 열린다. 시각은 이진 분수로만 넘긴다
     public class BossWolbaekHardPhaseTwoWarpTests
     {
         /****************************************
@@ -45,8 +45,8 @@ namespace Shinshi.Tests
         private const float  RADIUS       = 5f;
         private const float  DAMAGE_REF   = 0.24f;
         private const int    MAX_CANDIDATES = 8;
-        private const double TELEGRAPH    = 1.5;
-        private const double COMPLETE     = 2.5;
+        private const double TELEGRAPH    = 3.0;
+        private const double COMPLETE     = 5.0;
 
         private static readonly Vector3 Origin     = Vector3.zero;
         private static readonly Vector3 TargetSpot = new Vector3(0f, 0f, 8f);
@@ -370,9 +370,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EBossDifficulty.Hard, p.Difficulty);
             Assert.AreEqual(EPatternGroup.Pressure, p.Group);
-            Assert.AreEqual(1.5f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(3f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0f, p.ActiveSeconds);
-            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Circle, p.Shape.Shape);
             Assert.AreEqual(RADIUS, p.Shape.Range, TOLERANCE);
             Assert.AreEqual(DAMAGE_REF, p.DamageRef, TOLERANCE);
@@ -813,7 +813,7 @@ namespace Shinshi.Tests
             AssertNear(landed, r.Self.Position);
             AssertNear(landed, r.Listener.Center, "서버가 돌려준 실제 위치가 중심이다");
             Assert.AreEqual(RADIUS, r.Listener.Radius, TOLERANCE);
-            Assert.AreEqual(1.5f, r.Listener.Seconds, TOLERANCE);
+            Assert.AreEqual(3f, r.Listener.Seconds, TOLERANCE);
             Assert.AreEqual(1, r.Listener.StartedCount);
         }
 
@@ -844,8 +844,8 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.Start();
 
-            r.Fsm.Tick(1.0);
-            r.Fsm.Tick(1.4999);
+            r.Fsm.Tick(TELEGRAPH / 2.0);
+            r.Fsm.Tick(TELEGRAPH - 0.0001);
             Assert.AreEqual(EBossAttackState.Telegraph, r.Fsm.State);
             Assert.AreEqual(0, r.Resolver.Requests.Count);
             Assert.AreEqual(0, r.Listener.HitCalls);
@@ -865,9 +865,9 @@ namespace Shinshi.Tests
             r.Start();
 
             r.Fsm.Tick(TELEGRAPH);
-            r.Fsm.Tick(1.75);
+            r.Fsm.Tick(TELEGRAPH + 0.25);
             r.Fsm.Tick(COMPLETE);
-            r.Fsm.Tick(3.0);
+            r.Fsm.Tick(COMPLETE + 0.5);
 
             Assert.AreEqual(3, r.Resolver.Requests.Count, "대상 포함 범위 안 세 명이 한 번씩");
             Assert.IsFalse(HasTarget(r.Resolver, 13));
@@ -924,7 +924,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tick_RecoveryIsOneSecond_NextSelectionOpensAtTwoPointFive()
+        public void Tick_RecoveryIsTwoSeconds_NextSelectionOpensAtComplete()
         {
             Run r = new Run();
             r.Start();
@@ -932,9 +932,9 @@ namespace Shinshi.Tests
             r.Fsm.Tick(TELEGRAPH);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State, "즉발이라 발동 단계를 바로 지난다");
 
-            r.Fsm.Tick(2.25);
+            r.Fsm.Tick(TELEGRAPH + 0.75);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.Fsm.Tick(2.4999);
+            r.Fsm.Tick(COMPLETE - 0.0001);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
 
             r.Fsm.Tick(COMPLETE);
@@ -947,16 +947,16 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.Start(startTime: 8.0);
 
-            r.Fsm.Tick(9.4999);
+            r.Fsm.Tick(8.0 + TELEGRAPH - 0.0001);
             Assert.AreEqual(0, r.Resolver.Requests.Count);
 
-            r.Fsm.Tick(9.5);
+            r.Fsm.Tick(8.0 + TELEGRAPH);
             Assert.AreEqual(1, r.Resolver.Requests.Count);
 
-            r.Fsm.Tick(10.4999);
+            r.Fsm.Tick(8.0 + COMPLETE - 0.0001);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
 
-            r.Fsm.Tick(10.5);
+            r.Fsm.Tick(8.0 + COMPLETE);
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
         }
 
@@ -1186,7 +1186,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Brain_FullCycle_StrikesAtOnePointFiveAndOpensNextSelectionAtTwoPointFive()
+        public void Brain_FullCycle_StrikesAtTelegraphEndAndOpensNextSelectionAfterRecovery()
         {
             BrainRig r = new BrainRig();
             r.TransitionAndHandoff();
@@ -1196,19 +1196,19 @@ namespace Shinshi.Tests
             Assert.AreEqual(HARD_ID, r.Brain.ActivePatternId);
             Assert.AreEqual(1, r.Listener.StartedCount);
 
-            r.Brain.Tick(1.9999);
-            Assert.AreEqual(0, r.Damage.Requests.Count, "예고 1.5초 전에는 타격이 없다");
+            r.Brain.Tick(0.5 + TELEGRAPH - 0.0001);
+            Assert.AreEqual(0, r.Damage.Requests.Count, "예고가 끝나기 전에는 타격이 없다");
 
-            r.Brain.Tick(2.0);
+            r.Brain.Tick(0.5 + TELEGRAPH);
             Assert.AreEqual(1, r.Damage.Requests.Count);
             Assert.AreNotEqual(EBossAttackState.Ready, r.Brain.AttackState);
 
-            r.Brain.Tick(2.9999);
-            Assert.AreNotEqual(EBossAttackState.Ready, r.Brain.AttackState, "후딜 1초가 끝나기 전에는 다음 선택이 없다");
+            r.Brain.Tick(0.5 + COMPLETE - 0.0001);
+            Assert.AreNotEqual(EBossAttackState.Ready, r.Brain.AttackState, "후딜이 끝나기 전에는 다음 선택이 없다");
             Assert.AreEqual(1, r.Warp.WarpCalls.Count);
 
             // 착지한 보스가 대상과 3m라 근거리 배율 0이어서 다음 선택은 P07을 고르지 않는다
-            r.Brain.Tick(3.0);
+            r.Brain.Tick(0.5 + COMPLETE);
             Assert.AreEqual(EBossAttackState.Ready, r.Brain.AttackState);
             Assert.AreEqual(1, r.Damage.Requests.Count, "대상당 한 번만 맞는다");
             Assert.AreEqual(1, r.Warp.WarpCalls.Count);

@@ -31,8 +31,13 @@ namespace Shinshi.Tests
         private const string HARD_P05_ID  = "wolbaek_hard_p05";
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const float  TEST_HREF    = 3541f;
-        private const float  TELEGRAPH    = 1f;
-        private const float  RECOVERY     = 0.5f;
+        private const float  TELEGRAPH    = 2f;
+        private const float  RECOVERY     = 1f;
+
+        // 슬롯 소진 같은 선택·정리 동작을 확인하는 뇌 시험용 짧은 주기다. 정식 주기(예고 2초 + 회복 1초)에서는 장판 수명 6초 안에
+        // 세 번째 장판이 설치되지 않아 슬롯이 차는 상황을 만들 수 없다
+        private const float  FAST_TELEGRAPH = 1f;
+        private const float  FAST_RECOVERY  = 0.5f;
         private const float  RADIUS       = 3f;
         private const float  DURATION     = 6f;
         private const float  INTERVAL     = 1f;
@@ -47,11 +52,11 @@ namespace Shinshi.Tests
         *               Helpers
         ****************************************/
 
-        private static PatternDefinition MakeP05()
+        private static PatternDefinition MakeP05(float telegraph = TELEGRAPH, float recovery = RECOVERY)
         {
             return new PatternDefinition(P05_ID, BossTestFixtures.BOSS_ID, 1, 15f,
                 new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f }, new[] { 1f, 1f, 1f, 1f },
-                TELEGRAPH, 0f, 0f, 0f, RECOVERY, EnemyCatalogSO.AttackShapeSpec.TargetArea(RADIUS), DAMAGE_REF, false,
+                telegraph, 0f, 0f, 0f, recovery, EnemyCatalogSO.AttackShapeSpec.TargetArea(RADIUS), DAMAGE_REF, false,
                 EBossActionState.SelectTarget, 0f, false, DURATION, INTERVAL, MAX_AREAS, areaSkipsMissedRounds: true);
         }
 
@@ -337,11 +342,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(RADIUS, world.Listener.TelegraphRadius);
             Assert.AreEqual(TELEGRAPH, world.Listener.TelegraphSeconds);
 
-            world.TickRange(0.0, 0.4);
+            world.TickRange(0.0, TELEGRAPH * 0.4);
             tracked.Position = new Vector3(30f, 0f, 30f);
-            world.TickRange(0.4, 0.8);
+            world.TickRange(TELEGRAPH * 0.4, TELEGRAPH * 0.8);
             tracked.LifeState = EParticipantLifeState.Dead;
-            world.TickRange(0.8, 1.2);
+            world.TickRange(TELEGRAPH * 0.8, TELEGRAPH + 0.2);
 
             Assert.AreEqual(AreaCenter, cast.Pattern.Center);
             Assert.AreEqual(AreaCenter, world.Listener.ActivatedCenter);
@@ -737,8 +742,8 @@ namespace Shinshi.Tests
             Assert.IsTrue(first.Pattern.IsFinished);
             Assert.AreEqual(1, world.Manager.ActiveCount);
 
-            world.StartCast(10, activate + 1.0);
-            world.TickRange(activate + RECOVERY + 0.2, activate + 3.0);
+            world.StartCast(10, activate + RECOVERY);
+            world.TickRange(activate + RECOVERY + 0.2, activate + RECOVERY + TELEGRAPH + 0.2);
 
             Assert.AreEqual(2, world.Manager.ActiveCount);
             Assert.AreEqual(0, world.Listener.Ended.Count);
@@ -964,13 +969,14 @@ namespace Shinshi.Tests
             public AreaListener      Listener { get; } = new AreaListener();
             public FakeBossVitals    Vitals   { get; } = new FakeBossVitals();
             public FakeControlSource Control  { get; } = new FakeControlSource();
-            public PatternDefinition Definition { get; } = MakeP05();
+            public PatternDefinition Definition { get; }
             public BossAreaManager   Manager  { get; }
             public BossProjectileManager Projectiles { get; }
             public BossBrain         Brain    { get; }
 
-            public BrainRig()
+            public BrainRig(float telegraph = TELEGRAPH, float recovery = RECOVERY)
             {
+                Definition = MakeP05(telegraph, recovery);
                 Query.Targets.Add(Player);
                 Manager     = new BossAreaManager(Query, Listener);
                 Projectiles = new BossProjectileManager(Query);
@@ -1012,7 +1018,7 @@ namespace Shinshi.Tests
         [Test]
         public void Brain_SelectionExcludesP05WhenFull_AndReselectsWhenSlotFreed()
         {
-            BrainRig rig = new BrainRig();
+            BrainRig rig = new BrainRig(FAST_TELEGRAPH, FAST_RECOVERY);
             Assert.IsTrue(rig.Brain.Begin(0.0));
             rig.TickAt(0.0);
 
@@ -1036,7 +1042,7 @@ namespace Shinshi.Tests
         [TestCase(2)]
         public void Brain_DeathPhaseTransitionCombatEnd_RemoveReservationAndActiveAreasAndBlockDamage(int kind)
         {
-            BrainRig rig = new BrainRig();
+            BrainRig rig = new BrainRig(FAST_TELEGRAPH, FAST_RECOVERY);
             Assert.IsTrue(rig.Brain.Begin(0.0));
             rig.TickAt(0.0);
             rig.TickRange(0.0, 3.2); // 장판 둘 활성, 세 번째 예고 진행 중
@@ -1071,7 +1077,7 @@ namespace Shinshi.Tests
         [Test]
         public void Brain_AppliedDamageStays_WhenCombatEndsAfterRounds()
         {
-            BrainRig rig = new BrainRig();
+            BrainRig rig = new BrainRig(FAST_TELEGRAPH, FAST_RECOVERY);
             Assert.IsTrue(rig.Brain.Begin(0.0));
             rig.TickAt(0.0);
             rig.TickRange(0.0, 2.2);
@@ -1124,10 +1130,10 @@ namespace Shinshi.Tests
             Assert.IsTrue(catalog.TryGetPattern(P05_ID, out PatternDefinition p05));
 
             Assert.AreEqual(EEnemyAttackShape.TargetArea, p05.Shape.Shape);
-            Assert.AreEqual(1f, p05.TelegraphSeconds);
+            Assert.AreEqual(2f, p05.TelegraphSeconds);
             Assert.AreEqual(0f, p05.TrackingSeconds);
             Assert.AreEqual(0f, p05.ActiveSeconds);
-            Assert.AreEqual(0.5f, p05.RecoverySeconds);
+            Assert.AreEqual(1f, p05.RecoverySeconds);
             Assert.AreEqual(3f, p05.Shape.Range);
             Assert.AreEqual(0.08f, p05.DamageRef);
             Assert.IsFalse(p05.Guardable);
@@ -1188,7 +1194,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(expectedRadius, world.Listener.TelegraphRadius);
             Assert.AreEqual(TELEGRAPH, world.Listener.TelegraphSeconds);
 
-            world.TickRange(0.0, 1.2);
+            world.TickRange(0.0, TELEGRAPH + 0.2);
 
             Assert.AreEqual(expectedRadius, world.Listener.ActivatedRadius);
             Assert.AreEqual(DURATION, world.Listener.ActivatedDuration);
@@ -1211,7 +1217,7 @@ namespace Shinshi.Tests
             world.Add(11, AreaCenter + new Vector3(distance, 0f, 0f));
             world.StartCast(10, 0.0);
 
-            world.TickRange(0.0, 1.2);
+            world.TickRange(0.0, TELEGRAPH + 0.2);
 
             Assert.AreEqual(expectedHit ? 1 : 0, world.Hits(11), $"{id} {distance}");
         }
@@ -1227,7 +1233,7 @@ namespace Shinshi.Tests
                 world.Add(10, AreaCenter);
                 world.Add(11, AreaCenter + new Vector3(1f, 0f, 0f));
                 world.StartCast(10, 0.0);
-                world.TickRange(0.0, 1.2);
+                world.TickRange(0.0, TELEGRAPH + 0.2);
             }
 
             DamageRequest hardRequest = hardWorld.Resolver.Requests.Find(r => r.HitTargetId == 11);

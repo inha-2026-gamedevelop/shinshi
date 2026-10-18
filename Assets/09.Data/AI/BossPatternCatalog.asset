@@ -109,11 +109,11 @@ MonoBehaviour:
     - 0.5
     - 0.8
     - 1
-    _telegraphSeconds: 0.8
+    _telegraphSeconds: 1.6
     _trackingSeconds: 0.4
     _turnRate: 180
     _activeSeconds: 0.45
-    _recoverySeconds: 0.8
+    _recoverySeconds: 1.6
     _shape:
       _shape: 2
       _range: 8
@@ -165,11 +165,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0.5
     _turnRate: 120
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 0
       _range: 6
@@ -221,11 +221,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.2
+    _telegraphSeconds: 2.4
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 1
       _range: 5
@@ -277,11 +277,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0.9
+    _telegraphSeconds: 1.8
     _trackingSeconds: 0.45
     _turnRate: 120
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 3
       _range: 35
@@ -291,7 +291,7 @@ MonoBehaviour:
     _damageRef: 0.18
     _guardable: 1
     _controlPhase: 5
-    _controlWindowSeconds: 0.5
+    _controlWindowSeconds: 1
     _controlCancelsPattern: 0
     _areaDurationSeconds: 0
     _areaTickInterval: 0
@@ -333,11 +333,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 4
       _range: 3
@@ -389,11 +389,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.6
+    _telegraphSeconds: 3.2
     _trackingSeconds: 0.6
     _turnRate: 90
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 5
       _range: 14
@@ -445,11 +445,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 2
+    _telegraphSeconds: 4
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 6
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 5
       _range: 27
@@ -501,11 +501,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.5
+    _telegraphSeconds: 3
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 4
-    _recoverySeconds: 0.8
+    _recoverySeconds: 1.6
     _shape:
       _shape: 5
       _range: 36
@@ -557,11 +557,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.2
+    _telegraphSeconds: 2.4
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0.75
-    _recoverySeconds: 0.8
+    _recoverySeconds: 1.6
     _shape:
       _shape: 0
       _range: 6
@@ -613,11 +613,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 4
       _range: 3
@@ -669,11 +669,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0.9
+    _telegraphSeconds: 1.8
     _trackingSeconds: 0.45
     _turnRate: 120
     _activeSeconds: 0.6
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 3
       _range: 35
@@ -683,7 +683,7 @@ MonoBehaviour:
     _damageRef: 0.18
     _guardable: 1
     _controlPhase: 5
-    _controlWindowSeconds: 0.5
+    _controlWindowSeconds: 1
     _controlCancelsPattern: 0
     _areaDurationSeconds: 0
     _areaTickInterval: 0
@@ -725,11 +725,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.2
+    _telegraphSeconds: 2.4
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0.8
+    _recoverySeconds: 1.6
     _shape:
       _shape: 1
       _range: 5
@@ -781,11 +781,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.5
+    _telegraphSeconds: 3
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 1
       _range: 5
@@ -841,11 +841,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0.8
+    _telegraphSeconds: 1.6
     _trackingSeconds: 0.4
     _turnRate: 180
     _activeSeconds: 0.45
-    _recoverySeconds: 0.8
+    _recoverySeconds: 1.6
     _shape:
       _shape: 2
       _range: 8
@@ -898,11 +898,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0.5
     _turnRate: 120
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 0
       _range: 7
@@ -955,11 +955,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.5
+    _telegraphSeconds: 3
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 1
       _range: 5.5
@@ -1012,11 +1012,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0.9
+    _telegraphSeconds: 1.8
     _trackingSeconds: 0.45
     _turnRate: 120
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 3
       _range: 35
@@ -1026,7 +1026,7 @@ MonoBehaviour:
     _damageRef: 0.18
     _guardable: 1
     _controlPhase: 5
-    _controlWindowSeconds: 0.5
+    _controlWindowSeconds: 1
     _controlCancelsPattern: 0
     _areaDurationSeconds: 0
     _areaTickInterval: 0
@@ -1069,11 +1069,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 4
       _range: 3.25
@@ -1126,11 +1126,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.6
+    _telegraphSeconds: 3.2
     _trackingSeconds: 0.6
     _turnRate: 90
     _activeSeconds: 0
-    _recoverySeconds: 0.5
+    _recoverySeconds: 1
     _shape:
       _shape: 5
       _range: 14
@@ -1183,11 +1183,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 2
+    _telegraphSeconds: 4
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 1.6
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 5
       _range: 27
@@ -1243,11 +1243,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 12.5
-    _recoverySeconds: 1.5
+    _recoverySeconds: 3
     _shape:
       _shape: 5
       _range: 36
@@ -1310,11 +1310,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 2.5
+    _telegraphSeconds: 5
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 3
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 0
       _range: 16
@@ -1381,11 +1381,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 4
+    _telegraphSeconds: 8
     _trackingSeconds: 4
     _turnRate: 0
     _activeSeconds: 2.5
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 4
       _range: 6
@@ -1452,11 +1452,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 1.4
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 3
       _range: 35
@@ -1524,11 +1524,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 2
+    _telegraphSeconds: 4
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 1
       _range: 5.5
@@ -1599,11 +1599,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.5
+    _telegraphSeconds: 3
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 1
+    _recoverySeconds: 2
     _shape:
       _shape: 1
       _range: 5
@@ -1673,11 +1673,11 @@ MonoBehaviour:
     - 0.8
     - 1
     - 1
-    _telegraphSeconds: 0.7
+    _telegraphSeconds: 1.4
     _trackingSeconds: 0.35
     _turnRate: 180
     _activeSeconds: 0
-    _recoverySeconds: 0.6
+    _recoverySeconds: 1.2
     _shape:
       _shape: 0
       _range: 5
@@ -1716,11 +1716,11 @@ MonoBehaviour:
     - 0.8
     - 1
     - 1
-    _telegraphSeconds: 1.2
+    _telegraphSeconds: 2.4
     _trackingSeconds: 0.6
     _turnRate: 120
     _activeSeconds: 0
-    _recoverySeconds: 1.2
+    _recoverySeconds: 2.4
     _shape:
       _shape: 0
       _range: 5
@@ -1759,11 +1759,11 @@ MonoBehaviour:
     - 0.8
     - 1
     - 1
-    _telegraphSeconds: 0.9
+    _telegraphSeconds: 1.8
     _trackingSeconds: 0.4
     _turnRate: 150
     _activeSeconds: 0.5
-    _recoverySeconds: 0.8
+    _recoverySeconds: 1.6
     _shape:
       _shape: 2
       _range: 8
@@ -1802,11 +1802,11 @@ MonoBehaviour:
     - 0.8
     - 1
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 0.8
+    _recoverySeconds: 1.6
     _shape:
       _shape: 1
       _range: 5
@@ -1845,11 +1845,11 @@ MonoBehaviour:
     - 0.8
     - 1
     - 1
-    _telegraphSeconds: 0.8
+    _telegraphSeconds: 1.6
     _trackingSeconds: 0.4
     _turnRate: 150
     _activeSeconds: 0.5
-    _recoverySeconds: 1.2
+    _recoverySeconds: 2.4
     _shape:
       _shape: 0
       _range: 5
@@ -1888,11 +1888,11 @@ MonoBehaviour:
     - 0.8
     - 1
     - 1
-    _telegraphSeconds: 1.6
+    _telegraphSeconds: 3.2
     _trackingSeconds: 0.6
     _turnRate: 90
     _activeSeconds: 0.75
-    _recoverySeconds: 1.5
+    _recoverySeconds: 3
     _shape:
       _shape: 2
       _range: 18
@@ -1931,11 +1931,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0.9
+    _telegraphSeconds: 1.8
     _trackingSeconds: 0.4
     _turnRate: 150
     _activeSeconds: 0.45
-    _recoverySeconds: 0.7
+    _recoverySeconds: 1.4
     _shape:
       _shape: 0
       _range: 5
@@ -1974,11 +1974,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1.2
+    _telegraphSeconds: 2.4
     _trackingSeconds: 0.6
     _turnRate: 120
     _activeSeconds: 0.5
-    _recoverySeconds: 1.2
+    _recoverySeconds: 2.4
     _shape:
       _shape: 0
       _range: 5
@@ -2017,11 +2017,11 @@ MonoBehaviour:
     - 0.5
     - 0.8
     - 1
-    _telegraphSeconds: 0.9
+    _telegraphSeconds: 1.8
     _trackingSeconds: 0.4
     _turnRate: 150
     _activeSeconds: 1.4
-    _recoverySeconds: 0.9
+    _recoverySeconds: 1.8
     _shape:
       _shape: 2
       _range: 8
@@ -2060,11 +2060,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 1
+    _telegraphSeconds: 2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0.7
-    _recoverySeconds: 0.9
+    _recoverySeconds: 1.8
     _shape:
       _shape: 1
       _range: 5
@@ -2103,11 +2103,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 0.9
+    _telegraphSeconds: 1.8
     _trackingSeconds: 0.4
     _turnRate: 150
     _activeSeconds: 1
-    _recoverySeconds: 1.5
+    _recoverySeconds: 3
     _shape:
       _shape: 0
       _range: 5
@@ -2146,11 +2146,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 2
+    _telegraphSeconds: 4
     _trackingSeconds: 0.8
     _turnRate: 90
     _activeSeconds: 3.45
-    _recoverySeconds: 1.8
+    _recoverySeconds: 3.6
     _shape:
       _shape: 2
       _range: 18
@@ -2190,11 +2190,11 @@ MonoBehaviour:
     - 0
     - 0
     - 1
-    _telegraphSeconds: 4
+    _telegraphSeconds: 8
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 1.8
+    _recoverySeconds: 3.6
     _shape:
       _shape: 0
       _range: 44

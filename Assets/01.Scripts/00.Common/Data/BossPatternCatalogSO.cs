@@ -561,10 +561,12 @@ namespace Shinshi.Data
         // 하드 P05 난사의 구역 수이자 발 수, 전방위를 45도씩 나눈 여덟 곳이다
         private const int   BARRAGE_SHOTS        = 8;
 
-        // 하드 P04 추적 장판의 계약값, 서버 패턴이 기대하는 시간과 구조다. 추적 4초 뒤 고정 예고 2.5초를 거쳐 60초 동안 1초마다 피해를 준다
-        private const float HARD_AREA_TRACKING_SECONDS = 4f;
-        private const float HARD_AREA_FIXED_SECONDS    = 2.5f;
-        private const float HARD_AREA_RECOVERY_SECONDS = 1f;
+        // 하드 P04 추적 장판의 계약값, 서버 패턴이 기대하는 시간과 구조다. 추적 4초 뒤 중심을 고정하고 예고 8초에 실행으로 들어가
+        // 실행 2.5초가 끝나는 10.5초에 장판이 켜져 60초 동안 1초마다 피해를 준다. 회복은 2초다
+        private const float HARD_AREA_TRACKING_SECONDS  = 4f;
+        private const float HARD_AREA_TELEGRAPH_SECONDS = 8f;
+        private const float HARD_AREA_FIXED_SECONDS     = 2.5f;
+        private const float HARD_AREA_RECOVERY_SECONDS  = 2f;
         private const float HARD_AREA_RADIUS           = 6f;
         private const float HARD_AREA_DURATION_SECONDS = 60f;
         private const float HARD_AREA_TICK_SECONDS     = 1f;
@@ -1784,7 +1786,7 @@ namespace Shinshi.Data
 
             if ((pattern.Shape == null) || (pattern.Shape.Shape != EEnemyAttackShape.TargetArea)
                 || (pattern.Difficulty != EBossDifficulty.Hard) || (pattern.Phase != SECOND_PHASE)
-                || (pattern.TelegraphSeconds != HARD_AREA_TRACKING_SECONDS) || (pattern.TrackingSeconds != HARD_AREA_TRACKING_SECONDS)
+                || (pattern.TelegraphSeconds != HARD_AREA_TELEGRAPH_SECONDS) || (pattern.TrackingSeconds != HARD_AREA_TRACKING_SECONDS)
                 || (pattern.ActiveSeconds != HARD_AREA_FIXED_SECONDS) || (pattern.RecoverySeconds != HARD_AREA_RECOVERY_SECONDS)
                 || (pattern.Shape.Range != HARD_AREA_RADIUS) || (pattern.AreaDurationSeconds != HARD_AREA_DURATION_SECONDS)
                 || (pattern.AreaTickInterval != HARD_AREA_TICK_SECONDS) || (pattern.DamageRef != HARD_AREA_DAMAGE_REF)
@@ -1792,7 +1794,7 @@ namespace Shinshi.Data
                 || (pattern.MaxConcurrentAreas != HARD_AREA_TARGET_COUNT)
                 || (!pattern.AreaSkipsMissedRounds))
             {
-                errors.Add($"{OWNER}.{field}: 하드 P04의 추적 4초, 고정 예고 2.5초, 장판 2개와 60회 피해 계약이 맞지 않는다");
+                errors.Add($"{OWNER}.{field}: 하드 P04의 추적 4초, 예고 8초, 실행 2.5초, 회복 2초, 장판 2개와 60회 피해 계약이 맞지 않는다");
             }
         }
 

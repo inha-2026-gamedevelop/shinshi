@@ -805,7 +805,7 @@ namespace Shinshi.Tests
             Assert.IsNotNull(catalog);
             Assert.IsTrue(catalog.TryGetPattern(P02_ID, out PatternDefinition p02));
 
-            Assert.AreEqual(1f, p02.TelegraphSeconds);
+            Assert.AreEqual(2f, p02.TelegraphSeconds);
             Assert.AreEqual(0.5f, p02.TrackingSeconds);
             Assert.AreEqual(120f, p02.TurnRate);
             Assert.AreEqual(0f, p02.ActiveSeconds);
@@ -817,7 +817,7 @@ namespace Shinshi.Tests
             Assert.IsFalse(p02.HasControlWindow);
 
             // 임시값, 확정 밸런스가 아니다
-            Assert.AreEqual(0.5f, p02.RecoverySeconds);
+            Assert.AreEqual(1f, p02.RecoverySeconds);
 
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
         }
@@ -864,7 +864,7 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(expectedRange, rig.Listener.StartRadius);
             Assert.AreEqual(expectedArc, rig.Listener.StartArc);
-            Assert.AreEqual(1f, rig.Definition.TelegraphSeconds);
+            Assert.AreEqual(2f, rig.Definition.TelegraphSeconds);
         }
 
         // 두 난이도가 갈리는 위치를 포함한다. (0도, 6.5m)와 (+-52도, 5m)는 하드에서만 맞고, 7.01m와 55.1도는 둘 다 빗나간다
@@ -893,7 +893,7 @@ namespace Shinshi.Tests
             rig.AddPlayer(PROBE_ID, Polar(degrees, distance));
             rig.Start(0.0);
 
-            rig.Fsm.Tick(1.0);
+            rig.Fsm.Tick(rig.Definition.TelegraphSeconds);
 
             Assert.AreEqual(expectedHit ? 1 : 0, CountHits(rig.Resolver, PROBE_ID));
             Assert.AreEqual(1, CountHits(rig.Resolver, rig.Tracked.CombatId));
@@ -908,8 +908,8 @@ namespace Shinshi.Tests
             hardRig.Start(0.0);
             easyRig.Start(0.0);
 
-            hardRig.Fsm.Tick(1.0);
-            easyRig.Fsm.Tick(1.0);
+            hardRig.Fsm.Tick(hardRig.Definition.TelegraphSeconds);
+            easyRig.Fsm.Tick(easyRig.Definition.TelegraphSeconds);
 
             DamageRequest hardRequest = hardRig.Resolver.Requests.Find(r => r.HitTargetId == hardRig.Tracked.CombatId);
             DamageRequest easyRequest = easyRig.Resolver.Requests.Find(r => r.HitTargetId == easyRig.Tracked.CombatId);

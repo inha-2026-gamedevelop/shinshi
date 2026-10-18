@@ -41,8 +41,8 @@ namespace Shinshi.Tests
         private const float  RADIUS       = 5f;
         private const float  DAMAGE_REF   = 0.24f;
         private const int    MAX_CANDIDATES = 8;
-        private const double TELEGRAPH    = 1.5;
-        private const double COMPLETE     = 2.5;
+        private const double TELEGRAPH    = 3.0;
+        private const double COMPLETE     = 5.0;
 
         private static readonly Vector3 Origin     = Vector3.zero;
         private static readonly Vector3 TargetSpot = new Vector3(0f, 0f, 8f);
@@ -354,9 +354,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EBossDifficulty.Easy, p.Difficulty);
             Assert.AreEqual(EPatternGroup.Pressure, p.Group);
-            Assert.AreEqual(1.5f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(3f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0f, p.ActiveSeconds);
-            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Circle, p.Shape.Shape);
             Assert.AreEqual(RADIUS, p.Shape.Range, TOLERANCE);
             Assert.AreEqual(DAMAGE_REF, p.DamageRef, TOLERANCE);
@@ -833,7 +833,7 @@ namespace Shinshi.Tests
             AssertNear(landed, r.Self.Position, "예고 뒤 보스 위치");
             AssertNear(landed, r.Listener.Center, "서버가 돌려준 실제 위치가 중심이다");
             Assert.AreEqual(RADIUS, r.Listener.Radius, TOLERANCE);
-            Assert.AreEqual(1.5f, r.Listener.Seconds, TOLERANCE);
+            Assert.AreEqual(3f, r.Listener.Seconds, TOLERANCE);
             Assert.AreEqual(1, r.Listener.StartedCount);
         }
 
@@ -866,8 +866,8 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.Start();
 
-            r.Fsm.Tick(1.0);
-            r.Fsm.Tick(1.4999);
+            r.Fsm.Tick(TELEGRAPH / 2.0);
+            r.Fsm.Tick(TELEGRAPH - 0.0001);
 
             Assert.AreEqual(EBossAttackState.Telegraph, r.Fsm.State);
             Assert.AreEqual(0, r.Resolver.Requests.Count);
@@ -938,7 +938,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tick_RecoveryIsOneSecondThenNextSelectionCanStart()
+        public void Tick_RecoveryIsTwoSecondsThenNextSelectionCanStart()
         {
             Run r = new Run();
             r.Start();
@@ -946,9 +946,9 @@ namespace Shinshi.Tests
             r.Fsm.Tick(TELEGRAPH);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State, "즉발이라 발동 단계를 바로 지난다");
 
-            r.Fsm.Tick(2.25);
+            r.Fsm.Tick(TELEGRAPH + 0.75);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.Fsm.Tick(2.4999);
+            r.Fsm.Tick(COMPLETE - 0.0001);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
 
             r.Fsm.Tick(COMPLETE);

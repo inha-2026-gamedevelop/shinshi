@@ -43,10 +43,9 @@ namespace Shinshi.Tests
         private const int    SHOTS        = 8;
         private const float  SECTOR_ARC   = 45f;
         private const double SHOT_INTERVAL = 0.2;
-        private const double TELEGRAPH    = 1.0;
-        private const double LAST_FIRE    = 2.4;
-        private const double NEXT_SELECTION = 3.4;
-        private const int    PEAK_ACTIVE  = 9; // 앞선 시전 8발 + 다음 시전 첫 발
+        private const double TELEGRAPH    = 2.0;
+        private const double LAST_FIRE    = 3.4;
+        private const double NEXT_SELECTION = 5.4;
         private const double STEP         = 0.05;
 
         private static readonly Vector3 Origin = new Vector3(50f, 0f, -30f);
@@ -586,12 +585,12 @@ namespace Shinshi.Tests
             Assert.AreEqual(SHOTS, p.RawProjectileCount, "구역 8개, 구역마다 한 발");
             Assert.AreEqual(0.2f, p.ProjectileIntervalSeconds, TOLERANCE);
             Assert.AreEqual(2, p.ProjectileMaxHitsPerTarget, "대상당 한 시전 2회");
-            Assert.AreEqual(1f, p.TelegraphSeconds, TOLERANCE, "첫 발 t=1.0, 각 발 예고는 발사 1초 전");
+            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE, "첫 발 t=2.0, 각 발 예고는 발사 2초 전");
             Assert.AreEqual(0f, p.TrackingSeconds, TOLERANCE, "대상을 따라 돌지 않는다");
             Assert.AreEqual(0f, p.TurnRate, TOLERANCE);
-            Assert.AreEqual(1.4f, p.ActiveSeconds, TOLERANCE, "첫 발부터 마지막 발 t=2.4");
-            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
-            Assert.AreEqual(NEXT_SELECTION, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE, "다음 선택 t=3.4");
+            Assert.AreEqual(1.4f, p.ActiveSeconds, TOLERANCE, "첫 발부터 마지막 발 t=3.4");
+            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(NEXT_SELECTION, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE, "다음 선택 t=5.4");
             Assert.IsFalse(p.HasControlWindow);
             Assert.AreEqual(0, p.MaxConcurrentAreas, "장판 상한으로 후보에서 빠지지 않는다");
             Assert.AreEqual(0, p.RawAreaTargetCount);
@@ -626,11 +625,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(3, easy.RawProjectileCount);
             Assert.AreEqual(0.3f, easy.ProjectileIntervalSeconds, TOLERANCE);
             Assert.AreEqual(0, easy.ProjectileMaxHitsPerTarget, "이지는 대상 상한이 없다");
-            Assert.AreEqual(0.9f, easy.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(1.8f, easy.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0.45f, easy.TrackingSeconds, TOLERANCE);
             Assert.AreEqual(120f, easy.TurnRate, TOLERANCE);
             Assert.AreEqual(0.6f, easy.ActiveSeconds, TOLERANCE);
-            Assert.AreEqual(0.5f, easy.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1f, easy.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(0.18f, easy.DamageRef, TOLERANCE);
             Assert.IsTrue(easy.HasControlWindow);
             Assert.AreEqual(0, LoadDefinition("wolbaek_p04").ProjectileMaxHitsPerTarget, "1페이즈 단발도 그대로다");
@@ -762,7 +761,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(Origin, r.Listener.StartedOrigins[0], "시전 시작 서버 위치");
             Assert.AreEqual(5.0, r.Listener.StartedAt[0], TIME_TOL);
             Assert.AreEqual(SHOTS, r.Listener.StartedShots[0]);
-            Assert.AreEqual(1f, r.Listener.StartedLead[0], TOLERANCE);
+            Assert.AreEqual(2f, r.Listener.StartedLead[0], TOLERANCE);
             Assert.AreEqual(0.2f, r.Listener.StartedGap[0], TOLERANCE);
             Assert.AreEqual(1f, r.Listener.StartedWidth[0], TOLERANCE);
 
@@ -776,11 +775,11 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Timeline_EachShotIsTelegraphedOneSecondEarly_FiresEveryTwoTenths_AndTheNextSelectionIsAt3Point4()
+        public void Timeline_EachShotIsTelegraphedEarly_FiresEveryTwoTenths_AndTheNextSelectionOpensAfterRecovery()
         {
             Run r = new Run(new SeededBossRandom(9));
             r.StartCast(0.0);
-            r.StepRange(0.0, 3.5);
+            r.StepRange(0.0, 5.5);
 
             Assert.AreEqual(SHOTS, r.Listener.Telegraphs.Count);
             Assert.AreEqual(SHOTS, r.Listener.Fires.Count);
@@ -794,7 +793,7 @@ namespace Shinshi.Tests
                 Assert.AreEqual(k, f.Shot);
                 Assert.AreEqual(TelegraphTime(k), t.Scheduled, TIME_TOL, "예고 시작 " + k);
                 Assert.AreEqual(FireTime(k), f.Scheduled, TIME_TOL, "발사 " + k);
-                Assert.AreEqual(1.0, f.Scheduled - t.Scheduled, TIME_TOL, "예고는 발사 1초 전");
+                Assert.AreEqual(TELEGRAPH, f.Scheduled - t.Scheduled, TIME_TOL, "예고는 발사 예고 시간 전");
                 Assert.IsTrue(f.IsLaunched);
                 Assert.AreEqual(FireTime(k), r.Sink.Launches[k].Time, TIME_TOL, "투사체 발사 시각은 예정 시각");
                 Assert.AreEqual(f.ProjectileId, r.Sink.Launches[k].Id);
@@ -803,7 +802,7 @@ namespace Shinshi.Tests
                 Assert.LessOrEqual(f.Processed - f.Scheduled, STEP + TIME_TOL);
             }
 
-            Assert.AreEqual(LAST_FIRE, r.Listener.Fires[SHOTS - 1].Scheduled, TIME_TOL, "마지막 발 t=2.4");
+            Assert.AreEqual(LAST_FIRE, r.Listener.Fires[SHOTS - 1].Scheduled, TIME_TOL, "마지막 발 t=3.4");
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
             Assert.AreEqual(0, r.Resolver.Requests.Count);
         }
@@ -813,23 +812,24 @@ namespace Shinshi.Tests
         {
             Run r = new Run(new SeededBossRandom(9));
             r.StartCast(0.0);
-            r.StepRange(0.0, 1.25);
+            r.StepRange(0.0, 2.25);
+            const double SAMPLE = 2.2;
 
             int telegraphed = 0;
             int fired = 0;
             for (int i = 0; i < r.Listener.Telegraphs.Count; ++i)
             {
-                telegraphed += (r.Listener.Telegraphs[i].Scheduled <= 1.2 + TIME_TOL) ? 1 : 0;
+                telegraphed += (r.Listener.Telegraphs[i].Scheduled <= SAMPLE + TIME_TOL) ? 1 : 0;
             }
 
             for (int i = 0; i < r.Listener.Fires.Count; ++i)
             {
-                fired += (r.Listener.Fires[i].Scheduled <= 1.2 + TIME_TOL) ? 1 : 0;
+                fired += (r.Listener.Fires[i].Scheduled <= SAMPLE + TIME_TOL) ? 1 : 0;
             }
 
-            Assert.AreEqual(7, telegraphed, "t=1.2에는 발 0~6의 예고가 시작됐다");
+            Assert.AreEqual(SHOTS, telegraphed, "t=2.2에는 발 0~7의 예고가 모두 시작됐다");
             Assert.AreEqual(2, fired, "발 0, 1은 나갔다");
-            Assert.AreEqual(5, telegraphed - fired, "발 2~6의 예고가 동시에 보인다");
+            Assert.AreEqual(SHOTS - 2, telegraphed - fired, "발 2~7의 예고가 동시에 보인다");
         }
 
         [Test]
@@ -844,19 +844,22 @@ namespace Shinshi.Tests
             Assert.AreEqual(2, r.Listener.Telegraphs.Count);
             r.Step(0.9999);
             Assert.AreEqual(5, r.Listener.Telegraphs.Count, "0.8까지 발 0~4");
-            Assert.AreEqual(0, r.Listener.Fires.Count, "첫 발 t=1.0 전에는 나가지 않는다");
-            r.Step(1.0);
+            Assert.AreEqual(0, r.Listener.Fires.Count);
+            r.Step(TELEGRAPH - 0.0001);
+            Assert.AreEqual(SHOTS, r.Listener.Telegraphs.Count, "마지막 발의 예고는 t=1.4에 이미 나왔다");
+            Assert.AreEqual(0, r.Listener.Fires.Count, "첫 발 t=2.0 전에는 나가지 않는다");
+            r.Step(TELEGRAPH);
             Assert.AreEqual(1, r.Listener.Fires.Count, "경계에서 첫 발");
-            Assert.AreEqual(6, r.Listener.Telegraphs.Count, "발 5의 예고도 t=1.0");
-            r.Step(2.3999);
-            Assert.AreEqual(7, r.Listener.Fires.Count, "마지막 발 t=2.4 전에는 7발");
-            r.Step(2.4);
+            Assert.AreEqual(SHOTS, r.Listener.Telegraphs.Count);
+            r.Step(3.3999);
+            Assert.AreEqual(7, r.Listener.Fires.Count, "마지막 발 t=3.4 전에는 7발");
+            r.Step(3.4);
             Assert.AreEqual(SHOTS, r.Listener.Fires.Count, "마지막 발은 실행 끝 경계에서 놓치지 않는다");
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.Step(3.3999);
+            r.Step(5.3999);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.Step(3.4);
-            Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State, "다음 선택 t=3.4");
+            r.Step(5.4);
+            Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State, "다음 선택 t=5.4");
         }
 
         [Test]
@@ -864,9 +867,9 @@ namespace Shinshi.Tests
         {
             Run r = new Run(new SeededBossRandom(9));
             r.StartCast(0.0);
-            r.Step(10.0);
-            r.Step(10.5);
-            r.Step(30.0);
+            r.Step(12.0);
+            r.Step(12.5);
+            r.Step(32.0);
 
             Assert.AreEqual(SHOTS, r.Listener.Telegraphs.Count, "한 번씩만");
             Assert.AreEqual(SHOTS, r.Listener.Fires.Count);
@@ -876,13 +879,13 @@ namespace Shinshi.Tests
                 Assert.AreEqual(k, r.Listener.Fires[k].Shot);
                 Assert.AreEqual(TelegraphTime(k), r.Listener.Telegraphs[k].Scheduled, TIME_TOL);
                 Assert.AreEqual(FireTime(k), r.Listener.Fires[k].Scheduled, TIME_TOL, "예정 시각은 그대로");
-                Assert.AreEqual(10.0, r.Listener.Fires[k].Processed, TIME_TOL, "처리 시각은 틱 시각");
+                Assert.AreEqual(12.0, r.Listener.Fires[k].Processed, TIME_TOL, "처리 시각은 틱 시각");
                 Assert.AreEqual(FireTime(k), r.Sink.Launches[k].Time, TIME_TOL, "투사체 발사 시각도 예정 시각");
                 Assert.IsTrue(r.Listener.Fires[k].IsLaunched);
             }
 
             Assert.AreEqual(0.0, r.Listener.Telegraphs[0].Processed, TIME_TOL, "첫 예고는 시작 때");
-            Assert.AreEqual(10.0, r.Listener.Telegraphs[1].Processed, TIME_TOL);
+            Assert.AreEqual(12.0, r.Listener.Telegraphs[1].Processed, TIME_TOL);
 
             // 예정 시각 순서: 모든 알림 로그에서 같은 종류 안의 번호가 늘어나고, 예고 k는 발사 k보다 먼저다
             int lastT = -1;
@@ -915,7 +918,7 @@ namespace Shinshi.Tests
         {
             Run r = new Run(new SeededBossRandom(9));
             r.StartCast(0.0);
-            r.StepRange(0.0, 3.5, 0.5);
+            r.StepRange(0.0, 5.5, 0.5);
 
             Assert.AreEqual(SHOTS, r.Listener.Fires.Count);
             for (int k = 0; k < SHOTS; ++k)
@@ -925,8 +928,8 @@ namespace Shinshi.Tests
                 Assert.Less(r.Listener.Fires[k].Processed - r.Listener.Fires[k].Scheduled, 0.5 + TIME_TOL);
             }
 
-            Assert.AreEqual(1.0, r.Listener.Fires[0].Processed, TIME_TOL, "발 0은 0.5 간격 틱의 1.0에서");
-            Assert.AreEqual(1.5, r.Listener.Fires[1].Processed, TIME_TOL, "발 1~2는 1.5 틱에서 함께");
+            Assert.AreEqual(2.0, r.Listener.Fires[0].Processed, TIME_TOL, "발 0은 0.5 간격 틱의 2.0에서");
+            Assert.AreEqual(2.5, r.Listener.Fires[1].Processed, TIME_TOL, "발 1~2는 2.5 틱에서 함께");
         }
 
         /****************************************
@@ -940,7 +943,7 @@ namespace Shinshi.Tests
             r.StartCast(0.0);
             r.Step(0.5);
             r.Self.Position = Origin + new Vector3(7f, 0f, 3f);
-            r.StepRange(0.55, 3.5);
+            r.StepRange(0.55, 5.5);
 
             Assert.AreEqual(SHOTS, r.Sink.Launches.Count);
             for (int k = 0; k < SHOTS; ++k)
@@ -958,7 +961,7 @@ namespace Shinshi.Tests
             {
                 Run r = new Run(new SeededBossRandom(seed));
                 r.StartCast(0.0);
-                r.StepRange(0.0, 3.5);
+                r.StepRange(0.0, 5.5);
 
                 bool[] sectors = new bool[SHOTS];
                 for (int k = 0; k < SHOTS; ++k)
@@ -988,9 +991,9 @@ namespace Shinshi.Tests
             a.StartCast(0.0);
             b.StartCast(0.0);
             c.StartCast(0.0);
-            a.StepRange(0.0, 3.5);
-            b.StepRange(0.0, 3.5);
-            c.StepRange(0.0, 3.5);
+            a.StepRange(0.0, 5.5);
+            b.StepRange(0.0, 5.5);
+            c.StepRange(0.0, 5.5);
 
             bool differs = false;
             for (int k = 0; k < SHOTS; ++k)
@@ -1013,7 +1016,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(7, random.IntLimits.Count, "구역 순열 7번 교환");
             Assert.AreEqual(SHOTS, random.FloatCalls, "각도 8번");
 
-            r.StepRange(0.0, 3.5);
+            r.StepRange(0.0, 5.5);
             Assert.AreEqual(7, random.IntLimits.Count);
             Assert.AreEqual(SHOTS, random.FloatCalls);
         }
@@ -1056,7 +1059,7 @@ namespace Shinshi.Tests
 
             // 정수가 0이면 발 3은 구역 4이고 가운데 각도는 202.5도
             r.Add(10, Polar(Origin, 202.5f, 10f));
-            r.StepRange(0.0, 6.0);
+            r.StepRange(0.0, 8.0);
 
             Assert.AreEqual(1, r.Resolver.Requests.Count);
             DamageRequest request = r.Resolver.Requests[0];
@@ -1079,7 +1082,7 @@ namespace Shinshi.Tests
             Run r = new Run(CenteredRandom());
             r.StartCast(0.0);
             r.Add(10, Origin);
-            r.StepRange(0.0, 6.0);
+            r.StepRange(0.0, 8.0);
 
             Assert.AreEqual(2, r.Resolver.CountFor(10), "대상당 한 시전 2회");
             Assert.AreEqual(r.Listener.Fires[0].ProjectileId, r.Resolver.Requests[0].ActionInstanceId);
@@ -1097,7 +1100,7 @@ namespace Shinshi.Tests
             r.Resolver.Outcomes[10] = EDamageOutcome.Guarded;
             r.StartCast(0.0);
             r.Add(10, Origin);
-            r.StepRange(0.0, 3.5);
+            r.StepRange(0.0, 5.5);
 
             Assert.AreEqual(2, r.Resolver.CountFor(10), "방어와 반격으로 막은 유효 피격도 상한을 쓴다");
             Assert.AreEqual(2, r.Pattern.HitLimit.GetHitCount(10));
@@ -1110,10 +1113,10 @@ namespace Shinshi.Tests
             Run r = new Run(CenteredRandom());
             r.StartCast(0.0);
             r.Add(10, Origin);
-            r.StepRange(0.0, 1.1);
+            r.StepRange(0.0, 2.1);
             Assert.AreEqual(1, r.Resolver.CountFor(10), "첫 발은 적용으로 맞았다");
             r.Resolver.Outcomes[10] = EDamageOutcome.Guarded;
-            r.StepRange(1.15, 3.5);
+            r.StepRange(2.15, 5.5);
 
             Assert.AreEqual(2, r.Resolver.CountFor(10));
         }
@@ -1125,7 +1128,7 @@ namespace Shinshi.Tests
             r.Resolver.Outcomes[10] = EDamageOutcome.Invulnerable;
             r.StartCast(0.0);
             r.Add(10, Origin);
-            r.StepRange(0.0, 3.5);
+            r.StepRange(0.0, 5.5);
 
             Assert.AreEqual(SHOTS, r.Resolver.CountFor(10), "피해가 들어가지 않은 요청은 세지 않아 모든 발이 대상에게 간다");
             Assert.AreEqual(0, r.Pattern.HitLimit.GetHitCount(10));
@@ -1139,7 +1142,7 @@ namespace Shinshi.Tests
             r.StartCast(0.0);
             r.Add(11, Origin);
             r.Add(10, Origin);
-            r.StepRange(0.0, 3.5);
+            r.StepRange(0.0, 5.5);
 
             Assert.AreEqual(2, r.Resolver.CountFor(10));
             Assert.AreEqual(2, r.Resolver.CountFor(11));
@@ -1157,12 +1160,12 @@ namespace Shinshi.Tests
             Run r = new Run(CenteredRandom());
             r.Add(10, Origin);
             r.StartCast(0.0);
-            r.StepRange(0.0, 3.5);
+            r.StepRange(0.0, 5.5);
             Assert.AreEqual(2, r.Resolver.CountFor(10));
             int firstCast = r.CastId;
 
             r.StartCast(4.0);
-            r.StepRange(4.0, 7.5);
+            r.StepRange(6.0, 9.5);
 
             Assert.AreEqual(4, r.Resolver.CountFor(10), "새 시전은 새 상한");
             Assert.AreNotEqual(firstCast, r.CastId);
@@ -1176,9 +1179,9 @@ namespace Shinshi.Tests
             Run r = new Run(CenteredRandom());
             r.StartCast(0.0);
             r.Add(10, Origin);
-            r.StepRange(0.0, 0.95);
+            r.StepRange(0.0, 1.95);
             r.Gate.CloseForGood();
-            r.StepRange(1.0, 3.5);
+            r.StepRange(2.0, 5.5);
 
             Assert.AreEqual(0, r.Resolver.Requests.Count);
             Assert.AreEqual(0, r.Pattern.HitLimit.GetHitCount(10));
@@ -1300,12 +1303,12 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Overlap_BackToBackCasts_NeverLoseAShot_AndThePeakIsNine()
+        public void Overlap_BackToBackCasts_NeverLoseAShot_AndThePeakIsAllShotsOfOneCast()
         {
             Run r = new Run(new SeededBossRandom(3));
             r.StartCast(0.0);
             int casts = 1;
-            for (int i = 1; i <= 320; ++i)
+            for (int i = 1; i <= 520; ++i)
             {
                 double t = i * STEP;
                 r.Step(t);
@@ -1326,8 +1329,8 @@ namespace Shinshi.Tests
                 Assert.IsTrue(r.Listener.Fires[i].IsLaunched, "발사 창구가 받지 않은 발 " + i);
             }
 
-            Assert.AreEqual(PEAK_ACTIVE, r.Peak, "앞선 8발이 남은 채 다음 시전 첫 발이 나가는 최악");
-            Assert.Greater(r.Peak, BossProjectileManager.SharedCapacity, "공용 슬롯 8개만으로는 모자랐던 경우");
+            // 예고가 2초라 다음 시전의 첫 발은 앞선 시전의 첫 발이 사거리에서 사라진 뒤에 나간다. 한 시전의 8발이 모두 날 때가 최대다
+            Assert.AreEqual(SHOTS, r.Peak, "한 시전의 8발이 모두 날고 있는 순간이 최대");
             Assert.LessOrEqual(r.Peak, BossProjectileManager.TotalCapacity);
             Assert.AreEqual(0, r.Manager.ActiveCount);
         }
@@ -1341,11 +1344,14 @@ namespace Shinshi.Tests
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
             int firstCast = r.CastId;
 
-            // 앞선 시전 투사체가 날고 있는 중에 다음 시전을 시작한다. 발 0(구역 1, 67.5도)은 4.5초에 사라진다
+            // 앞선 시전 투사체가 날고 있는 중에 다음 시전을 시작한다. 발 0은 발사 4.5초 뒤(t=6.5)에 사라진다
             Assert.AreEqual(SHOTS, r.Manager.ActiveCount, "첫 발의 4.5초 소멸 전이라 8발이 모두 남아 있다");
-            r.Add(10, Polar(Origin, 67.5f, 33f));
+
+            // 예고가 2초라 발 0은 다음 시전이 시작되기 전(t=5.3)에 33m 끝에 닿는다. 마지막 발(t=3.4 발사)의 구역에 대상을 두면 t=6.7에 닿아 다음 시전 중에 맞는다
+            float lastShotAngle = (r.Listener.Telegraphs[SHOTS - 1].Sector + 0.5f) * SECTOR_ARC;
+            r.Add(10, Polar(Origin, lastShotAngle, 33f));
             r.StartCast(NEXT_SELECTION + 0.05);
-            r.StepRange(NEXT_SELECTION + 0.1, 5.0);
+            r.StepRange(NEXT_SELECTION + 0.1, 7.0);
 
             Assert.AreEqual(1, r.Resolver.CountFor(10), "다음 시전이 진행 중에도 앞선 시전의 발이 33m 끝에서 맞힌다");
             Assert.AreEqual(firstCast, r.Resolver.Requests[0].CastInstanceId);
@@ -1364,7 +1370,7 @@ namespace Shinshi.Tests
 
             Assert.IsTrue(r.Pattern.IsStartRejected);
             r.Fsm.Cancel(EBossInterruptReason.None);
-            r.StepRange(0.0, 4.0);
+            r.StepRange(0.0, 6.0);
 
             Assert.AreEqual(0, r.Listener.Log.Count, "시작하지 못한 시전은 예고도 취소도 알리지 않는다");
             Assert.AreEqual(0, r.Sink.Launches.Count);
@@ -1408,7 +1414,7 @@ namespace Shinshi.Tests
         {
             Run r = new Run(CenteredRandom());
             r.StartCast(0.0);
-            r.StepRange(0.0, 1.5);
+            r.StepRange(0.0, 2.5);
             Assert.AreEqual(3, r.Listener.Fires.Count, "t=1.5까지 발 0~2");
             Assert.AreEqual(3, r.Manager.ActiveCount);
 
@@ -1424,7 +1430,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(3, r.Sink.CountEnds(EBossProjectileEnd.Cancelled));
 
             int logCount = r.Listener.Log.Count;
-            r.StepRange(1.55, 10.0);
+            r.StepRange(2.55, 12.0);
             Assert.AreEqual(logCount, r.Listener.Log.Count, "취소 뒤에는 예고도 발사도 없다");
             Assert.AreEqual(3, r.Sink.Launches.Count);
             Assert.AreEqual(0, r.Resolver.Requests.Count);
@@ -1442,7 +1448,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, r.Listener.Cancels.Count);
             Assert.AreEqual(3, r.Listener.Cancels[0].Telegraphed, "0, 0.2, 0.4");
             Assert.AreEqual(0, r.Listener.Cancels[0].Fired);
-            r.StepRange(0.55, 5.0);
+            r.StepRange(0.55, 7.0);
             Assert.AreEqual(0, r.Sink.Launches.Count);
         }
 
@@ -1451,7 +1457,7 @@ namespace Shinshi.Tests
         {
             Run r = new Run(CenteredRandom());
             r.StartCast(0.0);
-            r.StepRange(0.0, 2.45);
+            r.StepRange(0.0, 3.45);
 
             r.Fsm.Cancel(EBossInterruptReason.CombatEnd);
             Assert.AreEqual(SHOTS, r.Listener.Cancels[0].Fired);
@@ -1466,13 +1472,13 @@ namespace Shinshi.Tests
         {
             Run r = new Run(CenteredRandom());
             r.StartCast(0.0);
-            r.StepRange(0.0, 3.5);
+            r.StepRange(0.0, 5.5);
 
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
             Assert.AreEqual(0, r.Listener.Cancels.Count);
             Assert.Greater(r.Manager.ActiveCount, 0, "패턴이 끝나도 투사체는 남아 날고 있다");
             Assert.IsTrue(r.Pattern.IsFinished);
-            r.StepRange(3.55, 6.0);
+            r.StepRange(5.55, 8.0);
             Assert.AreEqual(0, r.Manager.ActiveCount, "마지막 발은 2.4 + 3.5 = 5.9초에 사라진다");
         }
 
@@ -1614,7 +1620,7 @@ namespace Shinshi.Tests
 
             Assert.GreaterOrEqual(fullCasts, r.Used.Count - 1, "예고가 끝난 시전은 8구역을 모두 한 번씩 썼다");
 
-            Assert.GreaterOrEqual(r.Peak, PEAK_ACTIVE, "앞선 시전 투사체가 남은 채 다음 시전이 나간다");
+            Assert.GreaterOrEqual(r.Peak, SHOTS, "한 시전의 8발이 모두 날고 있는 순간이 있다");
             Assert.LessOrEqual(r.Peak, BossProjectileManager.TotalCapacity);
             Assert.AreEqual(0, r.Resolver.Requests.Count, "대상이 사거리 밖이라 피해는 없다");
         }

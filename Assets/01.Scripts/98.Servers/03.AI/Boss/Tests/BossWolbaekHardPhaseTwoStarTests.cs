@@ -37,12 +37,12 @@ namespace Shinshi.Tests
         private const float  RAW_DAMAGE    = 0.14f * HREF;
         private const float  TOLERANCE     = 0.001f;
         private const double TIME_TOL      = 0.0001;
-        private const double STAGE_0       = 2.0;
-        private const double STAGE_1       = 2.8;
+        private const double STAGE_0       = 4.0;
+        private const double STAGE_1       = 4.8;
 
         // FSM 경계는 float 정의 값을 double로 더해 얻으므로 리터럴 3.6, 4.6과 오차가 있다. 경계 틱 테스트는 FSM과 같은 식을 쓴다
-        private const double STAGE_2       = 2.0 + 1.6f;
-        private const double RECOVERY_END  = STAGE_2 + 1.0f;
+        private const double STAGE_2       = 4.0 + 1.6f;
+        private const double RECOVERY_END  = STAGE_2 + 2.0f;
         private const float  ARENA_RADIUS  = 18f;
         private const float  STEP_DEGREES  = 30f;
         private const int    STAGE_COUNT   = 3;
@@ -328,9 +328,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(WOLBAEK_ID, p.BossId);
             Assert.AreEqual(HARD_ID + ".name", p.DisplayKey);
             Assert.AreEqual(EPatternGroup.Large, p.Group);
-            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE, "첫 예고와 첫 타격 t=2.0");
-            Assert.AreEqual(1.6f, p.ActiveSeconds, TOLERANCE, "첫 타격부터 마지막 타격 t=3.6");
-            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=4.6");
+            Assert.AreEqual(4f, p.TelegraphSeconds, TOLERANCE, "첫 예고와 첫 타격 t=4.0");
+            Assert.AreEqual(1.6f, p.ActiveSeconds, TOLERANCE, "첫 타격부터 마지막 타격 t=5.6");
+            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=7.6");
             Assert.AreEqual(5, p.StarVertexCount);
             Assert.AreEqual(14f, p.StarRingRadius, TOLERANCE);
             Assert.AreEqual(2, p.StarConnectStep);
@@ -345,7 +345,7 @@ namespace Shinshi.Tests
             Assert.IsFalse(p.HasControlWindow);
             Assert.AreEqual(0f, p.TrackingSeconds);
             Assert.AreEqual(0.25f, p.RecentUseMultipliers[0], TOLERANCE, "하드 직전 배율");
-            Assert.AreEqual(4.6f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(7.6f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
         }
 
         [Test]
@@ -354,7 +354,7 @@ namespace Shinshi.Tests
             PatternDefinition p = LoadDefinition(EASY_ID);
 
             Assert.AreEqual(EBossDifficulty.Easy, p.Difficulty);
-            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(4f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(6f, p.ActiveSeconds, TOLERANCE);
             Assert.AreEqual(20f, p.StarRotationDegrees, TOLERANCE);
             Assert.AreEqual(0.25f, p.BeamTickInterval, TOLERANCE);
@@ -463,7 +463,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, r.Listener.StartedStars.Count);
             Assert.AreEqual(r.CastId, r.Listener.StartedCasts[0]);
             Assert.AreEqual(5.0, r.Listener.StartedAt[0], TIME_TOL, "시전 시작 서버 시각");
-            Assert.AreEqual(2f, r.Listener.FirstStrikes[0], TOLERANCE);
+            Assert.AreEqual(4f, r.Listener.FirstStrikes[0], TOLERANCE);
             Assert.AreEqual(0.8f, r.Listener.Intervals[0], TOLERANCE);
             Assert.AreEqual(STAGE_COUNT, r.Listener.StartedStages[0]);
             Assert.AreEqual(STEP_DEGREES, r.Listener.StartedSteps[0], TOLERANCE, "고정된 양의 단계 각도");
@@ -543,7 +543,7 @@ namespace Shinshi.Tests
         }
 
         /****************************************
-        *      Timing: 2.0 / 2.8 / 3.6 Boundaries
+        *      Timing: 4.0 / 4.8 / 5.6 Boundaries
         ****************************************/
 
         [Test]
@@ -556,8 +556,8 @@ namespace Shinshi.Tests
             AddAt(r, 13, 0b100);
 
             r.TickAt(0.0);
-            r.TickAt(1.99);
-            Assert.AreEqual(0, r.Resolver.Requests.Count, "t=2.0 전에는 타격이 없다");
+            r.TickAt(STAGE_0 - 0.01);
+            Assert.AreEqual(0, r.Resolver.Requests.Count, "t=4.0 전에는 타격이 없다");
 
             r.TickAt(STAGE_0);
             Assert.AreEqual(1, r.Listener.Strikes.Count);
@@ -565,16 +565,16 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, r.Hits(12));
             Assert.AreEqual(EBossAttackState.Execute, r.Fsm.State);
 
-            r.TickAt(2.79);
-            Assert.AreEqual(1, r.Listener.Strikes.Count, "t=2.8 전에는 둘째 타격이 없다");
+            r.TickAt(STAGE_1 - 0.01);
+            Assert.AreEqual(1, r.Listener.Strikes.Count, "t=4.8 전에는 둘째 타격이 없다");
 
             r.TickAt(STAGE_1);
             Assert.AreEqual(2, r.Listener.Strikes.Count);
             Assert.AreEqual(1, r.Hits(12));
             Assert.AreEqual(0, r.Hits(13));
 
-            r.TickAt(3.59);
-            Assert.AreEqual(2, r.Listener.Strikes.Count, "t=3.6 전에는 셋째 타격이 없다");
+            r.TickAt(STAGE_2 - 0.01);
+            Assert.AreEqual(2, r.Listener.Strikes.Count, "t=5.6 전에는 셋째 타격이 없다");
             Assert.AreEqual(EBossAttackState.Execute, r.Fsm.State);
 
             r.TickAt(STAGE_2);
@@ -600,12 +600,12 @@ namespace Shinshi.Tests
             r.Start(10);
             AddAt(r, 11, 0b111);
 
-            r.TickRange(0.0, 6.0);
+            r.TickRange(0.0, 8.0);
 
             Assert.AreEqual(STAGE_COUNT, r.Listener.Strikes.Count);
-            Assert.AreEqual(2.0, r.Listener.Strikes[0].Processed, TIME_TOL);
-            Assert.AreEqual(3.0, r.Listener.Strikes[1].Processed, TIME_TOL, "예정 2.8 -> 처음 닿은 틱 3.0");
-            Assert.AreEqual(3.75, r.Listener.Strikes[2].Processed, TIME_TOL, "예정 3.6 -> 처음 닿은 틱 3.75");
+            Assert.AreEqual(4.0, r.Listener.Strikes[0].Processed, TIME_TOL);
+            Assert.AreEqual(5.0, r.Listener.Strikes[1].Processed, TIME_TOL, "예정 4.8 -> 처음 닿은 틱 5.0");
+            Assert.AreEqual(5.75, r.Listener.Strikes[2].Processed, TIME_TOL, "예정 5.6 -> 처음 닿은 틱 5.75");
             Assert.AreEqual(STAGE_1, r.Listener.Strikes[1].Scheduled, TIME_TOL, "예정 시각은 틱에 끌려가지 않는다");
             Assert.AreEqual(STAGE_COUNT, r.Hits(11));
         }
@@ -618,7 +618,7 @@ namespace Shinshi.Tests
 
             r.TickAt(STAGE_2);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.TickAt(4.59);
+            r.TickAt(RECOVERY_END - 0.01);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State, "후딜 1초 중에는 다음 패턴을 고르지 않는다");
             r.TickAt(RECOVERY_END + 0.001);
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
@@ -664,7 +664,7 @@ namespace Shinshi.Tests
 
             r.TickAt(STAGE_0);
             Assert.AreEqual(1, r.Listener.Strikes.Count);
-            r.TickAt(3.7);
+            r.TickAt(STAGE_2 + 0.1);
 
             Assert.AreEqual(STAGE_COUNT, r.Listener.Strikes.Count);
             Assert.AreEqual(STAGE_COUNT, r.Hits(11), "단계 0은 다시 치지 않는다");
@@ -701,7 +701,7 @@ namespace Shinshi.Tests
             r.Start(10);
             AddAt(r, 11, 0b111);
             AddAt(r, 12, 0b111);
-            r.TickRange(0.0, 5.0);
+            r.TickRange(0.0, 7.0);
 
             Assert.AreEqual(STAGE_COUNT * 2, r.Resolver.Requests.Count);
             HashSet<int> actionIds = new HashSet<int>();
@@ -726,10 +726,10 @@ namespace Shinshi.Tests
             r.Start(10);
             AddAt(r, 11, 0b111);
 
-            r.TickRange(0.0, 3.5, 0.05);
+            r.TickRange(0.0, 5.5, 0.05);
             Assert.AreEqual(2, r.Hits(11), "단계 0, 1만 지났다. 그 사이 틱마다 추가 피해가 없다");
 
-            r.TickRange(3.55, 20.0, 0.05);
+            r.TickRange(5.55, 20.0, 0.05);
             Assert.AreEqual(3, r.Hits(11), "한 시전 대상당 최대 3회");
             Assert.AreEqual(3, r.Resolver.Requests.Count);
         }
@@ -838,11 +838,11 @@ namespace Shinshi.Tests
             Run r = StandardRun();
             r.Start(10);
             AddAt(r, 11, 0b001);
-            r.TickAt(1.0);
+            r.TickAt(STAGE_0 / 2.0);
 
             r.Fsm.Cancel(EBossInterruptReason.Death);
             r.Fsm.Cancel(EBossInterruptReason.Death);
-            r.TickRange(2.0, 8.0);
+            r.TickRange(STAGE_0, 10.0);
 
             Assert.AreEqual(1, r.Listener.CancelledNext.Count);
             Assert.AreEqual(0, r.Listener.CancelledNext[0], "미실행 단계 0부터 정리");
@@ -858,11 +858,11 @@ namespace Shinshi.Tests
             Run r = StandardRun();
             r.Start(10);
             AddAt(r, 11, 0b111);
-            r.TickRange(0.0, 2.25);
+            r.TickRange(0.0, STAGE_0 + 0.25);
             Assert.AreEqual(1, r.Hits(11));
 
             r.Fsm.Cancel(reason);
-            r.TickRange(2.5, 10.0);
+            r.TickRange(STAGE_0 + 0.5, 12.0);
 
             Assert.AreEqual(1, r.Hits(11), "이미 적용된 피해는 그대로, 남은 단계는 타격하지 않는다");
             Assert.AreEqual(1, r.Listener.Strikes.Count);
@@ -881,7 +881,7 @@ namespace Shinshi.Tests
             int before = r.Hits(11);
 
             r.Gate.CloseForGood();
-            r.TickRange(2.25, 6.0);
+            r.TickRange(STAGE_0 + 0.25, 8.0);
 
             Assert.AreEqual(before, r.Hits(11));
         }
@@ -939,7 +939,7 @@ namespace Shinshi.Tests
 
             double started = -1.0;
             string firstId = null;
-            for (double t = 0.5; t < 8.0; t += 0.05)
+            for (double t = 0.5; t < 12.0; t += 0.05)
             {
                 r.Brain.Tick(t);
                 if ((started < 0.0) && (r.Brain.AttackState != EBossAttackState.Ready))
@@ -986,7 +986,7 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(1, r.Listener.Strikes.Count);
             r.Brain.RequestCombatEnd();
-            for (double t = started + 2.5; t < started + 8.0; t += 0.05)
+            for (double t = started + STAGE_0 + 0.5; t < started + 12.0; t += 0.05)
             {
                 r.Brain.Tick(t);
             }
