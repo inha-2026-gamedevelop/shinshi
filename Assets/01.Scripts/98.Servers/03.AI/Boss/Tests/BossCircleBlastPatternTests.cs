@@ -33,8 +33,8 @@ namespace Shinshi.Tests
         private const string WOLBAEK_ID   = "boss_wolbaek";
         private const float  TEST_HREF    = 3541f; // 테스트가 명시적으로 주입하는 값이다
         private const float  RADIUS       = 5f;
-        private const float  TELEGRAPH    = 1.2f;
-        private const float  RECOVERY     = 0.5f;
+        private const float  TELEGRAPH    = 2.4f;
+        private const float  RECOVERY     = 1f;
         private const double EPSILON      = 0.001;
         private const int    PROBE_ID     = 11;
 
@@ -256,15 +256,15 @@ namespace Shinshi.Tests
             Assert.AreEqual(EBossAttackState.Recover, rig.Fsm.State);
         }
 
-        // float 1.2f는 double 1.2보다 크므로 1.2 그대로의 시각에는 아직 예고 중이다
+        // float 2.4f는 double 2.4보다 크므로 2.4 그대로의 시각에는 아직 예고 중이다
         [Test]
-        public void Tick_AtDoubleOnePointTwo_StillTelegraphing()
+        public void Tick_AtDoubleTwoPointFour_StillTelegraphing()
         {
             Rig rig = new Rig();
             rig.Start(0.0);
 
-            Assert.Greater(BoundaryOf(rig.Definition, 0.0), 1.2);
-            rig.Fsm.Tick(1.2);
+            Assert.Greater(BoundaryOf(rig.Definition, 0.0), 2.4);
+            rig.Fsm.Tick(2.4);
 
             Assert.AreEqual(EBossAttackState.Telegraph, rig.Fsm.State);
             Assert.AreEqual(0, rig.Resolver.Requests.Count);
@@ -772,22 +772,28 @@ namespace Shinshi.Tests
             Assert.AreEqual(EBossAttackState.Telegraph, rig.Brain.AttackState);
             Assert.AreEqual(P03_ID, rig.Brain.ActivePatternId);
 
-            rig.Brain.Tick(1.0);
-            Assert.AreEqual(0, rig.Resolver.Requests.Count);
+            // 경계는 FSM과 같이 float 정의 값을 double로 넓혀 더한다
+            double strike = TELEGRAPH;
+            double ready  = strike + RECOVERY;
 
-            rig.Brain.Tick(1.25);
+            rig.Brain.Tick(strike / 2.0);
+            Assert.AreEqual(0, rig.Resolver.Requests.Count);
+            rig.Brain.Tick(strike - EPSILON);
+            Assert.AreEqual(0, rig.Resolver.Requests.Count, "예고가 끝나기 전에는 타격이 없다");
+
+            rig.Brain.Tick(strike + 0.05);
             Assert.AreEqual(1, rig.Resolver.Requests.Count);
             Assert.AreEqual(EBossAttackState.Recover, rig.Brain.AttackState);
 
-            rig.Brain.Tick(1.5);
-            Assert.AreEqual(EBossAttackState.Recover, rig.Brain.AttackState);
+            rig.Brain.Tick(ready - EPSILON);
+            Assert.AreEqual(EBossAttackState.Recover, rig.Brain.AttackState, "후딜이 끝나기 전에는 다음 선택이 없다");
 
-            rig.Brain.Tick(1.75);
+            rig.Brain.Tick(ready + 0.05);
             Assert.AreEqual(EBossAttackState.Ready, rig.Brain.AttackState);
             Assert.IsTrue(rig.Created[0].IsFinished);
             Assert.IsFalse(rig.Created[0].IsCancelled);
 
-            rig.Brain.Tick(2.0);
+            rig.Brain.Tick(ready + 0.3);
             Assert.AreEqual(EBossAttackState.Telegraph, rig.Brain.AttackState);
             Assert.AreEqual(2, rig.Created.Count);
             Assert.AreEqual(1, rig.Resolver.Requests.Count);
@@ -887,7 +893,7 @@ namespace Shinshi.Tests
             Assert.IsNotNull(catalog);
             Assert.IsTrue(catalog.TryGetPattern(P03_ID, out PatternDefinition p03));
 
-            Assert.AreEqual(1.2f, p03.TelegraphSeconds);
+            Assert.AreEqual(2.4f, p03.TelegraphSeconds);
             Assert.AreEqual(0f, p03.TrackingSeconds);
             Assert.AreEqual(0f, p03.TurnRate);
             Assert.AreEqual(0f, p03.ActiveSeconds);
@@ -898,7 +904,7 @@ namespace Shinshi.Tests
             Assert.IsFalse(p03.HasControlWindow);
 
             // 임시값, 확정 밸런스가 아니다
-            Assert.AreEqual(0.5f, p03.RecoverySeconds);
+            Assert.AreEqual(1f, p03.RecoverySeconds);
 
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
         }
@@ -935,9 +941,9 @@ namespace Shinshi.Tests
             Assert.IsTrue(factory.CanCreate(LoadAssetPattern(P03_ID)));
         }
 
-        // 예고가 보여 주는 반경과 시간은 정의 값이다. 이지 P03은 5m, 1.2초 그대로다
-        [TestCase(HARD_P03_ID, 5.5f, 1.5f)]
-        [TestCase(P03_ID, 5f, 1.2f)]
+        // 예고가 보여 주는 반경과 시간은 정의 값이다. 이지 P03은 5m, 2.4초다
+        [TestCase(HARD_P03_ID, 5.5f, 3f)]
+        [TestCase(P03_ID, 5f, 2.4f)]
         public void Begin_AssetP03_ReportsItsOwnRadiusAndSeconds(string id, float expectedRadius, float expectedSeconds)
         {
             Rig rig = MakeAssetRig(id);
@@ -972,9 +978,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(rig.Query.LastRadius, rig.Definition.Shape.Range);
         }
 
-        // 타격 시각은 정의의 예고 시간이다. 하드는 1.5초에, 이지는 1.2초에 맞고 그 직전에는 맞지 않는다
-        [TestCase(HARD_P03_ID, 1.5)]
-        [TestCase(P03_ID, 1.2)]
+        // 타격 시각은 정의의 예고 시간이다. 하드는 3초에, 이지는 2.4초에 맞고 그 직전에는 맞지 않는다
+        [TestCase(HARD_P03_ID, 3.0)]
+        [TestCase(P03_ID, 2.4)]
         public void Strike_AssetP03_HappensAtItsOwnTelegraphEnd(string id, double expectedSeconds)
         {
             Rig rig = MakeAssetRig(id);

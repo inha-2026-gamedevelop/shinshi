@@ -46,18 +46,19 @@ namespace Shinshi.Tests
         private const float  FIRST_OFFSET  = -16.5f; // 첫 줄 중심선, 전장 중심에서의 거리
 
         // 설계 시각(전부 정확한 이진 분수라 FSM 경계와 오차가 없다)
-        private const double FIRST_STRIKE        = 1.0;
-        private const double HORIZONTAL_LAST     = 6.5;
-        private const double VERTICAL_FIRST      = 8.0;
-        private const double VERTICAL_LAST       = 13.5;
-        private const double NEXT_SELECTION      = 15.0;
+        private const double FIRST_STRIKE        = 2.0;
+        private const double TELEGRAPH_LEAD      = 2.0; // 각 줄의 예고는 타격 이 시간 전에 시작한다(예고 시간)
+        private const double HORIZONTAL_LAST     = 7.5;
+        private const double VERTICAL_FIRST      = 9.0;
+        private const double VERTICAL_LAST       = 14.5;
+        private const double NEXT_SELECTION      = 17.5;
 
         // 설계 시각 24개를 값 그대로 적은 표다. 공식으로 만들지 않으므로 실행 코드의 공식이 틀려도 같이 틀려서 통과하지 않는다
-        // 가로 12줄은 1.0부터 0.5초 간격으로 6.5까지, 가로 마지막에서 1.5초 뒤 세로 8.0부터 0.5초 간격으로 13.5까지다
+        // 가로 12줄은 2.0부터 0.5초 간격으로 7.5까지, 가로 마지막에서 1.5초 뒤 세로 9.0부터 0.5초 간격으로 14.5까지다
         private static readonly double[] DesignedStrikeTable =
         {
-            1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5,
-            8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5
+            2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5,
+            9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 14.0, 14.5
         };
 
         private static readonly Vector3 ArenaCenter = new Vector3(50f, 0f, -30f);
@@ -365,10 +366,10 @@ namespace Shinshi.Tests
             Assert.AreEqual(WOLBAEK_ID, p.BossId);
             Assert.AreEqual(HARD_ID + ".name", p.DisplayKey);
             Assert.AreEqual(EPatternGroup.Large, p.Group);
-            Assert.AreEqual(1f, p.TelegraphSeconds, TOLERANCE, "첫 줄 예고 1초, 첫 타격 t=1.0");
-            Assert.AreEqual(12.5f, p.ActiveSeconds, TOLERANCE, "첫 타격부터 마지막 타격 t=13.5");
-            Assert.AreEqual(1.5f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=15.0");
-            Assert.AreEqual(15f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE, "첫 줄 예고 2초, 첫 타격 t=2.0");
+            Assert.AreEqual(12.5f, p.ActiveSeconds, TOLERANCE, "첫 타격부터 마지막 타격 t=14.5");
+            Assert.AreEqual(3f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=17.5");
+            Assert.AreEqual(17.5f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Line, p.Shape.Shape);
             Assert.AreEqual(3f, p.Shape.Width, TOLERANCE);
             Assert.AreEqual(LINE_COUNT, p.RawGridLineCount);
@@ -390,9 +391,9 @@ namespace Shinshi.Tests
             PatternDefinition p = LoadDefinition(EASY_ID);
 
             Assert.AreEqual(EBossDifficulty.Easy, p.Difficulty);
-            Assert.AreEqual(1.5f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(3f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(4f, p.ActiveSeconds, TOLERANCE);
-            Assert.AreEqual(0.8f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1.6f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(2f, p.Shape.Width, TOLERANCE);
             Assert.AreEqual(2, p.RawBeamCount);
             Assert.AreEqual(5f, p.BeamLateralOffset, TOLERANCE);
@@ -662,7 +663,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, r.Listener.StartedCasts.Count);
             Assert.AreEqual(r.CastId, r.Listener.StartedCasts[0]);
             Assert.AreEqual(5.0, r.Listener.StartedAt[0], TIME_TOL);
-            Assert.AreEqual(1f, r.Listener.FirstStrikes[0], TOLERANCE);
+            Assert.AreEqual(2f, r.Listener.FirstStrikes[0], TOLERANCE);
             Assert.AreEqual(0.5f, r.Listener.Intervals[0], TOLERANCE);
             Assert.AreEqual(1.5f, r.Listener.AxisGaps[0], TOLERANCE);
             Assert.AreEqual(ArenaCenter, r.Listener.StartedLayouts[0].ArenaCenter);
@@ -670,7 +671,7 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(1, r.Listener.Telegraphs.Count, "첫 줄의 예고는 시전 시작 순간이다");
             Assert.AreEqual(5.0, r.Listener.Telegraphs[0].TelegraphAt, TIME_TOL);
-            Assert.AreEqual(6.0, r.Listener.Telegraphs[0].StrikeAt, TIME_TOL);
+            Assert.AreEqual(7.0, r.Listener.Telegraphs[0].StrikeAt, TIME_TOL);
             Assert.AreEqual(0, r.Resolver.Requests.Count, "예고만으로는 피해가 없다");
         }
 
@@ -692,7 +693,7 @@ namespace Shinshi.Tests
             moving.Self.Position = ArenaCenter;
             moving.Self.Forward = Vector3.back;
             moving.Arena.Set(Vector3.zero, 5f);
-            moving.TickRange(0.25, 1.75);
+            moving.TickRange(0.25, 2.75);
 
             Assert.AreEqual(first.ArenaCenter, moving.Pattern.Layout.ArenaCenter);
             Assert.AreEqual(first.ArenaRadius, moving.Pattern.Layout.ArenaRadius);
@@ -715,7 +716,7 @@ namespace Shinshi.Tests
             Assert.IsTrue(bigArena.Pattern.IsStartRejected, "줄 전체(지름 36m)가 전장 지름보다 작으면 가장자리에 틈이 생기므로 거절한다");
             Assert.AreEqual(0, bigArena.Listener.Telegraphs.Count);
 
-            bigArena.TickRange(0.25, 16.0);
+            bigArena.TickRange(0.25, 18.5);
             Assert.AreEqual(0, bigArena.Resolver.Requests.Count);
             Assert.AreEqual(0, bigArena.Listener.Strikes.Count, "거절한 시전은 타격하지 않는다");
         }
@@ -743,13 +744,13 @@ namespace Shinshi.Tests
             for (int k = 0; k < TOTAL_LINES; ++k)
             {
                 Assert.AreEqual(2.0 + DesignedStrike(k), r.Pattern.GetStrikeTime(k), TIME_TOL, "타격 " + k);
-                Assert.AreEqual(1.0, r.Pattern.GetStrikeTime(k) - r.Pattern.GetTelegraphTime(k), TIME_TOL, "발사 1초 전 예고 " + k);
+                Assert.AreEqual(2.0, r.Pattern.GetStrikeTime(k) - r.Pattern.GetTelegraphTime(k), TIME_TOL, "발사 2초 전 예고 " + k);
             }
 
-            Assert.AreEqual(2.0 + 1.0, r.Pattern.GetStrikeTime(0), TIME_TOL);
-            Assert.AreEqual(2.0 + 6.5, r.Pattern.GetStrikeTime(LINE_COUNT - 1), TIME_TOL);
-            Assert.AreEqual(2.0 + 8.0, r.Pattern.GetStrikeTime(LINE_COUNT), TIME_TOL);
-            Assert.AreEqual(2.0 + 13.5, r.Pattern.GetStrikeTime(TOTAL_LINES - 1), TIME_TOL);
+            Assert.AreEqual(2.0 + 2.0, r.Pattern.GetStrikeTime(0), TIME_TOL);
+            Assert.AreEqual(2.0 + 7.5, r.Pattern.GetStrikeTime(LINE_COUNT - 1), TIME_TOL);
+            Assert.AreEqual(2.0 + 9.0, r.Pattern.GetStrikeTime(LINE_COUNT), TIME_TOL);
+            Assert.AreEqual(2.0 + 14.5, r.Pattern.GetStrikeTime(TOTAL_LINES - 1), TIME_TOL);
         }
 
         [Test]
@@ -761,7 +762,7 @@ namespace Shinshi.Tests
             r.Add(12, At(0f, LineOffset(LINE_COUNT - 1)));
 
             r.TickAt(0.0);
-            r.TickAt(0.99);
+            r.TickAt(1.99);
             Assert.AreEqual(0, r.Listener.Strikes.Count, "t=1.0 전에는 타격이 없다");
 
             r.TickAt(FIRST_STRIKE);
@@ -803,7 +804,7 @@ namespace Shinshi.Tests
 
             r.TickAt(VERTICAL_LAST);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
-            r.TickAt(14.99);
+            r.TickAt(17.49);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State, "회복 1.5초 중에는 다음 패턴을 고르지 않는다");
             r.TickAt(NEXT_SELECTION);
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State, "t=15.0에 다음 선택 가능");
@@ -822,7 +823,7 @@ namespace Shinshi.Tests
             for (int k = 0; k < TOTAL_LINES; ++k)
             {
                 Assert.AreEqual(castStart + DesignedStrikeTable[k], r.Pattern.GetStrikeTime(k), TIME_TOL, "타격 " + k);
-                Assert.AreEqual(castStart + DesignedStrikeTable[k] - 1.0, r.Pattern.GetTelegraphTime(k), TIME_TOL, "예고 " + k);
+                Assert.AreEqual(castStart + DesignedStrikeTable[k] - TELEGRAPH_LEAD, r.Pattern.GetTelegraphTime(k), TIME_TOL, "예고 " + k);
             }
         }
 
@@ -835,8 +836,8 @@ namespace Shinshi.Tests
 
             double lastHorizontal = r.Pattern.GetStrikeTime(LINE_COUNT - 1);
             double firstVertical  = r.Pattern.GetStrikeTime(LINE_COUNT);
-            Assert.AreEqual(6.5, lastHorizontal, TIME_TOL);
-            Assert.AreEqual(8.0, firstVertical, TIME_TOL, "시전 시작 t=0일 때 첫 세로는 8.0초다. 8.5초가 아니다");
+            Assert.AreEqual(7.5, lastHorizontal, TIME_TOL);
+            Assert.AreEqual(9.0, firstVertical, TIME_TOL, "시전 시작 t=0일 때 첫 세로는 9.0초다. 9.5초가 아니다");
             Assert.AreEqual(p.GridAxisGapSeconds, firstVertical - lastHorizontal, TIME_TOL, "방향 전환 간격은 가로 마지막에서 세로 첫 줄까지다");
             Assert.AreEqual(p.GridStrikeIntervalSeconds, r.Pattern.GetStrikeTime(1) - r.Pattern.GetStrikeTime(0), TIME_TOL);
             Assert.AreEqual(p.GridStrikeIntervalSeconds, r.Pattern.GetStrikeTime(LINE_COUNT + 1) - firstVertical, TIME_TOL, "세로 안의 간격은 타격 간격이다");
@@ -892,7 +893,7 @@ namespace Shinshi.Tests
             for (int k = 0; k < TOTAL_LINES; ++k)
             {
                 Assert.AreEqual(DesignedStrikeTable[k], r.Listener.Telegraphs[k].StrikeAt, TIME_TOL, "예고가 알린 타격 시각 " + k);
-                Assert.AreEqual(DesignedStrikeTable[k] - 1.0, r.Listener.Telegraphs[k].TelegraphAt, TIME_TOL, "예고 시작 " + k);
+                Assert.AreEqual(DesignedStrikeTable[k] - TELEGRAPH_LEAD, r.Listener.Telegraphs[k].TelegraphAt, TIME_TOL, "예고 시작 " + k);
             }
         }
 
@@ -937,7 +938,7 @@ namespace Shinshi.Tests
         {
             Run r = StandardRun();
             r.Start(10);
-            r.TickRange(0.0, 16.0, 0.25);
+            r.TickRange(0.0, 18.5, 0.25);
 
             Assert.AreEqual(TOTAL_LINES, r.Listener.Telegraphs.Count);
             Assert.AreEqual(TOTAL_LINES, r.Listener.Strikes.Count);
@@ -967,7 +968,7 @@ namespace Shinshi.Tests
             for (int k = 0; k < TOTAL_LINES; ++k)
             {
                 Assert.AreEqual(r.Pattern.GetLineId(k), r.Listener.Telegraphs[k].LineId, "발사 순서대로");
-                Assert.AreEqual(DesignedStrike(k) - 1.0, r.Listener.Telegraphs[k].TelegraphAt, TIME_TOL, "발사 1초 전");
+                Assert.AreEqual(DesignedStrike(k) - TELEGRAPH_LEAD, r.Listener.Telegraphs[k].TelegraphAt, TIME_TOL, "발사 예고 시간 전");
                 Assert.AreEqual(DesignedStrike(k), r.Listener.Telegraphs[k].StrikeAt, TIME_TOL);
                 Assert.AreEqual(k < LINE_COUNT ? EBossGridBeamAxis.Horizontal : EBossGridBeamAxis.Vertical, r.Listener.Telegraphs[k].Axis);
                 Assert.AreEqual(k % LINE_COUNT, r.Listener.Telegraphs[k].Index);
@@ -1074,7 +1075,7 @@ namespace Shinshi.Tests
             Assert.IsTrue(BossBeamGeometry.Contains(r.Pattern.GetLineShape(5), center.Position), "가로 5번 줄 경계");
             Assert.IsTrue(BossBeamGeometry.Contains(r.Pattern.GetLineShape(6), center.Position), "가로 6번 줄 경계, 두 줄에 모두 든다");
 
-            r.TickRange(0.0, 16.0, 0.25);
+            r.TickRange(0.0, 18.5, 0.25);
 
             Assert.AreEqual(2, r.Hits(11), "경계에 서 있어도 가로 한 번, 세로 한 번");
         }
@@ -1086,10 +1087,10 @@ namespace Shinshi.Tests
             r.Start(10);
             r.Add(11, At(4.5f, 4.5f));
 
-            r.TickRange(0.0, 16.0, 0.25);
+            r.TickRange(0.0, 18.5, 0.25);
 
             Assert.AreEqual(2, r.Hits(11), "교차점은 가로 줄 하나와 세로 줄 하나에 든다");
-            Assert.AreEqual(4.5, r.Listener.Strikes[7].Scheduled, TIME_TOL, "가로 7번 줄은 t=4.5");
+            Assert.AreEqual(5.5, r.Listener.Strikes[7].Scheduled, TIME_TOL, "가로 7번 줄은 t=5.5");
             Assert.AreEqual(1, r.Listener.Strikes[7].HitCount);
             Assert.AreEqual(1, r.Listener.Strikes[LINE_COUNT + 7].HitCount);
         }
@@ -1116,7 +1117,7 @@ namespace Shinshi.Tests
                 r.TickAt(VERTICAL_FIRST + (j * 0.5));
             }
 
-            r.TickRange(14.0, 16.0);
+            r.TickRange(15.0, 18.5);
             Assert.AreEqual(2, r.Hits(11), "세로 12줄을 따라 달려도 세로는 한 번, 총 2회");
         }
 
@@ -1127,13 +1128,13 @@ namespace Shinshi.Tests
             r.Start(10);
             FakeCombatTarget mover = r.Add(11, At(0f, LineOffset(2)));
 
-            r.TickRange(0.0, 1.75, 0.25);
+            r.TickRange(0.0, 2.75, 0.25);
             Assert.AreEqual(0, r.Hits(11), "가로 2번 줄은 t=2.0");
-            r.TickAt(2.0);
+            r.TickAt(3.0);
             Assert.AreEqual(1, r.Hits(11));
 
             mover.Position = At(0f, LineOffset(9));
-            r.TickRange(2.25, HORIZONTAL_LAST, 0.25);
+            r.TickRange(3.25, HORIZONTAL_LAST, 0.25);
             Assert.AreEqual(0, r.Listener.Strikes[9].HitCount, "가로 9번 줄 t=5.5, 이미 가로를 맞은 대상은 다시 맞지 않는다");
             Assert.AreEqual(1, r.Hits(11));
         }
@@ -1145,9 +1146,9 @@ namespace Shinshi.Tests
             r.Start(10);
             r.Add(11, At(0f, LineOffset(0)));
 
-            r.TickRange(0.0, 1.0, 0.25);
+            r.TickRange(0.0, 2.0, 0.25);
             Assert.AreEqual(1, r.Hits(11));
-            r.TickRange(1.05, 6.0, 0.05);
+            r.TickRange(2.05, 7.0, 0.05);
             Assert.AreEqual(1, r.Hits(11), "맞은 줄은 곧바로 안전하다. 틱마다 추가 피해가 없다");
         }
 
@@ -1162,7 +1163,7 @@ namespace Shinshi.Tests
             r.Add(11, At(-7f, 7f));   // 가로 8번 줄, 세로 3번 줄 안쪽
             r.Add(12, At(-7f, 7f));
             r.Start(11);
-            r.TickRange(0.0, 16.0);
+            r.TickRange(0.0, 18.5);
 
             Assert.AreEqual(4, r.Resolver.Requests.Count, "대상 둘이 각각 가로 한 번, 세로 한 번");
             Assert.AreEqual(2, r.Hits(11));
@@ -1194,7 +1195,7 @@ namespace Shinshi.Tests
             r.Add(15, At(-4f, 4f), true);
             r.Add(16, At(-4f, 4f)).LifeState = EParticipantLifeState.Dead;
             r.Add(17, At(-4f, 4f)).Faction = ECombatFaction.Enemy;
-            r.TickRange(0.0, 16.0);
+            r.TickRange(0.0, 18.5);
 
             Assert.AreEqual(2, r.Hits(11));
             Assert.AreEqual(0, r.Hits(12), "전장 밖 모서리는 잘린다");
@@ -1213,9 +1214,9 @@ namespace Shinshi.Tests
             FakeCombatTarget victim = r.Add(11, At(0f, LineOffset(4)));
             r.Add(12, At(0f, LineOffset(8)));
 
-            r.TickRange(0.0, 2.5, 0.5);
+            r.TickRange(0.0, 3.5, 0.5);
             victim.LifeState = EParticipantLifeState.Dead;
-            r.TickRange(3.0, 16.0, 0.5);
+            r.TickRange(4.0, 18.5, 0.5);
 
             Assert.AreEqual(0, r.Hits(11), "가로 4번 줄은 t=3.0이라 죽은 뒤");
             Assert.AreEqual(2, r.Hits(12));
@@ -1226,14 +1227,14 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
-        public void BigTick_FromStartTo20Seconds_ProcessesAll24LinesOnceInOrder()
+        public void BigTick_FromStartPastTheEnd_ProcessesAll24LinesOnceInOrder()
         {
             Run r = StandardRun();
             r.Start(10);
             r.Add(11, At(5f, -5f));
             r.Add(12, At(-12f, 9f));
 
-            r.TickAt(20.0);
+            r.TickAt(22.5);
 
             Assert.AreEqual(TOTAL_LINES, r.Listener.Strikes.Count, "예정 줄을 빠뜨리지 않는다");
             Assert.AreEqual(TOTAL_LINES, r.Listener.Telegraphs.Count);
@@ -1243,11 +1244,11 @@ namespace Shinshi.Tests
             for (int k = 0; k < TOTAL_LINES; ++k)
             {
                 Assert.AreEqual(k, FindStrikeOrder(r, r.Pattern.GetLineId(k)), "줄 순서대로");
-                Assert.AreEqual(20.0, r.Listener.Strikes[k].Processed, TIME_TOL, "실제 처리 시각은 틱 시각으로 보고한다");
+                Assert.AreEqual(22.5, r.Listener.Strikes[k].Processed, TIME_TOL, "실제 처리 시각은 틱 시각으로 보고한다");
                 Assert.AreEqual(DesignedStrike(k), r.Listener.Strikes[k].Scheduled, TIME_TOL);
             }
 
-            r.TickRange(20.25, 30.0);
+            r.TickRange(22.75, 32.5);
             Assert.AreEqual(TOTAL_LINES, r.Listener.Strikes.Count, "두 번 실행하지 않는다");
             Assert.AreEqual(2, r.Hits(11));
         }
@@ -1272,16 +1273,16 @@ namespace Shinshi.Tests
             r.Start(10);
 
             r.TickAt(0.0);
-            r.TickAt(9.0);
+            r.TickAt(10.0);
 
-            Assert.AreEqual(LINE_COUNT + 3, r.Pattern.StrikeCount, "가로 12줄과 세로 8.0, 8.5, 9.0");
-            Assert.AreEqual(LINE_COUNT + 5, r.Pattern.TelegraphCount, "세로 예고는 7.0부터 9.0까지 5줄");
-            r.TickAt(9.0);
+            Assert.AreEqual(LINE_COUNT + 3, r.Pattern.StrikeCount, "가로 12줄과 세로 9.0, 9.5, 10.0");
+            Assert.AreEqual(LINE_COUNT + 7, r.Pattern.TelegraphCount, "세로 예고는 7.0부터 10.0까지 7줄");
+            r.TickAt(10.0);
             Assert.AreEqual(LINE_COUNT + 3, r.Pattern.StrikeCount, "같은 시각을 두 번 처리하지 않는다");
 
-            r.TickAt(9.4);
-            Assert.AreEqual(LINE_COUNT + 3, r.Pattern.StrikeCount, "남은 줄은 원래 일정 기준이라 9.5 전에는 나가지 않는다");
-            r.TickAt(9.5);
+            r.TickAt(10.4);
+            Assert.AreEqual(LINE_COUNT + 3, r.Pattern.StrikeCount, "남은 줄은 원래 일정 기준이라 10.5 전에는 나가지 않는다");
+            r.TickAt(10.5);
             Assert.AreEqual(LINE_COUNT + 4, r.Pattern.StrikeCount);
         }
 
@@ -1293,7 +1294,7 @@ namespace Shinshi.Tests
             FakeCombatTarget mover = r.Add(11, At(0f, LineOffset(0)));
             mover.Position = At(0f, LineOffset(11));
 
-            r.TickAt(20.0);
+            r.TickAt(22.5);
 
             Assert.AreEqual(0, r.Listener.Strikes[0].HitCount, "예정 시각의 과거 위치를 복원하지 않는다");
             Assert.AreEqual(1, r.Listener.Strikes[11].HitCount, "처리 시점의 현재 위치로 판정한다");
@@ -1314,7 +1315,7 @@ namespace Shinshi.Tests
 
             r.Fsm.Cancel(EBossInterruptReason.Death);
             r.Fsm.Cancel(EBossInterruptReason.Death);
-            r.TickRange(1.0, 16.0);
+            r.TickRange(2.0, 18.5);
 
             Assert.AreEqual(1, r.Listener.CancelReasons.Count);
             Assert.AreEqual(2, r.Listener.CancelledTelegraphed[0], "t=0.0, 0.5의 두 줄을 예고했다");
@@ -1333,11 +1334,11 @@ namespace Shinshi.Tests
             r.Start(10);
             r.Add(11, At(0f, LineOffset(1)));
             r.Add(12, At(0f, LineOffset(10)));
-            r.TickRange(0.0, 1.75, 0.25);
+            r.TickRange(0.0, 2.75, 0.25);
             Assert.AreEqual(1, r.Hits(11));
 
             r.Fsm.Cancel(reason);
-            r.TickRange(2.25, 20.0);
+            r.TickRange(3.25, 22.5);
 
             Assert.AreEqual(1, r.Hits(11), "이미 적용된 피해는 그대로, 남은 줄은 타격하지 않는다");
             Assert.AreEqual(0, r.Hits(12));
@@ -1354,12 +1355,12 @@ namespace Shinshi.Tests
             Run r = StandardRun();
             r.Start(10);
             r.Add(11, ArenaCenter);
-            r.TickRange(0.0, 6.0);
+            r.TickRange(0.0, 7.0);
             int before = r.Hits(11);
             Assert.AreEqual(1, before);
 
             r.Gate.CloseForGood();
-            r.TickRange(6.25, 16.0);
+            r.TickRange(7.25, 18.5);
 
             Assert.AreEqual(before, r.Hits(11));
         }
@@ -1409,7 +1410,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Brain_HardPhaseTwo_RunsP02ForFifteenSecondsWithoutPickingAnotherThenSelectsAgain()
+        public void Brain_HardPhaseTwo_RunsP02UntilRecoveryEndsWithoutPickingAnotherThenSelectsAgain()
         {
             BrainRig r = new BrainRig();
             r.TransitionAndHandoff();
@@ -1427,14 +1428,14 @@ namespace Shinshi.Tests
                 if ((started >= 0.0) && (t < (started + NEXT_SELECTION - 0.06)))
                 {
                     Assert.AreEqual(HARD_ID, r.Brain.ActivePatternId, "t=" + t);
-                    Assert.AreEqual(1, r.Listener.StartedCasts.Count, "15초 동안 다음 시전이 시작되지 않는다 t=" + t);
+                    Assert.AreEqual(1, r.Listener.StartedCasts.Count, "17.5초 동안 다음 시전이 시작되지 않는다 t=" + t);
                 }
             }
 
             LogAssert.NoUnexpectedReceived();
             Assert.GreaterOrEqual(started, 0.0);
             Assert.GreaterOrEqual(r.Listener.StartedCasts.Count, 2, "회복이 끝난 뒤에는 다시 고른다");
-            Assert.GreaterOrEqual(r.Listener.StartedAt[1], r.Listener.StartedAt[0] + NEXT_SELECTION - TIME_TOL, "다음 시전은 t=15.0 이후");
+            Assert.GreaterOrEqual(r.Listener.StartedAt[1], r.Listener.StartedAt[0] + NEXT_SELECTION - TIME_TOL, "다음 시전은 t=17.5 이후");
             Assert.AreEqual(TOTAL_LINES, FirstCastStrikes(r));
         }
 

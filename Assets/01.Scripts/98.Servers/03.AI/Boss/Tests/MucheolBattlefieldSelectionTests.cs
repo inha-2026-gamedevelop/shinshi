@@ -327,7 +327,7 @@ namespace Shinshi.Tests
         ****************************************/
 
         [Test]
-        public void Brain_ForcedP07_HitsAtFourSecondsAndRecoversForOnePointEightSeconds()
+        public void Brain_ForcedP07_HitsAtEightSecondsAndRecoversForThreePointSixSeconds()
         {
             Rig rig = new Rig(new Vector3(0f, 0f, 8f), true, true);
             var rule = new ForceP07Rule(rig.Catalog);
@@ -339,7 +339,7 @@ namespace Shinshi.Tests
             double hitTime   = -1.0;
             double endTime   = -1.0;
             int    before    = 0;
-            for (double t = next; t < (next + 30.0); t += STEP)
+            for (double t = next; t < (next + 60.0); t += STEP)
             {
                 rig.Brain.Tick(t);
 
@@ -360,8 +360,8 @@ namespace Shinshi.Tests
             }
 
             Assert.GreaterOrEqual(startTime, 0.0, "강제 선택으로 시전이 시작된다");
-            Assert.AreEqual(4.0, hitTime - startTime, STEP + TOLERANCE, "예고 4초 뒤 판정");
-            Assert.AreEqual(5.8, endTime - startTime, STEP + TOLERANCE, "판정 뒤 회복 1.8초");
+            Assert.AreEqual(8.0, hitTime - startTime, STEP + TOLERANCE, "예고 8초 뒤 판정");
+            Assert.AreEqual(11.6, endTime - startTime, STEP + TOLERANCE, "판정 뒤 회복 3.6초");
             Assert.AreEqual(1, rig.Resolver.Requests.Count - before, "대상 한 명에게 한 번만 피해 요청");
         }
 
@@ -374,7 +374,7 @@ namespace Shinshi.Tests
             double next = rig.GoToPhaseTwo();
             rule.IsEnabled = true;
 
-            rig.Run(next, 40.0);
+            rig.Run(next, 80.0);
 
             Assert.GreaterOrEqual(rig.Started.Count, 5);
             foreach (string id in rig.Started)

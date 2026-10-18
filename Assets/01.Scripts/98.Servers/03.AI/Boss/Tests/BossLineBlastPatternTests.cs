@@ -33,10 +33,10 @@ namespace Shinshi.Tests
         private const float  TEST_HREF    = 3541f; // 테스트가 명시적으로 주입하는 값이다
         private const float  LENGTH       = 14f;
         private const float  WIDTH        = 4f;
-        private const float  TELEGRAPH    = 1.6f;
+        private const float  TELEGRAPH    = 3.2f;
         private const float  TRACKING     = 0.6f;
         private const float  TURN_RATE    = 90f;
-        private const float  RECOVERY     = 0.5f;
+        private const float  RECOVERY     = 1f;
         private const float  CONTROL_SEC  = 0.4f;
         private const float  ANGLE_TOLERANCE = 0.01f;
         private const double EPSILON      = 0.001;
@@ -1039,10 +1039,10 @@ namespace Shinshi.Tests
                 }
             }
 
-            public BrainRig()
+            public BrainRig(float controlImmune = 2f)
             {
                 Query.Players.Add(Player);
-                FakeBossCatalog catalog = new FakeBossCatalog { Boss = BossTestFixtures.MakeBoss() };
+                FakeBossCatalog catalog = new FakeBossCatalog { Boss = BossTestFixtures.MakeBoss(controlImmune: controlImmune) };
                 catalog.Patterns.Add(Definition);
 
                 Brain = new BossBrain(BossTestFixtures.BOSS_ID, new BossBrainDependencies
@@ -1255,21 +1255,22 @@ namespace Shinshi.Tests
         [Test]
         public void Brain_ControlDuringImmunity_IsIgnoredAndNextCastStrikes()
         {
-            BrainRig rig = new BrainRig();
+            // 정식 예고(3.2초)에서는 다음 시전의 제어 구간이 면역 2초가 지난 뒤에 열린다. 면역 안의 제어를 재현하려고 면역을 늘린 시험 전용 값이다
+            BrainRig rig = new BrainRig(controlImmune: 4f);
             rig.BeginCast(0.0);
             double windowStart = WindowStartOf(rig.Definition, 0.0);
 
             rig.SendControl(windowStart);
             Assert.AreEqual(1, rig.Applied.Count);
 
-            // 다음 시전의 제어 구간은 면역(적용 시각 + 2초) 안에서 열린다
+            // 다음 시전의 제어 구간은 면역(적용 시각 + 시험 면역 4초) 안에서 열린다
             double secondStart = windowStart + 0.05;
             rig.Brain.Tick(secondStart);
             Assert.AreEqual(EBossAttackState.Telegraph, rig.Brain.AttackState);
             Assert.AreEqual(2, rig.Created.Count);
 
             double secondWindow = WindowStartOf(rig.Definition, secondStart);
-            Assert.Less(secondWindow + 0.1, windowStart + 2.0);
+            Assert.Less(secondWindow + 0.1, windowStart + 4.0);
 
             rig.SendControl(secondWindow + 0.1);
 
@@ -1292,7 +1293,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, rig.Applied.Count);
 
             // 면역은 적용 시각 + 2초까지라, 그 뒤의 제어 구간에서 온 제어는 다시 받는다
-            double secondStart = 2.0;
+            double secondStart = windowStart + 2.0;
             rig.Brain.Tick(secondStart);
             Assert.AreEqual(EBossAttackState.Telegraph, rig.Brain.AttackState);
 
@@ -1345,7 +1346,7 @@ namespace Shinshi.Tests
             Assert.IsNotNull(catalog);
             Assert.IsTrue(catalog.TryGetPattern(P06_ID, out PatternDefinition p06));
 
-            Assert.AreEqual(1.6f, p06.TelegraphSeconds);
+            Assert.AreEqual(3.2f, p06.TelegraphSeconds);
             Assert.AreEqual(0.6f, p06.TrackingSeconds);
             Assert.AreEqual(90f, p06.TurnRate);
             Assert.AreEqual(0f, p06.ActiveSeconds);
@@ -1360,7 +1361,7 @@ namespace Shinshi.Tests
             Assert.IsTrue(p06.HasControlWindow);
 
             // 임시값, 확정 밸런스가 아니다
-            Assert.AreEqual(0.5f, p06.RecoverySeconds);
+            Assert.AreEqual(1f, p06.RecoverySeconds);
 
             Assert.IsTrue(catalog.IsTuned(WOLBAEK_ID));
         }
@@ -1387,19 +1388,19 @@ namespace Shinshi.Tests
             Assert.IsTrue(catalog.TryGetPattern("wolbaek_p02", out PatternDefinition p02));
             Assert.IsTrue(catalog.TryGetPattern("wolbaek_p03", out PatternDefinition p03));
 
-            Assert.AreEqual(1f, p02.TelegraphSeconds);
+            Assert.AreEqual(2f, p02.TelegraphSeconds);
             Assert.AreEqual(0.5f, p02.TrackingSeconds);
             Assert.AreEqual(120f, p02.TurnRate);
             Assert.AreEqual(6f, p02.Shape.Range);
             Assert.AreEqual(100f, p02.Shape.ArcAngle);
             Assert.AreEqual(0.24f, p02.DamageRef);
-            Assert.AreEqual(0.5f, p02.RecoverySeconds);
+            Assert.AreEqual(1f, p02.RecoverySeconds);
             Assert.IsFalse(p02.HasControlWindow);
 
-            Assert.AreEqual(1.2f, p03.TelegraphSeconds);
+            Assert.AreEqual(2.4f, p03.TelegraphSeconds);
             Assert.AreEqual(5f, p03.Shape.Range);
             Assert.AreEqual(0.28f, p03.DamageRef);
-            Assert.AreEqual(0.5f, p03.RecoverySeconds);
+            Assert.AreEqual(1f, p03.RecoverySeconds);
             Assert.IsFalse(p03.HasControlWindow);
         }
 

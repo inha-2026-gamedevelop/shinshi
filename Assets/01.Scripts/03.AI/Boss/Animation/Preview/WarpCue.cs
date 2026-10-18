@@ -3,6 +3,7 @@ using System;
 
 // Unity
 using UnityEngine;
+using UnityEngine.Events;
 
 // 프로젝트 내부
 using Shinshi.Art;
@@ -26,6 +27,8 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekWarpPlayer _reform;
         [SerializeField] private WolbaekWarpPlayer _landing;
         [SerializeField] private string[] _patternLabels;
+        // 보스 위치가 순간 이동하는 같은 프레임에 불린다. 치마 같은 위치 기억 표현이 끌려오지 않게 초기화하는 용도다
+        [SerializeField] private UnityEvent _onTeleported;
         [SerializeField] private Vector3 _landingOffset = new Vector3(8f, 0f, 4f);
         [SerializeField] private float _radius = 5f;
         [SerializeField] private float _breakupSeconds = 1f;
@@ -147,6 +150,7 @@ namespace Shinshi.AI
                 _breakupId = _breakup.PlayBody(_castId, CalculateBounds(), now, now);
                 SetRenderers(false);
                 _bossRoot.position = _homePosition + _landingOffset;
+                _onTeleported.Invoke();
             }
 
             if ((!_didReform) && (elapsed >= _reformSeconds))
@@ -195,6 +199,7 @@ namespace Shinshi.AI
             _isCasting = false;
             SetRenderers(true);
             _bossRoot.position = _homePosition;
+            _onTeleported.Invoke();
         }
 
         private void StopAll()

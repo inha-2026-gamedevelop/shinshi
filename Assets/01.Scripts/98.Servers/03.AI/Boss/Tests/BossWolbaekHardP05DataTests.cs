@@ -64,11 +64,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(15f, easy.BaseWeight);
             Assert.AreEqual(EEnemyAttackShape.TargetArea, easy.Shape.Shape);
             Assert.AreEqual(EASY_RADIUS, easy.Shape.Range);
-            Assert.AreEqual(1f, easy.TelegraphSeconds);
+            Assert.AreEqual(2f, easy.TelegraphSeconds);
             Assert.AreEqual(0f, easy.TrackingSeconds);
             Assert.AreEqual(0f, easy.TurnRate);
             Assert.AreEqual(0f, easy.ActiveSeconds);
-            Assert.AreEqual(0.5f, easy.RecoverySeconds);
+            Assert.AreEqual(1f, easy.RecoverySeconds);
             Assert.AreEqual(0.08f, easy.DamageRef);
             Assert.IsFalse(easy.Guardable);
             Assert.IsFalse(easy.HasControlWindow);

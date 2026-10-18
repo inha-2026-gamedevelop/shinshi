@@ -50,8 +50,8 @@ namespace Shinshi.AI
         private const float P07_ARC_ANGLE      = 315f;
         private const float P07_WEIGHT         = 3f;
         private const float P07_ENHANCED       = 3f;
-        private const float P07_TELEGRAPH      = 4f;
-        private const float P07_RECOVERY       = 1.8f;
+        private const float P07_TELEGRAPH      = 8f;
+        private const float P07_RECOVERY       = 3.6f;
         private const float P07_DAMAGE_REF     = 0.30f;
         private const float P07_PUSH_DISTANCE  = 1f;
 
@@ -139,27 +139,27 @@ namespace Shinshi.AI
                     CONTROL_MAX, CONTROL_IMMUNE);
 
             // P01 팔 휘두르기, 부채꼴 5m 120도
-            Add(MucheolPatternFactory.P01_ID, 30f, NearOnly, 0.7f, 0.35f, 180f, 0f, 0.6f,
+            Add(MucheolPatternFactory.P01_ID, 30f, NearOnly, 1.4f, 0.35f, 180f, 0f, 1.2f,
                 EnemyCatalogSO.AttackShapeSpec.Fan(5f, 120f), 0.20f, true);
 
             // P02 양손 내려찍기, 부채꼴 5m 70도
-            Add(MucheolPatternFactory.P02_ID, 25f, NearOnly, 1.2f, 0.6f, 120f, 0f, 1.2f,
+            Add(MucheolPatternFactory.P02_ID, 25f, NearOnly, 2.4f, 0.6f, 120f, 0f, 2.4f,
                 EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.32f, true);
 
             // P03 어깨 돌진, 8m 폭 2.5m
-            Add(MucheolPatternFactory.P03_ID, 15f, MidOnly, 0.9f, 0.4f, 150f, 0.5f, 0.8f,
+            Add(MucheolPatternFactory.P03_ID, 15f, MidOnly, 1.8f, 0.4f, 150f, 0.5f, 1.6f,
                 EnemyCatalogSO.AttackShapeSpec.Dash(8f, 2.5f), 0.22f, true);
 
             // P04 발구르기 충격파, 원형 5m
-            Add(MucheolPatternFactory.P04_ID, 10f, NearOnly, 1.0f, 0f, 0f, 0f, 0.8f,
+            Add(MucheolPatternFactory.P04_ID, 10f, NearOnly, 2.0f, 0f, 0f, 0f, 1.6f,
                 EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.26f, true);
 
             // P05 2연타, 타별 형태와 피해는 콤보 데이터가 정한다. 이 정의의 형태와 피해는 쓰이지 않는다
-            Add(MucheolPatternFactory.P05_ID, 10f, NearOnly, 0.8f, 0.4f, 150f, 0.5f, 1.2f,
+            Add(MucheolPatternFactory.P05_ID, 10f, NearOnly, 1.6f, 0.4f, 150f, 0.5f, 2.4f,
                 EnemyCatalogSO.AttackShapeSpec.Fan(5f, 120f), 0.14f, true);
 
             // P06 뿔 들이받기, 18m 폭 3m 방어 불가
-            Add(MucheolPatternFactory.P06_ID, 10f, MidAndFar, 1.6f, 0.6f, 90f, 0.75f, 1.5f,
+            Add(MucheolPatternFactory.P06_ID, 10f, MidAndFar, 3.2f, 0.6f, 90f, 0.75f, 3.0f,
                 EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3f), 0.40f, false);
 
             if (includePhaseTwo)
@@ -257,27 +257,27 @@ namespace Shinshi.AI
         {
             // P01 연속 휘두르기, 좌우 구역
             AddTwo(MucheolPhase2PatternFactory.P01_ID, EPatternGroup.Basic, 22f, 18f, P2NearHigh, P2DirSwing, P2NearbySwing, P2Recent,
-                0.9f, 0.4f, 150f, 0.45f, 0.7f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 120f), 0.16f, true);
+                1.8f, 0.4f, 150f, 0.45f, 1.4f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 120f), 0.16f, true);
 
             // P02 충격 내려찍기, 부채꼴 뒤 전방 충격파
             AddTwo(MucheolPhase2PatternFactory.P02_ID, EPatternGroup.Large, 12f, 14f, P2NearMid, P2DirSlam, P2NearbySlam, P2Recent,
-                1.2f, 0.6f, 120f, 0.5f, 1.2f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.30f, true);
+                2.4f, 0.6f, 120f, 0.5f, 2.4f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.30f, true);
 
             // P03 연속 어깨 돌진, 8m 두 번
             AddTwo(MucheolPhase2PatternFactory.P03_ID, EPatternGroup.Pressure, 16f, 18f, P2DashDistance, Neutral3, P2NearbyDash, P2RecentDash,
-                0.9f, 0.4f, 150f, 1.4f, 0.9f, EnemyCatalogSO.AttackShapeSpec.Dash(8f, 2.5f), 0.22f, true);
+                1.8f, 0.4f, 150f, 1.4f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Dash(8f, 2.5f), 0.22f, true);
 
             // P04 이중 지면 충격파, 원형 두 번
             AddTwo(MucheolPhase2PatternFactory.P04_ID, EPatternGroup.Pressure, 14f, 16f, P2NearHigh, Neutral3, P2NearbyStomp, P2Recent,
-                1.0f, 0f, 0f, 0.7f, 0.9f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.22f, true);
+                2.0f, 0f, 0f, 0.7f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Circle(5f), 0.22f, true);
 
             // P05 폭주 연타, 좌우 구역 뒤 내려찍기
             AddTwo(MucheolPhase2PatternFactory.P05_ID, EPatternGroup.Large, 12f, 16f, P2NearLow, P2DirCombo, P2NearbyCombo, P2Recent,
-                0.9f, 0.4f, 150f, 1.0f, 1.5f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.26f, true);
+                1.8f, 0.4f, 150f, 1.0f, 3.0f, EnemyCatalogSO.AttackShapeSpec.Fan(5f, 70f), 0.26f, true);
 
             // P06 폭주 돌진, 18m 두 번(강화 구간 세 번), 방어 불가
             AddTwo(MucheolPhase2PatternFactory.P06_ID, EPatternGroup.Large, 10f, 14f, P2ChargeDist, P2DirCharge, P2NearbyCharge, P2Recent,
-                2.0f, 0.8f, 90f, 3.45f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3f), 0.32f, false);
+                4.0f, 0.8f, 90f, 3.45f, 3.6f, EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3f), 0.32f, false);
         }
 
         // P07 전장 공격, 방어 불가 단발. 실행 시간이 없어 예고가 끝나는 순간 타격하고 회복으로 넘어간다.

@@ -34,14 +34,14 @@ namespace Shinshi.Tests
         private const string P06_ID       = BossPatternCatalogSO.WOLBAEK_P2_P06_ID;
         private const float  HREF         = 1000f;
         private const float  TOLERANCE    = 0.001f;
-        private const float  TELEGRAPH    = 1.2f;
-        private const float  RECOVERY     = 0.8f;
+        private const float  TELEGRAPH    = 2.4f;
+        private const float  RECOVERY     = 1.6f;
         private const float  RADIUS       = 5f;
         private const float  DAMAGE_REF   = 0.28f;
 
-        // 단계 경계는 정의의 float 값을 double로 넓혀 더한다. 1.2와 2.0 같은 십진수와 비교하면 한 틱 어긋난다
-        private static readonly double TELEGRAPH_END = 1.2f;
-        private static readonly double COMPLETE_END  = (double)1.2f + (double)0.8f;
+        // 단계 경계는 정의의 float 값을 double로 넓혀 더한다. 2.4와 4.0 같은 십진수와 비교하면 한 틱 어긋난다
+        private static readonly double TELEGRAPH_END = 2.4f;
+        private static readonly double COMPLETE_END  = (double)2.4f + (double)1.6f;
 
         private static readonly Vector3 Origin = Vector3.zero;
 
@@ -204,10 +204,10 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EPatternGroup.Pressure, p.Group);
-            Assert.AreEqual(1.2f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(2.4f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0f, p.TrackingSeconds);
             Assert.AreEqual(0f, p.ActiveSeconds);
-            Assert.AreEqual(0.8f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1.6f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Circle, p.Shape.Shape);
             Assert.AreEqual(5f, p.Shape.Range, TOLERANCE);
             Assert.AreEqual(0.28f, p.DamageRef, TOLERANCE);
@@ -237,8 +237,8 @@ namespace Shinshi.Tests
             Assert.IsTrue(LoadCatalog().TryGetPattern("wolbaek_p03", out PatternDefinition p));
 
             Assert.AreEqual(1, p.Phase);
-            Assert.AreEqual(1.2f, p.TelegraphSeconds, TOLERANCE);
-            Assert.AreEqual(0.5f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(2.4f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(10f, p.BaseWeight, TOLERANCE);
             Assert.AreEqual(EPatternGroup.None, p.Group);
         }
@@ -281,8 +281,8 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.AddPlayer(10, new Vector3(0f, 0f, 3f));
 
-            r.Fsm.Tick(1.0);
-            r.Fsm.Tick(1.19);
+            r.Fsm.Tick(TELEGRAPH_END / 2.0);
+            r.Fsm.Tick(TELEGRAPH_END - 0.01);
 
             Assert.AreEqual(EBossAttackState.Telegraph, r.Fsm.State);
             Assert.AreEqual(0, r.Resolver.Requests.Count);
@@ -391,7 +391,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tick_RecoveryIsEightTenthsOfASecond()
+        public void Tick_RecoveryEndsAfterRecoverySecondsThenReady()
         {
             Run r = new Run();
             r.AddPlayer(10, new Vector3(0f, 0f, 3f));
@@ -399,8 +399,10 @@ namespace Shinshi.Tests
             r.Fsm.Tick(TELEGRAPH_END);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State, "즉발이라 발동 단계를 바로 지난다");
 
-            r.Fsm.Tick(1.75);
+            r.Fsm.Tick(TELEGRAPH_END + 0.75);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
+            r.Fsm.Tick(COMPLETE_END - 0.01);
+            Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State, "후딜이 끝나기 전에는 다음 선택이 없다");
 
             r.Fsm.Tick(COMPLETE_END);
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
@@ -563,7 +565,7 @@ namespace Shinshi.Tests
             r.TransitionAndHandoff();
             Assert.IsTrue(r.TickUntilAttack(0.5, 10.0));
 
-            // 예고 1.2초, 회복 0.8초가 지나 다시 선택할 수 있는 시각 이후를 길게 돈다
+            // 예고 2.4초, 회복 1.6초가 지나 다시 선택할 수 있는 시각 이후를 길게 돈다
             for (double t = 3.0; t < 30.0; t += 0.25)
             {
                 r.Brain.Tick(t);

@@ -571,7 +571,7 @@ namespace Shinshi.AI
             // 팩토리 인자 순서: 부채꼴(P01, P02), 이동 창구와 돌진(P03, P06), 원형(P04), 콤보 데이터와 표현(P05), 충돌 회복(P06)
             var factory = new MucheolPatternFactory(_referenceHealth, bridge, new BoundaryMarginMovement(_body), dashTap, bridge,
                 new MucheolComboSpec(new MucheolComboHit(5f, 120f, 0.14f, 0f), new MucheolComboHit(5f, 70f, 0.24f, 0.5f)), _combo,
-                new MucheolChargeSpec(2.5f), null, _chargeLog);
+                new MucheolChargeSpec(5f), null, _chargeLog);
 
             // 2페이즈 모드는 1페이즈 팩토리 뒤에 2페이즈 팩토리를 묶는다. 꺼 두면 1페이즈 팩토리 하나다
             IBossPatternFactory patterns = factory;

@@ -10,6 +10,8 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
 {
+    // 시간 흐름은 추적(TrackingSeconds) 뒤 중심 고정, 예고(TelegraphSeconds) 끝에 실행 진입, 실행(ActiveSeconds) 끝에 장판 활성, 회복 순이다.
+    // 추적이 끝나는 순간 중심을 고정해 알리고 그 뒤 예고가 끝나고 실행이 끝날 때까지 위치는 바뀌지 않는다.
     /// <summary> 월백 하드 2페이즈 P04, 대상 추적 예고와 고정 예고 뒤 장시간 장판을 남긴다 </summary>
     public sealed class BossHardAreaPattern : BossPatternBase, IBossPatternStartResult
     {
@@ -21,6 +23,7 @@ namespace Shinshi.AI
             public int AreaId;
             public Vector3 Center;
             public bool IsFollowing;
+            public bool IsFixed;
             public bool IsReserved;
             public bool IsActivated;
         }
@@ -59,7 +62,7 @@ namespace Shinshi.AI
         {
             _planCount = 0;
             PatternDefinition definition = Context.Definition;
-            _freezeServerTime = serverTime + definition.TelegraphSeconds;
+            _freezeServerTime = serverTime + Math.Min(definition.TrackingSeconds, definition.TelegraphSeconds);
             int wanted = Math.Min(definition.AreaTargetCount, MAX_AREAS_PER_CAST);
 
             if (Context.Targets.TryGet(Context.TargetCombatId, out ICombatTarget first) && IsTrackable(first))
@@ -96,12 +99,25 @@ namespace Shinshi.AI
 
         protected override void OnTick(EBossAttackState state, double serverTime)
         {
-            // 경계를 건너뛴 틱에는 t=4 뒤의 현재 좌표를 과거 추적 결과로 쓰지 않는다.
-            if ((state != EBossAttackState.Telegraph) || (serverTime > _freezeServerTime))
+            if (state != EBossAttackState.Telegraph)
             {
                 return;
             }
 
+            // 경계를 건너뛴 틱에는 추적이 끝난 뒤의 현재 좌표를 과거 추적 결과로 쓰지 않는다.
+            if (serverTime <= _freezeServerTime)
+            {
+                Follow(serverTime);
+            }
+
+            if (serverTime >= _freezeServerTime)
+            {
+                FixCenters();
+            }
+        }
+
+        private void Follow(double serverTime)
+        {
             for (int i = 0; i < _planCount; ++i)
             {
                 AreaPlan plan = _plans[i];
@@ -128,11 +144,7 @@ namespace Shinshi.AI
         {
             if (state == EBossAttackState.Execute)
             {
-                for (int i = 0; i < _planCount; ++i)
-                {
-                    _plans[i].IsFollowing = false;
-                    _listener.OnCenterFixed(Context.CastInstanceId, _plans[i].AreaId, _plans[i].Center, serverTime);
-                }
+                FixCenters();
             }
             else if (state == EBossAttackState.Recover)
             {
@@ -152,6 +164,22 @@ namespace Shinshi.AI
                 _host.ReleaseReservation(_plans[i].AreaId);
                 _plans[i].IsReserved = false;
                 _listener.OnCancelled(Context.CastInstanceId, _plans[i].AreaId, reason);
+            }
+        }
+
+        // 추적이 끝나는 시각에 한 번만 알린다. 틱이 거칠어 실행 진입에서 처음 불려도 알림 시각은 추적 종료 시각이다
+        private void FixCenters()
+        {
+            for (int i = 0; i < _planCount; ++i)
+            {
+                if (_plans[i].IsFixed)
+                {
+                    continue;
+                }
+
+                _plans[i].IsFollowing = false;
+                _plans[i].IsFixed     = true;
+                _listener.OnCenterFixed(Context.CastInstanceId, _plans[i].AreaId, _plans[i].Center, _freezeServerTime);
             }
         }
 
@@ -178,8 +206,12 @@ namespace Shinshi.AI
                 IsReserved = true
             };
             ++_planCount;
+            // 추적 시간 뒤 예고의 남은 시간과 실행 시간이 모두 고정 구간이다. 둘을 더하면 장판 활성 시각과 같다
+            PatternDefinition definition = Context.Definition;
+            float followSeconds = Math.Min(definition.TrackingSeconds, definition.TelegraphSeconds);
+            float fixedSeconds  = (definition.TelegraphSeconds - followSeconds) + definition.ActiveSeconds;
             _listener.OnMovingStarted(Context.CastInstanceId, areaId, target.CombatId, target.Position,
-                Context.Definition.Shape.Range, serverTime, Context.Definition.TelegraphSeconds, Context.Definition.ActiveSeconds);
+                Context.Definition.Shape.Range, serverTime, followSeconds, fixedSeconds);
             return true;
         }
 

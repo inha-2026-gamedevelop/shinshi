@@ -1,0 +1,17 @@
+{
+    "name": "Shinshi.Art.SkirtRig",
+    "rootNamespace": "Shinshi.Art",
+    "references": [
+        "Shinshi.Runtime",
+        "Unity.Animation.Rigging"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -40,9 +40,9 @@ namespace Shinshi.Tests
         private const int    RIGHT        = 1;
 
         private static readonly double Interval    = (double)0.25f;
-        private static readonly double TelegraphEnd = (double)1.2f;
-        private static readonly double ExecuteEnd  = (double)1.2f + (double)0.75f;
-        private static readonly double RecoverEnd  = ExecuteEnd + (double)0.8f;
+        private static readonly double TelegraphEnd = (double)2.4f;
+        private static readonly double ExecuteEnd  = (double)2.4f + (double)0.75f;
+        private static readonly double RecoverEnd  = ExecuteEnd + (double)1.6f;
 
         private static readonly Vector3 Origin = Vector3.zero;
         private static readonly Vector3 Base   = Vector3.forward;
@@ -345,10 +345,10 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EPatternGroup.Large, p.Group);
-            Assert.AreEqual(1.2f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(2.4f, p.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0f, p.TrackingSeconds, "추적하지 않는다");
             Assert.AreEqual(0.75f, p.ActiveSeconds, TOLERANCE, "첫 폭발부터 마지막 폭발까지");
-            Assert.AreEqual(0.8f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1.6f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Fan, p.Shape.Shape);
             Assert.AreEqual(6f, p.Shape.Range, TOLERANCE);
             Assert.AreEqual(180f, p.Shape.ArcAngle, TOLERANCE);
@@ -380,7 +380,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, p2.Phase);
             Assert.AreEqual(0, p2.RawSweepZoneCount);
             Assert.AreEqual(100f, p2.Shape.ArcAngle, TOLERANCE);
-            Assert.AreEqual(1f, p2.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(2f, p2.TelegraphSeconds, TOLERANCE);
         }
 
         /****************************************
@@ -403,7 +403,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(6f, r.Listener.StartRadius, TOLERANCE);
             Assert.AreEqual(180f, r.Listener.StartArc, TOLERANCE);
             Assert.AreEqual(4, r.Listener.StartZones);
-            Assert.AreEqual(1.2f, r.Listener.StartSeconds, TOLERANCE);
+            Assert.AreEqual(2.4f, r.Listener.StartSeconds, TOLERANCE);
             Assert.AreEqual(0.75f, r.Listener.StartSpan, TOLERANCE);
         }
 
@@ -455,7 +455,7 @@ namespace Shinshi.Tests
                     Assert.AreEqual(45f, zone.Arc, TOLERANCE);
                     float signedAngle = Vector3.SignedAngle(Base, zone.Direction, Vector3.up);
                     Assert.AreEqual(sign * 45f * (i + 0.5f), signedAngle, ANGLE_TOL);
-                    Assert.AreEqual(1.2f + (i * 0.25f), zone.Seconds, TOLERANCE);
+                    Assert.AreEqual(2.4f + (i * 0.25f), zone.Seconds, TOLERANCE);
                 }
             }
         }
@@ -701,7 +701,7 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.Start();
 
-            r.TickAt(1.19);
+            r.TickAt(TelegraphEnd - 0.01);
             Assert.AreEqual(0, r.Listener.Blasts.Count, "예고 중에는 폭발하지 않는다");
 
             r.TickAt(TelegraphEnd);

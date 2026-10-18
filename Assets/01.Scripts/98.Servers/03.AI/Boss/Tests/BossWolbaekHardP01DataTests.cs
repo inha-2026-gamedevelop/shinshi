@@ -167,11 +167,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(20f, easy.BaseWeight);
             Assert.AreEqual(EASY_WIDTH, easy.Shape.Width);
             Assert.AreEqual(8f, easy.Shape.Range);
-            Assert.AreEqual(0.8f, easy.TelegraphSeconds);
+            Assert.AreEqual(1.6f, easy.TelegraphSeconds);
             Assert.AreEqual(0.4f, easy.TrackingSeconds);
             Assert.AreEqual(180f, easy.TurnRate);
             Assert.AreEqual(0.45f, easy.ActiveSeconds);
-            Assert.AreEqual(0.8f, easy.RecoverySeconds);
+            Assert.AreEqual(1.6f, easy.RecoverySeconds);
             Assert.AreEqual(0.18f, easy.DamageRef);
             Assert.IsTrue(easy.Guardable);
             AssertTable(G_EasyRecent, easy.RecentUseMultipliers, "easy recent");

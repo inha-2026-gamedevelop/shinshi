@@ -31,10 +31,10 @@ namespace Shinshi.Tests
         private const string HARD_P04_ID  = "wolbaek_hard_p04";
         private const string CATALOG_PATH = "Assets/09.Data/AI/BossPatternCatalog.asset";
         private const float  TEST_HREF    = 3541f;
-        private const float  TELEGRAPH    = 0.9f;
+        private const float  TELEGRAPH    = 1.8f;
         private const float  TRACKING     = 0.45f;
         private const float  TURN_RATE    = 120f;
-        private const float  RECOVERY     = 0.5f;
+        private const float  RECOVERY     = 1f;
         private const float  RANGE        = 35f;
         private const float  WIDTH        = 1f;
         private const float  SPEED        = 10f;
@@ -1065,6 +1065,8 @@ namespace Shinshi.Tests
         public void Brain_NextPatternStartsWhileFirstProjectileStillFlying_BothFly()
         {
             BrainRig rig = new BrainRig();
+            // 예고가 1.8초로 길어져 다음 발사 시각에 첫 투사체가 30m 자리까지 가므로, 아직 날고 있도록 대상을 사거리 끝 가까이에 둔다
+            rig.Player.Position = new Vector3(0f, 0f, 34f);
             rig.RunToFlight(0.0);
             Assert.AreEqual(1, rig.Manager.ActiveCount);
             double recoverEnd = RecoverEndOf(rig.Definition, 0.0);
@@ -1074,7 +1076,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(EBossAttackState.Telegraph, rig.Brain.AttackState);
             Assert.AreEqual(1, rig.Manager.ActiveCount);
 
-            rig.TickAt(recoverEnd + 0.25 + TELEGRAPH);
+            rig.TickAt(recoverEnd + 0.25 + TELEGRAPH + EPSILON); // float 예고를 double로 넓혀 더한 경계보다 한 틱 뒤
             Assert.AreEqual(2, rig.Listener.LaunchCount);
             Assert.AreEqual(2, rig.Manager.ActiveCount);
         }
@@ -1165,18 +1167,18 @@ namespace Shinshi.Tests
             Assert.IsTrue(catalog.TryGetPattern(P04_ID, out PatternDefinition p04));
 
             Assert.AreEqual(EEnemyAttackShape.Projectile, p04.Shape.Shape);
-            Assert.AreEqual(0.9f, p04.TelegraphSeconds);
+            Assert.AreEqual(1.8f, p04.TelegraphSeconds);
             Assert.AreEqual(0.45f, p04.TrackingSeconds);
             Assert.AreEqual(120f, p04.TurnRate);
             Assert.AreEqual(0f, p04.ActiveSeconds);
-            Assert.AreEqual(0.5f, p04.RecoverySeconds);
+            Assert.AreEqual(1f, p04.RecoverySeconds);
             Assert.AreEqual(35f, p04.Shape.Range);
             Assert.AreEqual(1f, p04.Shape.Width);
             Assert.AreEqual(10f, p04.Shape.ProjectileSpeed);
             Assert.AreEqual(0.18f, p04.DamageRef);
             Assert.IsTrue(p04.Guardable);
             Assert.AreEqual(EBossActionState.Recover, p04.ControlPhase);
-            Assert.AreEqual(0.5f, p04.ControlWindowSeconds);
+            Assert.AreEqual(1f, p04.ControlWindowSeconds, "제어 구간이 후딜 전체다");
             Assert.IsFalse(p04.ControlCancelsPattern);
             Assert.AreEqual(3.5f, p04.Shape.Range / p04.Shape.ProjectileSpeed, 0.0001f);
 
@@ -1185,6 +1187,34 @@ namespace Shinshi.Tests
             Assert.AreEqual(0.5f, p04.DistanceMultipliers[0]);
             Assert.AreEqual(1.3f, p04.DirectionMultipliers[0]);
             Assert.AreEqual(0.6f, p04.NearbyMultipliers[2]);
+        }
+
+        // 후딜 1초 전체가 제어 구간이다. 후딜 시작 순간부터 끝나기 직전까지 열리고, 예고 중과 후딜이 끝난 뒤에는 닫힌다
+        [TestCase(P04_ID)]
+        [TestCase(HARD_P04_ID)]
+        public void Control_AssetP04_WindowCoversTheWholeRecovery(string id)
+        {
+            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
+            Assert.IsTrue(catalog.TryGetPattern(id, out PatternDefinition definition), id);
+            Assert.AreEqual(definition.RecoverySeconds, definition.ControlWindowSeconds, id + " 제어 구간은 후딜 전체");
+            Rig rig = new Rig(definition: definition);
+            rig.Start(0.0);
+
+            double recoverStart = (double)definition.TelegraphSeconds + definition.ActiveSeconds;
+            double recoverEnd   = recoverStart + definition.RecoverySeconds;
+
+            rig.Fsm.Tick(recoverStart - EPSILON);
+            Assert.IsFalse(rig.Fsm.IsControlWindowOpen(recoverStart - EPSILON), "예고 중에는 닫혀 있다");
+
+            rig.Fsm.Tick(recoverStart);
+            Assert.AreEqual(EBossAttackState.Recover, rig.Fsm.State);
+            Assert.IsTrue(rig.Fsm.IsControlWindowOpen(recoverStart), "후딜 시작 순간부터 열린다");
+            Assert.IsTrue(rig.Fsm.IsControlWindowOpen(recoverStart + 0.5), "후딜 중간");
+            Assert.IsTrue(rig.Fsm.IsControlWindowOpen(recoverEnd - EPSILON), "후딜이 끝나기 직전까지 열려 있다");
+
+            rig.Fsm.Tick(recoverEnd);
+            Assert.AreEqual(EBossAttackState.Ready, rig.Fsm.State);
+            Assert.IsFalse(rig.Fsm.IsControlWindowOpen(recoverEnd), "후딜이 끝난 뒤에는 닫혀 있다");
         }
 
         [Test]

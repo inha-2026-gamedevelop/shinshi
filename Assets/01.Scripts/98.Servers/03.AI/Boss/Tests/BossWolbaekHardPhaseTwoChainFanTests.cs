@@ -26,7 +26,7 @@ namespace Shinshi.Tests
     //
     // 기본 좌표계: 보스는 전장 중심에 서고 난수(Roll)가 0이면 피난 방향 가운데는 월드 +Z다
     // 각도는 +Z에서 시계 방향(위에서 볼 때 오른쪽)이다. 피난 방향은 -22.5도~+22.5도이고 구역 k의 가운데는 45 + 45 x k도다
-    // 구역 k의 폭발 시각은 시전 시작 + 2.5 + 0.5 x k, 위험 종료는 6.3, 다음 선택은 6.5다
+    // 구역 k의 폭발 시각은 시전 시작 + 5.0 + 0.5 x k, 위험 종료는 8.8, 다음 선택은 10.0이다
     // 같은 대상은 0.5초 간격으로 다시 맞으므로 구역마다 대상을 따로 두지 않은 테스트는 요청 수를 손으로 센 값을 쓴다
     public class BossWolbaekHardPhaseTwoChainFanTests
     {
@@ -49,10 +49,10 @@ namespace Shinshi.Tests
         private const float  PROBE_RADIUS  = 10f; // 보스에서 대상까지 거리, 최소 사거리 16m 안쪽이다
 
         // 설계 시각(전부 정확한 이진 분수라 FSM 경계와 오차가 없다). 위험 종료 6.3은 0.8초가 이진 분수가 아니라 허용 오차로 비교한다
-        private const double FIRST_STRIKE     = 2.5;
+        private const double FIRST_STRIKE     = 5.0;
         private const double STRIKE_INTERVAL  = 0.5;
-        private const double DANGER_END       = 6.3;
-        private const double NEXT_SELECTION   = 6.5;
+        private const double DANGER_END       = 8.8;
+        private const double NEXT_SELECTION   = 10.0;
 
         private static readonly Vector3 ArenaCenter = new Vector3(50f, 0f, -30f);
 
@@ -357,19 +357,19 @@ namespace Shinshi.Tests
             Assert.AreEqual(315f, p.Shape.ArcAngle, TOLERANCE, "폭발 구역 전체, 나머지 45도가 피난 방향");
             Assert.AreEqual(ZONE_COUNT, p.RawSweepZoneCount);
             Assert.AreEqual(0.5f, p.SweepIntervalSeconds, TOLERANCE);
-            Assert.AreEqual(2.5f, p.TelegraphSeconds, TOLERANCE, "여우불 1.0 + 바닥 예고 1.5, 첫 폭발 t=2.5");
-            Assert.AreEqual(3f, p.ActiveSeconds, TOLERANCE, "첫 폭발부터 마지막 폭발 t=5.5");
-            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=6.5");
+            Assert.AreEqual(5f, p.TelegraphSeconds, TOLERANCE, "여우불 1.0 + 바닥 예고 4.0, 첫 폭발 t=5.0");
+            Assert.AreEqual(3f, p.ActiveSeconds, TOLERANCE, "첫 폭발부터 마지막 폭발 t=8.0");
+            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=10.0");
             Assert.AreEqual(0.18f, p.DamageRef, TOLERANCE);
             Assert.IsTrue(p.Guardable, "방어와 반격 가능");
             Assert.IsFalse(p.HasControlWindow);
-            Assert.AreEqual(0.8f, p.ChainLingerSeconds, TOLERANCE, "위험 종료 t=6.3");
+            Assert.AreEqual(0.8f, p.ChainLingerSeconds, TOLERANCE, "위험 종료 t=8.8");
             Assert.AreEqual(1f, p.ChainSafeRevealSeconds, TOLERANCE);
             Assert.AreEqual(0.5f, p.ChainHitCooldownSeconds, TOLERANCE);
             Assert.AreEqual(2, p.ChainMaxHitsPerTarget);
             Assert.AreEqual(0, p.MaxConcurrentAreas, "장판 상한으로 후보에서 빠지지 않는다");
             Assert.AreEqual(0, p.RawAreaTargetCount);
-            Assert.AreEqual(6.5f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(10f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
         }
 
         [Test]
@@ -402,9 +402,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(EEnemyAttackShape.Fan, easy.Shape.Shape);
             Assert.AreEqual(6f, easy.Shape.Range, TOLERANCE);
             Assert.AreEqual(180f, easy.Shape.ArcAngle, TOLERANCE);
-            Assert.AreEqual(1.2f, easy.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(2.4f, easy.TelegraphSeconds, TOLERANCE);
             Assert.AreEqual(0.75f, easy.ActiveSeconds, TOLERANCE);
-            Assert.AreEqual(0.8f, easy.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1.6f, easy.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(0.18f, easy.DamageRef, TOLERANCE);
             Assert.AreEqual(0f, easy.ChainLingerSeconds, "이지는 잔류가 없다");
             Assert.AreEqual(0f, easy.ChainSafeRevealSeconds);
@@ -640,7 +640,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(r.CastId, r.Listener.StartedCasts[0]);
             Assert.AreEqual(5.0, r.Listener.StartedAt[0], TIME_TOL, "시전 시작 서버 시각");
             Assert.AreEqual(1f, r.Listener.Reveals[0], TOLERANCE, "t0~1 여우불");
-            Assert.AreEqual(2.5f, r.Listener.FirstBlasts[0], TOLERANCE, "t1~2.5 바닥 예고, 첫 폭발 t=2.5");
+            Assert.AreEqual(5f, r.Listener.FirstBlasts[0], TOLERANCE, "t1~5 바닥 예고, 첫 폭발 t=5");
             Assert.AreEqual(0.5f, r.Listener.Intervals[0], TOLERANCE);
             Assert.AreEqual(0.8f, r.Listener.Lingers[0], TOLERANCE);
 
@@ -655,7 +655,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(ARENA_RADIUS, layout.ArenaRadius, TOLERANCE);
             Assert.AreEqual(1, r.Random.FloatCalls, "피난 방향은 한 번만 추첨한다");
 
-            r.TickRange(5.0, 12.0);
+            r.TickRange(5.0, 15.0);
             Assert.AreEqual(1, r.Random.FloatCalls, "시전 중 다시 추첨하지 않는다");
             Assert.AreEqual(1, r.Listener.StartedLayouts.Count);
         }
@@ -671,7 +671,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(0f, (layout.SafeDirection - Vector3.right).magnitude, TOLERANCE, "난수 0.25 -> 90도, +X");
             r.AddPolar(10, 90f);
             r.AddPolar(11, 270f);
-            r.TickRange(0.0, 7.0);
+            r.TickRange(0.0, 10.5);
 
             Assert.AreEqual(0, r.Hits(10), "그려진 피난 방향 가운데는 끝까지 안전하다");
             Assert.Greater(r.Hits(11), 0, "반대쪽은 위험하다");
@@ -684,7 +684,7 @@ namespace Shinshi.Tests
             noRandom.UseRandom = false;
             noRandom.AddPolar(10, ZoneCenter(0));
             noRandom.Start();
-            noRandom.TickRange(0.0, 8.0);
+            noRandom.TickRange(0.0, 11.5);
 
             Assert.IsTrue(noRandom.Pattern.IsStartRejected, "난수가 없으면 피난 방향을 정할 수 없다");
             Assert.AreEqual(0, noRandom.Listener.StartedLayouts.Count);
@@ -695,7 +695,7 @@ namespace Shinshi.Tests
             noArena.Arena.Set(ArenaCenter, 0f);
             noArena.AddPolar(10, ZoneCenter(0));
             noArena.Start();
-            noArena.TickRange(0.0, 8.0);
+            noArena.TickRange(0.0, 11.5);
 
             Assert.IsTrue(noArena.Pattern.IsStartRejected);
             Assert.AreEqual(0, noArena.Listener.StartedLayouts.Count);
@@ -722,8 +722,8 @@ namespace Shinshi.Tests
             r.Self.Position = ArenaCenter + new Vector3(8f, 0f, 8f);
             r.Arena.Set(ArenaCenter + new Vector3(100f, 0f, 0f), 5f);
 
-            r.TickAt(2.0);
-            r.TickAt(2.5);
+            r.TickAt(4.5);
+            r.TickAt(5.0);
 
             Assert.AreEqual(ArenaCenter, r.Pattern.Layout.Origin, "중심은 시전 시작 위치에 고정된다");
             Assert.AreEqual(1, r.Hits(10), "처음 중심 기준 구역 0 안의 대상이 맞는다");
@@ -766,13 +766,13 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(2));
             r.Start(100.0);
 
-            r.TickRange(100.0, 103.49, 0.1);
-            r.TickAt(103.49);
+            r.TickRange(100.0, 105.99, 0.1);
+            r.TickAt(105.99);
             Assert.AreEqual(0, r.Hits(10));
-            r.TickAt(103.5);
-            Assert.AreEqual(1, r.Hits(10), "시전 시작 100 + 2.5 + 2 x 0.5");
-            Assert.AreEqual(103.5, r.Pattern.GetStrikeTime(2), TIME_TOL);
-            Assert.AreEqual(106.3, r.Pattern.DangerEndTime, TIME_TOL);
+            r.TickAt(106.0);
+            Assert.AreEqual(1, r.Hits(10), "시전 시작 100 + 5.0 + 2 x 0.5");
+            Assert.AreEqual(106.0, r.Pattern.GetStrikeTime(2), TIME_TOL);
+            Assert.AreEqual(108.8, r.Pattern.DangerEndTime, TIME_TOL);
         }
 
         [Test]
@@ -782,30 +782,30 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(6));
             r.Start();
 
-            r.TickRange(0.0, 5.4, 0.1);
+            r.TickRange(0.0, 7.9, 0.1);
             Assert.AreEqual(0, r.Hits(10), "마지막 구역은 5.5 전까지 안전하다");
-            r.TickAt(5.5);
+            r.TickAt(8.0);
             Assert.AreEqual(1, r.Hits(10));
 
             Run late = new Run();
             FakeCombatTarget lateTarget = late.AddPolar(10, 0f);
             late.Start();
-            late.TickRange(0.0, 4.1, 0.1);
+            late.TickRange(0.0, 6.6, 0.1);
             lateTarget.Position =Polar(ArenaCenter, ZoneCenter(0), PROBE_RADIUS);
-            late.TickAt(4.2);
-            Assert.AreEqual(1, late.Hits(10), "구역 0은 2.5에 폭발했고 4.2에 들어온 대상도 맞는다");
+            late.TickAt(6.7);
+            Assert.AreEqual(1, late.Hits(10), "구역 0은 5.0에 폭발했고 6.7에 들어온 대상도 맞는다");
         }
 
-        [TestCase(6.25, 1)]
-        [TestCase(6.3, 1)]
-        [TestCase(6.31, 0)]
-        [TestCase(6.4, 0)]
+        [TestCase(DANGER_END - 0.05, 1)]
+        [TestCase(DANGER_END, 1)]
+        [TestCase(DANGER_END + 0.01, 0)]
+        [TestCase(DANGER_END + 0.1, 0)]
         public void Danger_EndsExactlyAtTheLastStrikePlusPointEightSeconds(double enterAt, int expectedHits)
         {
             Run r = new Run();
             FakeCombatTarget target = r.AddPolar(10, 0f);
             r.Start();
-            r.TickRange(0.0, 6.2, 0.1);
+            r.TickRange(0.0, 8.7, 0.1);
             Assert.AreEqual(0, r.Hits(10), "피난 방향에서는 맞지 않는다");
 
             target.Position = Polar(ArenaCenter, ZoneCenter(0), PROBE_RADIUS);
@@ -821,32 +821,32 @@ namespace Shinshi.Tests
             Run r = new Run();
             FakeCombatTarget target = r.AddPolar(10, 0f);
             r.Start();
-            r.TickRange(0.0, 6.3, 0.1);
-            Assert.AreEqual(0, r.Listener.DangerEnds.Count, "6.3 그 순간까지는 위험이 끝나지 않았다");
+            r.TickRange(0.0, 8.8, 0.1);
+            Assert.AreEqual(0, r.Listener.DangerEnds.Count, "8.8 그 순간까지는 위험이 끝나지 않았다");
             Assert.IsFalse(r.Pattern.IsDangerEnded);
 
-            r.TickAt(6.31);
+            r.TickAt(8.81);
             Assert.AreEqual(1, r.Listener.DangerEnds.Count);
             Assert.AreEqual(DANGER_END, r.Listener.DangerEnds[0], TIME_TOL, "예정 시각을 알린다");
             Assert.IsTrue(r.Pattern.IsDangerEnded);
 
             target.Position = Polar(ArenaCenter, ZoneCenter(3), PROBE_RADIUS);
-            r.TickRange(6.31, 6.45, 0.01);
+            r.TickRange(8.81, 9.95, 0.01);
             Assert.AreEqual(0, r.Hits(10));
             Assert.AreEqual(1, r.Listener.DangerEnds.Count, "한 번만 알린다");
         }
 
         [Test]
-        public void Fsm_NextSelectionOpensAt6Point5_AndDangerEndsBeforeIt()
+        public void Fsm_NextSelectionOpensAfterRecovery_AndDangerEndsBeforeIt()
         {
             Run r = new Run();
             r.Start(4.0);
 
-            r.TickAt(4.0 + 6.4);
+            r.TickAt(4.0 + NEXT_SELECTION - 0.1);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
             Assert.AreEqual(1, r.Listener.DangerEnds.Count, "위험은 다음 선택보다 먼저 끝난다");
 
-            r.TickAt(4.0 + 6.49);
+            r.TickAt(4.0 + NEXT_SELECTION - 0.01);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
             r.TickAt(4.0 + NEXT_SELECTION);
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State);
@@ -862,13 +862,13 @@ namespace Shinshi.Tests
 
             r.TickAt(1.0);
             Assert.AreEqual(EBossAttackState.Telegraph, r.Fsm.State, "여우불 구간");
-            r.TickAt(2.49);
+            r.TickAt(4.99);
             Assert.AreEqual(EBossAttackState.Telegraph, r.Fsm.State, "바닥 예고 구간");
-            r.TickAt(2.5);
+            r.TickAt(5.0);
             Assert.AreEqual(EBossAttackState.Execute, r.Fsm.State);
-            r.TickAt(5.49);
+            r.TickAt(7.99);
             Assert.AreEqual(EBossAttackState.Execute, r.Fsm.State);
-            r.TickAt(5.5);
+            r.TickAt(8.0);
             Assert.AreEqual(EBossAttackState.Recover, r.Fsm.State);
         }
 
@@ -883,15 +883,15 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(0));
             r.Start();
 
-            r.TickAt(2.5);
+            r.TickAt(5.0);
             Assert.AreEqual(1, r.Hits(10));
-            r.TickAt(2.9);
-            r.TickAt(2.99);
+            r.TickAt(5.4);
+            r.TickAt(5.49);
             Assert.AreEqual(1, r.Hits(10), "0.5초가 지나기 전에는 다시 맞지 않는다");
-            r.TickAt(3.0);
+            r.TickAt(5.5);
             Assert.AreEqual(2, r.Hits(10), "정확히 0.5초 뒤에는 다시 맞는다");
 
-            r.TickRange(3.0, 6.3, 0.1);
+            r.TickRange(5.5, 8.8, 0.1);
             Assert.AreEqual(2, r.Hits(10), "한 시전 최대 2회");
             Assert.AreEqual(2, r.Pattern.GetHitCount(10));
         }
@@ -902,7 +902,7 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.AddPolar(10, ZoneCenter(0));
             r.Start();
-            r.TickRange(2.5, 3.0, 0.5);
+            r.TickRange(5.0, 5.5, 0.5);
 
             Assert.AreEqual(2, r.Resolver.Requests.Count);
             for (int i = 0; i < r.Resolver.Requests.Count; ++i)
@@ -927,12 +927,12 @@ namespace Shinshi.Tests
             FakeCombatTarget target = r.AddPolar(10, ZoneCenter(0));
             r.Start();
 
-            r.TickAt(2.5);
+            r.TickAt(5.0);
             target.Position = Polar(ArenaCenter, ZoneCenter(1), PROBE_RADIUS);
-            r.TickAt(2.6);
-            r.TickAt(2.99);
+            r.TickAt(5.1);
+            r.TickAt(5.49);
             Assert.AreEqual(1, r.Hits(10), "구역이 달라도 직전 피격에서 0.5초가 지나야 한다");
-            r.TickAt(3.0);
+            r.TickAt(5.5);
             Assert.AreEqual(2, r.Hits(10), "구역 1 폭발 순간에 두 번째");
             Assert.AreEqual(1, r.Listener.Blasts[1].HitCount);
         }
@@ -945,7 +945,7 @@ namespace Shinshi.Tests
             r.AddPolar(11, ZoneCenter(1));
             r.Start();
 
-            r.TickRange(0.0, 6.3, 0.1);
+            r.TickRange(0.0, 8.8, 0.1);
 
             Assert.AreEqual(2, r.Hits(10), "구역 0: 2.5와 3.0");
             Assert.AreEqual(2, r.Hits(11), "구역 1: 3.0과 3.5");
@@ -960,10 +960,10 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(0));
             r.Start();
 
-            r.TickAt(2.5);
-            r.TickAt(2.99);
+            r.TickAt(5.0);
+            r.TickAt(5.49);
             Assert.AreEqual(1, r.Hits(10), "막힌 타격도 간격을 시작한다");
-            r.TickRange(3.0, 6.3, 0.1);
+            r.TickRange(5.5, 8.8, 0.1);
 
             Assert.AreEqual(2, r.Hits(10), "막은 유효 타격도 2회 상한을 소모한다");
             Assert.AreEqual(2, r.Pattern.GetHitCount(10));
@@ -978,18 +978,18 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(0));
             r.Start();
 
-            r.TickRange(2.5, 3.2, 0.1);
+            r.TickRange(5.0, 5.7, 0.1);
             Assert.AreEqual(0, r.Pattern.GetHitCount(10), "무적으로 들어가지 않은 요청은 상한을 소모하지 않는다");
             Assert.Greater(r.Hits(10), 0, "요청은 나갔다");
 
             r.Resolver.Outcomes[10] = EDamageOutcome.Applied;
             int before = r.Hits(10);
-            r.TickAt(3.3);
+            r.TickAt(5.8);
             Assert.AreEqual(before + 1, r.Hits(10));
             Assert.AreEqual(1, r.Pattern.GetHitCount(10));
-            r.TickAt(3.79);
+            r.TickAt(6.29);
             Assert.AreEqual(1, r.Pattern.GetHitCount(10));
-            r.TickAt(3.8);
+            r.TickAt(6.3);
             Assert.AreEqual(2, r.Pattern.GetHitCount(10));
         }
 
@@ -1005,7 +1005,7 @@ namespace Shinshi.Tests
             r.AddPolar(13, ZoneCenter(0), 25f);
             r.Start();
 
-            r.TickAt(2.5);
+            r.TickAt(5.0);
 
             Assert.AreEqual(1, r.Hits(10), "소환물도 범위 피해를 받는다");
             Assert.AreEqual(0, r.Hits(11));
@@ -1021,13 +1021,13 @@ namespace Shinshi.Tests
             r.Start();
 
             target.Position = Polar(ArenaCenter, 0f, PROBE_RADIUS);
-            r.TickAt(2.5);
+            r.TickAt(5.0);
             Assert.AreEqual(0, r.Hits(10), "폭발 순간 피난 방향으로 나가 있으면 맞지 않는다");
 
             target.Position = Polar(ArenaCenter, ZoneCenter(3), PROBE_RADIUS);
-            r.TickAt(3.9);
+            r.TickAt(6.4);
             Assert.AreEqual(0, r.Hits(10), "구역 3은 4.0에 폭발한다");
-            r.TickAt(4.0);
+            r.TickAt(6.5);
             Assert.AreEqual(1, r.Hits(10));
         }
 
@@ -1041,11 +1041,11 @@ namespace Shinshi.Tests
             r.Start();
 
             Assert.AreEqual(28f, r.Pattern.Layout.Range, TOLERANCE);
-            r.TickRange(0.0, 4.9, 0.1);
+            r.TickRange(0.0, 7.4, 0.1);
             Assert.AreEqual(0, r.Hits(11), "구역 5는 5.0에 폭발한다");
-            r.TickAt(5.0);
+            r.TickAt(7.5);
             Assert.AreEqual(1, r.Hits(11), "먼 쪽 전장 경계 안쪽까지 닿는다");
-            r.TickRange(5.0, 6.3, 0.1);
+            r.TickRange(7.5, 8.8, 0.1);
             Assert.AreEqual(0, r.Hits(10), "전장 밖은 구역 안이어도 맞지 않는다");
         }
 
@@ -1063,18 +1063,18 @@ namespace Shinshi.Tests
             r.Start();
 
             r.TickAt(0.0);
-            r.TickAt(10.0);
+            r.TickAt(13.5);
 
             Assert.AreEqual(ZONE_COUNT, r.Listener.Blasts.Count, "7개 구역을 모두 한 번씩");
             for (int k = 0; k < ZONE_COUNT; ++k)
             {
                 Assert.AreEqual(k, r.Listener.Blasts[k].ZoneIndex, "순서대로");
                 Assert.AreEqual(Strike(k), r.Listener.Blasts[k].Scheduled, TIME_TOL, "예정 시각을 알린다");
-                Assert.AreEqual(10.0, r.Listener.Blasts[k].Processed, TIME_TOL, "처리 시각은 틱 시각");
+                Assert.AreEqual(13.5, r.Listener.Blasts[k].Processed, TIME_TOL, "처리 시각은 틱 시각");
             }
 
-            Assert.AreEqual(2, r.Hits(10), "구역 0의 대상: 2.5와 3.0, 이후 상한");
-            Assert.AreEqual(1, r.Hits(11), "구역 6의 대상: 5.5 한 번, 종료 뒤 틱에는 판정하지 않는다");
+            Assert.AreEqual(2, r.Hits(10), "구역 0의 대상: 5.0과 5.5, 이후 상한");
+            Assert.AreEqual(1, r.Hits(11), "구역 6의 대상: 8.0 한 번, 종료 뒤 틱에는 판정하지 않는다");
             Assert.AreEqual(0, r.Hits(12));
             Assert.AreEqual(1, r.Listener.DangerEnds.Count);
             Assert.AreEqual(EBossAttackState.Ready, r.Fsm.State, "같은 틱 안에서 끝까지 진행한다");
@@ -1087,14 +1087,14 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(0));
             r.Start();
 
-            r.TickAt(2.4);
-            r.TickAt(3.2);
+            r.TickAt(4.9);
+            r.TickAt(5.7);
             Assert.AreEqual(2, r.Listener.Blasts.Count);
             Assert.AreEqual(2, r.Hits(10), "2.5와 3.0의 예정 판정을 모두 처리, 간격 0.5는 예정 시각 기준");
 
-            r.TickAt(3.2);
-            r.TickAt(3.3);
-            r.TickAt(3.4);
+            r.TickAt(5.7);
+            r.TickAt(5.8);
+            r.TickAt(5.9);
             Assert.AreEqual(2, r.Listener.Blasts.Count, "처리한 구역은 다시 처리하지 않는다");
             Assert.AreEqual(2, r.Hits(10));
         }
@@ -1105,10 +1105,10 @@ namespace Shinshi.Tests
             Run r = new Run();
             FakeCombatTarget target = r.AddPolar(10, 0f);
             r.Start();
-            r.TickAt(2.4);
+            r.TickAt(4.9);
 
             target.Position = Polar(ArenaCenter, ZoneCenter(1), PROBE_RADIUS);
-            r.TickAt(3.1);
+            r.TickAt(5.6);
 
             Assert.AreEqual(0, r.Listener.Blasts[0].HitCount, "구역 0 판정에는 구역 1의 대상이 없다");
             Assert.AreEqual(1, r.Listener.Blasts[1].HitCount, "구역 1은 처리 시점의 현재 위치로 판정한다");
@@ -1121,15 +1121,15 @@ namespace Shinshi.Tests
             Run r = new Run();
             FakeCombatTarget target = r.AddPolar(10, 0f);
             r.Start();
-            r.TickAt(2.0);
+            r.TickAt(4.5);
 
             target.Position = Polar(ArenaCenter, ZoneCenter(2), PROBE_RADIUS);
-            r.TickAt(6.45);
+            r.TickAt(9.95);
 
             Assert.AreEqual(ZONE_COUNT, r.Listener.Blasts.Count);
             Assert.AreEqual(1, r.Listener.DangerEnds.Count);
-            r.TickAt(6.5);
-            r.TickAt(8.0);
+            r.TickAt(10.0);
+            r.TickAt(11.5);
             Assert.AreEqual(ZONE_COUNT, r.Listener.Blasts.Count);
             Assert.AreEqual(1, r.Listener.DangerEnds.Count);
         }
@@ -1141,10 +1141,10 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(6));
             r.Start();
 
-            r.TickAt(2.0);
-            r.TickAt(5.0);
+            r.TickAt(4.5);
+            r.TickAt(7.5);
             int blasts = r.Listener.Blasts.Count;
-            r.TickAt(5.9);
+            r.TickAt(8.4);
 
             Assert.AreEqual(ZONE_COUNT, r.Listener.Blasts.Count, "5.0까지 구역 0~5, 5.9에 구역 6");
             Assert.AreEqual(blasts + 1, r.Listener.Blasts.Count);
@@ -1165,7 +1165,7 @@ namespace Shinshi.Tests
             r.AddPolar(10, ZoneCenter(0));
             r.AddPolar(11, ZoneCenter(5));
             r.Start();
-            r.TickRange(0.0, 2.5, 0.25);
+            r.TickRange(0.0, 5.0, 0.25);
             int before = r.Resolver.Requests.Count;
             Assert.AreEqual(1, before);
 
@@ -1176,8 +1176,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, r.Listener.CancelBlasted[0], "구역 0만 폭발했다");
             Assert.IsFalse(r.Listener.CancelEnded[0]);
 
-            r.TickRange(2.5, 8.0, 0.1);
-            r.Pattern.Tick(EBossAttackState.Execute, 4.0);
+            r.TickRange(5.0, 11.5, 0.1);
+            r.Pattern.Tick(EBossAttackState.Execute, 6.5);
             r.Pattern.EnterState(EBossAttackState.Recover, 5.5);
             Assert.AreEqual(before, r.Resolver.Requests.Count, "남은 구역과 잔류 피해는 나가지 않는다");
             Assert.AreEqual(1, r.Listener.Blasts.Count);
@@ -1195,7 +1195,7 @@ namespace Shinshi.Tests
             r.TickAt(0.5);
 
             r.Fsm.Cancel(EBossInterruptReason.PhaseTransition);
-            r.TickRange(0.5, 8.0, 0.1);
+            r.TickRange(0.5, 11.5, 0.1);
 
             Assert.AreEqual(1, r.Listener.CancelReasons.Count);
             Assert.AreEqual(0, r.Listener.CancelBlasted[0]);
@@ -1209,7 +1209,7 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.AddPolar(10, 0f);
             r.Start();
-            r.TickRange(0.0, 6.4, 0.1);
+            r.TickRange(0.0, 9.9, 0.1);
             Assert.AreEqual(1, r.Listener.DangerEnds.Count);
 
             r.Fsm.Cancel(EBossInterruptReason.CombatEnd);
@@ -1224,11 +1224,11 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.AddPolar(10, ZoneCenter(0));
             r.Start();
-            r.TickAt(2.5);
+            r.TickAt(5.0);
             int before = r.Hits(10);
 
             r.Gate.CloseForGood();
-            r.TickRange(2.5, 6.4, 0.1);
+            r.TickRange(5.0, 9.9, 0.1);
 
             Assert.AreEqual(before, r.Hits(10));
             Assert.AreEqual(1, r.Pattern.GetHitCount(10), "게이트가 닫힌 뒤 나가지 못한 요청은 맞은 것으로 세지 않는다");
@@ -1240,12 +1240,12 @@ namespace Shinshi.Tests
             Run r = new Run();
             r.AddPolar(10, ZoneCenter(0));
             r.Start();
-            r.TickRange(0.0, 6.4, 0.1);
+            r.TickRange(0.0, 9.9, 0.1);
             r.TickAt(NEXT_SELECTION);
             int requests = r.Resolver.Requests.Count;
 
-            r.Pattern.Tick(EBossAttackState.Recover, 6.2);
-            r.Pattern.Tick(EBossAttackState.Recover, 7.0);
+            r.Pattern.Tick(EBossAttackState.Recover, 8.7);
+            r.Pattern.Tick(EBossAttackState.Recover, 10.5);
 
             Assert.IsTrue(r.Pattern.IsFinished);
             Assert.AreEqual(requests, r.Resolver.Requests.Count);
@@ -1277,7 +1277,7 @@ namespace Shinshi.Tests
             Assert.IsTrue(fsm.Start(easy, pattern, in context, 0.0));
 
             // 난수 0이면 왼쪽(반시계)이라 구역 0은 정면에서 -45도~0도다
-            // 예고 시간은 float 1.2f라 double로 바꾸면 1.2보다 조금 크다. 리터럴 1.2는 FSM 경계 이전이므로 에셋 값을 그대로 경계로 쓴다
+            // 예고 시간은 float 2.4f라 double로 바꾸면 2.4보다 조금 크다. 리터럴 2.4는 FSM 경계 이전이므로 에셋 값을 그대로 경계로 쓴다
             double castBoundary = (double)easy.TelegraphSeconds;
 
             aim.Position = Polar(ArenaCenter, -10f, 3f);
@@ -1286,7 +1286,7 @@ namespace Shinshi.Tests
             fsm.Tick(castBoundary);
             Assert.AreEqual(1, resolver.Requests.Count, "예고 경계 정각에 첫 구역");
 
-            for (double t = castBoundary; t <= 4.0; t += 0.1)
+            for (double t = castBoundary; t <= 7.0; t += 0.1)
             {
                 fsm.Tick(t);
             }
@@ -1418,9 +1418,9 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(1, r.Listener.Blasts.Count);
             r.Brain.RequestCombatEnd();
-            r.Brain.Tick(started + 3.0);
+            r.Brain.Tick(started + FIRST_STRIKE + 0.5);
             int requests = r.Damage.Requests.Count;
-            for (double t = started + 3.05; t < (started + 8.0); t += 0.05)
+            for (double t = started + FIRST_STRIKE + 0.55; t < (started + NEXT_SELECTION + 1.5); t += 0.05)
             {
                 r.Brain.Tick(t);
             }
@@ -1439,16 +1439,16 @@ namespace Shinshi.Tests
             double started = r.RunUntilStarted();
             Assert.GreaterOrEqual(started, 0.0);
 
-            for (double t = started + 0.05; t <= (started + 5.6); t += 0.05)
+            for (double t = started + 0.05; t <= (started + FIRST_STRIKE + 3.1); t += 0.05)
             {
                 r.Brain.Tick(t);
             }
 
             Assert.AreEqual(ZONE_COUNT, r.Listener.Blasts.Count);
             r.Vitals.IsHealthZero = true;
-            r.Brain.Tick(started + 5.7);
+            r.Brain.Tick(started + FIRST_STRIKE + 3.2);
             int requests = r.Damage.Requests.Count;
-            for (double t = started + 5.75; t < (started + 8.0); t += 0.05)
+            for (double t = started + FIRST_STRIKE + 3.25; t < (started + NEXT_SELECTION + 1.5); t += 0.05)
             {
                 r.Brain.Tick(t);
             }

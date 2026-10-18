@@ -38,7 +38,7 @@ namespace Shinshi.Tests
         private const float  REDUCTION_CAP  = 0.6f;
         private const float  TOLERANCE      = 0.01f;
         private const float  POSITION_TOLERANCE = 0.001f;
-        private const double TELEGRAPH_END  = 4.0;
+        private const double TELEGRAPH_END  = 8.0;
         private const float  HALF_ARC       = 157.5f; // 315도의 절반, 안전지대는 뒤쪽 45도다
 
         private static readonly Vector3 BossAt = Vector3.zero;
@@ -210,11 +210,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(3f, p07.EnhancedBaseWeight);
             Assert.AreEqual(44f, p07.Shape.Range);
             Assert.AreEqual(315f, p07.Shape.ArcAngle);
-            Assert.AreEqual(4f, p07.TelegraphSeconds);
+            Assert.AreEqual(8f, p07.TelegraphSeconds);
             Assert.AreEqual(0f, p07.TrackingSeconds, "방향을 따라 돌지 않는다");
             Assert.AreEqual(0f, p07.TurnRate);
             Assert.AreEqual(0f, p07.ActiveSeconds);
-            Assert.AreEqual(1.8f, p07.RecoverySeconds);
+            Assert.AreEqual(3.6f, p07.RecoverySeconds);
             Assert.AreEqual(0.30f, p07.DamageRef);
             Assert.IsFalse(p07.Guardable);
             CollectionAssert.AreEqual(new[] { 1f, 1f, 1f }, new List<float>(p07.DistanceMultipliers));
@@ -259,7 +259,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(new Vector3(1f, 0f, 1f).normalized.z, rig.Recorder.StartDirection.z, POSITION_TOLERANCE);
             Assert.AreEqual(44f, rig.Recorder.StartRadius);
             Assert.AreEqual(315f, rig.Recorder.StartArc);
-            Assert.AreEqual(4f, rig.Recorder.StartSeconds);
+            Assert.AreEqual(8f, rig.Recorder.StartSeconds);
             Assert.AreEqual(rig.Recorder.StartOrigin, rig.Pattern.Origin);
         }
 
