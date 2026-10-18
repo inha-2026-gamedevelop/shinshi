@@ -39,7 +39,8 @@ Assets/
 │ │                   + 팀 제작 모델링 에셋 - Characters, Environment, Props, Shaders, UI
 │ │                     (규칙: docs/unity/SCENE_AND_ASSET_SAFETY.md 4장)
 │ ├ 06.UI/            UI (Shinshi.UI) - Combat, Hub, Hud, Loading, Lobby, Systems,
-│ │                   SkillWindow(스킬창 화면·규칙), Social(Friends/·Guild/ 화면·규칙, Editor/ 프리팹 빌더)
+│ │                   SkillWindow(스킬창 화면·규칙), Social(Friends/·Guild/ 화면·규칙, Editor/ 프리팹 빌더),
+│ │                   Minimap(미니맵 뷰·규칙·바인더·지도 설정 SO, Editor/ 맵 캡처·씬 연결 도구)
 │ ├ 98.Servers/       서버 전용 코드 (Shinshi.Server 어셈블리) - 9장
 │ │ ├ 01.Network/     서버 프로세스·접속·백엔드 연결
 │ │ │ ├ Bootstrap/    부트스트랩·실행 설정·프로세스 제어·종료
