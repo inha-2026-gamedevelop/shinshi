@@ -43,9 +43,18 @@ namespace Shinshi.Network
         // Prometheus 히스토그램 경계(ms). 30Hz 예산 33.33ms 앞뒤를 촘촘히 둔다. 이 값은 창을 비워도 누적한다
         private static readonly double[] G_HistogramBoundsMs = { 1.0, 2.0, 5.0, 10.0, 16.0, 25.0, 33.0, 50.0, 100.0, 250.0 };
 
-        private readonly DungeonSessionHost _host;
-        private readonly int[]              _buckets = new int[BUCKET_COUNT];
-        private readonly StringBuilder      _builder = new StringBuilder(BUILDER_CAPACITY);
+        // 프레임 간격은 Update 사이 실제 시간이다. 예산의 1.5배를 넘으면 초과로 센다(프레임 제한 대기의 흔들림은 초과가 아니다)
+        private const double FRAME_OVERRUN_FACTOR        = 1.5;
+        private const double STALL_WINDOW_SECONDS        = 1.0;
+        private const double KCP_SAMPLE_INTERVAL_SECONDS = 1.0;
+
+        private static readonly double[] G_FrameBoundsMs = { 25.0, 34.0, 40.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 5000.0 };
+
+        private readonly DungeonSessionHost  _host;
+        private readonly int[]               _buckets        = new int[BUCKET_COUNT];
+        private readonly long[]              _frameHistogram = new long[G_FrameBoundsMs.Length + 1];
+        private readonly ServerKcpQueueProbe _kcp            = new ServerKcpQueueProbe();
+        private readonly StringBuilder       _builder        = new StringBuilder(BUILDER_CAPACITY);
 
         // 인덱스 i는 경계 i 이하인 틱 수(누적 아님), 마지막 칸은 모든 경계를 넘은 틱이다
         private readonly long[] _histogram = new long[G_HistogramBoundsMs.Length + 1];
@@ -57,6 +66,17 @@ namespace Shinshi.Network
         private long   _overrunTotal = 0;
         private double _nextEmitAt   = 0.0;
         private bool   _started      = false;
+
+        private double _lastFrameAt     = NO_VALUE;
+        private double _stallWindowAt   = 0.0;
+        private double _stallWindowMs   = 0.0;
+        private double _stallLastMs     = NO_VALUE;
+        private double _frameMaxCurMs   = 0.0;
+        private double _frameMaxPrevMs  = 0.0;
+        private double _frameSumMs      = 0.0;
+        private long   _frameCount      = 0;
+        private long   _frameOverrun    = 0;
+        private double _nextKcpSampleAt = 0.0;
 
         /****************************************
         *              Properties
@@ -71,6 +91,19 @@ namespace Shinshi.Network
         public long                         TotalTickCount     => _totalCount;
         public double                       TotalTickSumMs     => _totalSumMs;
         public DungeonSessionHost           Host               => _host;
+
+        public static IReadOnlyList<double> FrameBoundsMs      => G_FrameBoundsMs;
+        public static double                FrameOverrunMs     => TICK_BUDGET_MS * FRAME_OVERRUN_FACTOR;
+        public long                         FrameCount         => _frameCount;
+        public double                       FrameSumMs         => _frameSumMs;
+        public long                         FrameOverrunTotal  => _frameOverrun;
+
+        // 직전 창과 지금 창 중 큰 값이라 60~120초를 덮는다. 수집 주기보다 길어 스침이 사라지지 않는다
+        public double                       FrameMaxMs         => Math.Max(_frameMaxCurMs, _frameMaxPrevMs);
+
+        // 마지막으로 끝난 1초 창의 최대 프레임 간격, 첫 창이 끝나기 전에는 음수
+        public double                       StallMax1sMs       => _stallLastMs;
+        public ServerKcpQueueProbe          Kcp                => _kcp;
 
         /****************************************
         *                Methods
@@ -119,6 +152,66 @@ namespace Shinshi.Network
             ++_histogram[slot];
         }
 
+        /// <summary> 매 프레임 한 번 부른다, 직전 호출과의 간격을 프레임 간격으로 기록한다. 단조 시계 초를 받는다 </summary>
+        public void RecordFrame(double nowSeconds)
+        {
+            if (_lastFrameAt == NO_VALUE)
+            {
+                _lastFrameAt   = nowSeconds;
+                _stallWindowAt = nowSeconds;
+                return;
+            }
+
+            double intervalMs = (nowSeconds - _lastFrameAt) * MS_PER_SECOND;
+            _lastFrameAt = nowSeconds;
+            if (!(intervalMs >= 0.0))
+            {
+                return;
+            }
+
+            ++_frameCount;
+            _frameSumMs += intervalMs;
+            _frameMaxCurMs = Math.Max(_frameMaxCurMs, intervalMs);
+            if (intervalMs > FrameOverrunMs)
+            {
+                ++_frameOverrun;
+            }
+
+            int slot = G_FrameBoundsMs.Length;
+            for (int i = 0; i < G_FrameBoundsMs.Length; ++i)
+            {
+                if (intervalMs <= G_FrameBoundsMs[i])
+                {
+                    slot = i;
+                    break;
+                }
+            }
+
+            ++_frameHistogram[slot];
+
+            // 창을 닫는 프레임의 간격도 닫히는 창에 넣는다. 긴 정지는 끝나는 프레임에서야 보이기 때문이다
+            _stallWindowMs = Math.Max(_stallWindowMs, intervalMs);
+            if ((nowSeconds - _stallWindowAt) >= STALL_WINDOW_SECONDS)
+            {
+                _stallLastMs   = _stallWindowMs;
+                _stallWindowMs = 0.0;
+                _stallWindowAt = nowSeconds;
+            }
+        }
+
+        /// <summary> 프레임 간격 경계 index 이하인 프레임의 누적 수, index가 경계 개수면 전체 수(+Inf) </summary>
+        public long GetFrameCumulativeBucket(int index)
+        {
+            long cumulative = 0;
+            int  last       = Math.Min(index, G_FrameBoundsMs.Length);
+            for (int i = 0; i <= last; ++i)
+            {
+                cumulative += _frameHistogram[i];
+            }
+
+            return cumulative;
+        }
+
         /// <summary> 경계 index 이하인 틱의 누적 수, index가 경계 개수면 전체 수(+Inf) </summary>
         public long GetCumulativeBucket(int index)
         {
@@ -135,6 +228,13 @@ namespace Shinshi.Network
         /// <summary> 매 프레임 부른다, 주기가 되면 한 줄을 쓰고 틱 분포를 비운다. 단조 시계 초를 받는다 </summary>
         public void Tick(double nowSeconds)
         {
+            RecordFrame(nowSeconds);
+            if (nowSeconds >= _nextKcpSampleAt)
+            {
+                _nextKcpSampleAt = nowSeconds + KCP_SAMPLE_INTERVAL_SECONDS;
+                _kcp.Sample(Transport.active);
+            }
+
             if (!_started)
             {
                 _started    = true;
@@ -151,6 +251,8 @@ namespace Shinshi.Network
             ServerJsonLogHandler.LogEvent(ServerLogLine.LEVEL_INFO, ServerLogLine.EVENT_SERVER_METRICS, null, null,
                 BuildData());
             ResetWindow();
+            _frameMaxPrevMs = _frameMaxCurMs;
+            _frameMaxCurMs  = 0.0;
         }
 
         /// <summary> 직전 창의 분위수, 상한 칸은 칸 시작값으로 센다. 표본이 없으면 음수 </summary>
@@ -201,6 +303,13 @@ namespace Shinshi.Network
             AppendNumberOrNull(b, "storage_queue_depth", hasQueue ? events.QueuedCount : 0, hasQueue);
             AppendDouble(b, "storage_queue_oldest_age_seconds", hasQueue ? events.OldestAgeSeconds : NO_VALUE);
             AppendNumberOrNull(b, "storage_retry_total", hasQueue ? events.RetryCount : 0, hasQueue);
+            AppendDouble(b, "server_frame_interval_max_ms", (_frameCount > 0) ? FrameMaxMs : NO_VALUE);
+            AppendNumberOrNull(b, "server_frame_overrun_total", _frameOverrun, true);
+            AppendDouble(b, "server_frame_stall_max_1s_ms", _stallLastMs);
+            AppendNumberOrNull(b, "kcp_send_queue_total", _kcp.SendQueueTotal, _kcp.IsAvailable);
+            AppendNumberOrNull(b, "kcp_connection_backlog_max", _kcp.BacklogMax, _kcp.IsAvailable);
+            AppendNumberOrNull(b, "kcp_send_queue_warn_total", _kcp.WarnTotal, _kcp.IsAvailable);
+            AppendNumberOrNull(b, "log_dropped_total", ServerJsonLogHandler.InstalledDroppedCount, true);
             AppendNumberOrNull(b, "server_active_connections", CountAuthenticatedConnections(), true);
 
             // 마지막 쉼표를 지운다

@@ -692,6 +692,266 @@
         "overrides": []
       },
       "options": {}
+    },
+    {
+      "id": 21,
+      "type": "row",
+      "title": "프레임과 대기열",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "전체 프레임 간격 p95 / p99 / 최대",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (instance, le) (rate(server_frame_interval_ms_bucket{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])))",
+          "legendFormat": "p95 {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (instance, le) (rate(server_frame_interval_ms_bucket{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])))",
+          "legendFormat": "p99 {{instance}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "server_frame_interval_max_ms{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "최대(1~2분) {{instance}}"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "server_frame_stall_max_1s_ms{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "1초 창 최대 {{instance}}"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "max(server_tick_budget_ms{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"})",
+          "legendFormat": "예산"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "프레임 예산 초과 (초당)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(server_frame_overrun_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[1m])",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "kcp 송신 대기열",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "kcp_send_queue_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "큐 합계 {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "kcp_send_queue_max{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "큐 최대 {{instance}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "kcp_connection_backlog_max{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "연결별 큐+버퍼 최대 {{instance}}"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "max(kcp_send_queue_warn_threshold{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"})",
+          "legendFormat": "경고 임계값"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "백엔드 게이트웨이 대기열",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "backend_gateway_in_flight{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "응답 대기 {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "backend_gateway_completed_queue{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "전달 대기 {{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 57,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "로그 큐와 버림",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "shinshi-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "log_queue_depth{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}",
+          "legendFormat": "큐 {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(log_dropped_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[5m])",
+          "legendFormat": "버림/초 {{instance}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "shinshi-prometheus"
+          },
+          "expr": "rate(kcp_send_queue_warn_total{job=\"shinshi-gameserver\", role=~\"$role\", instance=~\"$instance\"}[5m])",
+          "legendFormat": "kcp 경고/초 {{instance}}"
+        }
+      ],
+      "gridPos": {
+        "x": 18,
+        "y": 57,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
     }
   ]
 }

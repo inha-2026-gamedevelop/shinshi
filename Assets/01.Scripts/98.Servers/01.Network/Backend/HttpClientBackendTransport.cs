@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -33,6 +34,10 @@ namespace Shinshi.Network
         private const string JSON_MEDIA_TYPE     = "application/json";
         private const int    STATUS_UNAUTHORIZED = 401;
 
+        // 같은 서버로 동시에 열 연결 수. 기본값(Mono는 10 안팎)이면 응답 대기 요청이 많을 때 클라이언트 안에서 줄을 선다.
+        // 게이트웨이의 응답 대기 상한(256)보다 작게 둬 백엔드 쪽 소켓이 한꺼번에 늘지 않게 한다
+        private const int    CONNECTION_LIMIT    = 64;
+
         private readonly HttpClient        _client;
         private readonly Uri               _baseUri;
         private readonly ServerCredentials _credentials;
@@ -63,9 +68,31 @@ namespace Shinshi.Network
             string baseText = baseUri.AbsoluteUri;
             _baseUri     = baseText.EndsWith("/", StringComparison.Ordinal) ? baseUri : new Uri(baseText + "/");
             _credentials = credentials;
-            _client      = (handler != null) ? new HttpClient(handler) : new HttpClient();
+            _client      = new HttpClient(handler ?? CreateDefaultHandler());
             _client.Timeout                      = Timeout.InfiniteTimeSpan;
             _client.MaxResponseContentBufferSize = Constants.Network.MAX_BACKEND_RESPONSE_BYTES;
+        }
+
+        // Unity Mono의 HttpClientHandler는 HttpWebRequest 위에서 돌아 ServicePointManager 한도를 따른다. 새 런타임은 MaxConnectionsPerServer를 따른다.
+        // 어느 한쪽이 지원되지 않아도 다른 쪽이 적용되므로 지원 예외는 삼킨다
+        private static HttpMessageHandler CreateDefaultHandler()
+        {
+            if (ServicePointManager.DefaultConnectionLimit < CONNECTION_LIMIT)
+            {
+                ServicePointManager.DefaultConnectionLimit = CONNECTION_LIMIT;
+            }
+
+            var handler = new HttpClientHandler();
+            try
+            {
+                handler.MaxConnectionsPerServer = CONNECTION_LIMIT;
+            }
+            catch (Exception exception) when ((exception is NotSupportedException) || (exception is NotImplementedException))
+            {
+                UnityEngine.Debug.LogWarning($"[Backend] 이 런타임은 처리기 단위 연결 한도를 지원하지 않는다, type={exception.GetType().Name}");
+            }
+
+            return handler;
         }
 
         public bool CanSend(BackendRequest request)

@@ -36,6 +36,46 @@ groups:
         annotations:
           summary: "{{ $labels.instance }} has session events unconfirmed by the API for over 30s"
 
+      # Whole-frame stalls: server_tick_* only measures the combat Step, so GC, physics, network ticks and logging stalls show up here.
+      - alert: ShinshiFrameOverrunRate
+        expr: rate(server_frame_overrun_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has frame intervals over 1.5x the tick budget more than once per 5 seconds"
+
+      - alert: ShinshiFrameStall
+        expr: server_frame_interval_max_ms > 500
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} had a frame interval over 500ms within the last one to two minutes"
+
+      - alert: ShinshiKcpSendBacklog
+        expr: kcp_connection_backlog_max > on (instance) kcp_send_queue_warn_threshold
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has a connection whose KCP send queue plus buffer is over the warning threshold (Mirror disconnects it at 10000)"
+
+      - alert: ShinshiBackendGatewayBacklog
+        expr: backend_gateway_in_flight > 200 or backend_gateway_completed_queue > 500
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} backend gateway is backed up (in-flight cap is 256, results wait for the main thread)"
+
+      - alert: ShinshiLogLinesDropped
+        expr: increase(log_dropped_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} dropped log lines because the writer queue was full"
+
       - alert: ShinshiServerRestarted
         expr: changes(process_start_time_seconds[10m]) > 0
         labels:
