@@ -199,6 +199,7 @@ namespace Shinshi.UI
 
         private void OnRoomChanged(PartyRoomStateMessage room)
         {
+            SortieContentMemory.Remember(in room);
             if ((room.InRoom) && (room.Phase == EPartyPhase.Countdown))
             {
                 _countdownReceivedAt = Time.unscaledTime;

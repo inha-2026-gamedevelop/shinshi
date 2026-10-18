@@ -6,6 +6,7 @@ using Mirror;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Data;
 using Shinshi.Network;
 
 namespace Shinshi.UI
@@ -24,8 +25,7 @@ namespace Shinshi.UI
         [SerializeField] private ResultScreenView _view   = null;
         [SerializeField] private UiPopupHub       _popups = null;
 
-        private string _contentId = null;
-        private bool   _isShown   = false;
+        private bool _isShown = false;
 
         /****************************************
         *              Unity Event
@@ -40,8 +40,7 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
-            SortieClient.StatusChanged  += OnStatusChanged;
-            TownPartyClient.RoomChanged += OnRoomChanged;
+            SortieClient.StatusChanged += OnStatusChanged;
             if (_view != null)
             {
                 _view.ReturnClicked += OnReturnClicked;
@@ -55,8 +54,7 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
-            SortieClient.StatusChanged  -= OnStatusChanged;
-            TownPartyClient.RoomChanged -= OnRoomChanged;
+            SortieClient.StatusChanged -= OnStatusChanged;
             if (_view != null)
             {
                 _view.ReturnClicked -= OnReturnClicked;
@@ -67,13 +65,15 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
-        // 출정 전 마지막 방의 콘텐츠 ID를 결과 창 지역 이름으로 쓴다
-        private void OnRoomChanged(PartyRoomStateMessage room)
+        // 던전 클라이언트는 파티 방을 모른다. 마을에서 출정 직전에 기억해 둔 콘텐츠로 지역 이름을 만든다
+        private static string RegionName()
         {
-            if (room.InRoom)
+            if (!SortieContentMemory.TryRecall(out EPartyMode mode, out string contentId))
             {
-                _contentId = room.ContentId;
+                return string.Empty;
             }
+
+            return DungeonEntryRules.ContentName(GameDB.IsInitialized ? GameDB.Progression : null, mode, contentId);
         }
 
         private void OnStatusChanged(SortieStatusMessage status)
@@ -87,7 +87,7 @@ namespace Shinshi.UI
             {
                 _isShown = true;
                 _window.SetActive(true);
-                _view.SetResult(SortieResultRules.Build(in status, _contentId));
+                _view.SetResult(SortieResultRules.Build(in status, RegionName()));
             }
 
             _view.SetSaveStatus(SortieResultRules.ToSaveStatus(status.SettlementState));

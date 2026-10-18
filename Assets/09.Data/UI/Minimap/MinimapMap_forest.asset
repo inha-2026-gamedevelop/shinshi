@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6036126260292343a94d55649f56f0c, type: 3}
+  m_Name: MinimapMap_forest
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.MinimapMapSO
+  _mapId: forest
+  _displayName: "\uC232 \uACE0\uC6D0"
+  _sprite: {fileID: 21300000, guid: bb27896d0821d2749abc69bc10b7b37e, type: 3}
+  _worldCenter: {x: 89.74363, y: 36.84804}
+  _worldHalfExtent: 124.52842
+  _viewRadiusMeters: 40
