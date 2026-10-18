@@ -63,6 +63,9 @@ namespace Shinshi.Network
         public int  BoundPort { get; private set; }
         public bool IsRunning => _running;
 
+        /// <summary> 백엔드 대기열 지표를 읽을 게이트웨이, 지정하지 않으면 서버 부트스트랩이 만든 것을 쓴다 </summary>
+        public BackendGateway Gateway { get; set; }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -159,6 +162,10 @@ namespace Shinshi.Network
 
             WriteNetworkState(w);
             WriteTick(w);
+            WriteFrame(w);
+            WriteKcp(w);
+            WriteBackend(w);
+            WriteLogging(w);
             WriteStorage(w);
             WriteTraffic(w);
             return w.ToString();
@@ -218,6 +225,90 @@ namespace Shinshi.Network
 
             w.WriteCounterHeader("server_tick_overrun_total", "Ticks that exceeded the tick budget");
             w.WriteSample("server_tick_overrun_total", _sampler.OverrunTotal);
+        }
+
+        // 전체 프레임 간격. 위의 틱 지표는 전투 Step만 재서 렌더, 물리, 네트워크 틱, 가비지 수집 정지를 보지 못한다
+        private void WriteFrame(PrometheusTextWriter w)
+        {
+            if (_sampler == null)
+            {
+                return;
+            }
+
+            const string FRAME = "server_frame_interval_ms";
+            w.WriteHistogramHeader(FRAME, "Wall-clock time between consecutive server Update calls in milliseconds");
+            IReadOnlyList<double> bounds = ServerMetricsSampler.FrameBoundsMs;
+            for (int i = 0; i < bounds.Count; ++i)
+            {
+                w.WriteBucket(FRAME, bounds[i], _sampler.GetFrameCumulativeBucket(i));
+            }
+
+            w.WriteBucket(FRAME, double.PositiveInfinity, _sampler.GetFrameCumulativeBucket(bounds.Count));
+            w.WriteHistogramTotals(FRAME, _sampler.FrameSumMs, _sampler.FrameCount);
+
+            w.WriteCounterHeader("server_frame_overrun_total", "Frame intervals longer than 1.5x the tick budget");
+            w.WriteSample("server_frame_overrun_total", _sampler.FrameOverrunTotal);
+            w.WriteGaugeHeader("server_frame_interval_max_ms", "Largest frame interval over the last one to two 60s windows");
+            w.WriteSample("server_frame_interval_max_ms", _sampler.FrameMaxMs);
+            if (_sampler.StallMax1sMs >= 0.0)
+            {
+                w.WriteGaugeHeader("server_frame_stall_max_1s_ms", "Largest frame interval in the last completed 1s window");
+                w.WriteSample("server_frame_stall_max_1s_ms", _sampler.StallMax1sMs);
+            }
+        }
+
+        // 연결별 값은 합계와 최댓값만 낸다. 연결 ID를 라벨로 쓰면 시계열이 연결 수만큼 늘어난다
+        private void WriteKcp(PrometheusTextWriter w)
+        {
+            ServerKcpQueueProbe kcp = _sampler?.Kcp;
+            if ((kcp == null) || (!kcp.IsAvailable))
+            {
+                return;
+            }
+
+            w.WriteGaugeHeader("kcp_connections", "KCP connections seen by the last queue sample");
+            w.WriteSample("kcp_connections", (long)kcp.ConnectionCount);
+            w.WriteGaugeHeader("kcp_send_queue_total", "Sum of KCP send queue lengths over all connections");
+            w.WriteSample("kcp_send_queue_total", kcp.SendQueueTotal);
+            w.WriteGaugeHeader("kcp_send_queue_max", "Longest KCP send queue of a single connection");
+            w.WriteSample("kcp_send_queue_max", (long)kcp.SendQueueMax);
+            w.WriteGaugeHeader("kcp_send_buffer_total", "Sum of KCP in-flight send buffer lengths over all connections");
+            w.WriteSample("kcp_send_buffer_total", kcp.SendBufferTotal);
+            w.WriteGaugeHeader("kcp_send_buffer_max", "Longest KCP send buffer of a single connection");
+            w.WriteSample("kcp_send_buffer_max", (long)kcp.SendBufferMax);
+            w.WriteGaugeHeader("kcp_connection_backlog_max", "Largest send queue plus send buffer of a single connection");
+            w.WriteSample("kcp_connection_backlog_max", (long)kcp.BacklogMax);
+            w.WriteGaugeHeader("kcp_send_queue_warn_threshold", "Per-connection backlog that raises a warning");
+            w.WriteSample("kcp_send_queue_warn_threshold", (long)kcp.WarnThreshold);
+            w.WriteCounterHeader("kcp_send_queue_warn_total", "Times a connection backlog crossed the warning threshold");
+            w.WriteSample("kcp_send_queue_warn_total", kcp.WarnTotal);
+        }
+
+        private void WriteBackend(PrometheusTextWriter w)
+        {
+            BackendGateway gateway = Gateway ?? ServerBootstrap.Backend;
+            if (gateway == null)
+            {
+                return;
+            }
+
+            w.WriteGaugeHeader("backend_gateway_in_flight", "Backend requests sent and not yet completed");
+            w.WriteSample("backend_gateway_in_flight", (long)gateway.InFlightCount);
+            w.WriteGaugeHeader("backend_gateway_completed_queue", "Backend results waiting for the main thread to deliver");
+            w.WriteSample("backend_gateway_completed_queue", (long)gateway.CompletedCount);
+        }
+
+        private static void WriteLogging(PrometheusTextWriter w)
+        {
+            if (!ServerJsonLogHandler.IsInstalled)
+            {
+                return;
+            }
+
+            w.WriteGaugeHeader("log_queue_depth", "Log lines waiting for the writer thread");
+            w.WriteSample("log_queue_depth", (long)ServerJsonLogHandler.InstalledQueuedCount);
+            w.WriteCounterHeader("log_dropped_total", "Log lines dropped because the writer queue was full");
+            w.WriteSample("log_dropped_total", ServerJsonLogHandler.InstalledDroppedCount);
         }
 
         // 저장 큐는 던전 역할에만 있다. 마을은 시계열을 만들지 않는다

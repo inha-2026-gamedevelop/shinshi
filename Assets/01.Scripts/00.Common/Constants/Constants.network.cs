@@ -22,7 +22,8 @@ namespace Shinshi.Common
             // 11: 보스 돌진 정지 서버 시각, 빔, 별, 추적 장판 취소의 시전 번호, 무철 돌진 유도 그로기 사건과 복원 추가(2026-10-17)
             // 12: 월백 체력 기믹 4종과 워프 출발 사건, 복원, 등장, 처치, 페이즈 세대 SyncVar, 격자 첫 줄 번호 추가(2026-10-17)
             // 13: 무철 돌진 구조물 배치, 파괴 사건과 복원 추가(2026-10-17)
-            public const int PROTOCOL_VERSION = 13;
+            // 14: 월백 2페이즈 전환 컷신 구간(번호, 서버 시작과 종료 시각) SyncVar 추가(2026-10-18)
+            public const int PROTOCOL_VERSION = 14;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -112,6 +113,11 @@ namespace Shinshi.Common
             public const double ACCOUNT_LEASE_RELEASE_RETRY_SECONDS = 2.0;
             public const int    MAX_PENDING_ACCOUNT_LEASE_RELEASES  = 256;
 
+            // 던전 이관을 기다리며 미뤄 둔 임대 해제 목록 상한. 가득 차면 미루지 않고 heartbeat 만료에 맡긴다.
+            // 입장권에 만료 시각이 없을 때는 이 시간 뒤에 푼다
+            public const int    MAX_DEFERRED_ACCOUNT_LEASE_RELEASES  = 256;
+            public const double DEFERRED_RELEASE_NO_DEADLINE_SECONDS = 60.0;
+
             // 초, 참가자 접속 임대 이관이 일시 실패했을 때 같은 newLeaseId로 다시 부르는 간격
             public const double LEASE_TRANSFER_RETRY_SECONDS = 2.0;
 
@@ -164,9 +170,9 @@ namespace Shinshi.Common
             public const string ENV_BOSS_ID = "BOSS_ID";
             public const string ARG_BOSS_ID = "-boss-id";
 
-            // 보스 체력 기믹을 켠다(환경 변수는 1이면 켬, 인자는 값 없이 있으면 켬). 기믹 표시가 없는 동안 기본은 꺼짐이다
-            public const string ENV_BOSS_GIMMICKS = "BOSS_GIMMICKS";
-            public const string ARG_BOSS_GIMMICKS = "-boss-gimmicks";
+            // 보스 체력 기믹 스위치. 기본은 켬이고 환경 변수 0이나 끄는 인자(값 없음)로 끈다
+            public const string ENV_BOSS_GIMMICKS    = "BOSS_GIMMICKS";
+            public const string ARG_NO_BOSS_GIMMICKS = "-no-boss-gimmicks";
 
             // Prometheus가 긁어 가는 지표 내보내기. 포트가 없거나 0이면 끈다. 수신 주소 기본값은 루프백이며
             // 수집기가 다른 호스트에 있을 때만 내부망 주소를 준다. 게임 포트와 달리 외부에 열지 않는다
@@ -212,8 +218,14 @@ namespace Shinshi.Common
             // 거절 응답이 전송 배치에 실려 나갈 시간을 준 뒤 끊는다. 바로 끊으면 응답이 버려진다
             public const double AUTH_REJECT_DISCONNECT_DELAY_SECONDS = 0.5;
 
-            // 인증 대기 중인 연결 상한. 넘으면 요청을 기다리지 않고 바로 끊어 인증 전 연결로 메모리를 채우지 못하게 한다
-            public const int MAX_PENDING_AUTH_CONNECTIONS = 128;
+            // 인증 대기 중인 연결 상한. 넘으면 요청을 기다리지 않고 바로 끊어 인증 전 연결로 메모리를 채우지 못하게 한다.
+            // 서버 매니저의 Mirror maxConnections(100)보다 크게 두지 않는다. 연결이 그 수를 넘으면 Mirror가 인증기에 닿기 전에
+            // 사유 없이 끊으므로, 이보다 큰 대기 상한은 쓸모없이 메모리만 잡는다
+            public const int MAX_PENDING_AUTH_CONNECTIONS = 100;
+
+            // 출정 입장권 만료 뒤에도 던전 이관을 기다려 주는 여유(초). 이 시각까지 마을 연결이 끊겨도 임대를 풀지 않는다.
+            // 그 뒤에도 이관이 없으면 입장권은 이미 쓸 수 없으므로 마을 끊김이 임대를 푼다
+            public const double DEPARTING_TRANSFER_GRACE_SECONDS = 10.0;
 
             // 인증 요청 문자열 상한(UTF-16 글자 수). 넘으면 검증기에 넘기지 않고 거절한다
             public const int MAX_JOIN_TOKEN_LENGTH = 512;

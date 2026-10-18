@@ -37,6 +37,7 @@ namespace Shinshi.Tests
         private const int    HOLD_TICKS        = Constants.Network.SERVER_TICK_RATE * 2; // 보류가 여러 틱 유지되는지 보는 길이
         private const int    BARRIER_SECONDS   = 20;                                     // 결계 전개 시작, 완료를 기다리는 상한
         private const int    BARRIER_TICKS     = Constants.Network.SERVER_TICK_RATE * BARRIER_SECONDS;
+        private const double PHASE2_TRANSITION_SECONDS = 9.6d; // BossServer 전환 컷신 구간, 클라이언트 Timeline 길이와 같다
         private const float  BELOW_HANDOFF     = 0.02f;  // 전환 비율보다 이만큼 아래로 체력을 맞춘다
         private const float  SMALL_DAMAGE      = 10f;
         private const float  CAP_FLOOR_RATE    = 0.5f;   // 가짜 상한이 체력을 멈추는 비율
@@ -315,7 +316,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Tick_TransitionWithBarrierReplaced_SendsNoBarrierAndHandsOffNextTick()
+        public void Tick_TransitionWithBarrierReplaced_SendsNoBarrierAndHandsOffAfterCutsceneWindow()
         {
             var fakes = new Fakes();
             Build(fakes.CreateSet(true));
@@ -326,10 +327,25 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(EBossPhaseState.AwaitingHandoff, _boss.PhaseState, "전환한 틱에는 인계 대기다");
             Assert.IsFalse(_ledger.HasBarrier);
+            Assert.AreEqual(1, _boss.Phase2TransitionId, "결계 대신 컷신 구간을 연다");
+            Assert.AreEqual(_now, _boss.Phase2TransitionStartServerTime, 1e-9);
+            Assert.AreEqual(PHASE2_TRANSITION_SECONDS,
+                _boss.Phase2TransitionEndServerTime - _boss.Phase2TransitionStartServerTime, 1e-9);
+
+            // 구간 동안 인계를 미루고 피해를 받지 않는다
+            while (_now + TICK_SECONDS < _boss.Phase2TransitionEndServerTime)
+            {
+                Step();
+                Assert.AreEqual(EBossPhaseState.AwaitingHandoff, _boss.PhaseState, $"시각 {_now}은 구간 안이라 인계 대기다");
+                Assert.IsTrue(_boss.IsInPhase2Transition);
+                Assert.IsTrue(_boss.IsInvulnerable, "구간 동안 무적이다");
+            }
 
             Step();
 
-            Assert.AreNotEqual(EBossPhaseState.AwaitingHandoff, _boss.PhaseState, "다음 틱에 인계가 끝난다");
+            Assert.AreNotEqual(EBossPhaseState.AwaitingHandoff, _boss.PhaseState, "구간 종료 시각의 틱에 인계가 끝난다");
+            Assert.IsFalse(_boss.IsInPhase2Transition);
+            Assert.AreEqual(1, _boss.Phase2TransitionId, "전환은 한 번이다");
 
             for (int i = 0; i < BARRIER_TICKS; ++i)
             {

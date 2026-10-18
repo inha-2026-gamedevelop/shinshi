@@ -23,8 +23,8 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        // 환경 변수 스위치를 켜는 값
-        private const string BOSS_GIMMICKS_ON = "1";
+        // 환경 변수로 보스 기믹을 끄는 값
+        private const string BOSS_GIMMICKS_OFF = "0";
 
         // 서비스 자격과 현재 서버 임대, 전송 계층과 ServerPresence가 함께 쓴다
         private static ServerCredentials _credentials;
@@ -274,6 +274,13 @@ namespace Shinshi.Network
             {
                 dungeonHost.ParticipantEvicted -= authenticator.DisconnectParticipant;
                 dungeonHost.ParticipantEvicted += authenticator.DisconnectParticipant;
+
+                // 인증된 연결이 플레이어 개체를 만들 때까지 출정을 시작하지 않는다. 오래 걸리면 끊고, 개체 없이 끊기면 이탈로 정리한다
+                dungeonHost.TracksPlayerReadiness = true;
+                dungeonHost.ParticipantLoadTimedOut -= authenticator.DisconnectParticipant;
+                dungeonHost.ParticipantLoadTimedOut += authenticator.DisconnectParticipant;
+                manager.ServerDisconnected -= HandleDungeonConnectionLost;
+                manager.ServerDisconnected += HandleDungeonConnectionLost;
             }
 
             portTransport.Port = config.Port;
@@ -346,31 +353,32 @@ namespace Shinshi.Network
             return GameDB.BossPatterns.TryGetBoss(bossId, out _);
         }
 
-        // 인자는 값 없이 있기만 하면 켜고, 환경 변수는 1일 때만 켠다. 기믹 표시가 없어 기본은 꺼짐이고 켠 사실을 로그로 남긴다
+        // 기믹 사건의 복제와 클라이언트 표시가 연결돼 기본은 켬이다. 끄는 인자가 있거나 환경 변수가 0일 때만 끄고
+        // 끈 사실을 로그로 남긴다
         private static bool ReadBossGimmicks(string[] args, Func<string, string> readEnvironment)
         {
-            bool enabled = false;
+            bool enabled = true;
             if (args != null)
             {
                 for (int i = 0; i < args.Length; ++i)
                 {
-                    if (string.Equals(args[i], Constants.Network.ARG_BOSS_GIMMICKS, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(args[i], Constants.Network.ARG_NO_BOSS_GIMMICKS, StringComparison.OrdinalIgnoreCase))
                     {
-                        enabled = true;
+                        enabled = false;
                         break;
                     }
                 }
             }
 
-            if (!enabled)
-            {
-                string value = readEnvironment(Constants.Network.ENV_BOSS_GIMMICKS);
-                enabled = (value != null) && (value.Trim() == BOSS_GIMMICKS_ON);
-            }
-
             if (enabled)
             {
-                Debug.LogWarning("[Boss] 보스 체력 기믹을 켠다, 기믹 표시가 클라이언트에 없어 개발 확인용이다");
+                string value = readEnvironment(Constants.Network.ENV_BOSS_GIMMICKS);
+                enabled = (value == null) || (value.Trim() != BOSS_GIMMICKS_OFF);
+            }
+
+            if (!enabled)
+            {
+                Debug.LogWarning("[Boss] 보스 체력 기믹을 끈다, 월백은 상한 없이 즉시 사망하고 기존 결계로 진행한다");
             }
 
             return enabled;
@@ -447,6 +455,16 @@ namespace Shinshi.Network
 
             // 보스 ID가 지정된 프리팹(BossState.PrefabBossId)이 등록돼 있으면 그 보스는 그 프리팹으로 스폰한다
             CombatServerInstaller.Runtime.EnableBossObjects(new BossNetworkSpawner(prefab, manager.spawnPrefabs));
+        }
+
+        // 인증기 정리(구독 순서상 먼저) 뒤에 부른다. 경매 전용 재입장은 명단 참가 집합과 무관하다
+        private static void HandleDungeonConnectionLost(NetworkConnectionToClient connection)
+        {
+            if ((DungeonHost != null) && (connection != null) && (connection.authenticationData is SessionBinding binding)
+                && (!binding.IsAuctionOnly))
+            {
+                DungeonHost.OnConnectionLost(binding.ParticipantId);
+            }
         }
 
         private static ShinshiServerAuthenticator InstallAuthenticator(ShinshiNetworkManager manager, ServerSessionRegistry sessions,

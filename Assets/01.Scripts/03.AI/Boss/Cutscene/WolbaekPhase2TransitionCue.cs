@@ -1,7 +1,7 @@
 namespace Shinshi.AI
 {
-    // 서버가 확정한 2페이즈 전환 연출 구간 한 건이다. 지금은 서버 계약이 없어 실제 전투에서 이 값을 만드는 곳이 없다(서버 파트 요청).
-    // 성공 사건이나 PhaseState만으로 만들지 않는다. 그 둘에는 전환 번호와 구간 시각이 없고, 서버가 그 구간 동안 전투를 멈춘다는 보장도 없다
+    // 서버가 확정한 2페이즈 전환 연출 구간 한 건이다. 서버(BossServer)가 구간 동안 보스를 무적으로 두고 인계를 미루며,
+    // BossState의 전환 구간 SyncVar로 복제한다. 성공 사건이나 PhaseState만으로 만들지 않는다. 그 둘에는 전환 번호와 구간 시각이 없다
     /// <summary> 월백 2페이즈 전환 컷신 한 번의 서버 확정 값, 전투 번호, 전환 번호, 시작과 종료 서버 시각 </summary>
     public readonly struct WolbaekPhase2TransitionCue
     {

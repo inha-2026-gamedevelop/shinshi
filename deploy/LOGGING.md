@@ -39,6 +39,20 @@
 |---|---|---|
 | `server_tick_duration_ms` | histogram, ms | 서버 판정 틱 한 회의 실제 수행 시간. 대기/sleep 제외 |
 | `server_tick_overrun_total` | counter, 회 | 수행 시간이 설정된 틱 예산을 넘은 횟수 |
+| `server_frame_interval_ms` | histogram, ms | 서버 Update 호출 사이의 실제 간격. 틱 지표가 못 보는 렌더, 물리, GC 정지를 포함 |
+| `server_frame_overrun_total` | counter, 회 | 프레임 간격이 틱 예산의 1.5배를 넘은 횟수 |
+| `server_frame_interval_max_ms` | gauge, ms | 직전과 현재 60초 창 중 큰 프레임 간격 |
+| `server_frame_stall_max_1s_ms` | gauge, ms | 마지막으로 끝난 1초 창의 최대 프레임 간격; 첫 창 전에는 없음 |
+| `kcp_connections` | gauge, 개 | 마지막 큐 표본의 KCP 연결 수 |
+| `kcp_send_queue_total` / `kcp_send_buffer_total` | gauge, 개 | 전체 연결의 KCP 송신 큐 / 송신 버퍼 길이 합 |
+| `kcp_send_queue_max` / `kcp_send_buffer_max` | gauge, 개 | 연결 하나의 최대 송신 큐 / 송신 버퍼 길이 |
+| `kcp_connection_backlog_max` | gauge, 개 | 연결 하나의 송신 큐와 송신 버퍼 합 중 최댓값 |
+| `kcp_send_queue_warn_threshold` | gauge, 개 | 연결별 적체 경고 임계값(기본 2000) |
+| `kcp_send_queue_warn_total` | counter, 회 | 연결 적체가 경고 임계값을 넘은 횟수 |
+| `backend_gateway_in_flight` | gauge, 개 | 보냈으나 완료되지 않은 백엔드 요청 수 |
+| `backend_gateway_completed_queue` | gauge, 개 | 메인 스레드 전달을 기다리는 백엔드 결과 수 |
+| `log_queue_depth` | gauge, 줄 | 쓰기 스레드를 기다리는 로그 줄 수 |
+| `log_dropped_total` | counter, 줄 | 큐가 가득 차 버려진 로그 줄 누적 수 |
 | `process_resident_memory_bytes` | gauge, byte | 프로세스 RSS. GC heap이나 호스트 총 RAM으로 대체하지 않음 |
 | `process_managed_heap_bytes` | gauge, byte | 관리 힙 사용량. RSS와 별도 집계 |
 | `api_request_duration_ms` | histogram, ms | API 요청 한 회의 실제 응답 시간, 성공/거절/실패 포함 |

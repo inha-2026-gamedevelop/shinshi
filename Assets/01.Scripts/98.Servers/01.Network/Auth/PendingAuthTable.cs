@@ -114,17 +114,25 @@ namespace Shinshi.Network
         /// <summary> 검증 결과의 요청 번호로 연결을 찾는다, 이미 시간 초과로 닫혔으면 거짓 </summary>
         public bool TryFindVerifying(int requestId, out int connectionId)
         {
+            return TryFindVerifying(requestId, out connectionId, out double _);
+        }
+
+        /// <summary> 연결과 함께 검증 마감 시각도 돌려준다, 결과가 마감 뒤에 처리되는지 다시 보는 데 쓴다 </summary>
+        public bool TryFindVerifying(int requestId, out int connectionId, out double deadline)
+        {
             for (int i = 0; i < _count; ++i)
             {
                 ref PendingAuthEntry entry = ref _entries[i];
                 if ((entry.Stage == EPendingAuthStage.Verifying) && (entry.RequestId == requestId))
                 {
                     connectionId = entry.ConnectionId;
+                    deadline     = entry.Deadline;
                     return true;
                 }
             }
 
             connectionId = 0;
+            deadline     = 0.0;
             return false;
         }
 

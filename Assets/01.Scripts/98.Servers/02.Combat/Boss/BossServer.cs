@@ -71,6 +71,10 @@ namespace Shinshi.Combat
         private const float PATH_EPSILON        = 0.001f; // m, 스윕 거리가 목표에 닿았는지 보는 부동소수 여유
         private const int   NO_PHASE            = 0;      // 전투가 열리기 전 두뇌가 답하는 페이즈 번호
 
+        // 결계를 대신하는 기믹 묶음이 붙은 보스의 2페이즈 전환 컷신 구간(초). 클라이언트 컷신(TL_WolbaekPhase2Transition_Combat) 길이와 같고,
+        // 다르면 클라이언트가 경고한 뒤 서버 종료 시각을 따른다
+        private const double PHASE2_TRANSITION_SECONDS = 9.6d;
+
         // 출정 준비 검사가 보는 페이즈 범위, 월백은 2페이즈까지다
         private const int SORTIE_FIRST_PHASE = 1;
         private const int SORTIE_LAST_PHASE  = 2;
@@ -153,6 +157,11 @@ namespace Shinshi.Combat
         private double _phaseTransitionServerTime = double.NaN;
         private ushort _phaseGeneration;
 
+        // 2페이즈 전환 컷신 구간. 이 구간 동안 인계를 미루고 피해를 받지 않는다. 번호는 전환마다 1씩 오르고 0은 구간이 없었다는 뜻이다
+        private int    _phase2TransitionId;
+        private double _phase2TransitionStartServerTime = double.NaN;
+        private double _phase2TransitionEndServerTime   = double.NaN;
+
         // 워프는 착지 위치로 몸체를 옮긴 뒤 같은 호출 안에서 원형 예고를 알린다. 출발 위치를 그 예고보다 먼저 보내려고 예고까지 들고 있는다
         private Vector3 _warpDeparture;
         private bool    _hasWarpDeparture = false;
@@ -184,7 +193,7 @@ namespace Shinshi.Combat
         // 등장 대기와 종료 뒤에는 피해와 공명을 받지 않는다. 기믹이 막는 구간(기믹 중 무적, 경계에 닿은 체력)과
         // 사망이 보류돼 체력 0인 채 살아 있는 동안에도 받지 않는다. 뒤의 것이 없으면 보류 중 같은 치명타가 틱마다 다시 적용된다
         public bool IsInvulnerable => (_lifeState != EParticipantLifeState.Alive) || (_brain.FlowState != EBossFlowState.Combat)
-            || ((_damageCap != null) && (_damageCap.IsDamageBlocked)) || (IsHealthZero);
+            || ((_damageCap != null) && (_damageCap.IsDamageBlocked)) || (IsHealthZero) || (IsInPhase2Transition);
 
         public float HealthRate   => (_maxHealth > 0f) ? Mathf.Clamp01(_health / _maxHealth) : 0f;
         public bool  IsHealthZero => _health <= Constants.Combat.HEALTH_EPSILON;
@@ -228,6 +237,19 @@ namespace Shinshi.Combat
 
         /// <summary> 마지막 페이즈 전환이 일어난 틱의 서버 시각, 없으면 NaN이다 </summary>
         public double PhaseTransitionServerTime => _phaseTransitionServerTime;
+
+        /// <summary> 마지막 2페이즈 전환 컷신 구간 번호, 없으면 0이다 </summary>
+        public int Phase2TransitionId => _phase2TransitionId;
+
+        /// <summary> 마지막 2페이즈 전환 컷신 구간의 서버 시작 시각, 없으면 NaN이다 </summary>
+        public double Phase2TransitionStartServerTime => _phase2TransitionStartServerTime;
+
+        /// <summary> 마지막 2페이즈 전환 컷신 구간의 서버 종료 시각, 이 시각에 인계를 마치고 2페이즈 선택을 연다 </summary>
+        public double Phase2TransitionEndServerTime => _phase2TransitionEndServerTime;
+
+        /// <summary> 전환 컷신 구간 안이라 인계를 미루고 피해를 받지 않는다 </summary>
+        public bool IsInPhase2Transition => (_phase2TransitionId > 0) && (_brain.PhaseState == EBossPhaseState.AwaitingHandoff)
+            && (_tickTime < _phase2TransitionEndServerTime);
 
         /// <summary> 월백 체력 기믹 알림의 중계, 기믹 팩토리가 기믹의 수신처로 넘긴다 </summary>
         public BossWolbaekGimmickEventRelay WolbaekGimmickRelay => _wolbaekRelay;
@@ -532,6 +554,7 @@ namespace Shinshi.Combat
             {
                 ++_phaseGeneration;
                 _phaseTransitionServerTime = serverTime;
+                TryOpenPhase2Transition(serverTime);
             }
 
             // 보류가 풀려 두뇌가 이 틱에 사망을 확정했으면 몸체도 맞춘다. 치명타 때 바로 Dead가 된 보스는 이미 Dead라 지나간다
@@ -1514,7 +1537,26 @@ namespace Shinshi.Combat
                 return;
             }
 
+            if (IsInPhase2Transition)
+            {
+                return;
+            }
+
             _brain.CompleteHandoff();
+        }
+
+        // 결계 전개를 대신하는 기믹 묶음이 있으면 결계 대신 컷신 구간을 연다. 결계가 있는 보스는 결계 시퀀스가 연출이라 열지 않는다.
+        // 구간 동안 보스는 무적이고 2페이즈 선택은 닫혀 있어, 클라이언트 컷신과 서버 전투가 같은 시각에 재개된다
+        private void TryOpenPhase2Transition(double serverTime)
+        {
+            if ((_gimmicks == null) || (ActiveBarrier != null) || (_brain.PhaseState != EBossPhaseState.AwaitingHandoff))
+            {
+                return;
+            }
+
+            ++_phase2TransitionId;
+            _phase2TransitionStartServerTime = serverTime;
+            _phase2TransitionEndServerTime   = serverTime + PHASE2_TRANSITION_SECONDS;
         }
 
         // 두뇌가 전환한 틱에 바로 결계를 시작하고, 완료한 틱에 바로 인계해 2페이즈 선택이 한 틱 늦지 않게 한다.

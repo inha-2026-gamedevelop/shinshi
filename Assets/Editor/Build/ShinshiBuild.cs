@@ -283,7 +283,9 @@ namespace Shinshi.Editor
                 extraScriptingDefines = server ? new[] { SERVER_DEFINE } : Array.Empty<string>()
             };
 
-            string                  output = Path.Combine(COMPILE_CHECK_ROOT, server ? "server" : "client");
+            // 출력 폴더가 없으면 컴파일러가 폴더 생성 실패를 되풀이하며 끝나지 않는다. Temp를 지운 뒤에도 돌도록 먼저 만든다
+            string output = Path.Combine(COMPILE_CHECK_ROOT, server ? "server" : "client");
+            Directory.CreateDirectory(output);
             ScriptCompilationResult result = PlayerBuildInterface.CompilePlayerScripts(settings, output);
 
             int  count     = (result.assemblies == null) ? 0 : result.assemblies.Count;

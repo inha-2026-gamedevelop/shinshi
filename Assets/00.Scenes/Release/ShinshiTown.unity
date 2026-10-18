@@ -196737,7 +196737,7 @@ PrefabInstance:
     - target: {fileID: 4227498345203707314, guid: b49e8b2e9974c1c41b429f7c391185ab, type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 4300000, guid: 0b870d47f4501824d9814e429145f2ff, type: 2}
+      objectReference: {fileID: -2732418793431357903, guid: 2834eb580b1655b48a78f10243061d35, type: 3}
     - target: {fileID: 4378681265359831449, guid: b49e8b2e9974c1c41b429f7c391185ab, type: 3}
       propertyPath: m_LocalScale.x
       value: 1.0537392
@@ -313691,7 +313691,7 @@ PrefabInstance:
     - target: {fileID: 2393485475254627178, guid: 065315108a9811b4a9ea4085ed9e860c, type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 4300000, guid: a8e04b23c8d677d429b74b529835a1c9, type: 2}
+      objectReference: {fileID: 4300000, guid: 514feb3aa440da44c9427fcaf06c6249, type: 2}
     - target: {fileID: 6378358387506287701, guid: 065315108a9811b4a9ea4085ed9e860c, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -313757,7 +313757,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: 4300000, guid: a8e04b23c8d677d429b74b529835a1c9, type: 2}
+  m_Mesh: {fileID: 4300000, guid: 514feb3aa440da44c9427fcaf06c6249, type: 2}
 --- !u!64 &1648412246
 MeshCollider:
   m_ObjectHideFlags: 0

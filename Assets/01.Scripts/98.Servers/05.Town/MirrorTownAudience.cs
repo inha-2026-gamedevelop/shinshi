@@ -57,9 +57,11 @@ namespace Shinshi.Network
             if (_connections.TryGetValue(participantId, out NetworkConnectionToClient connection))
             {
                 // 입장권을 받은 연결은 곧 마을을 끊고 던전으로 간다. 끊김 정리가 계정 임대를 풀지 않게 표시한다
-                if ((typeof(T) == typeof(SortieTicketMessage)) && (connection.authenticationData is SessionBinding binding))
+                // 입장권 만료(와 여유) 안에 이관이 없으면 표시가 풀려 마을 끊김이 임대를 푼다
+                if ((typeof(T) == typeof(SortieTicketMessage)) && (connection.authenticationData is SessionBinding binding)
+                    && (message is SortieTicketMessage ticket))
                 {
-                    binding.IsDeparting = true;
+                    binding.MarkDeparting(ticket.ExpiresAtUnixMs);
                 }
 
                 connection.Send(message);

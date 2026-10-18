@@ -72,7 +72,8 @@ namespace Shinshi.Backend
                 IConfiguration configuration = services.GetRequiredService<IConfiguration>();
                 string connectionString = PostgresConnectionConfiguration.GetRequiredConnectionString(
                     configuration, migrate: false);
-                return NpgsqlDataSource.Create(connectionString);
+                return NpgsqlDataSource.Create(PostgresConnectionConfiguration.ApplyPoolSize(connectionString,
+                    configuration));
             });
             builder.Services.AddSingleton<IOperationStore, PostgresOperationStore>();
             builder.Services.AddSingleton<IdempotentOperationExecutor>();

@@ -7,6 +7,9 @@ backend then marks that server pool row Draining. The stack therefore needs a su
 process for the same instance id; the backend lets a new boot take over a Draining dungeon row once no
 expedition is open on it. Start-ReleaseStack.ps1 starts this script as a hidden background process.
 
+The number of slots is the number of parties that can be on an expedition at the same time; the other parties wait
+in the town sortie queue until a slot is free again.
+
 Per slot N (1-based):
   - instance id   %LOCALAPPDATA%\Shinshi\release-stack\dungeon_instance_id (slot 1) or dungeon_instance_id_N
   - game port     FirstPort + N - 1
@@ -26,7 +29,7 @@ Stop with Start-ReleaseStack.ps1 -Stop (it stops this watcher first, then every 
 param(
     [Parameter(Mandatory = $true)] [ValidateNotNullOrEmpty()] [string] $StateDirectory,
     [Parameter(Mandatory = $true)] [ValidateNotNullOrEmpty()] [string] $ServerExecutable,
-    [string] $DungeonCount = '1',
+    [string] $DungeonCount = '4',
     [string] $FirstPort = '7780',
     [string] $ApiBaseUrl = 'http://127.0.0.1:5080',
     [string] $ContentVersion = '0.1.0',

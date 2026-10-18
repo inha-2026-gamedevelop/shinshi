@@ -66,6 +66,7 @@ namespace Shinshi.Tests
         private const int COLLAPSE_SECONDS = 6;
         private const int FALL_WAIT_SECONDS = 2;
         private const int BARRIER_SECONDS  = 20;
+        private const int TRANSITION_SECONDS = 11; // 2페이즈 전환 컷신 구간(9.6초)을 기다리는 상한
 
         private const double RETURN_AFTER_SECONDS = 0.3; // 바닥 제거 뒤 이만큼 지나 중앙으로 돌아온다, 낙하 시간(0.6초)보다 짧다
         private const double TIME_SLACK           = 0.0001;
@@ -186,10 +187,10 @@ namespace Shinshi.Tests
             Assert.AreEqual(EBossPhaseState.AwaitingHandoff, _boss.PhaseState, "색 결계가 끝난 틱에 2페이즈 전환이 일어난다");
             Assert.IsFalse(_boss.HasBarrier, "색 결계가 붙은 보스는 결계 전개를 쓰지 않는다");
 
-            Step();
+            RunThroughPhase2Transition();
 
             Assert.AreEqual(SECOND_PHASE, _boss.Phase);
-            Assert.AreNotEqual(EBossPhaseState.AwaitingHandoff, _boss.PhaseState, "결계 전개를 기다리지 않고 다음 틱에 인계한다");
+            Assert.AreNotEqual(EBossPhaseState.AwaitingHandoff, _boss.PhaseState, "결계 전개 없이 컷신 구간이 끝나면 인계한다");
             Assert.AreEqual(EBossBarrierState.Idle, _boss.BarrierState);
 
             RunToSealCounter();
@@ -790,7 +791,7 @@ namespace Shinshi.Tests
             _history.Add(entry);
         }
 
-        // 살아서 전투 중이고 체력이 남은 보스의 무적은 기믹이 막는 구간과 정확히 같다
+        // 살아서 전투 중이고 체력이 남은 보스의 무적은 기믹이 막는 구간과 2페이즈 전환 컷신 구간을 합친 것과 정확히 같다
         private void AssertBlockFollowsGimmicks()
         {
             if ((_set == null) || (_boss.LifeState != EParticipantLifeState.Alive) || (_boss.FlowState != EBossFlowState.Combat))
@@ -804,7 +805,8 @@ namespace Shinshi.Tests
                 return;
             }
 
-            Assert.AreEqual(_set.DamageCap.IsDamageBlocked, _boss.IsInvulnerable, $"시각 {_now}에 보스 무적이 기믹의 막는 구간과 다르다");
+            Assert.AreEqual((_set.DamageCap.IsDamageBlocked) || (_boss.IsInPhase2Transition), _boss.IsInvulnerable,
+                $"시각 {_now}에 보스 무적이 기믹의 막는 구간과 다르다");
         }
 
         private void HealLiving()
@@ -851,9 +853,25 @@ namespace Shinshi.Tests
             Assert.AreEqual(WolbaekColorWardDevCatalog.STAGE_COUNT - 1, _ward.StageIndex);
         }
 
+        // 50% 성공 뒤 결계 대신 열린 전환 컷신 구간 동안 인계를 미루고, 구간 종료 틱에 인계해 2페이즈 선택을 연다
+        private void RunThroughPhase2Transition()
+        {
+            if (_boss.PhaseState != EBossPhaseState.AwaitingHandoff)
+            {
+                return;
+            }
+
+            Assert.AreEqual(1, _boss.Phase2TransitionId, "결계 대신 전환 컷신 구간을 연다");
+            double end = _boss.Phase2TransitionEndServerTime;
+            Assert.IsTrue(StepUntil(() => _boss.PhaseState != EBossPhaseState.AwaitingHandoff, null, TRANSITION_SECONDS),
+                "컷신 구간이 끝나면 인계한다");
+            Assert.GreaterOrEqual(_now, end - TICK_SECONDS, "구간 종료 전에는 인계하지 않는다");
+        }
+
         // 2페이즈로 넘어온 보스를 25%까지 깎고 봉인을 시작시킨다
         private void EnterSeal()
         {
+            RunThroughPhase2Transition();
             float        before = _boss.Health;
             DamageResult hit    = Strike(_boss.CombatId);
             Assert.IsFalse(hit.IsLethal);

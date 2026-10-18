@@ -96,6 +96,11 @@ API 컨테이너 이름과 배포 방식은 배포 환경 결정 전이다. `doc
 | `ShinshiTickP95OverBudget` | 틱 p95가 틱 예산을 2분 초과 | warning | Grafana `Shinshi 게임 서버`의 틱·접속 수·RSS·네트워크를 본다. 한 인스턴스인지 전체인지 구분한다. 즉시 재시작하지 않는다. 지속되면 새 출정을 막는 기능 차단(`dungeon_entry`)이나 점검을 판단하고 기록한다. 부하 시험 전 임계값이라 오탐 가능 |
 | `ShinshiTickOverrunRate` | 예산 초과 틱이 5분간 초당 1회 초과 | warning | 위와 같다. 같은 시각의 배포·맵 이벤트·접속 급증을 확인한다 |
 | `ShinshiStorageQueueStuck` | 던전 저장 큐의 가장 오래된 이벤트가 30초 초과(1분 지속) | critical | **API가 세션 이벤트를 확정하지 못하는 상태**다. 먼저 API와 DB를 본다(`ShinshiApiDown`, `ShinshiApiNotReady`, API 로그). 서버 프로세스를 먼저 재시작하지 않는다(재시작이 큐의 미확정 이벤트를 잃게 하는지 미확인, 강제 종료 세션은 정상 정산이 아니다). API가 회복되면 큐가 줄어드는지 본다. 서버가 이미 죽었으면 [세션 복구](incident-response.md#장애-세션-복구) |
+| `ShinshiFrameOverrunRate` | 전체 프레임 간격이 틱 예산의 1.5배를 넘은 횟수가 5분간 초당 0.2회 초과 | warning | 전투 틱 지표(`ShinshiTickOverrunRate`)와 별개다. 틱 지표는 전투 Step만 재므로 가비지 수집, 물리, 네트워크 틱, 로그 쓰기 정지는 여기서만 보인다. Grafana `Shinshi 게임 서버`의 "전체 프레임 간격"과 관리 힙, `log_queue_depth`를 같은 시각으로 맞춰 본다. 임계값은 부하 시험 전이라 오탐 가능 |
+| `ShinshiFrameStall` | 최근 1~2분 안에 프레임 간격이 500ms를 넘은 적이 있음(1분 지속) | warning | `server_frame_interval_max_ms`는 직전과 현재 60초 창 중 큰 값이다. 한 번의 긴 정지(가비지 수집, 디스크·표준 출력 대기, 스레드 풀 고갈)가 이유다. `server_frame_stall_max_1s_ms`는 마지막 1초 창의 최댓값이라 수집 주기에 따라 놓칠 수 있다 |
+| `ShinshiKcpSendBacklog` | 한 연결의 KCP 송신 큐와 송신 버퍼 합이 경고 임계값(기본 2000)을 넘음(1분 지속) | warning | 느린 클라이언트나 서버의 과다 송신이다. 서버 로그의 `[Kcp] 연결 송신 대기열이 임계값을 넘었다` 줄이 연결 번호를 알려 준다. 서버는 이 값으로 연결을 끊지 않는다. Mirror는 수신·송신 큐·버퍼 합이 10000이 되면 그 연결을 끊는다. `network_message_send_bytes_total`(메시지 상세를 켠 경우)로 보내는 쪽을 확인한다. 이 지표는 `KcpTransport.server`를 리플렉션으로 읽어 만든다(코드 제거가 필드를 지우면 지표가 없다) |
+| `ShinshiBackendGatewayBacklog` | 백엔드 응답 대기 요청이 200개 초과(상한 256) 또는 메인 스레드 전달을 기다리는 결과가 500개 초과(1분 지속) | warning | API가 느리거나 응답 처리가 프레임당 상한에 막힌 상태다. API 경보(`ShinshiApiNotReady`, 오류율)와 `ShinshiStorageQueueStuck`을 함께 본다. 상한에 닿으면 새 요청이 `Overloaded`로 거절된다 |
+| `ShinshiLogLinesDropped` | 로그 쓰기 큐가 가득 차 5분 안에 줄이 버려짐 | warning | 표준 출력을 읽는 쪽(systemd-journald 등)이 느리거나 로그가 폭주한다. 버려진 개수는 `log_dropped_total`과 로그의 `로그 큐가 가득 차 줄을 버렸다` 줄에 남는다. 사건 로그가 일부 없을 수 있다는 뜻이므로 장애 분석 때 감안한다 |
 | `ShinshiServerRestarted` | 10분 안에 프로세스 재시작 | info | 던전은 출정마다 정상적으로 재시작한다. `systemctl status`/`journalctl`의 종료 코드를 본다: 0은 정상, **70(불변식 위반)과 75(서버 풀 존재 상실)는 운영 알림 대상**이다. 같은 슬롯이 반복 재시작하면 시작 제한과 `ShinshiServerDown`으로 이어진다 |
 
 ### API·DB·대사 경보 (추가 중)

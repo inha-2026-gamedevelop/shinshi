@@ -19,6 +19,8 @@ namespace Shinshi.UI
     // 이 바인더는 방 생성 요청(TownPartyClient.CreateRoom)만 보낸다. 지역, 보스전 존재, 체험판 포함, 계정 해금, 입장권은
     // 마을 서버가 방을 만들 때와 준비, 출정 때 판정하고 거절하면 그 사유를 이 창에 보인다.
     // 이미 파티 방에 있으면 같은 곳은 준비 창만 열고, 혼자인 방은 나갔다가 새로 만들고, 파티원이 있는 방은 건드리지 않는다
+    // TODO(진욱/기웅): 신시 안내(U18)가 생기기 전까지는 마을에 들어와 첫 성장 스냅샷을 받은 순간 안내 완료를 보낸다.
+    // 보내지 않으면 숲(region_forest) 해금 조건(안내 완료)을 채울 길이 없어 숲 파티의 준비와 예약이 모두 거절된다
     public sealed class DungeonEntryBinder : MonoBehaviour
     {
         /****************************************
@@ -44,6 +46,7 @@ namespace Shinshi.UI
         private int               _selected   = -1;
         private DungeonEntryData? _pending    = null;
         private bool              _awaitLeave = false;
+        private bool              _introSent  = false;
 
         /****************************************
         *              Properties
@@ -75,8 +78,10 @@ namespace Shinshi.UI
                 _view.EnterClicked  += OnEnterClicked;
             }
 
-            TownPartyClient.RoomChanged    += OnRoomChanged;
-            TownPartyClient.ResultReceived += OnPartyResult;
+            TownPartyClient.RoomChanged     += OnRoomChanged;
+            TownPartyClient.ResultReceived  += OnPartyResult;
+            TownGrowthClient.SnapshotChanged += OnGrowthSnapshot;
+            TownProgressClient.IntroResultReceived += OnIntroResult;
         }
 
         private void OnDisable()
@@ -94,8 +99,10 @@ namespace Shinshi.UI
                 _view.EnterClicked  -= OnEnterClicked;
             }
 
-            TownPartyClient.RoomChanged    -= OnRoomChanged;
-            TownPartyClient.ResultReceived -= OnPartyResult;
+            TownPartyClient.RoomChanged     -= OnRoomChanged;
+            TownPartyClient.ResultReceived  -= OnPartyResult;
+            TownGrowthClient.SnapshotChanged -= OnGrowthSnapshot;
+            TownProgressClient.IntroResultReceived -= OnIntroResult;
             if (_router != null)
             {
                 _router.Unregister(EHotkeyAction.CloseWindow, _onClose);
@@ -115,6 +122,7 @@ namespace Shinshi.UI
 
             _pending    = null;
             _awaitLeave = false;
+            SendIntroOnce();
             RebuildEntries();
             _view.Show();
             if (_router != null)
@@ -319,6 +327,34 @@ namespace Shinshi.UI
             }
 
             ClearPending(RejectText.Describe(result.Reason));
+        }
+
+        // 첫 스냅샷이 오면 서버가 이 연결의 계정을 마을 참가자로 묶은 뒤다. 이미 기록된 계정도 API가 성공으로 받는다
+        private void OnGrowthSnapshot(GrowthSnapshotMessage snapshot)
+        {
+            SendIntroOnce();
+        }
+
+        private void SendIntroOnce()
+        {
+            if ((_introSent) || (!ClientRoles.IsTown()))
+            {
+                return;
+            }
+
+            _introSent = TownProgressClient.CompleteIntro() != Guid.Empty;
+        }
+
+        // 거절되면 다음 스냅샷이나 창을 열 때 다시 보낸다
+        private void OnIntroResult(IntroCompleteResultMessage result)
+        {
+            if (result.IsAccepted)
+            {
+                return;
+            }
+
+            Debug.LogWarning($"[DungeonEntry] 신시 안내 완료 기록이 거절됐다, reason={result.Reason}", this);
+            _introSent = false;
         }
 
         private void ClearPending(string notice)

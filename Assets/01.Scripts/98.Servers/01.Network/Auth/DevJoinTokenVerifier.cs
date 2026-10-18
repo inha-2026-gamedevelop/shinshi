@@ -38,6 +38,8 @@ namespace Shinshi.Network
         // 같은 개발 토큰은 언제나 다시 쓸 수 있으므로 기억할 것이 없다
         public void OnAdmitted(int requestId) { }
 
+        public void OnAbandoned(int requestId) { }
+
         /// <summary> 형식만 확인해 참가자 키를 꺼낸다 </summary>
         public static bool TryParse(string joinToken, out string participantKey)
         {

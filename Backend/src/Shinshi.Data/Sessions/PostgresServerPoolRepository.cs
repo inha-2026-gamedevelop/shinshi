@@ -164,12 +164,26 @@ namespace Shinshi.Data.Sessions
         public Task<ServerPoolOutcome> HeartbeatAsync(Guid instanceId, Guid bootId,
             CancellationToken cancellationToken = default)
         {
+            return HeartbeatAsync(instanceId, bootId, null, null, cancellationToken);
+        }
+
+        /// <summary> 현재 접속 수와 정원을 함께 보고하는 heartbeat. 정원이 없으면 이전에 보고한 값을 유지하고, 접속 수가 없으면 비운다.
+        /// 마을 입장권 발급은 저장된 정원을 상한으로 쓴다 </summary>
+        public Task<ServerPoolOutcome> HeartbeatAsync(Guid instanceId, Guid bootId, int? connections, int? capacity,
+            CancellationToken cancellationToken = default)
+        {
             ValidateIds(instanceId, bootId);
+            if ((connections < 0) || (capacity <= 0))
+            {
+                throw new ArgumentOutOfRangeException(connections < 0 ? nameof(connections) : nameof(capacity));
+            }
+
             return SessionDb.RetryAsync(async token =>
             {
                 ServerPoolOutcome outcome = await ChangeOwnedAsync(instanceId, bootId,
-                    "UPDATE server_instances SET heartbeat_at = clock_timestamp() WHERE instance_id = @InstanceId "
-                    + "AND boot_id = @BootId AND " + OWNED_CONDITION + " RETURNING state;", token);
+                    "UPDATE server_instances SET heartbeat_at = clock_timestamp(), capacity = COALESCE(@Capacity, capacity), "
+                    + "reported_connections = @Connections WHERE instance_id = @InstanceId "
+                    + "AND boot_id = @BootId AND " + OWNED_CONDITION + " RETURNING state;", token, connections, capacity);
                 if (outcome.Status == EServerPoolStatus.Accepted)
                 {
                     await ExtendAccountLeasesAsync(instanceId, token);
@@ -324,12 +338,20 @@ namespace Shinshi.Data.Sessions
         }
 
         private async Task<ServerPoolOutcome> ChangeOwnedAsync(Guid instanceId, Guid bootId, string sql,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, int? connections = null, int? capacity = null)
         {
             await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-            string? state = await connection.QuerySingleOrDefaultAsync<string?>(new CommandDefinition(sql,
-                new { InstanceId = instanceId, BootId = bootId, HeartbeatTimeout = ServerPoolTimings.HeartbeatTimeout },
-                cancellationToken: cancellationToken));
+            // 마을 입장권 발급이 인스턴스 행을 잠그고 있어도 무기한 기다리지 않도록 쓰기 문장에 잠금, 실행 제한을 건다
+            string? state;
+            await using (NpgsqlTransaction transaction = await connection.BeginTransactionAsync(cancellationToken))
+            {
+                await PostgresTransactionPolicy.ApplyAsync(connection, transaction, cancellationToken);
+                state = await connection.QuerySingleOrDefaultAsync<string?>(new CommandDefinition(sql,
+                    new { InstanceId = instanceId, BootId = bootId, HeartbeatTimeout = ServerPoolTimings.HeartbeatTimeout,
+                        Connections = connections, Capacity = capacity }, transaction,
+                    cancellationToken: cancellationToken));
+                await transaction.CommitAsync(cancellationToken);
+            }
             InstanceRow? current = await ReadInstanceAsync(connection, instanceId, cancellationToken);
             if (current == null)
             {
@@ -363,6 +385,8 @@ namespace Shinshi.Data.Sessions
         private async Task ExtendAccountLeasesAsync(Guid instanceId, CancellationToken cancellationToken)
         {
             await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(cancellationToken);
+            await PostgresTransactionPolicy.ApplyAsync(connection, transaction, cancellationToken);
             await connection.ExecuteAsync(new CommandDefinition(
                 """
                 WITH target AS (
@@ -375,8 +399,9 @@ namespace Shinshi.Data.Sessions
                 SET expires_at = GREATEST(lease.expires_at, clock_timestamp() + @Duration)
                 FROM target
                 WHERE lease.account_id = target.account_id AND lease.instance_id = @InstanceId;
-                """, new { InstanceId = instanceId, Duration = ServerPoolTimings.AccountLease },
+                """, new { InstanceId = instanceId, Duration = ServerPoolTimings.AccountLease }, transaction,
                 cancellationToken: cancellationToken));
+            await transaction.CommitAsync(cancellationToken);
         }
 
         private static Task<InstanceRow?> ReadInstanceAsync(NpgsqlConnection connection, Guid instanceId,

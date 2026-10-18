@@ -26,8 +26,10 @@ namespace Shinshi.Network
         private readonly Func<double>   _clock;
         private readonly Action<string> _warn;
         private readonly Slot[]         _slots;
+        private readonly Deferred[]     _deferred;
 
-        private int _count = 0;
+        private int _count         = 0;
+        private int _deferredCount = 0;
 
         /****************************************
         *              Properties
@@ -35,6 +37,9 @@ namespace Shinshi.Network
 
         // 해제 응답을 기다리거나 재시도 시각을 기다리는 임대 수
         public int PendingCount => _count;
+
+        // 던전 이관을 기다리며 해제를 미뤄 둔 임대 수
+        public int DeferredCount => _deferredCount;
 
         /****************************************
         *                Methods
@@ -58,6 +63,7 @@ namespace Shinshi.Network
             _clock      = clock ?? BackendGateway.MonotonicSeconds;
             _warn       = warn;
             _slots      = new Slot[Constants.Network.MAX_PENDING_ACCOUNT_LEASE_RELEASES];
+            _deferred   = new Deferred[Constants.Network.MAX_DEFERRED_ACCOUNT_LEASE_RELEASES];
         }
 
         /// <summary> 끊긴 연결의 임대 해제를 보낸다, 형식이 틀렸거나 대기가 가득 차면 거짓(만료로 풀린다) </summary>
@@ -68,6 +74,9 @@ namespace Shinshi.Network
             {
                 return false;
             }
+
+            // 미뤄 둔 해제가 있으면 지금 보내는 것으로 대신한다
+            RemoveDeferred(leaseId);
 
             if (IndexOfLease(leaseId) >= 0)
             {
@@ -90,6 +99,35 @@ namespace Shinshi.Network
             return true;
         }
 
+        /// <summary> 던전 이관을 기다리는 임대의 해제를 delaySeconds 뒤로 미룬다, 그때까지 이관이 없으면 Tick이 푼다.
+        /// 해제는 원래 마을 인스턴스 소유일 때만 효력이 있으므로 이관된 임대는 그대로 남는다. 목록이 가득 차면 거짓(만료로 풀린다) </summary>
+        public bool ReleaseAfter(string accountLeaseId, double delaySeconds)
+        {
+            string leaseId = JoinTokenClaimsRules.ToAccountLeaseId(accountLeaseId);
+            if (leaseId == null)
+            {
+                return false;
+            }
+
+            double due   = _clock() + Math.Max(0.0, delaySeconds);
+            int    index = IndexOfDeferred(leaseId);
+            if (index >= 0)
+            {
+                _deferred[index].DueTime = due;
+                return true;
+            }
+
+            if (_deferredCount == _deferred.Length)
+            {
+                _warn?.Invoke($"[AccountLease] 미룬 해제가 상한({_deferred.Length})이라 미루지 않는다, heartbeat 만료로 풀린다");
+                return false;
+            }
+
+            _deferred[_deferredCount] = new Deferred(leaseId, due);
+            ++_deferredCount;
+            return true;
+        }
+
         /// <summary> 같은 임대로 새 연결이 들어왔으면 아직 보내지 않은 해제를 거둔다, 이미 보낸 해제는 거둘 수 없다 </summary>
         public bool Cancel(string accountLeaseId)
         {
@@ -98,10 +136,11 @@ namespace Shinshi.Network
                 return false;
             }
 
-            int index = IndexOfLease(accountLeaseId);
+            bool removedDeferred = RemoveDeferred(accountLeaseId);
+            int  index           = IndexOfLease(accountLeaseId);
             if ((index < 0) || (_slots[index].RequestId != 0))
             {
-                return false;
+                return removedDeferred;
             }
 
             RemoveAt(index);
@@ -111,12 +150,13 @@ namespace Shinshi.Network
         /// <summary> 매 프레임 부른다, 재시도 시각이 된 해제를 다시 보낸다 </summary>
         public void Tick()
         {
-            if (_count == 0)
+            if ((_count == 0) && (_deferredCount == 0))
             {
                 return;
             }
 
             double now = _clock();
+            TickDeferred(now);
             for (int i = 0; i < _count; ++i)
             {
                 ref Slot slot = ref _slots[i];
@@ -169,6 +209,55 @@ namespace Shinshi.Network
             slot.RequestId = _gateway.Send(request, this);
         }
 
+        // 기한이 지난 미룬 해제를 실제 해제로 옮긴다. 해제 대기가 가득 차 못 옮기면 남겨 두고 다음 Tick에 다시 본다
+        private void TickDeferred(double now)
+        {
+            for (int i = _deferredCount - 1; i >= 0; --i)
+            {
+                if ((now < _deferred[i].DueTime) || (_count == _slots.Length))
+                {
+                    continue;
+                }
+
+                string leaseId = _deferred[i].LeaseId;
+                RemoveDeferredAt(i);
+                Release(leaseId);
+            }
+        }
+
+        private int IndexOfDeferred(string leaseId)
+        {
+            for (int i = 0; i < _deferredCount; ++i)
+            {
+                if (string.Equals(_deferred[i].LeaseId, leaseId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private bool RemoveDeferred(string leaseId)
+        {
+            int index = IndexOfDeferred(leaseId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            RemoveDeferredAt(index);
+            return true;
+        }
+
+        private void RemoveDeferredAt(int index)
+        {
+            int last = _deferredCount - 1;
+            _deferred[index] = _deferred[last];
+            _deferred[last]  = default;
+            --_deferredCount;
+        }
+
         private int IndexOfLease(string leaseId)
         {
             for (int i = 0; i < _count; ++i)
@@ -212,6 +301,18 @@ namespace Shinshi.Network
         /****************************************
         *               Records
         ****************************************/
+
+        private struct Deferred
+        {
+            public string LeaseId;
+            public double DueTime;
+
+            public Deferred(string leaseId, double dueTime)
+            {
+                LeaseId = leaseId;
+                DueTime = dueTime;
+            }
+        }
 
         // 배열 안에서 ref로 제자리 수정하는 값 묶음이라 readonly로 두지 않는다
         private struct Slot

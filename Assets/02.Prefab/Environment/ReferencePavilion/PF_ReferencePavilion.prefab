@@ -456,6 +456,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 0bc72c49d6c89f640b2e9fa14e540886, type: 2}
+    - target: {fileID: -5754084199372789682, guid: 653f5ae0aa65a5546835badd1de8f676, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 3410630444368228224, guid: b93c9b7a3fec0ab4abf91a747d230e27, type: 3}
     - target: {fileID: 919132149155446097, guid: 653f5ae0aa65a5546835badd1de8f676, type: 3}
       propertyPath: m_Name
       value: LOD1_Medium
@@ -527,6 +531,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 0bc72c49d6c89f640b2e9fa14e540886, type: 2}
+    - target: {fileID: -5754084199372789682, guid: 4bceebdf52dfb38458bdfa6dfc6a5f8a, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 3410630444368228224, guid: b93c9b7a3fec0ab4abf91a747d230e27, type: 3}
     - target: {fileID: 919132149155446097, guid: 4bceebdf52dfb38458bdfa6dfc6a5f8a, type: 3}
       propertyPath: m_Name
       value: LOD2_Low

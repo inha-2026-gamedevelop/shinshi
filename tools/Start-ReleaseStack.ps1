@@ -13,10 +13,11 @@ What it does, in order:
   4. Starts (or reuses) the Docker container shinshi-release-db, applies SQL migrations, and opens the
      service state (maintenance off, allowed build ids = dev-local + both build ids).
   5. Starts the API, then the town server (API join-token verification, server pool registration).
-  6. Starts the dungeon servers (-DungeonCount, default 1) under tools/Watch-ReleaseDungeons.ps1, a hidden
+  6. Starts the dungeon servers (-DungeonCount, default 4, max 8; one slot = one party that can be on an expedition at the same time) under tools/Watch-ReleaseDungeons.ps1, a hidden
      background watcher. A dungeon server exits by design after one expedition is settled, so the watcher starts
      a new process for the same instance id within a few seconds (the next expedition can then reserve it).
-     Each dungeon slot has its own instance id, game port (-DungeonPort + slot - 1) and a log file per process.
+     Each dungeon slot runs one expedition at a time: while all slots are busy, another party waits in the town sortie queue (retry every few seconds)
+     until a slot is settled and restarted. Each dungeon slot has its own instance id, game port (-DungeonPort + slot - 1) and a log file per process.
   7. Starts the requested number of development clients. In each client use the Lobby development login:
      enter an id, password, and email, then press the sign-up button the first time.
 
@@ -41,7 +42,7 @@ param(
     [string] $PublicAddress = '127.0.0.1',
     [string] $ApiPort = '5080',
     [string] $GamePort = '7777',
-    [string] $DungeonCount = '1',
+    [string] $DungeonCount = '4',
     [string] $DungeonPort = '7780',
     [string] $DatabasePort = '55440',
     [string] $ContentVersion = '0.1.0',

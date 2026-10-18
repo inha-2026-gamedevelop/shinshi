@@ -56,6 +56,9 @@ namespace Shinshi.AI
         private ushort _pendingWardGeneration;
         private bool   _hasPendingWardGeneration;
 
+        // 복제 상태로 받은 마지막 전환 컷신 구간 번호. 너무 이른 구간은 번호를 남기지 않아 다음 프레임에 다시 넘긴다
+        private int _seenPhase2TransitionId;
+
         /****************************************
         *              Unity Event
         ****************************************/
@@ -133,6 +136,11 @@ namespace Shinshi.AI
             if ((IsWolbaek) && (_anchorTracker != null))
             {
                 _anchorTracker.Tick(Time.unscaledTimeAsDouble);
+            }
+
+            if (IsWolbaek)
+            {
+                ReceivePhase2Transition(_state);
             }
 
             if (_mucheolMotion != null)
@@ -268,6 +276,7 @@ namespace Shinshi.AI
             _starCasts.Clear();
             _lastFlowState = EBossFlowState.Combat;
             _hasPendingWardGeneration = false;
+            _seenPhase2TransitionId = 0;
             if (_anchorTracker != null)
             {
                 _anchorTracker.Clear();
@@ -601,9 +610,9 @@ namespace Shinshi.AI
             }
         }
 
-        // BossState에 2페이즈 전환 구간 계약(전투 번호, 전환 번호, 서버 시작과 종료 시각, 접속 스냅샷)이 생기면 사건과 복원에서 아래 둘을 호출한다.
-        // OnWardSucceeded나 PhaseState 변화로는 컷신을 시작하지 않는다. 그 둘에는 구간 시각과 번호가 없고,
-        // 지금 서버는 50% 성공과 같은 틱에 전환을 끝내고 다음 틱에 인계해 바로 2페이즈 선택을 연다(연출 시간과 무적이 없다)
+        // 서버 전환 구간(BossState.Phase2Transition*)을 ReceivePhase2Transition이 아래 둘로 넘긴다.
+        // OnWardSucceeded나 PhaseState 변화로는 컷신을 시작하지 않는다. 그 둘에는 구간 시각과 번호가 없다.
+        // 서버는 결계를 대신하는 기믹 묶음이 있을 때만 구간을 열고, 그동안 보스를 무적으로 두고 인계를 미룬다
         /// <summary> 서버 전환 구간 사건, 같은 구간이 복원으로 다시 와도 한 번만 재생한다 </summary>
         public EWolbaekPhase2TransitionDecision OnPhase2TransitionStarted(in WolbaekPhase2TransitionCue cue)
         {
@@ -613,6 +622,26 @@ namespace Shinshi.AI
             }
 
             return _phase2Transition.Receive(in cue, ReadServerTime());
+        }
+
+        // 서버 전환 구간은 복제 상태로 온다. 새 번호만 재생기에 넘기고, 스폰 초기 상태로 받은 진행 중 구간은 복원으로 넘긴다
+        private void ReceivePhase2Transition(BossState state)
+        {
+            int transitionId = state.Phase2TransitionId;
+            if ((transitionId <= _seenPhase2TransitionId) || (_phase2Transition == null))
+            {
+                return;
+            }
+
+            var cue = new WolbaekPhase2TransitionCue(state.CombatId, transitionId, state.Phase2TransitionStartServerTime,
+                state.Phase2TransitionEndServerTime);
+            EWolbaekPhase2TransitionDecision decision = _justBound
+                ? OnPhase2TransitionRestored(in cue)
+                : OnPhase2TransitionStarted(in cue);
+            if (decision != EWolbaekPhase2TransitionDecision.TooEarly)
+            {
+                _seenPhase2TransitionId = transitionId;
+            }
         }
 
         /// <summary> 늦은 접속, 재접속 스냅샷의 진행 중 전환 구간, 서버 경과 시간부터 재생하고 끝난 구간은 재생하지 않는다 </summary>

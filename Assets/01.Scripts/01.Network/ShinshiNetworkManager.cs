@@ -302,8 +302,33 @@ namespace Shinshi.Network
                 }
             }
 
-            base.OnServerDisconnect(conn);
-            ServerDisconnected?.Invoke(conn);
+            // 앞 단계가 실패해도 뒤 단계(임대 해제, 파티, 소셜 정리)는 실행돼야 한다
+            try
+            {
+                base.OnServerDisconnect(conn);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+
+            Action<NetworkConnectionToClient> handlers = ServerDisconnected;
+            if (handlers == null)
+            {
+                return;
+            }
+
+            foreach (Delegate handler in handlers.GetInvocationList())
+            {
+                try
+                {
+                    ((Action<NetworkConnectionToClient>)handler)(conn);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                }
+            }
         }
 
         // offlineScene은 쓰지 않는다. Mirror가 끊김 때 매니저를 DontDestroyOnLoad에서 꺼내 다음 씬과 함께 지운다.

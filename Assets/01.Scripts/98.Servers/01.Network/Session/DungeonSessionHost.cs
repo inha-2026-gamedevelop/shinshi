@@ -38,6 +38,11 @@ namespace Shinshi.Network
         // 다르면 SessionMismatch다. 일반전 계약은 웨이브 진행기 주입(WaveFactory)이 있어야 일반전으로 열고, 없으면 경고를 남기고
         // 웨이브 없는 개발 세션으로 연다. 보스전은 계약의 보스와 난이도로 보스, 보상 표, 경매 재료를 고른다.
         //
+        // 준비 판정: 인증과 임대 이관만으로는 시작하지 않는다. 인증된 연결이 서버 플레이어 개체(AddPlayer)를 만들어
+        // OnParticipantAttached로 알릴 때까지 그 참가자는 로딩 중이다. 로딩 중인 참가자가 있으면 start를 보내지 않고,
+        // 인증 뒤 LOADING_TIMEOUT_SECONDS 안에 준비되지 않으면 연결을 끊는다. 준비 전에 끊기면 개체가 없어 전투 쪽 이탈 통지가
+        // 오지 않으므로 OnConnectionLost가 같은 정리(OnParticipantDetached)를 한다. 연결 신호가 없는 단위 테스트는 기본값(끔)을 쓴다
+        //
         // 포기는 메시지 처리기가 받아 두고 다음 틱 BeginTick 뒤에 처리한다. 틱 중간에 참가 집합이 바뀌지 않게 하기 위해서다.
         // 출정 상태(SortieStatusMessage)는 값이 바뀐 틱 끝과 (재)접속 때 그 참가자에게만 보낸다
 
@@ -75,6 +80,14 @@ namespace Shinshi.Network
             public SortieStatusMessage Last;
         }
 
+        // 인증됐지만 플레이어 개체가 아직 없는 참가자, 마감은 다음 틱에서 서버 시각으로 정한다
+        private struct LoadingSlot
+        {
+            public int    ParticipantId;
+            public bool   Awaiting;
+            public double Deadline;
+        }
+
         private struct LeaseSlot
         {
             public int                 ParticipantId;
@@ -95,6 +108,7 @@ namespace Shinshi.Network
         private readonly string                _localSessionId;
         private readonly string[]              _readyIds;
         private readonly LeaseSlot[]           _leases;
+        private readonly LoadingSlot[]         _loading;
         private readonly int[]                 _absentIds;
         private readonly int[]                 _admittedIds;
         private readonly EPlayerClass[]        _admittedClasses;
@@ -119,6 +133,8 @@ namespace Shinshi.Network
         private int                   _startRequestId     = 0;
         private int                   _leaseCount         = 0;
         private int                   _absentCount        = 0;
+        private int                   _loadingCount       = 0;
+        private int                   _awaitingCount      = 0;
         private bool                  _hasLocalStartTime  = false;
         private bool                  _startDirty         = false;
         private bool                  _startRetryPending  = false;
@@ -161,6 +177,12 @@ namespace Shinshi.Network
 
         // 시작 전에 연결이 끊겨 돌아오기를 기다리는 참가자 수
         public int  LobbyAbsentCount => _absentCount;
+
+        // 인증됐지만 플레이어 개체가 아직 없는 참가자 수
+        public int  AwaitingPlayerCount => _awaitingCount;
+
+        /// <summary> 켜면 인증된 연결이 플레이어 개체를 만들 때까지 시작하지 않고 시간 초과로 끊는다, 서버 부팅이 켠다 </summary>
+        public bool TracksPlayerReadiness { get; set; } = false;
 
         /// <summary> None이 아니면 이 출정은 끝났고 프로세스를 재활용한다 </summary>
         public ESortieTerminalReason TerminalReason => _terminalReason;
@@ -210,6 +232,9 @@ namespace Shinshi.Network
         /// <summary> 접속 임대 이관이 확정 거절된 참가자, 인증된 연결을 끊어야 한다. 메인 스레드에서 통지한다 </summary>
         public event Action<int> ParticipantEvicted;
 
+        /// <summary> 인증 뒤 제한 시간 안에 플레이어 개체가 생기지 않은 참가자, 연결을 끊어야 한다. 메인 스레드에서 통지한다 </summary>
+        public event Action<int> ParticipantLoadTimedOut;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -242,6 +267,7 @@ namespace Shinshi.Network
             _roster            = new ParticipantRoster(config);
             _readyIds          = new string[Constants.Session.MAX_PARTY_SIZE];
             _leases            = new LeaseSlot[Constants.Session.MAX_PARTY_SIZE];
+            _loading           = new LoadingSlot[Constants.Session.MAX_PARTY_SIZE];
             _absentIds         = new int[Constants.Session.MAX_PARTY_SIZE];
             _admittedIds       = new int[Constants.Session.MAX_PARTY_SIZE];
             _admittedClasses   = new EPlayerClass[Constants.Session.MAX_PARTY_SIZE];
@@ -276,9 +302,13 @@ namespace Shinshi.Network
 
             if (_roster.TryGet(participantId, out ParticipantSnapshot existing))
             {
-                return (existing.ConnectionState == EParticipantConnectionState.Departed)
-                    ? ERejectReason.AlreadySettled
-                    : ERejectReason.None;
+                if (existing.ConnectionState == EParticipantConnectionState.Departed)
+                {
+                    return ERejectReason.AlreadySettled;
+                }
+
+                BeginAwaitingPlayer(participantId);
+                return ERejectReason.None;
             }
 
             if ((_roster.IsSealed) || (_session != null) || (_startCommitted))
@@ -306,6 +336,7 @@ namespace Shinshi.Network
             _admittedClasses[_admittedCount] = binding.PlayerClass;
             ++_admittedCount;
             _startDirty = true;
+            BeginAwaitingPlayer(participantId);
             return ERejectReason.None;
         }
 
@@ -415,6 +446,7 @@ namespace Shinshi.Network
             }
 
             _serverTime = serverTime;
+            TickLoadingTimeouts(serverTime);
             if (_session == null)
             {
                 TickLobby(serverTime);
@@ -473,12 +505,24 @@ namespace Shinshi.Network
         /// <summary> 같은 참가자가 캐릭터를 다시 넘겨받았을 때 부른다, 유예가 끝났으면 거짓 </summary>
         public bool OnParticipantAttached(int participantId, double serverTime)
         {
+            EndAwaitingPlayer(participantId, true);
             if (_session == null)
             {
                 return ClearLobbyAbsent(participantId);
             }
 
             return (IsSessionRunning) && (_session.TryReconnect(participantId, serverTime));
+        }
+
+        /// <summary> 인증된 연결이 끊겼을 때 부른다, 플레이어 개체를 만들기 전이면 개체가 없어 전투 쪽 통지가 없으므로 여기서 이탈로 처리한다 </summary>
+        public bool OnConnectionLost(int participantId)
+        {
+            if (!EndAwaitingPlayer(participantId, false))
+            {
+                return false;
+            }
+
+            return OnParticipantDetached(participantId, _serverTime);
         }
 
         /// <summary> 전투가 확정한 생사를 명단에 옮긴다, 유예 중 사망도 같은 축에 기록한다 </summary>
@@ -761,7 +805,7 @@ namespace Shinshi.Network
                     _localStartTime    = serverTime + _config.ReadyCountdownSeconds;
                 }
 
-                if (serverTime >= _localStartTime)
+                if ((serverTime >= _localStartTime) && (_awaitingCount == 0))
                 {
                     CommitStart();
                     BeginSession(serverTime);
@@ -786,7 +830,8 @@ namespace Shinshi.Network
                 return;
             }
 
-            if ((_startRequestId != 0) || (_absentCount > 0))
+            // 인증과 임대 이관이 끝나도 플레이어 개체가 없는 참가자가 있으면 기다린다. 준비되면 _startDirty로 다시 시도한다
+            if ((_startRequestId != 0) || (_absentCount > 0) || (_awaitingCount > 0))
             {
                 return;
             }
@@ -1172,6 +1217,103 @@ namespace Shinshi.Network
             }
 
             _terminalReason = reason;
+        }
+
+        private int IndexOfLoading(int participantId)
+        {
+            for (int i = 0; i < _loadingCount; ++i)
+            {
+                if (_loading[i].ParticipantId == participantId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        // 인증된 연결이 생겼다. 마감 시각은 다음 틱에서 서버 시각으로 정한다
+        private void BeginAwaitingPlayer(int participantId)
+        {
+            if (!TracksPlayerReadiness)
+            {
+                return;
+            }
+
+            int index = IndexOfLoading(participantId);
+            if (index < 0)
+            {
+                if (_loadingCount >= _loading.Length)
+                {
+                    return;
+                }
+
+                index = _loadingCount;
+                ++_loadingCount;
+                _loading[index].ParticipantId = participantId;
+            }
+
+            ref LoadingSlot slot = ref _loading[index];
+            if (!slot.Awaiting)
+            {
+                slot.Awaiting = true;
+                ++_awaitingCount;
+            }
+
+            slot.Deadline = double.NaN;
+        }
+
+        // 로딩 중이던 참가자를 푼다, 로딩 중이 아니었으면 거짓이다. 준비돼서 풀면 시작 조건을 다시 판정하게 한다
+        private bool EndAwaitingPlayer(int participantId, bool ready)
+        {
+            int index = IndexOfLoading(participantId);
+            if ((index < 0) || (!_loading[index].Awaiting))
+            {
+                return false;
+            }
+
+            _loading[index].Awaiting = false;
+            --_awaitingCount;
+            if (ready)
+            {
+                _startDirty = true;
+            }
+
+            return true;
+        }
+
+        // 마감을 넘긴 로딩 참가자의 연결을 끊게 알린다, 끊김이 오면 OnConnectionLost가 정리한다. 마감은 한 번만 알린다
+        private void TickLoadingTimeouts(double serverTime)
+        {
+            if (_awaitingCount == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _loadingCount; ++i)
+            {
+                ref LoadingSlot slot = ref _loading[i];
+                if (!slot.Awaiting)
+                {
+                    continue;
+                }
+
+                if (double.IsNaN(slot.Deadline))
+                {
+                    slot.Deadline = serverTime + Constants.Network.LOADING_TIMEOUT_SECONDS;
+                    continue;
+                }
+
+                if (serverTime < slot.Deadline)
+                {
+                    continue;
+                }
+
+                slot.Deadline = double.PositiveInfinity;
+                _warn?.Invoke($"[Session] 인증 뒤 플레이어 개체가 제한 시간 안에 생기지 않아 연결을 끊는다, session={_sessionId}, " +
+                    $"participantId={slot.ParticipantId}");
+                ParticipantLoadTimedOut?.Invoke(slot.ParticipantId);
+            }
         }
 
         private bool MarkLobbyAbsent(int participantId)
