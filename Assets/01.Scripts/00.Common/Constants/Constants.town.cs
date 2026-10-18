@@ -60,6 +60,18 @@ namespace Shinshi.Common
 
             // 결과를 받지 못한 채집 완료 저장을 같은 operationId로 다시 보내는 간격(초)
             public const double GATHER_RETRY_SECONDS = 2.0;
+
+            // 마을 관심 영역(AOI), 접속자마다 시야 반경 안에서 가까운 순으로 AOI_MAX_VISIBLE_PLAYERS명까지만 보인다.
+            // 본인과 파티원은 반경과 상한에 상관없이 항상 보이고, 상한은 이 둘을 포함한 총원이다.
+            // 셀 크기는 반경 이상이어야 3x3 셀 조회가 반경 전체를 덮는다
+            // TODO(민성): 기획 수치 미정. 시야 반경, 상한, 갱신 주기는 부하 측정 뒤 정한다
+            public const float  AOI_VIEW_RADIUS      = 40f;
+            public const float  AOI_CELL_SIZE        = 40f;
+            public const int    AOI_MAX_VISIBLE      = 30;
+            public const double AOI_REFRESH_SECONDS  = 0.5;
+
+            // 시야 풀이의 후보 정렬 버퍼 초기 용량. 모자라면 두 배로 늘린다
+            public const int    AOI_SOLVER_INITIAL_CANDIDATES = 64;
         }
     }
 }

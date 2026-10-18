@@ -42,7 +42,20 @@ namespace Shinshi.Network
             }
 
             driver.Bind(runtime);
+            InstallInterest(manager, runtime);
             return host;
+        }
+
+        // 서버를 연 뒤 붙여도 된다. 마을에는 씬에서 스폰되는 네트워크 객체가 없고 접속은 이 호출 뒤에 처리된다.
+        // 컴포넌트가 켜질 때 NetworkServer.aoi에 등록되고, 서버를 다시 열어도 같은 컴포넌트를 쓴다
+        private static void InstallInterest(ShinshiNetworkManager manager, TownServerRuntime runtime)
+        {
+            if (!manager.TryGetComponent(out TownInterestManagement interest))
+            {
+                interest = manager.gameObject.AddComponent<TownInterestManagement>();
+            }
+
+            interest.Bind(new TownChatPartyLookup(runtime.Party));
         }
     }
 }
