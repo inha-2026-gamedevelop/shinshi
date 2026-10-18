@@ -321,8 +321,14 @@ namespace Shinshi.Network
             Reply(state.ParticipantId, in message, reason);
         }
 
+        // 조회 응답과 작업 응답이 엇갈려 도착해도 서버가 아는 revision이 뒤로 가지 않게 오래된 스냅숏은 버린다
         private void ApplySnapshot(MemberState state, CharacterGrowthSnapshot snapshot)
         {
+            if ((state.HasRevision) && (snapshot.LoadoutRevision < state.Revision))
+            {
+                return;
+            }
+
             state.Revision    = snapshot.LoadoutRevision;
             state.HasRevision = true;
             _audience.Send(state.ParticipantId, TownSnapshotConverter.ToMessage(snapshot));
