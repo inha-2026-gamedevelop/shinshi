@@ -197,6 +197,86 @@ namespace Shinshi.UI.Editor
             }
         }
 
+        [MenuItem("Shinshi/UI/NPC_Dungeon에 던전 입장 연결")]
+        public static string WireNpcDungeon()
+        {
+            return WireExistingNpc("NPC_Dungeon", "MinimapDevTarget");
+        }
+
+        /// <summary> 열린 씬에 이미 놓인 NPC 오브젝트에 상호작용 트리거와 이름표를 달고 입장 창과 바인더를 연결한다. 씬은 저장하지 않는다 </summary>
+        // 개발 씬에는 네트워크 플레이어가 없어 가까움 판정은 fixedPlayerName의 오브젝트를 대상으로 한다. 접속이 없으면 입장 요청은
+        // 창이 "마을 서버에 접속한 상태에서만"이라고 안내하고 보내지 않는다
+        public static string WireExistingNpc(string npcObjectName, string fixedPlayerName)
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException("Play Mode에서는 씬을 변경하지 않습니다");
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            Transform npc = FindByName(scene, npcObjectName);
+            if (npc == null)
+            {
+                throw new InvalidOperationException("열린 씬에서 " + npcObjectName + "을 찾지 못했습니다");
+            }
+
+            var windowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DungeonEntryWindowBuilder.PREFAB_PATH);
+            if (windowPrefab == null)
+            {
+                throw new InvalidOperationException("입장 창 프리팹이 없습니다: " + DungeonEntryWindowBuilder.PREFAB_PATH);
+            }
+
+            TMP_FontAsset regular = DungeonEntryFonts.Ensure("Regular");
+            TMP_FontAsset bold    = DungeonEntryFonts.Ensure("Bold");
+            DungeonEntryFonts.Preload(regular, bold, new[] { NPC_TITLE, NPC_SUBTITLE, PROMPT_TEXT });
+
+            RemoveWindowObjects(scene);
+            Transform oldLabels = npc.Find("Labels");
+            if (oldLabels != null)
+            {
+                UnityEngine.Object.DestroyImmediate(oldLabels.gameObject);
+            }
+
+            GameObject labels = new GameObject("Labels");
+            labels.transform.SetParent(npc, false);
+            labels.transform.localPosition = new Vector3(0f, MeasureHeight(npc.gameObject) + LABEL_ABOVE_HEAD, 0f);
+            labels.AddComponent<UiWorldBillboard>();
+            MakeWorldLabel(labels.transform, "Nameplate", Vector3.zero,
+                NPC_TITLE + "\n<size=55%><color=#A6BBCB>" + NPC_SUBTITLE + "</color></size>", NAME_FONT_SIZE, G_Gold, bold);
+            GameObject prompt = MakeWorldLabel(labels.transform, "Prompt", new Vector3(0f, PROMPT_OFFSET, 0f), PROMPT_TEXT,
+                PROMPT_FONT_SIZE, G_Mint, bold).gameObject;
+
+            if (!npc.TryGetComponent(out NpcInteractionTrigger trigger))
+            {
+                trigger = npc.gameObject.AddComponent<NpcInteractionTrigger>();
+            }
+
+            var serialized = new SerializedObject(trigger);
+            serialized.FindProperty("_interactDistance").floatValue = INTERACT_RANGE;
+            serialized.FindProperty("_promptRoot").objectReferenceValue = prompt;
+            Transform fixedPlayer = string.IsNullOrEmpty(fixedPlayerName) ? null : FindByName(scene, fixedPlayerName);
+            serialized.FindProperty("_fixedPlayer").objectReferenceValue = fixedPlayer;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            WireWindow(scene, windowPrefab, trigger);
+            EditorSceneManager.MarkSceneDirty(scene);
+            string result = "[UI] " + npcObjectName + "에 던전 입장을 연결했다. 가까움 대상: " + ((fixedPlayer != null) ? fixedPlayer.name : "내 플레이어");
+            Debug.Log(result);
+            return result;
+        }
+
+        // NPC는 남기고 입장 창 캔버스와 바인더만 지운다
+        private static void RemoveWindowObjects(Scene scene)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if ((root.name == CANVAS_NAME) || (root.name == BINDER_NAME))
+                {
+                    UnityEngine.Object.DestroyImmediate(root);
+                }
+            }
+        }
+
         private static void WireWindow(Scene scene, GameObject windowPrefab, NpcInteractionTrigger trigger)
         {
             // 캐릭터 상세창의 캔버스 설정을 그대로 따른다. 같은 씬의 다른 창과 배율, 입력 처리가 달라지지 않게 한다
