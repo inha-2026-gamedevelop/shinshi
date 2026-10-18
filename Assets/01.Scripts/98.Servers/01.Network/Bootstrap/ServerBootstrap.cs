@@ -274,6 +274,13 @@ namespace Shinshi.Network
             {
                 dungeonHost.ParticipantEvicted -= authenticator.DisconnectParticipant;
                 dungeonHost.ParticipantEvicted += authenticator.DisconnectParticipant;
+
+                // 인증된 연결이 플레이어 개체를 만들 때까지 출정을 시작하지 않는다. 오래 걸리면 끊고, 개체 없이 끊기면 이탈로 정리한다
+                dungeonHost.TracksPlayerReadiness = true;
+                dungeonHost.ParticipantLoadTimedOut -= authenticator.DisconnectParticipant;
+                dungeonHost.ParticipantLoadTimedOut += authenticator.DisconnectParticipant;
+                manager.ServerDisconnected -= HandleDungeonConnectionLost;
+                manager.ServerDisconnected += HandleDungeonConnectionLost;
             }
 
             portTransport.Port = config.Port;
@@ -447,6 +454,16 @@ namespace Shinshi.Network
 
             // 보스 ID가 지정된 프리팹(BossState.PrefabBossId)이 등록돼 있으면 그 보스는 그 프리팹으로 스폰한다
             CombatServerInstaller.Runtime.EnableBossObjects(new BossNetworkSpawner(prefab, manager.spawnPrefabs));
+        }
+
+        // 인증기 정리(구독 순서상 먼저) 뒤에 부른다. 경매 전용 재입장은 명단 참가 집합과 무관하다
+        private static void HandleDungeonConnectionLost(NetworkConnectionToClient connection)
+        {
+            if ((DungeonHost != null) && (connection != null) && (connection.authenticationData is SessionBinding binding)
+                && (!binding.IsAuctionOnly))
+            {
+                DungeonHost.OnConnectionLost(binding.ParticipantId);
+            }
         }
 
         private static ShinshiServerAuthenticator InstallAuthenticator(ShinshiNetworkManager manager, ServerSessionRegistry sessions,
