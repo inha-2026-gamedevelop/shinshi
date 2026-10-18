@@ -38,7 +38,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int    DUNGEON_PORT     = 7781;
         private const int    STALE_SECONDS    = 20;
         private const int    NEAR_EXPIRY      = 2;
-        private const string CONTENT          = "0.1.3";
+        private const string CONTENT          = "0.1.4";
         private const int    PURGE_LIMIT      = 100;
 
         /****************************************

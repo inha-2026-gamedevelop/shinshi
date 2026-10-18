@@ -30,7 +30,7 @@ namespace Shinshi.Backend.Tests.Admin
 
         private const string ADMIN_NAME     = "replay.admin";
         private const string REASON         = "reservation replay check";
-        private const string CONTENT        = "0.1.3";
+        private const string CONTENT        = "0.1.4";
         private const int    TOWN_PORT      = 7777;
         private const int    DUNGEON_PORT   = 7780;
         private const int    LEASE_MINUTES  = 15;

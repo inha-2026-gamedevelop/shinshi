@@ -33,7 +33,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int    SERVER_MINUTES = 15;
         private const int    TOWN_PORT      = 7777;
         private const int    DUNGEON_PORT   = 7780;
-        private const string CONTENT        = "0.1.3";
+        private const string CONTENT        = "0.1.4";
         private const string BOSS_ID        = "boss_wolbaek";
         private const string REGION_FOREST  = "region_forest";
         private const long   SEED_TICKETS   = 3;

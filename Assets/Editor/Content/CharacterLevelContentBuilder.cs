@@ -19,7 +19,7 @@ namespace Shinshi.Editor
         /****************************************
         *                Fields
         ****************************************/
-        public const string CONTENT_VERSION = "0.1.3";
+        public const string CONTENT_VERSION = "0.1.4";
         public const string ASSET_PATH = "Assets/09.Data/Growth/CharacterLevelConfig.asset";
 
         [MenuItem("Shinshi/Build Character Level Content")]

@@ -45,7 +45,7 @@ param(
     [string] $DungeonCount = '4',
     [string] $DungeonPort = '7780',
     [string] $DatabasePort = '55440',
-    [string] $ContentVersion = '0.1.0',
+    [string] $ContentVersion = '0.1.4',
     [switch] $Stop,
     [switch] $RemoveDatabase,
     [string] $StateDirectory = ''

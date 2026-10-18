@@ -29,7 +29,7 @@ namespace Shinshi.Backend.Tests.Sessions
         *                Fields
         ****************************************/
 
-        public const string CONTENT_VERSION = "0.1.3";
+        public const string CONTENT_VERSION = "0.1.4";
         public const string POTION_ID       = "potion-small";
         public const string BINDING         = SettlementSanityLimits.ACCOUNT_BINDING_KIND;
         public const string MAP_ID          = "region_forest";

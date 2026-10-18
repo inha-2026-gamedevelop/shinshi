@@ -35,7 +35,7 @@ namespace Shinshi.Backend.Tests.Auth
         private const int SERVER_MINUTES = 15;
         private const int TOWN_PORT = 7777;
         private const int DUNGEON_PORT = 7780;
-        private const string CONTENT = "0.1.3";
+        private const string CONTENT = "0.1.4";
         private const string BATTLE_ID = "battle_forest_1";
         private const long POTIONS_OWNED = 5;
         private const long POTIONS_CARRIED = 3;

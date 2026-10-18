@@ -23,7 +23,7 @@ passed to the server as a file path only.
 
 Stop with Start-ReleaseStack.ps1 -Stop (it stops this watcher first, then every dungeon process).
 .EXAMPLE
-.\tools\Watch-ReleaseDungeons.ps1 -StateDirectory "$env:LOCALAPPDATA\Shinshi\release-stack" -ServerExecutable .\Builds\windows-server\Shinshi.exe -ContentVersion 0.1.3
+.\tools\Watch-ReleaseDungeons.ps1 -StateDirectory "$env:LOCALAPPDATA\Shinshi\release-stack" -ServerExecutable .\Builds\windows-server\Shinshi.exe -ContentVersion 0.1.4
 #>
 [CmdletBinding()]
 param(
@@ -32,7 +32,7 @@ param(
     [string] $DungeonCount = '4',
     [string] $FirstPort = '7780',
     [string] $ApiBaseUrl = 'http://127.0.0.1:5080',
-    [string] $ContentVersion = '0.1.0',
+    [string] $ContentVersion = '0.1.4',
     [string] $PublicAddress = '127.0.0.1',
     [string] $PollSeconds = '2',
     [string] $KeepLogs = '5'

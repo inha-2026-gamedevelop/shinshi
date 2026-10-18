@@ -26,7 +26,7 @@ namespace Shinshi.Backend.Tests.Sessions
         *                Fields
         ****************************************/
 
-        private const string CONTENT        = "0.1.3";
+        private const string CONTENT        = "0.1.4";
         private const int    TOWN_PORT      = 7777;
         private const int    SERVER_MINUTES = 15;
         private const string BOOT_ID        = "11111111-2222-3333-4444-555555555555";
