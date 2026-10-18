@@ -11,5 +11,10 @@ namespace Shinshi.Network
 
         // 이 서버 프로세스에 인증된 모든 참가자
         void SendToAll<T>(T message) where T : struct, NetworkMessage;
+
+        // 참가자의 연결이 끊겼다, 연결을 캐시하는 구현이 비운다
+        void Forget(int participantId)
+        {
+        }
     }
 }

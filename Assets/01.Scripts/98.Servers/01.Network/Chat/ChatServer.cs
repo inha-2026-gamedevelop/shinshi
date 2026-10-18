@@ -27,6 +27,9 @@ namespace Shinshi.Network
         private readonly Dictionary<int, Sender> _senders;
         private readonly List<int>               _partyBuffer;
 
+        private double _broadcastWindowStart = double.NegativeInfinity;
+        private int    _broadcastCount       = 0;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -100,6 +103,12 @@ namespace Shinshi.Network
             var broadcast = new ChatBroadcastMessage(message.Channel, ChatRules.NormalizeSender(characterName, participantId), text);
             if ((message.Channel == EChatChannel.All) || (_party == null))
             {
+                // 발신자별 제한을 지켜도 접속자가 많으면 방송 수가 곱으로 늘어 서버 전체 초당 상한을 둔다
+                if (!TryAcquireBroadcast(now))
+                {
+                    return Reject(participantId, sender, now, EChatReject.RateLimited);
+                }
+
                 _audience.SendToAll(broadcast);
                 _log?.Accepted(participantId, apiParticipantId, characterId, message.Channel, broadcast.Sender, text);
                 return EChatReject.None;
@@ -178,6 +187,7 @@ namespace Shinshi.Network
         public void Forget(int participantId)
         {
             _senders.Remove(participantId);
+            _audience.Forget(participantId);
             _social?.Forget(participantId);
         }
 
@@ -185,6 +195,24 @@ namespace Shinshi.Network
         {
             EChatReject reason = _social.Submit(participantId, in line);
             return (reason == EChatReject.None) ? EChatReject.None : Reject(participantId, sender, now, reason);
+        }
+
+        // 고정 창 계수기. 창이 지나면 처음부터 센다
+        private bool TryAcquireBroadcast(double now)
+        {
+            if (((now - _broadcastWindowStart) >= Constants.Chat.BROADCAST_WINDOW_SECONDS) || (now < _broadcastWindowStart))
+            {
+                _broadcastWindowStart = now;
+                _broadcastCount       = 0;
+            }
+
+            if (_broadcastCount >= Constants.Chat.BROADCASTS_PER_WINDOW)
+            {
+                return false;
+            }
+
+            ++_broadcastCount;
+            return true;
         }
 
         private Sender GetOrCreate(int participantId)

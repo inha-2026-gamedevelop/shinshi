@@ -19,6 +19,10 @@ namespace Shinshi.Common
             public const int    MESSAGES_PER_WINDOW = 1;
             public const double SEND_WINDOW_SECONDS = 1.0;
 
+            // 서버 전체가 창 하나에 방송할 수 있는 전체 채팅 수와 창 길이(초). 넘으면 발신자에게 RateLimited로 거절한다
+            public const int    BROADCASTS_PER_WINDOW   = 20;
+            public const double BROADCAST_WINDOW_SECONDS = 1.0;
+
             // 거절 안내를 다시 보내기까지 최소 간격(초), 변조 클라이언트가 안내를 폭주시키지 못하게 한다
             public const double REJECT_NOTICE_INTERVAL_SECONDS = 1.0;
 
