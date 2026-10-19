@@ -39,6 +39,8 @@ namespace Shinshi.Tests
         public CombatTargetRegistry Registry { get; }
         public DamageResolver       Resolver { get; }
         public List<PlayerServer>   Players  { get; } = new List<PlayerServer>();
+        public List<PlayerCombatState> Combats { get; } = new List<PlayerCombatState>();
+        public PlayerConfigSO       Config   => _config;
 
         /****************************************
         *                Methods
@@ -59,7 +61,7 @@ namespace Shinshi.Tests
         }
 
         /// <summary> 플레이어를 하나 만들어 목록에 더한다, 전투 번호는 등록부가 발급한다 </summary>
-        public PlayerServer Add(int participantId, Vector3 position)
+        public PlayerServer Add(int participantId, Vector3 position, EPlayerClass playerClass = EPlayerClass.Warrior)
         {
             var owner = new GameObject($"PlayerServerTestRig{participantId}", typeof(NetworkIdentity));
             owner.transform.position = position;
@@ -73,9 +75,10 @@ namespace Shinshi.Tests
             property.SetValue(combat, identity);
 
             CharacterStats stats  = CharacterStatsRules.Base(_config, _levels.ToSettings(), BASE_ATTACK);
-            var            player = new PlayerServer(input, combat, EPlayerClass.Warrior, Registry.IssueCombatId(), participantId,
+            var            player = new PlayerServer(input, combat, playerClass, Registry.IssueCombatId(), participantId,
                 SESSION_EPOCH, _config, in stats, Resolver, Registry, new CombatLineOfSight(0, 1f), 0.0);
             Players.Add(player);
+            Combats.Add(combat);
             return player;
         }
 

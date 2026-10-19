@@ -52,8 +52,10 @@ namespace Shinshi.Combat
         private float             _targetRadius = 0f;
 
         // 확정, 취소에 쓴 클릭이 손을 뗄 때까지 공격, 이동으로 이어지지 않게 막는다
-        private bool _suppressAttack = false;
-        private bool _suppressMove   = false;
+        // 공격은 서버 수락과 동작 종료까지 보는 상태기가 막고, 궁수 R만 손을 떼지 않아도 이어서 보낸다
+        private AttackSuppressionGate _attackGate;
+        private bool                  _isAttackSuppressed = false;
+        private bool                  _suppressMove       = false;
 
         // 마지막으로 보낸 기술 요청. 서버 결과의 순번이 같을 때만 어떤 기술이 거절됐는지 알린다
         private bool              _hasSentSkill      = false;
@@ -96,6 +98,8 @@ namespace Shinshi.Combat
         private void OnDisable()
         {
             CancelTargeting();
+            _attackGate.Reset();
+            _isAttackSuppressed = false;
             if (_input == null)
             {
                 return;
@@ -110,12 +114,14 @@ namespace Shinshi.Combat
             if ((_input == null) || (_combat == null) || (!_input.isOwned))
             {
                 CancelTargeting();
+                ResetAttackSuppression();
                 return;
             }
 
             if (_combat.LifeState != EParticipantLifeState.Alive)
             {
                 CancelTargeting();
+                ResetAttackSuppression();
                 return;
             }
 
@@ -167,7 +173,7 @@ namespace Shinshi.Combat
             }
 
             bool attackDown = Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK);
-            bool attackHeld = (!_suppressAttack) && (Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK));
+            bool attackHeld = (!_isAttackSuppressed) && (Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK));
             bool moveDown   = Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_MOVE);
             bool moveHeld   = (!_suppressMove) && (Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_MOVE));
             if ((!attackHeld) && (!moveHeld))
@@ -210,6 +216,13 @@ namespace Shinshi.Combat
         // 누르고 있으면 공격 간격마다 다시 보낸다. 매 프레임 보내면 쿨다운 거절만 오간다
         private void HandleAttack(Vector3 point, bool isNewPress)
         {
+            // 서버는 기술 동작 중 공격을 거절만 하고 보관하지 않는다. 보내면 간격만 소모하므로 끝난 뒤 첫 프레임에 보낸다
+            // 무사 반격창의 평타 취소처럼 다른 직업은 기술 동작 중 평타를 서버가 처리하므로 궁수에만 적용한다
+            if ((_combat.PlayerClass == EPlayerClass.Archer) && (_combat.SkillPhase != ESkillPhase.Idle))
+            {
+                return;
+            }
+
             double now = Time.unscaledTimeAsDouble;
             if ((!isNewPress) && (now < _nextAttackRequestTime))
             {
@@ -393,17 +406,21 @@ namespace Shinshi.Combat
                 return;
             }
 
+            _attackGate.Begin(AttackSuppressionGate.ResumesAfterSkill(_combat.PlayerClass, _targetKind, _targetSlot));
             _input.RequestSkill(_targetKind, _targetSlot, point, point - origin);
             CancelTargeting();
-            _suppressAttack = true;
+        }
+
+        private void ResetAttackSuppression()
+        {
+            _attackGate.Reset();
+            _isAttackSuppressed = false;
         }
 
         private void ReleaseSuppressedButtons()
         {
-            if ((_suppressAttack) && (!Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK)))
-            {
-                _suppressAttack = false;
-            }
+            _isAttackSuppressed = _attackGate.Update(Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK), _combat.SkillPhase,
+                Time.unscaledTimeAsDouble);
 
             if ((_suppressMove) && (!Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_MOVE)))
             {
@@ -413,15 +430,22 @@ namespace Shinshi.Combat
 
         private void OnSkillSent(uint sequence, ESkillRequestKind kind, byte slot)
         {
+            _attackGate.OnSkillSent(sequence);
             _hasSentSkill      = true;
             _lastSkillSequence = sequence;
             _lastSkillKind     = kind;
             _lastSkillSlot     = slot;
+
+            // 서버는 기술을 시전하면 콤보를 끊고 보관한 공격을 버린다. 예측도 처음부터 다시 잡는다
+            _predictedComboStep    = BasicAttackComboRules.NO_STEP;
+            _predictedReadyTime    = 0.0;
+            _nextAttackRequestTime = 0.0;
         }
 
         // 거절은 드물어서 이때만 문자열을 만든다
         private void OnSkillResult(uint sequence, int castInstanceId, ERejectReason reason)
         {
+            _attackGate.OnSkillResult(sequence, reason, Time.unscaledTimeAsDouble);
             if (reason == ERejectReason.None)
             {
                 return;

@@ -54,9 +54,10 @@ namespace Shinshi.UI
 
         // 하단 HUD 글꼴(LiberationSans)에는 한글이 없어 경험치 표시처럼 영문으로 쓴다
         private const string HUD_STACK_FORMAT          = "STACK {0} / {1}";
-        private const string HUD_ELEMENT_FORMAT        = "{0}  STACK {1} / {2}";
+        // 궁수 스택은 속성과 무관한 총합이라 속성 이름과 떼어 "총 스택"으로 적는다
+        private const string HUD_ELEMENT_FORMAT        = "{0}  TOTAL STACK {1} / {2}";
         private const string NAMEPLATE_STACK_FORMAT    = "스택 {0}/{1}";
-        private const string NAMEPLATE_ELEMENT_FORMAT  = "{0} 스택 {1}/{2}";
+        private const string NAMEPLATE_ELEMENT_FORMAT  = "{0} 총 스택 {1}/{2}";
 
         private const string HUD_ICE        = "ICE";
         private const string HUD_WIND       = "WIND";

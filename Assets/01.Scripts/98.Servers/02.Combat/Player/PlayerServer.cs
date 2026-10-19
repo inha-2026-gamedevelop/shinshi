@@ -29,6 +29,23 @@ namespace Shinshi.Combat
         // 서버 시각은 0 이상이라 음수가 부활한 적 없음의 표식이다
         public const double NO_REVIVE_TIME = -1.0;
 
+        // 날아가는 화살 동시 상한. 궁수 사거리 10, 속도 24면 비행 0.42초이고 발사 간격은 0.35초 아래로 내려가지 않아 실제로는 2발이면 충분하다
+        private const int MAX_ARROWS = 8;
+
+        // 날아가는 기본 공격 화살 한 발의 상태. 발사 때의 속성과 피해를 화살마다 들고 간다
+        private struct ArrowState
+        {
+            public Vector3        Origin;
+            public Vector3        Aim;
+            public float          Travelled;
+            public double         LastTime;
+            public int            CastId;
+            public int            ActionId;
+            public float          Damage;
+            public float          Speed;
+            public EArcherElement Element;
+        }
+
         /****************************************
         *                Fields
         ****************************************/
@@ -79,16 +96,8 @@ namespace Shinshi.Combat
         private int                   _comboStep           = BasicAttackComboRules.NO_STEP;
         private double                _comboImmuneUntil    = 0.0;
         private double                _grantedImmuneUntil  = 0.0;
-        private bool                  _arrowActive         = false;
-        private Vector3               _arrowOrigin         = Vector3.zero;
-        private Vector3               _arrowAim            = Vector3.forward;
-        private float                 _arrowTravelled      = 0f;
-        private double                _arrowLastTime       = 0.0;
-        private int                   _arrowCastId         = CombatIds.NONE;
-        private int                   _arrowActionId       = CombatIds.NONE;
-        private float                 _arrowDamage         = 0f;
-        private float                 _arrowSpeed          = 0f;
-        private EArcherElement        _arrowElement        = EArcherElement.None;
+        private readonly ArrowState[] _arrows              = new ArrowState[MAX_ARROWS];
+        private int                   _arrowCount          = 0;
         private readonly float        _dodgeDistance;
         private readonly float        _dodgeDuration;
         private readonly double       _dodgeCooldown;
@@ -316,7 +325,7 @@ namespace Shinshi.Combat
             _hasPendingMove      = false;
             _hasPendingAttack    = false;
             _isWindingUp         = false;
-            _arrowActive         = false;
+            _arrowCount          = 0;
             _hasPendingSkill     = false;
             _hasPendingDodge     = false;
             _isDodging           = false;
@@ -1021,25 +1030,36 @@ namespace Shinshi.Combat
         // 날아가는 기본 공격 화살. 이미 나간 화살은 시전자가 회피하거나 죽어도 사거리까지 이어 간다
         private void TickArrow(double serverTime)
         {
-            if (!_arrowActive)
+            // 뒤에서부터 돌며 끝난 화살은 마지막 화살로 메운다. 발사 순서는 판정에 영향이 없다
+            for (int i = _arrowCount - 1; i >= 0; --i)
             {
-                return;
-            }
+                if (TickOneArrow(ref _arrows[i], serverTime))
+                {
+                    continue;
+                }
 
-            float distance = Mathf.Min(_attack.Range - _arrowTravelled,
-                _arrowSpeed * (float)System.Math.Max(0.0, serverTime - _arrowLastTime));
-            float clear     = _lineOfSight.GetClearDistance(_arrowOrigin, _arrowAim, distance);
+                --_arrowCount;
+                _arrows[i] = _arrows[_arrowCount];
+            }
+        }
+
+        // 화살이 계속 날아가면 참, 맞았거나 벽이나 사거리에서 끝났으면 거짓이다
+        private bool TickOneArrow(ref ArrowState arrow, double serverTime)
+        {
+            float distance = Mathf.Min(_attack.Range - arrow.Travelled,
+                arrow.Speed * (float)System.Math.Max(0.0, serverTime - arrow.LastTime));
+            float clear     = _lineOfSight.GetClearDistance(arrow.Origin, arrow.Aim, distance);
             float halfWidth = _attack.ProjectileWidth * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
             bool  wallCut   = clear < distance;
 
             int   hitIndex = -1;
             float hitAlong = float.MaxValue;
-            int   count    = _query.GetLivingInRadius(_arrowOrigin, clear + halfWidth, ECombatFaction.Enemy, true, _targetBuffer);
+            int   count    = _query.GetLivingInRadius(arrow.Origin, clear + halfWidth, ECombatFaction.Enemy, true, _targetBuffer);
             for (int i = 0; i < count; ++i)
             {
                 Vector3 position = _targetBuffer[i].Position;
-                if ((!BasicAttackRules.TryProjectOnRay(_arrowOrigin, _arrowAim, position, clear, halfWidth, out float along))
-                    || (!BasicAttackRules.IsWithinHeight(_arrowOrigin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE)))
+                if ((!BasicAttackRules.TryProjectOnRay(arrow.Origin, arrow.Aim, position, clear, halfWidth, out float along))
+                    || (!BasicAttackRules.IsWithinHeight(arrow.Origin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE)))
                 {
                     continue;
                 }
@@ -1057,34 +1077,33 @@ namespace Shinshi.Combat
                 }
             }
 
+            bool alive;
             if (hitIndex >= 0)
             {
                 ICombatTarget target  = _targetBuffer[hitIndex];
-                var           request = new DamageRequest(_combatId, target.CombatId, _arrowCastId, _arrowActionId, _arrowDamage,
-                    EDamageFlags.None, _arrowOrigin, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+                var           request = new DamageRequest(_combatId, target.CombatId, arrow.CastId, arrow.ActionId, arrow.Damage,
+                    EDamageFlags.None, arrow.Origin, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
                 DamageResult result = _resolver.Apply(in request);
-                _arrowActive = false;
+                alive = false;
 
                 // 속성 스택과 화상, 둔화는 화살이 나갈 때의 속성으로 판정한다. 날아가는 중에 속성을 바꿔도 이 화살은 그대로다
-                _skills?.OnArrowHit(_arrowElement, target, in result, serverTime);
+                _skills?.OnArrowHit(arrow.Element, target, in result, serverTime);
                 if (result.CountsAsHit)
                 {
-                    _combat.BumpArrowHit(target.Position, _arrowElement);
+                    _combat.BumpArrowHit(target.Position, arrow.Element);
                 }
             }
             else
             {
-                _arrowOrigin    += _arrowAim * clear;
-                _arrowTravelled += clear;
-                _arrowLastTime   = serverTime;
-                if ((wallCut) || (_arrowTravelled >= _attack.Range))
-                {
-                    _arrowActive = false;
-                }
+                arrow.Origin    += arrow.Aim * clear;
+                arrow.Travelled += clear;
+                arrow.LastTime   = serverTime;
+                alive = (!wallCut) && (arrow.Travelled < _attack.Range);
             }
 
             // 반환된 참조는 이번 틱에만 쓴다
             _targetBuffer.Clear();
+            return alive;
         }
 
         // 이번 틱의 위치를 회피가 정했으면 참이다. 경로 이동과 기술의 이동 막기는 이 틱에 보지 않는다
@@ -1238,16 +1257,25 @@ namespace Shinshi.Combat
 
             if ((isRanged) && (_attack.ProjectileSpeed > 0f))
             {
-                _arrowActive    = true;
-                _arrowOrigin    = origin;
-                _arrowAim       = aim;
-                _arrowTravelled = 0f;
-                _arrowLastTime  = serverTime;
-                _arrowCastId    = _resolver.IssueInstanceId();
-                _arrowActionId  = _resolver.IssueInstanceId();
-                _arrowDamage    = _attackPower * coefficient;
-                _arrowElement   = (_skills != null) ? _skills.ArcherElement : EArcherElement.None;
-                _arrowSpeed     = _attack.ProjectileSpeed * ((_skills != null) ? _skills.BasicProjectileSpeedScale : 1f);
+                // 상한이 꽉 차는 일은 설정상 없다. 그래도 차면 가장 오래된 화살(0번)을 밀어내 배열을 넘지 않게 한다
+                if (_arrowCount >= MAX_ARROWS)
+                {
+                    _arrows[0] = _arrows[MAX_ARROWS - 1];
+                    --_arrowCount;
+                }
+
+                _arrows[_arrowCount++] = new ArrowState
+                {
+                    Origin    = origin,
+                    Aim       = aim,
+                    Travelled = 0f,
+                    LastTime  = serverTime,
+                    CastId    = _resolver.IssueInstanceId(),
+                    ActionId  = _resolver.IssueInstanceId(),
+                    Damage    = _attackPower * coefficient,
+                    Element   = (_skills != null) ? _skills.ArcherElement : EArcherElement.None,
+                    Speed     = _attack.ProjectileSpeed * ((_skills != null) ? _skills.BasicProjectileSpeedScale : 1f)
+                };
                 return;
             }
 
