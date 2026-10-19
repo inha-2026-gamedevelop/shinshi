@@ -4,6 +4,7 @@
     "references": [
         "Shinshi.Runtime",
         "Shinshi.Art.SkirtRig",
+        "Shinshi.AI.SkirtRig",
         "Unity.Animation.Rigging"
     ],
     "includePlatforms": [
