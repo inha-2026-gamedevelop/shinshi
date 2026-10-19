@@ -50,8 +50,7 @@ namespace Shinshi.Dev
 
         [Header("데이터 덮어쓰기 (이 시험 씬의 메모리에서만, 0이면 그대로)")]
         // 릴리즈 데이터 파일은 바꾸지 않고 실행 중에만 값을 바꿨다가 종료할 때 되돌린다
-        [SerializeField, Min(0f)] private float _skillWRange = 14f;
-        [SerializeField, Min(0f)] private float _skillWWidth = 3.5f;
+        [SerializeField, Min(0f)] private float _skillWRange = 0f;
 
         [Header("W 검파 타격감")]
         // 검파 타격을 강한 연출(흔들림, 경직, 불똥)로 낼지. 스택이 적은 약한 피해도 화면 흔들림이 보이게 한다
@@ -109,6 +108,8 @@ namespace Shinshi.Dev
         public bool AllowsCombat => true;
 
         public PlayerServer Server => _server;
+
+        public EPlayerClass PlayerClass => _playerClass;
 
         /****************************************
         *              Unity Event
@@ -433,7 +434,6 @@ namespace Shinshi.Dev
             }
 
             OverrideAreaField(skill.Area, "_castRange", _skillWRange);
-            OverrideAreaField(skill.Area, "_width", _skillWWidth);
         }
 
         private void OverrideAreaField(SkillCatalogSO.SkillArea area, string fieldName, float value)
