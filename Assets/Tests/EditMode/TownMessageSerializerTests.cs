@@ -73,6 +73,45 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void PartyRequest_RoundTrip_KeepsRequestId()
+        {
+            var source = new PartyRequestMessage(EPartyAction.Invite, 0, EPartyMode.Normal, null, "target", null, false, 0, 0, 4000000000u);
+            var writer = new NetworkWriter();
+            writer.WritePartyRequestMessage(source);
+            var reader = new NetworkReader(writer.ToArraySegment());
+            PartyRequestMessage read = reader.ReadPartyRequestMessage();
+
+            Assert.AreEqual(4000000000u, read.RequestId);
+            Assert.AreEqual(0, reader.Remaining);
+        }
+
+        [Test]
+        public void PartyResult_RoundTrip_KeepsRequestIdAndReason()
+        {
+            var source = new PartyResultMessage(EPartyAction.Invite, ERejectReason.InvalidTarget, 123456u);
+            var writer = new NetworkWriter();
+            writer.WritePartyResultMessage(source);
+            var reader = new NetworkReader(writer.ToArraySegment());
+            PartyResultMessage read = reader.ReadPartyResultMessage();
+
+            Assert.AreEqual(EPartyAction.Invite, read.Action);
+            Assert.AreEqual(ERejectReason.InvalidTarget, read.Reason);
+            Assert.AreEqual(123456u, read.RequestId);
+            Assert.AreEqual(0, reader.Remaining);
+        }
+
+        [Test]
+        public void PartyResult_RoundTripWithoutRequestId_StaysZero()
+        {
+            var writer = new NetworkWriter();
+            writer.WritePartyResultMessage(new PartyResultMessage(EPartyAction.JoinRoom, ERejectReason.RoomNotFound));
+            var reader = new NetworkReader(writer.ToArraySegment());
+
+            Assert.AreEqual(0u, reader.ReadPartyResultMessage().RequestId);
+            Assert.AreEqual(0, reader.Remaining);
+        }
+
+        [Test]
         public void PartyRoomState_RoundTrip_KeepsMembersAndPhase()
         {
             var members = new[]

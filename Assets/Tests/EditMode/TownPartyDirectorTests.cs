@@ -360,6 +360,55 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, room.Count);
         }
 
+        [Test]
+        public void Invite_WithRequestId_EchoesIdInAcceptedResult()
+        {
+            CreateBossRoom();
+
+            Send(_memberA, new PartyRequestMessage(EPartyAction.Invite, 0, EPartyMode.Normal, null, NAME_B, null, false, 0, 0, 7u));
+
+            Assert.IsTrue(_audience.TryGetLast(PARTICIPANT_A, out PartyResultMessage result));
+            Assert.AreEqual(EPartyAction.Invite, result.Action);
+            Assert.IsTrue(result.IsAccepted);
+            Assert.AreEqual(7u, result.RequestId);
+        }
+
+        [Test]
+        public void Invite_WithRequestId_EchoesIdInRejectedResult()
+        {
+            CreateBossRoom();
+
+            Send(_memberA, new PartyRequestMessage(EPartyAction.Invite, 0, EPartyMode.Normal, null, "없는캐릭터", null, false, 0, 0, 9u));
+
+            Assert.IsTrue(_audience.TryGetLast(PARTICIPANT_A, out PartyResultMessage result));
+            Assert.AreEqual(ERejectReason.InvalidTarget, result.Reason);
+            Assert.AreEqual(9u, result.RequestId);
+        }
+
+        [Test]
+        public void Invite_TwoRequestsInOrder_EachResultKeepsItsOwnId()
+        {
+            CreateBossRoom();
+
+            Send(_memberA, new PartyRequestMessage(EPartyAction.Invite, 0, EPartyMode.Normal, null, NAME_B, null, false, 0, 0, 1u));
+            Send(_memberA, new PartyRequestMessage(EPartyAction.Invite, 0, EPartyMode.Normal, null, "없는캐릭터", null, false, 0, 0, 2u));
+
+            Assert.IsTrue(_audience.TryGetLast(PARTICIPANT_A, out PartyResultMessage last));
+            Assert.AreEqual(2u, last.RequestId);
+            Assert.AreEqual(ERejectReason.InvalidTarget, last.Reason);
+        }
+
+        [Test]
+        public void Invite_WithoutRequestId_ResultIdIsZero()
+        {
+            CreateBossRoom();
+
+            Send(_memberA, Invite(NAME_B));
+
+            Assert.IsTrue(_audience.TryGetLast(PARTICIPANT_A, out PartyResultMessage result));
+            Assert.AreEqual(0u, result.RequestId);
+        }
+
         /****************************************
         *               Helpers
         ****************************************/

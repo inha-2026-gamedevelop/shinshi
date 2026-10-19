@@ -259,6 +259,7 @@ Assets/01.Scripts/
   - 부활: 색 결계 타격 중에는 횟수를 쓰지 않고 미룬다. 최후의 영역이 지점을 맡으면 그 지점으로 되살리고, 줄 지점이 없으면 횟수를 쓰지 않고 미룬다(기존 지점 선택으로 되돌아가지 않는다).
   - 스위치(2026-10-18 변경): **기본은 켬**이다. 기믹 사건의 Net 복제(`BossState`)와 클라이언트 표시(`BossNetworkViewBinder`)가 연결돼 있다. 끄려면 던전 서버 환경 변수 `BOSS_GIMMICKS=0` 또는 실행 인자 `-no-boss-gimmicks`(값 없음)를 준다. 끄면 상한 없음, 즉시 사망, 결계 전개의 기존 동작 그대로다. 월백(`boss_wolbaek`)에만 붙고, 묶음을 만들지 못하면 오류 로그를 남기고 기믹 없이 연다.
   - 2페이즈 전환 컷신 구간(2026-10-18): 결계를 대신하는 기믹 묶음이 붙은 보스는 50% 전환 틱에 9.6초 구간(`BossServer.Phase2Transition*`, 클라이언트 Timeline `TL_WolbaekPhase2Transition_Combat` 길이와 같음)을 열고, 그동안 무적이며 인계를 미룬다. 구간은 `BossState` SyncVar(번호, 서버 시작·종료 시각)로 복제하고 `BossNetworkViewBinder`가 `PF_NetWolbaekBoss`의 `WolbaekPhase2TransitionPlayer`로 재생한다. 늦은 접속은 스폰 상태로 중간부터 재생한다. 프로토콜 14.
+  - 현행 프로토콜(2026-10-19): 파티 요청·결과 메시지 끝에 요청 ID(`RequestId`)를 더해 wire가 바뀌었으므로 프로토콜 버전은 15. 서버와 클라이언트는 같은 빌드를 쓴다.
 - 보스가 내는 피해는 `BossDamageScaler`가 시작 인원 피해 배율을 `RawDamage`에 곱해 `SkillDamageResolver`에 넘긴다. 번호·위치는 바꾸지 않아 반격 방어와 중복 적중 판정이 유지된다.
 - 보스와 전장 지역은 출정 계약에 없다. 보스 ID는 던전 서버 실행 설정 `-boss-id`(`BOSS_ID`, 기본 `Constants.Combat.DEV_BOSS_ID` = `boss_wolbaek`) 한곳에서 정한다. `ServerBootstrap`이 `ServerLaunchConfig.TryReadBossId`로 읽고 보스 카탈로그에 없는 ID면 서버를 시작하지 않으며, 같은 값을 `CombatServerRuntime.ConfigureBoss`(보스 생성·로그)와 보스 경매 보상 표 조회에 넘긴다. 전장 지역은 `DEV_BOSS_REGION_ID`(`region_forest`, 체험판 Aref·Href)다. 정의가 없거나 `IsTuned`가 거짓이면 오류 로그 뒤 보스 없이 진행하며 개발 빌드는 `TryCompleteBossForDevelopment`로 끝낸다. 에디터 역할 실행은 실행 인자를 쓰지 않아 환경 변수가 없으면 기본 보스다. 보스 몸체 반경은 임시값 `BOSS_BODY_RADIUS`다.
 

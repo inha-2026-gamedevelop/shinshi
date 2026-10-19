@@ -120,7 +120,7 @@ namespace Shinshi.Network
             }
 
             ERejectReason reason = Dispatch(member, in message);
-            _audience.Send(member.ParticipantId, new PartyResultMessage(message.Action, reason));
+            _audience.Send(member.ParticipantId, new PartyResultMessage(message.Action, reason, message.RequestId));
         }
 
         /// <summary> 매 프레임 부른다. 초대 만료, 카운트다운 끝, 대기열 재예약, 응답 유실 재전송을 처리한다 </summary>

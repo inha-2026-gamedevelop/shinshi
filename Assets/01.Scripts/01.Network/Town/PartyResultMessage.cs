@@ -15,6 +15,7 @@ namespace Shinshi.Network
 
         private readonly EPartyAction  _action;
         private readonly ERejectReason _reason;
+        private readonly uint          _requestId;
 
         /****************************************
         *              Properties
@@ -24,12 +25,16 @@ namespace Shinshi.Network
         public ERejectReason Reason     => _reason;
         public bool          IsAccepted => _reason == ERejectReason.None;
 
+        // 요청에 실어 보낸 상관 ID를 그대로 돌려준 값. 0이면 상관 ID 없이 보낸 요청의 결과다
+        public uint          RequestId  => _requestId;
+
         /****************************************
         *                Methods
         ****************************************/
 
-        public PartyResultMessage(EPartyAction action, ERejectReason reason)
+        public PartyResultMessage(EPartyAction action, ERejectReason reason, uint requestId = 0)
         {
+            _requestId = requestId;
             _action = action;
             _reason = reason;
         }

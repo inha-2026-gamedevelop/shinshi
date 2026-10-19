@@ -117,6 +117,9 @@ namespace Shinshi.UI
 
         private EBossDifficulty _difficulty = EBossDifficulty.Easy;
 
+        private TMP_InputField _inviteInput  = null;
+        private Button         _inviteButton = null;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -125,6 +128,7 @@ namespace Shinshi.UI
         public event Action                  ReadyClicked;
         public event Action                  StartClicked;
         public event Action                  LeaveClicked;
+        public event Action<string>          InviteClicked;
 
         /****************************************
         *              Unity Event
@@ -350,6 +354,42 @@ namespace Shinshi.UI
             }
         }
 
+        /// <summary>배치가 실행 중에 만든 초대 입력칸과 단추를 연결한다. 한 번만 연결한다</summary>
+        public void AdoptInviteRow(TMP_InputField input, Button button)
+        {
+            if ((_inviteInput != null) || (input == null) || (button == null))
+            {
+                return;
+            }
+
+            _inviteInput  = input;
+            _inviteButton = button;
+            _inviteButton.onClick.AddListener(OnInvite);
+            _inviteInput.onSubmit.AddListener(OnInviteSubmit);
+        }
+
+        /// <summary>방장이 아니거나 방이 없으면 숨긴다. 응답을 기다리는 동안은 누를 수 없게 막는다</summary>
+        public void SetInviteState(bool visible, bool interactable)
+        {
+            if (_inviteInput == null)
+            {
+                return;
+            }
+
+            _inviteInput.gameObject.SetActive(visible);
+            _inviteButton.gameObject.SetActive(visible);
+            _inviteInput.interactable  = interactable;
+            _inviteButton.interactable = interactable;
+        }
+
+        public void ClearInviteInput()
+        {
+            if (_inviteInput != null)
+            {
+                _inviteInput.text = string.Empty;
+            }
+        }
+
         /// <summary>0 이하이면 출정 글자로 되돌린다</summary>
         public void SetCountdown(int seconds)
         {
@@ -465,6 +505,16 @@ namespace Shinshi.UI
             {
                 handler();
             }
+        }
+
+        private void OnInvite()
+        {
+            InviteClicked?.Invoke(_inviteInput.text);
+        }
+
+        private void OnInviteSubmit(string text)
+        {
+            InviteClicked?.Invoke(text);
         }
 
         private void OnLeave()

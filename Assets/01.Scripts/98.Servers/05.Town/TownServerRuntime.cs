@@ -128,7 +128,8 @@ namespace Shinshi.Network
         {
             if (!member.TryAcceptRequest(ETownChannel.Party, _clock()))
             {
-                _audience.Send(member.ParticipantId, new PartyResultMessage(message.Action, ERejectReason.RateLimited));
+                _audience.Send(member.ParticipantId, new PartyResultMessage(message.Action, ERejectReason.RateLimited,
+                    message.RequestId));
                 return;
             }
 
