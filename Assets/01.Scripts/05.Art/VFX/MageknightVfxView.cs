@@ -49,6 +49,10 @@ namespace Shinshi.Art
         [SerializeField] private float _maxLateSeconds    = 0.25f;
         [SerializeField] private float _heightOffset      = 0f;
 
+        [Header("검파")]
+        // 효과 프리팹이 옆으로 퍼지는 폭(m). 판정 폭이 이 값과 다르면 같은 비율로 옆으로 늘이거나 줄인다
+        [SerializeField, Min(0.1f)] private float _waveReferenceWidth = 2f;
+
         [Header("순간 이동 베기")]
         // 캐릭터가 도착한 뒤 효과를 이만큼 늦게 시작한다. 후딜 안이어야 한다
         [SerializeField, Min(0f)] private float _jumpBeatSeconds = 0.1f;
@@ -65,6 +69,7 @@ namespace Shinshi.Art
         private float     _waveRange;
         private int       _basicStepCount;
         private float     _jumpDelay;
+        private float     _waveWidthScale = 1f;
 
         /****************************************
         *              Unity Event
@@ -214,8 +219,9 @@ namespace Shinshi.Art
             _waveRange = 0f;
             if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_W, out SkillCatalogSO.SkillDefinition wave))
             {
-                _waveSpeed = wave.Area.ProjectileSpeed;
-                _waveRange = wave.Area.CastRange;
+                _waveSpeed      = wave.Area.ProjectileSpeed;
+                _waveRange      = wave.Area.CastRange;
+                _waveWidthScale = (wave.Area.Width > 0f) ? (wave.Area.Width / _waveReferenceWidth) : 1f;
             }
 
             // 발동 구간이 끝나는 순간 서버가 캐릭터를 옮기므로 그 뒤 한 박자 늦게 시작한다
@@ -256,7 +262,7 @@ namespace Shinshi.Art
                     pool.PlayTimed(position, ToRotation(direction), play.EndAt);
                     break;
                 case EMageknightVfxKind.Wave:
-                    pool.PlayWave(position, direction, play.StartAt, _waveSpeed, _waveRange, now);
+                    pool.PlayWave(position, direction, play.StartAt, _waveSpeed, _waveRange, now, _waveWidthScale);
                     break;
                 case EMageknightVfxKind.Jump:
                     PlayJump(pool, position, direction, now);
@@ -264,6 +270,16 @@ namespace Shinshi.Art
                 default:
                     pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
                     break;
+            }
+        }
+
+        /// <summary> 날아가는 검파 본체를 seconds 동안 세운다. 적중 연출용이라 서버 판정과는 무관하다 </summary>
+        public void FreezeWave(float seconds)
+        {
+            MageknightVfxPool pool = _pools[(int)EMageknightVfxKind.Wave];
+            if (pool != null)
+            {
+                pool.FreezeActiveWaves(NetworkTime.time, seconds);
             }
         }
 

@@ -1,3 +1,6 @@
+// System
+using System;
+
 // Unity
 using UnityEngine;
 
@@ -33,6 +36,9 @@ namespace Shinshi.Art
         private readonly double[]           _waveStartAt;
         private readonly float[]            _waveSpeed;
         private readonly float[]            _waveRange;
+        private readonly double[]           _frozenUntil;
+        private readonly bool[]             _isFrozen;
+        private double                      _lastTickTime = -1.0;
         private int                         _next;
 
         /****************************************
@@ -86,6 +92,8 @@ namespace Shinshi.Art
             _waveStartAt   = new double[size];
             _waveSpeed     = new float[size];
             _waveRange     = new float[size];
+            _frozenUntil   = new double[size];
+            _isFrozen      = new bool[size];
             for (int i = 0; i < size; ++i)
             {
                 GameObject instance = UnityEngine.Object.Instantiate(prefab, root);
@@ -153,7 +161,7 @@ namespace Shinshi.Art
         }
 
         /// <summary> 서버 출발 시각 기준의 직선 이동 효과, 위치는 속도 곱하기 경과 시간으로만 정하며 사거리에서 멈춘다 </summary>
-        public void PlayWave(Vector3 origin, Vector3 direction, double startAt, float speed, float range, double now)
+        public void PlayWave(Vector3 origin, Vector3 direction, double startAt, float speed, float range, double now, float widthScale = 1f)
         {
             if ((!HasPrefab) || (speed <= 0f) || (range <= 0f))
             {
@@ -172,6 +180,7 @@ namespace Shinshi.Art
             _waveStartAt[index]   = startAt;
             _waveSpeed[index]     = speed;
             _waveRange[index]     = range;
+            _transforms[index].localScale = new Vector3(widthScale, 1f, 1f);
             _transforms[index].SetPositionAndRotation(origin + (direction * MageknightVfxTracker.WaveDistance(speed, range, now - startAt)),
                 Quaternion.LookRotation(direction));
             Begin(index, ESlotMode.Wave, 0.0);
@@ -180,6 +189,9 @@ namespace Shinshi.Art
         /// <summary> 만료, 입자 종료, 검기 이동과 사거리 도달을 처리한다 </summary>
         public void Tick(double now)
         {
+            double deltaTime = (_lastTickTime >= 0.0) ? (now - _lastTickTime) : 0.0;
+            _lastTickTime = now;
+
             for (int i = 0; i < SlotCount; ++i)
             {
                 if (_modes[i] == ESlotMode.Idle)
@@ -211,10 +223,52 @@ namespace Shinshi.Art
 
                         break;
                     case ESlotMode.Wave:
+                        if (_isFrozen[i])
+                        {
+                            // 멈춘 시간만큼 출발 시각을 미뤄 정지가 풀릴 때 멈춘 자리에서 다시 나아간다
+                            _waveStartAt[i] += deltaTime;
+                            if (now >= _frozenUntil[i])
+                            {
+                                ResumeSlot(i);
+                            }
+
+                            break;
+                        }
+
                         TickWave(i, now);
                         break;
                     default:
                         break;
+                }
+            }
+        }
+
+        /// <summary> 날아가는 검기 본체를 seconds 동안 그 자리에 세운다. 이미 서 있으면 끝나는 시각만 늘린다. 입자도 같이 멈춘다 </summary>
+        public void FreezeActiveWaves(double now, float seconds)
+        {
+            if ((!HasPrefab) || (seconds <= 0f))
+            {
+                return;
+            }
+
+            for (int i = 0; i < SlotCount; ++i)
+            {
+                if ((_modes[i] != ESlotMode.Wave) || (_objects[i] == null))
+                {
+                    continue;
+                }
+
+                _frozenUntil[i] = Math.Max(_frozenUntil[i], now + seconds);
+                if (_isFrozen[i])
+                {
+                    continue;
+                }
+
+                _isFrozen[i] = true;
+                ParticleSystem[] systems = _systems[i];
+                for (int s = 0; s < systems.Length; ++s)
+                {
+                    systems[s].Pause(false);
                 }
             }
         }
@@ -341,9 +395,20 @@ namespace Shinshi.Art
             return false;
         }
 
+        private void ResumeSlot(int index)
+        {
+            _isFrozen[index] = false;
+            ParticleSystem[] systems = _systems[index];
+            for (int i = 0; i < systems.Length; ++i)
+            {
+                systems[i].Play(false);
+            }
+        }
+
         private void StopSlot(int index)
         {
-            _modes[index] = ESlotMode.Idle;
+            _modes[index]    = ESlotMode.Idle;
+            _isFrozen[index] = false;
             if (_objects[index] == null)
             {
                 return;
