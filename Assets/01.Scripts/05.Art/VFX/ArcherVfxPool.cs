@@ -32,6 +32,7 @@ namespace Shinshi.Art
         private readonly double[]           _startAt;
         private readonly float[]            _speed;
         private readonly float[]            _range;
+        private readonly bool[]             _stopsOnHit;
         private int                         _next;
 
         /****************************************
@@ -82,6 +83,7 @@ namespace Shinshi.Art
             _startAt    = new double[size];
             _speed      = new float[size];
             _range      = new float[size];
+            _stopsOnHit = new bool[size];
             for (int i = 0; i < size; ++i)
             {
                 GameObject instance = UnityEngine.Object.Instantiate(prefab, root);
@@ -118,7 +120,8 @@ namespace Shinshi.Art
         }
 
         /// <summary> 서버 출발 시각 기준의 직선 투사체, 위치는 속도 곱하기 경과 시간으로만 정하며 사거리에서 멈춘다 </summary>
-        public void PlayProjectile(Vector3 origin, Vector3 direction, double startAt, float speed, float range, double now)
+        public void PlayProjectile(Vector3 origin, Vector3 direction, double startAt, float speed, float range, double now,
+            bool stopsOnHit = false)
         {
             if ((!HasPrefab) || (speed <= 0f) || (range <= 0f))
             {
@@ -138,6 +141,7 @@ namespace Shinshi.Art
             _startAt[index]   = startAt;
             _speed[index]     = speed;
             _range[index]     = range;
+            _stopsOnHit[index] = stopsOnHit;
             _transforms[index].SetPositionAndRotation(origin + (direction * ArcherVfxTracker.Distance(speed, range, now - startAt)),
                 Quaternion.LookRotation(direction));
             Begin(index, ESlotMode.Projectile, 0.0);
@@ -184,25 +188,26 @@ namespace Shinshi.Art
             }
         }
 
-        /// <summary> 적중 위치에서 수평으로 maxDistance 안에 있는 가장 가까운 비행 투사체를 그 자리에서 흩어지게 한다, 없으면 거짓 </summary>
-        public bool FadeNearestProjectile(Vector3 position, float maxDistance, double now)
+        /// <summary> 적중으로 멈추는 비행 투사체 중 진행선이 적중 위치에 가장 가까운 것을 적중 거리에서 멈춘다, 없으면 거짓 </summary>
+        /// <remarks> 적중 신호는 지연만큼 늦게 오므로 이미 지나친 화살은 적중 거리로 되돌려 흩어지게 하고, 아직 못 닿은 화살은 그 거리까지만 날린다 </remarks>
+        public bool StopProjectileAtHit(Vector3 hitPosition, float maxLateral, double now)
         {
             int   nearest = -1;
-            float best    = maxDistance * maxDistance;
+            float best    = float.MaxValue;
+            float stopAt  = 0f;
             for (int i = 0; i < SlotCount; ++i)
             {
-                if ((_modes[i] != ESlotMode.Projectile) || (_objects[i] == null))
+                if ((_modes[i] != ESlotMode.Projectile) || (!_stopsOnHit[i]) || (_objects[i] == null))
                 {
                     continue;
                 }
 
-                Vector3 current = _transforms[i].position;
-                float   x       = current.x - position.x;
-                float   z       = current.z - position.z;
-                float   sqr     = (x * x) + (z * z);
-                if (sqr <= best)
+                if ((ArcherVfxTracker.TryGetHitStopDistance(_origin[i], _direction[i], _range[i], hitPosition, maxLateral,
+                        out float distance, out float lateral))
+                    && (lateral < best))
                 {
-                    best    = sqr;
+                    best    = lateral;
+                    stopAt  = distance;
                     nearest = i;
                 }
             }
@@ -212,7 +217,10 @@ namespace Shinshi.Art
                 return false;
             }
 
-            BeginFade(nearest, now);
+            // 화살 하나는 한 번만 맞으므로 다음 적중 신호는 다른 화살을 고른다
+            _range[nearest]      = stopAt;
+            _stopsOnHit[nearest] = false;
+            TickProjectile(nearest, now);
             return true;
         }
 

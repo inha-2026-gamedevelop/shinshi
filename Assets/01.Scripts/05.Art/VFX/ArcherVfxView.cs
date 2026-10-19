@@ -42,8 +42,10 @@ namespace Shinshi.Art
         private const float  MUZZLE_MAX_SECONDS     = 1.5f;
         private const float  HIT_MAX_SECONDS        = 1.5f;
         private const float  BURST_MAX_SECONDS      = 3f;
-        // 적중 신호를 받으면 이 거리 안의 같은 속성 화살을 그 자리에서 멈춘다. 화살 반폭과 몸체 크기를 넉넉히 덮는다
-        private const float  HIT_FADE_DISTANCE      = 2f;
+        // 적중 신호를 받으면 진행선이 적중 위치에서 옆으로 이 거리 안인 같은 속성 화살을 적중 거리에서 멈춘다.
+        // 서버는 몸체 반경까지 맞히고 적중 위치는 대상 중심이므로 가장 큰 몸체 반경에 화면과 서버 출발 위치 차이를 더한다
+        private const float  HIT_STOP_LATERAL_MARGIN = 0.5f;
+        private const float  HIT_STOP_MAX_LATERAL    = Constants.Combat.MAX_BODY_RADIUS + HIT_STOP_LATERAL_MARGIN;
         private const string POOL_ROOT_NAME         = "ArcherVfxPool";
 
         [Header("관찰 대상")]
@@ -301,7 +303,7 @@ namespace Shinshi.Art
                     ArcherVfxPool arrows = _pools[POOL_ARROW + element];
                     if ((arrows != null) && (arrows.HasPrefab))
                     {
-                        arrows.PlayProjectile(origin, play.Direction, play.StartAt, play.Speed, play.Range, now);
+                        arrows.PlayProjectile(origin, play.Direction, play.StartAt, play.Speed, play.Range, now, play.StopsOnHit);
                     }
 
                     return;
@@ -310,7 +312,7 @@ namespace Shinshi.Art
                     ArcherVfxPool flying = _pools[POOL_ARROW + element];
                     if (flying != null)
                     {
-                        flying.FadeNearestProjectile(play.Position, HIT_FADE_DISTANCE, now);
+                        flying.StopProjectileAtHit(play.Position, HIT_STOP_MAX_LATERAL, now);
                     }
 
                     Play(POOL_HIT + element, play.Position, rotation, now, HIT_MAX_SECONDS);

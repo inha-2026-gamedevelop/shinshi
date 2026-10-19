@@ -47,6 +47,9 @@ namespace Shinshi.Tests
         private const float  WIND_SPEED_SCALE   = 1.5f;
         private const float  SERVER_TICK        = 1f / 30f;
         private const float  TICK_WINDUP        = 0.25f;
+        // 보스 몸체 반경 2m 근처 옆 거리와 뷰의 적중 정지 옆 거리 상한(가장 큰 몸체 반경 4m + 여유 0.5m)
+        private const float  HIT_LATERAL        = 2.1f;
+        private const float  HIT_MAX_LATERAL    = 4.5f;
 
         private const byte SLOT_Q = 0;
         private const byte SLOT_W = 1;
@@ -157,6 +160,7 @@ namespace Shinshi.Tests
             Assert.That(_plays[1].Speed, Is.EqualTo(BASIC_SPEED));
             Assert.That(_plays[1].Range, Is.EqualTo(BASIC_RANGE));
             Assert.That(_plays[1].StartAt, Is.EqualTo(10.0 + BASIC_WINDUP).Within(1e-6));
+            Assert.That(_plays[1].StopsOnHit, Is.True, "기본 공격 화살만 서버 적중 신호로 멈춘다");
         }
 
         [Test]
@@ -458,6 +462,7 @@ namespace Shinshi.Tests
             Step(tracker, cast);
             Assert.That(CountProjectiles(), Is.EqualTo(Q_REPEAT));
             Assert.That(tracker.HasPending, Is.False);
+            Assert.That(FirstProjectile().StopsOnHit, Is.False, "기술 화살은 적중 신호를 보내지 않아 멈추지 않는다");
 
             double[] startAt = { 30.3, 30.3 + Q_INTERVAL, 30.3 + (2 * Q_INTERVAL) };
             int      shot    = 0;
@@ -1140,22 +1145,87 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Pool_FadeNearestProjectile_StopsOnlyArrowNearHit()
+        public void HitStopDistance_LateralWithinLimit_StopsAtProjectedDistance()
         {
-            ArcherVfxPool pool = CreatePool(POOL_SIZE);
-            pool.PlayProjectile(Vector3.zero, Vector3.forward, 0.0, Q_SPEED, Q_RANGE, 0.0);
-            pool.PlayProjectile(Vector3.right * 10f, Vector3.forward, 0.0, Q_SPEED, Q_RANGE, 0.0);
-            pool.Tick(0.1);
+            bool hit = ArcherVfxTracker.TryGetHitStopDistance(Vector3.zero, Vector3.forward, Q_RANGE, new Vector3(HIT_LATERAL, 0f, 4f),
+                HIT_MAX_LATERAL, out float stop, out float lateral);
 
-            Assert.That(pool.FadeNearestProjectile(new Vector3(0f, 0f, 2.6f), 2f, 0.1), Is.True);
-            Vector3 stopped = pool.GetSlotPosition(0);
-            pool.Tick(0.2);
-            Assert.That(pool.GetSlotPosition(0), Is.EqualTo(stopped), "멈춘 화살은 더 나아가지 않는다");
-            Assert.That(pool.GetSlotPosition(1).z, Is.GreaterThan(stopped.z));
+            Assert.That(hit, Is.True);
+            Assert.That(stop, Is.EqualTo(4f).Within(FLOAT_TOLERANCE));
+            Assert.That(lateral, Is.EqualTo(HIT_LATERAL).Within(FLOAT_TOLERANCE));
+        }
+
+        [Test]
+        public void HitStopDistance_BeyondLateralOrPath_False()
+        {
+            Assert.That(ArcherVfxTracker.TryGetHitStopDistance(Vector3.zero, Vector3.forward, Q_RANGE,
+                new Vector3(HIT_MAX_LATERAL + 0.1f, 0f, 4f), HIT_MAX_LATERAL, out _, out _), Is.False);
+            Assert.That(ArcherVfxTracker.TryGetHitStopDistance(Vector3.zero, Vector3.forward, Q_RANGE,
+                new Vector3(0f, 0f, Q_RANGE + HIT_MAX_LATERAL + 0.1f), HIT_MAX_LATERAL, out _, out _), Is.False);
+            Assert.That(ArcherVfxTracker.TryGetHitStopDistance(Vector3.zero, Vector3.forward, Q_RANGE,
+                new Vector3(0f, 0f, -(HIT_MAX_LATERAL + 0.1f)), HIT_MAX_LATERAL, out _, out _), Is.False);
+        }
+
+        [Test]
+        public void HitStopDistance_BigBodyCenterBehindOrPastRange_ClampsToPath()
+        {
+            Assert.That(ArcherVfxTracker.TryGetHitStopDistance(Vector3.zero, Vector3.forward, Q_RANGE, new Vector3(0f, 0f, -1f),
+                HIT_MAX_LATERAL, out float behind, out _), Is.True);
+            Assert.That(behind, Is.EqualTo(0f));
+
+            Assert.That(ArcherVfxTracker.TryGetHitStopDistance(Vector3.zero, Vector3.forward, Q_RANGE, new Vector3(0f, 0f, Q_RANGE + 1f),
+                HIT_MAX_LATERAL, out float past, out _), Is.True);
+            Assert.That(past, Is.EqualTo(Q_RANGE));
+        }
+
+        [Test]
+        public void Pool_StopProjectileAtHit_LateSignalSnapsBackToHitDistance()
+        {
+            // 지연으로 화살이 적을 3m 넘게 지나친 뒤 신호가 와도 적중 거리로 되돌아가 멈춘다. 옆으로 2m가 넘는 큰 몸체 적중이다
+            ArcherVfxPool pool = CreatePool(POOL_SIZE);
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 0.0, Q_SPEED, Q_RANGE, 0.0, true);
+            pool.Tick(0.3);
+
+            Assert.That(pool.StopProjectileAtHit(new Vector3(HIT_LATERAL, 0f, 4f), HIT_MAX_LATERAL, 0.3), Is.True);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(4f).Within(FLOAT_TOLERANCE));
+            pool.Tick(0.35);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(4f).Within(FLOAT_TOLERANCE), "멈춘 화살은 더 나아가지 않는다");
 
             pool.Tick(1.0);
             Assert.That(pool.IsSlotActive(0), Is.False);
-            Assert.That(pool.FadeNearestProjectile(new Vector3(50f, 0f, 50f), 2f, 1.0), Is.False);
+        }
+
+        [Test]
+        public void Pool_StopProjectileAtHit_EarlySignalFliesOnlyToHitDistance()
+        {
+            ArcherVfxPool pool = CreatePool(POOL_SIZE);
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 0.0, Q_SPEED, Q_RANGE, 0.0, true);
+            pool.Tick(0.1);
+
+            Assert.That(pool.StopProjectileAtHit(new Vector3(0f, 0f, 6f), HIT_MAX_LATERAL, 0.1), Is.True);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(Q_SPEED * 0.1f).Within(FLOAT_TOLERANCE));
+
+            pool.Tick(0.4);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(6f).Within(FLOAT_TOLERANCE));
+            pool.Tick(1.0);
+            Assert.That(pool.IsSlotActive(0), Is.False);
+        }
+
+        [Test]
+        public void Pool_StopProjectileAtHit_IgnoresSkillArrowAndPicksNearestLane()
+        {
+            ArcherVfxPool pool = CreatePool(POOL_SIZE);
+            pool.PlayProjectile(Vector3.zero, Vector3.forward, 0.0, Q_SPEED, Q_RANGE, 0.0);
+            pool.PlayProjectile(Vector3.right * 10f, Vector3.forward, 0.0, Q_SPEED, Q_RANGE, 0.0, true);
+            pool.Tick(0.1);
+
+            Assert.That(pool.StopProjectileAtHit(new Vector3(0f, 0f, 2f), HIT_MAX_LATERAL, 0.1), Is.False, "기술 화살은 멈추지 않는다");
+            Assert.That(pool.StopProjectileAtHit(new Vector3(9f, 0f, 2f), HIT_MAX_LATERAL, 0.1), Is.True);
+
+            pool.Tick(0.2);
+            Assert.That(pool.GetSlotPosition(0).z, Is.EqualTo(Q_SPEED * 0.2f).Within(FLOAT_TOLERANCE));
+            Assert.That(pool.GetSlotPosition(1).z, Is.EqualTo(2f).Within(FLOAT_TOLERANCE));
+            Assert.That(pool.StopProjectileAtHit(new Vector3(10f, 0f, 3f), HIT_MAX_LATERAL, 0.2), Is.False, "이미 멈춘 화살은 다시 고르지 않는다");
         }
 
         /****************************************
@@ -1311,7 +1381,7 @@ namespace Shinshi.Tests
                 ArcherVfxTracker.Play play = tracker.GetPlay(i);
                 if (!play.IsMuzzle)
                 {
-                    pool.PlayProjectile(Vector3.zero, play.Direction, play.StartAt, play.Speed, play.Range, obs.Now);
+                    pool.PlayProjectile(Vector3.zero, play.Direction, play.StartAt, play.Speed, play.Range, obs.Now, play.StopsOnHit);
                 }
             }
 

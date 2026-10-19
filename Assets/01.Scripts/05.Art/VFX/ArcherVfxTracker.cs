@@ -132,6 +132,8 @@ namespace Shinshi.Art
             public double         StartAt;
             public float          Speed;
             public float          Range;
+            // 참이면 서버 화살 적중 신호로 멈추는 기본 공격 화살이다. 기술 화살은 적중 신호를 보내지 않는다
+            public bool           StopsOnHit;
             // 적중과 폭발의 월드 위치. 화살, 부여, 차지는 캐릭터 위치에서 재생하므로 쓰지 않는다
             public bool           HasPosition;
             public Vector3        Position;
@@ -261,6 +263,21 @@ namespace Shinshi.Art
             }
 
             return Mathf.Min(range, (float)(speed * elapsed));
+        }
+
+        /// <summary> 적중 위치를 투사체 진행선에 투영해 멈출 거리를 구한다, 진행선에서 옆으로 maxLateral보다 멀거나 진행 구간 밖이면 거짓 </summary>
+        public static bool TryGetHitStopDistance(Vector3 origin, Vector3 direction, float range, Vector3 hitPosition,
+            float maxLateral, out float stopDistance, out float lateral)
+        {
+            float deltaX = hitPosition.x - origin.x;
+            float deltaZ = hitPosition.z - origin.z;
+            float along  = (deltaX * direction.x) + (deltaZ * direction.z);
+
+            lateral      = Mathf.Sqrt(Mathf.Max(0f, (deltaX * deltaX) + (deltaZ * deltaZ) - (along * along)));
+            stopDistance = Mathf.Clamp(along, 0f, Mathf.Max(0f, range));
+
+            // 몸체가 큰 대상은 중심이 발사 지점 뒤나 사거리 너머여도 몸체가 진행선에 걸린다
+            return (lateral <= maxLateral) && (along >= -maxLateral) && (along <= range + maxLateral);
         }
 
         /// <summary> 이번 프레임의 현재값을 반영하고 지금 재생할 효과의 개수를 돌려준다, 효과는 GetPlay로 읽는다 </summary>
@@ -568,7 +585,7 @@ namespace Shinshi.Art
             }
 
             return EmitShot(in spec, _pending[index].Element, ToHorizontal(_pending[index].Direction, Vector3.forward),
-                _pending[index].ResolveAt, now, count);
+                _pending[index].ResolveAt, now, count, true);
         }
 
         private int ResolveCast(int index, int count, in Observation obs)
@@ -593,7 +610,7 @@ namespace Shinshi.Art
                     break;
                 }
 
-                count = EmitShot(in spec, EArcherElement.None, _pending[index].Direction, launchAt, obs.Now, count);
+                count = EmitShot(in spec, EArcherElement.None, _pending[index].Direction, launchAt, obs.Now, count, false);
                 _pending[index].NextShot = shot + 1;
             }
 
@@ -646,7 +663,8 @@ namespace Shinshi.Art
         }
 
         // 한 번의 발사를 내보낸다. 늦게 관찰하면 총구는 생략하고, 투사체는 지나온 거리만큼 나간 자리에서 시작하며 이미 사거리를 넘겼으면 버린다
-        private int EmitShot(in ShotSpec spec, EArcherElement element, Vector3 direction, double launchAt, double now, int count)
+        private int EmitShot(in ShotSpec spec, EArcherElement element, Vector3 direction, double launchAt, double now, int count,
+            bool stopsOnHit)
         {
             double elapsed = Math.Max(0.0, now - launchAt);
             if ((spec.Speed * elapsed) >= spec.Range)
@@ -662,25 +680,26 @@ namespace Shinshi.Art
 
             if (elapsed <= _maxLate)
             {
-                count = Write(count, element, true, direction, launchAt, in spec);
+                count = Write(count, element, true, direction, launchAt, in spec, stopsOnHit);
             }
 
             for (int i = 0; i < prongs; ++i)
             {
                 float   angle = (prongs > 1) ? ((i - ((prongs - 1) * CENTER_INDEX_SCALE)) * spec.SpreadAngle) : 0f;
                 Vector3 aim   = (angle != 0f) ? (Quaternion.AngleAxis(angle, Vector3.up) * direction) : direction;
-                count = Write(count, element, false, aim, launchAt, in spec);
+                count = Write(count, element, false, aim, launchAt, in spec, stopsOnHit);
             }
 
             return count;
         }
 
-        private int Write(int count, EArcherElement element, bool isMuzzle, Vector3 direction, double startAt, in ShotSpec spec)
+        private int Write(int count, EArcherElement element, bool isMuzzle, Vector3 direction, double startAt, in ShotSpec spec,
+            bool stopsOnHit)
         {
             _plays[count] = new Play
             {
                 Kind = EArcherVfxKind.Arrow, Element = element, IsMuzzle = isMuzzle, Direction = direction, StartAt = startAt,
-                Speed = spec.Speed, Range = spec.Range
+                Speed = spec.Speed, Range = spec.Range, StopsOnHit = stopsOnHit
             };
             return count + 1;
         }
