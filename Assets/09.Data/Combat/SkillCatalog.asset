@@ -980,7 +980,7 @@ MonoBehaviour:
       _teleportToEnd: 0
       _archerElement: 1
       _requiredStacks: 0
-    _icon: {fileID: 0}
+    _icon: {fileID: 21300000, guid: 88ff97f16d1af104aaa7466f3e53fa20, type: 3}
   - _definitionId: skill_archer_retreat_shot
     _displayKey: skill_archer_retreat_shot.name
     _playerClass: 5
@@ -1026,7 +1026,7 @@ MonoBehaviour:
       _teleportToEnd: 0
       _archerElement: 2
       _requiredStacks: 0
-    _icon: {fileID: 0}
+    _icon: {fileID: 21300000, guid: 6b66579b0320f8846b106197a9b5afdd, type: 3}
   - _definitionId: skill_archer_scatter_shot
     _displayKey: skill_archer_scatter_shot.name
     _playerClass: 5
@@ -1072,7 +1072,7 @@ MonoBehaviour:
       _teleportToEnd: 0
       _archerElement: 3
       _requiredStacks: 0
-    _icon: {fileID: 0}
+    _icon: {fileID: 21300000, guid: e10aed0df7f033c459de72eba379655f, type: 3}
   - _definitionId: skill_archer_piercing_shot
     _displayKey: skill_archer_piercing_shot.name
     _playerClass: 5
@@ -1118,7 +1118,7 @@ MonoBehaviour:
       _teleportToEnd: 0
       _archerElement: 0
       _requiredStacks: 20
-    _icon: {fileID: 0}
+    _icon: {fileID: 21300000, guid: 1cdea26806c46c748ac7be8123778058, type: 3}
   _ascensions:
   - _definitionId: skill_summoner_ascension_single
     _displayKey: skill_summoner_ascension_single.name
