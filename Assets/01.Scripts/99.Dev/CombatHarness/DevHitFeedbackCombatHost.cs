@@ -9,6 +9,7 @@ using UnityEngine;
 using Mirror;
 
 // 프로젝트 내부
+using Shinshi.Art;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
@@ -33,6 +34,7 @@ namespace Shinshi.Dev
         private const int    TARGET_CAPACITY      = 256;
         private const float  MONSTER_SCAN_SECONDS = 0.25f;
         private const float  ATTACK_REPEAT_SECONDS = 0.1f;   // 공격 버튼을 누르고 있을 때 입력을 다시 보내는 주기
+        private const float  FREEZE_FRAMES_PER_SECOND = 60f;
         private const float  HEAVY_DAMAGE_RATIO   = 2f;      // 공격력의 이 배수 이상 피해는 강타 연출을 쓴다
         private const float  PLAYER_DAMAGE_RATIO  = 1f;      // 몬스터에게 한 번 맞을 때 최대 체력에서 깎는 몫을 맞을 수 있는 횟수로 나눈다
 
@@ -45,6 +47,19 @@ namespace Shinshi.Dev
         [Header("시험 편의")]
         [SerializeField] private bool _invincible = true;
         [SerializeField] private bool _noCooldown = true;
+
+        [Header("데이터 덮어쓰기 (이 시험 씬의 메모리에서만, 0이면 그대로)")]
+        // 릴리즈 데이터 파일은 바꾸지 않고 실행 중에만 값을 바꿨다가 종료할 때 되돌린다
+        [SerializeField, Min(0f)] private float _skillWRange = 14f;
+        [SerializeField, Min(0f)] private float _skillWWidth = 3.5f;
+
+        [Header("W 검파 타격감")]
+        // 검파 타격을 강한 연출(흔들림, 경직, 불똥)로 낼지. 스택이 적은 약한 피해도 화면 흔들림이 보이게 한다
+        [SerializeField] private bool _skillWHeavyFeedback = true;
+        // 맞을 때마다 날아가는 검파 본체를 이 프레임 수만큼 세운다(플레이어는 굳지 않는다)
+        [SerializeField, Min(0)] private int _skillWBodyFreezeFrames  = 4;
+        // 한 번 쏜 검파가 맞아서 서는 시간의 합 상한. 길어지면 본체가 실제 판정보다 한참 뒤처진다
+        [SerializeField, Min(0)] private int _skillWFreezeBudgetFrames = 12;
 
         [Header("카메라")]
         // 마검사 R 타격의 화면 흔들림 세기 배율(1이 기본)
@@ -76,6 +91,10 @@ namespace Shinshi.Dev
         private readonly HashSet<string> _tickSources = new HashSet<string>();
         private SourceTrackingResolver   _tracker;
 
+        private MageknightVfxView _waveView = null;
+        private int    _waveFreezeCastId = CombatIds.NONE;
+        private int    _waveFreezeSpentFrames = 0;
+        private readonly List<System.Action> _restoreOverrides = new List<System.Action>();
         private FieldInfo _readyAtField = null;
         private FieldInfo _energyField  = null;
 
@@ -101,6 +120,7 @@ namespace Shinshi.Dev
             _controller = GetComponent<CharacterController>();
             _input      = GetComponent<PlayerInputState>();
             _combat     = GetComponent<PlayerCombatState>();
+            _waveView   = GetComponent<MageknightVfxView>();
 
             if ((_input == null) || (_combat == null))
             {
@@ -117,6 +137,7 @@ namespace Shinshi.Dev
             }
 
             GameDBBootstrap.EnsureInitialized();
+            ApplyDataOverrides();
 
             PlayerConfigSO config = GameDB.Player;
             _registry = new CombatTargetRegistry(TARGET_CAPACITY);
@@ -170,6 +191,12 @@ namespace Shinshi.Dev
             }
 
             _server?.Shutdown();
+            for (int i = 0; i < _restoreOverrides.Count; ++i)
+            {
+                _restoreOverrides[i]();
+            }
+
+            _restoreOverrides.Clear();
         }
 
         private void Update()
@@ -382,18 +409,74 @@ namespace Shinshi.Dev
                 return;
             }
 
-            bool    isHeavy  = notice.Result.AppliedAmount >= (_stats.Attack * HEAVY_DAMAGE_RATIO);
+            bool    isWave   = IsSkillSource(_tracker.CurrentSource, Constants.Combat.SKILL_SLOT_W);
+            bool    isHeavy  = (notice.Result.AppliedAmount >= (_stats.Attack * HEAVY_DAMAGE_RATIO)) || ((isWave) && (_skillWHeavyFeedback));
             Vector3 hitPoint = target.Collider.ClosestPoint(transform.position);
             // 지속 피해는 몬스터 반응만 보이고 플레이어는 굳지 않는다(틱마다 멈추면 뚝뚝 끊긴다)
-            float shakeScale = IsSkillRSource(_tracker.CurrentSource) ? _skillRShakeScale : 1f;
-            _player.ReportHit(target.Collider, hitPoint, isHeavy, !isTick, shakeScale);
+            float shakeScale = IsSkillSource(_tracker.CurrentSource, Constants.Combat.SKILL_SLOT_R) ? _skillRShakeScale : 1f;
+
+            // 검파는 플레이어 대신 날아가는 검파 본체가 맞는 순간 멈춘다
+            _player.ReportHit(target.Collider, hitPoint, isHeavy, (!isTick) && (!isWave), shakeScale);
+            if (isWave)
+            {
+                FreezeWaveBody();
+            }
         }
 
-        private bool IsSkillRSource(string sourceId)
+        // 공용 기술 데이터는 메모리에서만 바꾸고 종료할 때 원래 값으로 되돌린다. 파일은 저장하지 않는다
+        private void ApplyDataOverrides()
+        {
+            if ((_playerClass != EPlayerClass.Mageknight)
+                || (!GameDB.Skills.TryGetSkillBySlot(_playerClass, Constants.Combat.SKILL_SLOT_W, out SkillCatalogSO.SkillDefinition skill)))
+            {
+                return;
+            }
+
+            OverrideAreaField(skill.Area, "_castRange", _skillWRange);
+            OverrideAreaField(skill.Area, "_width", _skillWWidth);
+        }
+
+        private void OverrideAreaField(SkillCatalogSO.SkillArea area, string fieldName, float value)
+        {
+            FieldInfo field = typeof(SkillCatalogSO.SkillArea).GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            if ((field == null) || (value <= 0f))
+            {
+                return;
+            }
+
+            float original = (float)field.GetValue(area);
+            field.SetValue(area, value);
+            _restoreOverrides.Add(() => field.SetValue(area, original));
+        }
+
+        private bool IsSkillSource(string sourceId, int slot)
         {
             return (sourceId != null) && (_playerClass == EPlayerClass.Mageknight)
-                && (GameDB.Skills.TryGetSkillBySlot(_playerClass, Constants.Combat.SKILL_SLOT_R, out SkillCatalogSO.SkillDefinition skill))
+                && (GameDB.Skills.TryGetSkillBySlot(_playerClass, slot, out SkillCatalogSO.SkillDefinition skill))
                 && (skill.DefinitionId == sourceId);
+        }
+
+        private void FreezeWaveBody()
+        {
+            if ((_waveView == null) || (_skillWBodyFreezeFrames <= 0))
+            {
+                return;
+            }
+
+            int castId = _server.Skills.CastInstanceId;
+            if (castId != _waveFreezeCastId)
+            {
+                _waveFreezeCastId      = castId;
+                _waveFreezeSpentFrames = 0;
+            }
+
+            if ((_waveFreezeSpentFrames + _skillWBodyFreezeFrames) > _skillWFreezeBudgetFrames)
+            {
+                return;
+            }
+
+            _waveFreezeSpentFrames += _skillWBodyFreezeFrames;
+            _waveView.FreezeWave(_skillWBodyFreezeFrames / FREEZE_FRAMES_PER_SECOND);
         }
 
         // 첫 타격 계수가 없고 틱 계수만 있는 기술이 지속 피해원이다(장판, 불 화살 화상)
