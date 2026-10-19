@@ -26,6 +26,7 @@ namespace Shinshi.Art
         private const int    KIND_COUNT       = 5;
         private const int    MIN_POOL_SIZE    = 1;
         private const float  MIN_PLAY_SECONDS = 0.05f;
+        private const float  FREEZE_FRAMES_PER_SECOND = 60f;
         private const float  MIN_JUMP_DISTANCE = 0.1f; // m, 이보다 덜 움직였으면 길이를 맞추지 않는다
         private const string POOL_ROOT_NAME   = "MageknightVfxPool";
 
@@ -49,9 +50,12 @@ namespace Shinshi.Art
         [SerializeField] private float _maxLateSeconds    = 0.25f;
         [SerializeField] private float _heightOffset      = 0f;
 
-        [Header("검파")]
-        // 효과 프리팹이 옆으로 퍼지는 폭(m). 판정 폭이 이 값과 다르면 같은 비율로 옆으로 늘이거나 줄인다
-        [SerializeField, Min(0.1f)] private float _waveReferenceWidth = 2f;
+        [Header("검파 적중 정지")]
+        // 내 검파가 적을 맞힐 때마다 날아가는 본체를 이 프레임 수만큼 세운다. 맞는 연출만 바꾸고 서버 판정과는 무관하다
+        [SerializeField, Min(0)] private int _waveFreezeFrames       = 4;
+        // 한 번 쏜 검파가 서는 시간의 합 상한. 길어지면 본체가 실제 판정보다 한참 뒤처진다
+        [SerializeField, Min(0)] private int _waveFreezeBudgetFrames = 12;
+        [SerializeField, Min(0f)] private float _classifyMargin      = 0.15f;
 
         [Header("순간 이동 베기")]
         // 캐릭터가 도착한 뒤 효과를 이만큼 늦게 시작한다. 후딜 안이어야 한다
@@ -69,7 +73,13 @@ namespace Shinshi.Art
         private float     _waveRange;
         private int       _basicStepCount;
         private float     _jumpDelay;
-        private float     _waveWidthScale = 1f;
+        private PlayerInputState _input;
+        private bool      _isFeedbackBound;
+        private readonly MageknightHitClassifier _hitClassifier = new MageknightHitClassifier();
+        private readonly DamageFeedbackReceiver  _hitReceiver   = new DamageFeedbackReceiver();
+        private int       _hitCastId;
+        private int       _freezeCastId;
+        private int       _freezeSpentFrames;
 
         /****************************************
         *              Unity Event
@@ -77,6 +87,7 @@ namespace Shinshi.Art
 
         private void OnDisable()
         {
+            UnbindFeedback();
             _tracker.Reset();
             _wasRunning = false;
             StopAllEffects();
@@ -119,6 +130,7 @@ namespace Shinshi.Art
 
             _wasRunning = true;
             EnsurePools();
+            UpdateWaveFreeze();
 
             // SyncVar hook의 중간값이 아니라 이번 프레임에 모인 현재값으로만 판단한다
             double now = NetworkTime.time;
@@ -157,6 +169,7 @@ namespace Shinshi.Art
 
         protected override void OnViewAwake()
         {
+            TryGetComponent(out _input);
             // 프리팹은 부모 빌더가 주입하며, 전투 상태가 빠졌을 때만 부모에서 한 번 찾는다
             if (_combat == null)
             {
@@ -219,9 +232,8 @@ namespace Shinshi.Art
             _waveRange = 0f;
             if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_W, out SkillCatalogSO.SkillDefinition wave))
             {
-                _waveSpeed      = wave.Area.ProjectileSpeed;
-                _waveRange      = wave.Area.CastRange;
-                _waveWidthScale = (wave.Area.Width > 0f) ? (wave.Area.Width / _waveReferenceWidth) : 1f;
+                _waveSpeed = wave.Area.ProjectileSpeed;
+                _waveRange = wave.Area.CastRange;
             }
 
             // 발동 구간이 끝나는 순간 서버가 캐릭터를 옮기므로 그 뒤 한 박자 늦게 시작한다
@@ -232,6 +244,7 @@ namespace Shinshi.Art
             }
 
             _tracker.Configure(basicDelay, shieldDuration, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds, _jumpDelay);
+            _hitClassifier.Configure((float)MageknightVfxTracker.WaveTravelSeconds(_waveSpeed, _waveRange), 0f, _classifyMargin);
             _hasConfig = true;
             return true;
         }
@@ -262,7 +275,7 @@ namespace Shinshi.Art
                     pool.PlayTimed(position, ToRotation(direction), play.EndAt);
                     break;
                 case EMageknightVfxKind.Wave:
-                    pool.PlayWave(position, direction, play.StartAt, _waveSpeed, _waveRange, now, _waveWidthScale);
+                    pool.PlayWave(position, direction, play.StartAt, _waveSpeed, _waveRange, now);
                     break;
                 case EMageknightVfxKind.Jump:
                     PlayJump(pool, position, direction, now);
@@ -271,6 +284,65 @@ namespace Shinshi.Art
                     pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
                     break;
             }
+        }
+
+        // 소유 플레이어만 피해 알림을 받는다. 소유권은 스폰 뒤에 정해지므로 정해진 뒤에 한 번 묶는다
+        private void UpdateWaveFreeze()
+        {
+            if ((_input != null) && (!_isFeedbackBound) && (_input.isOwned))
+            {
+                _input.DamageFeedbackReceived += OnDamageFeedback;
+                _isFeedbackBound = true;
+            }
+
+            if ((_combat.CastInstanceId != _hitCastId) && (_combat.SkillPhase != ESkillPhase.Idle)
+                && (_combat.SkillKind == ESkillRequestKind.Regular))
+            {
+                _hitCastId = _combat.CastInstanceId;
+                _hitClassifier.ObserveCast(_combat.SkillSlot == Constants.Combat.SKILL_SLOT_W,
+                    _combat.SkillSlot == Constants.Combat.SKILL_SLOT_R, _hitCastId, _combat.SkillResolveAt);
+            }
+        }
+
+        private void UnbindFeedback()
+        {
+            if ((_input != null) && (_isFeedbackBound))
+            {
+                _input.DamageFeedbackReceived -= OnDamageFeedback;
+            }
+
+            _isFeedbackBound = false;
+            _hitClassifier.Reset();
+            _hitCastId = 0;
+        }
+
+        private void OnDamageFeedback(DamageFeedback feedback)
+        {
+            if ((_waveFreezeFrames <= 0) || (_input == null) || (!_input.isOwned))
+            {
+                return;
+            }
+
+            double now = DamageFeedbackRules.ReceptionTime(NetworkTime.time, NetworkClient.bufferTime);
+            if ((!_hitReceiver.TryAccept(in feedback, _input.SessionEpoch, now))
+                || (_hitClassifier.Classify(feedback.ServerTime) != MageknightHitClassifier.EKind.Wave))
+            {
+                return;
+            }
+
+            if (_hitCastId != _freezeCastId)
+            {
+                _freezeCastId      = _hitCastId;
+                _freezeSpentFrames = 0;
+            }
+
+            if ((_freezeSpentFrames + _waveFreezeFrames) > _waveFreezeBudgetFrames)
+            {
+                return;
+            }
+
+            _freezeSpentFrames += _waveFreezeFrames;
+            FreezeWave(_waveFreezeFrames / FREEZE_FRAMES_PER_SECOND);
         }
 
         /// <summary> 날아가는 검파 본체를 seconds 동안 세운다. 적중 연출용이라 서버 판정과는 무관하다 </summary>

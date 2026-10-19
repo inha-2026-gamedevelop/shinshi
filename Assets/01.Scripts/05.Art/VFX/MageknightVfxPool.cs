@@ -161,7 +161,7 @@ namespace Shinshi.Art
         }
 
         /// <summary> 서버 출발 시각 기준의 직선 이동 효과, 위치는 속도 곱하기 경과 시간으로만 정하며 사거리에서 멈춘다 </summary>
-        public void PlayWave(Vector3 origin, Vector3 direction, double startAt, float speed, float range, double now, float widthScale = 1f)
+        public void PlayWave(Vector3 origin, Vector3 direction, double startAt, float speed, float range, double now)
         {
             if ((!HasPrefab) || (speed <= 0f) || (range <= 0f))
             {
@@ -180,7 +180,6 @@ namespace Shinshi.Art
             _waveStartAt[index]   = startAt;
             _waveSpeed[index]     = speed;
             _waveRange[index]     = range;
-            _transforms[index].localScale = new Vector3(widthScale, 1f, 1f);
             _transforms[index].SetPositionAndRotation(origin + (direction * MageknightVfxTracker.WaveDistance(speed, range, now - startAt)),
                 Quaternion.LookRotation(direction));
             Begin(index, ESlotMode.Wave, 0.0);
