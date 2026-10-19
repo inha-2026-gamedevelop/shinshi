@@ -143,6 +143,25 @@ namespace Shinshi.Combat
             return results.Count;
         }
 
+        // 사망·부활 대기자는 서버가 기록한 사망 위치에 그대로 있으므로 출현 금지 판정이 위치를 쓴다. 관전자는 뺀다
+        /// <summary> 소환물이 아닌 플레이어 중 생존·사망·부활 대기 참가자, 전장에서 제거된 이탈 정산자는 들어 있지 않다 </summary>
+        public int GetParticipantPlayers(List<ICombatTarget> results)
+        {
+            results.Clear();
+            for (int i = 0; i < _targets.Count; ++i)
+            {
+                IDamageable target = _targets[i];
+                if ((target.Faction != ECombatFaction.Player) || (target.IsSummon) || (target.LifeState == EParticipantLifeState.Spectating))
+                {
+                    continue;
+                }
+
+                results.Add(target);
+            }
+
+            return results.Count;
+        }
+
         public int GetLivingInRadius(Vector3 center, float radius, ECombatFaction faction, bool includeSummons,
             List<ICombatTarget> results)
         {

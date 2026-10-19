@@ -41,11 +41,32 @@ namespace Shinshi.Network
         private bool                  _forgetOnDisconnect = false;
         private int                   _lastRequestId      = 0;
 
+        // 입장은 허가됐지만 서버 맵 전환이 끝나기를 기다리며 ServerAccept를 미룬 연결. 토큰 소비는 허가 직후 이미 확정했다
+        private readonly List<HeldAdmission> _held      = new List<HeldAdmission>(Constants.Session.MAX_PARTY_SIZE);
+        private readonly List<HeldAdmission> _heldBatch = new List<HeldAdmission>(Constants.Session.MAX_PARTY_SIZE);
+
+        // 서버 맵 로드 중에는 Mirror가 받은 앱 메시지를 처리하지 않아(NetworkServer.isLoadingScene) 요청 대기, 검증 대기 마감을
+        // 로드 한 번에 한해 상한(DUNGEON_MAP_LOAD_TIMEOUT_SECONDS)까지 미룬다. 매 프레임 밀지 않고 로드를 처음 본 시각에 한 번만 정한다
+        private bool   _loadGraceActive = false;
+        private double _loadGraceUntil  = 0.0;
+
+        private struct HeldAdmission
+        {
+            public int            ConnectionId;
+            public SessionBinding Binding;
+        }
+
         /****************************************
         *              Properties
         ****************************************/
 
         public ServerSessionRegistry Sessions => _sessions;
+
+        // 던전 서버가 계약에 맞춰 씬을 바꾸는 중이면 입장 확정을 미룬다. 단일 씬 개발 구성은 비워 둔다
+        public IDungeonMapLoader MapLoader { get; set; }
+
+        // 마감 판정에 쓰는 시계(초), 비우면 Time.unscaledTimeAsDouble. 시험이 시간을 주입한다
+        public Func<double> Clock { get; set; }
 
         /****************************************
         *              Unity Event
@@ -53,14 +74,17 @@ namespace Shinshi.Network
 
         private void Update()
         {
+            double now = Now();
+            SyncLoadGrace(now);
             _accountLeases?.Tick();
+            TickHeld();
             if (_pending.Count == 0)
             {
                 return;
             }
 
             _due.Clear();
-            if (_pending.CollectDue(Time.unscaledTimeAsDouble, _due) == 0)
+            if (_pending.CollectDue(now, _due) == 0)
             {
                 return;
             }
@@ -79,6 +103,9 @@ namespace Shinshi.Network
                     ServerReject(connection);
                     continue;
                 }
+
+                // 맵 전환을 기다리던 연결이 마감을 넘겼다. 토큰 소비는 허가 때 이미 확정했고, 결합은 연결 종료 처리가 푼다
+                DropHeld(entry.ConnectionId);
 
                 // 토큰 검증이 마감 안에 끝나지 않았다
                 Reject(connection, ERejectReason.TokenExpired);
@@ -159,17 +186,30 @@ namespace Shinshi.Network
         {
             NetworkServer.UnregisterHandler<JoinRequestMessage>();
             _pending.Clear();
+            _held.Clear();
+            _heldBatch.Clear();
+            _loadGraceActive = false;
+            _loadGraceUntil  = 0.0;
         }
 
         public override void OnServerAuthenticate(NetworkConnectionToClient conn)
         {
-            if (!_pending.TryAdd(conn.connectionId, conn.address,
-                Time.unscaledTimeAsDouble + Constants.Network.AUTH_REQUEST_TIMEOUT_SECONDS))
+            double now = Now();
+
+            // 로드 중에 들어온 연결도 로드가 끝나야 요청이 처리된다. 같은 로드 상한까지만 요청 대기를 미룬다. 표 상한은 그대로다
+            bool loading = SyncLoadGrace(now);
+            if (!_pending.TryAdd(conn.connectionId, conn.address, now + Constants.Network.AUTH_REQUEST_TIMEOUT_SECONDS))
             {
                 // 주소는 개인 정보라 로그에 남기지 않는다
                 Debug.LogWarning($"[Auth] 인증 대기 상한(전체 {_pending.Capacity}, 주소별 {_pending.MaxPerAddress})을 넘어 연결을 바로 끊는다, " +
                     $"connId={conn.connectionId}");
                 ServerReject(conn);
+                return;
+            }
+
+            if (loading)
+            {
+                _pending.TryGraceForLoad(conn.connectionId, _loadGraceUntil);
             }
         }
 
@@ -182,7 +222,19 @@ namespace Shinshi.Network
             }
 
             _pending.Remove(conn.connectionId);
+            DropHeld(conn.connectionId);
             if ((_sessions == null) || (!(conn.authenticationData is SessionBinding binding)))
+            {
+                return;
+            }
+
+            ReleaseBinding(binding);
+        }
+
+        // 연결 종료와 사라진 연결 정리가 같은 방식으로 결합을 푼다
+        private void ReleaseBinding(SessionBinding binding)
+        {
+            if ((_sessions == null) || (binding == null))
             {
                 return;
             }
@@ -256,7 +308,7 @@ namespace Shinshi.Network
             }
 
             int requestId = NextRequestId();
-            _pending.TryBeginVerify(conn.connectionId, requestId, Time.unscaledTimeAsDouble + Constants.Network.AUTH_TIMEOUT_SECONDS);
+            _pending.TryBeginVerify(conn.connectionId, requestId, Now() + Constants.Network.AUTH_TIMEOUT_SECONDS);
             _verifier.Verify(requestId, message.JoinToken, this);
         }
 
@@ -284,7 +336,7 @@ namespace Shinshi.Network
             }
 
             // 응답 Pump가 마감 처리(Update)보다 먼저 돌면 마감이 지난 요청이 아직 검증 중으로 남아 있다. 늦은 성공은 받지 않는다
-            if (Time.unscaledTimeAsDouble >= deadline)
+            if (Now() >= deadline)
             {
                 AbandonVerified(requestId, reason, in claims);
                 Reject(conn, ERejectReason.TokenExpired);
@@ -317,19 +369,127 @@ namespace Shinshi.Network
                 }
             }
 
+            // 허가가 끝났으면 미룰지와 무관하게 이 토큰은 쓴 것이다. 검증기가 기억한 교환 결과를 지워 다시 쓰지 못하게 한다.
+            // 미룬 동안 같은 토큰의 중복 검증이 기억의 요청 번호를 덮어 쓰면 나중에 지우지 못하므로 지금 확정한다.
+            // 이미 접속 중으로 거절된 토큰만 재시도를 위해 남는다
+            _verifier?.OnAdmitted(requestId);
+
+            // 서버가 첫 계약에 맞는 맵으로 바꾸는 중이면 확정을 미룬다. ServerAccept가 나가면 Mirror가 그 시점의 networkSceneName을
+            // 보내므로 전환 전에 받으면 클라이언트가 잘못된 맵으로 간다. 결합과 명단은 유지하고 마감은 로드 유예 상한까지만 늘린다.
+            // 늦게 온 같은 출정 참가자도 전환 중이면 같은 경로로 미뤄진다
+            if (SyncLoadGrace(Now()))
+            {
+                conn.authenticationData = binding;
+                _pending.TryGraceForLoad(connectionId, _loadGraceUntil);
+                _held.Add(new HeldAdmission { ConnectionId = connectionId, Binding = binding });
+                return;
+            }
+
+            CompleteAccept(conn, binding);
+        }
+
+        // 입장 확정, 결합을 연결에 싣고 응답과 ServerAccept를 보낸다
+        private void CompleteAccept(NetworkConnectionToClient conn, SessionBinding binding)
+        {
             // 같은 임대로 다시 들어왔으면 이전 연결 종료가 걸어 둔 해제를 아직 보내지 않았을 때 거둔다
             if (binding.AccountLeaseId != null)
             {
                 _accountLeases?.Cancel(binding.AccountLeaseId);
             }
 
-            _pending.Remove(connectionId);
+            _pending.Remove(conn.connectionId);
             conn.authenticationData = binding;
             conn.Send(new JoinResponseMessage(ERejectReason.None, binding.ParticipantId));
             ServerAccept(conn);
+        }
 
-            // 입장한 토큰은 검증기가 다시 받아 주지 않게 한다. 이미 접속 중으로 거절된 토큰만 재시도를 위해 남는다
-            _verifier.OnAdmitted(requestId);
+        // 맵 전환이 끝났으면 미룬 입장을 모두 확정한다. 확정 중 다시 들어온 호출이 목록을 건드려도 안전하게 옮겨 담아 돈다
+        private void TickHeld()
+        {
+            if ((_held.Count == 0) || ((MapLoader != null) && (MapLoader.IsLoading)))
+            {
+                return;
+            }
+
+            _heldBatch.Clear();
+            _heldBatch.AddRange(_held);
+            _held.Clear();
+
+            double now = Now();
+            for (int i = 0; i < _heldBatch.Count; ++i)
+            {
+                HeldAdmission held = _heldBatch[i];
+                if (!NetworkServer.connections.TryGetValue(held.ConnectionId, out NetworkConnectionToClient conn))
+                {
+                    // 연결 종료 처리를 거치지 않고 사라진 연결, 결합을 풀어 참가자가 다시 들어올 수 있게 한다
+                    _pending.Remove(held.ConnectionId);
+                    ReleaseBinding(held.Binding);
+                    continue;
+                }
+
+                // 메인 스레드가 오래 멈춰 로드 유예 상한을 넘겨 처음 깨어난 프레임은 로드 종료와 마감 초과가 겹친다.
+                // 검증 대기가 아니거나(사라짐, 끊기 대기) 마감이 지났으면 승인하지 않는다. 토큰 소비는 허가 때 이미 확정했다.
+                // 결합은 연결에 그대로 두고 명단과 던전 호스트의 정리는 실제 연결 종료 구독 체인(인증기 정리 뒤 호스트 통지)에 맡긴다.
+                // 여기서 먼저 풀면 호스트가 결합 없이 끊김을 놓치고, 그 사이 재접속이 같은 결합을 쓰다 옛 종료가 새 연결을 풀 수 있다
+                if ((!_pending.TryGetVerifyingDeadline(held.ConnectionId, out double deadline)) || (now >= deadline))
+                {
+                    if (!_pending.IsClosing(held.ConnectionId))
+                    {
+                        Reject(conn, ERejectReason.TokenExpired);
+                    }
+
+                    continue;
+                }
+
+                CompleteAccept(conn, held.Binding);
+            }
+
+            _heldBatch.Clear();
+        }
+
+        // 미룬 입장이 확정 없이 닫힐 때(끊김, 마감) 목록에서만 뺀다. 토큰 소비는 허가 때 이미 확정했다
+        private void DropHeld(int connectionId)
+        {
+            for (int i = 0; i < _held.Count; ++i)
+            {
+                if (_held[i].ConnectionId != connectionId)
+                {
+                    continue;
+                }
+
+                _held.RemoveAt(i);
+                return;
+            }
+        }
+
+        // 서버 맵 로드를 처음 본 시각에 한 번 유예 상한을 정해 기존 대기 연결의 마감을 그 상한까지 미룬다. 로드가 끝나면 늘어난 항목만
+        // 정상 마감(요청 1초, 검증 5초)으로 되돌린다. 끊기 대기는 유예하지 않는다. 로드 중이면 참을 돌려준다
+        private bool SyncLoadGrace(double now)
+        {
+            if ((MapLoader != null) && (MapLoader.IsLoading))
+            {
+                if (!_loadGraceActive)
+                {
+                    _loadGraceActive = true;
+                    _loadGraceUntil  = now + Constants.Network.DUNGEON_MAP_LOAD_TIMEOUT_SECONDS;
+                    _pending.GraceAllForLoad(_loadGraceUntil);
+                }
+
+                return true;
+            }
+
+            if (_loadGraceActive)
+            {
+                _loadGraceActive = false;
+                _pending.EndLoadGrace(now + Constants.Network.AUTH_REQUEST_TIMEOUT_SECONDS, now + Constants.Network.AUTH_TIMEOUT_SECONDS);
+            }
+
+            return false;
+        }
+
+        private double Now()
+        {
+            return (Clock != null) ? Clock() : Time.unscaledTimeAsDouble;
         }
 
         // 쓰지 못하고 버린 검증 결과 정리. 실패 결과는 잡은 임대가 없다. 새 교환마다 새 임대라 접속 중인 다른 연결의 임대와 겹치지 않는다
@@ -348,7 +508,7 @@ namespace Shinshi.Network
             Debug.LogWarning($"[Auth] 접속 거절, connId={conn.connectionId}, reason={reason}");
             conn.isAuthenticated = false;
             conn.Send(new JoinResponseMessage(reason, 0));
-            if (!_pending.MarkClosing(conn.connectionId, Time.unscaledTimeAsDouble + Constants.Network.AUTH_REJECT_DISCONNECT_DELAY_SECONDS))
+            if (!_pending.MarkClosing(conn.connectionId, Now() + Constants.Network.AUTH_REJECT_DISCONNECT_DELAY_SECONDS))
             {
                 ServerReject(conn);
             }

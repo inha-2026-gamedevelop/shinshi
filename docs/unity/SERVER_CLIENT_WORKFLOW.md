@@ -261,7 +261,7 @@ Assets/01.Scripts/
   - 2페이즈 전환 컷신 구간(2026-10-18): 결계를 대신하는 기믹 묶음이 붙은 보스는 50% 전환 틱에 9.6초 구간(`BossServer.Phase2Transition*`, 클라이언트 Timeline `TL_WolbaekPhase2Transition_Combat` 길이와 같음)을 열고, 그동안 무적이며 인계를 미룬다. 구간은 `BossState` SyncVar(번호, 서버 시작·종료 시각)로 복제하고 `BossNetworkViewBinder`가 `PF_NetWolbaekBoss`의 `WolbaekPhase2TransitionPlayer`로 재생한다. 늦은 접속은 스폰 상태로 중간부터 재생한다. 프로토콜 14.
   - 현행 프로토콜(2026-10-19): 파티 요청·결과 메시지 끝에 요청 ID(`RequestId`)를 더해 wire가 바뀌었으므로 프로토콜 버전은 15. 서버와 클라이언트는 같은 빌드를 쓴다.
 - 보스가 내는 피해는 `BossDamageScaler`가 시작 인원 피해 배율을 `RawDamage`에 곱해 `SkillDamageResolver`에 넘긴다. 번호·위치는 바꾸지 않아 반격 방어와 중복 적중 판정이 유지된다.
-- 보스와 전장 지역은 출정 계약에 없다. 보스 ID는 던전 서버 실행 설정 `-boss-id`(`BOSS_ID`, 기본 `Constants.Combat.DEV_BOSS_ID` = `boss_wolbaek`) 한곳에서 정한다. `ServerBootstrap`이 `ServerLaunchConfig.TryReadBossId`로 읽고 보스 카탈로그에 없는 ID면 서버를 시작하지 않으며, 같은 값을 `CombatServerRuntime.ConfigureBoss`(보스 생성·로그)와 보스 경매 보상 표 조회에 넘긴다. 전장 지역은 `DEV_BOSS_REGION_ID`(`region_forest`, 체험판 Aref·Href)다. 정의가 없거나 `IsTuned`가 거짓이면 오류 로그 뒤 보스 없이 진행하며 개발 빌드는 `TryCompleteBossForDevelopment`로 끝낸다. 에디터 역할 실행은 실행 인자를 쓰지 않아 환경 변수가 없으면 기본 보스다. 보스 몸체 반경은 임시값 `BOSS_BODY_RADIUS`다.
+- 던전 맵 선택(2026-10-19): 실행 설정 `-boss-id`는 계약 없는 개발 출정과 부팅 전장의 기본값이다. 실제 첫 출정 계약이 일반전이면 `DungeonForest`, 무철이면 `DungeonMucheol`, 월백이면 `DungeonWolbaek`을 서버와 클라이언트가 함께 연다. `DungeonSessionHost.MapLoader`와 `ShinshiServerAuthenticator`는 맵 준비까지 인증 완료를 보류하며 로딩 상한은 15초다. `onlineScene`이 빈 단일 씬 개발 구성은 전환하지 않는다.
 
 복제(민성, `03.AI/Boss/Net/`, 2026-10-03, 구현됨·EditMode 검증·전용 서버와 다인 접속 미검증).
 
@@ -312,3 +312,11 @@ Assets/01.Scripts/
 8. 서비스 자격이 있으면 `ServerPresence`가 임대 발급 → 새 bootId로 풀 등록 → heartbeat를 수행한다. 던전은 출정 하나가 끝나면 `ServerShutdownController`가 드레인을 요청하고 결과 확인 유예·연결 종료·전송 flush 뒤 프로세스를 종료한다. systemd 던전 유닛은 `Restart=always`로 새 프로세스·새 bootId를 띄운다. 이 애플리케이션 종료 경로와 OS `SIGTERM`의 자동 드레인 연동은 구분하며, 후자의 실행 검증 근거는 없다.
 
 에디터·개발 빌드의 기본 검증기는 `dev`이고 형식만 확인한다. `JOIN_TOKEN_VERIFIER=api` 또는 `-join-verifier api`와 서비스 자격을 넣어 API 경로를 시험한다. 개발 저장 경로는 경제 결과를 남기지 않는다. 출시 빌드는 개발 검증기를 포함하지 않는다. 실제 실행 설정·자격 공급은 [BackendLaunchSettings](../../Assets/01.Scripts/98.Servers/01.Network/Backend/BackendLaunchSettings.cs)와 [서버 운영 원칙](NETWORK_AUTHORITY.md) 7장을 따른다.
+
+
+### 릴리즈 전장과 몬스터 연결 (2026-10-19)
+
+- Assets/00.Scenes/Release/의 숲·무철·월백은 원본 Dev_HUD 전장을 복제한 릴리즈 씬이며 원본 Dev 씬은 보존한다. 재생성 도구는 ReleaseDungeonMapBuilder다.
+- 일반전은 WaveSessionFactory와 DungeonSpawnLayout을 연결한다. 현재 구역 전멸 후 다음 도착 지점으로 이동하면 다음 웨이브를 시작한다. 적 상태·공격 예고·투사체는 PF_NetEnemy와 PF_NetEnemyEffect로 복제한다.
+- 몬스터 프리팹 생성에는 공유 외부 에셋 Horror Creatures의 Beast·Vendigo가 필요하다. 월백 원본 벽·재질은 KT_SplineBuilder와 Real Materials에 의존한다. Tools/Resources/WaterReflection.cs 중복 사본은 SHINSHI_ENABLE_LEGACY_WATER_REFLECTION 조건부로 제외하고 VFX/Simple Water Shader 사본만 컴파일한다. 이 외부 파일은 Git 제외이므로 공유 에셋에도 동일한 중복 제외가 필요하다.
+- 검증: Windows 릴리즈 클라이언트 IL2CPP·전용 서버 빌드 성공, 통합 표적 EditMode 138/138·씬 25/25 통과. 서버 빌드 오류 0·경고 90(주로 기존 외부 API와 UI 경고, 동적 글꼴 임포트 포함). 보스 파괴 표현은 PlayMode에서 확인했으나 실제 거래·입력·웨이브·보스 판정의 M2는 검증 대기다. 돌진 중 처음 관찰한 Vendigo의 현재 돌진 모션 복원은 제한이 남는다.

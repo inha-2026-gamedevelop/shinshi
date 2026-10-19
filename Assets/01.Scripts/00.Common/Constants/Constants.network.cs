@@ -202,6 +202,9 @@ namespace Shinshi.Common
             // 연결 뒤 이 시간 안에 인증 요청과 토큰 검증이 끝나지 않으면 끊는다
             public const double AUTH_TIMEOUT_SECONDS = 5.0;
 
+            // 던전 서버가 첫 입장 계약에 맞는 맵으로 바꾸는 동안 입장 확정을 보류하는 상한. 클라이언트 접속 대기(20초)보다 짧다
+            public const double DUNGEON_MAP_LOAD_TIMEOUT_SECONDS = 15.0;
+
             // 연결 뒤 인증 요청이 이 시간 안에 오지 않으면 끊는다. 정상 클라이언트는 연결 직후 바로 보낸다.
             // 요청을 받은 뒤의 토큰 검증 마감은 AUTH_TIMEOUT_SECONDS를 따로 준다
             public const double AUTH_REQUEST_TIMEOUT_SECONDS = 1.0;

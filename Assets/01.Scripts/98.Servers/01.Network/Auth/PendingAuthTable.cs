@@ -136,6 +136,70 @@ namespace Shinshi.Network
             return false;
         }
 
+        /// <summary> 검증 대기 연결의 마감을 늘린다, 검증 대기가 아니면 거짓 </summary>
+        public bool TryExtendVerify(int connectionId, double deadline)
+        {
+            int index = IndexOf(connectionId);
+            if ((index < 0) || (_entries[index].Stage != EPendingAuthStage.Verifying))
+            {
+                return false;
+            }
+
+            _entries[index].ExtendDeadline(deadline);
+            return true;
+        }
+
+        /// <summary> 요청 대기와 검증 대기 항목의 마감을 graceUntil까지 미룬다(줄이지 않는다), 끊기 대기는 건드리지 않는다. 바뀐 수를 돌려준다 </summary>
+        public int GraceAllForLoad(double graceUntil)
+        {
+            int changed = 0;
+            for (int i = 0; i < _count; ++i)
+            {
+                if (_entries[i].GraceForLoad(graceUntil))
+                {
+                    ++changed;
+                }
+            }
+
+            return changed;
+        }
+
+        /// <summary> 한 연결의 마감만 graceUntil까지 미룬다, 없거나 끊기 대기거나 이미 그 이상이면 거짓 </summary>
+        public bool TryGraceForLoad(int connectionId, double graceUntil)
+        {
+            int index = IndexOf(connectionId);
+            return (index >= 0) && (_entries[index].GraceForLoad(graceUntil));
+        }
+
+        /// <summary> 로드가 끝났다, 유예로 늘어난 항목만 정상 마감으로 되돌린다(더 짧은 쪽). 늘리지 않은 항목은 그대로다 </summary>
+        public void EndLoadGrace(double waitingDeadline, double verifyingDeadline)
+        {
+            for (int i = 0; i < _count; ++i)
+            {
+                _entries[i].EndLoadGrace(waitingDeadline, verifyingDeadline);
+            }
+        }
+
+        public bool IsClosing(int connectionId)
+        {
+            int index = IndexOf(connectionId);
+            return (index >= 0) && (_entries[index].Stage == EPendingAuthStage.Closing);
+        }
+
+        /// <summary> 검증 대기 연결의 현재 마감 시각, 표에 없거나 끊기 대기 등 검증 대기가 아니면 거짓 </summary>
+        public bool TryGetVerifyingDeadline(int connectionId, out double deadline)
+        {
+            int index = IndexOf(connectionId);
+            if ((index < 0) || (_entries[index].Stage != EPendingAuthStage.Verifying))
+            {
+                deadline = 0.0;
+                return false;
+            }
+
+            deadline = _entries[index].Deadline;
+            return true;
+        }
+
         /// <summary> 거절 응답을 보낸 연결을 끊기 대기로 바꾼다, 표에 없으면 넣고 자리가 없으면 거짓 </summary>
         public bool MarkClosing(int connectionId, double deadline)
         {

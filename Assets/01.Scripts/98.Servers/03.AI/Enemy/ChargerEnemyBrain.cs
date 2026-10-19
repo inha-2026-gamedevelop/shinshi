@@ -48,6 +48,10 @@ namespace Shinshi.AI
         private readonly IDamageResolver      _damage;
         private readonly IBossMovement        _movement;
         private readonly EnemyCrowd           _crowd;
+        private readonly IEnemyNavigation     _navigation;
+        private readonly EnemyTelegraphLimiter _limiter;
+        private readonly IBossWallQuery       _walls;
+        private readonly EnemyPathSteer       _steer = new EnemyPathSteer();
         private EnemyCrowd.SidestepState      _sidestep;
         private readonly EnemyTargetSelector  _selector;
         private readonly List<ICombatTarget>  _buffer  = new List<ICombatTarget>(INITIAL_BUFFER_CAPACITY);
@@ -92,6 +96,10 @@ namespace Shinshi.AI
         /// <summary> 판정 전체 폭 </summary>
         public float DashWidth => _definition.AttackShape.Width;
 
+        public double TelegraphStartTime => _telegraphStartTime;
+
+        public double TelegraphEndTime => _telegraphEndTime;
+
         /// <summary> 돌진 시작점에서 지금까지 실제로 간 거리 </summary>
         public float TraveledDistance => _traveled;
 
@@ -124,7 +132,8 @@ namespace Shinshi.AI
         // 플레이어의 현재 체력으로 대신하지 않는다. crowd가 null이면 적끼리 겹침 방지를 하지 않는다
         public ChargerEnemyBrain(EnemyServer self, EnemyDefinition definition, float referenceHealth,
             ICombatTargetQuery targets, IDamageResolver damage, IBossMovement movement,
-            float recoverSeconds = PROTOTYPE_RECOVER_SECONDS, EnemyCrowd crowd = null)
+            float recoverSeconds = PROTOTYPE_RECOVER_SECONDS, EnemyCrowd crowd = null,
+            IEnemyNavigation navigation = null, EnemyTelegraphLimiter limiter = null, IBossWallQuery walls = null)
         {
             if (self == null)
             {
@@ -175,7 +184,10 @@ namespace Shinshi.AI
             _movement       = movement;
             _crowd          = crowd;
             _sidestep       = new EnemyCrowd.SidestepState { Side = ((self.CombatId & 1) == 0) ? 1 : -1 };
-            _selector       = new EnemyTargetSelector(targets);
+            _navigation     = navigation;
+            _limiter        = limiter;
+            _walls          = walls;
+            _selector      = new EnemyTargetSelector(targets, navigation);
             _aim            = self.Forward;
             _origin         = self.Position;
             _lastHealth     = self.Health;
@@ -193,6 +205,7 @@ namespace Shinshi.AI
             if (_self.LifeState != EParticipantLifeState.Alive)
             {
                 State = EEnemyState.Dead;
+                _limiter?.Release(_self.CombatId);
                 _selector.Clear();
                 _handled.Clear();
                 return;
@@ -205,6 +218,10 @@ namespace Shinshi.AI
             // 체력이 줄었는지는 틱마다 갱신한다. 예고가 끝나는 틱이나 돌진 중에 맞았으면 공격보다 피격이 먼저다
             bool damaged = _self.Health < _lastHealth;
             _lastHealth  = _self.Health;
+            if (damaged)
+            {
+                _selector.RequestReevaluate();
+            }
 
             if (damaged && ((State == EEnemyState.Telegraph) || (State == EEnemyState.Dash)))
             {
@@ -253,7 +270,7 @@ namespace Shinshi.AI
 
         private void TickChase(double serverTime, float deltaSeconds)
         {
-            ICombatTarget target = _selector.Resolve(_self.Position);
+            ICombatTarget target = (_navigation != null) ? _selector.Resolve(_self.Position, serverTime) : _selector.Resolve(_self.Position);
             if (target == null)
             {
                 State = EEnemyState.Idle;
@@ -272,14 +289,42 @@ namespace Shinshi.AI
             Vector3 desired    = position;
             float   step       = 0f;
 
-            if (distance > engageDist)
+            // 벽이 가로막으면 직선 거리가 사거리 안이어도 멈추지 않고 경로를 따라 돌아간다
+            bool sighted = EnemySight.IsClear(_walls, position, target.Position);
+
+            if ((distance > engageDist) || (!sighted))
             {
-                step    = Mathf.Min(_definition.MoveSpeed * _self.GetMoveSpeedScale(serverTime) * deltaSeconds, distance - engageDist);
-                desired = position + ((toTarget / distance) * step);
+                Vector3 heading       = toTarget;
+                float   headingLength = distance;
+
+                // 나무와 바위를 돌아가도록 경로의 다음 꺾임 지점을 향한다. 경로가 끊겼으면 제자리에 선다
+                if (_navigation != null)
+                {
+                    if (!_steer.TryGetPoint(_navigation, position, target.Position, serverTime, out Vector3 steerPoint))
+                    {
+                        State = EEnemyState.Idle;
+                        MoveSelf(position, deltaSeconds, false);
+                        return;
+                    }
+
+                    Vector3 toSteer = steerPoint - position;
+                    toSteer.y = 0f;
+                    float steerLength = toSteer.magnitude;
+                    if (steerLength > SEPARATION_EPSILON)
+                    {
+                        heading       = toSteer;
+                        headingLength = steerLength;
+                    }
+                }
+
+                step    = _definition.MoveSpeed * _self.GetMoveSpeedScale(serverTime) * deltaSeconds;
+                step    = sighted ? Mathf.Min(step, distance - engageDist) : step;
+                step    = Mathf.Min(step, headingLength);
+                desired = position + ((heading / headingLength) * step);
             }
 
             bool separated = MoveSelf(desired, deltaSeconds, distance > engageDist);
-            if (separated)
+            if (separated || (_navigation != null))
             {
                 toTarget   = target.Position - _self.Position;
                 toTarget.y = 0f;
@@ -292,8 +337,15 @@ namespace Shinshi.AI
 
             _self.SetForward(toTarget);
 
-            if ((distance <= (engageDist + STOP_EPSILON)) && (serverTime >= _nextTelegraphTime))
+            if ((distance <= (engageDist + STOP_EPSILON)) && (serverTime >= _nextTelegraphTime)
+                && EnemySight.IsClear(_walls, _self.Position, target.Position))
             {
+                // 같은 대상에게 걸린 예고가 상한이면 예고하지 않고 다음 틱에 다시 시도한다
+                if ((_limiter != null) && (!_limiter.TryAcquire(_self.CombatId, target.CombatId, false)))
+                {
+                    return;
+                }
+
                 BeginTelegraph(serverTime, toTarget);
             }
         }
@@ -321,10 +373,12 @@ namespace Shinshi.AI
         // 굳는 동안 맞아도 시간은 늘지 않고, 끝나면 바로 다시 예고할 수 있다
         private void InterruptByHit(double serverTime)
         {
+            _limiter?.Release(_self.CombatId);
+
             _castId            = CombatIds.NONE;
             _actionId          = CombatIds.NONE;
             _handled.Clear();
-            _hitEndTime        = serverTime + PROTOTYPE_HIT_STUN_SECONDS;
+            _hitEndTime       = serverTime + PROTOTYPE_HIT_STUN_SECONDS;
             _nextTelegraphTime = _hitEndTime;
             State              = EEnemyState.Hit;
         }
@@ -348,6 +402,8 @@ namespace Shinshi.AI
         // 돌진 시작 시각은 틱 시각이 아니라 예고 끝 시각이다. 틱이 늦어도 이동은 이 시각부터 센다
         private void BeginDash()
         {
+            _limiter?.Release(_self.CombatId);
+
             _dashStartTime = _telegraphEndTime;
             _maxDistance   = MeasureClearLength();
             _traveled      = 0f;
@@ -438,6 +494,12 @@ namespace Shinshi.AI
             {
                 ICombatTarget target = _buffer[i];
                 if (!IsInsideSegment(target.Position, from, to, halfWidth))
+                {
+                    continue;
+                }
+
+                // 돌진 이동의 벽 보정과 별개로, 벽 너머의 대상은 한 번 처리한 것으로 기록하지 않고 건너뛴다
+                if (!EnemySight.IsClear(_walls, _self.Position, target.Position))
                 {
                     continue;
                 }

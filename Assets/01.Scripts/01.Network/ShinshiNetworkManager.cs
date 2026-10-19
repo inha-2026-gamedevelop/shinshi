@@ -17,14 +17,11 @@ using Shinshi.Common;
 namespace Shinshi.Network
 {
     /// <summary> 네트워크 주기를 적용한다, 서버 시작은 서버 부트스트랩만 한다 </summary>
-    public class ShinshiNetworkManager : NetworkManager
+    public class ShinshiNetworkManager : NetworkManager, IDungeonMapLoader
     {
         /****************************************
         *                Fields
         ****************************************/
-
-        // 던전 역할의 접속 씬 경로, 서버와 클라이언트 빌드 목록이 같은 경로를 쓴다
-        private const string DUNGEON_ONLINE_SCENE = Constants.Scene.RELEASE_FOLDER + Constants.Scene.DUNGEON_FOREST + Constants.Scene.EXTENSION;
 
         private readonly Dictionary<uint, GameObject> _spawnPrefabsByAssetId = new Dictionary<uint, GameObject>();
 
@@ -33,6 +30,10 @@ namespace Shinshi.Network
         // 씬에 저장한 onlineScene은 마을 씬이다. 던전 역할은 이 값이 있을 때만 던전 씬으로 바꾼다.
         // 서버와 클라이언트가 같은 역할 설정으로 같은 값을 써야 클라이언트가 서버의 씬 안내를 기다린다
         private string _townOnlineScene = string.Empty;
+
+        // 던전 서버가 올린(또는 올리는 중인) 전장 씬 이름과 전환 중 여부. 서버 측 전환만 쓴다
+        private string _dungeonMapName = string.Empty;
+        private bool   _isMapLoading   = false;
 
 #if !UNITY_SERVER
         // 마을 서버가 보낸 내 던전 입장권으로 마을을 끊고 던전에 접속한다. 클라이언트 빌드에서만 만든다
@@ -56,6 +57,9 @@ namespace Shinshi.Network
 
         // 클라이언트가 지금 접속 대상으로 지정한 서버 역할. 화면이 이 값으로 마을과 던전을 구분한다
         public EServerRole ServerRole => _serverRole;
+
+        public string CurrentMapName => _dungeonMapName;
+        public bool   IsLoading      => _isMapLoading;
 
 #if !UNITY_SERVER
         // 마을 -> 던전 이동이 끝났다. None이면 던전 인증 성공, 아니면 거절 사유다. 출정 화면(UI 담당)이 안내에 쓴다
@@ -216,7 +220,7 @@ namespace Shinshi.Network
         ****************************************/
 
         /// <summary> 서버 시작 또는 클라이언트 접속 전에 대상 역할을 지정한다, 마을 캐릭터는 별도 복제 주기를 쓴다 </summary>
-        public void ConfigureServerRole(EServerRole role)
+        public void ConfigureServerRole(EServerRole role, string dungeonBossId = null)
         {
             if ((role != EServerRole.Town) && (role != EServerRole.Dungeon))
             {
@@ -224,19 +228,67 @@ namespace Shinshi.Network
             }
 
             _serverRole = role;
-            onlineScene = ResolveOnlineScene(role, _townOnlineScene);
+            onlineScene     = ResolveOnlineScene(role, _townOnlineScene, dungeonBossId);
+            _dungeonMapName = ((role == EServerRole.Dungeon) && (!string.IsNullOrEmpty(onlineScene)))
+                ? DungeonMapRules.ResolveBootSceneName(dungeonBossId)
+                : string.Empty;
             ApplyNetworkSettings();
         }
 
+        /// <summary>
+        /// 첫 입장 계약이 요구하는 전장으로 서버만 씬을 바꾼다. Mirror ServerChangeScene과 같은 순서지만 SceneMessage를 보내지 않는다.
+        /// 이 시점에 서버가 받은 연결은 아직 입장이 확정되지 않았고, 확정되는 연결은 ServerAccept 때 바뀐 networkSceneName을 받는다
+        /// </summary>
+        public bool TryBeginLoad(string mapName)
+        {
+            if ((!NetworkServer.active) || (_isMapLoading) || (_serverRole != EServerRole.Dungeon)
+                || (!DungeonMapRules.IsDungeonSceneName(mapName)))
+            {
+                return false;
+            }
+
+            string path = DungeonMapRules.ToScenePath(mapName);
+            if (!Application.CanStreamedLevelBeLoaded(mapName))
+            {
+                Debug.LogError($"[Network] 빌드에 없는 전장 씬이라 맵 전환을 시작하지 못한다, map={mapName}");
+                return false;
+            }
+
+            NetworkServer.SetAllClientsNotReady();
+            networkSceneName = path;
+            OnServerChangeScene(path);
+            NetworkServer.isLoadingScene = true;
+            loadingSceneAsync            = SceneManager.LoadSceneAsync(path);
+            if (loadingSceneAsync == null)
+            {
+                NetworkServer.isLoadingScene = false;
+                return false;
+            }
+
+            startPositionIndex = 0;
+            startPositions.Clear();
+            _dungeonMapName = mapName;
+            _isMapLoading   = true;
+            return true;
+        }
+
+        public override void OnServerSceneChanged(string sceneName)
+        {
+            _isMapLoading = false;
+            base.OnServerSceneChanged(sceneName);
+        }
+
         /// <summary> 역할이 접속할 씬 경로를 구한다, 마을 씬이 비어 있는 단일 씬 개발 구성은 던전도 씬을 바꾸지 않는다 </summary>
-        public static string ResolveOnlineScene(EServerRole role, string townOnlineScene)
+        public static string ResolveOnlineScene(EServerRole role, string townOnlineScene, string dungeonBossId = null)
         {
             switch (role)
             {
                 case EServerRole.Town:
                     return townOnlineScene ?? string.Empty;
                 case EServerRole.Dungeon:
-                    return string.IsNullOrEmpty(townOnlineScene) ? string.Empty : DUNGEON_ONLINE_SCENE;
+                    return string.IsNullOrEmpty(townOnlineScene)
+                        ? string.Empty
+                        : DungeonMapRules.ToScenePath(DungeonMapRules.ResolveBootSceneName(dungeonBossId));
                 default:
                     throw new ArgumentOutOfRangeException(nameof(role));
             }
@@ -352,7 +404,7 @@ namespace Shinshi.Network
 
 #if !UNITY_SERVER
             if ((!IsTransferringServer) && (!string.IsNullOrEmpty(_townOnlineScene))
-                && ((Utils.IsSceneActive(_townOnlineScene)) || (Utils.IsSceneActive(DUNGEON_ONLINE_SCENE)))
+                && ((Utils.IsSceneActive(_townOnlineScene)) || (DungeonMapRules.IsDungeonSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)))
                 && (!NetworkServer.active))
             {
                 LobbyFlow.ReturnToCharacterSelect("서버와 연결이 끊겼다. 다시 게임 시작을 누른다.");
@@ -530,6 +582,12 @@ namespace Shinshi.Network
             }
 
             Destroy(replica);
+        }
+
+        /// <summary> 프리팹 루트에 위치 복제용 NetworkTransform이 있는지 본다, Mirror.Components를 못 보는 서버 어셈블리와 검증용이다 </summary>
+        public static bool HasRootTransformReplication(GameObject prefab)
+        {
+            return (prefab != null) && (prefab.TryGetComponent(out NetworkTransformBase _));
         }
 
         private static void ApplyTransformReplication(NetworkIdentity identity, float intervalSeconds)

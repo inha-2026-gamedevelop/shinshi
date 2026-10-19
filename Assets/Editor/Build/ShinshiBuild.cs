@@ -57,9 +57,11 @@ namespace Shinshi.Editor
         // SceneManager와 Mirror onlineScene은 Constants.Scene의 이름으로 찾으므로 빌드 목록에 빠지면 이동이 실패한다
         private static readonly string[] G_ClientScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.LOBBY),
             ScenePath(Constants.Scene.CHARACTER_SELECT), ScenePath(Constants.Scene.CHARACTER_CREATE),
-            ScenePath(Constants.Scene.SHINSHI_TOWN), ScenePath(Constants.Scene.DUNGEON_FOREST) };
+            ScenePath(Constants.Scene.SHINSHI_TOWN), ScenePath(Constants.Scene.DUNGEON_FOREST),
+            ScenePath(Constants.Scene.DUNGEON_MUCHEOL), ScenePath(Constants.Scene.DUNGEON_WOLBAEK) };
         private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN),
-            ScenePath(Constants.Scene.DUNGEON_FOREST) };
+            ScenePath(Constants.Scene.DUNGEON_FOREST), ScenePath(Constants.Scene.DUNGEON_MUCHEOL),
+            ScenePath(Constants.Scene.DUNGEON_WOLBAEK) };
         private static readonly string[] G_DevMovementScenes = { DEV_MOVEMENT_SCENE_PATH };
 
         // 네트워크 없이 보스 패턴과 UI 화면, 마을 렌더링 비용을 확인하는 개발 씬 묶음. 서버 접속 없이 한 실행 파일에서 고르며(DevTestScenePicker),
