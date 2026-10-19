@@ -138,6 +138,10 @@ MonoBehaviour:
     _items:
     - _itemId: item_essence
       _quantity: 500
+    - _itemId: item_herb
+      _quantity: 10
+    - _itemId: item_yeopjeon
+      _quantity: 100
     _equipment:
     - _equipmentId: equip_weapon_training
       _enhancement: 0
@@ -164,6 +168,10 @@ MonoBehaviour:
     _items:
     - _itemId: item_essence
       _quantity: 500
+    - _itemId: item_herb
+      _quantity: 10
+    - _itemId: item_yeopjeon
+      _quantity: 100
     _equipment:
     - _equipmentId: equip_weapon_rare
       _enhancement: 17
