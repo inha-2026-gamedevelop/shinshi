@@ -860,7 +860,7 @@ namespace Shinshi.Combat
             effect.Active = false;
         }
 
-        // 관통 술식은 맞힌 대상 위치까지 나아가 남은 거리에서 다음 적을 찾는다. 첫 적중은 원래 계수, 뒤는 추가 계수다
+        // 관통 술식은 맞힌 대상보다 먼 거리에서 다음 적을 찾는다. 첫 적중은 원래 계수, 뒤는 추가 계수다
         private void TickProjectile(ref Effect effect, int slot, double now)
         {
             if (effect.Pending)
@@ -875,27 +875,31 @@ namespace Shinshi.Combat
                 effect.LastTime = effect.StartAt;
             }
             int   hitBase  = slot * Constants.Combat.MAX_PIERCE_HITS_PER_PROJECTILE;
-            float distance = Mathf.Min(effect.Range - effect.Travelled,
-                effect.Speed * (float)Math.Max(0.0, now - effect.LastTime));
+            float elapsed  = (float)Math.Max(0.0, now - effect.LastTime);
+            float distance = Mathf.Min(effect.Range - effect.Travelled, effect.Speed * elapsed);
             float clear     = _lineOfSight.GetClearDistance(effect.Origin, effect.Aim, distance);
             float halfWidth = effect.HalfWidth;
-            float remaining = clear;
             bool  wallCut   = (effect.DiscardOnCancel) && (clear < distance);
+
+            // 기본 공격 화살처럼 투사체 쪽으로 달려온 적이 틱 사이에 지나쳤을 수 있어 지난 위치 뒤를 되짚는다. 쏜 자리보다 뒤는 보지 않는다.
+            // 한 틱 안에서는 출발점을 고정하고 start만 앞으로 옮긴다. 다음 적은 앞서 맞힌 적과 같거나 먼 거리에서 처음 닿는다
+            float start = -Mathf.Min(effect.Travelled, Constants.Combat.ARROW_TARGET_MAX_APPROACH_SPEED * elapsed);
             while (effect.Active)
             {
-                int index = FirstOnRay(effect.Origin, effect.Aim, remaining, halfWidth, hitBase, effect.HitCount, out float along);
+                int index = FirstBodyOnSegment(effect.Origin, effect.Aim, start, clear, halfWidth, hitBase, effect.HitCount,
+                    out float along);
                 if (index < 0)
                 {
                     break;
                 }
                 // 벽과 대상이 같은 거리면 벽이 먼저다
-                if ((wallCut) && (along >= remaining))
+                if ((wallCut) && (along >= clear))
                 {
                     break;
                 }
                 ICombatTarget target      = _targets[index];
                 float         coefficient = (effect.HitCount == 0) ? effect.Coefficient : effect.ExtraCoefficient;
-                ApplyHit(target, effect.Skill.DefinitionId, effect.CastId, effect.ActionId, effect.Origin,
+                ApplyHit(target, effect.Skill.DefinitionId, effect.CastId, effect.ActionId, effect.Origin + (effect.Aim * along),
                     coefficient * effect.Modifiers.DamageScale, effect.Modifiers.ResonanceBonus, 0f, false, now);
                 if (effect.PierceLeft <= 0)
                 {
@@ -905,13 +909,10 @@ namespace Shinshi.Combat
                 --effect.PierceLeft;
                 _hitIds[hitBase + effect.HitCount] = target.CombatId;
                 ++effect.HitCount;
-                along             = Mathf.Clamp(along, 0f, remaining);
-                effect.Origin    += effect.Aim * along;
-                effect.Travelled += along;
-                remaining        -= along;
+                start = along;
             }
-            effect.Origin    += effect.Aim * remaining;
-            effect.Travelled += remaining;
+            effect.Origin    += effect.Aim * clear;
+            effect.Travelled += clear;
             effect.LastTime   = now;
             if ((clear < distance) || (effect.Travelled >= effect.Range))
             {
@@ -1218,6 +1219,36 @@ namespace Shinshi.Combat
                 if ((candidate < along) || ((candidate == along) && ((nearest < 0) || (_targets[i].CombatId < _targets[nearest].CombatId))))
                 {
                     along = candidate;
+                    nearest = i;
+                }
+            }
+            return nearest;
+        }
+
+        // 출발점에서 진행 방향 start ~ end 구간을 지나는 폭 있는 투사체가 처음 닿는 몸체를 고른다. 대상 몸체 반경을 더하고 start는 음수일 수 있다.
+        // 이미 맞힌 대상(hitIds의 hitBase부터 hitCount개)은 고르지 않는다. 같은 거리면 전투 번호가 작은 쪽이다
+        private int FirstBodyOnSegment(Vector3 origin, Vector3 aim, float start, float end, float halfWidth, int hitBase, int hitCount,
+            out float along)
+        {
+            float search = Mathf.Max(end, -start) + halfWidth + Constants.Combat.MAX_BODY_RADIUS;
+            _registry.GetLivingInRadius(origin, search, ECombatFaction.Enemy, true, _targets);
+            int nearest = -1;
+            along = float.MaxValue;
+            for (int i = 0; i < _targets.Count; ++i)
+            {
+                ICombatTarget target   = _targets[i];
+                Vector3       position = target.Position;
+                if ((IsHit(hitBase, hitCount, target.CombatId))
+                    || (!BasicAttackRules.IsWithinHeight(origin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
+                    || (_lineOfSight.IsBlocked(origin, position))
+                    || (!BasicAttackRules.TryHitBodyOnSegment(origin, aim, position, start, end, halfWidth, target.BodyRadius,
+                        out float candidate)))
+                {
+                    continue;
+                }
+                if ((candidate < along) || ((candidate == along) && ((nearest < 0) || (target.CombatId < _targets[nearest].CombatId))))
+                {
+                    along   = candidate;
                     nearest = i;
                 }
             }

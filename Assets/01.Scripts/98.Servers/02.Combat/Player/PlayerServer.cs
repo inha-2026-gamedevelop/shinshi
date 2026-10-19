@@ -1046,19 +1046,25 @@ namespace Shinshi.Combat
         // 화살이 계속 날아가면 참, 맞았거나 벽이나 사거리에서 끝났으면 거짓이다
         private bool TickOneArrow(ref ArrowState arrow, double serverTime)
         {
-            float distance = Mathf.Min(_attack.Range - arrow.Travelled,
-                arrow.Speed * (float)System.Math.Max(0.0, serverTime - arrow.LastTime));
+            float elapsed  = (float)System.Math.Max(0.0, serverTime - arrow.LastTime);
+            float distance = Mathf.Min(_attack.Range - arrow.Travelled, arrow.Speed * elapsed);
             float clear     = _lineOfSight.GetClearDistance(arrow.Origin, arrow.Aim, distance);
             float halfWidth = _attack.ProjectileWidth * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
             bool  wallCut   = clear < distance;
 
+            // 화살 쪽으로 달려온 적이 틱 사이에 화살 끝을 지나쳤을 수 있어 지난 위치 뒤를 되짚는다. 쏜 자리보다 뒤는 보지 않는다
+            float lookback = Mathf.Min(arrow.Travelled, Constants.Combat.ARROW_TARGET_MAX_APPROACH_SPEED * elapsed);
+            float search   = Mathf.Max(clear, lookback) + halfWidth + Constants.Combat.MAX_BODY_RADIUS;
+
             int   hitIndex = -1;
             float hitAlong = float.MaxValue;
-            int   count    = _query.GetLivingInRadius(arrow.Origin, clear + halfWidth, ECombatFaction.Enemy, true, _targetBuffer);
+            int   count    = _query.GetLivingInRadius(arrow.Origin, search, ECombatFaction.Enemy, true, _targetBuffer);
             for (int i = 0; i < count; ++i)
             {
-                Vector3 position = _targetBuffer[i].Position;
-                if ((!BasicAttackRules.TryProjectOnRay(arrow.Origin, arrow.Aim, position, clear, halfWidth, out float along))
+                ICombatTarget candidate = _targetBuffer[i];
+                Vector3       position  = candidate.Position;
+                if ((!BasicAttackRules.TryHitBodyOnSegment(arrow.Origin, arrow.Aim, position, -lookback, clear, halfWidth,
+                        candidate.BodyRadius, out float along))
                     || (!BasicAttackRules.IsWithinHeight(arrow.Origin, position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE)))
                 {
                     continue;
