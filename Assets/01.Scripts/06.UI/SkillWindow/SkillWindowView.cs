@@ -86,12 +86,24 @@ namespace Shinshi.UI
 
         private UnityAction[] _tabHandlers;
         private UnityAction[] _choiceHandlers;
+        private bool          _modernAlternate = false;
+        private int           _selectedTab     = -1;
+        private int           _selectedChoice  = -1;
+        private Sprite        _selectedSkillIcon;
+        private Sprite        _selectedTalismanIcon;
 
         /****************************************
         *              Properties
         ****************************************/
 
         public bool IsOpen => gameObject.activeSelf;
+
+        /// <summary> 부적(참) · 스킬(거짓) 표시 모드. 같은 뷰와 Binder를 쓰는 표시만의 차이다 </summary>
+        public bool ModernAlternate => _modernAlternate;
+
+        /// <summary> 지금 고른 기술 탭과 부적 후보의 실제 아이콘. 고른 것이 없거나 그림이 없으면 null이다 </summary>
+        public Sprite SelectedSkillIcon    => _selectedSkillIcon;
+        public Sprite SelectedTalismanIcon => _selectedTalismanIcon;
 
         public event Action<int>      TabSelected;
         public event Action<int, int> ChoiceSelected;
@@ -148,6 +160,7 @@ namespace Shinshi.UI
                 }
             }
 
+            EnsureModernLayout();
             ShowConfirm(false);
         }
 
@@ -172,6 +185,19 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
+        /// <summary> 시안 레이아웃을 한 번만 적용한다. 여러 번 불러도 같은 결과다 </summary>
+        public void EnsureModernLayout()
+        {
+            SkillWindowModernLayout.Apply(this);
+        }
+
+        /// <summary> 표시 모드만 바꾼다. 데이터 · 초안 · 요청 상태와 부적 영역 켜기 · 끄기는 그대로다 </summary>
+        public void SetModernPresentation(bool alternate)
+        {
+            _modernAlternate = alternate;
+            SkillWindowModernLayout.Present(this, alternate);
+        }
+
         public void SetOpen(bool open)
         {
             gameObject.SetActive(open);
@@ -194,6 +220,19 @@ namespace Shinshi.UI
             }
 
             SetActive(Pick(_tabSelected, tab), selected);
+
+            if (selected)
+            {
+                _selectedTab       = tab;
+                _selectedSkillIcon = icon;
+            }
+            else if (_selectedTab == tab)
+            {
+                _selectedTab       = -1;
+                _selectedSkillIcon = null;
+            }
+
+            SkillWindowModernLayout.RefreshIcons(this);
         }
 
         public void SetSkill(string skillName, string stats, string description)
@@ -221,6 +260,16 @@ namespace Shinshi.UI
             }
 
             SetActive(Pick(_choiceRoots, index), visible);
+            if (!visible || !selected)
+            {
+                if (_selectedChoice == index)
+                {
+                    _selectedChoice       = -1;
+                    _selectedTalismanIcon = null;
+                    SkillWindowModernLayout.RefreshIcons(this);
+                }
+            }
+
             if (!visible)
             {
                 return;
@@ -243,6 +292,13 @@ namespace Shinshi.UI
 
             SetActive(Pick(_choiceSelected, index), selected);
             SetActive(Pick(_choiceEquipped, index), equipped);
+
+            if (selected)
+            {
+                _selectedChoice       = index;
+                _selectedTalismanIcon = icon;
+                SkillWindowModernLayout.RefreshIcons(this);
+            }
         }
 
         public void SetEffect(string title, string bonus, string description, string warning)
@@ -253,14 +309,14 @@ namespace Shinshi.UI
             SetText(_effectWarning, warning);
         }
 
-        public void SetRegister(string label, bool interactable)    { SetButton(_registerButton, _registerLabel, label, interactable); }
-        public void SetUpgrade(string label, bool interactable)     { SetButton(_upgradeButton, _upgradeLabel, label, interactable); }
+        public void SetRegister(string label, bool interactable)    { SetButton(_registerButton, _registerLabel, SkillWindowModernLayout.SplitCostLabel(label), interactable); }
+        public void SetUpgrade(string label, bool interactable)     { SetButton(_upgradeButton, _upgradeLabel, SkillWindowModernLayout.SplitCostLabel(label), interactable); }
         public void SetEquip(string label, bool interactable)       { SetButton(_equipButton, _equipLabel, label, interactable); }
 
         /// <summary> 분해 버튼과 수량 조절 버튼 </summary>
         public void SetDisassemble(string label, bool interactable, bool canDecrease, bool canIncrease)
         {
-            SetButton(_disassembleButton, _disassembleLabel, label, interactable);
+            SetButton(_disassembleButton, _disassembleLabel, SkillWindowModernLayout.SplitCostLabel(label), interactable);
             SetInteractable(_quantityDown, canDecrease);
             SetInteractable(_quantityUp, canIncrease);
         }

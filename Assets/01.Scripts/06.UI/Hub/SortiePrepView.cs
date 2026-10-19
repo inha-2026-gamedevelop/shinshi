@@ -130,6 +130,11 @@ namespace Shinshi.UI
         *              Unity Event
         ****************************************/
 
+        private void Awake()
+        {
+            EnsureModernLayout();
+        }
+
         private void OnEnable()
         {
             AddListener(_prevDifficultyButton, OnPrevDifficulty);
@@ -154,6 +159,12 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
+        /// <summary>어두운 공통 배치를 한 번만 적용한다. 여러 번 불러도 같다</summary>
+        public void EnsureModernLayout()
+        {
+            SortiePrepModernLayout.Apply(this);
+        }
+
         /// <summary>그림이 없으면 자리표시를 켠다</summary>
         public void SetDungeon(string dungeonName, string summary, Sprite art)
         {
@@ -167,12 +178,19 @@ namespace Shinshi.UI
                 _dungeonSummaryLabel.text = summary;
             }
 
+            if (art == null)
+            {
+                ModernDarkUiCatalog catalog = ModernDarkUiCatalog.Load();
+                art = (catalog != null) ? catalog.Background : null;
+            }
+
             bool hasArt = (art != null);
 
             if (_dungeonArt != null)
             {
-                _dungeonArt.sprite  = art;
-                _dungeonArt.enabled = hasArt;
+                _dungeonArt.sprite        = art;
+                _dungeonArt.enabled       = hasArt;
+                _dungeonArt.raycastTarget = false;
             }
 
             SetActive(_artPlaceholder, !hasArt);
@@ -312,6 +330,25 @@ namespace Shinshi.UI
         }
 
         public void SetStartEnabled(bool enabled) { SetInteractable(_startButton, enabled); }
+
+        /// <summary>방이 없는 동안 준비와 나가기를 막는다. 방을 만드는 중이면 난이도 단추도 막아 중복 요청을 막는다</summary>
+        public void SetRoomControls(bool inRoom, bool pending)
+        {
+            bool difficultyEnabled = inRoom || !pending;
+            SetInteractable(_readyButton, inRoom);
+            SetInteractable(_leaveButton, inRoom);
+            SetInteractable(_prevDifficultyButton, difficultyEnabled);
+            SetInteractable(_nextDifficultyButton, difficultyEnabled);
+        }
+
+        /// <summary>저장된 안내 글자가 없는 원본이면 배치가 만든 글자를 대신 쓴다. 이미 있으면 바꾸지 않는다</summary>
+        public void AdoptNoticeLabel(TMP_Text label)
+        {
+            if ((_noticeLabel == null) && (label != null))
+            {
+                _noticeLabel = label;
+            }
+        }
 
         /// <summary>0 이하이면 출정 글자로 되돌린다</summary>
         public void SetCountdown(int seconds)

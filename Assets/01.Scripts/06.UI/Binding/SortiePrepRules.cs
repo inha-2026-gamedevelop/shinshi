@@ -133,7 +133,14 @@ namespace Shinshi.UI
                 return false;
             }
 
-            return catalog.TryGetBattle(current.BossId, difficulty, out sibling);
+            if ((!catalog.TryGetBattle(current.BossId, difficulty, out ProgressionCatalogSO.BossBattleDefinition found))
+                || (found == null) || ((catalog.TrialEdition) && (!found.AvailableInTrial)))
+            {
+                return false;
+            }
+
+            sibling = found;
+            return true;
         }
 
         /// <summary> 서버 난이도 값을 창 난이도로 바꾼다, 정의에 없으면 Easy </summary>

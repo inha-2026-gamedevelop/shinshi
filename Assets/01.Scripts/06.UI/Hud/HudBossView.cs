@@ -41,6 +41,22 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
+        private void Awake()
+        {
+            EnsureModernLayout();
+        }
+
+        /// <summary>어두운 보스 바탕을 한 번만 깐다. 입력은 막지 않는다</summary>
+        public void EnsureModernLayout()
+        {
+            HudModernStyle.AddBackdrop(transform, UiModernDark.SPRITE_INSET, Color.white, 8f);
+            ModernDarkKit.StyleText(_nameLabel, 0f, UiModernDark.TextGold);
+            ModernDarkKit.StyleText(_healthLabel, 0f, UiModernDark.TextMain);
+            ModernDarkKit.StyleText(_phaseLabel, 0f, UiModernDark.TextMuted);
+            ModernDarkKit.StyleText(_reviveLabel, 0f, UiModernDark.TextMuted);
+            ModernDarkKit.StyleText(_potionLabel, 0f, UiModernDark.TextMuted);
+        }
+
         public void SetBossName(string bossName)
         {
             if (_nameLabel != null)

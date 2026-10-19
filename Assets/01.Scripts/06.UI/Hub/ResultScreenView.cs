@@ -98,6 +98,8 @@ namespace Shinshi.UI
 
         private void Awake()
         {
+            EnsureModernLayout();
+
             // 결과를 열 때마다 같은 등장 연출을 반복하므로 한 번 만들어 재사용한다.
             // 정산 중 게임 시간이 멈춰 있어도 보여야 하므로 시간 배율을 무시한다.
             // CanvasGroup.DOFade는 Shinshi.Runtime이 참조하지 못하는 DOTween 모듈에 있어 코어 DOTween.To를 쓴다
@@ -154,6 +156,24 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary>어두운 공통 배치를 한 번만 적용한다. 여러 번 불러도 같다</summary>
+        public void EnsureModernLayout()
+        {
+            ResultScreenModernLayout.Apply(this);
+        }
+
+        /// <summary>등장 연출을 건너뛰고 완전히 보이는 상태로 둔다</summary>
+        public void ShowImmediately()
+        {
+            if (_intro != null)
+            {
+                _intro.Complete();
+            }
+
+            SetAlpha(1f);
+            SetPop(1f);
+        }
 
         public void SetResult(ResultScreenData data)
         {

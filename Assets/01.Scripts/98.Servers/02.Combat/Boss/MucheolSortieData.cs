@@ -27,7 +27,7 @@ namespace Shinshi.Combat
         private const float COMBO_SECOND_DELAY      = 0.5f;  // 초, 실행 시작부터
 
         // P06 돌진이 벽이나 구조물에 막혀 끝났을 때의 회복
-        private const float CHARGE_COLLISION_RECOVERY = 2.5f; // 초
+        private const float CHARGE_COLLISION_RECOVERY = 5.0f; // 초
 
         // 돌진 유도 기믹
         private const float GIMMICK_TRIGGER_HEALTH_RATE = 0.70f; // 체력 비율이 이 값 이하면 발동

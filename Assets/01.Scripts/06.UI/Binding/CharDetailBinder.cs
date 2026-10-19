@@ -92,7 +92,7 @@ namespace Shinshi.UI
             for (int slot = 0; slot < Constants.Combat.EQUIPMENT_SLOT_COUNT; ++slot)
             {
                 CharDetailRules.EquippedText(in growth, slot, out string equipmentName, out string enhancement);
-                _view.SetSlot(slot, equipmentName, enhancement);
+                _view.SetSlot(slot, DisplayEquipmentName(GameDB.IsInitialized ? GameDB.Equipment : null, equipmentName), enhancement);
             }
 
             int[] training = growth.Training;
@@ -103,6 +103,17 @@ namespace Shinshi.UI
 
             _view.SetTalismanSummary(string.Format(CultureInfo.InvariantCulture, TALISMAN_FORMAT, growth.Talismans.Length,
                 growth.Loadout.Length));
+        }
+
+        /// <summary> 정의 ID를 장비 표시 이름으로 바꾼다. 카탈로그가 없거나 정의를 못 찾으면 받은 글자(빈 칸 "-" 포함)를 그대로 둔다 </summary>
+        public static string DisplayEquipmentName(EquipmentCatalogSO catalog, string definitionId)
+        {
+            if ((catalog == null) || (string.IsNullOrEmpty(definitionId)) || (!catalog.TryGetEquipment(definitionId, out _)))
+            {
+                return definitionId;
+            }
+
+            return EquipmentEnhanceRules.DisplayName(catalog, definitionId);
         }
 
         private void ApplyStats(in GrowthSnapshotMessage growth)

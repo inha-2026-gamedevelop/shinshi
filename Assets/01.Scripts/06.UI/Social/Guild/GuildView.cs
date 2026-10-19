@@ -85,6 +85,8 @@ namespace Shinshi.UI
 
         private void Awake()
         {
+            GuildModernLayout.Apply(this);
+
             AddListener(_closeButton, OnCloseClicked);
             AddListener(_createButton, OnCreateClicked);
             AddListener(_applyButton, OnApplyClicked);

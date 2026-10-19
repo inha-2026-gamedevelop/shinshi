@@ -145,6 +145,13 @@ namespace Shinshi.Network
             NetworkClient.Send(new JoinRequestMessage(Constants.Network.PROTOCOL_VERSION, contentHash, joinToken));
         }
 
+        // 서버는 인증 전 연결의 일반 메시지를 받지 않고 연결을 끊는다. 일반 요청은 인증이 끝난 연결에만 보낸다
+        /// <summary> 연결돼 있고 서버 인증까지 끝났으면 참 </summary>
+        public static bool IsAuthenticatedConnection()
+        {
+            return (NetworkClient.isConnected) && (NetworkClient.connection != null) && (NetworkClient.connection.isAuthenticated);
+        }
+
         private void OnJoinResponse(JoinResponseMessage message)
         {
             if (message.IsAccepted)

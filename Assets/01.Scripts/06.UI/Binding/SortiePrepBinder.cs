@@ -40,6 +40,8 @@ namespace Shinshi.UI
         private bool            _wasInRoom           = false;
         private bool            _startAfterReady     = false;
         private bool            _recreatePending     = false;
+        private string          _recreateBattleId    = null;
+        private bool            _createPending       = false;
         private float           _countdownReceivedAt = 0f;
         private float           _nextRefreshAt       = 0f;
 
@@ -172,19 +174,29 @@ namespace Shinshi.UI
             return true;
         }
 
-        private void CreateRoom(EBossDifficulty difficulty)
+        // battleId가 있으면 그 보스전으로, 없으면 난이도의 첫 선택 가능 보스전으로 방을 만든다. 실패하면 대기를 풀고 화면을 갱신한다
+        private bool CreateRoom(EBossDifficulty difficulty, string battleId = null)
         {
-            if (!ClientRoles.IsTown())
+            if (_createPending)
             {
-                _view.SetNotice("마을에서만 출정을 준비할 수 있다.");
-                return;
+                return true;
             }
 
-            if ((!GameDB.IsInitialized)
-                || (!SortiePrepRules.TrySelectBattle(GameDB.Progression, difficulty, out ProgressionCatalogSO.BossBattleDefinition battle)))
+            ProgressionCatalogSO.BossBattleDefinition battle = null;
+            if (!ClientRoles.IsTown())
             {
-                _view.SetNotice("열 수 있는 보스전이 없다.");
-                return;
+                FailCreate("마을에서만 출정을 준비할 수 있다.");
+                return false;
+            }
+
+            bool found = GameDB.IsInitialized
+                && ((string.IsNullOrEmpty(battleId))
+                    ? SortiePrepRules.TrySelectBattle(GameDB.Progression, difficulty, out battle)
+                    : (GameDB.Progression.TryGetBattle(battleId, out battle)));
+            if (!found)
+            {
+                FailCreate("열 수 있는 보스전이 없다.");
+                return false;
             }
 
             string localName = ClientRoles.LocalCharacterName();
@@ -194,7 +206,27 @@ namespace Shinshi.UI
             if (!TownPartyClient.CreateRoom(roomName, EPartyMode.Boss, battle.DefinitionId, null))
             {
                 _view.SetNotice(ERejectReason.BackendUnavailable);
+                FailCreate(null);
+                return false;
             }
+
+            _createPending = true;
+            _view.SetNotice("파티 방을 만드는 중이다.");
+            Refresh();
+            return true;
+        }
+
+        private void FailCreate(string notice)
+        {
+            _createPending    = false;
+            _recreatePending  = false;
+            _recreateBattleId = null;
+            if (notice != null)
+            {
+                _view.SetNotice(notice);
+            }
+
+            Refresh();
         }
 
         private void OnRoomChanged(PartyRoomStateMessage room)
@@ -213,8 +245,19 @@ namespace Shinshi.UI
 
             if ((!room.InRoom) && (_recreatePending))
             {
-                _recreatePending = false;
-                CreateRoom(_difficulty);
+                string battleId = _recreateBattleId;
+                _recreatePending  = false;
+                _recreateBattleId = null;
+                CreateRoom(_difficulty, battleId);
+            }
+
+            if ((room.InRoom) && (_createPending))
+            {
+                _createPending = false;
+                if (_view != null)
+                {
+                    _view.SetNotice(string.Empty);
+                }
             }
 
             _wasInRoom = room.InRoom;
@@ -232,11 +275,18 @@ namespace Shinshi.UI
             PartyRoomStateMessage room = TownPartyClient.Room;
             SortiePrepRules.BuildMembers(in room, _members);
             _view.SetMembers(_members);
+            bool pending = _createPending || _recreatePending;
+            _view.SetRoomControls(room.InRoom, pending);
             if (!room.InRoom)
             {
                 _view.SetLocalState(false, false);
                 _view.SetStartEnabled(false);
                 _view.SetCountdown(0);
+                if (pending)
+                {
+                    _view.SetNotice(_recreatePending ? "난이도를 바꾸려고 방을 다시 만드는 중이다." : "파티 방을 만드는 중이다.");
+                }
+
                 return;
             }
 
@@ -351,8 +401,9 @@ namespace Shinshi.UI
 
         private void OnLeaveClicked()
         {
-            _startAfterReady = false;
-            _recreatePending = false;
+            _startAfterReady  = false;
+            _recreatePending  = false;
+            _recreateBattleId = null;
             if (TownPartyClient.Room.InRoom)
             {
                 TownPartyClient.LeaveRoom();
@@ -364,26 +415,45 @@ namespace Shinshi.UI
         // 서버에 난이도 변경 요청이 없어 혼자 있는 방장만 방을 다시 만든다. 그 밖에는 방의 난이도로 되돌린다
         private void OnDifficultyChanged(EBossDifficulty difficulty)
         {
-            PartyRoomStateMessage room = TownPartyClient.Room;
-            if (!room.InRoom)
+            if ((_createPending) || (_recreatePending))
             {
-                _difficulty = difficulty;
-                CreateRoom(difficulty);
+                _view.SetDifficulty(_difficulty);
                 return;
             }
 
-            bool canRecreate = (room.Mode == EPartyMode.Boss) && (room.Phase == EPartyPhase.Open) && (room.Members.Length == 1)
-                && (GameDB.IsInitialized)
-                && (SortiePrepRules.TryFindSibling(GameDB.Progression, room.ContentId, difficulty, out _));
-            if (!canRecreate)
+            PartyRoomStateMessage room = TownPartyClient.Room;
+            if (!room.InRoom)
+            {
+                EBossDifficulty previous = _difficulty;
+                _difficulty = difficulty;
+                if (!CreateRoom(difficulty))
+                {
+                    _difficulty = previous;
+                    _view.SetDifficulty(previous);
+                }
+
+                return;
+            }
+
+            ProgressionCatalogSO.BossBattleDefinition sibling = null;
+            bool canChange = (room.Mode == EPartyMode.Boss) && (room.Phase == EPartyPhase.Open) && (room.Members.Length == 1);
+            if (!canChange)
             {
                 _view.SetDifficulty(SortiePrepRules.ToDifficulty(room.Difficulty));
                 _view.SetNotice("파티원이 있거나 출정 중에는 난이도를 바꿀 수 없다.");
                 return;
             }
 
-            _difficulty      = difficulty;
-            _recreatePending = true;
+            if ((!GameDB.IsInitialized) || (!SortiePrepRules.TryFindSibling(GameDB.Progression, room.ContentId, difficulty, out sibling)))
+            {
+                _view.SetDifficulty(SortiePrepRules.ToDifficulty(room.Difficulty));
+                _view.SetNotice("이 보스는 선택한 난이도로 지금 열 수 없다.");
+                return;
+            }
+
+            _difficulty       = difficulty;
+            _recreatePending  = true;
+            _recreateBattleId = sibling.DefinitionId;
             TownPartyClient.LeaveRoom();
         }
 
@@ -395,7 +465,11 @@ namespace Shinshi.UI
             }
 
             _startAfterReady = false;
+            _createPending    = false;
+            _recreatePending  = false;
+            _recreateBattleId = null;
             _view.SetNotice(result.Reason);
+            Refresh();
         }
 
         // 지참 물약은 가진 만큼 모두 보낸다. 준비 판정과 상한은 서버가 맡는다

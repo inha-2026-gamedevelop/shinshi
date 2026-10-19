@@ -169,7 +169,15 @@ namespace Shinshi.UI
         *              Unity Event
         ****************************************/
 
-        private void Awake() { BindButtons(); }
+        private void Awake()
+        {
+            if (Application.isPlaying)
+            {
+                EquipmentEnhanceModernLayout.Apply(this);
+            }
+
+            BindButtons();
+        }
 
         private void OnEnable()
         {

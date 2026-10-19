@@ -112,6 +112,10 @@ namespace Shinshi.UI.Editor
             // 확인 상자가 맨 위에 그려지도록 마지막 자식으로 둔다
             confirm.transform.SetAsLastSibling();
             EquipmentGrowthStyle.Finish(root, EquipmentGrowthStyle.Mint);
+
+            // 친구 창만 공통 어두운 스타일로 마감한다. 같은 도구를 쓰는 길드 창은 그대로 둔다
+            ModernDarkTextures.EnsureAll(false);
+            FriendsWindowRestyle.ApplyToRoot(root);
         }
     }
 }

@@ -20,6 +20,12 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
+        public const float WINDOW_WIDTH  = 960f;
+        public const float WINDOW_HEIGHT = 680f;
+
+        // 장면에 놓인 창이 옛 크기를 덮어쓰고 있어도 프리팹의 배치 크기로 맞춘다. 0이면 건드리지 않는다
+        [SerializeField] private Vector2 _windowSize = Vector2.zero;
+
         [SerializeField] private Button   _closeButton = null;
         [SerializeField] private TMP_Text _countLabel  = null;
 
@@ -72,6 +78,8 @@ namespace Shinshi.UI
 
         private void Awake()
         {
+            ApplyWindowSize();
+
             AddListener(_closeButton, OnCloseClicked);
             AddListener(_requestButton, OnRequestClicked);
             AddListener(_prevPage, OnPrevPage);
@@ -148,6 +156,14 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        public void ApplyWindowSize()
+        {
+            if ((_windowSize.x > 0f) && (_windowSize.y > 0f))
+            {
+                ((RectTransform)transform).sizeDelta = _windowSize;
+            }
+        }
 
         public void SetOpen(bool open)
         {
