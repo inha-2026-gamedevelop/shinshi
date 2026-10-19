@@ -44,6 +44,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_warrior_dash
     _displayKey: skill_warrior_dash.name
     _playerClass: 0
@@ -74,6 +90,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_warrior_ground_slam
     _displayKey: skill_warrior_ground_slam.name
     _playerClass: 0
@@ -104,6 +136,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_warrior_counter
     _displayKey: skill_warrior_counter.name
     _playerClass: 0
@@ -134,6 +182,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_sorcerer_spell_bolt
     _displayKey: skill_sorcerer_spell_bolt.name
     _playerClass: 1
@@ -164,6 +228,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_sorcerer_flame_field
     _displayKey: skill_sorcerer_flame_field.name
     _playerClass: 1
@@ -194,6 +274,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_sorcerer_binding_field
     _displayKey: skill_sorcerer_binding_field.name
     _playerClass: 1
@@ -224,6 +320,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_sorcerer_lightning
     _displayKey: skill_sorcerer_lightning.name
     _playerClass: 1
@@ -254,6 +366,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_summoner_summon_beast
     _displayKey: skill_summoner_summon_beast.name
     _playerClass: 2
@@ -284,6 +412,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0.35
       _companionAttackInterval: 0.75
       _companionAttackRange: 1.5
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_summoner_summon_spirit
     _displayKey: skill_summoner_summon_spirit.name
     _playerClass: 2
@@ -314,6 +458,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0.45
       _companionAttackInterval: 1
       _companionAttackRange: 8
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_summoner_spirit_strike
     _displayKey: skill_summoner_spirit_strike.name
     _playerClass: 2
@@ -344,6 +504,22 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_summoner_target_barrier
     _displayKey: skill_summoner_target_barrier.name
     _playerClass: 2
@@ -374,6 +550,575 @@ MonoBehaviour:
       _companionAttackCoefficient: 0
       _companionAttackInterval: 0
       _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  _classSkills:
+  - _definitionId: skill_swordsman_slash
+    _displayKey: skill_swordsman_slash.name
+    _playerClass: 3
+    _slot: 0
+    _isSignature: 1
+    _energyCost: 20
+    _cooldown: 6
+    _timeline:
+      _windup: 0.2
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 0
+      _castRange: 0
+      _radius: 3
+      _arcAngle: 120
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 2.2
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  - _definitionId: skill_swordsman_dash
+    _displayKey: skill_swordsman_dash.name
+    _playerClass: 3
+    _slot: 1
+    _isSignature: 0
+    _energyCost: 20
+    _cooldown: 8
+    _timeline:
+      _windup: 0
+      _active: 0.3
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 2
+      _castRange: 4
+      _radius: 0
+      _arcAngle: 0
+      _width: 1.5
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 1.8
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  - _definitionId: skill_swordsman_focus_slash
+    _displayKey: skill_swordsman_focus_slash.name
+    _playerClass: 3
+    _slot: 2
+    _isSignature: 0
+    _energyCost: 30
+    _cooldown: 12
+    _timeline:
+      _windup: 0.6
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 0
+      _castRange: 0
+      _radius: 3
+      _arcAngle: 80
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 4
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  - _definitionId: skill_swordsman_chain_slash
+    _displayKey: skill_swordsman_chain_slash.name
+    _playerClass: 3
+    _slot: 3
+    _isSignature: 0
+    _energyCost: 25
+    _cooldown: 12
+    _timeline:
+      _windup: 0.3
+      _active: 0.2
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 0
+      _castRange: 0
+      _radius: 3
+      _arcAngle: 90
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 1.75
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 1.75
+      _secondHitDelay: 0.2
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  - _definitionId: skill_mageknight_arcane_slash
+    _displayKey: skill_mageknight_arcane_slash.name
+    _playerClass: 4
+    _slot: 0
+    _isSignature: 0
+    _energyCost: 20
+    _cooldown: 14
+    _timeline:
+      _windup: 0.1
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 2
+      _shape: 5
+      _castRange: 0
+      _radius: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 3
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 21300000, guid: d00cd5946ec3a2d4e9192f232b44d9dd, type: 3}
+  - _definitionId: skill_mageknight_thunder_wave
+    _displayKey: skill_mageknight_thunder_wave.name
+    _playerClass: 4
+    _slot: 1
+    _isSignature: 0
+    _energyCost: 25
+    _cooldown: 8
+    _timeline:
+      _windup: 0.35
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 3
+      _castRange: 9
+      _radius: 0
+      _arcAngle: 0
+      _width: 2
+      _projectileSpeed: 20
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 1
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 8
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0.2
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 21300000, guid: 811ae4b1bde4f57458c0c4eeb8dfa54c, type: 3}
+  - _definitionId: skill_mageknight_flame_field
+    _displayKey: skill_mageknight_flame_field.name
+    _playerClass: 4
+    _slot: 2
+    _isSignature: 1
+    _energyCost: 30
+    _cooldown: 12
+    _timeline:
+      _windup: 0.3
+      _active: 0
+      _recovery: 0.15
+    _area:
+      _aimMode: 1
+      _shape: 1
+      _castRange: 7
+      _radius: 2.5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0.5625
+      _tickInterval: 0.5
+      _duration: 4
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 5
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 21300000, guid: d0918ae15b3a36646828f61871daf582, type: 3}
+  - _definitionId: skill_mageknight_seal_slash
+    _displayKey: skill_mageknight_seal_slash.name
+    _playerClass: 4
+    _slot: 3
+    _isSignature: 0
+    _energyCost: 30
+    _cooldown: 12
+    _timeline:
+      _windup: 0.15
+      _active: 0.45
+      _recovery: 0.2
+    _area:
+      _aimMode: 0
+      _shape: 2
+      _castRange: 6
+      _radius: 0
+      _arcAngle: 0
+      _width: 2
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 3
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 10
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 1
+      _archerElement: 0
+      _requiredStacks: 0
+    _icon: {fileID: 21300000, guid: 286f9b2f6e8f6134dbd35c0ff128f74e, type: 3}
+  - _definitionId: skill_archer_rapid_shot
+    _displayKey: skill_archer_rapid_shot.name
+    _playerClass: 5
+    _slot: 0
+    _isSignature: 0
+    _energyCost: 10
+    _cooldown: 6
+    _timeline:
+      _windup: 0.1
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 2
+      _shape: 5
+      _castRange: 0
+      _radius: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 1
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  - _definitionId: skill_archer_retreat_shot
+    _displayKey: skill_archer_retreat_shot.name
+    _playerClass: 5
+    _slot: 1
+    _isSignature: 0
+    _energyCost: 10
+    _cooldown: 6
+    _timeline:
+      _windup: 0.1
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 2
+      _shape: 5
+      _castRange: 0
+      _radius: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 2
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  - _definitionId: skill_archer_scatter_shot
+    _displayKey: skill_archer_scatter_shot.name
+    _playerClass: 5
+    _slot: 2
+    _isSignature: 0
+    _energyCost: 10
+    _cooldown: 6
+    _timeline:
+      _windup: 0.1
+      _active: 0
+      _recovery: 0.2
+    _area:
+      _aimMode: 2
+      _shape: 5
+      _castRange: 0
+      _radius: 0
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 0
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 3
+      _requiredStacks: 0
+    _icon: {fileID: 0}
+  - _definitionId: skill_archer_piercing_shot
+    _displayKey: skill_archer_piercing_shot.name
+    _playerClass: 5
+    _slot: 3
+    _isSignature: 1
+    _energyCost: 20
+    _cooldown: 3
+    _timeline:
+      _windup: 0.7
+      _active: 0
+      _recovery: 0.3
+    _area:
+      _aimMode: 1
+      _shape: 1
+      _castRange: 12
+      _radius: 5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+      _centerOffset: 0
+    _effect:
+      _damageCoefficient: 8
+      _tickCoefficient: 0
+      _tickInterval: 0
+      _duration: 0
+      _rootDuration: 0
+      _allyDamageBonus: 0
+      _companionAttackCoefficient: 0
+      _companionAttackInterval: 0
+      _companionAttackRange: 0
+      _secondHitCoefficient: 0
+      _secondHitDelay: 0
+      _projectileCount: 0
+      _spreadAngle: 0
+      _maxTargets: 0
+      _repeatCount: 0
+      _repeatInterval: 0
+      _retreatDistance: 0
+      _retreatDuration: 0
+      _stackGain: 0
+      _stackCoefficient: 0
+      _hitImmunityDuration: 0
+      _teleportToEnd: 0
+      _archerElement: 0
+      _requiredStacks: 20
+    _icon: {fileID: 0}
   _ascensions:
   - _definitionId: skill_summoner_ascension_single
     _displayKey: skill_summoner_ascension_single.name
@@ -386,6 +1131,7 @@ MonoBehaviour:
     _damageCoefficient: 12
     _rootDuration: 0
     _singleTarget: 1
+    _icon: {fileID: 0}
   - _definitionId: skill_summoner_ascension_area
     _displayKey: skill_summoner_ascension_area.name
     _slot: 1
@@ -397,6 +1143,7 @@ MonoBehaviour:
     _damageCoefficient: 7
     _rootDuration: 0
     _singleTarget: 0
+    _icon: {fileID: 0}
   - _definitionId: skill_summoner_ascension_control
     _displayKey: skill_summoner_ascension_control.name
     _slot: 2
@@ -408,6 +1155,7 @@ MonoBehaviour:
     _damageCoefficient: 4
     _rootDuration: 2
     _singleTarget: 0
+    _icon: {fileID: 0}
   _ascensionSharedCooldown: 3
   _resonanceMax: 100
   _resonancePerBasicHit: 1
@@ -422,3 +1170,14 @@ MonoBehaviour:
   _companionStuckSeconds: 2
   _companionWarpOffset: 1.5
   _companionMoveSpeed: 5
+  _classStackMax: 20
+  _classStackPerBasicSwing: 1
+  _archerStackPerSameHit: 1
+  _archerStackPerSwitchHit: 2
+  _windAttackIntervalScale: 0.8
+  _windProjectileSpeedScale: 1.5
+  _burnDuration: 3
+  _burnTickInterval: 0.5
+  _burnTickCoefficient: 0.1
+  _chillDuration: 1.5
+  _chillSlowRate: 0.4
