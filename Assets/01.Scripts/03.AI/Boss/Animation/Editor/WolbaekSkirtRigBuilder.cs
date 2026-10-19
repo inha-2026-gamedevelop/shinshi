@@ -39,6 +39,23 @@ namespace Shinshi.Editor
         private const float DAMP_POSITION = 0f;
         private const float DAMP_ROTATION = 0.5f;
 
+        // 치마 뿌리의 회전은 세움 기준, 골반, 같은 쪽 허벅지 셋을 섞어 정한다
+        // 고관절을 숙이는 모션은 골반이 척추보다 더 기울고 허벅지는 거의 서 있어서, 몸 쪽을 따르면 치마가 수평으로 눕는다
+        // 그래서 숙이지 않는 세움 기준을 크게 섞어 치마가 아래로 늘어지게 하고, 허벅지는 다리를 들 때 치마가 같이 밀려 오르게 하는 용도다
+        // 뒤쪽은 허벅지가 앞으로 들려도 닿지 않으므로 허벅지를 거의 섞지 않는다
+        private const string PELVIS_NAME  = "pelvis";
+        private const string THIGH_PREFIX = "thigh_";
+        private const string UPRIGHT_NAME = "SkirtUprightRef";
+
+        // 골반을 너무 줄이면 치마가 허리 높이에서 수직으로만 늘어져 뒤로 튀어나온 엉덩이를 덮지 못한다
+        // 뒤와 옆은 골반을 더 섞어 치마 윗부분이 엉덩이 곡면을 따라 덮이게 한다
+        private const float UPRIGHT_FRONT = 0.5f;
+        private const float UPRIGHT_SIDE  = 0.2f;
+        private const float UPRIGHT_BACK  = 0.15f;
+        private const float PELVIS_FRONT  = 0.1f;
+        private const float PELVIS_SIDE   = 0.7f;
+        private const float PELVIS_BACK   = 0.8f;
+
         private static readonly string[] G_Lines =
         {
             "front_l", "front_r", "back_l", "back_r", "side_l", "side_r",
@@ -62,7 +79,14 @@ namespace Shinshi.Editor
                     return;
                 }
 
-                int count = Build(animator.gameObject, out WolbaekSkirtWarpGuard guard);
+                BossView view = root.GetComponentInChildren<BossView>(true);
+                if (view == null)
+                {
+                    Debug.LogError($"[WolbaekSkirtRigBuilder] BossView를 찾지 못했다: {PREFAB_PATH}");
+                    return;
+                }
+
+                int count = Build(animator.gameObject, CreateUprightRef(view.transform), out WolbaekSkirtWarpGuard guard);
                 if (count < 0)
                 {
                     return;
@@ -96,7 +120,7 @@ namespace Shinshi.Editor
         }
 
         /// <summary> 모델 루트에 리그를 만들고 만든 Damped Transform 수를 돌려준다, 본이 모자라면 아무것도 바꾸지 않고 -1을 돌려준다 </summary>
-        private static int Build(GameObject model, out WolbaekSkirtWarpGuard guard)
+        private static int Build(GameObject model, Transform upright, out WolbaekSkirtWarpGuard guard)
         {
             guard = null;
 
@@ -130,6 +154,16 @@ namespace Shinshi.Editor
             GameObject rigObject = new GameObject(RIG_NAME);
             rigObject.transform.SetParent(model.transform, false);
             Rig rig = rigObject.AddComponent<Rig>();
+
+            // 뿌리 제약이 Damped Transform보다 먼저 계산되어야 하므로 자식 순서상 앞에 만든다
+            foreach (string line in G_Lines)
+            {
+                if (!CreateRoot(rigObject.transform, bones, upright, line))
+                {
+                    Object.DestroyImmediate(rigObject);
+                    return -1;
+                }
+            }
 
             foreach ((Transform constrained, Transform source) in pairs)
             {
@@ -182,6 +216,60 @@ namespace Shinshi.Editor
             return true;
         }
 
+        // 보스 루트 아래에 숙이지 않는 세움 기준을 만든다, 보스 루트는 바라보는 방향으로만 돌기 때문이다
+        private static Transform CreateUprightRef(Transform bossRoot)
+        {
+            Transform old = bossRoot.Find(UPRIGHT_NAME);
+            if (old != null)
+            {
+                Object.DestroyImmediate(old.gameObject);
+            }
+
+            GameObject upright = new GameObject(UPRIGHT_NAME);
+            upright.transform.SetParent(bossRoot, false);
+            return upright.transform;
+        }
+
+        // 치마 줄의 01번 본이 골반과 같은 쪽 허벅지의 회전을 섞어 따라가게 한다
+        private static bool CreateRoot(Transform parent, Dictionary<string, Transform> bones, Transform upright, string line)
+        {
+            string side      = line.Substring(line.LastIndexOf('_') + 1);
+            string rootName  = BoneName(line, 1);
+            string thighName = THIGH_PREFIX + side;
+
+            if (!bones.TryGetValue(rootName, out Transform root) ||
+                !bones.TryGetValue(PELVIS_NAME, out Transform pelvis) ||
+                !bones.TryGetValue(thighName, out Transform thigh))
+            {
+                Debug.LogError($"[WolbaekSkirtRigBuilder] 뿌리 제약에 쓸 본을 찾지 못했다: {rootName}, {PELVIS_NAME}, {thighName}");
+                return false;
+            }
+
+            float uprightWeight = line.StartsWith("front") ? UPRIGHT_FRONT : line.StartsWith("back") ? UPRIGHT_BACK : UPRIGHT_SIDE;
+            float pelvisWeight  = line.StartsWith("front") ? PELVIS_FRONT : line.StartsWith("back") ? PELVIS_BACK : PELVIS_SIDE;
+            float legWeight     = 1f - uprightWeight - pelvisWeight;
+
+            GameObject child = new GameObject($"Root_{root.name}");
+            child.transform.SetParent(parent, false);
+
+            MultiRotationConstraint constraint = child.AddComponent<MultiRotationConstraint>();
+            MultiRotationConstraintData data = constraint.data;
+            data.constrainedObject = root;
+            data.constrainedXAxis  = true;
+            data.constrainedYAxis  = true;
+            data.constrainedZAxis  = true;
+            data.maintainOffset    = true;
+
+            WeightedTransformArray sources = new WeightedTransformArray(3);
+            sources[0] = new WeightedTransform(upright, uprightWeight);
+            sources[1] = new WeightedTransform(pelvis, pelvisWeight);
+            sources[2] = new WeightedTransform(thigh, legWeight);
+            data.sourceObjects = sources;
+
+            constraint.data = data;
+            return true;
+        }
+
         private static void CreateDamped(Transform parent, Transform constrained, Transform source)
         {
             GameObject child = new GameObject($"Damp_{constrained.name}");
@@ -203,7 +291,8 @@ namespace Shinshi.Editor
 
             foreach (Transform bone in model.GetComponentsInChildren<Transform>(true))
             {
-                if (bone.name.StartsWith("skirt_") && !bones.ContainsKey(bone.name))
+                bool isNeeded = bone.name.StartsWith("skirt_") || (bone.name == PELVIS_NAME) || bone.name.StartsWith(THIGH_PREFIX);
+                if (isNeeded && !bones.ContainsKey(bone.name))
                 {
                     bones.Add(bone.name, bone);
                 }
