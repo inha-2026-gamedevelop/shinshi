@@ -780,7 +780,7 @@ namespace Shinshi.UI
             return row;
         }
 
-        private static TMP_Text NewText(Transform parent, string name, TMP_FontAsset font, float size, Color color, TextAlignmentOptions alignment)
+        internal static TMP_Text NewText(Transform parent, string name, TMP_FontAsset font, float size, Color color, TextAlignmentOptions alignment)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             go.layer = parent.gameObject.layer;
@@ -800,7 +800,7 @@ namespace Shinshi.UI
             return text;
         }
 
-        private static Button NewButton(Transform parent, string name, TMP_FontAsset font, string label, float x, float y, float w, float h,
+        internal static Button NewButton(Transform parent, string name, TMP_FontAsset font, string label, float x, float y, float w, float h,
             bool primary, UnityAction onClick)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
@@ -827,7 +827,7 @@ namespace Shinshi.UI
             return button;
         }
 
-        private static TMP_InputField NewInput(Transform parent, string name, TMP_FontAsset font, string placeholder, float x, float y, float w, float h,
+        internal static TMP_InputField NewInput(Transform parent, string name, TMP_FontAsset font, string placeholder, float x, float y, float w, float h,
             TMP_InputField.ContentType contentType, int limit)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -861,7 +861,7 @@ namespace Shinshi.UI
             return input;
         }
 
-        private static void Stretch(RectTransform rect)
+        internal static void Stretch(RectTransform rect)
         {
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;

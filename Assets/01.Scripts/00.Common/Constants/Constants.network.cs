@@ -23,7 +23,8 @@ namespace Shinshi.Common
             // 12: 월백 체력 기믹 4종과 워프 출발 사건, 복원, 등장, 처치, 페이즈 세대 SyncVar, 격자 첫 줄 번호 추가(2026-10-17)
             // 13: 무철 돌진 구조물 배치, 파괴 사건과 복원 추가(2026-10-17)
             // 14: 월백 2페이즈 전환 컷신 구간(번호, 서버 시작과 종료 시각) SyncVar 추가(2026-10-18)
-            public const int PROTOCOL_VERSION = 14;
+            // 15: 파티 요청과 결과 메시지 끝에 요청 ID(RequestId) 추가, 직렬화 wire 변경(2026-10-19)
+            public const int PROTOCOL_VERSION = 15;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -200,6 +201,9 @@ namespace Shinshi.Common
 
             // 연결 뒤 이 시간 안에 인증 요청과 토큰 검증이 끝나지 않으면 끊는다
             public const double AUTH_TIMEOUT_SECONDS = 5.0;
+
+            // 던전 서버가 첫 입장 계약에 맞는 맵으로 바꾸는 동안 입장 확정을 보류하는 상한. 클라이언트 접속 대기(20초)보다 짧다
+            public const double DUNGEON_MAP_LOAD_TIMEOUT_SECONDS = 15.0;
 
             // 연결 뒤 인증 요청이 이 시간 안에 오지 않으면 끊는다. 정상 클라이언트는 연결 직후 바로 보낸다.
             // 요청을 받은 뒤의 토큰 검증 마감은 AUTH_TIMEOUT_SECONDS를 따로 준다

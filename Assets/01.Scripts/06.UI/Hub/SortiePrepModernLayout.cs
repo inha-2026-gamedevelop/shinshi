@@ -8,6 +8,9 @@ using UnityEngine.UI;
 // 서드파티
 using TMPro;
 
+// 프로젝트 내부
+using Shinshi.Contracts;
+
 namespace Shinshi.UI
 {
     /// <summary> Restyles the sortie prep window once, server ready rules and button wiring stay on SortiePrepView </summary>
@@ -38,6 +41,12 @@ namespace Shinshi.UI
         private const float DOT_SIZE   = 20f;
         private const float DOT_STEP   = 36f;
         private const int   CARD_COUNT = 4;
+
+        private const float INVITE_GAP         = 20f;
+        private const float INVITE_GAP_SMALL   = 12f;
+        private const float INVITE_H           = 48f;
+        private const float INVITE_INPUT_W     = 270f;
+        private const float INVITE_BUTTON_W    = 130f;
 
         /****************************************
         *                Methods
@@ -231,6 +240,34 @@ namespace Shinshi.UI
             ModernDarkKit.StyleButton(start, true);
             ModernDarkKit.StyleButton(close, false);
             AddGlyph(close, notice, "X");
+            CreateInviteRow(view);
+        }
+
+        // 나가기와 준비 사이 빈 자리에 대상 이름 입력과 초대 단추를 실행 중에만 만든다. 씬과 프리팹은 저장하지 않는다
+        private static void CreateInviteRow(SortiePrepView view)
+        {
+            const string INPUT_NAME  = UiModernDark.DECOR_PREFIX + "InviteInput";
+            const string BUTTON_NAME = UiModernDark.DECOR_PREFIX + "InviteButton";
+
+            Transform inputExisting  = view.transform.Find(INPUT_NAME);
+            Transform buttonExisting = view.transform.Find(BUTTON_NAME);
+            if ((inputExisting != null) && (buttonExisting != null))
+            {
+                view.AdoptInviteRow(inputExisting.GetComponent<TMP_InputField>(), buttonExisting.GetComponent<Button>());
+                return;
+            }
+
+            TMP_Text fontSource = ModernDarkKit.Field<TMP_Text>(view, "_dungeonNameLabel");
+            TMP_FontAsset font  = (fontSource != null) ? fontSource.font : null;
+            float rowX          = CARD_X + BUTTON_W + INVITE_GAP;
+            float rowY          = BUTTON_Y + ((BUTTON_H - INVITE_H) * 0.5f);
+
+            TMP_InputField input = PartyRecruitView.NewInput(view.transform, INPUT_NAME, font, "초대할 캐릭터 이름", rowX, rowY, INVITE_INPUT_W,
+                INVITE_H, TMP_InputField.ContentType.Standard, CharacterNameRules.MAX_INPUT_LENGTH);
+            Button button = PartyRecruitView.NewButton(view.transform, BUTTON_NAME, font, "초대", rowX + INVITE_INPUT_W + INVITE_GAP_SMALL, rowY,
+                INVITE_BUTTON_W, INVITE_H, false, null);
+            view.AdoptInviteRow(input, button);
+            view.SetInviteState(false, false);
         }
 
         // 원본에 안내 글자 참조가 없으면 실행 중에만 만들어 뷰에 연결한다. 씬과 프리팹은 저장하지 않는다

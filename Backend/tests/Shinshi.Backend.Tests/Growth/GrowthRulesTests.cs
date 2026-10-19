@@ -151,9 +151,25 @@ namespace Shinshi.Backend.Tests.Growth
             GrowthContent.GrantBundle trialAccount = G_Content.GetAccountGrant(EGrowthContentProfile.Trial);
             Assert.Equal(100, trialAccount.ActionEnergy);
             Assert.Equal(new[] { ("item_potion_large", 9L), ("item_potion_small", 9L) },
-                trialAccount.Items.Select(item => (item.ItemId, item.Quantity)).OrderBy(item => item.ItemId));
-            Assert.Equal(new[] { ("item_potion_small", 9L) }, G_Content.GetAccountGrant(EGrowthContentProfile.Standard)
-                .Items.Select(item => (item.ItemId, item.Quantity)));
+                trialAccount.Items.Select(item => (item.ItemId, item.Quantity)).OrderBy(item => item.ItemId, StringComparer.Ordinal));
+            Assert.Equal(new[] { ("item_potion_small", 9L) },
+                G_Content.GetAccountGrant(EGrowthContentProfile.Standard).Items
+                    .Select(item => (item.ItemId, item.Quantity)).OrderBy(item => item.ItemId, StringComparer.Ordinal));
+        }
+
+        [Fact]
+        public void LoadEmbedded_TradableStarterGrant_IsOnCharacterBundleOnly()
+        {
+            foreach (EGrowthContentProfile profile in new[] { EGrowthContentProfile.Standard, EGrowthContentProfile.Trial })
+            {
+                GrowthContent.GrantBundle character = G_Content.GetCharacterGrant(profile);
+                Assert.Equal(10, character.Items.Single(item => item.ItemId == MarketTradeRules.HERB_ID).Quantity);
+                Assert.Equal(100, character.Items.Single(item => item.ItemId == GrowthAssets.CURRENCY_ITEM_ID).Quantity);
+                Assert.True(MarketTradeRules.IsTradableAccountItem(MarketTradeRules.HERB_ID));
+
+                Assert.DoesNotContain(G_Content.GetAccountGrant(profile).Items, item =>
+                    (item.ItemId == MarketTradeRules.HERB_ID) || (item.ItemId == GrowthAssets.CURRENCY_ITEM_ID));
+            }
         }
 
         [Fact]

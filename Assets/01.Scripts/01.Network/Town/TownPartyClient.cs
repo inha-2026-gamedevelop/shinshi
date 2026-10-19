@@ -17,6 +17,9 @@ namespace Shinshi.Network
 
         private static PartyRoomStateMessage _room;
 
+        // 연결을 다시 맺어도 되돌리지 않는다. 이전 연결의 늦은 응답이 새 요청의 ID와 겹치지 않게 한다
+        private static uint _lastRequestId = 0;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -77,7 +80,33 @@ namespace Shinshi.Network
 
         public static bool Invite(string characterName)
         {
-            return Send(new PartyRequestMessage(EPartyAction.Invite, 0, EPartyMode.Normal, null, characterName, null, false, 0, 0));
+            return Invite(characterName, out uint _);
+        }
+
+        /// <summary> 응답과 맞춰 볼 0이 아닌 요청 ID를 발급해 보낸다. 보내지 못해도 발급한 ID를 돌려준다 </summary>
+        public static bool Invite(string characterName, out uint requestId)
+        {
+            requestId = ReserveRequestId();
+            return InviteWithId(characterName, requestId);
+        }
+
+        /// <summary> 단조 증가하는 0이 아닌 요청 ID를 발급한다. 화면이 응답 전에 대기 상태를 먼저 걸 때 쓴다 </summary>
+        public static uint ReserveRequestId()
+        {
+            ++_lastRequestId;
+            if (_lastRequestId == 0)
+            {
+                ++_lastRequestId;
+            }
+
+            return _lastRequestId;
+        }
+
+        /// <summary> ReserveRequestId로 받은 ID를 실어 초대를 보낸다 </summary>
+        public static bool InviteWithId(string characterName, uint requestId)
+        {
+            return Send(new PartyRequestMessage(EPartyAction.Invite, 0, EPartyMode.Normal, null, characterName, null, false, 0, 0,
+                requestId));
         }
 
         public static bool AcceptInvite(int roomId)

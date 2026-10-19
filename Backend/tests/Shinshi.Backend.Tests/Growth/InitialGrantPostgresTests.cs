@@ -10,10 +10,12 @@ using Xunit;
 // Project
 using Shinshi.Backend.Ledger;
 using Shinshi.Backend.Tests.Admin;
+using Shinshi.Backend.Tests.Market;
 using Shinshi.Contracts;
 using Shinshi.Data.Characters;
 using Shinshi.Data.Growth;
 using Shinshi.Data.Ledger;
+using Shinshi.Data.Trade;
 
 namespace Shinshi.Backend.Tests.Growth
 {
@@ -26,6 +28,8 @@ namespace Shinshi.Backend.Tests.Growth
 
         private const string POTION_SMALL = "item_potion_small";
         private const string POTION_LARGE = "item_potion_large";
+        private const string HERB          = MarketTradeRules.HERB_ID;
+        private const int    LEASE_MINUTES = 5;
         private const string APPEARANCE   = "{}";
         private const string REQUEST      = "{}";
 
@@ -34,7 +38,7 @@ namespace Shinshi.Backend.Tests.Growth
         ****************************************/
 
         [PostgresFact]
-        public async Task Create_AccountFirstOnceAndCharacterGrantPerCharacter()
+        public async Task Create_AccountFirstOnceAndTradableStarterPerCharacter()
         {
             await using GrowthTestEnvironment environment = await GrowthTestEnvironment.CreateAsync();
             PostgresCharacterRepository characters = CreateRepository(environment, EGrowthContentProfile.Trial);
@@ -52,6 +56,8 @@ namespace Shinshi.Backend.Tests.Growth
             Assert.Equal(Enumerable.Range(0, GrowthContent.SLOT_COUNT), growth.Equipment.Select(item => item.Slot));
             Assert.Equal(9, GrowthTestEnvironment.Quantity(growth, POTION_SMALL));
             Assert.Equal(9, GrowthTestEnvironment.Quantity(growth, POTION_LARGE));
+            Assert.Equal(10, GrowthTestEnvironment.Quantity(growth, HERB));
+            Assert.Equal(100L, await CurrencyAsync(environment, account));
             Assert.Equal(100L, await environment.ScalarAsync(
                 "SELECT action_value FROM account_wallets WHERE account_id = @Account;", new { Account = account }));
 
@@ -62,20 +68,24 @@ namespace Shinshi.Backend.Tests.Growth
             Assert.Equal(500, secondGrowth.Essence);
             Assert.Equal(6, secondGrowth.Equipment.Length);
             Assert.Equal(9, GrowthTestEnvironment.Quantity(secondGrowth, POTION_SMALL));
+
+            // 거래 가능한 약초와 엽전은 새 캐릭터마다 계정 보관함과 지갑에 들어간다
+            Assert.Equal(20, GrowthTestEnvironment.Quantity(secondGrowth, HERB));
+            Assert.Equal(200L, await CurrencyAsync(environment, account));
             Assert.Equal(1L, await environment.ScalarAsync(
                 "SELECT count(*) FROM initial_grants WHERE account_id = @Account AND family = 'AccountFirst';",
                 new { Account = account }));
             Assert.Equal(2L, await environment.ScalarAsync(
                 "SELECT count(*) FROM initial_grants WHERE account_id = @Account AND family = 'CharacterFirst';",
                 new { Account = account }));
-            Assert.Equal(3L, await environment.ScalarAsync(
+            Assert.Equal(5L, await environment.ScalarAsync(
                 "SELECT count(DISTINCT asset_kind || asset_id) FROM economy_ledger WHERE account_id = @Account AND reason = @Reason;",
                 new { Account = account, Reason = ContractCodes.EconomyReason.INITIAL_GRANT }));
             await environment.AssertReconciledAsync();
         }
 
         [PostgresFact]
-        public async Task Create_ConcurrentCharactersOnNewAccount_GrantAccountShareOnce()
+        public async Task Create_ConcurrentCharactersOnNewAccount_GrantAccountShareOnceAndStarterPerCharacter()
         {
             await using GrowthTestEnvironment environment = await GrowthTestEnvironment.CreateAsync();
             PostgresCharacterRepository characters = CreateRepository(environment, EGrowthContentProfile.Standard);
@@ -105,7 +115,93 @@ namespace Shinshi.Backend.Tests.Growth
             Assert.Equal(created[0].Result.ReceiptId, replay.Result.ReceiptId);
             Assert.Equal(1500L, await environment.ScalarAsync(
                 "SELECT sum(essence)::bigint FROM characters WHERE account_id = @Account;", new { Account = account }));
+
+            // 서로 다른 동시 캐릭터 셋은 각각 한 번씩 받고, 재전송은 더하지 않는다
+            Assert.Equal(30L, await environment.ScalarAsync(
+                "SELECT quantity FROM account_items WHERE account_id = @Account AND definition_id = @Herb;",
+                new { Account = account, Herb = HERB }));
+            Assert.Equal(300L, await CurrencyAsync(environment, account));
+            Assert.Equal(3L, await environment.ScalarAsync(
+                "SELECT count(*) FROM economy_ledger WHERE account_id = @Account AND reason = @Reason AND asset_kind = 'Currency';",
+                new { Account = account, Reason = ContractCodes.EconomyReason.INITIAL_GRANT }));
+            Assert.Equal(3L, await environment.ScalarAsync(
+                "SELECT count(*) FROM initial_grants WHERE account_id = @Account AND family = 'CharacterFirst';",
+                new { Account = account }));
             await environment.AssertReconciledAsync();
+        }
+
+        [PostgresFact]
+        public async Task Create_AfterDeleteAndRecreate_GrantsTradableStarterForNewCharacter()
+        {
+            await using GrowthTestEnvironment environment = await GrowthTestEnvironment.CreateAsync();
+            PostgresCharacterRepository characters = CreateRepository(environment, EGrowthContentProfile.Standard);
+            Guid account = await CreateAccountAsync(environment);
+
+            CharacterCreateOutcome first = await characters.CreateAsync(account, Guid.NewGuid(), "Delete1", "delete1",
+                ContractCodes.PlayerClass.WARRIOR, APPEARANCE, REQUEST);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, first.Result.Status);
+            OperationResult deleted = await characters.DeleteAsync(account, Guid.NewGuid(), first.Character!.CharacterId,
+                first.Character.Revision);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, deleted.Status);
+
+            CharacterCreateOutcome again = await characters.CreateAsync(account, Guid.NewGuid(), "Delete2", "delete2",
+                ContractCodes.PlayerClass.WARRIOR, APPEARANCE, REQUEST);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, again.Result.Status);
+
+            // 승인된 정책: 삭제 뒤 만든 새 캐릭터도 정기, 수련 장비와 함께 약초 10, 엽전 100을 받는다
+            Assert.Equal(500, Assert.IsType<CharacterGrowthSnapshot>(
+                await environment.Reader.ReadAsync(again.Character!.CharacterId)).Essence);
+            Assert.Equal(20L, await environment.ScalarAsync(
+                "SELECT quantity FROM account_items WHERE account_id = @Account AND definition_id = @Herb;",
+                new { Account = account, Herb = HERB }));
+            Assert.Equal(200L, await CurrencyAsync(environment, account));
+            Assert.Equal(1L, await environment.ScalarAsync(
+                "SELECT count(*) FROM initial_grants WHERE account_id = @Account AND family = 'AccountFirst';",
+                new { Account = account }));
+            Assert.Equal(2L, await environment.ScalarAsync(
+                "SELECT count(*) FROM initial_grants WHERE account_id = @Account AND family = 'CharacterFirst';",
+                new { Account = account }));
+            await environment.AssertReconciledAsync();
+        }
+
+        [PostgresFact]
+        public async Task Create_StarterHerbAndCurrency_PassTradeFilterAndCommit()
+        {
+            await using MarketTestEnvironment market = await MarketTestEnvironment.CreateAsync();
+            GrowthTestEnvironment environment = market.Growth;
+            PostgresCharacterRepository characters = CreateRepository(environment, EGrowthContentProfile.Standard);
+            Guid account = await CreateAccountAsync(environment);
+            CharacterCreateOutcome created = await characters.CreateAsync(account, Guid.NewGuid(), "Trader", "trader",
+                ContractCodes.PlayerClass.ARCHER, APPEARANCE, REQUEST);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, created.Result.Status);
+            CharacterCreateOutcome second = await characters.CreateAsync(account, Guid.NewGuid(), "Trader2", "trader2",
+                ContractCodes.PlayerClass.WARRIOR, APPEARANCE, REQUEST);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, second.Result.Status);
+            GrowthPlayer starter = new GrowthPlayer(account, second.Character!.CharacterId);
+            Data.AccountLeaseOutcome lease = await environment.Leases.TryAcquireAsync(account, Guid.NewGuid(),
+                environment.TownId, ContractCodes.ServerRole.TOWN, TimeSpan.FromMinutes(LEASE_MINUTES));
+            Assert.Equal(Data.EAccountLeaseStatus.Acquired, lease.Status);
+            GrowthPlayer buyer = await market.CreatePlayerAsync(currency: 40);
+
+            // 지급 물약은 거래 필터에서 막히고 지급 약초는 통과한다
+            TradeOutcome potion = await market.Trades.PrepareAsync(market.TownId, market.PrepareInput(
+                MarketTestEnvironment.Offer(starter, 0, MarketTestEnvironment.Item(POTION_SMALL, 1)),
+                MarketTestEnvironment.Offer(buyer, 0)), false);
+            Assert.Equal(ContractCodes.RejectReason.TRADE_NOT_TRADABLE, potion.Result!.ReasonCode);
+
+            TradeOutcome prepared = await market.PrepareCommittedAsync(
+                MarketTestEnvironment.Offer(starter, 200, MarketTestEnvironment.Item(HERB, 20)),
+                MarketTestEnvironment.Offer(buyer, 40));
+            TradeRowSnapshot row = await market.ExecutionAsync(prepared.Execution!.ExecutionId);
+            TradeOutcome committed = await market.Trades.CommitAsync(market.TownId,
+                Guid.Parse(prepared.Execution.ExecutionId), row.CommitOperationId, false);
+
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, committed.Result!.Status);
+            Assert.Equal(0, await market.ItemQuantityAsync(starter, HERB));
+            Assert.Equal(20, await market.ItemQuantityAsync(buyer, HERB));
+            Assert.Equal(200 - 200 + 40, await market.CurrencyAsync(starter));
+            Assert.Equal(40 + 200 - 40, await market.CurrencyAsync(buyer));
+            await market.AssertReconciledAsync();
         }
 
         [PostgresFact]
@@ -183,6 +279,13 @@ namespace Shinshi.Backend.Tests.Growth
         {
             return new PostgresCharacterRepository(environment.DataSource, environment.Executor,
                 new InitialGrantService(environment.Content, profile, environment.Ledger, environment.History));
+        }
+
+        private static Task<long> CurrencyAsync(GrowthTestEnvironment environment, Guid account)
+        {
+            return environment.ScalarAsync(
+                "SELECT COALESCE((SELECT currency FROM account_wallets WHERE account_id = @Account), 0);",
+                new { Account = account });
         }
 
         private static async Task<Guid> CreateAccountAsync(GrowthTestEnvironment environment)

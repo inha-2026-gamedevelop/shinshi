@@ -22,6 +22,7 @@ namespace Shinshi.Network
         private readonly bool         _ready;
         private readonly int          _smallPotions;
         private readonly int          _largePotions;
+        private readonly uint         _requestId;
 
         /****************************************
         *              Properties
@@ -39,13 +40,17 @@ namespace Shinshi.Network
         public int          SmallPotions => _smallPotions;
         public int          LargePotions => _largePotions;
 
+        // 0이면 상관 ID가 없는 요청이다. 서버는 판정에 쓰지 않고 결과 메시지에 그대로 돌려준다
+        public uint         RequestId    => _requestId;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public PartyRequestMessage(EPartyAction action, int roomId, EPartyMode mode, string contentId, string name,
-            string password, bool ready, int smallPotions, int largePotions)
+            string password, bool ready, int smallPotions, int largePotions, uint requestId = 0)
         {
+            _requestId    = requestId;
             _action       = action;
             _roomId       = roomId;
             _mode         = mode;

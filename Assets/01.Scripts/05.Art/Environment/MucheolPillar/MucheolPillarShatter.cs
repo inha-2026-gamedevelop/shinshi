@@ -44,6 +44,9 @@ namespace Shinshi.Art
         [SerializeField] private float   _vanishDelay        = 4f;
         [SerializeField] private float   _fadeSeconds        = 1f;
 
+        // 판정이 있는 실제 전장 기둥은 지우면 복원과 늦은 접속을 되살릴 수 없어 끄기만 한다
+        [SerializeField] private bool    _removeWhenVanished = true;
+
         private Vector3[]      _homePositions;
         private Quaternion[]   _homeRotations;
         private Collider[]     _fragmentColliders;
@@ -206,11 +209,47 @@ namespace Shinshi.Art
             _vanishRoutine = null;
         }
 
+        /// <summary> 연출 없이 부서진 뒤의 모습으로 둔다, 복원과 늦은 접속이 이미 부서진 기둥을 보일 때 쓴다 </summary>
+        public void ShowShattered()
+        {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
+
+            if (_vanishRoutine != null)
+            {
+                StopCoroutine(_vanishRoutine);
+                _vanishRoutine = null;
+            }
+
+            KillFade();
+            SwapMaterials(_solidSlots);
+
+            for (int i = 0; i < _fragments.Length; i++)
+            {
+                _fragments[i].isKinematic = true;
+                _fragmentColliders[i].enabled = false;
+            }
+
+            _fragmentRoot.SetActive(false);
+            SetIntact(false);
+            _isShattered = true;
+        }
+
         // 다 투명해지면 석주 오브젝트를 통째로 지운다. 천 바닥 구와 투명 재질 복사본은 OnDestroy에서 함께 정리한다
         private void FinishVanish()
         {
             _fadeTween = null;
-            Destroy(gameObject);
+
+            if (_removeWhenVanished)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            SwapMaterials(_solidSlots);
+            _fragmentRoot.SetActive(false);
         }
 
         /// <summary> 파편 렌더러마다 불투명 재질 배열과 반투명 재질 배열을 미리 만들어 둔다 </summary>

@@ -287,7 +287,7 @@ namespace Shinshi.Data
         // 새 캐릭터는 수련용 일반 +0 6부위와 정기 500을 받는다
         [Header("정식 초기 지원")]
         [SerializeField] private GrantBundle _standardCharacterGrant = new GrantBundle("grant_character_standard",
-            new[] { new ItemGrant("item_essence", 500) },
+            new[] { new ItemGrant("item_essence", 500), new ItemGrant("item_herb", 10), new ItemGrant("item_yeopjeon", 100) },
             new[]
             {
                 new EquipmentGrant("equip_weapon_training", 0),
@@ -299,7 +299,6 @@ namespace Shinshi.Data
             },
             0);
 
-        // 계정을 처음 만들 때만 준다. 캐릭터 추가, 삭제, 재생성으로 다시 주지 않는다
         [SerializeField] private GrantBundle _standardAccountGrant = new GrantBundle("grant_account_standard",
             new[] { new ItemGrant("item_potion_small", 9) },
             Array.Empty<EquipmentGrant>(),
@@ -309,7 +308,7 @@ namespace Shinshi.Data
         // TODO(기웅): 체험판 캐릭터가 수련용 6부위도 함께 받는지 기획 미정이라 희귀 +17 6부위만 넣었다
         [Header("체험판 초기 지원")]
         [SerializeField] private GrantBundle _trialCharacterGrant = new GrantBundle("grant_character_trial",
-            new[] { new ItemGrant("item_essence", 500) },
+            new[] { new ItemGrant("item_essence", 500), new ItemGrant("item_herb", 10), new ItemGrant("item_yeopjeon", 100) },
             new[]
             {
                 new EquipmentGrant("equip_weapon_rare", 17),

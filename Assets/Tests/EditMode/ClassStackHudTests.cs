@@ -87,9 +87,9 @@ namespace Shinshi.Tests
             ClassStackDisplay archer = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Wind);
 
             Assert.AreEqual("STACK 12 / 20", ClassStackHudRules.FormatHud(in mageknight));
-            Assert.AreEqual("WIND  STACK 12 / 20", ClassStackHudRules.FormatHud(in archer));
+            Assert.AreEqual("WIND  TOTAL STACK 12 / 20", ClassStackHudRules.FormatHud(in archer));
             Assert.AreEqual("스택 12/20", ClassStackHudRules.FormatNameplate(in mageknight));
-            Assert.AreEqual("바람 스택 12/20", ClassStackHudRules.FormatNameplate(in archer));
+            Assert.AreEqual("바람 총 스택 12/20", ClassStackHudRules.FormatNameplate(in archer));
             Assert.AreEqual(string.Empty, ClassStackHudRules.FormatHud(ClassStackDisplay.Hidden));
         }
 
@@ -114,7 +114,7 @@ namespace Shinshi.Tests
             Assert.IsNotNull(label);
             var text = label.GetComponent<TMP_Text>();
             Assert.IsTrue(text.enabled);
-            Assert.AreEqual("FIRE  STACK 12 / 20", text.text);
+            Assert.AreEqual("FIRE  TOTAL STACK 12 / 20", text.text);
 
             status.SetClassStacks(ClassStackDisplay.Hidden);
             Assert.IsFalse(text.enabled);

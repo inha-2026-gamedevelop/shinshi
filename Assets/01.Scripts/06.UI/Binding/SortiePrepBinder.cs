@@ -26,6 +26,8 @@ namespace Shinshi.UI
         private const float  REFRESH_INTERVAL_SECONDS = 0.25f;
         private const string ROOM_NAME_FORMAT         = "{0}의 파티";
         private const string DEFAULT_ROOM_NAME        = "파티";
+        private const float  INVITE_TIMEOUT_SECONDS   = 8f;
+        private const string INVITE_TIMEOUT_TEXT      = "초대 응답이 없다. 잠시 뒤 다시 시도해라.";
 
         [SerializeField] private HotkeyRouter   _router = null;
         [SerializeField] private GameObject     _window = null;
@@ -44,6 +46,7 @@ namespace Shinshi.UI
         private bool            _createPending       = false;
         private float           _countdownReceivedAt = 0f;
         private float           _nextRefreshAt       = 0f;
+        private readonly PartyInviteTracker _invite  = new PartyInviteTracker();
 
         /****************************************
         *              Properties
@@ -76,6 +79,7 @@ namespace Shinshi.UI
                 _view.StartClicked      += OnStartClicked;
                 _view.LeaveClicked      += OnLeaveClicked;
                 _view.DifficultyChanged += OnDifficultyChanged;
+                _view.InviteClicked     += OnInviteClicked;
             }
         }
 
@@ -87,6 +91,7 @@ namespace Shinshi.UI
                 _router.Unregister(EHotkeyAction.CloseWindow, _onClose);
             }
 
+            ResetInvite();
             TownPartyClient.RoomChanged    -= OnRoomChanged;
             TownPartyClient.ResultReceived -= OnPartyResult;
             if (_view != null)
@@ -95,12 +100,14 @@ namespace Shinshi.UI
                 _view.StartClicked      -= OnStartClicked;
                 _view.LeaveClicked      -= OnLeaveClicked;
                 _view.DifficultyChanged -= OnDifficultyChanged;
+                _view.InviteClicked     -= OnInviteClicked;
             }
         }
 
         // 카운트다운 숫자만 주기적으로 다시 쓴다
         private void Update()
         {
+            ExpireInvite();
             if ((!IsOpen) || (Time.unscaledTime < _nextRefreshAt))
             {
                 return;
@@ -137,6 +144,7 @@ namespace Shinshi.UI
 
         public void Close()
         {
+            ResetInvite();
             if (_window != null)
             {
                 _window.SetActive(false);
@@ -260,6 +268,11 @@ namespace Shinshi.UI
                 }
             }
 
+            if (!room.InRoom)
+            {
+                ResetInvite();
+            }
+
             _wasInRoom = room.InRoom;
             TryStartAfterReady(in room);
             Refresh();
@@ -279,6 +292,8 @@ namespace Shinshi.UI
             _view.SetRoomControls(room.InRoom, pending);
             if (!room.InRoom)
             {
+                ResetInvite();
+                _view.SetInviteState(false, false);
                 _view.SetLocalState(false, false);
                 _view.SetStartEnabled(false);
                 _view.SetCountdown(0);
@@ -306,6 +321,7 @@ namespace Shinshi.UI
             }
 
             _view.SetLocalState(isLeader, isReady);
+            _view.SetInviteState(PartyInviteRules.CanUse(in room, ClientRoles.LocalCharacterName()), !_invite.IsPending);
             _view.SetStartEnabled((isLeader) && (room.Phase == EPartyPhase.Open) && (SortiePrepRules.AreGuestsReady(in room)));
             ApplyCountdown(room);
             ApplyPhaseNotice(room.Phase);
@@ -404,6 +420,7 @@ namespace Shinshi.UI
             _startAfterReady  = false;
             _recreatePending  = false;
             _recreateBattleId = null;
+            ResetInvite();
             if (TownPartyClient.Room.InRoom)
             {
                 TownPartyClient.LeaveRoom();
@@ -457,8 +474,88 @@ namespace Shinshi.UI
             TownPartyClient.LeaveRoom();
         }
 
+        // 서버에 초대를 보내고 응답이 올 때까지 다시 보내지 못하게 막는다. 성공 문구는 서버가 받아들인 응답에서만 만든다
+        private void OnInviteClicked(string rawName)
+        {
+            if (_view == null)
+            {
+                return;
+            }
+
+            string name = PartyInviteRules.NormalizeName(rawName);
+            PartyRoomStateMessage room = TownPartyClient.Room;
+            EInviteBlock block = PartyInviteRules.Check(name, ClientRoles.LocalCharacterName(), ClientRoles.IsTown(), in room, _invite.IsPending);
+            if (block != EInviteBlock.None)
+            {
+                _view.SetNotice(PartyInviteRules.Describe(block));
+                return;
+            }
+
+            // 응답이 보내는 도중이나 직후에 와도 놓치지 않도록 ID를 먼저 발급해 대기 상태를 걸고 보낸다
+            uint requestId = TownPartyClient.ReserveRequestId();
+            _invite.Begin(requestId, name, Time.unscaledTime);
+            if (!TownPartyClient.InviteWithId(name, requestId))
+            {
+                _invite.Reset();
+                _view.SetNotice(PartyInviteRules.Describe(EInviteBlock.Offline));
+                return;
+            }
+
+            _view.SetNotice(PartyInviteRules.Describe(EInviteBlock.Pending));
+            Refresh();
+        }
+
+        private void ExpireInvite()
+        {
+            if (!_invite.IsExpired(Time.unscaledTime, INVITE_TIMEOUT_SECONDS))
+            {
+                return;
+            }
+
+            ResetInvite();
+            if (_view != null)
+            {
+                _view.SetNotice(INVITE_TIMEOUT_TEXT);
+            }
+
+            Refresh();
+        }
+
+        private void ResetInvite()
+        {
+            _invite.Reset();
+        }
+
+        // 이 창이 지금 기다리는 요청 ID와 정확히 같은 응답만 받는다. 다른 화면이 보낸 초대나 닫기, 시간 초과 뒤 늦은 응답은 무시한다
+        private void OnInviteResult(PartyResultMessage result)
+        {
+            EInviteOutcome outcome = _invite.Resolve(in result, out string target);
+            if ((outcome == EInviteOutcome.Ignored) || (_view == null))
+            {
+                return;
+            }
+
+            if (outcome == EInviteOutcome.Accepted)
+            {
+                _view.SetNotice(string.Format(CultureInfo.InvariantCulture, PartyInviteRules.SENT_FORMAT, target));
+                _view.ClearInviteInput();
+            }
+            else
+            {
+                _view.SetNotice(PartyInviteRules.DescribeReject(result.Reason));
+            }
+
+            Refresh();
+        }
+
         private void OnPartyResult(PartyResultMessage result)
         {
+            if (result.Action == EPartyAction.Invite)
+            {
+                OnInviteResult(result);
+                return;
+            }
+
             if ((result.IsAccepted) || (_view == null))
             {
                 return;

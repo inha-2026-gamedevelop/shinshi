@@ -9,10 +9,12 @@ using UnityEngine;
 using Mirror;
 
 // 프로젝트 내부
+using Shinshi.AI;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Contracts;
 using Shinshi.Data;
+using Shinshi.Systems;
 
 namespace Shinshi.Network
 {
@@ -232,6 +234,7 @@ namespace Shinshi.Network
 
             // 첫 입장 전에 출정 명단과 캐릭터 유지 경로를 전투에 연결한다. 마을은 출정이 없어 기존 명단만 쓴다
             DungeonSessionHost dungeonHost = null;
+            string dungeonBossId = null;
             if (config.Role == EServerRole.Dungeon)
             {
                 // 실행 설정 보스(-boss-id)는 보스전 계약이 없는 개발 출정의 기본값이다. 계약이 있으면 호스트가 계약 보스와 난이도로
@@ -253,8 +256,19 @@ namespace Shinshi.Network
                 dungeonHost.SortieAudience  = new MirrorSortieAudience();
                 dungeonHost.ConfigureContent(GameDB.Waves, GameDB.Rewards, GameDB.Talismans, bossId, IsKnownBoss);
 
-                // TODO(기웅): 일반전 웨이브 진행기(스폰 디렉터, 적 두뇌) 구현이 생기면 여기서 dungeonHost.WaveFactory에 넣는다.
-                // 없으면 일반전 계약도 경고와 함께 웨이브 없는 개발 세션으로 열린다(IWaveSessionFactory 주석의 규칙을 지킨다)
+                // 범용 슬롯은 기본 전장(실행 설정 보스가 있으면 그 보스의 전장)으로 부팅하고, 첫 입장 계약이 다른 전장을 요구하면
+                // 호스트가 매니저로 서버 씬을 바꾼다. 단일 씬 개발 구성(마을 씬 비어 있음)은 매니저가 맵 이름을 비워 전환하지 않는다
+                dungeonBossId = bossId;
+
+                // 일반전 웨이브 진행기. 전투 런타임과 참가자 명단, 숲 씬의 DungeonSpawnLayout은 출정 시작(Create) 때 읽는다.
+                // 지면은 Default와 Obstacle 레이어, 벽 검사는 보스와 같은 Obstacle 마스크다
+                int waveObstacleMask = CombatLineOfSight.ResolveLayerMask(Constants.Combat.OBSTACLE_LAYER_NAME);
+                int waveGroundMask   = LayerMask.GetMask("Default", Constants.Combat.OBSTACLE_LAYER_NAME);
+                DungeonSessionHost waveHost = dungeonHost;
+                dungeonHost.WaveFactory = new WaveSessionFactory(() => CombatServerInstaller.Runtime, () => waveHost.Roster,
+                    new DungeonLayoutWaveSpawnPoints(null, waveGroundMask, waveObstacleMask, WaveSessionFactory.PROTOTYPE_BODY_RADIUS),
+                    GameDB.Enemies, GameDB.Progression, new BossTerrainProbe(waveObstacleMask),
+                    navigation: new NavMeshEnemyNavigation());
                 CombatServerInstaller.Runtime.ConfigureBoss(bossId);
                 CombatServerInstaller.Runtime.EnableBossGimmicks = ReadBossGimmicks(args, Environment.GetEnvironmentVariable);
                 CombatServerInstaller.Runtime.BindSession(dungeonHost);
@@ -272,6 +286,13 @@ namespace Shinshi.Network
                 config.Role, accountLeases);
             if (dungeonHost != null)
             {
+                // onlineScene이 비어 있는 단일 씬 개발 구성은 맵 전환 창구를 달지 않는다
+                if (!string.IsNullOrEmpty(manager.onlineScene))
+                {
+                    dungeonHost.MapLoader   = manager;
+                    authenticator.MapLoader = manager;
+                }
+
                 dungeonHost.ParticipantEvicted -= authenticator.DisconnectParticipant;
                 dungeonHost.ParticipantEvicted += authenticator.DisconnectParticipant;
 
@@ -284,7 +305,7 @@ namespace Shinshi.Network
             }
 
             portTransport.Port = config.Port;
-            manager.ConfigureServerRole(config.Role);
+            manager.ConfigureServerRole(config.Role, dungeonBossId);
             Config      = config;
             ContentHash = contentHash;
             try

@@ -8,6 +8,7 @@ using UnityEngine;
 using Mirror;
 
 // 프로젝트 내부
+using Shinshi.Art;
 using Shinshi.Common;
 
 namespace Shinshi.AI
@@ -58,6 +59,10 @@ namespace Shinshi.AI
 
         // 복제 상태로 받은 마지막 전환 컷신 구간 번호. 너무 이른 구간은 번호를 남기지 않아 다음 프레임에 다시 넘긴다
         private int _seenPhase2TransitionId;
+
+        // 받아들인 전환 구간 동안 맵 붕괴를 서버 시각으로 평가하는 추적. 연결과 해제, 새 구간 수락에서만 바뀐다
+        private double _arenaStartServerTime;
+        private bool   _isArenaTracking;
 
         /****************************************
         *              Unity Event
@@ -141,6 +146,7 @@ namespace Shinshi.AI
             if (IsWolbaek)
             {
                 ReceivePhase2Transition(_state);
+                TickArenaShatter(ReadServerTime());
             }
 
             if (_mucheolMotion != null)
@@ -269,6 +275,7 @@ namespace Shinshi.AI
                 _phase2Transition.SetServerClock(ReadServerTime);
                 _phase2Transition.ResetSession(state.CombatId);
             }
+            ResetArenaShatter();
             _wasDefeated = false;
             _justBound = true;
             _trackingCasts.Clear();
@@ -335,6 +342,7 @@ namespace Shinshi.AI
             {
                 _phase2Transition.EndSession();
             }
+            ResetArenaShatter();
             if (_view != null)
             {
                 _view.Bind(null, null);
@@ -621,7 +629,65 @@ namespace Shinshi.AI
                 return EWolbaekPhase2TransitionDecision.Invalid;
             }
 
-            return _phase2Transition.Receive(in cue, ReadServerTime());
+            double serverNow = ReadServerTime();
+            EWolbaekPhase2TransitionDecision decision = _phase2Transition.Receive(in cue, serverNow);
+            PresentArenaShatter(decision, in cue, serverNow);
+            return decision;
+        }
+
+        // 맵 붕괴는 컷신과 같은 서버 구간 신호에만 맞춘다. 서버가 정한 구간 시작에서 지난 시간만큼 건너뛰어 재생하므로
+        // 늦은 접속도 같은 장면을 보고, 이미 끝난 구간은 떨어진 뒤의 모습으로 둔다. 결과 판정은 하지 않는다
+        // 새로 받아들인 구간만 추적을 시작하고 중복, 지난 세션, 너무 이른 사건은 건드리지 않는다. Scheduled는 서버 시작 시각이 될 때까지 기다린다.
+        // 이후 위치는 매 프레임 서버 절대 경과 시간으로 평가한다(TickArenaShatter)
+        private void PresentArenaShatter(EWolbaekPhase2TransitionDecision decision, in WolbaekPhase2TransitionCue cue, double serverNow)
+        {
+            BossArenaShatterView arena = BossArenaShatterView.Current;
+            if (arena == null)
+            {
+                return;
+            }
+
+            if ((decision == EWolbaekPhase2TransitionDecision.Play) || (decision == EWolbaekPhase2TransitionDecision.Scheduled))
+            {
+                arena.ResetToIntact();
+                _arenaStartServerTime = cue.StartServerTime;
+                _isArenaTracking      = true;
+                TickArenaShatter(serverNow);
+            }
+            else if (decision == EWolbaekPhase2TransitionDecision.Ended)
+            {
+                arena.ResetToIntact();
+                _isArenaTracking = false;
+                arena.EvaluateAt(float.MaxValue);
+            }
+        }
+
+        private void TickArenaShatter(double serverNow)
+        {
+            if ((!_isArenaTracking) || (serverNow < _arenaStartServerTime))
+            {
+                return;
+            }
+
+            BossArenaShatterView arena = BossArenaShatterView.Current;
+            if (arena == null)
+            {
+                return;
+            }
+
+            if (!arena.EvaluateAt((float)(serverNow - _arenaStartServerTime)))
+            {
+                _isArenaTracking = false;
+            }
+        }
+
+        private void ResetArenaShatter()
+        {
+            _isArenaTracking = false;
+            if (BossArenaShatterView.Current != null)
+            {
+                BossArenaShatterView.Current.ResetToIntact();
+            }
         }
 
         // 서버 전환 구간은 복제 상태로 온다. 새 번호만 재생기에 넘기고, 스폰 초기 상태로 받은 진행 중 구간은 복원으로 넘긴다

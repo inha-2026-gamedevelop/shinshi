@@ -24,6 +24,8 @@ namespace Shinshi.Common
 
             // 던전 서버와 출정한 클라이언트가 접속하는 전장 씬
             public const string DUNGEON_FOREST   = "DungeonForest";
+            public const string DUNGEON_MUCHEOL  = "DungeonMucheol";
+            public const string DUNGEON_WOLBAEK  = "DungeonWolbaek";
 
             // 아직 만들지 않은 씬
             public const string FOREST_WAVE  = "ForestWave";

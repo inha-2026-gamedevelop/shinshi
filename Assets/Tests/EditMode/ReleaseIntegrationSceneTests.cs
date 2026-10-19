@@ -1,6 +1,8 @@
 // System
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 // Unity
 using UnityEditor;
@@ -8,6 +10,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
 
 // 서드파티
 using NUnit.Framework;
@@ -28,6 +31,11 @@ namespace Shinshi.Tests
 
         private const string TOWN_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
         private const string DUNGEON_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
+        private const string MUCHEOL_PATH = "Assets/00.Scenes/Release/DungeonMucheol.unity";
+        private const string WOLBAEK_PATH = "Assets/00.Scenes/Release/DungeonWolbaek.unity";
+        private const string DEV_MUCHEOL_PATH = "Assets/00.Scenes/Dev_HUD/Dev_BossMucheol.unity";
+        private const string DEV_WOLBAEK_PATH = "Assets/00.Scenes/Dev_HUD/Dev_BossWolbaek.unity";
+        private const string DEV_FOREST_PATH = "Assets/00.Scenes/Dev_HUD/Dev_ForestPlateauHitFeedback.unity";
         private const string BOSS_PATH = "Assets/02.Prefab/Network/NetBoss/PF_NetWolbaekBoss.prefab";
 
         /****************************************
@@ -36,6 +44,8 @@ namespace Shinshi.Tests
 
         [TestCase(TOWN_PATH)]
         [TestCase(DUNGEON_PATH)]
+        [TestCase(MUCHEOL_PATH)]
+        [TestCase(WOLBAEK_PATH)]
         public void SavedScene_Integration_HasOneInputAndCameraOwnerWithoutMissingScripts(string path)
         {
             Inspect(path, scene =>
@@ -71,6 +81,8 @@ namespace Shinshi.Tests
 
         [TestCase(TOWN_PATH)]
         [TestCase(DUNGEON_PATH)]
+        [TestCase(MUCHEOL_PATH)]
+        [TestCase(WOLBAEK_PATH)]
         public void SavedScene_CommonUiReferences_StayInsideCopiedScene(string path)
         {
             Inspect(path, scene =>
@@ -82,6 +94,122 @@ namespace Shinshi.Tests
                 RequireReferences(One<SettingsView>(scene), "_router");
                 RequireReferences(One<HudPlayerStatusView>(scene), "_hpFill", "_hpText", "_experience");
                 RequireReferences(One<NetworkFeedbackBinder>(scene), "_popups", "_skillReject");
+            });
+        }
+
+        [TestCase(DUNGEON_PATH)]
+        [TestCase(MUCHEOL_PATH)]
+        [TestCase(WOLBAEK_PATH)]
+        public void DungeonScene_CommonUi_HasNoDuplicatedBindersOrCopiedUiRoots(string path)
+        {
+            Inspect(path, scene =>
+            {
+                Assert.That(All<PartyHudBinder>(scene).Count, Is.EqualTo(1), "PartyHudBinder 중복");
+                Assert.That(All<SortieResultBinder>(scene).Count, Is.EqualTo(1), "SortieResultBinder 중복");
+                Assert.That(All<HudChatView>(scene).Count, Is.EqualTo(1), "HudChatView 중복");
+                Assert.That(All<SettingsView>(scene).Count, Is.EqualTo(1), "SettingsView 중복");
+                Assert.That(All<ReleaseMenuActions>(scene).Count, Is.EqualTo(1), "ReleaseMenuActions 중복");
+                Assert.That(All<HotkeyRouter>(scene).Count, Is.EqualTo(1), "HotkeyRouter 중복");
+                Assert.That(All<EventSystem>(scene).Count, Is.EqualTo(1), "EventSystem 중복");
+
+                var uiRoots = new List<string>();
+                foreach (Transform transform in All<Transform>(scene))
+                {
+                    if ((transform.name == "UiBinding") || (transform.name == "UiPopupHub") || (transform.name == "UiCursor"))
+                    {
+                        uiRoots.Add(transform.name);
+                    }
+                }
+                Assert.That(uiRoots.Count, Is.LessThanOrEqualTo(3), "공용 UI 루트가 복사돼 겹쳤다: " + string.Join(", ", uiRoots));
+                Assert.That(uiRoots.Distinct().Count(), Is.EqualTo(uiRoots.Count), "같은 이름의 공용 UI 루트가 둘 이상이다: " + string.Join(", ", uiRoots));
+            });
+        }
+
+        [Test]
+        public void Forest_Scene_HasNoDevUiContainerLeftovers()
+        {
+            Inspect(DUNGEON_PATH, scene =>
+            {
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    if (root.name != "10_DevForestPort")
+                    {
+                        continue;
+                    }
+
+                    foreach (Transform child in root.transform)
+                    {
+                        Assert.That(IsSkippedSourceRoot(child.gameObject), Is.False,
+                            "숲 이식 컨테이너에 건너뛰어야 할 Dev 루트가 있다: " + child.name);
+                    }
+                    Assert.That(root.GetComponentsInChildren<Canvas>(true).Length, Is.Zero, "이식 컨테이너에 캔버스가 있다");
+                }
+            });
+        }
+
+        [TestCase(DUNGEON_PATH)]
+        [TestCase(MUCHEOL_PATH)]
+        [TestCase(WOLBAEK_PATH)]
+        public void DungeonScene_Navigation_CoversEnvironmentAndStarts(string path)
+        {
+            Inspect(path, scene =>
+            {
+                MonoBehaviour surface = FindSurface(scene);
+                Assert.That(surface, Is.Not.Null, "내비게이션 표면이 필요하다");
+                string navPath = NavDataPath(surface);
+                Assert.That(navPath, Does.StartWith(path.Replace(".unity", "/")), "Release 씬 전용 NavMesh 에셋이어야 한다: " + navPath);
+
+                SerializedObject serialized = new SerializedObject(surface);
+                var volume = new Bounds(
+                    surface.transform.TransformPoint(serialized.FindProperty("m_Center").vector3Value),
+                    serialized.FindProperty("m_Size").vector3Value);
+
+                bool found = false;
+                var ground = new Bounds();
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    if (IsSkippedSourceRoot(root) || (root.name == "90_Gameplay"))
+                    {
+                        continue;
+                    }
+                    foreach (Collider collider in root.GetComponentsInChildren<Collider>(false))
+                    {
+                        if ((!collider.enabled) || collider.isTrigger)
+                        {
+                            continue;
+                        }
+                        if (!found)
+                        {
+                            ground = collider.bounds;
+                            found = true;
+                        }
+                        else
+                        {
+                            ground.Encapsulate(collider.bounds);
+                        }
+                    }
+                }
+                Assert.That(found, Is.True, "환경 콜라이더가 없다");
+                Assert.That(volume.Contains(ground.min) && volume.Contains(ground.max), Is.True,
+                    $"NavMesh 표면 {volume}이 환경 콜라이더 {ground}를 덮지 못한다");
+
+                var starts = All<Mirror.NetworkStartPosition>(scene);
+                Assert.That(starts.Count, Is.EqualTo(4));
+                var data = AssetDatabase.LoadAssetAtPath<UnityEngine.AI.NavMeshData>(navPath);
+                Assert.That(data, Is.Not.Null, "NavMesh 데이터를 읽지 못했다: " + navPath);
+                UnityEngine.AI.NavMeshDataInstance instance = UnityEngine.AI.NavMesh.AddNavMeshData(data);
+                try
+                {
+                    foreach (Mirror.NetworkStartPosition start in starts)
+                    {
+                        Assert.That(UnityEngine.AI.NavMesh.SamplePosition(start.transform.position, out UnityEngine.AI.NavMeshHit _, 2f,
+                            UnityEngine.AI.NavMesh.AllAreas), Is.True, start.name + " 시작점이 NavMesh 2m 안에 없다");
+                    }
+                }
+                finally
+                {
+                    UnityEngine.AI.NavMesh.RemoveNavMeshData(instance);
+                }
             });
         }
 
@@ -132,6 +260,141 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Mucheol_Scene_HasRealPillarsWiredToChargeStructureSet()
+        {
+            Inspect(MUCHEOL_PATH, scene =>
+            {
+                Assert.That(RootNames(scene), Does.Contain("PF_MucheolArena"));
+                Assert.That(RootNames(scene), Does.Contain("MucheolPillars"));
+
+                BossChargeStructureSet set = One<BossChargeStructureSet>(scene);
+                var infos = new List<BossChargeStructureInfo>();
+                Assert.That(set.TryCollect(infos, out string reason), Is.True, reason);
+                Assert.That(infos.Count, Is.EqualTo(3), "기믹 대상 구조물은 3개여야 한다");
+
+                var markers = All<BossChargeStructureMarker>(scene);
+                Assert.That(markers.Count, Is.EqualTo(3));
+                foreach (BossChargeStructureMarker marker in markers)
+                {
+                    Assert.That(marker.IsGimmickTarget, Is.True, marker.name);
+                    Assert.That(marker.Radius, Is.GreaterThan(0.5f), marker.name);
+                    Assert.That(set.TryGetMarker(marker.StructureId, out BossChargeStructureMarker found), Is.True);
+                    Assert.That(found, Is.SameAs(marker));
+                    RequireReferences(marker, "_playerBlocker", "_shatter");
+                    Assert.That(marker.GetComponentInChildren<MucheolPillarShatter>(true), Is.Not.Null, marker.name);
+                }
+
+                AssertBossStarts(scene);
+                AssertNoPlaceholderBoss(scene);
+            });
+        }
+
+        [Test]
+        public void Wolbaek_Scene_HasArenaShatterViewAndRepairedReferences()
+        {
+            Inspect(WOLBAEK_PATH, scene =>
+            {
+                foreach (string name in new[] { "BossArenaMap", "00_SkyIslandClouds", "GlobalVolume_ForestNight", "Ravine_WarmBounce", "Moon_CoolKey" })
+                {
+                    Assert.That(RootNames(scene), Does.Contain(name), name);
+                }
+                foreach (string name in new[] { "MinimapCanvas", "MinimapDevTarget", "MinimapDevBoss", "Dev_BossArenaShatterTrigger", "95_ObjectPalette" })
+                {
+                    Assert.That(RootNames(scene), Does.Not.Contain(name), name + ": Dev 전용 루트가 남아 있다");
+                }
+
+                BossArenaShatterView view = One<BossArenaShatterView>(scene);
+                RequireReferences(view, "_intactRoot", "_fracturedRoot");
+
+                AssertNoMissingReferences(scene);
+                AssertBossStarts(scene);
+                AssertNoPlaceholderBoss(scene);
+            });
+        }
+
+        [Test]
+        public void Forest_Scene_HasValidSpawnLayoutAndNavigationVolume()
+        {
+            Inspect(DUNGEON_PATH, scene =>
+            {
+                DungeonSpawnLayout layout = One<DungeonSpawnLayout>(scene);
+                Assert.That(layout.TryValidate(out string reason), Is.True, reason);
+
+                SerializedProperty zones = new SerializedObject(layout).FindProperty("_zones");
+                Assert.That(zones.arraySize, Is.GreaterThan(0));
+                for (int i = 0; i < zones.arraySize; ++i)
+                {
+                    SerializedProperty zone = zones.GetArrayElementAtIndex(i);
+                    Assert.That(zone.FindPropertyRelative("door").objectReferenceValue, Is.Not.Null, "구역 " + i + " 문 지점");
+                    Assert.That(zone.FindPropertyRelative("innerNodes").arraySize
+                        + zone.FindPropertyRelative("outerNodes").arraySize, Is.GreaterThan(0), "구역 " + i + " 출현 지점");
+                }
+
+                MonoBehaviour surface = FindSurface(scene);
+                Assert.That(surface, Is.Not.Null, "NavMeshSurface");
+                var surfaceData = new SerializedObject(surface);
+                Assert.That(surfaceData.FindProperty("m_NavMeshData").objectReferenceValue, Is.Not.Null);
+                Assert.That(surfaceData.FindProperty("m_CollectObjects").intValue, Is.EqualTo(1), "부피 모드여야 한다");
+                Vector3 size = surfaceData.FindProperty("m_Size").vector3Value;
+                Assert.That(size.x, Is.GreaterThan(10f));
+                Assert.That(size.z, Is.GreaterThan(10f));
+
+                AssertNoMissingReferences(scene);
+                AssertBossStarts(scene);
+                foreach (MonoBehaviour behaviour in All<MonoBehaviour>(scene))
+                {
+                    if (behaviour != null)
+                    {
+                        Assert.That(behaviour.GetType().Name, Does.Not.Contain("MockMonster"), "Dev 모의 몬스터가 남아 있다");
+                    }
+                }
+            });
+        }
+
+        [TestCase(MUCHEOL_PATH, DEV_MUCHEOL_PATH)]
+        [TestCase(WOLBAEK_PATH, DEV_WOLBAEK_PATH)]
+        [TestCase(DUNGEON_PATH, DEV_FOREST_PATH)]
+        public void Scene_ActiveLights_MatchCopiedSourceEnvironment(string releasePath, string devPath)
+        {
+            List<string> expectedDirectional = null;
+            List<string> expectedAll = null;
+            Regex[] knownSourceErrors = (devPath == DEV_WOLBAEK_PATH) ? WOLBAEK_SOURCE_OPEN_ERRORS : null;
+
+            InspectSource(devPath, knownSourceErrors, dev =>
+            {
+                expectedDirectional = ActiveLightNames(dev, true, true);
+                expectedAll = ActiveLightNames(dev, false, true);
+            });
+
+            Inspect(releasePath, scene =>
+            {
+                Assert.That(expectedDirectional.Count, Is.GreaterThan(0), "원본에 활성 Directional Light가 있어야 비교할 수 있다");
+                Assert.That(ActiveLightNames(scene, true, false), Is.EqualTo(expectedDirectional),
+                    releasePath + ": 활성 Directional Light가 원본과 다르다(틀 환경 조명이 남았거나 누락)");
+                Assert.That(ActiveLightNames(scene, false, false), Is.EqualTo(expectedAll),
+                    releasePath + ": 활성 조명 전체가 원본과 다르다");
+            });
+        }
+
+        [Test]
+        public void BossScenes_NavigationAssets_AreOwnedByEachScene()
+        {
+            foreach (string path in new[] { MUCHEOL_PATH, WOLBAEK_PATH, DUNGEON_PATH })
+            {
+                Inspect(path, scene =>
+                {
+                    MonoBehaviour surface = FindSurface(scene);
+                    Assert.That(surface, Is.Not.Null, path);
+                    UnityEngine.Object nav = new SerializedObject(surface).FindProperty("m_NavMeshData").objectReferenceValue;
+                    Assert.That(nav, Is.Not.Null, path);
+                    string navPath = AssetDatabase.GetAssetPath(nav);
+                    Assert.That(navPath, Does.StartWith("Assets/00.Scenes/Release/"), path);
+                    Assert.That(navPath, Does.Not.Contain("Dev_"), path + ": Dev 내비게이션을 공유한다");
+                });
+            }
+        }
+
+        [Test]
         public void NetworkBoss_Prefab_HasBoundClientEffects()
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(BOSS_PATH);
@@ -148,6 +411,74 @@ namespace Shinshi.Tests
         /****************************************
         *                Helpers
         ****************************************/
+
+        // 원본 Dev 월백 씬은 끊어진 벽 프리팹을 의도적으로 갖고 있다. 첫 열기에는 아래 두 오류가 나지만 Unity가 가져오기 결과를 캐시해 이후에는 나오지 않을 수 있다
+        private static readonly Regex[] WOLBAEK_SOURCE_OPEN_ERRORS =
+        {
+            new Regex("Problem detected while opening the Scene file: 'Assets/00\\.Scenes/Dev_HUD/Dev_BossWolbaek\\.unity'"),
+            new Regex("Prefab instance problem: 'Wall_Seg_02 \\(Missing Prefab with guid: 1045083f2495ad54296d4084ab5d3b4c\\)'"),
+        };
+
+        private static void InspectSource(string path, Regex[] knownOpenErrors, Action<Scene> inspect)
+        {
+            Scene scene = OpenSourcePreviewScene(path, knownOpenErrors);
+            try
+            {
+                inspect(scene);
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(scene);
+            }
+        }
+
+        // 열기 구간에서만 알려진 오류를 수집해 허용한다. 알려지지 않은 오류가 하나라도 있으면 실패한다
+        private static Scene OpenSourcePreviewScene(string path, Regex[] knownOpenErrors)
+        {
+            if (knownOpenErrors == null)
+            {
+                return EditorSceneManager.OpenPreviewScene(path);
+            }
+
+            var unexpected = new List<string>();
+            void OnLog(string condition, string stackTrace, LogType type)
+            {
+                if (type != LogType.Error && type != LogType.Assert && type != LogType.Exception)
+                {
+                    return;
+                }
+
+                foreach (Regex known in knownOpenErrors)
+                {
+                    if (known.IsMatch(condition))
+                    {
+                        return;
+                    }
+                }
+                unexpected.Add(type + ": " + condition);
+            }
+
+            bool previousIgnore = LogAssert.ignoreFailingMessages;
+            Scene scene;
+            Application.logMessageReceived += OnLog;
+            LogAssert.ignoreFailingMessages = true;
+            try
+            {
+                scene = EditorSceneManager.OpenPreviewScene(path);
+            }
+            finally
+            {
+                LogAssert.ignoreFailingMessages = previousIgnore;
+                Application.logMessageReceived -= OnLog;
+            }
+
+            if (unexpected.Count > 0)
+            {
+                EditorSceneManager.ClosePreviewScene(scene);
+                Assert.Fail(path + " 열기에서 알려지지 않은 오류가 났다:\n" + string.Join("\n", unexpected));
+            }
+            return scene;
+        }
 
         private static void Inspect(string path, Action<Scene> inspect)
         {
@@ -170,6 +501,154 @@ namespace Shinshi.Tests
                 result.AddRange(root.GetComponentsInChildren<T>(true));
             }
             return result;
+        }
+
+        // 원본이면 빌더가 가져오지 않는 루트(개발 도구, 카메라, 캔버스)의 조명은 제외한다. UI 캔버스와 캐릭터 미리보기 무대 조명은 항상 제외한다
+        private static List<string> ActiveLightNames(Scene scene, bool directionalOnly, bool isSource)
+        {
+            var names = new List<string>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (isSource && IsSkippedSourceRoot(root))
+                {
+                    continue;
+                }
+
+                foreach (Light light in root.GetComponentsInChildren<Light>(false))
+                {
+                    if ((!light.enabled) || (directionalOnly && (light.type != LightType.Directional)) || IsUiLight(light.transform))
+                    {
+                        continue;
+                    }
+                    names.Add(light.name);
+                }
+            }
+            names.Sort(StringComparer.Ordinal);
+            return names;
+        }
+
+        private static bool IsUiLight(Transform transform)
+        {
+            for (Transform current = transform; current != null; current = current.parent)
+            {
+                if ((current.name == "CharDetailPreviewStage") || (current.GetComponent<Canvas>() != null))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool IsSkippedSourceRoot(GameObject root)
+        {
+            // 빌더 ShouldSkipDevRoot와 같은 기준을 유지한다
+            foreach (string prefix in new[]
+            {
+                "Dev", "MinimapDev", "MinimapCanvas", "95_", "Player", "Barrier_", "ZoneBarriers",
+                "Ui", "CharDetail", "EventSystem", "Overview", "QuarterView", "HUD", "Popup",
+            })
+            {
+                if (root.name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            if ((root.name == "Main Camera")
+                || (root.GetComponentInChildren<Camera>(true) != null)
+                || (root.GetComponentInChildren<Canvas>(true) != null)
+                || (root.GetComponentInChildren<EventSystem>(true) != null)
+                || (root.GetComponentInChildren<AudioListener>(true) != null)
+                || (root.GetComponentInChildren<Mirror.NetworkIdentity>(true) != null))
+            {
+                return true;
+            }
+
+            foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (behaviour == null)
+                {
+                    continue;
+                }
+                Type type = behaviour.GetType();
+                if (((type.Namespace != null) && type.Namespace.StartsWith("Shinshi.UI", StringComparison.Ordinal))
+                    || (Array.IndexOf(new[] { "HotkeyRouter", "LocalPlayerCameraBinder", "SortieResultBinder", "PartyHudBinder", "ReleaseMenuActions" }, type.Name) >= 0))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static string NavDataPath(MonoBehaviour surface)
+        {
+            UnityEngine.Object data = new SerializedObject(surface).FindProperty("m_NavMeshData").objectReferenceValue;
+            return (data == null) ? string.Empty : AssetDatabase.GetAssetPath(data);
+        }
+
+        private static List<string> RootNames(Scene scene)
+        {
+            var names = new List<string>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                names.Add(root.name);
+            }
+            return names;
+        }
+
+        private static MonoBehaviour FindSurface(Scene scene)
+        {
+            foreach (MonoBehaviour behaviour in All<MonoBehaviour>(scene))
+            {
+                if ((behaviour != null) && (behaviour.GetType().Name == "NavMeshSurface"))
+                {
+                    return behaviour;
+                }
+            }
+            return null;
+        }
+
+        private static void AssertBossStarts(Scene scene)
+        {
+            var starts = All<Mirror.NetworkStartPosition>(scene);
+            Assert.That(starts.Count, Is.EqualTo(4), "안전한 플레이어 시작점 4개");
+            foreach (Mirror.NetworkStartPosition start in starts)
+            {
+                Assert.That(float.IsNaN(start.transform.position.y), Is.False, start.name);
+            }
+        }
+
+        private static void AssertNoPlaceholderBoss(Scene scene)
+        {
+            foreach (Transform transform in All<Transform>(scene))
+            {
+                if (transform.TryGetComponent(out MeshFilter filter) && (filter.sharedMesh != null)
+                    && transform.name.IndexOf("Boss", StringComparison.OrdinalIgnoreCase) >= 0
+                    && filter.sharedMesh.name == "Cylinder")
+                {
+                    Assert.Fail(transform.name + ": 원기둥 임시 보스가 남아 있다");
+                }
+                Assert.That(transform.name, Does.Not.StartWith("MinimapDev"), transform.name);
+            }
+        }
+
+        private static void AssertNoMissingReferences(Scene scene)
+        {
+            foreach (Transform transform in All<Transform>(scene))
+            {
+                Assert.That(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(transform.gameObject), Is.Zero, transform.name);
+                if (PrefabUtility.IsPrefabAssetMissing(transform.gameObject))
+                {
+                    Assert.Fail(transform.name + ": 끊어진 프리팹 인스턴스");
+                }
+                foreach (Renderer renderer in transform.GetComponents<Renderer>())
+                {
+                    foreach (Material material in renderer.sharedMaterials)
+                    {
+                        Assert.That(material, Is.Not.Null, transform.name + ": 빈 재질 칸");
+                    }
+                }
+            }
         }
 
         private static T One<T>(Scene scene) where T : Component

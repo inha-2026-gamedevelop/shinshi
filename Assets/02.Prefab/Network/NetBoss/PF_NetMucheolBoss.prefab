@@ -667,8 +667,10 @@ MonoBehaviour:
   _hardPhaseView: {fileID: 0}
   _mucheolPhaseView: {fileID: 8981163404048540216}
   _mucheolMotion: {fileID: 558472003471084118}
+  _mucheolVfx: {fileID: 0}
   _talismanView: {fileID: 0}
   _colorWardView: {fileID: 0}
   _foxfireSealView: {fileID: 0}
   _finalAreaView: {fileID: 0}
+  _phase2Transition: {fileID: 0}
   _effectsRoot: {fileID: 9068423945175783123}

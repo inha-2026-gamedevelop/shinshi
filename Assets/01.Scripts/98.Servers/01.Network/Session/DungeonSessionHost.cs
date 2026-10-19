@@ -210,6 +210,12 @@ namespace Shinshi.Network
         public string           BossId         => SortieContentRules.ResolveBossId(in _descriptor, _defaultBossId);
         public EBossDifficulty  BossDifficulty => _descriptor.BossDifficulty;
 
+        // 첫 입장 계약이 요구하는 전장으로 서버 씬을 바꾸는 창구. 없으면(단일 씬 개발 구성) 씬을 바꾸지 않는다
+        public IDungeonMapLoader MapLoader { get; set; }
+
+        // 맵 전환이 끝나기 전에는 입장을 확정하지 않는다(인증기가 본다)
+        public bool IsMapTransitioning => (MapLoader != null) && (MapLoader.IsLoading);
+
         // 일반전 웨이브 진행기 주입 창구(적 담당 구현). 서버 부트스트랩이 출정 시작 전에 넣는다
         public IWaveSessionFactory WaveFactory      { get; set; }
 
@@ -775,6 +781,20 @@ namespace Shinshi.Network
             {
                 _warn?.Invoke($"[Session] 출정 계약의 보스가 서버 콘텐츠에 없어 입장을 거절한다, sortie={sessionId}, boss={sortie.BossId}");
                 return ERejectReason.SessionMismatch;
+            }
+
+            // 범용 슬롯은 계약을 첫 입장 토큰에서야 알 수 있다. 계약을 검증한 지금 필요한 전장으로 서버 씬을 바꾼다.
+            // 이 호출은 출정을 고정하기 전이라 전환을 시작하지 못하면 고정하지 않고 거절해 예약 만료가 티켓을 돌려주게 한다.
+            // 전환이 끝나기 전의 플레이어 생성과 준비, 시작은 인증기가 입장 확정을 미뤄 막는다
+            if ((sortie.HasContract) && (MapLoader != null))
+            {
+                string required = DungeonMapRules.ResolveSceneName(sortie.IsBoss, sortie.BossId);
+                if ((!string.Equals(required, MapLoader.CurrentMapName, StringComparison.Ordinal)) && (!MapLoader.TryBeginLoad(required)))
+                {
+                    _warn?.Invoke($"[Session] 출정 계약의 전장으로 서버 씬을 바꾸지 못해 입장을 거절한다, sortie={sessionId}, " +
+                        $"required={required}, current={MapLoader.CurrentMapName}");
+                    return ERejectReason.SessionMismatch;
+                }
             }
 
             _sessionId   = sessionId;

@@ -38,6 +38,7 @@ namespace Shinshi.Network
             writer.WriteBool(value.Ready);
             writer.WriteInt(value.SmallPotions);
             writer.WriteInt(value.LargePotions);
+            writer.WriteVarUInt(value.RequestId);
         }
 
         public static PartyRequestMessage ReadPartyRequestMessage(this NetworkReader reader)
@@ -51,20 +52,24 @@ namespace Shinshi.Network
             bool   ready        = reader.ReadBool();
             int    smallPotions = reader.ReadInt();
             int    largePotions = reader.ReadInt();
-            return new PartyRequestMessage(action, roomId, mode, contentId, name, password, ready, smallPotions, largePotions);
+            uint   requestId    = (uint)reader.ReadVarUInt();
+            return new PartyRequestMessage(action, roomId, mode, contentId, name, password, ready, smallPotions, largePotions,
+                requestId);
         }
 
         public static void WritePartyResultMessage(this NetworkWriter writer, PartyResultMessage value)
         {
             writer.WriteByte((byte)value.Action);
             writer.WriteVarUInt((uint)value.Reason);
+            writer.WriteVarUInt(value.RequestId);
         }
 
         public static PartyResultMessage ReadPartyResultMessage(this NetworkReader reader)
         {
             var action = (EPartyAction)reader.ReadByte();
             var reason = (ERejectReason)reader.ReadVarUInt();
-            return new PartyResultMessage(action, reason);
+            uint requestId = (uint)reader.ReadVarUInt();
+            return new PartyResultMessage(action, reason, requestId);
         }
 
         public static void WritePartyRoomListMessage(this NetworkWriter writer, PartyRoomListMessage value)

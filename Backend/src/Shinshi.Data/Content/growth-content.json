@@ -1481,6 +1481,14 @@
         {
           "itemId": "item_essence",
           "quantity": 500
+        },
+        {
+          "itemId": "item_herb",
+          "quantity": 10
+        },
+        {
+          "itemId": "item_yeopjeon",
+          "quantity": 100
         }
       ],
       "equipment": [
@@ -1528,6 +1536,14 @@
         {
           "itemId": "item_essence",
           "quantity": 500
+        },
+        {
+          "itemId": "item_herb",
+          "quantity": 10
+        },
+        {
+          "itemId": "item_yeopjeon",
+          "quantity": 100
         }
       ],
       "equipment": [
