@@ -107,6 +107,10 @@ namespace Shinshi.Dev
         private int                 _hitsLeft       = 0;
         private float               _invincibleEnd  = 0f;
         private bool                _isDead         = false;
+        private bool                _showSlash      = true;
+        private bool                _skipPlayerFreeze   = false;
+        private bool                _attackInputEnabled = true;
+        private bool                _movementBlocked    = false;
 
         /// <summary> 공격이 맞힌 충돌체마다 한 번씩 알린다. 값은 맞은 충돌체, 몸 중심에서 가장 가까운 맞은 지점, 강공격 여부다 </summary>
         public event Action<Collider, Vector3, bool> Hit;
@@ -123,7 +127,13 @@ namespace Shinshi.Dev
         /// <summary> 체력이 다해 죽을 때 한 번 알린다 </summary>
         public event Action Died;
 
+        /// <summary> 공격을 시작할 때 한 번 알린다. 값은 0부터 센 콤보 단계와 강공격 여부다 </summary>
+        public event Action<int, bool> Attacked;
+
         public bool IsDead => _isDead;
+
+        /// <summary> 직전 프레임의 이동 속도(m/s) </summary>
+        public Vector3 Velocity => _controller.velocity;
 
         public int HitsLeft => _hitsLeft;
 
@@ -168,7 +178,7 @@ namespace Shinshi.Dev
                 return;
             }
 
-            bool attackPressed = Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK);
+            bool attackPressed = (_attackInputEnabled) && (Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK));
 
             // 렉프레임 동안은 나만 굳는다. 전역 timeScale은 건드리지 않아 다른 몬스터와 다른 플레이어는 그대로 흐른다
             if (_hitLagFramesLeft > 0)
@@ -194,7 +204,12 @@ namespace Shinshi.Dev
                 isAttacking = Time.time < _attackEndTime;
             }
 
-            Vector3 step = isAttacking ? Vector3.zero : ReadMoveStep();
+            if (_movementBlocked)
+            {
+                _hasDestination = false;
+            }
+
+            Vector3 step = ((isAttacking) || (_movementBlocked)) ? Vector3.zero : ReadMoveStep();
 
             _verticalSpeed = _controller.isGrounded ? GROUND_STICK_SPEED : _verticalSpeed + (GRAVITY * Time.deltaTime);
             _controller.Move(step + (Vector3.up * (_verticalSpeed * Time.deltaTime)));
@@ -294,6 +309,7 @@ namespace Shinshi.Dev
             // 콤보 시간 안에 이어 누르면 단계가 오르고, 강공격 뒤나 시간이 지나면 처음으로 돌아간다
             _comboStep = (Time.time < _comboEndTime) ? (_comboStep + 1) : 1;
             bool isHeavy = _comboStep >= HEAVY_COMBO_STEP;
+            int  attackStep = _comboStep - 1;
             if (isHeavy)
             {
                 _comboStep = 0;
@@ -306,6 +322,7 @@ namespace Shinshi.Dev
             _nextAttackTime = Time.time + _attackCooldown;
             _attackEndTime  = Time.time + lockTime;
 
+            Attacked?.Invoke(attackStep, isHeavy);
             ShowSlash(isHeavy, lockTime);
             DealDamageInCone(isHeavy);
 
@@ -355,6 +372,11 @@ namespace Shinshi.Dev
         /// <inheritdoc/>
         public void Freeze(int frames)
         {
+            if (_skipPlayerFreeze)
+            {
+                return;
+            }
+
             // 한 번 휘두르다 여럿을 맞혀도 멈춤이 겹쳐 길어지지 않고 가장 긴 것만 쓴다
             _hitLagFramesLeft = Mathf.Max(_hitLagFramesLeft, frames);
         }
@@ -371,9 +393,38 @@ namespace Shinshi.Dev
             _slashStartTime += frozen;
         }
 
+        /// <summary> 기본 공격 판정을 다른 곳(서버 판정 대역)이 맡을 때 이 플레이어의 자체 공격 입력을 끈다 </summary>
+        public void SetAttackInputEnabled(bool isEnabled) { _attackInputEnabled = isEnabled; }
+
+        /// <summary> 기술 시전 중처럼 걷지 못하는 동안 참으로 둔다 </summary>
+        public void SetMovementBlocked(bool isBlocked) { _movementBlocked = isBlocked; }
+
+        /// <summary> 외부 판정이 맞힌 충돌체를 같은 Hit 경로로 알린다 </summary>
+        public void ReportHit(Collider target, Vector3 hitPoint, bool isHeavy, bool freezesPlayer = true)
+        {
+            // 렉프레임(Freeze)은 Hit 이벤트 처리 중에 동기로 불린다. 지속 피해처럼 플레이어가 굳으면 안 되는 타격은 그 동안만 무시한다
+            _skipPlayerFreeze = !freezesPlayer;
+            Hit?.Invoke(target, hitPoint, isHeavy);
+            _skipPlayerFreeze = false;
+        }
+
+        /// <summary> 커서가 가리킨 지면 지점 </summary>
+        public bool TryReadCursorPoint(out Vector3 point) { return TryGetCursorPoint(out point); }
+
+        /// <summary> 직업별 공격 모양을 코드에서 덮어쓴다. 휘두르는 띠는 근접 직업만 보인다 </summary>
+        public void ConfigureAttack(float range, float halfAngle, float cooldown, float lockTime, float heavyLockTime, bool showSlash)
+        {
+            _attackRange     = range;
+            _attackHalfAngle = halfAngle;
+            _attackCooldown  = cooldown;
+            _attackLockTime  = lockTime;
+            _heavyLockTime   = heavyLockTime;
+            _showSlash       = showSlash;
+        }
+
         private void ShowSlash(bool isHeavy, float seconds)
         {
-            if (_slashMaterial == null)
+            if ((!_showSlash) || (_slashMaterial == null))
             {
                 return;
             }

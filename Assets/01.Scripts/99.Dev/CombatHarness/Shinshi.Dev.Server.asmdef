@@ -1,0 +1,22 @@
+{
+    "name": "Shinshi.Dev.Server",
+    "rootNamespace": "Shinshi.Dev",
+    "references": [
+        "Shinshi.Runtime",
+        "Shinshi.Contracts",
+        "Shinshi.Server",
+        "Shinshi.Dev",
+        "Mirror"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_EDITOR"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
