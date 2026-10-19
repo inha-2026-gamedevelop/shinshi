@@ -1,0 +1,21 @@
+{
+    "name": "Shinshi.AI.SkirtRig.Editor",
+    "rootNamespace": "Shinshi.Editor",
+    "references": [
+        "Shinshi.Runtime",
+        "Shinshi.Art.SkirtRig",
+        "Shinshi.AI.SkirtRig",
+        "Unity.Animation.Rigging"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
