@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
+using UnityEngine.Events;
 
 // 프로젝트 내부
 using Shinshi.Common;
@@ -115,6 +116,7 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekWarpView _warp; // 2페이즈 P07 워프 표현, 비어 있으면 생략한다
         [SerializeField] private WolbaekPatternVfxView _patternVfx; // 패턴 VFX 표현, 비어 있으면 생략한다
         [SerializeField] private WolbaekDissolveView _dissolve; // 처치 뒤 정지와 디졸브 표현, 비어 있으면 쓰러진 자세로 남는다
+        [SerializeField] private UnityEvent _onTeleported; // 모델 위치가 한 번에 바뀐 같은 프레임에 불린다, 치마 같은 위치 기억 표현을 초기화하는 용도다
         [SerializeField] private GameObject _appearEffectPrefab; // 등장 마법진, 서버 등장 상태 동안 보이고 비어 있으면 생략한다
 
         [Header("자세")]
@@ -514,6 +516,7 @@ namespace Shinshi.AI
             _isHeld       = true;
             _holdPosition = position;
             transform.position = position;
+            _onTeleported.Invoke();
         }
 
         /// <summary> 모델을 서버 위치로 바로 옮긴다, 늦게 받은 사건처럼 부드럽게 따라갈 때가 아닐 때 쓴다 </summary>
@@ -522,6 +525,7 @@ namespace Shinshi.AI
             if (_hasPose)
             {
                 transform.position = _targetPosition;
+                _onTeleported.Invoke();
             }
         }
 
@@ -538,6 +542,7 @@ namespace Shinshi.AI
             if (snapToServer && _hasPose)
             {
                 transform.position = _targetPosition;
+                _onTeleported.Invoke();
             }
         }
 

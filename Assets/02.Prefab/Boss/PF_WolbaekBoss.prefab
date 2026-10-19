@@ -1,5 +1,56 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &162945296319370468
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3895413857478662958}
+  - component: {fileID: 3017082710474648982}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_05_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3895413857478662958
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 162945296319370468}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3017082710474648982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 162945296319370468}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 6809936020053822619}
+    m_Source: {fileID: 8808308015597617204}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
 --- !u!1 &457011537323626831
 GameObject:
   m_ObjectHideFlags: 0
@@ -51,6 +102,57 @@ Transform:
   - {fileID: 3753472686404461903}
   m_Father: {fileID: 3934517869569767221}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &895827647064143968
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5525493131760200547}
+  - component: {fileID: 2812669043750735726}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_04_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5525493131760200547
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 895827647064143968}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2812669043750735726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 895827647064143968}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 2358614080831663781}
+    m_Source: {fileID: 2287434104570345856}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
 --- !u!1 &1289852489252288786
 GameObject:
   m_ObjectHideFlags: 0
@@ -105,13 +207,28 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 858f267480844724fa82143eacd8cabe, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossView
   _pivot: {fileID: 5516574155397790334}
   _animator: {fileID: 2581301787005299077}
   _warp: {fileID: 1550198058047714701}
   _patternVfx: {fileID: 2573852722824582184}
   _dissolve: {fileID: 3943905421948782661}
+  _onTeleported:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2054228164571586043}
+        m_TargetAssemblyTypeName: Shinshi.Art.WolbaekSkirtWarpGuard, Shinshi.Art.SkirtRig
+        m_MethodName: OnTeleported
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   _appearEffectPrefab: {fileID: 1238879637261762528, guid: 81d022a27375a5b4697abb622e601dd4, type: 3}
   _gatherSideArms: {x: -6, y: 60, z: 25}
   _gatherCircle: {x: 8, y: 25, z: -10}
@@ -126,7 +243,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6649846251db7b84e8954544a3b3a9c5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekWarpView
   _bossView: {fileID: 2897417657671704511}
   _breakup: {fileID: 1874501517624299581}
@@ -142,7 +259,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1edfe6b2cf9eddc4fb90a828f88ed18b, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekPatternVfxView
   _animator: {fileID: 2581301787005299077}
   _flights:
@@ -181,7 +298,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 56f9c5033edc43c5ac63a811b07ab44e, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekDissolveView
   _controllers: []
   _burnMaterials:
@@ -203,7 +320,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b38989ed8d19e704eaff1f444f915990, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekTalismanView
   _bossView: {fileID: 2897417657671704511}
   _animator: {fileID: 2581301787005299077}
@@ -225,7 +342,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 95696c6a2e65419c8ac75672189abd23, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekColorWardView
   _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
   _gatherPrefab: {fileID: 7004568119999708516, guid: 0a3357f39d15c7a409ecc42c799cb5ef, type: 3}
@@ -245,7 +362,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 404d44155d9096b4fba42c2a9b208545, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekFoxfireSealView
   _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
   _corePrefab: {fileID: 2008495056718390370, guid: 464da5e840389df4489375b453d8e777, type: 3}
@@ -261,13 +378,905 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 30b5c6043c8a45ccb44fe244022d773a, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekFinalAreaView
   _shieldPrefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
   _foxfirePrefab: {fileID: 4460296218332427879, guid: 0a5b5eafeccd22a4daa6bc81857c5609, type: 3}
   _floorTelegraphPrefab: {fileID: 280056518885622441, guid: 93583d4c2dc1a5c4ea9fb96bae28b8b2, type: 3}
   _floorCollapsePrefab: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
   _redLockPrefab: {fileID: 3818512665175147759, guid: 859531144da1a6942891dc37fa8fe52f, type: 3}
+--- !u!1 &1615434834987768677
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9138067160452339566}
+  - component: {fileID: 8620959799242905376}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_06_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9138067160452339566
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1615434834987768677}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8620959799242905376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1615434834987768677}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 1517746552896282784}
+    m_Source: {fileID: 8872677524098549766}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &1869946144336369501
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9193791597701049612}
+  - component: {fileID: 5589043470161518268}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_05_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9193791597701049612
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1869946144336369501}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5589043470161518268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1869946144336369501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 7565298645411873341}
+    m_Source: {fileID: 5888772082779815839}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &2540434248233430800
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8256484837872144942}
+  - component: {fileID: 3915365356611722745}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_06_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8256484837872144942
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2540434248233430800}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3915365356611722745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2540434248233430800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 3956903668674602543}
+    m_Source: {fileID: 6809936020053822619}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &2611902839130080503
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5226263060293780255}
+  - component: {fileID: 7300628196760515467}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_02_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5226263060293780255
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611902839130080503}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7300628196760515467
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611902839130080503}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 2399870130294539393}
+    m_Source: {fileID: 7339746778970526800}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &2641144088872290839
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5483284301209970819}
+  - component: {fileID: 3312000895441746783}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_03_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5483284301209970819
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2641144088872290839}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3312000895441746783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2641144088872290839}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 931595990483783542}
+    m_Source: {fileID: 3565428661202953081}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &2670752415301900324
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4727849166446846216}
+  - component: {fileID: 2548909461190041809}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_04_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4727849166446846216
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2670752415301900324}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2548909461190041809
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2670752415301900324}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 6110928108621256887}
+    m_Source: {fileID: 5876396396026636824}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &2691714877943431821
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 861835400036168128}
+  - component: {fileID: 1731890619118335857}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_05_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &861835400036168128
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2691714877943431821}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1731890619118335857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2691714877943431821}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 4558834981988171496}
+    m_Source: {fileID: 6644162708197742731}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &3170351109842023296
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6267312893454859543}
+  - component: {fileID: 2880053456715963408}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_03_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6267312893454859543
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3170351109842023296}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2880053456715963408
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3170351109842023296}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 2287434104570345856}
+    m_Source: {fileID: 7077313358339159132}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &3256573759045359497
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4928229606780211025}
+  - component: {fileID: 5424545892417413313}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_06_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4928229606780211025
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3256573759045359497}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5424545892417413313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3256573759045359497}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 1877995936100790990}
+    m_Source: {fileID: 4451108840226571058}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &3274743887583449888
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7174072836723035358}
+  - component: {fileID: 988798915498720219}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_02_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7174072836723035358
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3274743887583449888}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &988798915498720219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3274743887583449888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 8749548118189000390}
+    m_Source: {fileID: 3622953121998495021}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &3739130142364710272
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2235965289324009659}
+  - component: {fileID: 1426853666311021205}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_06_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2235965289324009659
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3739130142364710272}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1426853666311021205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3739130142364710272}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 1919869624395911314}
+    m_Source: {fileID: 4558834981988171496}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &3764219904303139942
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 468105005686573499}
+  - component: {fileID: 1798966287884721034}
+  m_Layer: 0
+  m_Name: SkirtRig
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &468105005686573499
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3764219904303139942}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2074276377263345336}
+  - {fileID: 6267312893454859543}
+  - {fileID: 5525493131760200547}
+  - {fileID: 4562521005557139285}
+  - {fileID: 5345595555081972368}
+  - {fileID: 4303212829319200141}
+  - {fileID: 3868300736686011693}
+  - {fileID: 5674440129023112824}
+  - {fileID: 3895413857478662958}
+  - {fileID: 8256484837872144942}
+  - {fileID: 8520877070647426600}
+  - {fileID: 6330387190153247753}
+  - {fileID: 3834263365378586211}
+  - {fileID: 861835400036168128}
+  - {fileID: 2235965289324009659}
+  - {fileID: 5226263060293780255}
+  - {fileID: 8074097327545930012}
+  - {fileID: 4727849166446846216}
+  - {fileID: 1120355877472857972}
+  - {fileID: 4928229606780211025}
+  - {fileID: 4877859502713982400}
+  - {fileID: 5483284301209970819}
+  - {fileID: 2317190103455713542}
+  - {fileID: 9193791597701049612}
+  - {fileID: 5800950740874214692}
+  - {fileID: 7174072836723035358}
+  - {fileID: 3283057261627042854}
+  - {fileID: 703229736859280671}
+  - {fileID: 6424314339172027528}
+  - {fileID: 9138067160452339566}
+  m_Father: {fileID: 8444966835970241535}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1798966287884721034
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3764219904303139942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70b342d8ce5c2fd48b8fa3147d48d1d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.Rig
+  m_Weight: 1
+  m_Effectors: []
+--- !u!1 &5052063120985246669
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2074276377263345336}
+  - component: {fileID: 3080460686939892501}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_02_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2074276377263345336
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5052063120985246669}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3080460686939892501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5052063120985246669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 7077313358339159132}
+    m_Source: {fileID: 5689235825007840327}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &5325004687682713202
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6424314339172027528}
+  - component: {fileID: 7488943755791598979}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_05_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6424314339172027528
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5325004687682713202}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7488943755791598979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5325004687682713202}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 8872677524098549766}
+    m_Source: {fileID: 5166410558269281915}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &5326010630532897816
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4877859502713982400}
+  - component: {fileID: 3222941886595651522}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_02_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4877859502713982400
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5326010630532897816}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3222941886595651522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5326010630532897816}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 3565428661202953081}
+    m_Source: {fileID: 983854095544985549}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &5413034614622079202
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8520877070647426600}
+  - component: {fileID: 7396555103696106947}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_02_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8520877070647426600
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5413034614622079202}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7396555103696106947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5413034614622079202}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 5332358151767039696}
+    m_Source: {fileID: 2389642791794868772}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &5440215882144593936
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 703229736859280671}
+  - component: {fileID: 8289369528568286691}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_04_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &703229736859280671
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5440215882144593936}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8289369528568286691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5440215882144593936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 5166410558269281915}
+    m_Source: {fileID: 4246541570336058898}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
 --- !u!1 &5490748374979100770
 GameObject:
   m_ObjectHideFlags: 0
@@ -300,6 +1309,618 @@ Transform:
   - {fileID: 8444966835970241535}
   m_Father: {fileID: 3934517869569767221}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5536148156858612931
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2317190103455713542}
+  - component: {fileID: 3420016993841544668}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_04_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2317190103455713542
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5536148156858612931}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3420016993841544668
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5536148156858612931}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 5888772082779815839}
+    m_Source: {fileID: 931595990483783542}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &5925697876211907057
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8074097327545930012}
+  - component: {fileID: 158984266920679647}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_03_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8074097327545930012
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5925697876211907057}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &158984266920679647
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5925697876211907057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 5876396396026636824}
+    m_Source: {fileID: 2399870130294539393}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &5975130324262321835
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1120355877472857972}
+  - component: {fileID: 2253762887547746434}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_05_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1120355877472857972
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5975130324262321835}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2253762887547746434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5975130324262321835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 4451108840226571058}
+    m_Source: {fileID: 6110928108621256887}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &6299442400964083425
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5674440129023112824}
+  - component: {fileID: 3068252400030016648}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_04_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5674440129023112824
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6299442400964083425}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3068252400030016648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6299442400964083425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 8808308015597617204}
+    m_Source: {fileID: 4723276151849692647}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &6425034910124576849
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5800950740874214692}
+  - component: {fileID: 5044049578396280788}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_06_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5800950740874214692
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6425034910124576849}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5044049578396280788
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6425034910124576849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 5169630928089620028}
+    m_Source: {fileID: 7565298645411873341}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &7522384162475911318
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4562521005557139285}
+  - component: {fileID: 2833356116498916356}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_05_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4562521005557139285
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7522384162475911318}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2833356116498916356
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7522384162475911318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 535722379049851520}
+    m_Source: {fileID: 2358614080831663781}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &7559800466040110727
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3283057261627042854}
+  - component: {fileID: 5059640529310624006}
+  m_Layer: 0
+  m_Name: Damp_skirt_side_03_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3283057261627042854
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7559800466040110727}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5059640529310624006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7559800466040110727}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 4246541570336058898}
+    m_Source: {fileID: 8749548118189000390}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &7690844961478719871
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6330387190153247753}
+  - component: {fileID: 4592156363864513064}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_03_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6330387190153247753
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7690844961478719871}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4592156363864513064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7690844961478719871}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 1941188245505154438}
+    m_Source: {fileID: 5332358151767039696}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &8125965453874930694
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3868300736686011693}
+  - component: {fileID: 523866094989528586}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_03_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3868300736686011693
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8125965453874930694}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &523866094989528586
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8125965453874930694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 4723276151849692647}
+    m_Source: {fileID: 8957726390974171762}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &8218099620296765227
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4303212829319200141}
+  - component: {fileID: 4761172443407322242}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_02_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4303212829319200141
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8218099620296765227}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4761172443407322242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8218099620296765227}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 8957726390974171762}
+    m_Source: {fileID: 5001309979920066352}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &8250840807385911698
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3834263365378586211}
+  - component: {fileID: 4045471813100647929}
+  m_Layer: 0
+  m_Name: Damp_skirt_back_04_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3834263365378586211
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8250840807385911698}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4045471813100647929
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8250840807385911698}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 6644162708197742731}
+    m_Source: {fileID: 1941188245505154438}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
+--- !u!1 &8924161173035276812
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5345595555081972368}
+  - component: {fileID: 8151468021893146991}
+  m_Layer: 0
+  m_Name: Damp_skirt_front_06_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5345595555081972368
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8924161173035276812}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 468105005686573499}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8151468021893146991
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8924161173035276812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b37cffab30b939469bac076fdd82c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.DampedTransform
+  m_Weight: 1
+  m_Data:
+    m_ConstrainedObject: {fileID: 246151662700618938}
+    m_Source: {fileID: 535722379049851520}
+    m_DampPosition: 0
+    m_DampRotation: 0.5
+    m_MaintainAim: 1
 --- !u!1001 &971840905654126989
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1461,12 +3082,181 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 2749246319921293395, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 468105005686573499}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7792869540829864208}
+    - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2054228164571586043}
   m_SourcePrefab: {fileID: 100100000, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+--- !u!4 &246151662700618938 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5800431588208869142, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &535722379049851520 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6087319427299066156, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &931595990483783542 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6915406902049789146, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &983854095544985549 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6823690625343634529, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1517746552896282784 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5045678775215618828, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1877995936100790990 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5267592209484130658, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1919869624395911314 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5310160874591144766, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1941188245505154438 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5324864455589168682, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2287434104570345856 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5524612021192483372, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2358614080831663781 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8335810433658402057, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2389642791794868772 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8231580780439083400, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2399870130294539393 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8240401242070081325, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
 --- !u!95 &2581301787005299077 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 8126574153018421801, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &3565428661202953081 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7092947398229440725, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &3622953121998495021 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7012831145303492225, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &3956903668674602543 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7348883391712509315, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4246541570336058898 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7636833250363569598, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4451108840226571058 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7984960780335241374, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4558834981988171496 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7805292501837276484, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4723276151849692647 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1340303354094663243, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5001309979920066352 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1620729082838842524, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5166410558269281915 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1488161954034306519, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5169630928089620028 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1489551962908591504, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5332358151767039696 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1807512533598930300, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5689235825007840327 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2153281068911056875, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5876396396026636824 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 187149031515697588, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5888772082779815839 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 192770142756889651, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6110928108621256887 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 566227403996742427, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6644162708197742731 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1090164309306540839, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6809936020053822619 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 978412331877963575, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7077313358339159132 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3540514778406334448, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7339746778970526800 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3947898346002943996, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7565298645411873341 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4316862314440841617, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
   m_PrefabInstance: {fileID: 5986907257307175852}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &8444966835970241535 stripped
@@ -1474,6 +3264,60 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2749246319921293395, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
   m_PrefabInstance: {fileID: 5986907257307175852}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &8749548118189000390 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3060591522930449770, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &8808308015597617204 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2965797474560416664, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &8872677524098549766 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2898015082220622762, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &8957726390974171762 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3406402331953648094, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &9113416701906889029 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+  m_PrefabInstance: {fileID: 5986907257307175852}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7792869540829864208
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9113416701906889029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fff0960ef4ea6e04eac66b4a7fd2189d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.RigBuilder
+  m_RigLayers:
+  - m_Rig: {fileID: 1798966287884721034}
+    m_Active: 1
+  m_Effectors: []
+--- !u!114 &2054228164571586043
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9113416701906889029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79258bde57909d9478d89a0f290cfdf7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Art.SkirtRig::Shinshi.Art.WolbaekSkirtWarpGuard
+  _rig: {fileID: 1798966287884721034}
 --- !u!1001 &6137833861727085277
 PrefabInstance:
   m_ObjectHideFlags: 0
