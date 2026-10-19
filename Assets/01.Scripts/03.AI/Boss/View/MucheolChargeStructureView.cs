@@ -24,7 +24,8 @@ namespace Shinshi.AI
         private const float  PILLAR_HEIGHT        = 4f;    // m, 임시 기둥 높이
         private const float  BROKEN_HEIGHT_RATE   = 0.25f; // 부서진 임시 기둥은 밑동만 남긴다
         private const float  HALF                 = 0.5f;
-        private const string ROOT_NAME            = "MucheolChargeStructures (임시)";
+        private const float  IMPACT_HEIGHT        = 1.2f;  // m, 파편이 튀는 기준 높이, 석주 연출의 기본 충격점과 같다
+        private const string ROOT_NAME           = "MucheolChargeStructures (임시)";
         private const string PILLAR_NAME_PREFIX   = "ChargeStructure_";
 
         private readonly Dictionary<int, BossChargeStructureInfo> _structures = new Dictionary<int, BossChargeStructureInfo>();
@@ -74,7 +75,7 @@ namespace Shinshi.AI
 
                 if ((scene != null) && (scene.TryGetMarker(info.Id, out BossChargeStructureMarker marker)))
                 {
-                    marker.SetDestroyed(destroyed);
+                    marker.RestoreDestroyed(destroyed);
                     continue;
                 }
 
@@ -95,7 +96,7 @@ namespace Shinshi.AI
             BossChargeStructureSet scene = BossChargeStructureSet.Current;
             if ((scene != null) && (scene.TryGetMarker(structureId, out BossChargeStructureMarker marker)))
             {
-                marker.SetDestroyed(true);
+                marker.PlayDestroyed(info.Center + (Vector3.up * IMPACT_HEIGHT));
             }
             else if (_pillars.TryGetValue(structureId, out GameObject pillar))
             {

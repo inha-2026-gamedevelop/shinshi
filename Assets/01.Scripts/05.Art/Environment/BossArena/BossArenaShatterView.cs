@@ -72,6 +72,7 @@ namespace Shinshi.Art
         private float                 _appliedGlow;
         private EShatterStage         _stage;
         private bool                  _hasKeptPieces;
+        private bool                  _externalFinished;
         private Transform[]           _extraTargets   = Array.Empty<Transform>();
         private bool[]                _extraActive    = Array.Empty<bool>();
 
@@ -81,9 +82,40 @@ namespace Shinshi.Art
 
         public bool IsPlaying => (_playTween != null) && _playTween.IsPlaying();
 
+        /// <summary> 마지막으로 평가한 붕괴 시각(초) </summary>
+        public float EvaluatedTime => _time;
+
+        /// <summary> 지금 켜져 있는 씬의 붕괴 표현, 보스 프리팹의 바인더가 씬 참조 없이 찾는 자리이고 없으면 null </summary>
+        public static BossArenaShatterView Current { get; private set; }
+
         /****************************************
         *              Unity Event
         ****************************************/
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatic()
+        {
+            Current = null;
+        }
+
+        private void OnEnable()
+        {
+            if ((Current != null) && (Current != this))
+            {
+                Debug.LogError("[BossArenaShatter] 붕괴 표현이 씬에 둘 이상이다. 먼저 켜진 것만 쓴다", this);
+                return;
+            }
+
+            Current = this;
+        }
+
+        private void OnDisable()
+        {
+            if (Current == this)
+            {
+                Current = null;
+            }
+        }
 
         protected override void OnViewAwake()
         {
@@ -134,6 +166,66 @@ namespace Shinshi.Art
             _playTween.Restart();
         }
 
+        /// <summary> 서버 신호를 늦게 받았거나 복원할 때 이미 지난 시간만큼 건너뛴 지점부터 재생한다, 전체 길이를 넘으면 끝난 모습으로 둔다 </summary>
+        public void PlayFrom(float elapsedSeconds)
+        {
+            if (_playTween == null)
+            {
+                return;
+            }
+
+            if (elapsedSeconds <= 0f)
+            {
+                Play();
+                return;
+            }
+
+            ResetToIntact();
+            SetStage(EShatterStage.Cracking);
+
+            if (elapsedSeconds >= _endTime)
+            {
+                ApplyTime(_endTime);
+                OnPlayFinished();
+                return;
+            }
+
+            _playTween.Restart();
+            _playTween.Goto(elapsedSeconds, true);
+        }
+
+        // 프레임이 멈춰도 DOTween deltaTime 상한 때문에 뒤처지지 않도록, 호출자가 서버 시각 기준 경과 시간을 매 프레임 넘겨 그 시각을 그대로 평가한다.
+        // 자유 재생(Play, PlayFrom)과 섞어 쓰지 않는다. 끝난 뒤에는 ResetToIntact 전까지 평가하지 않는다
+        /// <summary> 외부 시계의 경과 시간으로 붕괴를 평가한다, 아직 진행 중이면 true이고 끝난 모습으로 둔 뒤에는 false다 </summary>
+        public bool EvaluateAt(float elapsedSeconds)
+        {
+            if ((_playTween == null) || _externalFinished)
+            {
+                return false;
+            }
+
+            if (_playTween.IsPlaying())
+            {
+                _playTween.Pause();
+            }
+
+            if (_stage == EShatterStage.Idle)
+            {
+                SetStage(EShatterStage.Cracking);
+            }
+
+            if (elapsedSeconds >= _endTime)
+            {
+                ApplyTime(_endTime);
+                OnPlayFinished();
+                _externalFinished = true;
+                return false;
+            }
+
+            ApplyTime(Mathf.Max(0f, elapsedSeconds));
+            return true;
+        }
+
         /// <summary> 재생을 멈추고 씬의 기존 아레나 표현으로 되돌린다 </summary>
         [ContextMenu("Reset To Intact")]
         public void ResetToIntact()
@@ -145,6 +237,7 @@ namespace Shinshi.Art
 
             _playTween.Pause();
             _time = 0f;
+            _externalFinished = false;
 
             for (int i = 0; i < _pieces.Length; ++i)
             {
