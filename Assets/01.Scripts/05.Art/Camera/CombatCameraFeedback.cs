@@ -12,7 +12,7 @@ using Shinshi.Data;
 
 namespace Shinshi.Art
 {
-    /// <summary> 내 마검사의 섬광 일섬 시전 줌과 검파, 섬광 일섬 적중 흔들림을 카메라에 입힌다. 서버가 이미 보내는 피해 알림만 쓴다 </summary>
+    /// <summary> 내 캐릭터의 적중 흔들림과 불똥, 마검사 섬광 일섬 시전 줌을 입힌다. 서버가 이미 보내는 피해 알림만 쓴다 </summary>
     public sealed class CombatCameraFeedback : ClientView
     {
         // 새 네트워크 멤버 없이 소유 플레이어가 받는 피해 알림과 공개 전투 상태(시전 번호, 슬롯, 확정 시각)로 판단한다.
@@ -36,9 +36,19 @@ namespace Shinshi.Art
         [SerializeField, Min(0.01f)]      private float _zoomOutSmooth     = 0.2f;
 
         [Header("적중 흔들림")]
+        // 모든 직업의 일반 적중
+        [SerializeField, Min(0f)] private float _lightShake       = 0.06f;
+        // 마검사 검파와 섬광 일섬 적중
         [SerializeField, Min(0f)] private float _waveShake        = 0.2f;
         [SerializeField, Min(0f)] private float _blinkShakeScale  = 1.2f;
         [SerializeField, Min(0.01f)] private float _shakeSeconds  = DEFAULT_SHAKE_SECONDS;
+
+        [Header("적중 불똥")]
+        // 비어 있으면 불똥을 내지 않는다
+        [SerializeField] private Material _sparkMaterial;
+        [SerializeField, Min(0)] private int _lightSparkCount = 10;
+        [SerializeField, Min(0)] private int _heavySparkCount = 28;
+        [SerializeField, Min(1f)] private float _critSparkMultiplier = 2.5f;
 
         [Header("분류")]
         // 피해 알림 시각과 시전 시각 비교에 두는 여유
@@ -47,6 +57,7 @@ namespace Shinshi.Art
         private readonly CombatCameraEffects      _effects    = new CombatCameraEffects();
         private readonly MageknightHitClassifier  _classifier = new MageknightHitClassifier();
         private readonly DamageFeedbackReceiver   _receiver   = new DamageFeedbackReceiver();
+        private HitSparkPool                      _sparks     = null;
 
         private NetworkIdentity         _boundPlayer = null;
         private PlayerInputState        _input       = null;
@@ -62,6 +73,13 @@ namespace Shinshi.Art
 
         protected override void OnViewAwake()
         {
+            if (_sparkMaterial != null)
+            {
+                _sparks = new GameObject("HitSparks").AddComponent<HitSparkPool>();
+                _sparks.transform.SetParent(transform, false);
+                _sparks.Initialize(_sparkMaterial);
+            }
+
             if (_camera != null)
             {
                 _offset = _camera.GetComponent<CinemachineCameraOffset>();
@@ -86,7 +104,7 @@ namespace Shinshi.Art
             }
 
             EnsureBound();
-            if ((_combat == null) || (_combat.PlayerClass != EPlayerClass.Mageknight))
+            if (_combat == null)
             {
                 ClearEffects();
                 return;
@@ -97,7 +115,11 @@ namespace Shinshi.Art
                 return;
             }
 
-            ObserveCast();
+            if (_combat.PlayerClass == EPlayerClass.Mageknight)
+            {
+                ObserveCast();
+            }
+
             _effects.Tick(Time.unscaledTimeAsDouble, Time.unscaledDeltaTime);
             _rig.SetCombatZoom(_effects.ZoomScale);
             if (_offset != null)
@@ -214,7 +236,7 @@ namespace Shinshi.Art
 
         private void OnDamageFeedback(DamageFeedback feedback)
         {
-            if ((_input == null) || (!_input.isOwned) || (_combat == null) || (_combat.PlayerClass != EPlayerClass.Mageknight))
+            if ((_input == null) || (!_input.isOwned) || (_combat == null))
             {
                 return;
             }
@@ -225,14 +247,39 @@ namespace Shinshi.Art
                 return;
             }
 
-            MageknightHitClassifier.EKind kind = _classifier.Classify(feedback.ServerTime);
-            if (kind == MageknightHitClassifier.EKind.Other)
+            // 마검사의 검파와 섬광 일섬은 강한 연출, 나머지 적중은 모든 직업이 약한 연출이다
+            MageknightHitClassifier.EKind kind = (_combat.PlayerClass == EPlayerClass.Mageknight)
+                ? _classifier.Classify(feedback.ServerTime)
+                : MageknightHitClassifier.EKind.Other;
+
+            float strength = _lightShake;
+            if (kind == MageknightHitClassifier.EKind.Wave)
+            {
+                strength = _waveShake;
+            }
+            else if (kind == MageknightHitClassifier.EKind.Blink)
+            {
+                strength = _waveShake * _blinkShakeScale;
+            }
+
+            Vector3 cameraDirection = ToCameraSpace(feedback.WorldPosition);
+            _effects.Kick(cameraDirection, strength, _shakeSeconds, Time.unscaledTimeAsDouble);
+            BurstSparks(feedback, kind != MageknightHitClassifier.EKind.Other);
+        }
+
+        // 맞은 자리에서 플레이어가 공격한 쪽으로 불똥을 튀긴다
+        private void BurstSparks(DamageFeedback feedback, bool isHeavy)
+        {
+            if (_sparks == null)
             {
                 return;
             }
 
-            float strength = (kind == MageknightHitClassifier.EKind.Blink) ? (_waveShake * _blinkShakeScale) : _waveShake;
-            _effects.Kick(ToCameraSpace(feedback.WorldPosition), strength, _shakeSeconds, Time.unscaledTimeAsDouble);
+            Vector3 direction = feedback.WorldPosition - _boundPlayer.transform.position;
+            direction.y = 0f;
+            int count = HitSparkPool.ResolveCount(isHeavy ? _heavySparkCount : _lightSparkCount, feedback.IsCritical,
+                _critSparkMultiplier);
+            _sparks.Burst(feedback.WorldPosition, direction.normalized, count, feedback.IsCritical);
         }
 
         // 맞은 쪽으로 밀리도록 플레이어에서 적중 지점으로 향하는 방향을 카메라 좌표로 바꾼다
