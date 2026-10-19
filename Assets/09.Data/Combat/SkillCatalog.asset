@@ -811,7 +811,7 @@ MonoBehaviour:
     _area:
       _aimMode: 0
       _shape: 3
-      _castRange: 9
+      _castRange: 14
       _radius: 0
       _arcAngle: 0
       _width: 2
