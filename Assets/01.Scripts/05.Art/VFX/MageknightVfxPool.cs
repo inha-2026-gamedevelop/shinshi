@@ -107,8 +107,8 @@ namespace Shinshi.Art
             return _transforms[index].position;
         }
 
-        /// <summary> 짧은 베기, 입자가 모두 끝나거나 상한 시간이 지나면 정리한다. group이 0 이상이면 그 묶음만 재생한다 </summary>
-        public void PlayBrief(Vector3 position, Quaternion rotation, double now, float maxSeconds, int group = -1)
+        /// <summary> 짧은 베기, 입자가 모두 끝나거나 상한 시간이 지나면 정리한다. group이 0 이상이면 그 묶음만 재생하고, lengthScale이 0보다 크면 앞쪽으로 그만큼 늘려 재생한다 </summary>
+        public void PlayBrief(Vector3 position, Quaternion rotation, double now, float maxSeconds, int group = -1, float lengthScale = 0f)
         {
             if (!HasPrefab)
             {
@@ -117,6 +117,11 @@ namespace Shinshi.Art
 
             int index = Acquire();
             _transforms[index].SetPositionAndRotation(position, rotation);
+            if (lengthScale > 0f)
+            {
+                _transforms[index].localScale = new Vector3(1f, 1f, lengthScale);
+            }
+
             SelectGroup(index, group);
             Begin(index, ESlotMode.Brief, now + maxSeconds);
         }

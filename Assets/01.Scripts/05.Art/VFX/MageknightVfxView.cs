@@ -26,6 +26,7 @@ namespace Shinshi.Art
         private const int    KIND_COUNT       = 5;
         private const int    MIN_POOL_SIZE    = 1;
         private const float  MIN_PLAY_SECONDS = 0.05f;
+        private const float  MIN_JUMP_DISTANCE = 0.1f; // m, 이보다 덜 움직였으면 길이를 맞추지 않는다
         private const string POOL_ROOT_NAME   = "MageknightVfxPool";
 
         [Header("관찰 대상")]
@@ -48,6 +49,12 @@ namespace Shinshi.Art
         [SerializeField] private float _maxLateSeconds    = 0.25f;
         [SerializeField] private float _heightOffset      = 0f;
 
+        [Header("순간 이동 베기")]
+        // 캐릭터가 도착한 뒤 효과를 이만큼 늦게 시작한다. 후딜 안이어야 한다
+        [SerializeField, Min(0f)] private float _jumpBeatSeconds = 0.1f;
+        // 효과 프리팹이 앞쪽으로 닿는 길이(m). 실제로 이동한 거리에 맞춰 이 길이를 늘이거나 줄인다
+        [SerializeField, Min(0.1f)] private float _jumpReach     = 6.3f;
+
         private readonly MageknightVfxTracker _tracker = new MageknightVfxTracker();
         private readonly MageknightVfxPool[]  _pools   = new MageknightVfxPool[KIND_COUNT];
 
@@ -57,6 +64,7 @@ namespace Shinshi.Art
         private float     _waveSpeed;
         private float     _waveRange;
         private int       _basicStepCount;
+        private float     _jumpDelay;
 
         /****************************************
         *              Unity Event
@@ -210,7 +218,14 @@ namespace Shinshi.Art
                 _waveRange = wave.Area.CastRange;
             }
 
-            _tracker.Configure(basicDelay, shieldDuration, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds);
+            // 발동 구간이 끝나는 순간 서버가 캐릭터를 옮기므로 그 뒤 한 박자 늦게 시작한다
+            _jumpDelay = 0f;
+            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_R, out SkillCatalogSO.SkillDefinition jump))
+            {
+                _jumpDelay = jump.Timeline.Active + Mathf.Min(_jumpBeatSeconds, jump.Timeline.Recovery);
+            }
+
+            _tracker.Configure(basicDelay, shieldDuration, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds, _jumpDelay);
             _hasConfig = true;
             return true;
         }
@@ -243,10 +258,31 @@ namespace Shinshi.Art
                 case EMageknightVfxKind.Wave:
                     pool.PlayWave(position, direction, play.StartAt, _waveSpeed, _waveRange, now);
                     break;
+                case EMageknightVfxKind.Jump:
+                    PlayJump(pool, position, direction, now);
+                    break;
                 default:
                     pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
                     break;
             }
+        }
+
+        // 이 시점에는 캐릭터가 이미 도착해 있다. 출발점에서 실제 도착 지점까지 이어지게 방향과 길이를 맞춘다
+        private void PlayJump(MageknightVfxPool pool, Vector3 origin, Vector3 aim, double now)
+        {
+            Vector3 delta = _combat.transform.position - origin;
+            delta.y = 0f;
+            float distance = delta.magnitude;
+
+            Vector3 direction = aim;
+            float   scale     = 1f;
+            if (distance > MIN_JUMP_DISTANCE)
+            {
+                direction = delta / distance;
+                scale     = distance / _jumpReach;
+            }
+
+            pool.PlayBrief(origin, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds), -1, scale);
         }
 
         // 콤보 효과 묶음 수와 콤보 단계 수가 달라도 마지막 단계는 마지막 묶음(마무리 베기)을 쓴다
