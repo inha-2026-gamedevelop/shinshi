@@ -85,6 +85,7 @@ namespace Shinshi.Art
         private float _waveSpeed;
         private float _waveRange;
         private float _maxLate;
+        private float _jumpDelay;
 
         private bool _hasBaseline;
         private bool _wasAlive;
@@ -120,10 +121,11 @@ namespace Shinshi.Art
         *                Methods
         ****************************************/
 
-        /// <summary> 기본 공격 준비 시간, 방벽과 장판 지속 시간(0 이하면 재생하지 않음), 검파 속도와 사거리(0 이하면 재생하지 않음), 재생 시각을 넘겨 관찰해도 허용하는 시간 </summary>
+        /// <summary> 기본 공격 준비 시간, 방벽과 장판 지속 시간(0 이하면 재생하지 않음), 검파 속도와 사거리(0 이하면 재생하지 않음), 재생 시각을 넘겨 관찰해도 허용하는 시간, 순간 이동 베기 효과를 발동 시작보다 늦추는 시간 </summary>
         public void Configure(float basicDelay, float shieldDuration, float fieldDuration, float waveSpeed, float waveRange,
-            float maxLateSeconds)
+            float maxLateSeconds, float jumpDelay = 0f)
         {
+            _jumpDelay      = Mathf.Max(0f, jumpDelay);
             _basicDelay     = Mathf.Max(0f, basicDelay);
             _shieldDuration = shieldDuration;
             _fieldDuration  = fieldDuration;
@@ -372,8 +374,10 @@ namespace Shinshi.Art
             }
 
             // 서버가 Windup을 지났다는 신호(Active, Recovery)만으로도 도달한 것이다. Active 0 기술도 Recovery에서 잡는다
-            double startAt = obs.SkillResolveAt;
-            bool   isDue   = (obs.Now >= startAt) || (obs.SkillPhase != ESkillPhase.Windup);
+            // 순간 이동 베기는 캐릭터가 도착한 뒤에 한 박자 늦게 보여 준다. 늦춘 시각이 되기 전에는 단계와 상관없이 기다린다
+            bool   isJump  = _pending[index].Kind == EMageknightVfxKind.Jump;
+            double startAt = obs.SkillResolveAt + (isJump ? _jumpDelay : 0f);
+            bool   isDue   = (obs.Now >= startAt) || ((!isJump) && (obs.SkillPhase != ESkillPhase.Windup));
             if (!isDue)
             {
                 return count;

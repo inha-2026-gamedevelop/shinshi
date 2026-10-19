@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 2553924264900278471}
   - component: {fileID: 6946279224381350783}
   - component: {fileID: 4403773357744487308}
+  - component: {fileID: 3705574786544095937}
   m_Layer: 0
   m_Name: PlayerFollowCamera
   m_TagString: Untagged
@@ -166,6 +167,32 @@ MonoBehaviour:
     FrequencyGain: 1
     Duration: 1
     m_NoiseOffsets: {x: 0, y: 0, z: 0}
+--- !u!114 &3705574786544095937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1167186175085977110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 456163b82f7929d4d8f8eec553b2f1f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.CombatCameraFeedback
+  _rig: {fileID: 2553924264900278471}
+  _camera: {fileID: 9178423247471882500}
+  _blinkZoomAmount: 0.2
+  _zoomInSmooth: 0.12
+  _zoomOutSmooth: 0.2
+  _lightShake: 0.06
+  _waveShake: 0.2
+  _blinkShakeScale: 1.2
+  _shakeSeconds: 0.2
+  _sparkMaterial: {fileID: 2100000, guid: 613fbc462694e0c44b3874dfa5889f0e, type: 2}
+  _lightSparkCount: 10
+  _heavySparkCount: 28
+  _critSparkMultiplier: 2.5
+  _classifyMargin: 0.15
 --- !u!1 &3921472462371864315
 GameObject:
   m_ObjectHideFlags: 0

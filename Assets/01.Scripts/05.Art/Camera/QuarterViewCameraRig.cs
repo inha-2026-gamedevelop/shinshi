@@ -37,6 +37,7 @@ namespace Shinshi.Art
         private QuarterViewPose _toPose;
         private float           _blend     = 0f;
         private int             _zoomLevel = 0;
+        private float           _combatZoom = 1f;
 
         public QuarterViewPose Pose      => _pose;
         public int             ZoomLevel => _zoomLevel;
@@ -109,6 +110,21 @@ namespace Shinshi.Art
         *                Methods
         ****************************************/
 
+        /// <summary> 전투 연출이 시야각에 곱하는 값, 1이면 줌 단계의 시야각 그대로다. 줌 단계 전환과 독립으로 겹쳐 쓴다 </summary>
+        public void SetCombatZoom(float scale)
+        {
+            if (Mathf.Approximately(_combatZoom, scale))
+            {
+                return;
+            }
+
+            _combatZoom = scale;
+            if (_config != null)
+            {
+                ApplyLens();
+            }
+        }
+
         private QuarterViewPose GetLevelPose(int level)
         {
             CameraConfigSO.ZoomLevel data = _config.ZoomLevels[level];
@@ -126,12 +142,17 @@ namespace Shinshi.Art
         {
             _camera.transform.rotation = QuarterViewCameraRules.GetRotation(_pose.PitchAngle, _config.YawAngle);
 
-            LensSettings lens = _camera.Lens;
-            lens.FieldOfView = _pose.FieldOfView;
-            _camera.Lens     = lens;
+            ApplyLens();
 
             _follow.FollowOffset = QuarterViewCameraRules.GetFollowOffset(_pose.PitchAngle, _config.YawAngle, _pose.Distance,
                 _pose.FocusHeight);
+        }
+
+        private void ApplyLens()
+        {
+            LensSettings lens = _camera.Lens;
+            lens.FieldOfView = _pose.FieldOfView * _combatZoom;
+            _camera.Lens     = lens;
         }
 
         private float GetBlend()

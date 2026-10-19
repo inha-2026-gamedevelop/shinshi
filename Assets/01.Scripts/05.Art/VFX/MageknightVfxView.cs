@@ -26,6 +26,8 @@ namespace Shinshi.Art
         private const int    KIND_COUNT       = 5;
         private const int    MIN_POOL_SIZE    = 1;
         private const float  MIN_PLAY_SECONDS = 0.05f;
+        private const float  FREEZE_FRAMES_PER_SECOND = 60f;
+        private const float  MIN_JUMP_DISTANCE = 0.1f; // m, 이보다 덜 움직였으면 길이를 맞추지 않는다
         private const string POOL_ROOT_NAME   = "MageknightVfxPool";
 
         [Header("관찰 대상")]
@@ -48,6 +50,19 @@ namespace Shinshi.Art
         [SerializeField] private float _maxLateSeconds    = 0.25f;
         [SerializeField] private float _heightOffset      = 0f;
 
+        [Header("검파 적중 정지")]
+        // 내 검파가 적을 맞힐 때마다 날아가는 본체를 이 프레임 수만큼 세운다. 맞는 연출만 바꾸고 서버 판정과는 무관하다
+        [SerializeField, Min(0)] private int _waveFreezeFrames       = 4;
+        // 한 번 쏜 검파가 서는 시간의 합 상한. 길어지면 본체가 실제 판정보다 한참 뒤처진다
+        [SerializeField, Min(0)] private int _waveFreezeBudgetFrames = 12;
+        [SerializeField, Min(0f)] private float _classifyMargin      = 0.15f;
+
+        [Header("순간 이동 베기")]
+        // 캐릭터가 도착한 뒤 효과를 이만큼 늦게 시작한다. 후딜 안이어야 한다
+        [SerializeField, Min(0f)] private float _jumpBeatSeconds = 0.1f;
+        // 효과 프리팹이 앞쪽으로 닿는 길이(m). 실제로 이동한 거리에 맞춰 이 길이를 늘이거나 줄인다
+        [SerializeField, Min(0.1f)] private float _jumpReach     = 6.3f;
+
         private readonly MageknightVfxTracker _tracker = new MageknightVfxTracker();
         private readonly MageknightVfxPool[]  _pools   = new MageknightVfxPool[KIND_COUNT];
 
@@ -57,6 +72,14 @@ namespace Shinshi.Art
         private float     _waveSpeed;
         private float     _waveRange;
         private int       _basicStepCount;
+        private float     _jumpDelay;
+        private PlayerInputState _input;
+        private bool      _isFeedbackBound;
+        private readonly MageknightHitClassifier _hitClassifier = new MageknightHitClassifier();
+        private readonly DamageFeedbackReceiver  _hitReceiver   = new DamageFeedbackReceiver();
+        private int       _hitCastId;
+        private int       _freezeCastId;
+        private int       _freezeSpentFrames;
 
         /****************************************
         *              Unity Event
@@ -64,6 +87,7 @@ namespace Shinshi.Art
 
         private void OnDisable()
         {
+            UnbindFeedback();
             _tracker.Reset();
             _wasRunning = false;
             StopAllEffects();
@@ -106,6 +130,7 @@ namespace Shinshi.Art
 
             _wasRunning = true;
             EnsurePools();
+            UpdateWaveFreeze();
 
             // SyncVar hook의 중간값이 아니라 이번 프레임에 모인 현재값으로만 판단한다
             double now = NetworkTime.time;
@@ -144,6 +169,7 @@ namespace Shinshi.Art
 
         protected override void OnViewAwake()
         {
+            TryGetComponent(out _input);
             // 프리팹은 부모 빌더가 주입하며, 전투 상태가 빠졌을 때만 부모에서 한 번 찾는다
             if (_combat == null)
             {
@@ -210,7 +236,15 @@ namespace Shinshi.Art
                 _waveRange = wave.Area.CastRange;
             }
 
-            _tracker.Configure(basicDelay, shieldDuration, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds);
+            // 발동 구간이 끝나는 순간 서버가 캐릭터를 옮기므로 그 뒤 한 박자 늦게 시작한다
+            _jumpDelay = 0f;
+            if (GameDB.Skills.TryGetSkillBySlot(EPlayerClass.Mageknight, Constants.Combat.SKILL_SLOT_R, out SkillCatalogSO.SkillDefinition jump))
+            {
+                _jumpDelay = jump.Timeline.Active + Mathf.Min(_jumpBeatSeconds, jump.Timeline.Recovery);
+            }
+
+            _tracker.Configure(basicDelay, shieldDuration, fieldDuration, _waveSpeed, _waveRange, _maxLateSeconds, _jumpDelay);
+            _hitClassifier.Configure((float)MageknightVfxTracker.WaveTravelSeconds(_waveSpeed, _waveRange), 0f, _classifyMargin);
             _hasConfig = true;
             return true;
         }
@@ -243,10 +277,100 @@ namespace Shinshi.Art
                 case EMageknightVfxKind.Wave:
                     pool.PlayWave(position, direction, play.StartAt, _waveSpeed, _waveRange, now);
                     break;
+                case EMageknightVfxKind.Jump:
+                    PlayJump(pool, position, direction, now);
+                    break;
                 default:
                     pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
                     break;
             }
+        }
+
+        // 소유 플레이어만 피해 알림을 받는다. 소유권은 스폰 뒤에 정해지므로 정해진 뒤에 한 번 묶는다
+        private void UpdateWaveFreeze()
+        {
+            if ((_input != null) && (!_isFeedbackBound) && (_input.isOwned))
+            {
+                _input.DamageFeedbackReceived += OnDamageFeedback;
+                _isFeedbackBound = true;
+            }
+
+            if ((_combat.CastInstanceId != _hitCastId) && (_combat.SkillPhase != ESkillPhase.Idle)
+                && (_combat.SkillKind == ESkillRequestKind.Regular))
+            {
+                _hitCastId = _combat.CastInstanceId;
+                _hitClassifier.ObserveCast(_combat.SkillSlot == Constants.Combat.SKILL_SLOT_W,
+                    _combat.SkillSlot == Constants.Combat.SKILL_SLOT_R, _hitCastId, _combat.SkillResolveAt);
+            }
+        }
+
+        private void UnbindFeedback()
+        {
+            if ((_input != null) && (_isFeedbackBound))
+            {
+                _input.DamageFeedbackReceived -= OnDamageFeedback;
+            }
+
+            _isFeedbackBound = false;
+            _hitClassifier.Reset();
+            _hitCastId = 0;
+        }
+
+        private void OnDamageFeedback(DamageFeedback feedback)
+        {
+            if ((_waveFreezeFrames <= 0) || (_input == null) || (!_input.isOwned))
+            {
+                return;
+            }
+
+            double now = DamageFeedbackRules.ReceptionTime(NetworkTime.time, NetworkClient.bufferTime);
+            if ((!_hitReceiver.TryAccept(in feedback, _input.SessionEpoch, now))
+                || (_hitClassifier.Classify(feedback.ServerTime) != MageknightHitClassifier.EKind.Wave))
+            {
+                return;
+            }
+
+            if (_hitCastId != _freezeCastId)
+            {
+                _freezeCastId      = _hitCastId;
+                _freezeSpentFrames = 0;
+            }
+
+            if ((_freezeSpentFrames + _waveFreezeFrames) > _waveFreezeBudgetFrames)
+            {
+                return;
+            }
+
+            _freezeSpentFrames += _waveFreezeFrames;
+            FreezeWave(_waveFreezeFrames / FREEZE_FRAMES_PER_SECOND);
+        }
+
+        /// <summary> 날아가는 검파 본체를 seconds 동안 세운다. 적중 연출용이라 서버 판정과는 무관하다 </summary>
+        public void FreezeWave(float seconds)
+        {
+            MageknightVfxPool pool = _pools[(int)EMageknightVfxKind.Wave];
+            if (pool != null)
+            {
+                pool.FreezeActiveWaves(NetworkTime.time, seconds);
+            }
+        }
+
+        // 이 시점에는 캐릭터가 이미 도착해 있다. 출발점에서 실제 도착 지점까지 이어지게 방향과 길이를 맞춘다
+        private void PlayJump(MageknightVfxPool pool, Vector3 origin, Vector3 aim, double now)
+        {
+            Vector3 delta = _combat.transform.position - origin;
+            delta.y = 0f;
+            float distance = delta.magnitude;
+
+            Vector3 direction = aim;
+            float   scale     = 1f;
+            if (distance > MIN_JUMP_DISTANCE)
+            {
+                direction = delta / distance;
+                scale     = distance / _jumpReach;
+            }
+
+            pool.PlayBrief(origin, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds), -1, scale);
         }
 
         // 콤보 효과 묶음 수와 콤보 단계 수가 달라도 마지막 단계는 마지막 묶음(마무리 베기)을 쓴다

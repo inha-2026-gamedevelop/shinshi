@@ -413,7 +413,7 @@ namespace Shinshi.Data
             // W 검파 해방, 기본 1.0A에 스택당 0.2A를 더해 20스택이면 5.0A. 관통하며 시전 확정 때 스택을 0으로 만든다
             new SkillDefinition("skill_mageknight_thunder_wave", EPlayerClass.Mageknight, slot: 1, isSignature: false, energyCost: 25f, cooldown: 8f,
                 new SkillTimeline(0.35f, 0f, 0.2f),
-                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 9f, width: 2f, projectileSpeed: 20f),
+                new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 14f, width: 2f, projectileSpeed: 20f),
                 new SkillEffectSpec(damageCoefficient: 1.0f, maxTargets: 8, stackCoefficient: 0.2f)),
             // E 공간 절단진, 지정 지점에 고정, 4초 동안 0.5초마다 8회 총 4.5A, 생성 때 스택 +5
             new SkillDefinition("skill_mageknight_flame_field", EPlayerClass.Mageknight, slot: 2, isSignature: true, energyCost: 30f, cooldown: 12f,

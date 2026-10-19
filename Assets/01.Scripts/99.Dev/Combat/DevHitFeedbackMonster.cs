@@ -92,6 +92,9 @@ namespace Shinshi.Dev
         /// <summary> 죽는 순간 한 번 알린다. 사체는 이 뒤로도 한동안 남아 있다 </summary>
         public event Action<DevHitFeedbackMonster> Died;
 
+        /// <summary> 지금 살아 있는 몬스터 목록. 읽기만 한다 </summary>
+        public static IReadOnlyList<DevHitFeedbackMonster> Alive => s_alive;
+
         /// <summary> 죽는 연출 중이거나 이미 죽었는지 </summary>
         public bool IsDead => _isDying;
 
