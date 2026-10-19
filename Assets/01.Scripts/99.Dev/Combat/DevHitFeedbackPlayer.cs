@@ -108,6 +108,7 @@ namespace Shinshi.Dev
         private float               _invincibleEnd  = 0f;
         private bool                _isDead         = false;
         private bool                _showSlash      = true;
+        private bool                _isInvincible   = false;
         private bool                _skipPlayerFreeze   = false;
         private bool                _attackInputEnabled = true;
         private bool                _movementBlocked    = false;
@@ -243,7 +244,7 @@ namespace Shinshi.Dev
         /// <summary> 몬스터에게 한 대 맞는다. 맞은 직후 잠깐은 무적이고, 체력이 다하면 쓰러져 조작할 수 없다 </summary>
         public void TakeHit(Vector3 attackerPosition)
         {
-            if ((_isDead) || (Time.time < _invincibleEnd))
+            if ((_isDead) || (_isInvincible) || (Time.time < _invincibleEnd))
             {
                 return;
             }
@@ -396,15 +397,20 @@ namespace Shinshi.Dev
         /// <summary> 기본 공격 판정을 다른 곳(서버 판정 대역)이 맡을 때 이 플레이어의 자체 공격 입력을 끈다 </summary>
         public void SetAttackInputEnabled(bool isEnabled) { _attackInputEnabled = isEnabled; }
 
+        /// <summary> 참이면 몬스터에게 맞아도 체력이 줄지 않는다 </summary>
+        public void SetInvincible(bool isInvincible) { _isInvincible = isInvincible; }
+
         /// <summary> 기술 시전 중처럼 걷지 못하는 동안 참으로 둔다 </summary>
         public void SetMovementBlocked(bool isBlocked) { _movementBlocked = isBlocked; }
 
         /// <summary> 외부 판정이 맞힌 충돌체를 같은 Hit 경로로 알린다 </summary>
-        public void ReportHit(Collider target, Vector3 hitPoint, bool isHeavy, bool freezesPlayer = true)
+        public void ReportHit(Collider target, Vector3 hitPoint, bool isHeavy, bool freezesPlayer = true, float shakeScale = 1f)
         {
-            // 렉프레임(Freeze)은 Hit 이벤트 처리 중에 동기로 불린다. 지속 피해처럼 플레이어가 굳으면 안 되는 타격은 그 동안만 무시한다
+            // 렉프레임(Freeze)과 흔들림(Kick)은 Hit 이벤트 처리 중에 동기로 불린다. 그 동안만 플레이어를 굳히지 않거나 흔들림 배율을 바꾼다
             _skipPlayerFreeze = !freezesPlayer;
+            _feedbackCamera.ShakeScale = shakeScale;
             Hit?.Invoke(target, hitPoint, isHeavy);
+            _feedbackCamera.ShakeScale = 1f;
             _skipPlayerFreeze = false;
         }
 

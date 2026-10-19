@@ -42,6 +42,19 @@ namespace Shinshi.Dev
         [Header("능력치")]
         [SerializeField, Min(1f)] private float _maxHealth = 100f;
 
+        [Header("시험 편의")]
+        [SerializeField] private bool _invincible = true;
+        [SerializeField] private bool _noCooldown = true;
+
+        [Header("카메라")]
+        // 마검사 R 타격의 화면 흔들림 세기 배율(1이 기본)
+        [SerializeField, Min(0f)] private float _skillRShakeScale = 1.2f;
+        // 마검사 R 섬광 일섬 시전 동안 화면을 당기는 비율(시야각 기준), 0이면 쓰지 않는다
+        [SerializeField, Range(0f, 0.6f)] private float _skillRZoomAmount     = 0.2f;
+        // 당기고 풀 때의 감쇠 시간. 클수록 부드럽고 느리게 따라간다
+        [SerializeField, Min(0.01f)]      private float _skillRZoomInSmooth   = 0.12f;
+        [SerializeField, Min(0.01f)]      private float _skillRZoomOutSmooth  = 0.2f;
+
         [Header("타격감")]
         // 장판, 화상처럼 시전이 끝난 뒤 틱마다 들어오는 지속 피해에도 타격감(경직, 흔들림, 불똥)을 낼지. 끄면 피해는 들어가지만 연출은 첫 타격에만 나온다
         [SerializeField] private bool _feedbackOnTickDamage = true;
@@ -63,6 +76,10 @@ namespace Shinshi.Dev
         private readonly HashSet<string> _tickSources = new HashSet<string>();
         private SourceTrackingResolver   _tracker;
 
+        private FieldInfo _readyAtField = null;
+        private FieldInfo _energyField  = null;
+
+        private int    _lastCastId     = CombatIds.NONE;
         private uint   _sequence       = 0;
         private float  _nextScanTime   = 0f;
         private float  _nextAttackSend = 0f;
@@ -133,6 +150,8 @@ namespace Shinshi.Dev
                     .GetSetMethod(true).Invoke(identity, new object[] { true });
             }
 
+            _server.SetServerProtection(_invincible);
+            _player.SetInvincible(_invincible);
             _player.SetAttackInputEnabled(false);
             _player.Damaged += OnPlayerDamaged;
             _isReady = true;
@@ -162,6 +181,11 @@ namespace Shinshi.Dev
 
             double now = NetworkTime.time;
             ScanMonsters();
+            if (_noCooldown)
+            {
+                ClearCooldowns();
+            }
+
             SendInputs(now);
 
             // 기술이 위치를 직접 옮기므로 캐릭터 컨트롤러가 덮어쓰지 않게 이 틱 동안만 끈다
@@ -184,6 +208,7 @@ namespace Shinshi.Dev
 
             _player.SetMovementBlocked(_server.Skills.BlocksMovement);
             ApplyFacing();
+            ApplySkillCamera();
         }
 
         /****************************************
@@ -242,6 +267,41 @@ namespace Shinshi.Dev
         {
             ++_sequence;
             return new PlayerInputHeader(Constants.Network.PROTOCOL_VERSION, SESSION_EPOCH, PARTICIPANT_ID, _sequence, now);
+        }
+
+        // 기술 쿨다운을 모두 지우고 기력을 가득 채운다. 서버 기술 상태의 비공개 필드를 직접 쓴다
+        private void ClearCooldowns()
+        {
+            SkillServer skills = _server.Skills;
+            if (_readyAtField == null)
+            {
+                _readyAtField = typeof(SkillServer).GetField("_readyAt", BindingFlags.NonPublic | BindingFlags.Instance);
+                _energyField  = typeof(SkillServer).GetField("_energy", BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+
+            System.Array.Clear((double[])_readyAtField.GetValue(skills), 0, Constants.Player.SKILL_SLOT_COUNT);
+            _energyField.SetValue(skills, skills.MaxEnergy);
+        }
+
+        // 새 시전이 시작되면 그 기술의 준비와 발동 시간 동안 화면을 당긴다
+        private void ApplySkillCamera()
+        {
+            SkillServer skills = _server.Skills;
+            if (skills.CastInstanceId == _lastCastId)
+            {
+                return;
+            }
+
+            _lastCastId = skills.CastInstanceId;
+            if ((_playerClass != EPlayerClass.Mageknight) || (skills.Slot != Constants.Combat.SKILL_SLOT_R)
+                || (_skillRZoomAmount <= 0f) || (_player.FeedbackCamera == null)
+                || (!GameDB.Skills.TryGetSkillBySlot(_playerClass, skills.Slot, out SkillCatalogSO.SkillDefinition skill)))
+            {
+                return;
+            }
+
+            float holdSeconds = skill.Timeline.Windup + skill.Timeline.Active;
+            _player.FeedbackCamera.ZoomHold(_skillRZoomAmount, holdSeconds, _skillRZoomInSmooth, _skillRZoomOutSmooth);
         }
 
         // 서버가 정한 정면을 캐릭터 방향에 반영한다. 바뀐 순간에만 적용해 걷는 동안의 자체 회전과 다투지 않는다
@@ -325,7 +385,15 @@ namespace Shinshi.Dev
             bool    isHeavy  = notice.Result.AppliedAmount >= (_stats.Attack * HEAVY_DAMAGE_RATIO);
             Vector3 hitPoint = target.Collider.ClosestPoint(transform.position);
             // 지속 피해는 몬스터 반응만 보이고 플레이어는 굳지 않는다(틱마다 멈추면 뚝뚝 끊긴다)
-            _player.ReportHit(target.Collider, hitPoint, isHeavy, !isTick);
+            float shakeScale = IsSkillRSource(_tracker.CurrentSource) ? _skillRShakeScale : 1f;
+            _player.ReportHit(target.Collider, hitPoint, isHeavy, !isTick, shakeScale);
+        }
+
+        private bool IsSkillRSource(string sourceId)
+        {
+            return (sourceId != null) && (_playerClass == EPlayerClass.Mageknight)
+                && (GameDB.Skills.TryGetSkillBySlot(_playerClass, Constants.Combat.SKILL_SLOT_R, out SkillCatalogSO.SkillDefinition skill))
+                && (skill.DefinitionId == sourceId);
         }
 
         // 첫 타격 계수가 없고 틱 계수만 있는 기술이 지속 피해원이다(장판, 불 화살 화상)
