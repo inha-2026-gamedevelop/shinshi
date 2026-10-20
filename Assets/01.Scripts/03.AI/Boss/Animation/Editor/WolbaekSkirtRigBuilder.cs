@@ -258,6 +258,13 @@ namespace Shinshi.Editor
 
             CreateMotionGate(model, new MonoBehaviour[] { lower, gridPush, cover });
 
+            // 던지기 모션 전용 치마 넓히기는 이 리그를 다시 만들 때도 남도록 같이 붙인다
+            if (!WolbaekSkirtThrowFlareBuilder.Apply(model))
+            {
+                Object.DestroyImmediate(rigObject);
+                return -1;
+            }
+
             foreach ((Transform constrained, Transform source) in pairs)
             {
                 CreateDamped(rigObject.transform, constrained, source);

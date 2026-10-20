@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &163667343021244868
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 216673885395800025}
+  m_Layer: 0
+  m_Name: ThrowFlareAnchor_skirt_back_01_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &216673885395800025
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 163667343021244868}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.16388512, y: 0.9582076, z: -0.23097612, w: -0.04037389}
+  m_LocalPosition: {x: -0.09242496, y: 0.18221912, z: -0.15283787}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7831648607157045414}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &345413278662614206
 GameObject:
   m_ObjectHideFlags: 0
@@ -1003,6 +1034,37 @@ MonoBehaviour:
     m_DampPosition: 0
     m_DampRotation: 0.5
     m_MaintainAim: 1
+--- !u!1 &1929492239846727493
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3304836596388872506}
+  m_Layer: 0
+  m_Name: ThrowFlareAnchor_skirt_side_01_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3304836596388872506
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1929492239846727493}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.16861993, y: 0.88036877, z: -0.43508187, w: -0.08498197}
+  m_LocalPosition: {x: -0.10657278, y: 0.016537443, z: -0.27184698}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7831648607157045414}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1979525886049462809
 GameObject:
   m_ObjectHideFlags: 0
@@ -1259,6 +1321,10 @@ Transform:
   - {fileID: 1007562316179051904}
   - {fileID: 4008495986041294773}
   - {fileID: 8264574467673674031}
+  - {fileID: 6893944625463549250}
+  - {fileID: 7494410894826496605}
+  - {fileID: 659463019077702095}
+  - {fileID: 567596354406928853}
   - {fileID: 7693295628689349794}
   - {fileID: 8622510728217225091}
   - {fileID: 5482147025392929543}
@@ -1478,6 +1544,85 @@ MonoBehaviour:
     _startAngle: 20
     _ratio: 0.5
     _maxLower: 35
+--- !u!1 &2790758277438538415
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 567596354406928853}
+  - component: {fileID: 8678391676180267879}
+  m_Layer: 0
+  m_Name: ThrowFlare_skirt_side_01_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &567596354406928853
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2790758277438538415}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2384076629452985866}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8678391676180267879
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2790758277438538415}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10bdb03db33fb148b858a4a3b646cea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.MultiPositionConstraint
+  m_Weight: 0
+  m_Data:
+    m_ConstrainedObject: {fileID: 983854095544985549}
+    m_SourceObjects:
+      m_Length: 1
+      m_Item0:
+        transform: {fileID: 3304836596388872506}
+        weight: 1
+      m_Item1:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item2:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item3:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item4:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item5:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item6:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item7:
+        transform: {fileID: 0}
+        weight: 0
+    m_Offset: {x: 0, y: 0, z: 0}
+    m_ConstrainedAxes:
+      x: 1
+      y: 1
+      z: 1
+    m_MaintainOffset: 0
 --- !u!1 &3024865641287092173
 GameObject:
   m_ObjectHideFlags: 0
@@ -1812,6 +1957,37 @@ MonoBehaviour:
     m_DampPosition: 0
     m_DampRotation: 0.5
     m_MaintainAim: 1
+--- !u!1 &4772635719224510439
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7838411069861517150}
+  m_Layer: 0
+  m_Name: ThrowFlareAnchor_skirt_side_01_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7838411069861517150
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4772635719224510439}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.14799334, y: 0.79550016, z: 0.57729465, w: 0.10958271}
+  m_LocalPosition: {x: -0.106667146, y: 0.009160832, z: 0.25442195}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7831648607157045414}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4812459829323631035
 GameObject:
   m_ObjectHideFlags: 0
@@ -1891,6 +2067,164 @@ MonoBehaviour:
       y: 1
       z: 1
     m_MaintainOffset: 1
+--- !u!1 &5036365665644001773
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6893944625463549250}
+  - component: {fileID: 1652807613360754853}
+  m_Layer: 0
+  m_Name: ThrowFlare_skirt_back_01_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6893944625463549250
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5036365665644001773}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2384076629452985866}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1652807613360754853
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5036365665644001773}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10bdb03db33fb148b858a4a3b646cea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.MultiPositionConstraint
+  m_Weight: 0
+  m_Data:
+    m_ConstrainedObject: {fileID: 7339746778970526800}
+    m_SourceObjects:
+      m_Length: 1
+      m_Item0:
+        transform: {fileID: 7619362686483993563}
+        weight: 1
+      m_Item1:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item2:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item3:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item4:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item5:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item6:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item7:
+        transform: {fileID: 0}
+        weight: 0
+    m_Offset: {x: 0, y: 0, z: 0}
+    m_ConstrainedAxes:
+      x: 1
+      y: 1
+      z: 1
+    m_MaintainOffset: 0
+--- !u!1 &5354521445036313892
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7494410894826496605}
+  - component: {fileID: 4623368213769917737}
+  m_Layer: 0
+  m_Name: ThrowFlare_skirt_side_01_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7494410894826496605
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5354521445036313892}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2384076629452985866}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4623368213769917737
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5354521445036313892}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10bdb03db33fb148b858a4a3b646cea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.MultiPositionConstraint
+  m_Weight: 0
+  m_Data:
+    m_ConstrainedObject: {fileID: 3622953121998495021}
+    m_SourceObjects:
+      m_Length: 1
+      m_Item0:
+        transform: {fileID: 7838411069861517150}
+        weight: 1
+      m_Item1:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item2:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item3:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item4:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item5:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item6:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item7:
+        transform: {fileID: 0}
+        weight: 0
+    m_Offset: {x: 0, y: 0, z: 0}
+    m_ConstrainedAxes:
+      x: 1
+      y: 1
+      z: 1
+    m_MaintainOffset: 0
 --- !u!1 &5490748374979100770
 GameObject:
   m_ObjectHideFlags: 0
@@ -2599,6 +2933,85 @@ MonoBehaviour:
     m_DampPosition: 0
     m_DampRotation: 0.5
     m_MaintainAim: 1
+--- !u!1 &7785618353632343282
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 659463019077702095}
+  - component: {fileID: 4483258720644693213}
+  m_Layer: 0
+  m_Name: ThrowFlare_skirt_back_01_l
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &659463019077702095
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7785618353632343282}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2384076629452985866}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4483258720644693213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7785618353632343282}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10bdb03db33fb148b858a4a3b646cea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Animation.Rigging::UnityEngine.Animations.Rigging.MultiPositionConstraint
+  m_Weight: 0
+  m_Data:
+    m_ConstrainedObject: {fileID: 2389642791794868772}
+    m_SourceObjects:
+      m_Length: 1
+      m_Item0:
+        transform: {fileID: 216673885395800025}
+        weight: 1
+      m_Item1:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item2:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item3:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item4:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item5:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item6:
+        transform: {fileID: 0}
+        weight: 0
+      m_Item7:
+        transform: {fileID: 0}
+        weight: 0
+    m_Offset: {x: 0, y: 0, z: 0}
+    m_ConstrainedAxes:
+      x: 1
+      y: 1
+      z: 1
+    m_MaintainOffset: 0
 --- !u!1 &7811865110094657293
 GameObject:
   m_ObjectHideFlags: 0
@@ -2701,6 +3114,37 @@ MonoBehaviour:
     m_DampPosition: 0
     m_DampRotation: 0.5
     m_MaintainAim: 1
+--- !u!1 &8477530308461173223
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7619362686483993563}
+  m_Layer: 0
+  m_Name: ThrowFlareAnchor_skirt_back_01_r
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7619362686483993563
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8477530308461173223}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.14808007, y: 0.9831036, z: 0.10634972, w: 0.016416578}
+  m_LocalPosition: {x: -0.09919282, y: 0.20506197, z: 0.107326664}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7831648607157045414}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &971840905654126989
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3890,6 +4334,18 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2749246319921293395, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2384076629452985866}
+    - targetCorrespondingSourceObject: {fileID: 4592086691695022858, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7619362686483993563}
+    - targetCorrespondingSourceObject: {fileID: 4592086691695022858, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7838411069861517150}
+    - targetCorrespondingSourceObject: {fileID: 4592086691695022858, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 216673885395800025}
+    - targetCorrespondingSourceObject: {fileID: 4592086691695022858, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3304836596388872506}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       insertIndex: -1
@@ -3906,6 +4362,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 246413866491867327}
+    - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2315757328335655689}
   m_SourcePrefab: {fileID: 100100000, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
 --- !u!4 &246151662700618938 stripped
 Transform:
@@ -4337,6 +4796,26 @@ MonoBehaviour:
   _damping: 5
   _gravityScale: 1
   _maxDegrees: 45
+--- !u!114 &2315757328335655689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9113416701906889029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b4a15ef489e97e48a77992825dafad0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.AI.SkirtRig::Shinshi.AI.SkirtMotionGate
+  _animator: {fileID: 2581301787005299077}
+  _constraints:
+  - {fileID: 1652807613360754853}
+  - {fileID: 4623368213769917737}
+  - {fileID: 4483258720644693213}
+  - {fileID: 8678391676180267879}
+  _stateName: combo02_1_inplace
+  _blendSeconds: 0.15
 --- !u!1001 &6137833861727085277
 PrefabInstance:
   m_ObjectHideFlags: 0
