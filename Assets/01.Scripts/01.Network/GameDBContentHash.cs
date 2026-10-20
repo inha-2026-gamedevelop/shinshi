@@ -183,6 +183,12 @@ namespace Shinshi.Network
                     value = null;
                 }
 
+                // 아이콘 같은 표현용 에셋은 서버 판정과 무관하고, 서버 빌드에서 빠질 수 있어 연결 여부와 상관없이 값 없음으로 쓴다
+                if ((value is UnityEngine.Object) && (!IsGameData(value.GetType())))
+                {
+                    value = null;
+                }
+
                 if (value == null)
                 {
                     _writer.WriteBoolean(false);
