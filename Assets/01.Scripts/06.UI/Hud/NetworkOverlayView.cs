@@ -6,6 +6,9 @@ using System.Text;
 // Unity
 using UnityEngine;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEngine.SceneManagement;
+#endif
 
 // 서드파티
 using Mirror;
@@ -13,6 +16,7 @@ using TMPro;
 
 // 프로젝트 내부
 using Shinshi.Combat;
+using Shinshi.Common;
 using Shinshi.Data;
 
 namespace Shinshi.UI
@@ -41,7 +45,17 @@ namespace Shinshi.UI
         private const float  NAMEPLATE_FONT_SIZE      = 22f;
         private const float  STACK_FONT_SIZE          = 18f;
         private const float  STACK_OFFSET_Y           = 24f;
+        private const float  ELEMENT_ICON_SIZE        = 36f;
+        private const float  ELEMENT_OFFSET_Y         = 64f;
+        private const float  ELEMENT_PREVIEW_OFFSET_Y = 12f;
+        private const int    ELEMENT_ATLAS_COLUMNS    = 3;
+        private const string ELEMENT_TEXTURE_PATH     = "T_ArcherElementOverhead";
         private const float  TEXT_OUTLINE_WIDTH       = 0.2f;
+        private const float  NAMEPLATE_OUTLINE_WIDTH  = 0.35f;
+        // 이 셰이더를 쓰는 재질이 프로젝트에 없으면 빌드가 셰이더를 빼서 외곽선이 사라진다. Hud/Resources/M_TextOutlineShaderRef.mat이 포함을 맡으니 지우지 않는다
+        private const string OUTLINE_SHADER           = "TextMeshPro/Distance Field";
+        // 외곽선이 글자 안쪽까지 먹으므로 이름표 글자를 먼저 굵게 부풀린다
+        private const float  NAMEPLATE_FACE_DILATE    = 0.3f;
         private const float  REFERENCE_WIDTH         = 1920f;
         private const float  REFERENCE_HEIGHT         = 1080f;
         private const float  WIDTH_HEIGHT_MATCH       = 0.5f;
@@ -75,6 +89,11 @@ namespace Shinshi.UI
         private int             _frameCount      = 0;
         private float           _frameTime       = 0f;
         private float           _maxFrameTime    = 0f;
+        private Texture2D       _elementTexture;
+
+#if UNITY_EDITOR
+        private readonly List<Nameplate> _previewNameplates = new List<Nameplate>();
+#endif
 
         // 예측 진단값은 멀티 테스트용이다. 개발 빌드에서는 처음부터 보이고 배포 빌드에서는 F3으로 켠다
         private bool            _showsPrediction = false;
@@ -104,8 +123,26 @@ namespace Shinshi.UI
             _showsPrediction = Debug.isDebugBuild;
 
             _font = CreateSystemKoreanFont();
+            _elementTexture = Resources.Load<Texture2D>(ELEMENT_TEXTURE_PATH);
             BuildCanvas();
         }
+
+#if UNITY_EDITOR
+        private void OnEnable()
+        {
+            SceneManager.sceneLoaded += OnPreviewSceneLoaded;
+        }
+
+        private void Start()
+        {
+            CachePreviewPlayers(SceneManager.GetActiveScene());
+        }
+
+        private void OnDisable()
+        {
+            SceneManager.sceneLoaded -= OnPreviewSceneLoaded;
+        }
+#endif
 
         private void Update()
         {
@@ -218,6 +255,23 @@ namespace Shinshi.UI
             return text;
         }
 
+        // 밝은 바닥 위에서도 읽히도록 이름표는 통계 글자보다 굵은 검은 외곽선을 쓴다. 글자마다 재질 사본이 생긴다
+        private static void ApplyNameplateOutline(TextMeshProUGUI text)
+        {
+            // 모바일용 거리장 셰이더는 외곽선 값을 줘도 그리지 못해 일반 거리장 셰이더로 바꾼다
+            Material material = text.fontMaterial;
+            Shader   shader   = Shader.Find(OUTLINE_SHADER);
+            if ((shader != null) && (material.shader != shader))
+            {
+                material.shader = shader;
+            }
+
+            material.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            material.SetColor(ShaderUtilities.ID_OutlineColor, Color.black);
+            material.SetFloat(ShaderUtilities.ID_OutlineWidth, NAMEPLATE_OUTLINE_WIDTH);
+            material.SetFloat(ShaderUtilities.ID_FaceDilate, NAMEPLATE_FACE_DILATE);
+        }
+
         // 0.5초마다 한 번만 문자열을 만든다. 매 프레임 만들면 할당이 쌓인다
         private void RefreshStats()
         {
@@ -271,10 +325,19 @@ namespace Shinshi.UI
             if (!NetworkClient.active)
             {
                 RemoveStaleNameplates(true);
+#if UNITY_EDITOR
+                DrawPreviewNameplates();
+#endif
                 return;
             }
 
             Camera view = Camera.main;
+#if UNITY_EDITOR
+            if (_previewNameplates.Count > 0)
+            {
+                ClearPreviewNameplates();
+            }
+#endif
             foreach (KeyValuePair<uint, NetworkIdentity> pair in NetworkClient.spawned)
             {
                 DrawNameplate(pair.Key, pair.Value, view);
@@ -299,12 +362,24 @@ namespace Shinshi.UI
                     return;
                 }
 
-                nameplate = new Nameplate(state, CreateText("Nameplate", _nameplateRoot, NAMEPLATE_FONT_SIZE,
-                    TextAlignmentOptions.Center));
-                nameplate.Text.rectTransform.sizeDelta = NAMEPLATE_SIZE;
+                nameplate = CreateNameplate(state);
                 _nameplates.Add(netId, nameplate);
             }
 
+            DrawNameplate(nameplate, view);
+        }
+
+        private Nameplate CreateNameplate(PlayerCombatState state)
+        {
+            var nameplate = new Nameplate(state, CreateText("Nameplate", _nameplateRoot, NAMEPLATE_FONT_SIZE,
+                TextAlignmentOptions.Center));
+            nameplate.Text.rectTransform.sizeDelta = NAMEPLATE_SIZE;
+            ApplyNameplateOutline(nameplate.Text);
+            return nameplate;
+        }
+
+        private void DrawNameplate(Nameplate nameplate, Camera view)
+        {
             string displayName = nameplate.State.DisplayName;
             if (!ReferenceEquals(displayName, nameplate.ShownName))
             {
@@ -312,7 +387,7 @@ namespace Shinshi.UI
                 nameplate.Text.text = displayName;
             }
 
-            bool    visible = (view != null) && (!string.IsNullOrEmpty(displayName));
+            bool    visible = (view != null) && (nameplate.State.isActiveAndEnabled);
             Vector3 screen  = Vector3.zero;
             if (visible)
             {
@@ -321,9 +396,10 @@ namespace Shinshi.UI
                 visible = (screen.z > 0f) && ((head - view.transform.position).sqrMagnitude <= NAMEPLATE_MAX_DIST_SQR);
             }
 
-            if (nameplate.Text.enabled != visible)
+            bool nameVisible = (visible) && (!string.IsNullOrEmpty(displayName));
+            if (nameplate.Text.enabled != nameVisible)
             {
-                nameplate.Text.enabled = visible;
+                nameplate.Text.enabled = nameVisible;
             }
 
             // 오버레이 캔버스는 화면 픽셀 좌표가 곧 월드 좌표다
@@ -332,8 +408,112 @@ namespace Shinshi.UI
                 nameplate.Text.rectTransform.position = new Vector3(screen.x, screen.y, 0f);
             }
 
-            DrawStacks(nameplate, visible, screen);
+            DrawStacks(nameplate, nameVisible, screen);
+            DrawElement(nameplate, visible, nameVisible, screen);
         }
+
+        private void DrawElement(Nameplate nameplate, bool headVisible, bool nameVisible, Vector3 screen)
+        {
+            PlayerCombatState state = nameplate.State;
+            int column;
+            switch (state.ArcherElement)
+            {
+                case EArcherElement.Ice:
+                    column = 0;
+                    break;
+                case EArcherElement.Wind:
+                    column = 1;
+                    break;
+                case EArcherElement.Fire:
+                    column = 2;
+                    break;
+                default:
+                    column = -1;
+                    break;
+            }
+
+            bool visible = (headVisible) && (state.PlayerClass == EPlayerClass.Archer)
+                && (column >= 0) && (_elementTexture != null);
+            if (nameplate.ElementImage == null)
+            {
+                if (!visible)
+                {
+                    return;
+                }
+
+                var iconObject = new GameObject("NameplateElement", typeof(RectTransform));
+                iconObject.transform.SetParent(_nameplateRoot, false);
+                nameplate.ElementImage = iconObject.AddComponent<UnityEngine.UI.RawImage>();
+                nameplate.ElementImage.texture       = _elementTexture;
+                nameplate.ElementImage.raycastTarget = false;
+                nameplate.ElementImage.rectTransform.sizeDelta = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
+            }
+
+            nameplate.ElementImage.enabled = visible;
+            if (!visible)
+            {
+                return;
+            }
+
+            // 원화의 동일한 정사각형 세 칸을 UV로 골라 추가 텍스처와 런타임 스프라이트 생성을 피한다
+            float cellWidth = 1f / ELEMENT_ATLAS_COLUMNS;
+            nameplate.ElementImage.uvRect = new Rect(column * cellWidth, 0f, cellWidth, 1f);
+            float offset = (nameVisible ? ELEMENT_OFFSET_Y : ELEMENT_PREVIEW_OFFSET_Y) * _nameplateRoot.lossyScale.y;
+            nameplate.ElementImage.rectTransform.position = new Vector3(screen.x, screen.y + offset, 0f);
+        }
+
+#if UNITY_EDITOR
+        private void OnPreviewSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            CachePreviewPlayers(scene);
+        }
+
+        private void CachePreviewPlayers(Scene scene)
+        {
+            ClearPreviewNameplates();
+
+            if ((!scene.name.StartsWith("Dev_", StringComparison.Ordinal)) || (NetworkClient.active))
+            {
+                return;
+            }
+
+            // 오프라인 시험 플레이어는 NetworkClient에 등록되지 않으므로 에디터 씬 초기화 때 한 번만 찾는다
+            PlayerCombatState[] players = FindObjectsByType<PlayerCombatState>(FindObjectsSortMode.None);
+            for (int i = 0; i < players.Length; ++i)
+            {
+                if (players[i].gameObject.scene == scene)
+                {
+                    _previewNameplates.Add(CreateNameplate(players[i]));
+                }
+            }
+        }
+
+        private void ClearPreviewNameplates()
+        {
+            for (int i = 0; i < _previewNameplates.Count; ++i)
+            {
+                DestroyNameplate(_previewNameplates[i]);
+            }
+            _previewNameplates.Clear();
+        }
+
+        private void DrawPreviewNameplates()
+        {
+            Camera view = Camera.main;
+            for (int i = _previewNameplates.Count - 1; i >= 0; --i)
+            {
+                Nameplate nameplate = _previewNameplates[i];
+                if (nameplate.State == null)
+                {
+                    DestroyNameplate(nameplate);
+                    _previewNameplates.RemoveAt(i);
+                    continue;
+                }
+
+                DrawNameplate(nameplate, view);
+            }
+        }
+#endif
 
         // 머리 위에는 체력바가 없어 이름 바로 위에 마검사, 궁수 스택 줄을 하나 더 그린다. 글자는 값이 바뀔 때만 다시 만든다
         private void DrawStacks(Nameplate nameplate, bool nameVisible, Vector3 screen)
@@ -350,6 +530,7 @@ namespace Shinshi.UI
                 }
 
                 nameplate.StackText = CreateText("NameplateStacks", _nameplateRoot, STACK_FONT_SIZE, TextAlignmentOptions.Center);
+                ApplyNameplateOutline(nameplate.StackText);
                 nameplate.StackText.rectTransform.sizeDelta = NAMEPLATE_SIZE;
             }
 
@@ -388,11 +569,7 @@ namespace Shinshi.UI
             {
                 uint      netId   = _removeIds[i];
                 Nameplate removed = _nameplates[netId];
-                Destroy(removed.Text.gameObject);
-                if (removed.StackText != null)
-                {
-                    Destroy(removed.StackText.gameObject);
-                }
+                DestroyNameplate(removed);
                 _nameplates.Remove(netId);
             }
 
@@ -413,6 +590,19 @@ namespace Shinshi.UI
             return !NetworkClient.spawned.ContainsKey(netId);
         }
 
+        private void DestroyNameplate(Nameplate nameplate)
+        {
+            Destroy(nameplate.Text.gameObject);
+            if (nameplate.StackText != null)
+            {
+                Destroy(nameplate.StackText.gameObject);
+            }
+            if (nameplate.ElementImage != null)
+            {
+                Destroy(nameplate.ElementImage.gameObject);
+            }
+        }
+
         /****************************************
         *               Records
         ****************************************/
@@ -424,6 +614,7 @@ namespace Shinshi.UI
             public string                     ShownName;
             public TextMeshProUGUI            StackText;
             public ClassStackDisplay          ShownStacks;
+            public UnityEngine.UI.RawImage    ElementImage;
 
             public Nameplate(PlayerCombatState state, TextMeshProUGUI text)
             {
