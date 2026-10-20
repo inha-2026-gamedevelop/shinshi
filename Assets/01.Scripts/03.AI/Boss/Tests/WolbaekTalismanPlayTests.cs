@@ -235,6 +235,35 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, _view.VisibleStructureCount);
         }
 
+        // 서버는 참가 인원에 따라 구조물을 1~4개 보낸다. 4개가 아니어도 표시가 시작돼야 한다
+        [UnityTest]
+        public IEnumerator FewerStructures_StartsWithReceivedCount([NUnit.Framework.Range(1, 3)] int count)
+        {
+            WolbaekTalismanStart full = Start(16);
+            var placements = new WolbaekTalismanStructure[count];
+            for (int i = 0; i < count; ++i)
+            {
+                placements[i] = full.Structures[i];
+            }
+
+            var start = new WolbaekTalismanStart(1, 16, 100d, 103d, 5f, Vector3.zero, placements);
+
+            Assert.IsTrue(_view.StartFormation(in start, _clock));
+            yield return null;
+            Assert.AreEqual(count, _view.VisibleStructureCount);
+            _view.HoldStarted(16, 103d, 103d);
+            yield return At(105.5d);
+            _view.Succeeded(16, 108d, 114d, 108d);
+            yield return At(110d);
+            _view.CounterEnded(16);
+            yield return null;
+            Assert.IsFalse(_view.IsActive);
+            Assert.AreEqual(0, _view.VisibleStructureCount);
+
+            var empty = new WolbaekTalismanStart(1, 17, 100d, 103d, 5f, Vector3.zero, new WolbaekTalismanStructure[0]);
+            Assert.IsFalse(_view.StartFormation(in empty, _clock), "구조물이 없으면 시작하지 않는다");
+        }
+
         private static int CountClones(string name)
         {
             int count = 0;

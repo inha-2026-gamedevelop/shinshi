@@ -14,7 +14,7 @@ namespace Shinshi.AI
     /// <summary> 월백 75% 사방 부적진의 구조물, 보호막, 하드 압박 공격과 모션 표현 </summary>
     public sealed class WolbaekTalismanView : MonoBehaviour
     {
-        private const int STRUCTURE_COUNT = 4;
+        private const int STRUCTURE_COUNT = 4; // 구조물 최대 수와 문양 종류 수, 서버는 참가 인원에 따라 1~4개를 보낸다
         private const int RING_SEGMENTS = 96;
         private const float SHIELD_HEIGHT = 1.4f;
         private const float SHIELD_SCALE = 0.9f;
@@ -168,7 +168,7 @@ namespace Shinshi.AI
                 Camera main = Camera.main;
                 _viewer = (main != null) ? main.transform : null;
             }
-            for (int i = 0; i < STRUCTURE_COUNT; ++i)
+            for (int i = 0; i < start.Structures.Count; ++i)
             {
                 WolbaekTalismanStructure structure = start.Structures[i];
                 int symbol = structure.SymbolId;
@@ -484,12 +484,12 @@ namespace Shinshi.AI
         private bool ValidStart(in WolbaekTalismanStart start)
         {
             if ((start.CastInstanceId <= 0) || (start.HoldSeconds <= 0f)
-                || (start.Structures == null) || (start.Structures.Count != STRUCTURE_COUNT)
+                || (start.Structures == null) || (start.Structures.Count < 1) || (start.Structures.Count > STRUCTURE_COUNT)
                 || (_structurePrefabs == null) || (_structurePrefabs.Length != STRUCTURE_COUNT))
             {
                 return false;
             }
-            for (int i = 0; i < STRUCTURE_COUNT; ++i)
+            for (int i = 0; i < start.Structures.Count; ++i)
             {
                 WolbaekTalismanStructure structure = start.Structures[i];
                 if ((structure.SymbolId < 0) || (structure.SymbolId >= STRUCTURE_COUNT)
