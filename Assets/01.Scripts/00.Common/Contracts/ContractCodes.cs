@@ -105,6 +105,10 @@ namespace Shinshi.Contracts
             // 캐릭터 삭제. 다른 계정의 캐릭터와 이미 삭제한 캐릭터도 같은 코드다
             public const int CHARACTER_NOT_FOUND    = 1003;
 
+            // 캐릭터 삭제 예약. 예약 뒤 대기 시간이 지나야 삭제할 수 있다
+            public const int CHARACTER_DELETE_PENDING       = 1004;
+            public const int CHARACTER_DELETE_NOT_REQUESTED = 1005;
+
             // 운영, 우편함
             public const int FEATURE_DISABLED         = 1100;
             public const int INBOX_EXPIRED            = 1101;

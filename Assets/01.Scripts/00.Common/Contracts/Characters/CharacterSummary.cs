@@ -24,6 +24,10 @@ namespace Shinshi.Contracts
         // 선택 화면이 캐릭터 모습을 그릴 때 쓴다
         [DataMember(Name = "appearance")]  private CharacterAppearance _appearance;
 
+        // 삭제 예약 여부와 삭제 가능까지 남은 초, 목록을 읽은 순간의 서버 기준이다. 예약하지 않았으면 false와 0이다
+        [DataMember(Name = "deletePending")]          private bool _deletePending;
+        [DataMember(Name = "deleteRemainingSeconds")] private long _deleteRemainingSeconds;
+
         // TODO(진욱): 선택 화면에 보일 캐릭터별 성장 요약 필드는 기획 미정
 
         /****************************************
@@ -36,14 +40,18 @@ namespace Shinshi.Contracts
         public int                 ClassId     => _classId;
         public long                Revision    => _revision;
         public CharacterAppearance Appearance  => _appearance;
+        public bool                DeletePending          => _deletePending;
+        public long                DeleteRemainingSeconds => _deleteRemainingSeconds;
 
         /****************************************
         *                Methods
         ****************************************/
 
         public CharacterSummary(string characterId, string name, int classId, long revision,
-            CharacterAppearance appearance, long totalExperience = 0)
+            CharacterAppearance appearance, long totalExperience = 0, bool deletePending = false, long deleteRemainingSeconds = 0)
         {
+            _deletePending          = deletePending;
+            _deleteRemainingSeconds = deleteRemainingSeconds;
             _totalExperience = totalExperience;
             _characterId = characterId;
             _name        = name;

@@ -28,6 +28,11 @@ namespace Shinshi.Data.Characters
 
         public const string CREATE_OPERATION_KIND = "character.create";
         public const string DELETE_OPERATION_KIND = "character.delete";
+        public const string DELETE_REQUEST_OPERATION_KIND = "character.delete-request";
+        public const string DELETE_CANCEL_OPERATION_KIND  = "character.delete-cancel";
+
+        // 삭제 예약 뒤 최종 삭제까지의 유예 시간. DB 시각으로 판정한다
+        public const int DELETE_GRACE_MINUTES = 10;
 
         // 접속 판정은 마을 입장 교환과 같은 heartbeat 기준이다. 비정상 종료한 서버의 남은 임대는 삭제를 막지 않는다
         private const int HEARTBEAT_SECONDS = 15;
@@ -104,11 +109,16 @@ namespace Shinshi.Data.Characters
             IEnumerable<CharacterRow> rows = await connection.QueryAsync<CharacterRow>(new CommandDefinition(
                 """
                 SELECT character_id AS "CharacterId", account_id AS "AccountId", name AS "Name", class_id AS "ClassId",
-                    revision AS "Revision", appearance::text AS "Appearance", total_experience AS "TotalExperience"
+                    revision AS "Revision", appearance::text AS "Appearance", total_experience AS "TotalExperience",
+                    delete_requested_at IS NOT NULL AS "DeletePending",
+                    CASE WHEN delete_requested_at IS NULL THEN 0 ELSE GREATEST(0, CEIL(EXTRACT(EPOCH FROM
+                        delete_requested_at + make_interval(mins => @GraceMinutes) - clock_timestamp())))::bigint END
+                        AS "DeleteRemainingSeconds"
                 FROM characters WHERE account_id = @AccountId AND deleted_at IS NULL ORDER BY character_id;
-                """, new { AccountId = accountId }, cancellationToken: cancellationToken));
+                """, new { AccountId = accountId, GraceMinutes = DELETE_GRACE_MINUTES },
+                cancellationToken: cancellationToken));
             return rows.Select(row => new CharacterRecord(row.CharacterId, row.AccountId, row.Name, row.ClassId,
-                row.Revision, row.Appearance, row.TotalExperience)).ToArray();
+                row.Revision, row.Appearance, row.TotalExperience, row.DeletePending, row.DeleteRemainingSeconds)).ToArray();
         }
 
         public Task<OperationResult> DeleteAsync(Guid accountId, Guid operationId, Guid characterId,
@@ -190,6 +200,22 @@ namespace Shinshi.Data.Characters
                 return OperationDecision.Rejected(ContractCodes.RejectReason.STALE_REVISION, revision.Value);
             }
 
+            // 예약 없는 삭제와 유예 중 삭제는 거절한다. 유예는 DB 시각으로 판정하고 캐릭터 행은 위에서 잠갔다
+            bool? graceElapsed = await connection.QuerySingleOrDefaultAsync<bool?>(new CommandDefinition(
+                """
+                SELECT delete_requested_at <= clock_timestamp() - make_interval(mins => @GraceMinutes)
+                FROM characters WHERE character_id = @CharacterId;
+                """, new { CharacterId = characterId, GraceMinutes = DELETE_GRACE_MINUTES }, transaction,
+                cancellationToken: cancellationToken));
+            if (!graceElapsed.HasValue)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_DELETE_NOT_REQUESTED, revision.Value);
+            }
+            if (!graceElapsed.Value)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_DELETE_PENDING, revision.Value);
+            }
+
             // 계정 행을 잠근 뒤 세므로 동시 삭제가 함께 상한을 넘지 못한다. 시각은 DB 기준이다(ix_characters_account_deleted)
             long recentDeletes = await connection.QuerySingleAsync<long>(new CommandDefinition(
                 """
@@ -227,6 +253,78 @@ namespace Shinshi.Data.Characters
                 """, new { AccountId = accountId, CharacterId = characterId, OperationId = operationId }, transaction,
                 cancellationToken: cancellationToken));
             return OperationDecision.Committed(deleted, characterId.ToString("D"));
+        }
+
+        public Task<OperationResult> RequestDeleteAsync(Guid accountId, Guid operationId, Guid characterId,
+            long expectedRevision, CancellationToken cancellationToken = default)
+        {
+            return ExecuteDeleteReservationAsync(accountId, operationId, characterId, expectedRevision,
+                DELETE_REQUEST_OPERATION_KIND, true, cancellationToken);
+        }
+
+        public Task<OperationResult> CancelDeleteAsync(Guid accountId, Guid operationId, Guid characterId,
+            long expectedRevision, CancellationToken cancellationToken = default)
+        {
+            return ExecuteDeleteReservationAsync(accountId, operationId, characterId, expectedRevision,
+                DELETE_CANCEL_OPERATION_KIND, false, cancellationToken);
+        }
+
+        private Task<OperationResult> ExecuteDeleteReservationAsync(Guid accountId, Guid operationId, Guid characterId,
+            long expectedRevision, string kind, bool requesting, CancellationToken cancellationToken)
+        {
+            if ((accountId == Guid.Empty) || (operationId == Guid.Empty) || (characterId == Guid.Empty))
+            {
+                throw new ArgumentException("Account, operation and character IDs are required.");
+            }
+
+            OperationRequest request = new OperationRequest(accountId, operationId, kind,
+                SessionDb.ToRequestJson(new { characterId = characterId.ToString("D"), expectedRevision }));
+            return _executor.ExecuteAsync(request, (context, token) => DeleteReservationEffectAsync(context, accountId,
+                characterId, expectedRevision, requesting, token), cancellationToken);
+        }
+
+        private static async Task<OperationDecision> DeleteReservationEffectAsync(OperationExecutionContext context,
+            Guid accountId, Guid characterId, long expectedRevision, bool requesting, CancellationToken cancellationToken)
+        {
+            (DbConnection connection, DbTransaction transaction) = SessionDb.Require(context);
+
+            // 잠금 순서는 삭제와 같다: 계정 -> 캐릭터
+            if (await SessionDb.LockAccountsAsync(connection, transaction, new[] { accountId }, cancellationToken) != 1)
+            {
+                throw new InvalidOperationException("Character owner account is missing.");
+            }
+
+            CharacterLockRow? row = await connection.QuerySingleOrDefaultAsync<CharacterLockRow>(new CommandDefinition(
+                """
+                SELECT revision AS "Revision", delete_requested_at IS NOT NULL AS "Requested" FROM characters
+                WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL
+                FOR NO KEY UPDATE;
+                """, new { CharacterId = characterId, AccountId = accountId }, transaction,
+                cancellationToken: cancellationToken));
+            if (row == null)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_NOT_FOUND);
+            }
+
+            // 이미 예약했으면 시각을 유지하는 확정 no-op이다(revision도 올리지 않는다)
+            if (requesting && row.Requested)
+            {
+                return OperationDecision.Committed(row.Revision, characterId.ToString("D"));
+            }
+            if (row.Revision != expectedRevision)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.STALE_REVISION, row.Revision);
+            }
+            if (!requesting && !row.Requested)
+            {
+                return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_DELETE_NOT_REQUESTED, row.Revision);
+            }
+
+            string setClause = requesting ? "delete_requested_at = clock_timestamp()" : "delete_requested_at = NULL";
+            long updated = await connection.QuerySingleAsync<long>(new CommandDefinition(
+                $"UPDATE characters SET {setClause}, revision = revision + 1 WHERE character_id = @CharacterId RETURNING revision;",
+                new { CharacterId = characterId }, transaction, cancellationToken: cancellationToken));
+            return OperationDecision.Committed(updated, characterId.ToString("D"));
         }
 
         private async Task<OperationDecision> CreateEffectAsync(OperationExecutionContext context, Guid accountId,
@@ -278,11 +376,16 @@ namespace Shinshi.Data.Characters
             CharacterRow? row = await connection.QuerySingleOrDefaultAsync<CharacterRow>(new CommandDefinition(
                 """
                 SELECT character_id AS "CharacterId", account_id AS "AccountId", name AS "Name", class_id AS "ClassId",
-                    revision AS "Revision", appearance::text AS "Appearance", total_experience AS "TotalExperience"
+                    revision AS "Revision", appearance::text AS "Appearance", total_experience AS "TotalExperience",
+                    delete_requested_at IS NOT NULL AS "DeletePending",
+                    CASE WHEN delete_requested_at IS NULL THEN 0 ELSE GREATEST(0, CEIL(EXTRACT(EPOCH FROM
+                        delete_requested_at + make_interval(mins => @GraceMinutes) - clock_timestamp())))::bigint END
+                        AS "DeleteRemainingSeconds"
                 FROM characters WHERE character_id = @CharacterId AND account_id = @AccountId AND deleted_at IS NULL;
-                """, new { CharacterId = characterId, AccountId = accountId }, cancellationToken: cancellationToken));
+                """, new { CharacterId = characterId, AccountId = accountId, GraceMinutes = DELETE_GRACE_MINUTES },
+                cancellationToken: cancellationToken));
             return row == null ? null : new CharacterRecord(row.CharacterId, row.AccountId, row.Name, row.ClassId,
-                row.Revision, row.Appearance, row.TotalExperience);
+                row.Revision, row.Appearance, row.TotalExperience, row.DeletePending, row.DeleteRemainingSeconds);
         }
 
         /****************************************
@@ -298,6 +401,14 @@ namespace Shinshi.Data.Characters
             public long Revision { get; set; }
             public long TotalExperience { get; set; }
             public string? Appearance { get; set; }
+            public bool DeletePending { get; set; }
+            public long DeleteRemainingSeconds { get; set; }
+        }
+
+        private sealed class CharacterLockRow
+        {
+            public long Revision { get; set; }
+            public bool Requested { get; set; }
         }
     }
 }

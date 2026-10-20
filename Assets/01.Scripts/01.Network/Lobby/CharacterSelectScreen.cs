@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 
 // Unity
 using UnityEngine;
@@ -33,6 +34,16 @@ namespace Shinshi.Network
         private const float JOIN_WAIT_SECONDS = CONNECT_TIMEOUT_SECONDS
             + (Constants.Network.JOIN_ALREADY_CONNECTED_RETRY_INTERVAL_SECONDS * Constants.Network.JOIN_ALREADY_CONNECTED_MAX_RETRIES);
 
+        // 삭제 대기 시간은 백엔드 PostgresCharacterRepository.DELETE_GRACE_MINUTES와 같은 값이다. 안내 문구에만 쓰고 판정은 서버가 한다
+        private const int    DELETE_GRACE_MINUTES   = 10;
+        private const float  DELETE_CONFIRM_SECONDS = 5f;
+        private const float  COUNTDOWN_STEP_SECONDS = 1f;
+        private const int    SECONDS_PER_MINUTE     = 60;
+        private const string DELETE_LABEL           = "캐릭터 삭제";
+        private const string DELETE_CANCEL_LABEL    = "캐릭터 삭제 취소";
+        private const string DELETE_CONFIRM_LABEL   = "한 번 더 눌러 확인";
+        private const string DELETE_PENDING_SUFFIX  = " (삭제 예약)";
+
         [Header("선택")]
         [SerializeField] private CharacterSelectSelection _selection = null;
         [SerializeField] private CharacterSelectSlot[]    _slots     = null;
@@ -55,6 +66,11 @@ namespace Shinshi.Network
         private ERejectReason              _joinRejected  = ERejectReason.None;
         private bool                       _retryPending  = false;
         private bool                       _isLoaded      = false;
+        private TMP_Text                   _deleteLabel   = null;
+        private float                      _loadedAt      = 0f;
+        private float                      _nextCountdown = 0f;
+        private float                      _deleteArmedUntil = 0f;
+        private string                     _deleteArmedId    = null;
 
         /****************************************
         *              Properties
@@ -85,9 +101,8 @@ namespace Shinshi.Network
             _startButton.onClick.AddListener(OnStartClicked);
             _createButton.onClick.AddListener(OnCreateClicked);
             _backButton.onClick.AddListener(OnBackClicked);
-
-            // 삭제 API가 아직 없다. 버튼은 배치만 두고 누를 수 없게 한다
-            _deleteButton.interactable = false;
+            _deleteButton.onClick.AddListener(OnDeleteClicked);
+            _deleteLabel = _deleteButton.GetComponentInChildren<TMP_Text>(true);
         }
 
         private void OnEnable()  { _selection.SelectionChanged += OnSelectionChanged; }
@@ -116,6 +131,22 @@ namespace Shinshi.Network
 
             ShowSlots();
             Run(CoLoad(LobbyFlow.TakeNotice()));
+        }
+
+        // 삭제 대기 남은 시간과 확인 대기 만료를 1초마다 버튼 글자에 반영한다
+        private void Update()
+        {
+            if ((!_isLoaded) || (Time.realtimeSinceStartup < _nextCountdown))
+            {
+                return;
+            }
+
+            _nextCountdown = Time.realtimeSinceStartup + COUNTDOWN_STEP_SECONDS;
+            CharacterSummary selected = GetSelectedCharacter();
+            if (((selected != null) && (selected.DeletePending)) || (_deleteArmedId != null))
+            {
+                RefreshButtons();
+            }
         }
 
         private void OnDestroy()
@@ -175,6 +206,7 @@ namespace Shinshi.Network
             }
 
             _isLoaded = true;
+            _loadedAt = Time.realtimeSinceStartup;
             ShowSlots();
             SelectInitialSlot();
             _status.text = !string.IsNullOrEmpty(notice) ? notice
@@ -195,7 +227,8 @@ namespace Shinshi.Network
                     {
                         level = progress.Level;
                     }
-                    _slots[i].Show(character.Name, LobbyText.ClassName(character.ClassId), level);
+                    string name = character.DeletePending ? character.Name + DELETE_PENDING_SUFFIX : character.Name;
+                    _slots[i].Show(name, LobbyText.ClassName(character.ClassId), level);
                     _slots[i].ShowLook(character.ClassId, character.Appearance);
                 }
                 else
@@ -232,7 +265,16 @@ namespace Shinshi.Network
             return ((slot >= 0) && (slot < _characters.Count)) ? _characters[slot] : null;
         }
 
-        private void OnSelectionChanged(int slot) { RefreshButtons(); }
+        private void OnSelectionChanged(int slot)
+        {
+            _deleteArmedId = null;
+            RefreshButtons();
+            CharacterSummary selected = GetSelectedCharacter();
+            if ((!_isBusy) && (selected != null) && (selected.DeletePending))
+            {
+                _status.text = DeleteWaitText(selected);
+            }
+        }
 
         private void RefreshButtons()
         {
@@ -243,6 +285,15 @@ namespace Shinshi.Network
             _startButton.interactable  = idle && _isLoaded && (GetSelectedCharacter() != null) && selectedLookReady;
             _createButton.interactable = idle && _isLoaded && (_characters.Count < _slots.Length);
             _backButton.interactable   = idle;
+
+            CharacterSummary selected = GetSelectedCharacter();
+            if ((_deleteArmedId != null) && (Time.realtimeSinceStartup > _deleteArmedUntil))
+            {
+                _deleteArmedId = null;
+            }
+
+            _deleteButton.interactable = idle && _isLoaded && (selected != null);
+            SetDeleteLabel(selected);
 
             // 고른 칸의 해석/조립이 실패했으면 그 사유를 그대로 보인다. 정상이면 다른 흐름이 정한 문구를 가리지 않는다
             if ((hasValidSlot) && (!selectedLookReady) && (!string.IsNullOrEmpty(_slots[slot].LastError)))
@@ -272,6 +323,102 @@ namespace Shinshi.Network
         }
 
         private void OnBackClicked() { LobbyFlow.GoToLobby(); }
+
+        // 예약 전과 대기 후에는 두 번 눌러야 보낸다. 대기 중에는 한 번에 예약을 취소한다
+        private void OnDeleteClicked()
+        {
+            CharacterSummary character = GetSelectedCharacter();
+            if (character == null)
+            {
+                return;
+            }
+
+            if ((character.DeletePending) && (RemainingDeleteSeconds(character) > 0))
+            {
+                Run(CoDelete(ApiRoutes.CHARACTER_DELETE_CANCEL_FORMAT, character, "삭제 예약을 취소했다."));
+                return;
+            }
+
+            if (!string.Equals(_deleteArmedId, character.CharacterId, StringComparison.Ordinal))
+            {
+                _deleteArmedId    = character.CharacterId;
+                _deleteArmedUntil = Time.realtimeSinceStartup + DELETE_CONFIRM_SECONDS;
+                _status.text = character.DeletePending
+                    ? "한 번 더 누르면 캐릭터를 영구히 삭제한다."
+                    : $"삭제를 예약하면 {DELETE_GRACE_MINUTES}분 뒤에 삭제할 수 있다. 한 번 더 누르면 예약한다.";
+                RefreshButtons();
+                return;
+            }
+
+            _deleteArmedId = null;
+            if (character.DeletePending)
+            {
+                Run(CoDelete(ApiRoutes.CHARACTER_DELETE_FORMAT, character, "캐릭터를 삭제했다."));
+                return;
+            }
+
+            Run(CoDelete(ApiRoutes.CHARACTER_DELETE_REQUEST_FORMAT, character,
+                $"삭제를 예약했다. {DELETE_GRACE_MINUTES}분 뒤에 삭제할 수 있다."));
+        }
+
+        // 예약, 취소, 삭제 모두 같은 본문을 보낸다. 결과와 상관없이 목록을 다시 읽어 서버 상태로 맞춘다
+        private IEnumerator CoDelete(string format, CharacterSummary character, string success)
+        {
+            _status.text = "요청을 보내는 중이다.";
+            string path = string.Format(CultureInfo.InvariantCulture, format, character.CharacterId);
+            var request = new CharacterDeleteRequest(Guid.NewGuid().ToString("D"), character.Revision);
+            LobbyApiReply<OperationResult> reply = null;
+            yield return _api.SendGame<OperationResult>(path, request, value => reply = value);
+
+            bool committed = (reply != null) && (reply.IsSuccess) && (reply.Value.Status == ContractCodes.OperationStatus.COMMITTED);
+            string notice = committed ? success : LobbyText.Describe(reply);
+            if ((reply != null) && (reply.IsSuccess) && (!committed))
+            {
+                notice = LobbyText.Describe((ERejectReason)reply.Value.ReasonCode);
+            }
+
+            LobbyFlow.PreferredCharacterId = character.CharacterId;
+            yield return CoLoad(notice);
+        }
+
+        private void SetDeleteLabel(CharacterSummary character)
+        {
+            if (_deleteLabel == null)
+            {
+                return;
+            }
+
+            if ((character != null) && (string.Equals(_deleteArmedId, character.CharacterId, StringComparison.Ordinal)))
+            {
+                _deleteLabel.text = DELETE_CONFIRM_LABEL;
+                return;
+            }
+
+            long remaining = (character != null) ? RemainingDeleteSeconds(character) : 0;
+            _deleteLabel.text = ((character != null) && (character.DeletePending) && (remaining > 0))
+                ? $"{DELETE_CANCEL_LABEL}  {remaining / SECONDS_PER_MINUTE:00}:{remaining % SECONDS_PER_MINUTE:00}"
+                : DELETE_LABEL;
+        }
+
+        private string DeleteWaitText(CharacterSummary character)
+        {
+            long remaining = RemainingDeleteSeconds(character);
+            return (remaining > 0)
+                ? $"캐릭터 삭제 가능까지 {remaining / SECONDS_PER_MINUTE}분 {remaining % SECONDS_PER_MINUTE}초. 취소하려면 캐릭터 삭제 취소를 누른다."
+                : "삭제 대기가 끝났다. 캐릭터 삭제를 두 번 누르면 삭제한다.";
+        }
+
+        // 목록을 읽은 순간의 서버 남은 시간에서 그 뒤 흐른 시간을 뺀다. 기기 시계와 서버 시계 차이에 영향받지 않는다
+        private long RemainingDeleteSeconds(CharacterSummary character)
+        {
+            if (!character.DeletePending)
+            {
+                return 0;
+            }
+
+            long elapsed = (long)(Time.realtimeSinceStartup - _loadedAt);
+            return Math.Max(0L, character.DeleteRemainingSeconds - elapsed);
+        }
 
         private void OnJoinRejected(ERejectReason reason) { _joinRejected = reason; }
 

@@ -29,6 +29,9 @@ namespace Shinshi.UI
         private const int   STAT_COUNT    = Constants.Combat.TRAINING_STAT_COUNT;
         private const float PERCENT       = 100f;
         private const int   NO_STAT_INDEX = -1;
+        private const int   MIN_QUANTITY  = 1;
+
+        private const string RESPEC_COMMIT_LABEL = "재분배 확정";
 
         private static readonly string[] G_StatNames = { "공격력", "체력", "방어력", "치명타", "기력" };
 
@@ -225,7 +228,14 @@ namespace Shinshi.UI
                 return;
             }
 
+            // 수량 최소 1로 넣어 둔 한 단계는 고른 항목을 바꾸면 거둔다. 그 이상 올린 수량은 묶음 강화로 남긴다
+            if ((!_respecMode) && (_working[_selectedIndex] == _confirmed[_selectedIndex] + MIN_QUANTITY))
+            {
+                _working[_selectedIndex] -= MIN_QUANTITY;
+            }
+
             _selectedIndex = index;
+            ApplyMinimumQuantity();
             RefreshAll();
         }
 
@@ -281,8 +291,9 @@ namespace Shinshi.UI
                 return;
             }
 
-            if (_working[_selectedIndex] <= _confirmed[_selectedIndex])
+            if (_working[_selectedIndex] <= _confirmed[_selectedIndex] + MIN_QUANTITY)
             {
+                SetStatus("강화 수량은 최소 1단계입니다");
                 return;
             }
 
@@ -293,14 +304,19 @@ namespace Shinshi.UI
         /// <summary> 선택 항목을 한 단계 줄이며 확정된 단계는 환급 대신 재분배 풀로 돌린다 </summary>
         public void RevertSelected()
         {
-            if ((!CanEdit()) || (_working[_selectedIndex] <= 0))
+            if (!CanEdit())
             {
                 return;
             }
 
-            if ((_respecMode) || (_working[_selectedIndex] > _confirmed[_selectedIndex]))
+            if ((_respecMode) || (_working[_selectedIndex] > _confirmed[_selectedIndex] + MIN_QUANTITY))
             {
                 DecreaseSelected();
+                return;
+            }
+
+            if (_confirmed[_selectedIndex] <= 0)
+            {
                 return;
             }
 
@@ -327,7 +343,7 @@ namespace Shinshi.UI
             Array.Clear(_working, 0, STAT_COUNT);
             _pool       = Sum(_confirmed);
             _respecMode = true;
-            SetStatus("전체 단계를 다시 배분하세요. 투자한 정기는 반환되지 않습니다");
+            SetStatus($"능력치를 고르고 +로 {_pool}단계를 다시 나눈 뒤 재분배 확정을 누르세요. 투자한 정기는 반환되지 않습니다");
         }
 
         /// <summary> 보내지 않은 변경을 취소하고 마지막 서버 확정 또는 개발 예시 상태로 돌아간다 </summary>
@@ -516,7 +532,7 @@ namespace Shinshi.UI
             int workingTotal   = Sum(_working);
             if ((_respecMode) && ((_pool != 0) || (workingTotal != confirmedTotal)))
             {
-                reason = "배분 대기 단계를 모두 배분해야 합니다";
+                reason = $"배분 대기 {_pool}단계가 남았습니다. 능력치를 고르고 +로 모두 나눈 뒤 재분배 확정을 누르세요";
                 return false;
             }
 
@@ -792,6 +808,24 @@ namespace Shinshi.UI
             Array.Copy(_confirmed, _working, STAT_COUNT);
             _pool       = 0;
             _respecMode = false;
+            ApplyMinimumQuantity();
+        }
+
+        // 강화 수량은 1단계부터 시작한다. 항목 또는 전체 상한에 닿아 더 올릴 수 없으면 0으로 둔다
+        private void ApplyMinimumQuantity()
+        {
+            if ((_respecMode) || (_growth == null) || (!_hasData) || (_working[_selectedIndex] != _confirmed[_selectedIndex]))
+            {
+                return;
+            }
+
+            if ((_working[_selectedIndex] + MIN_QUANTITY > _growth.TrainingStatCap)
+                || (Sum(_working) + MIN_QUANTITY > _growth.TrainingTotalCap))
+            {
+                return;
+            }
+
+            _working[_selectedIndex] += MIN_QUANTITY;
         }
 
         private void SetStatus(string status)
@@ -845,14 +879,18 @@ namespace Shinshi.UI
                 && (_respecMode ? (_pool > 0) : (workingTotal < totalCap));
             bool canDecrease = _respecMode
                 ? _working[_selectedIndex] > 0
-                : _working[_selectedIndex] > _confirmed[_selectedIndex];
+                : _working[_selectedIndex] > _confirmed[_selectedIndex] + MIN_QUANTITY;
+            bool canRevert = _respecMode
+                ? _working[_selectedIndex] > 0
+                : (_confirmed[_selectedIndex] > 0) || canDecrease;
             bool hasDraft = (_respecMode) || (workingTotal > confirmedTotal);
-            bool canCommit = (ready) && (hasDraft) && ((!_respecMode) || (_pool == 0)) && (cost <= _essence)
+            // 재분배 중에는 배분이 남아도 누를 수 있게 둔다. 누르면 남은 단계를 안내해 무엇을 해야 하는지 보이게 한다
+            bool canCommit = (ready) && (hasDraft) && (cost <= _essence)
                 && ((!Application.isPlaying) || (!GrowthWriteGuard.IsBlockedByOther(_pendingOperation)));
             SetInteractable(_minusButton, (canEdit) && (canDecrease));
             SetInteractable(_plusButton, (canEdit) && (canIncrease));
             SetInteractable(_trainButton, (canEdit) && (canCommit));
-            SetInteractable(_revertButton, (canEdit) && (_working[_selectedIndex] > 0));
+            SetInteractable(_revertButton, (canEdit) && (canRevert));
             SetInteractable(_respecButton, canEdit);
             SetInteractable(_closeButton, !_requestInFlight);
             if (_statButtons != null)
@@ -869,6 +907,14 @@ namespace Shinshi.UI
             }
 
             TrainingModernLayout.Refresh(this, _selectedIndex, _confirmed[_selectedIndex], _working[_selectedIndex], _working, statCap, workingTotal, totalCap);
+            if ((_respecMode) && (_trainButton != null))
+            {
+                TMP_Text label = _trainButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null)
+                {
+                    label.text = (_pool > 0) ? $"{RESPEC_COMMIT_LABEL} ({_pool} 남음)" : RESPEC_COMMIT_LABEL;
+                }
+            }
         }
 
         private string EffectSummary(int index, int steps)

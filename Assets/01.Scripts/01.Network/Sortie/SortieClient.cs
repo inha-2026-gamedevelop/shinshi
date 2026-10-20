@@ -18,6 +18,8 @@ namespace Shinshi.Network
         private static SortieStatusMessage _current;
         private static bool                _hasStatus;
         private static Guid                _pendingAbandon;
+        private static WaveProgressMessage _waveProgress;
+        private static bool                _hasWaveProgress;
 
         /****************************************
         *              Properties
@@ -26,6 +28,10 @@ namespace Shinshi.Network
         /// <summary> 마지막으로 받은 출정 상태, HasStatus가 거짓이면 기본값이다 </summary>
         public static SortieStatusMessage Current   => _current;
         public static bool                HasStatus => _hasStatus;
+
+        /// <summary> 마지막으로 받은 일반전 웨이브 진행, 보스전에는 오지 않는다 </summary>
+        public static WaveProgressMessage WaveProgress    => _waveProgress;
+        public static bool                HasWaveProgress => _hasWaveProgress;
 
         // 결과를 아직 받지 못한 포기 요청이 있다
         public static bool IsAbandonPending => _pendingAbandon != Guid.Empty;
@@ -43,8 +49,11 @@ namespace Shinshi.Network
             _current        = default;
             _hasStatus      = false;
             _pendingAbandon = Guid.Empty;
+            _waveProgress    = default;
+            _hasWaveProgress = false;
             NetworkClient.ReplaceHandler<SortieStatusMessage>(OnStatus);
             NetworkClient.ReplaceHandler<SortieAbandonResultMessage>(OnAbandonResult);
+            NetworkClient.ReplaceHandler<WaveProgressMessage>(OnWaveProgress);
         }
 
         /// <summary> 포기를 보낸다, 결과 전에 다시 누르면 같은 작업 ID로 다시 보낸다. 연결되지 않았으면 거짓이다 </summary>
@@ -69,6 +78,12 @@ namespace Shinshi.Network
             _current   = message;
             _hasStatus = true;
             StatusChanged?.Invoke(message);
+        }
+
+        private static void OnWaveProgress(WaveProgressMessage message)
+        {
+            _waveProgress    = message;
+            _hasWaveProgress = true;
         }
 
         private static void OnAbandonResult(SortieAbandonResultMessage message)

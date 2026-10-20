@@ -484,6 +484,9 @@ namespace Shinshi.Network
             _wave.Tick(_serverTime);
         }
 
+        /// <summary> 일반전 웨이브가 시작했고 아직 끝나지 않았는지, 제한 시간이 흐르는 동안만 참이다 </summary>
+        public bool IsWaveRunning => (_wave != null) && (_wave.IsRunning);
+
         /// <summary> 일반전 진행 값, 웨이브가 없으면 거짓 </summary>
         public bool TryGetWaveProgress(out WaveProgressSnapshot progress)
         {

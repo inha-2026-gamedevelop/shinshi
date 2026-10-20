@@ -128,6 +128,10 @@ namespace Shinshi.UI
                     return "내 소유나 내 등록이 아닙니다";
                 case ERejectReason.CharacterHasMarketListing:
                     return "경매장에 등록한 장비가 있어 캐릭터를 삭제할 수 없습니다";
+                case ERejectReason.CharacterDeletePending:
+                    return "삭제 대기 시간이 아직 끝나지 않았습니다";
+                case ERejectReason.CharacterDeleteNotRequested:
+                    return "삭제 예약을 먼저 해야 합니다";
                 case ERejectReason.TradeItemChanged:
                     return "거래 품목이나 수량이 맞지 않습니다";
                 case ERejectReason.TradeNotTradable:

@@ -491,6 +491,18 @@ namespace Shinshi.Backend.Tests.Accounts
             return Task.FromResult<IReadOnlyList<CharacterRecord>>(Array.Empty<CharacterRecord>());
         }
 
+        public Task<OperationResult> RequestDeleteAsync(Guid accountId, Guid operationId, Guid characterId,
+            long expectedRevision, CancellationToken cancellationToken = default)
+        {
+            return DeleteAsync(accountId, operationId, characterId, expectedRevision, cancellationToken);
+        }
+
+        public Task<OperationResult> CancelDeleteAsync(Guid accountId, Guid operationId, Guid characterId,
+            long expectedRevision, CancellationToken cancellationToken = default)
+        {
+            return DeleteAsync(accountId, operationId, characterId, expectedRevision, cancellationToken);
+        }
+
         public Task<OperationResult> DeleteAsync(Guid accountId, Guid operationId, Guid characterId,
             long expectedRevision, CancellationToken cancellationToken = default)
         {

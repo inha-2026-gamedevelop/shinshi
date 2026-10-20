@@ -9,7 +9,7 @@ namespace Shinshi.Combat
     /// <summary> 기본 공격 판정 도형, 서버 판정과 클라이언트 사거리 표시가 같이 쓴다. 모두 수평면 기준이다 </summary>
     public static class BasicAttackRules
     {
-        // TODO(민성): 대상 몸체 반경이 기획에서 정해지면 사거리와 폭에 더한다. 지금은 대상 중심점으로 판정한다
+        // TODO(민성): 근접 부채꼴과 즉발 직선도 대상 몸체 반경을 더할지 기획에서 정한다. 지금은 날아가는 화살만 몸체를 본다
 
         /****************************************
         *                Fields
@@ -72,6 +72,37 @@ namespace Shinshi.Combat
             float distanceSqr = (deltaX * deltaX) + (deltaZ * deltaZ);
             float lateralSqr  = distanceSqr - (alongDistance * alongDistance);
             return lateralSqr <= halfWidth * halfWidth;
+        }
+
+        /// <summary> 폭이 있는 선분이 대상 몸체 원에 닿는지, 진행 방향으로 잰 처음 닿는 거리를 돌려준다. 경계를 포함한다 </summary>
+        public static bool TryHitBodyOnSegment(Vector3 origin, Vector3 direction, Vector3 target, float start, float end,
+            float halfWidth, float bodyRadius, out float entryDistance)
+        {
+            float deltaX = target.x - origin.x;
+            float deltaZ = target.z - origin.z;
+            float along  = (deltaX * direction.x) + (deltaZ * direction.z);
+            float reach  = halfWidth + Mathf.Max(0f, bodyRadius);
+
+            float distanceSqr = (deltaX * deltaX) + (deltaZ * deltaZ);
+            float lateralSqr  = Mathf.Max(0f, distanceSqr - (along * along));
+            float reachSqr    = reach * reach;
+            entryDistance = start;
+            if (lateralSqr > reachSqr)
+            {
+                return false;
+            }
+
+            // start는 음수일 수 있다. 몸체가 이미 시작점에 걸쳐 있으면 처음 닿는 거리는 start다
+            float halfChord = Mathf.Sqrt(reachSqr - lateralSqr);
+            float entry     = along - halfChord;
+            float exit      = along + halfChord;
+            if ((exit < start) || (entry > end))
+            {
+                return false;
+            }
+
+            entryDistance = Mathf.Max(entry, start);
+            return true;
         }
     }
 }

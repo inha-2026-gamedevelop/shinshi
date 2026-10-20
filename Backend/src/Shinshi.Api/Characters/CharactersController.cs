@@ -28,6 +28,9 @@ namespace Shinshi.Backend.Characters
 
         // ApiRoutes.CHARACTER_DELETE_FORMAT과 같은 경로의 ASP.NET Core 템플릿
         public const string CHARACTER_DELETE_TEMPLATE = "/v1/characters/{characterId}/delete";
+        // ApiRoutes.CHARACTER_DELETE_REQUEST_FORMAT, CHARACTER_DELETE_CANCEL_FORMAT과 같은 경로의 템플릿
+        public const string CHARACTER_DELETE_REQUEST_TEMPLATE = "/v1/characters/{characterId}/delete-request";
+        public const string CHARACTER_DELETE_CANCEL_TEMPLATE  = "/v1/characters/{characterId}/delete-cancel";
 
         private readonly ICharacterRepository _characters;
         private readonly AccountRequestLimiter _accounts;
@@ -140,7 +143,7 @@ namespace Shinshi.Backend.Characters
         }
 
         /// <summary> 200 확정(영수증 ID = 캐릭터 ID), 409 거절(CHARACTER_NOT_FOUND, ALREADY_CONNECTED, RESERVATION_CONFLICT,
-        /// STALE_REVISION, IDEMPOTENCY_CONFLICT)이고 본문은 OperationResult다. 429는 계정별 1분 한도 또는 24시간 삭제 상한(RATE_LIMITED)이다. 400은 형식 오류이며 작업으로 저장하지 않는다 </summary>
+        /// STALE_REVISION, CHARACTER_DELETE_NOT_REQUESTED(삭제 예약 없음), CHARACTER_DELETE_PENDING(예약 뒤 10분 전), IDEMPOTENCY_CONFLICT)이고 본문은 OperationResult다. 429는 계정별 1분 한도 또는 24시간 삭제 상한(RATE_LIMITED)이다. 400은 형식 오류이며 작업으로 저장하지 않는다 </summary>
         [HttpPost(CHARACTER_DELETE_TEMPLATE)]
         public async Task<IActionResult> Delete(string characterId, [FromBody] CharacterDeleteRequest? request,
             CancellationToken cancellationToken)
@@ -173,6 +176,49 @@ namespace Shinshi.Backend.Characters
             return ApiResponseFactory.FromOperation(result);
         }
 
+        /// <summary> 삭제를 예약한다. 200 확정(영수증 ID = 캐릭터 ID), 409 거절(CHARACTER_NOT_FOUND, STALE_REVISION, IDEMPOTENCY_CONFLICT)이다.
+        /// 이미 예약했으면 시각을 유지한 채 확정이다. 최종 삭제는 예약 뒤 10분(DB 시각)이 지나야 한다 </summary>
+        [HttpPost(CHARACTER_DELETE_REQUEST_TEMPLATE)]
+        public Task<IActionResult> DeleteRequest(string characterId, [FromBody] CharacterDeleteRequest? request,
+            CancellationToken cancellationToken)
+        {
+            return ReserveDeleteAsync(characterId, request, _characters.RequestDeleteAsync, cancellationToken);
+        }
+
+        /// <summary> 삭제 예약을 취소한다. 200 확정, 409 거절(CHARACTER_NOT_FOUND, STALE_REVISION, CHARACTER_DELETE_NOT_REQUESTED, IDEMPOTENCY_CONFLICT)이다 </summary>
+        [HttpPost(CHARACTER_DELETE_CANCEL_TEMPLATE)]
+        public Task<IActionResult> DeleteCancel(string characterId, [FromBody] CharacterDeleteRequest? request,
+            CancellationToken cancellationToken)
+        {
+            return ReserveDeleteAsync(characterId, request, _characters.CancelDeleteAsync, cancellationToken);
+        }
+
+        private async Task<IActionResult> ReserveDeleteAsync(string characterId, CharacterDeleteRequest? request,
+            Func<Guid, Guid, Guid, long, CancellationToken, Task<OperationResult>> operation,
+            CancellationToken cancellationToken)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Guid? accountId = AuthActors.GetPlayer(HttpContext)?.AccountId;
+            if (accountId == null)
+            {
+                return Reject(StatusCodes.Status401Unauthorized, ContractCodes.RejectReason.TOKEN_REVOKED);
+            }
+            if ((request == null) || !Guid.TryParse(request.OperationId, out Guid operationId)
+                || (operationId == Guid.Empty) || !Guid.TryParse(characterId, out Guid target) || (target == Guid.Empty)
+                || (request.ExpectedRevision < 0))
+            {
+                return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.IDEMPOTENCY_CONFLICT);
+            }
+            if (!_accounts.TryAcquireCharacterWrite(accountId.Value))
+            {
+                return AuthFailureLimiter.RejectTooMany(HttpContext, _timeProvider);
+            }
+
+            OperationResult result = await operation(accountId.Value, operationId, target, request.ExpectedRevision,
+                cancellationToken);
+            return ApiResponseFactory.FromOperation(result);
+        }
+
         private static CharacterSummary? ToSummary(CharacterRecord? character)
         {
             if (character == null)
@@ -183,7 +229,8 @@ namespace Shinshi.Backend.Characters
             CharacterAppearance? appearance = character.AppearanceJson == null ? null
                 : JsonConvert.DeserializeObject<CharacterAppearance>(character.AppearanceJson, ContractJson.CreateSettings());
             return new CharacterSummary(character.CharacterId.ToString("D"), character.Name, character.ClassId,
-                character.Revision, appearance, character.TotalExperience);
+                character.Revision, appearance, character.TotalExperience, character.DeletePending,
+                character.DeleteRemainingSeconds);
         }
 
         private AvailabilityResponse Availability(int reasonCode)

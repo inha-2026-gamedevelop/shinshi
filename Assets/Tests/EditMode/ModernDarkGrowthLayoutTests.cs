@@ -24,6 +24,8 @@ namespace Shinshi.Tests
 
         private const string TRAINING_PREFAB = "Assets/02.Prefab/UI/Training/PF_TrainingWindow.prefab";
         private const string SKILL_PREFAB    = "Assets/02.Prefab/UI/Windows/PF_SkillWindow.prefab";
+        private const string OPTION_PREFAB   = "Assets/02.Prefab/UI/Windows/PF_EquipmentOptionWindow.prefab";
+        private const string GROWTH_CONFIG   = "Assets/09.Data/Growth/GrowthConfig.asset";
         private const string APPLIED         = "MD_Applied";
 
         private readonly List<GameObject> _roots = new List<GameObject>();
@@ -270,6 +272,143 @@ namespace Shinshi.Tests
             Assert.AreEqual("등록\n카드 1 + 정기 150 (50%)", SkillWindowModernLayout.SplitCostLabel("등록  카드 1 + 정기 150 (50%)"));
             Assert.AreEqual("강화", SkillWindowModernLayout.SplitCostLabel("강화"));
             Assert.IsNull(SkillWindowModernLayout.SplitCostLabel(null));
+        }
+
+        [Test]
+        public void Training_Quantity_StartsAtOneAndCannotGoBelowOne()
+        {
+            var view = Spawn<TrainingView>(TRAINING_PREFAB);
+            view.ApplyPreviewSnapshot(100000, new[] { 3, 0, 0, 0, 0 }, LoadGrowth());
+            var quantity = ModernDarkKit.Field<TMP_Text>(view, "_quantityText");
+            var minus    = ModernDarkKit.Field<Button>(view, "_minusButton");
+            var stages   = ModernDarkKit.Field<TMP_Text[]>(view, "_stageLabels");
+
+            Assert.AreEqual("1", quantity.text);
+            Assert.IsFalse(minus.interactable);
+
+            view.DecreaseSelected();
+            Assert.AreEqual("1", quantity.text);
+
+            view.IncreaseSelected();
+            Assert.AreEqual("2", quantity.text);
+            Assert.IsTrue(minus.interactable);
+
+            view.DecreaseSelected();
+            Assert.AreEqual("1", quantity.text);
+            Assert.AreEqual("4 / 40", stages[0].text);
+        }
+
+        [Test]
+        public void Training_SelectStat_MovesDefaultQuantityAndKeepsRaisedOnes()
+        {
+            var view = Spawn<TrainingView>(TRAINING_PREFAB);
+            view.ApplyPreviewSnapshot(100000, new[] { 0, 0, 0, 0, 0 }, LoadGrowth());
+            var stages = ModernDarkKit.Field<TMP_Text[]>(view, "_stageLabels");
+
+            view.SelectStat(1);
+            Assert.AreEqual("0 / 40", stages[0].text, "기본으로 넣은 1단계는 다른 항목을 고르면 거둔다");
+            Assert.AreEqual("1 / 40", stages[1].text);
+
+            view.IncreaseSelected();
+            view.SelectStat(2);
+            Assert.AreEqual("2 / 40", stages[1].text, "직접 올린 수량은 묶음 강화로 남는다");
+            Assert.AreEqual("1 / 40", stages[2].text);
+        }
+
+        [Test]
+        public void Training_Redistribute_ShowsRemainingPoolAndAppliesAfterAllocation()
+        {
+            var view = Spawn<TrainingView>(TRAINING_PREFAB);
+            view.EnsureModernLayout();
+            view.ApplyPreviewSnapshot(100000, new[] { 5, 3, 0, 0, 0 }, LoadGrowth());
+            var train  = ModernDarkKit.Field<Button>(view, "_trainButton");
+            var stages = ModernDarkKit.Field<TMP_Text[]>(view, "_stageLabels");
+            TMP_Text label = train.GetComponentInChildren<TMP_Text>(true);
+
+            view.RedistributeAll();
+            Assert.IsTrue(train.interactable, "배분이 남아도 눌러서 이유를 볼 수 있어야 한다");
+            Assert.AreEqual("재분배 확정 (8 남음)", label.text);
+
+            view.Commit();
+            Assert.AreEqual("0 / 40", stages[0].text, "배분이 남은 확정은 보내지 않는다");
+
+            view.SelectStat(2);
+            for (int i = 0; i < 8; ++i)
+            {
+                view.IncreaseSelected();
+            }
+
+            Assert.AreEqual("재분배 확정", label.text);
+            view.Commit();
+            Assert.AreEqual("0 / 40", stages[0].text);
+            Assert.AreEqual("0 / 40", stages[1].text);
+            StringAssert.StartsWith("9 / 40", stages[2].text, "확정 뒤 기본 강화 수량 1이 더해져 보인다");
+        }
+
+        [Test]
+        public void Training_Quantity_StaysZeroWhenStatIsCapped()
+        {
+            var view = Spawn<TrainingView>(TRAINING_PREFAB);
+            view.ApplyPreviewSnapshot(100000, new[] { 40, 0, 0, 0, 0 }, LoadGrowth());
+
+            Assert.AreEqual("0", ModernDarkKit.Field<TMP_Text>(view, "_quantityText").text);
+            Assert.IsFalse(ModernDarkKit.Field<Button>(view, "_trainButton").interactable);
+        }
+
+        [Test]
+        public void EquipmentOption_EnsureModernLayout_CalledTwice_AppliesOnce()
+        {
+            var view = Spawn<EquipmentOptionView>(OPTION_PREFAB);
+            view.EnsureModernLayout();
+            int children = view.transform.childCount;
+            view.EnsureModernLayout();
+
+            Assert.AreEqual(1, CountNamed(view.transform, APPLIED));
+            Assert.AreEqual(children, view.transform.childCount);
+            Assert.AreEqual(new Vector2(1500f, 820f), ((RectTransform)view.transform).sizeDelta);
+        }
+
+        [Test]
+        public void EquipmentOption_EnsureModernLayout_KeepsAllSerializedWidgetsReachable()
+        {
+            var view = Spawn<EquipmentOptionView>(OPTION_PREFAB);
+            view.gameObject.SetActive(true);
+            view.EnsureModernLayout();
+
+            foreach (string field in new[] { "_closeButton", "_rerollButton" })
+            {
+                var button = ModernDarkKit.Field<Button>(view, field);
+                Assert.IsNotNull(button, field);
+                Assert.IsTrue(button.gameObject.activeInHierarchy, field);
+            }
+
+            foreach (string field in new[] { "_itemLabel", "_costLabel", "_pityLabel", "_statusLabel", "_rerollLabel" })
+            {
+                var label = ModernDarkKit.Field<TMP_Text>(view, field);
+                Assert.IsNotNull(label, field);
+                Assert.IsTrue(label.gameObject.activeInHierarchy, field);
+            }
+
+            var slots = ModernDarkKit.Field<Button[]>(view, "_slotButtons");
+            Assert.AreEqual(6, slots.Length);
+            foreach (Button slot in slots)
+            {
+                Assert.IsTrue(slot.gameObject.activeInHierarchy);
+            }
+
+            foreach (TMP_Text line in ModernDarkKit.Field<TMP_Text[]>(view, "_lineLabels"))
+            {
+                Assert.IsTrue(line.gameObject.activeInHierarchy);
+            }
+
+            Assert.IsFalse(Child(view.transform, "MD_Title").GetComponent<TMP_Text>().raycastTarget);
+        }
+
+        private static Shinshi.Data.GrowthConfigSO LoadGrowth()
+        {
+            var growth = AssetDatabase.LoadAssetAtPath<Shinshi.Data.GrowthConfigSO>(GROWTH_CONFIG);
+            Assert.IsNotNull(growth, GROWTH_CONFIG);
+            return growth;
         }
 
         private T Spawn<T>(string path) where T : Component

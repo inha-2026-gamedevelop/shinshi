@@ -10,10 +10,11 @@ using Shinshi.AI;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.Network;
 
 namespace Shinshi.UI
 {
-    /// <summary> 출시 전투 HUD에 클라이언트가 실제로 받은 보스, 공명, 물약 상태를 연결한다 </summary>
+    /// <summary> 출시 전투 HUD에 클라이언트가 실제로 받은 보스, 공명, 물약, 일반전 진행 상태를 연결한다 </summary>
     public sealed class ReleaseCombatHudBinder : ClientView
     {
         /****************************************
@@ -29,6 +30,7 @@ namespace Shinshi.UI
         [SerializeField] private HudResonanceView _resonanceView;
         [SerializeField] private HudPotionView _potionView;
         [SerializeField] private HudWaveView _waveView;
+        [SerializeField] private DungeonProgressView _progressView;
         [SerializeField] private HudReviveStatusView _reviveView;
 
         // 강림 비용과 재사용 상태를 받지 않는 장식은 공명 게이지와 별도로 숨긴다.
@@ -70,6 +72,7 @@ namespace Shinshi.UI
 
             RefreshBoss();
             RefreshResonance();
+            RefreshProgress();
             float duration = GameDB.IsInitialized ? GameDB.Player.PotionSharedCooldown : 0f;
             ApplyPotions(PotionClient.HasState, PotionClient.Current, NetworkTime.time, duration);
         }
@@ -115,6 +118,28 @@ namespace Shinshi.UI
             }
         }
 
+        // 서버가 일반전 진행을 보낸 출정에서만 켠다. 보스전은 메시지가 오지 않아 숨긴 채로 둔다
+        private void RefreshProgress()
+        {
+            bool visible = SortieClient.HasWaveProgress && (SortieClient.WaveProgress.WaveCount > 0);
+            SetVisible(_progressView, visible);
+            if ((!visible) || (_progressView == null))
+            {
+                return;
+            }
+
+            WaveProgressMessage progress = SortieClient.WaveProgress;
+            for (int i = 0; i < progress.WaveCount; ++i)
+            {
+                _progressView.SetNode(i, DungeonProgressRules.NodeState(in progress, i), DungeonProgressRules.NodeKilled(in progress, i),
+                    progress.GetPlanned(i));
+            }
+
+            _progressView.SetWaveCount(DungeonProgressRules.CurrentNumber(in progress), progress.WaveCount);
+            _progressView.SetOverall(DungeonProgressRules.OverallRatio(in progress));
+            _progressView.SetTime(DungeonProgressRules.RemainingSeconds(in progress, NetworkTime.time), progress.TimeLimitSeconds);
+        }
+
         private void RefreshResonance()
         {
             LocalPlayerGauges gauges = LocalPlayerView.Current.ReadGauges();
@@ -151,9 +176,11 @@ namespace Shinshi.UI
             SetVisible(_bossPotionLabel, false);
             SetVisible(_resonanceView, false);
             SetVisible(_potionView, false);
+            SetVisible(_progressView, false);
             _lastPhase = -1;
 
-            // 웨이브 진행, 부활 대기, 공용 잔량은 아직 클라이언트 복제 계약이 없다.
+            // 일반전 진행은 _progressView가 서버 진행 메시지로 보여 주므로 예전 웨이브 표시는 쓰지 않는다.
+            // 부활 대기, 공용 잔량은 아직 클라이언트 복제 계약이 없다.
             // 로컬 사망 시각으로 부활 가능 시점을 추측하거나 데모 수치를 남기지 않는다.
             SetVisible(_waveView, false);
             SetVisible(_reviveView, false);

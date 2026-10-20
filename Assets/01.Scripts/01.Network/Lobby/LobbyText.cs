@@ -192,6 +192,20 @@ namespace Shinshi.Network
                     return "아이디나 비밀번호가 맞지 않는다.";
                 case ERejectReason.AccountLocked:
                     return "로그인 실패가 많아 잠시 막혔다. 잠시 뒤 다시 시도한다.";
+                case ERejectReason.CharacterNotFound:
+                    return "이미 삭제했거나 없는 캐릭터다. 목록을 다시 불러온다.";
+                case ERejectReason.CharacterDeletePending:
+                    return "삭제 대기 시간이 아직 끝나지 않았다.";
+                case ERejectReason.CharacterDeleteNotRequested:
+                    return "삭제 예약을 먼저 한다.";
+                case ERejectReason.CharacterHasMarketListing:
+                    return "경매장에 등록한 장비가 있어 삭제할 수 없다.";
+                case ERejectReason.CharacterIsGuildLeader:
+                    return "길드원이 있는 길드장은 위임한 뒤 삭제한다.";
+                case ERejectReason.ReservationConflict:
+                    return "출정 중인 캐릭터는 삭제할 수 없다.";
+                case ERejectReason.StaleRevision:
+                    return "캐릭터 상태가 바뀌었다. 목록을 다시 불러온다.";
                 default:
                     return $"요청이 거절됐다({reason}).";
             }

@@ -35,6 +35,11 @@ namespace Shinshi.Common
             // TODO(민성): 기획 결정 뒤 PlayerConfigSO의 직업별 기본 공격 명세로 옮긴다
             public const float BASIC_ATTACK_RAY_HALF_WIDTH = 0.5f;
 
+            // 날아가는 화살이 지난 틱 끝 위치 뒤로 되짚어 보는 대상 접근 속도 상한(m/s). 화살 쪽으로 달려오던 적이
+            // 한 틱 사이에 화살 끝을 넘어 뒤로 빠지면 놓치므로, 경과 시간 동안 이 속도로 움직였을 거리만큼 뒤를 다시 본다.
+            // 돌진형 적 돌진(사거리 6m / 0.45초, 약 13.3m/s)보다 크게 둔다. 보스 돌진은 보스 몸체 반경이 덮는다
+            public const float ARROW_TARGET_MAX_APPROACH_SPEED = 20f;
+
             // 한 서버 프로세스의 전투 대상 상한, 넘으면 등록을 거절하고 연결을 끊는다.
             // 던전은 플레이어 4 + 소환 동료 8 + 활성 적 24지만 마을 서버도 같은 이동 판정을 쓰므로 마을 목표 100명에 여유를 둔다
             public const int MAX_COMBAT_TARGETS = 128;

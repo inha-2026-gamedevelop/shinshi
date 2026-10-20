@@ -647,7 +647,8 @@ namespace Shinshi.Backend.Tests.Market
                 """
                 UPDATE market_listings SET state = 'Cancelled', closed_at = clock_timestamp() WHERE listing_id = @ListingId;
                 """, new { ListingId = Guid.Parse(listingId) });
-            OperationResult deleted = await characters.DeleteAsync(seller.AccountId, Guid.NewGuid(), seller.CharacterId, 0);
+            OperationResult deleted = await Shinshi.Backend.Tests.Accounts.CharacterDeleteTestSupport.DeleteAfterGraceAsync(
+                environment.DataSource, characters, seller.AccountId, seller.CharacterId, 0);
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, deleted.Status);
         }
 

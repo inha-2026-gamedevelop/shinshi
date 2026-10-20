@@ -23,8 +23,18 @@ namespace Shinshi.Data.Characters
         Task<IReadOnlyList<CharacterRecord>> ListAsync(Guid accountId, CancellationToken cancellationToken = default);
 
         // 계정 actor의 멱등 작업이다. 없거나 남의, 이미 삭제한 캐릭터면 CHARACTER_NOT_FOUND, 접속 중이면 ALREADY_CONNECTED,
-        // 열린 출정 참가자면 RESERVATION_CONFLICT, revision이 다르면 STALE_REVISION이다
+        // 열린 출정 참가자면 RESERVATION_CONFLICT, revision이 다르면 STALE_REVISION이다.
+        // 삭제 예약이 없으면 CHARACTER_DELETE_NOT_REQUESTED, 예약 뒤 유예 시간 전이면 CHARACTER_DELETE_PENDING이다
         Task<OperationResult> DeleteAsync(Guid accountId, Guid operationId, Guid characterId, long expectedRevision,
+            CancellationToken cancellationToken = default);
+
+        /// <summary> 삭제를 예약한다. 없거나 남의 캐릭터면 CHARACTER_NOT_FOUND, revision이 다르면 STALE_REVISION이다.
+        /// 이미 예약했으면 시각을 바꾸지 않고 확정으로 돌려준다 </summary>
+        Task<OperationResult> RequestDeleteAsync(Guid accountId, Guid operationId, Guid characterId, long expectedRevision,
+            CancellationToken cancellationToken = default);
+
+        /// <summary> 삭제 예약을 취소한다. 예약이 없으면 CHARACTER_DELETE_NOT_REQUESTED다 </summary>
+        Task<OperationResult> CancelDeleteAsync(Guid accountId, Guid operationId, Guid characterId, long expectedRevision,
             CancellationToken cancellationToken = default);
     }
 }
