@@ -580,6 +580,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 246413866491867327}
+        m_TargetAssemblyTypeName: Shinshi.AI.WolbaekSleeveSpring, Shinshi.AI.SleeveSpring
+        m_MethodName: OnTeleported
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   _appearEffectPrefab: {fileID: 1238879637261762528, guid: 81d022a27375a5b4697abb622e601dd4, type: 3}
   _gatherSideArms: {x: -6, y: 60, z: 25}
   _gatherCircle: {x: 8, y: 25, z: -10}
@@ -3891,6 +3903,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4661438533220170880}
+    - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 246413866491867327}
   m_SourcePrefab: {fileID: 100100000, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
 --- !u!4 &246151662700618938 stripped
 Transform:
@@ -4306,6 +4321,22 @@ MonoBehaviour:
   _frontMaxLiftDegrees: 25
   _backMaxLiftDistance: 0.3
   _backMaxLiftDegrees: 60
+--- !u!114 &246413866491867327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9113416701906889029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c737db0e7428ba4f9a0ea448762441d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.AI.SleeveSpring::Shinshi.AI.WolbaekSleeveSpring
+  _stiffness: 40
+  _damping: 5
+  _gravityScale: 1
+  _maxDegrees: 45
 --- !u!1001 &6137833861727085277
 PrefabInstance:
   m_ObjectHideFlags: 0

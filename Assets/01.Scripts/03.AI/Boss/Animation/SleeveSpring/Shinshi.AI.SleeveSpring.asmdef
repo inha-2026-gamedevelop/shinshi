@@ -1,0 +1,16 @@
+{
+    "name": "Shinshi.AI.SleeveSpring",
+    "rootNamespace": "Shinshi.AI",
+    "references": [
+        "Shinshi.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
