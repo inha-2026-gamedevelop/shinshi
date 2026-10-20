@@ -147546,7 +147546,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Systems.DungeonSpawnLayout
   _zones:
   - door: {fileID: 1793314623}
-    nextWave: {fileID: 0}
+    nextWave: {fileID: 1023543039}
     innerNodes:
     - {fileID: 1573486772}
     - {fileID: 1338315342}
@@ -147566,7 +147566,7 @@ MonoBehaviour:
     - {fileID: 670805372}
     - {fileID: 182677296}
   - door: {fileID: 1060133313}
-    nextWave: {fileID: 1023543039}
+    nextWave: {fileID: 172605566}
     innerNodes:
     - {fileID: 942425103}
     - {fileID: 1797294429}
@@ -147586,7 +147586,7 @@ MonoBehaviour:
     - {fileID: 437261613}
     - {fileID: 1579056315}
   - door: {fileID: 380003368}
-    nextWave: {fileID: 172605566}
+    nextWave: {fileID: 701594109}
     innerNodes:
     - {fileID: 1271644175}
     - {fileID: 1889907677}
@@ -147606,7 +147606,7 @@ MonoBehaviour:
     - {fileID: 325813219}
     - {fileID: 836178622}
   - door: {fileID: 2112335840}
-    nextWave: {fileID: 701594109}
+    nextWave: {fileID: 335269613}
     innerNodes:
     - {fileID: 1615476324}
     - {fileID: 1854042337}
@@ -147626,7 +147626,7 @@ MonoBehaviour:
     - {fileID: 1056560970}
     - {fileID: 1933114221}
   - door: {fileID: 352272048}
-    nextWave: {fileID: 335269613}
+    nextWave: {fileID: 1045214197}
     innerNodes:
     - {fileID: 433343721}
     - {fileID: 1417740893}
@@ -147646,7 +147646,7 @@ MonoBehaviour:
     - {fileID: 185330640}
     - {fileID: 1350771001}
   - door: {fileID: 1323412025}
-    nextWave: {fileID: 1045214197}
+    nextWave: {fileID: 0}
     innerNodes:
     - {fileID: 1069768722}
     - {fileID: 1321111586}

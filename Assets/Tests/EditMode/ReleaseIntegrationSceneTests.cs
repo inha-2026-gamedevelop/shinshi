@@ -328,6 +328,14 @@ namespace Shinshi.Tests
                     Assert.That(zone.FindPropertyRelative("door").objectReferenceValue, Is.Not.Null, "구역 " + i + " 문 지점");
                     Assert.That(zone.FindPropertyRelative("innerNodes").arraySize
                         + zone.FindPropertyRelative("outerNodes").arraySize, Is.GreaterThan(0), "구역 " + i + " 출현 지점");
+                    if (i < (zones.arraySize - 1))
+                    {
+                        var next = zone.FindPropertyRelative("nextWave").objectReferenceValue as Transform;
+                        Assert.That(next, Is.Not.Null, "구역 " + i + " 다음 웨이브 지점");
+                        Assert.That(next.name, Is.EqualTo($"Zone{i + 2:00}_NextWave"));
+                        Assert.That(layout.TryGetNextWave(i, out Vector3 point), Is.True);
+                        Assert.That(point, Is.EqualTo(next.position));
+                    }
                 }
 
                 MonoBehaviour surface = FindSurface(scene);
@@ -348,6 +356,20 @@ namespace Shinshi.Tests
                         Assert.That(behaviour.GetType().Name, Does.Not.Contain("MockMonster"), "Dev 모의 몬스터가 남아 있다");
                     }
                 }
+            });
+        }
+
+        [Test]
+        public void TryValidate_MissingIntermediateWavePoint_RejectsLayout()
+        {
+            Inspect(DUNGEON_PATH, scene =>
+            {
+                DungeonSpawnLayout layout = One<DungeonSpawnLayout>(scene);
+                var data = new SerializedObject(layout);
+                data.FindProperty("_zones").GetArrayElementAtIndex(0).FindPropertyRelative("nextWave").objectReferenceValue = null;
+                data.ApplyModifiedPropertiesWithoutUndo();
+                Assert.That(layout.TryValidate(out string reason), Is.False);
+                Assert.That(reason, Does.Contain("다음 웨이브"));
             });
         }
 
