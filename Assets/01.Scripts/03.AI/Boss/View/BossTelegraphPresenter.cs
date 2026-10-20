@@ -50,6 +50,9 @@ namespace Shinshi.AI
             // 끝나는 순간 이벤트로 표시한다
             public bool                       SectorCompleted;
             public Action<SectorVFXController> OnSectorCompleted;
+
+            // 장판이 활성된 원형 예고는 터뜨리지 않고 붉은 예고를 그대로 두었다가 장판이 사라질 때 함께 지운다
+            public bool                       IsHeldByArea;
         }
 
         // 날고 있는 투사체 한 발, 예고 표현과 따로 산다. 패턴이 끝나거나 같은 보스의 다음 시전이 시작돼도 이어서 그린다
@@ -324,7 +327,7 @@ namespace Shinshi.AI
         }
 
         /// <summary> 부채꼴, 원형, 직사각형(P02, P03, P06)의 타격 확정, 서버의 OnHit에 해당한다 </summary>
-        public bool Strike(int castId, double serverTime)
+        public bool Strike(int castId, double serverTime, bool isHeldByArea = false)
         {
             if (!TryFind(castId, out Entry entry) || (!entry.Cast.TryStrike(serverTime)))
             {
@@ -333,10 +336,17 @@ namespace Shinshi.AI
 
             ApplyRotation(entry, true);
 
-            // 충전 끝에서 멈춰 있던 부채꼴과 원형이 이어서 폭발한다
+            // 충전 끝에서 멈춰 있던 부채꼴과 원형이 이어서 폭발한다. 장판이 이어받는 원형은 터뜨리지 않고 멈춘 채 둔다
             if (entry.Sector != null)
             {
-                entry.Sector.Confirm();
+                if (isHeldByArea)
+                {
+                    entry.IsHeldByArea = true;
+                }
+                else
+                {
+                    entry.Sector.Confirm();
+                }
             }
 
             PhaseChanged?.Invoke(castId, EBossTelegraphPhase.Execute);
@@ -639,7 +649,7 @@ namespace Shinshi.AI
 
             if (TryFind(id, out Entry telegraph) && (telegraph.Cast.Shape == EBossTelegraphShape.Circle))
             {
-                Strike(id, start.ActivateServerTime);
+                Strike(id, start.ActivateServerTime, true);
             }
 
             AddArea(track);
@@ -1204,6 +1214,16 @@ namespace Shinshi.AI
         {
             BossTelegraphCast cast = entry.Cast;
 
+            // 장판이 이어받은 예고는 장판이 사라지기 시작하거나 없어지면 함께 지운다
+            if (entry.IsHeldByArea && ((!TryFindArea(cast.CastId, out AreaEntry held)) || held.EndSeen))
+            {
+                cast.TryFinish();
+                ReleaseVisuals(entry);
+                RememberEnded(cast.CastId);
+                PhaseChanged?.Invoke(cast.CastId, EBossTelegraphPhase.Finished);
+                return true;
+            }
+
             if (!cast.HasExecuted)
             {
                 // 예고가 끝난 뒤에도 서버 확정이 오지 않으면 지운다
@@ -1401,7 +1421,7 @@ namespace Shinshi.AI
             for (int i = _active.Count - 1; i >= 0; --i)
             {
                 Entry entry = _active[i];
-                if ((entry.Cast.BossId != bossId) || (entry.Cast.GroupId == groupId))
+                if ((entry.Cast.BossId != bossId) || (entry.Cast.GroupId == groupId) || entry.IsHeldByArea)
                 {
                     continue;
                 }
