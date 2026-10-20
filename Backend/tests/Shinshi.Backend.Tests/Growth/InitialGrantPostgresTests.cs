@@ -140,8 +140,8 @@ namespace Shinshi.Backend.Tests.Growth
             CharacterCreateOutcome first = await characters.CreateAsync(account, Guid.NewGuid(), "Delete1", "delete1",
                 ContractCodes.PlayerClass.WARRIOR, APPEARANCE, REQUEST);
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, first.Result.Status);
-            OperationResult deleted = await characters.DeleteAsync(account, Guid.NewGuid(), first.Character!.CharacterId,
-                first.Character.Revision);
+            OperationResult deleted = await Shinshi.Backend.Tests.Accounts.CharacterDeleteTestSupport.DeleteAfterGraceAsync(
+                environment.DataSource, characters, account, first.Character!.CharacterId, first.Character.Revision);
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, deleted.Status);
 
             CharacterCreateOutcome again = await characters.CreateAsync(account, Guid.NewGuid(), "Delete2", "delete2",

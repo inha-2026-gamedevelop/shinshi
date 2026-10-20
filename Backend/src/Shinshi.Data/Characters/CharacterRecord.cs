@@ -17,14 +17,18 @@ namespace Shinshi.Data.Characters
         public long Revision { get; }
         public long TotalExperience { get; }
         public string? AppearanceJson { get; }
+        public bool DeletePending { get; }
+        public long DeleteRemainingSeconds { get; }
 
         /****************************************
         *                Methods
         ****************************************/
 
         public CharacterRecord(Guid characterId, Guid accountId, string? name, int classId, long revision,
-            string? appearanceJson, long totalExperience = 0)
+            string? appearanceJson, long totalExperience = 0, bool deletePending = false, long deleteRemainingSeconds = 0)
         {
+            DeletePending          = deletePending;
+            DeleteRemainingSeconds = deleteRemainingSeconds;
             TotalExperience = totalExperience;
             CharacterId    = characterId;
             AccountId      = accountId;

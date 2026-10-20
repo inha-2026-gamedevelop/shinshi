@@ -40,6 +40,10 @@ namespace Shinshi.Backend.Tests.Accounts
             PostgresCharacterRepository repository = CreateRepository(database);
             Guid accountId = await AddAccountAsync(database);
             (Guid characterId, long initialRevision) = await CreateAsync(repository, accountId, "Deleted");
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED,
+                (await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), characterId, initialRevision)).Status);
+            await CharacterDeleteTestSupport.BackdateAsync(database.DataSource, characterId);
+            initialRevision += DELETE_REVISION_STEP;
             long deletedRevision = initialRevision + DELETE_REVISION_STEP;
             Guid operationId = Guid.NewGuid();
 
@@ -144,8 +148,10 @@ namespace Shinshi.Backend.Tests.Accounts
                 characters[i] = await CreateAsync(repository, accountId, "slot" + i);
             }
 
+            await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), characters[0].Id, characters[0].Revision);
+            await CharacterDeleteTestSupport.BackdateAsync(database.DataSource, characters[0].Id);
             Task<OperationResult> deleting = repository.DeleteAsync(accountId, Guid.NewGuid(), characters[0].Id,
-                characters[0].Revision);
+                characters[0].Revision + DELETE_REVISION_STEP);
             Task<CharacterCreateOutcome> creating = CreateOutcomeAsync(repository, accountId, Guid.NewGuid(), "slotnew");
             await Task.WhenAll(deleting, creating);
 
@@ -176,10 +182,14 @@ namespace Shinshi.Backend.Tests.Accounts
             {
                 (Guid deletedId, long revision) = await CreateAsync(repository, accountId, names[i]);
                 Assert.Equal(ContractCodes.OperationStatus.COMMITTED,
-                    (await repository.DeleteAsync(accountId, Guid.NewGuid(), deletedId, revision)).Status);
+                    (await CharacterDeleteTestSupport.DeleteAfterGraceAsync(database.DataSource, repository, accountId,
+                        deletedId, revision)).Status);
             }
 
             (Guid characterId, long current) = await CreateAsync(repository, accountId, names[^1]);
+            await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), characterId, current);
+            await CharacterDeleteTestSupport.BackdateAsync(database.DataSource, characterId);
+            current += DELETE_REVISION_STEP;
             OperationResult limited = await repository.DeleteAsync(accountId, Guid.NewGuid(), characterId, current);
             Assert.Equal(ContractCodes.RejectReason.RATE_LIMITED, limited.ReasonCode);
             Assert.Single(await repository.ListAsync(accountId));
@@ -196,6 +206,113 @@ namespace Shinshi.Backend.Tests.Accounts
             OperationResult allowed = await repository.DeleteAsync(accountId, Guid.NewGuid(), characterId, current);
             Assert.Equal(ContractCodes.OperationStatus.COMMITTED, allowed.Status);
             Assert.Empty(await repository.ListAsync(accountId));
+        }
+
+        /// <summary> 예약 없는 삭제는 CHARACTER_DELETE_NOT_REQUESTED, 유예 중 삭제는 CHARACTER_DELETE_PENDING으로 거절되고 캐릭터는 그대로다 </summary>
+        [PostgresFact]
+        public async Task Delete_WithoutRequestOrWithinGrace_RejectsWithoutEffect()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresCharacterRepository repository = CreateRepository(database);
+            Guid accountId = await AddAccountAsync(database);
+            (Guid characterId, long revision) = await CreateAsync(repository, accountId, "Grace");
+
+            OperationResult notRequested = await repository.DeleteAsync(accountId, Guid.NewGuid(), characterId, revision);
+            OperationResult requested = await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), characterId, revision);
+            OperationResult pending = await repository.DeleteAsync(accountId, Guid.NewGuid(), characterId,
+                requested.CommittedRevision);
+
+            Assert.Equal(ContractCodes.RejectReason.CHARACTER_DELETE_NOT_REQUESTED, notRequested.ReasonCode);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, requested.Status);
+            Assert.Equal(revision + DELETE_REVISION_STEP, requested.CommittedRevision);
+            Assert.Equal(ContractCodes.RejectReason.CHARACTER_DELETE_PENDING, pending.ReasonCode);
+            Assert.Single(await repository.ListAsync(accountId));
+        }
+
+        /// <summary> 예약은 같은 작업 재전송과 새 작업 모두 시각과 revision을 바꾸지 않고, 다른 revision은 STALE_REVISION이다 </summary>
+        [PostgresFact]
+        public async Task RequestDelete_Repeated_KeepsTimestampAndRevision()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresCharacterRepository repository = CreateRepository(database);
+            Guid accountId = await AddAccountAsync(database);
+            (Guid characterId, long revision) = await CreateAsync(repository, accountId, "Repeat");
+            Guid operationId = Guid.NewGuid();
+
+            OperationResult first = await repository.RequestDeleteAsync(accountId, operationId, characterId, revision);
+            DateTime? requestedAt = await ReadRequestedAtAsync(database, characterId);
+            OperationResult replay = await repository.RequestDeleteAsync(accountId, operationId, characterId, revision);
+            OperationResult again = await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), characterId, revision);
+            OperationResult conflict = await repository.RequestDeleteAsync(accountId, operationId, characterId,
+                revision + DELETE_REVISION_STEP);
+            (Guid otherId, long otherRevision) = await CreateAsync(repository, accountId, "Stale");
+            OperationResult stale = await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), otherId,
+                otherRevision + DELETE_REVISION_STEP);
+
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, first.Status);
+            Assert.Equal(first.ServerTimeUnixMs, replay.ServerTimeUnixMs);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, again.Status);
+            Assert.Equal(first.CommittedRevision, again.CommittedRevision);
+            Assert.Equal(ContractCodes.RejectReason.IDEMPOTENCY_CONFLICT, conflict.ReasonCode);
+            Assert.Equal(ContractCodes.RejectReason.STALE_REVISION, stale.ReasonCode);
+            Assert.Equal(requestedAt, await ReadRequestedAtAsync(database, characterId));
+        }
+
+        /// <summary> 취소는 예약을 지우고 revision을 올리며, 취소 뒤 삭제는 NOT_REQUESTED, 예약 없는 취소도 NOT_REQUESTED다 </summary>
+        [PostgresFact]
+        public async Task CancelDelete_ClearsRequestAndBlocksFinalDelete()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresCharacterRepository repository = CreateRepository(database);
+            Guid accountId = await AddAccountAsync(database);
+            (Guid characterId, long revision) = await CreateAsync(repository, accountId, "Cancel");
+
+            OperationResult early = await repository.CancelDeleteAsync(accountId, Guid.NewGuid(), characterId, revision);
+            OperationResult requested = await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), characterId, revision);
+            await CharacterDeleteTestSupport.BackdateAsync(database.DataSource, characterId);
+            OperationResult cancelled = await repository.CancelDeleteAsync(accountId, Guid.NewGuid(), characterId,
+                requested.CommittedRevision);
+            OperationResult deleted = await repository.DeleteAsync(accountId, Guid.NewGuid(), characterId,
+                cancelled.CommittedRevision);
+
+            Assert.Equal(ContractCodes.RejectReason.CHARACTER_DELETE_NOT_REQUESTED, early.ReasonCode);
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, cancelled.Status);
+            Assert.Equal(requested.CommittedRevision + DELETE_REVISION_STEP, cancelled.CommittedRevision);
+            Assert.Null(await ReadRequestedAtAsync(database, characterId));
+            Assert.Equal(ContractCodes.RejectReason.CHARACTER_DELETE_NOT_REQUESTED, deleted.ReasonCode);
+            Assert.Single(await repository.ListAsync(accountId));
+        }
+
+        /// <summary> 목록은 예약 여부와 DB 시각 기준 남은 초를 돌려준다. 예약이 없으면 false와 0이다 </summary>
+        [PostgresFact]
+        public async Task List_ShowsDeletePendingAndRemainingSeconds()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            PostgresCharacterRepository repository = CreateRepository(database);
+            Guid accountId = await AddAccountAsync(database);
+            (Guid characterId, long revision) = await CreateAsync(repository, accountId, "Listed");
+
+            CharacterRecord before = Assert.Single(await repository.ListAsync(accountId));
+            await repository.RequestDeleteAsync(accountId, Guid.NewGuid(), characterId, revision);
+            CharacterRecord pending = Assert.Single(await repository.ListAsync(accountId));
+            await CharacterDeleteTestSupport.BackdateAsync(database.DataSource, characterId);
+            CharacterRecord elapsed = Assert.Single(await repository.ListAsync(accountId));
+
+            long graceSeconds = PostgresCharacterRepository.DELETE_GRACE_MINUTES * 60L;
+            Assert.False(before.DeletePending);
+            Assert.Equal(0L, before.DeleteRemainingSeconds);
+            Assert.True(pending.DeletePending);
+            Assert.InRange(pending.DeleteRemainingSeconds, graceSeconds - 30, graceSeconds);
+            Assert.True(elapsed.DeletePending);
+            Assert.Equal(0L, elapsed.DeleteRemainingSeconds);
+        }
+
+        private static async Task<DateTime?> ReadRequestedAtAsync(PostgresTestDatabase database, Guid characterId)
+        {
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            return await connection.QuerySingleAsync<DateTime?>(
+                "SELECT delete_requested_at FROM characters WHERE character_id = @CharacterId;",
+                new { CharacterId = characterId });
         }
 
         private static async Task<(Guid CharacterId, long Revision)> CreateAsync(PostgresCharacterRepository repository,

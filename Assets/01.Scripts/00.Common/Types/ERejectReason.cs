@@ -77,6 +77,8 @@ namespace Shinshi.Common
         CharacterNameTaken   = 1001, // 전각, 반각과 대소문자만 다른 이름도 같은 이름이다
         InvalidCharacterName = 1002, // 정규화 뒤 2~12자의 완성형 한글, 영문, 숫자가 아니다
         CharacterNotFound    = 1003, // 없거나 다른 계정이거나 이미 삭제한 캐릭터다
+        CharacterDeletePending      = 1004, // 삭제 예약 뒤 대기 시간이 아직 지나지 않았다
+        CharacterDeleteNotRequested = 1005, // 삭제 예약을 하지 않은 캐릭터라 바로 삭제하거나 예약을 취소할 수 없다
 
         // 운영, 우편함
         FeatureDisabled        = 1100, // 운영자가 기능 차단 스위치로 끈 기능이다

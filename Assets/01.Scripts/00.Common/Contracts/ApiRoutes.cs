@@ -43,6 +43,12 @@ namespace Shinshi.Contracts
         // 없거나 남의 캐릭터(CHARACTER_NOT_FOUND)는 거절한다. 이름은 반환하지 않고 슬롯만 돌려받는다
         public const string CHARACTER_DELETE_FORMAT = "/v1/characters/{0}/delete";
 
+        // string.Format으로 characterId를 넣는다. POST로 삭제를 예약하거나 예약을 취소한다. 본문은 CharacterDeleteRequest, 응답은 OperationResult.
+        // 삭제(CHARACTER_DELETE_FORMAT)는 예약 뒤 대기 시간이 지나야 확정되고, 예약 전이면 CHARACTER_DELETE_NOT_REQUESTED,
+        // 대기 중이면 CHARACTER_DELETE_PENDING으로 거절한다. 예약과 취소도 캐릭터 revision을 올린다
+        public const string CHARACTER_DELETE_REQUEST_FORMAT = "/v1/characters/{0}/delete-request";
+        public const string CHARACTER_DELETE_CANCEL_FORMAT  = "/v1/characters/{0}/delete-cancel";
+
         // string.Format으로 sessionId를 넣는다. 진행 중 출정에서 끊긴 플레이어가 복귀용 일회 접속 토큰을 다시 받는다
         public const string REJOIN_TICKET_FORMAT = "/v1/game-sessions/{0}/rejoin-ticket";
 

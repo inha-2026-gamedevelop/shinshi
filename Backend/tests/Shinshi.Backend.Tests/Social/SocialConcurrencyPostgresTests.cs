@@ -314,8 +314,10 @@ namespace Shinshi.Backend.Tests.Social
                     """, new { A = one.CharacterId, B = two.CharacterId, L = leader.CharacterId });
 
                 OperationResult[] results = await Task.WhenAll(
-                    Task.Run(() => characters.DeleteAsync(one.AccountId, Guid.NewGuid(), one.CharacterId, 0)),
-                    Task.Run(() => characters.DeleteAsync(two.AccountId, Guid.NewGuid(), two.CharacterId, 0)));
+                    Task.Run(() => Shinshi.Backend.Tests.Accounts.CharacterDeleteTestSupport.DeleteAfterGraceAsync(
+                        environment.DataSource, characters, one.AccountId, one.CharacterId, 0)),
+                    Task.Run(() => Shinshi.Backend.Tests.Accounts.CharacterDeleteTestSupport.DeleteAfterGraceAsync(
+                        environment.DataSource, characters, two.AccountId, two.CharacterId, 0)));
 
                 Assert.All(results, result => Assert.Equal(ContractCodes.OperationStatus.COMMITTED, result.Status));
                 Assert.Equal(1L, await environment.ScalarAsync("SELECT member_count FROM guilds WHERE guild_id = @Id;",
@@ -357,8 +359,10 @@ namespace Shinshi.Backend.Tests.Social
                 VALUES (@Lonely, 0, 4, 'x', 'hello', clock_timestamp() + interval '1 minute');
                 """, new { Guild = lonelyGuild, Friend = friend.CharacterId, Lonely = lonely.CharacterId });
 
-            OperationResult rejected = await characters.DeleteAsync(leader.AccountId, Guid.NewGuid(), leader.CharacterId, 0);
-            OperationResult disbanded = await characters.DeleteAsync(lonely.AccountId, Guid.NewGuid(), lonely.CharacterId, 0);
+            OperationResult rejected = await Shinshi.Backend.Tests.Accounts.CharacterDeleteTestSupport.DeleteAfterGraceAsync(
+                environment.DataSource, characters, leader.AccountId, leader.CharacterId, 0);
+            OperationResult disbanded = await Shinshi.Backend.Tests.Accounts.CharacterDeleteTestSupport.DeleteAfterGraceAsync(
+                environment.DataSource, characters, lonely.AccountId, lonely.CharacterId, 0);
 
             Assert.Equal((ContractCodes.OperationStatus.REJECTED, ContractCodes.RejectReason.CHARACTER_IS_GUILD_LEADER),
                 (rejected.Status, rejected.ReasonCode));
