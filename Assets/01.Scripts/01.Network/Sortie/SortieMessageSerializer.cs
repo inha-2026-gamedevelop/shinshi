@@ -62,5 +62,42 @@ namespace Shinshi.Network
             var  settlementState     = (ESortieSettlementState)reader.ReadByte();
             return new SortieStatusMessage(phase, endReason, hasPersonalClose, personalCloseReason, canReturn, settlementState);
         }
+
+        // 웨이브 수는 한 바이트라 받는 쪽 배열도 255칸을 넘지 않는다
+        public static void WriteWaveProgressMessage(this NetworkWriter writer, WaveProgressMessage value)
+        {
+            int count = Math.Min(value.WaveCount, byte.MaxValue);
+            writer.WriteByte((byte)count);
+            for (int i = 0; i < count; ++i)
+            {
+                writer.WriteUShort((ushort)value.GetPlanned(i));
+            }
+
+            writer.WriteByte(value.WaveIndex);
+            writer.WriteUShort(value.RemainingInWave);
+            writer.WriteBool(value.IsRunning);
+            writer.WriteFloat(value.ElapsedSeconds);
+            writer.WriteFloat(value.TimeLimitSeconds);
+            writer.WriteDouble(value.ServerTime);
+        }
+
+        public static WaveProgressMessage ReadWaveProgressMessage(this NetworkReader reader)
+        {
+            int      count   = reader.ReadByte();
+            ushort[] planned = new ushort[count];
+            for (int i = 0; i < count; ++i)
+            {
+                planned[i] = reader.ReadUShort();
+            }
+
+            byte   waveIndex        = reader.ReadByte();
+            ushort remainingInWave  = reader.ReadUShort();
+            bool   isRunning        = reader.ReadBool();
+            float  elapsedSeconds   = reader.ReadFloat();
+            float  timeLimitSeconds = reader.ReadFloat();
+            double serverTime       = reader.ReadDouble();
+            return new WaveProgressMessage(waveIndex, remainingInWave, isRunning, elapsedSeconds, timeLimitSeconds, serverTime,
+                planned);
+        }
     }
 }

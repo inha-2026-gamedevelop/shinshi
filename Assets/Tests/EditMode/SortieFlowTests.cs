@@ -197,6 +197,60 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void WaveProgress_NormalSortie_SendsOnChangeToAllAndResendsOnJoin()
+        {
+            var factory  = new FakeWaveFactory();
+            var progress = new RecordingWaveProgressAudience();
+            _host.WaveFactory          = factory;
+            _host.WaveProgressAudience = progress;
+            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_MUCHEOL, IsKnownBoss);
+            int one = Admit(API_ONE, Normal());
+            int two = Admit(API_TWO, Normal());
+            StartSession();
+
+            double time = _config.ReadyCountdownSeconds + 1.0;
+            factory.Wave.Progress = new WaveProgressSnapshot(0, _waves.Waves.Count, 5, 1.0);
+            int before = progress.Count;
+            Tick(time);
+            Assert.AreEqual(before + 2, progress.Count, "바뀐 진행은 참가자 모두에게 보낸다");
+            WaveProgressMessage last = progress.Last(two);
+            Assert.AreEqual(0, last.WaveIndex);
+            Assert.AreEqual(5, last.RemainingInWave);
+            Assert.IsTrue(last.IsRunning);
+            Assert.AreEqual(1f, last.ElapsedSeconds);
+            Assert.AreEqual(time, last.ServerTime);
+            Assert.AreEqual(_waves.TimeLimitSeconds, last.TimeLimitSeconds);
+            Assert.AreEqual(_waves.Waves.Count, last.WaveCount);
+            Assert.AreEqual(_waves.Waves[0].CountEnemies(), last.GetPlanned(0));
+
+            factory.Wave.Progress = new WaveProgressSnapshot(0, _waves.Waves.Count, 5, 2.0);
+            Tick(time + 1.0);
+            Assert.AreEqual(before + 2, progress.Count, "시간만 흐르면 다시 보내지 않는다");
+
+            factory.Wave.Progress = new WaveProgressSnapshot(0, _waves.Waves.Count, 4, 3.0);
+            Tick(time + 2.0);
+            Assert.AreEqual(before + 4, progress.Count);
+            Assert.AreEqual(4, progress.Last(one).RemainingInWave);
+
+            _host.SendStatusTo(one);
+            Assert.AreEqual(before + 5, progress.Count, "접속, 재접속 때는 바뀌지 않아도 그 참가자에게 다시 보낸다");
+        }
+
+        [Test]
+        public void WaveProgress_BossSortie_SendsNothing()
+        {
+            var progress = new RecordingWaveProgressAudience();
+            _host.WaveProgressAudience = progress;
+            _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_MUCHEOL, IsKnownBoss);
+            int one = Admit(API_ONE, Boss(BOSS_MUCHEOL, GameSessionCodes.Difficulty.EASY));
+            StartSession();
+            Tick(_config.ReadyCountdownSeconds + 1.0);
+            _host.SendStatusTo(one);
+
+            Assert.AreEqual(0, progress.Count);
+        }
+
+        [Test]
         public void RegisterWaveSources_FullPlan_RegistersCountTotalEnemies()
         {
             var roster = new ParticipantRoster(_config);
@@ -632,11 +686,38 @@ namespace Shinshi.Tests
             }
         }
 
+        private sealed class RecordingWaveProgressAudience : IWaveProgressAudience
+        {
+            private readonly List<KeyValuePair<int, WaveProgressMessage>> _sent =
+                new List<KeyValuePair<int, WaveProgressMessage>>();
+
+            public int Count => _sent.Count;
+
+            public void SendWaveProgress(int participantId, in WaveProgressMessage message)
+            {
+                _sent.Add(new KeyValuePair<int, WaveProgressMessage>(participantId, message));
+            }
+
+            public WaveProgressMessage Last(int participantId)
+            {
+                for (int i = _sent.Count - 1; i >= 0; --i)
+                {
+                    if (_sent[i].Key == participantId)
+                    {
+                        return _sent[i].Value;
+                    }
+                }
+
+                Assert.Fail($"진행 메시지가 없다, participantId={participantId}");
+                return default;
+            }
+        }
+
         private sealed class FakeWave : IWaveSession
         {
             public bool                 IsRunning  => Began;
             public bool                 IsFinished => false;
-            public WaveProgressSnapshot Progress   => default;
+            public WaveProgressSnapshot Progress   { get; set; }
             public bool                 Began      { get; private set; }
             public int                  TickCount  { get; private set; }
 

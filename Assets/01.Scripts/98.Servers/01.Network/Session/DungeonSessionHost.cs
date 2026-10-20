@@ -155,6 +155,9 @@ namespace Shinshi.Network
         private double                _nextCheckpointTime = 0.0;
         private long                  _checkpointSeq      = 0;
         private int                   _checkpointRequestId = 0;
+        private ushort[]              _wavePlanned         = null;
+        private bool                  _waveProgressSent    = false;
+        private WaveProgressMessage   _waveProgressLast;
 
         /****************************************
         *              Properties
@@ -221,6 +224,9 @@ namespace Shinshi.Network
 
         // 출정 상태와 포기 결과를 보낼 곳, 없으면 보내지 않는다
         public ISortieAudience     SortieAudience   { get; set; }
+
+        // 일반전 웨이브 진행을 보낼 곳, 없으면 보내지 않는다
+        public IWaveProgressAudience WaveProgressAudience { get; set; }
 
         // 체크포인트에 실을 전투 값(전투 런타임), 없으면 명단과 진행 값만 싣는다
         public ICheckpointSource   CheckpointSource { get; set; }
@@ -431,6 +437,10 @@ namespace Shinshi.Network
             _statuses[index].Sent = true;
             _statuses[index].Last = status;
             SortieAudience?.SendStatus(participantId, in status);
+            if ((WaveProgressAudience != null) && (TryBuildWaveProgress(out WaveProgressMessage progress)))
+            {
+                WaveProgressAudience.SendWaveProgress(participantId, in progress);
+            }
         }
 
         /// <summary> 일반전 웨이브를 진행한다, 전투 런타임이 플레이어와 보스 피해 뒤 생사 보고 앞에서 부른다 </summary>
@@ -495,6 +505,7 @@ namespace Shinshi.Network
             UpdateTerminal();
             TickCheckpoint();
             PublishStatuses();
+            PublishWaveProgress();
         }
 
         /// <summary> 연결이 끊겨 캐릭터를 서버에 남겼거나 지웠을 때 부른다, 시각은 마지막 서버 틱 시각이다 </summary>
@@ -1461,6 +1472,46 @@ namespace Shinshi.Network
                 slot.Last = status;
                 SortieAudience.SendStatus(_roster.GetAt(i).ParticipantId, in status);
             }
+        }
+
+        // 진행 값은 모든 참가자에게 같다. 바뀐 틱에만 보내고 흐르는 시간은 클라이언트가 서버 시각으로 이어 센다
+        private void PublishWaveProgress()
+        {
+            if ((WaveProgressAudience == null) || (!TryBuildWaveProgress(out WaveProgressMessage progress)))
+            {
+                return;
+            }
+
+            if ((_waveProgressSent) && (_waveProgressLast.SameAs(in progress)))
+            {
+                return;
+            }
+
+            _waveProgressSent = true;
+            _waveProgressLast = progress;
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                WaveProgressAudience.SendWaveProgress(_roster.GetAt(i).ParticipantId, in progress);
+            }
+        }
+
+        private bool TryBuildWaveProgress(out WaveProgressMessage message)
+        {
+            message = default;
+            if ((_session == null) || (_waves == null) || (!_session.TryGetWaveProgress(out WaveProgressSnapshot progress)))
+            {
+                return false;
+            }
+
+            // 웨이브 원본은 첫 입장 뒤 바뀌지 않으므로 계획 수는 한 번만 센다
+            if (_wavePlanned == null)
+            {
+                _wavePlanned = WaveProgressPublishRules.BuildPlanned(_waves);
+            }
+
+            message = WaveProgressPublishRules.Build(in progress, _session.IsWaveRunning, _waves.TimeLimitSeconds, _serverTime,
+                _wavePlanned);
+            return true;
         }
 
         private SortieStatusMessage BuildStatus(int rosterIndex)
