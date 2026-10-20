@@ -33,7 +33,7 @@ namespace Shinshi.Tests
         private const string IPV6_PREFIX_A_HOST_3 = "2001:db8:1:2::ffff";
         private const string IPV6_PREFIX_B_HOST_1 = "2001:db8:1:3::1";
         private const string ZERO_PREFIX_IPV6     = "::cb00:710a";
-        private const int    DUNGEON_PER_ADDRESS  = 2;
+        private const int    DUNGEON_PER_ADDRESS  = Constants.Session.MAX_PARTY_SIZE;
 
         private static readonly double _deadline = START_TIME + Constants.Network.AUTH_TIMEOUT_SECONDS;
 
@@ -191,15 +191,31 @@ namespace Shinshi.Tests
             Assert.IsTrue(table.TryAdd(4, null, _deadline));
         }
 
-        // N9 회귀: 던전은 주소별 대기 상한이 2다
+        // 같은 NAT 뒤의 파티원을 주소별 제한으로 거절하지 않아야 한다
         [Test]
-        public void MaxPendingPerAddressFor_Dungeon_ReturnsTwo()
+        public void MaxPendingPerAddressFor_Dungeon_AllowsFullParty()
         {
             Assert.AreEqual(Constants.Network.DUNGEON_MAX_PENDING_AUTH_PER_ADDRESS,
                 ShinshiServerAuthenticator.MaxPendingPerAddressFor(EServerRole.Dungeon));
             Assert.AreEqual(DUNGEON_PER_ADDRESS, Constants.Network.DUNGEON_MAX_PENDING_AUTH_PER_ADDRESS);
             Assert.AreEqual(Constants.Network.MAX_PENDING_AUTH_PER_ADDRESS,
                 ShinshiServerAuthenticator.MaxPendingPerAddressFor(EServerRole.Town));
+        }
+
+        [Test]
+        public void TryAdd_DungeonPartyBehindSameNat_AcceptsFourAndRejectsFifth()
+        {
+            var table = new PendingAuthTable(ShinshiServerAuthenticator.MaxPendingFor(EServerRole.Dungeon),
+                ShinshiServerAuthenticator.MaxPendingPerAddressFor(EServerRole.Dungeon));
+            for (int i = 1; i <= Constants.Session.MAX_PARTY_SIZE; ++i)
+            {
+                Assert.IsTrue(table.TryAdd(i, (i % 2 == 0) ? MAPPED_ADDRESS_A : ADDRESS_A, _deadline));
+                Assert.IsTrue(table.TryBeginVerify(i, i, _deadline));
+            }
+
+            Assert.IsFalse(table.TryAdd(5, ADDRESS_A, _deadline));
+            Assert.IsTrue(table.TryAdd(6, ADDRESS_B, _deadline));
+            Assert.AreEqual(Constants.Session.MAX_PARTY_SIZE, table.CountByAddress(ADDRESS_A));
         }
 
         [Test]
