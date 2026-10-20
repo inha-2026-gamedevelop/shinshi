@@ -121,6 +121,7 @@ namespace Shinshi.UI
             _fromScale = _rect.localScale.x;
             _fromColor = (_graphic != null) ? _graphic.color : Color.white;
             GetTarget(out _toScale, out _toColor);
+            RebasePosition();
 
             _progress = 0f;
             _tween.ChangeEndValue(FULL_PROGRESS, 0f, true);
@@ -135,6 +136,7 @@ namespace Shinshi.UI
             }
 
             _tween.Pause();
+            RebasePosition();
             GetTarget(out _toScale, out _toColor);
             _fromScale = _toScale;
             _fromColor = _toColor;
@@ -163,15 +165,24 @@ namespace Shinshi.UI
             color = _normalColor;
         }
 
+        // 공통 배치가 Awake 뒤에 단추를 다른 부모·좌표로 옮기므로, 처음 위치를 들고 있지 않고 지금 위치와 크기에서 기준을 다시 구한다
+        private void RebasePosition()
+        {
+            _basePosition = _rect.anchoredPosition - (CenterOffset() * (1f - _rect.localScale.x));
+        }
+
+        // 크기가 s일 때 가운데가 (0.5 - pivot) * size * s만큼 움직이므로 그만큼 되돌려 가운데를 고정한다
+        private Vector2 CenterOffset()
+        {
+            return (new Vector2(0.5f, 0.5f) - _rect.pivot) * _rect.rect.size;
+        }
+
         private void SetProgress(float progress)
         {
             _progress = progress;
             float scale = Mathf.Lerp(_fromScale, _toScale, progress);
             _rect.localScale = new Vector3(scale, scale, 1f);
-
-            // 크기가 s일 때 가운데가 (0.5 - pivot) * size * s만큼 움직이므로 그만큼 되돌려 가운데를 고정한다
-            Vector2 centerOffset = (new Vector2(0.5f, 0.5f) - _rect.pivot) * _rect.rect.size;
-            _rect.anchoredPosition = _basePosition + (centerOffset * (1f - scale));
+            _rect.anchoredPosition = _basePosition + (CenterOffset() * (1f - scale));
 
             if (_graphic != null)
             {

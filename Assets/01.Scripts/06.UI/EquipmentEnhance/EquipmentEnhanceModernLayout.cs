@@ -11,7 +11,7 @@ namespace Shinshi.UI
     public static class EquipmentEnhanceModernLayout
     {
         private const float WIDTH    = 1500f;
-        private const float HEIGHT   = 820f;
+        private const float HEIGHT   = 748f;
         private const float PANEL_Y  = 84f;
         private const float PANEL_H  = 640f;
 
@@ -93,10 +93,11 @@ namespace Shinshi.UI
                 Child(At(names, i), 100f, 12f, w - 100f - 84f, 34f, 23f, UiModernDark.TextMain, TextAlignmentOptions.Left);
                 Child(At(levels, i), w - 84f, 12f, 72f, 34f, 22f, UiModernDark.TextGold, TextAlignmentOptions.Right);
 
+                // 선택 표시는 단추 안쪽이라 Place가 건너뛰므로 단추 칸 전체에 직접 맞춘다
                 GameObject selection = At(selections, i);
-                kit.Place(selection, x, y, w, SLOT_H);
                 if ((selection != null) && (selection.TryGetComponent(out Image image)))
                 {
+                    ModernDarkKit.PlaceChild(image, 0f, 0f, w, SLOT_H);
                     ModernDarkKit.SetSliced(image, UiModernDark.SPRITE_SELECTED, Color.white);
                 }
             }
@@ -153,6 +154,15 @@ namespace Shinshi.UI
             if (arrow == null)
             {
                 return;
+            }
+
+            // 화살표는 90도 돌린 그림이라 왼쪽 위 기준점 그대로면 자기 높이만큼 위로 돌아간다. 놓인 자리는 두고 기준점만 가운데로 옮긴다
+            if (arrow.transform is RectTransform own)
+            {
+                Vector2 size  = own.sizeDelta;
+                Vector2 shift = (new Vector2(0.5f, 0.5f) - own.pivot) * size;
+                own.pivot             = new Vector2(0.5f, 0.5f);
+                own.anchoredPosition += shift;
             }
 
             foreach (Graphic graphic in arrow.GetComponentsInChildren<Graphic>(true))
