@@ -107,6 +107,70 @@ namespace Shinshi.Editor
             }
         }
 
+        public static void RepairForestTransitionsFromCommandLine()
+        {
+            try
+            {
+                Scene scene = EditorSceneManager.OpenScene(FOREST_PATH, OpenSceneMode.Single);
+                DungeonSpawnLayout layout = null;
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    DungeonSpawnLayout found = root.GetComponentInChildren<DungeonSpawnLayout>(true);
+                    if (found == null)
+                    {
+                        continue;
+                    }
+                    if (layout != null)
+                    {
+                        throw new InvalidOperationException("숲 출현 배치가 둘 이상이다");
+                    }
+                    layout = found;
+                }
+                if (layout == null)
+                {
+                    throw new InvalidOperationException("숲 출현 배치가 없다");
+                }
+
+                var markers = new Dictionary<int, Transform>();
+                foreach (Transform marker in layout.GetComponentsInChildren<Transform>(true))
+                {
+                    Match match = G_Next.Match(marker.name);
+                    if (match.Success)
+                    {
+                        markers.Add(ParseInt(match.Groups[1].Value), marker);
+                    }
+                }
+                var data = new SerializedObject(layout);
+                SerializedProperty zones = data.FindProperty("_zones");
+                for (int i = 0; i < zones.arraySize; ++i)
+                {
+                    Transform next = null;
+                    if ((i < (zones.arraySize - 1)) && (!markers.TryGetValue(i + 2, out next)))
+                    {
+                        throw new InvalidOperationException($"Zone{i + 2:00}_NextWave 표식이 없다");
+                    }
+                    zones.GetArrayElementAtIndex(i).FindPropertyRelative("nextWave").objectReferenceValue = next;
+                }
+                data.ApplyModifiedPropertiesWithoutUndo();
+                if (!layout.TryValidate(out string reason))
+                {
+                    throw new InvalidOperationException(reason);
+                }
+                EditorSceneManager.MarkSceneDirty(scene);
+                if (!EditorSceneManager.SaveScene(scene))
+                {
+                    throw new InvalidOperationException("숲 씬을 저장하지 못했다");
+                }
+                Debug.Log($"[ReleaseMapBuilder] 숲 {zones.arraySize - 1}개 구역 이동 연결 수정");
+                EditorApplication.Exit(0);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorApplication.Exit(1);
+            }
+        }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -670,8 +734,9 @@ namespace Shinshi.Editor
 
                 SerializedProperty element = zones.GetArrayElementAtIndex(index++);
                 element.FindPropertyRelative("door").objectReferenceValue = Mark(zoneRoot, prefix + "_DoorSpawn", door.Value);
-                element.FindPropertyRelative("nextWave").objectReferenceValue = nexts.TryGetValue(zone, out Transform next)
-                    ? Mark(zoneRoot, prefix + "_NextWave", next)
+                // Dev 표식 번호는 출발 구역이 아니라 도착 구역이다. Zone02는 첫 웨이브를 마친 뒤 향할 지점이다
+                element.FindPropertyRelative("nextWave").objectReferenceValue = nexts.TryGetValue(zone + 1, out Transform next)
+                    ? Mark(zoneRoot, $"Zone{zone + 1:00}_NextWave", next)
                     : null;
                 WriteNodes(element.FindPropertyRelative("innerNodes"), zoneRoot, prefix, "inner", inner, zone);
                 WriteNodes(element.FindPropertyRelative("outerNodes"), zoneRoot, prefix, "outer", outer, zone);

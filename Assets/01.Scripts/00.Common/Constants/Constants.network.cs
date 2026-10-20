@@ -213,8 +213,8 @@ namespace Shinshi.Common
             // 주소는 IPv4 그대로, IPv4-mapped IPv6는 IPv4로, 그 밖의 IPv6는 /64 접두사로 묶어 센다
             public const int MAX_PENDING_AUTH_PER_ADDRESS = 4;
 
-            // 던전의 주소별 인증 대기 상한. 받을 사람이 파티 인원뿐이라 한 주소가 대기 자리를 나눠 갖지 못하게 더 좁힌다
-            public const int DUNGEON_MAX_PENDING_AUTH_PER_ADDRESS = 2;
+            // 같은 NAT 뒤의 한 파티가 동시에 출정할 수 있어야 한다. 전체 대기 상한은 별도로 유지한다
+            public const int DUNGEON_MAX_PENDING_AUTH_PER_ADDRESS = Session.MAX_PARTY_SIZE;
 
             // 던전의 인증 대기 상한은 파티 최대 인원에 이 배수를 곱한다. 재시도와 늦은 끊김 감지 몫을 남긴다
             public const int DUNGEON_PENDING_AUTH_PER_PARTICIPANT = 2;

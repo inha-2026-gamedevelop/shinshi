@@ -146,7 +146,7 @@ namespace Shinshi.Network
                 : Constants.Network.MAX_PENDING_AUTH_CONNECTIONS;
         }
 
-        /// <summary> 역할별 주소 묶음당 인증 대기 상한, 던전이 더 좁다 </summary>
+        /// <summary> 역할별 주소 묶음당 인증 대기 상한, 던전은 같은 NAT 뒤의 한 파티를 허용한다 </summary>
         public static int MaxPendingPerAddressFor(EServerRole role)
         {
             return (role == EServerRole.Dungeon)

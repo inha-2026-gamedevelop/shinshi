@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 
 // Unity
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -38,6 +39,7 @@ namespace Shinshi.Tests
         private const int   WAVE_COUNT       = 6;
         private const int   TOTAL_ENEMIES    = 180;
         private const int   REGISTRY_SIZE    = 256;
+        private const string FOREST_SCENE_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
 
         private const double TELEGRAPH_STEP_SECONDS = 0.05;
         private const int    TELEGRAPH_LIMIT_STEPS  = 1200;
@@ -324,6 +326,38 @@ namespace Shinshi.Tests
             Assert.That(_listener.ClearedWaves, Is.EqualTo(new List<int> { 0, 1, 2, 3, 4, 5 }));
             Assert.That(new HashSet<string>(_listener.SourceIds), Has.Count.EqualTo(TOTAL_ENEMIES));
             Assert.That(_listener.SourceIds, Is.EqualTo(BuildCanonicalSourceIds()));
+        }
+
+        [Test]
+        public void Tick_ReleaseForestLayout_ClearsAllSixWaves()
+        {
+            var scene = EditorSceneManager.OpenPreviewScene(FOREST_SCENE_PATH);
+            try
+            {
+                DungeonSpawnLayout layout = null;
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    DungeonSpawnLayout found = root.GetComponentInChildren<DungeonSpawnLayout>(true);
+                    if (found != null)
+                    {
+                        Assert.That(layout, Is.Null);
+                        layout = found;
+                    }
+                }
+                Assert.That(layout, Is.Not.Null);
+                Assert.That(layout.TryValidate(out string reason), Is.True, reason);
+                _spawns = new DungeonLayoutWaveSpawnPoints(() => layout, 0, 0, 0f);
+                WaveSession session = CreateSession(1f);
+                session.Begin(0.0);
+                PlayUntilFinished(session);
+                Assert.That(_listener.Outcome.Reason, Is.EqualTo(ESessionEndReason.Success));
+                Assert.That(_listener.Outcome.ClearedWaveCount, Is.EqualTo(WAVE_COUNT));
+                Assert.That(_listener.Outcome.DefeatedCount, Is.EqualTo(TOTAL_ENEMIES));
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(scene);
+            }
         }
 
         [Test]

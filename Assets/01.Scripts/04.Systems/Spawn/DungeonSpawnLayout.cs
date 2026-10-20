@@ -165,6 +165,12 @@ namespace Shinshi.Systems
                     return false;
                 }
 
+                if ((i < (_zones.Length - 1)) && (_zones[i].nextWave == null))
+                {
+                    reason = $"{i}번 구역의 다음 웨이브 지점이 비어 있다";
+                    return false;
+                }
+
                 if (HasEmpty(_zones[i].innerNodes) || HasEmpty(_zones[i].outerNodes))
                 {
                     reason = $"{i}번 구역의 노드에 빈 칸이 있다";
