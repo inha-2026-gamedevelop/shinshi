@@ -26,6 +26,12 @@ namespace Shinshi.Combat
         private const float LABEL_WIDTH = 240f;
         private const float LABEL_HEIGHT = 64f;
         private const float MAX_DIRECT_FORMAT_AMOUNT = 1000000000f;
+        private const float OUTLINE_WIDTH = 0.35f;
+        // 외곽선이 글자 안쪽까지 먹으므로 글자 자체를 먼저 굵게 부풀린다
+        private const float FACE_DILATE = 0.35f;
+        // 이 셰이더를 쓰는 재질이 프로젝트에 없으면 빌드가 셰이더를 빼서 외곽선이 사라진다. Hud/Resources/M_TextOutlineShaderRef.mat이 포함을 맡으니 지우지 않는다
+        private const string OUTLINE_SHADER = "TextMeshPro/Distance Field";
+        private const string OUTLINE_KEYWORD = "OUTLINE_ON";
 
         private static int _baseTweenersCapacity;
         private static int _baseSequencesCapacity;
@@ -40,6 +46,7 @@ namespace Shinshi.Combat
         [SerializeField] private Color _criticalColor = new Color(1f, 0.75f, 0.15f, 1f);
 
         private Slot[] _slots;
+        private Material _outlineMaterial;
         private Camera _camera;
         private RectTransform _canvasRect;
         private int _activeCount;
@@ -75,6 +82,11 @@ namespace Shinshi.Combat
 
         private void OnDestroy()
         {
+            if (_outlineMaterial != null)
+            {
+                Destroy(_outlineMaterial);
+                _outlineMaterial = null;
+            }
             if (_slots == null)
             {
                 return;
@@ -137,6 +149,7 @@ namespace Shinshi.Combat
                 Debug.LogError("[Combat] 기존 HUD TMP 폰트가 없어 피해 숫자 풀을 만들 수 없다");
                 return;
             }
+            _outlineMaterial = CreateOutlineMaterial((style != null) ? style.fontSharedMaterial : font.material);
             Canvas canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = SORTING_ORDER;
@@ -241,6 +254,24 @@ namespace Shinshi.Combat
             }
         }
 
+        // 밝은 바닥 위에서도 읽히도록 검은 외곽선을 두른다. 모바일용 거리장 셰이더는 외곽선 값을 줘도 그리지 못해 일반 거리장 셰이더 사본을 쓴다.
+        // 셰이더를 찾지 못하면 null을 돌려 원래 재질을 그대로 쓰고, 풀의 모든 슬롯이 사본 하나를 같이 쓴다
+        private static Material CreateOutlineMaterial(Material source)
+        {
+            Shader shader = Shader.Find(OUTLINE_SHADER);
+            if ((source == null) || (shader == null))
+            {
+                return null;
+            }
+            var material = new Material(source) { hideFlags = HideFlags.DontSave };
+            material.shader = shader;
+            material.EnableKeyword(OUTLINE_KEYWORD);
+            material.SetColor(ShaderUtilities.ID_OutlineColor, Color.black);
+            material.SetFloat(ShaderUtilities.ID_OutlineWidth, OUTLINE_WIDTH);
+            material.SetFloat(ShaderUtilities.ID_FaceDilate, FACE_DILATE);
+            return material;
+        }
+
         private Slot CreateSlot(int index, TMP_FontAsset font, TMP_Text style)
         {
             var slot = new Slot();
@@ -251,7 +282,11 @@ namespace Shinshi.Combat
             slot.LabelRect = CreateRect("Value", slot.Anchor);
             slot.Label = slot.LabelRect.gameObject.AddComponent<TextMeshProUGUI>();
             slot.Label.font = font;
-            if (style != null)
+            if (_outlineMaterial != null)
+            {
+                slot.Label.fontSharedMaterial = _outlineMaterial;
+            }
+            else if (style != null)
             {
                 slot.Label.fontSharedMaterial = style.fontSharedMaterial;
             }
