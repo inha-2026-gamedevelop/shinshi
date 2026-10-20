@@ -86,8 +86,8 @@ MonoBehaviour:
     _bossId: boss_mucheol
     _difficulty: 0
     _ticketCost: 1
-    _availableInTrial: 0
-    _trialPreUnlocked: 0
+    _availableInTrial: 1
+    _trialPreUnlocked: 1
     _requirement:
       _requiresIntro: 0
       _clearedRegionId: region_ruins
@@ -99,7 +99,7 @@ MonoBehaviour:
     _bossId: boss_mucheol
     _difficulty: 1
     _ticketCost: 1
-    _availableInTrial: 0
+    _availableInTrial: 1
     _trialPreUnlocked: 0
     _requirement:
       _requiresIntro: 0

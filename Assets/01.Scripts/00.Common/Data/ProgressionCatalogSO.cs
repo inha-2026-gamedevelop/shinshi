@@ -270,13 +270,13 @@ namespace Shinshi.Data
                 new UnlockRequirement(foxTraceCount: 3))
         };
 
-        // 무철은 체험판에 넣지 않는 후속 콘텐츠이고 체험판은 월백 이지를 미리 연 전투 시험이다
+        // 체험판은 무철 이지와 월백 이지를 미리 연 전투 시험이고, 무철 하드는 이지를 처음 깨면 열린다
         [Header("보스전")]
         [SerializeField] private BossBattleDefinition[] _bossBattles =
         {
-            new BossBattleDefinition("battle_mucheol_easy", "boss_mucheol", EBossDifficulty.Easy, 1, false, false,
+            new BossBattleDefinition("battle_mucheol_easy", "boss_mucheol", EBossDifficulty.Easy, 1, true, true,
                 new UnlockRequirement(clearedRegionId: "region_ruins")),
-            new BossBattleDefinition("battle_mucheol_hard", "boss_mucheol", EBossDifficulty.Hard, 1, false, false,
+            new BossBattleDefinition("battle_mucheol_hard", "boss_mucheol", EBossDifficulty.Hard, 1, true, false,
                 new UnlockRequirement(clearedBattleId: "battle_mucheol_easy")),
             new BossBattleDefinition("battle_wolbaek_easy", "boss_wolbaek", EBossDifficulty.Easy, 1, true, true,
                 new UnlockRequirement(unlockedRegionId: "region_wolbaek_barrier", clearedBattleId: "battle_mucheol_hard")),

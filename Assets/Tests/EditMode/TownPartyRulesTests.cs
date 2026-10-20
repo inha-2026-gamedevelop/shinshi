@@ -98,7 +98,12 @@ namespace Shinshi.Tests
         {
             Assert.AreEqual(ERejectReason.MissingUnlock,
                 ReadyRules.CheckContent(_progression, EPartyMode.Normal, REGION_RUINS, out _));
-            Assert.AreEqual(ERejectReason.MissingUnlock,
+        }
+
+        [Test]
+        public void CheckContent_MucheolInTrial_ReturnsNone()
+        {
+            Assert.AreEqual(ERejectReason.None,
                 ReadyRules.CheckContent(_progression, EPartyMode.Boss, BATTLE_MUCHEOL, out _));
         }
 

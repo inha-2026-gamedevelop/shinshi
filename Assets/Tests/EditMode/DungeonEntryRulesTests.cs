@@ -85,7 +85,7 @@ namespace Shinshi.Tests
             Assert.That(entries.Find(entry => entry.ContentId == "region_ruins").IsAvailable, Is.False);
             Assert.That(entries.Find(entry => entry.ContentId == "region_ruins").UnavailableReason, Is.Not.Empty);
             Assert.That(entries.Find(entry => entry.ContentId == "battle_wolbaek_easy").IsAvailable, Is.True);
-            Assert.That(entries.Find(entry => entry.ContentId == "battle_mucheol_easy").IsAvailable, Is.False);
+            Assert.That(entries.Find(entry => entry.ContentId == "battle_mucheol_easy").IsAvailable, Is.True);
         }
 
         [Test]

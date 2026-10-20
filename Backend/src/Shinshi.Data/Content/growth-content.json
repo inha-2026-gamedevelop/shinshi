@@ -1419,8 +1419,8 @@
         "bossId": "boss_mucheol",
         "difficulty": 0,
         "ticketCost": 1,
-        "availableInTrial": false,
-        "trialPreUnlocked": false,
+        "availableInTrial": true,
+        "trialPreUnlocked": true,
         "requirement": {
           "requiresIntro": false,
           "clearedRegionId": "region_ruins",
@@ -1434,7 +1434,7 @@
         "bossId": "boss_mucheol",
         "difficulty": 1,
         "ticketCost": 1,
-        "availableInTrial": false,
+        "availableInTrial": true,
         "trialPreUnlocked": false,
         "requirement": {
           "requiresIntro": false,
