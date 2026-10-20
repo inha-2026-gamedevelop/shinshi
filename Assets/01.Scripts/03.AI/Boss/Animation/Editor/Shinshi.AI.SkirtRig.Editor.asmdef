@@ -5,6 +5,7 @@
         "Shinshi.Runtime",
         "Shinshi.Art.SkirtRig",
         "Shinshi.AI.SkirtRig",
+        "Shinshi.AI.SleeveSpring",
         "Unity.Animation.Rigging"
     ],
     "includePlatforms": [
