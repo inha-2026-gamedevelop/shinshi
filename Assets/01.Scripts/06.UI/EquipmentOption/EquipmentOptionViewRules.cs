@@ -21,7 +21,7 @@ namespace Shinshi.UI
         private const string EMPTY_SLOT_TEXT = "-";
         private const string LINE_FORMAT    = "{0} +{1:0.##}%";
         private const string RANGE_FORMAT   = "{0:0.##}% ~ {1:0.##}%";
-        private const string COST_FORMAT    = "정기 {0:N0} / {1:N0}    정련편 {2:N0} / {3:N0}";
+        private const string COST_FORMAT    = "정기 {0:N0} / {1:N0}\n정련편 {2:N0} / {3:N0}";
         private const string PITY_FORMAT    = "상급 확정까지 {0}회";
         private const string PITY_READY     = "이번 재설정에서 첫 줄 최고값 확정";
         private const string SLOT_FORMAT    = "{0}  {1}";

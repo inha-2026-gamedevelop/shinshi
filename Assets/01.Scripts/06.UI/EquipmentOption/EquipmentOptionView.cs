@@ -59,6 +59,11 @@ namespace Shinshi.UI
 
         private void Awake()
         {
+            if (Application.isPlaying)
+            {
+                EnsureModernLayout();
+            }
+
             if (_closeButton != null)
             {
                 _closeButton.onClick.AddListener(OnCloseClicked);
@@ -118,6 +123,12 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 공통 어두운 스타일 배치를 한 번만 적용한다. 여러 번 불러도 같은 결과다 </summary>
+        public void EnsureModernLayout()
+        {
+            EquipmentOptionModernLayout.Apply(this);
+        }
 
         public void SetOpen(bool open)
         {

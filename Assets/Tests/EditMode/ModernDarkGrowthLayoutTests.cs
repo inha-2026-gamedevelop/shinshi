@@ -24,6 +24,7 @@ namespace Shinshi.Tests
 
         private const string TRAINING_PREFAB = "Assets/02.Prefab/UI/Training/PF_TrainingWindow.prefab";
         private const string SKILL_PREFAB    = "Assets/02.Prefab/UI/Windows/PF_SkillWindow.prefab";
+        private const string OPTION_PREFAB   = "Assets/02.Prefab/UI/Windows/PF_EquipmentOptionWindow.prefab";
         private const string APPLIED         = "MD_Applied";
 
         private readonly List<GameObject> _roots = new List<GameObject>();
@@ -270,6 +271,55 @@ namespace Shinshi.Tests
             Assert.AreEqual("등록\n카드 1 + 정기 150 (50%)", SkillWindowModernLayout.SplitCostLabel("등록  카드 1 + 정기 150 (50%)"));
             Assert.AreEqual("강화", SkillWindowModernLayout.SplitCostLabel("강화"));
             Assert.IsNull(SkillWindowModernLayout.SplitCostLabel(null));
+        }
+
+        [Test]
+        public void EquipmentOption_EnsureModernLayout_CalledTwice_AppliesOnce()
+        {
+            var view = Spawn<EquipmentOptionView>(OPTION_PREFAB);
+            view.EnsureModernLayout();
+            int children = view.transform.childCount;
+            view.EnsureModernLayout();
+
+            Assert.AreEqual(1, CountNamed(view.transform, APPLIED));
+            Assert.AreEqual(children, view.transform.childCount);
+            Assert.AreEqual(new Vector2(1500f, 820f), ((RectTransform)view.transform).sizeDelta);
+        }
+
+        [Test]
+        public void EquipmentOption_EnsureModernLayout_KeepsAllSerializedWidgetsReachable()
+        {
+            var view = Spawn<EquipmentOptionView>(OPTION_PREFAB);
+            view.gameObject.SetActive(true);
+            view.EnsureModernLayout();
+
+            foreach (string field in new[] { "_closeButton", "_rerollButton" })
+            {
+                var button = ModernDarkKit.Field<Button>(view, field);
+                Assert.IsNotNull(button, field);
+                Assert.IsTrue(button.gameObject.activeInHierarchy, field);
+            }
+
+            foreach (string field in new[] { "_itemLabel", "_costLabel", "_pityLabel", "_statusLabel", "_rerollLabel" })
+            {
+                var label = ModernDarkKit.Field<TMP_Text>(view, field);
+                Assert.IsNotNull(label, field);
+                Assert.IsTrue(label.gameObject.activeInHierarchy, field);
+            }
+
+            var slots = ModernDarkKit.Field<Button[]>(view, "_slotButtons");
+            Assert.AreEqual(6, slots.Length);
+            foreach (Button slot in slots)
+            {
+                Assert.IsTrue(slot.gameObject.activeInHierarchy);
+            }
+
+            foreach (TMP_Text line in ModernDarkKit.Field<TMP_Text[]>(view, "_lineLabels"))
+            {
+                Assert.IsTrue(line.gameObject.activeInHierarchy);
+            }
+
+            Assert.IsFalse(Child(view.transform, "MD_Title").GetComponent<TMP_Text>().raycastTarget);
         }
 
         private T Spawn<T>(string path) where T : Component
