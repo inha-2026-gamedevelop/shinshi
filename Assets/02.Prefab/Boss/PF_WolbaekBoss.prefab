@@ -568,6 +568,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 4661438533220170880}
+        m_TargetAssemblyTypeName: Shinshi.AI.WolbaekHairBodyGuard, Shinshi.AI.HairGuard
+        m_MethodName: OnTeleported
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   _appearEffectPrefab: {fileID: 1238879637261762528, guid: 81d022a27375a5b4697abb622e601dd4, type: 3}
   _gatherSideArms: {x: -6, y: 60, z: 25}
   _gatherCircle: {x: 8, y: 25, z: -10}
@@ -3876,6 +3888,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6045727671614481283}
+    - targetCorrespondingSourceObject: {fileID: 3273158544194876137, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4661438533220170880}
   m_SourcePrefab: {fileID: 100100000, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
 --- !u!4 &246151662700618938 stripped
 Transform:
@@ -4145,6 +4160,152 @@ MonoBehaviour:
   - {fileID: 5572922308596093007}
   _stateName: attack04_inplace
   _blendSeconds: 0.15
+--- !u!114 &4661438533220170880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9113416701906889029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9c98a7614e8edb4dbf96a4756d75a68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.AI.HairGuard::Shinshi.AI.WolbaekHairBodyGuard
+  _frontBoundary:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: -1.15
+      value: 0.03
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: -0.75
+      value: 0.07
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: -0.35
+      value: 0.13
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: -0.15
+      value: 0.16
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.05
+      value: 0.14
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.2
+      value: 0.15
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.35
+      value: -1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  _backBoundary:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: -1.15
+      value: -0.09
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: -0.95
+      value: -0.115
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: -0.35
+      value: -0.12
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.05
+      value: -0.09
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.2
+      value: -0.04
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.35
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  _releaseSpeed: 0.6
+  _frontMaxLiftDistance: 0.1
+  _frontMaxLiftDegrees: 25
+  _backMaxLiftDistance: 0.3
+  _backMaxLiftDegrees: 60
 --- !u!1001 &6137833861727085277
 PrefabInstance:
   m_ObjectHideFlags: 0
