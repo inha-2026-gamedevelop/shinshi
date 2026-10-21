@@ -37,6 +37,22 @@ namespace Shinshi.Backend.Tests.Auth
         }
 
         [Fact]
+        public void CreateRotationToken_RestartAndPurpose_ReproducesOnlySameRequestAndPurpose()
+        {
+            AuthTokenOptions options = CreateOptions();
+            AuthTokenHasher hasher = new AuthTokenHasher(options);
+            string parent = hasher.CreateToken();
+            string requestId = Guid.NewGuid().ToString("N");
+            string refresh = hasher.CreateRotationToken(AuthTokenHasher.REFRESH_DOMAIN, parent, requestId);
+            Assert.True(hasher.IsAuthentic(refresh));
+            Assert.Equal(refresh, new AuthTokenHasher(options).CreateRotationToken(AuthTokenHasher.REFRESH_DOMAIN, parent, requestId));
+            Assert.NotEqual(refresh, hasher.CreateRotationToken(AuthTokenHasher.ACCESS_DOMAIN, parent, requestId));
+            Assert.NotEqual(refresh, hasher.CreateRotationToken(AuthTokenHasher.REFRESH_DOMAIN, parent, Guid.NewGuid().ToString("N")));
+            Assert.NotEqual(refresh, hasher.CreateRotationToken(AuthTokenHasher.REFRESH_DOMAIN, hasher.CreateToken(), requestId));
+            Assert.NotEqual(refresh, CreateHasher().CreateRotationToken(AuthTokenHasher.REFRESH_DOMAIN, parent, requestId));
+        }
+
+        [Fact]
         public void Hash_SameTokenDifferentDomains_DoesNotCrossTokenPurposes()
         {
             AuthTokenHasher hasher = CreateHasher();

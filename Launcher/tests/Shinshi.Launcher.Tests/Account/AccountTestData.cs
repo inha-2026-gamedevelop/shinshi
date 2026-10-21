@@ -61,6 +61,7 @@ namespace Shinshi.Launcher.Tests.Account
 
         private string? _token;
         private int     _saveCount;
+        private string? _requestId;
 
         /****************************************
         *              Properties
@@ -69,6 +70,7 @@ namespace Shinshi.Launcher.Tests.Account
         public bool    HasToken  => Volatile.Read(ref _token) != null;
         public string? Token     => Volatile.Read(ref _token);
         public int     SaveCount => Volatile.Read(ref _saveCount);
+        public bool CanPrepareRefresh { get; set; } = true;
 
         /****************************************
         *                Methods
@@ -87,11 +89,30 @@ namespace Shinshi.Launcher.Tests.Account
 
         public bool TrySave(string refreshToken)
         {
+            _requestId = null;
             Volatile.Write(ref _token, refreshToken);
             Interlocked.Increment(ref _saveCount);
             return true;
         }
 
         public void Clear() { Volatile.Write(ref _token, null); }
+
+        public bool TryPrepareRefresh(string refreshToken, out string requestId)
+        {
+            if (!CanPrepareRefresh)
+            {
+                requestId = string.Empty;
+                return false;
+            }
+
+            if ((_token != refreshToken) || (_requestId == null))
+            {
+                _token = refreshToken;
+                _requestId = Guid.NewGuid().ToString("N");
+            }
+
+            requestId = _requestId;
+            return true;
+        }
     }
 }

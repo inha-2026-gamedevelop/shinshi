@@ -16,7 +16,13 @@ dotnet test Launcher/Shinshi.Launcher.slnx
 | `src/Shinshi.Launcher.UI` | WPF 런처 화면. `launcher.json`의 `apiBaseUrl`(로그인·게임 시작), `websiteUrl`(회원가입 링크)을 읽는다 |
 | `tests/Shinshi.Launcher.Tests` | 위 프로젝트(화면 제외)의 단위 시험. Windows 전용(net10.0-windows) |
 
-런처는 시작할 때 업데이트가 있으면 로그인 여부와 무관하게 바로 받고, 자동 로그인은 그와 동시에 진행한다. 자동 로그인 갱신 응답을 잃어도(시간 초과, 502·504) 저장된 토큰은 지우지 않고 다음 자동 로그인에서 다시 시도하며, 서버가 401로 거절할 때만 지운다.
+런처는 시작할 때 업데이트가 있으면 로그인 여부와 무관하게 바로 받고, 자동 로그인은 그와 동시에 진행한다. 서버가 401과 TOKEN_EXPIRED/TOKEN_REVOKED를 함께 반환할 때만 저장된 토큰을 지우며, 프록시의 일반 401은 보존한다. 저장된 로그인이 있으면 자동 로그인 체크를 복원한다. 창을 닫을 때 진행 중인 토큰 회전과 저장이 끝날 때까지 기다린다.
+
+런처 1.0.2부터 갱신 요청 전에 임의 `refreshRequestId`를 이전 토큰과 함께 DPAPI로 저장한다. 응답 유실 시 같은 ID로 즉시 한 번 재시도하고, 재시작해도 그 ID를 이어 쓴다. 서버는 같은 요청에 최초 발급한 토큰과 만료 시각을 그대로 돌려준다. 저장 실패 시 갱신을 보내지 않는다. 다른 ID를 사용한 소비 토큰 재사용은 기존처럼 계열 전체를 폐기한다. 실제 만료·로그아웃·관리자 폐기는 복구하지 않는다.
+
+서버에는 먼저 `0022_refresh_rotation_retry` 마이그레이션과 새 API를 배포하고 런처를 배포한다. 서버 HMAC 키는 재시작 후에도 유지해야 한다. 구형 런처 요청은 계속 지원하지만 응답 유실 복구는 지원하지 않는다.
+
+`tests/Shinshi.Launcher.IntegrationTests`는 `SHINSHI_TEST_CONNECTION_STRING`으로 지정한 별도 PostgreSQL에 격리 스키마를 만들고 실제 API·DPAPI·런처를 연결한다. API 커밋 후 응답 유실을 주입하여 두 클라이언트 각 10회 복구와 API/런처 재시작 복구를 검사한다. 연결 문자열이 없으면 이 통합 시험은 건너뛴다.
 
 서비스 상태의 공지 제목(`notice`)이 비어 있으면 `notices` 목록에서 제목이 있는 Launcher 또는 Both 대상의 첫 공지를 표시한다.
 

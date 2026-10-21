@@ -18,6 +18,7 @@ namespace Shinshi.Data.Auth
         public const string GAME_SESSION_DOMAIN = "shinshi.auth.game-session.v1";
         public const string SERVER_LEASE_DOMAIN = "shinshi.auth.server-lease.v1";
         public const string JOIN_DOMAIN         = "shinshi.auth.join.v1";
+        public const string ROTATION_REQUEST_DOMAIN = "shinshi.auth.rotation-request.v1";
 
         // 원문 뒤 8바이트는 무작위 부분의 HMAC 태그다. 길이와 문자 집합이 이전 형식과 같아 클라이언트 계약은 그대로이고,
         // 태그가 맞지 않는 무작위 bearer는 DB 조회 전에 거절해 토큰 폭주가 DB 부하가 되지 않게 한다
@@ -44,6 +45,25 @@ namespace Shinshi.Data.Auth
             RandomNumberGenerator.Fill(bytes.AsSpan(0, RANDOM_BYTES));
             WriteTag(bytes.AsSpan(0, RANDOM_BYTES), bytes.AsSpan(RANDOM_BYTES, TAG_BYTES));
             return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        }
+
+        public string CreateRotationToken(string domain, string refreshToken, string requestId)
+        {
+            if ((domain != REFRESH_DOMAIN) && (domain != ACCESS_DOMAIN))
+            {
+                throw new ArgumentException("Unsupported rotation token purpose.", nameof(domain));
+            }
+
+            byte[] bytes = Hash("shinshi.auth.rotation.v1." + domain, refreshToken + "\0" + requestId);
+            try
+            {
+                WriteTag(bytes.AsSpan(0, RANDOM_BYTES), bytes.AsSpan(RANDOM_BYTES, TAG_BYTES));
+                return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(bytes);
+            }
         }
 
         /// <summary> 형식과 이 키로 만든 태그를 DB 없이 확인한다. 실패한 토큰은 조회하지 않고 거절한다 </summary>

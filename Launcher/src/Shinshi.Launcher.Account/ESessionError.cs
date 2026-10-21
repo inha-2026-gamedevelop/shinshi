@@ -22,6 +22,7 @@ namespace Shinshi.Launcher.Account
         RefreshSuspended,
 
         // 서버가 갱신 토큰을 만료, 폐기로 거절했다(401). 저장된 로그인을 지웠으니 다시 로그인해야 한다
-        SessionLost
+        SessionLost,
+        StoreFailed
     }
 }

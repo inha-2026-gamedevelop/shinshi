@@ -83,8 +83,7 @@ namespace Shinshi.Launcher.Account
             return SendAsync<AuthExchangeResponse>(HttpMethod.Post, ApiRoutes.AUTH_EXCHANGE, request, null, cancellationToken);
         }
 
-        // 응답을 잃으면(IsOutcomeUnknown) 같은 갱신 토큰을 다시 보내지 않는다. 서버가 이미 회전했으면 재사용으로 보고 폐기한다.
-        // 빌드를 보내지 않으므로 서버는 점검만 확인한다
+        // 요청 ID 없는 구형 호출은 회전 응답 유실을 복구할 수 없다. 런처 세션은 아래 요청 ID 오버로드를 쓴다
         public Task<AuthApiResult<AuthExchangeResponse>> ExchangeRefreshAsync(string refreshToken,
             CancellationToken cancellationToken)
         {
@@ -92,6 +91,15 @@ namespace Shinshi.Launcher.Account
 
             AuthExchangeRequest request = new AuthExchangeRequest(null, refreshToken, null!);
             return SendAsync<AuthExchangeResponse>(HttpMethod.Post, ApiRoutes.AUTH_EXCHANGE, request, null, cancellationToken);
+        }
+
+        public Task<AuthApiResult<AuthExchangeResponse>> ExchangeRefreshAsync(string refreshToken, string requestId,
+            CancellationToken cancellationToken)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(refreshToken);
+            ArgumentException.ThrowIfNullOrEmpty(requestId);
+            return SendAsync<AuthExchangeResponse>(HttpMethod.Post, ApiRoutes.AUTH_EXCHANGE,
+                AuthExchangeRequest.ForRefresh(refreshToken, requestId), null, cancellationToken);
         }
 
         public Task<AuthApiResult<GameSessionIssueResponse>> IssueGameSessionAsync(string accessToken, ClientBuildInfo build,

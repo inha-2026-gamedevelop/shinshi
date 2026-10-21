@@ -381,6 +381,16 @@ namespace Shinshi.Launcher.ViewModels
         /// <summary> 로그인 화면의 로그인 단추. 비밀번호는 화면이 PasswordBox에서 읽어 넘기고 바로 지운다 </summary>
         public void Login(string password) { RunGuarded(() => LoginAsync(password)); }
 
+        public async Task PrepareToCloseAsync()
+        {
+            _lifetimeCts.Cancel();
+            _operationCts?.Cancel();
+            if (_session != null)
+            {
+                await _session.WaitForPendingOperationsAsync();
+            }
+        }
+
         public void Dispose()
         {
             _lifetimeCts.Cancel();
@@ -460,7 +470,7 @@ namespace Shinshi.Launcher.ViewModels
         // 시작할 때 받을 업데이트가 있으면 사용자가 누르지 않아도 바로 받는다. 새 설치는 크기와 위치를 사용자가 보고 고르게 자동으로 하지 않는다
         private async Task AutoUpdateAsync()
         {
-            if (_state != ELauncherState.UpdateAvailable)
+            if ((_state != ELauncherState.UpdateAvailable) || _lifetimeCts.IsCancellationRequested)
             {
                 return;
             }
@@ -491,6 +501,7 @@ namespace Shinshi.Launcher.ViewModels
                 IsRefreshSuspended = _state == ELauncherState.GameRunning
             };
             _session.StateChanged += OnSessionStateChanged;
+            RememberLogin = _session.HasStoredLogin;
             LauncherLog.Info("Account API configured. api=" + apiBaseUri.GetLeftPart(UriPartial.Authority));
         }
 
@@ -905,6 +916,10 @@ namespace Shinshi.Launcher.ViewModels
             {
                 LoginErrorText = AccountErrorText.ToLoginMessage(result);
             }
+            else if (result.IsStoreFailed)
+            {
+                ErrorMessage = "자동 로그인 정보를 저장하지 못했습니다. 저장 공간과 Account 폴더의 쓰기 권한을 확인해 주세요.";
+            }
         }
 
         private async Task LoginAsync(string password)
@@ -942,6 +957,10 @@ namespace Shinshi.Launcher.ViewModels
             }
 
             CurrentView = ELauncherView.Home;
+            if (result.IsStoreFailed)
+            {
+                ErrorMessage = "자동 로그인 정보를 저장하지 못했습니다. 저장 공간과 Account 폴더의 쓰기 권한을 확인해 주세요.";
+            }
         }
 
         private async Task LogoutAsync()
