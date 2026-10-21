@@ -16,13 +16,35 @@ dotnet test Launcher/Shinshi.Launcher.slnx
 | `src/Shinshi.Launcher.UI` | WPF 런처 화면. `launcher.json`의 `apiBaseUrl`(로그인·게임 시작), `websiteUrl`(회원가입 링크)을 읽는다 |
 | `tests/Shinshi.Launcher.Tests` | 위 프로젝트(화면 제외)의 단위 시험. Windows 전용(net10.0-windows) |
 
-런처는 시작할 때 업데이트가 있으면 로그인 여부와 무관하게 바로 받고, 자동 로그인은 그와 동시에 진행한다. 자동 로그인 갱신 응답을 잃어도(시간 초과, 502·504) 저장된 토큰은 지우지 않고 다음 자동 로그인에서 다시 시도하며, 서버가 401로 거절할 때만 지운다.
+런처는 시작할 때 업데이트가 있으면 로그인 여부와 무관하게 바로 받고, 자동 로그인은 그와 동시에 진행한다. 서버가 401과 TOKEN_EXPIRED/TOKEN_REVOKED를 함께 반환할 때만 저장된 토큰을 지우며, 프록시의 일반 401은 보존한다. 저장된 로그인이 있으면 자동 로그인 체크를 복원한다. 창을 닫을 때 진행 중인 토큰 회전과 저장이 끝날 때까지 기다린다.
+
+런처 1.0.2부터 갱신 요청 전에 임의 `refreshRequestId`를 이전 토큰과 함께 DPAPI로 저장한다. 응답 유실 시 같은 ID로 즉시 한 번 재시도하고, 재시작해도 그 ID를 이어 쓴다. 서버는 같은 요청에 최초 발급한 토큰과 만료 시각을 그대로 돌려준다. 저장 실패 시 갱신을 보내지 않는다. 다른 ID를 사용한 소비 토큰 재사용은 기존처럼 계열 전체를 폐기한다. 실제 만료·로그아웃·관리자 폐기는 복구하지 않는다.
+
+서버에는 먼저 `0022_refresh_rotation_retry` 마이그레이션과 새 API를 배포하고 런처를 배포한다. 서버 HMAC 키는 재시작 후에도 유지해야 한다. 구형 런처 요청은 계속 지원하지만 응답 유실 복구는 지원하지 않는다.
+
+`tests/Shinshi.Launcher.IntegrationTests`는 `SHINSHI_TEST_CONNECTION_STRING`으로 지정한 별도 PostgreSQL에 격리 스키마를 만들고 실제 API·DPAPI·런처를 연결한다. API 커밋 후 응답 유실을 주입하여 두 클라이언트 각 10회 복구와 API/런처 재시작 복구를 검사한다. 연결 문자열이 없으면 이 통합 시험은 건너뛴다.
 
 서비스 상태의 공지 제목(`notice`)이 비어 있으면 `notices` 목록에서 제목이 있는 Launcher 또는 Both 대상의 첫 공지를 표시한다.
 
 런처 세션을 받은 클라이언트는 Release 로비·캐릭터 선택/생성 흐름을 거쳐 마을 입장권을 요청한다. 신규 직업 생성 UI와 API 기본 허용 직업(0,1,2)의 공개 정책 대조는 남아 있다. `GameSessionRefresher`가 만료 5분 전 게임 세션을 회전하며, 회전 응답 유실 시 기존 토큰 재사용 복구는 하지 않고 재로그인을 안내한다. 실제 런처 경유 전체 흐름·다인 접속은 미검증이다.
 
 Windows 독립 실행 배포: `dotnet publish Launcher/src/Shinshi.Launcher.UI -c Release -r win-x64 --self-contained true -o <배포폴더>`. 해당 폴더에 `launcher.json`을 넣고 전체를 함께 배포한다. 개발 빌드는 `channel: internal`, `teamBuild: true`로 설정한다. 같은 PC의 데디서버가 설치를 막지 않도록 실행 중 검사는 런처 설치 루트 아래 게임으로 한정한다.
+
+## 설치 EXE 배포
+
+```powershell
+./Launcher/scripts/Build-Installer.ps1 -ConfigPath <launcher.json> -OutputDirectory <출력폴더>
+# LAN 테스트용 CA가 필요한 teamBuild에서만 추가한다.
+./Launcher/scripts/Build-Installer.ps1 -ConfigPath <launcher.json> -CertificatePath <공개-CA.cer> -OutputDirectory <출력폴더>
+```
+
+출력 `Shinshi-Setup.exe`를 홈페이지에서 제공한다. 인증서가 있으면 설치 화면에서 대상·SHA-256 지문을 알린 뒤 현재 사용자 Root 저장소에 등록한다. 공개 인증 HTTPS 배포에서는 CertificatePath를 생략한다. 이 인증서는 TLS 연결용이며 EXE Authenticode 서명이나 SmartScreen 평판을 대신하지 않는다.
+
+설치 파일은 `%LOCALAPPDATA%/Shinshi/launcher/versions/{패키지해시}/`에 `ShinshiLauncher.exe`와 `launcher.json` 두 개만 배치하고 바탕화면에 `신시 런처.lnk`를 만든다. 게임(`game/`), 토큰(`Account/`), 로그(`logs/`)는 기존 경로를 유지한다. 기존 ZIP 폴더를 지우거나 계정 파일을 이동하지 않는다. 재설치 시 동일 패키지는 복구하고 다른 패키지는 별도 폴더에 설치해 기존 파일을 보존한다. 런처 자체 자동 업데이트 기능은 별도다.
+
+`Shinshi-Setup.exe --verify-only`는 변경 없이 내장 ZIP·인증서 유효성을 검사한다. 자동 설치 검증은 `--accept-certificate-sha256 <승인한-인증서-SHA256>`으로 수행하며 지문이 다르면 설치하지 않는다. 일반 사용자는 인자 없이 실행한다.
+
+아이콘 원본은 `src/Shinshi.Launcher.UI/Assets/launcher.png`, Windows 다중 해상도 아이콘은 같은 폴더의 `launcher.ico`다. 재변환은 `scripts/Convert-LauncherIcon.ps1`을 사용한다. EXE·창·상단 로고·바로가기가 같은 아이콘을 사용한다. 빌드 중간 산출물은 Git 제외된 `.local/installer/`에 둔다.
 
 ## 로컬 게시
 

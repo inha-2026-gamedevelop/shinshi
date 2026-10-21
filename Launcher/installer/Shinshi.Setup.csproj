@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Shinshi-Setup</AssemblyName>
+    <ApplicationIcon>../src/Shinshi.Launcher.UI/Assets/launcher.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(PayloadPath)" LogicalName="LauncherPayload" Condition="'$(PayloadPath)' != ''" />
+    <EmbeddedResource Include="$(CertificatePath)" LogicalName="ServerCertificate" Condition="'$(CertificatePath)' != ''" />
+  </ItemGroup>
+</Project>

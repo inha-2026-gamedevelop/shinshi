@@ -107,6 +107,24 @@ namespace Shinshi.Data.Auth
         public Task<AuthExchangeOutcome> RotateRefreshAsync(string refreshToken,
             CancellationToken cancellationToken = default)
         {
+            return RotateRefreshCoreAsync(refreshToken, null, cancellationToken);
+        }
+
+        public Task<AuthExchangeOutcome> RotateRefreshAsync(string refreshToken, string requestId,
+            CancellationToken cancellationToken = default)
+        {
+            if (!Guid.TryParseExact(requestId, "N", out Guid parsed) || (parsed == Guid.Empty)
+                || (requestId != parsed.ToString("N")))
+            {
+                return Task.FromResult(AuthExchangeOutcome.Rejected(ContractCodes.RejectReason.TOKEN_REVOKED));
+            }
+
+            return RotateRefreshCoreAsync(refreshToken, requestId, cancellationToken);
+        }
+
+        private Task<AuthExchangeOutcome> RotateRefreshCoreAsync(string refreshToken, string? requestId,
+            CancellationToken cancellationToken)
+        {
             if (!_hasher.IsAuthentic(refreshToken))
             {
                 return Task.FromResult(AuthExchangeOutcome.Rejected(ContractCodes.RejectReason.TOKEN_REVOKED));
@@ -132,6 +150,13 @@ namespace Shinshi.Data.Auth
 
                 if (current.ConsumedAt.HasValue || current.RevokedAt.HasValue)
                 {
+                    if ((requestId != null) && (current.RotationRequestHash != null)
+                        && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(current.RotationRequestHash,
+                            _hasher.Hash(AuthTokenHasher.ROTATION_REQUEST_DOMAIN, requestId)))
+                    {
+                        return await ReplayRotationAsync(connection, transaction, current, refreshToken, requestId, token);
+                    }
+
                     // 재사용이 child 발급보다 먼저/나중에 도착해도 같은 family 잠금 안에서 전체를 폐기한다.
                     await RevokeFamilyRowsAsync(connection, transaction, current.FamilyId, token);
                     return AuthExchangeOutcome.Rejected(ContractCodes.RejectReason.TOKEN_REVOKED);
@@ -145,10 +170,12 @@ namespace Shinshi.Data.Auth
 
                 int changed = await connection.ExecuteAsync(Command(
                     """
-                    UPDATE auth_refresh_tokens SET consumed_at = clock_timestamp(), revoked_at = clock_timestamp()
+                    UPDATE auth_refresh_tokens SET consumed_at = clock_timestamp(), revoked_at = clock_timestamp(),
+                        rotation_request_hash = @RequestHash
                     WHERE token_id = @TokenId AND consumed_at IS NULL AND revoked_at IS NULL
                         AND expires_at > clock_timestamp();
-                    """, new { current.TokenId }, transaction, token));
+                    """, new { current.TokenId, RequestHash = requestId == null ? null
+                        : _hasher.Hash(AuthTokenHasher.ROTATION_REQUEST_DOMAIN, requestId) }, transaction, token));
                 if (changed == 0)
                 {
                     return AuthExchangeOutcome.Rejected(ContractCodes.RejectReason.TOKEN_EXPIRED);
@@ -161,7 +188,9 @@ namespace Shinshi.Data.Auth
                     WHERE parent_token_id = @TokenId;
                     """, new { current.TokenId }, transaction, token));
                 return await InsertTokenPairAsync(connection, transaction, current.AccountId,
-                    current.FamilyId, current.TokenId, token);
+                    current.FamilyId, current.TokenId, token,
+                    requestId == null ? null : _hasher.CreateRotationToken(AuthTokenHasher.REFRESH_DOMAIN, refreshToken, requestId),
+                    requestId == null ? null : _hasher.CreateRotationToken(AuthTokenHasher.ACCESS_DOMAIN, refreshToken, requestId));
             }, cancellationToken);
         }
 
@@ -457,12 +486,13 @@ namespace Shinshi.Data.Auth
         }
 
         private async Task<AuthExchangeOutcome> InsertTokenPairAsync(NpgsqlConnection connection,
-            NpgsqlTransaction transaction, Guid accountId, Guid familyId, Guid? previousId, CancellationToken token)
+            NpgsqlTransaction transaction, Guid accountId, Guid familyId, Guid? previousId, CancellationToken token,
+            string? refreshValue = null, string? accessValue = null)
         {
             Guid refreshId = Guid.NewGuid();
             Guid accessId = Guid.NewGuid();
-            string refresh = _hasher.CreateToken();
-            string access = _hasher.CreateToken();
+            string refresh = refreshValue ?? _hasher.CreateToken();
+            string access = accessValue ?? _hasher.CreateToken();
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             DateTime refreshExpires = now.AddHours(REFRESH_HOURS);
             DateTime accessExpires = now.AddMinutes(ACCESS_MINUTES);
@@ -545,7 +575,8 @@ namespace Shinshi.Data.Auth
             return connection.QuerySingleOrDefaultAsync<RefreshRow>(Command(
                 """
                 SELECT token_id AS "TokenId", account_id AS "AccountId", family_id AS "FamilyId",
-                    expires_at AS "ExpiresAt", revoked_at AS "RevokedAt", consumed_at AS "ConsumedAt"
+                    expires_at AS "ExpiresAt", revoked_at AS "RevokedAt", consumed_at AS "ConsumedAt",
+                    replaced_by_token_id AS "ReplacedByTokenId", rotation_request_hash AS "RotationRequestHash"
                 FROM auth_refresh_tokens WHERE token_hash = @Hash;
                 """, new { Hash = hash }, transaction, token));
         }
@@ -639,6 +670,8 @@ namespace Shinshi.Data.Auth
 
         private sealed class RefreshRow
         {
+            public Guid? ReplacedByTokenId { get; set; }
+            public byte[]? RotationRequestHash { get; set; }
             public Guid TokenId { get; set; }
             public Guid AccountId { get; set; }
             public Guid FamilyId { get; set; }

@@ -63,6 +63,13 @@ namespace Shinshi.Backend
             string buildId = request?.Build?.BuildId ?? string.Empty;
             bool invite = !string.IsNullOrEmpty(request?.InviteCode);
             bool refresh = !string.IsNullOrEmpty(request?.RefreshToken);
+            string? requestId = request?.RefreshRequestId;
+            if ((requestId != null) && (!refresh || !Guid.TryParseExact(requestId, "N", out Guid parsedRequestId)
+                || (parsedRequestId == Guid.Empty) || (requestId != parsedRequestId.ToString("N"))))
+            {
+                return ApiResponseFactory.Reject(StatusCodes.Status400BadRequest,
+                    ContractCodes.RejectReason.INVALID_INVITE_CODE, buildId, _timeProvider);
+            }
             int methods = (invite ? 1 : 0) + (refresh ? 1 : 0) + (credentials ? 1 : 0);
             if ((request == null) || (methods != 1))
             {
@@ -85,7 +92,9 @@ namespace Shinshi.Backend
 
             AuthExchangeOutcome outcome = invite
                 ? await _repository.ExchangeInviteAsync(request.InviteCode, cancellationToken)
-                : await _repository.RotateRefreshAsync(request.RefreshToken, cancellationToken);
+                : requestId == null
+                    ? await _repository.RotateRefreshAsync(request.RefreshToken, cancellationToken)
+                    : await _repository.RotateRefreshAsync(request.RefreshToken, requestId, cancellationToken);
             if (!outcome.IsSuccess)
             {
                 // 우리 키로 만든 갱신 토큰의 만료, 재사용 폐기는 정상 클라이언트에게도 생긴다. 태그가 틀린 자격만 무차별 대입으로 센다

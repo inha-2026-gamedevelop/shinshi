@@ -26,6 +26,8 @@ namespace Shinshi.Launcher.Account
 
         // 첫 요청과, 접근 토큰이 거절된 뒤 갱신하고 한 번 더
         private const int MAX_ISSUE_ATTEMPTS = 2;
+        private const int MAX_REFRESH_ATTEMPTS = 2;
+        private const int REFRESH_RETRY_DELAY_MS = 250;
 
         private readonly AuthApiClient      _api;
         private readonly IRefreshTokenStore _store;
@@ -95,6 +97,12 @@ namespace Shinshi.Launcher.Account
         }
 
         public void Dispose() { _gate.Dispose(); }
+
+        public async Task WaitForPendingOperationsAsync()
+        {
+            await _gate.WaitAsync().ConfigureAwait(false);
+            _gate.Release();
+        }
 
         /// <summary> 아이디, 비밀번호로 로그인한다. remember면 갱신 토큰을 저장해 다음 실행에 자동 로그인한다 </summary>
         public async Task<SessionResult> LoginWithCredentialsAsync(string loginId, string password, bool remember,
@@ -333,7 +341,7 @@ namespace Shinshi.Launcher.Account
             return api.IsSuccess ? SessionResult.Success() : SessionResult.Fail(ESessionError.ApiFailed, api);
         }
 
-        // _gate를 잡은 상태에서만 부른다. 취소를 넘기지 않는 이유는 보낸 뒤 취소하면 응답을 잃은 것과 같아 로그인을 버려야 하기 때문이다
+        // _gate를 잡고 요청 ID 저장부터 응답 적용까지 직렬화한다. 창 종료도 이 저장이 끝날 때까지 기다린다
         private async Task<SessionResult> RefreshLockedAsync(string refreshToken, bool remember)
         {
             if (_isRefreshSuspended)
@@ -341,8 +349,21 @@ namespace Shinshi.Launcher.Account
                 return SessionResult.Fail(ESessionError.RefreshSuspended);
             }
 
-            AuthApiResult<AuthExchangeResponse> result = await _api.ExchangeRefreshAsync(refreshToken, CancellationToken.None)
+            string requestId = Guid.NewGuid().ToString("N");
+            if (remember && !_store.TryPrepareRefresh(refreshToken, out requestId))
+            {
+                return SessionResult.Fail(ESessionError.StoreFailed);
+            }
+
+            AuthApiResult<AuthExchangeResponse> result = await _api.ExchangeRefreshAsync(refreshToken, requestId, CancellationToken.None)
                 .ConfigureAwait(false);
+            for (int attempt = 1; (attempt < MAX_REFRESH_ATTEMPTS) && !result.IsSuccess
+                && (result.IsOutcomeUnknown || (result.Error == EAuthApiError.Unreachable)
+                    || (result.Error == EAuthApiError.ServerError)); ++attempt)
+            {
+                await Task.Delay(REFRESH_RETRY_DELAY_MS).ConfigureAwait(false);
+                result = await _api.ExchangeRefreshAsync(refreshToken, requestId, CancellationToken.None).ConfigureAwait(false);
+            }
             if (result.IsSuccess && IsUsable(result.Value))
             {
                 return Apply(result.Value!, remember);
@@ -351,16 +372,15 @@ namespace Shinshi.Launcher.Account
             AuthApiResult failure = ToFailure(result);
 
             // 서버가 토큰이 만료, 폐기됐다고 답했다. 이 경우만 저장된 로그인을 지우고 재로그인을 요구한다
-            if (failure.Error == EAuthApiError.Unauthorized)
+            if ((failure.Error == EAuthApiError.Unauthorized)
+                && ((failure.ReasonCode == ContractCodes.RejectReason.TOKEN_EXPIRED)
+                    || (failure.ReasonCode == ContractCodes.RejectReason.TOKEN_REVOKED)))
             {
                 ClearLocked();
                 return SessionResult.Fail(ESessionError.SessionLost, failure);
             }
 
-            // 응답을 잃었으면 서버가 회전했는지 알 수 없다. 이번 실행에서는 같은 토큰을 바로 다시 보내지 않게 메모리 로그인만 버리고,
-            // 저장된 토큰은 남겨 다음 자동 로그인에서 한 번 더 보낸다. 서버가 처리하지 않았으면 그대로 이어지고, 이미 회전했으면
-            // 서버가 재사용으로 보고 그 로그인 묶음만 폐기해 401을 돌려주므로 그때 지운다. 업데이트 배포 중 API 재시작(502, 504)이나
-            // 다운로드로 생긴 시간 초과 때문에 자동 로그인이 사라지던 문제를 막는다
+            // 재시도까지 실패하면 저장된 토큰과 요청 ID를 유지한다. 재실행도 같은 회전 결과를 받는다.
             if (failure.IsOutcomeUnknown)
             {
                 ForgetInMemoryLocked();

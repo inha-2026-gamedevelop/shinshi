@@ -34,6 +34,8 @@ namespace Shinshi.Launcher.Presentation
                     return string.Empty;
                 case ESessionError.InvalidInput:
                     return "아이디는 4~16자의 영문 소문자, 숫자, _이고 비밀번호를 입력해야 합니다.";
+                case ESessionError.StoreFailed:
+                    return "자동 로그인 복구 정보를 저장하지 못해 갱신하지 않았습니다. 저장 공간과 폴더 권한을 확인해 주세요.";
                 case ESessionError.Busy:
                     return "이미 로그인 중입니다.";
                 case ESessionError.RefreshSuspended:

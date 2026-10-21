@@ -8,5 +8,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Shinshi.Launcher.Tests/Shinshi.Launcher.Tests.csproj" />
+    <Project Path="tests/Shinshi.Launcher.IntegrationTests/Shinshi.Launcher.IntegrationTests.csproj" />
   </Folder>
 </Solution>

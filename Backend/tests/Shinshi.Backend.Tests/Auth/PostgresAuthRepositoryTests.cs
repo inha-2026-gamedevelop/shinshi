@@ -465,6 +465,117 @@ namespace Shinshi.Backend.Tests.Auth
             return new DungeonJoinGrant(fixture.SessionId, fixture.ParticipantId, fixture.AccountId, fixture.CharacterId,
                 fixture.InstanceId, "127.0.0.1", 7780, TimeSpan.FromMilliseconds(JOIN_DURATION_MILLISECONDS), DateTimeOffset.MaxValue);
         }
+        [PostgresFact]
+        public async Task RotateRefreshAsync_SameRequestAfterRestart_ReplaysWithoutExtendingExpiryOrRevokingGame()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse initial = await LoginAsync(fixture);
+            string requestId = Guid.NewGuid().ToString("N");
+            AuthExchangeResponse first = (await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).Response!;
+            PlayerAuthIdentity identity = (await fixture.Repository.ValidateAccessAsync(first.AccessToken)).Identity!;
+            IssuedAuthToken game = await fixture.Repository.IssueGameSessionAsync(identity, TimeSpan.FromMinutes(CHILD_DURATION_MINUTES));
+            PostgresAuthRepository restarted = new PostgresAuthRepository(database.DataSource, fixture.Options);
+            AuthExchangeResponse replay = (await restarted.RotateRefreshAsync(initial.RefreshToken, requestId)).Response!;
+            Assert.Equal(first.AccessToken, replay.AccessToken);
+            Assert.Equal(first.RefreshToken, replay.RefreshToken);
+            Assert.Equal(first.AccessTokenExpiresAtUnixMs, replay.AccessTokenExpiresAtUnixMs);
+            Assert.Equal(first.RefreshTokenExpiresAtUnixMs, replay.RefreshTokenExpiresAtUnixMs);
+            Assert.True((await restarted.ValidateGameSessionAsync(game.Token)).IsSuccess);
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            Assert.Equal(2L, await connection.QuerySingleAsync<long>("SELECT COUNT(*) FROM auth_refresh_tokens;"));
+        }
+
+        [PostgresFact]
+        public async Task RotateRefreshAsync_ConcurrentSameRequest_TenRoundsReturnOnePair()
+        {
+            const int ROUNDS = 10;
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse current = await LoginAsync(fixture);
+            for (int round = 0; round < ROUNDS; ++round)
+            {
+                string requestId = Guid.NewGuid().ToString("N");
+                AuthExchangeOutcome[] outcomes = await Task.WhenAll(
+                    fixture.Repository.RotateRefreshAsync(current.RefreshToken, requestId),
+                    fixture.Repository.RotateRefreshAsync(current.RefreshToken, requestId));
+                Assert.All(outcomes, outcome => Assert.True(outcome.IsSuccess));
+                Assert.Equal(outcomes[0].Response!.RefreshToken, outcomes[1].Response!.RefreshToken);
+                Assert.Equal(outcomes[0].Response!.AccessToken, outcomes[1].Response!.AccessToken);
+                current = outcomes[0].Response!;
+            }
+
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            Assert.Equal(ROUNDS + 1L, await connection.QuerySingleAsync<long>("SELECT COUNT(*) FROM auth_refresh_tokens;"));
+        }
+
+        [PostgresFact]
+        public async Task RotateRefreshAsync_DifferentRequest_RevokesFamily()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse initial = await LoginAsync(fixture);
+            AuthExchangeResponse first = (await fixture.Repository.RotateRefreshAsync(initial.RefreshToken,
+                Guid.NewGuid().ToString("N"))).Response!;
+            Assert.False((await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, Guid.NewGuid().ToString("N"))).IsSuccess);
+            Assert.False((await fixture.Repository.ValidateAccessAsync(first.AccessToken)).IsSuccess);
+        }
+
+        [PostgresFact]
+        public async Task RotateRefreshAsync_ReplayAfterLogout_DoesNotResurrectLogin()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse initial = await LoginAsync(fixture);
+            string requestId = Guid.NewGuid().ToString("N");
+            AuthExchangeResponse first = (await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).Response!;
+            await fixture.Repository.RevokeFamilyByRefreshTokenAsync(first.RefreshToken);
+            Assert.False((await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).IsSuccess);
+        }
+
+        [PostgresFact]
+        public async Task RotateRefreshAsync_StaleMatchingRequest_DoesNotRevokeNewerGeneration()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse initial = await LoginAsync(fixture);
+            string requestId = Guid.NewGuid().ToString("N");
+            AuthExchangeResponse first = (await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).Response!;
+            AuthExchangeResponse next = (await fixture.Repository.RotateRefreshAsync(first.RefreshToken, Guid.NewGuid().ToString("N"))).Response!;
+            Assert.False((await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).IsSuccess);
+            Assert.True((await fixture.Repository.ValidateAccessAsync(next.AccessToken)).IsSuccess);
+        }
+
+        [PostgresFact]
+        public async Task RotateRefreshAsync_ExpiredChild_CannotExtendLoginByReplay()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse initial = await LoginAsync(fixture);
+            string requestId = Guid.NewGuid().ToString("N");
+            await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId);
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync("UPDATE auth_refresh_tokens SET expires_at=clock_timestamp()-INTERVAL '1 second';");
+            Assert.Equal(ContractCodes.RejectReason.TOKEN_EXPIRED,
+                (await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).ReasonCode);
+        }
+
+        [PostgresFact]
+        public async Task RotateRefreshAsync_AccessExpiredBeforeRetry_RecoversRefreshWithoutExtendingAccess()
+        {
+            await using PostgresTestDatabase database = await PostgresTestDatabase.CreateAsync();
+            Fixture fixture = await CreateFixtureAsync(database);
+            AuthExchangeResponse initial = await LoginAsync(fixture);
+            string requestId = Guid.NewGuid().ToString("N");
+            AuthExchangeResponse first = (await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).Response!;
+            await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
+            await connection.ExecuteAsync("UPDATE auth_access_tokens SET expires_at=clock_timestamp()-INTERVAL '1 second';");
+            AuthExchangeResponse replay = (await fixture.Repository.RotateRefreshAsync(initial.RefreshToken, requestId)).Response!;
+            Assert.Equal(first.RefreshToken, replay.RefreshToken);
+            Assert.True(replay.AccessTokenExpiresAtUnixMs < replay.ServerTimeUnixMs);
+            Assert.True((await fixture.Repository.RotateRefreshAsync(replay.RefreshToken, Guid.NewGuid().ToString("N"))).IsSuccess);
+        }
+
         private static async Task<Fixture> CreateFixtureAsync(PostgresTestDatabase database)
         {
             GrowthContent content = GrowthContent.LoadEmbedded();

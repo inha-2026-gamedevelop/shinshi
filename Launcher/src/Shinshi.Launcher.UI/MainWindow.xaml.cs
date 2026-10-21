@@ -1,5 +1,6 @@
 // System
 using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +28,9 @@ namespace Shinshi.Launcher
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         private const int DWMWCP_ROUND                   = 2;
 
+        private bool _isClosing;
+        private bool _canClose;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -36,6 +40,36 @@ namespace Shinshi.Launcher
             InitializeComponent();
             SourceInitialized += OnSourceInitialized;
             StateChanged      += OnWindowStateChanged;
+            Closing           += OnClosing;
+        }
+
+        private async void OnClosing(object? sender, CancelEventArgs e)
+        {
+            if (_canClose)
+            {
+                return;
+            }
+
+            e.Cancel = true;
+            if (_isClosing)
+            {
+                return;
+            }
+
+            _isClosing = true;
+            IsEnabled = false;
+            try
+            {
+                if (DataContext is MainViewModel viewModel)
+                {
+                    await viewModel.PrepareToCloseAsync();
+                }
+            }
+            finally
+            {
+                _canClose = true;
+                _ = Dispatcher.BeginInvoke(new Action(Close));
+            }
         }
 
         private void OnSourceInitialized(object? sender, EventArgs e)

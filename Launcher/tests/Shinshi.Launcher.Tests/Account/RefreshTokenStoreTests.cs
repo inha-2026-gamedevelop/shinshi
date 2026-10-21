@@ -48,6 +48,23 @@ namespace Shinshi.Launcher.Tests.Account
         }
 
         [Fact]
+        public void TryPrepareRefresh_Restart_PreservesRequestUntilRotatedTokenIsSaved()
+        {
+            RefreshTokenStore store = CreateStore();
+            Assert.True(store.TrySave(TOKEN));
+            Assert.True(store.TryPrepareRefresh(TOKEN, out string first));
+            RefreshTokenStore restarted = new RefreshTokenStore(store.FilePath);
+            Assert.True(restarted.TryLoad(out string? token));
+            Assert.Equal(TOKEN, token);
+            Assert.True(restarted.TryPrepareRefresh(TOKEN, out string retry));
+            Assert.Equal(first, retry);
+            Assert.False(Contains(File.ReadAllBytes(store.FilePath), Encoding.UTF8.GetBytes(first)));
+            Assert.True(restarted.TrySave(OTHER_TOKEN));
+            Assert.True(restarted.TryPrepareRefresh(OTHER_TOKEN, out string next));
+            Assert.NotEqual(first, next);
+        }
+
+        [Fact]
         public void TrySave_FileDoesNotContainPlaintext()
         {
             RefreshTokenStore store = CreateStore();

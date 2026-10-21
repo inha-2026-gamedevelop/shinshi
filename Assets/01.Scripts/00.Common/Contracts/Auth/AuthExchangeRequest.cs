@@ -14,9 +14,9 @@ namespace Shinshi.Contracts
         // 첫 로그인. 운영자가 발급한 일회용 코드이며 교환과 함께 소비된다
         [DataMember(Name = "inviteCode")]   private string          _inviteCode;
 
-        // 자동 로그인. 회전형이라 응답을 잃으면 같은 토큰을 다시 보내지 않고 재로그인한다
-        // TODO(민성): 갱신을 이 요청으로 받을지 별도 경로로 둘지 기획 미정
+        // 자동 로그인. 재시도는 최초 전송 전에 보관한 refreshRequestId를 같은 토큰과 함께 보낸다
         [DataMember(Name = "refreshToken")] private string          _refreshToken;
+        [DataMember(Name = "refreshRequestId", EmitDefaultValue = false)] private string _refreshRequestId;
 
         // 런처와 홈페이지의 일반 로그인. 비밀번호는 이 요청에만 싣고 로그와 파일에 남기지 않는다
         [DataMember(Name = "loginId")]      private string          _loginId;
@@ -31,6 +31,7 @@ namespace Shinshi.Contracts
 
         public string          InviteCode   => _inviteCode;
         public string          RefreshToken => _refreshToken;
+        public string          RefreshRequestId => _refreshRequestId;
         public string          LoginId      => _loginId;
         public string          Password     => _password;
         public ClientBuildInfo Build        => _build;
@@ -56,5 +57,12 @@ namespace Shinshi.Contracts
         }
 
         private AuthExchangeRequest() { }
+
+        public static AuthExchangeRequest ForRefresh(string refreshToken, string requestId)
+        {
+            var request = new AuthExchangeRequest(null, refreshToken, null);
+            request._refreshRequestId = requestId;
+            return request;
+        }
     }
 }
