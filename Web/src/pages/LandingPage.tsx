@@ -75,7 +75,7 @@ export function LandingPage() {
             </Button>}
           </div>
           <p id="launcher-status" className="mt-3 text-[13px] text-muted">
-            {HAS_DOWNLOAD ? 'Windows 64비트 · 압축 해제 후 ShinshiLauncher.exe 실행 → 설치 → 로그인 → 게임 시작' : '런처 내려받기는 준비 중입니다.'}
+            {HAS_DOWNLOAD ? 'Windows 64비트 · 설치 EXE 실행 → 바탕화면의 신시 런처 실행 → 게임 설치 → 로그인' : '런처 내려받기는 준비 중입니다.'}
           </p>
         </div>
       </section>

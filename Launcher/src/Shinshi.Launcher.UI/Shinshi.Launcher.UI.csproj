@@ -5,10 +5,12 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>Shinshi.Launcher</RootNamespace>
     <AssemblyName>ShinshiLauncher</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.0.2</Version>
+    <ApplicationIcon>Assets/launcher.ico</ApplicationIcon>
     <Product>SHINSHI Launcher</Product>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/launcher.ico" />
     <ProjectReference Include="../Shinshi.Patch.Core/Shinshi.Patch.Core.csproj" />
     <ProjectReference Include="../Shinshi.Patch.Client/Shinshi.Patch.Client.csproj" />
     <ProjectReference Include="../Shinshi.Launcher.Account/Shinshi.Launcher.Account.csproj" />

@@ -24,6 +24,22 @@ dotnet test Launcher/Shinshi.Launcher.slnx
 
 Windows 독립 실행 배포: `dotnet publish Launcher/src/Shinshi.Launcher.UI -c Release -r win-x64 --self-contained true -o <배포폴더>`. 해당 폴더에 `launcher.json`을 넣고 전체를 함께 배포한다. 개발 빌드는 `channel: internal`, `teamBuild: true`로 설정한다. 같은 PC의 데디서버가 설치를 막지 않도록 실행 중 검사는 런처 설치 루트 아래 게임으로 한정한다.
 
+## 설치 EXE 배포
+
+```powershell
+./Launcher/scripts/Build-Installer.ps1 -ConfigPath <launcher.json> -OutputDirectory <출력폴더>
+# LAN 테스트용 CA가 필요한 teamBuild에서만 추가한다.
+./Launcher/scripts/Build-Installer.ps1 -ConfigPath <launcher.json> -CertificatePath <공개-CA.cer> -OutputDirectory <출력폴더>
+```
+
+출력 `Shinshi-Setup.exe`를 홈페이지에서 제공한다. 인증서가 있으면 설치 화면에서 대상·SHA-256 지문을 알린 뒤 현재 사용자 Root 저장소에 등록한다. 공개 인증 HTTPS 배포에서는 CertificatePath를 생략한다. 이 인증서는 TLS 연결용이며 EXE Authenticode 서명이나 SmartScreen 평판을 대신하지 않는다.
+
+설치 파일은 `%LOCALAPPDATA%/Shinshi/launcher/versions/{패키지해시}/`에 `ShinshiLauncher.exe`와 `launcher.json` 두 개만 배치하고 바탕화면에 `신시 런처.lnk`를 만든다. 게임(`game/`), 토큰(`Account/`), 로그(`logs/`)는 기존 경로를 유지한다. 기존 ZIP 폴더를 지우거나 계정 파일을 이동하지 않는다. 재설치 시 동일 패키지는 복구하고 다른 패키지는 별도 폴더에 설치해 기존 파일을 보존한다. 런처 자체 자동 업데이트 기능은 별도다.
+
+`Shinshi-Setup.exe --verify-only`는 변경 없이 내장 ZIP·인증서 유효성을 검사한다. 자동 설치 검증은 `--accept-certificate-sha256 <승인한-인증서-SHA256>`으로 수행하며 지문이 다르면 설치하지 않는다. 일반 사용자는 인자 없이 실행한다.
+
+아이콘 원본은 `src/Shinshi.Launcher.UI/Assets/launcher.png`, Windows 다중 해상도 아이콘은 같은 폴더의 `launcher.ico`다. 재변환은 `scripts/Convert-LauncherIcon.ps1`을 사용한다. EXE·창·상단 로고·바로가기가 같은 아이콘을 사용한다. 빌드 중간 산출물은 Git 제외된 `.local/installer/`에 둔다.
+
 ## 로컬 게시
 
 Unity 빌드(`Shinshi/Build/...` 메뉴)의 `BuildIdentityWriter` 후처리는 끝날 때 `Shinshi_Data/StreamingAssets/build-identity.json`을 쓴다. 게시 도구는 이 파일이 없으면 게임을 게시하지 않는다.
