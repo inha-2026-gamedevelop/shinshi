@@ -924,12 +924,16 @@ namespace Shinshi.AI
             OnWarpDeparted(castId, departure, serverTime);
         }
 
-        // 추적기가 찾은 참가자 몸체를 앵커가 필요한 세 표현에 함께 넣는다. null이면 지운다
+        // 추적기가 찾은 참가자 몸체를 앵커가 필요한 네 표현에 함께 넣는다. null이면 지운다
         private void SetParticipantAnchor(int combatId, Transform anchor)
         {
             SetWardMemberAnchor(combatId, anchor);
             SetSealMemberAnchor(combatId, anchor);
             SetFinalParticipantAnchor(combatId, anchor);
+            if (_talismanView != null)
+            {
+                _talismanView.SetMemberAnchor(combatId, anchor);
+            }
         }
 
         private void InjectAnchors()

@@ -4,6 +4,9 @@ using System.Collections.Generic;
 // Unity
 using UnityEngine;
 
+// 프로젝트 내부
+using Shinshi.Data;
+
 namespace Shinshi.AI
 {
     // 프리뷰(Dev_MucheolMotionVfxPreview)에서 확정한 패턴별 VFX 원본과 크기, 각도다.
@@ -24,8 +27,17 @@ namespace Shinshi.AI
         public const float DASH_8M_WIDTH  = 0.83333f;
         public const float DASH_8M_LENGTH = 0.44444f;
         public const float SIDE_YAW       = 30f;    // 도, 좌우 60도 구역의 중심 각도
-        public const float GROUND_LIFT    = 0.025f; // m, 바닥 겹침을 피하는 높이, 프리뷰와 같다
+        public const float GROUND_LIFT    = 0.08f;  // m, 바닥 겹침을 피하는 높이, 실전 맵 바닥에 묻혀 프리뷰(0.025)보다 올렸다
         public const float DASH_PATH_LENGTH = 18f;  // m, 원본 06 경로 길이(크기 1)
+
+        // 하드 정의(mucheol_hard_...)는 이지와 같은 원본을 쓰되 범위가 커서 크기를 곱한다. 부채꼴 사거리 5m는 7m(1.4배, 폭도 같은 비율),
+        // 원형은 5m가 6.5m(1.3배), 돌진 폭은 2.5m가 3m(1.2배)와 3m가 3.5m(7/6배), 순차 타격의 직선 길이 6m는 8m(4/3배)다.
+        // 서버 하드 정의와 실행 데이터의 값과 같아야 하며, 값을 바꾸면 함께 바꾼다
+        private const float HARD_FAN_SCALE      = 1.4f;
+        private const float HARD_CIRCLE_SCALE   = 1.3f;
+        private const float HARD_DASH_8M_WIDTH  = 1.2f;
+        private const float HARD_DASH_18M_WIDTH = 3.5f / 3f;
+        private const float HARD_LINE_LENGTH    = 8f / 6f;
 
         private struct Entry
         {
@@ -58,6 +70,24 @@ namespace Shinshi.AI
             { MucheolMotionCatalog.P2_P07_ID, Make(EMucheolVfxSource.Battlefield, Uniform(EMucheolVfxTemplate.Battlefield07)) },
         };
 
+        // 하드 정의가 있는 이지 ID별 단계 크기 배율. 단계가 배율 수보다 많으면 마지막 배율을 쓴다
+        private static readonly Dictionary<string, Vector3[]> G_HardScales = new Dictionary<string, Vector3[]>
+        {
+            { MucheolMotionCatalog.P1_P01_ID, new[] { FanScale() } },
+            { MucheolMotionCatalog.P1_P02_ID, new[] { FanScale() } },
+            { MucheolMotionCatalog.P1_P03_ID, new[] { DashScale(HARD_DASH_8M_WIDTH) } },
+            { MucheolMotionCatalog.P1_P04_ID, new[] { CircleScale() } },
+            { MucheolMotionCatalog.P1_P05_ID, new[] { FanScale() } },
+            { MucheolMotionCatalog.P1_P06_ID, new[] { DashScale(HARD_DASH_18M_WIDTH) } },
+
+            { MucheolMotionCatalog.P2_P01_ID, new[] { FanScale() } },
+            { MucheolMotionCatalog.P2_P02_ID, new[] { FanScale(), new Vector3(1f, 1f, HARD_LINE_LENGTH) } },
+            { MucheolMotionCatalog.P2_P03_ID, new[] { DashScale(HARD_DASH_8M_WIDTH) } },
+            { MucheolMotionCatalog.P2_P04_ID, new[] { CircleScale() } },
+            { MucheolMotionCatalog.P2_P05_ID, new[] { FanScale() } },
+            { MucheolMotionCatalog.P2_P06_ID, new[] { DashScale(HARD_DASH_18M_WIDTH) } },
+        };
+
         /****************************************
         *              Properties
         ****************************************/
@@ -71,12 +101,14 @@ namespace Shinshi.AI
 
         public static bool Handles(string patternId)
         {
+            patternId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
             return (patternId != null) && G_Entries.ContainsKey(patternId);
         }
 
         public static bool TryGetSource(string patternId, out EMucheolVfxSource source)
         {
             source = EMucheolVfxSource.BasicStrike;
+            patternId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
             if ((patternId == null) || (!G_Entries.TryGetValue(patternId, out Entry entry)))
             {
                 return false;
@@ -91,28 +123,38 @@ namespace Shinshi.AI
         public static bool TryGetCue(string patternId, int index, out MucheolVfxCue cue)
         {
             cue = default;
-            if ((patternId == null) || (index < 0) || (!G_Entries.TryGetValue(patternId, out Entry entry)))
+            string baseId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
+            if ((baseId == null) || (index < 0) || (!G_Entries.TryGetValue(baseId, out Entry entry)))
             {
                 return false;
             }
 
-            if (index < entry.Cues.Length)
+            int cueIndex = index;
+            if (index >= entry.Cues.Length)
             {
-                cue = entry.Cues[index];
-                return true;
+                if (entry.Source != EMucheolVfxSource.MultiDash)
+                {
+                    return false;
+                }
+
+                cueIndex = entry.Cues.Length - 1;
             }
 
-            if (entry.Source == EMucheolVfxSource.MultiDash)
+            cue = entry.Cues[cueIndex];
+
+            // 하드 전용 ID면 범위가 커진 만큼 크기를 키운다
+            if ((baseId != patternId) && G_HardScales.TryGetValue(baseId, out Vector3[] scales))
             {
-                cue = entry.Cues[entry.Cues.Length - 1];
-                return true;
+                Vector3 multiplier = scales[Mathf.Min(cueIndex, scales.Length - 1)];
+                cue = new MucheolVfxCue(cue.Template, Vector3.Scale(cue.Scale, multiplier), cue.YawDegrees);
             }
 
-            return false;
+            return true;
         }
 
         public static int CueCount(string patternId)
         {
+            patternId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
             return ((patternId != null) && G_Entries.TryGetValue(patternId, out Entry entry)) ? entry.Cues.Length : 0;
         }
 
@@ -129,6 +171,21 @@ namespace Shinshi.AI
         private static MucheolVfxCue Dash(float width, float length)
         {
             return new MucheolVfxCue(EMucheolVfxTemplate.DashPath06, new Vector3(width, 1f, length));
+        }
+
+        private static Vector3 FanScale()
+        {
+            return new Vector3(HARD_FAN_SCALE, 1f, HARD_FAN_SCALE);
+        }
+
+        private static Vector3 CircleScale()
+        {
+            return new Vector3(HARD_CIRCLE_SCALE, HARD_CIRCLE_SCALE, HARD_CIRCLE_SCALE);
+        }
+
+        private static Vector3 DashScale(float widthScale)
+        {
+            return new Vector3(widthScale, 1f, 1f);
         }
 
         private static MucheolVfxCue Uniform(EMucheolVfxTemplate template)

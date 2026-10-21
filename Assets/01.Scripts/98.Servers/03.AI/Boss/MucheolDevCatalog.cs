@@ -251,6 +251,39 @@ namespace Shinshi.AI
                 new MucheolMultiDashSpec(2, 3, 0.75f, 0.6f), new MucheolBattlefieldSpec(P07_PUSH_DISTANCE));
         }
 
+        /// <summary> 하드 P05 콤보의 타 목록. 이지(5m, 0.14와 0.24)보다 사거리를 7m로, 피해를 약 1.15배로 키운 시험용 값이다 </summary>
+        public static MucheolComboSpec CreateHardComboSpec()
+        {
+            return new MucheolComboSpec(new MucheolComboHit(7f, 120f, 0.16f, 0f), new MucheolComboHit(7f, 70f, 0.28f, 0.5f));
+        }
+
+        /// <summary>
+        /// 하드 2페이즈 P01, P02, P04, P05의 시험용 실행 데이터. 하드 정의(mucheol_hard_ph2_...)의 사거리 7m(P04는 반경 6.5m)와 실행 시간에 맞춘다.
+        /// 돌진 둘(P03, P06)과 P07은 이지와 같은 데이터다(돌진 폭은 정의가 정한다)
+        /// </summary>
+        public static MucheolPhase2Spec CreateHardPhaseTwoSpec()
+        {
+            var p01 = new MucheolSequenceSpec(
+                MucheolSequenceStep.Fan(7f, 60f, -30f, 0.18f, 0f),
+                MucheolSequenceStep.Fan(7f, 60f, 30f, 0.18f, 0.35f));
+
+            var p02 = new MucheolSequenceSpec(
+                MucheolSequenceStep.Fan(7f, 70f, 0f, 0.35f, 0f),
+                MucheolSequenceStep.Line(8f, 3f, 0f, 0.18f, 0.5f));
+
+            var p04 = new MucheolSequenceSpec(
+                MucheolSequenceStep.Circle(6.5f, 0.25f, 0f),
+                MucheolSequenceStep.Circle(7.8f, 0.25f, 0.7f));
+
+            var p05 = new MucheolSequenceSpec(
+                MucheolSequenceStep.Fan(7f, 60f, -30f, 0.16f, 0f),
+                MucheolSequenceStep.Fan(7f, 60f, 30f, 0.16f, 0.35f),
+                MucheolSequenceStep.Fan(7f, 70f, 0f, 0.30f, 0.85f));
+
+            return new MucheolPhase2Spec(p01, p02, new MucheolMultiDashSpec(2, 2, 0.5f, 0.4f), p04, p05,
+                new MucheolMultiDashSpec(2, 3, 0.75f, 0.6f), new MucheolBattlefieldSpec(P07_PUSH_DISTANCE));
+        }
+
         // 2페이즈 여섯 패턴. 폭주 돌진(P06)의 실행 시간은 두 번(2.1초)이 아니라 세 번(3.45초)에 맞춘다. 공용 공격 FSM이 실행 시간을
         // 정의 하나로 고정해 횟수별로 줄 수 없어서이며, 두 번 달리는 시전은 남는 구간 동안 서 있는다. FSM 변경이 승인되면 이 값은 2.1초가 된다
         private void AddPhaseTwo()

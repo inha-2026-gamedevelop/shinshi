@@ -627,16 +627,36 @@ namespace Shinshi.Tests
         *       Colors And Roster
         ****************************************/
 
-        [TestCase(4, 2, 2)]
-        [TestCase(2, 1, 1)]
-        public void Entry_EvenParty_SplitsEvenly(int party, int red, int blue)
+        [Test]
+        public void Entry_FourMembers_SplitsTwoAndTwo()
         {
-            Rig r = new Rig(party);
+            Rig r = new Rig(4);
 
             r.Enter();
 
-            Assert.AreEqual(red, CountColor(r.Gimmick, EWolbaekWardColor.Red));
-            Assert.AreEqual(blue, CountColor(r.Gimmick, EWolbaekWardColor.Blue));
+            Assert.AreEqual(2, CountColor(r.Gimmick, EWolbaekWardColor.Red));
+            Assert.AreEqual(2, CountColor(r.Gimmick, EWolbaekWardColor.Blue));
+        }
+
+        [Test]
+        public void Entry_TwoMembers_ShareOneColorAndEitherColorOccurs()
+        {
+            bool sawRed = false;
+            bool sawBlue = false;
+            for (int seed = 0; seed < 40; ++seed)
+            {
+                Rig r = new Rig(2, true, null, new SeededRandom(seed));
+                r.Enter();
+
+                int red = CountColor(r.Gimmick, EWolbaekWardColor.Red);
+                int blue = CountColor(r.Gimmick, EWolbaekWardColor.Blue);
+                Assert.AreEqual(2, Mathf.Max(red, blue), "seed " + seed);
+                Assert.AreEqual(0, Mathf.Min(red, blue), "seed " + seed);
+                sawRed |= red == 2;
+                sawBlue |= blue == 2;
+            }
+
+            Assert.IsTrue(sawRed && sawBlue);
         }
 
         [Test]

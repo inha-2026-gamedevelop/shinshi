@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 4337209285251196834}
   - component: {fileID: 9125636520618684281}
   - component: {fileID: 2679762219380379305}
+  - component: {fileID: 5706912240508128301}
   m_Layer: 0
   m_Name: PF_MucheolBoss
   m_TagString: Untagged
@@ -74,6 +75,32 @@ MonoBehaviour:
     _profile: {fileID: 11400000, guid: dbbb06be6b85aab4c98397b2ddaac304, type: 2}
   - _prefab: {fileID: 3611780430113273491, guid: 3dbb458840f753c45a33ad7463aab8a1, type: 3}
     _profile: {fileID: 11400000, guid: 2e54e15f01e6acb46863a1ec0a651667, type: 2}
+--- !u!114 &5706912240508128301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2502191398135602160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f418996e33781e843952ea520f8227a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.MucheolSealView
+  _anchors:
+  - {fileID: 7444052722109725917}
+  - {fileID: 1178881822253265983}
+  - {fileID: 4958927901640931342}
+  _offsets:
+  - {x: 0.093627684, y: 0.21952096, z: 0.13000526}
+  - {x: -0.09362793, y: 0.21952075, z: 0.13000503}
+  - {x: -0.000000021949303, y: 0.13083325, z: -0.24685684}
+  _localAngles:
+  - {x: 330.9123, y: 35.760857, z: 176.8674}
+  - {x: 330.91238, y: 324.23904, z: 183.1328}
+  - {x: 349.43063, y: 180, z: 0.000000008090538}
+  _material: {fileID: 2100000, guid: 56068431b6ce7204ebde6d2ed0dec26f, type: 2}
+  _size: 1.4
 --- !u!1 &2519519165488727896
 GameObject:
   m_ObjectHideFlags: 0
@@ -239,9 +266,24 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
+--- !u!4 &1178881822253265983 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3303038910203692175, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
+  m_PrefabInstance: {fileID: 4434632374213292208}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &2525037147915171569 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2197828423169607233, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
+  m_PrefabInstance: {fileID: 4434632374213292208}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4958927901640931342 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8744684261413128382, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
+  m_PrefabInstance: {fileID: 4434632374213292208}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7444052722109725917 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6540471463421348973, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
   m_PrefabInstance: {fileID: 4434632374213292208}
   m_PrefabAsset: {fileID: 0}
 --- !u!95 &8496769934756146315 stripped

@@ -28,12 +28,19 @@ namespace Shinshi.AI
         private const int    COLOR_COUNT      = 2;
         private const int    PAIR_SIZE        = 2;
         private const float  DIAMETER_FACTOR  = 2f;
+        private const float  MARK_RADIUS      = 0.75f;
+        private const float  MARK_WIDTH       = 0.1f;
+        private const float  MARK_HEIGHT      = 0.06f;
+        private const float  MARK_DIAMOND     = 1.2f;
+        private const int    MARK_CIRCLE_POINTS  = 32;
+        private const int    MARK_DIAMOND_POINTS = 4;
 
         private static readonly Color GatherColor    = new Color(0.6f, 0.9f, 1f);
         private static readonly Color TelegraphColor = new Color(1f, 0.55f, 0f);
         private static readonly Color StrikeColor    = Color.red;
         private static readonly Color BandNormal     = Color.white;
         private static readonly Color BandWarning    = Color.red;
+        private static readonly Color MarkBlue       = new Color(0.3f, 0.55f, 1f);
 
         /****************************************
         *                Fields
@@ -52,6 +59,8 @@ namespace Shinshi.AI
         private readonly LineRenderer[] _bands     = new LineRenderer[COLOR_COUNT];
         private readonly int[]          _bandA     = new int[COLOR_COUNT];
         private readonly int[]          _bandB     = new int[COLOR_COUNT];
+        private readonly Dictionary<int, GameObject> _marks = new Dictionary<int, GameObject>();
+        private Material                _markMaterial;
         private GameObject              _gatherDisc;
         private GameObject              _strikeDisc;
         private Material                _material;
@@ -107,6 +116,7 @@ namespace Shinshi.AI
             }
 
             UpdateBands();
+            UpdateMarks();
         }
 
         /// <summary> 도형과 기록을 모두 치운다 </summary>
@@ -343,6 +353,99 @@ namespace Shinshi.AI
             }
         }
 
+        // 배정 색을 참가자 발밑에 그린다, 빨강은 마름모 파랑은 원이다(운영 뷰 WolbaekColorWardView와 같은 모양). 쓰러진 참가자는 위치를 못 읽어 표식도 숨긴다
+        private void UpdateMarks()
+        {
+            if (!_hasStart)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _start.Members.Count; ++i)
+            {
+                WolbaekWardMember member = _start.Members[i];
+                _marks.TryGetValue(member.CombatId, out GameObject mark);
+
+                if (!_positions(member.CombatId, out Vector3 position))
+                {
+                    if (mark != null)
+                    {
+                        mark.SetActive(false);
+                    }
+
+                    continue;
+                }
+
+                if (mark == null)
+                {
+                    mark = CreateMark(member.Color);
+                    if (mark == null)
+                    {
+                        continue;
+                    }
+
+                    _marks[member.CombatId] = mark;
+                }
+
+                mark.SetActive(true);
+                mark.transform.position = position + (Vector3.up * MARK_HEIGHT);
+            }
+        }
+
+        private GameObject CreateMark(EWolbaekWardColor color)
+        {
+            if (_markMaterial == null)
+            {
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader == null)
+                {
+                    return null;
+                }
+
+                _markMaterial = new Material(shader);
+            }
+
+            bool  red  = color == EWolbaekWardColor.Red;
+            Color tint = red ? Color.red : MarkBlue;
+
+            GameObject mark = new GameObject("WardMemberMark");
+            mark.transform.SetParent(_parent, false);
+            mark.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+
+            LineRenderer line = mark.AddComponent<LineRenderer>();
+            line.useWorldSpace   = false;
+            line.loop            = true;
+            line.alignment       = LineAlignment.TransformZ;
+            line.widthMultiplier = MARK_WIDTH;
+            line.sharedMaterial  = _markMaterial;
+            line.startColor      = tint;
+            line.endColor        = tint;
+
+            int   points = red ? MARK_DIAMOND_POINTS : MARK_CIRCLE_POINTS;
+            float radius = red ? (MARK_RADIUS * MARK_DIAMOND) : MARK_RADIUS;
+            line.positionCount = points;
+            for (int i = 0; i < points; ++i)
+            {
+                float angle = (i / (float)points) * Mathf.PI * 2f;
+                line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f));
+            }
+
+            return mark;
+        }
+
+        private void DestroyMarks()
+        {
+            foreach (KeyValuePair<int, GameObject> pair in _marks)
+            {
+                if (pair.Value != null)
+                {
+                    UnityEngine.Object.Destroy(pair.Value);
+                }
+            }
+
+            _marks.Clear();
+        }
+
         private void DestroyWardDiscs()
         {
             for (int i = 0; i < _wardDiscs.Length; ++i)
@@ -364,6 +467,7 @@ namespace Shinshi.AI
         {
             DestroyObject(ref _gatherDisc);
             DestroyWardDiscs();
+            DestroyMarks();
             HideStrike();
 
             for (int i = 0; i < _bands.Length; ++i)

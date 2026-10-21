@@ -37,6 +37,7 @@ namespace Shinshi.AI
 
         private readonly float                             _referenceHealth;
         private readonly MucheolPhase2Spec                 _spec;
+        private readonly MucheolPhase2Spec                 _hardSpec;
         private readonly IBossVitals                       _vitals;
         private readonly IBossPatternCatalog               _catalog;
         private readonly IBossMovement                     _movement;
@@ -50,11 +51,13 @@ namespace Shinshi.AI
         ****************************************/
 
         // referenceHealth는 이 전투의 Href다. 지역과 난이도로 정하는 일은 서버 연결이 하며 이 클래스는 기본값을 두지 않는다
+        // hardSpec은 하드 전용 ID(mucheol_hard_ph2_...)의 실행 데이터다. 하드 정의는 이지와 같은 실행 객체를 쓰되 이 데이터로 만들며, 비어 있으면 하드 정의를 만들지 않는다.
+        // P07은 하드 전용이라 이지 데이터(spec)의 P07을 그대로 쓴다
         // vitals와 catalog는 연속 돌진의 강화 구간 판정에 쓴다. movement는 연속 돌진이 보스 몸체를 옮기는 창구이며 없으면 P03과 P06을 만들지 않는다
         public MucheolPhase2PatternFactory(float referenceHealth, MucheolPhase2Spec spec, IBossVitals vitals,
             IBossPatternCatalog catalog, IBossMovement movement = null, IMucheolSequenceTelegraphListener sequenceListener = null,
             IMucheolMultiDashListener dashListener = null, IBossHitDisplacer displacer = null,
-            IMucheolBattlefieldListener battlefieldListener = null)
+            IMucheolBattlefieldListener battlefieldListener = null, MucheolPhase2Spec hardSpec = null)
         {
             if (referenceHealth <= 0f)
             {
@@ -63,6 +66,7 @@ namespace Shinshi.AI
 
             _referenceHealth     = referenceHealth;
             _spec                = spec ?? throw new ArgumentNullException(nameof(spec));
+            _hardSpec            = hardSpec;
             _vitals              = vitals ?? throw new ArgumentNullException(nameof(vitals));
             _catalog             = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _movement            = movement;
@@ -80,22 +84,28 @@ namespace Shinshi.AI
                 return false;
             }
 
-            switch (definition.DefinitionId)
+            MucheolPhase2Spec spec = ResolveSpec(definition);
+            if (spec == null)
+            {
+                return false;
+            }
+
+            switch (ToBaseId(definition))
             {
                 case P01_ID:
-                    return _spec.P01 != null;
+                    return spec.P01 != null;
                 case P02_ID:
-                    return _spec.P02 != null;
+                    return spec.P02 != null;
                 case P04_ID:
-                    return _spec.P04 != null;
+                    return spec.P04 != null;
                 case P05_ID:
-                    return _spec.P05 != null;
+                    return spec.P05 != null;
                 case P03_ID:
-                    return (_spec.P03 != null) && (_movement != null);
+                    return (spec.P03 != null) && (_movement != null);
                 case P06_ID:
-                    return (_spec.P06 != null) && (_movement != null);
+                    return (spec.P06 != null) && (_movement != null);
                 case P07_ID:
-                    return (_spec.P07 != null) && (_displacer != null);
+                    return (spec.P07 != null) && (_displacer != null);
                 default:
                     return false;
             }
@@ -108,23 +118,36 @@ namespace Shinshi.AI
                 return null;
             }
 
-            switch (definition.DefinitionId)
+            MucheolPhase2Spec spec = ResolveSpec(definition);
+            switch (ToBaseId(definition))
             {
                 case P01_ID:
-                    return new MucheolSequencePattern(_referenceHealth, _spec.P01, _sequenceListener, naturalAim: true);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P01, _sequenceListener, naturalAim: true);
                 case P02_ID:
-                    return new MucheolSequencePattern(_referenceHealth, _spec.P02, _sequenceListener, naturalAim: true);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P02, _sequenceListener, naturalAim: true);
                 case P04_ID:
-                    return new MucheolSequencePattern(_referenceHealth, _spec.P04, _sequenceListener);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P04, _sequenceListener);
                 case P05_ID:
-                    return new MucheolSequencePattern(_referenceHealth, _spec.P05, _sequenceListener, naturalAim: true);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P05, _sequenceListener, naturalAim: true);
                 case P03_ID:
-                    return new MucheolMultiDashPattern(_referenceHealth, _movement, _spec.P03, ResolveDashCount(_spec.P03), _dashListener);
+                    return new MucheolMultiDashPattern(_referenceHealth, _movement, spec.P03, ResolveDashCount(spec.P03), _dashListener);
                 case P07_ID:
-                    return new MucheolBattlefieldBlastPattern(_referenceHealth, _spec.P07, _displacer, _battlefieldListener);
+                    return new MucheolBattlefieldBlastPattern(_referenceHealth, spec.P07, _displacer, _battlefieldListener);
                 default:
-                    return new MucheolMultiDashPattern(_referenceHealth, _movement, _spec.P06, ResolveDashCount(_spec.P06), _dashListener);
+                    return new MucheolMultiDashPattern(_referenceHealth, _movement, spec.P06, ResolveDashCount(spec.P06), _dashListener);
             }
+        }
+
+        // 하드 전용 ID(mucheol_hard_ph2_...)는 이지 ID로 되돌려 같은 실행 객체를 고른다
+        private static string ToBaseId(PatternDefinition definition)
+        {
+            return Shinshi.Data.BossPatternCatalogSO.ToMucheolBaseId(definition.DefinitionId);
+        }
+
+        // 하드 전용 ID면 하드 데이터를, 그 밖에는(P07 포함) 이지 데이터를 쓴다. 하드 데이터가 없으면 null이라 만들지 않는다
+        private MucheolPhase2Spec ResolveSpec(PatternDefinition definition)
+        {
+            return (definition.DefinitionId != ToBaseId(definition)) ? _hardSpec : _spec;
         }
 
         // 보스 정의가 없거나 강화 기준이 미지정이면 강화 구간이 아닌 것으로 본다

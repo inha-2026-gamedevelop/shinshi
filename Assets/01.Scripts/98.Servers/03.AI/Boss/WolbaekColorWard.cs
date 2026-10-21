@@ -434,7 +434,7 @@ namespace Shinshi.AI
             _listener?.OnWardStarted(in _start);
         }
 
-        // 명단 순서를 섞어 시도마다 다른 사람이 같은 색이 되게 한다. 4명 2대2, 3명 2대1, 2명 1대1, 1명은 어느 한 색이다.
+        // 명단 순서를 섞어 시도마다 다른 사람이 같은 색이 되게 한다. 4명 2대2, 3명 2대1, 2명은 둘 다 같은 색, 1명은 어느 한 색이다.
         // 파티 상한을 넘는 인원은 필수 참가자로 세지 않는다
         private void BuildMembers()
         {
@@ -483,6 +483,12 @@ namespace Shinshi.AI
             if (count == TRIO_COUNT)
             {
                 return 1 + _random.NextInt(COLOR_COUNT);
+            }
+
+            // 2명은 둘 다 같은 색이다. 서로 연결되어 한 결계에 함께 서면 되고, 어느 색일지는 무작위다
+            if (count == PAIR_SIZE)
+            {
+                return _random.NextInt(COLOR_COUNT) * PAIR_SIZE;
             }
 
             return count / COLOR_COUNT;

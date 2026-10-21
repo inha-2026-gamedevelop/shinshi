@@ -55,7 +55,7 @@ MonoBehaviour:
     _arenaDiameter: 44
     _healthRef: 700
     _defense: 200
-    _phaseTransitionHealthRate: 0.55
+    _phaseTransitionHealthRate: 0.5
     _appearanceSeconds: 0
     _openingDelaySeconds: 0.5
     _nearDistanceMax: 5
@@ -2211,3 +2211,531 @@ MonoBehaviour:
     _maxConcurrentAreas: 0
     _group: 1
     _enhancedBaseWeight: 3
+  - _definitionId: mucheol_hard_p01
+    _displayKey: mucheol_hard_p01.name
+    _bossId: boss_mucheol
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 24
+    _distanceMultipliers:
+    - 1
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0.5
+    - 0.8
+    - 1
+    - 1
+    _telegraphSeconds: 1.4
+    _trackingSeconds: 0.35
+    _turnRate: 180
+    _activeSeconds: 0
+    _recoverySeconds: 0.9
+    _shape:
+      _shape: 0
+      _range: 7
+      _arcAngle: 120
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.23
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+  - _definitionId: mucheol_hard_p02
+    _displayKey: mucheol_hard_p02.name
+    _bossId: boss_mucheol
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 27
+    _distanceMultipliers:
+    - 1
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0.5
+    - 0.8
+    - 1
+    - 1
+    _telegraphSeconds: 2.4
+    _trackingSeconds: 0.6
+    _turnRate: 120
+    _activeSeconds: 0
+    _recoverySeconds: 1.8
+    _shape:
+      _shape: 0
+      _range: 7
+      _arcAngle: 70
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.37
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+  - _definitionId: mucheol_hard_p03
+    _displayKey: mucheol_hard_p03.name
+    _bossId: boss_mucheol
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 15
+    _distanceMultipliers:
+    - 0
+    - 1
+    - 0
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0.5
+    - 0.8
+    - 1
+    - 1
+    _telegraphSeconds: 1.8
+    _trackingSeconds: 0.4
+    _turnRate: 180
+    _activeSeconds: 0.5
+    _recoverySeconds: 1.2
+    _shape:
+      _shape: 2
+      _range: 8
+      _arcAngle: 0
+      _width: 3
+      _projectileSpeed: 0
+    _damageRef: 0.25
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+  - _definitionId: mucheol_hard_p04
+    _displayKey: mucheol_hard_p04.name
+    _bossId: boss_mucheol
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 10
+    _distanceMultipliers:
+    - 1
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0.5
+    - 0.8
+    - 1
+    - 1
+    _telegraphSeconds: 2
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0
+    _recoverySeconds: 1.2
+    _shape:
+      _shape: 1
+      _range: 6.5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.3
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+  - _definitionId: mucheol_hard_p05
+    _displayKey: mucheol_hard_p05.name
+    _bossId: boss_mucheol
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 12
+    _distanceMultipliers:
+    - 1
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0.5
+    - 0.8
+    - 1
+    - 1
+    _telegraphSeconds: 1.6
+    _trackingSeconds: 0.4
+    _turnRate: 150
+    _activeSeconds: 0.5
+    _recoverySeconds: 1.8
+    _shape:
+      _shape: 0
+      _range: 7
+      _arcAngle: 120
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.16
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+  - _definitionId: mucheol_hard_p06
+    _displayKey: mucheol_hard_p06.name
+    _bossId: boss_mucheol
+    _phase: 1
+    _difficulty: 1
+    _baseWeight: 12
+    _distanceMultipliers:
+    - 0
+    - 1
+    - 1
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1
+    _recentUseMultipliers:
+    - 0.5
+    - 0.8
+    - 1
+    - 1
+    _telegraphSeconds: 2.8
+    _trackingSeconds: 0.6
+    _turnRate: 90
+    _activeSeconds: 0.75
+    _recoverySeconds: 2.4
+    _shape:
+      _shape: 2
+      _range: 18
+      _arcAngle: 0
+      _width: 3.5
+      _projectileSpeed: 0
+    _damageRef: 0.46
+    _guardable: 0
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 0
+    _enhancedBaseWeight: 0
+  - _definitionId: mucheol_hard_ph2_p01
+    _displayKey: mucheol_hard_ph2_p01.name
+    _bossId: boss_mucheol
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 18
+    _distanceMultipliers:
+    - 1.8
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1.3
+    - 1.2
+    - 0.6
+    _nearbyMultipliers:
+    - 1
+    - 1.1
+    - 1.2
+    _recentUseMultipliers:
+    - 0
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1.8
+    _trackingSeconds: 0.4
+    _turnRate: 150
+    _activeSeconds: 0.35
+    _recoverySeconds: 1.05
+    _shape:
+      _shape: 0
+      _range: 7
+      _arcAngle: 120
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.18
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 3
+    _enhancedBaseWeight: 18
+  - _definitionId: mucheol_hard_ph2_p02
+    _displayKey: mucheol_hard_ph2_p02.name
+    _bossId: boss_mucheol
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 12
+    _distanceMultipliers:
+    - 1.6
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1.6
+    - 0.8
+    - 0.3
+    _nearbyMultipliers:
+    - 1
+    - 1.2
+    - 1.3
+    _recentUseMultipliers:
+    - 0
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 2.4
+    _trackingSeconds: 0.6
+    _turnRate: 120
+    _activeSeconds: 0.5
+    _recoverySeconds: 1.8
+    _shape:
+      _shape: 0
+      _range: 7
+      _arcAngle: 70
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.35
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 1
+    _enhancedBaseWeight: 16
+  - _definitionId: mucheol_hard_ph2_p03
+    _displayKey: mucheol_hard_ph2_p03.name
+    _bossId: boss_mucheol
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 16
+    _distanceMultipliers:
+    - 0.3
+    - 1.8
+    - 1.1
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 1.2
+    - 1
+    - 0.8
+    _recentUseMultipliers:
+    - 0.25
+    - 0.5
+    - 0.8
+    - 1
+    _telegraphSeconds: 1.8
+    _trackingSeconds: 0.4
+    _turnRate: 180
+    _activeSeconds: 1.4
+    _recoverySeconds: 1.35
+    _shape:
+      _shape: 2
+      _range: 8
+      _arcAngle: 0
+      _width: 3
+      _projectileSpeed: 0
+    _damageRef: 0.25
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 2
+    _enhancedBaseWeight: 18
+  - _definitionId: mucheol_hard_ph2_p04
+    _displayKey: mucheol_hard_ph2_p04.name
+    _bossId: boss_mucheol
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 14
+    _distanceMultipliers:
+    - 1.8
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1
+    - 1
+    - 1
+    _nearbyMultipliers:
+    - 0.7
+    - 1.4
+    - 2
+    _recentUseMultipliers:
+    - 0
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 2
+    _trackingSeconds: 0
+    _turnRate: 0
+    _activeSeconds: 0.7
+    _recoverySeconds: 1.35
+    _shape:
+      _shape: 1
+      _range: 6.5
+      _arcAngle: 0
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.25
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 2
+    _enhancedBaseWeight: 16
+  - _definitionId: mucheol_hard_ph2_p05
+    _displayKey: mucheol_hard_ph2_p05.name
+    _bossId: boss_mucheol
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 14
+    _distanceMultipliers:
+    - 1.7
+    - 0
+    - 0
+    _directionMultipliers:
+    - 1.4
+    - 1
+    - 0.4
+    _nearbyMultipliers:
+    - 1
+    - 1
+    - 1.1
+    _recentUseMultipliers:
+    - 0
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 1.8
+    _trackingSeconds: 0.4
+    _turnRate: 150
+    _activeSeconds: 0.85
+    _recoverySeconds: 2.25
+    _shape:
+      _shape: 0
+      _range: 7
+      _arcAngle: 70
+      _width: 0
+      _projectileSpeed: 0
+    _damageRef: 0.3
+    _guardable: 1
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 1
+    _enhancedBaseWeight: 18
+  - _definitionId: mucheol_hard_ph2_p06
+    _displayKey: mucheol_hard_ph2_p06.name
+    _bossId: boss_mucheol
+    _phase: 2
+    _difficulty: 1
+    _baseWeight: 12
+    _distanceMultipliers:
+    - 0.2
+    - 1.4
+    - 1.8
+    _directionMultipliers:
+    - 1.5
+    - 1
+    - 0.6
+    _nearbyMultipliers:
+    - 1
+    - 1.1
+    - 1
+    _recentUseMultipliers:
+    - 0
+    - 0.3
+    - 0.7
+    - 1
+    _telegraphSeconds: 3.5
+    _trackingSeconds: 0.8
+    _turnRate: 90
+    _activeSeconds: 3.45
+    _recoverySeconds: 3
+    _shape:
+      _shape: 2
+      _range: 18
+      _arcAngle: 0
+      _width: 3.5
+      _projectileSpeed: 0
+    _damageRef: 0.37
+    _guardable: 0
+    _controlPhase: 0
+    _controlWindowSeconds: 0
+    _controlCancelsPattern: 0
+    _areaDurationSeconds: 0
+    _areaTickInterval: 0
+    _maxConcurrentAreas: 0
+    _group: 1
+    _enhancedBaseWeight: 16

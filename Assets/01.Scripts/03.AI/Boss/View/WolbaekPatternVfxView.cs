@@ -57,6 +57,7 @@ namespace Shinshi.AI
         private const int    STAGE_SLOT_GROUPS     = 2;
         private const int    MAX_TRACKED_CASTS     = 4;
         private const int    RELEASE_LINE_ID      = 1;
+        private const float  RELEASE_LIFT         = 0.3f;  // m, 대형 방출이 바닥 메시와 겹쳐 가려지지 않게 올린다
         private const uint   REVISION             = 1;
         private const int    MAX_AREAS            = 8;
         private const int    MAX_BEAMS            = 8;
@@ -603,8 +604,9 @@ namespace Shinshi.AI
         {
             Vector3 direction = cast.Direction;
             direction.y = 0f;
-            Vector3 end = cast.Origin + (direction.normalized * cast.Length);
-            return new WolbaekBeamShape(cast.Origin, end, cast.Width);
+            Vector3 start = cast.Origin + (Vector3.up * RELEASE_LIFT);
+            Vector3 end = start + (direction.normalized * cast.Length);
+            return new WolbaekBeamShape(start, end, cast.Width);
         }
 
         private void TickRelease(double now)

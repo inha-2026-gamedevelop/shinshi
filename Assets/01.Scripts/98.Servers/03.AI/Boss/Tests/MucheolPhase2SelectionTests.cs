@@ -553,7 +553,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(2, p07.Phase);
             Assert.AreEqual(EBossDifficulty.Hard, p07.Difficulty);
 
-            // 이지 수집에는 P07이 없다. 무철 하드는 이지 정의를 같이 담으므로(카탈로그 계약) 하드 수집은 P01~P06에 P07을 더한 7개다
+            // 이지 수집에는 P07과 하드 전용 정의가 없다. 하드 수집은 같은 번호의 하드 정의가 이지 정의를 대신해(카탈로그 계약) 하드 P01~P06에 P07을 더한 7개다
             var easy = new List<PatternDefinition>();
             catalog.CollectPatterns(MucheolPatternFactory.BOSS_ID, 2, EBossDifficulty.Easy, easy);
             Assert.AreEqual(PhaseTwoIds.Length, easy.Count);
@@ -565,7 +565,10 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, hard.FindAll(p => p.DefinitionId == MucheolPhase2PatternFactory.P07_ID).Count);
             for (int i = 0; i < PhaseTwoIds.Length; ++i)
             {
-                Assert.IsTrue(hard.Exists(p => p.DefinitionId == PhaseTwoIds[i]), PhaseTwoIds[i]);
+                string hardId = BossPatternCatalogSO.ToMucheolHardId(PhaseTwoIds[i]);
+                Assert.IsTrue(hard.Exists(p => p.DefinitionId == hardId), hardId);
+                Assert.IsFalse(hard.Exists(p => p.DefinitionId == PhaseTwoIds[i]), PhaseTwoIds[i]);
+                Assert.IsFalse(easy.Exists(p => p.DefinitionId == hardId), hardId);
             }
         }
     }

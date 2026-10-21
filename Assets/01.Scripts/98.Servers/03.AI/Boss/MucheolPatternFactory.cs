@@ -33,6 +33,7 @@ namespace Shinshi.AI
         private readonly IBossDashTelegraphListener   _dashListener;
         private readonly IBossCircleTelegraphListener _circleListener;
         private readonly MucheolComboSpec             _comboSpec;
+        private readonly MucheolComboSpec             _hardComboSpec;
         private readonly IBossComboTelegraphListener  _comboListener;
         private readonly MucheolChargeSpec            _chargeSpec;
         private readonly IBossChargeStructureQuery    _chargeStructures;
@@ -55,11 +56,13 @@ namespace Shinshi.AI
         // movement는 돌진이 보스 몸체를 옮기는 창구다. 서버 몸체가 구현해 넘기며, 비어 있으면 P03을 만들지 않는다
         // comboSpec은 P05 콤보의 타별 형태와 피해다. PatternDefinition에 타별 값이 없어 따로 받으며, 비어 있으면 P05를 만들지 않는다
         // chargeSpec은 P06 돌진의 충돌 회복이다. 이동 창구와 함께 있어야 P06을 만들고, chargeStructures는 구조물 조회라 없으면 벽에만 막힌다
+        // hardComboSpec은 하드 P05 콤보의 타 목록이며, 하드 정의(mucheol_hard_...)는 이지와 같은 실행 객체를 쓰되 이 목록으로 만든다. 비어 있으면 하드 P05를 만들지 않는다
         public MucheolPatternFactory(float referenceHealth, IBossFanTelegraphListener fanListener = null,
             IBossMovement movement = null, IBossDashTelegraphListener dashListener = null,
             IBossCircleTelegraphListener circleListener = null, MucheolComboSpec comboSpec = null,
             IBossComboTelegraphListener comboListener = null, MucheolChargeSpec chargeSpec = null,
-            IBossChargeStructureQuery chargeStructures = null, IBossChargeOutcomeListener chargeListener = null)
+            IBossChargeStructureQuery chargeStructures = null, IBossChargeOutcomeListener chargeListener = null,
+            MucheolComboSpec hardComboSpec = null)
         {
             if (referenceHealth <= 0f)
             {
@@ -72,6 +75,7 @@ namespace Shinshi.AI
             _dashListener     = dashListener;
             _circleListener   = circleListener;
             _comboSpec        = comboSpec;
+            _hardComboSpec    = hardComboSpec;
             _comboListener    = comboListener;
             _chargeSpec       = chargeSpec;
             _chargeStructures = chargeStructures;
@@ -93,7 +97,7 @@ namespace Shinshi.AI
                 return false;
             }
 
-            string id = definition.DefinitionId;
+            string id = ToBaseId(definition);
             if (id == P03_ID)
             {
                 return _movement != null;
@@ -101,7 +105,7 @@ namespace Shinshi.AI
 
             if (id == P05_ID)
             {
-                return _comboSpec != null;
+                return ResolveComboSpec(definition) != null;
             }
 
             if (id == P06_ID)
@@ -125,28 +129,41 @@ namespace Shinshi.AI
                 return null;
             }
 
-            if (definition.DefinitionId == P03_ID)
+            string id = ToBaseId(definition);
+            if (id == P03_ID)
             {
                 return new BossDashPattern(_referenceHealth, _movement, _dashListener, naturalAim: true);
             }
 
-            if (definition.DefinitionId == P04_ID)
+            if (id == P04_ID)
             {
                 return new BossCircleBlastPattern(_referenceHealth, _circleListener);
             }
 
-            if (definition.DefinitionId == P05_ID)
+            if (id == P05_ID)
             {
-                return new MucheolComboPattern(_referenceHealth, _comboSpec, _comboListener, naturalAim: true);
+                return new MucheolComboPattern(_referenceHealth, ResolveComboSpec(definition), _comboListener, naturalAim: true);
             }
 
-            if (definition.DefinitionId == P06_ID)
+            if (id == P06_ID)
             {
                 return new MucheolChargePattern(_referenceHealth, _movement, _chargeSpec, _chargeStructures, _dashListener,
                     _chargeListener, _chargeTracker);
             }
 
             return new BossFanBlastPattern(_referenceHealth, _fanListener, naturalAim: true);
+        }
+
+        // 하드 정의(mucheol_hard_...)는 이지와 같은 번호의 실행 객체를 쓰므로 ID를 이지 ID로 되돌려 비교한다
+        private static string ToBaseId(PatternDefinition definition)
+        {
+            return Shinshi.Data.BossPatternCatalogSO.ToMucheolBaseId(definition.DefinitionId);
+        }
+
+        // 하드 전용 ID(mucheol_hard_...)는 하드 콤보 목록으로, 그 밖에는 이지 목록으로 P05를 만든다. 사거리가 정의와 같은 값이어야 해서 목록을 나눠 둔다
+        private MucheolComboSpec ResolveComboSpec(PatternDefinition definition)
+        {
+            return (definition.DefinitionId != ToBaseId(definition)) ? _hardComboSpec : _comboSpec;
         }
     }
 }

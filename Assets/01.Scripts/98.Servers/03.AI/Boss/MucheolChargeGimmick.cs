@@ -2,6 +2,9 @@
 using System;
 using System.Collections.Generic;
 
+// 프로젝트 내부
+using Shinshi.Common;
+
 using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.AI
@@ -26,11 +29,13 @@ namespace Shinshi.AI
     //
     // 기믹 중 체력이 2페이즈 기준 이하가 되어도 구조물 파괴와 그로기를 먼저 마치도록 전환을 보류하고(DefersPhaseTransition),
     // 그로기 중에는 새 선택을 막는다(BlocksSelection). 사망과 전투 종료는 보스 두뇌가 이 틱 앞에서 처리하므로 기믹보다 앞선다.
-    // 기믹 상태는 피해 처리와 무관하다, 그로기 중에도 피해를 받는다.
+    // 체력 락(IBossDamageCap): 발동 비율에 닿는 피해는 경계까지만 깎고 초과분은 버린다. 기믹이 진행되는 동안(Active, AwaitingFinalRecovery)에는
+    // 모든 피해를 버리고, 그로기 중에는 락이 풀려 피해를 받는다. 발동할 수 없는 기믹(구조물 부족 등)은 락을 걸지 않는다.
+    // 이 클래스는 체력을 직접 바꾸지 않고 계산만 하므로, 보스 몸체가 이 상한을 읽어야 락이 닿는다.
     // 표현 알림(IMucheolChargeGimmickListener)은 마지막 파괴 확인, 그로기 시작, 사망과 전투 종료가 아닌 이유로 접은 그로기만 알린다.
     // 그로기 끝은 시작 알림의 끝 시각으로 정해져 따로 알리지 않는다
     /// <summary> 무철 돌진 유도 기믹, 체력 구간에서 한 번 발동해 P06을 반복하고 지정 구조물 파괴가 확인되면 그로기에 들어간다 </summary>
-    public sealed class MucheolChargeGimmick : IBossGimmick, IBossChargeCastTracker
+    public sealed class MucheolChargeGimmick : IBossGimmick, IBossChargeCastTracker, IBossDamageCap
     {
         /****************************************
         *              Constants
@@ -38,6 +43,8 @@ namespace Shinshi.AI
 
         private const int FIRST_PHASE = 1;
         private const int NO_CAST_ID  = 0; // 공용 시전 번호의 없음 값(CombatIds.NONE)과 같다
+
+        private const float BOUNDARY_TOLERANCE = 0.00001f; // 체력 비율, 경계에 닿았다고 보는 부동소수 여유
 
         /****************************************
         *                Fields
@@ -54,6 +61,7 @@ namespace Shinshi.AI
         private readonly List<PatternDefinition>        _buffer     = new List<PatternDefinition>();
 
         private EMucheolChargeGimmickState _state = EMucheolChargeGimmickState.Dormant;
+        private int                        _lastPhase = FIRST_PHASE;
         private bool                       _selectionPending;
         private int                        _trackedCastId       = NO_CAST_ID;
         private int                        _lastFinishedCastId  = NO_CAST_ID;
@@ -99,6 +107,16 @@ namespace Shinshi.AI
                 return (_state == EMucheolChargeGimmickState.Active)
                     || (_state == EMucheolChargeGimmickState.AwaitingFinalRecovery)
                     || (_state == EMucheolChargeGimmickState.Groggy);
+            }
+        }
+
+        /// <summary> 기믹이 진행되는 동안 체력이 경계에 잠겨 어떤 피해도 받지 않는다, 그로기에서 풀린다 </summary>
+        public bool IsDamageBlocked
+        {
+            get
+            {
+                return (_state == EMucheolChargeGimmickState.Active)
+                    || (_state == EMucheolChargeGimmickState.AwaitingFinalRecovery);
             }
         }
 
@@ -179,6 +197,8 @@ namespace Shinshi.AI
         // 같은 틱의 전환 판정이 보류를 읽을 수 있다. 매 전투 틱 맨 앞에서 불려야 하며, 선택 평가가 없는 틱에도 불려야 한다
         public void Tick(double serverTime, int phase)
         {
+            _lastPhase = phase;
+
             // 시전 추적 연결이 풀리면 어느 시전의 회복을 기다릴지 알 수 없어 회복 전에 그로기가 시작될 수 있다. 진행 중이던 기믹은 멈추고
             // 일반 흐름으로 돌아간다. 이미 시작한 그로기는 정당하게 시작한 것이라 끝까지 간다
             if (((_state == EMucheolChargeGimmickState.Active) || (_state == EMucheolChargeGimmickState.AwaitingFinalRecovery))
@@ -209,7 +229,7 @@ namespace Shinshi.AI
 
             if (_state == EMucheolChargeGimmickState.Dormant)
             {
-                if ((phase == FIRST_PHASE) && (_vitals.HealthRate <= _spec.TriggerHealthRate) && (CanRun()))
+                if ((phase == FIRST_PHASE) && (_vitals.HealthRate <= (_spec.TriggerHealthRate + BOUNDARY_TOLERANCE)) && (CanRun()))
                 {
                     _state = EMucheolChargeGimmickState.Active;
                 }
@@ -222,6 +242,45 @@ namespace Shinshi.AI
             {
                 _state = EMucheolChargeGimmickState.Completed;
             }
+        }
+
+        // 발동 전에는 피해가 발동 비율을 넘지 못하게 경계까지만 허용하고 초과분을 버린다. 기믹이 진행되는 동안에는 모두 버린다.
+        // 2페이즈로 넘어갔거나 기믹이 끝났거나 멈췄으면 막지 않는다. 발동할 수 없는 상태라면 경계를 넘어도 락을 걸지 않아 보스가 영구히 잠기지 않는다
+        public float CapDamage(float currentHealth, float maxHealth, float damage)
+        {
+            if (!(damage > 0f))
+            {
+                return 0f;
+            }
+
+            switch (_state)
+            {
+                case EMucheolChargeGimmickState.Active:
+                case EMucheolChargeGimmickState.AwaitingFinalRecovery:
+                    return 0f;
+                case EMucheolChargeGimmickState.Dormant:
+                    break;
+                default:
+                    return damage;
+            }
+
+            if (_lastPhase != FIRST_PHASE)
+            {
+                return damage;
+            }
+
+            float allowed = currentHealth - (_spec.TriggerHealthRate * maxHealth);
+            if (damage <= allowed)
+            {
+                return damage;
+            }
+
+            if (!CanRun())
+            {
+                return damage;
+            }
+
+            return (allowed > Constants.Combat.HEALTH_EPSILON) ? allowed : 0f;
         }
 
         // 서버가 파괴를 확인한 시전 ID를 함께 넘기면 늦게 와도 그 시전의 회복 종료 경계를 보존할 수 있다. 모르면 비워 둔다.
@@ -406,7 +465,7 @@ namespace Shinshi.AI
             PatternDefinition found = null;
             for (int i = 0; i < _buffer.Count; ++i)
             {
-                if (_buffer[i].DefinitionId == MucheolPatternFactory.P06_ID)
+                if (Shinshi.Data.BossPatternCatalogSO.ToMucheolBaseId(_buffer[i].DefinitionId) == MucheolPatternFactory.P06_ID)
                 {
                     found = _buffer[i];
                     break;

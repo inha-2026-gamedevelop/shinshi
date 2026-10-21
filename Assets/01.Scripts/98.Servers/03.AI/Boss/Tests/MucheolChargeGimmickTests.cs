@@ -197,6 +197,142 @@ namespace Shinshi.Tests
         }
 
         /****************************************
+        *          Health Lock (Damage Cap)
+        ****************************************/
+
+        private const float LOCK_MAX_HEALTH = 1000f;
+
+        [Test]
+        public void CapDamage_BeforeTrigger_ClampsToBoundaryAndDiscardsExcess()
+        {
+            Env env = new Env();
+
+            float capped = env.Gimmick.CapDamage(800f, LOCK_MAX_HEALTH, 300f);
+
+            Assert.AreEqual(100f, capped, 0.001f);
+            Assert.IsFalse(env.Gimmick.IsDamageBlocked);
+        }
+
+        [Test]
+        public void CapDamage_DamageThatStaysAboveBoundary_PassesThrough()
+        {
+            Env env = new Env();
+
+            Assert.AreEqual(50f, env.Gimmick.CapDamage(800f, LOCK_MAX_HEALTH, 50f), 0.001f);
+        }
+
+        [Test]
+        public void CapDamage_HealthAlreadyAtBoundary_DiscardsEverything()
+        {
+            Env env = new Env();
+
+            Assert.AreEqual(0f, env.Gimmick.CapDamage(TRIGGER_RATE * LOCK_MAX_HEALTH, LOCK_MAX_HEALTH, 10f), 0.001f);
+        }
+
+        // 발동할 수 없는 기믹이 보스를 경계에 영구히 잠그면 안 된다
+        [Test]
+        public void CapDamage_WhenGimmickCannotRun_DoesNotLock()
+        {
+            Env noP06 = new Env(withP06: false);
+            Env noStructures = new Env(designate: false);
+
+            Assert.AreEqual(300f, noP06.Gimmick.CapDamage(800f, LOCK_MAX_HEALTH, 300f), 0.001f);
+            Assert.AreEqual(300f, noStructures.Gimmick.CapDamage(800f, LOCK_MAX_HEALTH, 300f), 0.001f);
+        }
+
+        [Test]
+        public void CapDamage_NonPositiveDamage_ReturnsZero()
+        {
+            Env env = new Env();
+
+            Assert.AreEqual(0f, env.Gimmick.CapDamage(800f, LOCK_MAX_HEALTH, 0f), 0.001f);
+            Assert.AreEqual(0f, env.Gimmick.CapDamage(800f, LOCK_MAX_HEALTH, -5f), 0.001f);
+        }
+
+        [Test]
+        public void CapDamage_WhileActive_BlocksAndDiscardsAllDamage()
+        {
+            Env env = new Env();
+            env.Activate();
+
+            Assert.IsTrue(env.Gimmick.IsDamageBlocked);
+            Assert.AreEqual(0f, env.Gimmick.CapDamage(TRIGGER_RATE * LOCK_MAX_HEALTH, LOCK_MAX_HEALTH, 500f), 0.001f);
+        }
+
+        [Test]
+        public void CapDamage_WhileAwaitingFinalRecovery_StillBlocks()
+        {
+            Env env = new Env();
+            env.Activate();
+            env.SelectChargeCast();
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_A, 1.0, 1);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_B, 1.0, 1);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_C, 1.0, 1);
+            Assert.AreEqual(EMucheolChargeGimmickState.AwaitingFinalRecovery, env.Gimmick.State);
+
+            Assert.IsTrue(env.Gimmick.IsDamageBlocked);
+            Assert.AreEqual(0f, env.Gimmick.CapDamage(TRIGGER_RATE * LOCK_MAX_HEALTH, LOCK_MAX_HEALTH, 500f), 0.001f);
+        }
+
+        // 그로기는 보스가 피해를 받는 구간이다
+        [Test]
+        public void CapDamage_WhileGroggy_ReleasesTheLock()
+        {
+            Env env = new Env();
+            env.Activate();
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_A, 1.0);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_B, 1.0);
+            env.Gimmick.ConfirmStructureDestroyed(STRUCTURE_C, 1.0);
+            Assert.AreEqual(EMucheolChargeGimmickState.Groggy, env.Gimmick.State);
+
+            Assert.IsFalse(env.Gimmick.IsDamageBlocked);
+            Assert.AreEqual(500f, env.Gimmick.CapDamage(TRIGGER_RATE * LOCK_MAX_HEALTH, LOCK_MAX_HEALTH, 500f), 0.001f);
+        }
+
+        [Test]
+        public void CapDamage_AfterCompletionOrStop_DoesNotLock()
+        {
+            Env completed = new Env();
+            completed.Activate();
+            completed.Gimmick.ConfirmStructureDestroyed(STRUCTURE_A, 1.0);
+            completed.Gimmick.ConfirmStructureDestroyed(STRUCTURE_B, 1.0);
+            completed.Gimmick.ConfirmStructureDestroyed(STRUCTURE_C, 1.0);
+            completed.Gimmick.Tick(completed.Gimmick.GroggyEndTime, 1);
+            Assert.AreEqual(EMucheolChargeGimmickState.Completed, completed.Gimmick.State);
+
+            Env stopped = new Env();
+            stopped.Activate();
+            stopped.Gimmick.Stop();
+
+            Assert.IsFalse(completed.Gimmick.IsDamageBlocked);
+            Assert.AreEqual(200f, completed.Gimmick.CapDamage(500f, LOCK_MAX_HEALTH, 200f), 0.001f);
+            Assert.IsFalse(stopped.Gimmick.IsDamageBlocked);
+            Assert.AreEqual(200f, stopped.Gimmick.CapDamage(500f, LOCK_MAX_HEALTH, 200f), 0.001f);
+        }
+
+        [Test]
+        public void CapDamage_InSecondPhaseWithoutActivation_DoesNotLock()
+        {
+            Env env = new Env();
+            env.Vitals.HealthRate = 0.4f;
+            env.Gimmick.Tick(0.0, 2);
+
+            Assert.AreEqual(300f, env.Gimmick.CapDamage(800f, LOCK_MAX_HEALTH, 300f), 0.001f);
+        }
+
+        // 락이 만든 부동소수 오차 정도의 차이로 발동이 빗나가면 안 된다
+        [Test]
+        public void Tick_HealthWithinFloatToleranceAboveTrigger_Activates()
+        {
+            Env env = new Env();
+            env.Vitals.HealthRate = TRIGGER_RATE + 0.000001f;
+
+            env.Gimmick.Tick(0.0, 1);
+
+            Assert.AreEqual(EMucheolChargeGimmickState.Active, env.Gimmick.State);
+        }
+
+        /****************************************
         *        Trigger And Availability
         ****************************************/
 

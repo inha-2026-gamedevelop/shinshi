@@ -23,7 +23,10 @@ namespace Shinshi.AI
     // 켜면 하드 전용 전장 공격(mucheol_ph2_p07)이 2페이즈 후보로 섞이고, 방어력과 체력을 하드 시험값으로 낮춘 플레이어에 더해
     // 테스트용 동료와 소환물이 실제로 등록되어 같은 피해 경로와 밀림을 받는다. 밀림은 이 구동기 안의 로컬 대역(BossTestRigDisplacer)이 하며
     // 운영 서버의 플레이어와 동료 이동, 네트워크 동기화는 이 장면이 증명하지 않는다.
-    // 무철 외형 모델이 없어 캡슐로 대신한다. 무철 기믹 1은 공용 두뇌 연결이 승인 전이라 이 장면에서 동작하지 않는다
+    // 무철 외형 모델이 없어 캡슐로 대신한다. 무철 기믹 1은 공용 두뇌 연결이 승인 전이라 이 장면에서 동작하지 않는다.
+    // 방향 봉인 시험 스위치(_sealMode)는 무철 기믹 2(MucheolSealGimmick)를 두뇌에 얹어 발동과 체력 고정, 방향 순서, 타수를 눈으로 확인하는 별도 스위치다.
+    // 꺼 두면 두뇌, 몸체, 화면이 이전과 같다. 켜면 타격 보고와 체력 하한을 이 구동기가 대신 이어 준다(운영에서는 서버 피해 판정기가 IMucheolSealGuard로 한다).
+    // 봉인 표식 연출은 이 장면에 없고 프리뷰 씬(Dev_MucheolMotionVfxPreview)에서 본다
     /// <summary> 무철 시험 구동기, 단일 프로세스에서 서버 두뇌와 예고 표현과 대체 외형을 이어 준다 </summary>
     public sealed class MucheolBossTestRig : MonoBehaviour
     {
@@ -80,6 +83,21 @@ namespace Shinshi.AI
         private const float  DISTURB_YAW        = 90f;    // 도, 예고 중에 보스를 돌리는 각도
         private const float  LOW_HEALTH_RATE    = 0.3f;   // 체력을 낮추는 시험 비율
 
+        // 방향 봉인 시험 장치. 발동 비율과 타수는 MucheolSealGimmickTests와 같은 임시 시험값이다
+        private const float  SEAL_TRIGGER_RATE   = 0.30f;
+        private const int    SEAL_SOLO_HITS      = 5;
+        private const int    SEAL_GROUP_HITS     = 10;
+        private const float  SEAL_FRONT_HALF     = 45f;
+        private const float  SEAL_SIDE_LIMIT     = 135f;
+        private const int    SEAL_STARTING_COUNT = 1;      // 출정 시작 인원, 1명이면 솔로 타수다
+        private const float  SEAL_BEFORE_RATE    = 0.35f;  // 발동 직전
+        private const float  SEAL_AT_RATE        = 0.299f; // 발동 비율 이하, 부동소수 경계를 피해 살짝 아래로 둔다
+        private const float  SEAL_HIT_DAMAGE_RATE = 0.01f; // 봉인이 소비하지 않은 타격이 일반 피해로 들어갈 때의 최대 체력 비율
+        private const float  SEAL_RIGHT_ANGLE    = 90f;    // 보스 정면 기준 각도(도), 오른쪽이 양수다
+        private const float  SEAL_LEFT_ANGLE     = -90f;
+        private const float  SEAL_REAR_ANGLE     = 180f;
+        private const float  SEAL_FRONT_ANGLE    = 0f;
+
         private static readonly Color BossColor = new Color(0.45f, 0.1f, 0.55f);
 
         /****************************************
@@ -111,6 +129,9 @@ namespace Shinshi.AI
         [SerializeField] private float   _hardCompanionRate    = 0.6f;  // 동료 최대 체력 / 주인 최대 체력, 임시 시험값
         [SerializeField] private float   _hardSummonHealth     = 1500f; // 소환물 체력, 임시 시험값
 
+        [Header("방향 봉인 시험 (무철 기믹 2, 기본 꺼짐)")]
+        [SerializeField] private bool    _sealMode             = false; // 켜면 방향 봉인 기믹이 두뇌에 얹히고 시험 패널이 나온다
+
         private CombatTargetRegistry    _registry;
         private DamageResolver          _resolver;
         private BossTestRigBody         _body;
@@ -120,6 +141,11 @@ namespace Shinshi.AI
         private BattlefieldVisual       _battlefield;
         private readonly List<ExtraTargetView> _extras = new List<ExtraTargetView>();
         private bool                    _hardChangeRequested;
+        private MucheolSealGimmick      _seal;
+        private int                     _sealActionSerial;
+        private string                  _sealLast = string.Empty;
+        private bool                    _sealChangeRequested;
+        private bool                    _sealRequestedValue;
         private Vector2                 _guiScroll;
         private bool                    _hardRequestedValue;
         private BossTelegraphPresenter  _presenter;
@@ -192,6 +218,14 @@ namespace Shinshi.AI
                 return;
             }
 
+            if (_sealChangeRequested)
+            {
+                _sealChangeRequested = false;
+                _sealMode            = _sealRequestedValue;
+                Build();
+                return;
+            }
+
             double now = ReadClock();
 
             if (_player.LifeState == EParticipantLifeState.Alive)
@@ -241,6 +275,18 @@ namespace Shinshi.AI
                     _hardChangeRequested = true;
                     _hardRequestedValue  = wantHard;
                 }
+            }
+
+            bool wantSeal = GUILayout.Toggle(_sealMode, "방향 봉인 시험 스위치 (무철 기믹 2, 바꾸면 전투를 새로 시작)");
+            if (wantSeal != _sealMode)
+            {
+                _sealChangeRequested = true;
+                _sealRequestedValue  = wantSeal;
+            }
+
+            if (_seal != null)
+            {
+                DrawSealTools();
             }
 
             GUILayout.Space(GUI_SPACING);
@@ -392,6 +438,94 @@ namespace Shinshi.AI
 
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        // 방향 봉인 확인용 도구. 타격은 보스 정면 기준 각도로 만들어 기믹에 보고하고, 봉인이 소비하지 않은 타격은 일반 피해로 넣는다.
+        // 일반 피해는 몸체의 피해 상한(SealFloorCap)이 체력 하한에서 막는다
+        private void DrawSealTools()
+        {
+            GUILayout.Label($"방향 봉인: {_seal.State}  방향 {_seal.CurrentDirection}  타수 {_seal.HitCount}/{_seal.RequiredHits}  체력 하한 {_seal.HealthFloorRate * PERCENT:F1}%");
+            GUILayout.Label("마지막 타격: " + _sealLast);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("HP 35% (발동 전)"))
+            {
+                LowerHealthTo(SEAL_BEFORE_RATE);
+            }
+
+            if (GUILayout.Button("HP 29.9% (발동)"))
+            {
+                LowerHealthTo(SEAL_AT_RATE);
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("오른쪽 타격"))
+            {
+                ReportSealHit(SEAL_RIGHT_ANGLE, "오른쪽");
+            }
+
+            if (GUILayout.Button("왼쪽 타격"))
+            {
+                ReportSealHit(SEAL_LEFT_ANGLE, "왼쪽");
+            }
+
+            if (GUILayout.Button("후방 타격"))
+            {
+                ReportSealHit(SEAL_REAR_ANGLE, "후방");
+            }
+
+            if (GUILayout.Button("정면 타격"))
+            {
+                ReportSealHit(SEAL_FRONT_ANGLE, "정면");
+            }
+
+            GUILayout.EndHorizontal();
+
+            if (GUILayout.Button("현재 방향으로 타수만큼 연타"))
+            {
+                for (int i = 0; i < _seal.RequiredHits; ++i)
+                {
+                    EMucheolSealDirection direction = _seal.CurrentDirection;
+                    if (direction == EMucheolSealDirection.None)
+                    {
+                        break;
+                    }
+
+                    ReportSealHit(SealAngle(direction), direction.ToString());
+                }
+            }
+        }
+
+        private static float SealAngle(EMucheolSealDirection direction)
+        {
+            switch (direction)
+            {
+                case EMucheolSealDirection.Right:
+                    return SEAL_RIGHT_ANGLE;
+                case EMucheolSealDirection.Left:
+                    return SEAL_LEFT_ANGLE;
+                case EMucheolSealDirection.Rear:
+                    return SEAL_REAR_ANGLE;
+                default:
+                    return SEAL_FRONT_ANGLE;
+            }
+        }
+
+        // 공격 동작 번호를 매번 올려 중복으로 걸러지지 않게 한다. 봉인이 소비한 타격은 체력 피해가 없다
+        private void ReportSealHit(float angle, string label)
+        {
+            ++_sealActionSerial;
+            Vector3 incoming = Quaternion.AngleAxis(angle, Vector3.up) * _body.Forward;
+            var hit = new MucheolSealHit(_sealActionSerial, false, false, _body.Forward, incoming);
+            MucheolSealVerdict verdict = _seal.ReportHit(in hit);
+            _sealLast = $"{label} 타격 -> {verdict.Result}";
+
+            if (!verdict.ConsumesHit)
+            {
+                _body.ApplyDamage(_body.MaxHealth * SEAL_HIT_DAMAGE_RATE, false, ReadClock());
+            }
         }
 
         // 하드 P07 확인용 배치 도구. 위치만 바꾸고 판정은 건드리지 않는다
@@ -608,6 +742,19 @@ namespace Shinshi.AI
             _brain.AddSelectionRule(_forced);
             _body.Brain = _brain;
 
+            // 방향 봉인은 전투를 열기 전에만 얹을 수 있다. 꺼 두면 기믹도 피해 상한도 없다
+            _seal             = null;
+            _sealLast         = string.Empty;
+            _sealActionSerial = 0;
+            if (_sealMode)
+            {
+                _seal = new MucheolSealGimmick(_body,
+                    new MucheolSealGimmickSpec(SEAL_TRIGGER_RATE, SEAL_SOLO_HITS, SEAL_GROUP_HITS, SEAL_FRONT_HALF, SEAL_SIDE_LIMIT),
+                    SEAL_STARTING_COUNT);
+                _brain.AddGimmick(_seal);
+                _body.DamageCap = new SealFloorCap(_seal);
+            }
+
             double now = ReadClock();
             _bodyMotion.Reset(0f, now);
             _bodyDeadline = 0.0;
@@ -758,6 +905,26 @@ namespace Shinshi.AI
         /****************************************
         *            Helper Classes
         ****************************************/
+
+        // 봉인 중 체력 하한을 시험 몸체의 피해 상한 창구에 맞춘다. 운영에서는 서버 피해 판정기가 IMucheolSealGuard의 하한을 읽는 자리다.
+        // 하한은 발동 전과 봉인이 깨진 뒤에는 0이라 그때는 피해를 막지 않는다
+        private sealed class SealFloorCap : IBossDamageCap
+        {
+            private readonly MucheolSealGimmick _seal;
+
+            public SealFloorCap(MucheolSealGimmick seal)
+            {
+                _seal = seal;
+            }
+
+            public bool IsDamageBlocked => false;
+
+            public float CapDamage(float currentHealth, float maxHealth, float damage)
+            {
+                float floor = _seal.HealthFloorRate * maxHealth;
+                return Mathf.Min(damage, Mathf.Max(0f, currentHealth - floor));
+            }
+        }
 
         // 시험 몸체는 돌진이 전장 경계에 정확히 닿아 끝나면 그 자리에서 안쪽 돌진도 0m가 된다. 몸체를 고치지 않고(월백 시험과 같이 쓰는 코드)
         // 이 리그가 패턴에 주는 이동 창구에서 경계에 막히는 거리를 조금 줄여, 보스가 경계 위가 아니라 안쪽에 서게 한다

@@ -35,6 +35,12 @@ namespace Shinshi.AI
         private const float SUCCESS_IDLE_LEAD_SECONDS = 0.6f;
         private const float SUCCESS_ENTER_BLEND_SECONDS = 0.3f;
         private const float SUCCESS_EXIT_BLEND_SECONDS = 0.6f;
+        private const float MARK_HEIGHT = 2.1f;      // 배정 문양을 앵커(발밑)에서 띄우는 높이
+        private const float MARK_SIZE = 0.7f;        // 배정 문양의 긴 변 길이(m)
+        private const float MIN_FACE_DISTANCE_SQR = 0.0001f; // 카메라와 문양이 거의 겹치면 방향을 바꾸지 않는다
+        private const string GLYPH_NAME_PREFIX = "SM_Talisman_Glyph";
+        private static readonly string[] _glyphNames = { "Flower", "Moon", "Star", "Diamond" };
+        private static readonly int _markColorId = Shader.PropertyToID("_Color");
         private const string RANGE_SHADER = "Sprites/Default";
         private const string DEFENSE_STATE = "defense_inplace";
         private const string RING_STATE = "attack02_inplace";
@@ -62,6 +68,10 @@ namespace Shinshi.AI
         private Transform _viewer; // 문양을 돌려 보일 카메라, 주입하거나 기믹 시작 때 한 번 찾는다
         private readonly uint[] _playbackIds = new uint[STRUCTURE_COUNT];
         private readonly WolbaekTalismanStructure[] _placements = new WolbaekTalismanStructure[STRUCTURE_COUNT];
+        private readonly Dictionary<int, Transform> _anchors = new Dictionary<int, Transform>();
+        private readonly Dictionary<int, GameObject> _marks = new Dictionary<int, GameObject>();
+        private readonly List<int> _staleMarks = new List<int>();
+        private MaterialPropertyBlock _markBlock;
         private readonly List<GameObject> _effects = new List<GameObject>(4);
         private readonly WolbaekEffectTails _tails = new WolbaekEffectTails();
         private readonly List<WolbaekBeamPlayer> _beams = new List<WolbaekBeamPlayer>(2);
@@ -128,6 +138,20 @@ namespace Shinshi.AI
             if ((_active) && (_serverClock != null))
             {
                 Tick(_serverClock());
+            }
+            UpdateMemberMarks();
+        }
+
+        /// <summary> 참가자 머리 위 배정 문양의 기준이 될 몸체를 넣는다, null이면 지운다. 기믹이 끝나도 유지한다 </summary>
+        public void SetMemberAnchor(int combatId, Transform anchor)
+        {
+            if (anchor == null)
+            {
+                _anchors.Remove(combatId);
+            }
+            else
+            {
+                _anchors[combatId] = anchor;
             }
         }
 
@@ -474,6 +498,116 @@ namespace Shinshi.AI
                     _structures[i].FaceGlyph(_playbackIds[i], viewerPosition);
                 }
             }
+        }
+
+        // 서버가 구조물에 배정한 참가자 머리 위에 그 구조물과 같은 색·문양을 띄운다. 배정은 서버 값을 그대로 쓴다
+        private void UpdateMemberMarks()
+        {
+            _staleMarks.Clear();
+            foreach (KeyValuePair<int, GameObject> pair in _marks)
+            {
+                if (!_active || pair.Value == null || !_anchors.TryGetValue(pair.Key, out Transform held) || held == null)
+                {
+                    _staleMarks.Add(pair.Key);
+                }
+            }
+            for (int i = 0; i < _staleMarks.Count; ++i)
+            {
+                if (_marks.TryGetValue(_staleMarks[i], out GameObject stale) && stale != null)
+                {
+                    Destroy(stale);
+                }
+                _marks.Remove(_staleMarks[i]);
+            }
+            if (!_active)
+            {
+                return;
+            }
+
+            for (int i = 0; i < STRUCTURE_COUNT; ++i)
+            {
+                if ((_structures[i] == null) || (!_anchors.TryGetValue(_placements[i].AssignedCombatId, out Transform anchor)) || (anchor == null))
+                {
+                    continue;
+                }
+                int combatId = _placements[i].AssignedCombatId;
+                if (!_marks.TryGetValue(combatId, out GameObject mark) || mark == null)
+                {
+                    mark = CreateMemberMark(_placements[i]);
+                    if (mark == null)
+                    {
+                        continue;
+                    }
+                    _marks[combatId] = mark;
+                }
+
+                Vector3 position = anchor.position + (Vector3.up * MARK_HEIGHT);
+                mark.transform.position = position;
+                if (_viewer != null)
+                {
+                    Vector3 toViewer = _viewer.position - position;
+                    if (toViewer.sqrMagnitude > MIN_FACE_DISTANCE_SQR)
+                    {
+                        mark.transform.rotation = Quaternion.LookRotation(-toViewer, Vector3.up);
+                    }
+                }
+            }
+        }
+
+        // 구조물 프리팹의 글리프 메시와 재질을 그대로 복제해 구조물과 같은 모양을 쓴다
+        private GameObject CreateMemberMark(WolbaekTalismanStructure placement)
+        {
+            int symbol = placement.SymbolId;
+            if ((symbol < 0) || (symbol >= STRUCTURE_COUNT) || (_structurePrefabs == null) || (_structurePrefabs[symbol] == null)
+                || ((int)placement.Color < 0) || ((int)placement.Color >= _colors.Length))
+            {
+                return null;
+            }
+
+            string glyphName = GLYPH_NAME_PREFIX + _glyphNames[symbol];
+            MeshRenderer source = null;
+            MeshRenderer[] renderers = _structurePrefabs[symbol].GetComponentsInChildren<MeshRenderer>(true);
+            for (int i = 0; i < renderers.Length; ++i)
+            {
+                if (renderers[i].name == glyphName)
+                {
+                    source = renderers[i];
+                    break;
+                }
+            }
+            if ((source == null) || (!source.TryGetComponent(out MeshFilter filter)) || (filter.sharedMesh == null))
+            {
+                return null;
+            }
+
+            Vector3 size = filter.sharedMesh.bounds.size;
+            float extent = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+            if (extent <= 0f)
+            {
+                return null;
+            }
+
+            var root = new GameObject("WolbaekTalismanMemberMark");
+            var glyph = new GameObject(glyphName);
+            glyph.transform.SetParent(root.transform, false);
+            glyph.transform.localRotation = source.transform.localRotation;
+            float scale = MARK_SIZE / extent;
+            glyph.transform.localScale = Vector3.one * scale;
+            // 메시 중심이 원점에서 벗어나 있어, 구조물에서는 글리프 부모가 상쇄하던 오프셋을 여기서 직접 없앤다
+            glyph.transform.localPosition = -(glyph.transform.localRotation * (filter.sharedMesh.bounds.center * scale));
+            glyph.AddComponent<MeshFilter>().sharedMesh = filter.sharedMesh;
+            MeshRenderer renderer = glyph.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = source.sharedMaterial;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            if (_markBlock == null)
+            {
+                _markBlock = new MaterialPropertyBlock();
+            }
+            _markBlock.Clear();
+            _markBlock.SetColor(_markColorId, _colors[(int)placement.Color]);
+            renderer.SetPropertyBlock(_markBlock);
+            return root;
         }
 
         private bool SameCast(int castId)
