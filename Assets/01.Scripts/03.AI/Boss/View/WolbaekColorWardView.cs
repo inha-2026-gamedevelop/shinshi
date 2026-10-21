@@ -422,10 +422,17 @@ namespace Shinshi.AI
         {
             if (prefab == null) return null;
             WolbaekWardPlayer player = Instantiate(prefab);
+            // 재생기는 시작 시각이 현재 서버 시각보다 미래인 스냅샷을 조용히 거절한다. 지연이 짧으면 추정 서버 시각이
+            // 단계 시작 시각보다 늦을 수 있어 현재 시각으로 잘라 넣는다
+            double start = Math.Min(_stage.StartServerTime, now);
             var value = new WolbaekWardPlayer.Snapshot((ulong)_castId, _sequence, (uint)_stage.Index,
-                sign, color, center, radius, _stage.StartServerTime, now,
-                WolbaekWardPlayer.EPhase.Active, _stage.StartServerTime);
-            player.Begin(value, now);
+                sign, color, center, radius, start, now,
+                WolbaekWardPlayer.EPhase.Active, start);
+            if (player.Begin(value, now) == 0)
+            {
+                Debug.LogWarning($"[Boss] 월백 색 결계 재생기가 시작을 거절했다, cast={_castId}, stage={_stage.Index}, sign={sign}");
+            }
+
             return player;
         }
 
@@ -455,11 +462,13 @@ namespace Shinshi.AI
             float amount = Mathf.Clamp01((distance - _start.LinkWarnDistance)
                 / (_start.LinkDamageDistance - _start.LinkWarnDistance));
             bool red = color == EWolbaekWardColor.Red;
+            // 재생 중이면 시작 때 정한 시각을 그대로 써서 같은 단계로 인정받게 한다
+            double start = player.IsRunning ? player.CurrentSnapshot.AppearedAt : Math.Min(_stage.StartServerTime, now);
             var value = new WolbaekLinkPlayer.Snapshot((ulong)_castId, ++_sequence,
                 red ? EWolbaekWardSign.Diamond : EWolbaekWardSign.Moon,
                 red ? G_RedWardColor : G_BlueWardColor, first.position, second.position,
-                _stage.StartServerTime, now, WolbaekLinkPlayer.EPhase.Active,
-                _stage.StartServerTime, severity, amount, true);
+                start, now, WolbaekLinkPlayer.EPhase.Active,
+                start, severity, amount, true);
             if (!player.IsRunning) player.Begin(value, now);
             else player.Reconcile(player.PlaybackId, value, now);
             if (player.IsRunning) player.Tick(player.PlaybackId, now);
