@@ -558,11 +558,7 @@ namespace Shinshi.AI
 
         private static void LoopParticles(GameObject root)
         {
-            foreach (ParticleSystem particle in root.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                ParticleSystem.MainModule main = particle.main;
-                main.loop = true;
-            }
+            WolbaekParticleLoop.Apply(root);
         }
 
         private static void DestroyOwned(ref GameObject value)

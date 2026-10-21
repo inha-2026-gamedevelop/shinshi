@@ -498,11 +498,7 @@ namespace Shinshi.AI
             if (_shieldPrefab == null) return;
             _shield = Instantiate(_shieldPrefab, transform.position + (Vector3.up * SHIELD_HEIGHT), Quaternion.identity);
             _shield.transform.localScale = _shieldPrefab.transform.localScale * SHIELD_SCALE;
-            foreach (ParticleSystem particle in _shield.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                ParticleSystem.MainModule main = particle.main;
-                main.loop = true;
-            }
+            WolbaekParticleLoop.Apply(_shield);
         }
 
         private void StopShield()
