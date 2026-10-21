@@ -24,7 +24,7 @@ namespace Shinshi.AI
         public const float DASH_8M_WIDTH  = 0.83333f;
         public const float DASH_8M_LENGTH = 0.44444f;
         public const float SIDE_YAW       = 30f;    // 도, 좌우 60도 구역의 중심 각도
-        public const float GROUND_LIFT    = 0.025f; // m, 바닥 겹침을 피하는 높이, 프리뷰와 같다
+        public const float GROUND_LIFT    = 0.08f;  // m, 바닥 겹침을 피하는 높이, 실전 맵 바닥에 묻혀 프리뷰(0.025)보다 올렸다
         public const float DASH_PATH_LENGTH = 18f;  // m, 원본 06 경로 길이(크기 1)
 
         private struct Entry
