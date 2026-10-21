@@ -4400,8 +4400,8 @@ MonoBehaviour:
   - {fileID: 1537581411}
   _classNameText: {fileID: 1153313759}
   _classDescription: {fileID: 159254738}
-  _selectedColor: {r: 0.86, g: 0.78, b: 0.58, a: 0.35}
-  _normalColor: {r: 1, g: 1, b: 1, a: 0.06}
+  _selectedColor: {r: 1, g: 0.9, b: 0.62, a: 1}
+  _normalColor: {r: 1, g: 1, b: 1, a: 1}
   _preview: {fileID: 465672071}
   _customizePanel: {fileID: 806858977}
   _nameInput: {fileID: 906321240}
