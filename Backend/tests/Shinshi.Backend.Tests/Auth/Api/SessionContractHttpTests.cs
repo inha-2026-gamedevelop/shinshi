@@ -17,6 +17,7 @@ using Xunit;
 
 // Project
 using Shinshi.Backend;
+using Shinshi.Backend.Tests.Accounts;
 using Shinshi.Contracts;
 using Shinshi.Data.Auth;
 
@@ -293,12 +294,30 @@ namespace Shinshi.Backend.Tests.Auth
                 new { fixture.AccountId });
             IssuedAuthToken staleTownToken = (await fixture.Auth.IssueTownJoinTokenAsync(identity, fixture.CharacterId,
                 fixture.TownId)).Identity!;
+            using HttpResponseMessage unrequested = await player.PostAsync(deletePath,
+                Body(new CharacterDeleteRequest(Guid.NewGuid().ToString("D"), 0)));
+            Assert.Equal(HttpStatusCode.Conflict, unrequested.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.CHARACTER_DELETE_NOT_REQUESTED,
+                Read<OperationResult>(await unrequested.Content.ReadAsStringAsync()).ReasonCode);
+
+            using HttpResponseMessage requested = await player.PostAsync(string.Format(
+                ApiRoutes.CHARACTER_DELETE_REQUEST_FORMAT, fixture.CharacterId.ToString("D")),
+                Body(new CharacterDeleteRequest(Guid.NewGuid().ToString("D"), 0)));
+            Assert.Equal(HttpStatusCode.OK, requested.StatusCode);
+            long deleteRevision = Read<OperationResult>(await requested.Content.ReadAsStringAsync()).CommittedRevision;
+            using HttpResponseMessage pending = await player.PostAsync(deletePath,
+                Body(new CharacterDeleteRequest(Guid.NewGuid().ToString("D"), deleteRevision)));
+            Assert.Equal(HttpStatusCode.Conflict, pending.StatusCode);
+            Assert.Equal(ContractCodes.RejectReason.CHARACTER_DELETE_PENDING,
+                Read<OperationResult>(await pending.Content.ReadAsStringAsync()).ReasonCode);
+            await CharacterDeleteTestSupport.BackdateAsync(database.DataSource, fixture.CharacterId);
+
             using HttpResponseMessage deleted = await player.PostAsync(deletePath,
-                Body(new CharacterDeleteRequest(operationId, 0)));
+                Body(new CharacterDeleteRequest(operationId, deleteRevision)));
             using HttpResponseMessage replay = await player.PostAsync(deletePath,
-                Body(new CharacterDeleteRequest(operationId, 0)));
+                Body(new CharacterDeleteRequest(operationId, deleteRevision)));
             using HttpResponseMessage conflict = await player.PostAsync(deletePath,
-                Body(new CharacterDeleteRequest(operationId, 1)));
+                Body(new CharacterDeleteRequest(operationId, 0)));
             using HttpResponseMessage list = await player.GetAsync(ApiRoutes.CHARACTERS);
             using HttpResponseMessage ticket = await player.PostAsync(ApiRoutes.TOWN_JOIN_TICKET,
                 Body(new TownJoinTicketRequest(fixture.CharacterId.ToString("D"))));
