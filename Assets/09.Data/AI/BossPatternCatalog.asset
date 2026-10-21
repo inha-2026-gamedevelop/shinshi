@@ -55,7 +55,7 @@ MonoBehaviour:
     _arenaDiameter: 44
     _healthRef: 700
     _defense: 200
-    _phaseTransitionHealthRate: 0.55
+    _phaseTransitionHealthRate: 0.5
     _appearanceSeconds: 0
     _openingDelaySeconds: 0.5
     _nearDistanceMax: 5
