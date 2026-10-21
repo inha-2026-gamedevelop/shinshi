@@ -25,6 +25,12 @@ namespace Shinshi.AI
         private const float SHIELD_FADE_SECONDS = 2.5f;     // 정상 성공 때 새 파티클을 멈춘 뒤 남은 파티클이 투명해지며 사라지는 시간, 시험 씬 GimmickShieldCue와 같다
         private static readonly Color G_RedWardColor = new Color(1f, 0.25f, 0.3f, 1f);  // 시험 씬 ColorWardCue 확정 색
         private static readonly Color G_BlueWardColor = new Color(0.3f, 0.55f, 1f, 1f);
+        private const float MARK_RADIUS = 0.75f;           // 참가자 발밑 색 표식의 반경
+        private const float MARK_WIDTH = 0.1f;
+        private const float MARK_HEIGHT = 0.06f;
+        private const float MARK_DIAMOND_SCALE = 1.2f;     // 마름모는 같은 반경의 원보다 작아 보여서 키운다
+        private const int MARK_CIRCLE_POINTS = 32;
+        private const int MARK_DIAMOND_POINTS = 4;
         private const string GROGGY_STATE = "down_groggy02_loop_inplace";
         private const string IDLE_STATE = "Idle";
 
@@ -38,6 +44,8 @@ namespace Shinshi.AI
         [SerializeField] private GameObject _strikePrefab;
 
         private readonly Dictionary<int, Transform> _anchors = new Dictionary<int, Transform>();
+        private readonly Dictionary<int, GameObject> _marks = new Dictionary<int, GameObject>();
+        private readonly List<int> _staleMarks = new List<int>();
         private readonly List<GameObject> _strikes = new List<GameObject>();
         private readonly double[] _graceEnds = new double[4];
         private Func<double> _clock;
@@ -50,6 +58,7 @@ namespace Shinshi.AI
         private GameObject _telegraphEffect;
         private LineRenderer _holdLine;
         private Material _holdMaterial;
+        private Material _markMaterial;
         private WolbaekWardPlayer _redWard;
         private WolbaekWardPlayer _blueWard;
         private WolbaekLinkPlayer _redLink;
@@ -99,6 +108,7 @@ namespace Shinshi.AI
             double now = Now();
             if (_shield != null) _shield.transform.position = transform.position + Vector3.up * SHIELD_HEIGHT;
             UpdateHoldLine(now);
+            UpdateMemberMarks();
             if (_redWard != null && _redWard.IsRunning) _redWard.Tick(_redWard.PlaybackId, now);
             if (_blueWard != null && _blueWard.IsRunning) _blueWard.Tick(_blueWard.PlaybackId, now);
             UpdateLink(_redLink, EWolbaekWardColor.Red, now);
@@ -482,6 +492,7 @@ namespace Shinshi.AI
             _holding = false;
             StopStage();
             ClearHoldLine();
+            ClearMemberMarks();
             DestroyOwned(ref _gather);
             DestroyOwned(ref _shield);
             for (int i = 0; i < _strikes.Count; ++i) if (_strikes[i] != null) Destroy(_strikes[i]);
@@ -503,6 +514,94 @@ namespace Shinshi.AI
                 _holdLine.SetPosition(i, _start.GatherCenter + new Vector3(Mathf.Cos(angle) * _start.GatherRadius,
                     0.12f, Mathf.Sin(angle) * _start.GatherRadius));
             }
+        }
+
+        // 서버가 정한 배정 색을 참가자 발밑에 그린다. 연결 띠는 같은 색이 둘일 때만 생겨 혼자인 색은 단서가 없기 때문이다.
+        // 색만으로 구분하지 않도록 모양도 다르게 한다(빨강 마름모, 파랑 원, 결계의 기호와 같다). 배정은 서버가 정한 값을 그대로 쓴다
+        private void UpdateMemberMarks()
+        {
+            if (_start.Members == null)
+            {
+                return;
+            }
+
+            _staleMarks.Clear();
+            foreach (KeyValuePair<int, GameObject> pair in _marks)
+            {
+                if (!_anchors.TryGetValue(pair.Key, out Transform held) || held == null || pair.Value == null)
+                {
+                    _staleMarks.Add(pair.Key);
+                }
+            }
+
+            for (int i = 0; i < _staleMarks.Count; ++i)
+            {
+                if (_marks.TryGetValue(_staleMarks[i], out GameObject stale) && stale != null) Destroy(stale);
+                _marks.Remove(_staleMarks[i]);
+            }
+
+            for (int i = 0; i < _start.Members.Count; ++i)
+            {
+                WolbaekWardMember member = _start.Members[i];
+                if (!_anchors.TryGetValue(member.CombatId, out Transform anchor) || anchor == null) continue;
+
+                if (!_marks.TryGetValue(member.CombatId, out GameObject mark) || mark == null)
+                {
+                    mark = CreateMemberMark(member.Color);
+                    if (mark == null) continue;
+                    _marks[member.CombatId] = mark;
+                }
+
+                mark.transform.position = anchor.position + (Vector3.up * MARK_HEIGHT);
+            }
+        }
+
+        private GameObject CreateMemberMark(EWolbaekWardColor color)
+        {
+            if (_markMaterial == null)
+            {
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader == null) return null;
+                _markMaterial = new Material(shader);
+            }
+
+            bool red = color == EWolbaekWardColor.Red;
+            Color tint = red ? G_RedWardColor : G_BlueWardColor;
+
+            var mark = new GameObject("WolbaekWardMemberMark");
+            mark.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+
+            LineRenderer line = mark.AddComponent<LineRenderer>();
+            line.useWorldSpace = false;
+            line.loop = true;
+            line.alignment = LineAlignment.TransformZ;
+            line.widthMultiplier = MARK_WIDTH;
+            line.sharedMaterial = _markMaterial;
+            line.startColor = tint;
+            line.endColor = tint;
+
+            int points = red ? MARK_DIAMOND_POINTS : MARK_CIRCLE_POINTS;
+            line.positionCount = points;
+            for (int i = 0; i < points; ++i)
+            {
+                float angle = (i / (float)points) * Mathf.PI * 2f;
+                float radius = red ? (MARK_RADIUS * MARK_DIAMOND_SCALE) : MARK_RADIUS;
+                line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f));
+            }
+
+            return mark;
+        }
+
+        private void ClearMemberMarks()
+        {
+            foreach (KeyValuePair<int, GameObject> pair in _marks)
+            {
+                if (pair.Value != null) Destroy(pair.Value);
+            }
+
+            _marks.Clear();
+            if (_markMaterial != null) Destroy(_markMaterial);
+            _markMaterial = null;
         }
 
         private void FadeShield()
