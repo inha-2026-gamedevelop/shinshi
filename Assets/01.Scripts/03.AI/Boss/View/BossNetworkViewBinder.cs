@@ -16,7 +16,7 @@ namespace Shinshi.AI
     /// <summary> 서버 복제 상태와 공격 기록을 클라이언트 보스 표현에 연결한다 </summary>
     [DisallowMultipleComponent]
     public sealed class BossNetworkViewBinder : ClientView, IBossStateListener, IBossHardPhaseStateListener,
-        IBossMucheolStateListener, IBossWolbaekGimmickStateListener
+        IBossMucheolStateListener, IBossWolbaekGimmickStateListener, IBossMucheolSealStateListener
     {
         /****************************************
         *                Fields
@@ -30,6 +30,7 @@ namespace Shinshi.AI
         [SerializeField] private BossMucheolPhaseView _mucheolPhaseView; // 무철 전용 표시, 비어 있으면 생략한다
         [SerializeField] private MucheolMotionView _mucheolMotion; // 무철 몸 동작, 비어 있으면 같은 오브젝트에서 한 번 찾는다
         [SerializeField] private MucheolPatternVfxView _mucheolVfx; // 무철 일반 패턴 VFX, 비어 있으면 같은 오브젝트에서 한 번 찾는다
+        [SerializeField] private MucheolSealView _sealView; // 무철 방향 봉인 표식, 비어 있으면 연결할 때 하위 표현에서 찾는다
         [SerializeField] private WolbaekTalismanView _talismanView; // 서버 복제 계약 연결 전에는 수신 준비만 한다
         [SerializeField] private WolbaekColorWardView _colorWardView; // 50% 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekFoxfireSealView _foxfireSealView; // 25% 복제 계약의 클라이언트 입력점
@@ -243,6 +244,12 @@ namespace Shinshi.AI
                 _mucheolMotion.ResetSession();
                 _mucheolMotion.SetServerClock(ReadServerTime);
             }
+            ResolveSealView();
+            if (_sealView != null)
+            {
+                _sealView.OnSealStopped();
+                _sealView.SetServerClock(ReadServerTime);
+            }
             if (_mucheolVfx != null)
             {
                 _mucheolVfx.ResetSession();
@@ -360,6 +367,10 @@ namespace Shinshi.AI
             if (_mucheolPhaseView != null)
             {
                 _mucheolPhaseView.ClearAll();
+            }
+            if (_sealView != null)
+            {
+                _sealView.OnSealStopped();
             }
             if (_talismanView != null)
             {
@@ -2049,6 +2060,68 @@ namespace Shinshi.AI
             }
 
             _mucheolMotion.BeginGroggy(groggy.CastId, groggy.CollisionServerTime, groggy.GroggyEndServerTime);
+        }
+
+        // 봉인 표식은 보스 표현 프리팹(PF_MucheolBoss)에 붙어 있어 표현이 늦게 붙어도 찾도록 연결할 때와 사건마다 확인한다
+        private bool ResolveSealView()
+        {
+            if ((_sealView == null) && (_view != null))
+            {
+                _sealView = _view.GetComponentInChildren<MucheolSealView>(true);
+            }
+            if (_sealView == null)
+            {
+                _sealView = GetComponentInChildren<MucheolSealView>(true);
+            }
+            return _sealView != null;
+        }
+
+        public void OnSealRevealed(int requiredHits)
+        {
+            if (ResolveSealView())
+            {
+                _sealView.OnSealRevealed(requiredHits);
+            }
+        }
+
+        public void OnSealHitCounted(EMucheolSealSide side, int hitCount, int requiredHits)
+        {
+            if (ResolveSealView())
+            {
+                _sealView.OnSealHitCounted(side, hitCount, requiredHits);
+            }
+        }
+
+        public void OnSealDirectionCleared(EMucheolSealSide side, int requiredHits)
+        {
+            if (ResolveSealView())
+            {
+                _sealView.OnSealDirectionCleared(side, requiredHits);
+            }
+        }
+
+        public void OnSealBroken(int requiredHits)
+        {
+            if (ResolveSealView())
+            {
+                _sealView.OnSealBroken(requiredHits);
+            }
+        }
+
+        public void OnSealStopped()
+        {
+            if (ResolveSealView())
+            {
+                _sealView.OnSealStopped();
+            }
+        }
+
+        public void OnSealRestored(EMucheolSealSide side, int hitCount, int requiredHits)
+        {
+            if (ResolveSealView())
+            {
+                _sealView.OnSealRestored(side, hitCount, requiredHits);
+            }
         }
 
         public void OnChargeGroggyCancelled(int castId)

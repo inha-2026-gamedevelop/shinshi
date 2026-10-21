@@ -45,6 +45,8 @@ namespace Shinshi.Combat
     // 패턴 팩토리는 보스 ID로 고른다. 무철은 1페이즈와 2페이즈 팩토리를 묶어 쓰고 실행 데이터는 임시 시작값(MucheolSortieData)이다.
     // 무철 돌진 유도 기믹도 여기서 만들어 두뇌에 더한다. 돌진 구조물 배치(BossChargeStructureField)를 받으면 P06의 구조물 조회와
     // 지정 구조물로 넘기고, 구조물 연결(BossChargeStructureDirector)이 돌진 결과로 파괴를 확정한다. 배치가 없으면 기믹은 발동하지 않는다.
+    // 무철 방향 봉인 기믹은 이 몸체가 들고 판정기의 적중 확인(IDamageHitScreenTarget)에 타격 보고와 체력 하한을 잇는다.
+    // 봉인 사건은 수신처가 선택 계약(IBossMucheolSealEventListener)을 구현할 때만 나간다
     // 맞은 대상을 미는 창구(IBossHitDisplacer)도 이 몸체다. 막힘은 보스 이동과 같은 검사로 재고 실제 위치는 대상의 서버 이동이 옮긴다.
     // 50% 전환 뒤 인계 대기는 월백이면 결계 전개(BossBarrierDirector)가 끝날 때까지 이어지고, 결계가 없는 보스는 다음 틱에 바로 끝난다.
     // 결계 위험 구역은 완료 뒤에도 사망이나 전투 종료까지 남아 2페이즈 동안 피해를 낸다
@@ -59,7 +61,7 @@ namespace Shinshi.Combat
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
         IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
         IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp, IBossEventRelayHost,
-        IBossHitDisplacer, IDamageCapTarget
+        IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget
     {
         /****************************************
         *                Fields
@@ -108,6 +110,7 @@ namespace Shinshi.Combat
         // 월백 체력 기믹 알림의 중계, 기믹 묶음은 몸체보다 나중에 만들어지므로 팩토리가 이 중계를 기믹의 수신처로 넘긴다
         private readonly BossWolbaekGimmickEventRelay _wolbaekRelay;
         private readonly MucheolChargeGimmick    _chargeGimmick;   // 무철일 때만 있다
+        private readonly MucheolSealGimmick      _sealGimmick;     // 무철이고 출정 시작 인원을 받았을 때만 있다
 
         // 무철 돌진 구조물 배치와 그 파괴 연결, 무철이고 배치를 받았을 때만 있다
         private readonly BossChargeStructureField    _chargeStructures;
@@ -134,6 +137,8 @@ namespace Shinshi.Combat
         private bool                  _hasPendingControl = false;
         private bool                  _defeatReported    = false;
         private IBossEventListener    _events;
+        private IBossMucheolSealEventListener _sealEvents;           // 수신처가 봉인 계약도 구현할 때만 있다
+        private EMucheolSealState             _sealReportedState = EMucheolSealState.Dormant;
         private double                _tickTime;
 
         // 지금 예고 중인 시전 하나, 보스는 한 번에 한 시전만 한다. 조준 알림에 길이가 없는 패턴의 길이와 발동 알림의 형태를 여기서 채운다
@@ -288,12 +293,13 @@ namespace Shinshi.Combat
         // connections는 전투 번호의 현재 접속 상태를 답하는 입력이고, 하드 2페이즈 P04(추적 장판)가 접속한 대상만 고르는 데 쓴다. 비우면 그 패턴을 만들지 않는다
         // displaceTargets는 밀 수 있는 대상을 전투 번호로 찾는 입력이고, 비우면 밀림이 필요한 패턴(무철 하드 P07)을 만들지 않는다
         // chargeStructures는 무철 돌진 구조물 배치이고 무철에만 쓴다. 비우면 P06은 벽과 전장 경계에만 막히고 돌진 유도 기믹은 발동하지 않는다
+        // sealStartingCount는 출정 시작 때 고정된 인원이고 무철 방향 봉인의 방향당 타수를 정한다. 0이면 봉인 기믹을 붙이지 않는다
         public BossServer(string bossId, int combatId, Vector3 position, Vector3 forward, Vector3 arenaCenter,
             float referenceAttack, float referenceHealth, float healthScale,
             IBossPatternCatalog catalog, ICombatTargetQuery targets, IDamageResolver damage,
             IBossWallQuery terrain, IBossRandom random, BossBarrierSettings barrierSettings = null,
             IBossParticipantConnection connections = null, IBossDisplaceLookup displaceTargets = null,
-            BossChargeStructureField chargeStructures = null)
+            BossChargeStructureField chargeStructures = null, int sealStartingCount = 0)
         {
             if (string.IsNullOrEmpty(bossId))
             {
@@ -397,6 +403,17 @@ namespace Shinshi.Combat
             {
                 _brain.AddGimmick(_chargeGimmick);
             }
+
+            // 봉인은 판정기가 타격마다 이 몸체를 거쳐 부르므로(IDamageHitScreenTarget) 몸체가 기믹을 들고 있는다
+            if ((bossId == MucheolPatternFactory.BOSS_ID) && (sealStartingCount > 0))
+            {
+                _sealGimmick = new MucheolSealGimmick(this, MucheolSortieData.CreateSealGimmickSpec(), sealStartingCount);
+                if (!_brain.AddGimmick(_sealGimmick))
+                {
+                    Debug.LogError($"[Boss] 두뇌가 방향 봉인 기믹을 거절했다, combatId={combatId}");
+                    _sealGimmick = null;
+                }
+            }
         }
 
         // 무철, 하드 페이즈 사건은 수신처가 그 선택 계약도 구현할 때만 나간다. 구현하지 않으면 중계의 수신처가 비어 보내지 않는다
@@ -407,6 +424,7 @@ namespace Shinshi.Combat
             _mucheolRelay.SetListener(listener as IBossMucheolEventListener);
             _hardRelay.SetListener(listener as IBossHardPhaseEventListener);
             _wolbaekRelay.SetListener(listener as IBossWolbaekGimmickEventListener);
+            _sealEvents = listener as IBossMucheolSealEventListener;
         }
 
         // 두뇌가 기믹을 전투 시작 전에만 받으므로 Begin 전에만 받는다. 두 번째 호출은 첫 호출이 실패했어도 거절한다.
@@ -511,6 +529,29 @@ namespace Shinshi.Combat
             return (_damageCap == null) ? damage : _damageCap.CapDamage(currentHealth, _maxHealth, damage);
         }
 
+        // 투사체는 날아온 쪽(진행 방향의 반대)을, 그 밖에는 피해가 온 위치 쪽을 입사 방향으로 본다. 봉인 하한은 비율이라 최대 체력으로 바꿔 넘긴다
+        public bool ScreenHit(in DamageRequest request, bool isSummonAttack, out float healthFloor)
+        {
+            healthFloor = 0f;
+            if (_sealGimmick == null)
+            {
+                return false;
+            }
+
+            Vector3 travel   = request.TravelDirection;
+            Vector3 incoming = (travel.sqrMagnitude > (DIRECTION_EPSILON * DIRECTION_EPSILON))
+                ? -travel
+                : request.SourcePosition - _position;
+
+            EMucheolSealDirection direction = _sealGimmick.CurrentDirection;
+            var hit = new MucheolSealHit(request.ActionInstanceId, request.IsDamageOverTime, isSummonAttack, _forward, incoming);
+            MucheolSealVerdict verdict = _sealGimmick.ReportHit(in hit);
+
+            healthFloor = verdict.HealthFloorRate * _maxHealth;
+            PublishSealHit(verdict.Result, direction);
+            return verdict.ConsumesHit;
+        }
+
         /// <summary> 등장 대기 없이 전투를 연다, 정의가 없거나 수치가 비었으면 거짓이고 전투를 열지 않는다 </summary>
         public bool Begin(double serverTime)
         {
@@ -565,6 +606,7 @@ namespace Shinshi.Combat
             }
 
             TickBarrier(serverTime);
+            PublishSealState();
             _hasPendingControl = false;
         }
 
@@ -1499,11 +1541,12 @@ namespace Shinshi.Combat
                 ? (IBossChargeOutcomeListener)_structureDirector
                 : _mucheolRelay;
             var phaseOne = new MucheolPatternFactory(referenceHealth, this, this, this, this, MucheolSortieData.CreateComboSpec(),
-                _mucheolRelay, MucheolSortieData.CreateChargeSpec(), _chargeStructures, chargeListener);
+                _mucheolRelay, MucheolSortieData.CreateChargeSpec(), _chargeStructures, chargeListener,
+                MucheolSortieData.CreateHardComboSpec());
 
             IBossHitDisplacer displacer = (_displaceTargets != null) ? this : null;
             var phaseTwo = new MucheolPhase2PatternFactory(referenceHealth, MucheolSortieData.CreatePhaseTwoSpec(), this, _catalog,
-                this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay);
+                this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay, MucheolSortieData.CreateHardPhaseTwoSpec());
 
             chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec(),
                 _mucheolRelay);
@@ -1520,6 +1563,72 @@ namespace Shinshi.Combat
             }
 
             return new MucheolPatternFactoryChain(phaseOne, phaseTwo);
+        }
+
+        // 표식은 두뇌 틱 안(공격이 빈 첫 선택 평가)에서 나오고 멈춤은 사망과 전투 종료 정리에서 일어나므로 틱 끝에 상태 변화를 보고 알린다
+        private void PublishSealState()
+        {
+            if ((_sealGimmick == null) || (_sealGimmick.State == _sealReportedState))
+            {
+                return;
+            }
+
+            EMucheolSealState previous = _sealReportedState;
+            _sealReportedState = _sealGimmick.State;
+
+            if (_sealReportedState == EMucheolSealState.Active)
+            {
+                _sealEvents?.OnSealRevealed(_sealGimmick.RequiredHits);
+            }
+            else if ((_sealReportedState == EMucheolSealState.Stopped) && (previous == EMucheolSealState.Active))
+            {
+                _sealEvents?.OnSealStopped();
+            }
+        }
+
+        // 타수와 방향 완료와 파괴는 판정기가 부른 그 자리에서 알린다. direction은 이 타격을 처리하기 전의 활성 방향이다
+        private void PublishSealHit(EMucheolSealHitResult result, EMucheolSealDirection direction)
+        {
+            if ((_sealEvents == null) || (!TryGetSealSide(direction, out EMucheolSealSide side)))
+            {
+                return;
+            }
+
+            int required = _sealGimmick.RequiredHits;
+            switch (result)
+            {
+                case EMucheolSealHitResult.Counted:
+                    _sealEvents.OnSealHitCounted(side, _sealGimmick.HitCount, required);
+                    break;
+                case EMucheolSealHitResult.DirectionCleared:
+                    _sealEvents.OnSealDirectionCleared(side, required);
+                    break;
+                case EMucheolSealHitResult.Broken:
+                    _sealReportedState = EMucheolSealState.Broken;
+                    _sealEvents.OnSealBroken(required);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private static bool TryGetSealSide(EMucheolSealDirection direction, out EMucheolSealSide side)
+        {
+            switch (direction)
+            {
+                case EMucheolSealDirection.Right:
+                    side = EMucheolSealSide.Right;
+                    return true;
+                case EMucheolSealDirection.Left:
+                    side = EMucheolSealSide.Left;
+                    return true;
+                case EMucheolSealDirection.Rear:
+                    side = EMucheolSealSide.Rear;
+                    return true;
+                default:
+                    side = EMucheolSealSide.Right;
+                    return false;
+            }
         }
 
         // 페이즈 전환 뒤 인계 대기는 결계 전개 같은 별도 진행이 끝나기를 기다리는 자리다. 결계가 없는 보스는 전환한 틱의 다음 틱

@@ -1088,7 +1088,7 @@ namespace Shinshi.Combat
             {
                 ICombatTarget target  = _targetBuffer[hitIndex];
                 var           request = new DamageRequest(_combatId, target.CombatId, arrow.CastId, arrow.ActionId, arrow.Damage,
-                    EDamageFlags.None, arrow.Origin, Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+                    EDamageFlags.None, arrow.Origin, Constants.Combat.BASIC_ATTACK_SOURCE_ID, arrow.Aim);
                 DamageResult result = _resolver.Apply(in request);
                 alive = false;
 

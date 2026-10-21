@@ -157,6 +157,17 @@ namespace Shinshi.Combat
                 return DamageResult.Guarded();
             }
 
+            // 소비 여부와 체력 하한은 정상 적중이 확정된 뒤, 치명과 상한 전에 받는다. 소비한 타격은 치명 확률도 굴리지 않는다
+            float healthFloor = 0f;
+            if (target is IDamageHitScreenTarget screenTarget)
+            {
+                bool isSummonAttack = (attacker != null) && (attacker.IsSummon);
+                if (screenTarget.ScreenHit(in request, isSummonAttack, out healthFloor))
+                {
+                    return DamageResult.Ignored(EDamageOutcome.Invulnerable);
+                }
+            }
+
             // 주인이 없어진 기술도 보존된 anchor에서 확률을 읽는다. 소환물 자체의 확률은 사용하지 않는다
             IDamageable owner = ((attacker != null) && (attacker.IsSummon)) ? ResolveSource(attacker.OwnerCombatId) : attacker;
             int ownerId = ((owner != null) && (owner.Faction == ECombatFaction.Player) && (!owner.IsSummon))
@@ -188,8 +199,24 @@ namespace Shinshi.Combat
                 }
             }
 
+            // 하한은 상한 뒤에 건다. 하한에서 막힌 피해는 치명이나 처치로 알리지 않고, 남는 피해가 없으면 없던 피해다
+            if ((DamageFeedbackRules.IsFinite(healthFloor)) && (healthFloor > 0f))
+            {
+                float allowed = health - healthFloor;
+                if (!(allowed > 0f))
+                {
+                    return DamageResult.Ignored(EDamageOutcome.Invulnerable);
+                }
+
+                if (damage > allowed)
+                {
+                    damage     = allowed;
+                    isCritical = false;
+                }
+            }
+
             float remained = health - damage;
-            bool  isLethal = remained <= Constants.Combat.HEALTH_EPSILON;
+            bool  isLethal = (remained <= Constants.Combat.HEALTH_EPSILON) && (!(healthFloor > 0f));
             float applied  = isLethal ? health : damage;
 
             // 사망이 registry 해제와 Transform 파괴를 일으킬 수 있어 좌표와 귀속은 ApplyDamage 전에 고정한다

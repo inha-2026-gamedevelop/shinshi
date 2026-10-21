@@ -15,7 +15,7 @@ namespace Shinshi.AI
 {
     /// <summary> 보스 네트워크 개체의 복제 상태와 공격 사건 전달, 판정은 서버의 BossServer가 한다 </summary>
     public class BossState : NetworkBehaviour, IBossEventListener, IBossMucheolEventListener, IBossHardPhaseEventListener,
-        IBossWolbaekGimmickEventListener
+        IBossWolbaekGimmickEventListener, IBossMucheolSealEventListener
     {
         // 서버 스포너(BossNetworkSpawner)가 보스전 시작 틱에 서버 소유로 스폰한다. Command가 없어 클라이언트는 보스 상태를 바꿀 수 없다.
         //
@@ -42,6 +42,9 @@ namespace Shinshi.AI
         // 무철 돌진 구조물은 진행 중인 공격이 아니라 전투 내내 남는 전장 상태라 기록(BossChargeStructureLedger)을 따로 둔다.
         // 배치는 스폰 전에 서버가 넣고, 파괴는 서버 확정 사건으로만 쌓으며 전투가 끝날 때만 파괴 기록을 지운다.
         // 스폰 초기 상태에는 월백 기록 뒤에 싣고, 복원은 진행 중 공격 복원보다 먼저 넘겨 그로기 복원이 구조물 상태 위에 그려지게 한다
+        //
+        // 무철 방향 봉인은 사건을 ClientRpc로 보내고, 지금 방향과 타수와 요구 타수는 SyncVar로 함께 둔다. 늦은 접속과 재접속은
+        // 스폰 상태의 SyncVar로 복원(OnSealRestored)하고 이후 사건은 Rpc로 받는다. 표식이 없으면 방향은 NO_SEAL_SIDE다
 
         /****************************************
         *                Fields
@@ -81,6 +84,12 @@ namespace Shinshi.AI
         [SyncVar] private double _phase2TransitionStartServerTime = NO_SERVER_TIME;
         [SyncVar] private double _phase2TransitionEndServerTime   = NO_SERVER_TIME;
 
+        private const int NO_SEAL_SIDE = -1;
+
+        [SyncVar] private int _sealSide = NO_SEAL_SIDE; // EMucheolSealSide 값, 표식이 없으면 NO_SEAL_SIDE
+        [SyncVar] private int _sealHitCount;
+        [SyncVar] private int _sealRequiredHits;
+
         // 서버 기록과 클라이언트 기록을 나눠 호스트에서 같은 사건이 두 번 쌓이지 않게 한다
         private readonly BossEffectLedger _serverLedger = new BossEffectLedger();
         private readonly BossEffectLedger _clientLedger = new BossEffectLedger();
@@ -98,6 +107,7 @@ namespace Shinshi.AI
         private IBossMucheolStateListener        _mucheolListener; // 수신부가 구현했을 때만 있다
         private IBossHardPhaseStateListener      _hardListener;    // 수신부가 구현했을 때만 있다
         private IBossWolbaekGimmickStateListener _wolbaekListener; // 수신부가 구현했을 때만 있다
+        private IBossMucheolSealStateListener    _sealListener;    // 수신부가 구현했을 때만 있다
         private bool                             _clientStarted = false;
 
         /****************************************
@@ -181,6 +191,7 @@ namespace Shinshi.AI
             _clientStructureLedger.Replay(_mucheolListener);
             _clientPhaseLedger.Replay(_mucheolListener, _hardListener);
             _clientWolbaekLedger.Replay(_wolbaekListener);
+            RestoreSeal();
         }
 
         public override void OnStopClient()
@@ -212,12 +223,14 @@ namespace Shinshi.AI
             _mucheolListener = listener as IBossMucheolStateListener;
             _hardListener    = listener as IBossHardPhaseStateListener;
             _wolbaekListener = listener as IBossWolbaekGimmickStateListener;
+            _sealListener    = listener as IBossMucheolSealStateListener;
             if (_clientStarted)
             {
                 _clientLedger.Replay(_listener);
                 _clientStructureLedger.Replay(_mucheolListener);
                 _clientPhaseLedger.Replay(_mucheolListener, _hardListener);
                 _clientWolbaekLedger.Replay(_wolbaekListener);
+                RestoreSeal();
             }
         }
 
@@ -246,6 +259,7 @@ namespace Shinshi.AI
                 _serverPhaseLedger.Clear();
                 _serverWolbaekLedger.Clear();
                 _serverStructureLedger.ClearDestroyed();
+                _sealSide = NO_SEAL_SIDE;
             }
         }
 
@@ -834,6 +848,49 @@ namespace Shinshi.AI
         {
             _serverPhaseLedger.OnCircleBurstCancelled(castId);
             RpcCircleBurstCancelled(castId);
+        }
+
+        /****************************************
+        *      Server (Mucheol Seal Events)
+        ****************************************/
+
+        public void OnSealRevealed(int requiredHits)
+        {
+            SetSealSnapshot((int)EMucheolSealSide.Right, 0, requiredHits);
+            RpcSealRevealed(requiredHits);
+        }
+
+        public void OnSealHitCounted(EMucheolSealSide side, int hitCount, int requiredHits)
+        {
+            SetSealSnapshot((int)side, hitCount, requiredHits);
+            RpcSealHitCounted(side, hitCount, requiredHits);
+        }
+
+        // 다음 방향은 봉인 순서(오른쪽, 왼쪽, 후방)대로다. 마지막 방향의 완료는 파괴 사건으로 오므로 여기서는 넘치지 않는다
+        public void OnSealDirectionCleared(EMucheolSealSide side, int requiredHits)
+        {
+            int next = (int)side + 1;
+            SetSealSnapshot((next <= (int)EMucheolSealSide.Rear) ? next : NO_SEAL_SIDE, 0, requiredHits);
+            RpcSealDirectionCleared(side, requiredHits);
+        }
+
+        public void OnSealBroken(int requiredHits)
+        {
+            SetSealSnapshot(NO_SEAL_SIDE, 0, requiredHits);
+            RpcSealBroken(requiredHits);
+        }
+
+        public void OnSealStopped()
+        {
+            SetSealSnapshot(NO_SEAL_SIDE, 0, _sealRequiredHits);
+            RpcSealStopped();
+        }
+
+        private void SetSealSnapshot(int side, int hitCount, int requiredHits)
+        {
+            _sealSide         = side;
+            _sealHitCount     = hitCount;
+            _sealRequiredHits = requiredHits;
         }
 
         /****************************************
@@ -2058,6 +2115,52 @@ namespace Shinshi.AI
         {
             _clientWolbaekLedger.OnWarpDeparted(castId, departure, serverTime);
             _wolbaekListener?.OnWarpDeparted(castId, departure, serverTime);
+        }
+
+        /****************************************
+        *      ClientRpc (Mucheol Seal Events)
+        ****************************************/
+
+        [ClientRpc]
+        private void RpcSealRevealed(int requiredHits)
+        {
+            _sealListener?.OnSealRevealed(requiredHits);
+        }
+
+        [ClientRpc]
+        private void RpcSealHitCounted(EMucheolSealSide side, int hitCount, int requiredHits)
+        {
+            _sealListener?.OnSealHitCounted(side, hitCount, requiredHits);
+        }
+
+        [ClientRpc]
+        private void RpcSealDirectionCleared(EMucheolSealSide side, int requiredHits)
+        {
+            _sealListener?.OnSealDirectionCleared(side, requiredHits);
+        }
+
+        [ClientRpc]
+        private void RpcSealBroken(int requiredHits)
+        {
+            _sealListener?.OnSealBroken(requiredHits);
+        }
+
+        [ClientRpc]
+        private void RpcSealStopped()
+        {
+            _sealListener?.OnSealStopped();
+        }
+
+        // 표식이 나와 있는 전투 중일 때만 넘긴다. 끝난 봉인은 복원하지 않는다
+        private void RestoreSeal()
+        {
+            if ((_sealListener == null) || (_sealSide < (int)EMucheolSealSide.Right) || (_sealSide > (int)EMucheolSealSide.Rear)
+                || (!IsFighting(_lifeState, _flowState)))
+            {
+                return;
+            }
+
+            _sealListener.OnSealRestored((EMucheolSealSide)_sealSide, _sealHitCount, _sealRequiredHits);
         }
 
         /****************************************

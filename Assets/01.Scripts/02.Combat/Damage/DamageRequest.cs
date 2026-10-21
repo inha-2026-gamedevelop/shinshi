@@ -21,6 +21,7 @@ namespace Shinshi.Combat
         private readonly EDamageFlags _flags;
         private readonly Vector3      _sourcePosition;
         private readonly string       _sourceDefinitionId;
+        private readonly Vector3      _travelDirection;
 
         /****************************************
         *              Properties
@@ -49,9 +50,13 @@ namespace Shinshi.Combat
         // 기술 또는 보스 패턴의 정의 ID, 판정 기록과 공명 규칙 조회에 쓴다
         public string SourceDefinitionId => _sourceDefinitionId;
 
+        // 투사체가 맞는 순간 날아가던 방향, 근접과 범위 공격은 영벡터다. 맞은 쪽을 가르는 판정은 이 값이 있으면 SourcePosition보다 먼저 쓴다
+        public Vector3 TravelDirection => _travelDirection;
+
         // Enum.HasFlag는 박싱하므로 비트 연산으로 검사한다
         public bool IsUnblockable   => (_flags & EDamageFlags.Unblockable) != 0;
         public bool GrantsResonance => (_flags & EDamageFlags.NoResonance) == 0;
+        public bool IsDamageOverTime => (_flags & EDamageFlags.DamageOverTime) != 0;
 
         public bool HasValidIds => (_attackerId != CombatIds.NONE) && (_hitTargetId != CombatIds.NONE)
             && (_castInstanceId != CombatIds.NONE) && (_actionInstanceId != CombatIds.NONE);
@@ -61,7 +66,8 @@ namespace Shinshi.Combat
         ****************************************/
 
         public DamageRequest(int attackerId, int hitTargetId, int castInstanceId, int actionInstanceId,
-            float rawDamage, EDamageFlags flags, Vector3 sourcePosition, string sourceDefinitionId)
+            float rawDamage, EDamageFlags flags, Vector3 sourcePosition, string sourceDefinitionId,
+            Vector3 travelDirection = default)
         {
             _attackerId         = attackerId;
             _hitTargetId        = hitTargetId;
@@ -71,13 +77,14 @@ namespace Shinshi.Combat
             _flags              = flags;
             _sourcePosition     = sourcePosition;
             _sourceDefinitionId = sourceDefinitionId;
+            _travelDirection    = travelDirection;
         }
 
         /// <summary> 같은 동작의 다른 대상 요청을 만든다, 범위 공격이 대상마다 요청을 낼 때 쓴다 </summary>
         public DamageRequest WithTarget(int hitTargetId)
         {
             return new DamageRequest(_attackerId, hitTargetId, _castInstanceId, _actionInstanceId,
-                _rawDamage, _flags, _sourcePosition, _sourceDefinitionId);
+                _rawDamage, _flags, _sourcePosition, _sourceDefinitionId, _travelDirection);
         }
     }
 }

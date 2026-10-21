@@ -1156,7 +1156,8 @@ namespace Shinshi.Combat
                 scaledResolver, new BossTerrainProbe(_obstacleMask),
                 new SeededBossRandom(_sessionEpoch), connections: new BossParticipantConnections(_players, _host.Roster),
                 displaceTargets: new BossPlayerDisplaceLookup(_players),
-                chargeStructures: CreateChargeStructures(bossId, spawnPosition));
+                chargeStructures: CreateChargeStructures(bossId, spawnPosition),
+                sealStartingCount: _host.Session.StartingCount);
 
             // 이지는 준비되지 않은 정의가 있어도 기존처럼 연다(팩토리가 만들지 못한 패턴은 두뇌가 건너뛴다). 하드는 모든 정의가 준비돼야 연다
             if ((difficulty == EBossDifficulty.Hard) && (!boss.IsSortieReady(out string notReadyReason)))

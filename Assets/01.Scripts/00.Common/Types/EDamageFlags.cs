@@ -13,6 +13,9 @@ namespace Shinshi.Common
         Unblockable = 1,
 
         // 적중해도 공격자 쪽에 공명을 주지 않는다. 소환 자체와 강림 피해
-        NoResonance = 2
+        NoResonance = 2,
+
+        // 주기마다 들어오는 지속 피해(화상, 장판 틱). 무철 방향 봉인은 타수로 세지 않는다
+        DamageOverTime = 4
     }
 }

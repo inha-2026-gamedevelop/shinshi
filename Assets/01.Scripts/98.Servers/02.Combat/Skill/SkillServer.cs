@@ -844,7 +844,7 @@ namespace Shinshi.Combat
                 {
                     int action = _resolver.IssueInstanceId();
                     ApplyArea(effect.Skill, in effect.Modifiers, ESkillShape.Circle, effect.Origin, effect.Aim, effect.Radius, 0f,
-                        effect.CastId, action, effect.Skill.Effect.TickCoefficient, 0f, now);
+                        effect.CastId, action, effect.Skill.Effect.TickCoefficient, 0f, now, EDamageFlags.DamageOverTime);
                     effect.NextTick += effect.Skill.Effect.TickInterval;
                 }
             }
@@ -900,7 +900,8 @@ namespace Shinshi.Combat
                 ICombatTarget target      = _targets[index];
                 float         coefficient = (effect.HitCount == 0) ? effect.Coefficient : effect.ExtraCoefficient;
                 ApplyHit(target, effect.Skill.DefinitionId, effect.CastId, effect.ActionId, effect.Origin + (effect.Aim * along),
-                    coefficient * effect.Modifiers.DamageScale, effect.Modifiers.ResonanceBonus, 0f, false, now);
+                    coefficient * effect.Modifiers.DamageScale, effect.Modifiers.ResonanceBonus, 0f, false, now,
+                    travelDirection: effect.Aim);
                 if (effect.PierceLeft <= 0)
                 {
                     effect.Active = false;
@@ -1070,7 +1071,7 @@ namespace Shinshi.Combat
                         break;
                     }
                     ApplyHit(target, _burnSourceId, burn.CastId, _resolver.IssueInstanceId(), target.Position,
-                        _catalog.BurnTickCoefficient, 0f, 0f, false, now);
+                        _catalog.BurnTickCoefficient, 0f, 0f, false, now, EDamageFlags.DamageOverTime);
                     burn.NextTick += _catalog.BurnTickInterval;
                 }
                 if ((now >= burn.EndsAt) || (burn.NextTick > burn.EndsAt))
@@ -1272,7 +1273,8 @@ namespace Shinshi.Combat
         }
 
         private void ApplyArea(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers, ESkillShape shape, Vector3 center,
-            Vector3 aim, float radius, float arcAngle, int castId, int actionId, float coefficient, float root, double now)
+            Vector3 aim, float radius, float arcAngle, int castId, int actionId, float coefficient, float root, double now,
+            EDamageFlags flags = EDamageFlags.None)
         {
             _registry.GetLivingInRadius(center, radius, ECombatFaction.Enemy, true, _targets);
             for (int i = 0; i < _targets.Count; ++i)
@@ -1289,7 +1291,7 @@ namespace Shinshi.Combat
                     continue;
                 }
                 ApplyHit(target, skill.DefinitionId, castId, actionId, center, coefficient * modifiers.DamageScale,
-                    modifiers.ResonanceBonus, root, false, now);
+                    modifiers.ResonanceBonus, root, false, now, flags);
             }
             _targets.Clear();
         }
@@ -1404,10 +1406,11 @@ namespace Shinshi.Combat
         }
 
         private void ApplyHit(ICombatTarget target, string source, int castId, int actionId, Vector3 origin,
-            float coefficient, float resonanceBonus, float root, bool ascension, double now)
+            float coefficient, float resonanceBonus, float root, bool ascension, double now,
+            EDamageFlags flags = EDamageFlags.None, Vector3 travelDirection = default)
         {
             var request = new DamageRequest(_owner.CombatId, target.CombatId, castId, actionId,
-                _owner.AttackPower * coefficient, EDamageFlags.None, origin, source);
+                _owner.AttackPower * coefficient, flags, origin, source, travelDirection);
             DamageResult result = _resolver.Apply(in request);
             if (_playerClass == EPlayerClass.Summoner)
             {

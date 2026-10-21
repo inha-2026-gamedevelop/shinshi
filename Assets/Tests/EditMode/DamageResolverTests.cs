@@ -32,6 +32,9 @@ namespace Shinshi.Tests
         private const int    CAPPED_ID     = 6;    // 받는 피해 상한을 가진 적
         private const float  CAPPED_AMOUNT    = 30f;  // 방어 적용 피해보다 작은 상한
         private const float  CAPPED_REMAINDER = 100f; // 상한이 남기는 체력
+        private const int    SCREENED_ID   = 7;    // 적중 확인(봉인)을 가진 적
+        private const int    SUMMON_ID     = 8;
+        private const float  SCREEN_ALLOWED = 20f; // 하한이 허용하는 피해
         private const float  PLAYER_HEALTH = 1500f;
         private const float  ENEMY_HEALTH  = 500f;
         private const float  DEFENSE       = 100f;
@@ -506,6 +509,68 @@ namespace Shinshi.Tests
             Assert.Greater(second, first);
         }
 
+        [Test]
+        public void Apply_ScreenTarget_ConsumesHit_IgnoredWithoutDamageNoticeOrLifeSteal()
+        {
+            ScreenedDamageable screened = RegisterScreened(true, 0f);
+            _player.LifeStealRate = LIFE_STEAL_RATE;
+            int notices = 0;
+            _resolver.DamageApplied += notice => ++notices;
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, SCREENED_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(EDamageOutcome.Invulnerable, result.Outcome, "봉인이 소비한 타격은 없던 피해다");
+            Assert.AreEqual(1, screened.ScreenCalls);
+            Assert.AreEqual(0, screened.DamageCalls);
+            Assert.AreEqual(ENEMY_HEALTH, screened.Health);
+            Assert.AreEqual(0, notices);
+            Assert.AreEqual(0, _player.LifeStealCalls);
+        }
+
+        [Test]
+        public void Apply_ScreenTarget_HealthFloor_ClampsDamageAndIsNotLethal()
+        {
+            ScreenedDamageable screened = RegisterScreened(false, ENEMY_HEALTH - SCREEN_ALLOWED);
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, SCREENED_ID, 1, HUGE_DAMAGE));
+
+            Assert.IsTrue(result.IsApplied);
+            Assert.IsFalse(result.IsLethal, "하한에서 막힌 피해는 처치가 아니다");
+            Assert.IsFalse(result.IsCritical);
+            Assert.AreEqual(SCREEN_ALLOWED, result.AppliedAmount, TOLERANCE);
+            Assert.AreEqual(ENEMY_HEALTH - SCREEN_ALLOWED, screened.Health, TOLERANCE);
+        }
+
+        [Test]
+        public void Apply_ScreenTarget_HealthAtFloor_IgnoredWithoutDamage()
+        {
+            ScreenedDamageable screened = RegisterScreened(false, ENEMY_HEALTH);
+
+            DamageResult result = _resolver.Apply(Request(PLAYER_ID, SCREENED_ID, 1, RAW_DAMAGE));
+
+            Assert.AreEqual(EDamageOutcome.Invulnerable, result.Outcome);
+            Assert.AreEqual(0, screened.DamageCalls);
+        }
+
+        [Test]
+        public void Apply_ScreenTarget_ReceivesSummonFlagAndRequestValues()
+        {
+            ScreenedDamageable screened = RegisterScreened(false, 0f);
+            var summon = new FakeDamageable(SUMMON_ID, ECombatFaction.Player, PLAYER_HEALTH, DEFENSE)
+            {
+                IsSummon = true, OwnerCombatId = PLAYER_ID
+            };
+            Assert.IsTrue(_registry.Register(summon));
+            var request = new DamageRequest(SUMMON_ID, SCREENED_ID, 1, 1, RAW_DAMAGE, EDamageFlags.DamageOverTime,
+                Vector3.forward, Constants.Combat.BASIC_ATTACK_SOURCE_ID, Vector3.left);
+
+            _resolver.Apply(in request);
+
+            Assert.IsTrue(screened.LastIsSummon);
+            Assert.IsTrue(screened.LastRequest.IsDamageOverTime);
+            Assert.AreEqual(Vector3.left, screened.LastRequest.TravelDirection);
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
@@ -519,6 +584,14 @@ namespace Shinshi.Tests
         {
             return new DamageRequest(attacker, target, actionId, actionId, rawDamage, EDamageFlags.None, source,
                 Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+        }
+
+        private ScreenedDamageable RegisterScreened(bool consumes, float healthFloor)
+        {
+            var screened = new ScreenedDamageable(new FakeDamageable(SCREENED_ID, ECombatFaction.Enemy, ENEMY_HEALTH, DEFENSE),
+                consumes, healthFloor);
+            Assert.IsTrue(_registry.Register(screened));
+            return screened;
         }
 
         private CappedDamageable RegisterCapped(Func<float, float, float> cap)
@@ -565,6 +638,53 @@ namespace Shinshi.Tests
                 LastCapHealth = currentHealth;
                 LastCapDamage = damage;
                 return _cap(currentHealth, damage);
+            }
+
+            public void ApplyDamage(float appliedAmount, bool isLethal, double serverTime)
+            {
+                _inner.ApplyDamage(appliedAmount, isLethal, serverTime);
+            }
+        }
+        // FakeDamageable을 감싸 적중 확인만 더한 대상, 받은 요청을 남기고 정한 소비 여부와 체력 하한을 돌려준다
+        private sealed class ScreenedDamageable : IDamageable, IDamageHitScreenTarget
+        {
+            private readonly FakeDamageable _inner;
+            private readonly bool           _consumes;
+            private readonly float          _healthFloor;
+
+            public int                   CombatId        => _inner.CombatId;
+            public ECombatFaction        Faction         => _inner.Faction;
+            public EParticipantLifeState LifeState       => _inner.LifeState;
+            public bool                  IsSummon        => _inner.IsSummon;
+            public int                   OwnerCombatId   => _inner.OwnerCombatId;
+            public Vector3               Position        => _inner.Position;
+            public Vector3               Forward         => _inner.Forward;
+            public float                 BodyRadius      => _inner.BodyRadius;
+            public float                 Health          => _inner.Health;
+            public float                 MaxHealth       => _inner.MaxHealth;
+            public float                 Defense         => _inner.Defense;
+            public bool                  IsInvulnerable  => _inner.IsInvulnerable;
+            public bool                  IsGuardingFront => _inner.IsGuardingFront;
+            public int                   DamageCalls     => _inner.DamageCalls;
+
+            public int           ScreenCalls  { get; private set; }
+            public bool          LastIsSummon { get; private set; }
+            public DamageRequest LastRequest  { get; private set; }
+
+            public ScreenedDamageable(FakeDamageable inner, bool consumes, float healthFloor)
+            {
+                _inner       = inner;
+                _consumes    = consumes;
+                _healthFloor = healthFloor;
+            }
+
+            public bool ScreenHit(in DamageRequest request, bool isSummonAttack, out float healthFloor)
+            {
+                ++ScreenCalls;
+                LastIsSummon = isSummonAttack;
+                LastRequest  = request;
+                healthFloor  = _healthFloor;
+                return _consumes;
             }
 
             public void ApplyDamage(float appliedAmount, bool isLethal, double serverTime)

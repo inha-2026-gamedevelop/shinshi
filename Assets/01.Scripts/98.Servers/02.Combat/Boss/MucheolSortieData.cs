@@ -34,6 +34,13 @@ namespace Shinshi.Combat
         private const int   GIMMICK_REQUIRED_STRUCTURES = 3;     // 부서져야 하는 서로 다른 지정 구조물 수
         private const float GIMMICK_GROGGY_SECONDS      = 3f;    // 초
 
+        // 방향 봉인 기믹
+        private const float SEAL_TRIGGER_HEALTH_RATE = 0.30f; // 체력 비율이 이 값 이하면 발동
+        private const int   SEAL_SOLO_HITS           = 5;     // 출정 시작 인원 1명일 때 방향당 타수
+        private const int   SEAL_GROUP_HITS          = 10;    // 출정 시작 인원 2명 이상일 때 방향당 타수
+        private const float SEAL_FRONT_HALF_ANGLE    = 45f;   // 도, 정면 반각
+        private const float SEAL_SIDE_LIMIT_ANGLE    = 135f;  // 도, 좌우 구역의 바깥 경계
+
         /****************************************
         *                Methods
         ****************************************/
@@ -56,6 +63,25 @@ namespace Shinshi.Combat
         public static MucheolPhase2Spec CreatePhaseTwoSpec()
         {
             return MucheolDevCatalog.CreatePhaseTwoSpec();
+        }
+
+        /// <summary> 하드 P05 콤보의 타 목록, 하드 정의의 사거리에 맞춘 값이다 </summary>
+        public static MucheolComboSpec CreateHardComboSpec()
+        {
+            return MucheolDevCatalog.CreateHardComboSpec();
+        }
+
+        /// <summary> 하드 2페이즈 패턴의 실행 데이터, 하드 정의의 사거리와 실행 시간에 맞춘 값이다 </summary>
+        public static MucheolPhase2Spec CreateHardPhaseTwoSpec()
+        {
+            return MucheolDevCatalog.CreateHardPhaseTwoSpec();
+        }
+
+        /// <summary> 방향 봉인 기믹의 발동 비율, 방향당 타수, 방향 구역 각도 </summary>
+        public static MucheolSealGimmickSpec CreateSealGimmickSpec()
+        {
+            return new MucheolSealGimmickSpec(SEAL_TRIGGER_HEALTH_RATE, SEAL_SOLO_HITS, SEAL_GROUP_HITS,
+                SEAL_FRONT_HALF_ANGLE, SEAL_SIDE_LIMIT_ANGLE);
         }
 
         /// <summary> 돌진 유도 기믹의 발동 비율, 필요한 구조물 수, 그로기 시간 </summary>
