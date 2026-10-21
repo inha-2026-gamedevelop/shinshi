@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 // 프로젝트 내부
 using Shinshi.Art;
 using Shinshi.Common;
+using Shinshi.Data;
 
 namespace Shinshi.AI
 {
@@ -190,6 +191,13 @@ namespace Shinshi.AI
                     && MucheolVfxCatalog.TryGetCue(patternId, 0, out MucheolVfxCue cue) && HasTemplate(cue.Template))
                 {
                     presenter.RegisterExternalVisual(patternId);
+
+                    // 하드 정의(mucheol_hard_...)도 같은 표현이 그리므로 기본 예고가 같은 자리를 또 그리지 않게 함께 등록한다
+                    string hardId = BossPatternCatalogSO.ToMucheolHardId(patternId);
+                    if (hardId != null)
+                    {
+                        presenter.RegisterExternalVisual(hardId);
+                    }
                 }
             }
         }

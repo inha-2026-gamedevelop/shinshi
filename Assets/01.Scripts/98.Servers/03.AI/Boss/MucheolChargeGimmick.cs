@@ -465,7 +465,7 @@ namespace Shinshi.AI
             PatternDefinition found = null;
             for (int i = 0; i < _buffer.Count; ++i)
             {
-                if (_buffer[i].DefinitionId == MucheolPatternFactory.P06_ID)
+                if (Shinshi.Data.BossPatternCatalogSO.ToMucheolBaseId(_buffer[i].DefinitionId) == MucheolPatternFactory.P06_ID)
                 {
                     found = _buffer[i];
                     break;

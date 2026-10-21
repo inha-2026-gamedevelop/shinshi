@@ -548,6 +548,24 @@ namespace Shinshi.Data
         public const string MUCHEOL_P2_P06_ID = "mucheol_ph2_p06";
         public const string MUCHEOL_HARD_P2_P07_ID = "mucheol_ph2_p07";
 
+        // 무철 하드 전용 정의 ID. P01~P06 각각이 같은 번호의 이지 정의를 하드에서 대신한다(CollectPatterns가 이지 쪽을 뺀다).
+        // 실행 객체와 연출은 ToMucheolBaseId로 이지 ID로 되돌려 같은 것을 쓴다. P07은 하드 전용이라 따로 ID를 두지 않는다
+        public const string MUCHEOL_HARD_P01_ID    = "mucheol_hard_p01";
+        public const string MUCHEOL_HARD_P02_ID    = "mucheol_hard_p02";
+        public const string MUCHEOL_HARD_P03_ID    = "mucheol_hard_p03";
+        public const string MUCHEOL_HARD_P04_ID    = "mucheol_hard_p04";
+        public const string MUCHEOL_HARD_P05_ID    = "mucheol_hard_p05";
+        public const string MUCHEOL_HARD_P06_ID    = "mucheol_hard_p06";
+        public const string MUCHEOL_HARD_P2_P01_ID = "mucheol_hard_ph2_p01";
+        public const string MUCHEOL_HARD_P2_P02_ID = "mucheol_hard_ph2_p02";
+        public const string MUCHEOL_HARD_P2_P03_ID = "mucheol_hard_ph2_p03";
+        public const string MUCHEOL_HARD_P2_P04_ID = "mucheol_hard_ph2_p04";
+        public const string MUCHEOL_HARD_P2_P05_ID = "mucheol_hard_ph2_p05";
+        public const string MUCHEOL_HARD_P2_P06_ID = "mucheol_hard_ph2_p06";
+
+        private const string MUCHEOL_HARD_PREFIX = "mucheol_hard_";
+        private const string MUCHEOL_BASE_PREFIX = "mucheol_";
+
         private const float NEUTRAL_MULTIPLIER = 1f;
 
         // 한 시전의 발 수 상한, 서버 지속물 관리자의 공용 비행 슬롯 수와 같다. 대상당 피격 상한이 있는 난사는 이전 시전의 잔류 투사체와 겹쳐도
@@ -795,12 +813,14 @@ namespace Shinshi.Data
             };
         }
 
-        /// <summary> 무철 이지 1페이즈 여섯, 이지 2페이즈 여섯, 하드 전용 2페이즈 P07 하나의 임시 시작값 </summary>
+        /// <summary> 무철 이지 1페이즈 여섯, 이지 2페이즈 여섯, 하드 1페이즈 여섯, 하드 2페이즈 여섯과 하드 전용 P07의 임시 시작값 </summary>
         public static PatternDefinition[] CreateMucheolDefaults()
         {
             var patterns = new List<PatternDefinition>();
             patterns.AddRange(CreateMucheolPhaseOneDefaults());
             patterns.AddRange(CreateMucheolPhaseTwoDefaults());
+            patterns.AddRange(CreateMucheolHardPhaseOneDefaults());
+            patterns.AddRange(CreateMucheolHardPhaseTwoReplacementDefaults());
             patterns.Add(CreateMucheolHardPhaseTwoDefault());
             return patterns.ToArray();
         }
@@ -872,6 +892,64 @@ namespace Shinshi.Data
                 MakeMucheol(MUCHEOL_P2_P06_ID, SECOND_PHASE, EBossDifficulty.Easy, EPatternGroup.Large, 10f, 14f,
                     new[] { 0.2f, 1.4f, 1.8f }, new[] { 1.5f, 1f, 0.6f }, new[] { 1f, 1.1f, 1f }, recent,
                     2.0f, 0.8f, 90f, 3.45f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3f), 0.32f, false)
+            };
+        }
+
+        // 하드 1페이즈 여섯 정의. 같은 번호의 이지 정의를 대신하며 거리, 방향, 주변, 최근 사용 배열은 이지와 같다.
+        // 이지보다 후딜을 줄이고(약 0.75배) 범위와 피해를 키우며 큰 패턴의 가중치를 조금 올린다. 모두 시험 전 임시값이다.
+        // 부채꼴 사거리 5m를 7m(1.4배)로, 돌진 폭은 3.0m와 3.5m로, 원형 반경은 6.5m로 키운다
+        private static PatternDefinition[] CreateMucheolHardPhaseOneDefaults()
+        {
+            float[] neutral    = { 1f, 1f, 1f };
+            float[] nearOnly   = { 1f, 0f, 0f };
+            float[] midOnly    = { 0f, 1f, 0f };
+            float[] midAndFar  = { 0f, 1f, 1f };
+            float[] recentSoft = { 0.5f, 0.8f, 1f, 1f };
+
+            return new[]
+            {
+                MakeMucheol(MUCHEOL_HARD_P01_ID, FIRST_PHASE, EBossDifficulty.Hard, EPatternGroup.None, 24f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 1.4f, 0.35f, 180f, 0f, 0.9f, EnemyCatalogSO.AttackShapeSpec.Fan(7f, 120f), 0.23f, true),
+                MakeMucheol(MUCHEOL_HARD_P02_ID, FIRST_PHASE, EBossDifficulty.Hard, EPatternGroup.None, 27f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 2.4f, 0.6f, 120f, 0f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Fan(7f, 70f), 0.37f, true),
+                MakeMucheol(MUCHEOL_HARD_P03_ID, FIRST_PHASE, EBossDifficulty.Hard, EPatternGroup.None, 15f, 0f,
+                    midOnly, neutral, neutral, recentSoft, 1.8f, 0.4f, 180f, 0.5f, 1.2f, EnemyCatalogSO.AttackShapeSpec.Dash(8f, 3f), 0.25f, true),
+                MakeMucheol(MUCHEOL_HARD_P04_ID, FIRST_PHASE, EBossDifficulty.Hard, EPatternGroup.None, 10f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 2.0f, 0f, 0f, 0f, 1.2f, EnemyCatalogSO.AttackShapeSpec.Circle(6.5f), 0.30f, true),
+                MakeMucheol(MUCHEOL_HARD_P05_ID, FIRST_PHASE, EBossDifficulty.Hard, EPatternGroup.None, 12f, 0f,
+                    nearOnly, neutral, neutral, recentSoft, 1.6f, 0.4f, 150f, 0.5f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Fan(7f, 120f), 0.16f, true),
+                MakeMucheol(MUCHEOL_HARD_P06_ID, FIRST_PHASE, EBossDifficulty.Hard, EPatternGroup.None, 12f, 0f,
+                    midAndFar, neutral, neutral, recentSoft, 2.8f, 0.6f, 90f, 0.75f, 2.4f, EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3.5f), 0.46f, false)
+            };
+        }
+
+        // 하드 2페이즈 P01~P06 여섯 정의, 같은 번호의 이지 정의를 대신한다. 선택 배열은 이지와 같고 가중치와 실행 값만 다르다.
+        // P03과 P06의 돌진 횟수와 간격은 실행 데이터(MucheolMultiDashSpec)가 정하므로 실행 시간은 이지와 같게 둔다
+        private static PatternDefinition[] CreateMucheolHardPhaseTwoReplacementDefaults()
+        {
+            float[] neutral = { 1f, 1f, 1f };
+            float[] recent  = { 0f, 0.3f, 0.7f, 1f };
+
+            return new[]
+            {
+                MakeMucheol(MUCHEOL_HARD_P2_P01_ID, SECOND_PHASE, EBossDifficulty.Hard, EPatternGroup.Basic, 18f, 18f,
+                    new[] { 1.8f, 0f, 0f }, new[] { 1.3f, 1.2f, 0.6f }, new[] { 1f, 1.1f, 1.2f }, recent,
+                    1.8f, 0.4f, 150f, 0.35f, 1.05f, EnemyCatalogSO.AttackShapeSpec.Fan(7f, 120f), 0.18f, true),
+                MakeMucheol(MUCHEOL_HARD_P2_P02_ID, SECOND_PHASE, EBossDifficulty.Hard, EPatternGroup.Large, 12f, 16f,
+                    new[] { 1.6f, 0f, 0f }, new[] { 1.6f, 0.8f, 0.3f }, new[] { 1f, 1.2f, 1.3f }, recent,
+                    2.4f, 0.6f, 120f, 0.5f, 1.8f, EnemyCatalogSO.AttackShapeSpec.Fan(7f, 70f), 0.35f, true),
+                MakeMucheol(MUCHEOL_HARD_P2_P03_ID, SECOND_PHASE, EBossDifficulty.Hard, EPatternGroup.Pressure, 16f, 18f,
+                    new[] { 0.3f, 1.8f, 1.1f }, neutral, new[] { 1.2f, 1f, 0.8f }, new[] { 0.25f, 0.5f, 0.8f, 1f },
+                    1.8f, 0.4f, 180f, 1.4f, 1.35f, EnemyCatalogSO.AttackShapeSpec.Dash(8f, 3f), 0.25f, true),
+                MakeMucheol(MUCHEOL_HARD_P2_P04_ID, SECOND_PHASE, EBossDifficulty.Hard, EPatternGroup.Pressure, 14f, 16f,
+                    new[] { 1.8f, 0f, 0f }, neutral, new[] { 0.7f, 1.4f, 2f }, recent,
+                    2.0f, 0f, 0f, 0.7f, 1.35f, EnemyCatalogSO.AttackShapeSpec.Circle(6.5f), 0.25f, true),
+                MakeMucheol(MUCHEOL_HARD_P2_P05_ID, SECOND_PHASE, EBossDifficulty.Hard, EPatternGroup.Large, 14f, 18f,
+                    new[] { 1.7f, 0f, 0f }, new[] { 1.4f, 1f, 0.4f }, new[] { 1f, 1f, 1.1f }, recent,
+                    1.8f, 0.4f, 150f, 0.85f, 2.25f, EnemyCatalogSO.AttackShapeSpec.Fan(7f, 70f), 0.30f, true),
+                MakeMucheol(MUCHEOL_HARD_P2_P06_ID, SECOND_PHASE, EBossDifficulty.Hard, EPatternGroup.Large, 12f, 16f,
+                    new[] { 0.2f, 1.4f, 1.8f }, new[] { 1.5f, 1f, 0.6f }, new[] { 1f, 1.1f, 1f }, recent,
+                    3.5f, 0.8f, 90f, 3.45f, 3.0f, EnemyCatalogSO.AttackShapeSpec.Dash(18f, 3.5f), 0.37f, false)
             };
         }
 
@@ -1069,16 +1147,56 @@ namespace Shinshi.Data
             }
         }
 
-        // 난이도가 정확히 같은 패턴이 속한다. 무철 하드만 예외로 이지 정의를 같은 값으로 다시 쓴다(하드는 P07만 따로 정의한다).
+        /// <summary> 무철 하드 전용 ID(mucheol_hard_...)를 같은 번호의 이지 ID(mucheol_...)로 되돌린다, 다른 ID는 그대로다. 실행 객체와 연출 선택에 쓴다 </summary>
+        public static string ToMucheolBaseId(string patternId)
+        {
+            if ((patternId != null) && patternId.StartsWith(MUCHEOL_HARD_PREFIX, StringComparison.Ordinal))
+            {
+                return MUCHEOL_BASE_PREFIX + patternId.Substring(MUCHEOL_HARD_PREFIX.Length);
+            }
+
+            return patternId;
+        }
+
+        /// <summary> 무철 이지 ID(mucheol_...)에 대응하는 하드 전용 ID(mucheol_hard_...)를 돌려준다, 무철 ID가 아니거나 이미 하드 ID면 null이다. 하드 정의가 없는 번호(P07)에도 값을 돌려주므로 정의 유무는 부른 쪽이 본다 </summary>
+        public static string ToMucheolHardId(string basePatternId)
+        {
+            if ((basePatternId == null) || (!basePatternId.StartsWith(MUCHEOL_BASE_PREFIX, StringComparison.Ordinal))
+                || basePatternId.StartsWith(MUCHEOL_HARD_PREFIX, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return MUCHEOL_HARD_PREFIX + basePatternId.Substring(MUCHEOL_BASE_PREFIX.Length);
+        }
+
+        // 난이도가 정확히 같은 패턴이 속한다. 무철 하드만 예외로 이지 정의를 같이 담되, 같은 번호의 하드 정의가 있으면 그 이지 정의는 뺀다.
         // 월백과 다른 보스는 기존대로 난이도가 정확히 같아야 한다. 이지는 하드 정의를 절대 받지 않는다
-        private static bool BelongsToDifficulty(PatternDefinition pattern, EBossDifficulty difficulty)
+        private bool BelongsToDifficulty(PatternDefinition pattern, EBossDifficulty difficulty)
         {
             if (pattern.Difficulty == difficulty)
             {
                 return true;
             }
 
-            return (pattern.BossId == MUCHEOL_ID) && (difficulty == EBossDifficulty.Hard) && (pattern.Difficulty == EBossDifficulty.Easy);
+            return (pattern.BossId == MUCHEOL_ID) && (difficulty == EBossDifficulty.Hard) && (pattern.Difficulty == EBossDifficulty.Easy)
+                && (!IsReplacedByMucheolHard(pattern));
+        }
+
+        // 같은 번호의 무철 하드 정의가 따로 있으면 참이다. 하드 ID를 이지 ID로 되돌려 비교한다
+        private bool IsReplacedByMucheolHard(PatternDefinition easyPattern)
+        {
+            for (int i = 0; i < _patterns.Length; ++i)
+            {
+                PatternDefinition other = _patterns[i];
+                if ((other != null) && (other.BossId == MUCHEOL_ID) && (other.Difficulty == EBossDifficulty.Hard)
+                    && (other.DefinitionId != easyPattern.DefinitionId) && (ToMucheolBaseId(other.DefinitionId) == easyPattern.DefinitionId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary> 보스와 그 1페이즈 이지 패턴의 필수 수치가 모두 지정됐고 범위가 맞는가. 서버 세션은 이 값이 거짓인 보스의 전투를 열지 않는다. 2페이즈 패턴은 IsPhaseTuned가 따로 본다 </summary>

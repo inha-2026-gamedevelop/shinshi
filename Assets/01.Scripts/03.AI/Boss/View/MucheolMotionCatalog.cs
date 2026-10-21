@@ -1,6 +1,9 @@
 // System
 using System.Collections.Generic;
 
+// 프로젝트 내부
+using Shinshi.Data;
+
 namespace Shinshi.AI
 {
     // 값은 사용자가 무철 모션 프리뷰 씬에서 확인한 패턴별 MotionCue를 옮긴 것이다. 표현 상수이고 밸런스 값이 아니다.
@@ -164,11 +167,13 @@ namespace Shinshi.AI
         /// <summary> 이 패턴의 몸 동작을 확정 모션이 맡는다 </summary>
         public static bool Handles(string patternId)
         {
+            patternId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
             return (patternId != null) && (G_StrikeMotions.ContainsKey(patternId) || G_DashPatterns.Contains(patternId));
         }
 
         public static bool IsDash(string patternId)
         {
+            patternId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
             return (patternId != null) && G_DashPatterns.Contains(patternId);
         }
 
@@ -181,7 +186,7 @@ namespace Shinshi.AI
                 return false;
             }
 
-            return G_StrikeMotions.TryGetValue(patternId, out segments);
+            return G_StrikeMotions.TryGetValue(BossPatternCatalogSO.ToMucheolBaseId(patternId), out segments);
         }
 
         private static MucheolMotionSegment[] Single(string clip, params MucheolMotionKey[] keys)

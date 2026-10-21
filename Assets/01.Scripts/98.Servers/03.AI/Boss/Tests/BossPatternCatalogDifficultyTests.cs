@@ -195,7 +195,7 @@ namespace Shinshi.Tests
             }
         }
 
-        // 무철은 현재 운영 에셋 기준으로 이지 P01~P06(1페이즈)과 이지 2페이즈 P01~P06, 하드 전용 2페이즈 P07이다
+        // 무철은 현재 운영 에셋 기준으로 이지 P01~P06(1페이즈)과 이지 2페이즈 P01~P06, 하드 P01~P06(1페이즈)과 하드 2페이즈 P01~P06, 하드 전용 2페이즈 P07이다
         [Test]
         public void Asset_MucheolPatterns_HaveExplicitPhaseAndDifficulty()
         {
@@ -206,6 +206,12 @@ namespace Shinshi.Tests
             {
                 expected["mucheol_p0" + n] = new KeyValuePair<int, EBossDifficulty>(FIRST_PHASE, EBossDifficulty.Easy);
                 expected["mucheol_ph2_p0" + n] = new KeyValuePair<int, EBossDifficulty>(SECOND_PHASE, EBossDifficulty.Easy);
+            }
+
+            for (int n = 1; n <= 6; ++n)
+            {
+                expected["mucheol_hard_p0" + n] = new KeyValuePair<int, EBossDifficulty>(FIRST_PHASE, EBossDifficulty.Hard);
+                expected["mucheol_hard_ph2_p0" + n] = new KeyValuePair<int, EBossDifficulty>(SECOND_PHASE, EBossDifficulty.Hard);
             }
 
             expected["mucheol_ph2_p07"] = new KeyValuePair<int, EBossDifficulty>(SECOND_PHASE, EBossDifficulty.Hard);
