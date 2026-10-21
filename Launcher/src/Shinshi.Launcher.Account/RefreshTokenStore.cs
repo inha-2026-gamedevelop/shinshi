@@ -5,6 +5,9 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
+// Third-party
+using Newtonsoft.Json;
+
 namespace Shinshi.Launcher.Account
 {
     /// <summary> %LOCALAPPDATA%\Shinshi\Account\refresh.bin에 갱신 토큰을 DPAPI(CurrentUser)로 암호화해 둔다 </summary>
@@ -53,6 +56,73 @@ namespace Shinshi.Launcher.Account
         }
 
         public bool TryLoad([NotNullWhen(true)] out string? refreshToken)
+        {
+            lock (_lock)
+            {
+                RefreshTokenDocument? document = LoadDocument();
+                refreshToken = document?.Token;
+                return !string.IsNullOrEmpty(refreshToken);
+            }
+        }
+
+        public bool TrySave(string refreshToken)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(refreshToken);
+            return TrySavePayload(JsonConvert.SerializeObject(new RefreshTokenDocument { Token = refreshToken }));
+        }
+
+        public bool TryPrepareRefresh(string refreshToken, out string requestId)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(refreshToken);
+            lock (_lock)
+            {
+                RefreshTokenDocument? document = LoadDocument();
+                if ((document?.Token == refreshToken) && (document.RequestId != null))
+                {
+                    requestId = document.RequestId;
+                    return true;
+                }
+
+                requestId = Guid.NewGuid().ToString("N");
+                return TrySavePayload(JsonConvert.SerializeObject(new RefreshTokenDocument
+                {
+                    Token = refreshToken,
+                    RequestId = requestId
+                }));
+            }
+        }
+
+        private RefreshTokenDocument? LoadDocument()
+        {
+            if (!TryLoadPayload(out string? payload))
+            {
+                return null;
+            }
+
+            if (!payload.StartsWith("{", StringComparison.Ordinal))
+            {
+                return new RefreshTokenDocument { Token = payload };
+            }
+
+            try
+            {
+                RefreshTokenDocument? document = JsonConvert.DeserializeObject<RefreshTokenDocument>(payload);
+                if ((document == null) || string.IsNullOrEmpty(document.Token)
+                    || ((document.RequestId != null) && (!Guid.TryParseExact(document.RequestId, "N", out Guid parsed)
+                        || (parsed == Guid.Empty) || (document.RequestId != parsed.ToString("N")))))
+                {
+                    return null;
+                }
+
+                return document;
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        private bool TryLoadPayload([NotNullWhen(true)] out string? refreshToken)
         {
             refreshToken = null;
             byte[] cipher;
@@ -110,7 +180,7 @@ namespace Shinshi.Launcher.Account
             return true;
         }
 
-        public bool TrySave(string refreshToken)
+        private bool TrySavePayload(string refreshToken)
         {
             ArgumentException.ThrowIfNullOrEmpty(refreshToken);
 
@@ -136,7 +206,11 @@ namespace Shinshi.Launcher.Account
                 try
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-                    File.WriteAllBytes(tempPath, cipher);
+                    using (FileStream stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        stream.Write(cipher);
+                        stream.Flush(true);
+                    }
                     File.Move(tempPath, _filePath, true);
                     return true;
                 }

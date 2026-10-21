@@ -15,6 +15,9 @@ namespace Shinshi.Data.Auth
     {
         Task<AuthExchangeOutcome> ExchangeInviteAsync(string inviteCode, CancellationToken cancellationToken = default);
         Task<AuthExchangeOutcome> RotateRefreshAsync(string refreshToken, CancellationToken cancellationToken = default);
+        Task<AuthExchangeOutcome> RotateRefreshAsync(string refreshToken, string requestId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AuthExchangeOutcome.Rejected(ContractCodes.RejectReason.TOKEN_REVOKED));
         Task<AuthValidationOutcome<PlayerAuthIdentity>> ValidateAccessAsync(string accessToken,
             CancellationToken cancellationToken = default);
         Task<AuthValidationOutcome<ServerAuthIdentity>> ValidateServerLeaseAsync(string serverLeaseToken,
