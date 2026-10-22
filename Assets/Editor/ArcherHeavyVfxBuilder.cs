@@ -350,7 +350,7 @@ namespace Shinshi.Editor
             ParticleSystem.MainModule main = system.main;
             main.duration        = layer.Duration;
             main.loop            = layer.Loop;
-            main.playOnAwake     = true;
+            main.playOnAwake     = false;
             main.startLifetime   = new ParticleSystem.MinMaxCurve(layer.Life.x, layer.Life.y);
             main.startSpeed      = new ParticleSystem.MinMaxCurve(layer.Speed.x, layer.Speed.y);
             main.startSize       = new ParticleSystem.MinMaxCurve(layer.Size.x, layer.Size.y);

@@ -16,6 +16,8 @@ namespace Shinshi.Tests.EditMode.Art
     public sealed class ArcherVfxAssetTests
     {
         private const string ROOT = "Assets/02.Prefab/VFX/Archer/";
+        private const string ARROW_WAKE_NAME    = "Wake";
+        private const int    MAX_WAKE_PARTICLES = 64;
         private const string PLAYER = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
 
         [Test]
@@ -258,11 +260,15 @@ namespace Shinshi.Tests.EditMode.Art
                 Assert.That(particle.main.playOnAwake, Is.False);
                 Assert.That(particle.main.stopAction, Is.EqualTo(ParticleSystemStopAction.None));
                 Assert.That(particle.main.loop, Is.EqualTo(isProjectile));
-                Assert.That(particle.main.maxParticles, Is.LessThanOrEqualTo(maxParticles));
+
+                // 화살 꼬리 입자는 지나간 자리에 남아야 해서 월드 공간에서 더 많이 뿌린다
+                bool isWake = isProjectile && (particle.name == ARROW_WAKE_NAME);
+                Assert.That(particle.main.maxParticles, Is.LessThanOrEqualTo(isWake ? MAX_WAKE_PARTICLES : maxParticles));
                 if (isProjectile)
                 {
                     Assert.That(particle.main.startSpeed.constantMax, Is.Zero);
-                    Assert.That(particle.main.simulationSpace, Is.EqualTo(ParticleSystemSimulationSpace.Local));
+                    Assert.That(particle.main.simulationSpace, Is.EqualTo(isWake
+                        ? ParticleSystemSimulationSpace.World : ParticleSystemSimulationSpace.Local));
                     Assert.That(particle.velocityOverLifetime.enabled, Is.False);
                     Assert.That(particle.forceOverLifetime.enabled, Is.False);
                 }
