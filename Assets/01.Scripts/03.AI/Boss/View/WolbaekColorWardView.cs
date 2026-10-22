@@ -5,8 +5,12 @@ using System.Collections.Generic;
 // Unity
 using UnityEngine;
 
+// 서드파티
+using Mirror;
+
 // 프로젝트 내부
 using Shinshi.Art;
+using Shinshi.Combat;
 
 namespace Shinshi.AI
 {
@@ -31,6 +35,13 @@ namespace Shinshi.AI
         private const float MARK_DIAMOND_SCALE = 1.2f;     // 마름모는 같은 반경의 원보다 작아 보여서 키운다
         private const int MARK_CIRCLE_POINTS = 32;
         private const int MARK_DIAMOND_POINTS = 4;
+        private const float GUIDE_DISTANCE = 2.5f;        // 내 발밑에서 방향 화살표까지의 거리
+        private const float GUIDE_LENGTH = 1.2f;
+        private const float GUIDE_WING = 0.35f;
+        private const float GUIDE_WIDTH = 0.16f;
+        private const float GUIDE_HEIGHT = 0.12f;
+        private const float GUIDE_HIDE_MARGIN = 0.5f;      // 결계 반경 안쪽에 들어오면 화살표를 끈다
+        private const int GUIDE_POINTS = 5;
         private const string GROGGY_STATE = "down_groggy02_loop_inplace";
         private const string IDLE_STATE = "Idle";
 
@@ -59,6 +70,10 @@ namespace Shinshi.AI
         private LineRenderer _holdLine;
         private Material _holdMaterial;
         private Material _markMaterial;
+        private Material _guideMaterial;
+        private LineRenderer _redGuide;
+        private LineRenderer _blueGuide;
+        private PlayerCombatState _localCombat;
         private WolbaekWardPlayer _redWard;
         private WolbaekWardPlayer _blueWard;
         private WolbaekLinkPlayer _redLink;
@@ -109,6 +124,7 @@ namespace Shinshi.AI
             if (_shield != null) _shield.transform.position = transform.position + Vector3.up * SHIELD_HEIGHT;
             UpdateHoldLine(now);
             UpdateMemberMarks();
+            UpdateGuides();
             if (_redWard != null && _redWard.IsRunning) _redWard.Tick(_redWard.PlaybackId, now);
             if (_blueWard != null && _blueWard.IsRunning) _blueWard.Tick(_blueWard.PlaybackId, now);
             UpdateLink(_redLink, EWolbaekWardColor.Red, now);
@@ -422,10 +438,17 @@ namespace Shinshi.AI
         {
             if (prefab == null) return null;
             WolbaekWardPlayer player = Instantiate(prefab);
+            // 재생기는 시작 시각이 현재 서버 시각보다 미래인 스냅샷을 조용히 거절한다. 지연이 짧으면 추정 서버 시각이
+            // 단계 시작 시각보다 늦을 수 있어 현재 시각으로 잘라 넣는다
+            double start = Math.Min(_stage.StartServerTime, now);
             var value = new WolbaekWardPlayer.Snapshot((ulong)_castId, _sequence, (uint)_stage.Index,
-                sign, color, center, radius, _stage.StartServerTime, now,
-                WolbaekWardPlayer.EPhase.Active, _stage.StartServerTime);
-            player.Begin(value, now);
+                sign, color, center, radius, start, now,
+                WolbaekWardPlayer.EPhase.Active, start);
+            if (player.Begin(value, now) == 0)
+            {
+                Debug.LogWarning($"[Boss] 월백 색 결계 재생기가 시작을 거절했다, cast={_castId}, stage={_stage.Index}, sign={sign}");
+            }
+
             return player;
         }
 
@@ -455,11 +478,13 @@ namespace Shinshi.AI
             float amount = Mathf.Clamp01((distance - _start.LinkWarnDistance)
                 / (_start.LinkDamageDistance - _start.LinkWarnDistance));
             bool red = color == EWolbaekWardColor.Red;
+            // 재생 중이면 시작 때 정한 시각을 그대로 써서 같은 단계로 인정받게 한다
+            double start = player.IsRunning ? player.CurrentSnapshot.AppearedAt : Math.Min(_stage.StartServerTime, now);
             var value = new WolbaekLinkPlayer.Snapshot((ulong)_castId, ++_sequence,
                 red ? EWolbaekWardSign.Diamond : EWolbaekWardSign.Moon,
                 red ? G_RedWardColor : G_BlueWardColor, first.position, second.position,
-                _stage.StartServerTime, now, WolbaekLinkPlayer.EPhase.Active,
-                _stage.StartServerTime, severity, amount, true);
+                start, now, WolbaekLinkPlayer.EPhase.Active,
+                start, severity, amount, true);
             if (!player.IsRunning) player.Begin(value, now);
             else player.Reconcile(player.PlaybackId, value, now);
             if (player.IsRunning) player.Tick(player.PlaybackId, now);
@@ -493,6 +518,7 @@ namespace Shinshi.AI
             StopStage();
             ClearHoldLine();
             ClearMemberMarks();
+            ClearGuides();
             DestroyOwned(ref _gather);
             DestroyOwned(ref _shield);
             for (int i = 0; i < _strikes.Count; ++i) if (_strikes[i] != null) Destroy(_strikes[i]);
@@ -590,6 +616,104 @@ namespace Shinshi.AI
             }
 
             return mark;
+        }
+
+        // 결계가 화면 밖에 생겨도 찾을 수 있게 내 발밑에서 내 색 결계 쪽을 가리키는 화살표를 그린다.
+        // 내 배정 색을 모르면(관전, 늦은 입장) 두 색 모두 그린다. 표시만 하며 판정에는 쓰지 않는다
+        private void UpdateGuides()
+        {
+            if (!_hasStage || (_start.Members == null))
+            {
+                HideGuides();
+                return;
+            }
+
+            Transform self = NetworkClient.localPlayer != null ? NetworkClient.localPlayer.transform : null;
+            if (self == null)
+            {
+                HideGuides();
+                return;
+            }
+
+            if ((_localCombat == null) || (_localCombat.transform != self))
+            {
+                self.TryGetComponent(out _localCombat);
+            }
+
+            bool showRed = true;
+            bool showBlue = true;
+            if (_localCombat != null)
+            {
+                for (int i = 0; i < _start.Members.Count; ++i)
+                {
+                    if (_start.Members[i].CombatId != _localCombat.CombatId) continue;
+                    showRed = _start.Members[i].Color == EWolbaekWardColor.Red;
+                    showBlue = !showRed;
+                    break;
+                }
+            }
+
+            UpdateGuide(ref _redGuide, "WolbaekWardGuideRed", showRed, self.position, _stage.RedCenter, G_RedWardColor);
+            UpdateGuide(ref _blueGuide, "WolbaekWardGuideBlue", showBlue, self.position, _stage.BlueCenter, G_BlueWardColor);
+        }
+
+        private void UpdateGuide(ref LineRenderer line, string name, bool show, Vector3 from, Vector3 target, Color tint)
+        {
+            Vector3 flat = new Vector3(target.x - from.x, 0f, target.z - from.z);
+            float distance = flat.magnitude;
+            if (!show || (distance <= (_stage.Radius + GUIDE_HIDE_MARGIN)))
+            {
+                if (line != null) line.enabled = false;
+                return;
+            }
+
+            if (line == null)
+            {
+                if (_guideMaterial == null)
+                {
+                    Shader shader = Shader.Find("Sprites/Default");
+                    if (shader == null) return;
+                    _guideMaterial = new Material(shader);
+                }
+
+                var go = new GameObject(name);
+                line = go.AddComponent<LineRenderer>();
+                line.useWorldSpace = true;
+                line.positionCount = GUIDE_POINTS;
+                line.widthMultiplier = GUIDE_WIDTH;
+                line.numCapVertices = 2;
+                line.sharedMaterial = _guideMaterial;
+                line.startColor = tint;
+                line.endColor = tint;
+            }
+
+            Vector3 dir = flat / distance;
+            Vector3 side = new Vector3(-dir.z, 0f, dir.x);
+            Vector3 tail = new Vector3(from.x, from.y + GUIDE_HEIGHT, from.z) + (dir * GUIDE_DISTANCE);
+            Vector3 tip = tail + (dir * GUIDE_LENGTH);
+            line.enabled = true;
+            line.SetPosition(0, tail);
+            line.SetPosition(1, tip);
+            line.SetPosition(2, tip - (dir * GUIDE_WING) + (side * GUIDE_WING));
+            line.SetPosition(3, tip);
+            line.SetPosition(4, tip - (dir * GUIDE_WING) - (side * GUIDE_WING));
+        }
+
+        private void HideGuides()
+        {
+            if (_redGuide != null) _redGuide.enabled = false;
+            if (_blueGuide != null) _blueGuide.enabled = false;
+        }
+
+        private void ClearGuides()
+        {
+            if (_redGuide != null) Destroy(_redGuide.gameObject);
+            if (_blueGuide != null) Destroy(_blueGuide.gameObject);
+            _redGuide = null;
+            _blueGuide = null;
+            if (_guideMaterial != null) Destroy(_guideMaterial);
+            _guideMaterial = null;
+            _localCombat = null;
         }
 
         private void ClearMemberMarks()
