@@ -61,6 +61,9 @@ namespace Shinshi.AI
         private const uint   REVISION             = 1;
         private const int    MAX_AREAS            = 8;
         private const int    MAX_BEAMS            = 8;
+        private const int    ZONE_SOUND_KEY_OFFSET = 1 << 20; // 반복 소리 키가 시전 번호와 겹치지 않게 장판 번호에 더한다
+        private const int    BEAM_HOLD_SOUND_KEY   = 1 << 21; // 평행 빔 유지 소리는 한 번에 하나만 둔다
+        private const int    STAR_HOLD_SOUND_KEY   = 1 << 22; // 별 빔 유지 소리는 한 번에 하나만 둔다
 
         /****************************************
         *              Nested Types
@@ -121,6 +124,9 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekFoxfirePlayer[] _flights;
         [SerializeField] private WolbaekFoxfirePlayer[] _impacts;
 
+        [Header("효과음")]
+        [SerializeField] private WolbaekSoundPlayer _sound; // 비어 있으면 소리를 생략한다
+
         [Header("빔")]
         [SerializeField] private WolbaekBeamPlayer _release;
         [SerializeField] private WolbaekBeamPlayer _sustain;
@@ -163,6 +169,8 @@ namespace Shinshi.AI
         private double _releaseEnd;
 
         private int    _sustainCastId;
+        private int    _beamSoundCastId = NO_CAST;  // 방출과 유지 소리를 이미 시작한 빔 시전
+        private Vector3 _beamSoundPosition;
         private uint   _sustainPlayback;
         private BossBeamStart _lateBeam;    // 복원 때 예고 시간이 지나 활성 알림을 기다리는 빔
         private bool   _hasLateBeam;
@@ -239,6 +247,12 @@ namespace Shinshi.AI
 
             _presenter = presenter;
             _clock     = clock;
+
+            // 같은 보스 프리팹의 재생기를 찾아 쓴다, 프리팹에 직접 넣는 단계가 필요 없다
+            if (_sound == null)
+            {
+                _sound = GetComponentInParent<WolbaekSoundPlayer>();
+            }
 
             if (_presenter == null)
             {
@@ -328,11 +342,20 @@ namespace Shinshi.AI
             if ((phase == EBossTelegraphPhase.Telegraph) && WolbaekMotionCatalog.IsDash(cast.PatternId))
             {
                 SpawnDashTelegraph(cast);
+                StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
                 return;
             }
 
             if (phase != EBossTelegraphPhase.Execute)
             {
+                return;
+            }
+
+            // 돌진이 시작되면 예고 차징을 끊고 이동음을 낸다
+            if (WolbaekMotionCatalog.IsDash(cast.PatternId))
+            {
+                StopLoopSound(cast.CastId);
+                PlaySound(EWolbaekSound.Dash, cast.Origin);
                 return;
             }
 
@@ -355,6 +378,8 @@ namespace Shinshi.AI
         /// <summary> 시전이 끝나거나 취소됐다. 취소된 대형 방출은 효과를 끊고 정상 종료는 파면이 지속 시간까지 이어진다 </summary>
         public void OnCastEnded(int castId, bool isCancelled)
         {
+            StopLoopSound(castId);
+
             if (isCancelled && (_releaseCastId == castId))
             {
                 StopRelease();
@@ -435,6 +460,9 @@ namespace Shinshi.AI
                 Launch       = start.LaunchServerTime,
                 IsActive     = true
             };
+
+            // 비행 효과가 발사 시각에 맞춰 시작하므로 소리도 같은 만큼 늦춘다
+            PlaySound(EWolbaekSound.FoxfireShot, hand, (float)(start.LaunchServerTime - now));
         }
 
         private void OnProjectileEnded(int projectileId, EBossProjectileFate fate, Vector3 position)
@@ -509,8 +537,40 @@ namespace Shinshi.AI
             return -1;
         }
 
+        // 재접속 복원 중에는 이미 지난 일회성 소리를 다시 내지 않는다
+        private void PlaySound(EWolbaekSound id, Vector3 position, float delaySeconds = 0f)
+        {
+            if ((_sound == null) || IsRestoring)
+            {
+                return;
+            }
+
+            _sound.Play(id, position, delaySeconds);
+        }
+
+        private void StartLoopSound(int key, EWolbaekSound id, Vector3 position)
+        {
+            if ((_sound == null) || IsRestoring)
+            {
+                return;
+            }
+
+            _sound.StartLoop(key, id, position);
+        }
+
+        // 복원 중이어도 멈추는 것은 막지 않는다
+        private void StopLoopSound(int key)
+        {
+            if (_sound != null)
+            {
+                _sound.StopLoop(key);
+            }
+        }
+
         private void PlayImpact(Vector3 groundPoint)
         {
+            PlaySound(EWolbaekSound.FoxfireBurst, groundPoint);
+
             if ((_impacts == null) || (_impacts.Length == 0))
             {
                 return;
@@ -574,6 +634,11 @@ namespace Shinshi.AI
                     return;
                 }
 
+                if (!isRestoredExecute)
+                {
+                    StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
+                }
+
                 double expected = isRestoredExecute ? cast.ExecuteServerTime : (cast.Start.StartServerTime + cast.Start.TelegraphSeconds);
                 _releaseEnd = expected + RELEASE_ACTIVE_SECONDS;
 
@@ -597,6 +662,9 @@ namespace Shinshi.AI
                 // 서버 타격 확정 사건을 받았을 때만 확정한다
                 _releaseEnd = cast.ExecuteServerTime + RELEASE_ACTIVE_SECONDS;
                 _release.ConfirmActive(_releasePlayback, RELEASE_LINE_ID, REVISION, cast.ExecuteServerTime, _releaseEnd, now);
+
+                StopLoopSound(cast.CastId);
+                PlaySound(EWolbaekSound.WaveBeam, cast.Origin);
             }
         }
 
@@ -648,6 +716,8 @@ namespace Shinshi.AI
         // 부채꼴 프리팹 한 장은 약 60도라 서버 각도를 좌우로 나눈 두 장으로 덮는다
         private void SpawnFan(BossTelegraphCast cast)
         {
+            PlaySound(EWolbaekSound.BigBlast, cast.Origin);
+
             if (_fanEffect == null)
             {
                 return;
@@ -685,6 +755,8 @@ namespace Shinshi.AI
 
         private void SpawnCircle(BossTelegraphCast cast)
         {
+            PlaySound(EWolbaekSound.BigBlast, cast.Origin);
+
             if (_circleEffect == null)
             {
                 return;
@@ -722,6 +794,9 @@ namespace Shinshi.AI
                 GameObject instance = Instantiate(_zoneEffect, start.Center + (Vector3.up * ZONE_HEIGHT), Quaternion.identity);
                 instance.transform.localScale = _zoneEffect.transform.localScale * (start.Radius / ZONE_REFERENCE_RADIUS);
                 _zones[i] = new Zone { AreaId = start.AreaId, Instance = instance, EndServerTime = start.EndServerTime };
+
+                PlaySound(EWolbaekSound.FoxfireIgnite, start.Center);
+                StartLoopSound(ZONE_SOUND_KEY_OFFSET + start.AreaId, EWolbaekSound.FoxfireHoldLoop, start.Center);
                 return;
             }
         }
@@ -753,6 +828,7 @@ namespace Shinshi.AI
         private void EndZone(int index, bool isImmediate)
         {
             GameObject instance = _zones[index].Instance;
+            StopLoopSound(ZONE_SOUND_KEY_OFFSET + _zones[index].AreaId);
             _zones[index] = default;
 
             if (isImmediate)
@@ -818,6 +894,10 @@ namespace Shinshi.AI
             Vector3 center = shape.ArenaCenter;
             center.y += BEAM_HEIGHT;
 
+            // 같은 시전의 여러 줄은 대표음 하나만 쓴다, 같은 키가 이미 있으면 재생기가 무시한다
+            _beamSoundPosition = center;
+            StartLoopSound(start.CastId, EWolbaekSound.ChargeLoop, center);
+
             _sustain.Warn(_sustainPlayback, start.BeamId, REVISION, new WolbaekBeamShape(from, to, shape.Width, center, shape.ArenaRadius),
                 start.StartServerTime, expectedActive, expectedActive + start.DurationSeconds, now);
             RememberBeam(start.BeamId, start.DurationSeconds);
@@ -850,6 +930,15 @@ namespace Shinshi.AI
 
             _sustain.ConfirmActive(_sustainPlayback, beamId, REVISION, activateServerTime,
                 activateServerTime + _beamLines[index].Duration, ReadClock());
+
+            // 시전마다 첫 활성에서만 차징을 끊고 방출과 유지 루프를 시작한다
+            if (_beamSoundCastId != _sustainCastId)
+            {
+                _beamSoundCastId = _sustainCastId;
+                StopLoopSound(_sustainCastId);
+                PlaySound(EWolbaekSound.WaveBeam, _beamSoundPosition);
+                StartLoopSound(BEAM_HOLD_SOUND_KEY, EWolbaekSound.BeamHoldLoop, _beamSoundPosition);
+            }
         }
 
         private void OnBeamFateChanged(int beamId, EBossAreaFate fate)
@@ -864,6 +953,7 @@ namespace Shinshi.AI
             if ((fate == EBossAreaFate.Cancelled) && (_sustainPlayback != 0))
             {
                 _sustain.StopLine(_sustainPlayback, beamId, REVISION);
+                StopLoopSound(_sustainCastId);
             }
         }
 
@@ -876,6 +966,7 @@ namespace Shinshi.AI
                 if (!_sustain.IsRunning)
                 {
                     _sustainPlayback = 0;
+                    StopBeamSound();
                 }
             }
         }
@@ -889,6 +980,13 @@ namespace Shinshi.AI
 
             _sustainPlayback = 0;
             _sustainCastId = 0;
+            StopBeamSound();
+        }
+
+        private void StopBeamSound()
+        {
+            _beamSoundCastId = NO_CAST;
+            StopLoopSound(BEAM_HOLD_SOUND_KEY);
         }
 
         private void RememberBeam(int beamId, float duration)
@@ -996,6 +1094,9 @@ namespace Shinshi.AI
             {
                 _star.ConfirmActive(_starPlayback, i, REVISION, activateServerTime, _starEnd, now);
             }
+
+            PlaySound(EWolbaekSound.WaveBeam, transform.position);
+            StartLoopSound(STAR_HOLD_SOUND_KEY, EWolbaekSound.BeamHoldLoop, transform.position);
         }
 
         private void OnStarEnded(int starId, EBossAreaFate fate)
@@ -1051,6 +1152,7 @@ namespace Shinshi.AI
             _isStarActive = false;
             _isStageStar = false;
             _stageCastId = 0;
+            StopLoopSound(STAR_HOLD_SOUND_KEY);
         }
 
         /****************************************
@@ -1096,6 +1198,9 @@ namespace Shinshi.AI
             }
 
             double now = ReadClock();
+
+            // 단계마다 줄 전체가 동시에 나가므로 대표음 한 번만 낸다
+            PlaySound(EWolbaekSound.WaveBeam, transform.position);
 
             for (int i = 0; i < _starShape.BeamCount; ++i)
             {
@@ -1175,6 +1280,7 @@ namespace Shinshi.AI
             }
 
             _grid.ConfirmActive(_gridPlayback, lineId, REVISION, scheduledServerTime, scheduledServerTime + GRID_HIT_SECONDS, ReadClock());
+            PlaySound(EWolbaekSound.WaveBeam, transform.position);
         }
 
         // 서버 BossGridBeamLayout과 같은 인자다. 가로줄은 월드 -X, 세로줄은 월드 +Z 방향이고 오프셋은 줄 간격의 절반이다
@@ -1248,6 +1354,7 @@ namespace Shinshi.AI
                 }
 
                 ChainFanState fan = _chainFans[i];
+                PlaySound(EWolbaekSound.BigBlast, fan.Origin);
                 Vector3 safe = fan.SafeDirection;
                 safe.y = 0f;
                 safe = (safe.sqrMagnitude > 0f) ? safe.normalized : Vector3.forward;
@@ -1294,6 +1401,9 @@ namespace Shinshi.AI
                 {
                     continue;
                 }
+
+                // 여러 원이 같은 순간에 터지므로 대표음 한 번만 낸다
+                PlaySound(EWolbaekSound.BigBlast, _bursts[i].Centers[0]);
 
                 for (int c = 0; c < _bursts[i].Centers.Length; ++c)
                 {
@@ -1400,6 +1510,11 @@ namespace Shinshi.AI
 
             _hasLateBeam = false;
             _hasLateStar = false;
+
+            if (_sound != null)
+            {
+                _sound.StopAll();
+            }
 
             StopRelease();
             StopSustain();

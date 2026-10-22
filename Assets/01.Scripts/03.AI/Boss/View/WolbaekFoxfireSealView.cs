@@ -73,6 +73,8 @@ namespace Shinshi.AI
         public bool IsCounter => _counter;
         public int TurnIndex => _turnIndex;
         public int SuccessCount => _successCount;
+        private WolbaekSoundPlayer _sound;
+
         public int VisibleCoreCount => CountRunning(_cores);
         public int VisibleDropCount => CountRunning(_drops);
         public bool HasPendingSweep => _sweepRanges.Count > 0;
@@ -145,13 +147,29 @@ namespace Shinshi.AI
             _sequence = 1;
             BeginShield();
             PlayMotion(DEFENSE_STATE);
+            PlaySound(EWolbaekSound.WardOpen, transform.position);
             return true;
+        }
+
+        // 재접속 복원은 이 알림 경로를 거치지 않으므로 지난 일회성 소리는 다시 나지 않는다
+        private void PlaySound(EWolbaekSound id, Vector3 position)
+        {
+            if (_sound == null)
+            {
+                _sound = GetComponent<WolbaekSoundPlayer>();
+            }
+
+            if (_sound != null)
+            {
+                _sound.Play(id, position);
+            }
         }
 
         public void TurnStarted(int castId, in WolbaekSealTurn turn, double now)
         {
             if (!Matches(castId) || !ValidTurn(in turn)) return;
             StartTurn(in turn, null, null, now);
+            PlaySound(EWolbaekSound.WardOpen, transform.position);
         }
 
         public void TrackingStarted(int castId, int turnIndex, double serverTime, double now)
@@ -165,6 +183,7 @@ namespace Shinshi.AI
             _tracking = true;
             OpenCores(serverTime, now);
             TrackAnchors(now);
+            PlaySound(EWolbaekSound.CoreOpen, transform.position);
         }
 
         public void FoxfireDetached(int castId, int turnIndex, int foxfireIndex, double serverTime,
@@ -205,6 +224,9 @@ namespace Shinshi.AI
                 _hasServerDropPosition[i] = true;
                 EnsureDrop(i, WolbaekSealDropPlayer.EPhase.Locked, serverTime, now);
             }
+
+            // 낙하 위치가 여럿이어도 확정 신호는 대표음 한 번만 낸다
+            PlaySound(EWolbaekSound.LockOn, centers[0]);
         }
 
         public void SweepTelegraphed(int castId, in WolbaekSealSweep sweep, double now)
@@ -225,6 +247,7 @@ namespace Shinshi.AI
             if (_pendingSweeps.TryGetValue(key, out WolbaekSealSweep sweep))
             {
                 SpawnSweep(in sweep);
+                PlaySound(EWolbaekSound.WaveBeam, sweep.Origin);
             }
             RemoveSweepRange(key);
         }
@@ -266,6 +289,13 @@ namespace Shinshi.AI
                 WolbaekSealCorePlayer.Snapshot core = CoreSnapshot(i, phase, serverTime, now);
                 _cores[i].Reconcile(_corePlayback[i], core, now);
             }
+
+            // 낙하 충돌은 폭발음, 핵이 파괴된 차례만 파쇄음을 더한다
+            PlaySound(EWolbaekSound.BigBlast, _dropPositions[0]);
+            if (destroyedCoreMask != NO_DESTROYED_CORES)
+            {
+                PlaySound(EWolbaekSound.CoreShatter, _dropPositions[0]);
+            }
         }
 
         public void Succeeded(int castId, double serverTime, double counterEndServerTime, double now)
@@ -283,6 +313,7 @@ namespace Shinshi.AI
             _counter = true;
             _counterEndServerTime = counterEndServerTime;
             BeginCounterMotion(now);
+            PlaySound(EWolbaekSound.Success, transform.position);
         }
 
         public void CounterEnded(int castId)

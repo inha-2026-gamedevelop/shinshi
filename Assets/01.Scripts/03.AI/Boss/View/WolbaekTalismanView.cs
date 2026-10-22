@@ -101,6 +101,9 @@ namespace Shinshi.AI
         private bool _attackSpeedReset;
         private bool _idleStarted;
 
+        private WolbaekSoundPlayer _sound;
+        private bool               _isRestoring;
+
         public bool IsActive => _active;
         public int CastId => _castId;
         public int VisibleStructureCount
@@ -207,7 +210,28 @@ namespace Shinshi.AI
             {
                 PlayMotion(DEFENSE_STATE, 1f, 0.05f);
             }
+
+            PlaySound(EWolbaekSound.WardOpen);
             return true;
+        }
+
+        // 재접속 복원 중에는 이미 지난 일회성 소리를 다시 내지 않는다
+        private void PlaySound(EWolbaekSound id)
+        {
+            if (_isRestoring)
+            {
+                return;
+            }
+
+            if (_sound == null)
+            {
+                _sound = GetComponent<WolbaekSoundPlayer>();
+            }
+
+            if (_sound != null)
+            {
+                _sound.Play(id, transform.position);
+            }
         }
 
         // successServerTime은 서버 복원 기록이 함께 주는 성공 시각이다. 모르면 NaN이고 반격 진행을 지금부터 센다
@@ -220,7 +244,10 @@ namespace Shinshi.AI
                 return false;
             }
             WolbaekTalismanStart start = snapshot.Start;
-            if (!StartFormation(in start, now))
+            _isRestoring = true;
+            bool started = StartFormation(in start, now);
+            _isRestoring = false;
+            if (!started)
             {
                 return false;
             }
@@ -323,6 +350,7 @@ namespace Shinshi.AI
             if ((strikeServerTime >= _restoreTime) && (now - strikeServerTime <= STRIKE_GRACE_SECONDS))
             {
                 SpawnStrikeEffect(in _attack, strikeServerTime);
+                PlaySound(EWolbaekSound.BigBlast);
             }
         }
 
@@ -362,6 +390,7 @@ namespace Shinshi.AI
             ClearEffects();
             StopShield();
             ReconcileStructures(now);
+            PlaySound(EWolbaekSound.Success);
             if (now < counterEndServerTime - SUCCESS_IDLE_LEAD_SECONDS)
             {
                 PlayMotion(SUCCESS_STATE, 1f, SUCCESS_ENTER_BLEND_SECONDS);
