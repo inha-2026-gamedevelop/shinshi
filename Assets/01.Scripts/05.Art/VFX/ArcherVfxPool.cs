@@ -64,7 +64,7 @@ namespace Shinshi.Art
         *                Methods
         ****************************************/
 
-        public ArcherVfxPool(GameObject prefab, Transform root, int size)
+        public ArcherVfxPool(GameObject prefab, Transform root, int size, Color? tint = null)
         {
             HasPrefab = (prefab != null) && (size > 0);
             if (!HasPrefab)
@@ -92,6 +92,11 @@ namespace Shinshi.Art
                 _transforms[i] = instance.transform;
                 _systems[i]    = instance.GetComponentsInChildren<ParticleSystem>(true);
                 _trails[i]     = instance.GetComponentsInChildren<TrailRenderer>(true);
+                if (tint.HasValue)
+                {
+                    TintSlot(i, tint.Value);
+                }
+
                 StopTrails(i);
             }
         }
@@ -349,6 +354,64 @@ namespace Shinshi.Art
                 trail.emitting = false;
                 trail.Clear();
             }
+        }
+
+        // 풀을 만들 때 복제본만 착색한다. 밝기와 알파 곡선은 보존하며 공유 재질과 원본 프리팹은 건드리지 않는다
+        private void TintSlot(int index, Color tint)
+        {
+            foreach (ParticleSystem system in _systems[index])
+            {
+                ParticleSystem.MainModule main = system.main;
+                ParticleSystem.ColorOverLifetimeModule lifetime = system.colorOverLifetime;
+                main.startColor = TintColors(main.startColor, lifetime.enabled ? Color.white : tint);
+                if (lifetime.enabled)
+                {
+                    lifetime.color = TintColors(lifetime.color, tint);
+                }
+            }
+
+            foreach (TrailRenderer trail in _trails[index])
+            {
+                trail.colorGradient = TintGradient(trail.colorGradient, tint);
+            }
+        }
+
+        private static ParticleSystem.MinMaxGradient TintColors(ParticleSystem.MinMaxGradient colors, Color tint)
+        {
+            ParticleSystemGradientMode mode = colors.mode;
+            colors.colorMin = TintColor(colors.colorMin, tint);
+            colors.colorMax = TintColor(colors.colorMax, tint);
+            if (colors.gradientMin != null)
+            {
+                colors.gradientMin = TintGradient(colors.gradientMin, tint);
+            }
+
+            if (colors.gradientMax != null)
+            {
+                colors.gradientMax = TintGradient(colors.gradientMax, tint);
+            }
+
+            colors.mode = mode;
+            return colors;
+        }
+
+        private static Gradient TintGradient(Gradient source, Color tint)
+        {
+            GradientColorKey[] keys = source.colorKeys;
+            for (int i = 0; i < keys.Length; ++i)
+            {
+                keys[i].color = TintColor(keys[i].color, tint);
+            }
+
+            var result = new Gradient { mode = source.mode };
+            result.SetKeys(keys, source.alphaKeys);
+            return result;
+        }
+
+        private static Color TintColor(Color source, Color tint)
+        {
+            float brightness = Mathf.Max(source.r, Mathf.Max(source.g, source.b));
+            return new Color(tint.r * brightness, tint.g * brightness, tint.b * brightness, source.a);
         }
     }
 }

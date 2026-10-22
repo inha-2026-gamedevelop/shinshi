@@ -108,6 +108,7 @@ namespace Shinshi.Dev
         private float               _invincibleEnd  = 0f;
         private bool                _isDead         = false;
         private bool                _showSlash      = true;
+        private bool                _singleTarget   = false;
         private bool                _isInvincible   = false;
         private bool                _skipPlayerFreeze   = false;
         private bool                _attackInputEnabled = true;
@@ -316,11 +317,12 @@ namespace Shinshi.Dev
                 _comboStep = 0;
             }
 
-            _comboEndTime = Time.time + _comboWindow;
-
             float lockTime = isHeavy ? _heavyLockTime : _attackLockTime;
             _hasDestination = false;
             _nextAttackTime = Time.time + _attackCooldown;
+
+            // 콤보 시간은 다음 공격이 가능해진 때부터 센다. 공격 시점부터 세면 쿨다운이 긴 직업은 이어 누를 틈이 없다
+            _comboEndTime = _nextAttackTime + _comboWindow;
             _attackEndTime  = Time.time + lockTime;
 
             Attacked?.Invoke(attackStep, isHeavy);
@@ -350,6 +352,10 @@ namespace Shinshi.Dev
             int     count   = Physics.OverlapSphereNonAlloc(origin, _attackRange, _overlapHits, _hitLayers,
                 QueryTriggerInteraction.Ignore);
 
+            Collider nearest      = null;
+            Vector3  nearestPoint = Vector3.zero;
+            float    nearestSqr   = float.MaxValue;
+
             for (int i = 0; i < count; ++i)
             {
                 Collider target = _overlapHits[i];
@@ -358,15 +364,33 @@ namespace Shinshi.Dev
                     continue;
                 }
 
-                Vector3 toTarget = target.ClosestPoint(origin) - origin;
+                Vector3 hitPoint = target.ClosestPoint(origin);
+                Vector3 toTarget = hitPoint - origin;
                 toTarget.y = 0f;
                 if ((toTarget.sqrMagnitude > MIN_DIRECTION_SQR) && (Vector3.Angle(forward, toTarget) > _attackHalfAngle))
                 {
                     continue;
                 }
 
-                Vector3 hitPoint = target.ClosestPoint(origin);
-                Hit?.Invoke(target, hitPoint, isHeavy);
+                if (!_singleTarget)
+                {
+                    Hit?.Invoke(target, hitPoint, isHeavy);
+                    continue;
+                }
+
+                // 화살은 처음 맞힌 몬스터에서 멈춘다. 몬스터가 아닌 충돌체는 후보에서 뺀다
+                float sqr = (hitPoint - origin).sqrMagnitude;
+                if ((sqr < nearestSqr) && (target.TryGetComponent(out DevHitFeedbackMonster _)))
+                {
+                    nearest      = target;
+                    nearestPoint = hitPoint;
+                    nearestSqr   = sqr;
+                }
+            }
+
+            if (nearest != null)
+            {
+                Hit?.Invoke(nearest, nearestPoint, isHeavy);
             }
         }
 
@@ -418,7 +442,8 @@ namespace Shinshi.Dev
         public bool TryReadCursorPoint(out Vector3 point) { return TryGetCursorPoint(out point); }
 
         /// <summary> 직업별 공격 모양을 코드에서 덮어쓴다. 휘두르는 띠는 근접 직업만 보인다 </summary>
-        public void ConfigureAttack(float range, float halfAngle, float cooldown, float lockTime, float heavyLockTime, bool showSlash)
+        public void ConfigureAttack(float range, float halfAngle, float cooldown, float lockTime, float heavyLockTime, bool showSlash,
+            bool singleTarget = false)
         {
             _attackRange     = range;
             _attackHalfAngle = halfAngle;
@@ -426,6 +451,7 @@ namespace Shinshi.Dev
             _attackLockTime  = lockTime;
             _heavyLockTime   = heavyLockTime;
             _showSlash       = showSlash;
+            _singleTarget    = singleTarget;
         }
 
         private void ShowSlash(bool isHeavy, float seconds)

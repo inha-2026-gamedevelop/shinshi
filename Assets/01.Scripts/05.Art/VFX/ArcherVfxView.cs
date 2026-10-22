@@ -29,12 +29,16 @@ namespace Shinshi.Art
         private const int POOL_HIT      = POOL_MUZZLE + ELEMENT_COUNT;
         private const int POOL_CHARGE   = POOL_HIT + ELEMENT_COUNT;
         private const int POOL_BURST    = POOL_CHARGE + 1;
-        private const int POOL_COUNT    = POOL_BURST + 1;
+        private const int POOL_HEAVY_ARROW  = POOL_BURST + 1;
+        private const int POOL_HEAVY_MUZZLE = POOL_HEAVY_ARROW + ELEMENT_COUNT;
+        private const int POOL_HEAVY_HIT    = POOL_HEAVY_MUZZLE + ELEMENT_COUNT;
+        private const int POOL_COUNT        = POOL_HEAVY_HIT + ELEMENT_COUNT;
 
         private const int ARROW_POOL_SIZE  = 8;
         private const int MUZZLE_POOL_SIZE = 4;
         private const int HIT_POOL_SIZE    = 4;
         private const int BURST_POOL_SIZE  = 2;
+        private const int HEAVY_POOL_SIZE  = 3;
 
         // 발사 시각을 이만큼 넘겨 관찰한 총구 효과는 이미 지난 일이라 재생하지 않는다
         private const float  MAX_LATE_SECONDS       = 0.25f;
@@ -75,7 +79,24 @@ namespace Shinshi.Art
         [SerializeField] private GameObject _chargePrefab;
         [SerializeField] private GameObject _burstPrefab;
 
+        [Header("강공격 (HeavyBasicStep 단계의 기본 공격)")]
+        [SerializeField] private GameObject _heavyArrowPrefab;
+        [SerializeField] private GameObject _heavyMuzzlePrefab;
+        [SerializeField] private GameObject _heavyHitPrefab;
+
+        [Header("강공격 속성색 (기존 속성 화살의 잔광색)")]
+        [SerializeField] private Color _heavyIceColor  = new Color(0.55f, 0.85f, 1f);
+        [SerializeField] private Color _heavyWindColor = new Color(1f, 0.85f, 0.5f);
+        [SerializeField] private Color _heavyFireColor = new Color(1f, 0.45f, 0.12f);
+
         private readonly ArcherVfxTracker _tracker = new ArcherVfxTracker();
+
+        /// <summary> 이 콤보 단계의 기본 공격은 강공격 효과로 그린다. -1이면 모두 보통 효과다 </summary>
+        public int HeavyBasicStep
+        {
+            get => _tracker.HeavyBasicStep;
+            set => _tracker.HeavyBasicStep = value;
+        }
         private readonly ArcherVfxPool[]  _pools   = new ArcherVfxPool[POOL_COUNT];
 
         private Transform _poolRoot;
@@ -165,6 +186,7 @@ namespace Shinshi.Art
             observation.ArrowHitSequence     = _combat.ArrowHitSequence;
             observation.ArrowHitPosition     = _combat.ArrowHitPosition;
             observation.ArrowHitElement      = _combat.ArrowHitElement;
+            observation.ArrowHitIsHeavy      = _combat.ArrowHitIsHeavy;
             observation.Now                  = now;
 
             // 사망, 회피, 다음 시전은 아직 나가지 않은 발사만 버린다. 이미 나간 투사체는 풀이 자기 수명까지 유지한다
@@ -215,6 +237,13 @@ namespace Shinshi.Art
 
             _pools[POOL_CHARGE] = new ArcherVfxPool(_chargePrefab, _poolRoot, BURST_POOL_SIZE);
             _pools[POOL_BURST]  = new ArcherVfxPool(_burstPrefab, _poolRoot, BURST_POOL_SIZE);
+            Color?[] heavyColors = { null, _heavyIceColor, _heavyWindColor, _heavyFireColor };
+            for (int i = 0; i < ELEMENT_COUNT; ++i)
+            {
+                _pools[POOL_HEAVY_ARROW + i]  = new ArcherVfxPool(_heavyArrowPrefab, _poolRoot, HEAVY_POOL_SIZE, heavyColors[i]);
+                _pools[POOL_HEAVY_MUZZLE + i] = new ArcherVfxPool(_heavyMuzzlePrefab, _poolRoot, HEAVY_POOL_SIZE, heavyColors[i]);
+                _pools[POOL_HEAVY_HIT + i]    = new ArcherVfxPool(_heavyHitPrefab, _poolRoot, HEAVY_POOL_SIZE, heavyColors[i]);
+            }
         }
 
         // GameDB는 Awake 시점에 준비되지 않을 수 있어 초기화될 때까지 다음 프레임에 다시 시도한다
@@ -238,9 +267,17 @@ namespace Shinshi.Art
                 if (basic.HasCombo)
                 {
                     config.BasicStepWindups = new float[basic.ComboStepCount];
+                    config.BasicStepShotCounts = new int[basic.ComboStepCount];
+                    config.BasicStepShotIntervals = new float[basic.ComboStepCount];
                     for (int i = 0; i < config.BasicStepWindups.Length; ++i)
                     {
                         config.BasicStepWindups[i] = basic.GetWindup(i);
+                        config.BasicStepShotCounts[i] = basic.GetShotCount(i);
+                        config.BasicStepShotIntervals[i] = basic.GetShotInterval(i);
+                        if (basic.IsHeavy(i))
+                        {
+                            _tracker.HeavyBasicStep = i;
+                        }
                     }
                 }
                 config.BasicCancelOnMove = basic.CancelOnMove;
@@ -295,12 +332,13 @@ namespace Shinshi.Art
                 case EArcherVfxKind.Arrow:
                     if (play.IsMuzzle)
                     {
-                        Play(POOL_MUZZLE + element, origin, rotation, now, MUZZLE_MAX_SECONDS);
+                        Play(IsHeavyReady(play, POOL_HEAVY_MUZZLE + element) ? (POOL_HEAVY_MUZZLE + element) : (POOL_MUZZLE + element), origin, rotation, now,
+                            MUZZLE_MAX_SECONDS);
                         return;
                     }
 
                     // 서버는 발사 시각의 시전자 위치에서 쏘므로 재생 순간의 캐릭터 위치에서 출발한다
-                    ArcherVfxPool arrows = _pools[POOL_ARROW + element];
+                    ArcherVfxPool arrows = _pools[IsHeavyReady(play, POOL_HEAVY_ARROW + element) ? (POOL_HEAVY_ARROW + element) : (POOL_ARROW + element)];
                     if ((arrows != null) && (arrows.HasPrefab))
                     {
                         arrows.PlayProjectile(origin, play.Direction, play.StartAt, play.Speed, play.Range, now, play.StopsOnHit);
@@ -309,13 +347,14 @@ namespace Shinshi.Art
                     return;
                 case EArcherVfxKind.Hit:
                     // 화면의 화살은 서버 적중을 모르고 사거리까지 날아가므로 적중 자리에서 멈춘다
-                    ArcherVfxPool flying = _pools[POOL_ARROW + element];
+                    ArcherVfxPool flying = _pools[IsHeavyReady(play, POOL_HEAVY_ARROW + element) ? (POOL_HEAVY_ARROW + element) : (POOL_ARROW + element)];
                     if (flying != null)
                     {
                         flying.StopProjectileAtHit(play.Position, HIT_STOP_MAX_LATERAL, now);
                     }
 
-                    Play(POOL_HIT + element, play.Position, rotation, now, HIT_MAX_SECONDS);
+                    Play(IsHeavyReady(play, POOL_HEAVY_HIT + element) ? (POOL_HEAVY_HIT + element) : (POOL_HIT + element), play.Position, rotation, now,
+                        HIT_MAX_SECONDS);
                     return;
                 case EArcherVfxKind.Switch:
                     Play(POOL_MUZZLE + element, origin, rotation, now, MUZZLE_MAX_SECONDS);
@@ -329,6 +368,12 @@ namespace Shinshi.Art
                 default:
                     return;
             }
+        }
+
+        // 강공격이고 그 풀에 프리팹이 있을 때만 강공격 효과를 쓴다. 없으면 속성별 보통 효과로 대신한다
+        private bool IsHeavyReady(ArcherVfxTracker.Play play, int heavyPool)
+        {
+            return (play.IsHeavy) && (_pools[heavyPool] != null) && (_pools[heavyPool].HasPrefab);
         }
 
         private void Play(int index, Vector3 position, Quaternion rotation, double now, float maxSeconds)

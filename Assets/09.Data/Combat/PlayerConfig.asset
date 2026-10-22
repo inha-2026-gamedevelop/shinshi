@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72981feb1271b86479a5a61bba1e01d6, type: 3}
   m_Name: PlayerConfig
   m_EditorClassIdentifier: Assembly-CSharp::Shinshi.Data.PlayerConfigSO
-  _schemaVersion: 1
+  _schemaVersion: 2
   _moveSpeed: 5
   _dodgeDistance: 3
   _dodgeDuration: 0.25
@@ -95,14 +95,29 @@ MonoBehaviour:
       _interval: 0.85
       _windup: 0
       _hitImmune: 0
+      _shotCount: 1
+      _shotInterval: 0
+      _motionStep: 0
+      _motionSpeedScale: 1
+      _heavy: 0
     - _damageCoefficient: 0.9
       _interval: 0.85
       _windup: 0
       _hitImmune: 0
+      _shotCount: 1
+      _shotInterval: 0
+      _motionStep: 0
+      _motionSpeedScale: 1
+      _heavy: 0
     - _damageCoefficient: 0.9
       _interval: 0.85
       _windup: 0
       _hitImmune: 0
+      _shotCount: 1
+      _shotInterval: 0
+      _motionStep: 0
+      _motionSpeedScale: 1
+      _heavy: 0
   - _damageCoefficient: 0.9
     _interval: 0.95
     _range: 10
@@ -117,11 +132,26 @@ MonoBehaviour:
       _interval: 0.6
       _windup: 0.25
       _hitImmune: 0
+      _shotCount: 1
+      _shotInterval: 0
+      _motionStep: 0
+      _motionSpeedScale: 1
+      _heavy: 0
     - _damageCoefficient: 0.75
       _interval: 0.75
       _windup: 0.22
       _hitImmune: 0
+      _shotCount: 3
+      _shotInterval: 0.15
+      _motionStep: 0
+      _motionSpeedScale: 2
+      _heavy: 0
     - _damageCoefficient: 1.1
       _interval: 1.3
       _windup: 0.33
       _hitImmune: 1
+      _shotCount: 1
+      _shotInterval: 0
+      _motionStep: 0
+      _motionSpeedScale: 1
+      _heavy: 1

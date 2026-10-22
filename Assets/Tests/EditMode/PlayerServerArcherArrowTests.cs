@@ -173,22 +173,68 @@ namespace Shinshi.Tests
 
         // 실제 수치로 화살이 나는 시간과 연속 발사 간격을 비교한다. 지금 데이터에서는 겹치지 않고, 겹침 방어는 배열이 맡는다
         [Test]
-        public void RealArcherSpec_MinimumFireGap_ExceedsMaxFlightTime()
+        public void RealArcherSpec_BurstCanOverlapFlight_StaysWithinArrowCapacity()
         {
             PlayerConfigSO.BasicAttackSpec spec = _rig.Config.GetBasicAttack(EPlayerClass.Archer);
-            float windScale     = _catalog.WindAttackIntervalScale;
             float maxFlight     = spec.Range / spec.ProjectileSpeed;
-            float minGap        = float.MaxValue;
-            int   steps         = spec.ComboStepCount;
+            Assert.That(spec.GetShotCount(1), Is.EqualTo(3));
+            Assert.That(spec.GetShotInterval(1), Is.LessThan(maxFlight));
+            Assert.That(spec.GetShotCount(1) + 1, Is.LessThanOrEqualTo(8));
+        }
 
-            for (int from = 0; from < steps; ++from)
-            {
-                int   next = (from + 1) % steps;
-                float gap  = (spec.GetInterval(from) * windScale) + spec.GetWindup(next) - spec.GetWindup(from);
-                minGap = Mathf.Min(minGap, gap);
-            }
+        [Test]
+        public void BasicAttack_SecondStep_FiresThreeHitsAndPreservesTotalCoefficient()
+        {
+            CreateArcher(false);
+            SetField("_comboStep", 0);
+            SetField("_nextAttackTime", _now);
+            float applied = 0f;
+            _rig.Resolver.DamageApplied += notice => applied += notice.Result.AppliedAmount;
+            QueueAttack();
+            _player.TickAttack(_now);
+            RunUntil(START_TIME + 1.2);
+            Assert.That(_enemy.DamageCalls, Is.EqualTo(3));
+            float expected = _player.AttackPower * _rig.Config.GetBasicAttack(EPlayerClass.Archer).GetDamageCoefficient(1);
+            Assert.That(applied, Is.EqualTo(expected).Within(0.1f));
+        }
 
-            Assert.Greater(minGap, maxFlight, $"gap {minGap}, flight {maxFlight}");
+        [Test]
+        public void BasicAttack_CancelAfterFirstBurstShot_StopsOnlyRemainingShots()
+        {
+            CreateArcher(false);
+            SetField("_comboStep", 0);
+            SetField("_nextAttackTime", _now);
+            QueueAttack();
+            _player.TickAttack(_now);
+            RunUntil(START_TIME + 0.27);
+            Assert.That(_player.ApplyControl(EPlayerControlKind.Stun, 1f, _now), Is.EqualTo(EPlayerControlResult.Applied));
+            RunUntil(START_TIME + 1.2);
+            Assert.That(_enemy.DamageCalls, Is.EqualTo(1), "이미 발사한 한 발은 남고 나머지 두 발만 취소한다");
+        }
+
+        [Test]
+        public void DamageApplied_BurnRequest_PreservesDotFlagForFeedback()
+        {
+            CreateArcher(false);
+            bool observedDot = false;
+            _rig.Resolver.DamageApplied += notice => observedDot = notice.IsDamageOverTime;
+            var request = new DamageRequest(_player.CombatId, _enemy.CombatId, _rig.Resolver.IssueInstanceId(),
+                _rig.Resolver.IssueInstanceId(), 1f, EDamageFlags.DamageOverTime, _player.Position, "skill_archer_scatter_shot");
+            Assert.That(_rig.Resolver.Apply(in request).CountsAsHit, Is.True);
+            Assert.That(observedDot, Is.True);
+        }
+
+        [Test]
+        public void BasicAttack_HeavyStep_PublishesHeavyHitOnCombatState()
+        {
+            CreateArcher(false);
+            SetField("_comboStep", 1);
+            SetField("_nextAttackTime", _now);
+            QueueAttack();
+            _player.TickAttack(_now);
+            RunUntil(START_TIME + 1.2);
+            Assert.That(_enemy.DamageCalls, Is.EqualTo(1));
+            Assert.That(_combat.ArrowHitIsHeavy, Is.True);
         }
 
         /****************************************

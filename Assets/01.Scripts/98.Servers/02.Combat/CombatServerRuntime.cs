@@ -304,7 +304,7 @@ namespace Shinshi.Combat
                     return;
                 }
                 var feedback = new DamageFeedback(_sessionEpoch, sequence, notice.TargetCombatId, notice.TargetPosition,
-                    notice.Result.AppliedAmount, notice.Result.IsCritical, notice.ServerTime);
+                    notice.Result.AppliedAmount, notice.Result.IsCritical, notice.ServerTime, notice.IsDamageOverTime);
                 input.SendDamageFeedback(in feedback);
                 return;
             }

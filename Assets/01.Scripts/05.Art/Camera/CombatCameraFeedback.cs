@@ -263,7 +263,10 @@ namespace Shinshi.Art
             }
 
             Vector3 cameraDirection = ToCameraSpace(feedback.WorldPosition);
-            _effects.Kick(cameraDirection, strength, _shakeSeconds, Time.unscaledTimeAsDouble);
+            if (!feedback.IsDamageOverTime)
+            {
+                _effects.Kick(cameraDirection, strength, _shakeSeconds, Time.unscaledTimeAsDouble);
+            }
             BurstSparks(feedback, kind != MageknightHitClassifier.EKind.Other);
         }
 

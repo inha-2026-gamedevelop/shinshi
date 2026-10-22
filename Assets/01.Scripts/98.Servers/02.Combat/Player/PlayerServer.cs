@@ -44,6 +44,7 @@ namespace Shinshi.Combat
             public float          Damage;
             public float          Speed;
             public EArcherElement Element;
+            public bool           IsHeavy;
         }
 
         /****************************************
@@ -93,6 +94,8 @@ namespace Shinshi.Combat
         private double                _windupFireAt        = 0.0;
         private Vector3               _windupAim           = Vector3.forward;
         private float                 _windupCoefficient   = 0f;
+        private int                   _windupShotsLeft     = 0;
+        private float                 _windupShotInterval  = 0f;
         private int                   _comboStep           = BasicAttackComboRules.NO_STEP;
         private double                _comboImmuneUntil    = 0.0;
         private double                _grantedImmuneUntil  = 0.0;
@@ -957,6 +960,8 @@ namespace Shinshi.Combat
                 _attack.ComboStepCount);
             float coefficient = _attack.GetDamageCoefficient(step);
             float windup      = _attack.GetWindup(step);
+            int shots = ((_attack.ArcAngle <= 0f) && (_attack.ProjectileSpeed > 0f))
+                ? Mathf.Clamp(_attack.GetShotCount(step), 1, PlayerConfigSO.MAX_BASIC_SHOTS) : 1;
 
             // 궁수 바람 속성은 단계 주기만 줄이고 준비 시간과 단계 순서는 그대로 둔다
             float intervalScale = (_skills != null) ? _skills.BasicAttackIntervalScale : 1f;
@@ -971,13 +976,17 @@ namespace Shinshi.Combat
             Vector3 aim = FacingRules.DecodeYaw(_pendingAimYaw);
             SetFacing(aim);
             _combat.BumpAttackSequence((byte)step);
-            if (windup > 0f)
+            if ((windup > 0f) || (shots > 1))
             {
                 // 동작은 승인 시점에 시작하고 판정은 준비 시간 뒤에 한다
                 _isWindingUp       = true;
                 _windupFireAt      = serverTime + windup;
                 _windupAim         = aim;
-                _windupCoefficient = coefficient;
+                // 단계 총 계수를 발수로 나눠 연발만으로 총 피해가 늘지 않게 한다
+                _windupCoefficient = coefficient / shots;
+                _windupShotsLeft = shots;
+                _windupShotInterval = _attack.GetShotInterval(step);
+                TickWindup(serverTime);
                 return;
             }
 
@@ -1023,8 +1032,15 @@ namespace Shinshi.Combat
                 return;
             }
 
-            _isWindingUp = false;
-            ResolveBasicAttack(_windupAim, _windupFireAt, _windupCoefficient);
+            // 늦은 틱에도 예정 발사 시각을 써서 이미 흐른 비행 시간을 잃지 않는다
+            while ((_windupShotsLeft > 0) && (serverTime >= _windupFireAt))
+            {
+                ResolveBasicAttack(_windupAim, _windupFireAt, _windupCoefficient);
+                --_windupShotsLeft;
+                _windupFireAt += _windupShotInterval;
+            }
+
+            _isWindingUp = _windupShotsLeft > 0;
         }
 
         // 날아가는 기본 공격 화살. 이미 나간 화살은 시전자가 회피하거나 죽어도 사거리까지 이어 간다
@@ -1096,7 +1112,7 @@ namespace Shinshi.Combat
                 _skills?.OnArrowHit(arrow.Element, target, in result, serverTime);
                 if (result.CountsAsHit)
                 {
-                    _combat.BumpArrowHit(target.Position, arrow.Element);
+                    _combat.BumpArrowHit(target.Position, arrow.Element, arrow.IsHeavy);
                 }
             }
             else
@@ -1280,6 +1296,7 @@ namespace Shinshi.Combat
                     ActionId  = _resolver.IssueInstanceId(),
                     Damage    = _attackPower * coefficient,
                     Element   = (_skills != null) ? _skills.ArcherElement : EArcherElement.None,
+                    IsHeavy   = _attack.IsHeavy(_comboStep),
                     Speed     = _attack.ProjectileSpeed * ((_skills != null) ? _skills.BasicProjectileSpeedScale : 1f)
                 };
                 return;

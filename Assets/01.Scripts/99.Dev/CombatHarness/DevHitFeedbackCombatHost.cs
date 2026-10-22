@@ -36,7 +36,11 @@ namespace Shinshi.Dev
         private const float  ATTACK_REPEAT_SECONDS = 0.1f;   // 공격 버튼을 누르고 있을 때 입력을 다시 보내는 주기
         private const float  FREEZE_FRAMES_PER_SECOND = 60f;
         private const float  HEAVY_DAMAGE_RATIO   = 2f;      // 공격력의 이 배수 이상 피해는 강타 연출을 쓴다
-        private const float  PLAYER_DAMAGE_RATIO  = 1f;      // 몬스터에게 한 번 맞을 때 최대 체력에서 깎는 몫을 맞을 수 있는 횟수로 나눈다
+        private const int    HEAVY_SHOT_STEP      = 2;       // 강공격 효과를 쓰는 콤보 단계(0부터)
+        private const float  HEAVY_SHOT_SECONDS   = 1f;      // 강공격 화살이 맞기까지 기다려 주는 시간
+        private const float  ATTACK_LOCK_MARGIN   = 0.05f;   // 초, 준비 시간이 끝난 뒤에도 이만큼 더 선 채로 둔다
+        private const float  MIN_ASSIST_DISTANCE  = 0.01f;   // m, 이보다 가까운 몬스터는 방향을 정할 수 없어 보정에서 뺀다
+        private const float  PLAYER_DAMAGE_RATIO  = 1f;     // 몬스터에게 한 번 맞을 때 최대 체력에서 깎는 몫을 맞을 수 있는 횟수로 나눈다
 
         [Header("직업")]
         [SerializeField] private EPlayerClass _playerClass = EPlayerClass.Mageknight;
@@ -51,6 +55,18 @@ namespace Shinshi.Dev
         [Header("데이터 덮어쓰기 (이 시험 씬의 메모리에서만, 0이면 그대로)")]
         // 릴리즈 데이터 파일은 바꾸지 않고 실행 중에만 값을 바꿨다가 종료할 때 되돌린다
         [SerializeField, Min(0f)] private float _skillWRange = 0f;
+
+        [Header("원거리 기본 공격 (이 시험 씬에서만)")]
+        // 커서 방향에서 이 각도 안에 있는 가장 가까운 각도의 몬스터 중심으로 기본 공격 방향을 당긴다. 서버 코드는 그대로고 보내는 방향만 바꾼다
+        [SerializeField] private bool _aimAssist = true;
+        [SerializeField, Range(0f, 30f)] private float _aimAssistHalfAngle = 8f;
+
+        [Header("궁수 콤보 시험 (이 시험 씬에서만)")]
+        // 켜면 2타를 연발(1타 모션을 빠르게 반복)로 바꾸고 3타는 강공격 효과의 단발로 쓴다. 궁수일 때만 쓴다
+        [SerializeField] private bool _archerComboTrial = true;
+        [SerializeField, Range(2, 8)] private int _burstShots = 3;
+        [SerializeField, Min(0.02f)] private float _burstGap = 0.12f;
+        [SerializeField, Min(1f)] private float _burstAnimSpeedScale = 2.5f;
 
         [Header("W 검파 타격감")]
         // 검파 타격을 강한 연출(흔들림, 경직, 불똥)로 낼지. 스택이 적은 약한 피해도 화면 흔들림이 보이게 한다
@@ -94,6 +110,10 @@ namespace Shinshi.Dev
         private int    _waveFreezeCastId = CombatIds.NONE;
         private int    _waveFreezeSpentFrames = 0;
         private readonly List<System.Action> _restoreOverrides = new List<System.Action>();
+        private DevArcherComboTrial _comboTrial = null;
+        private byte  _lastAttackSequence = 0;
+        private float _attackLockUntil    = 0f;
+        private float _heavyShotUntil     = 0f;
         private FieldInfo _readyAtField = null;
         private FieldInfo _energyField  = null;
 
@@ -110,6 +130,16 @@ namespace Shinshi.Dev
         public PlayerServer Server => _server;
 
         public EPlayerClass PlayerClass => _playerClass;
+
+        /// <summary> 이번 프레임에 보정 조준이 잡은 몬스터의 중심점, 잡지 못했으면 거짓 </summary>
+        public bool HasAssistTarget { get; private set; }
+
+        public Vector3 AssistPoint { get; private set; }
+
+        /// <summary> 보정 후 기본 공격이 나가는 수평 방향, 보정이 없으면 커서 방향이다 </summary>
+        public Vector3 AttackAim { get; private set; } = Vector3.forward;
+
+        public float AimAssistHalfAngle => _aimAssist ? _aimAssistHalfAngle : 0f;
 
         /****************************************
         *              Unity Event
@@ -176,6 +206,7 @@ namespace Shinshi.Dev
             _player.SetInvincible(_invincible);
             _player.SetAttackInputEnabled(false);
             _player.Damaged += OnPlayerDamaged;
+            SetUpComboTrial(GetComponentInChildren<ArcherVfxView>(true));
             _isReady = true;
         }
 
@@ -224,7 +255,7 @@ namespace Shinshi.Dev
             }
 
             _budget.BeginTick();
-            _combat.SetLocomotionSpeed(new Vector2(_player.Velocity.x, _player.Velocity.z).magnitude);
+            _combat.SetLocomotionSpeed((Time.time < _attackLockUntil) ? 0f : new Vector2(_player.Velocity.x, _player.Velocity.z).magnitude);
             _server.TickSkills(Time.deltaTime, now, _budget);
             _server.TickAttack(now);
             _server.ReplicateSkills();
@@ -234,9 +265,38 @@ namespace Shinshi.Dev
                 _controller.enabled = true;
             }
 
-            _player.SetMovementBlocked(_server.Skills.BlocksMovement);
+            _comboTrial?.AfterAttackTick(now, AttackAim);
+            LockMovementWhileAttacking();
+            _player.SetMovementBlocked((_server.Skills.BlocksMovement) || (Time.time < _attackLockUntil));
             ApplyFacing();
             ApplySkillCamera();
+        }
+
+        // 실제 서버는 공격을 승인하면 이동을 멈추고 준비 중에 움직이면 공격을 취소한다. 이 씬은 이동을 서버가 아니라 플레이어가 하므로,
+        // 승인된 공격마다 준비 시간 동안 세워 둔다. 걷는 채로 승인하면 화살 효과가 이동 취소로 사라지기 때문이다
+        private void LockMovementWhileAttacking()
+        {
+            byte sequence = _combat.AttackSequence;
+            if (sequence == _lastAttackSequence)
+            {
+                return;
+            }
+
+            _lastAttackSequence = sequence;
+            if (_combat.AttackComboStep == HEAVY_SHOT_STEP)
+            {
+                _heavyShotUntil = Time.time + HEAVY_SHOT_SECONDS;
+            }
+
+            float windup = GameDB.Player.GetBasicAttack(_playerClass).GetWindup(_combat.AttackComboStep);
+            _attackLockUntil = Time.time + windup + ATTACK_LOCK_MARGIN;
+            _combat.SetLocomotionSpeed(0f);
+        }
+
+        // 애니메이션 뷰가 이번 프레임 재생을 정한 뒤에 속도만 덧입힌다
+        private void LateUpdate()
+        {
+            _comboTrial?.ApplyAnimationBoost();
         }
 
         /****************************************
@@ -254,6 +314,10 @@ namespace Shinshi.Dev
             }
 
             ushort yaw = FacingRules.EncodeYaw(toCursor.normalized);
+
+            // 보정은 기본 공격 방향에만 쓰고 기술은 커서 그대로 쓴다
+            Vector3 attackAim = ResolveAssistedAim(toCursor.normalized);
+            ushort  attackYaw = FacingRules.EncodeYaw(attackAim);
 
             if (Input.GetKeyDown(Constants.Player.KEY_SKILL_Q))
             {
@@ -280,9 +344,54 @@ namespace Shinshi.Dev
             if ((attackDown) || (attackHeld))
             {
                 _nextAttackSend = Time.time + ATTACK_REPEAT_SECONDS;
-                var attack = new PlayerAttackInput(NextHeader(now), yaw);
+                var attack = new PlayerAttackInput(NextHeader(now), attackYaw);
                 _server.HandleAttack(in attack);
             }
+        }
+
+        // 원거리 투사체 기본 공격일 때만, 커서 방향에서 반각 안에 든 몬스터 중 각도가 가장 작은 것의 중심으로 방향을 당긴다
+        private Vector3 ResolveAssistedAim(Vector3 cursorAim)
+        {
+            HasAssistTarget = false;
+            AttackAim       = cursorAim;
+
+            PlayerConfigSO.BasicAttackSpec attack = GameDB.Player.GetBasicAttack(_playerClass);
+            if ((!_aimAssist) || (attack.ArcAngle > 0f) || (attack.ProjectileSpeed <= 0f))
+            {
+                return cursorAim;
+            }
+
+            Vector3 origin    = transform.position;
+            float   bestAngle = _aimAssistHalfAngle;
+            IReadOnlyList<DevHitFeedbackMonster> monsters = DevHitFeedbackMonster.Alive;
+            for (int i = 0; i < monsters.Count; ++i)
+            {
+                DevHitFeedbackMonster monster = monsters[i];
+                if (monster.IsDead)
+                {
+                    continue;
+                }
+
+                Vector3 delta = monster.transform.position - origin;
+                delta.y = 0f;
+                float distance = delta.magnitude;
+                if ((distance < MIN_ASSIST_DISTANCE) || (distance > attack.Range)
+                    || (!BasicAttackRules.IsWithinHeight(origin, monster.transform.position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE)))
+                {
+                    continue;
+                }
+
+                float angle = Vector3.Angle(cursorAim, delta);
+                if (angle <= bestAngle)
+                {
+                    bestAngle       = angle;
+                    HasAssistTarget = true;
+                    AssistPoint     = monster.transform.position;
+                    AttackAim       = delta / distance;
+                }
+            }
+
+            return AttackAim;
         }
 
         private void SendSkill(int slot, Vector3 point, ushort yaw, double now)
@@ -404,17 +513,20 @@ namespace Shinshi.Dev
                 return;
             }
 
-            bool isTick = (_tracker.CurrentSource != null) && (_tickSources.Contains(_tracker.CurrentSource));
+            bool isTick = _tracker.IsDamageOverTime
+                || ((_tracker.CurrentSource != null) && (_tickSources.Contains(_tracker.CurrentSource)));
             if ((!_feedbackOnTickDamage) && (isTick))
             {
                 return;
             }
 
             bool    isWave   = IsSkillSource(_tracker.CurrentSource, Constants.Combat.SKILL_SLOT_W);
-            bool    isHeavy  = (notice.Result.AppliedAmount >= (_stats.Attack * HEAVY_DAMAGE_RATIO)) || ((isWave) && (_skillWHeavyFeedback));
+            bool    isHeavyShot = (Time.time < _heavyShotUntil) && (_tracker.CurrentSource == Constants.Combat.BASIC_ATTACK_SOURCE_ID);
+            bool    isHeavy  = (notice.Result.AppliedAmount >= (_stats.Attack * HEAVY_DAMAGE_RATIO)) || ((isWave) && (_skillWHeavyFeedback))
+                || (isHeavyShot);
             Vector3 hitPoint = target.Collider.ClosestPoint(transform.position);
-            // 지속 피해는 몬스터 반응만 보이고 플레이어는 굳지 않는다(틱마다 멈추면 뚝뚝 끊긴다)
-            float shakeScale = IsSkillSource(_tracker.CurrentSource, Constants.Combat.SKILL_SLOT_R) ? _skillRShakeScale : 1f;
+            // 지속 피해는 몬스터 반응만 보이고 플레이어는 굳지 않으며 화면도 흔들지 않는다(틱마다 멈추거나 흔들면 뚝뚝 끊긴다)
+            float shakeScale = isTick ? 0f : (IsSkillSource(_tracker.CurrentSource, Constants.Combat.SKILL_SLOT_R) ? _skillRShakeScale : 1f);
 
             // 검파는 플레이어 대신 날아가는 검파 본체가 맞는 순간 멈춘다
             _player.ReportHit(target.Collider, hitPoint, isHeavy, (!isTick) && (!isWave), shakeScale);
@@ -425,6 +537,40 @@ namespace Shinshi.Dev
         }
 
         // 공용 기술 데이터는 메모리에서만 바꾸고 종료할 때 원래 값으로 되돌린다. 파일은 저장하지 않는다
+        // 궁수 콤보 시험은 서버 판정기를 그대로 두고 호스트 틱 앞뒤에서만 끼어든다
+        private void SetUpComboTrial(ArcherVfxView archerView)
+        {
+            // 정식 데이터가 연발을 가지면 서버와 뷰가 직접 재생한다. 시험용 추가 발사를 겹치지 않는다
+            if ((_playerClass == EPlayerClass.Archer) && (GameDB.Player.GetBasicAttack(_playerClass).GetShotCount(1) > 1))
+            {
+                return;
+            }
+
+            if ((!_archerComboTrial) || (_playerClass != EPlayerClass.Archer))
+            {
+                return;
+            }
+
+            var settings = new DevArcherComboTrial.Settings
+            {
+                BurstShots          = _burstShots,
+                BurstGap            = _burstGap,
+                BurstAnimSpeedScale = _burstAnimSpeedScale
+            };
+
+            _comboTrial = new DevArcherComboTrial(in settings, _server, _combat, GetComponentInChildren<Animator>(true));
+            System.Action restore = _comboTrial.DivideBurstCoefficient(GameDB.Player.GetBasicAttack(_playerClass));
+            if (restore != null)
+            {
+                _restoreOverrides.Add(restore);
+            }
+
+            if (archerView != null)
+            {
+                archerView.HeavyBasicStep = HEAVY_SHOT_STEP;
+            }
+        }
+
         private void ApplyDataOverrides()
         {
             if ((_playerClass != EPlayerClass.Mageknight)
@@ -498,19 +644,24 @@ namespace Shinshi.Dev
             private readonly IDamageResolver _inner;
 
             public string CurrentSource { get; private set; }
+            public bool IsDamageOverTime { get; private set; }
 
             public SourceTrackingResolver(IDamageResolver inner) { _inner = inner; }
 
             public DamageResult Apply(in DamageRequest request)
             {
+                string previousSource = CurrentSource;
+                bool previousIsDamageOverTime = IsDamageOverTime;
                 CurrentSource = request.SourceDefinitionId;
+                IsDamageOverTime = request.IsDamageOverTime;
                 try
                 {
                     return _inner.Apply(in request);
                 }
                 finally
                 {
-                    CurrentSource = null;
+                    CurrentSource = previousSource;
+                    IsDamageOverTime = previousIsDamageOverTime;
                 }
             }
 

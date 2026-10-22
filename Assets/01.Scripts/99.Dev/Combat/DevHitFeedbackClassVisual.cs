@@ -44,6 +44,7 @@ namespace Shinshi.Dev
         [SerializeField] private float _attackInterval  = 0.85f; // 초, 모션 한 번이 끝나는 시간이자 다음 공격까지의 간격
         [SerializeField] private float _heavyInterval   = 1.1f;  // 초, 3타
         [SerializeField] private bool  _showSlash       = true;
+        [SerializeField] private bool  _singleTarget    = false; // 원거리 직업은 가장 가까운 몬스터 하나만 맞힌다
 
         private DevHitFeedbackPlayer _player = null;
         private Animator             _animator = null;
@@ -60,7 +61,7 @@ namespace Shinshi.Dev
         private void Awake()
         {
             _player = GetComponent<DevHitFeedbackPlayer>();
-            _player.ConfigureAttack(_attackRange, _attackHalfAngle, _attackInterval, _attackInterval, _heavyInterval, _showSlash);
+            _player.ConfigureAttack(_attackRange, _attackHalfAngle, _attackInterval, _attackInterval, _heavyInterval, _showSlash, _singleTarget);
         }
 
         private void Start()

@@ -17,13 +17,14 @@ namespace Shinshi.Combat
         public float Amount { get; }
         public bool IsCritical { get; }
         public double ServerTime { get; }
+        public bool IsDamageOverTime { get; }
 
         /****************************************
         *                Methods
         ****************************************/
 
         public DamageFeedback(int sessionEpoch, uint sequence, int targetCombatId, Vector3 worldPosition,
-            float amount, bool isCritical, double serverTime)
+            float amount, bool isCritical, double serverTime, bool isDamageOverTime = false)
         {
             SessionEpoch   = sessionEpoch;
             Sequence       = sequence;
@@ -32,6 +33,7 @@ namespace Shinshi.Combat
             Amount         = amount;
             IsCritical     = isCritical;
             ServerTime     = serverTime;
+            IsDamageOverTime = isDamageOverTime;
         }
     }
 }

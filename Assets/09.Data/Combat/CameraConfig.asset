@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Data.CameraConfigSO
   _schemaVersion: 1
   _zoomLevels:
-  - _pitchAngle: 55
+  - _pitchAngle: 56
     _fieldOfView: 30
-    _distance: 14.5
-    _focusHeight: 0.3
+    _distance: 22
+    _focusHeight: 0.4
   - _pitchAngle: 40
     _fieldOfView: 30
     _distance: 4
@@ -29,7 +29,7 @@ MonoBehaviour:
   _defaultZoomLevel: 0
   _zoomDuration: 0.7
   _yawAngle: 0
-  _followDamping: 1
+  _followDamping: 0.25
   _occlusionRadius: 2.2
   _occlusionEdgeSoftness: 0.4
   _occlusionTargetMargin: 0.6

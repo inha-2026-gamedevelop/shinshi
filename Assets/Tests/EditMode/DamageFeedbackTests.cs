@@ -10,6 +10,7 @@ using NUnit.Framework;
 
 // 프로젝트 내부
 using Shinshi.Combat;
+using Shinshi.Art;
 
 namespace Shinshi.Tests
 {
@@ -179,10 +180,11 @@ namespace Shinshi.Tests
             Assert.IsNotNull(rpc.GetCustomAttribute<TargetRpcAttribute>());
             Assert.IsNull(rpc.GetCustomAttribute<CommandAttribute>());
             ParameterInfo[] arguments = rpc.GetParameters();
-            Assert.AreEqual(7, arguments.Length);
+            Assert.AreEqual(8, arguments.Length);
             Assert.AreEqual(typeof(Vector3), arguments[3].ParameterType);
             Assert.AreEqual(typeof(float), arguments[4].ParameterType);
             Assert.AreEqual(typeof(bool), arguments[5].ParameterType);
+            Assert.AreEqual(typeof(bool), arguments[7].ParameterType);
         }
 
         [Test]
@@ -211,7 +213,7 @@ namespace Shinshi.Tests
                     }
                 }
                 Assert.IsNotNull(body, "Mirror weaving must have completed");
-                body.Invoke(input, new object[] { EPOCH, 1u, TARGET_ID, Vector3.zero, 1f, false, NOW });
+                body.Invoke(input, new object[] { EPOCH, 1u, TARGET_ID, Vector3.zero, 1f, false, NOW, true });
                 Assert.AreEqual(0, calls);
                 Assert.IsNull(root.GetComponent<DamageNumberBinder>());
             }
@@ -224,6 +226,61 @@ namespace Shinshi.Tests
         /****************************************
         *                Helpers
         ****************************************/
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TargetDamageFeedback_Owner_KeepsNumberEventAndSuppressesOnlyDotShake(bool isDot)
+        {
+            var player = new GameObject("DotCameraOwner", typeof(NetworkIdentity));
+            var cameraRoot = new GameObject("DotCamera");
+            try
+            {
+                PlayerInputState input = player.AddComponent<PlayerInputState>();
+                NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
+                PlayerCombatState combat = player.GetComponent<PlayerCombatState>();
+                typeof(NetworkBehaviour).GetProperty("netIdentity").SetValue(input, identity);
+                typeof(NetworkBehaviour).GetProperty("netIdentity").SetValue(combat, identity);
+                typeof(NetworkIdentity).GetProperty("isOwned").GetSetMethod(true).Invoke(identity, new object[] { true });
+                BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+                typeof(PlayerInputState).GetField("_sessionEpoch", flags).SetValue(input, EPOCH);
+                FieldInfo cameraField = typeof(CombatCameraFeedback).GetField("_camera", flags);
+                Component camera = cameraRoot.AddComponent(cameraField.FieldType);
+                CombatCameraFeedback view = cameraRoot.AddComponent<CombatCameraFeedback>();
+                cameraField.SetValue(view, camera);
+                typeof(CombatCameraFeedback).GetField("_input", flags).SetValue(view, input);
+                typeof(CombatCameraFeedback).GetField("_combat", flags).SetValue(view, combat);
+                typeof(CombatCameraFeedback).GetField("_boundPlayer", flags).SetValue(view, identity);
+                int numberEvents = 0;
+                input.DamageFeedbackReceived += feedback =>
+                {
+                    ++numberEvents;
+                    Assert.That(feedback.IsDamageOverTime, Is.EqualTo(isDot));
+                    typeof(CombatCameraFeedback).GetMethod("OnDamageFeedback", flags).Invoke(view, new object[] { feedback });
+                };
+                MethodInfo body = null;
+                foreach (MethodInfo method in typeof(PlayerInputState).GetMethods(flags | BindingFlags.Public))
+                {
+                    if (method.Name.StartsWith("UserCode_TargetDamageFeedback"))
+                    {
+                        body = method;
+                        break;
+                    }
+                }
+
+                Assert.That(body, Is.Not.Null);
+                body.Invoke(input, new object[] { EPOCH, 1u, TARGET_ID, Vector3.forward, 1f, false,
+                    DamageFeedbackRules.ReceptionTime(NetworkTime.time, NetworkClient.bufferTime), isDot });
+                var effects = (CombatCameraEffects)typeof(CombatCameraFeedback).GetField("_effects", flags).GetValue(view);
+                effects.Tick(Time.unscaledTimeAsDouble + 0.01, 0.01f);
+                Assert.That(numberEvents, Is.EqualTo(1));
+                Assert.That(effects.ShakeOffset.sqrMagnitude > 0f, Is.EqualTo(!isDot));
+            }
+            finally
+            {
+                Object.DestroyImmediate(cameraRoot);
+                Object.DestroyImmediate(player);
+            }
+        }
 
         private static DamageFeedback Feedback(uint sequence, float amount = 1f, int epoch = EPOCH, double serverTime = NOW)
         {
