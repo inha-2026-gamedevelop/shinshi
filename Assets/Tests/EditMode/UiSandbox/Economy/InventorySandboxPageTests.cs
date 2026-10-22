@@ -27,6 +27,8 @@ namespace Shinshi.Tests
         private const int SLOT_SWORD  = 0;
         private const int SLOT_POTION = 2;
 
+        private const string FIELD_EQUIPPED = "equipped";
+
         private EconomyTestHarness   _harness;
         private InventorySandboxPage _page;
         private InventoryView        _view;
@@ -43,6 +45,9 @@ namespace Shinshi.Tests
         {
             _harness = new EconomyTestHarness();
             BuildView();
+
+            // 가방 창은 착용 중인 장비를 목록에서 빼므로(거래 창 옆 사본만 예외), 칸 번호로 확인할 첫 아이템은 착용을 풀어 둔다
+            EconomyList.SetBool(Scenario(), InventorySandboxPage.ItemSchema, 0, FIELD_EQUIPPED, false);
             _page = new InventorySandboxPage();
             _harness.AttachAndApply(_page);
         }
@@ -59,6 +64,9 @@ namespace Shinshi.Tests
         [Test]
         public void BuildItems_DefaultScenario_MapsGradeCategoryAndFlags()
         {
+            // SetUp이 화면 확인용으로 풀어 둔 착용을 기본 시나리오 값(착용)으로 되돌려 변환을 확인한다
+            EconomyList.SetBool(Scenario(), InventorySandboxPage.ItemSchema, 0, FIELD_EQUIPPED, true);
+
             List<InventoryItemData> items = InventorySandboxPage.BuildItems(Scenario());
 
             Assert.AreEqual(4, items.Count);
@@ -91,6 +99,23 @@ namespace Shinshi.Tests
             Assert.AreEqual("item.sword", _grid.GetSlot(SLOT_SWORD).Data.Id);
             Assert.IsTrue(_grid.GetSlot(SLOT_POTION).Data.IsLocked);
             Assert.IsTrue(_grid.GetSlot(10).Data.IsEmpty);
+        }
+
+        [Test]
+        public void Apply_EquippedItem_IsHiddenFromBagGridAndShownAgainWhenUnequipped()
+        {
+            EconomyList.SetBool(Scenario(), InventorySandboxPage.ItemSchema, 0, FIELD_EQUIPPED, true);
+
+            _page.Apply(_harness.Context);
+
+            Assert.IsFalse(GridContains("item.sword"));
+            Assert.AreEqual("item.herb", _grid.GetSlot(SLOT_SWORD).Data.Id);
+
+            EconomyList.SetBool(Scenario(), InventorySandboxPage.ItemSchema, 0, FIELD_EQUIPPED, false);
+            _page.Apply(_harness.Context);
+
+            Assert.IsTrue(GridContains("item.sword"));
+            Assert.AreEqual("item.sword", _grid.GetSlot(SLOT_SWORD).Data.Id);
         }
 
         [Test]
@@ -350,22 +375,43 @@ namespace Shinshi.Tests
             return _harness.Context.Scenario;
         }
 
+        private bool GridContains(string itemId)
+        {
+            for (int i = 0; i < _grid.SlotCount; ++i)
+            {
+                if (_grid.GetSlot(i).Data.Id == itemId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static void Click(ItemSlotView slot)
         {
             slot.OnPointerClick(new PointerEventData(null));
         }
 
-        // 실제 InventoryView가 쓰는 참조(격자, 칸 견본, 정리 단추)를 Awake 전에 모두 연결한다
+        // 실제 InventoryView가 쓰는 참조(격자, 칸 견본, 정리 단추)를 Awake 전에 모두 연결한다.
+        // 실제 창 루트는 RectTransform이고, 넓은 배치는 칸 목록 → Viewport → GridArea 순으로 올라가므로 같은 계층을 만든다
         private void BuildView()
         {
             GameObject root = _harness.Spawn("InventoryTestRoot");
+            root.AddComponent<RectTransform>();
 
             GameObject slotTemplate = new GameObject("SlotTemplate", typeof(RectTransform), typeof(ItemSlotView));
             slotTemplate.transform.SetParent(root.transform, false);
             slotTemplate.SetActive(false);
 
+            GameObject gridArea = new GameObject("GridArea", typeof(RectTransform));
+            gridArea.transform.SetParent(root.transform, false);
+
+            GameObject viewport = new GameObject("Viewport", typeof(RectTransform));
+            viewport.transform.SetParent(gridArea.transform, false);
+
             GameObject gridObject = new GameObject("Grid", typeof(RectTransform), typeof(ItemSlotGridView));
-            gridObject.transform.SetParent(root.transform, false);
+            gridObject.transform.SetParent(viewport.transform, false);
             _grid = gridObject.GetComponent<ItemSlotGridView>();
             EconomyUiBuilder.SetRef(_grid, "_slotPrefab", slotTemplate.GetComponent<ItemSlotView>());
 
