@@ -76,6 +76,7 @@ namespace Shinshi.Dev
         private float      _leashRadius   = 0f;           // m, 플레이어가 이 안에 들어서면 쫓기 시작한다. 0이면 처음부터 쫓는다
         private bool       _isChasing     = false;        // 한 번 쫓기 시작하면 계속 쫓는다
         private int        _hitsLeft      = 0;
+        private bool       _isDummy       = false;
         private float      _deathElapsed  = 0f;
         private bool       _isDying       = false;
         private bool       _isAshing      = false;
@@ -139,6 +140,11 @@ namespace Shinshi.Dev
             if (_isDying)
             {
                 UpdateDeath();
+                return;
+            }
+
+            if (_isDummy)
+            {
                 return;
             }
 
@@ -260,6 +266,13 @@ namespace Shinshi.Dev
             away.y = 0f;
             away = (away.sqrMagnitude > MIN_DIRECTION_SQR) ? away.normalized : Vector3.forward;
 
+            // 허수아비는 맞는 반응만 보이고 죽지도 밀려나지도 않는다
+            if (_isDummy)
+            {
+                _reactor.React(profile, isCritical);
+                return true;
+            }
+
             --_hitsLeft;
             if (_hitsLeft <= 0)
             {
@@ -273,6 +286,12 @@ namespace Shinshi.Dev
             _knockDrag     = profile.KnockbackDrag;
             _reactor.React(profile, isCritical);
             return true;
+        }
+
+        /// <summary> 허수아비로 만든다. 체력이 끝없고 쫓지도 공격하지도 밀려나지도 않으며 맞는 반응만 보인다. 공격 효과 시험용이다 </summary>
+        public void SetTrainingDummy()
+        {
+            _isDummy = true;
         }
 
         /// <summary> center에서 radius 안의 산 몬스터를 바깥쪽으로 민다. 가까울수록 세게 밀리고, 이미 더 세게 밀려나는 중이면 건드리지 않는다 </summary>

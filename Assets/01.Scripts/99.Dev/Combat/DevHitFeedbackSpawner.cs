@@ -77,6 +77,9 @@ namespace Shinshi.Dev
         [SerializeField] private bool _spawnFirstZoneAtStart = true;      // 첫 구역은 입구 없이 출정 시작과 함께 세운다
         [SerializeField] private bool _spawnOnPreviousClear  = true;      // 이전 구역을 모두 처치해 그 사이 결계가 풀리면 다음 구역을 세운다. 끄면 입구에 들어설 때 세운다
 
+        [Header("허수아비 (지점이 있으면 구역 무리를 세우지 않고 지점마다 체력이 끝없는 캡슐을 세운다. 공격 효과 시험용)")]
+        [SerializeField] private Transform[] _dummyPoints;
+
         [Header("엘리트 (이 구역에 일반 무리와 함께 세운다. 엘리트까지 잡아야 구역 처치가 끝난다)")]
         [SerializeField, Min(0)] private int   _eliteZoneIndex = 5;    // 0부터 센 구역 번호, 5가 6구역
         [SerializeField, Min(0)] private int   _eliteCount     = 2;
@@ -196,6 +199,11 @@ namespace Shinshi.Dev
             _zoneKilled  = new int[zoneCount];
             _zoneSpawned = new bool[zoneCount];
             _zoneNextTry = new float[zoneCount];
+
+            if ((_dummyPoints != null) && (_dummyPoints.Length > 0))
+            {
+                SpawnDummies();
+            }
         }
 
         private void Update()
@@ -360,7 +368,24 @@ namespace Shinshi.Dev
             }
         }
 
-        private void CreateMonster(int zone, Vector3 position, float size, int hitsToDie)
+        // 구역 무리는 모두 세운 것으로 표시해 더 나오지 않게 하고, 지점마다 허수아비를 세운다. 지점의 높이가 곧 발 높이다
+        private void SpawnDummies()
+        {
+            for (int zone = 0; zone < _zoneSpawned.Length; ++zone)
+            {
+                _zoneSpawned[zone] = true;
+            }
+
+            for (int i = 0; i < _dummyPoints.Length; ++i)
+            {
+                if (_dummyPoints[i] != null)
+                {
+                    CreateMonster(0, _dummyPoints[i].position, _sizeMultiplier, 1).SetTrainingDummy();
+                }
+            }
+        }
+
+        private DevHitFeedbackMonster CreateMonster(int zone, Vector3 position, float size, int hitsToDie)
         {
             bool       hasModel = (_models != null) && (_models.Length > 0);
             GameObject body     = hasModel ? new GameObject(MONSTER_NAME) : GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -379,6 +404,7 @@ namespace Shinshi.Dev
             monster.Died += OnMonsterDied;
             _zoneOfMonster.Add(monster, zone);
             ++_zoneAlive[zone];
+            return monster;
         }
 
         // 보이지 않는 캡슐 충돌체 아래에 모델을 발이 땅에 닿게 붙이고, 모델의 애니메이터를 돌려준다

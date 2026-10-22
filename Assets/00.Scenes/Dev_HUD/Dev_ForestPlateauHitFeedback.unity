@@ -39580,10 +39580,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1419219845}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 140, y: -12}
-  m_SizeDelta: {x: 248, y: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &252551549
 MonoBehaviour:
@@ -84919,6 +84919,14 @@ GameObject:
   - component: {fileID: 580735308}
   - component: {fileID: 580735307}
   - component: {fileID: 580735306}
+  - component: {fileID: 580735309}
+  - component: {fileID: 580735315}
+  - component: {fileID: 580735314}
+  - component: {fileID: 580735313}
+  - component: {fileID: 580735312}
+  - component: {fileID: 580735311}
+  - component: {fileID: 580735310}
+  - component: {fileID: 580735316}
   m_Layer: 0
   m_Name: DevHitFeedbackPlayer
   m_TagString: Untagged
@@ -84997,6 +85005,165 @@ Transform:
   - {fileID: 1079337000}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &580735309
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c93224849e0761488c9dfca3986abe7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackClassVisual
+  _playerClass: 5
+  _lookCatalog: {fileID: 11400000, guid: edb96c36076d96042b3d1007e911e606, type: 2}
+  _animationProfile: {fileID: 11400000, guid: 835be026a8e785e43ac145d73bc93f39, type: 2}
+  _attackRange: 14
+  _attackHalfAngle: 6
+  _attackInterval: 0.95
+  _heavyInterval: 1.1
+  _showSlash: 0
+  _singleTarget: 1
+--- !u!114 &580735310
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 3915727631
+  _assetId: 0
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &580735311
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea382e913d5cb7c48ac23310171cde38, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.LocalPlayerHudBinder
+--- !u!114 &580735312
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 597e016ad5f918345afc4ef2918d327d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.ArcherVfxView
+  _combat: {fileID: 0}
+  _arrowPrefab: {fileID: 3150555367362999579, guid: 156154de3e00a734e8cc7ca5f509aa0b, type: 3}
+  _muzzlePrefab: {fileID: 6914791226151446844, guid: a38dc3650a052ca47859f451e7282470, type: 3}
+  _impactPrefab: {fileID: 1177811641028294398, guid: e650f6762cec93542bb7c6e81a5578b4, type: 3}
+  _iceArrowPrefab: {fileID: 2682960241579685217, guid: 07ad157073756e44bbd1ac8773f285c6, type: 3}
+  _iceMuzzlePrefab: {fileID: 7059153792879836106, guid: caa75c6ebc8c08248ab413113e01d368, type: 3}
+  _iceHitPrefab: {fileID: 903281530415090140, guid: 07bef5f5af043614ca2ca4ca7bbf0576, type: 3}
+  _windPrefab: {fileID: 3350526677311507371, guid: a9def26c4960a1043bea127c43a5d0f7, type: 3}
+  _windMuzzlePrefab: {fileID: 6065556663463694477, guid: ba662e0273739f54abd10123e0aa2b62, type: 3}
+  _windHitPrefab: {fileID: 2779136345013675175, guid: 337c0ac7572120540a5d4bb36a7fea1f, type: 3}
+  _fireArrowPrefab: {fileID: 3902253304092743793, guid: 9d3c1e071c50a6f47910babb85f1ff55, type: 3}
+  _fireMuzzlePrefab: {fileID: 3635461990612121688, guid: f443572d11cd54948ac5fbb52fe9c999, type: 3}
+  _fireHitPrefab: {fileID: 7384983536714631708, guid: b1d6ecd0f5cc96f4aa3cef59be0084f3, type: 3}
+  _chargePrefab: {fileID: 4863434451703385222, guid: 0845a9730a7a6b4419d3c10d0e216503, type: 3}
+  _burstPrefab: {fileID: 9209284992191710387, guid: 6c68251e9da51b14cb30719ad3c6fd13, type: 3}
+  _heavyArrowPrefab: {fileID: 3796135405742834663, guid: a3e800bdbdd048e48b992416bb679d70, type: 3}
+  _heavyMuzzlePrefab: {fileID: 2045524280272545470, guid: 4b5acf4e7ea6d0a45bdb30ffa052ce3c, type: 3}
+  _heavyHitPrefab: {fileID: 419832057966983470, guid: 76f042e038ade534bbab82296d7a59ad, type: 3}
+  _heavyIceColor: {r: 0.55, g: 0.85, b: 1, a: 1}
+  _heavyWindColor: {r: 1, g: 0.85, b: 0.5, a: 1}
+  _heavyFireColor: {r: 1, g: 0.45, b: 0.12, a: 1}
+--- !u!114 &580735313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9718fd1409885e749af20685dab79db5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevHitFeedbackCombatHost
+  _playerClass: 5
+  _maxHealth: 100
+  _invincible: 1
+  _noCooldown: 1
+  _skillWRange: 0
+  _aimAssist: 1
+  _aimAssistHalfAngle: 8
+  _archerComboTrial: 1
+  _burstShots: 3
+  _burstGap: 0.15
+  _burstAnimSpeedScale: 2
+  _skillWHeavyFeedback: 1
+  _skillWBodyFreezeFrames: 4
+  _skillWFreezeBudgetFrames: 12
+  _skillRShakeScale: 1.2
+  _skillRZoomAmount: 0.2
+  _skillRZoomInSmooth: 0.12
+  _skillRZoomOutSmooth: 0.2
+  _feedbackOnTickDamage: 1
+--- !u!114 &580735314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ada5361a0ce1f764a8c9544c8b5d1716, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.PlayerInputState
+  syncMethod: 0
+  syncDirection: 0
+  syncMode: 1
+  syncInterval: 0
+--- !u!114 &580735315
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbdaac199f35c944eb19530e11007b79, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.PlayerCombatState
+  syncMethod: 0
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &580735316
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580735305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99dd6b56bf5b3274cb587d79b47fcc59, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevArcherAttackGizmo
+  _showLabels: 1
 --- !u!1 &581650707
 GameObject:
   m_ObjectHideFlags: 0
@@ -86796,7 +86963,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -133337,10 +133504,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1419219845}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 140, y: -18}
-  m_SizeDelta: {x: 248, y: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &840872934
 MonoBehaviour:
@@ -149424,6 +149591,7 @@ MonoBehaviour:
   _yeopjeonLabel: {fileID: 109473699}
   _essenceLabel: {fileID: 1954316946}
   _enableSlotInteraction: 1
+  _modernLayout: 1
 --- !u!224 &941378380
 RectTransform:
   m_ObjectHideFlags: 0
@@ -157239,6 +157407,37 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   m_IsOn: 0
+--- !u!1 &999658740
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 999658741}
+  m_Layer: 0
+  m_Name: DummyPoint_05
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &999658741
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 999658740}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 6.63, y: 0.024093078, z: -13.68}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2065351722}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &999864792
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -202235,6 +202434,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7318196849444079825, guid: 60f31bb426c77d544bf603e9eb9e4a68, type: 3}
   m_PrefabInstance: {fileID: 1264481116}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1264741037
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1264741038}
+  m_Layer: 0
+  m_Name: DummyPoint_02
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1264741038
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1264741037}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.1300001, y: 0, z: -11.18}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2065351722}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1265237264
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -227596,7 +227826,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 280, y: 48}
+  m_SizeDelta: {x: 280, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1419219846
 MonoBehaviour:
@@ -227676,6 +227906,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1419219844}
   m_CullTransparentMesh: 1
+--- !u!1 &1419434675
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1419434677}
+  - component: {fileID: 1419434676}
+  m_Layer: 0
+  m_Name: DevLocalNetworkServer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1419434676
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419434675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2ecbf336bea7534f9f4e213ae66e453, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevLocalNetworkServer
+--- !u!4 &1419434677
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419434675}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1420140018
 GameObject:
   m_ObjectHideFlags: 0
@@ -237283,6 +237557,13 @@ MonoBehaviour:
   _groundHeightTolerance: 1
   _spawnFirstZoneAtStart: 1
   _spawnOnPreviousClear: 1
+  _dummyPoints:
+  - {fileID: 1923632178}
+  - {fileID: 1548186882}
+  - {fileID: 1264741038}
+  - {fileID: 1727320535}
+  - {fileID: 1998273372}
+  - {fileID: 999658741}
   _eliteZoneIndex: 5
   _eliteCount: 2
   _eliteHitsToDie: 2
@@ -237299,7 +237580,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 2065351722}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1454901488
@@ -248846,6 +249128,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1546798407}
   m_CullTransparentMesh: 1
+--- !u!1 &1548186881
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1548186882}
+  m_Layer: 0
+  m_Name: DummyPoint_01
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1548186882
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1548186881}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.1300001, y: 0, z: -8.18}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2065351722}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1550298117
 GameObject:
   m_ObjectHideFlags: 0
@@ -274827,6 +275140,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6070055280215162009, guid: 82d1b30e4a782c74c89203bd1249b5fe, type: 3}
   m_PrefabInstance: {fileID: 1726562967}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1727320534
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1727320535}
+  m_Layer: 0
+  m_Name: DummyPoint_03
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1727320535
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1727320534}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.63, y: 0, z: -9.68}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2065351722}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1728228342
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -306169,6 +306513,37 @@ Transform:
   - {fileID: 375010410}
   m_Father: {fileID: 890458695}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1923632177
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1923632178}
+  m_Layer: 0
+  m_Name: DummyPoint_00
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1923632178
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1923632177}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.3699999, y: 0, z: -9.68}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2065351722}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1925026839
 GameObject:
   m_ObjectHideFlags: 0
@@ -317876,6 +318251,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1995909877}
   m_CullTransparentMesh: 1
+--- !u!1 &1998273371
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1998273372}
+  m_Layer: 0
+  m_Name: DummyPoint_04
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1998273372
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1998273371}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -6.37, y: 0, z: -3.6800003}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2065351722}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1998907038
 GameObject:
   m_ObjectHideFlags: 0
@@ -324587,6 +324993,7 @@ MonoBehaviour:
   _yeopjeonLabel: {fileID: 1108725249}
   _essenceLabel: {fileID: 939185290}
   _enableSlotInteraction: 0
+  _modernLayout: 1
 --- !u!114 &2046328144
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -326483,6 +326890,43 @@ MonoBehaviour:
   _selectedMark: {fileID: 1143355985}
   _gradeBar: {fileID: 0}
   _gradeColors: []
+--- !u!1 &2065351721
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2065351722}
+  m_Layer: 0
+  m_Name: DevDummyPoints
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2065351722
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2065351721}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1923632178}
+  - {fileID: 1548186882}
+  - {fileID: 1264741038}
+  - {fileID: 1727320535}
+  - {fileID: 1998273372}
+  - {fileID: 999658741}
+  m_Father: {fileID: 1454901487}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2065488912
 GameObject:
   m_ObjectHideFlags: 0
@@ -339449,3 +339893,4 @@ SceneRoots:
   - {fileID: 1655196221}
   - {fileID: 157885807}
   - {fileID: 1140222160}
+  - {fileID: 1419434677}

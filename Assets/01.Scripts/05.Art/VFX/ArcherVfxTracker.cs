@@ -134,6 +134,8 @@ namespace Shinshi.Art
             public float          Range;
             // 참이면 서버 화살 적중 신호로 멈추는 기본 공격 화살이다. 기술 화살은 적중 신호를 보내지 않는다
             public bool           StopsOnHit;
+            // 참이면 강공격 단계의 화살과 총구, 적중 효과다
+            public bool           IsHeavy;
             // 적중과 폭발의 월드 위치. 화살, 부여, 차지는 캐릭터 위치에서 재생하므로 쓰지 않는다
             public bool           HasPosition;
             public Vector3        Position;
@@ -148,6 +150,7 @@ namespace Shinshi.Art
             public Vector3        Direction;
             public Vector3        Point;
             public EArcherElement Element;
+            public bool           IsHeavy;
             // 기본 공격은 관찰 시각에서 정한 발사 시각, 기술은 서버 SkillResolveAt
             public double         ResolveAt;
             public int            NextShot;
@@ -166,6 +169,8 @@ namespace Shinshi.Art
         private float    _basicWindup;
         private float[]  _basicStepWindups;
         private bool     _basicCancelOnMove;
+        private bool     _lastBasicHeavy;
+        private bool     _emitHeavy;
         private float    _maxLate;
         private float    _windSpeedScale = 1f;
         private int      _burstSlot      = NO_SLOT;
@@ -202,6 +207,9 @@ namespace Shinshi.Art
 
         /// <summary> 첫 관찰을 기준값으로 소비했으면 참 </summary>
         public bool HasBaseline => _hasBaseline;
+
+        /// <summary> 이 콤보 단계의 기본 공격은 강공격 효과로 그린다. -1이면 모든 단계가 보통 효과다 </summary>
+        public int HeavyBasicStep { get; set; } = -1;
 
         /****************************************
         *                Methods
@@ -384,7 +392,7 @@ namespace Shinshi.Art
             _plays[count] = new Play
             {
                 Kind = EArcherVfxKind.Hit, Element = obs.ArrowHitElement, StartAt = obs.Now, HasPosition = true,
-                Position = obs.ArrowHitPosition, Direction = ToHorizontal(obs.Facing, Vector3.forward)
+                Position = obs.ArrowHitPosition, Direction = ToHorizontal(obs.Facing, Vector3.forward), IsHeavy = _lastBasicHeavy
             };
             return count + 1;
         }
@@ -427,9 +435,11 @@ namespace Shinshi.Art
             // 속성은 승인 순간 값이다. 준비 중에 속성 기술을 쓰면 서버가 이 공격을 버린다
             float windup    = GetBasicWindup(obs.AttackComboStep);
             float fireDelay = GetFireDelay(windup);
+            bool isHeavy = obs.AttackComboStep == HeavyBasicStep;
+            _lastBasicHeavy = isHeavy;
             _pending[slot] = new Pending
             {
-                Active = true, Kind = EPendingKind.Basic, Direction = obs.Facing, Element = obs.ArcherElement,
+                Active = true, Kind = EPendingKind.Basic, IsHeavy = isHeavy, Direction = obs.Facing, Element = obs.ArcherElement,
                 ResolveAt = obs.Now + windup, DecideAt = obs.Now + fireDelay, ServerStartAt = obs.AttackStartedAt,
                 FireDelay = fireDelay
             };
@@ -584,8 +594,11 @@ namespace Shinshi.Art
                 spec.Speed *= _windSpeedScale;
             }
 
-            return EmitShot(in spec, _pending[index].Element, ToHorizontal(_pending[index].Direction, Vector3.forward),
+            _emitHeavy = _pending[index].IsHeavy;
+            count      = EmitShot(in spec, _pending[index].Element, ToHorizontal(_pending[index].Direction, Vector3.forward),
                 _pending[index].ResolveAt, now, count, true);
+            _emitHeavy = false;
+            return count;
         }
 
         private int ResolveCast(int index, int count, in Observation obs)
@@ -699,7 +712,7 @@ namespace Shinshi.Art
             _plays[count] = new Play
             {
                 Kind = EArcherVfxKind.Arrow, Element = element, IsMuzzle = isMuzzle, Direction = direction, StartAt = startAt,
-                Speed = spec.Speed, Range = spec.Range, StopsOnHit = stopsOnHit
+                Speed = spec.Speed, Range = spec.Range, StopsOnHit = stopsOnHit, IsHeavy = _emitHeavy
             };
             return count + 1;
         }

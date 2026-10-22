@@ -18,6 +18,56 @@ namespace Shinshi.Tests.EditMode.Art
         private const string ROOT = "Assets/02.Prefab/VFX/Archer/";
         private const string PLAYER = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
 
+        [TestCase("HeavyArrow")]
+        [TestCase("HeavyMuzzle")]
+        [TestCase("HeavyHit")]
+        public void Pool_ElementTint_PreservesAlphaAndDoesNotRecolorOtherPools(string effect)
+        {
+            var root = new GameObject("ArcherHeavyTintTest");
+            try
+            {
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ROOT + "PF_ArcherVfx_" + effect + ".prefab");
+                ParticleSystem[] originals = prefab.GetComponentsInChildren<ParticleSystem>(true);
+                Color originalColor = originals[0].main.startColor.color;
+                var neutral = new ArcherVfxPool(prefab, root.transform, 1);
+                var ice = new ArcherVfxPool(prefab, root.transform, 1, Color.blue);
+                var fire = new ArcherVfxPool(prefab, root.transform, 1, Color.red);
+                neutral.PlayBrief(Vector3.zero, Quaternion.identity, 0.0, 1f);
+                ice.PlayBrief(Vector3.right, Quaternion.identity, 0.0, 1f);
+                fire.PlayBrief(Vector3.left, Quaternion.identity, 0.0, 1f);
+
+                for (int slot = 1; slot <= 2; ++slot)
+                {
+                    ParticleSystem[] systems = root.transform.GetChild(slot).GetComponentsInChildren<ParticleSystem>(true);
+                    for (int i = 0; i < systems.Length; ++i)
+                    {
+                        ParticleSystem system = systems[i];
+                        Color color = system.colorOverLifetime.enabled
+                            ? system.colorOverLifetime.color.Evaluate(0.5f)
+                            : system.main.startColor.Evaluate(0.5f);
+                        Assert.That(color.g, Is.EqualTo(0f).Within(0.0001f), system.name);
+                        Assert.That(slot == 1 ? color.r : color.b, Is.EqualTo(0f).Within(0.0001f), system.name);
+                        Assert.That(slot == 1 ? color.b : color.r, Is.GreaterThan(0f), system.name);
+                        Assert.That(system.main.startColor.Evaluate(0.5f).a,
+                            Is.EqualTo(originals[i].main.startColor.Evaluate(0.5f).a).Within(0.0001f), system.name);
+                        if (system.colorOverLifetime.enabled)
+                        {
+                            Assert.That(system.colorOverLifetime.color.Evaluate(0.5f).a,
+                                Is.EqualTo(originals[i].colorOverLifetime.color.Evaluate(0.5f).a).Within(0.0001f), system.name);
+                        }
+                    }
+                }
+
+                Assert.That(originals[0].main.startColor.color, Is.EqualTo(originalColor));
+                Assert.That(root.transform.GetChild(0).GetComponentInChildren<ParticleSystem>(true).main.startColor.color,
+                    Is.EqualTo(originalColor));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [Test]
         public void Pool_ReusedFarAway_ClearsPreviousTrail()
         {
