@@ -107,6 +107,8 @@ namespace Shinshi.UI
         private int   _buyMax         = 0;
         private long  _buyUnitPrice   = 0;
         private int   _sellMax        = 0;
+        private int   _unseenCount    = 0;
+        private bool  _writeBusy      = false;
 
         /****************************************
         *              Properties
@@ -115,6 +117,10 @@ namespace Shinshi.UI
         public bool IsOpen => gameObject.activeSelf;
         public int  Tab    => _tab;
         public int  Page   => _page;
+
+        // 테스트가 마지막 안내 문구와 쓰기 잠금을 확인한다
+        internal string LastStatus { get; private set; }
+        internal bool   WriteBusy  => _writeBusy;
 
         public event Action<int>              TabChanged;
         public event Action<AuctionSearchInput> SearchRequested;
@@ -261,6 +267,7 @@ namespace Shinshi.UI
 
         public void SetStatus(string text)
         {
+            LastStatus = text;
             SetText(_statusLabel, text);
         }
 
@@ -346,9 +353,19 @@ namespace Shinshi.UI
             RefreshRegisterForm();
         }
 
+        /// <summary> 쓰기 요청이 진행 중이면 구매, 등록, 취소, 수령 버튼을 모두 잠근다. 풀리면 각 입력 조건대로 되돌린다 </summary>
+        public void SetWriteBusy(bool busy)
+        {
+            _writeBusy = busy;
+            RefreshBuyTotal();
+            RefreshRegisterForm();
+            RefreshMineButtons();
+        }
+
         public void SetMine(IReadOnlyList<ListRowData> rows, IReadOnlyList<bool> cancellable, int unseenCount)
         {
             ListRowData.Fill(_mineRows, rows, -1);
+            _unseenCount = unseenCount;
             if (_cancelButtons != null)
             {
                 for (int i = 0; i < _cancelButtons.Length; ++i)
@@ -364,7 +381,21 @@ namespace Shinshi.UI
                 empty.text = EMPTY_MINE_TEXT;
             }
 
-            SetInteractable(_ackButton, unseenCount > 0);
+            RefreshMineButtons();
+        }
+
+        private void RefreshMineButtons()
+        {
+            SetInteractable(_ackButton, (_unseenCount > 0) && (!_writeBusy));
+            if (_cancelButtons == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _cancelButtons.Length; ++i)
+            {
+                SetInteractable(_cancelButtons[i], !_writeBusy);
+            }
         }
 
         /// <summary> 기록 목록. pageIndex는 0부터이고 hasMore가 거짓이면 다음 쪽 버튼을 끈다 </summary>
@@ -388,7 +419,7 @@ namespace Shinshi.UI
             bool valid    = (_buyMax > 0) && (quantity >= 1) && (quantity <= _buyMax)
                 && (AuctionViewRules.TryPreview(_buyUnitPrice, quantity, out long gross, out _, out _));
             SetText(_buyTotalLabel, valid ? AuctionViewRules.FormatPrice(_buyUnitPrice * quantity) : string.Empty);
-            SetInteractable(_buyButton, valid);
+            SetInteractable(_buyButton, (valid) && (!_writeBusy));
         }
 
         private void RefreshRegisterForm()
@@ -413,7 +444,7 @@ namespace Shinshi.UI
             SetText(_feeLabel, show ? AuctionViewRules.FormatPrice(fee) : string.Empty);
             SetText(_proceedsLabel, show ? AuctionViewRules.FormatPrice(net) : string.Empty);
             SetText(_formErrorLabel, ((_sellMax > 0) && (error != EAuctionFormError.None)) ? AuctionViewRules.FormErrorText(error) : string.Empty);
-            SetInteractable(_registerButton, show);
+            SetInteractable(_registerButton, (show) && (!_writeBusy));
         }
 
         private AuctionSearchInput ReadSearch()

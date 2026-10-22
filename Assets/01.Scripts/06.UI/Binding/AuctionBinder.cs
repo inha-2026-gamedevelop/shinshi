@@ -18,7 +18,10 @@ namespace Shinshi.UI
     public sealed class AuctionBinder : MonoBehaviour
     {
         // 품목 이름은 번역 표가 없어 정의 ID를 쓴다. 이름 검색은 클라이언트가 입력 글자로 정의 ID 목록을 만들어 보낸다.
-        // 구매, 등록, 취소는 확인 팝업을 거친 뒤에만 보낸다. 결과를 모르면(BackendUnavailable) 같은 요청 ID로 최대 두 번 다시 보낸다.
+        // 구매, 등록, 취소는 확인 팝업을 거친 뒤에만 보낸다. 미확정 쓰기 상태와 ID, 원문은 TownMarketClient가 들고 있고 이 창은 그 상태를 보여 준다.
+        // 결과를 모르면(BackendUnavailable, 응답 시간 초과) 같은 요청 ID로 최대 두 번 자동으로 다시 확인하고, 그 뒤에는 결과 불명으로 남겨
+        // 사용자가 팝업에서 같은 ID 재확인을 고르게 한다. 재확인 전에는 새 쓰기를 막고, 새 ID로 대신 보내지 않는다.
+        // 연결이 바뀐 뒤에는 이전 원문을 보내지 않고 내 등록과 거래 내역을 서버에서 다시 받아 사용자가 직접 확인하게 한다(쓰기는 막지 않는다).
         // 쓰기가 성공하면 내 등록, 현재 목록, 성장, 생활 스냅숏을 다시 받는다
 
         /****************************************
@@ -29,14 +32,20 @@ namespace Shinshi.UI
         private const int    TAB_SELL     = 1;
         private const int    TAB_LISTINGS = 2;
         private const int    TAB_HISTORY  = 3;
-        private const int    MAX_WRITE_RETRIES = 2;
-        private const float  RETRY_SECONDS     = 1f;
         private const int    INITIAL_CAPACITY  = 64;
         private const string DONE_TEXT         = "처리되었습니다";
         private const string NO_RESULT_TEXT    = "검색 결과가 없습니다";
         private const string OWN_LISTING_TEXT  = "내 등록은 살 수 없습니다";
         private const string PENDING_TEXT      = "서버 응답을 기다리는 중입니다";
+        private const string RECONFIRM_TEXT    = "요청 결과를 확인하지 못했습니다. 같은 요청으로 다시 확인해야 새 요청을 보낼 수 있습니다";
+        private const string RECONFIRM_PROMPT  = "이전 요청의 결과를 확인하지 못했습니다.\n같은 요청으로 결과를 다시 확인할까요?";
+        private const string STALE_TEXT        = "이전 연결에서 보낸 요청의 결과를 확인하지 못했습니다. 내 등록과 거래 내역을 불러오는 중입니다";
+        private const string STALE_DONE_TEXT   = "내 등록과 거래 내역을 다시 불러왔습니다. 이전 요청의 처리 여부는 목록과 내역에서 확인하세요";
+        private const string STALE_RETRY_TEXT  = "내 등록과 거래 내역을 불러오지 못했습니다. 잠시 뒤 다시 불러옵니다";
+        private const string RECONFIRM_NO_POPUP_TEXT = "요청 결과를 확인하지 못했습니다. 확인 창을 열 수 없어 자동으로 다시 보내지 않습니다. 내 등록과 거래 내역에서 처리 여부를 확인하세요";
+        private const string RECONFIRM_LOST_TEXT     = "이전 요청은 더 이상 다시 확인할 수 없습니다. 내 등록과 거래 내역에서 처리 여부를 확인하세요";
         private const string SLASH_FORMAT      = "{0}/{1}";
+        private const float  STALE_RETRY_SECONDS = 3f;
 
         [SerializeField] private AuctionView _view     = null;
         [SerializeField] private UiPopupHub  _popupHub = null;
@@ -66,9 +75,19 @@ namespace Shinshi.UI
         private Guid  _listingsId;
         private Guid  _mineId;
         private Guid  _historyId;
-        private Guid  _writeId;
-        private int   _retries;
-        private float _retryAt;
+        private bool  _staleRefreshing;
+        private bool  _staleMinePending;
+        private bool  _staleHistoryPending;
+        private float _staleRetryAt;
+        private float _staleDeadline;
+
+        // 테스트가 마을 연결 없이 마을 상태를 흉내 낸다
+        internal static Func<bool> TestIsTown;
+
+        private static bool IsTown()
+        {
+            return (TestIsTown != null) ? TestIsTown() : ClientRoles.IsTown();
+        }
 
         /****************************************
         *              Unity Event
@@ -76,7 +95,10 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
-            TownMarketClient.ResultReceived  += OnResult;
+            // 창이 열린 채 이 바인더만 꺼졌다 켜지면 그 사이 응답이 확정됐을 수 있다. 다음 Update가 열림으로 다시 받아 완료 응답과 잠금 표시를 복구한다
+            _wasOpen = false;
+            TownMarketClient.ResultReceived     += OnResult;
+            TownMarketClient.WriteStateChanged  += OnWriteStateChanged;
             TownGrowthClient.SnapshotChanged += OnGrowthSnapshot;
             TownLifeClient.SnapshotChanged   += OnLifeSnapshot;
             if (_view != null)
@@ -96,7 +118,8 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
-            TownMarketClient.ResultReceived  -= OnResult;
+            TownMarketClient.ResultReceived     -= OnResult;
+            TownMarketClient.WriteStateChanged  -= OnWriteStateChanged;
             TownGrowthClient.SnapshotChanged -= OnGrowthSnapshot;
             TownLifeClient.SnapshotChanged   -= OnLifeSnapshot;
             if (_view != null)
@@ -133,14 +156,27 @@ namespace Shinshi.UI
                 RebuildSellables();
             }
 
-            if ((_retryAt > 0f) && (Time.unscaledTime >= _retryAt))
+            TownMarketClient.Tick(Time.unscaledTime);
+            if ((!isOpen) || (!IsTown()))
             {
-                _retryAt = 0f;
-                if (!TownMarketClient.RetryLastWrite())
-                {
-                    _view.SetStatus(RejectText.Describe(ERejectReason.BackendUnavailable));
-                }
+                return;
             }
+
+            if (!TownMarketClient.HasStaleWrite)
+            {
+                _staleRefreshing = false;
+                return;
+            }
+
+            if (_staleRefreshing)
+            {
+                TickStale(Time.unscaledTime);
+                return;
+            }
+
+            // 창이 열린 채 연결이 바뀐 경우. 읽기는 여기서 액션마다 한 번만 보낸다
+            BeginStaleRefresh(false);
+            RequestSnapshots();
         }
 
         /****************************************
@@ -149,17 +185,233 @@ namespace Shinshi.UI
 
         private void OnOpened()
         {
-            if (!ClientRoles.IsTown())
+            if (!IsTown())
             {
                 _view.SetStatus(string.Empty);
                 return;
             }
 
+            // 창이 닫힌 사이 응답이 와도 클라이언트가 상태를 들고 있으므로 여기서 이어 받는다
+            TownMarketClient.Tick(Time.unscaledTime);
             RequestSnapshots();
-            _mineId = TownMarketClient.RequestMine();
             _view.SetStatus(string.Empty);
-            _sellablesDirty = true;
-            OnTabChanged(_view.Tab);
+            _sellablesDirty      = true;
+            _staleRefreshing     = false;
+            _staleMinePending    = false;
+            _staleHistoryPending = false;
+
+            // 읽기는 이 열림에서 액션마다 한 번만 보낸다. 끝난 쓰기가 내 등록을 이미 다시 받았으면 다시 보내지 않고,
+            // 내역은 내역 탭이거나 이전 연결 확인이 필요할 때만 받는다. 요청 ID를 새로 덮어쓰면 먼저 보낸 응답이 버려져 확인이 멈춘다
+            bool mineSent = false;
+            if (TownMarketClient.TryTakeCompletedWrite(out MarketResultMessage completed))
+            {
+                mineSent = OnWriteResult(in completed);
+            }
+
+            int  tab   = _view.Tab;
+            bool stale = TownMarketClient.HasStaleWrite;
+            if (!mineSent)
+            {
+                _mineId = TownMarketClient.RequestMine();
+            }
+
+            if ((stale) || (tab == TAB_HISTORY))
+            {
+                _historyPage = 0;
+                _historyId   = TownMarketClient.RequestHistory(_historyPage);
+            }
+
+            if ((tab == TAB_BUY) || (tab == TAB_SELL))
+            {
+                OnTabChanged(tab);
+            }
+
+            if (stale)
+            {
+                BeginStaleRefresh(true);
+            }
+
+            OnWriteStateChanged();
+        }
+
+        // 이전 연결의 요청 결과는 알 수 없으므로 성공이나 실패로 단정하지 않고, 서버의 권위 있는 내 등록과 내역을 다시 받아 보여 준다.
+        // 두 응답이 모두 정상으로 오면 표식을 내린다. 쓰기는 막지 않는다(새 연결에는 미확정 쓰기가 없다).
+        // alreadySent가 참이면 호출한 쪽이 이 두 읽기를 이미 보냈다. 거절이나 시간 초과는 요청 ID를 비워 두고 TickStale이 간격을 두고 다시 받는다
+        private void BeginStaleRefresh(bool alreadySent)
+        {
+            _staleRefreshing     = true;
+            _staleMinePending    = true;
+            _staleHistoryPending = true;
+            _staleRetryAt        = 0f;
+            _staleDeadline       = Time.unscaledTime + Constants.Network.API_TIMEOUT_SECONDS;
+            if (!alreadySent)
+            {
+                _mineId    = Guid.Empty;
+                _historyId = Guid.Empty;
+                SendStaleReads();
+            }
+
+            _view.SetStatus(STALE_TEXT);
+        }
+
+        private bool StaleMineNeedsSend => (_staleMinePending) && (_mineId == Guid.Empty);
+
+        private bool StaleHistoryNeedsSend => (_staleHistoryPending) && (_historyId == Guid.Empty);
+
+        // 아직 응답을 기다리지 않는 읽기만 한 번씩 보낸다
+        private void SendStaleReads()
+        {
+            if (StaleMineNeedsSend)
+            {
+                _mineId = TownMarketClient.RequestMine();
+            }
+
+            if (StaleHistoryNeedsSend)
+            {
+                _historyPage = 0;
+                _historyId   = TownMarketClient.RequestHistory(_historyPage);
+            }
+
+            float now = Time.unscaledTime;
+            _staleDeadline = now + Constants.Network.API_TIMEOUT_SECONDS;
+            _staleRetryAt  = (StaleMineNeedsSend || StaleHistoryNeedsSend) ? now + STALE_RETRY_SECONDS : 0f;
+        }
+
+        private void TickStale(float now)
+        {
+            bool waiting = ((_staleMinePending) && (_mineId != Guid.Empty)) || ((_staleHistoryPending) && (_historyId != Guid.Empty));
+            if ((waiting) && (now >= _staleDeadline))
+            {
+                // 응답이 오지 않는 요청은 버리고 다시 받는다. 버린 요청의 늦은 응답은 ID가 달라 무시된다
+                if (_staleMinePending)
+                {
+                    _mineId = Guid.Empty;
+                }
+
+                if (_staleHistoryPending)
+                {
+                    _historyId = Guid.Empty;
+                }
+
+                ScheduleStaleRetry(now);
+                return;
+            }
+
+            if (((StaleMineNeedsSend) || (StaleHistoryNeedsSend)) && (now >= _staleRetryAt))
+            {
+                SendStaleReads();
+                _view.SetStatus(STALE_TEXT);
+            }
+        }
+
+        private void ScheduleStaleRetry(float now)
+        {
+            _staleRetryAt = now + STALE_RETRY_SECONDS;
+            _view.SetStatus(STALE_RETRY_TEXT);
+        }
+
+        private void TryResolveStale()
+        {
+            if ((!_staleRefreshing) || (_staleMinePending) || (_staleHistoryPending))
+            {
+                return;
+            }
+
+            _staleRefreshing = false;
+            TownMarketClient.ResolveStaleWrite();
+            _view.SetStatus(STALE_DONE_TEXT);
+        }
+
+        private void OnWriteStateChanged()
+        {
+            if (_view == null)
+            {
+                return;
+            }
+
+            EMarketWriteState state = TownMarketClient.WriteState;
+            bool busy = (state == EMarketWriteState.Pending) || ((state == EMarketWriteState.Unknown) && (!TownMarketClient.NeedsWriteReconfirm));
+            _view.SetWriteBusy(busy);
+            if (state == EMarketWriteState.Pending)
+            {
+                _view.SetStatus(PENDING_TEXT);
+                return;
+            }
+
+            if (state != EMarketWriteState.Unknown)
+            {
+                return;
+            }
+
+            if (!TownMarketClient.NeedsWriteReconfirm)
+            {
+                _view.SetStatus(PENDING_TEXT);
+                return;
+            }
+
+            _view.SetStatus(RECONFIRM_TEXT);
+            if (_view.IsOpen)
+            {
+                PromptReconfirm();
+            }
+        }
+
+        // 같은 ID와 원문을 다시 보내는 것이라 서버와 API가 처음 결과를 돌려주며 효과는 한 번이다. 거절하면 결과 불명으로 남아 다시 고를 수 있다.
+        // 사용자의 승인 없이는 다시 보내지 않는다. 확인 창을 열 수 없으면 보내지 않고 결과 불명임을 안내만 한다
+        private void PromptReconfirm()
+        {
+            Guid id = TownMarketClient.PendingWriteId;
+            if (id == Guid.Empty)
+            {
+                return;
+            }
+
+            if (_popupHub == null)
+            {
+                _view.SetStatus(RECONFIRM_NO_POPUP_TEXT);
+                return;
+            }
+
+            _popupHub.ShowConfirm(EPopupSize.Medium, RECONFIRM_PROMPT, accepted =>
+            {
+                if (accepted)
+                {
+                    OnReconfirmApproved(id);
+                }
+            });
+        }
+
+        // 팝업이 열려 있는 사이 연결이 바뀌면 그 ID는 더 이상 확인할 수 없다. 보내지 않고 이전 요청을 직접 확인하도록 안내한다
+        private void OnReconfirmApproved(Guid id)
+        {
+            if ((TownMarketClient.PendingWriteId == id) && (TownMarketClient.NeedsWriteReconfirm) && (TownMarketClient.RetryWrite(id)))
+            {
+                return;
+            }
+
+            if (_view != null)
+            {
+                _view.SetStatus(RECONFIRM_LOST_TEXT);
+            }
+        }
+
+        // 미확정 쓰기가 있으면 새 쓰기를 보내지 않는다. 결과 불명이면 같은 ID 재확인을 다시 권한다
+        private bool CanBeginWrite()
+        {
+            if (TownMarketClient.WriteState == EMarketWriteState.None)
+            {
+                return true;
+            }
+
+            if (TownMarketClient.NeedsWriteReconfirm)
+            {
+                _view.SetStatus(RECONFIRM_TEXT);
+                PromptReconfirm();
+                return false;
+            }
+
+            _view.SetStatus(PENDING_TEXT);
+            return false;
         }
 
         private static void RequestSnapshots()
@@ -185,11 +437,20 @@ namespace Shinshi.UI
                     RequestSnapshots();
                     return;
                 case TAB_LISTINGS:
-                    _mineId = TownMarketClient.RequestMine();
+                    // 이전 연결 확인용 읽기가 이미 나가 있으면 그 응답이 이 탭도 채운다. 같은 읽기를 겹쳐 보내면 서버가 PendingCommit으로 거절한다
+                    if (!((_staleRefreshing) && (_staleMinePending)))
+                    {
+                        _mineId = TownMarketClient.RequestMine();
+                    }
+
                     return;
                 case TAB_HISTORY:
-                    _historyPage = 0;
-                    _historyId   = TownMarketClient.RequestHistory(_historyPage);
+                    if (!((_staleRefreshing) && (_staleHistoryPending)))
+                    {
+                        _historyPage = 0;
+                        _historyId   = TownMarketClient.RequestHistory(_historyPage);
+                    }
+
                     return;
             }
         }
@@ -228,6 +489,11 @@ namespace Shinshi.UI
         {
             if (_view.Tab == TAB_HISTORY)
             {
+                if ((_staleRefreshing) && (_staleHistoryPending))
+                {
+                    return;
+                }
+
                 _historyPage = Math.Max(0, _historyPage + delta);
                 _historyId   = TownMarketClient.RequestHistory(_historyPage);
                 return;
@@ -282,7 +548,12 @@ namespace Shinshi.UI
             }
 
             string text = AuctionViewRules.BuyConfirmText(listing.DefinitionId, quantity, listing.UnitPrice, gross);
-            Confirm(text, () => SendWrite(TownMarketClient.Buy(listing.ListingId, quantity, listing.UnitPrice)));
+            if (!CanBeginWrite())
+            {
+                return;
+            }
+
+            Confirm(text, () => SendWrite(() => TownMarketClient.Buy(listing.ListingId, quantity, listing.UnitPrice)));
         }
 
         private void OnSellItemSelected(int index)
@@ -312,8 +583,13 @@ namespace Shinshi.UI
             }
 
             string kind = item.IsEquipment ? MarketCodes.ASSET_EQUIPMENT : MarketCodes.ASSET_ACCOUNT_ITEM;
+            if (!CanBeginWrite())
+            {
+                return;
+            }
+
             string text = AuctionViewRules.ListConfirmText(item.DefinitionId, quantity, unitPrice, net);
-            Confirm(text, () => SendWrite(TownMarketClient.List(kind, item.DefinitionId, item.ItemId, quantity, unitPrice)));
+            Confirm(text, () => SendWrite(() => TownMarketClient.List(kind, item.DefinitionId, item.ItemId, quantity, unitPrice)));
         }
 
         private void OnCancelRequested(int mineIndex)
@@ -323,13 +599,23 @@ namespace Shinshi.UI
                 return;
             }
 
+            if (!CanBeginWrite())
+            {
+                return;
+            }
+
             MarketListingEntry listing = _mine[mineIndex];
             string text = AuctionViewRules.CancelConfirmText(listing.DefinitionId, listing.RemainingQty);
-            Confirm(text, () => SendWrite(TownMarketClient.Cancel(listing.ListingId)));
+            Confirm(text, () => SendWrite(() => TownMarketClient.Cancel(listing.ListingId)));
         }
 
         private void OnAckRequested()
         {
+            if (!CanBeginWrite())
+            {
+                return;
+            }
+
             _ackIds.Clear();
             for (int i = 0; (i < _mine.Length) && (_ackIds.Count < MarketMessageSerializer.MAX_STRINGS); ++i)
             {
@@ -341,7 +627,7 @@ namespace Shinshi.UI
 
             if (_ackIds.Count > 0)
             {
-                SendWrite(TownMarketClient.Acknowledge(_ackIds.ToArray()));
+                SendWrite(() => TownMarketClient.Acknowledge(_ackIds.ToArray()));
             }
         }
 
@@ -361,10 +647,15 @@ namespace Shinshi.UI
             });
         }
 
-        private void SendWrite(Guid id)
+        // 팝업이 열려 있는 사이 상태가 바뀔 수 있어 보내기 직전에 다시 확인한다. 클라이언트도 미확정 쓰기가 있으면 보내지 않는다
+        private void SendWrite(Func<Guid> send)
         {
-            _writeId = id;
-            _retries = 0;
+            if (!CanBeginWrite())
+            {
+                return;
+            }
+
+            Guid id = send();
             _view.SetStatus((id == Guid.Empty) ? string.Empty : PENDING_TEXT);
         }
 
@@ -407,9 +698,10 @@ namespace Shinshi.UI
 
                     return;
                 default:
-                    if (result.RequestId == _writeId)
+                    // 클라이언트가 이미 미확정 쓰기에 반영했다. 끝난 결과만 꺼내 보여 주고, 결과 불명은 OnWriteStateChanged가 보여 준다
+                    if ((result.RequestId == TownMarketClient.CompletedWriteId) && (TownMarketClient.TryTakeCompletedWrite(out MarketResultMessage completed)))
                     {
-                        OnWriteResult(in result);
+                        OnWriteResult(in completed);
                     }
 
                     return;
@@ -471,6 +763,13 @@ namespace Shinshi.UI
         {
             if (!result.IsAccepted)
             {
+                if ((_staleRefreshing) && (_staleMinePending))
+                {
+                    _mineId = Guid.Empty;
+                    ScheduleStaleRetry(Time.unscaledTime);
+                    return;
+                }
+
                 _view.SetStatus(DescribeRead(result.Reason));
                 return;
             }
@@ -493,12 +792,21 @@ namespace Shinshi.UI
             }
 
             _view.SetMine(_rows, _flags, result.UnseenCount);
+            _staleMinePending = false;
+            TryResolveStale();
         }
 
         private void OnHistoryResult(in MarketResultMessage result)
         {
             if (!result.IsAccepted)
             {
+                if ((_staleRefreshing) && (_staleHistoryPending))
+                {
+                    _historyId = Guid.Empty;
+                    ScheduleStaleRetry(Time.unscaledTime);
+                    return;
+                }
+
                 _view.SetStatus(DescribeRead(result.Reason));
                 return;
             }
@@ -515,45 +823,46 @@ namespace Shinshi.UI
             }
 
             _view.SetHistory(_rows, _historyPage, result.HasMore);
+            _staleHistoryPending = false;
+            TryResolveStale();
         }
 
-        private void OnWriteResult(in MarketResultMessage result)
+        // 내 등록을 다시 요청했으면 참을 돌려준다
+        private bool OnWriteResult(in MarketResultMessage result)
         {
             if (result.IsAccepted)
             {
-                _writeId = Guid.Empty;
                 _view.SetStatus(DONE_TEXT);
-                RefreshAfterWrite();
-                return;
+                return RefreshAfterWrite();
             }
 
-            // 결과를 모르면 같은 요청 ID로 다시 보낸다. 서버와 API가 처음 결과를 돌려주므로 효과는 한 번이다
-            if ((result.Reason == ERejectReason.BackendUnavailable) && (_retries < MAX_WRITE_RETRIES))
-            {
-                ++_retries;
-                _retryAt = Time.unscaledTime + RETRY_SECONDS;
-                _view.SetStatus(PENDING_TEXT);
-                return;
-            }
-
-            _writeId = Guid.Empty;
             _view.SetStatus(DescribeWrite(result.Reason));
             if ((result.Reason == ERejectReason.MarketPriceChanged) || (result.Reason == ERejectReason.MarketSoldOut)
                 || (result.Reason == ERejectReason.MarketQuantityChanged) || (result.Reason == ERejectReason.MarketExpired))
             {
-                RefreshAfterWrite();
+                return RefreshAfterWrite();
             }
+
+            return false;
         }
 
-        private void RefreshAfterWrite()
+        private bool RefreshAfterWrite()
         {
-            _mineId = TownMarketClient.RequestMine();
+            bool mineSent = false;
+            if (!((_staleRefreshing) && (_staleMinePending)))
+            {
+                _mineId  = TownMarketClient.RequestMine();
+                mineSent = _mineId != Guid.Empty;
+            }
+
             RequestSnapshots();
             _sellablesDirty = true;
             if ((_view.Tab == TAB_BUY) && (_groupSelected >= 0) && (_groupSelected < _groups.Length))
             {
                 _listingsId = TownMarketClient.QueryListings(_groups[_groupSelected].DefinitionId, 0);
             }
+
+            return mineSent;
         }
 
         private void OnGrowthSnapshot(GrowthSnapshotMessage snapshot)
