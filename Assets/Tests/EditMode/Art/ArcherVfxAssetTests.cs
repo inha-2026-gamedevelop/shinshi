@@ -18,6 +18,83 @@ namespace Shinshi.Tests.EditMode.Art
         private const string ROOT = "Assets/02.Prefab/VFX/Archer/";
         private const string PLAYER = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
 
+        [Test]
+        public void Tracker_BurstStep_FiresThreeArrowsAtDataIntervals()
+        {
+            ArcherVfxTracker tracker = CreateBurstTracker();
+            ArcherVfxTracker.Observation obs = BasicObservation();
+            tracker.Update(in obs);
+            obs.AttackSequence = 1;
+            obs.AttackComboStep = 1;
+            double start = obs.Now;
+            tracker.Update(in obs);
+            foreach (double elapsed in new[] { 0.24, 0.41, 0.54 })
+            {
+                obs.Now = start + elapsed;
+                Assert.That(tracker.Update(in obs), Is.EqualTo(2));
+                Assert.That(tracker.GetPlay(1).Kind, Is.EqualTo(EArcherVfxKind.Arrow));
+                Assert.That(tracker.GetPlay(1).IsHeavy, Is.False);
+            }
+
+            obs.Now = start + 0.8;
+            Assert.That(tracker.Update(in obs), Is.Zero);
+        }
+
+        [Test]
+        public void Tracker_BurstCancelledAfterFirstArrow_DoesNotEmitRemainingArrows()
+        {
+            ArcherVfxTracker tracker = CreateBurstTracker();
+            ArcherVfxTracker.Observation obs = BasicObservation();
+            tracker.Update(in obs);
+            obs.AttackSequence = 1;
+            obs.AttackComboStep = 1;
+            tracker.Update(in obs);
+            obs.Now += 0.24;
+            Assert.That(tracker.Update(in obs), Is.EqualTo(2));
+            ++obs.ActionCancelSequence;
+            Assert.That(tracker.Update(in obs), Is.Zero);
+            obs.Now += 0.5;
+            Assert.That(tracker.Update(in obs), Is.Zero);
+        }
+
+        [Test]
+        public void Tracker_NormalArrowHitsDuringHeavyWindup_UsesServerHitFlag()
+        {
+            ArcherVfxTracker tracker = CreateBurstTracker();
+            tracker.HeavyBasicStep = 2;
+            ArcherVfxTracker.Observation obs = BasicObservation();
+            tracker.Update(in obs);
+            obs.AttackSequence = 1;
+            obs.AttackComboStep = 2;
+            tracker.Update(in obs);
+            ++obs.ArrowHitSequence;
+            obs.ArrowHitIsHeavy = false;
+            Assert.That(tracker.Update(in obs), Is.EqualTo(1));
+            Assert.That(tracker.GetPlay(0).IsHeavy, Is.False);
+            ++obs.ArrowHitSequence;
+            obs.ArrowHitIsHeavy = true;
+            Assert.That(tracker.Update(in obs), Is.EqualTo(1));
+            Assert.That(tracker.GetPlay(0).IsHeavy, Is.True);
+        }
+
+        private static ArcherVfxTracker CreateBurstTracker()
+        {
+            var tracker = new ArcherVfxTracker();
+            var config = new ArcherVfxTracker.Config
+            {
+                BasicWindup = 0.25f,
+                BasicStepWindups = new[] { 0.25f, 0.22f, 0.33f },
+                BasicStepShotCounts = new[] { 1, 3, 1 },
+                BasicStepShotIntervals = new[] { 0f, 0.15f, 0f },
+                BasicCancelOnMove = true,
+                MaxLateSeconds = 0.25f,
+                ServerTickSeconds = 1f / 30f,
+                Basic = new ArcherVfxTracker.ShotSpec { Speed = 24f, Range = 14f }
+            };
+            tracker.Configure(in config);
+            return tracker;
+        }
+
         [TestCase("HeavyArrow")]
         [TestCase("HeavyMuzzle")]
         [TestCase("HeavyHit")]
@@ -265,7 +342,7 @@ namespace Shinshi.Tests.EditMode.Art
             Assert.That(serialized.FindProperty("_combat").objectReferenceValue, Is.SameAs(player.GetComponent<PlayerCombatState>()));
             foreach (string field in new[] { "_arrowPrefab", "_muzzlePrefab", "_impactPrefab", "_iceArrowPrefab", "_iceMuzzlePrefab",
                 "_iceHitPrefab", "_windPrefab", "_windMuzzlePrefab", "_windHitPrefab", "_fireArrowPrefab", "_fireMuzzlePrefab",
-                "_fireHitPrefab", "_chargePrefab", "_burstPrefab" })
+                "_fireHitPrefab", "_chargePrefab", "_burstPrefab", "_heavyArrowPrefab", "_heavyMuzzlePrefab", "_heavyHitPrefab" })
             {
                 Assert.That(serialized.FindProperty(field).objectReferenceValue, Is.Not.Null, field);
             }

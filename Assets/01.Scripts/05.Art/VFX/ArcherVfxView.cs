@@ -186,6 +186,7 @@ namespace Shinshi.Art
             observation.ArrowHitSequence     = _combat.ArrowHitSequence;
             observation.ArrowHitPosition     = _combat.ArrowHitPosition;
             observation.ArrowHitElement      = _combat.ArrowHitElement;
+            observation.ArrowHitIsHeavy      = _combat.ArrowHitIsHeavy;
             observation.Now                  = now;
 
             // 사망, 회피, 다음 시전은 아직 나가지 않은 발사만 버린다. 이미 나간 투사체는 풀이 자기 수명까지 유지한다
@@ -266,9 +267,17 @@ namespace Shinshi.Art
                 if (basic.HasCombo)
                 {
                     config.BasicStepWindups = new float[basic.ComboStepCount];
+                    config.BasicStepShotCounts = new int[basic.ComboStepCount];
+                    config.BasicStepShotIntervals = new float[basic.ComboStepCount];
                     for (int i = 0; i < config.BasicStepWindups.Length; ++i)
                     {
                         config.BasicStepWindups[i] = basic.GetWindup(i);
+                        config.BasicStepShotCounts[i] = basic.GetShotCount(i);
+                        config.BasicStepShotIntervals[i] = basic.GetShotInterval(i);
+                        if (basic.IsHeavy(i))
+                        {
+                            _tracker.HeavyBasicStep = i;
+                        }
                     }
                 }
                 config.BasicCancelOnMove = basic.CancelOnMove;

@@ -59,10 +59,11 @@ namespace Shinshi.Combat
         [SyncVar] private EArcherElement _archerElement;
 
         // 궁수 기본 공격 화살이 적을 맞힐 때마다 서버가 1씩 올린다(255 다음 0). 위치와 속성은 그 화살의 값이며 적중 효과 표시에만 쓴다.
-        // 한 동기화 주기에 두 발이 맞으면 마지막 것만 보이는데, 화살은 1초에 두 발을 넘지 않아 표시 누락은 드물다
+        // 한 복제 주기 안에 여러 발이 맞으면 마지막 적중을 표시한다
         [SyncVar] private byte           _arrowHitSequence;
         [SyncVar] private Vector3        _arrowHitPosition;
         [SyncVar] private EArcherElement _arrowHitElement;
+        [SyncVar] private bool           _arrowHitIsHeavy;
         [SyncVar] private ESkillPhase _skillPhase;
         [SyncVar] private int _castInstanceId;
         [SyncVar] private int _actionInstanceId;
@@ -116,6 +117,7 @@ namespace Shinshi.Combat
         public byte ArrowHitSequence => _arrowHitSequence;
         public Vector3 ArrowHitPosition => _arrowHitPosition;
         public EArcherElement ArrowHitElement => _arrowHitElement;
+        public bool ArrowHitIsHeavy => _arrowHitIsHeavy;
         public ESkillPhase SkillPhase => _skillPhase;
         public int CastInstanceId => _castInstanceId;
         public int ActionInstanceId => _actionInstanceId;
@@ -219,10 +221,11 @@ namespace Shinshi.Combat
         }
 
         [Server]
-        public void BumpArrowHit(Vector3 position, EArcherElement element)
+        public void BumpArrowHit(Vector3 position, EArcherElement element, bool isHeavy = false)
         {
             _arrowHitPosition = position;
             _arrowHitElement  = element;
+            _arrowHitIsHeavy  = isHeavy;
             _arrowHitSequence = unchecked((byte)(_arrowHitSequence + 1));
         }
 

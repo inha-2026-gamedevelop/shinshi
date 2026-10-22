@@ -82,6 +82,11 @@ namespace Shinshi.Data
             public float GetInterval(int step)          { return HasStep(step) ? _comboSteps[step].Interval : _interval; }
             public float GetWindup(int step)            { return HasStep(step) ? _comboSteps[step].Windup : _windup; }
             public bool  IsHitImmune(int step)          { return HasStep(step) && _comboSteps[step].HitImmune; }
+            public int   GetShotCount(int step)        { return HasStep(step) ? _comboSteps[step].ShotCount : 1; }
+            public float GetShotInterval(int step)     { return HasStep(step) ? _comboSteps[step].ShotInterval : 0f; }
+            public int   GetMotionStep(int step)       { return HasStep(step) && (_comboSteps[step].ShotCount > 1) ? _comboSteps[step].MotionStep : step; }
+            public float GetMotionSpeedScale(int step) { return HasStep(step) ? _comboSteps[step].MotionSpeedScale : 1f; }
+            public bool  IsHeavy(int step)             { return HasStep(step) && _comboSteps[step].Heavy; }
 
             public ComboStepSpec GetComboStep(int index) { return _comboSteps[index]; }
 
@@ -99,18 +104,34 @@ namespace Shinshi.Data
             [SerializeField] private float _interval;          // 초, 이 단계 시작부터 다음 공격까지
             [SerializeField] private float _windup;            // 초, 이 단계 승인부터 판정까지
             [SerializeField] private bool  _hitImmune;         // 이 단계 동작 동안(주기만큼) 기절, 속박, 밀림을 받지 않는다. 피해는 받는다
+            [SerializeField, Range(1, MAX_BASIC_SHOTS)] private int _shotCount = 1;
+            [SerializeField, Min(0f)] private float _shotInterval;
+            [SerializeField, Min(0)] private int _motionStep;
+            [SerializeField, Min(1f)] private float _motionSpeedScale = 1f;
+            [SerializeField] private bool _heavy;
 
             public float DamageCoefficient => _damageCoefficient;
             public float Interval          => _interval;
             public float Windup            => _windup;
             public bool  HitImmune         => _hitImmune;
+            public int   ShotCount         => _shotCount;
+            public float ShotInterval      => _shotInterval;
+            public int   MotionStep        => _motionStep;
+            public float MotionSpeedScale  => (_motionSpeedScale > 0f) ? _motionSpeedScale : 1f;
+            public bool  Heavy             => _heavy;
 
-            public ComboStepSpec(float damageCoefficient, float interval, float windup, bool hitImmune)
+            public ComboStepSpec(float damageCoefficient, float interval, float windup, bool hitImmune,
+                int shotCount = 1, float shotInterval = 0f, int motionStep = 0, float motionSpeedScale = 1f, bool heavy = false)
             {
                 _damageCoefficient = damageCoefficient;
                 _interval          = interval;
                 _windup            = windup;
                 _hitImmune         = hitImmune;
+                _shotCount         = shotCount;
+                _shotInterval      = shotInterval;
+                _motionStep        = motionStep;
+                _motionSpeedScale  = motionSpeedScale;
+                _heavy             = heavy;
             }
         }
 
@@ -122,6 +143,7 @@ namespace Shinshi.Data
         private const float MIN_CRIT_MULTIPLIER = 1f;
         private const float MAX_ARC_ANGLE       = 360f;
         private const int   LEGACY_CLASS_COUNT  = 3;
+        public const int MAX_BASIC_SHOTS = 8;
 
         /****************************************
         *                Fields
@@ -202,8 +224,8 @@ namespace Shinshi.Data
             new BasicAttackSpec(0.9f, 0.95f, 10f, 0f, 0.35f, 24f, 0.3f, true, 1.2f, new[]
             {
                 new ComboStepSpec(0.65f, 0.6f, 0.25f, false),
-                new ComboStepSpec(0.75f, 0.75f, 0.22f, false),
-                new ComboStepSpec(1.1f, 1.3f, 0.33f, true)
+                new ComboStepSpec(0.75f, 0.75f, 0.22f, false, 3, 0.15f, 0, 2f),
+                new ComboStepSpec(1.1f, 1.3f, 0.33f, true, heavy: true)
             })
         };
 
@@ -344,6 +366,20 @@ namespace Shinshi.Data
                     DataValidation.RequirePositive(errors, OWNER, stepField + ".DamageCoefficient", step.DamageCoefficient);
                     DataValidation.RequirePositive(errors, OWNER, stepField + ".Interval", step.Interval);
                     DataValidation.RequireRange(errors, OWNER, stepField + ".Windup", step.Windup, 0f, step.Interval);
+                    DataValidation.RequireRange(errors, OWNER, stepField + ".ShotCount", step.ShotCount, 1, MAX_BASIC_SHOTS);
+                    DataValidation.RequireNonNegative(errors, OWNER, stepField + ".ShotInterval", step.ShotInterval);
+                    DataValidation.RequireRange(errors, OWNER, stepField + ".MotionStep", step.MotionStep, 0, spec.ComboStepCount - 1);
+                    DataValidation.RequireRange(errors, OWNER, stepField + ".MotionSpeedScale", step.MotionSpeedScale, 1f, float.MaxValue);
+                    if (step.ShotCount > 1)
+                    {
+                        DataValidation.RequirePositive(errors, OWNER, stepField + ".ShotInterval", step.ShotInterval);
+                        DataValidation.RequireRange(errors, OWNER, stepField + ".LastShotAt",
+                            step.Windup + ((step.ShotCount - 1) * step.ShotInterval), 0f, step.Interval);
+                        if ((spec.ArcAngle > 0f) || (spec.ProjectileSpeed <= 0f))
+                        {
+                            errors.Add($"{OWNER}.{stepField}: 연발은 투사체 기본 공격에만 지정한다");
+                        }
+                    }
                 }
             }
         }

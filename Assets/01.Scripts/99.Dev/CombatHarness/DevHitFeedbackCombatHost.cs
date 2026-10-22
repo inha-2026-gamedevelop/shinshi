@@ -540,6 +540,12 @@ namespace Shinshi.Dev
         // 궁수 콤보 시험은 서버 판정기를 그대로 두고 호스트 틱 앞뒤에서만 끼어든다
         private void SetUpComboTrial(ArcherVfxView archerView)
         {
+            // 정식 데이터가 연발을 가지면 서버와 뷰가 직접 재생한다. 시험용 추가 발사를 겹치지 않는다
+            if ((_playerClass == EPlayerClass.Archer) && (GameDB.Player.GetBasicAttack(_playerClass).GetShotCount(1) > 1))
+            {
+                return;
+            }
+
             if ((!_archerComboTrial) || (_playerClass != EPlayerClass.Archer))
             {
                 return;

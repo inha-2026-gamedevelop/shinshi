@@ -222,7 +222,7 @@ namespace Shinshi.Combat
             // 사망이 registry 해제와 Transform 파괴를 일으킬 수 있어 좌표와 귀속은 ApplyDamage 전에 고정한다
             Vector3 position = target.Position;
             DamageResult result = DamageResult.Applied(applied, isLethal, isRear, isCritical);
-            var notice = new AppliedDamageNotice(ownerId, request.HitTargetId, position, result, _now);
+            var notice = new AppliedDamageNotice(ownerId, request.HitTargetId, position, result, _now, request.IsDamageOverTime);
             target.ApplyDamage(applied, isLethal, _now);
             ApplyLifeSteal(owner, ownerId, applied);
             Publish(in notice);

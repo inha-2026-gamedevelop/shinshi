@@ -77,6 +77,8 @@ namespace Shinshi.Art
             public float    BasicWindup;
             // 서버 콤보 단계별 준비 시간, 비어 있거나 단계가 넘치면 BasicWindup을 쓴다
             public float[]  BasicStepWindups;
+            public int[]    BasicStepShotCounts;
+            public float[]  BasicStepShotIntervals;
             public bool     BasicCancelOnMove;
             public ShotSpec Basic;
             // 발사 시각을 이만큼 넘겨 관찰한 총구 효과는 이미 지난 일이라 재생하지 않는다
@@ -117,6 +119,7 @@ namespace Shinshi.Art
             public byte                  ArrowHitSequence;
             public Vector3               ArrowHitPosition;
             public EArcherElement        ArrowHitElement;
+            public bool                  ArrowHitIsHeavy;
             public double                Now;
         }
 
@@ -158,6 +161,9 @@ namespace Shinshi.Art
             public double         DecideAt;
             public double         ServerStartAt;
             public float          FireDelay;
+            public float          BasicWindup;
+            public int            ShotCount;
+            public float          ShotInterval;
         }
 
         private readonly Pending[]        _pending  = new Pending[MAX_PENDING];
@@ -168,8 +174,9 @@ namespace Shinshi.Art
         private ShotSpec _basic;
         private float    _basicWindup;
         private float[]  _basicStepWindups;
+        private int[]    _basicStepShotCounts;
+        private float[]  _basicStepShotIntervals;
         private bool     _basicCancelOnMove;
-        private bool     _lastBasicHeavy;
         private bool     _emitHeavy;
         private float    _maxLate;
         private float    _windSpeedScale = 1f;
@@ -220,6 +227,8 @@ namespace Shinshi.Art
             _basic             = Normalize(config.Basic);
             _basicWindup       = Mathf.Max(0f, config.BasicWindup);
             _basicStepWindups  = config.BasicStepWindups;
+            _basicStepShotCounts = config.BasicStepShotCounts;
+            _basicStepShotIntervals = config.BasicStepShotIntervals;
             _basicCancelOnMove = config.BasicCancelOnMove;
             _maxLate           = Mathf.Max(0f, config.MaxLateSeconds);
             _windSpeedScale    = (config.WindSpeedScale > 0f) ? config.WindSpeedScale : 1f;
@@ -392,7 +401,7 @@ namespace Shinshi.Art
             _plays[count] = new Play
             {
                 Kind = EArcherVfxKind.Hit, Element = obs.ArrowHitElement, StartAt = obs.Now, HasPosition = true,
-                Position = obs.ArrowHitPosition, Direction = ToHorizontal(obs.Facing, Vector3.forward), IsHeavy = _lastBasicHeavy
+                Position = obs.ArrowHitPosition, Direction = ToHorizontal(obs.Facing, Vector3.forward), IsHeavy = obs.ArrowHitIsHeavy
             };
             return count + 1;
         }
@@ -413,7 +422,7 @@ namespace Shinshi.Art
             // 취소 신호(이동, 회피, 기절, 기술)를 받지 않은 것이므로 서버에서는 이미 나간 화살이다. 버리지 않고 지금 내보낸다
             for (int i = 0; i < _pending.Length; ++i)
             {
-                if (_pending[i].Active && (_pending[i].Kind == EPendingKind.Basic))
+                while (_pending[i].Active && (_pending[i].Kind == EPendingKind.Basic))
                 {
                     count = FireBasic(i, count, obs.Now);
                 }
@@ -436,12 +445,15 @@ namespace Shinshi.Art
             float windup    = GetBasicWindup(obs.AttackComboStep);
             float fireDelay = GetFireDelay(windup);
             bool isHeavy = obs.AttackComboStep == HeavyBasicStep;
-            _lastBasicHeavy = isHeavy;
             _pending[slot] = new Pending
             {
                 Active = true, Kind = EPendingKind.Basic, IsHeavy = isHeavy, Direction = obs.Facing, Element = obs.ArcherElement,
                 ResolveAt = obs.Now + windup, DecideAt = obs.Now + fireDelay, ServerStartAt = obs.AttackStartedAt,
-                FireDelay = fireDelay
+                FireDelay = fireDelay, BasicWindup = windup,
+                ShotCount = ((_basicStepShotCounts != null) && (obs.AttackComboStep < _basicStepShotCounts.Length))
+                    ? Mathf.Clamp(_basicStepShotCounts[obs.AttackComboStep], 1, MAX_REPEAT) : 1,
+                ShotInterval = ((_basicStepShotIntervals != null) && (obs.AttackComboStep < _basicStepShotIntervals.Length))
+                    ? Mathf.Max(0f, _basicStepShotIntervals[obs.AttackComboStep]) : 0f
             };
             return count;
         }
@@ -577,17 +589,16 @@ namespace Shinshi.Art
                 return count;
             }
 
-            if (obs.Now < _pending[index].DecideAt)
+            while ((_pending[index].Active) && (obs.Now >= _pending[index].DecideAt))
             {
-                return count;
+                count = FireBasic(index, count, obs.Now);
             }
 
-            return FireBasic(index, count, obs.Now);
+            return count;
         }
 
         private int FireBasic(int index, int count, double now)
         {
-            _pending[index].Active = false;
             ShotSpec spec = _basic;
             if (_pending[index].Element == EArcherElement.Wind)
             {
@@ -596,8 +607,13 @@ namespace Shinshi.Art
 
             _emitHeavy = _pending[index].IsHeavy;
             count      = EmitShot(in spec, _pending[index].Element, ToHorizontal(_pending[index].Direction, Vector3.forward),
-                _pending[index].ResolveAt, now, count, true);
+                _pending[index].ResolveAt + (_pending[index].NextShot * (double)_pending[index].ShotInterval), now, count, true);
             _emitHeavy = false;
+            ++_pending[index].NextShot;
+            _pending[index].Active = _pending[index].NextShot < _pending[index].ShotCount;
+            _pending[index].FireDelay = GetFireDelay(_pending[index].BasicWindup
+                + (_pending[index].NextShot * _pending[index].ShotInterval));
+            _pending[index].DecideAt = _pending[index].ResolveAt - _pending[index].BasicWindup + _pending[index].FireDelay;
             return count;
         }
 

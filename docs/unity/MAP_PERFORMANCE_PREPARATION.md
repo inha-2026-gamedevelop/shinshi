@@ -111,9 +111,9 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 필수 목록은 **그 맵의 공격 예고, 현재 파티의 장착 스킬·동료, 등장할 적·보스의 효과**로 좁힌다. 실제 프리팹 GUID·재질·텍스처·셰이더 키워드·사용 품질·예상 동시 인스턴스·풀 반환 조건을 기록한다. `maxParticles` 합계를 실제 활성 입자나 필요 풀 수로 쓰지 않는다.
 
-### 등록된 개발 시험 대상 — 궁수 강공격
+### 등록된 대상 — 궁수 강공격
 
-2026-10-22 확인. `Dev_ForestPlateauHitFeedback`의 궁수 콤보 시험용이며, 릴리즈 전장 연결·부팅 카탈로그 소비·GPU 워밍업은 미검증이다. 속성색 변경은 기존 프리팹 복제본에만 적용하므로 별도 색상 프리팹이나 재질을 만들지 않는다.
+2026-10-22 릴리즈 `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab`에도 연결했다. 시험 호스트의 임시 추가 발사 대신 `PlayerServer`와 `PlayerConfigSO`의 정식 연발 설정을 사용한다. 부팅 카탈로그 소비·GPU 워밍업·실제 다인 전장 실행은 미검증이다. 속성색 변경은 기존 프리팹 복제본에만 적용하므로 별도 색상 프리팹이나 재질을 만들지 않는다.
 
 | 준비 단계 | 프리팹 (`Assets/02.Prefab/VFX/Archer/`) | GUID |
 |---|---|---|
@@ -121,12 +121,13 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 | 발사 | `PF_ArcherVfx_HeavyMuzzle.prefab` | `4b5acf4e7ea6d0a45bdb30ffa052ce3c` |
 | 적중·소멸 | `PF_ArcherVfx_HeavyHit.prefab` | `76f042e038ade534bbab82296d7a59ad` |
 
-- 사용 설정: `ArcherVfxView`의 `_heavyArrowPrefab`·`_heavyMuzzlePrefab`·`_heavyHitPrefab`과 `HeavyBasicStep`을 지정한다. `-1`이면 강공격 구분을 쓰지 않으며, 프리팹이 없으면 해당 속성의 일반 효과로 대체한다. 시험 호스트는 0부터 세는 2단계를 강공격으로 지정한다.
+- 사용 설정: `ArcherVfxView`의 `_heavyArrowPrefab`·`_heavyMuzzlePrefab`·`_heavyHitPrefab`을 지정한다. 강공격 단계는 `PlayerConfig.asset`의 궁수 콤보 `_heavy`에서 읽는다(현재 0부터 세는 2단계). 프리팹이 없으면 해당 속성의 일반 효과로 대체한다. `_shotCount`·`_shotInterval`·`_motionStep`·`_motionSpeedScale`은 2타 3연발과 반복 모션의 공용 설정이다.
 - 속성색은 Inspector의 `_heavyIceColor`·`_heavyWindColor`·`_heavyFireColor`로 조정한다. 기본값은 기존 잔광색인 얼음 RGB `(0.55, 0.85, 1)`, 바람 `(1, 0.85, 0.5)`, 불 `(1, 0.45, 0.12)`이며, 무속성은 프리팹 원색이다. 색은 풀 생성 때 적용하므로 실행 중 변경했다면 플레이를 다시 시작한다.
 - 풀은 속성별·단계별 3칸씩 만든다. 다른 속성의 비행·잔광이 남아 있어도 색을 바꾸지 않는다. `ArcherVfxPool`은 입자 밝기·알파 곡선과 크기·시간을 유지하고 복제본의 입자·TrailRenderer 색만 바꾼다. 기존 `PlayBrief`·`PlayProjectile`·`Tick`·`StopAll` 수명 계약을 사용하며 뷰 비활성화·파괴 때 정리한다.
 - 재질은 같은 폴더의 `Materials/M_ArcherArrow.mat`·`M_ReleaseGlow.mat`, 셰이더는 `Shinshi/VFX/ReleaseParticle`이다. AssetDatabase 재귀 조회 시 활성 로컬 키워드는 비어 있었다. 색상별 추가 셰이더 키워드나 텍스처는 없다. 발광 입자 표현이라 AO·물리 충돌체·LOD를 추가하지 않는다.
 - 로컬 시험 씬에서 무속성·얼음·바람·불의 발사·화살·적중 풀 12개 경로와 Unity 렌더를 확인했다. 초기 생성 수는 현재 구현값이며 성능·메모리 예산을 실측한 결과가 아니다. 품질·그래픽스 API별 첫 사용 지연, 실제 입력 전투와 다인 접속은 미검증이다.
-- 같은 시험 호스트의 화상 피드백은 피해 요청의 `DamageOverTime` 표식을 읽어 카메라 흔들림과 플레이어 경직을 억제한다. 일반 적중은 기존 흔들림을 유지한다. 릴리즈 네트워크 피해 알림 계약은 이 변경에 포함하지 않는다.
+- 릴리즈 반영 뒤 같은 정식 서버 코드를 시험 씬에서 실시간으로 실행해 1+3+1의 기본 화살 5회 적중과 화상 틱을 계측했다. 임시 콤보 보조 객체가 생성되지 않은 것도 확인했다. 관련 EditMode 229건 중 225건이 통과했고, 남은 4건은 기존 일반 화살 프리팹의 `playOnAwake` 설정 검사 실패다. 새 서버 연발·중간 취소·강공격 적중 표식·도트 RPC와 카메라·연발 VFX 테스트는 통과했다. 실제 릴리즈 빌드와 M2/M3는 미실행이다.
+- 화상은 서버 피해 요청의 `DamageOverTime` 표식을 `AppliedDamageNotice`·`DamageFeedback.IsDamageOverTime`·소유자 TargetRpc로 전달해 릴리즈 카메라 흔들림도 억제한다. 피해 숫자와 일반 적중 흔들림은 유지한다. 프로토콜 16 클라이언트·서버를 함께 사용해야 한다. 시험 호스트는 같은 표식으로 플레이어 경직도 억제한다.
 
 ### 등록된 필수 대상 — 무철 01~07
 

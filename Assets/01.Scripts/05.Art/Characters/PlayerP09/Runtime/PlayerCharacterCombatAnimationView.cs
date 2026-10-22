@@ -52,6 +52,11 @@ namespace Shinshi.Art
         private bool  _hasHealthDrop  = false;
         private float _lastHealth     = -1f;
         private int   _hitSide        = 0;
+        private int   _attackRepeatsLeft;
+        private int   _repeatAttackStep;
+        private byte  _repeatCancelSequence;
+        private float _nextAttackMotionAt;
+        private float _attackMotionInterval;
 
         // 피격이상 면역 콤보 단계를 재생하는 동안은 피격 모션으로 끊지 않는다
         private float _hitSuppressedUntil = float.NegativeInfinity;
@@ -66,6 +71,7 @@ namespace Shinshi.Art
 
         private void OnDisable()
         {
+            _attackRepeatsLeft = 0;
             ResetActionTriggers();
         }
 
@@ -90,6 +96,7 @@ namespace Shinshi.Art
             bool isAlive = _combat.LifeState == EParticipantLifeState.Alive;
             if (isAlive != _isAlive)
             {
+                _attackRepeatsLeft = 0;
                 _isAlive = isAlive;
                 _animator.SetBool(_aliveHash, isAlive);
                 ResetActionTriggers();
@@ -113,9 +120,11 @@ namespace Shinshi.Art
             switch (action)
             {
                 case CombatAnimationTriggerRules.EAction.Dodge:
+                    _attackRepeatsLeft = 0;
                     PlayDodge();
                     break;
                 case CombatAnimationTriggerRules.EAction.Skill:
+                    _attackRepeatsLeft = 0;
                     if (!TryPlayNewSkill())
                     {
                         // 아직 시작 전이면 시전 기준값을 남겨 다음 Update에서 다시 본다
@@ -139,6 +148,7 @@ namespace Shinshi.Art
                 return;
             }
 
+            TickAttackMotions();
             TryPlayHit();
         }
 
@@ -155,6 +165,7 @@ namespace Shinshi.Art
             _profile       = profile;
             _needsBaseline = true;
             _attackIndex   = -1;
+            _attackRepeatsLeft = 0;
 
             _hasSpecCache       = false;
             _hitSuppressedUntil = float.NegativeInfinity;
@@ -224,6 +235,11 @@ namespace Shinshi.Art
         // 신규 직업은 프로필에 배정된 단계만 재생한다. 배정이 없으면(정식 배정 보류) 대체 클립도 속도 강제도 없이 아무것도 재생하지 않는다
         private void PlayAttack()
         {
+            PlayAttackStep(_combat.AttackComboStep, true);
+        }
+
+        private void PlayAttackStep(int serverStep, bool scheduleRepeats)
+        {
             EPlayerClass playerClass = _combat.PlayerClass;
             int  stepCount = _profile.GetAttackStepCount(playerClass);
             bool isLegacy  = (stepCount == 0) && (PlayerCombatAnimationProfileSO.IsLegacyClass(playerClass));
@@ -239,10 +255,11 @@ namespace Shinshi.Art
 
             // 서버 콤보 직업은 서버가 고른 단계를 그대로 쓴다. 아니면 모션만 클라이언트가 돌려 쓴다
             int comboCount = isLegacy ? PlayerCombatAnimationProfileSO.ATTACK_COUNT : stepCount;
-            int serverStep = spec.HasCombo ? _combat.AttackComboStep : 0;
+            serverStep = spec.HasCombo ? serverStep : 0;
+            int motionStep = spec.GetMotionStep(serverStep);
             float now = Time.unscaledTime;
             _attackIndex    = spec.HasCombo
-                ? Mathf.Min(serverStep, comboCount - 1)
+                ? Mathf.Min(motionStep, comboCount - 1)
                 : CombatAnimationTriggerRules.NextAttackIndex(_attackIndex, now - _lastAttackTime,
                     _profile.GetComboResetSeconds(playerClass), comboCount);
             _lastAttackTime = now;
@@ -253,7 +270,7 @@ namespace Shinshi.Art
                 return;
             }
 
-            float target = spec.GetInterval(serverStep);
+            float target = spec.GetInterval(motionStep);
             if (target <= 0f)
             {
                 return;
@@ -271,7 +288,45 @@ namespace Shinshi.Art
             }
 
             float speed = CombatAnimationTriggerRules.ComputeSpeed(clipLength, target, _profile.MinSpeed, _profile.MaxSpeed);
+            speed *= spec.GetMotionSpeedScale(serverStep);
             Fire(_attackHash, actionIndex, speed, "Attack");
+            if (scheduleRepeats)
+            {
+                _attackRepeatsLeft = Mathf.Clamp(spec.GetShotCount(serverStep), 1, PlayerConfigSO.MAX_BASIC_SHOTS) - 1;
+                _repeatAttackStep = serverStep;
+                _repeatCancelSequence = _combat.ActionCancelSequence;
+                _attackMotionInterval = spec.GetShotInterval(serverStep);
+                _nextAttackMotionAt = now + _attackMotionInterval;
+            }
+        }
+
+        // 모션만 반복한다. 실제 발사와 피해는 서버가 같은 단계 명세로 판정한다
+        private void TickAttackMotions()
+        {
+            if (_attackRepeatsLeft <= 0)
+            {
+                return;
+            }
+
+            if ((_combat.SkillPhase != ESkillPhase.Idle) || (_combat.ActionCancelSequence != _repeatCancelSequence)
+                || ((_spec.CancelOnMove) && (_combat.LocomotionSpeed > ArcherVfxTracker.LOCOMOTION_EPSILON)))
+            {
+                _attackRepeatsLeft = 0;
+                return;
+            }
+
+            if (Time.unscaledTime >= _nextAttackMotionAt)
+            {
+                // 같은 프레임에 여러 모션을 덮어쓰지 않고 가장 최근 반복까지만 소비한다
+                do
+                {
+                    --_attackRepeatsLeft;
+                    _nextAttackMotionAt += _attackMotionInterval;
+                }
+                while ((_attackRepeatsLeft > 0) && (Time.unscaledTime >= _nextAttackMotionAt));
+
+                PlayAttackStep(_repeatAttackStep, false);
+            }
         }
 
         // 서버 기본 공격 명세(PlayerConfigSO)를 직업별로 한 번만 읽는다

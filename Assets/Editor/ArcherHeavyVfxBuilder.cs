@@ -2,6 +2,9 @@
 using UnityEditor;
 using UnityEngine;
 
+// 프로젝트 내부
+using Shinshi.Art;
+
 namespace Shinshi.Editor
 {
     /// <summary> 궁수 기본 공격 화살을 뾰족한 바늘로 바꾸고, 콤보 3타 강공격의 총구, 화살, 적중 효과 프리팹을 만든다. 기존 릴리즈 발광 재질에 입자를 많이 얹은 금빛 효과다 </summary>
@@ -15,6 +18,7 @@ namespace Shinshi.Editor
         private const string NEEDLE_FOLDER = "Assets/02.Prefab/VFX/Archer/Meshes";
         private const string NEEDLE_MESH   = "Assets/02.Prefab/VFX/Archer/Meshes/SM_ArcherNeedle.asset";
         private const string FOLDER        = "Assets/02.Prefab/VFX/Archer/";
+        private const string PLAYER_PREFAB = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
         private const string GLOW_MATERIAL = "Assets/02.Prefab/VFX/Archer/Materials/M_ReleaseGlow.mat";
         private const string BASE_ARROW    = "Assets/02.Prefab/VFX/Archer/PF_ArcherVfx_Arrow.prefab";
         private static readonly string[] G_ArrowPaths =
@@ -91,10 +95,30 @@ namespace Shinshi.Editor
             BuildMuzzle(glow);
             BuildArrow(glow);
             BuildHit(glow);
+            WirePlayer();
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("[ArcherHeavyVfx] 강공격 효과 프리팹 3개를 만들었다");
+        }
+
+        private static void WirePlayer()
+        {
+            GameObject player = PrefabUtility.LoadPrefabContents(PLAYER_PREFAB);
+            try
+            {
+                ArcherVfxView view = player.GetComponent<ArcherVfxView>();
+                var serialized = new SerializedObject(view);
+                serialized.FindProperty("_heavyArrowPrefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>(ARROW_PATH);
+                serialized.FindProperty("_heavyMuzzlePrefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>(MUZZLE_PATH);
+                serialized.FindProperty("_heavyHitPrefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>(HIT_PATH);
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(player, PLAYER_PREFAB);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(player);
+            }
         }
 
         // 화살 꼬리 입자는 프리팹 뿌리(지면)에 있어 땅바닥을 따라 흘렀다. 몸통과 같은 높이로 올려 화살에 붙인다

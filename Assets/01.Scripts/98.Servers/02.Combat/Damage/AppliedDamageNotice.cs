@@ -15,19 +15,21 @@ namespace Shinshi.Combat
         public Vector3 TargetPosition { get; }
         public DamageResult Result { get; }
         public double ServerTime { get; }
+        public bool IsDamageOverTime { get; }
 
         /****************************************
         *                Methods
         ****************************************/
 
         public AppliedDamageNotice(int ownerCombatId, int targetCombatId, Vector3 targetPosition,
-            DamageResult result, double serverTime)
+            DamageResult result, double serverTime, bool isDamageOverTime = false)
         {
             OwnerCombatId  = ownerCombatId;
             TargetCombatId = targetCombatId;
             TargetPosition = targetPosition;
             Result         = result;
             ServerTime     = serverTime;
+            IsDamageOverTime = isDamageOverTime;
         }
     }
 }

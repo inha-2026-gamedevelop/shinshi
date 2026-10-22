@@ -522,7 +522,7 @@ namespace Shinshi.Combat
                 return;
             }
             TargetDamageFeedback(feedback.SessionEpoch, feedback.Sequence, feedback.TargetCombatId,
-                feedback.WorldPosition, feedback.Amount, feedback.IsCritical, feedback.ServerTime);
+                feedback.WorldPosition, feedback.Amount, feedback.IsCritical, feedback.ServerTime, feedback.IsDamageOverTime);
         }
 
         /****************************************
@@ -543,14 +543,14 @@ namespace Shinshi.Combat
 
         [TargetRpc]
         private void TargetDamageFeedback(int sessionEpoch, uint sequence, int targetCombatId, Vector3 worldPosition,
-            float amount, bool isCritical, double serverTime)
+            float amount, bool isCritical, double serverTime, bool isDamageOverTime)
         {
             if (!isOwned)
             {
                 return;
             }
             var feedback = new DamageFeedback(sessionEpoch, sequence, targetCombatId, worldPosition,
-                amount, isCritical, serverTime);
+                amount, isCritical, serverTime, isDamageOverTime);
             DamageFeedbackReceived?.Invoke(feedback);
         }
     }
