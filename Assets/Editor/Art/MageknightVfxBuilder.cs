@@ -35,6 +35,18 @@ namespace Shinshi.Editor
         private const string SPAWN_CLIP_TOKEN   = "Spawn";
         private const string DESPAWN_CLIP_TOKEN = "Despawn";
 
+        // E 장판 시간표. 서버 장판 지속 시간(skill_mageknight_flame_field, 4초) 동안 반복 본체가 이어지고
+        // 시작 충격과 끝 마무리 입자만 한 번 재생한다. 끝내는 일은 MageknightVfxPool.PlayTimed가 서버 종료 시각에 한다
+        private const float FIELD_DURATION        = 4f;
+        private const float FIELD_LOOP_SECONDS    = 1f;
+        private const float FIELD_END_BURST_LEAD  = 1f;
+        private const float SOURCE_END_BURST_AT   = 0.8f;
+        private const float FIELD_BLADE_RATE      = 45f;
+        private const string FIELD_BLADES         = "Slashes";
+
+        // 원본 이름 그대로 구분한다. 시작 충격 ShockWave, 끝 마무리 DarkSparksEnd, DarkSmokeEnd, Flare만 한 번 재생하고 나머지 9개는 반복한다
+        private static readonly string[] G_FieldOneShot = { "ShockWave", "DarkSparksEnd", "DarkSmokeEnd", "Flare" };
+
         // 순서는 View의 EMageknightVfxKind와 같다. 기본 공격, Q 방벽, W 검파, E 장판, R 순간 이동 베기
         private static readonly string[] G_Sources = { HOVL + "Sword Slash Combo 6.prefab", SHIELD, HOVL + "Slash wave.prefab",
             HOVL + "Spatial section.prefab", JUMP };
@@ -271,8 +283,7 @@ namespace Shinshi.Editor
             particle.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
             ParticleSystem.MainModule main = particle.main;
             main.playOnAwake = false;
-            // 방벽만 면역 시간 동안 반복하고, 장판은 원본 4초 한 번으로 서버 지속 시간과 맞춘다
-            main.loop = index == SHIELD_INDEX;
+            main.loop = IsLoopingParticle(index, particle.name);
             main.stopAction = ParticleSystemStopAction.None;
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
             main.maxParticles = Mathf.Min(main.maxParticles, MAX_PARTICLES);
@@ -309,6 +320,54 @@ namespace Shinshi.Editor
                 force.enabled = false;
                 ParticleSystem.InheritVelocityModule inherit = particle.inheritVelocity;
                 inherit.enabled = false;
+            }
+
+            if (index == FIELD_INDEX)
+            {
+                ConfigureFieldTimeline(particle);
+            }
+        }
+
+        // 방벽은 면역 시간 동안 전부 반복한다. 장판은 한 번 재생하는 4개(G_FieldOneShot)를 뺀 나머지가 서버 지속 시간 동안 반복한다
+        private static bool IsLoopingParticle(int index, string particleName)
+        {
+            if (index == SHIELD_INDEX)
+            {
+                return true;
+            }
+
+            return (index == FIELD_INDEX) && (Array.IndexOf(G_FieldOneShot, particleName) < 0);
+        }
+
+        // 반복 본체는 짧은 주기로 돌리고, 한 번 재생하는 입자는 서버 지속 시간 전체를 길이로 삼아 끝 마무리를 그 끝 가까이로 옮긴다.
+        // 칼날은 한 번 터뜨리는 대신 지속 시간 내내 일정하게 흩뿌린다
+        private static void ConfigureFieldTimeline(ParticleSystem particle)
+        {
+            bool isOneShot = Array.IndexOf(G_FieldOneShot, particle.name) >= 0;
+            ParticleSystem.MainModule main = particle.main;
+            main.duration = isOneShot ? FIELD_DURATION : FIELD_LOOP_SECONDS;
+
+            ParticleSystem.EmissionModule emission = particle.emission;
+            if (string.Equals(particle.name, FIELD_BLADES, StringComparison.Ordinal))
+            {
+                emission.SetBursts(Array.Empty<ParticleSystem.Burst>());
+                emission.rateOverTime = FIELD_BLADE_RATE;
+                return;
+            }
+
+            if (!isOneShot)
+            {
+                return;
+            }
+
+            for (int b = 0; b < emission.burstCount; ++b)
+            {
+                ParticleSystem.Burst burst = emission.GetBurst(b);
+                if (Mathf.Approximately(burst.time, SOURCE_END_BURST_AT))
+                {
+                    burst.time = FIELD_DURATION - FIELD_END_BURST_LEAD;
+                    emission.SetBurst(b, burst);
+                }
             }
         }
 
