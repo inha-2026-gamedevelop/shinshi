@@ -31,6 +31,10 @@ namespace Shinshi.AI
         private const float LINE_WIDTH          = 0.08f;
         private const float MOVING_SPEED        = 0.2f;
         private const float FLASH_STRENGTH      = 0.5f;
+        private const float DASH_INFER_SPEED    = 8f;    // m/s, 돌진형이 걷는 속도보다 훨씬 빠른 이동
+        private const float DASH_HOLD_SECONDS   = 0.2f;  // 돌진 근거가 끊겨도 이 시간은 달리기를 유지한다
+        private const float BRACE_RELEASE_SECONDS = 0.3f; // 예고도 돌진도 아닌데 준비 자세에 남아 있으면 풀어 주는 시간
+        private const float RELEASE_FADE_SECONDS  = 0.1f;
         private const int   NO_MODEL            = -1;
 
         // 모델 배열 순서, 프리팹 빌더가 같은 순서로 채운다
@@ -49,6 +53,10 @@ namespace Shinshi.AI
         private static readonly int ANIM_ATTACK  = Animator.StringToHash("Attack");
         private static readonly int ANIM_DAMAGE  = Animator.StringToHash("Damage");
         private static readonly int ANIM_DASHING = Animator.StringToHash("Dashing");
+
+        // 돌진형 컨트롤러의 상태 이름: 예고의 준비 자세(Attack)와 평소 자세(Idle)
+        private static readonly int STATE_ATTACK = Animator.StringToHash("Attack");
+        private static readonly int STATE_IDLE   = Animator.StringToHash("Idle");
 
         [SerializeField] private Transform    _visual;
         [SerializeField] private Renderer     _visualRenderer; // 모델이 없을 때만 쓰는 대체 캡슐
@@ -78,6 +86,8 @@ namespace Shinshi.AI
         private bool                  _animatorDirty;
         private bool                  _corpseLaunched;
         private bool                  _seenAlive;
+        private float                 _dashUntil;
+        private float                 _braceReleaseAt = -1f;
 
         /****************************************
         *              Unity Event
@@ -113,6 +123,8 @@ namespace Shinshi.AI
             _animatorDirty = true;
             _corpseLaunched = false;
             _seenAlive      = false;
+            _dashUntil      = 0f;
+            _braceReleaseAt = -1f;
             ClearFlash();
             HideTelegraph();
         }
@@ -290,7 +302,9 @@ namespace Shinshi.AI
             _animator.SetBool(ANIM_DEAD, dead);
             if ((_activeModel >= 0) && _hasDashingParam[_activeModel])
             {
-                _animator.SetBool(ANIM_DASHING, behavior == EEnemyState.Dash);
+                bool dashing = ReadDashing(behavior, speed, dead);
+                _animator.SetBool(ANIM_DASHING, dashing);
+                ReleaseStuckBrace(behavior, dashing);
             }
 
             if ((!dead) && (behavior == EEnemyState.Telegraph) && (_lastBehavior != EEnemyState.Telegraph))
@@ -304,9 +318,68 @@ namespace Shinshi.AI
                 _animator.SetTrigger(ANIM_DAMAGE);
             }
 
+            if ((behavior != _lastBehavior) && (_activeModel >= 0))
+            {
+                AnimatorStateInfo info = _animator.GetCurrentAnimatorStateInfo(0);
+                ProbeLog($"Behavior {_lastBehavior}->{behavior} dashingParam={_hasDashingParam[_activeModel]} "
+                    + $"animHash={info.shortNameHash} inTransition={_animator.IsInTransition(0)} speed={speed:F2}");
+            }
+
             _lastPosition = position;
             _lastBehavior = behavior;
             _hasPose      = true;
+        }
+
+        // 서버 행동이 Dash이면 달린다. 복제가 중간 상태를 놓쳐 행동이 예고에 머물러도, 준비 자세인 채 걷는 속도보다 훨씬 빠르게
+        // 움직이면 돌진 중으로 본다. 근거가 끊겨도 잠깐은 달리기를 유지해 스냅샷 사이에 자세가 깜빡이지 않게 한다
+        private bool ReadDashing(EEnemyState behavior, float speed, bool dead)
+        {
+            if (dead)
+            {
+                _dashUntil = 0f;
+                return false;
+            }
+
+            if ((behavior == EEnemyState.Dash) || ((speed >= DASH_INFER_SPEED) && IsInBrace()))
+            {
+                _dashUntil = Time.time + DASH_HOLD_SECONDS;
+            }
+
+            return Time.time < _dashUntil;
+        }
+
+        // 준비 자세(Attack 상태)에 있거나 그리로 넘어가는 중인가
+        private bool IsInBrace()
+        {
+            if (_animator.GetCurrentAnimatorStateInfo(0).shortNameHash == STATE_ATTACK)
+            {
+                return true;
+            }
+
+            return _animator.IsInTransition(0) && (_animator.GetNextAnimatorStateInfo(0).shortNameHash == STATE_ATTACK);
+        }
+
+        // 준비 자세는 돌진 때만 빠져나오는 상태라 예고도 돌진도 아닌데 남아 있으면 평소 자세로 되돌린다
+        private void ReleaseStuckBrace(EEnemyState behavior, bool dashing)
+        {
+            if (dashing || (behavior == EEnemyState.Telegraph) || (!IsInBrace()))
+            {
+                _braceReleaseAt = -1f;
+                return;
+            }
+
+            if (_braceReleaseAt < 0f)
+            {
+                _braceReleaseAt = Time.time + BRACE_RELEASE_SECONDS;
+                return;
+            }
+
+            if ((Time.time >= _braceReleaseAt) && _animator.HasState(0, STATE_IDLE))
+            {
+                ProbeLog("준비 자세에 남아 평소 자세로 복귀");
+                _animator.CrossFadeInFixedTime(STATE_IDLE, RELEASE_FADE_SECONDS, 0);
+                _braceReleaseAt = -1f;
+            }
         }
 
         // 죽음을 처음 본 프레임에 모델 복제본을 날려 보내고 원본은 숨긴다. 개체는 곧 풀로 돌아가므로 시체는 따로 남긴다.
