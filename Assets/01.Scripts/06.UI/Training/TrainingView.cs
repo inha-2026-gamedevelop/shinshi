@@ -72,6 +72,8 @@ namespace Shinshi.UI
         private readonly int[]         _pendingExpected = new int[STAT_COUNT];
         private readonly UnityAction[] _selectActions   = new UnityAction[STAT_COUNT];
 
+        private readonly GrowthRefreshReleaseRequest _request = new GrowthRefreshReleaseRequest();
+
         private GrowthConfigSO _growth;
         private Button[]       _boundStatButtons;
         private Button         _boundMinusButton;
@@ -82,8 +84,6 @@ namespace Shinshi.UI
         private Button         _boundCloseButton;
         private TMP_Text       _respecButtonLabel;
         private Coroutine      _requestWatcher;
-        private Guid           _pendingOperation;
-        private EGrowthAction  _pendingAction;
         private long           _revision;
         private long           _pendingRevision;
         private long           _essence;
@@ -93,7 +93,6 @@ namespace Shinshi.UI
         private bool           _hasData;
         private bool           _hasServerSnapshot;
         private bool           _runtimeStarted;
-        private bool           _requestInFlight;
         private bool           _pendingAccepted;
         private bool           _pendingSnapshotReady;
         private bool           _awaitingFreshSnapshot;
@@ -204,7 +203,7 @@ namespace Shinshi.UI
             TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
             TownGrowthClient.ResultReceived   -= OnResultReceived;
             TownGrowthClient.WriteLockChanged -= OnWriteLockChanged;
-            if (_requestInFlight)
+            if (_request.IsInFlight)
             {
                 // 숨겨진 창은 다음 항목을 자동으로 구매하지 않는다. 재개 전에 서버 상태를 다시 조회한다.
                 ClearRequest();
@@ -223,7 +222,7 @@ namespace Shinshi.UI
         /// <summary> ETrainingStat 순서의 항목을 선택한다 </summary>
         public void SelectStat(int index)
         {
-            if ((index < 0) || (index >= STAT_COUNT) || (_requestInFlight))
+            if ((index < 0) || (index >= STAT_COUNT) || (_request.IsInFlight))
             {
                 return;
             }
@@ -349,7 +348,7 @@ namespace Shinshi.UI
         /// <summary> 보내지 않은 변경을 취소하고 마지막 서버 확정 또는 개발 예시 상태로 돌아간다 </summary>
         public void CancelDraft()
         {
-            if (_requestInFlight)
+            if (_request.IsInFlight)
             {
                 return;
             }
@@ -404,7 +403,7 @@ namespace Shinshi.UI
                 return;
             }
 
-            if (GrowthWriteGuard.IsBlockedByOther(_pendingOperation))
+            if (GrowthWriteGuard.IsBlockedByOther(_request.OperationId))
             {
                 SetStatus(GrowthWriteGuard.OTHER_WINDOW_TEXT);
                 return;
@@ -423,7 +422,7 @@ namespace Shinshi.UI
         /// <summary> 처리 중에는 창을 유지하며 그 외에는 초안을 취소하고 닫는다 </summary>
         public void Close()
         {
-            if (_requestInFlight)
+            if (_request.IsInFlight)
             {
                 SetStatus("강화 결과를 확인하는 중입니다");
                 return;
@@ -443,7 +442,7 @@ namespace Shinshi.UI
                 return;
             }
 
-            if ((_hasServerSnapshot) || (_requestInFlight) || (TownGrowthClient.HasSnapshot)
+            if ((_hasServerSnapshot) || (_request.IsInFlight) || (TownGrowthClient.HasSnapshot)
                 || ((Application.isPlaying) && (NetworkClient.isConnected)))
             {
                 return;
@@ -467,7 +466,7 @@ namespace Shinshi.UI
 
         private bool CanEdit()
         {
-            return (_growth != null) && (_hasData) && (!_requestInFlight) && (!_awaitingFreshSnapshot);
+            return (_growth != null) && (_hasData) && (!_request.IsInFlight) && (!_awaitingFreshSnapshot);
         }
 
         private void ReduceAllocation()
@@ -590,8 +589,7 @@ namespace Shinshi.UI
         {
             Array.Copy(_batchTarget, _pendingExpected, STAT_COUNT);
             BeginRequest(EGrowthAction.TrainingRespec);
-            _pendingOperation = TownGrowthClient.RespecTraining((int[])_batchTarget.Clone());
-            AfterSend();
+            AfterSend(TownGrowthClient.RespecTraining((int[])_batchTarget.Clone()));
         }
 
         private void SendNextTraining()
@@ -631,23 +629,21 @@ namespace Shinshi.UI
             Array.Copy(_confirmed, _pendingExpected, STAT_COUNT);
             _pendingExpected[index] = _batchTarget[index];
             BeginRequest(EGrowthAction.Training);
-            _pendingOperation = TownGrowthClient.Train(index, _batchTarget[index] - _confirmed[index]);
-            AfterSend();
+            AfterSend(TownGrowthClient.Train(index, _batchTarget[index] - _confirmed[index]));
         }
 
+        // 보내는 동안 오는 잠금 변경 알림에 화면이 끼어들지 않도록 보내기 전에 진행 중으로 둔다
         private void BeginRequest(EGrowthAction action)
         {
-            _pendingAction        = action;
+            _request.Prepare(action);
             _pendingRevision      = _revision;
-            _requestInFlight      = true;
             _pendingAccepted      = false;
             _pendingSnapshotReady = false;
-            _pendingOperation     = Guid.Empty;
         }
 
-        private void AfterSend()
+        private void AfterSend(Guid operationId)
         {
-            if (_pendingOperation == Guid.Empty)
+            if (!_request.Attach(operationId, Time.realtimeSinceStartup, Constants.Network.API_TIMEOUT_SECONDS))
             {
                 ClearRequest();
                 SetStatus("서버에 연결되지 않아 강화를 보낼 수 없습니다");
@@ -660,10 +656,9 @@ namespace Shinshi.UI
 
         private IEnumerator CoWatchRequest()
         {
-            float deadline = Time.realtimeSinceStartup + Constants.Network.API_TIMEOUT_SECONDS;
-            while (_requestInFlight)
+            while (_request.IsInFlight)
             {
-                if ((!NetworkClient.isConnected) || (Time.realtimeSinceStartup >= deadline))
+                if (_request.IsExpired(Time.realtimeSinceStartup, NetworkClient.isConnected))
                 {
                     _requestWatcher = null;
                     StopBatchAndRefresh("응답을 확인하지 못해 남은 강화를 중단했습니다. 서버 상태를 다시 확인합니다");
@@ -705,7 +700,7 @@ namespace Shinshi.UI
             _hasServerSnapshot     = true;
             _awaitingFreshSnapshot = false;
             Array.Copy(message.Training, _confirmed, STAT_COUNT);
-            if (_requestInFlight)
+            if (_request.IsInFlight)
             {
                 // 서버는 결과 메시지보다 스냅샷을 먼저 보낸다. 둘 다 확인하기 전에는 다음 항목을 보내지 않는다.
                 _pendingSnapshotReady = (_revision > _pendingRevision) && (SameAllocation(_confirmed, _pendingExpected));
@@ -720,7 +715,7 @@ namespace Shinshi.UI
 
         private void OnResultReceived(GrowthResultMessage message)
         {
-            if ((!_requestInFlight) || (message.OperationId != _pendingOperation) || (message.Action != _pendingAction))
+            if (!_request.Matches(message.OperationId, message.Action))
             {
                 return;
             }
@@ -746,12 +741,12 @@ namespace Shinshi.UI
 
         private void TryFinishRequest()
         {
-            if ((!_requestInFlight) || (!_pendingAccepted) || (!_pendingSnapshotReady))
+            if ((!_request.IsInFlight) || (!_pendingAccepted) || (!_pendingSnapshotReady))
             {
                 return;
             }
 
-            bool wasRespec = _pendingAction == EGrowthAction.TrainingRespec;
+            bool wasRespec = _request.Action == EGrowthAction.TrainingRespec;
             ClearRequest();
             if (wasRespec)
             {
@@ -788,16 +783,14 @@ namespace Shinshi.UI
                 _requestWatcher = null;
             }
 
-            TownGrowthClient.ReleaseWrite(_pendingOperation);
-            _requestInFlight      = false;
+            _request.ClearAndRelease();
             _pendingAccepted      = false;
             _pendingSnapshotReady = false;
-            _pendingOperation     = Guid.Empty;
         }
 
         private void OnWriteLockChanged()
         {
-            if ((Application.isPlaying) && (!_requestInFlight))
+            if ((Application.isPlaying) && (!_request.IsInFlight))
             {
                 RefreshAll();
             }
@@ -886,13 +879,13 @@ namespace Shinshi.UI
             bool hasDraft = (_respecMode) || (workingTotal > confirmedTotal);
             // 재분배 중에는 배분이 남아도 누를 수 있게 둔다. 누르면 남은 단계를 안내해 무엇을 해야 하는지 보이게 한다
             bool canCommit = (ready) && (hasDraft) && (cost <= _essence)
-                && ((!Application.isPlaying) || (!GrowthWriteGuard.IsBlockedByOther(_pendingOperation)));
+                && ((!Application.isPlaying) || (!GrowthWriteGuard.IsBlockedByOther(_request.OperationId)));
             SetInteractable(_minusButton, (canEdit) && (canDecrease));
             SetInteractable(_plusButton, (canEdit) && (canIncrease));
             SetInteractable(_trainButton, (canEdit) && (canCommit));
             SetInteractable(_revertButton, (canEdit) && (canRevert));
             SetInteractable(_respecButton, canEdit);
-            SetInteractable(_closeButton, !_requestInFlight);
+            SetInteractable(_closeButton, !_request.IsInFlight);
             if (_statButtons != null)
             {
                 for (int i = 0; i < _statButtons.Length; ++i)

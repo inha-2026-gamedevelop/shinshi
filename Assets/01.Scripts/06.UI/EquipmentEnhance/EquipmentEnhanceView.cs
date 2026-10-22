@@ -125,13 +125,14 @@ namespace Shinshi.UI
         private readonly UnityAction[]       _selectActions = new UnityAction[SLOT_COUNT];
         private readonly List<TownPityEntry> _pity          = new List<TownPityEntry>();
 
+        private readonly GrowthRefreshReleaseRequest _request = new GrowthRefreshReleaseRequest();
+
         private EquipmentCatalogSO _catalog;
         private Button[]           _boundSlotButtons;
         private Button             _boundEnhanceButton;
         private Button             _boundCloseButton;
         private Sequence           _resultSequence;
         private Coroutine          _requestWatcher;
-        private Guid               _pendingOperation;
         private long               _revision;
         private long               _essence;
         private long               _shards;
@@ -139,8 +140,8 @@ namespace Shinshi.UI
         private int                _pendingFromLevel;
         private bool               _hasData;
         private bool               _hasServerSnapshot;
+        private bool               _awaitingFreshSnapshot;
         private bool               _runtimeStarted;
-        private bool               _requestInFlight;
         private bool               _selectActionsReady;
         private string             _status = READY_TEXT;
 
@@ -229,12 +230,13 @@ namespace Shinshi.UI
             TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
             TownGrowthClient.ResultReceived   -= OnResultReceived;
             TownGrowthClient.WriteLockChanged -= OnWriteLockChanged;
-            if (_requestInFlight)
+            if (_request.IsInFlight)
             {
-                // 결과를 못 본 채 닫혔다. 다시 열면 서버 상태부터 다시 읽는다
+                // 결과를 못 본 채 닫혔다. 다시 열면 캐시가 아니라 새 서버 스냅샷을 받을 때까지 막는다
                 ClearRequest();
-                _hasServerSnapshot = false;
-                _hasData           = false;
+                _awaitingFreshSnapshot = true;
+                _hasServerSnapshot     = false;
+                _hasData               = false;
             }
 
             if (_resultSequence != null)
@@ -259,7 +261,7 @@ namespace Shinshi.UI
         /// <summary> EEquipmentSlot 순서의 부위를 선택한다 </summary>
         public void SelectSlot(int index)
         {
-            if ((index < 0) || (index >= SLOT_COUNT) || (_requestInFlight))
+            if ((index < 0) || (index >= SLOT_COUNT) || (_request.IsInFlight))
             {
                 return;
             }
@@ -300,22 +302,23 @@ namespace Shinshi.UI
             }
 
             _pendingFromLevel = _levels[_selectedIndex];
-            _pendingOperation = TownGrowthClient.EnhanceEquipment(_itemIds[_selectedIndex]);
-            if (_pendingOperation == Guid.Empty)
+            Guid operationId = TownGrowthClient.EnhanceEquipment(_itemIds[_selectedIndex]);
+            if (!_request.Begin(operationId, EGrowthAction.EquipmentEnhance, Time.realtimeSinceStartup,
+                Constants.Network.API_TIMEOUT_SECONDS))
             {
+                _request.Clear();
                 SetStatus("서버에 연결되지 않아 강화를 보낼 수 없습니다");
                 return;
             }
 
-            _requestInFlight = true;
-            _requestWatcher  = StartCoroutine(CoWatchRequest());
+            _requestWatcher = StartCoroutine(CoWatchRequest());
             SetStatus(SENDING_TEXT);
         }
 
         /// <summary> 처리 중에는 창을 유지하며 그 외에는 닫는다 </summary>
         public void Close()
         {
-            if (_requestInFlight)
+            if (_request.IsInFlight)
             {
                 SetStatus(SENDING_TEXT);
                 return;
@@ -335,7 +338,7 @@ namespace Shinshi.UI
                 return;
             }
 
-            if ((_hasServerSnapshot) || (_requestInFlight) || (TownGrowthClient.HasSnapshot)
+            if ((_hasServerSnapshot) || (_request.IsInFlight) || (TownGrowthClient.HasSnapshot)
                 || ((Application.isPlaying) && (NetworkClient.isConnected)))
             {
                 return;
@@ -387,13 +390,13 @@ namespace Shinshi.UI
         private bool TryValidate(out string reason)
         {
             reason = string.Empty;
-            if ((_catalog == null) || (!_hasData))
+            if ((_catalog == null) || (!_hasData) || (_awaitingFreshSnapshot))
             {
                 reason = Application.isPlaying ? WAITING_TEXT : OFFLINE_TEXT;
                 return false;
             }
 
-            if (_requestInFlight)
+            if (_request.IsInFlight)
             {
                 reason = SENDING_TEXT;
                 return false;
@@ -405,7 +408,7 @@ namespace Shinshi.UI
         private bool TryValidateSelected(out string reason)
         {
             reason = string.Empty;
-            if ((Application.isPlaying) && (GrowthWriteGuard.IsBlockedByOther(_pendingOperation)))
+            if ((Application.isPlaying) && (GrowthWriteGuard.IsBlockedByOther(_request.OperationId)))
             {
                 reason = GrowthWriteGuard.OTHER_WINDOW_TEXT;
                 return false;
@@ -464,6 +467,14 @@ namespace Shinshi.UI
                 return;
             }
 
+            if (_awaitingFreshSnapshot)
+            {
+                // 닫힌 동안 결과를 놓쳤을 수 있어 캐시를 쓰지 않고 서버에서 다시 받는다
+                _hasData = false;
+                SetStatus((TownGrowthClient.RequestSnapshot() != Guid.Empty) ? WAITING_TEXT : OFFLINE_TEXT);
+                return;
+            }
+
             if (TownGrowthClient.HasSnapshot)
             {
                 OnSnapshotChanged(TownGrowthClient.Snapshot);
@@ -486,10 +497,9 @@ namespace Shinshi.UI
 
         private IEnumerator CoWatchRequest()
         {
-            float deadline = Time.realtimeSinceStartup + Constants.Network.API_TIMEOUT_SECONDS;
-            while (_requestInFlight)
+            while (_request.IsInFlight)
             {
-                if ((!NetworkClient.isConnected) || (Time.realtimeSinceStartup >= deadline))
+                if (_request.IsExpired(Time.realtimeSinceStartup, NetworkClient.isConnected))
                 {
                     _requestWatcher = null;
                     StopAndRefresh(TIMEOUT_TEXT);
@@ -535,15 +545,16 @@ namespace Shinshi.UI
                 return;
             }
 
-            _hasData           = true;
-            _hasServerSnapshot = true;
-            SetStatus(_requestInFlight ? SENDING_TEXT : ReadyStatus());
+            _hasData               = true;
+            _hasServerSnapshot     = true;
+            _awaitingFreshSnapshot = false;
+            SetStatus(_request.IsInFlight ? SENDING_TEXT : ReadyStatus());
         }
 
         // 서버는 결과보다 스냅샷을 먼저 보낸다. 결과가 오면 화면은 이미 새 단계를 보여 주고 있으므로 연출만 띄운다
         private void OnResultReceived(GrowthResultMessage message)
         {
-            if ((!_requestInFlight) || (message.OperationId != _pendingOperation) || (message.Action != EGrowthAction.EquipmentEnhance))
+            if (!_request.Matches(message.OperationId, message.Action))
             {
                 return;
             }
@@ -568,8 +579,9 @@ namespace Shinshi.UI
         private void StopAndRefresh(string status)
         {
             ClearRequest();
-            _hasData           = false;
-            _hasServerSnapshot = false;
+            _hasData               = false;
+            _hasServerSnapshot     = false;
+            _awaitingFreshSnapshot = true;
             if (NetworkClient.isConnected)
             {
                 TownGrowthClient.RequestSnapshot();
@@ -588,14 +600,12 @@ namespace Shinshi.UI
                 _requestWatcher = null;
             }
 
-            TownGrowthClient.ReleaseWrite(_pendingOperation);
-            _requestInFlight  = false;
-            _pendingOperation = Guid.Empty;
+            _request.ClearAndRelease();
         }
 
         private void OnWriteLockChanged()
         {
-            if ((!Application.isPlaying) || (_requestInFlight))
+            if ((!Application.isPlaying) || (_request.IsInFlight))
             {
                 return;
             }
@@ -675,8 +685,8 @@ namespace Shinshi.UI
             SetText(_shardText, ready ? $"{_shards:N0}" : "-");
             SetText(_statusText, _status);
             SetText(_noteText, PreviewMode ? PREVIEW_NOTE_TEXT : KEEP_NOTE_TEXT);
-            SetInteractable(_enhanceButton, (ready) && (!_requestInFlight) && (TryValidateSelected(out string _)));
-            SetInteractable(_closeButton, !_requestInFlight);
+            SetInteractable(_enhanceButton, (ready) && (!_request.IsInFlight) && (TryValidateSelected(out string _)));
+            SetInteractable(_closeButton, !_request.IsInFlight);
             if (_previewTag != null)
             {
                 _previewTag.SetActive(PreviewMode);
@@ -705,7 +715,7 @@ namespace Shinshi.UI
                     selection.SetActive(i == _selectedIndex);
                 }
 
-                SetInteractable(ElementAt(_slotButtons, i), !_requestInFlight);
+                SetInteractable(ElementAt(_slotButtons, i), !_request.IsInFlight);
             }
         }
 
