@@ -1,5 +1,6 @@
 // Unity
 using UnityEngine;
+using UnityEngine.AI;
 
 // 서드파티
 using Unity.Cinemachine;
@@ -36,6 +37,7 @@ namespace Shinshi.Dev
         private const float EDGE_PROBE_DEPTH   = 3f;   // m, 이 깊이 안에 땅이 없으면 섬 끝으로 보고 멈춘다
         private const float FALL_RESET_DEPTH   = 30f;  // m, 시작 높이보다 이만큼 떨어지면 시작 지점으로 되돌린다
         private const float MIN_INPUT_SQR      = 0.01f;
+        private const float NAV_SAMPLE_RADIUS  = 1f;   // m, 현재 위치에서 내비 메시를 찾는 반경
 
         // 실제로 움직인 거리가 의도한 거리의 이 비율(제곱)보다 작으면 막힌 것으로 본다
         private const float BLOCKED_MOVE_RATIO_SQR = 0.01f;
@@ -118,6 +120,8 @@ namespace Shinshi.Dev
                 step            = Vector3.zero;
                 _hasDestination = false;
             }
+
+            step = ClampToNavMesh(step);
 
             _verticalSpeed = _controller.isGrounded ? GROUND_STICK_SPEED : _verticalSpeed + (GRAVITY * Time.deltaTime);
 
@@ -228,6 +232,28 @@ namespace Shinshi.Dev
         {
             Ray ray = _outputCamera.ScreenPointToRay(Input.mousePosition);
             return TryGetNearestHit(ray, Constants.Player.CURSOR_RAYCAST_MAX_DISTANCE, true, out point);
+        }
+
+        // 실제 플레이어는 서버 경로와 회피가 내비 메시 경계를 벽으로 보므로 같은 경계에서 막고 벽을 따라 미끄러진다.
+        // 내비 메시가 없는 환경 씬에서는 막지 않는다
+        private Vector3 ClampToNavMesh(Vector3 step)
+        {
+            if ((step == Vector3.zero) || (!NavMesh.SamplePosition(transform.position, out NavMeshHit origin, NAV_SAMPLE_RADIUS, NavMesh.AllAreas)))
+            {
+                return step;
+            }
+
+            Vector3 start = origin.position;
+            if (!NavMesh.Raycast(start, start + step, out NavMeshHit wall, NavMesh.AllAreas))
+            {
+                return step;
+            }
+
+            Vector3 normal = wall.normal;
+            normal.y = 0f;
+
+            Vector3 slide = step - Vector3.Project(step, normal);
+            return NavMesh.Raycast(start, start + slide, out _, NavMesh.AllAreas) ? Vector3.zero : slide;
         }
 
         private bool HasGroundBelow(Vector3 position)
