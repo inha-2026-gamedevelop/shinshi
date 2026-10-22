@@ -61,6 +61,7 @@ namespace Shinshi.AI
         private int _successCount;
         private ulong _sequence;
         private double _counterEndServerTime;
+        private double _appearAt;
         private bool _active;
         private bool _tracking;
         private bool _locked;
@@ -387,6 +388,8 @@ namespace Shinshi.AI
         {
             ClearTurn();
             _turn = turn;
+            // 재생기는 시작 시각이 현재 서버 시각보다 미래인 스냅샷을 조용히 거절한다. 추정 서버 시각이 늦을 수 있어 현재 시각으로 잘라 차례 내내 같은 값을 쓴다
+            _appearAt = Math.Min(turn.StartServerTime, now);
             _turnIndex = turn.Index;
             _tracking = false;
             _locked = false;
@@ -409,6 +412,10 @@ namespace Shinshi.AI
                 WolbaekSealCorePlayer.Snapshot core = CoreSnapshot(i, WolbaekSealCorePlayer.EPhase.Dormant,
                     turn.StartServerTime, now);
                 _corePlayback[i] = _cores[i].Begin(core, now);
+                if (_corePlayback[i] == 0)
+                {
+                    Debug.LogWarning($"[Boss] 월백 봉인 핵 재생기가 시작을 거절했다, cast={_castId}, turn={turn.Index}, core={i}");
+                }
             }
             for (int i = 0; i < dropCount; ++i)
             {
@@ -453,7 +460,14 @@ namespace Shinshi.AI
             if (_drops[index] == null) _drops[index] = Instantiate(_dropPrefab);
             ++_sequence;
             WolbaekSealDropPlayer.Snapshot snapshot = DropSnapshot(index, phase, phaseStartedAt, now);
-            if (_dropPlayback[index] == 0) _dropPlayback[index] = _drops[index].Begin(snapshot, now);
+            if (_dropPlayback[index] == 0)
+            {
+                _dropPlayback[index] = _drops[index].Begin(snapshot, now);
+                if (_dropPlayback[index] == 0)
+                {
+                    Debug.LogWarning($"[Boss] 월백 봉인 여우불 재생기가 시작을 거절했다, cast={_castId}, turn={_turnIndex}, drop={index}");
+                }
+            }
             else _drops[index].Reconcile(_dropPlayback[index], snapshot, now);
         }
 
@@ -482,15 +496,20 @@ namespace Shinshi.AI
         {
             WolbaekSealCore core = _turn.Cores[index];
             return new WolbaekSealCorePlayer.Snapshot((ulong)_castId, _sequence, _turn.Index, core.Index,
-                core.Center, _turn.StartServerTime, now, phase, phaseStartedAt);
+                core.Center, _appearAt, now, phase, PhaseStart(phaseStartedAt, now));
         }
 
         private WolbaekSealDropPlayer.Snapshot DropSnapshot(int index, WolbaekSealDropPlayer.EPhase phase,
             double phaseStartedAt, double now)
         {
             return new WolbaekSealDropPlayer.Snapshot((ulong)_castId, _sequence, _turn.Index,
-                _turn.Foxfires[index].Index, _dropPositions[index], _start.BlastRadius, _turn.StartServerTime,
-                _turn.LockServerTime, _turn.ResolveServerTime, now, phase, phaseStartedAt);
+                _turn.Foxfires[index].Index, _dropPositions[index], _start.BlastRadius, _appearAt,
+                _turn.LockServerTime, _turn.ResolveServerTime, now, phase, PhaseStart(phaseStartedAt, now));
+        }
+
+        private double PhaseStart(double phaseStartedAt, double now)
+        {
+            return Math.Max(_appearAt, Math.Min(phaseStartedAt, now));
         }
 
         private void BeginShield()
