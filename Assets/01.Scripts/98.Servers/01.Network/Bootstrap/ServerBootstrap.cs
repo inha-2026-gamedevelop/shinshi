@@ -451,7 +451,7 @@ namespace Shinshi.Network
                 new CompanionNetworkSpawner(prefab, manager, Constants.Combat.MAX_COMPANION_OBJECTS));
         }
 
-        // 일반 적 프리팹(PF_NetEnemy)이 아직 없다. 없으면 적 판정만 돌고 클라이언트에 적이 보이지 않는다. 서버를 막지는 않는다
+        // 일반 적 프리팹(PF_NetEnemy)이 spawnPrefabs에 없는 씬이면 적 판정만 돌고 클라이언트에 적이 보이지 않는다. 서버를 막지는 않는다
         private static void EnableEnemyObjects(ShinshiNetworkManager manager)
         {
             GameObject prefab = EnemyNetworkSpawner.FindPrefab(manager);

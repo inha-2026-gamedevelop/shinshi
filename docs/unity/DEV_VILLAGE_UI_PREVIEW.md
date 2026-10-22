@@ -45,7 +45,7 @@ Play Mode에서 오른쪽 상단 메뉴를 누른다. 우편함과 출정 준비
 
 2026-10-10 출시 연결 보완 검증: 관련 EditMode/Play Mode 전환 테스트 235개는 최종 재실행 결과를 합산해 전부 통과했다(전체 235개 실행 후 VFX·모션 관련 124개 재실행). 메뉴의 실제 포인터 클릭·Esc 닫기·설정/확인창, 현재 캐릭터 남녀 미리보기, 19개 전투 상태의 본 움직임, 16개 VFX의 렌더링을 포함한다. 재질 참조 확인에 더해 화면의 오류 셰이더 색상과 무출력을 검사했다. 실제 서버 경제 거래와 다인 접속 전투는 이 테스트 결과에 포함하지 않는다.
 
-`Release/ShinshiTown.unity`의 메뉴 연결은 `Shinshi > UI > Wire Release Town Menu`로 별도 구성한다. 이 도구는 개발 씬의 `VillageUiPreview`를 복사하지 않고 기존 `HotkeyWindowToggle`, 서버용 UI Binder와 `ReleaseMenuActions`를 연결한다. 인벤토리, 경매장, 우편함, 캐릭터 정보, 특성(수련 요약), 출정 준비, 환경설정, 거래 안내, 캐릭터 선택, 종료가 대상이다. 실제 거래 요청은 상대 플레이어 우클릭의 거래하기를 사용한다. 귓속말과 타인 상세는 기존 미구현 범위를 유지한다.
+`Release/ShinshiTown.unity`의 메뉴 연결은 `Shinshi > UI > Wire Release Town Menu`로 별도 구성한다. 이 도구는 개발 씬의 `VillageUiPreview`를 복사하지 않고 기존 `HotkeyWindowToggle`, 서버용 UI Binder와 `ReleaseMenuActions`를 연결한다. 인벤토리, 경매장, 우편함, 캐릭터 정보, 특성(수련 요약), 출정 준비, 환경설정, 거래 안내, 캐릭터 선택, 종료가 대상이다. 실제 거래 요청은 상대 플레이어 우클릭의 거래하기를 사용한다. 귓속말은 소셜 구현의 `PlayerInteractionPanelOpener`→채팅 입력 경로를 사용한다. 타인 상세의 구현·수용과 개발 미리보기는 별도로 구분한다.
 
 환경설정은 `PF_SettingsWindow`를 사용하며 출시 씬에서는 `HotkeyRouter`로 Esc를 처리한다. 캐릭터 정보 창의 활성 상태가 바뀌면 별도 3D 미리보기 스테이지도 함께 켜고 끈다. 출시 씬 저장은 통합 담당 승인 범위에서만 수행한다.
 

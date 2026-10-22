@@ -106,7 +106,7 @@ Linux Dedicated Server 빌드 하나가 역할 인자로 마을/던전을 고른
 
 80·22·5432의 인터넷 공개 규칙은 이 계획에 없다. DNS·호스트 업데이트·관리 접속 정책은 운영 환경 결정 후 필요한 범위로 별도 구성한다. IPv6를 사용할 때도 같은 역할 경계를 명시하고 무조건 전체 공개하지 않는다. API와 게임 서버가 같은 EC2/SG를 공유하면 SG는 프로세스를 구분하지 못한다. 게임 프로세스에 DB 자격을 공급하지 않고, 세분화가 필요하면 API 호스트/SG를 분리한다. 마이그레이션은 별도 허가된 실행 경로를 마련한다.
 
-KCP 기본 전송은 암호화하지 않는다. 공개 전에 일회용 접속 토큰의 한 번 교환·참가자/인스턴스 결합과 서버 서비스 자격 검증을 연결해야 한다. 보안 그룹만으로 인증을 대신하지 않는다.
+KCP 기본 전송은 암호화하지 않는다. 일회용 접속 토큰 교환·참가자/인스턴스 결합과 서버 서비스 자격 검증은 `ApiJoinTokenVerifier` 및 API 경로로 연결되어 있다. 공개 전에 배포한 빌드와 자격으로 그 경로를 실제 검증해야 한다. 보안 그룹만으로 인증을 대신하지 않는다.
 
 ## 검증 상태와 후속 작업
 
@@ -121,7 +121,7 @@ systemd-analyze verify deploy/gameserver/shinshi-town.service deploy/gameserver/
 부모/통합 담당이 이어서 할 작업:
 
 1. Docker 데몬 접근 가능한 Linux 환경에서 이미지 build/run, 비루트 UID·상태 검사(`/health/live`)·SIGTERM을 확인한다. 실제 DB 통합 검증은 Backend 범위다.
-2. Linux Dedicated Server 빌드와 Bootstrap/GameDB 배치를 만들고 각 역할의 UDP 수신·재시작·동시 인스턴스 실행을 확인한다. 현재 `ServerBootstrap.CreateJoinTokenVerifier`는 출시 빌드에서 `null`을 반환하므로 실제 출시 인증기를 연결해야 한다.
+2. Linux Dedicated Server 빌드와 Bootstrap/GameDB 배치를 만들고 각 역할의 UDP 수신·재시작·동시 인스턴스 실행을 확인한다. `ServerBootstrap.TryCreateJoinTokenVerifier`는 서비스 자격과 API 검증 설정으로 `ApiJoinTokenVerifier`를 생성한다. 출시 빌드는 개발 검증기로 대체하지 않고 잘못된 설정으로 기동하면 실패한다. 실제 배포에서는 서비스 자격·HTTPS·등록/입장 교환을 검증한다.
 3. 역할별 서비스 자격과 시크릿 환경 공급, API HTTPS 도메인·TLS, 비공개 DB/migrator 권한을 연결한다. 이 파일들은 실제 비밀값을 담지 않는다.
 4. 서버 풀 등록·heartbeat, 신규 배정 중지, 세션 마감/저장 큐/outbox 드레인을 구현하고 장애·강제 종료 때 경제 작업을 복구한다.
 5. [로그 규약](LOGGING.md)은 API/Unity 로거에 연결되어 있고 호스트 journald·Docker 드라이버 보존 설정 파일이 있다. Linux 호스트에 적용하고 정산 추적 조회를 실제 로그로 확인한다. 실제 웹훅 채널을 정해 시험 경보를 받아 본다(OP-2). 부하 시험으로 RSS·CPU·틱 시간·API p95·저장 큐를 측정해 N/호스팅 사양을 정한다. 필요 시 `ethtool -S`의 `pps_allowance_exceeded`, `bw_*_allowance_exceeded`, `conntrack_allowance_exceeded`도 확인한다.

@@ -7,7 +7,7 @@ using Shinshi.Data.Sessions;
 
 namespace Shinshi.Data.Inbox
 {
-    /// <summary> 보관 상한(docs/design/growth-economy.md 9장)과 30일 회수함 기간. 정산과 경매 낙찰 지급은 상한을 넘긴 몫만 회수함으로 옮기고,
+    /// <summary> 계정 보관 상한과 30일 회수함 기간. 정산과 경매 낙찰 지급은 상한을 넘긴 몫만 회수함으로 옮기고,
     /// 회수함 수령은 상한까지 남은 공간만큼만 옮긴다 </summary>
     public static class RewardStorageLimits
     {

@@ -26,7 +26,7 @@ namespace Shinshi.Common
             public const int    MAX_PENDING_INVITES   = 512;
 
             // 한 초대자가 동시에 들고 있는 초대 수. 한 명이 전체 초대 표(MAX_PENDING_INVITES)를 채워 다른 사람의 초대를 막지 못하게 한다.
-            // TODO(민성): 기획 수치 미정(docs/02-game-design.md 10장 협동, 초대 상한 없음). 파티 빈자리 3석에 거절 몇 번을 더한 임시값이다
+            // TODO(민성): 기획 수치 미정(협동 기획에 초대 상한이 정해져 있지 않다). 파티 빈자리 3석에 거절 몇 번을 더한 임시값이다
             public const int    MAX_INVITES_PER_INVITER = 8;
 
             // 던전 풀이 비었을 때(NO_CAPACITY) 대기열 맨 앞 방이 새 operationId로 다시 예약하는 간격(초)

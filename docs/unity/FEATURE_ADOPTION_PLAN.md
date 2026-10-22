@@ -93,7 +93,7 @@ Unity에 내장되어 있지 않지만 신시 설계가 이미 요구하고 있�
 
 ### 4.1 A02 데이터 검증
 
-- [아키텍처](../04-architecture.md) 6장은 ID 중복·누락·효과 범위·불가능한 참조를 빌드 전에 검증하도록 요구한다. 현재 `GameDatabaseSO.Validate`는 도메인 14개 값·교차 참조·카탈로그 간 아이템 ID 중복을 검사한다. `GameDBBuildValidator : IPreprocessBuildWithReport`가 빌드 전에 같은 검증을 호출한다(이번 빌드 실행 미검증).
+- [아키텍처](../04-architecture.md) 6장은 ID 중복·누락·효과 범위·불가능한 참조를 빌드 전에 검증하도록 요구한다. 현재 `GameDatabaseSO.Validate`는 하위 SO 16개 값·교차 참조·카탈로그 간 아이템 ID 중복을 검사한다. `GameDBBuildValidator : IPreprocessBuildWithReport`가 빌드 전에 같은 검증을 호출한다(이번 빌드 실행 미검증).
 - 현재 `IDataValidatable`·`GameDataSO` 계약이 오류 목록을 받는다. 카탈로그 간 참조(부적 → 기술 ID, 웨이브 → 적 ID)는 `GameDatabaseSO`가 전체를 모아 검사한다.
 - 목표는 에디터 수동 검사·EditMode(U22)·빌드 전처리에서 같은 검증기를 쓰는 것이다. 현재 초기화·루트 검증과 빌드 전처리는 확인됐고, 별도 수동 메뉴 연결은 이번 대조에서 확인하지 않았다.
 - `OnValidate`는 값 범위 보정에만 쓰고 카탈로그 간 검증은 넣지 않는다. 에셋마다 불려 순서가 보장되지 않는다.

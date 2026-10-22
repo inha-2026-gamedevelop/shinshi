@@ -54,7 +54,8 @@ namespace Shinshi.Combat
     // 순간 이동(IBossWarp)의 최종 권한도 이 몸체다. 착지 검사는 전장 경계, 정적 지형(IBossStandQuery), 살아 있는 플레이어와 소환물의 몸체
     // 순서이고 TryWarp가 패턴의 사전 검사를 믿지 않고 다시 한다. 경로 검사는 길찾기가 아니라 정적 지형을 향한 직선 한 번이다.
     // 출정 준비 검사(IsSortieReady)는 1, 2페이즈의 모든 정의가 데이터 지정과 생성 연결을 마쳤는지 본다.
-    // 하드 난이도는 이 검사를 통과해야만 출정을 연다(CombatServerRuntime). 연결하지 않은 표시 수신처의 패턴은 만들 수 있다고 답하지 않는다
+    // 하드 난이도는 이 검사를 통과해야만 출정을 연다(CombatServerRuntime). 패턴이 기대는 수신처, 이동과 밀림 창구, 전장 정보, 실행 수치 중
+    // 하나라도 비어 있으면 그 패턴은 만들 수 있다고 답하지 않는다
     /// <summary> 서버의 보스 개체, 피해를 받고 두뇌에 체력과 직접 제어를 넘기며 몸체 이동과 공격 사건 전달을 맡는다 </summary>
     public sealed class BossServer : IDamageable, ISkillControlTarget, IBossVitals, IBossControlSource, IBossMovement,
         IBossFanTelegraphListener, IBossCircleTelegraphListener, IBossLineTelegraphListener, IBossDashTelegraphListener,

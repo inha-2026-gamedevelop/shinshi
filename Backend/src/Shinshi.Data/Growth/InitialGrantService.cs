@@ -130,7 +130,7 @@ namespace Shinshi.Data.Growth
         private async Task GrantEquipmentAsync(GrowthEffectContext grant, GrowthContent.GrantBundle bundle,
             CancellationToken cancellationToken)
         {
-            // TODO(민성): 체험판 캐릭터가 수련용 6부위도 함께 받는지는 기획 미정(docs/design/growth-economy.md 4장).
+            // TODO(민성): 체험판 캐릭터가 수련용 6부위도 함께 받는지는 기획 미정이다.
             // 확정 전에는 프로필 묶음의 장비만 착용 상태로 지급한다
             string origin = Profile == EGrowthContentProfile.Standard
                 ? GrowthCodes.EquipmentOrigin.INITIAL_GRANT : GrowthCodes.EquipmentOrigin.TRIAL_GRANT;

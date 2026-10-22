@@ -1,6 +1,6 @@
 # 서버·클라이언트 협업
 
-> 2026-10-02 M-A 코드와 동기화. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정)다. **역할별 클래스 분리와 서버 전용 어셈블리**가 적용돼 있고, 연결·인증·전투·출정 저장·정산 코드가 있다. 개발 빌드와 격리 기동 검증 이력은 [로드맵](../05-implementation-roadmap.md)에 있으며 실제 M2/M3·배포 수용은 미검증이다. 보스 AI 서버 뼈대는 8장에 있다. 일반전 웨이브·스폰 실행 구현과 보스 마지막 단계 연결은 남아 있다.
+> 2026-10-22 현재 구현 정적 대조. 날짜가 붙은 시험 기록은 당시 범위에 한정한다. 네트워크 라이브러리는 Mirror 96.11.3(`Assets/Mirror/`), 호스트 방식은 데디케이티드 서버(확정)다. **역할별 클래스 분리와 서버 전용 어셈블리**가 적용돼 있고, 연결·인증·전투·출정 저장·정산 코드가 있다. 개발 빌드와 격리 기동 검증 이력은 [로드맵](../05-implementation-roadmap.md)에 있으며 2026-10-19 로컬 M2 범위는 해당 기록을 따른다. 현재 변경 전체의 M2·외부 PC M3·배포 수용은 미검증이다. 보스 AI 서버 구현은 8장에 있다. 일반전 웨이브·스폰 연결은 존재하며 보스 전체 흐름의 M-Boss 수용은 남아 있다.
 
 같은 Unity 프로젝트와 저장소, Mirror 서버 권위 구조를 쓰며 **실행 위치와 작성 담당을 분리한다.** 판정·AI는 서버에서만 실행되지만(권위 원칙 그대로, [네트워크 권위](NETWORK_AUTHORITY.md)) 작성은 원래 파트 담당이 하고, {팀장}은 네트워크 연결 코드를 맡는다.
 서버 구현 전체를 팀장 한 명이 맡으면 판정 규칙을 모르는 사람이 규칙을 쓰게 되고 병목이 생긴다. 그래서 판정·AI 작성은 파트 담당에게 둔다.
@@ -114,8 +114,8 @@ Assets/01.Scripts/
 
 - `Shinshi.Runtime`·`Shinshi.Contracts`·`Shinshi.Server`·`Shinshi.Dev`·EditMode/PlayMode 테스트 asmdef가 있다. `Contracts`는 엔진 참조가 없고, [백엔드 csproj](../../Backend/src/Shinshi.Contracts/Shinshi.Contracts.csproj)가 DTO 원본을 링크한다. 참조와 빌드 조건은 [코딩 컨벤션](../coding-convention.md) 0장과 실제 asmdef를 따른다.
 - [ClientView](../../Assets/01.Scripts/00.Common/Utility/ClientView.cs)가 `UNITY_SERVER`에서 표현을 끈다. 서버 판정은 `Shinshi.Server`에 있고 Runtime은 이 어셈블리를 참조하지 않는다.
-- `DungeonSessionHost.BeginSession`은 현재 웨이브 없는 `DungeonSession`을 생성한다. 일반전 `CreateNormal`과 source ID·보상 등록을 실제 스폰·웨이브 구현에 연결하는 작업, 보스 마지막 단계의 생산 종료 연결(M-Boss)이 남았다. 개발 전용 보스 종료 창구를 완성된 보스전으로 보지 않는다.
-- `PF_NetPlayer` 프리팹에는 `PlayerInputReader`와 입력·전투 상태·몸체 Collider·`SkillRangeIndicatorView` 참조가 연결되어 있다. 기술 입력은 Q/W/E/R(모든 직업), Z/X/C(신령사 강림)이며, 방향·자기 위치 기술은 키를 누를 때 바로 요청하고 지점 기술은 범위를 띄운 뒤 왼쪽 클릭으로 확정, 오른쪽 클릭·Esc·회피로 취소한다. 지정점은 서버와 같은 기준([SkillInputRules](../../Assets/01.Scripts/02.Combat/Skill/Rules/SkillInputRules.cs): 사거리 여유 제한, 내비 메시, 높이 차, `Obstacle` 시야)으로 미리 검사하며 판정은 서버가 다시 한다. 시야 검사 [CombatLineOfSight](../../Assets/01.Scripts/02.Combat/Damage/CombatLineOfSight.cs)는 이를 위해 `Shinshi.Runtime`으로 옮겼다. 사람이 직접 하는 기술 입력은 실행 미검증이다. 클릭 이동과 회피는 아래 개발 빌드 실행에서 자동 조작으로 확인했고, 사람이 직접 하는 클릭·공격 입력과 dungeon 역할 다인 접속 수용은 실행 미검증이다. API checkpoint 경로와 DTO는 있지만 `DungeonSessionHost.CompleteTick`의 30초 주기 송신은 TODO다. 직렬화된 참조와 실제 실행 검증을 구분한다.
+- `DungeonSessionHost`의 일반전 생성은 `CreateNormalSession`과 주입된 `WaveSessionFactory`를 통해 실제 스폰·웨이브 및 처치·보상 이벤트에 연결된다. 보스 전체 흐름의 M-Boss 수용은 남았다. 개발 전용 보스 종료 창구를 완성된 보스전으로 보지 않는다.
+- `PF_NetPlayer` 프리팹에는 `PlayerInputReader`와 입력·전투 상태·몸체 Collider·`SkillRangeIndicatorView` 참조가 연결되어 있다. 기술 입력은 Q/W/E/R(모든 직업), Z/X/C(신령사 강림)이며, 방향·자기 위치 기술은 키를 누를 때 바로 요청하고 지점 기술은 범위를 띄운 뒤 왼쪽 클릭으로 확정, 오른쪽 클릭·Esc·회피로 취소한다. 지정점은 서버와 같은 기준([SkillInputRules](../../Assets/01.Scripts/02.Combat/Skill/Rules/SkillInputRules.cs): 사거리 여유 제한, 내비 메시, 높이 차, `Obstacle` 시야)으로 미리 검사하며 판정은 서버가 다시 한다. 시야 검사 [CombatLineOfSight](../../Assets/01.Scripts/02.Combat/Damage/CombatLineOfSight.cs)는 이를 위해 `Shinshi.Runtime`으로 옮겼다. 사람이 직접 하는 기술 입력은 실행 미검증이다. 클릭 이동과 회피는 아래 개발 빌드 실행에서 자동 조작으로 확인했고, 사람이 직접 하는 클릭·공격 입력과 dungeon 역할 다인 접속 수용은 실행 미검증이다. API checkpoint 경로·DTO와 `DungeonSessionHost`의 30초 주기 진단 체크포인트 송신이 구현되어 있다. 실제 송신 수용은 별도 검증 대상이다. 직렬화된 참조와 실제 실행 검증을 구분한다.
 - 신령사 동료는 서버 소유 네트워크 개체 [PF_NetCompanion](../../Assets/02.Prefab/Network/NetCompanion/PF_NetCompanion.prefab)으로 보인다. 프리팹은 `NetworkIdentity`·`CompanionCombatState`·`NetworkTransformReliable`(위치만, 서버→클라이언트, 적과 같은 10Hz)·`CompanionView`(임시 도형, 종류별 색, yaw로 시각 피벗만 회전)로 구성한다. 연결 권한이 없고 Command가 없어 클라이언트는 요청을 보낼 수 없으며 `OwnerCombatId`로 소유 플레이어(`PlayerCombatState.CombatId`)를 가린다. `ServerBootstrap`이 매니저 `spawnPrefabs`에서 프리팹을 찾아 `CombatServerRuntime.EnableCompanionObjects`에 넘기고, 런타임은 매 틱 부활 승인 뒤 `CompanionSpawnTracker`로 활성 동료와 개체의 짝을 맞춘다. 소환 확정 시 스폰하고, 동료가 멈추는 모든 경로(만료, 본체 사망, 피격 사망, 세션 종료, 보존 해제, 개체 정리)와 재호출(전투 번호 변경, 옛 개체를 내리고 새로 스폰)에서 `NetworkServer.UnSpawn`으로 내려 서버 풀에 둔다. 재접속 보존 중에는 같은 `SkillServer`가 남으므로 개체도 유지된다. 클라이언트는 `ShinshiNetworkManager`가 `spawnPrefabs`를 적 복제 간격 처리기로 다시 등록해 만든다. 등록은 {팀장} 소유 `Bootstrap`·`Dev_PlayerMovement` 씬에만 했고, 프리팹이 없는 씬의 서버는 경고만 남기고 동료 판정만 돌린다. 추적 규칙은 EditMode, 스폰·풀 재사용·클라이언트 처리기는 에디터 Play Mode 단독 호출로만 확인했고 실제 시전·다인 접속은 실행 미검증이다.
 - 서비스 장애 취소의 현행 정책은 완료 웨이브 기본 정기와 서버 원장으로 확인된 미정산 추가 정기를 모두 100% 지급하는 것이다(2026-10-08 사용자 결정, 기존 추가 50% 정책 대체). 2026-10-10부터 `SettlementRules`의 `ServiceCancelled`와 API 서비스 장애 취소는 추가 정기도 100%, `Assets/09.Data/Session/SessionConfig.asset`은 2(`FullGrant`)다. 실제 서버 소실 검증은 남아 있으며 운영자 `ForceClose`는 추가 50%를 유지하는 별도 정책(기획 미정)이다. 일반 실패·포기의 추가 정기 50% 보존은 유지한다. 상세는 [기술 설계](../03-technical-design.md)와 [로드맵](../05-implementation-roadmap.md)을 따른다.
 - 코드 확인과 문서 링크·diff 점검만 이번 동기화에서 수행했다. 기존 실행 근거로 제공된 결과는 **사용자 제공 Unity Test Runner EditMode 780개 통과, PostgreSQL 18 Docker를 사용한 Backend 396개 통과**다. 이번 작업 트리의 새 실행 검증으로 재표시하지 않는다.
@@ -125,7 +125,7 @@ Assets/01.Scripts/
 
 ## 7. 일반전 웨이브 서버 경계
 
-웨이브·스폰 작성(기웅)과 세션 연결(민성)은 아래 인터페이스로 만난다. 스폰·웨이브 실행 클래스는 아직 없고, 민성 쪽 수신 구현인 `DungeonSession : IWaveSessionListener`와 출정 호스트·저장 큐는 존재한다. 작성·소유 경계는 그대로 유지한다.
+웨이브·스폰 작성(기웅)과 세션 연결(민성)은 아래 인터페이스로 만난다. `WaveSessionFactory`·`WaveSession`과 `ServerBootstrap`의 팩토리 주입, 수신 구현인 `DungeonSession : IWaveSessionListener`와 출정 호스트·저장 큐가 존재한다. `WaveSession`은 근접·돌진·원거리 두뇌와 적 네트워크 개체를 구동하며 팩토리가 출정 피해 배율을 적용한다. 작성·소유 경계는 그대로 유지한다.
 
 | 파일 | 네임스페이스 | 구현 | 호출 |
 |---|---|---|---|
@@ -170,7 +170,7 @@ Assets/01.Scripts/
 - 한 틱의 우선순위는 사망·전투 종료 → 페이즈 전환 → 허용된 직접 제어 → 일반 공격 진행·새 선택이다. 이미 적용된 피해는 되돌리지 않는다.
 - 상위 FSM이 중단 이유(`EBossInterruptReason`)를 정하고 취소를 지시한다. 현재 패턴은 자신의 실행과 예약 타격을 정리하고, 지속 장판과 투사체는 `IBossEffectLifetime`이 이유별로 정리한다.
 - 예고, 실행, 회복 중에도 사망, 페이즈 전환, 직접 제어 검사는 계속한다. BT는 새 행동을 고를 수 있을 때만 평가한다.
-- 기믹이 붙지 않은 보스는 체력 0이면 사망을 확정한다(`ImmediateBossDeathPolicy`). 월백 체력 기믹(75% 부적진, 50% 색 결계, 25% 여우불 봉인, 하드 0% 최후의 영역)을 붙인 전투에서는 기믹이 받는 피해 상한과 사망 보류를 걸어 체력 0에서도 보류가 풀릴 때까지 사망을 확정하지 않는다(2026-10-14 운영 서버 연결, 구현됨, 실행 미검증). 기믹은 기본 꺼짐이며 켜는 방법과 세션 처리는 아래 "월백 체력 기믹의 세션 처리" 항목에 적었다.
+- 기믹이 붙지 않은 보스는 체력 0이면 사망을 확정한다(`ImmediateBossDeathPolicy`). 월백 체력 기믹(75% 부적진, 50% 색 결계, 25% 여우불 봉인, 하드 0% 최후의 영역)을 붙인 전투에서는 기믹이 받는 피해 상한과 사망 보류를 걸어 체력 0에서도 보류가 풀릴 때까지 사망을 확정하지 않는다(2026-10-14 운영 서버 연결, 구현됨, 실행 미검증). 기믹은 기본 켬이며 끄는 방법과 세션 처리는 아래 "월백 체력 기믹의 세션 처리" 항목에 적었다.
 - 보스 사망과 전원 사망이 같은 시각이면 기획 문서의 초기 기준대로 전멸 실패를 우선한다(실제 전투 피드백 뒤 조정될 수 있다). 예외는 하드 월백 최후의 영역의 최종 성공 하나이며 같은 틱 전멸보다 앞선다. 뼈대는 두 사실을 모두 기록(`IsBossDeathRecorded`, `IsCombatEndRecorded`)하고 `FlowState`는 `Ended`가 된다. 플레이어 사망 상태는 바꾸지 않으며 승패 판정은 세션이 한다.
 - 보스가 죽으면 남은 장판과 투사체를 즉시 제거하고 예약 타격을 포함한 추가 피해를 막는다. 이미 적용된 피해는 되돌리지 않는다. 막는 방법은 `IBossEffectLifetime`의 즉시 제거와 `BossDamageGate`의 폐쇄 두 겹이다. 전투 종료(전멸 등)에서도 같은 정리를 한다.
 - 등장 컷씬: 보스는 컷씬 전에 미리 스폰한다. `BeginAppearance(serverTime, 길이)`로 `Appearing` 상태에 들어가며, 이 동안은 타깃 선택, 공격, 피해 처리를 하지 않고 등장 모션만 허용한다. 전투 시작 시점은 서버 시각으로만 정하며 클라이언트 컷씬 종료 신호는 받는 API가 없다. 컷씬을 언제 시작하고 길이를 얼마로 할지(전원 준비 시 진행, 이미 본 참가자의 별도 대기 등)는 기획 문서와 세션이 정하며, 뼈대는 시작 시각과 길이를 받기만 한다.
@@ -178,7 +178,7 @@ Assets/01.Scripts/
 - 고정 오프닝과 강제 후속 공격은 이번 구현에서 제외한다. 등장 대기가 끝나면 가중치로 첫 패턴을 고르고, 각 패턴의 회복이 끝난 뒤 그 시점의 상황(타깃, 거리, 방향, 주변 인원, 최근 기록)을 다시 읽어 다음 패턴을 가중 선택한다. 일반 가중 선택 앞에 평가되는 `IBossSelectionRule` 자리는 유지하며 등록된 규칙은 없다.
 - 직접 제어는 기획에 적힌 규칙대로 한다. 패턴별 허용 구간에서만 받고, 한 패턴에 최초 1회이며 적용 뒤 면역 시간 동안은 받지 않는다. 취소형 패턴(P06)은 예고 마지막 구간에서 성공하면 공격을 취소한다. 속박 등 취소형이 아닌 제어는 보스 동작이 협의 전이라 적용 표시와 면역 시작과 알림만 하고, 제어를 이동·회전·공격 정지로 일괄 해석하지 않는다. 가능성을 열어 두려고 제어는 값 묶음(`BossDirectControl`: 출처 ID, 요청 시간)으로 받고, 적용된 제어는 `BossBrain.DirectControlApplied` 알림(`BossDirectControlApplied`: 적용 시간(보스 정의의 최대 시간으로 자름), 패턴 취소 여부, 패턴 ID)으로 알린다. 보스를 실제로 어떻게 움직일지는 이 알림을 받는 쪽에서 나중에 붙인다.
 
-월백 2페이즈 선택 기반(Easy, 2026-10-03, EditMode 검증, 실제 서버 실행 미검증). 개별 공격은 P01~P06 여섯 개를 모두 구현했다. Hard 전용 낙하와 HP 0% 발악은 이 선택 기반의 범위 밖이다. HP 0%는 월백 체력 기믹의 최후의 영역(외곽 바닥 제거와 낙하 사망 포함)이 맡으며 2026-10-14에 운영 서버에 연결했다(구현됨, 실행 미검증, 기본 꺼짐. 아래 "월백 체력 기믹의 세션 처리" 항목).
+월백 2페이즈 선택 기반(Easy, 2026-10-03, EditMode 검증, 실제 서버 실행 미검증). 개별 공격은 P01~P06 여섯 개를 모두 구현했다. Hard 전용 낙하와 HP 0% 발악은 이 선택 기반의 범위 밖이다. HP 0%는 월백 체력 기믹의 최후의 영역(외곽 바닥 제거와 낙하 사망 포함)이 맡으며 2026-10-14에 운영 서버에 연결했다(구현됨, 실행 미검증, 현재 기본 켬. 아래 "월백 체력 기믹의 세션 처리" 항목).
 
 - 전환: 전체 최대 체력의 50% 이하(경계 포함)에서 한 번만 시작한다. 진행 중인 공격과 지속물과 예약을 정리하고, 최근 패턴 기록과 직전 그룹을 비운다. 사망과 전투 종료는 전환과 새 선택보다 먼저 처리한다. 연출 시간, 무적, 순간이동은 두지 않았다.
 - 패턴 ID와 그룹: 1페이즈 ID(`wolbaek_p01`~`06`)는 그대로이고 2페이즈는 `wolbaek_ph2_p01`~`06`이다. P01 회전 빔, P02 절단 빔, P03 반월 연쇄는 Large, P04 강화 장판과 P06 원형 폭발은 Pressure, P05 투사체는 Basic이다. 그룹은 `BossPatternCatalogSO.EPatternGroup`이다.
@@ -249,7 +249,7 @@ Assets/01.Scripts/
 - 이동: 돌진(P01)이 `Move`로 몸체를 옮긴다. 살아 있고 흐름이 `Combat`일 때만 움직이며 취소·사망·종료 뒤 늦게 온 호출은 현재 위치를 돌려준다. `GetClearDistance`는 원형 전장 경계(`BossArenaRules`, 반경은 정의의 `ArenaDiameter`/2에서 몸체 반경을 뺀 원, 경계 위·밖에서도 안쪽으로는 갈 수 있음)와 정적 지형(`BossTerrainProbe`, `Obstacle` 레이어 구 스윕) 중 가까운 쪽이다. 물리 스윕은 시작에서 겹친 콜라이더를 통째로 무시하므로, 지형 검사는 닿은 벽에서 법선 방향 0.05m 앞에 멈춰 다음 스윕이 겹친 채 시작하지 않게 한다. 구의 아래 끝은 발 위 0.25m라 평평한 바닥과 겹치지 않는다. 처음부터 벽 안에 놓인 몸체는 막지 못하므로 생성 지점은 벽에서 몸체 반경 이상 떨어뜨린다. 투사체 경로 길이도 같은 검사를 쓴다. 전장 지름이 몸체 반경 이하이면 `Begin`이 거절한다. 실제 지형에서는 미검증이다.
 - 지속물: `BossServer`가 `BossProjectileManager`·`BossAreaManager`·`BossBeamManager`·`BossStarManager`를 만들어 팩토리와 `Effects`(`BossEffectComposite`)에 같은 객체로 넘긴다. 그래서 사망·페이즈 전환·전투 종료 정리와 매 틱 진행이 빔과 별형 빔에도 간다. 2페이즈 P01·P02의 전장 입력(`IBossArenaSource`)은 몸체의 전장 중심과 반경(몸체 반경을 빼지 않은 값)이다.
 - 2페이즈 인계와 50% 결계(2026-10-03): 월백(`boss_wolbaek`)이면 `BossServer`가 `BossBarrierDirector`를 만든다(설정은 `BossBarrierSettings` 임시 기본값, 생성자 인자로 주입 가능, 카탈로그에는 아직 없음). 매 틱 두뇌 진행 뒤 흐름이 `Combat`이면 `Tick(serverTime, PhaseState == AwaitingHandoff)`를 부르고, 사망·전투 종료로 흐름이 바뀐 틱에는 `Cancel(Death 또는 CombatEnd)`로 위험 구역을 정리한다. 전환한 틱에 결계가 시작되고(보스가 전장 중심으로 이동 → 예고 → 활성 → 완료), 완료한 틱에 `BossBrain.CompleteHandoff()`를 불러 그 뒤로 2페이즈 선택이 열린다(실행 가능한 패턴이 없으면 `AwaitingReadiness`). 결계 위험 구역은 완료 뒤에도 사망·전투 종료까지 남아 바깥 원과 안쪽 안전 반경 사이에 지속 피해를 낸다. 피해는 패턴과 같은 `damage` 경로(`BossDamageScaler`)와 Href를 쓴다. 결계가 없는 보스(무철, 시험 정의)는 전처럼 전환 다음 틱 처음에 바로 인계한다. 개발 리셋 경로는 서버에 없어 `Reset()`은 부르지 않는다(EditMode 테스트 작성, 실행 미검증). 지속물 Tick은 `BossCombat`이 부르고 피해는 패턴의 게이트(`BossDamageScaler` 경로)로만 나간다.
-- 패턴 팩토리: 보스 ID가 `MucheolPatternFactory.BOSS_ID`(`boss_mucheol`)이면 패턴 없는 `MucheolPatternFactory`, 그 밖은 `WolbaekPatternFactory`다. 무철은 카탈로그 수치가 비어(`HealthRef` 0, `IsTuned` 거짓) `Begin`이 "최대 체력이 0" 오류로 거절하고 `CombatServerRuntime`이 보스 없이 진행한다(코드 경로 확인과 EditMode 테스트 작성, 실행 미검증).
+- 패턴 팩토리: 보스 ID가 `MucheolPatternFactory.BOSS_ID`(`boss_mucheol`)이면 `MucheolPatternFactory`, 그 밖은 `WolbaekPatternFactory`다. 무철 팩토리에는 돌진·원형·연격·돌격·부채꼴 패턴 생성 구현이 있다. 정의·수치의 준비와 실제 보스전 수용은 별도 검증 대상이며 팩토리 존재만으로 완료 판정하지 않는다.
 - `CombatServerRuntime`이 보스전 출정이 진행되는 첫 틱(배율 고정 직후)에 보스를 만들어 레지스트리에 적 진영으로 등록하고 `Begin`으로 전투를 연 뒤 네트워크 개체를 스폰한다. 틱 순서는 플레이어 기술·공격 → 보스 `Tick` → 생사 보고 → 세션 종료 판정 → (출정이 끝났으면) 같은 시각 `RequestCombatEnd`와 `Tick` → 보스 상태 기록이다.
 - 보스 사망이 확정된 틱에 `DungeonSessionHost.ReportBossDefeated` → `DungeonSession.ReportBossDefeated`로 성공을 예약한다. 종료는 `CompleteTick`이 판정하므로 같은 틱 전원 사망이면 전멸이 우선한다. 승패의 기준은 세션 종료 사유다. 이 순서에서 보스는 이미 `Defeated`라 같은 틱 종료 요청을 받지 않아 `IsCombatEndRecorded`가 기록되지 않는다(기웅에게 계약 변경 요청).
 - 월백 체력 기믹의 세션 처리(2026-10-14, 구현됨, 세션 EditMode 테스트 작성, 실행 미검증). `CombatServerRuntime.TickBoss`가 보스 `Tick` 뒤, 처치 보고 앞에 세션 틱에서만 본다.
@@ -259,7 +259,7 @@ Assets/01.Scripts/
   - 부활: 색 결계 타격 중에는 횟수를 쓰지 않고 미룬다. 최후의 영역이 지점을 맡으면 그 지점으로 되살리고, 줄 지점이 없으면 횟수를 쓰지 않고 미룬다(기존 지점 선택으로 되돌아가지 않는다).
   - 스위치(2026-10-18 변경): **기본은 켬**이다. 기믹 사건의 Net 복제(`BossState`)와 클라이언트 표시(`BossNetworkViewBinder`)가 연결돼 있다. 끄려면 던전 서버 환경 변수 `BOSS_GIMMICKS=0` 또는 실행 인자 `-no-boss-gimmicks`(값 없음)를 준다. 끄면 상한 없음, 즉시 사망, 결계 전개의 기존 동작 그대로다. 월백(`boss_wolbaek`)에만 붙고, 묶음을 만들지 못하면 오류 로그를 남기고 기믹 없이 연다.
   - 2페이즈 전환 컷신 구간(2026-10-18): 결계를 대신하는 기믹 묶음이 붙은 보스는 50% 전환 틱에 9.6초 구간(`BossServer.Phase2Transition*`, 클라이언트 Timeline `TL_WolbaekPhase2Transition_Combat` 길이와 같음)을 열고, 그동안 무적이며 인계를 미룬다. 구간은 `BossState` SyncVar(번호, 서버 시작·종료 시각)로 복제하고 `BossNetworkViewBinder`가 `PF_NetWolbaekBoss`의 `WolbaekPhase2TransitionPlayer`로 재생한다. 늦은 접속은 스폰 상태로 중간부터 재생한다. 프로토콜 14.
-  - 현행 프로토콜(2026-10-19): 파티 요청·결과 메시지 끝에 요청 ID(`RequestId`)를 더해 wire가 바뀌었으므로 프로토콜 버전은 15. 서버와 클라이언트는 같은 빌드를 쓴다.
+  - 프로토콜 이력(2026-10-19): 파티 요청·결과 메시지 끝에 요청 ID(`RequestId`)를 더해 당시 프로토콜 버전은 15였다. 현행 버전은 16이다(2026-10-22 정적 대조). 서버와 클라이언트는 같은 빌드를 쓴다.
 - 보스가 내는 피해는 `BossDamageScaler`가 시작 인원 피해 배율을 `RawDamage`에 곱해 `SkillDamageResolver`에 넘긴다. 번호·위치는 바꾸지 않아 반격 방어와 중복 적중 판정이 유지된다.
 - 던전 맵 선택(2026-10-19): 실행 설정 `-boss-id`는 계약 없는 개발 출정과 부팅 전장의 기본값이다. 실제 첫 출정 계약이 일반전이면 `DungeonForest`, 무철이면 `DungeonMucheol`, 월백이면 `DungeonWolbaek`을 서버와 클라이언트가 함께 연다. `DungeonSessionHost.MapLoader`와 `ShinshiServerAuthenticator`는 맵 준비까지 인증 완료를 보류하며 로딩 상한은 15초다. `onlineScene`이 빈 단일 씬 개발 구성은 전환하지 않는다.
 
@@ -297,13 +297,13 @@ Assets/01.Scripts/
 - 직접 제어 구간의 끝 경계 포함 여부. 지금 코드는 포함하지만 확정이 아니며 이 값에 기대는 테스트는 없다
 - 속박 등 직접 제어가 보스를 어떻게 움직이는지(기획 문서는 허용 구간에서만, 끌어오지 않고 이동 없이 최대 1초까지만 정했다. 속박 중 공격과 회전을 멈추는지는 없다)
 - 같은 시각 보스 사망과 전원 사망의 결과(기획의 초기 기준은 전멸 우선이며 실제 전투 피드백 뒤 조정). 하드 월백 최종 성공만 전멸보다 앞서도록 코드를 바꿨고(2026-10-14) 기획 문서의 같은 규칙 서술은 아직 고치지 않았다
-- 월백 체력 기믹의 Net 복제·늦은 접속 복원과 클라이언트 표시, 맵 좌표(지점 후보, 중앙 바닥 반경). 이것이 연결될 때까지 기믹은 기본 꺼짐이다
+- 월백 체력 기믹의 Net 복제·늦은 접속 복원과 클라이언트 표시 연결은 존재한다. 실제 다인 수신·복원과 맵 좌표(지점 후보, 중앙 바닥 반경)의 수용 검증은 남았다. 현재 기본 켬이며 `-no-boss-gimmicks` 또는 `BOSS_GIMMICKS=0`으로 끈다
 - 등장 컷씬의 시작 조건과 길이, 길이 데이터의 위치
 
 ## 9. 인증·재접속·서버 수명 연결
 
 1. `ServerBootstrap`이 역할·포트·콘텐츠 버전을 읽고 GameDB를 확인한 뒤 콘텐츠 해시를 계산한다. 전투 설치, 던전 역할의 `DungeonSessionHost`·플레이어 유지 창구 결합, 서버 인증기 설치를 끝낸 뒤 `StartServer`를 부른다.
-2. 클라이언트는 `ShinshiClientAuthenticator.SetJoinToken`을 `StartClient` 전에 부른다. 연결 직후 `JoinRequestMessage(protocolVersion, contentHash, joinToken)`을 보낸다. 접속 프로토콜은 `Constants.Network.PROTOCOL_VERSION`(현재 6)을 따른다. 닉네임·외형 복제 필드는 해당 프로토콜 계약의 일부다. 서버는 버전·해시·토큰 길이와 인증 대기 상한·마감을 먼저 확인한다.
+2. 클라이언트는 `ShinshiClientAuthenticator.SetJoinToken`을 `StartClient` 전에 부른다. 연결 직후 `JoinRequestMessage(protocolVersion, contentHash, joinToken)`을 보낸다. 접속 프로토콜은 `Constants.Network.PROTOCOL_VERSION`(2026-10-22 현재 16)을 따른다. 닉네임·외형 복제 필드는 해당 프로토콜 계약의 일부다. 서버는 버전·해시·토큰 길이와 인증 대기 상한·마감을 먼저 확인한다.
 3. 출시 서버는 `ApiJoinTokenVerifier`가 [일회용 토큰 교환](../../Assets/01.Scripts/00.Common/Contracts/Join/JoinApiRoutes.cs)을 한 번 호출하고 인스턴스·역할·캐릭터·직업(`classId`)·출정·참가자 정보를 확인한다. 직업은 마을과 던전 모두 이 응답에서만 오며, 모르는 값이면 입장을 거절하고 `SessionBinding.PlayerClass`로 `CombatServerRuntime`이 개체를 만든다. 게임 서버의 HTTP 호출은 `Authorization: Bearer {token}`을 쓴다. 서비스 자격은 서버 임대 발급에, 이후 게임 서버 경로는 `ServerPresence`가 받은 서버 임대 토큰에 묶인다. 일반 플레이어 접근 토큰으로 서버 전용 경로를 호출하지 않는다.
 4. `ServerSessionRegistry`가 같은 참가자의 동시 연결을 거절하고 `SessionBinding`을 만든다. 토큰 교환 응답의 DB 닉네임·외형을 검증해 `SessionBinding`에서 `PlayerCombatState`로 전달한 뒤 최초 생성·재결합한다. 외형 payload 버전은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)에서 구분한다. 마을 참가자 키는 캐릭터 ID, 던전 키는 출정 참가자 ID다. 계정 전체의 단일 접속 임대는 백엔드가 담당한다. 던전은 `DungeonSessionHost.Admit`까지 통과해야 연결의 `authenticationData`를 설정하고 `ServerAccept`한다. 인증 이전에는 플레이어 생성·Command를 허용하지 않는다.
 5. 동시 접속 거절은 `AlreadyConnected(809)`이며 사용자 안내는 **“이미 접속 중인 계정”**이다. 이전 연결의 끊김 감지가 늦을 때를 위해 클라이언트는 2초 간격으로 최대 6회 같은 토큰을 다시 보낸다. 서버 검증기는 교환 성공 정보를 이 서버에서만 최대 20초 기억하고 입장 성공 시 지운다. 재시도 중에는 `JoinRetryScheduled`, 최종 거절 때는 `Rejected`를 UI가 받는다. 백엔드 일시 불가는 `BackendUnavailable(810)`이고, `RateLimited(811)`과 정산 상한 `SettlementLimitExceeded(904)`는 별도 코드다.

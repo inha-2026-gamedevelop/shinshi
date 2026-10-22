@@ -1,6 +1,6 @@
 # 서버 재시작과 경보 대응
 
-게임 서버는 `systemctl`과 `journalctl`로, 업무 변경은 `shinshi-admin`으로 다룬다([도구 지도](README.md#도구-지도)). 유닛 이름과 경로는 [deploy/gameserver/README.md](../gameserver/README.md)와 유닛 파일 기준이다. 실행한 적 없는 정적 작성본이며 Linux 서버 빌드, 실제 서버 종료 신호 처리, 드레인은 모두 미검증이다.
+게임 서버는 `systemctl`과 `journalctl`로, 업무 변경은 `shinshi-admin`으로 다룬다([도구 지도](README.md#도구-지도)). 유닛 이름과 경로는 [deploy/gameserver/README.md](../gameserver/README.md)와 유닛 파일 기준이다. 이 운영 절차는 실제 systemd 배포에서 미검증이다. Linux 개발 서버 빌드와 격리 환경 협조 종료의 과거 결과는 [로드맵](../../docs/05-implementation-roadmap.md)에 한정하며 운영 정산 드레인의 성공을 뜻하지 않는다.
 
 ## 서버 재시작과 드레인
 
@@ -10,8 +10,8 @@
 |---|---|
 | 유닛 | 마을 `shinshi-town.service` 하나, 던전 `shinshi-dungeon@<슬롯>.service` 슬롯 1..N(`shinshi-dungeon@1.service`부터). 포트는 마을 UDP 7777, 던전 슬롯 i는 7780+i-1 |
 | 던전 수명 | 출정 하나가 끝나면 스스로 종료(종료 코드 0 재활용, 70 불변식 위반, 75 서버 풀 존재 상실)하고 `Restart=always`, `RestartSec=2`로 새 bootId와 함께 다시 뜬다. 300초 안에 시작 5회를 넘으면 systemd가 시작을 멈춘다 |
-| 중지 | `systemctl stop`은 프로세스 그룹에 SIGTERM을 보내고 최대 300초(`TimeoutStopSec`) 기다린 뒤 SIGKILL. 이 시간은 임시 상한일 뿐 세션 마감·정산 성공을 판정하지 않는다 |
-| 드레인 | **운영자가 시작하는 드레인, SIGTERM 연동, 정산 outbox 드레인은 구현됐다는 근거가 없다.** `shinshi-admin`에 서버를 드레인·재시작하는 명령은 없다. 아래 "계획된 교체"는 문서화된 순서를 수동 절차로 근사한 것이다 |
+| 중지 | `systemctl stop`은 먼저 ExecStop의 `cooperative-stop.sh`가 PID를 담은 협조 종료 요청 파일을 만들고 최대 270초 기다린다. 유닛에는 `TimeoutStopSec=300`과 종료 신호 설정이 있다. 실제 systemd에서 ExecStop·SIGTERM·SIGKILL 단계 전체의 경과 시간은 미검증이며 300초를 전체 종료 시간으로 단정하지 않는다. 시간 설정 자체가 세션 마감·정산 성공을 뜻하지 않는다 |
+| 드레인 | `ServerShutdownRequestWatcher`가 요청 파일을 읽고 `ServerShutdownController`의 협조 종료를 시작한다. systemd는 위 ExecStop 파일 경로를 사용하며 C#의 직접 SIGTERM 처리로 설명하지 않는다. 정산 outbox 소비·드레인 완료는 별개다. `shinshi-admin`에 서버 재시작 명령은 없으므로 운영 교체는 systemd와 아래 확인 절차를 따른다 |
 | 강제 종료된 서버 | 제한 시간 뒤 SIGKILL된 프로세스를 정상 정산으로 취급하지 않는다. 미확정 경제 작업은 [장애 세션 복구](incident-response.md#장애-세션-복구)가 필요하다 |
 
 ### 기본 확인 명령
@@ -84,7 +84,7 @@ API 컨테이너 이름과 배포 방식은 배포 환경 결정 전이다. `doc
 
 ## 경보 대응
 
-경보 규칙은 [prometheus/alerts.yml](../monitoring/prometheus/alerts.yml)이다. **Alertmanager가 연결되기 전에는 경보가 Prometheus의 Alerts 화면에서만 보이고 누구에게도 전달되지 않는다.** 아래는 이 문서를 쓴 2026-10-07 작업 트리 기준이며, API 경보 6종과 Alertmanager는 다른 작업이 추가 중인 미커밋 변경이다(이름과 조건이 바뀔 수 있다). 임계값은 모두 초기값이고 Linux 부하 시험 뒤에 다시 정한다.
+경보 규칙은 [prometheus/alerts.yml](../monitoring/prometheus/alerts.yml)이다. **Alertmanager가 연결되기 전에는 경보가 Prometheus의 Alerts 화면에서만 보이고 누구에게도 전달되지 않는다.** 2026-10-07 최초 작성 당시 API 경보 6종과 Alertmanager는 추가 중인 미커밋 변경이었다. 2026-10-22 정적 대조에서는 해당 경보 규칙과 Alertmanager 설정 파일이 저장소에 추적되어 있다. 운영 환경의 실제 배포·통지 성공은 별도 검증 대상이다. 임계값은 모두 초기값이고 Linux 부하 시험 뒤에 다시 정한다.
 
 공통 순서: 경보 이름과 대상(`instance`, `role`)을 사고 기록에 적는다 → 아래 표의 확인 → 서버·DB를 건드리기 전에 [점검](service-control.md#점검-시작)이나 [기능 차단](service-control.md#기능-차단)이 필요한지 판단한다 → 조치 → 해소 확인.
 

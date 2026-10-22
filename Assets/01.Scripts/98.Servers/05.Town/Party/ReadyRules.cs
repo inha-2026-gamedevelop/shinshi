@@ -16,7 +16,7 @@ namespace Shinshi.Network
         // 성공 기록, 여우의 흔적)은 참가자마다 다르므로 준비 확인 응답의 progress로 본인 해금을 판정한다(CheckProgress).
         // 예약 API가 같은 요구 조건으로 다시 판정해 최종 거절한다(MISSING_UNLOCK).
         // 안내 완료는 IntroCompleteRequestMessage -> IntroProgressRelay -> API로 기록한다. 클라이언트가 보내는 시점은
-        // TODO(진욱/기웅) U18(docs/05-implementation-roadmap.md 프롤로그·튜토리얼)이 정한다. 그 전까지 숲(region_forest)은
+        // TODO(진욱/기웅) 프롤로그와 튜토리얼 구현이 정한다. 그 전까지 숲(region_forest)은
         // 기록이 없는 계정에게 열리지 않는다
 
         /****************************************
@@ -129,8 +129,8 @@ namespace Shinshi.Network
 
         // 던전 PotionServer는 물약 정의마다 귀속 하나만 기억해 사용 이벤트에 싣는다. 여러 귀속으로 나눠 예약하면 두 번째 귀속분은
         // 쓸 수 없고 정산이 반환만 한다. 그래서 한 귀속이 수량을 모두 채울 때만 그 귀속 한 줄로 배정한다(가용 목록 순서의 첫 귀속).
-        // TODO(민성): 귀속을 섞어 지참하는 것이 기획상 필요하면 PotionServer가 정의별 귀속 배열을 소비 순서대로 쓰게 바꾼다
-        // (docs/design/life-training.md 물약, 잠정 결정 7)
+        // TODO(민성): 귀속을 섞어 지참하는 것이 기획상 필요하면 PotionServer가 정의별 귀속 배열을 소비 순서대로 쓰게 바꾼다.
+        // 지참 정책이 확정되지 않아 지금은 귀속 한 줄만 배정한다
         /// <summary> 가용 물약에서 한 종류를 수량만큼, 수량을 모두 채우는 한 귀속에서 담는다. 그런 귀속이 없으면 거짓 </summary>
         public static bool TryAllocatePotions(ReservationPotion[] available, string definitionId, int quantity,
             List<ReservationPotion> into)

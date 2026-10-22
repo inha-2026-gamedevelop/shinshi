@@ -310,7 +310,7 @@ namespace Shinshi.Data.Growth
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.MARKET_ESCROWED);
             }
 
-            // TODO(민성): 착용 중인 원본 거절과 계승 뒤 대상 자동 착용 여부는 기획 미정(docs/design/growth-economy.md 6장).
+            // TODO(민성): 착용 중인 원본 거절과 계승 뒤 대상 자동 착용 여부는 기획 미정이다.
             // 확정 전에는 착용 원본을 BOUND_ITEM으로 거절하고 자동 착용하지 않는다
             InheritanceDecision decision = InheritanceRules.Evaluate(content,
                 new InheritanceItem(source.ItemId, sourceDefinition, source.Enhancement, source.Equipped, source.Locked),
@@ -446,7 +446,7 @@ namespace Shinshi.Data.Growth
             }
 
             // 분해는 플레이어가 고른 행위라 회수함으로 보내지 않는다. 반환이 보관 상한을 넘으면 장비를 지우지 않고
-            // INVENTORY_FULL로 거절한다(docs/design/growth-economy.md 9장: 공간이 없으면 비용을 소모하지 않고 거절).
+            // INVENTORY_FULL로 거절한다. 공간이 없으면 비용을 소모하지 않는다.
             // 회수함은 이미 확정된 획득(정산, 낙찰)만 받는다
             long refund = CraftRules.DismantleRefund(context.Content, definition);
             if (refund > 0)

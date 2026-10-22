@@ -26,8 +26,8 @@
 
 | 영역 | 기능 | 단계 | 구현(U25) |
 |---|---|---|---|
-| 기반 | 경제 원장, 운영자 감사 로그, 어드민 로그인·역할 | P0 | 구현됨. 원장 일일 대사 스케줄 연결은 U24 잔여 |
-| 계정 | 계정·캐릭터 검색, 재화·인벤토리·진행·세션 이력 조회, 강제 접속 종료 | P0 | 일부. 계정·캐릭터 ID·초대 코드 검색, 지갑·캐릭터·아이템·접속 임대·최근 세션 조회, 강제 종료(기존 토큰·인증 묶음·초대 폐기, 현재 접속 유지, 비밀번호 로그인은 막지 않음). 캐릭터 이름 검색 없음(이름 열은 0010에 생겼으나 어드민 검색 미연결), 진행 데이터는 저장소가 없어 조회 없음 |
+| 기반 | 경제 원장, 운영자 감사 로그, 어드민 로그인·역할 | P0 | 구현됨. `GrowthServiceCollectionExtensions`가 일일 `EconomyReconciliationService`를 등록하며 운영 실행 검증은 별도 |
+| 계정 | 계정·캐릭터 검색, 재화·인벤토리·진행·세션 이력 조회, 강제 접속 종료 | P0 | 일부. 계정·캐릭터 ID·초대 코드 검색, 지갑·캐릭터·아이템·접속 임대·최근 세션 조회, 강제 종료(기존 토큰·인증 묶음·초대 폐기, 현재 접속 유지, 비밀번호 로그인은 막지 않음). POST 검색의 `characterName`과 `GET /admin/v1/characters/{id}`의 진행·장비·수련·부적 조회 구현 |
 | 계정 | 초대 코드 발급·폐기, 기기 변경 시 재발급(기존 세션 폐기) | P0 | 구현됨 |
 | 보상 | 개인 지급·회수(사유 필수), 우편함 | P0 | 구현됨. 지급은 계정 목록 지정, 실행자 단독 승인. 대상 2명 이상·보정 지급의 실행은 Admin |
 | 복구 | `RecoveryPending` 세션·경매 목록, 정산 재시도·수동 확정·장애 보정 지급 | P0 | 일부. 복구 대상 세션 목록·정산 재시도·서비스 장애 취소·격리 Settling 강제 종료·보정 지급(지급 경로). 경매 목록과 RecoveryPending 상태 처리는 없음 |
@@ -95,9 +95,9 @@
 
 **구현(U25).**
 
-- 계정 검색은 계정 ID·캐릭터 ID·초대 코드 원문(HMAC으로 바꿔 검색)이다. 요청 로그에 조회 문자열이 남으므로 초대 원문은 `POST /admin/v1/accounts/search` 본문으로만 받고, `GET /admin/v1/accounts?query=`는 UUID만 받는다. 캐릭터 이름 검색은 없다(이름 열은 0010에서 생겼으나 어드민 검색에 연결하지 않음). 상세 조회는 `reason`이 필수이고 데이터를 읽기 전에 감사 행을 먼저 커밋한다.
+- 계정 검색은 계정 ID·캐릭터 ID·초대 코드 원문(HMAC으로 바꿔 검색)이다. 요청 로그에 조회 문자열이 남으므로 초대 원문은 `POST /admin/v1/accounts/search` 본문으로만 받고, `GET /admin/v1/accounts?query=`는 UUID만 받는다. 이름 검색은 `POST /admin/v1/accounts/search`의 `characterName`으로 생성과 같은 정규화 키를 정확 조회하며 기본적으로 삭제 캐릭터를 제외한다(`includeDeletedCharacters`로 포함 가능). 상세 조회는 `reason`이 필수이고 데이터를 읽기 전에 감사 행을 먼저 커밋한다.
 - 강제 종료(kick)는 계정의 로그인 묶음과 하위 토큰(접근·갱신·게임 하위 세션·미소비 입장 토큰), `revokeInvites`(기본 true)면 초대도 폐기한다. **현재 접속은 유지한다**(응답 `currentSessionKept=true`). 게임 서버가 쥔 계정 접속 임대는 heartbeat로 계속 연장되고, 폐기된 토큰의 갱신·재접속·새 입장 토큰 발급부터 거절된다. **비밀번호 로그인은 막지 않는다.** 0010의 아이디·비밀번호 로그인이 있으므로 kick 뒤에도 같은 아이디와 비밀번호로 새 토큰을 받을 수 있다. 로그인 차단과 즉시 차단은 제재(P1)와 함께 정한다.
-- 복구 대상 목록(`GET /admin/v1/sessions`)은 세션만 보인다. 경매 복구 목록은 없다. 수동 복구(`POST /admin/v1/sessions/{id}/recovery`, Admin)는 `RetrySettlement`(Settling 정산 재시도), `ServiceCancel`(배정 서버 소실이 확인된 Running 장애 취소), `ForceClose`(정산이 5회 이상 실패해 격리된 Settling을 장애 취소와 같은 보상으로 닫음)다. 설계의 "수동 확정"은 `ForceClose`로 대신한다. 원래 정산안이 아니라 장애 취소 보상이므로 차이는 보정 지급으로 메운다. RecoveryPending 상태의 세션은 처리 경로가 없어 `INVALID_STATE`다.
+- 복구 대상 목록(`GET /admin/v1/sessions`)은 세션만 보인다. `GET /admin/v1/auctions`의 경매 복구 목록도 구현되어 있다. 수동 복구(`POST /admin/v1/sessions/{id}/recovery`, Admin)는 `RetrySettlement`(Settling 정산 재시도), `ServiceCancel`(배정 서버 소실이 확인된 Running 장애 취소), `ForceClose`(정산이 5회 이상 실패해 격리된 Settling을 닫음. 기본 정기·티켓/사용 물약은 장애 취소 틀을 쓰지만 추가 정기는 50% 내림으로 유지)다. 설계의 "수동 확정"은 `ForceClose`로 대신한다. 원래 정산안과 차이는 보정 지급으로 처리한다. 서비스 장애 취소의 추가 정기 100%를 ForceClose에 자동 적용하지 않는다. RecoveryPending 상태의 세션은 처리 경로가 없어 `INVALID_STATE`다.
 - `RetrySettlement`·`ServiceCancel`은 설계의 "한 원자 작업"과 달리 **두 트랜잭션**이다. 의도 감사 행(`admin.session.recovery.intent`)을 먼저 커밋하고, 정산·장애 취소는 자동 복구와 같은 서버 actor·operationId로 기존 경로가 자기 트랜잭션에서 확정한 뒤, 어드민 작업과 감사 행을 따로 확정한다. 마지막 단계가 실패해도 의도 행이 남는다. `alreadyApplied`는 복구 작업이 이번 호출 전에 이미 저장돼 있었는지다. 서버 복구가 어드민 operations 행보다 먼저 확정되므로, 세 action 모두 시작할 때 운영자 작업 키(운영자, operationId)를 action·대상 세션·요청 해시에 묶는 `admin_operation_claims` 행을 먼저 커밋하고 다르면 복구 없이 `IDEMPOTENCY_CONFLICT`다. 일반 업무 변경도 operations 행을 만들기 전에 같은 추가 전용 결속을 커밋한다. 다른 해시는 operations 행과 효과 없이 거절하므로, 일반 쓰기와 수동 복구가 경합해도 최초 요청만 실행되고 복구의 결과 키를 다른 요청이 점유하지 않는다. 같은 키의 수동 복구 실행은 끝까지 직렬화한다(같은 operationId로 서로 다른 세션을 동시에 복구하거나 어드민 단계 실패 뒤 다른 세션을 복구하는 것을 막음). `ForceClose`는 운영자 작업 한 트랜잭션에서 종결·원장(actor `Admin`)·감사를 함께 쓴다.
 - API 시작이나 DB 단절 뒤 30초 동안은 서버 소실 판정을 보류한다(`RecoveryLivenessGate`, 자동 복구와 공유, 프로세스별). 보류 중 새 `ServiceCancel`·`ForceClose`는 503 `BACKEND_UNAVAILABLE`과 `Retry-After`이고, 목록은 `livenessDeferred=true`, `instanceLost=false`로 보인다. 세부는 [Backend README](../../Backend/README.md)의 "장애 세션 복구".
 
@@ -201,7 +201,7 @@
 |---|---|---|
 | 어드민 API | 기존 ASP.NET Core API에 `/admin/v1` 경로와 별도 인증 스킴 | 별도 서비스는 트랜잭션·원장 코드를 중복시킴. **구현됨(U25)**: `Backend/src/Shinshi.Api/Admin/`, 별도 미들웨어 `AdminAuthenticationMiddleware`, DTO는 Unity 공유 계약이 아닌 `Backend/src/Shinshi.Contracts/Admin/` |
 | 명령줄 도구 | `Backend/src/Shinshi.AdminCli`가 어드민 API만 호출 | 체험판의 유일한 운영 도구. 사용법은 [Shinshi.AdminCli README](../../Backend/src/Shinshi.AdminCli/README.md) |
-| 어드민 화면 | **구현됨(2026-10-07)**: Blazor Interactive Server `Backend/src/Shinshi.Admin.Web/`가 어드민 API를 호출한다. 대시보드·캐릭터(이름 검색과 한 화면 프로필: 수련·장비 강화·부적·재화·최근 출정, `GET /admin/v1/characters/{id}`)·초대·지급·서비스 상태·공지·로그·장애 복구·운영자 관리 화면. 계정을 받는 입력은 캐릭터 이름도 받고, 날짜는 한국 시간 달력 입력, 비운 칸은 표시된 기본값으로 보낸다. 게임에 레벨 값이 없어 프로필은 수련 합계·최고 강화를 대신 보이고, 전투 능력치는 직업 기본값 데이터가 백엔드에 없어 계산하지 않는다 | React 등은 화면 자유도가 크지만 팀 언어가 C#이라 학습·유지 비용이 큼 |
+| 어드민 화면 | **구현됨(2026-10-07)**: Blazor Interactive Server `Backend/src/Shinshi.Admin.Web/`가 어드민 API를 호출한다. 대시보드·캐릭터(이름 검색과 한 화면 프로필: 수련·장비 강화·부적·재화·최근 출정, `GET /admin/v1/characters/{id}`)·초대·지급·서비스 상태·공지·로그·장애 복구·운영자 관리 화면. 계정을 받는 입력은 캐릭터 이름도 받고, 날짜는 한국 시간 달력 입력, 비운 칸은 표시된 기본값으로 보낸다. 게임에는 경험치·파생 레벨이 있지만 현재 어드민 프로필 DTO는 레벨을 내보내지 않아 수련 합계·최고 강화를 보인다. `PostgresAdminCharacterRepository`가 `combatStats`를 null로 반환하므로 전투 능력치 표시는 별도 구현 범위다 | React 등은 화면 자유도가 크지만 팀 언어가 C#이라 학습·유지 비용이 큼 |
 | 로그 저장소 | 체험판은 API·서버의 구조화 JSON을 호스트 로그 수집 서비스로 보냄 | 전용 검색 스택은 규모가 커진 뒤 검토 |
 | 지표 | API·서버가 지표를 노출하고 관리형 모니터링으로 수집 | 배포 환경 결정(U19) 뒤 확정 |
 
@@ -251,7 +251,7 @@ U25에서 정한 것.
 | 강제 종료의 즉시 차단 | 기존 토큰·초대 폐기만, 현재 접속 유지, 비밀번호 로그인 허용(현재) / 게임 서버에 연결 종료 통지·계정 임대 해제·로그인 차단 | 민성 | 제재(P1)와 함께 |
 | RecoveryPending 상태 세션 처리 | 처리 경로 추가 / 원인 수정 뒤 자동 복구 재시도 | 민성 | U17 장애 복구 |
 | 점검 중 우편 수령 | 허용(현재, `inbox_claim`으로만 막음) / 점검이면 수령도 거절 | 민성 | 외부 체험 전 |
-| 0008·0009 배포 묶음 | 0008의 지급·조정·수령 코드가 0009의 `currency_reserved`를 읽으므로 함께 커밋·배포(현재 둘 다 미커밋) | 민성 | 커밋 때 |
+| 0008·0009 배포 묶음 | 0008의 지급·조정·수령 코드가 0009의 `currency_reserved`를 읽으므로 함께 적용한다. 두 마이그레이션 모두 저장소에 추적되어 있으며 배포 여부는 대상 DB 이력으로 확인 | 민성 | 대상 DB 배포 전 |
 
 ## 9. 검증 기준
 

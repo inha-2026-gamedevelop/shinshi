@@ -286,7 +286,7 @@ CA04의 개별 물체 참조로 Meshy 원본 8종을 생성하고 Blender 5.1에
 
 ## CA-07 추가 환경 모델 — 2026-10-03
 
-CA-07(`docs/design/references/concept-art/village-layout-02.webp`)에서 기존 Assets에 없던 4종이다. 입력 이미지는 원화 크롭을 스타일 참조로 사용해 Codex 이미지 생성으로 만든 단일 물체 시안이다. Meshy 7.1의 PBR·2K 출력을 Blender 5.1에서 가공했다.
+마을 배치 원화 CA-07에서 기존 Assets에 없던 4종이다. 입력 이미지는 원화 크롭을 스타일 참조로 사용해 Codex 이미지 생성으로 만든 단일 물체 시안이다. Meshy 7.1의 PBR·2K 출력을 Blender 5.1에서 가공했다.
 
 | 공유 이름 | 생성 도구 | 가공 요약 |
 |---|---|---|
