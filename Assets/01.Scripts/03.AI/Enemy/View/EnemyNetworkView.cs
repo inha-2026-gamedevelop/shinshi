@@ -9,6 +9,7 @@ using Mirror;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.Network;
 
 namespace Shinshi.AI
 {
@@ -35,6 +36,8 @@ namespace Shinshi.AI
         // 모델 배열 순서, 프리팹 빌더가 같은 순서로 채운다
         public const int MODEL_BEAST   = 0;
         public const int MODEL_VENDIGO = 1;
+
+        private static bool s_quitting;
 
         private static readonly Color FLASH_TINT = Color.red;
 
@@ -73,6 +76,8 @@ namespace Shinshi.AI
         private bool                  _flashApplied;
         private bool                  _hasPose;
         private bool                  _animatorDirty;
+        private bool                  _corpseLaunched;
+        private bool                  _seenAlive;
 
         /****************************************
         *              Unity Event
@@ -80,6 +85,7 @@ namespace Shinshi.AI
 
         protected override void OnViewAwake()
         {
+            s_quitting = false;
             _state = GetComponent<EnemyNetState>();
             _block = new MaterialPropertyBlock();
 
@@ -105,13 +111,28 @@ namespace Shinshi.AI
             _hasPose       = false;
             _lastBehavior  = EEnemyState.Idle;
             _animatorDirty = true;
+            _corpseLaunched = false;
+            _seenAlive      = false;
             ClearFlash();
             HideTelegraph();
+        }
+
+        private void OnApplicationQuit()
+        {
+            s_quitting = true;
         }
 
         private void OnDisable()
         {
             HideTelegraph();
+            ProbeLog($"OnDisable corpseLaunched={_corpseLaunched} seenAlive={_seenAlive}");
+            LaunchOnRemoval();
+        }
+
+        private void OnDestroy()
+        {
+            ProbeLog($"OnDestroy corpseLaunched={_corpseLaunched} seenAlive={_seenAlive}");
+            LaunchOnRemoval();
         }
 
         private void Update()
@@ -122,6 +143,7 @@ namespace Shinshi.AI
             }
 
             ApplyHealthFlash();
+            ApplyCorpse();
             ApplyRole();
             ApplyAnimation();
             ApplyFlash();
@@ -285,6 +307,86 @@ namespace Shinshi.AI
             _lastPosition = position;
             _lastBehavior = behavior;
             _hasPose      = true;
+        }
+
+        // 죽음을 처음 본 프레임에 모델 복제본을 날려 보내고 원본은 숨긴다. 개체는 곧 풀로 돌아가므로 시체는 따로 남긴다.
+        // 처치 방향 계약이 없어 내 플레이어 반대쪽으로 날리고, 내 플레이어를 모르면 개체의 뒤쪽으로 날린다(표현 전용 기본값).
+        // 모델이 없는 대체 캡슐은 날리지 않는다
+        private void ApplyCorpse()
+        {
+            if (_state.LifeState == EParticipantLifeState.Alive)
+            {
+                _seenAlive = true;
+                return;
+            }
+
+            // 풀에서 켜진 직후 이전 생애의 죽음 상태가 남아 있어도 산 모습을 한 번 본 개체만 시체로 만든다
+            if (_corpseLaunched || (!_seenAlive) || (_activeModel < 0))
+            {
+                return;
+            }
+
+            ProbeLog("Dead 상태 수신, 시체 발사");
+            LaunchCorpse();
+        }
+
+        // 서버는 처치된 적을 상태 전달 없이 곧바로 내리므로 클라이언트는 사망 상태를 못 받고 제거만 받는다.
+        // 연결이 살아 있고 씬이 내려가는 중이 아닐 때의 제거를 처치로 보고 시체를 날린다. 던전 종료로 산 채 내려가는 개체도 시체가 될 수 있다
+        private void LaunchOnRemoval()
+        {
+            if (_corpseLaunched || (!_seenAlive) || (_activeModel < 0) || s_quitting || (!NetworkClient.active)
+                || (!gameObject.scene.isLoaded) || IsSortieClosing())
+            {
+                return;
+            }
+
+            ProbeLog("제거 시점 시체 발사");
+            LaunchCorpse();
+        }
+
+        // 출정 종료나 내 이탈이 이미 알려진 뒤의 제거는 던전 정리라 처치가 아니다
+        private static bool IsSortieClosing()
+        {
+            if (!SortieClient.HasStatus)
+            {
+                return false;
+            }
+
+            SortieStatusMessage status = SortieClient.Current;
+            return status.HasPersonalClose || (status.Phase >= ESortiePhase.Ended);
+        }
+
+        private void LaunchCorpse()
+        {
+            _corpseLaunched = true;
+            if (EnemyCorpse.Launch(_modelRoots[_activeModel], ReadFlyDirection()))
+            {
+                _modelRoots[_activeModel].SetActive(false);
+                _activeModel = NO_MODEL; // 적용한 역할은 그대로 둬 이번 생애에는 모델이 다시 켜지지 않고, 풀에서 다시 켜질 때 OnEnable이 지운다
+                _animator    = null;
+            }
+        }
+
+        // 서버가 방향을 알리지 않으므로 이 클라이언트의 플레이어에게서 멀어지는 쪽을 쓴다. 없으면 영벡터로 넘겨 시체가 정한 기본 방향을 쓰게 한다
+        private Vector3 ReadFlyDirection()
+        {
+            NetworkIdentity local = NetworkClient.localPlayer;
+            if (local == null)
+            {
+                return Vector3.zero;
+            }
+
+            return transform.position - local.transform.position;
+        }
+
+        // 임시 진단. 실제 던전에서 사망 상태가 클라이언트에 도달하는지 확인한 뒤 지운다
+        [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void ProbeLog(string message)
+        {
+            if (_state != null)
+            {
+                Debug.Log($"[EnemyDeathProbe] combatId={_state.CombatId} life={_state.LifeState} hp={_state.Health}/{_state.MaxHealth} behavior={_state.Behavior} {message}");
+            }
         }
 
         private void ApplyHealthFlash()
