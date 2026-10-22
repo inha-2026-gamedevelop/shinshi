@@ -213,8 +213,7 @@ namespace Shinshi.Tests
             Guid tradeId = StartTrade();
             ReachCommitting(tradeId);
 
-            Pump();
-            Pump();
+            PumpResults(2);
 
             Assert.IsTrue(_audience.TryGetLast(1, out TradeStateMessage state));
             Assert.AreEqual(ETradeState.Done, state.State);
@@ -232,8 +231,7 @@ namespace Shinshi.Tests
             _commitMode = "reject";
             Guid tradeId = StartTrade();
             ReachCommitting(tradeId);
-            Pump();
-            Pump();
+            PumpResults(2);
 
             Assert.IsTrue(_audience.TryGetLast(1, out TradeStateMessage state));
             Assert.AreEqual(ETradeState.Editing, state.State);
@@ -269,8 +267,7 @@ namespace Shinshi.Tests
             _prepareMode = "ok";
             _now += TradeSettings.PREPARE_RETRY_SECONDS + 0.1;
             _director.Tick();
-            Pump();
-            Pump();
+            PumpResults(2);
 
             Assert.AreEqual(0, _director.SessionCount);
             Assert.AreEqual(0, _audience.Count<TradeStateMessage>(2));
@@ -284,8 +281,7 @@ namespace Shinshi.Tests
             _commitMode = "down";
             Guid tradeId = StartTrade();
             ReachCommitting(tradeId);
-            Pump();
-            Pump();
+            PumpResults(2);
 
             Assert.AreEqual(1, _director.SessionCount);
             _resolveState = TradeCodes.ExecutionState.PREPARED;
@@ -320,8 +316,7 @@ namespace Shinshi.Tests
             _commitMode = "down";
             Guid tradeId = StartTrade();
             ReachCommitting(tradeId);
-            Pump();
-            Pump();
+            PumpResults(2);
             _resolveState = TradeCodes.ExecutionState.ABANDONED;
             _now += TradeSettings.RESOLVE_FIRST_SECONDS + 0.1;
             _director.Tick();
@@ -349,11 +344,17 @@ namespace Shinshi.Tests
             _director.RemoveMember(1);
             Assert.IsTrue(_director.IsCommittingAccount("acc-a"));
 
+            // 실패한 준비 요청은 스레드 풀에서 재시도하므로 결과가 큐에 들어올 때까지 기다려 한 건만 전달한다.
+            // 이 경계 전에 모드를 바꾸면 재시도가 새 모드를 읽는 경합이 생긴다
+            Pump();
+            Assert.IsTrue(_director.IsCommittingAccount("acc-a"), "준비 결과가 불명이면 확정 중이 유지돼야 한다");
+            Assert.AreEqual(0, _gateway.InFlightCount);
+
+            // 다음 재시도 시각은 불명 결과를 받은 시계 기준이라 시계를 올리는 일은 그 뒤에 한다
             _prepareMode = "ok";
             _now += TradeSettings.PREPARE_RETRY_SECONDS + 0.1;
             _director.Tick();
-            Pump();
-            Pump();
+            PumpUntil(() => !_director.IsCommittingAccount("acc-a"));
             Assert.IsFalse(_director.IsCommittingAccount("acc-a"));
         }
 
@@ -387,8 +388,7 @@ namespace Shinshi.Tests
             _commitMode = "abandoned";
             Guid tradeId = StartTrade();
             ReachCommitting(tradeId);
-            Pump();
-            Pump();
+            PumpResults(2);
 
             Assert.IsTrue(_audience.TryGetLast(1, out TradeStateMessage state));
             Assert.AreEqual(ETradeState.Failed, state.State);
@@ -402,8 +402,7 @@ namespace Shinshi.Tests
             _commitMode = "notfound";
             Guid tradeId = StartTrade();
             ReachCommitting(tradeId);
-            Pump();
-            Pump();
+            PumpResults(2);
 
             Assert.AreEqual(1, _director.SessionCount);
             Assert.IsTrue(_audience.TryGetLast(1, out TradeStateMessage state));
@@ -476,8 +475,7 @@ namespace Shinshi.Tests
             _resolveMode = "down";
             Guid tradeId = StartTrade();
             ReachCommitting(tradeId);
-            Pump();
-            Pump();
+            PumpResults(2);
             refreshed.Clear();
 
             // 회로가 열려도 응답은 실패로 돌아오므로 반복 횟수로 센다
@@ -599,6 +597,37 @@ namespace Shinshi.Tests
         {
             FakeBackendTransport.WaitForCompleted(_gateway, 1);
             _gateway.Pump();
+        }
+
+        // 준비 성공 뒤 commit 같이 콜백이 다음 요청을 보내는 흐름은 한 Pump이 두 결과를 함께 소비할 수 있어, Pump 횟수 대신 전달 건수로 맞춘다
+        private void PumpResults(int expected)
+        {
+            int delivered = 0;
+            while (delivered < expected)
+            {
+                FakeBackendTransport.WaitForCompleted(_gateway, 1);
+                delivered += _gateway.Pump();
+            }
+
+            Assert.AreEqual(expected, delivered, "예상보다 많은 결과가 한꺼번에 전달됐다");
+        }
+
+        // Pump 한 번이 콜백에서 보낸 다음 요청의 결과까지 소비할 수 있어, 결과 개수 대신 완료 조건으로 멈춘다
+        private void PumpUntil(Func<bool> isDone)
+        {
+            const int MAX_ROUNDS = 8;
+
+            for (int round = 0; round < MAX_ROUNDS; ++round)
+            {
+                if (isDone())
+                {
+                    return;
+                }
+
+                Pump();
+            }
+
+            Assert.IsTrue(isDone(), $"결과 {MAX_ROUNDS}번을 전달해도 완료 조건이 충족되지 않았다");
         }
 
         private static TradeOfferLine[] Herb(int quantity)
