@@ -485194,6 +485194,156 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1651644043856885045, guid: 661e65f703bcc91498b7cefe3a5cf402, type: 3}
   m_PrefabInstance: {fileID: 7897361496413632601}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &930000000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 930000001}
+  - component: {fileID: 930000002}
+  m_Layer: 0
+  m_Name: MoveClickMarkers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &930000001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 930000011}
+  - {fileID: 930000014}
+  - {fileID: 930000017}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &930000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8a54e6616fc47a42b978a2a28d948db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarkerBinder
+  _markers:
+  - {fileID: 930000012}
+  - {fileID: 930000015}
+  - {fileID: 930000018}
+--- !u!1001 &930000010
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 930000001}
+    m_Modifications:
+    - target: {fileID: 4802695629588495194, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+      propertyPath: m_Name
+      value: PF_MoveMarker_Ripple_01
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+--- !u!4 &930000011 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 125031407448004059, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000010}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &930000012 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7220865584821450378, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000010}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fec4e337bf14d6a4bbb5f30930b208aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarker
+--- !u!1001 &930000013
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 930000001}
+    m_Modifications:
+    - target: {fileID: 4802695629588495194, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+      propertyPath: m_Name
+      value: PF_MoveMarker_Ripple_02
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+--- !u!4 &930000014 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 125031407448004059, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000013}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &930000015 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7220865584821450378, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000013}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fec4e337bf14d6a4bbb5f30930b208aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarker
+--- !u!1001 &930000016
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 930000001}
+    m_Modifications:
+    - target: {fileID: 4802695629588495194, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+      propertyPath: m_Name
+      value: PF_MoveMarker_Ripple_03
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+--- !u!4 &930000017 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 125031407448004059, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &930000018 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7220865584821450378, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000016}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fec4e337bf14d6a4bbb5f30930b208aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarker
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -485222,3 +485372,4 @@ SceneRoots:
   - {fileID: 1570269872}
   - {fileID: 2020686209}
   - {fileID: 399564902}
+  - {fileID: 930000001}

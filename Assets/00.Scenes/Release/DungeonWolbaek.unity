@@ -2213,6 +2213,73 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 13562248}
   m_CullTransparentMesh: 1
+--- !u!1001 &13888128
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1580464130}
+    m_Modifications:
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2089765844206047535, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+      propertyPath: m_Name
+      value: PF_PlayerFemaleModular
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+--- !u!95 &13888129 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 4660005768595558895, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+  m_PrefabInstance: {fileID: 13888128}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &13888130 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1606525413412375445, guid: 55ad96c6fb4f7064882e772b2999f5d6, type: 3}
+  m_PrefabInstance: {fileID: 13888128}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &14391377
 GameObject:
   m_ObjectHideFlags: 0
@@ -85295,6 +85362,22 @@ PrefabInstance:
 --- !u!4 &603600097 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8304438087954103419, guid: 1a0caae8d4e8cdd4c8153d7dea5cbd2d, type: 3}
+  m_PrefabInstance: {fileID: 603600096}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &603600098 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9178423247471882500, guid: 1a0caae8d4e8cdd4c8153d7dea5cbd2d, type: 3}
+  m_PrefabInstance: {fileID: 603600096}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
+--- !u!20 &603600099 stripped
+Camera:
+  m_CorrespondingSourceObject: {fileID: 8244865211215759527, guid: 1a0caae8d4e8cdd4c8153d7dea5cbd2d, type: 3}
   m_PrefabInstance: {fileID: 603600096}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &606325586
@@ -221280,6 +221363,7 @@ MonoBehaviour:
   _resonanceView: {fileID: 351183762}
   _potionView: {fileID: 577868429}
   _waveView: {fileID: 1968045933}
+  _progressView: {fileID: 0}
   _reviveView: {fileID: 456463470}
   _unavailableRoots:
   - {fileID: 1222678167}
@@ -222544,6 +222628,82 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1580397520}
   m_CullTransparentMesh: 1
+--- !u!1 &1580464127
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1580464130}
+  - component: {fileID: 1580464129}
+  - component: {fileID: 1580464128}
+  m_Layer: 0
+  m_Name: DevWalker
+  m_TagString: EditorOnly
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1580464128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1580464127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13f6d11c62a70c347ae4db75b966564a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevQuarterViewWalker
+  _outputCamera: {fileID: 603600099}
+  _followCamera: {fileID: 603600098}
+  _animator: {fileID: 13888129}
+  _teleportPoints: []
+  _disableOnPlay: []
+--- !u!143 &1580464129
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1580464127}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 1.8
+  m_Radius: 0.4
+  m_SlopeLimit: 50
+  m_StepOffset: 0.4
+  m_SkinWidth: 0.05
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!4 &1580464130
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1580464127}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 8.485282, y: 0.1, z: 8.485282}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 13888130}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1581053736
 GameObject:
   m_ObjectHideFlags: 0
@@ -303359,6 +303519,156 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1651644043856885045, guid: 661e65f703bcc91498b7cefe3a5cf402, type: 3}
   m_PrefabInstance: {fileID: 7897361496413632601}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &930000000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 930000001}
+  - component: {fileID: 930000002}
+  m_Layer: 0
+  m_Name: MoveClickMarkers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &930000001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 930000011}
+  - {fileID: 930000014}
+  - {fileID: 930000017}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &930000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930000000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8a54e6616fc47a42b978a2a28d948db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarkerBinder
+  _markers:
+  - {fileID: 930000012}
+  - {fileID: 930000015}
+  - {fileID: 930000018}
+--- !u!1001 &930000010
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 930000001}
+    m_Modifications:
+    - target: {fileID: 4802695629588495194, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+      propertyPath: m_Name
+      value: PF_MoveMarker_Ripple_01
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+--- !u!4 &930000011 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 125031407448004059, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000010}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &930000012 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7220865584821450378, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000010}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fec4e337bf14d6a4bbb5f30930b208aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarker
+--- !u!1001 &930000013
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 930000001}
+    m_Modifications:
+    - target: {fileID: 4802695629588495194, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+      propertyPath: m_Name
+      value: PF_MoveMarker_Ripple_02
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+--- !u!4 &930000014 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 125031407448004059, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000013}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &930000015 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7220865584821450378, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000013}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fec4e337bf14d6a4bbb5f30930b208aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarker
+--- !u!1001 &930000016
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 930000001}
+    m_Modifications:
+    - target: {fileID: 4802695629588495194, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+      propertyPath: m_Name
+      value: PF_MoveMarker_Ripple_03
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+--- !u!4 &930000017 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 125031407448004059, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &930000018 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7220865584821450378, guid: 491f52210a9fd384683696c818e4467a, type: 3}
+  m_PrefabInstance: {fileID: 930000016}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fec4e337bf14d6a4bbb5f30930b208aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiMoveClickMarker
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -303391,3 +303701,5 @@ SceneRoots:
   - {fileID: 297109516}
   - {fileID: 501964155}
   - {fileID: 1462996336}
+  - {fileID: 1580464130}
+  - {fileID: 930000001}
