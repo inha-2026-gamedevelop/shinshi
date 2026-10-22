@@ -379,8 +379,7 @@ namespace Shinshi.Network
             _events.Tick(serverTime);
             for (int i = 0; i < _roster.Count; ++i)
             {
-                Save(new SessionEventData(ESessionEventType.ParticipantJoined, serverTime,
-                    participantId: _roster.GetAt(i).ParticipantKey, isBossSession: _isBossSession));
+                Save(SessionEventData.ParticipantJoined(serverTime, _roster.GetAt(i).ParticipantKey, _isBossSession));
             }
 
             if (_storageFault)
@@ -591,8 +590,7 @@ namespace Shinshi.Network
 
             if (before.ConnectionState != EParticipantConnectionState.Connected)
             {
-                Save(new SessionEventData(ESessionEventType.ParticipantJoined, serverTime,
-                    participantId: before.ParticipantKey, isBossSession: _isBossSession));
+                Save(SessionEventData.ParticipantJoined(serverTime, before.ParticipantKey, _isBossSession));
             }
 
             return true;
@@ -613,8 +611,7 @@ namespace Shinshi.Network
 
             if (before.ConnectionState == EParticipantConnectionState.Connected)
             {
-                Save(new SessionEventData(ESessionEventType.ParticipantLeft, serverTime,
-                    participantId: before.ParticipantKey, isBossSession: _isBossSession));
+                Save(SessionEventData.ParticipantDisconnected(serverTime, before.ParticipantKey, _isBossSession));
             }
 
             return true;
@@ -659,9 +656,8 @@ namespace Shinshi.Network
 
                 LootRollResult loot = LootRoller.Roll(_lootSalt, _sessionId, participant.ParticipantKey, _killSequence,
                     in _sourceRules[index], _participantEffects[i]);
-                Save(new SessionEventData(ESessionEventType.EnemyKilled, _serverTime,
-                    participantId: participant.ParticipantKey, sourceId: sourceId,
-                    killerParticipantId: killerParticipantId, killSequence: _killSequence, waveIndex: waveIndex, loot: loot));
+                Save(SessionEventData.EnemyKilled(_serverTime, participant.ParticipantKey, sourceId, killerParticipantId,
+                    _killSequence, waveIndex, in loot));
                 GrantExperience(participant.ParticipantKey, _sourceExperienceKinds[index], sourceId);
                 _ledger.AddLoot(i, in loot);
                 Accrue(i, participant.ParticipantKey, loot.ExtraEssence, waveIndex, _killSequence);
@@ -684,13 +680,13 @@ namespace Shinshi.Network
                 ParticipantSnapshot participant = _roster.GetAt(i);
                 if (_roster.IsRewardEligible(participant.ParticipantId, _serverTime))
                 {
-                    Save(new SessionEventData(ESessionEventType.WaveCleared, _serverTime,
-                        participantId: participant.ParticipantKey, waveIndex: waveIndex));
+                    Save(SessionEventData.WaveCleared(_serverTime, participant.ParticipantKey, waveIndex));
                     GrantExperience(participant.ParticipantKey, CharacterExperienceSource.WAVE_CLEARED,
                         _waveExperienceSourceIds[waveIndex]);
                     long baseEssence = _ledger.AddWaveBase(i, _rewardRule.BaseEssencePerWave,
                         _rewardRule.RefineShardsPerWave);
-                    SaveAccrual(ESessionEventType.BaseEssenceAccrued, participant.ParticipantKey, baseEssence, waveIndex, 0);
+                    SaveAccrual(SessionEventData.BaseEssenceAccrued(_serverTime, participant.ParticipantKey, baseEssence,
+                        waveIndex, 0));
                     Accrue(i, participant.ParticipantKey, _rewardRule.ExtraEssencePerWave, waveIndex, 0);
                 }
             }
@@ -822,10 +818,8 @@ namespace Shinshi.Network
 
             _lastDepartureReason = reason;
 
-            Save(new SessionEventData(ESessionEventType.ParticipantLeft, serverTime,
-                participantId: participant.ParticipantKey, reason: reason, isBossSession: _isBossSession));
-            Save(new SessionEventData(ESessionEventType.ParticipantSettled, serverTime,
-                participantId: participant.ParticipantKey, reason: reason, isBossSession: _isBossSession));
+            Save(SessionEventData.ParticipantClosed(serverTime, participant.ParticipantKey, reason, _isBossSession));
+            Save(SessionEventData.ParticipantSettled(serverTime, participant.ParticipantKey, reason, _isBossSession));
         }
 
         private void Finish(ESessionEndReason reason)
@@ -865,8 +859,7 @@ namespace Shinshi.Network
                 _roster.TryClose(_roster.GetAt(i).ParticipantId, reason, _serverTime);
             }
 
-            Save(new SessionEventData(ESessionEventType.SessionEnded, _serverTime,
-                reason: reason, isBossSession: _isBossSession, grants: CreateSettlementGrants()));
+            Save(SessionEventData.SessionEnded(_serverTime, reason, _isBossSession, CreateSettlementGrants()));
         }
 
         // 종료 때 한 번만 만든다. API에 개인 이탈 정산이 아직 없어 원래 참가자 전원을 한 번씩 덮어야 받아 준다.
@@ -918,20 +911,18 @@ namespace Shinshi.Network
         private void Accrue(int index, string participantKey, long amount, int waveIndex, long killSequence)
         {
             long accepted = _ledger.AccrueExtra(index, amount);
-            SaveAccrual(ESessionEventType.EssenceAccrued, participantKey, accepted, waveIndex, killSequence);
+            SaveAccrual(SessionEventData.EssenceAccrued(_serverTime, participantKey, accepted, waveIndex, killSequence));
         }
 
         // 기본, 추가 정기 적립 이벤트. 양수만 보낸다. API가 0 이하 적립을 형식 오류로 배치 전체를 거절하기 때문이다
-        private void SaveAccrual(ESessionEventType type, string participantKey, long amount, int waveIndex,
-            long killSequence)
+        private void SaveAccrual(in SessionEventData data)
         {
-            if (amount <= 0)
+            if (data.Amount <= 0)
             {
                 return;
             }
 
-            Save(new SessionEventData(type, _serverTime, participantId: participantKey, killSequence: killSequence,
-                waveIndex: waveIndex, amount: amount));
+            Save(in data);
         }
 
         // 종료 때 한 번만 부른다. 정상 출정은 고칠 것이 없어 경고가 남지 않는다
@@ -971,9 +962,7 @@ namespace Shinshi.Network
                 _storageFault = true;
                 return;
             }
-            Save(new SessionEventData(ESessionEventType.ExperienceGranted, _serverTime,
-                participantId: participantKey, sourceId: sourceId, amount: amount,
-                experienceSourceKind: sourceKind, experienceSettingsHash: _experienceHash));
+            Save(SessionEventData.ExperienceGranted(_serverTime, participantKey, sourceId, amount, sourceKind, _experienceHash));
             _events.RequestImmediateSend();
         }
 

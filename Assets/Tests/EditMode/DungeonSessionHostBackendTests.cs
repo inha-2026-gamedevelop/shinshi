@@ -23,7 +23,7 @@ namespace Shinshi.Tests
 {
     public class DungeonSessionHostBackendTests
     {
-        // 백엔드 출정 경로(접속 임대 이관, start, 시작 전 이탈과 끊김, 종료 원인)를 가짜 전송기로 본다
+        // 백엔드 출정 경로(접속 임대 이관, start, 시작 전 이탈과 끊김, 종료 원인, 보스 성공 정산과 경매 순서)를 가짜 전송기로 본다
 
         /****************************************
         *                Fields
@@ -235,6 +235,58 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.SessionMismatch, _host.Admit(in claims, binding));
         }
 
+        [Test]
+        public void Tick_BossSuccess_HoldsReturnAndTerminalUntilSettlementAckAuctionAndFinishAck()
+        {
+            var audience = new StatusAudience();
+            _host.SortieAudience = audience;
+            int one = Admit(API_ONE);
+            Tick(1.0);
+            Complete();
+            Tick(2.0);
+            Complete();
+            Tick(3.0);
+            Assert.IsTrue(_host.IsSessionRunning);
+
+            // 종료 이벤트 저장이 확인된 틱에 정산 요청이 나간다. 응답은 Pump로만 들어온다
+            Assert.IsTrue(_host.Session.TryCompleteBossForDevelopment(4.0));
+            Tick(6.0);
+            Complete();
+
+            BackendRequest[] requests = _transport.Requests.ToArray();
+            Assert.AreEqual(3, requests.Length);
+            Assert.AreEqual(Path(GameServerRoutes.SETTLEMENT_FORMAT), requests[2].Path);
+
+            // 정산 ACK는 받았지만 경매가 아직 만들어지지 않은 다음 틱 전이다
+            _host.SendStatusTo(one);
+            Assert.AreEqual(ESortieSettlementState.Settled, audience.Last.SettlementState);
+            Assert.IsNull(_host.Auction);
+            Assert.IsFalse(audience.Last.CanReturn, "보스 성공은 정산 ACK만으로 귀환하지 않는다");
+            Assert.IsFalse(_host.IsTerminal);
+
+            // 다음 틱에 경매가 만들어지고 finish 요청이 나간다. ACK 전에는 귀환도 종료도 막는다
+            Tick(8.0);
+            Assert.IsNotNull(_host.Auction);
+            Assert.AreEqual(EAuctionStep.Finishing, _host.Auction.Step);
+            Assert.IsFalse(_host.Auction.IsFinished);
+            _host.SendStatusTo(one);
+            Assert.AreEqual(ESortiePhase.Auction, audience.Last.Phase);
+            Assert.IsFalse(audience.Last.CanReturn);
+            Assert.IsFalse(_host.IsTerminal);
+
+            // finish ACK를 Pump로 받으면 귀환이 열리고, 다음 틱에 종료가 확정된다
+            Complete();
+            Assert.IsTrue(_host.Auction.IsFinished);
+            _host.SendStatusTo(one);
+            Assert.IsTrue(audience.Last.CanReturn);
+            Tick(10.0);
+
+            Assert.AreEqual(ESortieTerminalReason.Settled, _host.TerminalReason);
+            requests = _transport.Requests.ToArray();
+            Assert.AreEqual(4, requests.Length);
+            Assert.AreEqual(Path(GameServerRoutes.AUCTION_FINISH_FORMAT), requests[3].Path);
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
@@ -302,6 +354,20 @@ namespace Shinshi.Tests
             {
                 listener.OnBatchCompleted(attemptId, EEventBatchResult.Committed);
                 return true;
+            }
+        }
+
+        private sealed class StatusAudience : ISortieAudience
+        {
+            public SortieStatusMessage Last { get; private set; }
+
+            public void SendStatus(int participantId, in SortieStatusMessage message)
+            {
+                Last = message;
+            }
+
+            public void SendAbandonResult(int participantId, in SortieAbandonResultMessage message)
+            {
             }
         }
     }
