@@ -98,6 +98,7 @@ namespace Shinshi.Combat
         private SkillCatalogSO.SkillDefinition     _skill;
         private SkillCatalogSO.AscensionDefinition _ascension;
         private SkillModifiers                     _castModifiers;
+        private SkillExecutionPlan                 _plan;
         private ESkillPhase                        _phase            = ESkillPhase.Idle;
         private ESkillRequestKind                  _kind;
         private int                                _slot             = Constants.Combat.SKILL_SLOT_Q;
@@ -382,7 +383,8 @@ namespace Shinshi.Combat
                 reason = ERejectReason.InsufficientEnergy;
                 return false;
             }
-            if ((skill != null) && (RequiredEffectSlots(skill, in modifier) > CountFreeEffects()))
+            SkillExecutionPlan plan = (skill != null) ? new SkillExecutionPlan(skill, in modifier) : default;
+            if ((skill != null) && (plan.SlotCount > CountFreeEffects()))
             {
                 reason = ERejectReason.NoCapacity;
                 return false;
@@ -430,6 +432,7 @@ namespace Shinshi.Combat
             _skill         = skill;
             _ascension     = ascension;
             _castModifiers = modifier;
+            _plan          = plan;
             _kind          = kind;
             _slot          = slot;
             _origin        = origin;
@@ -446,7 +449,7 @@ namespace Shinshi.Combat
             if ((skill != null) && (_discardPending))
             {
                 // 후속 타격과 순차 발사가 끝나기 전에는 같은 동작이다. 그 사이 회피, 사망이 아직 나가지 않은 타격을 버린다
-                double lastFireAt = _resolveAt + GetScheduledTail(skill, in modifier);
+                double lastFireAt = _resolveAt + plan.ScheduledTail;
                 _recoveryEndsAt   = Math.Max(_activeEndsAt, lastFireAt) + recovery;
             }
             _phase          = ESkillPhase.Windup;
@@ -498,31 +501,6 @@ namespace Shinshi.Combat
                 }
             }
             return false;
-        }
-
-        // 동작 시작 뒤 마지막으로 예정된 타격까지의 시간(초), 이 시간 안은 같은 동작이다
-        private static float GetScheduledTail(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
-        {
-            SkillCoreVariant core    = modifiers.Core;
-            float            lastHit = 0f;
-            if (skill.Effect.RepeatCount > 1)
-            {
-                lastHit = (skill.Effect.RepeatCount - 1) * skill.Effect.RepeatInterval;
-            }
-            if (skill.Effect.SecondHitCoefficient > 0f)
-            {
-                lastHit = Math.Max(lastHit, skill.Effect.SecondHitDelay);
-            }
-            float tail = lastHit;
-            if (core.Is(ETalismanEffectKind.FollowUpStrike))
-            {
-                tail = Math.Max(tail, core.Delay);
-            }
-            else if (core.Is(ETalismanEffectKind.FollowUpProjectile))
-            {
-                tail = Math.Max(tail, lastHit + core.Delay);
-            }
-            return tail;
         }
 
         // 궁수 속성 부여와 속성 폭발은 화살 부적이 바꾸던 형태(사거리, 폭, 관통, 후속 화살, 후퇴)를 쓰지 않는다.
@@ -632,13 +610,12 @@ namespace Shinshi.Combat
             // 핵심 변형이 정한 형태(원형 교체, 근접의 갈래 투사체 교체)와 보조가 바꾼 반경, 각도로 첫 타격과 뒤따르는 타격을 모두 판정한다
             SkillCoreVariant core   = _castModifiers.Core;
             ESkillShape      shape  = TalismanModifierRules.GetShape(_skill, in _castModifiers);
-            if (shape == ESkillShape.Projectile)
+            if (_plan.IsProjectile)
             {
                 AddProjectiles(_resolveAt);
-                if (core.Is(ETalismanEffectKind.FollowUpProjectile))
+                if (_plan.HasFollowUpProjectile)
                 {
-                    float lastShot = (Math.Max(1, _skill.Effect.RepeatCount) - 1) * _skill.Effect.RepeatInterval;
-                    AddFollowUpProjectile(_resolveAt + lastShot + core.Delay);
+                    AddFollowUpProjectile(_resolveAt + _plan.FollowUpProjectileBase + _plan.CoreDelay);
                 }
                 return;
             }
@@ -656,26 +633,24 @@ namespace Shinshi.Combat
                 ApplyArea(_skill, in _castModifiers, shape, center, _aim, radius, arc, _castId, _actionId,
                     TalismanModifierRules.GetPrimaryCoefficient(_skill, in _castModifiers),
                     _skill.Effect.RootDuration + core.RootBonus, now);
-                float lastHitDelay = 0f;
-                if (_skill.Effect.SecondHitCoefficient > 0f)
+                if (_plan.EmitsSecondHit)
                 {
-                    lastHitDelay = _skill.Effect.SecondHitDelay;
-                    AddStrike(shape, center, radius, arc, _skill.Effect.SecondHitCoefficient, _resolveAt + lastHitDelay, _discardPending);
+                    AddStrike(shape, center, radius, arc, _skill.Effect.SecondHitCoefficient, _resolveAt + _plan.SecondHitDelay, _discardPending);
                 }
-                if (core.Is(ETalismanEffectKind.FollowUpStrike))
+                if (_plan.HasFollowUpStrike)
                 {
-                    AddStrike(shape, center, radius, arc, core.AddedCoefficient, _resolveAt + core.Delay, _discardPending);
+                    AddStrike(shape, center, radius, arc, core.AddedCoefficient, _resolveAt + _plan.CoreDelay, _discardPending);
                 }
-                else if (core.Is(ETalismanEffectKind.Shockwave))
+                else if (_plan.HasShockwave)
                 {
-                    AddStrike(ESkillShape.Circle, center, core.Radius, 0f, core.AddedCoefficient, _resolveAt + core.Delay);
+                    AddStrike(ESkillShape.Circle, center, core.Radius, 0f, core.AddedCoefficient, _resolveAt + _plan.CoreDelay);
                 }
-                else if (core.Is(ETalismanEffectKind.FollowUpProjectile))
+                else if (_plan.HasFollowUpProjectile)
                 {
-                    AddFollowUpProjectile(_resolveAt + lastHitDelay + core.Delay);
+                    AddFollowUpProjectile(_resolveAt + _plan.FollowUpProjectileBase + _plan.CoreDelay);
                 }
             }
-            if (_skill.Effect.Duration > 0f)
+            if (_plan.HasDurationEffect)
             {
                 // 화염 분출은 지속 피해를 지연 뒤 단일 폭발로 바꾼다. 반경과 피해 보조는 폭발에도 그대로 붙는다
                 if (core.Is(ETalismanEffectKind.Detonate))
@@ -714,9 +689,9 @@ namespace Shinshi.Combat
         {
             SkillCoreVariant core         = _castModifiers.Core;
             bool             pierceShot   = core.Is(ETalismanEffectKind.PierceShot);
-            int              count        = TalismanModifierRules.GetProjectileCount(_skill, in _castModifiers);
+            int              count        = _plan.ProjectileCount;
             float            step         = TalismanModifierRules.GetProjectileStepAngle(_skill, in _castModifiers);
-            int              repeat       = Math.Max(1, _skill.Effect.RepeatCount);
+            int              repeat       = _plan.VolleyCount;
             float            range        = TalismanModifierRules.GetCastRange(_skill, in _castModifiers);
             float            speed        = TalismanModifierRules.GetProjectileSpeed(_skill, in _castModifiers);
             float            halfWidth    = TalismanModifierRules.GetProjectileWidth(_skill, in _castModifiers) * Constants.Combat.SKILL_HALF_WIDTH_SCALE;
@@ -733,7 +708,7 @@ namespace Shinshi.Combat
             for (int shot = 0; shot < repeat; ++shot)
             {
                 // 순차 발사는 발사마다 새 동작 번호를 받아 같은 적도 발사마다 맞는다. 한 발사의 갈래는 같은 번호를 나눠 쓴다
-                double launchAt = now + (shot * _skill.Effect.RepeatInterval);
+                double launchAt = now + _plan.GetShotOffset(shot);
                 int    action   = (shot == 0) ? _actionId : _resolver.IssueInstanceId();
                 for (int i = 0; i < count; ++i)
                 {
@@ -1639,39 +1614,6 @@ namespace Shinshi.Combat
                 }
             }
             return count;
-        }
-
-        // 확정 전에 필요한 효과 칸을 모두 확인한다. 칸이 모자라 변형의 후속 타격이나 갈래만 빠진 채 비용을 받지 않게 한다
-        private static int RequiredEffectSlots(SkillCatalogSO.SkillDefinition skill, in SkillModifiers modifiers)
-        {
-            SkillCoreVariant core = modifiers.Core;
-            if ((skill.Area.Shape == ESkillShape.Summon) || (skill.Area.Shape == ESkillShape.Line))
-            {
-                return 0;
-            }
-            if (TalismanModifierRules.GetShape(skill, in modifiers) == ESkillShape.Projectile)
-            {
-                int volley = TalismanModifierRules.GetProjectileCount(skill, in modifiers) * Math.Max(1, skill.Effect.RepeatCount);
-                return volley + (core.Is(ETalismanEffectKind.FollowUpProjectile) ? 1 : 0);
-            }
-            int slots = 0;
-            if (skill.Effect.DamageCoefficient > 0f)
-            {
-                if ((core.Is(ETalismanEffectKind.FollowUpStrike)) || (core.Is(ETalismanEffectKind.Shockwave))
-                    || (core.Is(ETalismanEffectKind.FollowUpProjectile)))
-                {
-                    ++slots;
-                }
-                if (skill.Effect.SecondHitCoefficient > 0f)
-                {
-                    ++slots;
-                }
-            }
-            if (skill.Effect.Duration > 0f)
-            {
-                ++slots;
-            }
-            return slots;
         }
 
         private static bool IsValidModifiers(in SkillModifiers modifiers)
