@@ -241,8 +241,8 @@ namespace Shinshi.Tests
                 CastId     = Gate.IssueInstanceId();
                 Random.Enqueue(side);
 
-                // 기준 방향을 정하는 선택된 타깃, 정면 10m라 반경 밖이다
-                Anchor = Add(10, new Vector3(0f, 0f, 10f));
+                // 기준 방향을 정하는 선택된 타깃, 정면 30m라 반경 밖이다
+                Anchor = Add(10, new Vector3(0f, 0f, 30f));
             }
 
             public FakeCombatTarget Add(int id, Vector3 position, bool isSummon = false)
@@ -350,7 +350,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(0.75f, p.ActiveSeconds, TOLERANCE, "첫 폭발부터 마지막 폭발까지");
             Assert.AreEqual(1.6f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Fan, p.Shape.Shape);
-            Assert.AreEqual(6f, p.Shape.Range, TOLERANCE);
+            Assert.AreEqual(18f, p.Shape.Range, TOLERANCE);
             Assert.AreEqual(180f, p.Shape.ArcAngle, TOLERANCE);
             Assert.AreEqual(4, p.RawSweepZoneCount);
             Assert.AreEqual(0.25f, p.SweepIntervalSeconds, TOLERANCE);
@@ -400,7 +400,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(r.CastId, r.Listener.StartCast);
             Assert.AreEqual(Vector3.zero, r.Listener.StartOrigin);
             Assert.AreEqual(0f, Vector3.Angle(Vector3.right, r.Listener.StartBase), ANGLE_TOL, "유효 타깃을 향한 수평 방향");
-            Assert.AreEqual(6f, r.Listener.StartRadius, TOLERANCE);
+            Assert.AreEqual(18f, r.Listener.StartRadius, TOLERANCE);
             Assert.AreEqual(180f, r.Listener.StartArc, TOLERANCE);
             Assert.AreEqual(4, r.Listener.StartZones);
             Assert.AreEqual(2.4f, r.Listener.StartSeconds, TOLERANCE);
@@ -559,11 +559,11 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Blast_RadiusBoundary_SixMetersIsInsideAndBeyondIsOutside()
+        public void Blast_RadiusBoundary_EighteenMetersIsInsideAndBeyondIsOutside()
         {
             Run r = new Run();
-            FakeCombatTarget edge = r.Add(21, Run.At(0f, 6f));
-            FakeCombatTarget beyond = r.Add(22, Run.At(0f, 6.01f));
+            FakeCombatTarget edge = r.Add(21, Run.At(0f, 18f));
+            FakeCombatTarget beyond = r.Add(22, Run.At(0f, 18.01f));
             r.Start();
 
             r.RunAll();

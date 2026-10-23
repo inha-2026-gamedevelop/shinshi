@@ -725,11 +725,11 @@ namespace Shinshi.Data
                     new[] { 1.0f, 1.1f, 1.1f }, flatDirection, new[] { 1.0f, 1.1f, 1.2f }, recent,
                     new PhaseTwoExecution(1.5f, 4f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Line(36f, 2f), 0.08f,
                         beamCount: 2, beamLateralOffset: 5f, beamTickInterval: 0.5f)),
-                // P03은 선택한 쪽 반원 180도를 45도씩 4구역으로 나눠 예고 종료 순간부터 0.25초 간격으로 차례로 폭발한다. 반경 6m, 예고 1.2초, 실행 0.75초(첫 폭발부터 마지막 폭발까지),
+                // P03은 선택한 쪽 반원 180도를 45도씩 4구역으로 나눠 예고 종료 순간부터 0.25초 간격으로 차례로 폭발한다. 반경 18m, 예고 1.2초, 실행 0.75초(첫 폭발부터 마지막 폭발까지),
                 // 회복 0.8초, 피해 0.18Href, 반격 가능이고 직접 제어는 없다. 체력 25% 이하에서도 수치와 순서는 같다
                 MakePhaseTwo(WOLBAEK_P2_P03_ID, EEnemyAttackShape.Fan, true, EPatternGroup.Large, 12f, 14f,
                     new[] { 1.3f, 1.2f, 0.7f }, flatDirection, new[] { 1.0f, 1.15f, 1.3f }, recent,
-                    new PhaseTwoExecution(1.2f, 0.75f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Fan(6f, 180f), 0.18f,
+                    new PhaseTwoExecution(1.2f, 0.75f, 0.8f, EnemyCatalogSO.AttackShapeSpec.Fan(18f, 180f), 0.18f,
                         sweepZoneCount: 4, sweepIntervalSeconds: 0.25f)),
                 // P04는 서로 다른 생존 플레이어 최대 2명에게 장판을 하나씩 동시에 설치한다. 예고 1초, 반경 3m, 지속 6초, 간격 1초(활성 순간부터 6회), 회당 0.08Href, 방어 불가, 회복 0.5초이고
                 // 직접 제어는 없다. 보스 전체 장판(기존 월백 장판 포함) 상한은 3개이고 체력 25% 이하에서도 대상 수와 수치는 같다. 지연 시 장판당 한 틱에 한 회만 판정한다

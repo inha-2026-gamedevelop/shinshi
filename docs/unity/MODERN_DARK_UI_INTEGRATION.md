@@ -7,6 +7,7 @@ ModernDark 창 묶음(수련·신체강화·부적·파티모집·친구·인벤
 | 경로 | 동작 | 씬 수정 |
 |---|---|---|
 | 각 View의 `Awake`/`EnsureModernLayout` | 창 자신이 코드로 ModernDark 배치를 만든다. 인벤토리, 친구, 스킬, 메일, 던전 입장 등 | 필요 없음 |
+| 상시 HUD(상태 바, 채팅, 스킬 칸, 파티, 퀘스트, 보스 바) | 런타임에 위치·배경·글자색을 바꾸지 않는다. 플레이 전 편집 화면과 플레이 화면이 같아야 하므로 씬에 배치한 모양이 기준이다. 모양을 바꾸려면 씬(또는 HUD 프리팹)을 고친다 | 필요(씬이 기준) |
 | 프리팹 직렬화 값 | 친구창은 `PF_FriendWindow`의 `_windowSize`(960x680)를 `Awake`에서 적용한다. 씬은 프리팹 인스턴스라 프리팹 변경이 그대로 반영된다 | 필요 없음 |
 | `ModernDarkRuntimeBootstrap` | 씬 로드 뒤 `HudMenuDropdown`이 있는 실제 클라이언트 씬에만 수련·신체강화·부적·파티모집 항목과 창을 만든다 | 필요 없음 |
 | `NetworkOverlayView` | 이름표를 런타임에 자동 생성한다 | 필요 없음 |
@@ -25,7 +26,7 @@ Bootstrap 동작은 아래와 같다.
 
 | 씬 | 연동 |
 |---|---|
-| `Release/ShinshiTown`, `Release/DungeonForest` | 메인 View와 `PF_SystemMenu`가 씬에 있다. 위 네 경로가 모두 적용된다 |
+| `Release/ShinshiTown`, `Release/DungeonForest` | 메인 View와 `PF_SystemMenu`가 씬에 있다. 위 경로가 모두 적용되고, 상시 HUD는 씬 배치 그대로 쓴다 |
 | `Dev_HUD` 계열 | `HudMenuDropdown`이 있으면 Bootstrap이 적용된다. 창 자체 배치는 항상 적용된다 |
 | `Dev_Training`, `Dev_EquipmentEnhance`, `Dev_Setting` | `HudMenuDropdown`이 없어 Bootstrap은 건너뛰고 창 자체 배치와 `*PreviewBinder`만 쓴다 |
 

@@ -564,7 +564,7 @@ MonoBehaviour:
     _recoverySeconds: 1.6
     _shape:
       _shape: 0
-      _range: 6
+      _range: 18
       _arcAngle: 180
       _width: 0
       _projectileSpeed: 0
