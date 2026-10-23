@@ -912,9 +912,20 @@ namespace Shinshi.Combat
             return clear >= (reach - PATH_EPSILON);
         }
 
-        // 패턴의 사전 검사를 믿지 않고 여기서 다시 확인한다. 실패하면 위치는 그대로다
+        // 패턴의 사전 검사를 믿지 않고 여기서 다시 확인한다. 실패하면 위치는 그대로다.
+        // 착지 높이는 지금 보스 높이를 유지한다. 대상 높이를 따르면 맵 밖에 선 플레이어 높이로 굳어
+        // 이후 모든 플레이어 공격이 높이 차 검사에서 빠진다(다른 보스 이동도 높이를 유지한다)
         public bool TryWarp(Vector3 point, out Vector3 landed)
         {
+            // 높이를 덮어쓰기 전에 NaN, 무한대를 걸러 원래 입력이 잘못된 요청을 통과시키지 않는다
+            float sum = point.x + point.y + point.z;
+            if ((float.IsNaN(sum)) || (float.IsInfinity(sum)))
+            {
+                landed = _position;
+                return false;
+            }
+
+            point.y = _position.y;
             if ((!CanMove) || (!CanStandAt(point)))
             {
                 landed = _position;
