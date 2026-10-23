@@ -41,9 +41,20 @@ namespace Shinshi.Combat
         private double  _dodgeEndTime         = 0.0;
         private float   _dodgeSpeed           = 0f;
 
-        // 서버는 기본 공격 동작(공격 주기) 동안 이동을 보관했다가 끝난 뒤 시작한다. 예측도 같은 구간 동안 이동을 미룬다
-        private byte    _attackBaseline       = 0;
-        private double  _attackMotionEndTime  = 0.0;
+        // 서버는 이동으로 끊기지 않는 기본 공격의 준비부터 마지막 발사까지 이동을 보관했다가 다음 틱에 시작한다.
+        // 예측도 그 구간 동안 서 있어야 서버와 같은 자리에서 같은 순번으로 출발한다. 서버 확정 전에는 왕복 시간을 더한
+        // 넉넉한 구간으로 미리 막고, 공격 순번이 오면 서버 시작 시각으로 다시 잡는다
+        private const double ATTACK_HOLD_MARGIN_SECONDS = 1.0 / Constants.Network.SERVER_TICK_RATE;
+
+        // 왕복 지연 중 서버에서 클라이언트로 오는 쪽의 비율
+        private const double ONE_WAY_LATENCY_RATIO      = 0.5;
+
+        private byte    _attackBaseline         = 0;
+        private byte    _cancelBaseline         = 0;
+        private bool    _hasAttackInFlight      = false;
+        private uint    _attackInFlightSequence = 0;
+        private double  _provisionalHoldEndTime = 0.0;
+        private double  _confirmedHoldEndTime   = 0.0;
 
         /****************************************
         *              Properties
@@ -57,6 +68,9 @@ namespace Shinshi.Combat
         public float TravelledDistance => (_predictor != null) ? _predictor.TravelledDistance : 0f;
         public float CorrectedDistance => (_predictor != null) ? _predictor.CorrectedDistance : 0f;
         public int   SnapCount         => (_predictor != null) ? _predictor.SnapCount : 0;
+
+        // 확정 공격과 아직 확정되지 않은 공격 요청 중 더 늦게 끝나는 쪽까지 이동을 미룬다
+        private double AttackHoldEndTime => System.Math.Max(_provisionalHoldEndTime, _confirmedHoldEndTime);
 
         /****************************************
         *              Unity Event
@@ -119,10 +133,19 @@ namespace Shinshi.Combat
                 }
             }
 
-            TrackAttackMotion(now);
-            if ((!_isFollowing) && (!isDodging) && (now >= _attackMotionEndTime))
+            TrackAttackHold(now);
+            if ((!_isFollowing) && (!isDodging))
             {
-                TryBeginDeferredMove(now);
+                // 서버가 보관 없이 이미 움직였으면 이 공격 보관은 끝난 것이다
+                if (HasServerStartedDeferredMove())
+                {
+                    ClearAttackHold();
+                }
+
+                if (now >= AttackHoldEndTime)
+                {
+                    TryBeginDeferredMove(now);
+                }
             }
 
             PlayerMoveAuthority authority = _input.MoveAuthority;
@@ -156,7 +179,8 @@ namespace Shinshi.Combat
             _hasDeferredMove      = false;
             _dodgeEndTime         = 0.0;
             _attackBaseline       = _combat.AttackSequence;
-            _attackMotionEndTime  = 0.0;
+            _cancelBaseline       = _combat.ActionCancelSequence;
+            ClearAttackHold();
             _predictor.Reset(Time.unscaledTimeAsDouble);
 
             if (_networkTransform != null)
@@ -167,6 +191,7 @@ namespace Shinshi.Combat
             _input.MoveSent      += OnMoveSent;
             _input.DodgeSent     += OnDodgeSent;
             _input.ActionSent    += OnActionSent;
+            _input.AttackSent    += OnAttackSent;
             _input.InputRejected += OnInputRejected;
             _input.SkillResult   += OnSkillResult;
         }
@@ -195,6 +220,7 @@ namespace Shinshi.Combat
             _input.MoveSent      -= OnMoveSent;
             _input.DodgeSent     -= OnDodgeSent;
             _input.ActionSent    -= OnActionSent;
+            _input.AttackSent    -= OnAttackSent;
             _input.InputRejected -= OnInputRejected;
             _input.SkillResult   -= OnSkillResult;
         }
@@ -203,9 +229,16 @@ namespace Shinshi.Combat
         {
             double now = Time.unscaledTimeAsDouble;
 
-            // 서버는 기술, 회피, 기본 공격 동작이 끝난 뒤 이 이동을 시작하므로 그때 시작한다
-            if ((_isFollowing) || (now < _dodgeEndTime) || (now < _attackMotionEndTime))
+            // 서버는 기술, 회피, 기본 공격 준비가 끝난 뒤 이 이동을 시작하므로 그때 시작한다
+            if ((_isFollowing) || (now < _dodgeEndTime) || (now < AttackHoldEndTime))
             {
+                // 서버도 보관한 목적지와 같은 곳이면 앞 순번을 그대로 두므로 여기서도 바꾸지 않는다
+                if ((_hasDeferredMove)
+                    && ((destination - _deferredDestination).sqrMagnitude <= Constants.Player.MOVE_SAME_DESTINATION_EPSILON_SQR))
+                {
+                    return;
+                }
+
                 _hasDeferredMove     = true;
                 _deferredSequence    = sequence;
                 _deferredDestination = destination;
@@ -251,7 +284,7 @@ namespace Shinshi.Combat
 
             _dodgeSpeed           = (config.DodgeDuration > 0f) ? (Vector3.Distance(start, end) / config.DodgeDuration) : 0f;
             _dodgeEndTime         = now + config.DodgeDuration;
-            _attackMotionEndTime  = 0.0;
+            ClearAttackHold();
             _isFollowing          = false;
             _hasInterruptSequence = false;
             _hasDeferredMove      = false;
@@ -270,8 +303,38 @@ namespace Shinshi.Combat
             _hasInterruptSequence = true;
         }
 
+        // 서버가 준비 중 이동을 보관하는 공격이면 확정이 올 때까지 왕복 시간을 더한 가장 긴 구간만큼 서 있는다
+        private void OnAttackSent(uint sequence)
+        {
+            PlayerConfigSO.BasicAttackSpec spec = GameDB.Player.GetBasicAttack(_combat.PlayerClass);
+            float hold = (spec != null) ? spec.GetMaxMoveHoldSeconds() : 0f;
+            if (hold <= 0f)
+            {
+                return;
+            }
+
+            double now = Time.unscaledTimeAsDouble;
+            _hasAttackInFlight      = true;
+            _attackInFlightSequence = sequence;
+            _provisionalHoldEndTime = now + NetworkTime.rtt + hold + ATTACK_HOLD_MARGIN_SECONDS;
+        }
+
         private void OnInputRejected(uint sequence, ERejectReason reason)
         {
+            // 거절된 공격은 서버가 시작하지 않았다. 확정 공격의 보관은 그대로 두고 이 요청분만 푼다
+            if ((_hasAttackInFlight) && (sequence == _attackInFlightSequence))
+            {
+                _hasAttackInFlight      = false;
+                _provisionalHoldEndTime = 0.0;
+            }
+
+            // 미뤄 둔 이동이 거절되면 서버에 짝이 없으므로 나중에 시작하지 않는다
+            if ((_hasDeferredMove) && (sequence == _deferredSequence))
+            {
+                _hasDeferredMove = false;
+                return;
+            }
+
             if ((_hasInterruptSequence) && (sequence == _interruptSequence))
             {
                 ResumeInterruptedMove();
@@ -309,9 +372,17 @@ namespace Shinshi.Combat
             MovePathRules.TryBeginPath(transform.position, _predictor.Destination, _navPath, _predictor.Path);
         }
 
-        // 서버가 공격을 시작하면 공격 순번이 바뀐다. 그 단계의 공격 주기만큼 이동을 미룬다
-        private void TrackAttackMotion(double now)
+        // 서버가 공격을 시작하면 공격 순번이 바뀐다. 서버 시작 시각과 그 단계의 보관 구간으로 막는 끝을 다시 잡는다.
+        // 서버가 기절 등으로 준비를 끊으면 취소 순번이 바뀌므로 바로 풀어 준다
+        private void TrackAttackHold(double now)
         {
+            byte cancel = _combat.ActionCancelSequence;
+            if (cancel != _cancelBaseline)
+            {
+                _cancelBaseline = cancel;
+                ClearAttackHold();
+            }
+
             byte sequence = _combat.AttackSequence;
             if (sequence == _attackBaseline)
             {
@@ -319,13 +390,39 @@ namespace Shinshi.Combat
             }
 
             _attackBaseline = sequence;
+            ClearAttackHold();
+
             PlayerConfigSO.BasicAttackSpec spec = GameDB.Player.GetBasicAttack(_combat.PlayerClass);
-            if (spec == null)
+            float hold = (spec != null) ? spec.GetMoveHoldSeconds(_combat.AttackComboStep) : 0f;
+            if (hold <= 0f)
             {
                 return;
             }
 
-            _attackMotionEndTime = now + spec.GetInterval(_combat.AttackComboStep);
+            // NetworkTime.time은 보간 버퍼만큼 늦은 타임라인이다. 입력이 서버에 닿는 예측 시각에서 편도 지연을 빼 지금 서버 시각을 잡는다
+            double serverNow = NetworkTime.predictedTime - (NetworkTime.rtt * ONE_WAY_LATENCY_RATIO);
+            double serverEnd = _combat.AttackStartedAt + hold + ATTACK_HOLD_MARGIN_SECONDS;
+            _confirmedHoldEndTime = now + (serverEnd - serverNow);
+        }
+
+        private void ClearAttackHold()
+        {
+            _hasAttackInFlight      = false;
+            _provisionalHoldEndTime = 0.0;
+            _confirmedHoldEndTime   = 0.0;
+        }
+
+        // 서버가 대기 공격을 이동으로 지우면 공격 순번도 거절도 오지 않는다. 미뤄 둔 이동을 서버가 이미 시작했다고
+        // 알려 오면 기다리지 않고 바로 출발한다. 순번은 입력마다 늘어나므로 같거나 큰 순번이면 이미 지나간 것이다
+        private bool HasServerStartedDeferredMove()
+        {
+            if (!_hasDeferredMove)
+            {
+                return false;
+            }
+
+            PlayerMoveAuthority authority = _input.MoveAuthority;
+            return (authority.IsValid) && (authority.IsMoving) && (authority.MoveSequence >= _deferredSequence);
         }
 
         private void EnterFollow()
