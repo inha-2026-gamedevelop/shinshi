@@ -26,6 +26,10 @@ namespace Shinshi.UI
         // 내 위치를 중심으로 원형 창이 보여 주는 반경, 미터
         [SerializeField, Min(5f)] private float _viewRadiusMeters = 40f;
 
+        // 보스 아레나처럼 붕괴하면 바깥이 사라지는 맵이 붕괴 뒤에 남기는 중앙 바닥. 반경이 0이면 붕괴를 지도에 반영하지 않는다
+        [SerializeField]          private Vector2 _collapseCenter         = Vector2.zero;
+        [SerializeField, Min(0f)] private float   _collapsedRadiusMeters = 0f;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -36,5 +40,8 @@ namespace Shinshi.UI
         public Vector2 WorldCenter      => _worldCenter;
         public float   WorldHalfExtent  => _worldHalfExtent;
         public float   ViewRadiusMeters => _viewRadiusMeters;
+
+        public Vector2 CollapseCenter        => _collapseCenter;
+        public float   CollapsedRadiusMeters => _collapsedRadiusMeters;
     }
 }

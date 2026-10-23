@@ -9,6 +9,7 @@ using Mirror;
 
 // 프로젝트 내부
 using Shinshi.AI;
+using Shinshi.Art;
 using Shinshi.Combat;
 using Shinshi.Common;
 
@@ -57,6 +58,10 @@ namespace Shinshi.UI
                 return;
             }
 
+            // 붕괴 연출은 서버 시각으로 평가되고 되돌리면 시각이 0이 되므로, 이 시각으로 지금 붕괴한 상태인지 본다
+            BossArenaShatterView arena = BossArenaShatterView.Current;
+            _view.SetCollapsed((arena != null) && (arena.EvaluatedTime > 0f));
+
             bool connected = NetworkClient.isConnected;
             if (!TryGetSelf(connected, out Vector3 position, out float yaw))
             {
@@ -95,12 +100,39 @@ namespace Shinshi.UI
                 ++used;
             }
 
+            // 부적진과 색 결계는 표시 중인 목록을 그대로 읽고 기믹이 배정한 색으로 찍는다. 씬을 탐색하지 않는다
+            IReadOnlyList<WolbaekTalismanPlayer> talismans = WolbaekTalismanPlayer.RunningPlayers;
+            for (int i = 0; i < talismans.Count; ++i)
+            {
+                if ((talismans[i] != null)
+                    && (_view.SetMarker(used, MinimapRules.ToXz(talismans[i].transform.position), EMinimapMarker.Gimmick, OpaqueColor(talismans[i].CurrentSnapshot.Color))))
+                {
+                    ++used;
+                }
+            }
+
+            IReadOnlyList<WolbaekWardPlayer> wards = WolbaekWardPlayer.RunningPlayers;
+            for (int i = 0; i < wards.Count; ++i)
+            {
+                if ((wards[i] != null)
+                    && (_view.SetMarker(used, MinimapRules.ToXz(wards[i].transform.position), EMinimapMarker.Gimmick, OpaqueColor(wards[i].CurrentSnapshot.Color))))
+                {
+                    ++used;
+                }
+            }
+
             _view.HideMarkersFrom(used);
         }
 
         /****************************************
         *                Methods
         ****************************************/
+
+        // 기믹 색의 알파는 연출용이라 표시에는 쓰지 않고, 밝기 값이 1을 넘어도 한 번 눌러 화면 색으로 맞춘다
+        private static Color OpaqueColor(Color color)
+        {
+            return new Color(Mathf.Clamp01(color.r), Mathf.Clamp01(color.g), Mathf.Clamp01(color.b), 1f);
+        }
 
         private bool TryGetSelf(bool connected, out Vector3 position, out float yaw)
         {

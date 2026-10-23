@@ -28,14 +28,20 @@ namespace Shinshi.UI
         [SerializeField] private float _markerEdgeInset = 10f;
 
         [Header("표시 색")]
-        [SerializeField] private Color _partyColor = new Color(0.45f, 0.85f, 1f, 1f);
-        [SerializeField] private Color _bossColor  = new Color(1f, 0.35f, 0.3f, 1f);
-        [SerializeField] private Color _npcColor   = new Color(1f, 0.85f, 0.4f, 1f);
+        [SerializeField] private Color _partyColor   = new Color(0.45f, 0.85f, 1f, 1f);
+        [SerializeField] private Color _bossColor    = new Color(1f, 0.35f, 0.3f, 1f);
+        [SerializeField] private Color _npcColor     = new Color(1f, 0.85f, 0.4f, 1f);
+        [SerializeField] private Color _gimmickColor = new Color(0.78f, 0.5f, 1f, 1f);
 
         private MinimapMapSO _mapData      = null;
         private Vector2      _lastCenter   = Vector2.zero;
         private float        _appliedScale = -1f;
         private bool         _hasCenter    = false;
+
+        // 붕괴한 구역을 지운 지도 사본은 처음 붕괴할 때 한 번 만들어 재사용한다
+        private Sprite    _collapsedSprite  = null;
+        private Texture2D _collapsedTexture = null;
+        private bool      _isCollapsed      = false;
 
         /****************************************
         *              Properties
@@ -44,15 +50,27 @@ namespace Shinshi.UI
         public int MarkerCapacity => (_markers != null) ? _markers.Length : 0;
 
         /****************************************
+        *              Unity Event
+        ****************************************/
+
+        private void OnDestroy()
+        {
+            DiscardCollapsedSprite();
+        }
+
+        /****************************************
         *                Methods
         ****************************************/
 
         /// <summary> 지도 그림과 이름을 바꾼다, null이면 그림을 숨긴다 </summary>
         public void SetMap(MinimapMapSO map)
         {
+            DiscardCollapsedSprite();
+
             _mapData       = map;
             _appliedScale  = -1f;
             _hasCenter     = false;
+            _isCollapsed   = false;
 
             if (_mapImage != null)
             {
@@ -66,6 +84,35 @@ namespace Shinshi.UI
             }
 
             HideMarkersFrom(0);
+        }
+
+        /// <summary> 아레나가 붕괴했는지에 맞춰 지도 그림에서 중앙 바닥 밖을 지운다, 붕괴 반경이 없는 맵과 이미 같은 상태면 아무것도 하지 않는다 </summary>
+        public void SetCollapsed(bool isCollapsed)
+        {
+            if ((isCollapsed == _isCollapsed) || (_mapData == null) || (_mapImage == null) || (_mapData.Sprite == null))
+            {
+                return;
+            }
+
+            if ((isCollapsed) && (_mapData.CollapsedRadiusMeters <= 0f))
+            {
+                return;
+            }
+
+            _isCollapsed = isCollapsed;
+            if (isCollapsed)
+            {
+                if (_collapsedSprite == null)
+                {
+                    _collapsedSprite = BuildCollapsedSprite(_mapData);
+                }
+
+                _mapImage.sprite = _collapsedSprite;
+            }
+            else
+            {
+                _mapImage.sprite = _mapData.Sprite;
+            }
         }
 
         /// <summary> 창 가운데에 올 월드 X, Z 위치, 지도 그림이 반대로 움직인다 </summary>
@@ -111,6 +158,17 @@ namespace Shinshi.UI
         /// <summary> 표시 한 개를 찍는다, 칸이 모자라면 거짓이다. 창 밖이면 가장자리로 당긴다 </summary>
         public bool SetMarker(int index, Vector2 worldXz, EMinimapMarker kind)
         {
+            return PlaceMarker(index, worldXz, kind, Color.white, false);
+        }
+
+        /// <summary> 종류의 색 대신 넘긴 색으로 표시 한 개를 찍는다, 기믹이 배정한 색을 그대로 보일 때 쓴다 </summary>
+        public bool SetMarker(int index, Vector2 worldXz, EMinimapMarker kind, Color color)
+        {
+            return PlaceMarker(index, worldXz, kind, color, true);
+        }
+
+        private bool PlaceMarker(int index, Vector2 worldXz, EMinimapMarker kind, Color color, bool hasColor)
+        {
             if ((_markers == null) || (index < 0) || (index >= _markers.Length) || (_markers[index] == null))
             {
                 return false;
@@ -128,7 +186,7 @@ namespace Shinshi.UI
             position = MinimapRules.ClampToCircle(position, radius, out _);
 
             marker.rectTransform.anchoredPosition = position;
-            marker.color = ColorOf(kind);
+            marker.color = hasColor ? color : ColorOf(kind);
             if (!marker.gameObject.activeSelf)
             {
                 marker.gameObject.SetActive(true);
@@ -154,6 +212,66 @@ namespace Shinshi.UI
             }
         }
 
+        // 읽기를 켜지 않은 지도 텍스처도 쓸 수 있게 렌더 텍스처로 옮겨 읽고, 중앙 원 밖의 알파를 지운다
+        private Sprite BuildCollapsedSprite(MinimapMapSO map)
+        {
+            Texture source = map.Sprite.texture;
+            int     width  = source.width;
+            int     height = source.height;
+
+            RenderTexture previous  = RenderTexture.active;
+            RenderTexture temporary = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(source, temporary);
+            RenderTexture.active = temporary;
+
+            _collapsedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                wrapMode   = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            _collapsedTexture.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(temporary);
+
+            float extent  = map.WorldHalfExtent * 2f;
+            float centerU = ((map.CollapseCenter.x - map.WorldCenter.x) / extent) + 0.5f;
+            float centerV = ((map.CollapseCenter.y - map.WorldCenter.y) / extent) + 0.5f;
+            float radius  = map.CollapsedRadiusMeters / extent;
+
+            Color32[] pixels = _collapsedTexture.GetPixels32();
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    float du   = ((x + 0.5f) / width) - centerU;
+                    float dv   = ((y + 0.5f) / height) - centerV;
+                    float edge = (Mathf.Sqrt((du * du) + (dv * dv)) - radius) * width;
+
+                    int index = (y * width) + x;
+                    pixels[index].a = (byte)Mathf.RoundToInt(pixels[index].a * (1f - Mathf.Clamp01(edge + 0.5f)));
+                }
+            }
+
+            _collapsedTexture.SetPixels32(pixels);
+            _collapsedTexture.Apply(false);
+            return Sprite.Create(_collapsedTexture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f));
+        }
+
+        private void DiscardCollapsedSprite()
+        {
+            if (_collapsedSprite != null)
+            {
+                Destroy(_collapsedSprite);
+                _collapsedSprite = null;
+            }
+
+            if (_collapsedTexture != null)
+            {
+                Destroy(_collapsedTexture);
+                _collapsedTexture = null;
+            }
+        }
+
         private Color ColorOf(EMinimapMarker kind)
         {
             switch (kind)
@@ -162,6 +280,8 @@ namespace Shinshi.UI
                     return _bossColor;
                 case EMinimapMarker.Npc:
                     return _npcColor;
+                case EMinimapMarker.Gimmick:
+                    return _gimmickColor;
                 default:
                     return _partyColor;
             }

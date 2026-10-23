@@ -5,6 +5,7 @@ namespace Shinshi.UI
     {
         Party,
         Boss,
-        Npc
+        Npc,
+        Gimmick
     }
 }

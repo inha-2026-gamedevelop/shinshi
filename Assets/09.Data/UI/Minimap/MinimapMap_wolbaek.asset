@@ -18,3 +18,5 @@ MonoBehaviour:
   _worldCenter: {x: 0, y: -2.0066795}
   _worldHalfExtent: 38.10332
   _viewRadiusMeters: 30
+  _collapseCenter: {x: 0, y: 0}
+  _collapsedRadiusMeters: 18

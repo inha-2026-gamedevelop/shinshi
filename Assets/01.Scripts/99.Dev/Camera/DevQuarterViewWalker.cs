@@ -8,6 +8,7 @@ using Unity.Cinemachine;
 // 프로젝트 내부
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.UI;
 
 namespace Shinshi.Dev
 {
@@ -52,6 +53,11 @@ namespace Shinshi.Dev
 
         // 시험 카메라와 겹쳐 그리는 기존 구도 확인용 카메라. 실행 중에만 끈다
         [SerializeField] private GameObject[] _disableOnPlay;
+
+        // 클릭한 지점에 돌려 쓰는 이동 표시. 비워 두면 표시하지 않는다
+        [SerializeField] private UiMoveClickMarker[] _clickMarkers;
+
+        private int _nextMarker = 0;
 
         private readonly RaycastHit[] _hits = new RaycastHit[RAYCAST_MAX_HITS];
 
@@ -177,6 +183,11 @@ namespace Shinshi.Dev
             {
                 _destination    = point;
                 _hasDestination = true;
+
+                if (Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_MOVE))
+                {
+                    PlayClickMarker(point);
+                }
             }
 
             if (!_hasDestination)
@@ -193,6 +204,22 @@ namespace Shinshi.Dev
             }
 
             return toDestination.normalized;
+        }
+
+        // 실제 표시는 서버로 보낸 이동에 반응하지만 여기는 보내는 입력이 없어 클릭한 지점에 직접 재생한다
+        private void PlayClickMarker(Vector3 point)
+        {
+            if ((_clickMarkers == null) || (_clickMarkers.Length == 0))
+            {
+                return;
+            }
+
+            UiMoveClickMarker marker = _clickMarkers[_nextMarker];
+            _nextMarker = (_nextMarker + 1) % _clickMarkers.Length;
+            if (marker != null)
+            {
+                marker.Play(point);
+            }
         }
 
         private void HandleTeleportKeys()
