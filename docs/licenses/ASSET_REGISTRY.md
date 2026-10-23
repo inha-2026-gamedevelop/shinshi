@@ -110,7 +110,7 @@ CombatGirls 원본의 `SwitchSocket` 이벤트 39개는 무기 소켓 전환용�
 
 Succubus Anim Set과 Kitsune Yuna의 제작자·라이선스 조건·구매 증빙은 이 대장에서 확인하지 못했다. 위 복사본을 저장소에 두는 것이 두 패키지의 사용 조건에 맞는지는 미확인이다.
 
-P09의 원본 판매처·버전·라이선스와 두 패키지의 구매 증빙은 이 대장에서 확인하지 못했다. 원본 패키지의 ReadMe는 lilToon 셰이더를 요구하지만 프로젝트는 URP Lit 사본을 써 lilToon을 설치하지 않는다.
+P09의 원본 판매처·버전·라이선스와 두 패키지의 구매 증빙은 이 대장에서 확인하지 못했다. 원본 패키지의 ReadMe는 lilToon 셰이더를 요구한다. 2026-10-23 원본 재질이 분홍으로 보이지 않도록 lilToon 2.4.1을 Git 패키지(`Packages/manifest.json`, 태그 고정)로 설치했다. 출시 캐릭터와 무기는 계속 URP Lit 사본을 쓴다.
 
 UMA 3.1f1(GitHub 릴리스 `V3.1f1`)은 2026-10-01 들였다가 같은 날 쓰지 않기로 하고 뺐다. 연결 코드 `AvatarView`, `Shinshi.Runtime`의 `UMA_Core` 참조, `.gitignore`의 `Assets/UMA/` 예외, UMA 태그(`UMAKeepChain`, `UMAIgnore`), `PlayerFemaleModular/UMA/` 연동 에셋을 함께 지웠다. `Assets/UMA/`를 받아 둔 작업자는 로컬에서 직접 지운다.
 

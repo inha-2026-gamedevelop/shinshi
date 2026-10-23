@@ -19,6 +19,7 @@
     "com.unity.ugui": "2.0.0",
     "com.unity.visualeffectgraph": "17.4.0",
     "com.unity.visualscripting": "1.9.11",
+    "jp.lilxyzw.liltoon": "https://github.com/lilxyzw/lilToon.git?path=Assets/lilToon#2.4.1",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
