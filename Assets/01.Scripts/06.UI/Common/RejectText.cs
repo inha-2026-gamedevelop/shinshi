@@ -90,6 +90,8 @@ namespace Shinshi.UI
                     return "요청이 너무 빠릅니다. 잠시 기다려 주세요";
                 case ERejectReason.FeatureDisabled:
                     return "지금은 이용할 수 없는 기능입니다";
+                case ERejectReason.InventoryFull:
+                    return "보관함이 가득 찼습니다. 공간을 비운 뒤 다시 받아 주세요";
                 case ERejectReason.InboxExpired:
                     return "보관 기간이 지난 우편입니다";
                 case ERejectReason.InboxAlreadyClaimed:
