@@ -130,7 +130,6 @@ namespace Shinshi.UI
 
         private void Awake()
         {
-            EnsureModernLayout();
             _onOpen          = OpenInput;
             _onSubmit        = Submit;
             _onCloseExpanded = CloseExpandedByKey;
@@ -197,42 +196,6 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
-
-        /// <summary>어두운 채팅 바탕과 탭·입력 색을 한 번만 맞춘다. 송신과 포커스 동작은 그대로다</summary>
-        public void EnsureModernLayout()
-        {
-            if (!HudModernStyle.AddBackdrop(transform, UiModernDark.SPRITE_INSET, Color.white, 6f))
-            {
-                return;
-            }
-
-            _selectedLabelColor = UiModernDark.TextGold;
-            _labelColor         = UiModernDark.TextMuted;
-            _selectedTabColor   = new Color(UiModernDark.Gold.r, UiModernDark.Gold.g, UiModernDark.Gold.b, 0.18f);
-            if (_messages != null)
-            {
-                _messages.color = UiModernDark.TextMain;
-            }
-
-            if (_input != null)
-            {
-                ModernDarkKit.StyleInset(_input.targetGraphic);
-            }
-
-            for (int i = 0; i < _underlines.Length; ++i)
-            {
-                if (_underlines[i] == null)
-                {
-                    continue;
-                }
-
-                Graphic line = _underlines[i].GetComponent<Graphic>();
-                if (line != null)
-                {
-                    line.color = UiModernDark.Gold;
-                }
-            }
-        }
 
         public void SelectTab(EChatTab tab)
         {

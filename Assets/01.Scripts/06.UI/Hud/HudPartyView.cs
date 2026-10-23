@@ -70,29 +70,6 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
-        private void Awake()
-        {
-            EnsureModernLayout();
-        }
-
-        /// <summary>파티 칸마다 어두운 바탕을 한 번만 깐다. 입력은 막지 않는다</summary>
-        public void EnsureModernLayout()
-        {
-            if (_slots == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _slots.Length; ++i)
-            {
-                var root = ModernDarkKit.Field<GameObject>(_slots[i], "_root");
-                if (root != null)
-                {
-                    HudModernStyle.AddBackdrop(root.transform, UiModernDark.SPRITE_INSET, Color.white, 4f);
-                }
-            }
-        }
-
         /// <summary> hasHp가 거짓이면 체력 막대를 비우고 수치 대신 '-'를 쓴다 </summary>
         public void SetMember(int index, string memberName, EPlayerClass playerClass, bool hasHp, int hp, int maxHp)
         {

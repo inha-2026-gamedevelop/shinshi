@@ -36,20 +36,6 @@ namespace Shinshi.UI
         *              Unity Event
         ****************************************/
 
-        private void Awake()
-        {
-            EnsureModernLayout();
-        }
-
-        /// <summary>어두운 퀘스트 바탕을 한 번만 깐다. 입력은 막지 않는다</summary>
-        public void EnsureModernLayout()
-        {
-            HudModernStyle.AddBackdrop(transform, UiModernDark.SPRITE_INSET, Color.white, 8f);
-            ModernDarkKit.StyleText(_countLabel, 0f, UiModernDark.TextGold);
-            ModernDarkKit.StyleText(_minimizeLabel, 0f, UiModernDark.TextMuted);
-            ModernDarkKit.StyleButton(_minimizeButton, false);
-        }
-
         private void OnEnable()
         {
             if (_minimizeButton != null)
