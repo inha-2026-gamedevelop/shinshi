@@ -1,4 +1,5 @@
 // System
+using System;
 using System.Collections.Generic;
 
 // Unity
@@ -10,7 +11,7 @@ using Shinshi.Art;
 namespace Shinshi.AI
 {
     // 하드 2페이즈 P03, 잔류 부채꼴 연쇄의 표시다. 입력은 서버의 IBossChainFanListener 인자와 같은 값이다
-    // 시전 시작부터 safeRevealSeconds까지는 피난 방향만 보이고, 그 뒤로 폭발 구역 전체의 바닥을 예고한다. 구역 k는 시전 시작 + 첫 폭발 + k x 간격에 폭발한다
+    // 시전 시작부터 safeRevealSeconds까지는 피난 방향만 보이고, 그 뒤로 구역 예고가 폭발 간격마다 하나씩 차례로 나타난다. 구역 k는 시전 시작 + 첫 폭발 + k x 간격에 폭발한다
     // 구역 0은 피난 방향의 오른쪽 끝(위에서 볼 때 시계 방향)에 붙어 시계 방향으로 이어진다. 폭발한 구역은 위험 종료가 알려질 때까지 모두 같이 남는다
     // 폭발은 서버가 알린 구역만 그린다. 확정이 없으면 스스로 폭발하지 않고, 위험 종료 알림이 끝내 오지 않아도 예정 시각에서 일정 시간 뒤 지운다
     // 늦게 접속하면 Begin에 폭발한 구역 수와 위험 종료 여부를 넘긴다. 이 값은 복제 계층이 알림으로 세어 들고 있어야 한다
@@ -288,9 +289,12 @@ namespace Shinshi.AI
         {
             double blastTime = GetBlastTime(entry, zone);
 
+            // 구역 예고는 폭발 시각에서 같은 예고 시간만큼 앞서 차례로 나타난다
+            double appearTime = blastTime - (entry.FirstBlast - entry.SafeReveal);
+
             if (entry.States[zone] == EZoneState.Pending)
             {
-                if (now < revealEnd)
+                if (now < Math.Max(revealEnd, appearTime))
                 {
                     return;
                 }
@@ -322,7 +326,7 @@ namespace Shinshi.AI
 
             if (entry.States[zone] == EZoneState.Pending)
             {
-                DrawCharging(entry.Zones[zone], Ratio(now, revealEnd, blastTime), 1f);
+                DrawCharging(entry.Zones[zone], Ratio(now, Math.Max(revealEnd, appearTime), blastTime), 1f);
                 return;
             }
 
