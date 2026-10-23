@@ -427,8 +427,11 @@ namespace Shinshi.Tests
             Assert.That(hidden, Is.Null);
             Assert.That(_hard.ShapePool.LeasedCount, Is.EqualTo(1));
 
+            // 구역 예고는 폭발 간격마다 하나씩 나타난다, 구역 k는 1.0 + 0.5k초에 나타난다
             Advance(1.0);
-            Assert.That(_hard.ShapePool.LeasedCount, Is.EqualTo(8));
+            Assert.That(_hard.ShapePool.LeasedCount, Is.EqualTo(3));
+            Advance(0.6);
+            Assert.That(_hard.ShapePool.LeasedCount, Is.EqualTo(4));
             _hard.ChainFan.TryGetZone(CAST, 0, out _, out BossGroundShapeVFX first);
             Vector3 expected = new Vector3(Mathf.Sin(45f * Mathf.Deg2Rad), 0f, Mathf.Cos(45f * Mathf.Deg2Rad));
             Assert.That(Vector3.Distance(first.Direction, expected), Is.LessThan(TOLERANCE));

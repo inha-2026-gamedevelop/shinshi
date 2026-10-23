@@ -1924,6 +1924,24 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Sweep_WithSweepStart_ZonesAppearOneByOneAndEachKeepsTheSameTelegraphTime()
+        {
+            _useRealClock = true;
+            _presenter.BeginSweepCue(new BossSweepStart(BOSS_ID, SWEEP_CAST, Vector3.zero, Vector3.forward, true, 6f, 180f, 1.2f, 0.75f, Now));
+            BeginSweepZones();
+
+            Assert.AreEqual(4, _presenter.ActiveCount);
+            Assert.AreEqual(1, _sectorPool.LeasedCount, "첫 구역만 바로 그려지고 나머지는 자기 차례를 기다린다");
+            for (int i = 0; i < 4; ++i)
+            {
+                Visuals(SWEEP_CAST + 1 + i, out BossTelegraphCast cast, out SectorVFXController sector, out _);
+                Assert.AreEqual(1.2f, cast.Start.TelegraphSeconds, 0.001f, "구역 " + i);
+                Assert.AreEqual(Now + 1.2 + (i * 0.25), cast.TelegraphEndServerTime, 0.05, "폭발 시각은 그대로");
+                Assert.AreEqual(i == 0, sector != null, "구역 " + i);
+            }
+        }
+
+        [Test]
         public void Sweep_ZoneDirectionsFollowTheServerChosenSideInOrder()
         {
             foreach (bool isRight in new[] { true, false })

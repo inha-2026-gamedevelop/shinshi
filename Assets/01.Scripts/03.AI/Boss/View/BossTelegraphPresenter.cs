@@ -28,6 +28,8 @@ namespace Shinshi.AI
         private const float  FULL_CIRCLE_ANGLE     = 360f;
         private const int    ENDED_HISTORY         = 32;   // 끝난 시전 번호를 기억하는 수, 늦게 온 알림이 되살리지 못하게 한다
         private const float  NO_DELAY              = 0f;
+        private const float  SWEEP_LEAD_EPSILON    = 0.001f; // 초, 구역 예고를 늦춰 시작할 만큼 폭발이 뒤인지 보는 여유
+        private const int    NO_SWEEP_GROUP        = int.MinValue;
         private const float  NOT_EXECUTED          = -1f;
         private const float  PROJECTILE_HEAD_LENGTH = 1.5f; // m, 투사체를 길쭉한 머리로 그릴 때의 길이, 판정 길이가 아니다
         private const float  PROJECTILE_DISSOLVE    = 0.25f; // 초, 소멸 연출 길이
@@ -53,6 +55,9 @@ namespace Shinshi.AI
 
             // 장판이 활성된 원형 예고는 터뜨리지 않고 붉은 예고를 그대로 두었다가 장판이 사라질 때 함께 지운다
             public bool                       IsHeldByArea;
+
+            // 시작 시각이 오기 전이라 아직 그리지 않았다
+            public bool                       IsVisualPending;
         }
 
         // 날고 있는 투사체 한 발, 예고 표현과 따로 산다. 패턴이 끝나거나 같은 보스의 다음 시전이 시작돼도 이어서 그린다
@@ -113,6 +118,8 @@ namespace Shinshi.AI
         private readonly Queue<int>     _endedOrder   = new Queue<int>();
         private readonly HashSet<int>   _cancelledGroupIds   = new HashSet<int>();
         private readonly Queue<int>     _cancelledGroupOrder = new Queue<int>();
+        private int                     _sweepGroupId        = NO_SWEEP_GROUP; // 마지막 반월 연쇄의 시전 번호와 구역 하나의 예고 시간
+        private float                   _sweepTelegraphSeconds;
 
         private readonly HashSet<string> _externalVisualPatterns = new HashSet<string>();
         private Func<double> _serverClock;
@@ -292,16 +299,25 @@ namespace Shinshi.AI
                 return false;
             }
 
+            // 반월 연쇄의 구역은 한꺼번에 예약돼 오지만 폭발 시각이 구역마다 다르다. 구역 예고를 폭발보다 한 구역 예고 시간만큼 앞서 시작해 차례로 나타나게 한다
+            BossTelegraphStart zone = start;
+            float lead = start.TelegraphSeconds - _sweepTelegraphSeconds;
+            if ((start.GroupId == _sweepGroupId) && (start.CastId != start.GroupId) && (lead > SWEEP_LEAD_EPSILON))
+            {
+                zone = new BossTelegraphStart(start.BossId, start.CastId, start.GroupId, start.PatternId, start.Shape, start.Origin,
+                    start.Direction, start.Length, start.Width, start.ArcAngle, start.StartServerTime + lead, _sweepTelegraphSeconds);
+            }
+
             double now = ReadServerTime();
-            if (now >= (start.StartServerTime + start.TelegraphSeconds + CONFIRM_GRACE_SECONDS))
+            if (now >= (zone.StartServerTime + zone.TelegraphSeconds + CONFIRM_GRACE_SECONDS))
             {
                 // 확정을 기다릴 시간까지 지난 예고는 그리지 않는다, 늦게 온 취소나 발동이 되살리지도 못한다
-                RememberEnded(start.CastId);
+                RememberEnded(zone.CastId);
                 return false;
             }
 
-            RetireSameBoss(start.BossId, start.GroupId);
-            return Add(new BossTelegraphCast(start), now);
+            RetireSameBoss(zone.BossId, zone.GroupId);
+            return Add(new BossTelegraphCast(zone), now);
         }
 
         /// <summary> 추적 중 방향과 길이 갱신, 고정 뒤나 발동 뒤나 오래된 갱신이면 무시한다 </summary>
@@ -332,6 +348,13 @@ namespace Shinshi.AI
             if (!TryFind(castId, out Entry entry) || (!entry.Cast.TryStrike(serverTime)))
             {
                 return false;
+            }
+
+            // 시작 시각 전에 폭발이 확정되면 아직 그리지 않은 예고를 지금 그려 바로 터뜨린다
+            if (entry.IsVisualPending)
+            {
+                entry.IsVisualPending = false;
+                Show(entry, serverTime);
             }
 
             ApplyRotation(entry, true);
@@ -806,12 +829,14 @@ namespace Shinshi.AI
         /// <summary> 반월 연쇄 폭발의 여우불 이동을 시작한다, 구역 예고와 별개이며 서버 시각 기준으로 늦게 받아도 이어서 그린다. 표현이 없으면 아무것도 하지 않는다 </summary>
         public bool BeginSweepCue(in BossSweepStart start)
         {
-            if (_isServerBuild || (_sweepCue == null))
+            if (_isServerBuild)
             {
                 return false;
             }
 
-            return _sweepCue.Begin(in start, ReadServerTime);
+            _sweepGroupId          = start.CastId;
+            _sweepTelegraphSeconds = start.TelegraphSeconds;
+            return (_sweepCue != null) && _sweepCue.Begin(in start, ReadServerTime);
         }
 
         /// <summary> 여우불 이동을 지운다, 다른 시전의 이동은 건드리지 않는다 </summary>
@@ -1236,6 +1261,12 @@ namespace Shinshi.AI
                     return true;
                 }
 
+                if (entry.IsVisualPending && (now >= cast.Start.StartServerTime))
+                {
+                    entry.IsVisualPending = false;
+                    Show(entry, now);
+                }
+
                 ApplyRotation(entry, false);
                 if (entry.Rect != null)
                 {
@@ -1330,6 +1361,13 @@ namespace Shinshi.AI
 
             if (_externalVisualPatterns.Contains(cast.PatternId))
             {
+                return;
+            }
+
+            // 시작 시각이 아직 오지 않은 예고는 시작 시각에 그린다
+            if ((!cast.HasExecuted) && (now < cast.Start.StartServerTime))
+            {
+                entry.IsVisualPending = true;
                 return;
             }
 
