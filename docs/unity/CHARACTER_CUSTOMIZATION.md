@@ -35,7 +35,8 @@
 
 - 모델은 서드파티 P09 Modular Humanoid(`Assets/99.ThirdParty/Model/P09_Modular_Humanoid/`, Git 제외)다. 이 패키지가 없으면 캐릭터가 보이지 않는다.
 - 원본 재질은 lilToon 셰이더라 URP Lit 사본을 쓴다: `Assets/01.Scripts/05.Art/Characters/PlayerP09/Materials/`(변환 기록 `README.md`). 원본 HDRP 마스크는 선형으로 다시 임포트한 사본(`Textures/`)을 금속·AO 맵으로 쓴다. 헤어·눈·수염은 원본에 AO 데이터가 없다.
-- 프리팹은 원본 `P09_Human`의 변형 `Assets/02.Prefab/Characters/PlayerP09/PF_PlayerP09.prefab`이다. 재질만 사본으로 바꾸고 무기는 끈다.
+- 프리팹은 원본 `P09_Human`의 변형 `Assets/02.Prefab/Characters/PlayerP09/PF_PlayerP09.prefab`이다. 재질만 사본으로 바꾸고 프리팹 안의 원본 무기는 끈다.
+- 직업 무기는 `PF_NetPlayer`의 `PlayerClassWeaponView`가 조립된 인스턴스의 손 소켓에 붙인다. 마검사는 `PF_P09Weapon_MageknightSword`(P09 `Sword_02`, `Weapon_Target_Hand_R`), 궁수는 `PF_P09Weapon_ArcherBow`(Grruzam 활 사본, `Weapon_Target_Hand_L`)다. 검사와 구 직업은 무기를 붙이지 않는다. 표시 전용이라 충돌체를 끄며 서버 판정과 무관하다. 공격 모션 프레임 렌더로 쥐는 방향을 확인했고 실제 플레이 재생은 미검증이다.
 - 구 카탈로그는 `Assets/09.Data/Avatar/PlayerCharacterLookCatalog.asset`, 출시 `PF_NetPlayer` 참조는 `PlayerCharacterLookCatalog_Classes.asset`이다. `PlayerCharacterLookApplier`가 부위 오브젝트를 켜고 끄며 색 재질 슬롯을 바꾼다. 필요한 부위가 하나라도 없으면 아무것도 바꾸지 않고 실패한다.
 - 위 에셋은 에디터 도구 `PlayerP09AssetBuilder.BuildAll`(재질·프리팹·클립·컨트롤러·카탈로그)과 `PlayerP09SceneWiring.WireAll`(생성·선택 씬, PF_NetPlayer 연결)로 다시 만들 수 있다.
 - 생성 화면 왼쪽의 외형 패널(`CharacterCustomizePanel`)이 항목별 이전/다음 버튼을 제공한다. 이전 Tripo 외형 탭은 씬에서 꺼 두었다.

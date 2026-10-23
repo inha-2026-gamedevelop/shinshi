@@ -99,6 +99,8 @@ CombatGirls 원본의 `SwitchSocket` 이벤트 39개는 무기 소켓 전환용�
 - `Assets/01.Scripts/05.Art/Characters/PlayerP09/Textures/`: 원본 HDRP 마스크 PNG를 복사해 선형으로 다시 임포트한 사본.
 - `Assets/01.Scripts/05.Art/Characters/PlayerP09/Animations/Clips/`: CombatGirls FBX 클립을 `.anim`으로 복사하고 이벤트를 지운 사본.
 - `Assets/02.Prefab/Characters/PlayerP09/PF_PlayerP09.prefab`: 원본 `P09_Human` 프리팹 변형.
+- `Assets/01.Scripts/05.Art/Characters/PlayerP09/Weapons/` (2026-10-23): Stylish Archer Assets Pack의 `Modeling/Unity_Grruzam_BaseModeling_Bow.FBX`를 복사한 `SM_P09Weapon_Bow.fbx`, 원본에 색 텍스처가 없어 새로 만든 활 재질, 원본 lilToon `P09_Weapon_Sword_02`를 URP Lit로 옮긴 검 재질(원본 텍스처를 GUID로 참조).
+- `Assets/02.Prefab/Characters/PlayerP09/Weapons/` (2026-10-23): 위 메시·재질로 만든 마검사 검·궁수 활 프리팹.
 
 ### 월백 대기 모션 파생물 — 2026-10-06
 
