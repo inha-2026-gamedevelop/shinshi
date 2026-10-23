@@ -1142,7 +1142,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1f, p05.AreaTickInterval);
             Assert.AreEqual(3, p05.MaxConcurrentAreas);
             Assert.AreEqual(6, BossAreaManager.ComputeHitCount(p05.AreaDurationSeconds, p05.AreaTickInterval));
-            Assert.AreEqual(15f, p05.BaseWeight);
+            Assert.AreEqual(12f, p05.BaseWeight);
             Assert.AreEqual(0.8f, p05.DistanceMultipliers[0]);
             Assert.AreEqual(1.4f, p05.NearbyMultipliers[2]);
 

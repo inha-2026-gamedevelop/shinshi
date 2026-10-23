@@ -475,8 +475,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(7f, easy.EnhancedBaseWeight, TOLERANCE);
             BossWolbaekHardDataKit.AssertTable(BossWolbaekHardDataKit.G_EasyRecent, easy.RecentUseMultipliers, "easy recent");
 
-            float[] baseWeights     = { 10f, 10f, 12f, 16f, 22f, 8f };
-            float[] enhancedWeights = { 12f, 12f, 14f, 18f, 18f, 9f };
+            float[] baseWeights     = { 10f, 10f, 12f, 13f, 22f, 8f };
+            float[] enhancedWeights = { 12f, 12f, 14f, 15f, 18f, 9f };
             for (int i = 0; i < HardOthers.Length; ++i)
             {
                 PatternDefinition p = LoadDefinition(HardOthers[i]);

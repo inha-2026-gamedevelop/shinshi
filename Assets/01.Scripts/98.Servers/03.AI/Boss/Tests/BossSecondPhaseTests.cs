@@ -51,8 +51,8 @@ namespace Shinshi.Tests
         };
 
         // 가중치 기획안 5~10장 표를 그대로 옮긴 값, 행 순서는 P01~P06
-        private static readonly float[]   Base      = { 10f, 10f, 12f, 16f, 22f, 8f };
-        private static readonly float[]   Enhanced  = { 12f, 12f, 14f, 18f, 18f, 9f };
+        private static readonly float[]   Base      = { 10f, 10f, 12f, 13f, 22f, 8f };
+        private static readonly float[]   Enhanced  = { 12f, 12f, 14f, 15f, 18f, 9f };
         private static readonly float[][] Distance  =
         {
             new[] { 1.0f, 1.1f, 1.1f }, new[] { 1.0f, 1.1f, 1.1f }, new[] { 1.3f, 1.2f, 0.7f },
@@ -301,7 +301,7 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(2.75f, AssetWeight(catalog, 1, HP_ABOVE, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
             Assert.AreEqual(3.6f, AssetWeight(catalog, 2, HP_ABOVE, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
-            Assert.AreEqual(24f, AssetWeight(catalog, 3, HP_ABOVE, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
+            Assert.AreEqual(19.5f, AssetWeight(catalog, 3, HP_ABOVE, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
             Assert.AreEqual(49.28f * Nearby[4][ONE], AssetWeight(catalog, 4, HP_ABOVE, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
         }
 
@@ -322,7 +322,7 @@ namespace Shinshi.Tests
             BossPatternCatalogSO catalog = LoadCatalog();
 
             Assert.AreEqual(5.94f, AssetWeight(catalog, 1, HP_LOW, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
-            Assert.AreEqual(29.16f, AssetWeight(catalog, 3, HP_LOW, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
+            Assert.AreEqual(24.3f, AssetWeight(catalog, 3, HP_LOW, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
             Assert.AreEqual(31.5f * Nearby[4][ONE], AssetWeight(catalog, 4, HP_LOW, EPatternGroup.Large, MID, SIDE, ONE, RECENT_NONE), TOLERANCE);
         }
 
