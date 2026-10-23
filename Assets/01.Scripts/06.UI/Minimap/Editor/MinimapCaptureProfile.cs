@@ -94,6 +94,7 @@ namespace Shinshi.UI.Editor
                     return Town();
                 case "Dev_ForestPlateau":
                 case "Dev_ForestPlateauHitFeedback":
+                case "DungeonForest":
                     return Forest();
                 case "Dev_BossWolbaek":
                     return Wolbaek();
