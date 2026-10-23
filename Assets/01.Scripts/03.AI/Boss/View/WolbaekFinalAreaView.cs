@@ -49,6 +49,7 @@ namespace Shinshi.AI
         private readonly Dictionary<int, Transform> _anchors = new Dictionary<int, Transform>();
         private readonly List<GameObject> _oneShots = new List<GameObject>();
         private Func<double> _clock;
+        private WolbaekSoundPlayer _sound;
         private readonly WolbaekEffectTails _tails = new WolbaekEffectTails();
         private readonly WolbaekServerEventGate _gate = new WolbaekServerEventGate(); // 시계 오차로 서버 시각이 아직 오지 않은 사건을 그 시각까지 보류한다
         private BossView _bossView;
@@ -156,7 +157,22 @@ namespace Shinshi.AI
             BeginShield();
             ShowFloorTelegraph();
             PlayMotion(GROGGY_STATE, GROGGY_ENTER_BLEND);
+            PlaySound(EWolbaekSound.Warning, start.ArenaCenter);
             return true;
+        }
+
+        // 재접속 복원은 이 알림 경로를 거치지 않으므로 지난 일회성 소리는 다시 나지 않는다
+        private void PlaySound(EWolbaekSound id, Vector3 position)
+        {
+            if (_sound == null)
+            {
+                _sound = GetComponent<WolbaekSoundPlayer>();
+            }
+
+            if (_sound != null)
+            {
+                _sound.Play(id, position);
+            }
         }
 
         public void OuterFloorRemoved(int castId, double serverTime, double now)
@@ -174,6 +190,7 @@ namespace Shinshi.AI
             _floorRemoved = true;
             StopFloorTelegraph();
             SpawnOneShot(_floorCollapsePrefab, _start.ArenaCenter, FLOOR_EFFECT_SCALE * RadiusScale());
+            PlaySound(EWolbaekSound.GroundCollapse, _start.ArenaCenter);
         }
 
         public void YellowsSpawned(int castId, IReadOnlyList<WolbaekFinalYellow> yellows, double now)
@@ -184,6 +201,7 @@ namespace Shinshi.AI
             }
 
             ShowYellows(yellows, null, now);
+            PlaySound(EWolbaekSound.FoxfireIgnite, _start.ArenaCenter);
         }
 
         public void YellowDestroyed(int castId, int yellowIndex, double serverTime, double now)
@@ -208,6 +226,7 @@ namespace Shinshi.AI
             yellow.Stop(_yellowPlayback[yellowIndex]);
             _yellowPlayback[yellowIndex] = yellow.PlayImpact(position, EWolbaekFoxfireVariant.GoldTarget,
                 serverTime, now);
+            PlaySound(EWolbaekSound.FoxfireBurst, position);
         }
 
         public void BundleStarted(int castId, in WolbaekFinalBundle bundle, double now)
@@ -254,6 +273,9 @@ namespace Shinshi.AI
             }
 
             LockReds(centers, serverTime, true, now);
+
+            // 빨간 여우불이 여럿이어도 위치 확정 신호는 대표음 한 번만 낸다
+            PlaySound(EWolbaekSound.LockOn, centers[0]);
         }
 
         public void BundleResolved(int castId, int bundleIndex, double serverTime, double now)
@@ -269,6 +291,8 @@ namespace Shinshi.AI
             }
 
             _bundleResolved = true;
+            bool hasImpact = false;
+            Vector3 impactPosition = Vector3.zero;
             for (int i = 0; i < _reds.Length; ++i)
             {
                 if ((_reds[i] == null) || (_redPlayback[i] == 0))
@@ -279,11 +303,22 @@ namespace Shinshi.AI
                 if (_reds[i].State == EWolbaekFoxfireState.Locked)
                 {
                     _reds[i].ConfirmImpact(_redPlayback[i], serverTime, now);
+                    if (!hasImpact)
+                    {
+                        hasImpact = true;
+                        impactPosition = _reds[i].transform.position;
+                    }
                 }
                 else
                 {
                     _reds[i].Stop(_redPlayback[i]);
                 }
+            }
+
+            // 여러 개가 같은 순간에 터지므로 대표음 한 번만 낸다
+            if (hasImpact)
+            {
+                PlaySound(EWolbaekSound.BigBlast, impactPosition);
             }
         }
 

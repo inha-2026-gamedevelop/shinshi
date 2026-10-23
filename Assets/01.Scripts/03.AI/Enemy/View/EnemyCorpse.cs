@@ -37,6 +37,7 @@ namespace Shinshi.AI
         private const float ASH_LINGER      = 1.5f; // 몸이 다 사라진 뒤 재 입자가 흩어지길 기다리는 시간
         private const float MIN_DIRECTION_SQR = 0.0001f;
         private const int   MAX_CORPSES     = 16;
+        private const int   MAX_RAGDOLLS    = 8;    // 동시에 물리가 도는 래그돌 수, 넘으면 덩어리로 날린다
         private const int   HIT_BUFFER      = 8;
 
         private static readonly List<EnemyCorpse>  s_active = new List<EnemyCorpse>(MAX_CORPSES);
@@ -49,6 +50,7 @@ namespace Shinshi.AI
         private bool    _settled;
         private bool    _ashing;
         private bool    _shrinking;
+        private bool    _ragdolled;
 
         /****************************************
         *              Unity Event
@@ -65,7 +67,7 @@ namespace Shinshi.AI
         {
             _elapsed += Time.deltaTime;
 
-            if (!_settled)
+            if ((!_settled) && (!_ragdolled))
             {
                 Fly(Time.deltaTime);
             }
@@ -128,7 +130,28 @@ namespace Shinshi.AI
             corpse.transform.SetPositionAndRotation(sourceTransform.position, sourceTransform.rotation);
             corpse.transform.localScale = sourceTransform.lossyScale;
             corpse.Begin(away);
+
+            // 래그돌 동시 수에 여유가 있으면 뼈 물리로 날리고, 아니면 덩어리로 날린 그대로 둔다
+            if (CountRagdolls() < MAX_RAGDOLLS)
+            {
+                corpse._ragdolled = EnemyCorpseRagdoll.Build(corpse.gameObject, away);
+            }
+
             return true;
+        }
+
+        private static int CountRagdolls()
+        {
+            int count = 0;
+            for (int i = 0; i < s_active.Count; ++i)
+            {
+                if ((s_active[i] != null) && (s_active[i]._ragdolled))
+                {
+                    ++count;
+                }
+            }
+
+            return count;
         }
 
         /// <summary> 남아 있는 시체를 모두 지운다. 던전 종료와 씬 전환에서 부른다 </summary>
@@ -200,6 +223,7 @@ namespace Shinshi.AI
             _settled   = false;
             _ashing    = false;
             _shrinking = false;
+            _ragdolled = false;
             _velocity  = (away * FLY_SPEED) + (Vector3.up * FLY_UP_SPEED);
             _spin      = Vector3.Cross(Vector3.up, away) * SPIN_SPEED;
             gameObject.SetActive(true);

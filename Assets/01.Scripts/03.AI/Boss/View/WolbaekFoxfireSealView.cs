@@ -61,6 +61,7 @@ namespace Shinshi.AI
         private int _successCount;
         private ulong _sequence;
         private double _counterEndServerTime;
+        private double _appearAt;
         private bool _active;
         private bool _tracking;
         private bool _locked;
@@ -72,6 +73,8 @@ namespace Shinshi.AI
         public bool IsCounter => _counter;
         public int TurnIndex => _turnIndex;
         public int SuccessCount => _successCount;
+        private WolbaekSoundPlayer _sound;
+
         public int VisibleCoreCount => CountRunning(_cores);
         public int VisibleDropCount => CountRunning(_drops);
         public bool HasPendingSweep => _sweepRanges.Count > 0;
@@ -144,13 +147,29 @@ namespace Shinshi.AI
             _sequence = 1;
             BeginShield();
             PlayMotion(DEFENSE_STATE);
+            PlaySound(EWolbaekSound.WardOpen, transform.position);
             return true;
+        }
+
+        // 재접속 복원은 이 알림 경로를 거치지 않으므로 지난 일회성 소리는 다시 나지 않는다
+        private void PlaySound(EWolbaekSound id, Vector3 position)
+        {
+            if (_sound == null)
+            {
+                _sound = GetComponent<WolbaekSoundPlayer>();
+            }
+
+            if (_sound != null)
+            {
+                _sound.Play(id, position);
+            }
         }
 
         public void TurnStarted(int castId, in WolbaekSealTurn turn, double now)
         {
             if (!Matches(castId) || !ValidTurn(in turn)) return;
             StartTurn(in turn, null, null, now);
+            PlaySound(EWolbaekSound.WardOpen, transform.position);
         }
 
         public void TrackingStarted(int castId, int turnIndex, double serverTime, double now)
@@ -164,6 +183,7 @@ namespace Shinshi.AI
             _tracking = true;
             OpenCores(serverTime, now);
             TrackAnchors(now);
+            PlaySound(EWolbaekSound.CoreOpen, transform.position);
         }
 
         public void FoxfireDetached(int castId, int turnIndex, int foxfireIndex, double serverTime,
@@ -204,6 +224,9 @@ namespace Shinshi.AI
                 _hasServerDropPosition[i] = true;
                 EnsureDrop(i, WolbaekSealDropPlayer.EPhase.Locked, serverTime, now);
             }
+
+            // 낙하 위치가 여럿이어도 확정 신호는 대표음 한 번만 낸다
+            PlaySound(EWolbaekSound.LockOn, centers[0]);
         }
 
         public void SweepTelegraphed(int castId, in WolbaekSealSweep sweep, double now)
@@ -224,6 +247,7 @@ namespace Shinshi.AI
             if (_pendingSweeps.TryGetValue(key, out WolbaekSealSweep sweep))
             {
                 SpawnSweep(in sweep);
+                PlaySound(EWolbaekSound.WaveBeam, sweep.Origin);
             }
             RemoveSweepRange(key);
         }
@@ -265,6 +289,13 @@ namespace Shinshi.AI
                 WolbaekSealCorePlayer.Snapshot core = CoreSnapshot(i, phase, serverTime, now);
                 _cores[i].Reconcile(_corePlayback[i], core, now);
             }
+
+            // 낙하 충돌은 폭발음, 핵이 파괴된 차례만 파쇄음을 더한다
+            PlaySound(EWolbaekSound.BigBlast, _dropPositions[0]);
+            if (destroyedCoreMask != NO_DESTROYED_CORES)
+            {
+                PlaySound(EWolbaekSound.CoreShatter, _dropPositions[0]);
+            }
         }
 
         public void Succeeded(int castId, double serverTime, double counterEndServerTime, double now)
@@ -282,6 +313,7 @@ namespace Shinshi.AI
             _counter = true;
             _counterEndServerTime = counterEndServerTime;
             BeginCounterMotion(now);
+            PlaySound(EWolbaekSound.Success, transform.position);
         }
 
         public void CounterEnded(int castId)
@@ -387,6 +419,8 @@ namespace Shinshi.AI
         {
             ClearTurn();
             _turn = turn;
+            // 재생기는 시작 시각이 현재 서버 시각보다 미래인 스냅샷을 조용히 거절한다. 추정 서버 시각이 늦을 수 있어 현재 시각으로 잘라 차례 내내 같은 값을 쓴다
+            _appearAt = Math.Min(turn.StartServerTime, now);
             _turnIndex = turn.Index;
             _tracking = false;
             _locked = false;
@@ -409,6 +443,10 @@ namespace Shinshi.AI
                 WolbaekSealCorePlayer.Snapshot core = CoreSnapshot(i, WolbaekSealCorePlayer.EPhase.Dormant,
                     turn.StartServerTime, now);
                 _corePlayback[i] = _cores[i].Begin(core, now);
+                if (_corePlayback[i] == 0)
+                {
+                    Debug.LogWarning($"[Boss] 월백 봉인 핵 재생기가 시작을 거절했다, cast={_castId}, turn={turn.Index}, core={i}");
+                }
             }
             for (int i = 0; i < dropCount; ++i)
             {
@@ -453,7 +491,14 @@ namespace Shinshi.AI
             if (_drops[index] == null) _drops[index] = Instantiate(_dropPrefab);
             ++_sequence;
             WolbaekSealDropPlayer.Snapshot snapshot = DropSnapshot(index, phase, phaseStartedAt, now);
-            if (_dropPlayback[index] == 0) _dropPlayback[index] = _drops[index].Begin(snapshot, now);
+            if (_dropPlayback[index] == 0)
+            {
+                _dropPlayback[index] = _drops[index].Begin(snapshot, now);
+                if (_dropPlayback[index] == 0)
+                {
+                    Debug.LogWarning($"[Boss] 월백 봉인 여우불 재생기가 시작을 거절했다, cast={_castId}, turn={_turnIndex}, drop={index}");
+                }
+            }
             else _drops[index].Reconcile(_dropPlayback[index], snapshot, now);
         }
 
@@ -482,15 +527,20 @@ namespace Shinshi.AI
         {
             WolbaekSealCore core = _turn.Cores[index];
             return new WolbaekSealCorePlayer.Snapshot((ulong)_castId, _sequence, _turn.Index, core.Index,
-                core.Center, _turn.StartServerTime, now, phase, phaseStartedAt);
+                core.Center, _appearAt, now, phase, PhaseStart(phaseStartedAt, now));
         }
 
         private WolbaekSealDropPlayer.Snapshot DropSnapshot(int index, WolbaekSealDropPlayer.EPhase phase,
             double phaseStartedAt, double now)
         {
             return new WolbaekSealDropPlayer.Snapshot((ulong)_castId, _sequence, _turn.Index,
-                _turn.Foxfires[index].Index, _dropPositions[index], _start.BlastRadius, _turn.StartServerTime,
-                _turn.LockServerTime, _turn.ResolveServerTime, now, phase, phaseStartedAt);
+                _turn.Foxfires[index].Index, _dropPositions[index], _start.BlastRadius, _appearAt,
+                _turn.LockServerTime, _turn.ResolveServerTime, now, phase, PhaseStart(phaseStartedAt, now));
+        }
+
+        private double PhaseStart(double phaseStartedAt, double now)
+        {
+            return Math.Max(_appearAt, Math.Min(phaseStartedAt, now));
         }
 
         private void BeginShield()

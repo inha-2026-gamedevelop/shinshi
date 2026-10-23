@@ -315,7 +315,7 @@ MonoBehaviour:
     _displayKey: wolbaek_p05.name
     _bossId: boss_wolbaek
     _phase: 1
-    _baseWeight: 15
+    _baseWeight: 12
     _distanceMultipliers:
     - 0.8
     - 1.3
@@ -595,7 +595,7 @@ MonoBehaviour:
     _displayKey: wolbaek_ph2_p04.name
     _bossId: boss_wolbaek
     _phase: 2
-    _baseWeight: 16
+    _baseWeight: 13
     _distanceMultipliers:
     - 0.9
     - 1.2
@@ -633,7 +633,7 @@ MonoBehaviour:
     _areaTickInterval: 1
     _maxConcurrentAreas: 3
     _group: 2
-    _enhancedBaseWeight: 18
+    _enhancedBaseWeight: 15
     _projectileCount: 0
     _projectileIntervalSeconds: 0
     _areaTargetCount: 2
@@ -1051,7 +1051,7 @@ MonoBehaviour:
     _bossId: boss_wolbaek
     _phase: 1
     _difficulty: 1
-    _baseWeight: 15
+    _baseWeight: 12
     _distanceMultipliers:
     - 0.8
     - 1.3
@@ -1363,7 +1363,7 @@ MonoBehaviour:
     _bossId: boss_wolbaek
     _phase: 2
     _difficulty: 1
-    _baseWeight: 16
+    _baseWeight: 13
     _distanceMultipliers:
     - 0.9
     - 1.2
@@ -1401,7 +1401,7 @@ MonoBehaviour:
     _areaTickInterval: 1
     _maxConcurrentAreas: 2
     _group: 2
-    _enhancedBaseWeight: 18
+    _enhancedBaseWeight: 15
     _projectileCount: 0
     _projectileIntervalSeconds: 0
     _areaTargetCount: 2

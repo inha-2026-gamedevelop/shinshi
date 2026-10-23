@@ -98,6 +98,13 @@ namespace Shinshi.AI
         private int _fadingShieldCastId;
         private int _handoverCastId;           // 보호막을 컷신에 넘긴 시전, 이 시전의 늦은 성공이나 복원은 보호막을 다시 만들지 않는다
 
+        private const float LINK_WARN_SOUND_INTERVAL   = 1.2f; // 초, 연결선 경고 단계에서 경고음을 반복하는 간격
+        private const float LINK_DANGER_SOUND_INTERVAL = 0.5f; // 초, 위험 단계의 반복 간격
+
+        private WolbaekSoundPlayer _sound;
+        private bool               _isRestoring;
+        private float              _nextLinkSoundTime;
+
         public bool IsActive => _active;
         public bool IsGathering => _active && _gathering;
         public bool IsHolding => _active && _holding;
@@ -176,7 +183,27 @@ namespace Shinshi.AI
                 LoopParticles(_gather);
             }
             BeginWardMotion();
+            PlaySound(EWolbaekSound.WardOpen, transform.position);
             return true;
+        }
+
+        // 재접속 복원 중에는 이미 지난 일회성 소리를 다시 내지 않는다
+        private void PlaySound(EWolbaekSound id, Vector3 position)
+        {
+            if (_isRestoring)
+            {
+                return;
+            }
+
+            if (_sound == null)
+            {
+                _sound = GetComponent<WolbaekSoundPlayer>();
+            }
+
+            if (_sound != null)
+            {
+                _sound.Play(id, position);
+            }
         }
 
         public void HoldStarted(int castId, double serverTime)
@@ -234,6 +261,7 @@ namespace Shinshi.AI
             _blueWard = SpawnWard(_blueWardPrefab, stage.BlueCenter, stage.Radius, EWolbaekWardSign.Moon, G_BlueWardColor, now);
             _redLink = SpawnLink(_redLinkPrefab);
             _blueLink = SpawnLink(_blueLinkPrefab);
+            PlaySound(EWolbaekSound.WardOpen, stage.RedCenter);
         }
 
         public void StrikeTelegraphed(int castId, in WolbaekWardStrike strike, double now)
@@ -273,6 +301,7 @@ namespace Shinshi.AI
             effect.transform.localScale = _strikePrefab.transform.localScale * STRIKE_SCALE;
             _strikes.Add(effect);
             Destroy(effect, STRIKE_LIFE);
+            PlaySound(EWolbaekSound.BigBlast, origin);
         }
 
         public void Restore(in WolbaekWardSnapshot snapshot, double now)
@@ -286,7 +315,13 @@ namespace Shinshi.AI
             }
             if (_active && snapshot.Start.CastInstanceId == _castId) ClearVisuals();
             WolbaekWardStart start = snapshot.Start;
-            if (!StartWard(in start, now)) return;
+            _isRestoring = true;
+            bool started = StartWard(in start, now);
+            if (!started)
+            {
+                _isRestoring = false;
+                return;
+            }
             _gathering = snapshot.State == EWolbaekWardState.Gather;
             _holding = _gathering && snapshot.HasHold;
             _holdStart = _holding ? snapshot.HoldStartServerTime : 0d;
@@ -306,6 +341,7 @@ namespace Shinshi.AI
                 for (int i = 0; i < count; ++i)
                     _graceEnds[i] = snapshot.GraceEndServerTimes[i] > now ? snapshot.GraceEndServerTimes[i] : 0d;
             }
+            _isRestoring = false;
         }
 
         public void GraceStarted(int castId, int combatId, double end)
@@ -382,6 +418,7 @@ namespace Shinshi.AI
         {
             if (!Matches(castId)) return;
             _endedCastId = Math.Max(_endedCastId, castId);
+            PlaySound(EWolbaekSound.Success, transform.position);
             // 정상 성공은 보호막의 새 파티클만 멈춰 자연 소멸시키고, 성공과 같은 순간의 마지막 광역 효과는 제 수명대로 둔다
             FadeShield();
             for (int i = 0; i < _strikes.Count; ++i)
@@ -477,6 +514,7 @@ namespace Shinshi.AI
                 ? WolbaekLinkPlayer.ESeverity.Warning : WolbaekLinkPlayer.ESeverity.Normal;
             float amount = Mathf.Clamp01((distance - _start.LinkWarnDistance)
                 / (_start.LinkDamageDistance - _start.LinkWarnDistance));
+            PlayLinkWarning(severity, first.position);
             bool red = color == EWolbaekWardColor.Red;
             // 재생 중이면 시작 때 정한 시각을 그대로 써서 같은 단계로 인정받게 한다
             double start = player.IsRunning ? player.CurrentSnapshot.AppearedAt : Math.Min(_stage.StartServerTime, now);
@@ -488,6 +526,19 @@ namespace Shinshi.AI
             if (!player.IsRunning) player.Begin(value, now);
             else player.Reconcile(player.PlaybackId, value, now);
             if (player.IsRunning) player.Tick(player.PlaybackId, now);
+        }
+
+        // 경고 단계를 유지하는 동안 매 프레임 다시 울리지 않고 간격마다 한 번씩 낸다, 두 연결선이 같은 간격을 나눠 쓴다
+        private void PlayLinkWarning(WolbaekLinkPlayer.ESeverity severity, Vector3 position)
+        {
+            if ((severity == WolbaekLinkPlayer.ESeverity.Normal) || (Time.time < _nextLinkSoundTime))
+            {
+                return;
+            }
+
+            _nextLinkSoundTime = Time.time + ((severity == WolbaekLinkPlayer.ESeverity.Danger)
+                ? LINK_DANGER_SOUND_INTERVAL : LINK_WARN_SOUND_INTERVAL);
+            PlaySound(EWolbaekSound.Warning, position);
         }
 
         private void StopStage()

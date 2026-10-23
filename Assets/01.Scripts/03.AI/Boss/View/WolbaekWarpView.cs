@@ -29,6 +29,9 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekWarpPlayer _reform;
         [SerializeField] private WolbaekWarpPlayer _landing;
 
+        private const float SOUND_LATE_SECONDS = 0.5f; // 초, 단계 시각을 이만큼 넘겨 받았으면 지난 소리라 내지 않는다
+
+        private WolbaekSoundPlayer _sound;
         private Transform _effectsRoot;
         private int       _castId;
         private bool      _isCasting;
@@ -62,6 +65,8 @@ namespace Shinshi.AI
 
         protected override void OnViewAwake()
         {
+            _sound = GetComponent<WolbaekSoundPlayer>();
+
             if ((_bossView == null) || (_breakup == null) || (_reform == null) || (_landing == null))
             {
                 Debug.LogError("[WolbaekWarpView] 보스 뷰 또는 워프 재생기 참조가 비어 있다", this);
@@ -109,6 +114,12 @@ namespace Shinshi.AI
             {
                 // 서버가 타격을 확정했을 때만 충격파를 재생한다
                 _landing.ConfirmStrike(_landingId, cast.ExecuteServerTime, serverNow);
+
+                if (_sound != null)
+                {
+                    _sound.StopLoop(_castId);
+                    _sound.Play(EWolbaekSound.BigBlast, _landed);
+                }
             }
         }
 
@@ -141,6 +152,11 @@ namespace Shinshi.AI
 
             ShowModel();
             _isCasting = false;
+
+            if (_sound != null)
+            {
+                _sound.StopLoop(castId);
+            }
 
             if (isCancelled)
             {
@@ -182,6 +198,12 @@ namespace Shinshi.AI
             // 착지 위치는 서버가 확정했으므로 t=0에 바로 예고를 시작한다. 늦게 받았으면 서버 시각 기준으로 이어서 그린다
             _landingId = _landing.PlayLandedWarning((ulong)cast.CastId, _landed, cast.Length, _castStart,
                 _castStart + _telegraphSeconds, serverNow);
+
+            // 착지 예고 동안 차징을 낸다, 충격파 확정이나 시전 종료에서 끊는다
+            if (_sound != null)
+            {
+                _sound.StartLoop(_castId, EWolbaekSound.ChargeLoop, _landed);
+            }
 
             bool isSomersault = WolbaekMotionPlan.ResolveWarpStage(serverNow - _castStart) == WolbaekMotionPlan.EWarpStage.Somersault;
             if ((_hasServerDeparture) && (_serverDepartureCastId == _castId))
@@ -226,6 +248,7 @@ namespace Shinshi.AI
                 _didBreakup = true;
                 _breakupId = _breakup.PlayBody((ulong)_castId, CalculateBounds(), _castStart + WolbaekMotionPlan.WARP_BREAKUP_SECONDS, serverNow);
                 SetModelVisible(false);
+                PlayWarpSound(WolbaekMotionPlan.WARP_BREAKUP_SECONDS, _departure, serverNow);
 
                 // 숨겨진 사이에 모델 위치를 서버 위치로 옮긴다
                 _bossView.EndPositionHold(true);
@@ -237,12 +260,24 @@ namespace Shinshi.AI
                 Bounds landedBounds = _standingBounds;
                 landedBounds.center += _landed - _departure;
                 _reformId = _reform.PlayBody((ulong)_castId, landedBounds, _castStart + WolbaekMotionPlan.WARP_REFORM_SECONDS, serverNow);
+                PlayWarpSound(WolbaekMotionPlan.WARP_REFORM_SECONDS, _landed, serverNow);
             }
 
             if ((!_didShow) && (stage >= WolbaekMotionPlan.EWarpStage.Shown))
             {
                 ShowModel();
             }
+        }
+
+        // 단계 시각을 한참 지나 받은 재접속이면 지난 소리를 다시 내지 않는다
+        private void PlayWarpSound(float stageSeconds, Vector3 position, double serverNow)
+        {
+            if ((_sound == null) || ((serverNow - (_castStart + stageSeconds)) > SOUND_LATE_SECONDS))
+            {
+                return;
+            }
+
+            _sound.Play(EWolbaekSound.Warp, position);
         }
 
         private void ShowModel()
