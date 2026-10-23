@@ -16,7 +16,7 @@ namespace Shinshi.Combat
         MoveInput,
         MoveInputWindupCancel,
 
-        // 기본 공격 동작 중에 들어온 이동. 동작이 끝난 뒤 이동하므로 대기 공격만 지운다
+        // 이동으로 끊기지 않는 기본 공격의 준비(마지막 발사 전) 중에 들어온 이동. 발사 뒤 이동하므로 대기 공격만 지운다
         MoveInputHeld
     }
 }

@@ -40,6 +40,11 @@ namespace Shinshi.Tests
         private const int    COMBO_STEP     = 1;
         private const double IMMUNE_UNTIL   = 1e9;
 
+        // 발사 틱과 이동 시작 틱, 틱 경계 반올림을 합친 여유
+        private const int    HOLD_SLACK_TICKS = 3;
+        private const int    FIRST_STEP       = 0;
+        private const float  SECONDS_EPSILON  = 1e-6f;
+
         private PlayerServerTestRig _rig;
         private PlayerServer        _player;
         private PathRequestBudget   _budget;
@@ -185,34 +190,108 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.None, held.DodgeRejectReason);
         }
 
-        [TestCase(EPlayerClass.Swordsman)]
-        [TestCase(EPlayerClass.Archer)]
-        public void HandleMove_DuringAttackMotion_HoldsMoveUntilMotionEnds(EPlayerClass playerClass)
+        [Test]
+        public void HandleMove_DuringSwordsmanWindup_HoldsMoveOnlyUntilFire()
         {
-            _player = _rig.Add(PARTICIPANT, Vector3.zero, playerClass);
+            _player = _rig.Add(PARTICIPANT, Vector3.zero, EPlayerClass.Swordsman);
             SetField("_pendingAimYaw", FacingRules.EncodeYaw(Vector3.forward));
             SetField("_hasPendingAttack", true);
             StepWithMovement();
 
-            double motionUntil = (double)GetField("_attackMotionUntil");
-            Assert.Greater(motionUntil, _now, "공격을 시작하면 동작이 끝나는 시각이 잡힌다");
-            Assert.AreEqual((double)GetField("_nextAttackTime"), motionUntil);
-            bool windingUp = (bool)GetField("_isWindingUp");
+            double attackStart = _now;
+            double nextAttack  = (double)GetField("_nextAttackTime");
+            Assert.IsTrue((bool)GetField("_isWindingUp"), "검사 기본 공격은 준비 시간이 있다");
 
             _player.HandleMove(new PlayerMoveInput(Header(MOVE_SEQUENCE), new Vector3(MOVE_DISTANCE, 0f, 0f)));
-
-            Assert.AreEqual(windingUp, (bool)GetField("_isWindingUp"), "동작 중 이동은 공격 준비를 끊지 않는다");
+            Assert.IsTrue((bool)GetField("_isWindingUp"), "준비 중 이동은 검사 공격 준비를 끊지 않는다");
             Assert.IsTrue((bool)GetField("_hasPendingMove"));
 
-            while ((_now + TICK_STEP) < motionUntil)
+            // 발사할 때까지만 보관한다
+            for (int i = 0; (i < MAX_STEPS) && ((bool)GetField("_isWindingUp")); ++i)
             {
                 StepWithMovement();
-                Assert.IsTrue((bool)GetField("_hasPendingMove"), $"동작 중에는 이동을 시작하지 않는다, now={_now}");
+                Assert.IsTrue((bool)GetField("_hasPendingMove"), $"발사 전에는 이동을 시작하지 않는다, now={_now}");
             }
 
             StepWithMovement();
-            Assert.AreEqual(0.0, (double)GetField("_attackMotionUntil"));
-            Assert.IsFalse((bool)GetField("_hasPendingMove"), "동작이 끝난 틱에 보관한 이동을 시작한다");
+            Assert.IsFalse((bool)GetField("_hasPendingMove"), "발사 다음 틱에 보관한 이동을 시작한다");
+            Assert.Less(_now, nextAttack, "공격 주기 전체가 아니라 준비 시간만 이동을 막는다");
+            Assert.Less(_now - attackStart, _rig.Config.GetBasicAttack(EPlayerClass.Swordsman).GetWindup(FIRST_STEP) + (HOLD_SLACK_TICKS * TICK_STEP));
+        }
+
+        [Test]
+        public void HandleMove_AfterFireBeforeNextAttack_MovesWithoutWaitingForInterval()
+        {
+            _player = _rig.Add(PARTICIPANT, Vector3.zero, EPlayerClass.Swordsman);
+            SetField("_pendingAimYaw", FacingRules.EncodeYaw(Vector3.forward));
+            SetField("_hasPendingAttack", true);
+            StepWithMovement();
+            for (int i = 0; (i < MAX_STEPS) && ((bool)GetField("_isWindingUp")); ++i)
+            {
+                StepWithMovement();
+            }
+            double nextAttack = (double)GetField("_nextAttackTime");
+            Assert.Less(_now, nextAttack, "발사 뒤에도 공격 주기는 남아 있어야 한다");
+
+            _player.HandleMove(new PlayerMoveInput(Header(MOVE_SEQUENCE), new Vector3(MOVE_DISTANCE, 0f, 0f)));
+            StepWithMovement();
+
+            Assert.IsFalse((bool)GetField("_hasPendingMove"), "발사 뒤 이동은 남은 동작을 끊고 바로 시작한다");
+        }
+
+        [Test]
+        public void HandleMove_DuringArcherWindup_CancelsShotAndMovesNextTick()
+        {
+            _player = _rig.Add(PARTICIPANT, Vector3.zero, EPlayerClass.Archer);
+            SetField("_pendingAimYaw", FacingRules.EncodeYaw(Vector3.forward));
+            SetField("_hasPendingAttack", true);
+            StepWithMovement();
+            Assert.IsTrue((bool)GetField("_isWindingUp"), "궁수 기본 공격은 준비 시간이 있다");
+            SetField("_comboImmuneUntil", IMMUNE_UNTIL);
+            byte cancelBefore = _rig.Combats[0].ActionCancelSequence;
+
+            _player.HandleMove(new PlayerMoveInput(Header(MOVE_SEQUENCE), new Vector3(MOVE_DISTANCE, 0f, 0f)));
+
+            Assert.IsFalse((bool)GetField("_isWindingUp"), "궁수는 준비 중 이동으로 발사를 버린다");
+            Assert.AreEqual(unchecked((byte)(cancelBefore + 1)), _rig.Combats[0].ActionCancelSequence,
+                "경로를 못 만들어도 관찰자가 취소를 알 수 있게 취소 순번을 올린다");
+            Assert.AreEqual(0.0, (double)GetField("_comboImmuneUntil"), "이동 입력이 들어오면 면역은 바로 끝난다");
+
+            StepWithMovement();
+            Assert.IsFalse((bool)GetField("_hasPendingMove"), "준비를 버린 다음 틱에 바로 움직인다");
+            Assert.AreEqual(0, (int)GetField("_arrowCount"), "취소한 준비는 화살을 쏘지 않는다");
+        }
+
+        [Test]
+        public void HandleMove_SameDestinationWhileHeld_KeepsFirstSequence()
+        {
+            _player = _rig.Add(PARTICIPANT, Vector3.zero, EPlayerClass.Swordsman);
+            SetField("_pendingAimYaw", FacingRules.EncodeYaw(Vector3.forward));
+            SetField("_hasPendingAttack", true);
+            StepWithMovement();
+            var destination = new Vector3(MOVE_DISTANCE, 0f, 0f);
+
+            _player.HandleMove(new PlayerMoveInput(Header(MOVE_SEQUENCE), destination));
+            _player.HandleMove(new PlayerMoveInput(Header(MOVE_SEQUENCE + 1), destination));
+
+            Assert.AreEqual(MOVE_SEQUENCE, (uint)GetField("_pendingMoveSequence"), "보관한 같은 목적지는 앞 순번을 그대로 둔다");
+        }
+
+        [TestCase(EPlayerClass.Swordsman)]
+        [TestCase(EPlayerClass.Mageknight)]
+        [TestCase(EPlayerClass.Archer)]
+        public void GetMoveHoldSeconds_MatchesServerWindupLock(EPlayerClass playerClass)
+        {
+            PlayerConfigSO.BasicAttackSpec spec = _rig.Config.GetBasicAttack(playerClass);
+            for (int step = 0; step < spec.ComboStepCount; ++step)
+            {
+                float expected = spec.CancelOnMove
+                    ? 0f
+                    : spec.GetWindup(step) + ((spec.GetFiredShotCount(step) - 1) * spec.GetShotInterval(step));
+                Assert.AreEqual(expected, spec.GetMoveHoldSeconds(step), SECONDS_EPSILON, $"step={step}");
+                Assert.LessOrEqual(spec.GetMoveHoldSeconds(step), spec.GetMaxMoveHoldSeconds());
+                Assert.Less(spec.GetMoveHoldSeconds(step), spec.GetInterval(step), "보관 구간은 공격 주기보다 짧다");
+            }
         }
 
         [Test]
@@ -235,7 +314,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void HandleMove_ClassWhoseWindupSurvivesMove_KeepsWindupButClearsPendingAttackAndComboImmunity()
+        public void HandleMove_ClassWhoseWindupSurvivesMove_KeepsWindupAndImmunityButClearsPendingAttack()
         {
             // 검사는 이동으로 준비가 끊기지 않는 공격이라 이미 시작한 준비는 이어 간다
             _player = _rig.Add(PARTICIPANT, Vector3.zero, EPlayerClass.Swordsman);
@@ -248,7 +327,7 @@ namespace Shinshi.Tests
 
             Assert.IsFalse((bool)GetField("_hasPendingAttack"));
             Assert.IsTrue((bool)GetField("_isWindingUp"));
-            Assert.AreEqual(0.0, (double)GetField("_comboImmuneUntil"));
+            Assert.AreEqual(IMMUNE_UNTIL, (double)GetField("_comboImmuneUntil"), "면역은 보관한 이동이 실제로 시작될 때 거둔다");
             Assert.AreEqual(COMBO_STEP, (int)GetField("_comboStep"));
             Assert.IsTrue((bool)GetField("_hasPendingMove"));
         }
