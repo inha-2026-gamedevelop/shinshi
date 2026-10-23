@@ -32,18 +32,6 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
-        private void Awake()
-        {
-            EnsureModernLayout();
-        }
-
-        /// <summary>어두운 슬롯 바탕을 한 번만 깐다. 입력은 막지 않는다</summary>
-        public void EnsureModernLayout()
-        {
-            HudModernStyle.AddBackdrop(transform, UiModernDark.SPRITE_SLOT, Color.white, 0f);
-            ModernDarkKit.StyleText(_keyText, 0f, UiModernDark.TextGold);
-        }
-
         public void SetIcon(Sprite icon)
         {
             _icon.sprite = icon;

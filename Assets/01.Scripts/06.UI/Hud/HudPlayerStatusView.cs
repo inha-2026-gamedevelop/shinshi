@@ -62,21 +62,6 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
-        private void Awake()
-        {
-            EnsureModernLayout();
-        }
-
-        /// <summary>어두운 상태 바탕을 한 번만 깐다. 입력은 막지 않는다</summary>
-        public void EnsureModernLayout()
-        {
-            HudModernLayout.Apply(transform);
-            HudModernStyle.AddBackdrop(transform, UiModernDark.SPRITE_INSET, Color.white, 8f);
-            ModernDarkKit.StyleText(_levelText, 0f, UiModernDark.TextGold);
-            ModernDarkKit.StyleText(_hpText, 0f, UiModernDark.TextMain);
-            ModernDarkKit.StyleText(_mpText, 0f, UiModernDark.TextMain);
-        }
-
         /// <summary> 로컬 바인더가 소유한 임시 HUD인지 나타낸다 </summary>
         public bool IsRuntimeOwned { get; private set; }
 

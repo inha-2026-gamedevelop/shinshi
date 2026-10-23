@@ -85015,7 +85015,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8c93224849e0761488c9dfca3986abe7, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackClassVisual
   _playerClass: 5
   _lookCatalog: {fileID: 11400000, guid: edb96c36076d96042b3d1007e911e606, type: 2}
@@ -85036,7 +85036,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 3915727631
   _assetId: 0
@@ -85053,7 +85053,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea382e913d5cb7c48ac23310171cde38, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.LocalPlayerHudBinder
 --- !u!114 &580735312
 MonoBehaviour:
@@ -85065,7 +85065,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 597e016ad5f918345afc4ef2918d327d, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.ArcherVfxView
   _combat: {fileID: 0}
   _arrowPrefab: {fileID: 3150555367362999579, guid: 156154de3e00a734e8cc7ca5f509aa0b, type: 3}
@@ -85098,7 +85098,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9718fd1409885e749af20685dab79db5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevHitFeedbackCombatHost
   _playerClass: 5
   _maxHealth: 100
@@ -85129,7 +85129,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ada5361a0ce1f764a8c9544c8b5d1716, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.PlayerInputState
   syncMethod: 0
   syncDirection: 0
@@ -85145,7 +85145,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbdaac199f35c944eb19530e11007b79, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.PlayerCombatState
   syncMethod: 0
   syncDirection: 0
@@ -85161,7 +85161,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99dd6b56bf5b3274cb587d79b47fcc59, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevArcherAttackGizmo
   _showLabels: 1
 --- !u!1 &581650707
@@ -227933,7 +227933,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e2ecbf336bea7534f9f4e213ae66e453, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevLocalNetworkServer
 --- !u!4 &1419434677
 Transform:
@@ -237566,7 +237566,7 @@ MonoBehaviour:
   - {fileID: 999658741}
   _eliteZoneIndex: 5
   _eliteCount: 2
-  _eliteHitsToDie: 2
+  _eliteHitsToDie: 1
   _eliteSizeScale: 2
 --- !u!4 &1454901487
 Transform:
