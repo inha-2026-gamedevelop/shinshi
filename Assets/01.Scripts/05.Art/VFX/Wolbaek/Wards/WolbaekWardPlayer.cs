@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -128,6 +129,8 @@ namespace Shinshi.Art
         private float _switchWhiteShare;
         private Color _petalTint;
         private float _assignedPetalTintShare;
+        private static readonly List<WolbaekWardPlayer> _runningPlayers = new List<WolbaekWardPlayer>(4);
+
         private bool _running;
         private bool _posesCached;
         private bool _hasAcceptedSnapshot;
@@ -137,6 +140,9 @@ namespace Shinshi.Art
         ****************************************/
         public WolbaekWardSettingsSO Settings => _settings;
         public bool IsRunning => _running;
+
+        /// <summary> 지금 표시 중인 색 결계, 표시가 끝나면 빠진다 </summary>
+        public static IReadOnlyList<WolbaekWardPlayer> RunningPlayers => _runningPlayers;
         public uint PlaybackId => _playbackId;
         public ulong CastId => _running ? _snapshot.CastId : 0;
         public Snapshot CurrentSnapshot => _snapshot;
@@ -145,6 +151,12 @@ namespace Shinshi.Art
         /****************************************
         *              Unity Event
         ****************************************/
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatic()
+        {
+            _runningPlayers.Clear();
+        }
+
         protected override void OnViewAwake()
         {
             _properties = new MaterialPropertyBlock();
@@ -191,6 +203,11 @@ namespace Shinshi.Art
             }
             _snapshot = snapshot;
             _running = true;
+            if (!_runningPlayers.Contains(this))
+            {
+                _runningPlayers.Add(this);
+            }
+
             CacheSettings();
             _shapeRoot.localScale = new Vector3(snapshot.Radius, _domeHeight, snapshot.Radius);
             _radiusRoot.localScale = new Vector3(snapshot.Radius, 1f, snapshot.Radius);
@@ -263,6 +280,7 @@ namespace Shinshi.Art
         public void Stop()
         {
             _running = false;
+            _runningPlayers.Remove(this);
             _snapshot = default;
             _lastNow = 0d;
             Hide(_layers);

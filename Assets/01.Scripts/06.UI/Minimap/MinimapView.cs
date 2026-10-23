@@ -28,9 +28,10 @@ namespace Shinshi.UI
         [SerializeField] private float _markerEdgeInset = 10f;
 
         [Header("표시 색")]
-        [SerializeField] private Color _partyColor = new Color(0.45f, 0.85f, 1f, 1f);
-        [SerializeField] private Color _bossColor  = new Color(1f, 0.35f, 0.3f, 1f);
-        [SerializeField] private Color _npcColor   = new Color(1f, 0.85f, 0.4f, 1f);
+        [SerializeField] private Color _partyColor   = new Color(0.45f, 0.85f, 1f, 1f);
+        [SerializeField] private Color _bossColor    = new Color(1f, 0.35f, 0.3f, 1f);
+        [SerializeField] private Color _npcColor     = new Color(1f, 0.85f, 0.4f, 1f);
+        [SerializeField] private Color _gimmickColor = new Color(0.78f, 0.5f, 1f, 1f);
 
         private MinimapMapSO _mapData      = null;
         private Vector2      _lastCenter   = Vector2.zero;
@@ -157,6 +158,17 @@ namespace Shinshi.UI
         /// <summary> 표시 한 개를 찍는다, 칸이 모자라면 거짓이다. 창 밖이면 가장자리로 당긴다 </summary>
         public bool SetMarker(int index, Vector2 worldXz, EMinimapMarker kind)
         {
+            return PlaceMarker(index, worldXz, kind, Color.white, false);
+        }
+
+        /// <summary> 종류의 색 대신 넘긴 색으로 표시 한 개를 찍는다, 기믹이 배정한 색을 그대로 보일 때 쓴다 </summary>
+        public bool SetMarker(int index, Vector2 worldXz, EMinimapMarker kind, Color color)
+        {
+            return PlaceMarker(index, worldXz, kind, color, true);
+        }
+
+        private bool PlaceMarker(int index, Vector2 worldXz, EMinimapMarker kind, Color color, bool hasColor)
+        {
             if ((_markers == null) || (index < 0) || (index >= _markers.Length) || (_markers[index] == null))
             {
                 return false;
@@ -174,7 +186,7 @@ namespace Shinshi.UI
             position = MinimapRules.ClampToCircle(position, radius, out _);
 
             marker.rectTransform.anchoredPosition = position;
-            marker.color = ColorOf(kind);
+            marker.color = hasColor ? color : ColorOf(kind);
             if (!marker.gameObject.activeSelf)
             {
                 marker.gameObject.SetActive(true);
@@ -268,6 +280,8 @@ namespace Shinshi.UI
                     return _bossColor;
                 case EMinimapMarker.Npc:
                     return _npcColor;
+                case EMinimapMarker.Gimmick:
+                    return _gimmickColor;
                 default:
                     return _partyColor;
             }
