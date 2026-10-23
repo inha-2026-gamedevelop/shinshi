@@ -8,8 +8,8 @@ using DG.Tweening;
 
 namespace Shinshi.UI
 {
-    /// <summary>마우스를 올리면 밝아지고, 누르는 동안 가운데를 기준으로 조금 작아지며 어두워진다. Button의 색 전환 대신 쓴다</summary>
-    public sealed class UiButtonFeedback : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+    /// <summary>마우스를 올리면 밝아지고, 누르는 동안 가운데를 기준으로 조금 작아지며 어두워진다. Button의 색 전환 대신 쓰며 올림, 클릭 소리도 낸다</summary>
+    public sealed class UiButtonFeedback : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
     {
         // 상태가 바뀔 때마다 지금 보이는 값에서 새 목표로 다시 출발해야 빠르게 오가도 튀지 않는다.
         // 비율 하나를 0에서 1로 돌리고 출발값과 목표값을 섞어 쓰는 이유는 크기와 색을 한 트윈으로 묶기 위해서다.
@@ -34,6 +34,10 @@ namespace Shinshi.UI
 
         [Header("시간")]
         [SerializeField] private float _duration = 0.1f;
+
+        [Header("소리")]
+        [SerializeField] private bool          _playSound  = true;
+        [SerializeField] private EUiSoundGroup _soundGroup = EUiSoundGroup.Common; // 이 단추가 속한 UI, 칸이 비면 공통 소리를 쓴다
 
         private RectTransform _rect         = null;
         private Vector2       _basePosition = Vector2.zero;
@@ -87,6 +91,7 @@ namespace Shinshi.UI
         {
             _isHovered = true;
             Transition();
+            PlaySound(EUiSoundAction.Hover);
         }
 
         public void OnPointerExit(PointerEventData eventData)
@@ -105,6 +110,17 @@ namespace Shinshi.UI
         {
             _isPressed = false;
             Transition();
+        }
+
+        // Button.onClick과 같은 왼쪽 클릭에만 울린다
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData.button != PointerEventData.InputButton.Left)
+            {
+                return;
+            }
+
+            PlaySound(EUiSoundAction.Click);
         }
 
         /****************************************
@@ -143,10 +159,20 @@ namespace Shinshi.UI
             SetProgress(FULL_PROGRESS);
         }
 
+        private bool IsActive() { return (_selectable == null) || _selectable.IsInteractable(); }
+
+        private void PlaySound(EUiSoundAction action)
+        {
+            if ((_playSound) && (IsActive()))
+            {
+                UiSound.Play(_soundGroup, action);
+            }
+        }
+
         // 눌린 상태가 올린 상태보다 앞서며, 사용할 수 없는 버튼은 반응하지 않는다
         private void GetTarget(out float scale, out Color color)
         {
-            bool isActive = (_selectable == null) || _selectable.IsInteractable();
+            bool isActive = IsActive();
             if (isActive && _isPressed)
             {
                 scale = _pressedScale;

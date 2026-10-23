@@ -69,6 +69,7 @@ namespace Shinshi.UI
             }
 
             gameObject.SetActive(true);
+            UiSound.Play(EUiSoundGroup.Confirm, EUiSoundAction.Open);
         }
 
         private void Accept() { Finish(true); }
@@ -80,6 +81,7 @@ namespace Shinshi.UI
             Action<bool> callback = _onResult;
             _onResult = null;
             gameObject.SetActive(false);
+            UiSound.Play(EUiSoundGroup.Confirm, result ? EUiSoundAction.Confirm : EUiSoundAction.Cancel);
 
             if (callback != null)
             {
