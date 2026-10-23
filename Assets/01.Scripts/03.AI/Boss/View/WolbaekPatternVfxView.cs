@@ -143,6 +143,7 @@ namespace Shinshi.AI
         private Transform             _effectsRoot;
         private BossTelegraphPresenter _presenter;
         private Func<double>           _clock;
+        private readonly WolbaekServerEventGate _gate = new WolbaekServerEventGate(); // 시계 오차로 서버 시각이 아직 오지 않은 확정 사건을 그 시각까지 보류한다
         private Shot[]                 _shots;
         private Zone[]                 _zones;
         private BeamLine[]             _beamLines;
@@ -316,6 +317,7 @@ namespace Shinshi.AI
         /// <summary> 매 프레임 서버 시계를 전달한다 </summary>
         public void Tick(double now)
         {
+            _gate.Flush(now);
             TickShots(now);
             TickImpacts(now);
             TickRelease(now);
@@ -659,13 +661,31 @@ namespace Shinshi.AI
             }
             else if ((phase == EBossTelegraphPhase.Execute) && (_releaseCastId == cast.CastId) && (_releasePlayback != 0))
             {
-                // 서버 타격 확정 사건을 받았을 때만 확정한다
-                _releaseEnd = cast.ExecuteServerTime + RELEASE_ACTIVE_SECONDS;
-                _release.ConfirmActive(_releasePlayback, RELEASE_LINE_ID, REVISION, cast.ExecuteServerTime, _releaseEnd, now);
+                // 서버 확정 시각이 표시 시계보다 앞서 도착하면 재생기가 거절하므로 그 시각까지 보류한다
+                if (_gate.MustDefer(cast.ExecuteServerTime, now))
+                {
+                    uint playback = _releasePlayback;
+                    _gate.Defer(cast.ExecuteServerTime, now, () => ConfirmRelease(cast, playback, ReadClock()));
+                    return;
+                }
 
-                StopLoopSound(cast.CastId);
-                PlaySound(EWolbaekSound.WaveBeam, cast.Origin);
+                ConfirmRelease(cast, _releasePlayback, now);
             }
+        }
+
+        // 서버 타격 확정 사건을 받았을 때만 확정한다. 보류 중 취소되거나 새 시전으로 바뀌었으면 버린다
+        private void ConfirmRelease(BossTelegraphCast cast, uint playback, double now)
+        {
+            if ((_release == null) || (_releasePlayback != playback) || (_releaseCastId != cast.CastId))
+            {
+                return;
+            }
+
+            _releaseEnd = cast.ExecuteServerTime + RELEASE_ACTIVE_SECONDS;
+            _release.ConfirmActive(playback, RELEASE_LINE_ID, REVISION, cast.ExecuteServerTime, _releaseEnd, now);
+
+            StopLoopSound(cast.CastId);
+            PlaySound(EWolbaekSound.WaveBeam, cast.Origin);
         }
 
         private static WolbaekBeamShape BuildReleaseShape(BossTelegraphCast cast)
@@ -923,12 +943,32 @@ namespace Shinshi.AI
                 }
             }
 
-            if ((_sustainPlayback == 0) || (!TryFindBeam(beamId, out int index)))
+            if ((_sustainPlayback == 0) || (!TryFindBeam(beamId, out _)))
             {
                 return;
             }
 
-            _sustain.ConfirmActive(_sustainPlayback, beamId, REVISION, activateServerTime,
+            // 복원 중에는 이미 지난 시각이라 보류하지 않는다
+            double now = ReadClock();
+            if ((!IsRestoring) && _gate.MustDefer(activateServerTime, now))
+            {
+                uint playback = _sustainPlayback;
+                _gate.Defer(activateServerTime, now, () => ConfirmBeam(beamId, activateServerTime, playback));
+                return;
+            }
+
+            ConfirmBeam(beamId, activateServerTime, _sustainPlayback);
+        }
+
+        // 보류 중 빔이 사라졌거나 새 시전으로 바뀌었으면 버린다
+        private void ConfirmBeam(int beamId, double activateServerTime, uint playback)
+        {
+            if ((_sustain == null) || (_sustainPlayback != playback) || (!TryFindBeam(beamId, out int index)))
+            {
+                return;
+            }
+
+            _sustain.ConfirmActive(playback, beamId, REVISION, activateServerTime,
                 activateServerTime + _beamLines[index].Duration, ReadClock());
 
             // 시전마다 첫 활성에서만 차징을 끊고 방출과 유지 루프를 시작한다
@@ -1085,6 +1125,25 @@ namespace Shinshi.AI
                 return;
             }
 
+            double clock = ReadClock();
+            if ((!IsRestoring) && _gate.MustDefer(activateServerTime, clock))
+            {
+                uint playback = _starPlayback;
+                _gate.Defer(activateServerTime, clock, () => ConfirmStar(starId, activateServerTime, playback));
+                return;
+            }
+
+            ConfirmStar(starId, activateServerTime, _starPlayback);
+        }
+
+        // 보류 중 별이 끊겼거나 새 시전으로 바뀌었으면 버린다
+        private void ConfirmStar(int starId, double activateServerTime, uint playback)
+        {
+            if ((_star == null) || (_starPlayback != playback) || (_starId != starId))
+            {
+                return;
+            }
+
             _starActivate = activateServerTime;
             _starEnd      = activateServerTime + _starDuration;
             _isStarActive = true;
@@ -1197,6 +1256,25 @@ namespace Shinshi.AI
                 return;
             }
 
+            double clock = ReadClock();
+            if ((!IsRestoring) && _gate.MustDefer(scheduledServerTime, clock))
+            {
+                uint playback = _starPlayback;
+                _gate.Defer(scheduledServerTime, clock, () => ConfirmStage(castId, stageIndex, scheduledServerTime, playback));
+                return;
+            }
+
+            ConfirmStage(castId, stageIndex, scheduledServerTime, _starPlayback);
+        }
+
+        // 보류 중 단계 별이 끊겼거나 새 시전으로 바뀌었으면 버린다
+        private void ConfirmStage(int castId, int stageIndex, double scheduledServerTime, uint playback)
+        {
+            if ((!_isStageStar) || (_starPlayback != playback) || (_stageCastId != castId))
+            {
+                return;
+            }
+
             double now = ReadClock();
 
             // 단계마다 줄 전체가 동시에 나가므로 대표음 한 번만 낸다
@@ -1279,7 +1357,26 @@ namespace Shinshi.AI
                 return;
             }
 
-            _grid.ConfirmActive(_gridPlayback, lineId, REVISION, scheduledServerTime, scheduledServerTime + GRID_HIT_SECONDS, ReadClock());
+            double now = ReadClock();
+            if ((!IsRestoring) && _gate.MustDefer(scheduledServerTime, now))
+            {
+                uint playback = _gridPlayback;
+                _gate.Defer(scheduledServerTime, now, () => ConfirmGridLine(castId, lineId, scheduledServerTime, playback));
+                return;
+            }
+
+            ConfirmGridLine(castId, lineId, scheduledServerTime, _gridPlayback);
+        }
+
+        // 보류 중 격자가 끊겼거나 새 시전으로 바뀌었으면 버린다
+        private void ConfirmGridLine(int castId, int lineId, double scheduledServerTime, uint playback)
+        {
+            if ((_grid == null) || (_gridPlayback != playback) || (_gridCastId != castId))
+            {
+                return;
+            }
+
+            _grid.ConfirmActive(playback, lineId, REVISION, scheduledServerTime, scheduledServerTime + GRID_HIT_SECONDS, ReadClock());
             PlaySound(EWolbaekSound.WaveBeam, transform.position);
         }
 
@@ -1491,6 +1588,8 @@ namespace Shinshi.AI
 
         private void StopAll()
         {
+            _gate.Clear();
+
             for (int i = 0; (_shots != null) && (i < _shots.Length); ++i)
             {
                 if (_shots[i].IsActive)

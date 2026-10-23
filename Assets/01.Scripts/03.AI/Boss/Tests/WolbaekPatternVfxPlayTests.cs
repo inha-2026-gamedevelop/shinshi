@@ -162,6 +162,22 @@ namespace Shinshi.Tests
             return null;
         }
 
+        // 선 하나가 내부 연출(코어, 베일, 꽃잎)까지 켜졌는지 렌더러 활성 상태로 센다. 예고는 바닥만 켜진다
+        private static int CountFullyDrawn(WolbaekBeamPlayer player)
+        {
+            int count = 0;
+            foreach (WolbaekBeamLineView view in player.GetComponentsInChildren<WolbaekBeamLineView>(true))
+            {
+                var renderers = (Renderer[])typeof(WolbaekBeamLineView).GetField("_renderers", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(view);
+                if (renderers[0].enabled && renderers[1].enabled && renderers[3].enabled)
+                {
+                    ++count;
+                }
+            }
+
+            return count;
+        }
+
         /****************************************
         *            Projectile Tests
         ****************************************/
@@ -368,6 +384,125 @@ namespace Shinshi.Tests
 
             Assert.That(star.IsRunning, Is.True);
             Assert.That(star.VisibleLineCount, Is.EqualTo(5), "5선 확정");
+        }
+
+        /****************************************
+        *      Server Confirm Ahead Of Clock Tests
+        ****************************************/
+
+        // 서버 확정 시각이 표시 시계보다 50ms 앞서 도착해도 사건을 잃지 않고 그 시각이 되면 내부 연출까지 켠다
+        [UnityTest]
+        public IEnumerator BeamRelease_StrikeAheadOfClock_ConfirmsWhenClockReaches()
+        {
+            WolbaekBeamPlayer release = BeamPlayer(EWolbaekBeamKind.Release);
+            _presenter.BeginTelegraph(BossTelegraphStart.Line(BOSS_ID, CAST_ID, "wolbaek_p06", Vector3.zero, Vector3.forward, 14f, 4f, _clock, 1.6f));
+            yield return null;
+
+            yield return SetClock(START_CLOCK + 1.55);
+            _presenter.Strike(CAST_ID, START_CLOCK + 1.6);
+            yield return null;
+            Assert.That(CountFullyDrawn(release), Is.EqualTo(0), "시각 도달 전에는 예고만");
+
+            yield return SetClock(START_CLOCK + 1.62);
+            yield return null;
+            Assert.That(CountFullyDrawn(release), Is.EqualTo(1), "시각 도달 뒤 내부 연출까지");
+        }
+
+        // 보류 중 시전이 취소되면 시각이 지나도 부활하지 않는다
+        [UnityTest]
+        public IEnumerator BeamRelease_CancelledWhileDeferred_DoesNotRevive()
+        {
+            WolbaekBeamPlayer release = BeamPlayer(EWolbaekBeamKind.Release);
+            _presenter.BeginTelegraph(BossTelegraphStart.Line(BOSS_ID, CAST_ID, "wolbaek_p06", Vector3.zero, Vector3.forward, 14f, 4f, _clock, 1.6f));
+            yield return null;
+
+            yield return SetClock(START_CLOCK + 1.55);
+            _presenter.Strike(CAST_ID, START_CLOCK + 1.6);
+            yield return null;
+            _view.PatternVfx.OnCastEnded(CAST_ID, true);
+
+            yield return SetClock(START_CLOCK + 1.7);
+            yield return null;
+            Assert.That(release.IsRunning, Is.False);
+            Assert.That(CountFullyDrawn(release), Is.EqualTo(0), "취소 뒤 부활 없음");
+        }
+
+        [UnityTest]
+        public IEnumerator ParallelBeams_ActivateAheadOfClock_ConfirmsWhenClockReaches()
+        {
+            WolbaekBeamPlayer sustain = BeamPlayer(EWolbaekBeamKind.Sustain);
+            var shapeA = new BossBeamShape(Vector3.zero, 18f, Vector3.forward, -5f, 2f);
+            var shapeB = new BossBeamShape(Vector3.zero, 18f, Vector3.forward, 5f, 2f);
+            _presenter.BeginBeam(new BossBeamStart(BOSS_ID, 41, CAST_ID, shapeA, _clock, 1.5f, 4f, 1f));
+            _presenter.BeginBeam(new BossBeamStart(BOSS_ID, 42, CAST_ID, shapeB, _clock, 1.5f, 4f, 1f));
+            yield return null;
+
+            yield return SetClock(START_CLOCK + 1.45);
+            _presenter.ActivateBeam(41, START_CLOCK + 1.5);
+            _presenter.ActivateBeam(42, START_CLOCK + 1.5);
+            yield return null;
+            Assert.That(CountFullyDrawn(sustain), Is.EqualTo(0), "시각 도달 전에는 예고만");
+
+            yield return SetClock(START_CLOCK + 1.52);
+            yield return null;
+            Assert.That(CountFullyDrawn(sustain), Is.EqualTo(2), "두 줄 모두 내부 연출까지");
+        }
+
+        [UnityTest]
+        public IEnumerator RotatingStar_ActivateAheadOfClock_ConfirmsWhenClockReaches()
+        {
+            WolbaekBeamPlayer star = BeamPlayer(EWolbaekBeamKind.Star);
+            BossStarShape shape = BossStarGeometry.Place(Vector3.zero, 18f, Vector3.forward, 14f, 5, 2, 1.5f, 20f, true);
+            var start = new BossStarStart(BOSS_ID, 81, CAST_ID, in shape, _clock, 2f, 6f, 0.5f);
+            _presenter.BeginStar(in start);
+            yield return null;
+
+            yield return SetClock(START_CLOCK + 1.95);
+            _presenter.ActivateStar(81, START_CLOCK + 2.0);
+            yield return null;
+            Assert.That(CountFullyDrawn(star), Is.EqualTo(0), "시각 도달 전에는 예고만");
+
+            yield return SetClock(START_CLOCK + 2.02);
+            yield return null;
+            Assert.That(CountFullyDrawn(star), Is.EqualTo(5), "5선 내부 연출까지");
+        }
+
+        [UnityTest]
+        public IEnumerator HardStarStage_StruckAheadOfClock_ConfirmsWhenClockReaches()
+        {
+            WolbaekBeamPlayer star = BeamPlayer(EWolbaekBeamKind.Star);
+            BossStarShape shape = BossStarGeometry.Place(Vector3.zero, 18f, Vector3.forward, 14f, 5, 2, 1.5f, 0f, true);
+            var start = new BossStarStageStart(BOSS_ID, CAST_ID, 71, shape, 30f, 3, _clock, 2f, 0.8f);
+            _view.PatternVfx.OnStarStageStarted(in start);
+            yield return null;
+
+            yield return SetClock(START_CLOCK + 1.95);
+            _view.PatternVfx.OnStarStageStruck(CAST_ID, 0, START_CLOCK + 2.0);
+            yield return null;
+            Assert.That(CountFullyDrawn(star), Is.EqualTo(0), "시각 도달 전에는 예고만");
+
+            yield return SetClock(START_CLOCK + 2.02);
+            yield return null;
+            Assert.That(CountFullyDrawn(star), Is.EqualTo(5), "0단계 5선 내부 연출까지");
+        }
+
+        [UnityTest]
+        public IEnumerator HardGrid_StruckAheadOfClock_ConfirmsWhenClockReaches()
+        {
+            WolbaekBeamPlayer grid = BeamPlayer(EWolbaekBeamKind.Grid);
+            var start = new BossGridBeamStart(BOSS_ID, CAST_ID, Vector3.zero, 18f, 12, 3f, 3f, _clock, 1f, 0.5f, 1.5f);
+            _view.PatternVfx.OnGridBeamStarted(in start);
+            _view.PatternVfx.OnGridBeamLineTelegraphed(CAST_ID, 0, true, 0, START_CLOCK, START_CLOCK + 1.0);
+            yield return null;
+
+            yield return SetClock(START_CLOCK + 0.95);
+            _view.PatternVfx.OnGridBeamLineStruck(CAST_ID, 0, true, 0, START_CLOCK + 1.0);
+            yield return null;
+            Assert.That(CountFullyDrawn(grid), Is.EqualTo(0), "시각 도달 전에는 예고만");
+
+            yield return SetClock(START_CLOCK + 1.02);
+            yield return null;
+            Assert.That(CountFullyDrawn(grid), Is.EqualTo(1), "줄 내부 연출까지");
         }
 
         /****************************************
