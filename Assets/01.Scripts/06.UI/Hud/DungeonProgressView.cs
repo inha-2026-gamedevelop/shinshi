@@ -1,3 +1,6 @@
+// System
+using System;
+
 // Unity
 using UnityEngine;
 using UnityEngine.UI;
@@ -46,6 +49,9 @@ namespace Shinshi.UI
         [SerializeField] private TMP_Text[]    _numbers   = null;
         [SerializeField] private TMP_Text[]    _planned   = null;
 
+        [Header("포기")]
+        [SerializeField] private Button _abandonButton = null;
+
         [Header("색")]
         [SerializeField] private Color _goldColor          = new Color(0.922f, 0.788f, 0.478f, 1f);
         [SerializeField] private Color _pendingNodeColor   = new Color(0.137f, 0.165f, 0.212f, 1f);
@@ -65,9 +71,28 @@ namespace Shinshi.UI
         private int       _countCurrent     = -1;
         private int       _countTotal       = -1;
 
+        /// <summary> 포기 버튼을 누를 때마다 알린다. 요청은 바인더가 보낸다 </summary>
+        public event Action AbandonClicked;
+
         /****************************************
         *              Unity Event
         ****************************************/
+
+        private void OnEnable()
+        {
+            if (_abandonButton != null)
+            {
+                _abandonButton.onClick.AddListener(OnAbandonButton);
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (_abandonButton != null)
+            {
+                _abandonButton.onClick.RemoveListener(OnAbandonButton);
+            }
+        }
 
         private void Awake()
         {
@@ -99,6 +124,20 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 결과를 기다리는 포기 요청이 있는 동안 버튼을 막는다 </summary>
+        public void SetAbandonInteractable(bool interactable)
+        {
+            if ((_abandonButton != null) && (_abandonButton.interactable != interactable))
+            {
+                _abandonButton.interactable = interactable;
+            }
+        }
+
+        private void OnAbandonButton()
+        {
+            AbandonClicked?.Invoke();
+        }
 
         /// <summary> 남은 초를 올림해 표시하며 같은 초면 글자를 다시 만들지 않는다. 막대는 경과 비율 위치로 옮긴다 </summary>
         public void SetTime(float remainSeconds, float totalSeconds)
