@@ -114,6 +114,9 @@ namespace Shinshi.Network
         private readonly EPlayerClass[]        _admittedClasses;
         private readonly AbandonSlot[]         _abandons;
         private readonly StatusSlot[]          _statuses;
+
+        // 명단 순서별 정산 보상 내역을 보냈는지, 정산안은 종료 때 한 번 만들어지므로 한 번만 보낸다
+        private readonly bool[]                _rewardsSent;
         private readonly SessionCheckpointState _checkpoint;
         private readonly MemoryStream          _checkpointStream;
         private readonly BinaryWriter          _checkpointWriter;
@@ -228,6 +231,9 @@ namespace Shinshi.Network
         // 일반전 웨이브 진행을 보낼 곳, 없으면 보내지 않는다
         public IWaveProgressAudience WaveProgressAudience { get; set; }
 
+        // 출정 정산 보상 내역을 보낼 곳, 없으면 보내지 않는다
+        public ISortieRewardAudience RewardAudience { get; set; }
+
         // 체크포인트에 실을 전투 값(전투 런타임), 없으면 명단과 진행 값만 싣는다
         public ICheckpointSource   CheckpointSource { get; set; }
 
@@ -285,6 +291,7 @@ namespace Shinshi.Network
             _admittedClasses   = new EPlayerClass[Constants.Session.MAX_PARTY_SIZE];
             _abandons          = new AbandonSlot[Constants.Session.MAX_PARTY_SIZE];
             _statuses          = new StatusSlot[Constants.Session.MAX_PARTY_SIZE];
+            _rewardsSent       = new bool[Constants.Session.MAX_PARTY_SIZE];
             _checkpoint        = new SessionCheckpointState(Constants.Session.MAX_PARTY_SIZE);
             _checkpointStream  = new MemoryStream(CHECKPOINT_INITIAL_BYTES);
             _checkpointWriter  = new BinaryWriter(_checkpointStream, Encoding.UTF8, true);
@@ -441,6 +448,9 @@ namespace Shinshi.Network
             {
                 WaveProgressAudience.SendWaveProgress(participantId, in progress);
             }
+
+            // 재접속한 참가자는 결과 창을 처음부터 다시 그리므로 이미 보냈어도 다시 보낸다
+            SendRewardTo(index);
         }
 
         /// <summary> 일반전 웨이브를 진행한다, 전투 런타임이 플레이어와 보스 피해 뒤 생사 보고 앞에서 부른다 </summary>
@@ -506,6 +516,7 @@ namespace Shinshi.Network
             TickCheckpoint();
             PublishStatuses();
             PublishWaveProgress();
+            PublishRewards();
         }
 
         /// <summary> 연결이 끊겨 캐릭터를 서버에 남겼거나 지웠을 때 부른다, 시각은 마지막 서버 틱 시각이다 </summary>
@@ -1471,6 +1482,41 @@ namespace Shinshi.Network
             {
                 WaveProgressAudience.SendWaveProgress(_roster.GetAt(i).ParticipantId, in progress);
             }
+        }
+
+        // 정산안이 생긴 틱 끝에 아직 받지 못한 참가자에게만 보낸다. 연결이 없던 참가자는 재접속 때 SendStatusTo가 보낸다
+        private void PublishRewards()
+        {
+            if ((RewardAudience == null) || (_session == null) || (!_session.IsEnded))
+            {
+                return;
+            }
+
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                if (!_rewardsSent[i])
+                {
+                    SendRewardTo(i);
+                }
+            }
+        }
+
+        private void SendRewardTo(int rosterIndex)
+        {
+            if ((RewardAudience == null) || (_session == null))
+            {
+                return;
+            }
+
+            int participantId = _roster.GetAt(rosterIndex).ParticipantId;
+            if (!_session.TryGetSettlementResult(participantId, out SettlementGrant grant, out SettlementBreakdown breakdown))
+            {
+                return;
+            }
+
+            SortieRewardMessage message = SortieRewardPublishRules.Build(grant, in breakdown);
+            _rewardsSent[rosterIndex] = true;
+            RewardAudience.SendReward(participantId, in message);
         }
 
         private bool TryBuildWaveProgress(out WaveProgressMessage message)

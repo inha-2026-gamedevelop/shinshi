@@ -20,6 +20,8 @@ namespace Shinshi.Network
         private static Guid                _pendingAbandon;
         private static WaveProgressMessage _waveProgress;
         private static bool                _hasWaveProgress;
+        private static SortieRewardMessage _reward;
+        private static bool                _hasReward;
 
         /****************************************
         *              Properties
@@ -33,11 +35,16 @@ namespace Shinshi.Network
         public static WaveProgressMessage WaveProgress    => _waveProgress;
         public static bool                HasWaveProgress => _hasWaveProgress;
 
+        /// <summary> 마지막으로 받은 정산 보상 내역, 출정이 끝나 정산안이 만들어진 뒤에 온다 </summary>
+        public static SortieRewardMessage Reward    => _reward;
+        public static bool                HasReward => _hasReward;
+
         // 결과를 아직 받지 못한 포기 요청이 있다
         public static bool IsAbandonPending => _pendingAbandon != Guid.Empty;
 
         public static event Action<SortieStatusMessage>        StatusChanged;
         public static event Action<SortieAbandonResultMessage> AbandonResult;
+        public static event Action<SortieRewardMessage>        RewardReceived;
 
         /****************************************
         *                Methods
@@ -51,9 +58,12 @@ namespace Shinshi.Network
             _pendingAbandon = Guid.Empty;
             _waveProgress    = default;
             _hasWaveProgress = false;
+            _reward          = default;
+            _hasReward       = false;
             NetworkClient.ReplaceHandler<SortieStatusMessage>(OnStatus);
             NetworkClient.ReplaceHandler<SortieAbandonResultMessage>(OnAbandonResult);
             NetworkClient.ReplaceHandler<WaveProgressMessage>(OnWaveProgress);
+            NetworkClient.ReplaceHandler<SortieRewardMessage>(OnReward);
         }
 
         /// <summary> 포기를 보낸다, 결과 전에 다시 누르면 같은 작업 ID로 다시 보낸다. 연결되지 않았으면 거짓이다 </summary>
@@ -84,6 +94,13 @@ namespace Shinshi.Network
         {
             _waveProgress    = message;
             _hasWaveProgress = true;
+        }
+
+        private static void OnReward(SortieRewardMessage message)
+        {
+            _reward    = message;
+            _hasReward = true;
+            RewardReceived?.Invoke(message);
         }
 
         private static void OnAbandonResult(SortieAbandonResultMessage message)
