@@ -11,7 +11,7 @@
 
 ## 1. 현재 상태와 구조 원칙
 
-Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0017(0008 운영 어드민, 0009 파티 경매, 0010 계정 자격·캐릭터 이름, 0014 공지 분류, 0015 유저 경매장·1:1 거래, 0016 직업 ID 0~5 제약, 0017 캐릭터 경험치), `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
+Unity 6000.4.7f1, URP·Mirror 96.11.3과 외부 도구가 설치되어 있다. 공통 계약·GameDB 카탈로그, Mirror 연결/인증, 이동·기본공격·스킬·소환의 규칙/상태/표현, 서버 처리와 던전 세션·정산 연결 코드가 존재한다. `Assets/09.Data/`에는 GameDB 루트와 플레이어·세션·기술·부적·적·보스·웨이브·장비·성장·보상·생활·진행·외형 카탈로그 에셋이 있다. `Assets/Tests/EditMode`에 테스트가 있으며 PlayMode 어셈블리도 구성되어 있다. `Backend/src`의 API·Data·Contracts와 `Backend/tests/Shinshi.Backend.Tests`, SQL 마이그레이션 0001~0022(0017 캐릭터 경험치, 0018 장비 옵션, 0019 소셜, 0020 마을 정원, 0021 캐릭터 삭제 요청, 0022 갱신 토큰 회전 재시도), `deploy/`·`tools/`가 존재한다. 실제 어셈블리는 아래 2장과 같다. 이 파일 존재 사실은 각 파트의 게임플레이 통합·서버 빌드·배포 완료를 뜻하지 않는다.
 
 게임의 규칙, 네트워크 연결, 화면 표현, 영구 저장을 구분한다. 규칙은 해당 파트가 작성하고 서버 경로에서 실행한다. 클라이언트는 공개 Request/조회 계약만 사용하며 서버 전용 어셈블리(`Shinshi.Server`)의 타입을 참조하지 않는다. 과도한 빈 인터페이스나 상태 클래스는 먼저 만들지 않고 실제 교체 지점·중복·협업 경계가 있을 때 도입한다.
 
@@ -88,7 +88,7 @@ Assets/
 | `98.Servers/Shinshi.Server.asmdef` | `Shinshi.Server` → Runtime, Contracts, Mirror, Mirror.Transports, kcp2k | `UNITY_SERVER \|\| UNITY_EDITOR \|\| SHINSHI_DEV_TEST`(시험 빌드 `windows-devtest`만 정의) |
 | `99.Dev/Shinshi.Dev.asmdef` | `Shinshi.Dev` → Runtime | 현재 플랫폼·define 제한 없음. 배포에서 자동 제외된다고 가정하지 않음 |
 | `Assets/Tests/EditMode/Shinshi.Tests.EditMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | Editor 한정, `UNITY_INCLUDE_TESTS`, autoReferenced=false |
-| `Assets/Tests/PlayMode/Shinshi.Tests.PlayMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | 플랫폼 제한 없음, `UNITY_INCLUDE_TESTS`, autoReferenced=false. 실제 PlayMode/빌드 검증 미실행 |
+| `Assets/Tests/PlayMode/Shinshi.Tests.PlayMode.asmdef` | Runtime, Server, Contracts, Mirror, Unity Test Runner, NUnit | 플랫폼 제한 없음, `UNITY_INCLUDE_TESTS`, autoReferenced=false. 날짜별 PlayMode·빌드 기록은 로드맵을 따르며 이번 문서 대조에서 재실행하지 않음 |
 
 백엔드는 `Backend/src/{Shinshi.Api,Shinshi.Data,Shinshi.Contracts}`와 `Backend/tests/Shinshi.Backend.Tests`의 .NET 10 프로젝트다. `Shinshi.Contracts.csproj`는 Unity Contracts 원본 C#을 Compile Include/Link로 공유하며 Newtonsoft.Json을 사용한다. `Contracts/Auth`의 기존 Consume 경로/DTO 세 파일은 공유 컴파일에서 제외되어 현재 접속 교환은 `Contracts/Join`을 사용한다. DB 접근은 Npgsql + Dapper, 마이그레이션은 `Shinshi.Data/Migrations/*.sql`이다. 실행은 [Backend README](../Backend/README.md), API 컨테이너·게임 서버 유닛은 [deploy README](../deploy/README.md)를 따른다. 어드민은 API·CLI와 운영 웹(`Shinshi.Admin.Web`, 2026-10-07 추가)을 제공한다. 웹도 API만 호출하고 DB에 직접 접근하지 않는다. P0 운영 모듈은 `Shinshi.Api/Admin/`(어드민 API), `Shinshi.Data/Admin/`, `Shinshi.Contracts/Admin/`(어드민 전용 DTO, Unity 공유 계약 아님), 플레이어 우편함 `Shinshi.Api/Inbox/`·`Shinshi.Data/Inbox/`와 마이그레이션 0008로 구현됐고(U25, 운영 실행 미검증) 명령줄 도구는 `Backend/src/Shinshi.AdminCli`다. `Launcher/`에는 WPF 런처·계정 연결·Patch.Core/Client·게시 도구·테스트 프로젝트가 있다. 실제 게시·설치·런처 경유 다인 수용은 별도 검증이다.
 
@@ -120,8 +120,8 @@ Assets/
 | 플레이어 서버 | `98.Servers/02.Combat/Player/PlayerServer`, `PlayerInputGate`, `MoveRequestThrottle`, `ReconnectVault`, `ReviveBudget` | 이동·기본공격·회피·생사·120초 보존·공용 부활 규칙/처리 |
 | 피해 | `98.Servers/02.Combat/Damage/DamageResolver`, `HitLedger`, `CombatTargetRegistry`; 공용 `DamageRules` | 서버 피해·중복 적중·표적·가시성 검사 |
 | 스킬/동료 | `98.Servers/02.Combat/Skill/SkillServer`, `CompanionServer`, `ResonanceLedger`, `CompanionSpawnTracker`, `CompanionNetworkSpawner`; `CompanionCombatState`, `Skill/View/CompanionView`, `02.Prefab/Network/NetCompanion/PF_NetCompanion` | 실행·동료·공명 기반과 동료 네트워크 개체(서버 소유 스폰·풀, 임시 표현). 보스 주변 인원은 소환물 제외. 부적 modifier의 실제 파트 연결, 최종 동료 표현, M2 후속 |
-| 보스 | `BossBrain`, `BossCombat`, `BossSelectionTree`, `BossPatternSelector`, `IBossPattern` (서버 뼈대, 구현됨·EditMode만 검증), `BossServer`(서버 몸체), `BossState`(복제 상태, 구현됨·EditMode만 검증) | 상위 FSM→전투(페이즈·공격 FSM, 선택 BT)→가중 선택→패턴 실행. 1페이즈 6패턴·이지 2페이즈 P01~P07·하드 2페이즈 서버 실행·지속물·이동·사건 복제·늦은 접속 복원 구현됨(실제 전용 서버 미검증). 네트워크 클라이언트 표현 미연결이며 하드는 표시 수신처 부재로 출정 차단. 최종 설계 대조·M-Boss는 남음. 계약은 [서버·클라이언트 협업 8장](unity/SERVER_CLIENT_WORKFLOW.md#8-보스-서버-경계) |
-| 세션/보상 | `98.Servers/01.Network/Session/DungeonSessionHost`, `DungeonSession`, `ParticipantRoster`, `LootRoller`, `SettlementLedger`, `SettlementRules` | 세션 규칙·원장·정산안 구현. 호스트의 `CreateNormalSession`·팩토리 주입 창구는 구현됨. 실제 `IWaveSessionFactory` 구현체·주입과 `PF_NetEnemy`가 없어 웨이브 없는 개발 세션이며 6웨이브 완주로 판정하지 않음 |
+| 보스 | `BossBrain`, `BossCombat`, `BossSelectionTree`, `BossPatternSelector`, `IBossPattern` (서버 뼈대, 구현됨·EditMode만 검증), `BossServer`(서버 몸체), `BossState`(복제 상태, 구현됨·EditMode만 검증) | 상위 FSM→전투(페이즈·공격 FSM, 선택 BT)→가중 선택→패턴 실행. 1페이즈 6패턴·이지 2페이즈 P01~P07·하드 2페이즈 서버 실행·지속물·이동·사건 복제·늦은 접속 복원 구현됨(실제 전용 서버 미검증). BossState→BossNetworkViewBinder의 사건·복원·기믹 표현 연결이 있다. 하드는 BossServer.IsSortieReady가 데이터·패턴 생성 준비를 검사한다. 최종 설계 대조·M-Boss는 남음. 계약은 [서버·클라이언트 협업 8장](unity/SERVER_CLIENT_WORKFLOW.md#8-보스-서버-경계) |
+| 세션/보상 | `98.Servers/01.Network/Session/DungeonSessionHost`, `DungeonSession`, `ParticipantRoster`, `LootRoller`, `SettlementLedger`, `SettlementRules` | 세션 규칙·원장·정산안 구현. 호스트의 `CreateNormalSession`·팩토리 주입 창구는 구현됨. `WaveSessionFactory`·`WaveSession`과 ServerBootstrap 주입, `PF_NetEnemy`·`PF_NetEnemyEffect`·적 복제 상태가 있다. 팩토리는 출현 지점·카탈로그·런타임 의존성을 검사하며 적 피해 배율도 적용한다. 2026-10-19 로컬 4인 숲 완주 기록은 로드맵의 해당 날짜 범위에 한정하고 현재 변경의 재검증으로 확대하지 않음 |
 | 저장 연결 | `SessionEventQueue`, `HttpBackendEventSink`, `SessionSettlement` | 순번 이벤트·SessionEnded·정산 영수증 연결. 진단 체크포인트 30초 주기 송신 구현됨·실제 서버 실행 미검증 |
 | API/DB | `Backend/src/Shinshi.Api`, `Shinshi.Data` | 실제 HTTP는 [기술 설계 5장](03-technical-design.md#현재-http-엔드포인트), 실제 스키마는 7장 |
 
@@ -133,7 +133,7 @@ Assets/
 
 ### 5.1 출정
 
-현재 API가 쓰는 `game_sessions.state`는 `Reserved → Running → Settling → Closed`이고, 보스 성공 출정은 `Settling → Auction → Closed`다(정산이 기본 보상을 지급하고 Auction으로 둔 뒤 경매 `finish` 또는 경매 복구가 닫는다). `/start` 승인 때 Running으로 바뀌며 Started라는 저장 상태는 없다. DB CHECK에는 Loading/Starting/Returning/RecoveryPending도 허용되어 있지만 현재 API가 이 상태를 쓰는 것은 아니다. 마을 로비·준비/카운트다운·화면 로딩·경매·귀환은 후속 UI/게임 흐름이며 DB 상태와 별도로 다룬다.
+현재 API가 쓰는 `game_sessions.state`는 `Reserved → Running → Settling → Closed`이고, 보스 성공 출정은 `Settling → Auction → Closed`다(정산이 기본 보상을 지급하고 Auction으로 둔 뒤 경매 `finish` 또는 경매 복구가 닫는다). `/start` 승인 때 Running으로 바뀌며 Started라는 저장 상태는 없다. DB CHECK에는 Loading/Starting/Returning/RecoveryPending도 허용되어 있지만 현재 API가 이 상태를 쓰는 것은 아니다. 마을 로비·준비/카운트다운·화면 로딩·귀환의 클라이언트 흐름은 구현되어 있으며 DB 상태와 별도로 다룬다. 실행 검증은 [로드맵](05-implementation-roadmap.md)의 날짜별 기록 범위에 한정한다. 보스 파티 경매 UI는 미구현이며 유저 경매장 UI와 별개다.
 
 ```mermaid
 stateDiagram-v2

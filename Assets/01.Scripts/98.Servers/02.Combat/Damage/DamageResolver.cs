@@ -87,6 +87,17 @@ namespace Shinshi.Combat
             return _lastInstanceId;
         }
 
+        /// <summary> 원장과 성공 확정 전에 모든 피해 경로가 공유하는 요청 값 유효성 규칙 </summary>
+        public bool IsValidRequest(in DamageRequest request, IDamageable target)
+        {
+            return (DamageFeedbackRules.IsFinite(request.RawDamage)) && (request.RawDamage > 0f)
+                && (DamageFeedbackRules.IsFinite(request.SourcePosition)) && (DamageFeedbackRules.IsFinite(target.Position))
+                && (DamageFeedbackRules.IsFinite(target.Forward)) && (DamageFeedbackRules.IsFinite(target.Health))
+                && (target.Health > 0f) && (DamageFeedbackRules.IsFinite(target.Defense))
+                && (DamageFeedbackRules.IsFinite(_defenseConstant)) && (DamageFeedbackRules.IsFinite(_playerDefenseConstant))
+                && (DamageFeedbackRules.IsFinite(_reductionCap));
+        }
+
         public DamageResult Apply(in DamageRequest request)
         {
             if (!request.HasValidIds)
@@ -104,12 +115,7 @@ namespace Shinshi.Combat
                 return DamageResult.Ignored(EDamageOutcome.TargetNotAlive);
             }
 
-            if ((!DamageFeedbackRules.IsFinite(request.RawDamage)) || (request.RawDamage <= 0f)
-                || (!DamageFeedbackRules.IsFinite(request.SourcePosition)) || (!DamageFeedbackRules.IsFinite(target.Position))
-                || (!DamageFeedbackRules.IsFinite(target.Forward)) || (!DamageFeedbackRules.IsFinite(target.Health))
-                || (target.Health <= 0f) || (!DamageFeedbackRules.IsFinite(target.Defense))
-                || (!DamageFeedbackRules.IsFinite(_defenseConstant)) || (!DamageFeedbackRules.IsFinite(_playerDefenseConstant))
-                || (!DamageFeedbackRules.IsFinite(_reductionCap)))
+            if (!IsValidRequest(in request, target))
             {
                 return DamageResult.Ignored(EDamageOutcome.InvalidRequest);
             }

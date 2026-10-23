@@ -66,7 +66,7 @@ shinshi-admin service-state set --maintenance off --reason "점검 종료"
 
 **언제.** 사고 때 서버 전체를 내리지 않고 문제 기능만 멈출 때. 경제 사고의 1차 대응이다([경제 사고 1차 대응](incident-response.md#경제-사고-1차-대응-경매-중복-지급-의심)).
 
-기능 키(`ServiceFeatureKeys`, 목록 밖은 저장이 거절된다): `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`, `talisman`, `training`. 현재 키 목록은 `service-state show`의 "기능 키"에도 나온다.
+기능 키(`ServiceFeatureKeys`, 목록 밖은 저장이 거절된다): `auction`, `crafting`, `enhance`, `inherit`, `gathering`, `boss_entry`, `inbox_claim`, `dungeon_entry`, `talisman`, `training`, `market`, `trade`, `reroll_options`, `social`. 현재 키 목록은 `service-state show`의 "기능 키"에도 나온다.
 
 **막히는 범위(Backend README와 운영 설계 기준, 실행 미검증).**
 

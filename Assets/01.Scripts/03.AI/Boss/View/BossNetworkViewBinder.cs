@@ -31,7 +31,7 @@ namespace Shinshi.AI
         [SerializeField] private MucheolMotionView _mucheolMotion; // 무철 몸 동작, 비어 있으면 같은 오브젝트에서 한 번 찾는다
         [SerializeField] private MucheolPatternVfxView _mucheolVfx; // 무철 일반 패턴 VFX, 비어 있으면 같은 오브젝트에서 한 번 찾는다
         [SerializeField] private MucheolSealView _sealView; // 무철 방향 봉인 표식, 비어 있으면 연결할 때 하위 표현에서 찾는다
-        [SerializeField] private WolbaekTalismanView _talismanView; // 서버 복제 계약 연결 전에는 수신 준비만 한다
+        [SerializeField] private WolbaekTalismanView _talismanView; // 부적진 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekColorWardView _colorWardView; // 50% 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekFoxfireSealView _foxfireSealView; // 25% 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekFinalAreaView _finalAreaView; // 0% 복제 계약의 클라이언트 입력점

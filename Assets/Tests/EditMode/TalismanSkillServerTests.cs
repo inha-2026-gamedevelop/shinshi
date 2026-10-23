@@ -1,3 +1,7 @@
+// System
+using System.Collections.Generic;
+using System.Reflection;
+
 // Unity
 using UnityEngine;
 
@@ -30,6 +34,13 @@ namespace Shinshi.Tests
         private const int    LEVEL_ONE      = 1;
         private const float  BOOSTED_ENERGY = 140f;
         private const float  SKILL_GAIN     = 4f;
+
+        // 시전 확정 직후 효과 칸을 읽으려고 시전 시각에서 더하는 여유(초)
+        private const double ACTIVATION_MARGIN = 0.01;
+
+        // SkillServer의 효과 종류 열거 순서(투사체, 장판, 지연 타격)를 반사로 읽은 값과 맞추는 번호
+        private const int EFFECT_KIND_PROJECTILE = 0;
+        private const int EFFECT_KIND_FIELD      = 1;
 
         private const int SLOT_Q = Constants.Combat.SKILL_SLOT_Q;
         private const int SLOT_W = Constants.Combat.SKILL_SLOT_W;
@@ -317,9 +328,217 @@ namespace Shinshi.Tests
             Assert.AreEqual(TARGET_HEALTH - 580f, edge.Health, TOLERANCE);
         }
 
+        // 아래 Activate_ 시험은 같은 기술과 부적 변형으로 만든 SkillExecutionPlan이 예약한 칸 수, 마지막 일정을
+        // 시전 확정 직후 SkillServer가 실제로 만든 효과 칸과 비교한다. 대상을 두지 않아 효과가 중간에 사라지지 않는다.
+        // 기대 숫자는 카탈로그 값에서 나오므로 데이터가 바뀌면 같이 봐야 한다
+
+        [Test]
+        public void Activate_FollowUpStrike_SlotCountAndLastScheduleMatchCreatedStrike()
+        {
+            Create(EPlayerClass.Warrior, SLOT_Q, "T01-3A");
+            SkillExecutionPlan plan = CurrentPlan();
+
+            double resolveAt = CastAndActivate(SLOT_Q, Vector3.zero);
+
+            List<ScheduledEffect> effects = ActiveEffects();
+            Assert.AreEqual(1, plan.SlotCount);
+            Assert.AreEqual(plan.SlotCount, effects.Count);
+            Assert.AreEqual(resolveAt + plan.ScheduledTail, LatestAt(effects), TOLERANCE);
+        }
+
+        [Test]
+        public void Activate_Shockwave_ReservesOneSlotButScheduledTailDoesNotCoverShockwave()
+        {
+            Create(EPlayerClass.Warrior, SLOT_E, "T03-3A");
+            SkillExecutionPlan plan = CurrentPlan();
+
+            double resolveAt = CastAndActivate(SLOT_E, Vector3.zero);
+
+            List<ScheduledEffect> effects = ActiveEffects();
+            Assert.AreEqual(1, plan.SlotCount);
+            Assert.AreEqual(plan.SlotCount, effects.Count);
+            Assert.AreEqual(resolveAt + plan.CoreDelay, LatestAt(effects), TOLERANCE);
+
+            // 기존 동작 보존: 충격파는 마지막 일정 꼬리에 들어가지 않아 실제 타격이 꼬리보다 늦다
+            Assert.AreEqual(0f, plan.ScheduledTail, TOLERANCE);
+            Assert.Greater(LatestAt(effects), resolveAt + plan.ScheduledTail + TOLERANCE);
+        }
+
+        [Test]
+        public void Activate_Detonate_DurationSlotHoldsSingleExplosionAndTailDoesNotCoverIt()
+        {
+            Create(EPlayerClass.Sorcerer, SLOT_W, "T06-3A");
+            SkillExecutionPlan plan = CurrentPlan();
+
+            double resolveAt = CastAndActivate(SLOT_W, Vector3.forward * 4f);
+
+            // 지속 칸 하나를 장판 대신 폭발 한 번이 쓴다
+            List<ScheduledEffect> effects = ActiveEffects();
+            Assert.IsTrue(plan.HasDurationEffect);
+            Assert.AreEqual(1, plan.SlotCount);
+            Assert.AreEqual(plan.SlotCount, effects.Count);
+            Assert.AreNotEqual(EFFECT_KIND_FIELD, effects[0].Kind, "장판이 아니라 지연 타격이다");
+            Assert.AreEqual(resolveAt + plan.CoreDelay, LatestAt(effects), TOLERANCE);
+
+            // 기존 동작 보존: 폭발 지연도 꼬리에 넣지 않았다
+            Assert.AreEqual(0f, plan.ScheduledTail, TOLERANCE);
+        }
+
+        [Test]
+        public void Activate_EndExplosion_FieldSlotLivesForFullDurationAndTailDoesNotCoverBlast()
+        {
+            Create(EPlayerClass.Sorcerer, SLOT_W, "T06-3B");
+            SkillExecutionPlan plan     = CurrentPlan();
+            SkillModifiers     modifiers = _modifiers.Value;
+            float              duration  = TalismanModifierRules.GetDuration(_modifiers.Skill, in modifiers);
+
+            double resolveAt = CastAndActivate(SLOT_W, Vector3.forward * 4f);
+
+            // 마지막 폭발은 장판 칸이 끝날 때 나가므로 칸 하나가 지속 시간 내내 산다
+            List<ScheduledEffect> effects = ActiveEffects();
+            Assert.AreEqual(1, plan.SlotCount);
+            Assert.AreEqual(plan.SlotCount, effects.Count);
+            Assert.AreEqual(EFFECT_KIND_FIELD, effects[0].Kind);
+            Assert.AreEqual(resolveAt + duration, effects[0].At, TOLERANCE);
+
+            // 기존 동작 보존: 장판 종료 폭발도 꼬리에 넣지 않았다
+            Assert.AreEqual(0f, plan.ScheduledTail, TOLERANCE);
+        }
+
+        [Test]
+        public void Activate_SecondHitWithFollowUpProjectile_TwoSlotsAndTailIsLaunchAfterSecondHit()
+        {
+            Create(EPlayerClass.Swordsman, SLOT_R, "T16-3A");
+            SkillExecutionPlan plan = CurrentPlan();
+
+            double resolveAt = CastAndActivate(SLOT_R, Vector3.zero);
+
+            // 두 번째 타격 칸 하나와 후속 투사체 칸 하나, 후속 투사체는 두 번째 타격 시각을 기준으로 발사된다
+            List<ScheduledEffect> effects = ActiveEffects();
+            Assert.IsTrue(plan.EmitsSecondHit);
+            Assert.IsTrue(plan.HasFollowUpProjectile);
+            Assert.AreEqual(2, plan.SlotCount);
+            Assert.AreEqual(plan.SlotCount, effects.Count);
+            Assert.AreEqual(plan.SecondHitDelay, plan.FollowUpProjectileBase, TOLERANCE);
+            Assert.IsTrue(HasEffectAt(effects, resolveAt + plan.SecondHitDelay), "두 번째 타격");
+            Assert.IsTrue(HasEffectAt(effects, resolveAt + plan.SecondHitDelay + plan.CoreDelay), "후속 투사체 발사");
+            Assert.AreEqual(resolveAt + plan.ScheduledTail, LatestAt(effects), TOLERANCE);
+        }
+
+        [Test]
+        public void Activate_ProjectileFollowUp_TwoSlotsAndFollowUpLaunchesAfterFirstShot()
+        {
+            Create(EPlayerClass.Mageknight, SLOT_W, "T20-3A");
+            SkillExecutionPlan plan = CurrentPlan();
+
+            double resolveAt = CastAndActivate(SLOT_W, Vector3.zero);
+
+            // 투사체형은 발사 순번이 하나뿐이라 후속 투사체가 첫 발사 기준으로 나간다
+            List<ScheduledEffect> effects = ActiveEffects();
+            Assert.IsTrue(plan.IsProjectile);
+            Assert.AreEqual(2, plan.SlotCount);
+            Assert.AreEqual(plan.SlotCount, effects.Count);
+            Assert.AreEqual(0f, plan.FollowUpProjectileBase, TOLERANCE);
+            Assert.IsTrue(HasEffectAt(effects, resolveAt), "첫 발사");
+            Assert.IsTrue(HasEffectAt(effects, resolveAt + plan.CoreDelay), "후속 투사체 발사");
+            Assert.AreEqual(resolveAt + plan.ScheduledTail, LatestAt(effects), TOLERANCE);
+        }
+
+        [Test]
+        public void Activate_SpreadShot_BranchCountMatchesCreatedProjectilesSharingOneActionId()
+        {
+            Create(EPlayerClass.Sorcerer, SLOT_Q, "T05-3A");
+            SkillExecutionPlan plan = CurrentPlan();
+
+            double resolveAt = CastAndActivate(SLOT_Q, Vector3.zero);
+
+            List<ScheduledEffect> effects = ActiveEffects();
+            Assert.AreEqual(3, plan.ProjectileCount);
+            Assert.AreEqual(plan.ProjectileCount * plan.VolleyCount, plan.SlotCount);
+            Assert.AreEqual(plan.SlotCount, effects.Count);
+            Assert.AreEqual(resolveAt + plan.ScheduledTail, LatestAt(effects), TOLERANCE);
+            for (int i = 1; i < effects.Count; ++i)
+            {
+                Assert.AreEqual(effects[0].ActionId, effects[i].ActionId, "한 발사의 갈래는 동작 번호를 나눠 쓴다");
+            }
+        }
+
+        [Test]
+        public void Activate_CircleSweepShapeChange_ReservesNoSlotAndCreatesNoEffect()
+        {
+            Create(EPlayerClass.Warrior, SLOT_Q, "T01-3B");
+            SkillExecutionPlan plan = CurrentPlan();
+
+            CastAndActivate(SLOT_Q, Vector3.zero);
+
+            // 원형 교체는 첫 타격 한 번으로 끝나는 즉시 판정이라 예약할 칸도 만들 효과도 없다
+            Assert.AreEqual(0, plan.SlotCount);
+            Assert.AreEqual(0, ActiveEffects().Count);
+            Assert.AreEqual(0f, plan.ScheduledTail, TOLERANCE);
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
+
+        private SkillExecutionPlan CurrentPlan()
+        {
+            SkillModifiers modifiers = _modifiers.Value;
+            return new SkillExecutionPlan(_modifiers.Skill, in modifiers);
+        }
+
+        private double CastAndActivate(int slot, Vector3 point)
+        {
+            Cast(slot, point);
+            double resolveAt = _server.ResolveAt;
+            Tick(resolveAt + ACTIVATION_MARGIN);
+            return resolveAt;
+        }
+
+        // 켜져 있는 효과 칸을 반사로 읽는다. 투사체는 발사 시각, 지연 타격은 판정 시각, 장판은 종료 시각을 일정으로 본다
+        private List<ScheduledEffect> ActiveEffects()
+        {
+            FieldInfo effectsField = typeof(SkillServer).GetField("_effects", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(effectsField, "SkillServer._effects");
+            var slots   = (System.Array)effectsField.GetValue(_server);
+            var effects = new List<ScheduledEffect>();
+            for (int i = 0; i < slots.Length; ++i)
+            {
+                object slot = slots.GetValue(i);
+                System.Type type = slot.GetType();
+                if (!(bool)type.GetField("Active").GetValue(slot))
+                {
+                    continue;
+                }
+
+                int kind = System.Convert.ToInt32(type.GetField("Kind").GetValue(slot));
+                effects.Add(new ScheduledEffect(kind, (int)type.GetField("ActionId").GetValue(slot),
+                    (double)type.GetField(kind == EFFECT_KIND_PROJECTILE ? "StartAt" : "EndsAt").GetValue(slot)));
+            }
+            return effects;
+        }
+
+        private static double LatestAt(List<ScheduledEffect> effects)
+        {
+            double latest = double.MinValue;
+            for (int i = 0; i < effects.Count; ++i)
+            {
+                latest = System.Math.Max(latest, effects[i].At);
+            }
+            return latest;
+        }
+
+        private static bool HasEffectAt(List<ScheduledEffect> effects, double at)
+        {
+            for (int i = 0; i < effects.Count; ++i)
+            {
+                if (System.Math.Abs(effects[i].At - at) <= TOLERANCE)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         private void Create(EPlayerClass playerClass, int slot, params string[] effectIds)
         {
@@ -369,6 +588,20 @@ namespace Shinshi.Tests
             _budget.BeginTick();
             _server.Tick(now, Mathf.Max(0f, (float)(now - _lastTick)), _budget);
             _lastTick = now;
+        }
+
+        private readonly struct ScheduledEffect
+        {
+            public int    Kind     { get; }
+            public int    ActionId { get; }
+            public double At       { get; }
+
+            public ScheduledEffect(int kind, int actionId, double at)
+            {
+                Kind     = kind;
+                ActionId = actionId;
+                At       = at;
+            }
         }
 
         private sealed class FixedModifiers : ITalismanModifierResolver

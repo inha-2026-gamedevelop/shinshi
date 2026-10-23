@@ -35,13 +35,15 @@ namespace Shinshi.UI
         private const string NOT_ENOUGH_TEXT   = "정기나 정련편이 모자랍니다";
         private const string FAILED_TEXT       = "재설정하지 못했습니다";
 
+        private static readonly EGrowthAction[] G_OwnActions = { EGrowthAction.EquipmentRerollOptions };
+
         [SerializeField] private EquipmentOptionView _view = null;
 
-        private int  _selectedSlot = 0;
-        private bool _wasOpen;
-        private bool _isDirty;
-        private Guid _pendingOperation = Guid.Empty;
-        private bool _isOutcomeUnknown;
+        private readonly GrowthRequestLifetime _request = new GrowthRequestLifetime();
+
+        private int    _selectedSlot = 0;
+        private bool   _wasOpen;
+        private bool   _isDirty;
         private string _status = string.Empty;
 
         /****************************************
@@ -83,7 +85,7 @@ namespace Shinshi.UI
             if ((isOpen) && (!_wasOpen))
             {
                 // 결과를 기다리는 요청이 있으면 상태 글자를 지우지 않는다
-                if (_pendingOperation == Guid.Empty)
+                if (!_request.IsActive)
                 {
                     _status = string.Empty;
                 }
@@ -97,6 +99,7 @@ namespace Shinshi.UI
             }
 
             _wasOpen = isOpen;
+            TickRequest();
             if ((isOpen) && (_isDirty))
             {
                 _isDirty = false;
@@ -107,6 +110,27 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        // 창이 닫혀 있어도 매 프레임 돈다. 다시 접속해 공용 잠금이 비면 이전 요청을 놓고 서버 상태를 새로 읽어,
+        // 이전 연결의 결과 불명이 이 창을 영구히 막지 않게 한다. 결과는 성공이나 실패로 단정하지 않는다
+        private void TickRequest()
+        {
+            if (_request.DropIfLockLost(TownGrowthClient.HasUnresolvedWrite, TownGrowthClient.UnresolvedOperationId))
+            {
+                _status  = string.Empty;
+                _isDirty = true;
+                if (ClientRoles.IsTown())
+                {
+                    TownGrowthClient.RequestSnapshot();
+                }
+            }
+
+            if (_request.Expire(Time.unscaledTime))
+            {
+                _status  = UNKNOWN_TEXT;
+                _isDirty = true;
+            }
+        }
 
         private void OnSnapshot(GrowthSnapshotMessage snapshot)
         {
@@ -126,7 +150,7 @@ namespace Shinshi.UI
             }
 
             _selectedSlot = slot;
-            if (_pendingOperation == Guid.Empty)
+            if (!_request.IsActive)
             {
                 _status = string.Empty;
             }
@@ -136,21 +160,24 @@ namespace Shinshi.UI
 
         private void OnRerollRequested()
         {
-            if (_isOutcomeUnknown)
+            if (_request.IsOutcomeUnknown)
             {
                 // 같은 요청을 같은 번호로 다시 보낸다. 서버와 API가 처음 결과를 돌려주고 다시 뽑거나 차감하지 않는다.
                 // 공용 보관 칸이 이 창의 요청을 들고 있을 때만 보낸다. 아니면 다른 창의 요청을 다시 보내게 된다
-                if ((TownGrowthClient.UnresolvedOperationId == _pendingOperation) && (TownGrowthClient.RetryLast()))
+                if ((_request.CanRetry(TownGrowthClient.HasUnresolvedWrite, TownGrowthClient.IsUnresolvedOutcomeUnknown,
+                    TownGrowthClient.UnresolvedAction, TownGrowthClient.UnresolvedOperationId, G_OwnActions))
+                    && (TownGrowthClient.RetryLast()))
                 {
-                    _status = CHECKING_TEXT;
+                    _request.MarkRetrying(Time.unscaledTime, Constants.Network.API_TIMEOUT_SECONDS);
+                    _status  = CHECKING_TEXT;
                     _isDirty = true;
                 }
 
                 return;
             }
 
-            if ((_pendingOperation != Guid.Empty) || (!TownGrowthClient.HasSnapshot) || (!ClientRoles.IsTown())
-                || (GrowthWriteGuard.IsBlockedByOther(_pendingOperation)))
+            if ((_request.IsActive) || (!TownGrowthClient.HasSnapshot) || (!ClientRoles.IsTown())
+                || (GrowthWriteGuard.IsBlockedByOther(_request.OperationId)))
             {
                 return;
             }
@@ -163,39 +190,35 @@ namespace Shinshi.UI
             }
 
             Guid operationId = TownGrowthClient.RerollEquipmentOptions(entry.ItemId);
-            if (operationId == Guid.Empty)
+            if (!_request.Begin(operationId, EGrowthAction.EquipmentRerollOptions, Time.unscaledTime,
+                Constants.Network.API_TIMEOUT_SECONDS))
             {
                 return;
             }
 
-            _pendingOperation = operationId;
-            _status           = WAITING_TEXT;
-            _isDirty          = true;
+            _status  = WAITING_TEXT;
+            _isDirty = true;
         }
 
         private void OnResult(GrowthResultMessage result)
         {
-            if ((_pendingOperation == Guid.Empty) || (result.OperationId != _pendingOperation))
+            EGrowthRequestResolve resolve = _request.Resolve(result.OperationId, result.Reason, out _);
+            if (resolve == EGrowthRequestResolve.Ignored)
             {
                 return;
             }
 
-            if (result.IsAccepted)
-            {
-                _pendingOperation = Guid.Empty;
-                _isOutcomeUnknown = false;
-                _status           = DONE_TEXT;
-            }
-            else if (result.Reason == ERejectReason.BackendUnavailable)
+            if (resolve == EGrowthRequestResolve.Unknown)
             {
                 // 확정도 확정 거절도 아니다. 요청을 붙잡아 두고 같은 번호로 다시 확인하게 한다
-                _isOutcomeUnknown = true;
-                _status           = UNKNOWN_TEXT;
+                _status = UNKNOWN_TEXT;
+            }
+            else if (result.IsAccepted)
+            {
+                _status = DONE_TEXT;
             }
             else
             {
-                _pendingOperation = Guid.Empty;
-                _isOutcomeUnknown = false;
                 string text = RejectText.Describe(result.Reason);
                 _status = string.IsNullOrEmpty(text) ? FAILED_TEXT : text;
             }
@@ -252,14 +275,14 @@ namespace Shinshi.UI
         // 버튼 상태는 한곳에서 정한다. 결과 불명이면 확인만, 기다리는 중이면 잠금, 그 밖에는 조건을 본다
         private void ApplyReroll(EquipmentCatalogSO equipment, in GrowthSnapshotMessage snapshot, in TownEquipmentEntry entry)
         {
-            if (_isOutcomeUnknown)
+            if (_request.IsOutcomeUnknown)
             {
                 _view.SetStatus(_status);
                 _view.SetReroll(CONFIRM_TEXT, true);
                 return;
             }
 
-            if (_pendingOperation != Guid.Empty)
+            if (_request.IsActive)
             {
                 _view.SetStatus(_status);
                 _view.SetReroll(REROLL_TEXT, false);
@@ -271,7 +294,7 @@ namespace Shinshi.UI
             {
                 blocked = TOWN_ONLY_TEXT;
             }
-            else if (GrowthWriteGuard.IsBlockedByOther(_pendingOperation))
+            else if (GrowthWriteGuard.IsBlockedByOther(_request.OperationId))
             {
                 blocked = GrowthWriteGuard.OTHER_WINDOW_TEXT;
             }
@@ -296,8 +319,9 @@ namespace Shinshi.UI
             _view.SetLine(0, string.Empty, string.Empty, false);
             _view.SetLine(1, string.Empty, string.Empty, false);
             _view.SetPity(string.Empty);
-            _view.SetStatus(_isOutcomeUnknown ? _status : status);
-            _view.SetReroll(_isOutcomeUnknown ? CONFIRM_TEXT : REROLL_TEXT, _isOutcomeUnknown);
+            bool isUnknown = _request.IsOutcomeUnknown;
+            _view.SetStatus(isUnknown ? _status : status);
+            _view.SetReroll(isUnknown ? CONFIRM_TEXT : REROLL_TEXT, isUnknown);
         }
     }
 }

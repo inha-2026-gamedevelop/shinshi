@@ -35,15 +35,13 @@ namespace Shinshi.Combat
         public bool TryRecordUse(string participantKey, string definitionId, string bindingKind, double serverTime,
             out long sequence)
         {
-            var data = new SessionEventData(ESessionEventType.PotionUsed, serverTime, participantKey,
-                definitionId: definitionId, bindingKind: bindingKind);
+            SessionEventData data = SessionEventData.PotionUsed(serverTime, participantKey, definitionId, bindingKind);
             return TryEnqueue(in data, out sequence);
         }
 
         public bool TryRecordRevert(string participantKey, long useSequence, double serverTime, out long sequence)
         {
-            var data = new SessionEventData(ESessionEventType.PotionUseReverted, serverTime, participantKey,
-                revertsSequence: useSequence);
+            SessionEventData data = SessionEventData.PotionUseReverted(serverTime, participantKey, useSequence);
             return TryEnqueue(in data, out sequence);
         }
 

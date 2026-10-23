@@ -325,15 +325,7 @@ namespace Shinshi.Combat
             {
                 _skills?.Shutdown();
             }
-            _hasPendingMove      = false;
-            _hasPendingAttack    = false;
-            _isWindingUp         = false;
-            _arrowCount          = 0;
-            _hasPendingSkill     = false;
-            _hasPendingDodge     = false;
-            _isDodging           = false;
-            _path.Stop();
-            _moveThrottle.ClearActive();
+            CancelPreFire(EPreFireCancelReason.Shutdown);
             _targetBuffer.Clear();
         }
 
@@ -348,14 +340,7 @@ namespace Shinshi.Combat
             _isDetached          = true;
             _input.ServerHandler = null;
             _input.SkillServerHandler = null;
-            _hasPendingMove      = false;
-            _hasPendingAttack    = false;
-            _isWindingUp         = false;
-            _hasPendingSkill     = false;
-            _hasReviveRequest    = false;
-            _hasPendingDodge     = false;
-            _path.Stop();
-            _moveThrottle.ClearActive();
+            CancelPreFire(EPreFireCancelReason.Detach);
             SetWaitingSafePoint(false);
         }
 
@@ -420,15 +405,9 @@ namespace Shinshi.Combat
                 return;
             }
 
-            // 이동은 기본 공격 준비를 취소한다. 준비 동작이 이동으로 끊기는 공격은 이미 시작한 준비도 버린다
-            _hasPendingAttack = false;
-            if (_attack.CancelOnMove)
-            {
-                _isWindingUp = false;
-            }
-
+            // 이동은 기본 공격 준비를 취소한다. 준비 동작이 이동으로 끊기는 공격은 이미 시작한 준비도 버린다.
             // 움직이면 콤보 동작은 끝난 것이다. 단계는 이어 가되 동작에 붙은 피격이상 면역은 거둔다
-            _comboImmuneUntil = 0.0;
+            CancelPreFire(_attack.CancelOnMove ? EPreFireCancelReason.MoveInputWindupCancel : EPreFireCancelReason.MoveInput);
 
             // 진행 중인 경로와 같은 곳이면 다시 계산하지 않는다. 앞서 보관한 다른 목적지도 이 의도로 덮는다
             if (admission == EMoveAdmission.SameDestination)
@@ -754,7 +733,7 @@ namespace Shinshi.Combat
                     _pendingSkill = input;
                     _pendingSkillDeadline = now + _attackBufferSeconds;
                     _hasPendingSkill = true;
-                    _hasPendingAttack = false;
+                    CancelPreFire(EPreFireCancelReason.SkillBuffered);
                     return;
                 }
                 _input.SendSkillResult(input.Header.Sequence, CombatIds.NONE, reason);
@@ -765,17 +744,7 @@ namespace Shinshi.Combat
 
         private void CommitSkillInput(uint sequence)
         {
-            if (_hasPendingSkill)
-            {
-                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
-                _hasPendingSkill = false;
-            }
-            _hasPendingAttack = false;
-            _isWindingUp = false;
-            ResetCombo();
-            _hasPendingMove = false;
-            _path.Stop();
-            _moveThrottle.ClearActive();
+            CancelPreFire(EPreFireCancelReason.SkillCommit);
             ReplicateSkills();
             _input.SendSkillResult(sequence, _skills.CastInstanceId, ERejectReason.None);
         }
@@ -1005,6 +974,67 @@ namespace Shinshi.Combat
             return (serverTime < _comboImmuneUntil) || (serverTime < _grantedImmuneUntil);
         }
 
+        // 발사 전 동작과 보관 입력은 사유별 표(PreFireCancelPolicy)대로만 지운다. 기술 서버의 수명(Detach, Shutdown, Cancel, 사망)은 부르는 쪽이 따로 정한다.
+        // 기술 거절 알림은 회피 거절 알림보다 먼저 보낸다
+        private void CancelPreFire(EPreFireCancelReason reason)
+        {
+            PreFireCancelPolicy policy = PreFireCancelPolicy.Get(reason);
+
+            if (policy.Has(EPreFireTargets.PendingMove))
+            {
+                _hasPendingMove = false;
+            }
+            if (policy.Has(EPreFireTargets.PendingAttack))
+            {
+                _hasPendingAttack = false;
+            }
+            if (policy.Has(EPreFireTargets.Windup))
+            {
+                _isWindingUp = false;
+            }
+            if (policy.Has(EPreFireTargets.Combo))
+            {
+                ResetCombo();
+            }
+            if (policy.Has(EPreFireTargets.ComboImmunity))
+            {
+                _comboImmuneUntil = 0.0;
+            }
+            if (policy.Has(EPreFireTargets.FiredArrows))
+            {
+                _arrowCount = 0;
+            }
+            if (policy.Has(EPreFireTargets.PendingSkill))
+            {
+                if ((_hasPendingSkill) && (policy.SkillRejectReason != ERejectReason.None))
+                {
+                    _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, policy.SkillRejectReason);
+                }
+                _hasPendingSkill = false;
+            }
+            if (policy.Has(EPreFireTargets.ReviveRequest))
+            {
+                _hasReviveRequest = false;
+            }
+            if (policy.Has(EPreFireTargets.PendingDodge))
+            {
+                if ((_hasPendingDodge) && (policy.DodgeRejectReason != ERejectReason.None))
+                {
+                    _input.SendInputRejected(_pendingDodgeSequence, policy.DodgeRejectReason);
+                }
+                _hasPendingDodge = false;
+            }
+            if (policy.Has(EPreFireTargets.ActiveDodge))
+            {
+                _isDodging = false;
+            }
+            if (policy.Has(EPreFireTargets.Path))
+            {
+                _path.Stop();
+                _moveThrottle.ClearActive();
+            }
+        }
+
         // 회피, 기술, 사망, 기절로 끊기면 다음 기본 공격은 1단부터다
         private void ResetCombo()
         {
@@ -1196,12 +1226,7 @@ namespace Shinshi.Combat
 
             _combat.BumpDodgeSequence();
 
-            _hasPendingMove   = false;
-            _hasPendingAttack = false;
-            _isWindingUp      = false;
-            ResetCombo();
-            _path.Stop();
-            _moveThrottle.ClearActive();
+            CancelPreFire(EPreFireCancelReason.Dodge);
 
             // 이 틱에서 바로 한 칸 나아가므로 틱 구간의 시작에 시작한 것이다. 쿨다운도 그때부터 센다
             _isDodging      = true;
@@ -1408,22 +1433,14 @@ namespace Shinshi.Combat
         /// <summary> 회피가 서버에서 승인된 뒤에만 호출한다, 취소만 보내 후딜을 공짜로 지우지 않는다 </summary>
         public void CancelSkillForDodge()
         {
-            if (_hasPendingSkill)
-            {
-                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
-                _hasPendingSkill = false;
-            }
+            CancelPreFire(EPreFireCancelReason.SkillDodgeCancel);
             _skills?.Cancel();
             ReplicateSkills();
         }
 
         public void StopSkillCombat()
         {
-            if (_hasPendingSkill)
-            {
-                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.WrongPhase);
-            }
-            _hasPendingSkill = false;
+            CancelPreFire(EPreFireCancelReason.SkillCombatStop);
             _skills?.Shutdown();
             ReplicateSkills();
         }
@@ -1529,24 +1546,8 @@ namespace Shinshi.Combat
             // 사망 순간의 서버 좌표, 일반전 부활이 이 자리를 그대로 쓴다. 사망 뒤 기술 이동이 위치를 옮겨도 바뀌지 않는다
             _deathPosition    = _transform.position;
             _hasDeathPosition = true;
-            _hasPendingMove   = false;
-            _hasPendingAttack = false;
-            _isWindingUp      = false;
-            ResetCombo();
             _grantedImmuneUntil = 0.0;
-            if (_hasPendingSkill)
-            {
-                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.Dead);
-            }
-            _hasPendingSkill  = false;
-            if (_hasPendingDodge)
-            {
-                _input.SendInputRejected(_pendingDodgeSequence, ERejectReason.Dead);
-            }
-            _hasPendingDodge  = false;
-            _isDodging        = false;
-            _path.Stop();
-            _moveThrottle.ClearActive();
+            CancelPreFire(EPreFireCancelReason.Death);
             _combat.SetLifeState(_lifeState);
 
             // 죽으면 제어와 면역을 함께 지운다. 부활한 뒤에는 새 제어를 바로 받는다
@@ -1623,15 +1624,7 @@ namespace Shinshi.Combat
         // 기술은 RefreshControl이 기술 서버를 통해 끊는다. 비용과 쿨다운은 돌려주지 않는다
         private void BeginControl(EPlayerControlKind kind)
         {
-            _hasPendingMove = false;
-            _isDodging      = false;
-            _path.Stop();
-            _moveThrottle.ClearActive();
-            if (_hasPendingDodge)
-            {
-                _input.SendInputRejected(_pendingDodgeSequence, ERejectReason.Disabled);
-                _hasPendingDodge = false;
-            }
+            CancelPreFire(EPreFireCancelReason.ControlInterrupt);
 
             if (kind != EPlayerControlKind.Stun)
             {
@@ -1639,14 +1632,7 @@ namespace Shinshi.Combat
             }
 
             bool wasWindingUp = _isWindingUp;
-            _isWindingUp      = false;
-            _hasPendingAttack = false;
-            ResetCombo();
-            if (_hasPendingSkill)
-            {
-                _input.SendSkillResult(_pendingSkill.Header.Sequence, CombatIds.NONE, ERejectReason.Disabled);
-                _hasPendingSkill = false;
-            }
+            CancelPreFire(EPreFireCancelReason.StunInterrupt);
 
             if (wasWindingUp)
             {

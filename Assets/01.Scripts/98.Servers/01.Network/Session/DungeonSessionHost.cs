@@ -1145,8 +1145,7 @@ namespace Shinshi.Network
         // API는 보스 성공 정산 뒤 출정을 Auction으로 두므로 품목이 없어도 경매 진행기가 finish로 닫아야 한다
         private void TickAuction()
         {
-            if ((_auction == null) && (_settlement.State == ESessionSettlementState.Settled) && (_session.IsBossSession)
-                && (_session.EndReason == ESessionEndReason.Success))
+            if (SortieEndRules.ShouldStartAuction(_auction != null, _settlement.State, _session.IsBossSession, _session.EndReason))
             {
                 StartAuction();
             }
@@ -1206,38 +1205,17 @@ namespace Shinshi.Network
                 return;
             }
 
-            if (_session.EndReason == ESessionEndReason.ServiceCancelled)
+            ESortieTerminalReason reason = SortieEndRules.DecideTerminal(_session.EndReason, _session.HasTerminalStorage,
+                _session.CanReturn, _settlement.State, IsAuctionPending());
+            if (reason != ESortieTerminalReason.None)
             {
-                // 확정 거절로 멈춘 큐는 더 저장하지 않는다. 그 밖에는 종료 기록이 저장된 뒤 내린다
-                if ((_session.HasTerminalStorage) || (_session.CanReturn))
-                {
-                    SetTerminal(ESortieTerminalReason.ServiceCancelled);
-                }
-
-                return;
+                SetTerminal(reason);
             }
+        }
 
-            if (_session.HasTerminalStorage)
-            {
-                // 종료 이벤트 저장 전에 큐가 멈췄다. 결과를 확정할 수 없어 API 장애 취소가 맡는다
-                SetTerminal(ESortieTerminalReason.ServiceCancelled);
-                return;
-            }
-
-            if (_settlement.State == ESessionSettlementState.Settled)
-            {
-                // 보스 성공은 파티 경매와 출정 닫기(finish)까지 끝나야 내린다
-                if ((_auction != null) && (!_auction.IsFinished))
-                {
-                    return;
-                }
-
-                SetTerminal(ESortieTerminalReason.Settled);
-            }
-            else if (_settlement.State == ESessionSettlementState.Abandoned)
-            {
-                SetTerminal(ESortieTerminalReason.SettlementAbandoned);
-            }
+        private bool IsAuctionPending()
+        {
+            return (_auction != null) && (!_auction.IsFinished);
         }
 
         private void SetTerminal(ESortieTerminalReason reason)
@@ -1527,52 +1505,21 @@ namespace Shinshi.Network
             return new SortieStatusMessage(CurrentPhase(), endReason, personal, personalReason, canReturn, CurrentSettlementState());
         }
 
-        // API는 정산 확정 때 참가자 계정 임대를 푼다. 보스 성공은 경매 동안 던전이 임대를 쥐고 경매 닫기(finish)에서 푼다.
-        // 장애 취소와 정산 확정 거절은 API 복구 작업이 풀어 기다릴 신호가 없으므로 종료 저장 뒤 허용하고 입장권 재시도에 맡긴다
         private bool CanReturnAfterEnd()
         {
-            if ((_session == null) || (_settlement == null) || (!_session.CanReturn))
+            if ((_session == null) || (_settlement == null))
             {
                 return false;
             }
 
-            if ((_session.EndReason == ESessionEndReason.ServiceCancelled) || (_settlement.State == ESessionSettlementState.Abandoned))
-            {
-                return true;
-            }
-
-            if (_settlement.State != ESessionSettlementState.Settled)
-            {
-                return false;
-            }
-
-            if (_auction != null)
-            {
-                return _auction.IsFinished;
-            }
-
-            // 정산 응답은 틱 사이(Pump)에 오므로 경매가 다음 틱에 시작되기 전일 수 있다
-            return (!_session.IsBossSession) || (_session.EndReason != ESessionEndReason.Success);
+            return SortieEndRules.CanReturnAfterEnd(_session.CanReturn, _session.EndReason, _settlement.State, _auction != null,
+                (_auction != null) && (_auction.IsFinished), _session.IsBossSession);
         }
 
         private ESortiePhase CurrentPhase()
         {
-            if (IsTerminal)
-            {
-                return ESortiePhase.Closed;
-            }
-
-            if (_session == null)
-            {
-                return ESortiePhase.Waiting;
-            }
-
-            if (_session.IsRunning)
-            {
-                return ESortiePhase.Running;
-            }
-
-            return ((_auction != null) && (!_auction.IsFinished)) ? ESortiePhase.Auction : ESortiePhase.Ended;
+            return SortieEndRules.DecidePhase(IsTerminal, _session != null, (_session != null) && (_session.IsRunning),
+                IsAuctionPending());
         }
 
         private ESortieSettlementState CurrentSettlementState()
@@ -1582,15 +1529,7 @@ namespace Shinshi.Network
                 return ESortieSettlementState.None;
             }
 
-            switch (_settlement.State)
-            {
-                case ESessionSettlementState.Settled:
-                    return ESortieSettlementState.Settled;
-                case ESessionSettlementState.Abandoned:
-                    return ESortieSettlementState.Deferred;
-                default:
-                    return ESortieSettlementState.Pending;
-            }
+            return SortieEndRules.DecideSettlementState(_settlement.State);
         }
 
         // 진행 중에만 30초마다 보낸다. 보내는 중이면 이번 주기는 건너뛰고 다음 주기가 새 상태로 대신한다(재시도 없음)

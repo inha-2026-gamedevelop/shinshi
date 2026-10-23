@@ -6,8 +6,8 @@ using Mirror;
 
 namespace Shinshi.Network
 {
-    // TODO(진욱/기웅): 신시 안내(프롤로그, 튜토리얼)를 끝낸 시점에 CompleteIntro를 부른다(docs/05-implementation-roadmap.md U18,
-    // docs/02-game-design.md 8장 "신시 안내 -> 숲 성공"). 안내 완료가 기록돼야 숲(region_forest) 출정이 열린다
+    // TODO(진욱/기웅): 신시 안내(프롤로그, 튜토리얼)를 끝낸 시점에 CompleteIntro를 부른다.
+    // 안내가 구현되기 전에는 DungeonEntryBinder가 첫 성장 스냅샷에 대신 보낸다. 안내 완료가 기록돼야 숲(region_forest) 출정이 열린다
     /// <summary> 클라이언트의 마을 계정 진행 기록 송신과 결과 수신 창구. 연결되지 않았으면 Guid.Empty나 거짓을 돌려준다 </summary>
     public static class TownProgressClient
     {

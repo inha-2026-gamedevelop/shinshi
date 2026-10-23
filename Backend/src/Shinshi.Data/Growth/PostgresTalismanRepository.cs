@@ -203,7 +203,7 @@ namespace Shinshi.Data.Growth
         private static async Task<GrowthEffectResult> DisassembleEffectAsync(GrowthEffectContext context, string effectId,
             int quantity, CancellationToken cancellationToken)
         {
-            // TODO(민성): 다른 직업 카드 분해 허용 여부는 기획 미정(docs/design/growth-economy.md 7장). 확정 전 거절한다
+            // TODO(민성): 다른 직업 카드 분해 허용 여부는 기획 미정이다. 확정 전 거절한다
             if (!IsOwnClassEffect(context, effectId))
             {
                 return GrowthEffectResult.Rejected(ContractCodes.RejectReason.INVALID_TARGET);

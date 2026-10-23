@@ -62,7 +62,7 @@ namespace Shinshi.Editor
         }
     }
 
-    /// <summary> docs/design 요구에서 뽑은 8개 미래 화면의 계약 정의, 수치 규칙은 서버 몫이라 여기에 두지 않는다 </summary>
+    /// <summary> 8개 미래 화면의 계약 정의, 수치 규칙은 서버 몫이라 여기에 두지 않는다 </summary>
     public static class ContractOnlyDefinitions
     {
         /****************************************
@@ -73,9 +73,6 @@ namespace Shinshi.Editor
 
         private const int  LIST_MAX  = 30;
         private const long VALUE_MAX = 999999999L;
-
-        private const string GROWTH_DOC = "docs/design/growth-economy.md";
-        private const string LIFE_DOC   = "docs/design/life-training.md";
 
         /****************************************
         *                Methods
@@ -112,7 +109,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "growth";
             return new ContractOnlyDefinition(id, "성장 (계약 전용)",
-                "실제 화면 없음. " + GROWTH_DOC + "의 성장 · 경험치 요구를 따른다. 규칙 계산은 서버 몫이다.",
+                "실제 화면 없음. 성장 · 경험치 계약의 요구를 따른다. 규칙 계산은 서버 몫이다.",
                 new[]
                 {
                     new EconomyField("level", "현재 레벨", EEconomyFieldKind.Int, "1", 1, 999),
@@ -131,7 +128,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "equipment";
             return new ContractOnlyDefinition(id, "장비 (계약 전용)",
-                "실제 화면 없음. " + GROWTH_DOC + "의 장비 부품 · 재료 · 0강 생성 요구를 따른다.",
+                "실제 화면 없음. 장비 부품 · 재료 · 0강 생성 계약의 요구를 따른다. 생성과 분해 판정은 서버 몫이다.",
                 new[]
                 {
                     new EconomyField("slot", "대상 슬롯 번호", EEconomyFieldKind.Int, "0", 0, 5),
@@ -151,7 +148,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "enhancement";
             return new ContractOnlyDefinition(id, "강화 (계약 전용)",
-                "실제 화면 없음. " + GROWTH_DOC + "의 강화 성공률 · 비용 · 보호 요구를 따른다. 확률과 비용은 서버가 정하고 이 화면은 값을 계산하지 않는다.",
+                "실제 화면 없음. 강화 성공률 · 비용 · 보호 계약의 요구를 따른다. 확률과 비용은 서버가 정하고 이 화면은 값을 계산하지 않는다.",
                 new[]
                 {
                     new EconomyField("target", "대상 장비", EEconomyFieldKind.Text, "낡은 검"),
@@ -172,7 +169,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "inheritance";
             return new ContractOnlyDefinition(id, "계승 (계약 전용)",
-                "실제 화면 없음. " + GROWTH_DOC + "의 계승 조건(원본 강화 수치 · 대상 0강 · 미장착) 요구를 따른다. 조건 판정은 서버 몫이다.",
+                "실제 화면 없음. 계승 조건(원본 강화 수치 · 대상 0강 · 미장착) 계약의 요구를 따른다. 조건 판정은 서버 몫이다.",
                 new[]
                 {
                     new EconomyField("source", "원본 장비", EEconomyFieldKind.Text, "원본 검"),
@@ -193,7 +190,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "training";
             return new ContractOnlyDefinition(id, "수련 (계약 전용)",
-                "실제 화면 없음. " + LIFE_DOC + "의 수련 능력치 · 단계 · 재분배 요구를 따른다. 비용과 한도는 서버가 정한다.",
+                "실제 화면 없음. 수련 능력치 · 단계 · 재분배 계약의 요구를 따른다. 비용과 한도는 서버가 정한다.",
                 new[]
                 {
                     new EconomyField("points", "남은 수련 단계", EEconomyFieldKind.Int, "10", 0, 999)
@@ -211,7 +208,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "talisman";
             return new ContractOnlyDefinition(id, "부적 (계약 전용)",
-                "실제 화면 없음. " + GROWTH_DOC + "의 부적 등록 · 효과 단계 · 해체 요구를 따른다. 확률은 서버가 정한다.",
+                "실제 화면 없음. 부적 등록 · 효과 단계 · 해체 계약의 요구를 따른다. 확률은 서버가 정한다.",
                 new[]
                 {
                     new EconomyField("slotCount", "장착 칸 수", EEconomyFieldKind.Int, "3", 0, 10)
@@ -229,7 +226,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "crafting";
             return new ContractOnlyDefinition(id, "제작 (계약 전용)",
-                "실제 화면 없음. " + GROWTH_DOC + "의 제작 · 분해 요구를 따른다. 재료 수와 환급 비율은 서버가 정한다.",
+                "실제 화면 없음. 제작 · 분해 계약의 요구를 따른다. 재료 수와 환급 비율은 서버가 정한다.",
                 new[]
                 {
                     new EconomyField("recipe", "제작 대상", EEconomyFieldKind.Text, "낡은 검")
@@ -247,7 +244,7 @@ namespace Shinshi.Editor
         {
             string id = ID_PREFIX + "life";
             return new ContractOnlyDefinition(id, "생활 (계약 전용)",
-                "실제 화면 없음. " + LIFE_DOC + "의 채집 · 행동력 · 물약 제작 요구를 따른다. 수량과 소모량은 서버가 정한다.",
+                "실제 화면 없음. 채집 · 행동력 · 물약 제작 계약의 요구를 따른다. 수량과 소모량은 서버가 정한다.",
                 new[]
                 {
                     new EconomyField("actionPoints", "행동력", EEconomyFieldKind.Int, "20", 0, 999)

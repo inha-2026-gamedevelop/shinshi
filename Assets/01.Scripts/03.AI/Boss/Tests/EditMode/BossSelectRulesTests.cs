@@ -46,8 +46,8 @@ namespace Shinshi.Tests
 
         [TestCase("boss_wolbaek", EBossDifficulty.Easy, "battle_wolbaek_easy", true)]
         [TestCase("boss_wolbaek", EBossDifficulty.Hard, "battle_wolbaek_hard", false)]
-        [TestCase("boss_mucheol", EBossDifficulty.Easy, "battle_mucheol_easy", false)]
-        [TestCase("boss_mucheol", EBossDifficulty.Hard, "battle_mucheol_hard", false)]
+        [TestCase("boss_mucheol", EBossDifficulty.Easy, "battle_mucheol_easy", true)]
+        [TestCase("boss_mucheol", EBossDifficulty.Hard, "battle_mucheol_hard", true)]
         public void Resolve_ExistingCombination_ReturnsTheExactBattle(string bossId, EBossDifficulty difficulty, string battleId, bool inTrial)
         {
             BossBattleSelection selection = BossSelectRules.Resolve(_progression, _bosses, bossId, difficulty);
@@ -140,7 +140,12 @@ namespace Shinshi.Tests
             BossBattleSelection selection = BossSelectRules.Resolve(_progression, _bosses, "boss_mucheol", EBossDifficulty.Hard);
 
             Assert.That(selection.IsResolved, Is.True);
-            Assert.That(selection.AvailableInTrial, Is.False);
+
+            // 무철 하드는 체험판에 들어 있지만 미리 열려 있지 않다(이지를 먼저 깨야 열린다). 그래도 선택은 해석되고 입장 판정은 하지 않는다
+            Assert.That(selection.AvailableInTrial, Is.True);
+            Assert.That(_progression.TryGetBattle(selection.BattleId, out ProgressionCatalogSO.BossBattleDefinition battle), Is.True);
+            Assert.That(battle.TrialPreUnlocked, Is.False);
+            Assert.That(battle.Requirement.ClearedBattleId, Is.EqualTo("battle_mucheol_easy"));
         }
     }
 }

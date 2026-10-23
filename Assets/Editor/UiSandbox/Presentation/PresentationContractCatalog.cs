@@ -111,7 +111,7 @@ namespace Shinshi.Editor
         public const string KEY_NOTICE_AGE      = "servicenotice.sinceFetchSeconds";
         public const string KEY_NOTICE_FAILS    = "servicenotice.fetchFails";
 
-        // docs/design/experience-service.md 5장 파티 경매 기본안(위임 초기값 포함). 서버 규칙의 재구현이 아니라 입력 검증용 예시 값이다
+        // 파티 경매 기본안(위임 초기값 포함). 서버 규칙의 재구현이 아니라 입력 검증용 예시 값이다
         public const int LOOT_MIN_BID         = 100;
         public const int LOOT_MIN_STEP        = 10;
         public const int LOOT_DEFAULT_SECONDS = 30;
@@ -119,11 +119,11 @@ namespace Shinshi.Editor
         public const int LOOT_EXTEND_BELOW    = 10;
         public const int LOOT_MAX_ELIGIBLE    = 4;
 
-        // 같은 문서 7장: 프롤로그 약 90초(30+30+30), 여우의 흔적 3개로 월백 결계 해금
+        // 체험판 안내 흐름의 예시 값: 프롤로그 약 90초(30+30+30), 여우의 흔적 3개로 월백 결계 해금
         public const int PROLOGUE_STEP_SECONDS = 30;
         public const int FOX_TRACES_REQUIRED   = 3;
 
-        // 런처 문서의 소식 규칙: 홈 3개, 마지막 수신이 60초보다 오래되면 소식 탭에서 다시 받음
+        // 런처 소식 규칙의 예시 값: 홈 3개, 마지막 수신이 60초보다 오래되면 소식 탭에서 다시 받음
         public const int NOTICE_HOME_COUNT    = 3;
         public const int NOTICE_REFETCH_AFTER = 60;
 
@@ -551,9 +551,9 @@ namespace Shinshi.Editor
         {
             return new ContractSpec(
                 ID_PARTY_LOOT,
-                "보스 파티 경매 · 단독 구매 · 분배 (U15)",
-                "로드맵 U15의 경매 화면은 미착수다(API는 있고 경매 UI와 `auction` 기능 차단 때 개시 처리는 기획 미정). 유저 경매장(U28)과 별개이며 같은 거래 재화 잔액만 공유한다. " +
-                "값은 experience-service 5장 기본안(최저가 " + LOOT_MIN_BID + ", 최소 증가 " + LOOT_MIN_STEP + ", 기본 " + LOOT_DEFAULT_SECONDS + "초, 10초 미만 입찰 시 10초로 연장, 상한 " + LOOT_MAX_SECONDS + "초)이고 " +
+                "보스 파티 경매 · 단독 구매 · 분배",
+                "파티 경매 화면(View)은 아직 없다(서버 PartyAuctionDirector와 클라이언트 창구 PartyAuctionClient까지 구현됐고, `auction` 기능 차단 때 개시를 막을지는 기획 미정). 유저 경매장과 별개이며 같은 거래 재화 잔액만 공유한다. " +
+                "값은 기본안(최저가 " + LOOT_MIN_BID + ", 최소 증가 " + LOOT_MIN_STEP + ", 기본 " + LOOT_DEFAULT_SECONDS + "초, 10초 미만 입찰 시 10초로 연장, 상한 " + LOOT_MAX_SECONDS + "초)이고 " +
                 "단독 모드 30초 유찰은 위임 초기안이다. 잔액 · 접속 인원은 모의 값이며 서버 정산을 재구현하지 않고 입력 검증만 한다. 상한 120초와 원자 낙찰은 서버 몫이라 여기서 시험하지 않는다.",
                 new[]
                 {
@@ -661,9 +661,9 @@ namespace Shinshi.Editor
         {
             return new ContractSpec(
                 ID_PROGRESSION,
-                "프롤로그 · 튜토리얼 · 계정 진행 해금 (U18 / U21)",
-                "U18(프롤로그 약 90초 · 튜토리얼)은 미착수이고 U21의 계정 진행 · 해금 기록과 신시 안내 완료 API는 있으나 안내 완료 송신 UI는 남았다. " +
-                "프롤로그는 신시 토벌 준비 30초 → 스승의 부적과 단서 30초 → 출정 안내 30초(experience-service 7장). " +
+                "프롤로그 · 튜토리얼 · 계정 진행 해금",
+                "프롤로그(약 90초) · 튜토리얼 화면은 아직 없다. 계정 진행 · 해금 기록과 신시 안내 완료 API는 있고, 안내 완료는 별도 화면 없이 DungeonEntryBinder가 마을의 첫 성장 스냅샷을 받을 때 한 번 보낸다. " +
+                "프롤로그 기본안은 신시 토벌 준비 30초 → 스승의 부적과 단서 30초 → 출정 안내 30초다. " +
                 "해금 사슬은 숲 → 폐허 → 철각 이지 → 철각 하드 · 제단 → 여우의 흔적 " + FOX_TRACES_REQUIRED + "개 + 철각 하드 → 월백 이지의 기본안이며 값은 모의 입력이다. " +
                 "체험판은 폐허 · 철각 · 제단 없이 월백 이지를 미리 해금한 전투 시험이고 정식 해금 완료로 기록하지 않는다.",
                 new[]
@@ -768,8 +768,8 @@ namespace Shinshi.Editor
             return new ContractSpec(
                 ID_NOTICE,
                 "서비스 공지 (런처 소식 계약)",
-                "서비스 공지는 런처 문서(launcher-and-patch 9항)가 정의한다: GET /v1/service-state의 notices[], 분류 Notice/Update/Event/Maintenance, 홈 " + NOTICE_HOME_COUNT + "개, " +
-                "비면 '새 소식이 없습니다', 마지막 수신이 " + NOTICE_REFETCH_AFTER + "초보다 오래되면 소식 탭에서 다시 받는다. 게임 안 공지 View는 문서 근거가 없고 런처 UI는 이 샌드박스의 View 대상이 아니라 입력 계약만 시험한다.",
+                "서비스 공지의 런처 소식 계약: GET /v1/service-state의 notices[], 분류 Notice/Update/Event/Maintenance, 홈 " + NOTICE_HOME_COUNT + "개, " +
+                "비면 '새 소식이 없습니다', 마지막 수신이 " + NOTICE_REFETCH_AFTER + "초보다 오래되면 소식 탭에서 다시 받는다. 게임 안에서는 ServiceNoticeFeed가 게임 대상 공지를 채팅 시스템 줄로 넣을 뿐 별도 공지 View는 없고, 런처 UI는 이 샌드박스의 View 대상이 아니라 입력 계약만 시험한다.",
                 new[]
                 {
                     ContractField.Int(KEY_NOTICE_COUNT, "수신한 공지 수", 5, 0, MAX_NOTICES),
@@ -803,9 +803,9 @@ namespace Shinshi.Editor
         {
             return new ContractSpec(
                 ID_ABANDON,
-                "중도 포기 · 귀환 (U17)",
-                "로드맵 U17의 '포기·귀환 화면'은 아직 없다(SortieClient · SortieReturnFlow 흐름만 구현). 기술 설계의 RequestAbandon(sessionId, operationId) 실패 코드 AlreadySettled · SessionMismatch, " +
-                "접속 끊김 " + ABANDON_GRACE_SECONDS + "초 복귀 유예, 포기 직후 새 출정은 원 출정 정산까지 막힘을 입력 계약으로만 시험한다. 정산 값은 전부 더미이며 추가 정기는 floor(추가 정기 ÷ 2)만 보존하는 문서 규칙의 예시다. 결과 화면 복귀와는 별개다.",
+                "중도 포기 · 귀환",
+                "포기 · 귀환 화면(View)은 아직 없다(SortieClient.RequestAbandon과 SortieReturnFlow 흐름만 구현되어 있고 화면에서 부르는 곳은 없다). 포기 요청(sessionId, operationId)의 실패 코드 AlreadySettled · SessionMismatch, " +
+                "접속 끊김 " + ABANDON_GRACE_SECONDS + "초 복귀 유예, 포기 직후 새 출정은 원 출정 정산까지 막힘을 입력 계약으로만 시험한다. 정산 값은 전부 더미이며 추가 정기는 floor(추가 정기 ÷ 2)만 보존하는 규칙의 예시다. 결과 화면 복귀와는 별개다.",
                 new[]
                 {
                     ContractField.Bool(KEY_ABANDON_ACTIVE, "출정 진행 중", true),

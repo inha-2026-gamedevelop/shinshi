@@ -51,8 +51,7 @@ namespace Shinshi.Backend.Sessions
         }
 
         // TODO(민성): auction 기능 차단 때 개시도 막을지 정한다. 막으면 보스 성공 출정의 경매 품목을 어떻게 처리할지(드롭, 우편)가
-        // 정해지지 않았다(.claude/docs/2026-10-03/서버-미구현-구현-계획.md 잠정 결정 15, docs/design/operations-admin.md 기능 차단).
-        // 지금은 입찰만 막고 개시, 마감, 단계 종료는 진행한다
+        // 정해지지 않았다. 지금은 입찰만 막고 개시, 마감, 단계 종료는 진행한다
         [HttpPost(GameServerRouteTemplates.AUCTIONS)]
         public async Task<IActionResult> Open(string sessionId, [FromBody] AuctionOpenRequest request,
             CancellationToken cancellationToken)

@@ -239,7 +239,7 @@ namespace Shinshi.Data.Growth
         /// <summary> 성공 정산 트랜잭션에서 출정을 끝까지 함께한 계정들의 클리어를 기록한다. 일반전은 battleId(지역 ID)의 지역 성공과
         /// 그 지역의 여우의 흔적(foxTracesPerClear, 상한 foxTraceCap), 보스전은 bossId와 난이도로 찾은 보스전의 첫 처치다.
         /// 콘텐츠에 없는 전장(테스트용 지도, 0012 전 출정)은 기록하지 않는다. 호출자가 계정 행을 먼저 잠가야 한다.
-        /// 근거: docs/02-game-design.md 8장, growth-content.json progression </summary>
+        /// 어떤 전장이 해금 기록이 되고 여우의 흔적이 몇 개인지는 콘텐츠 정의의 Progression이 정한다 </summary>
         public async Task RecordSessionClearAsync(OperationExecutionContext context, IReadOnlyCollection<Guid> accountIds,
             bool isBoss, string? battleId, string? bossId, short? difficulty, Guid operationId,
             CancellationToken cancellationToken = default)

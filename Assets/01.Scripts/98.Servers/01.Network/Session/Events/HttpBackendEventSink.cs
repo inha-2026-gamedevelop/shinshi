@@ -141,54 +141,124 @@ namespace Shinshi.Network
         {
             SessionEventData data    = sessionEvent.Data;
             string           eventId = SessionContractIds.CreateEventId(sessionId, sessionEvent.Seq);
-            if ((data.Type == ESessionEventType.SessionEnded) && (data.Reason != ESessionEndReason.ServiceCancelled))
-            {
-                return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.SESSION_ENDED, null, null,
-                    null, 0L, (int)data.Reason, SessionContractIds.CreateSettlementOperationId(sessionId),
-                    data.Grants ?? Array.Empty<SettlementGrant>(), null);
-            }
 
             // 참가자 ID가 있으면 API가 GUID로 읽는다. 개발 키처럼 형식이 다르면 배치 전체가 거절되므로 payload에만 남긴다
             string participantId = SessionContractIds.TryGetApiParticipantId(data.ParticipantId, out string apiId) ? apiId : null;
 
-            if ((data.Type == ESessionEventType.PotionUsed) && (participantId != null)
-                && (!string.IsNullOrEmpty(data.DefinitionId)) && (!string.IsNullOrEmpty(data.BindingKind)))
+            // 종류별 변환이 null을 돌려주면 API가 받을 수 없는 형식이라 진단 LOOT로만 남긴다
+            SessionEventEntry entry;
+            switch (data.Type)
             {
-                return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.POTION_USED, participantId,
-                    data.DefinitionId, data.BindingKind, 0L, 0, null, null, null);
+                case ESessionEventType.SessionEnded:
+                    entry = ToSessionEnded(sessionId, in sessionEvent, eventId, in data);
+                    break;
+                case ESessionEventType.PotionUsed:
+                    entry = ToPotionUsed(in sessionEvent, eventId, participantId, in data);
+                    break;
+                case ESessionEventType.ParticipantSettled:
+                    entry = ToParticipantDeparted(in sessionEvent, eventId, participantId, in data);
+                    break;
+                case ESessionEventType.PotionUseReverted:
+                    entry = ToPotionUseReverted(sessionId, in sessionEvent, eventId, participantId, in data);
+                    break;
+                case ESessionEventType.ExperienceGranted:
+                    entry = ToExperienceGranted(in sessionEvent, eventId, participantId, in data);
+                    break;
+                case ESessionEventType.EssenceAccrued:
+                    entry = ToAccrual(GameSessionCodes.EventKind.ESSENCE_ACCRUED, in sessionEvent, eventId, participantId,
+                        in data);
+                    break;
+                case ESessionEventType.BaseEssenceAccrued:
+                    entry = ToAccrual(GameSessionCodes.EventKind.BASE_ESSENCE_ACCRUED, in sessionEvent, eventId, participantId,
+                        in data);
+                    break;
+                default:
+                    entry = null;
+                    break;
             }
 
-            // 진행 중 개인 이탈(포기, 유예 만료)은 PARTICIPANT_DEPARTED로 보낸다. API가 같은 트랜잭션에서 그 계정의 던전 접속 임대를
-            // 풀어 마을 복귀를 허용한다. 경제 정산은 하지 않고 SESSION_ENDED 정산안이 이 참가자를 한 번 포함한다
-            if ((data.Type == ESessionEventType.ParticipantSettled) && (participantId != null) && (IsDepartReason(data.Reason)))
+            return entry ?? ToDiagnostic(in sessionEvent, eventId, participantId, in data);
+        }
+
+        // 서비스 장애 취소는 API 복구 작업만 기록할 수 있어 SESSION_ENDED로 보내지 않는다
+        private static SessionEventEntry ToSessionEnded(string sessionId, in SessionEvent sessionEvent, string eventId,
+            in SessionEventData data)
+        {
+            if (data.Reason == ESessionEndReason.ServiceCancelled)
             {
-                return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.PARTICIPANT_DEPARTED,
-                    participantId, null, null, 0L, (int)data.Reason, null, null, null);
+                return null;
             }
 
-            // 물약 정의와 귀속은 API가 원 이벤트에서 읽으므로 싣지 않는다
-            if ((data.Type == ESessionEventType.PotionUseReverted) && (participantId != null) && (data.RevertsSequence > 0)
-                && (data.RevertsSequence < sessionEvent.Seq))
+            return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.SESSION_ENDED, null, null,
+                null, 0L, (int)data.Reason, SessionContractIds.CreateSettlementOperationId(sessionId),
+                data.Grants ?? Array.Empty<SettlementGrant>(), null);
+        }
+
+        private static SessionEventEntry ToPotionUsed(in SessionEvent sessionEvent, string eventId, string participantId,
+            in SessionEventData data)
+        {
+            if ((participantId == null) || (string.IsNullOrEmpty(data.DefinitionId)) || (string.IsNullOrEmpty(data.BindingKind)))
             {
-                return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.POTION_USE_REVERTED,
-                    participantId, null, null, 0L, 0, null, null, null,
-                    SessionContractIds.CreateEventId(sessionId, data.RevertsSequence));
+                return null;
             }
 
-            // 적립은 API 출정 원장에 쌓여 장애 취소의 지급 기준이 된다. 대상이 GUID가 아니거나 양이 0 이하면 API가
-            // 배치 전체를 거절하므로 그때는 진단 LOOT로만 남긴다
-            if (data.Type == ESessionEventType.ExperienceGranted)
+            return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.POTION_USED, participantId,
+                data.DefinitionId, data.BindingKind, 0L, 0, null, null, null);
+        }
+
+        // 진행 중 개인 이탈(포기, 유예 만료)은 PARTICIPANT_DEPARTED로 보낸다. API가 같은 트랜잭션에서 그 계정의 던전 접속 임대를
+        // 풀어 마을 복귀를 허용한다. 경제 정산은 하지 않고 SESSION_ENDED 정산안이 이 참가자를 한 번 포함한다
+        private static SessionEventEntry ToParticipantDeparted(in SessionEvent sessionEvent, string eventId,
+            string participantId, in SessionEventData data)
+        {
+            if ((participantId == null) || (!IsDepartReason(data.Reason)))
             {
-                return new SessionEventEntry(sessionEvent.Seq, eventId, participantId, data.Amount,
-                    data.ExperienceSourceKind, data.SourceId, data.ExperienceSettingsHash);
-            }
-            int accrualKind = GetAccrualKind(data.Type);
-            if ((accrualKind != GameSessionCodes.EventKind.LOOT) && (participantId != null) && (data.Amount > 0))
-            {
-                return new SessionEventEntry(sessionEvent.Seq, eventId, accrualKind, participantId, null, null,
-                    data.Amount, 0, null, null, null);
+                return null;
             }
 
+            return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.PARTICIPANT_DEPARTED,
+                participantId, null, null, 0L, (int)data.Reason, null, null, null);
+        }
+
+        // 물약 정의와 귀속은 API가 원 이벤트에서 읽으므로 싣지 않는다
+        private static SessionEventEntry ToPotionUseReverted(string sessionId, in SessionEvent sessionEvent, string eventId,
+            string participantId, in SessionEventData data)
+        {
+            if ((participantId == null) || (data.RevertsSequence <= 0) || (data.RevertsSequence >= sessionEvent.Seq))
+            {
+                return null;
+            }
+
+            return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.POTION_USE_REVERTED,
+                participantId, null, null, 0L, 0, null, null, null,
+                SessionContractIds.CreateEventId(sessionId, data.RevertsSequence));
+        }
+
+        // 경험치 지급은 항상 경험치 이벤트로 보낸다, 참가자와 양의 검증은 API가 맡는다
+        private static SessionEventEntry ToExperienceGranted(in SessionEvent sessionEvent, string eventId,
+            string participantId, in SessionEventData data)
+        {
+            return new SessionEventEntry(sessionEvent.Seq, eventId, participantId, data.Amount,
+                data.ExperienceSourceKind, data.SourceId, data.ExperienceSettingsHash);
+        }
+
+        // 적립은 API 출정 원장에 쌓여 장애 취소의 지급 기준이 된다. 대상이 GUID가 아니거나 양이 0 이하면 API가
+        // 배치 전체를 거절하므로 그때는 진단 LOOT로만 남긴다
+        private static SessionEventEntry ToAccrual(int accrualKind, in SessionEvent sessionEvent, string eventId,
+            string participantId, in SessionEventData data)
+        {
+            if ((participantId == null) || (data.Amount <= 0))
+            {
+                return null;
+            }
+
+            return new SessionEventEntry(sessionEvent.Seq, eventId, accrualKind, participantId, null, null,
+                data.Amount, 0, null, null, null);
+        }
+
+        private static SessionEventEntry ToDiagnostic(in SessionEvent sessionEvent, string eventId, string participantId,
+            in SessionEventData data)
+        {
             return new SessionEventEntry(sessionEvent.Seq, eventId, GameSessionCodes.EventKind.LOOT, participantId, null, null,
                 0L, 0, null, null, BackendJson.Serialize(new DiagnosticPayload(in data)));
         }
@@ -196,20 +266,6 @@ namespace Shinshi.Network
         private static bool IsDepartReason(ESessionEndReason reason)
         {
             return (reason == ESessionEndReason.Abandon) || (reason == ESessionEndReason.DisconnectExpired);
-        }
-
-        // 적립 이벤트가 아니면 LOOT를 돌려준다
-        private static int GetAccrualKind(ESessionEventType type)
-        {
-            switch (type)
-            {
-                case ESessionEventType.EssenceAccrued:
-                    return GameSessionCodes.EventKind.ESSENCE_ACCRUED;
-                case ESessionEventType.BaseEssenceAccrued:
-                    return GameSessionCodes.EventKind.BASE_ESSENCE_ACCRUED;
-                default:
-                    return GameSessionCodes.EventKind.LOOT;
-            }
         }
 
         /****************************************

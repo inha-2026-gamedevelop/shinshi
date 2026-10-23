@@ -1,6 +1,6 @@
 # 월백 봉인핵·낙하 VFX 사용 안내
 
-월백 06 원화의 봉인된 석편·각인 띠, 열린 청백 핵, 고정 지점 낙하, 짧은 파쇄를 표시하는 독립 아트 프리팹이다. 실보스·Net Binder 연결과 실행용 프리워밍 카탈로그 등록은 별도 작업이다.
+월백 06 원화의 봉인된 석편·각인 띠, 열린 청백 핵, 고정 지점 낙하, 짧은 파쇄를 표시하는 독립 아트 프리팹이다. `BossState`→`BossNetworkViewBinder`의 봉인 기믹 사건·복원 연결이 있으며(2026-10-22 정적 대조), 실행용 프리워밍 카탈로그 등록과 실제 다인 수용은 별도 작업이다.
 
 ## 프리팹과 배치
 
@@ -17,7 +17,7 @@
 
 `BlastRadius`는 여우불의 플레이어 폭발 경계다. `CoreHitRadius`는 낙하 중심에서 핵 중심까지의 서버 파괴 조건이며 핵 크기나 장식 문양의 반경이 아니다. 핵 바닥 문양은 장식이고 낙하 바닥 원만 외부 폭발 반경에 맞춘다.
 
-`OnTurnResolved`는 destroyedCores/totalCores 집계만 전달한다. `WolbaekSealSnapshot`에는 개별 파괴 핵 목록이 없다. 따라서 실패 차례의 집계나 거리로 어느 핵을 파쇄할지 클라이언트가 계산하면 안 된다. `Destroyed`는 해당 핵의 외부 확정 결과를 확보했을 때만 입력한다. 현행 서버 `IsCoreDestroyed(index)`를 원격에 전달할 계약은 서버·네트워크 담당 후속 범위다. Cleanup 재접속 시 개별 결과가 없으면 기존 표시를 정리하며 파괴를 추측하지 않는다.
+기본 `WolbaekSealSnapshot`과 별도로 Net 계약의 `OnSealTurnResolved`는 `destroyedCoreMask`를 전달하고 재접속용 `BossWolbaekSealRestore.DestroyedCoreMask`가 같은 결과를 복원한다. `BossState`가 RPC·원장에 보존하고 `BossNetworkViewBinder`가 표현에 전달한다. `Destroyed`는 이 서버 확정 비트로 입력하며 집계 수나 거리로 파괴 핵을 추측하지 않는다. 복원 계약 없이 개별 아트 프리팹만 사용할 때는 외부 호출자가 확정 결과를 제공해야 한다.
 
 ## 외부 API
 

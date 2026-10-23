@@ -32,6 +32,7 @@ namespace Shinshi.Combat
             if ((request.HasValidIds) && (_registry.TryGetDamageable(request.HitTargetId, out IDamageable target))
                 && (target.LifeState == EParticipantLifeState.Alive) && (!target.IsInvulnerable)
                 && (target is ISkillCombatant combatant) && (combatant.Skills != null)
+                && (_inner.IsValidRequest(in request, target))
                 && (combatant.Skills.CanGuard(in request, _inner.Now)))
             {
                 if ((_registry.TryGetDamageable(request.AttackerId, out IDamageable source)) && (source.Faction == target.Faction))

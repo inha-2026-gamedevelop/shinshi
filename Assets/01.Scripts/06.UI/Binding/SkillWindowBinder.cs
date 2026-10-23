@@ -78,10 +78,8 @@ namespace Shinshi.UI
         private bool          _wasOpen;
         private bool          _isDirty;
         private bool          _draftChanged;
-        private Guid          _pendingOperation = Guid.Empty;
-        private EGrowthAction _pendingAction;
-        private bool          _isOutcomeUnknown;
-        private float         _pendingDeadline;
+        private readonly GrowthRequestLifetime _request = new GrowthRequestLifetime();
+
         private string        _status = string.Empty;
         private Action        _confirmClose;
 
@@ -167,21 +165,22 @@ namespace Shinshi.UI
             }
 
             _wasOpen = isOpen;
-            if ((!_previewMode) && (_pendingOperation != Guid.Empty) && (!TownGrowthClient.HasUnresolvedWrite))
+            if ((!_previewMode) && (_request.DropIfLockLost(TownGrowthClient.HasUnresolvedWrite, TownGrowthClient.UnresolvedOperationId)))
             {
-                // 다시 접속하면 TownGrowthClient가 잠금을 비운다. 이전 연결의 요청은 다시 확인할 수 없으므로 놓고 상태를 새로 읽는다
-                _pendingOperation = Guid.Empty;
-                _isOutcomeUnknown = false;
-                _status           = string.Empty;
-                _isDirty          = true;
+                // 다시 접속하거나 닫힌 사이 결과를 받아 잠금이 비었거나 다른 창이 새 잠금을 잡았다. 이전 요청의 결과를 단정하지 않고 서버 상태를 새로 읽는다
+                _status  = string.Empty;
+                _isDirty = true;
+                if (ClientRoles.IsTown())
+                {
+                    TownGrowthClient.RequestSnapshot();
+                }
             }
 
-            if ((_pendingOperation != Guid.Empty) && (!_isOutcomeUnknown) && (Time.unscaledTime >= _pendingDeadline))
+            if (_request.Expire(Time.unscaledTime))
             {
                 // 응답이 오지 않으면 결과 불명으로 본다. 잠금은 남기고 같은 번호로 다시 확인하게 한다
-                _isOutcomeUnknown = true;
-                _status           = UNKNOWN_TEXT;
-                _isDirty          = true;
+                _status  = UNKNOWN_TEXT;
+                _isDirty = true;
             }
 
             if ((isOpen) && (_isDirty))
@@ -261,7 +260,7 @@ namespace Shinshi.UI
         {
             _confirmClose = null;
             _view.ShowConfirm(false);
-            if (_pendingOperation == Guid.Empty)
+            if (!_request.IsActive)
             {
                 _status = string.Empty;
             }
@@ -436,9 +435,8 @@ namespace Shinshi.UI
 
         private void OnRetryRequested()
         {
-            if ((!_isOutcomeUnknown) || (!GrowthWriteGuard.CanRetry(TownGrowthClient.HasUnresolvedWrite,
-                (TownGrowthClient.IsUnresolvedOutcomeUnknown) || (_isOutcomeUnknown), TownGrowthClient.UnresolvedAction,
-                TownGrowthClient.UnresolvedOperationId, _pendingOperation, SkillWindowViewRules.G_OwnActions)))
+            if (!_request.CanRetry(TownGrowthClient.HasUnresolvedWrite, TownGrowthClient.IsUnresolvedOutcomeUnknown,
+                TownGrowthClient.UnresolvedAction, TownGrowthClient.UnresolvedOperationId, SkillWindowViewRules.G_OwnActions))
             {
                 return;
             }
@@ -446,9 +444,8 @@ namespace Shinshi.UI
             // 같은 요청을 같은 번호로 다시 보낸다. 서버와 API가 처음 결과를 돌려주고 다시 차감하지 않는다
             if (TownGrowthClient.RetryLast())
             {
-                _isOutcomeUnknown = false;
-                _pendingDeadline  = Time.unscaledTime + Constants.Network.API_TIMEOUT_SECONDS;
-                _status           = CHECKING_TEXT;
+                _request.MarkRetrying(Time.unscaledTime, Constants.Network.API_TIMEOUT_SECONDS);
+                _status = CHECKING_TEXT;
                 Refresh();
             }
         }
@@ -496,40 +493,33 @@ namespace Shinshi.UI
 
         private void Begin(Guid operationId, EGrowthAction action)
         {
-            if (operationId == Guid.Empty)
+            if (!_request.Begin(operationId, action, Time.unscaledTime, Constants.Network.API_TIMEOUT_SECONDS))
             {
                 _status = GrowthWriteGuard.IsBlockedByOther(Guid.Empty) ? GrowthWriteGuard.OTHER_WINDOW_TEXT : OFFLINE_TEXT;
                 Refresh();
                 return;
             }
 
-            _pendingOperation = operationId;
-            _pendingAction    = action;
-            _isOutcomeUnknown = false;
-            _pendingDeadline  = Time.unscaledTime + Constants.Network.API_TIMEOUT_SECONDS;
-            _status           = WAITING_TEXT;
+            _status = WAITING_TEXT;
             Refresh();
         }
 
         // 서버는 결과보다 성장 상태를 먼저 보낸다. 결과가 오면 화면은 이미 새 상태라 안내 글자만 바꾼다
         private void OnResult(GrowthResultMessage result)
         {
-            if ((_pendingOperation == Guid.Empty) || (result.OperationId != _pendingOperation))
+            EGrowthRequestResolve resolve = _request.Resolve(result.OperationId, result.Reason, out EGrowthAction action);
+            if (resolve == EGrowthRequestResolve.Ignored)
             {
                 return;
             }
 
-            if (result.Reason == ERejectReason.BackendUnavailable)
+            if (resolve == EGrowthRequestResolve.Unknown)
             {
-                _isOutcomeUnknown = true;
-                _status           = UNKNOWN_TEXT;
-                _isDirty          = true;
+                _status  = UNKNOWN_TEXT;
+                _isDirty = true;
                 return;
             }
 
-            EGrowthAction action = _pendingAction;
-            _pendingOperation = Guid.Empty;
-            _isOutcomeUnknown = false;
             if (result.IsAccepted)
             {
                 _status = AcceptedText(action, result.Outcome);
@@ -629,7 +619,7 @@ namespace Shinshi.UI
 
         private bool CanWriteNow()
         {
-            return (CanEditLoadout()) && (_pendingOperation == Guid.Empty) && (!GrowthWriteGuard.IsBlockedByOther(_pendingOperation));
+            return (CanEditLoadout()) && (!_request.IsActive) && (!GrowthWriteGuard.IsBlockedByOther(_request.OperationId));
         }
 
         private EPlayerClass PlayerClass()
@@ -854,7 +844,7 @@ namespace Shinshi.UI
 
             bool equipped = SkillWindowViewRules.IsEquipped(_draft, effect.SkillId, (int)effect.Tier, effect.DefinitionId);
             _view.SetEquip(equipped ? UNEQUIP_TEXT : EQUIP_TEXT,
-                (CanEditLoadout()) && (_pendingOperation == Guid.Empty) && ((equipped) || (SkillWindowViewRules.IsRegistered(level))));
+                (CanEditLoadout()) && (!_request.IsActive) && ((equipped) || (SkillWindowViewRules.IsRegistered(level))));
         }
 
         private string BonusLine(TalismanCatalogSO.TalismanEffectDefinition effect, int level, int maxLevel)
@@ -895,16 +885,15 @@ namespace Shinshi.UI
             bool showTalismans = (SkillWindowViewRules.ShowsTalismans(mode)) && (_hasSnapshot);
             _view.SetFooter(showTalismans ? SkillWindowViewRules.FooterText(_snapshot.Essence, cards, _draft.Count) : string.Empty);
 
-            bool ownUnknown = (_isOutcomeUnknown) && (GrowthWriteGuard.CanRetry(TownGrowthClient.HasUnresolvedWrite, true,
-                TownGrowthClient.UnresolvedAction, TownGrowthClient.UnresolvedOperationId, _pendingOperation,
-                SkillWindowViewRules.G_OwnActions));
+            bool ownUnknown = _request.CanRetry(TownGrowthClient.HasUnresolvedWrite, TownGrowthClient.IsUnresolvedOutcomeUnknown,
+                TownGrowthClient.UnresolvedAction, TownGrowthClient.UnresolvedOperationId, SkillWindowViewRules.G_OwnActions);
             _view.SetRetry(ownUnknown);
             _view.SetSave((showTalismans) && (CanWriteNow()) && (HasUnsavedChanges));
 
             string status = _status;
-            if (_pendingOperation == Guid.Empty)
+            if (!_request.IsActive)
             {
-                if ((!_previewMode) && (GrowthWriteGuard.IsBlockedByOther(_pendingOperation)) && (showTalismans))
+                if ((!_previewMode) && (GrowthWriteGuard.IsBlockedByOther(_request.OperationId)) && (showTalismans))
                 {
                     status = GrowthWriteGuard.OTHER_WINDOW_TEXT;
                 }

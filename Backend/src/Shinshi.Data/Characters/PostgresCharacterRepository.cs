@@ -37,10 +37,10 @@ namespace Shinshi.Data.Characters
         // 접속 판정은 마을 입장 교환과 같은 heartbeat 기준이다. 비정상 종료한 서버의 남은 임대는 삭제를 막지 않는다
         private const int HEARTBEAT_SECONDS = 15;
 
-        // TODO(민성): 계정당 캐릭터 수는 기획 미정(docs/design/account-and-website.md 8장). 확정 전 임시값이다
+        // TODO(민성): 계정당 캐릭터 수는 기획 미정이다. 확정 전 임시값이다
         public const int MAX_CHARACTERS_PER_ACCOUNT = 3;
 
-        // TODO(민성): 계정당 하루 삭제 수는 기획 미정(docs/design/account-and-website.md 8장, 잠정 결정 9 소프트 삭제).
+        // TODO(민성): 계정당 하루 삭제 수는 기획 미정이다(삭제는 소프트 삭제).
         // 삭제와 생성을 반복해 이름 키와 캐릭터 행을 무한히 소모하지 못하게 슬롯 수만큼으로 임시로 막는다
         public const int MAX_DELETES_PER_WINDOW = MAX_CHARACTERS_PER_ACCOUNT;
         public const int DELETE_WINDOW_HOURS    = 24;

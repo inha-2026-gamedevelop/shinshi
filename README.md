@@ -8,7 +8,7 @@
 | 인원 | 솔로 또는 1~4인 파티 |
 | 직업 | 검사 · 마검사 · 궁수 |
 
-2026-10-11 코드 대조 기준, [신규 세 직업](docs/design/character-animation-design.md)의 12기술·45부적 효과는 서버 규칙·카탈로그·백엔드 계약에 구현되어 있다. [기존 직업](docs/design/legacy-class-design.md)의 ID 0/1/2와 12기술·45효과도 보존하므로 전체 런타임은 24기술·90효과다. 신규 직업 ID는 3/4/5이며 API의 `Characters:EnabledClassIds` 기본값은 `0,1,2`다. 신규 직업 공개 설정, 구 진도 이관, 실제 다인 전투 수용은 별도 작업이다. 외형은 P09를 유지한다. 실제 구현과 검증 범위는 [로드맵](docs/05-implementation-roadmap.md)을 따른다.
+2026-10-22 코드 대조 기준, [신규 세 직업](docs/design/character-animation-design.md)의 12기술·45부적 효과는 서버 규칙·카탈로그·백엔드 계약에 구현되어 있다. [기존 직업](docs/design/legacy-class-design.md)의 ID 0/1/2와 12기술·45효과도 보존하므로 전체 런타임은 24기술·90효과다. 신규 직업 ID는 3/4/5이며 API의 `Characters:EnabledClassIds` 기본값은 `3,4,5`다. 구직업 0~2는 설정에 넣어도 신규 생성할 수 없고 기존 캐릭터의 읽기·입장 호환만 유지한다. 구 진도 이관과 전체 직업·부적 조합의 실전 수용은 별도 범위다. 외형은 P09를 유지한다. 실제 구현과 날짜별 검증 범위는 [로드맵](docs/05-implementation-roadmap.md)을 따른다.
 
 ## 저장소 구성
 

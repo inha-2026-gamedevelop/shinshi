@@ -29,6 +29,13 @@ namespace Shinshi.Tests
             "growth", "equipment", "enhancement", "inheritance", "training", "talisman", "crafting", "life"
         };
 
+        // G_ContractSuffixes와 같은 순서, 각 화면 요구 문구가 자기 계약을 가리키는 이름이나 역할
+        private static readonly string[] G_ContractRoles =
+        {
+            "성장 · 경험치", "장비 부품 · 재료 · 0강 생성", "강화 성공률 · 비용 · 보호", "계승 조건", "수련 능력치 · 단계 · 재분배",
+            "부적 등록 · 효과 단계 · 해체", "제작 · 분해", "채집 · 행동력 · 물약 제작"
+        };
+
         /****************************************
         *                Methods
         ****************************************/
@@ -139,7 +146,29 @@ namespace Shinshi.Tests
                 }
 
                 StringAssert.Contains("계약 전용", pages[i].Title, pages[i].Id);
-                StringAssert.Contains("docs/design/", pages[i].Requirement, pages[i].Id + " 요구 문서 출처가 없다");
+                StringAssert.Contains("실제 화면 없음", pages[i].Requirement, pages[i].Id);
+                StringAssert.Contains("서버", pages[i].Requirement, pages[i].Id + " 서버 판정 조건이 없다");
+            }
+        }
+
+        [Test]
+        public void CreatePages_ContractPages_RequirementNamesOwnContractWithoutDocumentPath()
+        {
+            List<IUiSandboxPage> pages = EconomyPageRegistrar.CreatePages();
+            Dictionary<string, string> requirements = new Dictionary<string, string>();
+            for (int i = 0; i < pages.Count; ++i)
+            {
+                requirements[pages[i].Id] = pages[i].Requirement;
+            }
+
+            for (int i = 0; i < G_ContractSuffixes.Length; ++i)
+            {
+                string id = ContractOnlyDefinitions.ID_PREFIX + G_ContractSuffixes[i];
+                Assert.IsTrue(requirements.TryGetValue(id, out string requirement), id);
+                StringAssert.Contains(G_ContractRoles[i], requirement, id + " 계약 이름이나 역할 설명이 없다");
+                StringAssert.DoesNotContain("docs/", requirement, id);
+                StringAssert.DoesNotContain(".claude", requirement, id);
+                StringAssert.DoesNotContain(".md", requirement, id);
             }
         }
 

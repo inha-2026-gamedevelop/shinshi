@@ -27,6 +27,9 @@ namespace Shinshi.Network
 
         private static readonly GrowthWriteLock _writeLock = new GrowthWriteLock();
 
+        // 테스트가 Mirror 연결 없이 송신을 가로챈다. 지정하면 연결된 것으로 본다
+        internal static Action<GrowthRequestMessage> TestSink;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -53,13 +56,37 @@ namespace Shinshi.Network
         /// <summary> 클라이언트가 시작할 때 한 번 부른다, 이전 연결의 상태를 비운다 </summary>
         public static void RegisterHandlers()
         {
+            ResetConnectionState();
+            NetworkClient.ReplaceHandler<GrowthResultMessage>(OnResult);
+            NetworkClient.ReplaceHandler<GrowthSnapshotMessage>(OnSnapshot);
+        }
+
+        internal static void ResetConnectionState()
+        {
             _snapshot       = default;
             _hasSnapshot    = false;
             _lastRequest    = default;
             _hasLastRequest = false;
             _writeLock.Clear();
-            NetworkClient.ReplaceHandler<GrowthResultMessage>(OnResult);
-            NetworkClient.ReplaceHandler<GrowthSnapshotMessage>(OnSnapshot);
+        }
+
+        internal static void ResetForTest()
+        {
+            ResetConnectionState();
+            TestSink = null;
+        }
+
+        private static bool IsConnected => (TestSink != null) || (NetworkClient.isConnected);
+
+        private static void Transmit(GrowthRequestMessage request)
+        {
+            if (TestSink != null)
+            {
+                TestSink(request);
+                return;
+            }
+
+            NetworkClient.Send(request);
         }
 
         public static Guid RequestSnapshot()
@@ -143,7 +170,7 @@ namespace Shinshi.Network
         /// <summary> 결과가 정해지지 않은 쓰기 요청을 같은 operationId로 다시 보낸다, 서버와 API가 처음 결과를 돌려준다 </summary>
         public static bool RetryLast()
         {
-            if ((!NetworkClient.isConnected) || (!_hasLastRequest) || (!_writeLock.IsHeld))
+            if ((!IsConnected) || (!_hasLastRequest) || (!_writeLock.IsHeld))
             {
                 return false;
             }
@@ -153,7 +180,7 @@ namespace Shinshi.Network
                 WriteLockChanged?.Invoke();
             }
 
-            NetworkClient.Send(_lastRequest);
+            Transmit(_lastRequest);
             return true;
         }
 
@@ -174,7 +201,7 @@ namespace Shinshi.Network
         private static Guid Send(EGrowthAction action, string targetId, string secondaryId, int intArg, int intArg2, bool flag,
             int[] allocation, TownLoadoutEntry[] loadout)
         {
-            if (!NetworkClient.isConnected)
+            if (!IsConnected)
             {
                 return Guid.Empty;
             }
@@ -197,7 +224,7 @@ namespace Shinshi.Network
                 _writeLock.TryBegin(operationId, action);
             }
 
-            NetworkClient.Send(request);
+            Transmit(request);
             if (isWrite)
             {
                 WriteLockChanged?.Invoke();
@@ -207,7 +234,7 @@ namespace Shinshi.Network
         }
 
         // 잠금을 먼저 풀어야 결과를 받은 창이 같은 처리 안에서 다음 쓰기(수련 묶음의 다음 항목)를 보낼 수 있다
-        private static void OnResult(GrowthResultMessage message)
+        internal static void OnResult(GrowthResultMessage message)
         {
             bool changed = _writeLock.Resolve(message.OperationId, message.Reason);
             if ((changed) && (!_writeLock.IsHeld))
@@ -223,7 +250,7 @@ namespace Shinshi.Network
             ResultReceived?.Invoke(message);
         }
 
-        private static void OnSnapshot(GrowthSnapshotMessage message)
+        internal static void OnSnapshot(GrowthSnapshotMessage message)
         {
             _snapshot    = message;
             _hasSnapshot = true;
