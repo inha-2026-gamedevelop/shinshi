@@ -467,6 +467,88 @@ namespace Shinshi.Tests
             Assert.That(CountFullyDrawn(star), Is.EqualTo(5), "5선 내부 연출까지");
         }
 
+        /****************************************
+        *   Star Presenter Auto Disable Tests
+        ****************************************/
+
+        // 네트워크 Binder처럼 Presenter를 켠 뒤 별 예고만 받는다. 다른 효과가 없어도 꺼지지 않아야 한다
+        private IEnumerator ReceiveStarAlone(int starId)
+        {
+            _presenter.enabled = true;
+            BossStarShape shape = BossStarGeometry.Place(Vector3.zero, 18f, Vector3.forward, 14f, 5, 2, 1.5f, 20f, true);
+            var start = new BossStarStart(BOSS_ID, starId, CAST_ID, in shape, _clock, 2f, 6f, 0.5f);
+            Assert.That(_presenter.BeginStar(in start), Is.True, "예고 시작");
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator RotatingStar_ReceivedAlone_KeepsPresenterEnabledAndDrawsFullLines()
+        {
+            WolbaekBeamPlayer star = BeamPlayer(EWolbaekBeamKind.Star);
+            yield return ReceiveStarAlone(81);
+            yield return null;
+            yield return null;
+
+            Assert.That(_presenter.enabled, Is.True, "프레임이 지나도 Presenter 유지");
+            Assert.That(_presenter.StarCount, Is.EqualTo(1), "별 빔 상태 유지");
+
+            yield return SetClock(START_CLOCK + 2.0);
+            Assert.That(_presenter.ActivateStar(81, _clock), Is.True, "서버 활성 확정");
+            yield return SetClock(START_CLOCK + 2.1);
+            yield return null;
+
+            Assert.That(CountFullyDrawn(star), Is.EqualTo(5), "5선 코어·베일·꽃잎까지");
+        }
+
+        [UnityTest]
+        public IEnumerator RotatingStar_OtherEffectEndsDuringTelegraph_KeepsStar()
+        {
+            WolbaekBeamPlayer star = BeamPlayer(EWolbaekBeamKind.Star);
+            _presenter.enabled = true;
+            var zone = new BossAreaStart(BOSS_ID, 91, CAST_ID + 1, Vector3.zero, 3f, 0.5f, 0.25f, _clock);
+            Assert.That(_presenter.ActivateArea(in zone), Is.True, "장판 활성");
+            yield return ReceiveStarAlone(81);
+
+            yield return SetClock(START_CLOCK + 1.5);
+            Assert.That(_presenter.EndArea(91, EBossAreaFate.Cancelled), Is.True, "장판 종료");
+            yield return null;
+            yield return null;
+
+            Assert.That(_presenter.AreaCount, Is.EqualTo(0), "장판은 끝남");
+            Assert.That(_presenter.enabled, Is.True);
+            Assert.That(_presenter.StarCount, Is.EqualTo(1));
+
+            _presenter.ActivateStar(81, _clock);
+            yield return SetClock(START_CLOCK + 1.6);
+            yield return null;
+            Assert.That(CountFullyDrawn(star), Is.EqualTo(5));
+        }
+
+        [UnityTest]
+        public IEnumerator RotatingStar_EndedOrCancelled_ClearsAndDoesNotRevive()
+        {
+            WolbaekBeamPlayer star = BeamPlayer(EWolbaekBeamKind.Star);
+            yield return ReceiveStarAlone(81);
+            yield return SetClock(START_CLOCK + 2.0);
+            _presenter.ActivateStar(81, _clock);
+            yield return null;
+
+            Assert.That(_presenter.EndStar(81, EBossAreaFate.Expired), Is.True, "정상 종료");
+            yield return null;
+            Assert.That(_presenter.StarCount, Is.EqualTo(1), "페이드 중에는 유지");
+            yield return SetClock(START_CLOCK + 10.0);
+            yield return null;
+            Assert.That(_presenter.StarCount, Is.EqualTo(0), "정상 종료 뒤 정리");
+            Assert.That(_presenter.ActivateStar(81, _clock), Is.False, "늦은 활성 거절");
+
+            yield return ReceiveStarAlone(82);
+            Assert.That(_presenter.CancelStar(82), Is.True, "명시적 취소");
+            Assert.That(_presenter.StarCount, Is.EqualTo(0));
+            Assert.That(_presenter.ActivateStar(82, _clock), Is.False, "취소 뒤 늦은 활성 거절");
+            yield return null;
+            Assert.That(CountFullyDrawn(star), Is.EqualTo(0), "되살아나지 않음");
+        }
+
         [UnityTest]
         public IEnumerator HardStarStage_StruckAheadOfClock_ConfirmsWhenClockReaches()
         {

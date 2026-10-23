@@ -234,7 +234,8 @@ namespace Shinshi.AI
             }
 
             // 진행 중인 표현이 없으면 갱신을 멈춘다
-            if ((_active.Count == 0) && (_projectiles.Count == 0) && (_areas.Count == 0) && (_beams.Count == 0))
+            // 별형 빔은 비활성화 때 ClearAll로 취소되므로 진행 중이면 끄지 않는다
+            if ((_active.Count == 0) && (_projectiles.Count == 0) && (_areas.Count == 0) && (_beams.Count == 0) && (StarCount == 0))
             {
                 enabled = false;
             }
