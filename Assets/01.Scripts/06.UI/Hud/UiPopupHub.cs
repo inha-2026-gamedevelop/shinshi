@@ -61,6 +61,7 @@ namespace Shinshi.UI
             }
         }
 
+        // 시작 정리와 화면 전환용이라 닫기 소리 없이 끈다. Awake에서 열린 채 저장된 창이 닫히며 소리가 나면 안 된다
         public void CloseAll()
         {
             if (_alerts != null)
@@ -69,7 +70,7 @@ namespace Shinshi.UI
                 {
                     if (_alerts[i] != null)
                     {
-                        _alerts[i].Close();
+                        _alerts[i].gameObject.SetActive(false);
                     }
                 }
             }

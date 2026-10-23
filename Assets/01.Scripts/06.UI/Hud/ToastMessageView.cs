@@ -126,6 +126,7 @@ namespace Shinshi.UI
             _isPlaying = true;
             HideImmediate();
             _sequence.Restart();
+            UiSound.Play(EUiSoundGroup.Toast, EUiSoundAction.Open);
         }
 
         private void HideImmediate() { SetAlpha(0f); }
