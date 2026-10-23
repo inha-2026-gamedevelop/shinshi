@@ -31,6 +31,10 @@ namespace Shinshi.AI
         private const float FLY_SPEED         = 8f;    // m/s, 수평
         private const float FLY_UP_SPEED      = 5f;    // m/s
         private const float SPIN_SPEED        = 5f;    // rad/s
+        private const float ADOPT_FLY_SPEED   = 10f;   // m/s, 미리 만든 래그돌은 타격감 시험 씬과 같은 세기로 날린다
+        private const float ADOPT_FLY_UP_SPEED = 6f;   // m/s
+        private const float ADOPT_SPIN_SPEED  = 6f;    // rad/s
+        private const float ADOPT_DRAG        = 0.2f;
         private const float TWIST_LIMIT       = 30f;   // 도
         private const float SWING_LIMIT       = 45f;   // 도
         private const float FREEZE_SECONDS    = 3f;    // 이 뒤에는 물리를 끈다
@@ -67,7 +71,7 @@ namespace Shinshi.AI
         ****************************************/
 
         /// <summary> owner의 스킨드 메시 뼈에 래그돌을 만들고 away(수평) 쪽으로 날린다. 만들 수 있는 마디가 없으면 false </summary>
-        public static bool Build(GameObject owner, Vector3 away)
+        public static bool Build(GameObject owner, Vector3 away, float power = 1f)
         {
             SkinnedMeshRenderer skinned = owner.GetComponentInChildren<SkinnedMeshRenderer>(true);
             if ((skinned == null) || (skinned.rootBone == null))
@@ -90,7 +94,47 @@ namespace Shinshi.AI
 
             // 몸이 뼈를 따라 움직이므로 원래 경계 밖으로 나가도 그려야 한다
             skinned.updateWhenOffscreen = true;
-            ragdoll.Launch(away);
+            ragdoll.Launch(away, FLY_SPEED * power, FLY_UP_SPEED * power, SPIN_SPEED);
+            return true;
+        }
+
+        /// <summary> 모델에 미리 달린 뼈 리지드바디와 충돌체를 켜서 away(수평) 쪽으로 날린다. 달린 뼈가 없으면 false </summary>
+        public static bool Adopt(GameObject owner, Vector3 away, float power = 1f)
+        {
+            Rigidbody[] bodies = owner.GetComponentsInChildren<Rigidbody>(true);
+            if (bodies.Length == 0)
+            {
+                return false;
+            }
+
+            EnemyCorpseRagdoll ragdoll = owner.AddComponent<EnemyCorpseRagdoll>();
+            int layer = LayerMask.NameToLayer(SKIP_LAYER_NAME);
+
+            foreach (Collider collider in owner.GetComponentsInChildren<Collider>(true))
+            {
+                if (layer >= 0)
+                {
+                    collider.gameObject.layer = layer;
+                    collider.excludeLayers    = 1 << layer;
+                }
+
+                collider.enabled = true;
+            }
+
+            for (int i = 0; i < bodies.Length; ++i)
+            {
+                bodies[i].isKinematic   = false;
+                bodies[i].linearDamping = ADOPT_DRAG;
+                ragdoll._bodies.Add(bodies[i]);
+            }
+
+            SkinnedMeshRenderer skinned = owner.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            if (skinned != null)
+            {
+                skinned.updateWhenOffscreen = true;
+            }
+
+            ragdoll.Launch(away, ADOPT_FLY_SPEED * power, ADOPT_FLY_UP_SPEED * power, ADOPT_SPIN_SPEED);
             return true;
         }
 
@@ -204,16 +248,16 @@ namespace Shinshi.AI
             return (y >= z) ? 1 : 2;
         }
 
-        private void Launch(Vector3 away)
+        private void Launch(Vector3 away, float flySpeed, float upSpeed, float spinSpeed)
         {
             away.y = 0f;
             away   = (away.sqrMagnitude > MIN_DIRECTION_SQR) ? away.normalized : (-transform.forward);
 
-            Vector3 velocity = (away * FLY_SPEED) + (Vector3.up * FLY_UP_SPEED);
+            Vector3 velocity = (away * flySpeed) + (Vector3.up * upSpeed);
             for (int i = 0; i < _bodies.Count; ++i)
             {
                 _bodies[i].linearVelocity  = velocity;
-                _bodies[i].angularVelocity = Random.onUnitSphere * SPIN_SPEED;
+                _bodies[i].angularVelocity = Random.onUnitSphere * spinSpeed;
             }
         }
 

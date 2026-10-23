@@ -116,11 +116,28 @@ namespace Shinshi.Dev
         private void OnEnable()
         {
             s_alive.Add(this);
+            Shinshi.AI.EnemyCorpse.RagdollLaunched += IgnoreCorpseBones;
         }
 
         private void OnDisable()
         {
             s_alive.Remove(this);
+            Shinshi.AI.EnemyCorpse.RagdollLaunched -= IgnoreCorpseBones;
+        }
+
+        // 릴리스 시체의 뼈가 켜지면 이 산 몬스터와는 부딪히지 않게 한다
+        private void IgnoreCorpseBones(Collider[] bones)
+        {
+            Collider own = GetComponent<Collider>();
+            if (own == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < bones.Length; ++i)
+            {
+                Physics.IgnoreCollision(bones[i], own);
+            }
         }
 
         private void Update()
@@ -277,7 +294,7 @@ namespace Shinshi.Dev
             if (_hitsLeft <= 0)
             {
                 isKill = true;
-                StartDeath(away, profile);
+                StartDeath(away, profile, isCritical);
                 return true;
             }
 
@@ -315,10 +332,21 @@ namespace Shinshi.Dev
             }
         }
 
-        private void StartDeath(Vector3 away, HitFeedbackProfile profile)
+        private void StartDeath(Vector3 away, HitFeedbackProfile profile, bool isCritical)
         {
             _isDying = true;
             s_alive.Remove(this);
+
+            // 모델이 있으면 릴리스 적과 같은 시체 연출(EnemyCorpse)로 날리고 이 몬스터는 바로 치운다.
+            // 굳는 프레임과 날아가는 세기는 이 몬스터가 맞은 타격의 프로필을 따른다
+            int freezeFrames = profile.HitLagFrames + profile.KillExtraLagFrames + profile.TargetExtraLagFrames
+                + (isCritical ? profile.CritExtraLagFrames : 0);
+            if (TryLaunchReleaseCorpse(away, profile.FlyMultiplier, freezeFrames))
+            {
+                Died?.Invoke(this);
+                Destroy(gameObject);
+                return;
+            }
 
             // 날아가는 동안 걷는 자세로 굳어 있게 애니메이션을 멈춘다
             if (_animator != null)
@@ -331,6 +359,23 @@ namespace Shinshi.Dev
 
             // 사체가 남아 있는 동안에도 다음 무리가 나올 수 있게 죽는 순간 알린다
             Died?.Invoke(this);
+        }
+
+        // 애니메이터가 속한 모델 루트(이 몬스터의 직계 자식)를 릴리스 시체로 날린다. 모델이 없는 캡슐이면 false
+        private bool TryLaunchReleaseCorpse(Vector3 away, float flyMultiplier, int freezeFrames)
+        {
+            if (_animator == null)
+            {
+                return false;
+            }
+
+            Transform model = _animator.transform;
+            while ((model.parent != null) && (model.parent != transform))
+            {
+                model = model.parent;
+            }
+
+            return (model.parent == transform) && (Shinshi.AI.EnemyCorpse.Launch(model.gameObject, away, flyMultiplier, freezeFrames));
         }
 
         // 죽는 순간부터 다른 몬스터(산 것과 사체 모두)와는 부딪히지 않는다. 바닥과는 계속 부딪혀 튄다

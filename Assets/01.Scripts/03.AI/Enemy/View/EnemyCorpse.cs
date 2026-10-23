@@ -40,8 +40,31 @@ namespace Shinshi.AI
         private const int   MAX_RAGDOLLS    = 8;    // 동시에 물리가 도는 래그돌 수, 넘으면 덩어리로 날린다
         private const int   HIT_BUFFER      = 8;
 
+        // 처치 순간의 타격감. 날아가기 전에 몸이 하얗게 번쩍이며 잠깐 굳어 떨고, 풀리면 날아간다
+        private const int   DEATH_FREEZE_FRAMES = 6;     // 프레임, 타격 멈춤 3 + 처치 추가 3
+        private const float DEATH_VIBRATE       = 0.05f; // m, 굳어 있는 동안 떠는 크기
+        private const float DEATH_FLASH_SECONDS = 0.2f;
+
+        private static readonly int BASE_COLOR_ID = Shader.PropertyToID("_BaseColor");
+
         private static readonly List<EnemyCorpse>  s_active = new List<EnemyCorpse>(MAX_CORPSES);
         private static readonly RaycastHit[]       s_hits   = new RaycastHit[HIT_BUFFER];
+        private static readonly MaterialPropertyBlock s_block = new MaterialPropertyBlock();
+
+        /// <summary> 시체의 뼈 물리가 켜진 순간 한 번 알린다. 값은 뼈 충돌체다. 개체 쪽에서 이 뼈와의 충돌을 끄는 데 쓴다 </summary>
+        public static event System.Action<Collider[]> RagdollLaunched;
+
+        // 번쩍임이 식은 뒤 시체가 머무는 색. 원래 색에 검정을 섞은 적갈색이다
+        private static readonly Color CORPSE_COLOR = new Color(0.32f, 0.12f, 0.09f, 1f);
+
+        private Renderer[] _flashRenderers;
+        private bool    _prebuiltRagdoll;
+        private float   _flyMultiplier = 1f;
+        private Vector3 _vibrateOffset;
+        private Vector3 _pendingAway;
+        private float   _flashLeft;
+        private int     _freezeFrames;
+        private bool    _ragdollPending;
 
         private Vector3 _velocity;
         private Vector3 _spin;
@@ -65,6 +88,32 @@ namespace Shinshi.AI
 
         private void Update()
         {
+            // 굳어 있는 동안은 시체 시간도 흐르지 않고 날아가지도 않는다
+            if (UpdateFreeze())
+            {
+                return;
+            }
+
+            if (_ragdollPending)
+            {
+                _ragdollPending = false;
+
+                // 래그돌 동시 수에 여유가 있으면 뼈 물리로 날리고, 아니면 덩어리로 날린 그대로 둔다
+                // 뼈 물리가 미리 들어 있는 모델은 그 뼈를 그대로 날리고, 없는 모델은 뼈 계층에서 새로 만든다
+                if (CountRagdolls() < MAX_RAGDOLLS)
+                {
+                    _ragdolled = _prebuiltRagdoll
+                        ? EnemyCorpseRagdoll.Adopt(gameObject, _pendingAway, _flyMultiplier)
+                        : EnemyCorpseRagdoll.Build(gameObject, _pendingAway, _flyMultiplier);
+
+                    if (_ragdolled)
+                    {
+                        IgnoreCharacters(GetComponentsInChildren<Collider>());
+                    }
+                }
+            }
+
+            UpdateFlash();
             _elapsed += Time.deltaTime;
 
             if ((!_settled) && (!_ragdolled))
@@ -109,8 +158,9 @@ namespace Shinshi.AI
             }
         }
 
-        /// <summary> source 모델의 현재 자세를 복제해 away(수평) 쪽으로 날린다. 방향이 없으면 source의 뒤쪽으로 날린다. 복제할 수 없으면 false </summary>
-        public static bool Launch(GameObject source, Vector3 away)
+        /// <summary> source 모델의 현재 자세를 복제해 away(수평) 쪽으로 날린다. 방향이 없으면 source의 뒤쪽으로 날린다. 복제할 수 없으면 false.
+        /// flyMultiplier는 날아가는 세기 배율이고, freezeFrames는 날기 전에 굳는 프레임 수다(음수면 기본값) </summary>
+        public static bool Launch(GameObject source, Vector3 away, float flyMultiplier = 1f, int freezeFrames = -1)
         {
             if (source == null)
             {
@@ -130,14 +180,112 @@ namespace Shinshi.AI
             corpse.transform.SetPositionAndRotation(sourceTransform.position, sourceTransform.rotation);
             corpse.transform.localScale = sourceTransform.lossyScale;
             corpse.Begin(away);
+            corpse._velocity *= flyMultiplier;
 
-            // 래그돌 동시 수에 여유가 있으면 뼈 물리로 날리고, 아니면 덩어리로 날린 그대로 둔다
-            if (CountRagdolls() < MAX_RAGDOLLS)
-            {
-                corpse._ragdolled = EnemyCorpseRagdoll.Build(corpse.gameObject, away);
-            }
+            // 래그돌은 굳음이 풀린 뒤 Update에서 만들어 날린다
+            corpse._pendingAway    = away;
+            corpse._flyMultiplier  = flyMultiplier;
+            corpse._ragdollPending = true;
+            corpse.BeginImpact((freezeFrames >= 0) ? freezeFrames : DEATH_FREEZE_FRAMES);
 
             return true;
+        }
+
+        // 하얗게 번쩍이며 몇 프레임 굳는다. 번쩍임은 시체 색으로 식는다
+        private void BeginImpact(int freezeFrames)
+        {
+            _freezeFrames = freezeFrames;
+            _flashLeft    = DEATH_FLASH_SECONDS;
+
+            var renderers = new List<Renderer>();
+            foreach (Renderer found in GetComponentsInChildren<Renderer>(true))
+            {
+                Material material = found.sharedMaterial;
+                if ((material != null) && (material.HasProperty(BASE_COLOR_ID)))
+                {
+                    renderers.Add(found);
+                }
+            }
+
+            _flashRenderers = renderers.ToArray();
+            ApplyFlash(1f);
+        }
+
+        // 프레임마다 직전 떨림을 되돌리고 새로 떤다. 굳어 있는 프레임이면 true
+        private bool UpdateFreeze()
+        {
+            transform.position -= _vibrateOffset;
+            _vibrateOffset      = Vector3.zero;
+
+            if (_freezeFrames <= 0)
+            {
+                return false;
+            }
+
+            --_freezeFrames;
+            Vector2 shake = Random.insideUnitCircle * DEATH_VIBRATE;
+            _vibrateOffset      = new Vector3(shake.x, 0f, shake.y);
+            transform.position += _vibrateOffset;
+            return true;
+        }
+
+        private void UpdateFlash()
+        {
+            if (_flashLeft <= 0f)
+            {
+                return;
+            }
+
+            _flashLeft = Mathf.Max(0f, _flashLeft - Time.deltaTime);
+            ApplyFlash(_flashLeft / DEATH_FLASH_SECONDS);
+        }
+
+        // weight 1이면 흰색, 0이면 시체 색. 번쩍임이 끝나도 시체 색은 그대로 남는다
+        private void ApplyFlash(float weight)
+        {
+            Color color = Color.Lerp(CORPSE_COLOR, Color.white, weight);
+            for (int i = 0; i < _flashRenderers.Length; ++i)
+            {
+                if (_flashRenderers[i] == null)
+                {
+                    continue;
+                }
+
+                _flashRenderers[i].GetPropertyBlock(s_block);
+                s_block.SetColor(BASE_COLOR_ID, color);
+                _flashRenderers[i].SetPropertyBlock(s_block);
+            }
+        }
+
+        // 뼈 물리가 켜지는 순간, 플레이어와 적(산 것)과는 부딪히지 않게 한다. 바닥과 장애물에만 부딪혀 튄다.
+        // 레이어만으로는 지면과 개체를 가를 수 없어(둘 다 Default) 켜지는 순간 있는 개체와 짝으로 무시한다
+        private static void IgnoreCharacters(Collider[] bones)
+        {
+            foreach (CharacterController character in FindObjectsByType<CharacterController>())
+            {
+                IgnoreAll(bones, character);
+            }
+
+            foreach (NetworkIdentity identity in FindObjectsByType<NetworkIdentity>())
+            {
+                foreach (Collider other in identity.GetComponentsInChildren<Collider>())
+                {
+                    IgnoreAll(bones, other);
+                }
+            }
+
+            RagdollLaunched?.Invoke(bones);
+        }
+
+        private static void IgnoreAll(Collider[] bones, Collider other)
+        {
+            for (int i = 0; i < bones.Length; ++i)
+            {
+                if ((bones[i] != other) && (other.enabled))
+                {
+                    Physics.IgnoreCollision(bones[i], other);
+                }
+            }
         }
 
         private static int CountRagdolls()
@@ -180,27 +328,53 @@ namespace Shinshi.AI
                 Recycle(s_active[0]);
             }
 
+            // 뼈마다 리지드바디가 미리 달린 모델은 그 래그돌을 살려 쓴다
+            bool prebuilt = source.GetComponentInChildren<Rigidbody>(true) != null;
+
             GameObject copy = Instantiate(source);
             copy.name = source.name + "_Corpse";
             copy.transform.SetParent(null, true);
-            Strip(copy);
+            Strip(copy, prebuilt);
 
             EnemyCorpse corpse = copy.AddComponent<EnemyCorpse>();
+            corpse._prebuiltRagdoll = prebuilt;
             s_active.Add(corpse);
             return corpse;
         }
 
         // 복제본에서 판정과 동기화에 닿는 것을 모두 걷어 내고, 애니메이션은 현재 자세로 굳힌다
-        private static void Strip(GameObject copy)
+        private static void Strip(GameObject copy, bool keepRagdoll)
         {
-            foreach (Collider collider in copy.GetComponentsInChildren<Collider>(true))
+            // 미리 만든 래그돌은 날아가기 전까지 물리를 끈 채로 둔다
+            if (keepRagdoll)
             {
-                Destroy(collider);
-            }
+                foreach (Rigidbody body in copy.GetComponentsInChildren<Rigidbody>(true))
+                {
+                    body.isKinematic = true;
+                }
 
-            foreach (Rigidbody body in copy.GetComponentsInChildren<Rigidbody>(true))
+                foreach (Collider collider in copy.GetComponentsInChildren<Collider>(true))
+                {
+                    collider.enabled = false;
+                }
+            }
+            else
             {
-                Destroy(body);
+                // 리지드바디에 의존하는 관절이 남아 있으면 리지드바디를 못 지우므로 복제본의 관절을 먼저 즉시 지운다
+                foreach (Joint joint in copy.GetComponentsInChildren<Joint>(true))
+                {
+                    DestroyImmediate(joint);
+                }
+
+                foreach (Rigidbody body in copy.GetComponentsInChildren<Rigidbody>(true))
+                {
+                    DestroyImmediate(body);
+                }
+
+                foreach (Collider collider in copy.GetComponentsInChildren<Collider>(true))
+                {
+                    DestroyImmediate(collider);
+                }
             }
 
             foreach (NetworkBehaviour behaviour in copy.GetComponentsInChildren<NetworkBehaviour>(true))
