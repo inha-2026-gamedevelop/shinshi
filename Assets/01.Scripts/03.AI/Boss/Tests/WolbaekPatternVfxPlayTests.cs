@@ -346,6 +346,30 @@ namespace Shinshi.Tests
             Assert.That(sustain.IsRunning, Is.True);
         }
 
+        // 회전 별 빔은 서버 예고 사건으로 5선 예고를 보이고 서버 활성 사건에서 확정해 그린다
+        [UnityTest]
+        public IEnumerator RotatingStar_ServerStartAndActivate_ShowsConfirmedLines()
+        {
+            WolbaekBeamPlayer star = BeamPlayer(EWolbaekBeamKind.Star);
+            Assert.That(star, Is.Not.Null);
+
+            BossStarShape shape = BossStarGeometry.Place(Vector3.zero, 18f, Vector3.forward, 14f, 5, 2, 1.5f, 20f, true);
+            var start = new BossStarStart(BOSS_ID, 81, CAST_ID, in shape, _clock, 2f, 6f, 0.5f);
+            Assert.That(_presenter.BeginStar(in start), Is.True, "예고 시작");
+            yield return null;
+
+            Assert.That(star.IsRunning, Is.True, "재생 중");
+            Assert.That(star.VisibleLineCount, Is.EqualTo(5), "5선 예고");
+
+            yield return SetClock(START_CLOCK + 2.0);
+            Assert.That(_presenter.ActivateStar(81, _clock), Is.True, "활성 사건");
+            yield return null;
+            yield return SetClock(START_CLOCK + 2.5);
+
+            Assert.That(star.IsRunning, Is.True);
+            Assert.That(star.VisibleLineCount, Is.EqualTo(5), "5선 확정");
+        }
+
         /****************************************
         *        Dash Telegraph And Sweep Tests
         ****************************************/
