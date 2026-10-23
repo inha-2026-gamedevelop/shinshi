@@ -37,11 +37,25 @@ namespace Shinshi.UI
         private float        _appliedScale = -1f;
         private bool         _hasCenter    = false;
 
+        // 붕괴한 구역을 지운 지도 사본은 처음 붕괴할 때 한 번 만들어 재사용한다
+        private Sprite    _collapsedSprite  = null;
+        private Texture2D _collapsedTexture = null;
+        private bool      _isCollapsed      = false;
+
         /****************************************
         *              Properties
         ****************************************/
 
         public int MarkerCapacity => (_markers != null) ? _markers.Length : 0;
+
+        /****************************************
+        *              Unity Event
+        ****************************************/
+
+        private void OnDestroy()
+        {
+            DiscardCollapsedSprite();
+        }
 
         /****************************************
         *                Methods
@@ -50,9 +64,12 @@ namespace Shinshi.UI
         /// <summary> 지도 그림과 이름을 바꾼다, null이면 그림을 숨긴다 </summary>
         public void SetMap(MinimapMapSO map)
         {
+            DiscardCollapsedSprite();
+
             _mapData       = map;
             _appliedScale  = -1f;
             _hasCenter     = false;
+            _isCollapsed   = false;
 
             if (_mapImage != null)
             {
@@ -66,6 +83,35 @@ namespace Shinshi.UI
             }
 
             HideMarkersFrom(0);
+        }
+
+        /// <summary> 아레나가 붕괴했는지에 맞춰 지도 그림에서 중앙 바닥 밖을 지운다, 붕괴 반경이 없는 맵과 이미 같은 상태면 아무것도 하지 않는다 </summary>
+        public void SetCollapsed(bool isCollapsed)
+        {
+            if ((isCollapsed == _isCollapsed) || (_mapData == null) || (_mapImage == null) || (_mapData.Sprite == null))
+            {
+                return;
+            }
+
+            if ((isCollapsed) && (_mapData.CollapsedRadiusMeters <= 0f))
+            {
+                return;
+            }
+
+            _isCollapsed = isCollapsed;
+            if (isCollapsed)
+            {
+                if (_collapsedSprite == null)
+                {
+                    _collapsedSprite = BuildCollapsedSprite(_mapData);
+                }
+
+                _mapImage.sprite = _collapsedSprite;
+            }
+            else
+            {
+                _mapImage.sprite = _mapData.Sprite;
+            }
         }
 
         /// <summary> 창 가운데에 올 월드 X, Z 위치, 지도 그림이 반대로 움직인다 </summary>
@@ -151,6 +197,66 @@ namespace Shinshi.UI
                 {
                     _markers[i].gameObject.SetActive(false);
                 }
+            }
+        }
+
+        // 읽기를 켜지 않은 지도 텍스처도 쓸 수 있게 렌더 텍스처로 옮겨 읽고, 중앙 원 밖의 알파를 지운다
+        private Sprite BuildCollapsedSprite(MinimapMapSO map)
+        {
+            Texture source = map.Sprite.texture;
+            int     width  = source.width;
+            int     height = source.height;
+
+            RenderTexture previous  = RenderTexture.active;
+            RenderTexture temporary = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(source, temporary);
+            RenderTexture.active = temporary;
+
+            _collapsedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                wrapMode   = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            _collapsedTexture.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(temporary);
+
+            float extent  = map.WorldHalfExtent * 2f;
+            float centerU = ((map.CollapseCenter.x - map.WorldCenter.x) / extent) + 0.5f;
+            float centerV = ((map.CollapseCenter.y - map.WorldCenter.y) / extent) + 0.5f;
+            float radius  = map.CollapsedRadiusMeters / extent;
+
+            Color32[] pixels = _collapsedTexture.GetPixels32();
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    float du   = ((x + 0.5f) / width) - centerU;
+                    float dv   = ((y + 0.5f) / height) - centerV;
+                    float edge = (Mathf.Sqrt((du * du) + (dv * dv)) - radius) * width;
+
+                    int index = (y * width) + x;
+                    pixels[index].a = (byte)Mathf.RoundToInt(pixels[index].a * (1f - Mathf.Clamp01(edge + 0.5f)));
+                }
+            }
+
+            _collapsedTexture.SetPixels32(pixels);
+            _collapsedTexture.Apply(false);
+            return Sprite.Create(_collapsedTexture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f));
+        }
+
+        private void DiscardCollapsedSprite()
+        {
+            if (_collapsedSprite != null)
+            {
+                Destroy(_collapsedSprite);
+                _collapsedSprite = null;
+            }
+
+            if (_collapsedTexture != null)
+            {
+                Destroy(_collapsedTexture);
+                _collapsedTexture = null;
             }
         }
 

@@ -9,6 +9,7 @@ using Mirror;
 
 // 프로젝트 내부
 using Shinshi.AI;
+using Shinshi.Art;
 using Shinshi.Combat;
 using Shinshi.Common;
 
@@ -56,6 +57,10 @@ namespace Shinshi.UI
             {
                 return;
             }
+
+            // 붕괴 연출은 서버 시각으로 평가되고 되돌리면 시각이 0이 되므로, 이 시각으로 지금 붕괴한 상태인지 본다
+            BossArenaShatterView arena = BossArenaShatterView.Current;
+            _view.SetCollapsed((arena != null) && (arena.EvaluatedTime > 0f));
 
             bool connected = NetworkClient.isConnected;
             if (!TryGetSelf(connected, out Vector3 position, out float yaw))

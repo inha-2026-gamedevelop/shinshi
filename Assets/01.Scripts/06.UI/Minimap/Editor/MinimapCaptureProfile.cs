@@ -97,6 +97,7 @@ namespace Shinshi.UI.Editor
                 case "DungeonForest":
                     return Forest();
                 case "Dev_BossWolbaek":
+                case "DungeonWolbaek":
                     return Wolbaek();
                 case "Dev_BossMucheol":
                     return Mucheol();
