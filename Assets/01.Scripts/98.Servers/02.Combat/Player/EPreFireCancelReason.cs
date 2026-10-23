@@ -14,6 +14,9 @@ namespace Shinshi.Combat
         ControlInterrupt,
         StunInterrupt,
         MoveInput,
-        MoveInputWindupCancel
+        MoveInputWindupCancel,
+
+        // 기본 공격 동작 중에 들어온 이동. 동작이 끝난 뒤 이동하므로 대기 공격만 지운다
+        MoveInputHeld
     }
 }

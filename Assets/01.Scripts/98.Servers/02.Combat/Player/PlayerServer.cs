@@ -90,6 +90,9 @@ namespace Shinshi.Combat
         private bool                  _hasPendingAttack    = false;
         private ushort                _pendingAimYaw       = 0;
         private double                _nextAttackTime      = 0.0;
+
+        // 기본 공격 동작이 끝나는 서버 시각, 0이면 동작 중이 아니다. 동작은 공격 주기만큼 재생되므로 다음 공격 가능 시각과 같다
+        private double                _attackMotionUntil   = 0.0;
         private bool                  _isWindingUp         = false;
         private double                _windupFireAt        = 0.0;
         private Vector3               _windupAim           = Vector3.forward;
@@ -405,9 +408,18 @@ namespace Shinshi.Combat
                 return;
             }
 
-            // 이동은 기본 공격 준비를 취소한다. 준비 동작이 이동으로 끊기는 공격은 이미 시작한 준비도 버린다.
+            // 기본 공격 동작 중에는 움직이지 않는다. 대기 공격만 지우고 동작, 준비, 면역은 그대로 둔 채 목적지를 보관해
+            // 동작이 끝난 틱에 이동을 시작한다.
+            // 동작 밖에서는 이동이 기본 공격 준비를 취소한다. 준비 동작이 이동으로 끊기는 공격은 이미 시작한 준비도 버린다.
             // 움직이면 콤보 동작은 끝난 것이다. 단계는 이어 가되 동작에 붙은 피격이상 면역은 거둔다
-            CancelPreFire(_attack.CancelOnMove ? EPreFireCancelReason.MoveInputWindupCancel : EPreFireCancelReason.MoveInput);
+            if (_attackMotionUntil > 0.0)
+            {
+                CancelPreFire(EPreFireCancelReason.MoveInputHeld);
+            }
+            else
+            {
+                CancelPreFire(_attack.CancelOnMove ? EPreFireCancelReason.MoveInputWindupCancel : EPreFireCancelReason.MoveInput);
+            }
 
             // 진행 중인 경로와 같은 곳이면 다시 계산하지 않는다. 앞서 보관한 다른 목적지도 이 의도로 덮는다
             if (admission == EMoveAdmission.SameDestination)
@@ -876,6 +888,17 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 기본 공격 동작 중에 받은 이동은 동작이 끝난 틱부터 시작한다
+            if (_attackMotionUntil > 0.0)
+            {
+                if (serverTime < _attackMotionUntil)
+                {
+                    return;
+                }
+
+                _attackMotionUntil = 0.0;
+            }
+
             if ((_hasPendingMove) && (_moveThrottle.IsRepathReady(serverTime)) && (pathBudget.TryConsume()))
             {
                 _hasPendingMove = false;
@@ -935,10 +958,11 @@ namespace Shinshi.Combat
             // 궁수 바람 속성은 단계 주기만 줄이고 준비 시간과 단계 순서는 그대로 둔다
             float intervalScale = (_skills != null) ? _skills.BasicAttackIntervalScale : 1f;
 
-            _comboStep        = step;
-            _hasPendingAttack = false;
-            _nextAttackTime   = serverTime + (_attack.GetInterval(step) * intervalScale);
-            _comboImmuneUntil = _attack.IsHitImmune(step) ? _nextAttackTime : 0.0;
+            _comboStep         = step;
+            _hasPendingAttack  = false;
+            _nextAttackTime    = serverTime + (_attack.GetInterval(step) * intervalScale);
+            _attackMotionUntil = _nextAttackTime;
+            _comboImmuneUntil  = _attack.IsHitImmune(step) ? _nextAttackTime : 0.0;
             _path.Stop();
             _moveThrottle.ClearActive();
 
@@ -988,9 +1012,11 @@ namespace Shinshi.Combat
             {
                 _hasPendingAttack = false;
             }
+            // 준비를 끊는 사유(회피, 기술, 기절, 사망 등)는 공격 동작도 끊으므로 이동 막기도 푼다
             if (policy.Has(EPreFireTargets.Windup))
             {
-                _isWindingUp = false;
+                _isWindingUp       = false;
+                _attackMotionUntil = 0.0;
             }
             if (policy.Has(EPreFireTargets.Combo))
             {

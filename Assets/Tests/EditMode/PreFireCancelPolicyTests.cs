@@ -176,6 +176,46 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Get_MoveInputHeld_ClearsOnlyPendingAttack()
+        {
+            PreFireCancelPolicy held = PreFireCancelPolicy.Get(EPreFireCancelReason.MoveInputHeld);
+
+            Assert.AreEqual(EPreFireTargets.PendingAttack, held.Targets, "동작, 준비, 면역은 동작이 끝날 때까지 둔다");
+            Assert.AreEqual(ERejectReason.None, held.SkillRejectReason);
+            Assert.AreEqual(ERejectReason.None, held.DodgeRejectReason);
+        }
+
+        [TestCase(EPlayerClass.Swordsman)]
+        [TestCase(EPlayerClass.Archer)]
+        public void HandleMove_DuringAttackMotion_HoldsMoveUntilMotionEnds(EPlayerClass playerClass)
+        {
+            _player = _rig.Add(PARTICIPANT, Vector3.zero, playerClass);
+            SetField("_pendingAimYaw", FacingRules.EncodeYaw(Vector3.forward));
+            SetField("_hasPendingAttack", true);
+            StepWithMovement();
+
+            double motionUntil = (double)GetField("_attackMotionUntil");
+            Assert.Greater(motionUntil, _now, "공격을 시작하면 동작이 끝나는 시각이 잡힌다");
+            Assert.AreEqual((double)GetField("_nextAttackTime"), motionUntil);
+            bool windingUp = (bool)GetField("_isWindingUp");
+
+            _player.HandleMove(new PlayerMoveInput(Header(MOVE_SEQUENCE), new Vector3(MOVE_DISTANCE, 0f, 0f)));
+
+            Assert.AreEqual(windingUp, (bool)GetField("_isWindingUp"), "동작 중 이동은 공격 준비를 끊지 않는다");
+            Assert.IsTrue((bool)GetField("_hasPendingMove"));
+
+            while ((_now + TICK_STEP) < motionUntil)
+            {
+                StepWithMovement();
+                Assert.IsTrue((bool)GetField("_hasPendingMove"), $"동작 중에는 이동을 시작하지 않는다, now={_now}");
+            }
+
+            StepWithMovement();
+            Assert.AreEqual(0.0, (double)GetField("_attackMotionUntil"));
+            Assert.IsFalse((bool)GetField("_hasPendingMove"), "동작이 끝난 틱에 보관한 이동을 시작한다");
+        }
+
+        [Test]
         public void HandleMove_CancelOnMoveClass_ClearsAttackWindupAndComboImmunityButKeepsComboStep()
         {
             _player = _rig.Add(PARTICIPANT, Vector3.zero, EPlayerClass.Archer);
@@ -297,6 +337,17 @@ namespace Shinshi.Tests
             _now += TICK_STEP;
             _rig.Resolver.BeginTick(_now);
             _budget.BeginTick();
+            _player.TickSkills((float)TICK_STEP, _now, _budget);
+            _player.TickAttack(_now);
+        }
+
+        // 서버 틱 순서대로 이동 뒤 공격을 진행한다
+        private void StepWithMovement()
+        {
+            _now += TICK_STEP;
+            _rig.Resolver.BeginTick(_now);
+            _budget.BeginTick();
+            _player.TickMovement((float)TICK_STEP, _now, _budget);
             _player.TickSkills((float)TICK_STEP, _now, _budget);
             _player.TickAttack(_now);
         }

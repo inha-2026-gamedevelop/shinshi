@@ -41,6 +41,10 @@ namespace Shinshi.Combat
         private double  _dodgeEndTime         = 0.0;
         private float   _dodgeSpeed           = 0f;
 
+        // 서버는 기본 공격 동작(공격 주기) 동안 이동을 보관했다가 끝난 뒤 시작한다. 예측도 같은 구간 동안 이동을 미룬다
+        private byte    _attackBaseline       = 0;
+        private double  _attackMotionEndTime  = 0.0;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -115,7 +119,8 @@ namespace Shinshi.Combat
                 }
             }
 
-            if ((!_isFollowing) && (!isDodging))
+            TrackAttackMotion(now);
+            if ((!_isFollowing) && (!isDodging) && (now >= _attackMotionEndTime))
             {
                 TryBeginDeferredMove(now);
             }
@@ -150,6 +155,8 @@ namespace Shinshi.Combat
             _hasInterruptSequence = false;
             _hasDeferredMove      = false;
             _dodgeEndTime         = 0.0;
+            _attackBaseline       = _combat.AttackSequence;
+            _attackMotionEndTime  = 0.0;
             _predictor.Reset(Time.unscaledTimeAsDouble);
 
             if (_networkTransform != null)
@@ -196,8 +203,8 @@ namespace Shinshi.Combat
         {
             double now = Time.unscaledTimeAsDouble;
 
-            // 서버는 기술이나 회피가 끝난 뒤 이 이동을 시작하므로 그때 시작한다
-            if ((_isFollowing) || (now < _dodgeEndTime))
+            // 서버는 기술, 회피, 기본 공격 동작이 끝난 뒤 이 이동을 시작하므로 그때 시작한다
+            if ((_isFollowing) || (now < _dodgeEndTime) || (now < _attackMotionEndTime))
             {
                 _hasDeferredMove     = true;
                 _deferredSequence    = sequence;
@@ -244,6 +251,7 @@ namespace Shinshi.Combat
 
             _dodgeSpeed           = (config.DodgeDuration > 0f) ? (Vector3.Distance(start, end) / config.DodgeDuration) : 0f;
             _dodgeEndTime         = now + config.DodgeDuration;
+            _attackMotionEndTime  = 0.0;
             _isFollowing          = false;
             _hasInterruptSequence = false;
             _hasDeferredMove      = false;
@@ -299,6 +307,25 @@ namespace Shinshi.Combat
 
             _predictor.ClearInterrupt();
             MovePathRules.TryBeginPath(transform.position, _predictor.Destination, _navPath, _predictor.Path);
+        }
+
+        // 서버가 공격을 시작하면 공격 순번이 바뀐다. 그 단계의 공격 주기만큼 이동을 미룬다
+        private void TrackAttackMotion(double now)
+        {
+            byte sequence = _combat.AttackSequence;
+            if (sequence == _attackBaseline)
+            {
+                return;
+            }
+
+            _attackBaseline = sequence;
+            PlayerConfigSO.BasicAttackSpec spec = GameDB.Player.GetBasicAttack(_combat.PlayerClass);
+            if (spec == null)
+            {
+                return;
+            }
+
+            _attackMotionEndTime = now + spec.GetInterval(_combat.AttackComboStep);
         }
 
         private void EnterFollow()
