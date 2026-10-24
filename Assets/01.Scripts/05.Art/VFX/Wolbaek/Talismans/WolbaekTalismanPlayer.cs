@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -115,6 +116,9 @@ namespace Shinshi.Art
         private static readonly int _progressId       = Shader.PropertyToID("_Progress");
         private static readonly int _baseMapStId      = Shader.PropertyToID("_BaseMap_ST");
 
+        // 미니맵처럼 씬을 탐색하지 않고 지금 표시 중인 부적 위치를 읽는 쪽이 쓰는 목록. Begin에서 넣고 Stop에서 뺀다
+        private static readonly List<WolbaekTalismanPlayer> _runningPlayers = new List<WolbaekTalismanPlayer>(4);
+
         [SerializeField] private WolbaekTalismanSettingsSO _settings = null;
         [SerializeField] private Renderer[] _layers                 = null;
         [SerializeField] private int[] _layerKinds                   = null;
@@ -181,6 +185,9 @@ namespace Shinshi.Art
         ****************************************/
         public WolbaekTalismanSettingsSO Settings => _settings;
         public bool IsRunning => _running;
+
+        /// <summary> 지금 표시 중인 부적, 표시가 끝나면 빠진다 </summary>
+        public static IReadOnlyList<WolbaekTalismanPlayer> RunningPlayers => _runningPlayers;
         public uint PlaybackId => _playbackId;
         public ulong CastId => _running ? _snapshot.CastId : 0;
         public Snapshot CurrentSnapshot => _snapshot;
@@ -191,6 +198,12 @@ namespace Shinshi.Art
         /****************************************
         *              Unity Event
         ****************************************/
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatic()
+        {
+            _runningPlayers.Clear();
+        }
+
         protected override void OnViewAwake()
         {
             _properties = new MaterialPropertyBlock();
@@ -240,6 +253,11 @@ namespace Shinshi.Art
             _snapshot = snapshot;
             _lastNow = now;
             _running = true;
+            if (!_runningPlayers.Contains(this))
+            {
+                _runningPlayers.Add(this);
+            }
+
             CacheSettings();
             ConfigureFootLight();
             _radiusRoot.localScale = new Vector3(_radiusScale.x * snapshot.Radius,
@@ -346,6 +364,7 @@ namespace Shinshi.Art
         public void Stop()
         {
             _running = false;
+            _runningPlayers.Remove(this);
             _hasGlyphFacing = false;
             _snapshot = default;
             _lastNow = 0d;

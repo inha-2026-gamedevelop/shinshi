@@ -1,6 +1,9 @@
 // System
 using System.Collections;
 
+// System
+using System.Reflection;
+
 // Unity
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -10,6 +13,7 @@ using NUnit.Framework;
 
 // 프로젝트 내부
 using Shinshi.AI;
+using Shinshi.Art;
 
 namespace Shinshi.Tests
 {
@@ -198,6 +202,122 @@ namespace Shinshi.Tests
 
             Assert.That(AreModelRenderersEnabled(), Is.True);
             Assert.That(Vector3.Distance(_root.transform.position, G_Landing), Is.LessThan(POSITION_TOLERANCE));
+        }
+
+        /****************************************
+        *       P07 Warp Early Arrival Tests
+        ****************************************/
+
+        private WolbaekWarpPlayer GetLanding()
+        {
+            WolbaekWarpView warp = _root.GetComponent<WolbaekWarpView>();
+            FieldInfo field = typeof(WolbaekWarpView).GetField("_landing", BindingFlags.NonPublic | BindingFlags.Instance);
+            return (WolbaekWarpPlayer)field.GetValue(warp);
+        }
+
+        private IEnumerator BeginWarpAndReachStrikeTime()
+        {
+            _presenter.BeginTelegraph(WarpStart());
+            _view.SetPose(G_Landing, Vector3.forward);
+            yield return SetClock(START_CLOCK + 1.45);
+        }
+
+        // 예고 시작이 표시 시각보다 앞서 도착해도 그 시각이 되면 착지 예고를 그린다
+        [UnityTest]
+        public IEnumerator Warp_TelegraphArrivesEarly_LandingWarningStartsAtDisplayTime()
+        {
+            WolbaekWarpPlayer landing = GetLanding();
+            _clock = START_CLOCK - 0.05;
+            _presenter.BeginTelegraph(BossTelegraphStart.Circle(BOSS_ID, CAST_ID, WARP_ID, G_Landing, WARP_RADIUS, START_CLOCK, WARP_TELEGRAPH));
+            _view.SetPose(G_Landing, Vector3.forward);
+            yield return null;
+            Assert.That(landing.IsRunning, Is.False, "시각 전에는 그리지 않는다");
+
+            yield return SetClock(START_CLOCK + 0.01);
+            yield return null;
+            Assert.That(landing.IsRunning, Is.True, "시각 도달 후 착지 예고 표시");
+            Assert.That(landing.PlaybackId, Is.Not.EqualTo(0u));
+        }
+
+        // 타격 확정이 표시 시각보다 앞서 도착하면 그 시각 전에는 충격파가 없고 도달 후 재생한다
+        [UnityTest]
+        public IEnumerator Warp_StrikeArrivesEarly_ShockwavePlaysAtServerTime()
+        {
+            WolbaekWarpPlayer landing = GetLanding();
+            yield return BeginWarpAndReachStrikeTime();
+            yield return null;
+            Assert.That(landing.IsRunning, Is.True);
+
+            Assert.That(_presenter.Strike(CAST_ID, START_CLOCK + 1.5), Is.True);
+            yield return null;
+            Assert.That(landing.IsStrikeConfirmed, Is.False, "시각 전에는 충격파가 없다");
+
+            uint playback = landing.PlaybackId;
+            yield return SetClock(START_CLOCK + 1.5);
+            yield return null;
+            Assert.That(landing.IsStrikeConfirmed, Is.True, "시각 도달 후 충격파 재생");
+            Assert.That(landing.PlaybackId, Is.EqualTo(playback), "재생은 한 번");
+        }
+
+        // 서버 타격 확정이 없으면 시간이 지나도 충격파가 나오지 않는다
+        [UnityTest]
+        public IEnumerator Warp_NoServerStrike_NeverShockwaves()
+        {
+            WolbaekWarpPlayer landing = GetLanding();
+            yield return BeginWarpAndReachStrikeTime();
+            yield return SetClock(START_CLOCK + 1.6);
+            yield return SetClock(START_CLOCK + 3.0);
+            Assert.That(landing.IsStrikeConfirmed, Is.False);
+        }
+
+        // 보류 중 재접속 초기화가 오면 지난 충격파가 되살아나지 않는다(발동 뒤에는 Presenter가 취소를 받지 않는다)
+        [UnityTest]
+        public IEnumerator Warp_ResetWhileStrikePending_DoesNotRevive()
+        {
+            WolbaekWarpPlayer landing = GetLanding();
+            yield return BeginWarpAndReachStrikeTime();
+            Assert.That(_presenter.Strike(CAST_ID, START_CLOCK + 1.5), Is.True);
+            yield return null;
+            _root.GetComponent<WolbaekWarpView>().Reset();
+            yield return null;
+
+            yield return SetClock(START_CLOCK + 1.5);
+            yield return null;
+            Assert.That(landing.IsStrikeConfirmed, Is.False);
+            Assert.That(landing.IsRunning, Is.False);
+        }
+
+        // 보류 중 새 시전이 시작되면 이전 시전의 확정이 새 예고에 적용되지 않는다
+        [UnityTest]
+        public IEnumerator Warp_NewCastWhileStrikePending_DoesNotConfirmNewCast()
+        {
+            WolbaekWarpPlayer landing = GetLanding();
+            yield return BeginWarpAndReachStrikeTime();
+            Assert.That(_presenter.Strike(CAST_ID, START_CLOCK + 1.5), Is.True);
+            yield return null;
+
+            double next = START_CLOCK + 1.46;
+            _presenter.BeginTelegraph(BossTelegraphStart.Circle(BOSS_ID, CAST_ID + 1, WARP_ID, G_Landing, WARP_RADIUS, next, WARP_TELEGRAPH));
+            yield return SetClock(START_CLOCK + 1.5);
+            yield return null;
+            Assert.That(landing.CastId, Is.EqualTo((ulong)(CAST_ID + 1)));
+            Assert.That(landing.IsStrikeConfirmed, Is.False);
+        }
+
+        // 보류된 확정 직후 정상 종료가 와도 충격파가 유실되지 않는다
+        [UnityTest]
+        public IEnumerator Warp_FinishedWhileStrikePending_StillShockwaves()
+        {
+            WolbaekWarpPlayer landing = GetLanding();
+            yield return BeginWarpAndReachStrikeTime();
+            Assert.That(_presenter.Strike(CAST_ID, START_CLOCK + 1.5), Is.True);
+            Assert.That(_presenter.Finish(CAST_ID), Is.True);
+            yield return null;
+            Assert.That(landing.IsStrikeConfirmed, Is.False);
+
+            yield return SetClock(START_CLOCK + 1.5);
+            yield return null;
+            Assert.That(landing.IsStrikeConfirmed, Is.True);
         }
 
         /****************************************

@@ -533,9 +533,11 @@ namespace Shinshi.AI
         private WolbaekSealDropPlayer.Snapshot DropSnapshot(int index, WolbaekSealDropPlayer.EPhase phase,
             double phaseStartedAt, double now)
         {
+            // 재생기는 Tracking의 단계 시작을 등장 시각과 같아야 받는다. 추정 서버 시각이 차례 시작보다 늦었던 경우 매 프레임 다시 자르면 갱신이 모두 거절된다
+            double phaseStart = (phase == WolbaekSealDropPlayer.EPhase.Tracking) ? _appearAt : PhaseStart(phaseStartedAt, now);
             return new WolbaekSealDropPlayer.Snapshot((ulong)_castId, _sequence, _turn.Index,
                 _turn.Foxfires[index].Index, _dropPositions[index], _start.BlastRadius, _appearAt,
-                _turn.LockServerTime, _turn.ResolveServerTime, now, phase, PhaseStart(phaseStartedAt, now));
+                _turn.LockServerTime, _turn.ResolveServerTime, now, phase, phaseStart);
         }
 
         private double PhaseStart(double phaseStartedAt, double now)

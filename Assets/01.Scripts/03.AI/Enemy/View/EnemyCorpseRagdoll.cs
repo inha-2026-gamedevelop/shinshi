@@ -148,7 +148,8 @@ namespace Shinshi.AI
             if (TryFindTip(bone, children, out Vector3 tipLocal))
             {
                 float length = tipLocal.magnitude;
-                if (length >= MIN_BONE_LENGTH)
+                // 물리가 달린 조상이 없는 첫 마디는 짧아도 단다. 골반이 짧아 빠지면 정점이 죽은 자리에 남고 나머지 마디는 서로 연결되지 않아 흩어진다
+                if ((length >= MIN_BONE_LENGTH) || (parentBody == null))
                 {
                     body = CreateBody(bone, tipLocal, length, parentBody, layer);
                 }

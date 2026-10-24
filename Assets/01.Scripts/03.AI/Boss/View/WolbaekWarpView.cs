@@ -47,6 +47,9 @@ namespace Shinshi.AI
         private uint      _breakupId;
         private uint      _reformId;
         private uint      _landingId;
+        private float     _landingRadius;
+        private double    _lastNow;
+        private readonly WolbaekServerEventGate _gate = new WolbaekServerEventGate(); // 시계 오차로 서버 시각이 아직 오지 않은 착지 예고 시작과 타격 확정을 그 시각까지 보류한다
         private int       _serverDepartureCastId;
         private Vector3   _serverDeparture;
         private bool      _hasServerDeparture;
@@ -112,15 +115,47 @@ namespace Shinshi.AI
             }
             else if ((phase == EBossTelegraphPhase.Execute) && _isCasting && (_castId == cast.CastId))
             {
-                // 서버가 타격을 확정했을 때만 충격파를 재생한다
-                _landing.ConfirmStrike(_landingId, cast.ExecuteServerTime, serverNow);
-
-                if (_sound != null)
+                // 서버가 타격을 확정했을 때만 충격파를 재생한다. 확정 시각이 표시 시계보다 앞서 도착하면 그 시각까지 보류한다
+                // 보류한 확정은 정상 종료(Finished)로 _isCasting이 꺼져도 시전 번호가 같으면 처리한다
+                if (_gate.MustDefer(cast.ExecuteServerTime, serverNow))
                 {
-                    _sound.StopLoop(_castId);
-                    _sound.Play(EWolbaekSound.BigBlast, _landed);
+                    int     castId = _castId;
+                    double  hit    = cast.ExecuteServerTime;
+                    Vector3 landed = _landed;
+                    _gate.Defer(hit, serverNow, () => ConfirmStrike(castId, hit, landed));
+                    return;
                 }
+
+                _lastNow = serverNow;
+                ConfirmStrike(_castId, cast.ExecuteServerTime, _landed);
             }
+        }
+
+        // 재생기가 받아들였을 때만 효과음을 낸다
+        private void ConfirmStrike(int castId, double hitTime, Vector3 landed)
+        {
+            if ((_castId != castId) || (_landingId == 0) || (!_landing.ConfirmStrike(_landingId, hitTime, _lastNow)))
+            {
+                return;
+            }
+
+            if (_sound != null)
+            {
+                _sound.StopLoop(castId);
+                _sound.Play(EWolbaekSound.BigBlast, landed);
+            }
+        }
+
+        // 착지 예고 시작이 표시 시계보다 앞서 도착했으면 그 시각에 이어서 시작한다
+        private void StartLanding(int castId)
+        {
+            if ((_castId != castId) || (!_isCasting))
+            {
+                return;
+            }
+
+            _landingId = _landing.PlayLandedWarning((ulong)castId, _landed, _landingRadius, _castStart,
+                _castStart + _telegraphSeconds, _lastNow);
         }
 
         /// <summary> 서버가 알린 워프 직전 출발 위치, 예고보다 먼저 오면 다음 시작에 쓰고 진행 중인 같은 시전이면 지금 붙잡는다 </summary>
@@ -160,6 +195,7 @@ namespace Shinshi.AI
 
             if (isCancelled)
             {
+                _gate.Clear();
                 StopEffects();
             }
         }
@@ -167,6 +203,9 @@ namespace Shinshi.AI
         /// <summary> 매 프레임 서버 시계를 전달한다 </summary>
         public void Tick(double serverNow)
         {
+            _lastNow = serverNow;
+            _gate.Flush(serverNow);
+
             if (_isCasting)
             {
                 UpdateStages(serverNow);
@@ -196,8 +235,19 @@ namespace Shinshi.AI
             _reformId         = 0;
 
             // 착지 위치는 서버가 확정했으므로 t=0에 바로 예고를 시작한다. 늦게 받았으면 서버 시각 기준으로 이어서 그린다
-            _landingId = _landing.PlayLandedWarning((ulong)cast.CastId, _landed, cast.Length, _castStart,
-                _castStart + _telegraphSeconds, serverNow);
+            // 서버 시작 시각이 표시 시계보다 조금 앞서 도착하면 재생기가 거절하므로 그 시각까지 보류한다
+            _lastNow       = serverNow;
+            _landingRadius = cast.Length;
+            _landingId     = 0;
+            if (_gate.MustDefer(_castStart, serverNow))
+            {
+                int castId = _castId;
+                _gate.Defer(_castStart, serverNow, () => StartLanding(castId));
+            }
+            else
+            {
+                StartLanding(_castId);
+            }
 
             // 착지 예고 동안 차징을 낸다, 충격파 확정이나 시전 종료에서 끊는다
             if (_sound != null)
@@ -333,6 +383,8 @@ namespace Shinshi.AI
         // 진행 중인 시전을 끊고 모델을 보이게 한다. 새 시전이 시작될 때와 비활성화 때 부른다
         private void Cancel()
         {
+            _gate.Clear();
+
             if (_isCasting && (_bossView != null))
             {
                 ShowModel();
