@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1081675910573788673
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3186315569697028921}
+  - component: {fileID: 352654235609472117}
+  m_Layer: 0
+  m_Name: PF_Prewarm_MucheolPatternVfx
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3186315569697028921
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1081675910573788673}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &352654235609472117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1081675910573788673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41e57b9609a64abe8019d706980d7c11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.HiddenVfxPrewarmTarget
+  _prefabs:
+  - {fileID: 5077989429599655534, guid: 2dd58f00a425e6d4fb35cfb053f10606, type: 3}
+  - {fileID: 499106086623792859, guid: 97bfbd4a23032584ea026b2db1c9ed72, type: 3}
+  - {fileID: 2800039177950013571, guid: 5ef5e97f4f0197543bbd2d3dc94a91dc, type: 3}
+  - {fileID: 2675438885284939630, guid: ad7521ef3a7f4f145b864d33789d4b95, type: 3}
+  - {fileID: 3567491334474975996, guid: b9bd4aea755bc894481d3139ed1fe326, type: 3}
+  - {fileID: 4679569735249205841, guid: 27dfc0c389d264b48b0e969c502e0809, type: 3}
+  - {fileID: 3611780430113273491, guid: 3dbb458840f753c45a33ad7463aab8a1, type: 3}
