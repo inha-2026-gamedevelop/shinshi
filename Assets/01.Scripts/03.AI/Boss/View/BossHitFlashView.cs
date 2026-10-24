@@ -117,6 +117,12 @@ namespace Shinshi.AI
             _hasHealth  = true;
         }
 
+        /// <summary> 연결이 끊겼다 다시 이어질 때 부른다, 끊긴 동안 줄어든 체력이 재연결 직후 번쩍임으로 보이지 않게 기준값을 비운다 </summary>
+        public void ResetBaseline()
+        {
+            _hasHealth = false;
+        }
+
         /// <summary> 번쩍임을 시작한다, 이미 번쩍이는 중이면 끝 시각만 늦춘다 </summary>
         public void Play()
         {

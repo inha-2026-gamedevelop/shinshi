@@ -37,6 +37,7 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekFinalAreaView _finalAreaView; // 0% 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekPhase2TransitionPlayer _phase2Transition; // 50% 뒤 2페이즈 전환 컷신, 비어 있으면 보스 표현에서 한 번 찾는다
         [SerializeField] private Transform _effectsRoot;
+        [SerializeField] private BossHitFlashView _hitFlash; // 피격 번쩍임, 비어 있으면 보스 표현에서 한 번 찾고 없으면 생략한다
 
         private BossState _boundState;
 
@@ -95,6 +96,10 @@ namespace Shinshi.AI
             {
                 _phase2Transition = _view.GetComponent<WolbaekPhase2TransitionPlayer>();
             }
+            if (_hitFlash == null)
+            {
+                _hitFlash = (_view != null) ? _view.GetComponentInChildren<BossHitFlashView>(true) : GetComponentInChildren<BossHitFlashView>(true);
+            }
             if (_mucheolMotion == null)
             {
                 TryGetComponent(out _mucheolMotion);
@@ -137,6 +142,12 @@ namespace Shinshi.AI
                     _lastFlowState = _state.FlowState;
                     _view.SetFlowState(_lastFlowState, Mathf.Max(0f, ElapsedSince(_state.AppearStartServerTime)));
                 }
+            }
+
+            // 서버가 복제한 체력이 줄어든 프레임에 몸체를 번쩍인다
+            if (_hitFlash != null)
+            {
+                _hitFlash.Observe(_state.Health);
             }
 
             if ((IsWolbaek) && (_anchorTracker != null))
@@ -320,6 +331,10 @@ namespace Shinshi.AI
             _boundState = null;
             _justBound = false;
             _hasPendingWardGeneration = false;
+            if (_hitFlash != null)
+            {
+                _hitFlash.ResetBaseline();
+            }
             if (_anchorTracker != null)
             {
                 _anchorTracker.Clear();
