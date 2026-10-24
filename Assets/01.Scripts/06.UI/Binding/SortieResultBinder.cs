@@ -40,7 +40,8 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
-            SortieClient.StatusChanged += OnStatusChanged;
+            SortieClient.StatusChanged  += OnStatusChanged;
+            SortieClient.RewardReceived += OnRewardReceived;
             if (_view != null)
             {
                 _view.ReturnClicked += OnReturnClicked;
@@ -54,7 +55,8 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
-            SortieClient.StatusChanged -= OnStatusChanged;
+            SortieClient.StatusChanged  -= OnStatusChanged;
+            SortieClient.RewardReceived -= OnRewardReceived;
             if (_view != null)
             {
                 _view.ReturnClicked -= OnReturnClicked;
@@ -87,10 +89,34 @@ namespace Shinshi.UI
             {
                 _isShown = true;
                 _window.SetActive(true);
-                _view.SetResult(SortieResultRules.Build(in status, RegionName()));
+                _view.SetResult(BuildResult(in status));
             }
 
             _view.SetSaveStatus(SortieResultRules.ToSaveStatus(status.SettlementState));
+        }
+
+        // 보상 내역은 출정 종료 정산안이 만들어진 뒤에 온다. 먼저 이탈해 창이 떠 있었으면 받은 값으로 다시 그린다
+        private void OnRewardReceived(SortieRewardMessage reward)
+        {
+            if ((!_isShown) || (_view == null) || (!SortieClient.HasStatus))
+            {
+                return;
+            }
+
+            SortieStatusMessage status = SortieClient.Current;
+            _view.SetResult(BuildResult(in status));
+            _view.SetSaveStatus(SortieResultRules.ToSaveStatus(status.SettlementState));
+        }
+
+        private static ResultScreenData BuildResult(in SortieStatusMessage status)
+        {
+            if (!SortieClient.HasReward)
+            {
+                return SortieResultRules.Build(in status, RegionName());
+            }
+
+            SortieRewardMessage reward = SortieClient.Reward;
+            return SortieResultRules.Build(in status, RegionName(), in reward, GameDB.IsInitialized ? GameDB.Rewards : null);
         }
 
         private void OnReturnClicked()

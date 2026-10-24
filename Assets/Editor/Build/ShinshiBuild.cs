@@ -50,9 +50,6 @@ namespace Shinshi.Editor
         private const int EXIT_SUCCESS = 0;
         private const int EXIT_FAILURE = 1;
 
-        // 이동 예측과 회피를 서버, 클라이언트 빌드로 시험하는 씬. Bootstrap 구성에 바닥, 내비 메시, 쿼터뷰 카메라, 지연 시뮬레이션을 더했다
-        public const string DEV_MOVEMENT_SCENE_PATH = "Assets/00.Scenes/Dev_PlayerMovement.unity";
-
         // 클라이언트는 로비, 캐릭터 선택, 생성을 거쳐 마을로 가고 출정하면 던전 씬으로 간다. 서버는 Bootstrap에서 역할을 읽고 마을 또는 던전 씬을 연다.
         // SceneManager와 Mirror onlineScene은 Constants.Scene의 이름으로 찾으므로 빌드 목록에 빠지면 이동이 실패한다
         private static readonly string[] G_ClientScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.LOBBY),
@@ -62,26 +59,10 @@ namespace Shinshi.Editor
         private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN),
             ScenePath(Constants.Scene.DUNGEON_FOREST), ScenePath(Constants.Scene.DUNGEON_MUCHEOL),
             ScenePath(Constants.Scene.DUNGEON_WOLBAEK) };
-        private static readonly string[] G_DevMovementScenes = { DEV_MOVEMENT_SCENE_PATH };
 
-        // 네트워크 없이 보스 패턴과 UI 화면, 마을 렌더링 비용을 확인하는 개발 씬 묶음. 서버 접속 없이 한 실행 파일에서 고르며(DevTestScenePicker),
-        // 보스 시험 장치가 Shinshi.Server에 있어 SHINSHI_DEV_TEST로 그 어셈블리를 클라이언트 빌드에 넣는다.
+        // 서버 접속 없이 마을 렌더링 비용을 확인하는 개발 빌드. 시험 장치가 Shinshi.Server에 있어 SHINSHI_DEV_TEST로 그 어셈블리를 클라이언트 빌드에 넣는다.
         // 마을은 NetworkManager 없이 열려 플레이어 없이 배경만 그리며, -devPerfTown 측정(DevTownPerfViews)에 쓴다
-        private static readonly string[] G_DevTestScenes     = {
-            "Assets/00.Scenes/Dev_AI/Dev_BossMucheol.unity",
-            "Assets/00.Scenes/Dev_AI/Dev_BossMucheolPhase2.unity",
-            "Assets/00.Scenes/Dev_AI/Dev_BossWolbaek.unity",
-            "Assets/00.Scenes/Dev_AI/Dev_BossWolbaekBarrier.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_CombatHud.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_ItemSlot.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_Result.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_SortiePrep.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_ToastMessage.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_Trade.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_Auction.unity",
-            "Assets/00.Scenes/Dev_HUD/Dev_CharSelect.unity",
-            ScenePath(Constants.Scene.SHINSHI_TOWN) };
+        private static readonly string[] G_DevTestScenes     = { ScenePath(Constants.Scene.SHINSHI_TOWN) };
         private static readonly string[] G_DevTestDefines    = { DEV_TEST_DEFINE };
 
         // 릴리즈 클라이언트와 같은 씬으로 만드는 계측 빌드. DevPerfLogger만 SHINSHI_PERF_LOG로 넣고 서버 어셈블리와 시험 장치는 넣지 않는다
@@ -109,20 +90,7 @@ namespace Shinshi.Editor
             Build(TARGET_LINUX_SERVER, true);
         }
 
-        // 같은 출력 폴더를 쓰므로 tools/Start-M2.ps1로 바로 띄울 수 있다. Bootstrap 빌드를 덮어쓴다
-        [MenuItem(MENU_ROOT + "Dev Movement/Windows Client (Development)")]
-        private static void BuildDevMovementClientMenu()
-        {
-            Build(TARGET_WINDOWS_CLIENT, true, G_DevMovementScenes);
-        }
-
-        [MenuItem(MENU_ROOT + "Dev Movement/Windows Server (Development)")]
-        private static void BuildDevMovementServerMenu()
-        {
-            Build(TARGET_WINDOWS_SERVER, true, G_DevMovementScenes);
-        }
-
-        [MenuItem(MENU_ROOT + "Dev Test/Windows Boss and UI Scenes (Development)")]
+        [MenuItem(MENU_ROOT + "Dev Test/Windows Town (Development)")]
         private static void BuildDevTestMenu()
         {
             Build(TARGET_WINDOWS_DEVTEST, true);
@@ -193,12 +161,6 @@ namespace Shinshi.Editor
 
             bool server = (targetName == TARGET_WINDOWS_SERVER) || (targetName == TARGET_LINUX_SERVER);
             return Build(targetName, development, server ? G_ServerScenes : G_ClientScenes);
-        }
-
-        /// <summary> 개발 이동 씬으로 서버, 클라이언트 개발 빌드를 만든다, 에디터 코드 실행으로도 부른다 </summary>
-        public static bool BuildDevMovement(string targetName)
-        {
-            return Build(targetName, true, G_DevMovementScenes);
         }
 
         private static bool Build(string targetName, bool development, string[] scenes)

@@ -63,6 +63,62 @@ namespace Shinshi.Network
             return new SortieStatusMessage(phase, endReason, hasPersonalClose, personalCloseReason, canReturn, settlementState);
         }
 
+        public static void WriteSortieRewardMessage(this NetworkWriter writer, SortieRewardMessage value)
+        {
+            writer.WriteLong(value.BaseEssence);
+            writer.WriteLong(value.BossEssence);
+            writer.WriteLong(value.PaidExtraEssence);
+            writer.WriteLong(value.LostExtraEssence);
+            writer.WriteLong(value.Essence);
+            writer.WriteLong(value.RefineShards);
+            writer.WriteLong(value.Tickets);
+            writer.WriteLong(value.Currency);
+            WriteRewardLines(writer, value.Items);
+            WriteRewardLines(writer, value.Talismans);
+        }
+
+        public static SortieRewardMessage ReadSortieRewardMessage(this NetworkReader reader)
+        {
+            long baseEssence      = reader.ReadLong();
+            long bossEssence      = reader.ReadLong();
+            long paidExtraEssence = reader.ReadLong();
+            long lostExtraEssence = reader.ReadLong();
+            long essence          = reader.ReadLong();
+            long refineShards     = reader.ReadLong();
+            long tickets          = reader.ReadLong();
+            long currency         = reader.ReadLong();
+            SortieRewardLine[] items     = ReadRewardLines(reader);
+            SortieRewardLine[] talismans = ReadRewardLines(reader);
+            return new SortieRewardMessage(baseEssence, bossEssence, paidExtraEssence, lostExtraEssence, essence, refineShards,
+                tickets, currency, items, talismans);
+        }
+
+        // 줄 수는 한 바이트라 받는 쪽 배열도 255칸을 넘지 않는다. 정산 줄 상한은 이보다 작다
+        private static void WriteRewardLines(NetworkWriter writer, SortieRewardLine[] lines)
+        {
+            int count = Math.Min(lines.Length, byte.MaxValue);
+            writer.WriteByte((byte)count);
+            for (int i = 0; i < count; ++i)
+            {
+                writer.WriteString(lines[i].DefinitionId);
+                writer.WriteLong(lines[i].Quantity);
+            }
+        }
+
+        private static SortieRewardLine[] ReadRewardLines(NetworkReader reader)
+        {
+            int count = reader.ReadByte();
+            var lines = new SortieRewardLine[count];
+            for (int i = 0; i < count; ++i)
+            {
+                string definitionId = reader.ReadString();
+                long   quantity     = reader.ReadLong();
+                lines[i] = new SortieRewardLine(definitionId, quantity);
+            }
+
+            return lines;
+        }
+
         // 웨이브 수는 한 바이트라 받는 쪽 배열도 255칸을 넘지 않는다
         public static void WriteWaveProgressMessage(this NetworkWriter writer, WaveProgressMessage value)
         {

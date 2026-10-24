@@ -28,6 +28,7 @@ namespace Shinshi.Art
         [SerializeField] private PlayerCharacterCombatAnimationView           _combatAnimation;
         [SerializeField] private PlayerFemaleCharacterPredictionMotionSource  _predictionMotionSource;
         [SerializeField] private PlayerFemaleCharacterServerMotionSource      _serverMotionSource;
+        [SerializeField] private PlayerClassWeaponView                        _weaponView;
 
         private GameObject       _instance;
         private Animator         _animator;
@@ -148,6 +149,11 @@ namespace Shinshi.Art
                 return;
             }
 
+            if (_weaponView != null)
+            {
+                _weaponView.Attach(_instance.transform);
+            }
+
             _currentLook   = look;
             _isAssembled   = true;
             _cachedIsOwned = _combat.isOwned;
@@ -202,6 +208,11 @@ namespace Shinshi.Art
             if (_combatAnimation != null)
             {
                 _combatAnimation.Clear();
+            }
+
+            if (_weaponView != null)
+            {
+                _weaponView.Detach();
             }
 
             if (_instance != null)

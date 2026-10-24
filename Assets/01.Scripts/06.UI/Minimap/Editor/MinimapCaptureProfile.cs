@@ -91,6 +91,7 @@ namespace Shinshi.UI.Editor
             switch (sceneName)
             {
                 case "Dev_ShinshiVillageQuarterView_GroundPaint":
+                case "ShinshiTown":
                     return Town();
                 case "Dev_ForestPlateau":
                 case "Dev_ForestPlateauHitFeedback":
@@ -100,6 +101,7 @@ namespace Shinshi.UI.Editor
                 case "DungeonWolbaek":
                     return Wolbaek();
                 case "Dev_BossMucheol":
+                case "DungeonMucheol":
                     return Mucheol();
                 default:
                     return null;

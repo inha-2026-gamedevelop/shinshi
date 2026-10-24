@@ -133,6 +133,9 @@ namespace Shinshi.AI
                 ++_checkedCandidates;
                 Vector3 point = GetCandidate(target.Position, facing, i, definition.WarpLandingDistance);
 
+                // 서버 착지(TryWarp)가 보스 높이를 유지하므로 사전 검사도 같은 높이로 한다
+                point.y = self.Position.y;
+
                 // 검사 순서는 전장 경계, 거리, 충돌, 경로다. 앞 검사를 통과한 후보에만 다음 검사를 한다
                 if (!IsInsideArena(point, arenaCenter, arenaRadius, self.BodyRadius))
                 {

@@ -31,15 +31,23 @@ namespace Shinshi.Art
         private static readonly int   _actionIndexHash = Animator.StringToHash("ActionIndex");
         private static readonly int   _actionSpeedHash = Animator.StringToHash("ActionSpeed");
         private static readonly int   _aliveHash       = Animator.StringToHash("Alive");
+        private static readonly int   _locomotionHash  = Animator.StringToHash("Locomotion");
 
         // 기술 상태 이름 해시, [행동 인덱스][분절]. 첫 분절은 Skill{i}, 이어지는 분절은 Skill{i}_{s}다
         private static readonly int[][] G_SkillStates = BuildSkillStateHashes();
 
         private const int BASE_LAYER = 0;
 
+        // 발사 뒤 이동으로 공격 모션을 끊을 때 이동 모션으로 섞는 시간과, 끊기 전 공격 모션을 최소한 보이는 시간
+        private const float ATTACK_CUT_BLEND_SECONDS   = 0.1f;
+        private const float ATTACK_MIN_VISIBLE_SECONDS = 0.1f;
+
         private Animator                       _animator;
         private PlayerCombatState              _combat;
         private PlayerCombatAnimationProfileSO _profile;
+
+        // 소유 클라이언트에서만 켜지는 이동 예측. 소유자는 서버 복제를 기다리지 않고 예측 이동으로 공격 모션을 끊는다
+        private PlayerPrediction               _prediction;
 
         private bool  _needsBaseline  = false;
         private bool  _isAlive        = true;
@@ -58,6 +66,11 @@ namespace Shinshi.Art
         private float _nextAttackMotionAt;
         private float _attackMotionInterval;
 
+        // 서버는 마지막 발사 뒤 이동을 막지 않는다. 그 뒤 이동이 시작되면 남은 공격 모션을 이동 모션으로 끊는다
+        private bool  _canCutAttack;
+        private float _attackCutAllowedAt;
+        private float _attackMotionEndsAt;
+
         // 피격이상 면역 콤보 단계를 재생하는 동안은 피격 모션으로 끊지 않는다
         private float _hitSuppressedUntil = float.NegativeInfinity;
 
@@ -72,6 +85,7 @@ namespace Shinshi.Art
         private void OnDisable()
         {
             _attackRepeatsLeft = 0;
+            _canCutAttack      = false;
             ResetActionTriggers();
         }
 
@@ -97,6 +111,7 @@ namespace Shinshi.Art
             if (isAlive != _isAlive)
             {
                 _attackRepeatsLeft = 0;
+                _canCutAttack      = false;
                 _isAlive = isAlive;
                 _animator.SetBool(_aliveHash, isAlive);
                 ResetActionTriggers();
@@ -121,10 +136,12 @@ namespace Shinshi.Art
             {
                 case CombatAnimationTriggerRules.EAction.Dodge:
                     _attackRepeatsLeft = 0;
+                    _canCutAttack      = false;
                     PlayDodge();
                     break;
                 case CombatAnimationTriggerRules.EAction.Skill:
                     _attackRepeatsLeft = 0;
+                    _canCutAttack      = false;
                     if (!TryPlayNewSkill())
                     {
                         // 아직 시작 전이면 시전 기준값을 남겨 다음 Update에서 다시 본다
@@ -148,6 +165,11 @@ namespace Shinshi.Art
                 return;
             }
 
+            if (TryCutAttackForMove())
+            {
+                return;
+            }
+
             TickAttackMotions();
             TryPlayHit();
         }
@@ -163,9 +185,11 @@ namespace Shinshi.Art
             _animator      = animator;
             _combat        = combat;
             _profile       = profile;
+            _prediction    = (combat != null) ? combat.GetComponent<PlayerPrediction>() : null;
             _needsBaseline = true;
             _attackIndex   = -1;
             _attackRepeatsLeft = 0;
+            _canCutAttack      = false;
 
             _hasSpecCache       = false;
             _hitSuppressedUntil = float.NegativeInfinity;
@@ -179,8 +203,9 @@ namespace Shinshi.Art
         public void Clear()
         {
             Unbind();
-            _animator = null;
-            _profile  = null;
+            _animator   = null;
+            _profile    = null;
+            _prediction = null;
         }
 
         private void Unbind()
@@ -292,12 +317,56 @@ namespace Shinshi.Art
             Fire(_attackHash, actionIndex, speed, "Attack");
             if (scheduleRepeats)
             {
+                _canCutAttack       = true;
+                _attackCutAllowedAt = now + Mathf.Max(spec.GetMoveHoldSeconds(serverStep), ATTACK_MIN_VISIBLE_SECONDS);
+                _attackMotionEndsAt = now + target;
                 _attackRepeatsLeft = Mathf.Clamp(spec.GetShotCount(serverStep), 1, PlayerConfigSO.MAX_BASIC_SHOTS) - 1;
                 _repeatAttackStep = serverStep;
                 _repeatCancelSequence = _combat.ActionCancelSequence;
                 _attackMotionInterval = spec.GetShotInterval(serverStep);
                 _nextAttackMotionAt = now + _attackMotionInterval;
             }
+        }
+
+        // 공격을 시작한 뒤 이동이 시작됐으면 남은 공격 모션과 반복 모션을 버리고 이동 모션으로 넘어간다.
+        // 소유자는 예측 이동으로, 관찰자는 서버 이동 상태로 본다. 서버 값은 이동 시작 시각을 공격 시작 시각과 비교해
+        // 공격 전부터 남아 있던 속도 값으로 끊지 않는다
+        private bool TryCutAttackForMove()
+        {
+            if (!_canCutAttack)
+            {
+                return false;
+            }
+
+            float now = Time.unscaledTime;
+            if ((now >= _attackMotionEndsAt) || (_combat.SkillPhase != ESkillPhase.Idle))
+            {
+                _canCutAttack = false;
+                return false;
+            }
+
+            if ((now < _attackCutAllowedAt) || (!IsMovingAfterAttack()))
+            {
+                return false;
+            }
+
+            _canCutAttack       = false;
+            _attackRepeatsLeft  = 0;
+            _hitSuppressedUntil = float.NegativeInfinity;
+            ResetActionTriggers();
+            _animator.CrossFadeInFixedTime(_locomotionHash, ATTACK_CUT_BLEND_SECONDS, BASE_LAYER);
+            return true;
+        }
+
+        private bool IsMovingAfterAttack()
+        {
+            if ((_prediction != null) && (_prediction.IsPredicting))
+            {
+                return _prediction.MoveDirection.sqrMagnitude > 0f;
+            }
+
+            return (_combat.LocomotionSpeed > ArcherVfxTracker.LOCOMOTION_EPSILON)
+                && (_combat.LocomotionStartedAt > _combat.AttackStartedAt);
         }
 
         // 모션만 반복한다. 실제 발사와 피해는 서버가 같은 단계 명세로 판정한다
@@ -414,6 +483,7 @@ namespace Shinshi.Art
             float speed = CombatAnimationTriggerRules.ComputeSpeed(_profile.GetHitClipLength(_hitSide), _profile.HitSeconds,
                 _profile.MinSpeed, _profile.MaxSpeed);
             Fire(_hitHash, _hitSide, speed, "Hit");
+            _canCutAttack = false;
         }
 
         private bool TryGetSkillTimes(out float windup, out float total)

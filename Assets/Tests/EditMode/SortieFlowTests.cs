@@ -347,6 +347,33 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Reward_SessionEnds_SendsOncePerParticipantAndResendsOnJoin()
+        {
+            var rewards = new RecordingRewardAudience();
+            _host.RewardAudience = rewards;
+            int one = Admit(API_ONE, default);
+            int two = Admit(API_TWO, default);
+            StartSession();
+            double time = _config.ReadyCountdownSeconds;
+
+            Tick(time + 0.5);
+            Assert.AreEqual(0, rewards.Count, "출정이 끝나기 전에는 보내지 않는다");
+
+            _host.RequestAbandon(one, Guid.NewGuid());
+            _host.RequestAbandon(two, Guid.NewGuid());
+            Tick(time + 1.0);
+            Assert.IsTrue(_host.Session.IsEnded);
+            Assert.AreEqual(1, rewards.CountFor(one));
+            Assert.AreEqual(1, rewards.CountFor(two));
+
+            Tick(time + 2.0);
+            Assert.AreEqual(2, rewards.Count, "정산안은 한 번만 만들어져 다음 틱에 다시 보내지 않는다");
+
+            _host.SendStatusTo(two);
+            Assert.AreEqual(2, rewards.CountFor(two), "재접속하면 결과 창을 다시 그리도록 다시 보낸다");
+        }
+
+        [Test]
         public void Abandon_BeforeStart_RepliesWrongPhase()
         {
             int one = Admit(API_ONE, default);
@@ -683,6 +710,32 @@ namespace Shinshi.Tests
 
                 Assert.Fail($"입찰 결과가 없다, participantId={participantId}");
                 return default;
+            }
+        }
+
+        private sealed class RecordingRewardAudience : ISortieRewardAudience
+        {
+            private readonly List<int> _sentTo = new List<int>();
+
+            public int Count => _sentTo.Count;
+
+            public void SendReward(int participantId, in SortieRewardMessage message)
+            {
+                _sentTo.Add(participantId);
+            }
+
+            public int CountFor(int participantId)
+            {
+                int count = 0;
+                for (int i = 0; i < _sentTo.Count; ++i)
+                {
+                    if (_sentTo[i] == participantId)
+                    {
+                        ++count;
+                    }
+                }
+
+                return count;
             }
         }
 

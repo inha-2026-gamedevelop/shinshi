@@ -256,6 +256,7 @@ namespace Shinshi.Network
                 var sortieAudience = new MirrorSortieAudience();
                 dungeonHost.SortieAudience       = sortieAudience;
                 dungeonHost.WaveProgressAudience = sortieAudience;
+                dungeonHost.RewardAudience       = sortieAudience;
                 dungeonHost.ConfigureContent(GameDB.Waves, GameDB.Rewards, GameDB.Talismans, bossId, IsKnownBoss);
 
                 // 범용 슬롯은 기본 전장(실행 설정 보스가 있으면 그 보스의 전장)으로 부팅하고, 첫 입장 계약이 다른 전장을 요구하면

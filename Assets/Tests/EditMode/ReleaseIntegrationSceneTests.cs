@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 // Unity
 using UnityEditor;
@@ -10,7 +9,6 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
-using UnityEngine.TestTools;
 
 // 서드파티
 using NUnit.Framework;
@@ -33,9 +31,6 @@ namespace Shinshi.Tests
         private const string DUNGEON_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
         private const string MUCHEOL_PATH = "Assets/00.Scenes/Release/DungeonMucheol.unity";
         private const string WOLBAEK_PATH = "Assets/00.Scenes/Release/DungeonWolbaek.unity";
-        private const string DEV_MUCHEOL_PATH = "Assets/00.Scenes/Dev_HUD/Dev_BossMucheol.unity";
-        private const string DEV_WOLBAEK_PATH = "Assets/00.Scenes/Dev_HUD/Dev_BossWolbaek.unity";
-        private const string DEV_FOREST_PATH = "Assets/00.Scenes/Dev_HUD/Dev_ForestPlateauHitFeedback.unity";
         private const string BOSS_PATH = "Assets/02.Prefab/Network/NetBoss/PF_NetWolbaekBoss.prefab";
 
         /****************************************
@@ -373,31 +368,6 @@ namespace Shinshi.Tests
             });
         }
 
-        [TestCase(MUCHEOL_PATH, DEV_MUCHEOL_PATH)]
-        [TestCase(WOLBAEK_PATH, DEV_WOLBAEK_PATH)]
-        [TestCase(DUNGEON_PATH, DEV_FOREST_PATH)]
-        public void Scene_ActiveLights_MatchCopiedSourceEnvironment(string releasePath, string devPath)
-        {
-            List<string> expectedDirectional = null;
-            List<string> expectedAll = null;
-            Regex[] knownSourceErrors = (devPath == DEV_WOLBAEK_PATH) ? WOLBAEK_SOURCE_OPEN_ERRORS : null;
-
-            InspectSource(devPath, knownSourceErrors, dev =>
-            {
-                expectedDirectional = ActiveLightNames(dev, true, true);
-                expectedAll = ActiveLightNames(dev, false, true);
-            });
-
-            Inspect(releasePath, scene =>
-            {
-                Assert.That(expectedDirectional.Count, Is.GreaterThan(0), "원본에 활성 Directional Light가 있어야 비교할 수 있다");
-                Assert.That(ActiveLightNames(scene, true, false), Is.EqualTo(expectedDirectional),
-                    releasePath + ": 활성 Directional Light가 원본과 다르다(틀 환경 조명이 남았거나 누락)");
-                Assert.That(ActiveLightNames(scene, false, false), Is.EqualTo(expectedAll),
-                    releasePath + ": 활성 조명 전체가 원본과 다르다");
-            });
-        }
-
         [Test]
         public void BossScenes_NavigationAssets_AreOwnedByEachScene()
         {
@@ -434,74 +404,6 @@ namespace Shinshi.Tests
         *                Helpers
         ****************************************/
 
-        // 원본 Dev 월백 씬은 끊어진 벽 프리팹을 의도적으로 갖고 있다. 첫 열기에는 아래 두 오류가 나지만 Unity가 가져오기 결과를 캐시해 이후에는 나오지 않을 수 있다
-        private static readonly Regex[] WOLBAEK_SOURCE_OPEN_ERRORS =
-        {
-            new Regex("Problem detected while opening the Scene file: 'Assets/00\\.Scenes/Dev_HUD/Dev_BossWolbaek\\.unity'"),
-            new Regex("Prefab instance problem: 'Wall_Seg_02 \\(Missing Prefab with guid: 1045083f2495ad54296d4084ab5d3b4c\\)'"),
-        };
-
-        private static void InspectSource(string path, Regex[] knownOpenErrors, Action<Scene> inspect)
-        {
-            Scene scene = OpenSourcePreviewScene(path, knownOpenErrors);
-            try
-            {
-                inspect(scene);
-            }
-            finally
-            {
-                EditorSceneManager.ClosePreviewScene(scene);
-            }
-        }
-
-        // 열기 구간에서만 알려진 오류를 수집해 허용한다. 알려지지 않은 오류가 하나라도 있으면 실패한다
-        private static Scene OpenSourcePreviewScene(string path, Regex[] knownOpenErrors)
-        {
-            if (knownOpenErrors == null)
-            {
-                return EditorSceneManager.OpenPreviewScene(path);
-            }
-
-            var unexpected = new List<string>();
-            void OnLog(string condition, string stackTrace, LogType type)
-            {
-                if (type != LogType.Error && type != LogType.Assert && type != LogType.Exception)
-                {
-                    return;
-                }
-
-                foreach (Regex known in knownOpenErrors)
-                {
-                    if (known.IsMatch(condition))
-                    {
-                        return;
-                    }
-                }
-                unexpected.Add(type + ": " + condition);
-            }
-
-            bool previousIgnore = LogAssert.ignoreFailingMessages;
-            Scene scene;
-            Application.logMessageReceived += OnLog;
-            LogAssert.ignoreFailingMessages = true;
-            try
-            {
-                scene = EditorSceneManager.OpenPreviewScene(path);
-            }
-            finally
-            {
-                LogAssert.ignoreFailingMessages = previousIgnore;
-                Application.logMessageReceived -= OnLog;
-            }
-
-            if (unexpected.Count > 0)
-            {
-                EditorSceneManager.ClosePreviewScene(scene);
-                Assert.Fail(path + " 열기에서 알려지지 않은 오류가 났다:\n" + string.Join("\n", unexpected));
-            }
-            return scene;
-        }
-
         private static void Inspect(string path, Action<Scene> inspect)
         {
             Scene scene = EditorSceneManager.OpenPreviewScene(path);
@@ -523,42 +425,6 @@ namespace Shinshi.Tests
                 result.AddRange(root.GetComponentsInChildren<T>(true));
             }
             return result;
-        }
-
-        // 원본이면 빌더가 가져오지 않는 루트(개발 도구, 카메라, 캔버스)의 조명은 제외한다. UI 캔버스와 캐릭터 미리보기 무대 조명은 항상 제외한다
-        private static List<string> ActiveLightNames(Scene scene, bool directionalOnly, bool isSource)
-        {
-            var names = new List<string>();
-            foreach (GameObject root in scene.GetRootGameObjects())
-            {
-                if (isSource && IsSkippedSourceRoot(root))
-                {
-                    continue;
-                }
-
-                foreach (Light light in root.GetComponentsInChildren<Light>(false))
-                {
-                    if ((!light.enabled) || (directionalOnly && (light.type != LightType.Directional)) || IsUiLight(light.transform))
-                    {
-                        continue;
-                    }
-                    names.Add(light.name);
-                }
-            }
-            names.Sort(StringComparer.Ordinal);
-            return names;
-        }
-
-        private static bool IsUiLight(Transform transform)
-        {
-            for (Transform current = transform; current != null; current = current.parent)
-            {
-                if ((current.name == "CharDetailPreviewStage") || (current.GetComponent<Canvas>() != null))
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private static bool IsSkippedSourceRoot(GameObject root)

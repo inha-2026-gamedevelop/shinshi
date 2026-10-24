@@ -90,6 +90,8 @@ namespace Shinshi.Combat
                     return new PreFireCancelPolicy(
                         EPreFireTargets.PendingAttack | EPreFireTargets.Windup | EPreFireTargets.ComboImmunity,
                         ERejectReason.None, ERejectReason.None);
+                case EPreFireCancelReason.MoveInputHeld:
+                    return new PreFireCancelPolicy(EPreFireTargets.PendingAttack, ERejectReason.None, ERejectReason.None);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(reason), reason, null);
             }

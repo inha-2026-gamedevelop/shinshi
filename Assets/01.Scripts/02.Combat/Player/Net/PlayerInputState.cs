@@ -99,6 +99,9 @@ namespace Shinshi.Combat
         // 공격, 기술처럼 서버가 처리하는 틱에 이동을 멈추는 입력
         public event Action<uint> ActionSent;
 
+        // 기본 공격 요청을 실제로 보낸 순번. 서버가 준비 중 이동을 보관하는 구간을 예측이 미리 알 때 쓴다
+        public event Action<uint> AttackSent;
+
         // 기술 요청을 실제로 보낸 순번과 종류, 슬롯. SkillResult의 순번을 어떤 기술의 결과인지로 바꿀 때 쓴다
         public event Action<uint, ESkillRequestKind, byte> SkillSent;
 
@@ -193,6 +196,7 @@ namespace Shinshi.Combat
                 PlayerInputHeader attackHeader = NextHeader();
                 CmdAttack(new PlayerAttackInput(attackHeader, _pendingAimYaw));
                 ActionSent?.Invoke(attackHeader.Sequence);
+                AttackSent?.Invoke(attackHeader.Sequence);
                 return;
             }
 
