@@ -1,5 +1,6 @@
 // Unity
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace Shinshi.Dev
 {
@@ -24,8 +25,14 @@ namespace Shinshi.Dev
         [SerializeField] private bool _useSparks      = true;
         [SerializeField] private bool _useShockwave   = true;
         [SerializeField] private bool _useScreenFx    = true;
+        [SerializeField] private bool _useMotionBlur  = true;
+
+        [Header("치명타 블러 (렌더러의 풀스크린 패스와 그 재질)")]
+        [SerializeField] private FullScreenPassRendererFeature _blurFeature;
+        [SerializeField] private Material _blurMaterial;
 
         private HitFeedbackScreenFx     _screenFx  = null;
+        private HitFeedbackMotionBlur   _motionBlur = null;
         private HitFeedbackCamera       _camera    = null;
         private DevHitFeedbackSparks    _sparks    = null;
         private DevHitFeedbackShockwave _shockwave = null;
@@ -51,11 +58,54 @@ namespace Shinshi.Dev
 
             _screenFx = new GameObject("DevScreenFx").AddComponent<HitFeedbackScreenFx>();
             _screenFx.transform.SetParent(transform, false);
+
+            _motionBlur = new GameObject("DevMotionBlur").AddComponent<HitFeedbackMotionBlur>();
+            _motionBlur.transform.SetParent(transform, false);
+            _motionBlur.Init(_blurFeature, _blurMaterial);
+
+            // 치명타 블러와 줌 펀치는 프로필 값으로 시작해 조절 패널이 실행 중에 바꾼다. 프로필 에셋은 건드리지 않는다
+            CritBlurIntensity = _lightProfile.CritMotionBlurIntensity;
+            CritBlurSeconds   = _lightProfile.CritMotionBlurSeconds;
+            CritZoomPunch     = _lightProfile.CritZoomPunch;
+            CritZoomSeconds   = _lightProfile.CritZoomSeconds;
         }
+
+        /****************************************
+        *               Properties
+        ****************************************/
+
+        /// <summary> 치명타 블러 세기(0에서 1), 0이면 없다 </summary>
+        public float CritBlurIntensity { get; set; }
+
+        public float CritBlurSeconds { get; set; }
+
+        /// <summary> 치명타 줌 펀치로 화면이 당겨지는 비율, 0이면 없다 </summary>
+        public float CritZoomPunch { get; set; }
+
+        public float CritZoomSeconds { get; set; }
 
         /****************************************
         *                Methods
         ****************************************/
+
+        /// <summary> 맞히지 않고 치명타의 화면 연출(블러와 줌 펀치)만 한 번 재생한다. 값을 조절하며 눈으로 볼 때 쓴다 </summary>
+        public void PreviewCritical()
+        {
+            PlayCriticalScreen();
+        }
+
+        private void PlayCriticalScreen()
+        {
+            if (_useMotionBlur)
+            {
+                _motionBlur.Pulse(CritBlurIntensity, CritBlurSeconds);
+            }
+
+            if (_camera != null)
+            {
+                _camera.ZoomPunch(CritZoomPunch, CritZoomSeconds);
+            }
+        }
 
         /// <summary> 카메라 흔들림과 줌을 맡길 카메라 도우미를 연결한다 </summary>
         public void Init(HitFeedbackCamera feedbackCamera)
@@ -107,6 +157,7 @@ namespace Shinshi.Dev
 
             if (isCritical)
             {
+                PlayCriticalScreen();
                 PlayCritical(profile, point);
             }
 

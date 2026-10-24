@@ -144,6 +144,12 @@ namespace Shinshi.Dev
         /// <summary> 이 플레이어의 카메라 흔들림과 줌을 맡는 도우미 </summary>
         public HitFeedbackCamera FeedbackCamera => _feedbackCamera;
 
+        /// <summary> 화면을 그리는 카메라 </summary>
+        public Camera OutputCamera => _outputCamera;
+
+        /// <summary> 카메라가 캐릭터에서 떨어져 따라가는 거리(m) </summary>
+        public float CameraDistance => _cameraDistance;
+
         /****************************************
         *              Unity Event
         ****************************************/
@@ -173,6 +179,14 @@ namespace Shinshi.Dev
             _feedbackCamera.Init(_outputCamera);
         }
 
+        /// <summary> 카메라의 내려다보는 각도(pitch), 방위(yaw), 캐릭터와의 거리를 바꾼다. 캐릭터를 따라가는 방식은 그대로다 </summary>
+        public void SetCameraRig(float pitch, float yaw, float distance)
+        {
+            _cameraDistance = distance;
+            _outputCamera.transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+            _cameraOffset = -_outputCamera.transform.forward * _cameraDistance;
+        }
+
         private void Update()
         {
             if (_isDead)
@@ -193,7 +207,8 @@ namespace Shinshi.Dev
             attackPressed |= _attackBuffered;
             _attackBuffered = false;
 
-            if ((Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_MOVE)) && (TryGetCursorPoint(out Vector3 clickPoint)))
+            if ((Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_MOVE)) && (!DevHitFeedbackTuningPanel.IsPointerOver)
+                && (TryGetCursorPoint(out Vector3 clickPoint)))
             {
                 MoveClicked?.Invoke(clickPoint);
             }
@@ -268,7 +283,8 @@ namespace Shinshi.Dev
         // 이동 버튼을 누르는 동안 커서 지점을 목적지로 갱신하고, 도착하면 선다
         private Vector3 ReadMoveStep()
         {
-            if ((Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_MOVE)) && (TryGetCursorPoint(out Vector3 point)))
+            if ((Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_MOVE)) && (!DevHitFeedbackTuningPanel.IsPointerOver)
+                && (TryGetCursorPoint(out Vector3 point)))
             {
                 _destination    = point;
                 _hasDestination = true;
