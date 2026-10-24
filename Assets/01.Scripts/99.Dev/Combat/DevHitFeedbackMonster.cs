@@ -25,6 +25,19 @@ namespace Shinshi.Dev
         private static readonly int   s_dashingHash = Animator.StringToHash("Dashing");
         private static readonly Color s_corpseColor = new Color(0.32f, 0.12f, 0.09f, 1f); // 원래 색에 검정을 섞은 적갈색
 
+        private static readonly List<Rigidbody> s_corpseBodies = new List<Rigidbody>();
+        private static Collider s_loosenedBone = null; // 마지막으로 흐느적거리게 만든 시체의 첫 뼈
+
+        // 래그돌 시체를 흐느적거리게 하는 값. 몸통은 그대로 날리고 팔다리 끝은 LIMB_LAG_RATIO까지 느려진다
+        private const float LIMB_LAG_RATIO        = 0.35f;
+        private const float FLAIL_SPIN_MIN        = 4f;   // rad/s, 몸통
+        private const float FLAIL_SPIN_MAX        = 14f;  // rad/s, 팔다리 끝
+        private const float LOOSE_ANGULAR_DAMPING = 0.2f;
+        private const float LOOSE_LIMIT_SCALE     = 1.8f; // 프리팹의 가동 범위에 곱한다
+        private const float LOOSE_TWIST_CAP       = 70f;  // 도
+        private const float LOOSE_SWING_CAP       = 100f; // 도
+        private const int   MAX_JOINT_DEPTH       = 16;   // 관절이 잘못 순환해도 무한히 돌지 않게 하는 상한
+
         private const float DEATH_SECONDS = 0.25f;
         private const float CORPSE_SECONDS = 10f; // 날아가 쓰러진 채 남아 있는 시간
         private const float ASH_SECONDS        = 1.6f; // 래그돌 사체가 재가 되어 사라지는 데 걸리는 시간
@@ -117,12 +130,82 @@ namespace Shinshi.Dev
         {
             s_alive.Add(this);
             Shinshi.AI.EnemyCorpse.RagdollLaunched += IgnoreCorpseBones;
+            Shinshi.AI.EnemyCorpse.RagdollLaunched += LoosenCorpseBones;
         }
 
         private void OnDisable()
         {
             s_alive.Remove(this);
             Shinshi.AI.EnemyCorpse.RagdollLaunched -= IgnoreCorpseBones;
+            Shinshi.AI.EnemyCorpse.RagdollLaunched -= LoosenCorpseBones;
+        }
+
+        // 릴리스 래그돌은 모든 뼈를 같은 속도로 날리고 관절이 좁아 한 덩어리로 뻣뻣하게 날아간다. 이 시험 씬에서만 몸통은 그대로 날리고
+        // 팔다리 끝으로 갈수록 느리게 따라오게 하며 관절을 풀어 흐느적거리게 한다. 릴리스 코드는 건드리지 않는다.
+        // 몬스터마다 같은 알림을 받으므로 한 시체에는 한 번만 적용한다
+        private static void LoosenCorpseBones(Collider[] bones)
+        {
+            if ((bones == null) || (bones.Length == 0) || (bones[0] == s_loosenedBone))
+            {
+                return;
+            }
+
+            s_loosenedBone = bones[0];
+            s_corpseBodies.Clear();
+            for (int i = 0; i < bones.Length; ++i)
+            {
+                Rigidbody body = bones[i].attachedRigidbody;
+                if ((body != null) && (!s_corpseBodies.Contains(body)))
+                {
+                    s_corpseBodies.Add(body);
+                }
+            }
+
+            int maxDepth = 1;
+            for (int i = 0; i < s_corpseBodies.Count; ++i)
+            {
+                maxDepth = Mathf.Max(maxDepth, ReadJointDepth(s_corpseBodies[i]));
+            }
+
+            for (int i = 0; i < s_corpseBodies.Count; ++i)
+            {
+                Rigidbody body  = s_corpseBodies[i];
+                float     reach = (float)ReadJointDepth(body) / maxDepth;
+
+                body.linearVelocity   *= Mathf.Lerp(1f, LIMB_LAG_RATIO, reach);
+                body.angularVelocity   = UnityEngine.Random.onUnitSphere * Mathf.Lerp(FLAIL_SPIN_MIN, FLAIL_SPIN_MAX, reach);
+                body.angularDamping    = LOOSE_ANGULAR_DAMPING;
+
+                // 프리팹에 부위별로 정해 둔 가동 범위를 배율로만 넓힌다. 무릎과 팔꿈치처럼 0인 경첩은 0 그대로 둔다
+                if (body.TryGetComponent(out CharacterJoint joint))
+                {
+                    joint.lowTwistLimit  = ScaleLimit(joint.lowTwistLimit, LOOSE_TWIST_CAP);
+                    joint.highTwistLimit = ScaleLimit(joint.highTwistLimit, LOOSE_TWIST_CAP);
+                    joint.swing1Limit    = ScaleLimit(joint.swing1Limit, LOOSE_SWING_CAP);
+                    joint.swing2Limit    = ScaleLimit(joint.swing2Limit, LOOSE_SWING_CAP);
+                }
+            }
+
+            s_corpseBodies.Clear();
+        }
+
+        private static SoftJointLimit ScaleLimit(SoftJointLimit limit, float cap)
+        {
+            limit.limit = Mathf.Clamp(limit.limit * LOOSE_LIMIT_SCALE, -cap, cap);
+            return limit;
+        }
+
+        // 골반에서 이 뼈까지 관절로 이어진 단계 수. 골반이 0이고 팔다리 끝일수록 크다
+        private static int ReadJointDepth(Rigidbody body)
+        {
+            int depth = 0;
+            while ((body != null) && (body.TryGetComponent(out CharacterJoint joint)) && (joint.connectedBody != null) && (depth < MAX_JOINT_DEPTH))
+            {
+                body = joint.connectedBody;
+                ++depth;
+            }
+
+            return depth;
         }
 
         // 릴리스 시체의 뼈가 켜지면 이 산 몬스터와는 부딪히지 않게 한다
