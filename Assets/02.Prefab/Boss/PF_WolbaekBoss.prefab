@@ -1209,6 +1209,7 @@ GameObject:
   - component: {fileID: 3000000000000000002}
   - component: {fileID: 1250567913412408126}
   - component: {fileID: 7508857042736866457}
+  - component: {fileID: 99742154952081576}
   m_Layer: 0
   m_Name: PF_WolbaekBoss
   m_TagString: Untagged
@@ -1512,17 +1513,42 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  _swayBoneCount: 10
-  _swayDegrees: 25
-  _swayRootWeight: 0.3
-  _swayTipBias: 2
-  _swaySpeed: 2
-  _swayPhasePerBone: 0.7
-  _swayPhasePerTail: 2.4
+  _rootStiffness: 180
+  _tipStiffness: 40
+  _rootDamping: 12
+  _tipDamping: 5
+  _maxDistance: 0.6
+  _waveAmplitude: 0.3
+  _sideWaveRatio: 0.25
+  _waveRootWeight: 0
+  _waveTipBias: 1.5
+  _waveSpeed: 2
+  _wavePhasePerBone: 0.7
+  _wavePhasePerTail: 2.4
   _flutterSpeedRatio: 2.3
   _flutterMix: 0.35
   _speedVariance: 0.35
   _amplitudeVariance: 0.3
+  _idleActivity: 0.12
+  _idleSpeedScale: 0.4
+  _fullActivitySpeed: 4
+  _velocitySmoothTime: 0.25
+  _teleportDistance: 3
+--- !u!114 &99742154952081576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289852489252288786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a195ed0e809498b419709c60295ce4ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossHitFlashView
+  _flashSeconds: 0.15
+  _peak: 1
+  _gain: 8
 --- !u!1 &1294284390224381236
 GameObject:
   m_ObjectHideFlags: 0
