@@ -147,6 +147,7 @@ GameObject:
   - component: {fileID: 5195532964739581056}
   - component: {fileID: 7705905882241478004}
   - component: {fileID: 8796973754014022743}
+  - component: {fileID: 2738166842983258349}
   m_Layer: 0
   m_Name: PF_NetPlayer
   m_TagString: Untagged
@@ -361,6 +362,7 @@ MonoBehaviour:
   _combatAnimation: {fileID: 5502222593023159885}
   _predictionMotionSource: {fileID: 6357300329141890245}
   _serverMotionSource: {fileID: 3928697706582662904}
+  _weaponView: {fileID: 2738166842983258349}
 --- !u!114 &2284502398026728587
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -466,6 +468,11 @@ MonoBehaviour:
   _maxPlaySeconds: 3
   _maxLateSeconds: 0.25
   _heightOffset: 0
+  _waveFreezeFrames: 4
+  _waveFreezeBudgetFrames: 12
+  _classifyMargin: 0.15
+  _jumpBeatSeconds: 0.1
+  _jumpReach: 6.3
 --- !u!114 &8796973754014022743
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -499,3 +506,23 @@ MonoBehaviour:
   _heavyIceColor: {r: 0.55, g: 0.85, b: 1, a: 1}
   _heavyWindColor: {r: 1, g: 0.85, b: 0.5, a: 1}
   _heavyFireColor: {r: 1, g: 0.45, b: 0.12, a: 1}
+--- !u!114 &2738166842983258349
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3983380130020674932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ab584bf98afb1b43a7f6f2a4676ea33, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.PlayerClassWeaponView
+  _combat: {fileID: 7582053140134925329}
+  _weapons:
+  - _playerClass: 4
+    _prefab: {fileID: 2817639371530246233, guid: a1318b66a32b8254882e1206d656c340, type: 3}
+    _socketName: Weapon_Target_Hand_R
+  - _playerClass: 5
+    _prefab: {fileID: 2079197875989879088, guid: 5c93e907c729c5b4592b90b66c9697c9, type: 3}
+    _socketName: Weapon_Target_Hand_L

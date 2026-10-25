@@ -45,7 +45,7 @@ namespace Shinshi.Tests
         private static readonly string[] Ids = { "wolbaek_p01", "wolbaek_p02", "wolbaek_p03", "wolbaek_p04", "wolbaek_p05", "wolbaek_p06" };
 
         // 기획안 5~8장 표, 행 순서는 P01~P06
-        private static readonly float[]   Base      = { 20f, 15f, 10f, 20f, 15f, 8f };
+        private static readonly float[]   Base      = { 20f, 15f, 10f, 20f, 12f, 8f };
         private static readonly float[][] Distance  =
         {
             new[] { 0.4f, 1.3f, 1.8f }, new[] { 1.8f, 0.8f, 0.1f }, new[] { 1.6f, 0.5f, 0f },
@@ -307,7 +307,7 @@ namespace Shinshi.Tests
             rig.Self.Forward = Vector3.forward;
 
             // 같은 상황을 반복하려고 최근 기록은 매번 비운 상태로 본다
-            float[] expected = { 43.2f, 2.97f, 0f, 53.04f, 22.5f, 12.8f };
+            float[] expected = { 43.2f, 2.97f, 0f, 53.04f, 18f, 12.8f };
             float total = 0f;
             for (int i = 0; i < expected.Length; ++i)
             {
@@ -352,7 +352,7 @@ namespace Shinshi.Tests
             // 직전 P01(x0.25), 2회 전 P04(x0.3)
             float p01 = 43.2f * 0.25f;
             float p04 = 53.04f * 0.3f;
-            float p05 = 22.5f;
+            float p05 = 18f;
             float p06 = 12.8f;
             float p02 = 2.97f;
             float total = p01 + p04 + p05 + p06 + p02;

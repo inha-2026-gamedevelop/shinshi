@@ -339,8 +339,9 @@ namespace Shinshi.Dev
                 SendSkill(Constants.Combat.SKILL_SLOT_R, cursor, yaw, now);
             }
 
-            bool attackDown = Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK);
-            bool attackHeld = (Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK)) && (Time.time >= _nextAttackSend);
+            bool overPanel  = DevHitFeedbackTuningPanel.IsPointerOver;
+            bool attackDown = (Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK)) && (!overPanel);
+            bool attackHeld = (Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK)) && (!overPanel) && (Time.time >= _nextAttackSend);
             if ((attackDown) || (attackHeld))
             {
                 _nextAttackSend = Time.time + ATTACK_REPEAT_SECONDS;

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.HitFeedbackProfile
   _hitLagFrames: 3
   _killExtraLagFrames: 3
+  _targetExtraLagFrames: 0
   _shakeAmount: 0.06
   _killShakeAmount: 0.12
   _shakeSeconds: 0.2
@@ -32,6 +33,10 @@ MonoBehaviour:
   _critPunchMultiplier: 1.6
   _critKnockbackMultiplier: 1.5
   _critRingRadius: 1.4
+  _critMotionBlurIntensity: 0.8
+  _critMotionBlurSeconds: 0.45
+  _critZoomPunch: 0.08
+  _critZoomSeconds: 0.3
   _shockwaveRadius: 0
   _shockwaveSpeed: 14
   _zoomPunch: 0

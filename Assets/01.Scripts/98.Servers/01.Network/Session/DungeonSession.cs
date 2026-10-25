@@ -56,6 +56,10 @@ namespace Shinshi.Network
         private bool                 _hasRewardRule = false;
         private bool                 _hasBossRule   = false;
 
+        // 종료 때 한 번 만든 정산안과 정기 내역, 명단 순서다. 참가자 화면에 보상 내역을 보여 주려고 남긴다
+        private SettlementGrant[]     _settlementGrants;
+        private SettlementBreakdown[] _settlementBreakdowns;
+
         // 보스전만 있다. 일반전은 부활 횟수 제한과 전멸 실패가 없다
         private readonly ReviveBudget             _revives;
 
@@ -499,6 +503,22 @@ namespace Shinshi.Network
             return true;
         }
 
+        /// <summary> 종료 정산안이 만들어졌으면 이 참가자의 정산안과 정기 내역을 돌려준다 </summary>
+        public bool TryGetSettlementResult(int participantId, out SettlementGrant grant, out SettlementBreakdown breakdown)
+        {
+            int index = IndexOfParticipant(participantId);
+            if ((_settlementGrants == null) || (index < 0) || (index >= _settlementGrants.Length))
+            {
+                grant     = null;
+                breakdown = default;
+                return false;
+            }
+
+            grant     = _settlementGrants[index];
+            breakdown = _settlementBreakdowns[index];
+            return grant != null;
+        }
+
         /// <summary> 진행 중에 이 참가자만 먼저 떠났는지(포기, 유예 만료), 출정 종료로 닫힌 것은 아니다 </summary>
         public bool HasDeparture(int participantId)
         {
@@ -883,6 +903,15 @@ namespace Shinshi.Network
             SettlementGrant[] grants = SettlementRules.CreateGrants(participants, count, _ledger, bossMaterialId,
                 out SettlementSanityReport report);
             WarnSettlementCorrections(in report);
+
+            var breakdowns = new SettlementBreakdown[count];
+            for (int i = 0; i < count; ++i)
+            {
+                breakdowns[i] = SettlementRules.CalculateBreakdown(in participants[i], _ledger, i);
+            }
+
+            _settlementGrants     = grants;
+            _settlementBreakdowns = breakdowns;
             return grants;
         }
 

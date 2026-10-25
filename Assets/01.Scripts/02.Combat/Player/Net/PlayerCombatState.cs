@@ -87,7 +87,8 @@ namespace Shinshi.Combat
         [SyncVar] private double _attackStartedAt;
         [SyncVar] private double _locomotionStartedAt;
 
-        // 서버가 기절로 진행 중인 기본 공격 준비나 기술을 끊을 때마다 1씩 올린다(255 다음 0). 회피와 사망에는 각자 신호가 있어 올리지 않는다.
+        // 서버가 기절로 진행 중인 기본 공격 준비나 기술을 끊거나, 이동이 기본 공격 준비를 끊을 때마다 1씩 올린다(255 다음 0).
+        // 회피와 사망에는 각자 신호가 있어 올리지 않는다.
         // 클라이언트 표현은 값이 바뀌면 아직 나가지 않은 발사와 타격 재생을 버린다. 서버 판정은 이 값을 읽지 않는다
         [SyncVar] private byte _actionCancelSequence;
 

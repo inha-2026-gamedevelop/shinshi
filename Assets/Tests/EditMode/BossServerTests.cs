@@ -556,6 +556,20 @@ namespace Shinshi.Tests
             Assert.AreEqual(boss.Position, landed, "돌려주는 착지 위치가 몸체 위치와 같다");
         }
 
+        // 맵 밖 다른 높이에 선 플레이어 뒤로 순간이동해도 보스 높이가 그 높이로 굳으면 안 된다
+        [Test]
+        public void TryWarp_PointAtDifferentHeight_KeepsBossHeight()
+        {
+            BossServer boss = CreateBoss();
+            Assert.IsTrue(boss.Begin(0.0));
+            float height = boss.Position.y;
+
+            Assert.IsTrue(boss.TryWarp(new Vector3(5f, height + 6f, 3f), out Vector3 landed));
+
+            Assert.AreEqual(new Vector3(5f, height, 3f), boss.Position, "수평 위치만 옮기고 높이는 유지한다");
+            Assert.AreEqual(boss.Position, landed);
+        }
+
         [Test]
         public void TryWarp_ArenaEdge_AllowsBodyRadiusMarginOnly()
         {

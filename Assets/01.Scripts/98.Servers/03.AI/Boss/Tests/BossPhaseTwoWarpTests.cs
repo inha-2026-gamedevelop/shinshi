@@ -413,7 +413,7 @@ namespace Shinshi.Tests
             BossPatternCatalogSO catalog = LoadCatalog();
             float[][] expected =
             {
-                new[] { 10f, 12f }, new[] { 10f, 12f }, new[] { 12f, 14f }, new[] { 16f, 18f }, new[] { 22f, 18f }, new[] { 8f, 9f }
+                new[] { 10f, 12f }, new[] { 10f, 12f }, new[] { 12f, 14f }, new[] { 13f, 15f }, new[] { 22f, 18f }, new[] { 8f, 9f }
             };
             string[] ids =
             {

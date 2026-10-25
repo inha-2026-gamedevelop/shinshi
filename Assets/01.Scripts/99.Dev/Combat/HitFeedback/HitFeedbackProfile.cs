@@ -48,6 +48,10 @@ namespace Shinshi.Dev
         [SerializeField, Min(1f)]         private float _critPunchMultiplier  = 1.6f;   // 맞은 몸 찌그러짐 배율
         [SerializeField, Min(1f)]         private float _critKnockbackMultiplier = 1.5f; // 넉백 속도 배율
         [SerializeField, Min(0f)]         private float _critRingRadius       = 1.4f;   // m, 맞은 자리의 충격 링. 0이면 없다
+        [SerializeField, Range(0f, 1f)]   private float _critMotionBlurIntensity = 0.8f; // 화면 모션블러의 세기. 0이면 없다
+        [SerializeField, Min(0.01f)]      private float _critMotionBlurSeconds   = 0.45f;
+        [SerializeField, Range(0f, 0.5f)] private float _critZoomPunch    = 0.08f; // 화면이 당겨지는 비율. 0이면 없다
+        [SerializeField, Min(0.01f)]      private float _critZoomSeconds  = 0.3f;
 
         [Header("충격파 (반지름이 0이면 없음)")]
         [SerializeField, Min(0f)]         private float _shockwaveRadius = 0f;  // m
@@ -76,6 +80,10 @@ namespace Shinshi.Dev
         public float CritPunchMultiplier => _critPunchMultiplier;
         public float CritKnockbackMultiplier => _critKnockbackMultiplier;
         public float CritRingRadius      => _critRingRadius;
+        public float CritMotionBlurIntensity => _critMotionBlurIntensity;
+        public float CritMotionBlurSeconds   => _critMotionBlurSeconds;
+        public float CritZoomPunch       => _critZoomPunch;
+        public float CritZoomSeconds     => _critZoomSeconds;
         public float ShockwaveRadius    => _shockwaveRadius;
         public float ShockwaveSpeed     => _shockwaveSpeed;
         public float ZoomPunch          => _zoomPunch;

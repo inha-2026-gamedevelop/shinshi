@@ -72,6 +72,25 @@ namespace Shinshi.Dev
             _baseZoom = _camera.orthographic ? _camera.orthographicSize : _camera.fieldOfView;
         }
 
+        /// <summary> 줌을 되돌릴 기준(정사영 크기 또는 시야각)을 바꾸고 카메라에도 바로 반영한다. 줌이 진행 중이면 다음 프레임부터 새 기준으로 돌아간다 </summary>
+        public void SetBaseZoom(float value)
+        {
+            _baseZoom = value;
+            if (_camera == null)
+            {
+                return;
+            }
+
+            if (_camera.orthographic)
+            {
+                _camera.orthographicSize = value;
+            }
+            else
+            {
+                _camera.fieldOfView = value;
+            }
+        }
+
         /// <summary> 맞은 방향으로 확 밀렸다 돌아오는 흔들림을 delayFrames 프레임 뒤에 시작한다. 더 센 흔들림이 진행 중이면 무시한다 </summary>
         public void Kick(Vector3 direction, float strength, float seconds, int delayFrames)
         {

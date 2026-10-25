@@ -2,7 +2,7 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &1
 MonoBehaviour:
-  m_ObjectHideFlags: 0
+  m_ObjectHideFlags: 61
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
@@ -56,6 +56,18 @@ MonoBehaviour:
       group: 0
       enabled: 1
     - id: DuplicateLayersDetector
+      group: 0
+      enabled: 1
+    - id: DeletedBuildSceneDetector
+      group: 0
+      enabled: 1
+    - id: InvalidRendererBatchingDetector
+      group: 0
+      enabled: 1
+    - id: InvalidRendererMaterialsDetector
+      group: 0
+      enabled: 1
+    - id: InvalidSortingLayerDetector
       group: 0
       enabled: 1
     missingReferences: 0

@@ -61,7 +61,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(EBossDifficulty.Easy, easy.Difficulty);
             Assert.AreEqual(BossWolbaekHardDataKit.WOLBAEK_ID, easy.BossId);
             Assert.AreEqual(BossWolbaekHardDataKit.FIRST_PHASE, easy.Phase);
-            Assert.AreEqual(15f, easy.BaseWeight);
+            Assert.AreEqual(12f, easy.BaseWeight);
             Assert.AreEqual(EEnemyAttackShape.TargetArea, easy.Shape.Shape);
             Assert.AreEqual(EASY_RADIUS, easy.Shape.Range);
             Assert.AreEqual(2f, easy.TelegraphSeconds);

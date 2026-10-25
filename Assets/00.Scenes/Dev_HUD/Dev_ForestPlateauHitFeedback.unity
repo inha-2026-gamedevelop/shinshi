@@ -84923,7 +84923,6 @@ GameObject:
   - component: {fileID: 580735315}
   - component: {fileID: 580735314}
   - component: {fileID: 580735313}
-  - component: {fileID: 580735312}
   - component: {fileID: 580735311}
   - component: {fileID: 580735310}
   - component: {fileID: 580735316}
@@ -85017,15 +85016,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c93224849e0761488c9dfca3986abe7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackClassVisual
-  _playerClass: 5
+  _playerClass: 4
   _lookCatalog: {fileID: 11400000, guid: edb96c36076d96042b3d1007e911e606, type: 2}
   _animationProfile: {fileID: 11400000, guid: 835be026a8e785e43ac145d73bc93f39, type: 2}
-  _attackRange: 14
-  _attackHalfAngle: 6
-  _attackInterval: 0.95
+  _attackRange: 2.5
+  _attackHalfAngle: 60
+  _attackInterval: 0.85
   _heavyInterval: 1.1
-  _showSlash: 0
-  _singleTarget: 1
+  _showSlash: 1
+  _singleTarget: 0
 --- !u!114 &580735310
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85055,39 +85054,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea382e913d5cb7c48ac23310171cde38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Combat.LocalPlayerHudBinder
---- !u!114 &580735312
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 580735305}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 597e016ad5f918345afc4ef2918d327d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.ArcherVfxView
-  _combat: {fileID: 0}
-  _arrowPrefab: {fileID: 3150555367362999579, guid: 156154de3e00a734e8cc7ca5f509aa0b, type: 3}
-  _muzzlePrefab: {fileID: 6914791226151446844, guid: a38dc3650a052ca47859f451e7282470, type: 3}
-  _impactPrefab: {fileID: 1177811641028294398, guid: e650f6762cec93542bb7c6e81a5578b4, type: 3}
-  _iceArrowPrefab: {fileID: 2682960241579685217, guid: 07ad157073756e44bbd1ac8773f285c6, type: 3}
-  _iceMuzzlePrefab: {fileID: 7059153792879836106, guid: caa75c6ebc8c08248ab413113e01d368, type: 3}
-  _iceHitPrefab: {fileID: 903281530415090140, guid: 07bef5f5af043614ca2ca4ca7bbf0576, type: 3}
-  _windPrefab: {fileID: 3350526677311507371, guid: a9def26c4960a1043bea127c43a5d0f7, type: 3}
-  _windMuzzlePrefab: {fileID: 6065556663463694477, guid: ba662e0273739f54abd10123e0aa2b62, type: 3}
-  _windHitPrefab: {fileID: 2779136345013675175, guid: 337c0ac7572120540a5d4bb36a7fea1f, type: 3}
-  _fireArrowPrefab: {fileID: 3902253304092743793, guid: 9d3c1e071c50a6f47910babb85f1ff55, type: 3}
-  _fireMuzzlePrefab: {fileID: 3635461990612121688, guid: f443572d11cd54948ac5fbb52fe9c999, type: 3}
-  _fireHitPrefab: {fileID: 7384983536714631708, guid: b1d6ecd0f5cc96f4aa3cef59be0084f3, type: 3}
-  _chargePrefab: {fileID: 4863434451703385222, guid: 0845a9730a7a6b4419d3c10d0e216503, type: 3}
-  _burstPrefab: {fileID: 9209284992191710387, guid: 6c68251e9da51b14cb30719ad3c6fd13, type: 3}
-  _heavyArrowPrefab: {fileID: 3796135405742834663, guid: a3e800bdbdd048e48b992416bb679d70, type: 3}
-  _heavyMuzzlePrefab: {fileID: 2045524280272545470, guid: 4b5acf4e7ea6d0a45bdb30ffa052ce3c, type: 3}
-  _heavyHitPrefab: {fileID: 419832057966983470, guid: 76f042e038ade534bbab82296d7a59ad, type: 3}
-  _heavyIceColor: {r: 0.55, g: 0.85, b: 1, a: 1}
-  _heavyWindColor: {r: 1, g: 0.85, b: 0.5, a: 1}
-  _heavyFireColor: {r: 1, g: 0.45, b: 0.12, a: 1}
 --- !u!114 &580735313
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85100,7 +85066,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9718fd1409885e749af20685dab79db5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevHitFeedbackCombatHost
-  _playerClass: 5
+  _playerClass: 4
   _maxHealth: 100
   _invincible: 1
   _noCooldown: 1
@@ -85109,8 +85075,8 @@ MonoBehaviour:
   _aimAssistHalfAngle: 8
   _archerComboTrial: 1
   _burstShots: 3
-  _burstGap: 0.15
-  _burstAnimSpeedScale: 2
+  _burstGap: 0.12
+  _burstAnimSpeedScale: 2.5
   _skillWHeavyFeedback: 1
   _skillWBodyFreezeFrames: 4
   _skillWFreezeBudgetFrames: 12
@@ -85160,10 +85126,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 580735305}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 99dd6b56bf5b3274cb587d79b47fcc59, type: 3}
+  m_Script: {fileID: 11500000, guid: 180358ae6ff7c3b48b9d05515c5f343d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Shinshi.Dev.Server::Shinshi.Dev.DevArcherAttackGizmo
-  _showLabels: 1
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.MageknightVfxView
+  _combat: {fileID: 0}
+  _basicPrefab: {fileID: 223175418192766026, guid: 3bc2891cd978f6546b860b63c7c5f3c0, type: 3}
+  _shieldPrefab: {fileID: 4401836618647935956, guid: 7547c47df363fe34b9ec851f973a197c, type: 3}
+  _wavePrefab: {fileID: 4023686897370039170, guid: 876b03aa451a003449aa0271094656bd, type: 3}
+  _fieldPrefab: {fileID: 3181935672943181347, guid: 233c55ce434826444aead7c0a1b823fc, type: 3}
+  _jumpPrefab: {fileID: 5636803044710103467, guid: ea0aca9bba3e176478fb4937762b9857, type: 3}
+  _poolSizePerPrefab: 2
+  _maxPlaySeconds: 3
+  _maxLateSeconds: 0.25
+  _heightOffset: 0
+  _waveFreezeFrames: 4
+  _waveFreezeBudgetFrames: 12
+  _classifyMargin: 0.15
+  _jumpBeatSeconds: 0.1
+  _jumpReach: 6.3
 --- !u!1 &581650707
 GameObject:
   m_ObjectHideFlags: 0
@@ -116675,6 +116655,7 @@ MonoBehaviour:
   - {fileID: 1858744124}
   - {fileID: 716228123}
   - {fileID: 1730221110}
+  _abandonButton: {fileID: 0}
   _goldColor: {r: 0.922, g: 0.788, b: 0.478, a: 1}
   _pendingNodeColor: {r: 0.137, g: 0.165, b: 0.212, a: 1}
   _linkIdleColor: {r: 0.6, g: 0.64, b: 0.7, a: 0.35}
@@ -237557,13 +237538,9 @@ MonoBehaviour:
   _groundHeightTolerance: 1
   _spawnFirstZoneAtStart: 1
   _spawnOnPreviousClear: 1
-  _dummyPoints:
-  - {fileID: 1923632178}
-  - {fileID: 1548186882}
-  - {fileID: 1264741038}
-  - {fileID: 1727320535}
-  - {fileID: 1998273372}
-  - {fileID: 999658741}
+  _infiniteSpawn: 1
+  _infiniteRespawnDelay: 0.8
+  _dummyPoints: []
   _eliteZoneIndex: 5
   _eliteCount: 2
   _eliteHitsToDie: 1
@@ -237603,6 +237580,9 @@ MonoBehaviour:
   _useSparks: 1
   _useShockwave: 1
   _useScreenFx: 1
+  _useMotionBlur: 1
+  _blurFeature: {fileID: 4892596209770911660, guid: f288ae1f4751b564a96ac7587541f7a2, type: 2}
+  _blurMaterial: {fileID: 2100000, guid: 5cf5f78ad33ba974cba4b04526d93943, type: 2}
 --- !u!114 &1454901489
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -266823,6 +266803,7 @@ MonoBehaviour:
   _partyColor: {r: 0.45, g: 0.85, b: 1, a: 1}
   _bossColor: {r: 1, g: 0.35, b: 0.3, a: 1}
   _npcColor: {r: 1, g: 0.85, b: 0.4, a: 1}
+  _gimmickColor: {r: 0.78, g: 0.5, b: 1, a: 1}
 --- !u!1 &1664974204
 GameObject:
   m_ObjectHideFlags: 0
@@ -272059,6 +272040,53 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1703749260}
   m_CullTransparentMesh: 1
+--- !u!1 &1704206019
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1704206021}
+  - component: {fileID: 1704206020}
+  m_Layer: 0
+  m_Name: DevHitFeedbackTuningPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1704206020
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1704206019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1e31bab35cbfd34fa145972e0dccbf8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackTuningPanel
+  _director: {fileID: 1454901488}
+  _spawner: {fileID: 1454901486}
+  _player: {fileID: 580735306}
+--- !u!4 &1704206021
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1704206019}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1704350548
 GameObject:
   m_ObjectHideFlags: 0
@@ -339894,3 +339922,4 @@ SceneRoots:
   - {fileID: 157885807}
   - {fileID: 1140222160}
   - {fileID: 1419434677}
+  - {fileID: 1704206021}

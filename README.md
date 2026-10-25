@@ -59,7 +59,6 @@ Unity 메뉴 **Shinshi → Build**에서 만든다.
 | Windows Client (Development) | `Bootstrap`과 `Assets/00.Scenes/Release/`의 `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown`, `DungeonForest` | `Builds/windows-client/` |
 | Windows Server / Linux Server (Development) | `Bootstrap`, `Release/ShinshiTown`, `Release/DungeonForest` | `Builds/{대상}/` |
 | Perf → Windows Client (Development, Perf Log) | Windows Client와 같다. `SHINSHI_PERF_LOG`로 계측 로거(`99.Dev/DevPerfLogger.cs`)를 넣는다 | `Builds/windows-perf/` |
-| Dev Movement → Windows Client / Windows Server (Development) | `Assets/00.Scenes/Dev_PlayerMovement.unity` | 위와 같은 위치 (덮어씀) |
 
 명령줄 빌드:
 

@@ -33,6 +33,10 @@ MonoBehaviour:
   _critPunchMultiplier: 1.6
   _critKnockbackMultiplier: 1.5
   _critRingRadius: 1.4
+  _critMotionBlurIntensity: 0.8
+  _critMotionBlurSeconds: 0.45
+  _critZoomPunch: 0.08
+  _critZoomSeconds: 0.3
   _shockwaveRadius: 4
   _shockwaveSpeed: 14
   _zoomPunch: 0.015

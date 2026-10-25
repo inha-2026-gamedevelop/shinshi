@@ -98,7 +98,7 @@ MonoBehaviour:
     - 0.05
     _required: 1
     _moveTrail: 1
-  - _prefab: {fileID: 5249418338576633219, guid: 832286be7a104c14f8b6fc35d03b9d81, type: 3}
+  - _prefab: {fileID: 3350526677311507371, guid: a9def26c4960a1043bea127c43a5d0f7, type: 3}
     _kind: 0
     _visibleFrames: 4
     _sampleSeconds:
@@ -112,7 +112,7 @@ MonoBehaviour:
     - 0.05
     _required: 1
     _moveTrail: 0
-  - _prefab: {fileID: 3281536283908561520, guid: da3342042f8469049a2f8303635eb003, type: 3}
+  - _prefab: {fileID: 6065556663463694477, guid: ba662e0273739f54abd10123e0aa2b62, type: 3}
     _kind: 0
     _visibleFrames: 3
     _sampleSeconds:
@@ -180,6 +180,208 @@ MonoBehaviour:
     _visibleFrames: 5
     _sampleSeconds: []
     _required: 1
+    _moveTrail: 0
+  - _prefab: {fileID: 1177811641028294398, guid: e650f6762cec93542bb7c6e81a5578b4, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 2682960241579685217, guid: 07ad157073756e44bbd1ac8773f285c6, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 7059153792879836106, guid: caa75c6ebc8c08248ab413113e01d368, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 903281530415090140, guid: 07bef5f5af043614ca2ca4ca7bbf0576, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 2779136345013675175, guid: 337c0ac7572120540a5d4bb36a7fea1f, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 3902253304092743793, guid: 9d3c1e071c50a6f47910babb85f1ff55, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 3635461990612121688, guid: f443572d11cd54948ac5fbb52fe9c999, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 7384983536714631708, guid: b1d6ecd0f5cc96f4aa3cef59be0084f3, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 4863434451703385222, guid: 0845a9730a7a6b4419d3c10d0e216503, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 9209284992191710387, guid: 6c68251e9da51b14cb30719ad3c6fd13, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 3796135405742834663, guid: a3e800bdbdd048e48b992416bb679d70, type: 3}
+    _kind: 0
+    _visibleFrames: 4
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 1
+  - _prefab: {fileID: 2045524280272545470, guid: 4b5acf4e7ea6d0a45bdb30ffa052ce3c, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 419832057966983470, guid: 76f042e038ade534bbab82296d7a59ad, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 1238879637261762528, guid: 81d022a27375a5b4697abb622e601dd4, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.15
+    - 1.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 1754709177373251933, guid: ca109cf3c4825be4b8b9a9982c819829, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.25
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 3346786265420216650, guid: 27e72fed3f0b5c14babc12d0b81c0c98, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.3
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.25
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 1526207556128958582, guid: 173b4366ef4cc864eb43fbc9ee03c34c, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.15
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 2574637636729215457, guid: 8dc31ec6489595f4db14088a66b8bdfe, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 1.55
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 7755711838538548615, guid: 5676a61314787f947822701233c8669c, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 280056518885622441, guid: 93583d4c2dc1a5c4ea9fb96bae28b8b2, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.15
+    - 1.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 7004568119999708516, guid: 0a3357f39d15c7a409ecc42c799cb5ef, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.35
+    - 0.55
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 3818512665175147759, guid: 859531144da1a6942891dc37fa8fe52f, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.25
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 4982394884134382589, guid: 776757fdfbe999944a35c39f88ee452b, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 0.05
+    - 0.85
+    - 2.05
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 1081675910573788673, guid: a7510985e0174425b6f6da5ee270c0a2, type: 3}
+    _kind: 1
+    _visibleFrames: 4
+    _sampleSeconds:
+    - 0.1
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 1625813575972269697, guid: 98b463b290b8448bad0c4a7f269a936b, type: 3}
+    _kind: 1
+    _visibleFrames: 4
+    _sampleSeconds:
+    - 0.1
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 2502191398135602160, guid: 6b62291cb9cc48eaa6617aab266722db, type: 3}
+    _kind: 2
+    _visibleFrames: 3
+    _sampleSeconds: []
+    _required: 0
     _moveTrail: 0
   _frameBudgetMs: 8
   _totalTimeoutSeconds: 10

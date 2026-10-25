@@ -118,14 +118,14 @@ UI 샌드박스 HUD 상태 페이지에서 레벨과 `레벨 시작점부터 추
 | `InventoryCanvas` | Dev_ItemSlot | `I`, HUD 가방 버튼 | 성장·생활 스냅숏(`InventoryBinder`) |
 | `AuctionCanvas` | Dev_Auction | `Y` | `AuctionBinder` → `TownMarketClient`(0015, 구현됨·실행 미검증) |
 | `SortiePrepCanvas` | Dev_SortiePrep | `P`, 파티 방 입장 | 파티 방(`SortiePrepBinder`) |
-| `ResultCanvas` | Dev_Result | 출정 종료 | 출정 상태·정산 단계(`SortieResultBinder`) |
+| `ResultCanvas` | Dev_Result | 출정 종료 | 출정 상태·정산 단계·보상 내역(`SortieResultBinder`, `SortieRewardMessage`, 구현됨·실행 미검증) |
 | `PopupCanvas` | Dev_ToastMessage | 필요 시 | 거절·초대·기술 거절(`NetworkFeedbackBinder`) |
 | `TradeCanvas` | Dev_Trade | 거래 요청·초대 | `TradeBinder` → `TownTradeClient`(구현됨·실행 미검증) |
 | `DungeonProgressCanvas` | Dev_DungeonProcess | 닫힌 채 배치 | 웨이브 진행 연결 미완 |
 
 단축키는 `Assets/09.Data/UI/HotkeyConfig.asset`(`HotkeyConfigSO`)에 기록하고, 씬의 `UiBinding/HotkeyRouter`가 읽는다. 창은 `HotkeyRouter.Register`로 등록하고, `Esc`는 가장 최근에 연 창부터 닫는다. `CharacterSelect.unity`는 `ChaSelectCanvas`를 Dev_CharSelect 최신본으로 바꾸고 `CharacterSelectScreen` 참조를 같은 위치의 새 오브젝트로 옮겼다.
 
-아직 없는 서버 값: 아이템 표시 이름(번역 표 없음, 정의 ID 표시), 퀘스트, 출정 준비의 레벨·전투력, 결과 창의 보상 내역, 던전 웨이브 진행도. 검증은 EditMode 테스트와 오프라인 Play Mode 단축키 확인까지이며 실제 서버 접속 흐름은 미검증이다.
+아직 없는 서버 값: 아이템 표시 이름(번역 표 없음, 정의 ID 표시), 퀘스트, 출정 준비의 레벨·전투력, 던전 웨이브 진행도. 결과 창 보상 내역은 서버가 출정 종료 정산안을 만든 틱에 참가자별 `SortieRewardMessage`로 보내고 재접속 때 다시 보낸다(EditMode 검증, 실제 출정 미검증). 검증은 EditMode 테스트와 오프라인 Play Mode 단축키 확인까지이며 실제 서버 접속 흐름은 미검증이다.
 
 ## 캐릭터 선택 개발 씬 아이콘 (2026-10-07)
 

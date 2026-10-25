@@ -90,6 +90,39 @@ namespace Shinshi.Data
 
             public ComboStepSpec GetComboStep(int index) { return _comboSteps[index]; }
 
+            /// <summary> 이 단계에서 실제로 나가는 발수. 부채꼴 판정은 한 번, 투사체만 연발한다 </summary>
+            public int GetFiredShotCount(int step)
+            {
+                return ((_arcAngle <= 0f) && (_projectileSpeed > 0f)) ? Mathf.Clamp(GetShotCount(step), 1, MAX_BASIC_SHOTS) : 1;
+            }
+
+            /// <summary>
+            /// 기본 공격을 시작한 뒤 서버가 이동을 보관하는 시간. 마지막 발사까지만 막고 그 뒤 이동은 남은 동작을 끊는다.
+            /// 이동으로 준비가 끊기는 공격은 막지 않는다
+            /// </summary>
+            public float GetMoveHoldSeconds(int step)
+            {
+                if (_cancelOnMove)
+                {
+                    return 0f;
+                }
+
+                int shots = GetFiredShotCount(step);
+                return GetWindup(step) + ((shots - 1) * GetShotInterval(step));
+            }
+
+            /// <summary> 단계를 아직 모를 때 쓰는 가장 긴 이동 보관 시간 </summary>
+            public float GetMaxMoveHoldSeconds()
+            {
+                float max = 0f;
+                for (int step = 0; step < ComboStepCount; ++step)
+                {
+                    max = Mathf.Max(max, GetMoveHoldSeconds(step));
+                }
+
+                return max;
+            }
+
             private bool HasStep(int step)
             {
                 return HasCombo && (step >= 0) && (step < _comboSteps.Length);
