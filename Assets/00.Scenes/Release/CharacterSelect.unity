@@ -7266,6 +7266,15 @@ MonoBehaviour:
     _levelTexts:
     - {fileID: 1226682413}
     _errorText: {fileID: 0}
+    _classMarks:
+    - {fileID: 1779445352}
+    _classMarkSprites:
+    - {fileID: 21300000, guid: 7be325e7933b4d418d0dbee2f9a27ed0, type: 3}
+    - {fileID: 21300000, guid: 1d2092e25ddb4356ae0a4ad531a147c7, type: 3}
+    - {fileID: 21300000, guid: fbc1a82a971b404c9b3bac9cb9de6f36, type: 3}
+    - {fileID: 0}
+    - {fileID: 21300000, guid: f86c795aea007594a87cf816bf52016f, type: 3}
+    - {fileID: 21300000, guid: 65a0b072d1bd95f42b8c256909a1377c, type: 3}
     _preview: {fileID: 1008815019}
   - _filledObjects:
     - {fileID: 167738354}
@@ -7278,6 +7287,15 @@ MonoBehaviour:
     _levelTexts:
     - {fileID: 2011540855}
     _errorText: {fileID: 0}
+    _classMarks:
+    - {fileID: 1075985669}
+    _classMarkSprites:
+    - {fileID: 21300000, guid: 7be325e7933b4d418d0dbee2f9a27ed0, type: 3}
+    - {fileID: 21300000, guid: 1d2092e25ddb4356ae0a4ad531a147c7, type: 3}
+    - {fileID: 21300000, guid: fbc1a82a971b404c9b3bac9cb9de6f36, type: 3}
+    - {fileID: 0}
+    - {fileID: 21300000, guid: f86c795aea007594a87cf816bf52016f, type: 3}
+    - {fileID: 21300000, guid: 65a0b072d1bd95f42b8c256909a1377c, type: 3}
     _preview: {fileID: 2095217991}
   - _filledObjects:
     - {fileID: 1588490503}
@@ -7290,6 +7308,15 @@ MonoBehaviour:
     _levelTexts:
     - {fileID: 1010104162}
     _errorText: {fileID: 0}
+    _classMarks:
+    - {fileID: 6167665}
+    _classMarkSprites:
+    - {fileID: 21300000, guid: 7be325e7933b4d418d0dbee2f9a27ed0, type: 3}
+    - {fileID: 21300000, guid: 1d2092e25ddb4356ae0a4ad531a147c7, type: 3}
+    - {fileID: 21300000, guid: fbc1a82a971b404c9b3bac9cb9de6f36, type: 3}
+    - {fileID: 0}
+    - {fileID: 21300000, guid: f86c795aea007594a87cf816bf52016f, type: 3}
+    - {fileID: 21300000, guid: 65a0b072d1bd95f42b8c256909a1377c, type: 3}
     _preview: {fileID: 572728260}
   _startButton: {fileID: 1588331224}
   _createButton: {fileID: 1816616549}

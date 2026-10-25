@@ -24,6 +24,7 @@ namespace Shinshi.Network
         private const string EMPTY_NAME    = "빈 칸";
         private const string UNKNOWN_POWER = "전투력 -";
         private const string UNKNOWN_LEVEL = "Lv.-";
+        private const int    NO_CLASS_ID   = -1;
 
         // 캐릭터가 있을 때만 켜는 것(무대 모델, 무대 표시 글자 묶음)
         [SerializeField] private GameObject[] _filledObjects = null;
@@ -32,6 +33,10 @@ namespace Shinshi.Network
         [SerializeField] private TMP_Text[]   _powerTexts    = null;
         [SerializeField] private TMP_Text[]   _levelTexts    = null;
         [SerializeField] private TMP_Text     _errorText     = null;
+
+        [Header("직업 마크 (스프라이트는 직업 ID 순서)")]
+        [SerializeField] private UnityEngine.UI.Image[] _classMarks       = null;
+        [SerializeField] private Sprite[]               _classMarkSprites = null;
 
         // 칸마다 저장된 외형을 직접 조립해 보여 준다
         [SerializeField] private PlayerFemaleLookPreviewView _preview = null;
@@ -82,6 +87,7 @@ namespace Shinshi.Network
             // 빈 칸으로 다시 쓰이면 이전 캐릭터의 해석 실패 상태를 들고 있지 않는다. ShowLook이 다시 불리면 덮인다
             if (!filled)
             {
+                SetClassMark(NO_CLASS_ID);
                 _resolvedValid = true;
                 _lastError     = string.Empty;
                 SetText(new[] { _errorText }, string.Empty);
@@ -91,6 +97,7 @@ namespace Shinshi.Network
         /// <summary> classId로 TryResolve한 외형을 조립한다. 해석/조립 실패는 오류를 보이고 시작을 막는다 </summary>
         public void ShowLook(int classId, CharacterAppearance storedAppearance)
         {
+            SetClassMark(classId);
             if (_preview == null)
             {
                 return;
@@ -109,6 +116,26 @@ namespace Shinshi.Network
             _lastError     = string.Empty;
             SetText(new[] { _errorText }, string.Empty);
             _preview.Show(look);
+        }
+
+        private void SetClassMark(int classId)
+        {
+            if (_classMarks == null)
+            {
+                return;
+            }
+
+            Sprite sprite = ((_classMarkSprites != null) && (classId >= 0) && (classId < _classMarkSprites.Length))
+                ? _classMarkSprites[classId] : null;
+            for (int i = 0; i < _classMarks.Length; ++i)
+            {
+                UnityEngine.UI.Image mark = _classMarks[i];
+                if (mark != null)
+                {
+                    mark.sprite  = sprite;
+                    mark.enabled = sprite != null;
+                }
+            }
         }
 
         private static void SetActive(GameObject[] targets, bool active)
