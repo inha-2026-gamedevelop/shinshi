@@ -34,6 +34,9 @@ namespace Shinshi.UI
         private const string ORBIT_NAME   = "재설정 문양";
         private const string CRYSTAL_NAME = "재설정 결정 장식";
         private const string SLOT_ICON    = "부위 아이콘";
+        private const float  HALF         = 0.5f;
+
+        private static readonly Vector2 G_CenterPivot = new Vector2(HALF, HALF);
 
         public static void Apply(EquipmentOptionView view)
         {
@@ -153,13 +156,20 @@ namespace Shinshi.UI
             PlaceArt(kit, CRYSTAL_NAME, artX, artY);
         }
 
+        // 결정 그림은 세로로 길어 비율을 지키며 줄어드는데, 줄인 그림은 기준점 쪽에 붙는다.
+        // Place가 기준점을 왼쪽 위로 두므로 같은 상자에서 기준점만 가운데로 옮겨 문양 원 가운데에 맞춘다
         private static void PlaceArt(ModernDarkKit kit, string name, float x, float y)
         {
             Transform art = kit.Window.Find(name);
-            if (art != null)
+            if (art == null)
             {
-                kit.Place(art.gameObject, x, y, ART_SIZE, ART_SIZE);
+                return;
             }
+
+            kit.Place(art.gameObject, x, y, ART_SIZE, ART_SIZE);
+            var rect = (RectTransform)art;
+            rect.pivot             = G_CenterPivot;
+            rect.anchoredPosition += new Vector2(ART_SIZE * HALF, -ART_SIZE * HALF);
         }
 
         private static void LayoutLines(EquipmentOptionView view, ModernDarkKit kit)
