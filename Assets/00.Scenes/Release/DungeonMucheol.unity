@@ -20564,6 +20564,7 @@ MonoBehaviour:
   - {fileID: 1344898991}
   - {fileID: 445868526}
   _toast: {fileID: 1243664615}
+  _router: {fileID: 175147376}
 --- !u!1 &159407659
 GameObject:
   m_ObjectHideFlags: 0
@@ -23473,17 +23474,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 350214e384c933b4a8faef377281b9c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.ReleaseMenuActions
-  _router: {fileID: 175147376}
   _settings: {fileID: 944232825}
   _popups: {fileID: 159347790}
-  _alerts:
-  - {fileID: 1684001840}
-  - {fileID: 1686235822}
-  - {fileID: 2096254764}
-  _confirms:
-  - {fileID: 2022130151}
-  - {fileID: 1344898991}
-  - {fileID: 445868526}
 --- !u!114 &175147385
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -40834,6 +40826,7 @@ GameObject:
   - component: {fileID: 317615588}
   - component: {fileID: 317615587}
   - component: {fileID: 317615586}
+  - component: {fileID: 317615590}
   m_Layer: 0
   m_Name: ResultCanvas
   m_TagString: Untagged
@@ -40943,6 +40936,20 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 14
   m_TargetDisplay: 0
+--- !u!114 &317615590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 317615584}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c937e05f1c2c2ec4291d2ad7f97476cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.WindowEscapeButton
+  _router: {fileID: 175147376}
+  _closeButton: {fileID: 1832869039}
 --- !u!1 &320600433
 GameObject:
   m_ObjectHideFlags: 0
@@ -89675,6 +89682,7 @@ GameObject:
   - component: {fileID: 697501451}
   - component: {fileID: 697501450}
   - component: {fileID: 697501455}
+  - component: {fileID: 697501456}
   m_Layer: 5
   m_Name: TradeCanvas
   m_TagString: Untagged
@@ -89875,6 +89883,20 @@ MonoBehaviour:
   _acceptButton: {fileID: 71658762}
   _cancelButton: {fileID: 162274623}
   _cancelButtonLabel: {fileID: 1060016433}
+--- !u!114 &697501456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 697501449}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c937e05f1c2c2ec4291d2ad7f97476cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.WindowEscapeButton
+  _router: {fileID: 175147376}
+  _closeButton: {fileID: 793836875}
 --- !u!1 &698284473
 GameObject:
   m_ObjectHideFlags: 0
