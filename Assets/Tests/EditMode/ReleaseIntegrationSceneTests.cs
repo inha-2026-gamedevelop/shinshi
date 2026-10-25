@@ -85,7 +85,8 @@ namespace Shinshi.Tests
                 RequireReferences(One<PartyHudBinder>(scene), "_view");
                 RequireReferences(One<HudChatView>(scene), "_router", "_messages", "_input", "_channel");
                 RequireReferences(One<SortieResultBinder>(scene), "_window", "_view", "_popups");
-                RequireReferences(One<ReleaseMenuActions>(scene), "_router", "_settings", "_popups");
+                RequireReferences(One<ReleaseMenuActions>(scene), "_settings", "_popups");
+                RequireReferences(One<UiPopupHub>(scene), "_router");
                 RequireReferences(One<SettingsView>(scene), "_router");
                 RequireReferences(One<HudPlayerStatusView>(scene), "_hpFill", "_hpText", "_experience");
                 RequireReferences(One<NetworkFeedbackBinder>(scene), "_popups", "_skillReject");

@@ -235,6 +235,75 @@ namespace Shinshi.Tests
             Assert.That(panel.gameObject.activeSelf, Is.False);
         }
 
+        [TestCase(Constants.Scene.SHINSHI_TOWN)]
+        [TestCase(Constants.Scene.DUNGEON_FOREST)]
+        [TestCase(Constants.Scene.DUNGEON_MUCHEOL)]
+        [TestCase(Constants.Scene.DUNGEON_WOLBAEK)]
+        public void EscapeTargets_SavedScene_PopupsTradeAndResultCloseWithEscape(string sceneName)
+        {
+            Scene scene = EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + sceneName + Constants.Scene.EXTENSION,
+                OpenSceneMode.Additive);
+            try
+            {
+                HotkeyRouter router = InScene<HotkeyRouter>(scene);
+                Assert.That(Reference<HotkeyRouter>(InScene<UiPopupHub>(scene), "_router"), Is.EqualTo(router), "팝업");
+
+                TradeView trade = InScene<TradeView>(scene);
+                AssertEscape(trade.gameObject, router, Reference<Button>(trade, "_closeButton"), "거래창");
+
+                SortieResultBinder result = InScene<SortieResultBinder>(scene);
+                var view = Reference<ResultScreenView>(result, "_view");
+                AssertEscape(Reference<GameObject>(result, "_window"), router, Reference<Button>(view, "_returnButton"), "결과 화면");
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TownWindows_PlayMode_EscapeClosesPopupFirstThenEquipmentWindows()
+        {
+            EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + Constants.Scene.SHINSHI_TOWN
+                + Constants.Scene.EXTENSION, OpenSceneMode.Single);
+            yield return new EnterPlayMode();
+            ConfigurePlayTest();
+            yield return null;
+
+            Scene scene = SceneManager.GetActiveScene();
+            HudMenuDropdown menu = InScene<HudMenuDropdown>(scene);
+            HotkeyRouter router = InScene<HotkeyRouter>(scene);
+            Button menuButton = Reference<Button>(menu, "_menuButton");
+            RectTransform panel = Reference<RectTransform>(menu, "_panel");
+
+            // 창 위에 뜬 확인 팝업은 Esc가 취소로 먼저 닫고, 다음 Esc가 뒤의 창을 닫는다
+            HotkeyWindowToggle auction = Window(router, EHotkeyAction.AuctionHouse);
+            auction.SetOpen(true);
+            yield return null;
+            Assert.That(EscapeConfirm(InScene<UiPopupHub>(scene), router), Is.False, "Esc는 취소로 돌려준다");
+            Assert.That(auction.IsOpen, Is.True, "팝업을 닫는 Esc가 뒤의 창까지 닫으면 안 된다");
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(auction.IsOpen, Is.False);
+
+            EquipmentEnhanceView enhance = InScene<EquipmentEnhanceView>(scene);
+            ClickWithRaycast(menuButton);
+            yield return null;
+            ClickWithRaycast(MenuButton(panel, "장비 강화"));
+            yield return null;
+            Assert.That(enhance.gameObject.activeSelf, Is.True);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(enhance.gameObject.activeSelf, Is.False, "장비 강화");
+
+            HotkeyWindowToggle option = Window(router, EHotkeyAction.EquipmentOption);
+            ClickWithRaycast(menuButton);
+            yield return null;
+            ClickWithRaycast(MenuButton(panel, "옵션 재설정"));
+            yield return null;
+            Assert.That(option.IsOpen, Is.True);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(option.IsOpen, Is.False, "옵션 재설정");
+        }
+
         [UnityTest]
         public IEnumerator CharacterPreview_LocalCharacterChanges_ReplacesLookAndHidesOnDisconnect()
         {
@@ -389,6 +458,24 @@ namespace Shinshi.Tests
             }
             Assert.Fail(name + " 버튼이 없습니다.");
             return null;
+        }
+
+        // 람다가 잡는 지역 변수는 Play Mode 진입의 도메인 리로드에서 사라지므로 반복기 밖 함수에서 만든다
+        private static bool? EscapeConfirm(UiPopupHub hub, HotkeyRouter router)
+        {
+            bool? answer = null;
+            hub.ShowConfirm(EPopupSize.Small, "확인", accepted => answer = accepted);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            return answer;
+        }
+
+        private static void AssertEscape(GameObject window, HotkeyRouter router, Button closeButton, string label)
+        {
+            Assert.That(window, Is.Not.Null, label);
+            Assert.That(closeButton, Is.Not.Null, label);
+            Assert.That(window.TryGetComponent(out WindowEscapeButton escape), Is.True, label + "에 Esc 닫기가 없다");
+            Assert.That(Reference<HotkeyRouter>(escape, "_router"), Is.EqualTo(router), label);
+            Assert.That(Reference<Button>(escape, "_closeButton"), Is.EqualTo(closeButton), label);
         }
 
         private static HotkeyWindowToggle Window(HotkeyRouter router, EHotkeyAction action)
