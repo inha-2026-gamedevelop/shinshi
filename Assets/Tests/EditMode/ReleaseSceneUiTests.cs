@@ -87,6 +87,10 @@ namespace Shinshi.Tests
         [TestCase(Constants.Scene.LOBBY)]
         [TestCase(Constants.Scene.CHARACTER_SELECT)]
         [TestCase(Constants.Scene.CHARACTER_CREATE)]
+        [TestCase(Constants.Scene.SHINSHI_TOWN)]
+        [TestCase(Constants.Scene.DUNGEON_FOREST)]
+        [TestCase(Constants.Scene.DUNGEON_MUCHEOL)]
+        [TestCase(Constants.Scene.DUNGEON_WOLBAEK)]
         public void Selectables_InReleaseScene_ReceivePointerRaycasts(string sceneName)
         {
             string path  = Constants.Scene.RELEASE_FOLDER + sceneName + Constants.Scene.EXTENSION;
@@ -99,8 +103,8 @@ namespace Shinshi.Tests
                     foreach (Selectable selectable in root.GetComponentsInChildren<Selectable>(true))
                     {
                         Assert.IsNotNull(selectable.targetGraphic, $"{sceneName}/{selectable.name}: targetGraphic이 없다");
-                        Assert.IsTrue(selectable.targetGraphic.raycastTarget,
-                            $"{sceneName}/{selectable.name}: targetGraphic의 raycastTarget이 꺼져 클릭이 닿지 않는다");
+                        Assert.IsTrue(ReceivesRaycast(selectable),
+                            $"{sceneName}/{selectable.name}: 자기 아래 그래픽의 raycastTarget이 모두 꺼져 클릭이 닿지 않는다");
                         ++checkedCount;
                     }
                 }
@@ -165,7 +169,7 @@ namespace Shinshi.Tests
                 EHotkeyAction.CharacterInfo, EHotkeyAction.CharacterInfo };
             for (int i = 0; i < names.Length; ++i)
             {
-                menuButton.onClick.Invoke();
+                ClickWithRaycast(menuButton);
                 yield return null;
                 ClickWithRaycast(MenuButton(panel, names[i]));
                 yield return null;
@@ -185,7 +189,21 @@ namespace Shinshi.Tests
                 Assert.That(panel.gameObject.activeSelf, Is.False);
             }
 
-            menuButton.onClick.Invoke();
+            // 햄버거 옆 HUD 바로가기 버튼
+            Transform shortcuts = menuButton.transform.parent;
+            string[] shortcutNames = { "Inventory", "Profile" };
+            EHotkeyAction[] shortcutActions = { EHotkeyAction.Inventory, EHotkeyAction.CharacterInfo };
+            for (int i = 0; i < shortcutNames.Length; ++i)
+            {
+                ClickWithRaycast(shortcuts.Find(shortcutNames[i]).GetComponent<Button>());
+                yield return null;
+                HotkeyWindowToggle toggle = Window(router, shortcutActions[i]);
+                Assert.That(toggle.IsOpen, Is.True, shortcutNames[i]);
+                Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+                Assert.That(toggle.IsOpen, Is.False, shortcutNames[i]);
+            }
+
+            ClickWithRaycast(menuButton);
             yield return null;
             yield return CaptureIfRequested("release-town-menu.png");
             ClickWithRaycast(MenuButton(panel, "환경설정"));
@@ -197,7 +215,7 @@ namespace Shinshi.Tests
             Assert.That(settings.gameObject.activeSelf, Is.False);
             Assert.That(panel.gameObject.activeSelf, Is.False);
 
-            menuButton.onClick.Invoke();
+            ClickWithRaycast(menuButton);
             yield return null;
             ClickWithRaycast(MenuButton(panel, "게임 종료"));
             yield return null;
@@ -207,7 +225,7 @@ namespace Shinshi.Tests
             Reference<Button>(popup, "_cancelButton").onClick.Invoke();
             Assert.That(popup.gameObject.activeSelf, Is.False);
 
-            menuButton.onClick.Invoke();
+            ClickWithRaycast(menuButton);
             yield return null;
             ClickWithRaycast(MenuButton(panel, "캐릭터 선택"));
             yield return null;
@@ -303,6 +321,20 @@ namespace Shinshi.Tests
                 yield return null;
                 yield return null;
             }
+        }
+
+        // 클릭은 맞은 그래픽에서 위로 올라가며 처리기를 찾으므로, targetGraphic이 꺼져 있어도 자기 아래 다른 그래픽이 받으면 눌린다
+        private static bool ReceivesRaycast(Selectable selectable)
+        {
+            foreach (Graphic graphic in selectable.GetComponentsInChildren<Graphic>(true))
+            {
+                if ((graphic.raycastTarget) && (graphic.GetComponentInParent<Selectable>(true) == selectable))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void ClickWithRaycast(Button button)
