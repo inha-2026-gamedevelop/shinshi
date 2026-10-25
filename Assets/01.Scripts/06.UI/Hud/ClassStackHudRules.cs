@@ -73,6 +73,8 @@ namespace Shinshi.UI
         private static readonly Color G_WindColor    = new Color(0.55f, 1f, 0.65f, 1f);
         private static readonly Color G_FireColor    = new Color(1f, 0.55f, 0.35f, 1f);
         private static readonly Color G_FullColor    = new Color(1f, 0.85f, 0.3f, 1f);
+        // 속성 그림이 밝고 알록달록해 숫자는 색을 빼고 외곽선으로 읽히게 한다
+        private static readonly Color G_BadgeColor   = Color.white;
 
         /****************************************
         *                Methods
@@ -145,7 +147,25 @@ namespace Shinshi.UI
                 return G_FullColor;
             }
 
-            switch (display.Element)
+            return GetElementColor(display.Element);
+        }
+
+        /// <summary> 머리 위 속성 아이콘에 숫자로 겹치는지, 궁수만이고 0이면 숫자를 감춘다 </summary>
+        public static bool ShowsBadgeCount(in ClassStackDisplay display)
+        {
+            return (display.ShowsElement) && (display.Stacks > 0);
+        }
+
+        /// <summary> 아이콘 위 숫자색, 다 차면 금색이고 그 전에는 흰색이다 </summary>
+        public static Color GetBadgeColor(in ClassStackDisplay display)
+        {
+            return display.IsFull ? G_FullColor : G_BadgeColor;
+        }
+
+        /// <summary> 속성 고유색, 무속성이면 기본색이다 </summary>
+        public static Color GetElementColor(EArcherElement element)
+        {
+            switch (element)
             {
                 case EArcherElement.Ice:
                     return G_IceColor;
