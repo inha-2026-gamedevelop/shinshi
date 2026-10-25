@@ -89,14 +89,9 @@ namespace Shinshi.Editor
             {
                 actions = router.gameObject.AddComponent<ReleaseMenuActions>();
             }
-            Reference(actions, "_router", router);
             Reference(actions, "_settings", settings);
             Reference(actions, "_popups", popups);
-            var data = new SerializedObject(actions);
-            var popupData = new SerializedObject(popups);
-            CopyArray(popupData.FindProperty("_alerts"), data.FindProperty("_alerts"));
-            CopyArray(popupData.FindProperty("_confirms"), data.FindProperty("_confirms"));
-            data.ApplyModifiedPropertiesWithoutUndo();
+            Reference(popups, "_router", router);
 
             Button mail = Button(panel, "우편함");
             ((RectTransform)mail.transform).anchoredPosition = G_MailPosition;
@@ -289,15 +284,6 @@ namespace Shinshi.Editor
             var data = new SerializedObject(target);
             data.FindProperty(field).objectReferenceValue = value;
             data.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        private static void CopyArray(SerializedProperty source, SerializedProperty target)
-        {
-            target.arraySize = source.arraySize;
-            for (int i = 0; i < source.arraySize; ++i)
-            {
-                target.GetArrayElementAtIndex(i).objectReferenceValue = source.GetArrayElementAtIndex(i).objectReferenceValue;
-            }
         }
     }
 }

@@ -1,6 +1,3 @@
-// System
-using System;
-
 // Unity
 using UnityEngine;
 
@@ -10,7 +7,6 @@ using Mirror;
 // 프로젝트 내부
 using Shinshi.Common;
 using Shinshi.Network;
-using Shinshi.Systems;
 
 namespace Shinshi.UI
 {
@@ -21,30 +17,9 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
-        [SerializeField] private HotkeyRouter _router   = null;
+        // 팝업의 Esc 닫기는 UiPopupHub가 맡는다
         [SerializeField] private SettingsView _settings = null;
         [SerializeField] private UiPopupHub   _popups   = null;
-        [SerializeField] private AlertPopupView[]   _alerts   = null;
-        [SerializeField] private ConfirmPopupView[] _confirms = null;
-
-        private Func<bool> _onClose = null;
-
-        /****************************************
-        *              Unity Event
-        ****************************************/
-
-        protected override void OnViewAwake()
-        {
-            _onClose = ClosePopup;
-        }
-
-        private void OnDisable()
-        {
-            if (_router != null)
-            {
-                _router.Unregister(EHotkeyAction.CloseWindow, _onClose);
-            }
-        }
 
         /****************************************
         *                Methods
@@ -56,7 +31,6 @@ namespace Shinshi.UI
         public void OpenTradeHelp()
         {
             _popups.ShowAlert(EPopupSize.Small, "거래할 플레이어를 마우스 오른쪽 버튼으로 누른 뒤 거래하기를 선택하세요.");
-            RegisterPopup();
         }
 
         public void ConfirmCharacterSelect()
@@ -68,7 +42,6 @@ namespace Shinshi.UI
                     ReturnToCharacterSelect();
                 }
             });
-            RegisterPopup();
         }
 
         public void ConfirmQuit()
@@ -84,35 +57,6 @@ namespace Shinshi.UI
 #endif
                 }
             });
-            RegisterPopup();
-        }
-
-        private void RegisterPopup()
-        {
-            if (_onClose == null)
-            {
-                _onClose = ClosePopup;
-            }
-            _router.Register(EHotkeyAction.CloseWindow, _onClose);
-        }
-
-        private bool ClosePopup()
-        {
-            bool wasOpen = false;
-            foreach (AlertPopupView view in _alerts)
-            {
-                wasOpen |= (view != null) && (view.gameObject.activeInHierarchy);
-            }
-            foreach (ConfirmPopupView view in _confirms)
-            {
-                wasOpen |= (view != null) && (view.gameObject.activeInHierarchy);
-            }
-            if (wasOpen)
-            {
-                _popups.CloseAll();
-            }
-            _router.Unregister(EHotkeyAction.CloseWindow, _onClose);
-            return wasOpen;
         }
 
         private static void ReturnToCharacterSelect()
