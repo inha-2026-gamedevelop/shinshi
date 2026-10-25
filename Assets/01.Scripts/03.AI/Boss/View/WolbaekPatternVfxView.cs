@@ -134,6 +134,10 @@ namespace Shinshi.AI
 
         [SerializeField] private WolbaekBeamPlayer _grid;
 
+        [Header("1페이즈 P06 액체 손")]
+        [SerializeField] private WolbaekLiquidHandView _liquidHand; // 비어 있으면 기존 빔만 그린다
+        [SerializeField] private bool _liquidHandReplacesBeam = true; // 켜면 기존 빔(예고 포함)을 쓰지 않고 다른 패턴과 같은 기본 붉은 예고와 액체 손만 낸다
+
         [Header("서드파티 폭발과 장판")]
         [SerializeField] private GameObject _dashTelegraphEffect;
         [SerializeField] private GameObject _fanEffect;
@@ -165,6 +169,7 @@ namespace Shinshi.AI
         private BossGridBeamStart _gridStart;
         private double _gridEnd;
 
+        private int    _liquidHandCastId = NO_CAST;
         private int    _releaseCastId;
         private uint   _releasePlayback;
         private double _releaseEnd;
@@ -209,6 +214,7 @@ namespace Shinshi.AI
             Reparent(_sustain);
             Reparent(_star);
             Reparent(_grid);
+            Reparent(_liquidHand);
         }
 
         private void OnDestroy()
@@ -266,7 +272,8 @@ namespace Shinshi.AI
             _presenter.HasExternalBeamVisual       = _sustain != null;
             _presenter.HasExternalStarVisual       = _star != null;
 
-            if (_release != null)
+            // 액체 손만 쓰면 바닥 예고는 다른 패턴과 같은 기본 붉은 예고를 그대로 쓴다
+            if ((_release != null) && (!UsesLiquidHandOnly))
             {
                 _presenter.RegisterExternalVisual("wolbaek_p06");
                 _presenter.RegisterExternalVisual(BossPatternCatalogSO.WOLBAEK_HARD_P06_ID);
@@ -337,7 +344,15 @@ namespace Shinshi.AI
 
             if (IsBeamRelease(cast.PatternId))
             {
-                OnReleasePhase(cast, phase, now);
+                if (UsesLiquidHandOnly)
+                {
+                    OnLiquidHandPhase(cast, phase, now);
+                }
+                else
+                {
+                    OnReleasePhase(cast, phase, now);
+                }
+
                 return;
             }
 
@@ -386,6 +401,48 @@ namespace Shinshi.AI
             {
                 StopRelease();
             }
+
+            if (isCancelled && (_liquidHandCastId == castId) && (_liquidHand != null))
+            {
+                _liquidHand.Stop();
+                _liquidHandCastId = NO_CAST;
+            }
+        }
+
+        // 액체 손이 기존 빔을 대신하는가, 이때는 빔 플레이어를 부르지 않고 예고는 기본 붉은 지면 예고가 맡는다
+        private bool UsesLiquidHandOnly => (_liquidHand != null) && _liquidHandReplacesBeam;
+
+        // 예고 동안은 차징 소리만 내고, 서버 타격 확정 때 액체 손을 낸다. 재접속 복원 중의 확정은 이미 지난 타격이라 그리지 않는다
+        private void OnLiquidHandPhase(BossTelegraphCast cast, EBossTelegraphPhase phase, double now)
+        {
+            if (phase == EBossTelegraphPhase.Telegraph)
+            {
+                StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
+                return;
+            }
+
+            if ((phase != EBossTelegraphPhase.Execute) || IsRestoring)
+            {
+                return;
+            }
+
+            // 서버 확정 시각이 표시 시계보다 앞서 도착하면 그 시각까지 보류한다
+            if (_gate.MustDefer(cast.ExecuteServerTime, now))
+            {
+                _gate.Defer(cast.ExecuteServerTime, now, () => PlayLiquidHand(cast));
+                return;
+            }
+
+            PlayLiquidHand(cast);
+        }
+
+        private void PlayLiquidHand(BossTelegraphCast cast)
+        {
+            StopLoopSound(cast.CastId);
+            PlaySound(EWolbaekSound.WaveBeam, cast.Origin);
+
+            _liquidHandCastId = cast.CastId;
+            _liquidHand.Play(cast.Origin, cast.Direction, cast.Length, cast.Width);
         }
 
         // 재접속 스냅샷을 복원하는 알림 안인가
@@ -686,6 +743,11 @@ namespace Shinshi.AI
 
             StopLoopSound(cast.CastId);
             PlaySound(EWolbaekSound.WaveBeam, cast.Origin);
+
+            if (_liquidHand != null)
+            {
+                _liquidHand.Play(cast.Origin, cast.Direction, cast.Length, cast.Width);
+            }
         }
 
         private static WolbaekBeamShape BuildReleaseShape(BossTelegraphCast cast)
