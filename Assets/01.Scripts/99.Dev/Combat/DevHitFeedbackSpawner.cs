@@ -453,6 +453,7 @@ namespace Shinshi.Dev
             var monster = body.AddComponent<DevHitFeedbackMonster>();
             monster.Init(hitsToDie, _playerCollider, _chaseSpeed, animator, _attackWindup, _attackCooldown);
             monster.SetBloodFeedback(_director.Blood);
+            monster.SetLandingFeedback(_director.Landing);
             monster.SetLeash(GetAnchor(zone).position, _activityRadius);
             monster.Died += OnMonsterDied;
             _zoneOfMonster.Add(monster, zone);

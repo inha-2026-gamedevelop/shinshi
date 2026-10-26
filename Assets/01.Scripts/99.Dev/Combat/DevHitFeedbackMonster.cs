@@ -76,6 +76,9 @@ namespace Shinshi.Dev
 
         private DevHitFeedbackBlood _blood       = null;
         private Transform           _bloodAnchor = null;
+        private DevMonsterHitRecoil _recoil;
+        private DevCorpseLandingFx _landing;
+        private const string RECOIL_RESOURCE = "DevHitReactions/PF_DevMonsterHitRecoil";
 
         private HitReactor _reactor       = null;
         private Animator   _animator      = null;
@@ -230,6 +233,10 @@ namespace Shinshi.Dev
         {
             // 렉프레임 동안은 떨기만 하고 나머지 시간은 흐르지 않는다. 처치한 몬스터도 멈춤이 풀린 뒤에 날아간다
             bool isLagged = _reactor.Tick();
+            if (_recoil != null)
+            {
+                _recoil.SetLagged(isLagged);
+            }
             if (_animator != null)
             {
                 _animator.speed = isLagged ? 0f : 1f;
@@ -319,6 +326,17 @@ namespace Shinshi.Dev
             _reactor    = new HitReactor(gameObject, (animator != null) ? s_modelColor : s_normalColor, s_corpseColor);
 
             _reactor.Launched += IgnoreRagdollCollisions;
+            _reactor.Launched += BeginFallbackLanding;
+
+            if (animator != null)
+            {
+                GameObject recoilAsset = Resources.Load<GameObject>(RECOIL_RESOURCE);
+                if (recoilAsset != null)
+                {
+                    _recoil = Instantiate(recoilAsset, transform, false).GetComponent<DevMonsterHitRecoil>();
+                    _recoil.Init(animator);
+                }
+            }
 
             // 날아가는 시체가 플레이어를 밀거나 막지 않게 한다
             Collider ownCollider = GetComponent<Collider>();
@@ -373,6 +391,10 @@ namespace Shinshi.Dev
             // 허수아비는 맞는 반응만 보이고 죽지도 밀려나지도 않는다
             if (_isDummy)
             {
+                if (_recoil != null)
+                {
+                    _recoil.Play(away, isCritical);
+                }
                 _reactor.React(profile, isCritical);
                 return true;
             }
@@ -388,6 +410,10 @@ namespace Shinshi.Dev
             _attackHitTime = -1f; // 맞으면 휘두르던 공격은 끊긴다
             _knockVelocity = away * (profile.KnockbackSpeed * (isCritical ? profile.CritKnockbackMultiplier : 1f));
             _knockDrag     = profile.KnockbackDrag;
+            if (_recoil != null)
+            {
+                _recoil.Play(away, isCritical);
+            }
             _reactor.React(profile, isCritical);
             return true;
         }
@@ -399,6 +425,8 @@ namespace Shinshi.Dev
         }
 
         public void SetBloodFeedback(DevHitFeedbackBlood blood) { _blood = blood; }
+
+        public void SetLandingFeedback(DevCorpseLandingFx landing) { _landing = landing; }
 
         /// <summary> center에서 radius 안의 산 몬스터를 바깥쪽으로 민다. 가까울수록 세게 밀리고, 이미 더 세게 밀려나는 중이면 건드리지 않는다 </summary>
         public static void ShoveAround(Vector3 center, float radius, float speed)
@@ -424,6 +452,10 @@ namespace Shinshi.Dev
         private void StartDeath(Vector3 away, HitFeedbackProfile profile, bool isCritical)
         {
             _isDying = true;
+            if (_recoil != null)
+            {
+                _recoil.StopAndRestore();
+            }
             s_alive.Remove(this);
 
             // 모델이 있으면 릴리스 적과 같은 시체 연출(EnemyCorpse)로 날리고 이 몬스터는 바로 치운다.
@@ -480,7 +512,17 @@ namespace Shinshi.Dev
                 trail = model.gameObject.AddComponent<DevCorpseBloodTrail>();
                 trail.PrepareClone(_blood, _bloodAnchor, freezeFrames);
             }
+            DevCorpseLanding landing = null;
+            if (_landing != null)
+            {
+                landing = model.gameObject.AddComponent<DevCorpseLanding>();
+                landing.PrepareClone(_landing);
+            }
             bool launched = Shinshi.AI.EnemyCorpse.Launch(model.gameObject, away, flyMultiplier, freezeFrames);
+            if (landing != null)
+            {
+                Destroy(landing);
+            }
             if (trail != null)
             {
                 Destroy(trail);
@@ -511,6 +553,16 @@ namespace Shinshi.Dev
                     Physics.IgnoreCollision(ownCollider, other);
                 }
             }
+        }
+
+        private void BeginFallbackLanding()
+        {
+            if (_landing == null)
+            {
+                return;
+            }
+            DevCorpseLanding landing = gameObject.AddComponent<DevCorpseLanding>();
+            landing.BeginDirect(_landing, _reactor.HasRagdoll ? _reactor.RagdollColliders : GetComponents<Collider>());
         }
 
         // 래그돌 뼈가 켜지는 순간, 플레이어와 다른 몬스터(산 것, 이미 날아간 사체의 뼈)와는 부딪히지 않게 한다. 바닥과는 부딪힌다

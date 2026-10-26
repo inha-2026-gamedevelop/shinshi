@@ -16,6 +16,7 @@ namespace Shinshi.Dev
         ****************************************/
 
         private const string BLOOD_RESOURCE = "DevHitBlood/PF_DevHitBlood";
+        private const string LANDING_RESOURCE = "DevHitReactions/PF_DevCorpseLandingFx";
 
         [Header("프로필")]
         [SerializeField] private HitFeedbackProfile _lightProfile;
@@ -43,6 +44,7 @@ namespace Shinshi.Dev
         private DevHitFeedbackSparks    _sparks    = null;
         private DevHitFeedbackShockwave _shockwave = null;
         private DevHitFeedbackBlood     _blood     = null;
+        private DevCorpseLandingFx _landing = null;
 
         /****************************************
         *              Unity Event
@@ -81,6 +83,13 @@ namespace Shinshi.Dev
                 _blood.transform.SetParent(transform, false);
             }
 
+            GameObject landingPrefab = Resources.Load<GameObject>(LANDING_RESOURCE);
+            if (landingPrefab != null)
+            {
+                _landing = Instantiate(landingPrefab, transform, false).GetComponent<DevCorpseLandingFx>();
+                _landing.Init(Blood);
+            }
+
             _shockwave = new GameObject("DevShockwave").AddComponent<DevHitFeedbackShockwave>();
             _shockwave.transform.SetParent(transform, false);
 
@@ -113,6 +122,7 @@ namespace Shinshi.Dev
         public float CritZoomSeconds { get; set; }
 
         public DevHitFeedbackBlood Blood => _useBlood ? _blood : null;
+        public DevCorpseLandingFx Landing => _landing;
 
         /****************************************
         *                Methods

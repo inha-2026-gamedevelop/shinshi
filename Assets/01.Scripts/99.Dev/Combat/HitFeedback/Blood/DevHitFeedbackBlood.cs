@@ -445,6 +445,14 @@ namespace Shinshi.Dev
             return found;
         }
 
+        public void StampLandingBlood(Vector3 point, float size)
+        {
+            if ((isActiveAndEnabled) && (size > 0f))
+            {
+                PlaceStain(point, size);
+            }
+        }
+
         private void PlaceStain(Vector3 point, float size)
         {
             if (!TryGround(point + (Vector3.up * PROBE_UP), Vector3.down, PROBE_DISTANCE, out RaycastHit center))

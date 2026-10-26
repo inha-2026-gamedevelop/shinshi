@@ -236,6 +236,7 @@ namespace Shinshi.Dev
             _body.AddForce(((_launchAway * DEATH_FLY_SPEED) + (Vector3.up * DEATH_FLY_UP_SPEED)) * _launchPower,
                 ForceMode.VelocityChange);
             _body.AddTorque(Random.onUnitSphere * DEATH_SPIN_SPEED, ForceMode.VelocityChange);
+            Launched?.Invoke();
         }
 
         // 루트 충돌체를 끄고 뼈마다 물리를 켜서, 처치 방향으로 날려 팔다리가 따로 늘어지게 한다
