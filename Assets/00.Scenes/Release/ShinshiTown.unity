@@ -4998,6 +4998,7 @@ MonoBehaviour:
   _icon: {fileID: 175956650}
   _cooldown: {fileID: 54080440}
   _keyText: {fileID: 60332780}
+  _cooldownText: {fileID: 0}
 --- !u!114 &22992850
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67896,6 +67897,7 @@ MonoBehaviour:
   _icon: {fileID: 226793379}
   _cooldown: {fileID: 1664817880}
   _keyText: {fileID: 2031172356}
+  _cooldownText: {fileID: 0}
 --- !u!114 &363924556
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -84268,7 +84270,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -109550,6 +109552,7 @@ MonoBehaviour:
   _icon: {fileID: 204691235}
   _cooldown: {fileID: 301847061}
   _keyText: {fileID: 786913669}
+  _cooldownText: {fileID: 0}
 --- !u!114 &546367994
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112253,6 +112256,7 @@ Transform:
   - {fileID: 477968992}
   - {fileID: 1496286871}
   - {fileID: 188367635}
+  - {fileID: 1576947209}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &561848764
@@ -147359,7 +147363,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 733616642}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.46174863, y: -0, z: -0, w: 0.8870109}
+  m_LocalRotation: {x: 0.46174863, y: 0, z: 0, w: 0.8870109}
   m_LocalPosition: {x: 0, y: 9.727705, z: -48.316856}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -230492,6 +230496,7 @@ MonoBehaviour:
   _partyColor: {r: 0.45, g: 0.85, b: 1, a: 1}
   _bossColor: {r: 1, g: 0.35, b: 0.3, a: 1}
   _npcColor: {r: 1, g: 0.85, b: 0.4, a: 1}
+  _gimmickColor: {r: 0.78, g: 0.5, b: 1, a: 1}
 --- !u!1001 &1169168399
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -303258,6 +303263,55 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7318196849444079825, guid: 60f31bb426c77d544bf603e9eb9e4a68, type: 3}
   m_PrefabInstance: {fileID: 1576646830}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1576947208
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1576947209}
+  - component: {fileID: 1576947210}
+  m_Layer: 0
+  m_Name: GlobalVolume_ToonLook
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1576947209
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1576947208}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 561547890}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1576947210
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1576947208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 2
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: 9f3a2abdd7b4f0c4884ef96fa6235791, type: 2}
 --- !u!1 &1577733106
 GameObject:
   m_ObjectHideFlags: 0
@@ -373293,6 +373347,7 @@ MonoBehaviour:
   _icon: {fileID: 1066400915}
   _cooldown: {fileID: 1209576180}
   _keyText: {fileID: 1269883091}
+  _cooldownText: {fileID: 0}
 --- !u!114 &1951617091
 MonoBehaviour:
   m_ObjectHideFlags: 0
