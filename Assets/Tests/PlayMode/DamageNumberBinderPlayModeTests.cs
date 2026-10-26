@@ -260,7 +260,7 @@ namespace Shinshi.Tests
                 }
             }
             Assert.IsNotNull(body, "Mirror Weaver의 실제 RPC 수신 본문이 있어야 한다");
-            body.Invoke(input, new object[] { EPOCH, sequence, TARGET_ID, Vector3.zero, 100f, false, NetworkTime.time });
+            body.Invoke(input, new object[] { EPOCH, sequence, TARGET_ID, Vector3.zero, 100f, false, NetworkTime.time, false });
         }
     }
 }

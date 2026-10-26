@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+// 프로젝트 내부
+using Shinshi.Combat;
+
 namespace Shinshi.Dev
 {
     /// <summary> 구역마다 문 앞에 몬스터 한 무리를 한 번만 세우고, 구역별 처치 수를 세는 시험용 스포너 </summary>
@@ -18,6 +21,7 @@ namespace Shinshi.Dev
         ****************************************/
 
         private const string MONSTER_NAME = "DevMonster";
+        private const int DEV_DAMAGE_EPOCH = 1;
 
         // 몬스터 한 종의 모델. 컨트롤러는 이동 애니메이션(Moving)을 가진 것을 쓴다
         [System.Serializable]
@@ -50,6 +54,14 @@ namespace Shinshi.Dev
 
         [Header("서버 대역")]
         [SerializeField, Range(0f, 1f)] private float _devCritChance = 0.25f; // 서버가 정해 줄 치명타를 시험하려고 무작위로 내는 확률
+
+        [Header("개발용 숫자 표시 (처치에 필요한 타수와 별개)")]
+        [SerializeField, Min(1f)] private float _devNormalDamage = 100f;
+        [SerializeField, Min(1f)] private float _devHeavyDamage = 160f;
+        [SerializeField, Min(1f)] private float _devCriticalDamageMultiplier = 2f;
+
+        private DamageNumberPool _damageNumbers;
+        private uint _damageSequence;
 
         [Header("모델 (비우면 캡슐, 여러 종이면 섞어서 세운다)")]
         [SerializeField] private ModelEntry[] _models;
@@ -136,6 +148,7 @@ namespace Shinshi.Dev
             _playerCollider = _player.GetComponent<Collider>();
             _player.Hit  += OnPlayerHit;
             _player.Slam += OnPlayerSlam;
+            EnsureDamageNumbers();
         }
 
 #if UNITY_EDITOR
@@ -194,10 +207,23 @@ namespace Shinshi.Dev
 
         private void OnDisable()
         {
+            if (_damageNumbers != null)
+            {
+                _damageNumbers.Clear();
+                _damageNumbers.gameObject.SetActive(false);
+            }
             if (_player != null)
             {
                 _player.Hit  -= OnPlayerHit;
                 _player.Slam -= OnPlayerSlam;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_damageNumbers != null)
+            {
+                Destroy(_damageNumbers.gameObject);
             }
         }
 
@@ -242,6 +268,49 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
+        private void EnsureDamageNumbers()
+        {
+            Camera camera = _player.OutputCamera;
+            if (camera == null)
+            {
+                return;
+            }
+            if (_damageNumbers == null)
+            {
+                var root = new GameObject("DevHitDamageNumbers", typeof(RectTransform));
+                _damageNumbers = root.AddComponent<DamageNumberPool>();
+                _damageNumbers.Initialize(camera);
+            }
+            else
+            {
+                _damageNumbers.gameObject.SetActive(true);
+                if (!_damageNumbers.IsBoundToCamera(camera))
+                {
+                    _damageNumbers.BindCamera(camera);
+                }
+            }
+        }
+
+        private void ShowDamageNumber(Vector3 point, DevHitFeedbackMonster monster, bool isHeavy, bool isCritical)
+        {
+            EnsureDamageNumbers();
+            if (_damageNumbers == null)
+            {
+                return;
+            }
+            ++_damageSequence;
+            if (_damageSequence == 0)
+            {
+                ++_damageSequence;
+            }
+            float amount = (isHeavy ? _devHeavyDamage : _devNormalDamage)
+                * (isCritical ? _devCriticalDamageMultiplier : 1f);
+            int targetId = Mathf.Max(1, monster.GetInstanceID() & int.MaxValue);
+            var feedback = new DamageFeedback(DEV_DAMAGE_EPOCH, _damageSequence, targetId,
+                point, amount, isCritical, Time.timeAsDouble);
+            _damageNumbers.Show(in feedback);
+        }
+
         // 서버가 보내 줄 타격 결과를 대신해 플레이어가 맞힌 몬스터를 받는다. 맞힌 것으로 확정되면 프로필대로 타격감을 재생한다
         private void OnPlayerHit(Collider target, Vector3 hitPoint, bool isHeavy)
         {
@@ -267,6 +336,7 @@ namespace Shinshi.Dev
 
             hitPoint.y = target.bounds.center.y;
             _director.PlayHit(profile, hitPoint, direction, isKill, isCritical, _player, monster.LagTarget);
+            ShowDamageNumber(hitPoint, monster, isHeavy, isCritical);
         }
 
         // 강공격이 내려친 자리에서 링과 먼지를 터뜨리고, 반지름 안의 몬스터를 한꺼번에 밀어낸다
