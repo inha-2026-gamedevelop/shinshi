@@ -12,9 +12,9 @@ namespace Shinshi.AI
     /// <summary> 처치된 일반 적의 모델 복제본을 날려 보내고 쓰러뜨린 뒤 줄여 지우는 로컬 시체. 어떤 판정에도 참여하지 않는다 </summary>
     public sealed class EnemyCorpse : MonoBehaviour
     {
-        // 서버 개체는 처치 즉시 풀로 돌아가므로 시체는 모델 복제본을 월드 루트에 따로 둔다. 충돌체와 리지드바디가 없어
-        // 플레이어, 살아 있는 적, 길찾기, 공격 판정에 닿지 않고 NetworkTransform과도 겹치지 않는다.
-        // 현재 모델(Beast, Vendigo)에는 래그돌이 없어 포물선 비행, 회전, 바닥 튕김으로 대신 보인다.
+        // 서버 개체는 처치 즉시 풀로 돌아가므로 시체는 모델 복제본을 월드 루트에 따로 둔다.
+        // 네트워크 동기화와 공격 판정에서 분리하고, 시체 충돌은 플레이어와 살아 있는 적을 무시한다.
+        // 모델에 준비된 뼈 물리를 사용하고, 없으면 스킨 뼈에서 만든다. 뼈가 없는 모델은 포물선 비행으로 대신 보인다.
         // 동시에 남는 시체는 MAX_CORPSES개로 막고 넘으면 가장 오래된 것부터 재사용한다
 
         /****************************************
@@ -37,7 +37,6 @@ namespace Shinshi.AI
         private const float ASH_LINGER      = 1.5f; // 몸이 다 사라진 뒤 재 입자가 흩어지길 기다리는 시간
         private const float MIN_DIRECTION_SQR = 0.0001f;
         private const int   MAX_CORPSES     = 16;
-        private const int   MAX_RAGDOLLS    = 8;    // 동시에 물리가 도는 래그돌 수, 넘으면 덩어리로 날린다
         private const int   HIT_BUFFER      = 8;
 
         // 처치 순간의 타격감. 날아가기 전에 몸이 하얗게 번쩍이며 잠깐 굳어 떨고, 풀리면 날아간다
@@ -98,18 +97,14 @@ namespace Shinshi.AI
             {
                 _ragdollPending = false;
 
-                // 래그돌 동시 수에 여유가 있으면 뼈 물리로 날리고, 아니면 덩어리로 날린 그대로 둔다
-                // 뼈 물리가 미리 들어 있는 모델은 그 뼈를 그대로 날리고, 없는 모델은 뼈 계층에서 새로 만든다
-                if (CountRagdolls() < MAX_RAGDOLLS)
-                {
-                    _ragdolled = _prebuiltRagdoll
-                        ? EnemyCorpseRagdoll.Adopt(gameObject, _pendingAway, _flyMultiplier)
-                        : EnemyCorpseRagdoll.Build(gameObject, _pendingAway, _flyMultiplier);
+                // 사체 개수 상한과 래그돌의 자동 물리 종료로 비용을 제한한다. 새 사체를 경직된 자세로 대체하지 않는다
+                _ragdolled = _prebuiltRagdoll
+                    ? EnemyCorpseRagdoll.Adopt(gameObject, _pendingAway, _flyMultiplier)
+                    : EnemyCorpseRagdoll.Build(gameObject, _pendingAway, _flyMultiplier);
 
-                    if (_ragdolled)
-                    {
-                        IgnoreCharacters(GetComponentsInChildren<Collider>());
-                    }
+                if (_ragdolled)
+                {
+                    IgnoreCharacters(GetComponentsInChildren<Collider>());
                 }
             }
 
@@ -286,20 +281,6 @@ namespace Shinshi.AI
                     Physics.IgnoreCollision(bones[i], other);
                 }
             }
-        }
-
-        private static int CountRagdolls()
-        {
-            int count = 0;
-            for (int i = 0; i < s_active.Count; ++i)
-            {
-                if ((s_active[i] != null) && (s_active[i]._ragdolled))
-                {
-                    ++count;
-                }
-            }
-
-            return count;
         }
 
         /// <summary> 남아 있는 시체를 모두 지운다. 던전 종료와 씬 전환에서 부른다 </summary>
