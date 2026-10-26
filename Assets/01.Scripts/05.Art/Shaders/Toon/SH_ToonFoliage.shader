@@ -18,6 +18,7 @@ Shader "Shinshi/Environment/Toon Foliage"
         _ToonRampEdge("Toon Ramp Edge", Range(0.001, 0.3)) = 0.04
         _ToonAmbientKeep("Toon Ambient Keep", Range(0, 2)) = 1.2
         _ToonOcclusionKeep("Toon Occlusion Keep", Range(0, 1)) = 0.5
+        _ToonShadowFloor("Toon Shadow Floor", Range(0, 1)) = 0
         _ToonShadowColor("Toon Shadow Color", Color) = (0.78, 0.86, 1, 1)
         _ToonLitTint("Toon Lit Tint", Color) = (1, 1, 0.9, 1)
 
@@ -131,7 +132,7 @@ Shader "Shinshi/Environment/Toon Foliage"
 
             // -------------------------------------
             // Shader Stages
-            #pragma vertex ShinshiSoftFoliageLitPassVertex
+            #pragma vertex ShinshiToonFoliageLitPassVertex
             #pragma fragment ShinshiToonFoliageFragment
 
             // -------------------------------------
@@ -196,6 +197,7 @@ Shader "Shinshi/Environment/Toon Foliage"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitForwardPass.hlsl"
             #include "../OcclusionFade/ShinshiOcclusionFadeLitPasses.hlsl"
             #include "../OcclusionFade/ShinshiSoftFoliage.hlsl"
+            #include "ShinshiToonFoliageNormal.hlsl"
             #include "ShinshiToonFoliage.hlsl"
             ENDHLSL
         }
@@ -275,7 +277,7 @@ Shader "Shinshi/Environment/Toon Foliage"
 
             // -------------------------------------
             // Shader Stages
-            #pragma vertex ShinshiSoftFoliageGBufferVertex
+            #pragma vertex ShinshiToonFoliageGBufferVertex
             #pragma fragment ShinshiLitGBufferPassFragment
 
             // -------------------------------------
@@ -337,6 +339,7 @@ Shader "Shinshi/Environment/Toon Foliage"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitGBufferPass.hlsl"
             #include "../OcclusionFade/ShinshiOcclusionFadeLitPasses.hlsl"
             #include "../OcclusionFade/ShinshiSoftFoliage.hlsl"
+            #include "ShinshiToonFoliageNormal.hlsl"
             ENDHLSL
         }
 
@@ -382,6 +385,7 @@ Shader "Shinshi/Environment/Toon Foliage"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthOnlyPass.hlsl"
             #include "../OcclusionFade/ShinshiOcclusionFadeLitPasses.hlsl"
             #include "../OcclusionFade/ShinshiSoftFoliage.hlsl"
+            #include "ShinshiToonFoliageNormal.hlsl"
             ENDHLSL
         }
 
@@ -404,7 +408,7 @@ Shader "Shinshi/Environment/Toon Foliage"
 
             // -------------------------------------
             // Shader Stages
-            #pragma vertex ShinshiSoftFoliageDepthNormalsVertex
+            #pragma vertex ShinshiToonFoliageDepthNormalsVertex
             #pragma fragment ShinshiDepthNormalsFragment
 
             // -------------------------------------
@@ -434,6 +438,7 @@ Shader "Shinshi/Environment/Toon Foliage"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitDepthNormalsPass.hlsl"
             #include "../OcclusionFade/ShinshiOcclusionFadeLitPasses.hlsl"
             #include "../OcclusionFade/ShinshiSoftFoliage.hlsl"
+            #include "ShinshiToonFoliageNormal.hlsl"
             ENDHLSL
         }
 

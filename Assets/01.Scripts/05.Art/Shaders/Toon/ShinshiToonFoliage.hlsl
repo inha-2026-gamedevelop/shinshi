@@ -10,6 +10,7 @@ float  _ToonFlatMip;      // 평균 색을 읽을 밉 단계. 클수록 넓은 �
 float  _ToonRampEdge;     // 밝은 면과 그늘 경계의 부드러운 폭
 float  _ToonAmbientKeep;  // 환경광을 얼마나 남길지
 float  _ToonOcclusionKeep;// 수관 안쪽 AO를 얼마나 남길지
+float  _ToonShadowFloor;  // 그늘 밝기 하한(메인 광원 색 대비). 환경광이 약한 밤에도 그늘이 검게 꺼지지 않게 한다
 float4 _ToonShadowColor;  // 그늘 쪽에 곱하는 색
 float4 _ToonLitTint;      // 밝은 면에 곱하는 색
 
@@ -50,7 +51,7 @@ void ShinshiToonFoliageFragment(
     half  lit         = smoothstep(SHINSHI_TOON_FOLIAGE_THRESHOLD - edge, SHINSHI_TOON_FOLIAGE_THRESHOLD + edge, halfLambert * mainLight.shadowAttenuation);
 
     half3 ambient     = inputData.bakedGI * _ToonAmbientKeep;
-    half3 shadowLight = ambient * _ToonShadowColor.rgb;
+    half3 shadowLight = max(ambient, mainLight.color * _ToonShadowFloor) * _ToonShadowColor.rgb;
     half3 litLight    = ambient + mainLight.color * _ToonLitTint.rgb;
     half  occlusion   = lerp(1.0, surfaceData.occlusion, _ToonOcclusionKeep);
 
