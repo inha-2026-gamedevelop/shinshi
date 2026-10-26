@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Shinshi.Dev
 {
-    /// <summary> 치명타 블러와 줌 펀치, 몬스터 피격 떨림, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
+    /// <summary> 치명타 블러와 줌 펀치, 몬스터 피격 떨림, 다중 타격 흔들림, 히트스톱 상한, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
     public sealed class DevHitFeedbackTuningPanel : MonoBehaviour
     {
         // 값은 디렉터와 스포너의 메모리 값만 바꾸고 프로필 에셋은 쓰지 않는다. 화면 오른쪽의 빈 자리에 놓고 머리띠를 끌어 옮길 수 있다.
@@ -17,7 +17,7 @@ namespace Shinshi.Dev
         private const float REFERENCE_HEIGHT = 1080f;
         private const float MIN_SCALE        = 0.6f;
         private const float PANEL_WIDTH      = 300f;
-        private const float PANEL_HEIGHT     = 550f;
+        private const float PANEL_HEIGHT     = 550f; // 넘치는 항목은 스크롤한다
         private const float COLLAPSED_HEIGHT = 28f;
         private const float EDGE_MARGIN      = 24f;
         private const float START_Y          = 450f;
@@ -49,6 +49,12 @@ namespace Shinshi.Dev
         private const float ORTHO_SIZE_MIN   = 2f;
         private const float ORTHO_SIZE_MAX   = 30f;
         private const float VIBRATE_MAX      = 3f; // 떨림 배율
+        private const float SHAKE_BONUS_MAX  = 1f;
+        private const float SHAKE_SCALE_MIN  = 1f;
+        private const float SHAKE_SCALE_MAX  = 4f;
+        private const float LAG_BUDGET_MIN   = 1f;  // 프레임
+        private const float LAG_BUDGET_MAX   = 40f;
+        private const float LAG_REFILL_MAX   = 120f; // 프레임/초
 
         private const string FORMAT_ANGLE    = "0";
         private const string FORMAT_ONE      = "0.0";
@@ -63,6 +69,7 @@ namespace Shinshi.Dev
         private bool _isPlaced   = false;
         private bool _isFolded   = false;
         private float _scale     = 1f;
+        private Vector2 _scroll  = Vector2.zero;
 
         // 카메라 구도: 처음 값을 기억해 두었다가 되돌린다
         private bool  _hasCamera     = false;
@@ -141,6 +148,7 @@ namespace Shinshi.Dev
             if (!_isFolded)
             {
                 GUILayout.Space(TOP_GAP);
+                _scroll = GUILayout.BeginScrollView(_scroll);
 
                 GUILayout.Label("치명타 블러");
                 _director.CritBlurIntensity = DrawSlider("세기", _director.CritBlurIntensity, 0f, 1f, FORMAT_TWO);
@@ -161,11 +169,23 @@ namespace Shinshi.Dev
                 GUILayout.Label("몬스터 피격 떨림 (렉프레임 동안, 맞은 방향)");
                 _director.VibrateScale = DrawSlider("배율", _director.VibrateScale, 0f, VIBRATE_MAX, FORMAT_TWO);
 
+                GUILayout.Space(SECTION_GAP);
+                GUILayout.Label("다중 타격 흔들림 (같은 프레임)");
+                _director.MultiHitShakeBonus = DrawSlider("마리당 추가", _director.MultiHitShakeBonus, 0f, SHAKE_BONUS_MAX, FORMAT_TWO);
+                _director.MultiHitShakeMax   = DrawSlider("최대 배율", _director.MultiHitShakeMax, SHAKE_SCALE_MIN, SHAKE_SCALE_MAX, FORMAT_TWO);
+
+                GUILayout.Space(SECTION_GAP);
+                GUILayout.Label("내 캐릭터 히트스톱 상한");
+                _director.HitLagBudgetFrames    = Mathf.RoundToInt(DrawSlider("예산(프레임)", _director.HitLagBudgetFrames,
+                    LAG_BUDGET_MIN, LAG_BUDGET_MAX, FORMAT_ANGLE));
+                _director.HitLagRefillPerSecond = DrawSlider("회복(초당)", _director.HitLagRefillPerSecond, 0f, LAG_REFILL_MAX, FORMAT_ANGLE);
+
                 DrawCameraSection();
 
                 GUILayout.Space(SECTION_GAP);
                 _spawner.DevCritChance = DrawSlider("치명타 확률", _spawner.DevCritChance, 0f, 1f, FORMAT_TWO);
                 _spawner.InfiniteSpawn = GUILayout.Toggle(_spawner.InfiniteSpawn, " 몬스터 무한 소환");
+                GUILayout.EndScrollView();
             }
 
             GUI.DragWindow(new Rect(0f, 0f, _rect.width - HEADER_BUTTON_WIDTH - (HEADER_BUTTON_MARGIN * 2f), COLLAPSED_HEIGHT));
