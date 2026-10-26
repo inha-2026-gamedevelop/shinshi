@@ -555,6 +555,58 @@ MonoBehaviour:
     m_DampPosition: 0
     m_DampRotation: 0.5
     m_MaintainAim: 1
+--- !u!1 &715831994603453259
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2029996195359229427}
+  - component: {fileID: 4034306107413147984}
+  m_Layer: 0
+  m_Name: WolbaekBeamActiveView
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2029996195359229427
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 715831994603453259}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3934517869569767221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4034306107413147984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 715831994603453259}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b0fb35ae7ab15449b71c5fb6088085d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekBeamActiveView
+  _prefab: {fileID: 1444036918320906466, guid: c9ea50ef851e9ce418d046183fe6f5ca, type: 3}
+  _legacy: {fileID: 5153472707393830086}
+  _hideLegacy: 1
+  _hideLegacyGround: 1
+  _capacity: 8
+  _appearSeconds: 0.35
+  _fadeSeconds: 0.5
+  _widthScale: 1
 --- !u!1 &773596458761397541
 GameObject:
   m_ObjectHideFlags: 0
@@ -1237,6 +1289,10 @@ Transform:
   - {fileID: 504288607902876658}
   - {fileID: 6338154690592415942}
   - {fileID: 6565980714032043258}
+  - {fileID: 2029996195359229427}
+  - {fileID: 2499929498015508551}
+  - {fileID: 3348407005779082798}
+  - {fileID: 3940985196681470052}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2897417657671704511
@@ -1351,7 +1407,13 @@ MonoBehaviour:
   _sustain: {fileID: 5153472707393830086}
   _star: {fileID: 8190114912778715410}
   _grid: {fileID: 133383588302467392}
+  _releaseActive: {fileID: 4881672948808087224}
+  _sustainActive: {fileID: 4034306107413147984}
+  _starActive: {fileID: 6050278617229718697}
+  _gridActive: {fileID: 824954502627255333}
+  _defaultRedTelegraph: 1
   _liquidHand: {fileID: 5546305041705633880}
+  _liquidHandReplacesBeam: 1
   _dashTelegraphEffect: {fileID: 1754709177373251933, guid: ca109cf3c4825be4b8b9a9982c819829, type: 3}
   _fanEffect: {fileID: 3346786265420216650, guid: 27e72fed3f0b5c14babc12d0b81c0c98, type: 3}
   _circleEffect: {fileID: 5378708277684511202, guid: bbe2be2415049ad4ba0920dfa38c6687, type: 3}
@@ -3199,6 +3261,58 @@ Transform:
   - {fileID: 3805567625021620976}
   m_Father: {fileID: 208885186104052421}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &3281991469558245131
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3940985196681470052}
+  - component: {fileID: 824954502627255333}
+  m_Layer: 0
+  m_Name: WolbaekBeamActiveView_grid
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3940985196681470052
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3281991469558245131}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3934517869569767221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &824954502627255333
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3281991469558245131}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b0fb35ae7ab15449b71c5fb6088085d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekBeamActiveView
+  _prefab: {fileID: 1444036918320906466, guid: c9ea50ef851e9ce418d046183fe6f5ca, type: 3}
+  _legacy: {fileID: 133383588302467392}
+  _hideLegacy: 1
+  _hideLegacyGround: 1
+  _capacity: 12
+  _appearSeconds: 0.08
+  _fadeSeconds: 0.2
+  _widthScale: 1
 --- !u!1 &3309359689726032699
 GameObject:
   m_ObjectHideFlags: 0
@@ -3432,6 +3546,58 @@ Transform:
   m_Children: []
   m_Father: {fileID: 5112719952864679661}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &3755272180452775133
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2499929498015508551}
+  - component: {fileID: 4881672948808087224}
+  m_Layer: 0
+  m_Name: WolbaekBeamActiveView_release
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2499929498015508551
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3755272180452775133}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3934517869569767221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4881672948808087224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3755272180452775133}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b0fb35ae7ab15449b71c5fb6088085d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekBeamActiveView
+  _prefab: {fileID: 1444036918320906466, guid: c9ea50ef851e9ce418d046183fe6f5ca, type: 3}
+  _legacy: {fileID: 6956968949780649067}
+  _hideLegacy: 1
+  _hideLegacyGround: 1
+  _capacity: 2
+  _appearSeconds: 0.15
+  _fadeSeconds: 0.7
+  _widthScale: 1
 --- !u!1 &3838195550328018197
 GameObject:
   m_ObjectHideFlags: 0
@@ -6139,6 +6305,58 @@ MonoBehaviour:
     m_DampPosition: 0
     m_DampRotation: 0.5
     m_MaintainAim: 1
+--- !u!1 &7569568459375206686
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3348407005779082798}
+  - component: {fileID: 6050278617229718697}
+  m_Layer: 0
+  m_Name: WolbaekBeamActiveView_star
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3348407005779082798
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7569568459375206686}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3934517869569767221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6050278617229718697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7569568459375206686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b0fb35ae7ab15449b71c5fb6088085d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.WolbaekBeamActiveView
+  _prefab: {fileID: 1444036918320906466, guid: c9ea50ef851e9ce418d046183fe6f5ca, type: 3}
+  _legacy: {fileID: 8190114912778715410}
+  _hideLegacy: 1
+  _hideLegacyGround: 1
+  _capacity: 8
+  _appearSeconds: 0.2
+  _fadeSeconds: 0.3
+  _widthScale: 1
 --- !u!1 &7728900593250004370
 GameObject:
   m_ObjectHideFlags: 0

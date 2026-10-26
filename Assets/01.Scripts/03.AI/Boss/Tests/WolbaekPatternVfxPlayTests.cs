@@ -69,6 +69,13 @@ namespace Shinshi.Tests
             _view = _root.GetComponent<BossView>();
             _view.Bind(_presenter, () => _clock);
             _view.SetPose(Vector3.zero, Vector3.forward);
+
+            // 기존 재생기의 확정 타이밍은 내부 연출 렌더러 상태로 센다, 활성 빛 기둥이 그 메시를 숨기지 않게 끈다
+            foreach (WolbaekBeamActiveView active in _root.GetComponentsInChildren<WolbaekBeamActiveView>(true))
+            {
+                active.HidesLegacy = false;
+            }
+
             yield return null;
             yield return null;
         }
@@ -360,6 +367,42 @@ namespace Shinshi.Tests
             _presenter.ActivateBeam(42, _clock);
             yield return null;
             Assert.That(sustain.IsRunning, Is.True);
+        }
+
+        // 서버가 활성을 확정한 줄만 빛 기둥이 켜지고 끝 시각이 지나면 꺼진다
+        [UnityTest]
+        public IEnumerator ParallelBeams_ActiveLightPillar_ShowsOnlyBetweenConfirmAndEnd()
+        {
+            var shapeA = new BossBeamShape(Vector3.zero, 18f, Vector3.forward, -5f, 2f);
+            var shapeB = new BossBeamShape(Vector3.zero, 18f, Vector3.forward, 5f, 2f);
+            Assert.That(_presenter.BeginBeam(new BossBeamStart(BOSS_ID, 41, CAST_ID, shapeA, _clock, 1.5f, 4f, 1f)), Is.True);
+            Assert.That(_presenter.BeginBeam(new BossBeamStart(BOSS_ID, 42, CAST_ID, shapeB, _clock, 1.5f, 4f, 1f)), Is.True);
+            yield return null;
+            Assert.That(CountLightPillars(), Is.EqualTo(0), "예고 중에는 빛 기둥이 없다");
+
+            yield return SetClock(START_CLOCK + 1.5);
+            _presenter.ActivateBeam(41, _clock);
+            _presenter.ActivateBeam(42, _clock);
+            yield return null;
+            yield return SetClock(START_CLOCK + 2.5);
+            Assert.That(CountLightPillars(), Is.EqualTo(2), "확정된 두 줄이 빛 기둥으로 보인다");
+
+            yield return SetClock(START_CLOCK + 1.5 + 4.5);
+            Assert.That(CountLightPillars(), Is.EqualTo(0), "끝 시각 뒤에는 꺼진다");
+        }
+
+        private static int CountLightPillars()
+        {
+            int count = 0;
+            foreach (Transform t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            {
+                if ((t != null) && t.gameObject.activeInHierarchy && (t.name == "PF_VFX_WolbaekBeam(Clone)"))
+                {
+                    ++count;
+                }
+            }
+
+            return count;
         }
 
         // 회전 별 빔은 서버 예고 사건으로 5선 예고를 보이고 서버 활성 사건에서 확정해 그린다
