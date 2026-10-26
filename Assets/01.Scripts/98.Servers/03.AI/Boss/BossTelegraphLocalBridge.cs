@@ -18,6 +18,12 @@ namespace Shinshi.AI
         IBossStarTelegraphListener, IBossStarListener
     {
         /****************************************
+        *              Constants
+        ****************************************/
+
+        private const int NO_CAST_ID = 0; // 공용 시전 번호의 없음 값(CombatIds.NONE)과 같다
+
+        /****************************************
         *                Fields
         ****************************************/
 
@@ -25,6 +31,10 @@ namespace Shinshi.AI
         private readonly BossTestRigBody        _body;
         private readonly Func<double>           _clock;
         private readonly Func<string>           _activePatternId;
+        private readonly IBossEventMotionSink   _motion;
+
+        // 빔과 별은 줄마다 시작 알림이 와서, 모션을 계획한 마지막 시전 번호를 기억해 시전마다 한 번만 계획한다
+        private int _motionCastId = NO_CAST_ID;
 
         // 반월 연쇄 폭발의 고정한 중심과 반경, 구역 예고를 시작할 때 쓴다. 시전은 한 번에 하나다
         private Vector3 _sweepOrigin;
@@ -38,13 +48,15 @@ namespace Shinshi.AI
         ****************************************/
 
         // activePatternId는 지금 진행 중인 패턴 ID를 읽는 창구다. 원형 알림에는 패턴 ID가 없어서 1페이즈 P03과 2페이즈 P06을 가르는 데 쓴다
+        // motion은 패턴 번호가 예고에 없는 반월, 평행 빔, 회전 별의 몸 모션을 받는 쪽이다. 네트워크 연결부(BossNetworkViewBinder)와 같은 시점에 부른다
         public BossTelegraphLocalBridge(BossTelegraphPresenter presenter, BossTestRigBody body, Func<double> clock,
-            Func<string> activePatternId = null)
+            Func<string> activePatternId = null, IBossEventMotionSink motion = null)
         {
             _presenter       = presenter;
             _body            = body;
             _clock           = clock;
             _activePatternId = activePatternId;
+            _motion          = motion;
         }
 
         private int Boss => _body.CombatId;
@@ -293,6 +305,7 @@ namespace Shinshi.AI
             _body.Face(baseDirection);
             _sweepOrigin = origin;
             _sweepRadius = radius;
+            BeginEventMotion(castInstanceId, EWolbaekEventMotion.SweepHalfMoon, telegraphSeconds);
 
             _presenter.enabled = true;
             var start = new BossSweepStart(Boss, castInstanceId, origin, baseDirection, isRight, radius, totalArcAngle,
@@ -315,6 +328,7 @@ namespace Shinshi.AI
 
         void IBossSweepTelegraphListener.OnCancelled(int castInstanceId, EBossInterruptReason reason)
         {
+            EndEventMotion(castInstanceId);
             _presenter.CancelGroup(castInstanceId);
         }
 
@@ -327,6 +341,7 @@ namespace Shinshi.AI
         void IBossBeamTelegraphListener.OnTelegraphStarted(int castInstanceId, int beamId, in BossBeamShape shape,
             float telegraphSeconds, float durationSeconds, float tickInterval)
         {
+            BeginEventMotion(castInstanceId, EWolbaekEventMotion.BeamPair, telegraphSeconds);
             _presenter.enabled = true;
             var start = new BossBeamStart(Boss, beamId, castInstanceId, in shape, Now, telegraphSeconds, durationSeconds, tickInterval);
             _presenter.BeginBeam(in start);
@@ -334,6 +349,7 @@ namespace Shinshi.AI
 
         void IBossBeamTelegraphListener.OnCancelled(int castInstanceId, int beamId, EBossInterruptReason reason)
         {
+            EndEventMotion(castInstanceId);
             _presenter.CancelBeam(beamId);
         }
 
@@ -363,6 +379,7 @@ namespace Shinshi.AI
             float telegraphSeconds, float durationSeconds, float tickInterval)
         {
             _body.Face(shape.BaseDirection);
+            BeginEventMotion(castInstanceId, EWolbaekEventMotion.StarRotating, telegraphSeconds);
             _presenter.enabled = true;
             var start = new BossStarStart(Boss, starId, castInstanceId, in shape, Now, telegraphSeconds, durationSeconds, tickInterval);
             _presenter.BeginStar(in start);
@@ -370,6 +387,7 @@ namespace Shinshi.AI
 
         void IBossStarTelegraphListener.OnCancelled(int castInstanceId, int starId, EBossInterruptReason reason)
         {
+            EndEventMotion(castInstanceId);
             _presenter.CancelStar(starId);
         }
 
@@ -421,6 +439,27 @@ namespace Shinshi.AI
         {
             _lengths.Remove(castInstanceId);
             _presenter.Cancel(castInstanceId);
+        }
+
+        // 예고 시작 시각이 시전 시작 시각이다. 모션의 힘 순간은 첫 판정인 예고 끝에 맞춘다
+        private void BeginEventMotion(int castInstanceId, EWolbaekEventMotion kind, float strikeSeconds)
+        {
+            if ((_motion == null) || (castInstanceId == _motionCastId))
+            {
+                return;
+            }
+
+            _motionCastId = castInstanceId;
+            _motion.BeginEventMotion(castInstanceId, kind, Now, strikeSeconds);
+        }
+
+        // 다른 시전의 모션이면 받는 쪽이 무시한다. 한 시전의 빔과 별 취소가 여러 번 와도 첫 취소에서만 끝난다
+        private void EndEventMotion(int castInstanceId)
+        {
+            if (_motion != null)
+            {
+                _motion.EndEventMotion(castInstanceId, true);
+            }
         }
 
         private static EBossProjectileFate ToFate(EBossProjectileEnd end)

@@ -1549,7 +1549,8 @@ namespace Shinshi.AI
             _registry.Register(_body);
             BuildTalismanParticipants();
 
-            var bridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock, () => (_brain != null) ? _brain.ActivePatternId : null);
+            var bridge = new BossTelegraphLocalBridge(_presenter, _body, ReadClock, () => (_brain != null) ? _brain.ActivePatternId : null,
+                _bossView);
             _projectiles = new BossProjectileManager(_registry, _body, bridge);
             _areas       = new BossAreaManager(_registry, bridge);
             _beams       = new BossBeamManager(_registry, bridge);
