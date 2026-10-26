@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8821553265318217467
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2859312513507241750}
+  - component: {fileID: 8396841232874528745}
+  m_Layer: 0
+  m_Name: PF_DevHitSparks
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2859312513507241750
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8821553265318217467}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8396841232874528745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8821553265318217467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6d4c613637c42d479321f6b16b7c30e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackSparks
+  _streakLifetime: {x: 0.14, y: 0.3}
+  _streakSpeed: {x: 7, y: 18}
+  _streakWidth: {x: 0.2, y: 0.34}
+  _streakRatio: 0.65
+  _streakExposure: 6
+  _streakStretch: 0.05
+  _density: 2
+  _emberLifetime: {x: 0.28, y: 0.7}
+  _emberSpeed: {x: 2.5, y: 7.5}
+  _emberWidth: {x: 0.16, y: 0.3}
+  _emberExposure: 4
+  _emberGravity: 1.6
+  _spreadAngle: 68
+  _upBias: 0.65
+  _drag: 1.4
+  _criticalWidthScale: 1.15
+  _flashSeconds: 0.08
+  _flashSize: 1.1
+  _sparkMaterial: {fileID: 2100000, guid: 35d77982f33fef04d810a7bae839837c, type: 2}

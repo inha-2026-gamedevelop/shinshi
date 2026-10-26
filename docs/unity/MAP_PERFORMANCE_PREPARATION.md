@@ -111,6 +111,18 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 필수 목록은 **그 맵의 공격 예고, 현재 파티의 장착 스킬·동료, 등장할 적·보스의 효과**로 좁힌다. 실제 프리팹 GUID·재질·텍스처·셰이더 키워드·사용 품질·예상 동시 인스턴스·풀 반환 조건을 기록한다. `maxParticles` 합계를 실제 활성 입자나 필요 풀 수로 쓰지 않는다.
 
+### 개발 씬 준비 대상 - 피격 불똥
+
+2026-10-26 개발 씬용 재사용 프리팹을 등록했다. 사용 범위는 `Dev_ForestPlateauHitFeedback` 등 로컬 피격 표현 비교이며, 릴리즈 `HitSparkPool` 교체나 부팅 카탈로그 등록은 포함하지 않는다. 자세한 생성/API/Inspector 계약은 [피격 불똥 사용 안내](HIT_FEEDBACK_SPARKS_USAGE.md)에 있다.
+
+| 프리팹 | GUID | 준비할 표현 |
+|---|---|---|
+| `Assets/02.Prefab/VFX/HitFeedback/PF_DevHitSparks.prefab` | `06d0fdd7b5e054044bc868aeb98c8ede` | 백열 섬광, 잔불, 짧은 접점 플래시 |
+
+- AssetDatabase 재귀 의존성은 프리팹 포함 5개다. `DevHitFeedbackSparks.cs`, `Sparks/Materials/M_DevHitSparkSoftCore.mat`, `Sparks/Textures/T_DevHitSparkSoftCore.png`, 기존 `Shinshi/VFX/ReleaseParticle` 셰이더를 참조하며 재질의 활성 로컬 키워드는 비어 있다. `Sparks/`의 실제 루트는 `Assets/01.Scripts/99.Dev/Combat/HitFeedback/`이다.
+- `Awake`에서 12칸과 칸별 선/잔불/플래시 시스템 3개를 만든다. 12칸을 넘는 중첩은 가장 오래된 잔상을 지우고 재사용한다. `StopAll`과 비활성화 때 전부 비우며 최대 잔불 수명은 기본값 0.70초다. 이는 구현값이고 상주 메모리/동시 타격 예산 실측값은 아니다.
+- `Shinshi.Dev` 스크립트와 개발 씬의 자동 생성 경로를 릴리즈 전장 부팅에 섞지 않기 위해 `PrewarmCatalog.asset`에는 추가하지 않았다. 자동 생성 경로의 마스크와 재질은 런타임 생성물이므로 프리팹 의존성 조회가 그 경로의 GPU 준비까지 보증하지 않는다. 개발 씬의 실제 렌더는 확인했으나 Player/API별 셰이더/PSO 준비와 첫 타격 지연은 미검증이다. 일회성 효과이므로 ParticleSystem 루프용 `prewarm`은 켜지 않는다.
+
 ### 등록된 대상 — 궁수 강공격
 
 2026-10-22 릴리즈 `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab`에도 연결했다. 시험 호스트의 임시 추가 발사 대신 `PlayerServer`와 `PlayerConfigSO`의 정식 연발 설정을 사용한다. 부팅 카탈로그 소비·GPU 워밍업·실제 다인 전장 실행은 미검증이다. 속성색 변경은 기존 프리팹 복제본에만 적용하므로 별도 색상 프리팹이나 재질을 만들지 않는다.

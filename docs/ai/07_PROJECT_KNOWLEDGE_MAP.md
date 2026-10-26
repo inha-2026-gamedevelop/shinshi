@@ -99,5 +99,10 @@
 ## 무철 VFX 사용 안내
 
 [무철 VFX 01~07 사용 안내](../unity/MUCHEOL_VFX_USAGE.md): 프리팹 선택·Inspector 시간 설정·외부 예고/타격 확정 API와 보스 연결 시 확인할 항목. 아트 단독 검증과 BossNetworkViewBinder 연결의 실제 서버 수용을 구분한다.
+
+## 개발 씬 피격 불똥 사용 안내
+
+[개발 씬 피격 불똥](../unity/HIT_FEEDBACK_SPARKS_USAGE.md): `DevHitFeedbackSparks`와 `PF_DevHitSparks` 프리팹의 `Burst`/`StopAll` 계약, Inspector 기본값, 40m 시점 검증 범위. 개발 씬 전용이며 릴리즈 `HitSparkPool`과 부팅 카탈로그에는 적용하지 않았다.
+
 ### 거래 비동기 경합 반복 검증
 거래 fixture 반복은 2026-10-23 00:07:49~00:07:52 KST `trade-repeat-10.xml`에서 23개 테스트 전부 통과(exit 0)했다. `-repeat 10` 설정과 각 test-case의 `repeatIteration=10`을 확인했다. 로컬 RepeatCommand는 초기 실행 후 추가 반복을 수행하므로 이를 230건의 누적 단언 수로 환산하지 않는다. 테스트가 자동 변경한 폰트7개는 `final-test-font-changes.patch`에 보존 후 HEAD로 복원했고 최종 asset/unity/prefab/asmdef 차이는0이다.
