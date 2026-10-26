@@ -123,6 +123,18 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 - `Awake`에서 12칸과 칸별 선/잔불/플래시 시스템 3개를 만든다. 12칸을 넘는 중첩은 가장 오래된 잔상을 지우고 재사용한다. `StopAll`과 비활성화 때 전부 비우며 최대 잔불 수명은 기본값 0.70초다. 이는 구현값이고 상주 메모리/동시 타격 예산 실측값은 아니다.
 - `Shinshi.Dev` 스크립트와 개발 씬의 자동 생성 경로를 릴리즈 전장 부팅에 섞지 않기 위해 `PrewarmCatalog.asset`에는 추가하지 않았다. 자동 생성 경로의 마스크와 재질은 런타임 생성물이므로 프리팹 의존성 조회가 그 경로의 GPU 준비까지 보증하지 않는다. 개발 씬의 실제 렌더는 확인했으나 Player/API별 셰이더/PSO 준비와 첫 타격 지연은 미검증이다. 일회성 효과이므로 ParticleSystem 루프용 `prewarm`은 켜지 않는다.
 
+### 개발 씬 준비 대상 - 피격 혈흔
+
+2026-10-26 개발 씬의 타격/사체 출혈/바닥 얼룩 준비 대상으로 등록했다. [피격 혈흔 사용 안내](HIT_FEEDBACK_BLOOD_USAGE.md)의 API와 수명/정리 계약을 따른다.
+
+| 프리팹 | GUID | 준비할 표현 |
+|---|---|---|
+| `Assets/02.Prefab/VFX/HitFeedback/Resources/DevHitBlood/PF_DevHitBlood.prefab` | `d6c9f2c5ae7508b44ab2cec6913f10c1` | 타격 분사, 낙하 방울, 비행 사체 추적, 바닥 유지/페이드 |
+
+- AssetDatabase 재귀 의존성은 프리팹 포함 8개다. `99.Dev/Combat/HitFeedback/Blood/Resources/DevHitBlood/`의 재질 2개와 4x4 아틀라스 PNG를 사용한다. 분사는 `Universal Render Pipeline/Particles/Unlit`(`_SURFACE_TYPE_TRANSPARENT`, `_FLIPBOOKBLENDING_OFF`), 바닥은 `Universal Render Pipeline/Lit`(`_SURFACE_TYPE_TRANSPARENT`, `_ALPHAPREMULTIPLY_ON`)으로 조회됐다. 이는 확인된 로컬 키워드이며 모든 품질/조명/API variant를 뜻하지 않는다.
+- 개발 씬 Director가 Resources 프리팹을 직접 읽고 `Awake`에서 분사 12칸, 방울 256개 버퍼, 추적 32칸, 얼룩 160칸을 준비한다. 일회성 분사에 루프용 ParticleSystem `prewarm`을 켜지 않는다. 상한/재사용/StopAll/대상 소멸 계약은 사용 안내를 따른다.
+- 표현 전용 개발 프리팹이므로 릴리즈 `PrewarmCatalog.asset`에는 넣지 않았다. Resources 로드와 풀 준비는 실제 렌더/셰이더/PSO 워밍업 완료와 구분한다. PC/DX11 개발 씬 렌더와 수명/경사/정리는 확인했으나 Player/API별 첫 사용 지연과 상주 예산은 미검증이다.
+
 ### 등록된 대상 — 궁수 강공격
 
 2026-10-22 릴리즈 `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab`에도 연결했다. 시험 호스트의 임시 추가 발사 대신 `PlayerServer`와 `PlayerConfigSO`의 정식 연발 설정을 사용한다. 부팅 카탈로그 소비·GPU 워밍업·실제 다인 전장 실행은 미검증이다. 속성색 변경은 기존 프리팹 복제본에만 적용하므로 별도 색상 프리팹이나 재질을 만들지 않는다.

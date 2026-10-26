@@ -15,14 +15,20 @@ namespace Shinshi.Dev
         *                Fields
         ****************************************/
 
+        private const string BLOOD_RESOURCE = "DevHitBlood/PF_DevHitBlood";
+
         [Header("프로필")]
         [SerializeField] private HitFeedbackProfile _lightProfile;
         [SerializeField] private HitFeedbackProfile _heavyProfile;
+
+        [Header("혈흔 (비우면 개발용 Resources 프리팹)")]
+        [SerializeField] private DevHitFeedbackBlood _bloodPrefab;
 
         [Header("켜기")]
         [SerializeField] private bool _useHitLag      = true;
         [SerializeField] private bool _useCameraShake = true;
         [SerializeField] private bool _useSparks      = true;
+        [SerializeField] private bool _useBlood       = true;
         [SerializeField] private bool _useShockwave   = true;
         [SerializeField] private bool _useScreenFx    = true;
         [SerializeField] private bool _useMotionBlur  = true;
@@ -36,6 +42,7 @@ namespace Shinshi.Dev
         private HitFeedbackCamera       _camera    = null;
         private DevHitFeedbackSparks    _sparks    = null;
         private DevHitFeedbackShockwave _shockwave = null;
+        private DevHitFeedbackBlood     _blood     = null;
 
         /****************************************
         *              Unity Event
@@ -52,6 +59,27 @@ namespace Shinshi.Dev
 
             _sparks = new GameObject("DevSparks").AddComponent<DevHitFeedbackSparks>();
             _sparks.transform.SetParent(transform, false);
+
+            DevHitFeedbackBlood bloodPrefab = _bloodPrefab;
+            if (bloodPrefab == null)
+            {
+                GameObject bloodAsset = Resources.Load<GameObject>(BLOOD_RESOURCE);
+                if (bloodAsset != null)
+                {
+                    bloodAsset.TryGetComponent(out bloodPrefab);
+                }
+            }
+            if (bloodPrefab != null)
+            {
+                _blood = Instantiate(bloodPrefab, transform, false);
+                _blood.name = "DevBlood";
+            }
+            else
+            {
+                Debug.LogWarning("[HitFeedback] 혈흔 프리팹이 없어 코드 기본값을 사용한다", this);
+                _blood = new GameObject("DevBlood").AddComponent<DevHitFeedbackBlood>();
+                _blood.transform.SetParent(transform, false);
+            }
 
             _shockwave = new GameObject("DevShockwave").AddComponent<DevHitFeedbackShockwave>();
             _shockwave.transform.SetParent(transform, false);
@@ -83,6 +111,8 @@ namespace Shinshi.Dev
         public float CritZoomPunch { get; set; }
 
         public float CritZoomSeconds { get; set; }
+
+        public DevHitFeedbackBlood Blood => _useBlood ? _blood : null;
 
         /****************************************
         *                Methods
@@ -148,6 +178,11 @@ namespace Shinshi.Dev
                 int sparkCount = isKill ? profile.KillSparkCount : profile.SparkCount;
                 sparkCount     = isCritical ? Mathf.RoundToInt(sparkCount * profile.CritSparkMultiplier) : sparkCount;
                 _sparks.Burst(point, direction, sparkCount, isCritical);
+            }
+
+            if ((_useBlood) && (_blood != null))
+            {
+                _blood.Burst(point, direction, isKill, isCritical);
             }
 
             if ((_useScreenFx) && (isCritical))

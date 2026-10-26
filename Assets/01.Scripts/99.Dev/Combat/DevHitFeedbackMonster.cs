@@ -74,6 +74,9 @@ namespace Shinshi.Dev
         private const int GROUND_HIT_BUFFER = 8;
         private static readonly RaycastHit[] s_groundHits = new RaycastHit[GROUND_HIT_BUFFER];
 
+        private DevHitFeedbackBlood _blood       = null;
+        private Transform           _bloodAnchor = null;
+
         private HitReactor _reactor       = null;
         private Animator   _animator      = null;
         private Collider   _playerCollider = null;
@@ -303,6 +306,7 @@ namespace Shinshi.Dev
             _baseScale  = transform.localScale;
             _hitsLeft   = hitsToDie;
             _playerCollider = playerCollider;
+            _bloodAnchor    = (animator != null) ?DevCorpseBloodTrail.ResolveAnchor(animator.transform) : transform;
 
             // 캡슐 기본 반지름 0.5m에 루트 스케일이 곱해진 것이 몬스터의 실제 몸통 반지름이다
             float bodyRadius   = transform.localScale.x * HALF;
@@ -394,6 +398,8 @@ namespace Shinshi.Dev
             _isDummy = true;
         }
 
+        public void SetBloodFeedback(DevHitFeedbackBlood blood) { _blood = blood; }
+
         /// <summary> center에서 radius 안의 산 몬스터를 바깥쪽으로 민다. 가까울수록 세게 밀리고, 이미 더 세게 밀려나는 중이면 건드리지 않는다 </summary>
         public static void ShoveAround(Vector3 center, float radius, float speed)
         {
@@ -438,6 +444,10 @@ namespace Shinshi.Dev
             }
 
             _reactor.Die(away, profile);
+            if (_blood != null)
+            {
+                _blood.FollowCorpse(_bloodAnchor, freezeFrames);
+            }
             IgnoreOtherMonsters();
 
             // 사체가 남아 있는 동안에도 다음 무리가 나올 수 있게 죽는 순간 알린다
@@ -458,7 +468,24 @@ namespace Shinshi.Dev
                 model = model.parent;
             }
 
-            return (model.parent == transform) && (Shinshi.AI.EnemyCorpse.Launch(model.gameObject, away, flyMultiplier, freezeFrames));
+            if (model.parent != transform)
+            {
+                return false;
+            }
+
+            // 혈흔 연결만 모델과 함께 복제한다. 복제된 뼈 참조를 사용하므로 릴리즈 사체 코드를 바꾸지 않는다
+            DevCorpseBloodTrail trail = null;
+            if (_blood != null)
+            {
+                trail = model.gameObject.AddComponent<DevCorpseBloodTrail>();
+                trail.PrepareClone(_blood, _bloodAnchor, freezeFrames);
+            }
+            bool launched = Shinshi.AI.EnemyCorpse.Launch(model.gameObject, away, flyMultiplier, freezeFrames);
+            if (trail != null)
+            {
+                Destroy(trail);
+            }
+            return launched;
         }
 
         // 죽는 순간부터 다른 몬스터(산 것과 사체 모두)와는 부딪히지 않는다. 바닥과는 계속 부딪혀 튄다
