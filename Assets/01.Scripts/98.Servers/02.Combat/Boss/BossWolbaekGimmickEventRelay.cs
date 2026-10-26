@@ -20,7 +20,7 @@ namespace Shinshi.Combat
     // 리스너마다 알림 이름이 겹치는 것(OnCounterEnded 등)이 있어 모두 인터페이스별로 나눠 구현한다
     /// <summary> 월백 체력 기믹 알림을 복제 상태가 받는 월백 기믹 사건으로 바꾸는 중계 </summary>
     public sealed class BossWolbaekGimmickEventRelay : IWolbaekTalismanListener, IWolbaekColorWardListener,
-        IWolbaekFoxfireSealListener, IWolbaekFinalAreaListener
+        IWolbaekFoxfireSealListener, IWolbaekFinalAreaListener, IBossTargetHitListener
     {
         /****************************************
         *              Constants
@@ -56,6 +56,12 @@ namespace Shinshi.Combat
         public void BindSeal(WolbaekFoxfireSeal seal)
         {
             _seal = seal;
+        }
+
+        // 맞은 대상 알림은 사건 변환 없이 몸체로 넘긴다. 몸체가 월백 피격 사건으로 보낸다
+        void IBossTargetHitListener.OnTargetHit(int castInstanceId, int targetId, Vector3 position, Vector3 direction)
+        {
+            (_host as IBossTargetHitListener)?.OnTargetHit(castInstanceId, targetId, position, direction);
         }
 
         /// <summary> 워프 직전 출발 위치를 알린다, 몸체가 착지 원형 예고보다 먼저 부른다 </summary>

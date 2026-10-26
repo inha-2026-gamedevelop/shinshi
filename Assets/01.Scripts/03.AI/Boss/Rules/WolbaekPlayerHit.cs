@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Shinshi.AI
 {
     // 서버가 확정한 피격 한 건이다. 임팩트를 어디에 어느 쪽으로 터뜨릴지만 담고, 맞았는지는 클라이언트가 다시 판단하지 않는다
-    // 서버 패턴의 OnHit 알림은 아직 맞은 사람 수만 넘기므로, 복제 계층이 이 값을 채워 넘기는 계약은 후속 요청에서 정한다
+    // 서버 몸체가 맞은 대상 알림(IBossTargetHitListener)으로 채우고, 복제 상태(BossState)가 대상마다 Rpc 한 건으로 클라이언트에 넘긴다
     /// <summary> 월백 공격에 플레이어가 맞은 순간의 표시용 입력 </summary>
     public readonly struct WolbaekPlayerHit
     {

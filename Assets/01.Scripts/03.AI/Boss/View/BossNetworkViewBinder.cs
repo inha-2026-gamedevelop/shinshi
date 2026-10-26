@@ -16,7 +16,8 @@ namespace Shinshi.AI
     /// <summary> 서버 복제 상태와 공격 기록을 클라이언트 보스 표현에 연결한다 </summary>
     [DisallowMultipleComponent]
     public sealed class BossNetworkViewBinder : ClientView, IBossStateListener, IBossHardPhaseStateListener,
-        IBossMucheolStateListener, IBossWolbaekGimmickStateListener, IBossMucheolSealStateListener
+        IBossMucheolStateListener, IBossWolbaekGimmickStateListener, IBossMucheolSealStateListener,
+        IWolbaekPlayerHitEventListener
     {
         /****************************************
         *                Fields
@@ -1053,6 +1054,12 @@ namespace Shinshi.AI
         public bool OnPlayerHit(in WolbaekPlayerHit hit)
         {
             return (_hitImpact != null) && _hitImpact.Play(in hit, ReadServerTime());
+        }
+
+        // 복제 상태(BossState)가 받은 피격 Rpc를 넘기는 자리다. 재생 여부는 진단에만 쓰여 버린다
+        void IWolbaekPlayerHitEventListener.OnPlayerHit(in WolbaekPlayerHit hit)
+        {
+            OnPlayerHit(in hit);
         }
 
         public void OnStruck(int castId, double serverTime)

@@ -43,5 +43,26 @@ namespace Shinshi.Tests
         {
             Assert.IsFalse(WolbaekHitImpactRules.IsFresh(10.0, 11.0, 0.5f));
         }
+
+        // 복제는 yaw 하나로 줄이므로 되돌린 방향이 원래 수평 방향과 거의 같아야 한다
+        [Test]
+        public void EncodeDecode_HorizontalDirection_RoundTripsClosely()
+        {
+            Vector3 direction = new Vector3(-0.28f, 0f, 0.96f);
+
+            Assert.IsTrue(WolbaekHitImpactRules.TryEncodeDirection(direction, out ushort yaw));
+            Vector3 decoded = WolbaekHitImpactRules.DecodeDirection(true, yaw);
+
+            Assert.That(Vector3.Angle(direction, decoded), Is.LessThan(0.1f));
+            Assert.AreEqual(0f, decoded.y, 0.0001f);
+        }
+
+        [Test]
+        public void EncodeDecode_ZeroOrVerticalDirection_StaysWithoutDirection()
+        {
+            Assert.IsFalse(WolbaekHitImpactRules.TryEncodeDirection(Vector3.zero, out ushort zeroYaw));
+            Assert.IsFalse(WolbaekHitImpactRules.TryEncodeDirection(Vector3.up, out _));
+            Assert.AreEqual(Vector3.zero, WolbaekHitImpactRules.DecodeDirection(false, zeroYaw));
+        }
     }
 }

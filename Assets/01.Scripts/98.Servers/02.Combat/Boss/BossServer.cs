@@ -61,7 +61,7 @@ namespace Shinshi.Combat
         IBossFanTelegraphListener, IBossCircleTelegraphListener, IBossLineTelegraphListener, IBossDashTelegraphListener,
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
         IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
-        IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp, IBossEventRelayHost,
+        IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp, IBossEventRelayHost, IBossTargetHitListener,
         IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget
     {
         /****************************************
@@ -84,6 +84,9 @@ namespace Shinshi.Combat
 
         // 결계 전개를 쓰는 보스, 결계 설정이 카탈로그로 옮겨지면 정의 값으로 고른다
         private const string BARRIER_BOSS_ID = "boss_wolbaek";
+
+        // 피격 임팩트 표현은 월백에만 있어 다른 보스의 피격은 보내지 않는다
+        private const string HIT_IMPACT_BOSS_ID = "boss_wolbaek";
 
         private readonly string                _bossId;
         private readonly int                   _combatId;
@@ -139,6 +142,7 @@ namespace Shinshi.Combat
         private bool                  _defeatReported    = false;
         private IBossEventListener    _events;
         private IBossMucheolSealEventListener _sealEvents;           // 수신처가 봉인 계약도 구현할 때만 있다
+        private IWolbaekPlayerHitEventListener _hitEvents;           // 월백이고 수신처가 피격 계약도 구현할 때만 있다
         private EMucheolSealState             _sealReportedState = EMucheolSealState.Dormant;
         private double                _tickTime;
 
@@ -426,6 +430,7 @@ namespace Shinshi.Combat
             _hardRelay.SetListener(listener as IBossHardPhaseEventListener);
             _wolbaekRelay.SetListener(listener as IBossWolbaekGimmickEventListener);
             _sealEvents = listener as IBossMucheolSealEventListener;
+            _hitEvents  = (_bossId == HIT_IMPACT_BOSS_ID) ? listener as IWolbaekPlayerHitEventListener : null;
         }
 
         // 두뇌가 기믹을 전투 시작 전에만 받으므로 Begin 전에만 받는다. 두 번째 호출은 첫 호출이 실패했어도 거절한다.
@@ -1417,6 +1422,18 @@ namespace Shinshi.Combat
         void IBossEventRelayHost.Face(Vector3 direction)
         {
             Face(direction);
+        }
+
+        // 패턴, 지속물 관리자, 중계를 거친 하드 패턴과 기믹이 피해 요청을 낸 대상마다 부른다. 시각은 이번 틱 시각이다
+        void IBossTargetHitListener.OnTargetHit(int castInstanceId, int targetId, Vector3 position, Vector3 direction)
+        {
+            if (_hitEvents == null)
+            {
+                return;
+            }
+
+            var hit = new WolbaekPlayerHit(targetId, _brain.ActivePatternId, position, direction, _tickTime);
+            _hitEvents.OnPlayerHit(in hit);
         }
 
         // 발동 알림(OnCastExecuted)은 _castId만 보므로 이 시전에는 나가지 않는다. 타격 확정은 중계가 타별 사건으로 보낸다
