@@ -28,6 +28,16 @@ namespace Shinshi.Dev
         private const float REMOTE_EFFECT_SCALE   = 0.4f;  // 남의 공격일 때 몬스터 떨림과 불똥 개수 배율
         private const int   MIN_REMOTE_SPARKS     = 1;     // 줄여도 맞았다는 표시는 남긴다
 
+        // 임팩트 프레임. 이 씬은 몬스터가 대부분 한 대에 죽으므로 처치마다 내면 화면이 계속 깜빡인다.
+        // 치명타와 한 프레임 다중 처치에만 내고 재사용 간격을 둔다
+        // 흑백 반전은 화면 밝기가 한 번에 뒤집혀 눈이 아프다는 피드백으로 기본을 부드러운 방식(회색으로 어둡게, 서서히 풀림)으로 둔다
+        private const int   IMPACT_FRAMES         = 6;
+        private const float IMPACT_DIM            = 0.6f;  // 부드러운 방식에서 배경 회색의 밝기 배율
+        private const float IMPACT_THRESHOLD      = 0.12f; // 강한 방식에서 배경을 흑백으로 가르는 밝기. 숲 고원은 어두워 낮게 둔다
+        private const float IMPACT_HOT_THRESHOLD  = 0.5f;  // 이보다 밝은 곳(번쩍인 몸, 불똥)은 색을 남기거나 강조색
+        private const int   IMPACT_MULTI_KILLS    = 3;     // 한 프레임에 이만큼 처치하면 낸다
+        private const float IMPACT_COOLDOWN       = 0.4f;  // 초
+
         [Header("프로필")]
         [SerializeField] private HitFeedbackProfile _lightProfile;
         [SerializeField] private HitFeedbackProfile _heavyProfile;
@@ -64,6 +74,9 @@ namespace Shinshi.Dev
         private int     _shakeHits         = 0;
         private int     _lagFrame          = -1;
         private int     _lagGranted        = 0;   // 이번 프레임에 공격자에게 준 렉프레임
+        private int     _killFrame         = -1;
+        private int     _killsThisFrame    = 0;
+        private float   _nextImpactTime    = 0f;  // Time.time 기준
 
         /****************************************
         *              Unity Event
@@ -158,6 +171,33 @@ namespace Shinshi.Dev
         /// <summary> 남의 공격일 때 맞은 몬스터의 떨림과 불똥 개수에 곱하는 배율 </summary>
         public float RemoteEffectScale { get; set; } = REMOTE_EFFECT_SCALE;
 
+        /// <summary> 내 치명타와 한 프레임 다중 처치에 임팩트 프레임을 낼지 </summary>
+        public bool UseImpactFrame { get; set; } = true;
+
+        /// <summary> 임팩트 프레임으로 그리는 프레임 수. 부드러운 방식은 이 동안 서서히 풀린다 </summary>
+        public int ImpactFrames { get; set; } = IMPACT_FRAMES;
+
+        /// <summary> 참이면 부드러운 방식(배경을 어두운 회색으로, 밝은 곳만 색을 남김), 거짓이면 흑백과 강조색의 강한 방식 </summary>
+        public bool ImpactSoft { get; set; } = true;
+
+        /// <summary> 부드러운 방식에서 배경 회색의 밝기 배율(0에서 1) </summary>
+        public float ImpactDim { get; set; } = IMPACT_DIM;
+
+        /// <summary> 강한 방식에서 배경을 흑백으로 나누는 밝기 기준(0에서 1) </summary>
+        public float ImpactThreshold { get; set; } = IMPACT_THRESHOLD;
+
+        /// <summary> 이보다 밝은 곳은 부드러운 방식에서 원래 색을 남기고 강한 방식에서 강조색으로 칠한다 </summary>
+        public float ImpactHotThreshold { get; set; } = IMPACT_HOT_THRESHOLD;
+
+        /// <summary> 강한 방식에서 참이면 밝은 곳이 검게, 어두운 곳이 희게 된다 </summary>
+        public bool ImpactInvert { get; set; } = true;
+
+        /// <summary> 한 프레임에 이만큼 처치하면 치명타가 아니어도 임팩트 프레임을 낸다 </summary>
+        public int ImpactMultiKills { get; set; } = IMPACT_MULTI_KILLS;
+
+        /// <summary> 임팩트 프레임 사이의 최소 간격(초) </summary>
+        public float ImpactCooldown { get; set; } = IMPACT_COOLDOWN;
+
         public DevHitFeedbackBlood Blood => _useBlood ? _blood : null;
         public DevCorpseLandingFx Landing => _landing;
 
@@ -165,9 +205,13 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        /// <summary> 맞히지 않고 치명타의 화면 연출(블러와 줌 펀치)만 한 번 재생한다. 값을 조절하며 눈으로 볼 때 쓴다 </summary>
+        /// <summary> 맞히지 않고 치명타의 화면 연출(임팩트 프레임, 블러, 줌 펀치)만 한 번 재생한다. 값을 조절하며 눈으로 볼 때 쓴다 </summary>
         public void PreviewCritical()
         {
+            if (UseImpactFrame)
+            {
+                _motionBlur.ImpactFrame(ImpactFrames, ImpactSoft, ImpactDim, ImpactThreshold, ImpactHotThreshold, ImpactInvert);
+            }
             PlayCriticalScreen();
         }
 
@@ -261,6 +305,8 @@ namespace Shinshi.Dev
                 return attackerLag;
             }
 
+            TryImpactFrame(isKill, isCritical);
+
             if ((_useScreenFx) && (isCritical))
             {
                 _screenFx.Flash(profile.CritFlashAlpha, profile.CritFlashSeconds);
@@ -316,6 +362,30 @@ namespace Shinshi.Dev
             float   scale = Mathf.Min(MultiHitShakeMax, 1f + (MultiHitShakeBonus * (_shakeHits - 1)));
             Vector3 aim   = (_shakeDirectionSum.sqrMagnitude > MIN_DIRECTION_SQR) ? _shakeDirectionSum.normalized : direction;
             _camera.Kick(aim, _shakeBase * scale, seconds, delayFrames);
+        }
+
+        // 다중 처치는 그 프레임의 처치 수가 기준에 막 닿은 타격에서 한 번만 낸다
+        private void TryImpactFrame(bool isKill, bool isCritical)
+        {
+            if (Time.frameCount != _killFrame)
+            {
+                _killFrame      = Time.frameCount;
+                _killsThisFrame = 0;
+            }
+
+            if (isKill)
+            {
+                ++_killsThisFrame;
+            }
+
+            bool isMultiKill = (isKill) && (_killsThisFrame == ImpactMultiKills);
+            if ((!UseImpactFrame) || ((!isCritical) && (!isMultiKill)) || (Time.time < _nextImpactTime))
+            {
+                return;
+            }
+
+            _nextImpactTime = Time.time + ImpactCooldown;
+            _motionBlur.ImpactFrame(ImpactFrames, ImpactSoft, ImpactDim, ImpactThreshold, ImpactHotThreshold, ImpactInvert);
         }
 
         // 치명타만 더하는 연출: 맞은 자리의 충격 링

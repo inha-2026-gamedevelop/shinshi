@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Shinshi.Dev
 {
-    /// <summary> 치명타 블러와 줌 펀치, 몬스터 피격 떨림, 다중 타격 흔들림, 히트스톱 상한, 남의 공격 등급, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
+    /// <summary> 치명타 블러와 줌 펀치, 임팩트 프레임, 몬스터 피격 떨림, 다중 타격 흔들림, 히트스톱 상한, 남의 공격 등급, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
     public sealed class DevHitFeedbackTuningPanel : MonoBehaviour
     {
         // 값은 디렉터와 스포너의 메모리 값만 바꾸고 프로필 에셋은 쓰지 않는다. 화면 오른쪽의 빈 자리에 놓고 머리띠를 끌어 옮길 수 있다.
@@ -55,6 +55,12 @@ namespace Shinshi.Dev
         private const float LAG_BUDGET_MIN   = 1f;  // 프레임
         private const float LAG_BUDGET_MAX   = 40f;
         private const float LAG_REFILL_MAX   = 120f; // 프레임/초
+        private const float IMPACT_FRAMES_MIN   = 1f;
+        private const float IMPACT_FRAMES_MAX   = 20f;
+        private const float IMPACT_KILLS_MIN    = 2f;
+        private const float IMPACT_KILLS_MAX    = 10f;
+        private const float IMPACT_COOLDOWN_MAX = 2f; // 초
+        private const float IMPACT_HOT_MAX      = 2f; // 밝기, 2면 강조색이 거의 나오지 않는다
 
         private const string FORMAT_ANGLE    = "0";
         private const string FORMAT_ONE      = "0.0";
@@ -164,6 +170,26 @@ namespace Shinshi.Dev
                 {
                     _director.PreviewCritical();
                 }
+
+                GUILayout.Space(SECTION_GAP);
+                GUILayout.Label("임팩트 프레임 (치명타, 한 번에 여러 마리 처치)");
+                _director.UseImpactFrame   = GUILayout.Toggle(_director.UseImpactFrame, " 켜기");
+                _director.ImpactSoft       = GUILayout.Toggle(_director.ImpactSoft, " 부드럽게(회색 정지, 서서히 풀림)");
+                _director.ImpactFrames     = Mathf.RoundToInt(DrawSlider("프레임 수", _director.ImpactFrames,
+                    IMPACT_FRAMES_MIN, IMPACT_FRAMES_MAX, FORMAT_ANGLE));
+                _director.ImpactHotThreshold = DrawSlider("색 남김 기준", _director.ImpactHotThreshold, 0f, IMPACT_HOT_MAX, FORMAT_TWO);
+                if (_director.ImpactSoft)
+                {
+                    _director.ImpactDim = DrawSlider("배경 밝기", _director.ImpactDim, 0f, 1f, FORMAT_TWO);
+                }
+                else
+                {
+                    _director.ImpactInvert    = GUILayout.Toggle(_director.ImpactInvert, " 배경 반전(밝은 바닥을 검게)");
+                    _director.ImpactThreshold = DrawSlider("배경 기준", _director.ImpactThreshold, 0f, 1f, FORMAT_TWO);
+                }
+                _director.ImpactMultiKills = Mathf.RoundToInt(DrawSlider("다중 처치 수", _director.ImpactMultiKills,
+                    IMPACT_KILLS_MIN, IMPACT_KILLS_MAX, FORMAT_ANGLE));
+                _director.ImpactCooldown   = DrawSlider("재사용(초)", _director.ImpactCooldown, 0f, IMPACT_COOLDOWN_MAX, FORMAT_TWO);
 
                 GUILayout.Space(SECTION_GAP);
                 GUILayout.Label("몬스터 피격 떨림 (렉프레임 동안, 맞은 방향)");
