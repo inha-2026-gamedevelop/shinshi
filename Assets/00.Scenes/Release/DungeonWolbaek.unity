@@ -3466,6 +3466,7 @@ MonoBehaviour:
   _icon: {fileID: 175956650}
   _cooldown: {fileID: 54080440}
   _keyText: {fileID: 60332780}
+  _cooldownText: {fileID: 0}
 --- !u!114 &22992850
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48981,6 +48982,7 @@ MonoBehaviour:
   _icon: {fileID: 226793379}
   _cooldown: {fileID: 1664817880}
   _keyText: {fileID: 2031172356}
+  _cooldownText: {fileID: 0}
 --- !u!114 &363924556
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -77908,6 +77910,7 @@ MonoBehaviour:
   _icon: {fileID: 204691235}
   _cooldown: {fileID: 301847061}
   _keyText: {fileID: 786913669}
+  _cooldownText: {fileID: 0}
 --- !u!114 &546367994
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -110295,6 +110298,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 771208226}
   m_CullTransparentMesh: 1
+--- !u!1 &772639948
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 772639950}
+  - component: {fileID: 772639949}
+  m_Layer: 0
+  m_Name: GlobalVolume_ToonLook
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &772639949
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 772639948}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 5
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: 3fbad24bbfe4d0d49b2f4a5c877a5b9f, type: 2}
+--- !u!4 &772639950
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 772639948}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &773089075
 GameObject:
   m_ObjectHideFlags: 0
@@ -123380,6 +123432,7 @@ MonoBehaviour:
   _icon: {fileID: 1029173082}
   _cooldown: {fileID: 569141990}
   _keyText: {fileID: 1623048407}
+  _cooldownText: {fileID: 0}
 --- !u!1 &872150423
 GameObject:
   m_ObjectHideFlags: 0
@@ -156205,6 +156258,7 @@ MonoBehaviour:
   _icon: {fileID: 1435193738}
   _cooldown: {fileID: 998020701}
   _keyText: {fileID: 407788377}
+  _cooldownText: {fileID: 0}
 --- !u!114 &1064643728
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168545,6 +168599,7 @@ MonoBehaviour:
   _partyColor: {r: 0.45, g: 0.85, b: 1, a: 1}
   _bossColor: {r: 1, g: 0.35, b: 0.3, a: 1}
   _npcColor: {r: 1, g: 0.85, b: 0.4, a: 1}
+  _gimmickColor: {r: 0.78, g: 0.5, b: 1, a: 1}
 --- !u!1 &1169364260
 GameObject:
   m_ObjectHideFlags: 0
@@ -173914,6 +173969,7 @@ MonoBehaviour:
   _icon: {fileID: 41554578}
   _cooldown: {fileID: 1779477344}
   _keyText: {fileID: 1094302078}
+  _cooldownText: {fileID: 0}
 --- !u!224 &1213493094
 RectTransform:
   m_ObjectHideFlags: 0
@@ -174821,6 +174877,7 @@ MonoBehaviour:
   _icon: {fileID: 2007646869}
   _cooldown: {fileID: 1161701090}
   _keyText: {fileID: 1703628752}
+  _cooldownText: {fileID: 0}
 --- !u!1 &1225820835
 GameObject:
   m_ObjectHideFlags: 0
@@ -251669,6 +251726,7 @@ MonoBehaviour:
   _icon: {fileID: 1830885244}
   _cooldown: {fileID: 987476004}
   _keyText: {fileID: 592769685}
+  _cooldownText: {fileID: 0}
 --- !u!114 &1776660522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -278145,6 +278203,7 @@ MonoBehaviour:
   _icon: {fileID: 1066400915}
   _cooldown: {fileID: 1209576180}
   _keyText: {fileID: 1269883091}
+  _cooldownText: {fileID: 0}
 --- !u!114 &1951617091
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -304655,3 +304714,4 @@ SceneRoots:
   - {fileID: 501964155}
   - {fileID: 1462996336}
   - {fileID: 930000001}
+  - {fileID: 772639950}
