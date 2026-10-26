@@ -34,6 +34,14 @@ namespace Shinshi.Art
         [Tooltip("원래 색에 곱하는 비율의 상한")]
         [SerializeField] private ClampedFloatParameter _ratioMax          = new ClampedFloatParameter(1.6f, 1f, 3f);
 
+        [Header("표면 디테일")]
+        [Tooltip("같은 면 안의 잔무늬를 부드럽게 해 넓은 색 면으로 만든다. 0이면 끈다")]
+        [SerializeField] private ClampedFloatParameter _detailSoften     = new ClampedFloatParameter(0f, 0f, 1f);
+        [Tooltip("부드럽게 할 때 보는 이웃 거리(1080p 기준 픽셀)")]
+        [SerializeField] private ClampedFloatParameter _detailRadius     = new ClampedFloatParameter(2f, 1f, 4f);
+        [Tooltip("이 값보다 색 차이가 큰 이웃은 섞지 않는다(무늬 경계 보존)")]
+        [SerializeField] private ClampedFloatParameter _detailColorSigma = new ClampedFloatParameter(0.15f, 0.03f, 0.5f);
+
         [Header("보존")]
         [Tooltip("이 밝기부터 툰 효과를 줄인다(발광, 강한 반사)")]
         [SerializeField] private ClampedFloatParameter _highlightKeepStart = new ClampedFloatParameter(1.2f, 0.5f, 4f);
@@ -69,6 +77,9 @@ namespace Shinshi.Art
         public float AmbientKeep         => _ambientKeep.value;
         public float RatioMin            => _ratioMin.value;
         public float RatioMax            => _ratioMax.value;
+        public float DetailSoften        => _detailSoften.value;
+        public float DetailRadius        => _detailRadius.value;
+        public float DetailColorSigma    => _detailColorSigma.value;
         public float HighlightKeepStart  => _highlightKeepStart.value;
         public float HighlightKeepRange  => _highlightKeepRange.value;
         public float FadeStart           => _fadeStart.value;
@@ -86,7 +97,7 @@ namespace Shinshi.Art
 
         public bool IsActive()
         {
-            return active && (_lightingIntensity.value > 0f || _edgeIntensity.value > 0f);
+            return active && (_lightingIntensity.value > 0f || _edgeIntensity.value > 0f || _detailSoften.value > 0f);
         }
     }
 }

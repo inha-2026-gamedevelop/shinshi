@@ -114,6 +114,7 @@ namespace Shinshi.Art
             private static readonly int G_EdgeParamsId     = Shader.PropertyToID("_ToonEdgeParams");
             private static readonly int G_LineTintId       = Shader.PropertyToID("_ToonLineTint");
             private static readonly int G_FogParamsId      = Shader.PropertyToID("_ToonFogParams");
+            private static readonly int G_DetailParamsId   = Shader.PropertyToID("_ToonDetailParams");
 
             private static readonly Vector4 G_FullScaleBias = new Vector4(1f, 1f, 0f, 0f);
 
@@ -143,6 +144,7 @@ namespace Shinshi.Art
                 _material.SetVector(G_EdgeParamsId, new Vector4(volume.EdgeIntensity, volume.NormalEdge, volume.DepthEdgeThreshold, volume.LineDarken));
                 _material.SetColor(G_LineTintId, volume.LineTint);
                 _material.SetVector(G_FogParamsId, BuildFogParams());
+                _material.SetVector(G_DetailParamsId, new Vector4(volume.DetailSoften, volume.DetailRadius, volume.DetailColorSigma, 0f));
             }
 
             public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)

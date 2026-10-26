@@ -41,11 +41,71 @@ Shader "Hidden/Shinshi/ToonLightingPost"
             float4 _ToonLineTint;
             // x 안개 모드(0 없음, 1 선형, 2 지수, 3 지수 제곱), y 시작, z 끝, w 밀도
             float4 _ToonFogParams;
+            // x 표면 디테일 부드럽게 강도, y 이웃 거리(1080p 기준 픽셀), z 색 차이 기준
+            float4 _ToonDetailParams;
 
             #define TOON_MIN_LIGHT       0.001
             #define TOON_MIN_NORMAL_LEN  0.5
             #define TOON_MIN_EDGE_WIDTH  0.0001
             #define TOON_MIN_RANGE       0.0001
+            #define TOON_REFERENCE_HEIGHT  1080.0
+            #define TOON_SAME_SURFACE_DEPTH  0.02
+            #define TOON_SAME_SURFACE_NORMAL 0.9
+            #define TOON_DETAIL_TAPS 8
+
+            static const float2 G_DetailDirections[TOON_DETAIL_TAPS] =
+            {
+                float2(1.0, 0.0), float2(-1.0, 0.0), float2(0.0, 1.0), float2(0.0, -1.0),
+                float2(0.7071, 0.7071), float2(-0.7071, 0.7071), float2(0.7071, -0.7071), float2(-0.7071, -0.7071)
+            };
+
+            // 같은 면(깊이와 노멀이 비슷한 이웃) 안에서 색이 비슷한 이웃만 섞어 잔무늬를 지운다.
+            // 물체 경계와 큰 무늬 경계는 섞지 않아 형태는 남고 넓은 색 면이 된다
+            float3 SoftenDetail(float3 color, float2 uv, float eyeDepth)
+            {
+                float strength = _ToonDetailParams.x;
+                if (strength <= 0.0)
+                {
+                    return color;
+                }
+
+                float3 centerNormal = SampleSceneNormals(uv);
+                if (length(centerNormal) < TOON_MIN_NORMAL_LEN)
+                {
+                    return color;
+                }
+                centerNormal = normalize(centerNormal);
+
+                float  radiusPx  = _ToonDetailParams.y * (_ScreenParams.y / TOON_REFERENCE_HEIGHT);
+                float2 texel     = _CameraDepthTexture_TexelSize.xy * radiusPx;
+                float  sigma     = max(_ToonDetailParams.z, TOON_MIN_RANGE);
+                float  invSigma2 = 1.0 / (2.0 * sigma * sigma);
+
+                float3 sum    = color;
+                float  weight = 1.0;
+                // 분기 없이 모든 이웃을 읽고 다른 면이면 가중치를 0으로 둔다. 반복 안의 분기가 텍스처 샘플 미분을 깨지 않게 하기 위해서다
+                [unroll]
+                for (int i = 0; i < TOON_DETAIL_TAPS; i++)
+                {
+                    float2 sampleUv = uv + G_DetailDirections[i] * texel;
+
+                    float  sampleDepth  = LinearEyeDepth(SampleSceneDepth(sampleUv), _ZBufferParams);
+                    float3 sampleNormal = SampleSceneNormals(sampleUv);
+                    float3 sampleColor  = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, sampleUv, 0).rgb;
+
+                    float normalLen   = length(sampleNormal);
+                    float sameDepth   = step(abs(sampleDepth - eyeDepth), eyeDepth * TOON_SAME_SURFACE_DEPTH);
+                    float sameNormal  = step(TOON_SAME_SURFACE_NORMAL, dot(sampleNormal / max(normalLen, TOON_MIN_RANGE), centerNormal));
+                    float validNormal = step(TOON_MIN_NORMAL_LEN, normalLen);
+
+                    float3 difference = sampleColor - color;
+                    float  w = exp(-dot(difference, difference) * invSigma2) * sameDepth * sameNormal * validNormal;
+                    sum    += sampleColor * w;
+                    weight += w;
+                }
+
+                return lerp(color, sum / weight, strength);
+            }
 
             bool IsSkyDepth(float rawDepth)
             {
@@ -202,6 +262,7 @@ Shader "Hidden/Shinshi/ToonLightingPost"
 
                 float eyeDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
 
+                color.rgb = SoftenDetail(color.rgb, uv, eyeDepth);
                 color.rgb = ApplyToonLighting(color.rgb, uv, rawDepth, eyeDepth);
 
                 float  edge     = EdgeAmount(uv, eyeDepth);
