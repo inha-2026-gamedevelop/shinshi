@@ -197,6 +197,7 @@ namespace Shinshi.AI
                     if (TryApplyHit(in request, out DamageResult result) && CountsAsHit(result.Outcome))
                     {
                         ++_hitCount;
+                        ReportTargetHit(_listener, target, center);
                     }
                 }
             }

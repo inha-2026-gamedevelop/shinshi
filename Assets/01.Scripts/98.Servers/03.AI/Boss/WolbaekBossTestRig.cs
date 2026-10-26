@@ -33,6 +33,7 @@ namespace Shinshi.AI
         private const float  DEFENSE_CONSTANT = 1000f; // PlayerConfigSO 초안과 같은 값
         private const float  REDUCTION_CAP    = 0.6f;
         private const float  LINE_OF_SIGHT_HEIGHT = 0.5f;
+        private const float  HIT_TEST_DAMAGE_RATE = 0.03f; // 피격 번쩍임 시험 버튼이 주는 피해, 최대 체력 비율
         private const float  HIT_FLASH_SECONDS = 0.15f;
         private const int    HISTORY_LENGTH   = 8;
         private const float  GUI_WIDTH        = 400f;
@@ -124,6 +125,7 @@ namespace Shinshi.AI
         private RigPlayer               _player;
         private BossTelegraphPresenter  _presenter;
         private BossView                _bossView;
+        private BossHitFlashView        _hitFlash;
         private Transform               _playerBody;
         private Renderer                _playerRenderer;
         private BossDefinition          _boss;
@@ -384,6 +386,9 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 운영에서는 서버가 내려주는 체력 SyncVar가 하게 될 일을 몸체 체력으로 대신한다
+            _hitFlash?.Observe(_body.Health);
+
             // 시험 모드 변경은 GUI 이벤트 도중에 적용하면 컨트롤 수가 어긋나므로 요청만 받아 두고 여기서 적용한다
             if (_rebuildRequested)
             {
@@ -453,6 +458,11 @@ namespace Shinshi.AI
             GUILayout.Label($"보스-플레이어 거리 {toPlayer.magnitude:F1}m  보스 ({_body.Position.x:F1}, {_body.Position.z:F1})  " +
                 $"플레이어 ({_player.Position.x:F1}, {_player.Position.z:F1}) 정면 ({_player.Forward.x:F1}, {_player.Forward.z:F1})");
             GUILayout.Label("WASD 이동(이동 방향이 정면), Space 정면 방어");
+
+            if (GUILayout.Button("보스에게 피해 주기 (최대 체력 3%)"))
+            {
+                _body.ApplyDamage(_body.MaxHealth * HIT_TEST_DAMAGE_RATE, false, ReadClock());
+            }
 
             if (_brain.PhaseState == EBossPhaseState.AwaitingHandoff)
             {
@@ -1682,6 +1692,12 @@ namespace Shinshi.AI
 
             _bossView = Instantiate(_bossViewPrefab, transform);
             _bossView.Bind(_presenter, ReadClock);
+
+            _hitFlash = _bossView.GetComponent<BossHitFlashView>();
+            if (_hitFlash == null)
+            {
+                _hitFlash = _bossView.gameObject.AddComponent<BossHitFlashView>();
+            }
         }
 
         // 패턴이 바뀔 때마다 순서와 횟수를 남긴다, 가중 선택이 여섯 패턴을 고르게 쓰는지 눈으로 보려는 것이다

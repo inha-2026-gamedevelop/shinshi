@@ -250,6 +250,7 @@ namespace Shinshi.AI
                 if (TryApplyHit(in request, out DamageResult _))
                 {
                     ++hitCount;
+                    ReportTargetHit(_listener, _buffer[i], _center);
                 }
             }
 

@@ -287,6 +287,7 @@ namespace Shinshi.AI
 
                 Record(target.CombatId, recordIndex, sampleTime);
                 ++hitCount;
+                ReportTargetHit(_listener, target, _layout.Origin);
             }
 
             _buffer.Clear();

@@ -15,7 +15,7 @@ namespace Shinshi.AI
         IBossFanTelegraphListener, IBossCircleTelegraphListener, IBossLineTelegraphListener, IBossDashTelegraphListener,
         IBossProjectileTelegraphListener, IBossAreaTelegraphListener, IBossProjectileListener, IBossAreaListener,
         IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
-        IBossStarTelegraphListener, IBossStarListener
+        IBossStarTelegraphListener, IBossStarListener, IBossTargetHitListener
     {
         /****************************************
         *              Constants
@@ -59,9 +59,24 @@ namespace Shinshi.AI
             _motion          = motion;
         }
 
+        /// <summary> 맞은 대상 위치의 피격 임팩트, 비어 있으면 피격 알림을 버린다 </summary>
+        public WolbaekHitImpactView HitImpact { get; set; }
+
         private int Boss => _body.CombatId;
 
         private double Now => _clock();
+
+        void IBossTargetHitListener.OnTargetHit(int castInstanceId, int targetId, Vector3 position, Vector3 direction)
+        {
+            if (HitImpact == null)
+            {
+                return;
+            }
+
+            string patternId = (_activePatternId != null) ? _activePatternId() : null;
+            WolbaekPlayerHit hit = new WolbaekPlayerHit(targetId, patternId, position, direction, Now);
+            HitImpact.Play(in hit, Now);
+        }
 
         // 표현 진입점은 진행 중인 표현이 없으면 스스로 꺼지므로 새 표현을 시작하기 전에 켠다
         private void Begin(in BossTelegraphStart start)

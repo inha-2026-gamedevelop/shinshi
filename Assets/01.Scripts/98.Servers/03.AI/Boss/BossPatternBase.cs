@@ -1,3 +1,6 @@
+// Unity
+using UnityEngine;
+
 // 프로젝트 내부
 using Shinshi.Combat;
 
@@ -102,6 +105,12 @@ namespace Shinshi.AI
 
             // 패턴 자신이 취소되지 않았어도 게이트가 닫혔으면(사망, 전투 종료) 나가지 않는다
             return _context.Damage.TryApply(in request, out result);
+        }
+
+        // 패턴의 리스너가 IBossTargetHitListener도 구현했을 때만 알린다. 피해 요청이 나간 뒤에 부른다
+        protected void ReportTargetHit(object listener, ICombatTarget target, Vector3 origin)
+        {
+            BossTargetHitReport.Report(listener, Context.CastInstanceId, target, origin);
         }
 
         private bool IsActive()

@@ -983,6 +983,7 @@ namespace Shinshi.AI
                 if (_gate.TryApply(in request, out DamageResult result) && result.IsApplied)
                 {
                     ++singleHits;
+                    BossTargetHitReport.Report(_listener, _castId, target, _reds[reach].Position);
                 }
             }
 

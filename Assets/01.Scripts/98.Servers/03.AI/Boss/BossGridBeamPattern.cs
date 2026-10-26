@@ -269,6 +269,7 @@ namespace Shinshi.AI
                 {
                     hits.Add(target.CombatId);
                     ++hitCount;
+                    ReportTargetHit(_listener, target, shape.LineCenter);
                 }
             }
 
