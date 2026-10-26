@@ -41,6 +41,7 @@ namespace Shinshi.AI
         private const float  ZONE_HEIGHT          = 0.1f;  // m
         private const float  ZONE_REFERENCE_RADIUS = 3f;   // m, 효과 크기 1일 때의 서버 반경
         private const float  ZONE_GRACE_SECONDS   = 1f;    // 초, 서버 소멸 사건이 오지 않아도 지속 시간 뒤에 끄기까지
+        private const float  ZONE_SOUND_SECONDS   = 2f;    // 초, 장판이 생긴 뒤 소리를 들려주는 시간, 장판이 더 오래 남아도 소리는 여기서 끊는다
         private const float  EFFECT_LIFETIME      = 4f;    // 초, 한 번 터지는 효과를 지우기까지
         private const float  FADE_SECONDS         = 3f;    // 초, 생성을 멈춘 효과의 남은 파티클이 사라지기를 기다리는 시간
         private const float  RELEASE_ACTIVE_SECONDS = 1.4f; // 초, 대형 방출 파면의 표현 지속 시간(서버 값이 아니다)
@@ -88,6 +89,8 @@ namespace Shinshi.AI
             public int        AreaId;
             public GameObject Instance;
             public double     EndServerTime;
+            public double     SoundEndServerTime; // 이 시각이 되면 반복 소리를 끈다
+            public bool       IsSoundOn;
         }
 
         private struct ChainFanState
@@ -922,7 +925,14 @@ namespace Shinshi.AI
 
                 GameObject instance = Instantiate(_zoneEffect, start.Center + (Vector3.up * ZONE_HEIGHT), Quaternion.identity);
                 instance.transform.localScale = _zoneEffect.transform.localScale * (start.Radius / ZONE_REFERENCE_RADIUS);
-                _zones[i] = new Zone { AreaId = start.AreaId, Instance = instance, EndServerTime = start.EndServerTime };
+                _zones[i] = new Zone
+                {
+                    AreaId             = start.AreaId,
+                    Instance           = instance,
+                    EndServerTime      = start.EndServerTime,
+                    SoundEndServerTime = ReadClock() + ZONE_SOUND_SECONDS,
+                    IsSoundOn          = true
+                };
 
                 PlaySound(EWolbaekSound.FoxfireIgnite, start.Center);
                 StartLoopSound(ZONE_SOUND_KEY_OFFSET + start.AreaId, EWolbaekSound.FoxfireHoldLoop, start.Center);
@@ -947,7 +957,19 @@ namespace Shinshi.AI
         {
             for (int i = 0; i < _zones.Length; ++i)
             {
-                if ((_zones[i].Instance != null) && (now > (_zones[i].EndServerTime + ZONE_GRACE_SECONDS)))
+                if (_zones[i].Instance == null)
+                {
+                    continue;
+                }
+
+                // 장판은 더 오래 남아도 소리는 처음 발동 뒤 정해진 시간만 낸다
+                if (_zones[i].IsSoundOn && (now >= _zones[i].SoundEndServerTime))
+                {
+                    _zones[i].IsSoundOn = false;
+                    StopLoopSound(ZONE_SOUND_KEY_OFFSET + _zones[i].AreaId);
+                }
+
+                if (now > (_zones[i].EndServerTime + ZONE_GRACE_SECONDS))
                 {
                     EndZone(i, false);
                 }

@@ -342,6 +342,28 @@ namespace Shinshi.Tests
             Assert.That(CountNamed("SB_Vortex_Blue"), Is.EqualTo(0), "취소되면 즉시 지운다");
         }
 
+        // 장판이 오래 남아도 반복 소리는 처음 발동 뒤 2초만 낸다
+        [UnityTest]
+        public IEnumerator Zone_LoopSound_StopsAfterTwoSecondsWhileZoneStays()
+        {
+            WolbaekSoundPlayer sound = _root.GetComponentInChildren<WolbaekSoundPlayer>(true);
+            Assert.That(sound, Is.Not.Null, "사운드 재생기");
+            var loops = (System.Collections.IDictionary)typeof(WolbaekSoundPlayer)
+                .GetField("_loops", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(sound);
+
+            var start = new BossAreaStart(BOSS_ID, 32, new Vector3(4f, 0f, 6f), 6f, 12f, 1f, _clock);
+            Assert.That(_presenter.ActivateArea(start), Is.True);
+            yield return null;
+            Assert.That(loops.Count, Is.EqualTo(1), "발동하면 반복 소리가 시작된다");
+
+            yield return SetClock(START_CLOCK + 1.0);
+            Assert.That(loops.Count, Is.EqualTo(1), "1초에는 아직 난다");
+
+            yield return SetClock(START_CLOCK + 2.5);
+            Assert.That(loops.Count, Is.EqualTo(0), "2초가 지나면 소리만 끊긴다");
+            Assert.That(CountNamed("SB_Vortex_Blue"), Is.EqualTo(1), "장판은 남아 있다");
+        }
+
         /****************************************
         *            Parallel Beam Test
         ****************************************/
