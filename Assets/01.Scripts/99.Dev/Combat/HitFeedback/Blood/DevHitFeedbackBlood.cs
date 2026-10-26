@@ -56,6 +56,7 @@ namespace Shinshi.Dev
         private const float  MIN_FADE_SECONDS      = 0.01f;
 
         private static readonly int s_colorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int s_smoothnessId = Shader.PropertyToID("_Smoothness");
 
         [Header("분사 (개수, m/s, m, 초)")]
         [SerializeField, Min(1)] private int _hitSprayCount  = 24;
@@ -76,8 +77,13 @@ namespace Shinshi.Dev
         [SerializeField] private Vector2 _impactStainSize = new Vector2(1.2f, 2.2f);
         [SerializeField] private Vector2 _dripStainSize   = new Vector2(0.4f, 0.8f);
         [SerializeField, Min(0.1f)] private float _stainSeconds = 45f;
-        [SerializeField, Min(0.1f)] private float _fadeSeconds  = 5f;
+        [SerializeField, Min(0.1f)] private float _fadeSeconds  = 18f;
         [SerializeField] private Color _stainColor = new Color(0.52f, 0.007f, 0.015f, 0.95f);
+        [SerializeField] private Color _dryColor = new Color(0.19f, 0.018f, 0.012f, 0.65f);
+        [SerializeField, Min(0.1f)] private float _drySeconds = 12f;
+        [SerializeField, Range(0f, 1f)] private float _wetSmoothness = 0.45f;
+        [SerializeField, Range(0f, 1f)] private float _drySmoothness = 0.03f;
+        [SerializeField, Min(0.1f)] private float _recycleFadeSeconds = 0.65f;
         [SerializeField] private LayerMask _groundLayers = ~0;
 
         [Header("전용 재질 (비우면 Resources에서 로드)")]
@@ -171,7 +177,7 @@ namespace Shinshi.Dev
             _dropParticles = CreateParticles("BloodDrops", true);
             for (int i = 0; i < STAIN_CAPACITY; ++i)
             {
-                _stains[i] = new Stain(transform, _stainMaterial, _stainColor, i, _stainSeconds, _fadeSeconds);
+                _stains[i] = new Stain(this, i);
             }
             _isReady = true;
         }
@@ -459,8 +465,24 @@ namespace Shinshi.Dev
             {
                 return;
             }
-            Stain stain = _stains[_stainSlot];
-            _stainSlot = (_stainSlot + 1) % STAIN_CAPACITY;
+            Stain stain = null;
+            for (int i = 0; i < STAIN_CAPACITY; ++i)
+            {
+                int index = (_stainSlot + i) % STAIN_CAPACITY;
+                if (!_stains[index].Visible)
+                {
+                    stain = _stains[index];
+                    _stainSlot = (index + 1) % STAIN_CAPACITY;
+                    break;
+                }
+            }
+            if (stain == null)
+            {
+                // 자리가 없으면 새 자국을 생략하고 기존 것을 먼저 지운다. 보이는 메시를 즉시 덮어쓰지 않는다.
+                _stains[_stainSlot].Retire();
+                _stainSlot = (_stainSlot + 1) % STAIN_CAPACITY;
+                return;
+            }
             float radians = Random.Range(0f, FULL_TURN) * Mathf.Deg2Rad;
             float cosine = Mathf.Cos(radians);
             float sine = Mathf.Sin(radians);
@@ -540,9 +562,12 @@ namespace Shinshi.Dev
             private readonly Mesh                  _mesh;
             private readonly MeshRenderer          _renderer;
             private readonly MaterialPropertyBlock _block = new MaterialPropertyBlock();
-            private readonly Color                 _color;
+            private readonly DevHitFeedbackBlood    _owner;
             private readonly Tween                 _fade;
-            private float                          _alpha = 1f;
+            private readonly Tween                 _retire;
+            private float                          _age = 0f;
+            private float                          _pressureAlpha = 1f;
+            private bool                           _retiring = false;
 
             public Vector3[] Vertices { get; } = new Vector3[GRID_SIZE * GRID_SIZE];
             public Vector3[] Normals { get; } = new Vector3[GRID_SIZE * GRID_SIZE];
@@ -550,11 +575,11 @@ namespace Shinshi.Dev
             public bool Visible => _renderer.enabled;
             public Transform Space => _renderer.transform;
 
-            public Stain(Transform parent, Material material, Color color, int index, float seconds, float fadeSeconds)
+            public Stain(DevHitFeedbackBlood owner, int index)
             {
-                _color = color;
+                _owner = owner;
                 var go = new GameObject("BloodStain" + index);
-                go.transform.SetParent(parent, false);
+                go.transform.SetParent(owner.transform, false);
                 _mesh = new Mesh { name = "BloodSurface" + index };
                 _mesh.MarkDynamic();
                 _mesh.vertices = Vertices;
@@ -577,13 +602,14 @@ namespace Shinshi.Dev
                 _mesh.triangles = triangles;
                 go.AddComponent<MeshFilter>().sharedMesh = _mesh;
                 _renderer = go.AddComponent<MeshRenderer>();
-                _renderer.sharedMaterial = material;
+                _renderer.sharedMaterial = owner._stainMaterial;
                 _renderer.shadowCastingMode = ShadowCastingMode.Off;
                 _renderer.receiveShadows = true;
                 _renderer.enabled = false;
-                float fade = Mathf.Clamp(fadeSeconds, MIN_FADE_SECONDS, Mathf.Max(MIN_FADE_SECONDS, seconds));
-                _fade = DOTween.To(() => _alpha, ApplyAlpha, 0f, fade).SetDelay(Mathf.Max(0f, seconds - fade))
-                    .OnComplete(HideRenderer).SetAutoKill(false).Pause().SetLink(parent.gameObject);
+                _fade = DOTween.To(() => _age, ApplyAge, 1f, Mathf.Max(MIN_FADE_SECONDS, owner._stainSeconds))
+                    .SetEase(Ease.Linear).OnComplete(Hide).SetAutoKill(false).Pause().SetLink(owner.gameObject);
+                _retire = DOTween.To(() => _pressureAlpha, ApplyPressureAlpha, 0f, owner._recycleFadeSeconds)
+                    .SetEase(Ease.InOutSine).OnComplete(Hide).SetAutoKill(false).Pause().SetLink(owner.gameObject);
             }
 
             public void Show()
@@ -592,7 +618,10 @@ namespace Shinshi.Dev
                 _mesh.normals = Normals;
                 _mesh.uv = Uvs;
                 _mesh.RecalculateBounds();
-                ApplyAlpha(1f);
+                _retire.Pause();
+                _retiring = false;
+                _pressureAlpha = 1f;
+                ApplyAge(0f);
                 _renderer.enabled = true;
                 _fade.Restart();
             }
@@ -600,23 +629,50 @@ namespace Shinshi.Dev
             public void Hide()
             {
                 _fade.Pause();
+                _retire.Pause();
                 _renderer.enabled = false;
+            }
+
+            public void Retire()
+            {
+                if (_retiring)
+                {
+                    return;
+                }
+                _retiring = true;
+                _retire.Restart();
             }
 
             public void Dispose()
             {
                 _fade.Kill();
+                _retire.Kill();
                 Object.Destroy(_mesh);
             }
 
-            private void HideRenderer() { _renderer.enabled = false; }
-
-            private void ApplyAlpha(float alpha)
+            private void ApplyAge(float age)
             {
-                _alpha = alpha;
-                Color tint = _color;
-                tint.a *= alpha;
+                _age = age;
+                ApplyAppearance();
+            }
+
+            private void ApplyPressureAlpha(float alpha)
+            {
+                _pressureAlpha = alpha;
+                ApplyAppearance();
+            }
+
+            private void ApplyAppearance()
+            {
+                float seconds = Mathf.Max(MIN_FADE_SECONDS, _owner._stainSeconds);
+                float elapsed = _age * seconds;
+                float dry = Mathf.SmoothStep(0f, 1f, elapsed / Mathf.Max(MIN_FADE_SECONDS, _owner._drySeconds));
+                float fadeSeconds = Mathf.Clamp(_owner._fadeSeconds, MIN_FADE_SECONDS, seconds);
+                float fade = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - (seconds - fadeSeconds)) / fadeSeconds));
+                Color tint = Color.Lerp(_owner._stainColor, _owner._dryColor, dry);
+                tint.a *= (1f - fade) * _pressureAlpha;
                 _block.SetColor(s_colorId, tint);
+                _block.SetFloat(s_smoothnessId, Mathf.Lerp(_owner._wetSmoothness, _owner._drySmoothness, dry));
                 _renderer.SetPropertyBlock(_block);
             }
         }

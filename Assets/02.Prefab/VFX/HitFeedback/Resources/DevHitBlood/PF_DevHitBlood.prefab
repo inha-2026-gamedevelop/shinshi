@@ -58,8 +58,13 @@ MonoBehaviour:
   _impactStainSize: {x: 1.2, y: 2.2}
   _dripStainSize: {x: 0.4, y: 0.8}
   _stainSeconds: 45
-  _fadeSeconds: 5
+  _fadeSeconds: 18
   _stainColor: {r: 0.52, g: 0.007, b: 0.015, a: 0.95}
+  _dryColor: {r: 0.19, g: 0.018, b: 0.012, a: 0.65}
+  _drySeconds: 12
+  _wetSmoothness: 0.45
+  _drySmoothness: 0.03
+  _recycleFadeSeconds: 0.65
   _groundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
