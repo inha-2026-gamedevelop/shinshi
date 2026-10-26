@@ -283,6 +283,7 @@ namespace Shinshi.AI
                 if (spec.Gate.TryApply(in request, out DamageResult _))
                 {
                     ++hitCount;
+                    BossTargetHitReport.Report(_listener, spec.CastInstanceId, target, shape.LineCenter);
                 }
             }
 

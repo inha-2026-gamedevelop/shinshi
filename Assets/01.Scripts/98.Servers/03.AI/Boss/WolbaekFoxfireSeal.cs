@@ -922,6 +922,7 @@ namespace Shinshi.AI
                 if ((_gate.TryApply(in request, out DamageResult result)) && (result.IsApplied))
                 {
                     ++hits;
+                    BossTargetHitReport.Report(_listener, _castId, target, center);
                 }
             }
 
@@ -985,6 +986,7 @@ namespace Shinshi.AI
                 }
 
                 ++hitCount;
+                BossTargetHitReport.Report(_listener, _castId, target, sweep.Origin);
 
                 if (spec.PushDistance > 0f)
                 {

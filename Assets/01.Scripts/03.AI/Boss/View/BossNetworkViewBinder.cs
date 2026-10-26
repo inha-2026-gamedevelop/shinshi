@@ -38,6 +38,7 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekPhase2TransitionPlayer _phase2Transition; // 50% 뒤 2페이즈 전환 컷신, 비어 있으면 보스 표현에서 한 번 찾는다
         [SerializeField] private Transform _effectsRoot;
         [SerializeField] private BossHitFlashView _hitFlash; // 피격 번쩍임, 비어 있으면 보스 표현에서 한 번 찾고 없으면 생략한다
+        [SerializeField] private WolbaekHitImpactView _hitImpact; // 플레이어 피격 임팩트, 비어 있으면 한 번 찾고 없으면 생략한다
 
         private BossState _boundState;
 
@@ -99,6 +100,10 @@ namespace Shinshi.AI
             if (_hitFlash == null)
             {
                 _hitFlash = (_view != null) ? _view.GetComponentInChildren<BossHitFlashView>(true) : GetComponentInChildren<BossHitFlashView>(true);
+            }
+            if (_hitImpact == null)
+            {
+                _hitImpact = (_view != null) ? _view.GetComponentInChildren<WolbaekHitImpactView>(true) : GetComponentInChildren<WolbaekHitImpactView>(true);
             }
             if (_mucheolMotion == null)
             {
@@ -1042,6 +1047,12 @@ namespace Shinshi.AI
             {
                 _mucheolVfx.UpdateAim(castId, direction);
             }
+        }
+
+        /// <summary> 서버가 확정한 플레이어 피격 한 건을 임팩트로 보인다. 복제 계층이 맞은 대상마다 부른다 </summary>
+        public bool OnPlayerHit(in WolbaekPlayerHit hit)
+        {
+            return (_hitImpact != null) && _hitImpact.Play(in hit, ReadServerTime());
         }
 
         public void OnStruck(int castId, double serverTime)
