@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Shinshi.Dev
 {
-    /// <summary> 치명타 블러와 줌 펀치, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
+    /// <summary> 치명타 블러와 줌 펀치, 몬스터 피격 떨림, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
     public sealed class DevHitFeedbackTuningPanel : MonoBehaviour
     {
         // 값은 디렉터와 스포너의 메모리 값만 바꾸고 프로필 에셋은 쓰지 않는다. 화면 오른쪽의 빈 자리에 놓고 머리띠를 끌어 옮길 수 있다.
@@ -17,7 +17,7 @@ namespace Shinshi.Dev
         private const float REFERENCE_HEIGHT = 1080f;
         private const float MIN_SCALE        = 0.6f;
         private const float PANEL_WIDTH      = 300f;
-        private const float PANEL_HEIGHT     = 500f;
+        private const float PANEL_HEIGHT     = 550f;
         private const float COLLAPSED_HEIGHT = 28f;
         private const float EDGE_MARGIN      = 24f;
         private const float START_Y          = 450f;
@@ -48,6 +48,7 @@ namespace Shinshi.Dev
         private const float FOV_MAX          = 70f;
         private const float ORTHO_SIZE_MIN   = 2f;
         private const float ORTHO_SIZE_MAX   = 30f;
+        private const float VIBRATE_MAX      = 3f; // 떨림 배율
 
         private const string FORMAT_ANGLE    = "0";
         private const string FORMAT_ONE      = "0.0";
@@ -155,6 +156,10 @@ namespace Shinshi.Dev
                 {
                     _director.PreviewCritical();
                 }
+
+                GUILayout.Space(SECTION_GAP);
+                GUILayout.Label("몬스터 피격 떨림 (렉프레임 동안, 맞은 방향)");
+                _director.VibrateScale = DrawSlider("배율", _director.VibrateScale, 0f, VIBRATE_MAX, FORMAT_TWO);
 
                 DrawCameraSection();
 

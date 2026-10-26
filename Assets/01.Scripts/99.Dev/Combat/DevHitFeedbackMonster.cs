@@ -323,7 +323,8 @@ namespace Shinshi.Dev
             _playerMinDistance  = bodyRadius + playerRadius + BODY_GAP;
             _chaseStopDistance  = _playerMinDistance + CHASE_STOP_EXTRA;
 
-            _reactor    = new HitReactor(gameObject, (animator != null) ? s_modelColor : s_normalColor, s_corpseColor);
+            _reactor    = new HitReactor(gameObject, FindModelRoot(), (animator != null) ? s_modelColor : s_normalColor,
+                s_corpseColor);
 
             _reactor.Launched += IgnoreRagdollCollisions;
             _reactor.Launched += BeginFallbackLanding;
@@ -395,7 +396,7 @@ namespace Shinshi.Dev
                 {
                     _recoil.Play(away, isCritical);
                 }
-                _reactor.React(profile, isCritical);
+                _reactor.React(profile, away, isCritical);
                 return true;
             }
 
@@ -414,7 +415,7 @@ namespace Shinshi.Dev
             {
                 _recoil.Play(away, isCritical);
             }
-            _reactor.React(profile, isCritical);
+            _reactor.React(profile, away, isCritical);
             return true;
         }
 
@@ -489,18 +490,8 @@ namespace Shinshi.Dev
         // 애니메이터가 속한 모델 루트(이 몬스터의 직계 자식)를 릴리스 시체로 날린다. 모델이 없는 캡슐이면 false
         private bool TryLaunchReleaseCorpse(Vector3 away, float flyMultiplier, int freezeFrames)
         {
-            if (_animator == null)
-            {
-                return false;
-            }
-
-            Transform model = _animator.transform;
-            while ((model.parent != null) && (model.parent != transform))
-            {
-                model = model.parent;
-            }
-
-            if (model.parent != transform)
+            Transform model = FindModelRoot();
+            if (model == null)
             {
                 return false;
             }
@@ -528,6 +519,23 @@ namespace Shinshi.Dev
                 Destroy(trail);
             }
             return launched;
+        }
+
+        // 애니메이터가 속한 모델 루트(이 몬스터의 직계 자식). 모델이 없는 캡슐이면 null
+        private Transform FindModelRoot()
+        {
+            if (_animator == null)
+            {
+                return null;
+            }
+
+            Transform model = _animator.transform;
+            while ((model.parent != null) && (model.parent != transform))
+            {
+                model = model.parent;
+            }
+
+            return (model.parent == transform) ? model : null;
         }
 
         // 죽는 순간부터 다른 몬스터(산 것과 사체 모두)와는 부딪히지 않는다. 바닥과는 계속 부딪혀 튄다

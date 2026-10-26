@@ -121,6 +121,9 @@ namespace Shinshi.Dev
 
         public float CritZoomSeconds { get; set; }
 
+        /// <summary> 맞은 몬스터의 렉프레임 떨림 크기에 곱하는 배율. 1이면 프로필 그대로, 0이면 떨지 않는다 </summary>
+        public float VibrateScale { get; set; } = 1f;
+
         public DevHitFeedbackBlood Blood => _useBlood ? _blood : null;
         public DevCorpseLandingFx Landing => _landing;
 
@@ -175,6 +178,14 @@ namespace Shinshi.Dev
                     + (isCritical ? profile.CritExtraLagFrames : 0);
                 attacker?.Freeze(lagFrames);
                 target?.Freeze(lagFrames + profile.TargetExtraLagFrames);
+
+                // 쿼터뷰는 카메라가 멀어 고정 미터 떨림이 1px 안팎으로 묻힌다. 보이는 화면 높이 비율로 키운다.
+                // 플레이어는 떨지 않으므로 인터페이스를 넓히지 않고 맞은 몸에만 넘긴다
+                if ((target is HitReactor reactor) && (_camera != null))
+                {
+                    float screenAmount = _camera.VisibleHeightAt(point) * profile.VibrateScreenRatio;
+                    reactor.SetVibrateAmount(Mathf.Max(profile.VibrateAmount, screenAmount) * VibrateScale);
+                }
             }
 
             if ((_useCameraShake) && (_camera != null))

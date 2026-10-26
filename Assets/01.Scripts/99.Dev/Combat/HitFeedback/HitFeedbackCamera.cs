@@ -17,6 +17,8 @@ namespace Shinshi.Dev
         private const float MIN_ZOOM_SECONDS = 0.01f;
         private const float HOLD_STAGE_RATIO = 0.7f; // 두 단계 각각에 쓰는 감쇠 시간 비율
         private const float HOLD_END_LEVEL   = 0.002f; // 이만큼 아래로 풀리면 줌 상태를 끝낸다
+        private const float HALF             = 0.5f;
+        private const float HALF_TO_FULL     = 2f;
 
         private Camera  _camera          = null;
         private Vector3 _direction       = Vector3.zero;
@@ -89,6 +91,24 @@ namespace Shinshi.Dev
             {
                 _camera.fieldOfView = value;
             }
+        }
+
+        /// <summary> point 깊이에서 화면 세로 전체가 덮는 월드 높이(m). 카메라가 없으면 0이다 </summary>
+        public float VisibleHeightAt(Vector3 point)
+        {
+            if (_camera == null)
+            {
+                return 0f;
+            }
+
+            if (_camera.orthographic)
+            {
+                return _camera.orthographicSize * HALF_TO_FULL;
+            }
+
+            Transform view  = _camera.transform;
+            float     depth = Mathf.Max(_camera.nearClipPlane, Vector3.Dot(point - view.position, view.forward));
+            return HALF_TO_FULL * depth * Mathf.Tan(_camera.fieldOfView * HALF * Mathf.Deg2Rad);
         }
 
         /// <summary> 맞은 방향으로 확 밀렸다 돌아오는 흔들림을 delayFrames 프레임 뒤에 시작한다. 더 센 흔들림이 진행 중이면 무시한다 </summary>

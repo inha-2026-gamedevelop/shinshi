@@ -25,9 +25,10 @@ namespace Shinshi.Dev
         [SerializeField, Min(0.01f)] private float _shakeSeconds    = 0.2f; // 렉프레임이 풀린 뒤부터 센다
 
         [Header("맞은 몸")]
-        [SerializeField, Min(0.01f)]      private float _flashSeconds  = 0.12f;
-        [SerializeField, Range(0f, 0.6f)] private float _punchAmount  = 0.25f; // 높이가 눌리는 비율
-        [SerializeField, Min(0f)]         private float _vibrateAmount = 0.05f; // m, 렉프레임 동안 떠는 크기
+        [SerializeField, Min(0.01f)]      private float _flashSeconds       = 0.12f;
+        [SerializeField, Range(0f, 0.6f)] private float _punchAmount        = 0.25f;  // 높이가 눌리는 비율
+        [SerializeField, Min(0f)]         private float _vibrateAmount      = 0.05f;  // m, 렉프레임 동안 떠는 최소 크기
+        [SerializeField, Range(0f, 0.1f)] private float _vibrateScreenRatio = 0.008f; // 맞은 자리에서 보이는 화면 높이에 대한 떠는 크기 비율
 
         [Header("넉백")]
         [SerializeField, Min(0f)] private float _knockbackSpeed = 4f;  // m/s
@@ -68,6 +69,7 @@ namespace Shinshi.Dev
         public float FlashSeconds       => _flashSeconds;
         public float PunchAmount        => _punchAmount;
         public float VibrateAmount      => _vibrateAmount;
+        public float VibrateScreenRatio => _vibrateScreenRatio;
         public float KnockbackSpeed     => _knockbackSpeed;
         public float KnockbackDrag      => _knockbackDrag;
         public float FlyMultiplier      => _flyMultiplier;
