@@ -9,7 +9,7 @@ namespace Shinshi.Dev
     {
         // 서버가 확정한 타격 결과를 받은 쪽이 PlayHit을 부른다. 시험 씬에서는 스포너가 서버 대신 부른다.
         // 어떤 연출을 얼마나 낼지는 전부 프로필이 정하고, 이 클래스는 순서와 대상만 맞춘다.
-        // 카메라 흔들림과 줌은 이 클라이언트 화면에서만 쓰므로 자기 캐릭터의 타격일 때만 부른다는 전제다
+        // 카메라 흔들림, 줌, 화면 효과와 공격자 멈춤은 이 클라이언트의 내 공격(isOwnAttack)에만 쓰고, 남의 공격은 몬스터 반응과 입자만 줄여 낸다
 
         /****************************************
         *                Fields
@@ -25,6 +25,8 @@ namespace Shinshi.Dev
         private const float LAG_REFILL_PER_SECOND = 24f;   // 프레임/초
         private const int   MIN_ATTACKER_LAG      = 1;     // 예산이 바닥나도 맞힌 순간은 1프레임 멈춘다
         private const float MIN_DIRECTION_SQR     = 0.0001f;
+        private const float REMOTE_EFFECT_SCALE   = 0.4f;  // 남의 공격일 때 몬스터 떨림과 불똥 개수 배율
+        private const int   MIN_REMOTE_SPARKS     = 1;     // 줄여도 맞았다는 표시는 남긴다
 
         [Header("프로필")]
         [SerializeField] private HitFeedbackProfile _lightProfile;
@@ -153,6 +155,9 @@ namespace Shinshi.Dev
         /// <summary> 공격자 렉프레임 예산이 초마다 다시 차는 프레임 수 </summary>
         public float HitLagRefillPerSecond { get; set; } = LAG_REFILL_PER_SECOND;
 
+        /// <summary> 남의 공격일 때 맞은 몬스터의 떨림과 불똥 개수에 곱하는 배율 </summary>
+        public float RemoteEffectScale { get; set; } = REMOTE_EFFECT_SCALE;
+
         public DevHitFeedbackBlood Blood => _useBlood ? _blood : null;
         public DevCorpseLandingFx Landing => _landing;
 
@@ -191,9 +196,9 @@ namespace Shinshi.Dev
             return isHeavy ? _heavyProfile : _lightProfile;
         }
 
-        /// <summary> 맞은 지점에서 프로필대로 타격감을 재생하고 공격자에게 준 렉프레임 수를 돌려준다. direction은 공격이 향한 수평 방향이고, 치명타 여부는 서버가 정해 준 값이다 </summary>
+        /// <summary> 맞은 지점에서 프로필대로 타격감을 재생하고 공격자에게 준 렉프레임 수를 돌려준다. direction은 공격이 향한 수평 방향이고, 치명타 여부는 서버가 정해 준 값이다. isOwnAttack이 거짓이면 남의 공격 등급으로 줄여 재생한다 </summary>
         public int PlayHit(HitFeedbackProfile profile, Vector3 point, Vector3 direction, bool isKill, bool isCritical,
-            IHitLagTarget attacker, IHitLagTarget target)
+            IHitLagTarget attacker, IHitLagTarget target, bool isOwnAttack = true)
         {
             int attackerLag = 0;
             if (!enabled)
@@ -201,24 +206,35 @@ namespace Shinshi.Dev
                 return attackerLag;
             }
 
+            // 남의 공격은 내 화면을 흔들거나 멈추지 않는다. 4명이 함께 치면 화면 연출이 쌓여 내 조작과 예고가 묻히므로
+            // 맞은 몬스터의 반응과 월드 입자만 줄여 남긴다. 처치의 혈흔은 전장 상황이라 그대로 둔다
+            float effectScale = isOwnAttack ? 1f : RemoteEffectScale;
+
             if (_useHitLag)
             {
                 int lagFrames = profile.HitLagFrames + (isKill ? profile.KillExtraLagFrames : 0)
                     + (isCritical ? profile.CritExtraLagFrames : 0);
-                attackerLag = (attacker != null) ? GrantAttackerLag(lagFrames) : lagFrames;
-                attacker?.Freeze(attackerLag);
-                target?.Freeze(lagFrames + profile.TargetExtraLagFrames);
+                if (isOwnAttack)
+                {
+                    attackerLag = (attacker != null) ? GrantAttackerLag(lagFrames) : lagFrames;
+                    attacker?.Freeze(attackerLag);
+                    target?.Freeze(lagFrames + profile.TargetExtraLagFrames);
+                }
+                else
+                {
+                    target?.Freeze(profile.HitLagFrames);
+                }
 
                 // 쿼터뷰는 카메라가 멀어 고정 미터 떨림이 1px 안팎으로 묻힌다. 보이는 화면 높이 비율로 키운다.
                 // 플레이어는 떨지 않으므로 인터페이스를 넓히지 않고 맞은 몸에만 넘긴다
                 if ((target is HitReactor reactor) && (_camera != null))
                 {
                     float screenAmount = _camera.VisibleHeightAt(point) * profile.VibrateScreenRatio;
-                    reactor.SetVibrateAmount(Mathf.Max(profile.VibrateAmount, screenAmount) * VibrateScale);
+                    reactor.SetVibrateAmount(Mathf.Max(profile.VibrateAmount, screenAmount) * VibrateScale * effectScale);
                 }
             }
 
-            if ((_useCameraShake) && (_camera != null))
+            if ((isOwnAttack) && (_useCameraShake) && (_camera != null))
             {
                 float strength = isKill ? profile.KillShakeAmount : profile.ShakeAmount;
                 KickAccumulated(direction, strength, profile.ShakeSeconds, attackerLag);
@@ -228,12 +244,21 @@ namespace Shinshi.Dev
             {
                 int sparkCount = isKill ? profile.KillSparkCount : profile.SparkCount;
                 sparkCount     = isCritical ? Mathf.RoundToInt(sparkCount * profile.CritSparkMultiplier) : sparkCount;
+                if ((!isOwnAttack) && (sparkCount > 0))
+                {
+                    sparkCount = Mathf.Max(MIN_REMOTE_SPARKS, Mathf.RoundToInt(sparkCount * effectScale));
+                }
                 _sparks.Burst(point, direction, sparkCount, isCritical);
             }
 
-            if ((_useBlood) && (_blood != null))
+            if ((_useBlood) && (_blood != null) && ((isOwnAttack) || (isKill)))
             {
                 _blood.Burst(point, direction, isKill, isCritical);
+            }
+
+            if (!isOwnAttack)
+            {
+                return attackerLag;
             }
 
             if ((_useScreenFx) && (isCritical))
@@ -302,8 +327,8 @@ namespace Shinshi.Dev
             }
         }
 
-        /// <summary> 프로필에 충격파가 있으면 center에서 링과 먼지를 터뜨리고 화면을 당긴다. 몬스터를 미는 일은 호출한 쪽이 한다 </summary>
-        public void PlaySlam(HitFeedbackProfile profile, Vector3 center)
+        /// <summary> 프로필에 충격파가 있으면 center에서 링과 먼지를 터뜨리고 내 공격이면 화면을 당긴다. 몬스터를 미는 일은 호출한 쪽이 한다 </summary>
+        public void PlaySlam(HitFeedbackProfile profile, Vector3 center, bool isOwnAttack = true)
         {
             if ((!enabled) || (!_useShockwave) || (profile.ShockwaveRadius <= 0f))
             {
@@ -312,7 +337,7 @@ namespace Shinshi.Dev
 
             _shockwave.Play(center, profile.ShockwaveRadius, true);
 
-            if (_camera != null)
+            if ((isOwnAttack) && (_camera != null))
             {
                 _camera.ZoomPunch(profile.ZoomPunch, profile.ZoomSeconds);
             }

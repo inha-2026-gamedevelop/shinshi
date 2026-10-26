@@ -127,6 +127,9 @@ namespace Shinshi.Dev
         /// <summary> 서버 대역이 무작위로 내는 치명타 확률(0에서 1) </summary>
         public float DevCritChance { get => _devCritChance; set => _devCritChance = Mathf.Clamp01(value); }
 
+        /// <summary> 켜면 내 타격을 다른 파티원의 타격으로 보고 남의 공격 등급으로 재생한다. 내 캐릭터는 멈추지 않고 데미지 숫자도 띄우지 않는다 </summary>
+        public bool PlayHitsAsRemote { get; set; }
+
         public int ZoneCount => (_zoneAlive != null) ? _zoneAlive.Length : 0;
 
         /// <summary> 첫 무리를 세운 시각(Time.time), 아직이면 음수. 제한 시간은 여기서부터 센다 </summary>
@@ -335,15 +338,22 @@ namespace Shinshi.Dev
             direction   = direction.normalized;
 
             hitPoint.y = target.bounds.center.y;
-            _director.PlayHit(profile, hitPoint, direction, isKill, isCritical, _player, monster.LagTarget);
-            ShowDamageNumber(hitPoint, monster, isHeavy, isCritical);
+
+            // 남의 공격 확인용이면 공격자 없이 재생한다. 릴리즈의 데미지 숫자도 내 캐릭터가 받은 피해 알림에만 뜬다
+            bool isOwnAttack = !PlayHitsAsRemote;
+            _director.PlayHit(profile, hitPoint, direction, isKill, isCritical, isOwnAttack ? _player : null,
+                monster.LagTarget, isOwnAttack);
+            if (isOwnAttack)
+            {
+                ShowDamageNumber(hitPoint, monster, isHeavy, isCritical);
+            }
         }
 
         // 강공격이 내려친 자리에서 링과 먼지를 터뜨리고, 반지름 안의 몬스터를 한꺼번에 밀어낸다
         private void OnPlayerSlam(Vector3 center)
         {
             HitFeedbackProfile profile = _director.GetProfile(true);
-            _director.PlaySlam(profile, center);
+            _director.PlaySlam(profile, center, !PlayHitsAsRemote);
 
             if (profile.ShockwaveRadius > 0f)
             {

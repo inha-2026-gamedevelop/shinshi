@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Shinshi.Dev
 {
-    /// <summary> 치명타 블러와 줌 펀치, 몬스터 피격 떨림, 다중 타격 흔들림, 히트스톱 상한, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
+    /// <summary> 치명타 블러와 줌 펀치, 몬스터 피격 떨림, 다중 타격 흔들림, 히트스톱 상한, 남의 공격 등급, 카메라 구도, 치명타 확률, 무한 소환을 실행 중에 조절하는 시험용 패널 </summary>
     public sealed class DevHitFeedbackTuningPanel : MonoBehaviour
     {
         // 값은 디렉터와 스포너의 메모리 값만 바꾸고 프로필 에셋은 쓰지 않는다. 화면 오른쪽의 빈 자리에 놓고 머리띠를 끌어 옮길 수 있다.
@@ -179,6 +179,11 @@ namespace Shinshi.Dev
                 _director.HitLagBudgetFrames    = Mathf.RoundToInt(DrawSlider("예산(프레임)", _director.HitLagBudgetFrames,
                     LAG_BUDGET_MIN, LAG_BUDGET_MAX, FORMAT_ANGLE));
                 _director.HitLagRefillPerSecond = DrawSlider("회복(초당)", _director.HitLagRefillPerSecond, 0f, LAG_REFILL_MAX, FORMAT_ANGLE);
+
+                GUILayout.Space(SECTION_GAP);
+                GUILayout.Label("남의 공격 (파티원 타격)");
+                _spawner.PlayHitsAsRemote  = GUILayout.Toggle(_spawner.PlayHitsAsRemote, " 내 타격을 남의 공격으로 재생");
+                _director.RemoteEffectScale = DrawSlider("떨림, 불똥", _director.RemoteEffectScale, 0f, 1f, FORMAT_TWO);
 
                 DrawCameraSection();
 
