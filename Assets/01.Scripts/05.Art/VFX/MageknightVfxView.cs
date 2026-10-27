@@ -42,6 +42,7 @@ namespace Shinshi.Art
         [SerializeField] private GameObject _fieldPrefab;
         [FormerlySerializedAs("_sealPrefab")]
         [SerializeField] private GameObject _jumpPrefab;
+        [SerializeField] private GameObject _fullStackAuraPrefab;
 
         [Header("풀과 재생")]
         [SerializeField] private int   _poolSizePerPrefab = 2;
@@ -67,6 +68,7 @@ namespace Shinshi.Art
         private readonly MageknightVfxPool[]  _pools   = new MageknightVfxPool[KIND_COUNT];
 
         private Transform _poolRoot;
+        private GameObject _fullStackAura;
         private bool      _hasConfig;
         private bool      _wasRunning;
         private float     _waveSpeed;
@@ -87,6 +89,7 @@ namespace Shinshi.Art
 
         private void OnDisable()
         {
+            StopFullStackAura();
             UnbindFeedback();
             _tracker.Reset();
             _wasRunning = false;
@@ -95,6 +98,7 @@ namespace Shinshi.Art
 
         private void OnDestroy()
         {
+            StopFullStackAura();
             StopAllEffects();
             if (_poolRoot != null)
             {
@@ -112,6 +116,7 @@ namespace Shinshi.Art
 
             if (_combat.PlayerClass != EPlayerClass.Mageknight)
             {
+                StopFullStackAura();
                 // 직업이 바뀌면 남은 효과를 멈추고, 마검사로 돌아오면 새 기준값부터 본다
                 if (_wasRunning)
                 {
@@ -123,6 +128,7 @@ namespace Shinshi.Art
                 return;
             }
 
+            UpdateFullStackAura();
             if ((!_hasConfig) && (!TryConfigure()))
             {
                 return;
@@ -174,6 +180,32 @@ namespace Shinshi.Art
             if (_combat == null)
             {
                 _combat = GetComponentInParent<PlayerCombatState>();
+            }
+        }
+
+        private void UpdateFullStackAura()
+        {
+            bool full = GameDB.IsInitialized && (GameDB.Skills.ClassStackMax > 0)
+                && (_combat.ClassStacks >= GameDB.Skills.ClassStackMax)
+                && (_combat.LifeState == EParticipantLifeState.Alive);
+            if ((!full) || (_fullStackAuraPrefab == null))
+            {
+                StopFullStackAura();
+                return;
+            }
+
+            if (_fullStackAura == null)
+            {
+                _fullStackAura = Instantiate(_fullStackAuraPrefab, _combat.transform, false);
+            }
+        }
+
+        private void StopFullStackAura()
+        {
+            if (_fullStackAura != null)
+            {
+                Destroy(_fullStackAura);
+                _fullStackAura = null;
             }
         }
 

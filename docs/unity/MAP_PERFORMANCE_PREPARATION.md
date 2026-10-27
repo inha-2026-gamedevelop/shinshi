@@ -154,6 +154,8 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 `PF_NetPlayer`의 `ArcherVfxView`가 프리팹을 참조한다. 플레이어 원점에 자식으로 생성하며, 살아 있는 궁수에게 속성이 부여된 동안 스택 수와 관계없이 재생한다. 스택이 최대치에 도달하면 회전 속도를 Inspector 배율(기본 4배)로 높이고, 보조 입자의 크기를 기본 6배로 늘리며 바깥쪽 속도를 더한다. 보조 입자의 방출량은 스택에 관계없이 같다. 스택이 줄면 원래 설정으로 되돌린다. 주 궤적의 방출량과 입자 수명은 바꾸지 않는다. 얼음·바람·불 색은 뷰의 Inspector에서 조절한다. 속성 없음·사망·직업 변경·뷰 비활성화 때 입자를 제거하고, 속성 전환 때 이전 입자를 지운 후 새 색으로 재생한다. 효과는 표시 전용이고 판정에 영향을 주지 않는다. 게임 카메라, 다인 접속, 성능과 실제 프리워밍 실행은 미검증이다.
 
+마검사 풀스택 오라 `Assets/02.Prefab/VFX/Mageknight/PF_MageknightVfx_FullStackAura.prefab` (GUID `ebba8e06272088e4caf66c138392cc41`)는 `PrewarmCatalog`의 Particle 항목에 등록한다. `M_ReleaseGlow.mat`과 `Shinshi/VFX/ReleaseParticle`을 공유하며 1초 표본을 사용한다. `PF_NetPlayer`의 `MageknightVfxView`가 살아 있는 마검사의 최대 스택에서 플레이어 원점에 생성하고, 스택 감소·사망·직업 변경·뷰 비활성화 때 제거한다. 발광 입자에는 AO·충돌체·LOD를 사용하지 않는다. 솔로 호스트에서 재생과 스택 전환을 확인했으며 실제 로딩 프리워밍, Player 빌드, 다인 접속과 성능은 미검증이다.
+
 2026-10-22 릴리즈 `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab`에도 연결했다. 시험 호스트의 임시 추가 발사 대신 `PlayerServer`와 `PlayerConfigSO`의 정식 연발 설정을 사용한다. 부팅 카탈로그 소비·GPU 워밍업·실제 다인 전장 실행은 미검증이다. 속성색 변경은 기존 프리팹 복제본에만 적용하므로 별도 색상 프리팹이나 재질을 만들지 않는다.
 
 | 준비 단계 | 프리팹 (`Assets/02.Prefab/VFX/Archer/`) | GUID |

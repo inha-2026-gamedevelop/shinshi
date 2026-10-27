@@ -246,6 +246,27 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void StatusView_Mageknight_ShowsStackIconAndCountInBuffGroup()
+        {
+            HudPlayerStatusView status = CreateStatusView(out RectTransform track);
+            Transform group = CreateBuffGroup();
+            ClassStackDisplay empty = ClassStackHudRules.Build(EPlayerClass.Mageknight, 0, MAX_STACKS, EArcherElement.None);
+            ClassStackDisplay full = ClassStackHudRules.Build(EPlayerClass.Mageknight, MAX_STACKS, MAX_STACKS, EArcherElement.None);
+
+            status.SetClassStacks(in empty);
+            Transform badge = group.Find(BADGE_OBJECT_NAME);
+            Assert.IsNotNull(badge);
+            Assert.IsTrue(badge.gameObject.activeSelf);
+            Assert.AreEqual("T_MageknightStack", badge.Find("Icon").GetComponent<RawImage>().texture.name);
+            Assert.AreEqual("0", badge.Find("Count").GetComponent<TMP_Text>().text);
+            Assert.IsFalse(track.Find(STACK_OBJECT_NAME).GetComponent<TMP_Text>().enabled);
+
+            status.SetClassStacks(in full);
+            Assert.AreEqual("20", badge.Find("Count").GetComponent<TMP_Text>().text);
+            Assert.IsTrue(badge.Find("Glow").gameObject.activeSelf);
+        }
+
+        [Test]
         public void SkillSlot_SetLocked_DimsAndRestoresIcon()
         {
             var slot = _root.AddComponent<HudSkillSlotView>();

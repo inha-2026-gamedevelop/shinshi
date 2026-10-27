@@ -17,7 +17,6 @@ using TMPro;
 // 프로젝트 내부
 using Shinshi.Combat;
 using Shinshi.Common;
-using Shinshi.Data;
 using Shinshi.Network;
 
 namespace Shinshi.UI
@@ -44,9 +43,7 @@ namespace Shinshi.UI
         private const float  NAMEPLATE_MAX_DIST_SQR   = NAMEPLATE_MAX_DISTANCE * NAMEPLATE_MAX_DISTANCE;
         private const float  STATS_FONT_SIZE          = 20f;
         private const float  NAMEPLATE_FONT_SIZE      = 22f;
-        private const float  STACK_FONT_SIZE          = 18f;
-        private const float  STACK_OFFSET_Y           = 24f;
-        // 길드 줄은 이름 바로 위에 두고, 길드가 있으면 스택 줄은 그 위로 한 줄 밀린다
+        // 길드 줄은 이름 바로 위에 둔다
         private const float  GUILD_FONT_SIZE          = 18f;
         private const float  GUILD_OFFSET_Y           = 24f;
         private const float  TEXT_OUTLINE_WIDTH       = 0.2f;
@@ -406,16 +403,10 @@ namespace Shinshi.UI
                 nameplate.Text.rectTransform.position = new Vector3(screen.x, screen.y, 0f);
             }
 
-            int               max     = GameDB.IsInitialized ? GameDB.Skills.ClassStackMax : 0;
-            PlayerCombatState state   = nameplate.State;
-            ClassStackDisplay display = ClassStackHudRules.Build(state.PlayerClass, state.ClassStacks, max, state.ArcherElement);
-
-            // 궁수 속성 아이콘과 스택은 하단 HUD BuffGroup에서 보이므로 이름 위 줄은 속성이 없는 직업만 그린다
-            bool hasGuild = DrawGuild(nameplate, nameVisible, screen);
-            DrawStacks(nameplate, in display, (nameVisible) && (!display.ShowsElement), screen, hasGuild ? GUILD_OFFSET_Y : 0f);
+            DrawGuild(nameplate, nameVisible, screen);
         }
 
-                private bool DrawGuild(Nameplate nameplate, bool nameVisible, Vector3 screen)
+        private bool DrawGuild(Nameplate nameplate, bool nameVisible, Vector3 screen)
         {
             // 서버가 복제한 길드가 있으면 그것을 쓰고, 없으면 내 이름표만 소셜 스냅샷의 내 길드로 대신한다
             string guildName = nameplate.State.GuildName;
@@ -512,43 +503,6 @@ namespace Shinshi.UI
         }
 #endif
 
-        // 머리 위에는 체력바가 없어 이름 바로 위에 스택 줄을 하나 더 그린다. 글자는 값이 바뀔 때만 다시 만든다
-        private void DrawStacks(Nameplate nameplate, in ClassStackDisplay display, bool lineVisible, Vector3 screen,
-            float extraOffsetY)
-        {
-            bool visible = (lineVisible) && (display.IsVisible);
-            if (nameplate.StackText == null)
-            {
-                if (!visible)
-                {
-                    return;
-                }
-
-                nameplate.StackText = CreateText("NameplateStacks", _nameplateRoot, STACK_FONT_SIZE, TextAlignmentOptions.Center);
-                ApplyNameplateOutline(nameplate.StackText);
-                nameplate.StackText.rectTransform.sizeDelta = NAMEPLATE_SIZE;
-            }
-
-            if (!display.SameAs(in nameplate.ShownStacks))
-            {
-                nameplate.ShownStacks     = display;
-                nameplate.StackText.color = ClassStackHudRules.GetColor(in display);
-                nameplate.StackText.text  = ClassStackHudRules.FormatNameplate(in display);
-            }
-
-            if (nameplate.StackText.enabled != visible)
-            {
-                nameplate.StackText.enabled = visible;
-            }
-
-            // 캔버스 배율을 곱해야 해상도가 달라도 이름과의 간격이 같다
-            if (visible)
-            {
-                float offset = (STACK_OFFSET_Y + extraOffsetY) * _nameplateRoot.lossyScale.y;
-                nameplate.StackText.rectTransform.position = new Vector3(screen.x, screen.y + offset, 0f);
-            }
-        }
-
         private void RemoveStaleNameplates(bool removeAll)
         {
             _removeIds.Clear();
@@ -588,10 +542,6 @@ namespace Shinshi.UI
         private void DestroyNameplate(Nameplate nameplate)
         {
             Destroy(nameplate.Text.gameObject);
-            if (nameplate.StackText != null)
-            {
-                Destroy(nameplate.StackText.gameObject);
-            }
             if (nameplate.GuildText != null)
             {
                 Destroy(nameplate.GuildText.gameObject);
@@ -607,8 +557,6 @@ namespace Shinshi.UI
             public readonly PlayerCombatState State;
             public readonly TextMeshProUGUI   Text;
             public string                     ShownName;
-            public TextMeshProUGUI            StackText;
-            public ClassStackDisplay          ShownStacks;
             public TextMeshProUGUI            GuildText;
             public string                     ShownGuild;
 
@@ -617,8 +565,6 @@ namespace Shinshi.UI
                 State       = state;
                 Text        = text;
                 ShownName   = null;
-                StackText   = null;
-                ShownStacks = ClassStackDisplay.Hidden;
             }
         }
     }

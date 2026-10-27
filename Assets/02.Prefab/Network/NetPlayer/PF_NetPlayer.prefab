@@ -464,6 +464,7 @@ MonoBehaviour:
   _wavePrefab: {fileID: 4023686897370039170, guid: 876b03aa451a003449aa0271094656bd, type: 3}
   _fieldPrefab: {fileID: 3181935672943181347, guid: 233c55ce434826444aead7c0a1b823fc, type: 3}
   _jumpPrefab: {fileID: 5636803044710103467, guid: ea0aca9bba3e176478fb4937762b9857, type: 3}
+  _fullStackAuraPrefab: {fileID: 4162522289797983496, guid: ebba8e06272088e4caf66c138392cc41, type: 3}
   _poolSizePerPrefab: 2
   _maxPlaySeconds: 3
   _maxLateSeconds: 0.25

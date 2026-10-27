@@ -37,6 +37,7 @@ namespace Shinshi.UI
         private const string STATUS_LAYOUT_PATH      = "Layout_AlwaysVisible";
         private const string BUFF_GROUP_PATH         = "Layout_AlwaysVisible/StatusEffectGroup/BuffGroup";
         private const string ELEMENT_TEXTURE_PATH    = "T_ArcherElementOverhead";
+        private const string MAGE_STACK_TEXTURE_PATH = "T_MageknightStack";
         private const int    ELEMENT_ATLAS_COLUMNS   = 3;
         private const float  ELEMENT_ICON_SIZE       = 32f;
         private const float  ELEMENT_LEFT_MARGIN     = 8f;
@@ -288,11 +289,12 @@ namespace Shinshi.UI
             return true;
         }
 
-        // 속성이 정해진 궁수만 아이콘과 숫자를 BuffGroup에 보인다. 값이 바뀔 때만 불린다
+        // 마검사와 속성이 정해진 궁수의 아이콘과 숫자를 BuffGroup에 보인다. 값이 바뀔 때만 불린다
         private void ApplyElementIcon(in ClassStackDisplay display)
         {
+            bool mageknight = (display.IsVisible) && (!display.ShowsElement);
             int column = ClassStackHudRules.GetElementColumn(in display);
-            if (column < 0)
+            if ((!mageknight) && (column < 0))
             {
                 if (_elementBadge != null)
                 {
@@ -308,15 +310,28 @@ namespace Shinshi.UI
                 return;
             }
 
+            Texture2D texture = Resources.Load<Texture2D>(mageknight ? MAGE_STACK_TEXTURE_PATH : ELEMENT_TEXTURE_PATH);
+            if (texture == null)
+            {
+                if (_elementBadge != null)
+                {
+                    _elementBadge.gameObject.SetActive(false);
+                    StopFullPulse();
+                }
+
+                return;
+            }
+
             _elementBadge.gameObject.SetActive(true);
             float cellWidth = 1f / ELEMENT_ATLAS_COLUMNS;
-            _elementImage.uvRect = new Rect(column * cellWidth, 0f, cellWidth, 1f);
+            _elementImage.texture = texture;
+            _elementImage.uvRect = mageknight ? new Rect(0f, 0f, 1f, 1f) : new Rect(column * cellWidth, 0f, cellWidth, 1f);
             Color glowColor = ClassStackHudRules.GetElementColor(display.Element);
             glowColor.a = FULL_GLOW_ALPHA;
             _elementGlow.color = glowColor;
             _elementGlow.gameObject.SetActive(display.IsFull);
 
-            bool showsCount = ClassStackHudRules.ShowsBadgeCount(in display);
+            bool showsCount = mageknight || ClassStackHudRules.ShowsBadgeCount(in display);
             _elementCount.enabled = showsCount;
             if (showsCount)
             {
