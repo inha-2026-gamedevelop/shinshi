@@ -76,6 +76,7 @@ MonoBehaviour:
     _profile: {fileID: 11400000, guid: dbbb06be6b85aab4c98397b2ddaac304, type: 2}
   - _prefab: {fileID: 3611780430113273491, guid: 3dbb458840f753c45a33ad7463aab8a1, type: 3}
     _profile: {fileID: 11400000, guid: 2e54e15f01e6acb46863a1ec0a651667, type: 2}
+  _dashRushPrefab: {fileID: 3022872818176614544, guid: d452f9e5c9d0db344a8aded59e5b0256, type: 3}
 --- !u!114 &5706912240508128301
 MonoBehaviour:
   m_ObjectHideFlags: 0

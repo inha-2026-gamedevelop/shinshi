@@ -36,6 +36,8 @@ namespace Shinshi.AI
         private const float  EARLY_STOP_EPSILON         = 0.05f; // m, 이보다 짧게 멈춰야 일찍 멈춘 돌진으로 본다
         private const float  MIN_DIRECTION_SQR          = 0.0001f;
         private const string CONTAINER_NAME             = "MucheolPatternVfx";
+        private const int    MAX_RUSH_INSTANCES         = 3;     // 연속 돌진은 앞 돌진의 분출 꼬리가 다음 돌진과 겹친다
+        private const string CHARGE_HEAD_NAME           = "ChargeHead";
 
         /****************************************
         *              Nested Types
@@ -77,6 +79,7 @@ namespace Shinshi.AI
             public double                 DashHold;
             public bool                   IsHitEstimated;
             public bool                   IsBegun;
+            public MucheolDashRushView    Rush;
         }
 
         /****************************************
@@ -85,6 +88,9 @@ namespace Shinshi.AI
 
         [SerializeField] private Template[] _templates = new Template[TEMPLATE_COUNT]; // EMucheolVfxTemplate 순서
 
+        // 비우면 돌진(06)은 원본의 달리는 머리를 그대로 쓴다. 채우면 달리는 구간만 이 분출로 바꾸고 예고와 끝 타격은 원본이 그린다
+        [SerializeField] private GameObject _dashRushPrefab;
+
         private readonly List<Slot>              _slots        = new List<Slot>();
         private readonly List<GameObject>[]      _idle         = new List<GameObject>[TEMPLATE_COUNT];
         private readonly int[]                   _created      = new int[TEMPLATE_COUNT];
@@ -92,6 +98,8 @@ namespace Shinshi.AI
         private readonly HashSet<long>           _played       = new HashSet<long>();
         private readonly Queue<long>             _playedOrder  = new Queue<long>();
         private readonly Dictionary<int, string> _castPatterns = new Dictionary<int, string>();
+
+        private readonly List<MucheolDashRushView> _rushes = new List<MucheolDashRushView>();
 
         private Transform    _container;
         private Func<double> _serverClock;
@@ -521,6 +529,15 @@ namespace Shinshi.AI
             {
                 Release(_slots[i]);
             }
+
+            // 사망과 연결 끊김은 꼬리를 남기지 않고 분출을 모두 지운다
+            for (int i = 0; i < _rushes.Count; ++i)
+            {
+                if (_rushes[i] != null)
+                {
+                    _rushes[i].Stop();
+                }
+            }
         }
 
         private void SpawnStrike(int castId, int index, string patternId, Vector3 origin, Vector3 direction, double start,
@@ -640,6 +657,7 @@ namespace Shinshi.AI
             slot.DashHold     = ((speed > 0f) && (distance >= 0f))
                 ? Math.Min(slot.ImpactTime, startServerTime + (distance / speed)) : slot.ImpactTime;
             slot.Deadline     = slot.ImpactTime + CONFIRM_GRACE_SECONDS;
+            StartRush(slot);
         }
 
         // 끝 타격 시각은 서버가 정지를 판정한 시각(stopServerTime)이다. 서버 몸체도 그 틱에 멈춘 자리에 닿는다.
@@ -737,6 +755,8 @@ namespace Shinshi.AI
                 slot.Impact.Tick(profileTime);
             }
 
+            TickRush(slot, now);
+
             bool isRunning = (slot.Batch != null) ? slot.Batch.IsRunning : slot.Impact.IsRunning;
             if (!isRunning)
             {
@@ -797,6 +817,12 @@ namespace Shinshi.AI
         private void Release(Slot slot)
         {
             _slots.Remove(slot);
+            if (slot.Rush != null)
+            {
+                slot.Rush.Finish();
+                slot.Rush = null;
+            }
+
             if (slot.Batch != null)
             {
                 slot.Batch.Stop();
@@ -847,7 +873,99 @@ namespace Shinshi.AI
             GameObject created = Instantiate(_templates[template].Prefab, _container);
             created.SetActive(false);
             ++_created[template];
+            if ((template == (int)EMucheolVfxTemplate.DashPath06) && (_dashRushPrefab != null))
+            {
+                HideChargeHead(created);
+            }
+
             return created;
+        }
+
+        // 달리는 머리는 원본 재생기가 켜고 끄므로 오브젝트를 끄지 않고 렌더러만 꺼 둔다. 새 분출이 그 자리를 대신한다.
+        // 원본 프리팹을 고치지 않으려고 만들 때 한 번만 이름으로 찾는다
+        private static void HideChargeHead(GameObject root)
+        {
+            Transform head = root.transform.Find(CHARGE_HEAD_NAME);
+            if (head == null)
+            {
+                return;
+            }
+
+            Renderer[] renderers = head.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; ++i)
+            {
+                renderers[i].enabled = false;
+            }
+        }
+
+        // 돌진(06)이 달리기 시작하면 분출을 시작한다. 복원으로 늦게 시작해도 첫 Tick이 현재 거리로 옮긴다
+        private void StartRush(Slot slot)
+        {
+            if ((_dashRushPrefab == null) || (slot.Rush != null) || (slot.Cue.Template != EMucheolVfxTemplate.DashPath06))
+            {
+                return;
+            }
+
+            MucheolDashRushView rush = AcquireRush();
+            if (rush == null)
+            {
+                return;
+            }
+
+            Vector3 forward = Flatten(slot.Direction);
+            Vector3 origin  = slot.Origin + (Vector3.up * MucheolVfxCatalog.GROUND_LIFT);
+            rush.Begin(origin, Quaternion.LookRotation(forward, Vector3.up), slot.Cue.Scale.x);
+            slot.Rush = rush;
+        }
+
+        // 서버 돌진처럼 시작 시각부터 속도로 일정하게 나아간다. 벽에서 멈출 것을 아는 DashHold와 서버 정지 시각까지만 진행한다
+        private void TickRush(Slot slot, double now)
+        {
+            if (slot.Rush == null)
+            {
+                return;
+            }
+
+            double sample = Math.Min(now, slot.DashHold);
+            if (!double.IsNaN(slot.HitTime))
+            {
+                sample = Math.Min(sample, slot.HitTime);
+            }
+
+            slot.Rush.SetDistance((float)(slot.DashSpeed * Math.Max(0d, sample - slot.DashStart)));
+
+            bool isArrived = (now >= slot.DashHold) || ((!double.IsNaN(slot.HitTime)) && (now >= slot.HitTime));
+            if (isArrived)
+            {
+                slot.Rush.Finish();
+            }
+        }
+
+        private MucheolDashRushView AcquireRush()
+        {
+            for (int i = 0; i < _rushes.Count; ++i)
+            {
+                if ((_rushes[i] != null) && (!_rushes[i].IsPlaying))
+                {
+                    return _rushes[i];
+                }
+            }
+
+            if (_rushes.Count >= MAX_RUSH_INSTANCES)
+            {
+                return null;
+            }
+
+            GameObject created = Instantiate(_dashRushPrefab, _container);
+            created.SetActive(false);
+            if (!created.TryGetComponent(out MucheolDashRushView rush))
+            {
+                Destroy(created);
+                return null;
+            }
+
+            _rushes.Add(rush);
+            return rush;
         }
 
         private void ReturnToPool(int template, GameObject root)
