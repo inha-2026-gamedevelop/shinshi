@@ -83,7 +83,7 @@ namespace Shinshi.Tests
 
         // 프리뷰 Patterns의 EffectCue에서 옮긴 원본, 크기, 각도
         [TestCase(MucheolMotionCatalog.P1_P01_ID, 0, EMucheolVfxTemplate.Fan01, 1f, 1f, 0f)]
-        [TestCase(MucheolMotionCatalog.P1_P02_ID, 0, EMucheolVfxTemplate.Fan01, 0.4043f, 1f, 0f)]
+        [TestCase(MucheolMotionCatalog.P1_P02_ID, 0, EMucheolVfxTemplate.FanSlam70, 0.4043f, 1f, 0f)]
         [TestCase(MucheolMotionCatalog.P1_P03_ID, 0, EMucheolVfxTemplate.DashPath06, 0.83333f, 0.44444f, 0f)]
         [TestCase(MucheolMotionCatalog.P1_P04_ID, 0, EMucheolVfxTemplate.Circle02, 1f, 1f, 0f)]
         [TestCase(MucheolMotionCatalog.P1_P05_ID, 0, EMucheolVfxTemplate.Fan01, 1f, 1f, 0f)]
@@ -91,7 +91,7 @@ namespace Shinshi.Tests
         [TestCase(MucheolMotionCatalog.P1_P06_ID, 0, EMucheolVfxTemplate.DashPath06, 1f, 1f, 0f)]
         [TestCase(MucheolMotionCatalog.P2_P01_ID, 0, EMucheolVfxTemplate.Fan01, 0.33333f, 1f, -30f)]
         [TestCase(MucheolMotionCatalog.P2_P01_ID, 1, EMucheolVfxTemplate.Fan01, 0.33333f, 1f, 30f)]
-        [TestCase(MucheolMotionCatalog.P2_P02_ID, 0, EMucheolVfxTemplate.Fan01, 0.4043f, 1f, 0f)]
+        [TestCase(MucheolMotionCatalog.P2_P02_ID, 0, EMucheolVfxTemplate.FanSlam70, 0.4043f, 1f, 0f)]
         [TestCase(MucheolMotionCatalog.P2_P02_ID, 1, EMucheolVfxTemplate.Line03, 1f, 0.33333f, 0f)]
         [TestCase(MucheolMotionCatalog.P2_P03_ID, 0, EMucheolVfxTemplate.DashPath06, 0.83333f, 0.44444f, 0f)]
         [TestCase(MucheolMotionCatalog.P2_P04_ID, 0, EMucheolVfxTemplate.SmallWave04, 1f, 1f, 0f)]

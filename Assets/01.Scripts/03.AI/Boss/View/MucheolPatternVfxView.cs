@@ -27,7 +27,7 @@ namespace Shinshi.AI
         *              Constants
         ****************************************/
 
-        private const int    TEMPLATE_COUNT             = 7;
+        private const int    TEMPLATE_COUNT             = 8;
         private const int    MAX_INSTANCES_PER_TEMPLATE = 6;     // 한 원본을 동시에 쓰는 효과 수 상한, 꼬리가 겹치는 연타까지 덮는다
         private const int    ENDED_CAST_HISTORY         = 32;
         private const int    PLAYED_HISTORY             = 64;

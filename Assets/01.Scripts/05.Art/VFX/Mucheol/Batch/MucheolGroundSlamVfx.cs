@@ -13,12 +13,18 @@ namespace Shinshi.Art
         *                Fields
         ****************************************/
 
+        private const float MIN_SCALE = 0.0001f;
+
         [Header("지면 강타 프리팹 인스턴스, 켜 둔 채 저장하지 않는다")]
         [SerializeField] private Animation        _animation = null;
         [SerializeField] private AnimationClip    _clip      = null;
         [SerializeField] private ParticleSystem[] _particles = null;
 
-        private bool _playing;
+        [Header("부채꼴처럼 루트를 비균일 스케일로 쓰는 프리팹, 슬램이 찌그러지지 않게 z 스케일 기준으로 상쇄한다")]
+        [SerializeField] private bool _cancelParentScale = false;
+
+        private bool    _playing;
+        private Vector3 _baseScale = Vector3.one;
 
         /****************************************
         *              Properties
@@ -33,6 +39,11 @@ namespace Shinshi.Art
 
         protected override void OnViewAwake()
         {
+            if (_animation != null)
+            {
+                _baseScale = _animation.transform.localScale;
+            }
+
             Stop();
         }
 
@@ -74,6 +85,7 @@ namespace Shinshi.Art
             }
 
             _animation.gameObject.SetActive(true);
+            ApplyScale();
             _animation.Stop();
             _animation.Play(_clip.name);
             _animation[_clip.name].time = elapsed;
@@ -97,6 +109,7 @@ namespace Shinshi.Art
             }
 
             _animation.gameObject.SetActive(true);
+            ApplyScale();
             _animation.Stop();
             _clip.SampleAnimation(_animation.gameObject, elapsedSeconds);
             for (int i = 0; i < _particles.Length; ++i)
@@ -138,6 +151,23 @@ namespace Shinshi.Art
         {
             return (!IsServerBuild) && (isActiveAndEnabled) && (_animation != null) && (_clip != null)
                 && (_particles != null) && (!float.IsNaN(elapsedSeconds)) && (!float.IsInfinity(elapsedSeconds));
+        }
+
+        private void ApplyScale()
+        {
+            if (!_cancelParentScale)
+            {
+                return;
+            }
+
+            Vector3 parent = transform.lossyScale;
+            if ((parent.x <= MIN_SCALE) || (parent.y <= MIN_SCALE) || (parent.z <= MIN_SCALE))
+            {
+                return;
+            }
+
+            _animation.transform.localScale = new Vector3(
+                _baseScale.x * parent.z / parent.x, _baseScale.y * parent.z / parent.y, _baseScale.z);
         }
 
         private void PlayParticles(float elapsed)

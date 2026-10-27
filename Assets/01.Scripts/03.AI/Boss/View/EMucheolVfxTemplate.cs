@@ -11,5 +11,6 @@ namespace Shinshi.AI
         LargeWave05   = 4,
         DashPath06    = 5,
         Battlefield07 = 6,
+        FanSlam70     = 7,
     }
 }

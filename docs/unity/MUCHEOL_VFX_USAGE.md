@@ -116,7 +116,7 @@ vfx.Stop();
 - 02·04는 반경 5m 원형, 07은 반경 44m·315도(후방 45도 비움, 로컬 -Z 중심)이다. 07은 5m 연출을 루트 스케일 약 8.8배로 키웠다.
 - `MucheolBatchVfxPlayer`의 선택 필드 `_groundSlam`(`MucheolGroundSlamVfx`)에 연결한다. 비어 있으면 기존 동작과 같다. 확정 타격(`ConfirmImpact`)의 경과 시간부터 재생하고 `Stop()`에서 끈다. 슬램 길이는 약 2.7초이며 `PreviewDuration`에 반영된다.
 - `PF_MucheolBoss`의 `MucheolPatternVfxView`가 02·04·07 칸에 이 `_Slam` 프리팹을 쓴다. 되돌리려면 같은 칸에 원본을 다시 넣는다.
-- 에셋은 `Assets/01.Scripts/05.Art/VFX/Mucheol/GroundSlam/`에 있다(셰이더 `GroundSlamLayer`, 재질 `GS_*`, 바위 메시, 애니메이션 `AN_GroundSlam`). 부채꼴 70도 변형(`PF_VFX_GroundSlam_Fan70`)은 만들어 두었으나 어떤 프리팹에도 연결하지 않았다.
+- 에셋은 `Assets/01.Scripts/05.Art/VFX/Mucheol/GroundSlam/`에 있다(셰이더 `GroundSlamLayer`, 재질 `GS_*`, 바위 메시, 애니메이션 `AN_GroundSlam`). 70도 부채꼴 슬램은 `PF_Mucheol_FanSlam70.prefab`(01 부채꼴 사본에 슬램을 붙인 것)이며, 템플릿 `FanSlam70`(`EMucheolVfxTemplate` 7번, `MucheolPatternVfxView._templates` 8번째 칸)으로 P1 P02와 P2 P02의 첫 단계만 쓴다. 다른 부채꼴 패턴은 기존 `Fan01`을 그대로 쓴다. 이 프리팹은 루트를 비균일 스케일(폭 x 0.4043)로 쓰므로 `MucheolGroundSlamVfx`의 `_cancelParentScale`이 슬램을 z 스케일 기준 균일 크기로 되돌린다. 하드는 부채꼴 1.4배, 원형 1.3배가 뷰의 크기 배율로 그대로 곱해진다.
 - 사전 로딩 프리팹 `PF_Prewarm_MucheolPatternVfx`는 아직 원본 02·04·07을 가리킨다. 슬램 쪽 셰이더·재질은 첫 재생에서 로드된다.
 
 상태: 구현됨·실행 미검증. 에디터에서 시각을 정해 렌더한 정지 확인과 CPU 시간 측정(프레임당 약 0.4~0.5ms, GC 할당 없음)만 했다. Play 모드 연속 재생, 빌드, 서버 확정 타격 연결, 다인 접속, GPU·겹침 비용, 사전 로딩은 미검증이다. 용암 균열이 후반에도 밝게 남는 등 시각 품질은 1차 검토본이다.
