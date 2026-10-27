@@ -14,7 +14,9 @@
         "DOTweenPro.Scripts",
         "PixelCrushers",
         "DialogueSystem",
-        "MeshBakerCore"
+        "MeshBakerCore",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

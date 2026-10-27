@@ -88,5 +88,7 @@ Shader "Shinshi/VFX/MucheolBatchRock"
         }
         UsePass "Universal Render Pipeline/Lit/ShadowCaster"
         UsePass "Universal Render Pipeline/Lit/DepthOnly"
+        // 화면 깊이와 노멀을 읽는 후처리(SSAO, 툰 조명)에 이 바위가 들어가게 한다. 없으면 뒤 물체의 깊이와 노멀이 남는다
+        UsePass "Universal Render Pipeline/Lit/DepthNormals"
     }
 }

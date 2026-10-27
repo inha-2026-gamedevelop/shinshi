@@ -27,7 +27,8 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: 7833122117494664109}
   - {fileID: 4892596209770911660}
-  m_RendererFeatureMap: ad6b866f10d7b46cac57d1a854fee543
+  - {fileID: 2208963217007074006}
+  m_RendererFeatureMap: ad6b866f10d7b46cac57d1a854fee543d65a9c9f57d0a71e
   m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
@@ -76,6 +77,20 @@ MonoBehaviour:
   passIndex: 0
   bindDepthStencilAttachment: 0
   m_Version: 1
+--- !u!114 &2208963217007074006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f41d025ae76099458252cca7b69c796, type: 3}
+  m_Name: ToonLighting
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.ToonLightingRendererFeature
+  m_Active: 1
+  _shader: {fileID: 4800000, guid: f2d36af1b26b0944f9da7cba1fbd06b7, type: 3}
 --- !u!114 &7833122117494664109
 MonoBehaviour:
   m_ObjectHideFlags: 0

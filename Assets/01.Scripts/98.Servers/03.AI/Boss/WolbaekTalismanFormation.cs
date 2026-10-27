@@ -782,6 +782,7 @@ namespace Shinshi.AI
                 }
 
                 ++hitCount;
+                BossTargetHitReport.Report(_listener, _castId, target, _anchor);
 
                 if (spec.PushDistance > 0f)
                 {

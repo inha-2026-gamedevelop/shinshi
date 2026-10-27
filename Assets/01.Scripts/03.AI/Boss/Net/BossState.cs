@@ -15,7 +15,7 @@ namespace Shinshi.AI
 {
     /// <summary> 보스 네트워크 개체의 복제 상태와 공격 사건 전달, 판정은 서버의 BossServer가 한다 </summary>
     public class BossState : NetworkBehaviour, IBossEventListener, IBossMucheolEventListener, IBossHardPhaseEventListener,
-        IBossWolbaekGimmickEventListener, IBossMucheolSealEventListener
+        IBossWolbaekGimmickEventListener, IBossMucheolSealEventListener, IWolbaekPlayerHitEventListener
     {
         // 서버 스포너(BossNetworkSpawner)가 보스전 시작 틱에 서버 소유로 스폰한다. Command가 없어 클라이언트는 보스 상태를 바꿀 수 없다.
         //
@@ -45,6 +45,9 @@ namespace Shinshi.AI
         //
         // 무철 방향 봉인은 사건을 ClientRpc로 보내고, 지금 방향과 타수와 요구 타수는 SyncVar로 함께 둔다. 늦은 접속과 재접속은
         // 스폰 상태의 SyncVar로 복원(OnSealRestored)하고 이후 사건은 Rpc로 받는다. 표식이 없으면 방향은 NO_SEAL_SIDE다
+        //
+        // 월백 피격 임팩트는 맞은 대상마다 신뢰 Rpc 한 건이다. 같은 틱에 여럿이 맞아도 Mirror가 한 프레임의 메시지를 묶어 보내므로 따로 묶지 않는다.
+        // 표시용 일회성이라 기록에 남기지 않고, 방향은 플레이어 방향과 같은 yaw 하나로 줄인다
 
         /****************************************
         *                Fields
@@ -108,6 +111,7 @@ namespace Shinshi.AI
         private IBossHardPhaseStateListener      _hardListener;    // 수신부가 구현했을 때만 있다
         private IBossWolbaekGimmickStateListener _wolbaekListener; // 수신부가 구현했을 때만 있다
         private IBossMucheolSealStateListener    _sealListener;    // 수신부가 구현했을 때만 있다
+        private IWolbaekPlayerHitEventListener   _hitListener;     // 수신부가 구현했을 때만 있다
         private bool                             _clientStarted = false;
 
         /****************************************
@@ -224,6 +228,7 @@ namespace Shinshi.AI
             _hardListener    = listener as IBossHardPhaseStateListener;
             _wolbaekListener = listener as IBossWolbaekGimmickStateListener;
             _sealListener    = listener as IBossMucheolSealStateListener;
+            _hitListener     = listener as IWolbaekPlayerHitEventListener;
             if (_clientStarted)
             {
                 _clientLedger.Replay(_listener);
@@ -848,6 +853,17 @@ namespace Shinshi.AI
         {
             _serverPhaseLedger.OnCircleBurstCancelled(castId);
             RpcCircleBurstCancelled(castId);
+        }
+
+        /****************************************
+        *      Server (Wolbaek Player Hit)
+        ****************************************/
+
+        [Server]
+        public void OnPlayerHit(in WolbaekPlayerHit hit)
+        {
+            bool hasDirection = WolbaekHitImpactRules.TryEncodeDirection(hit.Direction, out ushort yaw);
+            RpcPlayerHit(hit.TargetId, hit.PatternId ?? string.Empty, hit.Position, hasDirection, yaw, hit.ServerTime);
         }
 
         /****************************************
@@ -2149,6 +2165,19 @@ namespace Shinshi.AI
         private void RpcSealStopped()
         {
             _sealListener?.OnSealStopped();
+        }
+
+        [ClientRpc]
+        private void RpcPlayerHit(int targetId, string patternId, Vector3 position, bool hasDirection, ushort yaw, double serverTime)
+        {
+            if (_hitListener == null)
+            {
+                return;
+            }
+
+            var hit = new WolbaekPlayerHit(targetId, patternId, position, WolbaekHitImpactRules.DecodeDirection(hasDirection, yaw),
+                serverTime);
+            _hitListener.OnPlayerHit(in hit);
         }
 
         // 표식이 나와 있는 전투 중일 때만 넘긴다. 끝난 봉인은 복원하지 않는다

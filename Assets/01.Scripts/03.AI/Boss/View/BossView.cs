@@ -17,7 +17,7 @@ namespace Shinshi.AI
     // 진짜 모션이 들어오면 이 클래스의 모션 부분만 걷어내면 된다.
     // 본을 세계 좌표 축으로 돌려서 본마다 다른 로컬 축 방향을 신경 쓰지 않는다
     /// <summary> 월백 외형 표현, 위치와 방향을 따라가고 시전 단계에 맞춰 임시 모션을 보여 준다 </summary>
-    public sealed class BossView : ClientView
+    public sealed class BossView : ClientView, IBossEventMotionSink
     {
         /****************************************
         *              Constants

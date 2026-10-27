@@ -53,7 +53,8 @@ namespace Shinshi.Tests
     // 하드 페이즈 사건과 전장 공격은 값에 패턴 ID가 없어, 사건이 온 순간 몸체가 시전 중이던 패턴을 patternSource로 함께 적는다.
     // 페이즈는 시험이 틱 전에 넣어 준 값이다. 전환한 틱에 온 정리 사건은 이전 페이즈로 적힌다
     /// <summary> 모의 전투에서 보스 사건을 순서대로 기록하는 시험용 수신처 </summary>
-    public sealed class BossEventRecorder : IBossEventListener, IBossMucheolStateListener, IBossHardPhaseStateListener
+    public sealed class BossEventRecorder : IBossEventListener, IBossMucheolStateListener, IBossHardPhaseStateListener,
+        IWolbaekPlayerHitEventListener
     {
         /****************************************
         *                Fields
@@ -82,6 +83,8 @@ namespace Shinshi.Tests
         /// <summary> 받은 사건으로 이어 간 전용 공격 복원 기록 </summary>
         public BossPhaseEffectLedger PhaseLedger { get; } = new BossPhaseEffectLedger();
 
+        // 피격은 표시용 일회성 사건이라 Records에 넣지 않는다. 사건 순서와 수를 보는 다른 시험이 맞은 횟수에 흔들리지 않게 한다
+        public List<WolbaekPlayerHit>      PlayerHits    { get; } = new List<WolbaekPlayerHit>();
         public List<BossTelegraphStart>    Telegraphs    { get; } = new List<BossTelegraphStart>();
         public List<BossProjectileStart>   Projectiles   { get; } = new List<BossProjectileStart>();
         public List<BossAreaStart>         Areas         { get; } = new List<BossAreaStart>();
@@ -804,6 +807,11 @@ namespace Shinshi.Tests
         public void OnCircleBurstRestored(in BossCircleBurstSnapshot snapshot)
         {
             RestoredCircleBursts.Add(snapshot);
+        }
+
+        public void OnPlayerHit(in WolbaekPlayerHit hit)
+        {
+            PlayerHits.Add(hit);
         }
     }
 }

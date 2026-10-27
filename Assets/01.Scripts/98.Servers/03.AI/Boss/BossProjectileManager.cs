@@ -236,7 +236,7 @@ namespace Shinshi.AI
 
             if (FindFirstTarget(slot, from, upper, acceptable, out ICombatTarget target, out float along))
             {
-                ApplyHit(slot, target);
+                ApplyHit(slot, target, _listener);
                 End(slot, EBossProjectileEnd.Hit, PositionAt(slot, Mathf.Clamp(along, 0f, slot.Spec.Range)), target.CombatId);
                 return;
             }
@@ -306,7 +306,7 @@ namespace Shinshi.AI
         }
 
         // 후방 판정 기준은 발사 위치다, 틱 크기와 상관없이 보스 쪽에서 온 공격으로 본다
-        private static void ApplyHit(Slot slot, ICombatTarget target)
+        private static void ApplyHit(Slot slot, ICombatTarget target, IBossProjectileListener listener)
         {
             BossProjectileSpec spec = slot.Spec;
             DamageRequest request = new DamageRequest(spec.AttackerId, target.CombatId, spec.CastInstanceId, spec.ActionInstanceId,
@@ -314,6 +314,10 @@ namespace Shinshi.AI
 
             // 닫힌 게이트라 요청이 나가지 않아도, 방어와 무적으로 막혀도 투사체는 사라진다
             bool isRequested = spec.Gate.TryApply(in request, out DamageResult result);
+            if (isRequested)
+            {
+                BossTargetHitReport.Report(listener, spec.CastInstanceId, target, spec.Origin);
+            }
 
             // 피해가 들어갔거나 방어, 반격으로 막힌 유효 타격만 대상 상한에 센다. 무적이나 사망 등 피해가 들어가지 않은 요청은 세지 않는다
             if ((spec.HitLimit != null) && isRequested
