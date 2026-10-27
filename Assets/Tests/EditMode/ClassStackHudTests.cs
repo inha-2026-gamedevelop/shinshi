@@ -25,6 +25,8 @@ namespace Shinshi.Tests
         private const int    PARTIAL_STACKS    = 12;
         private const int    OVERFLOW_STACKS   = 25;
         private const string STACK_OBJECT_NAME = "ClassStackDisplay";
+        private const string BADGE_OBJECT_NAME = "ClassElementBadge";
+        private const string BUFF_GROUP_PATH   = "Layout_AlwaysVisible/StatusEffectGroup/BuffGroup";
 
         private GameObject _root;
 
@@ -110,19 +112,20 @@ namespace Shinshi.Tests
             ClassStackDisplay mageknight = ClassStackHudRules.Build(EPlayerClass.Mageknight, PARTIAL_STACKS, MAX_STACKS,
                 EArcherElement.None);
 
-            Assert.IsFalse(ClassStackHudRules.ShowsBadgeCount(in empty));
+            Assert.IsTrue(ClassStackHudRules.ShowsBadgeCount(in empty));
             Assert.IsTrue(ClassStackHudRules.ShowsBadgeCount(in one));
             Assert.IsFalse(ClassStackHudRules.ShowsBadgeCount(in mageknight));
             Assert.IsFalse(ClassStackHudRules.ShowsBadgeCount(ClassStackDisplay.Hidden));
         }
 
         [Test]
-        public void GetBadgeColor_FullIsGold_PartialIsWhite()
+        public void GetBadgeColor_FullIsGold_PartialIsYellow()
         {
             ClassStackDisplay partial = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Fire);
             ClassStackDisplay full    = ClassStackHudRules.Build(EPlayerClass.Archer, MAX_STACKS, MAX_STACKS, EArcherElement.Fire);
 
-            Assert.AreEqual(Color.white, ClassStackHudRules.GetBadgeColor(in partial));
+            Assert.AreNotEqual(Color.white, ClassStackHudRules.GetBadgeColor(in partial));
+            Assert.Greater(ClassStackHudRules.GetBadgeColor(in partial).r, ClassStackHudRules.GetBadgeColor(in partial).b);
             Assert.AreEqual(ClassStackHudRules.GetColor(in full), ClassStackHudRules.GetBadgeColor(in full));
         }
 
@@ -153,6 +156,54 @@ namespace Shinshi.Tests
             status.SetClassStacks(in display);
 
             Assert.IsNull(track.Find(STACK_OBJECT_NAME));
+        }
+
+        [Test]
+        public void GetElementColumn_ArcherElementsMapToCells_OthersNone()
+        {
+            ClassStackDisplay ice        = ClassStackHudRules.Build(EPlayerClass.Archer, 1, MAX_STACKS, EArcherElement.Ice);
+            ClassStackDisplay wind       = ClassStackHudRules.Build(EPlayerClass.Archer, 1, MAX_STACKS, EArcherElement.Wind);
+            ClassStackDisplay fire       = ClassStackHudRules.Build(EPlayerClass.Archer, 1, MAX_STACKS, EArcherElement.Fire);
+            ClassStackDisplay none       = ClassStackHudRules.Build(EPlayerClass.Archer, 1, MAX_STACKS, EArcherElement.None);
+            ClassStackDisplay mageknight = ClassStackHudRules.Build(EPlayerClass.Mageknight, 1, MAX_STACKS, EArcherElement.None);
+
+            Assert.AreEqual(0, ClassStackHudRules.GetElementColumn(in ice));
+            Assert.AreEqual(1, ClassStackHudRules.GetElementColumn(in wind));
+            Assert.AreEqual(2, ClassStackHudRules.GetElementColumn(in fire));
+            Assert.AreEqual(-1, ClassStackHudRules.GetElementColumn(in none));
+            Assert.AreEqual(-1, ClassStackHudRules.GetElementColumn(in mageknight));
+            Assert.AreEqual(-1, ClassStackHudRules.GetElementColumn(ClassStackDisplay.Hidden));
+        }
+
+        [Test]
+        public void StatusView_ArcherElement_ShowsIconInBuffGroup_AndHidesWhenElementGone()
+        {
+            HudPlayerStatusView status = CreateStatusView(out RectTransform track);
+            Transform group = CreateBuffGroup();
+            ClassStackDisplay fire = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Fire);
+
+            status.SetClassStacks(in fire);
+
+            Transform badge = group.Find(BADGE_OBJECT_NAME);
+            Assert.IsNotNull(badge);
+            Assert.IsTrue(badge.gameObject.activeSelf);
+            Assert.AreEqual("12", badge.Find("Count").GetComponent<TMP_Text>().text);
+
+            ClassStackDisplay none = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.None);
+            status.SetClassStacks(in none);
+
+            Assert.IsFalse(badge.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void StatusView_NoBuffGroup_CreatesNoIcon()
+        {
+            HudPlayerStatusView status = CreateStatusView(out RectTransform track);
+            ClassStackDisplay fire = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Fire);
+
+            status.SetClassStacks(in fire);
+
+            Assert.IsNull(_root.transform.Find(BUFF_GROUP_PATH + "/" + BADGE_OBJECT_NAME));
         }
 
         [Test]
@@ -190,6 +241,19 @@ namespace Shinshi.Tests
             SetField(status, "_hpFill", (RectTransform)fillObject.transform);
             SetField(status, "_hpText", value);
             return status;
+        }
+
+        private Transform CreateBuffGroup()
+        {
+            Transform parent = _root.transform;
+            foreach (string name in BUFF_GROUP_PATH.Split('/'))
+            {
+                var node = new GameObject(name, typeof(RectTransform));
+                node.transform.SetParent(parent, false);
+                parent = node.transform;
+            }
+
+            return parent;
         }
 
         private static void SetField(object target, string name, object value)
