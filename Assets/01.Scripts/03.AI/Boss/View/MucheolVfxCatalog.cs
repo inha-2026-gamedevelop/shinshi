@@ -33,7 +33,7 @@ namespace Shinshi.AI
         // 하드 정의(mucheol_hard_...)는 이지와 같은 원본을 쓰되 범위가 커서 크기를 곱한다. 부채꼴 사거리 5m는 7m(1.4배, 폭도 같은 비율),
         // 원형은 5m가 6.5m(1.3배), 돌진 폭은 2.5m가 3m(1.2배)와 3m가 3.5m(7/6배), 순차 타격의 직선 길이 6m는 8m(4/3배)다.
         // 서버 하드 정의와 실행 데이터의 값과 같아야 하며, 값을 바꾸면 함께 바꾼다
-        private const float HARD_FAN_SCALE      = 1.4f;
+        public  const float HARD_FAN_SCALE      = 1.4f;
         private const float HARD_CIRCLE_SCALE   = 1.3f;
         private const float HARD_DASH_8M_WIDTH  = 1.2f;
         private const float HARD_DASH_18M_WIDTH = 3.5f / 3f;
@@ -51,20 +51,20 @@ namespace Shinshi.AI
 
         private static readonly Dictionary<string, Entry> G_Entries = new Dictionary<string, Entry>
         {
-            { MucheolMotionCatalog.P1_P01_ID, Make(EMucheolVfxSource.BasicStrike, Fan(1f)) },
+            { MucheolMotionCatalog.P1_P01_ID, Make(EMucheolVfxSource.ArmSwing, Fan(1f)) },
             { MucheolMotionCatalog.P1_P02_ID, Make(EMucheolVfxSource.BasicStrike, Fan(FAN_70_WIDTH)) },
             { MucheolMotionCatalog.P1_P03_ID, Make(EMucheolVfxSource.BasicDash, Dash(DASH_8M_WIDTH, DASH_8M_LENGTH)) },
             { MucheolMotionCatalog.P1_P04_ID, Make(EMucheolVfxSource.BasicStrike, Uniform(EMucheolVfxTemplate.Circle02)) },
-            { MucheolMotionCatalog.P1_P05_ID, Make(EMucheolVfxSource.StrikeChain, Fan(1f), Fan(FAN_70_WIDTH)) },
+            { MucheolMotionCatalog.P1_P05_ID, Make(EMucheolVfxSource.ArmChain, Fan(1f), Fan(FAN_70_WIDTH)) },
             { MucheolMotionCatalog.P1_P06_ID, Make(EMucheolVfxSource.BasicDash, Dash(1f, 1f)) },
 
-            { MucheolMotionCatalog.P2_P01_ID, Make(EMucheolVfxSource.StrikeChain, Fan(FAN_60_WIDTH, -SIDE_YAW), Fan(FAN_60_WIDTH, SIDE_YAW)) },
+            { MucheolMotionCatalog.P2_P01_ID, Make(EMucheolVfxSource.ArmChain, Fan(FAN_60_WIDTH, -SIDE_YAW), Fan(FAN_60_WIDTH, SIDE_YAW)) },
             { MucheolMotionCatalog.P2_P02_ID, Make(EMucheolVfxSource.StrikeChain, Fan(FAN_70_WIDTH),
                 new MucheolVfxCue(EMucheolVfxTemplate.Line03, new Vector3(1f, 1f, LINE_6M_LENGTH))) },
             { MucheolMotionCatalog.P2_P03_ID, Make(EMucheolVfxSource.MultiDash, Dash(DASH_8M_WIDTH, DASH_8M_LENGTH)) },
             { MucheolMotionCatalog.P2_P04_ID, Make(EMucheolVfxSource.StrikeChain, Uniform(EMucheolVfxTemplate.SmallWave04),
                 Uniform(EMucheolVfxTemplate.LargeWave05)) },
-            { MucheolMotionCatalog.P2_P05_ID, Make(EMucheolVfxSource.StrikeChain, Fan(FAN_60_WIDTH, -SIDE_YAW), Fan(FAN_60_WIDTH, SIDE_YAW),
+            { MucheolMotionCatalog.P2_P05_ID, Make(EMucheolVfxSource.ArmChain, Fan(FAN_60_WIDTH, -SIDE_YAW), Fan(FAN_60_WIDTH, SIDE_YAW),
                 Fan(FAN_70_WIDTH)) },
             { MucheolMotionCatalog.P2_P06_ID, Make(EMucheolVfxSource.MultiDash, Dash(1f, 1f)) },
             { MucheolMotionCatalog.P2_P07_ID, Make(EMucheolVfxSource.Battlefield, Uniform(EMucheolVfxTemplate.Battlefield07)) },
@@ -103,6 +103,12 @@ namespace Shinshi.AI
         {
             patternId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
             return (patternId != null) && G_Entries.ContainsKey(patternId);
+        }
+
+        /// <summary> 공격 범위 배율, 하드 정의는 부채꼴 사거리 배율이고 이지는 1이다 </summary>
+        public static float GetRangeScale(string patternId)
+        {
+            return (BossPatternCatalogSO.ToMucheolBaseId(patternId) != patternId) ? HARD_FAN_SCALE : 1f;
         }
 
         public static bool TryGetSource(string patternId, out EMucheolVfxSource source)

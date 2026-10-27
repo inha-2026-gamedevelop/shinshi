@@ -38,6 +38,8 @@ namespace Shinshi.AI
         private const string CONTAINER_NAME             = "MucheolPatternVfx";
         private const int    MAX_RUSH_INSTANCES         = 3;     // 연속 돌진은 앞 돌진의 분출 꼬리가 다음 돌진과 겹친다
         private const string CHARGE_HEAD_NAME           = "ChargeHead";
+        private const float  SWING_TRAIL_TAIL_SECONDS   = 1.3f;  // 초, 타격 뒤 스파크와 궤적이 사라질 때까지 손에 붙은 궤적을 켜 둔다
+        private const float  SWING_FILL_MARGIN          = 0.001f; // 초, 확정 전에는 예고가 가득 차 번쩍이지 않게 남기는 여유
 
         /****************************************
         *              Nested Types
@@ -51,6 +53,23 @@ namespace Shinshi.AI
 
             public GameObject                  Prefab  => _prefab;
             public MucheolPatternVfxSettingsSO Profile => _profile;
+        }
+
+        // 팔 휘두르기(P01) 한 번의 진행, 보스는 동시에 하나만 시전하므로 하나만 둔다
+        private sealed class Swing
+        {
+            public int                  CastId;
+            public int                  Index;
+            public double               Start;
+            public double               ImpactTime;
+            public double               HitTime;
+            public double               Deadline;
+            public Vector3              Origin;
+            public Vector3              Direction;
+            public float                Yaw;
+            public bool                 IsShown;
+            public bool                 IsTelegraphDone;
+            public MucheolFanTelegraph  Telegraph;
         }
 
         private sealed class Slot
@@ -91,6 +110,10 @@ namespace Shinshi.AI
         // 비우면 돌진(06)은 원본의 달리는 머리를 그대로 쓴다. 채우면 달리는 구간만 이 분출로 바꾸고 예고와 끝 타격은 원본이 그린다
         [SerializeField] private GameObject _dashRushPrefab;
 
+        // 팔 휘두르기(P01)는 땅 임팩트 대신 이 둘을 쓴다. 비우면 그 시전은 아무것도 그리지 않는다
+        [SerializeField] private MucheolFanTelegraph _swingTelegraphPrefab; // 빨간 예고, 보스 계층 밖에 둔다
+        [SerializeField] private MucheolArmTrail     _armTrailPrefab;       // 왼손 본에 붙는 궤적과 스파크
+
         private readonly List<Slot>              _slots        = new List<Slot>();
         private readonly List<GameObject>[]      _idle         = new List<GameObject>[TEMPLATE_COUNT];
         private readonly int[]                   _created      = new int[TEMPLATE_COUNT];
@@ -101,9 +124,18 @@ namespace Shinshi.AI
 
         private readonly List<MucheolDashRushView> _rushes = new List<MucheolDashRushView>();
 
-        private Transform    _container;
-        private Func<double> _serverClock;
-        private bool         _isDefeated;
+        private Transform          _container;
+        private Func<double>       _serverClock;
+        private bool               _isDefeated;
+        private Swing              _swing;
+        private MucheolFanTelegraph _swingTelegraph;
+        private readonly List<Swing>              _chainSteps = new List<Swing>();             // 연타의 아직 끝나지 않은 단계 예고
+        private readonly List<MucheolFanTelegraph> _chainPool  = new List<MucheolFanTelegraph>(); // 단계 번호별 예고, 단계가 바뀌어도 다시 쓴다
+        private MucheolArmTrail     _armTrail;        // 왼손, 팔 휘두르기(P01)와 연타가 함께 쓴다
+        private MucheolArmTrail     _armTrailRight;   // 오른손, 연타만 쓴다
+        private int                 _chainTrailCastId;
+        private double              _chainTrailEnd;
+        private bool                _hasChainTrail;
 
         /****************************************
         *              Properties
@@ -131,12 +163,19 @@ namespace Shinshi.AI
 
         private void Update()
         {
-            if (_slots.Count == 0)
+            if ((_slots.Count == 0) && (_swing == null) && (!_hasChainTrail) && (_chainSteps.Count == 0))
             {
                 return;
             }
 
             double now = ReadClock();
+            TickSwing(now);
+            TickChainSteps(now);
+            if (_hasChainTrail && (now > _chainTrailEnd))
+            {
+                EndChainTrails();
+            }
+
             for (int i = _slots.Count - 1; i >= 0; --i)
             {
                 TickSlot(_slots[i], now);
@@ -194,9 +233,15 @@ namespace Shinshi.AI
 
             foreach (string patternId in MucheolVfxCatalog.PatternIds)
             {
-                if (MucheolVfxCatalog.TryGetSource(patternId, out EMucheolVfxSource source)
-                    && ((source == EMucheolVfxSource.BasicStrike) || (source == EMucheolVfxSource.BasicDash))
-                    && MucheolVfxCatalog.TryGetCue(patternId, 0, out MucheolVfxCue cue) && HasTemplate(cue.Template))
+                if (!MucheolVfxCatalog.TryGetSource(patternId, out EMucheolVfxSource source))
+                {
+                    continue;
+                }
+
+                bool isSwing = (source == EMucheolVfxSource.ArmSwing) && (_swingTelegraphPrefab != null);
+                bool isBasic = ((source == EMucheolVfxSource.BasicStrike) || (source == EMucheolVfxSource.BasicDash))
+                    && MucheolVfxCatalog.TryGetCue(patternId, 0, out MucheolVfxCue cue) && HasTemplate(cue.Template);
+                if (isSwing || isBasic)
                 {
                     presenter.RegisterExternalVisual(patternId);
 
@@ -215,8 +260,15 @@ namespace Shinshi.AI
         public void BeginBasic(in BossTelegraphStart start)
         {
             if ((!MucheolVfxCatalog.TryGetSource(start.PatternId, out EMucheolVfxSource source))
-                || ((source != EMucheolVfxSource.BasicStrike) && (source != EMucheolVfxSource.BasicDash)))
+                || ((source != EMucheolVfxSource.BasicStrike) && (source != EMucheolVfxSource.BasicDash)
+                    && (source != EMucheolVfxSource.ArmSwing)))
             {
+                return;
+            }
+
+            if (source == EMucheolVfxSource.ArmSwing)
+            {
+                BeginSwing(in start);
                 return;
             }
 
@@ -234,6 +286,22 @@ namespace Shinshi.AI
         /// <summary> 아직 터지지 않은 예고의 조준 방향을 바꾼다, 기본 예고와 순차 타격 모두 쓴다 </summary>
         public void UpdateAim(int castId, Vector3 direction)
         {
+            if ((_swing != null) && (_swing.CastId == castId) && double.IsNaN(_swing.HitTime))
+            {
+                _swing.Direction = direction;
+                PlaceSwing(_swing);
+            }
+
+            for (int i = 0; i < _chainSteps.Count; ++i)
+            {
+                Swing step = _chainSteps[i];
+                if ((step.CastId == castId) && double.IsNaN(step.HitTime))
+                {
+                    step.Direction = direction;
+                    PlaceSwing(step);
+                }
+            }
+
             for (int i = 0; i < _slots.Count; ++i)
             {
                 Slot slot = _slots[i];
@@ -248,6 +316,12 @@ namespace Shinshi.AI
         /// <summary> 기본 단발의 서버 타격 확정 </summary>
         public void ConfirmBasicStrike(int castId, double serverTime)
         {
+            if ((_swing != null) && (_swing.CastId == castId))
+            {
+                ConfirmSwing(serverTime);
+                return;
+            }
+
             Slot slot = Find(castId, 0);
             if ((slot != null) && (!slot.IsDash))
             {
@@ -311,8 +385,14 @@ namespace Shinshi.AI
         public void BeginStrikeChain(in BossStrikeChainStart start, int firstStep = 0)
         {
             if ((!MucheolVfxCatalog.TryGetSource(start.PatternId, out EMucheolVfxSource source))
-                || (source != EMucheolVfxSource.StrikeChain))
+                || ((source != EMucheolVfxSource.StrikeChain) && (source != EMucheolVfxSource.ArmChain)))
             {
+                return;
+            }
+
+            if (source == EMucheolVfxSource.ArmChain)
+            {
+                BeginArmChain(in start, firstStep);
                 return;
             }
 
@@ -336,6 +416,18 @@ namespace Shinshi.AI
         /// <summary> 단계 타격의 서버 확정 </summary>
         public void ConfirmStrikeChainHit(int castId, int stepIndex, double serverTime)
         {
+            Swing step = FindChainStep(castId, stepIndex);
+            if (step != null)
+            {
+                if (double.IsNaN(step.HitTime))
+                {
+                    step.HitTime = serverTime;
+                    Remember(Key(castId, stepIndex));
+                }
+
+                return;
+            }
+
             Slot slot = Find(castId, stepIndex);
             if (slot != null)
             {
@@ -525,6 +617,9 @@ namespace Shinshi.AI
         /// <summary> 모든 효과를 멈추고 풀에 돌려준다 </summary>
         public void Clear()
         {
+            EndSwing();
+            EndChainTrails();
+            EndChainSteps(false, 0);
             for (int i = _slots.Count - 1; i >= 0; --i)
             {
                 Release(_slots[i]);
@@ -538,6 +633,389 @@ namespace Shinshi.AI
                     _rushes[i].Stop();
                 }
             }
+        }
+
+        // 팔 휘두르기는 예고 시작부터 타격까지 빨간 예고를 채우고, 시전 내내 왼손 궤적을 켜 둔다. 궤적은 손이 빠를 때만 스스로 그린다.
+        // 같은 (시전, 0번)이 이미 있거나 터졌으면 만들지 않는다, 복원과 늦은 사건이 같은 효과를 두 번 내지 않게 하는 기본 예고와 같은 기준이다
+        private void BeginSwing(in BossTelegraphStart start)
+        {
+            int castId = start.CastId;
+            if (_isDefeated || (_container == null) || (_swingTelegraphPrefab == null) || _endedCasts.Contains(castId)
+                || ((_swing != null) && (_swing.CastId == castId)) || _played.Contains(Key(castId, 0))
+                || (!MucheolVfxCatalog.Handles(start.PatternId)))
+            {
+                return;
+            }
+
+            double impact = start.StartServerTime + start.TelegraphSeconds;
+            if (ReadClock() >= impact + CONFIRM_GRACE_SECONDS)
+            {
+                return;
+            }
+
+            EnsureTelegraph();
+            EnsureTrails();
+            if (_swingTelegraph == null)
+            {
+                return;
+            }
+
+            EndSwing();
+            _swing = new Swing
+            {
+                CastId     = castId,
+                Start      = start.StartServerTime,
+                ImpactTime = impact,
+                HitTime    = double.NaN,
+                Deadline   = impact + CONFIRM_GRACE_SECONDS,
+                Origin     = start.Origin,
+                Direction  = start.Direction,
+                Telegraph  = _swingTelegraph,
+            };
+
+            float rangeScale = MucheolVfxCatalog.GetRangeScale(start.PatternId);
+            _swingTelegraph.Configure((float)(impact - start.StartServerTime));
+            _swingTelegraph.SetRangeScale(rangeScale);
+            PlaceSwing(_swing);
+            _swingTelegraph.gameObject.SetActive(true);
+            _swingTelegraph.SetElapsed((float)(ReadClock() - start.StartServerTime));
+            ActivateTrail(_armTrail, rangeScale);
+        }
+
+        private void ConfirmSwing(double hitTime)
+        {
+            if (!double.IsNaN(_swing.HitTime))
+            {
+                return;
+            }
+
+            _swing.HitTime = hitTime;
+            Remember(Key(_swing.CastId, 0));
+        }
+
+        // 확정 전에는 예고가 가득 차기 직전에서 기다리고, 확정이 오면 그 시각부터 번쩍임과 사라짐이 흐른다
+        private void TickSwing(double now)
+        {
+            if (_swing == null)
+            {
+                return;
+            }
+
+            bool isPending = double.IsNaN(_swing.HitTime);
+            if (isPending && (now > _swing.Deadline))
+            {
+                EndSwing();
+                return;
+            }
+
+            if (!_swing.IsTelegraphDone)
+            {
+                float fill = (float)(_swing.ImpactTime - _swing.Start);
+                float elapsed = isPending
+                    ? Mathf.Min((float)(now - _swing.Start), fill - SWING_FILL_MARGIN)
+                    : fill + (float)(now - _swing.HitTime);
+                _swingTelegraph.SetElapsed(elapsed);
+                if (_swingTelegraph.IsFinished)
+                {
+                    _swingTelegraph.gameObject.SetActive(false);
+                    _swing.IsTelegraphDone = true;
+                }
+            }
+
+            if ((!isPending) && (now > _swing.HitTime + SWING_TRAIL_TAIL_SECONDS))
+            {
+                EndSwing();
+            }
+        }
+
+        private static void PlaceSwing(Swing swing)
+        {
+            Vector3 forward = Flatten(swing.Direction);
+            Vector3 position = swing.Origin + (Vector3.up * MucheolVfxCatalog.GROUND_LIFT);
+            Quaternion rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, swing.Yaw, 0f);
+            swing.Telegraph.transform.SetPositionAndRotation(position, rotation);
+        }
+
+        private void EndSwing()
+        {
+            _swing = null;
+            if (_swingTelegraph != null)
+            {
+                _swingTelegraph.gameObject.SetActive(false);
+            }
+
+            if (_armTrail != null)
+            {
+                _armTrail.gameObject.SetActive(false);
+            }
+        }
+
+        // 연타는 단계마다 빨간 예고를 그린다. 단계 i의 예고는 앞 단계 타격부터(첫 단계는 시전 시작부터) 자기 타격까지 차오르고,
+        // 각도와 사거리와 방향 오프셋은 서버 사건의 값을 그대로 쓴다. 부채꼴이 아닌 단계는 그리지 않는다
+        private void BeginArmChain(in BossStrikeChainStart start, int firstStep)
+        {
+            int castId = start.CastId;
+            if (_isDefeated || (_container == null) || (_swingTelegraphPrefab == null) || _endedCasts.Contains(castId))
+            {
+                return;
+            }
+
+            IReadOnlyList<EBossTelegraphShape> shapes = start.Shapes;
+            IReadOnlyList<float> delays  = start.DelaySeconds;
+            IReadOnlyList<float> offsets = start.AimOffsetDegrees;
+            IReadOnlyList<float> ranges  = start.Ranges;
+            IReadOnlyList<float> arcs    = start.ArcAngles;
+            double execute = start.StartServerTime + start.TelegraphSeconds;
+            double now     = ReadClock();
+
+            for (int i = _chainSteps.Count - 1; i >= 0; --i)
+            {
+                if (_chainSteps[i].CastId != castId)
+                {
+                    EndChainStep(_chainSteps[i]);
+                }
+            }
+
+            BeginChainTrails(castId, start.PatternId, execute, delays);
+            for (int i = Math.Max(0, firstStep); i < start.StepCount; ++i)
+            {
+                if ((delays == null) || (i >= delays.Count) || (ranges == null) || (i >= ranges.Count) || (arcs == null)
+                    || (i >= arcs.Count) || (shapes == null) || (i >= shapes.Count))
+                {
+                    break;
+                }
+
+                if ((shapes[i] != EBossTelegraphShape.Fan) || (FindChainStep(castId, i) != null) || _played.Contains(Key(castId, i)))
+                {
+                    continue;
+                }
+
+                double impact = execute + delays[i];
+                if (now >= impact + CONFIRM_GRACE_SECONDS)
+                {
+                    continue;
+                }
+
+                MucheolFanTelegraph telegraph = GetChainTelegraph(i);
+                if (telegraph == null)
+                {
+                    continue;
+                }
+
+                double stepStart = (i == 0) ? start.StartServerTime : execute + delays[i - 1];
+                telegraph.SetShape(ranges[i], arcs[i]);
+                telegraph.SetRangeScale(1f);
+                telegraph.Configure((float)(impact - stepStart));
+                _chainSteps.Add(new Swing
+                {
+                    CastId     = castId,
+                    Index      = i,
+                    Start      = stepStart,
+                    ImpactTime = impact,
+                    HitTime    = double.NaN,
+                    Deadline   = impact + CONFIRM_GRACE_SECONDS,
+                    Origin     = start.Origin,
+                    Direction  = start.Direction,
+                    Yaw        = ((offsets != null) && (i < offsets.Count) && (!float.IsNaN(offsets[i]))) ? offsets[i] : 0f,
+                    Telegraph  = telegraph,
+                });
+            }
+        }
+
+        // 확정 전에는 가득 차기 직전에서 기다리고, 확정이 오면 그 시각부터 번쩍임과 사라짐이 흐른다. 단계 시작 전에는 켜지 않는다
+        private void TickChainSteps(double now)
+        {
+            for (int i = _chainSteps.Count - 1; i >= 0; --i)
+            {
+                Swing step = _chainSteps[i];
+                bool isPending = double.IsNaN(step.HitTime);
+                if (isPending && (now > step.Deadline))
+                {
+                    EndChainStep(step);
+                    continue;
+                }
+
+                if (!step.IsShown)
+                {
+                    if (now < step.Start)
+                    {
+                        continue;
+                    }
+
+                    PlaceSwing(step);
+                    step.Telegraph.gameObject.SetActive(true);
+                    step.IsShown = true;
+                }
+
+                float fill = (float)(step.ImpactTime - step.Start);
+                float elapsed = isPending
+                    ? Mathf.Min((float)(now - step.Start), fill - SWING_FILL_MARGIN)
+                    : fill + (float)(now - step.HitTime);
+                step.Telegraph.SetElapsed(elapsed);
+                if (step.Telegraph.IsFinished)
+                {
+                    EndChainStep(step);
+                }
+            }
+        }
+
+        // onlyPending이 참이면 그 시전의 아직 확정되지 않은 단계만 거두고, 이미 터진 단계는 번쩍임을 끝까지 둔다
+        private void EndChainSteps(bool onlyPending, int castId)
+        {
+            for (int i = _chainSteps.Count - 1; i >= 0; --i)
+            {
+                Swing step = _chainSteps[i];
+                if ((!onlyPending) || ((step.CastId == castId) && double.IsNaN(step.HitTime)))
+                {
+                    EndChainStep(step);
+                }
+            }
+        }
+
+        private void EndChainStep(Swing step)
+        {
+            step.Telegraph.gameObject.SetActive(false);
+            _chainSteps.Remove(step);
+        }
+
+        private Swing FindChainStep(int castId, int index)
+        {
+            for (int i = 0; i < _chainSteps.Count; ++i)
+            {
+                if ((_chainSteps[i].CastId == castId) && (_chainSteps[i].Index == index))
+                {
+                    return _chainSteps[i];
+                }
+            }
+
+            return null;
+        }
+
+        private MucheolFanTelegraph GetChainTelegraph(int index)
+        {
+            while (_chainPool.Count <= index)
+            {
+                _chainPool.Add(null);
+            }
+
+            if (_chainPool[index] == null)
+            {
+                MucheolFanTelegraph created = Instantiate(_swingTelegraphPrefab, _container);
+                created.gameObject.SetActive(false);
+                _chainPool[index] = created;
+            }
+
+            return _chainPool[index];
+        }
+
+        // 양손 궤적은 마지막 타격 뒤 꼬리까지 켜 둔다. 궤적은 손이 빠를 때만 스스로 그린다
+        private void BeginChainTrails(int castId, string patternId, double execute, IReadOnlyList<float> delays)
+        {
+            if (_isDefeated || (_container == null) || _endedCasts.Contains(castId) || (_hasChainTrail && (_chainTrailCastId == castId)))
+            {
+                return;
+            }
+
+            double lastDelay = 0d;
+            for (int i = 0; (delays != null) && (i < delays.Count); ++i)
+            {
+                lastDelay = Math.Max(lastDelay, delays[i]);
+            }
+
+            double end = execute + lastDelay + SWING_TRAIL_TAIL_SECONDS;
+            if (ReadClock() >= end)
+            {
+                return;
+            }
+
+            EnsureTrails();
+            if ((_armTrail == null) && (_armTrailRight == null))
+            {
+                return;
+            }
+
+            EndChainTrails();
+            _hasChainTrail    = true;
+            _chainTrailCastId = castId;
+            _chainTrailEnd    = end;
+
+            float rangeScale = MucheolVfxCatalog.GetRangeScale(patternId);
+            ActivateTrail(_armTrail, rangeScale);
+            ActivateTrail(_armTrailRight, rangeScale);
+        }
+
+        private void EndChainTrails()
+        {
+            _hasChainTrail = false;
+            if (_armTrail != null)
+            {
+                _armTrail.gameObject.SetActive(false);
+            }
+
+            if (_armTrailRight != null)
+            {
+                _armTrailRight.gameObject.SetActive(false);
+            }
+        }
+
+        private void ActivateTrail(MucheolArmTrail trail, float rangeScale)
+        {
+            if (trail == null)
+            {
+                return;
+            }
+
+            trail.SetRangeScale(rangeScale);
+            trail.SetFacing(transform);
+            trail.gameObject.SetActive(true);
+        }
+
+        // 예고는 보스가 움직여도 서버가 알린 자리에 남아야 해서 보스 계층 밖에 둔다
+        private void EnsureTelegraph()
+        {
+            if (_swingTelegraph == null)
+            {
+                _swingTelegraph = Instantiate(_swingTelegraphPrefab, _container);
+                _swingTelegraph.gameObject.SetActive(false);
+            }
+        }
+
+        // 궤적은 보스 모델의 양손 본에 붙인다. 두 손 모두 한 번만 만들고 켜고 끄기만 한다
+        private void EnsureTrails()
+        {
+            if (_armTrailPrefab == null)
+            {
+                return;
+            }
+
+            Animator animator = GetComponentInChildren<Animator>(true);
+            if (animator == null)
+            {
+                return;
+            }
+
+            if (_armTrail == null)
+            {
+                _armTrail = AttachTrail(animator.GetBoneTransform(HumanBodyBones.LeftHand));
+            }
+
+            if (_armTrailRight == null)
+            {
+                _armTrailRight = AttachTrail(animator.GetBoneTransform(HumanBodyBones.RightHand));
+            }
+        }
+
+        private MucheolArmTrail AttachTrail(Transform hand)
+        {
+            if (hand == null)
+            {
+                return null;
+            }
+
+            MucheolArmTrail trail = Instantiate(_armTrailPrefab, hand);
+            trail.transform.localPosition = Vector3.zero;
+            trail.gameObject.SetActive(false);
+            return trail;
         }
 
         private void SpawnStrike(int castId, int index, string patternId, Vector3 origin, Vector3 direction, double start,
@@ -798,6 +1276,18 @@ namespace Shinshi.AI
 
         private void ReleasePending(int castId)
         {
+            if ((_swing != null) && (_swing.CastId == castId) && double.IsNaN(_swing.HitTime))
+            {
+                EndSwing();
+            }
+
+            if (_hasChainTrail && (_chainTrailCastId == castId))
+            {
+                EndChainTrails();
+            }
+
+            EndChainSteps(true, castId);
+
             for (int i = _slots.Count - 1; i >= 0; --i)
             {
                 Slot slot = _slots[i];
@@ -814,6 +1304,7 @@ namespace Shinshi.AI
             _castPatterns.Remove(castId);
         }
 
+        // 예고만 거두는 취소나 정상 끝에서도 이미 나온 분출은 꼬리를 재생하고 스스로 거둔다
         private void Release(Slot slot)
         {
             _slots.Remove(slot);
