@@ -266,6 +266,9 @@ namespace Shinshi.AI
         /// <summary> 참이면 빔의 기본 표현을 그리지 않는다 </summary>
         public bool HasExternalBeamVisual { get; set; }
 
+        /// <summary> 참이면 빔의 기본 표현은 예고에만 쓰고 서버가 활성을 확정하면 거둔다, 활성은 다른 표현이 그린다 </summary>
+        public bool HidesBeamVisualOnActive { get; set; }
+
         /// <summary> 참이면 별형 빔의 기본 표현을 그리지 않는다 </summary>
         public bool HasExternalStarVisual
         {
@@ -275,6 +278,19 @@ namespace Shinshi.AI
                 if (_starView != null)
                 {
                     _starView.HasExternalVisual = value;
+                }
+            }
+        }
+
+        /// <summary> 참이면 별형 빔의 기본 표현은 예고에만 쓰고 활성이 확정되면 거둔다 </summary>
+        public bool HidesStarVisualOnActive
+        {
+            get => (_starView != null) && _starView.HidesVisualOnActive;
+            set
+            {
+                if (_starView != null)
+                {
+                    _starView.HidesVisualOnActive = value;
                 }
             }
         }
@@ -1785,6 +1801,11 @@ namespace Shinshi.AI
             float fadeAge = entry.EndSeen ? Mathf.Max(0f, (float)(now - entry.EndSeenAt)) : 0f;
             float fade    = entry.EndSeen ? (1f - Mathf.Clamp01(fadeAge / BEAM_FADE)) : 1f;
             bool  isDone  = entry.EndSeen && (fadeAge >= BEAM_FADE);
+
+            if (HidesBeamVisualOnActive && track.IsActivated && (entry.Visual != null))
+            {
+                ReleaseBeamVisual(entry);
+            }
 
             if (entry.Visual != null)
             {

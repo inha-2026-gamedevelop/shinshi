@@ -69,6 +69,9 @@ namespace Shinshi.AI
         /// <summary> 참이면 기본 별형 표현을 그리지 않고 서버 사건 기록만 유지한다, 다른 표현이 그릴 때 쓴다 </summary>
         public bool HasExternalVisual { get; set; }
 
+        /// <summary> 참이면 활성이 확정된 별의 기본 표현을 거둔다, 예고에만 쓰고 활성은 다른 표현이 그린다 </summary>
+        public bool HidesVisualOnActive { get; set; }
+
         /// <summary> 소멸이 확인될 때 알린다, 구조 번호와 이유. 시험과 진단용이다 </summary>
         public event Action<int, EBossAreaFate> FateChanged;
 
@@ -358,6 +361,11 @@ namespace Shinshi.AI
             float fadeAge = entry.EndSeen ? Mathf.Max(0f, (float)(now - entry.EndSeenAt)) : 0f;
             float fade    = entry.EndSeen ? (1f - Mathf.Clamp01(fadeAge / FADE_SECONDS)) : 1f;
             bool  isDone  = entry.EndSeen && (fadeAge >= FADE_SECONDS);
+
+            if (HidesVisualOnActive && track.IsActivated && (entry.Visual != null))
+            {
+                ReleaseVisual(entry);
+            }
 
             if (entry.Visual != null)
             {

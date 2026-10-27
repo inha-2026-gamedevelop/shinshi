@@ -1,0 +1,138 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8791419517073389528
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f335fb1ffd8684294ad653bf1c7564, type: 3}
+  m_Name: ColorAdjustments
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.ColorAdjustments
+  active: 1
+  postExposure:
+    m_OverrideState: 1
+    m_Value: 0.1
+  contrast:
+    m_OverrideState: 1
+    m_Value: 12
+  colorFilter:
+    m_OverrideState: 0
+    m_Value: {r: 1, g: 1, b: 1, a: 1}
+  hueShift:
+    m_OverrideState: 0
+    m_Value: 0
+  saturation:
+    m_OverrideState: 1
+    m_Value: 45
+--- !u!114 &-8666326026475410591
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 534fb6990a764e340b251c2da4926ffd, type: 3}
+  m_Name: ToonLookVolume
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.ToonLookVolume
+  active: 1
+  _lightingIntensity:
+    m_OverrideState: 1
+    m_Value: 1
+  _rampSteps:
+    m_OverrideState: 1
+    m_Value: 2
+  _rampEdgeWidth:
+    m_OverrideState: 1
+    m_Value: 0.025
+  _shadowColor:
+    m_OverrideState: 1
+    m_Value: {r: 0.82, g: 0.85, b: 1, a: 1}
+  _ambientKeep:
+    m_OverrideState: 1
+    m_Value: 1.25
+  _ratioMin:
+    m_OverrideState: 1
+    m_Value: 0.6
+  _ratioMax:
+    m_OverrideState: 1
+    m_Value: 1.4
+  _detailSoften:
+    m_OverrideState: 1
+    m_Value: 0.85
+  _detailRadius:
+    m_OverrideState: 1
+    m_Value: 2.5
+  _detailColorSigma:
+    m_OverrideState: 1
+    m_Value: 0.12
+  _highlightKeepStart:
+    m_OverrideState: 1
+    m_Value: 1.2
+  _highlightKeepRange:
+    m_OverrideState: 1
+    m_Value: 0.8
+  _fadeStart:
+    m_OverrideState: 1
+    m_Value: 40
+  _fadeRange:
+    m_OverrideState: 1
+    m_Value: 40
+  _edgeIntensity:
+    m_OverrideState: 1
+    m_Value: 0.35
+  _normalEdge:
+    m_OverrideState: 1
+    m_Value: 0.6
+  _depthEdgeThreshold:
+    m_OverrideState: 1
+    m_Value: 0.15
+  _normalEdgeFadeRange:
+    m_OverrideState: 1
+    m_Value: 10
+  _lineDarken:
+    m_OverrideState: 1
+    m_Value: 0.7
+  _lineTint:
+    m_OverrideState: 1
+    m_Value: {r: 1, g: 1, b: 1, a: 1}
+--- !u!114 &-191666855132703569
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 221518ef91623a7438a71fef23660601, type: 3}
+  m_Name: WhiteBalance
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.WhiteBalance
+  active: 1
+  temperature:
+    m_OverrideState: 1
+    m_Value: 11
+  tint:
+    m_OverrideState: 0
+    m_Value: 0
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7fd9488000d3734a9e00ee676215985, type: 3}
+  m_Name: VP_ToonLook_ShinshiTown
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
+  components:
+  - {fileID: -8666326026475410591}
+  - {fileID: -8791419517073389528}
+  - {fileID: -191666855132703569}

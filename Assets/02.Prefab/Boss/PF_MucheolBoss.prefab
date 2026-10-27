@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 9125636520618684281}
   - component: {fileID: 2679762219380379305}
   - component: {fileID: 5706912240508128301}
+  - component: {fileID: 7012541121253629083}
   m_Layer: 0
   m_Name: PF_MucheolBoss
   m_TagString: Untagged
@@ -101,6 +102,21 @@ MonoBehaviour:
   - {x: 349.43063, y: 180, z: 0.000000008090538}
   _material: {fileID: 2100000, guid: 56068431b6ce7204ebde6d2ed0dec26f, type: 2}
   _size: 1.4
+--- !u!114 &7012541121253629083
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2502191398135602160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a195ed0e809498b419709c60295ce4ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.BossHitFlashView
+  _flashSeconds: 0.15
+  _peak: 1
+  _gain: 8
 --- !u!1 &2519519165488727896
 GameObject:
   m_ObjectHideFlags: 0

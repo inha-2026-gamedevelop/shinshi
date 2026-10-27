@@ -6,8 +6,8 @@ Shader "Shinshi/VFX/BossBeam"
 {
     Properties
     {
-        _BaseColor("Base Color", Color) = (0.12,0.02,0.2,0.2)
-        [HDR] _EmissionColor("Emission Color", Color) = (1.4,0.35,2.4,1)
+        _BaseColor("Base Color", Color) = (0.22,0.018,0.003,0.15)
+        [HDR] _EmissionColor("Emission Color", Color) = (3,0.45,0.04,1)
         _NoiseScale("Noise Scale", Float) = 2.5
         _NoiseSpeed("Noise Speed", Float) = 1.2
         _EdgeWidth("Edge Width (meters)", Range(0.02,0.5)) = 0.12

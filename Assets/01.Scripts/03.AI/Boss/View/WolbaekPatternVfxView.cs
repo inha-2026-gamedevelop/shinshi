@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -40,6 +41,7 @@ namespace Shinshi.AI
         private const float  ZONE_HEIGHT          = 0.1f;  // m
         private const float  ZONE_REFERENCE_RADIUS = 3f;   // m, 효과 크기 1일 때의 서버 반경
         private const float  ZONE_GRACE_SECONDS   = 1f;    // 초, 서버 소멸 사건이 오지 않아도 지속 시간 뒤에 끄기까지
+        private const float  ZONE_SOUND_SECONDS   = 2f;    // 초, 장판이 생긴 뒤 소리를 들려주는 시간, 장판이 더 오래 남아도 소리는 여기서 끊는다
         private const float  EFFECT_LIFETIME      = 4f;    // 초, 한 번 터지는 효과를 지우기까지
         private const float  FADE_SECONDS         = 3f;    // 초, 생성을 멈춘 효과의 남은 파티클이 사라지기를 기다리는 시간
         private const float  RELEASE_ACTIVE_SECONDS = 1.4f; // 초, 대형 방출 파면의 표현 지속 시간(서버 값이 아니다)
@@ -87,6 +89,8 @@ namespace Shinshi.AI
             public int        AreaId;
             public GameObject Instance;
             public double     EndServerTime;
+            public double     SoundEndServerTime; // 이 시각이 되면 반복 소리를 끈다
+            public bool       IsSoundOn;
         }
 
         private struct ChainFanState
@@ -110,9 +114,12 @@ namespace Shinshi.AI
 
         private struct BeamLine
         {
-            public int    BeamId;
-            public float  Duration;
-            public bool   IsUsed;
+            public int     BeamId;
+            public float   Duration;
+            public bool    IsUsed;
+            public Vector3 From;
+            public Vector3 To;
+            public float   Width;
         }
 
         /****************************************
@@ -133,6 +140,17 @@ namespace Shinshi.AI
         [SerializeField] private WolbaekBeamPlayer _star;
 
         [SerializeField] private WolbaekBeamPlayer _grid;
+        [SerializeField] private WolbaekBeamActiveView _releaseActive; // 아래 네 개는 비워 두면 그 빔의 활성 표현도 기존 재생기를 그대로 쓴다
+        [SerializeField] private WolbaekBeamActiveView _sustainActive;
+        [SerializeField] private WolbaekBeamActiveView _starActive;
+        [SerializeField] private WolbaekBeamActiveView _gridActive;
+
+        [Header("예고 색")]
+        [SerializeField] private bool _defaultRedTelegraph = true; // 켜면 새 빛 기둥을 연결한 빔의 예고는 다른 패턴과 같은 기본 붉은 예고를 쓴다, 기존 재생기의 푸른 바닥 선은 숨긴다
+
+        [Header("1페이즈 P06 액체 손")]
+        [SerializeField] private WolbaekLiquidHandView _liquidHand; // 비어 있으면 기존 빔만 그린다
+        [SerializeField] private bool _liquidHandReplacesBeam = true; // 켜면 기존 빔(예고 포함)을 쓰지 않고 다른 패턴과 같은 기본 붉은 예고와 액체 손만 낸다
 
         [Header("서드파티 폭발과 장판")]
         [SerializeField] private GameObject _dashTelegraphEffect;
@@ -163,8 +181,10 @@ namespace Shinshi.AI
         private int    _gridCastId;
         private uint   _gridPlayback;
         private BossGridBeamStart _gridStart;
+        private readonly Dictionary<int, WolbaekBeamShape> _gridLines = new Dictionary<int, WolbaekBeamShape>(); // 예고한 줄의 선분, 타격 확정 때 활성 빔 위치로 쓴다
         private double _gridEnd;
 
+        private int    _liquidHandCastId = NO_CAST;
         private int    _releaseCastId;
         private uint   _releasePlayback;
         private double _releaseEnd;
@@ -209,6 +229,7 @@ namespace Shinshi.AI
             Reparent(_sustain);
             Reparent(_star);
             Reparent(_grid);
+            Reparent(_liquidHand);
         }
 
         private void OnDestroy()
@@ -263,10 +284,13 @@ namespace Shinshi.AI
             bool hasProjectile = (_flights != null) && (_flights.Length > 0) && (_impacts != null) && (_impacts.Length > 0);
             _presenter.HasExternalProjectileVisual = hasProjectile;
             _presenter.HasExternalAreaVisual       = _zoneEffect != null;
-            _presenter.HasExternalBeamVisual       = _sustain != null;
-            _presenter.HasExternalStarVisual       = _star != null;
+            _presenter.HasExternalBeamVisual       = (_sustain != null) && (!UsesRedTelegraph(_sustainActive));
+            _presenter.HasExternalStarVisual       = (_star != null) && (!UsesRedTelegraph(_starActive));
+            _presenter.HidesBeamVisualOnActive     = UsesRedTelegraph(_sustainActive);
+            _presenter.HidesStarVisualOnActive     = UsesRedTelegraph(_starActive);
 
-            if (_release != null)
+            // 액체 손만 쓰면 바닥 예고는 다른 패턴과 같은 기본 붉은 예고를 그대로 쓴다
+            if ((_release != null) && (!UsesLiquidHandOnly) && (!UsesRedTelegraph(_releaseActive)))
             {
                 _presenter.RegisterExternalVisual("wolbaek_p06");
                 _presenter.RegisterExternalVisual(BossPatternCatalogSO.WOLBAEK_HARD_P06_ID);
@@ -302,6 +326,8 @@ namespace Shinshi.AI
                 _presenter.HasExternalAreaVisual       = false;
                 _presenter.HasExternalBeamVisual       = false;
                 _presenter.HasExternalStarVisual       = false;
+                _presenter.HidesBeamVisualOnActive     = false;
+                _presenter.HidesStarVisualOnActive     = false;
             }
 
             _presenter = null;
@@ -337,7 +363,15 @@ namespace Shinshi.AI
 
             if (IsBeamRelease(cast.PatternId))
             {
-                OnReleasePhase(cast, phase, now);
+                if (UsesLiquidHandOnly)
+                {
+                    OnLiquidHandPhase(cast, phase, now);
+                }
+                else
+                {
+                    OnReleasePhase(cast, phase, now);
+                }
+
                 return;
             }
 
@@ -386,6 +420,50 @@ namespace Shinshi.AI
             {
                 StopRelease();
             }
+
+            if (isCancelled && (_liquidHandCastId == castId) && (_liquidHand != null))
+            {
+                _liquidHand.Stop();
+                _liquidHandCastId = NO_CAST;
+            }
+        }
+
+        // 액체 손이 기존 빔을 대신하는가, 이때는 빔 플레이어를 부르지 않고 예고는 기본 붉은 지면 예고가 맡는다
+        private bool UsesRedTelegraph(WolbaekBeamActiveView active) => _defaultRedTelegraph && (active != null);
+
+        private bool UsesLiquidHandOnly => (_liquidHand != null) && _liquidHandReplacesBeam;
+
+        // 예고 동안은 차징 소리만 내고, 서버 타격 확정 때 액체 손을 낸다. 재접속 복원 중의 확정은 이미 지난 타격이라 그리지 않는다
+        private void OnLiquidHandPhase(BossTelegraphCast cast, EBossTelegraphPhase phase, double now)
+        {
+            if (phase == EBossTelegraphPhase.Telegraph)
+            {
+                StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
+                return;
+            }
+
+            if ((phase != EBossTelegraphPhase.Execute) || IsRestoring)
+            {
+                return;
+            }
+
+            // 서버 확정 시각이 표시 시계보다 앞서 도착하면 그 시각까지 보류한다
+            if (_gate.MustDefer(cast.ExecuteServerTime, now))
+            {
+                _gate.Defer(cast.ExecuteServerTime, now, () => PlayLiquidHand(cast));
+                return;
+            }
+
+            PlayLiquidHand(cast);
+        }
+
+        private void PlayLiquidHand(BossTelegraphCast cast)
+        {
+            StopLoopSound(cast.CastId);
+            PlaySound(EWolbaekSound.WaveBeam, cast.Origin);
+
+            _liquidHandCastId = cast.CastId;
+            _liquidHand.Play(cast.Origin, cast.Direction, cast.Length, cast.Width);
         }
 
         // 재접속 스냅샷을 복원하는 알림 안인가
@@ -654,9 +732,15 @@ namespace Shinshi.AI
                 _release.Warn(_releasePlayback, RELEASE_LINE_ID, REVISION, BuildReleaseShape(cast), cast.Start.StartServerTime,
                     expected, _releaseEnd, now);
 
+                if (_releaseActive != null)
+                {
+                    _releaseActive.HideLegacy();
+                }
+
                 if (isRestoredExecute)
                 {
                     _release.ConfirmActive(_releasePlayback, RELEASE_LINE_ID, REVISION, cast.ExecuteServerTime, _releaseEnd, now);
+                    ActivateRelease(cast);
                 }
             }
             else if ((phase == EBossTelegraphPhase.Execute) && (_releaseCastId == cast.CastId) && (_releasePlayback != 0))
@@ -683,9 +767,27 @@ namespace Shinshi.AI
 
             _releaseEnd = cast.ExecuteServerTime + RELEASE_ACTIVE_SECONDS;
             _release.ConfirmActive(playback, RELEASE_LINE_ID, REVISION, cast.ExecuteServerTime, _releaseEnd, now);
+            ActivateRelease(cast);
 
             StopLoopSound(cast.CastId);
             PlaySound(EWolbaekSound.WaveBeam, cast.Origin);
+
+            if (_liquidHand != null)
+            {
+                _liquidHand.Play(cast.Origin, cast.Direction, cast.Length, cast.Width);
+            }
+        }
+
+        private void ActivateRelease(BossTelegraphCast cast)
+        {
+            if (_releaseActive == null)
+            {
+                return;
+            }
+
+            WolbaekBeamShape shape = BuildReleaseShape(cast);
+            _releaseActive.Activate(RELEASE_LINE_ID, shape.Start, shape.End, shape.Width, cast.ExecuteServerTime, _releaseEnd);
+            _releaseActive.HideLegacy();
         }
 
         private static WolbaekBeamShape BuildReleaseShape(BossTelegraphCast cast)
@@ -712,6 +814,11 @@ namespace Shinshi.AI
 
             _release.Tick(_releasePlayback, now);
 
+            if (_releaseActive != null)
+            {
+                _releaseActive.Tick(now);
+            }
+
             if (now > _releaseEnd)
             {
                 StopRelease();
@@ -723,6 +830,11 @@ namespace Shinshi.AI
             if ((_releasePlayback != 0) && (_release != null))
             {
                 _release.Stop(_releasePlayback);
+            }
+
+            if (_releaseActive != null)
+            {
+                _releaseActive.StopAll();
             }
 
             _releasePlayback = 0;
@@ -813,7 +925,14 @@ namespace Shinshi.AI
 
                 GameObject instance = Instantiate(_zoneEffect, start.Center + (Vector3.up * ZONE_HEIGHT), Quaternion.identity);
                 instance.transform.localScale = _zoneEffect.transform.localScale * (start.Radius / ZONE_REFERENCE_RADIUS);
-                _zones[i] = new Zone { AreaId = start.AreaId, Instance = instance, EndServerTime = start.EndServerTime };
+                _zones[i] = new Zone
+                {
+                    AreaId             = start.AreaId,
+                    Instance           = instance,
+                    EndServerTime      = start.EndServerTime,
+                    SoundEndServerTime = ReadClock() + ZONE_SOUND_SECONDS,
+                    IsSoundOn          = true
+                };
 
                 PlaySound(EWolbaekSound.FoxfireIgnite, start.Center);
                 StartLoopSound(ZONE_SOUND_KEY_OFFSET + start.AreaId, EWolbaekSound.FoxfireHoldLoop, start.Center);
@@ -838,7 +957,19 @@ namespace Shinshi.AI
         {
             for (int i = 0; i < _zones.Length; ++i)
             {
-                if ((_zones[i].Instance != null) && (now > (_zones[i].EndServerTime + ZONE_GRACE_SECONDS)))
+                if (_zones[i].Instance == null)
+                {
+                    continue;
+                }
+
+                // 장판은 더 오래 남아도 소리는 처음 발동 뒤 정해진 시간만 낸다
+                if (_zones[i].IsSoundOn && (now >= _zones[i].SoundEndServerTime))
+                {
+                    _zones[i].IsSoundOn = false;
+                    StopLoopSound(ZONE_SOUND_KEY_OFFSET + _zones[i].AreaId);
+                }
+
+                if (now > (_zones[i].EndServerTime + ZONE_GRACE_SECONDS))
                 {
                     EndZone(i, false);
                 }
@@ -920,7 +1051,12 @@ namespace Shinshi.AI
 
             _sustain.Warn(_sustainPlayback, start.BeamId, REVISION, new WolbaekBeamShape(from, to, shape.Width, center, shape.ArenaRadius),
                 start.StartServerTime, expectedActive, expectedActive + start.DurationSeconds, now);
-            RememberBeam(start.BeamId, start.DurationSeconds);
+            RememberBeam(start.BeamId, start.DurationSeconds, from, to, shape.Width);
+
+            if (_sustainActive != null)
+            {
+                _sustainActive.HideLegacy();
+            }
         }
 
         private void OnBeamActivated(int beamId, double activateServerTime)
@@ -971,6 +1107,14 @@ namespace Shinshi.AI
             _sustain.ConfirmActive(playback, beamId, REVISION, activateServerTime,
                 activateServerTime + _beamLines[index].Duration, ReadClock());
 
+            if (_sustainActive != null)
+            {
+                BeamLine line = _beamLines[index];
+                _sustainActive.Activate(beamId, line.From, line.To, line.Width,
+                    activateServerTime, activateServerTime + line.Duration);
+                _sustainActive.HideLegacy();
+            }
+
             // 시전마다 첫 활성에서만 차징을 끊고 방출과 유지 루프를 시작한다
             if (_beamSoundCastId != _sustainCastId)
             {
@@ -993,6 +1137,12 @@ namespace Shinshi.AI
             if ((fate == EBossAreaFate.Cancelled) && (_sustainPlayback != 0))
             {
                 _sustain.StopLine(_sustainPlayback, beamId, REVISION);
+
+                if (_sustainActive != null)
+                {
+                    _sustainActive.Stop(beamId);
+                }
+
                 StopLoopSound(_sustainCastId);
             }
         }
@@ -1003,9 +1153,20 @@ namespace Shinshi.AI
             {
                 _sustain.Tick(_sustainPlayback, now);
 
+                if (_sustainActive != null)
+                {
+                    _sustainActive.Tick(now);
+                }
+
                 if (!_sustain.IsRunning)
                 {
                     _sustainPlayback = 0;
+
+                    if (_sustainActive != null)
+                    {
+                        _sustainActive.StopAll();
+                    }
+
                     StopBeamSound();
                 }
             }
@@ -1016,6 +1177,11 @@ namespace Shinshi.AI
             if ((_sustainPlayback != 0) && (_sustain != null))
             {
                 _sustain.Stop(_sustainPlayback);
+            }
+
+            if (_sustainActive != null)
+            {
+                _sustainActive.StopAll();
             }
 
             _sustainPlayback = 0;
@@ -1029,13 +1195,13 @@ namespace Shinshi.AI
             StopLoopSound(BEAM_HOLD_SOUND_KEY);
         }
 
-        private void RememberBeam(int beamId, float duration)
+        private void RememberBeam(int beamId, float duration, Vector3 from, Vector3 to, float width)
         {
             for (int i = 0; i < _beamLines.Length; ++i)
             {
                 if (!_beamLines[i].IsUsed)
                 {
-                    _beamLines[i] = new BeamLine { BeamId = beamId, Duration = duration, IsUsed = true };
+                    _beamLines[i] = new BeamLine { BeamId = beamId, Duration = duration, IsUsed = true, From = from, To = to, Width = width };
                     return;
                 }
             }
@@ -1099,6 +1265,11 @@ namespace Shinshi.AI
             {
                 _star.Warn(_starPlayback, i, REVISION, BuildStarBeam(i, 0f), start.StartServerTime, expectedActive, _starEnd, now);
             }
+
+            if (_starActive != null)
+            {
+                _starActive.HideLegacy();
+            }
         }
 
         private void OnStarActivated(int starId, double activateServerTime)
@@ -1152,6 +1323,17 @@ namespace Shinshi.AI
             for (int i = 0; i < _starShape.BeamCount; ++i)
             {
                 _star.ConfirmActive(_starPlayback, i, REVISION, activateServerTime, _starEnd, now);
+
+                if (_starActive != null)
+                {
+                    WolbaekBeamShape beam = BuildStarBeam(i, 0f);
+                    _starActive.Activate(i, beam.Start, beam.End, beam.Width, activateServerTime, _starEnd);
+                }
+            }
+
+            if (_starActive != null)
+            {
+                _starActive.HideLegacy();
             }
 
             PlaySound(EWolbaekSound.WaveBeam, transform.position);
@@ -1180,11 +1362,22 @@ namespace Shinshi.AI
 
                 for (int i = 0; i < _starShape.BeamCount; ++i)
                 {
-                    _star.UpdateGeometry(_starPlayback, i, REVISION, BuildStarBeam(i, rotation), now);
+                    WolbaekBeamShape beam = BuildStarBeam(i, rotation);
+                    _star.UpdateGeometry(_starPlayback, i, REVISION, beam, now);
+
+                    if (_starActive != null)
+                    {
+                        _starActive.UpdateGeometry(i, beam.Start, beam.End);
+                    }
                 }
             }
 
             _star.Tick(_starPlayback, now);
+
+            if (_starActive != null)
+            {
+                _starActive.Tick(now);
+            }
 
             if (now > (_starEnd + FADE_SECONDS))
             {
@@ -1205,6 +1398,11 @@ namespace Shinshi.AI
             if ((_starPlayback != 0) && (_star != null))
             {
                 _star.Stop(_starPlayback);
+            }
+
+            if (_starActive != null)
+            {
+                _starActive.StopAll();
             }
 
             _starPlayback = 0;
@@ -1284,6 +1482,18 @@ namespace Shinshi.AI
             {
                 _star.ConfirmActive(_starPlayback, StageLineId(stageIndex, i), StageRevision(stageIndex), scheduledServerTime,
                     scheduledServerTime + STAGE_ACTIVE_SECONDS, now);
+
+                if (_starActive != null)
+                {
+                    WolbaekBeamShape beam = BuildStarBeam(i, stageIndex * _stageStart.StepDegrees);
+                    _starActive.Activate(StageLineId(stageIndex, i), beam.Start, beam.End, beam.Width,
+                        scheduledServerTime, scheduledServerTime + STAGE_ACTIVE_SECONDS);
+                }
+            }
+
+            if (_starActive != null)
+            {
+                _starActive.HideLegacy();
             }
 
             // 방금 끝난 묶음이 쓰던 슬롯을 두 단계 뒤의 예고로 다시 쓴다
@@ -1302,6 +1512,11 @@ namespace Shinshi.AI
             {
                 _star.Warn(_starPlayback, StageLineId(stage, i), StageRevision(stage), BuildStarBeam(i, rotation),
                     _stageStart.CastStartServerTime, expected, expected + STAGE_ACTIVE_SECONDS, now);
+            }
+
+            if (_starActive != null)
+            {
+                _starActive.HideLegacy();
             }
         }
 
@@ -1346,8 +1561,15 @@ namespace Shinshi.AI
                 return;
             }
 
-            _grid.Warn(_gridPlayback, lineId, REVISION, BuildGridLine(isHorizontal, lineIndex), telegraphServerTime, strikeServerTime,
+            WolbaekBeamShape line = BuildGridLine(isHorizontal, lineIndex);
+            _gridLines[lineId] = line;
+            _grid.Warn(_gridPlayback, lineId, REVISION, line, telegraphServerTime, strikeServerTime,
                 strikeServerTime + GRID_HIT_SECONDS, ReadClock());
+
+            if (_gridActive != null)
+            {
+                _gridActive.HideLegacy();
+            }
         }
 
         public void OnGridBeamLineStruck(int castId, int lineId, bool isHorizontal, int lineIndex, double scheduledServerTime)
@@ -1377,6 +1599,13 @@ namespace Shinshi.AI
             }
 
             _grid.ConfirmActive(playback, lineId, REVISION, scheduledServerTime, scheduledServerTime + GRID_HIT_SECONDS, ReadClock());
+
+            if ((_gridActive != null) && (_gridLines.TryGetValue(lineId, out WolbaekBeamShape line)))
+            {
+                _gridActive.Activate(lineId, line.Start, line.End, line.Width, scheduledServerTime, scheduledServerTime + GRID_HIT_SECONDS);
+                _gridActive.HideLegacy();
+            }
+
             PlaySound(EWolbaekSound.WaveBeam, transform.position);
         }
 
@@ -1403,6 +1632,11 @@ namespace Shinshi.AI
 
             _grid.Tick(_gridPlayback, now);
 
+            if (_gridActive != null)
+            {
+                _gridActive.Tick(now);
+            }
+
             if (now > (_gridEnd + GRID_IDLE_GRACE))
             {
                 StopGrid();
@@ -1415,6 +1649,13 @@ namespace Shinshi.AI
             {
                 _grid.Stop(_gridPlayback);
             }
+
+            if (_gridActive != null)
+            {
+                _gridActive.StopAll();
+            }
+
+            _gridLines.Clear();
 
             _gridPlayback = 0;
             _gridCastId = 0;

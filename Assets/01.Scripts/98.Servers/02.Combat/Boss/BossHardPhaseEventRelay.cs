@@ -16,7 +16,7 @@ namespace Shinshi.Combat
     // 수신처가 없어도 시전 번호 알림은 한다. 리스너마다 알림 이름이 달라 겹치지 않지만 몸체와 같게 인터페이스별로 나눠 구현한다
     /// <summary> 월백 하드 2페이즈 패턴 알림을 복제 상태가 받는 하드 페이즈 사건으로 바꾸는 중계 </summary>
     public sealed class BossHardPhaseEventRelay : IBossStarStageListener, IBossGridBeamListener, IBossChainFanListener,
-        IBossHardAreaListener, IBossBarrageListener, IBossCircleBurstListener
+        IBossHardAreaListener, IBossBarrageListener, IBossCircleBurstListener, IBossTargetHitListener
     {
         /****************************************
         *                Fields
@@ -39,6 +39,12 @@ namespace Shinshi.Combat
         public void SetListener(IBossHardPhaseEventListener listener)
         {
             _sink = listener;
+        }
+
+        // 맞은 대상 알림은 사건 변환 없이 몸체로 넘긴다. 몸체가 월백 피격 사건으로 보낸다
+        void IBossTargetHitListener.OnTargetHit(int castInstanceId, int targetId, Vector3 position, Vector3 direction)
+        {
+            (_host as IBossTargetHitListener)?.OnTargetHit(castInstanceId, targetId, position, direction);
         }
 
         /****************************************

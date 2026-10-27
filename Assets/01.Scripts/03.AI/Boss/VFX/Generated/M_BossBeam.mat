@@ -32,8 +32,8 @@ Material:
     - _PulseIntensity: 2.5
     - _TelegraphAlpha: 0.35
     m_Colors:
-    - _BaseColor: {r: 0.11999995, g: 0.02, b: 0.19999996, a: 0.2}
-    - _EmissionColor: {r: 1.4, g: 0.35, b: 2.4, a: 1}
+    - _BaseColor: {r: 0.22, g: 0.018, b: 0.003, a: 0.15}
+    - _EmissionColor: {r: 3, g: 0.45, b: 0.04, a: 1}
     - _Size: {r: 2, g: 0.035, b: 0, a: 0}
     - _State: {r: 0, g: 0, b: 99, a: 1}
   m_BuildTextureStacks: []

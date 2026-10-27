@@ -65,6 +65,8 @@ player.Tick(playbackId, serverNow);
 
 격자 현행 폭·간격 3m, 타격 간격 0.5초·축 간격 1.5초다. 가로 i는 T+1+0.5i, 세로 i는 T+8+0.5i, 각 예고는 자기 타격 1초 전이다. 이 숫자를 런타임에서 스케줄하지 않는다. 주기 확정에 별도 시각 펄스가 필요하면 호출자가 같은 lineId의 더 높은 revision을 실제 확정 시각에서 Warn→Confirm하고 서버 종료 시각을 유지할 수 있다.
 
+P1P06 액체 손(2026-10-25)은 위 Release 빔을 대신하는 선택 표현이다. `WolbaekPatternVfxView`의 `_liquidHand`가 연결되고 `_liquidHandReplacesBeam`이 켜져 있으면(기본값) P06은 Release 빔을 쓰지 않고, 다른 패턴과 같은 기본 붉은 지면 예고와 `WolbaekLiquidHandView`만 낸다. 서버 타격 확정에서 `Play(origin, direction, length, width)`를 부르고, 재접속 복원 중의 확정은 이미 지난 타격이라 그리지 않는다. `_liquidHand`가 비어 있거나 옵션을 끄면 위 Release 빔 계약 그대로다. 프리팹·FBX·재질·노이즈 텍스처는 Git 제외인 `Assets/99.ThirdParty/VFX/WolbaekP06LiquidHand/`에 있어 공유 에셋으로 따로 받아야 한다. 정점 5,171·삼각형 9,976이고 Release 빔은 삼각형 4,716이다. 확인한 범위: 시험 씬 PlayMode에서 서버 P06 발동마다 `Play`가 길이 14·폭 4로 불리는 것과 시험 씬 정지 장면의 화면. 확인하지 못한 범위: 실제 발동 중 화면, 기본 붉은 예고 화면, 하드 P06, 재접속 복원, 프로파일러 실측.
+
 읽어 확인한 원본은 아래와 같으며 변경하지 않았다.
 
 - [BossLineBlastPattern](../../Assets/01.Scripts/98.Servers/03.AI/Boss/BossLineBlastPattern.cs), [BossTelegraphStart](../../Assets/01.Scripts/03.AI/Boss/Rules/BossTelegraphStart.cs), [BossPatternCatalog.asset](../../Assets/09.Data/AI/BossPatternCatalog.asset).
