@@ -1,4 +1,7 @@
 #if UNITY_EDITOR
+// System
+using System;
+
 // Unity
 using UnityEngine;
 using UnityEngine.Animations;
@@ -23,11 +26,24 @@ namespace Shinshi.AI
         private const float PANEL_MARGIN = 12f;
         private const float LIST_HEIGHT = 210f;
         private const float DEFAULT_DURATION = 6f;
-        private static readonly string[] G_VfxLabels = { "01", "02", "03", "04", "05", "06", "07" };
+        private const string CLONE_SUFFIX = "(Clone)";
+
+        // 특정 클립을 재생하는 동안에만 켜는 오브젝트, 속도로 스스로 그리는 팔 궤적이 다른 모션에서 튀지 않게 한다
+        [Serializable]
+        private sealed class ClipGatedObject
+        {
+            [SerializeField] private AnimationClip _clip;
+            [SerializeField] private GameObject _target;
+
+            public AnimationClip Clip => _clip;
+            public GameObject Target => _target;
+        }
 
         [SerializeField] private Animator _animator;
         [SerializeField] private AnimationClip _idle;
         [SerializeField] private AnimationClip[] _clips;
+        [SerializeField, Tooltip("클립 목록 버튼에 보일 이름. 비우면 클립 이름을 쓴다.")] private string[] _clipLabels;
+        [SerializeField] private ClipGatedObject[] _clipGated = Array.Empty<ClipGatedObject>();
         [SerializeField] private GameObject[] _vfxRoots;
         [SerializeField] private MucheolBatchVfxPlayer[] _batchPlayers;
         [SerializeField] private MucheolImpactVfxPlayer[] _impactPlayers;
@@ -57,6 +73,7 @@ namespace Shinshi.AI
         private bool _motionEnabled;
         private bool _vfxEnabled;
         private string _status = "준비";
+        private string[] _vfxLabels;
 
         /****************************************
         *              Unity Event
@@ -64,6 +81,12 @@ namespace Shinshi.AI
 
         private void Start()
         {
+            _vfxLabels = new string[_vfxRoots.Length];
+            for (int i = 0; i < _vfxRoots.Length; ++i)
+            {
+                _vfxLabels[i] = _vfxRoots[i].name.Replace(CLONE_SUFFIX, string.Empty);
+            }
+
             _origin = _animator.transform.localPosition;
             _rotation = _animator.transform.localRotation;
             _animator.applyRootMotion = false;
@@ -158,15 +181,17 @@ namespace Shinshi.AI
                 {
                     continue;
                 }
-                if (GUILayout.Toggle(_clipIndex == i, _clips[i].name, GUI.skin.button, GUILayout.Width(panelWidth - PANEL_MARGIN * 4f)) && _clipIndex != i)
+                string label = ((_clipLabels != null) && (i < _clipLabels.Length) && (!string.IsNullOrEmpty(_clipLabels[i])))
+                    ? _clipLabels[i] : _clips[i].name;
+                if (GUILayout.Toggle(_clipIndex == i, label, GUI.skin.button, GUILayout.Width(panelWidth - PANEL_MARGIN * 4f)) && _clipIndex != i)
                 {
                     StopPreview();
                     _clipIndex = i;
                 }
             }
             GUILayout.EndScrollView();
-            GUILayout.Label("VFX 선택 (번호는 기존 에셋 번호)");
-            int selectedVfx = GUILayout.SelectionGrid(_vfxIndex, G_VfxLabels, 4);
+            GUILayout.Label("VFX 선택");
+            int selectedVfx = GUILayout.SelectionGrid(_vfxIndex, _vfxLabels, 1);
             if (selectedVfx != _vfxIndex)
             {
                 StopPreview();
@@ -226,8 +251,21 @@ namespace Shinshi.AI
             _status = "준비 · 정지 시 Idle 복원";
         }
 
+        private void ApplyClipGates(AnimationClip active)
+        {
+            for (int i = 0; i < _clipGated.Length; ++i)
+            {
+                bool isOn = (active != null) && (_clipGated[i].Clip == active);
+                if (_clipGated[i].Target.activeSelf != isOn)
+                {
+                    _clipGated[i].Target.SetActive(isOn);
+                }
+            }
+        }
+
         private void StopEffects()
         {
+            ApplyClipGates(null);
             for (int i = 0; i < _vfxRoots.Length; ++i)
             {
                 if (_batchPlayers[i] != null)
@@ -245,6 +283,7 @@ namespace Shinshi.AI
         private void Sample()
         {
             AnimationClip clip = _motionEnabled ? _clips[_clipIndex] : _idle;
+            ApplyClipGates(_motionEnabled ? clip : null);
             float motionTime = _elapsed - _motionDelay;
             SampleMotion(motionTime < 0f ? _idle : clip, Mathf.Max(0f, motionTime), !_motionEnabled);
             GameObject root = _vfxRoots[_vfxIndex];
