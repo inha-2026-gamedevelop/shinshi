@@ -22,6 +22,9 @@ namespace Shinshi.Art
         [SerializeField] private MucheolImpactVfxPlayer         _player  = null;
         [SerializeField] private MucheolPatternVfxSettingsSO    _profile = null;
 
+        [Header("지면 강타, 선택 사항, 확정 타격 시각에 재생한다")]
+        [SerializeField] private MucheolGroundSlamVfx _groundSlam = null;
+
         [Header("돌진 표현, 06에만 사용")]
         [SerializeField, Min(0f)] private float _chargeSeconds = 0f;
         [SerializeField] private Transform _chargeHead = null;
@@ -74,6 +77,11 @@ namespace Shinshi.Art
                 float impactTail = Mathf.Max(
                     FiniteSeconds(_profile.ExpansionSeconds) + FiniteSeconds(_profile.HoldSeconds)
                     + FiniteSeconds(_profile.FadeSeconds), FiniteSeconds(_profile.DebrisSeconds));
+                if (_groundSlam != null)
+                {
+                    impactTail = Mathf.Max(impactTail, FiniteSeconds(_groundSlam.Duration));
+                }
+
                 return FiniteSeconds(_profile.TelegraphSeconds) + ChargeSeconds + impactTail;
             }
         }
@@ -184,6 +192,11 @@ namespace Shinshi.Art
             }
 
             _player.ConfirmImpact(hitTime, now);
+            if (_groundSlam != null)
+            {
+                _groundSlam.Play((float)(now - hitTime));
+            }
+
             _confirmed = true;
             _hitTime = hitTime;
             HideChargeHead();
@@ -245,6 +258,11 @@ namespace Shinshi.Art
 
             ApplyCharge(elapsed - telegraph, charge, _chargeStart, _chargeEnd, elapsed < impact);
             ApplyShock(elapsed - impact, FiniteSeconds(_profile.ExpansionSeconds), elapsed >= impact);
+
+            if (_groundSlam != null)
+            {
+                _groundSlam.Sample(elapsed - impact);
+            }
         }
 
         /// <summary> 타격, 파편, 돌진 머리를 모두 숨기고 미리보기를 끝낸다 </summary>
@@ -257,6 +275,11 @@ namespace Shinshi.Art
             if (_player != null)
             {
                 _player.Stop();
+            }
+
+            if (_groundSlam != null)
+            {
+                _groundSlam.Stop();
             }
 
             HideChargeHead();

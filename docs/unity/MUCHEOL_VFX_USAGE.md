@@ -109,4 +109,16 @@ vfx.Stop();
 
 실제 보스 연결·서버 판정 일치·다인 접속·빌드·최소 사양 성능은 미검증이며, 시각 품질은 1차 검토본이다. 이번 사용 문서는 API 정적 대조로 확인했다.
 
+## 6. 지면 강타 변형 (02·04·07 `_Slam`)
+
+`PF_Mucheol_02_Slam`, `PF_Mucheol_04_Slam`, `PF_Mucheol_07_Slam`은 02·04·07 원본을 복사해, 예고선(`warning`)은 그대로 두고 확정 타격 때의 지면·충격파·파편 연출을 용암 지면 강타(바위가 가장자리로 튀며 균열 지면이 드러나는 연출)로 바꾼 변형이다. 원본 프리팹은 그대로 남아 있다.
+
+- 02·04는 반경 5m 원형, 07은 반경 44m·315도(후방 45도 비움, 로컬 -Z 중심)이다. 07은 5m 연출을 루트 스케일 약 8.8배로 키웠다.
+- `MucheolBatchVfxPlayer`의 선택 필드 `_groundSlam`(`MucheolGroundSlamVfx`)에 연결한다. 비어 있으면 기존 동작과 같다. 확정 타격(`ConfirmImpact`)의 경과 시간부터 재생하고 `Stop()`에서 끈다. 슬램 길이는 약 2.7초이며 `PreviewDuration`에 반영된다.
+- `PF_MucheolBoss`의 `MucheolPatternVfxView`가 02·04·07 칸에 이 `_Slam` 프리팹을 쓴다. 되돌리려면 같은 칸에 원본을 다시 넣는다.
+- 에셋은 `Assets/01.Scripts/05.Art/VFX/Mucheol/GroundSlam/`에 있다(셰이더 `GroundSlamLayer`, 재질 `GS_*`, 바위 메시, 애니메이션 `AN_GroundSlam`). 부채꼴 70도 변형(`PF_VFX_GroundSlam_Fan70`)은 만들어 두었으나 어떤 프리팹에도 연결하지 않았다.
+- 사전 로딩 프리팹 `PF_Prewarm_MucheolPatternVfx`는 아직 원본 02·04·07을 가리킨다. 슬램 쪽 셰이더·재질은 첫 재생에서 로드된다.
+
+상태: 구현됨·실행 미검증. 에디터에서 시각을 정해 렌더한 정지 확인과 CPU 시간 측정(프레임당 약 0.4~0.5ms, GC 할당 없음)만 했다. Play 모드 연속 재생, 빌드, 서버 확정 타격 연결, 다인 접속, GPU·겹침 비용, 사전 로딩은 미검증이다. 용암 균열이 후반에도 밝게 남는 등 시각 품질은 1차 검토본이다.
+
 구현 위치: `Assets/01.Scripts/05.Art/VFX/Mucheol/Batch/MucheolBatchVfxPlayer.cs`, 공통 재생기 `MucheolImpactVfxPlayer.cs`, 설정 `MucheolPatternVfxSettingsSO.cs`, 편집 도구 `Assets/Editor/MucheolBatch/`.
