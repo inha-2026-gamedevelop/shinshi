@@ -47,6 +47,9 @@ namespace Shinshi.Network
         // TryResolve가 정규화를 끝낸 외형. 개체의 공개 상태(PlayerCombatState)에 그대로 적용한다
         public CharacterAppearance Appearance => _appearance;
 
+        // 토큰 교환이 알려 준 길드 표시 이름, 길드가 없으면 null. 개체의 공개 상태(PlayerCombatState)에 그대로 적용한다
+        public string GuildName { get; internal set; }
+
         public bool IsActive { get; internal set; }
 
         // 마을이 던전 입장권을 보낸 참가자다. 이 연결이 끊겨도 마을은 계정 접속 임대를 풀지 않는다. 던전이 이관 경로로 옮기고,

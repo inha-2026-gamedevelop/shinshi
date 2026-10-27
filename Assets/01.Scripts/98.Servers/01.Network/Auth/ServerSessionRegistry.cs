@@ -100,6 +100,7 @@ namespace Shinshi.Network
                 claims.CharacterName, claims.Appearance);
             binding.AccountId   = claims.AccountId;
             binding.CharacterId = claims.CharacterId;
+            binding.GuildName   = claims.GuildName;
 
             binding.Experience      = claims.Experience;
             binding.CombatLoadout   = claims.CombatLoadout;

@@ -27,6 +27,7 @@ namespace Shinshi.Network
         private readonly ReservationPotion[]    _reservedPotions;
         private readonly SortieDescriptor       _sortie;
         private readonly CharacterAppearance    _appearance;
+        private readonly string                 _guildName;
 
         /****************************************
         *              Properties
@@ -69,6 +70,9 @@ namespace Shinshi.Network
         // TryResolve가 정규화한 공개 외형, null/v1은 직업 기본값으로, 유효한 v2는 그대로 들어 있다. 마을 토큰도 채운다
         public CharacterAppearance Appearance => _appearance;
 
+        // 규칙을 통과한 길드 표시 이름, 길드가 없거나 모르는 API, 개발 토큰은 null이다
+        public string GuildName => _guildName;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -85,6 +89,7 @@ namespace Shinshi.Network
             _characterName  = null;
             _appearance     = null;
             _accountId      = null;
+            _guildName      = null;
             _combatLoadout   = null;
             _reservedPotions = null;
             _sortie          = default;
@@ -132,6 +137,7 @@ namespace Shinshi.Network
             _characterName  = characterName;
             _appearance     = appearance;
             _accountId      = null;
+            _guildName      = null;
             _combatLoadout   = null;
             _reservedPotions = null;
             _sortie          = default;
@@ -184,6 +190,19 @@ namespace Shinshi.Network
         public JoinTokenClaims WithAccountId(string accountId)
         {
             return new JoinTokenClaims(this, accountId);
+        }
+
+        /// <summary> 길드 표시 이름을 붙인 복사본, 입장 결합 규칙만 부른다 </summary>
+        public JoinTokenClaims WithGuildName(string guildName)
+        {
+            return new JoinTokenClaims(this, guildName, true);
+        }
+
+        // 계정 ID 복사 생성자와 인자 모양이 같아 구분용 표시를 하나 더 받는다
+        private JoinTokenClaims(in JoinTokenClaims source, string guildName, bool isGuildName)
+        {
+            this       = source;
+            _guildName = guildName;
         }
     }
 }

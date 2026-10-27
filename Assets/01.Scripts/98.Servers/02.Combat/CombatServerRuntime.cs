@@ -531,6 +531,7 @@ namespace Shinshi.Combat
                 Debug.LogWarning($"[Combat] 재결합 참가자의 DB 인증 외형이 기존 값과 달라 새 값으로 갱신한다, participantId={participantId}");
             }
             combat.SetPublicIdentity(binding.CharacterName, binding.Appearance);
+            combat.SetGuildName(binding.GuildName);
 
             if (!NetworkServer.ReplacePlayerForConnection(connection, player.InputState.gameObject, ReplacePlayerOptions.KeepActive))
             {
@@ -609,6 +610,7 @@ namespace Shinshi.Combat
             // 최초 스폰 전에 DB 인증 이름/외형을 공개한다. PlayerServer 생성자가 다른 SyncVar를 먼저 설정하므로
             // 호출 순서에 기대지 않고 명시적으로 여기서 정한다
             combat.SetPublicIdentity(binding.CharacterName, binding.Appearance);
+            combat.SetGuildName(binding.GuildName);
             AdoptSessionEpoch();
             EnsureCombatMeter();
 
