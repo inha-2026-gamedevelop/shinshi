@@ -103,7 +103,7 @@ namespace Shinshi.Backend
                 identity.CharacterName, sortie?.Mode ?? JoinTokenExchangeResponse.NO_MODE, sortie?.MapId,
                 sortie?.BattleId, sortie?.BossId, sortie?.Difficulty ?? GameSessionCodes.Difficulty.NONE, combatLoadout,
                 identity.AccountId.ToString("D"), town ? null : identity.Potions?.ToArray(),
-                identity.AppearanceJson, identity.Experience));
+                identity.AppearanceJson, identity.Experience, identity.GuildName));
         }
     }
 }

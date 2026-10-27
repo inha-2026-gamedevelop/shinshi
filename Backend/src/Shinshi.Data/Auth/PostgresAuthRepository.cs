@@ -345,7 +345,9 @@ namespace Shinshi.Data.Auth
                     session.battle_id AS "BattleId", session.boss_id AS "BossId", session.difficulty AS "Difficulty",
                     participant.loadout_snapshot::text AS "Loadout", character.total_experience AS "TotalExperience",
                     character.last_experience_session_id AS "ExperienceSessionId",
-                    character.last_experience_event_seq AS "ExperienceEventSeq", session.content_version AS "ContentVersion", session.experience_settings::text AS "ExperienceSettings"
+                    character.last_experience_event_seq AS "ExperienceEventSeq", session.content_version AS "ContentVersion", session.experience_settings::text AS "ExperienceSettings",
+                    (SELECT guild.name FROM guild_members AS member JOIN guilds AS guild ON guild.guild_id = member.guild_id
+                        WHERE member.character_id = character.character_id AND guild.disbanded_at IS NULL) AS "GuildName"
                 FROM session_participants AS participant
                 JOIN characters AS character
                     ON character.character_id = participant.character_id AND character.account_id = participant.account_id
@@ -440,7 +442,8 @@ namespace Shinshi.Data.Auth
                 new CharacterExperienceSnapshot(character.TotalExperience,
                     consumed.SessionId.Value.ToString("D"), character.ExperienceSessionId == consumed.SessionId
                         ? character.ExperienceEventSeq : 0,
-                    CharacterLevelRules.SettingsHash(Growth.GrowthContent.LoadEmbedded().CharacterLevel))));
+                    CharacterLevelRules.SettingsHash(Growth.GrowthContent.LoadEmbedded().CharacterLevel)),
+                character.GuildName));
         }
 
         // 던전 입장 교환이 돌려주는 남은 물약 예약분 한 줄
@@ -463,6 +466,7 @@ namespace Shinshi.Data.Auth
             public int ClassId { get; set; }
             public string? Name { get; set; }
             public string? Appearance { get; set; }
+            public string? GuildName { get; set; }
             public bool Departed { get; set; }
             public string Mode { get; set; } = string.Empty;
             public string MapId { get; set; } = string.Empty;
