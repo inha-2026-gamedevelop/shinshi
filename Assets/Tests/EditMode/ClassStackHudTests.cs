@@ -159,6 +159,24 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void StatusView_ArcherWithoutElement_HidesHpStackText()
+        {
+            HudPlayerStatusView status = CreateStatusView(out RectTransform track);
+            ClassStackDisplay wind = ClassStackHudRules.Build(EPlayerClass.Archer, 0, MAX_STACKS, EArcherElement.Wind);
+            ClassStackDisplay none = ClassStackHudRules.Build(EPlayerClass.Archer, 0, MAX_STACKS, EArcherElement.None);
+
+            status.SetClassStacks(in wind);
+            var text = track.Find(STACK_OBJECT_NAME).GetComponent<TMP_Text>();
+            Assert.IsTrue(text.enabled);
+
+            status.SetClassStacks(in none);
+            Assert.IsFalse(text.enabled);
+
+            status.SetClassStacks(in wind);
+            Assert.IsTrue(text.enabled);
+        }
+
+        [Test]
         public void GetElementColumn_ArcherElementsMapToCells_OthersNone()
         {
             ClassStackDisplay ice        = ClassStackHudRules.Build(EPlayerClass.Archer, 1, MAX_STACKS, EArcherElement.Ice);

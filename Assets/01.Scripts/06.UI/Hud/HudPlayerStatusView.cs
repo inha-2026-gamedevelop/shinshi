@@ -10,6 +10,7 @@ using DG.Tweening;
 using TMPro;
 
 // 프로젝트 내부
+using Shinshi.Common;
 using Shinshi.Contracts;
 
 namespace Shinshi.UI
@@ -236,7 +237,7 @@ namespace Shinshi.UI
 
             _stackDisplay = display;
             ApplyElementIcon(in display);
-            if (!display.IsVisible)
+            if ((!display.IsVisible) || ((display.ShowsElement) && (display.Element == EArcherElement.None)))
             {
                 if (_stackText != null)
                 {
