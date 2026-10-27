@@ -37,11 +37,11 @@ namespace Shinshi.UI
         private const string BUFF_GROUP_PATH         = "Layout_AlwaysVisible/StatusEffectGroup/BuffGroup";
         private const string ELEMENT_TEXTURE_PATH    = "T_ArcherElementOverhead";
         private const int    ELEMENT_ATLAS_COLUMNS   = 3;
-        private const float  ELEMENT_ICON_SIZE       = 28f;
+        private const float  ELEMENT_ICON_SIZE       = 32f;
         private const float  ELEMENT_LEFT_MARGIN     = 8f;
-        private const float  ELEMENT_COUNT_FONT_SIZE = 14f;
-        private const float  ELEMENT_COUNT_OFFSET_Y  = -6f;  // 숫자는 아이콘 아래쪽에 겹친다
-        private const float  ELEMENT_COUNT_OUTLINE   = 0.3f; // 밝은 그림 위에서도 읽히게 하는 외곽선
+        private const float  ELEMENT_COUNT_FONT_SIZE = 22f;
+        private const float  ELEMENT_COUNT_OFFSET_Y  = 0f;   // 숫자는 아이콘 오른쪽 아래 모서리에 겹친다
+        private const float  ELEMENT_COUNT_OUTLINE   = 0.55f; // 밝은 그림 위에서도 읽히게 하는 외곽선
         private const string ELEMENT_COUNT_FORMAT    = "{0}";
         // 다 차면 아이콘이 숨 쉬듯 커졌다 줄어든다
         private const float  FULL_PULSE_SCALE        = 1.15f;
@@ -365,7 +365,7 @@ namespace Shinshi.UI
             count.fontSharedMaterial = _hpText.fontSharedMaterial;
             count.fontSize           = ELEMENT_COUNT_FONT_SIZE;
             count.fontStyle          = FontStyles.Bold;
-            count.alignment          = TextAlignmentOptions.Center;
+            count.alignment          = TextAlignmentOptions.BottomRight;
             count.outlineWidth       = ELEMENT_COUNT_OUTLINE;
             count.outlineColor       = Color.black;
             count.textWrappingMode   = TextWrappingModes.NoWrap;

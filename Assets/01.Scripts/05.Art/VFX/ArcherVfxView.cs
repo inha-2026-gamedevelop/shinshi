@@ -28,8 +28,8 @@ namespace Shinshi.Art
         private const int POOL_MUZZLE   = POOL_ARROW + ELEMENT_COUNT;
         private const int POOL_HIT      = POOL_MUZZLE + ELEMENT_COUNT;
         private const int POOL_CHARGE   = POOL_HIT + ELEMENT_COUNT;
-        private const int POOL_BURST    = POOL_CHARGE + 1;
-        private const int POOL_HEAVY_ARROW  = POOL_BURST + 1;
+        private const int POOL_BURST    = POOL_CHARGE + ELEMENT_COUNT;
+        private const int POOL_HEAVY_ARROW  = POOL_BURST + ELEMENT_COUNT;
         private const int POOL_HEAVY_MUZZLE = POOL_HEAVY_ARROW + ELEMENT_COUNT;
         private const int POOL_HEAVY_HIT    = POOL_HEAVY_MUZZLE + ELEMENT_COUNT;
         private const int POOL_COUNT        = POOL_HEAVY_HIT + ELEMENT_COUNT;
@@ -78,6 +78,10 @@ namespace Shinshi.Art
         [Header("속성 폭발")]
         [SerializeField] private GameObject _chargePrefab;
         [SerializeField] private GameObject _burstPrefab;
+        // 차지와 폭발은 프리팹 하나를 속성 색으로 착색해 쓴다. 속성이 없으면 프리팹 원래 색이다
+        [SerializeField] private Color _burstIceColor  = new Color(0.45f, 0.8f, 1f);
+        [SerializeField] private Color _burstWindColor = new Color(0.5f, 1f, 0.55f);
+        [SerializeField] private Color _burstFireColor = new Color(1f, 0.45f, 0.12f);
 
         [Header("최대 스택 오라")]
         [SerializeField] private GameObject _fullStackAuraPrefab;
@@ -308,8 +312,13 @@ namespace Shinshi.Art
                 _pools[POOL_HIT + i]    = new ArcherVfxPool(hits[i], _poolRoot, HIT_POOL_SIZE);
             }
 
-            _pools[POOL_CHARGE] = new ArcherVfxPool(_chargePrefab, _poolRoot, BURST_POOL_SIZE);
-            _pools[POOL_BURST]  = new ArcherVfxPool(_burstPrefab, _poolRoot, BURST_POOL_SIZE);
+            Color?[] burstColors = { null, _burstIceColor, _burstWindColor, _burstFireColor };
+            for (int i = 0; i < ELEMENT_COUNT; ++i)
+            {
+                _pools[POOL_CHARGE + i] = new ArcherVfxPool(_chargePrefab, _poolRoot, BURST_POOL_SIZE, burstColors[i]);
+                _pools[POOL_BURST + i]  = new ArcherVfxPool(_burstPrefab, _poolRoot, BURST_POOL_SIZE, burstColors[i]);
+            }
+
             Color?[] heavyColors = { null, _heavyIceColor, _heavyWindColor, _heavyFireColor };
             for (int i = 0; i < ELEMENT_COUNT; ++i)
             {
@@ -433,10 +442,10 @@ namespace Shinshi.Art
                     Play(POOL_MUZZLE + element, origin, rotation, now, MUZZLE_MAX_SECONDS);
                     return;
                 case EArcherVfxKind.Charge:
-                    Play(POOL_CHARGE, origin, rotation, now, Mathf.Max(MAX_LATE_SECONDS, _chargeSeconds));
+                    Play(POOL_CHARGE + element, origin, rotation, now, Mathf.Max(MAX_LATE_SECONDS, _chargeSeconds));
                     return;
                 case EArcherVfxKind.Burst:
-                    Play(POOL_BURST, play.Position, Quaternion.identity, now, BURST_MAX_SECONDS);
+                    Play(POOL_BURST + element, play.Position, Quaternion.identity, now, BURST_MAX_SECONDS);
                     return;
                 default:
                     return;
