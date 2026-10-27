@@ -27,8 +27,10 @@ Material:
     m_Floats:
     - _ClearRadius: 0.15
     - _Impact: 0
-    - _ImpactHotThreshold: 0.5
+    - _ImpactDim: 0.6
+    - _ImpactHotThreshold: 0
     - _ImpactInvert: 1
+    - _ImpactSoft: 1
     - _ImpactThreshold: 0.12
     - _Strength: 0
     m_Colors:

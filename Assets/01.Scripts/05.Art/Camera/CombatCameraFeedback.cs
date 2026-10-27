@@ -1,6 +1,8 @@
 // Unity
 using UnityEngine;
 
+using UnityEngine.Rendering.Universal;
+
 // 서드파티
 using Mirror;
 using Unity.Cinemachine;
@@ -24,6 +26,9 @@ namespace Shinshi.Art
 
         private const float DEFAULT_SHAKE_SECONDS  = 0.2f;
         private const float DIRECTION_EPSILON_SQR  = 0.0001f;
+        // 치명타 줌 펀치는 짧게 당겼다가 바로 풀므로 유지 시간과 당기는 감쇠 시간이 매우 짧다
+        private const float CRIT_ZOOM_HOLD_SECONDS = 0.04f;
+        private const float CRIT_ZOOM_IN_SMOOTH    = 0.04f;
 
         [Header("참조")]
         [SerializeField] private QuarterViewCameraRig _rig;
@@ -50,6 +55,31 @@ namespace Shinshi.Art
         [SerializeField, Min(0)] private int _heavySparkCount = 28;
         [SerializeField, Min(1f)] private float _critSparkMultiplier = 2.5f;
 
+        [Header("치명타 화면 연출")]
+        // 렌더러의 풀스크린 패스와 그 재질. 비어 있으면 블러와 임팩트 프레임은 건너뛴다
+        [SerializeField] private FullScreenPassRendererFeature _critBlurFeature;
+        [SerializeField] private Material _critBlurMaterial;
+        [SerializeField, Range(0f, 1f)]   private float _critBlurIntensity = 0.8f;
+        [SerializeField, Min(0.01f)]      private float _critBlurSeconds   = 0.45f;
+        // 0이면 줌 펀치를 쓰지 않는다
+        [SerializeField, Range(0f, 0.5f)] private float _critZoomPunch     = 0.08f;
+        [SerializeField, Min(0.01f)]      private float _critZoomSeconds   = 0.3f;
+        // 0이면 번쩍임을 쓰지 않는다
+        [SerializeField, Range(0f, 1f)]   private float _critFlashAlpha    = 0f;
+        [SerializeField, Min(0.01f)]      private float _critFlashSeconds  = 0.08f;
+
+        [Header("치명타 임팩트 프레임")]
+        [SerializeField] private bool _useImpactFrame = true;
+        [SerializeField, Range(1, 20)] private int _impactFrames = 6;
+        // 부드러운 방식은 배경을 회색으로 어둡게 하고 서서히 풀린다. 끄면 흑백과 강조색의 강한 방식이다
+        [SerializeField] private bool _impactSoft = true;
+        [SerializeField, Range(0f, 1f)] private float _impactDim = 0.6f;
+        [SerializeField, Range(0f, 1f)] private float _impactThreshold = 0.12f;
+        // 이보다 밝은 곳(번쩍인 몸, 불똥)은 색을 남기거나 강조색으로 칠한다
+        [SerializeField, Range(0f, 2f)] private float _impactHotThreshold = 0.5f;
+        [SerializeField] private bool _impactInvert = true;
+        [SerializeField, Min(0f)] private float _impactCooldownSeconds = 0.4f;
+
         [Header("분류")]
         // 피해 알림 시각과 시전 시각 비교에 두는 여유
         [SerializeField, Min(0f)] private float _classifyMargin = 0.15f;
@@ -57,7 +87,10 @@ namespace Shinshi.Art
         private readonly CombatCameraEffects      _effects    = new CombatCameraEffects();
         private readonly MageknightHitClassifier  _classifier = new MageknightHitClassifier();
         private readonly DamageFeedbackReceiver   _receiver   = new DamageFeedbackReceiver();
+        private readonly HitFeedbackCooldown      _impactCooldown = new HitFeedbackCooldown();
         private HitSparkPool                      _sparks     = null;
+        private HitFeedbackMotionBlur             _motionBlur = null;
+        private HitFeedbackScreenFx               _screenFx   = null;
 
         private NetworkIdentity         _boundPlayer = null;
         private PlayerInputState        _input       = null;
@@ -78,6 +111,19 @@ namespace Shinshi.Art
                 _sparks = new GameObject("HitSparks").AddComponent<HitSparkPool>();
                 _sparks.transform.SetParent(transform, false);
                 _sparks.Initialize(_sparkMaterial);
+            }
+
+            if ((_critBlurFeature != null) && (_critBlurMaterial != null))
+            {
+                _motionBlur = new GameObject("CritMotionBlur").AddComponent<HitFeedbackMotionBlur>();
+                _motionBlur.transform.SetParent(transform, false);
+                _motionBlur.Init(_critBlurFeature, _critBlurMaterial);
+            }
+
+            if (_critFlashAlpha > 0f)
+            {
+                _screenFx = new GameObject("CritScreenFx").AddComponent<HitFeedbackScreenFx>();
+                _screenFx.transform.SetParent(transform, false);
             }
 
             if (_camera != null)
@@ -157,6 +203,7 @@ namespace Shinshi.Art
 
             _classifier.Reset();
             _effects.Reset();
+            _impactCooldown.Reset();
             _lastCastId = 0;
         }
 
@@ -268,6 +315,31 @@ namespace Shinshi.Art
                 _effects.Kick(cameraDirection, strength, _shakeSeconds, Time.unscaledTimeAsDouble);
             }
             BurstSparks(feedback, kind != MageknightHitClassifier.EKind.Other);
+
+            // 지속 피해는 틱마다 들어오므로 치명타로 보여 주지 않는다
+            if ((feedback.IsCritical) && (!feedback.IsDamageOverTime))
+            {
+                PlayCriticalScreen();
+            }
+        }
+
+        // 내 치명타에만 거는 화면 연출. 이 클라이언트 화면에만 보이는 표현이라 서버 판정과 이동에는 관여하지 않는다
+        private void PlayCriticalScreen()
+        {
+            _motionBlur?.Pulse(_critBlurIntensity, _critBlurSeconds);
+
+            // 이미 당겨진 줌(섬광 일섬)이 있으면 그 줌을 끊지 않는다
+            if (!_effects.IsZooming)
+            {
+                _effects.ZoomHold(_critZoomPunch, CRIT_ZOOM_HOLD_SECONDS, CRIT_ZOOM_IN_SMOOTH, _critZoomSeconds, Time.unscaledTimeAsDouble);
+            }
+
+            _screenFx?.Flash(_critFlashAlpha, _critFlashSeconds);
+
+            if ((_useImpactFrame) && (_motionBlur != null) && (_impactCooldown.TryUse(Time.unscaledTimeAsDouble, _impactCooldownSeconds)))
+            {
+                _motionBlur.ImpactFrame(_impactFrames, _impactSoft, _impactDim, _impactThreshold, _impactHotThreshold, _impactInvert);
+            }
         }
 
         // 맞은 자리에서 플레이어가 공격한 쪽으로 불똥을 튀긴다

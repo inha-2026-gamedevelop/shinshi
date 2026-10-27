@@ -2,6 +2,9 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
+// 프로젝트 내부
+using Shinshi.Art;
+
 namespace Shinshi.Dev
 {
     /// <summary> 한 번의 타격이 일으킬 모든 타격감(렉프레임, 카메라, 불똥, 충격파)을 프로필대로 재생하는 중앙 재생기 </summary>
