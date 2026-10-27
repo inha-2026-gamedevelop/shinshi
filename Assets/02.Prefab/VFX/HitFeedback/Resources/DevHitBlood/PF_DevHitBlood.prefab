@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4404821249670519867
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8462099199009807024}
+  - component: {fileID: 2197989594426261963}
+  m_Layer: 0
+  m_Name: PF_DevHitBlood
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8462099199009807024
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4404821249670519867}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2197989594426261963
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4404821249670519867}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35b61a186c4ff6541ab3ed08261c7cca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackBlood
+  _hitSprayCount: 24
+  _killSprayCount: 42
+  _spraySpeed: {x: 3, y: 8}
+  _spraySize: {x: 0.55, y: 1}
+  _sprayLifetime: {x: 0.16, y: 0.4}
+  _freshColor: {r: 0.7, g: 0.008, b: 0.018, a: 0.96}
+  _hitDropCount: 7
+  _dropSize: {x: 0.25, y: 0.42}
+  _dropSeconds: 2.5
+  _dripInterval: 0.12
+  _bleedSeconds: 2.6
+  _impactStainSize: {x: 1.2, y: 2.2}
+  _dripStainSize: {x: 0.4, y: 0.8}
+  _stainSeconds: 45
+  _fadeSeconds: 18
+  _stainColor: {r: 0.52, g: 0.007, b: 0.015, a: 0.95}
+  _dryColor: {r: 0.19, g: 0.018, b: 0.012, a: 0.65}
+  _drySeconds: 12
+  _wetSmoothness: 0.45
+  _drySmoothness: 0.03
+  _recycleFadeSeconds: 0.65
+  _groundLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _sprayMaterial: {fileID: 2100000, guid: f84488919c698c448883af2b515c4bab, type: 2}
+  _stainMaterial: {fileID: 2100000, guid: dec8968da47363247ada41d9923a800a, type: 2}

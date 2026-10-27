@@ -50,8 +50,19 @@ namespace Shinshi.UI
             }
 
             gameObject.SetActive(true);
+            UiSound.Play(EUiSoundGroup.Alert, EUiSoundAction.Open);
         }
 
-        public void Close() { gameObject.SetActive(false); }
+        // 이미 닫힌 창을 다시 닫을 때는 소리를 내지 않는다
+        public void Close()
+        {
+            if (!gameObject.activeSelf)
+            {
+                return;
+            }
+
+            gameObject.SetActive(false);
+            UiSound.Play(EUiSoundGroup.Alert, EUiSoundAction.Close);
+        }
     }
 }

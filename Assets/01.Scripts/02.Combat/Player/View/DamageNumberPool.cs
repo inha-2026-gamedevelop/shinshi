@@ -29,6 +29,9 @@ namespace Shinshi.Combat
         private const float OUTLINE_WIDTH = 0.35f;
         // 외곽선이 글자 안쪽까지 먹으므로 글자 자체를 먼저 굵게 부풀린다
         private const float FACE_DILATE = 0.35f;
+        private const int TWEENERS_PER_SLOT = 3;
+        private const float MIN_TWEEN_SECONDS = 0.01f;
+        private const float TILT_SETTLE_RATIO = 0.3f;
         // 이 셰이더를 쓰는 재질이 프로젝트에 없으면 빌드가 셰이더를 빼서 외곽선이 사라진다. Hud/Resources/M_TextOutlineShaderRef.mat이 포함을 맡으니 지우지 않는다
         private const string OUTLINE_SHADER = "TextMeshPro/Distance Field";
         private const string OUTLINE_KEYWORD = "OUTLINE_ON";
@@ -45,12 +48,22 @@ namespace Shinshi.Combat
         [SerializeField] private Color _normalColor = Color.white;
         [SerializeField] private Color _criticalColor = new Color(1f, 0.75f, 0.15f, 1f);
 
+        [Header("숫자 타격 반응")]
+        [SerializeField, Min(0f)] private float _readableSeconds = 0.22f;
+        [SerializeField, Min(0f)] private float _sidePixels = 24f;
+        [SerializeField, Min(0f)] private float _tiltDegrees = 8f;
+        [SerializeField, Min(1f)] private float _criticalPopMultiplier = 1.15f;
+        [SerializeField] private AnimationCurve _popScale = new AnimationCurve(
+            new Keyframe(0f, 0.65f), new Keyframe(0.1f, 1.45f),
+            new Keyframe(0.28f, 1f), new Keyframe(1f, 0.85f));
+
         private Slot[] _slots;
         private Material _outlineMaterial;
         private Camera _camera;
         private RectTransform _canvasRect;
         private int _activeCount;
         private bool _hasTweenReservation;
+        private bool _nextSide;
 
         private sealed class Slot
         {
@@ -61,6 +74,10 @@ namespace Shinshi.Combat
             public Sequence Tween;
             public Vector3 WorldPosition;
             public bool Active;
+            public float PopProgress;
+            public float Emphasis;
+            public float Drift;
+            public float Tilt;
         }
 
         /****************************************
@@ -185,6 +202,12 @@ namespace Shinshi.Combat
                 slot.WorldPosition = world;
                 slot.Anchor.anchoredPosition = point;
                 slot.LabelRect.anchoredPosition = Vector2.zero;
+                _nextSide = !_nextSide;
+                float side = _nextSide ? 1f : -1f;
+                slot.Drift = side * _sidePixels;
+                slot.Tilt = side * _tiltDegrees;
+                slot.Emphasis = feedback.IsCritical ? _criticalPopMultiplier : 1f;
+                ApplyPop(slot, 0f);
                 slot.Group.alpha = 1f;
                 slot.Label.color = feedback.IsCritical ? _criticalColor : _normalColor;
                 slot.Label.fontSize = feedback.IsCritical ? _criticalFontSize : _normalFontSize;
@@ -241,12 +264,12 @@ namespace Shinshi.Combat
             }
             ++_reservedPoolCount;
             _hasTweenReservation = true;
-            // 설치 DLL의 기본 sequence 용량은 50이다. 기존 여유에 풀의 64 sequence·128 child를 더한다.
+            // 설치 DLL의 기본 sequence 용량은 50이다. 기존 여유에 풀의 sequence와 이동·크기·페이드 child를 더한다.
             // 동시 풀이 정리되어도 용량은 줄이지 않으며, 재바인딩마다 예약을 누적하지 않는다
             int sequences = Mathf.Max(DOTween.sequencesCapacity,
                 _baseSequencesCapacity + (_reservedPoolCount * POOL_CAPACITY) + 1);
             int tweeners = Mathf.Max(DOTween.tweenersCapacity,
-                _baseTweenersCapacity + (_reservedPoolCount * POOL_CAPACITY * 2) + 1);
+                _baseTweenersCapacity + (_reservedPoolCount * POOL_CAPACITY * TWEENERS_PER_SLOT) + 1);
             tweeners = Mathf.Max(tweeners, sequences);
             if ((tweeners != DOTween.tweenersCapacity) || (sequences != DOTween.sequencesCapacity))
             {
@@ -293,15 +316,31 @@ namespace Shinshi.Combat
             slot.Label.alignment = TextAlignmentOptions.Center;
             slot.Label.raycastTarget = false;
             slot.Label.textWrappingMode = TextWrappingModes.NoWrap;
+            slot.Emphasis = 1f;
+            ApplyPop(slot, 0f);
+            float lifetime = Mathf.Max(MIN_TWEEN_SECONDS, _lifetimeSeconds);
+            float hold = Mathf.Clamp(_readableSeconds, 0f, lifetime - MIN_TWEEN_SECONDS);
             slot.Tween = DOTween.Sequence().SetAutoKill(false).SetUpdate(true).Pause();
             // 현재 런타임 asmdef에서 UI 모듈 확장을 참조하지 않아 코어 DOTween으로 같은 표현을 만든다
             slot.Tween.Append(DOTween.To(() => slot.LabelRect.anchoredPosition.y,
-                value => slot.LabelRect.anchoredPosition = new Vector2(0f, value), _risePixels, _lifetimeSeconds).SetEase(Ease.OutQuad));
-            slot.Tween.Join(DOTween.To(() => slot.Group.alpha, value => slot.Group.alpha = value,
-                0f, _lifetimeSeconds).SetEase(Ease.InQuad));
+                value => slot.LabelRect.anchoredPosition = new Vector2(
+                    slot.Drift * Mathf.Clamp01(value / Mathf.Max(MIN_TWEEN_SECONDS, _risePixels)), value),
+                _risePixels, lifetime).SetEase(Ease.OutCubic));
+            slot.Tween.Join(DOTween.To(() => slot.PopProgress, value => ApplyPop(slot, value),
+                1f, lifetime).SetEase(Ease.Linear));
+            slot.Tween.Insert(hold, DOTween.To(() => slot.Group.alpha, value => slot.Group.alpha = value,
+                0f, lifetime - hold).SetEase(Ease.InQuad));
             slot.Tween.ForceInit();
             slot.Anchor.gameObject.SetActive(false);
             return slot;
+        }
+
+        private void ApplyPop(Slot slot, float progress)
+        {
+            slot.PopProgress = progress;
+            slot.LabelRect.localScale = Vector3.one * (_popScale.Evaluate(progress) * slot.Emphasis);
+            float tilt = slot.Tilt * (1f - Mathf.Clamp01(progress / TILT_SETTLE_RATIO));
+            slot.LabelRect.localRotation = Quaternion.Euler(0f, 0f, tilt);
         }
 
         private static RectTransform CreateRect(string objectName, Transform parent)

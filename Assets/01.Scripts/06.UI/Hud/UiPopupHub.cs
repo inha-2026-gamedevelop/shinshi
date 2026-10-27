@@ -4,11 +4,17 @@ using System;
 // Unity
 using UnityEngine;
 
+// 프로젝트 내부
+using Shinshi.Systems;
+
 namespace Shinshi.UI
 {
-    /// <summary>얼러트, 컨펌, 토스트를 한곳에서 열어 주는 진입점이며 시작할 때 모든 팝업을 닫는다</summary>
+    /// <summary>얼러트, 컨펌, 토스트를 한곳에서 열어 주는 진입점이며 시작할 때 모든 팝업을 닫는다. 열린 팝업은 Esc로 닫는다</summary>
     public sealed class UiPopupHub : MonoBehaviour
     {
+        // 팝업을 띄울 때마다 창 닫기 처리기를 맨 뒤로 다시 등록해 뒤의 창보다 먼저 Esc를 받는다.
+        // 컨펌은 Esc를 취소로 돌려준다
+
         /****************************************
         *                Fields
         ****************************************/
@@ -22,11 +28,28 @@ namespace Shinshi.UI
         [Header("토스트")]
         [SerializeField] private ToastMessageView _toast = null;
 
+        [Header("단축키")]
+        [SerializeField] private HotkeyRouter _router = null;
+
+        private Func<bool> _onEscape = null;
+
         /****************************************
         *              Unity Event
         ****************************************/
 
-        private void Awake() { CloseAll(); }
+        private void Awake()
+        {
+            _onEscape = OnEscape;
+            CloseAll();
+        }
+
+        private void OnDisable()
+        {
+            if ((_router != null) && (_onEscape != null))
+            {
+                _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);
+            }
+        }
 
         /****************************************
         *                Methods
@@ -39,6 +62,7 @@ namespace Shinshi.UI
             if (view != null)
             {
                 view.Show(message);
+                RegisterEscape();
             }
         }
 
@@ -50,6 +74,7 @@ namespace Shinshi.UI
             if (view != null)
             {
                 view.Show(message, onResult);
+                RegisterEscape();
             }
         }
 
@@ -61,6 +86,7 @@ namespace Shinshi.UI
             }
         }
 
+        // 시작 정리와 화면 전환용이라 닫기 소리 없이 끈다. Awake에서 열린 채 저장된 창이 닫히며 소리가 나면 안 된다
         public void CloseAll()
         {
             if (_alerts != null)
@@ -69,7 +95,7 @@ namespace Shinshi.UI
                 {
                     if (_alerts[i] != null)
                     {
-                        _alerts[i].Close();
+                        _alerts[i].gameObject.SetActive(false);
                     }
                 }
             }
@@ -84,6 +110,46 @@ namespace Shinshi.UI
                     }
                 }
             }
+        }
+
+        private void RegisterEscape()
+        {
+            if ((_router != null) && (_onEscape != null))
+            {
+                _router.Register(EHotkeyAction.CloseWindow, _onEscape);
+            }
+        }
+
+        // 버튼으로 이미 다 닫혔으면 뒤의 창에 넘긴다. 취소 결과를 받은 쪽이 새 팝업을 띄우면 그 팝업이 다시 등록하도록 먼저 푼다
+        private bool OnEscape()
+        {
+            _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);
+            bool closed = false;
+            if (_confirms != null)
+            {
+                for (int i = 0; i < _confirms.Length; ++i)
+                {
+                    if ((_confirms[i] != null) && (_confirms[i].gameObject.activeInHierarchy))
+                    {
+                        _confirms[i].Cancel();
+                        closed = true;
+                    }
+                }
+            }
+
+            if (_alerts != null)
+            {
+                for (int i = 0; i < _alerts.Length; ++i)
+                {
+                    if ((_alerts[i] != null) && (_alerts[i].gameObject.activeInHierarchy))
+                    {
+                        _alerts[i].Close();
+                        closed = true;
+                    }
+                }
+            }
+
+            return closed;
         }
 
         private static T Pick<T>(T[] views, EPopupSize size) where T : class

@@ -7,8 +7,9 @@ namespace Shinshi.Dev
     public sealed class HitReactor : IHitLagTarget
     {
         // 위치나 체력 같은 판정은 건드리지 않고 렌더러와 이 오브젝트의 표현만 바꾼다. 소유자가 매 프레임 Tick을 부른다.
-        // 시험 씬은 몬스터 루트가 곧 몸이라 루트를 직접 다루지만, 실제 적은 서버가 위치를 권위로 가지므로
-        // 이 클래스를 모델 자식 오브젝트에 연결해야 서버 위치와 어긋나지 않는다
+        // 렉프레임 떨림은 모델(visual)만 움직여 충돌체와 판정 위치를 그대로 둔다. 실제 적은 서버가 루트 위치를
+        // 권위로 가지므로 이 방식이어야 옮겨 쓸 수 있다. 모델 없는 시험용 캡슐만 루트를 떤다.
+        // 찌그러짐은 아직 루트 크기를 바꾼다
 
         /****************************************
         *                Fields
@@ -21,6 +22,8 @@ namespace Shinshi.Dev
         private const float PUNCH_CYCLES   = 2f;
         private const float PUNCH_XZ_RATIO = 0.5f; // 높이가 눌린 만큼 옆으로 퍼지는 비율
         private const float FULL_TURN      = Mathf.PI * 2f;
+
+        private const float MIN_AXIS_SQR = 0.0001f;
 
         // 처치 시 날아가기
         private const float DEATH_FLASH_SECONDS = 0.2f;
@@ -36,6 +39,7 @@ namespace Shinshi.Dev
 
         private readonly GameObject            _owner;
         private readonly Transform             _transform;
+        private readonly Transform             _shakeTarget;
         private readonly Renderer              _renderer;
         private readonly Collider              _collider;
         private readonly MaterialPropertyBlock _block = new MaterialPropertyBlock();
@@ -47,7 +51,8 @@ namespace Shinshi.Dev
 
         private Rigidbody _body          = null;
         private Color     _flashColor    = Color.white;
-        private Vector3   _vibrateOffset = Vector3.zero;
+        private Vector3   _vibrateOffset = Vector3.zero; // _shakeTarget의 부모 기준
+        private Vector3   _vibrateAxis   = Vector3.right; // 월드 수평, 맞은 방향
         private Vector3   _launchAway    = Vector3.zero;
         private float     _launchPower   = 1f;
         private float     _vibrateAmount = 0f;
@@ -56,6 +61,7 @@ namespace Shinshi.Dev
         private float     _punchLeft     = 0f;
         private float     _punchAmount   = 0f;
         private int       _vibrateFrames = 0;
+        private int       _vibrateTotal  = 0;
         private bool      _launchPending = false;
         private bool      _isDead        = false;
 
@@ -75,11 +81,12 @@ namespace Shinshi.Dev
         *               Constructor
         ****************************************/
 
-        /// <summary> owner의 렌더러에 색과 찌그러짐을 입힌다. normalColor는 평소 색, corpseColor는 죽은 뒤 색이다 </summary>
-        public HitReactor(GameObject owner, Color normalColor, Color corpseColor)
+        /// <summary> owner의 렌더러에 색과 찌그러짐을 입힌다. visual은 렉프레임에 떨 모델이고 비우면 owner를 떤다. normalColor는 평소 색, corpseColor는 죽은 뒤 색이다 </summary>
+        public HitReactor(GameObject owner, Transform visual, Color normalColor, Color corpseColor)
         {
             _owner       = owner;
             _transform   = owner.transform;
+            _shakeTarget = (visual != null) ? visual : _transform;
             _renderer    = owner.GetComponentInChildren<Renderer>();
             _collider    = owner.GetComponent<Collider>();
             _normalColor = normalColor;
@@ -109,13 +116,22 @@ namespace Shinshi.Dev
         /// <inheritdoc/>
         public void Freeze(int frames)
         {
-            _vibrateFrames = Mathf.Max(_vibrateFrames, frames);
+            // 더 긴 멈춤이 오면 감쇠도 처음부터 다시 센다
+            if (frames > _vibrateFrames)
+            {
+                _vibrateFrames = frames;
+                _vibrateTotal  = frames;
+            }
         }
 
-        /// <summary> 맞은 순간의 번쩍임과 찌그러짐을 시작한다. 치명타면 금색으로 번쩍이고 더 크게 찌그러진다. 렉프레임 동안 떠는 크기도 이때 프로필에서 받아 둔다 </summary>
-        public void React(HitFeedbackProfile profile, bool isCritical)
+        /// <summary> 렉프레임 동안 떠는 크기(m)를 정한다. 카메라 거리로 환산한 값을 React 뒤에 덮어쓸 때 쓴다 </summary>
+        public void SetVibrateAmount(float meters) { _vibrateAmount = meters; }
+
+        /// <summary> 맞은 순간의 번쩍임과 찌그러짐을 시작한다. away는 공격자에서 맞은 쪽으로 향하는 수평 방향이고 떨림 축이 된다. 치명타면 금색으로 번쩍이고 더 크게 찌그러진다 </summary>
+        public void React(HitFeedbackProfile profile, Vector3 away, bool isCritical)
         {
             _vibrateAmount = profile.VibrateAmount;
+            SetVibrateAxis(away);
             _punchAmount   = profile.PunchAmount * (isCritical ? profile.CritPunchMultiplier : 1f);
             _punchLeft   = PUNCH_SECONDS;
             StartFlash(profile.FlashSeconds, isCritical ? s_critFlashColor : s_normalFlashColor);
@@ -126,6 +142,7 @@ namespace Shinshi.Dev
         {
             _isDead        = true;
             _vibrateAmount = profile.VibrateAmount;
+            SetVibrateAxis(away);
             _transform.localScale = _baseScale;
             StartFlash(DEATH_FLASH_SECONDS, s_normalFlashColor);
 
@@ -192,21 +209,35 @@ namespace Shinshi.Dev
             _transform.localScale = new Vector3(_baseScale.x * spread, _baseScale.y * (1f - squash), _baseScale.z * spread);
         }
 
-        // 프레임마다 직전 떨림을 되돌리고 새로 떨어, 끝나면 원래 자리로 돌아온다. 이번 프레임이 렉프레임이면 true
+        private void SetVibrateAxis(Vector3 away)
+        {
+            away.y = 0f;
+            if (away.sqrMagnitude > MIN_AXIS_SQR)
+            {
+                _vibrateAxis = away.normalized;
+            }
+        }
+
+        // 프레임마다 직전 떨림을 되돌리고 새로 떨어, 끝나면 원래 자리로 돌아온다. 이번 프레임이 렉프레임이면 true.
+        // 맞은 방향 축으로 앞뒤를 번갈아 떨고 멈춤이 끝나 갈수록 줄여, 무작위 떨림보다 어느 쪽에서 맞았는지 읽힌다
         private bool UpdateVibrate()
         {
-            _transform.position -= _vibrateOffset;
-            _vibrateOffset       = Vector3.zero;
+            _shakeTarget.localPosition -= _vibrateOffset;
+            _vibrateOffset              = Vector3.zero;
 
             if (_vibrateFrames <= 0)
             {
                 return false;
             }
 
+            float decay = _vibrateFrames / (float)Mathf.Max(1, _vibrateTotal);
+            float side  = ((_vibrateFrames % 2) == 0) ? 1f : -1f;
             --_vibrateFrames;
-            Vector2 shake = Random.insideUnitCircle * _vibrateAmount;
-            _vibrateOffset       = new Vector3(shake.x, 0f, shake.y);
-            _transform.position += _vibrateOffset;
+
+            Vector3   world  = _vibrateAxis * (_vibrateAmount * decay * side);
+            Transform parent = _shakeTarget.parent;
+            _vibrateOffset              = (parent != null) ? parent.InverseTransformVector(world) : world;
+            _shakeTarget.localPosition += _vibrateOffset;
             return true;
         }
 
@@ -236,6 +267,7 @@ namespace Shinshi.Dev
             _body.AddForce(((_launchAway * DEATH_FLY_SPEED) + (Vector3.up * DEATH_FLY_UP_SPEED)) * _launchPower,
                 ForceMode.VelocityChange);
             _body.AddTorque(Random.onUnitSphere * DEATH_SPIN_SPEED, ForceMode.VelocityChange);
+            Launched?.Invoke();
         }
 
         // 루트 충돌체를 끄고 뼈마다 물리를 켜서, 처치 방향으로 날려 팔다리가 따로 늘어지게 한다

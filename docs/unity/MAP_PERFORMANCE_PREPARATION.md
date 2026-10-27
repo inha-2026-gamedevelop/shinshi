@@ -111,6 +111,43 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 필수 목록은 **그 맵의 공격 예고, 현재 파티의 장착 스킬·동료, 등장할 적·보스의 효과**로 좁힌다. 실제 프리팹 GUID·재질·텍스처·셰이더 키워드·사용 품질·예상 동시 인스턴스·풀 반환 조건을 기록한다. `maxParticles` 합계를 실제 활성 입자나 필요 풀 수로 쓰지 않는다.
 
+### 개발 씬 준비 대상 - 피격 불똥
+
+2026-10-26 개발 씬용 재사용 프리팹을 등록했다. 사용 범위는 `Dev_ForestPlateauHitFeedback` 등 로컬 피격 표현 비교이며, 릴리즈 `HitSparkPool` 교체나 부팅 카탈로그 등록은 포함하지 않는다. 자세한 생성/API/Inspector 계약은 [피격 불똥 사용 안내](HIT_FEEDBACK_SPARKS_USAGE.md)에 있다.
+
+| 프리팹 | GUID | 준비할 표현 |
+|---|---|---|
+| `Assets/02.Prefab/VFX/HitFeedback/PF_DevHitSparks.prefab` | `06d0fdd7b5e054044bc868aeb98c8ede` | 백열 섬광, 잔불, 짧은 접점 플래시 |
+
+- AssetDatabase 재귀 의존성은 프리팹 포함 5개다. `DevHitFeedbackSparks.cs`, `Sparks/Materials/M_DevHitSparkSoftCore.mat`, `Sparks/Textures/T_DevHitSparkSoftCore.png`, 기존 `Shinshi/VFX/ReleaseParticle` 셰이더를 참조하며 재질의 활성 로컬 키워드는 비어 있다. `Sparks/`의 실제 루트는 `Assets/01.Scripts/99.Dev/Combat/HitFeedback/`이다.
+- `Awake`에서 12칸과 칸별 선/잔불/플래시 시스템 3개를 만든다. 12칸을 넘는 중첩은 가장 오래된 잔상을 지우고 재사용한다. `StopAll`과 비활성화 때 전부 비우며 최대 잔불 수명은 기본값 0.70초다. 이는 구현값이고 상주 메모리/동시 타격 예산 실측값은 아니다.
+- `Shinshi.Dev` 스크립트와 개발 씬의 자동 생성 경로를 릴리즈 전장 부팅에 섞지 않기 위해 `PrewarmCatalog.asset`에는 추가하지 않았다. 자동 생성 경로의 마스크와 재질은 런타임 생성물이므로 프리팹 의존성 조회가 그 경로의 GPU 준비까지 보증하지 않는다. 개발 씬의 실제 렌더는 확인했으나 Player/API별 셰이더/PSO 준비와 첫 타격 지연은 미검증이다. 일회성 효과이므로 ParticleSystem 루프용 `prewarm`은 켜지 않는다.
+
+### 개발 씬 준비 대상 - 피격 혈흔
+
+2026-10-26 개발 씬의 타격/사체 출혈/바닥 얼룩 준비 대상으로 등록했다. [피격 혈흔 사용 안내](HIT_FEEDBACK_BLOOD_USAGE.md)의 API와 수명/정리 계약을 따른다.
+
+| 프리팹 | GUID | 준비할 표현 |
+|---|---|---|
+| `Assets/02.Prefab/VFX/HitFeedback/Resources/DevHitBlood/PF_DevHitBlood.prefab` | `d6c9f2c5ae7508b44ab2cec6913f10c1` | 타격 분사, 낙하 방울, 비행 사체 추적, 바닥 유지/페이드 |
+
+- AssetDatabase 재귀 의존성은 프리팹 포함 8개다. `99.Dev/Combat/HitFeedback/Blood/Resources/DevHitBlood/`의 재질 2개와 4x4 아틀라스 PNG를 사용한다. 분사는 `Universal Render Pipeline/Particles/Unlit`(`_SURFACE_TYPE_TRANSPARENT`, `_FLIPBOOKBLENDING_OFF`), 바닥은 `Universal Render Pipeline/Lit`(`_SURFACE_TYPE_TRANSPARENT`, `_ALPHAPREMULTIPLY_ON`)으로 조회됐다. 이는 확인된 로컬 키워드이며 모든 품질/조명/API variant를 뜻하지 않는다.
+- 개발 씬 Director가 Resources 프리팹을 직접 읽고 `Awake`에서 분사 12칸, 방울 256개 버퍼, 추적 32칸, 얼룩 160칸을 준비한다. 일회성 분사에 루프용 ParticleSystem `prewarm`을 켜지 않는다. 상한/재사용/StopAll/대상 소멸 계약은 사용 안내를 따른다.
+- 표현 전용 개발 프리팹이므로 릴리즈 `PrewarmCatalog.asset`에는 넣지 않았다. Resources 로드와 풀 준비는 실제 렌더/셰이더/PSO 워밍업 완료와 구분한다. PC/DX11 개발 씬 렌더와 수명/경사/정리는 확인했으나 Player/API별 첫 사용 지연과 상주 예산은 미검증이다.
+
+### 개발 씬 준비 대상 - 몬스터 반동/첫 착지
+
+2026-10-26 `Dev_ForestPlateauHitFeedback` 준비 대상으로 등록했다. [몬스터 반동/착지 사용 안내](HIT_FEEDBACK_REACTIONS_USAGE.md)의 시간·중첩·취소 계약을 따른다.
+
+| 프리팹 (`Assets/02.Prefab/VFX/HitFeedback/Resources/DevHitReactions/`) | GUID | 준비 표현 |
+|---|---|---|
+| `PF_DevMonsterHitRecoil.prefab` | `28122f649b3b304419761df78df97709` | 상체/머리/팔 반동과 복원 |
+| `PF_DevCorpseLandingFx.prefab` | `028479c527fae7d449ab7ed7f3d79ef8` | 첫 착지 먼지, 지면 혈흔 확산 |
+
+- AssetDatabase 재귀 의존성은 프리팹 포함 반동 2개, 착지 6개다. 먼지는 같은 폴더의 `M_CorpseLandingDust.mat`과 기존 `99.Dev/Combat/HitFeedback/Sparks/Textures/T_DevHitSparkSoftCore.png`를 참조한다. 셰이더는 `Universal Render Pipeline/Particles/Unlit`, 조회된 로컬 키워드는 `_SURFACE_TYPE_TRANSPARENT`, `_FLIPBOOKBLENDING_OFF`다. 혈흔 재생기는 위 혈흔 Resources 프리팹을 Director가 별도로 연결하므로 착지 프리팹의 정적 의존성 목록만으로 준비를 끝내지 않는다.
+- Director가 착지 풀 12칸(먼지 각 16개와 확산 시퀀스)을 준비한다. 반동 트윈은 몬스터 초기화마다 1개를 준비한다. ParticleSystem의 루프 `prewarm`은 사용하지 않는다. 비활성화/반환 때 미실행 확산을 취소하고 이미 찍힌 혈흔 수명은 혈흔 풀이 관리한다.
+- 개발 씬 Resources 소비 대상이며 릴리즈 `PrewarmCatalog.asset`에는 추가하지 않았다. PC/DX11 로컬 표현 검증과 풀 생성은 API별 셰이더/PSO 워밍업과 구분한다. Player 첫 사용 지연과 상주 예산은 미검증이다.
+
 ### 등록된 대상 — 궁수 강공격
 
 2026-10-22 릴리즈 `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab`에도 연결했다. 시험 호스트의 임시 추가 발사 대신 `PlayerServer`와 `PlayerConfigSO`의 정식 연발 설정을 사용한다. 부팅 카탈로그 소비·GPU 워밍업·실제 다인 전장 실행은 미검증이다. 속성색 변경은 기존 프리팹 복제본에만 적용하므로 별도 색상 프리팹이나 재질을 만들지 않는다.

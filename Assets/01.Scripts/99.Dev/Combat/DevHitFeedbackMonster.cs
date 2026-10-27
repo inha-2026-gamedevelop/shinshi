@@ -25,6 +25,19 @@ namespace Shinshi.Dev
         private static readonly int   s_dashingHash = Animator.StringToHash("Dashing");
         private static readonly Color s_corpseColor = new Color(0.32f, 0.12f, 0.09f, 1f); // 원래 색에 검정을 섞은 적갈색
 
+        private static readonly List<Rigidbody> s_corpseBodies = new List<Rigidbody>();
+        private static Collider s_loosenedBone = null; // 마지막으로 흐느적거리게 만든 시체의 첫 뼈
+
+        // 래그돌 시체를 흐느적거리게 하는 값. 몸통은 그대로 날리고 팔다리 끝은 LIMB_LAG_RATIO까지 느려진다
+        private const float LIMB_LAG_RATIO        = 0.35f;
+        private const float FLAIL_SPIN_MIN        = 4f;   // rad/s, 몸통
+        private const float FLAIL_SPIN_MAX        = 14f;  // rad/s, 팔다리 끝
+        private const float LOOSE_ANGULAR_DAMPING = 0.2f;
+        private const float LOOSE_LIMIT_SCALE     = 1.8f; // 프리팹의 가동 범위에 곱한다
+        private const float LOOSE_TWIST_CAP       = 70f;  // 도
+        private const float LOOSE_SWING_CAP       = 100f; // 도
+        private const int   MAX_JOINT_DEPTH       = 16;   // 관절이 잘못 순환해도 무한히 돌지 않게 하는 상한
+
         private const float DEATH_SECONDS = 0.25f;
         private const float CORPSE_SECONDS = 10f; // 날아가 쓰러진 채 남아 있는 시간
         private const float ASH_SECONDS        = 1.6f; // 래그돌 사체가 재가 되어 사라지는 데 걸리는 시간
@@ -60,6 +73,12 @@ namespace Shinshi.Dev
 
         private const int GROUND_HIT_BUFFER = 8;
         private static readonly RaycastHit[] s_groundHits = new RaycastHit[GROUND_HIT_BUFFER];
+
+        private DevHitFeedbackBlood _blood       = null;
+        private Transform           _bloodAnchor = null;
+        private DevMonsterHitRecoil _recoil;
+        private DevCorpseLandingFx _landing;
+        private const string RECOIL_RESOURCE = "DevHitReactions/PF_DevMonsterHitRecoil";
 
         private HitReactor _reactor       = null;
         private Animator   _animator      = null;
@@ -117,12 +136,82 @@ namespace Shinshi.Dev
         {
             s_alive.Add(this);
             Shinshi.AI.EnemyCorpse.RagdollLaunched += IgnoreCorpseBones;
+            Shinshi.AI.EnemyCorpse.RagdollLaunched += LoosenCorpseBones;
         }
 
         private void OnDisable()
         {
             s_alive.Remove(this);
             Shinshi.AI.EnemyCorpse.RagdollLaunched -= IgnoreCorpseBones;
+            Shinshi.AI.EnemyCorpse.RagdollLaunched -= LoosenCorpseBones;
+        }
+
+        // 릴리스 래그돌은 모든 뼈를 같은 속도로 날리고 관절이 좁아 한 덩어리로 뻣뻣하게 날아간다. 이 시험 씬에서만 몸통은 그대로 날리고
+        // 팔다리 끝으로 갈수록 느리게 따라오게 하며 관절을 풀어 흐느적거리게 한다. 릴리스 코드는 건드리지 않는다.
+        // 몬스터마다 같은 알림을 받으므로 한 시체에는 한 번만 적용한다
+        private static void LoosenCorpseBones(Collider[] bones)
+        {
+            if ((bones == null) || (bones.Length == 0) || (bones[0] == s_loosenedBone))
+            {
+                return;
+            }
+
+            s_loosenedBone = bones[0];
+            s_corpseBodies.Clear();
+            for (int i = 0; i < bones.Length; ++i)
+            {
+                Rigidbody body = bones[i].attachedRigidbody;
+                if ((body != null) && (!s_corpseBodies.Contains(body)))
+                {
+                    s_corpseBodies.Add(body);
+                }
+            }
+
+            int maxDepth = 1;
+            for (int i = 0; i < s_corpseBodies.Count; ++i)
+            {
+                maxDepth = Mathf.Max(maxDepth, ReadJointDepth(s_corpseBodies[i]));
+            }
+
+            for (int i = 0; i < s_corpseBodies.Count; ++i)
+            {
+                Rigidbody body  = s_corpseBodies[i];
+                float     reach = (float)ReadJointDepth(body) / maxDepth;
+
+                body.linearVelocity   *= Mathf.Lerp(1f, LIMB_LAG_RATIO, reach);
+                body.angularVelocity   = UnityEngine.Random.onUnitSphere * Mathf.Lerp(FLAIL_SPIN_MIN, FLAIL_SPIN_MAX, reach);
+                body.angularDamping    = LOOSE_ANGULAR_DAMPING;
+
+                // 프리팹에 부위별로 정해 둔 가동 범위를 배율로만 넓힌다. 무릎과 팔꿈치처럼 0인 경첩은 0 그대로 둔다
+                if (body.TryGetComponent(out CharacterJoint joint))
+                {
+                    joint.lowTwistLimit  = ScaleLimit(joint.lowTwistLimit, LOOSE_TWIST_CAP);
+                    joint.highTwistLimit = ScaleLimit(joint.highTwistLimit, LOOSE_TWIST_CAP);
+                    joint.swing1Limit    = ScaleLimit(joint.swing1Limit, LOOSE_SWING_CAP);
+                    joint.swing2Limit    = ScaleLimit(joint.swing2Limit, LOOSE_SWING_CAP);
+                }
+            }
+
+            s_corpseBodies.Clear();
+        }
+
+        private static SoftJointLimit ScaleLimit(SoftJointLimit limit, float cap)
+        {
+            limit.limit = Mathf.Clamp(limit.limit * LOOSE_LIMIT_SCALE, -cap, cap);
+            return limit;
+        }
+
+        // 골반에서 이 뼈까지 관절로 이어진 단계 수. 골반이 0이고 팔다리 끝일수록 크다
+        private static int ReadJointDepth(Rigidbody body)
+        {
+            int depth = 0;
+            while ((body != null) && (body.TryGetComponent(out CharacterJoint joint)) && (joint.connectedBody != null) && (depth < MAX_JOINT_DEPTH))
+            {
+                body = joint.connectedBody;
+                ++depth;
+            }
+
+            return depth;
         }
 
         // 릴리스 시체의 뼈가 켜지면 이 산 몬스터와는 부딪히지 않게 한다
@@ -144,6 +233,10 @@ namespace Shinshi.Dev
         {
             // 렉프레임 동안은 떨기만 하고 나머지 시간은 흐르지 않는다. 처치한 몬스터도 멈춤이 풀린 뒤에 날아간다
             bool isLagged = _reactor.Tick();
+            if (_recoil != null)
+            {
+                _recoil.SetLagged(isLagged);
+            }
             if (_animator != null)
             {
                 _animator.speed = isLagged ? 0f : 1f;
@@ -220,6 +313,7 @@ namespace Shinshi.Dev
             _baseScale  = transform.localScale;
             _hitsLeft   = hitsToDie;
             _playerCollider = playerCollider;
+            _bloodAnchor    = (animator != null) ?DevCorpseBloodTrail.ResolveAnchor(animator.transform) : transform;
 
             // 캡슐 기본 반지름 0.5m에 루트 스케일이 곱해진 것이 몬스터의 실제 몸통 반지름이다
             float bodyRadius   = transform.localScale.x * HALF;
@@ -229,9 +323,21 @@ namespace Shinshi.Dev
             _playerMinDistance  = bodyRadius + playerRadius + BODY_GAP;
             _chaseStopDistance  = _playerMinDistance + CHASE_STOP_EXTRA;
 
-            _reactor    = new HitReactor(gameObject, (animator != null) ? s_modelColor : s_normalColor, s_corpseColor);
+            _reactor    = new HitReactor(gameObject, FindModelRoot(), (animator != null) ? s_modelColor : s_normalColor,
+                s_corpseColor);
 
             _reactor.Launched += IgnoreRagdollCollisions;
+            _reactor.Launched += BeginFallbackLanding;
+
+            if (animator != null)
+            {
+                GameObject recoilAsset = Resources.Load<GameObject>(RECOIL_RESOURCE);
+                if (recoilAsset != null)
+                {
+                    _recoil = Instantiate(recoilAsset, transform, false).GetComponent<DevMonsterHitRecoil>();
+                    _recoil.Init(animator);
+                }
+            }
 
             // 날아가는 시체가 플레이어를 밀거나 막지 않게 한다
             Collider ownCollider = GetComponent<Collider>();
@@ -286,7 +392,11 @@ namespace Shinshi.Dev
             // 허수아비는 맞는 반응만 보이고 죽지도 밀려나지도 않는다
             if (_isDummy)
             {
-                _reactor.React(profile, isCritical);
+                if (_recoil != null)
+                {
+                    _recoil.Play(away, isCritical);
+                }
+                _reactor.React(profile, away, isCritical);
                 return true;
             }
 
@@ -301,7 +411,11 @@ namespace Shinshi.Dev
             _attackHitTime = -1f; // 맞으면 휘두르던 공격은 끊긴다
             _knockVelocity = away * (profile.KnockbackSpeed * (isCritical ? profile.CritKnockbackMultiplier : 1f));
             _knockDrag     = profile.KnockbackDrag;
-            _reactor.React(profile, isCritical);
+            if (_recoil != null)
+            {
+                _recoil.Play(away, isCritical);
+            }
+            _reactor.React(profile, away, isCritical);
             return true;
         }
 
@@ -310,6 +424,10 @@ namespace Shinshi.Dev
         {
             _isDummy = true;
         }
+
+        public void SetBloodFeedback(DevHitFeedbackBlood blood) { _blood = blood; }
+
+        public void SetLandingFeedback(DevCorpseLandingFx landing) { _landing = landing; }
 
         /// <summary> center에서 radius 안의 산 몬스터를 바깥쪽으로 민다. 가까울수록 세게 밀리고, 이미 더 세게 밀려나는 중이면 건드리지 않는다 </summary>
         public static void ShoveAround(Vector3 center, float radius, float speed)
@@ -335,6 +453,10 @@ namespace Shinshi.Dev
         private void StartDeath(Vector3 away, HitFeedbackProfile profile, bool isCritical)
         {
             _isDying = true;
+            if (_recoil != null)
+            {
+                _recoil.StopAndRestore();
+            }
             s_alive.Remove(this);
 
             // 모델이 있으면 릴리스 적과 같은 시체 연출(EnemyCorpse)로 날리고 이 몬스터는 바로 치운다.
@@ -355,6 +477,10 @@ namespace Shinshi.Dev
             }
 
             _reactor.Die(away, profile);
+            if (_blood != null)
+            {
+                _blood.FollowCorpse(_bloodAnchor, freezeFrames);
+            }
             IgnoreOtherMonsters();
 
             // 사체가 남아 있는 동안에도 다음 무리가 나올 수 있게 죽는 순간 알린다
@@ -364,9 +490,43 @@ namespace Shinshi.Dev
         // 애니메이터가 속한 모델 루트(이 몬스터의 직계 자식)를 릴리스 시체로 날린다. 모델이 없는 캡슐이면 false
         private bool TryLaunchReleaseCorpse(Vector3 away, float flyMultiplier, int freezeFrames)
         {
-            if (_animator == null)
+            Transform model = FindModelRoot();
+            if (model == null)
             {
                 return false;
+            }
+
+            // 혈흔 연결만 모델과 함께 복제한다. 복제된 뼈 참조를 사용하므로 릴리즈 사체 코드를 바꾸지 않는다
+            DevCorpseBloodTrail trail = null;
+            if (_blood != null)
+            {
+                trail = model.gameObject.AddComponent<DevCorpseBloodTrail>();
+                trail.PrepareClone(_blood, _bloodAnchor, freezeFrames);
+            }
+            DevCorpseLanding landing = null;
+            if (_landing != null)
+            {
+                landing = model.gameObject.AddComponent<DevCorpseLanding>();
+                landing.PrepareClone(_landing);
+            }
+            bool launched = Shinshi.AI.EnemyCorpse.Launch(model.gameObject, away, flyMultiplier, freezeFrames);
+            if (landing != null)
+            {
+                Destroy(landing);
+            }
+            if (trail != null)
+            {
+                Destroy(trail);
+            }
+            return launched;
+        }
+
+        // 애니메이터가 속한 모델 루트(이 몬스터의 직계 자식). 모델이 없는 캡슐이면 null
+        private Transform FindModelRoot()
+        {
+            if (_animator == null)
+            {
+                return null;
             }
 
             Transform model = _animator.transform;
@@ -375,7 +535,7 @@ namespace Shinshi.Dev
                 model = model.parent;
             }
 
-            return (model.parent == transform) && (Shinshi.AI.EnemyCorpse.Launch(model.gameObject, away, flyMultiplier, freezeFrames));
+            return (model.parent == transform) ? model : null;
         }
 
         // 죽는 순간부터 다른 몬스터(산 것과 사체 모두)와는 부딪히지 않는다. 바닥과는 계속 부딪혀 튄다
@@ -401,6 +561,16 @@ namespace Shinshi.Dev
                     Physics.IgnoreCollision(ownCollider, other);
                 }
             }
+        }
+
+        private void BeginFallbackLanding()
+        {
+            if (_landing == null)
+            {
+                return;
+            }
+            DevCorpseLanding landing = gameObject.AddComponent<DevCorpseLanding>();
+            landing.BeginDirect(_landing, _reactor.HasRagdoll ? _reactor.RagdollColliders : GetComponents<Collider>());
         }
 
         // 래그돌 뼈가 켜지는 순간, 플레이어와 다른 몬스터(산 것, 이미 날아간 사체의 뼈)와는 부딪히지 않게 한다. 바닥과는 부딪힌다

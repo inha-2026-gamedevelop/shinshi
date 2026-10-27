@@ -187,6 +187,49 @@ namespace Shinshi.Tests
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator Show_PopsBeforeFadingAndCriticalHasLargerPeak()
+        {
+            var normal = new DamageFeedback(EPOCH, 1, 2, Vector3.zero, 100f, false, NOW);
+            var critical = new DamageFeedback(EPOCH, 2, 2, Vector3.zero, 200f, true, NOW);
+            Assert.IsTrue(_pool.Show(in normal));
+            Assert.IsTrue(_pool.Show(in critical));
+            var slots = (System.Array)typeof(DamageNumberPool).GetField("_slots", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_pool);
+            object first = slots.GetValue(0);
+            object second = slots.GetValue(1);
+            RectTransform normalRect = (RectTransform)first.GetType().GetField("LabelRect").GetValue(first);
+            RectTransform criticalRect = (RectTransform)second.GetType().GetField("LabelRect").GetValue(second);
+            CanvasGroup group = (CanvasGroup)first.GetType().GetField("Group").GetValue(first);
+            Assert.That(normalRect.localScale.x, Is.EqualTo(0.65f).Within(0.001f));
+            Seek(first, 0.08f);
+            Seek(second, 0.08f);
+            Assert.That(normalRect.localScale.x, Is.GreaterThan(1.3f));
+            Assert.That(criticalRect.localScale.x, Is.GreaterThan(normalRect.localScale.x));
+            Assert.That(group.alpha, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(normalRect.anchoredPosition.x, Is.GreaterThan(0f));
+            Assert.That(criticalRect.anchoredPosition.x, Is.LessThan(0f));
+            Seek(first, 0.22f);
+            Assert.That(normalRect.localScale.x, Is.EqualTo(1f).Within(0.03f));
+            Assert.That(group.alpha, Is.EqualTo(1f).Within(0.001f));
+            Seek(first, 0.55f);
+            Assert.That(group.alpha, Is.InRange(0.05f, 0.9f));
+            _pool.Clear();
+            Assert.IsTrue(_pool.Show(in normal));
+            Assert.That(normalRect.anchoredPosition, Is.EqualTo(Vector2.zero));
+            Assert.That(normalRect.localScale.x, Is.EqualTo(0.65f).Within(0.001f));
+            Assert.That(group.alpha, Is.EqualTo(1f).Within(0.001f));
+            _pool.Clear();
+            yield return null;
+        }
+
+        private static void Seek(object slot, float seconds)
+        {
+            object tween = slot.GetType().GetField("Tween").GetValue(slot);
+            System.Type extensions = tween.GetType().Assembly.GetType("DG.Tweening.TweenExtensions");
+            extensions.GetMethod("Goto", BindingFlags.Static | BindingFlags.Public)
+                .Invoke(null, new object[] { tween, seconds, false });
+        }
+
         /****************************************
         *                Helpers
         ****************************************/

@@ -68,6 +68,10 @@ namespace Shinshi.Dev
         [SerializeField, Min(0.02f)] private float _burstGap = 0.12f;
         [SerializeField, Min(1f)] private float _burstAnimSpeedScale = 2.5f;
 
+        [Header("마검사 콤보 시험 (이 시험 씬에서만)")]
+        // 켜면 기본 공격을 1타 단발, 2타 3연타, 3타 5연타, 4타 강타 단발의 4단 콤보로 바꾼다. 마검사일 때만 쓴다. 데이터 파일은 바꾸지 않는다
+        [SerializeField] private bool _mageknightComboTrial = true;
+
         [Header("W 검파 타격감")]
         // 검파 타격을 강한 연출(흔들림, 경직, 불똥)로 낼지. 스택이 적은 약한 피해도 화면 흔들림이 보이게 한다
         [SerializeField] private bool _skillWHeavyFeedback = true;
@@ -111,6 +115,7 @@ namespace Shinshi.Dev
         private int    _waveFreezeSpentFrames = 0;
         private readonly List<System.Action> _restoreOverrides = new List<System.Action>();
         private DevArcherComboTrial _comboTrial = null;
+        private DevMageknightComboTrial _mageComboTrial = null;
         private byte  _lastAttackSequence = 0;
         private float _attackLockUntil    = 0f;
         private float _heavyShotUntil     = 0f;
@@ -207,6 +212,15 @@ namespace Shinshi.Dev
             _player.SetAttackInputEnabled(false);
             _player.Damaged += OnPlayerDamaged;
             SetUpComboTrial(GetComponentInChildren<ArcherVfxView>(true));
+            if ((_mageknightComboTrial) && (_playerClass == EPlayerClass.Mageknight))
+            {
+                // 추가 타의 효과는 원본 효과 뷰가 쓰는 기본 공격 프리팹을 그대로 가져다 따로 재생한다
+                GameObject basicPrefab = (_waveView != null)
+                    ? typeof(MageknightVfxView).GetField("_basicPrefab", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(_waveView) as GameObject
+                    : null;
+                _mageComboTrial = new DevMageknightComboTrial(_server, _combat, transform, basicPrefab);
+            }
+
             _isReady = true;
         }
 
@@ -223,6 +237,7 @@ namespace Shinshi.Dev
             }
 
             _server?.Shutdown();
+            _mageComboTrial?.Dispose();
             for (int i = 0; i < _restoreOverrides.Count; ++i)
             {
                 _restoreOverrides[i]();
@@ -266,6 +281,7 @@ namespace Shinshi.Dev
             }
 
             _comboTrial?.AfterAttackTick(now, AttackAim);
+            _mageComboTrial?.AfterAttackTick(now, AttackAim);
             LockMovementWhileAttacking();
             _player.SetMovementBlocked((_server.Skills.BlocksMovement) || (Time.time < _attackLockUntil));
             ApplyFacing();
@@ -283,13 +299,16 @@ namespace Shinshi.Dev
             }
 
             _lastAttackSequence = sequence;
-            if (_combat.AttackComboStep == HEAVY_SHOT_STEP)
+            PlayerConfigSO.BasicAttackSpec spec = GameDB.Player.GetBasicAttack(_playerClass);
+            int step = _combat.AttackComboStep;
+            if (((_playerClass == EPlayerClass.Archer) && (step == HEAVY_SHOT_STEP)) || (spec.IsHeavy(step)))
             {
                 _heavyShotUntil = Time.time + HEAVY_SHOT_SECONDS;
             }
 
-            float windup = GameDB.Player.GetBasicAttack(_playerClass).GetWindup(_combat.AttackComboStep);
-            _attackLockUntil = Time.time + windup + ATTACK_LOCK_MARGIN;
+            // 여러 번 치는 단계는 마지막 타까지 세워 둔다
+            float hold = spec.GetWindup(step) + (Mathf.Max(0, spec.GetShotCount(step) - 1) * spec.GetShotInterval(step));
+            _attackLockUntil = Time.time + hold + ATTACK_LOCK_MARGIN;
             _combat.SetLocomotionSpeed(0f);
         }
 
@@ -339,8 +358,9 @@ namespace Shinshi.Dev
                 SendSkill(Constants.Combat.SKILL_SLOT_R, cursor, yaw, now);
             }
 
-            bool attackDown = Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK);
-            bool attackHeld = (Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK)) && (Time.time >= _nextAttackSend);
+            bool overPanel  = DevHitFeedbackTuningPanel.IsPointerOver;
+            bool attackDown = (Input.GetMouseButtonDown(Constants.Player.MOUSE_BUTTON_ATTACK)) && (!overPanel);
+            bool attackHeld = (Input.GetMouseButton(Constants.Player.MOUSE_BUTTON_ATTACK)) && (!overPanel) && (Time.time >= _nextAttackSend);
             if ((attackDown) || (attackHeld))
             {
                 _nextAttackSend = Time.time + ATTACK_REPEAT_SECONDS;
@@ -573,6 +593,15 @@ namespace Shinshi.Dev
 
         private void ApplyDataOverrides()
         {
+            if ((_mageknightComboTrial) && (_playerClass == EPlayerClass.Mageknight))
+            {
+                System.Action restoreCombo = DevMageknightComboTrial.ApplyData(GameDB.Player.GetBasicAttack(_playerClass));
+                if (restoreCombo != null)
+                {
+                    _restoreOverrides.Add(restoreCombo);
+                }
+            }
+
             if ((_playerClass != EPlayerClass.Mageknight)
                 || (!GameDB.Skills.TryGetSkillBySlot(_playerClass, Constants.Combat.SKILL_SLOT_W, out SkillCatalogSO.SkillDefinition skill)))
             {

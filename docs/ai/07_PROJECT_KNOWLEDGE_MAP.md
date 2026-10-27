@@ -19,6 +19,7 @@
 |---|---|---|---|
 | 환경설정 개발 화면 (`Dev_Setting`) | [환경설정 UI 사용 안내](../../Assets/01.Scripts/06.UI/Settings/README.md) | `Assets/00.Scenes/Dev_HUD/Dev_Setting.unity`, `Assets/02.Prefab/UI/Settings/PF_SettingsWindow.prefab`, `Assets/01.Scripts/06.UI/Settings/SettingsView.cs` | 그래픽·오디오 설정, 골드 강조색. VSync·프레임 제한 및 SoundVolume PlayerPrefs 저장. Play Mode에서 포인터 조작·저장·취소 복원·초기화 확인. Player 화면 모드·해상도 변경과 실제 게임 BGM/SFX 재생은 미검증이다. 현재 SettingsView는 Release 마을·던전 씬에 연결돼 있으며 과거 개발 씬 관찰과 구분한다 |
 | ModernDark UI 연동 (수련·신체강화·부적·파티모집) | [ModernDark UI 연동 방식](../unity/MODERN_DARK_UI_INTEGRATION.md) | `Assets/01.Scripts/06.UI/Common/ModernDarkRuntimeBootstrap.cs`, `Assets/02.Prefab/UI/Resources/ModernDarkUiCatalog.asset`, `Assets/01.Scripts/06.UI/PartyRecruit/PartyRecruitView.cs` | 씬 수정 없이 View의 `EnsureModernLayout`과 런타임 Bootstrap이 `HudMenuDropdown`이 있는 씬에만 연결한다. EditMode 251/251, 개발 Play 2씬, 귀환 M1 확인. M2/M3·플레이어 빌드는 미검증 |
+| UI 효과음 창구 (`UiSound`) | — | 창구 `Assets/01.Scripts/06.UI/Common/Sound/` (`UiSound`, `UiSoundPlayer`, `UiSoundCatalogSO`, `UiSoundEntry`, `EUiSoundGroup`, `EUiSoundAction`), 카탈로그 `Assets/09.Data/Presentation/Resources/UiSoundCatalog.asset`, 인스펙터 표시 `06.UI/Common/Editor/UiSoundEntryDrawer.cs`, 연결 `UiButtonFeedback`(마우스 올림·클릭)·`AlertPopupView`·`ConfirmPopupView`·`ToastMessageView` | `UiSound.Play(그룹, 동작)`로 "어느 UI/무엇을 했나" 칸을 재생하고, 칸이 비면 공통 그룹의 같은 동작을 쓴다. 처음 부를 때 재생기를 만들어 씬 배치가 필요 없고 서버·배치·에디트 모드에서는 만들지 않는다. 네트워크 동기화 없음, 효과음(SFX) 볼륨을 따른다. enum 값은 숫자로 저장되므로 끝에만 추가한다. UI 클립은 아직 없다. 구현됨·실행 미검증(2026-10-24 Unity 내장 컴파일러로 컴파일만 확인, 임포트·Play 미실행). 나머지 창의 열기·닫기는 미연결 |
 | 게임 기획 (장르·규칙·스코프) | [기획서](../02-game-design.md), [시스템 개요](../01-system-design.md) | `docs/design/` 상세 부록, [컨셉아트 기록](../design/concept-art.md) | 확정 규칙과 위임 초기 수치, 월백 2페이즈 표현 연결 존재·최종 설계 대조와 실제 수신 수용 대기 |
 | 직업·애니메이션 개편 정본 | [캐릭터·애니메이션 개편](../design/character-animation-design.md), [전투·전장 기준안](../design/combat-design.md), [부적 효과 목록](../design/talisman-catalog.md), [궁수 상세](../design/archer-design.md) | `docs/design/character-animation-design.md`와 연결 부록. 궁수 상세는 `archer-design.md`가 단일 기준이며 신규 서버 규칙·저장 계약은 구현됨 | 사용자 확정 검사·마검사·궁수, CombatGirls 검 모션·MagicalKnight 검+마법·Stylish Archer 활, 일반12기술/45효과(보조30/핵심15), P09 외형 유지. 기술/특성은 구현됐고 실제 클립·VFX·다인 수용은 별도 검증 대상이다. 문서용KS/MK/AR ID·저장 이관·contentHash·M2/M3 게이트를 구구현 적용 상태와 구분 |
 | 기존 직업 규칙·이관 근거 | [기존 직업 설계 보존본](../design/legacy-class-design.md), [구현 로드맵](../05-implementation-roadmap.md) | `00.Common/Types/EPlayerClass.cs`, `00.Common/Data/{SkillCatalogSO,TalismanCatalogSO}.cs`, `Assets/09.Data/Combat/`, `Backend/src/Shinshi.Data/Content/growth-content.json` | 보존 중인 구직업 무사0/도술사1/신령사2·12기술/45효과·구신령사 공명/Z/X/C. 신규 생성은3/4/5이며 구직업은 생성 대상이 아니다. 기존 카드/등록진도/열린출정과 과거 시험을 보존하며 신규 검사/마검사/궁수 적용 완료로 소급하지 않음 |
@@ -98,5 +99,12 @@
 ## 무철 VFX 사용 안내
 
 [무철 VFX 01~07 사용 안내](../unity/MUCHEOL_VFX_USAGE.md): 프리팹 선택·Inspector 시간 설정·외부 예고/타격 확정 API와 보스 연결 시 확인할 항목. 아트 단독 검증과 BossNetworkViewBinder 연결의 실제 서버 수용을 구분한다.
+
+## 개발 씬 피격 불똥 사용 안내
+
+[개발 씬 피격 불똥](../unity/HIT_FEEDBACK_SPARKS_USAGE.md): `DevHitFeedbackSparks`와 `PF_DevHitSparks` 프리팹의 `Burst`/`StopAll` 계약, Inspector 기본값, 40m 시점 검증 범위. 개발 씬 전용이며 릴리즈 `HitSparkPool`과 부팅 카탈로그에는 적용하지 않았다.
+
+[개발 씬 피격 혈흔](../unity/HIT_FEEDBACK_BLOOD_USAGE.md): `DevHitFeedbackBlood`와 `PF_DevHitBlood` 프리팹의 타격 분사, 사체 출혈 추적, 바닥 혈흔 수명과 정리 계약. `HitFeedbackDirector`가 개발용 Resources 프리팹을 읽으며 릴리즈 전투에는 연결하지 않았다.
+
 ### 거래 비동기 경합 반복 검증
 거래 fixture 반복은 2026-10-23 00:07:49~00:07:52 KST `trade-repeat-10.xml`에서 23개 테스트 전부 통과(exit 0)했다. `-repeat 10` 설정과 각 test-case의 `repeatIteration=10`을 확인했다. 로컬 RepeatCommand는 초기 실행 후 추가 반복을 수행하므로 이를 230건의 누적 단언 수로 환산하지 않는다. 테스트가 자동 변경한 폰트7개는 `final-test-font-changes.patch`에 보존 후 HEAD로 복원했고 최종 asset/unity/prefab/asmdef 차이는0이다.

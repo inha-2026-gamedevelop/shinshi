@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+// 프로젝트 내부
+using Shinshi.Combat;
+
 namespace Shinshi.Dev
 {
     /// <summary> 구역마다 문 앞에 몬스터 한 무리를 한 번만 세우고, 구역별 처치 수를 세는 시험용 스포너 </summary>
@@ -18,6 +21,7 @@ namespace Shinshi.Dev
         ****************************************/
 
         private const string MONSTER_NAME = "DevMonster";
+        private const int DEV_DAMAGE_EPOCH = 1;
 
         // 몬스터 한 종의 모델. 컨트롤러는 이동 애니메이션(Moving)을 가진 것을 쓴다
         [System.Serializable]
@@ -51,6 +55,14 @@ namespace Shinshi.Dev
         [Header("서버 대역")]
         [SerializeField, Range(0f, 1f)] private float _devCritChance = 0.25f; // 서버가 정해 줄 치명타를 시험하려고 무작위로 내는 확률
 
+        [Header("개발용 숫자 표시 (처치에 필요한 타수와 별개)")]
+        [SerializeField, Min(1f)] private float _devNormalDamage = 100f;
+        [SerializeField, Min(1f)] private float _devHeavyDamage = 160f;
+        [SerializeField, Min(1f)] private float _devCriticalDamageMultiplier = 2f;
+
+        private DamageNumberPool _damageNumbers;
+        private uint _damageSequence;
+
         [Header("모델 (비우면 캡슐, 여러 종이면 섞어서 세운다)")]
         [SerializeField] private ModelEntry[] _models;
 
@@ -77,6 +89,10 @@ namespace Shinshi.Dev
         [SerializeField] private bool _spawnFirstZoneAtStart = true;      // 첫 구역은 입구 없이 출정 시작과 함께 세운다
         [SerializeField] private bool _spawnOnPreviousClear  = true;      // 이전 구역을 모두 처치해 그 사이 결계가 풀리면 다음 구역을 세운다. 끄면 입구에 들어설 때 세운다
 
+        [Header("무한 소환 (켜면 처치된 몬스터가 같은 구역에 다시 나온다. 구역은 입구에 들어설 때 세운다)")]
+        [SerializeField] private bool _infiniteSpawn = true;
+        [SerializeField, Min(0f)] private float _infiniteRespawnDelay = 0.8f; // 초, 처치된 뒤 새 몬스터가 나오기까지
+
         [Header("허수아비 (지점이 있으면 구역 무리를 세우지 않고 지점마다 체력이 끝없는 캡슐을 세운다. 공격 효과 시험용)")]
         [SerializeField] private Transform[] _dummyPoints;
 
@@ -98,9 +114,21 @@ namespace Shinshi.Dev
         private float[]  _zoneNextTry    = null;
         private float    _firstSpawnTime = -1f;
 
+        private readonly List<float> _respawnTimes = new List<float>(); // 새 몬스터를 세울 시각(Time.time)과 구역, 같은 위치끼리 짝이다
+        private readonly List<int>   _respawnZones = new List<int>();
+
         /****************************************
         *               Properties
         ****************************************/
+
+        /// <summary> 켜면 처치된 몬스터가 같은 구역에 다시 나온다 </summary>
+        public bool InfiniteSpawn { get => _infiniteSpawn; set => _infiniteSpawn = value; }
+
+        /// <summary> 서버 대역이 무작위로 내는 치명타 확률(0에서 1) </summary>
+        public float DevCritChance { get => _devCritChance; set => _devCritChance = Mathf.Clamp01(value); }
+
+        /// <summary> 켜면 내 타격을 다른 파티원의 타격으로 보고 남의 공격 등급으로 재생한다. 내 캐릭터는 멈추지 않고 데미지 숫자도 띄우지 않는다 </summary>
+        public bool PlayHitsAsRemote { get; set; }
 
         public int ZoneCount => (_zoneAlive != null) ? _zoneAlive.Length : 0;
 
@@ -123,6 +151,7 @@ namespace Shinshi.Dev
             _playerCollider = _player.GetComponent<Collider>();
             _player.Hit  += OnPlayerHit;
             _player.Slam += OnPlayerSlam;
+            EnsureDamageNumbers();
         }
 
 #if UNITY_EDITOR
@@ -181,10 +210,23 @@ namespace Shinshi.Dev
 
         private void OnDisable()
         {
+            if (_damageNumbers != null)
+            {
+                _damageNumbers.Clear();
+                _damageNumbers.gameObject.SetActive(false);
+            }
             if (_player != null)
             {
                 _player.Hit  -= OnPlayerHit;
                 _player.Slam -= OnPlayerSlam;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_damageNumbers != null)
+            {
+                Destroy(_damageNumbers.gameObject);
             }
         }
 
@@ -209,6 +251,7 @@ namespace Shinshi.Dev
         private void Update()
         {
             Vector3 playerPosition = _player.transform.position;
+            UpdateRespawns();
 
             for (int zone = 0; zone < _zoneAlive.Length; ++zone)
             {
@@ -227,6 +270,49 @@ namespace Shinshi.Dev
         /****************************************
         *                Methods
         ****************************************/
+
+        private void EnsureDamageNumbers()
+        {
+            Camera camera = _player.OutputCamera;
+            if (camera == null)
+            {
+                return;
+            }
+            if (_damageNumbers == null)
+            {
+                var root = new GameObject("DevHitDamageNumbers", typeof(RectTransform));
+                _damageNumbers = root.AddComponent<DamageNumberPool>();
+                _damageNumbers.Initialize(camera);
+            }
+            else
+            {
+                _damageNumbers.gameObject.SetActive(true);
+                if (!_damageNumbers.IsBoundToCamera(camera))
+                {
+                    _damageNumbers.BindCamera(camera);
+                }
+            }
+        }
+
+        private void ShowDamageNumber(Vector3 point, DevHitFeedbackMonster monster, bool isHeavy, bool isCritical)
+        {
+            EnsureDamageNumbers();
+            if (_damageNumbers == null)
+            {
+                return;
+            }
+            ++_damageSequence;
+            if (_damageSequence == 0)
+            {
+                ++_damageSequence;
+            }
+            float amount = (isHeavy ? _devHeavyDamage : _devNormalDamage)
+                * (isCritical ? _devCriticalDamageMultiplier : 1f);
+            int targetId = Mathf.Max(1, monster.GetInstanceID() & int.MaxValue);
+            var feedback = new DamageFeedback(DEV_DAMAGE_EPOCH, _damageSequence, targetId,
+                point, amount, isCritical, Time.timeAsDouble);
+            _damageNumbers.Show(in feedback);
+        }
 
         // 서버가 보내 줄 타격 결과를 대신해 플레이어가 맞힌 몬스터를 받는다. 맞힌 것으로 확정되면 프로필대로 타격감을 재생한다
         private void OnPlayerHit(Collider target, Vector3 hitPoint, bool isHeavy)
@@ -252,14 +338,22 @@ namespace Shinshi.Dev
             direction   = direction.normalized;
 
             hitPoint.y = target.bounds.center.y;
-            _director.PlayHit(profile, hitPoint, direction, isKill, isCritical, _player, monster.LagTarget);
+
+            // 남의 공격 확인용이면 공격자 없이 재생한다. 릴리즈의 데미지 숫자도 내 캐릭터가 받은 피해 알림에만 뜬다
+            bool isOwnAttack = !PlayHitsAsRemote;
+            _director.PlayHit(profile, hitPoint, direction, isKill, isCritical, isOwnAttack ? _player : null,
+                monster.LagTarget, isOwnAttack);
+            if (isOwnAttack)
+            {
+                ShowDamageNumber(hitPoint, monster, isHeavy, isCritical);
+            }
         }
 
         // 강공격이 내려친 자리에서 링과 먼지를 터뜨리고, 반지름 안의 몬스터를 한꺼번에 밀어낸다
         private void OnPlayerSlam(Vector3 center)
         {
             HitFeedbackProfile profile = _director.GetProfile(true);
-            _director.PlaySlam(profile, center);
+            _director.PlaySlam(profile, center, !PlayHitsAsRemote);
 
             if (profile.ShockwaveRadius > 0f)
             {
@@ -278,6 +372,43 @@ namespace Shinshi.Dev
 
             --_zoneAlive[zone];
             ++_zoneKilled[zone];
+
+            if (_infiniteSpawn)
+            {
+                _respawnTimes.Add(Time.time + _infiniteRespawnDelay);
+                _respawnZones.Add(zone);
+            }
+        }
+
+        // 처치된 만큼 같은 구역에 한 마리씩 다시 세운다. 자리가 없으면 잠시 뒤 다시 시도한다. 끄면 기다리던 것도 버린다
+        private void UpdateRespawns()
+        {
+            if (!_infiniteSpawn)
+            {
+                _respawnTimes.Clear();
+                _respawnZones.Clear();
+                return;
+            }
+
+            for (int i = _respawnTimes.Count - 1; i >= 0; --i)
+            {
+                if (Time.time < _respawnTimes[i])
+                {
+                    continue;
+                }
+
+                int     zone   = _respawnZones[i];
+                Vector3 anchor = GetAnchor(zone).position;
+                if (!TryFindSpot(anchor, _sizeMultiplier, out Vector3 position))
+                {
+                    _respawnTimes[i] = Time.time + _retryDelay;
+                    continue;
+                }
+
+                CreateMonster(zone, position, _sizeMultiplier, _hitsToDie);
+                _respawnTimes.RemoveAt(i);
+                _respawnZones.RemoveAt(i);
+            }
         }
 
         public bool IsZoneSpawned(int zone) { return _zoneSpawned[zone]; }
@@ -297,7 +428,8 @@ namespace Shinshi.Dev
                 return true;
             }
 
-            if ((_spawnOnPreviousClear) && (zone > 0))
+            // 무한 소환 중에는 구역이 끝나지 않으므로 앞 구역 처치를 기다리지 않고 입구에 들어설 때 세운다
+            if ((_spawnOnPreviousClear) && (!_infiniteSpawn) && (zone > 0))
             {
                 return IsZoneCleared(zone - 1);
             }
@@ -400,6 +532,8 @@ namespace Shinshi.Dev
 
             var monster = body.AddComponent<DevHitFeedbackMonster>();
             monster.Init(hitsToDie, _playerCollider, _chaseSpeed, animator, _attackWindup, _attackCooldown);
+            monster.SetBloodFeedback(_director.Blood);
+            monster.SetLandingFeedback(_director.Landing);
             monster.SetLeash(GetAnchor(zone).position, _activityRadius);
             monster.Died += OnMonsterDied;
             _zoneOfMonster.Add(monster, zone);

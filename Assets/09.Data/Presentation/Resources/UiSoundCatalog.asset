@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3434e4756a14d33b2ec070e05c20017, type: 3}
+  m_Name: UiSoundCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.UiSoundCatalogSO
+  _entries:
+  - _group: 0
+    _action: 2
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 0
+    _action: 3
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 0
+    _action: 0
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 0
+    _action: 1
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 1
+    _action: 0
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 1
+    _action: 1
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 2
+    _action: 0
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 2
+    _action: 5
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 2
+    _action: 6
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 3
+    _action: 0
+    _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05

@@ -69,7 +69,11 @@ namespace Shinshi.UI
             }
 
             gameObject.SetActive(true);
+            UiSound.Play(EUiSoundGroup.Confirm, EUiSoundAction.Open);
         }
+
+        /// <summary>취소 버튼을 누른 것과 같다. Esc로 닫을 때 쓴다</summary>
+        public void Cancel() { Finish(false); }
 
         private void Accept() { Finish(true); }
 
@@ -80,6 +84,7 @@ namespace Shinshi.UI
             Action<bool> callback = _onResult;
             _onResult = null;
             gameObject.SetActive(false);
+            UiSound.Play(EUiSoundGroup.Confirm, result ? EUiSoundAction.Confirm : EUiSoundAction.Cancel);
 
             if (callback != null)
             {

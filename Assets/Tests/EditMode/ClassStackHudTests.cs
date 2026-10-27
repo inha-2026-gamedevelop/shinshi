@@ -103,6 +103,30 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void ShowsBadgeCount_ArcherFromOneStack_MageknightNever()
+        {
+            ClassStackDisplay empty      = ClassStackHudRules.Build(EPlayerClass.Archer, 0, MAX_STACKS, EArcherElement.Wind);
+            ClassStackDisplay one        = ClassStackHudRules.Build(EPlayerClass.Archer, 1, MAX_STACKS, EArcherElement.Wind);
+            ClassStackDisplay mageknight = ClassStackHudRules.Build(EPlayerClass.Mageknight, PARTIAL_STACKS, MAX_STACKS,
+                EArcherElement.None);
+
+            Assert.IsFalse(ClassStackHudRules.ShowsBadgeCount(in empty));
+            Assert.IsTrue(ClassStackHudRules.ShowsBadgeCount(in one));
+            Assert.IsFalse(ClassStackHudRules.ShowsBadgeCount(in mageknight));
+            Assert.IsFalse(ClassStackHudRules.ShowsBadgeCount(ClassStackDisplay.Hidden));
+        }
+
+        [Test]
+        public void GetBadgeColor_FullIsGold_PartialIsWhite()
+        {
+            ClassStackDisplay partial = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Fire);
+            ClassStackDisplay full    = ClassStackHudRules.Build(EPlayerClass.Archer, MAX_STACKS, MAX_STACKS, EArcherElement.Fire);
+
+            Assert.AreEqual(Color.white, ClassStackHudRules.GetBadgeColor(in partial));
+            Assert.AreEqual(ClassStackHudRules.GetColor(in full), ClassStackHudRules.GetBadgeColor(in full));
+        }
+
+        [Test]
         public void StatusView_CreatesLabelAboveHpTrack_AndHidesForHidden()
         {
             HudPlayerStatusView status = CreateStatusView(out RectTransform track);

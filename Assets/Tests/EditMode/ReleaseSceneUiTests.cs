@@ -87,6 +87,10 @@ namespace Shinshi.Tests
         [TestCase(Constants.Scene.LOBBY)]
         [TestCase(Constants.Scene.CHARACTER_SELECT)]
         [TestCase(Constants.Scene.CHARACTER_CREATE)]
+        [TestCase(Constants.Scene.SHINSHI_TOWN)]
+        [TestCase(Constants.Scene.DUNGEON_FOREST)]
+        [TestCase(Constants.Scene.DUNGEON_MUCHEOL)]
+        [TestCase(Constants.Scene.DUNGEON_WOLBAEK)]
         public void Selectables_InReleaseScene_ReceivePointerRaycasts(string sceneName)
         {
             string path  = Constants.Scene.RELEASE_FOLDER + sceneName + Constants.Scene.EXTENSION;
@@ -99,8 +103,8 @@ namespace Shinshi.Tests
                     foreach (Selectable selectable in root.GetComponentsInChildren<Selectable>(true))
                     {
                         Assert.IsNotNull(selectable.targetGraphic, $"{sceneName}/{selectable.name}: targetGraphic이 없다");
-                        Assert.IsTrue(selectable.targetGraphic.raycastTarget,
-                            $"{sceneName}/{selectable.name}: targetGraphic의 raycastTarget이 꺼져 클릭이 닿지 않는다");
+                        Assert.IsTrue(ReceivesRaycast(selectable),
+                            $"{sceneName}/{selectable.name}: 자기 아래 그래픽의 raycastTarget이 모두 꺼져 클릭이 닿지 않는다");
                         ++checkedCount;
                     }
                 }
@@ -165,7 +169,7 @@ namespace Shinshi.Tests
                 EHotkeyAction.CharacterInfo, EHotkeyAction.CharacterInfo };
             for (int i = 0; i < names.Length; ++i)
             {
-                menuButton.onClick.Invoke();
+                ClickWithRaycast(menuButton);
                 yield return null;
                 ClickWithRaycast(MenuButton(panel, names[i]));
                 yield return null;
@@ -185,7 +189,21 @@ namespace Shinshi.Tests
                 Assert.That(panel.gameObject.activeSelf, Is.False);
             }
 
-            menuButton.onClick.Invoke();
+            // 햄버거 옆 HUD 바로가기 버튼
+            Transform shortcuts = menuButton.transform.parent;
+            string[] shortcutNames = { "Inventory", "Profile" };
+            EHotkeyAction[] shortcutActions = { EHotkeyAction.Inventory, EHotkeyAction.CharacterInfo };
+            for (int i = 0; i < shortcutNames.Length; ++i)
+            {
+                ClickWithRaycast(shortcuts.Find(shortcutNames[i]).GetComponent<Button>());
+                yield return null;
+                HotkeyWindowToggle toggle = Window(router, shortcutActions[i]);
+                Assert.That(toggle.IsOpen, Is.True, shortcutNames[i]);
+                Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+                Assert.That(toggle.IsOpen, Is.False, shortcutNames[i]);
+            }
+
+            ClickWithRaycast(menuButton);
             yield return null;
             yield return CaptureIfRequested("release-town-menu.png");
             ClickWithRaycast(MenuButton(panel, "환경설정"));
@@ -197,7 +215,7 @@ namespace Shinshi.Tests
             Assert.That(settings.gameObject.activeSelf, Is.False);
             Assert.That(panel.gameObject.activeSelf, Is.False);
 
-            menuButton.onClick.Invoke();
+            ClickWithRaycast(menuButton);
             yield return null;
             ClickWithRaycast(MenuButton(panel, "게임 종료"));
             yield return null;
@@ -207,7 +225,7 @@ namespace Shinshi.Tests
             Reference<Button>(popup, "_cancelButton").onClick.Invoke();
             Assert.That(popup.gameObject.activeSelf, Is.False);
 
-            menuButton.onClick.Invoke();
+            ClickWithRaycast(menuButton);
             yield return null;
             ClickWithRaycast(MenuButton(panel, "캐릭터 선택"));
             yield return null;
@@ -215,6 +233,75 @@ namespace Shinshi.Tests
             Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
             Assert.That(popup.gameObject.activeSelf, Is.False);
             Assert.That(panel.gameObject.activeSelf, Is.False);
+        }
+
+        [TestCase(Constants.Scene.SHINSHI_TOWN)]
+        [TestCase(Constants.Scene.DUNGEON_FOREST)]
+        [TestCase(Constants.Scene.DUNGEON_MUCHEOL)]
+        [TestCase(Constants.Scene.DUNGEON_WOLBAEK)]
+        public void EscapeTargets_SavedScene_PopupsTradeAndResultCloseWithEscape(string sceneName)
+        {
+            Scene scene = EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + sceneName + Constants.Scene.EXTENSION,
+                OpenSceneMode.Additive);
+            try
+            {
+                HotkeyRouter router = InScene<HotkeyRouter>(scene);
+                Assert.That(Reference<HotkeyRouter>(InScene<UiPopupHub>(scene), "_router"), Is.EqualTo(router), "팝업");
+
+                TradeView trade = InScene<TradeView>(scene);
+                AssertEscape(trade.gameObject, router, Reference<Button>(trade, "_closeButton"), "거래창");
+
+                SortieResultBinder result = InScene<SortieResultBinder>(scene);
+                var view = Reference<ResultScreenView>(result, "_view");
+                AssertEscape(Reference<GameObject>(result, "_window"), router, Reference<Button>(view, "_returnButton"), "결과 화면");
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TownWindows_PlayMode_EscapeClosesPopupFirstThenEquipmentWindows()
+        {
+            EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + Constants.Scene.SHINSHI_TOWN
+                + Constants.Scene.EXTENSION, OpenSceneMode.Single);
+            yield return new EnterPlayMode();
+            ConfigurePlayTest();
+            yield return null;
+
+            Scene scene = SceneManager.GetActiveScene();
+            HudMenuDropdown menu = InScene<HudMenuDropdown>(scene);
+            HotkeyRouter router = InScene<HotkeyRouter>(scene);
+            Button menuButton = Reference<Button>(menu, "_menuButton");
+            RectTransform panel = Reference<RectTransform>(menu, "_panel");
+
+            // 창 위에 뜬 확인 팝업은 Esc가 취소로 먼저 닫고, 다음 Esc가 뒤의 창을 닫는다
+            HotkeyWindowToggle auction = Window(router, EHotkeyAction.AuctionHouse);
+            auction.SetOpen(true);
+            yield return null;
+            Assert.That(EscapeConfirm(InScene<UiPopupHub>(scene), router), Is.False, "Esc는 취소로 돌려준다");
+            Assert.That(auction.IsOpen, Is.True, "팝업을 닫는 Esc가 뒤의 창까지 닫으면 안 된다");
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(auction.IsOpen, Is.False);
+
+            EquipmentEnhanceView enhance = InScene<EquipmentEnhanceView>(scene);
+            ClickWithRaycast(menuButton);
+            yield return null;
+            ClickWithRaycast(MenuButton(panel, "장비 강화"));
+            yield return null;
+            Assert.That(enhance.gameObject.activeSelf, Is.True);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(enhance.gameObject.activeSelf, Is.False, "장비 강화");
+
+            HotkeyWindowToggle option = Window(router, EHotkeyAction.EquipmentOption);
+            ClickWithRaycast(menuButton);
+            yield return null;
+            ClickWithRaycast(MenuButton(panel, "옵션 재설정"));
+            yield return null;
+            Assert.That(option.IsOpen, Is.True);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            Assert.That(option.IsOpen, Is.False, "옵션 재설정");
         }
 
         [UnityTest]
@@ -305,6 +392,20 @@ namespace Shinshi.Tests
             }
         }
 
+        // 클릭은 맞은 그래픽에서 위로 올라가며 처리기를 찾으므로, targetGraphic이 꺼져 있어도 자기 아래 다른 그래픽이 받으면 눌린다
+        private static bool ReceivesRaycast(Selectable selectable)
+        {
+            foreach (Graphic graphic in selectable.GetComponentsInChildren<Graphic>(true))
+            {
+                if ((graphic.raycastTarget) && (graphic.GetComponentInParent<Selectable>(true) == selectable))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static void ClickWithRaycast(Button button)
         {
             Canvas.ForceUpdateCanvases();
@@ -357,6 +458,24 @@ namespace Shinshi.Tests
             }
             Assert.Fail(name + " 버튼이 없습니다.");
             return null;
+        }
+
+        // 람다가 잡는 지역 변수는 Play Mode 진입의 도메인 리로드에서 사라지므로 반복기 밖 함수에서 만든다
+        private static bool? EscapeConfirm(UiPopupHub hub, HotkeyRouter router)
+        {
+            bool? answer = null;
+            hub.ShowConfirm(EPopupSize.Small, "확인", accepted => answer = accepted);
+            Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
+            return answer;
+        }
+
+        private static void AssertEscape(GameObject window, HotkeyRouter router, Button closeButton, string label)
+        {
+            Assert.That(window, Is.Not.Null, label);
+            Assert.That(closeButton, Is.Not.Null, label);
+            Assert.That(window.TryGetComponent(out WindowEscapeButton escape), Is.True, label + "에 Esc 닫기가 없다");
+            Assert.That(Reference<HotkeyRouter>(escape, "_router"), Is.EqualTo(router), label);
+            Assert.That(Reference<Button>(escape, "_closeButton"), Is.EqualTo(closeButton), label);
         }
 
         private static HotkeyWindowToggle Window(HotkeyRouter router, EHotkeyAction action)
