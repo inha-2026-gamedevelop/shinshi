@@ -152,7 +152,7 @@ Legacy 프로브의 Additive 로드/언로드에는 tetrahedralization 갱신 �
 
 궁수 최대 스택 오라 `Assets/02.Prefab/VFX/Archer/PF_ArcherVfx_FullStackAura.prefab` (GUID `2f93c91644bf2cc40bc3f97c87ba5a81`)도 `PrewarmCatalog`의 Particle 항목으로 등록한다. `M_ReleaseGlow.mat`과 `Shinshi/VFX/ReleaseParticle`을 사용하며 발광 입자라 AO, 충돌체와 LOD는 사용하지 않는다. 시뮬레이션 표본은 1초이며 실제 로딩 중 렌더와 GPU 준비는 별도 검증이 필요하다. 궤적의 게임 화면 가독성은 조정 중이다.
 
-`PF_NetPlayer`의 `ArcherVfxView`가 프리팹을 참조한다. 플레이어 원점에 자식으로 생성하며, 살아 있는 궁수의 복제 스택이 `SkillCatalogSO`의 최대치 이상이고 속성이 있을 때만 재생한다. 얼음·바람·불 색은 뷰의 Inspector에서 조절한다. 스택 감소·사망·직업 변경·뷰 비활성화 때 입자를 제거하고, 속성 전환 때 이전 입자를 지운 후 새 색으로 재생한다. 효과는 표시 전용이고 판정에 영향을 주지 않는다. 게임 카메라, 다인 접속, 성능과 실제 프리워밍 실행은 미검증이다.
+`PF_NetPlayer`의 `ArcherVfxView`가 프리팹을 참조한다. 플레이어 원점에 자식으로 생성하며, 살아 있는 궁수에게 속성이 부여된 동안 스택 수와 관계없이 재생한다. 스택이 최대치에 도달하면 회전 속도를 Inspector 배율(기본 4배)로 높이고, 보조 입자의 크기를 기본 6배로 늘리며 바깥쪽 속도를 더한다. 보조 입자의 방출량은 스택에 관계없이 같다. 스택이 줄면 원래 설정으로 되돌린다. 주 궤적의 방출량과 입자 수명은 바꾸지 않는다. 얼음·바람·불 색은 뷰의 Inspector에서 조절한다. 속성 없음·사망·직업 변경·뷰 비활성화 때 입자를 제거하고, 속성 전환 때 이전 입자를 지운 후 새 색으로 재생한다. 효과는 표시 전용이고 판정에 영향을 주지 않는다. 게임 카메라, 다인 접속, 성능과 실제 프리워밍 실행은 미검증이다.
 
 2026-10-22 릴리즈 `Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab`에도 연결했다. 시험 호스트의 임시 추가 발사 대신 `PlayerServer`와 `PlayerConfigSO`의 정식 연발 설정을 사용한다. 부팅 카탈로그 소비·GPU 워밍업·실제 다인 전장 실행은 미검증이다. 속성색 변경은 기존 프리팹 복제본에만 적용하므로 별도 색상 프리팹이나 재질을 만들지 않는다.
 

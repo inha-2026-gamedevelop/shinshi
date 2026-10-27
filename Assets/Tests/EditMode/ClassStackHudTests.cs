@@ -207,6 +207,27 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void StatusView_ArcherFullStacks_ShowsElementGlowAndClearsItOnSpend()
+        {
+            HudPlayerStatusView status = CreateStatusView(out RectTransform track);
+            Transform group = CreateBuffGroup();
+            ClassStackDisplay partial = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Wind);
+            ClassStackDisplay full = ClassStackHudRules.Build(EPlayerClass.Archer, MAX_STACKS, MAX_STACKS, EArcherElement.Wind);
+
+            status.SetClassStacks(in partial);
+            Transform glow = group.Find(BADGE_OBJECT_NAME + "/Glow");
+            Assert.IsNotNull(glow);
+            Assert.IsFalse(glow.gameObject.activeSelf);
+
+            status.SetClassStacks(in full);
+            Assert.IsTrue(glow.gameObject.activeSelf);
+            Assert.AreEqual(ClassStackHudRules.GetElementColor(EArcherElement.Wind).g, glow.GetComponent<RawImage>().color.g);
+
+            status.SetClassStacks(in partial);
+            Assert.IsFalse(glow.gameObject.activeSelf);
+        }
+
+        [Test]
         public void SkillSlot_SetLocked_DimsAndRestoresIcon()
         {
             var slot = _root.AddComponent<HudSkillSlotView>();

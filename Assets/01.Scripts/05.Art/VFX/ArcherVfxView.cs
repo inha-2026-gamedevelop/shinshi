@@ -83,11 +83,14 @@ namespace Shinshi.Art
         [SerializeField] private Color _burstWindColor = new Color(0.5f, 1f, 0.55f);
         [SerializeField] private Color _burstFireColor = new Color(1f, 0.45f, 0.12f);
 
-        [Header("최대 스택 오라")]
+        [Header("속성 부여 오라")]
         [SerializeField] private GameObject _fullStackAuraPrefab;
         [SerializeField] private Color _auraIceColor = new Color(0.45f, 0.8f, 1f, 0.8f);
         [SerializeField] private Color _auraWindColor = new Color(0.5f, 1f, 0.55f, 0.8f);
         [SerializeField] private Color _auraFireColor = new Color(1f, 0.45f, 0.12f, 0.8f);
+        [SerializeField, Min(1f)] private float _fullStackAuraSpeedMultiplier = 4f;
+        [SerializeField, Min(1f)] private float _fullStackParticleSizeMultiplier = 6f;
+        [SerializeField, Min(0f)] private float _fullStackParticleRadialSpeed = 1.2f;
 
         [Header("강공격 (HeavyBasicStep 단계의 기본 공격)")]
         [SerializeField] private GameObject _heavyArrowPrefab;
@@ -116,6 +119,10 @@ namespace Shinshi.Art
         private GameObject _auraInstance;
         private ParticleSystem[] _auraParticles;
         private EArcherElement _auraElement;
+        private Vector3[] _auraOrbitSpeeds;
+        private ParticleSystem.MinMaxCurve[] _auraParticleSizes;
+        private ParticleSystem.MinMaxCurve[] _auraRadialSpeeds;
+        private bool _auraFast;
 
         /****************************************
         *              Unity Event
@@ -245,10 +252,9 @@ namespace Shinshi.Art
 
         private void UpdateAura()
         {
-            int max = GameDB.Skills.ClassStackMax;
             EArcherElement element = _combat.ArcherElement;
-            if ((_fullStackAuraPrefab == null) || (max <= 0) || (_combat.ClassStacks < max)
-                || (_combat.LifeState != EParticipantLifeState.Alive) || (element == EArcherElement.None))
+            if ((_fullStackAuraPrefab == null) || (_combat.LifeState != EParticipantLifeState.Alive)
+                || (element == EArcherElement.None))
             {
                 StopAura();
                 return;
@@ -258,6 +264,56 @@ namespace Shinshi.Art
             {
                 _auraInstance = Instantiate(_fullStackAuraPrefab, _combat.transform, false);
                 _auraParticles = _auraInstance.GetComponentsInChildren<ParticleSystem>(true);
+                _auraOrbitSpeeds = new Vector3[_auraParticles.Length];
+                _auraParticleSizes = new ParticleSystem.MinMaxCurve[_auraParticles.Length];
+                _auraRadialSpeeds = new ParticleSystem.MinMaxCurve[_auraParticles.Length];
+                for (int i = 0; i < _auraParticles.Length; ++i)
+                {
+                    var velocity = _auraParticles[i].velocityOverLifetime;
+                    _auraOrbitSpeeds[i] = new Vector3(velocity.orbitalXMultiplier, velocity.orbitalYMultiplier,
+                        velocity.orbitalZMultiplier);
+                    _auraParticleSizes[i] = _auraParticles[i].main.startSize;
+                    _auraRadialSpeeds[i] = velocity.radial;
+                }
+            }
+
+            int stackMax = GameDB.Skills.ClassStackMax;
+            bool fast = (stackMax > 0) && (_combat.ClassStacks >= stackMax);
+            if (fast != _auraFast)
+            {
+                float multiplier = fast ? Mathf.Max(1f, _fullStackAuraSpeedMultiplier) : 1f;
+                for (int i = 0; i < _auraParticles.Length; ++i)
+                {
+                    var velocity = _auraParticles[i].velocityOverLifetime;
+                    velocity.orbitalXMultiplier = _auraOrbitSpeeds[i].x * multiplier;
+                    velocity.orbitalYMultiplier = _auraOrbitSpeeds[i].y * multiplier;
+                    velocity.orbitalZMultiplier = _auraOrbitSpeeds[i].z * multiplier;
+                    if (_auraParticles[i].gameObject != _auraInstance)
+                    {
+                        velocity.radial = fast ? new ParticleSystem.MinMaxCurve(Mathf.Max(0f, _fullStackParticleRadialSpeed))
+                            : _auraRadialSpeeds[i];
+                        var size = _auraParticleSizes[i];
+                        float sizeMultiplier = fast ? Mathf.Max(1f, _fullStackParticleSizeMultiplier) : 1f;
+                        if (size.mode == ParticleSystemCurveMode.TwoConstants)
+                        {
+                            size.constantMin *= sizeMultiplier;
+                            size.constantMax *= sizeMultiplier;
+                        }
+                        else if (size.mode == ParticleSystemCurveMode.Constant)
+                        {
+                            size.constant *= sizeMultiplier;
+                        }
+                        else
+                        {
+                            size.curveMultiplier *= sizeMultiplier;
+                        }
+
+                        var main = _auraParticles[i].main;
+                        main.startSize = size;
+                    }
+                }
+
+                _auraFast = fast;
             }
 
             if (element == _auraElement)
@@ -271,7 +327,18 @@ namespace Shinshi.Art
             {
                 particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 var main = particle.main;
-                main.startColor = particle.gameObject == _auraInstance ? color : Color.white;
+                main.startColor = particle.gameObject == _auraInstance ? Color.white : color;
+                if (particle.gameObject == _auraInstance)
+                {
+                    var gradient = new Gradient();
+                    gradient.SetKeys(
+                        new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 0.65f),
+                            new GradientColorKey(Color.white, 1f) },
+                        new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.3f),
+                            new GradientAlphaKey(1f, 1f) });
+                    var trails = particle.trails;
+                    trails.colorOverTrail = gradient;
+                }
                 particle.Play(true);
             }
 

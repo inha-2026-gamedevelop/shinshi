@@ -46,6 +46,10 @@ namespace Shinshi.UI
         // 다 차면 아이콘이 숨 쉬듯 커졌다 줄어든다
         private const float  FULL_PULSE_SCALE        = 1.15f;
         private const float  FULL_PULSE_SECONDS      = 0.5f;
+        private const float  FULL_GLOW_SIZE          = 48f;
+        private const float  FULL_GLOW_ALPHA         = 0.6f;
+        private const int    FULL_GLOW_TEXTURE_SIZE  = 32;
+        private static Texture2D s_fullGlowTexture;
 
         [Header("레벨")]
         [SerializeField] private TMP_Text _levelText = null;
@@ -77,6 +81,7 @@ namespace Shinshi.UI
 
         private RectTransform _elementBadge;
         private RawImage      _elementImage;
+        private RawImage      _elementGlow;
         private TMP_Text      _elementCount;
         private Tween         _fullPulse = null;
 
@@ -305,6 +310,10 @@ namespace Shinshi.UI
             _elementBadge.gameObject.SetActive(true);
             float cellWidth = 1f / ELEMENT_ATLAS_COLUMNS;
             _elementImage.uvRect = new Rect(column * cellWidth, 0f, cellWidth, 1f);
+            Color glowColor = ClassStackHudRules.GetElementColor(display.Element);
+            glowColor.a = FULL_GLOW_ALPHA;
+            _elementGlow.color = glowColor;
+            _elementGlow.gameObject.SetActive(display.IsFull);
 
             bool showsCount = ClassStackHudRules.ShowsBadgeCount(in display);
             _elementCount.enabled = showsCount;
@@ -337,6 +346,20 @@ namespace Shinshi.UI
             _elementBadge.pivot            = new Vector2(0f, 0.5f);
             _elementBadge.anchoredPosition = new Vector2(ELEMENT_LEFT_MARGIN, 0f);
             _elementBadge.sizeDelta        = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
+
+            var glowObject = new GameObject("Glow", typeof(RectTransform));
+            glowObject.layer = gameObject.layer;
+            var glowRect = (RectTransform)glowObject.transform;
+            glowRect.SetParent(_elementBadge, false);
+            glowRect.anchorMin        = new Vector2(0.5f, 0.5f);
+            glowRect.anchorMax        = new Vector2(0.5f, 0.5f);
+            glowRect.pivot            = new Vector2(0.5f, 0.5f);
+            glowRect.anchoredPosition = Vector2.zero;
+            glowRect.sizeDelta        = new Vector2(FULL_GLOW_SIZE, FULL_GLOW_SIZE);
+            _elementGlow = glowObject.AddComponent<RawImage>();
+            _elementGlow.texture = GetFullGlowTexture();
+            _elementGlow.raycastTarget = false;
+            glowObject.SetActive(false);
 
             var iconObject = new GameObject("Icon", typeof(RectTransform));
             iconObject.layer = gameObject.layer;
@@ -373,6 +396,35 @@ namespace Shinshi.UI
             count.enabled            = false;
             _elementCount = count;
             return true;
+        }
+
+        private static Texture2D GetFullGlowTexture()
+        {
+            if (s_fullGlowTexture != null)
+            {
+                return s_fullGlowTexture;
+            }
+
+            var texture = new Texture2D(FULL_GLOW_TEXTURE_SIZE, FULL_GLOW_TEXTURE_SIZE, TextureFormat.RGBA32, false);
+            texture.name = "ClassStackFullGlow";
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            var pixels = new Color32[FULL_GLOW_TEXTURE_SIZE * FULL_GLOW_TEXTURE_SIZE];
+            for (int y = 0; y < FULL_GLOW_TEXTURE_SIZE; ++y)
+            {
+                for (int x = 0; x < FULL_GLOW_TEXTURE_SIZE; ++x)
+                {
+                    float nx = ((x + 0.5f) / FULL_GLOW_TEXTURE_SIZE * 2f) - 1f;
+                    float ny = ((y + 0.5f) / FULL_GLOW_TEXTURE_SIZE * 2f) - 1f;
+                    float alpha = Mathf.Clamp01(1f - Mathf.Sqrt((nx * nx) + (ny * ny)));
+                    pixels[(y * FULL_GLOW_TEXTURE_SIZE) + x] = new Color(1f, 1f, 1f, alpha * alpha);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            s_fullGlowTexture = texture;
+            return s_fullGlowTexture;
         }
 
         private void SetFullPulse(bool full)
