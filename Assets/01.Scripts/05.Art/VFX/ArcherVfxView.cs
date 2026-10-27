@@ -79,6 +79,12 @@ namespace Shinshi.Art
         [SerializeField] private GameObject _chargePrefab;
         [SerializeField] private GameObject _burstPrefab;
 
+        [Header("최대 스택 오라")]
+        [SerializeField] private GameObject _fullStackAuraPrefab;
+        [SerializeField] private Color _auraIceColor = new Color(0.45f, 0.8f, 1f, 0.8f);
+        [SerializeField] private Color _auraWindColor = new Color(0.5f, 1f, 0.55f, 0.8f);
+        [SerializeField] private Color _auraFireColor = new Color(1f, 0.45f, 0.12f, 0.8f);
+
         [Header("강공격 (HeavyBasicStep 단계의 기본 공격)")]
         [SerializeField] private GameObject _heavyArrowPrefab;
         [SerializeField] private GameObject _heavyMuzzlePrefab;
@@ -103,6 +109,9 @@ namespace Shinshi.Art
         private bool      _hasConfig;
         private bool      _wasRunning;
         private float     _chargeSeconds;
+        private GameObject _auraInstance;
+        private ParticleSystem[] _auraParticles;
+        private EArcherElement _auraElement;
 
         /****************************************
         *              Unity Event
@@ -113,11 +122,23 @@ namespace Shinshi.Art
             _tracker.Reset();
             _wasRunning = false;
             StopAllEffects();
+            StopAura();
         }
 
         private void OnDestroy()
         {
             StopAllEffects();
+            if (_auraInstance != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(_auraInstance);
+                }
+                else
+                {
+                    DestroyImmediate(_auraInstance);
+                }
+            }
             if (_poolRoot != null)
             {
                 // 플레이 중에는 프레임 끝에 파괴하고, EditMode 직접 검증에서는 즉시 파괴한다
@@ -149,6 +170,7 @@ namespace Shinshi.Art
                     _tracker.Reset();
                     _wasRunning = false;
                     StopAllEffects();
+                    StopAura();
                 }
 
                 return;
@@ -161,6 +183,7 @@ namespace Shinshi.Art
 
             _wasRunning = true;
             EnsurePools();
+            UpdateAura();
 
             // SyncVar hook의 중간값이 아니라 이번 프레임에 모인 현재값으로만 판단한다
             double now = NetworkTime.time;
@@ -214,6 +237,56 @@ namespace Shinshi.Art
             {
                 _combat = GetComponentInParent<PlayerCombatState>();
             }
+        }
+
+        private void UpdateAura()
+        {
+            int max = GameDB.Skills.ClassStackMax;
+            EArcherElement element = _combat.ArcherElement;
+            if ((_fullStackAuraPrefab == null) || (max <= 0) || (_combat.ClassStacks < max)
+                || (_combat.LifeState != EParticipantLifeState.Alive) || (element == EArcherElement.None))
+            {
+                StopAura();
+                return;
+            }
+
+            if (_auraInstance == null)
+            {
+                _auraInstance = Instantiate(_fullStackAuraPrefab, _combat.transform, false);
+                _auraParticles = _auraInstance.GetComponentsInChildren<ParticleSystem>(true);
+            }
+
+            if (element == _auraElement)
+            {
+                return;
+            }
+
+            Color color = element == EArcherElement.Ice ? _auraIceColor
+                : element == EArcherElement.Wind ? _auraWindColor : _auraFireColor;
+            foreach (ParticleSystem particle in _auraParticles)
+            {
+                particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = particle.main;
+                main.startColor = particle.gameObject == _auraInstance ? color : Color.white;
+                particle.Play(true);
+            }
+
+            _auraElement = element;
+        }
+
+        private void StopAura()
+        {
+            if ((_auraParticles == null) || (_auraElement == EArcherElement.None))
+            {
+                return;
+            }
+
+            foreach (ParticleSystem particle in _auraParticles)
+            {
+                particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
+            _auraElement = EArcherElement.None;
         }
 
         private void EnsurePools()
