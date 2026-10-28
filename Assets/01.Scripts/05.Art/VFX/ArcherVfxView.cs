@@ -525,6 +525,7 @@ namespace Shinshi.Art
                         HIT_MAX_SECONDS);
                     return;
                 case EArcherVfxKind.Switch:
+                    PlayBuffSound();
                     Play(POOL_MUZZLE + element, origin, rotation, now, MUZZLE_MAX_SECONDS);
                     return;
                 case EArcherVfxKind.Charge:
@@ -551,21 +552,37 @@ namespace Shinshi.Art
                 };
             }
 
-            if (_bowAudio == null)
-            {
-                _bowAudio = gameObject.AddComponent<AudioSource>();
-                _bowAudio.playOnAwake = false;
-                _bowAudio.spatialBlend = 1f;
-                _bowAudio.rolloffMode = AudioRolloffMode.Linear;
-                _bowAudio.maxDistance = 60f;
-                OnBowVolumeChanged(SoundVolume.Load());
-            }
-
             AudioClip clip = _bowClips[_bowRandom.Next(_bowClips.Length)];
             if (clip != null)
             {
+                EnsureBowAudio();
                 _bowAudio.PlayOneShot(clip);
             }
+        }
+
+        private void PlayBuffSound()
+        {
+            AudioClip clip = BuffSoundClips.Pick(_bowRandom);
+            if (clip != null)
+            {
+                EnsureBowAudio();
+                _bowAudio.PlayOneShot(clip);
+            }
+        }
+
+        private void EnsureBowAudio()
+        {
+            if (_bowAudio != null)
+            {
+                return;
+            }
+
+            _bowAudio = gameObject.AddComponent<AudioSource>();
+            _bowAudio.playOnAwake = false;
+            _bowAudio.spatialBlend = 1f;
+            _bowAudio.rolloffMode = AudioRolloffMode.Linear;
+            _bowAudio.maxDistance = 60f;
+            OnBowVolumeChanged(SoundVolume.Load());
         }
 
         private void OnBowVolumeChanged(SoundVolume volume)

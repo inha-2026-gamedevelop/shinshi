@@ -308,6 +308,10 @@ namespace Shinshi.Art
             {
                 PlayWaveSound();
             }
+            else if ((play.Kind == EMageknightVfxKind.Shield) && ((now - play.StartAt) <= _maxLateSeconds))
+            {
+                PlayBuffSound();
+            }
 
             MageknightVfxPool pool = _pools[(int)play.Kind];
             if ((pool == null) || (!pool.HasPrefab))
@@ -375,6 +379,16 @@ namespace Shinshi.Art
             {
                 EnsureSfxAudio();
                 _sfxAudio.PlayOneShot(_waveClip);
+            }
+        }
+
+        private void PlayBuffSound()
+        {
+            AudioClip clip = BuffSoundClips.Pick(_basicSoundRandom);
+            if (clip != null)
+            {
+                EnsureSfxAudio();
+                _sfxAudio.PlayOneShot(clip);
             }
         }
 
