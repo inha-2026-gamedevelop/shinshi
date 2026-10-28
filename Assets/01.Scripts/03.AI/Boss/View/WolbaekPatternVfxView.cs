@@ -43,6 +43,7 @@ namespace Shinshi.AI
         private const float  ZONE_GRACE_SECONDS   = 1f;    // 초, 서버 소멸 사건이 오지 않아도 지속 시간 뒤에 끄기까지
         private const float  ZONE_SOUND_SECONDS   = 2f;    // 초, 장판이 생긴 뒤 소리를 들려주는 시간, 장판이 더 오래 남아도 소리는 여기서 끊는다
         private const float  EFFECT_LIFETIME      = 4f;    // 초, 한 번 터지는 효과를 지우기까지
+        private const float  LIQUID_HAND_LEAD_SECONDS = 0.2f; // 초, 액체 손 연출이 타격 확정 시각보다 먼저 시작하는 시간(손이 솟아 닿는 순간을 타격에 맞춘다)
         private const float  ZONE_SHRINK_SECONDS  = 0.4f;  // 초, 끝나는 장판 효과가 작아져 사라지는 시간
         private const float  FADE_SECONDS         = 3f;    // 초, 생성을 멈춘 효과의 남은 파티클이 사라지기를 기다리는 시간
         private const float  RELEASE_ACTIVE_SECONDS = 1.4f; // 초, 대형 방출 파면의 표현 지속 시간(서버 값이 아니다)
@@ -194,6 +195,8 @@ namespace Shinshi.AI
         private double _gridEnd;
 
         private int    _liquidHandCastId = NO_CAST;
+        private double _liquidHandDue;
+        private BossTelegraphCast _liquidHandPending; // 예고 때 예약해 둔 시전, 시각이 되면 액체 손을 낸다
         private int    _releaseCastId;
         private uint   _releasePlayback;
         private double _releaseEnd;
@@ -360,6 +363,7 @@ namespace Shinshi.AI
             TickSustain(now);
             TickStar(now);
             TickGrid(now);
+            TickLiquidHand(now);
             TickZones(now);
             TickShrinkingZones();
         }
@@ -427,6 +431,11 @@ namespace Shinshi.AI
         {
             StopLoopSound(castId);
 
+            if ((_liquidHandPending != null) && (_liquidHandPending.CastId == castId))
+            {
+                _liquidHandPending = null;
+            }
+
             if (isCancelled && (_releaseCastId == castId))
             {
                 StopRelease();
@@ -450,12 +459,30 @@ namespace Shinshi.AI
             if (phase == EBossTelegraphPhase.Telegraph)
             {
                 StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
+
+                if (!IsRestoring)
+                {
+                    _liquidHandPending = cast;
+                    _liquidHandDue     = cast.Start.StartServerTime + cast.Start.TelegraphSeconds - LIQUID_HAND_LEAD_SECONDS;
+                }
+
                 return;
             }
 
             if ((phase != EBossTelegraphPhase.Execute) || IsRestoring)
             {
                 return;
+            }
+
+            // 예고 때 예약한 시전은 시각이 되면 이미 냈거나 곧 낸다
+            if (_liquidHandCastId == cast.CastId)
+            {
+                return;
+            }
+
+            if ((_liquidHandPending != null) && (_liquidHandPending.CastId == cast.CastId))
+            {
+                _liquidHandPending = null;
             }
 
             // 서버 확정 시각이 표시 시계보다 앞서 도착하면 그 시각까지 보류한다
@@ -465,6 +492,18 @@ namespace Shinshi.AI
                 return;
             }
 
+            PlayLiquidHand(cast);
+        }
+
+        private void TickLiquidHand(double now)
+        {
+            if ((_liquidHandPending == null) || (now < _liquidHandDue))
+            {
+                return;
+            }
+
+            BossTelegraphCast cast = _liquidHandPending;
+            _liquidHandPending = null;
             PlayLiquidHand(cast);
         }
 
@@ -1900,6 +1939,7 @@ namespace Shinshi.AI
                 }
             }
 
+            _liquidHandPending = null;
             _hasLateBeam = false;
             _hasLateStar = false;
 
