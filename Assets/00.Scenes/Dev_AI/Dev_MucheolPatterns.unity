@@ -151,9 +151,9 @@ MonoBehaviour:
   _motion: {fileID: 509471568}
   _vfx: {fileID: 509471567}
   _boss: {fileID: 509471566}
-  _speed: 1
   _isHard: 0
   _repeat: 0
+  _speed: 1
 --- !u!4 &463069284
 Transform:
   m_ObjectHideFlags: 0
@@ -361,6 +361,7 @@ GameObject:
   - component: {fileID: 1167042249}
   - component: {fileID: 1167042248}
   - component: {fileID: 1167042247}
+  - component: {fileID: 1167042250}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -448,6 +449,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!81 &1167042250
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1167042246}
+  m_Enabled: 1
 --- !u!1 &1650132637
 GameObject:
   m_ObjectHideFlags: 0

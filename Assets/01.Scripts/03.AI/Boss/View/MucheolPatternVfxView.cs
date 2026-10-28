@@ -40,6 +40,9 @@ namespace Shinshi.AI
         private const string CHARGE_HEAD_NAME           = "ChargeHead";
         private const float  SWING_TRAIL_TAIL_SECONDS   = 1.3f;  // 초, 타격 뒤 스파크와 궤적이 사라질 때까지 손에 붙은 궤적을 켜 둔다
         private const float  SWING_FILL_MARGIN          = 0.001f; // 초, 확정 전에는 예고가 가득 차 번쩍이지 않게 남기는 여유
+        private const float  SOUND_WHOOSH_LEAD_SECONDS  = 0.3f;  // 초, 휘두르는 소리가 타격보다 앞서 시작하는 시간
+        private const float  SOUND_LATE_SECONDS         = 0.4f;  // 초, 이보다 늦게 받은 일회성 소리는 내지 않는다
+        private const int    SOUND_KEY_STRIDE           = 16;    // 반복 소리 키 = 시전 번호 * 이 값 + 순번
 
         /****************************************
         *              Nested Types
@@ -99,6 +102,7 @@ namespace Shinshi.AI
             public bool                   IsHitEstimated;
             public bool                   IsBegun;
             public MucheolDashRushView    Rush;
+            public Vector3                HitPoint;    // 타격 소리가 나는 자리, 돌진은 멈춘 자리다
         }
 
         /****************************************
@@ -113,6 +117,9 @@ namespace Shinshi.AI
         // 팔 휘두르기(P01)는 땅 임팩트 대신 이 둘을 쓴다. 비우면 그 시전은 아무것도 그리지 않는다
         [SerializeField] private MucheolFanTelegraph _swingTelegraphPrefab; // 빨간 예고, 보스 계층 밖에 둔다
         [SerializeField] private MucheolArmTrail     _armTrailPrefab;       // 왼손 본에 붙는 궤적과 스파크
+
+        [Header("효과음")]
+        [SerializeField] private MucheolSoundPlayer _sound; // 비어 있으면 같은 보스 프리팹에서 찾고, 없으면 소리를 생략한다
 
         private readonly List<Slot>              _slots        = new List<Slot>();
         private readonly List<GameObject>[]      _idle         = new List<GameObject>[TEMPLATE_COUNT];
@@ -136,6 +143,7 @@ namespace Shinshi.AI
         private int                 _chainTrailCastId;
         private double              _chainTrailEnd;
         private bool                _hasChainTrail;
+        private bool                _isRestoring;     // 복원 중에는 이미 지난 일회성 소리를 다시 내지 않는다
 
         /****************************************
         *              Properties
@@ -159,6 +167,11 @@ namespace Shinshi.AI
             var container = new GameObject(CONTAINER_NAME);
             SceneManager.MoveGameObjectToScene(container, gameObject.scene);
             _container = container.transform;
+
+            if (_sound == null)
+            {
+                _sound = GetComponentInParent<MucheolSoundPlayer>();
+            }
         }
 
         private void Update()
@@ -345,6 +358,19 @@ namespace Shinshi.AI
         /// <summary> 기본 예고 복원 </summary>
         public void RestoreBasic(in BossTelegraphSnapshot snapshot)
         {
+            _isRestoring = true;
+            try
+            {
+                RestoreBasicCore(in snapshot);
+            }
+            finally
+            {
+                _isRestoring = false;
+            }
+        }
+
+        private void RestoreBasicCore(in BossTelegraphSnapshot snapshot)
+        {
             BossTelegraphStart start = snapshot.Start;
             if (!MucheolVfxCatalog.TryGetSource(start.PatternId, out EMucheolVfxSource source))
             {
@@ -423,6 +449,7 @@ namespace Shinshi.AI
                 {
                     step.HitTime = serverTime;
                     Remember(Key(castId, stepIndex));
+                    PlaySoundAt(EMucheolSound.Thud, step.Origin, serverTime);
                 }
 
                 return;
@@ -437,6 +464,19 @@ namespace Shinshi.AI
 
         /// <summary> 콤보와 순차 타격 복원, 이미 터진 단계는 만들지 않는다 </summary>
         public void RestoreStrikeChain(in BossStrikeChainSnapshot snapshot)
+        {
+            _isRestoring = true;
+            try
+            {
+                RestoreStrikeChainCore(in snapshot);
+            }
+            finally
+            {
+                _isRestoring = false;
+            }
+        }
+
+        private void RestoreStrikeChainCore(in BossStrikeChainSnapshot snapshot)
         {
             BossStrikeChainStart start = snapshot.Start;
             for (int i = 0; i < snapshot.StruckCount; ++i)
@@ -505,6 +545,19 @@ namespace Shinshi.AI
         /// <summary> 연속 돌진 복원, 지금 돌진 하나만 아직 끝나지 않았을 때 이어 그린다 </summary>
         public void RestoreMultiDash(in BossMultiDashSnapshot snapshot)
         {
+            _isRestoring = true;
+            try
+            {
+                RestoreMultiDashCore(in snapshot);
+            }
+            finally
+            {
+                _isRestoring = false;
+            }
+        }
+
+        private void RestoreMultiDashCore(in BossMultiDashSnapshot snapshot)
+        {
             BossMultiDashStart start = snapshot.Start;
             if ((!MucheolVfxCatalog.TryGetSource(start.PatternId, out EMucheolVfxSource source))
                 || (source != EMucheolVfxSource.MultiDash) || snapshot.IsTruncated)
@@ -562,6 +615,19 @@ namespace Shinshi.AI
         /// <summary> 전장 공격 복원, 이미 터졌으면 만들지 않는다 </summary>
         public void RestoreBattlefield(in BossBattlefieldSnapshot snapshot)
         {
+            _isRestoring = true;
+            try
+            {
+                RestoreBattlefieldCore(in snapshot);
+            }
+            finally
+            {
+                _isRestoring = false;
+            }
+        }
+
+        private void RestoreBattlefieldCore(in BossBattlefieldSnapshot snapshot)
+        {
             BossBattlefieldStart start = snapshot.Start;
             if (snapshot.IsStruck)
             {
@@ -617,6 +683,11 @@ namespace Shinshi.AI
         /// <summary> 모든 효과를 멈추고 풀에 돌려준다 </summary>
         public void Clear()
         {
+            if (_sound != null)
+            {
+                _sound.StopAll();
+            }
+
             EndSwing();
             EndChainTrails();
             EndChainSteps(false, 0);
@@ -680,6 +751,7 @@ namespace Shinshi.AI
             _swingTelegraph.gameObject.SetActive(true);
             _swingTelegraph.SetElapsed((float)(ReadClock() - start.StartServerTime));
             ActivateTrail(_armTrail, rangeScale);
+            PlayWhoosh(start.Origin, impact);
         }
 
         private void ConfirmSwing(double hitTime)
@@ -691,6 +763,7 @@ namespace Shinshi.AI
 
             _swing.HitTime = hitTime;
             Remember(Key(_swing.CastId, 0));
+            PlaySoundAt(EMucheolSound.Thud, _swing.Origin, hitTime);
         }
 
         // 확정 전에는 예고가 가득 차기 직전에서 기다리고, 확정이 오면 그 시각부터 번쩍임과 사라짐이 흐른다
@@ -819,6 +892,8 @@ namespace Shinshi.AI
                     Yaw        = ((offsets != null) && (i < offsets.Count) && (!float.IsNaN(offsets[i]))) ? offsets[i] : 0f,
                     Telegraph  = telegraph,
                 });
+
+                PlayWhoosh(start.Origin, impact);
             }
         }
 
@@ -1042,6 +1117,13 @@ namespace Shinshi.AI
             slot.TelegraphEnd = impact;
             slot.ImpactTime   = impact;
             slot.Deadline     = impact + CONFIRM_GRACE_SECONDS;
+
+            if (cue.Template == EMucheolVfxTemplate.FanSlam70)
+            {
+                PlayWhoosh(origin, impact);
+            }
+
+            StartChargeSound(slot, patternId);
         }
 
         private void SpawnDash(int castId, int index, string patternId, Vector3 origin, Vector3 direction, double start,
@@ -1067,6 +1149,7 @@ namespace Shinshi.AI
             slot.Start        = start;
             slot.TelegraphEnd = telegraphEnd;
             slot.Deadline     = telegraphEnd + DASH_START_GRACE_SECONDS;
+            StartChargeSound(slot, patternId);
         }
 
         // 같은 (시전, 순번)이 이미 있거나 이미 터졌으면 새로 만들지 않는다. 복원과 늦은 사건이 같은 효과를 두 번 내지 않게 한다
@@ -1095,6 +1178,7 @@ namespace Shinshi.AI
                 Impact     = root.GetComponentInChildren<MucheolImpactVfxPlayer>(true),
                 YawDegrees = yaw,
                 Origin     = origin,
+                HitPoint    = origin,
                 Direction  = direction,
                 ImpactTime = double.NaN,
                 HitTime    = double.NaN,
@@ -1136,6 +1220,9 @@ namespace Shinshi.AI
                 ? Math.Min(slot.ImpactTime, startServerTime + (distance / speed)) : slot.ImpactTime;
             slot.Deadline     = slot.ImpactTime + CONFIRM_GRACE_SECONDS;
             StartRush(slot);
+
+            StopChargeSound(slot);
+            PlaySoundAt(EMucheolSound.Dash, slot.Origin, startServerTime);
         }
 
         // 끝 타격 시각은 서버가 정지를 판정한 시각(stopServerTime)이다. 서버 몸체도 그 틱에 멈춘 자리에 닿는다.
@@ -1165,6 +1252,7 @@ namespace Shinshi.AI
                 Place(slot);
             }
 
+            slot.HitPoint = position;
             bool hasServerTime = !double.IsNaN(stopServerTime);
             slot.IsHitEstimated = !hasServerTime;
             Confirm(slot, hasServerTime ? stopServerTime : Math.Min(estimate, ReadClock()));
@@ -1202,6 +1290,9 @@ namespace Shinshi.AI
             }
 
             Remember(Key(slot.CastId, slot.Index));
+
+            StopChargeSound(slot);
+            PlayImpactSounds(slot, hitTime);
         }
 
         private void TickSlot(Slot slot, double now)
@@ -1308,6 +1399,7 @@ namespace Shinshi.AI
         private void Release(Slot slot)
         {
             _slots.Remove(slot);
+            StopChargeSound(slot);
             if (slot.Rush != null)
             {
                 slot.Rush.Finish();
@@ -1482,6 +1574,93 @@ namespace Shinshi.AI
             {
                 _played.Remove(_playedOrder.Dequeue());
             }
+        }
+
+        // 소리는 연출이라 서버가 관여하지 않는다. 복원 중에는 이미 지난 일회성 소리를 내지 않는다
+        private void PlaySound(EMucheolSound id, Vector3 position, float delaySeconds)
+        {
+            if ((_sound == null) || _isRestoring)
+            {
+                return;
+            }
+
+            _sound.Play(id, position, delaySeconds);
+        }
+
+        // 서버가 알린 시각에 맞춰 울린다. 시각이 조금 앞이면 그만큼 늦추고, 너무 지났으면 내지 않는다
+        private void PlaySoundAt(EMucheolSound id, Vector3 position, double serverTime)
+        {
+            float delay = (float)(serverTime - ReadClock());
+            if (delay < -SOUND_LATE_SECONDS)
+            {
+                return;
+            }
+
+            PlaySound(id, position, Mathf.Max(0f, delay));
+        }
+
+        // 휘두르는 소리는 타격보다 조금 앞서 시작한다
+        private void PlayWhoosh(Vector3 position, double impactServerTime)
+        {
+            float untilImpact = (float)(impactServerTime - ReadClock());
+            if (untilImpact <= 0f)
+            {
+                return;
+            }
+
+            PlaySound(EMucheolSound.Whoosh, position, Mathf.Max(0f, untilImpact - SOUND_WHOOSH_LEAD_SECONDS));
+        }
+
+        // 원과 파동, 전장 원본은 타격 소리에 지면 충격파를 겹치고, 직선 충격파(03)는 타격 소리 없이 파동만 낸다
+        private void PlayImpactSounds(Slot slot, double hitTime)
+        {
+            EMucheolVfxTemplate template = slot.Cue.Template;
+            if (template != EMucheolVfxTemplate.Line03)
+            {
+                PlaySoundAt(EMucheolSound.Thud, slot.HitPoint, hitTime);
+            }
+
+            bool hasWave = (template == EMucheolVfxTemplate.Circle02) || (template == EMucheolVfxTemplate.SmallWave04)
+                || (template == EMucheolVfxTemplate.LargeWave05) || (template == EMucheolVfxTemplate.Battlefield07)
+                || (template == EMucheolVfxTemplate.Line03);
+            if (hasWave)
+            {
+                PlaySoundAt(EMucheolSound.Shockwave, slot.HitPoint, hitTime);
+            }
+        }
+
+        // 힘 모으기 소리는 강한 예고에만 깐다. 모든 예고에 같은 크기로 깔면 묻힌다
+        private static bool UsesChargeSound(string patternId)
+        {
+            string baseId = BossPatternCatalogSO.ToMucheolBaseId(patternId);
+            return (baseId == MucheolMotionCatalog.P1_P02_ID) || (baseId == MucheolMotionCatalog.P1_P04_ID)
+                || (baseId == MucheolMotionCatalog.P1_P06_ID) || (baseId == MucheolMotionCatalog.P2_P06_ID)
+                || (baseId == MucheolMotionCatalog.P2_P07_ID);
+        }
+
+        private void StartChargeSound(Slot slot, string patternId)
+        {
+            if ((_sound == null) || _isRestoring || (!UsesChargeSound(patternId)))
+            {
+                return;
+            }
+
+            float delay = Mathf.Max(0f, (float)(slot.Start - ReadClock()));
+            _sound.StartLoop(ChargeSoundKey(slot), EMucheolSound.ChargeLoop, slot.Origin, delay);
+        }
+
+        // 예고가 확정되거나 돌진이 시작되거나 취소되면 반드시 끊는다
+        private void StopChargeSound(Slot slot)
+        {
+            if (_sound != null)
+            {
+                _sound.StopLoop(ChargeSoundKey(slot));
+            }
+        }
+
+        private static int ChargeSoundKey(Slot slot)
+        {
+            return (slot.CastId * SOUND_KEY_STRIDE) + slot.Index;
         }
 
         private double ReadClock()

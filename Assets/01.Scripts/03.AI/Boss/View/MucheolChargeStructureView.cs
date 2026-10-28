@@ -44,7 +44,7 @@ namespace Shinshi.AI
         /// <summary> 씬 표식이 없어 만든 임시 기둥 수 </summary>
         public int TemporaryPillarCount => _pillars.Count;
 
-        // TODO(기웅): 파괴 VFX, 효과음 에셋이 생기면 이 훅에 연결한다. 인자는 구조물 식별자와 바닥 중심이다
+        // TODO(기웅): 파괴 VFX 에셋이 생기면 이 훅에 연결한다. 효과음은 바인더가 받아 낸다. 인자는 구조물 식별자와 바닥 중심이다
         /// <summary> 파괴 사건으로 구조물이 처음 부서질 때 한 번, 복원에서는 부르지 않는다 </summary>
         public event Action<int, Vector3> Destroyed;
 
