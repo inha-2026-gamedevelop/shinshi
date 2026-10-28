@@ -110,3 +110,9 @@ MonoBehaviour:
     _volume: 1
     _maxVoices: 2
     _minInterval: 0.05
+  - _group: 11
+    _action: 2
+    _clip: {fileID: 8300000, guid: 31e4188a6e8d41748ec5239817936dbd, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05

@@ -926,6 +926,16 @@ namespace Shinshi.UI
             }
         }
 
+        private void OnTrainButtonClicked()
+        {
+            if (_modernAlternate)
+            {
+                UiSound.Play(EUiSoundGroup.Training, EUiSoundAction.Click);
+            }
+
+            Commit();
+        }
+
         private void BindButtons()
         {
             UnbindButtons();
@@ -957,7 +967,7 @@ namespace Shinshi.UI
             _boundCloseButton  = _closeButton;
             AddListener(_boundMinusButton, DecreaseSelected);
             AddListener(_boundPlusButton, IncreaseSelected);
-            AddListener(_boundTrainButton, Commit);
+            AddListener(_boundTrainButton, OnTrainButtonClicked);
             AddListener(_boundRevertButton, RevertSelected);
             AddListener(_boundRespecButton, RedistributeAll);
             AddListener(_boundCloseButton, Close);
@@ -978,7 +988,7 @@ namespace Shinshi.UI
 
             RemoveListener(_boundMinusButton, DecreaseSelected);
             RemoveListener(_boundPlusButton, IncreaseSelected);
-            RemoveListener(_boundTrainButton, Commit);
+            RemoveListener(_boundTrainButton, OnTrainButtonClicked);
             RemoveListener(_boundRevertButton, RevertSelected);
             RemoveListener(_boundRespecButton, RedistributeAll);
             RemoveListener(_boundCloseButton, Close);
