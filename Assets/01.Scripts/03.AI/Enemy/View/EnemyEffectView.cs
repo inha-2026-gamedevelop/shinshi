@@ -22,6 +22,7 @@ namespace Shinshi.AI
 
         private const float RING_WIDTH = 0.08f;
         private const float BOLT_LIFT  = 1f;
+        private const float LATE_SOUND_SECONDS = 0.5f; // 늦게 접속해 이미 지나간 효과의 소리는 내지 않는다
 
         [SerializeField] private LineRenderer _ring;
         [SerializeField] private Transform    _bolt;
@@ -31,6 +32,9 @@ namespace Shinshi.AI
         private EnemyEffectState    _state;
         private BossProjectileTrack _track;
         private int                 _trackEffectId;
+        private int                 _soundPreviewId;
+        private bool                _boltAudible;
+        private Vector3             _lastBoltPosition;
 
         /****************************************
         *              Unity Event
@@ -44,14 +48,17 @@ namespace Shinshi.AI
 
         private void OnEnable()
         {
-            _track         = null;
-            _trackEffectId = 0;
+            _track          = null;
+            _trackEffectId  = 0;
+            _soundPreviewId = 0;
+            _boltAudible    = false;
             HideAll();
         }
 
         private void OnDisable()
         {
             _track = null;
+            EndBoltSound();
             HideAll();
         }
 
@@ -71,6 +78,7 @@ namespace Shinshi.AI
                     DrawProjectile();
                     break;
                 default:
+                    EndBoltSound();
                     HideAll();
                     break;
             }
@@ -82,6 +90,12 @@ namespace Shinshi.AI
 
         private void DrawPreview()
         {
+            if ((_soundPreviewId != _state.EffectId) && (NetworkTime.time < (_state.StartServerTime + LATE_SOUND_SECONDS)))
+            {
+                _soundPreviewId = _state.EffectId;
+                EnemySoundPlayer.Play(EEnemySound.SpawnWarning, _state.Origin);
+            }
+
             if (_bolt != null)
             {
                 _bolt.gameObject.SetActive(false);
@@ -132,17 +146,41 @@ namespace Shinshi.AI
                     _state.Size, _state.PathLength, _state.StartServerTime);
                 _track         = new BossProjectileTrack(start);
                 _trackEffectId = _state.EffectId;
+                _boltAudible   = false;
+
+                if (NetworkTime.time < (_state.StartServerTime + LATE_SOUND_SECONDS))
+                {
+                    _boltAudible = true;
+                    EnemySoundPlayer.Play(EEnemySound.ProjectileFly, _state.Origin);
+                }
             }
 
             double now = NetworkTime.time;
             if ((now < _track.LaunchServerTime) || _track.HasReachedEnd(now))
             {
+                EndBoltSound();
                 _bolt.gameObject.SetActive(false);
                 return;
             }
 
-            _bolt.position = _track.GetPosition(now) + (Vector3.up * BOLT_LIFT);
+            _lastBoltPosition = _track.GetPosition(now);
+            _bolt.position    = _lastBoltPosition + (Vector3.up * BOLT_LIFT);
             _bolt.gameObject.SetActive(true);
+        }
+
+        // 투사체가 끝나거나 서버가 맞았다고 내린 순간, 마지막으로 그린 자리에서 적중음을 한 번 울린다
+        private void EndBoltSound()
+        {
+            if (!_boltAudible)
+            {
+                return;
+            }
+
+            _boltAudible = false;
+            if (gameObject.scene.isLoaded)
+            {
+                EnemySoundPlayer.Play(EEnemySound.ProjectileHit, _lastBoltPosition + (Vector3.up * BOLT_LIFT));
+            }
         }
 
         private void HideAll()

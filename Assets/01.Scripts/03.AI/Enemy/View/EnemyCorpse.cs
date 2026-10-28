@@ -133,6 +133,7 @@ namespace Shinshi.AI
             {
                 _ashing    = EnemyCorpseDissolve.Begin(gameObject, ASH_SECONDS);
                 _shrinking = !_ashing;
+                EnemySoundPlayer.Play(EEnemySound.DeathDissolve, transform.position);
             }
 
             if (_ashing)

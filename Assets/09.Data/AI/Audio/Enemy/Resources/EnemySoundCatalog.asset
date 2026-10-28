@@ -1,0 +1,92 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c55d6b943a6b4de360598d5254e9b18, type: 3}
+  m_Name: EnemySoundCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.EnemySoundCatalogSO
+  _entries:
+  - _id: 1
+    _clips:
+    - {fileID: 8300000, guid: e3ea6b103f6830300395d1b876a693f7, type: 3}
+    _volume: 0.8
+    _maxVoices: 3
+  - _id: 2
+    _clips:
+    - {fileID: 8300000, guid: 82e7890f1d7c04574a14e3d5907904d3, type: 3}
+    _volume: 1
+    _maxVoices: 2
+  - _id: 3
+    _clips:
+    - {fileID: 8300000, guid: 64fcc5726441d68870cc6e4fbb0eac62, type: 3}
+    _volume: 0.9
+    _maxVoices: 4
+  - _id: 4
+    _clips:
+    - {fileID: 8300000, guid: c361c2423caf283f9c012b156f6f5686, type: 3}
+    _volume: 0.8
+    _maxVoices: 3
+  - _id: 5
+    _clips:
+    - {fileID: 8300000, guid: ae332fb2544751f4622c243d8b147290, type: 3}
+    _volume: 0.8
+    _maxVoices: 3
+  - _id: 6
+    _clips:
+    - {fileID: 8300000, guid: 366a3c8b7e6c5b9dc368e6d0bda0f7f9, type: 3}
+    _volume: 0.9
+    _maxVoices: 3
+  - _id: 7
+    _clips:
+    - {fileID: 8300000, guid: a066f3e105b3903f18ae1581b1a5796a, type: 3}
+    _volume: 0.9
+    _maxVoices: 3
+  - _id: 8
+    _clips:
+    - {fileID: 8300000, guid: 3ea148fdff37bd6742c74ea5bd6aa77a, type: 3}
+    - {fileID: 8300000, guid: 70893cd64d0772214ca81138f9d5466b, type: 3}
+    - {fileID: 8300000, guid: 37c9b7eac2403479b42c525fed6001e6, type: 3}
+    _volume: 0.8
+    _maxVoices: 3
+  - _id: 9
+    _clips:
+    - {fileID: 8300000, guid: 5ed32afac185c85162e3ef58788f09bf, type: 3}
+    _volume: 0.8
+    _maxVoices: 4
+  - _id: 10
+    _clips:
+    - {fileID: 8300000, guid: d59a8428b215662df9c5eb9b1f012b1c, type: 3}
+    _volume: 0.9
+    _maxVoices: 4
+  - _id: 11
+    _clips:
+    - {fileID: 8300000, guid: 5794da73728896362a748011ce38c5aa, type: 3}
+    _volume: 0.9
+    _maxVoices: 2
+  - _id: 12
+    _clips:
+    - {fileID: 8300000, guid: 10c10932a2cb9ca541eac62e3e2ffa8a, type: 3}
+    _volume: 1
+    _maxVoices: 2
+  - _id: 13
+    _clips:
+    - {fileID: 8300000, guid: 756e73feefd37784283f6aaa34ac906c, type: 3}
+    _volume: 1
+    _maxVoices: 2
+  - _id: 14
+    _clips:
+    - {fileID: 8300000, guid: 3c09cd55c69c1b2ec0de4619ac86a91d, type: 3}
+    _volume: 1
+    _maxVoices: 2
+  - _id: 15
+    _clips:
+    - {fileID: 8300000, guid: 5779befb60381a17aa3a7d048e0065ca, type: 3}
+    _volume: 0.8
+    _maxVoices: 3
