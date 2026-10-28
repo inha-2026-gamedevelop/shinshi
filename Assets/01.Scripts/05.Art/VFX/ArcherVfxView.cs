@@ -11,6 +11,7 @@ using Mirror;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.UI;
 
 namespace Shinshi.Art
 {
@@ -123,13 +124,27 @@ namespace Shinshi.Art
         private ParticleSystem.MinMaxCurve[] _auraParticleSizes;
         private ParticleSystem.MinMaxCurve[] _auraRadialSpeeds;
         private bool _auraFast;
+        private AudioSource _bowAudio;
+        private AudioClip[] _bowClips;
+        private readonly System.Random _bowRandom = new System.Random();
 
         /****************************************
         *              Unity Event
         ****************************************/
 
+        private void OnEnable()
+        {
+            SoundVolume.PreviewChanged += OnBowVolumeChanged;
+            OnBowVolumeChanged(SoundVolume.Load());
+        }
+
         private void OnDisable()
         {
+            SoundVolume.PreviewChanged -= OnBowVolumeChanged;
+            if (_bowAudio != null)
+            {
+                _bowAudio.Stop();
+            }
             _tracker.Reset();
             _wasRunning = false;
             StopAllEffects();
@@ -481,6 +496,10 @@ namespace Shinshi.Art
                 case EArcherVfxKind.Arrow:
                     if (play.IsMuzzle)
                     {
+                        if (play.StopsOnHit)
+                        {
+                            PlayBowSound();
+                        }
                         Play(IsHeavyReady(play, POOL_HEAVY_MUZZLE + element) ? (POOL_HEAVY_MUZZLE + element) : (POOL_MUZZLE + element), origin, rotation, now,
                             MUZZLE_MAX_SECONDS);
                         return;
@@ -516,6 +535,44 @@ namespace Shinshi.Art
                     return;
                 default:
                     return;
+            }
+        }
+
+        private void PlayBowSound()
+        {
+            if (_bowClips == null)
+            {
+                _bowClips = new[]
+                {
+                    Resources.Load<AudioClip>("Bow1"),
+                    Resources.Load<AudioClip>("Bow10"),
+                    Resources.Load<AudioClip>("Bow11"),
+                    Resources.Load<AudioClip>("Bow12")
+                };
+            }
+
+            if (_bowAudio == null)
+            {
+                _bowAudio = gameObject.AddComponent<AudioSource>();
+                _bowAudio.playOnAwake = false;
+                _bowAudio.spatialBlend = 1f;
+                _bowAudio.rolloffMode = AudioRolloffMode.Linear;
+                _bowAudio.maxDistance = 60f;
+                OnBowVolumeChanged(SoundVolume.Load());
+            }
+
+            AudioClip clip = _bowClips[_bowRandom.Next(_bowClips.Length)];
+            if (clip != null)
+            {
+                _bowAudio.PlayOneShot(clip);
+            }
+        }
+
+        private void OnBowVolumeChanged(SoundVolume volume)
+        {
+            if (_bowAudio != null)
+            {
+                _bowAudio.volume = volume.Sfx;
             }
         }
 
