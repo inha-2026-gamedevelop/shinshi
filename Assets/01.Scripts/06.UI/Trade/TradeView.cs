@@ -12,7 +12,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 1:1 거래 창이며 내 제안, 상대 제안, 엽전 입력, 확정, 수락, 취소, 처리 중 표시를 보인다. 네트워크는 모르고 이벤트로 의도만 알린다 </summary>
-    public sealed class TradeView : MonoBehaviour
+    public sealed class TradeView : UiWindowView
     {
         // 줄 안의 칸 순서: 품목, 수량. 제안 줄을 누르면 내 제안에서는 빼고, 보관함 줄을 누르면 하나 넣는다
 
@@ -99,16 +99,6 @@ namespace Shinshi.UI
             {
                 _myCurrencyField.onEndEdit.RemoveListener(OnCurrencyEndEdit);
             }
-        }
-
-        private void OnEnable()
-        {
-            UiSound.PlayWindowTransition(gameObject, true);
-        }
-
-        private void OnDisable()
-        {
-            UiSound.PlayWindowTransition(gameObject, false);
         }
 
         /****************************************

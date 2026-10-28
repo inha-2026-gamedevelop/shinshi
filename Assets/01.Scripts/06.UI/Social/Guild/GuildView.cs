@@ -12,7 +12,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 길드 창. 길드가 없으면 만들기, 가입 신청, 받은 초대를, 있으면 길드원, 가입 신청 탭과 초대, 탈퇴를 보여 준다 </summary>
-    public sealed class GuildView : MonoBehaviour
+    public sealed class GuildView : UiWindowView
     {
         // 네트워크는 모르고 이벤트로 의도만 알린다. 두 상태의 목록은 같은 줄 칸을 쓰고 글자와 버튼은 GuildBinder가 정한다
 
@@ -155,16 +155,6 @@ namespace Shinshi.UI
                     }
                 }
             }
-        }
-
-        private void OnEnable()
-        {
-            UiSound.PlayWindowTransition(gameObject, true);
-        }
-
-        private void OnDisable()
-        {
-            UiSound.PlayWindowTransition(gameObject, false);
         }
 
         /****************************************

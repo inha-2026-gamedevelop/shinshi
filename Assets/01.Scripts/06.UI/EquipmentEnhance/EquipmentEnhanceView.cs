@@ -23,7 +23,7 @@ namespace Shinshi.UI
 {
     /// <summary> 착용 장비 6부위의 강화 확률, 실패 보정, 능력치 전후와 비용을 표시하고 서버에 강화를 요청한다 </summary>
     [ExecuteAlways]
-    public sealed class EquipmentEnhanceView : MonoBehaviour
+    public sealed class EquipmentEnhanceView : UiWindowView
     {
         /****************************************
         *                Fields
@@ -180,9 +180,9 @@ namespace Shinshi.UI
             BindButtons();
         }
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
-            UiSound.PlayWindowTransition(gameObject, true);
+            base.OnEnable();
             BindButtons();
             HideResultImmediate();
             if (!Application.isPlaying)
@@ -225,9 +225,9 @@ namespace Shinshi.UI
             ReadServerState();
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
-            UiSound.PlayWindowTransition(gameObject, false);
+            base.OnDisable();
             UnbindButtons();
             TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
             TownGrowthClient.ResultReceived   -= OnResultReceived;

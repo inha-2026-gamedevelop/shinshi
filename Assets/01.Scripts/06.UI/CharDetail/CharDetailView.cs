@@ -11,7 +11,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 캐릭터 상세 창이며 이름, 직업, 능력치, 부위별 착용 장비, 수련, 부적 요약을 보인다. 데이터는 바인더가 채운다 </summary>
-    public sealed class CharDetailView : MonoBehaviour
+    public sealed class CharDetailView : UiWindowView
     {
         // 부위 배열은 EEquipmentSlot 순서(무기, 머리, 몸통, 손, 발, 정기), 수련 배열은 ETrainingStat 순서(공격, 체력, 방어, 치명타, 기력)와 같게 연결한다
 
@@ -75,18 +75,18 @@ namespace Shinshi.UI
         }
 
         // 단축키와 메뉴는 창의 활성 상태를 직접 바꾸므로 미리보기의 수명도 함께 맞춘다.
-        private void OnEnable()
+        protected override void OnEnable()
         {
-            UiSound.PlayWindowTransition(gameObject, true);
+            base.OnEnable();
             if (_previewStage != null)
             {
                 _previewStage.SetActive(true);
             }
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
-            UiSound.PlayWindowTransition(gameObject, false);
+            base.OnDisable();
             if (_previewStage != null)
             {
                 _previewStage.SetActive(false);

@@ -12,7 +12,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary>인벤토리 창이며 분류 탭, 정렬, 칸 사용량, 재화를 표시한다. 칸은 모든 아이템이 함께 쓴다</summary>
-    public sealed class InventoryView : MonoBehaviour
+    public sealed class InventoryView : UiWindowView
     {
         /****************************************
         *                Fields
@@ -166,16 +166,6 @@ namespace Shinshi.UI
             {
                 _grid.SlotClicked -= OnSlotClicked;
             }
-        }
-
-        private void OnEnable()
-        {
-            UiSound.PlayWindowTransition(gameObject, true);
-        }
-
-        private void OnDisable()
-        {
-            UiSound.PlayWindowTransition(gameObject, false);
         }
 
         /****************************************

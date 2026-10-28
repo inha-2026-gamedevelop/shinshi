@@ -15,7 +15,7 @@ using Shinshi.Contracts;
 namespace Shinshi.UI
 {
     /// <summary> 유저 경매장 창이며 구매, 판매 등록, 내 등록, 기록 네 탭을 표시한다. 네트워크는 모르고 이벤트로 사용자의 의도만 알린다 </summary>
-    public sealed class AuctionView : MonoBehaviour
+    public sealed class AuctionView : UiWindowView
     {
         // 목록은 줄 배열(ListRowView)을 미리 만들어 두고 내용만 바꾼다. 줄 안의 칸 순서는 아래에 적은 대로 씬에서 연결한다.
         //   구매 묶음 줄: 품목, 최저가, 수량, 등록 수, 최근가 / 등록 상세 줄: 개당 가격, 남은 수량, 남은 시간
@@ -222,16 +222,6 @@ namespace Shinshi.UI
             {
                 _sellPriceField.onValueChanged.RemoveListener(OnSellInputText);
             }
-        }
-
-        private void OnEnable()
-        {
-            UiSound.PlayWindowTransition(gameObject, true);
-        }
-
-        private void OnDisable()
-        {
-            UiSound.PlayWindowTransition(gameObject, false);
         }
 
         /****************************************

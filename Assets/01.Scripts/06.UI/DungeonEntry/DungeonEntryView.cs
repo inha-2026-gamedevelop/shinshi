@@ -13,7 +13,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 카오스 던전과 보스 맵 입장 창. 목록과 선택한 항목의 설명, 입장 버튼만 그리고 고른 것은 이벤트로 알린다 </summary>
-    public sealed class DungeonEntryView : MonoBehaviour
+    public sealed class DungeonEntryView : UiWindowView
     {
         // 네트워크와 카탈로그는 모르고 글자는 DungeonEntryBinder가 만들어 넣는다. 입장 판정은 마을 서버가 한다
 
@@ -123,16 +123,6 @@ namespace Shinshi.UI
                     _rowButtons[i].onClick.RemoveListener(_rowHandlers[i]);
                 }
             }
-        }
-
-        private void OnEnable()
-        {
-            UiSound.PlayWindowTransition(gameObject, true);
-        }
-
-        private void OnDisable()
-        {
-            UiSound.PlayWindowTransition(gameObject, false);
         }
 
         /****************************************

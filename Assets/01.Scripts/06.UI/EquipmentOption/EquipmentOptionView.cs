@@ -12,7 +12,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 장비 옵션 재설정 창. 착용 부위 목록과 선택한 장비의 옵션 두 줄, 비용, 재설정 버튼을 보여 준다 </summary>
-    public sealed class EquipmentOptionView : MonoBehaviour
+    public sealed class EquipmentOptionView : UiWindowView
     {
         // 네트워크는 모르고 이벤트로 의도만 알린다. 글자는 EquipmentOptionBinder가 만들어 넣는다
 
@@ -118,16 +118,6 @@ namespace Shinshi.UI
                     _slotButtons[i].onClick.RemoveListener(_slotHandlers[i]);
                 }
             }
-        }
-
-        private void OnEnable()
-        {
-            UiSound.PlayWindowTransition(gameObject, true);
-        }
-
-        private void OnDisable()
-        {
-            UiSound.PlayWindowTransition(gameObject, false);
         }
 
         /****************************************

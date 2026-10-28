@@ -20,7 +20,7 @@ namespace Shinshi.UI
 {
     /// <summary> 신체 강화의 투자 초안과 총량을 보존하는 재분배를 표시하고 서버 확정을 요청한다 </summary>
     [ExecuteAlways]
-    public sealed class TrainingView : MonoBehaviour
+    public sealed class TrainingView : UiWindowView
     {
         /****************************************
         *                Fields
@@ -158,9 +158,9 @@ namespace Shinshi.UI
             }
         }
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
-            UiSound.PlayWindowTransition(gameObject, true);
+            base.OnEnable();
             BindButtons();
             if (!Application.isPlaying)
             {
@@ -198,9 +198,9 @@ namespace Shinshi.UI
             ReadServerState();
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
-            UiSound.PlayWindowTransition(gameObject, false);
+            base.OnDisable();
             UnbindButtons();
             TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
             TownGrowthClient.ResultReceived   -= OnResultReceived;
