@@ -12,6 +12,7 @@ using Mirror;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.UI;
 
 namespace Shinshi.Art
 {
@@ -82,13 +83,28 @@ namespace Shinshi.Art
         private int       _hitCastId;
         private int       _freezeCastId;
         private int       _freezeSpentFrames;
+        private AudioSource _basicAudio;
+        private AudioClip[] _basicClips;
+        private readonly System.Random _basicSoundRandom = new System.Random();
 
         /****************************************
         *              Unity Event
         ****************************************/
 
+        private void OnEnable()
+        {
+            SoundVolume.PreviewChanged += OnBasicVolumeChanged;
+            OnBasicVolumeChanged(SoundVolume.Load());
+        }
+
         private void OnDisable()
         {
+            SoundVolume.PreviewChanged -= OnBasicVolumeChanged;
+            if (_basicAudio != null)
+            {
+                _basicAudio.Stop();
+            }
+
             StopFullStackAura();
             UnbindFeedback();
             _tracker.Reset();
@@ -283,6 +299,11 @@ namespace Shinshi.Art
 
         private void PlayEffect(MageknightVfxTracker.Play play, double now)
         {
+            if (play.Kind == EMageknightVfxKind.Basic)
+            {
+                PlayBasicSound();
+            }
+
             MageknightVfxPool pool = _pools[(int)play.Kind];
             if ((pool == null) || (!pool.HasPrefab))
             {
@@ -315,6 +336,43 @@ namespace Shinshi.Art
                 default:
                     pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
                     break;
+            }
+        }
+
+        private void PlayBasicSound()
+        {
+            if (_basicClips == null)
+            {
+                _basicClips = new[]
+                {
+                    Resources.Load<AudioClip>("SFX-Light-Slash-01_wav"),
+                    Resources.Load<AudioClip>("SFX-Light-Slash-02_wav"),
+                    Resources.Load<AudioClip>("SFX-Light-Slash-03_wav")
+                };
+            }
+
+            if (_basicAudio == null)
+            {
+                _basicAudio = gameObject.AddComponent<AudioSource>();
+                _basicAudio.playOnAwake = false;
+                _basicAudio.spatialBlend = 1f;
+                _basicAudio.rolloffMode = AudioRolloffMode.Linear;
+                _basicAudio.maxDistance = 60f;
+                OnBasicVolumeChanged(SoundVolume.Load());
+            }
+
+            AudioClip clip = _basicClips[_basicSoundRandom.Next(_basicClips.Length)];
+            if (clip != null)
+            {
+                _basicAudio.PlayOneShot(clip);
+            }
+        }
+
+        private void OnBasicVolumeChanged(SoundVolume volume)
+        {
+            if (_basicAudio != null)
+            {
+                _basicAudio.volume = volume.Sfx;
             }
         }
 
