@@ -77,6 +77,7 @@ namespace Shinshi.UI
         // 단축키와 메뉴는 창의 활성 상태를 직접 바꾸므로 미리보기의 수명도 함께 맞춘다.
         private void OnEnable()
         {
+            UiSound.PlayWindowTransition(gameObject, true);
             if (_previewStage != null)
             {
                 _previewStage.SetActive(true);
@@ -85,6 +86,7 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
+            UiSound.PlayWindowTransition(gameObject, false);
             if (_previewStage != null)
             {
                 _previewStage.SetActive(false);

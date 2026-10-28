@@ -39,6 +39,7 @@ namespace Shinshi.UI
         private BossState _boss;
         private float _nextRefreshAt;
         private int _lastPhase = -1;
+        private uint _lastPotionSequence;
 
         /****************************************
         *              Unity Event
@@ -46,12 +47,15 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
+            PotionClient.StateChanged += OnPotionState;
+            _lastPotionSequence = 0;
             _nextRefreshAt = 0f;
             HideAll();
         }
 
         private void OnDisable()
         {
+            PotionClient.StateChanged -= OnPotionState;
             _boss = null;
             HideAll();
         }
@@ -80,6 +84,18 @@ namespace Shinshi.UI
         /****************************************
         *                Methods
         ****************************************/
+
+        private void OnPotionState(PotionStateMessage state)
+        {
+            if ((state.Sequence == 0) || (state.Sequence == _lastPotionSequence)
+                || (state.Reason != ERejectReason.None) || (state.IsPending))
+            {
+                return;
+            }
+
+            _lastPotionSequence = state.Sequence;
+            UiSound.Play(EUiSoundGroup.Hud, EUiSoundAction.Potion);
+        }
 
         private void RefreshBoss()
         {

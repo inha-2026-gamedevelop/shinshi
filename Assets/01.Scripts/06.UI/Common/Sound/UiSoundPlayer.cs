@@ -20,6 +20,7 @@ namespace Shinshi.UI
         private UiSoundEntry[]                  _voiceEntries = null;
         private Dictionary<UiSoundEntry, float> _lastPlayed   = null; // 항목 -> 마지막 재생 시각(unscaled 초)
         private float                           _sfxVolume    = 1f;
+        private readonly System.Random           _random       = new System.Random();
 
         /****************************************
         *              Unity Event
@@ -96,12 +97,44 @@ namespace Shinshi.UI
             }
 
             AudioSource source = _voices[index];
-            source.clip   = entry.Clip;
+            source.clip   = PickClip(entry);
             source.volume = entry.Volume * _sfxVolume;
             source.Play();
 
             _voiceEntries[index] = entry;
             _lastPlayed[entry]   = now;
+        }
+
+        private AudioClip PickClip(UiSoundEntry entry)
+        {
+            AudioClip[] variants = entry.Variants;
+            int count = 1;
+            if (variants != null)
+            {
+                foreach (AudioClip variant in variants)
+                {
+                    if (variant != null)
+                    {
+                        ++count;
+                    }
+                }
+            }
+
+            int selected = _random.Next(count);
+            if ((selected == 0) || (variants == null))
+            {
+                return entry.Clip;
+            }
+
+            foreach (AudioClip variant in variants)
+            {
+                if ((variant != null) && (--selected == 0))
+                {
+                    return variant;
+                }
+            }
+
+            return entry.Clip;
         }
 
         private void ApplyVolume(SoundVolume volume)

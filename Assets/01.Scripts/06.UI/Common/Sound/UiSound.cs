@@ -30,6 +30,17 @@ namespace Shinshi.UI
             _isUnavailable = false;
         }
 
+        public static void PlayWindowTransition(GameObject window, bool open)
+        {
+            if ((!Application.isPlaying) || (Time.frameCount <= 1) || (window == null) || (!window.activeSelf && open)
+                || ((window.activeSelf) && (!open)))
+            {
+                return;
+            }
+
+            Play(EUiSoundGroup.Common, open ? EUiSoundAction.Open : EUiSoundAction.Close);
+        }
+
         public static void Play(EUiSoundGroup group, EUiSoundAction action)
         {
             UiSoundPlayer player = GetPlayer();

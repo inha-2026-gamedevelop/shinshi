@@ -149,6 +149,7 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
+            UiSound.PlayWindowTransition(gameObject, true);
             if (!_ready)
             {
                 return;
@@ -164,6 +165,7 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
+            UiSound.PlayWindowTransition(gameObject, false);
             if (_router != null)
             {
                 _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);

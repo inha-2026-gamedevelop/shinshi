@@ -18,5 +18,7 @@ namespace Shinshi.UI
         [InspectorName("실패")]        Fail    = 8,
         [InspectorName("거절")]        Reject  = 9,
         [InspectorName("도착")]        Arrive  = 10,
+        [InspectorName("장비 변경")]   Equipment = 11,
+        [InspectorName("물약 사용")]   Potion = 12,
     }
 }

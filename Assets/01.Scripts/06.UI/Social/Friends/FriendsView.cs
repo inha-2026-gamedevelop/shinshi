@@ -153,6 +153,16 @@ namespace Shinshi.UI
             }
         }
 
+        private void OnEnable()
+        {
+            UiSound.PlayWindowTransition(gameObject, true);
+        }
+
+        private void OnDisable()
+        {
+            UiSound.PlayWindowTransition(gameObject, false);
+        }
+
         /****************************************
         *                Methods
         ****************************************/

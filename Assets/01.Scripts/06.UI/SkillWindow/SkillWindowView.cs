@@ -181,6 +181,16 @@ namespace Shinshi.UI
             RemoveAll(_choiceButtons, _choiceHandlers);
         }
 
+        private void OnEnable()
+        {
+            UiSound.PlayWindowTransition(gameObject, true);
+        }
+
+        private void OnDisable()
+        {
+            UiSound.PlayWindowTransition(gameObject, false);
+        }
+
         /****************************************
         *                Methods
         ****************************************/

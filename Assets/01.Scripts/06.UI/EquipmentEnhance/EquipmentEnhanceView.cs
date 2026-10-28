@@ -182,6 +182,7 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
+            UiSound.PlayWindowTransition(gameObject, true);
             BindButtons();
             HideResultImmediate();
             if (!Application.isPlaying)
@@ -226,6 +227,7 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
+            UiSound.PlayWindowTransition(gameObject, false);
             UnbindButtons();
             TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
             TownGrowthClient.ResultReceived   -= OnResultReceived;
@@ -851,6 +853,8 @@ namespace Shinshi.UI
 
         private void PlayResult(bool succeeded, int fromLevel, float failBonus)
         {
+            UiSound.Play(EUiSoundGroup.EquipmentEnhance, succeeded ? EUiSoundAction.Success : EUiSoundAction.Fail);
+
             if ((_resultGroup == null) || (_resultBadge == null))
             {
                 return;

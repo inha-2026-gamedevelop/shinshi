@@ -159,6 +159,7 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
+            UiSound.PlayWindowTransition(gameObject, true);
             if (!Application.isPlaying)
             {
                 return;
@@ -171,6 +172,7 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
+            UiSound.PlayWindowTransition(gameObject, false);
             TownPartyClient.RoomListReceived -= OnRoomList;
             TownPartyClient.ResultReceived   -= OnResult;
             TownPartyClient.RoomChanged      -= OnRoomChanged;

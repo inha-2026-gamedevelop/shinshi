@@ -447,6 +447,7 @@ namespace Shinshi.UI
             }
 
             _panel.gameObject.SetActive(true);
+            UiSound.Play(EUiSoundGroup.Hud, EUiSoundAction.Open);
         }
 
         private void Close()
@@ -457,6 +458,7 @@ namespace Shinshi.UI
             }
 
             _panel.gameObject.SetActive(false);
+            UiSound.Play(EUiSoundGroup.Common, EUiSoundAction.Close);
             for (int i = 0; i < _wasActive.Length; ++i)
             {
                 if ((_wasActive[i]) && (_hideWhileOpen[i] != null))

@@ -45,7 +45,8 @@ namespace Shinshi.UI
                 return true;
             }
 
-            return (group != EUiSoundGroup.Common) && (_lookup.TryGetValue(ToKey(EUiSoundGroup.Common, action), out entry));
+            return (group != EUiSoundGroup.Common) && ((group != EUiSoundGroup.Toast) || (action != EUiSoundAction.Open))
+                && (_lookup.TryGetValue(ToKey(EUiSoundGroup.Common, action), out entry));
         }
 
         // 에디터에서 항목을 고치면 도메인 재로드 없이도 다시 만들어지도록 검증 때 비운다

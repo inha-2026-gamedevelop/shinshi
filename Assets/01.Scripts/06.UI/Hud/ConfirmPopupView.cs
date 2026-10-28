@@ -84,7 +84,7 @@ namespace Shinshi.UI
             Action<bool> callback = _onResult;
             _onResult = null;
             gameObject.SetActive(false);
-            UiSound.Play(EUiSoundGroup.Confirm, result ? EUiSoundAction.Confirm : EUiSoundAction.Cancel);
+            UiSound.Play(EUiSoundGroup.Confirm, EUiSoundAction.Close);
 
             if (callback != null)
             {

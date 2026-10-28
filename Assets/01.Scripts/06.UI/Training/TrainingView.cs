@@ -160,6 +160,7 @@ namespace Shinshi.UI
 
         private void OnEnable()
         {
+            UiSound.PlayWindowTransition(gameObject, true);
             BindButtons();
             if (!Application.isPlaying)
             {
@@ -199,6 +200,7 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
+            UiSound.PlayWindowTransition(gameObject, false);
             UnbindButtons();
             TownGrowthClient.SnapshotChanged  -= OnSnapshotChanged;
             TownGrowthClient.ResultReceived   -= OnResultReceived;

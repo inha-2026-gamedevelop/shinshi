@@ -1,4 +1,5 @@
 // System
+using System;
 using System.Globalization;
 
 // Unity
@@ -22,6 +23,8 @@ namespace Shinshi.UI
 
         [SerializeField] private UiPopupHub            _popups      = null;
         [SerializeField] private HudRejectFeedbackView _skillReject = null;
+
+        private Guid _lastEquipmentSoundOperation = Guid.Empty;
 
         /****************************************
         *              Unity Event
@@ -57,6 +60,13 @@ namespace Shinshi.UI
         private void OnGrowthResult(GrowthResultMessage result)
         {
             ShowReject(result.Reason);
+            if ((result.IsAccepted) && (result.OperationId != Guid.Empty)
+                && (result.OperationId != _lastEquipmentSoundOperation)
+                && ((result.Action == EGrowthAction.EquipmentEquip) || (result.Action == EGrowthAction.EquipmentUnequip)))
+            {
+                _lastEquipmentSoundOperation = result.OperationId;
+                UiSound.Play(EUiSoundGroup.Inventory, EUiSoundAction.Equipment);
+            }
         }
 
         private void OnLifeResult(LifeResultMessage result)
