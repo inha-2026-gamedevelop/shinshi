@@ -83,8 +83,9 @@ namespace Shinshi.Art
         private int       _hitCastId;
         private int       _freezeCastId;
         private int       _freezeSpentFrames;
-        private AudioSource _basicAudio;
+        private AudioSource _sfxAudio;
         private AudioClip[] _basicClips;
+        private AudioClip _waveClip;
         private readonly System.Random _basicSoundRandom = new System.Random();
 
         /****************************************
@@ -93,16 +94,16 @@ namespace Shinshi.Art
 
         private void OnEnable()
         {
-            SoundVolume.PreviewChanged += OnBasicVolumeChanged;
-            OnBasicVolumeChanged(SoundVolume.Load());
+            SoundVolume.PreviewChanged += OnSfxVolumeChanged;
+            OnSfxVolumeChanged(SoundVolume.Load());
         }
 
         private void OnDisable()
         {
-            SoundVolume.PreviewChanged -= OnBasicVolumeChanged;
-            if (_basicAudio != null)
+            SoundVolume.PreviewChanged -= OnSfxVolumeChanged;
+            if (_sfxAudio != null)
             {
-                _basicAudio.Stop();
+                _sfxAudio.Stop();
             }
 
             StopFullStackAura();
@@ -303,6 +304,10 @@ namespace Shinshi.Art
             {
                 PlayBasicSound();
             }
+            else if (play.Kind == EMageknightVfxKind.Wave)
+            {
+                PlayWaveSound();
+            }
 
             MageknightVfxPool pool = _pools[(int)play.Kind];
             if ((pool == null) || (!pool.HasPrefab))
@@ -351,28 +356,48 @@ namespace Shinshi.Art
                 };
             }
 
-            if (_basicAudio == null)
-            {
-                _basicAudio = gameObject.AddComponent<AudioSource>();
-                _basicAudio.playOnAwake = false;
-                _basicAudio.spatialBlend = 1f;
-                _basicAudio.rolloffMode = AudioRolloffMode.Linear;
-                _basicAudio.maxDistance = 60f;
-                OnBasicVolumeChanged(SoundVolume.Load());
-            }
-
             AudioClip clip = _basicClips[_basicSoundRandom.Next(_basicClips.Length)];
             if (clip != null)
             {
-                _basicAudio.PlayOneShot(clip);
+                EnsureSfxAudio();
+                _sfxAudio.PlayOneShot(clip);
             }
         }
 
-        private void OnBasicVolumeChanged(SoundVolume volume)
+        private void PlayWaveSound()
         {
-            if (_basicAudio != null)
+            if (_waveClip == null)
             {
-                _basicAudio.volume = volume.Sfx;
+                _waveClip = Resources.Load<AudioClip>("WEAPON_Dagger");
+            }
+
+            if (_waveClip != null)
+            {
+                EnsureSfxAudio();
+                _sfxAudio.PlayOneShot(_waveClip);
+            }
+        }
+
+        private void EnsureSfxAudio()
+        {
+            if (_sfxAudio != null)
+            {
+                return;
+            }
+
+            _sfxAudio = gameObject.AddComponent<AudioSource>();
+            _sfxAudio.playOnAwake = false;
+            _sfxAudio.spatialBlend = 1f;
+            _sfxAudio.rolloffMode = AudioRolloffMode.Linear;
+            _sfxAudio.maxDistance = 60f;
+            OnSfxVolumeChanged(SoundVolume.Load());
+        }
+
+        private void OnSfxVolumeChanged(SoundVolume volume)
+        {
+            if (_sfxAudio != null)
+            {
+                _sfxAudio.volume = volume.Sfx;
             }
         }
 
