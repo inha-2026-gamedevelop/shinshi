@@ -59,6 +59,7 @@ namespace Shinshi.AI
 
         private void OnEnable()
         {
+            RestoreAfterReload();
             SoundVolume.PreviewChanged += ApplyVolume;
             ApplyVolume(SoundVolume.Load());
         }
@@ -115,16 +116,32 @@ namespace Shinshi.AI
         /// <summary> 전투 종료, 취소, 사망 때 예약된 소리와 반복 소리까지 모두 멈춘다 </summary>
         public void StopAll()
         {
+            if (_loops != null)
+            {
+                _loops.Clear();
+            }
+
             if (_voices == null)
             {
                 return;
             }
 
-            _loops.Clear();
             for (int i = 0; i < _voices.Length; ++i)
             {
                 ReleaseVoice(i);
             }
+        }
+
+        // 스크립트를 다시 컴파일하면 배열은 복원되지만 Dictionary는 직렬화되지 않아 사라진다. 반복음은 이미 멈췄고 키 연결도 잃었으므로 모든 칸을 비우고 빈 목록을 다시 만든다
+        private void RestoreAfterReload()
+        {
+            if ((_voices == null) || (_loops != null))
+            {
+                return;
+            }
+
+            StopAll();
+            _loops = new Dictionary<int, int>();
         }
 
         private bool TryStart(EWolbaekSound id, Vector3 position, bool loop, float delaySeconds, out int index)
