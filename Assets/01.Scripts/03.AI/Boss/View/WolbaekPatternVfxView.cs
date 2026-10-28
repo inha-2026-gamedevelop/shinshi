@@ -393,7 +393,6 @@ namespace Shinshi.AI
             if ((phase == EBossTelegraphPhase.Telegraph) && WolbaekMotionCatalog.IsDash(cast.PatternId))
             {
                 SpawnDashTelegraph(cast);
-                StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
                 return;
             }
 
@@ -458,8 +457,6 @@ namespace Shinshi.AI
         {
             if (phase == EBossTelegraphPhase.Telegraph)
             {
-                StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
-
                 if (!IsRestoring)
                 {
                     _liquidHandPending = cast;
@@ -762,11 +759,6 @@ namespace Shinshi.AI
                 if (_releasePlayback == 0)
                 {
                     return;
-                }
-
-                if (!isRestoredExecute)
-                {
-                    StartLoopSound(cast.CastId, EWolbaekSound.ChargeLoop, cast.Origin);
                 }
 
                 double expected = isRestoredExecute ? cast.ExecuteServerTime : (cast.Start.StartServerTime + cast.Start.TelegraphSeconds);
@@ -1129,7 +1121,6 @@ namespace Shinshi.AI
 
             // 같은 시전의 여러 줄은 대표음 하나만 쓴다, 같은 키가 이미 있으면 재생기가 무시한다
             _beamSoundPosition = center;
-            StartLoopSound(start.CastId, EWolbaekSound.ChargeLoop, center);
 
             _sustain.Warn(_sustainPlayback, start.BeamId, REVISION, new WolbaekBeamShape(from, to, shape.Width, center, shape.ArenaRadius),
                 start.StartServerTime, expectedActive, expectedActive + start.DurationSeconds, now);

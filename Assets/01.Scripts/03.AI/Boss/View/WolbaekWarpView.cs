@@ -249,12 +249,6 @@ namespace Shinshi.AI
                 StartLanding(_castId);
             }
 
-            // 착지 예고 동안 차징을 낸다, 충격파 확정이나 시전 종료에서 끊는다
-            if (_sound != null)
-            {
-                _sound.StartLoop(_castId, EWolbaekSound.ChargeLoop, _landed);
-            }
-
             bool isSomersault = WolbaekMotionPlan.ResolveWarpStage(serverNow - _castStart) == WolbaekMotionPlan.EWarpStage.Somersault;
             if ((_hasServerDeparture) && (_serverDepartureCastId == _castId))
             {
