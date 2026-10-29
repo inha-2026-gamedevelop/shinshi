@@ -81,6 +81,10 @@ namespace Shinshi.UI
 
         [Header("게임")]
         [SerializeField] private TMP_Dropdown _cursorSize = null;
+        [SerializeField] private Slider   _vfxOwn        = null;
+        [SerializeField] private Slider   _vfxParty      = null;
+        [SerializeField] private TMP_Text _vfxOwnValue   = null;
+        [SerializeField] private TMP_Text _vfxPartyValue = null;
 
         [Header("설명과 버튼")]
         [SerializeField] private TMP_Text _hintTitle = null;
@@ -107,6 +111,8 @@ namespace Shinshi.UI
         private int  _savedResolution = 0;
         private int  _savedFrameCap   = NO_FRAME_CAP;
         private int  _savedCursorSize = CursorScale.DEFAULT_INDEX;
+        private float _savedVfxOwn   = VfxVisibility.DEFAULT_OPACITY;
+        private float _savedVfxParty = VfxVisibility.DEFAULT_OPACITY;
         private bool _savedVsync      = true;
         private int  _category        = CATEGORY_GRAPHICS;
         private bool _ready           = false;
@@ -126,6 +132,8 @@ namespace Shinshi.UI
             _sfx.onValueChanged.AddListener(OnVolumeChanged);
             _mute.onValueChanged.AddListener(OnMuteChanged);
             _cursorSize.onValueChanged.AddListener(OnCursorSizeChanged);
+            _vfxOwn.onValueChanged.AddListener(OnVfxOpacityChanged);
+            _vfxParty.onValueChanged.AddListener(OnVfxOpacityChanged);
             _reset.onClick.AddListener(ResetCategory);
             _resetAll.onClick.AddListener(ResetAll);
             _apply.onClick.AddListener(Apply);
@@ -174,6 +182,7 @@ namespace Shinshi.UI
             {
                 _savedAudio.Preview();
                 CursorScale.Preview(_savedCursorSize);
+                VfxVisibility.Preview(_savedVfxOwn, _savedVfxParty);
             }
         }
 
@@ -267,6 +276,7 @@ namespace Shinshi.UI
             _savedAudio.Save();
             _savedAudio.Preview();
             CursorScale.Save(_cursorSize.value);
+            VfxVisibility.Save(_vfxOwn.value, _vfxParty.value);
             PlayerPrefs.Save();
             CaptureGraphicsBaseline();
             RefreshState();
@@ -353,6 +363,8 @@ namespace Shinshi.UI
             }
             _cursorSize.AddOptions(cursorLabels);
             _cursorSize.SetValueWithoutNotify(CursorScale.Load());
+            _vfxOwn.SetValueWithoutNotify(VfxVisibility.LoadOwn());
+            _vfxParty.SetValueWithoutNotify(VfxVisibility.LoadParty());
             _savedAudio = SoundVolume.Load();
             SetAudio(_savedAudio);
             _savedAudio.Preview();
@@ -367,6 +379,8 @@ namespace Shinshi.UI
             _savedVsync      = _vsync.isOn;
             _savedFrameCap   = G_FrameCaps[_frameCap.value];
             _savedCursorSize = _cursorSize.value;
+            _savedVfxOwn     = _vfxOwn.value;
+            _savedVfxParty   = _vfxParty.value;
         }
 
         private void SelectCategory(int category)
@@ -420,6 +434,12 @@ namespace Shinshi.UI
             RefreshState();
         }
 
+        private void OnVfxOpacityChanged(float value)
+        {
+            VfxVisibility.Preview(_vfxOwn.value, _vfxParty.value);
+            RefreshState();
+        }
+
         private void OnVolumeChanged(float value)
         {
             CurrentAudio().Preview();
@@ -452,6 +472,9 @@ namespace Shinshi.UI
         {
             _cursorSize.SetValueWithoutNotify(CursorScale.DEFAULT_INDEX);
             CursorScale.Preview(CursorScale.DEFAULT_INDEX);
+            _vfxOwn.SetValueWithoutNotify(VfxVisibility.DEFAULT_OPACITY);
+            _vfxParty.SetValueWithoutNotify(VfxVisibility.DEFAULT_OPACITY);
+            VfxVisibility.Preview(VfxVisibility.DEFAULT_OPACITY, VfxVisibility.DEFAULT_OPACITY);
             RefreshState();
         }
 
@@ -462,6 +485,8 @@ namespace Shinshi.UI
                 || (_savedVsync != _vsync.isOn)
                 || (_savedFrameCap != G_FrameCaps[_frameCap.value])
                 || (_savedCursorSize != _cursorSize.value)
+                || (!Mathf.Approximately(_savedVfxOwn, _vfxOwn.value))
+                || (!Mathf.Approximately(_savedVfxParty, _vfxParty.value))
                 || (!_savedAudio.Equals(CurrentAudio()));
         }
 
@@ -475,6 +500,8 @@ namespace Shinshi.UI
             _masterValue.text = $"{Mathf.RoundToInt(_master.value * PERCENT)}%";
             _bgmValue.text = $"{Mathf.RoundToInt(_bgm.value * PERCENT)}%";
             _sfxValue.text = $"{Mathf.RoundToInt(_sfx.value * PERCENT)}%";
+            _vfxOwnValue.text = $"{Mathf.RoundToInt(_vfxOwn.value * PERCENT)}%";
+            _vfxPartyValue.text = $"{Mathf.RoundToInt(_vfxParty.value * PERCENT)}%";
             bool dirty = HasChanges();
             _apply.interactable = dirty;
             _status.text = dirty ? "적용하지 않은 변경 사항이 있습니다" : "모든 설정이 저장되어 있습니다";

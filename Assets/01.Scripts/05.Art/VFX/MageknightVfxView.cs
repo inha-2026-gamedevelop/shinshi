@@ -70,6 +70,7 @@ namespace Shinshi.Art
 
         private Transform _poolRoot;
         private GameObject _fullStackAura;
+        private float _auraOpacity = 1f;
         private bool      _hasConfig;
         private bool      _wasRunning;
         private float     _waveSpeed;
@@ -204,16 +205,26 @@ namespace Shinshi.Art
         {
             bool full = GameDB.IsInitialized && (GameDB.Skills.ClassStackMax > 0)
                 && (_combat.ClassStacks >= GameDB.Skills.ClassStackMax)
-                && (_combat.LifeState == EParticipantLifeState.Alive);
+                && (_combat.LifeState == EParticipantLifeState.Alive)
+                && (VfxVisibility.Allows(_combat.isOwned));
             if ((!full) || (_fullStackAuraPrefab == null))
             {
                 StopFullStackAura();
                 return;
             }
 
+            // 투명도는 생성 때 입자 색에 곱하므로 값이 바뀌면 오라를 다시 만든다
+            float alpha = VfxVisibility.Opacity(_combat.isOwned);
+            if ((_fullStackAura != null) && (!Mathf.Approximately(_auraOpacity, alpha)))
+            {
+                StopFullStackAura();
+            }
+
             if (_fullStackAura == null)
             {
                 _fullStackAura = Instantiate(_fullStackAuraPrefab, _combat.transform, false);
+                _auraOpacity = alpha;
+                VfxOpacity.Apply(_fullStackAura.GetComponentsInChildren<ParticleSystem>(true), alpha);
             }
         }
 
@@ -313,11 +324,14 @@ namespace Shinshi.Art
                 PlayBuffSound();
             }
 
+            // 소리는 위에서 이미 냈고, 투명도가 0이면 화면 효과만 건너뛴다
             MageknightVfxPool pool = _pools[(int)play.Kind];
-            if ((pool == null) || (!pool.HasPrefab))
+            if ((pool == null) || (!pool.HasPrefab) || (!VfxVisibility.Allows(_combat.isOwned)))
             {
                 return;
             }
+
+            pool.SetOpacity(VfxVisibility.Opacity(_combat.isOwned));
 
             // 기본 공격은 재생 순간의 캐릭터 위치, 나머지는 서버가 공개한 시전 위치에서 터진다
             Vector3 position = MageknightVfxTracker.UsesActorPosition(play.Kind) ? _combat.transform.position : play.Origin;
