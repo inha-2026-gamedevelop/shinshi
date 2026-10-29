@@ -29,6 +29,7 @@ namespace Shinshi.AI
         private const int    SIDE_COUNT      = 3;
         private const string CONTAINER_NAME  = "MucheolSealMarkers";
         private const string MARKER_SUFFIX   = " Seal";
+        private const float  NEXT_SOUND_WAIT = 0.6f; // 초, 방향 완료음 뒤 다음 표식 소리를 늦추는 시간
 
         private static readonly int G_Progress = Shader.PropertyToID("_Progress");
         private static readonly int G_Pulse    = Shader.PropertyToID("_Pulse");
@@ -71,6 +72,9 @@ namespace Shinshi.AI
         private Func<double> _serverClock;
         private bool         _isReady;
 
+        [Header("효과음")]
+        [SerializeField] private MucheolSoundPlayer _sound; // 비어 있으면 같은 보스 프리팹에서 찾고, 없으면 소리를 생략한다
+
         /****************************************
         *              Unity Event
         ****************************************/
@@ -85,6 +89,11 @@ namespace Shinshi.AI
             }
 
             _block = new MaterialPropertyBlock();
+
+            if (_sound == null)
+            {
+                _sound = GetComponentInParent<MucheolSoundPlayer>();
+            }
 
             // 표식은 보스 뼈 배율을 받지 않도록 보스 계층 밖에 두고 매 프레임 뼈를 따라가게 한다
             var container = new GameObject(CONTAINER_NAME);
@@ -163,6 +172,7 @@ namespace Shinshi.AI
         {
             HideAll();
             Show(EMucheolSealSide.Right, 0, requiredHits, ReadClock());
+            PlaySound(EMucheolSound.SealAppear, EMucheolSealSide.Right, 0f);
         }
 
         // 서버가 유효타를 센 사건이다. 표식이 아직 없으면(사건이 건너뛰어졌다면) 지금 값으로 나타낸다
@@ -182,9 +192,16 @@ namespace Shinshi.AI
                 return;
             }
 
+            bool isIncreased = hitCount > marker.Hits;
             marker.Hits      = Mathf.Clamp(hitCount, 0, Mathf.Max(0, requiredHits));
             marker.Required  = requiredHits;
             marker.LastHitAt = now;
+
+            // 서버가 센 유효타가 늘었을 때만 낸다, 같은 값으로 다시 온 사건은 내지 않는다
+            if (isIncreased)
+            {
+                PlaySound(EMucheolSound.SealTick, side, 0f);
+            }
         }
 
         /// <summary> 방향이 채워졌다. 그 표식은 마지막 번쩍임과 함께 퍼지며 사라지고 다음 방향의 표식이 나온다 </summary>
@@ -197,12 +214,19 @@ namespace Shinshi.AI
             if (next < SIDE_COUNT)
             {
                 Show((EMucheolSealSide)next, 0, requiredHits, now);
+
+                // 완료음 바로 뒤에 다음 표식을 겹치지 않게 조금 늦춰 낸다
+                PlaySound(EMucheolSound.SealDirectionDone, side, 0f);
+                PlaySound(EMucheolSound.SealAppear, (EMucheolSealSide)next, NEXT_SOUND_WAIT);
             }
         }
 
         /// <summary> 마지막 방향까지 채워 봉인이 깨졌다. 남은 표식이 퍼지며 사라진다 </summary>
         public void OnSealBroken(int requiredHits)
         {
+            // 마지막 방향의 완료음과 겹치지 않도록 최종 파괴음 하나만 낸다
+            PlaySound(EMucheolSound.SealBreak, EMucheolSealSide.Rear, 0f);
+
             double now = ReadClock();
             for (int i = 0; i < SIDE_COUNT; ++i)
             {
@@ -262,6 +286,18 @@ namespace Shinshi.AI
                 MucheolSealLook look = MucheolSealVisual.Evaluate(age, marker.Hits, marker.Required, (float)(now - marker.LastHitAt), dissolveAge);
                 Apply(i, marker, look, age);
             }
+        }
+
+        // 소리는 연출이라 서버가 관여하지 않는다. 복원(OnSealRestored)은 이 함수를 부르지 않아 지난 소리를 다시 내지 않는다
+        private void PlaySound(EMucheolSound id, EMucheolSealSide side, float delaySeconds)
+        {
+            if ((_sound == null) || (!_isReady))
+            {
+                return;
+            }
+
+            Transform anchor = _anchors[(int)side];
+            _sound.Play(id, (anchor != null) ? anchor.position : transform.position, delaySeconds);
         }
 
         private void Show(EMucheolSealSide side, int hits, int requiredHits, double now)

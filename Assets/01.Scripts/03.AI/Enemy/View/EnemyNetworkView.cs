@@ -35,6 +35,7 @@ namespace Shinshi.AI
         private const float DASH_HOLD_SECONDS   = 0.2f;  // 돌진 근거가 끊겨도 이 시간은 달리기를 유지한다
         private const float BRACE_RELEASE_SECONDS = 0.3f; // 예고도 돌진도 아닌데 준비 자세에 남아 있으면 풀어 주는 시간
         private const float RELEASE_FADE_SECONDS  = 0.1f;
+        private const float HIT_SOUND_INTERVAL  = 0.2f;
         private const int   NO_MODEL            = -1;
 
         // 모델 배열 순서, 프리팹 빌더가 같은 순서로 채운다
@@ -88,6 +89,10 @@ namespace Shinshi.AI
         private bool                  _seenAlive;
         private float                 _dashUntil;
         private float                 _braceReleaseAt = -1f;
+        private EEnemyState           _soundBehavior;
+        private bool                  _soundPrimed;
+        private bool                  _appearPlayed;
+        private float                 _nextHitSoundAt;
 
         /****************************************
         *              Unity Event
@@ -125,6 +130,9 @@ namespace Shinshi.AI
             _seenAlive      = false;
             _dashUntil      = 0f;
             _braceReleaseAt = -1f;
+            _soundPrimed    = false;
+            _appearPlayed   = false;
+            _nextHitSoundAt = 0f;
             ClearFlash();
             HideTelegraph();
         }
@@ -157,6 +165,7 @@ namespace Shinshi.AI
             ApplyHealthFlash();
             ApplyCorpse();
             ApplyRole();
+            ApplySound();
             ApplyAnimation();
             ApplyFlash();
             ApplyTelegraph();
@@ -267,6 +276,76 @@ namespace Shinshi.AI
             _activeModel   = index;
             _animator      = ((_modelAnimators != null) && (index < _modelAnimators.Length)) ? _modelAnimators[index] : null;
             _animatorDirty = true;
+        }
+
+        // 서버 행동 상태가 바뀐 순간에 맞춰 효과음을 울린다. 복제가 중간 상태를 놓칠 수 있어 정확한 상태 쌍이 아니라 어디서 어디로 나갔는지로 본다
+        private void ApplySound()
+        {
+            EEnemyState behavior = _state.Behavior;
+            EEnemyRole  role     = _state.Role;
+            bool        alive    = (_state.LifeState == EParticipantLifeState.Alive) && (behavior != EEnemyState.Dead);
+
+            if (!alive)
+            {
+                _soundBehavior = behavior;
+                return;
+            }
+
+            Vector3 position = transform.position;
+
+            if ((role == EEnemyRole.Elite) && (!_appearPlayed))
+            {
+                _appearPlayed = true;
+                EnemySoundPlayer.Play(EEnemySound.EliteAppear, position);
+            }
+
+            // 풀에서 켜진 첫 프레임은 지금 상태를 기준으로만 삼고 상태 변화 소리는 내지 않는다
+            if (!_soundPrimed)
+            {
+                _soundPrimed   = true;
+                _soundBehavior = behavior;
+                return;
+            }
+
+            EEnemyState previous = _soundBehavior;
+            _soundBehavior = behavior;
+            if (previous == behavior)
+            {
+                return;
+            }
+
+            if ((behavior == EEnemyState.Telegraph) && (role == EEnemyRole.Ranged))
+            {
+                EnemySoundPlayer.Play(EEnemySound.RangedCast, position);
+            }
+
+            if ((behavior == EEnemyState.Dash) && (role == EEnemyRole.Charger))
+            {
+                EnemySoundPlayer.Play(EEnemySound.ChargeRush, position);
+            }
+
+            if ((previous == EEnemyState.Dash) && (role == EEnemyRole.Charger))
+            {
+                EnemySoundPlayer.Play(EEnemySound.ChargeImpact, position);
+            }
+
+            // 예고가 취소(Hit)나 돌진으로 이어지지 않고 끝났으면 타격이 일어난 것이다
+            if ((previous == EEnemyState.Telegraph) && (behavior != EEnemyState.Hit) && (behavior != EEnemyState.Dash))
+            {
+                if (role == EEnemyRole.Melee)
+                {
+                    EnemySoundPlayer.Play(EEnemySound.MeleeAttack, position);
+                }
+                else if (role == EEnemyRole.Elite)
+                {
+                    EnemySoundPlayer.Play(EEnemySound.EliteSmash, position);
+                }
+            }
+        }
+
+        private static bool IsVendigoRole(EEnemyRole role)
+        {
+            return ModelIndexOf(role) == MODEL_VENDIGO;
         }
 
         // 서버 상태와 실제 이동량으로 애니메이터를 움직인다. 서버가 상태를 정하므로 여기서는 값을 읽어 파라미터로 옮길 뿐이다
@@ -432,6 +511,7 @@ namespace Shinshi.AI
         private void LaunchCorpse()
         {
             _corpseLaunched = true;
+            EnemySoundPlayer.Play(IsVendigoRole(_appliedRole) ? EEnemySound.DeathVendigo : EEnemySound.DeathBeast, transform.position);
             if (EnemyCorpse.Launch(_modelRoots[_activeModel], ReadFlyDirection()))
             {
                 _modelRoots[_activeModel].SetActive(false);
@@ -468,10 +548,23 @@ namespace Shinshi.AI
             if ((health < _lastHealth) && (_state.LifeState == EParticipantLifeState.Alive))
             {
                 _flashUntil = Time.time + FLASH_SECONDS;
+                PlayHitSound();
                 PlayHitReaction();
             }
 
             _lastHealth = health;
+        }
+
+        // 연타에 소리가 겹쳐 뭉개지지 않게 짧은 간격을 둔다
+        private void PlayHitSound()
+        {
+            if (Time.time < _nextHitSoundAt)
+            {
+                return;
+            }
+
+            _nextHitSoundAt = Time.time + HIT_SOUND_INTERVAL;
+            EnemySoundPlayer.Play(IsVendigoRole(_state.Role) ? EEnemySound.HitVendigo : EEnemySound.HitBeast, transform.position);
         }
 
         // 공격을 끊지 않는 피격만 동작으로 보인다. 예고, 돌진, 경직 중 피격은 서버가 상태로 알린다

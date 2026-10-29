@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 2679762219380379305}
   - component: {fileID: 5706912240508128301}
   - component: {fileID: 7012541121253629083}
+  - component: {fileID: 5288334170112934218}
   m_Layer: 0
   m_Name: PF_MucheolBoss
   m_TagString: Untagged
@@ -64,18 +65,24 @@ MonoBehaviour:
   _templates:
   - _prefab: {fileID: 5077989429599655534, guid: 2dd58f00a425e6d4fb35cfb053f10606, type: 3}
     _profile: {fileID: 11400000, guid: 798c8182db3eeec4d9211c8fa5d388c2, type: 2}
-  - _prefab: {fileID: 499106086623792859, guid: 97bfbd4a23032584ea026b2db1c9ed72, type: 3}
+  - _prefab: {fileID: 499106086623792859, guid: ff05c60e12d5380488df69a5b00fd4d8, type: 3}
     _profile: {fileID: 11400000, guid: 589086f546090e34f952a32824d03d42, type: 2}
   - _prefab: {fileID: 2800039177950013571, guid: 5ef5e97f4f0197543bbd2d3dc94a91dc, type: 3}
     _profile: {fileID: 11400000, guid: 8db4adf35fe42e44bb395df503d31f4e, type: 2}
-  - _prefab: {fileID: 2675438885284939630, guid: ad7521ef3a7f4f145b864d33789d4b95, type: 3}
+  - _prefab: {fileID: 2675438885284939630, guid: 791868cf38a408f4bab9a863efb4fdb6, type: 3}
     _profile: {fileID: 11400000, guid: 39957bc89babe7a4c9d3ade6876516f4, type: 2}
   - _prefab: {fileID: 3567491334474975996, guid: b9bd4aea755bc894481d3139ed1fe326, type: 3}
     _profile: {fileID: 11400000, guid: c162bed19c6aa4442bef60e3f24fec75, type: 2}
   - _prefab: {fileID: 4679569735249205841, guid: 27dfc0c389d264b48b0e969c502e0809, type: 3}
     _profile: {fileID: 11400000, guid: dbbb06be6b85aab4c98397b2ddaac304, type: 2}
-  - _prefab: {fileID: 3611780430113273491, guid: 3dbb458840f753c45a33ad7463aab8a1, type: 3}
+  - _prefab: {fileID: 3611780430113273491, guid: 125d46e6819863a4aaac0c6c5c38a976, type: 3}
     _profile: {fileID: 11400000, guid: 2e54e15f01e6acb46863a1ec0a651667, type: 2}
+  - _prefab: {fileID: 5077989429599655534, guid: 9839d6a9a2d2ae549989ed86a175069d, type: 3}
+    _profile: {fileID: 11400000, guid: 798c8182db3eeec4d9211c8fa5d388c2, type: 2}
+  _dashRushPrefab: {fileID: 3022872818176614544, guid: d452f9e5c9d0db344a8aded59e5b0256, type: 3}
+  _swingTelegraphPrefab: {fileID: 2344842101379775600, guid: 68f8dc77ff9e2bf4d83b42483a2d9c58, type: 3}
+  _armTrailPrefab: {fileID: 1795347528255833249, guid: 550ad63bbe979d04b9b654c6c2fb59f5, type: 3}
+  _sound: {fileID: 0}
 --- !u!114 &5706912240508128301
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102,6 +109,7 @@ MonoBehaviour:
   - {x: 349.43063, y: 180, z: 0.000000008090538}
   _material: {fileID: 2100000, guid: 56068431b6ce7204ebde6d2ed0dec26f, type: 2}
   _size: 1.4
+  _sound: {fileID: 0}
 --- !u!114 &7012541121253629083
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -117,6 +125,20 @@ MonoBehaviour:
   _flashSeconds: 0.15
   _peak: 1
   _gain: 8
+--- !u!114 &5288334170112934218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2502191398135602160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de536209bfbd8db49974f548638a308b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.MucheolSoundPlayer
+  _catalog: {fileID: 11400000, guid: 4dbb32f2573d3544eab3cff265b476eb, type: 2}
+  _spatialBlend: 0.5
 --- !u!1 &2519519165488727896
 GameObject:
   m_ObjectHideFlags: 0

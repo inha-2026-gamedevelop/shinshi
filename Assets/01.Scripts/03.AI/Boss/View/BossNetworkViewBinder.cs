@@ -31,6 +31,7 @@ namespace Shinshi.AI
         [SerializeField] private BossMucheolPhaseView _mucheolPhaseView; // 무철 전용 표시, 비어 있으면 생략한다
         [SerializeField] private MucheolMotionView _mucheolMotion; // 무철 몸 동작, 비어 있으면 같은 오브젝트에서 한 번 찾는다
         [SerializeField] private MucheolPatternVfxView _mucheolVfx; // 무철 일반 패턴 VFX, 비어 있으면 같은 오브젝트에서 한 번 찾는다
+        [SerializeField] private MucheolSoundPlayer _mucheolSound; // 무철 효과음, 비어 있으면 같은 오브젝트에서 한 번 찾고 없으면 소리를 생략한다
         [SerializeField] private MucheolSealView _sealView; // 무철 방향 봉인 표식, 비어 있으면 연결할 때 하위 표현에서 찾는다
         [SerializeField] private WolbaekTalismanView _talismanView; // 부적진 복제 계약의 클라이언트 입력점
         [SerializeField] private WolbaekColorWardView _colorWardView; // 50% 복제 계약의 클라이언트 입력점
@@ -53,6 +54,7 @@ namespace Shinshi.AI
         private bool _wasDefeated;
         private bool _justBound;
         private const string WOLBAEK_BOSS_ID = "boss_wolbaek";
+        private const float CHARGE_SOUND_LATE_SECONDS = 0.4f; // 이보다 늦게 받은 충돌과 그로기 소리는 내지 않는다
         private const int NO_CAST_ID = 0; // 공용 시전 번호의 없음 값(CombatIds.NONE)과 같다
         private EBossFlowState _lastFlowState = EBossFlowState.Combat;
 
@@ -114,6 +116,12 @@ namespace Shinshi.AI
             {
                 TryGetComponent(out _mucheolVfx);
             }
+            if (_mucheolSound == null)
+            {
+                TryGetComponent(out _mucheolSound);
+            }
+
+            _chargeStructures.Destroyed += OnChargeStructureDestroyedSound;
 
             _anchorTracker = new BossParticipantAnchorTracker(SetParticipantAnchor);
 
@@ -205,6 +213,8 @@ namespace Shinshi.AI
 
         private void OnDestroy()
         {
+            _chargeStructures.Destroyed -= OnChargeStructureDestroyedSound;
+
             // 외부에서 공유한 표현 루트는 소유하지 않는다. 이 개체가 분리한 자식만 함께 정리한다.
             if (_detachedEffectsRoot != null)
             {
@@ -2062,6 +2072,17 @@ namespace Shinshi.AI
         // 그로기가 반동을 대신한다(그로기 VFX는 아직 없다)
         public void OnChargeEnded(in BossChargeOutcome outcome)
         {
+            ShowChargeEnded(in outcome);
+
+            // 정상 이동 종료는 소리가 없고 벽이나 구조물에 부딪힌 충돌만 낸다. 늦게 받은 결과는 내지 않는다
+            if (outcome.IsCollision && (_mucheolSound != null) && (ReadServerTime() - outcome.ServerTime <= CHARGE_SOUND_LATE_SECONDS))
+            {
+                _mucheolSound.Play(EMucheolSound.WallCrash, outcome.Position, Mathf.Max(0f, (float)(outcome.ServerTime - ReadServerTime())));
+            }
+        }
+
+        private void ShowChargeEnded(in BossChargeOutcome outcome)
+        {
             if (IsMucheolMotion && outcome.IsCollision)
             {
                 _mucheolMotion.PlayChargeImpact(outcome.CastId, outcome.ServerTime);
@@ -2080,6 +2101,14 @@ namespace Shinshi.AI
         // 대기로 이미 내려앉았으면 끝 시각만 잇고, 대기를 받지 못했으면 충돌 시각부터 끝까지 새로 재생한다
         public void OnChargeGroggyStarted(in BossChargeGroggy groggy)
         {
+            // 구조물 파괴 순간이 아니라 실제 그로기가 시작됐을 때만 낸다
+            double groggyStart = double.IsNaN(groggy.GroggyStartServerTime) ? ReadServerTime() : groggy.GroggyStartServerTime;
+            if ((_mucheolSound != null) && (ReadServerTime() - groggyStart <= CHARGE_SOUND_LATE_SECONDS))
+            {
+                _mucheolSound.Play(EMucheolSound.GroggyEnter, _mucheolSound.transform.position,
+                    Mathf.Max(0f, (float)(groggyStart - ReadServerTime())));
+            }
+
             if (!IsMucheolMotion)
             {
                 return;
@@ -2176,6 +2205,15 @@ namespace Shinshi.AI
             _chargeStructures.ApplyDestroyed(structureId);
         }
 
+        // 구조물 표현이 파괴 사건에서 처음 부술 때만 부른다, 복원은 부르지 않는다
+        private void OnChargeStructureDestroyedSound(int structureId, Vector3 center)
+        {
+            if (_mucheolSound != null)
+            {
+                _mucheolSound.Play(EMucheolSound.PillarBreak, center);
+            }
+        }
+
         public void OnStrikeChainRestored(in BossStrikeChainSnapshot snapshot)
         {
             if (IsMucheolMotion)
@@ -2243,7 +2281,7 @@ namespace Shinshi.AI
         // 회복 중에 접속했으면 반동은 이미 끝났다. 반동 구간이 남아 있을 때만 이어 보인다
         public void OnChargeRestored(in BossChargeOutcome outcome)
         {
-            OnChargeEnded(in outcome);
+            ShowChargeEnded(in outcome);
         }
 
         // 끝 시각이 지난 그로기는 모션이 그리지 않는다. 대기 중이면 충돌 시각부터 낮은 자세로 이어 간다
