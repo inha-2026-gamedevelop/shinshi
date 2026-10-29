@@ -46,7 +46,7 @@ namespace Shinshi.Dev
         [SerializeField] private HitFeedbackProfile _heavyProfile;
 
         [Header("혈흔 (비우면 개발용 Resources 프리팹)")]
-        [SerializeField] private DevHitFeedbackBlood _bloodPrefab;
+        [SerializeField] private HitFeedbackBlood _bloodPrefab;
 
         [Header("켜기")]
         [SerializeField] private bool _useHitLag      = true;
@@ -66,7 +66,7 @@ namespace Shinshi.Dev
         private HitFeedbackCamera       _camera    = null;
         private DevHitFeedbackSparks    _sparks    = null;
         private DevHitFeedbackShockwave _shockwave = null;
-        private DevHitFeedbackBlood     _blood     = null;
+        private HitFeedbackBlood     _blood     = null;
         private DevCorpseLandingFx _landing = null;
 
         private Vector3 _shakeDirectionSum = Vector3.zero;
@@ -97,7 +97,7 @@ namespace Shinshi.Dev
             _sparks = new GameObject("DevSparks").AddComponent<DevHitFeedbackSparks>();
             _sparks.transform.SetParent(transform, false);
 
-            DevHitFeedbackBlood bloodPrefab = _bloodPrefab;
+            HitFeedbackBlood bloodPrefab = _bloodPrefab;
             if (bloodPrefab == null)
             {
                 GameObject bloodAsset = Resources.Load<GameObject>(BLOOD_RESOURCE);
@@ -114,7 +114,7 @@ namespace Shinshi.Dev
             else
             {
                 Debug.LogWarning("[HitFeedback] 혈흔 프리팹이 없어 코드 기본값을 사용한다", this);
-                _blood = new GameObject("DevBlood").AddComponent<DevHitFeedbackBlood>();
+                _blood = new GameObject("DevBlood").AddComponent<HitFeedbackBlood>();
                 _blood.transform.SetParent(transform, false);
             }
 
@@ -201,7 +201,7 @@ namespace Shinshi.Dev
         /// <summary> 임팩트 프레임 사이의 최소 간격(초) </summary>
         public float ImpactCooldown { get; set; } = IMPACT_COOLDOWN;
 
-        public DevHitFeedbackBlood Blood => _useBlood ? _blood : null;
+        public HitFeedbackBlood Blood => _useBlood ? _blood : null;
         public DevCorpseLandingFx Landing => _landing;
 
         /****************************************
