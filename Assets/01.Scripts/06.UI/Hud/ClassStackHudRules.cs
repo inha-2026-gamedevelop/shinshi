@@ -73,8 +73,8 @@ namespace Shinshi.UI
         private static readonly Color G_WindColor    = new Color(0.55f, 1f, 0.65f, 1f);
         private static readonly Color G_FireColor    = new Color(1f, 0.55f, 0.35f, 1f);
         private static readonly Color G_FullColor    = new Color(1f, 0.85f, 0.3f, 1f);
-        // 속성 그림이 밝고 알록달록해 숫자는 눈에 띄는 노란색에 외곽선을 둬서 읽히게 한다
-        private static readonly Color G_BadgeColor   = new Color(1f, 0.92f, 0.3f, 1f);
+        // 속성 그림이 밝고 알록달록해 숫자는 눈에 띄는 빨간색에 외곽선을 둬서 읽히게 한다
+        private static readonly Color G_BadgeColor   = new Color(1f, 0.2f, 0.2f, 1f);
 
         /****************************************
         *                Methods
@@ -177,7 +177,7 @@ namespace Shinshi.UI
             return (display.IsVisible) && (display.ShowsElement);
         }
 
-        /// <summary> 아이콘 옆 숫자색, 다 차면 금색이고 그 전에는 노란색이다 </summary>
+        /// <summary> 아이콘 옆 숫자색, 다 차면 금색이고 그 전에는 빨간색이다 </summary>
         public static Color GetBadgeColor(in ClassStackDisplay display)
         {
             return display.IsFull ? G_FullColor : G_BadgeColor;

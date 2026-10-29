@@ -119,7 +119,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void GetBadgeColor_FullIsGold_PartialIsYellow()
+        public void GetBadgeColor_FullIsGold_PartialIsRed()
         {
             ClassStackDisplay partial = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Fire);
             ClassStackDisplay full    = ClassStackHudRules.Build(EPlayerClass.Archer, MAX_STACKS, MAX_STACKS, EArcherElement.Fire);
