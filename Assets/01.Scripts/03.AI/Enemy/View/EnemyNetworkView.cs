@@ -44,6 +44,9 @@ namespace Shinshi.AI
 
         private static bool s_quitting;
 
+        /// <summary> 적이 처치된 것으로 보여 시체를 날리는 순간 불린다. 인자는 개체 위치와 플레이어에게서 멀어지는 방향(없으면 영벡터)이다 </summary>
+        public static event System.Action<Vector3, Vector3> Killed;
+
         private static readonly Color FLASH_TINT = Color.red;
 
         private static readonly int BASE_COLOR_ID = Shader.PropertyToID("_BaseColor");
@@ -511,6 +514,7 @@ namespace Shinshi.AI
         private void LaunchCorpse()
         {
             _corpseLaunched = true;
+            Killed?.Invoke(transform.position, ReadFlyDirection());
             EnemySoundPlayer.Play(IsVendigoRole(_appliedRole) ? EEnemySound.DeathVendigo : EEnemySound.DeathBeast, transform.position);
             if (EnemyCorpse.Launch(_modelRoots[_activeModel], ReadFlyDirection()))
             {

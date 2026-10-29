@@ -8,6 +8,7 @@ using Mirror;
 using Unity.Cinemachine;
 
 // 프로젝트 내부
+using Shinshi.AI;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
@@ -24,6 +25,8 @@ namespace Shinshi.Art
         *                Fields
         ****************************************/
 
+        private const string BLOOD_RESOURCE        = "DevHitBlood/PF_DevHitBlood";
+        private const float KILL_BLOOD_HEIGHT      = 1f; // m, 개체 발밑 기준 몸통 높이
         private const float DEFAULT_SHAKE_SECONDS  = 0.2f;
         private const float DIRECTION_EPSILON_SQR  = 0.0001f;
         // 치명타 줌 펀치는 짧게 당겼다가 바로 풀므로 유지 시간과 당기는 감쇠 시간이 매우 짧다
@@ -54,6 +57,10 @@ namespace Shinshi.Art
         [SerializeField, Min(0)] private int _lightSparkCount = 10;
         [SerializeField, Min(0)] private int _heavySparkCount = 28;
         [SerializeField, Min(1f)] private float _critSparkMultiplier = 2.5f;
+
+        [Header("적중 혈흔")]
+        // 켜면 Resources의 혈흔 프리팹을 세워 내 적중마다 분사와 바닥 혈흔을 낸다. 지속 피해는 제외한다
+        [SerializeField] private bool _useBlood = true;
 
         [Header("치명타 화면 연출")]
         // 렌더러의 풀스크린 패스와 그 재질. 비어 있으면 블러와 임팩트 프레임은 건너뛴다
@@ -91,8 +98,9 @@ namespace Shinshi.Art
         private HitSparkPool                      _sparks     = null;
         private HitFeedbackMotionBlur             _motionBlur = null;
         private HitFeedbackScreenFx               _screenFx   = null;
+        private HitFeedbackBlood                  _blood      = null;
 
-        private NetworkIdentity         _boundPlayer = null;
+        private NetworkIdentity        _boundPlayer = null;
         private PlayerInputState        _input       = null;
         private PlayerCombatState       _combat      = null;
         private CinemachineCameraOffset _offset      = null;
@@ -111,6 +119,11 @@ namespace Shinshi.Art
                 _sparks = new GameObject("HitSparks").AddComponent<HitSparkPool>();
                 _sparks.transform.SetParent(transform, false);
                 _sparks.Initialize(_sparkMaterial);
+            }
+
+            if (_useBlood)
+            {
+                CreateBlood();
             }
 
             if ((_critBlurFeature != null) && (_critBlurMaterial != null))
@@ -136,8 +149,14 @@ namespace Shinshi.Art
             }
         }
 
+        private void OnEnable()
+        {
+            EnemyNetworkView.Killed += OnEnemyKilled;
+        }
+
         private void OnDisable()
         {
+            EnemyNetworkView.Killed -= OnEnemyKilled;
             Unbind();
         }
 
@@ -315,6 +334,10 @@ namespace Shinshi.Art
                 _effects.Kick(cameraDirection, strength, _shakeSeconds, Time.unscaledTimeAsDouble);
             }
             BurstSparks(feedback, kind != MageknightHitClassifier.EKind.Other);
+            if (!feedback.IsDamageOverTime)
+            {
+                BurstBlood(feedback);
+            }
 
             // 지속 피해는 틱마다 들어오므로 치명타로 보여 주지 않는다
             if ((feedback.IsCritical) && (!feedback.IsDamageOverTime))
@@ -355,6 +378,46 @@ namespace Shinshi.Art
             int count = HitSparkPool.ResolveCount(isHeavy ? _heavySparkCount : _lightSparkCount, feedback.IsCritical,
                 _critSparkMultiplier);
             _sparks.Burst(feedback.WorldPosition, direction.normalized, count, feedback.IsCritical);
+        }
+
+        // 혈흔 풀은 프리팹 하나로 Resources에서 읽는다. 없으면 혈흔만 건너뛴다
+        private void CreateBlood()
+        {
+            var prefab = Resources.Load<GameObject>(BLOOD_RESOURCE);
+            if ((prefab == null) || (!prefab.TryGetComponent(out HitFeedbackBlood bloodPrefab)))
+            {
+                Debug.LogWarning("[CombatCameraFeedback] 혈흔 프리팹이 없어 혈흔을 건너뛴다", this);
+                return;
+            }
+
+            _blood = Instantiate(bloodPrefab, transform, false);
+            _blood.name = "HitBlood";
+        }
+
+        // 처치는 피해 알림에 없어 적 표현이 시체를 날리는 순간을 쓴다. 내 처치와 파티원의 처치를 모두 보여 준다.
+        // 몸통 높이에서 플레이어 쪽으로 분사해 시체가 날아가는 반대편에 피가 튄다
+        private void OnEnemyKilled(Vector3 position, Vector3 awayFromPlayer)
+        {
+            if (_blood == null)
+            {
+                return;
+            }
+
+            awayFromPlayer.y = 0f;
+            _blood.Burst(position + (Vector3.up * KILL_BLOOD_HEIGHT), awayFromPlayer.normalized, true, false);
+        }
+
+        // 맞은 자리에서 플레이어가 공격한 쪽으로 피를 튀긴다. 처치 분량은 OnEnemyKilled가 따로 낸다
+        private void BurstBlood(DamageFeedback feedback)
+        {
+            if (_blood == null)
+            {
+                return;
+            }
+
+            Vector3 direction = feedback.WorldPosition - _boundPlayer.transform.position;
+            direction.y = 0f;
+            _blood.Burst(feedback.WorldPosition, direction.normalized, false, feedback.IsCritical);
         }
 
         // 맞은 쪽으로 밀리도록 플레이어에서 적중 지점으로 향하는 방향을 카메라 좌표로 바꾼다

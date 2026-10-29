@@ -105,7 +105,7 @@
 
 [개발 씬 피격 불똥](../unity/HIT_FEEDBACK_SPARKS_USAGE.md): `DevHitFeedbackSparks`와 `PF_DevHitSparks` 프리팹의 `Burst`/`StopAll` 계약, Inspector 기본값, 40m 시점 검증 범위. 개발 씬 전용이며 릴리즈 `HitSparkPool`과 부팅 카탈로그에는 적용하지 않았다.
 
-[개발 씬 피격 혈흔](../unity/HIT_FEEDBACK_BLOOD_USAGE.md): `DevHitFeedbackBlood`와 `PF_DevHitBlood` 프리팹의 타격 분사, 사체 출혈 추적, 바닥 혈흔 수명과 정리 계약. `HitFeedbackDirector`가 개발용 Resources 프리팹을 읽으며 릴리즈 전투에는 연결하지 않았다.
+[피격 혈흔](../unity/HIT_FEEDBACK_BLOOD_USAGE.md): `HitFeedbackBlood`(`05.Art/HitFeedback`)와 `PF_DevHitBlood` 프리팹의 타격 분사, 사체 출혈 추적, 바닥 혈흔 수명과 정리 계약. 개발 씬은 `HitFeedbackDirector`가, 릴리즈는 `CombatCameraFeedback`이 같은 Resources 프리팹을 읽는다. 릴리즈는 내 적중과 처치의 분사·바닥 혈흔만 연결했고(구현됨·실행 미검증) 사체 출혈 추적과 착지 혈흔은 연결하지 않았다.
 
 ### 거래 비동기 경합 반복 검증
 거래 fixture 반복은 2026-10-23 00:07:49~00:07:52 KST `trade-repeat-10.xml`에서 23개 테스트 전부 통과(exit 0)했다. `-repeat 10` 설정과 각 test-case의 `repeatIteration=10`을 확인했다. 로컬 RepeatCommand는 초기 실행 후 추가 반복을 수행하므로 이를 230건의 누적 단언 수로 환산하지 않는다. 테스트가 자동 변경한 폰트7개는 `final-test-font-changes.patch`에 보존 후 HEAD로 복원했고 최종 asset/unity/prefab/asmdef 차이는0이다.

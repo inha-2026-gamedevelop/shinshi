@@ -1,17 +1,27 @@
-# 개발 씬 피격 혈흔
+# 피격 혈흔
 
-`Dev_ForestPlateauHitFeedback`에서 타격 순간 분사, 날아가는 사체의 출혈, 바닥에 남는 혈흔을 재생한다. 혈흔은 `DevHitFeedbackSpawner`와 `HitFeedbackDirector`를 사용하는 개발 씬에 연결하며 서버 피해 판정은 변경하지 않는다. 공용 사체의 래그돌 정책은 아래 절을 따른다.
+`Dev_ForestPlateauHitFeedback`에서 타격 순간 분사, 날아가는 사체의 출혈, 바닥에 남는 혈흔을 재생한다. 개발 씬은 `DevHitFeedbackSpawner`와 `HitFeedbackDirector`로, 릴리즈는 `CombatCameraFeedback`으로 연결하며 서버 피해 판정은 변경하지 않는다. 릴리즈 연결은 아래 "릴리즈 연결" 절을 따른다. 공용 사체의 래그돌 정책은 아래 절을 따른다.
 
 ## 프리팹과 적용 경로
 
 - 프리팹: `Assets/02.Prefab/VFX/HitFeedback/Resources/DevHitBlood/PF_DevHitBlood.prefab`.
-- 풀: `Assets/01.Scripts/99.Dev/Combat/HitFeedback/Blood/DevHitFeedbackBlood.cs`.
-- 사체 연결: 같은 폴더의 `DevCorpseBloodTrail.cs`.
-- 텍스처/재질: 같은 폴더의 `Resources/DevHitBlood/T_BloodSplatAtlas.png`, `M_BloodSpray.mat`, `M_BloodGround.mat`.
+- 풀: `Assets/01.Scripts/05.Art/HitFeedback/HitFeedbackBlood.cs`(`Shinshi.Art`). 개발 씬과 릴리즈가 함께 쓴다.
+- 사체 연결: `Assets/01.Scripts/99.Dev/Combat/HitFeedback/Blood/DevCorpseBloodTrail.cs`. 개발 씬 전용이다.
+- 텍스처/재질: `Assets/01.Scripts/05.Art/HitFeedback/Resources/DevHitBlood/T_BloodSplatAtlas.png`, `M_BloodSpray.mat`, `M_BloodGround.mat`.
 
 Director의 `_bloodPrefab`이 비어 있으면 `Resources/DevHitBlood/PF_DevHitBlood`를 읽는다. 따라서 위 프리팹 Inspector의 설정이 다음 게임 시작에도 적용된다. 프리팹이 없으면 경고와 함께 코드 기본값으로 생성한다. `_useBlood`는 혈흔 사용 여부이며 기존 불똥 토글과 독립적이다. 원본 씬을 저장하거나 새 컴포넌트를 수동 배치할 필요는 없다.
 
 원점과 크기는 월드 미터다. 풀 루트는 움직이지 않는 위치에 두고 스케일 `(1, 1, 1)`을 사용한다. 공중 입자는 월드 공간에서 시뮬레이션한다. 혈흔과 방울은 표현 전용이며 Collider, 피해량, 공격 판정이나 서버 시계를 추가하지 않는다.
+
+## 릴리즈 연결
+
+`CombatCameraFeedback`이 시작할 때 `Resources/DevHitBlood/PF_DevHitBlood`를 읽어 풀을 세운다(`_useBlood`로 끈다). 프리팹이 없으면 경고 뒤 혈흔만 건너뛴다.
+
+- 내 적중: 소유자가 받는 피해 알림마다 `Burst(.., isKill: false, ..)`를 부른다. 지속 피해는 제외하고, 방향은 플레이어에서 적중 지점으로 향하는 수평 방향이다.
+- 처치: 피해 알림에 처치 정보가 없어 `EnemyNetworkView.Killed`(시체를 날리는 순간 불리는 정적 이벤트)를 받아 몸통 높이 1m에서 `Burst(.., isKill: true, ..)`를 부른다. 내 처치와 파티원 처치 모두 해당한다.
+- 아직 없는 것: 시체 출혈 추적(`FollowCorpse`), 시체 착지 혈흔, 파티원의 일반 적중 혈흔, 몬스터 피격 떨림.
+
+구현됨·실행 미검증이다. 컴파일 오류 0건만 확인했고 릴리즈 던전 플레이, 빌드, 성능 예산은 확인하지 않았다.
 
 ## 호출과 사체 추적
 
