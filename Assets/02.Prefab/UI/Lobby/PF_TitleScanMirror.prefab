@@ -43,11 +43,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 60d46639c9905f14898b69560c2cacf3, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.UI.TitleMirrorMotion
-  _yawDegrees: 10
-  _pitchDegrees: 7
-  _response: 4
+  _yawDegrees: 22
+  _pitchDegrees: 16
+  _response: 5
 --- !u!1001 &2516318602436854363
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -106,7 +106,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 419be9945716f5a4199650830be9f190, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
-      value:
+      value: 
       objectReference: {fileID: 2100000, guid: 9592a023e8fd36c4d82273ec567c980b, type: 2}
     - target: {fileID: 919132149155446097, guid: 419be9945716f5a4199650830be9f190, type: 3}
       propertyPath: m_Name

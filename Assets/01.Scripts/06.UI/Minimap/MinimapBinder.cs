@@ -121,6 +121,18 @@ namespace Shinshi.UI
                 }
             }
 
+            // 봉인 핵은 파괴되거나 만료되면 목록에서 빠지므로 끝난 핵은 자연히 사라진다
+            IReadOnlyList<WolbaekSealCorePlayer> cores = WolbaekSealCorePlayer.RunningPlayers;
+            for (int i = 0; i < cores.Count; ++i)
+            {
+                if ((cores[i] != null)
+                    && (cores[i].CurrentSnapshot.Phase != WolbaekSealCorePlayer.EPhase.Destroyed)
+                    && (_view.SetMarker(used, MinimapRules.ToXz(cores[i].transform.position), EMinimapMarker.Gimmick, OpaqueColor(cores[i].MarkerColor))))
+                {
+                    ++used;
+                }
+            }
+
             _view.HideMarkersFrom(used);
         }
 
