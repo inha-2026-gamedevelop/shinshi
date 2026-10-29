@@ -156,6 +156,13 @@ namespace Shinshi.UI
 
             position = self.position;
             yaw      = self.eulerAngles.y;
+
+            // 플레이어 루트는 회전하지 않고 모델만 복제된 바라보는 방향으로 돌기 때문에, 접속 중에는 그 값을 쓴다
+            if ((connected) && (self.TryGetComponent(out PlayerCombatState combat)))
+            {
+                yaw = MinimapRules.DirectionToYaw(FacingRules.DecodeYaw(combat.FacingYaw));
+            }
+
             return true;
         }
 
