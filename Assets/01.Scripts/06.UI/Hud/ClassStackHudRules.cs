@@ -139,7 +139,7 @@ namespace Shinshi.UI
                 display.Stacks, display.Max);
         }
 
-        /// <summary> 다 차면 금색, 궁수는 속성 색, 그 밖은 기본색이다 </summary>
+        /// <summary> 다 차면 금색, 궁수는 속성 색, 속성이 없는 마검사는 빨간색이다 </summary>
         public static Color GetColor(in ClassStackDisplay display)
         {
             if (display.IsFull)
@@ -147,7 +147,7 @@ namespace Shinshi.UI
                 return G_FullColor;
             }
 
-            return GetElementColor(display.Element);
+            return display.ShowsElement ? GetElementColor(display.Element) : G_BadgeColor;
         }
 
         /// <summary> 속성 아이콘 원화에서 고를 칸 번호, 아이콘을 그리지 않는 표시(궁수가 아니거나 속성이 없음)는 -1이다 </summary>
