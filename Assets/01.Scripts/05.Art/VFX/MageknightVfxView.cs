@@ -12,6 +12,7 @@ using Mirror;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.UI;
 
 namespace Shinshi.Art
 {
@@ -42,6 +43,7 @@ namespace Shinshi.Art
         [SerializeField] private GameObject _fieldPrefab;
         [FormerlySerializedAs("_sealPrefab")]
         [SerializeField] private GameObject _jumpPrefab;
+        [SerializeField] private GameObject _fullStackAuraPrefab;
 
         [Header("풀과 재생")]
         [SerializeField] private int   _poolSizePerPrefab = 2;
@@ -67,6 +69,7 @@ namespace Shinshi.Art
         private readonly MageknightVfxPool[]  _pools   = new MageknightVfxPool[KIND_COUNT];
 
         private Transform _poolRoot;
+        private GameObject _fullStackAura;
         private bool      _hasConfig;
         private bool      _wasRunning;
         private float     _waveSpeed;
@@ -80,13 +83,30 @@ namespace Shinshi.Art
         private int       _hitCastId;
         private int       _freezeCastId;
         private int       _freezeSpentFrames;
+        private AudioSource _sfxAudio;
+        private AudioClip[] _basicClips;
+        private AudioClip _waveClip;
+        private readonly System.Random _basicSoundRandom = new System.Random();
 
         /****************************************
         *              Unity Event
         ****************************************/
 
+        private void OnEnable()
+        {
+            SoundVolume.PreviewChanged += OnSfxVolumeChanged;
+            OnSfxVolumeChanged(SoundVolume.Load());
+        }
+
         private void OnDisable()
         {
+            SoundVolume.PreviewChanged -= OnSfxVolumeChanged;
+            if (_sfxAudio != null)
+            {
+                _sfxAudio.Stop();
+            }
+
+            StopFullStackAura();
             UnbindFeedback();
             _tracker.Reset();
             _wasRunning = false;
@@ -95,6 +115,7 @@ namespace Shinshi.Art
 
         private void OnDestroy()
         {
+            StopFullStackAura();
             StopAllEffects();
             if (_poolRoot != null)
             {
@@ -112,6 +133,7 @@ namespace Shinshi.Art
 
             if (_combat.PlayerClass != EPlayerClass.Mageknight)
             {
+                StopFullStackAura();
                 // 직업이 바뀌면 남은 효과를 멈추고, 마검사로 돌아오면 새 기준값부터 본다
                 if (_wasRunning)
                 {
@@ -123,6 +145,7 @@ namespace Shinshi.Art
                 return;
             }
 
+            UpdateFullStackAura();
             if ((!_hasConfig) && (!TryConfigure()))
             {
                 return;
@@ -174,6 +197,32 @@ namespace Shinshi.Art
             if (_combat == null)
             {
                 _combat = GetComponentInParent<PlayerCombatState>();
+            }
+        }
+
+        private void UpdateFullStackAura()
+        {
+            bool full = GameDB.IsInitialized && (GameDB.Skills.ClassStackMax > 0)
+                && (_combat.ClassStacks >= GameDB.Skills.ClassStackMax)
+                && (_combat.LifeState == EParticipantLifeState.Alive);
+            if ((!full) || (_fullStackAuraPrefab == null))
+            {
+                StopFullStackAura();
+                return;
+            }
+
+            if (_fullStackAura == null)
+            {
+                _fullStackAura = Instantiate(_fullStackAuraPrefab, _combat.transform, false);
+            }
+        }
+
+        private void StopFullStackAura()
+        {
+            if (_fullStackAura != null)
+            {
+                Destroy(_fullStackAura);
+                _fullStackAura = null;
             }
         }
 
@@ -251,6 +300,19 @@ namespace Shinshi.Art
 
         private void PlayEffect(MageknightVfxTracker.Play play, double now)
         {
+            if (play.Kind == EMageknightVfxKind.Basic)
+            {
+                PlayBasicSound();
+            }
+            else if (play.Kind == EMageknightVfxKind.Wave)
+            {
+                PlayWaveSound();
+            }
+            else if ((play.Kind == EMageknightVfxKind.Shield) && ((now - play.StartAt) <= _maxLateSeconds))
+            {
+                PlayBuffSound();
+            }
+
             MageknightVfxPool pool = _pools[(int)play.Kind];
             if ((pool == null) || (!pool.HasPrefab))
             {
@@ -283,6 +345,73 @@ namespace Shinshi.Art
                 default:
                     pool.PlayBrief(position, ToRotation(direction), now, Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
                     break;
+            }
+        }
+
+        private void PlayBasicSound()
+        {
+            if (_basicClips == null)
+            {
+                _basicClips = new[]
+                {
+                    Resources.Load<AudioClip>("SFX-Light-Slash-01_wav"),
+                    Resources.Load<AudioClip>("SFX-Light-Slash-02_wav"),
+                    Resources.Load<AudioClip>("SFX-Light-Slash-03_wav")
+                };
+            }
+
+            AudioClip clip = _basicClips[_basicSoundRandom.Next(_basicClips.Length)];
+            if (clip != null)
+            {
+                EnsureSfxAudio();
+                _sfxAudio.PlayOneShot(clip);
+            }
+        }
+
+        private void PlayWaveSound()
+        {
+            if (_waveClip == null)
+            {
+                _waveClip = Resources.Load<AudioClip>("WEAPON_Dagger");
+            }
+
+            if (_waveClip != null)
+            {
+                EnsureSfxAudio();
+                _sfxAudio.PlayOneShot(_waveClip);
+            }
+        }
+
+        private void PlayBuffSound()
+        {
+            AudioClip clip = BuffSoundClips.Pick(_basicSoundRandom);
+            if (clip != null)
+            {
+                EnsureSfxAudio();
+                _sfxAudio.PlayOneShot(clip);
+            }
+        }
+
+        private void EnsureSfxAudio()
+        {
+            if (_sfxAudio != null)
+            {
+                return;
+            }
+
+            _sfxAudio = gameObject.AddComponent<AudioSource>();
+            _sfxAudio.playOnAwake = false;
+            _sfxAudio.spatialBlend = 1f;
+            _sfxAudio.rolloffMode = AudioRolloffMode.Linear;
+            _sfxAudio.maxDistance = 60f;
+            OnSfxVolumeChanged(SoundVolume.Load());
+        }
+
+        private void OnSfxVolumeChanged(SoundVolume volume)
+        {
+            if (_sfxAudio != null)
+            {
+                _sfxAudio.volume = volume.Sfx;
             }
         }
 

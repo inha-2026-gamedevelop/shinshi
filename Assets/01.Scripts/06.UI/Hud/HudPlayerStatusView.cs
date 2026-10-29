@@ -3,12 +3,14 @@ using System.Globalization;
 
 // Unity
 using UnityEngine;
+using UnityEngine.UI;
 
 // 서드파티
 using DG.Tweening;
 using TMPro;
 
 // 프로젝트 내부
+using Shinshi.Common;
 using Shinshi.Contracts;
 
 namespace Shinshi.UI
@@ -29,6 +31,27 @@ namespace Shinshi.UI
         private const float STACK_FONT_SIZE = 14f;
         private const float STACK_GAP       = 2f;
         private const float STACK_HEIGHT    = 18f;
+
+        // 궁수 속성 아이콘은 BuffGroup 줄 맨 앞에 둔다. 씬과 프리팹을 고치지 않으려고 처음 보일 때 만든다.
+        // 아이콘 원화는 같은 정사각형 세 칸(얼음, 바람, 불)이라 UV로 골라 쓴다
+        private const string STATUS_LAYOUT_PATH      = "Layout_AlwaysVisible";
+        private const string BUFF_GROUP_PATH         = "Layout_AlwaysVisible/StatusEffectGroup/BuffGroup";
+        private const string ELEMENT_TEXTURE_PATH    = "T_ArcherElementOverhead";
+        private const string MAGE_STACK_TEXTURE_PATH = "T_MageknightStack";
+        private const int    ELEMENT_ATLAS_COLUMNS   = 3;
+        private const float  ELEMENT_ICON_SIZE       = 32f;
+        private const float  ELEMENT_LEFT_MARGIN     = 8f;
+        private const float  ELEMENT_COUNT_FONT_SIZE = 22f;
+        private const float  ELEMENT_COUNT_OFFSET_Y  = 0f;   // 숫자는 아이콘 오른쪽 아래 모서리에 겹친다
+        private const float  ELEMENT_COUNT_OUTLINE   = 0.55f; // 밝은 그림 위에서도 읽히게 하는 외곽선
+        private const string ELEMENT_COUNT_FORMAT    = "{0}";
+        // 다 차면 아이콘이 숨 쉬듯 커졌다 줄어든다
+        private const float  FULL_PULSE_SCALE        = 1.15f;
+        private const float  FULL_PULSE_SECONDS      = 0.5f;
+        private const float  FULL_GLOW_SIZE          = 48f;
+        private const float  FULL_GLOW_ALPHA         = 0.6f;
+        private const int    FULL_GLOW_TEXTURE_SIZE  = 32;
+        private static Texture2D s_fullGlowTexture;
 
         [Header("레벨")]
         [SerializeField] private TMP_Text _levelText = null;
@@ -57,6 +80,12 @@ namespace Shinshi.UI
         private ClassStackDisplay _stackDisplay = ClassStackDisplay.Hidden;
         private Tween             _trailTween   = null;
         private float             _hpRatio      = 0f;
+
+        private RectTransform _elementBadge;
+        private RawImage      _elementImage;
+        private RawImage      _elementGlow;
+        private TMP_Text      _elementCount;
+        private Tween         _fullPulse = null;
 
         /****************************************
         *                Methods
@@ -108,10 +137,17 @@ namespace Shinshi.UI
             }
         }
 
+        // 그림이 없는 버프, 디버프 자리 표시 칸의 회색 바탕은 항상 끈다
+        private void OnEnable()
+        {
+            HudModernLayout.HidePlaceholderIcons(transform.root.Find(STATUS_LAYOUT_PATH));
+        }
+
         private void OnDisable()
         {
             _trailTween?.Kill();
             _trailTween = null;
+            StopFullPulse();
             ResetExperience();
         }
 
@@ -201,7 +237,8 @@ namespace Shinshi.UI
             }
 
             _stackDisplay = display;
-            if (!display.IsVisible)
+            ApplyElementIcon(in display);
+            if ((!display.IsVisible) || ((display.ShowsElement) && (display.Element == EArcherElement.None)))
             {
                 if (_stackText != null)
                 {
@@ -216,7 +253,8 @@ namespace Shinshi.UI
                 return;
             }
 
-            _stackText.enabled = true;
+            // 속성 아이콘을 BuffGroup에 보이는 동안은 같은 정보라 체력바 위 글자를 감춘다
+            _stackText.enabled = (_elementBadge == null) || (!_elementBadge.gameObject.activeSelf);
             _stackText.color   = ClassStackHudRules.GetColor(in display);
             _stackText.SetText(ClassStackHudRules.FormatHud(in display));
         }
@@ -249,6 +287,187 @@ namespace Shinshi.UI
             text.raycastTarget      = false;
             _stackText = text;
             return true;
+        }
+
+        // 마검사와 속성이 정해진 궁수의 아이콘과 숫자를 BuffGroup에 보인다. 값이 바뀔 때만 불린다
+        private void ApplyElementIcon(in ClassStackDisplay display)
+        {
+            bool mageknight = (display.IsVisible) && (!display.ShowsElement);
+            int column = ClassStackHudRules.GetElementColumn(in display);
+            if ((!mageknight) && (column < 0))
+            {
+                if (_elementBadge != null)
+                {
+                    _elementBadge.gameObject.SetActive(false);
+                    StopFullPulse();
+                }
+
+                return;
+            }
+
+            if ((_elementBadge == null) && (!TryCreateElementBadge()))
+            {
+                return;
+            }
+
+            Texture2D texture = Resources.Load<Texture2D>(mageknight ? MAGE_STACK_TEXTURE_PATH : ELEMENT_TEXTURE_PATH);
+            if (texture == null)
+            {
+                if (_elementBadge != null)
+                {
+                    _elementBadge.gameObject.SetActive(false);
+                    StopFullPulse();
+                }
+
+                return;
+            }
+
+            _elementBadge.gameObject.SetActive(true);
+            float cellWidth = 1f / ELEMENT_ATLAS_COLUMNS;
+            _elementImage.texture = texture;
+            _elementImage.uvRect = mageknight ? new Rect(0f, 0f, 1f, 1f) : new Rect(column * cellWidth, 0f, cellWidth, 1f);
+            Color glowColor = ClassStackHudRules.GetElementColor(display.Element);
+            glowColor.a = FULL_GLOW_ALPHA;
+            _elementGlow.color = glowColor;
+            _elementGlow.gameObject.SetActive(display.IsFull);
+
+            bool showsCount = mageknight || ClassStackHudRules.ShowsBadgeCount(in display);
+            _elementCount.enabled = showsCount;
+            if (showsCount)
+            {
+                _elementCount.SetText(ELEMENT_COUNT_FORMAT, display.Stacks);
+            }
+
+            _elementCount.color = ClassStackHudRules.GetBadgeColor(in display);
+            SetFullPulse(display.IsFull);
+        }
+
+        // BuffGroup이 없는 HUD(런타임 임시 HUD, 시험 구성)에서는 아이콘을 그리지 않는다
+        private bool TryCreateElementBadge()
+        {
+            Transform group   = transform.root.Find(BUFF_GROUP_PATH);
+            var       texture = Resources.Load<Texture2D>(ELEMENT_TEXTURE_PATH);
+            if ((group == null) || (texture == null) || (_hpText == null))
+            {
+                return false;
+            }
+
+            var badgeObject = new GameObject("ClassElementBadge", typeof(RectTransform));
+            badgeObject.hideFlags = HideFlags.DontSave;
+            badgeObject.layer     = gameObject.layer;
+            _elementBadge = (RectTransform)badgeObject.transform;
+            _elementBadge.SetParent(group, false);
+            _elementBadge.anchorMin        = new Vector2(0f, 0.5f);
+            _elementBadge.anchorMax        = new Vector2(0f, 0.5f);
+            _elementBadge.pivot            = new Vector2(0f, 0.5f);
+            _elementBadge.anchoredPosition = new Vector2(ELEMENT_LEFT_MARGIN, 0f);
+            _elementBadge.sizeDelta        = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
+
+            var glowObject = new GameObject("Glow", typeof(RectTransform));
+            glowObject.layer = gameObject.layer;
+            var glowRect = (RectTransform)glowObject.transform;
+            glowRect.SetParent(_elementBadge, false);
+            glowRect.anchorMin        = new Vector2(0.5f, 0.5f);
+            glowRect.anchorMax        = new Vector2(0.5f, 0.5f);
+            glowRect.pivot            = new Vector2(0.5f, 0.5f);
+            glowRect.anchoredPosition = Vector2.zero;
+            glowRect.sizeDelta        = new Vector2(FULL_GLOW_SIZE, FULL_GLOW_SIZE);
+            _elementGlow = glowObject.AddComponent<RawImage>();
+            _elementGlow.texture = GetFullGlowTexture();
+            _elementGlow.raycastTarget = false;
+            glowObject.SetActive(false);
+
+            var iconObject = new GameObject("Icon", typeof(RectTransform));
+            iconObject.layer = gameObject.layer;
+            var iconRect = (RectTransform)iconObject.transform;
+            iconRect.SetParent(_elementBadge, false);
+            iconRect.anchorMin        = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax        = new Vector2(0.5f, 0.5f);
+            iconRect.pivot            = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta        = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
+            _elementImage = iconObject.AddComponent<RawImage>();
+            _elementImage.texture       = texture;
+            _elementImage.raycastTarget = false;
+
+            var countObject = new GameObject("Count", typeof(RectTransform));
+            countObject.layer = gameObject.layer;
+            var countRect = (RectTransform)countObject.transform;
+            countRect.SetParent(_elementBadge, false);
+            countRect.anchorMin        = new Vector2(0.5f, 0.5f);
+            countRect.anchorMax        = new Vector2(0.5f, 0.5f);
+            countRect.pivot            = new Vector2(0.5f, 0.5f);
+            countRect.anchoredPosition = new Vector2(0f, ELEMENT_COUNT_OFFSET_Y);
+            countRect.sizeDelta        = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
+            var count = countObject.AddComponent<TextMeshProUGUI>();
+            count.font               = _hpText.font;
+            count.fontSharedMaterial = _hpText.fontSharedMaterial;
+            count.fontSize           = ELEMENT_COUNT_FONT_SIZE;
+            count.fontStyle          = FontStyles.Bold;
+            count.alignment          = TextAlignmentOptions.BottomRight;
+            count.outlineWidth       = ELEMENT_COUNT_OUTLINE;
+            count.outlineColor       = Color.black;
+            count.textWrappingMode   = TextWrappingModes.NoWrap;
+            count.raycastTarget      = false;
+            count.enabled            = false;
+            _elementCount = count;
+            return true;
+        }
+
+        private static Texture2D GetFullGlowTexture()
+        {
+            if (s_fullGlowTexture != null)
+            {
+                return s_fullGlowTexture;
+            }
+
+            var texture = new Texture2D(FULL_GLOW_TEXTURE_SIZE, FULL_GLOW_TEXTURE_SIZE, TextureFormat.RGBA32, false);
+            texture.name = "ClassStackFullGlow";
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            var pixels = new Color32[FULL_GLOW_TEXTURE_SIZE * FULL_GLOW_TEXTURE_SIZE];
+            for (int y = 0; y < FULL_GLOW_TEXTURE_SIZE; ++y)
+            {
+                for (int x = 0; x < FULL_GLOW_TEXTURE_SIZE; ++x)
+                {
+                    float nx = ((x + 0.5f) / FULL_GLOW_TEXTURE_SIZE * 2f) - 1f;
+                    float ny = ((y + 0.5f) / FULL_GLOW_TEXTURE_SIZE * 2f) - 1f;
+                    float alpha = Mathf.Clamp01(1f - Mathf.Sqrt((nx * nx) + (ny * ny)));
+                    pixels[(y * FULL_GLOW_TEXTURE_SIZE) + x] = new Color(1f, 1f, 1f, alpha * alpha);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            s_fullGlowTexture = texture;
+            return s_fullGlowTexture;
+        }
+
+        private void SetFullPulse(bool full)
+        {
+            if (!full)
+            {
+                StopFullPulse();
+                return;
+            }
+
+            if ((_fullPulse != null) && (_fullPulse.IsActive()))
+            {
+                return;
+            }
+
+            _fullPulse = _elementImage.rectTransform.DOScale(FULL_PULSE_SCALE, FULL_PULSE_SECONDS)
+                .SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo).SetLink(_elementImage.gameObject);
+        }
+
+        private void StopFullPulse()
+        {
+            _fullPulse?.Kill();
+            _fullPulse = null;
+            if (_elementImage != null)
+            {
+                _elementImage.rectTransform.localScale = Vector3.one;
+            }
         }
 
         // Image의 Filled 방식은 바 끝의 둥근 모양을 잘라 버린다.

@@ -12,7 +12,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 스킬창. 기술 탭, 기술 정보, 기술별 부적 3단계 후보, 선택한 효과의 상세와 등록, 강화, 분해, 장착, 조합 저장 버튼을 보여 준다 </summary>
-    public sealed class SkillWindowView : MonoBehaviour
+    public sealed class SkillWindowView : UiWindowView
     {
         // 네트워크는 모르고 이벤트로 의도만 알린다. 글자와 버튼 상태는 SkillWindowBinder가 정해 넣는다.
         // 후보 칸 배열은 단계 * 2 + 선택 순서다

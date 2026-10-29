@@ -103,7 +103,7 @@ namespace Shinshi.Network
                     response.CharacterId, response.InstanceId, response.SortieId, null, playerClass, characterName,
                     appearance)
                     .WithSortieLoadout(response.CombatLoadout, response.Potions)
-                    .WithSortie(in sortie).WithExperience(response.Experience);
+                    .WithSortie(in sortie).WithExperience(response.Experience).WithGuildName(ReadGuildName(response));
                 return ERejectReason.None;
             }
 
@@ -115,8 +115,15 @@ namespace Shinshi.Network
 
             claims = new JoinTokenClaims(Constants.Network.PARTICIPANT_KEY_TOWN_PREFIX + response.CharacterId,
                 response.CharacterId, response.InstanceId, null, ToAccountLeaseId(ReadAccountLeaseId(response)), playerClass,
-                characterName, appearance).WithAccountId(ToAccountLeaseId(response.AccountId)).WithExperience(response.Experience);
+                characterName, appearance).WithAccountId(ToAccountLeaseId(response.AccountId)).WithExperience(response.Experience)
+                .WithGuildName(ReadGuildName(response));
             return ERejectReason.None;
+        }
+
+        // 길드 이름은 표시 전용이라 규칙에 맞지 않으면 입장을 거절하지 않고 길드 없음으로 둔다
+        private static string ReadGuildName(JoinTokenExchangeResponse response)
+        {
+            return GuildNameRules.TryNormalize(response.GuildName, out string guildName, out string _) ? guildName : null;
         }
 
         // 일반전은 보스가 없고 보스전은 보스와 난이도가 있어야 한다. 값이 서로 맞지 않는 계약으로 전투를 열면 보상 표와

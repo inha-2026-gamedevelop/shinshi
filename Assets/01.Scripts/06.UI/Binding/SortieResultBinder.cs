@@ -90,6 +90,11 @@ namespace Shinshi.UI
                 _isShown = true;
                 _window.SetActive(true);
                 _view.SetResult(BuildResult(in status));
+                ESessionEndReason reason = SortieResultRules.ResolveReason(in status);
+                if ((reason == ESessionEndReason.Timeout) || (reason == ESessionEndReason.AllDead))
+                {
+                    UiSound.Play(EUiSoundGroup.Result, EUiSoundAction.Fail);
+                }
             }
 
             _view.SetSaveStatus(SortieResultRules.ToSaveStatus(status.SettlementState));

@@ -530,7 +530,8 @@ namespace Shinshi.Art
             _pending[slot] = new Pending
             {
                 Active = true, Kind = kind, CastId = obs.CastInstanceId, Slot = obs.SkillSlot,
-                Direction = ToHorizontal(obs.SkillAim, obs.Facing), Point = obs.SkillPoint, Element = _elements[obs.SkillSlot],
+                Direction = ToHorizontal(obs.SkillAim, obs.Facing), Point = obs.SkillPoint,
+                Element = (kind == EPendingKind.Burst) ? obs.ArcherElement : _elements[obs.SkillSlot],
                 ResolveAt = obs.SkillResolveAt
             };
 
@@ -539,7 +540,8 @@ namespace Shinshi.Art
             {
                 _plays[count] = new Play
                 {
-                    Kind = EArcherVfxKind.Charge, StartAt = obs.Now, Direction = _pending[slot].Direction
+                    Kind = EArcherVfxKind.Charge, Element = _pending[slot].Element, StartAt = obs.Now,
+                    Direction = _pending[slot].Direction
                 };
                 ++count;
             }

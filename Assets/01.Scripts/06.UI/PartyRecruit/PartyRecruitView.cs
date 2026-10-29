@@ -20,7 +20,7 @@ namespace Shinshi.UI
     /// <summary> Party recruit window, lists rooms from TownPartyClient and joins or creates through the real contract </summary>
     // 방 목록 · 참가 · 생성 요청은 TownPartyClient 그대로이며 서버 응답 없이 성공을 꾸며 보이지 않는다.
     // 참가나 생성이 받아들여지면 RoomChanged를 받은 SortiePrepBinder가 출정 준비 창을 열고 이 창은 닫는다
-    public sealed class PartyRecruitView : MonoBehaviour
+    public sealed class PartyRecruitView : UiWindowView
     {
         /****************************************
         *                Fields
@@ -157,8 +157,9 @@ namespace Shinshi.UI
         *              Unity Event
         ****************************************/
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
+            base.OnEnable();
             if (!Application.isPlaying)
             {
                 return;
@@ -169,8 +170,9 @@ namespace Shinshi.UI
             TownPartyClient.RoomChanged      += OnRoomChanged;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
+            base.OnDisable();
             TownPartyClient.RoomListReceived -= OnRoomList;
             TownPartyClient.ResultReceived   -= OnResult;
             TownPartyClient.RoomChanged      -= OnRoomChanged;

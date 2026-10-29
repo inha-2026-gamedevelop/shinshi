@@ -73,8 +73,8 @@ namespace Shinshi.UI
         private static readonly Color G_WindColor    = new Color(0.55f, 1f, 0.65f, 1f);
         private static readonly Color G_FireColor    = new Color(1f, 0.55f, 0.35f, 1f);
         private static readonly Color G_FullColor    = new Color(1f, 0.85f, 0.3f, 1f);
-        // 속성 그림이 밝고 알록달록해 숫자는 색을 빼고 외곽선으로 읽히게 한다
-        private static readonly Color G_BadgeColor   = Color.white;
+        // 속성 그림이 밝고 알록달록해 숫자는 눈에 띄는 노란색에 외곽선을 둬서 읽히게 한다
+        private static readonly Color G_BadgeColor   = new Color(1f, 0.92f, 0.3f, 1f);
 
         /****************************************
         *                Methods
@@ -150,13 +150,34 @@ namespace Shinshi.UI
             return GetElementColor(display.Element);
         }
 
-        /// <summary> 머리 위 속성 아이콘에 숫자로 겹치는지, 궁수만이고 0이면 숫자를 감춘다 </summary>
-        public static bool ShowsBadgeCount(in ClassStackDisplay display)
+        /// <summary> 속성 아이콘 원화에서 고를 칸 번호, 아이콘을 그리지 않는 표시(궁수가 아니거나 속성이 없음)는 -1이다 </summary>
+        public static int GetElementColumn(in ClassStackDisplay display)
         {
-            return (display.ShowsElement) && (display.Stacks > 0);
+            if ((!display.IsVisible) || (!display.ShowsElement))
+            {
+                return -1;
+            }
+
+            switch (display.Element)
+            {
+                case EArcherElement.Ice:
+                    return 0;
+                case EArcherElement.Wind:
+                    return 1;
+                case EArcherElement.Fire:
+                    return 2;
+                default:
+                    return -1;
+            }
         }
 
-        /// <summary> 아이콘 위 숫자색, 다 차면 금색이고 그 전에는 흰색이다 </summary>
+        /// <summary> 속성 아이콘 옆에 스택 숫자를 보이는지, 궁수만이고 0이어도 보인다 </summary>
+        public static bool ShowsBadgeCount(in ClassStackDisplay display)
+        {
+            return (display.IsVisible) && (display.ShowsElement);
+        }
+
+        /// <summary> 아이콘 옆 숫자색, 다 차면 금색이고 그 전에는 노란색이다 </summary>
         public static Color GetBadgeColor(in ClassStackDisplay display)
         {
             return display.IsFull ? G_FullColor : G_BadgeColor;

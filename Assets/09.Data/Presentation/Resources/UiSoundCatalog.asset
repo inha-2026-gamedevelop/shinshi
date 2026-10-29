@@ -27,13 +27,13 @@ MonoBehaviour:
     _minInterval: 0.05
   - _group: 0
     _action: 0
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: aac3e88a857b497db9535a58008e9be8, type: 3}
     _volume: 1
     _maxVoices: 2
     _minInterval: 0.05
   - _group: 0
     _action: 1
-    _clip: {fileID: 0}
+    _clip: {fileID: 8300000, guid: aac3e88a857b497db9535a58008e9be8, type: 3}
     _volume: 1
     _maxVoices: 2
     _minInterval: 0.05
@@ -70,6 +70,55 @@ MonoBehaviour:
   - _group: 3
     _action: 0
     _clip: {fileID: 0}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 4
+    _action: 0
+    _clip: {fileID: 8300000, guid: aac3e88a857b497db9535a58008e9be8, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 6
+    _action: 11
+    _clip: {fileID: 8300000, guid: 03d8e32682a14afdadb80818b3f68c96, type: 3}
+    _variants:
+    - {fileID: 8300000, guid: 378d294d4bd241cc99b106d13d00087e, type: 3}
+    - {fileID: 8300000, guid: 46bf2c9901674440b6ac31c9965886dd, type: 3}
+    - {fileID: 8300000, guid: 4e5b4395a2aa40a0ba33fd9693ca499c, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 4
+    _action: 12
+    _clip: {fileID: 8300000, guid: 40226ea3ec4d4e52a070cf1b30ae7ff4, type: 3}
+    _variants:
+    - {fileID: 8300000, guid: 3b36cf6eefef457e8d94297ea466d325, type: 3}
+    - {fileID: 8300000, guid: ef9745ea327e40878dffc19a213a5f7b, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 9
+    _action: 7
+    _clip: {fileID: 8300000, guid: d8bb4ae6a60d4c4d9750da198eac41de, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 9
+    _action: 8
+    _clip: {fileID: 8300000, guid: 773988a969ee495e97f902858f6ccf9c, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 11
+    _action: 2
+    _clip: {fileID: 8300000, guid: 31e4188a6e8d41748ec5239817936dbd, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05
+  - _group: 21
+    _action: 8
+    _clip: {fileID: 8300000, guid: 4f04117439684069ac2cff1d43e2369d, type: 3}
     _volume: 1
     _maxVoices: 2
     _minInterval: 0.05

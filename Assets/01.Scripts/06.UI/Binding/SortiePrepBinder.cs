@@ -128,7 +128,12 @@ namespace Shinshi.UI
                 return;
             }
 
+            bool wasOpen = _window.activeSelf;
             _window.SetActive(true);
+            if (!wasOpen)
+            {
+                UiSound.Play(EUiSoundGroup.Common, EUiSoundAction.Open);
+            }
             if (_router != null)
             {
                 _router.Register(EHotkeyAction.CloseWindow, _onClose);
@@ -145,9 +150,10 @@ namespace Shinshi.UI
         public void Close()
         {
             ResetInvite();
-            if (_window != null)
+            if ((_window != null) && (_window.activeSelf))
             {
                 _window.SetActive(false);
+                UiSound.Play(EUiSoundGroup.Common, EUiSoundAction.Close);
             }
 
             if (_router != null)

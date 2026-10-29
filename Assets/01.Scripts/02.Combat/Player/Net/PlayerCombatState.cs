@@ -46,6 +46,9 @@ namespace Shinshi.Combat
         [SyncVar(hook = nameof(OnAppearanceChanged))]
         private CharacterAppearance _appearance;
 
+        // 머리 위 이름 위에 띄우는 길드 이름. 토큰 교환 응답이 준 값이며 길드가 없으면 null이다
+        [SyncVar] private string _guildName;
+
         // 관찰자용 공개 이동 속도, Transform 차분이 아니라 서버가 직접 공개한다(NETWORK_AUTHORITY 5.5 함정5)
         [SyncVar] private float _locomotionSpeed;
 
@@ -110,6 +113,7 @@ namespace Shinshi.Combat
         public int CombatId => _combatId;
         // 머리 위 이름. DB 인증 닉네임이며 이름이 없는 레거시 캐릭터면 빈 값이다
         public string DisplayName => _characterName ?? string.Empty;
+        public string GuildName => _guildName ?? string.Empty;
         public float Energy => _energy;
         public float MaxEnergy => _maxEnergy;
         public float Resonance => _resonance;
@@ -193,6 +197,12 @@ namespace Shinshi.Combat
         {
             _characterName = characterName;
             _appearance    = appearance;
+        }
+
+        [Server]
+        public void SetGuildName(string guildName)
+        {
+            _guildName = guildName;
         }
 
         // Transform 차분이 아니라 서버가 직접 공개한다. PlayerServer.PublishMovement가 조기 반환 앞에서 부른다

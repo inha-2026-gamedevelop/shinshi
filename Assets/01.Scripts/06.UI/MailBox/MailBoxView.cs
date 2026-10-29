@@ -12,7 +12,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 우편함 창이며 우편 목록, 상세, 수령 버튼, 쪽 이동을 보인다. 네트워크는 모르고 이벤트로 의도만 알린다 </summary>
-    public sealed class MailBoxView : MonoBehaviour
+    public sealed class MailBoxView : UiWindowView
     {
         // 목록 줄 칸 순서: 발신자, 제목, 보상 요약, 발신일, 만료. 우편에는 삭제 API가 없어 휴지통 버튼은 두지 않는다(씬에서 숨긴다)
 

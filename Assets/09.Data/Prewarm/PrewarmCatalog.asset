@@ -383,6 +383,20 @@ MonoBehaviour:
     _sampleSeconds: []
     _required: 0
     _moveTrail: 0
+  - _prefab: {fileID: 9027543506281112269, guid: 2f93c91644bf2cc40bc3f97c87ba5a81, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 1
+    _required: 0
+    _moveTrail: 0
+  - _prefab: {fileID: 4162522289797983496, guid: ebba8e06272088e4caf66c138392cc41, type: 3}
+    _kind: 0
+    _visibleFrames: 3
+    _sampleSeconds:
+    - 1
+    _required: 0
+    _moveTrail: 0
   _frameBudgetMs: 8
   _totalTimeoutSeconds: 10
   _maxConcurrentVisible: 8

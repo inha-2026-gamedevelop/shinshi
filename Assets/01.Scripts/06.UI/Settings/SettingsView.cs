@@ -16,7 +16,7 @@ using Shinshi.Systems;
 namespace Shinshi.UI
 {
     /// <summary>그래픽과 오디오 값을 임시 편집하고 적용하거나 취소하는 설정 창</summary>
-    public sealed class SettingsView : MonoBehaviour
+    public sealed class SettingsView : UiWindowView
     {
         /****************************************
         *                Fields
@@ -147,8 +147,9 @@ namespace Shinshi.UI
             _ready = true;
         }
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
+            base.OnEnable();
             if (!_ready)
             {
                 return;
@@ -162,8 +163,9 @@ namespace Shinshi.UI
             }
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
+            base.OnDisable();
             if (_router != null)
             {
                 _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);

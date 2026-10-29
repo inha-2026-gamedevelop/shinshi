@@ -1145,6 +1145,26 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Update_BurstSkill_ChargeAndBurstFollowCurrentElement()
+        {
+            ArcherVfxTracker tracker = CreateElementTracker();
+            Step(tracker, Idle(240.0));
+            ArcherVfxTracker.Observation cast = Cast(Idle(240.0), 13, SLOT_R, ESkillPhase.Windup, 240.7);
+            cast.ArcherElement = EArcherElement.Fire;
+            Step(tracker, cast);
+
+            Assert.That(_plays[0].Kind, Is.EqualTo(EArcherVfxKind.Charge));
+            Assert.That(_plays[0].Element, Is.EqualTo(EArcherElement.Fire));
+
+            cast.Now        = 240.72;
+            cast.SkillPhase = ESkillPhase.Recovery;
+            Step(tracker, cast);
+
+            Assert.That(_plays[1].Kind, Is.EqualTo(EArcherVfxKind.Burst));
+            Assert.That(_plays[1].Element, Is.EqualTo(EArcherElement.Fire));
+        }
+
+        [Test]
         public void HitStopDistance_LateralWithinLimit_StopsAtProjectedDistance()
         {
             bool hit = ArcherVfxTracker.TryGetHitStopDistance(Vector3.zero, Vector3.forward, Q_RANGE, new Vector3(HIT_LATERAL, 0f, 4f),

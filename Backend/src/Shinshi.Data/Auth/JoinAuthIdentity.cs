@@ -43,6 +43,9 @@ namespace Shinshi.Data.Auth
         // DB 소유 캐릭터의 외형 원문(JSON), 명시적 레거시 캐릭터는 null이다. 토큰 소비 트랜잭션이 채운다
         public string? AppearanceJson { get; }
 
+        // 캐릭터가 속한 살아 있는 길드의 표시 이름. 길드가 없으면 null이다. 토큰 소비 트랜잭션이 채운다
+        public string? GuildName { get; }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -51,7 +54,7 @@ namespace Shinshi.Data.Auth
             Guid instanceId, long serverTimeUnixMs, Guid accountLeaseId = default, string? characterName = null,
             JoinSortieContract? sortie = null, string? combatLoadoutJson = null,
             IReadOnlyList<ReservationPotion>? potions = null,
-            string? appearanceJson = null, CharacterExperienceSnapshot? experience = null)
+            string? appearanceJson = null, CharacterExperienceSnapshot? experience = null, string? guildName = null)
         {
             Experience       = experience;
             AccountId        = accountId;
@@ -67,6 +70,7 @@ namespace Shinshi.Data.Auth
             CombatLoadoutJson = combatLoadoutJson;
             Potions          = potions;
             AppearanceJson   = appearanceJson;
+            GuildName        = guildName;
         }
     }
 }

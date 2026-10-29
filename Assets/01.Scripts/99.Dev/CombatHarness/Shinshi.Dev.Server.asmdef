@@ -6,7 +6,8 @@
         "Shinshi.Contracts",
         "Shinshi.Server",
         "Shinshi.Dev",
-        "Mirror"
+        "Mirror",
+        "Mirror.Transports"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

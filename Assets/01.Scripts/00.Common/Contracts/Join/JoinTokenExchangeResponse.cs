@@ -65,6 +65,10 @@ namespace Shinshi.Contracts
         // 표시 resolver가 null을 직업 기본값으로 읽는다
         [DataMember(Name = "appearance")]       private string _appearanceJson;
 
+        // 토큰이 발급된 캐릭터가 속한 길드의 표시 이름. 게임 서버가 머리 위 길드 줄로 복제한다. 길드가 없거나 이 필드를 모르는 API면 null이다.
+        // 백엔드가 입장 교환 트랜잭션에서 길드 가입 행으로 채운다
+        [DataMember(Name = "guildName")]        private string _guildName;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -88,6 +92,7 @@ namespace Shinshi.Contracts
         public string AccountId        => _accountId;
         public ReservationPotion[] Potions => _potions;
         public string AppearanceJson   => _appearanceJson;
+        public string GuildName        => _guildName;
 
         /****************************************
         *                Methods
@@ -149,7 +154,8 @@ namespace Shinshi.Contracts
         public JoinTokenExchangeResponse(string characterId, string instanceId, int serverRole, string participantId,
             string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
             string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout,
-            string accountId, ReservationPotion[] potions, string appearanceJson, CharacterExperienceSnapshot experience = null)
+            string accountId, ReservationPotion[] potions, string appearanceJson, CharacterExperienceSnapshot experience = null,
+            string guildName = null)
         {
             _experience       = experience;
             _characterId      = characterId;
@@ -170,6 +176,7 @@ namespace Shinshi.Contracts
             _accountId        = accountId;
             _potions          = potions;
             _appearanceJson   = appearanceJson;
+            _guildName        = guildName;
         }
 
         private JoinTokenExchangeResponse() { }

@@ -11,6 +11,7 @@ using Mirror;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.UI;
 
 namespace Shinshi.Art
 {
@@ -28,8 +29,8 @@ namespace Shinshi.Art
         private const int POOL_MUZZLE   = POOL_ARROW + ELEMENT_COUNT;
         private const int POOL_HIT      = POOL_MUZZLE + ELEMENT_COUNT;
         private const int POOL_CHARGE   = POOL_HIT + ELEMENT_COUNT;
-        private const int POOL_BURST    = POOL_CHARGE + 1;
-        private const int POOL_HEAVY_ARROW  = POOL_BURST + 1;
+        private const int POOL_BURST    = POOL_CHARGE + ELEMENT_COUNT;
+        private const int POOL_HEAVY_ARROW  = POOL_BURST + ELEMENT_COUNT;
         private const int POOL_HEAVY_MUZZLE = POOL_HEAVY_ARROW + ELEMENT_COUNT;
         private const int POOL_HEAVY_HIT    = POOL_HEAVY_MUZZLE + ELEMENT_COUNT;
         private const int POOL_COUNT        = POOL_HEAVY_HIT + ELEMENT_COUNT;
@@ -78,6 +79,19 @@ namespace Shinshi.Art
         [Header("속성 폭발")]
         [SerializeField] private GameObject _chargePrefab;
         [SerializeField] private GameObject _burstPrefab;
+        // 차지와 폭발은 프리팹 하나를 속성 색으로 착색해 쓴다. 속성이 없으면 프리팹 원래 색이다
+        [SerializeField] private Color _burstIceColor  = new Color(0.45f, 0.8f, 1f);
+        [SerializeField] private Color _burstWindColor = new Color(0.5f, 1f, 0.55f);
+        [SerializeField] private Color _burstFireColor = new Color(1f, 0.45f, 0.12f);
+
+        [Header("속성 부여 오라")]
+        [SerializeField] private GameObject _fullStackAuraPrefab;
+        [SerializeField] private Color _auraIceColor = new Color(0.45f, 0.8f, 1f, 0.8f);
+        [SerializeField] private Color _auraWindColor = new Color(0.5f, 1f, 0.55f, 0.8f);
+        [SerializeField] private Color _auraFireColor = new Color(1f, 0.45f, 0.12f, 0.8f);
+        [SerializeField, Min(1f)] private float _fullStackAuraSpeedMultiplier = 4f;
+        [SerializeField, Min(1f)] private float _fullStackParticleSizeMultiplier = 6f;
+        [SerializeField, Min(0f)] private float _fullStackParticleRadialSpeed = 1.2f;
 
         [Header("강공격 (HeavyBasicStep 단계의 기본 공격)")]
         [SerializeField] private GameObject _heavyArrowPrefab;
@@ -103,21 +117,54 @@ namespace Shinshi.Art
         private bool      _hasConfig;
         private bool      _wasRunning;
         private float     _chargeSeconds;
+        private GameObject _auraInstance;
+        private ParticleSystem[] _auraParticles;
+        private EArcherElement _auraElement;
+        private Vector3[] _auraOrbitSpeeds;
+        private ParticleSystem.MinMaxCurve[] _auraParticleSizes;
+        private ParticleSystem.MinMaxCurve[] _auraRadialSpeeds;
+        private bool _auraFast;
+        private AudioSource _bowAudio;
+        private AudioClip[] _bowClips;
+        private readonly System.Random _bowRandom = new System.Random();
 
         /****************************************
         *              Unity Event
         ****************************************/
 
+        private void OnEnable()
+        {
+            SoundVolume.PreviewChanged += OnBowVolumeChanged;
+            OnBowVolumeChanged(SoundVolume.Load());
+        }
+
         private void OnDisable()
         {
+            SoundVolume.PreviewChanged -= OnBowVolumeChanged;
+            if (_bowAudio != null)
+            {
+                _bowAudio.Stop();
+            }
             _tracker.Reset();
             _wasRunning = false;
             StopAllEffects();
+            StopAura();
         }
 
         private void OnDestroy()
         {
             StopAllEffects();
+            if (_auraInstance != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(_auraInstance);
+                }
+                else
+                {
+                    DestroyImmediate(_auraInstance);
+                }
+            }
             if (_poolRoot != null)
             {
                 // 플레이 중에는 프레임 끝에 파괴하고, EditMode 직접 검증에서는 즉시 파괴한다
@@ -149,6 +196,7 @@ namespace Shinshi.Art
                     _tracker.Reset();
                     _wasRunning = false;
                     StopAllEffects();
+                    StopAura();
                 }
 
                 return;
@@ -161,6 +209,7 @@ namespace Shinshi.Art
 
             _wasRunning = true;
             EnsurePools();
+            UpdateAura();
 
             // SyncVar hook의 중간값이 아니라 이번 프레임에 모인 현재값으로만 판단한다
             double now = NetworkTime.time;
@@ -216,6 +265,116 @@ namespace Shinshi.Art
             }
         }
 
+        private void UpdateAura()
+        {
+            EArcherElement element = _combat.ArcherElement;
+            if ((_fullStackAuraPrefab == null) || (_combat.LifeState != EParticipantLifeState.Alive)
+                || (element == EArcherElement.None))
+            {
+                StopAura();
+                return;
+            }
+
+            if (_auraInstance == null)
+            {
+                _auraInstance = Instantiate(_fullStackAuraPrefab, _combat.transform, false);
+                _auraParticles = _auraInstance.GetComponentsInChildren<ParticleSystem>(true);
+                _auraOrbitSpeeds = new Vector3[_auraParticles.Length];
+                _auraParticleSizes = new ParticleSystem.MinMaxCurve[_auraParticles.Length];
+                _auraRadialSpeeds = new ParticleSystem.MinMaxCurve[_auraParticles.Length];
+                for (int i = 0; i < _auraParticles.Length; ++i)
+                {
+                    var velocity = _auraParticles[i].velocityOverLifetime;
+                    _auraOrbitSpeeds[i] = new Vector3(velocity.orbitalXMultiplier, velocity.orbitalYMultiplier,
+                        velocity.orbitalZMultiplier);
+                    _auraParticleSizes[i] = _auraParticles[i].main.startSize;
+                    _auraRadialSpeeds[i] = velocity.radial;
+                }
+            }
+
+            int stackMax = GameDB.Skills.ClassStackMax;
+            bool fast = (stackMax > 0) && (_combat.ClassStacks >= stackMax);
+            if (fast != _auraFast)
+            {
+                float multiplier = fast ? Mathf.Max(1f, _fullStackAuraSpeedMultiplier) : 1f;
+                for (int i = 0; i < _auraParticles.Length; ++i)
+                {
+                    var velocity = _auraParticles[i].velocityOverLifetime;
+                    velocity.orbitalXMultiplier = _auraOrbitSpeeds[i].x * multiplier;
+                    velocity.orbitalYMultiplier = _auraOrbitSpeeds[i].y * multiplier;
+                    velocity.orbitalZMultiplier = _auraOrbitSpeeds[i].z * multiplier;
+                    if (_auraParticles[i].gameObject != _auraInstance)
+                    {
+                        velocity.radial = fast ? new ParticleSystem.MinMaxCurve(Mathf.Max(0f, _fullStackParticleRadialSpeed))
+                            : _auraRadialSpeeds[i];
+                        var size = _auraParticleSizes[i];
+                        float sizeMultiplier = fast ? Mathf.Max(1f, _fullStackParticleSizeMultiplier) : 1f;
+                        if (size.mode == ParticleSystemCurveMode.TwoConstants)
+                        {
+                            size.constantMin *= sizeMultiplier;
+                            size.constantMax *= sizeMultiplier;
+                        }
+                        else if (size.mode == ParticleSystemCurveMode.Constant)
+                        {
+                            size.constant *= sizeMultiplier;
+                        }
+                        else
+                        {
+                            size.curveMultiplier *= sizeMultiplier;
+                        }
+
+                        var main = _auraParticles[i].main;
+                        main.startSize = size;
+                    }
+                }
+
+                _auraFast = fast;
+            }
+
+            if (element == _auraElement)
+            {
+                return;
+            }
+
+            Color color = element == EArcherElement.Ice ? _auraIceColor
+                : element == EArcherElement.Wind ? _auraWindColor : _auraFireColor;
+            foreach (ParticleSystem particle in _auraParticles)
+            {
+                particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = particle.main;
+                main.startColor = particle.gameObject == _auraInstance ? Color.white : color;
+                if (particle.gameObject == _auraInstance)
+                {
+                    var gradient = new Gradient();
+                    gradient.SetKeys(
+                        new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 0.65f),
+                            new GradientColorKey(Color.white, 1f) },
+                        new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.3f),
+                            new GradientAlphaKey(1f, 1f) });
+                    var trails = particle.trails;
+                    trails.colorOverTrail = gradient;
+                }
+                particle.Play(true);
+            }
+
+            _auraElement = element;
+        }
+
+        private void StopAura()
+        {
+            if ((_auraParticles == null) || (_auraElement == EArcherElement.None))
+            {
+                return;
+            }
+
+            foreach (ParticleSystem particle in _auraParticles)
+            {
+                particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
+            _auraElement = EArcherElement.None;
+        }
+
         private void EnsurePools()
         {
             if (_poolRoot != null)
@@ -235,8 +394,13 @@ namespace Shinshi.Art
                 _pools[POOL_HIT + i]    = new ArcherVfxPool(hits[i], _poolRoot, HIT_POOL_SIZE);
             }
 
-            _pools[POOL_CHARGE] = new ArcherVfxPool(_chargePrefab, _poolRoot, BURST_POOL_SIZE);
-            _pools[POOL_BURST]  = new ArcherVfxPool(_burstPrefab, _poolRoot, BURST_POOL_SIZE);
+            Color?[] burstColors = { null, _burstIceColor, _burstWindColor, _burstFireColor };
+            for (int i = 0; i < ELEMENT_COUNT; ++i)
+            {
+                _pools[POOL_CHARGE + i] = new ArcherVfxPool(_chargePrefab, _poolRoot, BURST_POOL_SIZE, burstColors[i]);
+                _pools[POOL_BURST + i]  = new ArcherVfxPool(_burstPrefab, _poolRoot, BURST_POOL_SIZE, burstColors[i]);
+            }
+
             Color?[] heavyColors = { null, _heavyIceColor, _heavyWindColor, _heavyFireColor };
             for (int i = 0; i < ELEMENT_COUNT; ++i)
             {
@@ -332,6 +496,10 @@ namespace Shinshi.Art
                 case EArcherVfxKind.Arrow:
                     if (play.IsMuzzle)
                     {
+                        if (play.StopsOnHit)
+                        {
+                            PlayBowSound();
+                        }
                         Play(IsHeavyReady(play, POOL_HEAVY_MUZZLE + element) ? (POOL_HEAVY_MUZZLE + element) : (POOL_MUZZLE + element), origin, rotation, now,
                             MUZZLE_MAX_SECONDS);
                         return;
@@ -357,16 +525,71 @@ namespace Shinshi.Art
                         HIT_MAX_SECONDS);
                     return;
                 case EArcherVfxKind.Switch:
+                    PlayBuffSound();
                     Play(POOL_MUZZLE + element, origin, rotation, now, MUZZLE_MAX_SECONDS);
                     return;
                 case EArcherVfxKind.Charge:
-                    Play(POOL_CHARGE, origin, rotation, now, Mathf.Max(MAX_LATE_SECONDS, _chargeSeconds));
+                    Play(POOL_CHARGE + element, origin, rotation, now, Mathf.Max(MAX_LATE_SECONDS, _chargeSeconds));
                     return;
                 case EArcherVfxKind.Burst:
-                    Play(POOL_BURST, play.Position, Quaternion.identity, now, BURST_MAX_SECONDS);
+                    Play(POOL_BURST + element, play.Position, Quaternion.identity, now, BURST_MAX_SECONDS);
                     return;
                 default:
                     return;
+            }
+        }
+
+        private void PlayBowSound()
+        {
+            if (_bowClips == null)
+            {
+                _bowClips = new[]
+                {
+                    Resources.Load<AudioClip>("Bow1"),
+                    Resources.Load<AudioClip>("Bow10"),
+                    Resources.Load<AudioClip>("Bow11"),
+                    Resources.Load<AudioClip>("Bow12")
+                };
+            }
+
+            AudioClip clip = _bowClips[_bowRandom.Next(_bowClips.Length)];
+            if (clip != null)
+            {
+                EnsureBowAudio();
+                _bowAudio.PlayOneShot(clip);
+            }
+        }
+
+        private void PlayBuffSound()
+        {
+            AudioClip clip = BuffSoundClips.Pick(_bowRandom);
+            if (clip != null)
+            {
+                EnsureBowAudio();
+                _bowAudio.PlayOneShot(clip);
+            }
+        }
+
+        private void EnsureBowAudio()
+        {
+            if (_bowAudio != null)
+            {
+                return;
+            }
+
+            _bowAudio = gameObject.AddComponent<AudioSource>();
+            _bowAudio.playOnAwake = false;
+            _bowAudio.spatialBlend = 1f;
+            _bowAudio.rolloffMode = AudioRolloffMode.Linear;
+            _bowAudio.maxDistance = 60f;
+            OnBowVolumeChanged(SoundVolume.Load());
+        }
+
+        private void OnBowVolumeChanged(SoundVolume volume)
+        {
+            if (_bowAudio != null)
+            {
+                _bowAudio.volume = volume.Sfx;
             }
         }
 

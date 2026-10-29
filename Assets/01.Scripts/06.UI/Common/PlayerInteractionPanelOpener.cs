@@ -255,6 +255,7 @@ namespace Shinshi.UI
             panel.anchoredPosition = new Vector2(Mathf.Clamp(local.x, bounds.xMin, bounds.xMax - size.x),
                 Mathf.Clamp(local.y, bounds.yMin + size.y, bounds.yMax));
             panel.gameObject.SetActive(true);
+            UiSound.Play(EUiSoundGroup.Common, EUiSoundAction.Open);
             panel.SetAsLastSibling();
             _openedPanel = panel;
             if (_router != null)
@@ -477,6 +478,10 @@ namespace Shinshi.UI
             }
 
             _openedPanel.gameObject.SetActive(false);
+            if (isActiveAndEnabled)
+            {
+                UiSound.Play(EUiSoundGroup.Common, EUiSoundAction.Close);
+            }
             _openedPanel = null;
             if (_router != null)
             {

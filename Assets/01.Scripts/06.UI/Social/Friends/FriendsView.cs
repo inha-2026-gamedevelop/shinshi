@@ -12,7 +12,7 @@ using TMPro;
 namespace Shinshi.UI
 {
     /// <summary> 친구 창. 이름 입력과 친구 요청, 친구, 받은 요청, 보낸 요청 탭, 쪽 넘김 목록, 상태 줄, 확인 대화상자를 보여 준다 </summary>
-    public sealed class FriendsView : MonoBehaviour
+    public sealed class FriendsView : UiWindowView
     {
         // 네트워크는 모르고 이벤트로 의도만 알린다. 줄의 글자와 버튼은 FriendsBinder가 탭마다 정해 넣는다
 

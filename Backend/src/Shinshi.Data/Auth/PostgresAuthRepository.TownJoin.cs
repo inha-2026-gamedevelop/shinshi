@@ -310,7 +310,8 @@ namespace Shinshi.Data.Auth
                 consumed.CharacterId, character.ClassId, Guid.Empty, Guid.Empty, consumed.InstanceId, UnixMilliseconds(now),
                 accountLeaseId, character.Name, appearanceJson: character.Appearance,
                 experience: new Shinshi.Contracts.CharacterExperienceSnapshot(character.TotalExperience, null, 0,
-                    Shinshi.Contracts.CharacterLevelRules.SettingsHash(Growth.GrowthContent.LoadEmbedded().CharacterLevel))));
+                    Shinshi.Contracts.CharacterLevelRules.SettingsHash(Growth.GrowthContent.LoadEmbedded().CharacterLevel)),
+                guildName: character.GuildName));
         }
 
         // 계정 소유 캐릭터를 잠그고 직업, 닉네임, 외형 원문을 돌려준다, 소유하지 않으면 null.
@@ -320,7 +321,10 @@ namespace Shinshi.Data.Auth
         {
             return connection.QuerySingleOrDefaultAsync<JoinCharacterRow>(Command(
                 """
-                SELECT class_id AS "ClassId", name AS "Name", appearance::text AS "Appearance", total_experience AS "TotalExperience" FROM characters
+                SELECT class_id AS "ClassId", name AS "Name", appearance::text AS "Appearance", total_experience AS "TotalExperience",
+                    (SELECT guild.name FROM guild_members AS member JOIN guilds AS guild ON guild.guild_id = member.guild_id
+                        WHERE member.character_id = characters.character_id AND guild.disbanded_at IS NULL) AS "GuildName"
+                FROM characters
                 WHERE account_id = @AccountId AND character_id = @CharacterId AND deleted_at IS NULL FOR SHARE;
                 """,
                 new { AccountId = accountId, CharacterId = characterId }, transaction, token));

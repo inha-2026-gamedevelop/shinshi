@@ -17,7 +17,7 @@ using TMPro;
 // 프로젝트 내부
 using Shinshi.Combat;
 using Shinshi.Common;
-using Shinshi.Data;
+using Shinshi.Network;
 
 namespace Shinshi.UI
 {
@@ -43,24 +43,9 @@ namespace Shinshi.UI
         private const float  NAMEPLATE_MAX_DIST_SQR   = NAMEPLATE_MAX_DISTANCE * NAMEPLATE_MAX_DISTANCE;
         private const float  STATS_FONT_SIZE          = 20f;
         private const float  NAMEPLATE_FONT_SIZE      = 22f;
-        private const float  STACK_FONT_SIZE          = 18f;
-        private const float  STACK_OFFSET_Y           = 24f;
-        // 궁수는 스택 줄을 속성 아이콘의 숫자로 합친다. 숫자는 그림과 겹치지 않게 아이콘 아래 예전 스택 줄 자리에 둔다
-        private const float  ELEMENT_ICON_SIZE        = 46f;
-        private const float  ELEMENT_OFFSET_Y         = 56f;
-        private const float  ELEMENT_PREVIEW_OFFSET_Y = 12f;
-        private const int    ELEMENT_ATLAS_COLUMNS    = 3;
-        private const string ELEMENT_TEXTURE_PATH     = "T_ArcherElementOverhead";
-        private const float  ELEMENT_COUNT_FONT_SIZE  = 24f;
-        private const float  ELEMENT_COUNT_OFFSET_Y   = STACK_OFFSET_Y - ELEMENT_OFFSET_Y;
-        private const string ELEMENT_COUNT_FORMAT     = "{0}";
-        // 다 차면 아이콘이 숨 쉬듯 커졌다 줄고, 뒤에서 속성색 반짝이와 빛무리가 돈다
-        private const string FULL_STACK_FX_PATH       = "PF_ArcherStackFullFx";
-        private const string FULL_STACK_GLOW_NAME     = "Glow";
-        private const float  FULL_PULSE_SPEED         = 6f;
-        private const float  FULL_PULSE_SCALE         = 0.1f;
-        private const float  FULL_GLOW_MIN_ALPHA      = 0.45f;
-        private const float  WAVE_HALF                = 0.5f;
+        // 길드 줄은 이름 바로 위에 둔다
+        private const float  GUILD_FONT_SIZE          = 18f;
+        private const float  GUILD_OFFSET_Y           = 24f;
         private const float  TEXT_OUTLINE_WIDTH       = 0.2f;
         private const float  NAMEPLATE_OUTLINE_WIDTH  = 0.35f;
         // 이 셰이더를 쓰는 재질이 프로젝트에 없으면 빌드가 셰이더를 빼서 외곽선이 사라진다. Hud/Resources/M_TextOutlineShaderRef.mat이 포함을 맡으니 지우지 않는다
@@ -82,6 +67,7 @@ namespace Shinshi.UI
         private static readonly Vector2 STATS_PADDING   = new Vector2(8f, 4f);
         private static readonly Color   STATS_BACK      = new Color(0f, 0f, 0f, 0.55f);
         private static readonly Vector2 NAMEPLATE_SIZE  = new Vector2(300f, 40f);
+        private static readonly Color   GUILD_COLOR      = new Color(1f, 0.9f, 0.55f);
         private static readonly Color   PING_GOOD_COLOR = new Color(0.55f, 1f, 0.55f);
         private static readonly Color   PING_WARN_COLOR = new Color(1f, 0.85f, 0.35f);
         private static readonly Color   PING_BAD_COLOR  = new Color(1f, 0.45f, 0.45f);
@@ -100,8 +86,6 @@ namespace Shinshi.UI
         private int             _frameCount      = 0;
         private float           _frameTime       = 0f;
         private float           _maxFrameTime    = 0f;
-        private Texture2D       _elementTexture;
-        private GameObject      _fullStackFxPrefab;
 
 #if UNITY_EDITOR
         private readonly List<Nameplate> _previewNameplates = new List<Nameplate>();
@@ -135,8 +119,6 @@ namespace Shinshi.UI
             _showsPrediction = Debug.isDebugBuild;
 
             _font = CreateSystemKoreanFont();
-            _elementTexture = Resources.Load<Texture2D>(ELEMENT_TEXTURE_PATH);
-            _fullStackFxPrefab = Resources.Load<GameObject>(FULL_STACK_FX_PATH);
             BuildCanvas();
         }
 
@@ -421,160 +403,51 @@ namespace Shinshi.UI
                 nameplate.Text.rectTransform.position = new Vector3(screen.x, screen.y, 0f);
             }
 
-            int               max     = GameDB.IsInitialized ? GameDB.Skills.ClassStackMax : 0;
-            PlayerCombatState state   = nameplate.State;
-            ClassStackDisplay display = ClassStackHudRules.Build(state.PlayerClass, state.ClassStacks, max, state.ArcherElement);
-            int               column  = ElementColumn(state);
-
-            // 속성 아이콘이 있으면 스택은 아이콘 숫자로 보이므로 이름 위 글자 줄은 그리지 않는다
-            DrawStacks(nameplate, in display, (nameVisible) && (column < 0), screen);
-            DrawElement(nameplate, in display, column, visible, nameVisible, screen);
+            DrawGuild(nameplate, nameVisible, screen);
         }
 
-        // 궁수 속성 아이콘의 원화 칸 번호, 아이콘을 그리지 않으면 -1이다
-        private int ElementColumn(PlayerCombatState state)
+        private bool DrawGuild(Nameplate nameplate, bool nameVisible, Vector3 screen)
         {
-            if ((state.PlayerClass != EPlayerClass.Archer) || (_elementTexture == null))
+            // 서버가 복제한 길드가 있으면 그것을 쓰고, 없으면 내 이름표만 소셜 스냅샷의 내 길드로 대신한다
+            string guildName = nameplate.State.GuildName;
+            if ((string.IsNullOrEmpty(guildName)) && (nameplate.State.isLocalPlayer) && (SocialClient.HasSnapshot)
+                && (SocialClient.Snapshot.Guild.HasGuild))
             {
-                return -1;
+                guildName = SocialClient.Snapshot.Guild.Name;
             }
 
-            switch (state.ArcherElement)
-            {
-                case EArcherElement.Ice:
-                    return 0;
-                case EArcherElement.Wind:
-                    return 1;
-                case EArcherElement.Fire:
-                    return 2;
-                default:
-                    return -1;
-            }
-        }
-
-        private void DrawElement(Nameplate nameplate, in ClassStackDisplay display, int column, bool headVisible,
-            bool nameVisible, Vector3 screen)
-        {
-            bool visible = (headVisible) && (column >= 0);
-            if (nameplate.ElementBadge == null)
+            bool visible = (nameVisible) && (!string.IsNullOrEmpty(guildName));
+            if (nameplate.GuildText == null)
             {
                 if (!visible)
                 {
-                    return;
+                    return false;
                 }
 
-                CreateElementBadge(nameplate);
+                nameplate.GuildText = CreateText("NameplateGuild", _nameplateRoot, GUILD_FONT_SIZE, TextAlignmentOptions.Center);
+                ApplyNameplateOutline(nameplate.GuildText);
+                nameplate.GuildText.rectTransform.sizeDelta = NAMEPLATE_SIZE;
+                nameplate.GuildText.color = GUILD_COLOR;
             }
 
-            if (nameplate.ElementBadge.gameObject.activeSelf != visible)
+            if (!string.Equals(guildName, nameplate.ShownGuild, StringComparison.Ordinal))
             {
-                nameplate.ElementBadge.gameObject.SetActive(visible);
+                nameplate.ShownGuild     = guildName;
+                nameplate.GuildText.text = guildName;
             }
 
-            if (!visible)
+            if (nameplate.GuildText.enabled != visible)
             {
-                return;
+                nameplate.GuildText.enabled = visible;
             }
 
-            // 원화의 동일한 정사각형 세 칸을 UV로 골라 추가 텍스처와 런타임 스프라이트 생성을 피한다
-            float cellWidth = 1f / ELEMENT_ATLAS_COLUMNS;
-            nameplate.ElementImage.uvRect = new Rect(column * cellWidth, 0f, cellWidth, 1f);
-            DrawElementCount(nameplate, in display);
-
-            float offset = (nameVisible ? ELEMENT_OFFSET_Y : ELEMENT_PREVIEW_OFFSET_Y) * _nameplateRoot.lossyScale.y;
-            nameplate.ElementBadge.position = new Vector3(screen.x, screen.y + offset, 0f);
-        }
-
-        // 아이콘, 숫자를 한 묶음으로 옮긴다. 다 찬 연출은 처음 다 찼을 때 만들어 아이콘 뒤에 둔다
-        private void CreateElementBadge(Nameplate nameplate)
-        {
-            var badgeObject = new GameObject("NameplateElement", typeof(RectTransform));
-            badgeObject.transform.SetParent(_nameplateRoot, false);
-            nameplate.ElementBadge = (RectTransform)badgeObject.transform;
-            nameplate.ElementBadge.sizeDelta = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
-
-            var iconObject = new GameObject("Icon", typeof(RectTransform));
-            iconObject.transform.SetParent(nameplate.ElementBadge, false);
-            nameplate.ElementImage = iconObject.AddComponent<RawImage>();
-            nameplate.ElementImage.texture       = _elementTexture;
-            nameplate.ElementImage.raycastTarget = false;
-            nameplate.ElementImage.rectTransform.sizeDelta = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
-
-            nameplate.ElementCount = CreateText("Count", nameplate.ElementBadge, ELEMENT_COUNT_FONT_SIZE,
-                TextAlignmentOptions.Center);
-            ApplyNameplateOutline(nameplate.ElementCount);
-            nameplate.ElementCount.fontStyle = FontStyles.Bold;
-            nameplate.ElementCount.rectTransform.sizeDelta        = new Vector2(ELEMENT_ICON_SIZE, ELEMENT_ICON_SIZE);
-            nameplate.ElementCount.rectTransform.anchoredPosition = new Vector2(0f, ELEMENT_COUNT_OFFSET_Y);
-            nameplate.ElementCount.enabled = false;
-        }
-
-        // 숫자는 값이 바뀔 때만 다시 만들고, 다 찬 동안만 매 프레임 맥동을 움직인다
-        private void DrawElementCount(Nameplate nameplate, in ClassStackDisplay display)
-        {
-            int  count = ClassStackHudRules.ShowsBadgeCount(in display) ? display.Stacks : 0;
-            bool full  = display.IsFull;
-            if ((count != nameplate.ShownCount) || (full != nameplate.ShownFull))
+            if (visible)
             {
-                nameplate.ElementCount.enabled = count > 0;
-                if (count > 0)
-                {
-                    nameplate.ElementCount.SetText(ELEMENT_COUNT_FORMAT, count);
-                }
-
-                nameplate.ElementCount.color = ClassStackHudRules.GetBadgeColor(in display);
-                if (full != nameplate.ShownFull)
-                {
-                    SetFullStack(nameplate, full);
-                }
-
-                nameplate.ShownCount = count;
-                nameplate.ShownFull  = full;
+                float offset = GUILD_OFFSET_Y * _nameplateRoot.lossyScale.y;
+                nameplate.GuildText.rectTransform.position = new Vector3(screen.x, screen.y + offset, 0f);
             }
 
-            if (!full)
-            {
-                return;
-            }
-
-            float wave  = (Mathf.Sin(Time.unscaledTime * FULL_PULSE_SPEED) + 1f) * WAVE_HALF;
-            Color color = ClassStackHudRules.GetElementColor(display.Element);
-            nameplate.ElementImage.rectTransform.localScale = Vector3.one * (1f + (FULL_PULSE_SCALE * wave));
-            if (nameplate.FullFx != null)
-            {
-                nameplate.FullFx.Tint = color;
-            }
-
-            if (nameplate.FullGlow != null)
-            {
-                color.a = Mathf.Lerp(FULL_GLOW_MIN_ALPHA, 1f, wave);
-                nameplate.FullGlow.color = color;
-            }
-        }
-
-        private void SetFullStack(Nameplate nameplate, bool full)
-        {
-            if ((full) && (nameplate.FullFx == null) && (_fullStackFxPrefab != null))
-            {
-                GameObject fx = Instantiate(_fullStackFxPrefab, nameplate.ElementBadge, false);
-                fx.transform.SetAsFirstSibling();
-                nameplate.FullFx = fx.GetComponent<UiParticleEmitter>();
-                Transform glow = fx.transform.Find(FULL_STACK_GLOW_NAME);
-                nameplate.FullGlow = (glow != null) ? glow.GetComponent<Image>() : null;
-            }
-
-            if (!full)
-            {
-                nameplate.ElementImage.rectTransform.localScale = Vector3.one;
-            }
-
-            if (nameplate.FullFx == null)
-            {
-                return;
-            }
-
-            // 연출 프리팹은 켜질 때마다 스스로 재생하고 꺼지면 알갱이를 비운다
-            nameplate.FullFx.gameObject.SetActive(full);
+            return visible;
         }
 
 #if UNITY_EDITOR
@@ -630,42 +503,6 @@ namespace Shinshi.UI
         }
 #endif
 
-        // 머리 위에는 체력바가 없어 이름 바로 위에 스택 줄을 하나 더 그린다. 궁수는 속성 아이콘이 없을 때만 쓴다. 글자는 값이 바뀔 때만 다시 만든다
-        private void DrawStacks(Nameplate nameplate, in ClassStackDisplay display, bool lineVisible, Vector3 screen)
-        {
-            bool visible = (lineVisible) && (display.IsVisible);
-            if (nameplate.StackText == null)
-            {
-                if (!visible)
-                {
-                    return;
-                }
-
-                nameplate.StackText = CreateText("NameplateStacks", _nameplateRoot, STACK_FONT_SIZE, TextAlignmentOptions.Center);
-                ApplyNameplateOutline(nameplate.StackText);
-                nameplate.StackText.rectTransform.sizeDelta = NAMEPLATE_SIZE;
-            }
-
-            if (!display.SameAs(in nameplate.ShownStacks))
-            {
-                nameplate.ShownStacks     = display;
-                nameplate.StackText.color = ClassStackHudRules.GetColor(in display);
-                nameplate.StackText.text  = ClassStackHudRules.FormatNameplate(in display);
-            }
-
-            if (nameplate.StackText.enabled != visible)
-            {
-                nameplate.StackText.enabled = visible;
-            }
-
-            // 캔버스 배율을 곱해야 해상도가 달라도 이름과의 간격이 같다
-            if (visible)
-            {
-                float offset = STACK_OFFSET_Y * _nameplateRoot.lossyScale.y;
-                nameplate.StackText.rectTransform.position = new Vector3(screen.x, screen.y + offset, 0f);
-            }
-        }
-
         private void RemoveStaleNameplates(bool removeAll)
         {
             _removeIds.Clear();
@@ -705,13 +542,9 @@ namespace Shinshi.UI
         private void DestroyNameplate(Nameplate nameplate)
         {
             Destroy(nameplate.Text.gameObject);
-            if (nameplate.StackText != null)
+            if (nameplate.GuildText != null)
             {
-                Destroy(nameplate.StackText.gameObject);
-            }
-            if (nameplate.ElementBadge != null)
-            {
-                Destroy(nameplate.ElementBadge.gameObject);
+                Destroy(nameplate.GuildText.gameObject);
             }
         }
 
@@ -724,25 +557,14 @@ namespace Shinshi.UI
             public readonly PlayerCombatState State;
             public readonly TextMeshProUGUI   Text;
             public string                     ShownName;
-            public TextMeshProUGUI            StackText;
-            public ClassStackDisplay          ShownStacks;
-            public RectTransform              ElementBadge;
-            public RawImage                   ElementImage;
-            public TextMeshProUGUI            ElementCount;
-            public int                        ShownCount;
-            public bool                       ShownFull;
-            public UiParticleEmitter          FullFx;
-            public Image                      FullGlow;
+            public TextMeshProUGUI            GuildText;
+            public string                     ShownGuild;
 
             public Nameplate(PlayerCombatState state, TextMeshProUGUI text)
             {
                 State       = state;
                 Text        = text;
                 ShownName   = null;
-                StackText   = null;
-                ShownStacks = ClassStackDisplay.Hidden;
-                ShownCount  = -1;
-                ShownFull   = false;
             }
         }
     }

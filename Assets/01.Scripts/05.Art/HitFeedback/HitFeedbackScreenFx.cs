@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Shinshi.Dev
+namespace Shinshi.Art
 {
     /// <summary> 화면 전체를 덮는 번쩍임을 잠깐 보여 주는 연출 </summary>
     public sealed class HitFeedbackScreenFx : MonoBehaviour

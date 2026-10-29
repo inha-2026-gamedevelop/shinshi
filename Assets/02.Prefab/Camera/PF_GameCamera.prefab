@@ -192,6 +192,22 @@ MonoBehaviour:
   _lightSparkCount: 10
   _heavySparkCount: 28
   _critSparkMultiplier: 2.5
+  _critBlurFeature: {fileID: 4892596209770911660, guid: f288ae1f4751b564a96ac7587541f7a2, type: 2}
+  _critBlurMaterial: {fileID: 2100000, guid: 5cf5f78ad33ba974cba4b04526d93943, type: 2}
+  _critBlurIntensity: 0.8
+  _critBlurSeconds: 0.45
+  _critZoomPunch: 0.08
+  _critZoomSeconds: 0.3
+  _critFlashAlpha: 0
+  _critFlashSeconds: 0.08
+  _useImpactFrame: 1
+  _impactFrames: 6
+  _impactSoft: 1
+  _impactDim: 0.6
+  _impactThreshold: 0.12
+  _impactHotThreshold: 0.5
+  _impactInvert: 1
+  _impactCooldownSeconds: 0.4
   _classifyMargin: 0.15
 --- !u!1 &3921472462371864315
 GameObject:

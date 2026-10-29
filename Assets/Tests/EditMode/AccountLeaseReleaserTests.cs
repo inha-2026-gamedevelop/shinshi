@@ -223,6 +223,22 @@ namespace Shinshi.Tests
             Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE_ID, response,
                 out JoinTokenClaims claims));
             Assert.IsNull(claims.AccountLeaseId, "필드가 없는 응답은 해제 없이 heartbeat 만료로 풀린다");
+            Assert.IsNull(claims.GuildName, "길드 필드를 모르는 API는 길드 없음이다");
+        }
+
+        [TestCase("달빛길드", "달빛길드")]
+        [TestCase("a", null)]
+        [TestCase("길드 이름!", null)]
+        public void TryCreate_TownResponse_CarriesOnlyValidGuildName(string guildName, string expected)
+        {
+            var response = BackendJson.Deserialize<JoinTokenExchangeResponse>(
+                "{\"characterId\":\"" + CHARACTER_ID + "\",\"instanceId\":\"" + INSTANCE_ID + "\",\"serverRole\":" +
+                ContractCodes.ServerRole.TOWN.ToString(CultureInfo.InvariantCulture) + ",\"classId\":" +
+                ContractCodes.PlayerClass.WARRIOR.ToString(CultureInfo.InvariantCulture) + ",\"guildName\":\"" + guildName + "\"}");
+
+            Assert.AreEqual(ERejectReason.None, JoinTokenClaimsRules.TryCreate(EServerRole.Town, INSTANCE_ID, response,
+                out JoinTokenClaims claims));
+            Assert.AreEqual(expected, claims.GuildName);
         }
 
         /****************************************

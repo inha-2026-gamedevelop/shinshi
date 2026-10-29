@@ -45,6 +45,9 @@ namespace Shinshi.Art
 
         public bool IsActive => (_shakeEndTime > NO_TIME) || (_zoomStartTime > NO_TIME);
 
+        /// <summary> 줌이 진행 중이면 참, 이미 당겨진 줌을 다른 줌이 덮어쓰지 않게 확인할 때 쓴다 </summary>
+        public bool IsZooming => _zoomStartTime > NO_TIME;
+
         /****************************************
         *                Methods
         ****************************************/

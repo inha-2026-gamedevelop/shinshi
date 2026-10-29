@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
-namespace Shinshi.Dev
+namespace Shinshi.Art
 {
     /// <summary> 치명타 순간에 화면 중심에서 바깥으로 번지는 방사형 블러를 잠깐 걸었다가 푸는 연출. 같은 패스로 1~2프레임 임팩트 프레임도 낸다 </summary>
     public sealed class HitFeedbackMotionBlur : MonoBehaviour
