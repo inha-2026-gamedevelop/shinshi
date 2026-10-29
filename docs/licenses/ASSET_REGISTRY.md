@@ -1,5 +1,11 @@
 # 외부 에셋 대장
 
+## 타이틀 청동거울 스캔 (2026-10-29)
+
+- 원본: Osaka Museum of History의 [Gamontai Shinjukyo Mirror](https://sketchfab.com/3d-models/gamontai-shinjukyo-mirror-1e22cdd29b5d4de3bcbcb07732d000b3). 고조선 유물이 아닌 중국 삼국시대 거울이다.
+- 이용 조건: 원본 페이지의 CC BY 4.0 표기와 [박물관의 3D 데이터 이용 안내](https://www.osakamushis.jp/visit/3D_culturalproperties.html)를 따른다. 배포 시 제작자, 원본 링크, [라이선스](https://creativecommons.org/licenses/by/4.0/)와 변경 사항 표시가 필요하다. 실제 게임 배포물의 크레딧 표기는 아직 확인하지 않았다.
+- 가공: 제공된 OBJ를 FBX로 변환하고 Unity에서 텍스처 최대 크기를 2048로 설정했으며 URP 금속 재질과 타이틀용 조명을 적용했다. 런타임 파일은 `Assets/01.Scripts/05.Art/UI/Lobby/OsakaBronzeMirror/`, 배치 프리팹은 `Assets/02.Prefab/UI/Lobby/PF_TitleScanMirror.prefab`이다. 원본 색상·노멀 맵을 사용하며 별도 AO 베이크와 LOD는 아직 제작하지 않았다.
+
 2026-09-30 실제 설치 파일과 Unity 6000.4.7f1 에디터에서 처음 확인했고, 2026-10-08 `Assets/99.ThirdParty/` 전체 파일 목록과 `.meta`의 설치 정보를 정적으로 재대조했다. 이번 갱신에서 Unity 재생·컴파일·빌드는 실행하지 않았다. 저장소 루트가 Unity 프로젝트 루트다. Asset Store의 최신 버전과 이 프로젝트에 설치된 버전은 구분한다. 취득일·구매 내역·좌석 보유 현황은 확인하지 않았으며 설치 확인일을 취득일로 대신 적지 않는다.
 
 ## 분류와 설치 목록
