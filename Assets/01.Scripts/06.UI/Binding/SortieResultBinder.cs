@@ -95,6 +95,10 @@ namespace Shinshi.UI
                 {
                     UiSound.Play(EUiSoundGroup.Result, EUiSoundAction.Fail);
                 }
+                else if (reason == ESessionEndReason.Success)
+                {
+                    UiSound.Play(EUiSoundGroup.Result, EUiSoundAction.Success);
+                }
             }
 
             _view.SetSaveStatus(SortieResultRules.ToSaveStatus(status.SettlementState));
