@@ -47,6 +47,9 @@ namespace Shinshi.UI
         private const string SLASH_FORMAT      = "{0}/{1}";
         private const float  STALE_RETRY_SECONDS = 3f;
 
+        // 응답이 오지 않는 읽기를 언제까지 진행 중으로 볼지는 API 대기 시간에 여유를 더한 값이다
+        private const float  READ_WAIT_MARGIN_SECONDS = 3f;
+
         [SerializeField] private AuctionView _view     = null;
         [SerializeField] private UiPopupHub  _popupHub = null;
 
@@ -70,6 +73,14 @@ namespace Shinshi.UI
         private long                 _serverNowMs;
         private bool                 _wasOpen;
         private bool                 _sellablesDirty = true;
+
+        // 상세 읽기는 서버가 연결당 하나만 받는다. 진행 중에 다른 묶음을 누르면 요청을 덮어쓰지 않고 고른 품목만 기억해 두었다가
+        // 응답이 오면 그 품목을 다시 받는다. 보낸 품목과 다른 응답은 화면에 쓰지 않는다
+        private string _wantedDefinitionId;
+        private string _listingsDefinitionId;
+        private bool   _listingsDirty;
+        private float  _listingsSentAt;
+        private float  _searchSentAt;
 
         private Guid  _searchId;
         private Guid  _listingsId;
@@ -97,6 +108,11 @@ namespace Shinshi.UI
         {
             // 창이 열린 채 이 바인더만 꺼졌다 켜지면 그 사이 응답이 확정됐을 수 있다. 다음 Update가 열림으로 다시 받아 완료 응답과 잠금 표시를 복구한다
             _wasOpen = false;
+
+            // 꺼진 사이에는 응답을 받지 못했으므로 진행 중으로 남기지 않는다
+            _searchId      = Guid.Empty;
+            _listingsId    = Guid.Empty;
+            _listingsDirty = false;
             TownMarketClient.ResultReceived     += OnResult;
             TownMarketClient.WriteStateChanged  += OnWriteStateChanged;
             TownGrowthClient.SnapshotChanged += OnGrowthSnapshot;
@@ -473,6 +489,7 @@ namespace Shinshi.UI
                 if (_foundIds.Count == 0)
                 {
                     _groups = Array.Empty<MarketGroupEntry>();
+                    _wantedDefinitionId = null;
                     ShowGroups(0, 0);
                     _view.SetStatus(NO_RESULT_TEXT);
                     return;
@@ -481,9 +498,23 @@ namespace Shinshi.UI
                 ids = _foundIds.ToArray();
             }
 
-            _searchId = TownMarketClient.Search(_lastSearch.Category, _lastSearch.ClassId, _lastSearch.Grade, ids, _lastSearch.Sort,
+            _searchId     = TownMarketClient.Search(_lastSearch.Category, _lastSearch.ClassId, _lastSearch.Grade, ids, _lastSearch.Sort,
                 _lastSearch.Order, _searchPage);
+            _searchSentAt = Time.unscaledTime;
         }
+
+        // 검색 응답을 기다리는 동안 보이는 묶음은 곧 바뀔 목록이라 누르지 못하게 한다. 응답이 오지 않으면 일정 시간 뒤 푼다
+        private bool SearchInFlight
+        {
+            get { return (_searchId != Guid.Empty) && ((Time.unscaledTime - _searchSentAt) < ReadWaitSeconds); }
+        }
+
+        private bool ListingsInFlight
+        {
+            get { return (_listingsId != Guid.Empty) && ((Time.unscaledTime - _listingsSentAt) < ReadWaitSeconds); }
+        }
+
+        private static float ReadWaitSeconds => Constants.Network.API_TIMEOUT_SECONDS + READ_WAIT_MARGIN_SECONDS;
 
         private void OnPageDelta(int delta)
         {
@@ -505,13 +536,43 @@ namespace Shinshi.UI
 
         private void OnGroupSelected(int index)
         {
-            if ((index < 0) || (index >= _groups.Length))
+            if ((index < 0) || (index >= _groups.Length) || (SearchInFlight))
             {
                 return;
             }
 
             _groupSelected = index;
-            _listingsId    = TownMarketClient.QueryListings(_groups[index].DefinitionId, 0);
+            RequestListings(_groups[index].DefinitionId);
+        }
+
+        // 서버는 연결당 상세 읽기 하나만 받는다. 진행 중이면 보내지 않고 고른 품목만 바꿔 두며, 응답을 처리한 뒤 이어서 받는다
+        private void RequestListings(string definitionId)
+        {
+            _wantedDefinitionId = definitionId;
+            if (ListingsInFlight)
+            {
+                _listingsDirty = true;
+                return;
+            }
+
+            SendListings();
+        }
+
+        private void SendListings()
+        {
+            _listingsDirty        = false;
+            _listingsDefinitionId = _wantedDefinitionId;
+            _listingsId           = TownMarketClient.QueryListings(_wantedDefinitionId, 0);
+            _listingsSentAt       = Time.unscaledTime;
+        }
+
+        // 응답이 낡았거나(보낸 뒤 다른 품목을 골랐거나 쓰기가 있었다) 하면 고른 품목을 다시 받는다
+        private void ContinueListings()
+        {
+            if ((_wantedDefinitionId != null) && ((_listingsDirty) || (_listingsDefinitionId != _wantedDefinitionId)))
+            {
+                SendListings();
+            }
         }
 
         private void OnListingSelected(int index)
@@ -672,6 +733,7 @@ namespace Shinshi.UI
                 case EMarketAction.Search:
                     if (result.RequestId == _searchId)
                     {
+                        _searchId = Guid.Empty;
                         OnSearchResult(in result);
                     }
 
@@ -679,7 +741,9 @@ namespace Shinshi.UI
                 case EMarketAction.Listings:
                     if (result.RequestId == _listingsId)
                     {
+                        _listingsId = Guid.Empty;
                         OnListingsResult(in result);
+                        ContinueListings();
                     }
 
                     return;
@@ -716,7 +780,9 @@ namespace Shinshi.UI
                 return;
             }
 
-            _groups = result.Groups;
+            _groups             = result.Groups;
+            _groupSelected      = -1;
+            _wantedDefinitionId = null;
             ShowGroups(result.TotalCount, result.Page);
             _view.SetListings(null, null, 0);
             _view.SetStatus(string.Empty);
@@ -738,6 +804,12 @@ namespace Shinshi.UI
 
         private void OnListingsResult(in MarketResultMessage result)
         {
+            // 보낸 뒤 다른 묶음을 골랐거나 새 검색으로 목록이 바뀌었으면 이 응답은 화면에 쓰지 않는다
+            if ((_wantedDefinitionId == null) || (_listingsDefinitionId != _wantedDefinitionId))
+            {
+                return;
+            }
+
             if (!result.IsAccepted)
             {
                 _view.SetStatus(DescribeRead(result.Reason));
@@ -755,8 +827,7 @@ namespace Shinshi.UI
                     listing.RemainingQty.ToString(CultureInfo.InvariantCulture), time));
             }
 
-            string title = ((_groupSelected >= 0) && (_groupSelected < _groups.Length)) ? _groups[_groupSelected].DefinitionId : string.Empty;
-            _view.SetListings(title, _rows, result.AverageUnitPrice24h);
+            _view.SetListings(_wantedDefinitionId, _rows, result.AverageUnitPrice24h);
         }
 
         private void OnMineResult(in MarketResultMessage result)
@@ -857,9 +928,9 @@ namespace Shinshi.UI
 
             RequestSnapshots();
             _sellablesDirty = true;
-            if ((_view.Tab == TAB_BUY) && (_groupSelected >= 0) && (_groupSelected < _groups.Length))
+            if ((_view.Tab == TAB_BUY) && (_wantedDefinitionId != null))
             {
-                _listingsId = TownMarketClient.QueryListings(_groups[_groupSelected].DefinitionId, 0);
+                RequestListings(_wantedDefinitionId);
             }
 
             return mineSent;

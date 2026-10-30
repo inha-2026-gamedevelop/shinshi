@@ -356,8 +356,133 @@ namespace Shinshi.Tests
         }
 
         /****************************************
+        *       Tests: listings detail ordering
+        ****************************************/
+
+        // 상세 응답을 기다리는 사이 다른 묶음을 눌러도 요청을 덮어쓰지 않는다. 먼저 온 응답은 쓰지 않고 마지막에 고른 품목을 이어서 받는다
+        [Test]
+        public void Listings_SwitchGroupWhilePending_DefersAndFollowsLatestSelection()
+        {
+            OpenWithGroups("A", "B");
+
+            Invoke("OnGroupSelected", 0);
+            MarketRequestMessage requestA = Last(EMarketAction.Listings);
+            Invoke("OnGroupSelected", 1);
+
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(1), "진행 중에는 새 상세 읽기를 겹쳐 보내지 않는다");
+
+            TownMarketClient.OnResult(ListingsResult(requestA.RequestId, "A"));
+            Assert.That(Listings().Length, Is.EqualTo(0), "고르지 않은 품목의 응답은 화면에 쓰지 않는다");
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(2), "마지막에 고른 품목을 이어서 받는다");
+            MarketRequestMessage requestB = Last(EMarketAction.Listings);
+            Assert.That(requestB.DefinitionId, Is.EqualTo("B"));
+
+            TownMarketClient.OnResult(ListingsResult(requestB.RequestId, "B"));
+            Assert.That(Listings().Length, Is.EqualTo(1));
+            Assert.That(Listings()[0].DefinitionId, Is.EqualTo("B"));
+        }
+
+        [Test]
+        public void Listings_ClickWithoutPending_SendsImmediately()
+        {
+            OpenWithGroups("A", "B");
+
+            Invoke("OnGroupSelected", 1);
+
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(1));
+            Assert.That(Last(EMarketAction.Listings).DefinitionId, Is.EqualTo("B"));
+        }
+
+        // 새 검색 응답을 기다리는 동안 보이는 묶음은 곧 바뀌므로 눌러도 상세를 열지 않는다
+        [Test]
+        public void Listings_GroupClickWhileSearchPending_IsIgnoredUntilSearchResult()
+        {
+            OpenWithGroups("A");
+            Invoke("OnPageDelta", 1);
+            MarketRequestMessage search = Last(EMarketAction.Search);
+
+            Invoke("OnGroupSelected", 0);
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(0));
+
+            TownMarketClient.OnResult(GroupsResult(search.RequestId, "C"));
+            Invoke("OnGroupSelected", 0);
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(1));
+            Assert.That(Last(EMarketAction.Listings).DefinitionId, Is.EqualTo("C"));
+        }
+
+        // 상세를 기다리는 사이 검색 결과로 목록이 바뀌면 늦게 온 상세 응답은 새 목록 위에 쓰지 않고 이어 받지도 않는다
+        [Test]
+        public void Listings_LateResponseAfterNewSearch_IsDropped()
+        {
+            OpenWithGroups("A");
+            Invoke("OnGroupSelected", 0);
+            MarketRequestMessage requestA = Last(EMarketAction.Listings);
+
+            Invoke("OnPageDelta", 1);
+            TownMarketClient.OnResult(GroupsResult(Last(EMarketAction.Search).RequestId, "C"));
+            TownMarketClient.OnResult(ListingsResult(requestA.RequestId, "A"));
+
+            Assert.That(Listings().Length, Is.EqualTo(0), "새 목록 위에 이전 상세를 쓰지 않는다");
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(1), "고른 품목이 없으니 이어 받지 않는다");
+        }
+
+        // 응답이 영영 오지 않아도 일정 시간 뒤에는 다시 누를 수 있다
+        [Test]
+        public void Listings_NoResponse_AllowsNewRequestAfterTimeout()
+        {
+            OpenWithGroups("A", "B");
+            Invoke("OnGroupSelected", 0);
+            SetField("_listingsSentAt", -1000f);
+
+            Invoke("OnGroupSelected", 1);
+
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(2));
+            Assert.That(Last(EMarketAction.Listings).DefinitionId, Is.EqualTo("B"));
+        }
+
+        /****************************************
         *                Helpers
         ****************************************/
+
+        // 구매 탭을 열어 검색 응답으로 묶음을 채운다
+        private void OpenWithGroups(params string[] definitionIds)
+        {
+            Invoke("OnEnable");
+            OpenWindow(TAB_BUY);
+            TownMarketClient.OnResult(GroupsResult(Last(EMarketAction.Search).RequestId, definitionIds));
+            _sent.Clear();
+        }
+
+        private MarketListingEntry[] Listings()
+        {
+            FieldInfo field = typeof(AuctionBinder).GetField("_listings", INSTANCE);
+            Assert.That(field, Is.Not.Null, "AuctionBinder._listings");
+            return (MarketListingEntry[])field.GetValue(_binder);
+        }
+
+        private static MarketResultMessage GroupsResult(Guid requestId, params string[] definitionIds)
+        {
+            var groups = new MarketGroupEntry[definitionIds.Length];
+            for (int i = 0; i < groups.Length; ++i)
+            {
+                groups[i] = new MarketGroupEntry(definitionIds[i], 0, 100L, 1L, 1, 0L);
+            }
+
+            return new MarketResultMessage(requestId, EMarketAction.Search, ERejectReason.None, groups, null, null, groups.Length, 0,
+                false, 0L, 0L, 0, 0L, null, null, 0L, 0L, 0L);
+        }
+
+        private static MarketResultMessage ListingsResult(Guid requestId, string definitionId)
+        {
+            var listings = new[]
+            {
+                new MarketListingEntry("L-" + definitionId, "AccountItem", definitionId, string.Empty, 0, 100L, 1, 1, "Active", 0L, 0L, 0L,
+                    0L, 0L, 0L, false, false)
+            };
+
+            return new MarketResultMessage(requestId, EMarketAction.Listings, ERejectReason.None, null, listings, null, 1, 0, false, 0L,
+                0L, 0, 0L, null, null, 0L, 0L, 0L);
+        }
 
         // 이전 연결에서 보낸 쓰기를 남긴 채 지정한 탭으로 창을 연다
         private void BeginStaleOnTab(int tab)
