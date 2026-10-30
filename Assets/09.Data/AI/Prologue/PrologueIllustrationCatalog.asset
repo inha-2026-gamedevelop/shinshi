@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4be12e9fde499a46adbb316bcfc9da1, type: 3}
+  m_Name: PrologueIllustrationCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.PrologueIllustrationCatalogSO
+  _intro:
+  - _image: {fileID: 21300000, guid: c3e008941d07fa04a9a43190f5581702, type: 3}
+    _text: "[\uC784\uC2DC] \uB3C4\uC785 1\uC7A5 \uBB38\uAD6C"
+  - _image: {fileID: 21300000, guid: 8201d8f3f2e8c2148861035ae0b2ec2d, type: 3}
+    _text: "[\uC784\uC2DC] \uB3C4\uC785 2\uC7A5 \uBB38\uAD6C"
+  - _image: {fileID: 21300000, guid: a3a1f06ca9b2daf48b94ab5bc8ab7efa, type: 3}
+    _text: "[\uC784\uC2DC] \uB3C4\uC785 3\uC7A5 \uBB38\uAD6C"
+  - _image: {fileID: 21300000, guid: 16fb51f4aa71c164f81f0f7fd9a7537a, type: 3}
+    _text: "[\uC784\uC2DC] \uB3C4\uC785 4\uC7A5 \uBB38\uAD6C"
+  _talisman:
+  - _image: {fileID: 21300000, guid: bb2dde7f471ae004bb635a9137e06e2c, type: 3}
+    _text: "\uC2E0\uC2DC\uC758 \uBD80\uC801\uACFC \uB2EE\uC740 \uBB38\uC591\uC774\uB2E4."
+  _appearance:
+  - _image: {fileID: 21300000, guid: 14323255913318543b31b8648dc2259a, type: 3}
+    _text: "\uADF8 \uBD80\uC801...... \uC544\uC9C1\uB3C4 \uC778\uAC04\uC5D0\uAC8C
+      \uC804\uD574\uC9C0\uACE0 \uC788\uC5C8\uAD6C\uB098."
+  _ending:
+  - _image: {fileID: 21300000, guid: 3370fa9925d5426408ae0df18cdf8af0, type: 3}
+    _text: "[\uC784\uC2DC] \uB9C8\uBB34\uB9AC 1\uC7A5 \uBB38\uAD6C"
+  - _image: {fileID: 21300000, guid: a6da71c6b038d8b4fa32f4fd8dac5397, type: 3}
+    _text: "[\uC784\uC2DC] \uB9C8\uBB34\uB9AC 2\uC7A5 \uBB38\uAD6C"
