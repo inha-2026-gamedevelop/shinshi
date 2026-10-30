@@ -4,6 +4,7 @@ using System.Collections;
 // Unity
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 // 서드파티
 using NUnit.Framework;
@@ -96,6 +97,143 @@ namespace Shinshi.Tests
             _view.HandleClick();
 
             Assert.AreEqual(1, _finishedCount);
+        }
+
+        private static Sprite MakeSprite(Color color)
+        {
+            var texture = new Texture2D(4, 4);
+            var pixels  = new Color[16];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = color;
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f));
+        }
+
+        private Image Previous()
+        {
+            Transform previous = _view.transform.Find("InkPrevious");
+            Assert.IsNotNull(previous);
+            return previous.GetComponent<Image>();
+        }
+
+        [UnityTest]
+        public IEnumerator Ink_NextPageWithMaterial_ShowsPreviousImageUntilClicked()
+        {
+            Shader shader = Shader.Find("Shinshi/UI/InkWipe");
+            Assert.IsNotNull(shader);
+            _view.SetTransitionMaterial(new Material(shader));
+
+            var pages = new[]
+            {
+                new IllustrationPage(MakeSprite(Color.red), "첫 장"),
+                new IllustrationPage(MakeSprite(Color.blue), "둘째 장")
+            };
+            _view.Show(pages, false, true);
+            yield return null;
+
+            _view.HandleClick();
+            Assert.IsFalse(Previous().enabled);
+
+            _view.HandleClick();
+            Assert.IsTrue(Previous().enabled);
+
+            // 장이 넘어갈 때의 이전 그림은 새 그림과 같은 비율로 놓인다
+            Assert.IsTrue(Previous().preserveAspect);
+
+            // 지워지는 중에 누르면 전환이 바로 끝난다
+            _view.HandleClick();
+            Assert.IsFalse(Previous().enabled);
+        }
+
+        [UnityTest]
+        public IEnumerator Ink_WithoutMaterial_ChangesPageWithoutPreviousImage()
+        {
+            var pages = new[]
+            {
+                new IllustrationPage(MakeSprite(Color.red), "첫 장"),
+                new IllustrationPage(MakeSprite(Color.blue), "둘째 장")
+            };
+            _view.Show(pages, false, true);
+            yield return null;
+
+            _view.HandleClick();
+            _view.HandleClick();
+
+            Assert.IsFalse(Previous().enabled);
+        }
+
+        [UnityTest]
+        public IEnumerator Ink_FirstPage_AppearsFromInkCoverThatClearsOnClick()
+        {
+            Shader shader = Shader.Find("Shinshi/UI/InkWipe");
+            _view.SetTransitionMaterial(new Material(shader));
+
+            _view.Show(new[] { new IllustrationPage(MakeSprite(Color.red), "한 장") }, false, true);
+            yield return null;
+
+            // 첫 장은 먹색 막이 깔린 채 시작해 걷히며 나타난다
+            Image cover = Previous();
+            Assert.IsTrue(cover.enabled);
+            Assert.AreEqual(0.04f, cover.color.r, 0.001f);
+
+            // 막은 화면 전체를 덮어야 하므로 비율을 유지해 정사각형으로 줄이지 않는다
+            Assert.IsFalse(cover.preserveAspect);
+
+            _view.HandleClick();
+
+            Assert.IsFalse(cover.enabled);
+        }
+
+        [UnityTest]
+        public IEnumerator Ink_ShowAgain_DoesNotContinueFromPreviousRunsLastImage()
+        {
+            Shader shader = Shader.Find("Shinshi/UI/InkWipe");
+            _view.SetTransitionMaterial(new Material(shader));
+            Sprite red = MakeSprite(Color.red);
+
+            _view.Show(new[] { new IllustrationPage(red, "첫 구간") }, true, true);
+            yield return null;
+            _view.HandleClick();
+            _view.Close();
+
+            // 두 번째 구간의 첫 장도 이전 구간의 마지막 그림이 아니라 먹색 막에서 시작한다
+            _view.Show(new[] { new IllustrationPage(MakeSprite(Color.blue), "둘째 구간") }, true, true);
+            yield return null;
+
+            Image cover = Previous();
+            Assert.IsTrue(cover.enabled);
+            Assert.AreEqual(0.04f, cover.color.r, 0.001f);
+        }
+
+        [UnityTest]
+        public IEnumerator Ink_FinishedByTime_HidesPreviousImage()
+        {
+            Shader shader = Shader.Find("Shinshi/UI/InkWipe");
+            _view.SetTransitionMaterial(new Material(shader));
+            var pages = new[]
+            {
+                new IllustrationPage(MakeSprite(Color.red), "첫 장"),
+                new IllustrationPage(MakeSprite(Color.blue), "둘째 장")
+            };
+            _view.Show(pages, true, true);
+            yield return null;
+
+            _view.HandleClick();
+            Assert.IsTrue(Previous().enabled);
+
+            // 전환 시간(1.2초)이 지나면 스스로 사라진다
+            float waited = 0f;
+            while ((Previous().enabled) && (waited < 4f))
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.IsFalse(Previous().enabled);
         }
 
         [UnityTest]

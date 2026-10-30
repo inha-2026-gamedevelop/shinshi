@@ -46,6 +46,14 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Catalog_InkWipeMaterial_IsAssignedAndUsesInkShader()
+        {
+            Assert.IsNotNull(_catalog.InkWipeMaterial, "전환 재질이 연결되지 않았다");
+            Assert.AreEqual("Shinshi/UI/InkWipe", _catalog.InkWipeMaterial.shader.name);
+            Assert.IsTrue(_catalog.InkWipeMaterial.shader.isSupported);
+        }
+
+        [Test]
         public void Catalog_ConfirmedLines_AreExact()
         {
             Assert.AreEqual("신시의 부적과 닮은 문양이다.", _catalog.TalismanPages[0].Text);

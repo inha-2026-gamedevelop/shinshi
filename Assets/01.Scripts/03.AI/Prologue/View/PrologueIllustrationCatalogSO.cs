@@ -48,6 +48,10 @@ namespace Shinshi.AI
         [Header("마무리 (2장)")]
         [SerializeField] private PageEntry[] _ending;
 
+        // 장이 바뀔 때 이전 그림을 먹이 번지며 지우는 재질. 에셋이 참조해야 빌드에서 셰이더가 빠지지 않는다
+        [Header("전환")]
+        [SerializeField] private Material _inkWipeMaterial;
+
         private IllustrationPage[] _introPages      = null;
         private IllustrationPage[] _talismanPages   = null;
         private IllustrationPage[] _appearancePages = null;
@@ -56,6 +60,8 @@ namespace Shinshi.AI
         /****************************************
         *              Properties
         ****************************************/
+
+        public Material InkWipeMaterial => _inkWipeMaterial;
 
         public IllustrationPage[] IntroPages      => _introPages      ?? (_introPages      = Convert(_intro));
         public IllustrationPage[] TalismanPages   => _talismanPages   ?? (_talismanPages   = Convert(_talisman));
@@ -78,6 +84,12 @@ namespace Shinshi.AI
             _talismanPages   = null;
             _appearancePages = null;
             _endingPages     = null;
+        }
+
+        /// <summary> 에디터에서 전환 재질을 연결할 때 쓴다, 런타임에서는 부르지 않는다 </summary>
+        public void SetInkWipeMaterial(Material material)
+        {
+            _inkWipeMaterial = material;
         }
 
         private static IllustrationPage[] Convert(PageEntry[] entries)

@@ -123,6 +123,7 @@ namespace Shinshi.AI
 
             _view = IllustrationView.Create();
             PrologueDevFont.Apply(_view);
+            _view.SetTransitionMaterial(_catalog.InkWipeMaterial);
             _view.Finished += OnViewFinished;
 
             _choiceView = PrologueChoiceView.Create();

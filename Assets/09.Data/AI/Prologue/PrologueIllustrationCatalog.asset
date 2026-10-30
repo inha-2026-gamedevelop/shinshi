@@ -33,3 +33,4 @@ MonoBehaviour:
     _text: "[\uC784\uC2DC] \uB9C8\uBB34\uB9AC 1\uC7A5 \uBB38\uAD6C"
   - _image: {fileID: 21300000, guid: a6da71c6b038d8b4fa32f4fd8dac5397, type: 3}
     _text: "[\uC784\uC2DC] \uB9C8\uBB34\uB9AC 2\uC7A5 \uBB38\uAD6C"
+  _inkWipeMaterial: {fileID: 2100000, guid: 6d03c3dddd81c0e489135e5f5b982056, type: 2}

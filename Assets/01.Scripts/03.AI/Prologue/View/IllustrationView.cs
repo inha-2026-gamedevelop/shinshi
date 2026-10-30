@@ -27,7 +27,7 @@ namespace Shinshi.AI
         ****************************************/
 
         private const int    SORTING_ORDER      = 31000;
-        private const float  PANEL_HEIGHT       = 260f;
+        private const float  PANEL_HEIGHT       = 170f;
         private const float  TEXT_MARGIN        = 120f;
         private const float  TEXT_FONT_SIZE     = 34f;
         private const float  HINT_FONT_SIZE     = 22f;
@@ -38,19 +38,43 @@ namespace Shinshi.AI
         private const float  SKIP_MARGIN        = 32f;
         private const float  SKIP_FONT_SIZE     = 24f;
         private const float  CHARS_PER_SECOND   = 30f;
+        private const float  INK_SECONDS        = 1.2f;
+        private const float  INK_SEED_RANGE     = 100f;
+        private const float  INK_CENTER_MIN     = 0.3f;
+        private const float  INK_CENTER_MAX     = 0.7f;
+        private const float  SHADE_EXTRA        = 90f;
+        private const int    SHADE_STEPS        = 32;
+        private const float  HALF               = 0.5f;
         private const string ROOT_OBJECT_NAME   = "PrologueIllustration";
         private const string HINT_REVEAL        = "클릭하여 전체 표시";
         private const string HINT_NEXT          = "클릭하여 다음으로";
         private const string SKIP_LABEL         = "건너뛰기";
 
-        // 일러스트는 아래쪽이 종이색으로 번지게 만들어져 있다. 자막 패널은 그 종이색에 맞춘 연한 색 위에 짙은 먹색 글자를 쓴다
+        // 일러스트는 아래쪽이 종이색으로 번지게 만들어져 있어서 자막은 바탕 없이 그 종이색 위에 먹색 글자로 바로 얹는다.
+        // 그림이 아직 없는 임시 상태는 바탕이 어두우므로 그때만 밝은 글자를 쓴다
         private static readonly Color BACK_COLOR  = new Color(0.04f, 0.05f, 0.07f, 1f);
-        private static readonly Color PANEL_COLOR = new Color(0.94f, 0.89f, 0.78f, 0.88f);
-        private static readonly Color TEXT_COLOR  = new Color(0.17f, 0.12f, 0.08f, 1f);
-        private static readonly Color HINT_COLOR  = new Color(0.17f, 0.12f, 0.08f, 0.6f);
-        private static readonly Color CLEAR_COLOR = new Color(1f, 1f, 1f, 0f);
 
+        // 첫 장을 가리는 막 색, 화면 바탕색과 같아서 막이 깔리는 순간에 깜빡이지 않는다
+        private static readonly Color INK_COVER_COLOR = BACK_COLOR;
+        private static readonly Color TEXT_COLOR       = new Color(0.07f, 0.05f, 0.04f, 1f);
+        private static readonly Color HINT_COLOR       = new Color(0.07f, 0.05f, 0.04f, 0.55f);
+        private static readonly Color TEXT_ON_DARK     = new Color(0.9f, 0.92f, 0.94f, 1f);
+        private static readonly Color HINT_ON_DARK     = new Color(0.9f, 0.92f, 0.94f, 0.6f);
+        private static readonly Color CLEAR_COLOR      = new Color(1f, 1f, 1f, 0f);
+        private static readonly Color SHADE_COLOR      = new Color(0.94f, 0.89f, 0.78f, 0.9f);
+
+        private static readonly int PROGRESS_ID = Shader.PropertyToID("_Progress");
+        private static readonly int SEED_ID     = Shader.PropertyToID("_Seed");
+        private static readonly int CENTER_ID   = Shader.PropertyToID("_Center");
+
+        // 장이 바뀔 때 이전 그림을 위에 한 장 더 올려 먹이 번지며 지워지게 한다. 아래의 새 그림이 그 자리에서 드러난다
         private Image           _illustration;
+        private Image           _previous;
+        private Material        _inkMaterial  = null;
+        private Sprite          _coverSprite  = null;
+        private Sprite          _shadeSprite  = null;
+        private Texture2D       _shadeTexture = null;
+        private Coroutine       _inkRoutine   = null;
         private TextMeshProUGUI _bodyText;
         private TextMeshProUGUI _hintText;
         private TextMeshProUGUI _skipText;
@@ -94,6 +118,21 @@ namespace Shinshi.AI
             _skipText.font = font;
         }
 
+        /// <summary> 장이 바뀔 때 쓸 먹 번짐 지우기 재질, 없으면 전환 없이 바로 바뀐다. 에셋을 고치지 않게 복사본을 만들어 쓴다 </summary>
+        public void SetTransitionMaterial(Material source)
+        {
+            if (_inkMaterial != null)
+            {
+                Destroy(_inkMaterial);
+                _inkMaterial = null;
+            }
+
+            if (source != null)
+            {
+                _inkMaterial = new Material(source);
+            }
+        }
+
         /// <summary> 장들을 처음부터 보인다, startRevealed는 글을 처음부터 전부 보이고 allowSkip이 거짓이면 건너뛰기 버튼을 숨긴다 </summary>
         public void Show(IReadOnlyList<IllustrationPage> pages, bool startRevealed, bool allowSkip)
         {
@@ -113,6 +152,10 @@ namespace Shinshi.AI
 
             _skipButton.SetActive(allowSkip);
             gameObject.SetActive(true);
+            CompleteInk();
+
+            // 이전 구간의 마지막 그림이 남아 있으면 첫 장이 그 그림에서 이어져 보이므로 비워 둔다. 첫 장은 먹색 막이 걷히며 나타난다
+            _illustration.sprite = null;
             ShowPage();
         }
 
@@ -123,6 +166,9 @@ namespace Shinshi.AI
             {
                 return;
             }
+
+            // 지워지는 중에 누르면 전환을 바로 끝낸다. 클릭을 삼키지는 않고 그대로 다음 동작으로 이어 간다
+            CompleteInk();
 
             switch (_sequence.Click())
             {
@@ -158,6 +204,7 @@ namespace Shinshi.AI
         public void Close()
         {
             StopTyping();
+            CompleteInk();
             gameObject.SetActive(false);
         }
 
@@ -172,19 +219,67 @@ namespace Shinshi.AI
             gameObject.SetActive(false);
         }
 
+        private void OnDestroy()
+        {
+            if (_inkMaterial != null)
+            {
+                Destroy(_inkMaterial);
+                _inkMaterial = null;
+            }
+
+            if (_coverSprite != null)
+            {
+                Destroy(_coverSprite);
+                _coverSprite = null;
+            }
+
+            if (_shadeSprite != null)
+            {
+                Destroy(_shadeSprite);
+                _shadeSprite = null;
+            }
+
+            if (_shadeTexture != null)
+            {
+                Destroy(_shadeTexture);
+                _shadeTexture = null;
+            }
+        }
+
         private void Complete()
         {
             StopTyping();
+            CompleteInk();
             _completed = true;
             Finished?.Invoke();
         }
 
+        // 이전 그림이 먹처럼 지워지며 새 그림이 드러난다. 이전 그림이 없는 첫 장은 먹색 막이 걷히며 나타난다.
+        // 그림이 없거나 재질이 없으면 바로 바뀐다
         private void ShowPage()
         {
             IllustrationPage page = _pages[_sequence.PageIndex];
 
+            Sprite old = _illustration.sprite;
+
             _illustration.sprite  = page.Image;
             _illustration.enabled = page.Image != null;
+
+            bool onArt = page.Image != null;
+            _bodyText.color = onArt ? TEXT_COLOR : TEXT_ON_DARK;
+            _hintText.color = onArt ? HINT_COLOR : HINT_ON_DARK;
+
+            if ((_inkMaterial != null) && (page.Image != null))
+            {
+                if (old == null)
+                {
+                    BeginInk(GetCoverSprite(), INK_COVER_COLOR, false);
+                }
+                else if (old != page.Image)
+                {
+                    BeginInk(old, Color.white, true);
+                }
+            }
 
             StopTyping();
             _bodyText.text = page.Text;
@@ -201,6 +296,101 @@ namespace Shinshi.AI
             }
 
             RefreshHint();
+        }
+
+        // 아래가 불투명하고 위로 갈수록 투명해지는 세로 그라데이션, 색은 Image 색이 입힌다
+        private Sprite GetShadeSprite()
+        {
+            if (_shadeSprite == null)
+            {
+                _shadeTexture = new Texture2D(1, SHADE_STEPS, TextureFormat.RGBA32, false)
+                {
+                    wrapMode   = TextureWrapMode.Clamp,
+                    filterMode = FilterMode.Bilinear,
+                    hideFlags  = HideFlags.HideAndDontSave
+                };
+
+                // 텍스처의 0번 줄이 스프라이트의 맨 아래다. 아래가 불투명하고 위로 갈수록 투명해야 한다
+                for (int y = 0; y < SHADE_STEPS; ++y)
+                {
+                    float t     = y / (float)(SHADE_STEPS - 1);
+                    float alpha = Mathf.SmoothStep(1f, 0f, t);
+                    _shadeTexture.SetPixel(0, y, new Color(1f, 1f, 1f, alpha));
+                }
+
+                _shadeTexture.Apply();
+                _shadeSprite = Sprite.Create(_shadeTexture, new Rect(0f, 0f, 1f, SHADE_STEPS), new Vector2(HALF, HALF));
+            }
+
+            return _shadeSprite;
+        }
+
+        // 흰 한 점짜리 스프라이트를 한 번만 만든다, 첫 장의 먹색 막은 이것에 색을 입혀 쓴다
+        private Sprite GetCoverSprite()
+        {
+            if (_coverSprite == null)
+            {
+                Texture2D white = Texture2D.whiteTexture;
+                _coverSprite = Sprite.Create(white, new Rect(0f, 0f, white.width, white.height), new Vector2(HALF, HALF));
+            }
+
+            return _coverSprite;
+        }
+
+        // keepAspect는 이전 그림이 새 그림과 같은 비율로 놓여야 할 때 참이다. 먹색 막은 화면 전체를 덮어야 하므로 거짓이다
+        private void BeginInk(Sprite old, Color tint, bool keepAspect)
+        {
+            _previous.sprite         = old;
+            _previous.preserveAspect = keepAspect;
+            _previous.color          = tint;
+            _previous.material = _inkMaterial;
+            _previous.enabled  = true;
+
+            // 매번 같은 모양이 되지 않게 무늬와 시작 지점을 바꾼다
+            _inkMaterial.SetFloat(SEED_ID, UnityEngine.Random.Range(0f, INK_SEED_RANGE));
+            _inkMaterial.SetVector(CENTER_ID, new Vector4(
+                UnityEngine.Random.Range(INK_CENTER_MIN, INK_CENTER_MAX), UnityEngine.Random.Range(INK_CENTER_MIN, INK_CENTER_MAX), 0f, 0f));
+            ApplyInkProgress(0f);
+
+            _inkRoutine = StartCoroutine(CoInk());
+        }
+
+        // 일시정지 중에도 흘러야 하므로 실제 시간으로 센다
+        private IEnumerator CoInk()
+        {
+            float elapsed = 0f;
+            while (elapsed < INK_SECONDS)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                ApplyInkProgress(Mathf.Clamp01(elapsed / INK_SECONDS));
+                yield return null;
+            }
+
+            _inkRoutine = null;
+            _previous.enabled = false;
+        }
+
+        /// <summary> 진행 중인 전환을 바로 끝내고 이전 그림을 치운다 </summary>
+        private void CompleteInk()
+        {
+            if (_inkRoutine != null)
+            {
+                StopCoroutine(_inkRoutine);
+                _inkRoutine = null;
+            }
+
+            if (_previous != null)
+            {
+                _previous.enabled = false;
+            }
+        }
+
+        private void ApplyInkProgress(float progress)
+        {
+            _inkMaterial.SetFloat(PROGRESS_ID, progress);
+
+            // 이미지는 재질 값이 바뀐 것을 자동으로 다시 그리지 않을 수 있어 그래픽을 갱신 대상으로 표시한다
+            _previous.SetMaterialDirty();
         }
 
         private void StopTyping()
@@ -247,12 +437,28 @@ namespace Shinshi.AI
             _illustration.preserveAspect = true;
             PrologueUi.Stretch(_illustration.rectTransform);
 
+            // 이전 그림이 지워지는 층, 평소에는 꺼 둔다
+            _previous = PrologueUi.CreateImage("InkPrevious", transform, Color.white, false).GetComponent<Image>();
+            _previous.preserveAspect = true;
+            _previous.enabled        = false;
+            PrologueUi.Stretch(_previous.rectTransform);
+
             // 전체 화면 클릭 영역, 투명하지만 입력은 받는다
             RectTransform clickArea = PrologueUi.CreateImage("ClickArea", transform, CLEAR_COLOR, true);
             PrologueUi.Stretch(clickArea);
             clickArea.gameObject.AddComponent<Button>().onClick.AddListener(HandleClick);
 
-            RectTransform panel = PrologueUi.CreateImage("Panel", transform, PANEL_COLOR, false);
+            // 글 뒤에 종이색이 위로 갈수록 투명해지는 그라데이션을 깐다. 경계가 보이는 바탕이 아니라 그림의 종이색 번짐을 이어 주는 것이다
+            RectTransform shade = PrologueUi.CreateImage("Shade", transform, SHADE_COLOR, false);
+            shade.GetComponent<Image>().sprite = GetShadeSprite();
+            shade.anchorMin = new Vector2(0f, 0f);
+            shade.anchorMax = new Vector2(1f, 0f);
+            shade.pivot     = new Vector2(HALF, 0f);
+            shade.offsetMin = Vector2.zero;
+            shade.offsetMax = new Vector2(0f, PANEL_HEIGHT + SHADE_EXTRA);
+
+            // 글을 놓는 자리일 뿐 바탕은 그리지 않는다
+            RectTransform panel = PrologueUi.CreateImage("Panel", transform, CLEAR_COLOR, false);
             panel.anchorMin = new Vector2(0f, 0f);
             panel.anchorMax = new Vector2(1f, 0f);
             panel.pivot     = new Vector2(0.5f, 0f);
