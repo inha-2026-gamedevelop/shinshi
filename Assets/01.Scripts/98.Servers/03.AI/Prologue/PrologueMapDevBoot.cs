@@ -36,6 +36,11 @@ namespace Shinshi.AI
         private const string REFERENCE_HEALTH_FIELD = "_referenceHealth";
         private const string PLAYER_START_FIELD   = "_playerStart";
         private const string CLAMP_PLAYER_FIELD   = "_clampPlayerToArena";
+        private const string RECT_OBJECT_NAME     = "PrologueWolbaekArenaRect";
+        private const string RECT_CENTER_FIELD    = "_arenaRectCenter";
+        private const string RECT_AXIS_FIELD      = "_arenaRectAxisX";
+        private const string RECT_HALF_FIELD      = "_arenaRectHalf";
+        private const float  HALF                 = 0.5f;
 
         /****************************************
         *                Methods
@@ -85,8 +90,17 @@ namespace Shinshi.AI
                 serialized.FindProperty(PLAYER_START_FIELD).vector3Value = startObject.transform.position - center;
             }
 
-            // 프롤로그에서는 월백 전장 밖으로 나가지 못하게 한다
+            // 프롤로그에서는 월백 전장 밖으로 나가지 못하게 한다. 사각형 표시 오브젝트가 있으면 그 사각형 안으로 가둔다
             serialized.FindProperty(CLAMP_PLAYER_FIELD).boolValue = true;
+
+            GameObject rectObject = GameObject.Find(RECT_OBJECT_NAME);
+            if (rectObject != null)
+            {
+                Transform rect = rectObject.transform;
+                serialized.FindProperty(RECT_CENTER_FIELD).vector3Value = rect.position;
+                serialized.FindProperty(RECT_AXIS_FIELD).vector2Value   = new Vector2(rect.right.x, rect.right.z);
+                serialized.FindProperty(RECT_HALF_FIELD).vector2Value   = new Vector2(rect.localScale.x * HALF, rect.localScale.z * HALF);
+            }
 
             ApplyRegionReference(serialized);
             serialized.ApplyModifiedPropertiesWithoutUndo();
