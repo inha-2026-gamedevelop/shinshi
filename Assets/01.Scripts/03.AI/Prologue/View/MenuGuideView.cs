@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 // Unity
@@ -36,15 +37,15 @@ namespace Shinshi.AI
         private const float  TEXT_SIZE       = 30f;
         private const float  COUNTER_SIZE    = 22f;
         private const float  BUTTON_SIZE     = 26f;
-        private const float  BUTTON_WIDTH    = 200f;
+        private const float  BUTTON_WIDTH    = 240f;
         private const float  BUTTON_HEIGHT   = 64f;
         private const float  BUTTON_MARGIN   = 28f;
         private const float  COUNTER_HEIGHT  = 34f;
         private const float  COUNTER_TOP     = 12f;
         private const string ROOT_NAME       = "MenuGuide";
         private const string NEXT_LABEL      = "다음";
-        private const string DONE_LABEL      = "완료";
-        private const string SKIP_LABEL      = "건너뛰기";
+        private const string DONE_LABEL      = "닫기";
+        private const string SKIP_LABEL      = "안내 건너뛰기";
         private const string COUNTER_FORMAT  = "{0} / {1}";
 
         // 기존 창과 같은 색을 쓴다. 강조 테두리는 기존 창의 선택 강조색(청록)이다
@@ -61,6 +62,7 @@ namespace Shinshi.AI
         private TextMeshProUGUI _nextText    = null;
         private TextMeshProUGUI _skipText    = null;
 
+        private Coroutine                        _closeRoutine = null;
         private IReadOnlyList<MenuGuideStepData> _steps    = null;
         private Func<string, RectTransform>      _resolver = null;
         private MenuGuideSession                 _session  = null;
@@ -113,6 +115,8 @@ namespace Shinshi.AI
                 return;
             }
 
+            CancelPendingClose();
+
             _steps    = steps;
             _resolver = resolver;
             _session  = new MenuGuideSession(steps.Count);
@@ -154,6 +158,7 @@ namespace Shinshi.AI
         /// <summary> 안내를 끝내지 않고 내린다, 완료로 치지 않아 다음 진입 때 다시 안내한다 </summary>
         public void Abort()
         {
+            CancelPendingClose();
             _session = null;
             gameObject.SetActive(false);
         }
@@ -215,8 +220,32 @@ namespace Shinshi.AI
             }
 
             _reported = true;
-            gameObject.SetActive(false);
+
+            // 누른 클릭이 같은 프레임에 이동이나 공격으로 읽히지 않게 한 프레임 뒤에 내린다. 완료 처리기가 곧바로 다른 안내를
+            // 띄워도 되도록 내리기를 먼저 걸어 두고 알린다(Show가 걸려 있는 내리기를 취소한다). 이 완화가 실제로 누수를
+            // 막는지는 확인하지 못했다
+            CancelPendingClose();
+            _closeRoutine = StartCoroutine(CoCloseNextFrame());
             Finished?.Invoke(_session.WasSkipped);
+        }
+
+        private IEnumerator CoCloseNextFrame()
+        {
+            yield return null;
+
+            _closeRoutine = null;
+            gameObject.SetActive(false);
+        }
+
+        private void CancelPendingClose()
+        {
+            if (_closeRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(_closeRoutine);
+            _closeRoutine = null;
         }
 
         private void ShowStep()

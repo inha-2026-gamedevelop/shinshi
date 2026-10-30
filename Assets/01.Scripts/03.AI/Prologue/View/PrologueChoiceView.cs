@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections;
 
 // Unity
 using UnityEngine;
@@ -25,13 +26,14 @@ namespace Shinshi.AI
         ****************************************/
 
         private const int    SORTING_ORDER   = 31500;
-        private const float  PANEL_WIDTH     = 780f;
+        private const float  PANEL_WIDTH     = 920f;
         private const float  PANEL_HEIGHT    = 380f;
         private const float  TITLE_SIZE      = 36f;
         private const float  TITLE_HEIGHT    = 56f;
         private const float  BODY_SIZE       = 26f;
         private const float  BODY_TOP        = 104f;
-        private const float  BODY_HEIGHT     = 70f;
+        private const float  BODY_HEIGHT     = 110f;
+        private const float  BODY_SIDE_MARGIN = 60f;
         private const float  BUTTON_SIZE     = 28f;
         private const float  BUTTON_WIDTH    = 330f;
         private const float  BUTTON_HEIGHT   = 76f;
@@ -39,8 +41,9 @@ namespace Shinshi.AI
         private const float  BUTTON_BOTTOM   = 48f;
         private const float  HALF            = 0.5f;
         private const string ROOT_NAME       = "PrologueChoice";
-        private const string TITLE_TEXT      = "프롤로그를 진행할까요?";
-        private const string BODY_TEXT       = "이미 프롤로그를 마친 계정입니다.";
+        private const string TITLE_TEXT      = "프롤로그 진행";
+        // 초안 문구의 두 문장 사이에서 줄을 바꾼다. TMP는 한글을 글자 단위로 끊어서 문장 중간에서 줄이 바뀌면 음절이 쪼개진다
+        private const string BODY_TEXT       = "프롤로그에서 이야기와 기본 조작을 다시 살펴볼 수 있습니다.\n건너뛰면 신시에서 바로 시작합니다.";
         private const string PLAY_LABEL      = "프롤로그 진행";
         private const string SKIP_LABEL      = "건너뛰고 신시로 이동";
 
@@ -51,6 +54,7 @@ namespace Shinshi.AI
         private TextMeshProUGUI[] _texts     = null;
         private bool              _decorated = false;
         private bool              _chosen    = false;
+        private Coroutine         _closeRoutine = null;
 
         /****************************************
         *              Properties
@@ -87,6 +91,9 @@ namespace Shinshi.AI
 
         public void Show()
         {
+            // 방금 Close로 내려가는 중이었다면 취소한다. 안 그러면 새로 띄운 창이 곧 꺼진다
+            CancelPendingClose();
+
             _chosen = false;
             gameObject.SetActive(true);
 
@@ -111,7 +118,34 @@ namespace Shinshi.AI
 
         public void Close()
         {
+            if (!gameObject.activeInHierarchy)
+            {
+                return;
+            }
+
+            // 선택을 누른 클릭이 같은 프레임에 이동이나 공격으로 읽히지 않게 한 프레임 뒤에 내린다.
+            // 이 완화가 실제로 누수를 막는지는 확인하지 못했다
+            CancelPendingClose();
+            _closeRoutine = StartCoroutine(CoCloseNextFrame());
+        }
+
+        private IEnumerator CoCloseNextFrame()
+        {
+            yield return null;
+
+            _closeRoutine = null;
             gameObject.SetActive(false);
+        }
+
+        private void CancelPendingClose()
+        {
+            if (_closeRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(_closeRoutine);
+            _closeRoutine = null;
         }
 
         public void Hide()
@@ -168,7 +202,7 @@ namespace Shinshi.AI
             rect.anchorMax        = new Vector2(1f, 1f);
             rect.pivot            = new Vector2(HALF, 1f);
             rect.anchoredPosition = new Vector2(0f, -top);
-            rect.sizeDelta        = new Vector2(0f, height);
+            rect.sizeDelta        = new Vector2(-(BODY_SIDE_MARGIN * 2f), height);
             return label;
         }
 

@@ -236,6 +236,101 @@ namespace Shinshi.Tests
             Assert.IsFalse(Previous().enabled);
         }
 
+        private string TextAt(string path)
+        {
+            Transform target = _view.transform.Find(path);
+            Assert.IsNotNull(target, path);
+            return target.GetComponent<TMPro.TMP_Text>().text;
+        }
+
+        [UnityTest]
+        public IEnumerator SilentPage_FirstClickGoesToNextPageAndShadeIsHidden()
+        {
+            var pages = new[]
+            {
+                new IllustrationPage(null, string.Empty),
+                new IllustrationPage(null, "둘째 장")
+            };
+            _view.Show(pages, false, true);
+            yield return null;
+
+            Assert.IsFalse(_view.transform.Find("Shade").gameObject.activeSelf);
+
+            // 출력할 글이 없으니 글 완성 단계 없이 첫 클릭이 바로 다음 장이다
+            _view.HandleClick();
+
+            Assert.AreEqual("둘째 장", TextAt("Panel/Body"));
+            Assert.IsTrue(_view.transform.Find("Shade").gameObject.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator SingleRevealedPage_HintSaysCloseInsteadOfNext()
+        {
+            _view.Show(new[] { new IllustrationPage(null, "신시의 부적과 닮은 문양이다.") }, true, false);
+            yield return null;
+
+            Assert.AreEqual("클릭하여 닫기", TextAt("Panel/Hint"));
+        }
+
+        [UnityTest]
+        public IEnumerator MultiPage_HintSaysNextAfterTextIsRevealed()
+        {
+            _view.Show(new[] { new IllustrationPage(null, "첫 장"), new IllustrationPage(null, "둘째 장") }, true, true);
+            yield return null;
+
+            Assert.AreEqual("클릭하여 다음으로", TextAt("Panel/Hint"));
+        }
+
+        [UnityTest]
+        public IEnumerator Show_WithSkipLabel_AppliesItToTheSkipButton()
+        {
+            _view.Show(PAGES, false, true, "도입 이야기 건너뛰기");
+            yield return null;
+
+            Assert.AreEqual("도입 이야기 건너뛰기", TextAt("Skip/Label"));
+        }
+
+        [UnityTest]
+        public IEnumerator Show_WithoutSkipLabel_UsesDefaultLabel()
+        {
+            _view.Show(PAGES, false, true);
+            yield return null;
+
+            Assert.AreEqual("건너뛰기", TextAt("Skip/Label"));
+        }
+
+        [UnityTest]
+        public IEnumerator Close_KeepsViewActiveForOneFrameThenHidesIt()
+        {
+            _view.Show(PAGES, false, true);
+            yield return null;
+
+            _view.Close();
+
+            // 닫는 클릭이 같은 프레임에 전투 입력으로 읽히지 않도록 한 프레임은 입력을 막은 채 남는다
+            Assert.IsTrue(_view.gameObject.activeSelf);
+
+            yield return null;
+            yield return null;
+
+            Assert.IsFalse(_view.gameObject.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator Show_RightAfterClose_StaysVisible()
+        {
+            _view.Show(PAGES, false, true);
+            yield return null;
+
+            _view.Close();
+            _view.Show(PAGES, false, true);
+
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(_view.gameObject.activeSelf);
+        }
+
         [UnityTest]
         public IEnumerator Click_AfterFinished_DoesNotFinishAgain()
         {

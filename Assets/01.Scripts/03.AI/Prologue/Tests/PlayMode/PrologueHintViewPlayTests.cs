@@ -76,6 +76,49 @@ namespace Shinshi.Tests
             Assert.IsNull(_view.GetComponent<GraphicRaycaster>());
         }
 
+        [UnityTest]
+        public IEnumerator ShowNotice_ShowsTextThenHidesItAfterTheGivenSeconds()
+        {
+            _view.ShowNotice("체력이 회복되었습니다.", 0.2f);
+            yield return null;
+
+            TextMeshProUGUI notice = FindText("Notice");
+            Assert.IsTrue(notice.gameObject.activeSelf);
+            Assert.AreEqual("체력이 회복되었습니다.", notice.text);
+
+            float waited = 0f;
+            while ((notice.gameObject.activeSelf) && (waited < 3f))
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.IsFalse(notice.gameObject.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator ShowNotice_NewNoticeReplacesTheOldOne()
+        {
+            _view.ShowNotice("첫 알림", 5f);
+            yield return null;
+            _view.ShowNotice("둘째 알림", 5f);
+            yield return null;
+
+            Assert.AreEqual("둘째 알림", FindText("Notice").text);
+        }
+
+        [UnityTest]
+        public IEnumerator HideNotice_HidesImmediately()
+        {
+            _view.ShowNotice("알림", 5f);
+            yield return null;
+
+            _view.HideNotice();
+
+            Assert.IsFalse(FindText("Notice").gameObject.activeSelf);
+            Assert.IsFalse(FindText("Notice").raycastTarget);
+        }
+
         private TextMeshProUGUI FindText(string objectName)
         {
             Transform child = _view.transform.Find(objectName);

@@ -22,6 +22,7 @@ namespace Shinshi.AI
         private int               _spawnedNormal    = 0;
         private bool              _telegraphSpawned = false;
         private bool              _wolbaekOpened    = false;
+        private double            _reviveNoticeEnd  = 0.0;
         private bool              _disposed         = false;
 
         /****************************************
@@ -37,6 +38,9 @@ namespace Shinshi.AI
 
         // 월백이 열려 교전 중인 동안, 화면 위쪽 목표 문구를 띄우는 기준이다
         public bool           IsWolbaekOpen => (_stage == EPrologueStage.Wolbaek) && (_wolbaekOpened);
+
+        // 숲에서 체력 0으로 회복된 직후 무적 시간 동안, 회복 안내 문구를 띄우는 기준이다. 월백 교전에서는 거짓이다
+        public bool           IsReviveNoticeActive => (_stage == EPrologueStage.Forest) && (_clock() < _reviveNoticeEnd);
 
         /****************************************
         *                Methods
@@ -286,6 +290,7 @@ namespace Shinshi.AI
         {
             if (PrologueStageRules.RevivesOnDown(_stage))
             {
+                _reviveNoticeEnd = _clock() + PrologueStageRules.REVIVE_INVULNERABLE_SECONDS;
                 _host.ReviveToFull(PrologueStageRules.REVIVE_INVULNERABLE_SECONDS);
                 return;
             }

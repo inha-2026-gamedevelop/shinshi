@@ -31,6 +31,7 @@ namespace Shinshi.AI
 
         // 월백 등장 연출 길이, BossPatternCatalog의 AppearanceSeconds와 같은 값이다
         private const double APPEAR_SECONDS  = 2.5;
+        private const float  COMPLETED_NOTICE_SECONDS = 4f;
         private const double NO_CONTROL_TIME = -1.0;
 
         private const string CATALOG_PATH = "Assets/09.Data/AI/Prologue/PrologueIllustrationCatalog.asset";
@@ -244,6 +245,7 @@ namespace Shinshi.AI
         public void ReviveToFull(float invulnerableSeconds)
         {
             Log($"체력 회복 + 무적 {invulnerableSeconds}초");
+            _hintView.ShowNotice(PrologueHintTexts.REVIVE_NOTICE, invulnerableSeconds);
         }
 
         public void StartWolbaek()
@@ -268,6 +270,10 @@ namespace Shinshi.AI
                     break;
                 case EPrologueStage.Ending:
                     ShowPages(EViewPurpose.Ending, _catalog.EndingPages, false, true);
+                    break;
+                case EPrologueStage.Done:
+                    // 실제로는 신시 도착과 완료 기록을 확인한 뒤에 띄워야 한다. 시험 장치에는 마을이 없어 완료 처리 직후에 띄운다
+                    _hintView.ShowNotice(PrologueHintTexts.PROLOGUE_COMPLETED, COMPLETED_NOTICE_SECONDS);
                     break;
                 default:
                     break;
@@ -332,7 +338,23 @@ namespace Shinshi.AI
         private void ShowPages(EViewPurpose purpose, IReadOnlyList<IllustrationPage> pages, bool startRevealed, bool allowSkip)
         {
             _purpose = purpose;
-            _view.Show(pages, startRevealed, allowSkip);
+            _view.Show(pages, startRevealed, allowSkip, SkipLabelFor(purpose));
+        }
+
+        // 건너뛰기 버튼은 구간마다 무엇을 건너뛰는지 적는다. 숲 플레이나 교전을 건너뛰는 것으로 읽히면 안 된다
+        private static string SkipLabelFor(EViewPurpose purpose)
+        {
+            switch (purpose)
+            {
+                case EViewPurpose.Intro:
+                    return PrologueHintTexts.SKIP_INTRO_LABEL;
+                case EViewPurpose.Appearance:
+                    return PrologueHintTexts.SKIP_APPEARANCE_LABEL;
+                case EViewPurpose.Ending:
+                    return PrologueHintTexts.SKIP_ENDING_LABEL;
+                default:
+                    return null;
+            }
         }
 
         // 화면을 내린 뒤 목적에 맞는 사건을 일으킨다. 월백 등장은 건너뛰어도 교전은 이어지므로 같은 사건이다
@@ -369,23 +391,24 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 위쪽은 목표, 아래쪽은 설명이다. 월백이 열리면 월백 안내가 우선이고, 숲에서는 위험 범위 안내가 가장 급하며
+            // 그다음이 물약이다. 물약 안내는 아래 설명만 바꾸고 목표는 그대로 둔다
             EForestHint hint = _director.CurrentHint;
-            string text;
-            if (hint == EForestHint.LeaveDangerZone)
+            string objective   = PrologueHintTexts.ObjectiveFor(hint);
+            string instruction = PrologueHintTexts.InstructionFor(hint);
+
+            if (_director.IsWolbaekOpen)
             {
-                text = PrologueHintTexts.ForHint(hint);
+                objective   = PrologueHintTexts.WOLBAEK_OBJECTIVE;
+                instruction = PrologueHintTexts.WOLBAEK_INSTRUCTION;
             }
-            else if (_director.ShouldHintPotion(_damaged))
+            else if ((hint != EForestHint.LeaveDangerZone) && (_director.ShouldHintPotion(_damaged)))
             {
-                text = PrologueHintTexts.PotionHint();
-            }
-            else
-            {
-                text = PrologueHintTexts.ForHint(hint);
+                instruction = PrologueHintTexts.POTION_INSTRUCTION;
             }
 
-            _hintView.SetHint(text);
-            _hintView.SetObjective(_director.IsWolbaekOpen ? PrologueHintTexts.WOLBAEK_OBJECTIVE : string.Empty);
+            _hintView.SetObjective(objective);
+            _hintView.SetHint(instruction);
         }
 
         // 성장 메뉴 안내를 시험하기 위한 가짜 메뉴 패널과 진행기를 만든다

@@ -52,6 +52,48 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, _chosenCount);
         }
 
+        private string TextAt(string path)
+        {
+            Transform target = _view.transform.Find(path);
+            Assert.IsNotNull(target, path);
+            return target.GetComponent<TMPro.TMP_Text>().text;
+        }
+
+        [UnityTest]
+        public IEnumerator Texts_FollowTheDraftWording()
+        {
+            yield return null;
+
+            Assert.AreEqual("프롤로그 진행", TextAt("Panel/Title"));
+            // 초안의 두 문장 사이에서 줄만 바꿨다
+            Assert.AreEqual("프롤로그에서 이야기와 기본 조작을 다시 살펴볼 수 있습니다.\n건너뛰면 신시에서 바로 시작합니다.", TextAt("Panel/Body"));
+            Assert.AreEqual("프롤로그 진행", TextAt("Panel/PlayButton/Label"));
+            Assert.AreEqual("건너뛰고 신시로 이동", TextAt("Panel/SkipButton/Label"));
+        }
+
+        [UnityTest]
+        public IEnumerator Close_KeepsWindowForOneFrameAndShowAfterCloseStaysVisible()
+        {
+            _view.Show();
+            yield return null;
+            _view.HandlePlay();
+
+            _view.Close();
+            Assert.IsTrue(_view.gameObject.activeSelf);
+
+            yield return null;
+            yield return null;
+            Assert.IsFalse(_view.gameObject.activeSelf);
+
+            _view.Show();
+            _view.Close();
+            _view.Show();
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(_view.gameObject.activeSelf);
+        }
+
         [UnityTest]
         public IEnumerator HandlePlay_AfterShow_ReportsPlayOnce()
         {

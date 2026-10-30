@@ -37,12 +37,23 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Catalog_EveryPage_HasImageAndText()
+        public void Catalog_EveryPage_HasImage()
         {
-            AssertPages(_catalog.IntroPages);
-            AssertPages(_catalog.TalismanPages);
-            AssertPages(_catalog.AppearancePages);
-            AssertPages(_catalog.EndingPages);
+            AssertImages(_catalog.IntroPages);
+            AssertImages(_catalog.TalismanPages);
+            AssertImages(_catalog.AppearancePages);
+            AssertImages(_catalog.EndingPages);
+        }
+
+        // 마무리 첫 장(압도적인 술식)은 자막과 대사가 없다고 확정됐다. 나머지는 모두 문구가 있어야 한다
+        [Test]
+        public void Catalog_EveryPageHasText_ExceptTheSilentFirstEndingPage()
+        {
+            AssertText(_catalog.IntroPages, -1);
+            AssertText(_catalog.TalismanPages, -1);
+            AssertText(_catalog.AppearancePages, -1);
+            AssertText(_catalog.EndingPages, 0);
+            Assert.IsTrue(string.IsNullOrEmpty(_catalog.EndingPages[0].Text));
         }
 
         [Test]
@@ -60,11 +71,24 @@ namespace Shinshi.Tests
             Assert.AreEqual("그 부적...... 아직도 인간에게 전해지고 있었구나.", _catalog.AppearancePages[0].Text);
         }
 
-        private static void AssertPages(IllustrationPage[] pages)
+        private static void AssertImages(IllustrationPage[] pages)
         {
             for (int i = 0; i < pages.Length; ++i)
             {
                 Assert.IsNotNull(pages[i].Image, $"{i}번째 그림이 비어 있다");
+            }
+        }
+
+        // silentIndex는 문구가 없어도 되는 장의 번호, 없으면 -1이다
+        private static void AssertText(IllustrationPage[] pages, int silentIndex)
+        {
+            for (int i = 0; i < pages.Length; ++i)
+            {
+                if (i == silentIndex)
+                {
+                    continue;
+                }
+
                 Assert.IsFalse(string.IsNullOrEmpty(pages[i].Text), $"{i}번째 문구가 비어 있다");
             }
         }

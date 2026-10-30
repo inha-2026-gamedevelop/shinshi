@@ -105,6 +105,46 @@ namespace Shinshi.Tests
             Assert.IsFalse(_view.IsShowing);
         }
 
+        private string TextAt(string path)
+        {
+            Transform target = _view.transform.Find(path);
+            Assert.IsNotNull(target, path);
+            return target.GetComponent<TMPro.TMP_Text>().text;
+        }
+
+        [UnityTest]
+        public IEnumerator Buttons_FollowTheDraftWording()
+        {
+            _controller.TryShowFirstTime(MENU_ID, Resolve);
+            yield return null;
+
+            Assert.AreEqual("안내 건너뛰기", TextAt("Panel/SkipButton/Label"));
+            Assert.AreEqual("다음", TextAt("Panel/NextButton/Label"));
+
+            _view.HandleNext();
+            _view.HandleNext();
+
+            // 마지막 단계의 단추는 "다음"이 아니라 "닫기"다
+            Assert.AreEqual("닫기", TextAt("Panel/NextButton/Label"));
+        }
+
+        [UnityTest]
+        public IEnumerator Finish_HidesAfterOneFrameAndShowAgainRightAwayStaysVisible()
+        {
+            _controller.TryShowFirstTime(OTHER_ID, Resolve);
+            yield return null;
+
+            _view.HandleNext();
+            Assert.IsTrue(_view.gameObject.activeSelf);
+
+            _controller.Replay(OTHER_ID, Resolve);
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(_view.gameObject.activeSelf);
+            Assert.IsTrue(_view.IsShowing);
+        }
+
         [UnityTest]
         public IEnumerator Controller_Skip_AlsoRecordsCompletion()
         {

@@ -90,7 +90,7 @@ namespace Shinshi.Tests
             _session.RaiseKilled(1);
 
             Assert.AreEqual(2, _session.Spawns.Count);
-            Assert.AreEqual(EForestHint.BasicAttack, director.CurrentHint);
+            Assert.AreEqual(EForestHint.UseBothOnce, director.CurrentHint);
         }
 
         [Test]
@@ -131,6 +131,36 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, _session.Revives.Count);
             Assert.AreEqual(3f, _session.Revives[0]);
             Assert.AreEqual(EPrologueStage.Forest, director.Stage);
+        }
+
+        [Test]
+        public void PlayerDown_InForest_ShowsReviveNoticeOnlyDuringTheInvulnerableTime()
+        {
+            PrologueDirector director = Create(true);
+            director.Start(EPrologueStage.Forest, 0);
+            Assert.IsFalse(director.IsReviveNoticeActive);
+
+            _session.RaisePlayerDown();
+            Assert.IsTrue(director.IsReviveNoticeActive);
+
+            _session.Now += 2.9;
+            Assert.IsTrue(director.IsReviveNoticeActive);
+
+            _session.Now += 0.2;
+            Assert.IsFalse(director.IsReviveNoticeActive);
+        }
+
+        [Test]
+        public void PlayerDown_InWolbaek_NeverShowsReviveNotice()
+        {
+            PrologueDirector director = ReachSecondFight();
+            _session.RaiseKilled(0);
+            _session.RaiseWolbaekIntro();
+            _session.RaiseWolbaekControl();
+
+            _session.RaisePlayerDown();
+
+            Assert.IsFalse(director.IsReviveNoticeActive);
         }
 
         [Test]

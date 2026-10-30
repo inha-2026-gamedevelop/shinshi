@@ -33,7 +33,7 @@ namespace Shinshi.AI
         private const float  HINT_FONT_SIZE     = 22f;
         private const float  HINT_HEIGHT        = 36f;
         private const float  HINT_MARGIN        = 24f;
-        private const float  SKIP_WIDTH         = 160f;
+        private const float  SKIP_WIDTH         = 300f;
         private const float  SKIP_HEIGHT        = 56f;
         private const float  SKIP_MARGIN        = 32f;
         private const float  SKIP_FONT_SIZE     = 24f;
@@ -48,6 +48,7 @@ namespace Shinshi.AI
         private const string ROOT_OBJECT_NAME   = "PrologueIllustration";
         private const string HINT_REVEAL        = "클릭하여 전체 표시";
         private const string HINT_NEXT          = "클릭하여 다음으로";
+        private const string HINT_CLOSE         = "클릭하여 닫기";
         private const string SKIP_LABEL         = "건너뛰기";
 
         // 일러스트는 아래쪽이 종이색으로 번지게 만들어져 있어서 자막은 바탕 없이 그 종이색 위에 먹색 글자로 바로 얹는다.
@@ -75,6 +76,9 @@ namespace Shinshi.AI
         private Sprite          _shadeSprite  = null;
         private Texture2D       _shadeTexture = null;
         private Coroutine       _inkRoutine   = null;
+        private Coroutine       _closeRoutine = null;
+        private bool            _closesWithTap = false;
+        private GameObject      _shadeObject  = null;
         private TextMeshProUGUI _bodyText;
         private TextMeshProUGUI _hintText;
         private TextMeshProUGUI _skipText;
@@ -133,8 +137,8 @@ namespace Shinshi.AI
             }
         }
 
-        /// <summary> 장들을 처음부터 보인다, startRevealed는 글을 처음부터 전부 보이고 allowSkip이 거짓이면 건너뛰기 버튼을 숨긴다 </summary>
-        public void Show(IReadOnlyList<IllustrationPage> pages, bool startRevealed, bool allowSkip)
+        /// <summary> 장들을 처음부터 보인다. startRevealed는 글을 처음부터 전부 보이고, allowSkip이 거짓이면 건너뛰기 버튼을 숨기며, skipLabel은 구간에 맞는 버튼 글자다 </summary>
+        public void Show(IReadOnlyList<IllustrationPage> pages, bool startRevealed, bool allowSkip, string skipLabel = null)
         {
             if ((pages == null) || (pages.Count == 0))
             {
@@ -146,10 +150,15 @@ namespace Shinshi.AI
                 return;
             }
 
-            _pages     = pages;
-            _sequence  = new IllustrationSequence(pages.Count, startRevealed);
-            _completed = false;
+            // 방금 Close로 내려가는 중이었다면 취소한다. 안 그러면 새로 띄운 화면이 끝에 가서 꺼진다
+            CancelPendingClose();
 
+            _pages          = pages;
+            _sequence       = new IllustrationSequence(pages.Count, startRevealed);
+            _completed      = false;
+            _closesWithTap  = (startRevealed) && (pages.Count == 1);
+
+            _skipText.SetText(string.IsNullOrEmpty(skipLabel) ? SKIP_LABEL : skipLabel);
             _skipButton.SetActive(allowSkip);
             gameObject.SetActive(true);
             CompleteInk();
@@ -205,7 +214,35 @@ namespace Shinshi.AI
         {
             StopTyping();
             CompleteInk();
+
+            if (!gameObject.activeInHierarchy)
+            {
+                return;
+            }
+
+            // 화면을 닫는 클릭이 같은 프레임에 이동이나 공격 입력으로 읽히지 않게, 한 프레임 동안은 입력을 막은 채 둔다.
+            // 입력 쪽이 "포인터가 UI 위"를 보고 전투 입력을 거르기 때문이다. 이 완화가 실제로 누수를 막는지는 확인하지 못했다
+            CancelPendingClose();
+            _closeRoutine = StartCoroutine(CoCloseNextFrame());
+        }
+
+        private IEnumerator CoCloseNextFrame()
+        {
+            yield return null;
+
+            _closeRoutine = null;
             gameObject.SetActive(false);
+        }
+
+        private void CancelPendingClose()
+        {
+            if (_closeRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(_closeRoutine);
+            _closeRoutine = null;
         }
 
         public void Hide()
@@ -283,6 +320,14 @@ namespace Shinshi.AI
 
             StopTyping();
             _bodyText.text = page.Text;
+
+            // 자막과 대사가 없는 장은 종이색 그라데이션도 걷고, 출력할 글이 없으니 글 완성 단계 없이 첫 클릭으로 다음으로 넘어간다
+            bool hasText = !string.IsNullOrEmpty(page.Text);
+            _shadeObject.SetActive(hasText);
+            if (!hasText)
+            {
+                _sequence.OnTextCompleted();
+            }
 
             if (_sequence.IsTyping)
             {
@@ -406,7 +451,9 @@ namespace Shinshi.AI
 
         private void RefreshHint()
         {
-            _hintText.SetText(_sequence.IsTyping ? HINT_REVEAL : HINT_NEXT);
+            // 부적 조사처럼 글이 처음부터 전부 보이는 한 장짜리는 다음 장이 없으니 닫는다고 안내한다
+            string done = _closesWithTap ? HINT_CLOSE : HINT_NEXT;
+            _hintText.SetText(_sequence.IsTyping ? HINT_REVEAL : done);
         }
 
         // 일시정지 중에도 흘러야 하므로 실제 시간으로 센다
@@ -450,6 +497,7 @@ namespace Shinshi.AI
 
             // 글 뒤에 종이색이 위로 갈수록 투명해지는 그라데이션을 깐다. 경계가 보이는 바탕이 아니라 그림의 종이색 번짐을 이어 주는 것이다
             RectTransform shade = PrologueUi.CreateImage("Shade", transform, SHADE_COLOR, false);
+            _shadeObject = shade.gameObject;
             shade.GetComponent<Image>().sprite = GetShadeSprite();
             shade.anchorMin = new Vector2(0f, 0f);
             shade.anchorMax = new Vector2(1f, 0f);

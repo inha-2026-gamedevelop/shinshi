@@ -73,20 +73,25 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void CurrentHint_FirstFight_GuidesAttackThenQ()
+        public void CurrentHint_FirstFight_AttackThenQAtSecondEnemyThenKillRemaining()
         {
             var progress = new ForestProgress(true);
             Assert.AreEqual(EForestHint.BasicAttack, progress.CurrentHint);
 
+            // 기본 공격을 썼지만 두 번째 산귀가 아직 안 나왔으면 Q 안내 대신 남은 산귀 처치다
             progress.OnAttackUsed();
+            Assert.AreEqual(EForestHint.KillRemaining, progress.CurrentHint);
+
+            // 첫 산귀를 잡아 두 번째가 나오면 Q를 안내한다
+            progress.OnEnemyKilled();
             Assert.AreEqual(EForestHint.SkillQ, progress.CurrentHint);
 
             progress.OnSkillQUsed();
-            Assert.AreEqual(EForestHint.None, progress.CurrentHint);
+            Assert.AreEqual(EForestHint.KillRemaining, progress.CurrentHint);
         }
 
         [Test]
-        public void FirstFight_KilledBothEnemiesButQUnused_StaysUntilQUsed()
+        public void FirstFight_KilledBothEnemiesButQUnused_ShowsUseSkillOnceUntilQUsed()
         {
             var progress = new ForestProgress(true);
             progress.OnAttackUsed();
@@ -94,11 +99,35 @@ namespace Shinshi.Tests
             progress.OnEnemyKilled();
 
             Assert.AreEqual(EForestPhase.FirstFight, progress.Phase);
-            Assert.AreEqual(EForestHint.SkillQ, progress.CurrentHint);
+            Assert.AreEqual(EForestHint.UseSkillOnce, progress.CurrentHint);
 
             progress.OnSkillQUsed();
 
             Assert.AreEqual(EForestPhase.SecondFight, progress.Phase);
+        }
+
+        [Test]
+        public void FirstFight_KilledBothEnemiesButAttackUnused_ShowsUseAttackOnce()
+        {
+            var progress = new ForestProgress(true);
+            progress.OnSkillQUsed();
+            progress.OnEnemyKilled();
+            progress.OnEnemyKilled();
+
+            Assert.AreEqual(EForestHint.UseAttackOnce, progress.CurrentHint);
+        }
+
+        [Test]
+        public void FirstFight_KilledBothEnemiesWithoutUsingEither_ShowsUseBothOnce()
+        {
+            var progress = new ForestProgress(true);
+            progress.OnEnemyKilled();
+            progress.OnEnemyKilled();
+
+            Assert.AreEqual(EForestHint.UseBothOnce, progress.CurrentHint);
+
+            progress.OnAttackUsed();
+            Assert.AreEqual(EForestHint.UseSkillOnce, progress.CurrentHint);
         }
 
         [Test]
@@ -139,7 +168,16 @@ namespace Shinshi.Tests
 
             progress.OnTelegraphEnded();
 
-            Assert.AreEqual(EForestHint.None, progress.CurrentHint);
+            // 예고가 끝나면 다시 예고형 산귀와 싸우는 안내로 돌아온다
+            Assert.AreEqual(EForestHint.FightTelegraphEnemy, progress.CurrentHint);
+        }
+
+        [Test]
+        public void SecondFight_BeforeAnyTelegraph_ShowsFightTelegraphEnemy()
+        {
+            var progress = ReachSecondFight();
+
+            Assert.AreEqual(EForestHint.FightTelegraphEnemy, progress.CurrentHint);
         }
 
         [Test]

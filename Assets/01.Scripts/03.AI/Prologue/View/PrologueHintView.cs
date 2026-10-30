@@ -1,3 +1,6 @@
+// System
+using System.Collections;
+
 // Unity
 using UnityEngine;
 
@@ -24,15 +27,21 @@ namespace Shinshi.AI
         private const float  OBJECTIVE_FONT_SIZE = 34f;
         private const float  HINT_BOTTOM_OFFSET = 220f;
         private const float  OBJECTIVE_TOP_OFFSET = 90f;
+        private const float  NOTICE_FONT_SIZE   = 30f;
+        private const float  NOTICE_TOP_OFFSET  = 170f;
+        private const float  NOTICE_HEIGHT      = 100f;
         private const float  TEXT_WIDTH         = 900f;
         private const float  TEXT_HEIGHT        = 60f;
         private const string ROOT_OBJECT_NAME   = "PrologueHint";
 
         private static readonly Color HINT_COLOR      = new Color(1f, 1f, 1f, 0.95f);
         private static readonly Color OBJECTIVE_COLOR = new Color(1f, 0.92f, 0.65f, 1f);
+        private static readonly Color NOTICE_COLOR    = new Color(0.78f, 0.95f, 1f, 1f);
 
         private TextMeshProUGUI _hintText      = null;
         private TextMeshProUGUI _objectiveText = null;
+        private TextMeshProUGUI _noticeText    = null;
+        private Coroutine       _noticeRoutine = null;
         private string          _hint          = string.Empty;
         private string          _objective     = string.Empty;
 
@@ -56,6 +65,59 @@ namespace Shinshi.AI
 
             _hintText.font      = font;
             _objectiveText.font = font;
+            _noticeText.font    = font;
+        }
+
+        /// <summary> 회복, 귀환, 재개 같은 짧은 알림을 seconds 동안 보인다, 새 알림이 오면 이전 것을 바꾼다. 줄바꿈 문자로 두 줄까지 쓴다 </summary>
+        public void ShowNotice(string text, float seconds)
+        {
+            if (_noticeText == null)
+            {
+                return;
+            }
+
+            if (_noticeRoutine != null)
+            {
+                StopCoroutine(_noticeRoutine);
+                _noticeRoutine = null;
+            }
+
+            _noticeText.SetText(text);
+            _noticeText.gameObject.SetActive(!string.IsNullOrEmpty(text));
+
+            if ((!string.IsNullOrEmpty(text)) && (gameObject.activeInHierarchy))
+            {
+                _noticeRoutine = StartCoroutine(CoHideNotice(seconds));
+            }
+        }
+
+        /// <summary> 알림을 바로 내린다 </summary>
+        public void HideNotice()
+        {
+            if (_noticeRoutine != null)
+            {
+                StopCoroutine(_noticeRoutine);
+                _noticeRoutine = null;
+            }
+
+            if (_noticeText != null)
+            {
+                _noticeText.gameObject.SetActive(false);
+            }
+        }
+
+        // 일시정지 중에도 흘러야 하므로 실제 시간으로 센다
+        private IEnumerator CoHideNotice(float seconds)
+        {
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            _noticeRoutine = null;
+            _noticeText.gameObject.SetActive(false);
         }
 
         /// <summary> 조작 안내, 빈 문자열이면 숨긴다. 값이 바뀔 때만 다시 쓴다 </summary>
@@ -97,8 +159,13 @@ namespace Shinshi.AI
             _hintText = CreateText("Hint", HINT_FONT_SIZE, HINT_COLOR, 0f, HINT_BOTTOM_OFFSET);
             _objectiveText = CreateText("Objective", OBJECTIVE_FONT_SIZE, OBJECTIVE_COLOR, 1f, -OBJECTIVE_TOP_OFFSET);
 
+            _noticeText = CreateText("Notice", NOTICE_FONT_SIZE, NOTICE_COLOR, 1f, -NOTICE_TOP_OFFSET);
+            _noticeText.textWrappingMode = TextWrappingModes.Normal;
+            _noticeText.rectTransform.sizeDelta = new Vector2(TEXT_WIDTH, NOTICE_HEIGHT);
+
             _hintText.gameObject.SetActive(false);
             _objectiveText.gameObject.SetActive(false);
+            _noticeText.gameObject.SetActive(false);
         }
 
         // anchorY가 0이면 아래, 1이면 위에 붙이고 offsetY는 그 가장자리에서의 거리다

@@ -140,17 +140,39 @@ namespace Shinshi.AI
                 case EForestPhase.Talisman:
                     return _talismanOpen ? EForestHint.None : EForestHint.Move;
                 case EForestPhase.FirstFight:
-                    if (!_usedAttack)
-                    {
-                        return EForestHint.BasicAttack;
-                    }
-
-                    return _usedSkillQ ? EForestHint.None : EForestHint.SkillQ;
+                    return ResolveFirstFightHint();
                 case EForestPhase.SecondFight:
-                    return _telegraphActive ? EForestHint.LeaveDangerZone : EForestHint.None;
+                    return _telegraphActive ? EForestHint.LeaveDangerZone : EForestHint.FightTelegraphEnemy;
                 default:
                     return EForestHint.None;
             }
+        }
+
+        // 일반 산귀를 다 잡았는데 쓰지 않은 행동이 남았으면 그것만 남겨 안내한다. 아직 적이 남았으면 기본 공격,
+        // 두 번째 산귀가 나온 뒤의 Q, 그 밖에는 남은 산귀 처치 순이다
+        private EForestHint ResolveFirstFightHint()
+        {
+            if (_firstFightKills >= FIRST_FIGHT_ENEMY_COUNT)
+            {
+                if ((!_usedAttack) && (!_usedSkillQ))
+                {
+                    return EForestHint.UseBothOnce;
+                }
+
+                return (!_usedAttack) ? EForestHint.UseAttackOnce : EForestHint.UseSkillOnce;
+            }
+
+            if (!_usedAttack)
+            {
+                return EForestHint.BasicAttack;
+            }
+
+            if ((!_usedSkillQ) && (_firstFightKills >= 1))
+            {
+                return EForestHint.SkillQ;
+            }
+
+            return EForestHint.KillRemaining;
         }
     }
 }
