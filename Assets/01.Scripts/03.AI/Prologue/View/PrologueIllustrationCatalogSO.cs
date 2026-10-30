@@ -4,6 +4,9 @@ using System;
 // Unity
 using UnityEngine;
 
+// 서드파티
+using TMPro;
+
 namespace Shinshi.AI
 {
     /// <summary> 프롤로그 일러스트와 자막 묶음, 로컬 표현 전용이라 GameDB에 넣지 않고 서버 판정과 무관하다 </summary>
@@ -52,6 +55,10 @@ namespace Shinshi.AI
         [Header("전환")]
         [SerializeField] private Material _inkWipeMaterial;
 
+        // 프롤로그 화면의 한글 글꼴. 에디터 도우미는 빌드에서 쓸 수 없어 에셋이 참조한다. 비면 TMP 기본 글꼴이라 한글이 깨질 수 있다
+        [Header("글꼴")]
+        [SerializeField] private TMP_FontAsset _font;
+
         private IllustrationPage[] _introPages      = null;
         private IllustrationPage[] _talismanPages   = null;
         private IllustrationPage[] _appearancePages = null;
@@ -61,7 +68,8 @@ namespace Shinshi.AI
         *              Properties
         ****************************************/
 
-        public Material InkWipeMaterial => _inkWipeMaterial;
+        public Material      InkWipeMaterial => _inkWipeMaterial;
+        public TMP_FontAsset Font            => _font;
 
         public IllustrationPage[] IntroPages      => _introPages      ?? (_introPages      = Convert(_intro));
         public IllustrationPage[] TalismanPages   => _talismanPages   ?? (_talismanPages   = Convert(_talisman));
@@ -90,6 +98,12 @@ namespace Shinshi.AI
         public void SetInkWipeMaterial(Material material)
         {
             _inkWipeMaterial = material;
+        }
+
+        /// <summary> 에디터에서 글꼴을 연결할 때 쓴다, 런타임에서는 부르지 않는다 </summary>
+        public void SetFont(TMP_FontAsset font)
+        {
+            _font = font;
         }
 
         private static IllustrationPage[] Convert(PageEntry[] entries)
