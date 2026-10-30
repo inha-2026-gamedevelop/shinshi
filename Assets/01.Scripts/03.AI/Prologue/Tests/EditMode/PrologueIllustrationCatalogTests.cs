@@ -67,8 +67,16 @@ namespace Shinshi.Tests
         [Test]
         public void Catalog_ConfirmedLines_AreExact()
         {
+            // 줄임표는 기호 문자를 소스에 직접 쓰지 않으려고 이스케이프로 적는다
+            const string ELLIPSIS = "……";
+
+            Assert.AreEqual("인간과 신령이 함께 터를 잡은 곳, 신시.\n서로 다른 이들이 이곳에서 삶을 이어 왔다.", _catalog.IntroPages[0].Text);
+            Assert.AreEqual("사람들은 무예를 익히고, 부적의 가르침을 이어받았다.\n소중한 이들과 삶의 터전을 지키기 위해.", _catalog.IntroPages[1].Text);
+            Assert.AreEqual("그러나 숲 너머에서 인간을 습격하는 산귀들이 나타났다.\n흩어져 있던 습격의 흔적은 점차 하나의 숲으로 이어졌다.", _catalog.IntroPages[2].Text);
+            Assert.AreEqual("신시의 토벌대원인 당신은 그 흔적을 따라 숲으로 향했다.", _catalog.IntroPages[3].Text);
             Assert.AreEqual("신시의 부적과 닮은 문양이다.", _catalog.TalismanPages[0].Text);
-            Assert.AreEqual("그 부적...... 아직도 인간에게 전해지고 있었구나.", _catalog.AppearancePages[0].Text);
+            Assert.AreEqual("그 부적" + ELLIPSIS + " 아직도 인간에게 전해지고 있었구나.", _catalog.AppearancePages[0].Text);
+            Assert.AreEqual(ELLIPSIS + "이대로는 상대할 수 없어.\n신시로 돌아가자. 다시 맞설 힘이 필요해.", _catalog.EndingPages[1].Text);
         }
 
         private static void AssertImages(IllustrationPage[] pages)

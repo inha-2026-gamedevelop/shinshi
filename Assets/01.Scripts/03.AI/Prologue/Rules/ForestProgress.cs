@@ -65,10 +65,10 @@ namespace Shinshi.AI
             _phase        = EForestPhase.FirstFight;
         }
 
-        // 명중은 필요 없고 사용 한 번이면 된다. 적이 없어도 인정한다
+        // 안내가 그 행동을 요구하는 동안 쓴 것만 인정한다. 명중은 필요 없고 사용 한 번이면 되며 적이 없어도 인정한다
         public void OnAttackUsed()
         {
-            if (_phase != EForestPhase.FirstFight)
+            if (!AcceptsAttack())
             {
                 return;
             }
@@ -79,7 +79,7 @@ namespace Shinshi.AI
 
         public void OnSkillQUsed()
         {
-            if (_phase != EForestPhase.FirstFight)
+            if (!AcceptsSkillQ())
             {
                 return;
             }
@@ -120,6 +120,28 @@ namespace Shinshi.AI
         public void OnTelegraphEnded()
         {
             _telegraphActive = false;
+        }
+
+        private bool AcceptsAttack()
+        {
+            if (_phase != EForestPhase.FirstFight)
+            {
+                return false;
+            }
+
+            EForestHint hint = ResolveFirstFightHint();
+            return (hint == EForestHint.BasicAttack) || (hint == EForestHint.UseAttackOnce) || (hint == EForestHint.UseBothOnce);
+        }
+
+        private bool AcceptsSkillQ()
+        {
+            if (_phase != EForestPhase.FirstFight)
+            {
+                return false;
+            }
+
+            EForestHint hint = ResolveFirstFightHint();
+            return (hint == EForestHint.SkillQ) || (hint == EForestHint.UseSkillOnce) || (hint == EForestHint.UseBothOnce);
         }
 
         // 적을 다 잡았어도 쓰지 않은 기본 공격과 Q가 남았으면 첫 전투는 끝나지 않는다

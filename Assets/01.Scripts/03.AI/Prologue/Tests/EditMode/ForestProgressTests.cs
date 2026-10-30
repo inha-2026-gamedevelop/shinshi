@@ -110,11 +110,37 @@ namespace Shinshi.Tests
         public void FirstFight_KilledBothEnemiesButAttackUnused_ShowsUseAttackOnce()
         {
             var progress = new ForestProgress(true);
-            progress.OnSkillQUsed();
             progress.OnEnemyKilled();
             progress.OnEnemyKilled();
 
+            // 둘 다 남았다는 안내가 뜬 동안에는 Q를 먼저 써도 인정된다
+            progress.OnSkillQUsed();
+
             Assert.AreEqual(EForestHint.UseAttackOnce, progress.CurrentHint);
+        }
+
+        [Test]
+        public void OnSkillQUsed_BeforeSkillQHint_IsIgnored()
+        {
+            var progress = new ForestProgress(true);
+
+            // 기본 공격 안내 중에 쓴 Q는 인정되지 않는다
+            progress.OnSkillQUsed();
+            progress.OnAttackUsed();
+            progress.OnEnemyKilled();
+
+            Assert.AreEqual(EForestHint.SkillQ, progress.CurrentHint);
+        }
+
+        [Test]
+        public void OnAttackUsed_AfterAttackAlreadyUsed_DoesNotChangeHint()
+        {
+            var progress = new ForestProgress(true);
+            progress.OnAttackUsed();
+
+            progress.OnAttackUsed();
+
+            Assert.AreEqual(EForestHint.KillRemaining, progress.CurrentHint);
         }
 
         [Test]
@@ -131,12 +157,12 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void FirstFight_UsedBothBeforeKills_WaitsForKills()
+        public void FirstFight_UsedBothBeforeLastKill_WaitsForKills()
         {
             var progress = new ForestProgress(true);
             progress.OnAttackUsed();
-            progress.OnSkillQUsed();
             progress.OnEnemyKilled();
+            progress.OnSkillQUsed();
 
             Assert.AreEqual(EForestPhase.FirstFight, progress.Phase);
 
@@ -207,8 +233,8 @@ namespace Shinshi.Tests
         {
             var progress = new ForestProgress(true);
             progress.OnAttackUsed();
-            progress.OnSkillQUsed();
             progress.OnEnemyKilled();
+            progress.OnSkillQUsed();
             progress.OnEnemyKilled();
             return progress;
         }

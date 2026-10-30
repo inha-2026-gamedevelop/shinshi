@@ -30,8 +30,8 @@ namespace Shinshi.Tests
             PrologueDirector director = Create(true);
             director.Start(EPrologueStage.Forest, 0);
             _session.RaiseAttack();
-            _session.RaiseSkillQ();
             _session.RaiseKilled(0);
+            _session.RaiseSkillQ();
             _session.RaiseKilled(1);
             return director;
         }
