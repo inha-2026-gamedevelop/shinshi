@@ -30,14 +30,38 @@ namespace Shinshi.AI
                 return;
             }
 
+            view.SetFont(Load());
+        }
+
+        public static void Apply(PrologueHintView view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            view.SetFont(Load());
+        }
+
+        public static void Apply(PrologueChoiceView view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            view.SetFont(Load());
+        }
+
+        private static TMP_FontAsset Load()
+        {
             var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
             if (font == null)
             {
                 Debug.LogWarning($"[PrologueDevFont] 한글 글꼴을 찾지 못했다: {FONT_PATH}");
-                return;
             }
 
-            view.SetFont(font);
+            return font;
         }
     }
 }

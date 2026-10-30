@@ -35,6 +35,9 @@ namespace Shinshi.AI
         public EForestHint    CurrentHint => (_forest != null) ? _forest.CurrentHint : EForestHint.None;
         public bool           BlocksInput => (_forest != null) && (_forest.BlocksInput);
 
+        // 월백이 열려 교전 중인 동안, 화면 위쪽 목표 문구를 띄우는 기준이다
+        public bool           IsWolbaekOpen => (_stage == EPrologueStage.Wolbaek) && (_wolbaekOpened);
+
         /****************************************
         *                Methods
         ****************************************/
@@ -69,6 +72,7 @@ namespace Shinshi.AI
             _source.TelegraphEnded        += OnTelegraphEnded;
             _source.PlayerDown            += OnPlayerDown;
             _source.PotionUsed            += OnPotionUsed;
+            _source.TalismanApproached    += OnTalismanApproached;
             _source.TalismanConfirmed     += OnTalismanConfirmed;
             _source.WolbaekIntroFinished  += OnWolbaekIntroFinished;
             _source.WolbaekControlStarted += OnWolbaekControlStarted;
@@ -94,6 +98,12 @@ namespace Shinshi.AI
                 default:
                     break;
             }
+        }
+
+        /// <summary> 체력이 줄었고 임시 물약이 남았을 때만 참이다, 물약 사용 안내를 띄울 기준이다 </summary>
+        public bool ShouldHintPotion(bool isDamaged)
+        {
+            return (_stage == EPrologueStage.Forest) && (_potions.ShouldHintUse(isDamaged));
         }
 
         /// <summary> 서버 틱마다 부른다 </summary>
@@ -141,6 +151,7 @@ namespace Shinshi.AI
             _source.TelegraphEnded        -= OnTelegraphEnded;
             _source.PlayerDown            -= OnPlayerDown;
             _source.PotionUsed            -= OnPotionUsed;
+            _source.TalismanApproached    -= OnTalismanApproached;
             _source.TalismanConfirmed     -= OnTalismanConfirmed;
             _source.WolbaekIntroFinished  -= OnWolbaekIntroFinished;
             _source.WolbaekControlStarted -= OnWolbaekControlStarted;
@@ -248,6 +259,11 @@ namespace Shinshi.AI
         private void OnTelegraphEnded()
         {
             _forest?.OnTelegraphEnded();
+        }
+
+        private void OnTalismanApproached()
+        {
+            _forest?.OnTalismanApproached();
         }
 
         private void OnTalismanConfirmed()

@@ -5,7 +5,6 @@ using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 // 서드파티
@@ -28,9 +27,6 @@ namespace Shinshi.AI
         ****************************************/
 
         private const int    SORTING_ORDER      = 31000;
-        private const float  REFERENCE_WIDTH    = 1920f;
-        private const float  REFERENCE_HEIGHT   = 1080f;
-        private const float  WIDTH_HEIGHT_MATCH = 0.5f;
         private const float  PANEL_HEIGHT       = 260f;
         private const float  TEXT_MARGIN        = 120f;
         private const float  TEXT_FONT_SIZE     = 34f;
@@ -47,10 +43,12 @@ namespace Shinshi.AI
         private const string HINT_NEXT          = "클릭하여 다음으로";
         private const string SKIP_LABEL         = "건너뛰기";
 
+        // 일러스트는 아래쪽이 종이색으로 번지게 만들어져 있다. 자막 패널은 그 종이색에 맞춘 연한 색 위에 짙은 먹색 글자를 쓴다
         private static readonly Color BACK_COLOR  = new Color(0.04f, 0.05f, 0.07f, 1f);
-        private static readonly Color PANEL_COLOR = new Color(0f, 0f, 0f, 0.65f);
-        private static readonly Color SKIP_COLOR  = new Color(0f, 0f, 0f, 0.55f);
-        private static readonly Color HINT_COLOR  = new Color(1f, 1f, 1f, 0.7f);
+        private static readonly Color PANEL_COLOR = new Color(0.94f, 0.89f, 0.78f, 0.88f);
+        private static readonly Color TEXT_COLOR  = new Color(0.17f, 0.12f, 0.08f, 1f);
+        private static readonly Color SKIP_COLOR  = new Color(0.94f, 0.89f, 0.78f, 0.85f);
+        private static readonly Color HINT_COLOR  = new Color(0.17f, 0.12f, 0.08f, 0.6f);
         private static readonly Color CLEAR_COLOR = new Color(1f, 1f, 1f, 0f);
 
         private Image           _illustration;
@@ -240,58 +238,43 @@ namespace Shinshi.AI
 
         private void BuildCanvas()
         {
-            var canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = SORTING_ORDER;
+            PrologueUi.AddCanvas(gameObject, SORTING_ORDER, true);
+            PrologueUi.EnsureEventSystem(transform);
 
-            gameObject.AddComponent<GraphicRaycaster>();
+            RectTransform back = PrologueUi.CreateImage("Back", transform, BACK_COLOR, false);
+            PrologueUi.Stretch(back);
 
-            var scaler = gameObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(REFERENCE_WIDTH, REFERENCE_HEIGHT);
-            scaler.matchWidthOrHeight  = WIDTH_HEIGHT_MATCH;
-
-            // 입력을 받으려면 씬에 EventSystem이 있어야 한다. 없으면 이 화면과 함께 사라지는 것을 만든다
-            if (EventSystem.current == null)
-            {
-                var eventSystem = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-                eventSystem.transform.SetParent(transform, false);
-            }
-
-            RectTransform back = CreateImage("Back", transform, BACK_COLOR, false);
-            Stretch(back);
-
-            _illustration = CreateImage("Illustration", transform, Color.white, false).GetComponent<Image>();
+            _illustration = PrologueUi.CreateImage("Illustration", transform, Color.white, false).GetComponent<Image>();
             _illustration.preserveAspect = true;
-            Stretch(_illustration.rectTransform);
+            PrologueUi.Stretch(_illustration.rectTransform);
 
             // 전체 화면 클릭 영역, 투명하지만 입력은 받는다
-            RectTransform clickArea = CreateImage("ClickArea", transform, CLEAR_COLOR, true);
-            Stretch(clickArea);
+            RectTransform clickArea = PrologueUi.CreateImage("ClickArea", transform, CLEAR_COLOR, true);
+            PrologueUi.Stretch(clickArea);
             clickArea.gameObject.AddComponent<Button>().onClick.AddListener(HandleClick);
 
-            RectTransform panel = CreateImage("Panel", transform, PANEL_COLOR, false);
+            RectTransform panel = PrologueUi.CreateImage("Panel", transform, PANEL_COLOR, false);
             panel.anchorMin = new Vector2(0f, 0f);
             panel.anchorMax = new Vector2(1f, 0f);
             panel.pivot     = new Vector2(0.5f, 0f);
             panel.offsetMin = new Vector2(0f, 0f);
             panel.offsetMax = new Vector2(0f, PANEL_HEIGHT);
 
-            _bodyText = CreateText("Body", panel, TEXT_FONT_SIZE, Color.white, TextAlignmentOptions.TopLeft);
+            _bodyText = PrologueUi.CreateText("Body", panel, TEXT_FONT_SIZE, TEXT_COLOR, TextAlignmentOptions.TopLeft);
             _bodyText.textWrappingMode = TextWrappingModes.Normal;
             _bodyText.rectTransform.anchorMin = Vector2.zero;
             _bodyText.rectTransform.anchorMax = Vector2.one;
             _bodyText.rectTransform.offsetMin = new Vector2(TEXT_MARGIN, HINT_HEIGHT + HINT_MARGIN);
             _bodyText.rectTransform.offsetMax = new Vector2(-TEXT_MARGIN, -HINT_MARGIN);
 
-            _hintText = CreateText("Hint", panel, HINT_FONT_SIZE, HINT_COLOR, TextAlignmentOptions.BottomRight);
+            _hintText = PrologueUi.CreateText("Hint", panel, HINT_FONT_SIZE, HINT_COLOR, TextAlignmentOptions.BottomRight);
             _hintText.rectTransform.anchorMin = new Vector2(0f, 0f);
             _hintText.rectTransform.anchorMax = new Vector2(1f, 0f);
             _hintText.rectTransform.pivot     = new Vector2(0.5f, 0f);
             _hintText.rectTransform.offsetMin = new Vector2(TEXT_MARGIN, HINT_MARGIN);
             _hintText.rectTransform.offsetMax = new Vector2(-TEXT_MARGIN, HINT_MARGIN + HINT_HEIGHT);
 
-            RectTransform skip = CreateImage("Skip", transform, SKIP_COLOR, true);
+            RectTransform skip = PrologueUi.CreateImage("Skip", transform, SKIP_COLOR, true);
             skip.anchorMin        = new Vector2(1f, 1f);
             skip.anchorMax        = new Vector2(1f, 1f);
             skip.pivot            = new Vector2(1f, 1f);
@@ -300,42 +283,10 @@ namespace Shinshi.AI
             skip.gameObject.AddComponent<Button>().onClick.AddListener(HandleSkip);
             _skipButton = skip.gameObject;
 
-            _skipText = CreateText("Label", skip, SKIP_FONT_SIZE, Color.white, TextAlignmentOptions.Center);
+            _skipText = PrologueUi.CreateText("Label", skip, SKIP_FONT_SIZE, TEXT_COLOR, TextAlignmentOptions.Center);
             _skipText.SetText(SKIP_LABEL);
-            Stretch(_skipText.rectTransform);
+            PrologueUi.Stretch(_skipText.rectTransform);
         }
 
-        private static void Stretch(RectTransform rect)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-        }
-
-        private static RectTransform CreateImage(string objectName, Transform parent, Color color, bool blocksInput)
-        {
-            var imageObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer));
-            imageObject.transform.SetParent(parent, false);
-
-            var image = imageObject.AddComponent<Image>();
-            image.color         = color;
-            image.raycastTarget = blocksInput;
-            return image.rectTransform;
-        }
-
-        private static TextMeshProUGUI CreateText(string objectName, Transform parent, float fontSize, Color color,
-            TextAlignmentOptions alignment)
-        {
-            var textObject = new GameObject(objectName, typeof(RectTransform));
-            textObject.transform.SetParent(parent, false);
-
-            var text = textObject.AddComponent<TextMeshProUGUI>();
-            text.fontSize      = fontSize;
-            text.color         = color;
-            text.alignment     = alignment;
-            text.raycastTarget = false;
-            return text;
-        }
     }
 }

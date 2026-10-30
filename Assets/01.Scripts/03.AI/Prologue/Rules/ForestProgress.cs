@@ -16,6 +16,7 @@ namespace Shinshi.AI
         private bool         _usedSkillQ        = false;
         private bool         _telegraphSeen     = false;
         private bool         _telegraphActive   = false;
+        private bool         _talismanOpen      = false;
 
         /****************************************
         *              Properties
@@ -28,8 +29,8 @@ namespace Shinshi.AI
         // 예고 공격을 한 번이라도 봤다, 피격 여부는 상관없다
         public bool         TelegraphSeen   => _telegraphSeen;
 
-        // 입력을 막아야 하는 구간인가
-        public bool         BlocksInput     => _phase == EForestPhase.Talisman;
+        // 입력을 막아야 하는가, 부적 조사 화면이 떠 있는 동안만이고 부적까지 걸어가는 동안은 막지 않는다
+        public bool         BlocksInput     => (_phase == EForestPhase.Talisman) && (_talismanOpen);
 
         public EForestHint  CurrentHint     => ResolveHint();
 
@@ -43,6 +44,16 @@ namespace Shinshi.AI
             _phase = talismanChecked ? EForestPhase.FirstFight : EForestPhase.Talisman;
         }
 
+        public void OnTalismanApproached()
+        {
+            if (_phase != EForestPhase.Talisman)
+            {
+                return;
+            }
+
+            _talismanOpen = true;
+        }
+
         public void OnTalismanConfirmed()
         {
             if (_phase != EForestPhase.Talisman)
@@ -50,7 +61,8 @@ namespace Shinshi.AI
                 return;
             }
 
-            _phase = EForestPhase.FirstFight;
+            _talismanOpen = false;
+            _phase        = EForestPhase.FirstFight;
         }
 
         // 명중은 필요 없고 사용 한 번이면 된다. 적이 없어도 인정한다
@@ -125,6 +137,8 @@ namespace Shinshi.AI
         {
             switch (_phase)
             {
+                case EForestPhase.Talisman:
+                    return _talismanOpen ? EForestHint.None : EForestHint.Move;
                 case EForestPhase.FirstFight:
                     if (!_usedAttack)
                     {

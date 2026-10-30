@@ -6,6 +6,8 @@ namespace Shinshi.AI
         None            = 0,
         BasicAttack     = 1,
         SkillQ          = 2,
-        LeaveDangerZone = 3
+        LeaveDangerZone = 3,
+        // 부적까지 걸어가는 동안
+        Move            = 4
     }
 }

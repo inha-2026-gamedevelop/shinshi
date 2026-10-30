@@ -35,6 +35,7 @@ namespace Shinshi.Tests
         public event Action      TelegraphEnded;
         public event Action      PlayerDown;
         public event Action      PotionUsed;
+        public event Action      TalismanApproached;
         public event Action      TalismanConfirmed;
         public event Action      WolbaekIntroFinished;
         public event Action      WolbaekControlStarted;
@@ -51,6 +52,7 @@ namespace Shinshi.Tests
         public void RaiseTelegraphEnd()     { TelegraphEnded?.Invoke(); }
         public void RaisePlayerDown()       { PlayerDown?.Invoke(); }
         public void RaisePotionUsed()       { PotionUsed?.Invoke(); }
+        public void RaiseTalismanApproach() { TalismanApproached?.Invoke(); }
         public void RaiseTalisman()         { TalismanConfirmed?.Invoke(); }
         public void RaiseWolbaekIntro()     { WolbaekIntroFinished?.Invoke(); }
         public void RaiseWolbaekControl()   { WolbaekControlStarted?.Invoke(); }
@@ -59,7 +61,7 @@ namespace Shinshi.Tests
         // 구독자가 남았는지 확인하는 용도다
         public bool HasSubscribers => (AttackUsed != null) || (SkillQUsed != null) || (EnemyKilled != null)
             || (TelegraphStarted != null) || (TelegraphEnded != null) || (PlayerDown != null) || (PotionUsed != null)
-            || (TalismanConfirmed != null) || (WolbaekIntroFinished != null) || (WolbaekControlStarted != null)
+            || (TalismanApproached != null) || (TalismanConfirmed != null) || (WolbaekIntroFinished != null) || (WolbaekControlStarted != null)
             || (IllustrationFinished != null);
 
         /****************************************

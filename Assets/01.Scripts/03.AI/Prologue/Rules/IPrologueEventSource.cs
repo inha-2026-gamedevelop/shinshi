@@ -24,6 +24,9 @@ namespace Shinshi.AI
         // 임시 물약 한 개를 실제로 썼다
         event Action PotionUsed;
 
+        // 플레이어가 부적에 닿았다, 이 순간부터 조사 화면이 떠 있는 동안 입력을 막는다
+        event Action TalismanApproached;
+
         // 부적 조사 화면을 닫았다
         event Action TalismanConfirmed;
 

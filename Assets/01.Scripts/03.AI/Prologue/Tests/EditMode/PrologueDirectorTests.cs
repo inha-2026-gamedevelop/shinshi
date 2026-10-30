@@ -54,8 +54,13 @@ namespace Shinshi.Tests
             PrologueDirector director = Create(false);
             director.Start(EPrologueStage.Forest, 0);
 
+            // 부적까지 걸어가는 동안은 입력을 막지 않고 산귀도 나오지 않는다
             Assert.AreEqual(0, _session.Spawns.Count);
+            Assert.IsFalse(director.BlocksInput);
+
+            _session.RaiseTalismanApproach();
             Assert.IsTrue(director.BlocksInput);
+            Assert.AreEqual(0, _session.Spawns.Count);
 
             _session.RaiseTalisman();
 

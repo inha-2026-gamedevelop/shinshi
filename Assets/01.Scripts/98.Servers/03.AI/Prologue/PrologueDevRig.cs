@@ -14,7 +14,7 @@ namespace Shinshi.AI
     {
         // 실제 서버 세션 대신 이 장치가 사건 수신과 서버 지시를 모두 맡는다. 서버 판정은 없으므로 이 결과는 서버 연결의 증거가 아니다.
         // 씬 파일에는 이 컴포넌트를 직렬화하지 않고 씬 이름을 보고 스스로 만들어진다. 서버 어셈블리 타입이 씬에 남지 않게 하려는 것이다.
-        // 일러스트 문구는 내용이 정해지지 않아 모두 임시 문구다. 부적 조사와 월백 등장 자막만 기획 확정 문구다
+        // 일러스트와 자막은 PrologueIllustrationCatalog 에셋을 쓴다. 도입과 마무리 문구는 내용이 정해지지 않아 임시 문구다
 
         /****************************************
         *                Fields
@@ -33,29 +33,7 @@ namespace Shinshi.AI
         private const double APPEAR_SECONDS  = 2.5;
         private const double NO_CONTROL_TIME = -1.0;
 
-        private static readonly IllustrationPage[] INTRO_PAGES =
-        {
-            new IllustrationPage(null, "[임시] 도입 1장 문구"),
-            new IllustrationPage(null, "[임시] 도입 2장 문구"),
-            new IllustrationPage(null, "[임시] 도입 3장 문구"),
-            new IllustrationPage(null, "[임시] 도입 4장 문구")
-        };
-
-        private static readonly IllustrationPage[] TALISMAN_PAGES =
-        {
-            new IllustrationPage(null, "신시의 부적과 닮은 문양이다.")
-        };
-
-        private static readonly IllustrationPage[] APPEAR_PAGES =
-        {
-            new IllustrationPage(null, "그 부적...... 아직도 인간에게 전해지고 있었구나.")
-        };
-
-        private static readonly IllustrationPage[] ENDING_PAGES =
-        {
-            new IllustrationPage(null, "[임시] 마무리 1장 문구"),
-            new IllustrationPage(null, "[임시] 마무리 2장 문구")
-        };
+        private const string CATALOG_PATH = "Assets/09.Data/AI/Prologue/PrologueIllustrationCatalog.asset";
 
         private enum EViewPurpose
         {
@@ -70,6 +48,11 @@ namespace Shinshi.AI
 
         private PrologueDirector _director        = null;
         private IllustrationView _view            = null;
+        private PrologueHintView _hintView        = null;
+        private PrologueChoiceView _choiceView    = null;
+        private bool             _accountCompleted = false;
+        private bool             _damaged         = false;
+        private PrologueIllustrationCatalogSO _catalog = null;
         private GUIStyle         _labelStyle      = null;
         private GUIStyle         _buttonStyle     = null;
         private EViewPurpose     _purpose         = EViewPurpose.None;
@@ -89,6 +72,7 @@ namespace Shinshi.AI
         public event Action      TelegraphEnded;
         public event Action      PlayerDown;
         public event Action      PotionUsed;
+        public event Action      TalismanApproached;
         public event Action      TalismanConfirmed;
         public event Action      WolbaekIntroFinished;
         public event Action      WolbaekControlStarted;
@@ -112,9 +96,24 @@ namespace Shinshi.AI
 
         private void Start()
         {
+            _catalog = UnityEditor.AssetDatabase.LoadAssetAtPath<PrologueIllustrationCatalogSO>(CATALOG_PATH);
+            if (_catalog == null)
+            {
+                Debug.LogError($"[PrologueDevRig] 일러스트 카탈로그를 찾지 못했다: {CATALOG_PATH}", this);
+                enabled = false;
+                return;
+            }
+
+            _hintView = PrologueHintView.Create();
+            PrologueDevFont.Apply(_hintView);
+
             _view = IllustrationView.Create();
             PrologueDevFont.Apply(_view);
             _view.Finished += OnViewFinished;
+
+            _choiceView = PrologueChoiceView.Create();
+            PrologueDevFont.Apply(_choiceView);
+            _choiceView.Chosen += OnChoiceChosen;
 
             Restart(false);
         }
@@ -135,10 +134,12 @@ namespace Shinshi.AI
                 WolbaekControlStarted?.Invoke();
             }
 
+            RefreshHints();
+
             // 숲에서 부적을 아직 못 봤다면 조사 화면을 띄운다
             if ((_director.BlocksInput) && (!_view.IsShowing))
             {
-                ShowPages(EViewPurpose.Talisman, TALISMAN_PAGES, true, false);
+                ShowPages(EViewPurpose.Talisman, _catalog.TalismanPages, true, false);
             }
         }
 
@@ -152,6 +153,11 @@ namespace Shinshi.AI
             if (_view != null)
             {
                 _view.Finished -= OnViewFinished;
+            }
+
+            if (_choiceView != null)
+            {
+                _choiceView.Chosen -= OnChoiceChosen;
             }
         }
 
@@ -168,6 +174,7 @@ namespace Shinshi.AI
             GUILayout.Label($"단계: {_director.Stage}   물약: {_director.PotionCount}", _labelStyle);
             GUILayout.Label($"안내: {_director.CurrentHint}   입력 차단: {_director.BlocksInput}", _labelStyle);
 
+            if (Button("부적에 접근"))    { TalismanApproached?.Invoke(); }
             if (Button("기본 공격 사용")) { AttackUsed?.Invoke(); }
             if (Button("Q 사용"))         { SkillQUsed?.Invoke(); }
             if (Button("현재 적 처치"))   { EnemyKilled?.Invoke(_lastSpawn); }
@@ -175,6 +182,12 @@ namespace Shinshi.AI
             if (Button("예고 끝"))        { TelegraphEnded?.Invoke(); }
             if (Button("물약 사용"))      { PotionUsed?.Invoke(); }
             if (Button("체력 0"))         { PlayerDown?.Invoke(); }
+            if (Button(_damaged ? "체력 정상으로" : "체력 줄었음 (물약 안내 확인)")) { _damaged = !_damaged; }
+            if (Button(_accountCompleted ? "계정: 프롤로그 완료함 (누르면 최초로)" : "계정: 최초 (누르면 완료함으로)"))
+            {
+                _accountCompleted = !_accountCompleted;
+            }
+
             if (Button("처음부터 (부적 미확인)")) { Restart(false); }
             if (Button("처음부터 (부적 확인함)")) { Restart(true); }
 
@@ -226,10 +239,10 @@ namespace Shinshi.AI
             switch (stage)
             {
                 case EPrologueStage.Wolbaek:
-                    ShowPages(EViewPurpose.Appearance, APPEAR_PAGES, false, true);
+                    ShowPages(EViewPurpose.Appearance, _catalog.AppearancePages, false, true);
                     break;
                 case EPrologueStage.Ending:
-                    ShowPages(EViewPurpose.Ending, ENDING_PAGES, false, true);
+                    ShowPages(EViewPurpose.Ending, _catalog.EndingPages, false, true);
                     break;
                 default:
                     break;
@@ -254,9 +267,41 @@ namespace Shinshi.AI
             _purpose         = EViewPurpose.None;
             _controlAt       = NO_CONTROL_TIME;
 
+            _choiceView.Close();
+
             _director = new PrologueDirector(this, this, () => Time.timeAsDouble, _talismanChecked);
-            _director.Start(EPrologueStage.Intro, 0);
-            ShowPages(EViewPurpose.Intro, INTRO_PAGES, false, true);
+
+            // 계정에서 이미 마쳤다면 진행할지 건너뛸지 먼저 묻는다
+            if (PrologueEntryRules.Decide(_accountCompleted) == EPrologueEntry.AskPlayOrSkip)
+            {
+                Log("선택창 표시: 계정이 이미 프롤로그를 마쳤다");
+                _choiceView.Show();
+                return;
+            }
+
+            Log("계정 최초: 선택창 없이 프롤로그 시작");
+            BeginPrologue(EPrologueStage.Intro);
+        }
+
+        private void OnChoiceChosen(EPrologueChoice choice)
+        {
+            _choiceView.Close();
+            Log($"선택: {choice}");
+            BeginPrologue(PrologueEntryRules.StartStage(choice));
+        }
+
+        // 건너뛰기를 골랐다면 도입 없이 바로 완료다. 완료 기록과 기본 지급품은 서버가 맡는다
+        private void BeginPrologue(EPrologueStage stage)
+        {
+            _director.Start(stage, 0);
+
+            if (stage == EPrologueStage.Intro)
+            {
+                ShowPages(EViewPurpose.Intro, _catalog.IntroPages, false, true);
+                return;
+            }
+
+            _director.Complete();
         }
 
         private void ShowPages(EViewPurpose purpose, IReadOnlyList<IllustrationPage> pages, bool startRevealed, bool allowSkip)
@@ -287,6 +332,35 @@ namespace Shinshi.AI
                 default:
                     break;
             }
+        }
+
+        // 위험 범위 안내가 가장 급하고 그다음 물약, 그다음 조작 안내 순이다. 일러스트가 떠 있는 동안은 숨긴다
+        private void RefreshHints()
+        {
+            if (_view.IsShowing)
+            {
+                _hintView.SetHint(string.Empty);
+                _hintView.SetObjective(string.Empty);
+                return;
+            }
+
+            EForestHint hint = _director.CurrentHint;
+            string text;
+            if (hint == EForestHint.LeaveDangerZone)
+            {
+                text = PrologueHintTexts.ForHint(hint);
+            }
+            else if (_director.ShouldHintPotion(_damaged))
+            {
+                text = PrologueHintTexts.PotionHint();
+            }
+            else
+            {
+                text = PrologueHintTexts.ForHint(hint);
+            }
+
+            _hintView.SetHint(text);
+            _hintView.SetObjective(_director.IsWolbaekOpen ? PrologueHintTexts.WOLBAEK_OBJECTIVE : string.Empty);
         }
 
         private void Log(string line)

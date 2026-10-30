@@ -9,12 +9,48 @@ namespace Shinshi.Tests
     public class ForestProgressTests
     {
         [Test]
-        public void Constructor_TalismanNotChecked_StartsWithInputBlock()
+        public void Constructor_TalismanNotChecked_WaitsForApproachWithoutBlockingInput()
         {
             var progress = new ForestProgress(false);
 
             Assert.AreEqual(EForestPhase.Talisman, progress.Phase);
+            Assert.IsFalse(progress.BlocksInput);
+        }
+
+        [Test]
+        public void CurrentHint_WalkingToTalisman_IsMoveThenNoneWhileScreenOpen()
+        {
+            var progress = new ForestProgress(false);
+            Assert.AreEqual(EForestHint.Move, progress.CurrentHint);
+
+            progress.OnTalismanApproached();
+            Assert.AreEqual(EForestHint.None, progress.CurrentHint);
+
+            progress.OnTalismanConfirmed();
+            Assert.AreEqual(EForestHint.BasicAttack, progress.CurrentHint);
+        }
+
+        [Test]
+        public void OnTalismanApproached_BlocksInputUntilConfirmed()
+        {
+            var progress = new ForestProgress(false);
+
+            progress.OnTalismanApproached();
             Assert.IsTrue(progress.BlocksInput);
+
+            progress.OnTalismanConfirmed();
+            Assert.IsFalse(progress.BlocksInput);
+            Assert.AreEqual(EForestPhase.FirstFight, progress.Phase);
+        }
+
+        [Test]
+        public void OnTalismanApproached_AlreadyChecked_DoesNotBlock()
+        {
+            var progress = new ForestProgress(true);
+
+            progress.OnTalismanApproached();
+
+            Assert.IsFalse(progress.BlocksInput);
         }
 
         [Test]
