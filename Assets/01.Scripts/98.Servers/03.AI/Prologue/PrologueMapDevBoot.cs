@@ -9,7 +9,7 @@ using Shinshi.Data;
 
 namespace Shinshi.AI
 {
-    /// <summary> Dev_PrologueMap 씬을 Play하면 월백 시험 구동기를 스스로 붙여 숲 지형 위에서 월백 패턴을 눈으로 확인하게 해 주는 에디터 전용 장치 </summary>
+    /// <summary> Dev_PrologueMap 씬에서 월백 시험 구동기를 붙여 숲 지형 위에서 월백 패턴을 눈으로 확인하게 해 주는 에디터 전용 장치, 프롤로그 시험 장치가 월백 조우 때 부른다 </summary>
     public static class PrologueMapDevBoot
     {
         // 씬 파일에는 아무것도 직렬화하지 않는다. 전장 중심과 플레이어 시작은 씬에 아래 이름의 빈 오브젝트를 놓으면 그 위치를 쓰고,
@@ -35,26 +35,27 @@ namespace Shinshi.AI
         private const string REFERENCE_ATTACK_FIELD = "_referenceAttack";
         private const string REFERENCE_HEALTH_FIELD = "_referenceHealth";
         private const string PLAYER_START_FIELD   = "_playerStart";
+        private const string CLAMP_PLAYER_FIELD   = "_clampPlayerToArena";
 
         /****************************************
         *                Methods
         ****************************************/
 
-        // 씬이 열린 직후 한 번 본다. 개발 씬이 아니면 아무것도 하지 않는다
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Boot()
+        /// <summary> 지금 열린 씬이 숲 지형 개발 씬인지 알려 준다 </summary>
+        public static bool IsMapScene()
         {
-            if (SceneManager.GetActiveScene().name != SCENE_NAME)
-            {
-                return;
-            }
+            return SceneManager.GetActiveScene().name == SCENE_NAME;
+        }
 
+        /// <summary> 월백 시험 구동기를 만들어 붙이고 돌려준다. 숲 구간 장치가 월백 조우 때 부른다 </summary>
+        public static GameObject SpawnWolbaekRig()
+        {
             var presenter = AssetDatabase.LoadAssetAtPath<BossTelegraphPresenter>(PRESENTER_PATH);
             var bossView  = AssetDatabase.LoadAssetAtPath<BossView>(BOSS_VIEW_PATH);
             if ((presenter == null) || (bossView == null))
             {
                 Debug.LogError($"[PrologueMapDevBoot] 프리팹을 찾지 못했다, presenter={presenter != null}, bossView={bossView != null}");
-                return;
+                return null;
             }
 
             // 위치 표시용 오브젝트는 에디터 전용 코드라 이름으로 한 번만 찾는다
@@ -84,8 +85,12 @@ namespace Shinshi.AI
                 serialized.FindProperty(PLAYER_START_FIELD).vector3Value = startObject.transform.position - center;
             }
 
+            // 프롤로그에서는 월백 전장 밖으로 나가지 못하게 한다
+            serialized.FindProperty(CLAMP_PLAYER_FIELD).boolValue = true;
+
             ApplyRegionReference(serialized);
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            return rigObject;
         }
 
         // 서버가 쓰는 숲 기준값을 그대로 넣는다. GameDB가 안 열리면 구동기 기본값을 그대로 둔다

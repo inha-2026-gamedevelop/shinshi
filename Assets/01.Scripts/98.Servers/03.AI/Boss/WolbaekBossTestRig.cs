@@ -64,6 +64,7 @@ namespace Shinshi.AI
         private const float  LABEL_WIDTH             = 160f;
         private const float  LABEL_HEIGHT            = 40f;
         private const float  PARTICIPANT_LABEL_WIDTH = 70f;
+        private const float  PLAYER_ARENA_MARGIN     = 0.5f;  // m, 플레이어 가두기가 경계 안쪽에 남기는 거리
         private const float  BOSS_EDGE_MARGIN        = 0.1f;  // m, 보스를 가장자리로 옮길 때 경계 안쪽에 남기는 거리
 
         // 색 결계 기믹 시험 배치와 표시용 값이다. 모두 시험 장치 안에서만 쓴다
@@ -93,6 +94,7 @@ namespace Shinshi.AI
         [SerializeField] private float   _referenceHealth = 3541f;   // Href, 체험판 숲 기준
         [SerializeField] private float   _healthScale     = 1f;      // 시작 인원에 따른 체력 배율
         [SerializeField] private Vector3 _playerStart     = new Vector3(0f, 0f, 12f);
+        [SerializeField] private bool    _clampPlayerToArena = false; // 켜면 플레이어가 전장 경계 밖으로 나가지 못한다, 프롤로그 시험이 켠다
 
         [Header("2페이즈 시험")]
         [SerializeField] private bool _continueToPhaseTwo = true; // 전환 뒤 CompleteHandoff를 이 구동기가 대신 부른다, 운영에서는 서버 연결이 부른다
@@ -410,6 +412,11 @@ namespace Shinshi.AI
             {
                 Vector3 move = new Vector3(Input.GetAxisRaw(HORIZONTAL_AXIS), 0f, Input.GetAxisRaw(VERTICAL_AXIS));
                 _player.Position += move.normalized * (PLAYER_SPEED * Time.deltaTime);
+                if (_clampPlayerToArena)
+                {
+                    KeepPlayerInArena();
+                }
+
                 if (move.sqrMagnitude > DIRECTION_EPSILON)
                 {
                     _player.Forward = move.normalized;
@@ -1731,6 +1738,22 @@ namespace Shinshi.AI
             {
                 _history.RemoveAt(0);
             }
+        }
+
+        // 전장 중심에서 경계 안쪽 여유만큼까지만 서 있게 한다
+        private void KeepPlayerInArena()
+        {
+            Vector3 offset = _player.Position - transform.position;
+            offset.y       = 0f;
+
+            float limit = (_boss.ArenaDiameter * HALF) - PLAYER_ARENA_MARGIN;
+            if (offset.magnitude <= limit)
+            {
+                return;
+            }
+
+            Vector3 clamped = transform.position + (offset.normalized * limit);
+            _player.Position = new Vector3(clamped.x, _player.Position.y, clamped.z);
         }
 
         private void ApplyView()

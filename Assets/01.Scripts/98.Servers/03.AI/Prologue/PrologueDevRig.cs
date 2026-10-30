@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 // System
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 // Unity
@@ -10,9 +11,11 @@ using UnityEngine.SceneManagement;
 namespace Shinshi.AI
 {
     /// <summary> Dev_Prologue 씬을 단독으로 Play하면 서버 없이 가짜 세션으로 프롤로그 전체를 끝까지 돌려 보는 시험 장치 </summary>
-    public sealed class PrologueDevRig : MonoBehaviour, IPrologueEventSource, IPrologueHost
+    public sealed class PrologueDevRig : MonoBehaviour, IPrologueEventSource, IPrologueHost, IPrologueClientLink, IPrologueLocalVitals
     {
         // 실제 서버 세션 대신 이 장치가 사건 수신과 서버 지시를 모두 맡는다. 서버 판정은 없으므로 이 결과는 서버 연결의 증거가 아니다.
+        // 화면은 실제 클라이언트가 쓸 PrologueClientPresenter와 PrologueEntryCoordinator가 띄운다. 이 장치는 서버 상태 자리(IPrologueClientLink)를
+        // 진행기 값으로 채워 주기만 하므로, 여기서 화면이 끝까지 도는 것은 같은 클라이언트 코드가 도는 것이다.
         // 씬 파일에는 이 컴포넌트를 직렬화하지 않고 씬 이름을 보고 스스로 만들어진다. 서버 어셈블리 타입이 씬에 남지 않게 하려는 것이다.
         // 일러스트와 자막은 PrologueIllustrationCatalog 에셋을 쓴다. 도입과 마무리 문구는 내용이 정해지지 않아 임시 문구다
 
@@ -22,6 +25,7 @@ namespace Shinshi.AI
 
         private const string SCENE_NAME      = "Dev_Prologue";
         private const string RIG_OBJECT_NAME = "PrologueDevRig";
+        private const string WOLBAEK_PLAYER_BODY_NAME = "PlayerBody";
         private const string OS_FONT_NAME    = "Malgun Gothic";
         private const int    GUI_FONT_SIZE   = 16;
         private const float  PANEL_X         = 16f;
@@ -31,7 +35,6 @@ namespace Shinshi.AI
 
         // 월백 등장 연출 길이, BossPatternCatalog의 AppearanceSeconds와 같은 값이다
         private const double APPEAR_SECONDS  = 2.5;
-        private const float  COMPLETED_NOTICE_SECONDS = 4f;
         private const double NO_CONTROL_TIME = -1.0;
 
         private const string CATALOG_PATH = "Assets/09.Data/AI/Prologue/PrologueIllustrationCatalog.asset";
@@ -46,35 +49,40 @@ namespace Shinshi.AI
         private static readonly Vector2 GUIDE_TARGET_SIZE  = new Vector2(420f, 260f);
         private static readonly Color   GUIDE_TARGET_COLOR = new Color(0.35f, 0.5f, 0.6f, 1f);
 
-        private enum EViewPurpose
-        {
-            None,
-            Intro,
-            Talisman,
-            Appearance,
-            Ending
-        }
-
         private readonly List<string> _log = new List<string>();
 
-        private PrologueDirector _director        = null;
-        private IllustrationView _view            = null;
-        private PrologueHintView _hintView        = null;
-        private PrologueChoiceView _choiceView    = null;
-        private MenuGuideController _guide        = null;
-        private MenuGuideView    _guideView       = null;
+        private PrologueDirector              _director   = null;
+        private PrologueClientPresenter       _presenter  = null;
+        private PrologueForestDevWorld        _world      = null;
+        private GameObject                    _wolbaekRig = null;
+        private PrologueEntryCoordinator      _entry      = null;
+        private PrologueIllustrationCatalogSO _catalog    = null;
+        private MenuGuideController           _guide      = null;
+        private MenuGuideView                 _guideView  = null;
         private readonly MemoryMenuGuideRecord _guideRecord = new MemoryMenuGuideRecord();
-        private RectTransform    _guideTarget     = null;
-        private bool             _accountCompleted = false;
-        private bool             _damaged         = false;
-        private PrologueIllustrationCatalogSO _catalog = null;
-        private GUIStyle         _labelStyle      = null;
-        private GUIStyle         _buttonStyle     = null;
-        private EViewPurpose     _purpose         = EViewPurpose.None;
-        private bool             _talismanChecked = false;
-        private int              _potionStock     = 0;
-        private int              _lastSpawn       = 0;
-        private double           _controlAt       = NO_CONTROL_TIME;
+        private RectTransform                 _guideTarget = null;
+        private bool                          _accountCompleted = false;
+        private bool                          _damaged    = false;
+        private GUIStyle                      _labelStyle = null;
+        private GUIStyle                      _buttonStyle = null;
+        private bool                          _talismanChecked = false;
+        private int                           _potionStock = 0;
+        private int                           _lastSpawn  = 0;
+        private double                        _controlAt  = NO_CONTROL_TIME;
+
+        /****************************************
+        *              Properties
+        ****************************************/
+
+        // 서버 상태 자리, 진행기 값을 그대로 보여 준다
+        public EPrologueStage Stage          => (_director != null) ? _director.Stage : EPrologueStage.Intro;
+        public EForestHint    Hint           => (_director != null) ? _director.CurrentHint : EForestHint.None;
+        public bool           IsTalismanOpen => (_director != null) && (_director.BlocksInput);
+        public bool           IsWolbaekOpen  => (_director != null) && (_director.IsWolbaekOpen);
+        public int            PotionCount    => (_director != null) ? _director.PotionCount : 0;
+
+        // 내 캐릭터 체력 자리, 패널의 "체력 줄었음" 토글이 채운다
+        public bool           IsDamaged      => (_damaged) || ((_world != null) && (_world.IsDamaged));
 
         /****************************************
         *              Events
@@ -93,6 +101,8 @@ namespace Shinshi.AI
         public event Action      WolbaekControlStarted;
         public event Action      IllustrationFinished;
 
+        public event Action      Revived;
+
         /****************************************
         *              Unity Event
         ****************************************/
@@ -101,7 +111,7 @@ namespace Shinshi.AI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
         {
-            if (SceneManager.GetActiveScene().name != SCENE_NAME)
+            if ((SceneManager.GetActiveScene().name != SCENE_NAME) && (!PrologueMapDevBoot.IsMapScene()))
             {
                 return;
             }
@@ -119,17 +129,21 @@ namespace Shinshi.AI
                 return;
             }
 
-            _hintView = PrologueHintView.Create();
-            PrologueDevFont.Apply(_hintView);
+            _entry = PrologueEntryCoordinator.CreateFromCatalog(_catalog);
 
-            _view = IllustrationView.Create();
-            PrologueDevFont.Apply(_view);
-            _view.SetTransitionMaterial(_catalog.InkWipeMaterial);
-            _view.Finished += OnViewFinished;
-
-            _choiceView = PrologueChoiceView.Create();
-            PrologueDevFont.Apply(_choiceView);
-            _choiceView.Chosen += OnChoiceChosen;
+            // 숲 지형 씬에서는 도형 대역이 걷고 싸우는 시험 세계가 사건을 대신 만든다
+            if (PrologueMapDevBoot.IsMapScene())
+            {
+                _world = PrologueForestDevWorld.Create(IsWorldInputBlocked);
+                _world.AttackUsed         += () => AttackUsed?.Invoke();
+                _world.SkillQUsed         += () => SkillQUsed?.Invoke();
+                _world.EnemyKilled        += (index) => EnemyKilled?.Invoke(index);
+                _world.TelegraphStarted   += () => TelegraphStarted?.Invoke();
+                _world.TelegraphEnded     += () => TelegraphEnded?.Invoke();
+                _world.PlayerDown         += () => PlayerDown?.Invoke();
+                _world.PotionUsed         += () => PotionUsed?.Invoke();
+                _world.TalismanApproached += () => TalismanApproached?.Invoke();
+            }
 
             SetUpGuide();
 
@@ -151,14 +165,6 @@ namespace Shinshi.AI
                 _controlAt = NO_CONTROL_TIME;
                 WolbaekControlStarted?.Invoke();
             }
-
-            RefreshHints();
-
-            // 숲에서 부적을 아직 못 봤다면 조사 화면을 띄운다
-            if ((_director.BlocksInput) && (!_view.IsShowing))
-            {
-                ShowPages(EViewPurpose.Talisman, _catalog.TalismanPages, true, false);
-            }
         }
 
         private void OnDestroy()
@@ -168,16 +174,7 @@ namespace Shinshi.AI
                 _director.Dispose();
             }
 
-            if (_view != null)
-            {
-                _view.Finished -= OnViewFinished;
-            }
-
-            if (_choiceView != null)
-            {
-                _choiceView.Chosen -= OnChoiceChosen;
-            }
-
+            _entry?.Dispose();
             _guide?.Dispose();
         }
 
@@ -194,6 +191,11 @@ namespace Shinshi.AI
             GUILayout.Label($"단계: {_director.Stage}   물약: {_director.PotionCount}", _labelStyle);
             GUILayout.Label($"안내: {_director.CurrentHint}   입력 차단: {_director.BlocksInput}", _labelStyle);
 
+            if (_world != null)
+            {
+                GUILayout.Label("WASD 이동, J 기본 공격, Q 스킬, R 물약 (부적 가까이 가면 조사 화면)", _labelStyle);
+            }
+
             if (Button("부적에 접근"))    { TalismanApproached?.Invoke(); }
             if (Button("기본 공격 사용")) { AttackUsed?.Invoke(); }
             if (Button("Q 사용"))         { SkillQUsed?.Invoke(); }
@@ -201,7 +203,7 @@ namespace Shinshi.AI
             if (Button("예고 시작"))      { TelegraphStarted?.Invoke(); }
             if (Button("예고 끝"))        { TelegraphEnded?.Invoke(); }
             if (Button("물약 사용"))      { PotionUsed?.Invoke(); }
-            if (Button("체력 0"))         { PlayerDown?.Invoke(); }
+            if (Button("체력 0"))         { ForceDown(); }
             if (Button(_damaged ? "체력 정상으로" : "체력 줄었음 (물약 안내 확인)")) { _damaged = !_damaged; }
 
             GUILayout.Space(6f);
@@ -234,6 +236,7 @@ namespace Shinshi.AI
         {
             _lastSpawn = spawnIndex;
             Log($"소환 지시: {kind} #{spawnIndex}");
+            _world?.SpawnEnemy(kind, spawnIndex);
         }
 
         public void SetPotions(int count)
@@ -245,40 +248,49 @@ namespace Shinshi.AI
         public void ReviveToFull(float invulnerableSeconds)
         {
             Log($"체력 회복 + 무적 {invulnerableSeconds}초");
-            _hintView.ShowNotice(PrologueHintTexts.REVIVE_NOTICE, invulnerableSeconds);
+            _world?.Revive(invulnerableSeconds);
+            Revived?.Invoke();
         }
 
         public void StartWolbaek()
         {
             _controlAt = Time.timeAsDouble + APPEAR_SECONDS;
             Log("월백 소환, 플레이어 이동, 체력 최대 회복");
+
+            // 숲 지형 씬에서는 숲 세계를 접고 월백 시험 구동기가 그 자리를 이어받는다
+            if (_world != null)
+            {
+                _world.Hide();
+                _wolbaekRig = PrologueMapDevBoot.SpawnWolbaekRig();
+                StartCoroutine(FollowWolbaekPlayer(_wolbaekRig));
+            }
         }
 
         public void EndEngagement(EWolbaekEnd reason)
         {
             Log($"월백 교전 종료: {reason}");
+            DestroyWolbaekRig();
         }
 
         public void ReportStage(EPrologueStage stage, int wolbaekEntryPotions)
         {
             Log($"단계 저장: {stage} (월백 진입 물약 {wolbaekEntryPotions})");
 
-            switch (stage)
+            if (stage == EPrologueStage.Done)
             {
-                case EPrologueStage.Wolbaek:
-                    ShowPages(EViewPurpose.Appearance, _catalog.AppearancePages, false, true);
-                    break;
-                case EPrologueStage.Ending:
-                    ShowPages(EViewPurpose.Ending, _catalog.EndingPages, false, true);
-                    break;
-                case EPrologueStage.Done:
-                    // 실제로는 신시 도착과 완료 기록을 확인한 뒤에 띄워야 한다. 시험 장치에는 마을이 없어 완료 처리 직후에 띄운다
-                    _hintView.ShowNotice(PrologueHintTexts.PROLOGUE_COMPLETED, COMPLETED_NOTICE_SECONDS);
-                    break;
-                default:
-                    break;
+                // 실제로는 신시 도착과 완료 기록을 확인한 마을 쪽이 부른다. 시험 장치에는 마을이 없어 완료 처리 직후에 부른다
+                PrologueTownNotice.ShowCompletedFromCatalog(_catalog);
             }
         }
+
+        /****************************************
+        *            Client Link
+        ****************************************/
+
+        // 클라이언트가 화면을 끝냈다고 서버에 알리는 자리, 시험 장치는 서버 사건으로 되돌려 보낸다
+        public void SendTalismanConfirmed()     { TalismanConfirmed?.Invoke(); }
+        public void SendIllustrationFinished()  { IllustrationFinished?.Invoke(); }
+        public void SendWolbaekIntroFinished()  { WolbaekIntroFinished?.Invoke(); }
 
         /****************************************
         *                Methods
@@ -292,123 +304,91 @@ namespace Shinshi.AI
                 _director.Dispose();
             }
 
-            _view.Close();
+            if (_presenter != null)
+            {
+                Destroy(_presenter.gameObject);
+                _presenter = null;
+            }
+
+            DestroyWolbaekRig();
+            _world?.Hide();
+
             _log.Clear();
             _talismanChecked = talismanChecked;
-            _purpose         = EViewPurpose.None;
             _controlAt       = NO_CONTROL_TIME;
-
-            _choiceView.Close();
 
             _director = new PrologueDirector(this, this, () => Time.timeAsDouble, _talismanChecked);
 
-            // 계정에서 이미 마쳤다면 진행할지 건너뛸지 먼저 묻는다
-            if (PrologueEntryRules.Decide(_accountCompleted) == EPrologueEntry.AskPlayOrSkip)
+            // 로비가 하는 일: 계정 완료 여부로 선택창을 띄우거나 바로 시작한다
+            Log(_accountCompleted ? "선택창 표시: 계정이 이미 프롤로그를 마쳤다" : "계정 최초: 선택창 없이 프롤로그 시작");
+            _entry.Begin(_accountCompleted, OnStartPrologue, OnSkipToTown);
+        }
+
+        private void OnStartPrologue()
+        {
+            Log("프롤로그 진행");
+            _director.Start(EPrologueStage.Intro, 0);
+
+            // 실제 흐름에서는 서버 세션이 열린 뒤 클라이언트가 이 연결부를 만든다
+            _presenter = PrologueClientPresenter.Create(this, this, _catalog);
+
+            // 숲 구간의 플레이어 대역은 일러스트 뒤에서 대기한다. 조작은 화면이 닫혀야 받는다
+            _world?.Begin();
+        }
+
+        // 조사 화면이나 일러스트가 떠 있는 동안은 조작을 막는다
+        private bool IsWorldInputBlocked()
+        {
+            if (_director == null)
             {
-                Log("선택창 표시: 계정이 이미 프롤로그를 마쳤다");
-                _choiceView.Show();
+                return true;
+            }
+
+            return (_director.BlocksInput) || ((_presenter != null) && (_presenter.IsShowingIllustration));
+        }
+
+        private void ForceDown()
+        {
+            if ((_world != null) && (_director.Stage == EPrologueStage.Forest))
+            {
+                _world.ForceDown();
                 return;
             }
 
-            Log("계정 최초: 선택창 없이 프롤로그 시작");
-            BeginPrologue(EPrologueStage.Intro);
+            PlayerDown?.Invoke();
         }
 
-        private void OnChoiceChosen(EPrologueChoice choice)
+        // 월백 구동기는 첫 프레임에 자기 플레이어 도형을 만든다. 만들어지면 카메라를 그쪽으로 옮긴다
+        private IEnumerator FollowWolbaekPlayer(GameObject rig)
         {
-            _choiceView.Close();
-            Log($"선택: {choice}");
-            BeginPrologue(PrologueEntryRules.StartStage(choice));
+            Transform body = null;
+            while ((rig != null) && (body == null))
+            {
+                body = rig.transform.Find(WOLBAEK_PLAYER_BODY_NAME);
+                yield return null;
+            }
+
+            if (body != null)
+            {
+                PrologueDevCamera.Follow(body);
+            }
+        }
+
+        private void DestroyWolbaekRig()
+        {
+            if (_wolbaekRig != null)
+            {
+                Destroy(_wolbaekRig);
+                _wolbaekRig = null;
+            }
         }
 
         // 건너뛰기를 골랐다면 도입 없이 바로 완료다. 완료 기록과 기본 지급품은 서버가 맡는다
-        private void BeginPrologue(EPrologueStage stage)
+        private void OnSkipToTown()
         {
-            _director.Start(stage, 0);
-
-            if (stage == EPrologueStage.Intro)
-            {
-                ShowPages(EViewPurpose.Intro, _catalog.IntroPages, false, true);
-                return;
-            }
-
+            Log("건너뛰고 신시로 이동");
+            _director.Start(PrologueEntryRules.StartStage(EPrologueChoice.SkipToTown), 0);
             _director.Complete();
-        }
-
-        private void ShowPages(EViewPurpose purpose, IReadOnlyList<IllustrationPage> pages, bool startRevealed, bool allowSkip)
-        {
-            _purpose = purpose;
-            _view.Show(pages, startRevealed, allowSkip, SkipLabelFor(purpose));
-        }
-
-        // 건너뛰기 버튼은 구간마다 무엇을 건너뛰는지 적는다. 숲 플레이나 교전을 건너뛰는 것으로 읽히면 안 된다
-        private static string SkipLabelFor(EViewPurpose purpose)
-        {
-            switch (purpose)
-            {
-                case EViewPurpose.Intro:
-                    return PrologueHintTexts.SKIP_INTRO_LABEL;
-                case EViewPurpose.Appearance:
-                    return PrologueHintTexts.SKIP_APPEARANCE_LABEL;
-                case EViewPurpose.Ending:
-                    return PrologueHintTexts.SKIP_ENDING_LABEL;
-                default:
-                    return null;
-            }
-        }
-
-        // 화면을 내린 뒤 목적에 맞는 사건을 일으킨다. 월백 등장은 건너뛰어도 교전은 이어지므로 같은 사건이다
-        private void OnViewFinished()
-        {
-            EViewPurpose finished = _purpose;
-            _purpose = EViewPurpose.None;
-            _view.Close();
-
-            switch (finished)
-            {
-                case EViewPurpose.Intro:
-                case EViewPurpose.Ending:
-                    IllustrationFinished?.Invoke();
-                    break;
-                case EViewPurpose.Talisman:
-                    TalismanConfirmed?.Invoke();
-                    break;
-                case EViewPurpose.Appearance:
-                    WolbaekIntroFinished?.Invoke();
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        // 위험 범위 안내가 가장 급하고 그다음 물약, 그다음 조작 안내 순이다. 일러스트가 떠 있는 동안은 숨긴다
-        private void RefreshHints()
-        {
-            if (_view.IsShowing)
-            {
-                _hintView.SetHint(string.Empty);
-                _hintView.SetObjective(string.Empty);
-                return;
-            }
-
-            // 위쪽은 목표, 아래쪽은 설명이다. 월백이 열리면 월백 안내가 우선이고, 숲에서는 위험 범위 안내가 가장 급하며
-            // 그다음이 물약이다. 물약 안내는 아래 설명만 바꾸고 목표는 그대로 둔다
-            EForestHint hint = _director.CurrentHint;
-            string objective   = PrologueHintTexts.ObjectiveFor(hint);
-            string instruction = PrologueHintTexts.InstructionFor(hint);
-
-            if (_director.IsWolbaekOpen)
-            {
-                objective   = PrologueHintTexts.WOLBAEK_OBJECTIVE;
-                instruction = PrologueHintTexts.WOLBAEK_INSTRUCTION;
-            }
-            else if ((hint != EForestHint.LeaveDangerZone) && (_director.ShouldHintPotion(_damaged)))
-            {
-                instruction = PrologueHintTexts.POTION_INSTRUCTION;
-            }
-
-            _hintView.SetObjective(objective);
-            _hintView.SetHint(instruction);
         }
 
         // 성장 메뉴 안내를 시험하기 위한 가짜 메뉴 패널과 진행기를 만든다
