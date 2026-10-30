@@ -61,6 +61,7 @@ namespace Shinshi.AI
         private MenuGuideView                 _guideView  = null;
         private readonly MemoryMenuGuideRecord _guideRecord = new MemoryMenuGuideRecord();
         private RectTransform                 _guideTarget = null;
+        private GameObject                    _guideTargetRoot = null;
         private bool                          _accountCompleted = false;
         private bool                          _damaged    = false;
         private GUIStyle                      _labelStyle = null;
@@ -152,6 +153,12 @@ namespace Shinshi.AI
 
         private void Update()
         {
+            // 안내가 끝나면 시험용 대상 패널을 다시 숨긴다
+            if ((_guideTargetRoot != null) && (_guideTargetRoot.activeSelf) && (_guideView != null) && (!_guideView.IsShowing))
+            {
+                _guideTargetRoot.SetActive(false);
+            }
+
             if (_director == null)
             {
                 return;
@@ -414,6 +421,10 @@ namespace Shinshi.AI
             _guideTarget.pivot            = new Vector2(1f, 0.5f);
             _guideTarget.anchoredPosition = new Vector2(-GUIDE_TARGET_MARGIN, 0f);
             _guideTarget.sizeDelta        = GUIDE_TARGET_SIZE;
+
+            // 안내를 시험할 때만 보이게 한다
+            _guideTargetRoot = canvasObject;
+            _guideTargetRoot.SetActive(false);
         }
 
         private void ShowGuide(string menuId, bool replay)
@@ -423,7 +434,14 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 대상 패널이 켜져 있어야 안내가 위치를 잡을 수 있다
+            _guideTargetRoot.SetActive(true);
             bool shown = replay ? _guide.Replay(menuId, ResolveGuideTarget) : _guide.TryShowFirstTime(menuId, ResolveGuideTarget);
+            if (!shown)
+            {
+                _guideTargetRoot.SetActive(false);
+            }
+
             Log(shown ? $"성장 안내 표시: {menuId}" : $"성장 안내 안 뜸: {menuId} (이미 마쳤거나 등록 안 됨)");
         }
 
