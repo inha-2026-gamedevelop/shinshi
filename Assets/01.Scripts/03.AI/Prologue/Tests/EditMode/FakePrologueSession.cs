@@ -22,6 +22,7 @@ namespace Shinshi.Tests
         public readonly List<EWolbaekEnd>                          Ends    = new List<EWolbaekEnd>();
 
         public int PotionStock = -1;
+        public int WolbaekStarts = 0;
 
         /****************************************
         *              Events
@@ -35,6 +36,7 @@ namespace Shinshi.Tests
         public event Action      PlayerDown;
         public event Action      PotionUsed;
         public event Action      TalismanConfirmed;
+        public event Action      WolbaekIntroFinished;
         public event Action      WolbaekControlStarted;
         public event Action      IllustrationFinished;
 
@@ -50,13 +52,15 @@ namespace Shinshi.Tests
         public void RaisePlayerDown()       { PlayerDown?.Invoke(); }
         public void RaisePotionUsed()       { PotionUsed?.Invoke(); }
         public void RaiseTalisman()         { TalismanConfirmed?.Invoke(); }
+        public void RaiseWolbaekIntro()     { WolbaekIntroFinished?.Invoke(); }
         public void RaiseWolbaekControl()   { WolbaekControlStarted?.Invoke(); }
         public void RaiseIllustration()     { IllustrationFinished?.Invoke(); }
 
         // 구독자가 남았는지 확인하는 용도다
         public bool HasSubscribers => (AttackUsed != null) || (SkillQUsed != null) || (EnemyKilled != null)
             || (TelegraphStarted != null) || (TelegraphEnded != null) || (PlayerDown != null) || (PotionUsed != null)
-            || (TalismanConfirmed != null) || (WolbaekControlStarted != null) || (IllustrationFinished != null);
+            || (TalismanConfirmed != null) || (WolbaekIntroFinished != null) || (WolbaekControlStarted != null)
+            || (IllustrationFinished != null);
 
         /****************************************
         *               Host
@@ -65,6 +69,7 @@ namespace Shinshi.Tests
         public void SpawnEnemy(EPrologueEnemyKind kind, int spawnIndex) { Spawns.Add((kind, spawnIndex)); }
         public void SetPotions(int count)                                { PotionStock = count; }
         public void ReviveToFull(float invulnerableSeconds)              { Revives.Add(invulnerableSeconds); }
+        public void StartWolbaek()                                       { ++WolbaekStarts; }
         public void EndEngagement(EWolbaekEnd reason)                    { Ends.Add(reason); }
         public void ReportStage(EPrologueStage stage, int wolbaekEntryPotions) { Reports.Add((stage, wolbaekEntryPotions)); }
     }

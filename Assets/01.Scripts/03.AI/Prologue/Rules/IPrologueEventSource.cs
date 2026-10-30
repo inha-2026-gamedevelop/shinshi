@@ -27,6 +27,9 @@ namespace Shinshi.AI
         // 부적 조사 화면을 닫았다
         event Action TalismanConfirmed;
 
+        // 월백 등장 일러스트를 닫거나 건너뛰었다, 이 뒤에 서버가 월백을 소환하고 플레이어를 옮긴다
+        event Action WolbaekIntroFinished;
+
         // 월백 등장 연출이 끝나 조작이 가능해졌다
         event Action WolbaekControlStarted;
 

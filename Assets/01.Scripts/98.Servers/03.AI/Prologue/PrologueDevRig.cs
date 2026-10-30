@@ -29,6 +29,10 @@ namespace Shinshi.AI
         private const float  PANEL_WIDTH     = 340f;
         private const int    LOG_LIMIT       = 14;
 
+        // 월백 등장 연출 길이, BossPatternCatalog의 AppearanceSeconds와 같은 값이다
+        private const double APPEAR_SECONDS  = 2.5;
+        private const double NO_CONTROL_TIME = -1.0;
+
         private static readonly IllustrationPage[] INTRO_PAGES =
         {
             new IllustrationPage(null, "[임시] 도입 1장 문구"),
@@ -72,6 +76,7 @@ namespace Shinshi.AI
         private bool             _talismanChecked = false;
         private int              _potionStock     = 0;
         private int              _lastSpawn       = 0;
+        private double           _controlAt       = NO_CONTROL_TIME;
 
         /****************************************
         *              Events
@@ -85,6 +90,7 @@ namespace Shinshi.AI
         public event Action      PlayerDown;
         public event Action      PotionUsed;
         public event Action      TalismanConfirmed;
+        public event Action      WolbaekIntroFinished;
         public event Action      WolbaekControlStarted;
         public event Action      IllustrationFinished;
 
@@ -121,6 +127,13 @@ namespace Shinshi.AI
             }
 
             _director.Tick();
+
+            // 서버가 월백을 열고 등장 연출이 끝나면 조작 시작을 알린다
+            if ((_controlAt != NO_CONTROL_TIME) && (Time.timeAsDouble >= _controlAt))
+            {
+                _controlAt = NO_CONTROL_TIME;
+                WolbaekControlStarted?.Invoke();
+            }
 
             // 숲에서 부적을 아직 못 봤다면 조사 화면을 띄운다
             if ((_director.BlocksInput) && (!_view.IsShowing))
@@ -195,6 +208,12 @@ namespace Shinshi.AI
             Log($"체력 회복 + 무적 {invulnerableSeconds}초");
         }
 
+        public void StartWolbaek()
+        {
+            _controlAt = Time.timeAsDouble + APPEAR_SECONDS;
+            Log("월백 소환, 플레이어 이동, 체력 최대 회복");
+        }
+
         public void EndEngagement(EWolbaekEnd reason)
         {
             Log($"월백 교전 종료: {reason}");
@@ -233,6 +252,7 @@ namespace Shinshi.AI
             _log.Clear();
             _talismanChecked = talismanChecked;
             _purpose         = EViewPurpose.None;
+            _controlAt       = NO_CONTROL_TIME;
 
             _director = new PrologueDirector(this, this, () => Time.timeAsDouble, _talismanChecked);
             _director.Start(EPrologueStage.Intro, 0);
@@ -262,7 +282,7 @@ namespace Shinshi.AI
                     TalismanConfirmed?.Invoke();
                     break;
                 case EViewPurpose.Appearance:
-                    WolbaekControlStarted?.Invoke();
+                    WolbaekIntroFinished?.Invoke();
                     break;
                 default:
                     break;

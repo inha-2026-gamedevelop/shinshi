@@ -133,6 +133,7 @@ namespace Shinshi.Tests
         {
             PrologueDirector director = ReachSecondFight();
             _session.RaiseKilled(0);
+            _session.RaiseWolbaekIntro();
             _session.RaiseWolbaekControl();
 
             _session.Now += 29.0;
@@ -152,6 +153,7 @@ namespace Shinshi.Tests
         {
             PrologueDirector director = ReachSecondFight();
             _session.RaiseKilled(0);
+            _session.RaiseWolbaekIntro();
             _session.RaiseWolbaekControl();
 
             _session.Now += 5.0;
@@ -173,6 +175,55 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(0, _session.Ends.Count);
             Assert.AreEqual(EPrologueStage.Wolbaek, director.Stage);
+        }
+
+        [Test]
+        public void WolbaekIntroFinished_AfterForest_OpensWolbaekOnce()
+        {
+            PrologueDirector director = ReachSecondFight();
+            _session.RaiseKilled(0);
+            Assert.AreEqual(0, _session.WolbaekStarts);
+
+            _session.RaiseWolbaekIntro();
+            _session.RaiseWolbaekIntro();
+
+            Assert.AreEqual(1, _session.WolbaekStarts);
+        }
+
+        [Test]
+        public void WolbaekIntroFinished_BeforeWolbaekStage_IsIgnored()
+        {
+            PrologueDirector director = Create(true);
+            director.Start(EPrologueStage.Forest, 0);
+
+            _session.RaiseWolbaekIntro();
+
+            Assert.AreEqual(0, _session.WolbaekStarts);
+        }
+
+        [Test]
+        public void WolbaekControlStarted_BeforeIntroFinished_DoesNotStartTimer()
+        {
+            PrologueDirector director = ReachSecondFight();
+            _session.RaiseKilled(0);
+
+            _session.RaiseWolbaekControl();
+            _session.Now += 100.0;
+            director.Tick();
+
+            Assert.AreEqual(0, _session.Ends.Count);
+            Assert.AreEqual(EPrologueStage.Wolbaek, director.Stage);
+        }
+
+        [Test]
+        public void Start_ResumeWolbaek_ThenIntroFinished_OpensWolbaek()
+        {
+            PrologueDirector director = Create(true);
+            director.Start(EPrologueStage.Wolbaek, 2);
+
+            _session.RaiseWolbaekIntro();
+
+            Assert.AreEqual(1, _session.WolbaekStarts);
         }
 
         [Test]

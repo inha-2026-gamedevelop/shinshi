@@ -11,6 +11,10 @@ namespace Shinshi.AI
         // 일반 전투 체력 0, 제자리에서 최대 체력으로 회복시키고 무적을 준다
         void ReviveToFull(float invulnerableSeconds);
 
+        // 월백 교전을 연다. 월백을 소환하고, 플레이어를 월백 전장 시작점으로 옮기고, 체력을 최대로 회복시킨다.
+        // 위치는 서버가 씬의 시작점에서 정하고 이 쪽은 시점만 알린다
+        void StartWolbaek();
+
         // 월백 교전이 끝났다, 어느 쪽 이유든 마무리로 이어진다
         void EndEngagement(EWolbaekEnd reason);
 

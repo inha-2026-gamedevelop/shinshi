@@ -21,6 +21,7 @@ namespace Shinshi.AI
         private EPrologueStage    _stage            = EPrologueStage.Intro;
         private int               _spawnedNormal    = 0;
         private bool              _telegraphSpawned = false;
+        private bool              _wolbaekOpened    = false;
         private bool              _disposed         = false;
 
         /****************************************
@@ -69,6 +70,7 @@ namespace Shinshi.AI
             _source.PlayerDown            += OnPlayerDown;
             _source.PotionUsed            += OnPotionUsed;
             _source.TalismanConfirmed     += OnTalismanConfirmed;
+            _source.WolbaekIntroFinished  += OnWolbaekIntroFinished;
             _source.WolbaekControlStarted += OnWolbaekControlStarted;
             _source.IllustrationFinished  += OnIllustrationFinished;
         }
@@ -85,7 +87,8 @@ namespace Shinshi.AI
                     break;
                 case EPrologueStage.Wolbaek:
                     _potions.ResumeWolbaek(storedWolbaekPotions);
-                    _engagement = new WolbaekEngagement();
+                    _engagement    = new WolbaekEngagement();
+                    _wolbaekOpened = false;
                     _host.SetPotions(_potions.Count);
                     break;
                 default:
@@ -139,6 +142,7 @@ namespace Shinshi.AI
             _source.PlayerDown            -= OnPlayerDown;
             _source.PotionUsed            -= OnPotionUsed;
             _source.TalismanConfirmed     -= OnTalismanConfirmed;
+            _source.WolbaekIntroFinished  -= OnWolbaekIntroFinished;
             _source.WolbaekControlStarted -= OnWolbaekControlStarted;
             _source.IllustrationFinished  -= OnIllustrationFinished;
         }
@@ -185,9 +189,10 @@ namespace Shinshi.AI
 
         private void FinishForest()
         {
-            _forest     = null;
-            _stage      = EPrologueStage.Wolbaek;
-            _engagement = new WolbaekEngagement();
+            _forest        = null;
+            _stage         = EPrologueStage.Wolbaek;
+            _engagement    = new WolbaekEngagement();
+            _wolbaekOpened = false;
 
             _potions.EnterWolbaek();
             _host.ReportStage(EPrologueStage.Wolbaek, _potions.WolbaekEntryCount);
@@ -281,9 +286,22 @@ namespace Shinshi.AI
             }
         }
 
+        // 등장 일러스트가 끝나야 월백을 연다. 같은 구간에서 두 번 열지 않는다
+        private void OnWolbaekIntroFinished()
+        {
+            if ((_stage != EPrologueStage.Wolbaek) || (_engagement == null) || (_wolbaekOpened))
+            {
+                return;
+            }
+
+            _wolbaekOpened = true;
+            _host.StartWolbaek();
+        }
+
+        // 월백이 열리기 전의 조작 시작 알림은 30초를 시작시키지 않는다
         private void OnWolbaekControlStarted()
         {
-            if ((_stage != EPrologueStage.Wolbaek) || (_engagement == null))
+            if ((_stage != EPrologueStage.Wolbaek) || (_engagement == null) || (!_wolbaekOpened))
             {
                 return;
             }
