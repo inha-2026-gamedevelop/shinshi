@@ -35,6 +35,16 @@ namespace Shinshi.AI
 
         private const string CATALOG_PATH = "Assets/09.Data/AI/Prologue/PrologueIllustrationCatalog.asset";
 
+        private const string GUIDE_CATALOG_PATH = "Assets/09.Data/AI/Prologue/MenuGuideCatalog.asset";
+        private const string GUIDE_TRAINING     = "menu_training";
+        private const string GUIDE_TALISMAN     = "menu_talisman";
+        private const string GUIDE_TARGET_KEY   = "panel";
+        private const int    GUIDE_TARGET_SORTING = 100;
+        private const float  GUIDE_TARGET_MARGIN  = 120f;
+
+        private static readonly Vector2 GUIDE_TARGET_SIZE  = new Vector2(420f, 260f);
+        private static readonly Color   GUIDE_TARGET_COLOR = new Color(0.35f, 0.5f, 0.6f, 1f);
+
         private enum EViewPurpose
         {
             None,
@@ -50,6 +60,10 @@ namespace Shinshi.AI
         private IllustrationView _view            = null;
         private PrologueHintView _hintView        = null;
         private PrologueChoiceView _choiceView    = null;
+        private MenuGuideController _guide        = null;
+        private MenuGuideView    _guideView       = null;
+        private readonly MemoryMenuGuideRecord _guideRecord = new MemoryMenuGuideRecord();
+        private RectTransform    _guideTarget     = null;
         private bool             _accountCompleted = false;
         private bool             _damaged         = false;
         private PrologueIllustrationCatalogSO _catalog = null;
@@ -115,6 +129,8 @@ namespace Shinshi.AI
             PrologueDevFont.Apply(_choiceView);
             _choiceView.Chosen += OnChoiceChosen;
 
+            SetUpGuide();
+
             Restart(false);
         }
 
@@ -159,6 +175,8 @@ namespace Shinshi.AI
             {
                 _choiceView.Chosen -= OnChoiceChosen;
             }
+
+            _guide?.Dispose();
         }
 
         private void OnGUI()
@@ -183,6 +201,12 @@ namespace Shinshi.AI
             if (Button("물약 사용"))      { PotionUsed?.Invoke(); }
             if (Button("체력 0"))         { PlayerDown?.Invoke(); }
             if (Button(_damaged ? "체력 정상으로" : "체력 줄었음 (물약 안내 확인)")) { _damaged = !_damaged; }
+
+            GUILayout.Space(6f);
+            if (Button("수련 메뉴 첫 진입 (이미 마쳤으면 안 뜸)")) { ShowGuide(GUIDE_TRAINING, false); }
+            if (Button("부적 메뉴 첫 진입"))                      { ShowGuide(GUIDE_TALISMAN, false); }
+            if (Button("수련 도움말 버튼 (다시 보기)"))           { ShowGuide(GUIDE_TRAINING, true); }
+            if (Button("안내 완료 기록 지우기"))                  { _guideRecord.Clear(); Log("안내 완료 기록을 지웠다"); }
             if (Button(_accountCompleted ? "계정: 프롤로그 완료함 (누르면 최초로)" : "계정: 최초 (누르면 완료함으로)"))
             {
                 _accountCompleted = !_accountCompleted;
@@ -361,6 +385,47 @@ namespace Shinshi.AI
 
             _hintView.SetHint(text);
             _hintView.SetObjective(_director.IsWolbaekOpen ? PrologueHintTexts.WOLBAEK_OBJECTIVE : string.Empty);
+        }
+
+        // 성장 메뉴 안내를 시험하기 위한 가짜 메뉴 패널과 진행기를 만든다
+        private void SetUpGuide()
+        {
+            var catalog = UnityEditor.AssetDatabase.LoadAssetAtPath<MenuGuideCatalogSO>(GUIDE_CATALOG_PATH);
+            if (catalog == null)
+            {
+                Debug.LogWarning($"[PrologueDevRig] 성장 안내 카탈로그를 찾지 못했다: {GUIDE_CATALOG_PATH}", this);
+                return;
+            }
+
+            _guideView = MenuGuideView.Create();
+            PrologueDevFont.Apply(_guideView);
+            _guide = new MenuGuideController(catalog, _guideRecord, _guideView);
+
+            var canvasObject = new GameObject("DevGuideTargetCanvas");
+            canvasObject.transform.SetParent(transform, false);
+            PrologueUi.AddCanvas(canvasObject, GUIDE_TARGET_SORTING, false);
+            _guideTarget = PrologueUi.CreateImage("Panel", canvasObject.transform, GUIDE_TARGET_COLOR, false);
+            _guideTarget.anchorMin        = new Vector2(1f, 0.5f);
+            _guideTarget.anchorMax        = new Vector2(1f, 0.5f);
+            _guideTarget.pivot            = new Vector2(1f, 0.5f);
+            _guideTarget.anchoredPosition = new Vector2(-GUIDE_TARGET_MARGIN, 0f);
+            _guideTarget.sizeDelta        = GUIDE_TARGET_SIZE;
+        }
+
+        private void ShowGuide(string menuId, bool replay)
+        {
+            if (_guide == null)
+            {
+                return;
+            }
+
+            bool shown = replay ? _guide.Replay(menuId, ResolveGuideTarget) : _guide.TryShowFirstTime(menuId, ResolveGuideTarget);
+            Log(shown ? $"성장 안내 표시: {menuId}" : $"성장 안내 안 뜸: {menuId} (이미 마쳤거나 등록 안 됨)");
+        }
+
+        private RectTransform ResolveGuideTarget(string key)
+        {
+            return (key == GUIDE_TARGET_KEY) ? _guideTarget : null;
         }
 
         private void Log(string line)

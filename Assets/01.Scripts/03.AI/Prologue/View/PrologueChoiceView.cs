@@ -3,39 +3,40 @@ using System;
 
 // Unity
 using UnityEngine;
-using UnityEngine.UI;
 
 // 서드파티
 using TMPro;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.UI;
 
 namespace Shinshi.AI
 {
-    /// <summary> 계정에서 프롤로그를 한 번 마친 뒤 새 캐릭터를 만들었을 때 띄우는 선택창, 프리팹 없이 코드로 만든다 </summary>
+    /// <summary> 계정에서 프롤로그를 한 번 마친 뒤 새 캐릭터를 만들었을 때 띄우는 선택창, 기존 창과 같은 스타일이고 프리팹 없이 코드로 만든다 </summary>
     public sealed class PrologueChoiceView : ClientView
     {
         // 어떤 로비 화면에서 언제 띄울지는 이 클래스가 정하지 않는다. 호출하는 쪽이 Show를 부르고 Chosen을 받는다.
-        // 선택은 한 번만 전달하고, 뒤따르는 클릭은 무시한다
+        // 선택은 한 번만 전달하고, 뒤따르는 클릭은 무시한다.
+        // 제목 양옆 마름모는 글자 너비를 알아야 놓을 수 있어서 글꼴이 정해진 뒤 처음 Show할 때 한 번 놓는다
 
         /****************************************
         *                Fields
         ****************************************/
 
         private const int    SORTING_ORDER   = 31500;
-        private const float  PANEL_WIDTH     = 760f;
+        private const float  PANEL_WIDTH     = 780f;
         private const float  PANEL_HEIGHT    = 380f;
-        private const float  TITLE_SIZE      = 40f;
-        private const float  BODY_SIZE       = 28f;
-        private const float  BUTTON_SIZE     = 30f;
-        private const float  BUTTON_WIDTH    = 320f;
-        private const float  BUTTON_HEIGHT   = 80f;
-        private const float  BUTTON_GAP      = 40f;
-        private const float  BUTTON_BOTTOM   = 50f;
-        private const float  TITLE_TOP       = 50f;
-        private const float  BODY_TOP        = 130f;
-        private const float  TEXT_HEIGHT     = 70f;
+        private const float  TITLE_SIZE      = 36f;
+        private const float  TITLE_HEIGHT    = 56f;
+        private const float  BODY_SIZE       = 26f;
+        private const float  BODY_TOP        = 104f;
+        private const float  BODY_HEIGHT     = 70f;
+        private const float  BUTTON_SIZE     = 28f;
+        private const float  BUTTON_WIDTH    = 330f;
+        private const float  BUTTON_HEIGHT   = 76f;
+        private const float  BUTTON_GAP      = 36f;
+        private const float  BUTTON_BOTTOM   = 48f;
         private const float  HALF            = 0.5f;
         private const string ROOT_NAME       = "PrologueChoice";
         private const string TITLE_TEXT      = "프롤로그를 진행할까요?";
@@ -43,13 +44,13 @@ namespace Shinshi.AI
         private const string PLAY_LABEL      = "프롤로그 진행";
         private const string SKIP_LABEL      = "건너뛰고 신시로 이동";
 
-        private static readonly Color DIM_COLOR    = new Color(0f, 0f, 0f, 0.65f);
-        private static readonly Color PANEL_COLOR  = new Color(0.94f, 0.89f, 0.78f, 0.98f);
-        private static readonly Color BUTTON_COLOR = new Color(0.83f, 0.74f, 0.58f, 1f);
-        private static readonly Color TEXT_COLOR   = new Color(0.17f, 0.12f, 0.08f, 1f);
+        private static readonly Color DIM_COLOR = new Color(0f, 0f, 0f, 0.65f);
 
-        private TextMeshProUGUI[] _texts  = null;
-        private bool              _chosen = false;
+        private RectTransform     _panel     = null;
+        private TextMeshProUGUI   _title     = null;
+        private TextMeshProUGUI[] _texts     = null;
+        private bool              _decorated = false;
+        private bool              _chosen    = false;
 
         /****************************************
         *              Properties
@@ -88,6 +89,13 @@ namespace Shinshi.AI
         {
             _chosen = false;
             gameObject.SetActive(true);
+
+            if (!_decorated)
+            {
+                _title.ForceMeshUpdate();
+                PrologueUi.DecorateTitle(_panel, _title, -(TITLE_HEIGHT * HALF));
+                _decorated = true;
+            }
         }
 
         /// <summary> 진행 버튼, 키보드나 패드 입력도 이 메서드를 부르면 같은 흐름이다 </summary>
@@ -120,16 +128,21 @@ namespace Shinshi.AI
             RectTransform dim = PrologueUi.CreateImage("Dim", transform, DIM_COLOR, true);
             PrologueUi.Stretch(dim);
 
-            RectTransform panel = PrologueUi.CreateImage("Panel", transform, PANEL_COLOR, true);
-            Center(panel, new Vector2(PANEL_WIDTH, PANEL_HEIGHT), 0f);
+            _panel = PrologueUi.CreateImage("Panel", transform, Color.white, true);
+            _panel.anchorMin        = new Vector2(HALF, HALF);
+            _panel.anchorMax        = new Vector2(HALF, HALF);
+            _panel.pivot            = new Vector2(HALF, HALF);
+            _panel.anchoredPosition = Vector2.zero;
+            _panel.sizeDelta        = new Vector2(PANEL_WIDTH, PANEL_HEIGHT);
+            PrologueUi.StylePanel(_panel);
 
-            TextMeshProUGUI title = MakeLabel("Title", panel, TITLE_TEXT, TITLE_SIZE, TITLE_TOP);
-            TextMeshProUGUI body  = MakeLabel("Body", panel, BODY_TEXT, BODY_SIZE, BODY_TOP);
+            _title = MakeLabel("Title", TITLE_TEXT, TITLE_SIZE, UiModernDark.TextGold, 0f, TITLE_HEIGHT, true);
+            TextMeshProUGUI body = MakeLabel("Body", BODY_TEXT, BODY_SIZE, UiModernDark.TextMain, BODY_TOP, BODY_HEIGHT, false);
 
-            TextMeshProUGUI play = MakeButton("PlayButton", panel, PLAY_LABEL, -((BUTTON_WIDTH + BUTTON_GAP) * HALF), HandlePlay);
-            TextMeshProUGUI skip = MakeButton("SkipButton", panel, SKIP_LABEL, (BUTTON_WIDTH + BUTTON_GAP) * HALF, HandleSkip);
+            TextMeshProUGUI play = MakeButton("PlayButton", PLAY_LABEL, true, -((BUTTON_WIDTH + BUTTON_GAP) * HALF), HandlePlay);
+            TextMeshProUGUI skip = MakeButton("SkipButton", SKIP_LABEL, false, (BUTTON_WIDTH + BUTTON_GAP) * HALF, HandleSkip);
 
-            _texts = new[] { title, body, play, skip };
+            _texts = new[] { _title, body, play, skip };
             gameObject.SetActive(false);
         }
 
@@ -144,43 +157,31 @@ namespace Shinshi.AI
             Chosen?.Invoke(choice);
         }
 
-        private static void Center(RectTransform rect, Vector2 size, float offsetY)
+        private TextMeshProUGUI MakeLabel(string objectName, string text, float size, Color color, float top, float height, bool bold)
         {
-            rect.anchorMin        = new Vector2(HALF, HALF);
-            rect.anchorMax        = new Vector2(HALF, HALF);
-            rect.pivot            = new Vector2(HALF, HALF);
-            rect.anchoredPosition = new Vector2(0f, offsetY);
-            rect.sizeDelta        = size;
-        }
-
-        private static TextMeshProUGUI MakeLabel(string objectName, Transform parent, string text, float size, float top)
-        {
-            TextMeshProUGUI label = PrologueUi.CreateText(objectName, parent, size, TEXT_COLOR, TextAlignmentOptions.Center);
+            TextMeshProUGUI label = PrologueUi.CreateText(objectName, _panel, size, color, TextAlignmentOptions.Center);
             label.SetText(text);
+            label.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
 
             RectTransform rect = label.rectTransform;
             rect.anchorMin        = new Vector2(0f, 1f);
             rect.anchorMax        = new Vector2(1f, 1f);
             rect.pivot            = new Vector2(HALF, 1f);
             rect.anchoredPosition = new Vector2(0f, -top);
-            rect.sizeDelta        = new Vector2(0f, TEXT_HEIGHT);
+            rect.sizeDelta        = new Vector2(0f, height);
             return label;
         }
 
-        private static TextMeshProUGUI MakeButton(string objectName, Transform parent, string label, float offsetX,
+        private TextMeshProUGUI MakeButton(string objectName, string label, bool primary, float offsetX,
             UnityEngine.Events.UnityAction onClick)
         {
-            RectTransform rect = PrologueUi.CreateImage(objectName, parent, BUTTON_COLOR, true);
+            TextMeshProUGUI text = PrologueUi.CreateButton(objectName, _panel, BUTTON_SIZE, primary, onClick, out RectTransform rect);
             rect.anchorMin        = new Vector2(HALF, 0f);
             rect.anchorMax        = new Vector2(HALF, 0f);
             rect.pivot            = new Vector2(HALF, 0f);
             rect.anchoredPosition = new Vector2(offsetX, BUTTON_BOTTOM);
             rect.sizeDelta        = new Vector2(BUTTON_WIDTH, BUTTON_HEIGHT);
-            rect.gameObject.AddComponent<Button>().onClick.AddListener(onClick);
-
-            TextMeshProUGUI text = PrologueUi.CreateText("Label", rect, BUTTON_SIZE, TEXT_COLOR, TextAlignmentOptions.Center);
             text.SetText(label);
-            PrologueUi.Stretch(text.rectTransform);
             return text;
         }
     }

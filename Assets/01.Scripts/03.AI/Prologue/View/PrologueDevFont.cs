@@ -53,6 +53,16 @@ namespace Shinshi.AI
             view.SetFont(Load());
         }
 
+        public static void Apply(MenuGuideView view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            view.SetFont(Load());
+        }
+
         private static TMP_FontAsset Load()
         {
             var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);

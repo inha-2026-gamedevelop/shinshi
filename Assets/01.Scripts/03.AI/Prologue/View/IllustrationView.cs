@@ -47,7 +47,6 @@ namespace Shinshi.AI
         private static readonly Color BACK_COLOR  = new Color(0.04f, 0.05f, 0.07f, 1f);
         private static readonly Color PANEL_COLOR = new Color(0.94f, 0.89f, 0.78f, 0.88f);
         private static readonly Color TEXT_COLOR  = new Color(0.17f, 0.12f, 0.08f, 1f);
-        private static readonly Color SKIP_COLOR  = new Color(0.94f, 0.89f, 0.78f, 0.85f);
         private static readonly Color HINT_COLOR  = new Color(0.17f, 0.12f, 0.08f, 0.6f);
         private static readonly Color CLEAR_COLOR = new Color(1f, 1f, 1f, 0f);
 
@@ -274,18 +273,15 @@ namespace Shinshi.AI
             _hintText.rectTransform.offsetMin = new Vector2(TEXT_MARGIN, HINT_MARGIN);
             _hintText.rectTransform.offsetMax = new Vector2(-TEXT_MARGIN, HINT_MARGIN + HINT_HEIGHT);
 
-            RectTransform skip = PrologueUi.CreateImage("Skip", transform, SKIP_COLOR, true);
+            // 건너뛰기 단추는 다른 창과 같은 단추 스타일이다
+            _skipText = PrologueUi.CreateButton("Skip", transform, SKIP_FONT_SIZE, false, HandleSkip, out RectTransform skip);
             skip.anchorMin        = new Vector2(1f, 1f);
             skip.anchorMax        = new Vector2(1f, 1f);
             skip.pivot            = new Vector2(1f, 1f);
             skip.anchoredPosition = new Vector2(-SKIP_MARGIN, -SKIP_MARGIN);
             skip.sizeDelta        = new Vector2(SKIP_WIDTH, SKIP_HEIGHT);
-            skip.gameObject.AddComponent<Button>().onClick.AddListener(HandleSkip);
-            _skipButton = skip.gameObject;
-
-            _skipText = PrologueUi.CreateText("Label", skip, SKIP_FONT_SIZE, TEXT_COLOR, TextAlignmentOptions.Center);
+            _skipButton           = skip.gameObject;
             _skipText.SetText(SKIP_LABEL);
-            PrologueUi.Stretch(_skipText.rectTransform);
         }
 
     }
