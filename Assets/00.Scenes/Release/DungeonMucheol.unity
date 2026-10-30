@@ -212968,6 +212968,7 @@ MonoBehaviour:
   _clips:
   - {fileID: 8300000, guid: 290a3f60ebb0da647a3ef075419131c7, type: 3}
   - {fileID: 8300000, guid: eabab1640c1eb314ea681930097c8450, type: 3}
+  - {fileID: 8300000, guid: 6a5b14b35ca7ee043be7d02219a08d30, type: 3}
 --- !u!1 &1630391987
 GameObject:
   m_ObjectHideFlags: 0
