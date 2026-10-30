@@ -8,7 +8,7 @@ namespace Shinshi.AI
         ****************************************/
 
         // 첫 전투의 일반 산귀 수, 실제 플레이 뒤 조정할 수 있는 기획 확정안이다
-        private const int FIRST_FIGHT_ENEMY_COUNT = 2;
+        public const int FIRST_FIGHT_ENEMY_COUNT = 2;
 
         private EForestPhase _phase             = EForestPhase.Talisman;
         private int          _firstFightKills   = 0;

@@ -3,6 +3,8 @@
     "rootNamespace": "Shinshi.Tests",
     "references": [
         "Shinshi.Runtime",
+        "Shinshi.Server",
+        "Shinshi.Contracts",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
