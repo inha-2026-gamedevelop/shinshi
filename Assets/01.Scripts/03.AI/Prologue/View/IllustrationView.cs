@@ -157,6 +157,13 @@ namespace Shinshi.AI
             Complete();
         }
 
+        /// <summary> 화면을 내리되 객체는 남긴다, 같은 뷰로 다시 Show할 수 있다 </summary>
+        public void Close()
+        {
+            StopTyping();
+            gameObject.SetActive(false);
+        }
+
         public void Hide()
         {
             Destroy(gameObject);
