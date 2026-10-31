@@ -1122,7 +1122,7 @@ namespace Shinshi.Tests
             Assert.Throws<ArgumentNullException>(() => new BossAreaManager(null));
         }
 
-        // 서버가 읽는 에셋 값이 기획 표의 P05와 같고 가중치는 그대로이며, 보스 기본값까지 입력돼 IsTuned 오류가 없다
+        // 실행 값과 선택 가중치를 독립적으로 대조한다. 장판 선택 빈도를 낮춘 튜닝은 실제 에셋 기대값에만 반영한다
         [Test]
         public void CatalogAsset_P05_HasPlannedValues_AndBossIsTuned()
         {
@@ -1142,7 +1142,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1f, p05.AreaTickInterval);
             Assert.AreEqual(3, p05.MaxConcurrentAreas);
             Assert.AreEqual(6, BossAreaManager.ComputeHitCount(p05.AreaDurationSeconds, p05.AreaTickInterval));
-            Assert.AreEqual(12f, p05.BaseWeight);
+            Assert.AreEqual(8f, p05.BaseWeight);
             Assert.AreEqual(0.8f, p05.DistanceMultipliers[0]);
             Assert.AreEqual(1.4f, p05.NearbyMultipliers[2]);
 

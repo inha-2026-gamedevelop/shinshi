@@ -239,7 +239,7 @@ namespace Shinshi.Tests
             {
                 Gate = new BossDamageGate(Resolver);
                 Gate.Open();
-                Definition     = definition ?? LoadDefinition(HARD_ID);
+                Definition     = definition ?? TimelineDefinition();
                 Warp.Body      = Self;
                 Warp.Log       = Log;
                 Listener.Log   = Log;
@@ -296,6 +296,15 @@ namespace Shinshi.Tests
         {
             Assert.IsTrue(LoadCatalog().TryGetPattern(id, out PatternDefinition definition), id);
             return definition;
+        }
+
+        // 시간표 경계와 중단 검사는 고정한 실행 입력으로 확인하고, 최신 밸런스 에셋 계약은 Asset_ 검사에서 별도로 확인한다.
+        // 복사본만 바꾸므로 운영 카탈로그와 다른 테스트가 읽는 정의에는 영향을 주지 않는다.
+        private static PatternDefinition TimelineDefinition()
+        {
+            PatternDefinition fixture = JsonUtility.FromJson<PatternDefinition>(JsonUtility.ToJson(LoadDefinition(HARD_ID)));
+            JsonUtility.FromJsonOverwrite("{\"_telegraphSeconds\":3.0,\"_activeSeconds\":0.0,\"_recoverySeconds\":2.0}", fixture);
+            return fixture;
         }
 
         // 하드 에셋 정의와 같은 값에서 워프와 형태 수치만 바꾼 정의, 계약 검사와 후보 수 상한 검사에 쓴다
@@ -370,9 +379,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(2, p.Phase);
             Assert.AreEqual(EBossDifficulty.Hard, p.Difficulty);
             Assert.AreEqual(EPatternGroup.Pressure, p.Group);
-            Assert.AreEqual(3f, p.TelegraphSeconds, TOLERANCE);
+            Assert.AreEqual(2.6f, p.TelegraphSeconds, TOLERANCE, "d60ac1a9: 하드 예고를 이지 이하로 단축");
             Assert.AreEqual(0f, p.ActiveSeconds);
-            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(1.6f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Circle, p.Shape.Shape);
             Assert.AreEqual(RADIUS, p.Shape.Range, TOLERANCE);
             Assert.AreEqual(DAMAGE_REF, p.DamageRef, TOLERANCE);
@@ -388,14 +397,14 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Asset_HardP07_ExecutionValuesMatchEasyAndOnlySelectionTuningDiffers()
+        public void Asset_HardP07_KeepsEasyWarpGeometryWithShorterHardTiming()
         {
             PatternDefinition easy = LoadDefinition(EASY_ID);
             PatternDefinition hard = LoadDefinition(HARD_ID);
 
-            Assert.AreEqual(easy.TelegraphSeconds, hard.TelegraphSeconds);
+            Assert.Less(hard.TelegraphSeconds, easy.TelegraphSeconds, "d60ac1a9: 하드가 이지보다 늘어지지 않는다");
             Assert.AreEqual(easy.ActiveSeconds, hard.ActiveSeconds);
-            Assert.AreEqual(easy.RecoverySeconds, hard.RecoverySeconds);
+            Assert.Less(hard.RecoverySeconds, easy.RecoverySeconds);
             Assert.AreEqual(easy.Shape.Shape, hard.Shape.Shape);
             Assert.AreEqual(easy.Shape.Range, hard.Shape.Range);
             Assert.AreEqual(easy.DamageRef, hard.DamageRef);
@@ -467,7 +476,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Asset_EasyP07AndHardP01ToP06_AreUnchanged()
+        public void Asset_EasyP07AndHardP01ToP06_KeepTheirExplicitSelectionTuning()
         {
             PatternDefinition easy = LoadDefinition(EASY_ID);
             Assert.AreEqual(EBossDifficulty.Easy, easy.Difficulty);
@@ -475,8 +484,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(7f, easy.EnhancedBaseWeight, TOLERANCE);
             BossWolbaekHardDataKit.AssertTable(BossWolbaekHardDataKit.G_EasyRecent, easy.RecentUseMultipliers, "easy recent");
 
-            float[] baseWeights     = { 10f, 10f, 12f, 13f, 22f, 8f };
-            float[] enhancedWeights = { 12f, 12f, 14f, 15f, 18f, 9f };
+            float[] baseWeights     = { 10f, 10f, 12f, 9f, 22f, 8f };
+            float[] enhancedWeights = { 12f, 12f, 14f, 11f, 18f, 9f };
             for (int i = 0; i < HardOthers.Length; ++i)
             {
                 PatternDefinition p = LoadDefinition(HardOthers[i]);
@@ -1026,6 +1035,18 @@ namespace Shinshi.Tests
         ****************************************/
 
         // 하드 2페이즈 후보를 P07 하나(혹은 P07과 P01)만 남기고 실제 하드 카탈로그와 실제 팩토리로 두뇌를 돌린다
+        // 두뇌 통합은 운영 카탈로그를 그대로 사용하며 최신 입력의 예고/실행/회복 합으로 관찰할 경계를 정한다.
+        private static double TunedFirstStrike => LoadDefinition(HARD_ID).TelegraphSeconds;
+
+        private static double TunedNextSelection
+        {
+            get
+            {
+                PatternDefinition definition = LoadDefinition(HARD_ID);
+                return (double)definition.TelegraphSeconds + definition.ActiveSeconds + definition.RecoverySeconds;
+            }
+        }
+
         private sealed class BrainRig
         {
             public FakeCombatTarget   Self     = new FakeCombatTarget { CombatId = 1, Faction = ECombatFaction.Enemy, Position = Origin };
@@ -1196,19 +1217,19 @@ namespace Shinshi.Tests
             Assert.AreEqual(HARD_ID, r.Brain.ActivePatternId);
             Assert.AreEqual(1, r.Listener.StartedCount);
 
-            r.Brain.Tick(0.5 + TELEGRAPH - 0.0001);
+            r.Brain.Tick(0.5 + TunedFirstStrike - 0.0001);
             Assert.AreEqual(0, r.Damage.Requests.Count, "예고가 끝나기 전에는 타격이 없다");
 
-            r.Brain.Tick(0.5 + TELEGRAPH);
+            r.Brain.Tick(0.5 + TunedFirstStrike);
             Assert.AreEqual(1, r.Damage.Requests.Count);
             Assert.AreNotEqual(EBossAttackState.Ready, r.Brain.AttackState);
 
-            r.Brain.Tick(0.5 + COMPLETE - 0.0001);
+            r.Brain.Tick(0.5 + TunedNextSelection - 0.0001);
             Assert.AreNotEqual(EBossAttackState.Ready, r.Brain.AttackState, "후딜이 끝나기 전에는 다음 선택이 없다");
             Assert.AreEqual(1, r.Warp.WarpCalls.Count);
 
             // 착지한 보스가 대상과 3m라 근거리 배율 0이어서 다음 선택은 P07을 고르지 않는다
-            r.Brain.Tick(0.5 + COMPLETE);
+            r.Brain.Tick(0.5 + TunedNextSelection);
             Assert.AreEqual(EBossAttackState.Ready, r.Brain.AttackState);
             Assert.AreEqual(1, r.Damage.Requests.Count, "대상당 한 번만 맞는다");
             Assert.AreEqual(1, r.Warp.WarpCalls.Count);

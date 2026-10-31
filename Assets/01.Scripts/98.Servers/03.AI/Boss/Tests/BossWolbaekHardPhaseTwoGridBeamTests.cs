@@ -229,7 +229,7 @@ namespace Shinshi.Tests
             {
                 Gate = new BossDamageGate(Resolver);
                 Gate.Open();
-                Definition = LoadDefinition(HARD_ID);
+                Definition = TimelineDefinition();
                 CastId     = Gate.IssueInstanceId();
             }
 
@@ -291,6 +291,15 @@ namespace Shinshi.Tests
         {
             Assert.IsTrue(LoadCatalog().TryGetPattern(id, out PatternDefinition definition), id);
             return definition;
+        }
+
+        // 시간표 경계와 중단 검사는 고정한 실행 입력으로 확인하고, 최신 밸런스 에셋 계약은 Asset_ 검사에서 별도로 확인한다.
+        // 복사본만 바꾸므로 운영 카탈로그와 다른 테스트가 읽는 정의에는 영향을 주지 않는다.
+        private static PatternDefinition TimelineDefinition()
+        {
+            PatternDefinition fixture = JsonUtility.FromJson<PatternDefinition>(JsonUtility.ToJson(LoadDefinition(HARD_ID)));
+            JsonUtility.FromJsonOverwrite("{\"_telegraphSeconds\":2.0,\"_activeSeconds\":12.5,\"_recoverySeconds\":3.0,\"_gridStrikeIntervalSeconds\":0.5}", fixture);
+            return fixture;
         }
 
         // 대상 한 명이 있으면 시작할 수 있다. 격자는 대상 위치와 무관하다
@@ -366,15 +375,15 @@ namespace Shinshi.Tests
             Assert.AreEqual(WOLBAEK_ID, p.BossId);
             Assert.AreEqual(HARD_ID + ".name", p.DisplayKey);
             Assert.AreEqual(EPatternGroup.Large, p.Group);
-            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE, "첫 줄 예고 2초, 첫 타격 t=2.0");
-            Assert.AreEqual(12.5f, p.ActiveSeconds, TOLERANCE, "첫 타격부터 마지막 타격 t=14.5");
-            Assert.AreEqual(3f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=17.5");
-            Assert.AreEqual(17.5f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(0.3f, p.TelegraphSeconds, TOLERANCE, "d60ac1a9: 줄 예고와 타격 간격을 함께 단축");
+            Assert.AreEqual(5.9f, p.ActiveSeconds, TOLERANCE, "두 축의 각 11개 간격과 방향 전환 1.5초를 포함한다");
+            Assert.AreEqual(1.4f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(7.6f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(EEnemyAttackShape.Line, p.Shape.Shape);
             Assert.AreEqual(3f, p.Shape.Width, TOLERANCE);
             Assert.AreEqual(LINE_COUNT, p.RawGridLineCount);
             Assert.AreEqual(SPACING, p.GridLineSpacing, TOLERANCE);
-            Assert.AreEqual(0.5f, p.GridStrikeIntervalSeconds, TOLERANCE);
+            Assert.AreEqual(0.2f, p.GridStrikeIntervalSeconds, TOLERANCE);
             Assert.AreEqual(1.5f, p.GridAxisGapSeconds, TOLERANCE);
             Assert.AreEqual(0.14f, p.DamageRef, TOLERANCE);
             Assert.IsFalse(p.Guardable, "방어 불가");
@@ -844,7 +853,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Schedule_LastStrikeSitsOnTheExecuteEnd_AndTheNextSelectionIsRecoveryLater_ForTheRealDefinition()
+        public void Schedule_LastStrikeSitsOnTheExecuteEnd_AndTheNextSelectionIsRecoveryLater_ForTheFixedTimeline()
         {
             Run r = StandardRun();
             r.Start(10, 4.0);
@@ -1369,6 +1378,16 @@ namespace Shinshi.Tests
         *      Brain: Hard Catalog Selection
         ****************************************/
 
+        // 두뇌 통합은 운영 카탈로그를 그대로 사용하며 최신 입력의 예고/실행/회복 합으로 관찰할 경계를 정한다.
+        private static double TunedNextSelection
+        {
+            get
+            {
+                PatternDefinition definition = LoadDefinition(HARD_ID);
+                return (double)definition.TelegraphSeconds + definition.ActiveSeconds + definition.RecoverySeconds;
+            }
+        }
+
         private sealed class BrainRig
         {
             public FakeCombatTarget   Self     = new FakeCombatTarget { CombatId = 1, Faction = ECombatFaction.Enemy, Position = ArenaCenter };
@@ -1425,17 +1444,17 @@ namespace Shinshi.Tests
                     started = t;
                 }
 
-                if ((started >= 0.0) && (t < (started + NEXT_SELECTION - 0.06)))
+                if ((started >= 0.0) && (t < (started + TunedNextSelection - 0.06)))
                 {
                     Assert.AreEqual(HARD_ID, r.Brain.ActivePatternId, "t=" + t);
-                    Assert.AreEqual(1, r.Listener.StartedCasts.Count, "17.5초 동안 다음 시전이 시작되지 않는다 t=" + t);
+                    Assert.AreEqual(1, r.Listener.StartedCasts.Count, "현재 카탈로그의 후딜이 끝나기 전에는 다음 시전이 시작되지 않는다 t=" + t);
                 }
             }
 
             LogAssert.NoUnexpectedReceived();
             Assert.GreaterOrEqual(started, 0.0);
             Assert.GreaterOrEqual(r.Listener.StartedCasts.Count, 2, "회복이 끝난 뒤에는 다시 고른다");
-            Assert.GreaterOrEqual(r.Listener.StartedAt[1], r.Listener.StartedAt[0] + NEXT_SELECTION - TIME_TOL, "다음 시전은 t=17.5 이후");
+            Assert.GreaterOrEqual(r.Listener.StartedAt[1], r.Listener.StartedAt[0] + TunedNextSelection - TIME_TOL, "현재 카탈로그의 회복 경계 이후에 다음 시전이 열린다");
             Assert.AreEqual(TOTAL_LINES, FirstCastStrikes(r));
         }
 

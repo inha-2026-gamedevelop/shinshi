@@ -18,7 +18,7 @@ using PatternDefinition = Shinshi.Data.BossPatternCatalogSO.PatternDefinition;
 
 namespace Shinshi.Tests
 {
-    // 예고 1.6, 추적 0.6, 제어 구간 0.4는 float라 double로 넘기면 약간 크다. 경계 시각은 FSM과 같은 식(시작 + (double)길이)으로 구한다
+    // 실행 fixture의 예고, 추적, 제어 구간은 float라 double로 넘기면 약간 크다. 경계 시각은 FSM과 같은 식(시작 + (double)길이)으로 구한다
     // 가중치와 배율은 이 테스트가 정한 가짜 값이며 기획 값이 아니다
     public class BossLineBlastPatternTests
     {
@@ -34,6 +34,7 @@ namespace Shinshi.Tests
         private const float  LENGTH       = 14f;
         private const float  WIDTH        = 4f;
         private const float  TELEGRAPH    = 3.2f;
+        private const float  ASSET_TELEGRAPH = 1.6f;
         private const float  TRACKING     = 0.6f;
         private const float  TURN_RATE    = 90f;
         private const float  RECOVERY     = 1f;
@@ -1346,7 +1347,7 @@ namespace Shinshi.Tests
             Assert.IsNotNull(catalog);
             Assert.IsTrue(catalog.TryGetPattern(P06_ID, out PatternDefinition p06));
 
-            Assert.AreEqual(3.2f, p06.TelegraphSeconds);
+            Assert.AreEqual(ASSET_TELEGRAPH, p06.TelegraphSeconds);
             Assert.AreEqual(0.6f, p06.TrackingSeconds);
             Assert.AreEqual(90f, p06.TurnRate);
             Assert.AreEqual(0f, p06.ActiveSeconds);
@@ -1446,7 +1447,7 @@ namespace Shinshi.Tests
 
             Assert.AreEqual(expectedWidth, rig.Listener.StartWidth);
             Assert.AreEqual(LENGTH, rig.Listener.StartLength);
-            Assert.AreEqual(TELEGRAPH, rig.Listener.StartSeconds);
+            Assert.AreEqual(ASSET_TELEGRAPH, rig.Listener.StartSeconds);
         }
 
         // 서버 피격 폭은 예고 폭과 같다. 좌우 2.1m, 2.2m는 하드(절반 2.25m)에서만 맞고, 2.3m는 둘 다 빗나간다. 먼 모서리도 같다

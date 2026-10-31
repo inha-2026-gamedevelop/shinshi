@@ -232,7 +232,7 @@ namespace Shinshi.Tests
             {
                 Gate = new BossDamageGate(Resolver);
                 Gate.Open();
-                Definition = LoadDefinition(HARD_ID);
+                Definition = TimelineDefinition();
                 CastId     = Gate.IssueInstanceId();
             }
 
@@ -303,6 +303,15 @@ namespace Shinshi.Tests
             return definition;
         }
 
+        // 시간표 경계와 중단 검사는 고정한 실행 입력으로 확인하고, 최신 밸런스 에셋 계약은 Asset_ 검사에서 별도로 확인한다.
+        // 복사본만 바꾸므로 운영 카탈로그와 다른 테스트가 읽는 정의에는 영향을 주지 않는다.
+        private static PatternDefinition TimelineDefinition()
+        {
+            PatternDefinition fixture = JsonUtility.FromJson<PatternDefinition>(JsonUtility.ToJson(LoadDefinition(HARD_ID)));
+            JsonUtility.FromJsonOverwrite("{\"_telegraphSeconds\":4.0,\"_activeSeconds\":0.0,\"_recoverySeconds\":2.0}", fixture);
+            return fixture;
+        }
+
         // 전장 중심 기준 월드 축 좌표 (x, z)의 월드 위치
         private static Vector3 Rel(float x, float z)
         {
@@ -354,9 +363,9 @@ namespace Shinshi.Tests
             Assert.AreEqual(EPatternGroup.Pressure, p.Group);
             Assert.AreEqual(EEnemyAttackShape.Circle, p.Shape.Shape);
             Assert.AreEqual(BOSS_RADIUS, p.Shape.Range, TOLERANCE, "보스 중심 원 반경");
-            Assert.AreEqual(4f, p.TelegraphSeconds, TOLERANCE, "예고 t=0~4.0, 판정 t=4.0");
+            Assert.AreEqual(2.2f, p.TelegraphSeconds, TOLERANCE, "d60ac1a9: 하드 예고를 이지 이하로 단축");
             Assert.AreEqual(0f, p.ActiveSeconds, TOLERANCE, "즉발");
-            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE, "다음 선택 t=6.0");
+            Assert.AreEqual(1.4f, p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(0f, p.TrackingSeconds, "예고 중 조준을 따라가지 않는다");
             Assert.AreEqual(0.28f, p.DamageRef, TOLERANCE);
             Assert.IsTrue(p.Guardable, "방어와 반격 가능");
@@ -364,7 +373,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(SPOT_RADIUS, p.BurstSpotRadius, TOLERANCE, "사분면 원 반경");
             Assert.AreEqual(NEAR, p.BurstNearOffset, TOLERANCE);
             Assert.AreEqual(FAR, p.BurstFarOffset, TOLERANCE);
-            Assert.AreEqual(6f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(3.6f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
             Assert.AreEqual(0, p.MaxConcurrentAreas, "장판 상한으로 후보에서 빠지지 않는다");
             Assert.AreEqual(0, p.RawProjectileCount);
         }
@@ -1391,6 +1400,18 @@ namespace Shinshi.Tests
         *      Brain: Hard Catalog Selection
         ****************************************/
 
+        // 두뇌 통합은 운영 카탈로그를 그대로 사용하며 최신 입력의 예고/실행/회복 합으로 관찰할 경계를 정한다.
+        private static double TunedFirstStrike => LoadDefinition(HARD_ID).TelegraphSeconds;
+
+        private static double TunedNextSelection
+        {
+            get
+            {
+                PatternDefinition definition = LoadDefinition(HARD_ID);
+                return (double)definition.TelegraphSeconds + definition.ActiveSeconds + definition.RecoverySeconds;
+            }
+        }
+
         private sealed class BrainRig
         {
             public FakeCombatTarget   Self     = new FakeCombatTarget { CombatId = 1, Faction = ECombatFaction.Enemy, Position = ArenaCenter };
@@ -1451,7 +1472,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Brain_HardPhaseTwo_RunsP06ForThreeSecondsAndThenOpensTheNextSelection()
+        public void Brain_HardPhaseTwo_RunsP06UntilTunedRecoveryEndsAndThenOpensTheNextSelection()
         {
             BrainRig r = new BrainRig();
             r.TransitionAndHandoff();
@@ -1460,7 +1481,7 @@ namespace Shinshi.Tests
             Assert.GreaterOrEqual(started, 0.0);
             Assert.AreEqual(HARD_ID, r.Brain.ActivePatternId);
 
-            for (double t = started + 0.05; t < (started + STRIKE_TIME + 0.95); t += 0.05)
+            for (double t = started + 0.05; t < (started + TunedFirstStrike + 0.95); t += 0.05)
             {
                 r.Brain.Tick(t);
                 Assert.AreEqual(HARD_ID, r.Brain.ActivePatternId, "t=" + t);
@@ -1468,14 +1489,14 @@ namespace Shinshi.Tests
 
             LogAssert.NoUnexpectedReceived();
             Assert.AreEqual(1, r.Listener.StartedLayouts.Count);
-            Assert.AreEqual(1, r.Listener.Strikes.Count, "t=4.0에 한 번 폭발했다");
-            Assert.AreEqual(started + STRIKE_TIME, r.Listener.Strikes[0].Scheduled, TIME_TOL);
+            Assert.AreEqual(1, r.Listener.Strikes.Count, "현재 카탈로그의 예고 경계에서 한 번 폭발했다");
+            Assert.AreEqual(started + TunedFirstStrike, r.Listener.Strikes[0].Scheduled, TIME_TOL);
             Assert.AreEqual(1, r.Damage.Requests.Count);
             Assert.AreEqual(0, r.Listener.Cancels.Count);
 
-            r.Brain.Tick(started + NEXT_SELECTION + 0.001);
-            Assert.AreEqual(EBossAttackState.Ready, r.Brain.AttackState, "후딜 1초 뒤 t=3.0에 시전이 끝난다");
-            r.Brain.Tick(started + NEXT_SELECTION + 0.05);
+            r.Brain.Tick(started + TunedNextSelection + 0.001);
+            Assert.AreEqual(EBossAttackState.Ready, r.Brain.AttackState, "현재 카탈로그의 후딜 경계 뒤에 시전이 끝난다");
+            r.Brain.Tick(started + TunedNextSelection + 0.05);
             Assert.AreNotEqual(EBossAttackState.Ready, r.Brain.AttackState, "다음 선택이 바로 열린다");
         }
 
@@ -1552,7 +1573,7 @@ namespace Shinshi.Tests
             r.TransitionAndHandoff();
             double started = r.RunUntilStarted();
 
-            for (double t = started + 0.05; t <= (started + STRIKE_TIME + 0.3); t += 0.05)
+            for (double t = started + 0.05; t <= (started + TunedFirstStrike + 0.3); t += 0.05)
             {
                 r.Brain.Tick(t);
             }
@@ -1560,7 +1581,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(1, r.Listener.Strikes.Count);
             int requests = r.Damage.Requests.Count;
             r.Brain.RequestCombatEnd();
-            for (double t = started + STRIKE_TIME + 0.35; t < (started + 8.0); t += 0.05)
+            for (double t = started + TunedFirstStrike + 0.35; t < (started + 8.0); t += 0.05)
             {
                 r.Brain.Tick(t);
             }
@@ -1579,11 +1600,11 @@ namespace Shinshi.Tests
             Assert.AreEqual(HARD_ID, r.Brain.ActivePatternId);
 
             r.Brain.Tick(started + 1.0);
-            r.Brain.Tick(started + STRIKE_TIME + 0.8);
+            r.Brain.Tick(started + TunedFirstStrike + 0.8);
 
             Assert.AreEqual(1, r.Listener.Strikes.Count);
-            Assert.AreEqual(started + STRIKE_TIME, r.Listener.Strikes[0].Scheduled, TIME_TOL);
-            Assert.AreEqual(started + STRIKE_TIME + 0.8, r.Listener.Strikes[0].Processed, TIME_TOL);
+            Assert.AreEqual(started + TunedFirstStrike, r.Listener.Strikes[0].Scheduled, TIME_TOL);
+            Assert.AreEqual(started + TunedFirstStrike + 0.8, r.Listener.Strikes[0].Processed, TIME_TOL);
             Assert.AreEqual(1, r.Damage.Requests.Count);
         }
     }

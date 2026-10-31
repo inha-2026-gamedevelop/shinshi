@@ -346,8 +346,8 @@ namespace Shinshi.Tests
             Assert.AreEqual(2, p.AreaTargetCount);
             Assert.AreEqual(3, p.MaxConcurrentAreas, "기존 월백 장판을 합쳐 최대 3개");
             Assert.IsTrue(p.AreaSkipsMissedRounds);
-            Assert.AreEqual(13f, p.BaseWeight, TOLERANCE);
-            Assert.AreEqual(15f, p.EnhancedBaseWeight, TOLERANCE);
+            Assert.AreEqual(9f, p.BaseWeight, TOLERANCE);
+            Assert.AreEqual(11f, p.EnhancedBaseWeight, TOLERANCE);
             Assert.AreEqual(6, BossAreaManager.ComputeHitCount(p.AreaDurationSeconds, p.AreaTickInterval));
         }
 

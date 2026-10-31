@@ -356,7 +356,7 @@ namespace Shinshi.Tests
                 Manager    = new BossProjectileManager(Query, useWalls ? Walls : null, Sink);
                 Gate       = new BossDamageGate(Resolver);
                 Gate.Open();
-                Definition = LoadDefinition(HARD_ID);
+                Definition = TimelineDefinition();
             }
 
             public FakeCombatTarget Add(int id, Vector3 position)
@@ -410,6 +410,15 @@ namespace Shinshi.Tests
         {
             Assert.IsTrue(LoadCatalog().TryGetPattern(id, out PatternDefinition definition), id);
             return definition;
+        }
+
+        // 시간표 경계와 중단 검사는 고정한 실행 입력으로 확인하고, 최신 밸런스 에셋 계약은 Asset_ 검사에서 별도로 확인한다.
+        // 복사본만 바꾸므로 운영 카탈로그와 다른 테스트가 읽는 정의에는 영향을 주지 않는다.
+        private static PatternDefinition TimelineDefinition()
+        {
+            PatternDefinition fixture = JsonUtility.FromJson<PatternDefinition>(JsonUtility.ToJson(LoadDefinition(HARD_ID)));
+            JsonUtility.FromJsonOverwrite("{\"_telegraphSeconds\":2.0,\"_activeSeconds\":1.4,\"_recoverySeconds\":2.0}", fixture);
+            return fixture;
         }
 
         // origin에서 +Z 기준 시계 방향 degrees도, 거리 radius인 점
@@ -585,12 +594,12 @@ namespace Shinshi.Tests
             Assert.AreEqual(SHOTS, p.RawProjectileCount, "구역 8개, 구역마다 한 발");
             Assert.AreEqual(0.2f, p.ProjectileIntervalSeconds, TOLERANCE);
             Assert.AreEqual(2, p.ProjectileMaxHitsPerTarget, "대상당 한 시전 2회");
-            Assert.AreEqual(2f, p.TelegraphSeconds, TOLERANCE, "첫 발 t=2.0, 각 발 예고는 발사 2초 전");
+            Assert.AreEqual(1.6f, p.TelegraphSeconds, TOLERANCE, "d60ac1a9: 각 발의 예고를 1.6초로 단축");
             Assert.AreEqual(0f, p.TrackingSeconds, TOLERANCE, "대상을 따라 돌지 않는다");
             Assert.AreEqual(0f, p.TurnRate, TOLERANCE);
-            Assert.AreEqual(1.4f, p.ActiveSeconds, TOLERANCE, "첫 발부터 마지막 발 t=3.4");
-            Assert.AreEqual(2f, p.RecoverySeconds, TOLERANCE);
-            Assert.AreEqual(NEXT_SELECTION, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE, "다음 선택 t=5.4");
+            Assert.AreEqual(1.4f, p.ActiveSeconds, TOLERANCE, "8발의 0.2초 간격은 유지한다");
+            Assert.AreEqual(1f, p.RecoverySeconds, TOLERANCE);
+            Assert.AreEqual(4f, p.TelegraphSeconds + p.ActiveSeconds + p.RecoverySeconds, TOLERANCE);
             Assert.IsFalse(p.HasControlWindow);
             Assert.AreEqual(0, p.MaxConcurrentAreas, "장판 상한으로 후보에서 빠지지 않는다");
             Assert.AreEqual(0, p.RawAreaTargetCount);

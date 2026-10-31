@@ -170,7 +170,9 @@ namespace Shinshi.Tests
                 BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
                 Assert.IsNotNull(catalog);
                 Assert.IsTrue(catalog.TryGetPattern(P04_ID, out PatternDefinition definition));
-                Definition = definition;
+                // 시각 경계 검사는 기존의 추적/예고/실행/회복 시간표를 고정한 복사본으로 확인한다.
+                Definition = JsonUtility.FromJson<PatternDefinition>(JsonUtility.ToJson(definition));
+                JsonUtility.FromJsonOverwrite("{\"_telegraphSeconds\":8.0,\"_trackingSeconds\":4.0,\"_activeSeconds\":2.5,\"_recoverySeconds\":2.0}", Definition);
             }
 
             public FakeCombatTarget Add(int id, Vector3 position)
@@ -204,15 +206,16 @@ namespace Shinshi.Tests
         [Test]
         public void Asset_HardP04_HasTrackingAndSixtyRounds()
         {
-            Run run = new Run();
-            Assert.AreEqual(8f, run.Definition.TelegraphSeconds);
-            Assert.AreEqual(4f, run.Definition.TrackingSeconds);
-            Assert.AreEqual(2.5f, run.Definition.ActiveSeconds);
-            Assert.AreEqual(2f, run.Definition.RecoverySeconds);
-            Assert.AreEqual(6f, run.Definition.Shape.Range);
-            Assert.AreEqual(60, BossAreaManager.ComputeHitCount(run.Definition.AreaDurationSeconds,
-                run.Definition.AreaTickInterval));
-            Assert.AreEqual(2, run.Definition.MaxConcurrentAreas);
+            BossPatternCatalogSO catalog = AssetDatabase.LoadAssetAtPath<BossPatternCatalogSO>(CATALOG_PATH);
+            Assert.IsTrue(catalog.TryGetPattern(P04_ID, out PatternDefinition definition));
+            Assert.AreEqual(0.9f, definition.TelegraphSeconds);
+            Assert.AreEqual(0.8f, definition.TrackingSeconds);
+            Assert.AreEqual(1.25f, definition.ActiveSeconds);
+            Assert.AreEqual(1f, definition.RecoverySeconds);
+            Assert.AreEqual(6f, definition.Shape.Range);
+            Assert.AreEqual(60, BossAreaManager.ComputeHitCount(definition.AreaDurationSeconds,
+                definition.AreaTickInterval));
+            Assert.AreEqual(2, definition.MaxConcurrentAreas);
         }
 
         [Test]
