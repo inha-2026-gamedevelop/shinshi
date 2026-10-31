@@ -121,6 +121,18 @@ namespace Shinshi.UI
                 }
             }
 
+            // 봉인 핵은 파괴되거나 만료되면 목록에서 빠지므로 끝난 핵은 자연히 사라진다
+            IReadOnlyList<WolbaekSealCorePlayer> cores = WolbaekSealCorePlayer.RunningPlayers;
+            for (int i = 0; i < cores.Count; ++i)
+            {
+                if ((cores[i] != null)
+                    && (cores[i].CurrentSnapshot.Phase != WolbaekSealCorePlayer.EPhase.Destroyed)
+                    && (_view.SetMarker(used, MinimapRules.ToXz(cores[i].transform.position), EMinimapMarker.Gimmick, OpaqueColor(cores[i].MarkerColor))))
+                {
+                    ++used;
+                }
+            }
+
             _view.HideMarkersFrom(used);
         }
 
@@ -156,6 +168,13 @@ namespace Shinshi.UI
 
             position = self.position;
             yaw      = self.eulerAngles.y;
+
+            // 플레이어 루트는 회전하지 않고 모델만 복제된 바라보는 방향으로 돌기 때문에, 접속 중에는 그 값을 쓴다
+            if ((connected) && (self.TryGetComponent(out PlayerCombatState combat)))
+            {
+                yaw = MinimapRules.DirectionToYaw(FacingRules.DecodeYaw(combat.FacingYaw));
+            }
+
             return true;
         }
 

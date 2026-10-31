@@ -128,12 +128,12 @@ namespace Shinshi.Tests
 
             FakeEnemy dummy = AddEnemy(new Vector3(50f, 0f, 50f));
             DamageResult hit = DamageResult.Applied(10f, false, false);
-            for (int i = 0; i < _catalog.ClassStackMax; ++i)
+            for (int i = 0; i < _catalog.ArcherStackMax; ++i)
             {
                 _skills.OnArrowHit(EArcherElement.Ice, dummy, in hit, _now);
             }
 
-            Assert.AreEqual(_catalog.ClassStackMax, _skills.ClassStacks);
+            Assert.AreEqual(_catalog.ArcherStackMax, _skills.ClassStacks);
 
             Assert.IsTrue(_skills.TryCast(ESkillRequestKind.Regular, SLOT_R, new Vector3(10f, 0f, 0f), FacingRules.EncodeYaw(Vector3.forward),
                 _now, true, out ERejectReason reason), reason.ToString());

@@ -410,11 +410,11 @@ namespace Shinshi.Data
                 new SkillTimeline(0.1f, 0f, 0.15f),
                 new SkillArea(ESkillAimMode.Self, ESkillShape.Buff),
                 new SkillEffectSpec(hitImmunityDuration: 3f)),
-            // W 검파 해방, 기본 1.0A에 스택당 0.2A를 더해 20스택이면 5.0A. 관통하며 시전 확정 때 스택을 0으로 만든다
+            // W 검파 해방, 기본 0.85A에 스택당 0.17A를 더해 15스택이면 3.4A. 관통하며 시전 확정 때 스택을 0으로 만든다
             new SkillDefinition("skill_mageknight_thunder_wave", EPlayerClass.Mageknight, slot: 1, isSignature: false, energyCost: 25f, cooldown: 8f,
                 new SkillTimeline(0.35f, 0f, 0.2f),
                 new SkillArea(ESkillAimMode.Direction, ESkillShape.Projectile, castRange: 14f, width: 2f, projectileSpeed: 20f),
-                new SkillEffectSpec(damageCoefficient: 1.0f, maxTargets: 8, stackCoefficient: 0.2f)),
+                new SkillEffectSpec(damageCoefficient: 0.85f, maxTargets: 8, stackCoefficient: 0.17f)),
             // E 공간 절단진, 지정 지점에 고정, 4초 동안 0.5초마다 8회 총 4.5A, 생성 때 스택 +5
             new SkillDefinition("skill_mageknight_flame_field", EPlayerClass.Mageknight, slot: 2, isSignature: true, energyCost: 30f, cooldown: 12f,
                 new SkillTimeline(0.3f, 0f, 0.15f),
@@ -443,11 +443,11 @@ namespace Shinshi.Data
                 new SkillTimeline(0.1f, 0f, 0.2f),
                 new SkillArea(ESkillAimMode.Self, ESkillShape.Buff),
                 new SkillEffectSpec(archerElement: EArcherElement.Fire)),
-            // R 속성 폭발, 20스택을 모두 써서 사거리 안 커서 지점에 큰 원형 폭발. 준비 0.7초가 차지 동작이다
+            // R 속성 폭발, 10스택을 모두 써서 사거리 안 커서 지점에 큰 원형 폭발. 준비 0.7초가 차지 동작이다
             new SkillDefinition("skill_archer_piercing_shot", EPlayerClass.Archer, slot: 3, isSignature: true, energyCost: 20f, cooldown: 3f,
                 new SkillTimeline(0.7f, 0f, 0.3f),
                 new SkillArea(ESkillAimMode.Point, ESkillShape.Circle, castRange: 12f, radius: 5f),
-                new SkillEffectSpec(damageCoefficient: 8.0f, requiredStacks: 20))
+                new SkillEffectSpec(damageCoefficient: 5.6f, requiredStacks: 10))
         };
 
         // TODO(민성): 강림 후딜은 기획에 없어 신령사 공통 후딜 0.15초를 자리값으로 둔다. 기획 확정 뒤 교체
@@ -483,13 +483,14 @@ namespace Shinshi.Data
         // TODO(민성): 돌등, 솔빛 이동 속도는 기획 미정이라 플레이어 이동 속도와 같은 자리값을 둔다
         [SerializeField] private float _companionMoveSpeed      = 5f;   // m/s
 
-        // 상한은 마검사와 궁수가 같이 쓴다. 마검사는 적을 하나 이상 맞힌 기본 공격 한 번에 얻고 기술 적중은 기술의 StackGain만 준다
+        // 마검사 스택 상한이다(궁수는 아래 궁수 스택 상한). 마검사는 적을 하나 이상 맞힌 기본 공격 한 번에 얻고 기술 적중은 기술의 StackGain만 준다
         [Header("직업 스택 (마검사, 궁수)")]
-        [SerializeField] private int _classStackMax          = 20;
+        [SerializeField] private int _mageknightStackMax      = 15;
         [SerializeField] private int _classStackPerBasicSwing = 1;
 
-        // 기본 공격 화살이 적을 맞혔을 때만 쌓는다. 직전에 맞힌 속성과 다르면 전환 값, 같으면 유지 값이다. 상한은 위 스택 상한을 같이 쓴다
+        // 기본 공격 화살이 적을 맞혔을 때만 쌓는다. 직전에 맞힌 속성과 다르면 전환 값, 같으면 유지 값이다. 상한은 궁수 스택 상한을 쓴다
         [Header("궁수 속성")]
+        [SerializeField] private int   _archerStackMax           = 10;   // 궁수만 쓰는 스택 상한, R 필요 스택과 같아야 한다
         [SerializeField] private int   _archerStackPerSameHit    = 1;
         [SerializeField] private int   _archerStackPerSwitchHit  = 2;
         [SerializeField] private float _windAttackIntervalScale  = 0.8f; // 바람인 동안 기본 공격 단계 주기에 곱한다
@@ -521,8 +522,21 @@ namespace Shinshi.Data
         public float                              CompanionStuckSeconds    => _companionStuckSeconds;
         public float                              CompanionWarpOffset      => _companionWarpOffset;
         public float                              CompanionMoveSpeed       => _companionMoveSpeed;
-        public int                                ClassStackMax            => _classStackMax;
+        public int                                MageknightStackMax       => _mageknightStackMax;
+
+        /// <summary> 직업별 스택 상한, 스택을 쓰지 않는 직업은 0이다 </summary>
+        public int GetStackMax(EPlayerClass playerClass)
+        {
+            switch (playerClass)
+            {
+                case EPlayerClass.Archer:     return _archerStackMax;
+                case EPlayerClass.Mageknight: return _mageknightStackMax;
+                default:                      return 0;
+            }
+        }
+
         public int                                ClassStackPerBasicSwing  => _classStackPerBasicSwing;
+        public int                                ArcherStackMax           => _archerStackMax;
         public int                                ArcherStackPerSameHit    => _archerStackPerSameHit;
         public int                                ArcherStackPerSwitchHit  => _archerStackPerSwitchHit;
         public float                              WindAttackIntervalScale  => _windAttackIntervalScale;
@@ -641,10 +655,11 @@ namespace Shinshi.Data
             DataValidation.RequirePositive(errors, OWNER, nameof(_companionStuckSeconds), _companionStuckSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_companionWarpOffset), _companionWarpOffset);
             DataValidation.RequirePositive(errors, OWNER, nameof(_companionMoveSpeed), _companionMoveSpeed);
-            DataValidation.RequirePositive(errors, OWNER, nameof(_classStackMax), _classStackMax);
-            DataValidation.RequireRange(errors, OWNER, nameof(_classStackPerBasicSwing), _classStackPerBasicSwing, 0f, _classStackMax);
-            DataValidation.RequireRange(errors, OWNER, nameof(_archerStackPerSameHit), _archerStackPerSameHit, 0f, _classStackMax);
-            DataValidation.RequireRange(errors, OWNER, nameof(_archerStackPerSwitchHit), _archerStackPerSwitchHit, 0f, _classStackMax);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_mageknightStackMax), _mageknightStackMax);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_archerStackMax), _archerStackMax);
+            DataValidation.RequireRange(errors, OWNER, nameof(_classStackPerBasicSwing), _classStackPerBasicSwing, 0f, _mageknightStackMax);
+            DataValidation.RequireRange(errors, OWNER, nameof(_archerStackPerSameHit), _archerStackPerSameHit, 0f, _archerStackMax);
+            DataValidation.RequireRange(errors, OWNER, nameof(_archerStackPerSwitchHit), _archerStackPerSwitchHit, 0f, _archerStackMax);
             DataValidation.RequirePositiveAtMost(errors, OWNER, nameof(_windAttackIntervalScale), _windAttackIntervalScale, 1f);
             DataValidation.RequireRange(errors, OWNER, nameof(_windProjectileSpeedScale), _windProjectileSpeedScale, 1f, float.MaxValue);
             DataValidation.RequirePositive(errors, OWNER, nameof(_burnDuration), _burnDuration);
@@ -695,7 +710,7 @@ namespace Shinshi.Data
 
                 ValidateArea(errors, owner, field, skill);
                 ValidateEffect(errors, owner, field, skill.Effect);
-                DataValidation.RequireRange(errors, owner, field + ".Effect.RequiredStacks", skill.Effect.RequiredStacks, 0f, _classStackMax);
+                DataValidation.RequireRange(errors, owner, field + ".Effect.RequiredStacks", skill.Effect.RequiredStacks, 0f, GetStackMax(skill.PlayerClass));
             }
         }
 

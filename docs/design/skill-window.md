@@ -20,7 +20,7 @@
 |---|---|---|
 | 기술 정의(슬롯, 기력, 쿨다운, 범위, 대표 여부) | `SkillCatalogSO.TryGetSkillBySlot(playerClass, slot)` (`GameDB.Skills`) | 직업은 `PlayerCombatState.PlayerClass`(마을에서는 캐릭터 선택 결과) |
 | 기본 공격 콤보 단계 | `PlayerConfigSO.GetBasicAttack(class)`의 `ComboStepCount`, 단계별 계수·주기 | 검사는 단계 명세 없음(단일 값) |
-| 직업 스택 규칙 | `SkillCatalogSO`의 `ClassStackMax`, 기술 `StackGain`/`RequiredStacks`, 궁수 `ArcherElement` | 마검사·궁수만 표시 |
+| 직업 스택 규칙 | `SkillCatalogSO`의 `MageknightStackMax`·`ArcherStackMax`, 기술 `StackGain`/`RequiredStacks`, 궁수 `ArcherElement` | 마검사·궁수만 표시 |
 | 부적 효과 정의(기술 ID, 단계, 선택, 강화 항목, Lv1 보너스) | `TalismanCatalogSO` | 런타임 ID `Tnn-tierChoice` |
 | 보유 효과·레벨·등록 실패 보정, 현재 조합, 조합 판번호, 정기, 카드 수 | `TownGrowthClient.Snapshot`(`GrowthSnapshotMessage`의 `Talismans`, `Loadout`, `LoadoutRevision`, `Essence`, `AccountItems`) | 창을 열 때 스냅샷 요청 |
 | 등록·강화·분해 비용, 성공률, 보너스 배율 | 미리보기는 기존 GameDB를 재사용한다: 비용·성공률은 `GameDB.Growth`(`GrowthConfigSO`), 레벨 배율·보너스 계산은 `GameDB.Talismans`(`TalismanCatalogSO`). 별도 표시 표를 만들지 않는다 | 최종 값은 서버 결과. GameDB 값과 백엔드 `growth-content.json`의 일치는 기존·신규 EditMode 시험으로 확인한다 |

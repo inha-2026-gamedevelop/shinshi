@@ -60,6 +60,12 @@ namespace Shinshi.UI
             return -yawDegrees;
         }
 
+        /// <summary> 수평 바라보는 방향을 월드 Y 회전 각도(+Z가 0도, 위에서 볼 때 시계 방향 양수)로 바꾼다 </summary>
+        public static float DirectionToYaw(Vector3 direction)
+        {
+            return Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+        }
+
         public static Vector2 ToXz(Vector3 world)
         {
             return new Vector2(world.x, world.z);

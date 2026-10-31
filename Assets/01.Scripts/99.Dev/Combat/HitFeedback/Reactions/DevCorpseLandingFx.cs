@@ -4,6 +4,9 @@ using UnityEngine;
 // Third Party
 using DG.Tweening;
 
+// 프로젝트 내부
+using Shinshi.Art;
+
 namespace Shinshi.Dev
 {
     /// <summary> 첫 착지 먼지와 단계적으로 번지는 지면 혈흔을 풀에서 재생한다 </summary>
@@ -39,7 +42,7 @@ namespace Shinshi.Dev
         [SerializeField, Min(0.01f)] private float _spreadSeconds = 0.18f;
         [SerializeField, Min(0f)] private float _bloodSize = 2.1f;
 
-        private DevHitFeedbackBlood _blood;
+        private HitFeedbackBlood _blood;
         private readonly Slot[] _slots = new Slot[POOL_SIZE];
         private int _next = 0;
 
@@ -111,7 +114,7 @@ namespace Shinshi.Dev
         *                Methods
         ****************************************/
 
-        public void Init(DevHitFeedbackBlood blood) { _blood = blood; }
+        public void Init(HitFeedbackBlood blood) { _blood = blood; }
 
         public void Play(Vector3 point, Vector3 normal, float impactSpeed)
         {

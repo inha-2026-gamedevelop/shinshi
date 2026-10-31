@@ -818,7 +818,7 @@ MonoBehaviour:
       _projectileSpeed: 20
       _centerOffset: 0
     _effect:
-      _damageCoefficient: 1
+      _damageCoefficient: 0.85
       _tickCoefficient: 0
       _tickInterval: 0
       _duration: 0
@@ -837,7 +837,7 @@ MonoBehaviour:
       _retreatDistance: 0
       _retreatDuration: 0
       _stackGain: 0
-      _stackCoefficient: 0.2
+      _stackCoefficient: 0.17
       _hitImmunityDuration: 0
       _teleportToEnd: 0
       _archerElement: 0
@@ -1094,7 +1094,7 @@ MonoBehaviour:
       _projectileSpeed: 0
       _centerOffset: 0
     _effect:
-      _damageCoefficient: 8
+      _damageCoefficient: 5.6
       _tickCoefficient: 0
       _tickInterval: 0
       _duration: 0
@@ -1117,7 +1117,7 @@ MonoBehaviour:
       _hitImmunityDuration: 0
       _teleportToEnd: 0
       _archerElement: 0
-      _requiredStacks: 20
+      _requiredStacks: 10
     _icon: {fileID: 21300000, guid: 1cdea26806c46c748ac7be8123778058, type: 3}
   _ascensions:
   - _definitionId: skill_summoner_ascension_single
@@ -1170,7 +1170,8 @@ MonoBehaviour:
   _companionStuckSeconds: 2
   _companionWarpOffset: 1.5
   _companionMoveSpeed: 5
-  _classStackMax: 20
+  _mageknightStackMax: 15
+  _archerStackMax: 10
   _classStackPerBasicSwing: 1
   _archerStackPerSameHit: 1
   _archerStackPerSwitchHit: 2

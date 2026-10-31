@@ -90,6 +90,15 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void DirectionToYaw_CardinalDirections_ReturnsWorldYaw()
+        {
+            Assert.AreEqual(0f, MinimapRules.DirectionToYaw(Vector3.forward), TOLERANCE);
+            Assert.AreEqual(90f, MinimapRules.DirectionToYaw(Vector3.right), TOLERANCE);
+            Assert.AreEqual(-90f, MinimapRules.DirectionToYaw(Vector3.left), TOLERANCE);
+            Assert.AreEqual(-90f, MinimapRules.YawToMarkerRotation(MinimapRules.DirectionToYaw(Vector3.right)), TOLERANCE);
+        }
+
+        [Test]
         public void MarkerRadius_InsetLargerThanRadius_ClampsToZero()
         {
             Assert.AreEqual(115f, MinimapRules.MarkerRadius(250f, 10f), TOLERANCE);

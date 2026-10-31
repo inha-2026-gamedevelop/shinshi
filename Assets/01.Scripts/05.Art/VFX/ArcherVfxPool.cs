@@ -33,6 +33,7 @@ namespace Shinshi.Art
         private readonly float[]            _speed;
         private readonly float[]            _range;
         private readonly bool[]             _stopsOnHit;
+        private float                       _opacity = 1f;
         private int                         _next;
 
         /****************************************
@@ -98,6 +99,22 @@ namespace Shinshi.Art
                 }
 
                 StopTrails(i);
+            }
+        }
+
+        /// <summary> 이후 재생하는 효과의 투명도, 값이 바뀔 때만 모든 칸의 입자와 트레일 색을 다시 계산한다 </summary>
+        public void SetOpacity(float alpha)
+        {
+            if ((!HasPrefab) || (Mathf.Approximately(_opacity, alpha)))
+            {
+                return;
+            }
+
+            _opacity = alpha;
+            for (int i = 0; i < _systems.Length; ++i)
+            {
+                VfxOpacity.Apply(_systems[i], alpha);
+                VfxOpacity.Apply(_trails[i], alpha);
             }
         }
 

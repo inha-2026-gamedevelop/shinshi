@@ -31,7 +31,7 @@
 
 검사는 검격 방향·접근·후속 타격을 조절하는 근접 직업이다. 대검 고정·지면 내려찍기·전방 방어 자세가 필요한 구 무사 규칙을 강제하지 않는다. 기본 3단 모션과 Q 넓게 베기/W 돌진 베기/E 집중 베기/R 연환참을 쓴다.
 
-마검사는 2026-10-15부터 최대 20스택의 스택형이다. 기본 공격 콤보로 스택을 쌓고 Q 수류 방벽(피격이상 면역)/W 검파 해방(스택 소모 피해)/E 공간 절단진(지점 장판, +5)/R 섬광 일섬(경로 베기 뒤 끝으로 순간 이동, +10)을 쓴다. 공통 기력도 그대로 쓴다. 기술 동작 클립은 2026-10-15에 새 기술에 맞춰 다시 배정했다(아래 표의 `MageShield/MageWave/MageField/MageDash` 구간 사본). 프레임 시트로 동작 모양만 확인했고 P09 실제 재생·타격 시점 일치는 미검증이다. 효과는 Hovl `Sword Slash Combo 6`(기본), PixPlays `WaterShield`(Q), Hovl `Slash wave`(W), Hovl `Spatial section`(E), Magic Slashes FX `Eff11_Jump`(R)의 사본이다.
+마검사는 2026-10-15부터 최대 15스택의 스택형이다. 기본 공격 콤보로 스택을 쌓고 Q 수류 방벽(피격이상 면역)/W 검파 해방(스택 소모 피해)/E 공간 절단진(지점 장판, +5)/R 섬광 일섬(경로 베기 뒤 끝으로 순간 이동, +10)을 쓴다. 공통 기력도 그대로 쓴다. 기술 동작 클립은 2026-10-15에 새 기술에 맞춰 다시 배정했다(아래 표의 `MageShield/MageWave/MageField/MageDash` 구간 사본). 프레임 시트로 동작 모양만 확인했고 P09 실제 재생·타격 시점 일치는 미검증이다. 효과는 Hovl `Sword Slash Combo 6`(기본), PixPlays `WaterShield`(Q), Hovl `Slash wave`(W), Hovl `Spatial section`(E), Magic Slashes FX `Eff11_Jump`(R)의 사본이다.
 
 궁수는 직접 조준하는 원거리 직업으로 무료 원거리 3단 기본 공격과 2026-10-15 속성형 Q 얼음/W 바람/E 불 부여·R 속성 폭발을 쓴다. 기술 동작은 Grruzam `4__ChargeShot/Inplace/Archer@Attack_ChargeShot_1_Start` 0~0.4초 구간 사본(`AN_Release_ArcherInfuse`, Q/W/E 공용, 목표 0.3초·1.33배, 활을 크게 휘둘러 올리는 동작)과 R `ChargeShot_1_Start`+`ChargeShot_3_Shoot`(1.3초, 목표 1.0초·1.30배, 0.9초 차지 뒤 발사)이다. 원본 모델 프레임 시트로 모양만 확인했고 P09 실제 재생·발사 시점 일치는 미검증이다. 이전 `AN_Release_ArcherRetreat/ArcherPiercing`은 배정에서 빠졌다(파일은 남아 있음). 대표 E의 6효과와 나머지 각3효과를 [궁수 기준안](archer-design.md)에 정의한다. 공통 기력을 쓰고 동료·공명·강림·비행은 추가하지 않는다. 구 신령사의 4기술·15효과·동료/강림은 [구설계](legacy-class-design.md)에 보존한다. 세 직업의 설계 합계는 **12기술/45효과**이며 실제 이관 완료와 구분한다.
 

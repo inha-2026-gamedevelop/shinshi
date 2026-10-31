@@ -5,6 +5,9 @@ using System.Collections.Generic;
 // Unity
 using UnityEngine;
 
+// 프로젝트 내부
+using Shinshi.Art;
+
 namespace Shinshi.Dev
 {
     /// <summary> 정해진 횟수만 맞으면 죽는 시험용 몬스터. 플레이어를 쫓아오며 서로 겹치지 않고, 맞은 연출은 HitReactor가 맡는다 </summary>
@@ -74,7 +77,7 @@ namespace Shinshi.Dev
         private const int GROUND_HIT_BUFFER = 8;
         private static readonly RaycastHit[] s_groundHits = new RaycastHit[GROUND_HIT_BUFFER];
 
-        private DevHitFeedbackBlood _blood       = null;
+        private HitFeedbackBlood _blood       = null;
         private Transform           _bloodAnchor = null;
         private DevMonsterHitRecoil _recoil;
         private DevCorpseLandingFx _landing;
@@ -425,7 +428,7 @@ namespace Shinshi.Dev
             _isDummy = true;
         }
 
-        public void SetBloodFeedback(DevHitFeedbackBlood blood) { _blood = blood; }
+        public void SetBloodFeedback(HitFeedbackBlood blood) { _blood = blood; }
 
         public void SetLandingFeedback(DevCorpseLandingFx landing) { _landing = landing; }
 

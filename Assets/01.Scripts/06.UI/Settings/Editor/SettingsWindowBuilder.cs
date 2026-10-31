@@ -353,7 +353,76 @@ namespace Shinshi.UI.Editor
             RectTransform slot = Rect(row, "CursorSizeSlot", 420f, 10f, 344f, 42f);
             G_Nodes["dd-cursor"] = slot;
             Link("_cursorSize", Dropdown("dd-cursor", new[] { "중 (100%)" }));
+            BuildVfxSection(page);
             Label(page, "GameNotice", "커서 크기는 화면이 아닌 게임 커서 그림에만 적용됩니다", 36f, 396f, 740f, 32f, 15f, G_Gold, false, TextAlignmentOptions.Left);
+        }
+
+        // 게임 탭 아래쪽에 내 캐릭터와 파티원의 이펙트 투명도 슬라이더 두 줄을 둔다
+        private static void BuildVfxSection(RectTransform page)
+        {
+            Panel(page, "GameSeparator", 16f, 148f, 780f, 1f, G_Border);
+            Label(page, "VfxSection", "이펙트 투명도", 62f, 162f, 300f, 34f, 20f, G_Gold, true, TextAlignmentOptions.Left);
+            Glyph(page, "VfxSectionMark", 20f, 171f, 12f, SettingsGlyph.EShape.Diamond, G_Gold);
+            Slider own = VolumeRow(page, "VfxOwn", "내 이펙트 투명도", 208f,
+                "내 캐릭터가 쓰는 스킬 이펙트의 투명도를 조절합니다. 0%로 두면 내 이펙트를 그리지 않습니다. 설정은 내 화면에만 적용되며 전투 판정에는 영향이 없습니다.", out TMP_Text ownValue);
+            Slider party = VolumeRow(page, "VfxParty", "파티원 이펙트 투명도", 278f,
+                "파티원이 쓰는 스킬 이펙트의 투명도를 조절합니다. 낮추면 파티 전투에서 화면이 덜 복잡해지고 0%로 두면 파티원 이펙트를 그리지 않습니다. 몬스터의 공격 표시와 내 피격 이펙트는 항상 보입니다.", out TMP_Text partyValue);
+            Link("_vfxOwn", own);
+            Link("_vfxParty", party);
+            Link("_vfxOwnValue", ownValue);
+            Link("_vfxPartyValue", partyValue);
+        }
+
+        [MenuItem("Shinshi/UI/설정 창 이펙트 투명도 추가")]
+        private static void PatchVfxRows()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(PREFAB_PATH);
+            try
+            {
+                G_View = root.GetComponentInChildren<SettingsView>(true);
+                Transform page = FindDeep(root.transform, "GamePage");
+                if ((G_View == null) || (page == null))
+                {
+                    throw new InvalidOperationException("설정 창 프리팹에서 SettingsView 또는 GamePage를 찾을 수 없습니다");
+                }
+                G_Nodes.Clear();
+                G_Regular = EnsureFont("Regular");
+                G_Bold = EnsureFont("Bold");
+                foreach (string stale in new[] { "GameSeparator", "VfxSection", "VfxSectionMark", "VfxVisibilityRow", "VfxOwnRow", "VfxPartyRow" })
+                {
+                    Transform old = page.Find(stale);
+                    if (old != null)
+                    {
+                        UnityEngine.Object.DestroyImmediate(old.gameObject);
+                    }
+                }
+                BuildVfxSection((RectTransform)page);
+                PreloadCharacters((RectTransform)G_View.transform);
+                PrefabUtility.SaveAsPrefabAsset(root, PREFAB_PATH);
+                AssetDatabase.SaveAssetIfDirty(G_Regular);
+                AssetDatabase.SaveAssetIfDirty(G_Bold);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        private static Transform FindDeep(Transform parent, string name)
+        {
+            foreach (Transform child in parent)
+            {
+                if (child.name == name)
+                {
+                    return child;
+                }
+                Transform found = FindDeep(child, name);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+            return null;
         }
 
         private static void BuildFooter()

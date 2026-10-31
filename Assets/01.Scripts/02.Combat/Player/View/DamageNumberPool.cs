@@ -32,6 +32,8 @@ namespace Shinshi.Combat
         private const int TWEENERS_PER_SLOT = 3;
         private const float MIN_TWEEN_SECONDS = 0.01f;
         private const float TILT_SETTLE_RATIO = 0.3f;
+        private const float WOBBLE_FREQUENCY = 90f;
+        private const float FLASH_WHITE_RATIO = 0.6f;
         // 이 셰이더를 쓰는 재질이 프로젝트에 없으면 빌드가 셰이더를 빼서 외곽선이 사라진다. Hud/Resources/M_TextOutlineShaderRef.mat이 포함을 맡으니 지우지 않는다
         private const string OUTLINE_SHADER = "TextMeshPro/Distance Field";
         private const string OUTLINE_KEYWORD = "OUTLINE_ON";
@@ -40,22 +42,28 @@ namespace Shinshi.Combat
         private static int _baseSequencesCapacity;
         private static int _reservedPoolCount;
 
-        [SerializeField] private float _lifetimeSeconds = 0.8f;
-        [SerializeField] private float _risePixels = 64f;
+        [SerializeField] private float _lifetimeSeconds = 0.95f;
+        [SerializeField] private float _risePixels = 110f;
         [SerializeField] private float _worldHeight = 1.5f;
-        [SerializeField] private float _normalFontSize = 28f;
-        [SerializeField] private float _criticalFontSize = 36f;
+        [SerializeField] private float _normalFontSize = 40f;
+        [SerializeField] private float _criticalFontSize = 62f;
         [SerializeField] private Color _normalColor = Color.white;
         [SerializeField] private Color _criticalColor = new Color(1f, 0.75f, 0.15f, 1f);
 
         [Header("숫자 타격 반응")]
-        [SerializeField, Min(0f)] private float _readableSeconds = 0.22f;
-        [SerializeField, Min(0f)] private float _sidePixels = 24f;
-        [SerializeField, Min(0f)] private float _tiltDegrees = 8f;
-        [SerializeField, Min(1f)] private float _criticalPopMultiplier = 1.15f;
+        [SerializeField, Min(0f)] private float _readableSeconds = 0.35f;
+        [SerializeField, Min(0f)] private float _sidePixels = 48f;
+        [SerializeField, Min(0f)] private float _sideRandomRatio = 0.5f;
+        [SerializeField, Min(0f)] private float _tiltDegrees = 14f;
+        [SerializeField, Min(1f)] private float _criticalPopMultiplier = 1.35f;
+        [SerializeField, Min(0f)] private float _criticalWobbleDegrees = 10f;
+        // 맞는 순간 흰색으로 번쩍였다가 본래 색으로 돌아오는 구간(수명 비율)
+        [SerializeField, Range(0.01f, 0.5f)] private float _flashRatio = 0.12f;
+        // 크게 부풀었다가 탄성 있게 줄어 본래 크기(1배)로 돌아와 끝까지 유지하는 곡선
         [SerializeField] private AnimationCurve _popScale = new AnimationCurve(
-            new Keyframe(0f, 0.65f), new Keyframe(0.1f, 1.45f),
-            new Keyframe(0.28f, 1f), new Keyframe(1f, 0.85f));
+            new Keyframe(0f, 0.3f), new Keyframe(0.07f, 2.1f),
+            new Keyframe(0.17f, 0.9f), new Keyframe(0.28f, 1.1f),
+            new Keyframe(0.4f, 1f), new Keyframe(1f, 1f));
 
         private Slot[] _slots;
         private Material _outlineMaterial;
@@ -78,6 +86,9 @@ namespace Shinshi.Combat
             public float Emphasis;
             public float Drift;
             public float Tilt;
+            public Color BaseColor;
+            public bool Critical;
+            public bool FlashDone;
         }
 
         /****************************************
@@ -204,12 +215,16 @@ namespace Shinshi.Combat
                 slot.LabelRect.anchoredPosition = Vector2.zero;
                 _nextSide = !_nextSide;
                 float side = _nextSide ? 1f : -1f;
-                slot.Drift = side * _sidePixels;
-                slot.Tilt = side * _tiltDegrees;
+                // 매번 같은 궤적이면 연타가 한 줄로 겹쳐 읽히지 않으니 거리와 기울기를 흩는다
+                float spread = 1f + (Random.Range(-1f, 1f) * _sideRandomRatio);
+                slot.Drift = side * _sidePixels * spread;
+                slot.Tilt = side * _tiltDegrees * spread;
+                slot.Critical = feedback.IsCritical;
+                slot.BaseColor = feedback.IsCritical ? _criticalColor : _normalColor;
+                slot.FlashDone = false;
                 slot.Emphasis = feedback.IsCritical ? _criticalPopMultiplier : 1f;
                 ApplyPop(slot, 0f);
                 slot.Group.alpha = 1f;
-                slot.Label.color = feedback.IsCritical ? _criticalColor : _normalColor;
                 slot.Label.fontSize = feedback.IsCritical ? _criticalFontSize : _normalFontSize;
                 // TMP 숫자 포맷은 문자열 할당을 피한다. 치명타는 서버 표식의 색·크기·느낌표로 구분한다
                 SetAmount(slot.Label, feedback.Amount, feedback.IsCritical);
@@ -339,8 +354,32 @@ namespace Shinshi.Combat
         {
             slot.PopProgress = progress;
             slot.LabelRect.localScale = Vector3.one * (_popScale.Evaluate(progress) * slot.Emphasis);
-            float tilt = slot.Tilt * (1f - Mathf.Clamp01(progress / TILT_SETTLE_RATIO));
+            float settle = 1f - Mathf.Clamp01(progress / TILT_SETTLE_RATIO);
+            float tilt = slot.Tilt * settle;
+            if (slot.Critical)
+            {
+                // 치명타는 기울어진 채 좌우로 떨리며 자리를 잡는다
+                tilt += Mathf.Sin(progress * WOBBLE_FREQUENCY) * _criticalWobbleDegrees * settle;
+            }
             slot.LabelRect.localRotation = Quaternion.Euler(0f, 0f, tilt);
+            ApplyFlash(slot, progress);
+        }
+
+        private void ApplyFlash(Slot slot, float progress)
+        {
+            if (slot.Label == null || slot.FlashDone)
+            {
+                return;
+            }
+            if (progress >= _flashRatio)
+            {
+                slot.FlashDone = true;
+                slot.Label.color = slot.BaseColor;
+                return;
+            }
+            // 완전한 흰색에서 시작하면 치명타가 나오는 첫 프레임에 일반 숫자와 구분되지 않아 밝기만 끌어올린다
+            Color flash = Color.Lerp(slot.BaseColor, Color.white, FLASH_WHITE_RATIO);
+            slot.Label.color = Color.Lerp(flash, slot.BaseColor, progress / _flashRatio);
         }
 
         private static RectTransform CreateRect(string objectName, Transform parent)

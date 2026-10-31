@@ -73,8 +73,8 @@ namespace Shinshi.UI
         private static readonly Color G_WindColor    = new Color(0.55f, 1f, 0.65f, 1f);
         private static readonly Color G_FireColor    = new Color(1f, 0.55f, 0.35f, 1f);
         private static readonly Color G_FullColor    = new Color(1f, 0.85f, 0.3f, 1f);
-        // 속성 그림이 밝고 알록달록해 숫자는 눈에 띄는 노란색에 외곽선을 둬서 읽히게 한다
-        private static readonly Color G_BadgeColor   = new Color(1f, 0.92f, 0.3f, 1f);
+        // 속성 그림이 밝고 알록달록해 숫자는 눈에 띄는 빨간색에 외곽선을 둬서 읽히게 한다
+        private static readonly Color G_BadgeColor   = new Color(1f, 0.2f, 0.2f, 1f);
 
         /****************************************
         *                Methods
@@ -139,7 +139,7 @@ namespace Shinshi.UI
                 display.Stacks, display.Max);
         }
 
-        /// <summary> 다 차면 금색, 궁수는 속성 색, 그 밖은 기본색이다 </summary>
+        /// <summary> 다 차면 금색, 궁수는 속성 색, 속성이 없는 마검사는 빨간색이다 </summary>
         public static Color GetColor(in ClassStackDisplay display)
         {
             if (display.IsFull)
@@ -147,7 +147,7 @@ namespace Shinshi.UI
                 return G_FullColor;
             }
 
-            return GetElementColor(display.Element);
+            return display.ShowsElement ? GetElementColor(display.Element) : G_BadgeColor;
         }
 
         /// <summary> 속성 아이콘 원화에서 고를 칸 번호, 아이콘을 그리지 않는 표시(궁수가 아니거나 속성이 없음)는 -1이다 </summary>
@@ -177,7 +177,7 @@ namespace Shinshi.UI
             return (display.IsVisible) && (display.ShowsElement);
         }
 
-        /// <summary> 아이콘 옆 숫자색, 다 차면 금색이고 그 전에는 노란색이다 </summary>
+        /// <summary> 아이콘 옆 숫자색, 다 차면 금색이고 그 전에는 빨간색이다 </summary>
         public static Color GetBadgeColor(in ClassStackDisplay display)
         {
             return display.IsFull ? G_FullColor : G_BadgeColor;

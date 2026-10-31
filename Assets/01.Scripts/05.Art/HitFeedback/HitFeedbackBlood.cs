@@ -8,10 +8,10 @@ using UnityEngine.Rendering;
 // 서드파티
 using DG.Tweening;
 
-namespace Shinshi.Dev
+namespace Shinshi.Art
 {
-    /// <summary> 피격 분사, 사체의 낙하 방울, 지형에 붙는 지속 혈흔을 관리하는 개발 씬용 풀 </summary>
-    public sealed class DevHitFeedbackBlood : MonoBehaviour
+    /// <summary> 피격 분사, 사체의 낙하 방울, 지형에 붙는 지속 혈흔을 관리하는 풀 </summary>
+    public sealed class HitFeedbackBlood : MonoBehaviour
     {
         /****************************************
         *                Fields
@@ -165,7 +165,7 @@ namespace Shinshi.Dev
             }
             if ((_sprayMaterial == null) || (_stainMaterial == null))
             {
-                Debug.LogError("[DevBlood] 분사와 바닥 혈흔 재질이 필요하다", this);
+                Debug.LogError("[HitBlood] 분사와 바닥 혈흔 재질이 필요하다", this);
                 enabled = false;
                 return;
             }
@@ -562,7 +562,7 @@ namespace Shinshi.Dev
             private readonly Mesh                  _mesh;
             private readonly MeshRenderer          _renderer;
             private readonly MaterialPropertyBlock _block = new MaterialPropertyBlock();
-            private readonly DevHitFeedbackBlood    _owner;
+            private readonly HitFeedbackBlood    _owner;
             private readonly Tween                 _fade;
             private readonly Tween                 _retire;
             private float                          _age = 0f;
@@ -575,7 +575,7 @@ namespace Shinshi.Dev
             public bool Visible => _renderer.enabled;
             public Transform Space => _renderer.transform;
 
-            public Stain(DevHitFeedbackBlood owner, int index)
+            public Stain(HitFeedbackBlood owner, int index)
             {
                 _owner = owner;
                 var go = new GameObject("BloodStain" + index);

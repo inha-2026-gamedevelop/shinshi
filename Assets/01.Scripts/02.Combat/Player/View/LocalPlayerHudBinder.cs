@@ -412,7 +412,7 @@ namespace Shinshi.Combat
                 return;
             }
 
-            int max = GameDB.IsInitialized ? GameDB.Skills.ClassStackMax : 0;
+            int max = GameDB.IsInitialized ? GameDB.Skills.GetStackMax(_combat.PlayerClass) : 0;
             ClassStackDisplay display = ClassStackHudRules.Build(_combat.PlayerClass, stacks, max, _combat.ArcherElement);
             _statusView.SetClassStacks(in display);
         }

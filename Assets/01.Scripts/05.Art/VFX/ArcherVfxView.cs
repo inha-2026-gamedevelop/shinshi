@@ -119,6 +119,7 @@ namespace Shinshi.Art
         private float     _chargeSeconds;
         private GameObject _auraInstance;
         private ParticleSystem[] _auraParticles;
+        private float _auraOpacity = 1f;
         private EArcherElement _auraElement;
         private Vector3[] _auraOrbitSpeeds;
         private ParticleSystem.MinMaxCurve[] _auraParticleSizes;
@@ -269,7 +270,7 @@ namespace Shinshi.Art
         {
             EArcherElement element = _combat.ArcherElement;
             if ((_fullStackAuraPrefab == null) || (_combat.LifeState != EParticipantLifeState.Alive)
-                || (element == EArcherElement.None))
+                || (element == EArcherElement.None) || (!VfxVisibility.Allows(_combat.isOwned)))
             {
                 StopAura();
                 return;
@@ -292,7 +293,7 @@ namespace Shinshi.Art
                 }
             }
 
-            int stackMax = GameDB.Skills.ClassStackMax;
+            int stackMax = GameDB.Skills.ArcherStackMax;
             bool fast = (stackMax > 0) && (_combat.ClassStacks >= stackMax);
             if (fast != _auraFast)
             {
@@ -331,26 +332,29 @@ namespace Shinshi.Art
                 _auraFast = fast;
             }
 
-            if (element == _auraElement)
+            float alpha = VfxVisibility.Opacity(_combat.isOwned);
+            if ((element == _auraElement) && (Mathf.Approximately(alpha, _auraOpacity)))
             {
                 return;
             }
 
+            // 색을 새로 정하는 경로라 투명도도 여기서 함께 곱한다
             Color color = element == EArcherElement.Ice ? _auraIceColor
                 : element == EArcherElement.Wind ? _auraWindColor : _auraFireColor;
+            color.a *= alpha;
             foreach (ParticleSystem particle in _auraParticles)
             {
                 particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 var main = particle.main;
-                main.startColor = particle.gameObject == _auraInstance ? Color.white : color;
+                main.startColor = particle.gameObject == _auraInstance ? new Color(1f, 1f, 1f, alpha) : color;
                 if (particle.gameObject == _auraInstance)
                 {
                     var gradient = new Gradient();
                     gradient.SetKeys(
                         new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 0.65f),
                             new GradientColorKey(Color.white, 1f) },
-                        new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.3f),
-                            new GradientAlphaKey(1f, 1f) });
+                        new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f * alpha, 0.3f),
+                            new GradientAlphaKey(alpha, 1f) });
                     var trails = particle.trails;
                     trails.colorOverTrail = gradient;
                 }
@@ -358,6 +362,7 @@ namespace Shinshi.Art
             }
 
             _auraElement = element;
+            _auraOpacity = alpha;
         }
 
         private void StopAura()
@@ -507,8 +512,9 @@ namespace Shinshi.Art
 
                     // 서버는 발사 시각의 시전자 위치에서 쏘므로 재생 순간의 캐릭터 위치에서 출발한다
                     ArcherVfxPool arrows = _pools[IsHeavyReady(play, POOL_HEAVY_ARROW + element) ? (POOL_HEAVY_ARROW + element) : (POOL_ARROW + element)];
-                    if ((arrows != null) && (arrows.HasPrefab))
+                    if ((arrows != null) && (arrows.HasPrefab) && (VfxVisibility.Allows(_combat.isOwned)))
                     {
+                        arrows.SetOpacity(VfxVisibility.Opacity(_combat.isOwned));
                         arrows.PlayProjectile(origin, play.Direction, play.StartAt, play.Speed, play.Range, now, play.StopsOnHit);
                     }
 
@@ -602,11 +608,12 @@ namespace Shinshi.Art
         private void Play(int index, Vector3 position, Quaternion rotation, double now, float maxSeconds)
         {
             ArcherVfxPool pool = _pools[index];
-            if ((pool == null) || (!pool.HasPrefab))
+            if ((pool == null) || (!pool.HasPrefab) || (!VfxVisibility.Allows(_combat.isOwned)))
             {
                 return;
             }
 
+            pool.SetOpacity(VfxVisibility.Opacity(_combat.isOwned));
             pool.PlayBrief(position, rotation, now, maxSeconds);
         }
 

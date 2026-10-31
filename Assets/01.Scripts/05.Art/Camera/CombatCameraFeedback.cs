@@ -8,6 +8,7 @@ using Mirror;
 using Unity.Cinemachine;
 
 // 프로젝트 내부
+using Shinshi.AI;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
@@ -24,11 +25,16 @@ namespace Shinshi.Art
         *                Fields
         ****************************************/
 
+        private const string BLOOD_RESOURCE        = "DevHitBlood/PF_DevHitBlood";
+        private const float KILL_BLOOD_HEIGHT      = 1f; // m, 개체 발밑 기준 몸통 높이
         private const float DEFAULT_SHAKE_SECONDS  = 0.2f;
         private const float DIRECTION_EPSILON_SQR  = 0.0001f;
         // 치명타 줌 펀치는 짧게 당겼다가 바로 풀므로 유지 시간과 당기는 감쇠 시간이 매우 짧다
         private const float CRIT_ZOOM_HOLD_SECONDS = 0.04f;
         private const float CRIT_ZOOM_IN_SMOOTH    = 0.04f;
+        private const float MULTI_HIT_SHAKE_BONUS  = 0.25f; // 한 마리 더 맞힐 때마다 흔들림에 더하는 비율
+        private const float MULTI_HIT_SHAKE_MAX    = 2f;    // 흔들림 배율 상한
+        private const float HALF                   = 0.5f;
 
         [Header("참조")]
         [SerializeField] private QuarterViewCameraRig _rig;
@@ -47,13 +53,35 @@ namespace Shinshi.Art
         [SerializeField, Min(0f)] private float _waveShake        = 0.2f;
         [SerializeField, Min(0f)] private float _blinkShakeScale  = 1.2f;
         [SerializeField, Min(0.01f)] private float _shakeSeconds  = DEFAULT_SHAKE_SECONDS;
+        // 한 프레임에 여럿을 맞히면 맞힌 수만큼 흔들림을 키운다. 0이면 합산하지 않는다
+        [SerializeField, Min(0f)] private float _multiHitShakeBonus = MULTI_HIT_SHAKE_BONUS;
+        [SerializeField, Min(1f)] private float _multiHitShakeMax   = MULTI_HIT_SHAKE_MAX;
+
+        [Header("맞은 적 반응")]
+        // 켜면 내 적중에 맞은 적이 잠시 굳어 떨고(렉프레임), 찌그러지고, 치명타면 금색으로 번쩍인다. 표현 전용이라 서버 위치와 판정은 그대로다
+        [SerializeField] private bool _reactEnemies = true;
+        [SerializeField, Min(0)] private int _lightLagFrames = 3;
+        // 마검사 검파와 섬광 일섬 적중은 맞은 적이 더 오래 굳는다
+        [SerializeField, Min(0)] private int _heavyLagFrames = 15;
+        [SerializeField, Min(0)] private int _critExtraLagFrames = 5;
+        [SerializeField, Min(0f)] private float _vibrateMeters = 0.05f;
+        // 쿼터뷰는 카메라가 멀어 고정 미터 떨림이 묻히므로 맞은 자리에서 보이는 화면 높이의 이 비율로 키운다
+        [SerializeField, Range(0f, 0.1f)] private float _vibrateScreenRatio = 0.008f;
+        [SerializeField, Range(0f, 0.6f)] private float _punchAmount = 0.25f;
+        [SerializeField, Min(1f)] private float _critPunchMultiplier = 1.6f;
 
         [Header("적중 불똥")]
-        // 비어 있으면 불똥을 내지 않는다
+        // 백열 섬광과 잔불로 나눠 튀는 불똥. 비어 있으면 아래 옛 불똥 재질로 대신한다
+        [SerializeField] private HitSparkEmitter _sparkEmitterPrefab;
+        // 불똥 프리팹이 없을 때만 쓰는 옛 방식의 재질. 둘 다 비어 있으면 불똥을 내지 않는다
         [SerializeField] private Material _sparkMaterial;
         [SerializeField, Min(0)] private int _lightSparkCount = 10;
         [SerializeField, Min(0)] private int _heavySparkCount = 28;
         [SerializeField, Min(1f)] private float _critSparkMultiplier = 2.5f;
+
+        [Header("적중 혈흔")]
+        // 켜면 Resources의 혈흔 프리팹을 세워 내 적중마다 분사와 바닥 혈흔을 낸다. 지속 피해는 제외한다
+        [SerializeField] private bool _useBlood = true;
 
         [Header("치명타 화면 연출")]
         // 렌더러의 풀스크린 패스와 그 재질. 비어 있으면 블러와 임팩트 프레임은 건너뛴다
@@ -88,11 +116,18 @@ namespace Shinshi.Art
         private readonly MageknightHitClassifier  _classifier = new MageknightHitClassifier();
         private readonly DamageFeedbackReceiver   _receiver   = new DamageFeedbackReceiver();
         private readonly HitFeedbackCooldown      _impactCooldown = new HitFeedbackCooldown();
+        private HitSparkEmitter                   _emitter    = null;
         private HitSparkPool                      _sparks     = null;
+        private Camera                            _mainCamera = null;
+        private Vector3                           _shakeDirectionSum = Vector3.zero;
+        private float                             _shakeBase  = 0f;
+        private int                               _shakeFrame = -1;
+        private int                               _shakeHits  = 0;
         private HitFeedbackMotionBlur             _motionBlur = null;
         private HitFeedbackScreenFx               _screenFx   = null;
+        private HitFeedbackBlood                  _blood      = null;
 
-        private NetworkIdentity         _boundPlayer = null;
+        private NetworkIdentity        _boundPlayer = null;
         private PlayerInputState        _input       = null;
         private PlayerCombatState       _combat      = null;
         private CinemachineCameraOffset _offset      = null;
@@ -106,11 +141,21 @@ namespace Shinshi.Art
 
         protected override void OnViewAwake()
         {
-            if (_sparkMaterial != null)
+            if (_sparkEmitterPrefab != null)
+            {
+                _emitter = Instantiate(_sparkEmitterPrefab, transform, false);
+                _emitter.name = "HitSparkEmitter";
+            }
+            else if (_sparkMaterial != null)
             {
                 _sparks = new GameObject("HitSparks").AddComponent<HitSparkPool>();
                 _sparks.transform.SetParent(transform, false);
                 _sparks.Initialize(_sparkMaterial);
+            }
+
+            if (_useBlood)
+            {
+                CreateBlood();
             }
 
             if ((_critBlurFeature != null) && (_critBlurMaterial != null))
@@ -136,8 +181,14 @@ namespace Shinshi.Art
             }
         }
 
+        private void OnEnable()
+        {
+            EnemyNetworkView.Killed += OnEnemyKilled;
+        }
+
         private void OnDisable()
         {
+            EnemyNetworkView.Killed -= OnEnemyKilled;
             Unbind();
         }
 
@@ -310,11 +361,17 @@ namespace Shinshi.Art
             }
 
             Vector3 cameraDirection = ToCameraSpace(feedback.WorldPosition);
+            bool isHeavy = kind != MageknightHitClassifier.EKind.Other;
             if (!feedback.IsDamageOverTime)
             {
-                _effects.Kick(cameraDirection, strength, _shakeSeconds, Time.unscaledTimeAsDouble);
+                KickAccumulated(cameraDirection, strength);
             }
-            BurstSparks(feedback, kind != MageknightHitClassifier.EKind.Other);
+            BurstSparks(feedback, isHeavy);
+            if (!feedback.IsDamageOverTime)
+            {
+                BurstBlood(feedback);
+                ReactEnemy(feedback, isHeavy);
+            }
 
             // 지속 피해는 틱마다 들어오므로 치명타로 보여 주지 않는다
             if ((feedback.IsCritical) && (!feedback.IsDamageOverTime))
@@ -342,10 +399,68 @@ namespace Shinshi.Art
             }
         }
 
+        // 같은 프레임에 맞힌 수만큼 흔들림을 키운다. 방향은 맞힌 방향들의 평균이고, 서로 상쇄되면 이번 방향을 쓴다.
+        // Kick은 진행 중인 흔들림보다 약하면 무시하므로, 커진 값으로 다시 부르면 이번 프레임의 흔들림이 갱신된다
+        private void KickAccumulated(Vector3 cameraDirection, float strength)
+        {
+            if (Time.frameCount != _shakeFrame)
+            {
+                _shakeFrame        = Time.frameCount;
+                _shakeHits         = 0;
+                _shakeBase         = 0f;
+                _shakeDirectionSum = Vector3.zero;
+            }
+
+            ++_shakeHits;
+            _shakeBase         = Mathf.Max(_shakeBase, strength);
+            _shakeDirectionSum += cameraDirection;
+
+            float   scale = Mathf.Min(_multiHitShakeMax, 1f + (_multiHitShakeBonus * (_shakeHits - 1)));
+            Vector3 aim   = (_shakeDirectionSum.sqrMagnitude > DIRECTION_EPSILON_SQR) ? _shakeDirectionSum.normalized : cameraDirection;
+            _effects.Kick(aim, _shakeBase * scale, _shakeSeconds, Time.unscaledTimeAsDouble);
+        }
+
+        // 내 적중에 맞은 적을 서버가 알려 준 전투 개체 번호로 찾아 굳고, 떨고, 찌그러지게 한다
+        private void ReactEnemy(DamageFeedback feedback, bool isHeavy)
+        {
+            if (!_reactEnemies)
+            {
+                return;
+            }
+
+            Vector3 away = feedback.WorldPosition - _boundPlayer.transform.position;
+            away.y = 0f;
+            int   frames  = (isHeavy ? _heavyLagFrames : _lightLagFrames) + (feedback.IsCritical ? _critExtraLagFrames : 0);
+            float vibrate = Mathf.Max(_vibrateMeters, VisibleHeightAt(feedback.WorldPosition) * _vibrateScreenRatio);
+            float punch   = _punchAmount * (feedback.IsCritical ? _critPunchMultiplier : 1f);
+            EnemyNetworkView.TryReact(feedback.TargetCombatId, new EnemyHitCue(away, frames, vibrate, punch, feedback.IsCritical));
+        }
+
+        // 화면에 보이는 세로 길이(m), 카메라를 못 찾으면 0이라 최소 떨림만 쓴다
+        private float VisibleHeightAt(Vector3 point)
+        {
+            if (_mainCamera == null)
+            {
+                _mainCamera = Camera.main;
+                if (_mainCamera == null)
+                {
+                    return 0f;
+                }
+            }
+
+            if (_mainCamera.orthographic)
+            {
+                return _mainCamera.orthographicSize / HALF;
+            }
+
+            float distance = Mathf.Max(0f, Vector3.Dot(point - _mainCamera.transform.position, _mainCamera.transform.forward));
+            return distance * Mathf.Tan(_mainCamera.fieldOfView * HALF * Mathf.Deg2Rad) / HALF;
+        }
+
         // 맞은 자리에서 플레이어가 공격한 쪽으로 불똥을 튀긴다
         private void BurstSparks(DamageFeedback feedback, bool isHeavy)
         {
-            if (_sparks == null)
+            if ((_emitter == null) && (_sparks == null))
             {
                 return;
             }
@@ -354,7 +469,53 @@ namespace Shinshi.Art
             direction.y = 0f;
             int count = HitSparkPool.ResolveCount(isHeavy ? _heavySparkCount : _lightSparkCount, feedback.IsCritical,
                 _critSparkMultiplier);
+            if (_emitter != null)
+            {
+                _emitter.Burst(feedback.WorldPosition, direction.normalized, count, feedback.IsCritical);
+                return;
+            }
+
             _sparks.Burst(feedback.WorldPosition, direction.normalized, count, feedback.IsCritical);
+        }
+
+        // 혈흔 풀은 프리팹 하나로 Resources에서 읽는다. 없으면 혈흔만 건너뛴다
+        private void CreateBlood()
+        {
+            var prefab = Resources.Load<GameObject>(BLOOD_RESOURCE);
+            if ((prefab == null) || (!prefab.TryGetComponent(out HitFeedbackBlood bloodPrefab)))
+            {
+                Debug.LogWarning("[CombatCameraFeedback] 혈흔 프리팹이 없어 혈흔을 건너뛴다", this);
+                return;
+            }
+
+            _blood = Instantiate(bloodPrefab, transform, false);
+            _blood.name = "HitBlood";
+        }
+
+        // 처치는 피해 알림에 없어 적 표현이 시체를 날리는 순간을 쓴다. 내 처치와 파티원의 처치를 모두 보여 준다.
+        // 몸통 높이에서 플레이어 쪽으로 분사해 시체가 날아가는 반대편에 피가 튄다
+        private void OnEnemyKilled(Vector3 position, Vector3 awayFromPlayer)
+        {
+            if (_blood == null)
+            {
+                return;
+            }
+
+            awayFromPlayer.y = 0f;
+            _blood.Burst(position + (Vector3.up * KILL_BLOOD_HEIGHT), awayFromPlayer.normalized, true, false);
+        }
+
+        // 맞은 자리에서 플레이어가 공격한 쪽으로 피를 튀긴다. 처치 분량은 OnEnemyKilled가 따로 낸다
+        private void BurstBlood(DamageFeedback feedback)
+        {
+            if (_blood == null)
+            {
+                return;
+            }
+
+            Vector3 direction = feedback.WorldPosition - _boundPlayer.transform.position;
+            direction.y = 0f;
+            _blood.Burst(feedback.WorldPosition, direction.normalized, false, feedback.IsCritical);
         }
 
         // 맞은 쪽으로 밀리도록 플레이어에서 적중 지점으로 향하는 방향을 카메라 좌표로 바꾼다

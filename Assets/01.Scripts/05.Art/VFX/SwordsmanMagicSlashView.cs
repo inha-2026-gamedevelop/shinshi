@@ -8,6 +8,7 @@ using Mirror;
 using Shinshi.Combat;
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.UI;
 
 namespace Shinshi.Art
 {
@@ -198,7 +199,7 @@ namespace Shinshi.Art
         private void PlayEffect(SwordsmanMagicSlashTracker.Play play)
         {
             MagicSlashPool pool = _pools[(int)play.Kind];
-            if ((pool == null) || (!pool.HasPrefab))
+            if ((pool == null) || (!pool.HasPrefab) || (!VfxVisibility.Allows(_combat.isOwned)))
             {
                 return;
             }
@@ -211,6 +212,7 @@ namespace Shinshi.Art
             direction.y = 0f;
             Quaternion rotation = (direction.sqrMagnitude > Mathf.Epsilon) ? Quaternion.LookRotation(direction) : Quaternion.identity;
 
+            pool.SetOpacity(VfxVisibility.Opacity(_combat.isOwned));
             pool.Play(position, rotation, Time.time + Mathf.Max(MIN_PLAY_SECONDS, _maxPlaySeconds));
         }
 
@@ -249,6 +251,7 @@ namespace Shinshi.Art
             private readonly ParticleSystem[][] _systems;
             private readonly float[]            _expireAt;
             private readonly bool[]             _playing;
+            private float                       _opacity = 1f;
             private int                         _next;
 
             public bool HasPrefab { get; }
@@ -273,6 +276,21 @@ namespace Shinshi.Art
                     _objects[i]    = instance;
                     _transforms[i] = instance.transform;
                     _systems[i]    = instance.GetComponentsInChildren<ParticleSystem>(true);
+                }
+            }
+
+            // 이후 재생하는 효과의 투명도, 값이 바뀔 때만 모든 칸의 입자 색을 다시 계산한다
+            public void SetOpacity(float alpha)
+            {
+                if ((!HasPrefab) || (Mathf.Approximately(_opacity, alpha)))
+                {
+                    return;
+                }
+
+                _opacity = alpha;
+                for (int i = 0; i < _systems.Length; ++i)
+                {
+                    VfxOpacity.Apply(_systems[i], alpha);
                 }
             }
 

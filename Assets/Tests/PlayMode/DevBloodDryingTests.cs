@@ -28,7 +28,7 @@ namespace Shinshi.Tests
             _floor.transform.position = s_point + (Vector3.down * 0.5f);
             _floor.AddComponent<BoxCollider>().size = new Vector3(100f, 1f, 100f);
             _root = UnityEngine.Object.Instantiate(Resources.Load<GameObject>("DevHitBlood/PF_DevHitBlood"));
-            _blood = _root.GetComponent(Type.GetType("Shinshi.Dev.DevHitFeedbackBlood, Shinshi.Dev"));
+            _blood = _root.GetComponent(Type.GetType("Shinshi.Art.HitFeedbackBlood, Shinshi.Runtime"));
             yield return null;
         }
 

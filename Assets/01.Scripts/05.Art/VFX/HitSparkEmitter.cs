@@ -2,10 +2,10 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace Shinshi.Dev
+namespace Shinshi.Art
 {
-    /// <summary> 짧은 백열 섬광과 식으며 떨어지는 잔불을 분리해 재생하는 개발 씬용 불똥 풀 </summary>
-    public sealed class DevHitFeedbackSparks : MonoBehaviour
+    /// <summary> 짧은 백열 섬광과 식으며 떨어지는 잔불을 분리해 재생하는 불똥 풀, 이 클라이언트 화면에만 보이는 표현이다 </summary>
+    public sealed class HitSparkEmitter : MonoBehaviour
     {
         /****************************************
         *                Fields
@@ -65,7 +65,7 @@ namespace Shinshi.Dev
         [SerializeField, Min(0.01f)] private float _flashSeconds = 0.08f;
         [SerializeField, Min(0f)] private float _flashSize = 1.1f;
 
-        [Header("재질 (비우면 개발 씬에서 한 번 생성)")]
+        [Header("재질 (비우면 셰이더 이름으로 찾아 한 번 생성)")]
         [SerializeField] private Material _sparkMaterial;
 
         private static readonly Color s_hotColor  = new Color(1f, 0.94f, 0.8f, 1f);
@@ -96,8 +96,8 @@ namespace Shinshi.Dev
 
             for (int i = 0; i < POOL_SIZE; ++i)
             {
-                _streakPool[i] = CreateSystem("DevSparks", i, _streakLifetime, _streakSpeed, _streakWidth, false);
-                _emberPool[i]  = CreateSystem("DevEmbers", i, _emberLifetime, _emberSpeed, _emberWidth, true);
+                _streakPool[i] = CreateSystem("HitSparks", i, _streakLifetime, _streakSpeed, _streakWidth, false);
+                _emberPool[i]  = CreateSystem("HitEmbers", i, _emberLifetime, _emberSpeed, _emberWidth, true);
                 _flashPool[i]  = CreateFlash(i);
             }
 
@@ -189,19 +189,19 @@ namespace Shinshi.Dev
 
         private bool CreateMaterials()
         {
-            // 기존 개발 씬의 AddComponent 경로를 유지한다. 배포용 참조는 프리팹에 명시한다
+            // 프리팹의 재질을 쓰고, 비어 있으면 셰이더 이름으로 찾는다. 이름 검색은 빌드에서 셰이더가 빠질 수 있어 프리팹 재질을 권장한다
             Shader shader = _sparkMaterial != null ? _sparkMaterial.shader : Shader.Find(SHADER_NAME);
             if (shader == null)
             {
-                Debug.LogError($"[DevSparks] 셰이더를 찾지 못했다: {SHADER_NAME}", this);
+                Debug.LogError($"[HitSparkEmitter] 셰이더를 찾지 못했다: {SHADER_NAME}", this);
                 return false;
             }
 
             _mask = _sparkMaterial == null ? CreateMask() : null;
             _streakMaterial = _sparkMaterial != null ? new Material(_sparkMaterial) : new Material(shader);
             _emberMaterial  = _sparkMaterial != null ? new Material(_sparkMaterial) : new Material(shader);
-            _streakMaterial.name = "DevHitSpark_WhiteHot";
-            _emberMaterial.name  = "DevHitSpark_Ember";
+            _streakMaterial.name = "HitSpark_WhiteHot";
+            _emberMaterial.name  = "HitSpark_Ember";
             if (_mask != null)
             {
                 _streakMaterial.SetTexture(TEXTURE_PROPERTY, _mask);
@@ -218,7 +218,7 @@ namespace Shinshi.Dev
         {
             var texture = new Texture2D(MASK_SIZE, MASK_SIZE, TextureFormat.RGBA32, false, true)
             {
-                name       = "DevHitSpark_SoftCore",
+                name       = "HitSpark_SoftCore",
                 wrapMode   = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear
             };
@@ -347,7 +347,7 @@ namespace Shinshi.Dev
 
         private ParticleSystem CreateFlash(int index)
         {
-            ParticleSystem system = CreateSystem("DevSparkFlash", index, new Vector2(_flashSeconds, _flashSeconds),
+            ParticleSystem system = CreateSystem("HitSparkFlash", index, new Vector2(_flashSeconds, _flashSeconds),
                 Vector2.zero, new Vector2(_flashSize, _flashSize), false);
             var shape = system.shape;
             shape.enabled = false;

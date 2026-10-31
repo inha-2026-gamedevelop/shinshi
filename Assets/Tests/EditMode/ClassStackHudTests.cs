@@ -105,6 +105,15 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void GetColor_MageknightPartial_IsRedLikeBadge()
+        {
+            ClassStackDisplay partial = ClassStackHudRules.Build(EPlayerClass.Mageknight, PARTIAL_STACKS, MAX_STACKS, EArcherElement.None);
+
+            Assert.AreEqual(ClassStackHudRules.GetBadgeColor(in partial), ClassStackHudRules.GetColor(in partial));
+            Assert.Greater(ClassStackHudRules.GetColor(in partial).r, ClassStackHudRules.GetColor(in partial).g);
+        }
+
+        [Test]
         public void ShowsBadgeCount_ArcherFromOneStack_MageknightNever()
         {
             ClassStackDisplay empty      = ClassStackHudRules.Build(EPlayerClass.Archer, 0, MAX_STACKS, EArcherElement.Wind);
@@ -119,7 +128,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void GetBadgeColor_FullIsGold_PartialIsYellow()
+        public void GetBadgeColor_FullIsGold_PartialIsRed()
         {
             ClassStackDisplay partial = ClassStackHudRules.Build(EPlayerClass.Archer, PARTIAL_STACKS, MAX_STACKS, EArcherElement.Fire);
             ClassStackDisplay full    = ClassStackHudRules.Build(EPlayerClass.Archer, MAX_STACKS, MAX_STACKS, EArcherElement.Fire);

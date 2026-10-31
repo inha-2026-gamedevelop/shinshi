@@ -37,14 +37,20 @@ namespace Shinshi.AI
         private const float RELEASE_FADE_SECONDS  = 0.1f;
         private const float HIT_SOUND_INTERVAL  = 0.2f;
         private const int   NO_MODEL            = -1;
+        private const float CRIT_FLASH_STRENGTH = 0.7f;  // 치명타로 맞았을 때 금색을 섞는 비율
 
         // 모델 배열 순서, 프리팹 빌더가 같은 순서로 채운다
         public const int MODEL_BEAST   = 0;
         public const int MODEL_VENDIGO = 1;
 
         private static bool s_quitting;
+        private static readonly List<EnemyNetworkView> s_active = new List<EnemyNetworkView>();
 
-        private static readonly Color FLASH_TINT = Color.red;
+        /// <summary> 적이 처치된 것으로 보여 시체를 날리는 순간 불린다. 인자는 개체 위치와 플레이어에게서 멀어지는 방향(없으면 영벡터)이다 </summary>
+        public static event System.Action<Vector3, Vector3> Killed;
+
+        private static readonly Color FLASH_TINT      = Color.red;
+        private static readonly Color CRIT_FLASH_TINT = new Color(1f, 0.8f, 0.2f, 1f);
 
         private static readonly int BASE_COLOR_ID = Shader.PropertyToID("_BaseColor");
         private static readonly int COLOR_ID      = Shader.PropertyToID("_Color");
@@ -73,6 +79,11 @@ namespace Shinshi.AI
         private MaterialPropertyBlock _block;
         private Renderer[][]          _modelRenderers;
         private Color[][]             _flashColors;
+        private Color[][]             _critFlashColors;
+        private readonly EnemyHitReaction _reaction = new EnemyHitReaction();
+        private Transform             _vibrateTarget;
+        private Vector3               _vibrateLocal;
+        private bool                  _flashCrit;
         private bool[]                _hasDashingParam;
         private Animator              _animator;
         private Vector3               _visualBaseScale = Vector3.one;
@@ -133,6 +144,9 @@ namespace Shinshi.AI
             _soundPrimed    = false;
             _appearPlayed   = false;
             _nextHitSoundAt = 0f;
+            _reaction.Reset();
+            _vibrateTarget  = null;
+            s_active.Add(this);
             ClearFlash();
             HideTelegraph();
         }
@@ -144,6 +158,8 @@ namespace Shinshi.AI
 
         private void OnDisable()
         {
+            s_active.Remove(this);
+            RestoreReactionPose();
             HideTelegraph();
             ProbeLog($"OnDisable corpseLaunched={_corpseLaunched} seenAlive={_seenAlive}");
             LaunchOnRemoval();
@@ -162,6 +178,9 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 직전 프레임의 떨림을 먼저 되돌려야 시체 복제와 이동량 계산이 떨린 자리를 기준으로 삼지 않는다
+            UndoVibrate();
+            _reaction.Tick(Time.deltaTime);
             ApplyHealthFlash();
             ApplyCorpse();
             ApplyRole();
@@ -169,6 +188,7 @@ namespace Shinshi.AI
             ApplyAnimation();
             ApplyFlash();
             ApplyTelegraph();
+            ApplyVibrate();
         }
 
         /****************************************
@@ -181,15 +201,18 @@ namespace Shinshi.AI
             int count = (_modelRoots != null) ? _modelRoots.Length : 0;
             _modelRenderers  = new Renderer[count][];
             _flashColors     = new Color[count][];
+            _critFlashColors = new Color[count][];
             _hasDashingParam = new bool[count];
 
-            List<Renderer> renderers = new List<Renderer>();
-            List<Color>    colors    = new List<Color>();
+            List<Renderer> renderers  = new List<Renderer>();
+            List<Color>    colors     = new List<Color>();
+            List<Color>    critColors = new List<Color>();
 
             for (int i = 0; i < count; ++i)
             {
                 renderers.Clear();
                 colors.Clear();
+                critColors.Clear();
 
                 if (_modelRoots[i] != null)
                 {
@@ -200,13 +223,16 @@ namespace Shinshi.AI
                         if ((material != null) && (material.HasProperty(BASE_COLOR_ID)))
                         {
                             renderers.Add(all[r]);
-                            colors.Add(Color.Lerp(material.GetColor(BASE_COLOR_ID), FLASH_TINT, FLASH_STRENGTH));
+                            Color original = material.GetColor(BASE_COLOR_ID);
+                            colors.Add(Color.Lerp(original, FLASH_TINT, FLASH_STRENGTH));
+                            critColors.Add(Color.Lerp(original, CRIT_FLASH_TINT, CRIT_FLASH_STRENGTH));
                         }
                     }
                 }
 
                 _modelRenderers[i] = renderers.ToArray();
                 _flashColors[i]    = colors.ToArray();
+                _critFlashColors[i] = critColors.ToArray();
 
                 Animator animator = ((_modelAnimators != null) && (i < _modelAnimators.Length)) ? _modelAnimators[i] : null;
                 if ((animator != null) && (animator.runtimeAnimatorController != null))
@@ -253,7 +279,7 @@ namespace Shinshi.AI
             {
                 // 모델은 죽음 애니메이션이 있어 줄이지 않고, 대체 캡슐만 줄인다
                 float scale = EnemyRoleColors.GetScale(role) * ((dead && (!hasModels)) ? DEAD_SCALE : 1f);
-                _visual.localScale = _visualBaseScale * scale;
+                _visual.localScale = Vector3.Scale(_visualBaseScale * scale, _reaction.PunchScale);
             }
         }
 
@@ -265,6 +291,12 @@ namespace Shinshi.AI
             }
 
             ClearFlash();
+            UndoVibrate();
+            if (_animator != null)
+            {
+                _animator.speed = 1f;
+            }
+
             for (int i = 0; i < _modelRoots.Length; ++i)
             {
                 if (_modelRoots[i] != null)
@@ -370,6 +402,13 @@ namespace Shinshi.AI
                 _animatorDirty = false;
                 _hasPose       = false;
                 _lastBehavior  = EEnemyState.Idle;
+            }
+
+            // 맞은 순간 몇 프레임 굳는 렉프레임, 풀리면 원래 속도로 돌아온다
+            float animatorSpeed = _reaction.IsFrozen ? 0f : 1f;
+            if (_animator.speed != animatorSpeed)
+            {
+                _animator.speed = animatorSpeed;
             }
 
             float dt     = Time.deltaTime;
@@ -511,6 +550,8 @@ namespace Shinshi.AI
         private void LaunchCorpse()
         {
             _corpseLaunched = true;
+            RestoreReactionPose();
+            Killed?.Invoke(transform.position, ReadFlyDirection());
             EnemySoundPlayer.Play(IsVendigoRole(_appliedRole) ? EEnemySound.DeathVendigo : EEnemySound.DeathBeast, transform.position);
             if (EnemyCorpse.Launch(_modelRoots[_activeModel], ReadFlyDirection()))
             {
@@ -608,7 +649,7 @@ namespace Shinshi.AI
             }
 
             Renderer[] renderers = _modelRenderers[_activeModel];
-            Color[]    colors    = _flashColors[_activeModel];
+            Color[]    colors    = _flashCrit ? _critFlashColors[_activeModel] : _flashColors[_activeModel];
             for (int i = 0; i < renderers.Length; ++i)
             {
                 renderers[i].GetPropertyBlock(_block);
@@ -634,6 +675,83 @@ namespace Shinshi.AI
             }
 
             _flashApplied = false;
+            _flashCrit    = false;
+        }
+
+        /// <summary> 내 적중에 맞은 적을 전투 개체 번호로 찾아 렉프레임 떨림, 찌그러짐, 치명타 금색 번쩍임을 입힌다. 찾지 못하면 거짓이다 </summary>
+        public static bool TryReact(int combatId, in EnemyHitCue cue)
+        {
+            for (int i = 0; i < s_active.Count; ++i)
+            {
+                EnemyNetworkView view = s_active[i];
+                if ((view._state != null) && (view._state.CombatId == combatId))
+                {
+                    view.React(in cue);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // 서버가 체력을 깎아 알리는 번쩍임보다 먼저 올 수 있어 여기서도 번쩍임을 시작한다. 치명타 색은 번쩍임이 끝날 때까지 유지된다
+        private void React(in EnemyHitCue cue)
+        {
+            if (_state.LifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            _reaction.Begin(in cue);
+            _flashUntil = Time.time + FLASH_SECONDS;
+            _flashCrit  = cue.IsCritical;
+            if (_activeModel >= 0)
+            {
+                _flashApplied = false;
+            }
+        }
+
+        private void UndoVibrate()
+        {
+            if (_vibrateTarget != null)
+            {
+                _vibrateTarget.localPosition -= _vibrateLocal;
+            }
+
+            _vibrateTarget = null;
+            _vibrateLocal  = Vector3.zero;
+        }
+
+        // 위치는 서버 권위라 모델만 떤다. 모델 없는 대체 캡슐은 떨지 않는다
+        private void ApplyVibrate()
+        {
+            Vector3 world = _reaction.VibrateOffset;
+            if ((_activeModel < 0) || (_modelRoots[_activeModel] == null) || (world.sqrMagnitude <= 0f))
+            {
+                return;
+            }
+
+            Transform target = _modelRoots[_activeModel].transform;
+            Transform parent = target.parent;
+            _vibrateLocal      = (parent != null) ? parent.InverseTransformVector(world) : world;
+            target.localPosition += _vibrateLocal;
+            _vibrateTarget     = target;
+        }
+
+        // 시체 복제나 비활성화 전에 떨림, 찌그러짐, 굳은 애니메이터를 모두 평소로 되돌린다
+        private void RestoreReactionPose()
+        {
+            UndoVibrate();
+            _reaction.Reset();
+            if (_animator != null)
+            {
+                _animator.speed = 1f;
+            }
+
+            if ((_visual != null) && (_appliedRole != (EEnemyRole)(-1)))
+            {
+                _visual.localScale = _visualBaseScale * EnemyRoleColors.GetScale(_appliedRole);
+            }
         }
 
         private void ApplyTelegraph()

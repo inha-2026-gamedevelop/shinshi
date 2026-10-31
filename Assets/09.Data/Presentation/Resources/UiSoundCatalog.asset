@@ -122,3 +122,9 @@ MonoBehaviour:
     _volume: 1
     _maxVoices: 2
     _minInterval: 0.05
+  - _group: 21
+    _action: 7
+    _clip: {fileID: 8300000, guid: ae67a3d1dbee95c449083a56b9662965, type: 3}
+    _volume: 1
+    _maxVoices: 2
+    _minInterval: 0.05

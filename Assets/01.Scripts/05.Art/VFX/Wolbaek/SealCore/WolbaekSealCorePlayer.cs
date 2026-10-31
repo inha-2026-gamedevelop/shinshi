@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections.Generic;
 
 // Unity
 using UnityEngine;
@@ -147,6 +148,8 @@ namespace Shinshi.Art
         private float _openedLightIntensity;
         private Color _color;
         private Color _lightColor;
+        private static readonly List<WolbaekSealCorePlayer> _runningPlayers = new List<WolbaekSealCorePlayer>(4);
+
         private bool _running;
         private bool _posesCached;
         private bool _hasAcceptedSnapshot;
@@ -156,6 +159,10 @@ namespace Shinshi.Art
         ****************************************/
         public WolbaekSealCoreSettingsSO Settings => _settings;
         public bool IsRunning => _running;
+
+        /// <summary> 지금 표시 중인 봉인 핵, 표시가 끝나면 빠진다 </summary>
+        public static IReadOnlyList<WolbaekSealCorePlayer> RunningPlayers => _runningPlayers;
+        public Color MarkerColor => _color;
         public uint PlaybackId => _playbackId;
         public ulong CastId => _running ? _snapshot.CastId : 0;
         public Snapshot CurrentSnapshot => _snapshot;
@@ -166,6 +173,12 @@ namespace Shinshi.Art
         /****************************************
         *              Unity Event
         ****************************************/
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatic()
+        {
+            _runningPlayers.Clear();
+        }
+
         protected override void OnViewAwake()
         {
             _appearTween  = Envelope(gameObject, () => _appear, value => _appear = value, Ease.OutCubic);
@@ -215,6 +228,11 @@ namespace Shinshi.Art
             }
             _snapshot = snapshot;
             _running = true;
+            if (!_runningPlayers.Contains(this))
+            {
+                _runningPlayers.Add(this);
+            }
+
             Accept(snapshot, now);
             uint playbackId = _playbackId;
             Tick(playbackId, now);
@@ -285,6 +303,7 @@ namespace Shinshi.Art
         public void Stop()
         {
             _running = false;
+            _runningPlayers.Remove(this);
             _snapshot = default;
             _appearTween?.Goto(0f, false);
             _openTween?.Goto(0f, false);

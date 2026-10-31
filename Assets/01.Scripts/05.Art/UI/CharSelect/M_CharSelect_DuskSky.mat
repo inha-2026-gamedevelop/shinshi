@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_CharSelect_DuskSky
+  m_Shader: {fileID: 4800000, guid: c4f3bfd6892e5d34b85942625831c32e, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _GlowSize: 0.48
+    - _GlowStrength: 0.32
+    - _MiddleHeight: 0.5
+    m_Colors:
+    - _BottomColor: {r: 1, g: 0.72, b: 0.56, a: 1}
+    - _GlowColor: {r: 1, g: 0.67, b: 0.35, a: 1}
+    - _GlowPosition: {r: 0.25, g: 0.43, b: 0, a: 0}
+    - _MiddleColor: {r: 0.8, g: 0.6, b: 0.64, a: 1}
+    - _TopColor: {r: 0.33, g: 0.4, b: 0.65, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

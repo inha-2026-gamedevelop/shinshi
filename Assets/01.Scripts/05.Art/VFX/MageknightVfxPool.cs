@@ -39,6 +39,7 @@ namespace Shinshi.Art
         private readonly double[]           _frozenUntil;
         private readonly bool[]             _isFrozen;
         private double                      _lastTickTime = -1.0;
+        private float                       _opacity = 1f;
         private int                         _next;
 
         /****************************************
@@ -102,6 +103,21 @@ namespace Shinshi.Art
                 _transforms[i] = instance.transform;
                 _systems[i]    = instance.GetComponentsInChildren<ParticleSystem>(true);
                 _groups[i]     = CollectGroups(instance.transform);
+            }
+        }
+
+        /// <summary> 이후 재생하는 효과의 투명도, 값이 바뀔 때만 모든 칸의 입자 색을 다시 계산한다 </summary>
+        public void SetOpacity(float alpha)
+        {
+            if ((!HasPrefab) || (Mathf.Approximately(_opacity, alpha)))
+            {
+                return;
+            }
+
+            _opacity = alpha;
+            for (int i = 0; i < _systems.Length; ++i)
+            {
+                VfxOpacity.Apply(_systems[i], alpha);
             }
         }
 

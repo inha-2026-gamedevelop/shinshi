@@ -4,6 +4,9 @@ using System;
 // Unity
 using UnityEngine;
 
+// 프로젝트 내부
+using Shinshi.Art;
+
 namespace Shinshi.Dev
 {
     /// <summary> 모델 복제본의 골반을 혈흔 풀에 연결하고 사체가 사라지면 추적을 끊는다 </summary>
@@ -16,7 +19,7 @@ namespace Shinshi.Dev
         private const string PELVIS_BONE = "pelvis";
         private const string HIPS_BONE   = "hips";
 
-        [SerializeField] private DevHitFeedbackBlood _blood;
+        [SerializeField] private HitFeedbackBlood _blood;
         [SerializeField] private Transform           _anchor;
         [SerializeField] private int                 _freezeFrames;
 
@@ -49,7 +52,7 @@ namespace Shinshi.Dev
         ****************************************/
 
         /// <summary> 원본은 재생하지 않는다. EnemyCorpse가 모델을 복제할 때 뼈 참조가 복제본 안으로 다시 연결된다 </summary>
-        public void PrepareClone(DevHitFeedbackBlood blood, Transform anchor, int freezeFrames)
+        public void PrepareClone(HitFeedbackBlood blood, Transform anchor, int freezeFrames)
         {
             _blood = blood;
             _anchor = anchor;

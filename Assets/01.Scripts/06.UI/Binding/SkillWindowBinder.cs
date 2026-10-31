@@ -705,7 +705,7 @@ namespace Shinshi.UI
             string basicText = string.Empty;
             if (_display.TryGetClass(playerClass, out SkillDisplayCatalogSO.ClassDisplay classDisplay))
             {
-                stackRule = SkillWindowViewRules.StackRuleText(classDisplay.StackRule, _skills.ClassStackMax);
+                stackRule = SkillWindowViewRules.StackRuleText(classDisplay.StackRule, _skills.GetStackMax(playerClass));
                 basicText = classDisplay.BasicAttackDescription;
             }
 
