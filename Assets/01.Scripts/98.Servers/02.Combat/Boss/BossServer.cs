@@ -128,6 +128,7 @@ namespace Shinshi.Combat
         private BossGimmickSet         _gimmicks;
         private IBossDamageCap         _damageCap;
         private IBossFinalSuccess      _finalSuccess;
+        private float                  _minHealthRate;
         private IBossGimmickStopSource _stopSource;
         private IBossGimmickReviveGate _reviveGate;
         private bool                   _gimmickAttachTried = false;
@@ -532,7 +533,23 @@ namespace Shinshi.Combat
         // 기믹이 없으면 그대로 돌려준다. 최대 체력은 이 몸체가 알고 판정기는 모르므로 여기서 채운다
         public float CapIncomingDamage(float currentHealth, float damage)
         {
-            return (_damageCap == null) ? damage : _damageCap.CapDamage(currentHealth, _maxHealth, damage);
+            float capped = (_damageCap == null) ? damage : _damageCap.CapDamage(currentHealth, _maxHealth, damage);
+
+            // 프롤로그 월백은 30초 안에 쓰러지거나 2페이즈 전환 체력에 닿지 않도록 하한 아래로 내려가지 못하게 한다. 기본 0은 하한 없음이다
+            if (_minHealthRate > 0f)
+            {
+                float room = Mathf.Max(0f, currentHealth - (_minHealthRate * _maxHealth));
+                capped = Mathf.Min(capped, room);
+            }
+
+            return capped;
+        }
+
+        /// <summary> 체력이 이 비율 아래로 내려가지 않게 피해를 줄인다, 0이면 하한이 없다. 전투를 열기 전에 정한다 </summary>
+        public float MinHealthRate
+        {
+            get => _minHealthRate;
+            set => _minHealthRate = Mathf.Clamp01(value);
         }
 
         // 투사체는 날아온 쪽(진행 방향의 반대)을, 그 밖에는 피해가 온 위치 쪽을 입사 방향으로 본다. 봉인 하한은 비율이라 최대 체력으로 바꿔 넘긴다

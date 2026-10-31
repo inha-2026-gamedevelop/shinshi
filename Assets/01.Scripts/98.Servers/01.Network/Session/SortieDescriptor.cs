@@ -44,6 +44,9 @@ namespace Shinshi.Network
         public bool   IsNormal    => (_hasContract) && (_mode == GameSessionCodes.Mode.NORMAL);
         public bool   IsBoss      => (_hasContract) && (_mode == GameSessionCodes.Mode.BOSS);
 
+        // 마을을 거치지 않는 1인 튜토리얼 출정, 보스(월백)는 있지만 보스전 규칙(공용 부활, 보상, 경매)을 쓰지 않는다
+        public bool   IsPrologue  => (_hasContract) && (_mode == GameSessionCodes.Mode.PROLOGUE);
+
         // 보스전의 난이도, 보스전이 아니면 쉬움으로 본다
         public EBossDifficulty BossDifficulty => (IsBoss) && (_difficulty == GameSessionCodes.Difficulty.HARD)
             ? EBossDifficulty.Hard

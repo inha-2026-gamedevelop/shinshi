@@ -28,6 +28,7 @@ namespace Shinshi.Network
         private readonly SortieDescriptor       _sortie;
         private readonly CharacterAppearance    _appearance;
         private readonly string                 _guildName;
+        private readonly PrologueResume         _prologue;
 
         /****************************************
         *              Properties
@@ -73,12 +74,16 @@ namespace Shinshi.Network
         // 규칙을 통과한 길드 표시 이름, 길드가 없거나 모르는 API, 개발 토큰은 null이다
         public string GuildName => _guildName;
 
+        // 프롤로그 입장 교환이 준 캐릭터의 저장 상태, 프롤로그가 아니면 HasValue가 거짓이다
+        public PrologueResume Prologue => _prologue;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public JoinTokenClaims(string participantKey)
         {
+            _prologue = default;
             _experience = null;
             _participantKey = participantKey;
             _characterId    = null;
@@ -141,6 +146,7 @@ namespace Shinshi.Network
             _combatLoadout   = null;
             _reservedPotions = null;
             _sortie          = default;
+            _prologue        = default;
         }
 
         // 다른 필드는 그대로 두고 계정 ID만 붙인다. 생성자 인자를 더 늘리지 않으려고 복사 생성자를 쓴다
@@ -190,6 +196,19 @@ namespace Shinshi.Network
         public JoinTokenClaims WithAccountId(string accountId)
         {
             return new JoinTokenClaims(this, accountId);
+        }
+
+        /// <summary> 프롤로그 저장 상태를 붙인 복사본, 던전 입장 결합 규칙만 부른다 </summary>
+        public JoinTokenClaims WithPrologue(in PrologueResume prologue)
+        {
+            var copy = this;
+            return new JoinTokenClaims(in copy, in prologue);
+        }
+
+        private JoinTokenClaims(in JoinTokenClaims source, in PrologueResume prologue)
+        {
+            this      = source;
+            _prologue = prologue;
         }
 
         /// <summary> 길드 표시 이름을 붙인 복사본, 입장 결합 규칙만 부른다 </summary>

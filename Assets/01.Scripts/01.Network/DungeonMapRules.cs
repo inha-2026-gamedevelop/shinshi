@@ -42,6 +42,12 @@ namespace Shinshi.Network
             return Constants.Scene.DUNGEON_FOREST;
         }
 
+        /// <summary> 프롤로그 출정이 여는 씬 이름, 보스 ID와 무관하게 고정이다 </summary>
+        public static string ResolvePrologueSceneName()
+        {
+            return Constants.Scene.DUNGEON_PROLOGUE;
+        }
+
         /// <summary> 실행 설정 보스(-boss-id)로 서버가 부팅 때 여는 씬 이름, 보스가 없으면 숲이다 </summary>
         public static string ResolveBootSceneName(string defaultBossId)
         {
@@ -58,7 +64,8 @@ namespace Shinshi.Network
         {
             return string.Equals(sceneName, Constants.Scene.DUNGEON_FOREST, StringComparison.Ordinal)
                 || string.Equals(sceneName, Constants.Scene.DUNGEON_MUCHEOL, StringComparison.Ordinal)
-                || string.Equals(sceneName, Constants.Scene.DUNGEON_WOLBAEK, StringComparison.Ordinal);
+                || string.Equals(sceneName, Constants.Scene.DUNGEON_WOLBAEK, StringComparison.Ordinal)
+                || string.Equals(sceneName, Constants.Scene.DUNGEON_PROLOGUE, StringComparison.Ordinal);
         }
     }
 }

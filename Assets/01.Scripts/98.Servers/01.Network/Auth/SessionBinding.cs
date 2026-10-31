@@ -75,6 +75,9 @@ namespace Shinshi.Network
         // 던전 입장만 채운다. 입장 교환이 준 출정 계약이며 던전 호스트가 첫 입장에서 고정한 값과 대조한다
         public SortieDescriptor       Sortie          { get; internal set; }
 
+        // 프롤로그 입장만 채운다. 캐릭터의 저장 단계와 월백 진입 물약 수, 부적 확인 여부이며 세션이 이 구간의 처음부터 시작한다
+        public PrologueResume         Prologue        { get; internal set; }
+
         // 출정이 끝난 뒤 경매에만 다시 들어온 참가자다. 전투 개체를 만들지 않고 경매 상태와 입찰만 주고받는다
         public bool                   IsAuctionOnly   { get; internal set; }
 

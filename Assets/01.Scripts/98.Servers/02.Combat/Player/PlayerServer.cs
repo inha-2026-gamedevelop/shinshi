@@ -147,6 +147,15 @@ namespace Shinshi.Combat
         public EParticipantLifeState LifeState       => _lifeState;
         public bool                  IsSummon        => false;
         public int                   OwnerCombatId   => CombatIds.NONE;
+        // 치명 피해를 죽음 대신 다른 처리로 바꾸는 규칙, 프롤로그 서버 어댑터만 넣는다
+        public IPlayerLethalInterceptor LethalInterceptor { get; set; } = null;
+
+        // 기본 공격이 승인되어 시작될 때, 명중과 무관하다
+        public event System.Action BasicAttackStarted;
+
+        // 기술이 승인되어 시전될 때, 명중과 무관하다. 슬롯은 Constants.Combat.SKILL_SLOT_*다
+        public event System.Action<ESkillRequestKind, int> SkillCommitted;
+
         public Vector3               Position        => _transform.position;
         public Vector3               Forward         => _forward;
         public float                 BodyRadius      => Constants.Combat.PLAYER_BODY_RADIUS;
@@ -773,6 +782,7 @@ namespace Shinshi.Combat
             CancelPreFire(EPreFireCancelReason.SkillCommit);
             ReplicateSkills();
             _input.SendSkillResult(sequence, _skills.CastInstanceId, ERejectReason.None);
+            SkillCommitted?.Invoke(_skills.Kind, _skills.Slot);
         }
 
         /// <summary> 물약 요청의 입력 머리를 다른 입력과 같은 게이트로 검증한다, 통과하면 참 </summary>
@@ -979,6 +989,7 @@ namespace Shinshi.Combat
             Vector3 aim = FacingRules.DecodeYaw(_pendingAimYaw);
             SetFacing(aim);
             _combat.BumpAttackSequence((byte)step);
+            BasicAttackStarted?.Invoke();
             if ((windup > 0f) || (shots > 1))
             {
                 // 동작은 승인 시점에 시작하고 판정은 준비 시간 뒤에 한다
@@ -1551,9 +1562,47 @@ namespace Shinshi.Combat
         // 추락 같은 서버 사망 확정이다. 방어, 반격, 무적이 개입하지 않아야 하므로 피해 판정기를 거치지 않고 피해 통지, 미터, 흡혈도 만들지 않는다.
         // 서버 보호 중에도 죽인다. 보호가 막을지는 부르는 쪽이 정한다
         /// <summary> 판정기를 거치지 않고 사망을 확정한다, 살아 있을 때만 참이다 </summary>
+            // 프롤로그 숲처럼 치명타를 죽음 대신 제자리 회복으로 바꾸는 규칙이 개입한다. 개입이 처리했으면 죽지 않는다
+            if ((LethalInterceptor != null) && (LethalInterceptor.TryIntercept(this, serverTime)))
+            {
+                return;
+            }
+
         public bool KillByServer(double serverTime)
         {
             if (_lifeState != EParticipantLifeState.Alive)
+        /// <summary> 살아 있을 때 체력을 최대로 채운다, 프롤로그가 숲 체력 0 회복과 월백 교전 직전 회복에 쓴다 </summary>
+        public void RestoreFullHealth()
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            _health = _maxHealth;
+            _combat.SetHealth(_health, _maxHealth);
+        }
+
+        // Displace와 달리 기술이나 회피 중이어도 옮긴다. 일러스트 직후 화면 전환으로 처리하는 서버 연출 이동이다.
+        // 소유 예측은 서버가 멈춘 것을 권위 값만으로는 알지 못해 옛 경로를 끝까지 가므로 이동 중이었으면 거절을 보내 멈추게 한다
+        /// <summary> 플레이어를 지점으로 순간 이동시킨다, 유한한 좌표만 받는다 </summary>
+        public void TeleportTo(Vector3 position)
+        {
+            if (!IsFinite(position))
+            {
+                return;
+            }
+
+            if (_path.IsMoving)
+            {
+                _path.Stop();
+                _moveThrottle.ClearActive();
+                _input.SendInputRejected(_moveSequence, ERejectReason.Disabled);
+            }
+
+            _transform.position = position;
+        }
+
             {
                 return false;
             }
@@ -1635,6 +1684,8 @@ namespace Shinshi.Combat
             if (IsHitImmune(serverTime))
             {
                 return EPlayerControlResult.Immune;
+            // 회피는 매 틱 시작점과 끝점 사이의 절대 위치를 다시 쓰므로 진행 중이면 옮긴 자리를 덮어쓴다. 같은 이유로 취소한다
+            _isDodging = false;
             }
 
             EPlayerControlResult result = _control.TryApply(kind, seconds, serverTime);

@@ -7,6 +7,7 @@ using UnityEngine;
 // 프로젝트 내부
 using Shinshi.AI;
 using Shinshi.Combat;
+using Shinshi.Common;
 using Shinshi.Data;
 using Shinshi.Network;
 
@@ -108,6 +109,42 @@ namespace Shinshi.Systems
             }
 
             return session;
+        }
+
+        /// <summary> 프롤로그 숲의 산귀 소환기를 만든다. 웨이브 팩토리와 같은 협력 객체와 숲 기준값을 쓴다, 만들 수 없으면 null이다 </summary>
+        public PrologueEnemyField CreatePrologueEnemyField(float damageScale, float enemyHealthScale)
+        {
+            CombatServerRuntime runtime = _runtimeProvider?.Invoke();
+            if ((runtime == null) || (_spawns == null) || (_enemies == null) || (_progression == null))
+            {
+                Debug.LogError("[Prologue] 산귀 소환기의 협력 객체가 비어 있다");
+                return null;
+            }
+
+            if ((!(damageScale > 0f)) || (float.IsInfinity(damageScale)) || (!(enemyHealthScale > 0f)))
+            {
+                Debug.LogError($"[Prologue] 적 배율이 올바르지 않다, damage={damageScale}, health={enemyHealthScale}");
+                return null;
+            }
+
+            if (!_progression.TryGetRegion(Constants.Combat.DEV_BOSS_REGION_ID, out ProgressionCatalogSO.RegionDefinition region))
+            {
+                Debug.LogError($"[Prologue] 숲 지역 정의가 없다, regionId={Constants.Combat.DEV_BOSS_REGION_ID}");
+                return null;
+            }
+
+            if ((runtime.Registry == null) || (runtime.Resolver == null) || (runtime.EnemyObjects == null))
+            {
+                Debug.LogError("[Prologue] 전투 런타임에 레지스트리, 판정기, 적 오브젝트 호스트가 아직 없다");
+                return null;
+            }
+
+            var scaledResolver = new BossDamageScaler(runtime.Resolver, damageScale);
+            var connections    = new RegistryParticipantConnections(runtime.Registry, _rosterProvider);
+            var deps = new WaveSessionDependencies(runtime.Registry, scaledResolver, runtime.EnemyObjects, _spawns, _enemies,
+                new WaveEnemyMovement(_walls), _walls, _killers, _progression.GetReferenceAttack(region),
+                _progression.GetReferenceHealth(region), _bodyRadius, _separationRadius, _navigation, connections);
+            return new PrologueEnemyField(deps, enemyHealthScale);
         }
 
         private static IWaveSession Fail(string reason)
