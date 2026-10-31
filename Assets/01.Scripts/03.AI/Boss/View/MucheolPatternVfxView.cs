@@ -43,6 +43,11 @@ namespace Shinshi.AI
         private const float  SOUND_WHOOSH_LEAD_SECONDS  = 0.3f;  // 초, 휘두르는 소리가 타격보다 앞서 시작하는 시간
         private const float  SOUND_LATE_SECONDS         = 0.4f;  // 초, 이보다 늦게 받은 일회성 소리는 내지 않는다
         private const int    SOUND_KEY_STRIDE           = 16;    // 반복 소리 키 = 시전 번호 * 이 값 + 순번
+        private const int    MAX_WAVE_IMPACTS           = 4;     // 원형 충격파 VFX 동시 수 상한, 작은 충격파와 큰 충격파가 이어진다
+        private const int    MAX_FAN_IMPACTS            = 6;     // 부채꼴 착탄 VFX 동시 수 상한, 연타의 꼬리가 겹치는 만큼이다
+        private const float  FAN_IMPACT_LATE_SECONDS    = 0.6f;  // 초, 확정이 이보다 늦게 알려진 착탄(복원, 늦은 사건)은 다시 그리지 않는다
+        private const float  FAN_BASE_RADIUS            = 5f;    // m, 템플릿 부채꼴의 크기 1일 때 사거리
+        private const float  FAN_BASE_HALF_TAN          = 1.7320508f; // 템플릿 부채꼴 폭 1은 120도, 반각 60도의 tan
 
         /****************************************
         *              Nested Types
@@ -103,6 +108,8 @@ namespace Shinshi.AI
             public bool                   IsBegun;
             public MucheolDashRushView    Rush;
             public Vector3                HitPoint;    // 타격 소리가 나는 자리, 돌진은 멈춘 자리다
+            public float                  Radius;      // m, 서버가 알린 범위(전장 공격), 없으면 0
+            public float                  Arc;         // 도, 서버가 알린 각도(전장 공격), 없으면 0
         }
 
         /****************************************
@@ -118,6 +125,12 @@ namespace Shinshi.AI
         [SerializeField] private MucheolFanTelegraph _swingTelegraphPrefab; // 빨간 예고, 보스 계층 밖에 둔다
         [SerializeField] private MucheolArmTrail     _armTrailPrefab;       // 왼손 본에 붙는 궤적과 스파크
 
+        // 모든 부채꼴 타격(팔 휘두르기, 연타 단계, 지면 강타)이 서버 확정 때 그 자리에서 터뜨리는 착탄 VFX. 비우면 터뜨리지 않는다
+        [SerializeField] private MucheolFanImpactView _fanImpactPrefab;
+
+        // 원형 충격파(작은 충격파, 큰 충격파)가 서버 확정 때 보스 둘레로 퍼뜨리는 고리 VFX. 큰 충격파는 360도 크레이터를 함께 터뜨린다. 비우면 터뜨리지 않는다
+        [SerializeField] private MucheolWaveImpactView _waveImpactPrefab;
+
         [Header("효과음")]
         [SerializeField] private MucheolSoundPlayer _sound; // 비어 있으면 같은 보스 프리팹에서 찾고, 없으면 소리를 생략한다
 
@@ -130,6 +143,8 @@ namespace Shinshi.AI
         private readonly Dictionary<int, string> _castPatterns = new Dictionary<int, string>();
 
         private readonly List<MucheolDashRushView> _rushes = new List<MucheolDashRushView>();
+        private readonly List<MucheolFanImpactView> _fanImpacts = new List<MucheolFanImpactView>();
+        private readonly List<MucheolWaveImpactView> _waveImpacts = new List<MucheolWaveImpactView>();
 
         private Transform          _container;
         private Func<double>       _serverClock;
@@ -601,6 +616,12 @@ namespace Shinshi.AI
         {
             SpawnStrike(start.CastId, 0, MucheolMotionCatalog.P2_P07_ID, start.Origin, start.Direction, start.StartServerTime,
                 start.StartServerTime + start.TelegraphSeconds, float.NaN);
+            Slot field = Find(start.CastId, 0);
+            if (field != null)
+            {
+                field.Radius = start.Radius;
+                field.Arc    = start.ArcAngle;
+            }
         }
 
         public void ConfirmBattlefield(int castId, double serverTime)
@@ -694,6 +715,22 @@ namespace Shinshi.AI
             for (int i = _slots.Count - 1; i >= 0; --i)
             {
                 Release(_slots[i]);
+            }
+
+            for (int i = 0; i < _fanImpacts.Count; ++i)
+            {
+                if (_fanImpacts[i] != null)
+                {
+                    _fanImpacts[i].Stop();
+                }
+            }
+
+            for (int i = 0; i < _waveImpacts.Count; ++i)
+            {
+                if (_waveImpacts[i] != null)
+                {
+                    _waveImpacts[i].Stop();
+                }
             }
 
             // 사망과 연결 끊김은 꼬리를 남기지 않고 분출을 모두 지운다
@@ -1093,6 +1130,100 @@ namespace Shinshi.AI
             return trail;
         }
 
+        // 원형 충격파가 서버에서 확정된 순간 보스 둘레로 고리를 퍼뜨린다
+        private void PlayWaveImpact(Vector3 origin, Vector3 direction, float yawDegrees, float radius, bool isStrong, float arc, double hitTime)
+        {
+            if ((_waveImpactPrefab == null) || (_container == null) || (_isDefeated) || (ReadClock() - hitTime > FAN_IMPACT_LATE_SECONDS))
+            {
+                return;
+            }
+
+            MucheolWaveImpactView view = AcquireWaveImpact();
+            if (view == null)
+            {
+                return;
+            }
+
+            Quaternion rotation = Quaternion.LookRotation(Flatten(direction), Vector3.up) * Quaternion.Euler(0f, yawDegrees, 0f);
+            view.transform.SetPositionAndRotation(origin + (Vector3.up * MucheolVfxCatalog.GROUND_LIFT), rotation);
+            view.gameObject.SetActive(true);
+            view.Setup(radius, isStrong, arc);
+            view.Play();
+        }
+
+        private MucheolWaveImpactView AcquireWaveImpact()
+        {
+            for (int i = 0; i < _waveImpacts.Count; ++i)
+            {
+                if ((_waveImpacts[i] != null) && (!_waveImpacts[i].IsPlaying))
+                {
+                    return _waveImpacts[i];
+                }
+            }
+
+            if (_waveImpacts.Count < MAX_WAVE_IMPACTS)
+            {
+                MucheolWaveImpactView created = Instantiate(_waveImpactPrefab, _container);
+                created.gameObject.SetActive(false);
+                _waveImpacts.Add(created);
+                return created;
+            }
+
+            MucheolWaveImpactView oldest = _waveImpacts[0];
+            _waveImpacts.RemoveAt(0);
+            _waveImpacts.Add(oldest);
+            oldest.Stop();
+            return oldest;
+        }
+
+        // 부채꼴 타격이 서버에서 확정된 순간 그 자리에서 착탄 VFX를 터뜨린다. 위치와 방향은 예고와 같고 각도와 사거리는 서버 값이다
+        private void PlayFanImpact(Vector3 origin, Vector3 direction, float yawDegrees, float angle, float radius, double hitTime)
+        {
+            if ((_fanImpactPrefab == null) || (_container == null) || (_isDefeated) || (ReadClock() - hitTime > FAN_IMPACT_LATE_SECONDS))
+            {
+                return;
+            }
+
+            MucheolFanImpactView view = AcquireFanImpact();
+            if (view == null)
+            {
+                return;
+            }
+
+            Vector3 forward = Flatten(direction);
+            Quaternion rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, yawDegrees, 0f);
+            view.transform.SetPositionAndRotation(origin + (Vector3.up * MucheolVfxCatalog.GROUND_LIFT), rotation);
+            view.gameObject.SetActive(true);
+            view.Setup(angle, radius);
+            view.Play();
+        }
+
+        // 놀고 있는 것을 먼저 쓰고, 없으면 상한까지 새로 만들고, 상한이면 가장 오래된 것을 다시 쓴다
+        private MucheolFanImpactView AcquireFanImpact()
+        {
+            for (int i = 0; i < _fanImpacts.Count; ++i)
+            {
+                if ((_fanImpacts[i] != null) && (!_fanImpacts[i].IsPlaying))
+                {
+                    return _fanImpacts[i];
+                }
+            }
+
+            if (_fanImpacts.Count < MAX_FAN_IMPACTS)
+            {
+                MucheolFanImpactView created = Instantiate(_fanImpactPrefab, _container);
+                created.gameObject.SetActive(false);
+                _fanImpacts.Add(created);
+                return created;
+            }
+
+            MucheolFanImpactView oldest = _fanImpacts[0];
+            _fanImpacts.RemoveAt(0);
+            _fanImpacts.Add(oldest);
+            oldest.Stop();
+            return oldest;
+        }
+
         private void SpawnStrike(int castId, int index, string patternId, Vector3 origin, Vector3 direction, double start,
             double impact, float serverYaw)
         {
@@ -1293,6 +1424,36 @@ namespace Shinshi.AI
 
             StopChargeSound(slot);
             PlayImpactSounds(slot, hitTime);
+            EMucheolVfxTemplate template = slot.Cue.Template;
+            if ((template == EMucheolVfxTemplate.SmallWave04) || (template == EMucheolVfxTemplate.LargeWave05) || (template == EMucheolVfxTemplate.Circle02))
+            {
+                // 원형 템플릿의 크기는 균일 배율이고 1이 반경 5m다(하드는 1.3배). 큰 충격파와 원형 단발은 바닥도 갈라낸다
+                float waveRadius = FAN_BASE_RADIUS * Mathf.Max(slot.Cue.Scale.x, 0.01f);
+                bool  isStrong   = template != EMucheolVfxTemplate.SmallWave04;
+                PlayWaveImpact(slot.Origin, slot.Direction, 0f, waveRadius, isStrong, 360f, hitTime);
+                if (isStrong)
+                {
+                    PlayFanImpact(slot.Origin, slot.Direction, 0f, 360f, waveRadius, hitTime);
+                }
+            }
+            else if (template == EMucheolVfxTemplate.Battlefield07)
+            {
+                // 전장 공격은 서버가 알린 반경과 각도를 쓴다. 크레이터는 기준 반경 공간에서 만들어 비율로 키우므로 범위가 넓어도 판 개수는 같다
+                if (slot.Radius > 0f)
+                {
+                    float arc = (slot.Arc > 0f) ? slot.Arc : 360f;
+                    PlayWaveImpact(slot.Origin, slot.Direction, 0f, slot.Radius, true, arc, hitTime);
+                    PlayFanImpact(slot.Origin, slot.Direction, 0f, arc, slot.Radius, hitTime);
+                }
+            }
+
+            if ((template == EMucheolVfxTemplate.FanSlam70) || (template == EMucheolVfxTemplate.Fan01))
+            {
+                // 템플릿 부채꼴의 크기는 폭(x)과 사거리(z) 배율이다. 폭 1이 120도, 사거리 1이 5m이고 하드는 둘 다 커진다
+                float length = Mathf.Max(slot.Cue.Scale.z, 0.01f);
+                float angle  = 2f * Mathf.Atan((slot.Cue.Scale.x / length) * FAN_BASE_HALF_TAN) * Mathf.Rad2Deg;
+                PlayFanImpact(slot.Origin, slot.Direction, slot.YawDegrees, angle, FAN_BASE_RADIUS * length, hitTime);
+            }
         }
 
         private void TickSlot(Slot slot, double now)

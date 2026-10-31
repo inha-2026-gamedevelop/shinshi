@@ -44,10 +44,10 @@ namespace Shinshi.AI
         private const float DRAIN_SLOW_TO    = 2.2f;
         private const float DRAIN_SLOW_SPEED = 0.3f;
         private const float GRID_PEAK        = 0.8f;
+        private const float GRID_CLIP_SECONDS = 1.6f; // 팔을 올리고(0~0.8) 내리는(0.8~1.6) 클립 전체, 하드 격자 빔은 시전 전체에 고르게 편다
         private const float GRID_SLOW_FROM   = 0.8f;
         private const float GRID_SLOW_TO     = 1.6f;
         private const float BEAM_PAIR_SLOW   = 0.2f;
-        private const float GRID_SLOW_SPEED  = 0.064f;
         private const float SWEEP_PEAK       = 1.15f;
         private const float SWEEP_SLOW_FROM  = 1.15f;
         private const float SWEEP_SLOW_TO    = 1.85f;
@@ -113,7 +113,7 @@ namespace Shinshi.AI
                 { EWolbaekEventMotion.StarRotating, new WolbaekMotionEntry(DRAIN_STATE, DRAIN_PEAK, 0f, DRAIN_SLOW_FROM, DRAIN_SLOW_TO, DRAIN_SLOW_SPEED) },
                 { EWolbaekEventMotion.StarStage, new WolbaekMotionEntry(DRAIN_STATE, DRAIN_PEAK) },
                 { EWolbaekEventMotion.BeamPair, new WolbaekMotionEntry(GRID_STATE, GRID_PEAK, 0f, GRID_SLOW_FROM, GRID_SLOW_TO, BEAM_PAIR_SLOW) },
-                { EWolbaekEventMotion.GridBeam, new WolbaekMotionEntry(GRID_STATE, GRID_PEAK, 0f, GRID_SLOW_FROM, GRID_SLOW_TO, GRID_SLOW_SPEED) },
+                { EWolbaekEventMotion.GridBeam, new WolbaekMotionEntry(GRID_STATE, GRID_PEAK, fitClipSeconds: GRID_CLIP_SECONDS) },
                 { EWolbaekEventMotion.SweepHalfMoon, new WolbaekMotionEntry(SWEEP_STATE, SWEEP_PEAK) },
                 { EWolbaekEventMotion.ChainFan, new WolbaekMotionEntry(SWEEP_STATE, SWEEP_PEAK, 0f, SWEEP_SLOW_FROM, SWEEP_SLOW_TO, CHAIN_SLOW_SPEED) },
                 { EWolbaekEventMotion.TrackingArea, new WolbaekMotionEntry(AREA_STATE, AREA_PEAK) },

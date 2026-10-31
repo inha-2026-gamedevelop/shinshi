@@ -29,11 +29,16 @@ namespace Shinshi.AI
         // 초, 서버 정지 시각과 미리 잡은 정지 시각이 서버 한 틱 안이면 같은 정지로 본다. 다시 끊으면 섞기가 한 번 더 보인다
         private const double STOP_TIME_TOLERANCE = 1.0 / Constants.Network.SERVER_TICK_RATE;
 
+        private const float SHIFT_SMOOTH_SECONDS = 0.08f; // 초, 재생 중 모델 이동이 튀지 않게 따라가는 시간
+        private const float SHIFT_RETURN_SECONDS = 0.5f;  // 초, 모션이 끝나 Idle로 돌아갈 때 원위치로 천천히 돌아오는 시간
+        private const float SERVER_MOVE_DISTANCE = 0.15f; // m, 클립 재생 중 보스 위치가 이만큼 움직이면 서버가 옮기는 것으로 본다
+
         /****************************************
         *                Fields
         ****************************************/
 
         [SerializeField] private Animator _animator; // 무철 모델의 휴머노이드 Animator, AC_Mucheol 컨트롤러를 가진다
+        [SerializeField] private bool     _applyBodyShift = true; // 발 위치에 맞춰 모델을 옮긴다, 끄면 모델은 보스 위치에 고정된다
 
         private readonly List<MucheolMotionTrack> _tracks  = new List<MucheolMotionTrack>();
         private readonly List<double>             _strikes = new List<double>();
@@ -45,6 +50,12 @@ namespace Shinshi.AI
         private int                   _runIndex   = NO_DASH;
         private MucheolMotionTrack    _runTrack;
         private double                _stopAt     = double.NaN;
+        private Vector3               _modelBasePosition;
+        private Vector2               _shift;
+        private Vector2               _shiftVelocity;
+        private string                _shiftClip;
+        private Vector3               _clipStartPosition;
+        private bool                  _isServerDriven;
 
         /****************************************
         *              Properties
@@ -67,12 +78,14 @@ namespace Shinshi.AI
             }
 
             _animator.applyRootMotion = false;
-            _director = new MucheolMotionDirector(_animator);
+            _director          = new MucheolMotionDirector(_animator);
+            _modelBasePosition = _animator.transform.localPosition;
         }
 
         private void Update()
         {
             _director.Tick(ReadClock());
+            ApplyBodyShift();
         }
 
         // 비활성화된 동안 받은 사건은 없으므로 다시 켜질 때 남은 속도나 정지 자세가 이어지지 않게 비운다
@@ -467,6 +480,29 @@ namespace Shinshi.AI
             {
                 _tracks.Add(track);
             }
+        }
+
+        // 서버 위치는 건드리지 않고 모델만 보스 기준으로 옮긴다. 재생 중인 클립이 표에 없거나 Idle이면 0으로 돌아온다
+        // 서버가 이 클립 동안 보스를 직접 옮기면(위치가 클립 시작 위치에서 SERVER_MOVE_DISTANCE 넘게 벗어나면) 같은 이동이 두 번 더해지지 않게 그 클립이 끝날 때까지 보정을 끈다
+        private void ApplyBodyShift()
+        {
+            string clip = _director.PlayingClip;
+            if (clip != _shiftClip)
+            {
+                _shiftClip           = clip;
+                _clipStartPosition   = transform.position;
+                _isServerDriven      = false;
+            }
+            else if ((clip != null) && (!_isServerDriven))
+            {
+                Vector3 moved = transform.position - _clipStartPosition;
+                _isServerDriven = (new Vector2(moved.x, moved.z).sqrMagnitude > (SERVER_MOVE_DISTANCE * SERVER_MOVE_DISTANCE));
+            }
+
+            bool    isPlaying = _applyBodyShift && (clip != null) && (!_isServerDriven);
+            Vector2 target    = isPlaying ? MucheolBodyShiftCatalog.Sample(_director.PlayingClip, _director.ClipSeconds) : Vector2.zero;
+            _shift = Vector2.SmoothDamp(_shift, target, ref _shiftVelocity, isPlaying ? SHIFT_SMOOTH_SECONDS : SHIFT_RETURN_SECONDS);
+            _animator.transform.localPosition = _modelBasePosition + new Vector3(_shift.x, 0f, _shift.y);
         }
 
         private void ClearDashTracking()

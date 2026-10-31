@@ -56,6 +56,7 @@ namespace Shinshi.AI
         private const string WOLBAEK_BOSS_ID = "boss_wolbaek";
         private const float CHARGE_SOUND_LATE_SECONDS = 0.4f; // 이보다 늦게 받은 충돌과 그로기 소리는 내지 않는다
         private const int NO_CAST_ID = 0; // 공용 시전 번호의 없음 값(CombatIds.NONE)과 같다
+        private const float GRID_AXIS_COUNT = 2f; // 격자는 가로 줄 전체와 세로 줄 전체, 두 방향이 같은 간격으로 이어진다
         private EBossFlowState _lastFlowState = EBossFlowState.Combat;
 
         // 50% 성공 뒤 그로기는 서버 페이즈 세대가 성공 순간의 세대보다 커질 때 끝낸다. 성공 Rpc와 세대 SyncVar 중 무엇이 먼저 와도 같다
@@ -1545,7 +1546,7 @@ namespace Shinshi.AI
                     start.LineSpacing, start.CastStartServerTime, start.FirstStrikeSeconds, start.StrikeIntervalSeconds, start.AxisGapSeconds);
             }
 
-            BeginEventMotion(start.CastId, EWolbaekEventMotion.GridBeam, start.CastStartServerTime, start.FirstStrikeSeconds);
+            BeginEventMotion(start.CastId, EWolbaekEventMotion.GridBeam, start.CastStartServerTime, GridCastSeconds(in start));
 
             if (PatternVfx != null)
             {
@@ -1797,7 +1798,14 @@ namespace Shinshi.AI
                 start.LineSpacing, start.CastStartServerTime, start.FirstStrikeSeconds, start.StrikeIntervalSeconds, start.AxisGapSeconds,
                 snapshot.TelegraphedCount, snapshot.StruckCount, start.FirstLineId);
 
-            BeginEventMotion(start.CastId, EWolbaekEventMotion.GridBeam, start.CastStartServerTime, start.FirstStrikeSeconds);
+            BeginEventMotion(start.CastId, EWolbaekEventMotion.GridBeam, start.CastStartServerTime, GridCastSeconds(in start));
+        }
+
+        // 격자 모션은 팔 올림과 내림을 시전 전체에 반반으로 편다. 시전은 가로 줄 전체, 축 사이 틈, 세로 줄 전체의 마지막 타격에서 끝난다
+        private static float GridCastSeconds(in BossGridBeamStart start)
+        {
+            int lastLine = start.LineCount - 1;
+            return start.FirstStrikeSeconds + (GRID_AXIS_COUNT * lastLine * start.StrikeIntervalSeconds) + start.AxisGapSeconds;
         }
 
         public void OnChainFanRestored(in BossChainFanSnapshot snapshot)
