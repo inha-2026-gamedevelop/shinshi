@@ -45,6 +45,7 @@ namespace Shinshi.AI
         private const float  SHADE_EXTRA        = 90f;
         private const int    SHADE_STEPS        = 32;
         private const float  HALF               = 0.5f;
+        private const float  OUTLINE_WIDTH      = 0.25f;
         private const string ROOT_OBJECT_NAME   = "PrologueIllustration";
         private const string HINT_REVEAL        = "클릭하여 전체 표시";
         private const string HINT_NEXT          = "클릭하여 다음으로";
@@ -63,6 +64,7 @@ namespace Shinshi.AI
         private static readonly Color HINT_ON_DARK     = new Color(0.9f, 0.92f, 0.94f, 0.6f);
         private static readonly Color CLEAR_COLOR      = new Color(1f, 1f, 1f, 0f);
         private static readonly Color SHADE_COLOR      = new Color(0.94f, 0.89f, 0.78f, 0.9f);
+        private static readonly Color32 OUTLINE_COLOR  = new Color32(0, 0, 0, 255);
 
         private static readonly int PROGRESS_ID = Shader.PropertyToID("_Progress");
         private static readonly int SEED_ID     = Shader.PropertyToID("_Seed");
@@ -78,6 +80,7 @@ namespace Shinshi.AI
         private Coroutine       _inkRoutine   = null;
         private Coroutine       _closeRoutine = null;
         private bool            _closesWithTap = false;
+        private bool            _outlined      = false;
         private GameObject      _shadeObject  = null;
         private TextMeshProUGUI _bodyText;
         private TextMeshProUGUI _hintText;
@@ -120,6 +123,21 @@ namespace Shinshi.AI
             _bodyText.font = font;
             _hintText.font = font;
             _skipText.font = font;
+        }
+
+        /// <summary> 자막을 흰 글자에 검은 테두리로 바꾼다, 시험용이라 켜는 쪽이 따로 부른다. 이미 보이는 장에도 바로 적용한다 </summary>
+        public void UseOutlinedSubtitle()
+        {
+            _outlined = true;
+
+            if (_bodyText == null)
+            {
+                return;
+            }
+
+            _bodyText.outlineWidth = OUTLINE_WIDTH;
+            _bodyText.outlineColor = OUTLINE_COLOR;
+            _bodyText.color        = Color.white;
         }
 
         /// <summary> 장이 바뀔 때 쓸 먹 번짐 지우기 재질, 없으면 전환 없이 바로 바뀐다. 에셋을 고치지 않게 복사본을 만들어 쓴다 </summary>
@@ -303,7 +321,7 @@ namespace Shinshi.AI
             _illustration.enabled = page.Image != null;
 
             bool onArt = page.Image != null;
-            _bodyText.color = onArt ? TEXT_COLOR : TEXT_ON_DARK;
+            _bodyText.color = _outlined ? Color.white : (onArt ? TEXT_COLOR : TEXT_ON_DARK);
             _hintText.color = onArt ? HINT_COLOR : HINT_ON_DARK;
 
             if ((_inkMaterial != null) && (page.Image != null))

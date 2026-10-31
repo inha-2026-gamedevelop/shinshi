@@ -90,6 +90,15 @@ namespace Shinshi.AI
             }
         }
 
+        /// <summary> 일러스트 자막을 흰 글자·검은 테두리로 바꾼다, 시험 장치만 부른다 </summary>
+        public void UseOutlinedSubtitle()
+        {
+            if (_illustration != null)
+            {
+                _illustration.UseOutlinedSubtitle();
+            }
+        }
+
         private void Bind(IPrologueClientLink link, IPrologueLocalVitals vitals, PrologueIllustrationCatalogSO catalog)
         {
             // 서버 빌드이면 Awake에서 이미 꺼졌다. 화면을 만들지 않는다
