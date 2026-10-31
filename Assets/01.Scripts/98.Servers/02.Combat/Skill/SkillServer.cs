@@ -975,7 +975,7 @@ namespace Shinshi.Combat
             }
 
             _stacks = ArcherElementRules.AddStacks(_stacks, ArcherElementRules.GetStackGain(_catalog, element, _lastHitElement),
-                _catalog.ClassStackMax);
+                _catalog.ArcherStackMax);
             if (element != EArcherElement.None)
             {
                 _lastHitElement = element;
@@ -1104,7 +1104,7 @@ namespace Shinshi.Combat
             {
                 return;
             }
-            _stacks = Math.Min(_catalog.ClassStackMax, _stacks + amount);
+            _stacks = Math.Min(_catalog.MageknightStackMax, _stacks + amount);
         }
 
         // 후퇴 사격, 조준 반대 방향으로 시전 때 고정한 거리만큼 물러난다. 벽, 이동 불가 지형, 적 몸체 앞에서 멈추고 아군은 지나간다

@@ -110,7 +110,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(5, e.Effect.StackGain);
             Assert.AreEqual(10, r.Effect.StackGain);
             Assert.IsTrue(r.Effect.TeleportToEnd);
-            Assert.AreEqual(20, _catalog.ClassStackMax);
+            Assert.AreEqual(15, _catalog.MageknightStackMax);
 
             var errors = new List<string>();
             _catalog.Validate(errors);
@@ -135,12 +135,12 @@ namespace Shinshi.Tests
             Create(EPlayerClass.Mageknight);
             FakeCaster enemy = Enemy(Vector3.forward);
 
-            for (int i = 0; i < _catalog.ClassStackMax + 5; ++i)
+            for (int i = 0; i < _catalog.MageknightStackMax + 5; ++i)
             {
                 Swing(enemy);
             }
 
-            Assert.AreEqual(_catalog.ClassStackMax, _server.ClassStacks);
+            Assert.AreEqual(_catalog.MageknightStackMax, _server.ClassStacks);
         }
 
         [Test]
@@ -185,9 +185,9 @@ namespace Shinshi.Tests
             Tick(START_TIME + 0.35);
             Tick(START_TIME + 1.0);
 
-            // 기본 1.0A + 10스택 * 0.2A = 3.0A
-            Assert.AreEqual(300f, before - first.Health, TOLERANCE);
-            Assert.AreEqual(300f, TARGET_HEALTH - second.Health, TOLERANCE);
+            // 기본 0.85A + 10스택 * 0.17A = 2.55A
+            Assert.AreEqual(255f, before - first.Health, TOLERANCE);
+            Assert.AreEqual(255f, TARGET_HEALTH - second.Health, TOLERANCE);
         }
 
         [Test]
@@ -200,7 +200,7 @@ namespace Shinshi.Tests
             Tick(START_TIME + 0.35);
             Tick(START_TIME + 1.0);
 
-            Assert.AreEqual(100f, TARGET_HEALTH - enemy.Health, TOLERANCE);
+            Assert.AreEqual(85f, TARGET_HEALTH - enemy.Health, TOLERANCE);
         }
 
         [Test]

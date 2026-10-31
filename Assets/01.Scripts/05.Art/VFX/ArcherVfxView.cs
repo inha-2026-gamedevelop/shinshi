@@ -293,7 +293,7 @@ namespace Shinshi.Art
                 }
             }
 
-            int stackMax = GameDB.Skills.ClassStackMax;
+            int stackMax = GameDB.Skills.ArcherStackMax;
             bool fast = (stackMax > 0) && (_combat.ClassStacks >= stackMax);
             if (fast != _auraFast)
             {

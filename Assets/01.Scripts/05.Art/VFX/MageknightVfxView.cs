@@ -203,8 +203,8 @@ namespace Shinshi.Art
 
         private void UpdateFullStackAura()
         {
-            bool full = GameDB.IsInitialized && (GameDB.Skills.ClassStackMax > 0)
-                && (_combat.ClassStacks >= GameDB.Skills.ClassStackMax)
+            bool full = GameDB.IsInitialized && (GameDB.Skills.MageknightStackMax > 0)
+                && (_combat.ClassStacks >= GameDB.Skills.MageknightStackMax)
                 && (_combat.LifeState == EParticipantLifeState.Alive)
                 && (VfxVisibility.Allows(_combat.isOwned));
             if ((!full) || (_fullStackAuraPrefab == null))

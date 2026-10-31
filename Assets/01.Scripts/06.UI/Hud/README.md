@@ -10,7 +10,7 @@ Editor Play Mode rendering, text overflow, centered Value positions and inactive
 
 # Class stack display (temporary)
 
-Mageknight and Archer stacks (`PlayerCombatState.ClassStacks`, max `SkillCatalogSO.ClassStackMax`) are shown as text until stack icons exist. `HudPlayerStatusView` creates a `ClassStackDisplay` label above the HP track at runtime (ASCII, because the HUD font has no Korean glyphs), and `NetworkOverlayView` draws a Korean stack line above each overhead nameplate. Archers also show the current element. Other classes show nothing. Skills with `RequiredStacks` (Archer R) are dimmed by `HudSkillSlotView.SetLocked` and the input reader does not send them until the replicated stacks are enough; the server still rejects on its own count. Play Mode rendering is not verified.
+Mageknight and Archer stacks (`PlayerCombatState.ClassStacks`, max `SkillCatalogSO.GetStackMax(playerClass)`) are shown as text until stack icons exist. `HudPlayerStatusView` creates a `ClassStackDisplay` label above the HP track at runtime (ASCII, because the HUD font has no Korean glyphs), and `NetworkOverlayView` draws a Korean stack line above each overhead nameplate. Archers also show the current element. Other classes show nothing. Skills with `RequiredStacks` (Archer R) are dimmed by `HudSkillSlotView.SetLocked` and the input reader does not send them until the replicated stacks are enough; the server still rejects on its own count. Play Mode rendering is not verified.
 
 # Archer overhead element
 

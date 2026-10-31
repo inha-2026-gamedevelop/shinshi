@@ -96,7 +96,7 @@ namespace Shinshi.Tests
             Assert.IsTrue(burst.IsSignature);
             Assert.AreEqual(ESkillAimMode.Point, burst.Area.AimMode);
             Assert.AreEqual(ESkillShape.Circle, burst.Area.Shape);
-            Assert.AreEqual(_catalog.ClassStackMax, burst.Effect.RequiredStacks);
+            Assert.AreEqual(_catalog.ArcherStackMax, burst.Effect.RequiredStacks);
 
             var errors = new System.Collections.Generic.List<string>();
             _catalog.Validate(errors);
@@ -195,7 +195,7 @@ namespace Shinshi.Tests
                 _server.OnArrowHit((i % 2 == 0) ? EArcherElement.Ice : EArcherElement.Wind, enemy, in hit, START_TIME);
             }
 
-            Assert.AreEqual(_catalog.ClassStackMax, _server.ClassStacks);
+            Assert.AreEqual(_catalog.ArcherStackMax, _server.ClassStacks);
 
             _server.OnOwnerDeath();
             Assert.AreEqual(0, _server.ClassStacks);
@@ -236,7 +236,7 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, center.DamageCalls, "준비 0.7초 전에는 터지지 않는다");
 
             Tick(START_TIME + 0.75);
-            float expected = ATTACK_POWER * 8f;
+            float expected = ATTACK_POWER * 5.6f;
             Assert.AreEqual(1, center.DamageCalls);
             Assert.AreEqual(TARGET_HEALTH - expected, center.Health, TOLERANCE);
             Assert.AreEqual(1, edge.DamageCalls);
@@ -254,7 +254,7 @@ namespace Shinshi.Tests
 
             Assert.IsFalse(cast);
             Assert.AreEqual(ERejectReason.OutOfRange, reason);
-            Assert.AreEqual(_catalog.ClassStackMax, _server.ClassStacks);
+            Assert.AreEqual(_catalog.ArcherStackMax, _server.ClassStacks);
         }
 
         [Test]
@@ -352,12 +352,12 @@ namespace Shinshi.Tests
         {
             FakeArcher dummy = Enemy(new Vector3(50f, 0f, 50f));
             DamageResult hit = DamageResult.Applied(10f, false, false);
-            for (int i = 0; i < _catalog.ClassStackMax; ++i)
+            for (int i = 0; i < _catalog.ArcherStackMax; ++i)
             {
                 _server.OnArrowHit(EArcherElement.Ice, dummy, in hit, START_TIME);
             }
 
-            Assert.AreEqual(_catalog.ClassStackMax, _server.ClassStacks);
+            Assert.AreEqual(_catalog.ArcherStackMax, _server.ClassStacks);
         }
 
         private void SetElement(int slot, double at = START_TIME)
