@@ -39,7 +39,12 @@ namespace Shinshi.Tests
         private const int    STATUS_CONFLICT = 409;
         private const int    STATUS_DOWN     = 503;
 
+        private const int COMPLETION_BATCH_REPETITIONS = 30;
+        private const int SNAPSHOTS_PER_BATCH          = 2;
+
         private double                _now;
+        private int                   _expectedCompletions;
+        private int                   _deliveredCompletions;
         private FakeBackendTransport  _transport;
         private BackendGateway        _gateway;
         private FakeSocialAudience    _audience;
@@ -53,7 +58,10 @@ namespace Shinshi.Tests
         [SetUp]
         public void SetUp()
         {
-            _now       = 0.0;
+            _now                  = 0.0;
+            _expectedCompletions  = 0;
+            _deliveredCompletions = 0;
+
             _respond   = request => Task.FromResult(new BackendTransportResult(STATUS_DOWN, null));
             _transport = new FakeBackendTransport((request, token) => _respond(request));
             _gateway   = new BackendGateway(_transport, ReadClock, FakeBackendTransport.ImmediateDelay(new ConcurrentQueue<TimeSpan>()),
@@ -113,6 +121,43 @@ namespace Shinshi.Tests
             Assert.That(results[0].Reason, Is.EqualTo(ERejectReason.None));
             Assert.That(_audience.All<SocialSnapshotMessage>(SENDER).Count, Is.EqualTo(1));
             Assert.That(relay.HasPendingWrite(SENDER), Is.False);
+        }
+
+        [Test]
+        public void Complete_TwoQueuedSnapshotsRepeated_CarriesExtraDeliveryToNextWait()
+        {
+            for (int iteration = 0; iteration < COMPLETION_BATCH_REPETITIONS; ++iteration)
+            {
+                // 503 누적으로 회로가 열리지 않게 게이트웨이와 중계만 새로 만든다. Complete의 누적 기대·전달 수는 유지한다.
+                _gateway.Dispose();
+                _transport = new FakeBackendTransport((request, token) => _respond(request));
+                _gateway = new BackendGateway(_transport, ReadClock,
+                    FakeBackendTransport.ImmediateDelay(new ConcurrentQueue<TimeSpan>()), null, null);
+                _audience.Clear();
+                var relay = new SocialRelayServer(_gateway, _audience, EServerRole.Town, ReadClock);
+
+                relay.Handle(SENDER, ACTOR_ID, ACTOR_NAME, Request(ESocialAction.Snapshot));
+                relay.Handle(RECEIVER, TARGET_ID, TARGET_NAME, Request(ESocialAction.Snapshot));
+                FakeBackendTransport.WaitForCompleted(_gateway, SNAPSHOTS_PER_BATCH);
+
+                Complete(1);
+                Assert.That(_gateway.CompletedCount, Is.EqualTo(0));
+                Complete(1);
+                Assert.That(_deliveredCompletions, Is.EqualTo((iteration + 1) * SNAPSHOTS_PER_BATCH));
+
+                foreach (int participantId in new[] { SENDER, RECEIVER })
+                {
+                    List<SocialResultMessage> results = _audience.All<SocialResultMessage>(participantId);
+                    Assert.That(results.Count, Is.EqualTo(1));
+                    Assert.That(results[0].Action, Is.EqualTo(ESocialAction.Snapshot));
+                    Assert.That(results[0].RequestId, Is.EqualTo(Guid.Empty));
+                    Assert.That(results[0].Reason, Is.EqualTo(ERejectReason.BackendUnavailable));
+                    Assert.That(_audience.All<SocialSnapshotMessage>(participantId), Is.Empty);
+                }
+
+                Assert.That(_transport.Calls, Is.EqualTo(SNAPSHOTS_PER_BATCH));
+                Assert.That(relay.PendingCount, Is.EqualTo(0));
+            }
         }
 
         [Test]
@@ -392,8 +437,13 @@ namespace Shinshi.Tests
 
         private void Complete(int count)
         {
-            FakeBackendTransport.WaitForCompleted(_gateway, count);
-            _gateway.Pump();
+            _expectedCompletions += count;
+            // 쓰기 응답이 시작한 스냅샷도 같은 Pump에서 끝날 수 있다. 이미 전달한 결과는 다음 대기 몫으로 남긴다.
+            while (_deliveredCompletions < _expectedCompletions)
+            {
+                FakeBackendTransport.WaitForCompleted(_gateway, 1);
+                _deliveredCompletions += _gateway.Pump();
+            }
         }
 
         private static SocialRequestMessage Request(ESocialAction action, string name = null)
