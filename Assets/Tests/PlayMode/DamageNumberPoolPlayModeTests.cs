@@ -56,6 +56,37 @@ namespace Shinshi.Tests
         ****************************************/
 
         [UnityTest]
+        public IEnumerator Show_BrushDigits_CriticalAloneShowsInkAndYellow()
+        {
+            var normal = new DamageFeedback(EPOCH, 1, 2, Vector3.zero, 102f, false, NOW);
+            var critical = new DamageFeedback(EPOCH, 2, 2, Vector3.zero, 102f, true, NOW);
+            Assert.IsTrue(_pool.Show(in normal));
+            Assert.IsTrue(_pool.Show(in critical));
+            var slots = (System.Array)typeof(DamageNumberPool).GetField("_slots", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_pool);
+            object first = slots.GetValue(0);
+            object second = slots.GetValue(1);
+            var normalInk = (UnityEngine.UI.RawImage)first.GetType().GetField("CriticalInk").GetValue(first);
+            var criticalInk = (UnityEngine.UI.RawImage)second.GetType().GetField("CriticalInk").GetValue(second);
+            var digits = (UnityEngine.UI.RawImage[])second.GetType().GetField("Digits").GetValue(second);
+            Assert.IsFalse(normalInk.enabled);
+            Assert.IsTrue(criticalInk.enabled);
+            Assert.IsTrue(digits[0].enabled && digits[1].enabled && digits[2].enabled);
+            Assert.IsFalse(digits[3].enabled);
+            Assert.That(digits[0].uvRect.x, Is.EqualTo(0.4f).Within(0.001f));
+            Assert.That(digits[1].uvRect.x, Is.EqualTo(0f).Within(0.001f));
+            Assert.That(digits[2].uvRect.x, Is.EqualTo(0.2f).Within(0.001f));
+            Seek(second, 0.2f);
+            Assert.That(digits[0].color.r, Is.GreaterThan(digits[0].color.b));
+            _pool.Clear();
+            var largeCritical = new DamageFeedback(EPOCH, 3, 2, Vector3.zero, 1e12f, true, NOW);
+            Assert.IsTrue(_pool.Show(in largeCritical));
+            Assert.IsTrue(normalInk.enabled);
+            var fallback = (Behaviour)first.GetType().GetField("Label").GetValue(first);
+            Assert.IsTrue(fallback.enabled);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator Show_BeyondCapacity_DropsDisplayAndExpiresWithoutGrowing()
         {
             int children = _root.GetComponentsInChildren<RectTransform>(true).Length;
@@ -68,7 +99,8 @@ namespace Shinshi.Tests
             Assert.IsFalse(_pool.Show(in overflow));
             Assert.AreEqual(_pool.Capacity, _pool.ActiveCount);
             Assert.AreEqual(children, _root.GetComponentsInChildren<RectTransform>(true).Length);
-            yield return new WaitForSecondsRealtime(1f);
+            yield return new WaitForSecondsRealtime(1.5f);
+            yield return null;
             Assert.AreEqual(0, _pool.ActiveCount);
             Assert.IsFalse(_pool.enabled);
             Assert.AreEqual(children, _root.GetComponentsInChildren<RectTransform>(true).Length);
@@ -200,7 +232,7 @@ namespace Shinshi.Tests
             RectTransform normalRect = (RectTransform)first.GetType().GetField("LabelRect").GetValue(first);
             RectTransform criticalRect = (RectTransform)second.GetType().GetField("LabelRect").GetValue(second);
             CanvasGroup group = (CanvasGroup)first.GetType().GetField("Group").GetValue(first);
-            Assert.That(normalRect.localScale.x, Is.EqualTo(0.65f).Within(0.001f));
+            Assert.That(normalRect.localScale.x, Is.EqualTo(0.3f).Within(0.001f));
             Seek(first, 0.08f);
             Seek(second, 0.08f);
             Assert.That(normalRect.localScale.x, Is.GreaterThan(1.3f));
@@ -216,7 +248,7 @@ namespace Shinshi.Tests
             _pool.Clear();
             Assert.IsTrue(_pool.Show(in normal));
             Assert.That(normalRect.anchoredPosition, Is.EqualTo(Vector2.zero));
-            Assert.That(normalRect.localScale.x, Is.EqualTo(0.65f).Within(0.001f));
+            Assert.That(normalRect.localScale.x, Is.EqualTo(0.3f).Within(0.001f));
             Assert.That(group.alpha, Is.EqualTo(1f).Within(0.001f));
             _pool.Clear();
             yield return null;
