@@ -61,6 +61,13 @@ namespace Shinshi.UI
         private readonly Vector3[] _corners = new Vector3[CORNER_COUNT];
 
         /****************************************
+        *              Properties
+        ****************************************/
+
+        /// <summary> 참이면 Esc로 메뉴를 열고 닫지 않는다. Esc를 다른 화면이 쓰는 동안만 그 화면이 켜고 끈다, 평소는 거짓이다 </summary>
+        public static bool IsEscapeSuppressed { get; set; } = false;
+
+        /****************************************
         *              Unity Event
         ****************************************/
 
@@ -110,7 +117,7 @@ namespace Shinshi.UI
         private void Update()
         {
             // 라우터가 있으면 Esc는 라우터의 창 닫기 처리기로 받는다. 없을 때만 직접 본다
-            if ((_router == null) && (Input.GetKeyDown(KeyCode.Escape)))
+            if ((_router == null) && (!IsEscapeSuppressed) && (Input.GetKeyDown(KeyCode.Escape)))
             {
                 Toggle();
                 return;
@@ -419,6 +426,11 @@ namespace Shinshi.UI
 
         private bool OnEscape()
         {
+            if (IsEscapeSuppressed)
+            {
+                return false;
+            }
+
             Toggle();
             return true;
         }

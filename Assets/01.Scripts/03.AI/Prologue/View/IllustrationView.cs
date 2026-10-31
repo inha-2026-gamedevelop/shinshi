@@ -12,6 +12,7 @@ using TMPro;
 
 // 프로젝트 내부
 using Shinshi.Common;
+using Shinshi.UI;
 
 namespace Shinshi.AI
 {
@@ -33,10 +34,19 @@ namespace Shinshi.AI
         private const float  HINT_FONT_SIZE     = 22f;
         private const float  HINT_HEIGHT        = 36f;
         private const float  HINT_MARGIN        = 24f;
-        private const float  SKIP_WIDTH         = 300f;
+        private const float  SKIP_WIDTH         = 200f;
         private const float  SKIP_HEIGHT        = 56f;
         private const float  SKIP_MARGIN        = 32f;
         private const float  SKIP_FONT_SIZE     = 24f;
+        private const float  KEYCAP_WIDTH       = 64f;
+        private const float  KEYCAP_HEIGHT      = 44f;
+        private const float  KEYCAP_LABEL_GAP   = 14f;
+        private const float  KEYCAP_FONT_SIZE   = 18f;
+        private const int    KEYCAP_TEX_WIDTH   = 128;
+        private const int    KEYCAP_TEX_HEIGHT  = 88;
+        private const float  KEYCAP_RADIUS      = 20f;
+        private const float  KEYCAP_LINE        = 5f;
+        private const float  KEYCAP_BASE_ALPHA  = 0.35f;
         private const float  CHARS_PER_SECOND   = 30f;
         private const int    INK_COLOR_COUNT    = 2;
         private const float  INK_SECONDS        = 2.4f;
@@ -51,6 +61,8 @@ namespace Shinshi.AI
         private const string HINT_NEXT          = "클릭하여 다음으로";
         private const string HINT_CLOSE         = "클릭하여 닫기";
         private const string SKIP_LABEL         = "건너뛰기";
+        private const string KEYCAP_LABEL       = "ESC";
+        private const float  SKIP_HOLD_SECONDS  = 1.2f;
 
         // 일러스트는 아래쪽이 종이색으로 번지게 만들어져 있어서 자막은 바탕 없이 그 종이색 위에 먹색 글자로 바로 얹는다.
         // 그림이 아직 없는 임시 상태는 바탕이 어두우므로 그때만 밝은 글자를 쓴다
@@ -93,6 +105,14 @@ namespace Shinshi.AI
         private TextMeshProUGUI _hintText;
         private TextMeshProUGUI _skipText;
         private GameObject      _skipButton;
+        private AspectRatioFitter _skipFit;
+        private TextMeshProUGUI _keycapText;
+        private Image           _keycapBase;
+        private Image           _skipRing;
+        private Sprite          _keycapSprite  = null;
+        private Texture2D       _keycapTexture = null;
+        private float           _skipHeld   = 0f;
+        private bool            _skipHolding = false;
 
         private IReadOnlyList<IllustrationPage> _pages     = null;
         private IllustrationSequence            _sequence  = null;
@@ -130,6 +150,7 @@ namespace Shinshi.AI
             _bodyText.font = font;
             _hintText.font = font;
             _skipText.font = font;
+            _keycapText.font = font;
         }
 
         /// <summary> 자막 본문만 다른 글꼴로 바꾼다, 안내 글자와 건너뛰기 단추는 그대로 둔다 </summary>
@@ -210,8 +231,13 @@ namespace Shinshi.AI
             _completed      = false;
             _closesWithTap  = (startRevealed) && (pages.Count == 1);
 
-            _skipText.SetText(string.IsNullOrEmpty(skipLabel) ? SKIP_LABEL : skipLabel);
+            // 구간별 글자는 쓰지 않고 모든 구간이 같은 글자를 쓴다. skipLabel은 호출부 호환을 위해 받기만 한다
+            _skipText.SetText(SKIP_LABEL);
             _skipButton.SetActive(allowSkip);
+            ResetSkipHold();
+
+            // 삽화가 떠 있는 동안 Esc는 건너뛰기용이다. 시스템 메뉴가 같이 열리지 않게 막고, 끝나거나 꺼질 때 푼다
+            HudMenuDropdown.IsEscapeSuppressed = true;
             gameObject.SetActive(true);
             CompleteInk();
             _inkCount = 0;
@@ -309,8 +335,55 @@ namespace Shinshi.AI
             gameObject.SetActive(false);
         }
 
+        private void Update()
+        {
+            if ((_sequence == null) || (_completed) || (!_skipButton.activeSelf))
+            {
+                return;
+            }
+
+            // 누르기 시작한 키만 센다. 삽화가 뜨기 전부터 눌려 있던 Esc로 바로 건너뛰지 않게 한다
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                _skipHolding = true;
+            }
+
+            if ((!_skipHolding) || (!Input.GetKey(KeyCode.Escape)))
+            {
+                ResetSkipHold();
+                return;
+            }
+
+            // 일시정지 중에도 흘러야 하므로 실제 시간으로 센다
+            _skipHeld += Time.unscaledDeltaTime;
+            _skipRing.fillAmount = Mathf.Clamp01(_skipHeld / SKIP_HOLD_SECONDS);
+
+            if (_skipHeld >= SKIP_HOLD_SECONDS)
+            {
+                ResetSkipHold();
+                HandleSkip();
+            }
+        }
+
+        private void ResetSkipHold()
+        {
+            _skipHeld    = 0f;
+            _skipHolding = false;
+            if (_skipRing != null)
+            {
+                _skipRing.fillAmount = 0f;
+            }
+        }
+
+        private void OnDisable()
+        {
+            HudMenuDropdown.IsEscapeSuppressed = false;
+        }
+
         private void OnDestroy()
         {
+            HudMenuDropdown.IsEscapeSuppressed = false;
+
             if (_inkMaterial != null)
             {
                 Destroy(_inkMaterial);
@@ -334,6 +407,18 @@ namespace Shinshi.AI
                 Destroy(_shadeTexture);
                 _shadeTexture = null;
             }
+
+            if (_keycapSprite != null)
+            {
+                Destroy(_keycapSprite);
+                _keycapSprite = null;
+            }
+
+            if (_keycapTexture != null)
+            {
+                Destroy(_keycapTexture);
+                _keycapTexture = null;
+            }
         }
 
         private void Complete()
@@ -341,6 +426,7 @@ namespace Shinshi.AI
             StopTyping();
             CompleteInk();
             _completed = true;
+            HudMenuDropdown.IsEscapeSuppressed = false;
             Finished?.Invoke();
         }
 
@@ -355,9 +441,13 @@ namespace Shinshi.AI
             _illustration.sprite  = page.Image;
             _illustration.enabled = page.Image != null;
 
+            // 건너뛰기 틀을 이 그림이 보이는 영역에 맞춘다. 그림이 없으면 기본 가로세로 비율을 쓴다
+            _skipFit.aspectRatio = (page.Image != null) ? (page.Image.rect.width / page.Image.rect.height) : MATTE_ASPECT;
+
             bool onArt = page.Image != null;
             _bodyText.color = _outlined ? Color.white : (onArt ? TEXT_COLOR : TEXT_ON_DARK);
             _hintText.color = onArt ? HINT_COLOR : HINT_ON_DARK;
+            ApplySkipColors(onArt);
 
             if ((_inkMaterial != null) && (page.Image != null))
             {
@@ -594,15 +684,105 @@ namespace Shinshi.AI
             _hintText.rectTransform.offsetMin = new Vector2(TEXT_MARGIN, HINT_MARGIN);
             _hintText.rectTransform.offsetMax = new Vector2(-TEXT_MARGIN, HINT_MARGIN + HINT_HEIGHT);
 
-            // 건너뛰기 단추는 다른 창과 같은 단추 스타일이다
-            _skipText = PrologueUi.CreateButton("Skip", transform, SKIP_FONT_SIZE, false, HandleSkip, out RectTransform skip);
+            // 건너뛰기는 ESC 키캡과 글자다. 키캡 윤곽선이 꾹 누르는 동안 돌아가며 채워지고, 영역 전체가 클릭도 받는다
+            // 그림은 비율을 지켜 화면 안에 맞춰지므로 화면 모서리에 두면 검은 띠 위로 밀려난다. 그림이 보이는 영역을 따라가는 틀 안에 둔다
+            RectTransform skipArea = PrologueUi.CreateImage("SkipArea", transform, CLEAR_COLOR, false);
+            PrologueUi.Stretch(skipArea);
+            _skipFit              = skipArea.gameObject.AddComponent<AspectRatioFitter>();
+            _skipFit.aspectMode   = AspectRatioFitter.AspectMode.FitInParent;
+            _skipFit.aspectRatio  = MATTE_ASPECT;
+
+            RectTransform skip = PrologueUi.CreateImage("Skip", skipArea, CLEAR_COLOR, true);
             skip.anchorMin        = new Vector2(1f, 1f);
             skip.anchorMax        = new Vector2(1f, 1f);
             skip.pivot            = new Vector2(1f, 1f);
             skip.anchoredPosition = new Vector2(-SKIP_MARGIN, -SKIP_MARGIN);
             skip.sizeDelta        = new Vector2(SKIP_WIDTH, SKIP_HEIGHT);
+            skip.gameObject.AddComponent<Button>().onClick.AddListener(HandleSkip);
             _skipButton           = skip.gameObject;
+
+            RectTransform keycap = PrologueUi.CreateImage("Keycap", skip, CLEAR_COLOR, false);
+            keycap.anchorMin        = new Vector2(0f, HALF);
+            keycap.anchorMax        = new Vector2(0f, HALF);
+            keycap.pivot            = new Vector2(0f, HALF);
+            keycap.anchoredPosition = Vector2.zero;
+            keycap.sizeDelta        = new Vector2(KEYCAP_WIDTH, KEYCAP_HEIGHT);
+
+            _keycapBase = keycap.GetComponent<Image>();
+            _keycapBase.sprite = GetKeycapSprite();
+
+            RectTransform ring = PrologueUi.CreateImage("KeycapRing", keycap, Color.white, false);
+            PrologueUi.Stretch(ring);
+            _skipRing                = ring.GetComponent<Image>();
+            _skipRing.sprite         = GetKeycapSprite();
+            _skipRing.type           = Image.Type.Filled;
+            _skipRing.fillMethod     = Image.FillMethod.Radial360;
+            _skipRing.fillOrigin     = (int)Image.Origin360.Top;
+            _skipRing.fillClockwise  = true;
+            _skipRing.fillAmount     = 0f;
+
+            _keycapText = PrologueUi.CreateText("KeycapText", keycap, KEYCAP_FONT_SIZE, TEXT_COLOR, TextAlignmentOptions.Center);
+            PrologueUi.Stretch(_keycapText.rectTransform);
+            _keycapText.fontStyle = FontStyles.Bold;
+            _keycapText.SetText(KEYCAP_LABEL);
+
+            _skipText = PrologueUi.CreateText("SkipLabel", skip, SKIP_FONT_SIZE, TEXT_COLOR, TextAlignmentOptions.MidlineLeft);
+            _skipText.rectTransform.anchorMin = Vector2.zero;
+            _skipText.rectTransform.anchorMax = Vector2.one;
+            _skipText.rectTransform.offsetMin = new Vector2(KEYCAP_WIDTH + KEYCAP_LABEL_GAP, 0f);
+            _skipText.rectTransform.offsetMax = Vector2.zero;
+            _skipText.fontStyle = FontStyles.Bold;
             _skipText.SetText(SKIP_LABEL);
+
+            ApplySkipColors(true);
+        }
+
+        // 밝은 그림 위에서는 먹색, 어두운 바탕 위에서는 밝은 색으로 키캡과 글자를 바꾼다
+        private void ApplySkipColors(bool onArt)
+        {
+            Color main = onArt ? TEXT_COLOR : TEXT_ON_DARK;
+            Color dim  = new Color(main.r, main.g, main.b, KEYCAP_BASE_ALPHA);
+
+            _keycapBase.color = dim;
+            _skipRing.color   = main;
+            _keycapText.color = main;
+            _skipText.color   = main;
+        }
+
+        // 둥근 사각형 윤곽선만 있는 흰 스프라이트를 한 번만 만든다. 색은 Image에서 입히고, 채우기로 진행을 보인다
+        private Sprite GetKeycapSprite()
+        {
+            if (_keycapSprite == null)
+            {
+                _keycapTexture = new Texture2D(KEYCAP_TEX_WIDTH, KEYCAP_TEX_HEIGHT, TextureFormat.RGBA32, false)
+                {
+                    wrapMode   = TextureWrapMode.Clamp,
+                    filterMode = FilterMode.Bilinear,
+                    hideFlags  = HideFlags.HideAndDontSave
+                };
+
+                // 모서리가 둥근 사각형까지의 부호 있는 거리. 바깥이 양수이고, 0에서 선 두께 안쪽까지가 윤곽선이다
+                float halfW = KEYCAP_TEX_WIDTH * HALF;
+                float halfH = KEYCAP_TEX_HEIGHT * HALF;
+                for (int y = 0; y < KEYCAP_TEX_HEIGHT; ++y)
+                {
+                    for (int x = 0; x < KEYCAP_TEX_WIDTH; ++x)
+                    {
+                        float px = Mathf.Abs(x + HALF - halfW) - (halfW - KEYCAP_RADIUS);
+                        float py = Mathf.Abs(y + HALF - halfH) - (halfH - KEYCAP_RADIUS);
+                        float outside = new Vector2(Mathf.Max(px, 0f), Mathf.Max(py, 0f)).magnitude;
+                        float d = outside + Mathf.Min(Mathf.Max(px, py), 0f) - KEYCAP_RADIUS;
+
+                        float alpha = Mathf.Min(Mathf.Clamp01(HALF - d), Mathf.Clamp01(d + KEYCAP_LINE + HALF));
+                        _keycapTexture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                    }
+                }
+
+                _keycapTexture.Apply();
+                _keycapSprite = Sprite.Create(_keycapTexture, new Rect(0f, 0f, KEYCAP_TEX_WIDTH, KEYCAP_TEX_HEIGHT), new Vector2(HALF, HALF));
+            }
+
+            return _keycapSprite;
         }
 
     }
