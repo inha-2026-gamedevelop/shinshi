@@ -50,6 +50,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.MucheolMotionView
   _animator: {fileID: 8496769934756146315}
+  _applyBodyShift: 0
 --- !u!114 &2679762219380379305
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -304,7 +305,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1570509298993749243, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1036149395291438392}
   m_SourcePrefab: {fileID: 100100000, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
 --- !u!4 &1178881822253265983 stripped
 Transform:
@@ -316,6 +320,30 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2197828423169607233, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
   m_PrefabInstance: {fileID: 4434632374213292208}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2900717579042974795 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1570509298993749243, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}
+  m_PrefabInstance: {fileID: 4434632374213292208}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1036149395291438392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2900717579042974795}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b203ab4787570044b77029e2c748706, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.MucheolFootLock
+  _plantHeight: 0.3
+  _releaseHeight: 0.42
+  _plantSpeed: 0.8
+  _maxStretch: 1.2
+  _minLockSeconds: 0.4
+  _minFreeSeconds: 0.2
+  _moveSpeed: 4
 --- !u!4 &4958927901640931342 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8744684261413128382, guid: 255e3f84726a418408c5bbcc0ef3e7ac, type: 3}

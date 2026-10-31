@@ -56,6 +56,7 @@ namespace Shinshi.AI
         private int    _playingIndex = NO_TRACK;
         private string _playingState;
         private string _playingClip;
+        private float  _clipSeconds;
         private bool   _isBlocked;
 
         /****************************************
@@ -76,6 +77,12 @@ namespace Shinshi.AI
 
         /// <summary> 지금 재생 중인 컨트롤러 상태 이름, Idle이면 null이다 </summary>
         public string PlayingState => _playingState;
+
+        /// <summary> 지금 재생 중인 클립 이름, Idle이면 null이다 </summary>
+        public string PlayingClip => _playingClip;
+
+        /// <summary> 마지막 Tick이 계산한 클립 시간 </summary>
+        public float ClipSeconds => _clipSeconds;
 
         /****************************************
         *                Methods
@@ -332,6 +339,7 @@ namespace Shinshi.AI
 
             MucheolMotionTrack track = _tracks[index];
             MucheolMotionPlan.Sample(track, now, out float clipSeconds, out float speed);
+            _clipSeconds = clipSeconds;
 
             if (index != _playingIndex)
             {
