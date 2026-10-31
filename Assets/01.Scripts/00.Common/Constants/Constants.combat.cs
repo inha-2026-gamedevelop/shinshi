@@ -102,6 +102,13 @@ namespace Shinshi.Common
             // TODO(기웅): 기획 미정, 보스 몸체 반경 임시값(m). 보스 정의 데이터에 몸체 크기가 생기면 그 값을 쓴다
             public const float BOSS_BODY_RADIUS      = 2f;
 
+            // 보스 정의에 밀침 반경이 비어 있을 때 쓰는 값(m). 판정용 BOSS_BODY_RADIUS와 따로 둔다.
+            // 막히는 거리(밀침 반경 + 플레이어 반경)가 근접 기본 공격 사거리보다 작아야 근접 직업이 닿는다
+            public const float BOSS_BODY_PUSH_RADIUS_DEFAULT = 1f;
+
+            // 보스 돌진에 겹친 플레이어를 돌진 방향의 옆으로 미는 거리(m). 민 뒤에도 몸통 안이면 틱 끝 밀어내기가 바깥에 놓는다
+            public const float BOSS_DASH_SIDE_PUSH_DISTANCE = 2f;
+
             // 몸체에 막히는지 볼 대상을 찾을 때 이동 거리에 더하는 여유(m). 가장 큰 몸체(보스) 반경보다 커야 한다
             public const float MAX_BODY_RADIUS = 4f;
 

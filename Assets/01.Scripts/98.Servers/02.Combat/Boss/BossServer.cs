@@ -62,7 +62,7 @@ namespace Shinshi.Combat
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
         IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
         IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp, IBossEventRelayHost, IBossTargetHitListener,
-        IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget
+        IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget, IBossBodyBlocker
     {
         /****************************************
         *                Fields
@@ -94,6 +94,7 @@ namespace Shinshi.Combat
         private readonly float                 _arenaRadius;
         private readonly float                 _maxHealth;
         private readonly float                 _defense;
+        private readonly float                 _bodyPushRadius; // m, 플레이어를 밀어내는 몸통 반경, 판정용 BodyRadius와 따로 둔다
         private readonly IBossWallQuery        _terrain;
         private readonly IBossStandQuery       _standQuery;   // 지형이 겹침 검사를 지원할 때만 있다
         private readonly ICombatTargetQuery    _targets;
@@ -189,6 +190,12 @@ namespace Shinshi.Combat
         public Vector3               Position      => _position;
         public Vector3               Forward       => _forward;
         public float                 BodyRadius    => Constants.Combat.BOSS_BODY_RADIUS;
+
+        /// <summary> 플레이어를 밀어내는 몸통 반경(m), 보스 정의에서 읽는다 </summary>
+        public float BodyPushRadius => _bodyPushRadius;
+
+        // 등장 대기, 그로기, 전환 컷신 중에도 몸은 그 자리에 있으므로 살아 있는 동안은 막는다
+        public bool BlocksBodies => (_lifeState == EParticipantLifeState.Alive) && (_bodyPushRadius > 0f);
 
         /// <summary> 보스 정의 ID, 전투 번호와 다르다 </summary>
         public string BossId => _bossId;
@@ -345,12 +352,14 @@ namespace Shinshi.Combat
 
             _displaceTargets = displaceTargets;
 
-            // 정의가 없거나 수치가 비어 있으면 최대 체력 0으로 남고 Begin이 거절한다
+            // 정의가 없거나 수치가 비어 있으면 최대 체력 0으로 남고 Begin이 거절한다. 밀침 반경은 정의가 없어도 기본값으로 막는다
+            _bodyPushRadius = Constants.Combat.BOSS_BODY_PUSH_RADIUS_DEFAULT;
             if (catalog.TryGetBoss(bossId, out BossDefinition boss))
             {
-                _maxHealth   = boss.HealthRef * referenceAttack * healthScale;
-                _defense     = boss.Defense;
-                _arenaRadius = boss.ArenaDiameter * HALF;
+                _maxHealth      = boss.HealthRef * referenceAttack * healthScale;
+                _defense        = boss.Defense;
+                _arenaRadius    = boss.ArenaDiameter * HALF;
+                _bodyPushRadius = boss.BodyPushRadius;
             }
 
             _health = _maxHealth;

@@ -1091,6 +1091,9 @@ namespace Shinshi.Combat
             SyncCompanionObjects();
             _combatMeter?.Tick(serverTime);
 
+            // 보스 몸통 밀어내기는 이동, 기술, 공격, 보스, 부활이 위치를 모두 옮긴 뒤 한 번만 한다. 보내는 위치가 몸통과 겹치지 않는다
+            ResolveBossBodies();
+
             // 이동, 기술, 공격, 부활이 위치를 모두 옮긴 뒤에 보내야 예측이 틱 중간 위치를 기준으로 삼지 않는다
             for (int i = 0; i < _players.Count; ++i)
             {
@@ -1231,6 +1234,19 @@ namespace Shinshi.Combat
 
             _registry.Unregister(_boss.CombatId);
             _boss = null;
+        }
+
+        private void ResolveBossBodies()
+        {
+            if (_boss == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                _players[i].ResolveBossBody(_boss);
+            }
         }
 
         // 출정 시작 틱에 배율을 한 번 고정하고, 진행 중일 때만 기술 전투를 연다

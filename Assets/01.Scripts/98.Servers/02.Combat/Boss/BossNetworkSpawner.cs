@@ -153,6 +153,7 @@ namespace Shinshi.Combat
                 boss.PhaseTransitionServerTime);
             state.SetPhase2TransitionSnapshot(boss.Phase2TransitionId, boss.Phase2TransitionStartServerTime,
                 boss.Phase2TransitionEndServerTime);
+            state.SetBodyPushRadius(boss.BodyPushRadius);
         }
 
         public void Despawn(BossServer boss, BossState state)

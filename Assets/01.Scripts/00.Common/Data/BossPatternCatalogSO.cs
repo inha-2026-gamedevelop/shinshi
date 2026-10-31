@@ -49,6 +49,9 @@ namespace Shinshi.Data
             [SerializeField] private float  _directControlMaxSeconds;    // 초, 한 패턴에 한 번 받는 직접 제어의 최대 길이
             [SerializeField] private float  _directControlImmuneSeconds; // 초, 직접 제어가 성공한 뒤 추가 직접 제어를 받지 않는 시간
 
+            // 플레이어를 밀어내는 몸통 반경. 판정용 몸체 반경(이동, 서는 자리, 직선 스킬 피격)과 따로 두며 IsTuned는 보지 않는다
+            [SerializeField] private float  _bodyPushRadius;             // m, 0이면 Constants.Combat.BOSS_BODY_PUSH_RADIUS_DEFAULT
+
             // 아래 둘은 2페이즈 선택에만 쓴다. 1페이즈 시작 검사(IsTuned)는 보지 않고 2페이즈 준비 검사가 본다
             [SerializeField] private float   _enhancedHealthRate;        // 이 체력 비율 이하(포함)면 강화 기본값과 강화 흐름 배율을 쓴다
             [SerializeField] private float[] _flowMultipliers;           // 흐름 배율 18칸, 체력 구간(초과, 이하) x 직전 그룹(Large, Pressure, Basic) x 다음 그룹 순서
@@ -70,6 +73,12 @@ namespace Shinshi.Data
             public float  DirectControlMaxSeconds    => _directControlMaxSeconds;
             public float  DirectControlImmuneSeconds => _directControlImmuneSeconds;
             public float  EnhancedHealthRate         => _enhancedHealthRate;
+
+            /// <summary> 플레이어를 밀어내는 몸통 반경(m), 미지정이면 기본값이다 </summary>
+            public float  BodyPushRadius => (_bodyPushRadius > UNSET) ? _bodyPushRadius : Constants.Combat.BOSS_BODY_PUSH_RADIUS_DEFAULT;
+
+            /// <summary> 에셋에 넣은 밀침 반경 그대로, 0이면 미지정이다 </summary>
+            public float  RawBodyPushRadius => _bodyPushRadius;
 
             public IReadOnlyList<float> FlowMultipliers => _flowMultipliers;
 
@@ -1411,6 +1420,8 @@ namespace Shinshi.Data
                         string bossField = $"{nameof(_bosses)}[{_bosses[i].DefinitionId}]";
                         CheckPositiveAtMost(errors, bossField + ".EnhancedHealthRate", _bosses[i].EnhancedHealthRate, MAX_RATE, false);
                         ValidateFlowTable(errors, bossField + ".FlowMultipliers", _bosses[i].FlowMultipliers, false);
+                        CheckPositiveAtMost(errors, bossField + ".BodyPushRadius", _bosses[i].RawBodyPushRadius,
+                            Constants.Combat.MAX_BODY_RADIUS, false);
                     }
                 }
             }

@@ -1296,7 +1296,8 @@ namespace Shinshi.Combat
             return true;
         }
 
-        // 적 몸체 직전에서 멈춘다. 아군과 신령 몸체는 막지 않는다
+        // 적 몸체 직전에서 멈춘다. 아군과 신령 몸체는 막지 않는다.
+        // 보스 몸통은 회피로 통과할 수 있다(기획 결정 2026-10-31). 회피가 끝났을 때 몸통 안이면 틱 끝 밀어내기가 바깥에 놓는다
         private float ClampByEnemyBodies(Vector3 start, Vector3 direction, float distance)
         {
             float searchRadius = distance + Constants.Combat.PLAYER_BODY_RADIUS + Constants.Combat.MAX_BODY_RADIUS;
@@ -1304,6 +1305,11 @@ namespace Shinshi.Combat
             for (int i = 0; i < count; ++i)
             {
                 ICombatTarget target = _targetBuffer[i];
+                if (target is IBossBodyBlocker)
+                {
+                    continue;
+                }
+
                 if (!BasicAttackRules.IsWithinHeight(start, target.Position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
                 {
                     continue;
@@ -1645,6 +1651,26 @@ namespace Shinshi.Combat
         /****************************************
         *             Displacement
         ****************************************/
+
+        // 이동, 기술, 공격, 보스 틱이 위치를 모두 옮긴 뒤 PublishMovement 앞에서 부른다. 걸어 들어간 경우, 보스가 걸어오거나 돌진한 경우,
+        // 순간 이동 기술(섬광 일섬)의 도착점이 몸통 안인 경우를 이 한곳이 바깥으로 놓는다. 회피 중에는 통과하므로 밀지 않는다.
+        // Displace와 달리 경로를 버리지 않는다. 소유 예측도 같은 규칙으로 걸음마다 밀어 경로를 그대로 이어 가므로, 몸통을 향해 걸으면
+        // 둘 다 원을 따라 미끄러진다. 제어나 기술로 멈춰 있어도 민다
+        /// <summary> 보스 몸통과 겹쳤으면 몸통 밖으로 밀어낸다 </summary>
+        public void ResolveBossBody(IBossBodyBlocker blocker)
+        {
+            if ((_lifeState != EParticipantLifeState.Alive) || (_isDodging) || (blocker == null))
+            {
+                return;
+            }
+
+            Vector3 current  = _transform.position;
+            Vector3 resolved = BossBodyPushRules.Resolve(current, blocker, BodyRadius);
+            if ((resolved != current) && (IsFinite(resolved)))
+            {
+                _transform.position = resolved;
+            }
+        }
 
         // 보스 틱은 이동, 기술 틱 뒤이고 PublishMovement 앞이라 이 틱의 위치를 다시 쓰는 계층이 없고, 틱 끝 위치가 바뀌었으므로
         // 서 있던 대상도 권위 값이 다시 나간다. 그래서 시각은 여기서 쓰지 않는다

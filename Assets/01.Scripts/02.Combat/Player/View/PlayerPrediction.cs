@@ -160,7 +160,9 @@ namespace Shinshi.Combat
             {
                 _predictor.SetRoundTripTime(NetworkTime.rtt);
                 float speed = isDodging ? _dodgeSpeed : _input.MoveSpeed;
-                position = _predictor.Advance(position, speed, now);
+
+                // 회피 중에는 보스 몸통을 통과하고, 끝나면 다음 프레임부터 다시 밀린다. 서버도 회피 중에는 밀지 않는다
+                position = _predictor.Advance(position, speed, now, !isDodging);
                 position = _predictor.Reconcile(in authority, position, now, deltaTime);
             }
 
