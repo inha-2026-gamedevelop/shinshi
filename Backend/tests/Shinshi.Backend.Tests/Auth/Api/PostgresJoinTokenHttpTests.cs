@@ -97,10 +97,15 @@ namespace Shinshi.Backend.Tests.Auth
             Assert.Equal(reservation.SessionId, result.SortieId);
             Assert.True(result.ServerTimeUnixMs >= ticket.ServerTimeUnixMs);
             Assert.Equal(new[] { "accountId", "accountLeaseId", "appearance", "battleId", "bossId", "characterId", "characterName",
-                    "classId", "combatLoadout", "difficulty", "experience", "instanceId", "mapId", "mode", "participantId", "potions",
+                    "classId", "combatLoadout", "difficulty", "experience", "guildName", "instanceId", "mapId", "mode", "participantId", "potions",
+                    "prologueStage", "prologueTalismanChecked", "prologueWolbaekPotions",
                     "serverRole", "serverTimeUnixMs", "sortieId" },
                 JObject.Parse(responseBody).Properties().Select(property => property.Name).OrderBy(name => name).ToArray());
             Assert.Null(result.AccountLeaseId);
+            Assert.Null(result.GuildName);
+            Assert.Equal(0, result.PrologueStage);
+            Assert.Equal(0, result.PrologueWolbaekPotions);
+            Assert.False(result.PrologueTalismanChecked);
 
             // 출정 계약은 예약 때 저장한 값 그대로다. 일반전이라 bossId는 값 없음, 난이도는 NONE이다
             Assert.Equal(GameSessionCodes.Mode.NORMAL, result.Mode);
