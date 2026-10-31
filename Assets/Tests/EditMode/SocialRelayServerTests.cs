@@ -128,7 +128,7 @@ namespace Shinshi.Tests
         {
             for (int iteration = 0; iteration < COMPLETION_BATCH_REPETITIONS; ++iteration)
             {
-                // 503 누적으로 회로가 열리지 않게 게이트웨이와 중계만 새로 만든다. Complete의 누적 기대·전달 수는 유지한다.
+                // 503 누적으로 회로가 열리지 않게 게이트웨이와 중계만 새로 만든다. Complete의 누적 기대 수와 전달 수는 유지한다.
                 _gateway.Dispose();
                 _transport = new FakeBackendTransport((request, token) => _respond(request));
                 _gateway = new BackendGateway(_transport, ReadClock,
