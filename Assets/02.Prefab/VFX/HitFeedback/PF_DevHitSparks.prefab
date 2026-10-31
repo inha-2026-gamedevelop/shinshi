@@ -43,7 +43,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a6d4c613637c42d479321f6b16b7c30e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Shinshi.Dev::Shinshi.Dev.DevHitFeedbackSparks
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.Art.HitSparkEmitter
   _streakLifetime: {x: 0.14, y: 0.3}
   _streakSpeed: {x: 7, y: 18}
   _streakWidth: {x: 0.2, y: 0.34}

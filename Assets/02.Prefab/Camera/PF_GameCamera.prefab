@@ -188,6 +188,7 @@ MonoBehaviour:
   _waveShake: 0.2
   _blinkShakeScale: 1.2
   _shakeSeconds: 0.2
+  _sparkEmitterPrefab: {fileID: 8396841232874528745, guid: 06d0fdd7b5e054044bc868aeb98c8ede, type: 3}
   _sparkMaterial: {fileID: 2100000, guid: 613fbc462694e0c44b3874dfa5889f0e, type: 2}
   _lightSparkCount: 10
   _heavySparkCount: 28

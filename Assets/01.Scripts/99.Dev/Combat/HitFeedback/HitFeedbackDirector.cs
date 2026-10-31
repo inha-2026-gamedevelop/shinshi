@@ -64,7 +64,7 @@ namespace Shinshi.Dev
         private HitFeedbackScreenFx     _screenFx  = null;
         private HitFeedbackMotionBlur   _motionBlur = null;
         private HitFeedbackCamera       _camera    = null;
-        private DevHitFeedbackSparks    _sparks    = null;
+        private HitSparkEmitter         _sparks    = null;
         private DevHitFeedbackShockwave _shockwave = null;
         private HitFeedbackBlood     _blood     = null;
         private DevCorpseLandingFx _landing = null;
@@ -94,7 +94,7 @@ namespace Shinshi.Dev
                 return;
             }
 
-            _sparks = new GameObject("DevSparks").AddComponent<DevHitFeedbackSparks>();
+            _sparks = new GameObject("DevSparks").AddComponent<HitSparkEmitter>();
             _sparks.transform.SetParent(transform, false);
 
             HitFeedbackBlood bloodPrefab = _bloodPrefab;
