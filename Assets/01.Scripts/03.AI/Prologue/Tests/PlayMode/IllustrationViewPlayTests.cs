@@ -225,7 +225,7 @@ namespace Shinshi.Tests
             _view.HandleClick();
             Assert.IsTrue(Previous().enabled);
 
-            // 전환 시간(1.2초)이 지나면 스스로 사라진다
+            // 전환 시간(기본 2.4초)이 지나면 스스로 사라진다
             float waited = 0f;
             while ((Previous().enabled) && (waited < 4f))
             {

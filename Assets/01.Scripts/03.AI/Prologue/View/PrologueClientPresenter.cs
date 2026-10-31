@@ -121,6 +121,7 @@ namespace Shinshi.AI
             _illustration.transform.SetParent(transform, false);
             _illustration.SetFont(catalog.Font);
             _illustration.SetTransitionMaterial(catalog.InkWipeMaterial);
+            _illustration.SetTransitionSeconds(catalog.InkSeconds);
             _illustration.Finished += OnIllustrationFinished;
 
             _hint = PrologueHintView.Create();

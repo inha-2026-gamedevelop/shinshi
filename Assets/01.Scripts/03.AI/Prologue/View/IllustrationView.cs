@@ -38,10 +38,10 @@ namespace Shinshi.AI
         private const float  SKIP_MARGIN        = 32f;
         private const float  SKIP_FONT_SIZE     = 24f;
         private const float  CHARS_PER_SECOND   = 30f;
-        private const float  INK_SECONDS        = 1.2f;
-        private const float  INK_SEED_RANGE     = 100f;
-        private const float  INK_CENTER_MIN     = 0.3f;
-        private const float  INK_CENTER_MAX     = 0.7f;
+        private const int    INK_COLOR_COUNT    = 2;
+        private const float  INK_SECONDS        = 2.4f;
+        private const float  INK_MIN_SECONDS    = 0.2f;
+        private const float  MATTE_ASPECT       = 16f / 9f;
         private const float  SHADE_EXTRA        = 90f;
         private const int    SHADE_STEPS        = 32;
         private const float  HALF               = 0.5f;
@@ -58,6 +58,10 @@ namespace Shinshi.AI
 
         // 첫 장을 가리는 막 색, 화면 바탕색과 같아서 막이 깔리는 순간에 깜빡이지 않는다
         private static readonly Color INK_COVER_COLOR = BACK_COLOR;
+
+        // 전환마다 먹 색을 번갈아 쓴다. 구간의 첫 전환(첫 장)이 검정이고 다음이 흰색이다
+        private static readonly Color INK_DARK_COLOR  = new Color(0.05f, 0.045f, 0.04f, 1f);
+        private static readonly Color INK_LIGHT_COLOR = new Color(0.97f, 0.97f, 0.95f, 1f);
         private static readonly Color TEXT_COLOR       = new Color(0.07f, 0.05f, 0.04f, 1f);
         private static readonly Color HINT_COLOR       = new Color(0.07f, 0.05f, 0.04f, 0.55f);
         private static readonly Color TEXT_ON_DARK     = new Color(0.9f, 0.92f, 0.94f, 1f);
@@ -66,14 +70,17 @@ namespace Shinshi.AI
         private static readonly Color SHADE_COLOR      = new Color(0.94f, 0.89f, 0.78f, 0.9f);
         private static readonly Color32 OUTLINE_COLOR  = new Color32(0, 0, 0, 255);
 
-        private static readonly int PROGRESS_ID = Shader.PropertyToID("_Progress");
-        private static readonly int SEED_ID     = Shader.PropertyToID("_Seed");
-        private static readonly int CENTER_ID   = Shader.PropertyToID("_Center");
+        private static readonly int PROGRESS_ID  = Shader.PropertyToID("_Progress");
+        private static readonly int FIT_ID       = Shader.PropertyToID("_FitScale");
+        private static readonly int MATTE_ID     = Shader.PropertyToID("_MatteScale");
+        private static readonly int INK_COLOR_ID = Shader.PropertyToID("_InkColor");
 
-        // 장이 바뀔 때 이전 그림을 위에 한 장 더 올려 먹이 번지며 지워지게 한다. 아래의 새 그림이 그 자리에서 드러난다
+        // 장이 바뀔 때 이전 그림을 위에 한 장 더 올려 먹 매트로 지운다. 아래의 새 그림이 그 자리에서 드러난다
         private Image           _illustration;
         private Image           _previous;
         private Material        _inkMaterial  = null;
+        private float           _inkSeconds   = INK_SECONDS;
+        private int             _inkCount     = 0;
         private Sprite          _coverSprite  = null;
         private Sprite          _shadeSprite  = null;
         private Texture2D       _shadeTexture = null;
@@ -176,6 +183,12 @@ namespace Shinshi.AI
             }
         }
 
+        /// <summary> 전환이 걸리는 시간(초), 너무 짧으면 매트의 움직임이 읽히지 않아 아래 한계로 올려 쓴다 </summary>
+        public void SetTransitionSeconds(float seconds)
+        {
+            _inkSeconds = Mathf.Max(INK_MIN_SECONDS, seconds);
+        }
+
         /// <summary> 장들을 처음부터 보인다. startRevealed는 글을 처음부터 전부 보이고, allowSkip이 거짓이면 건너뛰기 버튼을 숨기며, skipLabel은 구간에 맞는 버튼 글자다 </summary>
         public void Show(IReadOnlyList<IllustrationPage> pages, bool startRevealed, bool allowSkip, string skipLabel = null)
         {
@@ -201,6 +214,7 @@ namespace Shinshi.AI
             _skipButton.SetActive(allowSkip);
             gameObject.SetActive(true);
             CompleteInk();
+            _inkCount = 0;
 
             // 이전 구간의 마지막 그림이 남아 있으면 첫 장이 그 그림에서 이어져 보이므로 비워 둔다. 첫 장은 먹색 막이 걷히며 나타난다
             _illustration.sprite = null;
@@ -430,23 +444,37 @@ namespace Shinshi.AI
             _previous.material = _inkMaterial;
             _previous.enabled  = true;
 
-            // 매번 같은 모양이 되지 않게 무늬와 시작 지점을 바꾼다
-            _inkMaterial.SetFloat(SEED_ID, UnityEngine.Random.Range(0f, INK_SEED_RANGE));
-            _inkMaterial.SetVector(CENTER_ID, new Vector4(
-                UnityEngine.Random.Range(INK_CENTER_MIN, INK_CENTER_MAX), UnityEngine.Random.Range(INK_CENTER_MIN, INK_CENTER_MAX), 0f, 0f));
+            // 전환 횟수가 짝수면 검정, 홀수면 흰색 먹이다
+            bool darkInk = (_inkCount % INK_COLOR_COUNT) == 0;
+            _inkMaterial.SetColor(INK_COLOR_ID, darkInk ? INK_DARK_COLOR : INK_LIGHT_COLOR);
+            ++_inkCount;
+
+            // 매트는 구워 둔 하나의 구도다. 화면 비율에 맞춘 좌표 보정만 매번 넣는다
+            float screenAspect = (Screen.height > 0) ? (float)Screen.width / Screen.height : MATTE_ASPECT;
+            float spriteAspect = ((old != null) && (old.rect.height > 0f)) ? old.rect.width / old.rect.height : screenAspect;
+
+            // 비율을 유지해 놓인 그림은 화면 안쪽에 들어가므로 그만큼의 비율을, 막은 화면 전체라 1을 준다
+            Vector2 fit = keepAspect
+                ? new Vector2(Mathf.Min(1f, spriteAspect / screenAspect), Mathf.Min(1f, screenAspect / spriteAspect))
+                : Vector2.one;
+            Vector2 cover = new Vector2(Mathf.Min(1f, screenAspect / MATTE_ASPECT), Mathf.Min(1f, MATTE_ASPECT / screenAspect));
+
+            _inkMaterial.SetVector(FIT_ID,   fit);
+            _inkMaterial.SetVector(MATTE_ID, cover);
             ApplyInkProgress(0f);
 
             _inkRoutine = StartCoroutine(CoInk());
         }
 
         // 일시정지 중에도 흘러야 하므로 실제 시간으로 센다
+        // 큰 덩어리·회색 흐름·작은 방울의 리듬은 매트에 구워져 있어서 진행도는 시간에 비례해 그대로 준다
         private IEnumerator CoInk()
         {
             float elapsed = 0f;
-            while (elapsed < INK_SECONDS)
+            while (elapsed < _inkSeconds)
             {
                 elapsed += Time.unscaledDeltaTime;
-                ApplyInkProgress(Mathf.Clamp01(elapsed / INK_SECONDS));
+                ApplyInkProgress(Mathf.Clamp01(elapsed / _inkSeconds));
                 yield return null;
             }
 
