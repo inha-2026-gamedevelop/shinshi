@@ -206,6 +206,7 @@ namespace Shinshi.Tests
                 CollectionAssert.Contains(scenes, DungeonMapRules.ToScenePath(Constants.Scene.DUNGEON_FOREST), method);
                 CollectionAssert.Contains(scenes, DungeonMapRules.ToScenePath(Constants.Scene.DUNGEON_MUCHEOL), method);
                 CollectionAssert.Contains(scenes, DungeonMapRules.ToScenePath(Constants.Scene.DUNGEON_WOLBAEK), method);
+                CollectionAssert.Contains(scenes, DungeonMapRules.ToScenePath(Constants.Scene.DUNGEON_PROLOGUE), method);
             }
         }
 

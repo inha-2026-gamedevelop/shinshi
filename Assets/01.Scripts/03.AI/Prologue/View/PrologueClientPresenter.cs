@@ -43,6 +43,8 @@ namespace Shinshi.AI
         private PrologueIllustrationCatalogSO _catalog;
         private IllustrationView              _illustration;
         private PrologueHintView              _hint;
+        private PrologueTalismanBeacon        _beacon;
+        private bool                          _beaconAttempted = false;
 
         private EPurpose       _purpose          = EPurpose.None;
         private EPrologueStage _lastStage        = EPrologueStage.Intro;
@@ -141,6 +143,16 @@ namespace Shinshi.AI
         private void Refresh()
         {
             EPrologueStage stage = _link.Stage;
+
+            if ((stage == EPrologueStage.Forest) && (!_beaconAttempted))
+            {
+                _beaconAttempted = true;
+                _beacon = PrologueTalismanBeacon.Create(transform);
+            }
+            if ((_beacon != null) && (_beacon.gameObject.activeSelf != (stage == EPrologueStage.Forest)))
+            {
+                _beacon.gameObject.SetActive(stage == EPrologueStage.Forest);
+            }
 
             // 처음 받은 상태가 숲이나 월백이면 중단했던 구간의 재개다. 도입이나 마무리는 새로 시작한 것과 구분되지 않아 알리지 않는다
             if (!_started)

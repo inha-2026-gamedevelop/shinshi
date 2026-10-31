@@ -139,6 +139,7 @@ namespace Shinshi.UI
         {
             _modernAlternate = alternate;
             TrainingModernLayout.Present(this, alternate);
+            MenuGuideWindowBinder.Configure(this, MenuGuideWindowBinder.TRAINING_MENU_ID, !alternate);
             if ((transform.Find(ModernDarkKit.APPLIED_NAME) != null) && (isActiveAndEnabled))
             {
                 RefreshAll();
@@ -155,6 +156,7 @@ namespace Shinshi.UI
             if (Application.isPlaying)
             {
                 EnsureModernLayout();
+                MenuGuideWindowBinder.Configure(this, MenuGuideWindowBinder.TRAINING_MENU_ID, !_modernAlternate);
             }
         }
 

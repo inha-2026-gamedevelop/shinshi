@@ -11,6 +11,14 @@
 - 전투 표시: `Assets/01.Scripts/06.UI/Binding/ReleaseCombatHudBinder.cs`가 실제 보스 HP·전투 미터 단계·물약 상태를 읽는다. 당시 숨기던 웨이브 진행은 현재 SortieClient.WaveProgress와 RefreshProgress로 연결돼 있다. 부활 대기 등 나머지 표시의 수용은 별도 확인한다. 보스 표현은 `Assets/01.Scripts/03.AI/Boss/View/BossNetworkViewBinder.cs`와 네트워크 보스 프리팹을 본다.
 - 검증: 관련 EditMode 41/41(job `56568bbcda2b47be93fa6909d8f23e50`), 마을 설정 열기·던전 HUD의 새 Play Mode 시각 확인, 씬별 주 카메라/EventSystem/HotkeyRouter 각 1개, 스폰 8곳 NavMesh 표본 통과. 실서버 접속·M2/M3는 미실시다. 최종 테스트는 비포커스에서도 통과했고 보스 프리팹의 효과 활성화·분리·월드 좌표 유지·파괴 정리를 Play Mode로 확인했다. 최종 Windows IL2CPP Release `build-bde9cbfa16`는 74.443346초, 오류 0건·경고 5건으로, Linux Mono 전용 서버 Release `build-fb5c281675`는 71.8607225초, 오류 0건·경고 80건으로 성공했다. 서버 백엔드는 `NamedBuildTarget.Server`의 `Mono2x`로 확인했다. Windows는 무화면으로 15초 기동을 유지했고 로그에서 Exception/Error가 없었다. 렌더·로그인 검증은 아니며 이번 Linux 실행은 미검증이다. 상세는 [로드맵](../05-implementation-roadmap.md)의 해당 실행 범위를 따른다.
 
+## 프롤로그 릴리즈 통합 진입점
+
+- `Release/DungeonPrologue.unity`는 최신 릴리즈 숲의 공용 HUD·입력·카메라를 사용하고, `Dev_AI/Dev_PrologueMap.unity`의 환경·경계·진행 마커를 복사한다. 원본 개발 씬은 저장하지 않는다. 전용 NavMesh와 1인 시작점을 사용하며 클라이언트·서버 빌드 목록에 포함한다.
+- 생성은 `Shinshi/Release/Build Prologue Map` 또는 `Shinshi.Editor.ReleaseDungeonMapBuilder.BuildPrologueFromCommandLine`으로 실행한다. 기존 숲·무철·월백 씬을 재생성하지 않으므로 해당 씬의 수작업 배치를 유지한다. 명령줄 실행은 진행 마커 7곳의 NavMesh를 검사하고 숲·월백 시작 지점을 캡처한다.
+- 실제 수련·부적 창의 첫 진입과 도움말은 `06.UI/Common/MenuGuideWindowBinder.cs`가 기존 `MenuGuideController`·`MenuGuideCatalogSO`와 `01.Network/Prologue/ServerMenuGuideRecord.cs`에 연결한다. 완료한 계정은 서버 기록을 따르고, 창을 도중에 닫으면 완료로 기록하지 않는다.
+- UI 샌드박스의 경제·HUD·출정·캐릭터 선택 페이지는 삭제된 개별 개발 씬 대신 현재 `Release/ShinshiTown`·`DungeonForest`·`CharacterSelect`를 복사 원본으로 사용한다. 원본은 미리보기로만 읽고, 위험 컴포넌트를 제거한 사본만 기존 샌드박스 소유 폴더에 저장한다.
+- 현재 실행 검증 범위는 [로드맵](../05-implementation-roadmap.md)을 따른다. 씬 생성·자동 테스트와 실제 프롤로그 출정·다인 플레이 검증을 구분한다.
+
 ## 기능별 진입점
 
 경로는 저장소 루트(Unity 프로젝트 루트) 기준이고, 표의 `00.Common/`·`01.Network/`·`02.Combat/`·`98.Servers/`는 `Assets/01.Scripts/` 아래 상대 경로다. 서버 M-A의 입장·재접속·플레이어 전투·세션·정산과 `Backend/`의 API·DB 기반, 보스 AI 서버 뼈대(`98.Servers/03.AI/Boss/`)가 있다. 아래에서 실제 진입점과 미착수 계획을 구분한다. 빌드와 격리 기동의 확인 범위는 로드맵의 날짜별 근거를 따른다. 2026-10-19 로컬 4인 숲 완주 M2는 로드맵의 당시 조건에 한정한다. 현재 변경 전체의 M2·외부 PC M3·배포 수용은 미검증이다.

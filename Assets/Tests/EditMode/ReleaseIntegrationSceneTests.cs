@@ -31,6 +31,8 @@ namespace Shinshi.Tests
         private const string DUNGEON_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
         private const string MUCHEOL_PATH = "Assets/00.Scenes/Release/DungeonMucheol.unity";
         private const string WOLBAEK_PATH = "Assets/00.Scenes/Release/DungeonWolbaek.unity";
+        private const string PROLOGUE_PATH = "Assets/00.Scenes/Release/DungeonPrologue.unity";
+        private const float NAV_MARKER_RANGE = 2f;
         private const string BOSS_PATH = "Assets/02.Prefab/Network/NetBoss/PF_NetWolbaekBoss.prefab";
 
         /****************************************
@@ -41,6 +43,7 @@ namespace Shinshi.Tests
         [TestCase(DUNGEON_PATH)]
         [TestCase(MUCHEOL_PATH)]
         [TestCase(WOLBAEK_PATH)]
+        [TestCase(PROLOGUE_PATH)]
         public void SavedScene_Integration_HasOneInputAndCameraOwnerWithoutMissingScripts(string path)
         {
             Inspect(path, scene =>
@@ -78,6 +81,7 @@ namespace Shinshi.Tests
         [TestCase(DUNGEON_PATH)]
         [TestCase(MUCHEOL_PATH)]
         [TestCase(WOLBAEK_PATH)]
+        [TestCase(PROLOGUE_PATH)]
         public void SavedScene_CommonUiReferences_StayInsideCopiedScene(string path)
         {
             Inspect(path, scene =>
@@ -96,6 +100,7 @@ namespace Shinshi.Tests
         [TestCase(DUNGEON_PATH)]
         [TestCase(MUCHEOL_PATH)]
         [TestCase(WOLBAEK_PATH)]
+        [TestCase(PROLOGUE_PATH)]
         public void DungeonScene_CommonUi_HasNoDuplicatedBindersOrCopiedUiRoots(string path)
         {
             Inspect(path, scene =>
@@ -205,6 +210,61 @@ namespace Shinshi.Tests
                 finally
                 {
                     UnityEngine.AI.NavMesh.RemoveNavMeshData(instance);
+                }
+            });
+        }
+
+        [Test]
+        public void Prologue_SavedScene_HasSingleStartAndAllProgressMarkersOnItsOwnNavMesh()
+        {
+            Inspect(PROLOGUE_PATH, scene =>
+            {
+                List<Mirror.NetworkStartPosition> starts = All<Mirror.NetworkStartPosition>(scene);
+                Assert.That(starts.Count, Is.EqualTo(1), "프롤로그는 1인 출정이다");
+                Assert.That(RootNames(scene), Does.Contain(PrologueMarkers.ROOT_NAME));
+                Assert.That(RootNames(scene), Does.Contain("PrologueBoundary"));
+                Assert.That(All<DungeonSpawnLayout>(scene).Count, Is.Zero, "일반 웨이브 배치를 프롤로그에 남기지 않는다");
+
+                MonoBehaviour surface = FindSurface(scene);
+                Assert.That(surface, Is.Not.Null);
+                string navPath = NavDataPath(surface);
+                Assert.That(navPath, Does.StartWith(PROLOGUE_PATH.Replace(".unity", "/")), "다른 전장 NavMesh를 공유하면 안 된다");
+                var nav = AssetDatabase.LoadAssetAtPath<UnityEngine.AI.NavMeshData>(navPath);
+                Assert.That(nav, Is.Not.Null);
+
+                List<Transform> transforms = All<Transform>(scene);
+                var points = new List<Vector3> { starts[0].transform.position };
+                foreach (string name in new[] { PrologueMarkers.FOREST_PLAYER_START, PrologueMarkers.TALISMAN,
+                    PrologueMarkers.WOLBAEK_ARENA_CENTER, PrologueMarkers.WOLBAEK_PLAYER_START,
+                    "NormalEnemy_0", "NormalEnemy_1", "TelegraphEnemy_0" })
+                {
+                    List<Transform> matches = transforms.FindAll(item => item.name == name);
+                    Assert.That(matches.Count, Is.EqualTo(1), name + ": 진행 마커는 정확히 하나여야 한다");
+                    points.Add(matches[0].position);
+                }
+
+                UnityEngine.AI.NavMeshDataInstance instance = UnityEngine.AI.NavMesh.AddNavMeshData(nav);
+                try
+                {
+                    foreach (Vector3 point in points)
+                    {
+                        Assert.That(UnityEngine.AI.NavMesh.SamplePosition(point, out UnityEngine.AI.NavMeshHit _,
+                            NAV_MARKER_RANGE, UnityEngine.AI.NavMesh.AllAreas), Is.True, "필수 마커가 내비게이션 밖이다: " + point);
+                    }
+                }
+                finally
+                {
+                    UnityEngine.AI.NavMesh.RemoveNavMeshData(instance);
+                }
+
+                AssertNoMissingReferences(scene);
+                foreach (MonoBehaviour behaviour in All<MonoBehaviour>(scene))
+                {
+                    if (behaviour != null)
+                    {
+                        Assert.That(behaviour.GetType().Name, Does.Not.StartWith("PrologueDev"));
+                        Assert.That(behaviour.GetType().Name, Is.Not.EqualTo("PrologueForestDevWorld"));
+                    }
                 }
             });
         }

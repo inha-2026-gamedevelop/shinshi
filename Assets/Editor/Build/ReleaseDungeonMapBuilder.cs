@@ -20,6 +20,8 @@ using Mirror;
 // 프로젝트 내부
 using Shinshi.AI;
 using Shinshi.Art;
+using Shinshi.Common;
+using Shinshi.Data;
 using Shinshi.Systems;
 
 namespace Shinshi.Editor
@@ -39,10 +41,20 @@ namespace Shinshi.Editor
         private const string FOREST_PATH  = "Assets/00.Scenes/Release/DungeonForest.unity";
         private const string MUCHEOL_PATH = "Assets/00.Scenes/Release/DungeonMucheol.unity";
         private const string WOLBAEK_PATH = "Assets/00.Scenes/Release/DungeonWolbaek.unity";
+        private const string PROLOGUE_PATH = "Assets/00.Scenes/Release/DungeonPrologue.unity";
 
         private const string DEV_FOREST_PATH  = "Assets/00.Scenes/Dev_HUD/Dev_ForestPlateauHitFeedback.unity";
         private const string DEV_MUCHEOL_PATH = "Assets/00.Scenes/Dev_HUD/Dev_BossMucheol.unity";
         private const string DEV_WOLBAEK_PATH = "Assets/00.Scenes/Dev_HUD/Dev_BossWolbaek.unity";
+        private const string DEV_PROLOGUE_PATH = "Assets/00.Scenes/Dev_AI/Dev_PrologueMap.unity";
+        private const string PROLOGUE_BOUNDARY_ROOT = "PrologueBoundary";
+        private const string PROLOGUE_CAPTURE_FOLDER = ".local/test-server/logs/release-0.1.12-prologue-captures";
+        private const int PROLOGUE_CAPTURE_WIDTH  = 1280;
+        private const int PROLOGUE_CAPTURE_HEIGHT = 720;
+        private const int PROLOGUE_CAPTURE_DEPTH = 24;
+        private const string OCCLUSION_CAMERA_PROPERTY = "_ShinshiOcclusionCamera";
+        private const string OCCLUSION_FOCUS_PROPERTY  = "_ShinshiOcclusionFocus";
+        private const string OCCLUSION_PARAMS_PROPERTY = "_ShinshiOcclusionParams";
 
         private const string PORT_ROOT_NAME = "10_DevForestPort";
         private const string GAMEPLAY_ROOT  = "90_Gameplay";
@@ -104,6 +116,234 @@ namespace Shinshi.Editor
             {
                 Debug.LogException(exception);
                 EditorApplication.Exit(1);
+            }
+        }
+
+        /// <summary> 최신 릴리즈 공통 틀에 프롤로그 원본의 지형, 경계와 진행 마커를 이식하고 내비게이션을 굽는다 </summary>
+        [MenuItem("Shinshi/Release/Build Prologue Map")]
+        public static void BuildPrologue()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException("플레이 모드에서는 맵을 만들 수 없다");
+            }
+
+            for (int i = 0; i < SceneManager.sceneCount; ++i)
+            {
+                if (SceneManager.GetSceneAt(i).isDirty)
+                {
+                    throw new InvalidOperationException("저장하지 않은 열린 씬이 있다: " + SceneManager.GetSceneAt(i).path);
+                }
+            }
+
+            SceneSetup[] initialSetup = EditorSceneManager.GetSceneManagerSetup();
+            try
+            {
+                Scene scene = OpenBossScene(PROLOGUE_PATH);
+                Scene dev = EditorSceneManager.OpenPreviewScene(DEV_PROLOGUE_PATH);
+                try
+                {
+                    // 최신 릴리즈의 입력, HUD, 카메라는 유지하고 원본이 확정한 지형과 경계, 진행 마커만 이식한다.
+                    // Dev 시험 장치와 대역 플레이어는 가져오지 않으며 원본 씬은 저장하지 않는다.
+                    var clones = new List<GameObject>();
+                    foreach (string name in new[] { PORT_ROOT_NAME, PROLOGUE_BOUNDARY_ROOT, PrologueMarkers.ROOT_NAME })
+                    {
+                        Transform source = FindRoot(dev, name);
+                        if (source == null)
+                        {
+                            throw new InvalidOperationException("프롤로그 원본의 필수 루트가 없다: " + name);
+                        }
+
+                        RemoveRootsNamed(scene, name);
+                        GameObject clone = UnityEngine.Object.Instantiate(source.gameObject);
+                        clone.name = name;
+                        SceneManager.MoveGameObjectToScene(clone, scene);
+                        StripClone(clone);
+                        clones.Add(clone);
+                    }
+
+                    Transform gameplay = FindRoot(scene, GAMEPLAY_ROOT);
+                    if (gameplay != null)
+                    {
+                        RemoveGameplayLeftovers(gameplay);
+                    }
+
+                    if (!PrologueMarkers.TryLoad(out PrologueMarkers markers, out string reason))
+                    {
+                        throw new InvalidOperationException(reason);
+                    }
+
+                    CopyRenderSettings(DEV_PROLOGUE_PATH, scene);
+                    var report = new StringBuilder("[ReleaseMapBuilder] 프롤로그 결과\n");
+                    FinishBossScene(scene, PROLOGUE_PATH, new List<Vector3> { markers.ForestPlayerStart },
+                        markers.Talisman, clones, report);
+
+                    Component surface = FindSurface(scene);
+                    var points = new List<Vector3> { markers.ForestPlayerStart, markers.Talisman,
+                        markers.WolbaekCenter, markers.WolbaekPlayerStart };
+                    for (int i = 0; i < PrologueMarkers.NORMAL_ENEMY_COUNT; ++i)
+                    {
+                        markers.TryGetEnemyPoint(EPrologueEnemyKind.Normal, i, out Vector3 point);
+                        points.Add(point);
+                    }
+                    for (int i = 0; i < PrologueMarkers.TELEGRAPH_ENEMY_COUNT; ++i)
+                    {
+                        markers.TryGetEnemyPoint(EPrologueEnemyKind.Telegraph, i, out Vector3 point);
+                        points.Add(point);
+                    }
+
+                    VerifyNavStarts(surface, points, PROLOGUE_PATH);
+                    RegisterBuildScenes(report);
+                    AssetDatabase.SaveAssets();
+                    report.AppendLine($"- {PROLOGUE_PATH}: 환경/경계/마커 이식, 마커 {points.Count}개 NavMesh 확인");
+                    Debug.Log(report.ToString());
+                }
+                finally
+                {
+                    EditorSceneManager.ClosePreviewScene(dev);
+                }
+            }
+            finally
+            {
+                if (initialSetup.Length > 0)
+                {
+                    EditorSceneManager.RestoreSceneManagerSetup(initialSetup);
+                }
+                else
+                {
+                    EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                }
+            }
+        }
+
+        /// <summary> 프롤로그 씬을 만들고 성공 여부를 프로세스 종료 코드로 반환한다 </summary>
+        public static void BuildPrologueFromCommandLine()
+        {
+            try
+            {
+                BuildPrologue();
+                CapturePrologueFromCommandLine();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorApplication.Exit(1);
+            }
+        }
+
+        /// <summary> GameDB 기본 카메라와 가림 설정으로 전장을 미리 본다. 실제 플레이 캡처가 아니며 씬은 저장하지 않는다 </summary>
+        public static void CapturePrologueFromCommandLine()
+        {
+            try
+            {
+                Scene scene = EditorSceneManager.OpenScene(PROLOGUE_PATH, OpenSceneMode.Single);
+                if (!PrologueMarkers.TryLoad(out PrologueMarkers markers, out string reason))
+                {
+                    throw new InvalidOperationException(reason);
+                }
+
+                Camera camera = null;
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    foreach (Camera found in root.GetComponentsInChildren<Camera>(true))
+                    {
+                        if ((found.enabled) && (found.CompareTag("MainCamera")))
+                        {
+                            camera = found;
+                        }
+                    }
+                }
+                if (camera == null)
+                {
+                    throw new InvalidOperationException("프롤로그 릴리즈 카메라가 없다");
+                }
+
+                var database = Resources.Load<GameDatabaseSO>(Constants.Resource.GAME_DB_PATH);
+                CameraConfigSO config = (database != null) ? database.Camera : null;
+                if ((config == null) || (config.DefaultZoomLevel < 0) || (config.DefaultZoomLevel >= config.ZoomLevels.Count))
+                {
+                    throw new InvalidOperationException("GameDB 기본 카메라 설정이 없다");
+                }
+
+                Directory.CreateDirectory(PROLOGUE_CAPTURE_FOLDER);
+                CaptureProloguePoint(camera, markers.ForestPlayerStart, config, "forest-start.png");
+                CaptureProloguePoint(camera, markers.WolbaekPlayerStart, config, "wolbaek-start.png");
+                Debug.Log("[ReleaseMapBuilder] GameDB 기본 시점/가림을 적용한 에디터 환경 미리보기(실제 접속 미검증): "
+                    + Path.GetFullPath(PROLOGUE_CAPTURE_FOLDER));
+                EditorApplication.Exit(0);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorApplication.Exit(1);
+            }
+        }
+
+        private static void CaptureProloguePoint(Camera camera, Vector3 point, CameraConfigSO config, string fileName)
+        {
+            RenderTexture previousTarget = camera.targetTexture;
+            RenderTexture previousActive = RenderTexture.active;
+            Vector3 previousPosition = camera.transform.position;
+            Quaternion previousRotation = camera.transform.rotation;
+            float previousFieldOfView = camera.fieldOfView;
+            float previousAspect = camera.aspect;
+            Vector4 previousOcclusionCamera = Shader.GetGlobalVector(OCCLUSION_CAMERA_PROPERTY);
+            Vector4 previousOcclusionFocus = Shader.GetGlobalVector(OCCLUSION_FOCUS_PROPERTY);
+            Vector4 previousOcclusionParams = Shader.GetGlobalVector(OCCLUSION_PARAMS_PROPERTY);
+            bool previousFadeActive = OcclusionFadeChannel.IsActive;
+            OcclusionFadeShape previousFadeShape = OcclusionFadeChannel.Shape;
+            var target = new RenderTexture(PROLOGUE_CAPTURE_WIDTH, PROLOGUE_CAPTURE_HEIGHT, PROLOGUE_CAPTURE_DEPTH);
+            var frame = new Texture2D(PROLOGUE_CAPTURE_WIDTH, PROLOGUE_CAPTURE_HEIGHT, TextureFormat.RGB24, false);
+            try
+            {
+                CameraConfigSO.ZoomLevel pose = config.ZoomLevels[config.DefaultZoomLevel];
+                camera.transform.rotation = QuarterViewCameraRules.GetRotation(pose.PitchAngle, config.YawAngle);
+                camera.transform.position = point + QuarterViewCameraRules.GetFollowOffset(pose.PitchAngle,
+                    config.YawAngle, pose.Distance, pose.FocusHeight);
+                camera.fieldOfView = pose.FieldOfView;
+                camera.aspect = (float)PROLOGUE_CAPTURE_WIDTH / PROLOGUE_CAPTURE_HEIGHT;
+                camera.targetTexture = target;
+
+                // EditMode 캡처에서는 리그와 가림 드라이버의 Start가 실행되지 않는다. 같은 공개 계산 규칙과 설정으로 표시값만 만든다.
+                Vector3 focus = point + (Vector3.up * pose.FocusHeight);
+                var shape = new OcclusionFadeShape(camera.transform.position, focus, config.OcclusionRadius,
+                    config.OcclusionEdgeSoftness, config.OcclusionTargetMargin, point.y + config.OcclusionFloorClearance,
+                    config.OcclusionMinVisibility);
+                OcclusionFadeChannel.Publish(shape);
+                Shader.SetGlobalVector(OCCLUSION_CAMERA_PROPERTY, new Vector4(shape.CameraPosition.x,
+                    shape.CameraPosition.y, shape.CameraPosition.z, 1f));
+                Shader.SetGlobalVector(OCCLUSION_FOCUS_PROPERTY, new Vector4(shape.FocusPoint.x,
+                    shape.FocusPoint.y, shape.FocusPoint.z, shape.Radius));
+                Shader.SetGlobalVector(OCCLUSION_PARAMS_PROPERTY, new Vector4(shape.EdgeSoftness,
+                    shape.TargetMargin, shape.FloorHeight, shape.MinVisibility));
+                camera.Render();
+                RenderTexture.active = target;
+                frame.ReadPixels(new Rect(0f, 0f, PROLOGUE_CAPTURE_WIDTH, PROLOGUE_CAPTURE_HEIGHT), 0, 0);
+                frame.Apply();
+                File.WriteAllBytes(Path.Combine(PROLOGUE_CAPTURE_FOLDER, fileName), frame.EncodeToPNG());
+            }
+            finally
+            {
+                camera.transform.position = previousPosition;
+                camera.transform.rotation = previousRotation;
+                camera.fieldOfView = previousFieldOfView;
+                camera.aspect = previousAspect;
+                camera.targetTexture = previousTarget;
+                RenderTexture.active = previousActive;
+                Shader.SetGlobalVector(OCCLUSION_CAMERA_PROPERTY, previousOcclusionCamera);
+                Shader.SetGlobalVector(OCCLUSION_FOCUS_PROPERTY, previousOcclusionFocus);
+                Shader.SetGlobalVector(OCCLUSION_PARAMS_PROPERTY, previousOcclusionParams);
+                if (previousFadeActive)
+                {
+                    OcclusionFadeChannel.Publish(previousFadeShape);
+                }
+                else
+                {
+                    OcclusionFadeChannel.Clear();
+                }
+                target.Release();
+                UnityEngine.Object.DestroyImmediate(target);
+                UnityEngine.Object.DestroyImmediate(frame);
             }
         }
 
@@ -1353,8 +1593,12 @@ namespace Shinshi.Editor
         private static void RegisterBuildScenes(StringBuilder report)
         {
             var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            foreach (string path in new[] { FOREST_PATH, MUCHEOL_PATH, WOLBAEK_PATH })
+            foreach (string path in new[] { FOREST_PATH, MUCHEOL_PATH, WOLBAEK_PATH, PROLOGUE_PATH })
             {
+                if (AssetDatabase.LoadAssetAtPath<SceneAsset>(path) == null)
+                {
+                    continue;
+                }
                 int existing = scenes.FindIndex(s => s.path == path);
                 if (existing < 0)
                 {
@@ -1367,7 +1611,7 @@ namespace Shinshi.Editor
             }
 
             EditorBuildSettings.scenes = scenes.ToArray();
-            report.AppendLine("- EditorBuildSettings에 숲/무철/월백 씬 등록 확인");
+            report.AppendLine("- EditorBuildSettings에 존재하는 릴리즈 던전 씬 등록 확인");
         }
 
         private static int ParseInt(string text)

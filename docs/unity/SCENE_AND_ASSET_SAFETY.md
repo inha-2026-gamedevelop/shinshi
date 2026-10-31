@@ -29,6 +29,7 @@
 | `Assets/{씬 폴더}/Dev_{파트}.unity` | {파트} ({팀원이름}) |
 | `Assets/00.Scenes/Release/` 실제 실행 흐름 씬: `Lobby`, `CharacterSelect`, `CharacterCreate`, `ShinshiTown` (Bootstrap에서 로비, 캐릭터 선택·생성을 거쳐 마을 서버의 마을로 접속) | **{팀장}** (통합 담당) |
 | `Assets/00.Scenes/Release/DungeonForest.unity` (숲 일반전 던전 전장, 던전 역할 씬 선택·빌드 목록 연결됨, 실제 접속 미검증) | **{팀장}** (통합 담당) |
+| `Assets/00.Scenes/Release/DungeonPrologue.unity` (1인 프롤로그 숲·월백 전장, 공용 HUD·입력·카메라와 서버 진행 마커 연결) | **{팀장}** (통합 담당) |
 | 그 밖의 실제 런타임 흐름 씬 (게임 등) | 통합 담당자 ({팀원이름}) |
 | 메인 씬 (이름 미정) | **통합 담당자만** |
 

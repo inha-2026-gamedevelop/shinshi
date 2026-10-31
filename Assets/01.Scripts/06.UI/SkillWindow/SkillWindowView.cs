@@ -162,6 +162,7 @@ namespace Shinshi.UI
 
             EnsureModernLayout();
             ShowConfirm(false);
+            MenuGuideWindowBinder.Configure(this, MenuGuideWindowBinder.TALISMAN_MENU_ID, _modernAlternate);
         }
 
         private void OnDestroy()
@@ -196,6 +197,7 @@ namespace Shinshi.UI
         {
             _modernAlternate = alternate;
             SkillWindowModernLayout.Present(this, alternate);
+            MenuGuideWindowBinder.Configure(this, MenuGuideWindowBinder.TALISMAN_MENU_ID, alternate);
         }
 
         public void SetOpen(bool open)

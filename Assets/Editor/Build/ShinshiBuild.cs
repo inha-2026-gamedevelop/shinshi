@@ -55,10 +55,11 @@ namespace Shinshi.Editor
         private static readonly string[] G_ClientScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.LOBBY),
             ScenePath(Constants.Scene.CHARACTER_SELECT), ScenePath(Constants.Scene.CHARACTER_CREATE),
             ScenePath(Constants.Scene.SHINSHI_TOWN), ScenePath(Constants.Scene.DUNGEON_FOREST),
-            ScenePath(Constants.Scene.DUNGEON_MUCHEOL), ScenePath(Constants.Scene.DUNGEON_WOLBAEK) };
+            ScenePath(Constants.Scene.DUNGEON_MUCHEOL), ScenePath(Constants.Scene.DUNGEON_WOLBAEK),
+            ScenePath(Constants.Scene.DUNGEON_PROLOGUE) };
         private static readonly string[] G_ServerScenes      = { BOOTSTRAP_SCENE_PATH, ScenePath(Constants.Scene.SHINSHI_TOWN),
             ScenePath(Constants.Scene.DUNGEON_FOREST), ScenePath(Constants.Scene.DUNGEON_MUCHEOL),
-            ScenePath(Constants.Scene.DUNGEON_WOLBAEK) };
+            ScenePath(Constants.Scene.DUNGEON_WOLBAEK), ScenePath(Constants.Scene.DUNGEON_PROLOGUE) };
 
         // 서버 접속 없이 마을 렌더링 비용을 확인하는 개발 빌드. 시험 장치가 Shinshi.Server에 있어 SHINSHI_DEV_TEST로 그 어셈블리를 클라이언트 빌드에 넣는다.
         // 마을은 NetworkManager 없이 열려 플레이어 없이 배경만 그리며, -devPerfTown 측정(DevTownPerfViews)에 쓴다
