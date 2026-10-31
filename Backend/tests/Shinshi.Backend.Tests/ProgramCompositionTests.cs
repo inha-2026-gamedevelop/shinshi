@@ -27,6 +27,7 @@ using Shinshi.Contracts;
 using Shinshi.Data.Auth;
 using Shinshi.Data.Characters;
 using Shinshi.Data.Growth;
+using Shinshi.Data.Prologue;
 using Shinshi.Data.Ledger;
 using Shinshi.Data.Life;
 using Shinshi.Data.Reservations;
@@ -77,6 +78,8 @@ namespace Shinshi.Backend.Tests
             Assert.NotNull(factory.Services.GetRequiredService<PostgresAccountProgressRepository>());
             Assert.Equal(EGrowthContentProfile.Trial, factory.Services.GetRequiredService<InitialGrantService>().Profile);
             Assert.IsType<PostgresCharacterRepository>(factory.Services.GetRequiredService<ICharacterRepository>());
+            Assert.NotNull(factory.Services.GetRequiredService<PostgresPrologueRepository>());
+            Assert.NotNull(factory.Services.GetRequiredService<PostgresMenuGuideRepository>());
             Assert.Equal(runtimeDatabase, factory.Services.GetServices<IHostedService>()
                 .Any(service => service is EconomyReconciliationService));
 

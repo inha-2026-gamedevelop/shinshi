@@ -344,6 +344,8 @@ namespace Shinshi.Data.Auth
                     participant.departed_at IS NOT NULL AS "Departed", session.mode AS "Mode", session.map_id AS "MapId",
                     session.battle_id AS "BattleId", session.boss_id AS "BossId", session.difficulty AS "Difficulty",
                     participant.loadout_snapshot::text AS "Loadout", character.total_experience AS "TotalExperience",
+                    character.prologue_stage AS "PrologueStage", character.prologue_wolbaek_potions AS "PrologueWolbaekPotions",
+                    character.prologue_talisman_checked AS "PrologueTalismanChecked",
                     character.last_experience_session_id AS "ExperienceSessionId",
                     character.last_experience_event_seq AS "ExperienceEventSeq", session.content_version AS "ContentVersion", session.experience_settings::text AS "ExperienceSettings",
                     (SELECT guild.name FROM guild_members AS member JOIN guilds AS guild ON guild.guild_id = member.guild_id
@@ -438,7 +440,8 @@ namespace Shinshi.Data.Auth
                 consumed.CharacterId, character.ClassId, consumed.ParticipantId!.Value, consumed.SessionId!.Value,
                 consumed.InstanceId, UnixMilliseconds(now), default, character.Name,
                 JoinSortieContract.FromRow(character.Mode, character.MapId, character.BattleId, character.BossId,
-                    character.Difficulty), character.Loadout, potions, character.Appearance,
+                    character.Difficulty, character.PrologueStage, character.PrologueWolbaekPotions,
+                    character.PrologueTalismanChecked), character.Loadout, potions, character.Appearance,
                 new CharacterExperienceSnapshot(character.TotalExperience,
                     consumed.SessionId.Value.ToString("D"), character.ExperienceSessionId == consumed.SessionId
                         ? character.ExperienceEventSeq : 0,
@@ -474,6 +477,11 @@ namespace Shinshi.Data.Auth
             public string? BossId { get; set; }
             public short? Difficulty { get; set; }
             public string? Loadout { get; set; }
+
+            // 프롤로그 출정의 던전 서버가 저장 단계에서 재개하도록 함께 읽는다(0023). 마을 입장은 쓰지 않는다
+            public short PrologueStage { get; set; }
+            public short PrologueWolbaekPotions { get; set; }
+            public bool PrologueTalismanChecked { get; set; }
         }
 
         private static Task<int> ReadUnconsumedReasonAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,

@@ -183,6 +183,13 @@ namespace Shinshi.Contracts
             public const int CHARACTER_IS_GUILD_LEADER   = 1643;
             public const int GUILD_TARGET_INVITES_FULL   = 1644;
             public const int GUILD_LEADER_CHANGED        = 1645;
+
+            // 프롤로그, 성장 메뉴 안내
+            public const int PROLOGUE_REQUIRED      = 1700;
+            public const int PROLOGUE_ALREADY_DONE  = 1701;
+            public const int PROLOGUE_STAGE_INVALID = 1702;
+            public const int MENU_GUIDE_INVALID     = 1710;
+            public const int MENU_GUIDE_LIMIT       = 1711;
         }
 
         /// <summary> EEconomyReason과 같은 값, 경제 원장에 기록되므로 기존 값을 바꾸거나 재배열하지 않는다 </summary>

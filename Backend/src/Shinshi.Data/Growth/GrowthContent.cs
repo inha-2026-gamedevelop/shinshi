@@ -43,6 +43,9 @@ namespace Shinshi.Data.Growth
         private const string EFFECT_ID_PATTERN        = "^T[0-9]{2}-[1-3][A-Z]$";
         private const string EQUIPMENT_ID_PATTERN     = "^equip_[a-z0-9_]{1,58}$";
 
+        // 콘텐츠에 프롤로그 완료 묶음 키가 없을 때 쓰는 빈 묶음의 ID
+        public const string PROLOGUE_COMPLETION_GRANT_ID = "grant_prologue_completion";
+
         private static readonly Lazy<GrowthContent> G_Embedded = new Lazy<GrowthContent>(ReadEmbedded);
 
         private Dictionary<string, EquipmentDefinition> _equipmentById = new Dictionary<string, EquipmentDefinition>();
@@ -476,6 +479,16 @@ namespace Shinshi.Data.Growth
                 }
             }
 
+            // 프롤로그 완료 묶음은 계정 지갑의 행동력을 다시 쓰지 않으므로 0만 허용한다
+            GrantBundle prologue = section.PrologueCompletionGrant;
+            if ((prologue == null) || string.IsNullOrWhiteSpace(prologue.GrantId) || (prologue.ActionEnergy != 0)
+                || prologue.Items.Any(item => string.IsNullOrWhiteSpace(item.ItemId) || (item.Quantity <= 0))
+                || prologue.Equipment.Any(equipment => (equipment.Enhancement < 0) || (equipment.Enhancement > MAX_ENHANCEMENT)
+                    || !Equipment.Definitions.Any(definition => definition.DefinitionId == equipment.EquipmentId)))
+            {
+                errors.Add("progression prologue completion grant is invalid");
+            }
+
             if ((section.FoxTraceCap < 0) || (section.Regions.Length == 0) || (section.BossBattles.Length == 0))
             {
                 errors.Add("progression regions or battles are missing");
@@ -687,6 +700,11 @@ namespace Shinshi.Data.Growth
             [JsonProperty("standardAccountGrant")]   public GrantBundle            StandardAccountGrant   { get; set; } = new GrantBundle();
             [JsonProperty("trialCharacterGrant")]    public GrantBundle            TrialCharacterGrant    { get; set; } = new GrantBundle();
             [JsonProperty("trialAccountGrant")]      public GrantBundle            TrialAccountGrant      { get; set; } = new GrantBundle();
+
+            // 프롤로그 완료(직접 완료, 건너뛰기) 기본 지급품. 캐릭터마다 한 번이며 prologue_completions가 멱등을 맡는다.
+            // TODO(민성): 품목과 수량은 기획 미정이다. 키가 없으면 빈 묶음(지급 없음)이고 행동력은 쓰지 않는다(0이어야 한다)
+            [JsonProperty("prologueCompletionGrant")] public GrantBundle           PrologueCompletionGrant { get; set; } =
+                new GrantBundle { GrantId = PROLOGUE_COMPLETION_GRANT_ID };
         }
 
         /// <summary> 지역 하나와 해금 조건 </summary>

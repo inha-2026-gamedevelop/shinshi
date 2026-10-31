@@ -88,6 +88,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
     public.friendships, public.friend_requests, public.guild_members, public.guild_join_requests, public.social_deliveries
     TO shinshi_runtime;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.guilds TO shinshi_runtime;
+-- 0023: 성장 메뉴 안내 완료와 프롤로그 완료 표식. 둘 다 고치거나 지우지 않는다. characters의 새 열(prologue_*)은 기존 테이블 권한을 따른다
+GRANT SELECT, INSERT ON TABLE public.account_menu_guides, public.prologue_completions TO shinshi_runtime;
 -- 0008: 운영자 계정, 어드민 세션, 지급, 우편함, 공지. service_state는 0008이 넣은 단일 행만 갱신한다(INSERT 없음)
 GRANT SELECT, INSERT, UPDATE ON TABLE
     public.admin_users, public.admin_sessions, public.admin_grants, public.reward_inbox, public.service_notices
@@ -568,3 +570,23 @@ Data Protection 공급자와 키 관리 저장소도 프로세스 메모리에 �
 전달함(`social_deliveries`)은 귓속말(kind 0), 길드 채팅(1), 소셜 알림(2) 모두 행을 먼저 남기고 클라이언트 수신 확인을 받은 행만 지운다(60초 만료). 발신 응답의 `localDeliveries`는 호출 인스턴스에 있는 수신자의 남은 행(새 행 이하)을 수신자별 오름차순으로 주고(수신자당 20개 넘으면 그 수신자는 꺼내기에 맡김), 돌려준 행은 `next_attempt_at`을 5초 뒤로 미룬다. 꺼내기는 확인(`delivery_id`와 수신 캐릭터가 모두 맞고 그 캐릭터 임대가 호출 인스턴스에 있는 행만)을 먼저 지우고 `next_attempt_at`이 지난 행을 수신자당 20개, 전체 200개 `delivery_id` 순으로 골라 같은 문장에서 5초 뒤로 미룬다. 알림 행은 접속 중인 상대에게만 넣고 그 대상이 응답의 `changedCharacterIds`다. `SocialMaintenanceService`(DB 연결이 있을 때만 등록)가 60초마다 만료된 요청과 전달함 행을 지운다. 계정 임대의 `character_id`는 마을 입장 교환이 채우고(재입장 `ON CONFLICT DO UPDATE` 포함), 던전 이관은 그대로 두며, `TryAcquireAsync`는 비운다.
 
 0019 down은 소셜 상태를 모두 지우므로 운영 DB에서 실행하지 않는다. 시험은 `tests/Shinshi.Backend.Tests/Social/`에 있다.
+
+## 프롤로그와 성장 메뉴 안내 (0023)
+
+신입 캐릭터가 마을을 거치지 않고 1인 프롤로그 출정(숲 튜토리얼, 보스 월백, 마무리)을 한 뒤 마을로 간다. 경로 상수는 공유 `PrologueRoutes`, 단계와 한도는 `PrologueCodes`다. 0023은 `characters.prologue_stage`(0 INTRO ~ 4 DONE), `prologue_wolbaek_potions`(0~9), `prologue_talisman_checked`를 더하고 이 파일 전에 있던 캐릭터는 완료(4)로 채운다. 새 캐릭터 생성은 0을 명시한다. `account_menu_guides`(계정, 메뉴 ID 유일), `prologue_completions`(캐릭터당 완료 지급 한 번의 표식)를 만들고 `game_sessions.mode`에 `Prologue`를 허용한다(보스 ID 허용, 1인 CHECK).
+
+| 경로 | 주체 | 결과 |
+|---|---|---|
+| `GET /v1/characters/{characterId}/prologue` | 플레이어 토큰 | `PrologueStateResponse`. 다른 계정 캐릭터나 삭제한 캐릭터는 404 `CHARACTER_NOT_FOUND`. `accountCompleted`는 `account_progress.intro_completed_at`(신시 안내 완료와 같은 기록) |
+| `POST /v1/prologue/entry` | 게임 하위 세션 토큰 | `JoinTicket`(던전 role). 점검 503 `MAINTENANCE`, `dungeon_entry` 차단 409 `FEATURE_DISABLED` |
+| `POST /v1/prologue/skip` | 플레이어 토큰 | `OperationResult`. 계정이 이미 완료했을 때만(`PROLOGUE_REQUIRED`) |
+| `POST /v1/game-sessions/{sessionId}/prologue/stage` | 던전 서버 임대 | `OperationResult`, committedRevision = 저장 단계 |
+| `POST /v1/game-sessions/{sessionId}/prologue/complete` | 던전 서버 임대 | `OperationResult`, 정산 전에 부른다 |
+| `GET /v1/accounts/me/menu-guides` | 플레이어 토큰 | `MenuGuideListResponse`(바이트 순 정렬) |
+| `POST /v1/accounts/me/menu-guides/{menuId}/complete` | 플레이어 토큰 | 같은 응답. 형식 불량 400 `MENU_GUIDE_INVALID`, 64개 초과 새 ID 409 `MENU_GUIDE_LIMIT`, 같은 메뉴 재전송은 200 |
+
+입장은 한 작업 트랜잭션(actor = 계정, operationId 멱등)에서 계정 -> 캐릭터 -> 계정 접속 임대 -> 유휴 던전(SKIP LOCKED) -> 로그인 묶음 -> 서버 임대 순서로 잠근다. 캐릭터 소유, 삭제 예약 없음, 단계 DONE 아님을 확인하고, 살아 있는 접속 임대가 있으면 `ALREADY_CONNECTED`, 다른 열린 출정이 있으면 `RESERVATION_CONFLICT`다. 유휴 던전을 배정해 `game_sessions`(mode `Prologue`, 1인, mapId `prologue_forest`, battleId `prologue`, bossId `boss_wolbaek`, 난이도 0, 티켓·물약 예약 없음)와 참가자(일반 예약과 같은 전투 구성 스냅샷)를 넣는다. `reserved_by_instance_id`는 배정 던전 자신이고, 계정 접속 임대도 그 던전에 직접 만든다(만료 = 예약 만료 150초). 그래서 기존 `lease-transfer`가 수정 없이 던전 -> 같은 던전으로 임대를 옮기고, 접속하지 않으면 기존 예약 만료 해제가 출정과 임대를 함께 정리한다. 입장 토큰은 마을이 받는 던전 입장권과 같은 형식·클레임·60초 일회 토큰이지만 원문을 (계정, operationId)에서 HMAC으로 파생해 저장하지 않는다. 같은 operationId 재전송은 처음 세션의 같은 입장권을 돌려주고, 이미 교환했거나 새 입장이 대체했으면 401 `TOKEN_REVOKED`, 만료면 401 `TOKEN_EXPIRED`다(새 operationId로 다시 요청). 같은 캐릭터의 시작 전(Reserved) 프롤로그 출정이 살아 있으면 새 operationId 입장은 그 출정을 이어 쓰며 새 입장권을 발급하고 이전 미교환 입장권을 폐기한다. 시작한 프롤로그의 재접속은 기존 `rejoin-ticket`이다.
+
+프롤로그 출정은 기존 흐름(교환 -> `lease-transfer` -> `/start` -> `/events` -> `/settlement`)을 그대로 지난다. 교환 응답의 `mode`는 2, `prologueStage`·`prologueWolbaekPotions`·`prologueTalismanChecked`에 캐릭터의 저장 상태를 싣는다. `/events`는 정기 적립, 경험치 이벤트, 0이 아닌 종료 정산안을 `SETTLEMENT_LIMIT_EXCEEDED`로 거절하고(물약 사용은 예약이 없어 `POTION_LIMIT`), 정산은 성공이어도 클리어 기록과 경매 없이 닫고 접속 임대를 푼다. 비정상 종료와 장애 취소는 캐릭터 단계를 바꾸지 않는다. 단계 저장은 앞으로만(같은 단계 재전송은 확정, 뒤로·DONE·물약 0~9 밖은 `PROLOGUE_STAGE_INVALID`) 가고 부적 조사 기록은 되돌리지 않는다. 완료는 한 트랜잭션에서 계정 진행의 신시 안내 완료(이미 있으면 그대로), 캐릭터 단계 DONE, `prologue_completions`(Played) 삽입을 하고 처음 넣은 쪽만 완료 지급품을 준다. 건너뛰기도 같은 표식(Skipped)과 지급을 쓴다.
+
+완료 지급품은 `growth-content.json`의 `progression.prologueCompletionGrant`(키가 없으면 빈 묶음, 행동력 0만 허용)이며 품목은 아직 정하지 않았다. 묶음이 있으면 `InitialGrantService`가 최초 지원과 같은 방식(원장 사유 `INITIAL_GRANT`, 보관 상한 미적용)으로 지급한다. 실제 PostgreSQL에서의 프롤로그 시험(`Prologue/ProloguePostgresTests`)은 아직 실행하지 않았다.

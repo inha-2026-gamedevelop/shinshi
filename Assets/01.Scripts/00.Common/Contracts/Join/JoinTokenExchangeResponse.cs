@@ -69,6 +69,13 @@ namespace Shinshi.Contracts
         // 백엔드가 입장 교환 트랜잭션에서 길드 가입 행으로 채운다
         [DataMember(Name = "guildName")]        private string _guildName;
 
+        // 프롤로그 출정(mode = GameSessionCodes.Mode.PROLOGUE)의 던전 입장, 재입장만 채운다. 캐릭터의 저장 단계(PrologueCodes.Stage),
+        // 월백 구간 진입 때 남은 임시 물약 수, 부적 조사 화면을 본 적이 있는지이며 던전 서버가 이 값으로 구간을 재개한다.
+        // 다른 출정, 마을 입장이면 0, 0, false다. 이 필드 전의 API 응답에는 없을 수 있고 그때도 기본값으로 읽힌다
+        [DataMember(Name = "prologueStage")]           private int  _prologueStage;
+        [DataMember(Name = "prologueWolbaekPotions")]  private int  _prologueWolbaekPotions;
+        [DataMember(Name = "prologueTalismanChecked")] private bool _prologueTalismanChecked;
+
         /****************************************
         *              Properties
         ****************************************/
@@ -93,6 +100,9 @@ namespace Shinshi.Contracts
         public ReservationPotion[] Potions => _potions;
         public string AppearanceJson   => _appearanceJson;
         public string GuildName        => _guildName;
+        public int    PrologueStage           => _prologueStage;
+        public int    PrologueWolbaekPotions  => _prologueWolbaekPotions;
+        public bool   PrologueTalismanChecked => _prologueTalismanChecked;
 
         /****************************************
         *                Methods
@@ -155,7 +165,7 @@ namespace Shinshi.Contracts
             string sortieId, long serverTimeUnixMs, string accountLeaseId, int classId, string characterName, int mode,
             string mapId, string battleId, string bossId, int difficulty, CharacterCombatLoadout combatLoadout,
             string accountId, ReservationPotion[] potions, string appearanceJson, CharacterExperienceSnapshot experience = null,
-            string guildName = null)
+            string guildName = null, int prologueStage = 0, int prologueWolbaekPotions = 0, bool prologueTalismanChecked = false)
         {
             _experience       = experience;
             _characterId      = characterId;
@@ -177,6 +187,9 @@ namespace Shinshi.Contracts
             _potions          = potions;
             _appearanceJson   = appearanceJson;
             _guildName        = guildName;
+            _prologueStage           = prologueStage;
+            _prologueWolbaekPotions  = prologueWolbaekPotions;
+            _prologueTalismanChecked = prologueTalismanChecked;
         }
 
         private JoinTokenExchangeResponse() { }

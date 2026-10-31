@@ -30,6 +30,8 @@ namespace Shinshi.Data.Sessions
         // game_sessions.mode
         public const string MODE_NORMAL = "Normal";
         public const string MODE_BOSS   = "Boss";
+        // 0023. 마을을 거치지 않는 1인 튜토리얼 출정, 보상, 티켓, 물약, 경험치, 클리어 기록, 경매가 없다
+        public const string MODE_PROLOGUE = "Prologue";
 
         // server_instances.state
         public const string INSTANCE_IDLE     = "Idle";
