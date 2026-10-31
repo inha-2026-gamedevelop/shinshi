@@ -13,7 +13,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.party";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
         public const int MEMBER_COUNT = 4;
 

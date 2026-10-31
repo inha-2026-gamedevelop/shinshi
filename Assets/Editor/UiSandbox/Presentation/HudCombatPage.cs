@@ -13,7 +13,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.combat";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_CombatHud.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
 
         public const string KEY_POTION_SMALL    = "hud.combat.potion.small";
         public const string KEY_POTION_LARGE    = "hud.combat.potion.large";

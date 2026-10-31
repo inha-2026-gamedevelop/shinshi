@@ -21,7 +21,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "economy_trade";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_Trade.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
         public const string KEY_PARTNER          = "trade.partner";
         public const string KEY_STATE            = "trade.state";

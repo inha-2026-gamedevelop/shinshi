@@ -12,7 +12,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.popup";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_ToastMessage.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
         public const string KEY_SIZE    = "popup.size";
         public const string KEY_ALERT   = "popup.alertText";

@@ -18,7 +18,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "lobby.charselect";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_CharSelect.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/CharacterSelect.unity";
 
         public const int SLOT_COUNT = 4;
 

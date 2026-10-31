@@ -19,7 +19,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "economy_mailbox";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_MailBox.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
         public const string KEY_NOW    = "mail.serverNowMs";
         public const string KEY_PAGE   = "mail.page";
 

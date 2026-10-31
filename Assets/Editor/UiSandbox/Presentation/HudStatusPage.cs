@@ -14,7 +14,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.status";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
 
         public const string KEY_LEVEL          = "hud.status.level";
         public const string KEY_EXPERIENCE     = "hud.status.experience";

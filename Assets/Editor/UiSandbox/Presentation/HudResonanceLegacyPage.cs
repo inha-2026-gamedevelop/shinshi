@@ -12,7 +12,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.resonance.legacy";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_CombatHud.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
 
         public const string KEY_CURRENT = "hud.resonance.current";
         public const string KEY_MAX     = "hud.resonance.max";

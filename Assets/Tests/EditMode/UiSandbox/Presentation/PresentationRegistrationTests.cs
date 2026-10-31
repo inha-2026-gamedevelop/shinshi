@@ -62,7 +62,7 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void CreatePages_ViewPages_PointAtExistingDevScenes()
+        public void CreatePages_ViewPages_PointAtExistingReleaseScenes()
         {
             IList<IUiSandboxPage> pages = PresentationRegistration.CreatePages();
 
@@ -73,7 +73,7 @@ namespace Shinshi.Tests
                     continue;
                 }
 
-                StringAssert.StartsWith("Assets/00.Scenes/Dev_HUD/", pages[i].SourceScenePath, pages[i].Id);
+                StringAssert.StartsWith("Assets/00.Scenes/Release/", pages[i].SourceScenePath, pages[i].Id);
                 Assert.IsTrue(File.Exists(pages[i].SourceScenePath), "씬 파일 없음: " + pages[i].SourceScenePath);
             }
         }

@@ -14,7 +14,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "sortie.result";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_Result.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
 
         public const int ITEM_SLOTS = 4;
 

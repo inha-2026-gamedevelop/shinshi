@@ -13,7 +13,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.combatmeter";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/DungeonForest.unity";
 
         public const int MEMBER_COUNT = 4;
         public const int SLOT_COUNT   = (int)ECombatMeterSlot.Other + 1;

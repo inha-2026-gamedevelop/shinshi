@@ -20,7 +20,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.menu";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
         public const string KEY_ITEM_PREFIX   = "hud.menu.item.";
         public const string KEY_LAST_ITEM     = "hud.menu.lastItem";

@@ -15,7 +15,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "economy_chardetail";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_CharDetail.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
         public const string KEY_NAME     = "chardetail.name";
         public const string KEY_CLASS    = "chardetail.class";

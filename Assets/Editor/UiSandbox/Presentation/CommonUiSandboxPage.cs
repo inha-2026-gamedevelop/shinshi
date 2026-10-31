@@ -22,7 +22,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "common.ui";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_ItemSlot.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
         public const string ITEM_SLOT_PREFAB_PATH = "Assets/02.Prefab/UI/PF_ItemSlot.prefab";
         public const string CURSOR_PREFAB_PATH    = "Assets/02.Prefab/UI/PF_UiCursor.prefab";

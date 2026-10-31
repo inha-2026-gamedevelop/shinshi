@@ -16,7 +16,7 @@ namespace Shinshi.Editor
         ****************************************/
 
         public const string PAGE_ID    = "hud.chat";
-        public const string SCENE_PATH = "Assets/00.Scenes/Dev_HUD/Dev_HUD.unity";
+        public const string SCENE_PATH = "Assets/00.Scenes/Release/ShinshiTown.unity";
 
         public const string KEY_TAB      = "hud.chat.tab";
         public const string KEY_CHANNEL  = "hud.chat.channel";
