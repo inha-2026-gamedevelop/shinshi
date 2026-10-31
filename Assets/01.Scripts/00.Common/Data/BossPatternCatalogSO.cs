@@ -581,10 +581,10 @@ namespace Shinshi.Data
 
         // 하드 P04 추적 장판의 계약값, 서버 패턴이 기대하는 시간과 구조다. 추적 4초 뒤 중심을 고정하고 예고 8초에 실행으로 들어가
         // 실행 2.5초가 끝나는 10.5초에 장판이 켜져 60초 동안 1초마다 피해를 준다. 회복은 2초다
-        private const float HARD_AREA_TRACKING_SECONDS  = 4f;
-        private const float HARD_AREA_TELEGRAPH_SECONDS = 8f;
-        private const float HARD_AREA_FIXED_SECONDS     = 2.5f;
-        private const float HARD_AREA_RECOVERY_SECONDS  = 2f;
+        private const float HARD_AREA_TRACKING_SECONDS  = 0.8f;
+        private const float HARD_AREA_TELEGRAPH_SECONDS = 0.9f;
+        private const float HARD_AREA_FIXED_SECONDS     = 1.25f;
+        private const float HARD_AREA_RECOVERY_SECONDS  = 1f;
         private const float HARD_AREA_RADIUS           = 6f;
         private const float HARD_AREA_DURATION_SECONDS = 60f;
         private const float HARD_AREA_TICK_SECONDS     = 1f;
@@ -1912,7 +1912,7 @@ namespace Shinshi.Data
                 || (pattern.MaxConcurrentAreas != HARD_AREA_TARGET_COUNT)
                 || (!pattern.AreaSkipsMissedRounds))
             {
-                errors.Add($"{OWNER}.{field}: 하드 P04의 추적 4초, 예고 8초, 실행 2.5초, 회복 2초, 장판 2개와 60회 피해 계약이 맞지 않는다");
+                errors.Add($"{OWNER}.{field}: 하드 P04의 추적 0.8초, 예고 0.9초, 실행 1.25초, 회복 1초, 장판 2개와 60회 피해 계약이 맞지 않는다");
             }
         }
 

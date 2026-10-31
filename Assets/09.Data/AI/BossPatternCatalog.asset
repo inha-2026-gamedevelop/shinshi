@@ -315,7 +315,7 @@ MonoBehaviour:
     _displayKey: wolbaek_p05.name
     _bossId: boss_wolbaek
     _phase: 1
-    _baseWeight: 12
+    _baseWeight: 8
     _distanceMultipliers:
     - 0.8
     - 1.3
@@ -371,7 +371,7 @@ MonoBehaviour:
     _displayKey: wolbaek_p06.name
     _bossId: boss_wolbaek
     _phase: 1
-    _baseWeight: 8
+    _baseWeight: 14
     _distanceMultipliers:
     - 0.9
     - 1.2
@@ -389,7 +389,7 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 3.2
+    _telegraphSeconds: 1.6
     _trackingSeconds: 0.6
     _turnRate: 90
     _activeSeconds: 0
@@ -595,7 +595,7 @@ MonoBehaviour:
     _displayKey: wolbaek_ph2_p04.name
     _bossId: boss_wolbaek
     _phase: 2
-    _baseWeight: 13
+    _baseWeight: 9
     _distanceMultipliers:
     - 0.9
     - 1.2
@@ -633,7 +633,7 @@ MonoBehaviour:
     _areaTickInterval: 1
     _maxConcurrentAreas: 3
     _group: 2
-    _enhancedBaseWeight: 15
+    _enhancedBaseWeight: 11
     _projectileCount: 0
     _projectileIntervalSeconds: 0
     _areaTargetCount: 2
@@ -1051,7 +1051,7 @@ MonoBehaviour:
     _bossId: boss_wolbaek
     _phase: 1
     _difficulty: 1
-    _baseWeight: 12
+    _baseWeight: 8
     _distanceMultipliers:
     - 0.8
     - 1.3
@@ -1108,7 +1108,7 @@ MonoBehaviour:
     _bossId: boss_wolbaek
     _phase: 1
     _difficulty: 1
-    _baseWeight: 8
+    _baseWeight: 14
     _distanceMultipliers:
     - 0.9
     - 1.2
@@ -1126,7 +1126,7 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 3.2
+    _telegraphSeconds: 1.6
     _trackingSeconds: 0.6
     _turnRate: 90
     _activeSeconds: 0
@@ -1183,11 +1183,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 4
+    _telegraphSeconds: 3.2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 1.6
-    _recoverySeconds: 2
+    _recoverySeconds: 1.5
     _shape:
       _shape: 5
       _range: 27
@@ -1243,11 +1243,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 2
+    _telegraphSeconds: 0.3
     _trackingSeconds: 0
     _turnRate: 0
-    _activeSeconds: 12.5
-    _recoverySeconds: 3
+    _activeSeconds: 5.9
+    _recoverySeconds: 1.4
     _shape:
       _shape: 5
       _range: 36
@@ -1285,7 +1285,7 @@ MonoBehaviour:
     _warpCandidateCount: 0
     _gridLineCount: 12
     _gridLineSpacing: 3
-    _gridStrikeIntervalSeconds: 0.5
+    _gridStrikeIntervalSeconds: 0.2
     _gridAxisGapSeconds: 1.5
   - _definitionId: wolbaek_hard_ph2_p03
     _displayKey: wolbaek_hard_ph2_p03.name
@@ -1310,11 +1310,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 5
+    _telegraphSeconds: 2.4
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 3
-    _recoverySeconds: 2
+    _recoverySeconds: 1.5
     _shape:
       _shape: 0
       _range: 16
@@ -1363,7 +1363,7 @@ MonoBehaviour:
     _bossId: boss_wolbaek
     _phase: 2
     _difficulty: 1
-    _baseWeight: 13
+    _baseWeight: 9
     _distanceMultipliers:
     - 0.9
     - 1.2
@@ -1381,11 +1381,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 8
-    _trackingSeconds: 4
+    _telegraphSeconds: 0.9
+    _trackingSeconds: 0.8
     _turnRate: 0
-    _activeSeconds: 2.5
-    _recoverySeconds: 2
+    _activeSeconds: 1.25
+    _recoverySeconds: 1
     _shape:
       _shape: 4
       _range: 6
@@ -1401,7 +1401,7 @@ MonoBehaviour:
     _areaTickInterval: 1
     _maxConcurrentAreas: 2
     _group: 2
-    _enhancedBaseWeight: 15
+    _enhancedBaseWeight: 11
     _projectileCount: 0
     _projectileIntervalSeconds: 0
     _areaTargetCount: 2
@@ -1452,11 +1452,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 2
+    _telegraphSeconds: 1.6
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 1.4
-    _recoverySeconds: 2
+    _recoverySeconds: 1
     _shape:
       _shape: 3
       _range: 35
@@ -1524,11 +1524,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 4
+    _telegraphSeconds: 2.2
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 2
+    _recoverySeconds: 1.4
     _shape:
       _shape: 1
       _range: 5.5
@@ -1599,11 +1599,11 @@ MonoBehaviour:
     - 0.3
     - 0.7
     - 1
-    _telegraphSeconds: 3
+    _telegraphSeconds: 2.6
     _trackingSeconds: 0
     _turnRate: 0
     _activeSeconds: 0
-    _recoverySeconds: 2
+    _recoverySeconds: 1.6
     _shape:
       _shape: 1
       _range: 5
