@@ -38,6 +38,9 @@ namespace Shinshi.AI
         private readonly MucheolChargeSpec            _chargeSpec;
         private readonly IBossChargeStructureQuery    _chargeStructures;
         private readonly IBossChargeOutcomeListener   _chargeListener;
+        private readonly bool                         _shiftsBody;
+
+        private static readonly float[] G_SingleStrike = { 0f }; // 단발 패턴의 타 지연, 실행 시작 순간 한 번이다
 
         private IBossChargeCastTracker _chargeTracker;
 
@@ -57,12 +60,14 @@ namespace Shinshi.AI
         // comboSpec은 P05 콤보의 타별 형태와 피해다. PatternDefinition에 타별 값이 없어 따로 받으며, 비어 있으면 P05를 만들지 않는다
         // chargeSpec은 P06 돌진의 충돌 회복이다. 이동 창구와 함께 있어야 P06을 만들고, chargeStructures는 구조물 조회라 없으면 벽에만 막힌다
         // hardComboSpec은 하드 P05 콤보의 타 목록이며, 하드 정의(mucheol_hard_...)는 이지와 같은 실행 객체를 쓰되 이 목록으로 만든다. 비어 있으면 하드 P05를 만들지 않는다
+        // shiftsBody를 켜면 P01, P02, P04, P05가 모션 경로대로 보스를 옮긴다(MucheolBodyShift). 이동 창구가 없으면 켜도 옮기지 않는다.
+        // 기본값 꺼짐은 보스가 제자리에서 치는 기존 동작이고 운영 서버와 무철 시험 구동기가 켠다
         public MucheolPatternFactory(float referenceHealth, IBossFanTelegraphListener fanListener = null,
             IBossMovement movement = null, IBossDashTelegraphListener dashListener = null,
             IBossCircleTelegraphListener circleListener = null, MucheolComboSpec comboSpec = null,
             IBossComboTelegraphListener comboListener = null, MucheolChargeSpec chargeSpec = null,
             IBossChargeStructureQuery chargeStructures = null, IBossChargeOutcomeListener chargeListener = null,
-            MucheolComboSpec hardComboSpec = null)
+            MucheolComboSpec hardComboSpec = null, bool shiftsBody = false)
         {
             if (referenceHealth <= 0f)
             {
@@ -80,6 +85,7 @@ namespace Shinshi.AI
             _chargeSpec       = chargeSpec;
             _chargeStructures = chargeStructures;
             _chargeListener   = chargeListener;
+            _shiftsBody       = shiftsBody;
         }
 
         // 시전 추적 수신자(기믹)는 생성자가 아니라 따로 연결한다. 기믹이 팩토리로 P06을 고를 수 있는지 확인하고 팩토리가 기믹에 시전을 알리는
@@ -137,12 +143,14 @@ namespace Shinshi.AI
 
             if (id == P04_ID)
             {
-                return new BossCircleBlastPattern(_referenceHealth, _circleListener);
+                return new BossCircleBlastPattern(_referenceHealth, _circleListener, CreateBodyShift(id, G_SingleStrike));
             }
 
             if (id == P05_ID)
             {
-                return new MucheolComboPattern(_referenceHealth, ResolveComboSpec(definition), _comboListener, naturalAim: true);
+                MucheolComboSpec combo = ResolveComboSpec(definition);
+                return new MucheolComboPattern(_referenceHealth, combo, _comboListener, naturalAim: true,
+                    bodyShift: CreateBodyShift(id, ToStrikeDelays(combo)));
             }
 
             if (id == P06_ID)
@@ -151,7 +159,35 @@ namespace Shinshi.AI
                     _chargeListener, _chargeTracker);
             }
 
-            return new BossFanBlastPattern(_referenceHealth, _fanListener, naturalAim: true);
+            return new BossFanBlastPattern(_referenceHealth, _fanListener, naturalAim: true,
+                bodyShift: CreateBodyShift(id, G_SingleStrike));
+        }
+
+        // 켜져 있고 이동 창구가 있을 때만 만든다. 키가 기준으로 삼는 타가 타 목록에 없으면(타 수가 다른 데이터) 옮기지 않는다
+        private MucheolBodyShift CreateBodyShift(string baseId, float[] strikeDelays)
+        {
+            if ((!_shiftsBody) || (_movement == null))
+            {
+                return null;
+            }
+
+            if ((!MucheolBodyShiftCatalog.TryGet(baseId, out MucheolBodyShiftSpec spec)) || (spec.MaxStrikeIndex >= strikeDelays.Length))
+            {
+                return null;
+            }
+
+            return new MucheolBodyShift(_movement, spec, strikeDelays);
+        }
+
+        private static float[] ToStrikeDelays(MucheolComboSpec combo)
+        {
+            var delays = new float[combo.HitCount];
+            for (int i = 0; i < delays.Length; ++i)
+            {
+                delays[i] = combo.Hits[i].DelaySeconds;
+            }
+
+            return delays;
         }
 
         // 하드 정의(mucheol_hard_...)는 이지와 같은 번호의 실행 객체를 쓰므로 ID를 이지 ID로 되돌려 비교한다

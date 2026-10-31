@@ -32,6 +32,7 @@ namespace Shinshi.AI
         private readonly float                      _referenceHealth;
         private readonly IBossFanTelegraphListener  _listener;
         private readonly MucheolAimTracker          _tracker;
+        private readonly MucheolBodyShift           _bodyShift;
         private readonly List<ICombatTarget>        _buffer = new List<ICombatTarget>();
 
         private Vector3 _aim;
@@ -55,11 +56,14 @@ namespace Shinshi.AI
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
         // naturalAim은 부드러운 조준이다. 기본값 꺼짐은 회전 속도로 제한하는 기존 동작이고 무철과 월백 팩토리가 켠다
-        public BossFanBlastPattern(float referenceHealth, IBossFanTelegraphListener listener = null, bool naturalAim = false)
+        // bodyShift는 무철 몸 이동이다. 있으면 보스가 경로를 따라 움직이고 예고는 예상 타격 위치에 그려지며, 판정은 원래대로 타격 순간의 보스 위치다
+        public BossFanBlastPattern(float referenceHealth, IBossFanTelegraphListener listener = null, bool naturalAim = false,
+            MucheolBodyShift bodyShift = null)
         {
             _referenceHealth = referenceHealth;
             _listener        = listener;
             _tracker         = naturalAim ? new MucheolAimTracker() : null;
+            _bodyShift       = bodyShift;
         }
 
         protected override void OnBegin(double serverTime)
@@ -74,7 +78,15 @@ namespace Shinshi.AI
 
             _tracker?.Begin(_aim, serverTime, definition.TrackingSeconds, definition.TurnRate);
 
-            _listener?.OnTelegraphStarted(Context.CastInstanceId, Context.Self.Position, _aim,
+            Vector3 origin = Context.Self.Position;
+            if (_bodyShift != null)
+            {
+                _bodyShift.Begin(Context.Self, MucheolBodyShift.ResolveForward(Context, _tracker != null), serverTime,
+                    serverTime + definition.TelegraphSeconds);
+                origin = _bodyShift.PredictStrikePosition(0);
+            }
+
+            _listener?.OnTelegraphStarted(Context.CastInstanceId, origin, _aim,
                 definition.Shape.Range, definition.Shape.ArcAngle, definition.TelegraphSeconds);
 
             AdvanceTracking(serverTime);
@@ -82,6 +94,8 @@ namespace Shinshi.AI
 
         protected override void OnTick(EBossAttackState state, double serverTime)
         {
+            AdvanceBody(serverTime);
+
             if (state == EBossAttackState.Telegraph)
             {
                 AdvanceTracking(serverTime);
@@ -90,6 +104,8 @@ namespace Shinshi.AI
 
         protected override void OnEnterState(EBossAttackState state, double serverTime)
         {
+            AdvanceBody(serverTime);
+
             if (state != EBossAttackState.Execute)
             {
                 return;
@@ -104,6 +120,22 @@ namespace Shinshi.AI
         protected override void OnCancelled(EBossInterruptReason reason)
         {
             _listener?.OnCancelled(Context.CastInstanceId, reason);
+        }
+
+        protected override void OnFinished()
+        {
+            _bodyShift?.Complete();
+        }
+
+        // 타격 전에는 타 확정 시각을 넘지 않는다. 거친 틱에서 몸이 타격 위치를 지나친 뒤에 판정하지 않게 한다
+        private void AdvanceBody(double serverTime)
+        {
+            if (_bodyShift == null)
+            {
+                return;
+            }
+
+            _bodyShift.Advance(_hasHit ? serverTime : Math.Min(serverTime, _bodyShift.GetStrikeTime(0)));
         }
 
         // 추적 구간 밖의 시간은 회전량에 넣지 않는다. 틱이 거칠어도 총 회전은 회전 속도 x 추적 시간을 넘지 않는다

@@ -1595,13 +1595,15 @@ namespace Shinshi.Combat
             IBossChargeOutcomeListener chargeListener = (_structureDirector != null)
                 ? (IBossChargeOutcomeListener)_structureDirector
                 : _mucheolRelay;
+            // 몸 이동(shiftsBody)을 켜 타격 모션의 발이 미끄러지지 않게 보스를 모션 경로대로 옮긴다. 이동은 이 몸체의 Move가 맡는다
             var phaseOne = new MucheolPatternFactory(referenceHealth, this, this, this, this, MucheolSortieData.CreateComboSpec(),
                 _mucheolRelay, MucheolSortieData.CreateChargeSpec(), _chargeStructures, chargeListener,
-                MucheolSortieData.CreateHardComboSpec());
+                MucheolSortieData.CreateHardComboSpec(), shiftsBody: true);
 
             IBossHitDisplacer displacer = (_displaceTargets != null) ? this : null;
             var phaseTwo = new MucheolPhase2PatternFactory(referenceHealth, MucheolSortieData.CreatePhaseTwoSpec(), this, _catalog,
-                this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay, MucheolSortieData.CreateHardPhaseTwoSpec());
+                this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay, MucheolSortieData.CreateHardPhaseTwoSpec(),
+                shiftsBody: true);
 
             chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec(),
                 _mucheolRelay);
