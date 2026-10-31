@@ -647,7 +647,7 @@ public static class MucheolFanImpactBuilder
 
         material.SetColor("_BaseColor", new Color(0.2f, 0.1f, 0.07f, 1f));
         material.SetFloat("_Smoothness", 0.15f);
-        material.EnableKeyword("_EMISSION");
+        material.DisableKeyword("_EMISSION");
         material.SetColor("_EmissionColor", new Color(1.5f, 0.42f, 0.1f, 1f));
         EditorUtility.SetDirty(material);
         return material;
@@ -725,9 +725,9 @@ public static class MucheolFanImpactBuilder
 
         material.SetColor("_BaseColor", new Color(0.15f, 0.125f, 0.175f, 1f));
         material.SetFloat("_Smoothness", 0.3f);
-        material.EnableKeyword("_EMISSION");
+        material.DisableKeyword("_EMISSION");
         material.SetColor("_EmissionColor", new Color(0.05f, 0.012f, 0.008f, 1f));
-        material.SetTexture("_EmissionMap", vein);
+        material.SetTexture("_EmissionMap", null);
         EditorUtility.SetDirty(material);
         return material;
     }
@@ -966,7 +966,7 @@ public static class MucheolFanImpactBuilder
 
         material.SetColor("_BaseColor", new Color(0.07f, 0.06f, 0.06f, 1f));
         material.SetFloat("_Smoothness", 0.2f);
-        material.EnableKeyword("_EMISSION");
+        material.DisableKeyword("_EMISSION");
         material.SetColor("_EmissionColor", new Color(0.7f, 0.14f, 0.02f, 1f));
         EditorUtility.SetDirty(material);
         return material;
