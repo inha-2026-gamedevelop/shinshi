@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Wolbaek_DVFX_MistLayer
+  m_Shader: {fileID: 4800000, guid: 8bbdf3743bdc8c54895a7581958fe388, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _NoiseTex:
+        m_Texture: {fileID: 2800000, guid: 35057da1d4cc1d744ab8b6bbf4191751, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Coverage: 0.72
+    - _DetailScale: 0.13
+    - _IntersectionFade: 1.1
+    - _LargeScale: 0.045
+    - _Opacity: 0.27
+    - _Softness: 0.39
+    - _SunInfluence: 0.5
+    - _SunScatter: 0
+    m_Colors:
+    - _DetailScroll: {r: -0.006, g: 0.003, b: 0, a: 0}
+    - _FadeCenter: {r: 0, g: 0, b: 0, a: 0}
+    - _FadeRadius: {r: 14, g: 23, b: 0, a: 0}
+    - _LargeScroll: {r: 0.004, g: 0.0015, b: 0, a: 0}
+    - _LitColor: {r: 0.2, g: 0.25, b: 0.36, a: 1}
+    - _ShadowColor: {r: 0.07, g: 0.09, b: 0.14, a: 1}
+    - _SunScatterColor: {r: 1, g: 0.52, b: 0.19999996, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

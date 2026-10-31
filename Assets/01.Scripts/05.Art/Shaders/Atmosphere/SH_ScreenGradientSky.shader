@@ -12,6 +12,9 @@ Shader "Shinshi/Environment/ScreenGradientSky"
         _GlowPosition ("Sun Glow Screen Position (XY)", Vector) = (0.72, 0.9, 0, 0)
         _GlowSize ("Sun Glow Size", Range(0.01, 2)) = 0.55
         _GlowStrength ("Sun Glow Strength", Range(0, 2)) = 0.45
+        _DiscColor ("Disc Color", Color) = (0.9, 0.95, 1, 1)
+        _DiscSize ("Disc Size (0 = Off)", Range(0, 0.2)) = 0
+        _DiscSoftness ("Disc Edge Softness", Range(0.001, 0.05)) = 0.004
     }
 
     SubShader
@@ -37,6 +40,9 @@ Shader "Shinshi/Environment/ScreenGradientSky"
                 float4 _GlowPosition;
                 float _GlowSize;
                 float _GlowStrength;
+                half4 _DiscColor;
+                float _DiscSize;
+                float _DiscSoftness;
             CBUFFER_END
 
             struct Attributes
@@ -67,6 +73,12 @@ Shader "Shinshi/Environment/ScreenGradientSky"
                 float2 glowOffset = (screenUV - _GlowPosition.xy) * float2(aspect, 1.0);
                 float glow = exp(-dot(glowOffset, glowOffset) / (_GlowSize * _GlowSize));
                 color += _GlowColor.rgb * glow * _GlowStrength;
+
+                // 해나 달 원반. 크기가 0이면 그리지 않는다
+                float discDistance = length(glowOffset);
+                float disc = 1.0 - smoothstep(_DiscSize - _DiscSoftness, _DiscSize, discDistance);
+                disc *= step(0.0001, _DiscSize);
+                color = lerp(color, _DiscColor.rgb, disc);
                 return half4(color, 1);
             }
             ENDHLSL
