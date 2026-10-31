@@ -4,6 +4,9 @@ using System;
 // Unity
 using UnityEngine;
 
+// 서드파티
+using TMPro;
+
 // 프로젝트 내부
 using Shinshi.Common;
 
@@ -90,13 +93,16 @@ namespace Shinshi.AI
             }
         }
 
-        /// <summary> 일러스트 자막을 흰 글자·검은 테두리로 바꾼다, 시험 장치만 부른다 </summary>
-        public void UseOutlinedSubtitle()
+        /// <summary> 일러스트 자막을 흰 글자·검은 테두리로 바꾼다, font가 있으면 자막 글꼴도 바꾼다. 시험 장치만 부른다 </summary>
+        public void UseOutlinedSubtitle(TMP_FontAsset font)
         {
-            if (_illustration != null)
+            if (_illustration == null)
             {
-                _illustration.UseOutlinedSubtitle();
+                return;
             }
+
+            _illustration.SetSubtitleFont(font);
+            _illustration.UseOutlinedSubtitle();
         }
 
         private void Bind(IPrologueClientLink link, IPrologueLocalVitals vitals, PrologueIllustrationCatalogSO catalog)

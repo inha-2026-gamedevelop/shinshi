@@ -17,7 +17,8 @@ namespace Shinshi.AI
         *                Fields
         ****************************************/
 
-        private const string FONT_PATH = "Assets/01.Scripts/06.UI/Hud/Fonts/HudQuestKorean-Regular.asset";
+        private const string FONT_PATH          = "Assets/01.Scripts/06.UI/Hud/Fonts/HudQuestKorean-Regular.asset";
+        private const string SUBTITLE_FONT_PATH = "Assets/01.Scripts/03.AI/Prologue/Fonts/AstaSans/AstaSans-Bold SDF.asset";
 
         /****************************************
         *                Methods
@@ -61,6 +62,23 @@ namespace Shinshi.AI
             }
 
             view.SetFont(Load());
+        }
+
+        /// <summary> 일러스트 자막을 Asta Sans 글꼴에 흰 글자·검은 테두리로 바꾼다, 시험 장치 전용이다 </summary>
+        public static void ApplyOutlinedSubtitle(PrologueClientPresenter presenter)
+        {
+            if (presenter == null)
+            {
+                return;
+            }
+
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(SUBTITLE_FONT_PATH);
+            if (font == null)
+            {
+                Debug.LogWarning($"[PrologueDevFont] 자막 글꼴을 찾지 못했다: {SUBTITLE_FONT_PATH}");
+            }
+
+            presenter.UseOutlinedSubtitle(font);
         }
 
         private static TMP_FontAsset Load()

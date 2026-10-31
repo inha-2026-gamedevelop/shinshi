@@ -45,7 +45,7 @@ namespace Shinshi.AI
         private const float  SHADE_EXTRA        = 90f;
         private const int    SHADE_STEPS        = 32;
         private const float  HALF               = 0.5f;
-        private const float  OUTLINE_WIDTH      = 0.25f;
+        private const float  OUTLINE_WIDTH      = 0.4f;
         private const string ROOT_OBJECT_NAME   = "PrologueIllustration";
         private const string HINT_REVEAL        = "클릭하여 전체 표시";
         private const string HINT_NEXT          = "클릭하여 다음으로";
@@ -125,6 +125,17 @@ namespace Shinshi.AI
             _skipText.font = font;
         }
 
+        /// <summary> 자막 본문만 다른 글꼴로 바꾼다, 안내 글자와 건너뛰기 단추는 그대로 둔다 </summary>
+        public void SetSubtitleFont(TMP_FontAsset font)
+        {
+            if ((font == null) || (_bodyText == null))
+            {
+                return;
+            }
+
+            _bodyText.font = font;
+        }
+
         /// <summary> 자막을 흰 글자에 검은 테두리로 바꾼다, 시험용이라 켜는 쪽이 따로 부른다. 이미 보이는 장에도 바로 적용한다 </summary>
         public void UseOutlinedSubtitle()
         {
@@ -135,9 +146,19 @@ namespace Shinshi.AI
                 return;
             }
 
+            // 글꼴 재질은 그림자(Underlay)만 켜져 있고 외곽선 키워드는 꺼져 있어서, 두께만 주면 외곽선이 그려지지 않는다.
+            // fontMaterial은 이 텍스트 전용 복사본이라 다른 화면의 글꼴에는 영향이 없다
+            Material material = _bodyText.fontMaterial;
+            material.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            material.DisableKeyword(ShaderUtilities.Keyword_Underlay);
+
+            // 외곽선은 글자 경계에서 안쪽으로도 퍼져 흰 면을 깎는다. 깎인 만큼 면을 부풀려야 흰 글자가 얇은 선 한 줄로 남지 않는다
+            material.SetFloat(ShaderUtilities.ID_FaceDilate, OUTLINE_WIDTH);
+
             _bodyText.outlineWidth = OUTLINE_WIDTH;
             _bodyText.outlineColor = OUTLINE_COLOR;
             _bodyText.color        = Color.white;
+            _bodyText.UpdateMeshPadding();
         }
 
         /// <summary> 장이 바뀔 때 쓸 먹 번짐 지우기 재질, 없으면 전환 없이 바로 바뀐다. 에셋을 고치지 않게 복사본을 만들어 쓴다 </summary>
