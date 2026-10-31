@@ -286,12 +286,14 @@ namespace Shinshi.Data.Auth
             return participant.HasValue;
         }
 
-        // 같은 참가자의 미교환 토큰은 폐기한다. 만료는 요청 수명, Reserved 예약 만료, Auction 마감, 로그인 묶음 만료 중 이른 값이다
+        // 같은 참가자의 미교환 토큰은 폐기한다. 만료는 요청 수명, Reserved 예약 만료, Auction 마감, 로그인 묶음 만료 중 이른 값이다.
+        // rawToken이 없으면 무작위 원문을 만든다. 프롤로그 입장권은 재전송 복원을 위해 파생 원문을 넘긴다
         private async Task<IssuedAuthToken?> InsertDungeonJoinTokenAsync(NpgsqlConnection connection,
-            NpgsqlTransaction transaction, DungeonTokenTarget target, TimeSpan lifetime, CancellationToken token)
+            NpgsqlTransaction transaction, DungeonTokenTarget target, TimeSpan lifetime, CancellationToken token,
+            string? rawToken = null)
         {
             Guid id = Guid.NewGuid();
-            string raw = _hasher.CreateToken();
+            string raw = rawToken ?? _hasher.CreateToken();
             DateTime now = await ReadTimeAsync(connection, transaction, token);
             DateTime expires = await connection.QuerySingleAsync<DateTime>(Command(
                 """

@@ -353,12 +353,15 @@ namespace Shinshi.Data.Characters
             Guid characterId = Guid.NewGuid();
             Guid? inserted = await connection.QuerySingleOrDefaultAsync<Guid?>(new CommandDefinition(
                 """
-                INSERT INTO characters (character_id, account_id, class_id, name, name_key, appearance, initial_experience, total_experience)
-                VALUES (@CharacterId, @AccountId, @ClassId, @Name, @NameKey, CAST(@Appearance AS jsonb), @Experience, @Experience)
+                INSERT INTO characters (character_id, account_id, class_id, name, name_key, appearance, initial_experience, total_experience,
+                    prologue_stage)
+                VALUES (@CharacterId, @AccountId, @ClassId, @Name, @NameKey, CAST(@Appearance AS jsonb), @Experience, @Experience,
+                    @PrologueStage)
                 ON CONFLICT (name_key) DO NOTHING
                 RETURNING character_id;
                 """, new { CharacterId = characterId, AccountId = accountId, ClassId = classId, Name = name,
-                    NameKey = nameKey, Appearance = appearanceJson, Experience = _grants.InitialExperience }, transaction, cancellationToken: cancellationToken));
+                    NameKey = nameKey, Appearance = appearanceJson, Experience = _grants.InitialExperience,
+                    PrologueStage = (short)PrologueCodes.Stage.INTRO }, transaction, cancellationToken: cancellationToken));
             if (!inserted.HasValue)
             {
                 return OperationDecision.Rejected(ContractCodes.RejectReason.CHARACTER_NAME_TAKEN);

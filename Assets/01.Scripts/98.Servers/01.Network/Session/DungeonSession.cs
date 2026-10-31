@@ -28,6 +28,7 @@ namespace Shinshi.Network
         private readonly SessionEventQueue        _events;
         private readonly IWaveSession             _wave;
         private readonly bool                     _isBossSession;
+        private readonly bool                     _isPrologue;
         private readonly double                   _timeLimitSeconds;
         private readonly int[]                    _expectedKills;
         private readonly int[]                    _killsPerWave;
@@ -106,6 +107,9 @@ namespace Shinshi.Network
         public bool              CanReturn         => (IsEnded) && (_endEventSequence > 0) && (_events.LastAcknowledgedSequence >= _endEventSequence);
         public bool              IsBossSession     => _isBossSession;
 
+        // 프롤로그 출정. 웨이브도 보스 규칙(공용 부활, 보상, 경매)도 없고, 시간 제한과 전멸 종료도 없다. 마무리 구간이 끝나야 성공으로 닫힌다
+        public bool              IsPrologue        => _isPrologue;
+
         // 참가자별 확보 보상 원장, 명단 순서로 읽는다
         public SettlementLedger Ledger => _ledger;
 
@@ -125,7 +129,8 @@ namespace Shinshi.Network
         /// <summary> config와 waveConfig는 GameDB 초기화 뒤 넘긴다, wave가 null이면 개발용 보스 종료만 제공한다.
         /// lootSalt는 start 확정 때 만든 출정 비밀이고 null이면 여기서 만든다 </summary>
         public DungeonSession(string sessionId, ParticipantRoster roster, SessionEventQueue events,
-            SessionConfigSO config, WaveConfigSO waveConfig, IWaveSession wave = null, byte[] lootSalt = null)
+            SessionConfigSO config, WaveConfigSO waveConfig, IWaveSession wave = null, byte[] lootSalt = null,
+            bool prologue = false)
         {
             if (string.IsNullOrEmpty(sessionId))
             {
@@ -161,7 +166,8 @@ namespace Shinshi.Network
             _roster             = roster;
             _events             = events;
             _wave               = wave;
-            _isBossSession      = wave == null;
+            _isPrologue         = prologue;
+            _isBossSession      = (wave == null) && (!prologue);
             _sessionConfig      = config;
             _lootSalt           = (lootSalt != null) ? (byte[])lootSalt.Clone() : LootRoller.CreateSalt();
             _revives            = _isBossSession ? new ReviveBudget(config.BossSharedRevives) : null;
@@ -353,14 +359,14 @@ namespace Shinshi.Network
             if ((_started) || (_disposed) || (!IsValidTime(serverTime))
                 || (serverTime < _roster.LastServerTime)
                 || (_roster.Count < Constants.Session.MIN_PARTY_SIZE) || (_roster.ActiveCount != _roster.Count)
-                || (_sourceIndices.Count != _sourceWaves.Length) || ((!_isBossSession) && (!_hasRewardRule)))
+                || (_sourceIndices.Count != _sourceWaves.Length) || ((!_isBossSession) && (!_isPrologue) && (!_hasRewardRule)))
             {
                 return false;
             }
 
             for (int i = 0; i < _roster.Count; ++i)
             {
-                if ((_participantEffects[i] == null) && (!_isBossSession))
+                if ((_participantEffects[i] == null) && (!_isBossSession) && (!_isPrologue))
                 {
                     return false;
                 }
@@ -458,7 +464,7 @@ namespace Shinshi.Network
                 {
                     Finish(_lastDepartureReason);
                 }
-                else if ((_timeoutPending) || ((!_isBossSession) && ((_serverTime - _startTime) >= _timeLimitSeconds)))
+                else if ((_timeoutPending) || ((!_isBossSession) && (!_isPrologue) && ((_serverTime - _startTime) >= _timeLimitSeconds)))
                 {
                     Finish(ESessionEndReason.Timeout);
                 }
@@ -736,6 +742,19 @@ namespace Shinshi.Network
         public bool ReportBossDefeated()
         {
             if ((!IsRunning) || (!_inTick) || (!_isBossSession) || (_storageFault))
+            {
+                return false;
+            }
+
+            _successPending = true;
+            return true;
+        }
+
+        // 프롤로그의 마무리 구간이 끝났다. 보상 없이 성공으로 닫혀 정산이 영 항목으로 나가고 접속 임대가 풀린다
+        /// <summary> 프롤로그 출정이 진행 중인 틱 안에서 부른다, 프롤로그가 아니면 받지 않는다 </summary>
+        public bool ReportPrologueCompleted()
+        {
+            if ((!IsRunning) || (!_inTick) || (!_isPrologue) || (_storageFault))
             {
                 return false;
             }

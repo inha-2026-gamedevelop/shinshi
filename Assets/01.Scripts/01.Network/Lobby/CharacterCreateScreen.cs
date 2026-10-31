@@ -301,7 +301,8 @@ namespace Shinshi.Network
             }
 
             _pendingCreation = null;
-            LobbyFlow.PreferredCharacterId = reply.Value.Character.CharacterId;
+            LobbyFlow.PreferredCharacterId   = reply.Value.Character.CharacterId;
+            LobbyFlow.JustCreatedCharacterId = reply.Value.Character.CharacterId;
             LobbyFlow.GoToCharacterSelect();
         }
 

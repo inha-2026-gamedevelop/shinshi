@@ -141,8 +141,10 @@ namespace Shinshi.Combat
             return (_hasRecord) && (_recordSequence == sequence);
         }
 
-        /// <summary> 지난 호출 뒤 흐른 시간만큼 경로를 따라가고 결과를 기록한다 </summary>
-        public Vector3 Advance(Vector3 position, float speed, double now)
+        // 보스 몸통 밀어내기는 기록 전에 한다. 서버도 그 틱의 이동 뒤 밀어낸 위치를 권위 값으로 보내므로 같은 시점끼리 비교된다.
+        // 서 있어도 민다. 보스가 걸어와 겹친 경우도 서버와 같은 자리로 비켜야 보정이 작다
+        /// <summary> 지난 호출 뒤 흐른 시간만큼 경로를 따라가고 결과를 기록한다, resolveBossBodies면 등록된 보스 몸통 밖으로 민다 </summary>
+        public Vector3 Advance(Vector3 position, float speed, double now, bool resolveBossBodies = false)
         {
             double elapsed = now - _lastStepTime;
             _lastStepTime  = now;
@@ -157,6 +159,11 @@ namespace Shinshi.Combat
                     _moveDirection     = direction;
                     _travelledDistance += Vector3.Distance(before, position);
                 }
+            }
+
+            if (resolveBossBodies)
+            {
+                position = BossBodyPushRules.ResolveRegistered(position);
             }
 
             _history.Record(now, position);

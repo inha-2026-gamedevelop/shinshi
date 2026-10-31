@@ -153,6 +153,13 @@ namespace Shinshi.Common
         GuildPendingFull          = 1642, // 길드 대기 신청과 초대가 50건이다
         CharacterIsGuildLeader    = 1643, // 길드원이 있는 길드장은 캐릭터를 삭제할 수 없다
         GuildTargetInvitesFull    = 1644, // 상대가 받은 대기 길드 초대가 5건이다
-        GuildLeaderChanged        = 1645  // 요청 뒤 길드장이 바뀌어 위임 기대 버전이 맞지 않는다
+        GuildLeaderChanged        = 1645, // 요청 뒤 길드장이 바뀌어 위임 기대 버전이 맞지 않는다
+
+        // 프롤로그, 성장 메뉴 안내
+        PrologueRequired          = 1700, // 계정의 첫 프롤로그는 건너뛸 수 없다
+        PrologueAlreadyDone       = 1701, // 이 캐릭터는 프롤로그를 이미 마쳤다
+        PrologueStageInvalid      = 1702, // 알 수 없는 단계이거나 뒤로 가는 단계다
+        MenuGuideInvalid          = 1710, // 메뉴 ID 형식이 맞지 않는다
+        MenuGuideLimit            = 1711  // 계정의 안내 완료 기록이 상한이다
     }
 }

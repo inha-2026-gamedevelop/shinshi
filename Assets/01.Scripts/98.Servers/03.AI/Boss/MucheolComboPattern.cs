@@ -36,6 +36,7 @@ namespace Shinshi.AI
         private readonly MucheolComboSpec           _spec;
         private readonly IBossComboTelegraphListener _listener;
         private readonly MucheolAimTracker          _tracker;
+        private readonly MucheolBodyShift           _bodyShift;
         private readonly List<ICombatTarget>        _buffer = new List<ICombatTarget>();
 
         private Vector3 _aim;
@@ -69,8 +70,10 @@ namespace Shinshi.AI
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
         // naturalAim을 켜면 추적 회전이 MucheolAimTracker의 최단 경로 부드러운 회전이 된다. 기본값 꺼짐은 회전 속도로 제한하는 기존 동작이다
+        // bodyShift는 무철 몸 이동이다. 있으면 타마다 그 타 확정 순간의 보스 위치에서 판정하고, 예고는 첫 타의 예상 위치에 그린다.
+        // 예고 사건은 모든 타가 기준점 하나를 공유해 둘째 타부터는 예고와 판정 위치가 경로 차이만큼 다를 수 있다
         public MucheolComboPattern(float referenceHealth, MucheolComboSpec spec, IBossComboTelegraphListener listener = null,
-            bool naturalAim = false)
+            bool naturalAim = false, MucheolBodyShift bodyShift = null)
         {
             _tracker = naturalAim ? new MucheolAimTracker() : null;
 
@@ -82,6 +85,7 @@ namespace Shinshi.AI
             _referenceHealth = referenceHealth;
             _spec            = spec;
             _listener        = listener;
+            _bodyShift       = bodyShift;
         }
 
         protected override void OnBegin(double serverTime)
@@ -98,7 +102,15 @@ namespace Shinshi.AI
 
             _tracker?.Begin(_aim, serverTime, Context.Definition.TrackingSeconds, Context.Definition.TurnRate);
 
-            _listener?.OnTelegraphStarted(Context.CastInstanceId, Context.Self.Position, _aim,
+            Vector3 origin = Context.Self.Position;
+            if (_bodyShift != null)
+            {
+                _bodyShift.Begin(Context.Self, MucheolBodyShift.ResolveForward(Context, _tracker != null), serverTime,
+                    serverTime + Context.Definition.TelegraphSeconds);
+                origin = _bodyShift.PredictStrikePosition(0);
+            }
+
+            _listener?.OnTelegraphStarted(Context.CastInstanceId, origin, _aim,
                 Context.Definition.TelegraphSeconds, _spec.Hits);
 
             AdvanceTracking(serverTime);
@@ -110,11 +122,13 @@ namespace Shinshi.AI
         {
             if (state == EBossAttackState.Telegraph)
             {
+                AdvanceBody(serverTime);
                 AdvanceTracking(serverTime);
             }
             else
             {
                 ResolveDueHits(serverTime);
+                AdvanceBody(serverTime);
             }
         }
 
@@ -122,6 +136,8 @@ namespace Shinshi.AI
         {
             if (state == EBossAttackState.Execute)
             {
+                AdvanceBody(serverTime);
+
                 // 큰 시간 간격으로 틱이 건너뛰어도 고정은 반드시 첫 타보다 먼저 끝난다. serverTime은 FSM이 넘기는 예고 끝 경계다
                 AdvanceTracking(serverTime);
                 LockDirection();
@@ -130,17 +146,36 @@ namespace Shinshi.AI
                 _executeStart = serverTime;
                 ScheduleHits();
                 ResolveDueHits(serverTime);
+                AdvanceBody(serverTime);
             }
             else if (state == EBossAttackState.Recover)
             {
                 // 실행 끝 경계와 같은 시각의 타(지연이 실행 시간과 같은 타)는 틱이 경계에서 끊겨도 여기서 마무리한다
                 ResolveDueHits(serverTime);
+                AdvanceBody(serverTime);
             }
         }
 
         protected override void OnCancelled(EBossInterruptReason reason)
         {
             _listener?.OnCancelled(Context.CastInstanceId, reason);
+        }
+
+        protected override void OnFinished()
+        {
+            _bodyShift?.Complete();
+        }
+
+        // 아직 치지 않은 타의 확정 시각을 넘지 않는다. 거친 틱에서 몸이 타격 위치를 지나친 뒤에 판정하지 않게 한다
+        private void AdvanceBody(double serverTime)
+        {
+            if (_bodyShift == null)
+            {
+                return;
+            }
+
+            double limit = (_nextHit < _spec.HitCount) ? Math.Min(serverTime, _bodyShift.GetStrikeTime(_nextHit)) : serverTime;
+            _bodyShift.Advance(limit);
         }
 
         // 추적 구간 밖의 시간은 회전량에 넣지 않는다. 틱이 거칠어도 총 회전은 회전 속도 x 추적 시간을 넘지 않는다
@@ -265,6 +300,9 @@ namespace Shinshi.AI
                 {
                     return;
                 }
+
+                // 몸 이동은 이 타의 확정 순간까지만 옮겨 그 순간의 위치에서 판정한다
+                _bodyShift?.Advance(_executeStart + hit.DelaySeconds);
 
                 int index = _nextHit;
                 ++_nextHit;

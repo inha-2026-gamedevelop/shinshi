@@ -30,6 +30,7 @@ MonoBehaviour:
     _emptyWeightRetrySeconds: 0.25
     _directControlMaxSeconds: 1
     _directControlImmuneSeconds: 2
+    _bodyPushRadius: 1
     _enhancedHealthRate: 0.25
     _flowMultipliers:
     - 0.25
@@ -66,6 +67,7 @@ MonoBehaviour:
     _emptyWeightRetrySeconds: 0.25
     _directControlMaxSeconds: 1
     _directControlImmuneSeconds: 2
+    _bodyPushRadius: 1.4
     _enhancedHealthRate: 0.25
     _flowMultipliers:
     - 0.25

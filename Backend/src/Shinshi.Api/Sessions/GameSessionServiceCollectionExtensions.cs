@@ -9,7 +9,9 @@ using Npgsql;
 // Project
 using Shinshi.Data;
 using Shinshi.Data.Auctions;
+using Shinshi.Data.Auth;
 using Shinshi.Data.Growth;
+using Shinshi.Data.Prologue;
 using Shinshi.Data.Reservations;
 using Shinshi.Data.Sessions;
 using Shinshi.Data.Settlement;
@@ -43,6 +45,13 @@ namespace Shinshi.Backend.Sessions
             services.AddSingleton<PostgresPartyAuctionRepository>();
             services.AddSingleton<PostgresReadinessRepository>();
             services.TryAddSingleton(provider => new RecoveryLivenessGate(provider.GetRequiredService<TimeProvider>()));
+            // 프롤로그 입장은 인증(AddShinshiAuth)의 입장 토큰 발급, 성장(AddShinshiGrowth)의 계정 진행과 초기 지급을 함께 쓴다
+            services.AddSingleton(provider => new PostgresPrologueRepository(
+                provider.GetRequiredService<NpgsqlDataSource>(), provider.GetRequiredService<IdempotentOperationExecutor>(),
+                new Lazy<PostgresAuthRepository>(() => provider.GetRequiredService<PostgresAuthRepository>()),
+                provider.GetRequiredService<PostgresAccountProgressRepository>(),
+                provider.GetRequiredService<InitialGrantService>()));
+            services.AddSingleton<PostgresMenuGuideRepository>();
             return services;
         }
 

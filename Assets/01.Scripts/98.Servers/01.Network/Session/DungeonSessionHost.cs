@@ -212,6 +212,9 @@ namespace Shinshi.Network
         // 첫 입장 토큰에서 고정한 출정 계약, 첫 입장 전과 개발 토큰은 계약 없음이다
         public SortieDescriptor Sortie => _descriptor;
 
+        // 백엔드 호출 창구, 프롤로그 단계 저장과 완료 기록이 쓴다. 개발 출정이면 null이다
+        public BackendGateway   Gateway => _usesBackend ? _gateway : null;
+
         // 이 출정에서 열 보스, 보스전 계약이면 계약 값이고 아니면 ConfigureContent의 기본 보스다(없으면 null)
         public string           BossId         => SortieContentRules.ResolveBossId(in _descriptor, _defaultBossId);
         public EBossDifficulty  BossDifficulty => _descriptor.BossDifficulty;
@@ -565,6 +568,12 @@ namespace Shinshi.Network
             return (_inTick) && (_session.ReportBossDefeated());
         }
 
+        /// <summary> 프롤로그 마무리가 끝난 틱에 부른다, 보상 없이 성공으로 닫는다. BeginTick과 CompleteTick 사이에서만 받는다 </summary>
+        public bool ReportPrologueCompleted()
+        {
+            return (_inTick) && (_session.ReportPrologueCompleted());
+        }
+
         /// <summary> 보스 기믹이 최종 성공을 내준 틱에 부른다, 같은 틱 전원 사망보다 앞선다. BeginTick과 CompleteTick 사이에서만 받는다 </summary>
         public bool ReportBossFinalSuccess()
         {
@@ -799,7 +808,7 @@ namespace Shinshi.Network
 
             // 이 서버 콘텐츠에 없는 보스로는 전투를 열 수 없다. 출정을 고정하지 않고 거절해 예약 만료가 티켓을 돌려주게 둔다
             SortieDescriptor sortie = claims.Sortie;
-            if ((sortie.IsBoss) && (_isKnownBoss != null) && (!_isKnownBoss(sortie.BossId)))
+            if (((sortie.IsBoss) || (sortie.IsPrologue)) && (_isKnownBoss != null) && (!_isKnownBoss(sortie.BossId)))
             {
                 _warn?.Invoke($"[Session] 출정 계약의 보스가 서버 콘텐츠에 없어 입장을 거절한다, sortie={sessionId}, boss={sortie.BossId}");
                 return ERejectReason.SessionMismatch;
@@ -810,7 +819,9 @@ namespace Shinshi.Network
             // 전환이 끝나기 전의 플레이어 생성과 준비, 시작은 인증기가 입장 확정을 미뤄 막는다
             if ((sortie.HasContract) && (MapLoader != null))
             {
-                string required = DungeonMapRules.ResolveSceneName(sortie.IsBoss, sortie.BossId);
+                string required = sortie.IsPrologue
+                    ? DungeonMapRules.ResolvePrologueSceneName()
+                    : DungeonMapRules.ResolveSceneName(sortie.IsBoss, sortie.BossId);
                 if ((!string.Equals(required, MapLoader.CurrentMapName, StringComparison.Ordinal)) && (!MapLoader.TryBeginLoad(required)))
                 {
                     _warn?.Invoke($"[Session] 출정 계약의 전장으로 서버 씬을 바꾸지 못해 입장을 거절한다, sortie={sessionId}, " +
@@ -1030,6 +1041,12 @@ namespace Shinshi.Network
                 // 일반전 계약에는 보스 보상(엽전)을 넣지 않는다. API가 일반전 정산의 엽전을 거절하기 때문이다
                 _warn?.Invoke($"[Session] 일반전 웨이브 구현이 없어 웨이브 없는 개발 세션으로 연다, session={_sessionId}");
                 return new DungeonSession(_sessionId, _roster, _events, _config, null, null, _lootSalt);
+            }
+
+            // 프롤로그는 보상, 보스 보상 표, 경매가 없다. 월백은 서버 어댑터가 교전 구간에서 소환한다
+            if (_descriptor.IsPrologue)
+            {
+                return new DungeonSession(_sessionId, _roster, _events, _config, null, null, _lootSalt, prologue: true);
             }
 
             var boss = new DungeonSession(_sessionId, _roster, _events, _config, null, null, _lootSalt);

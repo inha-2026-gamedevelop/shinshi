@@ -38,7 +38,8 @@ namespace Shinshi.Combat
         *                Fields
         ****************************************/
 
-        private const int NO_PARTICIPANT = 0;
+        private const int    NO_PARTICIPANT   = 0;
+        private const string PROLOGUE_BINDING = "Prologue";
 
         private struct Record
         {
@@ -158,6 +159,35 @@ namespace Shinshi.Combat
                 }
             }
 
+            return true;
+        }
+
+        // 프롤로그 임시 물약 전용이다. 출정 예약과 무관한 별도 재고라 저장 이벤트를 만들지 않는 레저(ProloguePotionLedger)와 함께 쓴다.
+        // 참가자가 없으면 만들고, 있으면 소형 재고만 이 수량으로 맞춘다. 이미 사용한 횟수와 쿨다운은 그대로 둔다
+        /// <summary> 소형 물약 재고를 count로 맞춘다, 0이면 제거다. 자리가 없으면 거짓 </summary>
+        public bool SetSmallStock(int participantId, string participantKey, int count)
+        {
+            if ((participantId == NO_PARTICIPANT) || (string.IsNullOrEmpty(participantKey)) || (count < 0))
+            {
+                return false;
+            }
+
+            int index = IndexOf(participantId);
+            if (index < 0)
+            {
+                if (!TryRegister(participantId, participantKey, null))
+                {
+                    return false;
+                }
+
+                index = IndexOf(participantId);
+            }
+
+            ref Record record = ref _records[index];
+            record.SmallBinding   = PROLOGUE_BINDING;
+            record.SmallStock     = count;
+            record.RevertingSmall = 0;
+            _host.OnPotionState(participantId, 0, ERejectReason.None);
             return true;
         }
 

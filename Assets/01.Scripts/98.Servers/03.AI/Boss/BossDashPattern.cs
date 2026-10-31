@@ -19,6 +19,7 @@ namespace Shinshi.AI
     // 기본은 추적 시간 동안 회전 속도로 제한해 돌며 월백 P01과 무철 P03이 이 방식이다. snapAimToTarget을 켜면(무철 P06) 예고를 시작하는 순간 선택된 대상
     // 쪽으로 각도 제한 없이 방향을 잡고, 방향을 고정하는 시각까지 같은 대상을 따라간다. 켜도 고정한 뒤에는 돌진 중에 꺾이지 않는다
     // naturalAim을 켜면(무철 P03, 월백 P01) MucheolAimTracker로 최단 경로를 부드럽게 돌아 고정 시각에 대상 방향에 닿는다. snapAimToTarget과 같이 켤 수 없다
+    // 몸통 충돌(BossDashBodyContact): 지나가는 몸통과 겹친 대상도 같은 피해로 한 번 맞히고, 이동 창구가 IBossHitDisplacer면 옆으로 짧게 민다
     /// <summary> 월백 P01 돌진, 추적 회전 뒤 방향을 고정하고 일정한 속도로 직진하며 지나간 구간의 대상을 한 번씩 타격한다 </summary>
     public sealed class BossDashPattern : BossPatternBase
     {
@@ -42,6 +43,7 @@ namespace Shinshi.AI
         private readonly IBossDashTelegraphListener _listener;
         private readonly bool                      _snapAimToTarget;
         private readonly MucheolAimTracker         _tracker;
+        private readonly IBossHitDisplacer         _displacer; // 이동 창구가 밀림도 맡을 때만 있다
         private readonly List<ICombatTarget>       _buffer  = new List<ICombatTarget>();
         private readonly HashSet<int>              _handled = new HashSet<int>();
 
@@ -103,6 +105,7 @@ namespace Shinshi.AI
 
             _referenceHealth = referenceHealth;
             _movement        = movement;
+            _displacer       = movement as IBossHitDisplacer;
             _listener        = listener;
             _snapAimToTarget = snapAimToTarget;
         }
@@ -373,16 +376,21 @@ namespace Shinshi.AI
             }
         }
 
-        // 한 틱에 지나간 구간만 본다. 한 번 처리한 대상은 방어, 반격, 무적 결과와 상관없이 다시 판정하지 않는다
+        // 한 틱에 지나간 구간만 본다. 한 번 처리한 대상은 방어, 반격, 무적 결과와 상관없이 다시 판정하지 않는다.
+        // 몸통 겹침은 몸통 중심이 지나간 from~to에 몸통 앞쪽(to + 겹침 거리)을 더한 띠다. 돌진이 멈춘 자리 바로 앞에 선 대상도 몸통에 겹친다
         private void SweepHits(float from, float to)
         {
             PatternDefinition definition = Context.Definition;
             float halfWidth = definition.Shape.Width * HALF;
-            float halfLength = (to - from) * HALF;
 
-            // 조회는 원이라 구간 직사각형의 먼 모서리까지 닿는 반경이 필요하다. 안팎은 아래에서 직사각형으로 다시 가른다
-            Vector3 center = _origin + (_aim * (from + halfLength));
-            float   radius = Mathf.Sqrt((halfLength * halfLength) + (halfWidth * halfWidth)) + EDGE_EPSILON;
+            float pushRadius = BossDashBodyContact.GetPushRadius(Context.Self);
+            float bodyReach  = BossDashBodyContact.GetQueryReach(pushRadius);
+
+            // 조회는 원이라 구간 직사각형과 몸통 띠의 먼 모서리까지 닿는 반경이 필요하다. 안팎은 아래에서 다시 가른다
+            float   reachWidth  = Mathf.Max(halfWidth, bodyReach);
+            float   halfLength  = ((to + bodyReach) - from) * HALF;
+            Vector3 center      = _origin + (_aim * (from + halfLength));
+            float   radius      = Mathf.Sqrt((halfLength * halfLength) + (reachWidth * reachWidth)) + EDGE_EPSILON;
             Context.Targets.GetLivingInRadius(center, radius, ECombatFaction.Player, true, _buffer);
 
             float        rawDamage = definition.DamageRef * _referenceHealth;
@@ -392,7 +400,7 @@ namespace Shinshi.AI
             for (int i = 0; i < _buffer.Count; ++i)
             {
                 ICombatTarget target = _buffer[i];
-                if (!IsInsideSegment(target.Position, from, to, halfWidth))
+                if ((!IsInsideSegment(target.Position, from, to, halfWidth)) && (!BossDashBodyContact.IsInsideBodyBand(_origin, _aim, target, from, to, pushRadius)))
                 {
                     continue;
                 }
@@ -410,6 +418,7 @@ namespace Shinshi.AI
                 {
                     ++hitCount;
                     ReportTargetHit(_listener, target, _origin);
+                    BossDashBodyContact.PushAside(_displacer, _origin, _aim, target);
                 }
             }
 

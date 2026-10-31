@@ -27,6 +27,9 @@ namespace Shinshi.Common
             public const string DUNGEON_MUCHEOL  = "DungeonMucheol";
             public const string DUNGEON_WOLBAEK  = "DungeonWolbaek";
 
+            // 캐릭터 생성 직후 1인 프롤로그 출정의 전장, 숲 구간과 월백 교전을 한 씬에서 치른다
+            public const string DUNGEON_PROLOGUE = "DungeonPrologue";
+
             // 아직 만들지 않은 씬
             public const string FOREST_WAVE  = "ForestWave";
             public const string WOLBAEK_EASY = "WolbaekEasy";

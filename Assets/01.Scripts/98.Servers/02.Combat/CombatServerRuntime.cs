@@ -14,6 +14,7 @@ using Shinshi.Common;
 using Shinshi.Contracts;
 using Shinshi.Data;
 using Shinshi.Network;
+using Shinshi.Systems;
 
 namespace Shinshi.Combat
 {
@@ -48,6 +49,9 @@ namespace Shinshi.Combat
 
         // 기믹 난수 시드에 섞는 값. 보스 패턴 선택과 같은 출정 시드에서 나오되 난수열은 따로 쓴다
         private const int    GIMMICK_RANDOM_SALT   = 0x5F3759DF;
+
+        // 프롤로그 월백은 1페이즈에서 2페이즈 전환 체력(정의의 PhaseTransitionHealthRate)에 닿지 않게 그보다 이만큼 위에서 피해를 막는다
+        private const float  PROLOGUE_PHASE_MARGIN = 0.01f;
 
         private readonly Dictionary<int, ExperienceBinding> _experience = new Dictionary<int, ExperienceBinding>();
         private SessionEventQueue _experienceQueue;
@@ -96,6 +100,9 @@ namespace Shinshi.Combat
         private PotionServer                 _potions;
         private IEnemyObjectHost             _enemyHost;
         private bool                         _epochFromSession      = false;
+        private PrologueSessionAdapter       _prologue;
+        private SessionBinding               _prologueBinding;
+        private bool                         _prologueChecked       = false;
 
         /****************************************
         *              Properties
@@ -377,6 +384,21 @@ namespace Shinshi.Combat
         {
             NetworkServer.ReplaceHandler<PotionUseRequestMessage>(OnPotionRequest);
             NetworkServer.ReplaceHandler<SortieAbandonRequestMessage>(OnAbandonRequest);
+            NetworkServer.ReplaceHandler<PrologueEventMessage>(OnPrologueEvent);
+        }
+
+        // 메인 스레드의 Mirror 수신에서 불린다. 참가자는 연결 결합으로 정하고, 프롤로그 출정이 아니면 무시한다.
+        // 어댑터가 사건을 모아 두었다가 다음 틱 앞에서 처리한다
+        private void OnPrologueEvent(NetworkConnectionToClient connection, PrologueEventMessage message)
+        {
+            if ((_host == null) || (_prologue == null) || (connection == null)
+                || (!(connection.authenticationData is SessionBinding binding)) || (!binding.IsActive)
+                || (!binding.Sortie.IsPrologue))
+            {
+                return;
+            }
+
+            _prologue.OnClientEvent(binding.ParticipantId, message.Event);
         }
 
         // 메인 스레드의 Mirror 수신에서 불린다. 참가자는 연결 결합으로 정하고 메시지 값은 작업 ID만 쓴다.
@@ -598,6 +620,11 @@ namespace Shinshi.Combat
                 Debug.LogError($"[Combat] 보존된 기술 상태의 직업이 API 직업과 달라 버린다, participantId={participantId}, " +
                     $"retained={retainedClass.PlayerClass}, bound={playerClass}");
                 ReleaseRetainedSkills(participantId);
+            }
+
+            if (binding.Sortie.IsPrologue)
+            {
+                _prologueBinding = binding;
             }
 
             BindExperience(binding);
@@ -1007,6 +1034,7 @@ namespace Shinshi.Combat
             EnsureExperienceObserver();
             ApplySessionPhase();
             TrySpawnBoss(serverTime);
+            TryBeginPrologue(serverTime);
             DiscardClosedParticipants();
             CloseExpiredParticipants(serverTime);
             for (int i = 0; i < _players.Count; ++i)
@@ -1043,6 +1071,7 @@ namespace Shinshi.Combat
             if (sessionTick)
             {
                 _host.TickWave();
+                _prologue?.Tick(serverTime);
             }
 
             ReportLifeStates(serverTime);
@@ -1052,6 +1081,7 @@ namespace Shinshi.Combat
             }
 
             EndBossIfSessionEnded(serverTime);
+            EndPrologueIfSessionEnded();
             PublishBossObject();
 
             // 종료 판정 뒤에 확정을 본다. 이번 틱에 출정이 끝났으면 종료 이벤트 뒤로 되돌림을 넣지 않는다
@@ -1061,11 +1091,161 @@ namespace Shinshi.Combat
             SyncCompanionObjects();
             _combatMeter?.Tick(serverTime);
 
+            // 보스 몸통 밀어내기는 이동, 기술, 공격, 보스, 부활이 위치를 모두 옮긴 뒤 한 번만 한다. 보내는 위치가 몸통과 겹치지 않는다
+            ResolveBossBodies();
+
             // 이동, 기술, 공격, 부활이 위치를 모두 옮긴 뒤에 보내야 예측이 틱 중간 위치를 기준으로 삼지 않는다
             for (int i = 0; i < _players.Count; ++i)
             {
                 _players[i].ReplicateSkills();
                 _players[i].PublishMovement(serverTime);
+            }
+        }
+
+        /// <summary> 참가자 번호의 서버 플레이어 개체, 없으면 null이다. 프롤로그 어댑터가 재접속으로 바뀐 개체를 따라가는 데 쓴다 </summary>
+        public PlayerServer FindPlayer(int participantId)
+        {
+            int index = IndexOfParticipant(participantId);
+            return (index >= 0) ? _players[index] : null;
+        }
+
+        // 프롤로그 출정이 진행되는 첫 틱에 한 번 시도한다. 전장 마커나 산귀 소환기를 만들 수 없으면 플레이어가 갇히지 않도록
+        // 출정을 서비스 취소로 닫는다(캐릭터 저장 단계는 그대로라 다음 입장에서 이어진다). 플레이어 개체가 생길 때까지는 기다린다
+        private void TryBeginPrologue(double serverTime)
+        {
+            if ((_prologueChecked) || (!_scalesApplied) || (_host == null) || (!_host.IsSessionRunning) || (!_host.Sortie.IsPrologue))
+            {
+                return;
+            }
+
+            if ((_prologueBinding == null) || (FindPlayer(_prologueBinding.ParticipantId) == null))
+            {
+                return;
+            }
+
+            _prologueChecked = true;
+            if (!PrologueMarkers.TryLoad(out PrologueMarkers markers, out string error))
+            {
+                Debug.LogError($"[Prologue] {error}");
+                _host.CancelSortieService(serverTime);
+                return;
+            }
+
+            PrologueEnemyField enemies = (_host.WaveFactory as WaveSessionFactory)?.CreatePrologueEnemyField(DamageScale, EnemyHealthScale);
+            if (enemies == null)
+            {
+                Debug.LogError("[Prologue] 산귀 소환기를 만들지 못해 출정을 서비스 취소로 닫는다");
+                _host.CancelSortieService(serverTime);
+                return;
+            }
+
+            var reporter = new PrologueBackendReporter(_host.Gateway, _host.SessionId, _prologueBinding.CharacterId);
+            _prologue = new PrologueSessionAdapter(this, _host, _prologueBinding, enemies, markers, reporter);
+            _prologue.Begin(serverTime);
+            Debug.Log($"[Prologue] 프롤로그 세션 시작, stage={_prologueBinding.Prologue.Stage}, " +
+                $"potions={_prologueBinding.Prologue.WolbaekPotions}, talisman={_prologueBinding.Prologue.TalismanChecked}");
+        }
+
+        // 세션이 끝나면 어댑터와 월백을 정리한다
+        private void EndPrologueIfSessionEnded()
+        {
+            if ((_prologue == null) || (_host == null) || (_host.Session == null) || (!_host.Session.IsEnded))
+            {
+                return;
+            }
+
+            EndPrologueBoss(_lastTickTime);
+            _prologue.Dispose();
+            _prologue = null;
+        }
+
+        /// <summary> 프롤로그 월백을 지정한 중심에 이지 난이도로 소환한다. 체력 하한을 두고 기믹은 붙이지 않는다, 소환하지 못하면 거짓이다 </summary>
+        public bool TrySpawnPrologueBoss(Vector3 center, Vector3 forward, double serverTime)
+        {
+            if ((_boss != null) || (_host == null) || (!_host.Sortie.IsPrologue) || (!_host.IsSessionRunning) || (!GameDB.IsInitialized))
+            {
+                return false;
+            }
+
+            string bossId = _host.Sortie.BossId;
+            if ((!GameDB.Progression.TryGetRegion(Constants.Combat.DEV_BOSS_REGION_ID, out ProgressionCatalogSO.RegionDefinition region))
+                || (!GameDB.BossPatterns.TryGetBoss(bossId, out BossPatternCatalogSO.BossDefinition definition)))
+            {
+                Debug.LogError($"[Prologue] 월백 정의나 전장 지역이 없다, boss={bossId}, region={Constants.Combat.DEV_BOSS_REGION_ID}");
+                return false;
+            }
+
+            float referenceAttack = GameDB.Progression.GetReferenceAttack(region);
+            float referenceHealth = GameDB.Progression.GetReferenceHealth(region);
+            if ((!(referenceAttack > 0f)) || (!(referenceHealth > 0f)) || (!(BossHealthScale > 0f)) || (!(DamageScale > 0f)))
+            {
+                Debug.LogError($"[Prologue] 기준값이나 인원 배율이 0이라 월백을 만들지 않는다, Aref={referenceAttack}, " +
+                    $"Href={referenceHealth}, health={BossHealthScale}, damage={DamageScale}");
+                return false;
+            }
+
+            var scaledResolver = new BossDamageScaler(_skillResolver, DamageScale);
+            var boss = new BossServer(bossId, _registry.IssueCombatId(), center, forward, center, referenceAttack, referenceHealth,
+                BossHealthScale, new BossPatternCatalogSource(GameDB.BossPatterns, EBossDifficulty.Easy), _registry,
+                scaledResolver, new BossTerrainProbe(_obstacleMask), new SeededBossRandom(_sessionEpoch),
+                connections: new BossParticipantConnections(_players, _host.Roster),
+                displaceTargets: new BossPlayerDisplaceLookup(_players), chargeStructures: null,
+                sealStartingCount: _host.Session.StartingCount);
+
+            // 30초 안에 쓰러지지 않고 2페이즈 전환 체력에도 닿지 않게 한다. 기믹은 붙이지 않아 75%, 50%, 25% 체력 기믹이 없다
+            boss.MinHealthRate = Mathf.Min(1f, definition.PhaseTransitionHealthRate + PROLOGUE_PHASE_MARGIN);
+
+            if (!boss.Begin(serverTime))
+            {
+                Debug.LogError($"[Prologue] 월백 전투를 열지 못했다, boss={bossId}");
+                return false;
+            }
+
+            if (!_registry.Register(boss))
+            {
+                Debug.LogError($"[Prologue] 월백을 전투 대상에 등록하지 못했다, boss={bossId}");
+                return false;
+            }
+
+            _boss = boss;
+            SpawnBossObject();
+            Debug.Log($"[Prologue] 월백 소환, combatId={boss.CombatId}, maxHealth={boss.MaxHealth}, minRate={boss.MinHealthRate}");
+            return true;
+        }
+
+        /// <summary> 프롤로그 월백 전투를 끝내고 개체를 내린다, 없으면 아무것도 하지 않는다 </summary>
+        public void EndPrologueBoss(double serverTime)
+        {
+            if (_boss == null)
+            {
+                return;
+            }
+
+            if (_boss.IsActive)
+            {
+                _boss.EndCombat(serverTime);
+            }
+
+            if ((_bossHost != null) && (_bossState != null))
+            {
+                _bossHost.Despawn(_boss, _bossState);
+                _bossState = null;
+            }
+
+            _registry.Unregister(_boss.CombatId);
+            _boss = null;
+        }
+
+        private void ResolveBossBodies()
+        {
+            if (_boss == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                _players[i].ResolveBossBody(_boss);
             }
         }
 

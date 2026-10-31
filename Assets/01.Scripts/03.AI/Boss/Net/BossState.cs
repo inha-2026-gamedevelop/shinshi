@@ -15,7 +15,7 @@ namespace Shinshi.AI
 {
     /// <summary> 보스 네트워크 개체의 복제 상태와 공격 사건 전달, 판정은 서버의 BossServer가 한다 </summary>
     public class BossState : NetworkBehaviour, IBossEventListener, IBossMucheolEventListener, IBossHardPhaseEventListener,
-        IBossWolbaekGimmickEventListener, IBossMucheolSealEventListener, IWolbaekPlayerHitEventListener
+        IBossWolbaekGimmickEventListener, IBossMucheolSealEventListener, IWolbaekPlayerHitEventListener, IBossBodyBlocker
     {
         // 서버 스포너(BossNetworkSpawner)가 보스전 시작 틱에 서버 소유로 스폰한다. Command가 없어 클라이언트는 보스 상태를 바꿀 수 없다.
         //
@@ -66,6 +66,9 @@ namespace Shinshi.AI
         [SyncVar] private ushort  _facingYaw;
         [SyncVar] private float   _health;
         [SyncVar] private float   _maxHealth;
+
+        // 플레이어를 밀어내는 몸통 반경(m). 소유 클라이언트 예측이 서버와 같은 밀어내기를 하도록 보스 정의 값을 그대로 싣는다
+        [SyncVar] private float   _bodyPushRadius;
 
         [SyncVar(hook = nameof(OnLifeStateSynced))]
         private EParticipantLifeState _lifeState = EParticipantLifeState.Alive;
@@ -127,6 +130,12 @@ namespace Shinshi.AI
         /// <summary> 서버가 확정한 몸체 위치, 돌진 중에는 복제 주기만큼 늦으므로 표현은 돌진 사건으로 그린다 </summary>
         public Vector3 Position => _position;
 
+        /// <summary> 플레이어를 밀어내는 몸통 반경(m), 서버가 아직 싣지 않았으면 0이다 </summary>
+        public float BodyPushRadius => _bodyPushRadius;
+
+        /// <summary> 살아 있고 반경을 받았으면 플레이어 예측을 막는다 </summary>
+        public bool BlocksBodies => (_lifeState == EParticipantLifeState.Alive) && (_bodyPushRadius > 0f);
+
         public ushort  FacingYaw => _facingYaw;
         public Vector3 Forward   => FacingRules.DecodeYaw(_facingYaw);
 
@@ -183,6 +192,7 @@ namespace Shinshi.AI
         public override void OnStartClient()
         {
             _clientStarted = true;
+            BossBodyBlockerRegistry.Register(this);
 
             // 호스트는 스폰 초기 상태를 역직렬화하지 않아 서버가 스폰 전에 넣은 배치를 받지 못한다. 서버 기록에서 직접 옮긴다
             if ((NetworkServer.active) && (isServer) && (_serverStructureLedger.HasLayout))
@@ -201,6 +211,7 @@ namespace Shinshi.AI
         public override void OnStopClient()
         {
             _clientStarted = false;
+            BossBodyBlockerRegistry.Unregister(this);
             _clientLedger.Clear();
             _clientPhaseLedger.Clear();
             _clientWolbaekLedger.Clear();
@@ -278,6 +289,13 @@ namespace Shinshi.AI
             _defeatServerTime          = defeatServerTime;
             _phaseGeneration           = phaseGeneration;
             _phaseTransitionServerTime = phaseTransitionServerTime;
+        }
+
+        /// <summary> 플레이어를 밀어내는 몸통 반경을 싣는다, 같은 값이면 다시 보내지 않는다 </summary>
+        [Server]
+        public void SetBodyPushRadius(float radius)
+        {
+            _bodyPushRadius = radius;
         }
 
         /// <summary> 2페이즈 전환 컷신 구간을 싣는다, 구간이 없으면 번호 0과 NaN이다 </summary>

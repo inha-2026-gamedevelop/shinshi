@@ -104,6 +104,21 @@ namespace Shinshi.Network
                     appearance)
                     .WithSortieLoadout(response.CombatLoadout, response.Potions)
                     .WithSortie(in sortie).WithExperience(response.Experience).WithGuildName(ReadGuildName(response));
+
+                // 프롤로그는 캐릭터의 저장 단계로 이어 시작한다. 범위를 벗어난 값은 발급 쪽 결함이라 받지 않는다
+                if (sortie.IsPrologue)
+                {
+                    var resume = new PrologueResume(response.PrologueStage, response.PrologueWolbaekPotions,
+                        response.PrologueTalismanChecked);
+                    if (!resume.IsValid())
+                    {
+                        claims = default;
+                        return ERejectReason.SessionMismatch;
+                    }
+
+                    claims = claims.WithPrologue(in resume);
+                }
+
                 return ERejectReason.None;
             }
 
@@ -159,6 +174,14 @@ namespace Shinshi.Network
                 bool knownDifficulty = (response.Difficulty == GameSessionCodes.Difficulty.EASY)
                     || (response.Difficulty == GameSessionCodes.Difficulty.HARD);
                 if ((!IsSafeId(response.BossId)) || (!knownDifficulty))
+                {
+                    return ERejectReason.SessionMismatch;
+                }
+            }
+            else if (response.Mode == GameSessionCodes.Mode.PROLOGUE)
+            {
+                // 프롤로그는 월백을 쉬움으로 연다. 그 밖의 난이도나 보스 없는 계약은 어긋난 발급이다
+                if ((!IsSafeId(response.BossId)) || (response.Difficulty != GameSessionCodes.Difficulty.EASY))
                 {
                     return ERejectReason.SessionMismatch;
                 }

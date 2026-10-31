@@ -6,15 +6,16 @@ namespace Shinshi.Contracts
         // TODO(민성): ContractCodes로 합칠지 정한다. 같은 이름 enum이 없는 Mode, EventKind, InstanceState는
         // 여기서 처음 정한 값이고, EndReason은 ESessionEndReason과 값이 같아야 한다
 
-        /// <summary> 출정 종류, 보스전만 티켓 1장을 예약한다 </summary>
+        /// <summary> 출정 종류, 보스전만 티켓 1장을 예약한다. 프롤로그는 마을을 거치지 않는 1인 튜토리얼 출정이고 티켓, 물약 예약, 보상 정산이 없다 </summary>
         public static class Mode
         {
             /****************************************
             *                Fields
             ****************************************/
 
-            public const int NORMAL = 0;
-            public const int BOSS   = 1;
+            public const int NORMAL   = 0;
+            public const int BOSS     = 1;
+            public const int PROLOGUE = 2;
         }
 
         /// <summary> ESessionEndReason과 같은 값 </summary>

@@ -19,7 +19,9 @@ namespace Shinshi.AI
     // 타깃을 따라 도는 조준이 없고 안전지대 방향도 저장한 정면의 반대쪽으로 고정이다. 보스가 전장 가장자리에 있어 안전지대가 전장 밖이어도
     // 시전을 취소하거나 중앙으로 옮기지 않는다. 그 위치는 타깃이 보스를 유도한 결과로 본다.
     // 부채꼴 안팎 판정은 BossFanShape 하나를 쓴다. 각도 경계는 안쪽(공격 영역)에 포함이라 예고 메시의 경계선 위는 맞는다.
-    // 보스와 같은 위치의 대상은 방향이 없어 맞고, 밀 방향은 저장한 정면으로 한다
+    // 보스와 같은 위치의 대상은 방향이 없어 맞고, 밀 방향은 저장한 정면으로 한다.
+    // 무철 몸 이동(bodyShift)이 있으면 저장하는 위치는 예고 시작 위치가 아니라 미리 계산한 타격 순간의 보스 위치다. 조준이 없어
+    // 벽에 막히지 않는 한 실제 타격 순간 위치와 같고, 막혀도 예고와 판정이 같은 값을 쓰도록 저장한 위치로 판정한다
     /// <summary> 무철 하드 2페이즈 전장 공격, 저장한 위치와 방향으로 예고가 끝나면 한 번 타격하고 맞은 대상을 바깥으로 민다 </summary>
     public sealed class MucheolBattlefieldBlastPattern : BossPatternBase
     {
@@ -37,6 +39,7 @@ namespace Shinshi.AI
         private readonly MucheolBattlefieldSpec        _spec;
         private readonly IBossHitDisplacer             _displacer;
         private readonly IMucheolBattlefieldListener   _listener;
+        private readonly MucheolBodyShift              _bodyShift;
         private readonly List<ICombatTarget>           _buffer = new List<ICombatTarget>();
 
         private Vector3 _origin;
@@ -47,7 +50,7 @@ namespace Shinshi.AI
         *              Properties
         ****************************************/
 
-        /// <summary> 예고 시작 순간에 저장한 보스 위치, 시전이 끝날 때까지 바뀌지 않는다 </summary>
+        /// <summary> 예고 시작 순간에 저장한 판정 위치, 시전이 끝날 때까지 바뀌지 않는다 </summary>
         public Vector3 Origin => _origin;
 
         /// <summary> 예고 시작 순간에 저장한 정면 방향, 수평 단위 벡터. 안전지대는 이 방향의 반대쪽이다 </summary>
@@ -59,12 +62,13 @@ namespace Shinshi.AI
 
         // referenceHealth는 지역과 난이도에 맞는 Href다. 정하는 쪽은 서버 연결이다
         public MucheolBattlefieldBlastPattern(float referenceHealth, MucheolBattlefieldSpec spec, IBossHitDisplacer displacer,
-            IMucheolBattlefieldListener listener = null)
+            IMucheolBattlefieldListener listener = null, MucheolBodyShift bodyShift = null)
         {
             _referenceHealth = referenceHealth;
             _spec            = spec ?? throw new ArgumentNullException(nameof(spec));
             _displacer       = displacer ?? throw new ArgumentNullException(nameof(displacer));
             _listener        = listener;
+            _bodyShift       = bodyShift;
         }
 
         protected override void OnBegin(double serverTime)
@@ -75,12 +79,25 @@ namespace Shinshi.AI
             _aim    = Flatten(Context.Self.Forward, Vector3.forward);
             _hasHit = false;
 
+            if (_bodyShift != null)
+            {
+                _bodyShift.Begin(Context.Self, _aim, serverTime, serverTime + definition.TelegraphSeconds);
+                _origin = _bodyShift.PredictStrikePosition(0);
+            }
+
             _listener?.OnTelegraphStarted(Context.CastInstanceId, _origin, _aim, definition.Shape.Range, definition.Shape.ArcAngle,
                 definition.TelegraphSeconds);
         }
 
+        protected override void OnTick(EBossAttackState state, double serverTime)
+        {
+            AdvanceBody(serverTime);
+        }
+
         protected override void OnEnterState(EBossAttackState state, double serverTime)
         {
+            AdvanceBody(serverTime);
+
             if (state == EBossAttackState.Execute)
             {
                 Strike();
@@ -90,6 +107,22 @@ namespace Shinshi.AI
         protected override void OnCancelled(EBossInterruptReason reason)
         {
             _listener?.OnCancelled(Context.CastInstanceId, reason);
+        }
+
+        protected override void OnFinished()
+        {
+            _bodyShift?.Complete();
+        }
+
+        // 타격 전에는 타 확정 시각을 넘지 않는다. 표현이 타격 순간의 몸 위치와 맞도록 거친 틱에서도 그 순간에 멈춘다
+        private void AdvanceBody(double serverTime)
+        {
+            if (_bodyShift == null)
+            {
+                return;
+            }
+
+            _bodyShift.Advance(_hasHit ? serverTime : Math.Min(serverTime, _bodyShift.GetStrikeTime(0)));
         }
 
         // 한 번만 쓴다. 대상마다 요청을 내지만 한 동작 번호를 공유하므로 대상당 한 번이다

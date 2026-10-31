@@ -394,7 +394,8 @@ namespace Shinshi.Data.Settlement
                     AND settlement_operation_id = @OperationId
                 RETURNING ended_event_seq AS "EndedEventSeq", instance_boot_id AS "InstanceBootId", revision AS "Revision",
                     state = 'Auction' AS "StartsAuction", (end_reason = @Success) AS "Succeeded",
-                    (mode = 'Boss') AS "IsBoss", battle_id AS "BattleId", boss_id AS "BossId", difficulty AS "Difficulty";
+                    (mode = 'Boss') AS "IsBoss", (mode = 'Prologue') AS "IsPrologue", battle_id AS "BattleId",
+                    boss_id AS "BossId", difficulty AS "Difficulty";
                 """, new
                 {
                     SessionId = sessionId, InstanceId = callerInstanceId, OperationId = operationId,
@@ -450,7 +451,8 @@ namespace Shinshi.Data.Settlement
             // 성공 정산만 계정 진행(지역 성공, 보스 첫 처치, 여우의 흔적)을 남긴다. 실패, 장애 취소는 기록하지 않고,
             // 포기나 접속 만료로 떠난 참가자(departed_at)는 성공에 참여하지 않았으므로 뺀다. 계정 행은 위에서 이미 잠갔고,
             // 같은 출정의 정산 효과는 settlement_operation_id 조건부 갱신으로 한 번만 실행되므로 진행도 한 번만 오른다
-            if ((_progress != null) && closed.Succeeded)
+            // 프롤로그 출정은 클리어 기록이 없다. 계정 완료(신시 안내 완료)는 던전 서버의 프롤로그 완료 경로가 따로 기록한다
+            if ((_progress != null) && closed.Succeeded && !closed.IsPrologue)
             {
                 Guid[] clearers = (await connection.QueryAsync<Guid>(new CommandDefinition(
                     """
@@ -1090,6 +1092,7 @@ namespace Shinshi.Data.Settlement
             // 출정 계약(0012). 0012 전 출정은 battle, boss, difficulty가 NULL이다
             public bool    Succeeded  { get; set; }
             public bool    IsBoss     { get; set; }
+            public bool    IsPrologue { get; set; }
             public string? BattleId   { get; set; }
             public string? BossId     { get; set; }
             public short?  Difficulty { get; set; }

@@ -45,6 +45,9 @@ namespace Shinshi.AI
         private readonly IMucheolMultiDashListener         _dashListener;
         private readonly IBossHitDisplacer                 _displacer;
         private readonly IMucheolBattlefieldListener       _battlefieldListener;
+        private readonly bool                              _shiftsBody;
+
+        private static readonly float[] G_SingleStrike = { 0f }; // 단발 패턴의 타 지연, 실행 시작 순간 한 번이다
 
         /****************************************
         *                Methods
@@ -54,10 +57,11 @@ namespace Shinshi.AI
         // hardSpec은 하드 전용 ID(mucheol_hard_ph2_...)의 실행 데이터다. 하드 정의는 이지와 같은 실행 객체를 쓰되 이 데이터로 만들며, 비어 있으면 하드 정의를 만들지 않는다.
         // P07은 하드 전용이라 이지 데이터(spec)의 P07을 그대로 쓴다
         // vitals와 catalog는 연속 돌진의 강화 구간 판정에 쓴다. movement는 연속 돌진이 보스 몸체를 옮기는 창구이며 없으면 P03과 P06을 만들지 않는다
+        // shiftsBody를 켜면 P01, P02, P04, P05, P07이 모션 경로대로 보스를 옮긴다(MucheolBodyShift). 이동 창구가 없으면 켜도 옮기지 않는다
         public MucheolPhase2PatternFactory(float referenceHealth, MucheolPhase2Spec spec, IBossVitals vitals,
             IBossPatternCatalog catalog, IBossMovement movement = null, IMucheolSequenceTelegraphListener sequenceListener = null,
             IMucheolMultiDashListener dashListener = null, IBossHitDisplacer displacer = null,
-            IMucheolBattlefieldListener battlefieldListener = null, MucheolPhase2Spec hardSpec = null)
+            IMucheolBattlefieldListener battlefieldListener = null, MucheolPhase2Spec hardSpec = null, bool shiftsBody = false)
         {
             if (referenceHealth <= 0f)
             {
@@ -74,6 +78,7 @@ namespace Shinshi.AI
             _dashListener        = dashListener;
             _displacer           = displacer;
             _battlefieldListener = battlefieldListener;
+            _shiftsBody          = shiftsBody;
         }
 
         // Create가 null을 돌려줄 조건과 같아야 한다
@@ -119,20 +124,26 @@ namespace Shinshi.AI
             }
 
             MucheolPhase2Spec spec = ResolveSpec(definition);
-            switch (ToBaseId(definition))
+            string            id   = ToBaseId(definition);
+            switch (id)
             {
                 case P01_ID:
-                    return new MucheolSequencePattern(_referenceHealth, spec.P01, _sequenceListener, naturalAim: true);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P01, _sequenceListener, naturalAim: true,
+                        bodyShift: CreateBodyShift(id, ToStrikeDelays(spec.P01)));
                 case P02_ID:
-                    return new MucheolSequencePattern(_referenceHealth, spec.P02, _sequenceListener, naturalAim: true);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P02, _sequenceListener, naturalAim: true,
+                        bodyShift: CreateBodyShift(id, ToStrikeDelays(spec.P02)));
                 case P04_ID:
-                    return new MucheolSequencePattern(_referenceHealth, spec.P04, _sequenceListener);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P04, _sequenceListener,
+                        bodyShift: CreateBodyShift(id, ToStrikeDelays(spec.P04)));
                 case P05_ID:
-                    return new MucheolSequencePattern(_referenceHealth, spec.P05, _sequenceListener, naturalAim: true);
+                    return new MucheolSequencePattern(_referenceHealth, spec.P05, _sequenceListener, naturalAim: true,
+                        bodyShift: CreateBodyShift(id, ToStrikeDelays(spec.P05)));
                 case P03_ID:
                     return new MucheolMultiDashPattern(_referenceHealth, _movement, spec.P03, ResolveDashCount(spec.P03), _dashListener);
                 case P07_ID:
-                    return new MucheolBattlefieldBlastPattern(_referenceHealth, spec.P07, _displacer, _battlefieldListener);
+                    return new MucheolBattlefieldBlastPattern(_referenceHealth, spec.P07, _displacer, _battlefieldListener,
+                        CreateBodyShift(id, G_SingleStrike));
                 default:
                     return new MucheolMultiDashPattern(_referenceHealth, _movement, spec.P06, ResolveDashCount(spec.P06), _dashListener);
             }
@@ -148,6 +159,33 @@ namespace Shinshi.AI
         private MucheolPhase2Spec ResolveSpec(PatternDefinition definition)
         {
             return (definition.DefinitionId != ToBaseId(definition)) ? _hardSpec : _spec;
+        }
+
+        // 켜져 있고 이동 창구가 있을 때만 만든다. 키가 기준으로 삼는 타가 타 목록에 없으면(타 수가 다른 데이터) 옮기지 않는다
+        private MucheolBodyShift CreateBodyShift(string baseId, float[] strikeDelays)
+        {
+            if ((!_shiftsBody) || (_movement == null))
+            {
+                return null;
+            }
+
+            if ((!MucheolBodyShiftCatalog.TryGet(baseId, out MucheolBodyShiftSpec spec)) || (spec.MaxStrikeIndex >= strikeDelays.Length))
+            {
+                return null;
+            }
+
+            return new MucheolBodyShift(_movement, spec, strikeDelays);
+        }
+
+        private static float[] ToStrikeDelays(MucheolSequenceSpec sequence)
+        {
+            var delays = new float[sequence.StepCount];
+            for (int i = 0; i < delays.Length; ++i)
+            {
+                delays[i] = sequence.Steps[i].DelaySeconds;
+            }
+
+            return delays;
         }
 
         // 보스 정의가 없거나 강화 기준이 미지정이면 강화 구간이 아닌 것으로 본다

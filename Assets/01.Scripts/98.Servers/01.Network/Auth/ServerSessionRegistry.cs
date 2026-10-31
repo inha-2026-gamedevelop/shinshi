@@ -106,6 +106,7 @@ namespace Shinshi.Network
             binding.CombatLoadout   = claims.CombatLoadout;
             binding.ReservedPotions = claims.ReservedPotions;
             binding.Sortie          = claims.Sortie;
+            binding.Prologue        = claims.Prologue;
             binding.IsAuctionOnly   = auctionOnly;
             return ERejectReason.None;
         }

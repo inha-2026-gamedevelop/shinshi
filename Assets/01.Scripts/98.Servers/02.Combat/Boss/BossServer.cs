@@ -62,7 +62,7 @@ namespace Shinshi.Combat
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
         IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
         IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp, IBossEventRelayHost, IBossTargetHitListener,
-        IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget
+        IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget, IBossBodyBlocker
     {
         /****************************************
         *                Fields
@@ -94,6 +94,7 @@ namespace Shinshi.Combat
         private readonly float                 _arenaRadius;
         private readonly float                 _maxHealth;
         private readonly float                 _defense;
+        private readonly float                 _bodyPushRadius; // m, 플레이어를 밀어내는 몸통 반경, 판정용 BodyRadius와 따로 둔다
         private readonly IBossWallQuery        _terrain;
         private readonly IBossStandQuery       _standQuery;   // 지형이 겹침 검사를 지원할 때만 있다
         private readonly ICombatTargetQuery    _targets;
@@ -127,6 +128,7 @@ namespace Shinshi.Combat
         // AttachGimmicks가 채운다. 붙이지 않은 보스는 모두 비어 있어 상한 없음, 즉시 사망, 결계 전개 그대로다
         private BossGimmickSet         _gimmicks;
         private IBossDamageCap         _damageCap;
+        private float                  _minHealthRate;
         private IBossFinalSuccess      _finalSuccess;
         private IBossGimmickStopSource _stopSource;
         private IBossGimmickReviveGate _reviveGate;
@@ -188,6 +190,12 @@ namespace Shinshi.Combat
         public Vector3               Position      => _position;
         public Vector3               Forward       => _forward;
         public float                 BodyRadius    => Constants.Combat.BOSS_BODY_RADIUS;
+
+        /// <summary> 플레이어를 밀어내는 몸통 반경(m), 보스 정의에서 읽는다 </summary>
+        public float BodyPushRadius => _bodyPushRadius;
+
+        // 등장 대기, 그로기, 전환 컷신 중에도 몸은 그 자리에 있으므로 살아 있는 동안은 막는다
+        public bool BlocksBodies => (_lifeState == EParticipantLifeState.Alive) && (_bodyPushRadius > 0f);
 
         /// <summary> 보스 정의 ID, 전투 번호와 다르다 </summary>
         public string BossId => _bossId;
@@ -344,12 +352,14 @@ namespace Shinshi.Combat
 
             _displaceTargets = displaceTargets;
 
-            // 정의가 없거나 수치가 비어 있으면 최대 체력 0으로 남고 Begin이 거절한다
+            // 정의가 없거나 수치가 비어 있으면 최대 체력 0으로 남고 Begin이 거절한다. 밀침 반경은 정의가 없어도 기본값으로 막는다
+            _bodyPushRadius = Constants.Combat.BOSS_BODY_PUSH_RADIUS_DEFAULT;
             if (catalog.TryGetBoss(bossId, out BossDefinition boss))
             {
-                _maxHealth   = boss.HealthRef * referenceAttack * healthScale;
-                _defense     = boss.Defense;
-                _arenaRadius = boss.ArenaDiameter * HALF;
+                _maxHealth      = boss.HealthRef * referenceAttack * healthScale;
+                _defense        = boss.Defense;
+                _arenaRadius    = boss.ArenaDiameter * HALF;
+                _bodyPushRadius = boss.BodyPushRadius;
             }
 
             _health = _maxHealth;
@@ -532,7 +542,23 @@ namespace Shinshi.Combat
         // 기믹이 없으면 그대로 돌려준다. 최대 체력은 이 몸체가 알고 판정기는 모르므로 여기서 채운다
         public float CapIncomingDamage(float currentHealth, float damage)
         {
-            return (_damageCap == null) ? damage : _damageCap.CapDamage(currentHealth, _maxHealth, damage);
+            float capped = (_damageCap == null) ? damage : _damageCap.CapDamage(currentHealth, _maxHealth, damage);
+
+            // 프롤로그 월백은 30초 안에 쓰러지거나 2페이즈 전환 체력에 닿지 않도록 하한 아래로 내려가지 못하게 한다. 기본 0은 하한 없음이다
+            if (_minHealthRate > 0f)
+            {
+                float room = Mathf.Max(0f, currentHealth - (_minHealthRate * _maxHealth));
+                capped = Mathf.Min(capped, room);
+            }
+
+            return capped;
+        }
+
+        /// <summary> 체력이 이 비율 아래로 내려가지 않게 피해를 줄인다, 0이면 하한이 없다. 전투를 열기 전에 정한다 </summary>
+        public float MinHealthRate
+        {
+            get => _minHealthRate;
+            set => _minHealthRate = Mathf.Clamp01(value);
         }
 
         // 투사체는 날아온 쪽(진행 방향의 반대)을, 그 밖에는 피해가 온 위치 쪽을 입사 방향으로 본다. 봉인 하한은 비율이라 최대 체력으로 바꿔 넘긴다
@@ -1569,13 +1595,15 @@ namespace Shinshi.Combat
             IBossChargeOutcomeListener chargeListener = (_structureDirector != null)
                 ? (IBossChargeOutcomeListener)_structureDirector
                 : _mucheolRelay;
+            // 몸 이동(shiftsBody)을 켜 타격 모션의 발이 미끄러지지 않게 보스를 모션 경로대로 옮긴다. 이동은 이 몸체의 Move가 맡는다
             var phaseOne = new MucheolPatternFactory(referenceHealth, this, this, this, this, MucheolSortieData.CreateComboSpec(),
                 _mucheolRelay, MucheolSortieData.CreateChargeSpec(), _chargeStructures, chargeListener,
-                MucheolSortieData.CreateHardComboSpec());
+                MucheolSortieData.CreateHardComboSpec(), shiftsBody: true);
 
             IBossHitDisplacer displacer = (_displaceTargets != null) ? this : null;
             var phaseTwo = new MucheolPhase2PatternFactory(referenceHealth, MucheolSortieData.CreatePhaseTwoSpec(), this, _catalog,
-                this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay, MucheolSortieData.CreateHardPhaseTwoSpec());
+                this, _mucheolRelay, _mucheolRelay, displacer, _mucheolRelay, MucheolSortieData.CreateHardPhaseTwoSpec(),
+                shiftsBody: true);
 
             chargeGimmick = new MucheolChargeGimmick(this, _catalog, phaseOne, _bossId, MucheolSortieData.CreateChargeGimmickSpec(),
                 _mucheolRelay);

@@ -204,6 +204,12 @@ namespace Shinshi.Backend.Tests.Sessions
             return await connection.QuerySingleAsync<long>(sql, parameters);
         }
 
+        public async Task<Guid> ScalarGuidAsync(string sql, object? parameters = null)
+        {
+            await using NpgsqlConnection connection = await DataSource.OpenConnectionAsync();
+            return await connection.QuerySingleAsync<Guid>(sql, parameters);
+        }
+
         public async Task<string> TextAsync(string sql, object? parameters = null)
         {
             await using NpgsqlConnection connection = await DataSource.OpenConnectionAsync();

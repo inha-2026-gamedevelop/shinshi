@@ -318,6 +318,13 @@ namespace Shinshi.Data.Sessions
                 return OperationDecision.Rejected(ContractCodes.RejectReason.SESSION_MISMATCH, last);
             }
 
+            // 프롤로그 출정은 보상, 경험치가 없다. 정기 적립, 경험치 이벤트나 0이 아닌 종료 정산안은 저장하지 않는다.
+            // 물약 사용은 예약이 없어 아래 물약 소비가 POTION_LIMIT로 거절한다
+            if ((session.Mode == GameSessionStates.MODE_PROLOGUE) && HasPrologueReward(events))
+            {
+                return OperationDecision.Rejected(SettlementSanityLimits.REJECT_REASON, last);
+            }
+
             // 물약 소비, 되돌림과 이탈 처리가 함께 잠글 계정을 먼저 오름차순으로 한 번에 잠근다. 따로 잠그면 배치 안에서
             // 순서가 뒤집힌다(되돌림만 있는 계정을 뒤에서 처음 잠그면 앞서 잠근 큰 ID 계정 뒤에 작은 ID를 잡게 된다)
             await SessionDb.LockAccountsAsync(connection, transaction, events
@@ -419,6 +426,29 @@ namespace Shinshi.Data.Sessions
                 """, new { InstanceId = dungeonInstanceId, SessionId = sessionId,
                     Window = SettlementSanityLimits.InstanceEssenceWindow }, transaction, cancellationToken: cancellationToken));
             return previous + endedEssence > SettlementSanityLimits.MAX_INSTANCE_DAILY_ESSENCE;
+        }
+
+        /// <summary> 프롤로그 출정이 받지 않는 보상성 이벤트가 배치에 있는가. 종료 정산안은 참가자마다 모든 칸이 0이어야 한다 </summary>
+        public static bool HasPrologueReward(IReadOnlyList<SessionEventInput> events)
+        {
+            ArgumentNullException.ThrowIfNull(events);
+            foreach (SessionEventInput entry in events)
+            {
+                if ((entry.EventKind == GameSessionCodes.EventKind.ESSENCE_ACCRUED)
+                    || (entry.EventKind == GameSessionCodes.EventKind.BASE_ESSENCE_ACCRUED)
+                    || (entry.EventKind == GameSessionCodes.EventKind.EXPERIENCE_GRANTED))
+                {
+                    return true;
+                }
+                if ((entry.EventKind == GameSessionCodes.EventKind.SESSION_ENDED)
+                    && entry.Grants.Any(grant => (grant.Essence != 0) || (grant.RefineShards != 0) || (grant.Tickets != 0)
+                        || (grant.Currency != 0) || (grant.Items.Count > 0) || ((grant.Talismans?.Count ?? 0) > 0)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool ReferencesActiveParticipants(IReadOnlyList<SessionEventInput> events,

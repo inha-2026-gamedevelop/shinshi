@@ -14,6 +14,7 @@ namespace Shinshi.Combat
         ****************************************/
 
         private readonly DungeonSessionHost _host;
+        private long                        _prologueSequence = 0;
 
         /****************************************
         *              Properties
@@ -35,18 +36,36 @@ namespace Shinshi.Combat
         public bool TryRecordUse(string participantKey, string definitionId, string bindingKind, double serverTime,
             out long sequence)
         {
+            // 프롤로그 임시 물약은 출정 예약분이 아니라 API가 받지 않는다. 저장 이벤트 없이 바로 확정으로 본다
+            if (_host.Sortie.IsPrologue)
+            {
+                sequence = ++_prologueSequence;
+                return true;
+            }
+
             SessionEventData data = SessionEventData.PotionUsed(serverTime, participantKey, definitionId, bindingKind);
             return TryEnqueue(in data, out sequence);
         }
 
         public bool TryRecordRevert(string participantKey, long useSequence, double serverTime, out long sequence)
         {
+            if (_host.Sortie.IsPrologue)
+            {
+                sequence = ++_prologueSequence;
+                return true;
+            }
+
             SessionEventData data = SessionEventData.PotionUseReverted(serverTime, participantKey, useSequence);
             return TryEnqueue(in data, out sequence);
         }
 
         public bool IsCommitted(long sequence)
         {
+            if (_host.Sortie.IsPrologue)
+            {
+                return sequence > 0;
+            }
+
             DungeonSession session = _host.Session;
             return (session != null) && (sequence > 0) && (session.Events.LastAcknowledgedSequence >= sequence);
         }

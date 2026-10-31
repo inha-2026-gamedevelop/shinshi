@@ -20,6 +20,9 @@ namespace Shinshi.Data.Auth
         public const string JOIN_DOMAIN         = "shinshi.auth.join.v1";
         public const string ROTATION_REQUEST_DOMAIN = "shinshi.auth.rotation-request.v1";
 
+        // 프롤로그 입장권 원문 파생 용도. 같은 계정, 같은 operationId 재전송이 같은 원문을 다시 만들어 처음 입장권을 돌려준다
+        public const string PROLOGUE_JOIN_DOMAIN = "shinshi.auth.prologue-join.v1";
+
         // 원문 뒤 8바이트는 무작위 부분의 HMAC 태그다. 길이와 문자 집합이 이전 형식과 같아 클라이언트 계약은 그대로이고,
         // 태그가 맞지 않는 무작위 bearer는 DB 조회 전에 거절해 토큰 폭주가 DB 부하가 되지 않게 한다
         private const string TAG_DOMAIN       = "shinshi.auth.token-tag.v1";
@@ -55,6 +58,28 @@ namespace Shinshi.Data.Auth
             }
 
             byte[] bytes = Hash("shinshi.auth.rotation.v1." + domain, refreshToken + "\0" + requestId);
+            try
+            {
+                WriteTag(bytes.AsSpan(0, RANDOM_BYTES), bytes.AsSpan(RANDOM_BYTES, TAG_BYTES));
+                return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(bytes);
+            }
+        }
+
+        /// <summary> 프롤로그 입장권처럼 원문을 저장하지 않고 재전송에 같은 원문을 돌려줘야 하는 토큰을 HMAC으로 파생한다.
+        /// 형식과 태그는 CreateToken과 같아 교환 경로가 구분하지 않는다. seed는 서버가 정한 값(계정, operationId)만 넣는다 </summary>
+        public string CreateDerivedToken(string domain, string seed)
+        {
+            if (domain != PROLOGUE_JOIN_DOMAIN)
+            {
+                throw new ArgumentException("Unsupported derived token purpose.", nameof(domain));
+            }
+            ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+
+            byte[] bytes = Hash("shinshi.auth.derived.v1." + domain, seed);
             try
             {
                 WriteTag(bytes.AsSpan(0, RANDOM_BYTES), bytes.AsSpan(RANDOM_BYTES, TAG_BYTES));

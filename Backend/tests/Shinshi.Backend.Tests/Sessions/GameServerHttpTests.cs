@@ -50,6 +50,8 @@ namespace Shinshi.Backend.Tests.Sessions
         [InlineData(LifeRoutes.SNAPSHOT)]
         [InlineData(LifeRoutes.GATHERS)]
         [InlineData(LifeRoutes.POTION_CRAFTS)]
+        [InlineData("/v1/game-sessions/7b4c1c0e-8f69-4d0a-9d55-1f3c8fd1a001/prologue/stage")]
+        [InlineData("/v1/game-sessions/7b4c1c0e-8f69-4d0a-9d55-1f3c8fd1a001/prologue/complete")]
         public async Task Post_WithoutServerCredential_Returns401(string route)
         {
             using GameServerApplicationFactory factory = new GameServerApplicationFactory();
@@ -67,6 +69,8 @@ namespace Shinshi.Backend.Tests.Sessions
         [InlineData("/v1/game-sessions/7b4c1c0e-8f69-4d0a-9d55-1f3c8fd1a001/settlement", 0)]
         [InlineData(LifeRoutes.GATHERS, 1)]
         [InlineData(LifeRoutes.POTION_CRAFTS, 1)]
+        [InlineData("/v1/game-sessions/7b4c1c0e-8f69-4d0a-9d55-1f3c8fd1a001/prologue/stage", 0)]
+        [InlineData("/v1/game-sessions/7b4c1c0e-8f69-4d0a-9d55-1f3c8fd1a001/prologue/complete", 0)]
         public async Task Post_WrongServerRole_Returns403(string route, int role)
         {
             using GameServerApplicationFactory factory = new GameServerApplicationFactory(role);

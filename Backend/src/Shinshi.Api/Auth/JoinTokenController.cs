@@ -87,7 +87,8 @@ namespace Shinshi.Backend
 
             // 마을 입장은 출정 참가자가 없으므로 participantId, sortieId를 값 없음(null)으로 보낸다.
             // 계정 접속 임대는 마을 입장 교환만 얻으므로 던전 입장의 accountLeaseId도 값 없음이다
-            // 던전 입장, 재입장은 예약 때 확정한 출정 계약(mode, mapId, battleId, bossId, difficulty)을 함께 보낸다
+            // 던전 입장, 재입장은 예약 때 확정한 출정 계약(mode, mapId, battleId, bossId, difficulty)을 함께 보낸다.
+            // 프롤로그 출정이면 캐릭터의 저장 단계도 보내 던전 서버가 그 구간에서 재개한다(다른 출정은 0, 0, false)
             JoinAuthIdentity identity = outcome.Identity!;
             bool town = identity.ParticipantId == Guid.Empty;
             string? accountLeaseId = identity.AccountLeaseId == Guid.Empty ? null : identity.AccountLeaseId.ToString("D");
@@ -103,7 +104,8 @@ namespace Shinshi.Backend
                 identity.CharacterName, sortie?.Mode ?? JoinTokenExchangeResponse.NO_MODE, sortie?.MapId,
                 sortie?.BattleId, sortie?.BossId, sortie?.Difficulty ?? GameSessionCodes.Difficulty.NONE, combatLoadout,
                 identity.AccountId.ToString("D"), town ? null : identity.Potions?.ToArray(),
-                identity.AppearanceJson, identity.Experience, identity.GuildName));
+                identity.AppearanceJson, identity.Experience, identity.GuildName, sortie?.PrologueStage ?? 0,
+                sortie?.PrologueWolbaekPotions ?? 0, sortie?.PrologueTalismanChecked ?? false));
         }
     }
 }

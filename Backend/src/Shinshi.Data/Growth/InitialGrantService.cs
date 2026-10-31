@@ -93,6 +93,26 @@ namespace Shinshi.Data.Growth
             }
         }
 
+        /// <summary> 프롤로그 완료(직접 완료, 건너뛰기) 기본 지급품을 지급한다. 한 번만 지급하는 판단은 호출자가 prologue_completions에
+        /// 먼저 넣은 쪽만 부르는 것으로 한다. actorId는 이 작업의 operations actor(건너뛰기는 계정, 완료는 던전 인스턴스)이며
+        /// 원장 행위자 종류는 System, 사유는 최초 지원과 같은 INITIAL_GRANT다. 캐릭터 생성 지급과 같이 보관 상한을 보지 않는다.
+        /// 묶음이 비어 있으면(기본값) 아무것도 바꾸지 않는다. 호출자가 계정 행을 먼저 잠가야 한다 </summary>
+        public async Task ApplyPrologueCompletionAsync(OperationExecutionContext context, Guid actorId, Guid accountId,
+            Guid characterId, int classId, Guid operationId, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+            GrowthContent.GrantBundle bundle = _content.Progression.PrologueCompletionGrant;
+            if ((bundle.Items.Length == 0) && (bundle.Equipment.Length == 0))
+            {
+                return;
+            }
+
+            GrowthEffectContext grant = new GrowthEffectContext(context, _content, _ledger, _history, actorId, ACTOR_KIND,
+                operationId, accountId, characterId, classId, ContractCodes.EconomyReason.INITIAL_GRANT);
+            await GrantItemsAsync(grant, bundle, cancellationToken);
+            await GrantEquipmentAsync(grant, bundle, cancellationToken);
+        }
+
         private async Task<bool> ClaimAsync(DbConnection connection, DbTransaction transaction, string family,
             Guid accountId, Guid? characterId, string grantId, Guid operationId, CancellationToken cancellationToken)
         {

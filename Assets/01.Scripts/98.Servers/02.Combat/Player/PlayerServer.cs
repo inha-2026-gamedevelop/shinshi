@@ -147,6 +147,15 @@ namespace Shinshi.Combat
         public EParticipantLifeState LifeState       => _lifeState;
         public bool                  IsSummon        => false;
         public int                   OwnerCombatId   => CombatIds.NONE;
+        // 치명 피해를 죽음 대신 다른 처리로 바꾸는 규칙, 프롤로그 서버 어댑터만 넣는다
+        public IPlayerLethalInterceptor LethalInterceptor { get; set; } = null;
+
+        // 기본 공격이 승인되어 시작될 때, 명중과 무관하다
+        public event System.Action BasicAttackStarted;
+
+        // 기술이 승인되어 시전될 때, 명중과 무관하다. 슬롯은 Constants.Combat.SKILL_SLOT_*다
+        public event System.Action<ESkillRequestKind, int> SkillCommitted;
+
         public Vector3               Position        => _transform.position;
         public Vector3               Forward         => _forward;
         public float                 BodyRadius      => Constants.Combat.PLAYER_BODY_RADIUS;
@@ -773,6 +782,7 @@ namespace Shinshi.Combat
             CancelPreFire(EPreFireCancelReason.SkillCommit);
             ReplicateSkills();
             _input.SendSkillResult(sequence, _skills.CastInstanceId, ERejectReason.None);
+            SkillCommitted?.Invoke(_skills.Kind, _skills.Slot);
         }
 
         /// <summary> 물약 요청의 입력 머리를 다른 입력과 같은 게이트로 검증한다, 통과하면 참 </summary>
@@ -979,6 +989,7 @@ namespace Shinshi.Combat
             Vector3 aim = FacingRules.DecodeYaw(_pendingAimYaw);
             SetFacing(aim);
             _combat.BumpAttackSequence((byte)step);
+            BasicAttackStarted?.Invoke();
             if ((windup > 0f) || (shots > 1))
             {
                 // 동작은 승인 시점에 시작하고 판정은 준비 시간 뒤에 한다
@@ -1285,7 +1296,8 @@ namespace Shinshi.Combat
             return true;
         }
 
-        // 적 몸체 직전에서 멈춘다. 아군과 신령 몸체는 막지 않는다
+        // 적 몸체 직전에서 멈춘다. 아군과 신령 몸체는 막지 않는다.
+        // 보스 몸통은 회피로 통과할 수 있다(기획 결정 2026-10-31). 회피가 끝났을 때 몸통 안이면 틱 끝 밀어내기가 바깥에 놓는다
         private float ClampByEnemyBodies(Vector3 start, Vector3 direction, float distance)
         {
             float searchRadius = distance + Constants.Combat.PLAYER_BODY_RADIUS + Constants.Combat.MAX_BODY_RADIUS;
@@ -1293,6 +1305,11 @@ namespace Shinshi.Combat
             for (int i = 0; i < count; ++i)
             {
                 ICombatTarget target = _targetBuffer[i];
+                if (target is IBossBodyBlocker)
+                {
+                    continue;
+                }
+
                 if (!BasicAttackRules.IsWithinHeight(start, target.Position, Constants.Combat.MAX_ATTACK_HEIGHT_DIFFERENCE))
                 {
                     continue;
@@ -1545,7 +1562,45 @@ namespace Shinshi.Combat
                 return;
             }
 
+            // 프롤로그 숲처럼 치명타를 죽음 대신 제자리 회복으로 바꾸는 규칙이 개입한다. 개입이 처리했으면 죽지 않는다
+            if ((LethalInterceptor != null) && (LethalInterceptor.TryIntercept(this, serverTime)))
+            {
+                return;
+            }
+
             ConfirmDeath(serverTime);
+        }
+
+        /// <summary> 살아 있을 때 체력을 최대로 채운다, 프롤로그가 숲 체력 0 회복과 월백 교전 직전 회복에 쓴다 </summary>
+        public void RestoreFullHealth()
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            _health = _maxHealth;
+            _combat.SetHealth(_health, _maxHealth);
+        }
+
+        // Displace와 달리 기술이나 회피 중이어도 옮긴다. 일러스트 직후 화면 전환으로 처리하는 서버 연출 이동이다.
+        // 소유 예측은 서버가 멈춘 것을 권위 값만으로는 알지 못해 옛 경로를 끝까지 가므로 이동 중이었으면 거절을 보내 멈추게 한다
+        /// <summary> 플레이어를 지점으로 순간 이동시킨다, 유한한 좌표만 받는다 </summary>
+        public void TeleportTo(Vector3 position)
+        {
+            if (!IsFinite(position))
+            {
+                return;
+            }
+
+            if (_path.IsMoving)
+            {
+                _path.Stop();
+                _moveThrottle.ClearActive();
+                _input.SendInputRejected(_moveSequence, ERejectReason.Disabled);
+            }
+
+            _transform.position = position;
         }
 
         // 추락 같은 서버 사망 확정이다. 방어, 반격, 무적이 개입하지 않아야 하므로 피해 판정기를 거치지 않고 피해 통지, 미터, 흡혈도 만들지 않는다.
@@ -1597,6 +1652,26 @@ namespace Shinshi.Combat
         *             Displacement
         ****************************************/
 
+        // 이동, 기술, 공격, 보스 틱이 위치를 모두 옮긴 뒤 PublishMovement 앞에서 부른다. 걸어 들어간 경우, 보스가 걸어오거나 돌진한 경우,
+        // 순간 이동 기술(섬광 일섬)의 도착점이 몸통 안인 경우를 이 한곳이 바깥으로 놓는다. 회피 중에는 통과하므로 밀지 않는다.
+        // Displace와 달리 경로를 버리지 않는다. 소유 예측도 같은 규칙으로 걸음마다 밀어 경로를 그대로 이어 가므로, 몸통을 향해 걸으면
+        // 둘 다 원을 따라 미끄러진다. 제어나 기술로 멈춰 있어도 민다
+        /// <summary> 보스 몸통과 겹쳤으면 몸통 밖으로 밀어낸다 </summary>
+        public void ResolveBossBody(IBossBodyBlocker blocker)
+        {
+            if ((_lifeState != EParticipantLifeState.Alive) || (_isDodging) || (blocker == null))
+            {
+                return;
+            }
+
+            Vector3 current  = _transform.position;
+            Vector3 resolved = BossBodyPushRules.Resolve(current, blocker, BodyRadius);
+            if ((resolved != current) && (IsFinite(resolved)))
+            {
+                _transform.position = resolved;
+            }
+        }
+
         // 보스 틱은 이동, 기술 틱 뒤이고 PublishMovement 앞이라 이 틱의 위치를 다시 쓰는 계층이 없고, 틱 끝 위치가 바뀌었으므로
         // 서 있던 대상도 권위 값이 다시 나간다. 그래서 시각은 여기서 쓰지 않는다
         public void Displace(Vector3 position, double serverTime)
@@ -1609,6 +1684,8 @@ namespace Shinshi.Combat
             // 밀린 자리에서 남은 모서리로 곧장 가면 경로가 벽을 스칠 수 있어 순간 이동처럼 경로를 버린다.
             // 소유 예측은 서버가 멈춘 것을 권위 값만으로는 알지 못해 옛 경로를 끝까지 가므로 그 이동의 거절을 보내 멈추게 한다.
             // 아직 경로를 만들지 않은 보관 이동은 다음 틱에 밀린 자리에서 시작하면 되므로 남긴다
+            // 회피는 매 틱 시작점과 끝점 사이의 절대 위치를 다시 쓰므로 진행 중이면 옮긴 자리를 덮어쓴다. 같은 이유로 취소한다
+            _isDodging = false;
             if (_path.IsMoving)
             {
                 _path.Stop();
