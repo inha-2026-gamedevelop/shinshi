@@ -13,6 +13,7 @@ using Mirror;
 using TMPro;
 
 // 프로젝트 내부
+using Shinshi.AI;
 using Shinshi.Common;
 using Shinshi.Contracts;
 using Shinshi.UI;
@@ -29,6 +30,11 @@ namespace Shinshi.Network
         ****************************************/
 
         private const float CONNECT_TIMEOUT_SECONDS = 20f;
+
+        // 프롤로그 진행/건너뛰기 선택 결과, 0은 아직 고르지 않았다
+        private const int    PROLOGUE_CHOICE_PLAY = 1;
+        private const int    PROLOGUE_CHOICE_SKIP = 2;
+        private const string GUID_FORMAT          = "D";
 
         // 이미 접속 중 거절은 같은 토큰으로 몇 번 다시 붙는다. 그 시간까지 기다린다
         private const float JOIN_WAIT_SECONDS = CONNECT_TIMEOUT_SECONDS
@@ -71,6 +77,8 @@ namespace Shinshi.Network
         private float                      _nextCountdown = 0f;
         private float                      _deleteArmedUntil = 0f;
         private string                     _deleteArmedId    = null;
+        private PrologueEntryCoordinator   _prologueEntry    = null;
+        private string                     _autoStartId      = null;
 
         /****************************************
         *              Properties
@@ -157,6 +165,7 @@ namespace Shinshi.Network
                 _authenticator.JoinRetryScheduled -= OnJoinRetryScheduled;
             }
 
+            _prologueEntry?.Dispose();
             _api.Abort();
         }
 
@@ -182,6 +191,14 @@ namespace Shinshi.Network
             yield return operation;
             _isBusy = false;
             RefreshButtons();
+
+            // 방금 만든 캐릭터는 목록을 불러온 직후 프롤로그 진입(선택창 또는 바로 진행)을 자동으로 시작한다
+            if (_autoStartId != null)
+            {
+                string characterId = _autoStartId;
+                _autoStartId = null;
+                Run(CoStart(characterId, true));
+            }
         }
 
         private IEnumerator CoLoad(string notice)
@@ -208,6 +225,7 @@ namespace Shinshi.Network
             _isLoaded = true;
             _loadedAt = Time.realtimeSinceStartup;
             ShowSlots();
+            _autoStartId = TakeJustCreated();
             SelectInitialSlot();
             _status.text = !string.IsNullOrEmpty(notice) ? notice
                 : (_characters.Count == 0) ? "캐릭터가 없다. 캐릭터 생성을 누른다." : "캐릭터를 고르고 게임 시작을 누른다.";
@@ -236,6 +254,22 @@ namespace Shinshi.Network
                     _slots[i].Show(null, null);
                 }
             }
+        }
+
+        // 방금 만든 캐릭터가 목록에 있으면 한 번만 꺼낸다, 없으면 null이다
+        private string TakeJustCreated()
+        {
+            string justCreated = LobbyFlow.JustCreatedCharacterId;
+            LobbyFlow.JustCreatedCharacterId = null;
+            for (int i = 0; i < _characters.Count; ++i)
+            {
+                if (string.Equals(_characters[i].CharacterId, justCreated, StringComparison.Ordinal))
+                {
+                    return justCreated;
+                }
+            }
+
+            return null;
         }
 
         // 방금 만든 캐릭터가 있으면 그 칸을, 없으면 첫 칸을 고른다
@@ -307,7 +341,7 @@ namespace Shinshi.Network
             CharacterSummary character = GetSelectedCharacter();
             if (character != null)
             {
-                Run(CoJoin(character.CharacterId));
+                Run(CoStart(character.CharacterId, false));
             }
         }
 
@@ -456,13 +490,19 @@ namespace Shinshi.Network
                 yield break;
             }
 
+            yield return CoConnect(ticket, EServerRole.Town, characterId, portTransport, "마을");
+        }
+
+        // 입장권으로 서버에 접속하고 인증될 때까지 기다린다. 마을과 프롤로그 던전이 같이 쓴다. 인증되면 서버가 씬으로 안내한다
+        private IEnumerator CoConnect(JoinTicket ticket, EServerRole role, string characterId, PortTransport portTransport, string label)
+        {
             _joinRejected = ERejectReason.None;
             _retryPending = false;
-            _manager.ConfigureServerRole(EServerRole.Town);
+            _manager.ConfigureServerRole(role);
             _manager.networkAddress = ticket.Address;
             portTransport.Port      = (ushort)ticket.Port;
             _authenticator.SetJoinToken(ticket.JoinToken);
-            _status.text = "마을 서버에 접속하는 중이다.";
+            _status.text = label + " 서버에 접속하는 중이다.";
             _manager.StartClient();
 
             float deadline = Time.realtimeSinceStartup + JOIN_WAIT_SECONDS;
@@ -471,8 +511,8 @@ namespace Shinshi.Network
                 if (IsAuthenticated())
                 {
                     LobbyFlow.ActiveCharacterId = characterId;
-                    _status.text = "마을로 이동하는 중이다.";
-                    Debug.Log("[CharacterSelect] 마을 서버 인증 성공");
+                    _status.text = label + " 접속을 마쳤다. 이동하는 중이다.";
+                    Debug.Log($"[CharacterSelect] {label} 서버 인증 성공");
                     yield break;
                 }
 
@@ -501,8 +541,114 @@ namespace Shinshi.Network
             }
 
             _status.text = (_joinRejected != ERejectReason.None) ? LobbyText.Describe(_joinRejected)
-                : "마을 서버에 접속하지 못했다. 서버가 켜져 있는지 확인하고 다시 시도한다.";
-            Debug.LogWarning($"[CharacterSelect] 마을 접속 실패, reason={_joinRejected}");
+                : label + " 서버에 접속하지 못했다. 서버가 켜져 있는지 확인하고 다시 시도한다.";
+            Debug.LogWarning($"[CharacterSelect] {label} 접속 실패, reason={_joinRejected}");
+        }
+
+        // 캐릭터의 프롤로그 상태에 따라 마을 입장, 프롤로그 진행, 선택창을 정한다. 프롤로그를 마친 캐릭터는 곧바로 마을 입장이다
+        private IEnumerator CoStart(string characterId, bool justCreated)
+        {
+            _status.text = "프롤로그 진행 상태를 확인하는 중이다.";
+            LobbyApiReply<PrologueStateResponse> reply = null;
+            yield return _api.SendGame<PrologueStateResponse>(string.Format(CultureInfo.InvariantCulture, PrologueRoutes.STATE_FORMAT,
+                characterId), null, value => reply = value);
+            PrologueStateResponse state = reply?.Value;
+            if (state == null)
+            {
+                _status.text = LobbyText.Describe(reply);
+                yield break;
+            }
+
+            if (state.Stage == PrologueCodes.Stage.DONE)
+            {
+                yield return CoJoin(characterId);
+                yield break;
+            }
+
+            // 방금 만든 캐릭터이고 계정이 이미 프롤로그를 마쳤으면 진행/건너뛰기를 고르게 한다. 계정의 첫 프롤로그와 중단한 프롤로그의
+            // 재개는 선택 없이 바로 진행한다(첫 프롤로그는 건너뛸 수 없다)
+            if ((!justCreated) || (!state.AccountCompleted))
+            {
+                yield return CoPrologueEnter(characterId);
+                yield break;
+            }
+
+            PrologueAssetsSO assets = PrologueAssetsSO.Load();
+            if ((assets == null) || (assets.Illustrations == null))
+            {
+                _status.text = "프롤로그 화면 리소스를 찾지 못했다.";
+                yield break;
+            }
+
+            int choice = 0;
+            _prologueEntry?.Dispose();
+            _prologueEntry = PrologueEntryCoordinator.CreateFromCatalog(assets.Illustrations);
+            _prologueEntry.Begin(true, () => choice = PROLOGUE_CHOICE_PLAY, () => choice = PROLOGUE_CHOICE_SKIP);
+            _status.text = "프롤로그를 진행할지 고른다.";
+            while (choice == 0)
+            {
+                yield return null;
+            }
+
+            _prologueEntry.Dispose();
+            _prologueEntry = null;
+            if (choice == PROLOGUE_CHOICE_PLAY)
+            {
+                yield return CoPrologueEnter(characterId);
+            }
+            else
+            {
+                yield return CoPrologueSkip(characterId);
+            }
+        }
+
+        // 마을을 거치지 않고 프롤로그 던전의 입장권을 받아 바로 접속한다
+        private IEnumerator CoPrologueEnter(string characterId)
+        {
+            if ((_manager == null) || (_authenticator == null) || (NetworkClient.active)
+                || !(Transport.active is PortTransport portTransport))
+            {
+                _status.text = "네트워크 준비가 끝나지 않았다. 게임을 다시 실행한다.";
+                yield break;
+            }
+
+            _status.text = "프롤로그 입장을 요청하는 중이다.";
+            LobbyApiReply<JoinTicket> reply = null;
+            yield return _api.SendGame<JoinTicket>(PrologueRoutes.ENTRY,
+                new PrologueEntryRequest(Guid.NewGuid().ToString(GUID_FORMAT), characterId), value => reply = value);
+            JoinTicket ticket = reply?.Value;
+            if (ticket == null)
+            {
+                _status.text = LobbyText.Describe(reply);
+                yield break;
+            }
+
+            if ((ticket.ServerRole != ContractCodes.ServerRole.DUNGEON) || (ticket.CharacterId != characterId)
+                || string.IsNullOrEmpty(ticket.JoinToken) || (Uri.CheckHostName(ticket.Address ?? string.Empty) == UriHostNameType.Unknown)
+                || (ticket.Port <= 0) || (ticket.Port > ushort.MaxValue))
+            {
+                _status.text = "프롤로그 입장권이 올바르지 않다.";
+                yield break;
+            }
+
+            yield return CoConnect(ticket, EServerRole.Dungeon, characterId, portTransport, "프롤로그");
+        }
+
+        // 이미 프롤로그를 마친 계정의 건너뛰기, 서버가 완료 기록과 기본 지급품을 맡고 확정되면 마을로 들어간다
+        private IEnumerator CoPrologueSkip(string characterId)
+        {
+            _status.text = "프롤로그를 건너뛰는 중이다.";
+            LobbyApiReply<OperationResult> reply = null;
+            yield return _api.SendGame<OperationResult>(PrologueRoutes.SKIP,
+                new PrologueSkipRequest(Guid.NewGuid().ToString(GUID_FORMAT), characterId), value => reply = value);
+            OperationResult result = reply?.Value;
+            if ((result == null) || (result.Status != ContractCodes.OperationStatus.COMMITTED))
+            {
+                _status.text = LobbyText.Describe(reply);
+                yield break;
+            }
+
+            yield return CoJoin(characterId);
         }
 
         private static bool IsAuthenticated()

@@ -54,6 +54,9 @@ namespace Shinshi.Network
         // 마을 입장에 성공한 캐릭터. 던전에서 마을로 돌아갈 때 마을 입장권을 다시 받는 데 쓴다
         public static string ActiveCharacterId { get; set; }
 
+        // 방금 만든 캐릭터. 선택 화면이 한 번 소비해 프롤로그 진입(선택창 또는 바로 진행)을 정한다
+        public static string JustCreatedCharacterId { get; set; }
+
         // 캐릭터 생성 직후처럼 선택 화면이 먼저 고를 캐릭터
         public static string PreferredCharacterId
         {
@@ -69,8 +72,9 @@ namespace Shinshi.Network
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatic()
         {
-            _preferredCharacterId = null;
-            ActiveCharacterId     = null;
+            _preferredCharacterId   = null;
+            JustCreatedCharacterId  = null;
+            ActiveCharacterId       = null;
             _notice               = null;
             _contentHash          = null;
         }

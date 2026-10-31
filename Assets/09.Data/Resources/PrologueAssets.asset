@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2002:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7f3c1d25b8e4f60913d2c4e6b7a8f01, type: 3}
+  m_Name: PrologueAssets
+  m_EditorClassIdentifier:
+  _illustrations: {fileID: 11400000, guid: e4ad934142a2b2c49b81afe31be47cd0, type: 2}
+  _menuGuides: {fileID: 11400000, guid: 4160d77d4d70fde48aaf61dbebe2894b, type: 2}
