@@ -82,6 +82,8 @@ MonoBehaviour:
   _dashRushPrefab: {fileID: 3022872818176614544, guid: d452f9e5c9d0db344a8aded59e5b0256, type: 3}
   _swingTelegraphPrefab: {fileID: 2344842101379775600, guid: 68f8dc77ff9e2bf4d83b42483a2d9c58, type: 3}
   _armTrailPrefab: {fileID: 1795347528255833249, guid: 550ad63bbe979d04b9b654c6c2fb59f5, type: 3}
+  _fanImpactPrefab: {fileID: 5053859103463415929, guid: 18f77fe24a667bf42b4bc1a47e6421d0, type: 3}
+  _waveImpactPrefab: {fileID: 46878771935762717, guid: c51591b300479894fb14831c5a064703, type: 3}
   _sound: {fileID: 0}
 --- !u!114 &5706912240508128301
 MonoBehaviour:

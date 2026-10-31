@@ -145,7 +145,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -870,7 +870,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -1186,7 +1186,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -3413,7 +3413,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -4740,7 +4740,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -5279,7 +5279,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -6050,7 +6050,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -7053,7 +7053,7 @@ SkinnedMeshRenderer:
   m_MaskInteraction: 0
   serializedVersion: 2
   m_Quality: 0
-  m_UpdateWhenOffscreen: 0
+  m_UpdateWhenOffscreen: 1
   m_SkinnedMotionVectors: 1
   m_Mesh: {fileID: 515117030136639211, guid: 3e1c4738a69bc334aa20248b8914ef7b, type: 3}
   m_Bones:
@@ -8317,6 +8317,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 5516574155397790334}
     m_Modifications:
+    - target: {fileID: 48445824821486130, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 55661484032386816, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 525049086236867431, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 694889164233533190, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1044119128903546087, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1433996784835144445, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1496294668397366536, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2633805280700441795, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2749246319921293395, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -8377,6 +8409,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SK_KitsuneYuna Blue
       objectReference: {fileID: 0}
+    - target: {fileID: 4261959276583475661, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5260874012897805440, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0.68747425
@@ -8386,13 +8422,41 @@ PrefabInstance:
       value: -0.38722545
       objectReference: {fileID: 0}
     - target: {fileID: 6035692233258269701, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6035692233258269701, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: d72f63b43c6cc894bae698d91276560a, type: 2}
+    - target: {fileID: 6063806400928962013, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6776374587951416559, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6776374587951416559, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: d72f63b43c6cc894bae698d91276560a, type: 2}
+    - target: {fileID: 7203494063673633094, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7520741654654202446, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7617282912245601520, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7887395470559935724, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8126574153018421801, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       propertyPath: m_Avatar
       value: 
@@ -8404,6 +8468,14 @@ PrefabInstance:
     - target: {fileID: 8126574153018421801, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       propertyPath: m_ApplyRootMotion
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8492128553844311207, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9022375466267768831, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9022375466267768831, guid: 3af5b5dbb9b23a64eaf87518a829ffcb, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'

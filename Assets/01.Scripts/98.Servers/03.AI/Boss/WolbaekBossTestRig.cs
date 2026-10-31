@@ -64,6 +64,7 @@ namespace Shinshi.AI
         private const float  LABEL_WIDTH             = 160f;
         private const float  LABEL_HEIGHT            = 40f;
         private const float  PARTICIPANT_LABEL_WIDTH = 70f;
+        private const float  PLAYER_ARENA_MARGIN     = 0.5f;  // m, 플레이어 가두기가 경계 안쪽에 남기는 거리
         private const float  BOSS_EDGE_MARGIN        = 0.1f;  // m, 보스를 가장자리로 옮길 때 경계 안쪽에 남기는 거리
 
         // 색 결계 기믹 시험 배치와 표시용 값이다. 모두 시험 장치 안에서만 쓴다
@@ -93,6 +94,10 @@ namespace Shinshi.AI
         [SerializeField] private float   _referenceHealth = 3541f;   // Href, 체험판 숲 기준
         [SerializeField] private float   _healthScale     = 1f;      // 시작 인원에 따른 체력 배율
         [SerializeField] private Vector3 _playerStart     = new Vector3(0f, 0f, 12f);
+        [SerializeField] private bool    _clampPlayerToArena = false; // 켜면 플레이어가 전장 경계 밖으로 나가지 못한다, 프롤로그 시험이 켠다
+        [SerializeField] private Vector3 _arenaRectCenter = Vector3.zero; // 사각형 경계의 월드 중심, 반 길이가 0이면 쓰지 않고 전장 원을 쓴다
+        [SerializeField] private Vector2 _arenaRectAxisX  = Vector2.right; // 사각형 첫 축의 월드 방향(x, z)
+        [SerializeField] private Vector2 _arenaRectHalf   = Vector2.zero;  // 두 축 방향 반 길이
 
         [Header("2페이즈 시험")]
         [SerializeField] private bool _continueToPhaseTwo = true; // 전환 뒤 CompleteHandoff를 이 구동기가 대신 부른다, 운영에서는 서버 연결이 부른다
@@ -410,6 +415,11 @@ namespace Shinshi.AI
             {
                 Vector3 move = new Vector3(Input.GetAxisRaw(HORIZONTAL_AXIS), 0f, Input.GetAxisRaw(VERTICAL_AXIS));
                 _player.Position += move.normalized * (PLAYER_SPEED * Time.deltaTime);
+                if (_clampPlayerToArena)
+                {
+                    KeepPlayerInArena();
+                }
+
                 if (move.sqrMagnitude > DIRECTION_EPSILON)
                 {
                     _player.Forward = move.normalized;
@@ -1731,6 +1741,44 @@ namespace Shinshi.AI
             {
                 _history.RemoveAt(0);
             }
+        }
+
+        // 사각형 경계가 있으면 그 안에, 없으면 전장 중심에서 경계 안쪽 여유만큼까지만 서 있게 한다
+        private void KeepPlayerInArena()
+        {
+            if ((_arenaRectHalf.x > 0f) && (_arenaRectHalf.y > 0f))
+            {
+                KeepPlayerInRect();
+                return;
+            }
+
+            Vector3 offset = _player.Position - transform.position;
+            offset.y       = 0f;
+
+            float limit = (_boss.ArenaDiameter * HALF) - PLAYER_ARENA_MARGIN;
+            if (offset.magnitude <= limit)
+            {
+                return;
+            }
+
+            Vector3 clamped = transform.position + (offset.normalized * limit);
+            _player.Position = new Vector3(clamped.x, _player.Position.y, clamped.z);
+        }
+
+        // 회전한 사각형의 두 축으로 위치를 나눠 각 축의 반 길이 안으로 되돌린다
+        private void KeepPlayerInRect()
+        {
+            Vector2 axisX = _arenaRectAxisX.normalized;
+            Vector2 axisZ = new Vector2(-axisX.y, axisX.x);
+
+            Vector3 offset = _player.Position - _arenaRectCenter;
+            float localX   = Mathf.Clamp((offset.x * axisX.x) + (offset.z * axisX.y), -_arenaRectHalf.x + PLAYER_ARENA_MARGIN, _arenaRectHalf.x - PLAYER_ARENA_MARGIN);
+            float localZ   = Mathf.Clamp((offset.x * axisZ.x) + (offset.z * axisZ.y), -_arenaRectHalf.y + PLAYER_ARENA_MARGIN, _arenaRectHalf.y - PLAYER_ARENA_MARGIN);
+
+            _player.Position = new Vector3(
+                _arenaRectCenter.x + (axisX.x * localX) + (axisZ.x * localZ),
+                _player.Position.y,
+                _arenaRectCenter.z + (axisX.y * localX) + (axisZ.y * localZ));
         }
 
         private void ApplyView()

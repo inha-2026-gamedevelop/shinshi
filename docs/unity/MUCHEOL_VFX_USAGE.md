@@ -122,3 +122,24 @@ vfx.Stop();
 상태: 구현됨·실행 미검증. 에디터에서 시각을 정해 렌더한 정지 확인과 CPU 시간 측정(프레임당 약 0.4~0.5ms, GC 할당 없음)만 했다. Play 모드 연속 재생, 빌드, 서버 확정 타격 연결, 다인 접속, GPU·겹침 비용, 사전 로딩은 미검증이다. 용암 균열이 후반에도 밝게 남는 등 시각 품질은 1차 검토본이다.
 
 구현 위치: `Assets/01.Scripts/05.Art/VFX/Mucheol/Batch/MucheolBatchVfxPlayer.cs`, 공통 재생기 `MucheolImpactVfxPlayer.cs`, 설정 `MucheolPatternVfxSettingsSO.cs`, 편집 도구 `Assets/Editor/MucheolBatch/`.
+
+## 7. 착탄 VFX 교체 (판 조각 크레이터와 고리 충격파)
+
+6장의 용암 지면 강타 연출 중 확정 타격 레이어는 새 착탄 VFX가 대신한다. 서버가 타격을 확정한 순간 `MucheolPatternVfxView`가 아래 프리팹을 그 자리에서 재생한다. 예고선(`warning`)과 재생기 타이밍은 기존 `_Slam`/원본 프리팹이 그대로 맡는다.
+
+| 패턴 | 템플릿 | 새 VFX |
+|---|---|---|
+| P1 P02, P2 P02 첫 단계 | `FanSlam70` | 부채꼴 크레이터(`MucheolFanImpactView`), 각도 70도, 반경 5m(하드 7m) |
+| P1 P04 | `Circle02` | 고리 충격파(`MucheolWaveImpactView`)와 360도 크레이터, 반경 5m(하드 6.5m) |
+| P2 P04 | `SmallWave04` | 고리 충격파만 |
+| P2 P04 | `LargeWave05` | 고리 충격파와 360도 크레이터 |
+| P2 P07 | `Battlefield07` | 서버가 알린 반경(44m)과 각도(315도)로 고리 충격파와 크레이터. 후방 45도는 비운다 |
+
+- 팔 휘두르기와 연타(P1 P01, P1 P05, P2 P01, P2 P05)에는 넣지 않는다. 팔 궤적 파티클과 빨간 예고 번쩍임만 쓴다.
+- 재생기는 기준 반경 8m에서 판 조각과 고리를 만들고 반경 비율로 키운다. 반경이 커져도 판 개수는 거의 같고 판이 커진다.
+- 프리팹은 `Assets/02.Prefab/VFX/Mucheol/FanImpact/Prefabs/`의 `PF_VFX_MucheolFanImpact`, `PF_VFX_MucheolWaveImpact`다. `PF_MucheolBoss`의 `MucheolPatternVfxView`에 `_fanImpactPrefab`, `_waveImpactPrefab`으로 연결한다. 비우면 새 VFX만 안 나오고 나머지는 같다.
+- `PF_Mucheol_FanSlam70`, `PF_Mucheol_02_Slam`, `PF_Mucheol_04_Slam`, `PF_Mucheol_05`, `PF_Mucheol_07_Slam`은 예고 레이어만 남기고 기존 타격 레이어와 지면 강타 연결을 비웠다. 되돌리려면 이 프리팹들을 git에서 복구하고 보스 프리팹의 두 필드를 비운다.
+- 프리팹 재생성과 연결은 에디터 메뉴 `Giwoong/VFX/Build Fan Impact`, `Giwoong/VFX/Wire Fan Impact`다(`Assets/Editor/Art/MucheolFanImpactBuilder.cs`, `MucheolFanImpactWiring.cs`).
+- 사전 로딩 프리팹 `PF_Prewarm_MucheolPatternVfx`에는 아직 등록하지 않았다. 첫 재생에서 판과 입자를 만들어 한 번 끊길 수 있다.
+
+상태: 구현됨·실행 미검증. EditMode 269건 통과와 개발 씬(`Dev_MucheolPatterns`)의 이벤트 재생기로 P1 P04, P2 P04, P2 P07의 생성과 서버 값 전달(반경 44, 각도 315)을 확인했다. 서버 확정 타격으로 이어진 실전투, 하드 범위, 다인 접속, 빌드, 프레임과 GC 비용(판마다 `GameObject`를 새로 만든다)은 미검증이다.

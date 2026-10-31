@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9e943fe7721d7a43a8104e730443877, type: 3}
+  m_Name: MenuGuideCatalog
+  m_EditorClassIdentifier: Shinshi.Runtime::Shinshi.AI.MenuGuideCatalogSO
+  _menus:
+  - _menuId: menu_training
+    _steps:
+    - _text: "\uC218\uB828\uC73C\uB85C \uB2A5\uB825\uCE58\uB97C \uB192\uC77C \uC218
+        \uC788\uC2B5\uB2C8\uB2E4. \uD56D\uBAA9\uACFC \uD544\uC694\uD55C \uC815\uAE30\uB97C
+        \uD655\uC778\uD574\uBCF4\uC138\uC694."
+      _targetKey: panel
+    - _text: "\uC9C0\uAE08 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC544\uB3C4 \uB429\uB2C8\uB2E4.
+        \uB3C4\uC6C0\uB9D0\uC5D0\uC11C \uC5B8\uC81C\uB4E0 \uB2E4\uC2DC \uBCFC \uC218
+        \uC788\uC2B5\uB2C8\uB2E4."
+      _targetKey: 
+  - _menuId: menu_talisman
+    _steps:
+    - _text: "\uBD80\uC801\uC73C\uB85C \uAE30\uC220\uC5D0 \uD6A8\uACFC\uB97C \uB354\uD560
+        \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uAE30\uC220\uBCC4 \uD6A8\uACFC\uB97C \uC0B4\uD3B4\uBCF4\uC138\uC694."
+      _targetKey: panel
+    - _text: "\uC9C0\uAE08 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC544\uB3C4 \uB429\uB2C8\uB2E4.
+        \uB3C4\uC6C0\uB9D0\uC5D0\uC11C \uC5B8\uC81C\uB4E0 \uB2E4\uC2DC \uBCFC \uC218
+        \uC788\uC2B5\uB2C8\uB2E4."
+      _targetKey: 

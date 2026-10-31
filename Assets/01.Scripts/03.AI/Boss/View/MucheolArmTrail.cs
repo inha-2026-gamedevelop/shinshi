@@ -17,6 +17,7 @@ namespace Shinshi.AI
 
         [SerializeField] private TrailRenderer  _trail;
         [SerializeField] private ParticleSystem _sparks;
+        [SerializeField] private MucheolArmLightning _lightning;         // 손에 두르는 전기, 비우면 없다
         [SerializeField] private Transform      _facing;                 // 앞쪽의 기준, 비우면 최상위 오브젝트
         [SerializeField, Min(0f)] private float _startSpeed      = 6f;   // m/s, 이 속도를 넘으면 그리기 시작
         [SerializeField, Min(0f)] private float _stopSpeed       = 3f;   // m/s, 이 속도 아래로 내려가면 그리기 멈춤
@@ -104,6 +105,11 @@ namespace Shinshi.AI
         public void SetRangeScale(float scale)
         {
             _rangeScale = Mathf.Max(scale, MIN_RANGE_SCALE);
+            if (_lightning != null)
+            {
+                _lightning.SetRangeScale(_rangeScale);
+            }
+
             if (_sparks == null)
             {
                 return;
@@ -119,6 +125,11 @@ namespace Shinshi.AI
         private void SetEmitting(bool isEmitting)
         {
             _trail.emitting = isEmitting;
+            if (_lightning != null)
+            {
+                _lightning.SetSwinging(isEmitting);
+            }
+
             if (_sparks == null)
             {
                 return;
