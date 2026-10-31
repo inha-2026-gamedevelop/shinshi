@@ -60,6 +60,10 @@ namespace Shinshi.Network
         [SerializeField] private Button _deleteButton = null;
         [SerializeField] private Button _backButton   = null;
 
+        [Header("환경설정")]
+        [SerializeField] private Button       _settingsButton = null;
+        [SerializeField] private SettingsView _settings       = null;
+
         [Header("안내")]
         [SerializeField] private TMP_Text _status = null;
 
@@ -110,6 +114,10 @@ namespace Shinshi.Network
             _createButton.onClick.AddListener(OnCreateClicked);
             _backButton.onClick.AddListener(OnBackClicked);
             _deleteButton.onClick.AddListener(OnDeleteClicked);
+            if ((_settingsButton != null) && (_settings != null))
+            {
+                _settingsButton.onClick.AddListener(OnSettingsClicked);
+            }
             _deleteLabel = _deleteButton.GetComponentInChildren<TMP_Text>(true);
         }
 
@@ -357,6 +365,8 @@ namespace Shinshi.Network
         }
 
         private void OnBackClicked() { LobbyFlow.GoToLobby(); }
+
+        private void OnSettingsClicked() { _settings.Show(); }
 
         // 예약 전과 대기 후에는 두 번 눌러야 보낸다. 대기 중에는 한 번에 예약을 취소한다
         private void OnDeleteClicked()
