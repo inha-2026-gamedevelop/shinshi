@@ -11,7 +11,7 @@ namespace Shinshi.AI
     // 샘플은 0.05초마다 (x, z)를 이어 적은 것이고 앞뒤 2프레임을 평균해 떨림을 줄였다. 샘플 사이는 선형으로 잇고, 끝은 시작 자세로 돌아와 이동이 닫힌다.
     // 다른 패턴의 경로는 아직 확정하지 않아 표에 없다. 서버가 같은 경로로 보스를 옮기게 되면 이 표는 쓰지 않는다
     /// <summary> 왼발을 지면에 고정하는 무철 클립의 몸 이동 경로 </summary>
-    public static class MucheolBodyShiftCatalog
+    public static class MucheolClipBodyShiftCatalog
     {
         /****************************************
         *              Constants

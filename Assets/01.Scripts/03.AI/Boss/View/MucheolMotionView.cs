@@ -500,7 +500,7 @@ namespace Shinshi.AI
             }
 
             bool    isPlaying = _applyBodyShift && (clip != null) && (!_isServerDriven);
-            Vector2 target    = isPlaying ? MucheolBodyShiftCatalog.Sample(_director.PlayingClip, _director.ClipSeconds) : Vector2.zero;
+            Vector2 target    = isPlaying ? MucheolClipBodyShiftCatalog.Sample(_director.PlayingClip, _director.ClipSeconds) : Vector2.zero;
             _shift = Vector2.SmoothDamp(_shift, target, ref _shiftVelocity, isPlaying ? SHIFT_SMOOTH_SECONDS : SHIFT_RETURN_SECONDS);
             _animator.transform.localPosition = _modelBasePosition + new Vector3(_shift.x, 0f, _shift.y);
         }
