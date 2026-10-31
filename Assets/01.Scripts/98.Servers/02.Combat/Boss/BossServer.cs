@@ -127,8 +127,8 @@ namespace Shinshi.Combat
         // AttachGimmicks가 채운다. 붙이지 않은 보스는 모두 비어 있어 상한 없음, 즉시 사망, 결계 전개 그대로다
         private BossGimmickSet         _gimmicks;
         private IBossDamageCap         _damageCap;
-        private IBossFinalSuccess      _finalSuccess;
         private float                  _minHealthRate;
+        private IBossFinalSuccess      _finalSuccess;
         private IBossGimmickStopSource _stopSource;
         private IBossGimmickReviveGate _reviveGate;
         private bool                   _gimmickAttachTried = false;

@@ -1556,21 +1556,15 @@ namespace Shinshi.Combat
                 return;
             }
 
-            ConfirmDeath(serverTime);
-        }
-
-        // 추락 같은 서버 사망 확정이다. 방어, 반격, 무적이 개입하지 않아야 하므로 피해 판정기를 거치지 않고 피해 통지, 미터, 흡혈도 만들지 않는다.
-        // 서버 보호 중에도 죽인다. 보호가 막을지는 부르는 쪽이 정한다
-        /// <summary> 판정기를 거치지 않고 사망을 확정한다, 살아 있을 때만 참이다 </summary>
             // 프롤로그 숲처럼 치명타를 죽음 대신 제자리 회복으로 바꾸는 규칙이 개입한다. 개입이 처리했으면 죽지 않는다
             if ((LethalInterceptor != null) && (LethalInterceptor.TryIntercept(this, serverTime)))
             {
                 return;
             }
 
-        public bool KillByServer(double serverTime)
-        {
-            if (_lifeState != EParticipantLifeState.Alive)
+            ConfirmDeath(serverTime);
+        }
+
         /// <summary> 살아 있을 때 체력을 최대로 채운다, 프롤로그가 숲 체력 0 회복과 월백 교전 직전 회복에 쓴다 </summary>
         public void RestoreFullHealth()
         {
@@ -1603,6 +1597,12 @@ namespace Shinshi.Combat
             _transform.position = position;
         }
 
+        // 추락 같은 서버 사망 확정이다. 방어, 반격, 무적이 개입하지 않아야 하므로 피해 판정기를 거치지 않고 피해 통지, 미터, 흡혈도 만들지 않는다.
+        // 서버 보호 중에도 죽인다. 보호가 막을지는 부르는 쪽이 정한다
+        /// <summary> 판정기를 거치지 않고 사망을 확정한다, 살아 있을 때만 참이다 </summary>
+        public bool KillByServer(double serverTime)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
             {
                 return false;
             }
@@ -1658,6 +1658,8 @@ namespace Shinshi.Combat
             // 밀린 자리에서 남은 모서리로 곧장 가면 경로가 벽을 스칠 수 있어 순간 이동처럼 경로를 버린다.
             // 소유 예측은 서버가 멈춘 것을 권위 값만으로는 알지 못해 옛 경로를 끝까지 가므로 그 이동의 거절을 보내 멈추게 한다.
             // 아직 경로를 만들지 않은 보관 이동은 다음 틱에 밀린 자리에서 시작하면 되므로 남긴다
+            // 회피는 매 틱 시작점과 끝점 사이의 절대 위치를 다시 쓰므로 진행 중이면 옮긴 자리를 덮어쓴다. 같은 이유로 취소한다
+            _isDodging = false;
             if (_path.IsMoving)
             {
                 _path.Stop();
@@ -1684,8 +1686,6 @@ namespace Shinshi.Combat
             if (IsHitImmune(serverTime))
             {
                 return EPlayerControlResult.Immune;
-            // 회피는 매 틱 시작점과 끝점 사이의 절대 위치를 다시 쓰므로 진행 중이면 옮긴 자리를 덮어쓴다. 같은 이유로 취소한다
-            _isDodging = false;
             }
 
             EPlayerControlResult result = _control.TryApply(kind, seconds, serverTime);
