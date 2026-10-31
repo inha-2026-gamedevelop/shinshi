@@ -78,6 +78,14 @@ namespace Shinshi.AI
         /// <summary> 판정 시각까지의 시간(strikeSeconds)에 힘 순간을 맞춘 재생 속도와 시작 지연을 정한다 </summary>
         public static void ResolveStart(float strikeSeconds, in WolbaekMotionEntry entry, out float speed, out float delay)
         {
+            // 시전 전체에 클립을 고르게 편다, 이 경우 strikeSeconds는 첫 판정이 아니라 시전 전체 길이다
+            if ((entry.FitClipSeconds > 0f) && (strikeSeconds > 0f))
+            {
+                speed = entry.FitClipSeconds / strikeSeconds;
+                delay = 0f;
+                return;
+            }
+
             if (entry.ForcedSpeed > 0f)
             {
                 speed = entry.ForcedSpeed;

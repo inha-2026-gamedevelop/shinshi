@@ -14,6 +14,7 @@ namespace Shinshi.AI
         private readonly float  _slowFromClip;
         private readonly float  _slowToClip;
         private readonly float  _slowSpeed;
+        private readonly float  _fitClipSeconds;
 
         /****************************************
         *              Properties
@@ -38,13 +39,17 @@ namespace Shinshi.AI
 
         public bool HasSlowSegment => _slowSpeed > 0f;
 
+        /// <summary> 초, 0보다 크면 이 길이의 클립을 시전 전체에 같은 속도로 펴서 재생한다. 힘 순간은 시전의 중간쯤에 온다 </summary>
+        public float FitClipSeconds => _fitClipSeconds;
+
         /****************************************
         *                Methods
         ****************************************/
 
         public WolbaekMotionEntry(string stateName, float clipPeakSeconds, float forcedSpeed = 0f, float slowFromClip = 0f,
-            float slowToClip = 0f, float slowSpeed = 0f)
+            float slowToClip = 0f, float slowSpeed = 0f, float fitClipSeconds = 0f)
         {
+            _fitClipSeconds  = fitClipSeconds;
             _stateName       = stateName;
             _clipPeakSeconds = clipPeakSeconds;
             _forcedSpeed     = forcedSpeed;
