@@ -80,6 +80,19 @@ namespace Shinshi.AI
         public bool HasPendingSweep => _sweepRanges.Count > 0;
         public double CounterEndServerTime => _counterEndServerTime;
 
+        /// <summary> 봉인 전체 제한 시간이 끝나기까지 남은 초, 봉인이 진행 중이 아니면 거짓이다 </summary>
+        public bool TryGetLimitRemaining(out float seconds)
+        {
+            seconds = 0f;
+            if (!_active)
+            {
+                return false;
+            }
+
+            seconds = (float)Math.Max(0.0, _start.LimitEndServerTime - Now());
+            return true;
+        }
+
         private void Awake()
         {
             _bossView = GetComponent<BossView>();

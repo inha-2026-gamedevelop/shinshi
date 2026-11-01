@@ -37,6 +37,7 @@ namespace Shinshi.UI
         [SerializeField] private GameObject[] _unavailableRoots;
 
         private BossState _boss;
+        private WolbaekFoxfireSealView _sealView;
         private float _nextRefreshAt;
         private int _lastPhase = -1;
         private uint _lastPotionSequence;
@@ -57,6 +58,7 @@ namespace Shinshi.UI
         {
             PotionClient.StateChanged -= OnPotionState;
             _boss = null;
+            _sealView = null;
             HideAll();
         }
 
@@ -123,6 +125,22 @@ namespace Shinshi.UI
                 return;
             }
             _bossView.SetHealth(_boss.HealthRate);
+
+            // 보스전의 제한 시간은 웨이브 없는 진행 메시지로 온다. 서버 시각으로 이어 센다
+            if (SortieClient.HasWaveProgress && (SortieClient.WaveProgress.WaveCount == 0) && (SortieClient.WaveProgress.TimeLimitSeconds > 0f))
+            {
+                _bossView.SetTimeRemaining(DungeonProgressRules.RemainingSeconds(SortieClient.WaveProgress, NetworkTime.time));
+            }
+
+            // 월백 하드 25% 여우불 봉인은 진행 중일 때만 60초 제한을 따로 보여 준다
+            if ((_sealView == null) && (_bossView.HasSealTimer))
+            {
+                _sealView = FindAnyObjectByType<WolbaekFoxfireSealView>();
+            }
+
+            float sealSeconds = 0f;
+            bool sealActive = (_sealView != null) && _sealView.TryGetLimitRemaining(out sealSeconds);
+            _bossView.SetSealTimeRemaining(sealActive, sealSeconds);
 
             // BossState.PhaseState는 전환 FSM 상태이지 단계 번호가 아니다. 미터의 서버 단계만 표시한다.
             int phase = CombatMeterClient.HasSelf ? CombatMeterClient.Self.Phase : 0;
