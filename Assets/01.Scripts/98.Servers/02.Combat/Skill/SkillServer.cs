@@ -952,12 +952,18 @@ namespace Shinshi.Combat
             _targets.Clear();
         }
 
-        // 자기 강화, 발동 순간부터 정한 시간 동안 피격이상 면역. 궁수 속성 부여는 발동 순간부터 다음 기본 공격의 속성을 바꾼다
+        // 자기 강화, 발동 순간부터 정한 시간 동안 피격이상 면역. 마검사 Q는 같은 시간 동안 보호막도 건다.
+        // 궁수 속성 부여는 발동 순간부터 다음 기본 공격의 속성을 바꾼다
         private void ApplyBuff()
         {
             if (_skill.Effect.HitImmunityDuration > 0f)
             {
                 _owner.GrantHitImmunity(_resolveAt + _skill.Effect.HitImmunityDuration);
+            }
+            if (PlayerShieldRules.GrantsShield(_skill.PlayerClass, _skill.Slot))
+            {
+                _owner.GrantShield(PlayerShieldRules.GetGrantAmount(_owner.MaxHealth),
+                    _resolveAt + PlayerShieldRules.GetDuration(_skill.Effect.HitImmunityDuration));
             }
             if (_skill.Effect.ArcherElement != EArcherElement.None)
             {

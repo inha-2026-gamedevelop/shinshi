@@ -25,7 +25,8 @@ namespace Shinshi.Common
             // 14: 월백 2페이즈 전환 컷신 구간(번호, 서버 시작과 종료 시각) SyncVar 추가(2026-10-18)
             // 15: 파티 요청과 결과 메시지 끝에 요청 ID(RequestId) 추가, 직렬화 wire 변경(2026-10-19)
             // 16: 피해 표시 TargetRpc에 지속 피해 표식, 궁수 화살 적중에 강공격 표식 추가(2026-10-22)
-            public const int PROTOCOL_VERSION = 16;
+            // 17: 플레이어 보호막(마검사 Q) SyncVar 추가(2026-11-01)
+            public const int PROTOCOL_VERSION = 17;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;

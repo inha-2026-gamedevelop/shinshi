@@ -342,7 +342,8 @@ namespace Shinshi.Combat
             if (gauges.MaxHealth > 0f)
             {
                 _statusView.SetHp(LocalPlayerHudRules.ToDisplayInt(gauges.Health, gauges.MaxHealth),
-                    LocalPlayerHudRules.ToDisplayInt(gauges.MaxHealth, gauges.MaxHealth));
+                    LocalPlayerHudRules.ToDisplayInt(gauges.MaxHealth, gauges.MaxHealth),
+                    LocalPlayerHudRules.ToDisplayInt(_combat.Shield, gauges.MaxHealth));
             }
 
             if (gauges.MaxEnergy > 0f)

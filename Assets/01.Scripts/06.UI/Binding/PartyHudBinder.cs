@@ -105,10 +105,11 @@ namespace Shinshi.UI
 
         private void SetMember(int slot, string memberName, EPlayerClass playerClass, PlayerCombatState combat)
         {
-            bool hasHp = (combat != null) && (combat.MaxHealth > 0f);
-            int  hp    = hasHp ? LocalPlayerHudRules.ToDisplayInt(combat.Health, combat.MaxHealth) : 0;
-            int  max   = hasHp ? LocalPlayerHudRules.ToDisplayInt(combat.MaxHealth, combat.MaxHealth) : 0;
-            _view.SetMember(slot, memberName, playerClass, hasHp, hp, max);
+            bool hasHp  = (combat != null) && (combat.MaxHealth > 0f);
+            int  hp     = hasHp ? LocalPlayerHudRules.ToDisplayInt(combat.Health, combat.MaxHealth) : 0;
+            int  max    = hasHp ? LocalPlayerHudRules.ToDisplayInt(combat.MaxHealth, combat.MaxHealth) : 0;
+            int  shield = hasHp ? LocalPlayerHudRules.ToDisplayInt(combat.Shield, combat.MaxHealth) : 0;
+            _view.SetMember(slot, memberName, playerClass, hasHp, hp, max, shield);
         }
 
         private PlayerCombatState FindRemote(string characterName)

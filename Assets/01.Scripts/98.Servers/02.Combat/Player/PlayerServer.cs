@@ -16,7 +16,8 @@ namespace Shinshi.Combat
 {
     /// <summary> 플레이어 한 명의 서버 판정, 입력 검증과 서버 권위 이동, 기본 공격, 체력과 사망을 맡는다 </summary>
     public sealed class PlayerServer : IPlayerInputServerHandler, IPlayerSkillServerHandler, ISkillCombatant, IPotionUser,
-        IPlayerControlTarget, ICriticalDamageSource, ILifeStealSource, IBossDisplaceTarget, IHitImmunityTarget
+        IPlayerControlTarget, ICriticalDamageSource, ILifeStealSource, IBossDisplaceTarget, IHitImmunityTarget, IShieldTarget,
+        IDamageShieldTarget
     {
         // Command 처리기는 검증과 의도 보관만 하고, 실제 이동과 공격은 CombatServerRuntime의 틱에서 한다.
         // 한 틱에 이동 입력이 여러 개 와도 경로 계산은 마지막 것 한 번만 하고, 처리 순서를 틱 순서에 맞춘다
@@ -101,6 +102,8 @@ namespace Shinshi.Combat
         private int                   _comboStep           = BasicAttackComboRules.NO_STEP;
         private double                _comboImmuneUntil    = 0.0;
         private double                _grantedImmuneUntil  = 0.0;
+        private float                 _shield              = 0f;
+        private double                _shieldUntil         = 0.0;
         private readonly ArrowState[] _arrows              = new ArrowState[MAX_ARROWS];
         private int                   _arrowCount          = 0;
         private readonly float        _dodgeDistance;
@@ -163,6 +166,9 @@ namespace Shinshi.Combat
         public float                 MaxHealth       => _maxHealth;
         public float                 Defense         => _defense;
         public double                DeathTime       => _deathTime;
+
+        // 마지막으로 확정한 남은 보호막, 만료는 틱 시작이나 다음 피격 때 반영된다
+        public float                 Shield          => _shield;
 
         // 부활 단계가 승인한 서버 시각, 부활한 적이 없으면 NO_REVIVE_TIME이다. 보스 기믹의 부활 직후 보호가 이 시각에서 잰다
         public double                LastReviveTime  => _lastReviveTime;
@@ -278,6 +284,9 @@ namespace Shinshi.Combat
             _combat.SetPlayerClass(playerClass);
             _combat.SetCombatId(_combatId);
             _combat.SetHealth(_health, _maxHealth);
+
+            // 재접속은 기존 복제 개체를 다시 쓸 수 있어 지난 연결의 보호막 표시를 지운다. 보호막은 재접속으로 이어지지 않는다
+            _combat.SetShield(_shield);
             _combat.SetLifeState(_lifeState);
             _combat.SetFacingYaw(FacingRules.EncodeYaw(_forward));
             _input.SetMoveSpeed(_moveSpeed);
@@ -1013,6 +1022,57 @@ namespace Shinshi.Combat
             _grantedImmuneUntil = System.Math.Max(_grantedImmuneUntil, untilServerTime);
         }
 
+        // 다시 걸면 남은 양에 더하지 않고 새 양으로 덮는다. 연속 시전으로 최대 체력 비율을 넘겨 쌓이지 않게 한다
+        /// <summary> 살아 있을 때 보호막을 amount로 덮어쓰고 만료 시각을 바꾼다 </summary>
+        public void GrantShield(float amount, double untilServerTime)
+        {
+            if ((_lifeState != EParticipantLifeState.Alive) || (!(amount > 0f)) || (float.IsInfinity(amount))
+                || (double.IsNaN(untilServerTime)) || (double.IsInfinity(untilServerTime)))
+            {
+                return;
+            }
+
+            _shield      = amount;
+            _shieldUntil = untilServerTime;
+            _combat.SetShield(_shield);
+        }
+
+        /// <summary> 남은 보호막으로 피해를 먼저 흡수하고 체력으로 넘길 피해를 돌려준다, DamageResolver만 부른다 </summary>
+        public float AbsorbWithShield(float damage, double serverTime)
+        {
+            ExpireShield(serverTime);
+            if (!(_shield > 0f))
+            {
+                return damage;
+            }
+
+            float passed = PlayerShieldRules.Absorb(_shield, damage, out _shield);
+            if (!(_shield > 0f))
+            {
+                ClearShield();
+                return passed;
+            }
+
+            _combat.SetShield(_shield);
+            return passed;
+        }
+
+        // 피격이 없어도 표시가 만료 시각에 사라지도록 틱 시작에서도 부른다
+        private void ExpireShield(double serverTime)
+        {
+            if ((_shield > 0f) && (!PlayerShieldRules.IsActive(_shield, _shieldUntil, serverTime)))
+            {
+                ClearShield();
+            }
+        }
+
+        private void ClearShield()
+        {
+            _shield      = 0f;
+            _shieldUntil = 0.0;
+            _combat.SetShield(0f);
+        }
+
         /// <summary> 콤보 동작이나 기술이 건 피격이상 면역 중이면 참 </summary>
         public bool IsHitImmune(double serverTime)
         {
@@ -1499,6 +1559,8 @@ namespace Shinshi.Combat
 
         public void TickSkills(float deltaTime, double serverTime, PathRequestBudget budget)
         {
+            // 기술 틱보다 먼저 지운다. 같은 틱에 다시 건 보호막이 만료 처리에 지워지지 않는다
+            ExpireShield(serverTime);
             _skills?.Tick(serverTime, deltaTime, budget);
             if ((!_hasPendingSkill) || (_skills == null))
             {
@@ -1637,6 +1699,7 @@ namespace Shinshi.Combat
             _deathPosition    = _transform.position;
             _hasDeathPosition = true;
             _grantedImmuneUntil = 0.0;
+            ClearShield();
             CancelPreFire(EPreFireCancelReason.Death);
             _combat.SetLifeState(_lifeState);
 

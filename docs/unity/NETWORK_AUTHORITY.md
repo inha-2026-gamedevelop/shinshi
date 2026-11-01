@@ -302,9 +302,11 @@ public override void OnClientConnect()
 
 ### 7.1.1 인증·경제 경계
 
-- 접속 프로토콜은 `Constants.Network.PROTOCOL_VERSION`(현재 16)을 따르며 닉네임·외형·경험치는 API 토큰 교환 때 소유 캐릭터의 DB 값으로 읽고, 서버가 검증해 최초 생성·재결합 전에 적용한다. 경험치 누계와 마지막 사건 순번은 같은 캐릭터 행에서 읽고 예약 장비 스냅샷과 분리한다. 외형 payload 버전과 기존 캐릭터 해석은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)를 따른다.
+- 접속 프로토콜은 `Constants.Network.PROTOCOL_VERSION`(현재 17)을 따르며 닉네임·외형·경험치는 API 토큰 교환 때 소유 캐릭터의 DB 값으로 읽고, 서버가 검증해 최초 생성·재결합 전에 적용한다. 경험치 누계와 마지막 사건 순번은 같은 캐릭터 행에서 읽고 예약 장비 스냅샷과 분리한다. 외형 payload 버전과 기존 캐릭터 해석은 [캐릭터 커스터마이즈](CHARACTER_CUSTOMIZATION.md)를 따른다.
 
 2026-10-22 프로토콜 16은 소유자 피해 표시 TargetRpc의 지속 피해 여부와 `PlayerCombatState.ArrowHitIsHeavy`를 추가한다. 지속 피해 여부는 `DamageRequest.IsDamageOverTime`에서 공통 판정기·런타임·소유자 RPC를 거쳐 전달하며, 클라이언트는 피해량이나 현재 속성으로 추측하지 않는다. 궁수 2타 연발의 발수·발사 간격과 3타 강공격 여부는 공용 `PlayerConfigSO`(스키마 2)에 있고 서버가 발사·피해·취소를 판정한다. 애니메이션과 VFX는 같은 설정과 공개 단계로만 재생한다. 클라이언트·서버의 프로토콜과 콘텐츠 해시를 함께 갱신해야 하며 M2/M3와 실제 빌드는 별도 수용 대상이다.
+
+2026-11-01 프로토콜 17은 `PlayerCombatState.Shield`(남은 보호막) SyncVar를 추가한다. 마검사 Q 수류 방벽이 발동하면 서버가 최대 체력 5% 보호막을 방벽 유지 시간 동안 덮어써 걸고, 공통 판정기(`DamageResolver`)가 상한 뒤·체력 하한 앞에서 `IDamageShieldTarget`으로 보호막을 먼저 깎은 뒤 남은 피해만 체력에 적용한다. 만료·사망 시 서버가 지우며 클라이언트는 복제 값으로 체력바 흰 구간만 그린다. EditMode 시험만 있고 실제 빌드·다인 접속은 미검증이다.
 
 - HTTP 토큰은 `Authorization: Bearer {token}`으로 보낸다. 게임 서버의 서비스 자격은 임대 발급에만 쓰고, 이후 서버 경로는 `ServerCredentials`의 유효한 서버 임대 토큰을 사용한다. 인스턴스 헤더만으로 서버를 인증하지 않는다. 실행 설정은 [ServerLaunchConfig](../../Assets/01.Scripts/98.Servers/01.Network/Bootstrap/ServerLaunchConfig.cs)·[BackendLaunchSettings](../../Assets/01.Scripts/98.Servers/01.Network/Backend/BackendLaunchSettings.cs)가 기준이다.
 - 서비스 자격은 `BACKEND_SERVICE_TOKEN` 또는 `-backend-service-token-file`의 파일로 공급한다. 토큰 원문을 CLI 인자·SO·로그에 넣지 않는다. 출시 서버는 API 검증기를 쓰고, `dev` 검증기는 에디터·개발 빌드 전용이며 형식만 확인한다. 출시 서버는 서비스 자격 없이 던전을 열지 않는다.

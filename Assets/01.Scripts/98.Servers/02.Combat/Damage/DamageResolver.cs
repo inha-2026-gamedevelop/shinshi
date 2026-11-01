@@ -205,6 +205,17 @@ namespace Shinshi.Combat
                 }
             }
 
+            // 보호막은 상한 뒤, 하한 앞에서 깎는다. 전부 흡수해도 적중은 인정해 0짜리 적용으로 남기고(제어 효과는 그대로 받는다),
+            // 체력으로 넘긴 몫만 처치 판정과 적용량에 들어간다. 계약을 어긴 값은 대상 쪽 결함이므로 무시하고 원래 피해를 쓴다
+            if ((damage > 0f) && (target is IDamageShieldTarget shieldTarget))
+            {
+                float passed = shieldTarget.AbsorbWithShield(damage, _now);
+                if ((DamageFeedbackRules.IsFinite(passed)) && (passed >= 0f) && (passed <= damage))
+                {
+                    damage = passed;
+                }
+            }
+
             // 하한은 상한 뒤에 건다. 하한에서 막힌 피해는 치명이나 처치로 알리지 않고, 남는 피해가 없으면 없던 피해다
             if ((DamageFeedbackRules.IsFinite(healthFloor)) && (healthFloor > 0f))
             {

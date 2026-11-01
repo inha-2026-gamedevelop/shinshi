@@ -26,6 +26,10 @@ namespace Shinshi.Combat
         [SyncVar(hook = nameof(OnMaxHealthChanged))]
         private float _maxHealth = 0f;
 
+        // 남은 보호막, 체력바 흰 구간 표시 전용이다. 흡수와 만료는 서버 처리기가 자기 상태로 판정한다
+        [SyncVar(hook = nameof(OnShieldChanged))]
+        private float _shield = 0f;
+
         [SyncVar(hook = nameof(OnLifeStateChanged))]
         private EParticipantLifeState _lifeState = EParticipantLifeState.Alive;
 
@@ -107,6 +111,7 @@ namespace Shinshi.Combat
 
         public float                 Health      => _health;
         public float                 MaxHealth   => _maxHealth;
+        public float                 Shield      => _shield;
         public EParticipantLifeState LifeState   => _lifeState;
         public ushort                FacingYaw   => _facingYaw;
         public EPlayerClass          PlayerClass => _playerClass;
@@ -146,6 +151,7 @@ namespace Shinshi.Combat
 
         // 전용 서버에서는 hook이 불리지 않으므로 표현과 UI만 구독한다
         public event Action<float, float>           HealthChanged;
+        public event Action<float>                 ShieldChanged;
         public event Action<EParticipantLifeState> LifeStateChanged;
         public event Action<EPlayerClass>          PlayerClassChanged;
         public event Action<string>                CharacterNameChanged;
@@ -166,6 +172,13 @@ namespace Shinshi.Combat
         {
             _maxHealth = maxHealth;
             _health    = health;
+        }
+
+        // 같은 값이면 SyncVar가 더럽혀지지 않으므로 바뀔 때만 전송된다
+        [Server]
+        public void SetShield(float shield)
+        {
+            _shield = shield;
         }
 
         [Server]
@@ -303,6 +316,11 @@ namespace Shinshi.Combat
         private void OnMaxHealthChanged(float previous, float next)
         {
             HealthChanged?.Invoke(_health, next);
+        }
+
+        private void OnShieldChanged(float previous, float next)
+        {
+            ShieldChanged?.Invoke(next);
         }
 
         private void OnLifeStateChanged(EParticipantLifeState previous, EParticipantLifeState next)

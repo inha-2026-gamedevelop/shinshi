@@ -73,9 +73,12 @@ namespace Shinshi.UI
         private int _level     = -1;
         private int _hpCurrent = -1;
         private int _hpMax     = -1;
+        private int _hpShield  = -1;
         private int _mpCurrent = -1;
         private int _mpMax     = -1;
 
+        // 체력 채움 끝에 이어 붙이는 흰 보호막 구간, 처음 보호막이 생길 때 만든다
+        private RectTransform     _shieldFill;
         private TMP_Text          _stackText;
         private ClassStackDisplay _stackDisplay = ClassStackDisplay.Hidden;
         private Tween             _trailTween   = null;
@@ -165,9 +168,10 @@ namespace Shinshi.UI
             }
         }
 
-        public void SetHp(int current, int max)
+        /// <summary> 체력과 남은 보호막을 넣는다, 보호막은 체력 채움 끝에 흰 구간으로 이어 붙인다 </summary>
+        public void SetHp(int current, int max, int shield = 0)
         {
-            if ((current == _hpCurrent) && (max == _hpMax))
+            if ((current == _hpCurrent) && (max == _hpMax) && (shield == _hpShield))
             {
                 return;
             }
@@ -176,14 +180,18 @@ namespace Shinshi.UI
 
             _hpCurrent = current;
             _hpMax = max;
-            ApplyBar(_hpFill, _hpText, current, max);
-            ApplyTrail(current, max, isDamaged);
+            _hpShield = shield;
+            HudShieldBarRules.Compute(current, shield, max, out float healthRatio, out float shieldEndRatio);
+            SetFillRatio(_hpFill, healthRatio);
+            SetValueText(_hpText, current, max);
+            HudShieldSegment.Apply(ref _shieldFill, _hpFill, healthRatio, shieldEndRatio);
+            ApplyTrail(healthRatio, isDamaged);
         }
 
         // 줄어든 만큼은 하얀 칸이 이전 길이에 그대로 남아 있다가, 잠깐 있다가 새 길이까지 줄어든다.
         // 연달아 맞으면 지금 길이에서 이어서 줄여 잔상이 끊기지 않는다. 늘거나 최대치가 바뀌면 바로 맞춘다.
         // 잔상이 채움보다 길 때만 켠다. 같은 길이로 겹쳐 두면 채움 가장자리의 반투명 픽셀 뒤로 잔상 색이 비쳐 튀어나와 보인다
-        private void ApplyTrail(int current, int max, bool isDamaged)
+        private void ApplyTrail(float ratio, bool isDamaged)
         {
             if (_hpTrail == null)
             {
@@ -193,7 +201,6 @@ namespace Shinshi.UI
             _trailTween?.Kill();
             _trailTween = null;
 
-            float ratio = (max > 0) ? Mathf.Clamp01((float)current / max) : 0f;
             _hpRatio = ratio;
             if (!isDamaged)
             {
@@ -474,10 +481,19 @@ namespace Shinshi.UI
         // 그래서 9분할 채움 칸의 오른쪽 앵커를 줄여 끝 모양이 현재 값 위치를 따라가게 한다
         private static void ApplyBar(RectTransform fill, TMP_Text text, int current, int max)
         {
-            float ratio = (max > 0) ? Mathf.Clamp01((float)current / max) : 0f;
+            SetFillRatio(fill, (max > 0) ? Mathf.Clamp01((float)current / max) : 0f);
+            SetValueText(text, current, max);
+        }
+
+        private static void SetFillRatio(RectTransform fill, float ratio)
+        {
             Vector2 anchorMax = fill.anchorMax;
             anchorMax.x = ratio;
             fill.anchorMax = anchorMax;
+        }
+
+        private static void SetValueText(TMP_Text text, int current, int max)
+        {
             text.SetText(string.Format(CultureInfo.InvariantCulture, VALUE_FORMAT, current, max));
         }
     }

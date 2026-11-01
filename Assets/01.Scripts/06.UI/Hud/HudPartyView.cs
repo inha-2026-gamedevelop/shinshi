@@ -32,11 +32,15 @@ namespace Shinshi.UI
             [SerializeField] private TMP_Text      _hpText = null;
 
             // 값이 같으면 글자를 다시 만들지 않는다
-            [NonSerialized] public bool         HasValue  = false;
-            [NonSerialized] public string       LastName  = null;
-            [NonSerialized] public EPlayerClass LastClass = EPlayerClass.Warrior;
-            [NonSerialized] public int          LastHp    = -1;
-            [NonSerialized] public int          LastMaxHp = -1;
+            [NonSerialized] public bool         HasValue   = false;
+            [NonSerialized] public string       LastName   = null;
+            [NonSerialized] public EPlayerClass LastClass  = EPlayerClass.Warrior;
+            [NonSerialized] public int          LastHp     = -1;
+            [NonSerialized] public int          LastMaxHp  = -1;
+            [NonSerialized] public int          LastShield = -1;
+
+            // 체력 채움 끝의 흰 보호막 구간, 처음 보호막이 생길 때 만든다
+            [NonSerialized] public RectTransform ShieldFill = null;
 
             public GameObject    Root   => _root;
             public TMP_Text      Name   => _name;
@@ -70,8 +74,9 @@ namespace Shinshi.UI
         *                Methods
         ****************************************/
 
-        /// <summary> hasHp가 거짓이면 체력 막대를 비우고 수치 대신 '-'를 쓴다 </summary>
-        public void SetMember(int index, string memberName, EPlayerClass playerClass, bool hasHp, int hp, int maxHp)
+        /// <summary> hasHp가 거짓이면 체력 막대와 보호막을 비우고 수치 대신 '-'를 쓴다 </summary>
+        public void SetMember(int index, string memberName, EPlayerClass playerClass, bool hasHp, int hp, int maxHp,
+            int shield = 0)
         {
             Slot slot = GetSlot(index);
             if (slot == null)
@@ -81,21 +86,23 @@ namespace Shinshi.UI
 
             if (!hasHp)
             {
-                hp    = -1;
-                maxHp = -1;
+                hp     = -1;
+                maxHp  = -1;
+                shield = 0;
             }
 
             if ((slot.HasValue) && (slot.LastName == memberName) && (slot.LastClass == playerClass)
-                && (slot.LastHp == hp) && (slot.LastMaxHp == maxHp))
+                && (slot.LastHp == hp) && (slot.LastMaxHp == maxHp) && (slot.LastShield == shield))
             {
                 return;
             }
 
-            slot.HasValue  = true;
-            slot.LastName  = memberName;
-            slot.LastClass = playerClass;
-            slot.LastHp    = hp;
-            slot.LastMaxHp = maxHp;
+            slot.HasValue   = true;
+            slot.LastName   = memberName;
+            slot.LastClass  = playerClass;
+            slot.LastHp     = hp;
+            slot.LastMaxHp  = maxHp;
+            slot.LastShield = shield;
 
             SetActive(slot.Root, true);
             if (slot.Name != null)
@@ -110,7 +117,7 @@ namespace Shinshi.UI
                 slot.Badge.enabled = (badge != null);
             }
 
-            ApplyHp(slot, hasHp, hp, maxHp);
+            ApplyHp(slot, hasHp, hp, maxHp, shield);
         }
 
         public void ClearMember(int index)
@@ -161,15 +168,23 @@ namespace Shinshi.UI
             }
         }
 
-        // 9분할 채움 칸의 오른쪽 앵커를 줄인다. HudPlayerStatusView와 같은 방식이라 막대 끝 모양이 유지된다
-        private static void ApplyHp(Slot slot, bool hasHp, int hp, int maxHp)
+        // 9분할 채움 칸의 오른쪽 앵커를 줄인다. HudPlayerStatusView와 같은 방식이라 막대 끝 모양이 유지된다.
+        // 보호막은 채움 끝에 흰 구간으로 이어 붙이고, 합이 최대 체력을 넘으면 합 기준으로 줄인다
+        private static void ApplyHp(Slot slot, bool hasHp, int hp, int maxHp, int shield)
         {
-            float ratio = ((hasHp) && (maxHp > 0)) ? Mathf.Clamp01((float)hp / maxHp) : 0f;
+            float ratio          = 0f;
+            float shieldEndRatio = 0f;
+            if (hasHp)
+            {
+                HudShieldBarRules.Compute(hp, shield, maxHp, out ratio, out shieldEndRatio);
+            }
+
             if (slot.HpFill != null)
             {
                 Vector2 anchorMax = slot.HpFill.anchorMax;
                 anchorMax.x           = ratio;
                 slot.HpFill.anchorMax = anchorMax;
+                HudShieldSegment.Apply(ref slot.ShieldFill, slot.HpFill, ratio, shieldEndRatio);
             }
 
             if (slot.HpText != null)
