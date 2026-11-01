@@ -21,6 +21,11 @@ namespace Shinshi.Network
             Find(participantId)?.Send(message);
         }
 
+        public void SendStopVote(int participantId, in SortieStopVoteStateMessage message)
+        {
+            Find(participantId)?.Send(message);
+        }
+
         public void SendWaveProgress(int participantId, in WaveProgressMessage message)
         {
             Find(participantId)?.Send(message);

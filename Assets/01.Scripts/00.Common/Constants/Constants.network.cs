@@ -26,7 +26,8 @@ namespace Shinshi.Common
             // 15: 파티 요청과 결과 메시지 끝에 요청 ID(RequestId) 추가, 직렬화 wire 변경(2026-10-19)
             // 16: 피해 표시 TargetRpc에 지속 피해 표식, 궁수 화살 적중에 강공격 표식 추가(2026-10-22)
             // 17: 플레이어 보호막(마검사 Q) SyncVar 추가(2026-11-01)
-            public const int PROTOCOL_VERSION = 17;
+            // 18: 보스전 토벌 중단 투표 요청과 상태 메시지 추가(2026-11-01)
+            public const int PROTOCOL_VERSION = 18;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;

@@ -7,5 +7,7 @@ namespace Shinshi.Network
         void SendStatus(int participantId, in SortieStatusMessage message);
 
         void SendAbandonResult(int participantId, in SortieAbandonResultMessage message);
+
+        void SendStopVote(int participantId, in SortieStopVoteStateMessage message);
     }
 }

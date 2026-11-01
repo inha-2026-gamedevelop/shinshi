@@ -369,6 +369,10 @@ namespace Shinshi.Tests
             public void SendAbandonResult(int participantId, in SortieAbandonResultMessage message)
             {
             }
+
+            public void SendStopVote(int participantId, in SortieStopVoteStateMessage message)
+            {
+            }
         }
     }
 }

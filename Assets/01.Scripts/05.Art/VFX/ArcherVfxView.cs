@@ -547,6 +547,12 @@ namespace Shinshi.Art
 
         private void PlayBowSound()
         {
+            // 다른 플레이어 캐릭터의 소리는 내지 않는다. 각자 자기 캐릭터 소리만 듣는다
+            if (!_combat.isOwned)
+            {
+                return;
+            }
+
             if (_bowClips == null)
             {
                 _bowClips = new[]
@@ -568,6 +574,12 @@ namespace Shinshi.Art
 
         private void PlayBuffSound()
         {
+            // 다른 플레이어 캐릭터의 소리는 내지 않는다. 각자 자기 캐릭터 소리만 듣는다
+            if (!_combat.isOwned)
+            {
+                return;
+            }
+
             AudioClip clip = BuffSoundClips.Pick(_bowRandom);
             if (clip != null)
             {

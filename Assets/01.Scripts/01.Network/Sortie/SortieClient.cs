@@ -22,6 +22,7 @@ namespace Shinshi.Network
         private static bool                _hasWaveProgress;
         private static SortieRewardMessage _reward;
         private static bool                _hasReward;
+        private static SortieStopVoteStateMessage _stopVote;
 
         /****************************************
         *              Properties
@@ -45,6 +46,10 @@ namespace Shinshi.Network
         public static event Action<SortieStatusMessage>        StatusChanged;
         public static event Action<SortieAbandonResultMessage> AbandonResult;
         public static event Action<SortieRewardMessage>        RewardReceived;
+        public static event Action<SortieStopVoteStateMessage> StopVoteChanged;
+
+        /// <summary> 마지막으로 받은 토벌 중단 투표 상태, 받은 적이 없으면 None이다 </summary>
+        public static SortieStopVoteStateMessage StopVote => _stopVote;
 
         /****************************************
         *                Methods
@@ -60,10 +65,24 @@ namespace Shinshi.Network
             _hasWaveProgress = false;
             _reward          = default;
             _hasReward       = false;
+            _stopVote        = default;
             NetworkClient.ReplaceHandler<SortieStatusMessage>(OnStatus);
             NetworkClient.ReplaceHandler<SortieAbandonResultMessage>(OnAbandonResult);
             NetworkClient.ReplaceHandler<WaveProgressMessage>(OnWaveProgress);
             NetworkClient.ReplaceHandler<SortieRewardMessage>(OnReward);
+            NetworkClient.ReplaceHandler<SortieStopVoteStateMessage>(OnStopVote);
+        }
+
+        /// <summary> 토벌 중단 표를 보낸다, 열린 투표가 없을 때 찬성하면 새 투표를 연다. 연결되지 않았으면 거짓이다 </summary>
+        public static bool RequestStopVote(bool agree)
+        {
+            if (!NetworkClient.isConnected)
+            {
+                return false;
+            }
+
+            NetworkClient.Send(new SortieStopVoteRequestMessage(agree));
+            return true;
         }
 
         /// <summary> 포기를 보낸다, 결과 전에 다시 누르면 같은 작업 ID로 다시 보낸다. 연결되지 않았으면 거짓이다 </summary>
@@ -101,6 +120,12 @@ namespace Shinshi.Network
             _reward    = message;
             _hasReward = true;
             RewardReceived?.Invoke(message);
+        }
+
+        private static void OnStopVote(SortieStopVoteStateMessage message)
+        {
+            _stopVote = message;
+            StopVoteChanged?.Invoke(message);
         }
 
         private static void OnAbandonResult(SortieAbandonResultMessage message)

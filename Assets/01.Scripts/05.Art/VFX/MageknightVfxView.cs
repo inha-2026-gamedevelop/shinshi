@@ -364,6 +364,12 @@ namespace Shinshi.Art
 
         private void PlayBasicSound()
         {
+            // 다른 플레이어 캐릭터의 소리는 내지 않는다. 각자 자기 캐릭터 소리만 듣는다
+            if (!_combat.isOwned)
+            {
+                return;
+            }
+
             if (_basicClips == null)
             {
                 _basicClips = new[]
@@ -384,6 +390,12 @@ namespace Shinshi.Art
 
         private void PlayWaveSound()
         {
+            // 다른 플레이어 캐릭터의 소리는 내지 않는다. 각자 자기 캐릭터 소리만 듣는다
+            if (!_combat.isOwned)
+            {
+                return;
+            }
+
             if (_waveClip == null)
             {
                 _waveClip = Resources.Load<AudioClip>("WEAPON_Dagger");
@@ -398,6 +410,12 @@ namespace Shinshi.Art
 
         private void PlayBuffSound()
         {
+            // 다른 플레이어 캐릭터의 소리는 내지 않는다. 각자 자기 캐릭터 소리만 듣는다
+            if (!_combat.isOwned)
+            {
+                return;
+            }
+
             AudioClip clip = BuffSoundClips.Pick(_basicSoundRandom);
             if (clip != null)
             {

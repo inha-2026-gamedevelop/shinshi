@@ -384,6 +384,7 @@ namespace Shinshi.Combat
         {
             NetworkServer.ReplaceHandler<PotionUseRequestMessage>(OnPotionRequest);
             NetworkServer.ReplaceHandler<SortieAbandonRequestMessage>(OnAbandonRequest);
+            NetworkServer.ReplaceHandler<SortieStopVoteRequestMessage>(OnStopVoteRequest);
             NetworkServer.ReplaceHandler<PrologueEventMessage>(OnPrologueEvent);
         }
 
@@ -412,6 +413,19 @@ namespace Shinshi.Combat
             }
 
             _host.RequestAbandon(binding.ParticipantId, message.OperationId);
+        }
+
+        // 메인 스레드의 Mirror 수신에서 불린다. 참가자는 연결 결합으로 정하고 메시지 값은 찬반만 쓴다.
+        // 표는 다음 틱 세션 BeginTick 뒤에 넣는다
+        private void OnStopVoteRequest(NetworkConnectionToClient connection, SortieStopVoteRequestMessage message)
+        {
+            if ((_host == null) || (connection == null) || (!(connection.authenticationData is SessionBinding binding))
+                || (!binding.IsActive))
+            {
+                return;
+            }
+
+            _host.RequestStopVote(binding.ParticipantId, message.Agree);
         }
 
         // 매니저가 플레이어 생성 요청에서 먼저 부른다. 출정 종료 뒤 경매에만 다시 들어온 연결은 캐릭터 없이 경매 상태만 받는다

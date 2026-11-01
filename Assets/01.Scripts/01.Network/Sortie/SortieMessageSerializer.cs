@@ -63,6 +63,42 @@ namespace Shinshi.Network
             return new SortieStatusMessage(phase, endReason, hasPersonalClose, personalCloseReason, canReturn, settlementState);
         }
 
+        public static void WriteSortieStopVoteRequestMessage(this NetworkWriter writer, SortieStopVoteRequestMessage value)
+        {
+            writer.WriteBool(value.Agree);
+        }
+
+        public static SortieStopVoteRequestMessage ReadSortieStopVoteRequestMessage(this NetworkReader reader)
+        {
+            return new SortieStopVoteRequestMessage(reader.ReadBool());
+        }
+
+        public static void WriteSortieStopVoteStateMessage(this NetworkWriter writer, SortieStopVoteStateMessage value)
+        {
+            writer.WriteByte((byte)value.State);
+            writer.WriteByte(value.AgreeCount);
+            writer.WriteByte(value.DisagreeCount);
+            writer.WriteByte(value.RequiredCount);
+            writer.WriteByte(value.EligibleCount);
+            writer.WriteByte((byte)value.MyChoice);
+            writer.WriteFloat(value.RemainingSeconds);
+            writer.WriteVarUInt((uint)value.Reject);
+        }
+
+        public static SortieStopVoteStateMessage ReadSortieStopVoteStateMessage(this NetworkReader reader)
+        {
+            var   state            = (ESortieStopVoteState)reader.ReadByte();
+            byte  agreeCount       = reader.ReadByte();
+            byte  disagreeCount    = reader.ReadByte();
+            byte  requiredCount    = reader.ReadByte();
+            byte  eligibleCount    = reader.ReadByte();
+            var   myChoice         = (ESortieStopVoteChoice)reader.ReadByte();
+            float remainingSeconds = reader.ReadFloat();
+            var   reject           = (ERejectReason)reader.ReadVarUInt();
+            return new SortieStopVoteStateMessage(state, agreeCount, disagreeCount, requiredCount, eligibleCount, myChoice,
+                remainingSeconds, reject);
+        }
+
         public static void WriteSortieRewardMessage(this NetworkWriter writer, SortieRewardMessage value)
         {
             writer.WriteLong(value.BaseEssence);

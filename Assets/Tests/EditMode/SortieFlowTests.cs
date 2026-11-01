@@ -602,6 +602,14 @@ namespace Shinshi.Tests
                 _results.Add(new KeyValuePair<int, SortieAbandonResultMessage>(participantId, message));
             }
 
+            public void SendStopVote(int participantId, in SortieStopVoteStateMessage message)
+            {
+                StopVotes.Add(new KeyValuePair<int, SortieStopVoteStateMessage>(participantId, message));
+            }
+
+            public readonly List<KeyValuePair<int, SortieStopVoteStateMessage>> StopVotes =
+                new List<KeyValuePair<int, SortieStopVoteStateMessage>>();
+
             public int ResultCount(int participantId)
             {
                 int count = 0;
