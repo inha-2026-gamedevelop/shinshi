@@ -55,6 +55,9 @@ namespace Shinshi.AI
         [Header("전환")]
         [SerializeField] private Material _inkWipeMaterial;
 
+        // 장이 바뀌는 전환 한 번의 길이(초). 구운 먹 매트를 이 시간에 걸쳐 재생한다
+        [SerializeField, Range(0.5f, 6f)] private float _inkSeconds = 2.4f;
+
         // 프롤로그 화면의 한글 글꼴. 에디터 도우미는 빌드에서 쓸 수 없어 에셋이 참조한다. 비면 TMP 기본 글꼴이라 한글이 깨질 수 있다
         [Header("글꼴")]
         [SerializeField] private TMP_FontAsset _font;
@@ -69,6 +72,7 @@ namespace Shinshi.AI
         ****************************************/
 
         public Material      InkWipeMaterial => _inkWipeMaterial;
+        public float         InkSeconds      => _inkSeconds;
         public TMP_FontAsset Font            => _font;
 
         public IllustrationPage[] IntroPages      => _introPages      ?? (_introPages      = Convert(_intro));

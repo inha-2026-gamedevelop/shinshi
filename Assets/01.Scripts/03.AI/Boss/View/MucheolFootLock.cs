@@ -85,9 +85,9 @@ namespace Shinshi.AI
             bool   hasMotion       = (_motion != null) && (_motion.Director != null);
             string clip            = hasMotion ? _motion.Director.PlayingClip : null;
             float  clipSeconds     = hasMotion ? _motion.Director.ClipSeconds : 0f;
-            bool   isLeftAnchored  = hasMotion && MucheolBodyShiftCatalog.IsLeftFootAnchored(clip, clipSeconds);
-            bool   isRightAnchored = hasMotion && MucheolBodyShiftCatalog.IsRightFootAnchored(clip, clipSeconds);
-            bool   isReleased      = hasMotion && MucheolBodyShiftCatalog.IsFootLockReleased(clip, clipSeconds);
+            bool   isLeftAnchored  = hasMotion && MucheolClipBodyShiftCatalog.IsLeftFootAnchored(clip, clipSeconds);
+            bool   isRightAnchored = hasMotion && MucheolClipBodyShiftCatalog.IsRightFootAnchored(clip, clipSeconds);
+            bool   isReleased      = hasMotion && MucheolClipBodyShiftCatalog.IsFootLockReleased(clip, clipSeconds);
             for (int i = 0; i < FOOT_COUNT; ++i)
             {
                 bool isAnchored = (isLeftAnchored && (G_Goals[i] == AvatarIKGoal.LeftFoot)) || (isRightAnchored && (G_Goals[i] == AvatarIKGoal.RightFoot));

@@ -27,24 +27,43 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _MatteAtlas:
+        m_Texture: {fileID: 2800000, guid: 609946f95cad0c042909dc1590589064, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _Aspect: 1
     - _ColorMask: 15
     - _EdgeWidth: 0.07
+    - _InkBlack: 1
+    - _InkLag: 0.5
+    - _MatteCols: 8
+    - _MatteFrames: 60
+    - _MatteRows: 8
     - _NoiseScale: 3.2
     - _Progress: 0
     - _RadialWeight: 0.4
     - _Seed: 0
     - _Softness: 0.14
+    - _StainStrength: 0.5
+    - _StainWidth: 0
     - _Stencil: 0
     - _StencilComp: 8
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
     - _UseUIAlphaClip: 0
+    - _Warp: 0
+    - _WetTint: 0.5
     m_Colors:
     - _Center: {r: 0.5, g: 0.5, b: 0, a: 0}
+    - _Center2: {r: 0.5, g: 0.5, b: 9, a: 0}
+    - _Center3: {r: 0.5, g: 0.5, b: 9, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EdgeColor: {r: 0.079999976, g: 0.059999965, b: 0.049999982, a: 0.9}
+    - _FitScale: {r: 1, g: 1, b: 0, a: 0}
+    - _InkColor: {r: 0.05, g: 0.045, b: 0.04, a: 1}
+    - _MatteScale: {r: 1, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

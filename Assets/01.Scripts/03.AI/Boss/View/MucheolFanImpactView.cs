@@ -99,10 +99,10 @@ namespace Shinshi.AI
         private const float AXIS_JITTER_INNER  = 0.5f;
         private const float AXIS_JITTER_OUTER  = 1.1f;
         private const float PLATE_DELAY_JITTER = 0.04f;
-        private const float LAUNCH_SPEED_MIN   = 2f;
-        private const float LAUNCH_SPEED_MAX   = 6f;
-        private const float LAUNCH_UP_MIN      = 6f;
-        private const float LAUNCH_UP_MAX      = 11f;
+        private const float LAUNCH_SPEED_MIN   = 8f;
+        private const float LAUNCH_SPEED_MAX   = 20f;
+        private const float LAUNCH_UP_MIN      = 8f;
+        private const float LAUNCH_UP_MAX      = 14f;
         private const float LAUNCH_SPIN_MIN    = 150f;
         private const float LAUNCH_SPIN_MAX    = 500f;
         private const float LAUNCH_DELAY_MAX   = 0.06f;
@@ -158,9 +158,9 @@ namespace Shinshi.AI
         private const float RISE_TIME          = 0.2f;    // s, 판 하나가 솟는 시간
         private const float SPREAD_TIME        = 0.26f;   // s, 중심에서 가장자리까지 판이 솟는 데 걸리는 시간
         private const float LAVA_START_DELAY   = 0.3f;    // s, 용암빛이 식기 시작하기 전 대기
-        private const float LAVA_HOLD_TIME     = 2.6f;    // s, 갈라진 뒤 용암빛 유지
-        private const float LAVA_COOL_TIME     = 3.6f;    // s, 이후 식어 가는 시간
-        private const float SINK_TIME          = 0.6f;    // s, 마지막에 판이 가라앉는 시간
+        private const float LAVA_HOLD_TIME     = 0.8f;    // s, 갈라진 뒤 용암빛 유지
+        private const float LAVA_COOL_TIME     = 1.2f;    // s, 이후 식어 가는 시간
+        private const float SINK_TIME          = 0.5f;    // s, 마지막에 판이 가라앉는 시간
         private const float END_MARGIN         = 0.5f;    // s, 모두 끝난 뒤 정리까지 두는 여유
         private const float GRAVITY            = 22f;     // m/s^2, 날아가는 판에 쓰는 중력
         private const float LANDED_HEIGHT      = -0.2f;   // m, 날아가는 판이 이 아래로 내려가면 사라진다

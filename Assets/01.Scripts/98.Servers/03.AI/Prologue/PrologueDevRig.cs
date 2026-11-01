@@ -338,6 +338,7 @@ namespace Shinshi.AI
 
             // 실제 흐름에서는 서버 세션이 열린 뒤 클라이언트가 이 연결부를 만든다
             _presenter = PrologueClientPresenter.Create(this, this, _catalog);
+            PrologueDevFont.ApplyOutlinedSubtitle(_presenter);
 
             // 숲 구간의 플레이어 대역은 일러스트 뒤에서 대기한다. 조작은 화면이 닫혀야 받는다
             _world?.Begin();
