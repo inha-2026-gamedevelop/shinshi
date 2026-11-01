@@ -25,12 +25,13 @@ namespace Shinshi.Dev
         *                Fields
         ****************************************/
 
-        private const string FOREST_SCENE_NAME = "DungeonForest";
-        private const string PLAYER_PREFAB     = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
-        private const string HOST_OBJECT_NAME  = "DevSoloForestHost";
-        private const string MANAGER_NAME      = "DevSoloNetworkManager";
-        private const string ADDRESS           = "localhost";
-        private const ushort PORT              = 17877;
+        private const string FOREST_SCENE_NAME  = "DungeonForest";
+        private const string MUCHEOL_SCENE_NAME = "DungeonMucheol";
+        private const string PLAYER_PREFAB      = "Assets/02.Prefab/Network/NetPlayer/PF_NetPlayer.prefab";
+        private const string HOST_OBJECT_NAME   = "DevSoloForestHost";
+        private const string MANAGER_NAME       = "DevSoloNetworkManager";
+        private const string ADDRESS            = "localhost";
+        private const ushort PORT               = 17877;
 
         // 허수아비는 플레이어 소환 지점 앞쪽(월드 +Z 쪽)에 흩어 세운다
         private const string DUMMY_NAME        = "DevSoloDummy";
@@ -56,7 +57,8 @@ namespace Shinshi.Dev
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
         {
-            if ((SceneManager.GetActiveScene().name != FOREST_SCENE_NAME) || (NetworkManager.singleton != null)
+            string sceneName = SceneManager.GetActiveScene().name;
+            if (((sceneName != FOREST_SCENE_NAME) && (sceneName != MUCHEOL_SCENE_NAME)) || (NetworkManager.singleton != null)
                 || (NetworkServer.active) || (NetworkClient.active)
                 || (FindAnyObjectByType<NetworkManager>(FindObjectsInactive.Include) != null))
             {
