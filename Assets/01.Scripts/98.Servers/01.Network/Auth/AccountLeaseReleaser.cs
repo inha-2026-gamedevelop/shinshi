@@ -8,11 +8,13 @@ using Shinshi.Contracts;
 
 namespace Shinshi.Network
 {
-    /// <summary> 마을 연결이 끊긴 계정의 접속 임대를 백엔드에서 푼다, 일시 실패는 간격을 두고 몇 번 더 보낸다 </summary>
+    /// <summary> 마을 연결이 끊긴 계정의 접속 임대를 백엔드에서 푼다, 일시 실패는 확정 응답이 올 때까지 간격을 두고 다시 보낸다 </summary>
     public sealed class AccountLeaseReleaser : IBackendResponseListener
     {
-        // 해제 경로는 멱등이라 같은 임대를 여러 번 보내도 결과가 같다. 그래도 끝없이 보내지 않는다. 끝내 실패하면 계정 임대는
-        // 백엔드 계약대로 heartbeat 만료로 풀린다. 그동안 같은 계정의 새 로그인은 이미 접속 중으로 거절될 수 있다.
+        // 해제 경로는 멱등이라 같은 임대를 여러 번 보내도 결과가 같다. 마을 heartbeat는 그 인스턴스의 살아 있는 임대를 연결 여부와
+        // 상관없이 모두 연장하므로, 해제를 포기하면 임대가 만료되지 않고 마을이 내려갈 때까지 같은 계정의 입장이 이미 접속 중으로
+        // 막힌다(API 재시작, 서버 임대 갱신 사이 401, 회로 열림처럼 몇 초 이어지는 일시 실패에서 일어난다). 그래서 성공이나 확정
+        // 거절이 올 때까지 간격 상한으로 계속 보낸다. 대기 수는 고정 배열 상한을 넘지 않는다.
         // 메인 스레드에서만 부른다. 해제 대기는 고정 배열에 두고 Tick은 대기 수만큼만 돈다
 
         /****************************************
@@ -187,15 +189,21 @@ namespace Shinshi.Network
                 return;
             }
 
-            if (slot.Attempts >= Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_ATTEMPTS)
+            if (slot.Attempts == Constants.Network.ACCOUNT_LEASE_RELEASE_WARN_ATTEMPTS)
             {
-                _warn?.Invoke($"[AccountLease] 해제를 {slot.Attempts}번 보내고 포기한다, heartbeat 만료로 풀린다, " +
+                _warn?.Invoke($"[AccountLease] 해제를 {slot.Attempts}번 보냈지만 확정되지 않아 계속 다시 보낸다, " +
                     $"outcome={response.Outcome}, status={response.StatusCode}");
-                RemoveAt(index);
-                return;
             }
 
-            slot.NextTime = _clock() + Math.Max(Constants.Network.ACCOUNT_LEASE_RELEASE_RETRY_SECONDS, response.RetryAfterSeconds);
+            slot.NextTime = _clock() + RetryDelaySeconds(slot.Attempts, response.RetryAfterSeconds);
+        }
+
+        /// <summary> attempts번 보낸 뒤의 재시도 간격, 보낼수록 늘리되 상한을 넘지 않는다. 서버가 요청한 대기가 더 길면 그것을 따른다 </summary>
+        public static double RetryDelaySeconds(int attempts, double retryAfterSeconds)
+        {
+            double delay = Math.Min(Constants.Network.ACCOUNT_LEASE_RELEASE_RETRY_SECONDS * Math.Max(1, attempts),
+                Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_RETRY_SECONDS);
+            return Math.Max(delay, retryAfterSeconds);
         }
 
         private void Send(int index)

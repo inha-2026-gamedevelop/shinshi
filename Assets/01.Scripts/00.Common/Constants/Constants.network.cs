@@ -109,11 +109,13 @@ namespace Shinshi.Common
             public const string DEV_PUBLIC_ADDRESS        = "127.0.0.1";
             public const int    MAX_PUBLIC_ADDRESS_LENGTH = 253;
 
-            // 마을 계정 접속 임대 해제. 연결이 끊길 때 한 번 보내고 일시 실패면 간격을 두고 몇 번 더 보낸다.
-            // 끝내 실패해도 계정 임대는 heartbeat 만료로 풀린다(백엔드 계약)
-            public const int    ACCOUNT_LEASE_RELEASE_MAX_ATTEMPTS  = 3;
-            public const double ACCOUNT_LEASE_RELEASE_RETRY_SECONDS = 2.0;
-            public const int    MAX_PENDING_ACCOUNT_LEASE_RELEASES  = 256;
+            // 마을 계정 접속 임대 해제. 연결이 끊길 때 한 번 보내고 일시 실패면 간격을 늘려(상한까지) 확정 응답이 올 때까지 다시 보낸다.
+            // 마을 heartbeat가 그 인스턴스의 살아 있는 임대를 모두 연장하므로 포기하면 마을이 내려갈 때까지 같은 계정의 입장이 막힌다.
+            // 경고 시도 수를 넘기면 한 번 기록한다. 재시도 간격 상한은 캐릭터 선택의 이미 접속 중 재시도 구간보다 짧아야 한다
+            public const int    ACCOUNT_LEASE_RELEASE_WARN_ATTEMPTS     = 3;
+            public const double ACCOUNT_LEASE_RELEASE_RETRY_SECONDS     = 2.0;
+            public const double ACCOUNT_LEASE_RELEASE_MAX_RETRY_SECONDS = 4.0;
+            public const int    MAX_PENDING_ACCOUNT_LEASE_RELEASES      = 256;
 
             // 던전 이관을 기다리며 미뤄 둔 임대 해제 목록 상한. 가득 차면 미루지 않고 heartbeat 만료에 맡긴다.
             // 입장권에 만료 시각이 없을 때는 이 시간 뒤에 푼다
