@@ -7,12 +7,26 @@ namespace Shinshi.Art
     public static class QuarterViewCameraRules
     {
         /****************************************
+        *              Constants
+        ****************************************/
+
+        // CameraConfigSO의 최대 각도와 같다. 90도면 화면 위쪽 방향이 정해지지 않는다
+        private const float MIN_PITCH_ANGLE = 3f;
+        private const float MAX_PITCH_ANGLE = 89f;
+
+        /****************************************
         *                Methods
         ****************************************/
 
         public static Quaternion GetRotation(float pitchAngle, float yawAngle)
         {
             return Quaternion.Euler(pitchAngle, yawAngle, 0f);
+        }
+
+        /// <summary> 줌 단계 각도에 사용자 보정을 더한다. 수평선 아래로 뒤집히거나 바로 위에서 내려다보지 않게 제한한다 </summary>
+        public static float GetAdjustedPitch(float pitchAngle, float offset)
+        {
+            return Mathf.Clamp(pitchAngle + offset, MIN_PITCH_ANGLE, MAX_PITCH_ANGLE);
         }
 
         // 카메라가 대상 발밑이 아니라 초점 높이를 바라보도록 초점에서 시선 반대쪽으로 거리만큼 물린다

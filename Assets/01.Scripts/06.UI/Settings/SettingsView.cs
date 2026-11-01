@@ -85,6 +85,10 @@ namespace Shinshi.UI
         [SerializeField] private Slider   _vfxParty      = null;
         [SerializeField] private TMP_Text _vfxOwnValue   = null;
         [SerializeField] private TMP_Text _vfxPartyValue = null;
+        [SerializeField] private Slider   _cameraPitch      = null;
+        [SerializeField] private Slider   _cameraDistance   = null;
+        [SerializeField] private TMP_Text _cameraPitchValue    = null;
+        [SerializeField] private TMP_Text _cameraDistanceValue = null;
 
         [Header("설명과 버튼")]
         [SerializeField] private TMP_Text _hintTitle = null;
@@ -113,6 +117,8 @@ namespace Shinshi.UI
         private int  _savedCursorSize = CursorScale.DEFAULT_INDEX;
         private float _savedVfxOwn   = VfxVisibility.DEFAULT_OPACITY;
         private float _savedVfxParty = VfxVisibility.DEFAULT_OPACITY;
+        private float _savedCameraPitch    = CameraComposition.DEFAULT_RATE;
+        private float _savedCameraDistance = CameraComposition.DEFAULT_RATE;
         private bool _savedVsync      = true;
         private int  _category        = CATEGORY_GRAPHICS;
         private bool _ready           = false;
@@ -134,6 +140,8 @@ namespace Shinshi.UI
             _cursorSize.onValueChanged.AddListener(OnCursorSizeChanged);
             _vfxOwn.onValueChanged.AddListener(OnVfxOpacityChanged);
             _vfxParty.onValueChanged.AddListener(OnVfxOpacityChanged);
+            _cameraPitch.onValueChanged.AddListener(OnCameraChanged);
+            _cameraDistance.onValueChanged.AddListener(OnCameraChanged);
             _reset.onClick.AddListener(ResetCategory);
             _resetAll.onClick.AddListener(ResetAll);
             _apply.onClick.AddListener(Apply);
@@ -183,6 +191,7 @@ namespace Shinshi.UI
                 _savedAudio.Preview();
                 CursorScale.Preview(_savedCursorSize);
                 VfxVisibility.Preview(_savedVfxOwn, _savedVfxParty);
+                CameraComposition.Preview(_savedCameraPitch, _savedCameraDistance);
             }
         }
 
@@ -277,6 +286,7 @@ namespace Shinshi.UI
             _savedAudio.Preview();
             CursorScale.Save(_cursorSize.value);
             VfxVisibility.Save(_vfxOwn.value, _vfxParty.value);
+            CameraComposition.Save(_cameraPitch.value, _cameraDistance.value);
             PlayerPrefs.Save();
             CaptureGraphicsBaseline();
             RefreshState();
@@ -365,6 +375,8 @@ namespace Shinshi.UI
             _cursorSize.SetValueWithoutNotify(CursorScale.Load());
             _vfxOwn.SetValueWithoutNotify(VfxVisibility.LoadOwn());
             _vfxParty.SetValueWithoutNotify(VfxVisibility.LoadParty());
+            _cameraPitch.SetValueWithoutNotify(CameraComposition.LoadPitch());
+            _cameraDistance.SetValueWithoutNotify(CameraComposition.LoadDistance());
             _savedAudio = SoundVolume.Load();
             SetAudio(_savedAudio);
             _savedAudio.Preview();
@@ -381,6 +393,8 @@ namespace Shinshi.UI
             _savedCursorSize = _cursorSize.value;
             _savedVfxOwn     = _vfxOwn.value;
             _savedVfxParty   = _vfxParty.value;
+            _savedCameraPitch    = _cameraPitch.value;
+            _savedCameraDistance = _cameraDistance.value;
         }
 
         private void SelectCategory(int category)
@@ -440,6 +454,12 @@ namespace Shinshi.UI
             RefreshState();
         }
 
+        private void OnCameraChanged(float value)
+        {
+            CameraComposition.Preview(_cameraPitch.value, _cameraDistance.value);
+            RefreshState();
+        }
+
         private void OnVolumeChanged(float value)
         {
             CurrentAudio().Preview();
@@ -475,6 +495,9 @@ namespace Shinshi.UI
             _vfxOwn.SetValueWithoutNotify(VfxVisibility.DEFAULT_OPACITY);
             _vfxParty.SetValueWithoutNotify(VfxVisibility.DEFAULT_OPACITY);
             VfxVisibility.Preview(VfxVisibility.DEFAULT_OPACITY, VfxVisibility.DEFAULT_OPACITY);
+            _cameraPitch.SetValueWithoutNotify(CameraComposition.DEFAULT_RATE);
+            _cameraDistance.SetValueWithoutNotify(CameraComposition.DEFAULT_RATE);
+            CameraComposition.Preview(CameraComposition.DEFAULT_RATE, CameraComposition.DEFAULT_RATE);
             RefreshState();
         }
 
@@ -487,6 +510,8 @@ namespace Shinshi.UI
                 || (_savedCursorSize != _cursorSize.value)
                 || (!Mathf.Approximately(_savedVfxOwn, _vfxOwn.value))
                 || (!Mathf.Approximately(_savedVfxParty, _vfxParty.value))
+                || (!Mathf.Approximately(_savedCameraPitch, _cameraPitch.value))
+                || (!Mathf.Approximately(_savedCameraDistance, _cameraDistance.value))
                 || (!_savedAudio.Equals(CurrentAudio()));
         }
 
@@ -502,6 +527,8 @@ namespace Shinshi.UI
             _sfxValue.text = $"{Mathf.RoundToInt(_sfx.value * PERCENT)}%";
             _vfxOwnValue.text = $"{Mathf.RoundToInt(_vfxOwn.value * PERCENT)}%";
             _vfxPartyValue.text = $"{Mathf.RoundToInt(_vfxParty.value * PERCENT)}%";
+            _cameraPitchValue.text = $"{CameraComposition.ToPitchOffset(_cameraPitch.value):+0;-0;0}°";
+            _cameraDistanceValue.text = $"{Mathf.RoundToInt(CameraComposition.ToDistanceScale(_cameraDistance.value) * PERCENT)}%";
             bool dirty = HasChanges();
             _apply.interactable = dirty;
             _status.text = dirty ? "적용하지 않은 변경 사항이 있습니다" : "모든 설정이 저장되어 있습니다";
