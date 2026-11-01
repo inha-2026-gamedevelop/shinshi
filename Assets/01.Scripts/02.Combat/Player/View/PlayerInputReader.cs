@@ -45,6 +45,12 @@ namespace Shinshi.Combat
         private int               _predictedComboStep    = BasicAttackComboRules.NO_STEP;
         private double            _predictedReadyTime    = 0.0;
 
+        // 서버가 공격을 거절하면 짐작한 단계를 요청 전으로 되돌리고 곧 다시 보낸다. 거절된 요청은 서버 콤보를 진행시키지 않는다
+        private int               _priorComboStep         = BasicAttackComboRules.NO_STEP;
+        private double            _priorReadyTime         = 0.0;
+        private bool              _hasAttackInFlight      = false;
+        private uint              _attackInFlightSequence = 0;
+
         // 지점 기술 지정 상태. 확정 전에는 서버가 모르므로 소유 클라이언트에만 있다
         private bool              _isTargeting  = false;
         private ESkillRequestKind _targetKind   = ESkillRequestKind.Regular;
@@ -95,8 +101,10 @@ namespace Shinshi.Combat
                 return;
             }
 
-            _input.SkillSent   += OnSkillSent;
-            _input.SkillResult += OnSkillResult;
+            _input.SkillSent     += OnSkillSent;
+            _input.SkillResult   += OnSkillResult;
+            _input.AttackSent    += OnAttackSent;
+            _input.InputRejected += OnInputRejected;
         }
 
         private void OnDisable()
@@ -109,8 +117,10 @@ namespace Shinshi.Combat
                 return;
             }
 
-            _input.SkillSent   -= OnSkillSent;
-            _input.SkillResult -= OnSkillResult;
+            _input.SkillSent     -= OnSkillSent;
+            _input.SkillResult   -= OnSkillResult;
+            _input.AttackSent    -= OnAttackSent;
+            _input.InputRejected -= OnInputRejected;
         }
 
         private void Update()
@@ -239,6 +249,8 @@ namespace Shinshi.Combat
                 spec.ComboStepCount);
             // 궁수 바람 속성은 서버가 주기를 줄이므로 누르고 있을 때의 요청 간격도 같이 줄인다
             float interval = spec.GetInterval(step) * ArcherElementRules.GetAttackIntervalScale(GameDB.Skills, _combat.ArcherElement);
+            _priorComboStep     = _predictedComboStep;
+            _priorReadyTime     = _predictedReadyTime;
             _predictedComboStep = step;
             _predictedReadyTime = System.Math.Max(now, _predictedReadyTime) + interval;
 
@@ -444,6 +456,27 @@ namespace Shinshi.Combat
             _predictedComboStep    = BasicAttackComboRules.NO_STEP;
             _predictedReadyTime    = 0.0;
             _nextAttackRequestTime = 0.0;
+        }
+
+        private void OnAttackSent(uint sequence)
+        {
+            _hasAttackInFlight      = true;
+            _attackInFlightSequence = sequence;
+        }
+
+        // 지연이나 기술 동작으로 서버가 거절해도 누르고 있으면 다음 주기까지 기다리지 않고 곧 다시 보낸다
+        private void OnInputRejected(uint sequence, ERejectReason reason)
+        {
+            if ((!_hasAttackInFlight) || (sequence != _attackInFlightSequence))
+            {
+                return;
+            }
+
+            _hasAttackInFlight     = false;
+            _predictedComboStep    = _priorComboStep;
+            _predictedReadyTime    = _priorReadyTime;
+            _nextAttackRequestTime = System.Math.Min(_nextAttackRequestTime,
+                Time.unscaledTimeAsDouble + Constants.Player.ATTACK_HOLD_RETRY_SECONDS);
         }
 
         // 거절은 드물어서 이때만 문자열을 만든다

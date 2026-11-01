@@ -83,6 +83,9 @@ namespace Shinshi.Common
             // 진행 중인 경로의 목적지와 이 거리 제곱(m 제곱) 안이면 같은 목적지로 보고 다시 계산하지 않는다
             public const float MOVE_SAME_DESTINATION_EPSILON_SQR = 0.01f;
 
+            // 왼쪽을 누르고 있는 동안 서버가 기본 공격을 거절하면 이 간격(초) 뒤에 다시 보낸다. 다음 주기까지 기다리면 공격이 끊겨 보인다
+            public const double ATTACK_HOLD_RETRY_SECONDS = 0.1;
+
             // 소유 클라이언트 이동 예측의 위치 기록. 간격(초) x 개수가 되돌아볼 수 있는 시간이며 왕복 지연과 복제 간격을 덮어야 한다.
             // 지연이 1초 넘게 튀어도 같은 시점끼리 비교할 수 있게 약 4초를 남긴다
             public const int    PREDICTION_HISTORY_CAPACITY         = 512;
