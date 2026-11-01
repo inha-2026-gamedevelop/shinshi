@@ -40,9 +40,35 @@ namespace Shinshi.Tests
             _binder = _boss.AddComponent<BossNetworkViewBinder>();
             typeof(BossNetworkViewBinder).GetField("_finalAreaView", BindingFlags.NonPublic | BindingFlags.Instance)
                 .SetValue(_binder, _view);
+            // 기존 시험은 중앙 경계 예고선과 바닥 붕괴 경로를 확인하므로 공간 축소를 켠다. 꺼진 기본 동작은 아래 시험이 따로 확인한다
+            SetSpaceShrink(true);
             _clock = 100d;
             _view.SetServerClock(() => _clock);
             yield return null;
+        }
+
+        private void SetSpaceShrink(bool isOn)
+        {
+            typeof(WolbaekFinalAreaView).GetField("_hasSpaceShrink", BindingFlags.NonPublic | BindingFlags.Instance)
+                .SetValue(_view, isOn);
+        }
+
+        [UnityTest]
+        public IEnumerator NoSpaceShrink_ShowsNoBoundaryAndStillShowsYellowsAfterTheWarning()
+        {
+            SetSpaceShrink(false);
+            WolbaekFinalStart start = Start(75);
+            Assert.IsTrue(_view.StartFinal(in start, _clock));
+            Assert.IsNull(GameObject.Find("WolbaekFinalSafeBoundary"));
+
+            _clock = 104d;
+            _view.OuterFloorRemoved(75, 104d, _clock);
+            WolbaekFinalYellow[] yellows = Yellows();
+            _view.YellowsSpawned(75, yellows, _clock);
+            yield return null;
+
+            Assert.IsTrue(_view.IsFloorRemoved);
+            Assert.AreEqual(2, _view.VisibleYellowCount);
         }
 
         [UnityTearDown]

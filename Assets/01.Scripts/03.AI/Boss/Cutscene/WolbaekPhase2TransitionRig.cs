@@ -73,7 +73,13 @@ namespace Shinshi.AI
         [SerializeField] private float            _shieldFadeEnd;
         [SerializeField] private float            _shieldEnd;
 
-        private float _appliedScale = 1f;
+        [Header("컷신 조명")]
+        [SerializeField] private Light[]          _lights = new Light[0];     // 보스를 비추는 키, 림 라이트, 프리팹에 놓은 세기가 최대값이다
+        [SerializeField] private float            _lightFadeIn  = 0.4f;       // 컷신 시작 때 켜지는 데 걸리는 시간(초)
+        [SerializeField] private float            _lightFadeOut = 0.6f;       // 컷신 끝 직전에 꺼지는 데 걸리는 시간(초)
+
+        private float   _appliedScale = 1f;
+        private float[] _lightMaxIntensity;
 
         /****************************************
         *              Properties
@@ -130,6 +136,7 @@ namespace Shinshi.AI
 
             BindShots(boss);
             BindOutputs(boss, brain);
+            CacheLights();
             if (_ownShieldRoot != null)
             {
                 _ownShieldRoot.gameObject.SetActive(useOwnShield);
@@ -152,6 +159,7 @@ namespace Shinshi.AI
 
             _director.time = time;
             _director.Evaluate();
+            ApplyLights(time);
         }
 
         // 그래프를 없애면 카메라 덮어쓰기가 풀리고, Animator 출력이 빠지고, ControlTrack이 만든 VFX 인스턴스가 지워진다
@@ -164,6 +172,44 @@ namespace Shinshi.AI
             }
 
             _director.Stop();
+        }
+
+        // 컷신 조명은 이 장비가 지워질 때 함께 사라진다. 갑자기 켜지고 꺼지지 않게 시작과 끝에서 세기를 곡선으로 올리고 내린다
+        private void CacheLights()
+        {
+            _lightMaxIntensity = new float[_lights.Length];
+            for (int i = 0; i < _lights.Length; ++i)
+            {
+                if (_lights[i] == null)
+                {
+                    continue;
+                }
+
+                _lightMaxIntensity[i] = _lights[i].intensity;
+                _lights[i].intensity  = 0f;
+            }
+        }
+
+        private void ApplyLights(double time)
+        {
+            if ((_lights.Length == 0) || (_lightMaxIntensity == null))
+            {
+                return;
+            }
+
+            float fadeIn  = (_lightFadeIn > 0f) ? Mathf.Clamp01((float)(time / _lightFadeIn)) : 1f;
+            float fadeOut = (_lightFadeOut > 0f) ? Mathf.Clamp01((float)((Duration - time) / _lightFadeOut)) : 1f;
+            float factor  = Mathf.SmoothStep(0f, 1f, Mathf.Min(fadeIn, fadeOut));
+
+            for (int i = 0; i < _lights.Length; ++i)
+            {
+                if (_lights[i] == null)
+                {
+                    continue;
+                }
+
+                _lights[i].intensity = _lightMaxIntensity[i] * factor;
+            }
         }
 
         private void BindShots(Animator boss)

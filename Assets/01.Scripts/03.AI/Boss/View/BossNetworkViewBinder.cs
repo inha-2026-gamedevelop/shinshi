@@ -678,8 +678,8 @@ namespace Shinshi.AI
             return decision;
         }
 
-        // 맵 붕괴는 컷신과 같은 서버 구간 신호에만 맞춘다. 서버가 정한 구간 시작에서 지난 시간만큼 건너뛰어 재생하므로
-        // 늦은 접속도 같은 장면을 보고, 이미 끝난 구간은 떨어진 뒤의 모습으로 둔다. 결과 판정은 하지 않는다
+        // 맵 붕괴는 컷신과 같은 서버 구간 신호에만 맞추고, 컷신이 끝나는 서버 시각부터 시작한다. 그 시각에서 지난 시간만큼 건너뛰어 재생하므로
+        // 늦은 접속도 같은 장면을 보고, 붕괴가 다 끝난 뒤에 받으면 떨어진 뒤의 모습으로 둔다. 결과 판정은 하지 않는다
         // 새로 받아들인 구간만 추적을 시작하고 중복, 지난 세션, 너무 이른 사건은 건드리지 않는다. Scheduled는 서버 시작 시각이 될 때까지 기다린다.
         // 이후 위치는 매 프레임 서버 절대 경과 시간으로 평가한다(TickArenaShatter)
         private void PresentArenaShatter(EWolbaekPhase2TransitionDecision decision, in WolbaekPhase2TransitionCue cue, double serverNow)
@@ -690,18 +690,14 @@ namespace Shinshi.AI
                 return;
             }
 
-            if ((decision == EWolbaekPhase2TransitionDecision.Play) || (decision == EWolbaekPhase2TransitionDecision.Scheduled))
+            // 컷신이 끝나는 서버 시각에 붕괴를 시작한다. 구간이 이미 끝난 뒤 받아도 같은 기준이라 붕괴 도중이면 그 지점부터 이어 본다
+            if ((decision == EWolbaekPhase2TransitionDecision.Play) || (decision == EWolbaekPhase2TransitionDecision.Scheduled)
+                || (decision == EWolbaekPhase2TransitionDecision.Ended))
             {
                 arena.ResetToIntact();
-                _arenaStartServerTime = cue.StartServerTime;
+                _arenaStartServerTime = cue.EndServerTime;
                 _isArenaTracking      = true;
                 TickArenaShatter(serverNow);
-            }
-            else if (decision == EWolbaekPhase2TransitionDecision.Ended)
-            {
-                arena.ResetToIntact();
-                _isArenaTracking = false;
-                arena.EvaluateAt(float.MaxValue);
             }
         }
 
