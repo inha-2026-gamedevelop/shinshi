@@ -440,6 +440,126 @@ namespace Shinshi.Tests
             Assert.That(Last(EMarketAction.Listings).DefinitionId, Is.EqualTo("B"));
         }
 
+        // 묶음을 누르자마자 상세 요청이 요청 한도로 거절되어도 상세를 포기하지 않고 잠시 뒤 다시 받아 채운다
+        [Test]
+        public void Listings_RateLimited_RetriesAfterDelayAndFillsDetail()
+        {
+            OpenWithGroups("item_herb");
+
+            Invoke("OnGroupSelected", 0);
+            MarketRequestMessage first = Last(EMarketAction.Listings);
+            Assert.That(_view.LastStatus, Is.EqualTo("불러오는 중입니다"));
+
+            TownMarketClient.OnResult(Result(first.RequestId, EMarketAction.Listings, ERejectReason.RateLimited));
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(1), "거절 직후 바로 다시 보내지 않는다(같은 1초 창이라 또 막힌다)");
+            Assert.That(_view.LastStatus, Is.EqualTo("불러오는 중입니다"), "요청 한도 안내로 상세를 포기하지 않는다");
+
+            Invoke("TickReadRetries", Time.unscaledTime + 10f);
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(2));
+            MarketRequestMessage retry = Last(EMarketAction.Listings);
+            Assert.That(retry.DefinitionId, Is.EqualTo("item_herb"));
+
+            TownMarketClient.OnResult(ListingsResult(retry.RequestId, "item_herb"));
+            Assert.That(Listings().Length, Is.EqualTo(1), "다시 받은 상세를 채운다");
+            Assert.That(_view.LastStatus, Is.Empty, "읽기 대기 안내를 지운다");
+        }
+
+        [Test]
+        public void Listings_RateLimitedBeyondRetries_ShowsReason()
+        {
+            OpenWithGroups("A");
+            Invoke("OnGroupSelected", 0);
+
+            for (int i = 0; i <= 2; ++i)
+            {
+                TownMarketClient.OnResult(Result(Last(EMarketAction.Listings).RequestId, EMarketAction.Listings, ERejectReason.RateLimited));
+                Invoke("TickReadRetries", Time.unscaledTime + 10f);
+            }
+
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(3), "처음 한 번과 다시 받기 두 번");
+            Assert.That(_view.LastStatus, Is.EqualTo(RejectText.Describe(ERejectReason.RateLimited)));
+        }
+
+        // 이전 읽기 실패 안내가 남아 있어도 상세를 받으면 지운다
+        [Test]
+        public void Listings_Accepted_ClearsEarlierReadError()
+        {
+            OpenWithGroups("A");
+            Guid mine = (Guid)GetField("_mineId");
+            TownMarketClient.OnResult(Result(mine, EMarketAction.Mine, ERejectReason.RateLimited));
+            Assert.That(_view.LastStatus, Is.EqualTo(RejectText.Describe(ERejectReason.RateLimited)));
+
+            Invoke("OnGroupSelected", 0);
+            TownMarketClient.OnResult(ListingsResult(Last(EMarketAction.Listings).RequestId, "A"));
+
+            Assert.That(_view.LastStatus, Is.Empty);
+        }
+
+        // 같은 품목을 거듭 눌러도 진행 중이거나 방금 받은 상세가 있으면 다시 요청하지 않는다
+        [Test]
+        public void Listings_SameGroupClickedRepeatedly_SendsOnce()
+        {
+            OpenWithGroups("A");
+
+            Invoke("OnGroupSelected", 0);
+            Invoke("OnGroupSelected", 0);
+            TownMarketClient.OnResult(ListingsResult(Last(EMarketAction.Listings).RequestId, "A"));
+            Invoke("OnGroupSelected", 0);
+
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(1));
+            Assert.That(Listings().Length, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Listings_SameGroupAfterFreshWindow_RequestsAgain()
+        {
+            OpenWithGroups("A");
+            Invoke("OnGroupSelected", 0);
+            TownMarketClient.OnResult(ListingsResult(Last(EMarketAction.Listings).RequestId, "A"));
+            SetField("_shownAt", -1000f);
+
+            Invoke("OnGroupSelected", 0);
+
+            Assert.That(Count(EMarketAction.Listings), Is.EqualTo(2));
+        }
+
+        // 검색 응답을 기다리는 사이 조건을 바꾸면 겹쳐 보내지 않고(서버가 PendingCommit으로 거절한다) 응답 뒤 새 조건으로 받는다
+        [Test]
+        public void Search_ChangedWhilePending_SendsLatestAfterResponse()
+        {
+            OpenWithGroups("A");
+            Invoke("OnPageDelta", 1);
+            MarketRequestMessage first = Last(EMarketAction.Search);
+            Invoke("OnPageDelta", 1);
+
+            Assert.That(Count(EMarketAction.Search), Is.EqualTo(1), "진행 중에는 검색을 겹쳐 보내지 않는다");
+
+            TownMarketClient.OnResult(GroupsResult(first.RequestId, "B"));
+            Assert.That(Count(EMarketAction.Search), Is.EqualTo(2));
+            Assert.That(Last(EMarketAction.Search).Page, Is.EqualTo(2), "마지막 조건으로 받는다");
+            Assert.That(Groups()[0].DefinitionId, Is.EqualTo("A"), "낡은 조건의 응답은 쓰지 않는다");
+        }
+
+        // 상세 응답은 조회자를 몰라 Mine이 거짓이다. 받아 둔 내 등록과 같은 등록은 사지 못하게 한다
+        [Test]
+        public void Listings_OwnListingKnownFromMine_BlocksBuyTarget()
+        {
+            OpenWithGroups("A");
+            Guid mineId = (Guid)GetField("_mineId");
+            var own = new[]
+            {
+                new MarketListingEntry("L-A", "AccountItem", "A", string.Empty, 0, 100L, 1, 1, "Active", 0L, 0L, 0L, 0L, 0L, 0L, false, true)
+            };
+            TownMarketClient.OnResult(new MarketResultMessage(mineId, EMarketAction.Mine, ERejectReason.None, null, own, null, 1, 0, false,
+                0L, 0L, 0, 0L, null, null, 0L, 0L, 0L));
+
+            Invoke("OnGroupSelected", 0);
+            TownMarketClient.OnResult(ListingsResult(Last(EMarketAction.Listings).RequestId, "A"));
+            Invoke("OnListingSelected", 0);
+
+            Assert.That(_view.LastStatus, Is.EqualTo("내 등록은 살 수 없습니다"));
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
@@ -569,6 +689,18 @@ namespace Shinshi.Tests
         private static MarketResultMessage Result(Guid requestId, EMarketAction action, ERejectReason reason)
         {
             return new MarketResultMessage(requestId, action, reason, null, null, null, 0, 0, false, 0L, 0L, 0, 0L, null, null, 0L, 0L, 0L);
+        }
+
+        private MarketGroupEntry[] Groups()
+        {
+            return (MarketGroupEntry[])GetField("_groups");
+        }
+
+        private object GetField(string name)
+        {
+            FieldInfo field = typeof(AuctionBinder).GetField(name, INSTANCE);
+            Assert.That(field, Is.Not.Null, "AuctionBinder." + name);
+            return field.GetValue(_binder);
         }
 
         private void SetField(string name, object value)

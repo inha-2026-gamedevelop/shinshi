@@ -197,9 +197,22 @@ namespace Shinshi.UI
                 return;
             }
 
-            string text = RejectText.Describe(result.Reason);
+            string text = MailBoxViewRules.ClaimFailureText(result.Reason, FindEntry(result.InboxId));
             _view.SetStatus(string.IsNullOrEmpty(text) ? FAILED_TEXT : text);
             _view.SetClaimInteractable(true);
+        }
+
+        private InboxEntry FindEntry(string inboxId)
+        {
+            for (int i = 0; i < _entries.Length; ++i)
+            {
+                if (_entries[i].InboxId == inboxId)
+                {
+                    return _entries[i];
+                }
+            }
+
+            return null;
         }
     }
 }

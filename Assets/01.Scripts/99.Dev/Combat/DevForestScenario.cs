@@ -17,6 +17,7 @@ using Mirror;
 using Shinshi.AI;
 using Shinshi.Combat;
 using Shinshi.Common;
+using Shinshi.Data;
 using Shinshi.Network;
 using Shinshi.Systems;
 
@@ -290,7 +291,7 @@ namespace Shinshi.Dev
                 {
                     MoveToward(nearest.transform.position - aim.normalized * (ranged ? 7f : 1.5f));
                 }
-                else if (((!ranged) || (_combat.ClassStacks >= 20)) && (NetworkTime.time >= _input.SkillRReadyAt)
+                else if (((!ranged) || (_combat.ClassStacks >= GameDB.Skills.ArcherStackMax)) && (NetworkTime.time >= _input.SkillRReadyAt)
                     && (Time.realtimeSinceStartup >= _nextBurst))
                 {
                     _input.RequestSkill(ESkillRequestKind.Regular, 3, nearest.transform.position, aim.normalized);

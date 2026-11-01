@@ -1,9 +1,12 @@
 // System
 using System.Reflection;
+using System.Runtime.ExceptionServices;
+using System.Text.RegularExpressions;
 
 // Unity
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 
 // 서드파티
@@ -11,6 +14,7 @@ using NUnit.Framework;
 using TMPro;
 
 // 프로젝트 내부
+using Shinshi.Common;
 using Shinshi.UI;
 
 namespace Shinshi.Tests
@@ -228,9 +232,59 @@ namespace Shinshi.Tests
             }
         }
 
+        // 메뉴 버튼 연결이 빠진 씬(신시 마을 HUD 메뉴 묶음이 지워졌던 경우)에서 Awake 오류 뒤 생명주기와 항목 클릭이 NullReferenceException을 내던 회귀
+        [Test]
+        public void Lifecycle_MissingMenuButton_LogsErrorAndKeepsWorkingWithoutException()
+        {
+            BuildFixture(SCREEN_HEIGHT);
+            _panel.gameObject.SetActive(true);
+            LogAssert.Expect(LogType.Error, new Regex("메뉴 버튼이 연결되지 않았다"));
+
+            Invoke(typeof(ClientView), "Awake");
+            Assert.IsTrue(_menu.enabled);
+            Assert.IsFalse(_panel.gameObject.activeSelf);
+
+            Assert.DoesNotThrow(() => Invoke(typeof(HudMenuDropdown), "OnEnable"));
+            Button entry = _menu.AddEntry(LABELS[0], null);
+            Invoke(typeof(HudMenuDropdown), "Toggle");
+            Assert.IsTrue(_panel.gameObject.activeSelf);
+
+            Assert.DoesNotThrow(() => entry.onClick.Invoke());
+            Assert.IsFalse(_panel.gameObject.activeSelf);
+            Assert.DoesNotThrow(() => Invoke(typeof(HudMenuDropdown), "OnDisable"));
+        }
+
+        [Test]
+        public void Lifecycle_MissingPanel_DisablesAndToleratesDisableAndEntries()
+        {
+            BuildFixture(SCREEN_HEIGHT);
+            typeof(HudMenuDropdown).GetField("_panel", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_menu, null);
+            LogAssert.Expect(LogType.Error, new Regex("메뉴에 패널이 연결되지 않았다"));
+
+            Invoke(typeof(ClientView), "Awake");
+
+            Assert.IsFalse(_menu.enabled);
+            Assert.DoesNotThrow(() => Invoke(typeof(HudMenuDropdown), "OnDisable"));
+            Assert.DoesNotThrow(() => Invoke(typeof(HudMenuDropdown), "Toggle"));
+            Assert.IsNull(_menu.AddEntry(LABELS[0], null));
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
+
+        // 에디터 모드는 유니티가 생명주기를 부르지 않으므로 리플렉션으로 직접 부른다. 대상 예외는 감싸지 않고 그대로 던진다
+        private void Invoke(System.Type owner, string method)
+        {
+            try
+            {
+                owner.GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_menu, null);
+            }
+            catch (TargetInvocationException e)
+            {
+                ExceptionDispatchInfo.Capture(e.InnerException).Throw();
+            }
+        }
 
         private Button[] AddAll()
         {

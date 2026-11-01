@@ -16,7 +16,7 @@ namespace Shinshi.Tests
 {
     public class AccountLeaseReleaserTests
     {
-        // N5 회귀: 마을 연결이 끊기면 계정 접속 임대 해제를 보내고, 일시 실패는 몇 번 더 보낸 뒤 포기한다
+        // N5 회귀: 마을 연결이 끊기면 계정 접속 임대 해제를 보내고, 일시 실패는 확정 응답이 올 때까지 간격 상한으로 다시 보낸다
 
         /****************************************
         *                Fields
@@ -84,26 +84,46 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void Release_TransientFailure_RetriesUpToMaxAttemptsThenGivesUp()
+        public void Release_TransientFailure_KeepsRetryingPastWarnAttemptsUntilSuccess()
         {
+            // 마을 heartbeat가 남은 임대를 계속 연장하므로 포기하면 같은 계정이 마을이 내려갈 때까지 들어오지 못한다
+            // 게이트웨이 회로가 열리기 전까지만 실패시켜 전송 횟수로 확인한다. 이 시험의 시계는 멈춰 있어 열린 회로가 닫히지 않는다
+            const int FAILED_ATTEMPTS = Constants.Network.ACCOUNT_LEASE_RELEASE_WARN_ATTEMPTS + 1;
+            Assume.That(FAILED_ATTEMPTS, Is.LessThan(Constants.Network.BACKEND_CIRCUIT_FAILURE_THRESHOLD));
             _status = STATUS_UNAVAILABLE;
             _releaser.Release(LEASE_ID);
             Complete();
 
-            for (int attempt = 2; attempt <= Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_ATTEMPTS; ++attempt)
+            for (int attempt = 2; attempt <= FAILED_ATTEMPTS; ++attempt)
             {
                 Assert.AreEqual(1, _releaser.PendingCount);
-                _now += Constants.Network.ACCOUNT_LEASE_RELEASE_RETRY_SECONDS;
+                _now += Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_RETRY_SECONDS;
                 _releaser.Tick();
                 Complete();
             }
 
-            Assert.AreEqual(Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_ATTEMPTS, _transport.Calls);
-            Assert.AreEqual(0, _releaser.PendingCount, "끝내 실패하면 포기하고 heartbeat 만료에 맡긴다");
+            Assert.AreEqual(FAILED_ATTEMPTS, _transport.Calls);
+            Assert.AreEqual(1, _releaser.PendingCount, "확정 응답 전에는 포기하지 않는다");
 
-            _now += Constants.Network.ACCOUNT_LEASE_RELEASE_RETRY_SECONDS;
+            _status = STATUS_OK;
+            _now += Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_RETRY_SECONDS;
             _releaser.Tick();
-            Assert.AreEqual(Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_ATTEMPTS, _transport.Calls);
+            Complete();
+            Assert.AreEqual(FAILED_ATTEMPTS + 1, _transport.Calls);
+            Assert.AreEqual(0, _releaser.PendingCount);
+        }
+
+        [Test]
+        public void RetryDelaySeconds_GrowsToCapAndHonorsRetryAfter()
+        {
+            const double LONG_RETRY_AFTER = 30.0;
+            Assert.AreEqual(Constants.Network.ACCOUNT_LEASE_RELEASE_RETRY_SECONDS, AccountLeaseReleaser.RetryDelaySeconds(1, 0.0));
+            Assert.AreEqual(Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_RETRY_SECONDS, AccountLeaseReleaser.RetryDelaySeconds(100, 0.0));
+            Assert.AreEqual(LONG_RETRY_AFTER, AccountLeaseReleaser.RetryDelaySeconds(1, LONG_RETRY_AFTER));
+
+            // 캐릭터 선택의 이미 접속 중 재시도 구간 안에 해제가 한 번 이상 다시 나가야 한다
+            Assert.Less(Constants.Network.ACCOUNT_LEASE_RELEASE_MAX_RETRY_SECONDS,
+                Constants.Network.JOIN_ALREADY_CONNECTED_RETRY_INTERVAL_SECONDS * Constants.Network.JOIN_ALREADY_CONNECTED_MAX_RETRIES);
         }
 
         [Test]

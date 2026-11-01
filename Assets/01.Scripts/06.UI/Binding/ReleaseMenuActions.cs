@@ -17,6 +17,9 @@ namespace Shinshi.UI
         *                Fields
         ****************************************/
 
+        private const string LEAVE_CONFIRM_TEXT   = "현재 접속을 종료하고 캐릭터 선택으로 돌아갈까요?";
+        private const string ABANDON_CONFIRM_TEXT = "진행 중인 출정을 포기하고 캐릭터 선택으로 돌아갈까요? 보상은 받을 수 없습니다.";
+
         // 팝업의 Esc 닫기는 UiPopupHub가 맡는다
         [SerializeField] private SettingsView _settings = null;
         [SerializeField] private UiPopupHub   _popups   = null;
@@ -35,7 +38,10 @@ namespace Shinshi.UI
 
         public void ConfirmCharacterSelect()
         {
-            _popups.ShowConfirm(EPopupSize.Small, "현재 접속을 종료하고 캐릭터 선택으로 돌아갈까요?", accepted =>
+            // 던전에서 진행 중인 출정은 포기를 먼저 보내고 나간다(그대로 끊으면 재접속 유예 동안 다시 입장할 수 없다)
+            bool   abandons = (NetworkManager.singleton is ShinshiNetworkManager manager) && (manager.WillAbandonSortieOnLeave);
+            string message  = abandons ? ABANDON_CONFIRM_TEXT : LEAVE_CONFIRM_TEXT;
+            _popups.ShowConfirm(EPopupSize.Small, message, accepted =>
             {
                 if (accepted)
                 {
@@ -59,26 +65,15 @@ namespace Shinshi.UI
             });
         }
 
+        // 끊기, 출정 포기와 이탈 저장 대기, 씬 이동은 매니저가 맡는다. 이미 서버를 옮기는 중이면 매니저가 무시한다
         private static void ReturnToCharacterSelect()
         {
-            // 의도한 종료를 접속 장애로 처리해 씬을 두 번 열지 않도록 기존 전환 플래그를 쓴다.
             if (NetworkManager.singleton is ShinshiNetworkManager manager)
             {
-                if ((manager.IsTransferringServer) || (NetworkServer.active))
-                {
-                    return;
-                }
-                manager.IsTransferringServer = true;
-                try
-                {
-                    manager.StopClient();
-                }
-                finally
-                {
-                    manager.IsTransferringServer = false;
-                }
-                ChatClient.ClearHistory();
+                manager.LeaveToCharacterSelect();
+                return;
             }
+
             LobbyFlow.ReturnToCharacterSelect(string.Empty);
         }
     }

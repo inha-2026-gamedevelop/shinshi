@@ -25,7 +25,8 @@ namespace Shinshi.Common
             // 14: 월백 2페이즈 전환 컷신 구간(번호, 서버 시작과 종료 시각) SyncVar 추가(2026-10-18)
             // 15: 파티 요청과 결과 메시지 끝에 요청 ID(RequestId) 추가, 직렬화 wire 변경(2026-10-19)
             // 16: 피해 표시 TargetRpc에 지속 피해 표식, 궁수 화살 적중에 강공격 표식 추가(2026-10-22)
-            public const int PROTOCOL_VERSION = 16;
+            // 17: 플레이어 보호막(마검사 Q) SyncVar 추가(2026-11-01)
+            public const int PROTOCOL_VERSION = 17;
 
             // 복제 주기, 플레이어 복제 주기는 대역폭 측정으로 15Hz 또는 30Hz 중에 정한다
             public const int SERVER_TICK_RATE             = 30;
@@ -109,11 +110,13 @@ namespace Shinshi.Common
             public const string DEV_PUBLIC_ADDRESS        = "127.0.0.1";
             public const int    MAX_PUBLIC_ADDRESS_LENGTH = 253;
 
-            // 마을 계정 접속 임대 해제. 연결이 끊길 때 한 번 보내고 일시 실패면 간격을 두고 몇 번 더 보낸다.
-            // 끝내 실패해도 계정 임대는 heartbeat 만료로 풀린다(백엔드 계약)
-            public const int    ACCOUNT_LEASE_RELEASE_MAX_ATTEMPTS  = 3;
-            public const double ACCOUNT_LEASE_RELEASE_RETRY_SECONDS = 2.0;
-            public const int    MAX_PENDING_ACCOUNT_LEASE_RELEASES  = 256;
+            // 마을 계정 접속 임대 해제. 연결이 끊길 때 한 번 보내고 일시 실패면 간격을 늘려(상한까지) 확정 응답이 올 때까지 다시 보낸다.
+            // 마을 heartbeat가 그 인스턴스의 살아 있는 임대를 모두 연장하므로 포기하면 마을이 내려갈 때까지 같은 계정의 입장이 막힌다.
+            // 경고 시도 수를 넘기면 한 번 기록한다. 재시도 간격 상한은 캐릭터 선택의 이미 접속 중 재시도 구간보다 짧아야 한다
+            public const int    ACCOUNT_LEASE_RELEASE_WARN_ATTEMPTS     = 3;
+            public const double ACCOUNT_LEASE_RELEASE_RETRY_SECONDS     = 2.0;
+            public const double ACCOUNT_LEASE_RELEASE_MAX_RETRY_SECONDS = 4.0;
+            public const int    MAX_PENDING_ACCOUNT_LEASE_RELEASES      = 256;
 
             // 던전 이관을 기다리며 미뤄 둔 임대 해제 목록 상한. 가득 차면 미루지 않고 heartbeat 만료에 맡긴다.
             // 입장권에 만료 시각이 없을 때는 이 시간 뒤에 푼다

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 
 // 프로젝트 내부
+using Shinshi.Common;
 using Shinshi.Contracts;
 
 namespace Shinshi.UI
@@ -31,6 +32,11 @@ namespace Shinshi.UI
         private const long   MS_PER_HOUR = 3600000L;
         private const int    MAX_REWARD_LINES_IN_ROW = 1;
         private const string DATE_FORMAT = "MM-dd HH:mm";
+
+        private const string ACQUIRER_NOTE          = "\n(정련편, 정수는 보상을 얻은 캐릭터가 받습니다)";
+        private const string LIMIT_FULL_FORMAT      = "{0} 보관 한도에 도달해 받을 수 없습니다{1}. 보유량을 줄인 뒤 다시 받아 주세요";
+        private const string LIMIT_ACQUIRER_SUFFIX  = "(정련편은 보상을 얻은 캐릭터 기준)";
+        private const string DELETED_ACQUIRER_TEXT  = "보상을 얻은 캐릭터가 삭제되어 받을 수 없습니다";
 
         /****************************************
         *                Methods
@@ -110,8 +116,85 @@ namespace Shinshi.UI
             {
                 builder.Append("\n(현재 캐릭터로 받습니다)");
             }
+            else if (IsRecoverySource(entry.SourceKind) && HasCharacterAsset(rewards))
+            {
+                builder.Append(ACQUIRER_NOTE);
+            }
 
             return builder.ToString();
+        }
+
+        // 회수함 수령은 품목별 보관 한도(정련편은 캐릭터당, 티켓과 재료는 계정당 합계)까지만 옮긴다.
+        // 가방 칸이 남아도 한도에 닿으면 INVENTORY_FULL이라, 어떤 품목이 막혔는지 알려야 한다
+        /// <summary> 수령 거절 안내. 보관함 가득은 한도가 있는 품목 이름을 붙인다 </summary>
+        public static string ClaimFailureText(ERejectReason reason, InboxEntry entry)
+        {
+            if (reason == ERejectReason.CharacterNotFound)
+            {
+                return DELETED_ACQUIRER_TEXT;
+            }
+
+            string names = (reason == ERejectReason.InventoryFull) ? LimitedRewardNames(entry) : string.Empty;
+            if (names.Length == 0)
+            {
+                return RejectText.Describe(reason);
+            }
+
+            bool characterBound = IsRecoverySource(entry.SourceKind) && HasCharacterAsset(entry.Rewards);
+            return string.Format(CultureInfo.InvariantCulture, LIMIT_FULL_FORMAT, names,
+                characterBound ? LIMIT_ACQUIRER_SUFFIX : string.Empty);
+        }
+
+        private static bool IsRecoverySource(string sourceKind)
+        {
+            return (sourceKind == SOURCE_SESSION_REWARD) || (sourceKind == SOURCE_AUCTION_REWARD)
+                || (sourceKind == SOURCE_MARKET_RETURN);
+        }
+
+        private static bool HasCharacterAsset(InboxReward[] rewards)
+        {
+            if (rewards == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < rewards.Length; ++i)
+            {
+                if ((rewards[i].AssetKind == ASSET_SHARDS) || (rewards[i].AssetKind == ASSET_ESSENCE))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // 보관 한도가 있는 보상(티켓, 정련편, 계정 아이템)의 이름. 엽전, 정수는 한도가 없어 뺀다
+        private static string LimitedRewardNames(InboxEntry entry)
+        {
+            InboxReward[] rewards = entry?.Rewards;
+            if (rewards == null)
+            {
+                return string.Empty;
+            }
+
+            var names = new List<string>(rewards.Length);
+            for (int i = 0; i < rewards.Length; ++i)
+            {
+                string kind = rewards[i].AssetKind;
+                if ((kind != ASSET_TICKETS) && (kind != ASSET_SHARDS) && (kind != ASSET_ACCOUNT_ITEM))
+                {
+                    continue;
+                }
+
+                string name = RewardName(rewards[i]);
+                if ((!string.IsNullOrEmpty(name)) && (!names.Contains(name)))
+                {
+                    names.Add(name);
+                }
+            }
+
+            return string.Join(", ", names);
         }
 
         /// <summary> 발신일 글자, 서버 시각을 그대로 날짜로 바꾼다(표시 전용) </summary>

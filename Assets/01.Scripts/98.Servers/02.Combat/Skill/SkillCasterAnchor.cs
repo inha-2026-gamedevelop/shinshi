@@ -7,7 +7,7 @@ using Shinshi.Common;
 namespace Shinshi.Combat
 {
     /// <summary> 연결 객체가 사라져도 남은 장판과 동료가 파괴된 Transform을 읽지 않게 한다 </summary>
-    public sealed class SkillCasterAnchor : ISkillCaster, ICriticalDamageSource, ILifeStealSource, IHitImmunityTarget
+    public sealed class SkillCasterAnchor : ISkillCaster, ICriticalDamageSource, ILifeStealSource, IHitImmunityTarget, IShieldTarget
     {
         /****************************************
         *                Fields
@@ -93,6 +93,15 @@ namespace Shinshi.Combat
             if (_attached is IHitImmunityTarget target)
             {
                 target.GrantHitImmunity(untilServerTime);
+            }
+        }
+
+        // 면역과 같이 연결이 끊긴 동안에는 받을 개체가 없어 버린다
+        public void GrantShield(float amount, double untilServerTime)
+        {
+            if (_attached is IShieldTarget target)
+            {
+                target.GrantShield(amount, untilServerTime);
             }
         }
 

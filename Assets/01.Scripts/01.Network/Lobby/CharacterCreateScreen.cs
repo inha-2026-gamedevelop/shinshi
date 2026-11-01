@@ -23,7 +23,10 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
-        // 직업 버튼과 미리보기는 ContractCodes.PlayerClass 값(무사, 도술사, 신령사) 순서로 둔다
+        // 씬의 직업 버튼은 검사, 마검사, 궁수 순서다. 검사는 생성을 끝내 버튼을 숨기되, 씬 배열과 기존
+        // 연결 도구가 이 순서를 전제하므로 배열에서 빼지 않는다
+        private const int FIRST_BUTTON_CLASS = ContractCodes.PlayerClass.SWORDSMAN;
+
         [Header("직업")]
         [SerializeField] private Button[]     _classButtons     = null;
         [SerializeField] private Image[]      _classHighlights  = null;
@@ -49,7 +52,7 @@ namespace Shinshi.Network
 
         private readonly LobbyApiClient _api = new LobbyApiClient();
 
-        private int                    _classId         = ContractCodes.PlayerClass.SWORDSMAN;
+        private int                    _classId         = ContractCodes.PlayerClass.CREATION_MIN;
         private CharacterP09Selection  _selection       = null;
         private bool                   _isBusy          = false;
         private CharacterCreateRequest _pendingCreation = null;
@@ -69,8 +72,9 @@ namespace Shinshi.Network
 
         public Button GetClassButton(int classId)
         {
-            int index = classId - ContractCodes.PlayerClass.SWORDSMAN;
-            return ((_classButtons != null) && (index >= 0) && (index < _classButtons.Length)) ? _classButtons[index] : null;
+            int index = classId - FIRST_BUTTON_CLASS;
+            return ((_classButtons != null) && (IsCreatableClass(classId)) && (index >= 0) && (index < _classButtons.Length))
+                ? _classButtons[index] : null;
         }
 
         /****************************************
@@ -88,9 +92,25 @@ namespace Shinshi.Network
                 return;
             }
 
+            // 버튼은 레이아웃 그룹 없이 고정 위치라, 숨긴 버튼 자리가 비지 않도록 보이는 버튼을 앞 칸으로 당긴다
+            Vector2[] slots = new Vector2[_classButtons.Length];
             for (int i = 0; i < _classButtons.Length; ++i)
             {
-                int classId = i + ContractCodes.PlayerClass.SWORDSMAN;
+                slots[i] = ((RectTransform)_classButtons[i].transform).anchoredPosition;
+            }
+
+            int slot = 0;
+            for (int i = 0; i < _classButtons.Length; ++i)
+            {
+                int classId = i + FIRST_BUTTON_CLASS;
+                if (!IsCreatableClass(classId))
+                {
+                    _classButtons[i].gameObject.SetActive(false);
+                    continue;
+                }
+
+                ((RectTransform)_classButtons[i].transform).anchoredPosition = slots[slot];
+                ++slot;
                 _classButtons[i].onClick.AddListener(() => SelectClass(classId));
             }
 
@@ -116,9 +136,9 @@ namespace Shinshi.Network
                 return;
             }
 
-            _selection = new CharacterP09Selection(ContractCodes.PlayerClass.SWORDSMAN);
+            _selection = new CharacterP09Selection(ContractCodes.PlayerClass.CREATION_MIN);
             _customizePanel.Bind(_selection);
-            SelectClass(ContractCodes.PlayerClass.SWORDSMAN);
+            SelectClass(ContractCodes.PlayerClass.CREATION_MIN);
             _status.text = $"직업과 외형을 고르고 {CharacterNameRules.MIN_LENGTH}~{CharacterNameRules.MAX_LENGTH}자 닉네임을 정한다.";
         }
 
@@ -146,7 +166,7 @@ namespace Shinshi.Network
 
         private void SelectClass(int classId)
         {
-            if ((_isBusy) || (_selection == null))
+            if ((_isBusy) || (_selection == null) || (!IsCreatableClass(classId)))
             {
                 return;
             }
@@ -160,7 +180,7 @@ namespace Shinshi.Network
                 {
                     if (_classHighlights[i] != null)
                     {
-                        _classHighlights[i].color = (i + ContractCodes.PlayerClass.SWORDSMAN == classId) ? _selectedColor : _normalColor;
+                        _classHighlights[i].color = (i + FIRST_BUTTON_CLASS == classId) ? _selectedColor : _normalColor;
                     }
                 }
             }
@@ -304,6 +324,11 @@ namespace Shinshi.Network
             LobbyFlow.PreferredCharacterId   = reply.Value.Character.CharacterId;
             LobbyFlow.JustCreatedCharacterId = reply.Value.Character.CharacterId;
             LobbyFlow.GoToCharacterSelect();
+        }
+
+        private static bool IsCreatableClass(int classId)
+        {
+            return (classId >= ContractCodes.PlayerClass.CREATION_MIN) && (classId <= ContractCodes.PlayerClass.ARCHER);
         }
 
         private static CharacterP09Look PendingLook(CharacterCreateRequest pending)

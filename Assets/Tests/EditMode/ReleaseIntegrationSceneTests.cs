@@ -350,7 +350,7 @@ namespace Shinshi.Tests
         {
             Inspect(WOLBAEK_PATH, scene =>
             {
-                foreach (string name in new[] { "BossArenaMap", "00_SkyIslandClouds", "GlobalVolume_ForestNight", "Ravine_WarmBounce", "Moon_CoolKey" })
+                foreach (string name in new[] { "BossArenaMap", "00_SkyIslandClouds", "GlobalVolume_WolbaekMoonlight", "Ravine_WarmBounce", "Moon_CoolKey" })
                 {
                     Assert.That(RootNames(scene), Does.Contain(name), name);
                 }

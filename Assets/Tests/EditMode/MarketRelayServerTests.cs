@@ -154,7 +154,7 @@ namespace Shinshi.Tests
         [Test]
         public void Handle_MoreThanLimitInOneSecond_RejectsRateLimited()
         {
-            for (int i = 0; i < Constants.Town.REQUESTS_PER_SECOND; ++i)
+            for (int i = 0; i < Constants.Town.MARKET_READS_PER_SECOND; ++i)
             {
                 _relay.Handle(_member, Read(EMarketAction.History));
             }
@@ -163,6 +163,62 @@ namespace Shinshi.Tests
 
             Assert.IsTrue(_audience.TryGetLast(1, out MarketResultMessage result));
             Assert.AreEqual(ERejectReason.RateLimited, result.Reason);
+        }
+
+        // 창을 열 때 나가는 내 등록과 검색, 곧바로 이어지는 검색과 상세는 쓰기 한도와 따로 세어 막히지 않아야 한다
+        [Test]
+        public void Handle_ReadsAfterWritesInSameSecond_UseSeparateBudget()
+        {
+            for (int i = 0; i < Constants.Town.REQUESTS_PER_SECOND; ++i)
+            {
+                _relay.Handle(_member, ListHerb());
+            }
+
+            int before = _audience.Count<MarketResultMessage>(1);
+            _relay.Handle(_member, Read(EMarketAction.Listings, MarketTradeRules.HERB_ID));
+
+            Assert.AreEqual(before, _audience.Count<MarketResultMessage>(1), "쓰기가 한도를 채워도 조회는 거절 없이 API로 보낸다");
+            Assert.AreEqual(2, _relay.PendingCount, "쓰기 하나와 상세 하나가 진행 중이다");
+        }
+
+        [Test]
+        public void Handle_ReadsUpToReadLimitInOneSecond_AreNotRateLimited()
+        {
+            Assert.Greater(Constants.Town.MARKET_READS_PER_SECOND, Constants.Town.REQUESTS_PER_SECOND,
+                "열기, 검색, 상세가 이어지는 정상 흐름보다 조회 한도가 넉넉해야 한다");
+
+            // 첫 요청은 API로 가고 나머지는 같은 종류 진행 중(PendingCommit)으로 답한다. 한도 안에서는 RateLimited가 없어야 한다
+            for (int i = 0; i < Constants.Town.MARKET_READS_PER_SECOND; ++i)
+            {
+                _relay.Handle(_member, Read(EMarketAction.History));
+                if (_audience.TryGetLast(1, out MarketResultMessage reply))
+                {
+                    Assert.AreNotEqual(ERejectReason.RateLimited, reply.Reason, "조회 " + i + "번째");
+                }
+            }
+
+            _relay.Handle(_member, Read(EMarketAction.History));
+            Assert.IsTrue(_audience.TryGetLast(1, out MarketResultMessage limited));
+            Assert.AreEqual(ERejectReason.RateLimited, limited.Reason, "조회 남용은 여전히 막는다");
+
+            _now += Constants.Town.REQUEST_WINDOW_SECONDS;
+            _relay.Handle(_member, Read(EMarketAction.History));
+            Assert.IsTrue(_audience.TryGetLast(1, out MarketResultMessage next));
+            Assert.AreNotEqual(ERejectReason.RateLimited, next.Reason, "다음 창에서는 다시 받는다");
+        }
+
+        [Test]
+        public void Handle_WritesOverWriteLimit_StillRateLimited()
+        {
+            for (int i = 0; i < Constants.Town.REQUESTS_PER_SECOND; ++i)
+            {
+                _relay.Handle(_member, ListHerb());
+            }
+
+            _relay.Handle(_member, ListHerb());
+
+            Assert.IsTrue(_audience.TryGetLast(1, out MarketResultMessage result));
+            Assert.AreEqual(ERejectReason.RateLimited, result.Reason, "쓰기 남용 방지는 그대로다");
         }
 
         [Test]
@@ -251,7 +307,12 @@ namespace Shinshi.Tests
 
         private static MarketRequestMessage Read(EMarketAction action)
         {
-            return new MarketRequestMessage(Guid.NewGuid(), action, -1, -1, -1, null, 0, 0, 0, null, null, null, null, 0, 0, null);
+            return Read(action, null);
+        }
+
+        private static MarketRequestMessage Read(EMarketAction action, string definitionId)
+        {
+            return new MarketRequestMessage(Guid.NewGuid(), action, -1, -1, -1, null, 0, 0, 0, definitionId, null, null, null, 0, 0, null);
         }
 
         private BackendTransportResult Respond(BackendRequest request)

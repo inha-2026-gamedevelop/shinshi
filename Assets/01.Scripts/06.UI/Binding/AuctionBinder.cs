@@ -50,6 +50,14 @@ namespace Shinshi.UI
         // 응답이 오지 않는 읽기를 언제까지 진행 중으로 볼지는 API 대기 시간에 여유를 더한 값이다
         private const float  READ_WAIT_MARGIN_SECONDS = 3f;
 
+        // 검색과 상세가 일시 거절(요청 한도, 같은 읽기 진행 중, 서버 불안정)되면 서버의 1초 요청 창을 넘긴 뒤 몇 번만 다시 받는다
+        private const float  READ_RETRY_SECONDS = 1.2f;
+        private const int    MAX_READ_RETRIES   = 2;
+
+        // 같은 품목을 다시 눌렀을 때 이 시간 안에 받은 상세는 다시 요청하지 않는다. 쓰기가 끝나면 시간과 관계없이 다시 받는다
+        private const float  LISTINGS_FRESH_SECONDS = 3f;
+        private const string LOADING_TEXT           = "불러오는 중입니다";
+
         [SerializeField] private AuctionView _view     = null;
         [SerializeField] private UiPopupHub  _popupHub = null;
 
@@ -82,6 +90,20 @@ namespace Shinshi.UI
         private float  _listingsSentAt;
         private float  _searchSentAt;
 
+        // 상세에 지금 보이는 품목과 받은 시각, 검색 진행 중에 바뀐 조건, 일시 거절 뒤 다시 받을 시각과 횟수
+        private string _shownDefinitionId;
+        private float  _shownAt;
+        private bool   _searchDirty;
+        private float  _listingsRetryAt;
+        private int    _listingsRetries;
+        private float  _searchRetryAt;
+        private int    _searchRetries;
+
+        // 읽기 실패나 대기로 띄운 안내. 다음 읽기가 성공하면 그 안내가 남아 있을 때만 지운다
+        private string _readStatus;
+
+        private Func<string, string> _nameOf;
+
         private Guid  _searchId;
         private Guid  _listingsId;
         private Guid  _mineId;
@@ -110,9 +132,17 @@ namespace Shinshi.UI
             _wasOpen = false;
 
             // 꺼진 사이에는 응답을 받지 못했으므로 진행 중으로 남기지 않는다
-            _searchId      = Guid.Empty;
-            _listingsId    = Guid.Empty;
-            _listingsDirty = false;
+            _searchId        = Guid.Empty;
+            _listingsId      = Guid.Empty;
+            _listingsDirty   = false;
+            _searchDirty     = false;
+            _listingsRetryAt = 0f;
+            _searchRetryAt   = 0f;
+            if (_nameOf == null)
+            {
+                _nameOf = ItemName;
+            }
+
             TownMarketClient.ResultReceived     += OnResult;
             TownMarketClient.WriteStateChanged  += OnWriteStateChanged;
             TownGrowthClient.SnapshotChanged += OnGrowthSnapshot;
@@ -178,6 +208,7 @@ namespace Shinshi.UI
                 return;
             }
 
+            TickReadRetries(Time.unscaledTime);
             if (!TownMarketClient.HasStaleWrite)
             {
                 _staleRefreshing = false;
@@ -476,21 +507,39 @@ namespace Shinshi.UI
             _lastSearch = input;
             _hasSearch  = true;
             _searchPage = 0;
+            RequestSearch();
+        }
+
+        // 서버는 연결당 검색 하나만 받는다. 진행 중에 조건이 바뀌면 겹쳐 보내지 않고(PendingCommit으로 거절되어 결과를 잃는다)
+        // 응답이 오면 새 조건으로 이어 받는다
+        private void RequestSearch()
+        {
+            _searchRetries = 0;
+            _searchRetryAt = 0f;
+            if (SearchInFlight)
+            {
+                _searchDirty = true;
+                return;
+            }
+
             SendSearch();
         }
 
         private void SendSearch()
         {
+            _searchDirty = false;
             string[] ids = null;
             if (!string.IsNullOrWhiteSpace(_lastSearch.Text))
             {
                 CollectCandidates();
-                AuctionViewRules.FindDefinitionIds(_lastSearch.Text, _candidates, MarketLimits.MAX_SEARCH_DEFINITIONS, _foundIds);
+                AuctionViewRules.FindDefinitionIds(_lastSearch.Text, _candidates, MarketLimits.MAX_SEARCH_DEFINITIONS, _foundIds,
+                    _nameOf);
                 if (_foundIds.Count == 0)
                 {
                     _groups = Array.Empty<MarketGroupEntry>();
                     _wantedDefinitionId = null;
                     ShowGroups(0, 0);
+                    HideDetail();
                     _view.SetStatus(NO_RESULT_TEXT);
                     return;
                 }
@@ -531,7 +580,7 @@ namespace Shinshi.UI
             }
 
             _searchPage = Math.Max(0, _searchPage + delta);
-            SendSearch();
+            RequestSearch();
         }
 
         private void OnGroupSelected(int index)
@@ -542,20 +591,131 @@ namespace Shinshi.UI
             }
 
             _groupSelected = index;
-            RequestListings(_groups[index].DefinitionId);
+            string definitionId = _groups[index].DefinitionId;
+
+            // 응답을 기다리지 않고 상세 칸을 먼저 연다. 다른 품목의 상세가 보이고 있었다면 비워 잘못 사지 않게 한다
+            if (_shownDefinitionId != definitionId)
+            {
+                _shownDefinitionId = null;
+                _listings          = Array.Empty<MarketListingEntry>();
+                _listingSelected   = -1;
+                _view.SetListings(ItemName(definitionId), null, 0);
+            }
+
+            RequestListings(definitionId, false);
         }
 
-        // 서버는 연결당 상세 읽기 하나만 받는다. 진행 중이면 보내지 않고 고른 품목만 바꿔 두며, 응답을 처리한 뒤 이어서 받는다
-        private void RequestListings(string definitionId)
+        // 서버는 연결당 상세 읽기 하나만 받는다. 진행 중이면 보내지 않고 고른 품목만 바꿔 두며, 응답을 처리한 뒤 이어서 받는다.
+        // 같은 품목을 다시 누르면 진행 중인 요청이나 방금 받은 상세를 그대로 쓴다. force는 쓰기 뒤처럼 받은 상세가 낡았을 때다
+        private void RequestListings(string definitionId, bool force)
         {
             _wantedDefinitionId = definitionId;
+            _listingsRetries    = 0;
+            _listingsRetryAt    = 0f;
+            if (force)
+            {
+                _shownDefinitionId = null;
+            }
+            else if ((_shownDefinitionId == definitionId) && ((Time.unscaledTime - _shownAt) < LISTINGS_FRESH_SECONDS))
+            {
+                return;
+            }
+
             if (ListingsInFlight)
             {
-                _listingsDirty = true;
+                if ((force) || (_listingsDefinitionId != definitionId))
+                {
+                    _listingsDirty = true;
+                }
+
                 return;
             }
 
             SendListings();
+
+            // 쓰기 뒤 다시 받을 때는 처리 결과 안내를 덮지 않는다
+            if ((!force) && (_listingsId != Guid.Empty))
+            {
+                SetReadStatus(LOADING_TEXT);
+            }
+        }
+
+        // 일시 거절된 검색과 상세를 정한 시각에 한 번씩 다시 보낸다
+        private void TickReadRetries(float now)
+        {
+            if ((_searchRetryAt > 0f) && (now >= _searchRetryAt))
+            {
+                _searchRetryAt = 0f;
+                if ((_hasSearch) && (!SearchInFlight))
+                {
+                    SendSearch();
+                }
+            }
+
+            if ((_listingsRetryAt > 0f) && (now >= _listingsRetryAt))
+            {
+                _listingsRetryAt = 0f;
+                if ((_wantedDefinitionId != null) && (!ListingsInFlight) && (!SearchInFlight))
+                {
+                    SendListings();
+                }
+            }
+        }
+
+        // 서버 앞단의 일시 거절이다. 다시 보내면 받아들여질 수 있다
+        private static bool IsTransientRead(ERejectReason reason)
+        {
+            return (reason == ERejectReason.RateLimited) || (reason == ERejectReason.PendingCommit)
+                || (reason == ERejectReason.BackendUnavailable);
+        }
+
+        private void HideDetail()
+        {
+            _shownDefinitionId = null;
+            _listings          = Array.Empty<MarketListingEntry>();
+            _listingSelected   = -1;
+            _view.SetListings(null, null, 0);
+        }
+
+        private void SetReadStatus(string text)
+        {
+            _readStatus = text;
+            _view.SetStatus(text);
+        }
+
+        private void ClearReadStatus()
+        {
+            if ((_readStatus != null) && (_view.LastStatus == _readStatus))
+            {
+                _view.SetStatus(string.Empty);
+            }
+
+            _readStatus = null;
+        }
+
+        private string ItemName(string definitionId)
+        {
+            bool ready = GameDB.IsInitialized;
+            return AuctionViewRules.ItemName(definitionId, ready ? GameDB.Equipment : null, ready ? GameDB.SkillDisplay : null);
+        }
+
+        // 상세 응답의 Mine은 API가 조회자를 몰라 늘 거짓이다. 받아 둔 내 등록으로도 확인한다
+        private bool IsOwnListing(in MarketListingEntry listing)
+        {
+            if (listing.Mine)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < _mine.Length; ++i)
+            {
+                if (string.Equals(_mine[i].ListingId, listing.ListingId, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void SendListings()
@@ -584,7 +744,7 @@ namespace Shinshi.UI
 
             _listingSelected = index;
             MarketListingEntry listing = _listings[index];
-            if (listing.Mine)
+            if (IsOwnListing(in listing))
             {
                 _view.SetBuyTarget(0, 0);
                 _view.SetStatus(OWN_LISTING_TEXT);
@@ -603,12 +763,18 @@ namespace Shinshi.UI
             }
 
             MarketListingEntry listing = _listings[_listingSelected];
+            if (IsOwnListing(in listing))
+            {
+                _view.SetStatus(OWN_LISTING_TEXT);
+                return;
+            }
+
             if ((quantity < 1) || (quantity > listing.RemainingQty) || (!MarketFeeRules.TryGross(listing.UnitPrice, quantity, out long gross)))
             {
                 return;
             }
 
-            string text = AuctionViewRules.BuyConfirmText(listing.DefinitionId, quantity, listing.UnitPrice, gross);
+            string text = AuctionViewRules.BuyConfirmText(ItemName(listing.DefinitionId), quantity, listing.UnitPrice, gross);
             if (!CanBeginWrite())
             {
                 return;
@@ -625,7 +791,7 @@ namespace Shinshi.UI
             }
 
             _sellSelected = index;
-            _view.SetSellTarget(_sellables[index].DefinitionId, _sellables[index].MaxQuantity);
+            _view.SetSellTarget(ItemName(_sellables[index].DefinitionId), _sellables[index].MaxQuantity);
         }
 
         private void OnRegisterRequested(int quantity, long unitPrice)
@@ -649,7 +815,7 @@ namespace Shinshi.UI
                 return;
             }
 
-            string text = AuctionViewRules.ListConfirmText(item.DefinitionId, quantity, unitPrice, net);
+            string text = AuctionViewRules.ListConfirmText(ItemName(item.DefinitionId), quantity, unitPrice, net);
             Confirm(text, () => SendWrite(() => TownMarketClient.List(kind, item.DefinitionId, item.ItemId, quantity, unitPrice)));
         }
 
@@ -666,7 +832,7 @@ namespace Shinshi.UI
             }
 
             MarketListingEntry listing = _mine[mineIndex];
-            string text = AuctionViewRules.CancelConfirmText(listing.DefinitionId, listing.RemainingQty);
+            string text = AuctionViewRules.CancelConfirmText(ItemName(listing.DefinitionId), listing.RemainingQty);
             Confirm(text, () => SendWrite(() => TownMarketClient.Cancel(listing.ListingId)));
         }
 
@@ -774,17 +940,34 @@ namespace Shinshi.UI
 
         private void OnSearchResult(in MarketResultMessage result)
         {
+            // 기다리는 사이 조건이 바뀌었으면 이 응답은 낡았다. 쓰지 않고 새 조건으로 받는다
+            if (_searchDirty)
+            {
+                SendSearch();
+                return;
+            }
+
             if (!result.IsAccepted)
             {
-                _view.SetStatus(DescribeRead(result.Reason));
+                if ((IsTransientRead(result.Reason)) && (_searchRetries < MAX_READ_RETRIES))
+                {
+                    ++_searchRetries;
+                    _searchRetryAt = Time.unscaledTime + READ_RETRY_SECONDS;
+                    SetReadStatus(LOADING_TEXT);
+                    return;
+                }
+
+                SetReadStatus(DescribeRead(result.Reason));
                 return;
             }
 
             _groups             = result.Groups;
             _groupSelected      = -1;
             _wantedDefinitionId = null;
+            _listingsRetryAt    = 0f;
             ShowGroups(result.TotalCount, result.Page);
-            _view.SetListings(null, null, 0);
+            HideDetail();
+            _readStatus = null;
             _view.SetStatus(string.Empty);
         }
 
@@ -794,7 +977,7 @@ namespace Shinshi.UI
             for (int i = 0; i < _groups.Length; ++i)
             {
                 MarketGroupEntry group = _groups[i];
-                _rows.Add(new ListRowData(group.Grade, group.DefinitionId, AuctionViewRules.FormatPrice(group.LowestUnitPrice),
+                _rows.Add(new ListRowData(group.Grade, ItemName(group.DefinitionId), AuctionViewRules.FormatPrice(group.LowestUnitPrice),
                     AuctionViewRules.FormatPrice(group.TotalQty), group.ListingCount.ToString(CultureInfo.InvariantCulture),
                     (group.RecentUnitPrice > 0) ? AuctionViewRules.FormatPrice(group.RecentUnitPrice) : "-"));
             }
@@ -812,12 +995,24 @@ namespace Shinshi.UI
 
             if (!result.IsAccepted)
             {
-                _view.SetStatus(DescribeRead(result.Reason));
+                // 요청 한도 같은 일시 거절이면 상세 칸을 연 채 잠시 뒤 다시 받는다. 다른 품목으로 이어 받을 예정이면 그쪽이 대신한다
+                if ((IsTransientRead(result.Reason)) && (_listingsRetries < MAX_READ_RETRIES) && (!_listingsDirty))
+                {
+                    ++_listingsRetries;
+                    _listingsRetryAt = Time.unscaledTime + READ_RETRY_SECONDS;
+                    SetReadStatus(LOADING_TEXT);
+                    return;
+                }
+
+                SetReadStatus(DescribeRead(result.Reason));
                 return;
             }
 
-            _listings        = result.Listings;
-            _listingSelected = -1;
+            _listings          = result.Listings;
+            _listingSelected   = -1;
+            _shownDefinitionId = _wantedDefinitionId;
+            _shownAt           = Time.unscaledTime;
+            ClearReadStatus();
             _rows.Clear();
             for (int i = 0; i < _listings.Length; ++i)
             {
@@ -827,7 +1022,7 @@ namespace Shinshi.UI
                     listing.RemainingQty.ToString(CultureInfo.InvariantCulture), time));
             }
 
-            _view.SetListings(_wantedDefinitionId, _rows, result.AverageUnitPrice24h);
+            _view.SetListings(ItemName(_wantedDefinitionId), _rows, result.AverageUnitPrice24h);
         }
 
         private void OnMineResult(in MarketResultMessage result)
@@ -841,10 +1036,11 @@ namespace Shinshi.UI
                     return;
                 }
 
-                _view.SetStatus(DescribeRead(result.Reason));
+                SetReadStatus(DescribeRead(result.Reason));
                 return;
             }
 
+            ClearReadStatus();
             _mine = result.Listings;
             _view.SetYeopjeon(result.AvailableYeopjeon);
             _rows.Clear();
@@ -856,7 +1052,7 @@ namespace Shinshi.UI
                 string detail = active
                     ? AuctionViewRules.FormatRemaining(listing.ExpiresAtUnixMs, _serverNowMs)
                     : AuctionViewRules.FormatPrice(listing.NetTotal);
-                _rows.Add(new ListRowData(listing.Grade, listing.DefinitionId, AuctionViewRules.FormatPrice(listing.UnitPrice),
+                _rows.Add(new ListRowData(listing.Grade, ItemName(listing.DefinitionId), AuctionViewRules.FormatPrice(listing.UnitPrice),
                     string.Format(CultureInfo.InvariantCulture, SLASH_FORMAT, listing.RemainingQty, listing.ListedQty),
                     AuctionViewRules.ListingStateText(listing.State), detail));
                 _flags.Add(active);
@@ -878,17 +1074,18 @@ namespace Shinshi.UI
                     return;
                 }
 
-                _view.SetStatus(DescribeRead(result.Reason));
+                SetReadStatus(DescribeRead(result.Reason));
                 return;
             }
 
+            ClearReadStatus();
             _rows.Clear();
             MarketTradeEntry[] trades = result.Trades;
             for (int i = 0; i < trades.Length; ++i)
             {
                 MarketTradeEntry trade = trades[i];
                 bool seller = trade.Role == MarketCodes.TradeRole.SELLER;
-                _rows.Add(new ListRowData(0, AuctionViewRules.RoleText(trade.Role), trade.DefinitionId,
+                _rows.Add(new ListRowData(0, AuctionViewRules.RoleText(trade.Role), ItemName(trade.DefinitionId),
                     trade.Quantity.ToString(CultureInfo.InvariantCulture), AuctionViewRules.FormatPrice(trade.Gross),
                     seller ? AuctionViewRules.FormatPrice(trade.Fee) : "-", seller ? AuctionViewRules.FormatPrice(trade.Net) : "-"));
             }
@@ -930,7 +1127,7 @@ namespace Shinshi.UI
             _sellablesDirty = true;
             if ((_view.Tab == TAB_BUY) && (_wantedDefinitionId != null))
             {
-                RequestListings(_wantedDefinitionId);
+                RequestListings(_wantedDefinitionId, true);
             }
 
             return mineSent;
@@ -956,7 +1153,7 @@ namespace Shinshi.UI
             for (int i = 0; i < _sellables.Count; ++i)
             {
                 SellableItem item = _sellables[i];
-                _rows.Add(new ListRowData(item.Grade, item.DefinitionId, item.MaxQuantity.ToString(CultureInfo.InvariantCulture)));
+                _rows.Add(new ListRowData(item.Grade, ItemName(item.DefinitionId), item.MaxQuantity.ToString(CultureInfo.InvariantCulture)));
             }
 
             _sellSelected = -1;
