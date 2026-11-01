@@ -213,6 +213,9 @@ namespace Shinshi.Network
         // 보존 기록 만료로 명단을 닫는 것은 시작 뒤만이다. 시작 전 끊김의 유예 상한은 예약 만료다
         public bool ClosesParticipantOnRetentionExpiry => HasStarted;
 
+        // 초, 사망 뒤 부활을 요청할 수 있을 때까지의 대기. 협동 보스와 일반전이 다르다
+        public float ReviveDelay => ((_session != null) && (_session.IsBossSession)) ? _config.BossReviveDelay : _config.NormalReviveDelay;
+
         // 초, 안전 복귀 지점이 없을 때 부활을 다시 평가하는 간격
         public float SafePointRetryInterval => _config.SafePointRetryInterval;
 

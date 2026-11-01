@@ -196,8 +196,8 @@ namespace Shinshi.UI
             _lastPhase = -1;
 
             // 일반전 진행은 _progressView가 서버 진행 메시지로 보여 주므로 예전 웨이브 표시는 쓰지 않는다.
-            // 부활 대기, 공용 잔량은 아직 클라이언트 복제 계약이 없다.
-            // 로컬 사망 시각으로 부활 가능 시점을 추측하거나 데모 수치를 남기지 않는다.
+            // 보스전 부활 대기와 공용 잔량은 보스 맵의 부활 창(BossReviveBinder)이 서버 복제 값으로 보여 준다.
+            // 이 예전 표시는 쓰지 않는다.
             SetVisible(_waveView, false);
             SetVisible(_reviveView, false);
             SetVisible(_bossRevivesLabel, false);

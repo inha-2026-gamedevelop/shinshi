@@ -687,6 +687,14 @@ namespace Shinshi.Combat
             _combat.SetLifeState(_lifeState);
         }
 
+        // 같은 값이면 SyncVar가 더럽혀지지 않으므로 매 틱 불러도 바뀔 때만 전송된다
+        /// <summary> 부활 창이 보여 줄 부활 가능 서버 시각과 남은 공용 부활 횟수를 복제 상태에 싣는다, 일반전 횟수는 -1이다 </summary>
+        public void PublishReviveStatus(float reviveDelay, int sharedRevives)
+        {
+            double readyAt = (_lifeState == EParticipantLifeState.Alive) ? 0.0 : PlayerLifeRules.ReviveReadyTime(_deathTime, reviveDelay);
+            _combat.SetReviveStatus(readyAt, sharedRevives);
+        }
+
         /// <summary> 보스 공용 부활이 바닥난 뒤 사망했을 때 관전으로 옮긴다, 대기 중인 요청은 NoRevives로 거절한다 </summary>
         public void EnterSpectating()
         {

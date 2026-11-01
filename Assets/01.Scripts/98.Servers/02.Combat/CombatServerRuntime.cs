@@ -1103,6 +1103,7 @@ namespace Shinshi.Combat
             _potions?.Tick(serverTime);
 
             ApproveRevives(serverTime);
+            PublishReviveStatuses();
             SyncCompanionObjects();
             _combatMeter?.Tick(serverTime);
 
@@ -1289,6 +1290,22 @@ namespace Shinshi.Combat
             for (int i = 0; i < _players.Count; ++i)
             {
                 _players[i].ConfineToArena(_boss.ArenaCenter, _boss.ArenaRadius);
+            }
+        }
+
+        // 부활 창이 대기 시간과 남은 공용 횟수를 보여 주도록 매 틱 싣는다. 값이 같으면 복제되지 않는다
+        private void PublishReviveStatuses()
+        {
+            if ((_host == null) || (!_host.IsSessionRunning))
+            {
+                return;
+            }
+
+            float delay   = _host.ReviveDelay;
+            int   revives = _host.Session.RemainingRevives;
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                _players[i].PublishReviveStatus(delay, revives);
             }
         }
 
