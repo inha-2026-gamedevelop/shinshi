@@ -62,7 +62,7 @@ namespace Shinshi.Combat
         IBossProjectileTelegraphListener, IBossProjectileListener, IBossAreaTelegraphListener, IBossAreaListener,
         IBossCastListener, IBossArenaSource, IBossSweepTelegraphListener, IBossBeamTelegraphListener, IBossBeamListener,
         IBossStarTelegraphListener, IBossStarListener, IBossBarrierListener, IBossWarp, IBossEventRelayHost, IBossTargetHitListener,
-        IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget, IBossBodyBlocker
+        IBossHitDisplacer, IDamageCapTarget, IDamageHitScreenTarget, IBossBodyBlocker, IBossArenaEdge
     {
         /****************************************
         *                Fields
@@ -87,6 +87,10 @@ namespace Shinshi.Combat
 
         // 피격 임팩트 표현은 월백에만 있어 다른 보스의 피격은 보내지 않는다
         private const string HIT_IMPACT_BOSS_ID = "boss_wolbaek";
+
+        // 2페이즈 전환 때 바깥 링이 무너지는 보스(BossArenaShatterView)와 그때부터 가두는 페이즈
+        private const string EDGE_FALL_BOSS_ID = "boss_wolbaek";
+        private const int    EDGE_FALL_PHASE   = 2;
 
         private readonly string                _bossId;
         private readonly int                   _combatId;
@@ -121,6 +125,10 @@ namespace Shinshi.Combat
         private readonly BossChargeStructureField    _chargeStructures;
         private readonly BossChargeStructureDirector _structureDirector;
         private readonly IBossDisplaceLookup     _displaceTargets; // 없으면 아무도 밀지 않는다
+
+        // 이번 보스 틱에 밀침으로 전장 밖에 놓인 플레이어 전투 번호, 틱 시작에 비운다
+        private readonly List<int> _pushedOff = new List<int>(Constants.Combat.MAX_COMBAT_TARGETS);
+        private bool               _confinesToArena = false;
 
         // 두뇌에 넘긴 것과 같은 객체다. 치명타 처리가 두뇌와 같은 보류를 읽는다
         private readonly BossGimmickDeathPolicy _deathPolicy;
@@ -202,6 +210,10 @@ namespace Shinshi.Combat
 
         public Vector3 ArenaCenter => _arenaCenter;
         public float   ArenaRadius => _arenaRadius;
+
+        // 한 번 켜지면 끄지 않는다. 무너진 바닥은 보스가 쓰러진 뒤에도 돌아오지 않는다
+        /// <summary> 바깥 바닥이 무너져 걸어서 전장 밖에 나갈 수 없고 밀려 나가면 떨어진다 </summary>
+        public bool ConfinesToArena => _confinesToArena;
 
         public float Health          => _health;
         public float MaxHealth       => _maxHealth;
@@ -618,6 +630,7 @@ namespace Shinshi.Combat
         {
             _tickTime         = serverTime;
             _hasWarpDeparture = false;
+            _pushedOff.Clear();
             CompleteHandoffIfReady();
 
             // 등장 대기 동안 두뇌의 페이즈는 0이고 전투가 열리는 틱에 1이 된다. 그 변화는 전환이 아니라 세지 않는다
@@ -628,6 +641,11 @@ namespace Shinshi.Combat
                 ++_phaseGeneration;
                 _phaseTransitionServerTime = serverTime;
                 TryOpenPhase2Transition(serverTime);
+            }
+
+            if ((!_confinesToArena) && (_bossId == EDGE_FALL_BOSS_ID) && (_brain.Phase >= EDGE_FALL_PHASE))
+            {
+                _confinesToArena = true;
             }
 
             // 보류가 풀려 두뇌가 이 틱에 사망을 확정했으면 몸체도 맞춘다. 치명타 때 바로 Dead가 된 보스는 이미 Dead라 지나간다
@@ -822,6 +840,18 @@ namespace Shinshi.Combat
             return Mathf.Clamp(clear, 0f, maxDistance);
         }
 
+        private float GetTerrainClearDistance(Vector3 origin, Vector3 direction, float maxDistance, float bodyRadius)
+        {
+            float clear = (_terrain != null) ? _terrain.GetClearDistance(origin, direction, maxDistance, bodyRadius) : maxDistance;
+            return Mathf.Clamp(clear, 0f, maxDistance);
+        }
+
+        /// <summary> 이번 보스 틱에 밀침으로 전장 밖에 놓였는가, 바깥이 무너진 뒤에만 참이 될 수 있다 </summary>
+        public bool WasPushedOff(int combatId)
+        {
+            return _pushedOff.Contains(combatId);
+        }
+
         public Vector3 Move(Vector3 from, Vector3 to, float bodyRadius)
         {
             if (!CanMove)
@@ -869,14 +899,24 @@ namespace Shinshi.Combat
 
             direction /= Mathf.Sqrt(sqrMagnitude);
 
+            // 바깥이 무너진 뒤에는 전장 경계가 벽이 아니다. 정적 지형까지만 밀고, 원 밖에 놓이면 낙사 대상으로 남긴다
             Vector3 origin   = target.Position;
-            float   distance = GetClearDistance(origin, direction, maxDistance, target.BodyRadius);
+            float   distance = (_confinesToArena)
+                ? GetTerrainClearDistance(origin, direction, maxDistance, target.BodyRadius)
+                : GetClearDistance(origin, direction, maxDistance, target.BodyRadius);
             if (!(distance > 0f))
             {
                 return 0f;
             }
 
-            target.Displace(origin + (direction * distance), _tickTime);
+            Vector3 destination = origin + (direction * distance);
+            target.Displace(destination, _tickTime);
+            if ((_confinesToArena) && (ArenaEdgeRules.IsBeyond(destination, _arenaCenter, _arenaRadius, target.BodyRadius))
+                && (!_pushedOff.Contains(combatId)))
+            {
+                _pushedOff.Add(combatId);
+            }
+
             return distance;
         }
 

@@ -100,6 +100,11 @@ namespace Shinshi.Combat
         [SyncVar] private byte _actionCancelSequence;
 
         // 지금 적용 중인 제어와 그 종료 서버 시각, 표시용이다. 판정은 서버 처리기가 자기 상태로 한다
+        // 쓰러진 동안 부활을 요청할 수 있게 되는 서버 시각과 남은 파티 공용 부활 횟수, 부활 창 표시용이다. 살아 있으면 시각은 0,
+        // 횟수 제한이 없는 일반전은 -1이다. 판정은 서버 세션이 자기 상태로 한다
+        [SyncVar] private double _reviveReadyAt;
+        [SyncVar] private int    _sharedRevives = -1;
+
         [SyncVar] private long _totalExperience;
         public long TotalExperience => _totalExperience;
         [SyncVar] private EPlayerControlKind _controlKind;
@@ -148,6 +153,8 @@ namespace Shinshi.Combat
         public byte ActionCancelSequence => _actionCancelSequence;
         public EPlayerControlKind ControlKind => _controlKind;
         public double ControlEndsAt => _controlEndsAt;
+        public double ReviveReadyAt => _reviveReadyAt;
+        public int    SharedRevives => _sharedRevives;
 
         // 전용 서버에서는 hook이 불리지 않으므로 표현과 UI만 구독한다
         public event Action<float, float>           HealthChanged;
@@ -172,6 +179,13 @@ namespace Shinshi.Combat
         {
             _maxHealth = maxHealth;
             _health    = health;
+        }
+
+        [Server]
+        public void SetReviveStatus(double reviveReadyAt, int sharedRevives)
+        {
+            _reviveReadyAt = reviveReadyAt;
+            _sharedRevives = sharedRevives;
         }
 
         // 같은 값이면 SyncVar가 더럽혀지지 않으므로 바뀔 때만 전송된다

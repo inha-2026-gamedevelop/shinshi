@@ -15,7 +15,8 @@ namespace Shinshi.AI
 {
     /// <summary> 보스 네트워크 개체의 복제 상태와 공격 사건 전달, 판정은 서버의 BossServer가 한다 </summary>
     public class BossState : NetworkBehaviour, IBossEventListener, IBossMucheolEventListener, IBossHardPhaseEventListener,
-        IBossWolbaekGimmickEventListener, IBossMucheolSealEventListener, IWolbaekPlayerHitEventListener, IBossBodyBlocker
+        IBossWolbaekGimmickEventListener, IBossMucheolSealEventListener, IWolbaekPlayerHitEventListener, IBossBodyBlocker,
+        IBossArenaEdge
     {
         // 서버 스포너(BossNetworkSpawner)가 보스전 시작 틱에 서버 소유로 스폰한다. Command가 없어 클라이언트는 보스 상태를 바꿀 수 없다.
         //
@@ -69,6 +70,11 @@ namespace Shinshi.AI
 
         // 플레이어를 밀어내는 몸통 반경(m). 소유 클라이언트 예측이 서버와 같은 밀어내기를 하도록 보스 정의 값을 그대로 싣는다
         [SyncVar] private float   _bodyPushRadius;
+
+        // 바깥 바닥이 무너져 전장 안에 가두는지와 그 원, 소유 클라이언트 예측이 서버와 같은 가두기를 하도록 싣는다
+        [SyncVar] private bool    _confinesToArena;
+        [SyncVar] private Vector3 _arenaCenter;
+        [SyncVar] private float   _arenaRadius;
 
         [SyncVar(hook = nameof(OnLifeStateSynced))]
         private EParticipantLifeState _lifeState = EParticipantLifeState.Alive;
@@ -135,6 +141,11 @@ namespace Shinshi.AI
 
         /// <summary> 살아 있고 반경을 받았으면 플레이어 예측을 막는다 </summary>
         public bool BlocksBodies => (_lifeState == EParticipantLifeState.Alive) && (_bodyPushRadius > 0f);
+
+        /// <summary> 반경을 받았고 서버가 가두기를 켰으면 플레이어 예측을 전장 안에 둔다 </summary>
+        public bool    ConfinesToArena => (_confinesToArena) && (_arenaRadius > 0f);
+        public Vector3 ArenaCenter     => _arenaCenter;
+        public float   ArenaRadius     => _arenaRadius;
 
         public ushort  FacingYaw => _facingYaw;
         public Vector3 Forward   => FacingRules.DecodeYaw(_facingYaw);
@@ -296,6 +307,15 @@ namespace Shinshi.AI
         public void SetBodyPushRadius(float radius)
         {
             _bodyPushRadius = radius;
+        }
+
+        /// <summary> 전장 가두기를 싣는다, 같은 값이면 다시 보내지 않는다 </summary>
+        [Server]
+        public void SetArenaEdge(bool confines, Vector3 center, float radius)
+        {
+            _confinesToArena = confines;
+            _arenaCenter     = center;
+            _arenaRadius     = radius;
         }
 
         /// <summary> 2페이즈 전환 컷신 구간을 싣는다, 구간이 없으면 번호 0과 NaN이다 </summary>

@@ -106,6 +106,9 @@ namespace Shinshi.Tests
                         Assert.IsNotNull(selectable.targetGraphic, $"{sceneName}/{selectable.name}: targetGraphic이 없다");
                         Assert.IsTrue(ReceivesRaycast(selectable),
                             $"{sceneName}/{selectable.name}: 자기 아래 그래픽의 raycastTarget이 모두 꺼져 클릭이 닿지 않는다");
+                        Transform collapsed = FindZeroScale(selectable.transform);
+                        Assert.IsNull(collapsed, $"{sceneName}/{selectable.name}: "
+                            + ((collapsed != null) ? collapsed.name : string.Empty) + "의 크기 배율이 0이라 보이지 않고 클릭도 닿지 않는다");
                         ++checkedCount;
                     }
                 }
@@ -471,6 +474,26 @@ namespace Shinshi.Tests
             }
 
             return false;
+        }
+
+        // 루트 캔버스의 배율은 실행 시 캔버스가 덮어써서 저장값 0이 정상이므로 그 아래만 본다(경매장 상세 칸이 0으로 저장되어 구매 칸이 사라졌다)
+        private static Transform FindZeroScale(Transform target)
+        {
+            for (Transform current = target; current != null; current = current.parent)
+            {
+                if ((current.TryGetComponent(out Canvas canvas)) && (canvas.isRootCanvas))
+                {
+                    return null;
+                }
+
+                Vector3 scale = current.localScale;
+                if ((scale.x == 0f) || (scale.y == 0f))
+                {
+                    return current;
+                }
+            }
+
+            return null;
         }
 
         private static void ClickWithRaycast(Button button)

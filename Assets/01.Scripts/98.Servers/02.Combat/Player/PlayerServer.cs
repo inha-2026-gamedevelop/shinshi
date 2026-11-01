@@ -687,6 +687,14 @@ namespace Shinshi.Combat
             _combat.SetLifeState(_lifeState);
         }
 
+        // 같은 값이면 SyncVar가 더럽혀지지 않으므로 매 틱 불러도 바뀔 때만 전송된다
+        /// <summary> 부활 창이 보여 줄 부활 가능 서버 시각과 남은 공용 부활 횟수를 복제 상태에 싣는다, 일반전 횟수는 -1이다 </summary>
+        public void PublishReviveStatus(float reviveDelay, int sharedRevives)
+        {
+            double readyAt = (_lifeState == EParticipantLifeState.Alive) ? 0.0 : PlayerLifeRules.ReviveReadyTime(_deathTime, reviveDelay);
+            _combat.SetReviveStatus(readyAt, sharedRevives);
+        }
+
         /// <summary> 보스 공용 부활이 바닥난 뒤 사망했을 때 관전으로 옮긴다, 대기 중인 요청은 NoRevives로 거절한다 </summary>
         public void EnterSpectating()
         {
@@ -1730,6 +1738,24 @@ namespace Shinshi.Combat
             Vector3 current  = _transform.position;
             Vector3 resolved = BossBodyPushRules.Resolve(current, blocker, BodyRadius);
             if ((resolved != current) && (IsFinite(resolved)))
+            {
+                _transform.position = resolved;
+            }
+        }
+
+        // 바깥 바닥이 무너진 전장에서 걷기, 회피, 기술 이동으로 나간 위치를 경계로 되돌린다. 보스 밀침으로 나간 사람은 이 앞에서 이미 낙사했다.
+        // 소유 예측도 같은 규칙으로 걸음마다 되돌리므로 경로를 버리지 않고 경계를 따라 미끄러진다. 회피 중에도 되돌린다
+        /// <summary> 전장 밖이면 경계 안으로 되돌린다 </summary>
+        public void ConfineToArena(Vector3 center, float arenaRadius)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            Vector3 current  = _transform.position;
+            Vector3 resolved = ArenaEdgeRules.Clamp(current, center, arenaRadius, BodyRadius);
+            if (resolved != current)
             {
                 _transform.position = resolved;
             }
