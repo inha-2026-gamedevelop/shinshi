@@ -26,8 +26,8 @@ namespace Shinshi.Data
 
         // 배열은 모두 시작 인원 1명부터 Constants.Session.MAX_PARTY_SIZE명 순서다
         [Header("시작 인원별 배율")]
-        [SerializeField] private float[] _enemyHealthScale = { 1f, 1.75f, 2.5f, 3.25f };
-        [SerializeField] private float[] _bossHealthScale  = { 1f, 1.8f, 2.6f, 3.4f };
+        [SerializeField] private float[] _enemyHealthScale = { 1f, 1.55f, 2.1f, 2.65f };
+        [SerializeField] private float[] _bossHealthScale  = { 1f, 1.6f, 2.2f, 2.8f };
         [SerializeField] private float[] _damageScale      = { 1f, 1.05f, 1.1f, 1.15f };
 
         [Header("부활")]

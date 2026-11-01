@@ -15,14 +15,14 @@ MonoBehaviour:
   _schemaVersion: 1
   _enemyHealthScale:
   - 1
-  - 1.75
-  - 2.5
-  - 3.25
+  - 1.55
+  - 2.1
+  - 2.65
   _bossHealthScale:
   - 1
-  - 1.8
-  - 2.6
-  - 3.4
+  - 1.6
+  - 2.2
+  - 2.8
   _damageScale:
   - 1
   - 1.05
