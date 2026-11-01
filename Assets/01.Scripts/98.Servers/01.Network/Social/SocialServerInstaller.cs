@@ -1,7 +1,11 @@
 // System
 using System;
 
+// 서드파티
+using Mirror;
+
 // 프로젝트 내부
+using Shinshi.Combat;
 using Shinshi.Common;
 
 namespace Shinshi.Network
@@ -28,6 +32,7 @@ namespace Shinshi.Network
             var router   = new SocialDeliveryRouter(audience, new SocialDeliveryLedger());
             var relay    = new SocialRelayServer(gateway, audience, role, null);
             var chat     = new SocialChatRelay(gateway, audience, router);
+            relay.GuildResolved += ApplyGuildName;
             SocialDeliveryPump pump = ((gateway != null) && (!string.IsNullOrEmpty(instanceId)) && (bootId != null))
                 ? new SocialDeliveryPump(gateway, audience, router, instanceId, bootId, null, warn)
                 : null;
@@ -45,6 +50,27 @@ namespace Shinshi.Network
 
             driver.Bind(host);
             return host;
+        }
+
+        // 접속 후 가입, 탈퇴, 강퇴가 접속 토큰의 길드 이름을 낡게 만든다. 스냅샷이 확인한 값으로 결합과 머리 위 표시를 맞춘다
+        private static void ApplyGuildName(int participantId, string guildName)
+        {
+            foreach (NetworkConnectionToClient connection in NetworkServer.connections.Values)
+            {
+                if ((!(connection.authenticationData is SessionBinding binding)) || (!binding.IsActive)
+                    || (binding.ParticipantId != participantId))
+                {
+                    continue;
+                }
+
+                binding.GuildName = guildName;
+                if ((connection.identity != null) && (connection.identity.TryGetComponent(out PlayerCombatState combat)))
+                {
+                    combat.SetGuildName(guildName);
+                }
+
+                return;
+            }
         }
     }
 }
