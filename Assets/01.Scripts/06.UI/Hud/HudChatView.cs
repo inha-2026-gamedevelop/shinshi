@@ -28,6 +28,8 @@ namespace Shinshi.UI
 
         private const int    TAB_COUNT          = 5;
         private const string WHISPER_USAGE_TEXT = "귓속말은 /w 이름 내용 으로 보냅니다.";
+        private const char   TAB_CHAR           = '\t';
+        private const char   NO_CHAR            = '\0';
 
         [Header("연결")]
         [SerializeField] private HotkeyRouter   _router   = null;
@@ -163,6 +165,7 @@ namespace Shinshi.UI
             if (_input != null)
             {
                 _input.onSubmit.AddListener(_onSubmit);
+                _input.onValidateInput += RejectTab;
             }
 
             if (_router != null)
@@ -171,6 +174,18 @@ namespace Shinshi.UI
             }
 
             SelectTab(_tab);
+        }
+
+        // 입력 중에 Tab을 누르면 입력 채널을 전체, 파티, 길드 순으로 넘긴다
+        private void Update()
+        {
+            UpdatePlaceholder();
+            if ((_input == null) || (_channel == null) || (!_input.isFocused) || (!Input.GetKeyDown(KeyCode.Tab)))
+            {
+                return;
+            }
+
+            SelectTab(ChatViewRules.NextInputTab(_channel.value));
         }
 
         private void OnDisable()
@@ -184,6 +199,7 @@ namespace Shinshi.UI
             if (_input != null)
             {
                 _input.onSubmit.RemoveListener(_onSubmit);
+                _input.onValidateInput -= RejectTab;
             }
 
             if (_router != null)
@@ -262,6 +278,28 @@ namespace Shinshi.UI
 
             _input.ActivateInputField();
             _input.caretPosition = _input.text.Length;
+        }
+
+        // 입력 칸이 켜져 있는 동안은 안내 문구를 숨겨 활성 상태를 구분하게 한다
+        private void UpdatePlaceholder()
+        {
+            if ((_input == null) || (_input.placeholder == null))
+            {
+                return;
+            }
+
+            GameObject placeholder = _input.placeholder.gameObject;
+            bool show = !_input.isFocused;
+            if (placeholder.activeSelf != show)
+            {
+                placeholder.SetActive(show);
+            }
+        }
+
+        // Tab은 채널을 넘기는 키라 문장에 글자로 들어가지 않게 한다
+        private static char RejectTab(string text, int charIndex, char addedChar)
+        {
+            return (addedChar == TAB_CHAR) ? NO_CHAR : addedChar;
         }
 
         // 거절되면 쓴 문장을 남겨 고쳐 보낼 수 있게 한다. 빈 Enter는 입력만 닫는다

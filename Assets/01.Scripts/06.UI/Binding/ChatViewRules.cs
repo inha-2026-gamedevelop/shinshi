@@ -133,6 +133,20 @@ namespace Shinshi.UI
             }
         }
 
+        /// <summary> 입력 중 Tab으로 넘길 다음 채널의 탭. 전체, 파티, 길드 순으로 돌고 길드 다음은 다시 전체다 </summary>
+        public static EChatTab NextInputTab(int dropdownIndex)
+        {
+            switch (dropdownIndex)
+            {
+                case DROPDOWN_ALL:
+                    return EChatTab.Party;
+                case DROPDOWN_PARTY:
+                    return EChatTab.Guild;
+                default:
+                    return EChatTab.All;
+            }
+        }
+
         /// <summary> 탭을 골랐을 때 입력 채널을 바꿀지. 시스템과 귓속말 탭은 보낼 채널이 아니라 바꾸지 않는다 </summary>
         public static bool ChangesInputChannel(EChatTab tab)
         {
