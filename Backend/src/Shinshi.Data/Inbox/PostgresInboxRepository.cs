@@ -242,7 +242,8 @@ namespace Shinshi.Data.Inbox
         }
 
         // 회수함 부분 수령: 줄마다 보관 상한까지 남은 공간만큼만 옮기고 남은 수량을 줄인다. 한 줄도 옮기지 못하면 효과 없이
-        // INVENTORY_FULL이다. 모든 줄이 0이 되면 수령 완료로 표시해 같은 우편을 다시 수령할 수 없다.
+        // INVENTORY_FULL(획득 캐릭터 삭제로만 막혔으면 CHARACTER_NOT_FOUND)이다. 캐릭터 자산은 요청 캐릭터가 아니라 줄의 획득
+        // 캐릭터 보유량으로 판정한다. 모든 줄이 0이 되면 수령 완료로 표시해 같은 우편을 다시 수령할 수 없다.
         // 잠금 순서: 우편 행(호출자) -> 줄 -> 계정 -> 지갑 -> 캐릭터 -> 아이템
         private async Task<OperationDecision> ClaimRecoveryAsync(OperationExecutionContext context,
             DbConnection connection, DbTransaction transaction, Guid accountId, Guid operationId, Guid inboxId,
@@ -267,6 +268,7 @@ namespace Shinshi.Data.Inbox
             string sourceId = inboxId.ToString("D");
             long moved = 0;
             long left = 0;
+            bool blockedBySpace = false;
             foreach (RecoveryLineRow line in lines.OrderBy(row => RecoveryInbox.KindRank(row.AssetKind))
                 .ThenBy(row => row.DefinitionId, StringComparer.Ordinal).ThenBy(row => row.LineNo))
             {
@@ -281,6 +283,7 @@ namespace Shinshi.Data.Inbox
                         current.Value, line.Remaining)
                     : 0;
                 left += line.Remaining - amount;
+                blockedBySpace |= current.HasValue && (amount < line.Remaining);
                 if (amount == 0)
                 {
                     continue;
@@ -300,9 +303,12 @@ namespace Shinshi.Data.Inbox
                 moved += amount;
             }
 
+            // 획득 캐릭터가 삭제돼 못 옮긴 줄만 남았으면 공간을 비워도 받을 수 없으므로 보관함 가득과 가른다
             if (moved == 0)
             {
-                return OperationDecision.Rejected(ContractCodes.RejectReason.INVENTORY_FULL);
+                return OperationDecision.Rejected(blockedBySpace
+                    ? ContractCodes.RejectReason.INVENTORY_FULL
+                    : ContractCodes.RejectReason.CHARACTER_NOT_FOUND);
             }
             if (left == 0)
             {

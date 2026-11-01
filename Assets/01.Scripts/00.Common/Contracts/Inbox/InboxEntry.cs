@@ -15,7 +15,7 @@ namespace Shinshi.Contracts
 
         // AdminGrant(운영자 지급), RecoveryCompensation(장애 보정), SessionReward, AuctionReward(보관 상한을 넘긴 정산, 낙찰 보상의
         // 30일 회수함). 회수함은 rewards에 남은 수량만 오고, 수령은 보관 상한까지만 옮기므로 여러 번 나눠 받을 수 있다
-        // (공간이 없으면 INVENTORY_FULL). 만료는 원래 획득 시각 + 30일이다
+        // (공간이 없으면 INVENTORY_FULL, 정련편 줄의 획득 캐릭터가 삭제됐으면 CHARACTER_NOT_FOUND). 만료는 원래 획득 시각 + 30일이다
         [DataMember(Name = "sourceKind")]        private string        _sourceKind;
         [DataMember(Name = "createdAtUnixMs")]   private long          _createdAtUnixMs;
         [DataMember(Name = "expiresAtUnixMs")]   private long          _expiresAtUnixMs;

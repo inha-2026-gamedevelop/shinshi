@@ -162,6 +162,74 @@ namespace Shinshi.Backend.Tests.Inbox
             Assert.Empty((await inbox.ListAsync(player.AccountId)).Entries);
         }
 
+        /// <summary> 정련편 줄은 획득 캐릭터 보유량으로만 판정한다. 그 캐릭터가 상한이면 다른 캐릭터로 받아도 INVENTORY_FULL이고,
+        /// 상한 아래로 내려가면 남은 수량 전부가 그 캐릭터에 들어간다 </summary>
+        [PostgresFact]
+        public async Task Claim_ShardLine_UsesAcquiringCharacterSpaceNotClaimingCharacter()
+        {
+            await using SessionTestEnvironment environment = await SessionTestEnvironment.CreateAsync();
+            (TestPlayer player, ReservedSessionView _) = await SettleOverLimitAsync(environment);
+            PostgresInboxRepository inbox = CreateInbox(environment);
+            Guid other = await AddCharacterAsync(environment, player);
+            Guid inboxId = Guid.Parse(await environment.TextAsync(
+                "SELECT inbox_id::text FROM reward_inbox WHERE account_id = @AccountId;", new { player.AccountId }));
+
+            // 티켓과 재료 줄을 먼저 모두 받아 정련편 줄만 남긴다. 정련편 획득 캐릭터는 아직 상한이다
+            await environment.ExecuteAsync(
+                """
+                UPDATE account_wallets SET tickets = 0 WHERE account_id = @AccountId;
+                UPDATE account_items SET quantity = 0 WHERE account_id = @AccountId AND definition_id = @Material;
+                """, new { player.AccountId, Material = MATERIAL_ID });
+            OperationResult others = await inbox.ClaimAsync(player.AccountId, Guid.NewGuid(), inboxId, other);
+            OperationResult full = await inbox.ClaimAsync(player.AccountId, Guid.NewGuid(), inboxId, other);
+
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, others.Status);
+            Assert.Equal(ContractCodes.RejectReason.INVENTORY_FULL, full.ReasonCode);
+            Assert.Equal(OVER_SHARDS, await LineAsync(environment, player, EconomyAsset.SHARDS, string.Empty));
+            Assert.Equal(0L, await environment.ScalarAsync(
+                "SELECT shards FROM characters WHERE character_id = @Other;", new { Other = other }));
+
+            await environment.ExecuteAsync("UPDATE characters SET shards = @Shards WHERE character_id = @CharacterId;",
+                new { player.CharacterId, Shards = RewardStorageLimits.MATERIAL_STACK - OVER_SHARDS });
+            OperationResult rest = await inbox.ClaimAsync(player.AccountId, Guid.NewGuid(), inboxId, other);
+
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, rest.Status);
+            Assert.Equal(RewardStorageLimits.MATERIAL_STACK, await ShardsAsync(environment, player));
+            Assert.Equal(0L, await LineAsync(environment, player, EconomyAsset.SHARDS, string.Empty));
+            Assert.Empty((await inbox.ListAsync(player.AccountId)).Entries);
+        }
+
+        /// <summary> 남은 줄이 삭제된 획득 캐릭터의 정련편뿐이면 공간 문제가 아니므로 INVENTORY_FULL이 아니라 CHARACTER_NOT_FOUND이고
+        /// 효과(잔액, 남은 수량, 원장)가 없다 </summary>
+        [PostgresFact]
+        public async Task Claim_OnlyDeletedCharacterLinesLeft_RejectsCharacterNotFoundWithoutEffect()
+        {
+            await using SessionTestEnvironment environment = await SessionTestEnvironment.CreateAsync();
+            (TestPlayer player, ReservedSessionView _) = await SettleOverLimitAsync(environment);
+            PostgresInboxRepository inbox = CreateInbox(environment);
+            Guid inboxId = Guid.Parse(await environment.TextAsync(
+                "SELECT inbox_id::text FROM reward_inbox WHERE account_id = @AccountId;", new { player.AccountId }));
+            await environment.ExecuteAsync(
+                """
+                UPDATE account_wallets SET tickets = 0 WHERE account_id = @AccountId;
+                UPDATE account_items SET quantity = 0 WHERE account_id = @AccountId AND definition_id = @Material;
+                UPDATE characters SET shards = 0, deleted_at = clock_timestamp(), delete_operation_id = gen_random_uuid()
+                WHERE character_id = @CharacterId;
+                """, new { player.AccountId, player.CharacterId, Material = MATERIAL_ID });
+
+            OperationResult others = await inbox.ClaimAsync(player.AccountId, Guid.NewGuid(), inboxId, null);
+            Guid blockedId = Guid.NewGuid();
+            OperationResult blocked = await inbox.ClaimAsync(player.AccountId, blockedId, inboxId, null);
+
+            Assert.Equal(ContractCodes.OperationStatus.COMMITTED, others.Status);
+            Assert.Equal(ContractCodes.OperationStatus.REJECTED, blocked.Status);
+            Assert.Equal(ContractCodes.RejectReason.CHARACTER_NOT_FOUND, blocked.ReasonCode);
+            Assert.Equal(OVER_SHARDS, await LineAsync(environment, player, EconomyAsset.SHARDS, string.Empty));
+            Assert.Equal(0L, await ShardsAsync(environment, player));
+            Assert.Equal(0L, await environment.ScalarAsync(
+                "SELECT count(*) FROM economy_ledger WHERE operation_id = @Id;", new { Id = blockedId }));
+        }
+
         /// <summary> 원래 획득 시각에서 30일이 지난 회수함은 목록에서 빠지고 수령은 INBOX_EXPIRED로 효과가 없다 </summary>
         [PostgresFact]
         public async Task Claim_AfterThirtyDays_IsExpiredAndHidden()
@@ -294,6 +362,16 @@ namespace Shinshi.Backend.Tests.Inbox
                 Assert.Equal(results[0].ReceiptId, result.ReceiptId);
             });
             return (player, session);
+        }
+
+        // 같은 계정의 두 번째 캐릭터(정련편 0)
+        private static async Task<Guid> AddCharacterAsync(SessionTestEnvironment environment, TestPlayer player)
+        {
+            Guid characterId = Guid.NewGuid();
+            await environment.ExecuteAsync(
+                "INSERT INTO characters (character_id, account_id, class_id) VALUES (@CharacterId, @AccountId, 0);",
+                new { CharacterId = characterId, player.AccountId });
+            return characterId;
         }
 
         private static PostgresInboxRepository CreateInbox(SessionTestEnvironment environment)
