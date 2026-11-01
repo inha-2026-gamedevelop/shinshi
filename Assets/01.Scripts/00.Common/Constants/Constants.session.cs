@@ -40,6 +40,10 @@ namespace Shinshi.Common
             // 초, start 호출이 일시 실패했을 때 같은 준비 집합으로 다시 부르는 간격
             public const double START_RETRY_SECONDS = 2.0;
 
+            // 초, 보스전 토벌 중단 투표가 열려 있는 시간과 부결 뒤 다시 열 수 있을 때까지의 간격
+            public const double STOP_VOTE_DURATION_SECONDS = 30.0;
+            public const double STOP_VOTE_RETRY_SECONDS    = 20.0;
+
             // 실패, 포기, 유예 만료 정산에서 남기는 추가 정기 비율(%)과 분모. 남는 값은 내림한다(101 -> 50).
             // TODO(민성): 기획 문서에 있는 값이지만 SessionConfigSO에 필드가 없어 여기 둔다. SO 필드를 만들면 옮긴다
             public const long FAILURE_EXTRA_ESSENCE_PERCENT = 50;

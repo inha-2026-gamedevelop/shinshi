@@ -51,6 +51,10 @@ namespace Shinshi.Network
         ****************************************/
 
         private const string GUID_FORMAT          = "D";
+
+        private const byte   STOP_VOTE_NONE       = 0;
+        private const byte   STOP_VOTE_AGREE      = 1;
+        private const byte   STOP_VOTE_DISAGREE   = 2;
         private const int    STATUS_BAD_REQUEST   = 400;
         private const int    STATUS_CONFLICT      = 409;
 
@@ -114,6 +118,12 @@ namespace Shinshi.Network
         private readonly EPlayerClass[]        _admittedClasses;
         private readonly AbandonSlot[]         _abandons;
         private readonly StatusSlot[]          _statuses;
+
+        // 보스전 토벌 중단 투표. 표는 메시지 처리기가 받아 두고 다음 틱 BeginTick 뒤에 넣는다(0 없음, 1 찬성, 2 반대)
+        private readonly SortieStopVote        _stopVote;
+        private readonly byte[]                _stopVoteRequests;
+        private readonly ERejectReason[]       _stopVoteRejects;
+        private int                            _stopVoteSentVersion = 0;
 
         // 명단 순서별 정산 보상 내역을 보냈는지, 정산안은 종료 때 한 번 만들어지므로 한 번만 보낸다
         private readonly bool[]                _rewardsSent;
@@ -294,6 +304,10 @@ namespace Shinshi.Network
             _admittedClasses   = new EPlayerClass[Constants.Session.MAX_PARTY_SIZE];
             _abandons          = new AbandonSlot[Constants.Session.MAX_PARTY_SIZE];
             _statuses          = new StatusSlot[Constants.Session.MAX_PARTY_SIZE];
+            _stopVote          = new SortieStopVote(Constants.Session.MAX_PARTY_SIZE, Constants.Session.STOP_VOTE_DURATION_SECONDS,
+                Constants.Session.STOP_VOTE_RETRY_SECONDS);
+            _stopVoteRequests  = new byte[Constants.Session.MAX_PARTY_SIZE];
+            _stopVoteRejects   = new ERejectReason[Constants.Session.MAX_PARTY_SIZE];
             _rewardsSent       = new bool[Constants.Session.MAX_PARTY_SIZE];
             _checkpoint        = new SessionCheckpointState(Constants.Session.MAX_PARTY_SIZE);
             _checkpointStream  = new MemoryStream(CHECKPOINT_INITIAL_BYTES);
@@ -434,6 +448,19 @@ namespace Shinshi.Network
             slot.Result      = ERejectReason.None;
         }
 
+        /// <summary> 인증된 연결의 토벌 중단 표를 받아 둔다, 다음 틱 BeginTick 뒤 넣고 진행은 참가자마다 보낸다 </summary>
+        public void RequestStopVote(int participantId, bool agree)
+        {
+            int index = IndexOfRoster(participantId);
+            if ((index < 0) || (_disposed))
+            {
+                return;
+            }
+
+            // 한 틱에 여러 번 와도 마지막 표만 넣는다. 이미 낸 표는 투표 규칙이 다시 받지 않는다
+            _stopVoteRequests[index] = agree ? STOP_VOTE_AGREE : STOP_VOTE_DISAGREE;
+        }
+
         /// <summary> 이 참가자에게 지금 출정 상태를 보낸다, 접속, 재접속 때 부른다 </summary>
         public void SendStatusTo(int participantId)
         {
@@ -493,6 +520,7 @@ namespace Shinshi.Network
 
             _inTick = true;
             ProcessAbandons(serverTime);
+            ProcessStopVotes(serverTime);
             return true;
         }
 
@@ -1427,6 +1455,79 @@ namespace Shinshi.Network
                 }
 
                 CompleteAbandon(ref slot, participantId, reason);
+            }
+        }
+
+        // 포기 처리 뒤에 넣어 같은 틱에 떠난 참가자는 자격에서 빠진다. 가결되면 같은 틱 CompleteTick이 출정을 포기로 끝낸다
+        private void ProcessStopVotes(double serverTime)
+        {
+            bool canVote      = (_session.IsRunning) && (_session.IsBossSession);
+            int  eligibleMask = canVote ? StopVoteEligibleMask() : 0;
+            bool hasReject    = false;
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                byte request = _stopVoteRequests[i];
+                if (request == STOP_VOTE_NONE)
+                {
+                    continue;
+                }
+
+                _stopVoteRequests[i] = STOP_VOTE_NONE;
+                ERejectReason reason = canVote
+                    ? _stopVote.Cast(i, request == STOP_VOTE_AGREE, serverTime, eligibleMask)
+                    : ERejectReason.WrongPhase;
+                if (reason != ERejectReason.None)
+                {
+                    _stopVoteRejects[i] = reason;
+                    hasReject           = true;
+                }
+            }
+
+            if ((canVote) && (_stopVote.Evaluate(serverTime, eligibleMask) == ESortieStopVoteState.Passed))
+            {
+                _session.RequestVoteStop();
+            }
+
+            if ((hasReject) || (_stopVote.Version != _stopVoteSentVersion))
+            {
+                PublishStopVote(serverTime);
+            }
+        }
+
+        // 접속 중이고 떠나지 않은 참가자만 표를 낸다. 재접속을 기다리는 참가자 때문에 투표가 묶이지 않게 한다
+        private int StopVoteEligibleMask()
+        {
+            int mask = 0;
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                if (_roster.GetAt(i).ConnectionState == EParticipantConnectionState.Connected)
+                {
+                    mask |= 1 << i;
+                }
+            }
+
+            return mask;
+        }
+
+        private void PublishStopVote(double serverTime)
+        {
+            _stopVoteSentVersion = _stopVote.Version;
+            float remaining = (_stopVote.State == ESortieStopVoteState.Open)
+                ? (float)Math.Max(0.0, _stopVote.EndsAt - serverTime)
+                : 0f;
+            for (int i = 0; i < _roster.Count; ++i)
+            {
+                ERejectReason reject = _stopVoteRejects[i];
+                _stopVoteRejects[i] = ERejectReason.None;
+                if (SortieAudience == null)
+                {
+                    continue;
+                }
+
+                var message = new SortieStopVoteStateMessage(_stopVote.State, (byte)_stopVote.AgreeCount,
+                    (byte)_stopVote.DisagreeCount, (byte)_stopVote.RequiredCount, (byte)_stopVote.EligibleCount,
+                    _stopVote.GetChoice(i), remaining, reject);
+                SortieAudience.SendStopVote(_roster.GetAt(i).ParticipantId, in message);
             }
         }
 

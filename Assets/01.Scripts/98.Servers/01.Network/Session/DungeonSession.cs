@@ -81,6 +81,7 @@ namespace Shinshi.Network
         private bool              _timeoutPending      = false;
         private bool              _finalSuccessPending = false;
         private bool              _failurePending      = false;
+        private bool              _voteStopPending     = false;
         private bool              _storageFault        = false;
         private bool              _disposed            = false;
         private ESessionEndReason _endReason;
@@ -460,6 +461,10 @@ namespace Shinshi.Network
                 {
                     Finish(ESessionEndReason.Success);
                 }
+                else if (_voteStopPending)
+                {
+                    Finish(ESessionEndReason.Abandon);
+                }
                 else if (_roster.ActiveCount == 0)
                 {
                     Finish(_lastDepartureReason);
@@ -793,6 +798,19 @@ namespace Shinshi.Network
                 _failureReason  = reason;
             }
 
+            return true;
+        }
+
+        // 새 종료 사유를 만들면 정산과 백엔드 계약이 바뀌므로 전원 포기와 같은 Abandon으로 닫는다. 보상은 실패 정산과 같다
+        /// <summary> 보스전 토벌 중단 투표가 가결된 틱 안에서 부른다, 같은 틱 CompleteTick이 출정 전체를 포기로 끝낸다 </summary>
+        public bool RequestVoteStop()
+        {
+            if ((!IsRunning) || (!_inTick) || (!_isBossSession) || (_storageFault))
+            {
+                return false;
+            }
+
+            _voteStopPending = true;
             return true;
         }
 
