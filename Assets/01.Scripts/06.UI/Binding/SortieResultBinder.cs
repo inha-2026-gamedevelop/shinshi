@@ -12,14 +12,13 @@ using Shinshi.Network;
 namespace Shinshi.UI
 {
     /// <summary> 던전 출정이 끝나면 결과 창을 띄우고, 귀환 버튼으로 마을에 다시 접속한다 </summary>
-    // 마을 재접속은 씬을 다시 불러 이 개체가 사라지므로 귀환 흐름 코루틴은 씬을 넘어 남는 네트워크 매니저에서 돌린다
+    // 마을 재접속은 씬을 다시 불러 이 개체가 사라지므로 귀환 흐름은 씬을 넘어 남는 네트워크 매니저가 돌린다.
+    // 정산 뒤 던전이 연결을 닫을 때의 자동 귀환과 같은 흐름 하나를 쓰고, 마을 접속 실패의 캐릭터 선택 이동도 매니저가 맡는다
     public sealed class SortieResultBinder : MonoBehaviour
     {
         /****************************************
         *                Fields
         ****************************************/
-
-        private static SortieReturnFlow _returnFlow = null;
 
         [SerializeField] private GameObject       _window = null;
         [SerializeField] private ResultScreenView _view   = null;
@@ -30,13 +29,6 @@ namespace Shinshi.UI
         /****************************************
         *              Unity Event
         ****************************************/
-
-        // 도메인 리로드를 끈 에디터에서 이전 플레이의 흐름이 남지 않게 한다
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatic()
-        {
-            _returnFlow = null;
-        }
 
         private void OnEnable()
         {
@@ -140,35 +132,25 @@ namespace Shinshi.UI
                 return;
             }
 
-            if ((_returnFlow != null) && (_returnFlow.IsRunning))
+            // 이미 마을로 옮기는 중이거나 메뉴로 나가는 중이다
+            var manager = NetworkManager.singleton as ShinshiNetworkManager;
+            if ((manager != null) && (manager.IsTransferringServer))
             {
                 return;
             }
 
-            var    manager       = NetworkManager.singleton as ShinshiNetworkManager;
-            var    authenticator = (manager != null) ? manager.authenticator as ShinshiClientAuthenticator : null;
-            string characterId   = LobbyFlow.ActiveCharacterId;
-            if ((manager == null) || (authenticator == null) || (string.IsNullOrEmpty(characterId)))
+            if ((manager == null) || (!manager.TryReturnToTown(OnReturnFinished)))
             {
                 LobbyFlow.ReturnToCharacterSelect("마을로 돌아갈 정보가 없다. 캐릭터를 다시 고른다.");
-                return;
             }
-
-            _returnFlow = new SortieReturnFlow(new LobbyApiClient(), manager, authenticator);
-            manager.StartCoroutine(_returnFlow.Run(characterId, OnReturnFinished));
         }
 
+        // 연결이 남은 실패(입장권 단계)만 안내한다. 연결이 없는 실패는 매니저가 캐릭터 선택으로 보낸다.
         // 이 개체는 마을 씬을 다시 불러 사라졌을 수 있다. 화면은 살아 있을 때만 만진다
         private void OnReturnFinished(ERejectReason reason)
         {
-            if (reason == ERejectReason.None)
+            if ((reason == ERejectReason.None) || (!NetworkClient.isConnected))
             {
-                return;
-            }
-
-            if (!NetworkClient.isConnected)
-            {
-                LobbyFlow.ReturnToCharacterSelect("마을 서버에 접속하지 못했다. 다시 게임 시작을 누른다.");
                 return;
             }
 

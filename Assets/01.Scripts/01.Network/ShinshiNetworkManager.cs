@@ -1,5 +1,6 @@
 // System
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -23,9 +24,23 @@ namespace Shinshi.Network
         *                Fields
         ****************************************/
 
+        // 메뉴로 나갈 때 포기 뒤 이탈 기록 저장(계정 임대 해제)을 기다리는 상한. 넘기면 그대로 끊는다
+        private const float LEAVE_DEPARTURE_WAIT_SECONDS = 10f;
+
         private readonly Dictionary<uint, GameObject> _spawnPrefabsByAssetId = new Dictionary<uint, GameObject>();
 
         private EServerRole _serverRole = EServerRole.Town;
+
+        // 던전에서 마을로 옮기는 흐름. 결과 창의 귀환 버튼과 정산 뒤 던전의 연결 끊김이 같은 흐름 하나를 쓴다.
+        // 클라이언트 빌드의 Awake에서만 만들어 서버 빌드에서는 null이다
+        private SortieReturnFlow      _returnFlow       = null;
+        private Action<ERejectReason> _onReturnFinished = null;
+        private Action<ERejectReason> _returnListener   = null;
+
+        // 메뉴의 캐릭터 선택이 포기 결과와 이탈 저장을 기다리는 중이다
+        private Action<SortieAbandonResultMessage> _onLeaveAbandonResult = null;
+        private bool                               _isLeaving            = false;
+        private bool                               _leaveAbandonRejected = false;
 
         // 씬에 저장한 onlineScene은 마을 씬이다. 던전 역할은 이 값이 있을 때만 던전 씬으로 바꾼다.
         // 서버와 클라이언트가 같은 역할 설정으로 같은 값을 써야 클라이언트가 서버의 씬 안내를 기다린다
@@ -61,6 +76,10 @@ namespace Shinshi.Network
         public string CurrentMapName => _dungeonMapName;
         public bool   IsLoading      => _isMapLoading;
 
+        // 메뉴로 나가면 진행 중인 출정을 포기하게 되는지. 확인 창 문구에 쓴다
+        public bool WillAbandonSortieOnLeave => (NetworkClient.isConnected)
+            && (SortieExitRules.ShouldAbandonBeforeLeave(_serverRole == EServerRole.Dungeon, SortieClient.HasStatus, SortieClient.Current));
+
 #if !UNITY_SERVER
         // 마을 -> 던전 이동이 끝났다. None이면 던전 인증 성공, 아니면 거절 사유다. 출정 화면(UI 담당)이 안내에 쓴다
         public event Action<ERejectReason> SortieDepartFinished;
@@ -82,6 +101,8 @@ namespace Shinshi.Network
             {
                 _departFlow       = new SortieDepartFlow(this, clientAuthenticator);
                 _onDepartFinished = OnSortieDepartFinished;
+                _returnFlow       = new SortieReturnFlow(new LobbyApiClient(), this, clientAuthenticator);
+                _onReturnFinished = OnReturnToTownFinished;
                 TownPartyClient.SortieTicketReceived += OnSortieTicketReceived;
             }
 #endif
@@ -396,6 +417,19 @@ namespace Shinshi.Network
             SocialClient.ResetConnection();
             ChatClient.ResetConnection();
 
+#if !UNITY_SERVER
+            bool lostGameScene = (!IsTransferringServer) && (!NetworkServer.active) && (IsGameSceneActive());
+
+            // 정산 뒤 결과 창 대기 시간이 지나 던전이 연결을 닫은 경우처럼, 출정 결과가 저장돼 귀환할 수 있는 던전에서 끊기면
+            // 캐릭터 선택이 아니라 마을로 보낸다. 귀환 흐름은 첫 단계(입장권 요청)에서 Mirror를 건드리지 않아 끊김 처리 중에 시작해도 된다.
+            // 흐름이 서버 이동 중 표시를 세우므로 대화 기록도 이어서 둔다
+            if ((lostGameScene) && (SortieExitRules.ShouldReturnToTownOnDisconnect(_serverRole == EServerRole.Dungeon,
+                SortieClient.HasStatus, SortieClient.Current)) && (TryReturnToTown(null)))
+            {
+                return;
+            }
+#endif
+
             // 마을과 던전 사이를 옮길 때는 대화와 전달 ID 중복 기억을 이어서 둔다. 새 서버가 다시 보낸 줄도 걸러진다
             if (!IsTransferringServer)
             {
@@ -403,13 +437,128 @@ namespace Shinshi.Network
             }
 
 #if !UNITY_SERVER
-            if ((!IsTransferringServer) && (!string.IsNullOrEmpty(_townOnlineScene))
-                && ((Utils.IsSceneActive(_townOnlineScene)) || (DungeonMapRules.IsDungeonSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)))
-                && (!NetworkServer.active))
+            if (lostGameScene)
             {
                 LobbyFlow.ReturnToCharacterSelect("서버와 연결이 끊겼다. 다시 게임 시작을 누른다.");
             }
 #endif
+        }
+
+        /// <summary> 던전에서 마을로 돌아가는 흐름을 시작한다. 이미 서버를 옮기는 중이거나 돌아갈 캐릭터가 없으면 거짓이고, listener는 결과를 한 번 받는다 </summary>
+        public bool TryReturnToTown(Action<ERejectReason> listener)
+        {
+            string characterId = LobbyFlow.ActiveCharacterId;
+            if ((_returnFlow == null) || (_returnFlow.IsRunning) || (_isLeaving) || (IsTransferringServer)
+                || (NetworkServer.active) || (string.IsNullOrEmpty(characterId)))
+            {
+                return false;
+            }
+
+            _returnListener = listener;
+            StartCoroutine(_returnFlow.Run(characterId, _onReturnFinished));
+            return true;
+        }
+
+        /// <summary> 메뉴의 캐릭터 선택. 귀환 전인 던전 출정이면 포기를 보내고 이탈 저장을 기다린 뒤 끊는다. 이미 옮기는 중이면 거짓 </summary>
+        public bool LeaveToCharacterSelect()
+        {
+            if ((IsTransferringServer) || (_isLeaving) || (NetworkServer.active))
+            {
+                return false;
+            }
+
+            if ((NetworkClient.isConnected) && (SortieExitRules.ShouldWaitBeforeLeave(_serverRole == EServerRole.Dungeon,
+                SortieClient.HasStatus, SortieClient.Current)))
+            {
+                StartCoroutine(CoLeaveAfterDeparture());
+                return true;
+            }
+
+            LeaveNow();
+            return true;
+        }
+
+        // 그대로 끊으면 던전이 재접속 유예 동안 계정 임대를 쥐어 다음 마을, 프롤로그 입장이 이미 접속 중으로 막힌다
+        private IEnumerator CoLeaveAfterDeparture()
+        {
+            _isLeaving            = true;
+            _leaveAbandonRejected = false;
+            IsTransferringServer  = true;
+            if (_onLeaveAbandonResult == null)
+            {
+                _onLeaveAbandonResult = OnLeaveAbandonResult;
+            }
+
+            SortieClient.AbandonResult += _onLeaveAbandonResult;
+            try
+            {
+                if (SortieExitRules.ShouldAbandonBeforeLeave(_serverRole == EServerRole.Dungeon, SortieClient.HasStatus,
+                    SortieClient.Current))
+                {
+                    SortieClient.RequestAbandon();
+                }
+
+                float deadline = Time.realtimeSinceStartup + LEAVE_DEPARTURE_WAIT_SECONDS;
+                while ((NetworkClient.isConnected) && (!_leaveAbandonRejected) && (Time.realtimeSinceStartup < deadline)
+                    && (!SortieExitRules.IsLeaveReady(SortieClient.HasStatus, SortieClient.Current)))
+                {
+                    yield return null;
+                }
+            }
+            finally
+            {
+                SortieClient.AbandonResult -= _onLeaveAbandonResult;
+                IsTransferringServer = false;
+                _isLeaving           = false;
+            }
+
+            LeaveNow();
+        }
+
+        // 출정이 이미 끝나 거절된 포기(SessionTerminal)는 곧 종료 저장으로 귀환 가능이 되므로 계속 기다린다
+        private void OnLeaveAbandonResult(SortieAbandonResultMessage message)
+        {
+            if ((message.Reason != ERejectReason.None) && (message.Reason != ERejectReason.SessionTerminal))
+            {
+                _leaveAbandonRejected = true;
+            }
+        }
+
+        private void LeaveNow()
+        {
+            // 의도한 종료를 접속 장애로 처리해 씬을 두 번 열지 않도록 서버 이동 중 표시를 잠시 세운다
+            IsTransferringServer = true;
+            try
+            {
+                StopClient();
+            }
+            finally
+            {
+                IsTransferringServer = false;
+            }
+
+            ChatClient.ClearHistory();
+            LobbyFlow.ReturnToCharacterSelect(string.Empty);
+        }
+
+        // 실패했고 연결이 남지 않았으면(마을 접속 단계 실패, 던전이 이미 끊음) 캐릭터 선택으로 보낸다. 입장권 단계 실패는 던전에 남는다
+        private void OnReturnToTownFinished(ERejectReason reason)
+        {
+            Action<ERejectReason> listener = _returnListener;
+            _returnListener = null;
+            if ((reason != ERejectReason.None) && (!NetworkClient.isConnected) && (!NetworkServer.active))
+            {
+                LobbyFlow.ReturnToCharacterSelect("마을 서버에 접속하지 못했다. 다시 게임 시작을 누른다.");
+            }
+
+            listener?.Invoke(reason);
+        }
+
+        // 마을 씬이나 던전 씬에 있다. 로비, 캐릭터 선택에서의 접속 실패는 화면이 직접 안내한다
+        private bool IsGameSceneActive()
+        {
+            return (!string.IsNullOrEmpty(_townOnlineScene))
+                && ((Utils.IsSceneActive(_townOnlineScene)) || (DungeonMapRules.IsDungeonSceneName(SceneManager.GetActiveScene().name)));
         }
 
 #if !UNITY_SERVER
