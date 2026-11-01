@@ -55,7 +55,7 @@ namespace Shinshi.UI
 
         private Func<bool> _onEscape = null;
 
-        // 숨기기 전에 켜져 있던 것만 닫을 때 되살린다
+        // 숨기기 전에 켜져 있던 것만 닫을 때 되살린다. Awake 전에는 비어 있고 EnsureHideState가 만든다
         private bool[] _wasActive = null;
 
         private readonly Vector3[] _corners = new Vector3[CORNER_COUNT];
@@ -71,29 +71,45 @@ namespace Shinshi.UI
         *              Unity Event
         ****************************************/
 
+        // 패널이 없으면 메뉴 자체가 없으므로 끈다. 메뉴 버튼만 빠졌으면 오류를 남기되 Esc로는 계속 열 수 있게 켜 둔다
         protected override void OnViewAwake()
         {
-            if ((_menuButton == null) || (_panel == null))
+            if (_panel == null)
             {
-                Debug.LogError("[UI] 메뉴에 메뉴 버튼이나 패널이 연결되지 않았다", this);
+                Debug.LogError("[UI] 메뉴에 패널이 연결되지 않았다", this);
                 enabled = false;
                 return;
             }
 
-            _wasActive = new bool[(_hideWhileOpen != null) ? _hideWhileOpen.Length : 0];
+            if (_menuButton == null)
+            {
+                Debug.LogError("[UI] 메뉴에 메뉴 버튼이 연결되지 않았다. Esc로만 열린다", this);
+            }
+
+            EnsureHideState();
             ApplyKoreanFont();
             _panel.gameObject.SetActive(false);
         }
 
+        // Awake에서 꺼진 경우에도 유니티가 OnDisable을 부를 수 있어 OnEnable, OnDisable 모두 연결이 빠진 상태를 견딘다
         private void OnEnable()
         {
+            if (_panel == null)
+            {
+                return;
+            }
+
             _onEscape = OnEscape;
             if (_router != null)
             {
                 _router.Register(EHotkeyAction.CloseWindow, _onEscape);
             }
 
-            _menuButton.onClick.AddListener(Toggle);
+            if (_menuButton != null)
+            {
+                _menuButton.onClick.AddListener(Toggle);
+            }
+
             foreach (Button item in _panel.GetComponentsInChildren<Button>(true))
             {
                 item.onClick.AddListener(Close);
@@ -102,12 +118,21 @@ namespace Shinshi.UI
 
         private void OnDisable()
         {
-            if (_router != null)
+            if ((_router != null) && (_onEscape != null))
             {
                 _router.Unregister(EHotkeyAction.CloseWindow, _onEscape);
             }
 
-            _menuButton.onClick.RemoveListener(Toggle);
+            if (_menuButton != null)
+            {
+                _menuButton.onClick.RemoveListener(Toggle);
+            }
+
+            if (_panel == null)
+            {
+                return;
+            }
+
             foreach (Button item in _panel.GetComponentsInChildren<Button>(true))
             {
                 item.onClick.RemoveListener(Close);
@@ -116,6 +141,11 @@ namespace Shinshi.UI
 
         private void Update()
         {
+            if (_panel == null)
+            {
+                return;
+            }
+
             // 라우터가 있으면 Esc는 라우터의 창 닫기 처리기로 받는다. 없을 때만 직접 본다
             if ((_router == null) && (!IsEscapeSuppressed) && (Input.GetKeyDown(KeyCode.Escape)))
             {
@@ -426,7 +456,7 @@ namespace Shinshi.UI
 
         private bool OnEscape()
         {
-            if (IsEscapeSuppressed)
+            if ((IsEscapeSuppressed) || (_panel == null))
             {
                 return false;
             }
@@ -437,6 +467,11 @@ namespace Shinshi.UI
 
         private void Toggle()
         {
+            if (_panel == null)
+            {
+                return;
+            }
+
             if (_panel.gameObject.activeSelf)
             {
                 Close();
@@ -446,8 +481,24 @@ namespace Shinshi.UI
             Open();
         }
 
+        // 숨김 목록 길이와 기억 배열 길이가 어긋나면 다시 만든다. Awake를 거치지 않고 열린 경우도 여기서 맞춘다
+        private void EnsureHideState()
+        {
+            int count = (_hideWhileOpen != null) ? _hideWhileOpen.Length : 0;
+            if ((_wasActive == null) || (_wasActive.Length != count))
+            {
+                _wasActive = new bool[count];
+            }
+        }
+
         private void Open()
         {
+            if (_panel == null)
+            {
+                return;
+            }
+
+            EnsureHideState();
             for (int i = 0; i < _wasActive.Length; ++i)
             {
                 GameObject target = _hideWhileOpen[i];
@@ -464,13 +515,14 @@ namespace Shinshi.UI
 
         private void Close()
         {
-            if (!_panel.gameObject.activeSelf)
+            if ((_panel == null) || (!_panel.gameObject.activeSelf))
             {
                 return;
             }
 
             _panel.gameObject.SetActive(false);
             UiSound.Play(EUiSoundGroup.Common, EUiSoundAction.Close);
+            EnsureHideState();
             for (int i = 0; i < _wasActive.Length; ++i)
             {
                 if ((_wasActive[i]) && (_hideWhileOpen[i] != null))
@@ -483,8 +535,13 @@ namespace Shinshi.UI
         private bool IsPointerOnMenu()
         {
             Vector2 point = Input.mousePosition;
-            return RectTransformUtility.RectangleContainsScreenPoint(_panel, point, null)
-                || RectTransformUtility.RectangleContainsScreenPoint((RectTransform)_menuButton.transform, point, null);
+            if (RectTransformUtility.RectangleContainsScreenPoint(_panel, point, null))
+            {
+                return true;
+            }
+
+            return (_menuButton != null)
+                && (RectTransformUtility.RectangleContainsScreenPoint((RectTransform)_menuButton.transform, point, null));
         }
     }
 }

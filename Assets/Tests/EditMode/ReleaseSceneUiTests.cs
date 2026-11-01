@@ -13,6 +13,7 @@ using UnityEngine.UI;
 
 // 서드파티
 using NUnit.Framework;
+using TMPro;
 
 // 프로젝트 내부
 using Shinshi.Common;
@@ -233,6 +234,72 @@ namespace Shinshi.Tests
             Assert.That(router.Trigger(EHotkeyAction.CloseWindow), Is.True);
             Assert.That(popup.gameObject.activeSelf, Is.False);
             Assert.That(panel.gameObject.activeSelf, Is.False);
+        }
+
+        // 맵 정리 커밋에서 HUD 메뉴 묶음(MenuGroup)이 함께 지워져 실행 중 메뉴 버튼 연결 오류와 NullReferenceException이 났던 회귀
+        [TestCase(Constants.Scene.SHINSHI_TOWN)]
+        [TestCase(Constants.Scene.DUNGEON_FOREST)]
+        [TestCase(Constants.Scene.DUNGEON_MUCHEOL)]
+        [TestCase(Constants.Scene.DUNGEON_WOLBAEK)]
+        [TestCase(Constants.Scene.DUNGEON_PROLOGUE)]
+        public void HudMenu_SavedScene_HasMenuButtonPanelAndShortcuts(string sceneName)
+        {
+            Scene scene = EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + sceneName + Constants.Scene.EXTENSION,
+                OpenSceneMode.Additive);
+            try
+            {
+                HudMenuDropdown menu = InScene<HudMenuDropdown>(scene);
+                Button menuButton = Reference<Button>(menu, "_menuButton");
+                Assert.That(menuButton, Is.Not.Null, $"{sceneName}: 메뉴 버튼");
+                Assert.That(Reference<RectTransform>(menu, "_panel"), Is.Not.Null, $"{sceneName}: 메뉴 패널");
+                Assert.That(menuButton.gameObject.scene, Is.EqualTo(scene), $"{sceneName}: 메뉴 버튼이 씬 안에 있어야 한다");
+                foreach (string shortcut in new[] { "Inventory", "Profile" })
+                {
+                    Transform target = menuButton.transform.parent.Find(shortcut);
+                    Assert.That(target, Is.Not.Null, $"{sceneName}: {shortcut} 바로가기");
+                    Button button = target.GetComponent<Button>();
+                    Assert.That(button.onClick.GetPersistentEventCount(), Is.GreaterThan(0), $"{sceneName}: {shortcut} 연결");
+                    Assert.That(button.onClick.GetPersistentTarget(0), Is.Not.Null, $"{sceneName}: {shortcut} 연결 대상");
+                }
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        // 같은 맵 정리 커밋에서 채팅 탭(전체, 길드)과 미니맵 지역 이름표·내 위치 표시도 지워졌던 회귀. 시스템 탭은 화면에 두지 않는다
+        [TestCase(Constants.Scene.SHINSHI_TOWN)]
+        [TestCase(Constants.Scene.DUNGEON_FOREST)]
+        [TestCase(Constants.Scene.DUNGEON_MUCHEOL)]
+        [TestCase(Constants.Scene.DUNGEON_WOLBAEK)]
+        public void ChatTabsAndMinimap_SavedScene_KeepAllReferences(string sceneName)
+        {
+            Scene scene = EditorSceneManager.OpenScene(Constants.Scene.RELEASE_FOLDER + sceneName + Constants.Scene.EXTENSION,
+                OpenSceneMode.Additive);
+            try
+            {
+                HudChatView chat = InScene<HudChatView>(scene);
+                var data = new SerializedObject(chat);
+                EChatTab[] tabs = { EChatTab.All, EChatTab.Party, EChatTab.Guild, EChatTab.Whisper };
+                foreach (string field in new[] { "_tabs", "_tabLabels", "_underlines" })
+                {
+                    SerializedProperty array = data.FindProperty(field);
+                    foreach (EChatTab tab in tabs)
+                    {
+                        Assert.That((int)tab, Is.LessThan(array.arraySize), $"{sceneName}: {field}");
+                        Assert.That(array.GetArrayElementAtIndex((int)tab).objectReferenceValue, Is.Not.Null, $"{sceneName}: {field}[{tab}]");
+                    }
+                }
+
+                MinimapView minimap = InScene<MinimapView>(scene);
+                Assert.That(Reference<RectTransform>(minimap, "_selfMarker"), Is.Not.Null, $"{sceneName}: 미니맵 내 위치 표시");
+                Assert.That(Reference<TMP_Text>(minimap, "_nameLabel"), Is.Not.Null, $"{sceneName}: 미니맵 지역 이름");
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
         }
 
         [TestCase(Constants.Scene.SHINSHI_TOWN)]
