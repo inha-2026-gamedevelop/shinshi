@@ -171,7 +171,7 @@ namespace Shinshi.Network
             _sessionConfig      = config;
             _lootSalt           = (lootSalt != null) ? (byte[])lootSalt.Clone() : LootRoller.CreateSalt();
             _revives            = _isBossSession ? new ReviveBudget(config.BossSharedRevives) : null;
-            _timeLimitSeconds   = (waveConfig != null) ? waveConfig.TimeLimitSeconds : 0.0;
+            _timeLimitSeconds   = (waveConfig != null) ? waveConfig.TimeLimitSeconds : (_isBossSession ? config.BossTimeLimitSeconds : 0.0);
             int waveCount       = (wave != null) ? waveConfig.Waves.Count : 0;
             int sourceCount     = (wave != null) ? waveConfig.CountTotalEnemies() : 0;
             _expectedKills      = new int[waveCount];
@@ -464,7 +464,7 @@ namespace Shinshi.Network
                 {
                     Finish(_lastDepartureReason);
                 }
-                else if ((_timeoutPending) || ((!_isBossSession) && (!_isPrologue) && ((_serverTime - _startTime) >= _timeLimitSeconds)))
+                else if ((_timeoutPending) || ((!_isPrologue) && ((_serverTime - _startTime) >= _timeLimitSeconds)))
                 {
                     Finish(ESessionEndReason.Timeout);
                 }
