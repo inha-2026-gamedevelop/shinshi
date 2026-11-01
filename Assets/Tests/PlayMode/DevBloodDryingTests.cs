@@ -63,6 +63,60 @@ namespace Shinshi.Tests
             Assert.IsFalse(renderer.enabled);
         }
 
+        [UnityTest]
+        public IEnumerator CameraMovement_LeavesStainOnGroundAndDestroysPoolWithCamera()
+        {
+            var cameraObject = new GameObject("BloodTestCamera");
+            Component feedback = cameraObject.AddComponent(Type.GetType("Shinshi.Art.CombatCameraFeedback, Shinshi.Runtime"));
+            Component blood = (Component)feedback.GetType().GetField("_blood", PRIVATE_INSTANCE).GetValue(feedback);
+            Assert.IsNotNull(blood);
+            blood.GetType().GetMethod("StampLandingBlood").Invoke(blood, new object[] { s_point, 1f });
+            Array stains = (Array)blood.GetType().GetField("_stains", PRIVATE_INSTANCE).GetValue(blood);
+            MeshRenderer renderer = Renderer(stains.GetValue(0));
+            Assert.IsTrue(renderer.enabled);
+            Vector3 vertex = renderer.GetComponent<MeshFilter>().sharedMesh.vertices[0];
+            Vector3 before = renderer.transform.TransformPoint(vertex);
+            cameraObject.transform.SetPositionAndRotation(new Vector3(12f, 4f, -7f), Quaternion.Euler(15f, 70f, 0f));
+            yield return null;
+            Vector3 after = renderer.transform.TransformPoint(vertex);
+            Assert.That(Vector3.Distance(before, after), Is.LessThan(0.001f));
+            UnityEngine.Object.Destroy(cameraObject);
+            yield return null;
+            Assert.IsTrue(blood == null);
+        }
+
+        [Test]
+        public void BossTarget_RemainsExcludedAfterBossLeavesAndResetsOnUnbind()
+        {
+            var cameraObject = new GameObject("BloodBossTestCamera");
+            var bossObject = new GameObject("BloodBossTestTarget");
+            Type feedbackType = Type.GetType("Shinshi.Art.CombatCameraFeedback, Shinshi.Runtime");
+            Type bossType = Type.GetType("Shinshi.AI.BossState, Shinshi.Runtime");
+            Type registryType = Type.GetType("Shinshi.Combat.BossBodyBlockerRegistry, Shinshi.Runtime");
+            Component feedback = cameraObject.AddComponent(feedbackType);
+            Component boss = bossObject.AddComponent(bossType);
+            bossType.GetField("_combatId", PRIVATE_INSTANCE).SetValue(boss, 789);
+            MethodInfo register = registryType.GetMethod("Register");
+            MethodInfo unregister = registryType.GetMethod("Unregister");
+            MethodInfo isBoss = feedbackType.GetMethod("IsBossBloodTarget", PRIVATE_INSTANCE);
+            register.Invoke(null, new object[] { boss });
+            try
+            {
+                Assert.IsFalse((bool)isBoss.Invoke(feedback, new object[] { 456 }));
+                Assert.IsTrue((bool)isBoss.Invoke(feedback, new object[] { 789 }));
+                unregister.Invoke(null, new object[] { boss });
+                Assert.IsTrue((bool)isBoss.Invoke(feedback, new object[] { 789 }));
+                feedbackType.GetMethod("Unbind", PRIVATE_INSTANCE).Invoke(feedback, null);
+                Assert.IsFalse((bool)isBoss.Invoke(feedback, new object[] { 789 }));
+            }
+            finally
+            {
+                unregister.Invoke(null, new object[] { boss });
+                UnityEngine.Object.Destroy(cameraObject);
+                UnityEngine.Object.Destroy(bossObject);
+            }
+        }
+
         [Test]
         public void Stain_FullPoolFadesOldSurfaceBeforeReusingMesh()
         {

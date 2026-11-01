@@ -1,3 +1,6 @@
+// System
+using System.Collections.Generic;
+
 // Unity
 using UnityEngine;
 
@@ -115,6 +118,8 @@ namespace Shinshi.Art
         private readonly CombatCameraEffects      _effects    = new CombatCameraEffects();
         private readonly MageknightHitClassifier  _classifier = new MageknightHitClassifier();
         private readonly DamageFeedbackReceiver   _receiver   = new DamageFeedbackReceiver();
+        private readonly HashSet<int>             _bossCombatIds = new HashSet<int>();
+        private int _bossSessionEpoch = -1;
         private readonly HitFeedbackCooldown      _impactCooldown = new HitFeedbackCooldown();
         private HitSparkEmitter                   _emitter    = null;
         private HitSparkPool                      _sparks     = null;
@@ -165,7 +170,7 @@ namespace Shinshi.Art
                 _motionBlur.Init(_critBlurFeature, _critBlurMaterial);
             }
 
-            if (_critFlashAlpha > 0f)
+            if ((_critFlashAlpha > 0f) || (_useBlood))
             {
                 _screenFx = new GameObject("CritScreenFx").AddComponent<HitFeedbackScreenFx>();
                 _screenFx.transform.SetParent(transform, false);
@@ -184,12 +189,28 @@ namespace Shinshi.Art
         private void OnEnable()
         {
             EnemyNetworkView.Killed += OnEnemyKilled;
+            if (_blood != null)
+            {
+                _blood.gameObject.SetActive(true);
+            }
         }
 
         private void OnDisable()
         {
             EnemyNetworkView.Killed -= OnEnemyKilled;
             Unbind();
+            if (_blood != null)
+            {
+                _blood.gameObject.SetActive(false);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_blood != null)
+            {
+                Destroy(_blood.gameObject);
+            }
         }
 
         // Cinemachine이 LateUpdate에서 카메라 상태를 만들기 전에 값을 넣어야 해서 Update에서 계산한다
@@ -201,6 +222,7 @@ namespace Shinshi.Art
             }
 
             EnsureBound();
+            RememberBosses();
             if (_combat == null)
             {
                 ClearEffects();
@@ -268,6 +290,8 @@ namespace Shinshi.Art
             _boundPlayer = null;
             _input       = null;
             _combat      = null;
+            _bossCombatIds.Clear();
+            _bossSessionEpoch = -1;
             ClearEffects();
         }
 
@@ -345,6 +369,12 @@ namespace Shinshi.Art
                 return;
             }
 
+            if (_bossSessionEpoch != feedback.SessionEpoch)
+            {
+                _bossCombatIds.Clear();
+                _bossSessionEpoch = feedback.SessionEpoch;
+            }
+
             // 마검사의 검파와 섬광 일섬은 강한 연출, 나머지 적중은 모든 직업이 약한 연출이다
             MageknightHitClassifier.EKind kind = (_combat.PlayerClass == EPlayerClass.Mageknight)
                 ? _classifier.Classify(feedback.ServerTime)
@@ -369,7 +399,14 @@ namespace Shinshi.Art
             BurstSparks(feedback, isHeavy);
             if (!feedback.IsDamageOverTime)
             {
-                BurstBlood(feedback);
+                if (!IsBossBloodTarget(feedback.TargetCombatId))
+                {
+                    BurstBlood(feedback);
+                    if ((_useBlood) && (feedback.IsCritical))
+                    {
+                        _screenFx?.SplashBlood();
+                    }
+                }
                 ReactEnemy(feedback, isHeavy);
             }
 
@@ -488,8 +525,30 @@ namespace Shinshi.Art
                 return;
             }
 
-            _blood = Instantiate(bloodPrefab, transform, false);
+            _blood = Instantiate(bloodPrefab);
             _blood.name = "HitBlood";
+        }
+
+        private bool IsBossBloodTarget(int combatId)
+        {
+            RememberBosses();
+            return _bossCombatIds.Contains(combatId);
+        }
+
+        private void RememberBosses()
+        {
+            if ((_input != null) && (_bossSessionEpoch != _input.SessionEpoch))
+            {
+                _bossCombatIds.Clear();
+                _bossSessionEpoch = _input.SessionEpoch;
+            }
+            for (int i = 0; i < BossBodyBlockerRegistry.Count; ++i)
+            {
+                if ((BossBodyBlockerRegistry.Get(i) is BossState boss) && (boss.CombatId > 0))
+                {
+                    _bossCombatIds.Add(boss.CombatId);
+                }
+            }
         }
 
         // 처치는 피해 알림에 없어 적 표현이 시체를 날리는 순간을 쓴다. 내 처치와 파티원의 처치를 모두 보여 준다.

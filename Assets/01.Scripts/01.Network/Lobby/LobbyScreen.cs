@@ -69,6 +69,10 @@ namespace Shinshi.Network
                 return;
             }
 
+#if !UNITY_EDITOR
+            // 안내 문구 영역은 에디터에서만 보인다. 글자 갱신은 꺼진 채로도 문제없다
+            _status.gameObject.SetActive(false);
+#endif
             _startButton.onClick.AddListener(OnStartClicked);
             _quitButton.onClick.AddListener(OnQuitClicked);
             _loginButton.onClick.AddListener(OnLoginClicked);
@@ -120,7 +124,13 @@ namespace Shinshi.Network
         {
             if (HasValidSession)
             {
-                _status.text = "로그인했다. 게임 시작을 누른다.";
+                _status.text = LauncherSession.IsLaunchRequired ? string.Empty : "로그인했다. 게임 시작을 누른다.";
+                return;
+            }
+
+            if ((LauncherSession.IsLaunchRequired) && (LauncherSession.State == ELauncherSessionState.Receiving))
+            {
+                _status.text = string.Empty;
                 return;
             }
 

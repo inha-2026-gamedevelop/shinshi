@@ -21,6 +21,10 @@ namespace Shinshi.Combat
         ****************************************/
 
         private const string HUD_RESOURCE = "PF_PlayerStatusHud";
+        private const string DIGITS_RESOURCE = "T_DamageBrushDigits";
+        private const string CRITICAL_INK_RESOURCE = "T_DamageCriticalInk";
+        private const int DIGIT_CAPACITY = 10;
+        private const int DIGIT_COLUMNS = 5;
         private const int POOL_CAPACITY = 64;
         private const int SORTING_ORDER = 50;
         private const float LABEL_WIDTH = 240f;
@@ -67,6 +71,8 @@ namespace Shinshi.Combat
 
         private Slot[] _slots;
         private Material _outlineMaterial;
+        private Texture _digitsTexture;
+        private Texture _criticalInkTexture;
         private Camera _camera;
         private RectTransform _canvasRect;
         private int _activeCount;
@@ -78,6 +84,8 @@ namespace Shinshi.Combat
             public RectTransform Anchor;
             public RectTransform LabelRect;
             public TMP_Text Label;
+            public UnityEngine.UI.RawImage[] Digits;
+            public UnityEngine.UI.RawImage CriticalInk;
             public CanvasGroup Group;
             public Sequence Tween;
             public Vector3 WorldPosition;
@@ -178,6 +186,8 @@ namespace Shinshi.Combat
                 return;
             }
             _outlineMaterial = CreateOutlineMaterial((style != null) ? style.fontSharedMaterial : font.material);
+            _digitsTexture = Resources.Load<Texture>(DIGITS_RESOURCE);
+            _criticalInkTexture = Resources.Load<Texture>(CRITICAL_INK_RESOURCE);
             Canvas canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = SORTING_ORDER;
@@ -228,6 +238,7 @@ namespace Shinshi.Combat
                 slot.Label.fontSize = feedback.IsCritical ? _criticalFontSize : _normalFontSize;
                 // TMP 숫자 포맷은 문자열 할당을 피한다. 치명타는 서버 표식의 색·크기·느낌표로 구분한다
                 SetAmount(slot.Label, feedback.Amount, feedback.IsCritical);
+                SetBrushAmount(slot, feedback.Amount, feedback.IsCritical);
                 slot.Anchor.gameObject.SetActive(true);
                 ++_activeCount;
                 slot.Tween.Restart();
@@ -268,6 +279,60 @@ namespace Shinshi.Combat
                 return;
             }
             label.SetText(critical ? "{0}!" : "{0}", Mathf.Max(1f, Mathf.Round(amount)));
+        }
+
+        private void SetBrushAmount(Slot slot, float amount, bool critical)
+        {
+            bool useBrush = (slot.Digits != null) && (amount <= MAX_DIRECT_FORMAT_AMOUNT);
+            slot.Label.enabled = !useBrush;
+            if (slot.CriticalInk != null)
+            {
+                slot.CriticalInk.enabled = critical;
+                if (!useBrush)
+                {
+                    slot.CriticalInk.rectTransform.sizeDelta = new Vector2(LABEL_WIDTH, _criticalFontSize * 1.7f);
+                }
+            }
+            if (!useBrush)
+            {
+                if (slot.Digits != null)
+                {
+                    for (int i = 0; i < slot.Digits.Length; ++i)
+                    {
+                        slot.Digits[i].enabled = false;
+                    }
+                }
+                return;
+            }
+
+            int number = Mathf.Max(1, Mathf.RoundToInt(amount));
+            int count = 1;
+            for (int remaining = number; remaining >= 10; remaining /= 10)
+            {
+                ++count;
+            }
+            float size = critical ? _criticalFontSize : _normalFontSize;
+            float advance = size * 0.55f;
+            int value = number;
+            for (int i = 0; i < slot.Digits.Length; ++i)
+            {
+                UnityEngine.UI.RawImage digit = slot.Digits[i];
+                digit.enabled = i < count;
+                if (!digit.enabled)
+                {
+                    continue;
+                }
+                int numeral = value % 10;
+                value /= 10;
+                digit.uvRect = new Rect((numeral % DIGIT_COLUMNS) / 5f, (numeral < DIGIT_COLUMNS) ? 0.5f : 0f, 0.2f, 0.5f);
+                digit.rectTransform.sizeDelta = new Vector2(size * 0.8f, size * 1.2f);
+                digit.rectTransform.anchoredPosition = new Vector2(((count - 1) * 0.5f - i) * advance, 0f);
+                digit.color = slot.Label.color;
+            }
+            if (slot.CriticalInk != null)
+            {
+                slot.CriticalInk.rectTransform.sizeDelta = new Vector2(Mathf.Max(size * 2f, count * advance * 1.5f), size * 1.7f);
+            }
         }
 
         private void ReserveTweenCapacity()
@@ -318,7 +383,16 @@ namespace Shinshi.Combat
             slot.Group.blocksRaycasts = false;
             slot.Group.interactable = false;
             slot.LabelRect = CreateRect("Value", slot.Anchor);
-            slot.Label = slot.LabelRect.gameObject.AddComponent<TextMeshProUGUI>();
+            if (_criticalInkTexture != null)
+            {
+                RectTransform inkRect = CreateRect("CriticalInk", slot.LabelRect);
+                slot.CriticalInk = inkRect.gameObject.AddComponent<UnityEngine.UI.RawImage>();
+                slot.CriticalInk.texture = _criticalInkTexture;
+                slot.CriticalInk.raycastTarget = false;
+                slot.CriticalInk.enabled = false;
+            }
+            RectTransform textRect = CreateRect("Text", slot.LabelRect);
+            slot.Label = textRect.gameObject.AddComponent<TextMeshProUGUI>();
             slot.Label.font = font;
             if (_outlineMaterial != null)
             {
@@ -331,6 +405,18 @@ namespace Shinshi.Combat
             slot.Label.alignment = TextAlignmentOptions.Center;
             slot.Label.raycastTarget = false;
             slot.Label.textWrappingMode = TextWrappingModes.NoWrap;
+            if (_digitsTexture != null)
+            {
+                slot.Digits = new UnityEngine.UI.RawImage[DIGIT_CAPACITY];
+                for (int i = 0; i < slot.Digits.Length; ++i)
+                {
+                    RectTransform digitRect = CreateRect("Digit" + i, slot.LabelRect);
+                    slot.Digits[i] = digitRect.gameObject.AddComponent<UnityEngine.UI.RawImage>();
+                    slot.Digits[i].texture = _digitsTexture;
+                    slot.Digits[i].raycastTarget = false;
+                    slot.Digits[i].enabled = false;
+                }
+            }
             slot.Emphasis = 1f;
             ApplyPop(slot, 0f);
             float lifetime = Mathf.Max(MIN_TWEEN_SECONDS, _lifetimeSeconds);
@@ -375,11 +461,25 @@ namespace Shinshi.Combat
             {
                 slot.FlashDone = true;
                 slot.Label.color = slot.BaseColor;
+                ApplyDigitColor(slot, slot.BaseColor);
                 return;
             }
             // 완전한 흰색에서 시작하면 치명타가 나오는 첫 프레임에 일반 숫자와 구분되지 않아 밝기만 끌어올린다
             Color flash = Color.Lerp(slot.BaseColor, Color.white, FLASH_WHITE_RATIO);
             slot.Label.color = Color.Lerp(flash, slot.BaseColor, progress / _flashRatio);
+            ApplyDigitColor(slot, slot.Label.color);
+        }
+
+        private static void ApplyDigitColor(Slot slot, Color color)
+        {
+            if (slot.Digits == null)
+            {
+                return;
+            }
+            for (int i = 0; i < slot.Digits.Length; ++i)
+            {
+                slot.Digits[i].color = color;
+            }
         }
 
         private static RectTransform CreateRect(string objectName, Transform parent)
