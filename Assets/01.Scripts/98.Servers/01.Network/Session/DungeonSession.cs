@@ -122,6 +122,9 @@ namespace Shinshi.Network
         // Begin이 받은 서버 시각, 시작 전은 0이다
         public double StartTime => _startTime;
 
+        // 전투 시작부터 재는 제한 시간(초), 프롤로그는 0이다
+        public double TimeLimitSeconds => _timeLimitSeconds;
+
         /****************************************
         *                Methods
         ****************************************/

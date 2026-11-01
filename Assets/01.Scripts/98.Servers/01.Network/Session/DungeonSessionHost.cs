@@ -1539,6 +1539,17 @@ namespace Shinshi.Network
         private bool TryBuildWaveProgress(out WaveProgressMessage message)
         {
             message = default;
+
+            // 보스전은 웨이브가 없어 계획 수가 빈 진행 메시지로 제한 시간만 보낸다
+            if ((_session != null) && (_session.IsBossSession))
+            {
+                double elapsed = (_session.IsRunning || _session.IsEnded) ? Math.Max(0.0, _serverTime - _session.StartTime) : 0.0;
+                var bossProgress = new WaveProgressSnapshot(0, 0, 0, elapsed);
+                message = WaveProgressPublishRules.Build(in bossProgress, _session.IsRunning, (float)_session.TimeLimitSeconds,
+                    _serverTime, Array.Empty<ushort>());
+                return true;
+            }
+
             if ((_session == null) || (_waves == null) || (!_session.TryGetWaveProgress(out WaveProgressSnapshot progress)))
             {
                 return false;

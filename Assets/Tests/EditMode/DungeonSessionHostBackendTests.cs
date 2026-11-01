@@ -35,6 +35,8 @@ namespace Shinshi.Tests
         private const int    STATUS_OK           = 200;
         private const int    STATUS_UNAUTHORIZED = 401;
         private const int    STATUS_CONFLICT     = 409;
+        private const int    SETTLE_POLL_COUNT        = 100;
+        private const int    SETTLE_POLL_MILLISECONDS = 20;
 
         private SessionConfigSO           _config;
         private ServerSessionRegistry     _registry;
@@ -287,6 +289,74 @@ namespace Shinshi.Tests
             Assert.AreEqual(Path(GameServerRoutes.AUCTION_FINISH_FORMAT), requests[3].Path);
         }
 
+        [Test]
+        public void Tick_BossTwentyMinutes_EndsWithTimeoutAndOpensReturn()
+        {
+            var audience = new StatusAudience();
+            _host.SortieAudience = audience;
+            int one = Admit(API_ONE);
+            Tick(1.0);
+            Complete();
+            Tick(2.0);
+            Complete();
+            Tick(3.0);
+            Assert.IsTrue(_host.IsSessionRunning);
+            Assert.IsTrue(_host.Session.IsBossSession);
+            double start = _host.Session.StartTime;
+
+            // 제한 시간 직전까지는 계속 싸운다
+            Tick(start + _config.BossTimeLimitSeconds - 1.0);
+            Assert.IsTrue(_host.IsSessionRunning, "20분이 되기 전에는 끝나지 않는다");
+            Assert.IsFalse(_host.Session.IsEnded);
+
+            // 20분이 되는 틱에 시간 초과로 끝난다
+            double end = start + _config.BossTimeLimitSeconds;
+            Tick(end);
+            Assert.IsTrue(_host.Session.IsEnded);
+            Assert.AreEqual(ESessionEndReason.Timeout, _host.Session.EndReason);
+            Assert.IsFalse(_host.IsSessionRunning);
+
+            // 종료 이벤트 저장과 정산 ACK 뒤에 귀환이 열리고 출정이 닫힌다
+            Tick(end + 2.0);
+            Assert.IsTrue(_host.Session.CanReturn, "종료 이벤트 저장이 확인된다");
+            BackendRequest[] requests = _transport.Requests.ToArray();
+            string settlementPath = Path(GameServerRoutes.SETTLEMENT_FORMAT);
+            Assert.IsTrue(Array.Exists(requests, request => request.Path == settlementPath), "시간 초과도 정산 요청이 나간다");
+
+            // 가짜 전송기의 응답은 다른 스레드에서 오므로 정산 ACK가 들어올 때까지 Pump와 틱을 되풀이한다
+            for (int i = 0; (i < SETTLE_POLL_COUNT) && (_host.TerminalReason == ESortieTerminalReason.None); ++i)
+            {
+                System.Threading.Thread.Sleep(SETTLE_POLL_MILLISECONDS);
+                _gateway.Pump();
+                Tick(end + 3.0 + i);
+            }
+
+            _host.SendStatusTo(one);
+            Assert.AreEqual(ESessionEndReason.Timeout, audience.Last.EndReason);
+            Assert.IsTrue(audience.Last.CanReturn, "시간 초과 실패도 참가자를 마을로 돌려보낸다");
+            Assert.AreEqual(ESortieTerminalReason.Settled, _host.TerminalReason);
+        }
+
+        [Test]
+        public void Tick_BossProgressMessage_CarriesTwentyMinuteLimitFromBegin()
+        {
+            var progress = new ProgressAudience();
+            _host.WaveProgressAudience = progress;
+            int one = Admit(API_ONE);
+            Tick(1.0);
+            Complete();
+            Tick(2.0);
+            Complete();
+            Tick(3.0);
+            Tick(4.0);
+
+            Assert.IsTrue(progress.HasLast);
+            Assert.AreEqual(0, progress.Last.WaveCount, "보스전은 웨이브 계획이 없다");
+            Assert.AreEqual(_config.BossTimeLimitSeconds, progress.Last.TimeLimitSeconds);
+            Assert.IsTrue(progress.Last.IsRunning);
+            Assert.AreEqual(one, progress.ParticipantId);
+        }
+
         /****************************************
         *                Helpers
         ****************************************/
@@ -354,6 +424,20 @@ namespace Shinshi.Tests
             {
                 listener.OnBatchCompleted(attemptId, EEventBatchResult.Committed);
                 return true;
+            }
+        }
+
+        private sealed class ProgressAudience : IWaveProgressAudience
+        {
+            public WaveProgressMessage Last          { get; private set; }
+            public bool                HasLast       { get; private set; }
+            public int                 ParticipantId { get; private set; }
+
+            public void SendWaveProgress(int participantId, in WaveProgressMessage message)
+            {
+                Last          = message;
+                HasLast       = true;
+                ParticipantId = participantId;
             }
         }
 
