@@ -33,10 +33,16 @@ namespace Shinshi.AI
         private readonly float _redSingleDamageRate;
         private readonly float _bundleGapSeconds;
         private readonly float _reviveProtectionSeconds;
+        private readonly bool  _hasSpaceShrink;
 
         /****************************************
         *              Properties
         ****************************************/
+
+        // 2페이즈 붕괴로 맵이 이미 좁아져 있어 0%에서는 공간을 줄이지 않는다(2026-11-01 결정, 일정 때문에 보류). 켜면 예전 방식(외곽 바닥 제거와 추락)이 살아난다.
+        // 안개로 8m 밖에 피해를 주는 방식은 아직 없고, 만들면 이 플래그에 이어 붙인다. 클라이언트 WolbaekFinalAreaView의 같은 이름 플래그와 함께 바꾼다
+        /// <summary> 참이면 0%에서 외곽 바닥을 제거하고 밖으로 나간 참가자를 추락 사망시킨다, 거짓이면 공간은 그대로다 </summary>
+        public bool HasSpaceShrink => _hasSpaceShrink;
 
         /// <summary> 초, 중앙만 남는다는 예고부터 외곽 바닥을 제거하기까지 </summary>
         public float CollapseSeconds => _collapseSeconds;
@@ -78,7 +84,7 @@ namespace Shinshi.AI
         // yellowCounts는 생존자 1명부터 4명까지의 노란 여우불 수이고 1명 이상이며 줄어들지 않는다
         public WolbaekFinalAreaSpec(float collapseSeconds, float centralRadius, int[] yellowCounts, float yellowMaxHealth,
             float yellowDefense, float yellowBodyRadius, float redTrackSeconds, float redFuseSeconds, float redBlastRadius,
-            float redSingleDamageRate, float bundleGapSeconds, float reviveProtectionSeconds)
+            float redSingleDamageRate, float bundleGapSeconds, float reviveProtectionSeconds, bool hasSpaceShrink = false)
         {
             RequirePositive(collapseSeconds, nameof(collapseSeconds), "바닥 제거 예고 시간은 0보다 큰 유한값이다");
             RequirePositive(centralRadius, nameof(centralRadius), "중앙 반경은 0보다 큰 유한값이다");
@@ -123,6 +129,7 @@ namespace Shinshi.AI
             _redSingleDamageRate     = redSingleDamageRate;
             _bundleGapSeconds        = bundleGapSeconds;
             _reviveProtectionSeconds = reviveProtectionSeconds;
+            _hasSpaceShrink          = hasSpaceShrink;
         }
 
         /// <summary> 생존자 수에 맞는 노란 여우불 수, 4명 이상은 4명의 값이고 0명 이하는 0이다 </summary>

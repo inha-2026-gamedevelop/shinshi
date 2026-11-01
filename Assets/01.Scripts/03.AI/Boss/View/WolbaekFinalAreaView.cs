@@ -46,6 +46,10 @@ namespace Shinshi.AI
         [SerializeField] private GameObject _floorCollapsePrefab;
         [SerializeField] private GameObject _redLockPrefab;
 
+        // 서버 WolbaekFinalAreaSpec.HasSpaceShrink와 같은 값으로 맞춘다. 꺼져 있으면 중앙 경계 예고선과 바닥 붕괴 연출, 소리를 내지 않는다.
+        // 안개로 8m 밖에 피해를 주는 연출을 만들면 이 플래그에 이어 붙인다
+        [SerializeField] private bool _hasSpaceShrink = false;
+
         private readonly Dictionary<int, Transform> _anchors = new Dictionary<int, Transform>();
         private readonly List<GameObject> _oneShots = new List<GameObject>();
         private Func<double> _clock;
@@ -189,6 +193,11 @@ namespace Shinshi.AI
 
             _floorRemoved = true;
             StopFloorTelegraph();
+            if (!_hasSpaceShrink)
+            {
+                return;
+            }
+
             SpawnOneShot(_floorCollapsePrefab, _start.ArenaCenter, FLOOR_EFFECT_SCALE * RadiusScale());
             PlaySound(EWolbaekSound.GroundCollapse, _start.ArenaCenter);
         }
@@ -569,6 +578,11 @@ namespace Shinshi.AI
         private void ShowFloorTelegraph()
         {
             StopFloorTelegraph();
+            if (!_hasSpaceShrink)
+            {
+                return;
+            }
+
             _floorTelegraph = CreateRing(_start.ArenaCenter, _start.CentralRadius);
             if (_floorTelegraphPrefab != null)
             {

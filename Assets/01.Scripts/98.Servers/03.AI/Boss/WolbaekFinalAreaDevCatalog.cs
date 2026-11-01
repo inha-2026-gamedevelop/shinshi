@@ -25,6 +25,7 @@ namespace Shinshi.AI
         private const float RED_BLAST_RADIUS     = 2f;
         private const float RED_SINGLE_RATE      = 0.6f;
         private const float REVIVE_PROTECT_SECONDS = 3f;
+        private const bool  HAS_SPACE_SHRINK       = false; // 2페이즈 붕괴로 이미 좁아진 맵을 쓴다
 
         // 임시 개발값, 기획 미정
         private const float DEV_YELLOW_BODY_RADIUS = 1f;
@@ -39,7 +40,7 @@ namespace Shinshi.AI
             int[] counts = { YELLOW_ONE_LIVING, YELLOW_TWO_LIVING, YELLOW_THREE_LIVING, YELLOW_FOUR_LIVING };
             return new WolbaekFinalAreaSpec(COLLAPSE_SECONDS, CENTRAL_RADIUS, counts, YELLOW_HEALTH, YELLOW_DEFENSE,
                 DEV_YELLOW_BODY_RADIUS, RED_TRACK_SECONDS, RED_FUSE_SECONDS, RED_BLAST_RADIUS, RED_SINGLE_RATE,
-                DEV_BUNDLE_GAP_SECONDS, REVIVE_PROTECT_SECONDS);
+                DEV_BUNDLE_GAP_SECONDS, REVIVE_PROTECT_SECONDS, HAS_SPACE_SHRINK);
         }
     }
 }

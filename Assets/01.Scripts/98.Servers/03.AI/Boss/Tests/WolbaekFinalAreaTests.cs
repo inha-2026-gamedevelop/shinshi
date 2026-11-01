@@ -474,9 +474,10 @@ namespace Shinshi.Tests
             }
         }
 
-        private static WolbaekFinalAreaSpec MakeSpec(float gap = 0f)
+        // 기존 시험은 외곽 바닥 제거와 추락 경로를 확인하므로 공간 축소를 켠 설정이 기본이다
+        private static WolbaekFinalAreaSpec MakeSpec(float gap = 0f, bool hasSpaceShrink = true)
         {
-            return new WolbaekFinalAreaSpec(4f, CENTRAL, new[] { 2, 3, 4, 4 }, 8000f, 0f, 1f, 4f, 2f, 2f, 0.6f, gap, 3f);
+            return new WolbaekFinalAreaSpec(4f, CENTRAL, new[] { 2, 3, 4, 4 }, 8000f, 0f, 1f, 4f, 2f, 2f, 0.6f, gap, 3f, hasSpaceShrink);
         }
 
         private static readonly Vector3[] Spread =
@@ -502,7 +503,7 @@ namespace Shinshi.Tests
             public Recorder           Listener { get; }
             public WolbaekFinalArea   Gimmick  { get; }
 
-            public Rig(int partyCount, FakeHandoff preceding = null)
+            public Rig(int partyCount, FakeHandoff preceding = null, bool hasSpaceShrink = true)
             {
                 for (int i = 0; i < partyCount; ++i)
                 {
@@ -518,7 +519,7 @@ namespace Shinshi.Tests
                 Killer   = new FakeKiller(Query.Players);
                 Guard    = new FakeGuard(Log);
                 Listener = new Recorder(Log);
-                Gimmick  = new WolbaekFinalArea(MakeSpec(), Boss, Vitals, Roster, Roster, Arena, Sites, Floor, Killer, Guard, Registry,
+                Gimmick  = new WolbaekFinalArea(MakeSpec(0f, hasSpaceShrink), Boss, Vitals, Roster, Roster, Arena, Sites, Floor, Killer, Guard, Registry,
                     Revive, Damage, Query, preceding, Listener);
             }
 
@@ -752,6 +753,49 @@ namespace Shinshi.Tests
             Assert.AreEqual(0, r.Blasts().Count);
             Assert.AreEqual(EWolbaekFinalState.Active, r.Gimmick.State);
             Assert.AreEqual(1, r.Listener.Count("floor@"));
+        }
+
+        [Test]
+        public void NoSpaceShrink_NeverTouchesTheFloor_ButStillStartsYellowsAndTheFirstBundle()
+        {
+            Rig r = new Rig(2, null, false);
+            r.Player(0).Position = new Vector3(14f, 0f, 0f);
+            r.ReachHunt();
+
+            Assert.AreEqual(0, r.Floor.Requests);
+            Assert.AreEqual(EWolbaekFinalStep.Hunt, r.Gimmick.Step);
+            Assert.AreEqual(3, r.Registry.Registered.Count);
+            Assert.AreEqual(2, r.Gimmick.Bundle.Reds.Count);
+
+            // 클라이언트가 노란 여우불을 이 알림 뒤에만 그리므로 알림과 완료 표시는 유지한다
+            Assert.IsTrue(r.Gimmick.IsOuterFloorRemoved);
+            Assert.AreEqual(1, r.Listener.Count("floor@"));
+        }
+
+        [Test]
+        public void NoSpaceShrink_IgnoresFallsTheFloorReports()
+        {
+            Rig r = new Rig(2, null, false);
+            r.ReachHunt();
+            r.Floor.Report(FIRST_PLAYER);
+            r.Tick(4.5);
+            r.Tick(5.0);
+
+            Assert.AreEqual(0, r.Floor.CollectTimes.Count);
+            Assert.AreEqual(0, r.Killer.Kills.Count);
+            Assert.AreEqual(EParticipantLifeState.Alive, r.Player(0).LifeState);
+            Assert.AreEqual(0, r.Listener.Count("fell"));
+        }
+
+        [Test]
+        public void NoSpaceShrink_RejectingFloorRemovalCannotHaltTheGimmick()
+        {
+            Rig r = new Rig(2, null, false);
+            r.Floor.Accept = false;
+            r.ReachHunt();
+
+            Assert.AreEqual(EWolbaekFinalState.Active, r.Gimmick.State);
+            Assert.AreEqual(EWolbaekFinalStep.Hunt, r.Gimmick.Step);
         }
 
         [Test]

@@ -25,6 +25,9 @@ namespace Shinshi.AI
     // TryTakeHandoff를 정확히 한 번 불러 받은 틱에 진입한다. 앞선 기믹이 아직 반격 중이면 체력이 0이어도 기다린다.
     // 앞선 기믹은 Tick 순서상 이 기믹보다 먼저 등록해야 같은 틱에 이어서 시작한다.
     //
+    // 공간 축소(2026-11-01): 2페이즈 붕괴로 맵이 이미 좁아져 있어 일정 때문에 0%의 외곽 바닥 제거와 추락은 꺼 두었다(Spec.HasSpaceShrink가 거짓).
+    // 꺼진 동안은 예고 시간 뒤에 바닥은 그대로 두고 노란 여우불과 첫 묶음만 시작하며 추락도 보지 않는다. 아래 설명은 켰을 때의 동작이다.
+    //
     // 진행: 예고 4초 동안 중앙만 남는다고 알린 뒤 외곽 바닥을 제거한다(IWolbaekFinalFloor). 제거 순간 외곽에 서 있다는 이유만으로는
     // 아무도 죽이지 않는다. 바닥을 제거한 같은 순간 노란 여우불을 진입 시점 생존자 수로
     // 고정한 수만큼 중앙 바닥의 검증된 위치에 세우고(IWolbaekFinalSiteSource, IWolbaekYellowRegistry) 첫 빨간 묶음을 시작한다.
@@ -608,7 +611,7 @@ namespace Shinshi.AI
                 return;
             }
 
-            if (_outerRemoved && ApplyFalls(serverTime))
+            if (_spec.HasSpaceShrink && _outerRemoved && ApplyFalls(serverTime))
             {
                 ReadRoster();
                 if (CountLiving() == 0)
@@ -674,9 +677,12 @@ namespace Shinshi.AI
 
         // 바닥 제거를 요청하고 받아들여지면 노란 여우불을 세우고 첫 묶음을 시작한다. 거절되면 정지한다.
         // 제거 순간에는 외곽에 서 있어도 아무도 죽이지 않는다. 추락은 그 뒤 틱에서 바닥 창구가 낙하를 내줄 때 처리한다
+        //
+        // 공간 축소가 꺼져 있으면(WolbaekFinalAreaSpec.HasSpaceShrink) 바닥은 건드리지 않는다. 이 단계의 알림과 완료 표시는 그대로 두는데,
+        // 클라이언트가 노란 여우불을 이 알림 뒤에만 그리기 때문이다. 이때 OuterFloorRemoved는 바닥이 사라졌다는 뜻이 아니라 예고가 끝났다는 뜻이다
         private void Collapse(double eventTime)
         {
-            if (!_floor.TryRemoveOuterFloor(_castId, eventTime))
+            if (_spec.HasSpaceShrink && (!_floor.TryRemoveOuterFloor(_castId, eventTime)))
             {
                 Debug.LogError("[Boss] 외곽 바닥 제거가 거절돼 최후의 영역 기믹을 정지한다");
                 Halt(EWolbaekFinalHaltReason.FloorUnavailable, eventTime);
