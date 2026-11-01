@@ -100,7 +100,7 @@ MonoBehaviour:
     _difficulty: 1
     _ticketCost: 1
     _availableInTrial: 1
-    _trialPreUnlocked: 0
+    _trialPreUnlocked: 1
     _requirement:
       _requiresIntro: 0
       _clearedRegionId:
@@ -125,8 +125,8 @@ MonoBehaviour:
     _bossId: boss_wolbaek
     _difficulty: 1
     _ticketCost: 1
-    _availableInTrial: 0
-    _trialPreUnlocked: 0
+    _availableInTrial: 1
+    _trialPreUnlocked: 1
     _requirement:
       _requiresIntro: 0
       _clearedRegionId: 

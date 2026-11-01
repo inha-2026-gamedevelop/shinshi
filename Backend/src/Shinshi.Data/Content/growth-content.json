@@ -1435,7 +1435,7 @@
         "difficulty": 1,
         "ticketCost": 1,
         "availableInTrial": true,
-        "trialPreUnlocked": false,
+        "trialPreUnlocked": true,
         "requirement": {
           "requiresIntro": false,
           "clearedRegionId": "",
@@ -1464,8 +1464,8 @@
         "bossId": "boss_wolbaek",
         "difficulty": 1,
         "ticketCost": 1,
-        "availableInTrial": false,
-        "trialPreUnlocked": false,
+        "availableInTrial": true,
+        "trialPreUnlocked": true,
         "requirement": {
           "requiresIntro": false,
           "clearedRegionId": "",
