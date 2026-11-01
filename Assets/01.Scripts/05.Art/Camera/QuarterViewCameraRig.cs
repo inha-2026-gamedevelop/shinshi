@@ -10,6 +10,7 @@ using Unity.Cinemachine.TargetTracking;
 // 프로젝트 내부
 using Shinshi.Common;
 using Shinshi.Data;
+using Shinshi.UI;
 
 namespace Shinshi.Art
 {
@@ -71,6 +72,16 @@ namespace Shinshi.Art
                 .SetAutoKill(false)
                 .Pause()
                 .SetLink(gameObject);
+        }
+
+        private void OnEnable()
+        {
+            CameraComposition.Changed += OnCompositionChanged;
+        }
+
+        private void OnDisable()
+        {
+            CameraComposition.Changed -= OnCompositionChanged;
         }
 
         private void Update()
@@ -138,14 +149,25 @@ namespace Shinshi.Art
             _follow.TrackerSettings = tracker;
         }
 
+        // 설정 창의 구도 보정을 줌 단계 시점 위에 겹친다
+        private void OnCompositionChanged()
+        {
+            if (_config != null)
+            {
+                ApplyPose();
+            }
+        }
+
         private void ApplyPose()
         {
-            _camera.transform.rotation = QuarterViewCameraRules.GetRotation(_pose.PitchAngle, _config.YawAngle);
+            float pitch    = QuarterViewCameraRules.GetAdjustedPitch(_pose.PitchAngle, CameraComposition.PitchOffset);
+            float distance = _pose.Distance * CameraComposition.DistanceScale;
+
+            _camera.transform.rotation = QuarterViewCameraRules.GetRotation(pitch, _config.YawAngle);
 
             ApplyLens();
 
-            _follow.FollowOffset = QuarterViewCameraRules.GetFollowOffset(_pose.PitchAngle, _config.YawAngle, _pose.Distance,
-                _pose.FocusHeight);
+            _follow.FollowOffset = QuarterViewCameraRules.GetFollowOffset(pitch, _config.YawAngle, distance, _pose.FocusHeight);
         }
 
         private void ApplyLens()

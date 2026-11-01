@@ -63,6 +63,8 @@ namespace Shinshi.Tests
         private const int WARD_SECONDS     = 40;
         private const int SEAL_SECONDS     = 45;
         private const int SEAL_FAIL_SECONDS = 70;
+        private const int SEAL_LIMIT_SECONDS = 60;
+        private const double SEAL_LIMIT_SLACK = 1.0;
         private const int COLLAPSE_SECONDS = 6;
         private const int FALL_WAIT_SECONDS = 2;
         private const int BARRIER_SECONDS  = 20;
@@ -422,6 +424,30 @@ namespace Shinshi.Tests
             Assert.IsNotEmpty(detail);
             Assert.IsTrue(_boss.IsInvulnerable, "실패한 기믹의 보스는 무적으로 남는다");
             AssertEveryoneAlive();
+        }
+
+        [Test]
+        public void TryGetGimmickStop_HardSealNotClearedInSixtySeconds_FailedWithTimeout()
+        {
+            Build(EBossDifficulty.Hard, TWO_PLAYERS, true);
+            RunToWardCompleted();
+            Step();
+            EnterSeal();
+
+            double entered = _now;
+            Assert.AreEqual(SEAL_LIMIT_SECONDS, _seal.LimitEndServerTime - entered, SEAL_LIMIT_SLACK, "봉인 제한은 발동부터 60초다");
+            Assert.IsFalse(_boss.TryGetGimmickStop(out _, out _, out _));
+
+            // 59초까지는 핵을 부수지 못해도 실패하지 않는다
+            StepSeconds(SEAL_LIMIT_SECONDS - 1, StandAtGather);
+            Assert.AreEqual(EWolbaekSealState.Active, _seal.State, "60초가 되기 전에는 실패하지 않는다");
+
+            Assert.IsTrue(StepUntil(() => _seal.State == EWolbaekSealState.Failed, StandAtGather, SEAL_FAIL_SECONDS));
+            Assert.AreEqual(EWolbaekSealFail.TimeExpired, _seal.FailReason);
+            Assert.AreEqual(SEAL_LIMIT_SECONDS, _now - entered, SEAL_LIMIT_SLACK, "발동 60초 뒤에 실패한다");
+            Assert.IsTrue(_boss.TryGetGimmickStop(out EBossGimmickStop kind, out ESessionEndReason reason, out _));
+            Assert.AreEqual(EBossGimmickStop.Failed, kind);
+            Assert.AreEqual(ESessionEndReason.Timeout, reason, "서버는 이 사유로 출정을 끝낸다");
         }
 
         [Test]

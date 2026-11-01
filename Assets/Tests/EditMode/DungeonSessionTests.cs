@@ -123,6 +123,36 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void SessionConfig_BossTimeLimit_DefaultsToTwentyMinutes()
+        {
+            Assert.AreEqual(1200f, _config.BossTimeLimitSeconds);
+        }
+
+        [Test]
+        public void CompleteTick_BossBeforeTwentyMinutes_KeepsRunning()
+        {
+            _session.Dispose();
+            _session = new DungeonSession("boss", _roster, new SessionEventQueue("boss", _sink, QUEUE_CAPACITY, QUEUE_CAPACITY), _config, null);
+            _session.Begin(0.0);
+            Assert.IsTrue(_session.BeginTick(_config.BossTimeLimitSeconds - 0.5));
+            _session.CompleteTick();
+            Assert.IsFalse(_session.IsEnded);
+        }
+
+        [Test]
+        public void CompleteTick_BossAtTwentyMinutes_TimesOutWithBossSettlement()
+        {
+            _session.Dispose();
+            _session = new DungeonSession("boss", _roster, new SessionEventQueue("boss", _sink, QUEUE_CAPACITY, QUEUE_CAPACITY), _config, null);
+            _session.Begin(100.0);
+            Assert.IsTrue(_session.BeginTick(100.0 + _config.BossTimeLimitSeconds));
+            _session.CompleteTick();
+            Assert.IsTrue(_session.IsEnded);
+            Assert.AreEqual(ESessionEndReason.Timeout, _session.EndReason);
+            Assert.IsTrue(_sink.Last(ESessionEventType.SessionEnded).Data.IsBossSession);
+        }
+
+        [Test]
         public void CompleteTick_NormalAllDead_KeepsRunningWithUnlimitedRevives()
         {
             _session.Begin(0.0);

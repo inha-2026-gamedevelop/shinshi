@@ -3,14 +3,10 @@ using System;
 
 // Unity
 using UnityEditor;
-using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-
-// 서드파티
-using TMPro;
 
 // 프로젝트 내부
 using Shinshi.Network;
@@ -28,9 +24,7 @@ namespace Shinshi.Editor
         private const string SCENE_PATH    = "Assets/00.Scenes/Release/CharacterSelect.unity";
         private const string SETTINGS_PATH = "Assets/02.Prefab/UI/Settings/PF_SettingsWindow.prefab";
         private const string BUTTON_NAME   = "환경설정 버튼";
-        private const string BUTTON_LABEL  = "환경설정";
         private const string CANVAS_NAME   = "SettingsCanvas";
-        private static readonly Vector2 G_Margin = new Vector2(-48f, -48f);
 
         /****************************************
         *                Methods
@@ -62,8 +56,19 @@ namespace Shinshi.Editor
             var back = (Button)data.FindProperty("_backButton").objectReferenceValue;
             Transform parent = back.transform.parent;
 
+            Transform bottom = parent.Find("하단 버튼 그룹/" + BUTTON_NAME);
+            Button button = (bottom != null) ? bottom.GetComponent<Button>() : null;
+            if (button == null)
+            {
+                throw new InvalidOperationException("하단 환경설정 버튼이 없습니다.");
+            }
+            button.interactable = true;
+
             Transform existing = parent.Find(BUTTON_NAME);
-            Button button = (existing != null) ? existing.GetComponent<Button>() : CreateButton(back, parent);
+            if (existing != null)
+            {
+                UnityEngine.Object.DestroyImmediate(existing.gameObject);
+            }
 
             SettingsView settings = UnityEngine.Object.FindAnyObjectByType<SettingsView>(FindObjectsInactive.Include);
             if (settings == null)
@@ -84,27 +89,5 @@ namespace Shinshi.Editor
             Debug.Log("[CharacterSelect] 환경설정 버튼과 설정 창을 연결했습니다.");
         }
 
-        // 뒤로 가기 버튼 모양을 그대로 복제해 오른쪽 위에 둔다
-        private static Button CreateButton(Button template, Transform parent)
-        {
-            GameObject clone = UnityEngine.Object.Instantiate(template.gameObject, parent);
-            clone.name = BUTTON_NAME;
-            var rect = (RectTransform)clone.transform;
-            rect.anchorMin        = Vector2.one;
-            rect.anchorMax        = Vector2.one;
-            rect.pivot            = Vector2.one;
-            rect.anchoredPosition = G_Margin;
-
-            Button button = clone.GetComponent<Button>();
-            while (button.onClick.GetPersistentEventCount() > 0)
-            {
-                UnityEventTools.RemovePersistentListener(button.onClick, 0);
-            }
-            foreach (TMP_Text label in clone.GetComponentsInChildren<TMP_Text>(true))
-            {
-                label.text = BUTTON_LABEL;
-            }
-            return button;
-        }
     }
 }

@@ -34,6 +34,13 @@ namespace Shinshi.Network
         public int PendingCount => _owners.Count;
 
         /****************************************
+        *               Events
+        ****************************************/
+
+        // 스냅샷을 받을 때마다 참가자 번호와 현재 길드 이름을 알린다. 길드가 없으면 null이다
+        public event Action<int, string> GuildResolved;
+
+        /****************************************
         *                Methods
         ****************************************/
 
@@ -171,6 +178,7 @@ namespace Shinshi.Network
             if ((response.IsSucceeded) && (response.Payload is SocialSnapshotResponse snapshot))
             {
                 _audience.Send(state.ParticipantId, SocialSnapshotConverter.ToMessage(snapshot));
+                GuildResolved?.Invoke(state.ParticipantId, ReadGuildName(snapshot));
                 if (state.SnapshotAgain)
                 {
                     RequestSnapshot(state);
@@ -188,6 +196,17 @@ namespace Shinshi.Network
             }
 
             Reply(state.ParticipantId, ESocialAction.Snapshot, Guid.Empty, reason);
+        }
+
+        private static string ReadGuildName(SocialSnapshotResponse snapshot)
+        {
+            Shinshi.Contracts.SocialGuildView guild = snapshot.Guild;
+            if ((guild == null) || (!guild.HasGuild))
+            {
+                return null;
+            }
+
+            return GuildNameRules.TryNormalize(guild.Name, out string guildName, out string _) ? guildName : null;
         }
 
         private void OnWriteResponse(MemberState state, in BackendResponse response)

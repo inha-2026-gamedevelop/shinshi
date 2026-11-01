@@ -123,6 +123,9 @@ namespace Shinshi.Network
         // Begin이 받은 서버 시각, 시작 전은 0이다
         public double StartTime => _startTime;
 
+        // 전투 시작부터 재는 제한 시간(초), 프롤로그는 0이다
+        public double TimeLimitSeconds => _timeLimitSeconds;
+
         /****************************************
         *                Methods
         ****************************************/
@@ -172,7 +175,7 @@ namespace Shinshi.Network
             _sessionConfig      = config;
             _lootSalt           = (lootSalt != null) ? (byte[])lootSalt.Clone() : LootRoller.CreateSalt();
             _revives            = _isBossSession ? new ReviveBudget(config.BossSharedRevives) : null;
-            _timeLimitSeconds   = (waveConfig != null) ? waveConfig.TimeLimitSeconds : 0.0;
+            _timeLimitSeconds   = (waveConfig != null) ? waveConfig.TimeLimitSeconds : (_isBossSession ? config.BossTimeLimitSeconds : 0.0);
             int waveCount       = (wave != null) ? waveConfig.Waves.Count : 0;
             int sourceCount     = (wave != null) ? waveConfig.CountTotalEnemies() : 0;
             _expectedKills      = new int[waveCount];
@@ -469,7 +472,7 @@ namespace Shinshi.Network
                 {
                     Finish(_lastDepartureReason);
                 }
-                else if ((_timeoutPending) || ((!_isBossSession) && (!_isPrologue) && ((_serverTime - _startTime) >= _timeLimitSeconds)))
+                else if ((_timeoutPending) || ((!_isPrologue) && ((_serverTime - _startTime) >= _timeLimitSeconds)))
                 {
                     Finish(ESessionEndReason.Timeout);
                 }

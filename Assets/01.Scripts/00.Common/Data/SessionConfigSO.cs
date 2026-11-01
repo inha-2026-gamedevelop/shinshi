@@ -39,6 +39,9 @@ namespace Shinshi.Data
         [SerializeField] private float _safePointRetryInterval = 0.25f; // 초, 안전 지점이 없을 때 재평가 간격
         [SerializeField] private float _safePointEnemyClearance = 6f;   // m, 복귀 지점과 살아 있는 적 사이 최소 수평 거리
 
+        [Header("보스 제한 시간")]
+        [SerializeField] private float _bossTimeLimitSeconds   = 1200f; // 초, 쉬움과 어려움 모두 전투 시작부터 20분
+
         [Header("재접속과 준비")]
         [SerializeField] private float _reconnectGraceSeconds  = 120f;
         [SerializeField] private float _readyCountdownSeconds  = 3f;
@@ -66,6 +69,7 @@ namespace Shinshi.Data
         public int   BossSharedRevives       => _bossSharedRevives;
         public float SafePointRetryInterval  => _safePointRetryInterval;
         public float SafePointEnemyClearance => _safePointEnemyClearance;
+        public float BossTimeLimitSeconds    => _bossTimeLimitSeconds;
         public float ReconnectGraceSeconds   => _reconnectGraceSeconds;
         public float ReadyCountdownSeconds   => _readyCountdownSeconds;
         public int   BossPotionUseLimit      => _bossPotionUseLimit;
@@ -111,6 +115,7 @@ namespace Shinshi.Data
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_bossSharedRevives), _bossSharedRevives);
             DataValidation.RequirePositive(errors, OWNER, nameof(_safePointRetryInterval), _safePointRetryInterval);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_safePointEnemyClearance), _safePointEnemyClearance);
+            DataValidation.RequirePositive(errors, OWNER, nameof(_bossTimeLimitSeconds), _bossTimeLimitSeconds);
             DataValidation.RequirePositive(errors, OWNER, nameof(_reconnectGraceSeconds), _reconnectGraceSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_readyCountdownSeconds), _readyCountdownSeconds);
             DataValidation.RequireNonNegative(errors, OWNER, nameof(_bossPotionUseLimit), _bossPotionUseLimit);

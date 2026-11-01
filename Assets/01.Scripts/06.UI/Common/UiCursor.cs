@@ -1,18 +1,23 @@
 // Unity
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 // 프로젝트 내부
 using Shinshi.Common;
 
 namespace Shinshi.UI
 {
-    /// <summary>켜져 있는 동안 마우스 커서를 게임 커서 그림으로 바꾸고, 꺼지면 OS 기본 커서로 돌린다</summary>
+    /// <summary>켜져 있는 동안 OS 커서를 숨기고 게임 커서 그림을 마우스 위치에 그린다. 꺼지면 OS 기본 커서로 돌린다</summary>
     public sealed class UiCursor : MonoBehaviour
     {
+        // Windows는 하드웨어 커서를 32x32로 줄여 크기 설정이 보이지 않는다. 그래서 가장 위 캔버스에 그림을 직접 그려 크기를 정한다
+
         /****************************************
         *                Fields
         ****************************************/
+
+        private const int OVERLAY_SORTING_ORDER = short.MaxValue;
 
         private enum ECursorState
         {
@@ -38,11 +43,13 @@ namespace Shinshi.UI
         [Tooltip("FlashBlocked로 불가 커서를 띄워 두는 시간(초)")]
         [SerializeField] private float _flashDuration = 0.4f;
 
-        private readonly Texture2D[] _scaled = new Texture2D[3];
-
         private ECursorState _state        = ECursorState.None;
         private float        _blockedUntil = 0f;
         private float        _scale        = 1f;
+
+        private GameObject    _overlay   = null;
+        private RawImage      _image     = null;
+        private RectTransform _imageRect = null;
 
         /****************************************
         *              Unity Event
@@ -62,19 +69,30 @@ namespace Shinshi.UI
             _state = ECursorState.None;
             _scale = CursorScale.Current;
             CursorScale.Changed += OnScaleChanged;
+            EnsureOverlay();
+            _overlay.SetActive(true);
+            Cursor.visible = false;
             Refresh();
+            FollowMouse();
         }
 
         private void OnDisable()
         {
             CursorScale.Changed -= OnScaleChanged;
             _state = ECursorState.None;
-            Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+            if (_overlay != null)
+            {
+                _overlay.SetActive(false);
+            }
+            Cursor.visible = true;
         }
 
         private void OnDestroy()
         {
-            ClearScaled();
+            if (_overlay != null)
+            {
+                Destroy(_overlay);
+            }
         }
 
         private void Update()
@@ -82,13 +100,17 @@ namespace Shinshi.UI
             Refresh();
         }
 
-        // 창 전환이나 해상도 변경 뒤 OS가 커서를 기본값으로 되돌리는 경우가 있어 다시 건다
+        private void LateUpdate()
+        {
+            FollowMouse();
+        }
+
+        // 창 전환 뒤 OS가 커서를 다시 보이게 하는 경우가 있어 포커스를 얻을 때 다시 숨긴다
         private void OnApplicationFocus(bool hasFocus)
         {
             if (hasFocus)
             {
-                _state = ECursorState.None;
-                Refresh();
+                Cursor.visible = false;
             }
         }
 
@@ -101,6 +123,30 @@ namespace Shinshi.UI
         {
             _blockedUntil = Time.unscaledTime + _flashDuration;
             Refresh();
+        }
+
+        private void EnsureOverlay()
+        {
+            if (_overlay != null)
+            {
+                return;
+            }
+
+            // 다른 캔버스의 영향을 받지 않도록 부모 없이 만든다
+            _overlay = new GameObject("UiCursorOverlay", typeof(RectTransform), typeof(Canvas));
+            var canvas = _overlay.GetComponent<Canvas>();
+            canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = OVERLAY_SORTING_ORDER;
+
+            var imageObject = new GameObject("Cursor", typeof(RectTransform), typeof(RawImage));
+            imageObject.transform.SetParent(_overlay.transform, false);
+            _imageRect = (RectTransform)imageObject.transform;
+            _imageRect.anchorMin = Vector2.zero;
+            _imageRect.anchorMax = Vector2.zero;
+            _imageRect.pivot     = new Vector2(0f, 1f);
+
+            _image = imageObject.GetComponent<RawImage>();
+            _image.raycastTarget = false;
         }
 
         private void Refresh()
@@ -117,59 +163,42 @@ namespace Shinshi.UI
                 return;
             }
 
-            _state = next;
-            Cursor.SetCursor(Scaled(texture, next), _hotspot * _scale, CursorMode.Auto);
+            _state         = next;
+            _image.texture = texture;
+            ApplySize(texture);
         }
 
         private void OnScaleChanged(float scale)
         {
             _scale = scale;
-            ClearScaled();
-            _state = ECursorState.None;
-            Refresh();
+            if (_image.texture != null)
+            {
+                ApplySize((Texture2D)_image.texture);
+            }
         }
 
-        // 원본 그림은 그대로 두고 상태별로 배율을 적용한 복사본을 한 번만 만든다
-        private Texture2D Scaled(Texture2D source, ECursorState state)
+        // 그림 크기에 배율을 곱한 픽셀 크기로 그린다
+        private void ApplySize(Texture2D texture)
         {
-            if (Mathf.Approximately(_scale, 1f))
-            {
-                return source;
-            }
-
-            int index = (int)state - 1;
-            if (_scaled[index] == null)
-            {
-                _scaled[index] = Resize(source, Mathf.Max(1, Mathf.RoundToInt(source.width * _scale)), Mathf.Max(1, Mathf.RoundToInt(source.height * _scale)));
-            }
-            return _scaled[index];
+            _imageRect.sizeDelta = new Vector2(texture.width * _scale, texture.height * _scale);
         }
 
-        private static Texture2D Resize(Texture2D source, int width, int height)
+        // 클릭이 찍히는 화살 끝이 마우스 위치에 오도록 핫스팟만큼 당겨서 놓는다
+        private void FollowMouse()
         {
-            RenderTexture target = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            RenderTexture previous = RenderTexture.active;
-            target.filterMode = FilterMode.Bilinear;
-            Graphics.Blit(source, target);
-            RenderTexture.active = target;
-            Texture2D result = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            result.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
-            result.Apply();
-            RenderTexture.active = previous;
-            RenderTexture.ReleaseTemporary(target);
-            return result;
-        }
-
-        private void ClearScaled()
-        {
-            for (int i = 0; i < _scaled.Length; ++i)
+            if (_image.texture == null)
             {
-                if (_scaled[i] != null)
-                {
-                    Destroy(_scaled[i]);
-                    _scaled[i] = null;
-                }
+                return;
             }
+
+            Vector3 mouse = Input.mousePosition;
+            bool inside = (mouse.x >= 0f) && (mouse.y >= 0f) && (mouse.x <= Screen.width) && (mouse.y <= Screen.height);
+            if (_image.enabled != inside)
+            {
+                _image.enabled = inside;
+            }
+
+            _imageRect.anchoredPosition = new Vector2(mouse.x - (_hotspot.x * _scale), mouse.y + (_hotspot.y * _scale));
         }
 
         private ECursorState ResolveState()

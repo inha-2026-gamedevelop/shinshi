@@ -211,6 +211,95 @@ namespace Shinshi.Tests
         }
 
         [Test]
+        public void Handle_SnapshotWithoutGuild_ResolvesNullGuildName()
+        {
+            _respond = request => Task.FromResult(Ok(EmptySnapshot()));
+            var relay    = new SocialRelayServer(_gateway, _audience, EServerRole.Town, ReadClock);
+            var resolved = new List<(int ParticipantId, string GuildName)>();
+            relay.GuildResolved += (participantId, guildName) => resolved.Add((participantId, guildName));
+
+            relay.Handle(SENDER, ACTOR_ID, ACTOR_NAME, Request(ESocialAction.Snapshot));
+            Complete(1);
+
+            Assert.That(resolved.Count, Is.EqualTo(1));
+            Assert.That(resolved[0].ParticipantId, Is.EqualTo(SENDER));
+            Assert.That(resolved[0].GuildName, Is.Null);
+        }
+
+        [Test]
+        public void Handle_SnapshotWithGuild_ResolvesGuildNameForRequester()
+        {
+            _respond = request => Task.FromResult(Ok(GuildSnapshot("청룡단")));
+            var relay    = new SocialRelayServer(_gateway, _audience, EServerRole.Town, ReadClock);
+            var resolved = new List<(int ParticipantId, string GuildName)>();
+            relay.GuildResolved += (participantId, guildName) => resolved.Add((participantId, guildName));
+
+            relay.Handle(SENDER, ACTOR_ID, ACTOR_NAME, Request(ESocialAction.Snapshot));
+            Complete(1);
+
+            Assert.That(resolved.Count, Is.EqualTo(1));
+            Assert.That(resolved[0].ParticipantId, Is.EqualTo(SENDER));
+            Assert.That(resolved[0].GuildName, Is.EqualTo("청룡단"));
+        }
+
+        [Test]
+        public void Handle_GuildCreateCommitted_ResolvesGuildNameFromFollowUpSnapshot()
+        {
+            _respond = request => Task.FromResult(request.Path.EndsWith("/snapshot", StringComparison.Ordinal)
+                ? Ok(GuildSnapshot("청룡단"))
+                : Ok(Committed()));
+            var relay    = new SocialRelayServer(_gateway, _audience, EServerRole.Town, ReadClock);
+            var resolved = new List<string>();
+            relay.GuildResolved += (participantId, guildName) => resolved.Add(guildName);
+
+            relay.Handle(SENDER, ACTOR_ID, ACTOR_NAME, Request(ESocialAction.GuildCreate, "청룡단"));
+            Complete(1);
+            Assert.That(resolved, Is.Empty);
+            Complete(1);
+
+            Assert.That(resolved, Is.EqualTo(new List<string> { "청룡단" }));
+        }
+
+        [Test]
+        public void Handle_SnapshotWithInvalidGuildName_ResolvesNull()
+        {
+            _respond = request => Task.FromResult(Ok(GuildSnapshot(string.Empty)));
+            var relay    = new SocialRelayServer(_gateway, _audience, EServerRole.Town, ReadClock);
+            var resolved = new List<string>();
+            relay.GuildResolved += (participantId, guildName) => resolved.Add(guildName);
+
+            relay.Handle(SENDER, ACTOR_ID, ACTOR_NAME, Request(ESocialAction.Snapshot));
+            Complete(1);
+
+            Assert.That(resolved, Is.EqualTo(new List<string> { null }));
+        }
+
+        [Test]
+        public void Handle_SnapshotFails_DoesNotResolveGuildName()
+        {
+            var relay  = new SocialRelayServer(_gateway, _audience, EServerRole.Town, ReadClock);
+            int called = 0;
+            relay.GuildResolved += (participantId, guildName) => ++called;
+
+            relay.Handle(SENDER, ACTOR_ID, ACTOR_NAME, Request(ESocialAction.Snapshot));
+            Complete(1);
+
+            Assert.That(called, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Handle_DungeonRole_DoesNotResolveGuildName()
+        {
+            var relay  = new SocialRelayServer(_gateway, _audience, EServerRole.Dungeon, ReadClock);
+            int called = 0;
+            relay.GuildResolved += (participantId, guildName) => ++called;
+
+            relay.Handle(SENDER, ACTOR_ID, ACTOR_NAME, Request(ESocialAction.Snapshot));
+
+            Assert.That(called, Is.EqualTo(0));
+        }
+
+        [Test]
         public void Submit_CommittedWhisper_SendsSentLineAndRoutesStoredLocalRowsInOrder()
         {
             _audience.Connect(TARGET_ID, RECEIVER);
@@ -482,6 +571,13 @@ namespace Shinshi.Tests
         {
             return new SocialSnapshotResponse(0, Array.Empty<SocialFriendView>(), Array.Empty<SocialRequestView>(),
                 Array.Empty<SocialRequestView>(), new GuildDto(false, string.Empty, string.Empty, 0, 0, string.Empty, 0),
+                Array.Empty<SocialGuildMemberView>(), Array.Empty<SocialRequestView>(), Array.Empty<SocialGuildInviteView>());
+        }
+
+        private static SocialSnapshotResponse GuildSnapshot(string guildName)
+        {
+            return new SocialSnapshotResponse(0, Array.Empty<SocialFriendView>(), Array.Empty<SocialRequestView>(),
+                Array.Empty<SocialRequestView>(), new GuildDto(true, "guild-1", guildName, 1, 0, "member-1", 0),
                 Array.Empty<SocialGuildMemberView>(), Array.Empty<SocialRequestView>(), Array.Empty<SocialGuildInviteView>());
         }
 

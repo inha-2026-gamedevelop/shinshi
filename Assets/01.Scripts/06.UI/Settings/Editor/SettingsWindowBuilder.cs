@@ -36,6 +36,11 @@ namespace Shinshi.UI.Editor
         private const float ROW_WIDTH     = 780f;
         private const float ROW_HEIGHT    = 62f;
 
+        // 게임 탭은 창 높이(430)를 넘어 스크롤한다. 안내 문구는 맨 아래에 둔다
+        private const float GAME_CONTENT_HEIGHT     = 620f;
+        private const float GAME_NOTICE_Y           = 576f;
+        private const float GAME_SCROLL_SENSITIVITY = 40f;
+
         private static readonly Color G_Window  = new Color(0.065f, 0.083f, 0.102f, 1f);
         private static readonly Color G_Sidebar = new Color(0.048f, 0.067f, 0.082f, 1f);
         private static readonly Color G_Row     = new Color(0.095f, 0.118f, 0.14f, 1f);
@@ -354,7 +359,102 @@ namespace Shinshi.UI.Editor
             G_Nodes["dd-cursor"] = slot;
             Link("_cursorSize", Dropdown("dd-cursor", new[] { "중 (100%)" }));
             BuildVfxSection(page);
-            Label(page, "GameNotice", "커서 크기는 화면이 아닌 게임 커서 그림에만 적용됩니다", 36f, 396f, 740f, 32f, 15f, G_Gold, false, TextAlignmentOptions.Left);
+            BuildCameraSection(page);
+            Label(page, "GameNotice", "커서 크기는 화면이 아닌 게임 커서 그림에만 적용됩니다", 36f, GAME_NOTICE_Y, 740f, 32f, 15f, G_Gold, false, TextAlignmentOptions.Left);
+            EnsureGameScroll(page);
+        }
+
+        // 게임 탭 맨 아래에 카메라 각도와 거리 슬라이더를 둔다. 슬라이더 0.5가 줌 단계 그대로다
+        private static void BuildCameraSection(RectTransform page)
+        {
+            Panel(page, "CameraSeparator", 16f, 364f, 780f, 1f, G_Border);
+            Label(page, "CameraSection", "카메라 구도", 62f, 378f, 300f, 34f, 20f, G_Gold, true, TextAlignmentOptions.Left);
+            Glyph(page, "CameraSectionMark", 20f, 387f, 12f, SettingsGlyph.EShape.Diamond, G_Gold);
+            Slider pitch = VolumeRow(page, "CameraPitch", "카메라 각도", 424f,
+                "카메라가 캐릭터를 내려다보는 각도를 조절합니다. 오른쪽으로 올리면 더 위에서 내려다보고 왼쪽으로 내리면 더 눕혀서 봅니다. 마우스 휠 줌 단계마다 기본 각도가 다르며 그 위에 이 값이 더해집니다.", out TMP_Text pitchValue);
+            Slider distance = VolumeRow(page, "CameraDistance", "카메라 거리", 494f,
+                "카메라가 캐릭터에서 떨어진 거리를 조절합니다. 오른쪽으로 올리면 더 멀리서 넓게 보이고 왼쪽으로 내리면 더 가까이서 봅니다. 마우스 휠 줌 단계의 거리에 비율로 적용됩니다.", out TMP_Text distanceValue);
+            pitch.value = CameraComposition.DEFAULT_RATE;
+            distance.value = CameraComposition.DEFAULT_RATE;
+            Link("_cameraPitch", pitch);
+            Link("_cameraDistance", distance);
+            Link("_cameraPitchValue", pitchValue);
+            Link("_cameraDistanceValue", distanceValue);
+        }
+
+        // 항목이 창 높이보다 길어져 게임 탭을 세로 스크롤로 만든다. 이미 만든 탭이면 내용 영역만 돌려준다
+        private static RectTransform EnsureGameScroll(RectTransform page)
+        {
+            Transform existing = page.Find("GameContent");
+            if (existing != null)
+            {
+                return (RectTransform)existing;
+            }
+
+            RectTransform content = Rect(page, "GameContent", 0f, 0f, page.rect.width, GAME_CONTENT_HEIGHT);
+            List<Transform> children = new List<Transform>();
+            foreach (Transform child in page)
+            {
+                if (child != content)
+                {
+                    children.Add(child);
+                }
+            }
+            foreach (Transform child in children)
+            {
+                child.SetParent(content, false);
+            }
+
+            page.gameObject.AddComponent<RectMask2D>();
+            ScrollRect scroll = page.gameObject.AddComponent<ScrollRect>();
+            scroll.content = content;
+            scroll.viewport = page;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = GAME_SCROLL_SENSITIVITY;
+            return content;
+        }
+
+        [MenuItem("Shinshi/UI/설정 창 카메라 구도 추가")]
+        private static void PatchCameraRows()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(PREFAB_PATH);
+            try
+            {
+                G_View = root.GetComponentInChildren<SettingsView>(true);
+                Transform page = FindDeep(root.transform, "GamePage");
+                if ((G_View == null) || (page == null))
+                {
+                    throw new InvalidOperationException("설정 창 프리팹에서 SettingsView 또는 GamePage를 찾을 수 없습니다");
+                }
+                G_Nodes.Clear();
+                G_Regular = EnsureFont("Regular");
+                G_Bold = EnsureFont("Bold");
+                RectTransform content = EnsureGameScroll((RectTransform)page);
+                foreach (string stale in new[] { "CameraSeparator", "CameraSection", "CameraSectionMark", "CameraPitchRow", "CameraDistanceRow" })
+                {
+                    Transform old = content.Find(stale);
+                    if (old != null)
+                    {
+                        UnityEngine.Object.DestroyImmediate(old.gameObject);
+                    }
+                }
+                BuildCameraSection(content);
+                Transform notice = content.Find("GameNotice");
+                if (notice != null)
+                {
+                    SetRect((RectTransform)notice, 36f, GAME_NOTICE_Y, 740f, 32f);
+                }
+                PreloadCharacters((RectTransform)G_View.transform);
+                PrefabUtility.SaveAsPrefabAsset(root, PREFAB_PATH);
+                AssetDatabase.SaveAssetIfDirty(G_Regular);
+                AssetDatabase.SaveAssetIfDirty(G_Bold);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         // 게임 탭 아래쪽에 내 캐릭터와 파티원의 이펙트 투명도 슬라이더 두 줄을 둔다
@@ -388,15 +488,16 @@ namespace Shinshi.UI.Editor
                 G_Nodes.Clear();
                 G_Regular = EnsureFont("Regular");
                 G_Bold = EnsureFont("Bold");
+                Transform vfxParent = page.Find("GameContent") ?? page;
                 foreach (string stale in new[] { "GameSeparator", "VfxSection", "VfxSectionMark", "VfxVisibilityRow", "VfxOwnRow", "VfxPartyRow" })
                 {
-                    Transform old = page.Find(stale);
+                    Transform old = vfxParent.Find(stale);
                     if (old != null)
                     {
                         UnityEngine.Object.DestroyImmediate(old.gameObject);
                     }
                 }
-                BuildVfxSection((RectTransform)page);
+                BuildVfxSection((RectTransform)vfxParent);
                 PreloadCharacters((RectTransform)G_View.transform);
                 PrefabUtility.SaveAsPrefabAsset(root, PREFAB_PATH);
                 AssetDatabase.SaveAssetIfDirty(G_Regular);

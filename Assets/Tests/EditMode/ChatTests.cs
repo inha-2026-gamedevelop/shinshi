@@ -258,6 +258,14 @@ namespace Shinshi.Tests
             Assert.That(ChatViewRules.ToDropdownIndex(EChatTab.All), Is.EqualTo(0));
         }
 
+        [Test]
+        public void NextInputTab_Cycles_AllPartyGuildAll()
+        {
+            Assert.That(ChatViewRules.NextInputTab(0), Is.EqualTo(EChatTab.Party));
+            Assert.That(ChatViewRules.NextInputTab(1), Is.EqualTo(EChatTab.Guild));
+            Assert.That(ChatViewRules.NextInputTab(2), Is.EqualTo(EChatTab.All));
+        }
+
         /****************************************
         *                Types
         ****************************************/
