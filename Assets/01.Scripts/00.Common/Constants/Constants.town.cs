@@ -13,6 +13,10 @@ namespace Shinshi.Common
             public const int    REQUESTS_PER_SECOND    = 5;
             public const double REQUEST_WINDOW_SECONDS = 1.0;
 
+            // 경매장 조회(검색, 등록 상세, 내 등록, 기록)는 쓰기와 따로 센다. 창을 열면 내 등록과 검색이 나가고 곧바로 다른 검색과
+            // 상세가 이어지므로 쓰기 한도와 함께 세면 정상 사용도 막힌다. 조회는 종류마다 하나씩만 진행되어 API 부하는 동시 진행 수로도 묶인다
+            public const int    MARKET_READS_PER_SECOND = 10;
+
             // 마을 프로세스가 동시에 여는 방 수와 방 목록 한 번에 보내는 방 수. 넘으면 새 방을 만들지 않는다
             public const int MAX_PARTY_ROOMS  = 256;
             public const int MAX_LISTED_ROOMS = 64;

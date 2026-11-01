@@ -11,7 +11,8 @@ namespace Shinshi.Network
     /// <summary> 클라이언트 경매장 요청을 검증해 경매장 API로 중계하고 결과를 소유자에게 돌려준다, 메인 스레드에서만 부른다 </summary>
     public sealed class MarketRelayServer : IBackendResponseListener
     {
-        // 연결마다 1초에 REQUESTS_PER_SECOND번까지 받는다. 쓰기(등록, 구매, 취소, 확인)는 연결당 한 번에 하나만 API로 보낸다.
+        // 쓰기는 연결마다 1초에 REQUESTS_PER_SECOND번, 조회는 따로 MARKET_READS_PER_SECOND번까지 받는다. 조회와 쓰기가 한도를 나눠 쓰면
+        // 창을 열고 곧바로 검색, 상세를 고르는 정상 흐름이 RateLimited로 막힌다. 쓰기(등록, 구매, 취소, 확인)는 연결당 한 번에 하나만 API로 보낸다.
         // 처리 중인 requestId가 다시 오면 무시하고(결과는 곧 간다), 다른 쓰기가 오면 PendingCommit으로 거절한다.
         // 읽기(검색, 등록 상세, 내 등록, 기록)는 종류마다 하나씩 동시에 진행할 수 있고, 같은 종류가 진행 중이면 PendingCommit이다.
         // 결과를 모르는 쓰기는 BackendUnavailable로 알리고 진행 표를 지운다. 클라이언트가 같은 requestId로 다시 보내면 API가 처음 결과를 돌려준다.
@@ -59,7 +60,8 @@ namespace Shinshi.Network
                 return;
             }
 
-            if (!member.TryAcceptRequest(ETownChannel.Market, _clock()))
+            ETownChannel channel = message.IsWrite ? ETownChannel.Market : ETownChannel.MarketRead;
+            if (!member.TryAcceptRequest(channel, _clock()))
             {
                 Reply(member.ParticipantId, in message, ERejectReason.RateLimited);
                 return;

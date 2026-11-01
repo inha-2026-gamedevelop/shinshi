@@ -5,6 +5,7 @@ using System.Globalization;
 
 // 프로젝트 내부
 using Shinshi.Contracts;
+using Shinshi.Data;
 
 namespace Shinshi.UI
 {
@@ -26,6 +27,7 @@ namespace Shinshi.UI
         private const string HOUR_FORMAT = "{0}시간 {1}분";
         private const string MINUTE_FORMAT = "{0}분";
         private const string PRICE_FORMAT = "{0:N0}";
+        private const string HERB_NAME = "약초";
 
         /****************************************
         *                Methods
@@ -169,8 +171,36 @@ namespace Shinshi.UI
             return (role == MarketCodes.TradeRole.SELLER) ? "판매" : "구매";
         }
 
-        /// <summary> 입력 글자가 정의 ID에 들어 있는 후보를 모은다. 표시 이름 번역 표가 없어 정의 ID로 찾는다. 빈 글자는 빈 목록 </summary>
-        public static void FindDefinitionIds(string text, IEnumerable<string> candidates, int max, List<string> into)
+        // 번역 표가 아직 없어 품목별로 이미 있는 표시 이름을 쓴다. 약초는 고정 이름, 부적 효과는 기술 표시 카탈로그, 장비는 등급과 부위 이름이다
+        /// <summary> 경매장에 보일 품목 이름, 알 수 없으면 정의 ID를 그대로 돌려준다 </summary>
+        public static string ItemName(string definitionId, EquipmentCatalogSO equipment, SkillDisplayCatalogSO display)
+        {
+            if (string.IsNullOrEmpty(definitionId))
+            {
+                return string.Empty;
+            }
+
+            if (definitionId == MarketTradeRules.HERB_ID)
+            {
+                return HERB_NAME;
+            }
+
+            if (MarketTradeRules.IsTalismanEffectId(definitionId))
+            {
+                return (display != null) ? display.DisplayNameOf(definitionId) : definitionId;
+            }
+
+            if ((equipment != null) && (equipment.TryGetEquipment(definitionId, out _)))
+            {
+                return EquipmentEnhanceRules.DisplayName(equipment, definitionId);
+            }
+
+            return definitionId;
+        }
+
+        /// <summary> 입력 글자가 정의 ID나 표시 이름(nameOf가 있으면)에 들어 있는 후보를 모은다. 빈 글자는 빈 목록 </summary>
+        public static void FindDefinitionIds(string text, IEnumerable<string> candidates, int max, List<string> into,
+            Func<string, string> nameOf = null)
         {
             if (into == null)
             {
@@ -186,7 +216,14 @@ namespace Shinshi.UI
             string needle = text.Trim();
             foreach (string id in candidates)
             {
-                if ((!string.IsNullOrEmpty(id)) && (id.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0) && (!into.Contains(id)))
+                if ((string.IsNullOrEmpty(id)) || (into.Contains(id)))
+                {
+                    continue;
+                }
+
+                string name = (nameOf != null) ? nameOf(id) : null;
+                if ((id.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
+                    || ((!string.IsNullOrEmpty(name)) && (name.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)))
                 {
                     into.Add(id);
                     if (into.Count >= max)

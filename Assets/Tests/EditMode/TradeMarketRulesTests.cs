@@ -204,6 +204,15 @@ namespace Shinshi.Tests
             Assert.AreEqual(2, found.Count);
             AuctionViewRules.FindDefinitionIds("  ", new[] { "item_herb" }, 10, found);
             Assert.AreEqual(0, found.Count);
+            AuctionViewRules.FindDefinitionIds("약초", new[] { "item_herb", "equip_a" }, 10, found,
+                id => AuctionViewRules.ItemName(id, null, null));
+            Assert.AreEqual(1, found.Count, "표시 이름으로도 찾는다");
+            Assert.AreEqual("item_herb", found[0]);
+
+            Assert.AreEqual("약초", AuctionViewRules.ItemName(MarketTradeRules.HERB_ID, null, null));
+            Assert.AreEqual("T01-1A", AuctionViewRules.ItemName("T01-1A", null, null), "카탈로그가 없으면 정의 ID");
+            Assert.AreEqual("equip_unknown", AuctionViewRules.ItemName("equip_unknown", null, null));
+            Assert.AreEqual(string.Empty, AuctionViewRules.ItemName(null, null, null));
 
             Assert.AreEqual("만료", AuctionViewRules.FormatRemaining(1000, 2000));
             Assert.AreEqual("1일 1시간", AuctionViewRules.FormatRemaining(25L * 3600L * 1000L, 0));
