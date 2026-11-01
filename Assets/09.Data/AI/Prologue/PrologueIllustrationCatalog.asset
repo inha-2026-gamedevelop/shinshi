@@ -44,3 +44,4 @@ MonoBehaviour:
       \uB3CC\uC544\uAC00\uC790. \uB2E4\uC2DC \uB9DE\uC124 \uD798\uC774 \uD544\uC694\uD574."
   _inkWipeMaterial: {fileID: 2100000, guid: 6d03c3dddd81c0e489135e5f5b982056, type: 2}
   _font: {fileID: 11400000, guid: 41bb4f9c604e41a438b947123d8b3145, type: 2}
+  _subtitleFont: {fileID: 11400000, guid: 9c595fba874703e4d85d8d7d0277bebc, type: 2}

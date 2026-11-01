@@ -164,7 +164,7 @@ namespace Shinshi.AI
             _bodyText.font = font;
         }
 
-        /// <summary> 자막을 흰 글자에 검은 테두리로 바꾼다, 시험용이라 켜는 쪽이 따로 부른다. 이미 보이는 장에도 바로 적용한다 </summary>
+        /// <summary> 자막을 흰 글자에 검은 테두리로 바꾼다, 켜는 쪽이 따로 부른다. 이미 보이는 장에도 바로 적용한다 </summary>
         public void UseOutlinedSubtitle()
         {
             _outlined = true;

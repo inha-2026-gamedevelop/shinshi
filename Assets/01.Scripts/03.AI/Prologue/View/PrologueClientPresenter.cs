@@ -95,7 +95,7 @@ namespace Shinshi.AI
             }
         }
 
-        /// <summary> 일러스트 자막을 흰 글자·검은 테두리로 바꾼다, font가 있으면 자막 글꼴도 바꾼다. 시험 장치만 부른다 </summary>
+        /// <summary> 일러스트 자막을 흰 글자·검은 테두리로 바꾼다, font가 있으면 자막 글꼴도 바꾼다 </summary>
         public void UseOutlinedSubtitle(TMP_FontAsset font)
         {
             if (_illustration == null)
@@ -124,6 +124,12 @@ namespace Shinshi.AI
             _illustration.SetFont(catalog.Font);
             _illustration.SetTransitionMaterial(catalog.InkWipeMaterial);
             _illustration.SetTransitionSeconds(catalog.InkSeconds);
+
+            if (catalog.SubtitleFont != null)
+            {
+                UseOutlinedSubtitle(catalog.SubtitleFont);
+            }
+
             _illustration.Finished += OnIllustrationFinished;
 
             _hint = PrologueHintView.Create();

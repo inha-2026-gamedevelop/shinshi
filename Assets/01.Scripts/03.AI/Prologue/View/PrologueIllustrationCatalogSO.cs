@@ -62,6 +62,9 @@ namespace Shinshi.AI
         [Header("글꼴")]
         [SerializeField] private TMP_FontAsset _font;
 
+        // 삽화 자막 본문 글꼴. 있으면 자막을 이 글꼴의 흰 글자·검은 테두리로 바꾸고, 비면 위 글꼴의 기본 자막을 쓴다
+        [SerializeField] private TMP_FontAsset _subtitleFont;
+
         private IllustrationPage[] _introPages      = null;
         private IllustrationPage[] _talismanPages   = null;
         private IllustrationPage[] _appearancePages = null;
@@ -74,6 +77,7 @@ namespace Shinshi.AI
         public Material      InkWipeMaterial => _inkWipeMaterial;
         public float         InkSeconds      => _inkSeconds;
         public TMP_FontAsset Font            => _font;
+        public TMP_FontAsset SubtitleFont    => _subtitleFont;
 
         public IllustrationPage[] IntroPages      => _introPages      ?? (_introPages      = Convert(_intro));
         public IllustrationPage[] TalismanPages   => _talismanPages   ?? (_talismanPages   = Convert(_talisman));
