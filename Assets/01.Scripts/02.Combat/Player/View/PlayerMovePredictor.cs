@@ -161,6 +161,8 @@ namespace Shinshi.Combat
                 }
             }
 
+            // 무너진 전장 가두기는 서버처럼 회피 중에도 한다
+            position = ArenaEdgeRules.ClampRegistered(position);
             if (resolveBossBodies)
             {
                 position = BossBodyPushRules.ResolveRegistered(position);

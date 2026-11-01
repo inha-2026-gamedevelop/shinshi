@@ -1081,6 +1081,7 @@ namespace Shinshi.Combat
             }
 
             TickBoss(serverTime, sessionTick);
+            ApplyArenaFalls(serverTime);
             ObserveBossMeterPhase(serverTime);
             if (sessionTick)
             {
@@ -1105,7 +1106,9 @@ namespace Shinshi.Combat
             SyncCompanionObjects();
             _combatMeter?.Tick(serverTime);
 
-            // 보스 몸통 밀어내기는 이동, 기술, 공격, 보스, 부활이 위치를 모두 옮긴 뒤 한 번만 한다. 보내는 위치가 몸통과 겹치지 않는다
+            // 전장 가두기와 보스 몸통 밀어내기는 이동, 기술, 공격, 보스, 부활이 위치를 모두 옮긴 뒤 한 번만 한다.
+            // 보내는 위치가 무너진 바닥 위나 몸통과 겹치지 않는다
+            ConfinePlayersToArena();
             ResolveBossBodies();
 
             // 이동, 기술, 공격, 부활이 위치를 모두 옮긴 뒤에 보내야 예측이 틱 중간 위치를 기준으로 삼지 않는다
@@ -1248,6 +1251,45 @@ namespace Shinshi.Combat
 
             _registry.Unregister(_boss.CombatId);
             _boss = null;
+        }
+
+        // 보스 틱 바로 뒤, 생사 보고 앞에 둔다. 같은 틱의 종료 판정이 낙사로 생긴 전멸을 본다.
+        // 걸어서는 경계를 넘지 못하므로 전장 밖에 있는 살아 있는 사람은 이번 보스 틱의 밀침으로 나간 사람뿐이다.
+        // 서버 보호와 부활 직후 보호는 추락을 막지 않는다(하드 0% 추락과 같은 기준)
+        private void ApplyArenaFalls(double serverTime)
+        {
+            if ((_boss == null) || (!_boss.ConfinesToArena))
+            {
+                return;
+            }
+
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                PlayerServer player = _players[i];
+                if ((player.LifeState != EParticipantLifeState.Alive) || (!_boss.WasPushedOff(player.CombatId))
+                    || (!ArenaEdgeRules.IsBeyond(player.Position, _boss.ArenaCenter, _boss.ArenaRadius, player.BodyRadius)))
+                {
+                    continue;
+                }
+
+                if (player.KillByServer(serverTime))
+                {
+                    Debug.Log($"[Boss] 밀려서 무너진 전장 밖으로 떨어졌다, participantId={player.ParticipantId}");
+                }
+            }
+        }
+
+        private void ConfinePlayersToArena()
+        {
+            if ((_boss == null) || (!_boss.ConfinesToArena))
+            {
+                return;
+            }
+
+            for (int i = 0; i < _players.Count; ++i)
+            {
+                _players[i].ConfineToArena(_boss.ArenaCenter, _boss.ArenaRadius);
+            }
         }
 
         private void ResolveBossBodies()

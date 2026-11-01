@@ -1735,6 +1735,24 @@ namespace Shinshi.Combat
             }
         }
 
+        // 바깥 바닥이 무너진 전장에서 걷기, 회피, 기술 이동으로 나간 위치를 경계로 되돌린다. 보스 밀침으로 나간 사람은 이 앞에서 이미 낙사했다.
+        // 소유 예측도 같은 규칙으로 걸음마다 되돌리므로 경로를 버리지 않고 경계를 따라 미끄러진다. 회피 중에도 되돌린다
+        /// <summary> 전장 밖이면 경계 안으로 되돌린다 </summary>
+        public void ConfineToArena(Vector3 center, float arenaRadius)
+        {
+            if (_lifeState != EParticipantLifeState.Alive)
+            {
+                return;
+            }
+
+            Vector3 current  = _transform.position;
+            Vector3 resolved = ArenaEdgeRules.Clamp(current, center, arenaRadius, BodyRadius);
+            if (resolved != current)
+            {
+                _transform.position = resolved;
+            }
+        }
+
         // 보스 틱은 이동, 기술 틱 뒤이고 PublishMovement 앞이라 이 틱의 위치를 다시 쓰는 계층이 없고, 틱 끝 위치가 바뀌었으므로
         // 서 있던 대상도 권위 값이 다시 나간다. 그래서 시각은 여기서 쓰지 않는다
         public void Displace(Vector3 position, double serverTime)

@@ -154,6 +154,7 @@ namespace Shinshi.Combat
             state.SetPhase2TransitionSnapshot(boss.Phase2TransitionId, boss.Phase2TransitionStartServerTime,
                 boss.Phase2TransitionEndServerTime);
             state.SetBodyPushRadius(boss.BodyPushRadius);
+            state.SetArenaEdge(boss.ConfinesToArena, boss.ArenaCenter, boss.ArenaRadius);
         }
 
         public void Despawn(BossServer boss, BossState state)
