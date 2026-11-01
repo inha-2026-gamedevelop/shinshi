@@ -738,6 +738,8 @@ namespace Shinshi.Backend.Tests.Accounts
         [InlineData("0,1,2", 5)]
         [InlineData("3", 4)]
         [InlineData("3", 5)]
+        [InlineData("5", 4)]
+        [InlineData("4", 5)]
         public async Task CharacterCreate_NewClassWhileGateClosed_Returns409FeatureDisabled(string? enabledClassIds, int classId)
         {
             using AccountApiHost host = new AccountApiHost(enabledClassIds: enabledClassIds);
@@ -754,13 +756,10 @@ namespace Shinshi.Backend.Tests.Accounts
         }
 
         [Theory]
-        [InlineData(null, 3)]
         [InlineData(null, 4)]
         [InlineData(null, 5)]
-        [InlineData("", 3)]
         [InlineData("", 4)]
         [InlineData("", 5)]
-        [InlineData("0,1,2,3,4,5", 3)]
         [InlineData("0,1,2,3,4,5", 4)]
         [InlineData("0,1,2,3,4,5", 5)]
         public async Task CharacterCreate_NewClassWithDefaultOrExplicitGate_ReachesRepository(string? enabledClassIds,
@@ -779,15 +778,19 @@ namespace Shinshi.Backend.Tests.Accounts
             Assert.Equal(classId, host.Characters.LastClassId);
         }
 
-        /// <summary> 구직업은 기본 설정과 명시적인 구직업 재개방 설정 모두에서 생성되지 않는다 </summary>
+        /// <summary> 생성을 끝낸 직업(구직업, 검사)은 기본 설정과 명시적인 재개방 설정 모두에서 생성되지 않는다 </summary>
         [Theory]
         [InlineData(null, ContractCodes.PlayerClass.WARRIOR)]
         [InlineData(null, ContractCodes.PlayerClass.SORCERER)]
         [InlineData(null, ContractCodes.PlayerClass.SUMMONER)]
+        [InlineData(null, ContractCodes.PlayerClass.SWORDSMAN)]
         [InlineData("", ContractCodes.PlayerClass.WARRIOR)]
+        [InlineData("", ContractCodes.PlayerClass.SWORDSMAN)]
+        [InlineData("3", ContractCodes.PlayerClass.SWORDSMAN)]
         [InlineData("0,1,2,3,4,5", ContractCodes.PlayerClass.WARRIOR)]
         [InlineData("0,1,2,3,4,5", ContractCodes.PlayerClass.SORCERER)]
         [InlineData("0,1,2,3,4,5", ContractCodes.PlayerClass.SUMMONER)]
+        [InlineData("0,1,2,3,4,5", ContractCodes.PlayerClass.SWORDSMAN)]
         public async Task CharacterCreate_LegacyClassWithDefaultOrExplicitGate_Returns409BeforeRepository(
             string? enabledClassIds, int classId)
         {
@@ -821,13 +824,13 @@ namespace Shinshi.Backend.Tests.Accounts
             for (int i = 1; i < AccountRequestLimiter.MAX_CHARACTER_WRITES_PER_WINDOW; ++i)
             {
                 using HttpResponseMessage created = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
-                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.SWORDSMAN,
+                    new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.MAGEKNIGHT,
                         CharacterTestData.Appearance())));
                 Assert.Equal(HttpStatusCode.Conflict, created.StatusCode);
             }
 
             using HttpResponseMessage limited = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
-                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.SWORDSMAN,
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.MAGEKNIGHT,
                     CharacterTestData.Appearance())));
             host.Characters.DeleteReason = ContractCodes.RejectReason.NONE;
             using HttpResponseMessage limitedDelete = await player.PostAsync(deletePath, AccountApiHost.Json(
@@ -893,10 +896,10 @@ namespace Shinshi.Backend.Tests.Accounts
         // 허용된 v3(P09) 외형은 검증을 통과해 저장소까지 간다. 대역 저장소는 슬롯 부족(409)으로 답하므로
         // 400이 아니고 저장소 호출 1회와 v3 JSON 전달로 통과를 확인한다
         [Theory]
-        [InlineData(ContractCodes.PlayerClass.SWORDSMAN, CharacterAppearance.BODY_TYPE_FEMALE, 1, 1, 1, 1, 1, 0, 2, 31)]
+        [InlineData(ContractCodes.PlayerClass.ARCHER, CharacterAppearance.BODY_TYPE_FEMALE, 1, 1, 1, 1, 1, 0, 2, 31)]
         [InlineData(ContractCodes.PlayerClass.MAGEKNIGHT, CharacterAppearance.BODY_TYPE_FEMALE, 3, 3, 9, 5, 3, 0, 3, 0)]
         [InlineData(ContractCodes.PlayerClass.ARCHER, CharacterAppearance.BODY_TYPE_MALE, 2, 2, 4, 2, 2, 8, 0, 21)]
-        [InlineData(ContractCodes.PlayerClass.SWORDSMAN, CharacterAppearance.BODY_TYPE_MALE, 1, 3, 1, 1, 1, 0, 0, 31)]
+        [InlineData(ContractCodes.PlayerClass.MAGEKNIGHT, CharacterAppearance.BODY_TYPE_MALE, 1, 3, 1, 1, 1, 0, 0, 31)]
         public async Task CharacterCreate_V3AllowedAppearance_ReachesRepository(int classId, int bodyType, int faceId, int hairId,
             int hairColor, int eyeColor, int skinTone, int facialHair, int bustSize, int outfitMask)
         {
@@ -978,7 +981,7 @@ namespace Shinshi.Backend.Tests.Accounts
             using HttpClient player = host.CreateClient(access);
 
             using HttpResponseMessage response = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
-                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.SWORDSMAN,
+                new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "여우", ContractCodes.PlayerClass.MAGEKNIGHT,
                     CharacterTestData.AppearanceV2(CharacterAppearanceCatalog.FACE_CUTE, 2, 3))));
 
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);

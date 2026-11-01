@@ -542,7 +542,7 @@ namespace Shinshi.Backend.Tests.Accounts
         *                Methods
         ****************************************/
 
-        /// <summary> enabledClassIds는 Characters:EnabledClassIds 값이다. null이면 설정을 비워 기본(3,4,5)이다 </summary>
+        /// <summary> enabledClassIds는 Characters:EnabledClassIds 값이다. null이면 설정을 비워 기본(4,5)이다 </summary>
         public AccountApiHost(bool maintenance = false, PasswordHashGate? gate = null,
             int iterations = AccountPasswordHasherTests.TEST_ITERATIONS, string? enabledClassIds = null,
             ICharacterRepository? characterRepository = null)

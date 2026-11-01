@@ -252,6 +252,10 @@ namespace Shinshi.Contracts
             public const int SWORDSMAN  = 3;
             public const int MAGEKNIGHT = 4;
             public const int ARCHER     = 5;
+
+            // enum 값이 아니라 신규 생성 경계다. 이보다 작은 직업(구직업 0~2, 검사 3)은 저장된 캐릭터만 읽고
+            // 새로 만들지 않는다. 생성 화면과 API 생성 검증이 같은 값을 봐야 화면에 없는 직업을 변조 요청으로 만들 수 없다
+            public const int CREATION_MIN = MAGEKNIGHT;
         }
 
         /// <summary> EServerRole과 같은 값 </summary>

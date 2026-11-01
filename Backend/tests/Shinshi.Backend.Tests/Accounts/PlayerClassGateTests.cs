@@ -24,7 +24,7 @@ using Shinshi.Data.Characters;
 
 namespace Shinshi.Backend.Tests.Accounts
 {
-    /// <summary> 직업 ID 범위(0~5)와 새 직업 3, 4, 5의 서버 설정 문(Characters:EnabledClassIds), 0016 마이그레이션을 검사한다 </summary>
+    /// <summary> 직업 ID 범위(0~5)와 생성 직업 4, 5의 서버 설정 문(Characters:EnabledClassIds), 생성을 끝낸 검사 3, 0016 마이그레이션을 검사한다 </summary>
     public sealed class PlayerClassGateTests
     {
         /****************************************
@@ -32,7 +32,7 @@ namespace Shinshi.Backend.Tests.Accounts
         ****************************************/
 
         private const string MIGRATION_0016 = "0016_player_class_range";
-        private const int NEW_CLASS = 3;
+        private const int NEW_CLASS = ContractCodes.PlayerClass.MAGEKNIGHT;
 
         /****************************************
         *                Methods
@@ -52,15 +52,17 @@ namespace Shinshi.Backend.Tests.Accounts
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
+        [InlineData("4,5")]
         [InlineData("3,4,5")]
         public void Parse_DefaultOrEmpty_OpensOnlyNewClasses(string? text)
         {
             PlayerClassPolicy policy = PlayerClassPolicy.Parse(text);
 
-            Assert.Equal(new[] { 3, 4, 5 }, policy.EnabledClassIds());
+            Assert.Equal(new[] { 4, 5 }, policy.EnabledClassIds());
             Assert.False(policy.IsEnabled(0));
             Assert.False(policy.IsEnabled(1));
             Assert.False(policy.IsEnabled(2));
+            Assert.False(policy.IsEnabled(ContractCodes.PlayerClass.SWORDSMAN));
             Assert.False(policy.IsEnabled(6));
         }
 
@@ -69,8 +71,8 @@ namespace Shinshi.Backend.Tests.Accounts
         {
             PlayerClassPolicy policy = PlayerClassPolicy.Parse(" 3, 5 ");
 
-            Assert.Equal(new[] { 3, 5 }, policy.EnabledClassIds());
-            Assert.True(policy.IsEnabled(3));
+            Assert.Equal(new[] { 5 }, policy.EnabledClassIds());
+            Assert.False(policy.IsEnabled(3));
             Assert.False(policy.IsEnabled(4));
             Assert.True(policy.IsEnabled(5));
         }
@@ -78,6 +80,8 @@ namespace Shinshi.Backend.Tests.Accounts
         [Theory]
         [InlineData("0,1,2")]
         [InlineData("2")]
+        [InlineData("3")]
+        [InlineData("0,1,2,3")]
         public void Parse_LegacyClassList_DoesNotReopenCreation(string text)
         {
             PlayerClassPolicy policy = PlayerClassPolicy.Parse(text);
@@ -90,7 +94,7 @@ namespace Shinshi.Backend.Tests.Accounts
         {
             PlayerClassPolicy policy = PlayerClassPolicy.Parse("0,1,2,3,4,5,3");
 
-            Assert.Equal(new[] { 3, 4, 5 }, policy.EnabledClassIds());
+            Assert.Equal(new[] { 4, 5 }, policy.EnabledClassIds());
         }
 
         [Fact]
@@ -105,7 +109,7 @@ namespace Shinshi.Backend.Tests.Accounts
         [InlineData(0, true)]
         [InlineData(1, true)]
         [InlineData(2, true)]
-        [InlineData(3, false)]
+        [InlineData(3, true)]
         [InlineData(4, false)]
         [InlineData(5, true)]
         [InlineData(6, false)]
@@ -134,15 +138,18 @@ namespace Shinshi.Backend.Tests.Accounts
             PlayerClassPolicy policy = new CharacterOptions().ResolvePolicy();
 
             Assert.Equal(CharacterOptions.DEFAULT_ENABLED_CLASS_IDS, new CharacterOptions().EnabledClassIds);
-            Assert.Equal(new[] { 3, 4, 5 }, policy.EnabledClassIds());
+            Assert.Equal(new[] { 4, 5 }, policy.EnabledClassIds());
             Assert.False(policy.IsEnabled(ContractCodes.PlayerClass.SUMMONER));
+            Assert.False(policy.IsEnabled(ContractCodes.PlayerClass.SWORDSMAN));
         }
 
         [Theory]
-        [InlineData("3,4,5", new[] { 3, 4, 5 })]
-        [InlineData("3", new[] { 3 })]
-        [InlineData("", new[] { 3, 4, 5 })]
-        [InlineData("0,1,2,3,4,5", new[] { 3, 4, 5 })]
+        [InlineData("4,5", new[] { 4, 5 })]
+        [InlineData("5", new[] { 5 })]
+        [InlineData("3", new int[0])]
+        [InlineData("3,4,5", new[] { 4, 5 })]
+        [InlineData("", new[] { 4, 5 })]
+        [InlineData("0,1,2,3,4,5", new[] { 4, 5 })]
         public void AddShinshiAccounts_ConfiguredClassList_ReplacesDefaultAndCannotReopenLegacyClasses(string text,
             int[] expected)
         {
@@ -168,7 +175,7 @@ namespace Shinshi.Backend.Tests.Accounts
             await connection.ExecuteAsync("INSERT INTO accounts(account_id) VALUES (@AccountId);",
                 new { AccountId = accountId });
 
-            for (int classId = PlayerClassPolicy.MIN_CLASS_ID; classId <= PlayerClassPolicy.LEGACY_MAX_ID; ++classId)
+            for (int classId = PlayerClassPolicy.MIN_CLASS_ID; classId <= PlayerClassPolicy.RETIRED_MAX_ID; ++classId)
             {
                 using HttpResponseMessage rejected = await player.PostAsync(ApiRoutes.CHARACTERS, AccountApiHost.Json(
                     new CharacterCreateRequest(Guid.NewGuid().ToString("D"), "Legacy" + classId, classId,
@@ -195,9 +202,9 @@ namespace Shinshi.Backend.Tests.Accounts
                 Assert.Equal(classId, result.Character.ClassId);
             }
 
-            Assert.Equal(new[] { 3, 4, 5 }, (await repository.ListAsync(accountId))
+            Assert.Equal(new[] { 4, 5 }, (await repository.ListAsync(accountId))
                 .Select(character => character.ClassId).OrderBy(classId => classId).ToArray());
-            Assert.Equal(3L, await connection.QuerySingleAsync<long>("SELECT count(*) FROM operations;"));
+            Assert.Equal(2L, await connection.QuerySingleAsync<long>("SELECT count(*) FROM operations;"));
         }
 
         /// <summary> 0016 적용 뒤 CHECK 이름이 바뀌어 있고, 새 직업 행이 있으면 down이 데이터를 지우지 않고 중단하며, 행을 치우면 되돌아가고 다시 올라간다 </summary>
@@ -253,8 +260,8 @@ namespace Shinshi.Backend.Tests.Accounts
                 """));
         }
 
-        /// <summary> 마을 입장권 발급은 닫힌 새 직업을 FEATURE_DISABLED로 거절하고, 열면 문을 통과하며, 기존 직업은 설정과 무관하다.
-        /// 대상 마을이 없어도 문 검사가 먼저이므로 서버 인스턴스를 심지 않는다 </summary>
+        /// <summary> 마을 입장권 발급은 닫힌 새 직업을 FEATURE_DISABLED로 거절하고, 열면 문을 통과하며, 생성을 끝낸 직업(구직업, 검사)은
+        /// 설정과 무관하다. 대상 마을이 없어도 문 검사가 먼저이므로 서버 인스턴스를 심지 않는다 </summary>
         [PostgresFact]
         public async Task IssueTownJoin_NewClassCharacter_RespectsGate()
         {
@@ -263,7 +270,7 @@ namespace Shinshi.Backend.Tests.Accounts
             PostgresAuthRepository closed = new PostgresAuthRepository(database.DataSource, options,
                 PlayerClassPolicy.Parse("0,1,2"));
             PostgresAuthRepository open = new PostgresAuthRepository(database.DataSource, options);
-            (Guid accountId, Guid newClassCharacter, Guid legacyCharacter) = await SeedAsync(database);
+            (Guid accountId, Guid newClassCharacter, Guid legacyCharacter, Guid swordsmanCharacter) = await SeedAsync(database);
             PlayerAuthIdentity identity = await LoginAsync(closed, accountId);
             Guid missingTown = Guid.NewGuid();
 
@@ -273,30 +280,36 @@ namespace Shinshi.Backend.Tests.Accounts
                 newClassCharacter, missingTown);
             AuthValidationOutcome<IssuedAuthToken> closedLegacy = await closed.IssueTownJoinTokenAsync(identity,
                 legacyCharacter, missingTown);
+            AuthValidationOutcome<IssuedAuthToken> closedSwordsman = await closed.IssueTownJoinTokenAsync(identity,
+                swordsmanCharacter, missingTown);
 
             Assert.False(closedNew.IsSuccess);
             Assert.Equal(ContractCodes.RejectReason.FEATURE_DISABLED, closedNew.ReasonCode);
             // 문을 통과하면 다음 검사(등록된 마을 없음)에서 멈춘다
             Assert.Equal(ContractCodes.RejectReason.SESSION_MISMATCH, openNew.ReasonCode);
             Assert.Equal(ContractCodes.RejectReason.SESSION_MISMATCH, closedLegacy.ReasonCode);
+            Assert.Equal(ContractCodes.RejectReason.SESSION_MISMATCH, closedSwordsman.ReasonCode);
         }
 
-        private static async Task<(Guid AccountId, Guid NewClassCharacter, Guid LegacyCharacter)> SeedAsync(
-            PostgresTestDatabase database)
+        private static async Task<(Guid AccountId, Guid NewClassCharacter, Guid LegacyCharacter, Guid SwordsmanCharacter)>
+            SeedAsync(PostgresTestDatabase database)
         {
             Guid accountId = Guid.NewGuid();
             Guid newClassCharacter = Guid.NewGuid();
             Guid legacyCharacter = Guid.NewGuid();
+            Guid swordsmanCharacter = Guid.NewGuid();
             await using NpgsqlConnection connection = await database.DataSource.OpenConnectionAsync();
             await connection.ExecuteAsync(
                 """
                 INSERT INTO accounts(account_id) VALUES (@AccountId);
                 INSERT INTO account_wallets(account_id) VALUES (@AccountId);
                 INSERT INTO characters(character_id, account_id, class_id)
-                    VALUES (@NewClassCharacter, @AccountId, @NewClass), (@LegacyCharacter, @AccountId, @LegacyClass);
+                    VALUES (@NewClassCharacter, @AccountId, @NewClass), (@LegacyCharacter, @AccountId, @LegacyClass),
+                        (@SwordsmanCharacter, @AccountId, @SwordsmanClass);
                 """, new { AccountId = accountId, NewClassCharacter = newClassCharacter, LegacyCharacter = legacyCharacter,
-                    NewClass = NEW_CLASS, LegacyClass = ContractCodes.PlayerClass.WARRIOR });
-            return (accountId, newClassCharacter, legacyCharacter);
+                    SwordsmanCharacter = swordsmanCharacter, NewClass = NEW_CLASS, LegacyClass = ContractCodes.PlayerClass.WARRIOR,
+                    SwordsmanClass = ContractCodes.PlayerClass.SWORDSMAN });
+            return (accountId, newClassCharacter, legacyCharacter, swordsmanCharacter);
         }
 
         private static async Task<PlayerAuthIdentity> LoginAsync(PostgresAuthRepository auth, Guid accountId)

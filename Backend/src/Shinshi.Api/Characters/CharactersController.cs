@@ -123,7 +123,7 @@ namespace Shinshi.Backend.Characters
             {
                 return Reject(StatusCodes.Status400BadRequest, ContractCodes.RejectReason.INVALID_APPEARANCE);
             }
-            // 구직업과 설정에서 닫힌 새 직업은 작업으로 저장하지 않는다
+            // 생성을 끝낸 직업(구직업, 검사)과 설정에서 닫힌 직업은 작업으로 저장하지 않는다
             if (!_classPolicy.IsEnabled(request.ClassId))
             {
                 return Reject(StatusCodes.Status409Conflict, ContractCodes.RejectReason.FEATURE_DISABLED);
