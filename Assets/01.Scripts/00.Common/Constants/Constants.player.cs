@@ -44,6 +44,9 @@ namespace Shinshi.Common
             public const float CURSOR_RAYCAST_MAX_DISTANCE = 500f;
             public const int   CURSOR_RAYCAST_MAX_HITS     = 8;
 
+            // 투명한 아레나 경계 벽 레이어 이름. 카메라가 비스듬해서 벽 윗면이 먼저 맞으면 클릭 지점이 공중에 잡혀 이동이 거절되므로 커서 레이캐스트에서 뺀다
+            public const string ARENA_BOUNDARY_LAYER_NAME = "ArenaBoundary";
+
             // 개, 일반 기술 Q/W/E/R, 강림 Z/X/C, 물약 1/2 입력 슬롯 수
             public const int SKILL_SLOT_COUNT  = 4;
             public const int SUMMON_SLOT_COUNT = 3;

@@ -35,6 +35,7 @@ namespace Shinshi.Combat
         private readonly RaycastHit[] _hits = new RaycastHit[Constants.Player.CURSOR_RAYCAST_MAX_HITS];
 
         private Camera            _camera                = null;
+        private int               _cursorLayerMask       = Physics.DefaultRaycastLayers;
         private CombatLineOfSight _lineOfSight           = null;
         private bool              _hasRequestedMove      = false;
         private Vector3           _lastRequestedMove     = Vector3.zero;
@@ -82,6 +83,9 @@ namespace Shinshi.Combat
         {
             _lineOfSight = new CombatLineOfSight(CombatLineOfSight.ResolveLayerMask(Constants.Combat.OBSTACLE_LAYER_NAME),
                 Constants.Combat.LINE_OF_SIGHT_HEIGHT);
+
+            _cursorLayerMask = Physics.DefaultRaycastLayers
+                & ~CombatLineOfSight.ResolveLayerMask(Constants.Player.ARENA_BOUNDARY_LAYER_NAME);
         }
 
         private void OnEnable()
@@ -483,7 +487,7 @@ namespace Shinshi.Combat
 
             Ray ray   = _camera.ScreenPointToRay(Input.mousePosition);
             int count = Physics.RaycastNonAlloc(ray, _hits, Constants.Player.CURSOR_RAYCAST_MAX_DISTANCE,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                _cursorLayerMask, QueryTriggerInteraction.Ignore);
 
             float nearest = float.MaxValue;
             bool  found   = false;
