@@ -178,6 +178,13 @@ namespace Shinshi.Art
                 _combatAnimation.Configure(_animator, _combat, _combatProfile);
             }
 
+            // OnAnimatorIK는 Animator와 같은 개체에서만 불리므로 조립된 인스턴스 루트에 붙인다
+            if (!_animator.TryGetComponent(out PlayerCharacterFootIkView footIk))
+            {
+                footIk = _animator.gameObject.AddComponent<PlayerCharacterFootIkView>();
+            }
+
+            footIk.Configure(_movementRoot, _combat);
             return true;
         }
 
