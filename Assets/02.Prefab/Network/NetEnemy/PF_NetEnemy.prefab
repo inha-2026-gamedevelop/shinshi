@@ -210,6 +210,7 @@ MonoBehaviour:
   _visual: {fileID: 7696160111719332597}
   _visualRenderer: {fileID: 0}
   _telegraphLine: {fileID: 8228681748287599178}
+  _telegraphFillMaterial: {fileID: 2100000, guid: 30b229325bdf00240a890533f0f1b306, type: 2}
   _modelRoots:
   - {fileID: 3428203570869812176}
   - {fileID: 4423833720477715749}

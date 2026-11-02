@@ -38,6 +38,9 @@ namespace Shinshi.AI
         private const float HIT_SOUND_INTERVAL  = 0.2f;
         private const int   NO_MODEL            = -1;
         private const float CRIT_FLASH_STRENGTH = 0.7f;  // 치명타로 맞았을 때 금색을 섞는 비율
+        private const float FILL_BACK_ALPHA     = 0.15f; // 채움 면 시작 쪽 투명도
+        private const float FILL_FRONT_ALPHA    = 0.55f; // 채움 면 진행 끝 쪽 투명도, 돌진 끝이 앞으로 밀려 나가는 느낌을 준다
+        private const string FILL_OBJECT_NAME   = "TelegraphFill";
 
         // 모델 배열 순서, 프리팹 빌더가 같은 순서로 채운다
         public const int MODEL_BEAST   = 0;
@@ -68,12 +71,20 @@ namespace Shinshi.AI
         [SerializeField] private Transform    _visual;
         [SerializeField] private Renderer     _visualRenderer; // 모델이 없을 때만 쓰는 대체 캡슐
         [SerializeField] private LineRenderer _telegraphLine;
+        [SerializeField] private Material     _telegraphFillMaterial; // 투명, 정점 색을 쓰는 재질. 없으면 윤곽선만 그린다
 
         [Header("원본 모델")]
         [SerializeField] private GameObject[] _modelRoots;
         [SerializeField] private Animator[]   _modelAnimators;
 
-        private readonly Vector3[] _points = new Vector3[EnemyTelegraphGeometry.MAX_POINTS];
+        private readonly Vector3[] _points      = new Vector3[EnemyTelegraphGeometry.MAX_POINTS];
+        private readonly Vector3[] _fillVertices = new Vector3[EnemyTelegraphGeometry.MAX_AREA_VERTICES];
+        private readonly Color32[] _fillColors   = new Color32[EnemyTelegraphGeometry.MAX_AREA_VERTICES];
+        private readonly int[]     _fillIndices  = new int[EnemyTelegraphGeometry.MAX_AREA_INDICES];
+
+        private Mesh         _fillMesh;
+        private MeshRenderer _fillRenderer;
+        private Transform    _fillTransform;
 
         private EnemyNetState         _state;
         private MaterialPropertyBlock _block;
@@ -121,6 +132,7 @@ namespace Shinshi.AI
             }
 
             CacheModels();
+            CreateTelegraphFill();
             HideTelegraph();
         }
 
@@ -169,6 +181,11 @@ namespace Shinshi.AI
         {
             ProbeLog($"OnDestroy corpseLaunched={_corpseLaunched} seenAlive={_seenAlive}");
             LaunchOnRemoval();
+            if (_fillMesh != null)
+            {
+                Destroy(_fillMesh);
+                _fillMesh = null;
+            }
         }
 
         private void Update()
@@ -779,12 +796,66 @@ namespace Shinshi.AI
             _telegraphLine.positionCount = count;
             _telegraphLine.SetPositions(_points);
 
-            Color color = Color.Lerp(Color.yellow, Color.red, cue.Progress(now));
+            float progress = cue.Progress(now);
+            Color color = Color.Lerp(Color.yellow, Color.red, progress);
             _telegraphLine.startColor = color;
             _telegraphLine.endColor   = color;
             _telegraphLine.startWidth = LINE_WIDTH;
             _telegraphLine.endWidth   = LINE_WIDTH;
             _telegraphLine.enabled    = true;
+            ApplyTelegraphFill(in cue, progress, color);
+        }
+
+        // 윤곽은 처음부터 다 보이고, 안쪽 면은 진행도만큼 시작점에서 앞으로(원형은 바깥으로) 차오른다
+        private void ApplyTelegraphFill(in EnemyTelegraphCue cue, float progress, Color color)
+        {
+            if (_fillMesh == null)
+            {
+                return;
+            }
+
+            int vertexCount = EnemyTelegraphGeometry.FillArea(_fillVertices, cue, progress);
+            if (vertexCount <= 0)
+            {
+                _fillRenderer.enabled = false;
+                return;
+            }
+
+            bool isRectangle = EnemyTelegraphGeometry.UsesRectangleArea(cue.Shape);
+            int  indexCount  = EnemyTelegraphGeometry.FillAreaIndices(_fillIndices, isRectangle);
+            for (int i = 0; i < vertexCount; ++i)
+            {
+                color.a = EnemyTelegraphGeometry.IsAreaFrontVertex(isRectangle, i) ? FILL_FRONT_ALPHA : FILL_BACK_ALPHA;
+                _fillColors[i] = color;
+            }
+
+            // 꼭짓점은 월드 좌표다. 부모가 움직여도 면이 따라가지 않게 매 프레임 원점에 둔다
+            _fillTransform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            _fillMesh.Clear();
+            _fillMesh.SetVertices(_fillVertices, 0, vertexCount);
+            _fillMesh.SetColors(_fillColors, 0, vertexCount);
+            _fillMesh.SetTriangles(_fillIndices, 0, indexCount, 0);
+            _fillRenderer.enabled = true;
+        }
+
+        private void CreateTelegraphFill()
+        {
+            if ((IsServerBuild) || (_telegraphFillMaterial == null) || (_fillMesh != null))
+            {
+                return;
+            }
+
+            GameObject fill = new GameObject(FILL_OBJECT_NAME);
+            _fillTransform = fill.transform;
+            _fillTransform.SetParent(transform, false);
+            _fillMesh = new Mesh { name = FILL_OBJECT_NAME };
+            _fillMesh.MarkDynamic();
+            fill.AddComponent<MeshFilter>().sharedMesh = _fillMesh;
+            _fillRenderer = fill.AddComponent<MeshRenderer>();
+            _fillRenderer.sharedMaterial    = _telegraphFillMaterial;
+            _fillRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _fillRenderer.receiveShadows    = false;
+            _fillRenderer.enabled           = false;
         }
 
         private void HideTelegraph()
@@ -792,6 +863,11 @@ namespace Shinshi.AI
             if (_telegraphLine != null)
             {
                 _telegraphLine.enabled = false;
+            }
+
+            if (_fillRenderer != null)
+            {
+                _fillRenderer.enabled = false;
             }
         }
 
