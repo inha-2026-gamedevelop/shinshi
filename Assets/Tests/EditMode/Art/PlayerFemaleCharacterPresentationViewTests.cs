@@ -32,6 +32,14 @@ namespace Shinshi.Tests
         private const float  TOLERANCE       = 0.0001f;
         private const float  ROOT_YAW        = 30f;
         private const float  SLOW_TIME_SCALE = 0.5f;
+        private const float  TURN_SPEED      = 450f;
+        private const float  TURN_PER_TICK   = 45f;
+        private const float  RIGHT_ANGLE     = 90f;
+        private const float  ANGLE_TOLERANCE = 0.5f;
+        private const float  REFERENCE_SPEED = 4f;
+        private const float  MAX_PLAYBACK    = 1.6f;
+
+        private const string PLAYBACK_PARAMETER = "MoveAnimSpeed";
 
         private static readonly MethodInfo _updatePresentation = typeof(PlayerFemaleCharacterPresentationView)
             .GetMethod("UpdatePresentation", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -295,6 +303,131 @@ namespace Shinshi.Tests
             Assert.AreEqual(0f, _animator.GetFloat("Speed"));
         }
 
+        [Test]
+        public void UpdatePresentation_FirstFacing_SnapsThenTurnsAtLimitedRate()
+        {
+            SetField(_view, "_turnDegreesPerSecond", TURN_SPEED);
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.right));
+            Assert.IsTrue(Bind());
+            Tick(FRAME_SECONDS);
+            Assert.Less(Vector3.Distance(Vector3.right, _animator.transform.forward), TOLERANCE);
+
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.forward));
+            Tick(FRAME_SECONDS + FRAME_SECONDS);
+            Assert.AreEqual(TURN_PER_TICK, Vector3.Angle(Vector3.right, _animator.transform.forward), ANGLE_TOLERANCE);
+            Assert.AreEqual(TURN_PER_TICK, Vector3.Angle(Vector3.forward, _animator.transform.forward), ANGLE_TOLERANCE);
+
+            Tick(FRAME_SECONDS + FRAME_SECONDS + FRAME_SECONDS);
+            Assert.AreEqual(RIGHT_ANGLE, Vector3.Angle(Vector3.right, _animator.transform.forward), ANGLE_TOLERANCE);
+            Assert.Less(Vector3.Angle(Vector3.forward, _animator.transform.forward), ANGLE_TOLERANCE);
+        }
+
+        [Test]
+        public void UpdatePresentation_NewAttack_SnapsToAimInsteadOfTurning()
+        {
+            SetField(_view, "_turnDegreesPerSecond", TURN_SPEED);
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.right));
+            Assert.IsTrue(Bind());
+            Tick(FRAME_SECONDS);
+
+            // 서버는 조준 방향과 공격 순번을 같은 묶음으로 보낸다
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.left));
+            SetField(_combat, "_attackSequence", (byte)1);
+            Tick(FRAME_SECONDS + FRAME_SECONDS);
+            Assert.Less(Vector3.Angle(Vector3.left, _animator.transform.forward), ANGLE_TOLERANCE);
+        }
+
+        [Test]
+        public void UpdatePresentation_FirstSeenAttackSequence_DoesNotSnap()
+        {
+            SetField(_view, "_turnDegreesPerSecond", TURN_SPEED);
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.right));
+            SetField(_combat, "_attackSequence", (byte)3);
+            Assert.IsTrue(Bind());
+            Tick(FRAME_SECONDS);
+
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.forward));
+            Tick(FRAME_SECONDS + FRAME_SECONDS);
+            Assert.AreEqual(TURN_PER_TICK, Vector3.Angle(Vector3.right, _animator.transform.forward), ANGLE_TOLERANCE);
+        }
+
+        [Test]
+        public void Configure_Rebind_SnapsFacingAgainOnFirstFrame()
+        {
+            SetField(_view, "_turnDegreesPerSecond", TURN_SPEED);
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.right));
+            Assert.IsTrue(Bind());
+            Tick(FRAME_SECONDS);
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.back));
+            Assert.IsTrue(Bind());
+            Tick(FRAME_SECONDS + FRAME_SECONDS);
+            Assert.Less(Vector3.Angle(Vector3.back, _animator.transform.forward), ANGLE_TOLERANCE);
+        }
+
+        [Test]
+        public void UpdatePresentation_FacingRotation_NeverTouchesGameplayRoot()
+        {
+            SetField(_view, "_turnDegreesPerSecond", TURN_SPEED);
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.left));
+            Quaternion gameplayRotation = _root.transform.rotation;
+            Assert.IsTrue(Bind());
+            Tick(FRAME_SECONDS);
+            SetField(_combat, "_facingYaw", FacingRules.EncodeYaw(Vector3.back));
+            Tick(FRAME_SECONDS + FRAME_SECONDS);
+            Assert.AreEqual(gameplayRotation, _root.transform.rotation);
+        }
+
+        [Test]
+        public void UpdatePresentation_PlaybackParameterPresent_ScalesOnlyAboveReference()
+        {
+            AddControllerParameter(PLAYBACK_PARAMETER, AnimatorControllerParameterType.Float);
+            SetField(_view, "_locomotionReferenceSpeed", REFERENCE_SPEED);
+            SetField(_view, "_maximumPlaybackScale", MAX_PLAYBACK);
+            Assert.IsTrue(Bind(), _view.ValidationError);
+            DriveMovingSample();
+            Assert.AreEqual(EXPECTED_SPEED / REFERENCE_SPEED, _animator.GetFloat(PLAYBACK_PARAMETER), TOLERANCE);
+
+            _source.UseSpeedOverride = true;
+            _source.SpeedOverride = REFERENCE_SPEED * 0.5f;
+            Tick(FRAME_SECONDS + FRAME_SECONDS);
+            Assert.AreEqual(1f, _animator.GetFloat(PLAYBACK_PARAMETER));
+
+            _source.SpeedOverride = MAX_SPEED;
+            Tick(FRAME_SECONDS + FRAME_SECONDS + FRAME_SECONDS);
+            Assert.AreEqual(MAX_PLAYBACK, _animator.GetFloat(PLAYBACK_PARAMETER));
+        }
+
+        [Test]
+        public void UpdatePresentation_PlaybackParameterPresentAndSourceLost_ResetsToNormalSpeed()
+        {
+            AddControllerParameter(PLAYBACK_PARAMETER, AnimatorControllerParameterType.Float);
+            SetField(_view, "_locomotionReferenceSpeed", REFERENCE_SPEED);
+            Assert.IsTrue(Bind(), _view.ValidationError);
+            DriveMovingSample();
+            _source.IsAvailable = false;
+            Tick(FRAME_SECONDS + FRAME_SECONDS);
+            Assert.AreEqual(1f, _animator.GetFloat(PLAYBACK_PARAMETER));
+        }
+
+        [Test]
+        public void UpdatePresentation_PlaybackParameterMissing_BindsAndAnimatesSpeed()
+        {
+            SetField(_view, "_locomotionReferenceSpeed", REFERENCE_SPEED);
+            Assert.IsTrue(Bind(), _view.ValidationError);
+            Assert.DoesNotThrow(DriveMovingSample);
+            Assert.AreEqual(EXPECTED_SPEED, _animator.GetFloat("Speed"), TOLERANCE);
+        }
+
+        [Test]
+        public void UpdatePresentation_PlaybackParameterWrongType_LeavesItUntouched()
+        {
+            AddControllerParameter(PLAYBACK_PARAMETER, AnimatorControllerParameterType.Int);
+            SetField(_view, "_locomotionReferenceSpeed", REFERENCE_SPEED);
+            Assert.IsTrue(Bind(), _view.ValidationError);
+            DriveMovingSample();
+            Assert.AreEqual(0, _animator.GetInteger(PLAYBACK_PARAMETER));
+        }
+
         /****************************************
         *                Methods
         ****************************************/
@@ -302,6 +435,14 @@ namespace Shinshi.Tests
         private bool Bind()
         {
             return _view.Configure(_animator, _root.transform, _combat, _source);
+        }
+
+        // 이미 연결된 컨트롤러에 파라미터를 더하면 Animator가 다시 연결될 때까지 새 파라미터를 모른다
+        private void AddControllerParameter(string name, AnimatorControllerParameterType type)
+        {
+            _controller.AddParameter(name, type);
+            _animator.runtimeAnimatorController = null;
+            _animator.runtimeAnimatorController = _controller;
         }
 
         private void DriveMovingSample()

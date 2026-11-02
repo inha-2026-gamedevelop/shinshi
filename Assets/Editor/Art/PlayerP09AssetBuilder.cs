@@ -48,6 +48,7 @@ namespace Shinshi.Editor
         public const string PARAM_ACTION_INDEX = "ActionIndex";
         public const string PARAM_ACTION_SPEED = "ActionSpeed";
         public const string PARAM_FACE_EMOTION = "FaceEmotion";
+        public const string PARAM_MOVE_ANIM_SPEED = "MoveAnimSpeed";
 
         private const string MENU_PATH        = "Shinshi/Art/P09/Build Assets";
         private const string SOURCE_PREFAB    = "Assets/99.ThirdParty/Model/P09_Modular_Humanoid/Model_DATA/Prefab/P09_Human.prefab";
@@ -64,11 +65,9 @@ namespace Shinshi.Editor
         private const string DODGE_CLIP       = "Special/S_QuickShift_F";
         private const string DIE_CLIP         = "Normal/S_Die";
 
-        private const float WALK_SPEED          = 2.5f;
-        private const float RUN_SPEED           = 5f;
         private const float ACTION_BLEND        = 0.08f;
-        private const float ACTION_EXIT_TIME    = 0.95f;
-        private const float ACTION_EXIT_BLEND   = 0.15f;
+        private const float ACTION_EXIT_TIME    = 0.9f;
+        private const float ACTION_EXIT_BLEND   = 0.2f;
         private const float DIE_BLEND           = 0.1f;
         private const float REVIVE_BLEND        = 0.3f;
         private const float FACE_BLEND          = 0.15f;
@@ -108,7 +107,8 @@ namespace Shinshi.Editor
         private const string CLASS_MENU_PATH   = "Shinshi/Art/P09/Build Class Assets (Swordsman, Mageknight, Archer)";
         private const string CLASS_VERIFY_MENU_PATH = "Shinshi/Art/P09/Verify Class Assets Rerun Keeps GUIDs";
         private const string MK_CLIP_ROOT      = "Assets/99.ThirdParty/Animation/Magical-Knight_Set/Animation/Humanoid/Inplace";
-        private const string ARCHER_CLIP_ROOT  = "Assets/99.ThirdParty/Animation/Grruzam Archer Animation/Animation/Archer/2_Attack";
+        private const string ARCHER_AIM_CLIP_MARKER = "Archer_Attack";
+        private const string ARCHER_CLIP_ROOT  ="Assets/99.ThirdParty/Animation/Grruzam Archer Animation/Animation/Archer/2_Attack";
         private const string KEY_BASE          = "CG/";
         private const string KEY_MK            = "MK/";
         private const string KEY_ARCHER        = "AR/";
@@ -400,6 +400,12 @@ namespace Shinshi.Editor
             controller.AddParameter(PARAM_ACTION_INDEX, AnimatorControllerParameterType.Int);
             controller.AddParameter(new AnimatorControllerParameter { name = PARAM_ACTION_SPEED, type = AnimatorControllerParameterType.Float, defaultFloat = 1f });
             controller.AddParameter(PARAM_FACE_EMOTION, AnimatorControllerParameterType.Int);
+            controller.AddParameter(new AnimatorControllerParameter { name = PARAM_MOVE_ANIM_SPEED, type = AnimatorControllerParameterType.Float, defaultFloat = 1f });
+
+            // 발 IK(OnAnimatorIK)가 불리도록 기본 레이어 IK Pass를 켠다
+            AnimatorControllerLayer[] layers = controller.layers;
+            layers[0].iKPass  = true;
+            controller.layers = layers;
 
             AnimatorStateMachine machine = controller.layers[0].stateMachine;
 
@@ -408,8 +414,11 @@ namespace Shinshi.Editor
             tree.blendParameter         = PARAM_SPEED;
             tree.useAutomaticThresholds = false;
             tree.AddChild(clips[G_LocomotionClips[0]], 0f);
-            tree.AddChild(clips[G_LocomotionClips[1]], WALK_SPEED);
-            tree.AddChild(clips[G_LocomotionClips[2]], RUN_SPEED);
+            tree.AddChild(clips[G_LocomotionClips[1]], GetGroundSpeed(clips[G_LocomotionClips[1]]));
+            tree.AddChild(clips[G_LocomotionClips[2]], GetGroundSpeed(clips[G_LocomotionClips[2]]));
+            locomotion.speedParameter       = PARAM_MOVE_ANIM_SPEED;
+            locomotion.speedParameterActive = true;
+            locomotion.iKOnFeet             = true;
             machine.defaultState = locomotion;
 
             for (int i = 0; i < G_AttackClips.Length; ++i)
@@ -435,6 +444,8 @@ namespace Shinshi.Editor
                 {
                     AddActionChain(machine, locomotion, extras[i]);
                 }
+
+                TagBowAimStates(machine);
             }
 
             AnimatorState die = machine.AddState("Die");
@@ -452,6 +463,13 @@ namespace Shinshi.Editor
             BuildFaceLayer(controller, mask);
             EditorUtility.SetDirty(controller);
             return controller;
+        }
+
+        // 블렌드 기준값을 클립의 실제 수평 이동 속도(m/s)로 맞춰야 Speed 값과 발걸음이 어긋나지 않는다
+        private static float GetGroundSpeed(AnimationClip clip)
+        {
+            Vector3 average = clip.averageSpeed;
+            return (float)Math.Round(new Vector2(average.x, average.z).magnitude, 2);
         }
 
         // 컨트롤러 에셋 파일은 남기고 파라미터, 레이어, 상태, 전이, 하위 오브젝트를 모두 비운다. 첫 레이어와 그 루트 상태 머신은 유지한다
@@ -1237,6 +1255,21 @@ namespace Shinshi.Editor
             }
 
             return clips;
+        }
+
+        // 궁수 사격 클립은 가슴이 정면, 활 든 팔이 왼쪽을 향하게 만들어져 있다. 표현이 이 태그가 달린 상태에서만
+        // 모델을 돌려 활이 조준 방향을 겨누게 한다
+        private static void TagBowAimStates(AnimatorStateMachine machine)
+        {
+            ChildAnimatorState[] states = machine.states;
+            for (int i = 0; i < states.Length; ++i)
+            {
+                Motion motion = states[i].state.motion;
+                if ((motion != null) && (motion.name.Contains(ARCHER_AIM_CLIP_MARKER)))
+                {
+                    states[i].state.tag = PlayerFemaleCharacterPresentationView.BOW_AIM_TAG;
+                }
+            }
         }
 
         // 분절이 하나면 일반 행동 상태, 여럿이면 같은 속도로 이어지는 상태 사슬이다.
