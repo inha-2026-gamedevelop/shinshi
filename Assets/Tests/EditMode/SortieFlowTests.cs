@@ -237,17 +237,38 @@ namespace Shinshi.Tests
         }
 
         [Test]
-        public void WaveProgress_BossSortie_SendsNothing()
+        public void WaveProgress_BossSortie_SendsTimerAndResendsOnJoin()
         {
+            const float ELAPSED_SECONDS = 1f;
+
             var progress = new RecordingWaveProgressAudience();
             _host.WaveProgressAudience = progress;
             _host.ConfigureContent(_waves, _rewards, _talismans, BOSS_MUCHEOL, IsKnownBoss);
             int one = Admit(API_ONE, Boss(BOSS_MUCHEOL, GameSessionCodes.Difficulty.EASY));
             StartSession();
-            Tick(_config.ReadyCountdownSeconds + 1.0);
-            _host.SendStatusTo(one);
 
-            Assert.AreEqual(0, progress.Count);
+            Assert.AreEqual(1, progress.Count);
+            WaveProgressMessage first = progress.Last(one);
+            Assert.AreEqual(0, first.WaveCount);
+            Assert.AreEqual(0, first.RemainingInWave);
+            Assert.AreEqual(_config.BossTimeLimitSeconds, first.TimeLimitSeconds);
+            Assert.IsTrue(first.IsRunning);
+            Assert.AreEqual(0f, first.ElapsedSeconds);
+            Assert.AreEqual(_config.ReadyCountdownSeconds, first.ServerTime);
+
+            double time = _config.ReadyCountdownSeconds + ELAPSED_SECONDS;
+            Tick(time);
+            Assert.AreEqual(1, progress.Count, "시간만 흐르면 다시 보내지 않는다");
+
+            _host.SendStatusTo(one);
+            Assert.AreEqual(2, progress.Count);
+            WaveProgressMessage restored = progress.Last(one);
+            Assert.AreEqual(0, restored.WaveCount);
+            Assert.AreEqual(0, restored.RemainingInWave);
+            Assert.AreEqual(_config.BossTimeLimitSeconds, restored.TimeLimitSeconds);
+            Assert.IsTrue(restored.IsRunning);
+            Assert.AreEqual(ELAPSED_SECONDS, restored.ElapsedSeconds);
+            Assert.AreEqual(time, restored.ServerTime);
         }
 
         [Test]
